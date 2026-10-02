@@ -1,59 +1,34 @@
 # COOK-02 — In-cook recipe feedback requirements
 
-> **Status:** Proposed documentation of current behavior; behavior-first, accelerated cadence. This specification does **not** authorize implementation. Source artifact: `docs/feature-inventory.md` COOK-02.
+## Status
+
+- **Status:** Implemented capability baseline.
+- **Kind:** Capability baseline; behavior-first.
 
 ## Outcome
 
-A cook can report the current ingredient or step problem and return to the same cooking position.
+While cooking, a member can report an ingredient or instruction problem against the current recipe without losing their cooking position.
 
-## Scope
+## Implemented behavior
 
-- Family-facing behavior described above, its current API/workflow seams, async states, and recovery.
-- Actor: an authenticated household member unless explicitly identified as operator configuration. Recipe/library effects are household-shared; transient UI state is member/device-local.
-- Entry: flag actions inside `CooksMode`, opening `RecipeImportIssueSheet` with contextual reason.
+- **COOK-02-R1 — Contextual entry.** Cook's Mode shows a labelled flag only when loaded recipe detail says `canReimport`. The preparation screen opens the issue sheet with `ingredients`; a cooking step opens it with `steps`. The sheet merges that reason with any stored report reason.
+- **COOK-02-R2 — Report editing.** The sheet supports `ingredients`, `steps`, and `duplicate`, optional note disclosure, reason exclusivity between duplicate and content reasons, focus trapping, Escape/close, and busy/re-import locks. Content reasons are disabled when the recipe cannot be re-imported; duplicate remains a report-for-review path.
+- **COOK-02-R3 — Authoritative submission.** Save calls `POST /api/recipes/{id}/import-report` with `{ reasons, note }`. The service validates the family-member header, recipe/member existence, allowed/unique reasons, note length, and content-report eligibility; it upserts one `RecipeImportReport` per recipe and returns authoritative recipe detail plus contextual re-import outcome.
+- **COOK-02-R4 — Conditional re-import.** A non-duplicate ingredients/steps report with a nonblank note for a re-importable recipe triggers the contextual workflow. An identical report with an active matching workflow reports that workflow as already started; unchanged prior feedback does not launch a new run. Changed feedback is persisted and may start a new attempt once no conflicting active run exists.
+- **COOK-02-R5 — Recovery and resolution.** If launch fails before a durable attempt is established, the report remains saved and the response marks `reimportLaunchFailed`; Cook's Mode keeps the sheet open with safe retry wording. Delete calls `DELETE /api/recipes/{id}/import-report` and removes a non-active report; active re-import conflicts are rejected.
+- **COOK-02-R6 — Cooking continuity.** Submission/recovery updates Cook's Mode `recipeDetails` but does not alter `plannerStore.cookProgress`; dismissal returns to the same preparation/step position. A local background-reimport acknowledgement appears only after a successful initiating submission.
 
-## Non-goals
+## Scope and boundaries
 
-- Redesigning adjacent recipe, planner, identity, workflow administration, or localization capabilities.
-- Treating current implementation details as newly approved product policy.
-- Implementing, migrating, or correcting behavior as part of this documentation packet.
+COOK-02 owns the contextual Cook's Mode entry and import-issue sheet behavior. The persisted report and workflow policy are shared with the recipe import-reporting capability; `lib-02` owns general recipe detail and `lib-03` owns actions outside Cook's Mode. It does not own instruction parsing/editing, schedule completion, or stream transport.
 
-## Verified baseline
+## Current limitations
 
-- Contract: `POST /api/recipes/{id}/import-report` and `DELETE /api/recipes/{id}/import-report`.
-- Ownership: `RecipeController.cs`, `RecipeImportReportService.cs`, and contextual re-import workflow.
-- Evidence: `CooksMode.test.tsx`, `RecipeImportIssueSheet.test.tsx`, and import-report integration tests.
-- Happy path: context preselects the applicable reason, save updates authoritative recipe issue state, and dismissal preserves cook progress.
-- Failure path: save/re-import launch failure keeps report context/recovery clear without moving the cook.
-- Concurrency: a concurrently changed report is reconciled from the returned recipe; no local progress reset follows issue updates.
-- Async: re-import continues after returning to cooking and exposes acknowledgement/status.
+- The in-process per-recipe semaphore does not coordinate multiple API replicas; no durable cross-process concurrency mechanism exists.
+- Cook's Mode does not poll or subscribe to later re-import status. A workflow can continue after the sheet closes, but this surface learns its later state only through a later detail fetch/mount.
+- Report and sheet copy, including errors and reimport acknowledgement, are hard-coded English. Failure UI exposes copyable recipe/import IDs, so product privacy/support policy should remain explicit.
+- The sheet's `resolve` success path leaves `busy` true until its parent unmounts it; an unexpected parent retention would leave controls disabled.
 
-## Requirements
+## Preserved behavior
 
-- **COOK-02-R1 — Entry and eligibility.** When an authenticated member enters this capability in an eligible state, the system shall expose the relevant action and enough context to understand its effect; when ineligible, it shall hide or disable it with a truthful explanation.
-- **COOK-02-R2 — Accepted outcome.** When valid input is confirmed, the system shall perform only the scoped action, return/retain a durable correlation identifier where background work exists, and distinguish acceptance from completion.
-- **COOK-02-R3 — Validation and failure.** When input, authorization, network, source, or processing fails, the system shall preserve recoverable member input/state, show a family-safe actionable message, and avoid claiming success or readiness.
-- **COOK-02-R4 — Async consistency.** While work is pending, the member may navigate away; polling/events/refetch shall reconcile to authoritative server state, and stale or late results shall not overwrite a newer attempt.
-- **COOK-02-R5 — Concurrency.** Repeat activation shall be locked while a request is active. Cross-device conflicts shall converge on server state, and unsupported atomicity shall not be represented as guaranteed.
-- **COOK-02-R6 — Accessibility and responsive use.** Every pointer/gesture action shall have a labeled keyboard/touch alternative, dialogs shall expose name and focus containment/restoration, progress/error changes shall be announced without focus theft, and controls shall remain usable on phone and larger layouts.
-- **COOK-02-R7 — Privacy and localization.** Family UI shall not reveal technical diagnostics, secrets, or another household's data. User-facing copy shall use supported locale resources; recipe processing language shall remain distinct from interface locale.
-- **COOK-02-R8 — Preserved behavior.** feedback is optional and never blocks step navigation; the current recipe/step remains selected
-
-## Observable acceptance states
-
-| State | Observable result |
-|---|---|
-| Ready/empty | Valid entry controls are available; absence of optional data is explained without fabricating content. |
-| Pending | Inputs that could duplicate work are locked and status says queued/processing rather than complete. |
-| Success | The authoritative result is visible or reachable and the next destination is explicit. |
-| Validation failure | The offending field/action is identified; no server-side effect is claimed. |
-| Service/workflow failure | Recoverable state remains; retry/refresh guidance is safe and diagnostics stay behind the operations boundary. |
-| Stale/concurrent | A refetch/versioned response wins over late optimistic state; destructive replacement is not silent. |
-| Unauthorized/not found | No household data is disclosed and the member is returned to a safe state. |
-
-## Open questions / blockers for future change
-
-1. What server idempotency key or version policy, if any, should be guaranteed across devices? Current evidence is insufficient for a stronger requirement.
-2. Which SSE event names and polling intervals are product commitments versus current implementation choices?
-3. Should pending work survive sign-out/member switching on the same device, and which member receives completion notification?
-4. Product approval is required before resolving these questions or implementing any task below.
+Feedback is optional and does not block navigation. The server saves report state before attempting eligible workflow launch; workflow acceptance is distinct from later re-import completion. The report is recipe-scoped, not a per-step annotation.

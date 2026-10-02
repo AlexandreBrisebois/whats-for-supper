@@ -1,72 +1,26 @@
 # PLAN-02 — Meal assignment and replacement: requirements
 
-## Status and derivation
+## Status
 
-- **Status:** Baseline proposed/current-behavior specification.
-- **Kind:** Feature specification; behavior-first; accelerated cadence.
-- **Source artifact:** [`docs/feature-inventory.md`](../../../docs/feature-inventory.md), PLAN-02.
-- **Authority:** This specification documents observed behavior for review. **Implementation is not authorized.**
+- **Status:** Implemented capability baseline.
+- **Kind:** Capability baseline; behavior-first.
+- **Authority:** documents current source behavior; it does not authorize implementation.
 
 ## Outcome
 
-A member can fill or replace a day while explicitly resolving any recipe already occupying the destination.
+From a planner slot, a user can choose a replacement from Quick Find or library search, assign it to an empty day, or explicitly move/remove the existing meal before replacing it.
 
-## Terms and state ownership
+## Implemented behavior
 
-- **Household** is the shared authenticated group; **member** is the selected perspective within it.
-- Canonical state for this feature is selected slot UI state, weekStore snapshot, and assignment displacement response. Client stores own display and in-flight state only; accepted server responses/events remain authoritative.
+- **PLAN-02-AC-01 — Entry paths.** Tapping a planner day opens the planning pivot. Quick Find requests `GET /api/schedule/fill-the-gap?weekOffset=<selected week>` and receives at most five server-ranked recipes; Search Library navigates to `/recipes?addToDay=<index>&weekOffset=<offset>`.
+- **PLAN-02-AC-02 — Empty-slot assignment.** Selecting a recipe for an empty slot calls `weekStore.assignRecipe`, optimistically fills that local day, posts `POST /api/schedule/assign` with `{ weekOffset, dayIndex, recipeId }`, then refreshes grocery/status information. On failure it restores the previous local schedule; the page re-initializes the week and displays an error toast.
+- **PLAN-02-AC-03 — Occupied-slot recovery.** Planner Quick Find does not call assign directly for an occupied day. It opens `SkipRecoveryDialog`; Tomorrow/Next Week/Drop first use `POST /api/schedule/move`, `POST /api/schedule/defer`, or `DELETE /api/schedule/day/{date}/remove`, then assigns the new recipe. A ref guards duplicate recovery submissions and the page re-fetches the week after either outcome.
+- **PLAN-02-AC-04 — Server displacement.** `ScheduleService.AssignRecipeAsync` replaces an occupied event. Only a Sunday replacement carries the displaced recipe to the following Monday and returns `displacedRecipe { id, name?, movedToWeekOffset, movedToDayIndex }`; other occupied assignments replace the row without returning a displaced recipe. The generic assignment wrapper returns but `weekStore.assignRecipe` does not inspect that response.
+- **PLAN-02-AC-05 — Suggestions and invalidation.** The service excludes recipes already assigned in the target week, prefers `RecipeMatches`, then fills from `DiscoveryRecipes`, ordered by never/least-recently cooked then popularity. Assignment/removal publish `fill_the_gap_invalidated`; the stream invalidates the discovery store for that week.
+- **PLAN-02-AC-06 — Scope boundary.** Quick Find card progression/rendering is owned by `QuickFindModal`; search semantics are owned by `search-04-context-aware-search`. Movement and the recovery dialog’s server operations are PLAN-03 concerns.
 
-## Scope
+## Limitations and non-goals
 
-### In scope
-
-- An empty day opens Quick Find or planner-aware recipe search with its date and week context.
-- A planned recipe can be inspected and replacement initiated from the planning pivot.
-- Assignment returns displacedRecipe when applicable; the user resolves that recipe rather than the client silently discarding it.
-- Loading, empty, success, rejection, retry, late-result, navigation, localization, accessibility, and concurrent-device behavior directly attached to the outcomes above.
-
-### Out of scope
-
-- Redesigning adjacent discovery, capture, recipe, or administration features.
-- Changing the approved OpenAPI contract, persistence schema, authentication model, or workflow schedule.
-- Treating this baseline as authorization to implement, migrate, or deploy anything.
-
-## Verified current ownership
-
-- `pwa/src/app/(app)/planner/page.tsx`
-- `pwa/src/components/planner/QuickFindModal.tsx`
-- `pwa/src/components/planner/PlanningPivotSheet.tsx`
-- `pwa/src/lib/planner/slotAssignment.ts`
-- `pwa/src/store/weekStore.ts`
-- `api/src/RecipeApi/Controllers/ScheduleController.cs`
-- `api/src/RecipeApi/Dto/DisplacedRecipeDto.cs`
-
-These paths verify current integration ownership, not that every proposed acceptance statement is already completely implemented.
-
-## Acceptance requirements
-
-- **PLAN-02-AC-01 — Primary outcome.** An empty day opens Quick Find or planner-aware recipe search with its date and week context.
-- **PLAN-02-AC-02 — Complete path.** A planned recipe can be inspected and replacement initiated from the planning pivot.
-- **PLAN-02-AC-03 — Boundary behavior.** Assignment returns displacedRecipe when applicable; the user resolves that recipe rather than the client silently discarding it.
-- **PLAN-02-AC-04 — Failure and recovery.** While work is loading or pending, duplicate submission is prevented and progress is perceivable. A rejected or unreachable request shows an actionable localized error, preserves the last confirmed state and user context, and permits retry without duplicating an accepted mutation.
-- **PLAN-02-AC-05 — Concurrency and late results.** Shared server updates are applied only to matching identities/week/date/context. Echoes and stale asynchronous results must not overwrite a newer local or server-confirmed state; reconnect obtains or preserves an authoritative snapshot.
-- **PLAN-02-AC-06 — Accessibility and localization.** Every action is keyboard operable, has a programmatic name and visible focus, communicates state without color alone, and announces consequential progress/errors. User-facing copy uses repository localization facilities; date, time, and count meaning remains locale-safe.
-- **PLAN-02-AC-07 — Compatibility and preservation.** Existing household authentication and member scoping remain enforced. Navigation retains relevant context, secrets never enter logs or persistent public UI, and unrelated weeks, days, recipes, votes, and member preferences remain unchanged.
-
-## Preserved behavior
-
-- Existing API authentication, success-envelope, member identity, and SSE-origin rules remain unchanged unless a separately approved contract specification says otherwise.
-- Existing confirmed server state is never discarded merely because a client request, animation, clipboard operation, native share call, or stream connection fails.
-- Unsupported browser conveniences degrade to another explicit action rather than blocking the core outcome.
-
-## Decisions
-
-- Stable acceptance identifiers use the `PLAN-02-AC-nn` namespace.
-- The server is authoritative for durable shared state; optimistic UI is provisional and reversible.
-- Accelerated cadence omits intermediate approval pauses but does not approve implementation.
-
-## Open questions
-
-- Which acceptance statements should become normative product commitments rather than preservation of observed behavior?
-- What user-facing retention, audit, conflict-resolution, and telemetry policy is required for this feature?
-- Which current edge cases need dedicated product copy, analytics, or explicit service-level targets?
+- The API documentation suggests `displacedRecipe` is broadly available, but source only creates it for Sunday; no current client path surfaces it.
+- A recovery action can succeed while the subsequent assignment fails; the user gets a refresh/toast but there is no compensating transaction.
+- Planner selection/replacement controls use some localized labels, but several Quick Find and pivot strings are literal English.

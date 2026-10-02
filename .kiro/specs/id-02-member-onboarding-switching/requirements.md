@@ -1,72 +1,33 @@
 # ID-02 — Member onboarding and switching: requirements
 
-## Status and derivation
+## Status and scope
 
-- **Status:** Baseline proposed/current-behavior specification.
-- **Kind:** Feature specification; behavior-first; accelerated cadence.
-- **Source artifact:** [`docs/feature-inventory.md`](../../../docs/feature-inventory.md), ID-02.
-- **Authority:** This specification documents observed behavior for review. **Implementation is not authorized.**
+- **Status:** Implemented capability baseline.
+- **Kind:** Capability baseline; behavior-first.
+- **Source artifact:** Current PWA, API, OpenAPI, and focused tests; `docs/feature-inventory.md` is historical context only.
+
+This packet owns selecting the member perspective after household access. It depends on ID-01 for access and is the shared selection boundary used by ID-03 management.
 
 ## Outcome
 
-An authenticated household visitor can choose the family member perspective used for personalized requests and restore it later.
+An access-authenticated visitor can select an existing member or create one when permitted, then use that selected member identity in app requests.
 
-## Terms and state ownership
+## Implemented behavior
 
-- **Household** is the shared authenticated group; **member** is the selected perspective within it.
-- Canonical state for this feature is family-member cookie and familyStore.selectedFamilyMemberId. Client stores own display and in-flight state only; accepted server responses/events remain authoritative.
+- **ID-02-AC-01 — Onboarding list and creation.** `/onboarding` loads `GET /api/family`, renders the member list, and exposes an add-member form. A nonblank name calls `POST /api/family`; on success, the returned member is appended locally and selected. The API rejects creation in demo mode with 403.
+- **ID-02-AC-02 — Selection persistence.** Onboarding selection writes the HttpOnly `x-family-member-id` cookie, then calls the family store selection action, completes the client onboarding flag, and replaces the route with `/home`. The store selection action also writes a non-HttpOnly fallback cookie for local development/test before setting `selectedFamilyMemberId`.
+- **ID-02-AC-03 — Switching and recovery.** `/profile` selects a member through `ProfileDropdown`, sets the same store/cookie state, completes onboarding, and pushes `/home`. `IdentityValidator` redirects routes lacking a selected member to onboarding; it attempts cookie/server recovery using `GET /api/family/me`, validates a selected ID against a loaded family list, and clears an absent selected ID only when a nonempty list has loaded.
+- **ID-02-AC-04 — API identity boundary.** `FamilyMemberIdModelBinder` takes `X-Family-Member-Id` first, then `x-family-member-id`. `/api/family/me` returns 401 with a message when no identity is present and 404 when the selected ID does not exist. The browser cookie is necessary for SSE because EventSource cannot add the header.
 
-## Scope
+## Preserved boundaries and non-goals
 
-### In scope
+- A member ID is personalized context, not household authentication; ID-01 owns `h_access` validation.
+- The family list is global in the current persistence model; this packet does not claim household-specific member partitioning.
+- Member rename, delete capability, invite UI, and copy/share handling belong to ID-03. Schedule SSE payload/reconciliation belongs to schedule specifications.
+- This baseline does not authorize a contract, cookie, middleware/proxy, or persistence change.
 
-- Onboarding lists members and permits selection or creation where server policy allows.
-- Selecting a member persists its identifier in the identity cookie and updates client state before protected navigation.
-- The selected perspective can be switched from onboarding, profile, or the in-app selector; return visits restore a valid current identity.
-- Loading, empty, success, rejection, retry, late-result, navigation, localization, accessibility, and concurrent-device behavior directly attached to the outcomes above.
+## Known limitations
 
-### Out of scope
-
-- Redesigning adjacent discovery, capture, recipe, or administration features.
-- Changing the approved OpenAPI contract, persistence schema, authentication model, or workflow schedule.
-- Treating this baseline as authorization to implement, migrate, or deploy anything.
-
-## Verified current ownership
-
-- `pwa/src/app/(auth)/onboarding/page.tsx`
-- `pwa/src/components/identity/FamilyMemberList.tsx`
-- `pwa/src/components/identity/FamilySelector.tsx`
-- `pwa/src/components/profile/ProfileDropdown.tsx`
-- `pwa/src/store/familyStore.ts`
-- `pwa/src/lib/identity/cookie.ts`
-- `api/src/RecipeApi/Controllers/FamilyController.cs`
-
-These paths verify current integration ownership, not that every proposed acceptance statement is already completely implemented.
-
-## Acceptance requirements
-
-- **ID-02-AC-01 — Primary outcome.** Onboarding lists members and permits selection or creation where server policy allows.
-- **ID-02-AC-02 — Complete path.** Selecting a member persists its identifier in the identity cookie and updates client state before protected navigation.
-- **ID-02-AC-03 — Boundary behavior.** The selected perspective can be switched from onboarding, profile, or the in-app selector; return visits restore a valid current identity.
-- **ID-02-AC-04 — Failure and recovery.** While work is loading or pending, duplicate submission is prevented and progress is perceivable. A rejected or unreachable request shows an actionable localized error, preserves the last confirmed state and user context, and permits retry without duplicating an accepted mutation.
-- **ID-02-AC-05 — Concurrency and late results.** Shared server updates are applied only to matching identities/week/date/context. Echoes and stale asynchronous results must not overwrite a newer local or server-confirmed state; reconnect obtains or preserves an authoritative snapshot.
-- **ID-02-AC-06 — Accessibility and localization.** Every action is keyboard operable, has a programmatic name and visible focus, communicates state without color alone, and announces consequential progress/errors. User-facing copy uses repository localization facilities; date, time, and count meaning remains locale-safe.
-- **ID-02-AC-07 — Compatibility and preservation.** Existing household authentication and member scoping remain enforced. Navigation retains relevant context, secrets never enter logs or persistent public UI, and unrelated weeks, days, recipes, votes, and member preferences remain unchanged.
-
-## Preserved behavior
-
-- Existing API authentication, success-envelope, member identity, and SSE-origin rules remain unchanged unless a separately approved contract specification says otherwise.
-- Existing confirmed server state is never discarded merely because a client request, animation, clipboard operation, native share call, or stream connection fails.
-- Unsupported browser conveniences degrade to another explicit action rather than blocking the core outcome.
-
-## Decisions
-
-- Stable acceptance identifiers use the `ID-02-AC-nn` namespace.
-- The server is authoritative for durable shared state; optimistic UI is provisional and reversible.
-- Accelerated cadence omits intermediate approval pauses but does not approve implementation.
-
-## Open questions
-
-- Which acceptance statements should become normative product commitments rather than preservation of observed behavior?
-- What user-facing retention, audit, conflict-resolution, and telemetry policy is required for this feature?
-- Which current edge cases need dedicated product copy, analytics, or explicit service-level targets?
+- The onboarding handler writes the member cookie directly and then invokes a store action that writes it again; the operations are not transactionally coupled to navigation.
+- `IdentityValidator` only clears an unknown selected ID after a successful nonempty list load. An empty list or a failed load leaves different recovery paths; there is no explicit stale-identity API error UX.
+- The existing Playwright onboarding test covers list rendering, clicking a member, and adding one with a stateful `/api/family` mock. It explicitly does not prove the SSR `/home` redirect/cookie seam; `auth-flow.spec.ts` covers the full invite redirect instead.

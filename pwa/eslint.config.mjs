@@ -11,6 +11,8 @@ const eslintConfig = [
       'src/lib/api/generated/**',
       '.kiota-check/**',
       'coverage/**',
+      'playwright-report/**',
+      'test-results/**',
     ],
   },
   ...nextConfig,

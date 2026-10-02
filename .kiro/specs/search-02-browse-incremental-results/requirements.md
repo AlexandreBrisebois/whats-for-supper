@@ -1,67 +1,18 @@
 # SEARCH-02 — Browse and incremental results: requirements
+> Status: **Implemented capability baseline**.
 
-> Status: **Proposed current-behavior specification**. Behavior-first, accelerated cadence.
-> Source: `docs/feature-inventory.md`. This documents observed behavior; it does not authorize implementation.
-
-## Outcome
-
-Members can browse and progressively extend a stable eligible result set.
-
-## Scope
-
-- Specify the current family-facing **browse and incremental results** behavior and its direct API/state seams.
-- Specify observable loading, empty, success, failure, retry, concurrency, navigation, localization, and accessibility behavior.
-- Preserve household isolation, active-member attribution, ready/non-deleted eligibility, and unrelated planner/library state.
-
-## Non-goals
-
-- Approving UI, API, schema, ranking, workflow, or persistence changes.
-- Defining adjacent capture, planner, identity, or operations features except where this feature hands off to them.
-- Treating implementation comments, tests, or this proposed baseline as a product decision.
-
-## Verified baseline
-
-- `pwa/src/app/(app)/recipes/page.tsx`
-- `pwa/src/lib/api/recipes.ts`
-- `api/src/RecipeApi/Services/RecipeSearchService.cs`
-- `pwa/e2e/search-hardening.spec.ts`
-- `pwa/src/app/(app)/recipes/page.test.tsx`
-
-The current OpenAPI authority is `specs/openapi.yaml`; relevant operations are: `POST /api/recipes/search`.
-
-## Acceptance criteria
-
+## Outcome and boundary
+With no text, usable concepts, or similar target, `/recipes` uses browse. SEARCH-01 owns ranked retrieval; SEARCH-03 filters; SEARCH-04 context.
 ### SEARCH-02-AC1
-
-With no query or usable preference concepts, Search opens in browse mode with eligible recommendations and no fabricated query explanation.
-
+Initial empty-query browse requests limit 12 and returns `resultPath: "browse"`, an optional server-vetted Top Pick, alternatives and an opaque cursor. Review filters suppress Top Pick.
 ### SEARCH-02-AC2
-
-Approaching the result boundary requests the contract cursor once, appends deduplicated results, and preserves already rendered cards during loading or failure.
-
+An intersection observer (400 px margin) requests a cursor once per generation. Browse continuation uses 24 and ranked continuation 12; appended IDs are deduplicated while cards and Top Pick remain visible.
 ### SEARCH-02-AC3
-
-A 409 expired continuation is identified separately and offers restart/recovery without silently clearing current cards.
-
+A 409 leaves cards visible and offers Restart search; other continuation errors offer Load more. Tokens are process-local, fingerprint-bound, bounded, and expire after ten minutes.
 ### SEARCH-02-AC4
+Surprise Me is local-only and enabled only for a promotion-eligible, import-issue-free alternative; it returns the former pick to alternatives.
 
-Surprise Me chooses another eligible displayed result when possible, avoids duplicate concurrent activation, and has a labeled keyboard-operable control.
-
-## Preserved behavior
-
-- Household/member credentials remain required where the current contract requires them; data must not cross household boundaries.
-- Unsupported or ineligible records remain excluded rather than made actionable by presentation state.
-- Existing routes and unrelated state remain stable on cancellation or failure.
-- English and French copy continue through the repository localization layer; no new hard-coded user-facing copy is implied.
-
-## Decisions
-
-- **Derivation:** behavior-first from the inventory, verified current source, OpenAPI, and tests.
-- **Cadence:** accelerated; requirements, design, and tasks are delivered together without an approval gate.
-- **Baseline:** proposed documentation of current behavior, not approval to preserve every behavior or begin work.
-
-## Open questions
-
-- Product must confirm whether every observed behavior is intended before an implementation packet is authorized.
-- Accessibility wording, performance budgets, telemetry retention, and destructive-operation policy require explicit product/security acceptance if changed.
-- Any contract divergence found during a future audit must be resolved against approved intent; implementation alone is not authority.
+## Limitations
+- Tokens do not survive API process restart and are not durable/shareable.
+- Repeated Surprise Me can select a previously seen pick.
+- No manual continuation fallback exists without `IntersectionObserver`.

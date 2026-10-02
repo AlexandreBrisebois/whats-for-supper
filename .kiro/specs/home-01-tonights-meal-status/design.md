@@ -1,76 +1,15 @@
-# HOME-01 — Tonight’s meal status: design baseline
+# HOME-01 — Tonight's meal status: design
 
-## Status
+## Integration map
 
-Baseline proposed/current-behavior design derived from [`requirements.md`](requirements.md). It records current integration evidence and candidate verification seams. **Implementation is not authorized.**
+`pwa/src/app/(app)/home/page.tsx` server-fetches the family and week-0 schedule, finds today, and renders `TodayStoreInitializer` plus `HomeCommandCenter`. `todayStore.ts` owns the browser recipe/status slice; `TonightMenuCard.tsx` renders the planned state and hands cooking to `CooksMode`. `useScheduleStream.ts` reconciles schedule events. Kiota/planner helpers cross the browser/API seam; `ScheduleController` delegates durable reads and validations to `ScheduleService`.
 
-## Verified current integration map
+## State and async flow
 
-- `pwa/src/app/(app)/home/page.tsx`
-- `pwa/src/components/home/HomeCommandCenter.tsx`
-- `pwa/src/components/home/TonightMenuCard.tsx`
-- `pwa/src/store/todayStore.ts`
-- `pwa/src/hooks/useScheduleStream.ts`
-- `api/src/RecipeApi/Controllers/ScheduleController.cs`
+SSR provides a possibly-null seed; `init` deliberately does not erase an existing client recipe merely because SSR returned null. `sync()` re-fetches the current week and normally treats the matching day as authoritative. Cook completion sets status `2` first, then posts validation. Stream snapshots and slot/week events replace the matching slice; a remote cooked event produces the compact cooked presentation.
 
-### Ownership and flow
+Network catches only log. There is no pending lock, response-confirmed success, rollback, request identity, or feature-specific stream recovery. Future work must retain the schedule service/SSE publisher as the durable authority.
 
-1. The route/component accepts interaction and keeps only ephemeral presentation state.
-2. The relevant Zustand store or API wrapper translates feature intent into generated-client or explicit HTTP calls.
-3. The current API controller operation validates household/member context and delegates to its service or workflow.
-4. Durable ownership remains todayStore seeded by server data and SSE schedule events; response data and `/api/stream` events reconcile participating clients where the feature is shared.
-5. Tests adjacent to the listed source and controller/service tests are the preferred executable evidence; `specs/openapi.yaml` is the contract authority for exposed operations.
+## Evidence
 
-## Behavior design
-
-### Success
-
-- Render confirmed data with stable identity and retain relevant member, week, date, or recipe context through navigation.
-- Disable only conflicting work while a mutation is pending; apply the accepted response, then reconcile matching shared events idempotently.
-- Report success only for an accepted operation. Browser-only conveniences such as clipboard/share do not redefine server success.
-
-### Empty, loading, errors, and recovery
-
-- Loading retains safe confirmed content where available and exposes a perceivable busy state.
-- Empty state distinguishes “no configured/assigned data” from loading and failure.
-- Authentication/authorization failure returns to the appropriate access or identity recovery path; validation/conflict errors preserve inputs and explain the next action.
-- Network/server failure restores the last confirmed state. Retry reuses feature context but does not blindly replay a mutation whose outcome is unknown.
-- Late results are ignored when their member, week, slot, recipe, request generation, or mounted surface no longer matches.
-
-### Concurrency
-
-- Server responses/events are authoritative. Optimistic changes require a pre-mutation snapshot or equivalent rollback data.
-- Matching SSE events may confirm local work; echoed or older events must not cause duplicate effects or visual regression.
-- A reconnect/snapshot converges client state without overwriting a newer guarded optimistic write; conflicts are surfaced rather than silently dropping displaced information.
-
-### Security and privacy
-
-- Household credentials use the existing authentication mechanism; member identity scopes personalized operations but is not a replacement for household authentication.
-- Secrets and signed invitation material are not logged, rendered after consumption, placed in telemetry, or sent to unrelated origins.
-- Destructive or household-wide changes require explicit intent and server authorization; inputs are contract-validated.
-
-### Accessibility and localization
-
-- Semantic headings, labels, focus management, keyboard activation, live status/error announcements, and non-color state indicators cover every interactive flow.
-- Copy is localized through current locale facilities. Dates are transported in contract format and presented in the member locale without changing schedule-day identity.
-
-### Performance and operations
-
-- Avoid duplicate fetch/mutation calls and unbounded suggestion/list rendering. Preserve store selectors and targeted event updates to limit rerenders.
-- Do not log credentials or full private payloads. Operational signals should distinguish validation, conflict, authorization, dependency, and unexpected failures without inventing success.
-
-## Requirement traceability
-
-| Requirements | Design seam |
-|---|---|
-| HOME-01-AC-01, HOME-01-AC-02, HOME-01-AC-03 | Route/component → store/API → controller/service → authoritative state |
-| HOME-01-AC-04 | Pending guard, confirmed snapshot, actionable error, retry |
-| HOME-01-AC-05 | Context keys, optimistic guard, SSE echo/reconnect reconciliation |
-| HOME-01-AC-06 | Semantic controls, focus/live regions, locale-safe copy and dates |
-| HOME-01-AC-07 | Authentication/member scope, context-preserving navigation, non-target preservation |
-
-## Verified facts versus future decisions
-
-**Verified facts:** the files above currently own the visible/client/server seams; generated API code is derived from `specs/openapi.yaml`; shared schedule behavior uses `/api/stream`; todayStore seeded by server data and SSE schedule events is the observed state boundary.
-
-**Future decisions (not implementation commitments):** final product copy, retention/audit policy, conflict UX, service-level targets, telemetry schema, and any new family-facing entry point or contract field require approval. The open questions in requirements block affected future tasks.
+`page.tsx`, `TodayStoreInitializer.tsx`, `HomeCommandCenter.tsx`, `TonightMenuCard.tsx`, `todayStore.ts`, `useScheduleStream.ts`, `ScheduleController.cs`, `ScheduleService.cs`, `specs/openapi.yaml`; focused evidence: `todayStore.test.ts`, `HomeCommandCenter.test.tsx`, `home-recipe.spec.ts`, and `home-race.spec.ts`.

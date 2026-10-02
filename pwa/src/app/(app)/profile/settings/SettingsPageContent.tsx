@@ -8,6 +8,7 @@ import { FailedCapturesSection } from '@/components/profile/FailedCapturesSectio
 import { t } from '@/locales';
 import { ROUTES } from '@/lib/constants/routes';
 import { useFamilyStore } from '@/store/familyStore';
+import { PreviewFeaturesSection } from '@/components/profile/PreviewFeaturesSection';
 
 interface SettingsPageContentProps {
   buildVersion?: string;
@@ -18,7 +19,10 @@ export function SettingsPageContent({ buildVersion }: SettingsPageContentProps) 
   const { selectedFamilyMemberId, updateMemberPreferences } = useFamilyStore();
 
   return (
-    <div className="flex flex-col gap-10 py-8 animate-in fade-in slide-in-from-bottom-8 duration-1000 ease-out">
+    <div
+      data-testid="settings-content"
+      className="flex min-w-0 flex-col gap-10 py-8 animate-in fade-in slide-in-from-bottom-8 duration-1000 ease-out"
+    >
       {/* Decorative background element */}
       <div className="fixed inset-0 -z-10 bg-[radial-gradient(circle_at_50%_-20%,#FDFCF0_0%,#FFFFFF_100%)]" />
       <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[150%] h-[40%] -z-10 bg-terracotta/[0.03] blur-[120px] rounded-[100%]" />
@@ -41,15 +45,14 @@ export function SettingsPageContent({ buildVersion }: SettingsPageContentProps) 
         </div>
       </div>
 
-      <div className="flex flex-col gap-8">
-        {/* Family Management */}
+      <div className="flex min-w-0 flex-col gap-8">
         <FamilyManagement />
 
-        {/* Family GOTO */}
         <FamilyGOTOSettings />
 
-        {/* Failed Captures */}
         <FailedCapturesSection />
+
+        <PreviewFeaturesSection />
       </div>
 
       {buildVersion && (

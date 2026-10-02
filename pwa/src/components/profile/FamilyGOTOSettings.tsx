@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
+import { t, tWithVars } from '@/locales';
 import { useFamilyStore } from '@/store/familyStore';
 import { useGotoStore } from '@/store/gotoStore';
 import { apiClient } from '@/lib/api/api-client';
@@ -90,13 +91,15 @@ export function FamilyGOTOSettings() {
         <div className="flex items-center gap-3 mb-8">
           <Sparkles className="h-4 w-4 text-ochre" />
           <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-ochre">
-            Family GOTO
+            {t('familyGoto.title', 'Family GOTO')}
           </h3>
         </div>
 
         <p className="text-sm text-charcoal/60 mb-6">
-          Your fallback meals when nothing is planned. They cycle on the home screen so you can
-          confirm them in one tap.
+          {t(
+            'familyGoto.description',
+            'Your fallback meals when nothing is planned. They cycle on the home screen so you can confirm them in one tap.'
+          )}
         </p>
 
         {currentGotos.length > 0 ? (
@@ -131,6 +134,9 @@ export function FamilyGOTOSettings() {
                   <button
                     onClick={() => handleRemove(goto.recipeId!)}
                     disabled={isRemoving}
+                    aria-label={tWithVars('familyGoto.remove', 'Remove {{name}}', {
+                      name: goto.description ?? '',
+                    })}
                     className="p-2 rounded-full hover:bg-charcoal/5 text-charcoal/30 hover:text-terracotta transition-colors disabled:opacity-50"
                   >
                     {isRemoving ? <Loader2 size={14} className="animate-spin" /> : <X size={14} />}
@@ -144,17 +150,19 @@ export function FamilyGOTOSettings() {
               className="flex items-center gap-2 w-full h-11 rounded-2xl bg-ochre/10 text-ochre justify-center text-[10px] font-black uppercase tracking-widest hover:bg-ochre/20 transition-colors mt-2"
               data-testid="add-goto-btn"
             >
-              <Plus size={14} /> Add a GOTO
+              <Plus size={14} /> {t('familyGoto.add', 'Add a GOTO')}
             </button>
           </div>
         ) : (
           <div className="flex flex-col gap-3">
-            <p className="text-sm text-charcoal/40 italic">No GOTO set yet.</p>
+            <p className="text-sm text-charcoal/40 italic">
+              {t('familyGoto.empty', 'No GOTO set yet.')}
+            </p>
             <button
               onClick={() => setShowSheet(true)}
               className="flex items-center gap-2 w-full h-12 rounded-2xl bg-ochre/10 text-ochre justify-center text-[10px] font-black uppercase tracking-widest hover:bg-ochre/20 transition-colors"
             >
-              Add a GOTO <ChevronRight size={14} />
+              {t('familyGoto.add', 'Add a GOTO')} <ChevronRight size={14} />
             </button>
           </div>
         )}
@@ -187,12 +195,12 @@ export function FamilyGOTOSettings() {
               {/* Header */}
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-sm font-black uppercase tracking-widest text-charcoal/60">
-                  Add a GOTO
+                  {t('familyGoto.add', 'Add a GOTO')}
                 </h2>
                 <button
                   onClick={() => setShowSheet(false)}
                   className="p-2 rounded-full bg-charcoal/5 hover:bg-charcoal/10 transition-colors"
-                  aria-label="Close"
+                  aria-label={t('familyGoto.close', 'Close')}
                 >
                   <X size={16} className="text-charcoal/60" />
                 </button>
@@ -203,16 +211,21 @@ export function FamilyGOTOSettings() {
                 {/* Search library */}
                 <button
                   onClick={handleSearchLibrary}
-                  className="flex items-center gap-4 w-full h-16 rounded-2xl bg-ochre/10 px-5 text-left hover:bg-ochre/20 transition-colors"
+                  className="flex items-center gap-4 w-full min-h-16 py-3 rounded-2xl bg-ochre/10 px-5 text-left hover:bg-ochre/20 transition-colors"
                   data-testid="goto-search-library"
                 >
                   <div className="flex-shrink-0 h-9 w-9 rounded-xl bg-ochre/20 flex items-center justify-center">
                     <Search size={18} className="text-ochre" />
                   </div>
                   <div>
-                    <p className="text-sm font-black text-charcoal">Search the Library</p>
+                    <p className="text-sm font-black text-charcoal">
+                      {t('familyGoto.search', 'Search the Library')}
+                    </p>
                     <p className="text-[10px] text-charcoal/40 font-medium">
-                      Find the recipe, then tap the star to make it your GOTO.
+                      {t(
+                        'familyGoto.searchDescription',
+                        'Find the recipe, then tap the star to make it your GOTO.'
+                      )}
                     </p>
                   </div>
                 </button>
@@ -220,15 +233,20 @@ export function FamilyGOTOSettings() {
                 {/* Describe it */}
                 <button
                   onClick={handleDescribeIt}
-                  className="flex items-center gap-4 w-full h-20 rounded-[1.25rem] bg-terracotta/10 px-6 text-left hover:bg-terracotta/20 transition-all active:scale-[0.98]"
+                  className="flex items-center gap-4 w-full min-h-20 py-3 rounded-[1.25rem] bg-terracotta/10 px-6 text-left hover:bg-terracotta/20 transition-all active:scale-[0.98]"
                 >
                   <div className="flex-shrink-0 h-10 w-10 rounded-xl bg-terracotta/20 flex items-center justify-center">
                     <PenLine size={20} className="text-terracotta" />
                   </div>
                   <div>
-                    <p className="text-sm font-black text-charcoal tracking-tight">Describe it</p>
+                    <p className="text-sm font-black text-charcoal tracking-tight">
+                      {t('familyGoto.describe', 'Describe it')}
+                    </p>
                     <p className="text-[10px] text-charcoal/40 font-semibold leading-tight">
-                      AI synthesizes a full recipe from your description
+                      {t(
+                        'familyGoto.describeDescription',
+                        'AI synthesizes a full recipe from your description'
+                      )}
                     </p>
                   </div>
                 </button>
@@ -236,15 +254,20 @@ export function FamilyGOTOSettings() {
                 {/* Capture it */}
                 <button
                   onClick={handleCaptureIt}
-                  className="flex items-center gap-4 w-full h-16 rounded-2xl bg-sage/10 px-5 text-left hover:bg-sage/20 transition-colors"
+                  className="flex items-center gap-4 w-full min-h-16 py-3 rounded-2xl bg-sage/10 px-5 text-left hover:bg-sage/20 transition-colors"
                 >
                   <div className="flex-shrink-0 h-9 w-9 rounded-xl bg-sage/20 flex items-center justify-center">
                     <Camera size={18} className="text-sage" />
                   </div>
                   <div>
-                    <p className="text-sm font-black text-charcoal">Capture it</p>
+                    <p className="text-sm font-black text-charcoal">
+                      {t('familyGoto.capture', 'Capture it')}
+                    </p>
                     <p className="text-[10px] text-charcoal/40 font-medium">
-                      Photo of a recipe card, box, or handwritten note
+                      {t(
+                        'familyGoto.captureDescription',
+                        'Photo of a recipe card, box, or handwritten note'
+                      )}
                     </p>
                   </div>
                 </button>

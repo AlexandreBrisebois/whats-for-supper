@@ -47,7 +47,11 @@ export function Layout({
       <main
         className={`relative flex flex-col flex-1 ${hideHeader ? 'safe-top' : ''} ${isFluid ? '' : 'px-4 py-8 md:px-6'} ${hideNavigation ? 'safe-bottom' : 'pb-[calc(6rem+env(safe-area-inset-bottom))]'} ${mainClassName}`}
       >
-        <div className={isFluid ? 'flex-1 flex flex-col' : 'mx-auto max-w-7xl'}>{children}</div>
+        <div
+          className={isFluid ? 'flex-1 flex flex-col' : 'mx-auto min-w-0 max-w-[min(100%,80rem)]'}
+        >
+          {children}
+        </div>
       </main>
 
       {/* Mobile & Tablet Navigation */}

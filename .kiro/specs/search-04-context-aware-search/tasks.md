@@ -1,51 +1,6 @@
-# SEARCH-04 — Context-aware search: proposed tasks
+# SEARCH-04 — Context-aware search: future work
+## T1 — Validate planner URL context before Search or assignment
+**Test seam:** unit: `page.test.tsx`, `slotAssignment.test.ts`; API: `RecipeSearchIntegrationTests` and planner controller tests if API validation changes; Playwright: malformed context issues no invalid assignment and stays recoverable; mock owner: page Search/planner mocks and Playwright Search/schedule routes; route/method: `POST /api/recipes/search`, `GET /api/schedule`, `POST /api/schedule/assign`; contract: optional integer week/day for Search, required `{weekOffset,dayIndex,recipeId}` for assignment, never non-finite/out-of-range.
 
-**Requirements:** [requirements.md](requirements.md)
-
-**Design:** [design.md](design.md)
-
-> These are **future audit/change tasks**, not a claim that shipped behavior is missing.
-> No task below is authorized for implementation by this specification.
-
-## Execution rules
-
-- Select and approve a bounded change outcome before starting; use OpenAPI → tests → implementation for contract-affecting work.
-- Stop on unresolved product intent, cross-household exposure, destructive-data ambiguity, contract drift, or a required schema decision.
-- Record commands and actual pass/fail/blocked/not-run evidence; do not check off work from historical status.
-
-## T1 — Baseline audit (required for any future change)
-
-**Traceability:** SEARCH-04-AC1, SEARCH-04-AC2, SEARCH-04-AC3, SEARCH-04-AC4.
-**Authorized effects after separate approval:** selected spec/evidence only; no runtime changes.
-**Assertions:** exercise the verified route, capture every state named in requirements, compare wrapper/generated types/controller behavior with `specs/openapi.yaml`, and document divergences.
-**Checks:** targeted existing React/API tests and OpenAPI generation/drift checks chosen by the execution harness.
-**Stop:** intent differs from baseline, an endpoint is undocumented, or identity/eligibility cannot be demonstrated.
-
-## T2 — Contract and test-first packet (required only if change is approved)
-
-**Traceability:** affected acceptance IDs identified by T1.
-**Design references:** Integration map; Data and control flow; Security and privacy.
-**Authorized effects:** only explicitly approved OpenAPI/generated client, targeted API/PWA tests, and schema compatibility files.
-**Assertions:** encode success, validation, authorization, empty/error, concurrency, and recovery semantics before implementation.
-**Checks:** OpenAPI validation/client generation plus targeted API and PWA unit tests; add database compatibility checks if persistence changes.
-**Stop:** failing baseline is unexplained, generated/manual models drift, or contract intent is unapproved.
-
-## T3 — Vertical implementation (required only after T2 approval/evidence)
-
-**Traceability:** implement only acceptance IDs covered by failing/approved tests.
-**Design references:** State, failures, and recovery; Localization and accessibility; Performance and compatibility.
-**Authorized effects:** named runtime files from the approved execution packet; no adjacent cleanup.
-**Assertions:** request guards prevent stale writes, repeated actions are bounded, errors preserve context, identity/eligibility are server-enforced, and English/French plus keyboard/screen-reader behavior remain complete.
-**Checks:** targeted .NET tests, PWA unit tests, lint/type checks, and relevant Playwright journey.
-**Stop:** scope expands to another inventory feature, destructive semantics change, or required services/test identities are unavailable.
-
-## T4 — Acceptance and drift review (required after an approved implementation)
-
-**Traceability:** every changed acceptance ID → design section → test assertion → recorded command.
-**Assertions:** review actual diff for authorized scope; verify OpenAPI/controller/generated client/mock parity; verify loading/empty/error/retry/concurrency/accessibility/localization and preserved behavior.
-**Checks:** execution-harness completion checks, `git diff --check`, and local Markdown-link validation for changed specs.
-**Stop:** any required check fails or is unqualified; report the blocker rather than declaring completion.
-
-## Optional follow-up
-
-Telemetry or performance-budget work is optional unless separately accepted. It must not collect household secrets, natural-language query contents, imported bundle contents, or recipe notes without an approved privacy decision.
+## T2 — Decide whether similar context should be durable and visible
+**Test seam:** unit: `page.test.tsx`; API: `RecipeSearchIntegrationTests`; Playwright: Find Similar shows focus and reload preserves it if URL durability is approved; mock owner: page Search mock and Playwright Search route; route/method: `POST /api/recipes/search`; contract: `{query:"",similarToRecipeId:uuid}` returns `{searchMode:"similar",resultPath:"similar",topPick,results,appliedFilters,nextCursor}`.

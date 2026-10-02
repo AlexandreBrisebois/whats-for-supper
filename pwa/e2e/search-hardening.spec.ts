@@ -279,7 +279,7 @@ test.describe('Scenario 4 — soft-delete → restore → hard-delete lifecycle'
 });
 
 // ---------------------------------------------------------------------------
-// Scenario 5: failed capture → retry success → item removed → empty state
+// Scenario 5: failed capture → retry success → item removed → section hidden
 // ---------------------------------------------------------------------------
 
 test.describe('Scenario 5 — failed capture → retry success lifecycle', () => {
@@ -305,7 +305,7 @@ test.describe('Scenario 5 — failed capture → retry success lifecycle', () =>
     await setupCommonRoutes(page);
   });
 
-  test('failure present → retry → item disappears → empty state shows', async ({ page }) => {
+  test('failure present → retry → item disappears → section hides', async ({ page }) => {
     let retryCallCount = 0;
     let failuresReturned = true;
 
@@ -364,12 +364,21 @@ test.describe('Scenario 5 — failed capture → retry success lifecycle', () =>
     expect((await retryResponse).status()).toBe(202);
     expect(retryCallCount).toBe(1);
 
-    // After retry, refresh — item gone, empty state shown
-    await page.goto('/profile/settings');
-    await expect(page.getByTestId('failed-captures-empty')).toBeVisible({ timeout: 5000 });
     await expect(
-      page.locator(`[data-testid="failed-capture-${MOCK_IDS.CAPTURE_FAILURE_URL}"]`)
-    ).not.toBeVisible();
+      page.getByTestId(`action-retry-${MOCK_IDS.CAPTURE_FAILURE_URL}-retrying`)
+    ).toBeVisible();
+
+    // After retry, refresh and verify the server reports no remaining failures.
+    const refreshedFailures = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'GET' && response.url().endsWith('/api/captures/failures')
+    );
+    await page.goto('/profile/settings');
+    const failuresResponse = await refreshedFailures;
+    expect(failuresResponse.status()).toBe(200);
+    expect(await failuresResponse.json()).toEqual({ data: { items: [] } });
+    await expect(page.getByTestId('failed-captures-section')).toHaveCount(0);
+    await expect(page.getByTestId(`failed-capture-${MOCK_IDS.CAPTURE_FAILURE_URL}`)).toHaveCount(0);
   });
 });
 

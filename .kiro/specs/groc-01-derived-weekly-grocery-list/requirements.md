@@ -1,71 +1,36 @@
 # GROC-01 — Derived weekly grocery list: requirements
 
-## Status and derivation
+## Status
 
-- **Status:** Baseline proposed/current-behavior specification.
-- **Kind:** Feature specification; behavior-first; accelerated cadence.
-- **Source artifact:** [`docs/feature-inventory.md`](../../../docs/feature-inventory.md), GROC-01.
-- **Authority:** This specification documents observed behavior for review. **Implementation is not authorized.**
+- **Status:** Implemented capability baseline.
+- **Kind:** Capability baseline; behavior-first.
 
 ## Outcome
 
-A member can shop from a week-specific list derived from the recipes actually assigned to that week.
+The planner shows a grocery checklist for the selected week, derived from recipes assigned to that week's calendar days.
 
-## Terms and state ownership
+## Implemented behavior
 
-- **Household** is the shared authenticated group; **member** is the selected perspective within it.
-- Canonical state for this feature is server-derived GroceryLineItemDto collection in selected weekStore. Client stores own display and in-flight state only; accepted server responses/events remain authoritative.
+- **GROC-01-AC-01 — Week-derived lines.** `GET /api/schedule?weekOffset={n}` returns that week's `groceryItems` with the schedule. `weekStore` retains the returned items and the planner renders them through `GroceryList`.
+- **GROC-01-AC-02 — Recompute and aggregation.** Schedule assignment, removal, move, and defer paths recompute affected weeks. `GroceryRecomputeService` reads structured recipe `supply` entries, falls back to stored ingredients when needed, normalizes names, aggregates compatible quantities by normalized ingredient and unit bucket, retains contributing `recipeIds`, and persists the resulting JSON on `WeeklyPlan`.
+- **GROC-01-AC-03 — Aisle presentation.** Each line has a server-resolved section: a saved ingredient category takes precedence over the server keyword mapper. The browser groups the returned lines in the fixed aisle order, places checked rows after unchecked rows, renders quantity/unit hints, and supplies an empty-list path back to planning.
+- **GROC-01-AC-04 — Week and stream refresh.** `weekStore.init` and `sync` load the selected offset; snapshots from `week_updated` replace `groceryItems` only for that offset. Assignment fetches the schedule after success; remove and local reclassification have narrower local updates.
+- **GROC-01-AC-05 — State preservation.** Recompute preserves the persisted grocery check-state map, removing keys only when a prior line disappears or no longer matches the new line's normalized/legacy key and display name. It creates an otherwise absent `WeeklyPlan` when recomputing a week.
 
-## Scope
+## Scope and boundaries
 
-### In scope
+This packet owns the derived grocery-line representation and planner display. `plan-02-meal-assignment-replacement` and `plan-03-schedule-movement-exceptions` own schedule commands that trigger recomputation. `plat-04-ingredient-categorization` owns normalization, stored category authority, and background categorization; GROC-03 owns the correction interaction. GROC-02 owns checked-state commands and convergence.
 
-- The selected week response provides grocery lines derived from scheduled recipes.
-- Lines are grouped in aisle/category order while distinct recipe needs retain their provenance instead of being silently collapsed.
-- Switching planner and grocery views preserves weekOffset and does not refetch a different week.
-- Loading, empty, success, rejection, retry, late-result, navigation, localization, accessibility, and concurrent-device behavior directly attached to the outcomes above.
+It does not define recipe parsing, schedule semantics, category vocabulary, or SSE transport.
 
-### Out of scope
+## Current limitations
 
-- Redesigning adjacent discovery, capture, recipe, or administration features.
-- Changing the approved OpenAPI contract, persistence schema, authentication model, or workflow schedule.
-- Treating this baseline as authorization to implement, migrate, or deploy anything.
-
-## Verified current ownership
-
-- `pwa/src/app/(app)/planner/page.tsx`
-- `pwa/src/components/planner/GroceryList.tsx`
-- `pwa/src/lib/grocery/aisleMapper.ts`
-- `pwa/src/store/weekStore.ts`
-- `api/src/RecipeApi/Services/GroceryRecomputeService.cs`
-- `api/src/RecipeApi/Services/ScheduleService.cs`
-
-These paths verify current integration ownership, not that every proposed acceptance statement is already completely implemented.
-
-## Acceptance requirements
-
-- **GROC-01-AC-01 — Primary outcome.** The selected week response provides grocery lines derived from scheduled recipes.
-- **GROC-01-AC-02 — Complete path.** Lines are grouped in aisle/category order while distinct recipe needs retain their provenance instead of being silently collapsed.
-- **GROC-01-AC-03 — Boundary behavior.** Switching planner and grocery views preserves weekOffset and does not refetch a different week.
-- **GROC-01-AC-04 — Failure and recovery.** While work is loading or pending, duplicate submission is prevented and progress is perceivable. A rejected or unreachable request shows an actionable localized error, preserves the last confirmed state and user context, and permits retry without duplicating an accepted mutation.
-- **GROC-01-AC-05 — Concurrency and late results.** Shared server updates are applied only to matching identities/week/date/context. Echoes and stale asynchronous results must not overwrite a newer local or server-confirmed state; reconnect obtains or preserves an authoritative snapshot.
-- **GROC-01-AC-06 — Accessibility and localization.** Every action is keyboard operable, has a programmatic name and visible focus, communicates state without color alone, and announces consequential progress/errors. User-facing copy uses repository localization facilities; date, time, and count meaning remains locale-safe.
-- **GROC-01-AC-07 — Compatibility and preservation.** Existing household authentication and member scoping remain enforced. Navigation retains relevant context, secrets never enter logs or persistent public UI, and unrelated weeks, days, recipes, votes, and member preferences remain unchanged.
+- Grocery lines are precomputed only after covered schedule mutations; this baseline makes no freshness guarantee for direct recipe-content edits outside those paths.
+- The durable checked-state map and single-item command are keyed by `displayName`, even though display rows are distinguished by normalized key/unit. Equal display names therefore share a check state.
+- The browser's initial empty state is populated locally from displayed items when no grocery state arrived; it is not persisted until a toggle.
+- `GroceryList` has no explicit list-loading or list-fetch error surface; it receives items from the planner store.
+- The fallback to raw ingredient strings cannot provide structured quantities or units.
 
 ## Preserved behavior
 
-- Existing API authentication, success-envelope, member identity, and SSE-origin rules remain unchanged unless a separately approved contract specification says otherwise.
-- Existing confirmed server state is never discarded merely because a client request, animation, clipboard operation, native share call, or stream connection fails.
-- Unsupported browser conveniences degrade to another explicit action rather than blocking the core outcome.
-
-## Decisions
-
-- Stable acceptance identifiers use the `GROC-01-AC-nn` namespace.
-- The server is authoritative for durable shared state; optimistic UI is provisional and reversible.
-- Accelerated cadence omits intermediate approval pauses but does not approve implementation.
-
-## Open questions
-
-- Which acceptance statements should become normative product commitments rather than preservation of observed behavior?
-- What user-facing retention, audit, conflict-resolution, and telemetry policy is required for this feature?
-- Which current edge cases need dedicated product copy, analytics, or explicit service-level targets?
+The API remains the source of grocery line data. Aisle grouping is presentation-only; unknown sections fall into `Grocery`. The feature remains usable with an empty week and does not alter recipes, votes, or another week's plan.

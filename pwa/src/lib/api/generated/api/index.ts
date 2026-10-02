@@ -20,6 +20,12 @@ import {
 } from './family/index';
 // @ts-ignore
 import {
+  FeatureFlagsRequestBuilderNavigationMetadata,
+  FeatureFlagsRequestBuilderRequestsMetadata,
+  type FeatureFlagsRequestBuilder,
+} from './featureFlags/index';
+// @ts-ignore
+import {
   GotoRequestBuilderNavigationMetadata,
   GotoRequestBuilderRequestsMetadata,
   type GotoRequestBuilder,
@@ -89,6 +95,10 @@ export interface ApiRequestBuilder extends BaseRequestBuilder<ApiRequestBuilder>
    */
   get family(): FamilyRequestBuilder;
   /**
+   * The featureFlags property
+   */
+  get featureFlags(): FeatureFlagsRequestBuilder;
+  /**
    * The goto property
    */
   get goto(): GotoRequestBuilder;
@@ -150,6 +160,10 @@ export const ApiRequestBuilderNavigationMetadata: Record<
   family: {
     requestsMetadata: FamilyRequestBuilderRequestsMetadata,
     navigationMetadata: FamilyRequestBuilderNavigationMetadata,
+  },
+  featureFlags: {
+    requestsMetadata: FeatureFlagsRequestBuilderRequestsMetadata,
+    navigationMetadata: FeatureFlagsRequestBuilderNavigationMetadata,
   },
   goto: {
     requestsMetadata: GotoRequestBuilderRequestsMetadata,

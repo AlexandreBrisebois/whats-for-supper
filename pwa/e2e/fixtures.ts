@@ -3,9 +3,10 @@ import { generateSecretToken } from './auth-utils';
 
 export type { Page, APIRequestContext };
 
-export const test = base.extend({
+export const test = base.extend<{ appLocale: 'en' | 'fr' }>({
+  appLocale: ['en', { option: true }],
   // Extend the page fixture to clear cookies before each test and inject auth
-  page: async ({ page }, use) => {
+  page: async ({ page, appLocale }, use) => {
     const fixedTestDate = '2026-05-04T12:00:00Z';
 
     // Pin time to 2026-05-04 12:00:00 UTC (a Monday) to match ADR-029 fixed reference date
@@ -51,11 +52,11 @@ export const test = base.extend({
       }
     });
 
-    // Force English locale for deterministic tests
+    // Seed the selected app locale on every navigation (English by default).
     // Match LOCALE_KEY from pwa/src/locales/index.ts
-    await page.addInitScript(() => {
-      window.localStorage.setItem('locale', 'en');
-    });
+    await page.addInitScript((locale) => {
+      window.localStorage.setItem('locale', locale);
+    }, appLocale);
 
     page.on('request', (request) => {
       if (request.url().includes('/api/')) {

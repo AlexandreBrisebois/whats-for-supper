@@ -58,6 +58,7 @@ vi.mock('@/components/recipes/RecipeDetailSheet', () => ({
 
 import { CooksMode } from './CooksMode';
 import { usePlannerStore } from '@/store/plannerStore';
+import { useFeatureFlagStore } from '@/store/featureFlagStore';
 
 describe('CooksMode', () => {
   beforeEach(() => {
@@ -67,6 +68,143 @@ describe('CooksMode', () => {
     resolveRecipeImportIssueMock.mockReset();
     routerMocks.push.mockReset();
     usePlannerStore.setState({ cookProgress: {} });
+    useFeatureFlagStore.setState({ flags: {} });
+  });
+
+  it('keeps preparation and then renders every editable step on one page when enabled', async () => {
+    getRecipeMock.mockResolvedValue({
+      id: 'recipe-1',
+      name: 'Pasta Night',
+      ingredients: ['Pasta'],
+      recipeInstructions: ['Boil water', 'Cook pasta'],
+    });
+    updateRecipeMock.mockResolvedValue(undefined);
+    useFeatureFlagStore.setState({
+      flags: {
+        'single-page-recipe-steps': {
+          key: 'single-page-recipe-steps',
+          mode: 'opt-in',
+          enabled: true,
+          memberEnabled: true,
+        },
+      },
+    });
+
+    render(
+      <CooksMode recipe={{ id: 'recipe-1', name: 'Pasta Night', image: '' }} onClose={vi.fn()} />
+    );
+
+    expect(await screen.findByRole('heading', { name: 'Check & Prep' })).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('cooks-mode-step-next'));
+    expect(await screen.findByTestId('single-page-recipe-steps')).toHaveTextContent('Boil water');
+    expect(screen.getByTestId('single-page-recipe-steps')).toHaveTextContent('Cook pasta');
+    expect(screen.queryByRole('heading', { name: /^Step \d+$/ })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Edit step 2' }));
+    fireEvent.change(screen.getByLabelText('Edit step 2 instructions'), {
+      target: { value: 'Cook gently' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(updateRecipeMock).toHaveBeenCalledWith('recipe-1', {
+        recipeInstructions: ['Boil water', 'Cook gently'],
+      })
+    );
+  });
+
+  it('tracks single-page reading position without remounting rows or completing cooking', async () => {
+    const id = '11111111-1111-4111-8111-111111111111';
+    // Use a consistent structured representation, including a redundant source title.
+    getRecipeMock.mockResolvedValue({
+      id,
+      recipeInstructions: [
+        { name: 'Step 1', text: 'Boil water' },
+        { name: 'Simmer gently', text: 'Cook pasta' },
+      ],
+    });
+    useFeatureFlagStore.setState({
+      flags: {
+        'single-page-recipe-steps': {
+          key: 'single-page-recipe-steps',
+          mode: 'on',
+          enabled: true,
+          memberEnabled: false,
+        },
+      },
+    });
+    const onCooked = vi.fn();
+    const { unmount } = render(
+      <CooksMode recipe={{ id, name: 'Pasta', image: '' }} onClose={vi.fn()} onCooked={onCooked} />
+    );
+    fireEvent.click(await screen.findByTestId('cooks-mode-step-next'));
+    expect(screen.queryByRole('heading', { name: 'Step 1' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Cooking steps' })).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Simmer gently' })).toBeInTheDocument();
+    expect(screen.getByTestId('cooks-mode-step-next')).toHaveTextContent('Cooked');
+    expect(screen.getByTestId('cooks-mode-step-next')).toHaveAccessibleName(
+      'Mark recipe as cooked'
+    );
+    expect(screen.getByTestId('cooks-mode-step-next').querySelector('svg')).toBeNull();
+    const scroll = screen.getByTestId('cooks-mode-instructions');
+    const row = screen.getByTestId('single-page-step-2');
+    vi.spyOn(scroll, 'getBoundingClientRect').mockReturnValue({ top: 0 } as DOMRect);
+    vi.spyOn(screen.getByTestId('single-page-step-1'), 'getBoundingClientRect').mockReturnValue({
+      top: -300,
+    } as DOMRect);
+    const secondRect = vi
+      .spyOn(row, 'getBoundingClientRect')
+      .mockReturnValue({ top: 0 } as DOMRect);
+    fireEvent.scroll(scroll);
+    expect(screen.getByTestId('cooks-mode-step-indicator')).toHaveTextContent('2 / 2');
+    expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '2');
+    expect(screen.getByTestId('single-page-step-2')).toBe(row);
+    expect(onCooked).not.toHaveBeenCalled();
+    secondRect.mockReturnValue({ top: 300 } as DOMRect);
+    fireEvent.scroll(scroll);
+    expect(screen.getByTestId('cooks-mode-step-indicator')).toHaveTextContent('1 / 2');
+    fireEvent.click(screen.getByTestId('single-page-edit-step-2'));
+    const editor = screen.getByLabelText('Edit step 2 instructions');
+    fireEvent.change(editor, { target: { value: 'Keep this draft' } });
+    secondRect.mockReturnValue({ top: 0 } as DOMRect);
+    fireEvent.scroll(scroll);
+    expect(screen.getByLabelText('Edit step 2 instructions')).toBe(editor);
+    expect(editor).toHaveValue('Keep this draft');
+    expect(usePlannerStore.getState().cookProgress[id]).toBe(2);
+    unmount();
+    render(
+      <CooksMode recipe={{ id, name: 'Pasta', image: '' }} onClose={vi.fn()} onCooked={onCooked} />
+    );
+    expect(await screen.findByTestId('cooks-mode-step-indicator')).toHaveTextContent('2 / 2');
+    vi.useFakeTimers();
+    try {
+      fireEvent.click(screen.getByTestId('cooks-mode-step-next'));
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(600);
+      });
+      expect(onCooked).toHaveBeenCalledOnce();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('preserves focused headings, Next/Back navigation, and ignores scrolling with the flag off', async () => {
+    const id = '11111111-1111-4111-8111-111111111112';
+    getRecipeMock.mockResolvedValue({ id, recipeInstructions: ['Boil water', 'Cook pasta'] });
+    render(<CooksMode recipe={{ id, name: 'Pasta', image: '' }} onClose={vi.fn()} />);
+    fireEvent.click(await screen.findByTestId('cooks-mode-step-next'));
+    expect(screen.getByRole('heading', { name: 'Step 1' })).toBeInTheDocument();
+    expect(screen.getByTestId('cooks-mode-step-next')).toHaveTextContent('Next');
+    fireEvent.scroll(screen.getByTestId('cooks-mode-instructions'));
+    expect(screen.getByTestId('cooks-mode-step-indicator')).toHaveTextContent('1 / 2');
+    fireEvent.click(screen.getByTestId('cooks-mode-step-next'));
+    expect(screen.getByRole('heading', { name: 'Step 2' })).toBeInTheDocument();
+    expect(screen.getByTestId('cooks-mode-step-next')).toHaveTextContent('Cooked');
+    expect(screen.getByTestId('cooks-mode-step-next')).toHaveAccessibleName(
+      'Mark recipe as cooked'
+    );
+    expect(screen.getByTestId('cooks-mode-step-next').querySelector('svg')).toBeNull();
+    fireEvent.click(screen.getByTestId('cooks-mode-step-prev'));
+    expect(screen.getByTestId('cooks-mode-step-text')).toHaveTextContent('Boil water');
+    expect(screen.queryByTestId('single-page-recipe-steps')).not.toBeInTheDocument();
   });
 
   it('completes Cook Mode in place so the Home cooked state is not remounted', async () => {

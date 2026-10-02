@@ -225,7 +225,8 @@
     "removeRecipeAction": "Remove recipe",
     "viewRecipe": "View recipe",
     "closeVoting": "Close Voting",
-    "diversify": "Diversify"
+    "diversify": "Diversify",
+    "holdToMove": "Hold to move"
   },
   "grocery": {
     "smartShopping": "Smart Shopping",
@@ -255,7 +256,8 @@
     "ingredientsReady": "Check off your ingredients before you start cooking.",
     "letsCook": "Let's Cook",
     "back": "Back",
-    "done": "Done",
+    "cooked": "Cooked",
+    "markCooked": "Mark recipe as cooked",
     "next": "Next",
     "total": "total",
     "noCookFresh": "No-Cook / Fresh",
@@ -387,5 +389,42 @@
     "retrying": "Retrying...",
     "clearFailedCapture": "Clear failed capture",
     "clearFailedCaptureConfirm": "Clear this failed capture?"
+  },
+  "previewFeatures": {
+    "title": "Preview features",
+    "subtitle": "Try upcoming ideas when you want to.",
+    "notice": "Previews may change, and you can turn them off at any time.",
+    "badge": "Preview",
+    "retry": "Retry",
+    "tryAgain": "Try again",
+    "saving": "Saving…",
+    "loadError": "Unable to load preview features.",
+    "saveError": "Couldn't save. Try again.",
+    "enabled": "Preview enabled",
+    "disabled": "Preview turned off",
+    "flags": {
+      "single-page-recipe-steps": {
+        "name": "Recipe on one page",
+        "description": "After getting ready, scroll through all the cooking steps on one page."
+      },
+      "planner-hold-to-move": {
+        "name": "Hold to move meals",
+        "description": "Hold the planner handle briefly before moving a meal. Scroll past it without changing your plan."
+      }
+    }
+  },
+  "familyGoto": {
+    "title": "Family GOTO",
+    "description": "Your fallback meals when nothing is planned. They cycle on the home screen so you can confirm them in one tap.",
+    "empty": "No GOTO set yet.",
+    "add": "Add a GOTO",
+    "remove": "Remove {{name}}",
+    "close": "Close",
+    "search": "Search the Library",
+    "searchDescription": "Find the recipe, then tap the star to make it your GOTO.",
+    "describe": "Describe it",
+    "describeDescription": "AI synthesizes a full recipe from your description",
+    "capture": "Capture it",
+    "captureDescription": "Photo of a recipe card, box, or handwritten note"
   }
 }

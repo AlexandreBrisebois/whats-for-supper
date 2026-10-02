@@ -1,57 +1,27 @@
 # COOK-02 — In-cook recipe feedback design
 
-> **Status:** Proposed design derived from `COOK-02` requirements and verified current sources. Implementation is not authorized.
-
 ## Integration map
 
-1. **UI/entry:** flag actions inside `CooksMode`, opening `RecipeImportIssueSheet` with contextual reason.
-2. **Client boundary:** API helpers in `pwa/src/lib/api/recipes.ts` or `pwa/src/lib/api/captures.ts`; generated models under `pwa/src/lib/api/generated/`.
-3. **Contract:** `specs/openapi.yaml`: `POST /api/recipes/{id}/import-report` and `DELETE /api/recipes/{id}/import-report`.
-4. **Server/workflow:** `RecipeController.cs`, `RecipeImportReportService.cs`, and contextual re-import workflow.
-5. **Evidence:** `CooksMode.test.tsx`, `RecipeImportIssueSheet.test.tsx`, and import-report integration tests.
+`CooksMode` chooses contextual `ingredients` or `steps` and mounts `RecipeImportIssueSheet`. The sheet owns draft reasons/note, focus, validation affordances, and submission lock. `saveRecipeImportIssue` and `resolveRecipeImportIssue` use generated-client builders for the import-report routes and return mapped recipe detail to `CooksMode`.
 
-## State and data flow
+`RecipeController` binds `X-Family-Member-Id` and delegates to `RecipeImportReportService`. The service validates, uses a per-process recipe semaphore, persists `RecipeImportReports`, and conditionally triggers the workflow orchestrator. Workflow completion/failure updates report status by workflow ID; the public detail DTO maps it to reported/ready-to-review, reimporting, or a safe failure message.
 
-1. The member enters with authenticated household/member context. Device-local draft and busy/error state remain owned by the initiating UI/store.
-2. Client validation rejects structurally invalid input before transport and locks submission during the request.
-3. The generated/manual API adapter sends the documented representation. The controller validates identity and maps the request to service/persistence or a workflow trigger.
-4. A synchronous success updates from the response. A 202 response stores its recipe/import/workflow identifier and represents **pending**, never ready.
-5. Workflow processors update durable recipe/import state. Polling, refetch, or household-scoped SSE reconciles the client; ready entities enter normal recipe surfaces only when readiness rules pass.
-6. Errors are separated into local validation, HTTP authorization/conflict/not-found, workflow launch failure, and later processing failure. Retry never assumes the prior attempt had no effect.
+## State and async flow
 
-## Behavioral design decisions
+```text
+Cook's Mode flag -> contextual sheet -> POST report
+  -> RecipeImportReports row -> eligible workflow trigger
+  -> response: updated recipe + reimportStarted/importId/launchFailed
+  -> Cook's Mode detail state; local cooking progress unchanged
+workflow completion/failure -> report status (observed on later detail fetch)
+```
 
-- Reuse the existing capture/detail/cook/issue components and OpenAPI-generated boundary; do not introduce a parallel state model.
-- Treat server responses as authoritative after every mutation. Guard async callbacks by recipe/import/attempt identity.
-- Preserve draft/navigation state until the accepted result or explicit cancel makes it safe to clear.
-- a concurrently changed report is reconciled from the returned recipe; no local progress reset follows issue updates
-- re-import continues after returning to cooking and exposes acknowledgement/status
+`DELETE /api/recipes/{id}/import-report` clears the report only when its workflow is not Pending/Processing. No Cook's Mode SSE handler updates this detail state.
 
-## Security, privacy, and household isolation
+## Contract and failure behavior
 
-Protected mutations carry family-member identity according to `specs/openapi.yaml`; controllers must re-establish authorization and never trust a client recipe/import association. Asset/source access and import diagnostics remain household-scoped. Logs may retain correlation IDs and technical causes, while normal UI receives allow-listed family-safe reasons. Uploaded/shared content must be treated as untrusted input.
+POST accepts `RecipeImportIssueRequest { reasons: [ingredients|steps|duplicate], note?: string|null }` and returns `RecipeImportReportSubmissionResponseDto` with recipe, `reimportStarted`, `importId`, and `reimportLaunchFailed`; 400, 404, and 409 are documented errors. DELETE returns recipe detail with `importIssue: null`. The component retains its draft on a thrown save/resolve error; active/ineligible conditions become generic safe UI errors through the client boundary. A launch failure is exceptional in the Cook's Mode handler after authoritative detail is already stored, deliberately leaving the sheet available to retry.
 
-## Accessibility, devices, and localization
+## Evidence seams and dependencies
 
-Use semantic buttons/inputs/fieldset/dialog naming, visible focus, focus restoration, keyboard escape where cancellation is safe, and live status for async outcomes. Do not make swipe, camera, hover, or color the only mechanism. Preserve safe-area and touch targets. Route copy through `pwa/src/locales/en/common.json` and `pwa/src/locales/fr/common.json` when future changes are approved; never infer recipe processing language from UI locale.
-
-## Failure and recovery
-
-- Client validation: retain draft, focus/associate the error, make no request.
-- Request uncertainty: retain identifier/draft, disable blind duplicate resubmission until authoritative lookup/refetch.
-- 401/403/404: disclose no cross-household existence; return to a safe surface.
-- 409/concurrent action: explain the active/conflicting state and refetch.
-- Accepted workflow failure: retain durable failure/report state and correlation ID; expose only safe retry/clear actions.
-- Offline/reconnect: do not claim cancellation; reconcile status before permitting a duplicate action.
-
-## Verification strategy
-
-- Component tests assert entry, validation, keyboard/focus, pending locks, family-safe errors, and late-result guards.
-- API contract tests assert exact request/response/error shapes and generated-client parity.
-- Server unit/integration tests assert authorization, eligibility, persistence transitions, idempotency/conflicts, and workflow launch failure.
-- Real-database tests cover concurrent updates and durable status where the feature writes workflow/import state.
-- End-to-end tests cover the complete happy path plus one recoverable failure without mocking away the selected seam.
-
-## Alternatives and unresolved decisions
-
-A purely client-side duplicate/concurrency policy is simpler but cannot guarantee cross-device correctness; a server idempotency/version contract is preferred if product requires that guarantee. SSE-only feedback is lower latency but polling/refetch remains necessary for reconnect and missed events. Exact policies remain blocked by the open questions in `requirements.md`.
+`RecipeImportIssueSheet.test.tsx` covers selection, accessibility, lock, and error behavior; `CooksMode.test.tsx` covers contextual entry and progress preservation. `RecipeImportReportIntegrationTests` and report-service tests own persistence/workflow semantics. OpenAPI is the route/schema authority. This packet depends on recipe detail/actions/import-reporting and workflow behavior; it has no schedule or stream write of its own.

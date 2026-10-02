@@ -1,59 +1,15 @@
-# CAP-02 — URL capture and PWA share target requirements
+# CAP-02 — URL capture and share target requirements
 
-> **Status:** Proposed documentation of current behavior; behavior-first, accelerated cadence. This specification does **not** authorize implementation. Source artifact: `docs/feature-inventory.md` CAP-02.
+## Status
 
-## Outcome
+**Implemented capability baseline.**
 
-A member can paste or share a recipe URL, add appreciation and notes, and continue while acquisition/import runs.
+## Current behavior
 
-## Scope
+- **CAP-02-R1.** The PWA manifest declares a GET share target to Capture; shared `url`, `text`, and `title` query values are consumed by `MinimalCapture`.
+- **CAP-02-R2.** Capture presents shared material for review rather than treating the handoff as accepted recipe creation; the normal capture/import submission path owns validation and workflow acceptance.
+- **CAP-02-R3.** Manual Capture remains available when platform share-target support or shared fields are absent.
 
-- Family-facing behavior described above, its current API/workflow seams, async states, and recovery.
-- Actor: an authenticated household member unless explicitly identified as operator configuration. Recipe/library effects are household-shared; transient UI state is member/device-local.
-- Entry: `/capture`; share-target query/form handling in the capture route and `pwa/public/manifest.json`/`pwa/public/sw.js`.
+## Limits and boundaries
 
-## Non-goals
-
-- Redesigning adjacent recipe, planner, identity, workflow administration, or localization capabilities.
-- Treating current implementation details as newly approved product policy.
-- Implementing, migrating, or correcting behavior as part of this documentation packet.
-
-## Verified baseline
-
-- Contract: `POST /api/recipes/capture-url`, returning 202 with a recipe identifier.
-- Ownership: `RecipeController.cs`, `url-import.yaml`, and web-acquisition agents/services.
-- Evidence: `MinimalCapture.test.tsx`, `pwa/src/lib/api/recipes.test.ts`, and `WebAcquisitionAgentTests.cs`.
-- Happy path: a normalized nonblank URL plus optional metadata queues acquisition and provides navigation/completion feedback.
-- Failure path: missing/malformed/unacquirable sources show a family-safe error; technical diagnostics stay server-side.
-- Concurrency: one-client submit locking exists; duplicate submissions across share target and paste are governed by duplicate handling, not assumed atomic.
-- Async: 202 is pending; acquisition, extraction, and readiness complete after navigation.
-
-## Requirements
-
-- **CAP-02-R1 — Entry and eligibility.** When an authenticated member enters this capability in an eligible state, the system shall expose the relevant action and enough context to understand its effect; when ineligible, it shall hide or disable it with a truthful explanation.
-- **CAP-02-R2 — Accepted outcome.** When valid input is confirmed, the system shall perform only the scoped action, return/retain a durable correlation identifier where background work exists, and distinguish acceptance from completion.
-- **CAP-02-R3 — Validation and failure.** When input, authorization, network, source, or processing fails, the system shall preserve recoverable member input/state, show a family-safe actionable message, and avoid claiming success or readiness.
-- **CAP-02-R4 — Async consistency.** While work is pending, the member may navigate away; polling/events/refetch shall reconcile to authoritative server state, and stale or late results shall not overwrite a newer attempt.
-- **CAP-02-R5 — Concurrency.** Repeat activation shall be locked while a request is active. Cross-device conflicts shall converge on server state, and unsupported atomicity shall not be represented as guaranteed.
-- **CAP-02-R6 — Accessibility and responsive use.** Every pointer/gesture action shall have a labeled keyboard/touch alternative, dialogs shall expose name and focus containment/restoration, progress/error changes shall be announced without focus theft, and controls shall remain usable on phone and larger layouts.
-- **CAP-02-R7 — Privacy and localization.** Family UI shall not reveal technical diagnostics, secrets, or another household's data. User-facing copy shall use supported locale resources; recipe processing language shall remain distinct from interface locale.
-- **CAP-02-R8 — Preserved behavior.** shared title/text may help recover the URL, metadata is optional, and capture does not block on extraction
-
-## Observable acceptance states
-
-| State | Observable result |
-|---|---|
-| Ready/empty | Valid entry controls are available; absence of optional data is explained without fabricating content. |
-| Pending | Inputs that could duplicate work are locked and status says queued/processing rather than complete. |
-| Success | The authoritative result is visible or reachable and the next destination is explicit. |
-| Validation failure | The offending field/action is identified; no server-side effect is claimed. |
-| Service/workflow failure | Recoverable state remains; retry/refresh guidance is safe and diagnostics stay behind the operations boundary. |
-| Stale/concurrent | A refetch/versioned response wins over late optimistic state; destructive replacement is not silent. |
-| Unauthorized/not found | No household data is disclosed and the member is returned to a safe state. |
-
-## Open questions / blockers for future change
-
-1. What server idempotency key or version policy, if any, should be guaranteed across devices? Current evidence is insufficient for a stronger requirement.
-2. Which SSE event names and polling intervals are product commitments versus current implementation choices?
-3. Should pending work survive sign-out/member switching on the same device, and which member receives completion notification?
-4. Product approval is required before resolving these questions or implementing any task below.
+Share targets are browser/OS dependent and query text is untrusted input. This packet does not promise offline submission, automatic source fetch success, or native-share availability. PREF-02 owns manifest/service-worker device integration; CAP-01/06 own capture/import workflow and failure behavior.

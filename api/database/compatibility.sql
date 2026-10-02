@@ -4,6 +4,23 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 BEGIN;
 
+-- Compatibility runs before sqldef. A fresh installation receives this table
+-- from schema.sql after family_members is created; existing installations can
+-- safely receive it here.
+DO $$
+BEGIN
+    IF to_regclass('public.family_members') IS NOT NULL THEN
+        CREATE TABLE IF NOT EXISTS feature_flag_overrides (
+            member_id uuid NOT NULL REFERENCES family_members(id) ON DELETE CASCADE,
+            flag_key text NOT NULL,
+            enabled boolean NOT NULL,
+            updated_at timestamptz DEFAULT now() NOT NULL,
+            PRIMARY KEY (member_id, flag_key)
+        );
+    END IF;
+END
+$$;
+
 -- Vegetarian classification is a nullable recipe fact. Existing rows without a
 -- classifier version were legacy defaults, not confirmed non-vegetarian recipes.
 DO $$

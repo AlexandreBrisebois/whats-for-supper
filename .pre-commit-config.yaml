@@ -27,7 +27,7 @@ repos:
         name: API Review (Lint & Test)
         language: system
         entry: bash -c "cd api && DOTNET_CLI_HOME=\"${TMPDIR:-$HOME/.dotnet}\" dotnet format RecipeApi.csproj --verify-no-changes --no-restore && DOTNET_CLI_HOME=\"${TMPDIR:-$HOME/.dotnet}\" dotnet test src/RecipeApi.Tests/RecipeApi.Tests.csproj --no-restore"
-        files: ^api/
+        files: ^(api/|specs/openapi\.yaml$|\.github/workflows/|\.pre-commit-config\.yaml$)
         pass_filenames: false
 
       - id: kiota-client-sync
@@ -38,8 +38,8 @@ repos:
         pass_filenames: false
 
       - id: pwa-review
-        name: PWA Review (Lint & Typecheck & Unit Tests)
+        name: PWA Review (Lint, Types, Unit, Production Build & E2E)
         language: system
-        entry: bash -c "cd pwa && npm run lint && npm run typecheck && npm run test:unit"
-        files: ^pwa/
+        entry: bash -c "cd pwa && npm run lint && npm run typecheck && npm run test:unit && unset BASE_URL && export CI=true NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:5001 API_INTERNAL_URL=http://127.0.0.1:5001 NEXT_PUBLIC_ENABLE_AGENT_SEARCH=true NEXT_PUBLIC_ENABLE_PHOTO_SEARCH=true HEARTH_SECRET=Paris-Montreal && npm run build && npm run test:e2e"
+        files: ^(pwa/|specs/openapi\.yaml$|\.github/workflows/|\.pre-commit-config\.yaml$)
         pass_filenames: false

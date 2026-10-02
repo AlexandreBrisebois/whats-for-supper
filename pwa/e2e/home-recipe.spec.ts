@@ -874,48 +874,56 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
       name: 'Test Lasagna',
     });
 
-    // Override SSE to seed todayStore with the recipe — prevents the race between
-    // SSE (empty schedule) and sync() (GET schedule) from hiding the menu card.
-    await mockSseWithSlotUpdate(page, { date: today, recipe: lasagnaRecipe, status: 0 });
+    let todayStatus = 0;
+    let validateCalled = false;
+    let cookedReconnects = 0;
+    const schedule = () => ({
+      weekOffset: 0,
+      days: Array.from({ length: 7 }, (_, i) => {
+        const d = new Date(monday);
+        d.setUTCDate(monday.getUTCDate() + i);
+        return {
+          date: toDateStr(d),
+          status: i === 0 ? todayStatus : 0,
+          recipe: lasagnaRecipe,
+        };
+      }),
+    });
 
-    // 1. Mock schedule with planned recipe
+    // REST and every SSE reconnect read the same persisted mock state. Replaying
+    // status 0 after accepting validation would incorrectly undo the cooked UI.
+    await page.route(/\/(?:backend\/)?api\/stream/, async (route) => {
+      const snapshot = schedule();
+      if (todayStatus === 2) cookedReconnects += 1;
+      await route.fulfill({
+        status: 200,
+        contentType: 'text/event-stream',
+        headers: { 'Cache-Control': 'no-cache' },
+        body: `event: connected\ndata: ${JSON.stringify({ type: 'connected', schedule: snapshot })}\n\n`,
+      });
+    });
     await page.route(
-      (url) => url.pathname.includes('/api/schedule'),
+      (url) => url.pathname.endsWith('/api/schedule'),
       async (route) => {
-        if (route.request().method() === 'GET') {
-          const days = Array.from({ length: 7 }, (_, i) => {
-            const d = new Date(monday);
-            d.setUTCDate(monday.getUTCDate() + i);
-            const dateStr = toDateStr(d);
-
-            return {
-              date: dateStr,
-              status: 0,
-              recipe: lasagnaRecipe,
-            };
-          });
-
-          await route.fulfill({
-            status: 200,
-            contentType: 'application/json',
-            body: JSON.stringify({ data: { weekOffset: 0, days } }),
-          });
-        } else {
-          await route.continue();
-        }
+        if (route.request().method() !== 'GET') return route.fallback();
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ data: schedule() }),
+        });
       }
     );
-
-    // 2. Mock validation API
-    let validateCalled = false;
     await page.route(
-      (url) => url.pathname.includes('/api/schedule/day/') && url.pathname.endsWith('/validate'),
+      (url) => url.pathname.endsWith(`/api/schedule/day/${today}/validate`),
       async (route) => {
+        if (route.request().method() !== 'POST') return route.fallback();
+        expect(route.request().postDataJSON()).toEqual({ status: 2 });
+        todayStatus = 2;
         validateCalled = true;
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
-          body: JSON.stringify({ success: true }),
+          body: JSON.stringify({ data: { message: 'Day validated' } }),
         });
       }
     );
@@ -933,19 +941,24 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
     const nextBtn = page.getByTestId('cooks-mode-step-next');
     await expect(nextBtn).toBeVisible({ timeout: 15_000 });
 
-    // Click Next until "Done"
+    // Stop at completion so it is clicked exactly once.
     for (let i = 0; i < 5; i++) {
-      const text = await nextBtn.textContent();
-      if (text?.toLowerCase().includes('done')) break;
+      if ((await nextBtn.getAttribute('aria-label')) === 'Mark recipe as cooked') break;
       await nextBtn.click();
     }
 
-    await nextBtn.click(); // Click "Done"
+    await expect(nextBtn).toHaveText('Cooked');
+    await expect(nextBtn).toHaveAccessibleName('Mark recipe as cooked');
+    await nextBtn.click();
 
     // Verify implicit cooked call
     await expect.poll(() => validateCalled).toBe(true);
 
-    // Verify Success Card
+    // Verify both optimistic completion and persistence across an SSE reconnect.
+    await expect(page.getByTestId('cooked-success-card')).toBeVisible();
+    await expect.poll(() => cookedReconnects, { timeout: 10_000 }).toBeGreaterThan(0);
+    await expect(page.getByTestId('cooked-success-card')).toBeVisible();
+    await page.reload();
     await expect(page.getByTestId('cooked-success-card')).toBeVisible();
   });
 });

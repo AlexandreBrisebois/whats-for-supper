@@ -22,6 +22,8 @@ export function FailedCapturesSection() {
       .catch(() => {});
   }, []);
 
+  if (failures.length === 0) return null;
+
   async function handleRetry(id: string) {
     if (retryingIds.has(id)) return;
     try {
@@ -75,79 +77,67 @@ export function FailedCapturesSection() {
         </h3>
       </div>
 
-      {failures.length === 0 ? (
-        <p
-          data-testid="failed-captures-empty"
-          className="text-sm font-medium text-charcoal/40 text-center py-8"
-        >
-          {t(
-            'settings.noFailedCaptures',
-            'No failed captures. All imports completed successfully.'
-          )}
-        </p>
-      ) : (
-        <ul className="flex flex-col gap-4">
-          {failures.map((failure) => (
-            <li
-              key={failure.id}
-              data-testid={`failed-capture-${failure.id}`}
-              className="flex flex-col gap-4 rounded-2xl bg-white/60 border border-white/40 p-5 shadow-sm"
-            >
-              <div className="flex flex-col gap-1">
-                <p
-                  data-testid={`failed-capture-reason-${failure.id}`}
-                  className="text-sm font-bold text-charcoal tracking-tight"
-                >
-                  {failure.friendlyReason}
-                </p>
-                {failure.previewText && (
-                  <p className="text-[10px] font-medium text-charcoal/40 truncate">
-                    {failure.previewText}
-                  </p>
-                )}
-              </div>
-
-              <div className="flex items-center gap-3">
-                {retryingIds.has(failure.id) ? (
-                  <span
-                    data-testid={`action-retry-${failure.id}-retrying`}
-                    className="text-xs font-black uppercase tracking-widest text-terracotta/60"
-                  >
-                    {t('settings.retrying', 'Retrying…')}
-                  </span>
-                ) : (
-                  <button
-                    data-testid={`action-retry-${failure.id}`}
-                    onClick={() => handleRetry(failure.id)}
-                    className="h-10 rounded-xl bg-terracotta px-5 text-[10px] font-black uppercase tracking-[0.1em] text-white transition-all active:scale-95 hover:bg-terracotta/90 shadow-sm"
-                  >
-                    {t('settings.retry', 'Retry')}
-                  </button>
-                )}
-
-                <button
-                  data-testid={`action-clear-${failure.id}`}
-                  onClick={() => handleClear(failure.id)}
-                  disabled={clearingIds.has(failure.id)}
-                  className="flex h-10 w-10 items-center justify-center rounded-xl border border-terracotta/20 text-terracotta/40 transition-all hover:bg-terracotta/5 hover:text-terracotta disabled:opacity-50 active:scale-90"
-                  aria-label={t('settings.clearFailedCapture', 'Clear failed capture')}
-                >
-                  <Trash2 size={16} />
-                </button>
-              </div>
-
-              {errorIds.has(failure.id) && (
-                <p
-                  data-testid={`action-retry-error-${failure.id}`}
-                  className="text-xs font-bold text-terracotta"
-                >
-                  {t('settings.retryError', 'Retry failed. Please try again.')}
+      <ul className="flex flex-col gap-4">
+        {failures.map((failure) => (
+          <li
+            key={failure.id}
+            data-testid={`failed-capture-${failure.id}`}
+            className="flex flex-col gap-4 rounded-2xl bg-white/60 border border-white/40 p-5 shadow-sm"
+          >
+            <div className="flex flex-col gap-1">
+              <p
+                data-testid={`failed-capture-reason-${failure.id}`}
+                className="text-sm font-bold text-charcoal tracking-tight"
+              >
+                {failure.friendlyReason}
+              </p>
+              {failure.previewText && (
+                <p className="text-[10px] font-medium text-charcoal/40 truncate">
+                  {failure.previewText}
                 </p>
               )}
-            </li>
-          ))}
-        </ul>
-      )}
+            </div>
+
+            <div className="flex items-center gap-3">
+              {retryingIds.has(failure.id) ? (
+                <span
+                  data-testid={`action-retry-${failure.id}-retrying`}
+                  className="text-xs font-black uppercase tracking-widest text-terracotta/60"
+                >
+                  {t('settings.retrying', 'Retrying…')}
+                </span>
+              ) : (
+                <button
+                  data-testid={`action-retry-${failure.id}`}
+                  onClick={() => handleRetry(failure.id)}
+                  className="h-10 rounded-xl bg-terracotta px-5 text-[10px] font-black uppercase tracking-[0.1em] text-white transition-all active:scale-95 hover:bg-terracotta/90 shadow-sm"
+                >
+                  {t('settings.retry', 'Retry')}
+                </button>
+              )}
+
+              <button
+                data-testid={`action-clear-${failure.id}`}
+                onClick={() => handleClear(failure.id)}
+                disabled={clearingIds.has(failure.id)}
+                className="flex h-10 w-10 items-center justify-center rounded-xl border border-terracotta/20 text-terracotta/40 transition-all hover:bg-terracotta/5 hover:text-terracotta disabled:opacity-50 active:scale-90"
+                aria-label={t('settings.clearFailedCapture', 'Clear failed capture')}
+              >
+                <Trash2 size={16} />
+              </button>
+            </div>
+
+            {errorIds.has(failure.id) && (
+              <p
+                data-testid={`action-retry-error-${failure.id}`}
+                className="text-xs font-bold text-terracotta"
+              >
+                {t('settings.retryError', 'Retry failed. Please try again.')}
+              </p>
+            )}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

@@ -74,3 +74,17 @@ See Cloudflare's [Tunnel setup guide](https://developers.cloudflare.com/tunnel/g
 for current dashboard details and connector troubleshooting.
 
 This template does not configure backup, restore, updates, or rollback.
+
+## Feature previews
+
+The deployment administrator controls whether **Recipe on one page** is unavailable,
+available as a per-member preview, or enabled for everyone:
+
+```dotenv
+WFS_FEATURE_SINGLE_PAGE_RECIPE_STEPS=off # off | opt-in | on
+WFS_FEATURE_PLANNER_HOLD_TO_MOVE=off # off | opt-in | on
+```
+
+After changing the value, recreate the API container. Missing or invalid values
+fail closed to `off`. Changing back to `off` is the rollback and requires no data
+rollback.

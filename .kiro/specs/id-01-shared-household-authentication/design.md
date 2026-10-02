@@ -1,76 +1,29 @@
 # ID-01 — Shared household authentication: design baseline
 
-## Status
+## Ownership and integration map
 
-Baseline proposed/current-behavior design derived from [`requirements.md`](requirements.md). It records current integration evidence and candidate verification seams. **Implementation is not authorized.**
+1. `pwa/src/app/(auth)/welcome/page.tsx` holds the passphrase, pending flag, and visible error. It calls server actions in `pwa/src/lib/auth.ts`.
+2. `authenticateWithPassphrase` compares trimmed input with `HEARTH_SECRET`; `generateSecretToken` signs `Date.now()` with HMAC-SHA-256. `setHearthCookie` writes an HttpOnly, SameSite=Lax `h_access` cookie (one-year max age; Secure outside test/localhost production conditions).
+3. `pwa/src/app/(auth)/invite/page.tsx` calls `validateHearthSecret`, then the cookie actions. A supplied member ID crosses into ID-02 through `setFamilyMemberCookie` and `useFamily().selectFamilyMember`.
+4. `pwa/src/proxy.ts` validates the same HMAC for route access and independently checks `x-family-member-id` for app context. `api/src/RecipeApi/Program.cs` installs a global authorization filter; `Infrastructure/HearthAuthenticationHandler.cs` validates the configured secret, bearer token, or access cookie for API requests.
+5. `specs/openapi.yaml` describes the global `HearthSecret`/`HearthToken` schemes. The stream contract also relies on both `h_access` and the member cookie, but stream synchronization is owned by schedule features rather than this packet.
 
-## Verified current integration map
+## State and failure behavior
 
-- `pwa/src/app/(auth)/welcome/page.tsx`
-- `pwa/src/app/(auth)/invite/page.tsx`
-- `pwa/src/lib/auth.ts`
-- `api/src/RecipeApi/Infrastructure/HearthAuthenticationHandler.cs`
-- `api/src/RecipeApi/Program.cs`
-- `specs/openapi.yaml`
+The browser form owns only unsaved input, error text, and pending state. The signed token is written server-side to the HttpOnly cookie, so it is not readable by ordinary client code. The proxy and API independently validate it on later requests. `IdentityValidator` is a client-side recovery layer for member context, not the household access authority.
 
-### Ownership and flow
+Passphrase failure leaves the input in place and clears pending state. Health lookup is deliberately non-blocking. Invite validation shows a joining state until it either writes cookies and navigates or switches to the invalid-link screen. There is no server mutation, SSE event, persistence record, or retry protocol for sign-in/invitation acceptance.
 
-1. The route/component accepts interaction and keeps only ephemeral presentation state.
-2. The relevant Zustand store or API wrapper translates feature intent into generated-client or explicit HTTP calls.
-3. The current API controller operation validates household/member context and delegates to its service or workflow.
-4. Durable ownership remains household credential cookie and invite query parameters; response data and `/api/stream` events reconcile participating clients where the feature is shared.
-5. Tests adjacent to the listed source and controller/service tests are the preferred executable evidence; `specs/openapi.yaml` is the contract authority for exposed operations.
+## Security boundaries
 
-## Behavior design
+The HMAC token proves possession of the configured household secret; it carries no member, expiry, nonce, audience, or revocation state. `memberId` in an invite is a separate cookie/context input, not a claim inside the token. Consequently, improvements such as expiring or one-time invitations require a distinct server-owned credential/record design; they cannot be safely added as a PWA-only timer.
 
-### Success
+## Cross-spec dependencies
 
-- Render confirmed data with stable identity and retain relevant member, week, date, or recipe context through navigation.
-- Disable only conflicting work while a mutation is pending; apply the accepted response, then reconcile matching shared events idempotently.
-- Report success only for an accepted operation. Browser-only conveniences such as clipboard/share do not redefine server success.
+- **ID-02 member onboarding and switching:** owns `x-family-member-id`, store selection, and navigation after access is established.
+- **ID-03 member administration and invitations:** owns the UI that generates and shares links, but depends on this packet's token semantics.
+- **PLAT-07 health/authentication conventions:** owns the health endpoint and API-wide response/auth conventions.
 
-### Empty, loading, errors, and recovery
+## Current evidence
 
-- Loading retains safe confirmed content where available and exposes a perceivable busy state.
-- Empty state distinguishes “no configured/assigned data” from loading and failure.
-- Authentication/authorization failure returns to the appropriate access or identity recovery path; validation/conflict errors preserve inputs and explain the next action.
-- Network/server failure restores the last confirmed state. Retry reuses feature context but does not blindly replay a mutation whose outcome is unknown.
-- Late results are ignored when their member, week, slot, recipe, request generation, or mounted surface no longer matches.
-
-### Concurrency
-
-- Server responses/events are authoritative. Optimistic changes require a pre-mutation snapshot or equivalent rollback data.
-- Matching SSE events may confirm local work; echoed or older events must not cause duplicate effects or visual regression.
-- A reconnect/snapshot converges client state without overwriting a newer guarded optimistic write; conflicts are surfaced rather than silently dropping displaced information.
-
-### Security and privacy
-
-- Household credentials use the existing authentication mechanism; member identity scopes personalized operations but is not a replacement for household authentication.
-- Secrets and signed invitation material are not logged, rendered after consumption, placed in telemetry, or sent to unrelated origins.
-- Destructive or household-wide changes require explicit intent and server authorization; inputs are contract-validated.
-
-### Accessibility and localization
-
-- Semantic headings, labels, focus management, keyboard activation, live status/error announcements, and non-color state indicators cover every interactive flow.
-- Copy is localized through current locale facilities. Dates are transported in contract format and presented in the member locale without changing schedule-day identity.
-
-### Performance and operations
-
-- Avoid duplicate fetch/mutation calls and unbounded suggestion/list rendering. Preserve store selectors and targeted event updates to limit rerenders.
-- Do not log credentials or full private payloads. Operational signals should distinguish validation, conflict, authorization, dependency, and unexpected failures without inventing success.
-
-## Requirement traceability
-
-| Requirements | Design seam |
-|---|---|
-| ID-01-AC-01, ID-01-AC-02, ID-01-AC-03 | Route/component → store/API → controller/service → authoritative state |
-| ID-01-AC-04 | Pending guard, confirmed snapshot, actionable error, retry |
-| ID-01-AC-05 | Context keys, optimistic guard, SSE echo/reconnect reconciliation |
-| ID-01-AC-06 | Semantic controls, focus/live regions, locale-safe copy and dates |
-| ID-01-AC-07 | Authentication/member scope, context-preserving navigation, non-target preservation |
-
-## Verified facts versus future decisions
-
-**Verified facts:** the files above currently own the visible/client/server seams; generated API code is derived from `specs/openapi.yaml`; shared schedule behavior uses `/api/stream`; household credential cookie and invite query parameters is the observed state boundary.
-
-**Future decisions (not implementation commitments):** final product copy, retention/audit policy, conflict UX, service-level targets, telemetry schema, and any new family-facing entry point or contract field require approval. The open questions in requirements block affected future tasks.
+`welcome/page.test.tsx` verifies demo prefill. `pwa/e2e/auth-flow.spec.ts` covers redirect to onboarding after passphrase entry and successful member/voting invites. These are coverage references, not a claim that all failure or security cases are qualified.
