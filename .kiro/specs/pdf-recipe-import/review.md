@@ -5,7 +5,7 @@ Reviewed branch: codex/pdf-recipe-import-preview, after design commit 48fc7a66fe
 Reviewed design: [design.md](design.md). Source reads used the branch ref, not an immutable checkout; revalidate at implementation.
 Lens: [.agents/prompts/mere-designer.md](../../../.agents/prompts/mere-designer.md), applied directly to interruptions, cognitive load, recovery and family effects.
 
-Product disposition, 2026-10-01: the user accepts best-effort completion feedback and manually managing duplicate recipes. R2's durable feedback/reconciliation requirement and R3's idempotency requirement are withdrawn. Their observations remain documented below; they are not implementation blockers. Further disposition, 2026-10-02: draft loss is accepted, withdrawing R1's preservation/recovery requirement and R9's draft-preservation/discard-confirmation requirement. Family GOTO keeps its existing photo flow; PDFs are excluded from that chooser, resolving R4 by exclusion. R5's proposal to preserve the existing capture layout and extend the recipe-file picker to PDFs is awaiting approval. Remaining findings still apply within these decisions.
+Product disposition, 2026-10-01: the user accepts best-effort completion feedback and manually managing duplicate recipes. R2's durable feedback/reconciliation requirement and R3's idempotency requirement are withdrawn. Their observations remain documented below; they are not implementation blockers. Further disposition, 2026-10-02: draft loss is accepted, withdrawing R1's preservation/recovery requirement and R9's draft-preservation/discard-confirmation requirement. Family GOTO keeps its existing photo flow; PDFs are excluded from that chooser, resolving R4 by exclusion. R5 is resolved by the user's approval to preserve the existing capture layout and extend the recipe-file picker to enabled PDFs outside Family GOTO. Remaining findings still apply within these decisions.
 
 Recommendation: revise the remaining design gaps before implementation. The page-image adapter remains a promising minimal seam, but the current spec does not yet substantiate its interruption-safe or no-support-needed outcome. The findings below distinguish new design risks from inherited limitations. No application tests were executed.
 
@@ -47,7 +47,9 @@ Smallest correction: explicitly support intent=goto with the existing pending pr
 
 Acceptance: PDF from ordinary capture, external share and Family GOTO each have defined destinations and effects. GOTO submission creates exactly one pending rotation entry and promotes it when ready; ordinary imports do not change GOTO.
 
-## R5 — P2: enabling PDFs moves the kids' existing actions
+## R5 — Resolved: preserve capture layout and extend the file picker
+
+Disposition, 2026-10-02: approved. Keep photo import primary and every existing action in its established position in both preview states. Extend the existing recipe-file picker for PDFs only when enabled, outside Family GOTO; keep .txt bundle handling separate. Do not introduce Other ways. The earlier disclosure proposal is superseded. Verify existing direct links and keyboard/screen-reader paths.
 
 Design line 38 couples PDF enablement to moving Describe a recipe and Import recipe file under Other ways. This makes an import preview alter unrelated familiar controls. Description is a practical way for a child to add an idea without possessing a recipe document. The spec's broad legacy tests do not settle on-path discoverability.
 
@@ -103,4 +105,4 @@ Mom's actual phone and unaided usability remain unverified. This review establis
 
 Initial review delta: one new review document only. Follow-up disposition updates this review and the proposed design to record the user's accepted feedback/duplicate tradeoffs; no application code or API contract changes. Repository Task harness unavailable without a local checkout; review used GitHub connector reads and a new-file commit, with remote content verification.
 
-Specification follow-up, 2026-10-02: recorded accepted draft loss and Family GOTO exclusion in design/review only. Capture-layout/file-picker proposal remains pending approval. No runtime implementation or approved API contract changes. Local checkout and Task harness were unavailable because Git clone could not reach the configured proxy; baseline used branch HEAD and fetched blob identities, followed by remote content verification.
+Specification follow-up, 2026-10-02: recorded accepted draft loss and Family GOTO exclusion in design/review only. Capture-layout/file-picker proposal was subsequently approved on 2026-10-02 and recorded in both documents. No runtime implementation or approved API contract changes. Local checkout and Task harness were unavailable because Git clone could not reach the configured proxy; baseline used branch HEAD and fetched blob identities, followed by remote content verification.
