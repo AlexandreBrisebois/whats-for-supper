@@ -67,6 +67,24 @@ The service worker cannot decide member flags or authorization. It stages an inc
 
 ## PDF processing: retained source and page-image adapter
 
+### Execution boundary: API-side conversion
+
+PDF-to-image conversion runs server-side in the API process, through a dedicated PDF conversion service invoked by POST /api/recipes/capture-pdf. The browser and service worker upload/stage the PDF only; neither renders pages nor calls Gemini. The API deployment packages the renderer and its runtime dependencies.
+
+Request sequence:
+
+1. Resolve household/member identity and enforce the effective PDF preview flag.
+2. Validate the uploaded document and enforce input/conversion resource limits.
+3. Render every supported page server-side into ordered image files. Conversion failure rejects the document without accepting a recipe.
+4. Persist the unchanged source PDF with the recipe's original page images through the storage abstraction.
+5. Feed the generated images into the existing recipe creation and recipe-import workflow, with no finished-dish page designation.
+6. Return the accepted recipe ID using the established API response convention. The PWA returns Home; AI extraction and subsequent recipe processing run in the existing background workflow.
+
+Conversion completes during the API upload request, before acceptance; AI extraction remains asynchronous. Accepted-ID responses establish persistence, not completed extraction or verified workflow launch. Client progress covers upload and API preparation. Apply the previously specified renderer timeout/resource limits; if bounded conversion cannot fit this request boundary, revise the design explicitly rather than silently moving conversion into the browser or another workflow.
+
+View original uses the stored page images through the existing original-image endpoints. The retained source PDF is a separate artifact and does not count as an image.
+
+
 User decision: retain the original PDF with the recipe, convert its pages to ordered images, and feed those images through the normal photo-import flow. View original reads the stored page images using the existing image viewer. Direct PDF submission to Gemini is not the selected approach. Model selection remains governed by the normal extraction configuration.
 
 
