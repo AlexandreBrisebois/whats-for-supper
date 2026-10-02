@@ -19,9 +19,9 @@ These decisions accept missing feedback, duplicate results and draft loss; they 
 
 ## Outcome and scope
 
-Mom can select a recipe PDF or share it from another app, confirm the file, and save it without choosing an extraction method. PDF import is a preview, off by default, with server-side enforcement. Support one PDF containing one recipe per submission, including scanned PDFs and a recipe spanning multiple pages. Do not silently truncate pages or split a cookbook into recipes.
+Mom can select a recipe PDF or share it from another app, confirm the file, and save it without choosing an extraction method. PDF import is a preview, off by default, with server-side enforcement. Approved user decision, 2026-10-02: support one PDF containing exactly one recipe per submission, including scanned PDFs and a single recipe spanning multiple pages. PDFs containing multiple recipes are unsupported. Do not split a cookbook, create several recipes from one PDF, or silently truncate pages.
 
-Exclude cookbook splitting, page selection/editor, password entry, native mobile wrappers, PDF source-type migrations, original-PDF export, and a general capture rewrite. Reject encrypted, malformed, over-limit and unsupported documents with a next step. Multiple-recipe detection is not guaranteed by the existing extraction pipeline; validate that limitation with fixtures before describing such documents as supported.
+Exclude cookbook splitting, page selection/editor, password entry, native mobile wrappers, PDF source-type migrations, original-PDF export, and a general capture rewrite. Reject encrypted, malformed, over-limit and unsupported documents with a next step. Reuse normal photo extraction without adding automatic multiple-recipe detection. This limitation does not make multi-recipe PDFs supported. Qualify single-recipe extraction and readable page images with representative fixtures before rollout; use multi-recipe fixtures to document unsupported-input behavior, not to claim detection or splitting.
 
 ## Observed seams
 
@@ -49,7 +49,7 @@ The current photo contract names its binary array `images`, while the hook/helpe
 
 Approved user decision, 2026-10-02: preserve the current capture layout and existing action positions in both preview states. Photo import remains primary: keep Take photo, Choose photos, Paste a link, Describe a recipe and the existing recipe-file action where they are. Extend the existing recipe-file picker to accept PDFs alongside .txt bundles only when PDF preview is enabled and outside Family GOTO. Do not add Other ways or move existing actions. Dispatch by validated format; never send a PDF through the JSON bundle parser. Preserve existing .txt bundle behavior and direct mode=describe and mode=photo links.
 
-Selecting a PDF opens a compact confirmation: filename, “Add this recipe to your library”, Save recipe and Cancel. No required title, rating, notes, dish-photo selection or instructions. PDF and .txt bundle confirmations remain separate because the bundle already contains a structured recipe.
+Selecting a PDF opens a compact confirmation: filename, “Choose a PDF containing one recipe”, “Add this recipe to your library”, Save recipe and Cancel. No required title, rating, notes, dish-photo selection or instructions. PDF and .txt bundle confirmations remain separate because the bundle already contains a structured recipe.
 
 Sharing a PDF opens that same confirmation directly, bypassing the capture chooser. Save uploads/converts the file with honest progress (“Preparing your PDF…”). After the API returns an accepted recipe ID, add it to the existing pending capture store and navigate to Home immediately. Existing ready/failure feedback is best-effort while the session remains active. Members can browse for the recipe when ready; no completion notification after app closure is promised. Never claim that parsing or upload means the recipe is ready.
 
