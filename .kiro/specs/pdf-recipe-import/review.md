@@ -65,6 +65,10 @@ Writer/reviewer synchronization: PDF-R03/15, D6/D8, T01/T06/T07 and OQ-04 status
 
 User accepts starting qualification at 200 DPI PNG per page. Measure small-text readability, extraction accuracy, page/output bytes and actual Synology memory use before proposing final render settings and resource budgets. requirements/design/tasks synchronized. OQ-03 remains for measured settings, native timeout/failure isolation and staging bounds; 200 DPI is not a tested production guarantee. No fixture spike, renderer code or runtime tests performed in this specification-only revision; remote content verification is the completion check.
 
+## Approved Android single-share staging policy — 2026-10-02
+
+User accepts one pending Android-shared PDF at a time. A new share replaces the prior unsaved selection; leaving capture, unlock or member change clears it. Already submitted workflow jobs continue independently. Requirements/design/tasks synchronized, including token ownership and replacement checks; orphan-cleanup TTL and transient staging bounds still require implementation qualification. No runtime/worker changes; remote content verification is the completion check.
+
 ## Historical archive — non-authoritative
 
 <details>

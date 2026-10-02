@@ -59,10 +59,10 @@ Stop: no new Other ways/discard dialog/notification filtering/recovery UI; do no
 Requirements: PDF-R01/03/09/13/14; design D2/D6. Depends: T01, T03/T05; OQ-03 staging bounds approved; OQ-04 single /manifest.json strategy is already approved.
 Allowed effects when selected: exact share-target handler in pwa/public/sw.js, single deployment-selected /manifest.json serving/linkage and handoff integration, focused worker/receiver tests and schema-compliant mocks.
 Test seam:
-- Units: new share-target handler/staging tests naming storage/count/bytes/orphan cleanup and token ownership; no worker API upload.
+- Units: new share-target handler/staging tests naming one pending shared PDF/new-share replacement, count/bytes/orphan cleanup and token ownership; no worker API upload.
 - Playwright pwa/e2e/capture-flow.spec.ts: cold/warm simulated POST /share-target multipart PDF → confirmation; text-only POST → existing link review; disabled message/destinations; unlock/member switch discards share; staging failure requires restart. Preserve GET /capture and API/SSE bypass.
 - Mock owner pwa/e2e/mock-api.ts, PDF API accepted-ID/failure envelopes from T03. Same-origin POST /share-target has local 303 /capture?share=<token> handoff, not an API acceptance response.
-Checks: no origin-app restriction/auto-save/rendering, validated staging, no content/identity in URL/logs, stale manifests gated at runtime, old cleanup cannot erase newer share. Run PWA units/E2E/typecheck/lint and production PWA build. Actual Android OS qualification remains T08.
+Checks: no origin-app restriction/auto-save/rendering, validated staging, no content/identity in URL/logs, stale manifests gated at runtime, old cleanup cannot erase newer share; new share replaces only the unsaved selection, never accepted jobs. Run PWA units/E2E/typecheck/lint and production PWA build. Actual Android OS qualification remains T08.
 Stop: no native iOS extension, unlock share recovery or second conflicting manifest.
 
 ## T07 — Required: user guide, process documentation and Synology template/env
