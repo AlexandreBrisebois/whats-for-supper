@@ -5,7 +5,7 @@ Reviewed branch: codex/pdf-recipe-import-preview, after design commit 48fc7a66fe
 Reviewed design: [design.md](design.md). Source reads used the branch ref, not an immutable checkout; revalidate at implementation.
 Lens: [.agents/prompts/mere-designer.md](../../../.agents/prompts/mere-designer.md), applied directly to interruptions, cognitive load, recovery and family effects.
 
-Product disposition, 2026-10-01: the user accepts best-effort completion feedback and manually managing duplicate recipes. R2's durable feedback/reconciliation requirement and R3's idempotency requirement are withdrawn. Their observations remain documented below; they are not implementation blockers. Further disposition, 2026-10-02: draft loss is accepted, withdrawing R1's preservation/recovery requirement and R9's draft-preservation/discard-confirmation requirement. Family GOTO keeps its existing photo flow; PDFs are excluded from that chooser, resolving R4 by exclusion. R5 is resolved by the user's approval to preserve the existing capture layout and extend the recipe-file picker to enabled PDFs outside Family GOTO. Remaining findings still apply within these decisions.
+Product disposition, 2026-10-01: the user accepts best-effort completion feedback and manually managing duplicate recipes. R2's durable feedback/reconciliation requirement and R3's idempotency requirement are withdrawn. Their observations remain documented below; they are not implementation blockers. Further disposition, 2026-10-02: draft loss is accepted, withdrawing R1's preservation/recovery requirement and R9's draft-preservation/discard-confirmation requirement. Family GOTO keeps its existing photo flow; PDFs are excluded from that chooser, resolving R4 by exclusion. R5 is resolved by the user's approval to preserve the existing capture layout and extend the recipe-file picker to enabled PDFs outside Family GOTO. R6 is resolved by the approved disabled-share message and explicit navigation, with file reselection accepted after a Settings detour. Remaining findings still apply within these decisions.
 
 Recommendation: revise the remaining design gaps before implementation. The page-image adapter remains a promising minimal seam, but the current spec does not yet substantiate its interruption-safe or no-support-needed outcome. The findings below distinguish new design risks from inherited limitations. No application tests were executed.
 
@@ -57,7 +57,9 @@ Smallest correction: keep the existing description/file actions in their establi
 
 Acceptance: both preview states retain one understandable route to each existing capability; direct links and keyboard/screen-reader paths work. If the disclosure is retained, test finding Describe and a shared .txt bundle without instructions, including a child user.
 
-## R6 — P2: deployment-wide share registration creates a dead end for non-opted-in members
+## R6 — Resolved: disabled-share message and explicit destinations
+
+Disposition, 2026-10-02: approved. Resolve identity/flags before showing a disabled verdict; flag failure keeps submission disabled. For disabled PDF preview, show “PDF import preview isn’t enabled. This file hasn’t been added.” Offer Preview features only when opt-in is available and Choose another way returning to ordinary Capture, including launches without browser history. Never automatically enable, switch identity or save. File reselection after Settings is accepted; the staged-token preservation/return-to-file recommendations below are superseded by the draft-loss tradeoff. Verify deployment off, opt-in disabled, loading/failure, stale manifest and both destinations.
 
 Design lines 56–58 advertise PDF sharing for the deployment, while effective enablement is per member. The share sheet cannot know which family member will be selected. Its proposed Back action also lacks a guaranteed external-app return destination.
 
@@ -106,3 +108,5 @@ Mom's actual phone and unaided usability remain unverified. This review establis
 Initial review delta: one new review document only. Follow-up disposition updates this review and the proposed design to record the user's accepted feedback/duplicate tradeoffs; no application code or API contract changes. Repository Task harness unavailable without a local checkout; review used GitHub connector reads and a new-file commit, with remote content verification.
 
 Specification follow-up, 2026-10-02: recorded accepted draft loss and Family GOTO exclusion in design/review only. Capture-layout/file-picker proposal was subsequently approved on 2026-10-02 and recorded in both documents. No runtime implementation or approved API contract changes. Local checkout and Task harness were unavailable because Git clone could not reach the configured proxy; baseline used branch HEAD and fetched blob identities, followed by remote content verification.
+
+Specification follow-up, 2026-10-02: recorded approved disabled-share behavior and resolved R6; no application or OpenAPI changes. Remote content verification used because the local checkout/Task harness remains unavailable.
