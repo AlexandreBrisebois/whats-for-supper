@@ -12,7 +12,7 @@ Keep Take photo, Choose photos, Paste a link, Describe a recipe and the recipe-f
 
 PDF confirmation shows filename, Choose a PDF containing one recipe, Add this recipe to your library, rating/notes and Save recipe. Reuse current photo rating choices/validation (0 unknown, 1–3) and notes trim/omit behavior. No user photo selection accompanies a PDF; no cooked/finished-dish designation (finishedDishImageIndex=-1), Cancel, required title/instructions or extracted-recipe review.
 
-Android installed Chromium PWA PDF share target is required, from any compatible PDF-sharing app. It enters confirmation directly without auto-saving; representative OS cold/warm tests are required. iPhone/iPad uses the existing file picker; native iOS sharing is out of scope. One recipe per PDF, text/scanned/multipage, 20 MB/10 pages; no multi-recipe support/detection, page splitting/selection or silent truncation. Exact bytes remain OQ-02.
+Android installed Chromium PWA PDF share target is required, from any compatible PDF-sharing app. It enters confirmation directly without auto-saving; representative OS cold/warm tests are required. iPhone/iPad uses the existing file picker; native iOS sharing is out of scope. One recipe per PDF, text/scanned/multipage, 20 MiB (20,971,520 bytes) at upload and 10 pages in the processor; no multi-recipe support/detection, page splitting/selection or silent truncation. The API rejects uploads above 20,971,520 bytes before pending-import persistence. The processor fails the whole job above 10 pages without truncating pages.
 
 ## D2 — Flag and shared-device state (PDF-R01, PDF-R09, PDF-R11–13)
 
@@ -33,9 +33,9 @@ Dedicated authenticated POST /api/recipes/capture-pdf accepts one PDF plus ratin
 Approved user decision: conversion is a separate processor in existing recipe-import, before normal image extraction. It runs server-side in the workflow execution host, not synchronously in the capture API request. Package PDFtoImage/native dependencies in the container that executes processors.
 
 Success/failure sequence:
-1. API resolves auth/member and effective acquisition flag, validates transport shape/upload byte bound under the approved wire contract.
+1. API resolves auth/member and effective acquisition flag, validates transport shape and enforces the approved 20 MiB (20,971,520-byte) upload bound before storing a pending import.
 2. Store unchanged source PDF, rating/notes and attribution with a pending recipe; start existing recipe-import and return accepted recipe ID. Pending PDF has no finished-dish designation and is not cookable/ready.
-3. The separate PDF processor detects a PDF source, validates document/page/render limits and renders all pages sequentially. Existing photo imports skip PDF work.
+3. The separate PDF processor detects a PDF source, validates document/render limits and the approved 10-page ceiling, failing the whole job above it without truncation and renders all pages sequentially. Existing photo imports skip PDF work.
 4. On success, persist ordered pages and accurate image metadata, then continue the existing normal extraction/categorization/readiness steps. sourceType remains photos; no direct Gemini PDF input or separate PDF workflow.
 5. On temporary failure use existing workflow retries. A failed conversion task appears through existing Settings failure list. Corrupt/encrypted PDFs remain failed for user Retry/Delete; do not automatically delete them or ask for passwords.
 
@@ -79,7 +79,7 @@ Manifest is deployment-wide, not member-specific: off retains current link targe
 Once ready, imports obey existing shared-library access, search/discovery/voting/planning/cooking eligibility even when another member's PDF flag is off. Import alone casts no vote, changes no plan/groceries and alters no GOTO. Existing readiness rules control pending/failed cookability; no immediate promotion.
 
 Required implementation deliverables:
-- docs/user-guide.md: preview opt-in, Android PDF share and iOS picker, one recipe/20 MB/10 pages, rating/notes, no cooked-dish choice, resets/restart, Settings Retry/Delete and View original. No renderer/API details in user flow.
+- docs/user-guide.md: preview opt-in, Android PDF share and iOS picker, one recipe/20 MiB/10 pages, rating/notes, no cooked-dish choice, resets/restart, Settings Retry/Delete and View original. No renderer/API details in user flow.
 - docs/flows: PDF user process and data flow covering share/picker → identity/flags/reset → confirmation → source persistence/accepted/Home → separate conversion processor → normal workflow → readiness/Settings recovery, including attribution and cleanup. Link/update affected existing photo/failure flows after revalidating their stale status/sequence details.
 - release-template/synology/compose.yaml, .env.example and README.md: PDF mode default off, off/opt-in/on description, API and selected PWA manifest config, installation metadata refresh, renderer packaging and rollout. Apply documented value to deployed .env during deployment; never commit live secrets. No actual deployment files changed by this spec revision.
 

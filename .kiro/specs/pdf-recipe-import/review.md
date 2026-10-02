@@ -15,7 +15,7 @@ Consolidation preserves: primary photo chooser layout; enabled PDF file extensio
 ## Spec-reviewer findings, risks and open questions
 
 - **Finding F1 / OQ-01 — architecture resolved by user:** conversion is a separate processor in existing recipe-import after pending PDF source acceptance. Existing automatic retries and failed-task Settings Retry/Delete apply; corrupt/encrypted PDFs stay failed for the user to delete. Requirements/design/tasks now replace synchronous conversion-before-acceptance. Source/metadata retention, safe partial-page retries and existing cleanup/listing still need implementation evidence.
-- **Open question Q2 — contract gate:** design D3 / OQ-02. Exact PDF multipart/error/page-limit envelope and bytes are not yet approved OpenAPI. The photo contract has an existing files-versus-images mismatch; leave its rename out of scope. Approve PDF wire semantics after tracing actual contracts; tests/mocks must not decide them.
+- **Open question Q2 — contract gate:** design D3 / OQ-02. Exact PDF multipart/error/page-limit envelope are not yet approved OpenAPI. The photo contract has an existing files-versus-images mismatch; leave its rename out of scope. Approve PDF wire semantics after tracing actual contracts; tests/mocks must not decide them.
 - **Risk R3 — runtime qualification:** design D4/D6 / OQ-03. Renderer/native timeout, production memory/disk/quality, architecture compatibility and orphan-share limits are not measured. 200 DPI PNG is a candidate. Qualify before setting release guarantees; do not infer cancellation or supported CPU from library documentation.
 - **Open question Q4 — manifest/config gate:** design D6 / OQ-04. Actual serving/linkage and deployment-wide selection must be chosen consistently for API/PWA/Synology before advertising required Android PDF sharing.
 
@@ -42,6 +42,11 @@ Completion delta limited to requirements.md, design.md, tasks.md, review.md, spe
 User explicitly selects a separate conversion processor in the existing workflow. This supersedes API-process conversion-before-acceptance. API persists unchanged PDF, rating/notes and pending recipe, then returns acceptance; server workflow converts and continues normal extraction. Photo jobs skip conversion. Workflow retries are retained; encrypted/corrupt failed jobs stay in Settings for user Delete, with no automatic deletion or special cancellation/password UI.
 Writer/reviewer synchronization: PDF-R05/06/08/10, D3–D5, T01/T03/T04/T05/T08 updated. OQ-01 retained with resolved status; wire/API/resource/manifest gates remain. No product/runtime/OpenAPI/template implementation. Metadata/count/readiness and attempt-cleanup safety are required checks, not a claim of running code.
 Current checks: stable requirement/task/gate IDs and remote text/content scope verification; application/API/renderer/device checks not run. Historical archive remains untouched. The earlier consolidation-validation statements describe their original content identity, not this later processor implementation.
+
+## Approved exact input limits — 2026-10-02
+
+User accepts 20 MiB = 20,971,520 bytes, matching the existing photo convention, enforced at API upload before pending-import persistence. The separate workflow conversion processor checks 10 pages; over-limit documents fail the whole job in existing Settings recovery with no truncation. API/schema details remain OQ-02; this resolves only the byte/page boundary decision.
+Requirements/design/tasks are synchronized, including exact boundary checks (20,971,520 versus 20,971,521 bytes; 10 versus 11 pages). Historical 20 MB wording remains evidence only; current specification uses 20 MiB. No application/OpenAPI changes or runtime qualification; remote content verification is the completion check.
 
 ## Historical archive — non-authoritative
 
