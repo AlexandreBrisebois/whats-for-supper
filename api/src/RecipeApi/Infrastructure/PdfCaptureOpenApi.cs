@@ -7,6 +7,9 @@ namespace RecipeApi.Infrastructure;
 /// <summary>The manual, bounded form reader owns validation; publish its exact approved wire shape.</summary>
 public static class PdfCaptureOpenApi
 {
+    public static void AddServices(IServiceCollection services) =>
+        services.AddOpenApi(options => options.AddOperationTransformer(TransformAsync));
+
     public static Task TransformAsync(OpenApiOperation operation, OpenApiOperationTransformerContext context, CancellationToken ct)
     {
         if (context.Description.RelativePath != "api/recipes/capture-pdf") return Task.CompletedTask;

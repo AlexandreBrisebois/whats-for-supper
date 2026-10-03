@@ -199,6 +199,15 @@ public sealed class PdfCapturePostgresTests : IAsyncLifetime
         Assert.Equal(expected, memory.ToArray());
     }
 
+    private sealed class PostgresFactAttribute : FactAttribute
+    {
+        public PostgresFactAttribute()
+        {
+            if (string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("WFS_TEST_POSTGRES_CONNECTION")))
+                Skip = "Set WFS_TEST_POSTGRES_CONNECTION to run isolated PostgreSQL PDF recovery.";
+        }
+    }
+
     private sealed class ControlledRenderer : IPdfPageRenderer
     {
         public bool Fail = true;

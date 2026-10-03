@@ -162,7 +162,7 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
                 opts.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.Never;
             });
         
-        builder.Services.AddOpenApi(options => options.AddOperationTransformer(PdfCaptureOpenApi.TransformAsync));
+        PdfCaptureOpenApi.AddServices(builder.Services);
         builder.Services.AddSingleton<IPromptRepository, EmbeddedPromptRepository>();
 
         builder.Services.AddSingleton<AisleMapper>();
@@ -234,7 +234,7 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
                     {
                         TaskId = Guid.NewGuid(),
                         InstanceId = instance.Id,
-                        TaskName = _configurationOverrides.GetValueOrDefault("Tests:PdfWorkflow") == "true" && workflowId == "recipe-import" ? "ConvertPdf" : "mock",
+                        TaskName = _configurationOverrides.GetValueOrDefault("Tests:PdfWorkflow") == "true" && workflowId == "recipe-import" ? "convert_pdf" : "mock",
                         ProcessorName = _configurationOverrides.GetValueOrDefault("Tests:PdfWorkflow") == "true" && workflowId == "recipe-import" ? "ConvertPdf" : "Mock",
                         Payload = JsonSerializer.Serialize(parameters),
                         Status = RecipeApi.Models.TaskStatus.Pending,

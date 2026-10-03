@@ -30,7 +30,9 @@ jobs:
         with:
           dotnet-version: '11.0.100-preview.6.26359.118'
       - name: API tests
-        run: dotnet test api/src/RecipeApi.Tests/RecipeApi.Tests.csproj --configuration Release --logger trx --results-directory results
+        run: dotnet test api/src/RecipeApi.Tests/RecipeApi.Tests.csproj --configuration Release --filter 'FullyQualifiedName!~PdfCapturePostgresTests' --logger 'trx;LogFileName=api.trx' --results-directory results
+      - name: PDF PostgreSQL disk recovery and lifecycle
+        run: dotnet test api/src/RecipeApi.Tests/RecipeApi.Tests.csproj --configuration Release --no-build --filter FullyQualifiedName~PdfCapturePostgresTests --logger 'trx;LogFileName=pdf-postgres.trx' --results-directory results
       - uses: actions/upload-artifact@v7
         if: always()
         with:
@@ -84,9 +86,13 @@ jobs:
         working-directory: pwa
       - run: python3 -B scripts/agent/kiota_client.py check
       - run: python3 -B scripts/agent/spec_registry.py check
+        if: always()
       - run: python3 -B scripts/agent/api_tools.py --route-drift
+        if: always()
       - run: python3 -B scripts/agent/drift.py --schema-only
+        if: always()
       - run: python3 -B scripts/agent/drift_mocks.py
+        if: always()
       - run: python3 scripts/agent/kiota_client.py generate
       - uses: actions/upload-artifact@v7
         with:

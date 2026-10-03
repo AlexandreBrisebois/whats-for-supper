@@ -290,8 +290,9 @@ entries:
   - slug: pdf-recipe-import
     name: PDF recipe import preview
     kind: planned-feature
-    lifecycle: planned
+    lifecycle: in-progress
     path: .kiro/specs/pdf-recipe-import
     aliases: [pdf capture, android pdf sharing]
     depends_on: [feature-flags, photo-capture, recipe-url-capture, import-progress-and-completion, import-failure-recovery, storage-backup-and-recovery]
-    next_action: Start T01-T03 during implementation: source validation, renderer qualification and contract schemas; then implement approved package.
+    next_action: Complete T02/T08 renderer and device qualification; implementation and automated evidence are tracked in implementation-evidence.md.
+
