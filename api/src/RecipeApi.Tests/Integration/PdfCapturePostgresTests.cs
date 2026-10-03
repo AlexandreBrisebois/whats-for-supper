@@ -93,7 +93,7 @@ public sealed class PdfCapturePostgresTests : IAsyncLifetime
             var body = await failed.Content.ReadAsStringAsync();
             Assert.Contains(instance.Id.ToString(), body);
             Assert.Contains(factory.DefaultFamilyMemberId.ToString(), body);
-            Assert.Contains("ConvertPdf", body);
+            Assert.Contains("convert_pdf", body);
         }
         await AssertSourceAsync(store, id, bytes);
         factory.Services.GetRequiredService<IConfiguration>()["WFS_FEATURE_PREVIEW_PDF_RECIPE_IMPORT"] = "off";
@@ -120,6 +120,74 @@ public sealed class PdfCapturePostgresTests : IAsyncLifetime
         Assert.Equal(1, result.Completed);
         Assert.Null(await store.ReadSourcePdfAsync(id));
         Assert.Null(await store.ReadOriginalImageAsync(id, 0));
+    }
+
+    [PostgresFact]
+    public async Task Backup_restore_soft_delete_and_purge_preserve_then_remove_PDF_aggregate()
+    {
+        using var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Add("X-Family-Member-Id", factory.DefaultFamilyMemberId.ToString());
+        var bytes = "%PDF-original-retained"u8.ToArray();
+        using var form = new MultipartFormDataContent();
+        var file = new ByteArrayContent(bytes);
+        file.Headers.ContentType = new MediaTypeHeaderValue("application/pdf");
+        form.Add(file, "file", "supper.pdf");
+        using var accepted = await client.PostAsync("/api/recipes/capture-pdf", form);
+        Assert.Equal(HttpStatusCode.Accepted, accepted.StatusCode);
+        using var json = JsonDocument.Parse(await accepted.Content.ReadAsStringAsync());
+        var id = json.RootElement.GetProperty("data").GetProperty("id").GetGuid();
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+        var store = scope.ServiceProvider.GetRequiredService<IRecipeStore>();
+        var recipe = await db.Recipes.SingleAsync(r => r.Id == id);
+        recipe.Name = "Lemon chicken";
+        recipe.IsReady = true;
+        recipe.ImageCount = 1;
+        recipe.Rating = (RecipeRating)3;
+        recipe.Notes = "less salt";
+        var png = Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aNkwAAAAASUVORK5CYII=");
+        await store.ReplacePdfPagesAsync(id, [png]);
+        var info = (await store.ReadInfoAsync(id))!;
+        info.ImageCount = 1;
+        await store.WriteInfoAsync(info);
+        await db.SaveChangesAsync();
+        var management = scope.ServiceProvider.GetRequiredService<ManagementService>();
+        await management.BackupAsync();
+        db.Recipes.Remove(recipe);
+        await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
+        await management.RestoreAsync();
+        var restored = await db.Recipes.SingleAsync(r => r.Id == id);
+        Assert.True(restored.IsReady);
+        Assert.Equal("less salt", restored.Notes);
+        Assert.Equal(3, (int)restored.Rating);
+        Assert.Equal(-1, restored.FinishedDishIndex);
+        await AssertSourceAsync(store, id, bytes);
+        var image = await store.ReadOriginalImageAsync(id, 0);
+        Assert.NotNull(image);
+        await image!.Value.Stream.DisposeAsync();
+        using var deleted = await client.DeleteAsync($"/api/recipes/{id}");
+        Assert.Equal(HttpStatusCode.OK, deleted.StatusCode);
+        await AssertSourceAsync(store, id, bytes);
+        Assert.NotNull(await store.ReadInfoAsync(id));
+        using var recovered = await client.PostAsync($"/api/recipes/{id}/restore", null);
+        Assert.Equal(HttpStatusCode.OK, recovered.StatusCode);
+        await AssertSourceAsync(store, id, bytes);
+        using var deletedAgain = await client.DeleteAsync($"/api/recipes/{id}");
+        Assert.Equal(HttpStatusCode.OK, deletedAgain.StatusCode);
+        var previous = Environment.GetEnvironmentVariable("ELEVATED_ACTIONS_PIN");
+        try
+        {
+            Environment.SetEnvironmentVariable("ELEVATED_ACTIONS_PIN", "pdf-qualification-pin");
+            using var request = new HttpRequestMessage(HttpMethod.Delete, $"/api/recipes/{id}/purge");
+            request.Headers.Add("X-Elevated-Pin", "pdf-qualification-pin");
+            using var purged = await client.SendAsync(request);
+            Assert.Equal(HttpStatusCode.OK, purged.StatusCode);
+        }
+        finally { Environment.SetEnvironmentVariable("ELEVATED_ACTIONS_PIN", previous); }
+        Assert.Null(await store.ReadSourcePdfAsync(id));
+        Assert.Null(await store.ReadOriginalImageAsync(id, 0));
+        Assert.Null(await store.ReadInfoAsync(id));
     }
 
     private static async Task AssertSourceAsync(IRecipeStore store, Guid id, byte[] expected)
