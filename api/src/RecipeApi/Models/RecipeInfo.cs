@@ -21,6 +21,9 @@ public class RecipeInfo
     public string? CuisineType { get; set; }
     public string[]? MealTypes { get; set; }
     public bool IsDiscoverable { get; set; } = false;
+    // PDF recovery must distinguish extracted metadata from workflow completion.
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public bool? IsReady { get; set; }
     public bool? IsVegetarian { get; set; }
     public string? TotalTime { get; set; }
     public DateTimeOffset? LastCookedDate { get; set; }

@@ -13,7 +13,8 @@ namespace RecipeApi.Services.Processors;
 public class RecipeReadyProcessor(
     RecipeDbContext db,
     ILogger<RecipeReadyProcessor> logger,
-    IScheduleEventPublisher publisher) : IWorkflowProcessor
+    IScheduleEventPublisher publisher,
+    IRecipeStore? recipeStore = null) : IWorkflowProcessor
 {
     public string ProcessorName => "RecipeReady";
 
@@ -40,6 +41,8 @@ public class RecipeReadyProcessor(
         // to maintain the integrity of UpdatedAt (fixes integration tests).
         if (recipe.IsReady && recipe.IsDiscoverable)
         {
+            // Repair metadata if an earlier attempt committed the DB before its file write failed.
+            await RecordPdfReadinessAsync(recipeId, ct);
             logger.LogInformation("Recipe {RecipeId} is already finalized — skipping", recipeId);
             return new { Status = "AlreadyReady", RecipeId = recipeId };
         }
@@ -49,6 +52,7 @@ public class RecipeReadyProcessor(
         recipe.UpdatedAt = DateTimeOffset.UtcNow;
 
         await db.SaveChangesAsync(ct);
+        await RecordPdfReadinessAsync(recipeId, ct);
 
         logger.LogInformation("Recipe {RecipeId} marked as READY and DISCOVERABLE", recipeId);
 
@@ -58,5 +62,17 @@ public class RecipeReadyProcessor(
         await publisher.PublishRecipeReadyAsync(recipeId, name, imageUrl);
 
         return new { Status = "Ready", RecipeId = recipeId };
+    }
+
+    private async Task RecordPdfReadinessAsync(Guid recipeId, CancellationToken ct)
+    {
+        if (recipeStore is null) return;
+        await using var source = await recipeStore.ReadSourcePdfAsync(recipeId, ct);
+        if (source is null) return;
+        var info = await recipeStore.ReadInfoAsync(recipeId, ct)
+            ?? throw new InvalidDataException("Retained PDF is missing its recipe metadata.");
+        if (info.IsReady == true) return;
+        info.IsReady = true;
+        await recipeStore.WriteInfoAsync(info, ct);
     }
 }

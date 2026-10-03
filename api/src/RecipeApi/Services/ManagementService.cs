@@ -62,10 +62,11 @@ public class ManagementService(
         int backedUpCount = 0;
         foreach (var recipe in recipes)
         {
+            await using var pdfSource = await recipeStore.ReadSourcePdfAsync(recipe.Id);
             // Skip if recipe is not ready and has no payload worth persisting
             var isReady = (!string.IsNullOrEmpty(recipe.Name) && recipe.ImageCount > 0)
                        || (!string.IsNullOrEmpty(recipe.Name) && recipe.IsSynthesized);
-            if (!isReady &&
+            if (pdfSource is null && !isReady &&
                 string.IsNullOrEmpty(recipe.RawMetadata) &&
                 string.IsNullOrEmpty(recipe.Notes) &&
                 recipe.Rating == RecipeRating.Unknown)
@@ -77,6 +78,7 @@ public class ManagementService(
             var existing = await recipeStore.ReadInfoAsync(recipe.Id);
             if (existing != null)
             {
+                if (pdfSource is not null) existing.IsReady = recipe.IsReady;
                 existing.Notes = recipe.Notes;
                 existing.Rating = recipe.Rating;
                 existing.Description = recipe.Description;
@@ -97,6 +99,7 @@ public class ManagementService(
             {
                 var info = new RecipeInfo
                 {
+                    IsReady = pdfSource is not null ? recipe.IsReady : null,
                     Id = recipe.Id,
                     Notes = recipe.Notes,
                     Rating = recipe.Rating,
@@ -834,7 +837,7 @@ public class ManagementService(
                     if (info != null)
                     {
                         await using var pdfSource = await recipeStore.ReadSourcePdfAsync(recipeId, ct);
-                        var pendingPdf = pdfSource is not null && string.IsNullOrWhiteSpace(info.Name);
+                        var pendingPdf = pdfSource is not null && info.IsReady != true;
                         if (pendingPdf) pendingPdfIds.Add(recipeId);
                         if (info.Id != recipeId || (string.IsNullOrWhiteSpace(info.Name) && !pendingPdf))
                             throw new InvalidDataException($"Recipe info for {recipeId} is missing its required current id or name.");

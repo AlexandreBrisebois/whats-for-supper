@@ -35,7 +35,7 @@ public sealed class PdfCaptureService(
         await store.WriteInfoAsync(new RecipeInfo
         {
             Id = id, AddedBy = memberId, Rating = (RecipeRating)rating, Notes = notes,
-            FinishedDishImageIndex = -1, ImageCount = 0, CreatedAt = now
+            FinishedDishImageIndex = -1, ImageCount = 0, CreatedAt = now, IsReady = false
         }, ct);
         var recipe = new Recipe
         {
