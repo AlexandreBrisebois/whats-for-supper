@@ -1,6 +1,6 @@
 # PDF renderer qualification
 
-Start at **200 DPI PNG**, one recipe/document, 20 MiB upload and at most ten pages. Production values are required environment settings and must come from measurements; this harness profile is an evaluation profile, not a qualified NAS default.
+Start at **200 DPI PNG**, one recipe/document, 20 MiB upload and at most ten pages. The code-owned `PdfRenderLimits.Default` profile is 200 DPI, 4096 pixels maximum dimension, 16,777,216 pixels/page, 64 MiB total PNG output, 512 MiB sampled child RSS and a 60-second parent deadline. It was selected from the recorded Ubuntu amd64 measurements; operators do not configure or override it through deployment variables. Actual NAS performance/readability/extraction qualification remains open.
 
 On an isolated Linux host with Docker, Python Pillow, DejaVu fonts and qpdf:
 
@@ -15,6 +15,6 @@ The branch-only `pdf-preview-validation.yml` workflow performs these checks with
 
 Fixture cases: text, scanned, bilingual French/English, cover plus recipe, ten pages, eleven pages, pathological dimensions, corrupt bytes, encrypted PDF with an empty user password, and multiple recipes (unsupported: no detector or splitting). Originals are hashed before/after. PNG count/order/dimensions are automated. Inspect quantity fractions, accents, units, temperatures, step order and the cover case on a phone. Record actual extraction accuracy using the normal recipe workflow separately; synthetic pixel assertions cannot establish it.
 
-Record command, commit, container digest, resolved dependency versions/notices, CPU architecture/limits, input/output bytes, dimensions/pixels, peak memory/disk/time and cleanup outcomes. Repeat on the intended Synology architecture under household load before choosing the six positive `WFS_PDF_*` values in the Synology template. Do not claim ARM64 from x64 CI, Synology from an Ubuntu runner, or readability/AI accuracy from PNG generation. Record unavailable NAS/Android/iOS checks as blocked, and do not enable/deploy the preview until qualified.
+Record command, commit, container digest, resolved dependency versions/notices, CPU architecture/limits, input/output bytes, dimensions/pixels, peak memory/disk/time and cleanup outcomes. Repeat on the intended Synology architecture under household load to qualify the fixed code profile; any later profile adjustment is a code change with new measurements and regression checks. Do not claim ARM64 from x64 CI, Synology from an Ubuntu runner, or readability/AI accuracy from PNG generation. Record unavailable NAS/Android/iOS checks as blocked, and do not enable/deploy the preview until qualified.
 
 No household documents, live secrets, model API calls, publishing or deployment are used by this harness. Generated fixture artifacts are public synthetic data; runtime attempt cleanup never deletes accepted recipe sources.

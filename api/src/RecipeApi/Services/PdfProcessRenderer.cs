@@ -4,13 +4,13 @@ using System.Text.Json;
 namespace RecipeApi.Services;
 
 /// <summary>One disposable native subprocess, with a parent-enforced timeout and resource monitoring.</summary>
-public sealed class PdfProcessRenderer(IConfiguration config) : IPdfPageRenderer
+public sealed class PdfProcessRenderer(PdfRenderLimits? renderLimits = null) : IPdfPageRenderer
 {
     private static readonly SemaphoreSlim Gate = new(1, 1);
 
     public async Task<IReadOnlyList<byte[]>> RenderAsync(Stream source, CancellationToken ct)
     {
-        var limits = PdfRenderLimits.Read(config);
+        var limits = renderLimits ?? PdfRenderLimits.Default;
         await Gate.WaitAsync(ct);
         var attempt = Path.Combine(Path.GetTempPath(), "wfs-pdf-" + Guid.NewGuid().ToString("N"));
         Process? process = null;

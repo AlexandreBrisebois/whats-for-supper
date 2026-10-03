@@ -1,19 +1,16 @@
 namespace RecipeApi.Services;
 
-/// <summary>Values must be supplied from qualification; there are no unmeasured production defaults.</summary>
+/// <summary>Code-owned production profile selected from measured Ubuntu amd64 qualification.</summary>
 public sealed record PdfRenderLimits(int Dpi, int MaxDimension, long MaxPixels, long MaxOutputBytes, long MaxResidentBytes, int TimeoutSeconds)
 {
-    public static PdfRenderLimits Read(IConfiguration config) => new(
-        checked((int)Positive(config, "WFS_PDF_RENDER_DPI")),
-        checked((int)Positive(config, "WFS_PDF_MAX_DIMENSION")),
-        Positive(config, "WFS_PDF_MAX_PIXELS"),
-        Positive(config, "WFS_PDF_MAX_OUTPUT_BYTES"),
-        Positive(config, "WFS_PDF_MAX_RESIDENT_BYTES"),
-        checked((int)Positive(config, "WFS_PDF_TIMEOUT_SECONDS")));
-
-    private static long Positive(IConfiguration config, string key) =>
-        long.TryParse(config[key], out var value) && value > 0 ? value
-        : throw new InvalidOperationException("PDF renderer qualification setting is missing: " + key);
+    // Operators do not tune PDF rendering. Keep the measured profile in one immutable value.
+    public static PdfRenderLimits Default { get; } = new(
+        Dpi: 200,
+        MaxDimension: 4096,
+        MaxPixels: 16_777_216,
+        MaxOutputBytes: 64L * 1024 * 1024,
+        MaxResidentBytes: 512L * 1024 * 1024,
+        TimeoutSeconds: 60);
 
     public void ValidatePage(double widthPoints, double heightPoints)
     {

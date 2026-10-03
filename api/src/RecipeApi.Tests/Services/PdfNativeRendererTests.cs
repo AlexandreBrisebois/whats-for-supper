@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Configuration;
 using RecipeApi.Services;
 using Xunit;
 
@@ -8,13 +7,23 @@ namespace RecipeApi.Tests.Services;
 public sealed class PdfNativeRendererTests
 {
     private static string Fixture(string name) => Path.Combine(Environment.GetEnvironmentVariable("WFS_NATIVE_PDF_FIXTURES")!, name + ".pdf");
-    private static Dictionary<string, string?> Settings(int dpi = 200, int timeout = 60) => new()
+    private static PdfRenderLimits Settings(int dpi = 200, int timeout = 60) =>
+        PdfRenderLimits.Default with
+        {
+            Dpi = dpi, MaxDimension = 20000, MaxPixels = 300000000,
+            MaxOutputBytes = 536870912, MaxResidentBytes = 4294967296,
+            TimeoutSeconds = timeout
+        };
+    private static PdfProcessRenderer Renderer(PdfRenderLimits settings) => new(settings);
+
+    [NativePdfFact]
+    public async Task Production_profile_renders_without_deployment_settings()
     {
-        ["WFS_PDF_RENDER_DPI"] = dpi.ToString(), ["WFS_PDF_MAX_DIMENSION"] = "20000",
-        ["WFS_PDF_MAX_PIXELS"] = "300000000", ["WFS_PDF_MAX_OUTPUT_BYTES"] = "536870912",
-        ["WFS_PDF_MAX_RESIDENT_BYTES"] = "4294967296", ["WFS_PDF_TIMEOUT_SECONDS"] = timeout.ToString()
-    };
-    private static PdfProcessRenderer Renderer(Dictionary<string, string?> settings) => new(new ConfigurationBuilder().AddInMemoryCollection(settings).Build());
+        await using var source = File.OpenRead(Fixture("text"));
+        var pages = await new PdfProcessRenderer().RenderAsync(source, CancellationToken.None);
+        Assert.Single(pages);
+        Assert.Equal(new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 }, pages[0].Take(8));
+    }
 
     [NativePdfFact]
     public async Task Native_success_returns_ordered_pngs_and_cleans_attempt_directories()
@@ -58,10 +67,12 @@ public sealed class PdfNativeRendererTests
     public async Task Resource_breaches_and_cancellation_clean_temporary_attempts_and_release_gate()
     {
         var before = Directory.GetDirectories(Path.GetTempPath(), "wfs-pdf-*").Order().ToArray();
-        foreach (var setting in new[] { "WFS_PDF_MAX_DIMENSION", "WFS_PDF_MAX_PIXELS", "WFS_PDF_MAX_OUTPUT_BYTES", "WFS_PDF_MAX_RESIDENT_BYTES" })
+        foreach (var limits in new[]
         {
-            var limits = Settings();
-            limits[setting] = "1";
+            Settings() with { MaxDimension = 1 }, Settings() with { MaxPixels = 1 },
+            Settings() with { MaxOutputBytes = 1 }, Settings() with { MaxResidentBytes = 1 }
+        })
+        {
             await using var source = File.OpenRead(Fixture("text"));
             await Assert.ThrowsAsync<InvalidDataException>(() => Renderer(limits).RenderAsync(source, CancellationToken.None));
         }
