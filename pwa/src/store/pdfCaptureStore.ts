@@ -25,7 +25,8 @@ export const usePdfCaptureStore = create<PdfCaptureState>((set, get) => ({
     return generation;
   },
   reset(expectedGeneration) {
-    if (expectedGeneration !== undefined && get().selection?.generation !== expectedGeneration) return;
+    if (expectedGeneration !== undefined && get().selection?.generation !== expectedGeneration)
+      return;
     set({ selection: null, generation: get().generation + 1 });
   },
 }));

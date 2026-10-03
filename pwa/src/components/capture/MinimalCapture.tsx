@@ -146,8 +146,19 @@ export default function MinimalCapture({
   const isGoto = intent === 'goto';
   const memberId = useFamilyStore((state) => state.selectedFamilyMemberId);
   const pdfSelection = usePdfCaptureStore((state) => state.selection);
-  const pdfEnabled = useFeatureFlagStore((state) => Boolean(!isGoto && memberId && state.memberId === memberId && !state.loading && !state.error && state.flags['preview-pdf-recipe-import']?.enabled));
-  useEffect(() => { if (pdfSelection) resetCapture?.(); }, [pdfSelection, resetCapture]);
+  const pdfEnabled = useFeatureFlagStore((state) =>
+    Boolean(
+      !isGoto &&
+      memberId &&
+      state.memberId === memberId &&
+      !state.loading &&
+      !state.error &&
+      state.flags['preview-pdf-recipe-import']?.enabled
+    )
+  );
+  useEffect(() => {
+    if (pdfSelection) resetCapture?.();
+  }, [pdfSelection, resetCapture]);
 
   useEffect(() => {
     if (isGoto) {
@@ -388,14 +399,21 @@ export default function MinimalCapture({
     if (!file) return;
     if (file.name.toLowerCase().endsWith('.pdf') || file.type === 'application/pdf') {
       if (!pdfEnabled || !memberId) {
-        setBundleImportError(t('capture.pdf.disabled', 'PDF import preview isn’t enabled. This file hasn’t been added.'));
+        setBundleImportError(
+          t(
+            'capture.pdf.disabled',
+            'PDF import preview isn’t enabled. This file hasn’t been added.'
+          )
+        );
         return;
       }
       const invalid = validatePdfSelection(file);
       if (invalid) {
-        setBundleImportError(invalid === 'size'
-          ? t('capture.pdf.size', 'Choose a PDF up to 20 MiB.')
-          : t('capture.pdf.type', 'Choose a PDF file.'));
+        setBundleImportError(
+          invalid === 'size'
+            ? t('capture.pdf.size', 'Choose a PDF up to 20 MiB.')
+            : t('capture.pdf.type', 'Choose a PDF file.')
+        );
         return;
       }
       resetCapture();
@@ -1125,7 +1143,7 @@ export default function MinimalCapture({
               ref={recipeFileInputRef}
               data-testid="import-recipe-file-input"
               type="file"
-              accept={pdfEnabled ? ".txt,text/plain,.pdf,application/pdf" : ".txt,text/plain"}
+              accept={pdfEnabled ? '.txt,text/plain,.pdf,application/pdf' : '.txt,text/plain'}
               aria-label="Import recipe file"
               title="Import recipe file"
               className="hidden"
@@ -1519,4 +1537,3 @@ export default function MinimalCapture({
     </div>
   );
 }
-

@@ -11,7 +11,14 @@ describe('deployment-selected manifest', () => {
     expect(manifest.id).toBe('/');
     expect(manifest.share_target.method).toBe('POST');
     expect(manifest.share_target.action).toBe('/share-target');
-    expect(manifest.share_target).toMatchObject({ enctype: 'multipart/form-data', params: { title: 'title', text: 'text', url: 'url', files: [{ name: 'files', accept: ['application/pdf', '.pdf'] }] } });
+    expect(manifest.share_target).toMatchObject({
+      enctype: 'multipart/form-data',
+      params: {
+        title: 'title',
+        text: 'text',
+        url: 'url',
+        files: [{ name: 'files', accept: ['application/pdf', '.pdf'] }],
+      },
+    });
   });
 });
-

@@ -1,6 +1,6 @@
 # PDF recipe import preview — tasks and checks
 
-Status: T01 static reconnaissance recorded; T02 qualification packet in progress; T03 approved wire contract synchronized. User authorized T01–T08 and connector implementation. Runtime/device completion remains unverified; see [implementation-evidence.md](implementation-evidence.md).
+Status: T01 complete; T03 contract/client synchronized; T04–T07 source implementation present and automated verification in progress. T02 production Ubuntu x64 fixture/timeout/cleanup checks passed at the recorded evaluation profile; actual NAS, phone readability and extraction accuracy remain unqualified. T08 final regression evidence and real-device qualification are tracked in [implementation-evidence.md](implementation-evidence.md).
 Kind: feature specification; design-first from design.md, gated approval. Product acceptance: requirements.md PDF-R01–15. OQ-01 architecture is resolved by a separate PDF processor in existing recipe-import; OQ-04 manifest strategy is approved; OQ-02/OQ-03 are early implementation follow-ups; resolve them from repository conventions/measurements before dependent tests/code, not by guessing.
 Required/optional: T01–T08 are required within the approved preview. No optional task is a hidden completion condition. Listing tasks does not authorize executing them. An explicit complete-package kickoff selects T01–T08 together; routine internal dependencies do not require repeated selection/confirmation.
 Dependencies/shared-file ownership: execute dependent changes sequentially. One writer owns OpenAPI/client/mock updates and each shared capture/recovery file within its selected task. Do not parallelize overlapping contract, capture, failure-service, worker/manifest or template mutations.
@@ -97,8 +97,9 @@ Stop: classify passed/failed/blocked/not-run evidence, preserve original limitat
 | PDF-R12/13 | T01/T04/T05/T06/T08: household/GOTO invariants and disabled-share next steps |
 | PDF-R15 | T07/T08: guide/flows, Synology env/template/build checks |
 
-Specification-only validation is recorded in review.md. Runtime/API/device/container tests are not run and are not passing evidence. Current review risks/gates do not authorize implementing tasks by themselves. Once the complete package is explicitly selected, continue through the required dependency order without asking to start each task.
+Specification-only validation is recorded in review.md. Original consolidation checks were specification-only. Actual runtime/API/browser/container classifications now live in implementation-evidence.md; device/NAS absence is blocked evidence. Current review risks/gates do not authorize implementing tasks by themselves. Once the complete package is explicitly selected, continue through the required dependency order without asking to start each task.
 
 ## Kickoff execution scope
 
 A complete-package implementation instruction selects all required T01–T08, including early reconnaissance/renderer qualification/schema work, application/tests/workflow/storage integration, Android sharing/manifest, user/process documentation and Synology template/env example. Update task progress and the spec as technical follow-ups are resolved. Preserve approved behavior; do not reopen accepted tradeoffs. Tests precede implementation, and finalized OpenAPI precedes dependent client/mock/runtime work. Routine schema/resource details may be resolved directly; behavior/scope changes need one-at-a-time user approval. Deployment, live .env/secret changes and rollout remain outside implementation authorization unless separately requested. Real-device/Synology qualification must be completed or explicitly blocked before release; never fabricate results.
+

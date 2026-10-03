@@ -12,7 +12,10 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(navigation.query),
 }));
 vi.mock('@/lib/api/recipes', () => ({ createPdfRecipe: vi.fn() }));
-vi.mock('@/lib/pdfShare', () => ({ claimSharedPdf: vi.fn(), discardSharedPdf: vi.fn(async () => {}) }));
+vi.mock('@/lib/pdfShare', () => ({
+  claimSharedPdf: vi.fn(),
+  discardSharedPdf: vi.fn(async () => {}),
+}));
 
 const member = '550e8400-e29b-41d4-a716-446655440001';
 const another = '550e8400-e29b-41d4-a716-446655440002';
@@ -23,11 +26,19 @@ beforeEach(() => {
   vi.clearAllMocks();
   usePdfCaptureStore.getState().reset();
   useFamilyStore.setState({ selectedFamilyMemberId: member });
-  useFeatureFlagStore.setState({ memberId: member, loading: false, error: null, flags: {
-    'preview-pdf-recipe-import': { key: 'preview-pdf-recipe-import', mode: 'on', enabled: true },
-  } });
+  useFeatureFlagStore.setState({
+    memberId: member,
+    loading: false,
+    error: null,
+    flags: {
+      'preview-pdf-recipe-import': { key: 'preview-pdf-recipe-import', mode: 'on', enabled: true },
+    },
+  });
 });
-afterEach(() => { cleanup(); usePdfCaptureStore.getState().reset(); });
+afterEach(() => {
+  cleanup();
+  usePdfCaptureStore.getState().reset();
+});
 
 describe('PDF capture draft ownership', () => {
   it('clears an existing draft when capture changes to Family GOTO', async () => {
@@ -47,12 +58,19 @@ describe('PDF capture draft ownership', () => {
   it('a member switch and switch back cannot restore an in-flight delivery', async () => {
     navigation.query = 'share=opaque-token';
     let deliver!: (value: { token: string; file: File }) => void;
-    vi.mocked(claimSharedPdf).mockImplementationOnce(() => new Promise((resolve) => { deliver = resolve; }));
+    vi.mocked(claimSharedPdf).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          deliver = resolve;
+        })
+    );
     render(<PdfCapturePanel isGoto={false} resetPhotos={resetPhotos} />);
     await waitFor(() => expect(claimSharedPdf).toHaveBeenCalled());
     act(() => useFamilyStore.setState({ selectedFamilyMemberId: another }));
     act(() => useFamilyStore.setState({ selectedFamilyMemberId: member }));
-    await act(async () => { deliver({ token: 'opaque-token', file }); });
+    await act(async () => {
+      deliver({ token: 'opaque-token', file });
+    });
     expect(usePdfCaptureStore.getState().selection).toBeNull();
   });
 });

@@ -468,8 +468,12 @@ STRICT OUTPUT: Return ONLY valid JSON. No markdown. No preamble. No explanation.
         foreach (var index in imageIndices)
         {
             var bytes = await recipeRepository.GetOriginalImageAsync(recipeId, index, ct);
-            // We assume JPEG for simplicity here as GetOriginalImageAsync handles the ext check
-            message.Contents.Add(new DataContent(bytes, "image/jpeg"));
+            // PDF pages are PNGs. Describe the actual bytes to the model while
+            // retaining the existing JPEG path and ordinary extraction prompt.
+            var mediaType = bytes.AsSpan().StartsWith(new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 }) ? "image/png"
+                : bytes.Length >= 12 && bytes.AsSpan(0, 4).SequenceEqual("RIFF"u8) && bytes.AsSpan(8, 4).SequenceEqual("WEBP"u8) ? "image/webp"
+                : "image/jpeg";
+            message.Contents.Add(new DataContent(bytes, mediaType));
         }
     }
 
@@ -499,3 +503,4 @@ STRICT OUTPUT: Return ONLY valid JSON. No markdown. No preamble. No explanation.
 
     #endregion
 }
+

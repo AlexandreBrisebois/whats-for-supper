@@ -6,7 +6,12 @@ vi.mock('@/locales', () => ({ t: (_key: string, fallback: string) => fallback })
 describe('PDF confirmation', () => {
   it('shows filename, guidance and metadata; locks Save synchronously without Cancel or dish selection', async () => {
     let done!: () => void;
-    const save = vi.fn(() => new Promise<void>((resolve) => { done = resolve; }));
+    const save = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          done = resolve;
+        })
+    );
     render(<PdfCaptureConfirmation file={new File(['pdf'], 'supper.pdf')} enabled onSave={save} />);
     expect(screen.getByText('supper.pdf')).toBeTruthy();
     expect(screen.getByText(/one recipe/i)).toBeTruthy();
@@ -24,8 +29,13 @@ describe('PDF confirmation', () => {
     await act(async () => done());
   });
   it('does not permit submission before effective enablement', () => {
-    render(<PdfCaptureConfirmation file={new File(['pdf'], 'supper.pdf')} enabled={false} onSave={vi.fn()} />);
+    render(
+      <PdfCaptureConfirmation
+        file={new File(['pdf'], 'supper.pdf')}
+        enabled={false}
+        onSave={vi.fn()}
+      />
+    );
     expect(screen.getByTestId('pdf-save')).toBeDisabled();
   });
 });
-

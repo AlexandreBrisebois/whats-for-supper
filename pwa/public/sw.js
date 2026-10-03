@@ -4,7 +4,9 @@ const CACHE = 'supper-v1';
 
 self.addEventListener('install', (e) => e.waitUntil(caches.open(CACHE)));
 
-self.addEventListener('activate', (e) => e.waitUntil(Promise.all([self.clients.claim(), self.WfsPdfShare.cleanup().catch(() => {})])));
+self.addEventListener('activate', (e) =>
+  e.waitUntil(Promise.all([self.clients.claim(), self.WfsPdfShare.cleanup().catch(() => {})]))
+);
 
 self.addEventListener('fetch', (e) => {
   if (self.WfsPdfShare.matches(e.request)) {
@@ -20,4 +22,3 @@ self.addEventListener('fetch', (e) => {
 
   e.respondWith(caches.match(e.request).then((cached) => cached ?? fetch(e.request)));
 });
-

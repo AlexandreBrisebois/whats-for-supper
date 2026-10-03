@@ -1,16 +1,22 @@
 # PDF recipe import preview — current review and historical evidence
 
-Status: specification consolidation reviewed; product decisions recorded, technical gates remain unresolved. No implementation approval.
+Status: user authorized complete T01–T08 implementation; source work and automated evidence are in progress. The consolidation and approval entries below preserve their original check identities. Real NAS/device/extraction qualification remains open.
 Reviewed source baseline: 9eb64bb06339b25861e45b559284629064c30f7a, followed by this authorized revision.
 Workflow: .agents/prompts/spec-writer.md → .agents/core/specification-workflow.md, then .agents/prompts/spec-reviewer.md. Applied sequentially to this package; no external agent/persona output is claimed.
 
 ## Current authority and consolidation
 
-Current acceptance is [requirements.md](requirements.md) PDF-R01–15; approach is [design.md](design.md) D1–D8; dependent work/checks are [tasks.md](tasks.md) T01–T08. Feature specification, design-first, gated cadence, planned lifecycle. Stable IDs are new for the consolidated checklist. The existing package is registered with current capture/recovery/storage/flag dependencies.
+Current acceptance is [requirements.md](requirements.md) PDF-R01–15; approach is [design.md](design.md) D1–D8; dependent work/checks are [tasks.md](tasks.md) T01–T08. Feature specification, design-first, in-progress lifecycle under the explicit complete-package authorization. Stable IDs are new for the consolidated checklist. The existing package is registered with current capture/recovery/storage/flag dependencies.
 
 Only the current sections above the historical archive carry review status. The archive preserves past findings, rejected proposals and user dispositions as evidence. Every archived correction, Acceptance paragraph and “pending” label is historical, superseded by the current artifacts. Do not convert archived draft preservation, PDF GOTO promotion, Cancel, unlock staging retention, rating/notes omission, original-PDF export or multi-recipe detection proposals into implementation requirements.
 
-Consolidation preserves: primary photo chooser layout; enabled PDF file extension/Android sharing; iOS picker; rating/notes/no dish designation; server PDFtoImage + normal workflow; unchanged retained PDF/internal page-image viewer; one recipe/20 MB/10 pages; no Cancel; restart/reset on interruption/navigation/unlock/member change; existing Settings failed-job Retry/Delete; best-effort/shared-session feedback/uncertain duplicates; acquisition-only flag and unchanged GOTO/household eligibility. User guide/flow docs/Synology template/env remain required future deliverables.
+Consolidation preserves: primary photo chooser layout; enabled PDF file extension/Android sharing; iOS picker; rating/notes/no dish designation; server PDFtoImage + normal workflow; unchanged retained PDF/internal page-image viewer; one recipe/20 MB/10 pages; no Cancel; restart/reset on interruption/navigation/unlock/member change; existing Settings failed-job Retry/Delete; best-effort/shared-session feedback/uncertain duplicates; acquisition-only flag and unchanged GOTO/household eligibility. User guide/flow docs/Synology template/env are now implemented; their actual validation is recorded separately.
+
+## Implementation review checkpoint — 2026-10-03
+
+The approved OpenAPI seam, generated client, acceptance/source storage, separate workflow processor, renderer isolation, picker/confirmation, Android handoff, single manifest, guide/flows and Synology templates are implemented. Source reconnaissance uses baseline `6f36291d7bae3c46b9af2f9c17c02e9e17acc018`; later test identities are explicit in [implementation-evidence.md](implementation-evidence.md). Contract and targeted tests precede their implementation commits. No new product decision, workflow/flag framework, detector, PDF download, durable draft or deployment is introduced.
+
+The findings below originally described consolidation gates. OQ-02 and OQ-04 are now implemented. OQ-03 has production Ubuntu x64 fixture and actual timeout/cleanup results, but final NAS budgets, phone readability, extraction accuracy and real Android/iOS evidence remain open. Native notices are inventoried separately from the MIT wrapper license. Automated browser handoffs do not establish installed OS sharing. No passing result is attached to an untested later content identity.
 
 ## Spec-reviewer findings, risks and open questions
 
@@ -288,3 +294,4 @@ Added required implementation deliverables to design.md: docs/user-guide.md; pro
 Evidence: inspected existing CAP-07 recovery design, photo-upload data-flow and Synology template/env example at the branch commit. No application tests or device checks. Scope delta: design/review only; remote content verification used because local checkout/Task harness remains unavailable.
 
 </details>
+

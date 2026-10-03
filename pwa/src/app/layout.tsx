@@ -116,7 +116,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="min-h-dvh bg-cream text-charcoal antialiased">
         <Script src="/pdf-share.js" strategy="beforeInteractive" />
-        <Suspense fallback={null}><PdfShareLifecycle /></Suspense>
+        <Suspense fallback={null}>
+          <PdfShareLifecycle />
+        </Suspense>
         <LocaleProvider>
           <IdentityValidator>{children}</IdentityValidator>
         </LocaleProvider>
@@ -124,4 +126,3 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     </html>
   );
 }
-

@@ -30,4 +30,3 @@ export default async function CapturePage({ searchParams }: CapturePageProps) {
     </div>
   );
 }
-

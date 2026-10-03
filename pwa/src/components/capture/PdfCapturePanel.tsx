@@ -11,7 +11,13 @@ import { claimSharedPdf, discardSharedPdf } from '@/lib/pdfShare';
 import { PdfCaptureConfirmation } from './PdfCaptureConfirmation';
 import { t } from '@/locales';
 
-export function PdfCapturePanel({ isGoto, resetPhotos }: { isGoto: boolean; resetPhotos: () => void }) {
+export function PdfCapturePanel({
+  isGoto,
+  resetPhotos,
+}: {
+  isGoto: boolean;
+  resetPhotos: () => void;
+}) {
   const router = useRouter();
   const params = useSearchParams();
   const selection = usePdfCaptureStore((state) => state.selection);
@@ -76,7 +82,9 @@ export function PdfCapturePanel({ isGoto, resetPhotos }: { isGoto: boolean; rese
     if (previousNavigation.current !== navigation) {
       deliveryEpoch.current++;
       reset();
-      queueMicrotask(() => { if (mounted.current && previousNavigation.current === navigation) setShareError(null); });
+      queueMicrotask(() => {
+        if (mounted.current && previousNavigation.current === navigation) setShareError(null);
+      });
     }
     previousNavigation.current = navigation;
   }, [navigation, reset]);
@@ -87,48 +95,93 @@ export function PdfCapturePanel({ isGoto, resetPhotos }: { isGoto: boolean; rese
     // A share is consumed exactly once. Unlock/member changes never restore it.
     void (async () => {
       try {
-        if (!memberId || isGoto) { await discardSharedPdf(token); return; }
+        if (!memberId || isGoto) {
+          await discardSharedPdf(token);
+          return;
+        }
         const shared = await claimSharedPdf(token);
-        if (!mounted.current || deliveryEpoch.current !== epoch || currentToken.current !== token
-            || document.visibilityState === 'hidden' || useFamilyStore.getState().selectedFamilyMemberId !== memberId) return;
+        if (
+          !mounted.current ||
+          deliveryEpoch.current !== epoch ||
+          currentToken.current !== token ||
+          document.visibilityState === 'hidden' ||
+          useFamilyStore.getState().selectedFamilyMemberId !== memberId
+        )
+          return;
         if (!shared) throw new Error('Share expired.');
         resetPhotos();
         usePdfCaptureStore.getState().select(shared.file, memberId, token);
         ownedGeneration.current = usePdfCaptureStore.getState().selection?.generation;
         setShareError(null);
       } catch {
-        if (mounted.current && deliveryEpoch.current === epoch && currentToken.current === token) setShareError(t('capture.pdf.restart', 'Choose or share the PDF again.'));
+        if (mounted.current && deliveryEpoch.current === epoch && currentToken.current === token)
+          setShareError(t('capture.pdf.restart', 'Choose or share the PDF again.'));
       }
     })();
   }, [token, memberId, isGoto, resetPhotos]);
 
-  if (!selection) return shareError || params.get('pdfShareError') ? (
-    <p data-testid="pdf-share-error" role="alert" className="text-sm text-pink">{shareError || t('capture.pdf.restart', 'Choose or share the PDF again.')}</p>
-  ) : null;
+  if (!selection)
+    return shareError || params.get('pdfShareError') ? (
+      <p data-testid="pdf-share-error" role="alert" className="text-sm text-pink">
+        {shareError || t('capture.pdf.restart', 'Choose or share the PDF again.')}
+      </p>
+    ) : null;
   if (isGoto || selection.memberId !== memberId) return null;
   const resolved = flags.memberId === memberId && !flags.loading;
   const flag = flags.flags['preview-pdf-recipe-import'];
   const enabled = resolved && !flags.error && flag?.enabled === true;
-  if (!resolved) return <p role="status">{t('capture.pdf.loading', 'Loading preview features…')}</p>;
-  if (!enabled) return (
-    <section data-testid="pdf-disabled" className="flex flex-col gap-5">
-      <p>{t('capture.pdf.disabled', 'PDF import preview isn’t enabled. This file hasn’t been added.')}</p>
-      {flag?.mode === 'opt-in' && <button type="button" onClick={() => { reset(); router.push('/profile/settings'); }}>
-        {t('capture.pdf.previewFeatures', 'Preview features')}
-      </button>}
-      <button type="button" onClick={() => { reset(); router.replace('/capture'); }}>
-        {t('capture.pdf.chooseAnotherWay', 'Choose another way')}
-      </button>
-    </section>
+  if (!resolved)
+    return <p role="status">{t('capture.pdf.loading', 'Loading preview features…')}</p>;
+  if (!enabled)
+    return (
+      <section data-testid="pdf-disabled" className="flex flex-col gap-5">
+        <p>
+          {t(
+            'capture.pdf.disabled',
+            'PDF import preview isn’t enabled. This file hasn’t been added.'
+          )}
+        </p>
+        {flag?.mode === 'opt-in' && (
+          <button
+            type="button"
+            onClick={() => {
+              reset();
+              router.push('/profile/settings');
+            }}
+          >
+            {t('capture.pdf.previewFeatures', 'Preview features')}
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={() => {
+            reset();
+            router.replace('/capture');
+          }}
+        >
+          {t('capture.pdf.chooseAnotherWay', 'Choose another way')}
+        </button>
+      </section>
+    );
+  return (
+    <PdfCaptureConfirmation
+      key={selection.generation}
+      file={selection.file}
+      enabled
+      onSave={async (rating, notes) => {
+        const submitted = selection;
+        const id = await createPdfRecipe(submitted.file, rating, notes, submitted.memberId);
+        useCaptureStore.getState().addPending({ recipeId: id });
+        const current = usePdfCaptureStore.getState().selection;
+        if (
+          mounted.current &&
+          current?.generation === submitted.generation &&
+          current.memberId === useFamilyStore.getState().selectedFamilyMemberId
+        ) {
+          reset();
+          router.push('/home');
+        }
+      }}
+    />
   );
-  return <PdfCaptureConfirmation key={selection.generation} file={selection.file} enabled onSave={async (rating, notes) => {
-    const submitted = selection;
-    const id = await createPdfRecipe(submitted.file, rating, notes, submitted.memberId);
-    useCaptureStore.getState().addPending({ recipeId: id });
-    const current = usePdfCaptureStore.getState().selection;
-    if (mounted.current && current?.generation === submitted.generation && current.memberId === useFamilyStore.getState().selectedFamilyMemberId) {
-      reset();
-      router.push('/home');
-    }
-  }} />;
 }

@@ -1,7 +1,8 @@
 export const PDF_MAX_BYTES = 20 * 1024 * 1024;
 
 export function validatePdfSelection(file: File): 'type' | 'size' | 'empty' | null {
-  if (!file.name.toLowerCase().endsWith('.pdf') || file.type.toLowerCase() !== 'application/pdf') return 'type';
+  if (!file.name.toLowerCase().endsWith('.pdf') || file.type.toLowerCase() !== 'application/pdf')
+    return 'type';
   if (file.size > PDF_MAX_BYTES) return 'size';
   if (file.size === 0) return 'empty';
   return null;
