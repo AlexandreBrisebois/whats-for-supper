@@ -121,3 +121,31 @@ User authorization: remove the six renderer deployment settings and keep static 
 `PdfRenderLimits.Default` is the single immutable API profile (200 DPI, 4096 maximum dimension, 16,777,216 pixels/page, 64 MiB output, 512 MiB sampled RSS, 60 seconds); PdfProcessRenderer selects it without IConfiguration. Explicit code-only limits remain a native test seam for timeout/resource/cancellation checks. Tests cover the fixed profile, invalid dimensions/pixel bounds and native production rendering with no deployment configuration. Compose verification now rejects renderer environment variables in both services and the example file while retaining the shared default-off preview mode. Only the renderer/profile tests, the six template lines, directly affected qualification docs/script status and selected specs/evidence/HANDOVER change.
 
 Verification is pending the follow-up workflow. Earlier results keep their original source identities. Actual NAS/device/model checks remain blocked/not-run; no live .env, deployment or rollout change.
+
+### Follow-up scope review and passed evidence
+
+Reviewed source: `7576cdd7d6ecb9e8ea01059e337f410997df237b`, 17 changed paths against the follow-up baseline, using guarded non-forced connector updates. No ambiguous ownership or branch movement.
+
+| Path | Authorized change |
+| --- | --- |
+| api/src/RecipeApi/Services/PdfRenderLimits.cs | Own the immutable measured production profile; remove configuration parsing. |
+| api/src/RecipeApi/Services/PdfProcessRenderer.cs | Use the fixed default without IConfiguration; keep explicit code profiles for native guard tests. |
+| api/src/RecipeApi.Tests/Services/PdfRenderLimitsTests.cs | Replace the superseded missing-configuration expectation with fixed-profile/boundary tests; retain the existing explicit dimension guard test. |
+| api/src/RecipeApi.Tests/Services/PdfNativeRendererTests.cs | Prove no-configuration rendering; preserve actual timeout/resource/cancellation/cleanup tests with explicit code profiles. |
+| release-template/synology/compose.yaml | Remove the six renderer environment entries, preserve shared preview mode. |
+| release-template/synology/.env.example | Remove renderer variables and the operator setup instructions. |
+| release-template/synology/README.md | Document fixed rendering limits and remove configuration failure/setup advice. |
+| scripts/pdf/check-compose.py | Assert renderer variables are absent and shared preview modes remain correct. |
+| scripts/pdf/qualify.py | Label the unchanged measured profile as code-owned; retain target qualification limitations. |
+| scripts/pdf/README.md | Describe code-owned limits and qualify the NAS without operator tuning. |
+| scripts/pdf/qualification-x64.md | Preserve historical image evidence and explain the approved static-profile follow-up. |
+| .kiro/specs/pdf-recipe-import/requirements.md | Record the user-approved code ownership, profile and unchanged public limits. |
+| .kiro/specs/pdf-recipe-import/design.md | Replace environment-based budget ownership and specify the static implementation. |
+| .kiro/specs/pdf-recipe-import/tasks.md | Synchronize the approved follow-up and required checks. |
+| .kiro/specs/pdf-recipe-import/review.md | Record the approval and preserve historical review evidence. |
+| .kiro/specs/pdf-recipe-import/implementation-evidence.md | Record source identity, scope, actual checks and remaining target limitations. |
+| HANDOVER.md | Update only the PDF task's checkpoint. |
+
+Actions [37091282008](https://github.com/AlexandreBrisebois/whats-for-supper/actions/runs/37091282008) completed successfully for that source in all four jobs. API job 111112143091: **831 passed / 34 skipped / 0 failed**; isolated PDF PostgreSQL/disk **3 passed**. Renderer/template job 111112143035: **10 fixture cases and 5 actual native tests passed**, including production-profile rendering without deployment settings; Compose off/opt-in/on passed with renderer variables absent. Generated-client job 111112143057: **94 harness tests**, documentation/Python syntax, whitespace, Kiota/registry/route/schema/mock checks passed. Native fixture artifact: 11262054591. PWA job 111112142841: **563 unit tests in 64 files and 4 worker tests passed**; typecheck/lint/production build passed; browser suite **202 passed, 1 flaky (passed on retry), 2 skipped**. The flaky case is the existing home-recipe.spec.ts:869 Cook Mode completion scenario already recorded above; it passed on retry. No PWA implementation files changed in this follow-up.
+
+The additional existing PostgreSQL suite remains 35 passed/2 failed, and both failures reproduced on the original package baseline again. No unrelated search implementation or tests were changed. Local syntax/source-whitespace/removal checks and documentation links against the actual pinned Git tree passed. Local Task session/finish remains blocked; real NAS/device/model qualification remains blocked/not-run. No deployment, live .env, secrets or rollout change. Final evidence-only edits preserve application results under their tested source identity.
