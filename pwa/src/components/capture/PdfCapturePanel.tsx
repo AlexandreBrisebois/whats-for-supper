@@ -23,9 +23,11 @@ export function PdfCapturePanel({ isGoto, resetPhotos }: { isGoto: boolean; rese
   const mounted = useRef(true);
   const deliveryEpoch = useRef(0);
   const currentToken = useRef(token);
-  currentToken.current = token;
   const ownedGeneration = useRef<number | undefined>(undefined);
-  if (selection) ownedGeneration.current = selection.generation;
+  useEffect(() => {
+    currentToken.current = token;
+    if (selection) ownedGeneration.current = selection.generation;
+  }, [token, selection]);
   const reset = useCallback(() => {
     const current = usePdfCaptureStore.getState().selection;
     if (!current || current.generation !== ownedGeneration.current) return;

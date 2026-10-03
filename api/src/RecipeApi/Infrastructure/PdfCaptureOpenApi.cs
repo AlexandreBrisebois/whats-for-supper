@@ -15,9 +15,9 @@ public static class PdfCaptureOpenApi
         operation.RequestBody = new OpenApiRequestBody
         {
             Required = true,
-            Content = new Dictionary<string, OpenApiMediaType>
+            Content = new Dictionary<string, IOpenApiMediaType>
             {
-                ["multipart/form-data"] = new()
+                ["multipart/form-data"] = new OpenApiMediaType()
                 {
                     Schema = new OpenApiSchema
                     {
@@ -58,6 +58,6 @@ public static class PdfCaptureOpenApi
     private static OpenApiResponse JsonResponse(string description, OpenApiSchema schema) => new()
     {
         Description = description,
-        Content = new Dictionary<string, OpenApiMediaType> { ["application/json"] = new() { Schema = schema } }
+        Content = new Dictionary<string, IOpenApiMediaType> { ["application/json"] = new OpenApiMediaType() { Schema = schema } }
     };
 }

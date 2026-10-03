@@ -11,6 +11,19 @@ concurrency:
 jobs:
   api:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg18-trixie
+        env:
+          POSTGRES_USER: qualification
+          POSTGRES_PASSWORD: qualification
+          POSTGRES_DB: qualification
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U qualification -d qualification"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      WFS_TEST_POSTGRES_CONNECTION: Host=localhost;Port=5432;Database=qualification;Username=qualification;Password=qualification
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-dotnet@v6
@@ -47,7 +60,7 @@ jobs:
         working-directory: pwa
       - run: npx playwright install chromium --with-deps
         working-directory: pwa
-      - run: npx playwright test e2e/pdf-capture.spec.ts e2e/capture-flow.spec.ts e2e/settings.spec.ts e2e/recipe-original-viewer.spec.ts
+      - run: npx playwright test
         working-directory: pwa
       - uses: actions/upload-artifact@v7
         if: always()
@@ -69,8 +82,48 @@ jobs:
       - run: dotnet tool restore
       - run: npm ci
         working-directory: pwa
+      - run: python3 -B scripts/agent/kiota_client.py check
+      - run: python3 -B scripts/agent/spec_registry.py check
+      - run: python3 -B scripts/agent/api_tools.py --route-drift
+      - run: python3 -B scripts/agent/drift.py --schema-only
+      - run: python3 -B scripts/agent/drift_mocks.py
       - run: python3 scripts/agent/kiota_client.py generate
       - uses: actions/upload-artifact@v7
         with:
           name: pdf-generated-client
           path: pwa/src/lib/api/generated
+
+  renderer-and-template:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '11.0.100-preview.6.26359.118'
+      - name: Qualification tools
+        run: sudo apt-get update && sudo apt-get install -y qpdf python3-pil fonts-dejavu-core
+      - name: Synthetic fixtures
+        run: python3 -B scripts/pdf/qualify.py prepare --directory /tmp/wfs-pdf-fixtures
+      - name: Production chiseled image
+        run: docker build --target production -t wfs-pdf-qualification:local api
+      - name: Image identity and notice inventory
+        run: |
+          docker image inspect wfs-pdf-qualification:local > /tmp/wfs-pdf-fixtures/image.json
+          container=$(docker create wfs-pdf-qualification:local)
+          docker cp "$container:/app/licenses" /tmp/wfs-pdf-fixtures/licenses
+          docker cp "$container:/app/RecipeApi.deps.json" /tmp/wfs-pdf-fixtures/RecipeApi.deps.json
+          docker rm "$container"
+      - name: Production native fixtures and measurements
+        run: python3 -B scripts/pdf/qualify.py run --directory /tmp/wfs-pdf-fixtures
+      - name: Native parent timeout and cleanup
+        run: dotnet test api/src/RecipeApi.Tests/RecipeApi.Tests.csproj --configuration Release --filter FullyQualifiedName~PdfNativeRendererTests --logger trx --results-directory /tmp/wfs-pdf-fixtures/test-results
+        env:
+          WFS_NATIVE_PDF_FIXTURES: /tmp/wfs-pdf-fixtures
+      - name: Synology Compose mode parity
+        run: python3 -B scripts/pdf/check-compose.py
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: pdf-renderer-qualification-x64
+          path: /tmp/wfs-pdf-fixtures
