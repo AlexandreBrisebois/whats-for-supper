@@ -100,15 +100,34 @@ You can add a recipe three ways:
 - **URL** — share a link from any recipe site
 - **Describe it** — type a few words and let the app fill in the details
 
-After you submit, the recipe queues while it's being processed. You'll get a notification the moment it's ready in your library.
+After you submit, the recipe queues while it's being processed. Ready or failed feedback can appear during your session; if you miss it, check your library and Settings.
 
 Adding recipes saves you from retyping Grandma's lasagna off a crumpled index card.
 
 ---
 
+## Importing a PDF recipe (preview)
+
+Photo capture remains the main way to add a recipe. PDF import is a preview that your household administrator must make available. When offered as an opt-in preview, enable **PDF recipe import** under **Settings → Preview features** for your selected member.
+
+Use one PDF containing **one recipe**, up to **20 MiB** and **10 pages**. All pages are processed in order, including a cover page. A longer document fails as a whole; pages are never silently dropped. Books containing several recipes are unsupported and are not split automatically.
+
+- **Android:** install What's for Supper from your household's HTTPS address. In any app that can share a PDF, choose **Share → What's for Supper**. You can also choose the PDF through capture's file picker. After the preview is enabled for the deployment, the installed app may need its installation metadata refreshed or to be reinstalled before it appears as a PDF share target.
+- **iPhone/iPad:** open capture and use the file picker. iOS PDF sharing through a native share extension is not supported.
+
+Review the filename, choose a rating if you want, add notes, and tap **Save**. PDF confirmation has no cooked-dish photo choice and no Cancel button. Acceptance takes you Home while preparation continues. Saving adds the recipe to the shared household library; it does not vote for it, plan a meal, or add groceries. Family GOTO capture excludes PDFs.
+
+Keep capture open while choosing and saving. Leaving, interrupting the app, unlocking, or changing the selected member clears the unsaved selection, rating and notes. Choose or share the PDF again to restart. A new Android share replaces the previous unsaved PDF. A job already submitted continues even if you leave, switch member, receive another share, or the preview is disabled later. If an interrupted upload leaves you unsure whether Save succeeded, check your library and Settings before trying again; retrying an uncertain upload can create another recipe.
+
+A stale Android share target may still open while the preview is disabled. The app explains that the file has not been added and offers ordinary capture, or **Preview features** when opt-in is available. Unlocking does not recover the shared file; share it again after selecting your member.
+
+Corrupt, encrypted and unsupported documents can be accepted for preparation and then fail. Open **Settings → failed imports** and use the existing **Retry** or **Delete** actions. Retry uses the retained source and can fail again for an invalid PDF. Failed imports are retained until you delete them. A completed recipe's **View original** shows the rendered pages in order. The retained PDF is internal and is not offered as a download.
+
+---
+
 ## Automated Recipe Translation
 
-Your household can be configured to process new recipes in a preferred language (for example, French). This applies during the initial processing of **Photo**, **URL**, and **Describe it** recipes.
+Your household can be configured to process new recipes in a preferred language (for example, French). This applies during the initial processing of **Photo**, enabled **PDF**, **URL**, and **Describe it** recipes.
 
 When translation is active:
 - **Consistent Library**: The recipe-processing workflow requests ingredients, steps, and descriptions in your chosen language.
@@ -162,3 +181,4 @@ The grocery list works the same way. Two people in the same store, checking thin
 Demo Mode is a managed showcase environment. The host captures a master snapshot, and the app restores recipes, plans, and votes from it on a configured schedule.
 
 To keep the showcase predictable and avoid AI costs, AI-powered recipe processing is disabled. You can still use the planner, browse the library, and use regular search.
+

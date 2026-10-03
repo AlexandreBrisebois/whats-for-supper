@@ -1,5 +1,6 @@
 export interface SharedPdf { token: string; file: File; }
 export interface PdfShareBridge {
+  cleanup?: () => Promise<void>;
   claim: (token: string) => Promise<SharedPdf | null>;
   discard: (token: string) => Promise<void>;
 }
@@ -10,5 +11,6 @@ export async function claimSharedPdf(token: string): Promise<SharedPdf | null> {
   return window.WfsPdfShare.claim(token);
 }
 export async function discardSharedPdf(token: string): Promise<void> {
-  await window.WfsPdfShare?.discard(token);
+  try { await window.WfsPdfShare?.discard(token); }
+  catch { /* A storage failure cannot restore a draft; the bounded slot expires. */ }
 }

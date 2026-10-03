@@ -1,5 +1,7 @@
 using System.Globalization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Filters;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using RecipeApi.Infrastructure;
 using RecipeApi.Services;
 
@@ -11,6 +13,7 @@ public sealed class PdfCaptureController(FeatureFlagService flags, PdfCaptureSer
 {
     [HttpPost("capture-pdf")]
     [SkipWrapping]
+    [ManualPdfForm]
     [RequestFormLimits(MultipartBodyLengthLimit = 20 * 1024 * 1024)]
     [RequestSizeLimit(500 * 1024 * 1024)] // Multipart envelope is separate from the 20 MiB file bound.
     public async Task<IActionResult> Capture(
@@ -52,6 +55,21 @@ public sealed class PdfCaptureController(FeatureFlagService flags, PdfCaptureSer
             return Accepted(new { data = new { id } });
         }
         catch (PdfUploadTooLargeException) { return Reject(413, "Choose a PDF up to 20 MiB."); }
+    }
+
+    // MVC's form value providers otherwise parse the body during model binding,
+    // converting an over-limit multipart section into an automatic 400 before
+    // the action can return the contract's 413. This endpoint owns form parsing.
+    private sealed class ManualPdfFormAttribute : Attribute, IResourceFilter
+    {
+        public void OnResourceExecuting(ResourceExecutingContext context)
+        {
+            for (var i = context.ValueProviderFactories.Count - 1; i >= 0; i--)
+                if (context.ValueProviderFactories[i] is FormValueProviderFactory
+                    or FormFileValueProviderFactory or JQueryFormValueProviderFactory)
+                    context.ValueProviderFactories.RemoveAt(i);
+        }
+        public void OnResourceExecuted(ResourceExecutedContext context) { }
     }
 
     private ObjectResult Reject(int status, string message) => StatusCode(status, new { status, message });

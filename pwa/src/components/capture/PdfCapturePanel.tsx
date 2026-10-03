@@ -21,9 +21,14 @@ export function PdfCapturePanel({ isGoto, resetPhotos }: { isGoto: boolean; rese
   const token = params.get('share');
   const processedToken = useRef<string | null>(null);
   const mounted = useRef(true);
+  const deliveryEpoch = useRef(0);
+  const currentToken = useRef(token);
+  currentToken.current = token;
+  const ownedGeneration = useRef<number | undefined>(undefined);
+  if (selection) ownedGeneration.current = selection.generation;
   const reset = useCallback(() => {
     const current = usePdfCaptureStore.getState().selection;
-    if (!current) return;
+    if (!current || current.generation !== ownedGeneration.current) return;
     if (current?.shareToken) void discardSharedPdf(current.shareToken);
     usePdfCaptureStore.getState().reset(current?.generation);
     resetPhotos();
@@ -31,11 +36,22 @@ export function PdfCapturePanel({ isGoto, resetPhotos }: { isGoto: boolean; rese
 
   useEffect(() => {
     mounted.current = true;
-    return () => { mounted.current = false; reset(); };
+    return () => {
+      mounted.current = false;
+      // React's development effect replay remounts synchronously. Only a real
+      // unmount invalidates the in-flight claim and the selection this panel owns.
+      queueMicrotask(() => {
+        if (mounted.current) return;
+        deliveryEpoch.current++;
+        reset();
+        if (currentToken.current) void discardSharedPdf(currentToken.current);
+      });
+    };
   }, [reset]);
   useEffect(() => {
     const onHidden = () => {
       if (document.visibilityState === 'hidden') {
+        deliveryEpoch.current++;
         reset();
         if (token) void discardSharedPdf(token);
       }
@@ -49,22 +65,23 @@ export function PdfCapturePanel({ isGoto, resetPhotos }: { isGoto: boolean; rese
   useEffect(() => {
     if (!token || processedToken.current === token) return;
     processedToken.current = token;
-    let active = true;
+    const epoch = deliveryEpoch.current;
     // A share is consumed exactly once. Unlock/member changes never restore it.
     void (async () => {
       try {
         if (!memberId || isGoto) { await discardSharedPdf(token); return; }
         const shared = await claimSharedPdf(token);
-        if (!active || !mounted.current || useFamilyStore.getState().selectedFamilyMemberId !== memberId) return;
+        if (!mounted.current || deliveryEpoch.current !== epoch || currentToken.current !== token
+            || document.visibilityState === 'hidden' || useFamilyStore.getState().selectedFamilyMemberId !== memberId) return;
         if (!shared) throw new Error('Share expired.');
         resetPhotos();
         usePdfCaptureStore.getState().select(shared.file, memberId, token);
+        ownedGeneration.current = usePdfCaptureStore.getState().selection?.generation;
         setShareError(null);
       } catch {
-        if (active) setShareError(t('capture.pdf.restart', 'Choose or share the PDF again.'));
+        if (mounted.current && deliveryEpoch.current === epoch && currentToken.current === token) setShareError(t('capture.pdf.restart', 'Choose or share the PDF again.'));
       }
     })();
-    return () => { active = false; void discardSharedPdf(token); };
   }, [token, memberId, isGoto, resetPhotos]);
 
   if (!selection) return shareError || params.get('pdfShareError') ? (

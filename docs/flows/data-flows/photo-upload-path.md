@@ -16,7 +16,7 @@ sequenceDiagram
     participant Orch as WorkflowOrchestrator
     participant Wf as recipe-import workflow
 
-    PWA->>API: POST /api/recipes (multipart)\n  X-Family-Member-Id: {memberId}\n  files: [image1, image2, ...]\n  body: { name?, notes? }
+    PWA->>API: POST /api/recipes (multipart)\n  X-Family-Member-Id: {memberId}\n  files: [image1, image2, ...]\n  fields: rating, notes?, finishedDishImageIndex
 
     API->>Svc: CreateRecipe(familyMemberId, files, dto)
 
@@ -24,7 +24,7 @@ sequenceDiagram
     Val-->>Svc: validated
 
     Svc->>Img: SaveImages(recipeId, files)
-    Img->>Disk: write data/recipes/{id}/original/{filename}
+    Img->>Disk: write data/recipes/{id}/original/{index}.{extension}
     Img-->>Svc: imageCount
 
     Svc->>Img: CreateRecipeInfo({ Id, Name, ImageCount,\n  AddedBy=familyMemberId, CreatedAt=now, ... })
@@ -34,12 +34,12 @@ sequenceDiagram
 
     Svc->>Orch: TriggerAsync("recipe-import", { recipeId })
 
-    Orch->>Wf: ImportRecipe → GenerateHero\n→ SyncRecipe → RecipeReady
+    Orch->>Wf: ConvertPdf (skip for photos) → ExtractRecipe\n→ GenerateHero → SyncRecipe → categorization → RecipeReady
 
     Wf->>DB: AI metadata merged, ImageCount confirmed
     Wf->>Disk: recipe.json written (SyncRecipe)
 
-    API-->>PWA: 200 { id }
+    API-->>PWA: 202 { data: { id } }
 ```
 
 ## Key contrast with describe path
@@ -51,4 +51,7 @@ sequenceDiagram
 | `ImageCount` after workflow | Unchanged (already > 0) | Stays `0` — readiness gated on `IsSynthesized` instead |
 | Workflow | `recipe-import` | `goto-synthesis` |
 | `recipe.json` | Written by SyncRecipe | Written by SyncRecipe |
-| Status path | Already ready if Name set | Pending until RecipeReady runs |
+| Status path | Pending until RecipeReady runs | Pending until RecipeReady runs |
+
+
+The source and pending recipe/search sidecar commit before workflow launch. Enqueue errors follow existing persisted-ID acceptance semantics; acceptance is not readiness or verified delivery. PDFs use a [dedicated acceptance and conversion path](pdf-upload-path.md) and do not change the image-only photo endpoint.

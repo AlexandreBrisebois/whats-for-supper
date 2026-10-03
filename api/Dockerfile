@@ -26,7 +26,9 @@ RUN LIB_PATH=$(find /usr/lib -name "libgssapi_krb5.so.2" | head -n 1 | xargs dir
     cp -P ${LIB_PATH}/libkeyutils.so* /rootfs${LIB_PATH}/
 
 # Fonts are baked into the chiseled image; never installed at startup.
-RUN mkdir -p /rootfs/usr/share/fonts && cp -a /usr/share/fonts/truetype /rootfs/usr/share/fonts/
+RUN mkdir -p /rootfs/usr/share/fonts /rootfs/app/licenses/fonts && \
+    cp -a /usr/share/fonts/truetype /rootfs/usr/share/fonts/ && \
+    cp /usr/share/doc/fonts-dejavu-core/copyright /rootfs/app/licenses/fonts/DejaVu-copyright.txt
 
 # =============================================================================
 # Stage 3 — Development (Hot Reload)

@@ -10,6 +10,13 @@ export function PdfShareLifecycle() {
   const params = useSearchParams();
   const token = params.get('share');
   useEffect(() => {
+    const cleanup = () => { void window.WfsPdfShare?.cleanup?.().catch(() => {}); };
+    cleanup();
+    const timer = window.setInterval(cleanup, 60000);
+    window.addEventListener('pageshow', cleanup);
+    return () => { window.clearInterval(timer); window.removeEventListener('pageshow', cleanup); };
+  }, []);
+  useEffect(() => {
     if (token && pathname !== '/capture') {
       void discardSharedPdf(token);
       const url = new URL(window.location.href);

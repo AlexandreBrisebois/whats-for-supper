@@ -66,14 +66,23 @@ public sealed class PdfProcessRenderer(IConfiguration config) : IPdfPageRenderer
         finally
         {
             // Cancellation does not stop PDFium: explicitly kill and reap the child before cleanup/releasing the gate.
-            if (process is not null)
+            try
             {
-                if (!process.HasExited) process.Kill(entireProcessTree: true);
-                await process.WaitForExitAsync(CancellationToken.None);
-                process.Dispose();
+                if (process is not null)
+                {
+                    try
+                    {
+                        if (!process.HasExited) process.Kill(entireProcessTree: true);
+                        await process.WaitForExitAsync(CancellationToken.None);
+                    }
+                    finally { process.Dispose(); }
+                }
             }
-            if (Directory.Exists(attempt)) Directory.Delete(attempt, recursive: true);
-            Gate.Release();
+            finally
+            {
+                try { if (Directory.Exists(attempt)) Directory.Delete(attempt, recursive: true); }
+                finally { Gate.Release(); }
+            }
         }
     }
 }
