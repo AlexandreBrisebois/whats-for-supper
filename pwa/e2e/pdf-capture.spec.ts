@@ -97,4 +97,22 @@ test.describe('PDF import preview', () => {
     await expect(page.getByTestId('pdf-confirmation')).toHaveCount(0);
   });
 
+  test('common PDF transport mock follows disabled and accepted contract', async ({ page }) => {
+    await page.goto('/capture');
+    const upload = async () => page.evaluate(async (memberId) => {
+      const form = new FormData();
+      form.append('file', new File(['%PDF'], 'supper.pdf', { type: 'application/pdf' }));
+      form.append('rating', '0');
+      const response = await fetch('/api/recipes/capture-pdf', { method: 'POST', headers: { 'X-Family-Member-Id': memberId }, body: form });
+      return { status: response.status, body: await response.json() };
+    }, MOCK_IDS.MEMBER_ALEX);
+    const disabled = await upload();
+    expect(disabled.status).toBe(409);
+    expect(disabled.body.status).toBe(409);
+    await enable(page);
+    const accepted = await upload();
+    expect(accepted.status).toBe(202);
+    expect(accepted.body).toEqual({ data: { id: MOCK_IDS.RECIPE_LASAGNA } });
+  });
+
 });
