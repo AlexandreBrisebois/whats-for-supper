@@ -78,7 +78,7 @@ Actions [37083918393](https://github.com/AlexandreBrisebois/whats-for-supper/act
 | Synology Compose off/opt-in/on | passed | Same job, synthetic values; identical API/PWA mode and positive renderer variables. Template check is not deployment |
 | Production native notices/dependency inventory | passed as inventory inspection | Downloaded final production image notices: wrapper, Skia/SkiaSharp, DejaVu and matching PDFium component trees; ARM64 notices do not establish ARM64 execution |
 | Installed Next guidance | read | Actual installed route-handler/manifest/Script guides downloaded from Actions artifact 11259447748 and verified; initial coding used upstream fallback while local installed docs were unavailable |
-| Repository harness regression/selected scope whitespace | pending verification closure | Added exact test:agent command and baseline git diff --check to branch-only validation workflow; record actual results below |
+| Repository harness regression/selected scope whitespace | passed | Run 37084585886 at b25b3a0eaaa6eeeceb9c636a43abca6acd4d9213, job 111092174346: **94 harness tests passed**, baseline git diff --check and selected documentation links/Python syntax passed; pinned Task v3.54.0 installed in that isolated runner |
 | Final NAS profile, worst-case scans, household load | blocked / not-run | No NAS access; synthetic Ubuntu figures are not worst-case capacity guarantees |
 | AI extraction accuracy and phone readability | not-run / blocked | No model calls/live credentials; available synthetic PNG inspection is not device/model evidence |
 | Installed Android shares from multiple apps; iOS picker/keyboard | blocked | Real devices and browser versions unavailable. Browser delivery/IndexedDB tests do not establish OS share registration |
@@ -103,3 +103,13 @@ Per-file rationale and reviewed identity are recorded in [scope-review.md](scope
 ## Verification closure failure and correction
 
 Run 37084394089 at fca0a47025d7e56945a11a3dd94dc7ae96c118d4 exposed added EOF blank lines/source notice whitespace and two harness errors because the runner lacked Task. The 94-test harness run had two errors, not a pass. Closure now normalizes only those changed paths (no source behavior/license term changes) and installs the release-pinned Task v3.54.0 before rerunning the unchanged repository tests. Documentation links, Python syntax, Kiota and static parity checks passed in that job. Final closure results are recorded below when complete; no local Task session/finish is claimed.
+
+## Final closure — all four jobs passed
+
+Actions [37084585886](https://github.com/AlexandreBrisebois/whats-for-supper/actions/runs/37084585886), source `b25b3a0eaaa6eeeceb9c636a43abca6acd4d9213`: API, PWA, generated-client and renderer-and-template jobs all completed successfully. API: 824 passed/33 skipped; isolated PDF PostgreSQL/disk: 3 passed; PWA: 563 unit tests in 64 files, 4 worker tests passed; browser suite: 202 passed, 1 flaky (passed on retry), 2 skipped; typecheck/lint/production build passed. Harness: 94 tests passed. Baseline whitespace, selected documentation links/Python syntax, Kiota/registry/route/schema/mock checks passed. Native: 10 fixture cases and 4 subprocess tests passed; Compose off/opt-in/on passed. Final artifact 11259866563 was downloaded/inspected and its production digest/measurements are appended to the x64 report.
+
+The browser flaky case is the existing `e2e/home-recipe.spec.ts:869` Cook Mode completion scenario (five-second cooked-success-card wait); it passed on retry. The same PWA source had 203 passed/0 flaky in run 37083918393. No unrelated Cook Mode code/test or timeout was changed.
+
+The optional existing PostgreSQL suite still has 35 passed/2 failed; the exact two failures reproduced on the original baseline again. They are not concealed by the successful mandatory PDF steps or changed by this package. Real NAS/Android/iOS/phone/model acceptance and worst-case capacity checks remain blocked/not-run as listed above. T02/T08 are not release-qualified. Local Task finish remains blocked even though the isolated CI runner now executes the harness tests with Task installed. No deployment, live .env/secret change or rollout occurred.
+
+The final evidence/HANDOVER/x64-report commit follows this tested source as documentation only. Its changed links are checked against the pinned repository inventory and its text has no trailing whitespace/EOF blank lines; application results retain the tested identity above.

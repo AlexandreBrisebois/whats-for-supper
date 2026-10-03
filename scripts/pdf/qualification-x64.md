@@ -43,3 +43,11 @@ Eleven-page, pathological-dimension, corrupt and encrypted fixtures failed befor
 Downloaded production inventory includes PDFtoImage MIT, SkiaSharp MIT, pinned Skia BSD and in-tree third-party notices, DejaVu copyright and matching PDFium chromium/7961 x64/arm64 notice trees (13 upstream component notice files per architecture). This qualifies notice packaging; ARM64 notices are not ARM64 execution evidence.
 
 NAS architecture/profile, near-limit high-entropy scans, household load, phone readability, live extraction accuracy and actual Android/iOS behavior remain blocked/not-run. No production defaults or rollout guarantee is inferred from these measurements.
+
+## Final whitespace closure rerun
+
+Source `b25b3a0eaaa6eeeceb9c636a43abca6acd4d9213`, Actions [37084585886](https://github.com/AlexandreBrisebois/whats-for-supper/actions/runs/37084585886), renderer job 111092174371: ten fixture cases and four native parent tests passed again after source/notice whitespace normalization. Downloaded and inspected artifact 11259866563; production amd64 image `sha256:49e7adcec961c32dc0280fd4947d5760cd1c79887217f5a978150a8f8ea13195`. Profile and dependency versions are unchanged.
+
+Scanned: 116,340 PNG bytes, 0.386 end-to-end seconds, 50,855,936 sampled cgroup peak bytes. Ten: 733,592 PNG bytes, 1.297 end-to-end seconds, 45,174,784 sampled cgroup peak bytes.
+
+This rerun retains the same explicit target-NAS/device/model limitations; no settings, live .env or rollout were changed.
