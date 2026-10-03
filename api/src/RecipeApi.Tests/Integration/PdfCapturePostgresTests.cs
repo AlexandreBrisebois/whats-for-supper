@@ -99,6 +99,7 @@ public sealed class PdfCapturePostgresTests : IAsyncLifetime
         factory.Services.GetRequiredService<IConfiguration>()["WFS_FEATURE_PREVIEW_PDF_RECIPE_IMPORT"] = "off";
         using var retry = await client.PostAsync($"/api/captures/failures/{instance.Id}/retry", null);
         Assert.Equal(HttpStatusCode.Accepted, retry.StatusCode);
+        await db.Entry(instance).ReloadAsync();
         await db.Entry(task).ReloadAsync();
         Assert.Equal(RecipeApi.Models.TaskStatus.Pending, task.Status);
         renderer.Fail = false;
@@ -188,6 +189,42 @@ public sealed class PdfCapturePostgresTests : IAsyncLifetime
         Assert.Null(await store.ReadSourcePdfAsync(id));
         Assert.Null(await store.ReadOriginalImageAsync(id, 0));
         Assert.Null(await store.ReadInfoAsync(id));
+    }
+
+    [PostgresFact]
+    public async Task Named_but_unfinished_PDF_stays_pending_after_backup_and_restore()
+    {
+        using var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Add("X-Family-Member-Id", factory.DefaultFamilyMemberId.ToString());
+        using var form = new MultipartFormDataContent();
+        var file = new ByteArrayContent("%PDF-pending"u8.ToArray());
+        file.Headers.ContentType = new MediaTypeHeaderValue("application/pdf");
+        form.Add(file, "file", "supper.pdf");
+        using var accepted = await client.PostAsync("/api/recipes/capture-pdf", form);
+        Assert.Equal(HttpStatusCode.Accepted, accepted.StatusCode);
+        using var json = JsonDocument.Parse(await accepted.Content.ReadAsStringAsync());
+        var id = json.RootElement.GetProperty("data").GetProperty("id").GetGuid();
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+        var store = scope.ServiceProvider.GetRequiredService<IRecipeStore>();
+        var recipe = await db.Recipes.SingleAsync(r => r.Id == id);
+        recipe.Name = "Extracted name, final workflow tasks unfinished";
+        recipe.ImageCount = 1;
+        recipe.IsReady = false;
+        await store.ReplacePdfPagesAsync(id, [new byte[] { 137, 80, 78, 71 }]);
+        var info = (await store.ReadInfoAsync(id))!;
+        info.Name = recipe.Name;
+        info.ImageCount = 1;
+        await store.WriteInfoAsync(info);
+        await db.SaveChangesAsync();
+        var management = scope.ServiceProvider.GetRequiredService<ManagementService>();
+        await management.BackupAsync();
+        db.Recipes.Remove(recipe);
+        await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
+        await management.RestoreAsync();
+        Assert.False((await db.Recipes.SingleAsync(r => r.Id == id)).IsReady);
+        Assert.NotNull(await store.ReadSourcePdfAsync(id));
     }
 
     private static async Task AssertSourceAsync(IRecipeStore store, Guid id, byte[] expected)
