@@ -82,7 +82,7 @@ LIMITS = {"Dpi": 200, "MaxDimension": 4096, "MaxPixels": 16777216, "MaxOutputByt
 
 def run(root, image):
     cases = {"text": 1, "scanned": 1, "bilingual": 2, "cover": 4, "ten": 10, "eleven": 0, "giant": 0, "corrupt": 0, "encrypted": 0, "multiple-recipes-unsupported": 2}
-    report = {"profile": LIMITS, "profileStatus": "evaluation only; final NAS budgets and readability/extraction checks pending", "image": image, "architecture": subprocess.check_output(["docker", "image", "inspect", "--format", "{{.Architecture}}", image], text=True).strip(), "cases": []}
+    report = {"profile": LIMITS, "profileStatus": "code-owned production profile; NAS, readability and extraction qualification pending", "image": image, "architecture": subprocess.check_output(["docker", "image", "inspect", "--format", "{{.Architecture}}", image], text=True).strip(), "cases": []}
     failed = False
     for name, expected in cases.items():
         source = root / (name + ".pdf")

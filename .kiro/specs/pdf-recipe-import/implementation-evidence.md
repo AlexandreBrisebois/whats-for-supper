@@ -88,7 +88,7 @@ Earlier failures are preserved as defect evidence rather than passing claims: wo
 
 ## Measurements and ownership limits
 
-200 DPI PNG worked on the tested text/scanned/bilingual/cover/ten-page fixtures. Ten pages produced 733,592 output bytes in 1.980 end-to-end seconds with 45,191,168 sampled cgroup peak bytes; scanned one-page peak was 50,991,104. Full details, tested image and dependency pins are retained in the x64 report. Evaluation values are explicit; blank Synology renderer variables prevent inventing target defaults. Missing values fail the retained conversion job instead of deleting its source. Normal photo jobs skip configuration/native loading.
+200 DPI PNG worked on the tested text/scanned/bilingual/cover/ten-page fixtures. Ten pages produced 733,592 output bytes in 1.980 end-to-end seconds with 45,191,168 sampled cgroup peak bytes; scanned one-page peak was 50,991,104. Full details, tested image and dependency pins are retained in the x64 report. The measured values are now the code-owned production profile under the user's follow-up approval; no renderer deployment variables are required. NAS/device/model qualification remains unverified. Normal photo jobs skip configuration/native loading.
 
 Staging: one IndexedDB slot, file ≤20 MiB, envelope ≤file limit +64 KiB, atomic replacement and token-matched claim/discard. Logical expiry is ten minutes; physical cleanup is opportunistic at worker activation, foreground startup/pageshow/minute timer and token access. An unopened app can retain one bounded expired slot until cleanup. Transient multipart/IDB replacement can hold both old/new data; no measured browser heap guarantee is claimed.
 
@@ -113,3 +113,11 @@ The browser flaky case is the existing `e2e/home-recipe.spec.ts:869` Cook Mode c
 The optional existing PostgreSQL suite still has 35 passed/2 failed; the exact two failures reproduced on the original baseline again. They are not concealed by the successful mandatory PDF steps or changed by this package. Real NAS/Android/iOS/phone/model acceptance and worst-case capacity checks remain blocked/not-run as listed above. T02/T08 are not release-qualified. Local Task finish remains blocked even though the isolated CI runner now executes the harness tests with Task installed. No deployment, live .env/secret change or rollout occurred.
 
 The final evidence/HANDOVER/x64-report commit follows this tested source as documentation only. Its changed links are checked against the pinned repository inventory and its text has no trailing whitespace/EOF blank lines; application results retain the tested identity above.
+
+## Code-owned renderer profile follow-up — 2026-10-02 (Toronto)
+
+User authorization: remove the six renderer deployment settings and keep static values in code. Private baseline for this scoped follow-up: `59fdc3253a6c56228a795f7bb82fbfe5a45b0ac4`; existing guarded connector session reused, no local Task session claimed. Specs and tests were committed first at d8ef0c8eeeb39a205081e3e63acad2ba2955f6c5. No public wire/OpenAPI/client change.
+
+`PdfRenderLimits.Default` is the single immutable API profile (200 DPI, 4096 maximum dimension, 16,777,216 pixels/page, 64 MiB output, 512 MiB sampled RSS, 60 seconds); PdfProcessRenderer selects it without IConfiguration. Explicit code-only limits remain a native test seam for timeout/resource/cancellation checks. Tests cover the fixed profile, invalid dimensions/pixel bounds and native production rendering with no deployment configuration. Compose verification now rejects renderer environment variables in both services and the example file while retaining the shared default-off preview mode. Only the renderer/profile tests, the six template lines, directly affected qualification docs/script status and selected specs/evidence/HANDOVER change.
+
+Verification is pending the follow-up workflow. Earlier results keep their original source identities. Actual NAS/device/model checks remain blocked/not-run; no live .env, deployment or rollout change.

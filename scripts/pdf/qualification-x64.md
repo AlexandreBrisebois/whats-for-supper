@@ -51,3 +51,7 @@ Source `b25b3a0eaaa6eeeceb9c636a43abca6acd4d9213`, Actions [37084585886](https:/
 Scanned: 116,340 PNG bytes, 0.386 end-to-end seconds, 50,855,936 sampled cgroup peak bytes. Ten: 733,592 PNG bytes, 1.297 end-to-end seconds, 45,174,784 sampled cgroup peak bytes.
 
 This rerun retains the same explicit target-NAS/device/model limitations; no settings, live .env or rollout were changed.
+
+## Code-owned profile follow-up — 2026-10-02 (Toronto)
+
+The user subsequently approved static renderer settings in code instead of deployment tuning. The measured profile above is now PdfRenderLimits.Default; the six renderer variables and their Synology setup instructions are removed. Earlier image measurements retain their original identities and are not retrospective NAS qualification. Follow-up regression results are recorded in the selected specification's implementation evidence. No live environment or deployment changed.
