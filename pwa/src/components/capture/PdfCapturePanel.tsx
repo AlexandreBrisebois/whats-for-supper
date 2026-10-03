@@ -47,13 +47,14 @@ export function PdfCapturePanel({
 
   useEffect(() => {
     mounted.current = true;
+    const epochRef = deliveryEpoch;
     return () => {
       mounted.current = false;
       // React's development effect replay remounts synchronously. Only a real
       // unmount invalidates the in-flight claim and the selection this panel owns.
       queueMicrotask(() => {
         if (mounted.current) return;
-        deliveryEpoch.current++;
+        epochRef.current++;
         reset();
         if (currentToken.current) void discardSharedPdf(currentToken.current);
       });
