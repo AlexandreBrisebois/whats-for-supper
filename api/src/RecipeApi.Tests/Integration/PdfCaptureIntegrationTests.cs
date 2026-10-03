@@ -139,4 +139,29 @@ public class PdfCaptureIntegrationTests
         using var response = await Send(factory, Form());
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
+    [Fact]
+    public async Task Live_PDF_operation_exposes_the_approved_multipart_and_response_shapes()
+    {
+        await using var factory = await TestWebApplicationFactory.CreateAsync();
+        using var client = factory.CreateClient();
+        using var response = await client.GetAsync("/openapi/v1.json");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var operation = document.RootElement.GetProperty("paths").GetProperty("/api/recipes/capture-pdf").GetProperty("post");
+        Assert.Equal("capturePdfRecipe", operation.GetProperty("operationId").GetString());
+        var schema = operation.GetProperty("requestBody").GetProperty("content").GetProperty("multipart/form-data").GetProperty("schema");
+        Assert.Equal("file", schema.GetProperty("required")[0].GetString());
+        Assert.False(schema.GetProperty("additionalProperties").GetBoolean());
+        var properties = schema.GetProperty("properties");
+        Assert.Equal("binary", properties.GetProperty("file").GetProperty("format").GetString());
+        Assert.Equal(0, properties.GetProperty("rating").GetProperty("minimum").GetInt32());
+        Assert.Equal(3, properties.GetProperty("rating").GetProperty("maximum").GetInt32());
+        Assert.Equal(0, properties.GetProperty("rating").GetProperty("default").GetInt32());
+        foreach (var status in new[] { "202", "400", "401", "409", "413", "415" })
+            Assert.True(operation.GetProperty("responses").TryGetProperty(status, out _));
+        var accepted = operation.GetProperty("responses").GetProperty("202").GetProperty("content").GetProperty("application/json").GetProperty("schema");
+        Assert.Equal("uuid", accepted.GetProperty("properties").GetProperty("data").GetProperty("properties").GetProperty("id").GetProperty("format").GetString());
+    }
+
 }
+
