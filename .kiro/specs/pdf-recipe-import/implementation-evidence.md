@@ -43,42 +43,48 @@ Wrong extension/MIME is 415; corrupt bytes accepted as a PDF transport fail in c
 20 MiB is a file-byte bound, not the total multipart-body bound. No signature/document
 parse at acceptance. Acquisition flag is rechecked server-side, not on workflow Retry.
 
-## Task progress — implementation checkpoint 2026-10-03
+## Task progress — implemented source, 2026-10-03
 
 | Task | Progress | Remaining qualification |
 | --- | --- | --- |
-| T01 | complete, pinned source/recovery map | Static evidence only; source paths revalidated where runtime failures exposed a seam |
-| T02 | production Ubuntu amd64 fixtures and 3 native subprocess checks passed; measurements recorded | Final NAS profile, worst-case scans, household load, phone readability/extraction accuracy and ARM64 execution unqualified |
-| T03 | approved exact OpenAPI, Kiota output, common mock and live operation synchronized | Final source checks rerun after fixes; no remaining product schema question |
-| T04 | source acceptance, storage, workflow conversion, acquisition gate, existing recovery integration implemented | Final isolated PostgreSQL/disk/lifecycle tests pending latest source run |
-| T05 | picker, metadata confirmation, no dish/Cancel, pending/Home, localized copy implemented | New member/navigation/delivery guard tests and complete regression run pending |
-| T06 | one bounded atomic share slot, exact worker interception, single runtime manifest implemented | Browser token/expiry coverage pending final run; actual Android OS registration/apps blocked |
-| T07 | user/process docs, Synology API/PWA mode and renderer variables implemented | Updated docs/index and final packaging checks pending; Compose modes passed on earlier unchanged template |
-| T08 | automated regression/qualification workflow implemented and running | Actual Android/iOS/NAS checks blocked; never inferred from CI |
+| T01 | complete: pinned insertion points and existing recovery ownership verified | Source map is static evidence; runtime seams checked separately |
+| T02 | Ubuntu amd64 production packaging, ten fixture cases, four real native parent checks and measured 200 DPI profile passed | Actual NAS profile/architecture, near-limit scans, household load, phone readability and model extraction accuracy blocked/not-run; ARM64 execution not run |
+| T03 | complete: exact approved OpenAPI, actual Kiota output, common mock and live PDF operation synchronized | No remaining public contract decision |
+| T04 | implemented and automated checks passed: unchanged source/pending acceptance, conversion, normal extraction/readiness, retained failures and existing recovery | Three isolated PostgreSQL/disk tests passed, including flag-off retry/delete and completed/pending backup/restore/soft-delete/purge |
+| T05 | implemented: picker, rating/notes, no dish/Cancel, session pending/Home and reset guards | Automated PWA results tied to their actual run identity; phone keyboard reachability blocked |
+| T06 | implemented: one atomic bounded share slot, exact worker interception, one runtime manifest | Simulated browser/IndexedDB/worker checks; real Android OS registration and multiple compatible originating apps blocked |
+| T07 | implemented: user guide/process flows and default-off Synology mode/renderer template documentation | Compose off/opt-in/on passed using synthetic values; no live .env or deployment |
+| T08 | automated API/PWA/browser/contract/native/lifecycle regressions recorded below | Target device/NAS acceptance remains explicitly blocked; package is not release-qualified |
 
 ## Actual check classifications and identities
 
+Final application implementation identity: `b1b491a83fe9db5f0abef4355dfb3a6c111e12db`.
+Actions [37083918393](https://github.com/AlexandreBrisebois/whats-for-supper/actions/runs/37083918393) verifies that source. Subsequent evidence/HANDOVER/scope text and verification workflow steps are documentation/verification closure; they do not inherit a claim that a local Task finish ran.
+
 | Check | State | Actual evidence |
 | --- | --- | --- |
-| Repository/spec/source reads | passed | Connector-pinned baseline and guarded additive trees; branch movement blocks writes |
-| Clone/local networking | failed | Proxy port 8080 unavailable; local sockets/Docker restricted. Connector and Actions used instead |
-| Local Task begin/prepare/finish/session | blocked | No usable local checkout/Task/.NET; equivalent baseline, guarded refs, remote generation/preparation/checks used. No claim that Task finish ran |
-| PWA typecheck/lint/unit/build and selected capture/settings/original-viewer E2E | passed at `f1bdb00a0caa9852cd448dd86c081781c83bf65a` | Actions 37079373771: 63 unit files / 560 tests, 4 worker tests, 47 browser tests; production build/typecheck/lint passed. Later guard tests require new evidence |
-| Kiota generation | passed | Same run produced artifact 11257578455; actual generated four-file diff committed at 2d4a3537d3c3a1d3ee90597d1d4cb3c779a46aa5 |
-| Kiota check / registry / route / schema / mock checks | passed in latest completed static job before later test additions | Actions 37082453135 generated-client job; retain identity, rerun final checks after preparation |
-| API suite | failed then corrected / final run pending | First compile failure CS0126 corrected; subsequent 818 passed / 1 failed oversized 400-vs-413 caught MVC pre-action parsing and was fixed with manual form ownership. Later full PostgreSQL-enabled run at 2f0dd1f5868a6d7776e3636199be610eb1f35ded had 855 passed / 6 skipped / 2 existing search-test failures |
-| Existing optional PostgreSQL search regressions | failed | BaselineHarness_RecordsVersionedRelevanceMeasurements (missing database lexical retrieval registration) and FindSimilar_UnavailableSemanticRetrievalFallsBackWithZeroSemanticContributionAndStableContinuations (ordering). Baseline comparison is running; no unrelated search implementation edits |
-| PDF actual PostgreSQL + LocalRecipeStore recovery/lifecycle | not-run at this checkpoint | Separate isolated, explicit connection step added; prior broader failure prevented it. Final evidence must report actual result |
-| Production chiseled amd64 native fixture execution | passed | [qualification-x64.md](../../../scripts/pdf/qualification-x64.md), runs 37081241720/37081572433. Ten fixture cases; source hashes unchanged, ordered PNGs, expected encrypted/corrupt/11-page/dimension failures |
-| Actual native timeout/cleanup/gate reuse | passed 3/3 at `2f0dd1f5868a6d7776e3636199be610eb1f35ded` | Native dotnet tests with real PDFium/Skia; added resource/cancellation test requires final run |
-| Synology Compose off/opt-in/on interpolation | passed at same identity | Synthetic values; identical mode in API/PWA and renderer variables present. This is template validation, not deployment |
-| Updated native notice/image inventory | pending | Audit found PDFium NuGet omitted native notices; matching digest-pinned upstream bundles and pinned Skia/DejaVu notices now packaged. New image identity required |
-| Installed Next guidance | read for verification | Actual npm-installed route-handler, manifest and Script guides downloaded from Actions artifact 11259447748. Earlier coding used upstream guide fallback while installed local docs were unavailable |
-| Final complete PWA/browser/contract/doc regression run | pending | Branch-only nondeployment workflow; no later source identity inherits old successes |
-| Final NAS profile, worst-case scans, household load | blocked / not-run | NAS unavailable; CI synthetic fixtures are not worst-case capacity guarantees |
-| AI extraction accuracy and phone readability | not-run / blocked | No model calls/live credentials; synthetic output viewed on available image viewer only |
-| Installed Android OS PDF shares from multiple apps; iOS picker/keyboard usability | blocked | Real devices/browser versions unavailable. Browser fixture delivery is not OS registration evidence |
-| Deployment/live .env/secrets/rollout | not-applicable | Explicitly outside authorization; not performed |
+| Pinned source/scope review | passed as agent assessment | Guarded non-forced connector updates and [per-path scope review](scope-review.md); no unexpected branch movement |
+| Local clone/networking | failed | Proxy port 8080 unavailable and local sockets/Docker restricted; GitHub connector plus isolated Actions used |
+| Local Task begin/prepare/finish/session | blocked | No usable checkout/Task/.NET. Equivalent private baseline, remote Kiota, scope-only Prettier and broad remote checks; no Task completion record claimed |
+| Full default API suite | passed | Final API job 111090210784: **824 passed, 33 skipped, 0 failed**. Skips include optional database/native suites separately qualified below |
+| Isolated PDF PostgreSQL + disk lifecycle | passed | Same job: **3 passed, 0 skipped/failed**. Retained conversion failure/flag-off Retry/Delete; completed backup/restore/soft-delete/purge; extracted-name-but-unfinished backup/restore remains pending |
+| Ordinary completion/readiness metadata | passed | New unit in the 824-test suite records PDF completion and idempotent retry. Internal optional JSON readiness was specified/tested before implementation; no DB migration or public API change |
+| Existing optional PostgreSQL regressions | failed, baseline-confirmed | **35 passed, 2 failed**: BaselineHarness_RecordsVersionedRelevanceMeasurements and FindSimilar_UnavailableSemanticRetrievalFallsBackWithZeroSemanticContributionAndStableContinuations. Exact two failures also reproduced on baseline `6f36291d7bae3c46b9af2f9c17c02e9e17acc018` in this same run. No unrelated search changes |
+| Complete PWA typecheck/lint/unit/worker/build/browser suite | passed | Final PWA job 111090210658: **64 files / 563 units, 4 worker tests, 203 browser tests passed; 2 browser tests skipped**. Typecheck/lint/production build passed. Full browser suite includes capture/share/settings/original-viewer and household/GOTO regressions; mocked browser results do not qualify actual OS registration |
+| Kiota/registry/route/schema/mock checks and documentation/Python syntax | passed | Final generated-client job 111090210847. Actual generated client artifact checked; generation is a calculated contract closure |
+| Full running-service endpoint drift | not-run | The live PDF OpenAPI operation is tested through WebApplicationFactory; no claim that the external-service endpoint-diff command ran |
+| Production chiseled amd64 fixtures | passed | Final renderer job 111090210862: **10/10 cases** with unchanged source bytes and ordered PNGs; [image/profile/measurements/notices](../../../scripts/pdf/qualification-x64.md), artifact 11260490763 downloaded/inspected |
+| Actual native timeout/resources/cancellation/cleanup | passed | Same final renderer job: **4 passed, 0 skipped/failed**, real PDFium/Skia subprocesses with timeout kill/reap, output/RSS breach and cancellation, temp cleanup and gate reuse |
+| Synology Compose off/opt-in/on | passed | Same job, synthetic values; identical API/PWA mode and positive renderer variables. Template check is not deployment |
+| Production native notices/dependency inventory | passed as inventory inspection | Downloaded final production image notices: wrapper, Skia/SkiaSharp, DejaVu and matching PDFium component trees; ARM64 notices do not establish ARM64 execution |
+| Installed Next guidance | read | Actual installed route-handler/manifest/Script guides downloaded from Actions artifact 11259447748 and verified; initial coding used upstream fallback while local installed docs were unavailable |
+| Repository harness regression/selected scope whitespace | pending verification closure | Added exact test:agent command and baseline git diff --check to branch-only validation workflow; record actual results below |
+| Final NAS profile, worst-case scans, household load | blocked / not-run | No NAS access; synthetic Ubuntu figures are not worst-case capacity guarantees |
+| AI extraction accuracy and phone readability | not-run / blocked | No model calls/live credentials; available synthetic PNG inspection is not device/model evidence |
+| Installed Android shares from multiple apps; iOS picker/keyboard | blocked | Real devices and browser versions unavailable. Browser delivery/IndexedDB tests do not establish OS share registration |
+| Deployment/live .env/secrets/rollout | not-applicable | Outside authorization; not performed |
+
+Earlier failures are preserved as defect evidence rather than passing claims: worker CS0126 fixed; MVC pre-action multipart parsing originally returned 400 for oversize and was corrected to 413; stale EF tracking in the new PostgreSQL Delete fixture was corrected by reloading the instance after client Retry. PNG MIME correctness and pending restore readiness were specified/tested before the corresponding fixes. Initial partial runs and later preparation output are not attributed to the final application identity.
 
 ## Measurements and ownership limits
 
@@ -90,6 +96,6 @@ Staging: one IndexedDB slot, file ≤20 MiB, envelope ≤file limit +64 KiB, ato
 
 All commits are additive trees on the requested branch, rooted at the recorded baseline, with non-forced guarded ref updates. Added test/code paths implement the approved PDF API/renderer/workflow/storage/confirmation/share/manifest seams; existing store/factory/agent changes provide image-only enumeration, faithful persistence, pending restore, correct PNG MIME and dependency wiring. Kiota changes are calculated output of the approved OpenAPI. Photo capture positions, GOTO behavior and downstream prompts/frameworks are preserved. Registry/index metadata changes are limited to this selected package and repair its invalid unquoted colon. Native notice/license files and branch-only CI are required qualification closure. Guide/flows/template/example changes are T07 deliverables; no live secrets/.env are read or changed.
 
-Remote PWA preparation runs Prettier only on post-baseline affected TS/TSX/JSON/JS paths and uploads the exact output. That formatting closure will be committed before final verification, preserving source semantics and unrelated paths. Source/test fixes (MVC 413 parsing, .NET/OpenAPI registration/interfaces, React effect ownership, correct PNG media type) follow failing checks or targeted seam evidence without changed approved behavior. Test commits precede implementation. Additional existing PostgreSQL failures are observed and compared with baseline, not silently fixed or hidden.
+Remote PWA preparation runs Prettier only on post-baseline affected TS/TSX/JSON/JS paths and uploads the exact output. That exact formatting closure was committed at e5e45 before final application verification, preserving source semantics and unrelated paths. Source/test fixes (MVC 413 parsing, .NET/OpenAPI registration/interfaces, React effect ownership, correct PNG media type) follow failing checks or targeted seam evidence without changed approved behavior. Test commits precede implementation. Additional existing PostgreSQL failures are observed and compared with baseline, not silently fixed or hidden.
 
-Final source identity, passed/failed counts, blocked checks and handoff must be appended after the final workflow completes. Current pending results are not completion claims.
+Per-file rationale and reviewed identity are recorded in [scope-review.md](scope-review.md). Final verification closure results must be appended below when available; pending results are not passing claims.

@@ -1,7 +1,7 @@
 # PDF recipe import preview — current requirements
 
 Status: approved product decisions consolidated; technical follow-ups are assigned to early implementation tasks below. No remaining product decision blocks starting T01–T03. T01–T08 implementation authorized by the user; connector writes selected.
-Kind: feature specification (registry: planned-feature, planned).
+Kind: feature specification (registry: planned-feature, in-progress; implementation is present, target qualification remains open).
 Revision of the existing pdf-recipe-import package, not a new competing capture package.
 Derivation: design-first; source artifact design.md, reflecting user decisions made 2026-10-01/02. Approval cadence: gated; propose consequential remaining decisions one at a time and wait. Product/wire decisions already approved remain fixed; routine remaining schema details are finalized within implementation using those decisions.
 Synchronization: requirements/design/tasks synchronized for this revision; technical follow-ups have explicit task dependencies; T01–T03 can start once implementation is instructed. OpenAPI remains authoritative for wire contracts once approved.

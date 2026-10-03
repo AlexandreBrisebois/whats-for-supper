@@ -1,6 +1,6 @@
 # PDF recipe import preview — current review and historical evidence
 
-Status: user authorized complete T01–T08 implementation; source work and automated evidence are in progress. The consolidation and approval entries below preserve their original check identities. Real NAS/device/extraction qualification remains open.
+Status: user authorized complete T01–T08 implementation; source work is implemented and automated evidence is recorded in implementation-evidence.md. The consolidation and approval entries below preserve their original check identities. Real NAS/device/extraction qualification remains open.
 Reviewed source baseline: 9eb64bb06339b25861e45b559284629064c30f7a, followed by this authorized revision.
 Workflow: .agents/prompts/spec-writer.md → .agents/core/specification-workflow.md, then .agents/prompts/spec-reviewer.md. Applied sequentially to this package; no external agent/persona output is claimed.
 
@@ -18,16 +18,16 @@ The approved OpenAPI seam, generated client, acceptance/source storage, separate
 
 The findings below originally described consolidation gates. OQ-02 and OQ-04 are now implemented. OQ-03 has production Ubuntu x64 fixture and actual timeout/cleanup results, but final NAS budgets, phone readability, extraction accuracy and real Android/iOS evidence remain open. Native notices are inventoried separately from the MIT wrapper license. Automated browser handoffs do not establish installed OS sharing. No passing result is attached to an untested later content identity.
 
-## Spec-reviewer findings, risks and open questions
+## Current findings, risks and open questions
 
-- **Finding F1 / OQ-01 — architecture resolved by user:** conversion is a separate processor in existing recipe-import after pending PDF source acceptance. Existing automatic retries and failed-task Settings Retry/Delete apply; corrupt/encrypted PDFs stay failed for the user to delete. Requirements/design/tasks now replace synchronous conversion-before-acceptance. Source/metadata retention, safe partial-page retries and existing cleanup/listing still need implementation evidence.
-- **Open question Q2 — contract gate:** design D3 / OQ-02. PDF multipart field names file/rating/notes and 202 {data:{id}} are now approved, but exact field schemas/transport errors remain to be synchronized in OpenAPI. Page/content failure belongs to the conversion processor. The photo contract has an existing files-versus-images mismatch; leave its rename out of scope. Approve PDF wire semantics after tracing actual contracts; tests/mocks must not decide them.
-- **Risk R3 — runtime qualification:** design D4/D6 / OQ-03. Renderer/native timeout, production memory/disk/quality, architecture compatibility and orphan-share limits are not measured. 200 DPI PNG is a candidate. Qualify before setting release guarantees; do not infer cancellation or supported CPU from library documentation.
-- **Q4 / OQ-04 — strategy resolved by user:** one deployment-selected /manifest.json, off retaining existing GET link target and opt-in/on advertising Android multipart PDF target. Same PDF mode setting for PWA/API through Synology template. Root layout linkage/current static manifest verified; serving implementation/cache/installed refresh remain qualification, not an open architecture choice.
+- **F1 / OQ-01 resolved and implemented:** a separate ConvertPdf processor precedes normal extraction in recipe-import. Acceptance retains unchanged source and a pending recipe. Existing Settings Retry/Delete, flag-off retry, source retention and disk/PostgreSQL lifecycle checks pass on the recorded implementation identity.
+- **Q2 / OQ-02 resolved and implemented:** approved multipart file/rating/notes, 202 envelope and immediate errors are synchronized in OpenAPI, live PDF operation, Kiota and the common mock. The unrelated photo files/images mismatch remains outside scope.
+- **R3 / OQ-03 partially qualified:** production Ubuntu amd64 fixtures, native timeout/resource/cancellation/cleanup and all three Compose modes pass at the recorded 200 DPI evaluation profile. Actual NAS budgets, near-limit scans, household load, phone readability and extraction accuracy remain blocked/not-run. Staging is one bounded token-owned slot with ten-minute logical expiry and opportunistic physical cleanup; no browser heap guarantee is claimed.
+- **Q4 / OQ-04 resolved and implemented:** one deployment-selected /manifest.json uses the API/PWA mode variable. Off preserves GET link sharing; opt-in/on advertises multipart PDF sharing. Runtime/API gates handle stale registration. Installed Android registration and compatible originating apps still need real-device qualification.
 
 Historical assertion contradiction B4 is resolved by this consolidation and archive boundary. B1 interruption and B2 unlock/member reset follow the user's restart decision; no recovery architecture is required for unsaved selections. B3 recovery follows Settings import-job requirement and is covered by F1's remaining technical gate. These dispositions do not reopen accepted preview tradeoffs.
 
-## Review checklist and actual evidence
+## Original consolidation checklist (historical content identity)
 
 - Writer registry search: repository spec_registry.py searches pdf (no registered PDF match), capture and import (existing photo/url/bundle/progress/recovery baselines). This is a revision/registration of the existing descriptive package, not a new duplicate.
 - Bounded source evidence at the pinned baseline: CapturesController, CaptureFailureService, FeatureFlagService, photo capture and failed-capture requirements, recipes helper and FailedCapturesSection; prior source maps remain explicitly subject to T01 revalidation. Source observations affect requirements, seam design and task order rather than being just a file list.
@@ -35,7 +35,7 @@ Historical assertion contradiction B4 is resolved by this consolidation and arch
 - Scope: requirements/design/tasks/review, registry and rendered index only. Application, OpenAPI, user docs, deployment templates and live .env are unchanged; their updates are planned deliverables.
 - Validation results are recorded after the final content check below. Application/API/device/container checks are not run (specification-only); full checkout Task session tooling is unavailable. Private baseline uses pinned HEAD/blob identities and remote path inventory.
 
-## Consolidation validation results
+## Original consolidation validation results (historical content identity)
 
 Passed: python3 -B scripts/agent/spec_registry.py render and check pdf-recipe-import on a materialized specification snapshot using the repository script; selected-package artifact/dependency checks and exact generated-index comparison passed.
 Passed: full registry/dependency/active-package artifact-path comparison against pinned remote Git tree plus new local artifacts; no unregistered active directory or missing active artifact path. This is path-existence validation, not a full materialized-checkout task spec:check run.
