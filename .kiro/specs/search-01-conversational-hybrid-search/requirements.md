@@ -1,68 +1,20 @@
 # SEARCH-01 — Conversational hybrid search: requirements
+> Status: **Implemented capability baseline**.
 
-> Status: **Proposed current-behavior specification**. Behavior-first, accelerated cadence.
-> Source: `docs/feature-inventory.md`. This documents observed behavior; it does not authorize implementation.
-
-## Outcome
-
-Natural-language intent produces understandable, resilient recipe ranking.
-
-## Scope
-
-- Specify the current family-facing **conversational hybrid search** behavior and its direct API/state seams.
-- Specify observable loading, empty, success, failure, retry, concurrency, navigation, localization, and accessibility behavior.
-- Preserve household isolation, active-member attribution, ready/non-deleted eligibility, and unrelated planner/library state.
-
-## Non-goals
-
-- Approving UI, API, schema, ranking, workflow, or persistence changes.
-- Defining adjacent capture, planner, identity, or operations features except where this feature hands off to them.
-- Treating implementation comments, tests, or this proposed baseline as a product decision.
-
-## Verified baseline
-
-- `pwa/src/app/(app)/recipes/page.tsx`
-- `pwa/src/lib/api/recipes.ts`
-- `api/src/RecipeApi/Services/RecipeSearchService.cs`
-- `api/src/RecipeApi/Services/RecipeSemanticSearchRepository.cs`
-- `api/src/RecipeApi/Controllers/RecipeController.cs`
-- `api/src/RecipeApi.Tests/Integration/RecipeLexicalSearchPostgresTests.cs`
-
-The current OpenAPI authority is `specs/openapi.yaml`; relevant operations are: `POST /api/recipes/search`.
-
-## Acceptance criteria
+## Outcome and boundary
+`/recipes` accepts debounced natural-language text and returns ready, non-deleted recipes. SEARCH-02 owns browse/continuations; SEARCH-03 filters; SEARCH-04 planner and similarity context.
 
 ### SEARCH-01-AC1
-
-A non-empty natural-language query searches eligible recipe names and facts and returns a ranked result set with an explained top pick when one exists.
-
+Non-blank text is sent to `POST /api/recipes/search`; Enter submits immediately and the page renders Top Pick, alternatives, or empty state.
 ### SEARCH-01-AC2
-
-When semantic retrieval is enabled and healthy, ranking combines semantic and lexical evidence; when unavailable it degrades to the contract’s lexical-only result path.
-
+When enabled and healthy, the service combines lexical and vector candidates. `resultPath` identifies `hybrid`, `semantic-only`, `lexical-only`, `fallback-lexical`, or `similar`; semantic timeout/provider failure falls back to lexical results.
 ### SEARCH-01-AC3
-
-The response preserves the submitted query semantics, exposes search mode/result path, and never returns unready or soft-deleted recipes.
-
+The service restricts to `DeletedAt == null` and `IsReady`, applies server-owned ranking, and returns `topPick`, `results`, `appliedFilters`, `searchMode`, `resultPath`, and optional opaque `nextCursor`; results include reason labels.
 ### SEARCH-01-AC4
+Request generation and Search-promotion version reject late/invalidated responses. An initial request failure is currently rendered as an empty lexical-only response, not a distinct error.
 
-Loading, empty, validation, service-error, and late-response states are distinct; a superseded response never replaces newer results and explanations remain accessible text.
-
-## Preserved behavior
-
-- Household/member credentials remain required where the current contract requires them; data must not cross household boundaries.
-- Unsupported or ineligible records remain excluded rather than made actionable by presentation state.
-- Existing routes and unrelated state remain stable on cancellation or failure.
-- English and French copy continue through the repository localization layer; no new hard-coded user-facing copy is implied.
-
-## Decisions
-
-- **Derivation:** behavior-first from the inventory, verified current source, OpenAPI, and tests.
-- **Cadence:** accelerated; requirements, design, and tasks are delivered together without an approval gate.
-- **Baseline:** proposed documentation of current behavior, not approval to preserve every behavior or begin work.
-
-## Open questions
-
-- Product must confirm whether every observed behavior is intended before an implementation packet is authorized.
-- Accessibility wording, performance budgets, telemetry retention, and destructive-operation policy require explicit product/security acceptance if changed.
-- Any contract divergence found during a future audit must be resolved against approved intent; implementation alone is not authority.
+## Limitations and non-goals
+- The response does not echo query text.
+- No initial-search retry/error affordance exists.
+- Client member headers are sent, but this controller/service path does not establish household authorization; do not infer isolation from this packet.
+- No SSE is consumed here; promotion invalidation is an adjacent capability boundary.

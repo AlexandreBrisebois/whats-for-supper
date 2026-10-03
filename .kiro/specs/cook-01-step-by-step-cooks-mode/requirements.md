@@ -1,59 +1,35 @@
 # COOK-01 — Step-by-step Cook's Mode requirements
 
-> **Status:** Proposed documentation of current behavior; behavior-first, accelerated cadence. This specification does **not** authorize implementation. Source artifact: `docs/feature-inventory.md` COOK-01.
+## Status
+
+- **Status:** Implemented capability baseline.
+- **Kind:** Capability baseline; behavior-first.
 
 ## Outcome
 
-A cook can follow large focused preparation and instruction steps, move backward or forward, and resume their place.
+A cook can open a full-screen recipe view, check preparation ingredients, read parsed cooking steps, move through them, and return to the invoking surface.
 
-## Scope
+## Implemented behavior
 
-- Family-facing behavior described above, its current API/workflow seams, async states, and recovery.
-- Actor: an authenticated household member unless explicitly identified as operator configuration. Recipe/library effects are household-shared; transient UI state is member/device-local.
-- Entry: `CooksMode` launched from recipe detail/planner actions.
+- **COOK-01-R1 — Entry.** Recipe detail exposes a Steps action; Home opens Cook's Mode for today's scheduled recipe. The overlay fetches `GET /api/recipes/{id}` for complete ingredients, instructions, and import-issue state. It locks document scrolling while open and can open the recipe-detail sheet from its hero.
+- **COOK-01-R2 — Preparation and steps.** The first screen is Check & Prep, with local ingredient checks. `stepParser` turns string arrays, flat `HowToStep` arrays, and `HowToSection` arrays into ordered display steps while retaining source paths for editing. Missing, unsupported, or failed detail data falls back to four generic instructions rather than a blank view.
+- **COOK-01-R3 — Progress and navigation.** Next moves from preparation to step 1 and thereafter advances one step; Back stops at preparation. Progress is `plannerStore.cookProgress[recipeId]`, so close/reopen in the same browser store resumes the selected step. The preparation checklist, fetched detail, and fallback steps are component-local and reset on a remount.
+- **COOK-01-R4 — Completion boundary.** At the final step, Cook's Mode displays a local celebration for 600 ms, invokes its optional `onCooked` callback, then closes. Home supplies that callback and optimistically validates today's schedule day as cooked; the recipe-detail entry supplies no callback, so completing steps there does not change schedule status.
+- **COOK-01-R5 — Step editing.** When the `single-page-recipe-steps` flag is off, the active step can be edited; when it is on, all parsed steps are displayed with per-row edit controls. Save sends the complete modified `recipeInstructions` through the recipe PATCH path, updates local parsing on success, and keeps the editor/error/retry affordance on failure.
+- **COOK-01-R6 — In-cook reporting.** When the loaded recipe has `canReimport`, the prep or step view exposes its matching issue action. That flow is owned by COOK-02 and does not reset Cook's Mode progress.
 
-## Non-goals
+## Scope and boundaries
 
-- Redesigning adjacent recipe, planner, identity, workflow administration, or localization capabilities.
-- Treating current implementation details as newly approved product policy.
-- Implementing, migrating, or correcting behavior as part of this documentation packet.
+COOK-01 owns the instructional overlay, local cooking progress, parsing, and instruction edit interaction. `lib-02-recipe-detail-metadata` owns recipe detail/PATCH behavior and `lib-03-recipe-actions` owns detail action availability. Home/today and planner schedule packets own durable cooked-day state. COOK-02 owns import-issue reporting; `plat-01` only supplies schedule/recipe events to its respective stores, not cooking-progress synchronization.
 
-## Verified baseline
+## Current limitations
 
-- Contract: `GET /api/recipes/{id}`; client-owned progress in `plannerStore`.
-- Ownership: no dedicated cooking endpoint; recipe detail is authoritative and `stepParser.ts` adapts structured/legacy instructions.
-- Evidence: `CooksMode.test.tsx`, `stepParser.test.ts`, and `RecipeDetailSheet.test.tsx`.
-- Happy path: loading resolves to preparation then parsed steps; navigation updates per-recipe progress and Done invokes cooked completion.
-- Failure path: detail fetch or unparseable instructions uses explicit fallback steps rather than a blank screen.
-- Concurrency: progress is client-local and last local update wins; cross-device synchronization is not established.
-- Async: late recipe fetch must apply only to the active recipe; close/reopen preserves store progress.
+- The detail-fetch effect has no active-request or recipe-ID guard after `getRecipe` resolves; a late old request can update a newly changed overlay instance.
+- Progress and ingredient checks are neither persisted nor synchronized across devices. No completion state is stored by Cook's Mode itself.
+- The fallback instructions may not reflect a recipe whose detail request failed or whose instruction format is unsupported.
+- The celebration and several Cook's Mode/error strings are hard-coded English rather than routed through localization.
+- Home's `markCooked` is optimistic and logs a failed validate request without rollback; recipe-detail completion does not mark a meal cooked at all.
 
-## Requirements
+## Preserved behavior
 
-- **COOK-01-R1 — Entry and eligibility.** When an authenticated member enters this capability in an eligible state, the system shall expose the relevant action and enough context to understand its effect; when ineligible, it shall hide or disable it with a truthful explanation.
-- **COOK-01-R2 — Accepted outcome.** When valid input is confirmed, the system shall perform only the scoped action, return/retain a durable correlation identifier where background work exists, and distinguish acceptance from completion.
-- **COOK-01-R3 — Validation and failure.** When input, authorization, network, source, or processing fails, the system shall preserve recoverable member input/state, show a family-safe actionable message, and avoid claiming success or readiness.
-- **COOK-01-R4 — Async consistency.** While work is pending, the member may navigate away; polling/events/refetch shall reconcile to authoritative server state, and stale or late results shall not overwrite a newer attempt.
-- **COOK-01-R5 — Concurrency.** Repeat activation shall be locked while a request is active. Cross-device conflicts shall converge on server state, and unsupported atomicity shall not be represented as guaranteed.
-- **COOK-01-R6 — Accessibility and responsive use.** Every pointer/gesture action shall have a labeled keyboard/touch alternative, dialogs shall expose name and focus containment/restoration, progress/error changes shall be announced without focus theft, and controls shall remain usable on phone and larger layouts.
-- **COOK-01-R7 — Privacy and localization.** Family UI shall not reveal technical diagnostics, secrets, or another household's data. User-facing copy shall use supported locale resources; recipe processing language shall remain distinct from interface locale.
-- **COOK-01-R8 — Preserved behavior.** structured HowTo sections/steps and legacy strings parse without destructive recipe conversion
-
-## Observable acceptance states
-
-| State | Observable result |
-|---|---|
-| Ready/empty | Valid entry controls are available; absence of optional data is explained without fabricating content. |
-| Pending | Inputs that could duplicate work are locked and status says queued/processing rather than complete. |
-| Success | The authoritative result is visible or reachable and the next destination is explicit. |
-| Validation failure | The offending field/action is identified; no server-side effect is claimed. |
-| Service/workflow failure | Recoverable state remains; retry/refresh guidance is safe and diagnostics stay behind the operations boundary. |
-| Stale/concurrent | A refetch/versioned response wins over late optimistic state; destructive replacement is not silent. |
-| Unauthorized/not found | No household data is disclosed and the member is returned to a safe state. |
-
-## Open questions / blockers for future change
-
-1. What server idempotency key or version policy, if any, should be guaranteed across devices? Current evidence is insufficient for a stronger requirement.
-2. Which SSE event names and polling intervals are product commitments versus current implementation choices?
-3. Should pending work survive sign-out/member switching on the same device, and which member receives completion notification?
-4. Product approval is required before resolving these questions or implementing any task below.
+Cook's Mode does not create a cooking-specific API, workflow, or background identifier. Parsed instruction display preserves the source recipe until an explicit instruction edit succeeds; it does not rewrite legacy instructions merely by viewing them.

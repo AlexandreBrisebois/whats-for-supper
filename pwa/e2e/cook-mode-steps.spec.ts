@@ -13,7 +13,14 @@
  * pins to the fixed test date (2026-05-04, Monday). Never use new Date() here.
  */
 import { test, expect } from './fixtures';
-import { MOCK_IDS, builders, setupCommonRoutes, currentMonday, toDateStr } from './mock-api';
+import {
+  MOCK_IDS,
+  builders,
+  setupCommonRoutes,
+  currentMonday,
+  toDateStr,
+  mockFeatureFlags,
+} from './mock-api';
 import { REALISTIC_RECIPES } from '../src/testing/realistic-recipes';
 
 /**
@@ -123,6 +130,87 @@ test.describe('Cook Mode — HowToSection[] steps display', () => {
     });
   });
 
+  for (const viewport of [
+    { width: 390, height: 844 },
+    { width: 1180, height: 820 },
+  ]) {
+    test(`single-page reading position and compact headings at ${viewport.width}px`, async ({
+      page,
+    }) => {
+      await page.setViewportSize(viewport);
+      await mockFeatureFlags(page, [
+        { key: 'single-page-recipe-steps', enabled: true, mode: 'on', memberEnabled: false },
+      ]);
+      await page.route('**/api/recipes/*', async (route) => {
+        if (route.request().method() !== 'GET') return route.fallback();
+        await route.fulfill({
+          json: {
+            recipe: {
+              ...REALISTIC_RECIPES[MOCK_IDS.RECIPE_SPAGHETTI],
+              recipeInstructions: Array.from({ length: 6 }, (_, index) => ({
+                '@type': 'HowToStep',
+                name: index === 1 ? 'Cook the pasta' : `Step ${index + 1}`,
+                text: 'Stir gently and keep an eye on the pan. '.repeat(8),
+              })),
+            },
+          },
+        });
+      });
+      await page.goto('/home');
+      await page.getByTestId('tonight-menu-card').click();
+      await page.getByTestId('cook-mode-btn').click();
+      await page.getByTestId('cooks-mode-step-next').click();
+      const list = page.getByTestId('single-page-recipe-steps');
+      await expect(list).toBeVisible();
+      await expect(page.getByRole('heading', { name: /^Step \d+$/ })).toHaveCount(0);
+      await expect(page.getByRole('heading', { name: 'Cooking steps' })).toHaveCount(0);
+      await expect(page.getByRole('heading', { name: 'Cook the pasta' })).toHaveCount(1);
+      await expect(page.getByTestId('cooks-mode-step-next')).toHaveText('Cooked');
+      const completion = page.getByTestId('cooks-mode-step-next');
+      await expect(completion).toHaveAccessibleName('Mark recipe as cooked');
+      await expect(completion.locator('svg')).toHaveCount(0);
+      const buttonBounds = await completion.boundingBox();
+      const footerBounds = await page.getByTestId('cooks-mode-controls').boundingBox();
+      expect(buttonBounds!.height).toBeGreaterThanOrEqual(64);
+      expect(
+        footerBounds!.y + footerBounds!.height - buttonBounds!.y - buttonBounds!.height
+      ).toBeGreaterThanOrEqual(24);
+      const scroll = page.getByTestId('cooks-mode-instructions');
+      await scroll.evaluate((surface) => {
+        const row = surface.querySelector<HTMLElement>('[data-cooking-step="3"]')!;
+        surface.scrollTop +=
+          row.getBoundingClientRect().top - surface.getBoundingClientRect().top - 16;
+      });
+      await expect(page.getByTestId('cooks-mode-step-indicator')).toHaveText('3 / 6');
+      await expect(page.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '3');
+      await page.getByTestId('close-cooks-mode').click();
+      await page.getByTestId('cook-mode-btn').click();
+      await expect(page.getByTestId('cooks-mode-step-indicator')).toHaveText('3 / 6');
+      await expect
+        .poll(() =>
+          scroll.evaluate((surface) => {
+            const row = surface.querySelector<HTMLElement>('[data-cooking-step="3"]')!;
+            return Math.round(
+              row.getBoundingClientRect().top - surface.getBoundingClientRect().top
+            );
+          })
+        )
+        .toBe(16);
+      await scroll.evaluate((surface) => {
+        surface.scrollTop = surface.scrollHeight;
+      });
+      await expect(page.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '6');
+      await expect(page.getByTestId('cooks-mode-celebration')).toHaveCount(0);
+      await scroll.evaluate((surface) => {
+        surface.scrollTop = 0;
+      });
+      await expect(page.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '1');
+      await expect
+        .poll(() => list.evaluate((element) => element.scrollWidth <= element.clientWidth))
+        .toBe(true);
+    });
+  }
+
   // HowToSection[] step parsing (home + planner entry points) is covered by
   // CooksMode.test.tsx. Only the Done → celebration → /home navigation seam
   // requires a real browser.
@@ -162,12 +250,12 @@ test.describe('Cook Mode — HowToSection[] steps display', () => {
     });
     await expect(page.getByTestId('cooks-mode-step-next')).toBeVisible({ timeout: 15_000 });
 
-    // Step through all steps until Done appears
+    // Step through all steps until Cooked appears
     let isDone = false;
     for (let i = 0; i < 20; i++) {
       const nextBtn = page.getByTestId('cooks-mode-step-next');
       const label = await nextBtn.textContent();
-      if (label?.toLowerCase().includes('done')) {
+      if (label?.toLowerCase().includes('cooked')) {
         isDone = true;
         break;
       }

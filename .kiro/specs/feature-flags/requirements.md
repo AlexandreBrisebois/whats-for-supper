@@ -6,7 +6,7 @@
 
 **Source:** Product direction in the 2026-09-29 settings-page review
 
-**Status:** Proposed; implementation is not authorized by this specification
+**Status:** Approved for implementation on 2026-09-30
 
 ## Outcome
 
@@ -61,8 +61,11 @@ not add anxiety or compete with everyday household tasks.
    surprising everyone sharing the household.
 4. Only flags in `opt-in` mode appear in Settings. `off` flags are unavailable;
    `on` flags are normal product behavior and no longer presented as choices.
-5. New flag keys are stable, lowercase kebab-case identifiers. Display copy is
-   separate and localizable.
+5. Temporary preview flag keys use `preview-<feature-slug>`, where the feature
+   slug is the stable spec-registry slug. Keep the key unchanged through `off`,
+   `opt-in`, and `on`; delete it at graduation. Environment variables use
+   `WFS_FEATURE_` followed by the uppercase key with hyphens replaced by underscores.
+   Display copy is separate and localizable.
 6. Flag checks occur at a coarse route, workflow, component, or service boundary.
    They must not be scattered through both implementations.
 7. Database changes used by a feature remain backward compatible while either path
@@ -197,12 +200,21 @@ enable a disabled server capability.
 8. After graduation, a repository search finds neither the flag key nor its
    environment variable, and only the promoted implementation remains.
 
-## Open questions before implementation
+## Naming adoption
 
-1. **Feedback destination:** approve an existing feedback URL/channel, or defer
-   FF-10's action as an optional follow-up.
-2. **Initial proving flag:** select one small, reversible feature to validate the
-   framework end to end. Building infrastructure with no real consumer would create
-   speculative code.
-3. **Operational ownership:** identify who may change production deployment modes
-   and where that change is audited in the chosen deployment platform.
+The approved target key is `preview-single-page-recipe-view`, with environment
+variable `WFS_FEATURE_PREVIEW_SINGLE_PAGE_RECIPE_VIEW`. Existing application code
+and deployment configuration still use `single-page-recipe-steps` and
+`WFS_FEATURE_SINGLE_PAGE_RECIPE_STEPS`. The examples here describe the target;
+Task 8 tracks coordinated migration before claiming runtime adoption.
+
+## Approved proving slice
+
+- **Feature:** `preview-single-page-recipe-view`, specified independently in
+  [`../single-page-recipe-view/requirements.md`](../single-page-recipe-view/requirements.md).
+- **Member copy:** **Recipe on one page** — “After getting ready, scroll through all
+  the cooking steps on one page.”
+- **Feedback:** defer FF-10's action to optional Task 5A; do not invent or reuse a
+  recipe-content feedback destination.
+- **Operational ownership:** the administrator deploying each local or Synology
+  installation owns deployment-mode changes. AWS is not an active deployment.

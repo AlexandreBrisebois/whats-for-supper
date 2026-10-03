@@ -176,6 +176,14 @@ CREATE TABLE family_settings (
     updated_at  timestamptz DEFAULT now() NOT NULL
 );
 
+CREATE TABLE feature_flag_overrides (
+    member_id uuid NOT NULL REFERENCES family_members(id) ON DELETE CASCADE,
+    flag_key text NOT NULL,
+    enabled boolean NOT NULL,
+    updated_at timestamptz DEFAULT now() NOT NULL,
+    PRIMARY KEY (member_id, flag_key)
+);
+
 CREATE TABLE IF NOT EXISTS maintenance_commands (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     command_type text NOT NULL,

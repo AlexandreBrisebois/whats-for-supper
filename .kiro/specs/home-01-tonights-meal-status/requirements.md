@@ -1,71 +1,19 @@
-# HOME-01 — Tonight’s meal status: requirements
+# HOME-01 — Tonight's meal status: requirements
 
-## Status and derivation
+## Status
 
-- **Status:** Baseline proposed/current-behavior specification.
-- **Kind:** Feature specification; behavior-first; accelerated cadence.
-- **Source artifact:** [`docs/feature-inventory.md`](../../../docs/feature-inventory.md), HOME-01.
-- **Authority:** This specification documents observed behavior for review. **Implementation is not authorized.**
+**Implemented capability baseline.** This packet is the canonical description of Home's current-date meal status; it does not authorize product changes.
 
-## Outcome
+## Current behavior
 
-A household member can understand tonight’s current plan and continue to recipe details or guided cooking.
+- **HOME-01-AC-01 — Current-date presentation.** `page.tsx` requests `/api/family` and `/api/schedule?weekOffset=0`, derives the server-local current date, and hides recipes whose status is cooked (`2`) or skipped (`3`). `TodayStoreInitializer` seeds `todayStore`; `HomeCommandCenter` renders an unplanned pivot, planned card, cooked acknowledgement, or terminal state.
+- **HOME-01-AC-02 — Cooking handoff.** A planned card opens Cook's Mode. Marking cooked immediately changes `todayStore` then sends `POST /api/schedule/day/{date}/validate` with `{ status: 2 }`.
+- **HOME-01-AC-03 — Shared updates.** `useScheduleStream` consumes `/api/stream`; `connected`, `slot_updated`, and `week_updated` reconcile the current-day store and week store.
+- **HOME-01-AC-04 — Background reconciliation.** Mount starts a week-0 `sync()`. A recent optimistic assignment is retained for up to 20 seconds under the store's reconciliation guard.
 
-## Terms and state ownership
+## Limitations and boundaries
 
-- **Household** is the shared authenticated group; **member** is the selected perspective within it.
-- Canonical state for this feature is todayStore seeded by server data and SSE schedule events. Client stores own display and in-flight state only; accepted server responses/events remain authoritative.
-
-## Scope
-
-### In scope
-
-- Home presents the current date’s recipe, image, timing/readiness information available from the recipe, and relevant actions.
-- Recipe details and Cook’s Mode open from the current meal without changing the plan.
-- Schedule stream updates for today reconcile the displayed recipe and status.
-- Loading, empty, success, rejection, retry, late-result, navigation, localization, accessibility, and concurrent-device behavior directly attached to the outcomes above.
-
-### Out of scope
-
-- Redesigning adjacent discovery, capture, recipe, or administration features.
-- Changing the approved OpenAPI contract, persistence schema, authentication model, or workflow schedule.
-- Treating this baseline as authorization to implement, migrate, or deploy anything.
-
-## Verified current ownership
-
-- `pwa/src/app/(app)/home/page.tsx`
-- `pwa/src/components/home/HomeCommandCenter.tsx`
-- `pwa/src/components/home/TonightMenuCard.tsx`
-- `pwa/src/store/todayStore.ts`
-- `pwa/src/hooks/useScheduleStream.ts`
-- `api/src/RecipeApi/Controllers/ScheduleController.cs`
-
-These paths verify current integration ownership, not that every proposed acceptance statement is already completely implemented.
-
-## Acceptance requirements
-
-- **HOME-01-AC-01 — Primary outcome.** Home presents the current date’s recipe, image, timing/readiness information available from the recipe, and relevant actions.
-- **HOME-01-AC-02 — Complete path.** Recipe details and Cook’s Mode open from the current meal without changing the plan.
-- **HOME-01-AC-03 — Boundary behavior.** Schedule stream updates for today reconcile the displayed recipe and status.
-- **HOME-01-AC-04 — Failure and recovery.** While work is loading or pending, duplicate submission is prevented and progress is perceivable. A rejected or unreachable request shows an actionable localized error, preserves the last confirmed state and user context, and permits retry without duplicating an accepted mutation.
-- **HOME-01-AC-05 — Concurrency and late results.** Shared server updates are applied only to matching identities/week/date/context. Echoes and stale asynchronous results must not overwrite a newer local or server-confirmed state; reconnect obtains or preserves an authoritative snapshot.
-- **HOME-01-AC-06 — Accessibility and localization.** Every action is keyboard operable, has a programmatic name and visible focus, communicates state without color alone, and announces consequential progress/errors. User-facing copy uses repository localization facilities; date, time, and count meaning remains locale-safe.
-- **HOME-01-AC-07 — Compatibility and preservation.** Existing household authentication and member scoping remain enforced. Navigation retains relevant context, secrets never enter logs or persistent public UI, and unrelated weeks, days, recipes, votes, and member preferences remain unchanged.
-
-## Preserved behavior
-
-- Existing API authentication, success-envelope, member identity, and SSE-origin rules remain unchanged unless a separately approved contract specification says otherwise.
-- Existing confirmed server state is never discarded merely because a client request, animation, clipboard operation, native share call, or stream connection fails.
-- Unsupported browser conveniences degrade to another explicit action rather than blocking the core outcome.
-
-## Decisions
-
-- Stable acceptance identifiers use the `HOME-01-AC-nn` namespace.
-- The server is authoritative for durable shared state; optimistic UI is provisional and reversible.
-- Accelerated cadence omits intermediate approval pauses but does not approve implementation.
-
-## Open questions
-
-- Which acceptance statements should become normative product commitments rather than preservation of observed behavior?
-- What user-facing retention, audit, conflict-resolution, and telemetry policy is required for this feature?
-- Which current edge cases need dedicated product copy, analytics, or explicit service-level targets?
+- SSR fetch failures yield null seed data without user-visible error. Assignment and validation are optimistic, fire-and-forget writes; failures are logged, not rolled back or surfaced.
+- The stream has no feature-specific disconnect/retry UI. A two-second echo guard prevents a conflicting early assignment event from replacing the current card; it is not conflict resolution.
+- HOME-02 owns empty-state GOTO/Quick Find, HOME-03 skip/recovery mutations, HOME-04 GOTO lifecycle, and the single-page recipe view recipe detail.
+- Contract ownership: `GET /api/schedule`, `POST /api/schedule/day/{date}/validate`, and `GET /api/stream` in `specs/openapi.yaml`.

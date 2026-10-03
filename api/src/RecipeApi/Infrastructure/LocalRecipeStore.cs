@@ -124,6 +124,45 @@ public sealed class LocalRecipeStore(RecipesRootResolver resolver, ILogger<Local
         return Task.FromResult(exists);
     }
 
+    public async Task SaveSourcePdfAsync(Guid recipeId, Stream source, CancellationToken ct = default)
+    {
+        var dir = OriginalDir(recipeId);
+        Directory.CreateDirectory(dir);
+        await using var destination = File.Create(Path.Combine(dir, "source.pdf"));
+        await source.CopyToAsync(destination, ct);
+    }
+
+    public Task<Stream?> ReadSourcePdfAsync(Guid recipeId, CancellationToken ct = default)
+    {
+        var path = Path.Combine(OriginalDir(recipeId), "source.pdf");
+        return Task.FromResult<Stream?>(File.Exists(path) ? File.OpenRead(path) : null);
+    }
+
+    public async Task ReplacePdfPagesAsync(Guid recipeId, IReadOnlyList<byte[]> pages, CancellationToken ct = default)
+    {
+        var original = OriginalDir(recipeId);
+        if (!File.Exists(Path.Combine(original, "source.pdf")))
+            throw new InvalidOperationException("PDF source is missing.");
+        // Attempt-owned sibling directory. No accepted source/other recipe is ever cleaned.
+        var attempt = Path.Combine(RecipeDir(recipeId), ".pdf-pages-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(attempt);
+        try
+        {
+            for (var i = 0; i < pages.Count; i++)
+                await File.WriteAllBytesAsync(Path.Combine(attempt, i + ".png"), pages[i], ct);
+            ct.ThrowIfCancellationRequested();
+            // Publication is followed by the metadata barrier in ConvertPdf. Retries overwrite
+            // numbered output; they cannot append duplicate pages or publish stale counts.
+            foreach (var path in Directory.GetFiles(original))
+                if (int.TryParse(Path.GetFileNameWithoutExtension(path), out _)
+                    && KnownImageExts.Contains(Path.GetExtension(path).ToLowerInvariant()))
+                    File.Delete(path);
+            for (var i = 0; i < pages.Count; i++)
+                File.Move(Path.Combine(attempt, i + ".png"), Path.Combine(original, i + ".png"), overwrite: true);
+        }
+        finally { Directory.Delete(attempt, recursive: true); }
+    }
+
     // ── lifecycle ────────────────────────────────────────────────────────────
 
     public Task DeleteAsync(Guid recipeId, CancellationToken ct = default)

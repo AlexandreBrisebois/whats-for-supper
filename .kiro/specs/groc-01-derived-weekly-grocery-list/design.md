@@ -1,76 +1,32 @@
 # GROC-01 — Derived weekly grocery list: design baseline
 
-## Status
+## Integration map
 
-Baseline proposed/current-behavior design derived from [`requirements.md`](requirements.md). It records current integration evidence and candidate verification seams. **Implementation is not authorized.**
+`planner/page.tsx` initializes `weekStore` for the selected offset and supplies its `groceryItems` to `GroceryList`. The store calls the generated schedule client for `GET /api/schedule?weekOffset={n}` and accepts matching `week_updated` snapshots from `useScheduleStream`.
 
-## Verified current integration map
+`ScheduleController` delegates schedule mutations to `ScheduleService`. Those paths call `GroceryRecomputeService`, which reads calendar events and recipes, resolves normalized-key categories from `IngredientCategories` (falling back to `AisleMapper`), groups quantities and provenance, and persists `WeeklyPlan.GroceryItems`. `ScheduleService.GetScheduleAsync` deserializes both grocery JSON columns into `ScheduleDays`; the OpenAPI `GroceryLineItemDto` contract carries `displayName`, `normalizedKey`, `section`, optional quantity/unit, and `recipeIds`.
 
-- `pwa/src/app/(app)/planner/page.tsx`
-- `pwa/src/components/planner/GroceryList.tsx`
-- `pwa/src/lib/grocery/aisleMapper.ts`
-- `pwa/src/store/weekStore.ts`
-- `api/src/RecipeApi/Services/GroceryRecomputeService.cs`
-- `api/src/RecipeApi/Services/ScheduleService.cs`
+## Data and state flow
 
-### Ownership and flow
+```text
+schedule command / category change
+  -> GroceryRecomputeService -> WeeklyPlan.grocery_items
+  -> GET /api/schedule or week_updated snapshot
+  -> weekStore.groceryItems -> GroceryList aisle grouping
+```
 
-1. The route/component accepts interaction and keeps only ephemeral presentation state.
-2. The relevant Zustand store or API wrapper translates feature intent into generated-client or explicit HTTP calls.
-3. The current API controller operation validates household/member context and delegates to its service or workflow.
-4. Durable ownership remains server-derived GroceryLineItemDto collection in selected weekStore; response data and `/api/stream` events reconcile participating clients where the feature is shared.
-5. Tests adjacent to the listed source and controller/service tests are the preferred executable evidence; `specs/openapi.yaml` is the contract authority for exposed operations.
+`GroceryRecomputeService` publishes `grocery_updated` only when its check-state transition changes. Section-only recomputation is therefore normally observed by the initiating browser's explicit schedule load or local item update, not by a dedicated grocery-line event.
 
-## Behavior design
+## Failure and recovery
 
-### Success
+Recompute ignores recipe-less days and tolerates absent structured supply by falling back to ingredient text. An empty source persists an empty list. A `week_updated` snapshot is ignored for a non-current week; `weekStore` also has move-specific optimistic snapshot guards. No feature-specific retry or error UI exists for failed list acquisition/recomputation.
 
-- Render confirmed data with stable identity and retain relevant member, week, date, or recipe context through navigation.
-- Disable only conflicting work while a mutation is pending; apply the accepted response, then reconcile matching shared events idempotently.
-- Report success only for an accepted operation. Browser-only conveniences such as clipboard/share do not redefine server success.
+## Evidence seams
 
-### Empty, loading, errors, and recovery
+- API/service: `GroceryItemsIntegrationTests`, `GroceryRecomputeServiceTests`, and schedule integration tests cover assignment/move/remove, aggregation, persisted state, and returned schedule data.
+- Browser/store: `GroceryList.test.tsx` covers ordering, duplicate-row rendering, quantity presentation and optimistic checklist rendering; `weekStore.test.ts` covers snapshot item replacement.
+- Contract: `specs/openapi.yaml` `ScheduleDays` and `GroceryLineItemDto` are authoritative.
 
-- Loading retains safe confirmed content where available and exposes a perceivable busy state.
-- Empty state distinguishes “no configured/assigned data” from loading and failure.
-- Authentication/authorization failure returns to the appropriate access or identity recovery path; validation/conflict errors preserve inputs and explain the next action.
-- Network/server failure restores the last confirmed state. Retry reuses feature context but does not blindly replay a mutation whose outcome is unknown.
-- Late results are ignored when their member, week, slot, recipe, request generation, or mounted surface no longer matches.
+## Dependencies
 
-### Concurrency
-
-- Server responses/events are authoritative. Optimistic changes require a pre-mutation snapshot or equivalent rollback data.
-- Matching SSE events may confirm local work; echoed or older events must not cause duplicate effects or visual regression.
-- A reconnect/snapshot converges client state without overwriting a newer guarded optimistic write; conflicts are surfaced rather than silently dropping displaced information.
-
-### Security and privacy
-
-- Household credentials use the existing authentication mechanism; member identity scopes personalized operations but is not a replacement for household authentication.
-- Secrets and signed invitation material are not logged, rendered after consumption, placed in telemetry, or sent to unrelated origins.
-- Destructive or household-wide changes require explicit intent and server authorization; inputs are contract-validated.
-
-### Accessibility and localization
-
-- Semantic headings, labels, focus management, keyboard activation, live status/error announcements, and non-color state indicators cover every interactive flow.
-- Copy is localized through current locale facilities. Dates are transported in contract format and presented in the member locale without changing schedule-day identity.
-
-### Performance and operations
-
-- Avoid duplicate fetch/mutation calls and unbounded suggestion/list rendering. Preserve store selectors and targeted event updates to limit rerenders.
-- Do not log credentials or full private payloads. Operational signals should distinguish validation, conflict, authorization, dependency, and unexpected failures without inventing success.
-
-## Requirement traceability
-
-| Requirements | Design seam |
-|---|---|
-| GROC-01-AC-01, GROC-01-AC-02, GROC-01-AC-03 | Route/component → store/API → controller/service → authoritative state |
-| GROC-01-AC-04 | Pending guard, confirmed snapshot, actionable error, retry |
-| GROC-01-AC-05 | Context keys, optimistic guard, SSE echo/reconnect reconciliation |
-| GROC-01-AC-06 | Semantic controls, focus/live regions, locale-safe copy and dates |
-| GROC-01-AC-07 | Authentication/member scope, context-preserving navigation, non-target preservation |
-
-## Verified facts versus future decisions
-
-**Verified facts:** the files above currently own the visible/client/server seams; generated API code is derived from `specs/openapi.yaml`; shared schedule behavior uses `/api/stream`; server-derived GroceryLineItemDto collection in selected weekStore is the observed state boundary.
-
-**Future decisions (not implementation commitments):** final product copy, retention/audit policy, conflict UX, service-level targets, telemetry schema, and any new family-facing entry point or contract field require approval. The open questions in requirements block affected future tasks.
+This packet consumes the schedule owner packets and `plat-04-ingredient-categorization`; it relies on `plat-01-shared-real-time-state` only for whole-week refresh delivery. It deliberately does not duplicate their policies.

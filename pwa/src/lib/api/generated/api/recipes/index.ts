@@ -8,6 +8,11 @@ import {
 } from '../../models/index';
 // @ts-ignore
 import {
+  CapturePdfRequestBuilderRequestsMetadata,
+  type CapturePdfRequestBuilder,
+} from './capturePdf/index';
+// @ts-ignore
+import {
   CaptureUrlRequestBuilderRequestsMetadata,
   type CaptureUrlRequestBuilder,
 } from './captureUrl/index';
@@ -178,6 +183,10 @@ export interface RecipesPostResponse_data extends AdditionalDataHolder, Parsable
  * Builds and executes requests for operations under /api/recipes
  */
 export interface RecipesRequestBuilder extends BaseRequestBuilder<RecipesRequestBuilder> {
+  /**
+   * The capturePdf property
+   */
+  get capturePdf(): CapturePdfRequestBuilder;
   /**
    * The captureUrl property
    */
@@ -362,6 +371,9 @@ export const RecipesRequestBuilderNavigationMetadata: Record<
     requestsMetadata: ItemRequestBuilderRequestsMetadata,
     navigationMetadata: ItemRequestBuilderNavigationMetadata,
     pathParametersMappings: ['%2Did'],
+  },
+  capturePdf: {
+    requestsMetadata: CapturePdfRequestBuilderRequestsMetadata,
   },
   captureUrl: {
     requestsMetadata: CaptureUrlRequestBuilderRequestsMetadata,

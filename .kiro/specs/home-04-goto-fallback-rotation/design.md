@@ -1,77 +1,15 @@
-# HOME-04 — GOTO fallback rotation: design baseline
+# HOME-04 — GOTO fallback rotation: design
 
-## Status
+## Data and service ownership
 
-Baseline proposed/current-behavior design derived from [`requirements.md`](requirements.md). It records current integration evidence and candidate verification seams. **Implementation is not authorized.**
+`GoToService` serializes `GoToListDto` as camel-case JSON in `FamilySettings.Key == "family_goto"` and reads/writes the whole list. `GetActive` filters recipe IDs against undeleted `IsReady` records, randomly picks a ready ID, supplies a hero URL if absent, and returns null/404 for no candidate. `GoToController` wraps successful payloads as `{ data }`.
 
-## Verified current integration map
+`familyStore` is the client cache/API wrapper: load stores the list under `familySettings.family_goto`; save PUTs then stores the submitted DTO; active lookup returns null for any error. `FamilyGOTOSettings` and `RecipeDetailSheet` create replacement lists from that cache.
 
-- `pwa/src/components/profile/FamilyGOTOSettings.tsx`
-- `pwa/src/components/recipes/RecipeDetailSheet.tsx`
-- `pwa/src/store/gotoStore.ts`
-- `pwa/src/lib/gotoUtils.ts`
-- `api/src/RecipeApi/Controllers/GoToController.cs`
-- `api/src/RecipeApi/Services/GoToService.cs`
-- `api/src/RecipeApi/Workflows/goto-synthesis.yaml`
+## Workflow and stream boundary
 
-### Ownership and flow
+`RecipeService.DescribeRecipe` creates a non-ready recipe and starts `goto-synthesis`. Recipe-ready processing publishes `recipe_ready`; `useScheduleStream` records its ID in `gotoStore`. Settings reloads when one of its pending IDs becomes ready, while Home reloads an already-pending active entry. The event does not change `family_goto`.
 
-1. The route/component accepts interaction and keeps only ephemeral presentation state.
-2. The relevant Zustand store or API wrapper translates feature intent into generated-client or explicit HTTP calls.
-3. The current API controller operation validates household/member context and delegates to its service or workflow.
-4. Durable ownership remains server GOTO list with pending/ready lifecycle and client gotoStore; response data and `/api/stream` events reconcile participating clients where the feature is shared.
-5. Tests adjacent to the listed source and controller/service tests are the preferred executable evidence; `specs/openapi.yaml` is the contract authority for exposed operations.
+## Evidence
 
-## Behavior design
-
-### Success
-
-- Render confirmed data with stable identity and retain relevant member, week, date, or recipe context through navigation.
-- Disable only conflicting work while a mutation is pending; apply the accepted response, then reconcile matching shared events idempotently.
-- Report success only for an accepted operation. Browser-only conveniences such as clipboard/share do not redefine server success.
-
-### Empty, loading, errors, and recovery
-
-- Loading retains safe confirmed content where available and exposes a perceivable busy state.
-- Empty state distinguishes “no configured/assigned data” from loading and failure.
-- Authentication/authorization failure returns to the appropriate access or identity recovery path; validation/conflict errors preserve inputs and explain the next action.
-- Network/server failure restores the last confirmed state. Retry reuses feature context but does not blindly replay a mutation whose outcome is unknown.
-- Late results are ignored when their member, week, slot, recipe, request generation, or mounted surface no longer matches.
-
-### Concurrency
-
-- Server responses/events are authoritative. Optimistic changes require a pre-mutation snapshot or equivalent rollback data.
-- Matching SSE events may confirm local work; echoed or older events must not cause duplicate effects or visual regression.
-- A reconnect/snapshot converges client state without overwriting a newer guarded optimistic write; conflicts are surfaced rather than silently dropping displaced information.
-
-### Security and privacy
-
-- Household credentials use the existing authentication mechanism; member identity scopes personalized operations but is not a replacement for household authentication.
-- Secrets and signed invitation material are not logged, rendered after consumption, placed in telemetry, or sent to unrelated origins.
-- Destructive or household-wide changes require explicit intent and server authorization; inputs are contract-validated.
-
-### Accessibility and localization
-
-- Semantic headings, labels, focus management, keyboard activation, live status/error announcements, and non-color state indicators cover every interactive flow.
-- Copy is localized through current locale facilities. Dates are transported in contract format and presented in the member locale without changing schedule-day identity.
-
-### Performance and operations
-
-- Avoid duplicate fetch/mutation calls and unbounded suggestion/list rendering. Preserve store selectors and targeted event updates to limit rerenders.
-- Do not log credentials or full private payloads. Operational signals should distinguish validation, conflict, authorization, dependency, and unexpected failures without inventing success.
-
-## Requirement traceability
-
-| Requirements | Design seam |
-|---|---|
-| HOME-04-AC-01, HOME-04-AC-02, HOME-04-AC-03 | Route/component → store/API → controller/service → authoritative state |
-| HOME-04-AC-04 | Pending guard, confirmed snapshot, actionable error, retry |
-| HOME-04-AC-05 | Context keys, optimistic guard, SSE echo/reconnect reconciliation |
-| HOME-04-AC-06 | Semantic controls, focus/live regions, locale-safe copy and dates |
-| HOME-04-AC-07 | Authentication/member scope, context-preserving navigation, non-target preservation |
-
-## Verified facts versus future decisions
-
-**Verified facts:** the files above currently own the visible/client/server seams; generated API code is derived from `specs/openapi.yaml`; shared schedule behavior uses `/api/stream`; server GOTO list with pending/ready lifecycle and client gotoStore is the observed state boundary.
-
-**Future decisions (not implementation commitments):** final product copy, retention/audit policy, conflict UX, service-level targets, telemetry schema, and any new family-facing entry point or contract field require approval. The open questions in requirements block affected future tasks.
+`FamilyGOTOSettings.tsx`, `RecipeDetailSheet.tsx`, `familyStore.ts`, `gotoStore.ts`, `gotoUtils.ts`, `useScheduleStream.ts`, `GoToController.cs`, `GoToService.cs`, `RecipeService.cs`, `Workflows/goto-synthesis.yaml`, `GotoSynthesisIntegrationTests.cs`, and `specs/openapi.yaml`.

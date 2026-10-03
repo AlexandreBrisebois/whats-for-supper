@@ -63,7 +63,7 @@ export function FamilyMemberList({
                       aria-label={tWithVars('family.editNameFor', 'Edit name for {name}', {
                         name: member.name,
                       })}
-                      className="flex-1 rounded-xl bg-terracotta/5 px-3 py-2 text-sm font-medium text-charcoal focus:outline-none"
+                      className="min-w-0 flex-1 rounded-xl bg-terracotta/5 px-3 py-2 text-sm font-medium text-charcoal focus:outline-none"
                       autoFocus
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') handleUpdate(member.id);
@@ -75,7 +75,7 @@ export function FamilyMemberList({
                       onClick={() => handleUpdate(member.id)}
                       disabled={isLoading || !editName.trim()}
                       data-testid={`family-member-save-${member.id}`}
-                      className="rounded-full p-2 text-terracotta hover:bg-terracotta/10 disabled:opacity-30"
+                      className="shrink-0 rounded-full p-2 text-terracotta hover:bg-terracotta/10 disabled:opacity-30"
                       aria-label={t('family.saveName', 'Save name')}
                     >
                       <Check className="h-4 w-4" />
@@ -85,7 +85,7 @@ export function FamilyMemberList({
                       onClick={cancelEditing}
                       disabled={isLoading}
                       data-testid={`family-member-cancel-${member.id}`}
-                      className="rounded-full p-2 text-charcoal-400 hover:bg-charcoal-100"
+                      className="shrink-0 rounded-full p-2 text-charcoal-400 hover:bg-charcoal-100"
                       aria-label={t('family.cancelEditing', 'Cancel editing')}
                     >
                       <X className="h-4 w-4" />
@@ -98,18 +98,19 @@ export function FamilyMemberList({
                       onClick={() => onSelect(member.id)}
                       data-testid={`family-member-${member.id}`}
                       className={[
-                        'flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left transition-all',
                         'flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left transition-all active:scale-[0.98]',
                         'focus:outline-none focus:ring-2 focus:ring-terracotta/40',
                         selected
-                          ? `bg-terracotta text-white shadow-card ${onInvite ? 'pr-36' : 'pr-24'}`
-                          : `bg-white/40 backdrop-blur-xl border border-white/60 text-charcoal shadow-glass hover:bg-white/60 ${onInvite ? 'pr-28' : 'pr-12'}`,
+                          ? `bg-terracotta text-white shadow-card ${onInvite ? 'pr-24 sm:pr-36' : 'pr-24'}`
+                          : `bg-white/40 backdrop-blur-xl border border-white/60 text-charcoal shadow-glass hover:bg-white/60 ${onInvite ? 'pr-24 sm:pr-28' : 'pr-12'}`,
                       ].join(' ')}
                     >
-                      <span className="font-medium truncate">{member.name}</span>
+                      <span className="min-w-0 font-medium truncate" title={member.name}>
+                        {member.name}
+                      </span>
                       {selected && (
                         <>
-                          <span className="ml-auto text-xs font-semibold text-white/80">
+                          <span className="ml-auto shrink-0 text-xs font-semibold text-white/80">
                             {t('family.selected', 'you')}
                           </span>
                           <span className="sr-only">Selected family member</span>
@@ -126,15 +127,16 @@ export function FamilyMemberList({
                             onInvite(member.id, member.name);
                           }}
                           data-testid={`family-member-invite-${member.id}`}
+                          aria-label={t('profile.invite', 'Invite')}
                           className={[
-                            'flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider transition-all shadow-sm',
+                            'flex h-11 w-11 sm:h-auto sm:w-auto items-center justify-center gap-1.5 rounded-full sm:px-3 sm:py-1.5 text-[10px] font-bold uppercase tracking-wider transition-all shadow-sm',
                             selected
                               ? 'bg-white/20 text-white hover:bg-white/30 ring-1 ring-white/30'
                               : 'bg-terracotta/10 text-terracotta hover:bg-terracotta/20 ring-1 ring-terracotta/20',
                           ].join(' ')}
                         >
                           <Share2 className="h-3 w-3" />
-                          {t('profile.invite', 'Invite')}
+                          <span className="hidden sm:inline">{t('profile.invite', 'Invite')}</span>
                         </button>
                       )}
                       <button

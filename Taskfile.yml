@@ -1007,6 +1007,21 @@ tasks:
   # DOCUMENTATION
   # ============================================================================
 
+  spec:search:
+    desc: "Search the specification registry before creating or revising a spec"
+    cmds:
+      - python3 -B scripts/agent/spec_registry.py search {{.CLI_ARGS}}
+
+  spec:check:
+    desc: "Validate the specification registry and rendered index"
+    cmds:
+      - python3 -B scripts/agent/spec_registry.py check {{.CLI_ARGS}}
+
+  spec:index:
+    desc: "Render SPEC_INDEX.md from the canonical specification registry"
+    cmds:
+      - python3 -B scripts/agent/spec_registry.py render
+
   docs:dev-loop:
     desc: "Open local development loop documentation"
     cmds:

@@ -89,6 +89,20 @@
       "1": "Not for me",
       "2": "It was OK",
       "3": "Loved it!"
+    },
+    "pdf": {
+      "title": "Add this recipe to your library",
+      "guidance": "Choose a PDF containing one recipe · up to 10 pages · 20 MiB.",
+      "preparing": "Preparing your PDF…",
+      "receipt": "Wait for the upload to finish. An interrupted upload may need to be restarted.",
+      "uncertain": "Couldn’t confirm the upload. Try again; another submission may create a duplicate.",
+      "disabled": "PDF import preview isn’t enabled. This file hasn’t been added.",
+      "size": "Choose a PDF up to 20 MiB.",
+      "type": "Choose a PDF file.",
+      "restart": "Choose or share the PDF again.",
+      "loading": "Loading preview features…",
+      "previewFeatures": "Preview features",
+      "chooseAnotherWay": "Choose another way"
     }
   },
   "profile": {
@@ -225,7 +239,8 @@
     "removeRecipeAction": "Remove recipe",
     "viewRecipe": "View recipe",
     "closeVoting": "Close Voting",
-    "diversify": "Diversify"
+    "diversify": "Diversify",
+    "holdToMove": "Hold to move"
   },
   "grocery": {
     "smartShopping": "Smart Shopping",
@@ -255,7 +270,8 @@
     "ingredientsReady": "Check off your ingredients before you start cooking.",
     "letsCook": "Let's Cook",
     "back": "Back",
-    "done": "Done",
+    "cooked": "Cooked",
+    "markCooked": "Mark recipe as cooked",
     "next": "Next",
     "total": "total",
     "noCookFresh": "No-Cook / Fresh",
@@ -387,5 +403,42 @@
     "retrying": "Retrying...",
     "clearFailedCapture": "Clear failed capture",
     "clearFailedCaptureConfirm": "Clear this failed capture?"
+  },
+  "previewFeatures": {
+    "title": "Preview features",
+    "subtitle": "Try upcoming ideas when you want to.",
+    "notice": "Previews may change, and you can turn them off at any time.",
+    "badge": "Preview",
+    "retry": "Retry",
+    "tryAgain": "Try again",
+    "saving": "Saving…",
+    "loadError": "Unable to load preview features.",
+    "saveError": "Couldn't save. Try again.",
+    "enabled": "Preview enabled",
+    "disabled": "Preview turned off",
+    "flags": {
+      "single-page-recipe-steps": {
+        "name": "Recipe on one page",
+        "description": "After getting ready, scroll through all the cooking steps on one page."
+      },
+      "planner-hold-to-move": {
+        "name": "Hold to move meals",
+        "description": "Hold the planner handle briefly before moving a meal. Scroll past it without changing your plan."
+      }
+    }
+  },
+  "familyGoto": {
+    "title": "Family GOTO",
+    "description": "Your fallback meals when nothing is planned. They cycle on the home screen so you can confirm them in one tap.",
+    "empty": "No GOTO set yet.",
+    "add": "Add a GOTO",
+    "remove": "Remove {{name}}",
+    "close": "Close",
+    "search": "Search the Library",
+    "searchDescription": "Find the recipe, then tap the star to make it your GOTO.",
+    "describe": "Describe it",
+    "describeDescription": "AI synthesizes a full recipe from your description",
+    "capture": "Capture it",
+    "captureDescription": "Photo of a recipe card, box, or handwritten note"
   }
 }

@@ -1,72 +1,25 @@
 # PLAN-03 — Schedule movement and exceptions: requirements
 
-## Status and derivation
+## Status
 
-- **Status:** Baseline proposed/current-behavior specification.
-- **Kind:** Feature specification; behavior-first; accelerated cadence.
-- **Source artifact:** [`docs/feature-inventory.md`](../../../docs/feature-inventory.md), PLAN-03.
-- **Authority:** This specification documents observed behavior for review. **Implementation is not authorized.**
+- **Status:** Implemented capability baseline.
+- **Kind:** Capability baseline; behavior-first.
 
 ## Outcome
 
-A member can move, remove, defer, or classify scheduled days while the shared schedule remains reconcilable after concurrent edits.
+A planner user can reorder a scheduled meal, carry it into a later week when a recovery flow requests it, remove it, or record an ordered-in/skipped day; shared schedule updates are reconciled without overwriting a local drag.
 
-## Terms and state ownership
+## Implemented behavior
 
-- **Household** is the shared authenticated group; **member** is the selected perspective within it.
-- Canonical state for this feature is weekStore optimistic snapshot, move sequence, server schedule and SSE events. Client stores own display and in-flight state only; accepted server responses/events remain authoritative.
+- **PLAN-03-AC-01 — Drag move.** Reorder feedback swaps only the two affected local slots. On drag end, `commitMove` makes one `POST /api/schedule/move` request with `{ weekOffset, recipeId, fromIndex, toIndex }`; a request failure restores the pre-drag snapshot.
+- **PLAN-03-AC-02 — Server move rules.** With default intent, the service swaps source and target event recipe/status/vote data. With `intent: push`, it finds the first empty date up to 14 days from the source-week Monday and shifts events; if none exists it falls back to swap. Cross-week push searches only the target week and silently returns when full.
+- **PLAN-03-AC-03 — Exceptions.** A Recovery dialog can push Tomorrow/Next Week, call defer to the first available date from next Monday onward, or remove the source. Defer rejects `AwaitingConsensus` with HTTP 409 and returns 404 when the exact date/recipe no longer matches. A skipped source preserves its ordered-in placeholder and creates a new planned event at the destination.
+- **PLAN-03-AC-04 — Ordered in and removal.** `POST /api/schedule/day/{date}/validate` status 3 creates a recipe-less Skipped event if absent. `DELETE /api/schedule/day/{date}/remove` deletes an existing event. Both update the stream; removal recomputes grocery data and invalidates Quick Find.
+- **PLAN-03-AC-05 — Echo and concurrent move handling.** A browser move increments `localMoveSeq`; the auth layer sends it as `X-Move-Seq`, and `week_updated.echoSeq` confirms it. During drag/unconfirmed moves, a foreign snapshot is deferred; server status still updates. Other slot events only apply if their date is in the current loaded week.
+- **PLAN-03-AC-06 — Scope boundary.** Assignment/replacement is PLAN-02; Cooked status and today UI are `home-01-tonights-meal-status`; weekly navigation is PLAN-01.
 
-## Scope
+## Limitations and non-goals
 
-### In scope
-
-- Dragging commits one move for the completed gesture and supports movement/reordering across valid dates and weeks.
-- A day can be marked Ordered In, removed, moved to tomorrow, or deferred to an available later date.
-- Optimistic state is reconciled from server events; rejected moves restore the pre-drag snapshot and validation errors remain visible.
-- Loading, empty, success, rejection, retry, late-result, navigation, localization, accessibility, and concurrent-device behavior directly attached to the outcomes above.
-
-### Out of scope
-
-- Redesigning adjacent discovery, capture, recipe, or administration features.
-- Changing the approved OpenAPI contract, persistence schema, authentication model, or workflow schedule.
-- Treating this baseline as authorization to implement, migrate, or deploy anything.
-
-## Verified current ownership
-
-- `pwa/src/app/(app)/planner/page.tsx`
-- `pwa/src/store/weekStore.ts`
-- `pwa/src/components/home/SkipRecoveryDialog.tsx`
-- `pwa/src/lib/api/planner.ts`
-- `pwa/src/hooks/useScheduleStream.ts`
-- `api/src/RecipeApi/Controllers/ScheduleController.cs`
-- `api/src/RecipeApi/Services/ScheduleService.cs`
-
-These paths verify current integration ownership, not that every proposed acceptance statement is already completely implemented.
-
-## Acceptance requirements
-
-- **PLAN-03-AC-01 — Primary outcome.** Dragging commits one move for the completed gesture and supports movement/reordering across valid dates and weeks.
-- **PLAN-03-AC-02 — Complete path.** A day can be marked Ordered In, removed, moved to tomorrow, or deferred to an available later date.
-- **PLAN-03-AC-03 — Boundary behavior.** Optimistic state is reconciled from server events; rejected moves restore the pre-drag snapshot and validation errors remain visible.
-- **PLAN-03-AC-04 — Failure and recovery.** While work is loading or pending, duplicate submission is prevented and progress is perceivable. A rejected or unreachable request shows an actionable localized error, preserves the last confirmed state and user context, and permits retry without duplicating an accepted mutation.
-- **PLAN-03-AC-05 — Concurrency and late results.** Shared server updates are applied only to matching identities/week/date/context. Echoes and stale asynchronous results must not overwrite a newer local or server-confirmed state; reconnect obtains or preserves an authoritative snapshot.
-- **PLAN-03-AC-06 — Accessibility and localization.** Every action is keyboard operable, has a programmatic name and visible focus, communicates state without color alone, and announces consequential progress/errors. User-facing copy uses repository localization facilities; date, time, and count meaning remains locale-safe.
-- **PLAN-03-AC-07 — Compatibility and preservation.** Existing household authentication and member scoping remain enforced. Navigation retains relevant context, secrets never enter logs or persistent public UI, and unrelated weeks, days, recipes, votes, and member preferences remain unchanged.
-
-## Preserved behavior
-
-- Existing API authentication, success-envelope, member identity, and SSE-origin rules remain unchanged unless a separately approved contract specification says otherwise.
-- Existing confirmed server state is never discarded merely because a client request, animation, clipboard operation, native share call, or stream connection fails.
-- Unsupported browser conveniences degrade to another explicit action rather than blocking the core outcome.
-
-## Decisions
-
-- Stable acceptance identifiers use the `PLAN-03-AC-nn` namespace.
-- The server is authoritative for durable shared state; optimistic UI is provisional and reversible.
-- Accelerated cadence omits intermediate approval pauses but does not approve implementation.
-
-## Open questions
-
-- Which acceptance statements should become normative product commitments rather than preservation of observed behavior?
-- What user-facing retention, audit, conflict-resolution, and telemetry policy is required for this feature?
-- Which current edge cases need dedicated product copy, analytics, or explicit service-level targets?
+- Direct move errors are silent except for rollback; plan-later logs its failure and does not show recovery UI.
+- The service does not return a changed schedule from move/defer; clients depend on stream/refetch.
+- Cross-week move publishes only the source-week schedule in `MoveScheduleEventAsync`; defer publishes both affected weeks.

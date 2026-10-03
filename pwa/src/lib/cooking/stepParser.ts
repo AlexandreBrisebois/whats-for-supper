@@ -2,6 +2,8 @@ export interface CookingStep {
   index: number;
   title: string;
   instruction: string;
+  sourcePath?: [number, number?];
+  editableInstruction?: string;
 }
 
 interface HowToStep {
@@ -51,13 +53,19 @@ export function parseRecipeSteps(recipeInstructions?: unknown): CookingStep[] {
 
     // ── Branch 1: string array ["Step 1...", "Step 2..."] ───────────────────
     if (typeof firstItem === 'string') {
-      return instructions
-        .filter((s): s is string => typeof s === 'string' && s.trim().length > 0)
-        .map((instruction, idx) => ({
-          index: idx + 1,
-          title: `Step ${idx + 1}`,
-          instruction: instruction.trim(),
-        }));
+      const steps: CookingStep[] = [];
+      instructions.forEach((value, sourceIndex) => {
+        if (typeof value !== 'string' || !value.trim()) return;
+        const index = steps.length + 1;
+        steps.push({
+          index,
+          title: `Step ${index}`,
+          instruction: value.trim(),
+          editableInstruction: value.trim(),
+          sourcePath: [sourceIndex],
+        });
+      });
+      return steps;
     }
 
     if (typeof firstItem !== 'object' || firstItem === null) return [];
@@ -67,13 +75,13 @@ export function parseRecipeSteps(recipeInstructions?: unknown): CookingStep[] {
       const steps: CookingStep[] = [];
       let globalIndex = 1;
 
-      for (const section of instructions as HowToSection[]) {
+      for (const [sectionIndex, section] of (instructions as HowToSection[]).entries()) {
         if (!isHowToSection(section)) continue;
 
         const sectionName = section.name?.trim() ?? '';
         const isGeneric = GENERIC_SECTION_NAMES.has(sectionName.toLowerCase());
 
-        for (const step of section.itemListElement ?? []) {
+        for (const [stepIndex, step] of (section.itemListElement ?? []).entries()) {
           const text = step.text?.trim() || step.name?.trim() || '';
           if (!text) continue;
 
@@ -84,6 +92,8 @@ export function parseRecipeSteps(recipeInstructions?: unknown): CookingStep[] {
             index: globalIndex++,
             title: step.name?.trim() || `Step ${globalIndex - 1}`,
             instruction,
+            editableInstruction: text,
+            sourcePath: [sectionIndex, stepIndex] as [number, number],
           });
         }
       }
@@ -92,17 +102,21 @@ export function parseRecipeSteps(recipeInstructions?: unknown): CookingStep[] {
     }
 
     // ── Branch 3: flat HowToStep array [{name:"...", text:"..."}] ───────────
-    return (instructions as HowToStep[])
-      .filter((item): item is HowToStep => typeof item === 'object' && item !== null)
-      .map((step, idx) => {
-        const text = step.text?.trim() || step.name?.trim() || '';
-        return {
-          index: idx + 1,
-          title: step.name?.trim() || `Step ${idx + 1}`,
-          instruction: text,
-        };
-      })
-      .filter((step) => step.instruction.length > 0);
+    const flatSteps: CookingStep[] = [];
+    (instructions as HowToStep[]).forEach((step, sourceIndex) => {
+      if (typeof step !== 'object' || step === null) return;
+      const text = step.text?.trim() || step.name?.trim() || '';
+      if (!text) return;
+      const index = flatSteps.length + 1;
+      flatSteps.push({
+        index,
+        title: step.name?.trim() || `Step ${index}`,
+        instruction: text,
+        editableInstruction: text,
+        sourcePath: [sourceIndex],
+      });
+    });
+    return flatSteps;
   } catch (error) {
     console.error('Error parsing recipe steps:', error);
   }

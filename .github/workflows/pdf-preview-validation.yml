@@ -1,0 +1,201 @@
+name: PDF preview validation (no deployment)
+on:
+  push:
+    branches: [codex/pdf-recipe-import-preview]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: pdf-preview-validation
+  cancel-in-progress: true
+jobs:
+  api:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg18-trixie
+        env:
+          POSTGRES_USER: qualification
+          POSTGRES_PASSWORD: qualification
+          POSTGRES_DB: qualification
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U qualification -d qualification"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '11.0.100-preview.6.26359.118'
+      - name: API tests
+        run: dotnet test api/src/RecipeApi.Tests/RecipeApi.Tests.csproj --configuration Release --filter 'FullyQualifiedName!~PdfCapturePostgresTests' --logger 'trx;LogFileName=api.trx' --results-directory results
+      - name: PDF PostgreSQL disk recovery and lifecycle
+        if: always()
+        env:
+          WFS_TEST_POSTGRES_CONNECTION: Host=localhost;Port=5432;Database=qualification;Username=qualification;Password=qualification
+        run: dotnet test api/src/RecipeApi.Tests/RecipeApi.Tests.csproj --configuration Release --no-build --filter FullyQualifiedName~PdfCapturePostgresTests --logger 'trx;LogFileName=pdf-postgres.trx' --results-directory results
+      - name: Additional existing PostgreSQL regressions
+        continue-on-error: true
+        env:
+          WFS_TEST_POSTGRES_CONNECTION: Host=localhost;Port=5432;Database=qualification;Username=qualification;Password=qualification
+        run: dotnet test api/src/RecipeApi.Tests/RecipeApi.Tests.csproj --configuration Release --no-build --filter 'FullyQualifiedName~Postgres&FullyQualifiedName!~PdfCapturePostgresTests' --logger 'trx;LogFileName=additional-postgres.trx' --results-directory results
+      - name: Baseline evidence for existing PostgreSQL failures
+        if: always()
+        continue-on-error: true
+        env:
+          WFS_TEST_POSTGRES_CONNECTION: Host=localhost;Port=5432;Database=qualification;Username=qualification;Password=qualification
+        run: |
+          git fetch origin 6f36291d7bae3c46b9af2f9c17c02e9e17acc018
+          git worktree add /tmp/wfs-pdf-baseline 6f36291d7bae3c46b9af2f9c17c02e9e17acc018
+          dotnet test /tmp/wfs-pdf-baseline/api/src/RecipeApi.Tests/RecipeApi.Tests.csproj --configuration Release --filter 'FullyQualifiedName~BaselineHarness_RecordsVersionedRelevanceMeasurements|FullyQualifiedName~FindSimilar_UnavailableSemanticRetrievalFallsBackWithZeroSemanticContributionAndStableContinuations' --logger 'trx;LogFileName=baseline-postgres.trx' --results-directory "$GITHUB_WORKSPACE/results"
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: pdf-api-results
+          path: results
+  pwa:
+    runs-on: ubuntu-latest
+    env:
+      HEARTH_SECRET: Paris-Montreal
+      CI: true
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - run: npm ci
+        working-directory: pwa
+      - name: Scope-preserving PWA preparation
+        run: |
+          git fetch origin 6f36291d7bae3c46b9af2f9c17c02e9e17acc018
+          python3 - <<'PYFORMAT'
+          import pathlib, subprocess
+          files = subprocess.check_output(['git', 'diff', '--name-only', '--diff-filter=ACMR', '6f36291d7bae3c46b9af2f9c17c02e9e17acc018', 'HEAD'], text=True).splitlines()
+          files = [p for p in files if p.startswith('pwa/') and pathlib.Path(p).suffix in {'.ts', '.tsx', '.json', '.js', '.mjs'}]
+          subprocess.run(['npx', '--prefix', 'pwa', 'prettier', '--write', *files], check=True)
+          import shutil
+          for name in files:
+              target = pathlib.Path('/tmp/pdf-prepared') / name
+              target.parent.mkdir(parents=True, exist_ok=True)
+              shutil.copyfile(name, target)
+          PYFORMAT
+      - uses: actions/upload-artifact@v7
+        with:
+          name: pdf-prepared-pwa
+          path: /tmp/pdf-prepared
+      - uses: actions/upload-artifact@v7
+        with:
+          name: pdf-installed-next-guides
+          path: pwa/node_modules/next/dist/docs
+      - run: npm run typecheck
+        working-directory: pwa
+      - run: npm run lint
+        working-directory: pwa
+      - run: npm run test:unit
+        working-directory: pwa
+      - run: node --test public/pdf-share.test.mjs
+        working-directory: pwa
+      - run: npm run build
+        working-directory: pwa
+      - run: npx playwright install chromium --with-deps
+        working-directory: pwa
+      - run: npx playwright test
+        working-directory: pwa
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: pdf-pwa-results
+          path: pwa/playwright-report
+  generated-client:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: |
+            10.0.x
+            11.0.100-preview.6.26359.118
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - run: dotnet tool restore
+      - run: npm ci
+        working-directory: pwa
+      - run: python3 -B scripts/agent/kiota_client.py check
+      - name: PDF documentation links and Python syntax
+        if: always()
+        run: |
+          python3 - <<'PYDOC'
+          from pathlib import Path
+          import ast, re
+          docs = ['docs/user-guide.md', 'docs/flows/user-flows/pdf-recipe-import.md', 'docs/flows/data-flows/pdf-upload-path.md', 'docs/flows/data-flows/photo-upload-path.md', 'release-template/synology/README.md', 'scripts/pdf/README.md', 'scripts/pdf/qualification-x64.md', '.kiro/specs/pdf-recipe-import/implementation-evidence.md', '.kiro/specs/pdf-recipe-import/scope-review.md', '.kiro/specs/pdf-recipe-import/tasks.md', 'HANDOVER.md']
+          for name in docs:
+              path = Path(name)
+              for link in re.findall(r'\[[^\]]*\]\(([^)]+)\)', path.read_text()):
+                  if '://' in link or link.startswith('#'): continue
+                  target = link.split('#')[0]
+                  assert (path.parent / target).exists(), (name, link)
+          for name in ['scripts/pdf/qualify.py', 'scripts/pdf/check-compose.py']: ast.parse(Path(name).read_text())
+          print('passed: selected PDF documentation links and Python syntax')
+          PYDOC
+      - name: Selected scope whitespace
+        if: always()
+        run: |
+          git fetch origin 6f36291d7bae3c46b9af2f9c17c02e9e17acc018
+          git diff --check 6f36291d7bae3c46b9af2f9c17c02e9e17acc018 HEAD
+      - name: Install pinned Task for repository harness tests
+        if: always()
+        run: |
+          go install github.com/go-task/task/v3/cmd/task@v3.54.0
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+      - name: Repository agent regression tests
+        if: always()
+        run: python3 -B -m unittest discover -s scripts/agent/tests -p "test_*.py"
+      - run: python3 -B scripts/agent/spec_registry.py check
+        if: always()
+      - run: python3 -B scripts/agent/api_tools.py --route-drift
+        if: always()
+      - run: python3 -B scripts/agent/drift.py --schema-only
+        if: always()
+      - run: python3 -B scripts/agent/drift_mocks.py
+        if: always()
+      - run: python3 scripts/agent/kiota_client.py generate
+      - uses: actions/upload-artifact@v7
+        with:
+          name: pdf-generated-client
+          path: pwa/src/lib/api/generated
+
+  renderer-and-template:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '11.0.100-preview.6.26359.118'
+      - name: Qualification tools
+        run: sudo apt-get update && sudo apt-get install -y qpdf python3-pil fonts-dejavu-core
+      - name: Synthetic fixtures
+        run: python3 -B scripts/pdf/qualify.py prepare --directory /tmp/wfs-pdf-fixtures
+      - name: Production chiseled image
+        run: docker build --target production -t wfs-pdf-qualification:local api
+      - name: Image identity and notice inventory
+        run: |
+          docker image inspect wfs-pdf-qualification:local > /tmp/wfs-pdf-fixtures/image.json
+          container=$(docker create wfs-pdf-qualification:local)
+          docker cp "$container:/app/licenses" /tmp/wfs-pdf-fixtures/licenses
+          docker cp "$container:/app/RecipeApi.deps.json" /tmp/wfs-pdf-fixtures/RecipeApi.deps.json
+          docker rm "$container"
+      - name: Production native fixtures and measurements
+        run: python3 -B scripts/pdf/qualify.py run --directory /tmp/wfs-pdf-fixtures
+      - name: Native parent timeout and cleanup
+        run: dotnet test api/src/RecipeApi.Tests/RecipeApi.Tests.csproj --configuration Release --filter FullyQualifiedName~PdfNativeRendererTests --logger trx --results-directory /tmp/wfs-pdf-fixtures/test-results
+        env:
+          WFS_NATIVE_PDF_FIXTURES: /tmp/wfs-pdf-fixtures
+      - name: Synology Compose mode parity
+        run: python3 -B scripts/pdf/check-compose.py
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: pdf-renderer-qualification-x64
+          path: /tmp/wfs-pdf-fixtures

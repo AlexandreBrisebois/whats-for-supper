@@ -74,3 +74,31 @@ See Cloudflare's [Tunnel setup guide](https://developers.cloudflare.com/tunnel/g
 for current dashboard details and connector troubleshooting.
 
 This template does not configure backup, restore, updates, or rollback.
+
+## Feature previews
+
+The deployment administrator controls whether **Recipe on one page** is unavailable,
+available as a per-member preview, or enabled for everyone:
+
+```dotenv
+WFS_FEATURE_SINGLE_PAGE_RECIPE_STEPS=off # off | opt-in | on
+WFS_FEATURE_PLANNER_HOLD_TO_MOVE=off # off | opt-in | on
+```
+
+After changing the value, recreate the API container. Missing or invalid values
+fail closed to `off`. Changing back to `off` is the rollback and requires no data
+rollback.
+
+## PDF recipe import preview
+
+`WFS_FEATURE_PREVIEW_PDF_RECIPE_IMPORT=off` is the default. `opt-in` advertises PDF sharing for the installed Android app and permits each established member to enable acquisition in Settings. `on` enables acquisition for everyone. Missing or invalid modes fail closed to `off`. The same `.env` value is passed to **both API and PWA**; recreate both containers when an administrator changes it. The single runtime `/manifest.json` keeps the existing identity/icons/shortcuts: off uses the original GET link target; opt-in/on advertises multipart PDF POST sharing. Manifest responses bypass the service-worker cache and use `Cache-Control: no-store`.
+
+Installed Android metadata can remain stale. After a future authorized deployment change, reopen the HTTPS app and allow the browser to refresh installation metadata; if the PDF target remains absent, reinstall the PWA. Verify OS registration from several compatible PDF-sharing apps on the supported Android/browser versions. A stale target remains subject to foreground and API member gates. iOS uses the file picker. This template update does not deploy or enable the preview.
+
+PDF rendering uses a fixed profile in API code; there are no deployment tuning variables. The measured profile is 200 DPI PNG, a maximum dimension of 4096 pixels, 16,777,216 pixels per page, 64 MiB total PNG output, a 512 MiB native-child resident-memory guard and a 60-second timeout. The native child runs sequentially; page dimensions/output are validated and the parent monitors resident memory and kills/reaps it on timeout or a budget breach. RSS monitoring is sampled and is not an operating-system hard memory ceiling. Actual NAS architecture and household-load qualification remains required before enabling the preview; leave capacity for the API, PostgreSQL and temporary files.
+
+The API image pins PDFtoImage 5.4.0, includes fonts and shipped dependency notices, and runs the PDF worker inside the production chiseled container. See [renderer qualification](../../scripts/pdf/README.md) for repeatable fixture/container commands and evidence. An x64 CI result does not establish ARM64 or Synology support. A document that exceeds the fixed renderer limits remains a failed job, recoverable through Settings; its accepted PDF is retained. Disabling acquisition does not stop already submitted workflow retries. Enabling the preview does not require additional renderer configuration.
+
+Keep the whole `data/app` tree, including each recipe's internal `original/source.pdf`, rendered pages and metadata, with the database backup. Soft delete keeps artifacts; permanent purge or failed-import Delete maintenance removes the aggregate. Existing backup/restore is not a durable workflow-queue backup: restoring a pending PDF preserves its source and pending metadata but does not recreate lost workflow tasks automatically. Check pending jobs explicitly after recovery. Never expose the retained PDF through a public file server; View original serves page images only.
+
+Release qualification must record native fixture measurements, timeout/cleanup, source lifecycle, real Android OS sharing, the iOS picker and phone usability. `off → opt-in → on` is a possible later rollout, requiring separate deployment authorization and those results. No live `.env`, secrets, deployment or rollout is changed by this work.

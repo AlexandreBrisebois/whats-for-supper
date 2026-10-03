@@ -14,6 +14,9 @@ import {
   ArrowLeft,
 } from 'lucide-react';
 import { useCapture } from '@/hooks/useCapture';
+import { usePdfCaptureStore } from '@/store/pdfCaptureStore';
+import { useFeatureFlagStore } from '@/store/featureFlagStore';
+import { validatePdfSelection } from '@/lib/pdfCapture';
 import { useFamilyStore } from '@/store/familyStore';
 import { useCaptureStore } from '@/store/captureStore';
 import { useLibraryStore } from '@/store/libraryStore';
@@ -69,6 +72,7 @@ export default function MinimalCapture({
   const saveGoTo = useFamilyStore((state) => state.saveGoTo);
   const {
     images,
+    reset: resetCapture,
     addImage,
     removeImage,
     isSubmitting,
@@ -140,6 +144,21 @@ export default function MinimalCapture({
   const [isDiscardingDuplicate, setIsDiscardingDuplicate] = useState(false);
 
   const isGoto = intent === 'goto';
+  const memberId = useFamilyStore((state) => state.selectedFamilyMemberId);
+  const pdfSelection = usePdfCaptureStore((state) => state.selection);
+  const pdfEnabled = useFeatureFlagStore((state) =>
+    Boolean(
+      !isGoto &&
+      memberId &&
+      state.memberId === memberId &&
+      !state.loading &&
+      !state.error &&
+      state.flags['preview-pdf-recipe-import']?.enabled
+    )
+  );
+  useEffect(() => {
+    if (pdfSelection) resetCapture?.();
+  }, [pdfSelection, resetCapture]);
 
   useEffect(() => {
     if (isGoto) {
@@ -378,6 +397,31 @@ export default function MinimalCapture({
     event.target.value = '';
 
     if (!file) return;
+    if (file.name.toLowerCase().endsWith('.pdf') || file.type === 'application/pdf') {
+      if (!pdfEnabled || !memberId) {
+        setBundleImportError(
+          t(
+            'capture.pdf.disabled',
+            'PDF import preview isn’t enabled. This file hasn’t been added.'
+          )
+        );
+        return;
+      }
+      const invalid = validatePdfSelection(file);
+      if (invalid) {
+        setBundleImportError(
+          invalid === 'size'
+            ? t('capture.pdf.size', 'Choose a PDF up to 20 MiB.')
+            : t('capture.pdf.type', 'Choose a PDF file.')
+        );
+        return;
+      }
+      resetCapture();
+      setParsedBundle(null);
+      setBundleImportError(null);
+      usePdfCaptureStore.getState().select(file, memberId);
+      return;
+    }
 
     try {
       setBundleImportError(null);
@@ -1099,7 +1143,7 @@ export default function MinimalCapture({
               ref={recipeFileInputRef}
               data-testid="import-recipe-file-input"
               type="file"
-              accept=".txt,text/plain"
+              accept={pdfEnabled ? '.txt,text/plain,.pdf,application/pdf' : '.txt,text/plain'}
               aria-label="Import recipe file"
               title="Import recipe file"
               className="hidden"

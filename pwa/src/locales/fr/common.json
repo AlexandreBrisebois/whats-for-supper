@@ -89,6 +89,20 @@
       "1": "Pas pour moi",
       "2": "C'était correct",
       "3": "On a adoré !"
+    },
+    "pdf": {
+      "title": "Ajouter cette recette à votre bibliothèque",
+      "guidance": "Choisissez un PDF contenant une recette · 10 pages maximum · 20 Mio.",
+      "preparing": "Préparation de votre PDF…",
+      "receipt": "Attendez la fin du téléversement. Un téléversement interrompu peut nécessiter un nouvel essai.",
+      "uncertain": "Impossible de confirmer le téléversement. Réessayez; un nouvel envoi peut créer un doublon.",
+      "disabled": "L’import PDF en aperçu n’est pas activé. Ce fichier n’a pas été ajouté.",
+      "size": "Choisissez un PDF de 20 Mio maximum.",
+      "type": "Choisissez un fichier PDF.",
+      "restart": "Choisissez ou partagez le PDF à nouveau.",
+      "loading": "Chargement des fonctionnalités en aperçu…",
+      "previewFeatures": "Fonctionnalités en aperçu",
+      "chooseAnotherWay": "Choisir une autre méthode"
     }
   },
   "profile": {
@@ -225,7 +239,8 @@
     "removeRecipeAction": "Retirer la recette",
     "viewRecipe": "Voir la recette",
     "closeVoting": "Fermer le vote",
-    "diversify": "Diversifier"
+    "diversify": "Diversifier",
+    "holdToMove": "Maintenir pour déplacer"
   },
   "grocery": {
     "smartShopping": "Courses Intelligentes",
@@ -255,7 +270,8 @@
     "ingredientsReady": "Cochez vos ingrédients avant de commencer à cuisiner.",
     "letsCook": "On cuisine",
     "back": "Retour",
-    "done": "Terminé",
+    "cooked": "Cuisiné",
+    "markCooked": "Marquer la recette comme cuisinée",
     "next": "Suivant",
     "total": "total",
     "noCookFresh": "Sans Cuisson / Frais",
@@ -387,5 +403,42 @@
     "retrying": "Nouvel essai...",
     "clearFailedCapture": "Effacer la capture échouée",
     "clearFailedCaptureConfirm": "Effacer cette capture échouée?"
+  },
+  "previewFeatures": {
+    "title": "Fonctionnalités en aperçu",
+    "subtitle": "Essayez les nouveautés à votre rythme.",
+    "notice": "Les aperçus peuvent évoluer. Vous pouvez les désactiver à tout moment.",
+    "badge": "Aperçu",
+    "retry": "Réessayer",
+    "tryAgain": "Réessayer",
+    "saving": "Enregistrement…",
+    "loadError": "Impossible de charger les fonctionnalités en aperçu.",
+    "saveError": "Impossible d’enregistrer. Réessayez.",
+    "enabled": "Aperçu activé",
+    "disabled": "Aperçu désactivé",
+    "flags": {
+      "single-page-recipe-steps": {
+        "name": "Recette sur une seule page",
+        "description": "Après la préparation, faites défiler toutes les étapes sur une seule page."
+      },
+      "planner-hold-to-move": {
+        "name": "Maintenir pour déplacer les repas",
+        "description": "Maintenez brièvement la poignée avant de déplacer un repas. Faites défiler sans modifier votre plan."
+      }
+    }
+  },
+  "familyGoto": {
+    "title": "Repas de secours",
+    "description": "Vos repas de secours quand rien n’est prévu. Ils s’affichent à tour de rôle sur l’accueil : confirmez votre choix d’un seul geste.",
+    "empty": "Aucun repas de secours pour le moment.",
+    "add": "Ajouter un repas",
+    "remove": "Retirer {{name}}",
+    "close": "Fermer",
+    "search": "Chercher dans la bibliothèque",
+    "searchDescription": "Trouvez la recette, puis touchez l’étoile pour en faire un repas de secours.",
+    "describe": "Décrire un plat",
+    "describeDescription": "L’IA crée une recette complète à partir de votre description",
+    "capture": "Prendre une photo",
+    "captureDescription": "Photographiez une fiche recette, un emballage ou une note manuscrite"
   }
 }

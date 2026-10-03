@@ -5,6 +5,7 @@
 import {
   createUntypedNodeFromDiscriminatorValue,
   type AdditionalDataHolder,
+  type ApiError,
   type DateOnly,
   type Guid,
   type Parsable,
@@ -259,6 +260,28 @@ export function createDisplacedRecipeDtoFromDiscriminatorValue(
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {FeatureFlagDto}
+ */
+// @ts-ignore
+export function createFeatureFlagDtoFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoFeatureFlagDto;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {FeatureFlagListDto}
+ */
+// @ts-ignore
+export function createFeatureFlagListDtoFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoFeatureFlagListDto;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {GoToItem}
  */
 // @ts-ignore
@@ -409,6 +432,39 @@ export function createPaginationDtoFromDiscriminatorValue(
   parseNode: ParseNode | undefined
 ): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
   return deserializeIntoPaginationDto;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {PdfCaptureAccepted_data}
+ */
+// @ts-ignore
+export function createPdfCaptureAccepted_dataFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoPdfCaptureAccepted_data;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {PdfCaptureAccepted}
+ */
+// @ts-ignore
+export function createPdfCaptureAcceptedFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoPdfCaptureAccepted;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {PdfCaptureError}
+ */
+// @ts-ignore
+export function createPdfCaptureErrorFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoPdfCaptureError;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -831,6 +887,17 @@ export function createTopPickDtoFromDiscriminatorValue(
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {UpdateFeatureFlagRequest}
+ */
+// @ts-ignore
+export function createUpdateFeatureFlagRequestFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoUpdateFeatureFlagRequest;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {UpdateRecipeDto}
  */
 // @ts-ignore
@@ -1234,6 +1301,53 @@ export function deserializeIntoDisplacedRecipeDto(
 }
 /**
  * The deserialization information for the current model
+ * @param FeatureFlagDto The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoFeatureFlagDto(
+  featureFlagDto: Partial<FeatureFlagDto> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    description: (n) => {
+      featureFlagDto.description = n.getStringValue();
+    },
+    displayName: (n) => {
+      featureFlagDto.displayName = n.getStringValue();
+    },
+    enabled: (n) => {
+      featureFlagDto.enabled = n.getBooleanValue();
+    },
+    key: (n) => {
+      featureFlagDto.key = n.getStringValue();
+    },
+    memberEnabled: (n) => {
+      featureFlagDto.memberEnabled = n.getBooleanValue();
+    },
+    mode: (n) => {
+      featureFlagDto.mode = n.getEnumValue<FeatureFlagMode>(FeatureFlagModeObject);
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param FeatureFlagListDto The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoFeatureFlagListDto(
+  featureFlagListDto: Partial<FeatureFlagListDto> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    items: (n) => {
+      featureFlagListDto.items = n.getCollectionOfObjectValues<FeatureFlagDto>(
+        createFeatureFlagDtoFromDiscriminatorValue
+      );
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
  * @param GoToItem The instance to deserialize into.
  * @returns {Record<string, (node: ParseNode) => void>}
  */
@@ -1591,6 +1705,56 @@ export function deserializeIntoPaginationDto(
     },
     total: (n) => {
       paginationDto.total = n.getNumberValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param PdfCaptureAccepted The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoPdfCaptureAccepted(
+  pdfCaptureAccepted: Partial<PdfCaptureAccepted> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    data: (n) => {
+      pdfCaptureAccepted.data = n.getObjectValue<PdfCaptureAccepted_data>(
+        createPdfCaptureAccepted_dataFromDiscriminatorValue
+      );
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param PdfCaptureAccepted_data The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoPdfCaptureAccepted_data(
+  pdfCaptureAccepted_data: Partial<PdfCaptureAccepted_data> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    id: (n) => {
+      pdfCaptureAccepted_data.id = n.getGuidValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param PdfCaptureError The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoPdfCaptureError(
+  pdfCaptureError: Partial<PdfCaptureError> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    message: (n) => {
+      pdfCaptureError.messageEscaped = n.getStringValue();
+    },
+    status: (n) => {
+      pdfCaptureError.status = n.getNumberValue();
     },
   };
 }
@@ -2666,6 +2830,21 @@ export function deserializeIntoTopPickDto(
 }
 /**
  * The deserialization information for the current model
+ * @param UpdateFeatureFlagRequest The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoUpdateFeatureFlagRequest(
+  updateFeatureFlagRequest: Partial<UpdateFeatureFlagRequest> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    enabled: (n) => {
+      updateFeatureFlagRequest.enabled = n.getBooleanValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
  * @param UpdateRecipeDto The instance to deserialize into.
  * @returns {Record<string, (node: ParseNode) => void>}
  */
@@ -2969,6 +3148,39 @@ export interface DisplacedRecipeDto extends AdditionalDataHolder, Parsable {
    */
   name?: string | null;
 }
+export interface FeatureFlagDto extends AdditionalDataHolder, Parsable {
+  /**
+   * The description property
+   */
+  description?: string | null;
+  /**
+   * The displayName property
+   */
+  displayName?: string | null;
+  /**
+   * The enabled property
+   */
+  enabled?: boolean | null;
+  /**
+   * The key property
+   */
+  key?: string | null;
+  /**
+   * The memberEnabled property
+   */
+  memberEnabled?: boolean | null;
+  /**
+   * The mode property
+   */
+  mode?: FeatureFlagMode | null;
+}
+export interface FeatureFlagListDto extends AdditionalDataHolder, Parsable {
+  /**
+   * The items property
+   */
+  items?: FeatureFlagDto[] | null;
+}
+export type FeatureFlagMode = (typeof FeatureFlagModeObject)[keyof typeof FeatureFlagModeObject];
 export interface GoToItem extends AdditionalDataHolder, Parsable {
   /**
    * The description property
@@ -3237,6 +3449,28 @@ export interface PaginationDto extends AdditionalDataHolder, Parsable {
    * The total property
    */
   total?: number | null;
+}
+export interface PdfCaptureAccepted extends AdditionalDataHolder, Parsable {
+  /**
+   * The data property
+   */
+  data?: PdfCaptureAccepted_data | null;
+}
+export interface PdfCaptureAccepted_data extends AdditionalDataHolder, Parsable {
+  /**
+   * The id property
+   */
+  id?: Guid | null;
+}
+export interface PdfCaptureError extends AdditionalDataHolder, ApiError, Parsable {
+  /**
+   * The message property
+   */
+  messageEscaped?: string | null;
+  /**
+   * The status property
+   */
+  status?: number | null;
 }
 export interface PreSelectedRecipeDto extends AdditionalDataHolder, Parsable {
   /**
@@ -4200,6 +4434,51 @@ export function serializeDisplacedRecipeDto(
 }
 /**
  * Serializes information the current object
+ * @param FeatureFlagDto The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeFeatureFlagDto(
+  writer: SerializationWriter,
+  featureFlagDto: Partial<FeatureFlagDto> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!featureFlagDto || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeStringValue('description', featureFlagDto.description);
+  writer.writeStringValue('displayName', featureFlagDto.displayName);
+  writer.writeBooleanValue('enabled', featureFlagDto.enabled);
+  writer.writeStringValue('key', featureFlagDto.key);
+  writer.writeBooleanValue('memberEnabled', featureFlagDto.memberEnabled);
+  writer.writeEnumValue<FeatureFlagMode>('mode', featureFlagDto.mode);
+  writer.writeAdditionalData(featureFlagDto.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param FeatureFlagListDto The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeFeatureFlagListDto(
+  writer: SerializationWriter,
+  featureFlagListDto: Partial<FeatureFlagListDto> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!featureFlagListDto || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeCollectionOfObjectValues<FeatureFlagDto>(
+    'items',
+    featureFlagListDto.items,
+    serializeFeatureFlagDto
+  );
+  writer.writeAdditionalData(featureFlagListDto.additionalData);
+}
+/**
+ * Serializes information the current object
  * @param GoToItem The instance to serialize from.
  * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
  * @param writer Serialization writer to use to serialize this model
@@ -4536,6 +4815,65 @@ export function serializePaginationDto(
   writer.writeNumberValue('page', paginationDto.page);
   writer.writeNumberValue('total', paginationDto.total);
   writer.writeAdditionalData(paginationDto.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param PdfCaptureAccepted The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializePdfCaptureAccepted(
+  writer: SerializationWriter,
+  pdfCaptureAccepted: Partial<PdfCaptureAccepted> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!pdfCaptureAccepted || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeObjectValue<PdfCaptureAccepted_data>(
+    'data',
+    pdfCaptureAccepted.data,
+    serializePdfCaptureAccepted_data
+  );
+  writer.writeAdditionalData(pdfCaptureAccepted.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param PdfCaptureAccepted_data The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializePdfCaptureAccepted_data(
+  writer: SerializationWriter,
+  pdfCaptureAccepted_data: Partial<PdfCaptureAccepted_data> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!pdfCaptureAccepted_data || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeGuidValue('id', pdfCaptureAccepted_data.id);
+  writer.writeAdditionalData(pdfCaptureAccepted_data.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param PdfCaptureError The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializePdfCaptureError(
+  writer: SerializationWriter,
+  pdfCaptureError: Partial<PdfCaptureError> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!pdfCaptureError || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeStringValue('message', pdfCaptureError.messageEscaped);
+  writer.writeNumberValue('status', pdfCaptureError.status);
+  writer.writeAdditionalData(pdfCaptureError.additionalData);
 }
 /**
  * Serializes information the current object
@@ -5518,6 +5856,23 @@ export function serializeTopPickDto(
 /**
  * Serializes information the current object
  * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param UpdateFeatureFlagRequest The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeUpdateFeatureFlagRequest(
+  writer: SerializationWriter,
+  updateFeatureFlagRequest: Partial<UpdateFeatureFlagRequest> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!updateFeatureFlagRequest || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeBooleanValue('enabled', updateFeatureFlagRequest.enabled);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
  * @param UpdateRecipeDto The instance to serialize from.
  * @param writer Serialization writer to use to serialize this model
  */
@@ -5851,6 +6206,12 @@ export interface TopPickDto extends AdditionalDataHolder, Parsable {
    */
   totalTime?: string | null;
 }
+export interface UpdateFeatureFlagRequest extends Parsable {
+  /**
+   * The enabled property
+   */
+  enabled?: boolean | null;
+}
 export interface UpdateRecipeDto extends AdditionalDataHolder, Parsable {
   /**
    * The cuisineType property
@@ -6077,6 +6438,11 @@ export const CaptureFailureDto_sourceTypeObject = {
 } as const;
 export const CaptureFailureDto_statusObject = {
   Failed: 'failed',
+} as const;
+export const FeatureFlagModeObject = {
+  Off: 'off',
+  OptIn: 'opt-in',
+  On: 'on',
 } as const;
 export const GoToItem_statusObject = {
   Pending: 'pending',

@@ -16,9 +16,12 @@ import { useCaptureStore } from '@/store/captureStore';
 import { BackgroundBlobs } from '@/components/ui/BackgroundBlobs';
 import { ToastContainer } from '@/components/ui';
 import { LanguageSwitchProposal } from '@/components/common/LanguageSwitchProposal';
+import { usePdfCaptureStore } from '@/store/pdfCaptureStore';
+import { FeatureFlagProvider } from '@/components/featureFlags/FeatureFlagProvider';
 
 export default function AppRouteLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const pdfActive = usePdfCaptureStore((state) => Boolean(state.selection));
 
   // Mount SSE stream once at layout level — survives page navigation within the app shell
   useScheduleStream();
@@ -43,7 +46,7 @@ export default function AppRouteLayout({ children }: { children: React.ReactNode
     if (path.startsWith(ROUTES.CAPTURE)) {
       return {
         title: t('capture.addRecipe', 'Add a Recipe'),
-        rightAction: (
+        rightAction: pdfActive ? undefined : (
           <Link
             href={ROUTES.HOME}
             data-testid="capture-cancel-btn"
@@ -83,7 +86,7 @@ export default function AppRouteLayout({ children }: { children: React.ReactNode
     pathname === '/profile/settings';
 
   return (
-    <>
+    <FeatureFlagProvider>
       {/* Pre-seed weekStore for weekOffset=0 on app load (BS-2 fix) */}
       <WeekStoreInitializer />
       {/* Notification layer — fixed at the top, stackable flex column */}
@@ -106,6 +109,6 @@ export default function AppRouteLayout({ children }: { children: React.ReactNode
       >
         {children}
       </Layout>
-    </>
+    </FeatureFlagProvider>
   );
 }

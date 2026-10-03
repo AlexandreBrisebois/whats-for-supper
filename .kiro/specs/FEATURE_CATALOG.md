@@ -1,6 +1,11 @@
-# Current feature specification catalog
+# Legacy capability catalog
 
-This index expands every stable ID in [`docs/feature-inventory.md`](../../docs/feature-inventory.md) into the three active specification artifacts required by the repository workflow. These are **baseline proposals for future change control**: they document current capability boundaries and do not authorize implementation.
+> The canonical active-spec registry is [SPEC_INDEX.md](SPEC_INDEX.md), generated
+> from [spec-registry.yaml](spec-registry.yaml). This document retains the original
+> capability inventory and legacy ID links; it is not the entrypoint for creating
+> or classifying new specifications.
+
+This index expands every stable ID in [`docs/feature-inventory.md`](../../docs/feature-inventory.md) into the three active specification artifacts required by the repository workflow. These entries document current capability boundaries and do not authorize implementation.
 
 Each packet uses behavior-first derivation with accelerated cadence:
 

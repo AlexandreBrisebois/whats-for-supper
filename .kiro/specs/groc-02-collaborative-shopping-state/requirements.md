@@ -1,72 +1,34 @@
 # GROC-02 — Collaborative shopping state: requirements
 
-## Status and derivation
+## Status
 
-- **Status:** Baseline proposed/current-behavior specification.
-- **Kind:** Feature specification; behavior-first; accelerated cadence.
-- **Source artifact:** [`docs/feature-inventory.md`](../../../docs/feature-inventory.md), GROC-02.
-- **Authority:** This specification documents observed behavior for review. **Implementation is not authorized.**
+- **Status:** Implemented capability baseline.
+- **Kind:** Capability baseline; behavior-first.
 
 ## Outcome
 
-Household shoppers can coordinate checked state for individual or all weekly grocery lines across devices.
+Household shoppers can mark a displayed grocery item checked or unchecked, with the accepted state persisted for the selected week and broadcast to connected clients.
 
-## Terms and state ownership
+## Implemented behavior
 
-- **Household** is the shared authenticated group; **member** is the selected perspective within it.
-- Canonical state for this feature is server weekly grocery-state map and local displayed optimistic/check state. Client stores own display and in-flight state only; accepted server responses/events remain authoritative.
+- **GROC-02-AC-01 — Individual toggle.** A row immediately toggles its local `plannerStore.groceryState`, then `GroceryList` sends `PATCH /api/schedule/{weekOffset}/grocery/item` with `{ ingredientName, checked }`. On a non-success response it reverses that row and displays a temporary error icon.
+- **GROC-02-AC-02 — Durable merge.** `ScheduleService.ToggleGroceryItemAsync` loads the week's JSON map, changes only the supplied `ingredientName`, saves it, and publishes the complete map. The route returns `204 No Content`.
+- **GROC-02-AC-03 — Snapshot and stream convergence.** `GET /api/schedule` returns the persisted `groceryState` alongside grocery lines. Matching `week_updated` snapshots update it through `weekStore`; a `grocery_updated` SSE event updates `plannerStore` only when its `weekOffset` matches the currently loaded one.
+- **GROC-02-AC-04 — Bulk route.** `PATCH /api/schedule/{weekOffset}/grocery` replaces the complete state map and returns `{ data: Record<string, boolean> }`; the PWA wrapper exposes it, but `GroceryList` uses the item route rather than bulk replacement.
+- **GROC-02-AC-05 — Interaction.** Rows are buttons with checkbox role/state and keyboard handling; completed aisles collapse when the document becomes visible again. Check states are grouped by aisle and checked rows move after unchecked rows.
 
-## Scope
+## Scope and boundaries
 
-### In scope
+This packet owns persisted checklist state and its collaboration behavior. GROC-01 owns the derived rows that provide the present display-name key; `plat-01-shared-real-time-state` owns SSE connection and delivery mechanics. It does not own aisle corrections, schedule membership, household authorization, or a generalized conflict model.
 
-- A shopper can check or uncheck an individual grocery line for the selected week.
-- Bulk changes update the week grocery-state map and the response becomes the displayed state.
-- Shared schedule events synchronize accepted shopping changes; failures do not leave a false durable-success indication.
-- Loading, empty, success, rejection, retry, late-result, navigation, localization, accessibility, and concurrent-device behavior directly attached to the outcomes above.
+## Current limitations
 
-### Out of scope
-
-- Redesigning adjacent discovery, capture, recipe, or administration features.
-- Changing the approved OpenAPI contract, persistence schema, authentication model, or workflow schedule.
-- Treating this baseline as authorization to implement, migrate, or deploy anything.
-
-## Verified current ownership
-
-- `pwa/src/components/planner/GroceryList.tsx`
-- `pwa/src/lib/api/schedule.ts`
-- `pwa/src/store/plannerStore.ts`
-- `pwa/src/store/weekStore.ts`
-- `pwa/src/hooks/useScheduleStream.ts`
-- `api/src/RecipeApi/Controllers/ScheduleController.cs`
-- `api/src/RecipeApi/Services/ScheduleService.cs`
-
-These paths verify current integration ownership, not that every proposed acceptance statement is already completely implemented.
-
-## Acceptance requirements
-
-- **GROC-02-AC-01 — Primary outcome.** A shopper can check or uncheck an individual grocery line for the selected week.
-- **GROC-02-AC-02 — Complete path.** Bulk changes update the week grocery-state map and the response becomes the displayed state.
-- **GROC-02-AC-03 — Boundary behavior.** Shared schedule events synchronize accepted shopping changes; failures do not leave a false durable-success indication.
-- **GROC-02-AC-04 — Failure and recovery.** While work is loading or pending, duplicate submission is prevented and progress is perceivable. A rejected or unreachable request shows an actionable localized error, preserves the last confirmed state and user context, and permits retry without duplicating an accepted mutation.
-- **GROC-02-AC-05 — Concurrency and late results.** Shared server updates are applied only to matching identities/week/date/context. Echoes and stale asynchronous results must not overwrite a newer local or server-confirmed state; reconnect obtains or preserves an authoritative snapshot.
-- **GROC-02-AC-06 — Accessibility and localization.** Every action is keyboard operable, has a programmatic name and visible focus, communicates state without color alone, and announces consequential progress/errors. User-facing copy uses repository localization facilities; date, time, and count meaning remains locale-safe.
-- **GROC-02-AC-07 — Compatibility and preservation.** Existing household authentication and member scoping remain enforced. Navigation retains relevant context, secrets never enter logs or persistent public UI, and unrelated weeks, days, recipes, votes, and member preferences remain unchanged.
+- The state key is `displayName`, so duplicate display names share one check state even if represented by separate normalized/unit rows.
+- A single-item update is a read-modify-write of a JSON map. It prevents the browser from submitting its whole stale map, but there is no database concurrency token or per-item conflict protocol for simultaneous writes to the same plan.
+- The component has no pending-toggle guard; rapid toggles can resolve out of order. Remote `grocery_updated` events replace the whole displayed map without a local-write version guard.
+- Failure feedback is an icon auto-cleared after three seconds, without localized explanatory copy or a retry control.
+- The client sends the selected-family-member header, while these controller methods themselves do not consume it; authenticated household scoping is platform behavior, not specified here.
 
 ## Preserved behavior
 
-- Existing API authentication, success-envelope, member identity, and SSE-origin rules remain unchanged unless a separately approved contract specification says otherwise.
-- Existing confirmed server state is never discarded merely because a client request, animation, clipboard operation, native share call, or stream connection fails.
-- Unsupported browser conveniences degrade to another explicit action rather than blocking the core outcome.
-
-## Decisions
-
-- Stable acceptance identifiers use the `GROC-02-AC-nn` namespace.
-- The server is authoritative for durable shared state; optimistic UI is provisional and reversible.
-- Accelerated cadence omits intermediate approval pauses but does not approve implementation.
-
-## Open questions
-
-- Which acceptance statements should become normative product commitments rather than preservation of observed behavior?
-- What user-facing retention, audit, conflict-resolution, and telemetry policy is required for this feature?
-- Which current edge cases need dedicated product copy, analytics, or explicit service-level targets?
+Accepted server state, not the optimistic row change, is durable. Events for another week are ignored. The legacy bulk endpoint remains contract-supported but is not the normal browser path.

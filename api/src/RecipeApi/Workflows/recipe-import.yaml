@@ -4,8 +4,14 @@ parameters:
     - repairReasons?
     - repairNote?
 tasks:
+    - name: convert_pdf
+      processor: ConvertPdf
+      payload:
+          recipeId: "{{ recipeId }}"
     - name: extract_recipe
       processor: ExtractRecipe
+      depends_on:
+          - convert_pdf
       payload:
           recipeId: "{{ recipeId }}"
           repairReasons: "{{ repairReasons }}"
