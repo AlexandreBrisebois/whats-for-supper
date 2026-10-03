@@ -69,7 +69,7 @@ test.describe('PDF import preview', () => {
     await expect(page.getByTestId('pdf-confirmation')).toContainText('new.pdf');
     await page.reload();
     await expect(page.getByTestId('pdf-confirmation')).toHaveCount(0);
-    await expect(page.getByRole('alert')).toContainText(/again/);
+    await expect(page.getByTestId('pdf-share-error')).toContainText(/again/);
     const warm = await stage('warm.pdf');
     await page.goto('/capture?share=' + warm);
     await expect(page.getByTestId('pdf-confirmation')).toContainText('warm.pdf');
@@ -130,7 +130,7 @@ test.describe('PDF import preview', () => {
     expect(restored).toBe(false);
     await page.goto('/capture?share=' + token);
     await expect(page.getByTestId('pdf-confirmation')).toHaveCount(0);
-    await expect(page.getByRole('alert')).toContainText(/again/);
+    await expect(page.getByTestId('pdf-share-error')).toContainText(/again/);
   });
 
 });

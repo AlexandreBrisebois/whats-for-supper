@@ -30,6 +30,19 @@ RUN mkdir -p /rootfs/usr/share/fonts /rootfs/app/licenses/fonts && \
     cp -a /usr/share/fonts/truetype /rootfs/usr/share/fonts/ && \
     cp /usr/share/doc/fonts-dejavu-core/copyright /rootfs/app/licenses/fonts/DejaVu-copyright.txt
 
+# PDFium's NuGet package omits the native third-party notices. Retain the
+# exact matching upstream binary-distribution bundles, verified by release digest.
+FROM ubuntu:resolute AS renderer-notices
+ADD --checksum=sha256:019665c8877d46fe65f625f80fd714ab07aac68554b0636acf2a2adf9288adb2 \
+    https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/7961/pdfium-linux-x64.tgz /tmp/pdfium-x64.tgz
+ADD --checksum=sha256:974107999784a438149605024475d42d80dd306799d90e1af5f6fa63f976455f \
+    https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/7961/pdfium-linux-arm64.tgz /tmp/pdfium-arm64.tgz
+RUN mkdir -p /licenses/pdfium-linux-x64 /licenses/pdfium-linux-arm64 && \
+    tar -xzf /tmp/pdfium-x64.tgz -C /licenses/pdfium-linux-x64 --wildcards 'licenses/*' && \
+    tar -xzf /tmp/pdfium-arm64.tgz -C /licenses/pdfium-linux-arm64 --wildcards 'licenses/*' && \
+    test -s /licenses/pdfium-linux-x64/licenses/pdfium.txt && \
+    test -s /licenses/pdfium-linux-arm64/licenses/pdfium.txt
+
 # =============================================================================
 # Stage 3 — Development (Hot Reload)
 # =============================================================================
@@ -78,6 +91,7 @@ FROM base AS production
 WORKDIR /app
 COPY --from=extractor /rootfs /
 COPY --from=build /app/publish .
+COPY --from=renderer-notices /licenses /app/licenses/pdfium-distribution
 ENTRYPOINT ["dotnet", "RecipeApi.dll"]
 
 # =============================================================================

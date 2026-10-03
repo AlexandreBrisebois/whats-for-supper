@@ -24,6 +24,9 @@ export function PdfCapturePanel({ isGoto, resetPhotos }: { isGoto: boolean; rese
   const deliveryEpoch = useRef(0);
   const currentToken = useRef(token);
   const ownedGeneration = useRef<number | undefined>(undefined);
+  const previousMember = useRef(memberId);
+  const navigation = params.toString();
+  const previousNavigation = useRef(navigation);
   useEffect(() => {
     currentToken.current = token;
     if (selection) ownedGeneration.current = selection.generation;
@@ -62,8 +65,21 @@ export function PdfCapturePanel({ isGoto, resetPhotos }: { isGoto: boolean; rese
     return () => document.removeEventListener('visibilitychange', onHidden);
   }, [reset, token]);
   useEffect(() => {
-    if (selection && selection.memberId !== memberId) reset();
-  }, [memberId, selection, reset]);
+    if (previousMember.current !== memberId) {
+      deliveryEpoch.current++;
+      if (token) void discardSharedPdf(token);
+    }
+    previousMember.current = memberId;
+    if (selection && (selection.memberId !== memberId || isGoto)) reset();
+  }, [memberId, selection, isGoto, reset, token]);
+  useEffect(() => {
+    if (previousNavigation.current !== navigation) {
+      deliveryEpoch.current++;
+      reset();
+      queueMicrotask(() => { if (mounted.current && previousNavigation.current === navigation) setShareError(null); });
+    }
+    previousNavigation.current = navigation;
+  }, [navigation, reset]);
   useEffect(() => {
     if (!token || processedToken.current === token) return;
     processedToken.current = token;
@@ -87,7 +103,7 @@ export function PdfCapturePanel({ isGoto, resetPhotos }: { isGoto: boolean; rese
   }, [token, memberId, isGoto, resetPhotos]);
 
   if (!selection) return shareError || params.get('pdfShareError') ? (
-    <p role="alert" className="text-sm text-pink">{shareError || t('capture.pdf.restart', 'Choose or share the PDF again.')}</p>
+    <p data-testid="pdf-share-error" role="alert" className="text-sm text-pink">{shareError || t('capture.pdf.restart', 'Choose or share the PDF again.')}</p>
   ) : null;
   if (isGoto || selection.memberId !== memberId) return null;
   const resolved = flags.memberId === memberId && !flags.loading;

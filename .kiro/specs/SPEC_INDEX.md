@@ -68,9 +68,14 @@ stable paths and are not a numbering scheme for new work.
 | Dietary preferences and planning exploration | exploration | [Dietary preferences and planning exploration](diet-agent/) | — | Reconcile legacy prompts into one approved outcome before implementation. |
 | Feature flags | planned-feature | [Feature flags](feature-flags/) | — | Select the first bounded implementation task. |
 | Model routing | platform-initiative | [Model routing](model-routing/) | — | Select increment 1 only. |
-| PDF recipe import preview | planned-feature | [PDF recipe import preview](pdf-recipe-import/) | feature-flags, photo-capture, recipe-url-capture, import-progress-and-completion, import-failure-recovery, storage-backup-and-recovery | Start T01-T03 during implementation: source validation, renderer qualification and contract schemas; then implement approved package. |
 | PWA cache coherence | platform-initiative | [PWA cache coherence](pwa-caching/) | — | Normalize legacy session prompts before selecting work. |
 | Recipe on one page | planned-feature | [Recipe on one page](single-page-recipe-view/) | feature-flags | Implement after the feature-flag decision boundary exists. |
+
+## In progress
+
+| Name | Kind | Canonical package | Dependencies | Next action |
+|---|---|---|---|---|
+| PDF recipe import preview | planned-feature | [PDF recipe import preview](pdf-recipe-import/) | feature-flags, photo-capture, recipe-url-capture, import-progress-and-completion, import-failure-recovery, storage-backup-and-recovery | Complete T02/T08 renderer and device qualification; implementation and automated evidence are tracked in implementation-evidence.md. |
 
 ## Registry rules
 
