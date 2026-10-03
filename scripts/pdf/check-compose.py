@@ -15,7 +15,8 @@ for mode in ("off", "opt-in", "on"):
     services = json.loads(result.stdout)["services"]
     assert services["api"]["environment"]["WFS_FEATURE_PREVIEW_PDF_RECIPE_IMPORT"] == mode
     assert services["pwa"]["environment"]["WFS_FEATURE_PREVIEW_PDF_RECIPE_IMPORT"] == mode
-    for key in ("WFS_PDF_RENDER_DPI", "WFS_PDF_MAX_DIMENSION", "WFS_PDF_MAX_PIXELS", "WFS_PDF_MAX_OUTPUT_BYTES", "WFS_PDF_MAX_RESIDENT_BYTES", "WFS_PDF_TIMEOUT_SECONDS"):
-        assert key in services["api"]["environment"]
-    print(f"passed: Compose API/PWA share mode {mode}, render settings present")
+    for service in ("api", "pwa"):
+        assert not any(key.startswith("WFS_PDF_") for key in services[service]["environment"]), service
+    print(f"passed: Compose API/PWA share mode {mode}, renderer uses code-owned settings")
+assert "WFS_PDF_" not in (template / ".env.example").read_text()
 assert "WFS_FEATURE_PREVIEW_PDF_RECIPE_IMPORT=off" in (template / ".env.example").read_text()

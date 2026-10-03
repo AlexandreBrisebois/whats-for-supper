@@ -294,3 +294,9 @@ Added required implementation deliverables to design.md: docs/user-guide.md; pro
 Evidence: inspected existing CAP-07 recovery design, photo-upload data-flow and Synology template/env example at the branch commit. No application tests or device checks. Scope delta: design/review only; remote content verification used because local checkout/Task harness remains unavailable.
 
 </details>
+
+## Approved code-owned renderer profile — 2026-10-02 (Toronto)
+
+The user directs that renderer settings be static in code because deployment users should not tune them. PdfRenderLimits.Default owns the measured profile: 200 DPI PNG, maximum dimension 4096 pixels, 16,777,216 pixels/page, 64 MiB total PNG output, 512 MiB sampled child RSS and a 60-second parent deadline. The API uses this profile without configuration or WFS_PDF_* environment overrides. Native qualification tests may supply an explicit profile in code to exercise guard failures; that seam is not deployment configuration. Remove the six renderer variables from Synology Compose/.env.example and their setup instructions; keep the existing default-off PDF acquisition mode shared by API and PWA.
+
+This supersedes the earlier requirement for blank operator-supplied renderer values. Existing resource enforcement, 20 MiB upload/10-page limits, retained Settings failures and retries remain unchanged. The selected profile comes from recorded Ubuntu amd64 measurements; actual NAS/device/model qualification remains blocked/not-run and no deployment or rollout is authorized. No public API/OpenAPI schema changes are needed.
