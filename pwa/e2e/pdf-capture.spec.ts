@@ -115,4 +115,22 @@ test.describe('PDF import preview', () => {
     expect(accepted.body).toEqual({ data: { id: MOCK_IDS.RECIPE_LASAGNA } });
   });
 
+  test('expired browser staging is cleaned and never restores a draft', async ({ page }) => {
+    await page.goto('/capture');
+    await page.waitForFunction(() => Boolean(window.WfsPdfShare));
+    const token = await page.evaluate(async () => {
+      const bridge = window.WfsPdfShare as unknown as { stage(file: File): Promise<string> };
+      return bridge.stage(new File(['%PDF'], 'expired.pdf', { type: 'application/pdf' }));
+    });
+    await page.clock.setFixedTime(new Date('2026-05-04T12:11:00Z'));
+    const restored = await page.evaluate(async (value) => {
+      await window.WfsPdfShare?.cleanup?.();
+      return (await window.WfsPdfShare?.claim(value)) !== null;
+    }, token);
+    expect(restored).toBe(false);
+    await page.goto('/capture?share=' + token);
+    await expect(page.getByTestId('pdf-confirmation')).toHaveCount(0);
+    await expect(page.getByRole('alert')).toContainText(/again/);
+  });
+
 });
