@@ -89,6 +89,20 @@
       "1": "Not for me",
       "2": "It was OK",
       "3": "Loved it!"
+    },
+    "pdf": {
+      "title": "Add this recipe to your library",
+      "guidance": "Choose a PDF containing one recipe · up to 10 pages · 20 MiB.",
+      "preparing": "Preparing your PDF…",
+      "receipt": "Wait for the upload to finish. An interrupted upload may need to be restarted.",
+      "uncertain": "Couldn’t confirm the upload. Try again; another submission may create a duplicate.",
+      "disabled": "PDF import preview isn’t enabled. This file hasn’t been added.",
+      "size": "Choose a PDF up to 20 MiB.",
+      "type": "Choose a PDF file.",
+      "restart": "Choose or share the PDF again.",
+      "loading": "Loading preview features…",
+      "previewFeatures": "Preview features",
+      "chooseAnotherWay": "Choose another way"
     }
   },
   "profile": {

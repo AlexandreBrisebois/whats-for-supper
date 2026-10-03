@@ -37,6 +37,27 @@ public class ManagementServiceTests : IAsyncLifetime
         await _factory.DisposeAsync();
     }
 
+    [Fact]
+    public async Task Retained_pending_pdf_restores_metadata_without_becoming_ready()
+    {
+        var id = Guid.NewGuid();
+        await _recipeStore.SaveSourcePdfAsync(id, new MemoryStream([1, 2, 3]));
+        await _recipeStore.WriteInfoAsync(new RecipeInfo
+        {
+            Id = id, AddedBy = _factory.DefaultFamilyMemberId, Rating = RecipeRating.Love,
+            Notes = "less salt", FinishedDishImageIndex = -1, ImageCount = 0
+        });
+        await _service.RestoreAsync();
+        var restored = await _db.Recipes.SingleAsync(r => r.Id == id);
+        Assert.False(restored.IsReady);
+        Assert.False(restored.IsDiscoverable);
+        Assert.Null(restored.Name);
+        Assert.Equal(-1, restored.FinishedDishIndex);
+        Assert.Equal("less salt", restored.Notes);
+        await using var source = await _recipeStore.ReadSourcePdfAsync(id);
+        Assert.Equal(1, source!.ReadByte());
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private string DataRoot => _scope.ServiceProvider

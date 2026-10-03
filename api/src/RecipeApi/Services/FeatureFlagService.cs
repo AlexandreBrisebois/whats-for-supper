@@ -33,6 +33,12 @@ public sealed class FeatureFlagRegistry
             "Responsive and accessibility acceptance passes and the owner approves graduation after the opt-in observation period.",
             configuration,
             logger);
+        var pdf = Create(
+            "preview-pdf-recipe-import", "WFS_FEATURE_PREVIEW_PDF_RECIPE_IMPORT", "recipe-capture",
+            "Import a recipe PDF", "Choose or share a PDF containing one recipe.",
+            new DateOnly(2026, 10, 2),
+            "Renderer/NAS/device and household acceptance passes before owner-approved graduation.",
+            configuration, logger);
         var plannerHold = Create(
             "planner-hold-to-move",
             "WFS_FEATURE_PLANNER_HOLD_TO_MOVE",
@@ -46,6 +52,7 @@ public sealed class FeatureFlagRegistry
         _definitions = new Dictionary<string, FeatureFlagDefinition>(StringComparer.Ordinal)
         {
             [definition.Key] = definition,
+            [pdf.Key] = pdf,
             [plannerHold.Key] = plannerHold
         };
     }

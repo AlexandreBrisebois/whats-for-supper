@@ -161,7 +161,8 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
                 opts.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
                 opts.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.Never;
             });
-        
+
+        PdfCaptureOpenApi.AddServices(builder.Services);
         builder.Services.AddSingleton<IPromptRepository, EmbeddedPromptRepository>();
 
         builder.Services.AddSingleton<AisleMapper>();
@@ -175,6 +176,9 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
         builder.Services.AddScoped<IValidationService, ValidationService>();
         builder.Services.AddScoped<ImageService>();
         builder.Services.AddScoped<RecipeService>();
+        builder.Services.AddScoped<PdfCaptureService>();
+        builder.Services.AddSingleton<FeatureFlagRegistry>();
+        builder.Services.AddScoped<FeatureFlagService>();
         builder.Services.AddScoped<RecipePurgeService>();
         builder.Services.AddScoped<CaptureFailureService>();
         builder.Services.AddScoped<RecipeSearchService>();
@@ -182,7 +186,7 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
             builder.Configuration,
             sp.GetRequiredService<ILogger<RecipeSearchFilterOptions>>()));
         builder.Services.AddSingleton<RecipeSearchContinuationStore>();
-        
+
         var mockEmbedding = new Mock<IEmbeddingProvider>();
         mockEmbedding.Setup(e => e.GenerateAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new float[1536]);
@@ -230,8 +234,9 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
                     {
                         TaskId = Guid.NewGuid(),
                         InstanceId = instance.Id,
-                        TaskName = "mock",
-                        ProcessorName = "Mock",
+                        TaskName = _configurationOverrides.GetValueOrDefault("Tests:PdfWorkflow") == "true" && workflowId == "recipe-import" ? "convert_pdf" : "mock",
+                        ProcessorName = _configurationOverrides.GetValueOrDefault("Tests:PdfWorkflow") == "true" && workflowId == "recipe-import" ? "ConvertPdf" : "Mock",
+                        Payload = JsonSerializer.Serialize(parameters),
                         Status = RecipeApi.Models.TaskStatus.Pending,
                         ScheduledAt = scheduledAt,
                         CreatedAt = DateTimeOffset.UtcNow,
@@ -249,11 +254,18 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
         builder.Services.AddSingleton<RecipesRootResolver>();
         builder.Services.AddSingleton<WorkflowRootResolver>();
         builder.Services.AddSingleton<IStorageProvider, LocalStorageProvider>();
-        builder.Services.AddSingleton<IRecipeStore, InMemoryRecipeStore>();
+        if (_configurationOverrides.GetValueOrDefault("Tests:LocalRecipeStore") == "true")
+            builder.Services.AddSingleton<IRecipeStore, LocalRecipeStore>();
+        else
+            builder.Services.AddSingleton<IRecipeStore, InMemoryRecipeStore>();
 
         builder.Services.AddDbContext<RecipeDbContext>(opts =>
-            opts.UseInMemoryDatabase(_dbName)
-                .ConfigureWarnings(warnings => warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.InMemoryEventId.TransactionIgnoredWarning)));
+        {
+            var postgres = _configurationOverrides.GetValueOrDefault("Tests:PostgresConnectionString");
+            if (postgres is not null) opts.UseNpgsql(postgres);
+            else opts.UseInMemoryDatabase(_dbName)
+                .ConfigureWarnings(warnings => warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.InMemoryEventId.TransactionIgnoredWarning));
+        });
 
         // ── Test server ──────────────────────────────────────────────────────
         builder.WebHost.UseTestServer();
@@ -284,6 +296,7 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
             _app.UseAuthorization();
         }
         _app.MapControllers();
+        _app.MapOpenApi();
 
         await _app.StartAsync();
     }

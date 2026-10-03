@@ -368,7 +368,7 @@ public class RecipeAgentPromptSelectionTests
         await agent.DoExtractRecipeAsync(recipeId, CancellationToken.None);
 
         // Assert
-        var hasFrench = capturedMessages.Any(batch => 
+        var hasFrench = capturedMessages.Any(batch =>
             batch.Any(m => m.Text != null && m.Text.Contains("French", StringComparison.OrdinalIgnoreCase)));
 
         Assert.True(hasFrench, $"The word 'French' was not found in any AI messages. Total message batches: {capturedMessages.Count}");
@@ -389,7 +389,7 @@ public class RecipeAgentPromptSelectionTests
         await agent.DoExtractRecipeAsync(recipeId, CancellationToken.None);
 
         // Assert
-        var hasTranslationInstruction = capturedMessages.Any(batch => 
+        var hasTranslationInstruction = capturedMessages.Any(batch =>
             batch.Any(m => m.Text != null && m.Text.Contains("Translate", StringComparison.OrdinalIgnoreCase)));
 
         Assert.False(hasTranslationInstruction, "A translation instruction was found even though IMPORT_TARGET_LANGUAGE was set to NONE.");
@@ -415,6 +415,37 @@ public class RecipeAgentPromptSelectionTests
         using var doc = JsonDocument.Parse(recipeJsonStr);
         Assert.False(doc.RootElement.TryGetProperty("rawHtml", out _),
             "recipe.json must not contain a rawHtml property after extraction via images");
+    }
+
+    [Theory]
+    [InlineData("png", "image/png", 10)]
+    [InlineData("jpg", "image/jpeg", 1)]
+    [InlineData("webp", "image/webp", 1)]
+    public async Task ImageExtraction_SendsEveryPageInOrder_WithItsActualMediaType(string extension, string mediaType, int count)
+    {
+        var id = Guid.NewGuid();
+        var (agent, storage, _, _, _, captured) = CreateSut(ValidRecipeJson());
+        await WriteRecipeInfo(storage, id, count);
+        for (var i = 0; i < count; i++)
+        {
+            byte[] header = extension switch
+            {
+                "png" => [137, 80, 78, 71, 13, 10, 26, 10],
+                "webp" => [82, 73, 70, 70, 0, 0, 0, 0, 87, 69, 66, 80],
+                _ => [255, 216, 255]
+            };
+            await storage.SaveAsync("recipes", $"{id}/original/{i}.{extension}", [.. header, (byte)i]);
+        }
+        // The internal source must never become a model image attachment.
+        await storage.SaveAsync("recipes", $"{id}/original/source.pdf", "%PDF-internal"u8.ToArray());
+        await agent.DoExtractRecipeAsync(id, CancellationToken.None);
+        var attachments = captured[0].SelectMany(message => message.Contents).OfType<DataContent>().ToArray();
+        Assert.Equal(count, attachments.Length);
+        for (var i = 0; i < count; i++)
+        {
+            Assert.Equal(mediaType, attachments[i].MediaType);
+            Assert.Equal((byte)i, attachments[i].Data.ToArray()[^1]);
+        }
     }
 
     // ── Property-based tests ──────────────────────────────────────────────────

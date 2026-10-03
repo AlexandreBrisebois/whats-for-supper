@@ -10,6 +10,7 @@ namespace RecipeApi.Infrastructure;
 public sealed class InMemoryRecipeStore : IRecipeStore
 {
     private readonly ConcurrentDictionary<Guid, RecipeInfo> _info = new();
+    private readonly ConcurrentDictionary<Guid, byte[]> _pdf = new();
     private readonly ConcurrentDictionary<Guid, string> _json = new();
     private readonly ConcurrentDictionary<string, (byte[] Data, string ContentType)> _images = new();
 
@@ -96,10 +97,30 @@ public sealed class InMemoryRecipeStore : IRecipeStore
         return Task.FromResult(has);
     }
 
+    public async Task SaveSourcePdfAsync(Guid recipeId, Stream source, CancellationToken ct = default)
+    {
+        using var buffer = new MemoryStream();
+        await source.CopyToAsync(buffer, ct);
+        _pdf[recipeId] = buffer.ToArray();
+    }
+
+    public Task<Stream?> ReadSourcePdfAsync(Guid recipeId, CancellationToken ct = default)
+        => Task.FromResult<Stream?>(_pdf.TryGetValue(recipeId, out var source) ? new MemoryStream(source, writable: false) : null);
+
+    public async Task ReplacePdfPagesAsync(Guid recipeId, IReadOnlyList<byte[]> pages, CancellationToken ct = default)
+    {
+        if (!_pdf.ContainsKey(recipeId)) throw new InvalidOperationException("PDF source is missing.");
+        foreach (var key in _images.Keys.Where(k => k.StartsWith(recipeId + "/original/")))
+            _images.TryRemove(key, out _);
+        for (var i = 0; i < pages.Count; i++)
+            await SaveOriginalImageAsync(recipeId, i, "image/png", new MemoryStream(pages[i]), ct);
+    }
+
     // ── lifecycle ────────────────────────────────────────────────────────────
 
     public Task DeleteAsync(Guid recipeId, CancellationToken ct = default)
     {
+        _pdf.TryRemove(recipeId, out _);
         _info.TryRemove(recipeId, out _);
         _json.TryRemove(recipeId, out _);
         var imageKeys = _images.Keys.Where(k => k.StartsWith($"{recipeId}/")).ToList();
@@ -109,7 +130,7 @@ public sealed class InMemoryRecipeStore : IRecipeStore
 
     public Task<IReadOnlyList<Guid>> ListRecipeIdsAsync(CancellationToken ct = default)
     {
-        var ids = _info.Keys
+        var ids = _pdf.Keys.Union(_info.Keys)
             .Union(_json.Keys)
             .Union(_images.Keys.Select(k => Guid.TryParse(k.Split('/')[0], out var g) ? g : Guid.Empty).Where(g => g != Guid.Empty))
             .Distinct()

@@ -71,6 +71,12 @@ stable paths and are not a numbering scheme for new work.
 | PWA cache coherence | platform-initiative | [PWA cache coherence](pwa-caching/) | — | Normalize legacy session prompts before selecting work. |
 | Recipe on one page | planned-feature | [Recipe on one page](single-page-recipe-view/) | feature-flags | Implement after the feature-flag decision boundary exists. |
 
+## In progress
+
+| Name | Kind | Canonical package | Dependencies | Next action |
+|---|---|---|---|---|
+| PDF recipe import preview | planned-feature | [PDF recipe import preview](pdf-recipe-import/) | feature-flags, photo-capture, recipe-url-capture, import-progress-and-completion, import-failure-recovery, storage-backup-and-recovery | Complete T02/T08 renderer and device qualification; implementation and automated evidence are tracked in implementation-evidence.md. |
+
 ## Registry rules
 
 - Search the registry before creating a feature spec; revise or depend on existing work

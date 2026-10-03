@@ -22,6 +22,12 @@ using OpenTelemetry.Trace;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc.Authorization;
 
+// Isolated native worker entrypoint: no web host, database, credentials or workflow bootstrap.
+if (args.Length > 0 && args[0] == "--render-pdf")
+{
+    return PdfNativeWorker.Run(args);
+}
+
 // Bootstrap logger for startup errors before full Serilog is configured.
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
@@ -91,7 +97,7 @@ try
             options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
         });
 
-    builder.Services.AddOpenApi();
+    PdfCaptureOpenApi.AddServices(builder.Services);
     builder.Services.AddHttpClient("", client =>
     {
         client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
@@ -116,6 +122,9 @@ try
     builder.Services.AddScoped<ManagementService>();
     builder.Services.AddScoped<RecipeImportBulkService>();
     builder.Services.AddScoped<RecipeService>();
+    builder.Services.AddScoped<PdfCaptureService>();
+    builder.Services.AddSingleton<IPdfPageRenderer, PdfProcessRenderer>();
+    builder.Services.AddScoped<IWorkflowProcessor, PdfConversionProcessor>();
     builder.Services.AddScoped<RecipePurgeService>();
     builder.Services.AddScoped<CaptureFailureService>();
     builder.Services.AddScoped<RecipeSearchService>();

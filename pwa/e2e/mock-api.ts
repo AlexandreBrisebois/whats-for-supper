@@ -150,6 +150,72 @@ export async function mockFeatureFlags(
     });
   });
 
+  await page.route('**/api/recipes/capture-pdf', async (route) => {
+    const request = route.request();
+    if (request.method() !== 'POST') return route.fallback();
+    const reject = (status: number, message: string) =>
+      route.fulfill({
+        status,
+        contentType: 'application/json',
+        body: JSON.stringify({ status, message }),
+      });
+    const memberId = request.headers()['x-family-member-id'];
+    if (!memberId || ![MOCK_IDS.MEMBER_ALEX, MOCK_IDS.MEMBER_JORDAN].includes(memberId))
+      return reject(400, 'An established family member is required.');
+    if (
+      !snapshotFor(memberId).some(
+        (flag) => flag.key === 'preview-pdf-recipe-import' && flag.enabled
+      )
+    )
+      return reject(409, "PDF import preview isn't enabled. This file hasn't been added.");
+    if (!request.headers()['content-type']?.startsWith('multipart/form-data'))
+      return reject(415, 'Choose a PDF file.');
+    try {
+      const payload = request.postDataBuffer();
+      const form = await new Response(payload ? new Uint8Array(payload) : null, {
+        headers: { 'content-type': request.headers()['content-type'] },
+      }).formData();
+      const files = [...form.values()].filter((value) => typeof value !== 'string');
+      const file = form.get('file');
+      if (
+        files.length !== 1 ||
+        !file ||
+        typeof file === 'string' ||
+        form.getAll('file').length !== 1
+      )
+        return reject(400, 'Choose exactly one PDF.');
+      if (file.size > 20971520) return reject(413, 'Choose a PDF up to 20 MiB.');
+      if (!file.size) return reject(400, 'Choose a PDF file.');
+      if (
+        !file.name.toLowerCase().endsWith('.pdf') ||
+        file.type.toLowerCase() !== 'application/pdf'
+      )
+        return reject(415, 'Choose a PDF file.');
+      if (
+        [...form.keys()].some((key) => !['file', 'rating', 'notes'].includes(key)) ||
+        form.getAll('rating').length > 1 ||
+        form.getAll('notes').length > 1
+      )
+        return reject(400, 'The upload metadata is invalid.');
+      const raw = form.get('rating');
+      if (
+        raw !== null &&
+        (typeof raw !== 'string' ||
+          !/^[+-]?\d+$/.test(raw.trim()) ||
+          Number(raw) < 0 ||
+          Number(raw) > 3)
+      )
+        return reject(400, 'Choose a rating between 0 and 3.');
+      return route.fulfill({
+        status: 202,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: { id: MOCK_IDS.RECIPE_LASAGNA } }),
+      });
+    } catch {
+      return reject(400, 'The upload form is invalid.');
+    }
+  });
+
   await page.route('**/api/feature-flags', async (route) => {
     if (route.request().method() !== 'GET') return route.fallback();
     const items = snapshotFor(memberIdFor(route.request()));
@@ -765,6 +831,8 @@ export async function setupCommonRoutes(page: Page) {
       body: JSON.stringify({ data: { purged: true } }),
     });
   });
+
+  await mockFeatureFlags(page);
 
   // POST /api/recipes/capture-url — registered AFTER the wildcard so LIFO gives it priority
   await page.route('**/api/recipes/capture-url', async (route) => {
