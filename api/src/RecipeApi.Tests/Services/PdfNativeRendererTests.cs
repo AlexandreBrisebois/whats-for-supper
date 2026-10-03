@@ -54,6 +54,25 @@ public sealed class PdfNativeRendererTests
         Assert.Single(await Renderer(Settings()).RenderAsync(valid, CancellationToken.None));
     }
 
+    [NativePdfFact]
+    public async Task Resource_breaches_and_cancellation_clean_temporary_attempts_and_release_gate()
+    {
+        var before = Directory.GetDirectories(Path.GetTempPath(), "wfs-pdf-*").Order().ToArray();
+        foreach (var setting in new[] { "WFS_PDF_MAX_DIMENSION", "WFS_PDF_MAX_PIXELS", "WFS_PDF_MAX_OUTPUT_BYTES", "WFS_PDF_MAX_RESIDENT_BYTES" })
+        {
+            var limits = Settings();
+            limits[setting] = "1";
+            await using var source = File.OpenRead(Fixture("text"));
+            await Assert.ThrowsAsync<InvalidDataException>(() => Renderer(limits).RenderAsync(source, CancellationToken.None));
+        }
+        using var cancelled = new CancellationTokenSource(TimeSpan.FromMilliseconds(100));
+        await using (var source = File.OpenRead(Fixture("ten")))
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => Renderer(Settings(dpi: 1000)).RenderAsync(source, cancelled.Token));
+        Assert.Equal(before, Directory.GetDirectories(Path.GetTempPath(), "wfs-pdf-*").Order().ToArray());
+        await using var valid = File.OpenRead(Fixture("text"));
+        Assert.Single(await Renderer(Settings()).RenderAsync(valid, CancellationToken.None));
+    }
+
     private sealed class NativePdfFactAttribute : FactAttribute
     {
         public NativePdfFactAttribute()
