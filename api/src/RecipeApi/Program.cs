@@ -448,4 +448,3 @@ return 0;
 
 // Exposes the compiler-generated Program class to the test assembly.
 public partial class Program { }
-

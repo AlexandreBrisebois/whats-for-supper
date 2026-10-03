@@ -102,4 +102,3 @@ Specification-only validation is recorded in review.md. Original consolidation c
 ## Kickoff execution scope
 
 A complete-package implementation instruction selects all required T01–T08, including early reconnaissance/renderer qualification/schema work, application/tests/workflow/storage integration, Android sharing/manifest, user/process documentation and Synology template/env example. Update task progress and the spec as technical follow-ups are resolved. Preserve approved behavior; do not reopen accepted tradeoffs. Tests precede implementation, and finalized OpenAPI precedes dependent client/mock/runtime work. Routine schema/resource details may be resolved directly; behavior/scope changes need one-at-a-time user approval. Deployment, live .env/secret changes and rollout remain outside implementation authorization unless separately requested. Real-device/Synology qualification must be completed or explicitly blocked before release; never fabricate results.
-

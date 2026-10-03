@@ -74,4 +74,3 @@ public sealed class PdfCaptureController(FeatureFlagService flags, PdfCaptureSer
 
     private ObjectResult Reject(int status, string message) => StatusCode(status, new { status, message });
 }
-

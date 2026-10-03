@@ -86,4 +86,3 @@ public sealed class PdfProcessRenderer(IConfiguration config) : IPdfPageRenderer
         }
     }
 }
-

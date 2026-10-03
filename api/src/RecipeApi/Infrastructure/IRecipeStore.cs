@@ -40,4 +40,3 @@ public interface IRecipeStore
     Task DeleteAsync(Guid recipeId, CancellationToken ct = default);
     Task<IReadOnlyList<Guid>> ListRecipeIdsAsync(CancellationToken ct = default);
 }
-

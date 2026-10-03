@@ -294,4 +294,3 @@ Added required implementation deliverables to design.md: docs/user-guide.md; pro
 Evidence: inspected existing CAP-07 recovery design, photo-upload data-flow and Synology template/env example at the branch commit. No application tests or device checks. Scope delta: design/review only; remote content verification used because local checkout/Task harness remains unavailable.
 
 </details>
-

@@ -32,7 +32,7 @@ This screen saves you from opening the fridge, staring blankly, and ordering piz
 
 Your **GOTO recipes** are the fallback meals everyone accepts — the ones you can make when the plan falls apart. By keeping a list of multiple GOTOs, the app can rotate through them randomly on your home screen, saving you from "fallback fatigue."
 
-Manage your list from **Settings → Family GOTO**. You can see all your active fallback meals, remove ones you're tired of, or add new ones. 
+Manage your list from **Settings → Family GOTO**. You can see all your active fallback meals, remove ones you're tired of, or add new ones.
 
 To add an existing recipe from your library, choose **Search the Library**, open the recipe, and tap the **star** at the top. When the star is selected, it shows **GOTO** beside it. Tapping the star on other recipes will add them to your rotation rather than replacing the old ones.
 
@@ -181,4 +181,3 @@ The grocery list works the same way. Two people in the same store, checking thin
 Demo Mode is a managed showcase environment. The host captures a master snapshot, and the app restores recipes, plans, and votes from it on a configured schedule.
 
 To keep the showcase predictable and avoid AI costs, AI-powered recipe processing is disabled. You can still use the planner, browse the library, and use regular search.
-

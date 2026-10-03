@@ -143,6 +143,11 @@ jobs:
         run: |
           git fetch origin 6f36291d7bae3c46b9af2f9c17c02e9e17acc018
           git diff --check 6f36291d7bae3c46b9af2f9c17c02e9e17acc018 HEAD
+      - name: Install pinned Task for repository harness tests
+        if: always()
+        run: |
+          go install github.com/go-task/task/v3/cmd/task@v3.54.0
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
       - name: Repository agent regression tests
         if: always()
         run: python3 -B -m unittest discover -s scripts/agent/tests -p "test_*.py"

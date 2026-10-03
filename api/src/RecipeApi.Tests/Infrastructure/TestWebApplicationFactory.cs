@@ -161,7 +161,7 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
                 opts.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
                 opts.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.Never;
             });
-        
+
         PdfCaptureOpenApi.AddServices(builder.Services);
         builder.Services.AddSingleton<IPromptRepository, EmbeddedPromptRepository>();
 
@@ -186,7 +186,7 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
             builder.Configuration,
             sp.GetRequiredService<ILogger<RecipeSearchFilterOptions>>()));
         builder.Services.AddSingleton<RecipeSearchContinuationStore>();
-        
+
         var mockEmbedding = new Mock<IEmbeddingProvider>();
         mockEmbedding.Setup(e => e.GenerateAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new float[1536]);
@@ -332,4 +332,3 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
             Directory.Delete(_dataRoot, recursive: true);
     }
 }
-

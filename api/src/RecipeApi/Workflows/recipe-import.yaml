@@ -52,4 +52,3 @@ tasks:
           - recipe_ready
       payload:
           recipeId: "{{ recipeId }}"
-

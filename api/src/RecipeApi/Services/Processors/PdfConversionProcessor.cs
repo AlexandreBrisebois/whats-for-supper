@@ -54,4 +54,3 @@ public sealed class PdfConversionProcessor(RecipeDbContext db, IRecipeStore stor
         finally { Gate.Release(); }
     }
 }
-

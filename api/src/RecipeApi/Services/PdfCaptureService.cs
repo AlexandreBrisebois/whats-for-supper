@@ -73,4 +73,3 @@ public sealed class PdfCaptureService(
 }
 
 public sealed class PdfUploadTooLargeException : Exception { }
-

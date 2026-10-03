@@ -194,4 +194,3 @@ public sealed class LocalRecipeStore(RecipesRootResolver resolver, ILogger<Local
         return Task.FromResult<IReadOnlyList<Guid>>(ids);
     }
 }
-

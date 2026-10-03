@@ -121,4 +121,3 @@ public sealed class FeatureFlagService(RecipeDbContext db, FeatureFlagRegistry r
 }
 
 public sealed class FeatureFlagNotOptInException(string key) : Exception($"Feature flag '{key}' is not available for opt-in.");
-

@@ -138,4 +138,3 @@ public sealed class InMemoryRecipeStore : IRecipeStore
         return Task.FromResult<IReadOnlyList<Guid>>(ids);
     }
 }
-

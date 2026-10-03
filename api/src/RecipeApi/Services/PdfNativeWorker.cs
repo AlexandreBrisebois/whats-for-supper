@@ -74,4 +74,3 @@ public static class PdfNativeWorker
         [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern void FPDF_CloseDocument(IntPtr document);
     }
 }
-

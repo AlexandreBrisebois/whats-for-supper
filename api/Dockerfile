@@ -101,4 +101,3 @@ FROM production AS demo
 # Install AWS Lambda Web Adapter
 COPY --from=public.ecr.aws/awsguru/aws-lambda-adapter:1.1.0 /lambda-adapter /opt/extensions/lambda-adapter
 # Inherits ENTRYPOINT and WORKDIR from the production stage
-

@@ -88,4 +88,3 @@ public class FeatureFlagServiceTests
         return new RecipeDbContext(options);
     }
 }
-

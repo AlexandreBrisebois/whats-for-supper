@@ -99,3 +99,7 @@ All commits are additive trees on the requested branch, rooted at the recorded b
 Remote PWA preparation runs Prettier only on post-baseline affected TS/TSX/JSON/JS paths and uploads the exact output. That exact formatting closure was committed at e5e45 before final application verification, preserving source semantics and unrelated paths. Source/test fixes (MVC 413 parsing, .NET/OpenAPI registration/interfaces, React effect ownership, correct PNG media type) follow failing checks or targeted seam evidence without changed approved behavior. Test commits precede implementation. Additional existing PostgreSQL failures are observed and compared with baseline, not silently fixed or hidden.
 
 Per-file rationale and reviewed identity are recorded in [scope-review.md](scope-review.md). Final verification closure results must be appended below when available; pending results are not passing claims.
+
+## Verification closure failure and correction
+
+Run 37084394089 at fca0a47025d7e56945a11a3dd94dc7ae96c118d4 exposed added EOF blank lines/source notice whitespace and two harness errors because the runner lacked Task. The 94-test harness run had two errors, not a pass. Closure now normalizes only those changed paths (no source behavior/license term changes) and installs the release-pinned Task v3.54.0 before rerunning the unchanged repository tests. Documentation links, Python syntax, Kiota and static parity checks passed in that job. Final closure results are recorded below when complete; no local Task session/finish is claimed.

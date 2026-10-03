@@ -24,4 +24,3 @@ public sealed record PdfRenderLimits(int Dpi, int MaxDimension, long MaxPixels, 
             throw new InvalidDataException("PDF page exceeds the qualified render dimensions.");
     }
 }
-

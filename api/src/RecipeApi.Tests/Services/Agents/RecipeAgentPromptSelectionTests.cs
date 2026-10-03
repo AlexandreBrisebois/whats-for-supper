@@ -368,7 +368,7 @@ public class RecipeAgentPromptSelectionTests
         await agent.DoExtractRecipeAsync(recipeId, CancellationToken.None);
 
         // Assert
-        var hasFrench = capturedMessages.Any(batch => 
+        var hasFrench = capturedMessages.Any(batch =>
             batch.Any(m => m.Text != null && m.Text.Contains("French", StringComparison.OrdinalIgnoreCase)));
 
         Assert.True(hasFrench, $"The word 'French' was not found in any AI messages. Total message batches: {capturedMessages.Count}");
@@ -389,7 +389,7 @@ public class RecipeAgentPromptSelectionTests
         await agent.DoExtractRecipeAsync(recipeId, CancellationToken.None);
 
         // Assert
-        var hasTranslationInstruction = capturedMessages.Any(batch => 
+        var hasTranslationInstruction = capturedMessages.Any(batch =>
             batch.Any(m => m.Text != null && m.Text.Contains("Translate", StringComparison.OrdinalIgnoreCase)));
 
         Assert.False(hasTranslationInstruction, "A translation instruction was found even though IMPORT_TARGET_LANGUAGE was set to NONE.");
@@ -691,4 +691,3 @@ public class RecipeAgentPromptSelectionTests
         });
     }
 }
-

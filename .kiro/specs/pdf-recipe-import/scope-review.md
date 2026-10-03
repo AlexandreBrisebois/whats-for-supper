@@ -96,4 +96,3 @@ Reviewed implementation identity: `b1b491a83fe9db5f0abef4355dfb3a6c111e12db`, ag
 | `specs/openapi.yaml` | Specify approved multipart file/rating/notes, exact limits and acceptance/error envelopes before dependent code. |
 
 Semantic review: the public photo endpoint, extraction prompt, primary capture action layout, GOTO, voting/plans/groceries and shared recipe eligibility retain their existing behavior. PDF acquisition alone uses its preview flag. Existing Settings retry/delete and normal workflow completion own submitted jobs. No public source PDF download, multi-recipe detector, persistent draft, cancellation control, deployment, live secret or .env change is introduced. PNG MIME correction and internal readiness repair close required page/extraction/recovery seams; no database schema migration is added.
-
