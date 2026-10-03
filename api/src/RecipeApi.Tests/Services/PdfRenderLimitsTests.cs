@@ -3,8 +3,18 @@ using Xunit;
 
 namespace RecipeApi.Tests.Services;
 
-public sealed class PdfRenderLimitsTests
+public class PdfRenderLimitsTests
 {
+    [Fact]
+    public void Qualified_profile_checks_dimensions_before_native_render()
+    {
+        var limits = new PdfRenderLimits(200, 4096, 12000000, 128 * 1024 * 1024, 512 * 1024 * 1024, 60);
+        limits.ValidatePage(612, 792);
+        Assert.Throws<InvalidDataException>(() => limits.ValidatePage(100000, 100000));
+        Assert.Throws<InvalidDataException>(() => limits.ValidatePage(double.NaN, 792));
+        Assert.Throws<InvalidDataException>(() => limits.ValidatePage(0, 792));
+    }
+
     [Fact]
     public void Production_profile_matches_the_measured_200_DPI_limits()
     {
