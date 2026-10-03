@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import ast
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -21,9 +22,75 @@ CHECKS = ('documentation', 'test:agent', 'lint', 'format:check:pwa', 'typecheck'
           'agent:drift:endpoints', 'database-behavior')
 
 
+# Narrow exception for preview switches, not arbitrary deployment configuration.
+# Database connections, migrations, mounts, images and unrecognized formats retain
+# the conservative classification below.
+FEATURE_FLAG_CONFIG_PATHS = {
+    'docker/compose/apps.yml', 'docker/compose/production.yml',
+    'release-template/synology/compose.yaml', 'docker/compose/smoke.env',
+}
+
+
+def without_feature_flags(content, dotenv=False):
+    remaining = []
+    services = api = environment = False
+    for line in content.splitlines(keepends=True):
+        text = line.rstrip('\r\n')
+        if dotenv:
+            if re.fullmatch(r'WFS_FEATURE_[A-Z0-9_]+=(off|opt-in|on)', text):
+                continue
+        else:
+            if text.strip() and not text.lstrip().startswith('#'):
+                indent = len(text) - len(text.lstrip(' '))
+                if indent == 0:
+                    services = text == 'services:'
+                    api = environment = False
+                elif indent == 2:
+                    api = services and text == '  api:'
+                    environment = False
+                elif indent == 4:
+                    environment = api and text == '    environment:'
+                elif indent == 6 and environment and re.fullmatch(
+                        r'      (WFS_FEATURE_[A-Z0-9_]+): \$\{\1:-(off|opt-in|on)\}', text):
+                    continue
+        remaining.append(line)
+    return ''.join(remaining)
+
+
+def feature_flag_configuration_only(path):
+    if path not in FEATURE_FLAG_CONFIG_PATHS:
+        return False
+    try:
+        manifest = session.load_manifest(session.SESSION_DIR)
+        session.validate_identity(manifest, ROOT)
+        baseline = manifest['baseline'][path]
+        current = session.fingerprint(ROOT / path)
+        if (baseline['kind'] != 'file' or current['kind'] != 'file'
+                or baseline['mode'] != current['mode']):
+            return False
+        if path in manifest['ambient_at_start']:
+            before = (session.SESSION_DIR / 'baseline' / path).read_bytes()
+        else:
+            before = subprocess.check_output(
+                ['git', 'show', f"{manifest['head']}:{path}"], cwd=ROOT,
+                stderr=subprocess.DEVNULL)
+        # Do not substitute HEAD for a missing or stale task-boundary snapshot.
+        if hashlib.sha256(before).hexdigest() != baseline['sha256']:
+            return False
+        after = (ROOT / path).read_bytes()
+        return before != after and without_feature_flags(
+            before.decode(), path.endswith('.env')) == without_feature_flags(
+                after.decode(), path.endswith('.env'))
+    except (OSError, RuntimeError, KeyError, ValueError, subprocess.CalledProcessError):
+        return False
+
+
 def classes_for(paths):
     classes = set()
     for path in paths:
+        if feature_flag_configuration_only(path):
+            classes.update(('application', 'harness'))
+            continue
         # Runtime schemas beat documentation/spec-directory shortcuts.
         if (path == 'specs/openapi.yaml' or path.endswith('.sql') or path.startswith('docker/compose/')
                 or path.startswith(('api/src/RecipeApi/Dto/', 'api/src/RecipeApi/Controllers/',

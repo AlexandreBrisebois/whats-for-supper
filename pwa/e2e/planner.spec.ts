@@ -1,5 +1,12 @@
 import { test, expect } from './fixtures';
-import { MOCK_IDS, builders, currentMonday, toDateStr, setupCommonRoutes } from './mock-api';
+import {
+  MOCK_IDS,
+  builders,
+  currentMonday,
+  toDateStr,
+  setupCommonRoutes,
+  mockFeatureFlags,
+} from './mock-api';
 
 // Compute current week's Monday at noon UTC — avoids timezone rollback
 
@@ -374,6 +381,64 @@ test.describe('Supper Planner', () => {
     const cards = page.getByTestId(/^day-card-/);
     await expect(cards).toHaveCount(7);
     await expect(cards.first()).toBeVisible();
+  });
+
+  test('hold-to-move preview lets touch scroll pass and requires a hold before moving', async ({
+    page,
+    context,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 600 });
+    await mockFeatureFlags(page, [{ key: 'planner-hold-to-move', mode: 'on', enabled: true }]);
+    await page.reload();
+    const handle = page.getByTestId('day-card-0').getByTestId('planner-drag-handle');
+    await expect(handle).toHaveAttribute('aria-label', 'Hold to move');
+    const moves: unknown[] = [];
+    await page.route('**/api/schedule/move', async (route) => {
+      moves.push(route.request().postDataJSON());
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: { message: 'ok' } }),
+      });
+    });
+    const client = await context.newCDPSession(page);
+    await client.send('Emulation.setTouchEmulationEnabled', { enabled: true });
+    await handle.scrollIntoViewIfNeeded();
+    const box = await handle.boundingBox();
+    if (!box) throw new Error('Missing drag handle');
+    const x = box.x + box.width / 2;
+    const y = box.y + box.height / 2;
+    const touch = async (type: 'touchStart' | 'touchMove' | 'touchEnd', atY: number) => {
+      await client.send('Input.dispatchTouchEvent', {
+        type,
+        touchPoints: type === 'touchEnd' ? [] : [{ x, y: atY }],
+      });
+    };
+    const before = await page.getByTestId('reorder-group').innerText();
+    const scrollPosition = () =>
+      page.evaluate(() =>
+        [...document.querySelectorAll('*')].reduce((sum, element) => sum + element.scrollTop, 0)
+      );
+    const scrollBefore = await scrollPosition();
+    await touch('touchStart', y);
+    await touch('touchMove', y - 60);
+    await touch('touchEnd', y - 60);
+    await expect.poll(scrollPosition).toBeGreaterThan(scrollBefore);
+    await expect(handle).toHaveAttribute('data-grabbed', 'false');
+    expect(moves).toHaveLength(0);
+    expect(await page.getByTestId('reorder-group').innerText()).toBe(before);
+
+    await handle.scrollIntoViewIfNeeded();
+    const heldBox = await handle.boundingBox();
+    if (!heldBox) throw new Error('Missing drag handle');
+    const heldY = heldBox.y + heldBox.height / 2;
+    await touch('touchStart', heldY);
+    await expect(handle).toHaveAttribute('data-grabbed', 'true');
+    // Cross a card midpoint only after activation, then release to commit once.
+    for (let offset = 10; offset <= 100; offset += 10) await touch('touchMove', heldY + offset);
+    await touch('touchEnd', heldY + 100);
+    await expect.poll(() => moves.length).toBe(1);
+    await client.detach();
   });
 
   test('should allow dragging cards to reorder', async ({ page }) => {

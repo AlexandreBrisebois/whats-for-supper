@@ -33,12 +33,17 @@ public class FeatureFlagServiceTests
     {
         var values = value is null
             ? new Dictionary<string, string?>()
-            : new Dictionary<string, string?> { ["WFS_FEATURE_SINGLE_PAGE_RECIPE_STEPS"] = value };
+            : new Dictionary<string, string?>
+            {
+                ["WFS_FEATURE_SINGLE_PAGE_RECIPE_STEPS"] = value,
+                ["WFS_FEATURE_PLANNER_HOLD_TO_MOVE"] = value
+            };
         var registry = new FeatureFlagRegistry(
             new ConfigurationBuilder().AddInMemoryCollection(values).Build(),
             NullLogger<FeatureFlagRegistry>.Instance);
 
         Assert.Equal(expected, registry.Get("single-page-recipe-steps")!.Mode);
+        Assert.Equal(expected, registry.Get("planner-hold-to-move")!.Mode);
         Assert.Null(registry.Get("unknown"));
     }
 
@@ -52,8 +57,10 @@ public class FeatureFlagServiceTests
     public void Resolver_combines_mode_and_override(FeatureFlagMode mode, bool? memberEnabled, bool expected) =>
         Assert.Equal(expected, FeatureFlagService.Resolve(mode, memberEnabled));
 
-    [Fact]
-    public async Task SetOverride_is_member_specific_and_upserts()
+    [Theory]
+    [InlineData("single-page-recipe-steps")]
+    [InlineData("planner-hold-to-move")]
+    public async Task SetOverride_is_member_specific_and_upserts(string key)
     {
         await using var db = CreateDb();
         var first = new FamilyMember { Name = "Alex" };
@@ -62,11 +69,13 @@ public class FeatureFlagServiceTests
         await db.SaveChangesAsync();
         var service = CreateService(db, "opt-in");
 
-        await service.SetOverrideAsync(first.Id, "single-page-recipe-steps", true);
-        await service.SetOverrideAsync(first.Id, "single-page-recipe-steps", false);
+        await service.SetOverrideAsync(first.Id, key, true);
+        Assert.True((await service.GetSnapshotAsync(first.Id)).Single(flag => flag.Key == key).Enabled);
+        Assert.False((await service.GetSnapshotAsync(second.Id)).Single(flag => flag.Key == key).Enabled);
+        await service.SetOverrideAsync(first.Id, key, false);
 
-        Assert.False((await service.GetSnapshotAsync(first.Id)).Single(flag => flag.Key == "single-page-recipe-steps").Enabled);
-        Assert.False((await service.GetSnapshotAsync(second.Id)).Single(flag => flag.Key == "single-page-recipe-steps").Enabled);
+        Assert.False((await service.GetSnapshotAsync(first.Id)).Single(flag => flag.Key == key).Enabled);
+        Assert.False((await service.GetSnapshotAsync(second.Id)).Single(flag => flag.Key == key).Enabled);
         Assert.Single(db.FeatureFlagOverrides);
     }
 
@@ -74,7 +83,8 @@ public class FeatureFlagServiceTests
     {
         var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         {
-            ["WFS_FEATURE_SINGLE_PAGE_RECIPE_STEPS"] = mode
+            ["WFS_FEATURE_SINGLE_PAGE_RECIPE_STEPS"] = mode,
+            ["WFS_FEATURE_PLANNER_HOLD_TO_MOVE"] = mode
         }).Build();
         var registry = new FeatureFlagRegistry(configuration, NullLogger<FeatureFlagRegistry>.Instance);
         return new FeatureFlagService(db, registry);

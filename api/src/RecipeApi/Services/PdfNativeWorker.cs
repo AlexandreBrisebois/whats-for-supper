@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
 using System.Text.Json;
 using PDFtoImage;
 using SkiaSharp;
@@ -10,9 +11,20 @@ public static class PdfNativeWorker
 {
     public static int Run(string[] args)
     {
+        if (args.Length != 4) return 2;
+        if (OperatingSystem.IsLinux() || OperatingSystem.IsMacOS() || OperatingSystem.IsWindows())
+            return RunSupported(args);
+        Console.Error.WriteLine("PDF rendering failed.");
+        return 1;
+    }
+
+    [SupportedOSPlatform("linux")]
+    [SupportedOSPlatform("macos")]
+    [SupportedOSPlatform("windows")]
+    private static int RunSupported(string[] args)
+    {
         try
         {
-            if (args.Length != 4) return 2;
             var limits = JsonSerializer.Deserialize<PdfRenderLimits>(args[3])
                 ?? throw new InvalidDataException("Missing render limits.");
             // Detect encryption even when the user password is empty. PDFium's security

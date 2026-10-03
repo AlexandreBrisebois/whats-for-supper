@@ -34,20 +34,36 @@ public sealed class PdfCaptureService(
         await store.SaveSourcePdfAsync(id, buffer, ct);
         await store.WriteInfoAsync(new RecipeInfo
         {
-            Id = id, AddedBy = memberId, Rating = (RecipeRating)rating, Notes = notes,
-            FinishedDishImageIndex = -1, ImageCount = 0, CreatedAt = now, IsReady = false
+            Id = id,
+            AddedBy = memberId,
+            Rating = (RecipeRating)rating,
+            Notes = notes,
+            FinishedDishImageIndex = -1,
+            ImageCount = 0,
+            CreatedAt = now,
+            IsReady = false
         }, ct);
         var recipe = new Recipe
         {
-            Id = id, AddedBy = memberId, Rating = (RecipeRating)rating, Notes = notes,
-            FinishedDishIndex = -1, ImageCount = 0, IsReady = false, IsDiscoverable = false,
-            CreatedAt = now, UpdatedAt = now
+            Id = id,
+            AddedBy = memberId,
+            Rating = (RecipeRating)rating,
+            Notes = notes,
+            FinishedDishIndex = -1,
+            ImageCount = 0,
+            IsReady = false,
+            IsDiscoverable = false,
+            CreatedAt = now,
+            UpdatedAt = now
         };
         db.Recipes.Add(recipe);
         db.RecipeSearchDocuments.Add(new RecipeSearchDocument
         {
-            RecipeId = id, DocumentText = string.Empty, SearchMetadata = "{}",
-            IndexStatus = "pending", EmbeddingStatus = "pending",
+            RecipeId = id,
+            DocumentText = string.Empty,
+            SearchMetadata = "{}",
+            IndexStatus = "pending",
+            EmbeddingStatus = "pending",
             EmbeddingModel = Environment.GetEnvironmentVariable("EMBEDDING_MODEL_ID") ?? "gemini-embedding-2",
             SchemaVersion = RecipeSearchDocumentBuilder.CurrentSchemaVersion
         });

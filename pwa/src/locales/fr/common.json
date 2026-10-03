@@ -239,7 +239,8 @@
     "removeRecipeAction": "Retirer la recette",
     "viewRecipe": "Voir la recette",
     "closeVoting": "Fermer le vote",
-    "diversify": "Diversifier"
+    "diversify": "Diversifier",
+    "holdToMove": "Maintenir pour déplacer"
   },
   "grocery": {
     "smartShopping": "Courses Intelligentes",
@@ -419,6 +420,10 @@
       "single-page-recipe-steps": {
         "name": "Recette sur une seule page",
         "description": "Après la préparation, faites défiler toutes les étapes sur une seule page."
+      },
+      "planner-hold-to-move": {
+        "name": "Maintenir pour déplacer les repas",
+        "description": "Maintenez brièvement la poignée avant de déplacer un repas. Faites défiler sans modifier votre plan."
       }
     }
   },

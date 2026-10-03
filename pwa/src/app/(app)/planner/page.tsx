@@ -6,7 +6,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Plus,
-  GripVertical,
   Users,
   Share2,
   Copy,
@@ -43,6 +42,7 @@ import { useUiStore } from '@/store/uiStore';
 import { SkipRecoveryDialog } from '@/components/home/SkipRecoveryDialog';
 import { type AssignmentRecipe, resolveOccupiedSlot } from '@/lib/planner/slotAssignment';
 import { getVotingLink } from '@/lib/auth';
+import { PlannerDragHandle } from '@/components/planner/PlannerDragHandle';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 
 export default function PlannerPage() {
@@ -875,6 +875,10 @@ const PlannerDayCard = memo(function PlannerDayCard({
   isWide: boolean;
 }) {
   const dragControls = useDragControls();
+  const startDrag = React.useCallback(
+    (event: PointerEvent) => dragControls.start(event),
+    [dragControls]
+  );
 
   return (
     <Reorder.Item
@@ -1066,17 +1070,7 @@ const PlannerDayCard = memo(function PlannerDayCard({
                     <RefreshCw size={18} />
                   </motion.button>
                 )}
-                <div
-                  onPointerDown={(e) => dragControls.start(e)}
-                  className="h-full min-h-[44px] flex items-center px-2.5 cursor-grab active:cursor-grabbing touch-none select-none group/handle rounded-r-2xl"
-                  aria-label="Drag to reorder"
-                  title="Drag to reorder"
-                >
-                  <GripVertical
-                    className="text-charcoal/20 group-hover/handle:text-sage transition-colors"
-                    size={20}
-                  />
-                </div>
+                <PlannerDragHandle start={startDrag} />
               </div>
             </div>
           ) : (
@@ -1104,17 +1098,7 @@ const PlannerDayCard = memo(function PlannerDayCard({
                 </div>
               </button>
               <div className="ml-2 pl-2 border-l border-charcoal/8 flex items-center gap-1 self-stretch">
-                <div
-                  onPointerDown={(e) => dragControls.start(e)}
-                  className="h-full min-h-[44px] flex items-center px-2.5 cursor-grab active:cursor-grabbing touch-none select-none group/handle rounded-r-2xl"
-                  aria-label="Drag to reorder"
-                  title="Drag to reorder"
-                >
-                  <GripVertical
-                    className="text-charcoal/20 group-hover/handle:text-sage transition-colors"
-                    size={20}
-                  />
-                </div>
+                <PlannerDragHandle start={startDrag} />
               </div>
             </div>
           )}

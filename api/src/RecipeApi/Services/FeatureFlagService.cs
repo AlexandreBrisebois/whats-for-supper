@@ -39,9 +39,21 @@ public sealed class FeatureFlagRegistry
             new DateOnly(2026, 10, 2),
             "Renderer/NAS/device and household acceptance passes before owner-approved graduation.",
             configuration, logger);
+        var plannerHold = Create(
+            "planner-hold-to-move",
+            "WFS_FEATURE_PLANNER_HOLD_TO_MOVE",
+            "meal-planning",
+            "Hold to move meals",
+            "Hold the planner handle briefly before moving a meal. Scroll past it without changing your plan.",
+            new DateOnly(2026, 9, 30),
+            "Touch scrolling and deliberate reordering pass on iOS and Android, and the owner approves graduation after the opt-in observation period.",
+            configuration,
+            logger);
         _definitions = new Dictionary<string, FeatureFlagDefinition>(StringComparer.Ordinal)
         {
-            [definition.Key] = definition, [pdf.Key] = pdf
+            [definition.Key] = definition,
+            [pdf.Key] = pdf,
+            [plannerHold.Key] = plannerHold
         };
     }
 

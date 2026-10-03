@@ -190,6 +190,93 @@ class CompletionTests(IsolatedGitTestCase):
             self.assertEqual(f.prepare(['docker/compose/infrastructure.yml']), 0)
         self.assertEqual(run.call_args_list, [mock.call(['task', 'gen:client'], cwd=None)])
 
+    @contextlib.contextmanager
+    def feature_flag_change(self, before, after, path='docker/compose/apps.yml', dirty=None):
+        f = self.finish()
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            subprocess.run(['git', 'init', '-q'], cwd=root, check=True)
+            subprocess.run(['git', 'config', 'user.email', 'tests@example.com'], cwd=root, check=True)
+            subprocess.run(['git', 'config', 'user.name', 'Tests'], cwd=root, check=True)
+            (root / '.gitignore').write_text('.task/\n')
+            target = root / path
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(before)
+            subprocess.run(['git', 'add', '.'], cwd=root, check=True)
+            subprocess.run(['git', 'commit', '-qm', 'baseline'], cwd=root, check=True)
+            if dirty is not None:
+                target.write_text(dirty)
+            session_dir = root / '.task/agent-session'
+            session.begin('flags', root, session_dir)
+            target.write_text(after)
+            with mock.patch.object(f, 'ROOT', root), \
+                 mock.patch.object(session, 'SESSION_DIR', session_dir):
+                yield f, target, session_dir
+
+    def test_feature_flag_compose_and_smoke_edits_keep_application_checks(self):
+        before = 'services:\n  api:\n    environment:\n      EXISTING: value\n'
+        after = before + '      WFS_FEATURE_EXAMPLE: ${WFS_FEATURE_EXAMPLE:-off}\n'
+        for path in ['docker/compose/apps.yml', 'docker/compose/production.yml',
+                     'release-template/synology/compose.yaml', 'docker/compose/smoke.env']:
+            old, new = (('EXISTING=value\n', 'EXISTING=value\nWFS_FEATURE_EXAMPLE=off\n')
+                        if path.endswith('.env') else (before, after))
+            with self.subTest(path=path), self.feature_flag_change(old, new, path) as (f, _, __):
+                self.assertEqual(f.classes_for([path]), {'application', 'harness'})
+                checks = f.checks_for([path])
+                for check in ['test:agent', 'test:api', 'agent:test:impact', 'review:contracts']:
+                    self.assertIn(check, checks)
+                self.assertNotIn('database-behavior', checks)
+                self.assertNotIn('agent:drift:endpoints', checks)
+                with mock.patch.object(f, 'run_command') as run:
+                    self.assertEqual(f.prepare([path]), 0)
+                    run.assert_not_called()
+                for real_contract in ['specs/openapi.yaml', 'specs/db.sql',
+                                      'api/src/RecipeApi/Models/Example.cs', 'unknown.bin']:
+                    self.assertIn('database-behavior', f.checks_for([path, real_contract]))
+
+    def test_other_compose_effects_remain_conservative(self):
+        before = 'services:\n  api:\n    environment:\n      EXISTING: value\n'
+        flag = '      WFS_FEATURE_EXAMPLE: ${WFS_FEATURE_EXAMPLE:-off}\n'
+        for after in [before + flag + '    image: different\n',
+                      before + flag + '    volumes: [data:/data]\n',
+                      before + '      ConnectionStrings__Default: changed\n',
+                      before + flag.replace(':-off', ':-unexpected'),
+                      before.replace('environment:', 'labels:') + flag,
+                      before.replace('  api:', '  postgres:') + flag,
+                      before + flag.replace('${WFS_FEATURE_EXAMPLE:-off}', '${OTHER:-off}')]:
+            with self.subTest(after=after), self.feature_flag_change(before, after) as (f, _, __):
+                self.assertIn('database-behavior', f.checks_for(['docker/compose/apps.yml']))
+
+    def test_flag_changes_compare_against_dirty_session_baseline(self):
+        clean = 'services:\n  api:\n    environment:\n      EXISTING: value\n'
+        dirty = clean + '    image: ambient-image\n'
+        after = dirty.replace('      EXISTING: value\n',
+                              '      EXISTING: value\n      WFS_FEATURE_EXAMPLE: ${WFS_FEATURE_EXAMPLE:-off}\n')
+        with self.feature_flag_change(clean, after, dirty=dirty) as (f, _, __):
+            self.assertNotIn('database-behavior', f.checks_for(['docker/compose/apps.yml']))
+        # Reverting ambient changes is still a task change, even if HEAD looks safe.
+        with self.feature_flag_change(clean, clean, dirty=dirty) as (f, _, __):
+            self.assertIn('database-behavior', f.checks_for(['docker/compose/apps.yml']))
+
+    def test_flag_classifier_fails_closed_for_missing_baseline_and_mode_changes(self):
+        before = 'services:\n  api:\n    environment:\n      EXISTING: value\n'
+        after = before + '      WFS_FEATURE_EXAMPLE: ${WFS_FEATURE_EXAMPLE:-off}\n'
+        for kind in ['manifest', 'mode', 'deleted', 'corrupt-baseline']:
+            with self.subTest(kind=kind), self.feature_flag_change(before, after, dirty=before) as (f, target, session_dir):
+                if kind == 'manifest':
+                    (session_dir / 'manifest.json').unlink()
+                elif kind == 'mode':
+                    target.chmod(0o755)
+                elif kind == 'deleted':
+                    target.unlink()
+                else:
+                    # No saved dirty copy exists when the baseline equals HEAD.
+                    import json
+                    manifest = json.loads((session_dir / 'manifest.json').read_text())
+                    manifest['baseline']['docker/compose/apps.yml']['sha256'] = 'invalid'
+                    (session_dir / 'manifest.json').write_text(json.dumps(manifest))
+                self.assertIn('database-behavior', f.checks_for(['docker/compose/apps.yml']))
+
     def test_github_workflows_are_harness_configuration_not_unknown(self):
         f = self.finish()
         self.assertEqual(f.classes_for(['.github/workflows/ci.yml']), {'harness'})

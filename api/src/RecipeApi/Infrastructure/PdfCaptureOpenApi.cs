@@ -24,7 +24,9 @@ public static class PdfCaptureOpenApi
                 {
                     Schema = new OpenApiSchema
                     {
-                        Type = JsonSchemaType.Object, Required = new HashSet<string> { "file" }, AdditionalPropertiesAllowed = false,
+                        Type = JsonSchemaType.Object,
+                        Required = new HashSet<string> { "file" },
+                        AdditionalPropertiesAllowed = false,
                         Properties = new Dictionary<string, IOpenApiSchema>
                         {
                             ["file"] = new OpenApiSchema { Type = JsonSchemaType.String, Format = "binary", Description = "Exactly one .pdf with application/pdf MIME type, 1–20,971,520 bytes; document validity is checked asynchronously." },
