@@ -29,9 +29,11 @@ Verified affected owners:
 
 ## D1 — One server-owned identity resolver (ID-R1–R5)
 
+Install identity is always active and is not gated by a feature flag. DEMO_MODE selects demo identity and the immutable image release channel selects stable/beta identity; neither is an additional feature-enable switch. Do not add a preview, opt-in, or rollout flag around the resolver, metadata, icon selection, or UI hint. Preserve independently gated existing behavior, including PDF share-target configuration.
+
 Proposed new pwa/src/lib/server/app-identity.ts resolves two inputs: runtime DEMO_MODE and immutable image release channel. Use a server-only module. Return only public fields: demo boolean, channel, install name, icon paths, hint, and accessible channel description. Do not send environment objects or secrets to clients.
 
-Match DemoModeOptions boolean semantics and safe warning behavior. Pass resolved public identity to client UI from server layout/props; do not read process.env dynamically in browser code and do not poll /api/health for branding.
+Match DemoModeOptions boolean semantics and safe warning behavior. All versions use "What's for Supper?" as the manifest name/short_name, Apple title, and browser title; icons and hints distinguish the variants. Pass resolved public identity to client UI from server layout/props; do not read process.env dynamically in browser code and do not poll /api/health for branding.
 
 Use a build argument WFS_RELEASE_CHANNEL=stable|beta, validated before build and persisted in the final image via generated server-readable metadata. The workflow determines it from the already validated version suffix. A label alone is insufficient because the Next.js server cannot reliably read Docker labels. Default local builds to stable; reject unsupported explicit channel values. Runtime configuration must not silently replace baked beta channel metadata.
 
@@ -49,7 +51,7 @@ Manifest metadata and server HTML must work without an API response, authenticat
 
 Keep production assets byte-for-byte unchanged. Create demo, beta, and beta-demo icon families under versioned public/icons/ paths. Supply 32px favicon, 180px Apple, 192/512px normal and maskable PNGs, and the favicon formats actually referenced by the app. Inspect current artwork before deriving assets.
 
-Demo: retain production colors and artwork; add one small DEMO corner ribbon. Beta: a violet background contrasting with the current terracotta identity plus prominent BETA marking. Beta-demo: preserve the beta cue while adding the demo corner. Keep badge positions within reviewed maskable safe areas; normal and maskable geometry may differ.
+Demo: retain production colors and artwork; add one small DEMO corner ribbon. Beta: retain the original textured cream background, artwork and shadow; add prominent BETA marking. This follows the user’s October 4, 2026 correction to the earlier violet-background proposal. Beta-demo: preserve the beta cue while adding the demo corner. Keep badge positions within reviewed maskable safe areas; normal and maskable geometry may differ.
 
 Proposed common IdentityHint component receives resolved identity and renders a compact muted corner label using existing Solar Earth tokens. Place it in the shared header and welcome container without replacing the logo, shifting controls, or covering safe areas. No interaction, new tooltip, or modal is needed. Use localized accessible text and stable test IDs; show nothing in stable non-demo mode. If a selected main route does not use Header, inspect its existing layout and use that same shared hint without broad layout refactoring.
 

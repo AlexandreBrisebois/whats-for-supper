@@ -22,6 +22,7 @@ jobs:
     outputs:
       version: ${{ steps.validate.outputs.version }}
       revision: ${{ steps.validate.outputs.revision }}
+      channel: ${{ steps.channel.outputs.channel }}
 
     steps:
       - uses: actions/checkout@v7
@@ -61,6 +62,22 @@ jobs:
 
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "revision=$tag_commit" >> "$GITHUB_OUTPUT"
+
+      - name: Derive PWA release channel
+        id: channel
+        env:
+          VERSION: ${{ steps.validate.outputs.version }}
+        run: |
+          set -euo pipefail
+          if ! [[ "$VERSION" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-beta\.([1-9][0-9]*))?$ ]]; then
+            echo "Cannot derive channel from invalid release version: $VERSION" >&2
+            exit 1
+          fi
+          channel=stable
+          if [[ "$VERSION" == *-beta.* ]]; then
+            channel=beta
+          fi
+          echo "channel=$channel" >> "$GITHUB_OUTPUT"
 
   validate:
     name: Validate release source
@@ -142,6 +159,7 @@ jobs:
           target: ${{ matrix.target }}
           platforms: linux/amd64,linux/arm64
           push: true
+          build-args: ${{ matrix.context == './pwa' && format('WFS_RELEASE_CHANNEL={0}', needs.validate-tag.outputs.channel) || '' }}
           tags: docker.io/${{ matrix.image }}:${{ needs.validate-tag.outputs.version }}
           labels: |
             org.opencontainers.image.revision=${{ needs.validate-tag.outputs.revision }}

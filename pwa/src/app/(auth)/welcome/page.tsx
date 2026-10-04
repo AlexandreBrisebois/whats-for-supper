@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { authenticateWithPassphrase, setHearthCookie } from '@/lib/auth';
 import { apiClient } from '@/lib/api/api-client';
+import { IdentityHint } from '@/components/identity/IdentityHint';
 import { t } from '@/locales';
 
 export default function WelcomePage() {
@@ -58,7 +59,8 @@ export default function WelcomePage() {
   }
 
   return (
-    <main className="flex min-h-dvh flex-col items-center justify-center gap-8 px-6 py-12 bg-cream">
+    <main className="relative flex min-h-dvh flex-col items-center justify-center gap-8 px-6 py-12 bg-cream">
+      <IdentityHint className="right-4 top-[calc(env(safe-area-inset-top)+1rem)]" />
       <div className="text-center animate-in fade-in slide-in-from-bottom-4 duration-700">
         <h1 className="text-4xl font-bold text-indigo tracking-tight" data-testid="welcome-title">
           {t('auth.welcomeTitle', "What's For Supper?")}

@@ -284,6 +284,59 @@ class CompletionTests(IsolatedGitTestCase):
             self.assertEqual(f.prepare(['.github/workflows/ci.yml']), 0)
         run.assert_not_called()
 
+    def test_pwa_demo_pass_through_keeps_broad_application_checks(self):
+        before = ('services:\n  api:\n    environment:\n      DEMO_MODE: ${DEMO_MODE:-false}\n'
+                  '  pwa:\n    environment:\n      EXISTING: value\n')
+        after = before + '      DEMO_MODE: ${DEMO_MODE:-false}\n'
+        for path in ['docker/compose/apps.yml', 'release-template/synology/compose.yaml']:
+            with self.subTest(path=path), self.feature_flag_change(before, after, path) as (f, _, __):
+                self.assertEqual(f.classes_for([path]), {'application', 'harness'})
+                checks = f.checks_for([path])
+                for check in ['test:agent', 'lint', 'typecheck', 'test:unit',
+                              'test:api', 'agent:test:impact', 'review:contracts']:
+                    self.assertIn(check, checks)
+                self.assertNotIn('database-behavior', checks)
+                self.assertNotIn('agent:drift:endpoints', checks)
+                for path2 in ['specs/openapi.yaml', 'specs/db.sql', 'unknown.bin']:
+                    self.assertIn('database-behavior', f.checks_for([path, path2]))
+                with mock.patch.object(f, 'run_command') as run:
+                    self.assertEqual(f.prepare([path]), 0)
+                    run.assert_not_called()
+
+    def test_demo_pass_through_rejects_other_effects_and_wrong_placement(self):
+        before = 'services:\n  pwa:\n    environment:\n      EXISTING: value\n'
+        addition = '      DEMO_MODE: ${DEMO_MODE:-false}\n'
+        for after in [before + addition + '    image: changed\n',
+                      before + addition + '    volumes: [data:/data]\n',
+                      before + addition + '      POSTGRES_CONNECTION_STRING: changed\n',
+                      before + addition.replace(':-false', ':-true'),
+                      before + addition.replace('DEMO_MODE:-false', 'OTHER:-false'),
+                      before.replace('environment:', 'labels:') + addition,
+                      before.replace('  pwa:', '  api:') + addition,
+                      before + addition + addition]:
+            with self.subTest(after=after), self.feature_flag_change(before, after) as (f, _, __):
+                self.assertIn('database-behavior', f.checks_for(['docker/compose/apps.yml']))
+        for path in ['docker/compose/production.yml', 'other/compose.yaml']:
+            with self.subTest(path=path), self.feature_flag_change(before, before + addition, path) as (f, _, __):
+                self.assertIn('database-behavior', f.checks_for([path]))
+
+    def test_demo_pass_through_uses_verified_dirty_baseline(self):
+        clean = 'services:\n  pwa:\n    environment:\n      EXISTING: value\n'
+        dirty = clean + '    image: ambient\n'
+        addition = '      DEMO_MODE: ${DEMO_MODE:-false}\n'
+        after = dirty.replace('      EXISTING: value\n', '      EXISTING: value\n' + addition)
+        with self.feature_flag_change(clean, after, dirty=dirty) as (f, _, __):
+            self.assertNotIn('database-behavior', f.checks_for(['docker/compose/apps.yml']))
+        for kind in ['manifest', 'snapshot', 'mode']:
+            with self.subTest(kind=kind), self.feature_flag_change(clean, after, dirty=dirty) as (f, target, session_dir):
+                if kind == 'manifest':
+                    (session_dir / 'manifest.json').unlink()
+                elif kind == 'snapshot':
+                    (session_dir / 'baseline/docker/compose/apps.yml').write_text('corrupt')
+                else:
+                    target.chmod(0o755)
+                self.assertIn('database-behavior', f.checks_for(['docker/compose/apps.yml']))
+
     def test_prepare_generation_and_format_precede_any_verification(self):
         f = self.finish()
         with mock.patch.object(f, 'run_command', return_value=('passed', 'ok')) as run, \

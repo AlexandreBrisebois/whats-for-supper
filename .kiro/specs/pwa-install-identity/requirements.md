@@ -10,6 +10,8 @@
 
 People can distinguish installed releases on their phone while the demo retains the production name, branding, and feel. Scope includes PWA install metadata, icon assets, a subtle in-app identity hint, configuration propagation, and beta image publication metadata.
 
+**User decision:** This feature is not gated by a feature flag. Once implemented, install identity is always resolved from the existing runtime DEMO_MODE and the image's release channel. No preview, opt-in, or rollout flag controls its availability.
+
 No native app bundle work, backend demo behavior changes, database changes, new demo switch, app-wide recoloring, or production rebranding. Existing managed demo behavior remains governed by [PLAT-06](../plat-06-managed-demo-mode/requirements.md).
 
 ## Verified baseline
@@ -42,7 +44,7 @@ An unobtrusive, non-interactive Demo corner hint appears on welcome and main app
 
 ### ID-R4 — Beta identity
 
-A beta image automatically presents "Supper Beta" as installed name, short_name, and Apple title when demo is disabled. Its icon retains recognizable artwork but uses a strongly contrasting background and prominent BETA marking. Beta identity must survive deployment without a manually supplied runtime beta flag. Stable images must not inherit beta identity.
+A beta image uses "What's for Supper?" as installed name, short_name, Apple title, and browser title, matching every other version. Its icon retains the original artwork and background, with a prominent BETA marking distinguishing the channel. Beta identity must survive deployment without a manually supplied runtime beta flag. Stable images must not inherit beta identity.
 
 The application keeps the existing brand and palette; a quiet Beta hint confirms the channel.
 
@@ -60,7 +62,7 @@ Masks, rounded corners, and small phone labels preserve the distinguishing marks
 
 ### ID-R7 — Install coexistence and caching
 
-Separate production, demo, and beta deployment origins allow installations to coexist even when production and demo share a name. Preserve production id "/" and use stable per-origin manifest identity; toggling demo on the same origin must not create a new app identity on every restart or version.
+Separate production, demo, and beta deployment origins allow installations to coexist while all versions share a name. Preserve production id "/" and use stable per-origin manifest identity; toggling demo on the same origin must not create a new app identity on every restart or version.
 
 Distinct, versioned asset paths prevent the wrong variant being reused. Fresh metadata reflects runtime configuration without cross-deployment cache leakage. Previously installed home-screen icons may require OS refresh or removal/reinstallation; document that limitation rather than promising immediate replacement.
 
@@ -74,13 +76,13 @@ The hint is localized using the existing English/French infrastructure, accessib
 |---|---|---|---|---|
 | Stable | unset/false/invalid | What's for Supper? | Current | None |
 | Stable | true | What's for Supper? | Current + DEMO corner | Demo |
-| Beta | unset/false/invalid | Supper Beta | Contrasting + BETA | Beta |
-| Beta | true | What's for Supper? | Contrasting + BETA + DEMO corner | Demo; Beta accessible description |
+| Beta | unset/false/invalid | What's for Supper? | Original + BETA | Beta |
+| Beta | true | What's for Supper? | Original + BETA + DEMO corner | Demo; Beta accessible description |
 
 Verify true/TRUE/whitespace true and false/blank/invalid parsing; verify fresh initial HTML and manifest agree; verify stable and beta images across runtime restart; verify install coexistence on separate origins and real-device icon cropping.
 
 ## Decisions and open questions
 
-User decisions: preserve production icon; demo name unchanged; demo icon alteration small; in-app demo hint unobtrusive; demo branding and feel identical; existing DEMO_MODE controls demo identity; beta visually distinct.
+User decisions: preserve production icon; all versions use the same app name "What's for Supper?"; demo icon alteration small; in-app demo hint unobtrusive; demo branding and feel identical; existing DEMO_MODE controls demo identity; beta visually distinct through its icon and hint.
 
-Proposed details: "Supper Beta", violet beta background, overlap behavior in ID-R5, separate origins, and a static non-interactive corner hint. Final violet shade and badge geometry are chosen through small-size icon review during implementation. No blocking question prevents this spec from being reviewed.
+Proposed details: original icon background with prominent BETA marking, overlap behavior in ID-R5, separate origins, and a static non-interactive corner hint. Badge geometry is chosen through small-size icon review during implementation. No blocking question prevents this spec from being reviewed.

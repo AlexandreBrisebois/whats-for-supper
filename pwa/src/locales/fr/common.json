@@ -1,4 +1,9 @@
 {
+  "installIdentity": {
+    "demo": "Démo",
+    "beta": "Bêta",
+    "betaChannel": "Canal bêta"
+  },
   "buttons": {
     "next": "Suivant",
     "back": "Retour",

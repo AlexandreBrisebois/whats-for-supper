@@ -22,7 +22,8 @@ CHECKS = ('documentation', 'test:agent', 'lint', 'format:check:pwa', 'typecheck'
           'agent:drift:endpoints', 'database-behavior')
 
 
-# Narrow exception for preview switches, not arbitrary deployment configuration.
+# Narrow exceptions for preview switches and the PWA demo pass-through addition.
+# These do not cover arbitrary deployment configuration.
 # Database connections, migrations, mounts, images and unrecognized formats retain
 # the conservative classification below.
 FEATURE_FLAG_CONFIG_PATHS = {
@@ -57,8 +58,35 @@ def without_feature_flags(content, dotenv=False):
     return ''.join(remaining)
 
 
-def feature_flag_configuration_only(path):
-    if path not in FEATURE_FLAG_CONFIG_PATHS:
+def without_pwa_demo(content):
+    """Recognize only the existing false-default demo input in PWA environment."""
+    remaining = []
+    services = pwa = environment = False
+    removed = 0
+    for line in content.splitlines(keepends=True):
+        text = line.rstrip('\r\n')
+        if text.strip() and not text.lstrip().startswith('#'):
+            indent = len(text) - len(text.lstrip(' '))
+            if indent == 0:
+                services = text == 'services:'
+                pwa = environment = False
+            elif indent == 2:
+                pwa = services and text == '  pwa:'
+                environment = False
+            elif indent == 4:
+                environment = pwa and text == '    environment:'
+            elif (indent == 6 and environment
+                  and text == '      DEMO_MODE: ${DEMO_MODE:-false}'):
+                removed += 1
+                continue
+        remaining.append(line)
+    return ''.join(remaining), removed
+
+
+def deployment_configuration_only(path, *, pwa_demo=False):
+    allowed_paths = ({'docker/compose/apps.yml', 'release-template/synology/compose.yaml'}
+                     if pwa_demo else FEATURE_FLAG_CONFIG_PATHS)
+    if path not in allowed_paths:
         return False
     try:
         manifest = session.load_manifest(session.SESSION_DIR)
@@ -78,6 +106,11 @@ def feature_flag_configuration_only(path):
         if hashlib.sha256(before).hexdigest() != baseline['sha256']:
             return False
         after = (ROOT / path).read_bytes()
+        if pwa_demo:
+            stripped, count = without_pwa_demo(after.decode())
+            # Addition only: API demo values, defaults, removals and mixed changes
+            # are not covered. Match the verified task-boundary bytes exactly.
+            return count == 1 and stripped == before.decode()
         return before != after and without_feature_flags(
             before.decode(), path.endswith('.env')) == without_feature_flags(
                 after.decode(), path.endswith('.env'))
@@ -88,7 +121,8 @@ def feature_flag_configuration_only(path):
 def classes_for(paths):
     classes = set()
     for path in paths:
-        if feature_flag_configuration_only(path):
+        if (deployment_configuration_only(path)
+                or deployment_configuration_only(path, pwa_demo=True)):
             classes.update(('application', 'harness'))
             continue
         # Runtime schemas beat documentation/spec-directory shortcuts.

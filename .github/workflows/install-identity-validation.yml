@@ -1,0 +1,41 @@
+name: Install identity validation (no publication)
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'pwa/**'
+      - 'docker/compose/**'
+      - 'release-template/synology/compose.yaml'
+      - 'scripts/agent/install_identity.py'
+      - '.github/workflows/install-identity-validation.yml'
+      - '.github/workflows/publish-dockerhub.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: install-identity-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  amd64:
+    name: Native amd64 — ${{ matrix.channel }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        channel: [stable, beta]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
+      - name: Build and verify the exact image with demo off and on
+        run: python3 -B scripts/agent/install_identity.py --images --architecture amd64 --channel ${{ matrix.channel }}
+      - name: Upload image and Compose evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: install-identity-amd64-${{ matrix.channel }}
+          path: .task/identity-T3/*-results.json
+          if-no-files-found: error

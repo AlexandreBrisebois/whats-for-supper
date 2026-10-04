@@ -35,6 +35,7 @@ services:
       WFS_FEATURE_PREVIEW_PDF_RECIPE_IMPORT: ${WFS_FEATURE_PREVIEW_PDF_RECIPE_IMPORT:-off}
       WFS_VERSION: ${WFS_VERSION}
       API_INTERNAL_URL: http://api:9001
+      DEMO_MODE: ${DEMO_MODE:-false}
       HEARTH_SECRET: ${HEARTH_SECRET:?HEARTH_SECRET must be set}
     depends_on:
       api:

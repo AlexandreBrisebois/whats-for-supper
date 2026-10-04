@@ -1,10 +1,13 @@
-import { Metadata, Viewport } from 'next';
+import type { Metadata, Viewport } from 'next';
+import { connection } from 'next/server';
+import { resolveAppIdentity } from '@/lib/server/app-identity';
 import Script from 'next/script';
 import { Suspense } from 'react';
 import { PdfShareLifecycle } from '@/components/capture/PdfShareLifecycle';
 import { Outfit, Inter } from 'next/font/google';
 import './globals.css';
 import { LocaleProvider } from '@/components/common/LocaleProvider';
+import { InstallIdentityProvider } from '@/components/identity/IdentityHint';
 import { IdentityValidator } from '@/components/identity/IdentityValidator';
 
 const outfit = Outfit({
@@ -19,20 +22,25 @@ const inter = Inter({
   display: 'swap',
 });
 
-export const metadata: Metadata = {
-  title: "What's for Supper?",
-  description: 'Capture recipes, plan your week, discover what to cook next.',
-  manifest: '/manifest.json',
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: 'black-translucent',
-    title: "What's for Supper?",
-  },
-  icons: {
-    icon: '/favicon-32x32.png',
-    apple: '/apple-touch-icon.png',
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  await connection();
+  const identity = resolveAppIdentity();
+  return {
+    title: identity.name,
+    description: 'Capture recipes, plan your week, discover what to cook next.',
+    manifest: '/manifest.json',
+    appleWebApp: {
+      capable: true,
+      statusBarStyle: 'black-translucent',
+      title: identity.name,
+    },
+    icons: {
+      icon: identity.icons.favicon,
+      apple: identity.icons.apple,
+      ...(identity.icons.shortcut ? { shortcut: identity.icons.shortcut } : {}),
+    },
+  };
+}
 
 export const viewport: Viewport = {
   themeColor: '#CD5D45',
@@ -43,7 +51,9 @@ export const viewport: Viewport = {
   viewportFit: 'cover',
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  await connection();
+  const identity = resolveAppIdentity();
   return (
     <html lang="en" className={`${outfit.variable} ${inter.variable}`}>
       <head>
@@ -120,7 +130,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <PdfShareLifecycle />
         </Suspense>
         <LocaleProvider>
-          <IdentityValidator>{children}</IdentityValidator>
+          <InstallIdentityProvider identity={{ demo: identity.demo, channel: identity.channel }}>
+            <IdentityValidator>{children}</IdentityValidator>
+          </InstallIdentityProvider>
         </LocaleProvider>
       </body>
     </html>

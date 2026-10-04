@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 
+import { IdentityHint } from '@/components/identity/IdentityHint';
 import { Header } from './Header';
 import { Navigation } from './Navigation';
 import { BackgroundBlobs } from '../ui/BackgroundBlobs';
@@ -41,6 +42,9 @@ export function Layout({
   return (
     <div className={`relative flex min-h-dvh flex-col bg-cream overflow-x-hidden ${className}`}>
       {showBackgroundBlobs && <BackgroundBlobs />}
+      {hideHeader && (
+        <IdentityHint className="right-1 top-[calc(env(safe-area-inset-top)+1px)] z-30" />
+      )}
       {/* Header */}
       {!hideHeader && <Header title={title} leftAction={leftAction} rightAction={rightAction} />}
 

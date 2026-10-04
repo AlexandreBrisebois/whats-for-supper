@@ -26,6 +26,9 @@ COPY . .
 ARG NEXT_PUBLIC_API_BASE_URL=""
 ENV NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL}
 
+# Bake channel metadata into the server bundle; runtime env cannot replace it.
+ARG WFS_RELEASE_CHANNEL=stable
+RUN WFS_RELEASE_CHANNEL="$WFS_RELEASE_CHANNEL" node -e 'const channel = process.env.WFS_RELEASE_CHANNEL; if (!["stable", "beta"].includes(channel)) throw new Error("Invalid WFS_RELEASE_CHANNEL"); require("node:fs").writeFileSync("src/lib/server/release-channel.json", JSON.stringify({ channel }) + "\n");'
 
 RUN --mount=type=cache,target=/app/.next/cache \
     npm run build
@@ -42,6 +45,7 @@ ENV API_INTERNAL_URL=http://api:9001
 COPY --from=build /app/public ./public
 COPY --from=build /app/.next/standalone ./
 COPY --from=build /app/.next/static ./.next/static
+COPY --from=build /app/src/lib/server/release-channel.json ./release-channel.json
 
 EXPOSE 3000
 

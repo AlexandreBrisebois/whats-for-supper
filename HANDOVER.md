@@ -1,5 +1,28 @@
 # Active resume checkpoints
 
+## PWA install identity ID-T3
+
+Task/spec: ID-T3 in `.kiro/specs/pwa-install-identity/tasks.md`; stop before ID-T4.
+Worktree/branch: Task-local ID-T3 session at `bb76d775cc57cd43787263036068836eeb94f064`; predecessor ID-T2 session and fresh successful correction finish preserved in `.task/identity-T3/predecessor-ID-T2/`.
+Authorized scope and source: User-selected Compose/Synology demo parity, automatic immutable Docker PWA channel, direct config tests/docs. User explicitly excluded AWS work during execution. No commit/publication/deployment.
+Current checkpoint: Deployment wiring and docs implemented test-first; all existing assets, PDF gates, API semantics and auth preserved.
+Verification evidence and content identity: 633 PWA units passed; focused 52 identity/config/asset tests passed; 30 rendered Compose parity cases passed. New test formatted. Task evidence and private scope review identify exact post-begin changes and Dockerfile overlap.
+Blocker or next action: Docker socket denied, so image/runtime/architecture matrix is blocked. Run `python3 -B .task/identity-T3/verify.py --images` locally. Preparation blocked before writes on unknown Synology YAML classification; conservative finish selection is preserved. ID-T3 remains incomplete; final finish record must be reconciled with required image acceptance, and ID-T4 stays unstarted.
+
+Final verification: Finish was unsuccessful at `2528e02ac0ef1eefa66b41f83c175ceb3ed52168e5a65dc1ec76f169dec36456`: docs, 98 harness tests, formatting, 633 units and content passed; API lint/E2E/API tests hit sandbox socket restrictions; Kiota/live/database evidence blocked. A new-test `NODE_ENV` type error was fixed afterward; typecheck, 21 channel/deployment tests, changed-file ESLint and Prettier now pass. Later code/docs require fresh finish; no completion or final-image success claimed.
+
+User-directed common name: All versions now use "What's for Supper?"; resolver, unit/E2E expectations, spec, docs and private image verifier updated. Icons/hints unchanged. Two assertions failed before implementation; 52 focused tests, typecheck and changed-file lint/format passed afterward. Prior finish identity does not cover this change; existing Docker/harness blockers remain.
+
+Build boundary: User requires amd64 builds only in GitHub Actions. The same local `verify.py --images` command now builds arm64 stable/beta only (two images, four runtime cases). GitHub Actions amd64 evidence remains pending; no local amd64/emulation requirement remains. Existing publication workflow retains both architectures and has not been triggered.
+
+Arm64 acceptance: Saved image-results.json verified: all four stable/beta × demo-off/on cases passed. Stable image `sha256:e7a4d41cb363afb955e793537dddfb2fb6e0e20398251ed36f5be1b9f16f93e6`; beta image `sha256:a5eefcfe9880bdd1a60b8c2a7570797ff55a59789551adf7c2846c4cdf6ddfa1`. Each channel reuses its exact image ID across demo values. Local image blocker is resolved; GitHub amd64 and harness preparation/finish remain pending. ID-T3 stays unchecked.
+
+Latest local finish: Verified on-disk identity `979aa5b92be79ff7b6d23c568f8ef9488d8d0c682d4974977b2d125827e6cdb5`; all code/static checks and immutable content passed. Only live endpoint parity (API absent at localhost:5001) and database-behavior gate remain blocked. Deployment files select contract/unknown checks despite this task changing no API contract/persistence/database configuration. No gate fix or bypass implemented. Non-Markdown task source matches final review. GitHub amd64 verification and harness classification/preparation closeout remain pending; ID-T3 unchecked.
+
+Closeout support: User accepted resolving T3 prerequisites before T4. Narrow PWA-demo-addition classification implemented test-first; all 105 harness tests and 30 shared-verifier Compose cases pass; preparation now passes without changing formatted source. Broad application checks preserved; actual mixed contract/unknown changes still select live/database checks. Shared `scripts/agent/install_identity.py` permits local arm64 and GitHub-only native amd64. New non-publishing `install-identity-validation.yml` tests stable/beta demo off/on and uploads evidence. Not committed/pushed or executed. Next: local `task agent:finish`, then actual GitHub matrix after separately authorized commit/push. T3 remains unchecked; T4/AWS untouched.
+
+Fresh finish accepted: Verified on-disk ID-T3 success at `80a658b9c6e2cdf3841c184a707e78072b308ffb009ca976d843a4db8d3f7735`; all applicable checks and immutable content passed. Non-Markdown task source matches final scope review. Local preparation/scope/finish and arm64 acceptance are satisfied. Only actual GitHub amd64 matrix remains; commit/push authorization is still pending. Later evidence edits are documentation only; T3 unchecked and T4 unstarted.
+
 Load for resumption or active-state ambiguity via `task agent:status`. These
 checkpoints are context, not authority. Follow the shared
 [handoff procedure](.agents/core/execution-harness.md#evidence-and-meaningful-handoffs).
@@ -82,3 +105,16 @@ PDF renderer follow-up: user approved static code-owned limits instead of deploy
 
 Static-profile verification: source `7576cdd7d6ecb9e8ea01059e337f410997df237b`, Actions 37091282008, all four jobs successful. API 831 passed/34 skipped; PDF PostgreSQL/disk 3 passed; native production/default and guard tests 5 passed; ten production fixture cases and Compose off/opt-in/on passed; harness 94 passed; contract/documentation/whitespace checks passed. PWA: 563 units/4 worker tests passed; browser 202 passed/1 flaky (passed on retry)/2 skipped, typecheck/lint/build passed. Existing optional PostgreSQL search failures reproduce on the original baseline. Actual NAS/device/model checks remain blocked/not-run; no live environment or rollout changes.
 >>>>>>> be7cce13b185b88f60c7dc46b4c1303b8c1c2b63
+
+## PWA install identity ID-T2
+
+Task/spec: User-authorized ID-T2 in [.kiro/specs/pwa-install-identity/tasks.md](.kiro/specs/pwa-install-identity/tasks.md); stop before ID-T3.
+Worktree/branch: `/Users/alex/Code/whats-for-supper`, `spec/pwa-install-identity`, HEAD bb76d775cc57cd43787263036068836eeb94f064; active session `ID-T2`. Stale unrelated session metadata retired only with explicit user approval.
+Authorized scope and source: versioned demo/beta/beta-demo icons, identity asset wiring, shared localized non-interactive hint in Header/welcome/Header-hidden shell, directly needed tests and evidence. Existing deployment/AWS/publication wiring and backend/auth semantics preserved.
+Current checkpoint: original ID-T2 implementation accepted with 12 matrix tests and local finish; subsequent user-directed beta background restoration is implemented and ID-T2 reopened for fresh correction finish evidence. Original backgrounds restored; no T3 work.
+Verification evidence and content identity: 616 PWA unit tests passed; all applicable local finish checks passed, including lint/types/format, impact E2E, API tests and static contracts/client checks. Immutable local finish identity dcd3f501b3a57f94ce4183da7dd4cb8e37c5d4327bbfb8dbf72a500e63e9cfbb; content passed. User confirmed all 12 targeted identity-matrix tests passed. Production public-file hashes unchanged; maskable/small-size review passed. Reviewed task files matched before final documentation bookkeeping. Acceptance updates are later documentation, checked separately; prior finish identity does not cover those Markdown edits. Private scope/hash evidence: `.task/identity-T2-preflight/scope-review.json`; automated finish evidence: `.task/agent-finish/last-run.json`.
+Blocker or next action: run `task agent:finish` locally for the background correction; sandbox named-pipe/TCP permissions and Kiota timeout block fresh completion. Stop before ID-T3. No commit, publish or deploy performed.
+
+ID-T2 visual correction (October 4, 2026): user rejected violet beta/beta-demo backgrounds. Restored corresponding production backgrounds in all 16 PNG/ICO assets while retaining badge overlays, sizes and paths; requirements/design updated to the explicit correction. Test-first background checks failed before regeneration, then all eight asset tests passed. Crop previews reviewed again. Prior full local acceptance remains historical for prior asset bytes; fresh correction finish pending. No UI/auth/deployment changes.
+
+Background correction finish: 618 unit tests, typecheck, format, docs and content passed at ccd98425c7fbfe269342cff789a8816892f01acbb459a9dae9f34a3ce21d1850. Overall finish blocked by sandbox socket permissions/Kiota timeout; no code defect observed. These later evidence edits are documentation only, checked separately. Updated crop preview and correction scope: `.task/identity-T2-preflight/icon-review.png`, `.task/identity-T2-preflight/background-correction.json`.

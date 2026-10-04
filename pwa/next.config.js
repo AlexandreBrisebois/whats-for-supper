@@ -3,6 +3,8 @@ const nextConfig = {
   reactStrictMode: true,
   compress: true,
   output: 'standalone',
+  // Install metadata must be in the initial head for Apple/browser install discovery.
+  htmlLimitedBots: /.*/,
   images: {
     remotePatterns: [
       {
