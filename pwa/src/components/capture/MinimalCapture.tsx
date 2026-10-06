@@ -398,7 +398,11 @@ export default function MinimalCapture({
 
     if (!file) return;
     if (file.name.toLowerCase().endsWith('.pdf') || file.type === 'application/pdf') {
-      if (!pdfEnabled || !memberId) {
+      const flags = useFeatureFlagStore.getState();
+      // Returning from the picker can refresh flags on focus. The PDF panel
+      // waits for that member's snapshot before permitting confirmation.
+      const awaitingFlags = flags.memberId === memberId && flags.loading;
+      if ((!pdfEnabled && !awaitingFlags) || !memberId || isGoto) {
         setBundleImportError(
           t(
             'capture.pdf.disabled',
