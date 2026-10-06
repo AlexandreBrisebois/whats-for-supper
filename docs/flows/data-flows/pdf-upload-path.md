@@ -10,6 +10,7 @@ sequenceDiagram
     participant API as PDF capture API
     participant Store as Database + recipe store
     participant Workflow as Existing recipe-import
+    participant Index as Independent search indexing
     participant Native as Isolated PDFtoImage child
     participant Settings as Existing Settings recovery
     Origin->>Worker: Android multipart POST /share-target
@@ -23,9 +24,11 @@ sequenceDiagram
     API-->>Capture: 202 data.id; return Home
     Workflow->>Native: ConvertPdf; all 1–10 pages; sequential PNG
     Native-->>Store: Publish complete ordered 0.png…N.png; update count
-    Workflow->>Workflow: ExtractRecipe and unchanged downstream tasks
+    Workflow->>Workflow: ExtractRecipe → GenerateHero → SyncRecipe → categorization
     alt Ready
         Workflow->>Store: Normal readiness publication
+        Workflow->>Workflow: Complete import report
+        Workflow->>Index: Queue index-recipe-search using completed content fingerprint
     else Conversion/extraction failure after normal retries
         Workflow->>Settings: Existing paused recipe-import + failed task
         Settings->>Workflow: Retry failed task using retained source
@@ -33,7 +36,7 @@ sequenceDiagram
     end
 ```
 
-Photos run the same workflow and skip ConvertPdf when no retained PDF exists. Accepted-ID persistence follows the existing photo boundary: enqueue errors are logged after persistence, so 202 does not verify launch or readiness. No new durable queue or pre-workflow failure model is introduced.
+Photos run the same workflow and skip ConvertPdf when no retained PDF exists. Upload acceptance starts only recipe-import; search indexing is queued after readiness and import-report completion. The indexing child runs independently and its failures do not emit an import-failure notification. Accepted-ID persistence follows the existing photo boundary: enqueue errors are logged after persistence, so 202 does not verify launch or readiness. No new durable queue or pre-workflow failure model is introduced.
 
 Transport rejects missing/extra file or invalid metadata with 400, a disabled preview with 409, a file over 20,971,520 bytes with 413 and wrong extension/MIME with 415. Rejection creates no pending recipe/workflow. Errors use unwrapped `{status,message}`; acceptance is `{data:{id}}`. Corrupt/encrypted documents and 11-page documents fail conversion as retained jobs. Do not truncate, promote partial pages, or automatically delete failed sources.
 

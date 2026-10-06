@@ -90,17 +90,6 @@ public class RecipeService(
         });
         await db.SaveChangesAsync();
 
-        // Enqueue search index job for new recipe
-        try
-        {
-            await orchestrator.TriggerAsync("index-recipe-search", new Dictionary<string, string>
-            {
-                ["recipeId"] = recipeId.ToString(),
-                ["fingerprint"] = SearchFingerprintService.ComputeSourceFingerprint(recipe)
-            });
-        }
-        catch (Exception ex) { logger.LogError(ex, "Failed to trigger search index for new recipe {RecipeId}", recipeId); }
-
         // Trigger the recipe-import workflow asynchronously.
         // This queues the background extraction (OCR/AI) of the recipe content from photos.
         try

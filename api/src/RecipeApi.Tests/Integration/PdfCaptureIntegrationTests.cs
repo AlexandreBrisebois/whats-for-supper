@@ -79,7 +79,9 @@ public class PdfCaptureIntegrationTests
         Assert.False(await store.HasOriginalImagesAsync(id));
         Assert.Null(await store.ReadOriginalImageAsync(id, 0));
         Assert.NotNull(await db.RecipeSearchDocuments.SingleOrDefaultAsync(x => x.RecipeId == id));
-        Assert.Contains(await db.WorkflowInstances.ToListAsync(), w => w.WorkflowId == "recipe-import" && w.Parameters!.Contains(id.ToString()));
+        var workflows = await db.WorkflowInstances.ToListAsync();
+        Assert.Contains(workflows, w => w.WorkflowId == "recipe-import" && w.Parameters!.Contains(id.ToString()));
+        Assert.DoesNotContain(workflows, w => w.WorkflowId == "index-recipe-search");
     }
 
     [Theory]

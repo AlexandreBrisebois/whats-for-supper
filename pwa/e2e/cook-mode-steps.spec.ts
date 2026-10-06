@@ -136,7 +136,7 @@ test.describe('Cook Mode — HowToSection[] steps display', () => {
   ]) {
     test(`single-page reading position and compact headings at ${viewport.width}px`, async ({
       page,
-    }) => {
+    }, testInfo) => {
       await page.setViewportSize(viewport);
       await mockFeatureFlags(page, [
         { key: 'single-page-recipe-steps', enabled: true, mode: 'on', memberEnabled: false },
@@ -159,6 +159,8 @@ test.describe('Cook Mode — HowToSection[] steps display', () => {
       await page.goto('/home');
       await page.getByTestId('tonight-menu-card').click();
       await page.getByTestId('cook-mode-btn').click();
+      const ingredient = page.getByTestId('ingredient-toggle').first();
+      await ingredient.click();
       await page.getByTestId('cooks-mode-step-next').click();
       const list = page.getByTestId('single-page-recipe-steps');
       await expect(list).toBeVisible();
@@ -171,10 +173,9 @@ test.describe('Cook Mode — HowToSection[] steps display', () => {
       await expect(completion.locator('svg')).toHaveCount(0);
       const buttonBounds = await completion.boundingBox();
       const footerBounds = await page.getByTestId('cooks-mode-controls').boundingBox();
-      expect(buttonBounds!.height).toBeGreaterThanOrEqual(64);
-      expect(
-        footerBounds!.y + footerBounds!.height - buttonBounds!.y - buttonBounds!.height
-      ).toBeGreaterThanOrEqual(24);
+      expect(buttonBounds!.height).toBeGreaterThanOrEqual(44);
+      expect(footerBounds!.height).toBeLessThanOrEqual(80);
+      await page.screenshot({ path: testInfo.outputPath('single-page-cooking.png') });
       const scroll = page.getByTestId('cooks-mode-instructions');
       await scroll.evaluate((surface) => {
         const row = surface.querySelector<HTMLElement>('[data-cooking-step="3"]')!;
@@ -183,6 +184,16 @@ test.describe('Cook Mode — HowToSection[] steps display', () => {
       });
       await expect(page.getByTestId('cooks-mode-step-indicator')).toHaveText('3 / 6');
       await expect(page.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '3');
+      const readingOffset = await scroll.evaluate((surface) => surface.scrollTop);
+      // The development-only issues badge overlaps the phone's left dock action.
+      const devBadge = page.getByRole('button', { name: 'Collapse issues badge' });
+      if (await devBadge.isVisible()) await devBadge.click();
+      await page.getByTestId('cooks-mode-step-prev').click();
+      await expect(ingredient).toHaveAttribute('aria-checked', 'true');
+      await expect(page.getByTestId('cooks-mode-step-next')).toHaveText('Resume steps');
+      await page.getByTestId('cooks-mode-step-next').click();
+      await expect(page.getByTestId('cooks-mode-step-indicator')).toHaveText('3 / 6');
+      await expect.poll(() => scroll.evaluate((surface) => surface.scrollTop)).toBe(readingOffset);
       await page.getByTestId('close-cooks-mode').click();
       await page.getByTestId('cook-mode-btn').click();
       await expect(page.getByTestId('cooks-mode-step-indicator')).toHaveText('3 / 6');

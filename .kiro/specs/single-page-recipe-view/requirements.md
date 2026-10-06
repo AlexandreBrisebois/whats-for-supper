@@ -82,6 +82,20 @@ behavior. Structured HowTo sections/steps, flat legacy instructions, fallback st
 issue reporting, recipe detail access, and current progress data shall remain
 compatible.
 
+### SPRV-09 — Ingredient recovery and scanning
+
+The single-page cooking dock shall expose **Ingredients** and **Cooked** with
+touch targets of at least 44px and compact padding that respects device safe areas.
+Ingredients shall return to the existing checklist without clearing checks or the
+reading bookmark. **Resume steps** shall restore the prior scroll position.
+Ingredient navigation shall be disabled while a step editor is open.
+
+Cards shall use supplied meaningful step titles and show meaningful section context
+once per consecutive section. Cards without a meaningful supplied title shall show
+the step number and instructions without inventing a heading. Instruction sentences
+may be separated for scanning. Presentation shall retain the full source wording and
+editing coordinates, without generating summaries, headings, or quantity emphasis.
+
 ## Member-facing copy
 
 - **Name:** Recipe on one page

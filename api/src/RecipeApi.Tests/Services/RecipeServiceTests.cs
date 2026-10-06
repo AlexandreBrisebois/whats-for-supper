@@ -33,6 +33,27 @@ public class RecipeServiceTests : IAsyncLifetime
     // ── GET /api/recipes — ingredients deserialization resilience ─────────────
 
     [Fact]
+    public async Task Photo_acceptance_starts_import_without_indexing_unextracted_content()
+    {
+        _client.DefaultRequestHeaders.Add("X-Family-Member-Id", _factory.DefaultFamilyMemberId.ToString());
+        using var form = new MultipartFormDataContent();
+        var image = new ByteArrayContent(Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/l2kAAAAASUVORK5CYII="));
+        image.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/png");
+        form.Add(image, "files", "recipe.png");
+        using var response = await _client.PostAsync("/api/recipes", form);
+        Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
+        using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var recipeId = json.RootElement.GetProperty("data").GetProperty("id").GetGuid();
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+        var recipe = await db.Recipes.FindAsync(recipeId);
+        Assert.False(recipe!.IsReady);
+        Assert.NotNull(await db.RecipeSearchDocuments.FindAsync(recipeId));
+        var instance = Assert.Single(db.WorkflowInstances);
+        Assert.Equal("recipe-import", instance.WorkflowId);
+    }
+
+    [Fact]
     public async Task GetRecipes_WithNullIngredients_Returns_EmptyList()
     {
         // Arrange: seed a recipe with null ingredients

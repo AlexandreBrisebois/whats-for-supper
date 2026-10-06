@@ -46,3 +46,32 @@ use `mockFeatureFlags` for all three modes, the standard recipe-update mock for 
 and a test-local failed-save route. Expected feature snapshot envelope is
 `{ data: FeatureFlagDto[] }`; update the mock owner with the contract task, before
 the browser scenario is run.
+
+## 2026-10-06 — Ingredient recovery and scan-friendly cards
+
+Authorized by the cooking-experience owner's request to implement ingredient
+recovery, a slimmer dock, and scan-friendly cards across varying extraction formats.
+Implements SPRV-09; this does not graduate the preview or change extraction/API data.
+
+- Ingredients preserves checklist checks and the stored step bookmark. Resume steps
+  restores the exact reading offset. An open editor disables ingredient navigation.
+- The single-page dock uses 48px buttons, compact padding, and the device safe area.
+- Supplied step titles and section metadata provide context; untitled steps show
+  their number and instructions. Sentence spacing improves scanning without rewriting
+  or emphasizing instruction content. Unit coverage verifies exact text preservation,
+  multiple languages, decimal quantities, and unavailable sentence segmentation.
+- Passed: 649 PWA unit tests, PWA lint, TypeScript, formatting, diff whitespace, and
+  static route/schema/mock reconciliation.
+- Browser evidence from the earlier revision: tablet recovery/dock/bookmark scenario
+  and legacy completion passed. Phone recovery failed because Next.js's development issues badge intercepted
+  the tap. A test-local badge-collapse step was added; the rerun was blocked by
+  `listen EPERM` on port 3000. Final phone/browser acceptance remains unverified,
+  including the subsequent removal of automatic measurement emphasis requested by
+  the owner to keep this change focused on card presentation.
+- Blocked: API tests could not start their test-host socket; generated-client check
+  timed out after 20 seconds. Neither is reported as passed.
+- Formal begin/prepare/session/finish are blocked by the pre-existing stale ID-T4
+  session. It was preserved. A separate private baseline and scope review are in
+  `.task/cooks-mode-ingredients-scan-friendly/`; no unrelated API/PDF work was adopted.
+- Local remaining checks: `task review` and
+  `task test:e2e -- e2e/cook-mode-steps.spec.ts --reporter=list --workers=1`.
