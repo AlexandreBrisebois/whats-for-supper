@@ -203,7 +203,8 @@ tasks:
     desc: "Run E2E against production build (CI parity: build + test)"
     dir: pwa
     cmds:
-      - npm run test:e2e:ci
+      - npm run build
+      - npm run test:e2e -- {{.CLI_ARGS}}
 
   test:audit:
     desc: "🔍 Audit tests for a specific area (Usage: task test:audit AREA=<keyword>)"

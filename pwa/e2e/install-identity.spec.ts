@@ -2,8 +2,11 @@ import { test, expect } from '@playwright/test';
 import { setupCommonRoutes, MOCK_IDS, builders } from './mock-api';
 import { generateSecretToken } from './auth-utils';
 import channelArtifact from '../src/lib/server/release-channel.json';
+import baseManifest from '../src/lib/baseManifest.json';
 
-const demo = process.env.DEMO_MODE?.trim().toLowerCase() === 'true';
+const demo =
+  (process.env.WFS_IDENTITY_TEST_DEMO_MODE ?? process.env.DEMO_MODE)?.trim().toLowerCase() ===
+  'true';
 const variant =
   channelArtifact.channel === 'beta' ? (demo ? 'beta-demo' : 'beta') : demo ? 'demo' : 'production';
 const prefix = variant === 'production' ? '' : `/icons/install-v1/${variant}`;
@@ -34,15 +37,48 @@ test('public install metadata agrees in initial HTML and retains access policy',
     '/capture',
   ]);
   const pdf = ['on', 'opt-in'].includes(
-    process.env.WFS_FEATURE_PREVIEW_PDF_RECIPE_IMPORT?.trim().toLowerCase() ?? ''
+    (process.env.WFS_IDENTITY_TEST_PDF_MODE ?? process.env.WFS_FEATURE_PREVIEW_PDF_RECIPE_IMPORT)
+      ?.trim()
+      .toLowerCase() ?? ''
   );
   expect(manifest.share_target.method).toBe(pdf ? 'POST' : 'GET');
   expect(manifest.share_target.action).toBe(pdf ? '/share-target' : '/capture');
+  const expectedShareTarget = pdf
+    ? {
+        action: '/share-target',
+        method: 'POST',
+        enctype: 'multipart/form-data',
+        params: {
+          title: 'title',
+          text: 'text',
+          url: 'url',
+          files: [{ name: 'files', accept: ['application/pdf', '.pdf'] }],
+        },
+      }
+    : baseManifest.share_target;
+  // Compare every field, including implicit scope, icon purpose/sizes and shortcut text.
+  expect(manifest).toEqual({
+    ...baseManifest,
+    name,
+    short_name: name,
+    icons: baseManifest.icons.map((icon) => ({ ...icon, src: prefix + icon.src })),
+    shortcuts: baseManifest.shortcuts.map((shortcut) => ({
+      ...shortcut,
+      icons: shortcut.icons.map((icon) => ({ ...icon, src: prefix + icon.src })),
+    })),
+    share_target: expectedShareTarget,
+  });
   for (const icon of [
     ...manifest.icons,
     ...manifest.shortcuts.flatMap((shortcut: { icons: { src: string }[] }) => shortcut.icons),
   ]) {
-    expect((await request.get(icon.src)).status()).toBe(200);
+    const asset = await request.get(icon.src);
+    expect(asset.status()).toBe(200);
+    expect(asset.headers()['content-type']).toContain('image/');
+    expect((await asset.body()).length).toBeGreaterThan(0);
+  }
+  for (const assetPath of [`${prefix}/favicon-32x32.png`, `${prefix}/favicon.ico`]) {
+    expect((await request.get(assetPath)).status()).toBe(200);
   }
   // A normal browser UA must receive metadata in head, without hydration or API access.
   for (let attempt = 0; attempt < 2; attempt++) {
@@ -70,6 +106,30 @@ test('public install metadata agrees in initial HTML and retains access policy',
   const protectedResponse = await request.get('/planner', { maxRedirects: 0 });
   expect(protectedResponse.status()).toBe(307);
   expect(protectedResponse.headers().location).toContain('/welcome');
+});
+
+test('welcome identity renders with every backend request unavailable in light and dark', async ({
+  page,
+}) => {
+  await page.route('**/api/**', (route) => route.abort());
+  await page.addInitScript(() => localStorage.setItem('locale', 'en'));
+  for (const colorScheme of ['light', 'dark'] as const) {
+    await page.emulateMedia({ colorScheme });
+    await page.goto('/welcome');
+    await expect(page).toHaveTitle(name);
+    await expect(page.getByTestId('welcome-title')).toHaveText("What's For Supper?");
+    await expect(page.getByTestId('passphrase-input')).toBeVisible();
+    const hint = page.getByTestId('identity-hint');
+    if (variant === 'production') {
+      await expect(hint).toHaveCount(0);
+    } else {
+      await expect(hint).toBeVisible();
+      await expect(hint).toHaveAccessibleName(demo ? 'Demo' : 'Beta');
+      await expect(hint).toHaveAccessibleDescription(
+        variant === 'beta-demo' ? 'Beta release channel' : ''
+      );
+    }
+  }
 });
 
 for (const locale of ['en', 'fr'] as const) {

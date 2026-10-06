@@ -1,6 +1,6 @@
 # PWA Install Identity — Tasks
 
-**Status:** ID-T1 complete; ID-T2 background correction implemented, fresh finish pending; ID-T3/ID-T4 unstarted.
+**Status:** ID-T1/ID-T2/ID-T3 complete per accepted local evidence and user closeout; ID-T3 GitHub amd64 verification explicitly deferred. ID-T4 in progress; required device acceptance remains blocked.
 **Requirements:** [requirements.md](requirements.md)
 **Design:** [design.md](design.md)
 **Execution:** [repository harness](../../../.agents/core/execution-harness.md)
@@ -20,6 +20,12 @@ in GitHub Actions. Local image verification builds arm64 stable/beta only; amd64
 acceptance must come from GitHub Actions. Do not run local emulated amd64 builds
 or claim arm64 success proves architecture agreement.
 
+**T4 authorization and T3 closeout — October 4, 2026:** The user explicitly
+marked T3 complete with actual GitHub amd64 verification deferred, and authorized
+T4. This supersedes the historical unchecked/unstarted checkpoints below. The
+deferred GitHub check is not passed evidence and does not reopen T3. AWS remains
+not applicable. T4 must stay unchecked until its own required acceptance passes.
+
 All tasks below are required and dependency-ordered. Selecting a task requires implementation authorization; writing this specification does not authorize app changes. Before coding, begin a task session and read applicable Next.js docs. Follow tests-before-implementation. Stop each task at its bounded outcome; do not change demo backend behavior, unrelated health behavior, or authentication.
 
 **Implementation constraint:** This feature is not gated by a feature flag. Do not introduce or require a preview, opt-in, or rollout flag for identity resolution, metadata, icons, or hints. Existing DEMO_MODE and the image release channel determine the identity directly. Preserve unrelated feature gates such as PDF share-target configuration.
@@ -36,7 +42,7 @@ All tasks below are required and dependency-ordered. Selecting a task requires i
 
 ## 2. Icon assets and UI hint
 
-- [ ] ID-T2 — Implement D3 after T1; satisfy ID-R1, ID-R3–ID-R6, ID-R8.
+- [x] ID-T2 — Implement D3 after T1; satisfy ID-R1, ID-R3–ID-R6, ID-R8.
   - Outcome: demo changes only the icon corner and quiet app hint; beta icon is clearly distinct.
   - Allowed effects: new versioned pwa/public/icons assets, shared IdentityHint component, Header, welcome page, directly used locale files and component/E2E tests.
   - Context: current icon artwork, existing theme tokens, header/welcome layout, locale conventions, T1 resolver output.
@@ -46,7 +52,7 @@ All tasks below are required and dependency-ordered. Selecting a task requires i
 
 ## 3. Existing env propagation and automatic beta images
 
-- [ ] ID-T3 — Implement D4 after T1/T2; satisfy ID-R2, ID-R4–ID-R7.
+- [x] ID-T3 — Implement D4 after T1/T2; satisfy ID-R2, ID-R4–ID-R7.
   - Outcome: existing DEMO_MODE drives demo identity at runtime; beta channel is embedded automatically and survives deployment.
   - Allowed effects: pwa/Dockerfile, .github/workflows/publish-dockerhub.yml, docker/compose/apps.yml, release-template/synology/compose.yaml, targeted AWS frontend/backend config wiring, directly affected deployment docs and config tests.
   - Context: validated release tag grammar, existing API demo configuration, merged Compose overrides, Amplify build/runtime behavior.
@@ -288,3 +294,141 @@ All tasks below are required and dependency-ordered. Selecting a task requires i
   evidence. No commit/push authorization has yet been received; no GitHub run or
   successful architecture agreement is claimed. ID-T3 remains unchecked until
   that evidence passes. AWS excluded; ID-T4 remains unstarted.
+
+## ID-T4 automated acceptance checkpoint — October 4, 2026
+
+- Task-local session `ID-T4`, baseline `4c5af66451a40c056a8c6fb7bce6890da2d7e172`,
+  clean worktree at begin. Before beginning, copied the complete predecessor T3
+  session/baseline, finish record and private evidence to ignored
+  `.task/identity-T4/predecessor-ID-T3/`; moved the original active T3 session to
+  `.task/identity-T4/archived-ID-T3-session/`. No session/source reset or discard.
+  T3's accepted local finish remains identity
+  `80a658b9c6e2cdf3841c184a707e78072b308ffb009ca976d843a4db8d3f7735`.
+  Its GitHub amd64 execution is explicitly deferred by the user, not passed.
+- Read requirements/design/tasks, repository Codex/PWA instructions and installed
+  Next.js 16.3.6 connection, Route Handler and metadata documentation. Coverage
+  review found existing parsing/warning, four-variant metadata, immutable channel,
+  independent PDF, localized hint and artwork invariants. No application defect
+  was established; no identity/UI/backend/auth/icon implementation was changed.
+- Added browser assertions before test infrastructure changes: exact full
+  manifest parity (including implicit scope, purposes/sizes, shortcut text and
+  PDF params), image content type/nonempty bytes, public favicon, and API-down
+  welcome identity under light/dark browser media. Retained existing initial
+  head, unauthenticated manifest, protected-route, two-locale/main-surface and
+  control geometry assertions. Initial execution was blocked before assertions
+  by `listen EPERM 127.0.0.1:3017`; no red/green browser result is claimed.
+- Production runner `pwa/e2e/run-install-identity.py` invokes targeted
+  `task test:e2e:ci` for ten cases: stable/beta × demo false/true × PDF off/on,
+  plus invalid demo for each channel. It builds with opposite demo/PDF values,
+  starts a fresh dedicated production server with tested values, uses the
+  opposite runtime channel override, and sets no identity feature flag. Source
+  and local build-input hashes, revision, build ID on success and case logs are
+  retained privately; source mutation fails evidence. It restores the channel
+  artifact and stops at the first failure. These are Next.js builds, not image
+  or device qualification.
+- `Taskfile.yml` preserves build-before-test and allows targeted CLI arguments;
+  the dedicated config uses an unavailable API address and disables retry.
+  Backend-independent welcome aborts all API calls; main-surface data retains
+  existing schema-compliant mocks/builders. Existing PDF/auth behavior preserved.
+- Passed: 57 existing focused tests across five identity/config/asset/hint files;
+  Playwright discovery finds four targeted tests (discovery is not execution);
+  Python runner syntax; restored channel bytes and every baseline public asset
+  SHA-256 match. `task agent:prepare` passed and formatted only the two changed
+  TypeScript test/config files.
+- Blocked: actual `task test:e2e:ci` production attempt stopped in Turbopack CSS
+  processing at `binding to a port / Operation not permitted (os error 1)`.
+  The first case's build did not complete; its browser tests did not run. The
+  remaining nine cases are not-run after fail-fast. Task exit was 201, recorded
+  in `.task/identity-T4/production-matrix/`; no application failure is inferred.
+  The runner's subsequent blocker classification/source-hash improvements were
+  syntax-reviewed, not re-executed against the blocked environment.
+- Physical-device acceptance: blocked. No physical iOS/Android device bridge,
+  device/OS/browser versions, authorized separate HTTPS origins or tested device
+  image identities are available in this session. Coexistence, real launcher
+  cropping/legibility, OS light/dark splash/presentation, refresh and reinstall
+  have not run. Prior T3 arm64 image IDs remain predecessor evidence only; no
+  image has been qualified on a device for T4. See the
+  [physical acceptance checklist](../../../docs/operations/install-identity-acceptance.md).
+- Scope review: six post-begin paths, no ambient paths/overlaps. Test suite owns
+  added assertions; config owns dedicated runtime/API isolation; runner owns
+  repeatable production matrix/evidence; Taskfile owns targeted argument
+  forwarding; acceptance guide owns physical checklist/local procedure; this
+  tasks file owns corrected current status, explicit T3 deferral and T4 evidence.
+  No source, assets, backend contract, PDF policy or deployment edits. AWS,
+  commit, push, publish and deploy are not applicable/not authorized.
+- Next local acceptance command: `python3 -B pwa/e2e/run-install-identity.py`.
+  Real-device evidence is independently required. ID-T4 remains unchecked.
+
+### ID-T4 finish and handoff
+
+- `task agent:finish` completed unsuccessfully (Task exit 201) at immutable
+  identity `ac0f35ee314b37346fe3a317aeb983dc472c9c5c35019a03fae95959e916c8e6`.
+  Passed: documentation, all 105 harness tests, PWA formatting, typecheck, all
+  633 PWA units and immutable content. Changed-file ESLint passed separately.
+  Static route/schema/mock/reconciliation checks passed.
+- Environment-blocked checks: API lint named-pipe bind denied; impact E2E
+  listener denied at 127.0.0.1:3000; API testhost TCP bind denied. The harness
+  reports these as **failed** Task exits; they establish environment blockers,
+  not failed application assertions. Contract/client aggregate is **blocked**
+  because Kiota timed out after 20 seconds and was stopped without retry.
+  Live endpoint parity/database behavior are **not-applicable** for this delta;
+  no API contract/persistence changes. No gate weakened and no result rewritten.
+- Finish/private scope evidence preserved in `.task/identity-T4/finish.json` and
+  `.task/identity-T4/scope-review.json`. This later task evidence and the writer's
+  new ID-T4 HANDOVER section are documentation after the finish identity. They
+  are checked separately; prior code checks are not asserted to cover a new
+  whole-repository digest. Final scope adds only that task-local HANDOVER section
+  to the six paths reviewed above; historical T3 and unrelated sections retained.
+- Acceptance classification: browser production matrix **blocked**, remaining
+  cases **not-run**; real iOS/Android install acceptance **blocked**; GitHub amd64
+  verification **not-run/deferred** by explicit T3 closeout; AWS **not-applicable**.
+  No qualified T4 build/image/device identity exists. All required acceptance has
+  not passed, so ID-T4 remains incomplete and unchecked.
+
+### ID-T4 local production success and finish mutation — October 5, 2026
+
+- Saved production results and ten logs verified on disk: all ten cases passed,
+  four browser tests each (40 total), through targeted `task test:e2e:ci`.
+  Both channels cover demo false/true × PDF off/on and invalid-demo fallback.
+  Source revision `4c5af66451a40c056a8c6fb7bce6890da2d7e172`; stable-case source
+  fingerprint `eab40c2527f641a94da9a4ff4447664da29d1b24a4203610adddcd1ecb394ebc`,
+  beta-case fingerprint `be7f38b1179464403cb89b1cff5616676ee3a355fef7438ab4249a48abc1eb63`.
+  Per-case build IDs, channel hashes and logs are retained in the private matrix
+  record. These are production Next.js builds, not Docker/device image evidence.
+- Matched all ten recorded source fingerprints against current PWA/Taskfile and
+  local build inputs using each recorded baked channel and production-generated
+  declaration bytes in a read-only hash calculation. No source/config files were
+  rewritten to perform this comparison. All seven prior scope fingerprints match.
+- New local finish at
+  `641c4795473b35a517169d4207d32334427178c88ee75d94181b75f767f3f7ba`
+  passed docs, 105 harness tests, lint, formatting, types and 633 PWA units before
+  impact testing. Impact/content **failed** because content changed during tests;
+  immutable success correctly discarded. API tests/contracts are **not-run**.
+  Live endpoint/database checks remain **not-applicable**. This supersedes the
+  earlier sandbox blockers for checks that actually ran locally, not for omitted
+  checks. No successful final finish is claimed.
+- Observed new delta: only `pwa/next-env.d.ts`, whose two generated imports changed
+  from `.next/types/{routes,root-params}.d.ts` to
+  `.next/dev/types/{routes,root-params}.d.ts`. Installed Next.js documentation and
+  `writeAppTypeDeclarations.js` confirm build/dev regenerate this file and skip
+  rewriting identical content. Finish impact uses the dev server; its content
+  digest includes the tracked declarations despite excluding them from ordinary
+  dirty-file discovery. This generated change explains the mutation rejection;
+  no baseline reset, declaration edit, exclusion or guard change was made.
+- Retain the generated dev declarations as an attributable framework prerequisite
+  for the selected acceptance workflow. Additional scope path owns only those
+  two generated import changes; application metadata/icons/backend/PDF/auth code
+  remains untouched. The preparation formatter already ignores this generated
+  file via the existing PWA Prettier ignore rule.
+  Session discovery also excludes it via the existing `VOLATILE_PATHS`, while
+  verification still hashes it: session status reports seven task paths, with
+  the generated file reviewed separately from that delta. Preparation passed
+  with no writes on this follow-up; no new exclusion rule was introduced.
+- Failed local finish, passed production logs/results and generated declaration
+  bytes preserved under `.task/identity-T4/local-follow-up-2026-10-05/`. Updated
+  acceptance guidance/HANDOVER are later documentation, not success at the local
+  finish digest above. Next: prepare/review the retained generated delta, then
+  local `task agent:finish`, with no concurrent or intervening production build.
+- Real iOS/Android install acceptance remains **blocked** with no actual
+  device/OS/browser/origin/image-ID records supplied. T3 stays complete with
+  GitHub amd64 explicitly deferred; AWS not applicable. ID-T4 remains unchecked.
