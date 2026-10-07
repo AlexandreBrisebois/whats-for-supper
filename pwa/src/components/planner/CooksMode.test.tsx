@@ -114,12 +114,15 @@ describe('CooksMode', () => {
   it('renders section context, supplied headings, and scan-friendly source text without changing edits', async () => {
     const id = '11111111-1111-4111-8111-111111111114';
     const text =
-      'Verser 60 ml (1/4 tasse) de pâte. Cuire environ 1 minute. Retourner et cuire 30 secondes.';
+      '1. Verser 60 ml (1/4 tasse) de pâte. Cuire environ 1 minute. Retourner et cuire 30 secondes.';
     const recipeInstructions = [
       {
         '@type': 'HowToSection',
         name: 'Crêpes de base',
-        itemListElement: [{ name: 'Cuire les crêpes', text }, { text: 'Réserver au chaud.' }],
+        itemListElement: [
+          { name: 'Cuire les crêpes', text },
+          { name: '', text: 'Réserver au chaud. Couvrir.\n\nServir avec la salade.' },
+        ],
       },
     ];
     getRecipeMock.mockResolvedValue({ id, recipeInstructions });
@@ -140,8 +143,17 @@ describe('CooksMode', () => {
     expect(within(row).getByRole('heading', { name: 'Cuire les crêpes' })).toBeInTheDocument();
     const body = within(row).getByTestId('single-page-step-body-1');
     expect(body.textContent).toBe(text);
-    expect(body.querySelectorAll('p')).toHaveLength(3);
+    expect(row.textContent).toBe(`Crêpes de baseCuire les crêpes${text}`);
+    expect(body.querySelectorAll('p')).toHaveLength(1);
     expect(body.querySelectorAll('strong')).toHaveLength(0);
+    const untitled = screen.getByTestId('single-page-step-2');
+    expect(within(untitled).queryByRole('heading')).not.toBeInTheDocument();
+    const paragraphs = within(untitled)
+      .getByTestId('single-page-step-body-2')
+      .querySelectorAll('p');
+    expect(paragraphs).toHaveLength(2);
+    expect(paragraphs[0]).toHaveTextContent('Réserver au chaud. Couvrir.');
+    expect(paragraphs[1]).toHaveTextContent('Servir avec la salade.');
     fireEvent.click(within(row).getByRole('button', { name: 'Edit step 1' }));
     expect(screen.getByLabelText('Edit step 1 instructions')).toHaveValue(text);
     expect(screen.getByRole('button', { name: 'Ingredients' })).toBeDisabled();

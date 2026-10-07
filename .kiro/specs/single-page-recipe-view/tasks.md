@@ -75,3 +75,56 @@ Implements SPRV-09; this does not graduate the preview or change extraction/API 
   `.task/cooks-mode-ingredients-scan-friendly/`; no unrelated API/PDF work was adopted.
 - Local remaining checks: `task review` and
   `task test:e2e -- e2e/cook-mode-steps.spec.ts --reporter=list --workers=1`.
+
+
+## 2026-10-06 — Cookbook step refinement
+
+Authorized by the owner's request to implement the Mère-Designer recommendation
+on `feature/single-page-recipe-view`. Task session: `single-page-cookbook-refinement`,
+baseline `9459057b38b681f38609550921d21ef4ac61f066`; no ambient changes at begin.
+
+- CooksMode places number, meaningful title and 44px edit action on one row.
+  Untitled steps begin beside the number. A phone screenshot review found the
+  first implementation reserved the pencil gutter for the entire paragraph;
+  correction floats the pencil so following lines regain the available width.
+- instructionPresentation preserves exact source strings and explicit blank-line
+  paragraphs, rather than splitting every sentence. Saving uses the original text.
+- Focused component/formatter checks: 28 passed. Cook Mode Playwright suite:
+  3 passed, including 390px and 1180px layouts, paragraph count, body width,
+  edit targets, bookmark/reopening, ingredient recovery and legacy completion.
+- Mère-Designer screenshot review: step landmarks, reading rhythm and reachable
+  controls meet the requested busy-parent criteria after the width correction.
+  This is a design review, not user research. Test screenshots lack the remote
+  recipe photograph because its request failed certificate validation.
+- Scope: component and formatter implement the presentation; their existing tests
+  and Cook Mode browser scenarios cover regression behavior; requirements/design
+  record the authorized refinement. No API or stored recipe schema changed.
+- Focused ESLint and diff whitespace passed. Broad completion results are recorded
+  separately in `.task/agent-finish/last-run.json`; they must not be inferred from
+  focused acceptance. .NET is unavailable in this execution environment.
+
+- Subsequent broad PWA unit run: 653 passed across 71 files. PWA-wide ESLint,
+  TypeScript and formatting passed. The bounded broad impact run was stopped at
+  180 seconds; API/contract completion is unverified. The completion record also
+  detects Next dev's generated next-env.d.ts import change. Only that known
+  generated change was restored after the server stopped; no successful final
+  repository-wide completion is claimed. Focused acceptance above remains the
+  evidence for the implemented cooking interaction.
+
+
+### Follow-up — Remove generated card numbering
+
+Owner requested removing system-generated numbers to avoid duplication with
+extracted numbering. Removed the visible number and its grid column in the
+single-page cards. Source text, accessible Edit step N labels, internal step IDs,
+scroll bookmarking and the top progress indicator retain their existing behavior.
+The component regression fixture now includes extraction-supplied numbering and
+checks that the card shows it exactly once.
+
+Follow-up validation: all 17 CooksMode component tests and all 3 Cook Mode browser
+scenarios passed (phone, tablet and legacy completion). Focused ESLint and diff
+whitespace passed. Restored only the known Next dev generated import change.
+
+The follow-up broad finish attempt remains incomplete: .NET lint cannot run,
+and the bounded run was terminated before full completion. Its output is in
+`/tmp/wfs-numberless-finish.log`; no repository-wide pass is claimed.

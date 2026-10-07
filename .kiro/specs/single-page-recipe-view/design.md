@@ -30,7 +30,7 @@ The feature key occurs only at `CookingInstructionsBoundary`.
 
 ## Single-page presentation
 
-The right-hand instruction surface becomes an ordered stack. Each step has a number, an optional meaningful title, instruction, contextual issue
+The right-hand instruction surface becomes an ordered stack. Each step has an optional meaningful title, instruction, contextual issue
 action where eligible, and a 44px edit action. Generic “Step N” titles and titles
 identical to the instruction are hidden in this presentation. The list has no
 repeated page-level step or cooking headings. Instructions use the full card width.
@@ -50,10 +50,11 @@ remains beside the instructions.
 For scanning, meaningful section labels appear once above the first card in that
 section; the parser retains its existing prefixed instruction for the focused view
 and exposes the section label separately. The single-page body uses the unprefixed
-editable source text. Cards without a meaningful supplied heading show their number
-and instructions. Sentence segmentation changes layout only; instruction wording
-stays plain and fully visible. If sentence segmentation is
-unavailable, the full instruction remains readable as one block. No display change
+editable source text. Cards without a meaningful supplied heading show their instructions without generated numbers. Related sentences flow as natural paragraphs; only explicit blank lines create
+paragraph breaks. Optional title and edit share one row; untitled cards start their instructions
+on that row. Cards have no generated numbering or reserved number gutter. Source
+numbering is preserved, and the progress indicator continues to communicate position. Body text remains 20px at 1.5 line spacing,
+with a 44px edit target and quiet card shadows. No display change
 rewrites saved recipe instructions or invents titles.
 
 On phone the stack uses one readable column. At tablet widths the existing hero and
