@@ -52,3 +52,9 @@ tasks:
           - recipe_ready
       payload:
           recipeId: "{{ recipeId }}"
+    - name: queue_search_index
+      processor: QueueRecipeSearchIndex
+      depends_on:
+          - complete_import_report
+      payload:
+          recipeId: "{{ recipeId }}"

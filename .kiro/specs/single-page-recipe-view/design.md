@@ -35,12 +35,26 @@ action where eligible, and a 44px edit action. Generic “Step N” titles and t
 identical to the instruction are hidden in this presentation. The list has no
 repeated page-level step or cooking headings. Instructions use the full card width.
 The established left hero, close action, colors, typography, and celebration remain.
-The bottom control area contains a single prominent **Cooked** action after preparation. Scrolling updates
+The compact bottom control area contains **Ingredients** and a prominent **Cooked**
+action after preparation. Ingredients temporarily shows the existing checklist
+without changing the stored step bookmark or checked items. Resume steps restores
+the exact prior instruction scroll offset. Ingredient navigation is disabled while
+an editor is open. The single-page dock uses 48px controls and 8px vertical padding,
+plus the bottom device safe area. Scrolling updates
 the reading-position indicator and device-local step bookmark without marking the
 meal cooked. Reopening restores that step; scrolling does not remount the list or
 editor. The focused-step path retains its headings, Next/Back navigation and Done
 action. The phone cooking banner and list spacing are compact; tablet imagery
 remains beside the instructions.
+
+For scanning, meaningful section labels appear once above the first card in that
+section; the parser retains its existing prefixed instruction for the focused view
+and exposes the section label separately. The single-page body uses the unprefixed
+editable source text. Cards without a meaningful supplied heading show their number
+and instructions. Sentence segmentation changes layout only; instruction wording
+stays plain and fully visible. If sentence segmentation is
+unavailable, the full instruction remains readable as one block. No display change
+rewrites saved recipe instructions or invents titles.
 
 On phone the stack uses one readable column. At tablet widths the existing hero and
 content split remains; the implementation does not add a second text column.

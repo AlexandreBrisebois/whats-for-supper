@@ -1586,15 +1586,16 @@ public class WorkflowWorkerTests : IAsyncLifetime
         await db.DisposeAsync();
     }
     /// <summary>
-    /// Validates: Task 25 — WorkflowFatalFailure_PublishesRecipeFailedEvent
-    /// When a workflow instance reaches WorkflowStatus.Failed (all retries exhausted),
-    /// the worker MUST publish a recipe_failed SSE event with the recipe's partial data.
+    /// Fatal import failures publish recipe_failed and remain retryable in Settings.
+    /// An independent indexing failure retains its failed state without reporting
+    /// that the recipe import failed or changing its import report.
     /// </summary>
     [Theory]
-    [InlineData("recipe-import")]
-    [InlineData("url-import")]
-    public async Task WorkflowFatalFailure_RecordsImportReportAndPublishesRecipeFailedEvent(
-        string workflowId)
+    [InlineData("recipe-import", "ExtractRecipe", "extract_recipe", true)]
+    [InlineData("url-import", "ExtractRecipe", "extract_recipe", true)]
+    [InlineData("index-recipe-search", "IndexRecipeSearch", "index_job", false)]
+    public async Task WorkflowFatalFailure_IndexingDoesNotReportAnImportFailure(
+        string workflowId, string processorName, string taskName, bool importFailed)
     {
         // Arrange
         var services = new ServiceCollection();
@@ -1620,7 +1621,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
 
         // Fatal exception — not transient, not 429 — exhausts retries immediately
         services.AddScoped<IWorkflowProcessor>(sp =>
-            new ThrowingWorkflowProcessor("ExtractRecipe", new InvalidOperationException("AI pipeline exploded")));
+            new ThrowingWorkflowProcessor(processorName, new InvalidOperationException("AI pipeline exploded")));
 
         // Capture published events via a mock publisher
         var publishedEvents = new List<(Guid RecipeId, string ErrorMessage, string FailedStep, object? PartialData)>();
@@ -1692,8 +1693,8 @@ public class WorkflowWorkerTests : IAsyncLifetime
         {
             TaskId = Guid.NewGuid(),
             InstanceId = instance.Id,
-            TaskName = "ExtractRecipe",
-            ProcessorName = "ExtractRecipe",
+            TaskName = taskName,
+            ProcessorName = processorName,
             Status = TaskStatus.Pending,
             ScheduledAt = now.AddSeconds(-1),
             RetryCount = 10, // = _maxRetries — budget exhausted
@@ -1713,18 +1714,35 @@ public class WorkflowWorkerTests : IAsyncLifetime
         var queryDb = queryScope.ServiceProvider.GetRequiredService<RecipeDbContext>();
         var failedInstance = await queryDb.WorkflowInstances.FirstAsync(i => i.Id == instance.Id);
         Assert.Equal(WorkflowStatus.Paused, failedInstance.Status);
+        var failedTask = await queryDb.WorkflowTasks.SingleAsync(t => t.TaskId == task.TaskId);
+        Assert.Equal(TaskStatus.Failed, failedTask.Status);
+        Assert.Contains("AI pipeline exploded", failedTask.ErrorMessage);
+
+        var failures = await new CaptureFailureService(queryDb, new SystemClock()).GetActiveFailuresAsync();
+        var report = await queryDb.RecipeImportReports.SingleAsync(r => r.RecipeId == recipeId);
+        if (!importFailed)
+        {
+            Assert.Empty(publishedEvents);
+            Assert.Empty(failures);
+            Assert.Equal(RecipeImportReportStatus.Reimporting, report.Status);
+            Assert.Null(report.LastError);
+            testWorker.Dispose();
+            initCts.Dispose();
+            await db.DisposeAsync();
+            return;
+        }
+        Assert.Single(failures);
 
         // Assert: recipe_failed SSE event was published
         Assert.Single(publishedEvents);
         var evt = publishedEvents[0];
         Assert.Equal(recipeId, evt.RecipeId);
         Assert.Contains("AI pipeline exploded", evt.ErrorMessage);
-        Assert.Equal("ExtractRecipe", evt.FailedStep);
+        Assert.Equal(taskName, evt.FailedStep);
         Assert.NotNull(evt.PartialData);
 
-        var report = await queryDb.RecipeImportReports.SingleAsync(r => r.RecipeId == recipeId);
         Assert.Equal(RecipeImportReportStatus.ReimportFailed, report.Status);
-        Assert.Contains("ExtractRecipe", report.LastError);
+        Assert.Contains(taskName, report.LastError);
         Assert.Contains("AI pipeline exploded", report.LastError);
 
         // Cleanup

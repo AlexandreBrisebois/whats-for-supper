@@ -70,6 +70,14 @@ public class SearchIndexWorkflow(
             return;
         }
 
+        // A newly accepted PDF has metadata but no extracted recipe text yet.
+        // Leave its sidecar pending until reconciliation sees populated content.
+        if (string.IsNullOrWhiteSpace(content.DocumentText))
+        {
+            logger?.LogInformation("Skipping index job for recipe {RecipeId} — no recipe text yet", recipeId);
+            return;
+        }
+
         // Publish lexical content before the provider call. The fingerprint check makes
         // publication conditional on the content this workflow was asked to index.
         var doc = await db.RecipeSearchDocuments.FindAsync([recipeId], ct);
@@ -96,6 +104,8 @@ public class SearchIndexWorkflow(
             if (embeddingProvider is not null)
             {
                 var vector = await embeddingProvider.GenerateAsync(content.DocumentText, ct);
+                if (vector.Length == 0)
+                    throw new InvalidOperationException("The embedding provider returned an empty embedding for non-empty recipe text.");
                 await db.Entry(doc).ReloadAsync(ct);
                 if (doc.SourceFingerprint != currentFingerprint)
                 {

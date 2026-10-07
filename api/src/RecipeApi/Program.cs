@@ -240,6 +240,7 @@ try
     builder.Services.AddScoped<IWorkflowProcessor, FinalizeOverdueMealsProcessor>();
     builder.Services.AddScoped<IWorkflowProcessor, MaterializeRecipeSearchFiltersProcessor>();
     builder.Services.AddScoped<IWorkflowProcessor, CompleteRecipeImportReportProcessor>();
+    builder.Services.AddScoped<IWorkflowProcessor, QueueRecipeSearchIndexProcessor>();
     builder.Services.AddScoped<IWorkflowProcessor>(sp => sp.GetRequiredService<SearchIndexWorkflow>());
     builder.Services.AddScoped<IWorkflowProcessor>(sp => sp.GetRequiredService<SearchReconciliationWorkflow>());
     builder.Services.AddScoped<IWorkflowProcessor, WorkflowProcessor>();

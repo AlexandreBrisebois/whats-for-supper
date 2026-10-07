@@ -4,6 +4,7 @@ export interface CookingStep {
   instruction: string;
   sourcePath?: [number, number?];
   editableInstruction?: string;
+  sectionTitle?: string;
 }
 
 interface HowToStep {
@@ -93,6 +94,7 @@ export function parseRecipeSteps(recipeInstructions?: unknown): CookingStep[] {
             title: step.name?.trim() || `Step ${globalIndex - 1}`,
             instruction,
             editableInstruction: text,
+            ...(!isGeneric && sectionName ? { sectionTitle: sectionName } : {}),
             sourcePath: [sectionIndex, stepIndex] as [number, number],
           });
         }

@@ -107,6 +107,14 @@ test.describe('Settings — FamilyGOTOSettings card', () => {
           ).toBeVisible();
           const member = page.getByTestId(`family-member-${MOCK_IDS.MEMBER_ALEX}`);
           await expect(member).toContainText(scenario.names[0]);
+          for (const memberId of [MOCK_IDS.MEMBER_ALEX, MOCK_IDS.MEMBER_JORDAN]) {
+            const invite = page.getByTestId(`family-member-invite-${memberId}`);
+            const inviteLabel = scenario.locale === 'fr' ? 'Inviter' : 'Invite';
+            await expect(invite).toHaveAccessibleName(inviteLabel);
+            await expect(invite.getByText(inviteLabel, { exact: true })).toBeVisible();
+            const inviteBounds = await invite.boundingBox();
+            expect(inviteBounds!.width).toBeGreaterThan(inviteBounds!.height);
+          }
           const contentBounds = await page.getByTestId('settings-content').boundingBox();
           await expect(page.getByTestId('settings-content')).toHaveCSS('padding-left', '0px');
           await expect(page.getByTestId('settings-content')).toHaveCSS('padding-right', '0px');

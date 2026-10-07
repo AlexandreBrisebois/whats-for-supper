@@ -549,6 +549,10 @@ public class WorkflowWorker(
         RecipeDbContext db,
         CancellationToken ct)
     {
+        // Indexing runs independently of import. Its failure must not remove
+        // the pending capture or offer an import Retry for a saved recipe.
+        if (instance.WorkflowId == "index-recipe-search") return;
+
         try
         {
             // Resolve the recipe ID from the workflow instance's parameters.

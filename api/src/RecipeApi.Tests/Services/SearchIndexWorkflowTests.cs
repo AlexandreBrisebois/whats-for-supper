@@ -204,6 +204,75 @@ public class SearchIndexWorkflowTests : IAsyncLifetime
         Assert.Equal("pending", doc.IndexStatus);
     }
 
+    [Fact]
+    public async Task ExecuteAsync_DefersEmptyPdfDocument_ThenIndexesExtractedContent()
+    {
+        var recipe = new Recipe
+        {
+            Id = Guid.NewGuid(),
+            AddedBy = _factory.DefaultFamilyMemberId,
+            IsReady = false,
+            IsDiscoverable = false,
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow
+        };
+        await SeedDocumentAsync(recipe);
+        var service = new SearchIndexWorkflow(_db, new FailingEmbeddingProvider());
+        var task = new WorkflowTask
+        {
+            Payload = JsonSerializer.Serialize(new { recipeId = recipe.Id })
+        };
+
+        // The provider throws if invoked: pending PDF metadata has no text to embed.
+        await service.ExecuteAsync(task, CancellationToken.None);
+        var doc = await _db.RecipeSearchDocuments.FindAsync(recipe.Id);
+        await _db.Entry(doc!).ReloadAsync();
+        Assert.Equal("pending", doc!.IndexStatus);
+        Assert.Equal("pending", doc.EmbeddingStatus);
+        Assert.Null(doc.EmbeddingJson);
+        Assert.Null(doc.EmbeddingFingerprint);
+
+        recipe.Name = "Spaghetti";
+        recipe.Ingredients = """["pasta","tomatoes"]""";
+        recipe.IsReady = true;
+        recipe.IsDiscoverable = true;
+        await _db.SaveChangesAsync();
+        await new SearchIndexWorkflow(_db, new FakeEmbeddingProvider()).ExecuteAsync(task, CancellationToken.None);
+        await _db.Entry(doc).ReloadAsync();
+        Assert.Equal("ready", doc.IndexStatus);
+        Assert.Equal("ready", doc.EmbeddingStatus);
+        Assert.Equal(1536, doc.Embedding!.Length);
+        Assert.Equal(doc.SourceFingerprint, doc.EmbeddingFingerprint);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_RejectsEmptyEmbedding_WithoutSavingAnInvalidVector()
+    {
+        var recipe = BuildRecipe();
+        await SeedDocumentAsync(recipe);
+        var service = new SearchIndexWorkflow(_db, new EmptyEmbeddingProvider());
+        var task = new WorkflowTask
+        {
+            Payload = JsonSerializer.Serialize(new { recipeId = recipe.Id })
+        };
+
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => service.ExecuteAsync(task, CancellationToken.None));
+        Assert.Contains("empty embedding", error.Message);
+        var doc = await _db.RecipeSearchDocuments.FindAsync(recipe.Id);
+        await _db.Entry(doc!).ReloadAsync();
+        Assert.Equal("ready", doc!.IndexStatus);
+        Assert.Equal("failed", doc.EmbeddingStatus);
+        Assert.Null(doc.EmbeddingJson);
+        Assert.Null(doc.EmbeddingFingerprint);
+    }
+
+    private sealed class EmptyEmbeddingProvider : IEmbeddingProvider
+    {
+        public Task<float[]> GenerateAsync(string text, CancellationToken ct = default) =>
+            Task.FromResult(Array.Empty<float>());
+    }
+
     // ── Test doubles ──────────────────────────────────────────────────────────
 
     private sealed class FakeEmbeddingProvider : IEmbeddingProvider

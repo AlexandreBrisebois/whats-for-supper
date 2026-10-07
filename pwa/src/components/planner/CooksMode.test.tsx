@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 
 vi.mock('next/image', () => ({
   default: ({ fill: _fill, priority: _priority, unoptimized: _unoptimized, ...props }: any) => (
@@ -69,6 +69,84 @@ describe('CooksMode', () => {
     routerMocks.push.mockReset();
     usePlannerStore.setState({ cookProgress: {} });
     useFeatureFlagStore.setState({ flags: {} });
+  });
+
+  it('returns to ingredients without losing checks, the step bookmark, or the reading offset', async () => {
+    const id = '11111111-1111-4111-8111-111111111113';
+    getRecipeMock.mockResolvedValue({
+      id,
+      ingredients: ['Pasta', 'Butter'],
+      recipeInstructions: ['Boil water.', 'Cook pasta.'],
+    });
+    useFeatureFlagStore.setState({
+      flags: {
+        'single-page-recipe-steps': {
+          key: 'single-page-recipe-steps',
+          mode: 'on',
+          enabled: true,
+          memberEnabled: false,
+        },
+      },
+    });
+    const onCooked = vi.fn();
+    render(
+      <CooksMode recipe={{ id, name: 'Pasta', image: '' }} onClose={vi.fn()} onCooked={onCooked} />
+    );
+    const ingredient = (await screen.findAllByTestId('ingredient-toggle'))[0];
+    fireEvent.click(ingredient);
+    fireEvent.click(screen.getByTestId('cooks-mode-step-next'));
+    const scroll = screen.getByTestId('cooks-mode-instructions');
+    scroll.scrollTop = 137;
+    act(() => usePlannerStore.getState().setCookProgress(id, 2));
+    fireEvent.click(screen.getByRole('button', { name: 'Ingredients' }));
+    expect(scroll.scrollTop).toBe(0);
+    expect(screen.getByRole('heading', { name: 'Check & Prep' })).toBeInTheDocument();
+    expect(screen.getAllByTestId('ingredient-toggle')[0]).toHaveAttribute('aria-checked', 'true');
+    expect(usePlannerStore.getState().cookProgress[id]).toBe(2);
+    fireEvent.click(screen.getByRole('button', { name: /Resume steps/ }));
+    expect(screen.getByTestId('single-page-recipe-steps')).toBeInTheDocument();
+    expect(scroll.scrollTop).toBe(137);
+    expect(screen.getByTestId('cooks-mode-step-indicator')).toHaveTextContent('2 / 2');
+    expect(onCooked).not.toHaveBeenCalled();
+    expect(getRecipeMock).toHaveBeenCalledOnce();
+  });
+
+  it('renders section context, supplied headings, and scan-friendly source text without changing edits', async () => {
+    const id = '11111111-1111-4111-8111-111111111114';
+    const text =
+      'Verser 60 ml (1/4 tasse) de pâte. Cuire environ 1 minute. Retourner et cuire 30 secondes.';
+    const recipeInstructions = [
+      {
+        '@type': 'HowToSection',
+        name: 'Crêpes de base',
+        itemListElement: [{ name: 'Cuire les crêpes', text }, { text: 'Réserver au chaud.' }],
+      },
+    ];
+    getRecipeMock.mockResolvedValue({ id, recipeInstructions });
+    useFeatureFlagStore.setState({
+      flags: {
+        'single-page-recipe-steps': {
+          key: 'single-page-recipe-steps',
+          mode: 'on',
+          enabled: true,
+          memberEnabled: false,
+        },
+      },
+    });
+    render(<CooksMode recipe={{ id, name: 'Crêpes', image: '' }} onClose={vi.fn()} />);
+    fireEvent.click(await screen.findByTestId('cooks-mode-step-next'));
+    expect(screen.getAllByText('Crêpes de base')).toHaveLength(1);
+    const row = screen.getByTestId('single-page-step-1');
+    expect(within(row).getByRole('heading', { name: 'Cuire les crêpes' })).toBeInTheDocument();
+    const body = within(row).getByTestId('single-page-step-body-1');
+    expect(body.textContent).toBe(text);
+    expect(body.querySelectorAll('p')).toHaveLength(3);
+    expect(body.querySelectorAll('strong')).toHaveLength(0);
+    fireEvent.click(within(row).getByRole('button', { name: 'Edit step 1' }));
+    expect(screen.getByLabelText('Edit step 1 instructions')).toHaveValue(text);
+    expect(screen.getByRole('button', { name: 'Ingredients' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.getByRole('button', { name: 'Ingredients' })).toBeEnabled();
   });
 
   it('keeps preparation and then renders every editable step on one page when enabled', async () => {

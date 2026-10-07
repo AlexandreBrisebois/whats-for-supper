@@ -1,6 +1,11 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import MinimalCapture from './MinimalCapture';
+import { useFeatureFlagStore } from '@/store/featureFlagStore';
+import { usePdfCaptureStore } from '@/store/pdfCaptureStore';
+
+const memberId = '11111111-1111-4111-8111-111111111111';
+let selectedMemberId: string | null = null;
 
 const mockPush = vi.fn();
 
@@ -33,6 +38,7 @@ vi.mock('@/hooks/useCapture', () => ({
     submitRecipe: mockSubmitRecipe,
     submitUrl: mockSubmitUrl,
     clearError: vi.fn(),
+    reset: vi.fn(),
     error: null,
     rating: 0,
     setRating: vi.fn(),
@@ -46,6 +52,7 @@ vi.mock('@/hooks/useCapture', () => ({
 vi.mock('@/store/familyStore', () => ({
   useFamilyStore: (selector: (state: any) => unknown) =>
     selector({
+      selectedFamilyMemberId: selectedMemberId,
       familySettings: { family_goto: { items: [] } },
       loadGoTo: vi.fn().mockResolvedValue(undefined),
       saveGoTo: vi.fn().mockResolvedValue(undefined),
@@ -118,6 +125,9 @@ vi.mock('@/components/recipes/RecipeDetailSheet', () => ({
 describe('MinimalCapture recipe import', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    selectedMemberId = null;
+    useFeatureFlagStore.setState({ memberId: null, flags: {}, loading: false, error: null });
+    usePdfCaptureStore.getState().reset();
     mockImages = [];
     mockSubmitRecipe.mockResolvedValue('test-recipe-id');
     mockSubmitUrl.mockResolvedValue('test-recipe-id');
@@ -129,6 +139,37 @@ describe('MinimalCapture recipe import', () => {
 
   afterEach(() => {
     vi.useRealTimers();
+  });
+
+  it('keeps the selected PDF while the member flag snapshot is refreshing', () => {
+    selectedMemberId = memberId;
+    useFeatureFlagStore.setState({ memberId, flags: {}, loading: true });
+    render(<MinimalCapture />);
+    const file = new File(['%PDF'], 'supper.pdf', { type: 'application/pdf' });
+
+    fireEvent.change(screen.getByTestId('import-recipe-file-input'), {
+      target: { files: [file] },
+    });
+
+    expect(usePdfCaptureStore.getState().selection?.file).toBe(file);
+    expect(usePdfCaptureStore.getState().selection?.memberId).toBe(memberId);
+    expect(screen.queryByTestId('bundle-import-error')).not.toBeInTheDocument();
+  });
+
+  it.each(['disabled', 'goto', 'other-member'])('does not stage a PDF when %s', (scenario) => {
+    selectedMemberId = memberId;
+    useFeatureFlagStore.setState({
+      memberId: scenario === 'other-member' ? '22222222-2222-4222-8222-222222222222' : memberId,
+      flags: {},
+      loading: scenario !== 'disabled',
+    });
+    render(<MinimalCapture intent={scenario === 'goto' ? 'goto' : undefined} />);
+    fireEvent.change(screen.getByTestId('import-recipe-file-input'), {
+      target: { files: [new File(['%PDF'], 'supper.pdf', { type: 'application/pdf' })] },
+    });
+
+    expect(usePdfCaptureStore.getState().selection).toBeNull();
+    expect(screen.getByTestId('bundle-import-error')).toHaveTextContent('isn’t enabled');
   });
 
   it('keeps Camera/Gallery primary and renders secondary actions in the required order', () => {

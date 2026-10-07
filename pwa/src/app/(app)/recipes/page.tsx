@@ -888,6 +888,9 @@ export default function RecipesPage() {
             requestAnimationFrame(() => window.scrollTo({ top: detailScrollYRef.current }));
           }}
           onUseForDay={handleAssignRecipe}
+          onDeleted={() => {
+            void runSearch(query, similarToRecipeId, activeFilters, limit, activePreferences);
+          }}
           onPlanForLater={handlePlanForLater}
           onFindSimilar={handleFindSimilar}
         />

@@ -1,4 +1,9 @@
 {
+  "installIdentity": {
+    "demo": "Demo",
+    "beta": "Beta",
+    "betaChannel": "Beta release channel"
+  },
   "buttons": {
     "next": "Next",
     "back": "Back",
@@ -269,6 +274,8 @@
     "checkAndPrep": "Check & Prep",
     "ingredientsReady": "Check off your ingredients before you start cooking.",
     "letsCook": "Let's Cook",
+    "ingredients": "Ingredients",
+    "resumeSteps": "Resume steps",
     "back": "Back",
     "cooked": "Cooked",
     "markCooked": "Mark recipe as cooked",

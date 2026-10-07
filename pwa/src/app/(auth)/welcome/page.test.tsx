@@ -32,12 +32,34 @@ vi.mock('@/locales', () => ({
 }));
 
 import WelcomePage from './page';
+import { InstallIdentityProvider } from '@/components/identity/IdentityHint';
 
 describe('WelcomePage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.healthGet.mockResolvedValue({ demoMode: false });
   });
+
+  it.each(['stable', 'beta'] as const)(
+    'keeps welcome branding and controls for %s',
+    async (channel) => {
+      for (const demo of [false, true]) {
+        const view = render(
+          <InstallIdentityProvider identity={{ demo, channel }}>
+            <WelcomePage />
+          </InstallIdentityProvider>
+        );
+        await waitFor(() => expect(mocks.healthGet).toHaveBeenCalled());
+        expect(screen.getByTestId('welcome-title')).toHaveTextContent("What's For Supper?");
+        expect(screen.getByTestId('passphrase-input')).toHaveValue('');
+        expect(screen.getByTestId('welcome-enter-btn')).toBeDisabled();
+        if (demo || channel === 'beta')
+          expect(screen.getByTestId('identity-hint')).toHaveTextContent(demo ? 'Demo' : 'Beta');
+        else expect(screen.queryByTestId('identity-hint')).not.toBeInTheDocument();
+        view.unmount();
+      }
+    }
+  );
 
   it('pre-populates the passphrase in demo mode', async () => {
     mocks.healthGet.mockResolvedValue({ demoMode: true });

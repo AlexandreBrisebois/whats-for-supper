@@ -27,6 +27,7 @@ import { RecipeDetailSheet } from '@/components/recipes/RecipeDetailSheet';
 import { RecipeImportIssueSheet } from '@/components/recipes/RecipeImportIssueSheet';
 import { t } from '@/locales';
 import { parseRecipeSteps, type CookingStep } from '@/lib/cooking/stepParser';
+import { formatCookingInstruction } from '@/lib/cooking/instructionPresentation';
 import { getImageUrl } from '@/lib/imageUtils';
 import { usePlannerStore } from '@/store/plannerStore';
 import { useFeatureFlag } from '@/store/featureFlagStore';
@@ -81,6 +82,7 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
   const [parsedSteps, setParsedSteps] = useState<CookingStep[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [gathered, setGathered] = useState<Record<string, boolean>>({});
+  const [showIngredients, setShowIngredients] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
   const [showDetailId, setShowDetailId] = useState<string | null>(null);
   const [reportContext, setReportContext] = useState<RecipeImportIssueReason | null>(null);
@@ -127,17 +129,28 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
   }, [initialRecipe.id]);
 
   const steps = parsedSteps.length > 0 ? parsedSteps : getFallbackSteps();
-  const isPrepStep = currentStep === 0;
+  const isPrepStep = currentStep === 0 || (singlePageEnabled && showIngredients);
+  const isResumingSteps = singlePageEnabled && showIngredients && currentStep > 0;
   const activeRecipeStepIndex = Math.max(currentStep - 1, 0);
   const singlePageCooking = singlePageEnabled && !isPrepStep;
   const isCompletionAction = !isPrepStep && (singlePageEnabled || currentStep === steps.length);
   const instructionScrollRef = useRef<HTMLDivElement>(null);
+  const resumeScrollTopRef = useRef<number | null>(null);
 
   // Restore only when entering the list. Reading-position updates must not remount
   // the list, scroll it again, or replace an in-progress editor.
   useLayoutEffect(() => {
+    if (isResumingSteps && instructionScrollRef.current) {
+      instructionScrollRef.current.scrollTop = 0;
+      return;
+    }
     if (isLoading || !singlePageCooking) return;
     const surface = instructionScrollRef.current;
+    if (surface && resumeScrollTopRef.current !== null) {
+      surface.scrollTop = resumeScrollTopRef.current;
+      resumeScrollTopRef.current = null;
+      return;
+    }
     const savedStep = usePlannerStore.getState().cookProgress[initialRecipe.id] ?? 1;
     const row = surface?.querySelector<HTMLElement>(`[data-cooking-step="${savedStep}"]`);
     if (surface && row && savedStep > 1) {
@@ -146,7 +159,7 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
     } else if (surface) {
       surface.scrollTop = 0;
     }
-  }, [isLoading, singlePageCooking, initialRecipe.id]);
+  }, [isLoading, singlePageCooking, isResumingSteps, initialRecipe.id]);
 
   const trackReadingPosition = (event: React.UIEvent<HTMLDivElement>) => {
     if (!singlePageCooking) return;
@@ -172,7 +185,8 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
 
   const nextStep = () => {
     if (isPrepStep) {
-      setCookProgress(initialRecipe.id, 1);
+      if (!isResumingSteps) setCookProgress(initialRecipe.id, 1);
+      setShowIngredients(false);
     } else if (currentStep < steps.length) {
       setCookProgress(initialRecipe.id, currentStep + 1);
     } else {
@@ -188,6 +202,11 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
     if (currentStep > 0) {
       setCookProgress(initialRecipe.id, currentStep - 1);
     }
+  };
+
+  const openIngredients = () => {
+    resumeScrollTopRef.current = instructionScrollRef.current?.scrollTop ?? 0;
+    setShowIngredients(true);
   };
 
   const handleSaveEdit = async () => {
@@ -556,24 +575,32 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
                     <ol aria-label="Cooking steps" className="space-y-4">
                       {steps.map((step, index) => {
                         const rowEditing = editingStepIndex === index;
+                        const instruction = step.editableInstruction ?? step.instruction;
                         const showTitle =
                           !/^step\s+\d+$/i.test(step.title.trim()) &&
-                          step.title.trim() !== step.instruction.trim();
+                          step.title.trim() !== instruction.trim();
+                        const showSection =
+                          step.sectionTitle && step.sectionTitle !== steps[index - 1]?.sectionTitle;
                         return (
                           <li
                             key={step.index}
                             data-cooking-step={step.index}
                             data-testid={`single-page-step-${step.index}`}
-                            className="rounded-[2rem] border border-charcoal/5 bg-white/70 p-4 shadow-sm md:p-6"
+                            className="rounded-2xl border border-charcoal/5 bg-white/90 p-4 shadow-sm md:p-5"
                           >
-                            <div className="grid grid-cols-[2.75rem_minmax(0,1fr)] items-start gap-x-4 gap-y-3">
-                              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-terracotta text-lg font-black text-white">
+                            {showSection && (
+                              <p className="mb-3 text-sm font-bold text-terracotta-700">
+                                {step.sectionTitle}
+                              </p>
+                            )}
+                            <div className="grid grid-cols-[2rem_minmax(0,1fr)] items-start gap-x-3 gap-y-2">
+                              <span className="flex h-11 w-8 shrink-0 items-center justify-center text-lg font-bold text-terracotta-700">
                                 {step.index}
                               </span>
                               <div className="contents">
                                 <div className="flex min-h-11 items-center justify-end gap-3">
                                   {showTitle && (
-                                    <h4 className="mr-auto min-w-0 break-words font-heading text-xl font-black text-charcoal md:text-2xl">
+                                    <h4 className="mr-auto min-w-0 break-words font-heading text-xl font-bold text-charcoal md:text-2xl">
                                       {step.title}
                                     </h4>
                                   )}
@@ -591,7 +618,7 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
                                         );
                                         setEditError(false);
                                       }}
-                                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-charcoal/10 bg-white text-charcoal/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta disabled:opacity-40"
+                                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-charcoal/70 hover:bg-charcoal/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta disabled:opacity-40"
                                     >
                                       <Pencil size={18} aria-hidden="true" />
                                     </button>
@@ -638,9 +665,18 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
                                     )}
                                   </div>
                                 ) : (
-                                  <p className="col-span-2 break-words text-xl font-semibold leading-relaxed text-charcoal/80">
-                                    {step.instruction}
-                                  </p>
+                                  <div
+                                    data-testid={`single-page-step-body-${step.index}`}
+                                    className="col-span-2 space-y-2 break-words text-xl font-normal leading-relaxed text-charcoal"
+                                  >
+                                    {formatCookingInstruction(instruction).map(
+                                      (sentence, sentenceIndex) => (
+                                        <p key={sentenceIndex} className="whitespace-pre-line">
+                                          {sentence}
+                                        </p>
+                                      )
+                                    )}
+                                  </div>
                                 )}
                               </div>
                             </div>
@@ -697,19 +733,22 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
         {/* Controls */}
         <div
           data-testid="cooks-mode-controls"
-          className={`p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] md:p-8 md:pb-[calc(2rem+env(safe-area-inset-bottom))] grid ${singlePageCooking ? 'grid-cols-1' : 'grid-cols-[1fr_1.5fr]'} gap-4 bg-white/80 backdrop-blur-xl border-t border-charcoal/5 shrink-0`}
+          className={`${singlePageEnabled ? 'px-4 py-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] md:px-6' : 'p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] md:p-8 md:pb-[calc(2rem+env(safe-area-inset-bottom))]'} grid ${singlePageEnabled && isPrepStep ? 'grid-cols-1' : 'grid-cols-[1fr_1.5fr]'} gap-3 bg-white/80 backdrop-blur-xl border-t border-charcoal/5 shrink-0`}
         >
-          <Button
-            variant="secondary"
-            style={!isPrepStep && singlePageEnabled ? { display: 'none' } : undefined}
-            disabled={currentStep === 0}
-            onClick={prevStep}
-            data-testid="cooks-mode-step-prev"
-            className="h-16 md:h-20 rounded-[1.5rem] md:rounded-[2rem] border-charcoal/10 text-charcoal/40 text-base md:text-lg font-black flex items-center justify-center space-x-2 md:space-x-3 active:scale-95 transition-all bg-white"
-          >
-            <ChevronLeft size={24} />
-            <span>{t('cook.back', 'Back')}</span>
-          </Button>
+          {(!singlePageEnabled || singlePageCooking) && (
+            <Button
+              variant="secondary"
+              disabled={singlePageCooking ? isEditing : currentStep === 0}
+              onClick={singlePageCooking ? openIngredients : prevStep}
+              data-testid="cooks-mode-step-prev"
+              className={`${singlePageEnabled ? 'h-12 rounded-xl text-base font-semibold text-charcoal/80' : 'h-16 md:h-20 rounded-[1.5rem] md:rounded-[2rem] text-charcoal/40 text-base md:text-lg font-black'} border-charcoal/10 flex items-center justify-center space-x-2 active:scale-95 transition-all bg-white`}
+            >
+              {!singlePageCooking && <ChevronLeft size={24} />}
+              <span>
+                {singlePageCooking ? t('cook.ingredients', 'Ingredients') : t('cook.back', 'Back')}
+              </span>
+            </Button>
+          )}
           <Button
             onClick={
               !isPrepStep && singlePageEnabled
@@ -726,14 +765,16 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
             aria-label={
               isCompletionAction ? t('cook.markCooked', 'Mark recipe as cooked') : undefined
             }
-            className={`h-16 md:h-20 ${singlePageCooking ? 'w-full md:w-auto md:min-w-64 md:justify-self-end' : ''} rounded-[1.5rem] md:rounded-[2rem] bg-terracotta text-white text-xl md:text-2xl font-black flex items-center justify-center space-x-2 md:space-x-3 shadow-xl shadow-terracotta/20 active:scale-95 transition-all`}
+            className={`${singlePageEnabled ? 'h-12 rounded-xl text-lg font-bold shadow-sm' : 'h-16 md:h-20 rounded-[1.5rem] md:rounded-[2rem] text-xl md:text-2xl font-black shadow-xl shadow-terracotta/20'} bg-terracotta text-white flex items-center justify-center space-x-2 active:scale-95 transition-all`}
           >
             <span>
               {isCompletionAction
                 ? t('cook.cooked', 'Cooked')
-                : isPrepStep
-                  ? t('cook.letsCook', "Let's Cook")
-                  : t('cook.next', 'Next')}
+                : isResumingSteps
+                  ? t('cook.resumeSteps', 'Resume steps')
+                  : isPrepStep
+                    ? t('cook.letsCook', "Let's Cook")
+                    : t('cook.next', 'Next')}
             </span>
             {!isCompletionAction && <ChevronRight size={24} />}
           </Button>

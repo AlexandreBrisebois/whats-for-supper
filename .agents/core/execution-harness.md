@@ -47,6 +47,13 @@ Documentation/harness preparation requires no application generation or formatti
 fix relevant syntax/whitespace before final checks. Review the resulting diff and
 preserve unrelated work. `gen:client:sync` also stages files and is not preparation.
 
+The classifier recognizes the exact addition of `DEMO_MODE: ${DEMO_MODE:-false}`
+to the PWA environment in shared apps Compose or the Synology template as
+application/harness configuration. It compares against verified session-baseline
+bytes and retains broad application checks. API demo changes, different defaults,
+removals, other deployment effects and mixed contract changes remain conservative;
+this exception does not waive live API/database checks for their actual impact.
+
 Finish performs no formatting/generation in the source tree. Agent Python commands
 use `-B` to avoid adding/updating bytecode during verification. Kiota check generates
 and formats only in its temporary output directory. `review` remains a reusable

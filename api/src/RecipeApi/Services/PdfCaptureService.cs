@@ -70,19 +70,13 @@ public sealed class PdfCaptureService(
         await db.SaveChangesAsync(ct);
 
         // Preserve the existing acceptance/enqueue boundary: persisted ID is not a delivery guarantee.
-        foreach (var workflow in new[] { "index-recipe-search", "recipe-import" })
+        try
         {
-            try
-            {
-                var parameters = new Dictionary<string, string> { ["recipeId"] = id.ToString() };
-                if (workflow == "index-recipe-search")
-                    parameters["fingerprint"] = SearchFingerprintService.ComputeSourceFingerprint(recipe);
-                await orchestrator.TriggerAsync(workflow, parameters);
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Failed to trigger {Workflow} for PDF recipe {RecipeId}", workflow, id);
-            }
+            await orchestrator.TriggerAsync("recipe-import", new() { ["recipeId"] = id.ToString() });
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to trigger recipe-import for PDF recipe {RecipeId}", id);
         }
         return id;
     }

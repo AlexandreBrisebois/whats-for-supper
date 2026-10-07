@@ -34,7 +34,8 @@ sequenceDiagram
 
     Svc->>Orch: TriggerAsync("recipe-import", { recipeId })
 
-    Orch->>Wf: ConvertPdf (skip for photos) → ExtractRecipe\n→ GenerateHero → SyncRecipe → categorization → RecipeReady
+    Orch->>Wf: ConvertPdf (skip for photos) → ExtractRecipe\n→ GenerateHero → SyncRecipe → categorization → RecipeReady → CompleteRecipeImportReport
+    Wf->>Orch: Queue independent index-recipe-search\nwith completed content fingerprint
 
     Wf->>DB: AI metadata merged, ImageCount confirmed
     Wf->>Disk: recipe.json written (SyncRecipe)
@@ -54,4 +55,4 @@ sequenceDiagram
 | Status path | Pending until RecipeReady runs | Pending until RecipeReady runs |
 
 
-The source and pending recipe/search sidecar commit before workflow launch. Enqueue errors follow existing persisted-ID acceptance semantics; acceptance is not readiness or verified delivery. PDFs use a [dedicated acceptance and conversion path](pdf-upload-path.md) and do not change the image-only photo endpoint.
+The source and pending recipe/search sidecar commit before workflow launch. Upload acceptance starts only recipe-import; search indexing waits until the recipe is ready and its import report is complete. Enqueue errors follow existing persisted-ID acceptance semantics; acceptance is not readiness or verified delivery. PDFs use a [dedicated acceptance and conversion path](pdf-upload-path.md) and do not change the image-only photo endpoint.

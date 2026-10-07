@@ -75,6 +75,31 @@ for current dashboard details and connector troubleshooting.
 
 This template does not configure backup, restore, updates, or rollback.
 
+## Install identity and demo configuration
+
+Set the existing `DEMO_MODE=true` in `.env` to enable demo behavior and the small
+DEMO icon marking. The template passes the same value to API and PWA. Missing or
+false disables demo; invalid values disable it with a configuration warning.
+After changing the value, recreate **both** containers without rebuilding images.
+This setting retains the existing backend demo behavior, including restore/AI
+policy; it is not a cosmetic-only switch.
+
+The published PWA image carries its release channel. A `WFS_VERSION` such as
+`1.2.3-beta.1` selects a beta image automatically; do not set a runtime beta flag.
+All versions use **What's for Supper?** as the installed name. Icon markings and
+the in-app hint distinguish demo and beta installations; beta-demo preserves
+both BETA and DEMO icon marks. No feature preview controls install identity.
+
+Verify the public `/manifest.json` and the initial HTML at `/welcome` after
+recreation: installed name, Apple title and icon paths must agree. Inspect the
+PWA image's `/app/release-channel.json` when diagnosing a channel mismatch. The
+PWA's local `/api/health` is not an authority for install identity.
+
+Use separate HTTPS origins for coexisting production/demo/beta installs. An
+already installed home-screen icon/name may require an OS metadata refresh or
+removal/reinstallation. Changing `DEMO_MODE` on the same origin preserves the
+manifest identity; it does not create a separate installation.
+
 ## Feature previews
 
 The deployment administrator controls whether **Recipe on one page** is unavailable,

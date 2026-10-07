@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { ROUTES } from '@/lib/constants/routes';
 import { useFamilyStore } from '@/store/familyStore';
+import { IdentityHint } from '@/components/identity/IdentityHint';
 import { Sparkles } from 'lucide-react';
 
 interface HeaderProps {
@@ -48,7 +49,8 @@ export function Header({
         <div className="flex min-w-[2.5rem] items-center">{leftAction}</div>
 
         {/* Center: Dynamic Greeting or Page Title */}
-        <div className="flex-1 text-center">
+        <div className="relative flex-1 text-center">
+          <IdentityHint className="right-0 -top-1.5" />
           {showLogo && (title === 'Discovery' || !title) ? (
             <Link href={ROUTES.HOME} className="inline-flex items-center gap-2 group">
               <span className="font-heading text-lg font-bold tracking-tight text-charcoal md:text-xl">

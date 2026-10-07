@@ -26,6 +26,55 @@ test.describe('PDF import preview', () => {
     await page.goto('/capture?intent=goto');
     await expect(page.getByTestId('import-recipe-file-input')).not.toHaveAttribute('accept', /pdf/);
   });
+  for (const enabled of [true, false]) {
+    test(`file picker waits for the focus refresh to resolve ${enabled ? 'on' : 'off'}`, async ({
+      page,
+    }) => {
+      await enable(page);
+      await page.goto('/capture');
+      await expect(page.getByTestId('import-recipe-file-input')).toHaveAttribute('accept', /pdf/);
+
+      let release!: () => void;
+      const pending = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      let requests = 0;
+      await page.route('**/api/feature-flags', async (route) => {
+        requests++;
+        await pending;
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            data: {
+              items: [
+                {
+                  key: 'preview-pdf-recipe-import',
+                  mode: enabled ? 'on' : 'off',
+                  enabled,
+                },
+              ],
+            },
+          }),
+        });
+      });
+      await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+      await expect.poll(() => requests).toBeGreaterThan(0);
+      await page.getByTestId('import-recipe-file-input').setInputFiles(pdf);
+      try {
+        await expect(page.getByRole('status')).toContainText('Loading preview features');
+        await expect(page.getByTestId('bundle-import-error')).toHaveCount(0);
+      } finally {
+        release();
+      }
+      if (enabled) {
+        await expect(page.getByTestId('pdf-confirmation')).toBeVisible();
+      } else {
+        await expect(page.getByTestId('pdf-disabled')).toContainText('isn’t enabled');
+        await expect(page.getByTestId('pdf-confirmation')).toHaveCount(0);
+      }
+    });
+  }
   test('metadata is submitted once and acceptance returns Home without conversion', async ({
     page,
   }) => {

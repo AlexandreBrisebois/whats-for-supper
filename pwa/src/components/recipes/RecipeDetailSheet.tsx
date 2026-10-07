@@ -84,6 +84,7 @@ interface RecipeDetailSheetProps {
   recipeId: string;
   plannerDayLabel: string | null;
   onClose: () => void;
+  onDeleted?: () => void;
   onUseForDay: (recipe: Recipe, specificDayIndex?: number) => Promise<void>;
   onPlanForLater?: (recipe: Recipe) => Promise<void>;
   onFindSimilar: (recipeId: string) => void;
@@ -93,6 +94,7 @@ export function RecipeDetailSheet({
   recipeId,
   plannerDayLabel,
   onClose,
+  onDeleted,
   onUseForDay,
   onPlanForLater,
   onFindSimilar,
@@ -309,6 +311,7 @@ export function RecipeDetailSheet({
     setIsSavingAction(true);
     try {
       await deleteRecipe(recipe.id);
+      onDeleted?.();
       onClose();
     } catch (error) {
       console.error('Failed to move recipe to bin', error);
