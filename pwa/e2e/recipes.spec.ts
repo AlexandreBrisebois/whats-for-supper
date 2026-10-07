@@ -149,6 +149,54 @@ test.describe('Recipes Search Page', () => {
     });
   });
 
+  test('removes a recipe from Browse after moving it to the bin without navigation', async ({
+    page,
+  }) => {
+    let deleted = false;
+    await page.route('**/api/recipes/search', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: {
+            topPick: null,
+            results: deleted
+              ? [MOCK_SEARCH_RESULTS.secondary[0]]
+              : [MOCK_SEARCH_RESULTS.topPick, MOCK_SEARCH_RESULTS.secondary[0]],
+            appliedFilters: {},
+            searchMode: 'standard',
+            resultPath: 'browse',
+            nextCursor: null,
+          },
+        }),
+      });
+    });
+    await page.route(`**/api/recipes/${MOCK_IDS.RECIPE_LASAGNA}`, async (route) => {
+      if (route.request().method() !== 'DELETE') {
+        await route.fallback();
+        return;
+      }
+      deleted = true;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: MOCK_DETAIL_RECIPE }),
+      });
+    });
+
+    await page.goto('/recipes');
+    const recipeCard = page.getByTestId(`recipe-card-${MOCK_IDS.RECIPE_LASAGNA}`);
+    await recipeCard.click();
+    await page.getByTestId('action-gear-menu').click();
+    await page.getByTestId('action-move-to-bin').click();
+
+    await expect(page.getByTestId('recipe-detail-sheet')).not.toBeVisible();
+    await expect(page.getByTestId(`recipe-card-${MOCK_IDS.RECIPE_STIR_FRY}`)).toBeVisible();
+    await expect(recipeCard).toHaveCount(0);
+    expect(deleted).toBe(true);
+    await expect(page).toHaveURL(/\/recipes$/);
+  });
+
   test('searches on Enter and shows the top pick result', async ({ page }) => {
     await page.goto('/recipes');
 

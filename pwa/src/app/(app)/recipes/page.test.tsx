@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => {
   const searchRecipes = vi.fn();
   const getRecipe = vi.fn();
   const updateRecipe = vi.fn();
+  const deleteRecipe = vi.fn();
   const loadSetting = vi.fn();
   const saveSetting = vi.fn();
   const assignRecipeToDay = vi.fn();
@@ -27,6 +28,7 @@ const mocks = vi.hoisted(() => {
     searchRecipes,
     getRecipe,
     updateRecipe,
+    deleteRecipe,
     loadSetting,
     saveSetting,
     assignRecipeToDay,
@@ -85,6 +87,7 @@ vi.mock('@/lib/api/recipes', () => ({
   searchRecipes: (...args: unknown[]) => mocks.searchRecipes(...args),
   getRecipe: (...args: unknown[]) => mocks.getRecipe(...args),
   updateRecipe: (...args: unknown[]) => mocks.updateRecipe(...args),
+  deleteRecipe: (...args: unknown[]) => mocks.deleteRecipe(...args),
   getTrashItems: (...args: unknown[]) => mocks.getTrashItems(...args),
   restoreRecipe: (...args: unknown[]) => mocks.restoreRecipe(...args),
   purgeRecipe: (...args: unknown[]) => mocks.purgeRecipe(...args),
@@ -199,11 +202,13 @@ function makeSearchResult(index: number) {
 describe('RecipesPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.searchRecipes.mockReset();
     mocks.setSearchParams('');
     mocks.setFamilySettings({});
     mocks.searchRecipes.mockResolvedValue(makeSearchResponse());
     mocks.getRecipe.mockResolvedValue(makeRecipeDetail());
     mocks.updateRecipe.mockResolvedValue(undefined);
+    mocks.deleteRecipe.mockResolvedValue(undefined);
     mocks.loadSetting.mockResolvedValue(null);
     mocks.loadGoTo.mockResolvedValue({ items: [] });
     mocks.saveGoTo.mockResolvedValue(undefined);
@@ -744,6 +749,85 @@ describe('RecipesPage', () => {
     expect(mocks.searchRecipes).toHaveBeenCalledTimes(1);
     expect(screen.getByTestId('recipe-card-top-pick')).toBeInTheDocument();
     expect(screen.getByTestId('recipe-search-input')).toHaveValue('');
+  });
+
+  it.each(['browse', 'lexical-only'] as const)(
+    'refreshes %s results after moving a recipe to the bin without navigating',
+    async (resultPath) => {
+      const response = makeSearchResponse({
+        resultPath,
+        ...(resultPath === 'browse' ? { topPick: null } : {}),
+      });
+      const removedRecipe = response.topPick ?? response.results[0];
+      const cardTestId = response.topPick
+        ? 'recipe-card-top-pick'
+        : `recipe-card-${removedRecipe.id}`;
+      mocks.getRecipe.mockResolvedValue(
+        makeRecipeDetail({ id: removedRecipe.id, name: removedRecipe.name })
+      );
+      mocks.searchRecipes.mockResolvedValueOnce(response);
+      let resolveRefresh!: (value: ReturnType<typeof makeSearchResponse>) => void;
+      mocks.searchRecipes.mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveRefresh = resolve;
+          })
+      );
+      mocks.setSearchParams('addToDay=2&weekOffset=1');
+
+      render(<RecipesPage />);
+      fireEvent.click(await screen.findByTestId(cardTestId));
+      fireEvent.click(await screen.findByTestId('action-gear-menu'));
+      fireEvent.click(screen.getByTestId('action-move-to-bin'));
+
+      await waitFor(() => {
+        expect(mocks.deleteRecipe).toHaveBeenCalledWith(removedRecipe.id);
+        expect(screen.queryByTestId('recipe-detail-sheet')).not.toBeInTheDocument();
+        expect(screen.queryByTestId(cardTestId)).not.toBeInTheDocument();
+        expect(mocks.searchRecipes).toHaveBeenCalledTimes(2);
+      });
+      expect(mocks.searchRecipes).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          query: '',
+          weekOffset: 1,
+          dayIndex: 2,
+        })
+      );
+
+      await act(async () => {
+        resolveRefresh(
+          makeSearchResponse({
+            ...response,
+            topPick: null,
+            results: response.results.filter((recipe) => recipe.id !== removedRecipe.id),
+          })
+        );
+      });
+      expect(screen.queryByTestId(cardTestId)).not.toBeInTheDocument();
+      if (resultPath === 'browse') {
+        expect(screen.getByTestId('search-empty-state')).toBeInTheDocument();
+      } else {
+        expect(screen.getByTestId(`recipe-card-${response.results[0].id}`)).toBeInTheDocument();
+      }
+      expect(mocks.push).not.toHaveBeenCalled();
+    }
+  );
+
+  it('keeps the recipe available and the detail sheet open when moving to the bin fails', async () => {
+    const errorLog = vi.spyOn(console, 'error').mockImplementation(() => {});
+    mocks.deleteRecipe.mockRejectedValueOnce(new Error('Recipe is assigned to the planner'));
+    try {
+      render(<RecipesPage />);
+      fireEvent.click(await screen.findByTestId('recipe-card-top-pick'));
+      fireEvent.click(await screen.findByTestId('action-gear-menu'));
+      fireEvent.click(screen.getByTestId('action-move-to-bin'));
+      await waitFor(() => expect(errorLog).toHaveBeenCalled());
+      expect(screen.getByTestId('recipe-detail-sheet')).toBeInTheDocument();
+      expect(screen.getByTestId('recipe-card-top-pick')).toBeInTheDocument();
+      expect(mocks.searchRecipes).toHaveBeenCalledTimes(1);
+    } finally {
+      errorLog.mockRestore();
+    }
   });
 
   it('marks a recipe as the family GOTO from the detail sheet star pill', async () => {
