@@ -1,8 +1,8 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import * as fc from 'fast-check';
 import { formatCookingInstruction } from './instructionPresentation';
 
-describe('scan-friendly instruction presentation', () => {
+describe('cookbook instruction paragraphs', () => {
   it('preserves arbitrary extraction text exactly', () => {
     fc.assert(fc.property(fc.string(), (text) => formatCookingInstruction(text).join('') === text));
   });
@@ -19,20 +19,20 @@ describe('scan-friendly instruction presentation', () => {
     expect(formatted.join('')).toBe(text);
   });
 
-  it('separates sentences without splitting decimal quantities or temperatures', () => {
-    const result = formatCookingInstruction('Use 1.5 cups. Heat to 200°C. Wait 30 seconds.');
-    expect(result).toHaveLength(3);
-    expect(result).toEqual(['Use 1.5 cups. ', 'Heat to 200°C. ', 'Wait 30 seconds.']);
+  it('keeps related sentences together, including decimal quantities', () => {
+    const text = 'Use 1.5 cups. Heat to 200°C. Wait 30 seconds.';
+    expect(formatCookingInstruction(text)).toEqual([text]);
   });
 
-  it('keeps the complete instruction when sentence segmentation is unavailable', () => {
-    vi.stubGlobal('Intl', { ...Intl, Segmenter: undefined });
-    try {
-      expect(formatCookingInstruction('Use 60 ml. Stir gently.').join('')).toBe(
-        'Use 60 ml. Stir gently.'
-      );
-    } finally {
-      vi.unstubAllGlobals();
-    }
+  it('preserves explicit paragraph breaks without treating every line as a paragraph', () => {
+    const text = 'Fill the pita. Add lemon.\nContinue assembling.\n\nMake a salad. Serve together.';
+    expect(formatCookingInstruction(text)).toEqual([
+      'Fill the pita. Add lemon.\nContinue assembling.\n\n',
+      'Make a salad. Serve together.',
+    ]);
+  });
+
+  it('preserves Windows paragraph breaks and whitespace exactly', () => {
+    expect(formatCookingInstruction('Cook.\r\n \r\nServe.')).toEqual(['Cook.\r\n \r\n', 'Serve.']);
   });
 });

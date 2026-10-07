@@ -150,7 +150,8 @@ test.describe('Cook Mode — HowToSection[] steps display', () => {
               recipeInstructions: Array.from({ length: 6 }, (_, index) => ({
                 '@type': 'HowToStep',
                 name: index === 1 ? 'Cook the pasta' : `Step ${index + 1}`,
-                text: 'Stir gently and keep an eye on the pan. '.repeat(8),
+                text:
+                  'Stir gently and keep an eye on the pan. '.repeat(8) + '\n\nServe when ready.',
               })),
             },
           },
@@ -167,6 +168,17 @@ test.describe('Cook Mode — HowToSection[] steps display', () => {
       await expect(page.getByRole('heading', { name: /^Step \d+$/ })).toHaveCount(0);
       await expect(page.getByRole('heading', { name: 'Cooking steps' })).toHaveCount(0);
       await expect(page.getByRole('heading', { name: 'Cook the pasta' })).toHaveCount(1);
+      const untitledBody = page.getByTestId('single-page-step-body-1');
+      await expect(untitledBody.locator('p')).toHaveCount(2);
+      const pencil = page.getByTestId('single-page-edit-step-1');
+      const pencilBounds = (await pencil.boundingBox())!;
+      const bodyBounds = (await untitledBody.boundingBox())!;
+      const cardBounds = (await page.getByTestId('single-page-step-1').boundingBox())!;
+      expect(pencilBounds.width).toBeGreaterThanOrEqual(44);
+      expect(pencilBounds.height).toBeGreaterThanOrEqual(44);
+      expect(bodyBounds.width / cardBounds.width).toBeGreaterThan(0.75);
+      expect(pencilBounds.y - bodyBounds.y).toBeLessThan(10);
+
       await expect(page.getByTestId('cooks-mode-step-next')).toHaveText('Cooked');
       const completion = page.getByTestId('cooks-mode-step-next');
       await expect(completion).toHaveAccessibleName('Mark recipe as cooked');

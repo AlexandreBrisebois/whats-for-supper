@@ -572,58 +572,57 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
                   </div>
                 ) : singlePageEnabled ? (
                   <div data-testid="single-page-recipe-steps">
-                    <ol aria-label="Cooking steps" className="space-y-4">
+                    <ol role="list" aria-label="Cooking steps" className="list-none space-y-4">
                       {steps.map((step, index) => {
                         const rowEditing = editingStepIndex === index;
                         const instruction = step.editableInstruction ?? step.instruction;
                         const showTitle =
+                          Boolean(step.title.trim()) &&
                           !/^step\s+\d+$/i.test(step.title.trim()) &&
                           step.title.trim() !== instruction.trim();
                         const showSection =
                           step.sectionTitle && step.sectionTitle !== steps[index - 1]?.sectionTitle;
+                        const editButton = !rowEditing ? (
+                          <button
+                            type="button"
+                            disabled={isEditing}
+                            data-testid={`single-page-edit-step-${step.index}`}
+                            aria-label={`Edit step ${step.index}`}
+                            onClick={() => {
+                              setIsEditing(true);
+                              setEditingStepIndex(index);
+                              setEditingValue(step.editableInstruction ?? step.instruction);
+                              setEditError(false);
+                            }}
+                            className={`h-11 w-11 shrink-0 items-center justify-center rounded-xl text-charcoal/70 hover:bg-charcoal/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta disabled:opacity-40 ${
+                              showTitle
+                                ? 'col-start-2 row-start-1 flex'
+                                : 'float-right -mt-1.5 ml-3 inline-flex'
+                            }`}
+                          >
+                            <Pencil size={18} aria-hidden="true" />
+                          </button>
+                        ) : null;
                         return (
                           <li
                             key={step.index}
                             data-cooking-step={step.index}
                             data-testid={`single-page-step-${step.index}`}
-                            className="rounded-2xl border border-charcoal/5 bg-white/90 p-4 shadow-sm md:p-5"
+                            className="rounded-2xl border border-charcoal/5 bg-white/90 p-4 shadow-[0_1px_2px_rgba(31,41,55,0.03)] md:p-5"
                           >
                             {showSection && (
                               <p className="mb-3 text-sm font-bold text-terracotta-700">
                                 {step.sectionTitle}
                               </p>
                             )}
-                            <div className="grid grid-cols-[2rem_minmax(0,1fr)] items-start gap-x-3 gap-y-2">
-                              <span className="flex h-11 w-8 shrink-0 items-center justify-center text-lg font-bold text-terracotta-700">
-                                {step.index}
-                              </span>
+                            <div className="grid grid-cols-[minmax(0,1fr)_2.75rem] items-start gap-x-3 gap-y-2">
                               <div className="contents">
-                                <div className="flex min-h-11 items-center justify-end gap-3">
-                                  {showTitle && (
-                                    <h4 className="mr-auto min-w-0 break-words font-heading text-xl font-bold text-charcoal md:text-2xl">
-                                      {step.title}
-                                    </h4>
-                                  )}
-                                  {!rowEditing && (
-                                    <button
-                                      type="button"
-                                      disabled={isEditing}
-                                      data-testid={`single-page-edit-step-${step.index}`}
-                                      aria-label={`Edit step ${step.index}`}
-                                      onClick={() => {
-                                        setIsEditing(true);
-                                        setEditingStepIndex(index);
-                                        setEditingValue(
-                                          step.editableInstruction ?? step.instruction
-                                        );
-                                        setEditError(false);
-                                      }}
-                                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-charcoal/70 hover:bg-charcoal/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta disabled:opacity-40"
-                                    >
-                                      <Pencil size={18} aria-hidden="true" />
-                                    </button>
-                                  )}
-                                </div>
+                                {showTitle && (
+                                  <h4 className="col-start-1 row-start-1 min-w-0 break-words pt-1.5 font-heading text-xl font-semibold leading-[1.5] text-charcoal">
+                                    {step.title}
+                                  </h4>
+                                )}
+                                {showTitle && editButton}
                                 {rowEditing ? (
                                   <div className="col-span-2 space-y-3">
                                     <textarea
@@ -667,12 +666,17 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
                                 ) : (
                                   <div
                                     data-testid={`single-page-step-body-${step.index}`}
-                                    className="col-span-2 space-y-2 break-words text-xl font-normal leading-relaxed text-charcoal"
+                                    className={`min-w-0 space-y-3 break-words text-xl font-normal leading-[1.5] text-charcoal ${
+                                      showTitle
+                                        ? 'col-span-2'
+                                        : 'col-span-2 col-start-1 row-start-1 pt-1.5'
+                                    }`}
                                   >
                                     {formatCookingInstruction(instruction).map(
-                                      (sentence, sentenceIndex) => (
-                                        <p key={sentenceIndex} className="whitespace-pre-line">
-                                          {sentence}
+                                      (paragraph, paragraphIndex) => (
+                                        <p key={paragraphIndex} className="flow-root">
+                                          {!showTitle && paragraphIndex === 0 && editButton}
+                                          {paragraph}
                                         </p>
                                       )
                                     )}

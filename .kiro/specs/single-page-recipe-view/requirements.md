@@ -92,8 +92,11 @@ Ingredient navigation shall be disabled while a step editor is open.
 
 Cards shall use supplied meaningful step titles and show meaningful section context
 once per consecutive section. Cards without a meaningful supplied title shall show
-the step number and instructions without inventing a heading. Instruction sentences
-may be separated for scanning. Presentation shall retain the full source wording and
+instructions without inventing a heading or displaying a generated number. Related sentences flow together; explicit blank lines separate paragraphs.
+Titled cards place title and edit action on one row. Untitled cards align
+the edit action with the first instruction line, without an empty heading row.
+Cards do not display generated numbers; extraction-supplied numbering remains
+part of the source text. The existing progress indicator communicates position. Presentation shall retain the full source wording and
 editing coordinates, without generating summaries, headings, or quantity emphasis.
 
 ## Member-facing copy
