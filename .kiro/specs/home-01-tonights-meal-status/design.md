@@ -6,9 +6,9 @@
 
 ## State and async flow
 
-SSR provides a possibly-null seed; `init` deliberately does not erase an existing client recipe merely because SSR returned null. `sync()` re-fetches the current week and normally treats the matching day as authoritative. Cook completion sets status `2` first, then posts validation. Stream snapshots and slot/week events replace the matching slice; a remote cooked event produces the compact cooked presentation.
+SSR provides a possibly-null seed; `init` deliberately does not erase an existing client recipe merely because SSR returned null. `sync()` re-fetches the current week and normally treats the matching day as authoritative. Cook's Mode saves through `todayStore.markCooked(recipeId)` from both Home and recipe detail. Validation includes `{ status: 2, recipeId }`; the server records the recipe timestamp and completes today's event only if its recipe matches. The store sets status `2` only after `{ data: { message, mealMarkedCooked: true } }` confirms completion and the local current recipe still matches. Home no longer supplies a second persistence callback. Stream snapshots and slot/week events replace the matching slice; a remote cooked event produces the compact cooked presentation.
 
-Network catches only log. There is no pending lock, response-confirmed success, rollback, request identity, or feature-specific stream recovery. Future work must retain the schedule service/SSE publisher as the durable authority.
+Cooking completion has a duplicate-submission guard and disabled completion button while saving; a failed save leaves Cook's Mode open with an error and retry. Other optimistic assignment/ordered-in write catches only log, and there is no feature-specific stream recovery. The schedule service/SSE publisher remains the durable meal-state authority.
 
 ## Evidence
 
