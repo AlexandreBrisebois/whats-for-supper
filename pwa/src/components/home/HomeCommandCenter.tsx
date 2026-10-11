@@ -56,8 +56,7 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
 
   // ── Domain state from todayStore ──────────────────────────────────────────
   // NOTE: init() is intentionally excluded here — TodayStoreInitializer is the sole initialiser.
-  const { currentRecipe, status, isLoading, assignRecipe, markCooked, markOrderedIn, sync } =
-    useTodayStore();
+  const { currentRecipe, status, isLoading, assignRecipe, markOrderedIn, sync } = useTodayStore();
 
   const isCooked = status === 2;
   const isSkipped = status === 3;
@@ -131,10 +130,6 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
 
   const handleSkipTrigger = () => {
     setRecoveryFlow({ kind: 'step1' });
-  };
-
-  const handleCookedMark = () => {
-    markCooked();
   };
 
   const handleRecoveryAction = useCallback(
@@ -392,7 +387,6 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
             onClose={() => {
               setShowCooksMode(false);
             }}
-            onCooked={handleCookedMark}
           />
         )}
       </AnimatePresence>

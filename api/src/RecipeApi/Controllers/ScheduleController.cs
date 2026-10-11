@@ -73,8 +73,15 @@ public class ScheduleController(ScheduleService scheduleService) : ControllerBas
     [HttpPost("day/{date}/validate")]
     public async Task<IActionResult> ValidateDay(string date, [FromBody] ValidationDto dto)
     {
-        await _scheduleService.ValidateDayAsync(date, dto, GetConnectionId());
-        return Ok(new { message = "Day validated" });
+        try
+        {
+            var mealMarkedCooked = await _scheduleService.ValidateDayAsync(date, dto, GetConnectionId());
+            return Ok(new { message = "Cooking status updated", mealMarkedCooked });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
     }
 
     [HttpPost("voting/open")]

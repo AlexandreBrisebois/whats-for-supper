@@ -65,6 +65,9 @@ export function deserializeIntoValidatePostResponse_data(
   validatePostResponse_data: Partial<ValidatePostResponse_data> | undefined = {}
 ): Record<string, (node: ParseNode) => void> {
   return {
+    mealMarkedCooked: (n) => {
+      validatePostResponse_data.mealMarkedCooked = n.getBooleanValue();
+    },
     message: (n) => {
       validatePostResponse_data.message = n.getStringValue();
     },
@@ -107,6 +110,7 @@ export function serializeValidatePostResponse_data(
   if (!validatePostResponse_data || isSerializingDerivedType) {
     return;
   }
+  writer.writeBooleanValue('mealMarkedCooked', validatePostResponse_data.mealMarkedCooked);
   writer.writeStringValue('message', validatePostResponse_data.message);
   writer.writeAdditionalData(validatePostResponse_data.additionalData);
 }
@@ -117,6 +121,10 @@ export interface ValidatePostResponse extends AdditionalDataHolder, Parsable {
   data?: ValidatePostResponse_data | null;
 }
 export interface ValidatePostResponse_data extends AdditionalDataHolder, Parsable {
+  /**
+   * True only when the scheduled meal was marked cooked.
+   */
+  mealMarkedCooked?: boolean | null;
   /**
    * The message property
    */

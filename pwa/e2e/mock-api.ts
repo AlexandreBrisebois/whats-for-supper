@@ -921,7 +921,12 @@ export async function setupCommonRoutes(page: Page) {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ data: { valid: true } }),
+      body: JSON.stringify({
+        data: {
+          message: 'Cooking status updated',
+          mealMarkedCooked: route.request().postDataJSON()?.status === 2,
+        },
+      }),
     });
   });
 

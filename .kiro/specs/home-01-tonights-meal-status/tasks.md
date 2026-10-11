@@ -1,8 +1,8 @@
 # HOME-01 — Tonight's meal status: follow-up candidates
 
-- [ ] **T1 — Make current-day mutation outcome explicit.** Decide whether cooking validation needs pending UI, response confirmation, rollback, and actionable failure recovery.
+- [ ] **T1 — Verify current-day cooking outcome.** Recipe-specific validation, pending completion controls, response-confirmed success, and failed-save retry are implemented. Complete the blocked API/database, browser, and regenerated-client checks tracked in [COOK-01-T2](../cook-01-step-by-step-cooks-mode/tasks.md); do not treat their added tests as passing runtime evidence.
 
-  **Test seam:** unit/API: `todayStore.test.ts`, `ScheduleIntegrationTests`; Playwright: mark tonight cooked with success and rejected/network responses; mock owner: Home/todayStore vertical slice; route/method: `POST /api/schedule/day/{date}/validate`; contract: `{ status: 2 }` request and `{ message }` success/non-success response.
+  **Test seam:** unit/API: `todayStore.test.ts`, `ScheduleServiceTests`, `RecipeCookingIntegrationTests`; Playwright: complete matching supper or different lunch and exercise rejected/network responses; mock owner: Home/todayStore vertical slice; route/method: `POST /api/schedule/day/{date}/validate`; contract: `{ status: 2, recipeId }` request and `{ data: { message, mealMarkedCooked } }` success/non-success response. A stale local recipe must not produce a cooked acknowledgement when the server reports no matching meal.
 
 - [ ] **T2 — Define stream-disconnect and competing-update behavior.** Specify failed-stream behavior and remote update during a local mutation.
 

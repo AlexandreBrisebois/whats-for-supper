@@ -279,6 +279,7 @@
     "back": "Retour",
     "cooked": "Cuisiné",
     "markCooked": "Marquer la recette comme cuisinée",
+    "completionFailed": "Impossible d’enregistrer la recette comme cuisinée. Veuillez réessayer.",
     "next": "Suivant",
     "total": "total",
     "noCookFresh": "Sans Cuisson / Frais",

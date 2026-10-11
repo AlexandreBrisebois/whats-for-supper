@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { apiClient } from '@/lib/api/api-client';
-import { DateOnly } from '@microsoft/kiota-abstractions';
+import { DateOnly, type Guid } from '@microsoft/kiota-abstractions';
 import { assignRecipeToDay, getSchedule, normalizeScheduleRecipe } from '@/lib/api/planner';
 import { getTodayString } from '@/lib/imageUtils';
 import type { ScheduleRecipeDto } from '@/lib/api/generated/models';
@@ -49,10 +49,9 @@ export interface TodayState {
   assignRecipe: (recipe: { id: string; name: string | null; image: string }) => void;
 
   /**
-   * Optimistically set status = 2 (cooked), then fire
-   * POST /api/schedule/day/{date}/validate with { status: 2 } in the background.
+   * Record cooking for a specific recipe. Complete today's slot only if its recipe matches.
    */
-  markCooked: () => void;
+  markCooked: (recipeId: string) => Promise<void>;
 
   /**
    * Optimistically set status = 3 (ordered in / skipped), then fire
@@ -170,16 +169,17 @@ export const useTodayStore = create<TodayState>((set, get) => ({
   },
 
   // ── markCooked ────────────────────────────────────────────────────────────
-  markCooked() {
-    set({ status: 2 });
-
+  async markCooked(recipeId) {
     const todayDate = DateOnly.parse(getTodayString());
-    if (!todayDate) return;
+    if (!todayDate || !recipeId) throw new Error('A recipe and date are required');
 
-    apiClient.api.schedule.day
+    const result = await apiClient.api.schedule.day
       .byDate(todayDate)
-      .validate.post({ status: 2 })
-      .catch((err) => console.error('[todayStore] markCooked failed:', err));
+      .validate.post({ status: 2, recipeId: recipeId as Guid });
+
+    if (result?.data?.mealMarkedCooked && get().currentRecipe?.id === recipeId) {
+      set({ status: 2 });
+    }
   },
 
   // ── markOrderedIn ─────────────────────────────────────────────────────────
