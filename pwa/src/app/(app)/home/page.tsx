@@ -43,7 +43,11 @@ export default async function HomePage() {
   return (
     <>
       {familyMembers && <StoreInitializer familyMembers={familyMembers} />}
-      <TodayStoreInitializer todaysRecipe={todaysRecipe} todayStatus={todayStatus} />
+      <TodayStoreInitializer
+        todaysRecipe={todaysRecipe}
+        todayStatus={todayStatus}
+        nonCooking={todaysEntry?.nonCooking ?? null}
+      />
       <HomeCommandCenter todaysRecipe={todaysRecipe} todayStatus={todayStatus} />
     </>
   );

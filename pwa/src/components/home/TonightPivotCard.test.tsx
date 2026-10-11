@@ -126,3 +126,31 @@ describe('TonightPivotCard — GOTO ready state', () => {
     expect(screen.queryByTestId('add-goto-btn')).not.toBeInTheDocument();
   });
 });
+
+it('shows a custom supper plan as the primary text instead of a GOTO suggestion', () => {
+  render(
+    <TonightPivotCard
+      gotoDescription="Fallback pasta"
+      gotoRecipeId={null}
+      onConfirmGoto={() => {}}
+      onDiscover={() => {}}
+      onOrderIn={() => {}}
+      nonCookingLabel="Emma’s birthday supper"
+    />
+  );
+  expect(screen.getByTestId('today-non-cooking-label')).toHaveTextContent('Emma’s birthday supper');
+  expect(screen.queryByText('Nothing planned yet')).not.toBeInTheDocument();
+});
+
+it('does not show a GOTO recipe image on a non-cooking day', () => {
+  render(
+    <TonightPivotCard
+      {...baseProps}
+      gotoDescription="Fallback pasta"
+      gotoRecipeId={null}
+      gotoImageUrl="/pasta.jpg"
+      nonCookingLabel="Eating out"
+    />
+  );
+  expect(screen.queryByRole('img')).not.toBeInTheDocument();
+});

@@ -4,6 +4,7 @@ import { Utensils } from 'lucide-react';
 import { TonightCardBase } from './TonightMenuCard';
 import { getImageUrl } from '@/lib/imageUtils';
 import Link from 'next/link';
+import { t } from '@/locales';
 import { ROUTES } from '@/lib/constants/routes';
 
 interface TonightPivotCardProps {
@@ -15,6 +16,7 @@ interface TonightPivotCardProps {
   onConfirmGoto: () => void;
   onDiscover: () => void;
   onOrderIn: () => void;
+  nonCookingLabel?: string | null;
 }
 
 export function TonightPivotCard({
@@ -25,17 +27,20 @@ export function TonightPivotCard({
   onConfirmGoto,
   onDiscover,
   onOrderIn,
+  nonCookingLabel,
 }: TonightPivotCardProps) {
   // A GOTO is only actionable when it exists AND is ready.
   // Existing values without a status field (set before Phase 13) are treated as ready.
   const hasGoto = gotoRecipeId != null;
-  const gotoReady = hasGoto && gotoStatus === 'ready';
-  const gotoPending = hasGoto && gotoStatus === 'pending';
-  const isFetching = hasGoto && gotoStatus === null;
+  const gotoReady = !nonCookingLabel && hasGoto && gotoStatus === 'ready';
+  const gotoPending = !nonCookingLabel && hasGoto && gotoStatus === 'pending';
+  const isFetching = !nonCookingLabel && hasGoto && gotoStatus === null;
 
   // If we have an explicit image URL, use it.
   // Otherwise, if the recipe is ready, use the standard hero endpoint.
-  const imageUrl = gotoImageUrl || (gotoReady ? `/api/recipes/${gotoRecipeId}/hero` : null);
+  const imageUrl = nonCookingLabel
+    ? null
+    : gotoImageUrl || (gotoReady ? `/api/recipes/${gotoRecipeId}/hero` : null);
 
   return (
     <div
@@ -75,7 +80,19 @@ export function TonightPivotCard({
 
         {/* Body */}
         <div className="flex flex-col gap-2 px-1 mb-5">
-          {gotoReady && gotoDescription ? (
+          {nonCookingLabel ? (
+            <details>
+              <summary
+                data-testid="today-non-cooking-label"
+                className="line-clamp-2 cursor-pointer font-heading text-3xl font-black text-charcoal"
+              >
+                {nonCookingLabel}
+              </summary>
+              <p className="mt-3 whitespace-pre-wrap break-words text-charcoal">
+                {nonCookingLabel}
+              </p>
+            </details>
+          ) : gotoReady && gotoDescription ? (
             <h3 className="font-heading text-3xl font-black text-charcoal leading-none tracking-tighter">
               {gotoDescription}
             </h3>
@@ -131,7 +148,7 @@ export function TonightPivotCard({
                   : 'flex items-center justify-center h-12 rounded-[1.5rem] bg-charcoal/10 text-charcoal/60 transition-all active:scale-95 hover:bg-charcoal/20 text-[10px] font-black uppercase tracking-widest'
               }
             >
-              Order In
+              {t('home.orderingIn', 'Ordering In')}
             </button>
           </div>
         </div>

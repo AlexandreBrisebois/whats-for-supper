@@ -245,7 +245,18 @@
     "viewRecipe": "View recipe",
     "closeVoting": "Close Voting",
     "diversify": "Diversify",
-    "holdToMove": "Hold to move"
+    "holdToMove": "Hold to move",
+    "noCooking": "No cooking",
+    "eatingOut": "Eating out",
+    "otherPlans": "Other plans",
+    "editSupperPlan": "Edit supper plan",
+    "nonCookingChoice": "Supper plan",
+    "nonCookingMessage": "What’s the plan?",
+    "nonCookingExamples": "Supper at Grandma’s · Emma’s birthday supper",
+    "nonCookingInvalid": "Enter a message with 1–80 characters.",
+    "nonCookingConflict": "This day’s plan changed. Review it before trying again.",
+    "nonCookingSaveError": "Could not save this plan. Try again.",
+    "clearDay": "Clear day"
   },
   "grocery": {
     "smartShopping": "Smart Shopping",

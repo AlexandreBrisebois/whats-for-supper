@@ -295,3 +295,17 @@ entries:
     aliases: [pdf capture, android pdf sharing]
     depends_on: [feature-flags, photo-capture, recipe-url-capture, import-progress-and-completion, import-failure-recovery, storage-backup-and-recovery]
     next_action: Complete T02/T08 renderer and device qualification; implementation and automated evidence are tracked in implementation-evidence.md.
+  - slug: planner-non-cooking-days
+    name: Planner non-cooking days
+    kind: planned-feature
+    lifecycle: planned
+    path: .kiro/specs/planner-non-cooking-days
+    aliases: [order-in, eating out, custom day labels, issue 214]
+    depends_on: [schedule-movement-and-exceptions, family-voting-cycle, meal-assignment-and-replacement, tonights-meal-status, shared-real-time-state]
+    next_action: Verify implemented NCD-T1 through NCD-T3 with browser/database/shared-client acceptance and finish; API hook passes; see evidence.md.
+  - slug: pwa-install-identity
+    name: PWA install identity
+    kind: planned-feature
+    lifecycle: in-progress
+    path: .kiro/specs/pwa-install-identity
+    next_action: Complete ID-T4 device and installation acceptance.

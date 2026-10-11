@@ -245,7 +245,18 @@
     "viewRecipe": "Voir la recette",
     "closeVoting": "Fermer le vote",
     "diversify": "Diversifier",
-    "holdToMove": "Maintenir pour déplacer"
+    "holdToMove": "Maintenir pour déplacer",
+    "noCooking": "Pas de cuisine",
+    "eatingOut": "Manger à l’extérieur",
+    "otherPlans": "Autres plans",
+    "editSupperPlan": "Modifier le souper",
+    "nonCookingChoice": "Plan du souper",
+    "nonCookingMessage": "Quel est le plan?",
+    "nonCookingExamples": "Souper chez grand-maman · Souper d’anniversaire d’Emma",
+    "nonCookingInvalid": "Entrez un message de 1 à 80 caractères.",
+    "nonCookingConflict": "Le plan de cette journée a changé. Vérifiez-le avant de réessayer.",
+    "nonCookingSaveError": "Impossible d’enregistrer ce plan. Réessayez.",
+    "clearDay": "Libérer la journée"
   },
   "grocery": {
     "smartShopping": "Courses Intelligentes",

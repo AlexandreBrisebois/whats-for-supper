@@ -6,7 +6,8 @@ public record ScheduleDayDto(
     [property: JsonPropertyName("day")] string Day,
     [property: JsonPropertyName("date")] string Date,
     [property: JsonPropertyName("recipe")] ScheduleRecipeDto? Recipe,
-    [property: JsonPropertyName("status")] int Status = 0);
+    [property: JsonPropertyName("status")] int Status = 0,
+    [property: JsonPropertyName("nonCooking")] NonCookingPlanDto? NonCooking = null);
 
 public record ScheduleRecipeDto(
     [property: JsonPropertyName("id")] Guid Id,

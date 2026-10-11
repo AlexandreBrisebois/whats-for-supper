@@ -14,6 +14,7 @@ import type {
   GroceryLineItemDto,
   ScheduleRecipeDto,
   SmartDefaultsDto,
+  NonCookingPlanDto,
 } from '@/lib/api/generated/models';
 import type { ScheduleDay } from '@/lib/api/planner';
 import type { ScheduleDays } from '@/lib/api/generated/models';
@@ -78,7 +79,12 @@ export interface WeekState {
 
   // SSE-driven actions
   applySnapshot: (schedule: ScheduleDays, echoSeq?: number) => void;
-  applySlotUpdate: (update: { date: string; recipe: any; status: number }) => void;
+  applySlotUpdate: (update: {
+    date: string;
+    recipe: any;
+    status: number;
+    nonCooking?: NonCookingPlanDto | null;
+  }) => void;
   applyVoteUpdate: (update: { recipeId: string; voteCount: number }) => void;
   applySmartDefaultsUpdate: (defaults: SmartDefaultsDto) => void;
 }
@@ -119,6 +125,8 @@ function buildScheduleDays(
       return { ...day, recipe, _uiId: stableUiId };
     }
 
+    if (day.status === 3)
+      return { ...day, recipe: undefined, _isPending: false, _uiId: stableUiId };
     const smartDefault = defaultsByDayIndex.get(index);
     if (smartDefault) {
       return {
@@ -223,6 +231,7 @@ export const useWeekStore = create<WeekState>((set, get) => ({
         ? {
             ...d,
             status: 0,
+            nonCooking: null,
             recipe: {
               id: recipe.id,
               name: recipe.name ?? '',
@@ -256,7 +265,14 @@ export const useWeekStore = create<WeekState>((set, get) => ({
     const removedRecipeId = typeof recipeId === 'string' ? recipeId : undefined;
     const next = prev.map((d, i) =>
       i === dayIndex
-        ? { ...d, status: 0, recipe: undefined, _isPending: false, _userCleared: true }
+        ? {
+            ...d,
+            status: 0,
+            nonCooking: null,
+            recipe: undefined,
+            _isPending: false,
+            _userCleared: true,
+          }
         : d
     );
     set({
@@ -362,7 +378,7 @@ export const useWeekStore = create<WeekState>((set, get) => ({
     // Identify slots with pending suggestions that need to be committed
     const pendingSlots = schedule
       .map((slot, index) => ({ slot, index }))
-      .filter(({ slot }) => slot._isPending && slot.recipe?.id);
+      .filter(({ slot }) => slot.status !== 3 && slot._isPending && slot.recipe?.id);
 
     set({ status: 2 });
 
@@ -494,7 +510,7 @@ export const useWeekStore = create<WeekState>((set, get) => ({
     const snapshotIsEmpty = mergedDays.every((d) => !d.recipe);
 
     const preserved = mergedDays.map((day) => {
-      if (day.recipe) return day; // server has a real recipe — use it
+      if (day.recipe || day.status === 3) return day; // persisted recipe or non-cooking plan
       const prevDay = prev.find((p) => p.date === day.date);
       if (prevDay?._isPending) {
         return {
@@ -528,13 +544,31 @@ export const useWeekStore = create<WeekState>((set, get) => ({
   },
 
   // ── applySlotUpdate ───────────────────────────────────────────────────────
-  applySlotUpdate({ date, recipe, status }: { date: string; recipe: any; status: number }) {
+  applySlotUpdate({
+    date,
+    recipe,
+    status,
+    nonCooking,
+  }: {
+    date: string;
+    recipe: any;
+    status: number;
+    nonCooking?: NonCookingPlanDto | null;
+  }) {
     const prev = get().schedule;
     if (prev.length === 0) return;
     const inCurrentWeek = prev.some((d) => d.date === date);
     if (!inCurrentWeek) return;
     const next = prev.map((d) =>
-      d.date === date ? { ...d, recipe: recipe ?? undefined, status } : d
+      d.date === date
+        ? {
+            ...d,
+            recipe: recipe ?? undefined,
+            status,
+            nonCooking: status === 3 ? (nonCooking ?? null) : null,
+            _isPending: false,
+          }
+        : d
     );
     set({ schedule: next });
   },
@@ -558,7 +592,7 @@ export const useWeekStore = create<WeekState>((set, get) => ({
     );
 
     const next = prev.map((d, index) => {
-      if (d.recipe && !d._isPending) return d;
+      if (d.status === 3 || (d.recipe && !d._isPending)) return d;
 
       const smartDefault = defaultsByDayIndex.get(index);
       if (smartDefault) {

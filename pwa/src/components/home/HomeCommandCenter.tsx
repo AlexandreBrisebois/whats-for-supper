@@ -8,7 +8,7 @@ import {
   VotingNudgeCard,
   BrowseLibraryTrigger,
 } from './HomeSections';
-import { TonightMenuCard } from './TonightMenuCard';
+import { TonightCardBase, TonightMenuCard } from './TonightMenuCard';
 import { TonightPivotCard } from './TonightPivotCard';
 import { SkipRecoveryDialog } from './SkipRecoveryDialog';
 import { QuickFindModal } from '../planner/QuickFindModal';
@@ -27,6 +27,7 @@ import { useGotoStore } from '@/store/gotoStore';
 import { useWeekStore } from '@/store/weekStore';
 import { useUiStore } from '@/store/uiStore';
 import { t } from '@/locales';
+import { nonCookingLabel } from '@/lib/planner/nonCooking';
 import { ROUTES } from '@/lib/constants/routes';
 import type { GoToItem } from '@/lib/api/generated/models/index';
 
@@ -49,14 +50,19 @@ function getMondayBasedDayIndex(dateString: string) {
 export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCenterProps) {
   // ── UI-only state (not domain state) ──────────────────────────────────────
   const [showCooksMode, setShowCooksMode] = useState(false);
-  const [recoveryFlow, setRecoveryFlow] = useState<RecoveryFlowState>({ kind: 'closed' });
+  const [recoveryFlow, setRecoveryFlow] = useState<RecoveryFlowState>({
+    kind: 'closed',
+  });
   const [cookedDismissed, setCookedDismissed] = useState(false);
-  const [votingNudge, setVotingNudge] = useState<{ plannedCount: number } | null>(null);
+  const [votingNudge, setVotingNudge] = useState<{
+    plannedCount: number;
+  } | null>(null);
   const [votingNudgeDismissed, setVotingNudgeDismissed] = useState(false);
 
   // ── Domain state from todayStore ──────────────────────────────────────────
   // NOTE: init() is intentionally excluded here — TodayStoreInitializer is the sole initialiser.
-  const { currentRecipe, status, isLoading, assignRecipe, markOrderedIn, sync } = useTodayStore();
+  const { currentRecipe, status, nonCooking, isLoading, assignRecipe, markOrderedIn, sync } =
+    useTodayStore();
 
   const isCooked = status === 2;
   const isSkipped = status === 3;
@@ -105,7 +111,9 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
     let isMounted = true;
     const fetchVotingStatus = async () => {
       try {
-        const result = await apiClient.api.schedule.get({ queryParameters: { weekOffset: 1 } });
+        const result = await apiClient.api.schedule.get({
+          queryParameters: { weekOffset: 1 },
+        });
         const data = result?.data;
         if (!isMounted) return;
         if (data?.status === 1 && data.days) {
@@ -160,9 +168,16 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
             return;
           }
 
-          setRecoveryFlow({ kind: 'step2', intent: 'order_in', pendingRecipe: currentRecipe });
+          setRecoveryFlow({
+            kind: 'step2',
+            intent: 'order_in',
+            pendingRecipe: currentRecipe,
+          });
         } else if (action === 'pick_else') {
-          setRecoveryFlow({ kind: 'quick_find', intent: 'pick_else' });
+          setRecoveryFlow({
+            kind: 'quick_find',
+            intent: 'pick_else',
+          });
         } else if (action === 'tomorrow') {
           const recipeToReassign =
             recoveryFlow.kind === 'step2' ? recoveryFlow.pendingRecipe : null;
@@ -267,9 +282,17 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
     setRecoveryFlow({ kind: 'closed' });
     if (!recipe) return;
     if (quickFindIntent === 'pick_else') {
-      setRecoveryFlow({ kind: 'step2', intent: 'pick_else', pendingRecipe: recipe });
+      setRecoveryFlow({
+        kind: 'step2',
+        intent: 'pick_else',
+        pendingRecipe: recipe,
+      });
     } else {
-      assignRecipe({ id: recipe.id, name: recipe.name ?? null, image: recipe.image ?? '' });
+      assignRecipe({
+        id: recipe.id,
+        name: recipe.name ?? null,
+        image: recipe.image ?? '',
+      });
     }
   };
 
@@ -285,6 +308,21 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
         </div>
       ) : (
         <>
+          {isSkipped && !currentRecipe && (
+            <TonightCardBase className="p-6">
+              <details>
+                <summary
+                  data-testid="today-non-cooking-label"
+                  className="line-clamp-2 cursor-pointer font-heading text-3xl font-black text-charcoal"
+                >
+                  {nonCookingLabel(nonCooking)}
+                </summary>
+                <p className="mt-3 whitespace-pre-wrap break-words text-charcoal">
+                  {nonCookingLabel(nonCooking)}
+                </p>
+              </details>
+            </TonightCardBase>
+          )}
           {!currentRecipe && !isSkipped && !sessionDone && !isCooked && (
             <TonightPivotCard
               gotoDescription={gotoDescription}
@@ -299,10 +337,19 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
                     image: gotoImageUrl || '',
                   });
                 } else {
-                  setRecoveryFlow({ kind: 'quick_find', intent: null });
+                  setRecoveryFlow({
+                    kind: 'quick_find',
+                    intent: null,
+                  });
                 }
               }}
-              onDiscover={() => setRecoveryFlow({ kind: 'quick_find', intent: null })}
+              onDiscover={() =>
+                setRecoveryFlow({
+                  kind: 'quick_find',
+                  intent: null,
+                })
+              }
+              nonCookingLabel={isSkipped ? nonCookingLabel(nonCooking) : null}
               onOrderIn={async () => {
                 if (!currentRecipe) {
                   // B5: No recipe — write status:3 unconditionally via store

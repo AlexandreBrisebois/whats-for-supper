@@ -12,6 +12,8 @@ interface PlanningPivotSheetProps {
   onRemoveRecipe?: () => void;
   onPlanLater?: () => void;
   hasRecipe: boolean;
+  onNoCooking?: () => void;
+  isNonCooking?: boolean;
 }
 
 export const PlanningPivotSheet: React.FC<PlanningPivotSheetProps> = ({
@@ -23,6 +25,8 @@ export const PlanningPivotSheet: React.FC<PlanningPivotSheetProps> = ({
   onRemoveRecipe,
   onPlanLater,
   hasRecipe,
+  onNoCooking,
+  isNonCooking = false,
 }) => {
   return (
     <AnimatePresence>
@@ -71,6 +75,17 @@ export const PlanningPivotSheet: React.FC<PlanningPivotSheetProps> = ({
             </div>
 
             <div className="grid grid-cols-1 gap-4">
+              {onNoCooking && (
+                <button
+                  onClick={onNoCooking}
+                  data-testid="pivot-no-cooking"
+                  className="rounded-[2rem] border-2 border-charcoal/5 p-5 text-left font-heading text-lg font-bold text-charcoal hover:bg-sage/5"
+                >
+                  {isNonCooking
+                    ? t('planner.editSupperPlan', 'Edit supper plan')
+                    : t('planner.noCooking', 'No cooking')}
+                </button>
+              )}
               {hasRecipe && onPlanLater && (
                 <button
                   onClick={onPlanLater}

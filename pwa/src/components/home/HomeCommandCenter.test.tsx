@@ -18,6 +18,7 @@ const mocks = vi.hoisted(() => ({
   loadActiveGoTo: vi.fn().mockResolvedValue(null),
   currentRecipe: null as any,
   todayStatus: 0 as 0 | 2 | 3,
+  nonCooking: null as { kind: string; customLabel: string | null } | null,
   todayString: '2026-05-07',
 }));
 
@@ -48,7 +49,8 @@ vi.mock('@/components/home/TonightPivotCard', () => ({
   ),
 }));
 
-vi.mock('@/components/home/TonightMenuCard', () => ({
+vi.mock('@/components/home/TonightMenuCard', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('./TonightMenuCard')>()),
   TonightMenuCard: ({ onSkip }: { onSkip: () => void }) => (
     <button data-testid="skip-btn" onClick={onSkip}>
       Skip
@@ -130,6 +132,7 @@ vi.mock('@/store/todayStore', () => ({
     () => ({
       currentRecipe: mocks.currentRecipe,
       status: mocks.todayStatus,
+      nonCooking: mocks.nonCooking,
       isLoading: false,
       assignRecipe: mocks.assignRecipe,
       markCooked: vi.fn(),
@@ -223,9 +226,29 @@ describe('HomeCommandCenter', () => {
     vi.clearAllMocks();
     mocks.currentRecipe = null;
     mocks.todayStatus = 0;
+    mocks.nonCooking = null;
     mocks.todayString = '2026-05-07';
     mocks.loadActiveGoTo.mockResolvedValue(null);
   });
+
+  it.each([
+    ['order_in', null, 'Ordering In'],
+    ['eating_out', null, 'Eating out'],
+    ['custom', 'Supper at Grandma’s', 'Supper at Grandma’s'],
+    ['custom', 'Emma’s birthday supper', 'Emma’s birthday supper'],
+  ])(
+    'shows the saved %s plan on Home without meal recovery controls',
+    async (kind, customLabel, label) => {
+      mocks.todayStatus = 3;
+      mocks.nonCooking = { kind: kind!, customLabel };
+
+      render(<HomeCommandCenter todaysRecipe={null} todayStatus={3} />);
+
+      expect(await screen.findByTestId('today-non-cooking-label')).toHaveTextContent(label!);
+      expect(screen.queryByTestId('order-in-btn')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('tonight-menu-card')).not.toBeInTheDocument();
+    }
+  );
 
   it('re-fetches a pending GOTO when its recipe is already marked ready by SSE', async () => {
     mocks.loadActiveGoTo

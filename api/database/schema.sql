@@ -126,6 +126,9 @@ CREATE TABLE calendar_events (
     status smallint NOT NULL,
     vote_count integer,
     candidate_ids uuid[],
+    non_cooking_kind text,
+    non_cooking_label text,
+    CONSTRAINT calendar_events_non_cooking_check CHECK ((non_cooking_kind IS NULL AND non_cooking_label IS NULL) OR (non_cooking_kind IS NOT NULL AND status = 3 AND recipe_id IS NULL AND ((non_cooking_kind IN ('order_in', 'eating_out') AND non_cooking_label IS NULL) OR (non_cooking_kind = 'custom' AND non_cooking_label IS NOT NULL AND char_length(btrim(non_cooking_label)) BETWEEN 1 AND 80)))),
     CONSTRAINT calendar_events_status_check CHECK (status >= 0 AND status <= 4),
     CONSTRAINT calendar_events_date_slot_unique UNIQUE (date, meal_slot)
 );

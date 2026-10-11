@@ -68,6 +68,7 @@ stable paths and are not a numbering scheme for new work.
 | Dietary preferences and planning exploration | exploration | [Dietary preferences and planning exploration](diet-agent/) | — | Reconcile legacy prompts into one approved outcome before implementation. |
 | Feature flags | planned-feature | [Feature flags](feature-flags/) | — | Select the first bounded implementation task. |
 | Model routing | platform-initiative | [Model routing](model-routing/) | — | Select increment 1 only. |
+| Planner non-cooking days | planned-feature | [Planner non-cooking days](planner-non-cooking-days/) | schedule-movement-and-exceptions, family-voting-cycle, meal-assignment-and-replacement, tonights-meal-status, shared-real-time-state | Verify implemented NCD-T1 through NCD-T3 with browser/database/shared-client acceptance and finish; API hook passes; see evidence.md. |
 | PWA cache coherence | platform-initiative | [PWA cache coherence](pwa-caching/) | — | Normalize legacy session prompts before selecting work. |
 | Recipe on one page | planned-feature | [Recipe on one page](single-page-recipe-view/) | feature-flags | Implement after the feature-flag decision boundary exists. |
 
@@ -76,6 +77,7 @@ stable paths and are not a numbering scheme for new work.
 | Name | Kind | Canonical package | Dependencies | Next action |
 |---|---|---|---|---|
 | PDF recipe import preview | planned-feature | [PDF recipe import preview](pdf-recipe-import/) | feature-flags, photo-capture, recipe-url-capture, import-progress-and-completion, import-failure-recovery, storage-backup-and-recovery | Complete T02/T08 renderer and device qualification; implementation and automated evidence are tracked in implementation-evidence.md. |
+| PWA install identity | planned-feature | [PWA install identity](pwa-install-identity/) | — | Complete ID-T4 device and installation acceptance. |
 
 ## Registry rules
 

@@ -54,7 +54,8 @@ export async function findFirstOpenPlannerSlot(
 
     const startIndex = weekOffset === startWeekOffset ? startDayIndex : 0;
     const dayIndex = schedule.days.findIndex(
-      (day, index) => index >= startIndex && !normalizeScheduleRecipe(day.recipe)
+      (day, index) =>
+        index >= startIndex && day.status !== 3 && !normalizeScheduleRecipe(day.recipe)
     );
 
     if (dayIndex !== undefined && dayIndex >= 0) {

@@ -397,6 +397,14 @@ components:
           items: { $ref: '#/components/schemas/GroceryLineItemDto' }
           nullable: true
 
+    NonCookingPlanDto:
+      type: object
+      required: [kind]
+      description: Recipe-free supper plan. customLabel is required and trimmed to 1-80 Unicode scalar values for custom; null or absent for presets.
+      properties:
+        kind: { type: string, enum: [order_in, eating_out, custom] }
+        customLabel: { type: [string, 'null'], maxLength: 80 }
+
     ScheduleDayDto:
       type: object
       required: [day, date]
@@ -409,6 +417,9 @@ components:
             - { $ref: '#/components/schemas/ScheduleRecipeDto' }
             - { type: 'null' }
         status: { type: integer, description: '0: Planned, 1: Locked, 2: Cooked, 3: Skipped, 4: AwaitingConsensus' }
+        nonCooking:
+          nullable: true
+          allOf: [{ $ref: '#/components/schemas/NonCookingPlanDto' }]
 
     ScheduleRecipeDto:
       type: object
@@ -628,6 +639,10 @@ components:
       required: [status]
       properties:
         status: { type: integer, description: '1: Planned, 2: Cooked, 3: Skipped, 4: AwaitingConsensus' }
+        nonCooking:
+          nullable: true
+          description: Only valid with status 3. Cannot overwrite a persisted recipe; legacy status-only requests remain supported.
+          allOf: [{ $ref: '#/components/schemas/NonCookingPlanDto' }]
         recipeId:
           type: string
           format: uuid
@@ -734,6 +749,9 @@ components:
                 - $ref: '#/components/schemas/ScheduleRecipeDto'
                 - type: 'null'
             status: { type: integer, description: '0: Planned, 1: Locked, 2: Cooked, 3: Skipped' }
+            nonCooking:
+              nullable: true
+              allOf: [{ $ref: '#/components/schemas/NonCookingPlanDto' }]
 
     WeekUpdatedEvent:
       allOf:
@@ -2467,6 +2485,27 @@ paths:
                     properties:
                       mealMarkedCooked: { type: boolean, description: 'True only when the scheduled meal was marked cooked.' }
                       message: { type: string }
+
+        '400':
+          description: Invalid non-cooking kind, label, or validation status
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, message]
+                properties:
+                  status: { type: integer }
+                  message: { type: string }
+        '409':
+          description: The date is now occupied by a recipe or another non-skipped entry
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, message]
+                properties:
+                  status: { type: integer }
+                  message: { type: string }
 
   /api/schedule/{weekOffset}/smart-defaults:
     get:

@@ -917,13 +917,16 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
       (url) => url.pathname.endsWith(`/api/schedule/day/${today}/validate`),
       async (route) => {
         if (route.request().method() !== 'POST') return route.fallback();
-        expect(route.request().postDataJSON()).toEqual({ status: 2 });
+        expect(route.request().postDataJSON()).toEqual({
+          status: 2,
+          recipeId: MOCK_IDS.RECIPE_LASAGNA,
+        });
         todayStatus = 2;
         validateCalled = true;
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
-          body: JSON.stringify({ data: { message: 'Day validated' } }),
+          body: JSON.stringify({ data: { message: 'Day validated', mealMarkedCooked: true } }),
         });
       }
     );

@@ -82,6 +82,14 @@ public class ScheduleController(ScheduleService scheduleService) : ControllerBas
         {
             return NotFound(new { message = ex.Message });
         }
+        catch (Npgsql.PostgresException ex) when (dto.NonCooking != null && ex.SqlState == "40001")
+        {
+            return Conflict(new { status = 409, message = "This day’s plan changed. Refresh it before retrying." });
+        }
+        catch (NonCookingPlanConflictException ex)
+        {
+            return Conflict(new { status = 409, message = ex.Message });
+        }
     }
 
     [HttpPost("voting/open")]

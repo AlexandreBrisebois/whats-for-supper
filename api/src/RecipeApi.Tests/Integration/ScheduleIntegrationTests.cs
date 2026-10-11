@@ -72,6 +72,44 @@ public class ScheduleIntegrationTests : IAsyncLifetime
     // ──────────────────────────────────────────────────────────────────────────────
 
     [Fact]
+    public async Task NonCookingValidation_RoundTripsAndRejectsRecipeConflict()
+    {
+        using var client = _factory.CreateClient();
+        var date = DateOnly.FromDateTime(DateTime.UtcNow).ToString("yyyy-MM-dd");
+        var saved = await client.PostAsJsonAsync($"/api/schedule/day/{date}/validate", new { status = 3, nonCooking = new { kind = "custom", customLabel = "Supper at Grandma’s" } });
+        Assert.Equal(System.Net.HttpStatusCode.OK, saved.StatusCode);
+        var savedBody = await saved.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.False(savedBody.GetProperty("data").GetProperty("mealMarkedCooked").GetBoolean());
+        var schedule = await client.GetFromJsonAsync<JsonElement>("/api/schedule?weekOffset=0");
+        var day = schedule.GetProperty("data").GetProperty("days").EnumerateArray().Single(d => d.GetProperty("date").GetString() == date);
+        Assert.Equal("Supper at Grandma’s", day.GetProperty("nonCooking").GetProperty("customLabel").GetString());
+        var recipeId = Guid.NewGuid();
+        _db.Recipes.Add(new Recipe { Id = recipeId, Name = "Pasta" });
+        await _db.SaveChangesAsync();
+        await _service.AssignRecipeAsync(new AssignScheduleDto(0, ((int)DateTime.UtcNow.DayOfWeek + 6) % 7, recipeId));
+        var conflict = await client.PostAsJsonAsync($"/api/schedule/day/{date}/validate", new { status = 3, nonCooking = new { kind = "eating_out" } });
+        Assert.Equal(System.Net.HttpStatusCode.Conflict, conflict.StatusCode);
+        var conflictBody = await conflict.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(409, conflictBody.GetProperty("status").GetInt32());
+        Assert.False(conflictBody.TryGetProperty("data", out _));
+        Assert.False(string.IsNullOrWhiteSpace(conflictBody.GetProperty("message").GetString()));
+        Assert.Equal(recipeId, _db.CalendarEvents.Single(e => e.Date.ToString("yyyy-MM-dd") == date).RecipeId);
+    }
+
+    [Fact]
+    public async Task NonCookingValidation_InvalidLabelReturns400WithoutCreatingEntry()
+    {
+        using var client = _factory.CreateClient();
+        var date = DateOnly.FromDateTime(DateTime.UtcNow).ToString("yyyy-MM-dd");
+        var response = await client.PostAsJsonAsync($"/api/schedule/day/{date}/validate", new { status = 3, nonCooking = new { kind = "custom", customLabel = "   " } });
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(400, body.GetProperty("status").GetInt32());
+        Assert.False(body.TryGetProperty("data", out _));
+        Assert.Empty(_db.CalendarEvents);
+    }
+
+    [Fact]
     public async Task AssignRecipe_CreatesCalendarEvent_WhenNoneExists()
     {
         // Arrange

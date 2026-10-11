@@ -46,6 +46,7 @@ vi.mock('@/lib/api/api-client', () => ({
 beforeEach(() => {
   useTodayStore.setState({
     currentRecipe: null,
+    nonCooking: null,
     status: 0,
     isLoading: false,
     lastSyncedAt: null,
@@ -61,7 +62,11 @@ const mockRecipe = {
 };
 
 describe('todayStore — recipe-specific cooking', () => {
-  const supper = { id: '550e8400-e29b-41d4-a716-446655440101', name: 'Supper', image: '' };
+  const supper = {
+    id: '550e8400-e29b-41d4-a716-446655440101',
+    name: 'Supper',
+    image: '',
+  };
   const lunchId = '550e8400-e29b-41d4-a716-446655440102';
 
   it('records lunch without marking the scheduled supper cooked', async () => {
@@ -188,7 +193,11 @@ describe('todayStore — applyServerUpdate', () => {
   });
   it('updates details from server push even within 2s echo window if ID matches', () => {
     const recipeId = 'recipe-1';
-    const optimisticRecipe = { id: recipeId, name: 'Pasta', image: '/img.jpg' };
+    const optimisticRecipe = {
+      id: recipeId,
+      name: 'Pasta',
+      image: '/img.jpg',
+    };
 
     useTodayStore.setState({
       currentRecipe: optimisticRecipe as any,
@@ -267,7 +276,11 @@ describe('todayStore — assignRecipe', () => {
 describe('todayStore — sync', () => {
   it('updates details if ID matches during optimistic window (SMART RECONCILIATION)', async () => {
     const recipeId = 'recipe-1';
-    const initialRecipe = { id: recipeId, name: 'Pasta', image: '/img.jpg' };
+    const initialRecipe = {
+      id: recipeId,
+      name: 'Pasta',
+      image: '/img.jpg',
+    };
 
     // Set optimistic state
     useTodayStore.setState({
@@ -330,7 +343,11 @@ describe('todayStore — clearOptimisticGuard', () => {
 describe('todayStore — init', () => {
   it('updates details if ID matches during optimistic window', () => {
     const recipeId = 'recipe-1';
-    const optimisticRecipe = { id: recipeId, name: 'Pasta', image: '/img.jpg' };
+    const optimisticRecipe = {
+      id: recipeId,
+      name: 'Pasta',
+      image: '/img.jpg',
+    };
 
     useTodayStore.setState({
       currentRecipe: optimisticRecipe as any,
@@ -352,4 +369,56 @@ describe('todayStore — init', () => {
     // SHOULD preserve optimisticWriteAt
     expect(useTodayStore.getState().optimisticWriteAt).not.toBeNull();
   });
+});
+
+it('keeps a custom non-cooking message from shared state and clears it on replacement', () => {
+  useTodayStore.getState().applyServerUpdate({
+    recipe: null,
+    status: 3,
+    nonCooking: { kind: 'custom', customLabel: 'Emma’s birthday supper' },
+  });
+  expect(useTodayStore.getState().nonCooking?.customLabel).toBe('Emma’s birthday supper');
+  useTodayStore.getState().applyServerUpdate({ recipe: null, status: 0 });
+  expect(useTodayStore.getState().nonCooking).toBeNull();
+});
+
+it('preserves optimistic non-cooking metadata against stale SSR initialization', () => {
+  useTodayStore.setState({
+    currentRecipe: null,
+    status: 3,
+    nonCooking: { kind: 'custom', customLabel: 'Birthday' },
+    optimisticWriteAt: Date.now(),
+  });
+  useTodayStore.getState().init(null, 0, null);
+  expect(useTodayStore.getState().status).toBe(3);
+  expect(useTodayStore.getState().nonCooking?.customLabel).toBe('Birthday');
+});
+
+it('preserves an authoritative non-cooking snapshot when empty SSR arrives later', () => {
+  useTodayStore.getState().applyServerUpdate({
+    recipe: null,
+    status: 3,
+    nonCooking: { kind: 'custom', customLabel: 'Grandma' },
+  });
+  useTodayStore.getState().init(null, 0, null);
+  expect(useTodayStore.getState().status).toBe(3);
+  expect(useTodayStore.getState().nonCooking?.customLabel).toBe('Grandma');
+});
+
+it('recording an unscheduled recipe keeps the saved non-cooking plan', async () => {
+  const plan = {
+    kind: 'custom',
+    customLabel: 'Supper at Grandma’s',
+  } as const;
+  useTodayStore.setState({
+    currentRecipe: null,
+    status: 3,
+    nonCooking: plan,
+  });
+  vi.mocked(apiClient.api.schedule.day.byDate({} as any).validate.post).mockResolvedValueOnce({
+    data: { mealMarkedCooked: false },
+  });
+  await useTodayStore.getState().markCooked('11111111-1111-1111-1111-111111111111');
+  expect(useTodayStore.getState().status).toBe(3);
+  expect(useTodayStore.getState().nonCooking).toEqual(plan);
 });

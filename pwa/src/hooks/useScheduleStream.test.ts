@@ -321,6 +321,7 @@ describe('week_updated event', () => {
     expect(mockApplyServerUpdate).toHaveBeenCalledWith({
       recipe,
       status: 1,
+      nonCooking: null,
     });
   });
 });
@@ -581,3 +582,35 @@ describe('cleanup', () => {
     expect(source.close).toHaveBeenCalledOnce();
   });
 });
+
+it('passes custom non-cooking metadata through slot updates to planner and today', () => {
+  const { source } = setupHook();
+  const plan = { kind: 'custom', customLabel: 'Birthday supper' };
+  source.emit('slot_updated', { date: '2025-01-15', recipe: null, status: 3, nonCooking: plan });
+  expect(mockApplyServerUpdate).toHaveBeenCalledWith({ recipe: null, status: 3, nonCooking: plan });
+  expect(mockApplySlotUpdate).toHaveBeenCalledWith({
+    date: '2025-01-15',
+    recipe: null,
+    status: 3,
+    nonCooking: plan,
+  });
+});
+
+it.each(['connected', 'week_updated'])(
+  'reconciles non-cooking metadata from %s snapshots',
+  (event) => {
+    const { source } = setupHook();
+    const plan = { kind: 'eating_out', customLabel: null };
+    const schedule = {
+      weekOffset: 0,
+      days: [{ date: '2025-01-15', recipe: null, status: 3, nonCooking: plan }],
+    };
+    source.emit(event, { schedule });
+    expect(mockApplySnapshot.mock.calls.at(-1)?.[0]).toEqual(schedule);
+    expect(mockApplyServerUpdate).toHaveBeenCalledWith({
+      recipe: null,
+      status: 3,
+      nonCooking: plan,
+    });
+  }
+);
