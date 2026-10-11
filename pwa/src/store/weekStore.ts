@@ -255,7 +255,9 @@ export const useWeekStore = create<WeekState>((set, get) => ({
     const recipeId = prev[dayIndex]?.recipe?.id;
     const removedRecipeId = typeof recipeId === 'string' ? recipeId : undefined;
     const next = prev.map((d, i) =>
-      i === dayIndex ? { ...d, recipe: undefined, _isPending: false, _userCleared: true } : d
+      i === dayIndex
+        ? { ...d, status: 0, recipe: undefined, _isPending: false, _userCleared: true }
+        : d
     );
     set({
       schedule: next,
