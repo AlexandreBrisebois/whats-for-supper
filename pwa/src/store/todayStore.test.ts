@@ -60,6 +60,56 @@ const mockRecipe = {
   image: '/api/recipes/recipe-1/original/0',
 };
 
+describe('todayStore — recipe-specific cooking', () => {
+  const supper = { id: '550e8400-e29b-41d4-a716-446655440101', name: 'Supper', image: '' };
+  const lunchId = '550e8400-e29b-41d4-a716-446655440102';
+
+  it('records lunch without marking the scheduled supper cooked', async () => {
+    useTodayStore.setState({ currentRecipe: supper, status: 0 });
+    const post = apiClient.api.schedule.day.byDate({} as any).validate.post;
+    vi.mocked(post).mockClear();
+
+    await useTodayStore.getState().markCooked(lunchId);
+
+    expect(post).toHaveBeenCalledWith({ status: 2, recipeId: lunchId });
+    expect(useTodayStore.getState().currentRecipe).toEqual(supper);
+    expect(useTodayStore.getState().status).toBe(0);
+  });
+
+  it('still marks the scheduled supper cooked when its recipe matches', async () => {
+    useTodayStore.setState({ currentRecipe: supper, status: 0 });
+    vi.mocked(apiClient.api.schedule.day.byDate({} as any).validate.post).mockResolvedValueOnce({
+      data: { mealMarkedCooked: true },
+    });
+    await useTodayStore.getState().markCooked(supper.id);
+    expect(useTodayStore.getState().status).toBe(2);
+  });
+
+  it('does not complete a stale local supper when the server reports a different scheduled recipe', async () => {
+    useTodayStore.setState({ currentRecipe: supper, status: 0 });
+    vi.mocked(apiClient.api.schedule.day.byDate({} as any).validate.post).mockResolvedValueOnce({
+      data: { mealMarkedCooked: false },
+    });
+    await useTodayStore.getState().markCooked(supper.id);
+    expect(useTodayStore.getState().status).toBe(0);
+  });
+
+  it('records an unscheduled recipe when there is no planned supper', async () => {
+    await useTodayStore.getState().markCooked(lunchId);
+    expect(useTodayStore.getState().status).toBe(0);
+    expect(useTodayStore.getState().currentRecipe).toBeNull();
+  });
+
+  it('does not mark supper cooked if saving the cooking event fails', async () => {
+    useTodayStore.setState({ currentRecipe: supper, status: 0 });
+    const post = apiClient.api.schedule.day.byDate({} as any).validate.post;
+    vi.mocked(post).mockRejectedValueOnce(new Error('Saving failed'));
+
+    await expect(useTodayStore.getState().markCooked(supper.id)).rejects.toThrow('Saving failed');
+    expect(useTodayStore.getState().status).toBe(0);
+  });
+});
+
 describe('todayStore — applyServerUpdate', () => {
   it('updates currentRecipe and status from server push', () => {
     useTodayStore.getState().applyServerUpdate({ recipe: mockRecipe, status: 0 });

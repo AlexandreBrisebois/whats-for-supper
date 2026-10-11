@@ -279,6 +279,7 @@
     "back": "Back",
     "cooked": "Cooked",
     "markCooked": "Mark recipe as cooked",
+    "completionFailed": "Could not save cooking completion. Please try again.",
     "next": "Next",
     "total": "total",
     "noCookFresh": "No-Cook / Fresh",

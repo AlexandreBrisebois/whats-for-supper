@@ -732,12 +732,27 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
         );
     }
 
-    public async Task ValidateDayAsync(string dateStr, ValidationDto dto, string? excludeConnectionId = null)
+    public async Task<bool> ValidateDayAsync(string dateStr, ValidationDto dto, string? excludeConnectionId = null)
     {
         var date = DateOnly.Parse(dateStr);
         var @event = await _dbContext.CalendarEvents
             .Include(e => e.Recipe)
             .FirstOrDefaultAsync(e => e.Date == date);
+
+        if (dto.Status == 2 && dto.RecipeId is { } cookedRecipeId)
+        {
+            var cookedRecipe = await _dbContext.Recipes.FirstOrDefaultAsync(r => r.Id == cookedRecipeId && r.DeletedAt == null)
+                ?? throw new KeyNotFoundException("Recipe not found");
+            cookedRecipe.LastCookedDate = _clock.UtcNow;
+
+            // Cooking an unscheduled recipe must not complete another recipe's meal.
+            if (@event?.RecipeId != cookedRecipeId)
+            {
+                await _dbContext.SaveChangesAsync();
+                await _publisher.PublishFillTheGapInvalidatedAsync(GetWeekOffset(GetMonday(date)), excludeConnectionId);
+                return false;
+            }
+        }
 
         if (@event == null)
         {
@@ -755,7 +770,7 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
                 _logger.LogInformation("Created ordered-in CalendarEvent for date {Date} with no recipe", date);
 
                 await _publisher.PublishSlotUpdatedAsync(date, null, dto.Status, excludeConnectionId);
-                return;
+                return false;
             }
             throw new Exception("No meal planned for this date");
         }
@@ -797,6 +812,7 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
         }
 
         await _publisher.PublishSlotUpdatedAsync(date, recipeDto, dto.Status, excludeConnectionId);
+        return dto.Status == 2;
     }
 
     public async Task<Dictionary<string, bool>> UpdateGroceryStateAsync(

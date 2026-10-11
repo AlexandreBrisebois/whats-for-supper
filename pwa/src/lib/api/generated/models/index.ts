@@ -2896,6 +2896,9 @@ export function deserializeIntoValidationDto(
   validationDto: Partial<ValidationDto> | undefined = {}
 ): Record<string, (node: ParseNode) => void> {
   return {
+    recipeId: (n) => {
+      validationDto.recipeId = n.getGuidValue();
+    },
     status: (n) => {
       validationDto.status = n.getNumberValue();
     },
@@ -5915,6 +5918,7 @@ export function serializeValidationDto(
   if (!validationDto || isSerializingDerivedType) {
     return;
   }
+  writer.writeGuidValue('recipeId', validationDto.recipeId);
   writer.writeNumberValue('status', validationDto.status);
   writer.writeAdditionalData(validationDto.additionalData);
 }
@@ -6253,6 +6257,10 @@ export interface UpdateRecipeDto extends AdditionalDataHolder, Parsable {
 export type UpdateRecipeDto_mealTypes =
   (typeof UpdateRecipeDto_mealTypesObject)[keyof typeof UpdateRecipeDto_mealTypesObject];
 export interface ValidationDto extends AdditionalDataHolder, Parsable {
+  /**
+   * For status 2, record cooking for this recipe. Only mark the scheduled day cooked when its recipe matches. Omit for legacy day-only validation.
+   */
+  recipeId?: Guid | null;
   /**
    * 1: Planned, 2: Cooked, 3: Skipped, 4: AwaitingConsensus
    */
