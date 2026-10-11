@@ -229,7 +229,9 @@ test.describe("Planner — Cook's Mode", () => {
 });
 
 test.describe('Planner — Ordered-In State', () => {
-  test('ordered-in day shows ordered-in-indicator and hides plan-meal-button', async ({ page }) => {
+  test('removing an ordered-in day clears the card immediately and after reload', async ({
+    page,
+  }) => {
     const baseUrl = process.env.BASE_URL || 'http://127.0.0.1:3000';
     await page
       .context()
@@ -263,6 +265,12 @@ test.describe('Planner — Ordered-In State', () => {
     await page.route(
       (url) => url.pathname.includes('/api/schedule'),
       async (route) => {
+        if (route.request().method() === 'DELETE') {
+          expect(new URL(route.request().url()).pathname).toBe(`/api/schedule/day/${today}/remove`);
+          days[0].status = 0;
+          await route.fulfill({ status: 204 });
+          return;
+        }
         if (
           route.request().method() === 'GET' &&
           !route.request().url().includes('smart-defaults')
@@ -308,6 +316,18 @@ test.describe('Planner — Ordered-In State', () => {
     await expect(todayCard.getByTestId('ordered-in-indicator')).toBeVisible({ timeout: 3000 });
     // Assert plan-meal-button is NOT visible
     await expect(todayCard.getByTestId('plan-meal-button')).not.toBeVisible();
+
+    await todayCard.getByTestId('ordered-in-indicator').click();
+    await expect(page.getByTestId('pivot-remove-recipe')).toHaveAccessibleName(
+      'Remove recipe Clear this slot'
+    );
+    await page.getByTestId('pivot-remove-recipe').click();
+    await expect(todayCard.getByTestId('plan-meal-button')).toBeVisible();
+    await expect(todayCard.getByTestId('ordered-in-indicator')).toHaveCount(0);
+
+    await page.reload();
+    await expect(todayCard.getByTestId('plan-meal-button')).toBeVisible();
+    await expect(todayCard.getByTestId('ordered-in-indicator')).toHaveCount(0);
   });
 });
 
