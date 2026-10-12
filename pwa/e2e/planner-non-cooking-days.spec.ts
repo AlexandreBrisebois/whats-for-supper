@@ -236,10 +236,14 @@ test('Other plans stays readable and reachable on a phone', async ({ page }, tes
   await page.screenshot({ path: testInfo.outputPath('other-plans-menu.png') });
   await page.getByTestId('pivot-no-cooking').click();
   await expect(page.getByRole('dialog')).toHaveAccessibleName('What’s the plan? Monday, May 4');
-  await expect(page.getByRole('button', { name: 'Order In', exact: true })).toHaveAttribute(
+  await expect(page.getByRole('button', { name: 'Mystery night', exact: true })).toHaveAttribute(
     'aria-pressed',
     'true'
   );
+  await expect(
+    page.getByTestId('non-cooking-sheet').getByRole('group').getByRole('button').first()
+  ).toHaveText('Mystery night');
+  await expect(page.getByTestId('non-cooking-custom-label')).toBeHidden();
   await expect(
     page.getByTestId('non-cooking-sheet').getByRole('button', { name: 'Save', exact: true })
   ).toBeInViewport();

@@ -3,6 +3,17 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { NonCookingDaySheet } from './NonCookingDaySheet';
 
 describe('NonCookingDaySheet', () => {
+  it('puts Mystery night first and defaults to it for a new plan without a textbox', async () => {
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    render(<NonCookingDaySheet date="2026-10-12" onSave={onSave} onClose={vi.fn()} />);
+    const choices = screen.getByRole('group', { name: 'Supper plan' });
+    expect(choices.querySelector('button')).toBe(screen.getByTestId('non-cooking-mystery'));
+    expect(screen.getByTestId('non-cooking-mystery')).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Save' })));
+    expect(onSave).toHaveBeenCalledWith({ kind: 'mystery', customLabel: null });
+  });
+
   it('saves Mystery night without typing and preserves the custom draft', async () => {
     const onSave = vi.fn().mockResolvedValue(undefined);
     render(<NonCookingDaySheet date="2026-10-12" onSave={onSave} onClose={vi.fn()} />);
@@ -62,7 +73,7 @@ describe('NonCookingDaySheet', () => {
     );
     render(<NonCookingDaySheet date="2026-10-12" onSave={onSave} onClose={vi.fn()} />);
     expect(screen.getByRole('dialog')).toHaveAccessibleName('What’s the plan? Monday, October 12');
-    expect(screen.getByRole('button', { name: 'Order In' })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: 'Mystery night' })).toHaveAttribute(
       'aria-pressed',
       'true'
     );
@@ -94,7 +105,7 @@ describe('NonCookingDaySheet', () => {
   it('shows four choices and preserves custom typing while saving only the selected preset', async () => {
     const onSave = vi.fn().mockResolvedValue(undefined);
     render(<NonCookingDaySheet date="2026-10-12" onSave={onSave} onClose={vi.fn()} />);
-    expect(screen.getByLabelText('Tell the family the plan')).toBeInTheDocument();
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
     fireEvent.click(screen.getByTestId('non-cooking-other-plans'));
     fireEvent.change(screen.getByTestId('non-cooking-custom-label'), {
       target: { value: 'Supper at Grandma’s' },
@@ -121,6 +132,9 @@ describe('NonCookingDaySheet', () => {
         />
       );
       const input = screen.getByLabelText('Tell the family the plan');
+      expect(
+        screen.getByTestId(`non-cooking-${kind === 'order_in' ? 'order-in' : 'eating-out'}`)
+      ).toHaveAttribute('aria-pressed', 'true');
       expect(input).toHaveValue('Luigi’s');
       expect(input).not.toHaveFocus();
       fireEvent.change(input, { target: { value: 'x'.repeat(81) } });

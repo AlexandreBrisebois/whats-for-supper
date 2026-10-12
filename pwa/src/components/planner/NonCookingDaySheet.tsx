@@ -16,7 +16,7 @@ interface Props {
 }
 
 export function NonCookingDaySheet({ date, plan, onSave, onClear, onClose }: Props) {
-  const [kind, setKind] = useState(plan?.kind ?? 'order_in');
+  const [kind, setKind] = useState(plan?.kind ?? 'mystery');
   const [message, setMessage] = useState(plan?.customLabel ?? '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -149,9 +149,9 @@ export function NonCookingDaySheet({ date, plan, onSave, onClear, onClose }: Pro
         >
           {(
             [
+              ['mystery', t('planner.mysteryNight', 'Mystery night'), 'non-cooking-mystery'],
               ['order_in', t('home.orderingIn', 'Order In'), 'non-cooking-order-in'],
               ['eating_out', t('planner.eatingOut', 'Eating out'), 'non-cooking-eating-out'],
-              ['mystery', t('planner.mysteryNight', 'Mystery night'), 'non-cooking-mystery'],
               ['custom', t('planner.otherPlans', 'We made plans'), 'non-cooking-other-plans'],
             ] as const
           ).map(([value, label, testId]) => (

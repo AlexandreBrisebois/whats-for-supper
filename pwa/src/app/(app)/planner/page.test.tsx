@@ -492,7 +492,7 @@ describe('PlannerPage voting action row', () => {
     fireEvent.click(screen.getByTestId('non-cooking-save'));
     await waitFor(() =>
       expect(mocks.saveNonCookingDay).toHaveBeenCalledWith('2026-05-12', {
-        kind: 'order_in',
+        kind: 'mystery',
         customLabel: null,
       })
     );

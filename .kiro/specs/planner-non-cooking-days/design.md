@@ -85,9 +85,9 @@ Requirement → design → task mapping is in [tasks](tasks.md). Real PostgreSQL
 
 ## October 12 UX refinement — authorized follow-up
 
-Add Mystery night (`mystery`) as a localized, recipe-free preset between Eating out and We made plans. Selecting it shows “We’ll figure out supper that day.”, does not open the keyboard, and can be saved without text. It reserves the date under existing non-cooking occupancy rules and shows Mystery night on the planner after reload and shared-state reconciliation. On Home, Mystery night shows the same Tonight pivot card and recipe-choice actions as an empty night, including available GOTO, Quick Find, and Ordering In; merely viewing Home does not clear the saved preset. Persist no custom label for this preset.
+Add Mystery night (`mystery`) as a localized, recipe-free preset at the top of the choices. Select it by default for new plans; reopening a saved plan selects its saved kind. Selecting it shows “We’ll figure out supper that day.”, does not open the keyboard, and can be saved without text. It reserves the date under existing non-cooking occupancy rules and shows Mystery night on the planner after reload and shared-state reconciliation. On Home, Mystery night shows the same Tonight pivot card and recipe-choice actions as an empty night, including available GOTO, Quick Find, and Ordering In; merely viewing Home does not clear the saved preset. Persist no custom label for this preset.
 
-Rename the custom choice to We made plans; its required input is labeled “Tell the family the plan.” Keep trimmed 1–80-character validation, examples, primary custom-label display, and unsaved draft preservation. Use the shared localized Save button. Preserve existing default selection, lifecycle, movement, failure, and concurrency behavior; no optional note field is added to Mystery night.
+Rename the custom choice to We made plans; its required input is labeled “Tell the family the plan.” Keep trimmed 1–80-character validation, examples, primary custom-label display, and unsaved draft preservation. Use the shared localized Save button. Preserve saved-plan selection, lifecycle, movement, failure, and concurrency behavior; no optional note field is added to Mystery night.
 
 
 ### Optional restaurant/plan notes (2026-10-12)
