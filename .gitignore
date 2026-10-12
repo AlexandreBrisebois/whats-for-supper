@@ -73,6 +73,7 @@ http-client.env.json
 # Node / Next.js
 node_modules/
 .next/
+pwa/next-env.d.ts
 *.tsbuildinfo
 
 # Playwright output

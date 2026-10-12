@@ -2,6 +2,7 @@ import { DateOnly } from '@microsoft/kiota-abstractions';
 import { apiClient } from './api-client';
 import { usePlannerStore } from '@/store/plannerStore';
 import type {
+  NonCookingPlanDto,
   ScheduleDays,
   ScheduleDayDto,
   ScheduleRecipeDto,
@@ -120,3 +121,9 @@ export const getSmartDefaults = async (
     return null;
   }
 };
+
+export async function saveNonCookingDay(date: string, plan: NonCookingPlanDto) {
+  const parsed = DateOnly.parse(date);
+  if (!parsed) throw new Error('Invalid date');
+  return apiClient.api.schedule.day.byDate(parsed).validate.post({ status: 3, nonCooking: plan });
+}

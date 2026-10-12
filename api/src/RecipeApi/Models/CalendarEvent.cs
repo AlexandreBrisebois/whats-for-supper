@@ -25,6 +25,12 @@ public class CalendarEvent
     [ForeignKey(nameof(RecipeId))]
     public Recipe? Recipe { get; set; }
 
+    [Column("non_cooking_kind")]
+    public string? NonCookingKind { get; set; }
+
+    [Column("non_cooking_label")]
+    public string? NonCookingLabel { get; set; }
+
     [Column("vote_count")]
     public int? VoteCount { get; set; }
 

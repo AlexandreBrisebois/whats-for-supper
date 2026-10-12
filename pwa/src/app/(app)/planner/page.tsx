@@ -22,10 +22,21 @@ import {
 import { usePlannerStore } from '@/store/plannerStore';
 import { useWeekStore } from '@/store/weekStore';
 import type { UILocalScheduleDay } from '@/store/weekStore';
-import { lockSchedule, assignRecipeToDay, openVoting } from '@/lib/api/planner';
+import {
+  lockSchedule,
+  assignRecipeToDay,
+  openVoting,
+  saveNonCookingDay,
+  getSchedule,
+  removeRecipeFromDay,
+} from '@/lib/api/planner';
 import { apiClient } from '@/lib/api/api-client';
 import { DateOnly } from '@microsoft/kiota-abstractions';
 import { Button } from '@/components/ui/button';
+import { NonCookingDaySheet } from '@/components/planner/NonCookingDaySheet';
+import { NonCookingIcon } from '@/components/planner/NonCookingIcon';
+import { nonCookingLabel, nonCookingNote } from '@/lib/planner/nonCooking';
+import type { NonCookingPlanDto } from '@/lib/api/generated/models';
 import { PlanningPivotSheet } from '@/components/planner/PlanningPivotSheet';
 import { cn } from '@/lib/utils';
 import { t, tWithVars } from '@/locales';
@@ -55,6 +66,16 @@ export default function PlannerPage() {
   const groceryItems = useWeekStore((s) => s.groceryItems);
   const isVotingOpen = status === 1;
   const isLocked = status === 2;
+  const [nonCookingTarget, setNonCookingTarget] = useState<{
+    date: string;
+    weekOffset: number;
+    plan?: NonCookingPlanDto | null;
+    existing: boolean;
+  } | null>(null);
+  const activeNonCookingDate = useRef<string | null>(null);
+  useEffect(() => {
+    activeNonCookingDate.current = nonCookingTarget?.date ?? null;
+  }, [nonCookingTarget]);
   const [showPivot, setShowPivot] = useState<{ dayIndex: number } | null>(null);
   const [selectedDayIndex, setSelectedDayIndex] = useState<number | null>(null);
   const [showQuickFind, setShowQuickFind] = useState(false);
@@ -75,6 +96,8 @@ export default function PlannerPage() {
   } | null>(null);
   const { setHasPendingCards } = useDiscoveryStore();
   const searchParams = useSearchParams();
+  const planDate = searchParams.get('planDate');
+  const openedPlanDate = useRef<string | null>(null);
   const successParam = searchParams.get('success');
   const [prevOffset, setPrevOffset] = useState(currentWeekOffset);
   const preDragSnapshotRef = useRef<UILocalScheduleDay[] | null>(null);
@@ -126,6 +149,22 @@ export default function PlannerPage() {
   useEffect(() => {
     useWeekStore.getState().init(currentWeekOffset);
   }, [currentWeekOffset, successParam]);
+
+  useEffect(() => {
+    if (!planDate) {
+      openedPlanDate.current = null;
+      return;
+    }
+    if (isLoading || currentWeekOffset !== 0 || openedPlanDate.current === planDate) return;
+    const day = schedule.find((item) => item.date === planDate);
+    if (!day || day.status !== 3 || day.recipe?.id) return;
+    const timer = window.setTimeout(() => {
+      openedPlanDate.current = planDate;
+      setActiveTab('planner');
+      setShowPivot({ dayIndex: schedule.indexOf(day) });
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [planDate, isLoading, currentWeekOffset, schedule, setActiveTab]);
 
   useEffect(() => {
     if (pendingQuickFindDayIndex === null || showPivot !== null) return;
@@ -695,7 +734,69 @@ export default function PlannerPage() {
         </motion.div>
       )}
 
+      {nonCookingTarget && (
+        <NonCookingDaySheet
+          key={`${nonCookingTarget.weekOffset}:${nonCookingTarget.date}`}
+          date={nonCookingTarget.date}
+          plan={nonCookingTarget.plan}
+          onClose={() => setNonCookingTarget(null)}
+          onSave={async (plan) => {
+            const target = nonCookingTarget;
+            try {
+              await saveNonCookingDay(target.date, plan);
+            } catch (failure) {
+              const refreshed = await getSchedule(target.weekOffset).catch(() => undefined);
+              if (refreshed && useWeekStore.getState().weekOffset === target.weekOffset)
+                useWeekStore.getState().applySnapshot(refreshed);
+              throw failure;
+            }
+            const refreshed = await getSchedule(target.weekOffset);
+            if (refreshed && useWeekStore.getState().weekOffset === target.weekOffset)
+              useWeekStore.getState().applySnapshot(refreshed);
+            if (
+              activeNonCookingDate.current === target.date &&
+              usePlannerStore.getState().currentWeekOffset === target.weekOffset
+            )
+              setNonCookingTarget(null);
+          }}
+          onClear={
+            nonCookingTarget.existing
+              ? async () => {
+                  const target = nonCookingTarget;
+                  await removeRecipeFromDay(target.date);
+                  const refreshed = await getSchedule(target.weekOffset);
+                  if (refreshed && useWeekStore.getState().weekOffset === target.weekOffset)
+                    useWeekStore.getState().applySnapshot(refreshed);
+                  if (
+                    activeNonCookingDate.current === target.date &&
+                    usePlannerStore.getState().currentWeekOffset === target.weekOffset
+                  )
+                    setNonCookingTarget(null);
+                }
+              : undefined
+          }
+        />
+      )}
       <PlanningPivotSheet
+        date={showPivot !== null ? (schedule[showPivot.dayIndex]?.date ?? undefined) : undefined}
+        isNonCooking={showPivot !== null && schedule[showPivot.dayIndex]?.status === 3}
+        onNoCooking={
+          showPivot !== null &&
+          currentWeekOffset >= 0 &&
+          (!schedule[showPivot.dayIndex]?.recipe?.id || schedule[showPivot.dayIndex]?._isPending)
+            ? () => {
+                const day = schedule[showPivot.dayIndex];
+                if (!day?.date) return;
+                setNonCookingTarget({
+                  date: day.date,
+                  weekOffset: currentWeekOffset,
+                  plan: day.nonCooking,
+                  existing: day.status === 3,
+                });
+                setShowPivot(null);
+              }
+            : undefined
+        }
         isOpen={showPivot !== null}
         onClose={() => {
           setShowPivot(null);
@@ -981,12 +1082,30 @@ const PlannerDayCard = memo(function PlannerDayCard({
               data-testid="ordered-in-indicator"
               className="flex items-center gap-3 w-full text-left hover:opacity-80 transition-opacity"
             >
-              <div className="h-10 w-10 rounded-xl bg-charcoal/5 flex items-center justify-center flex-shrink-0">
-                <span className="text-xl">🥡</span>
+              <div className="h-10 w-10 rounded-xl bg-sage/10 text-sage-700 flex items-center justify-center flex-shrink-0">
+                <NonCookingIcon kind={day.nonCooking?.kind} />
               </div>
-              <div className="flex flex-col gap-0.5">
-                <span className="text-sm font-bold text-charcoal/60">Ordered In</span>
-                <span className="text-[10px] text-charcoal/30 font-medium">No cook tonight</span>
+              <div className="min-w-0 flex flex-col gap-0.5">
+                <span
+                  data-testid="non-cooking-indicator"
+                  title={nonCookingLabel(day.nonCooking)}
+                  className="line-clamp-2 text-sm font-bold text-charcoal/60"
+                >
+                  {nonCookingLabel(day.nonCooking)}
+                </span>
+                {day.nonCooking?.kind === 'mystery' ? (
+                  <span className="text-[10px] text-charcoal/30 font-medium">
+                    {t('planner.mysteryNightHint', 'We’ll figure out supper that day.')}
+                  </span>
+                ) : nonCookingNote(day.nonCooking) ? (
+                  <span
+                    data-testid="non-cooking-note"
+                    title={nonCookingNote(day.nonCooking) ?? undefined}
+                    className="line-clamp-2 break-words text-xs text-charcoal/70 font-medium"
+                  >
+                    {nonCookingNote(day.nonCooking)}
+                  </span>
+                ) : null}
               </div>
             </button>
           ) : day.recipe?.id ? (

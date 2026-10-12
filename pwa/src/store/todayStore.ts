@@ -1,15 +1,16 @@
 import { create } from 'zustand';
 import { apiClient } from '@/lib/api/api-client';
-import { DateOnly } from '@microsoft/kiota-abstractions';
+import { DateOnly, type Guid } from '@microsoft/kiota-abstractions';
 import { assignRecipeToDay, getSchedule, normalizeScheduleRecipe } from '@/lib/api/planner';
 import { getTodayString } from '@/lib/imageUtils';
-import type { ScheduleRecipeDto } from '@/lib/api/generated/models';
+import type { NonCookingPlanDto, ScheduleRecipeDto } from '@/lib/api/generated/models';
 
 // ─── State shape ────────────────────────────────────────────────────────────
 
 export interface TodayState {
   /** The recipe assigned to today's slot, or null if none. */
   currentRecipe: ScheduleRecipeDto | null;
+  nonCooking: NonCookingPlanDto | null;
   /**
    * Domain status for today's slot:
    *   0 = no action taken
@@ -39,7 +40,11 @@ export interface TodayState {
    * Seed the store from SSR props. Idempotent — safe to call on every mount.
    * Clears optimisticWriteAt so a fresh sync can reconcile freely.
    */
-  init: (recipe: ScheduleRecipeDto | null, status: 0 | 2 | 3) => void;
+  init: (
+    recipe: ScheduleRecipeDto | null,
+    status: 0 | 2 | 3,
+    nonCooking?: NonCookingPlanDto | null
+  ) => void;
 
   /**
    * Optimistically set currentRecipe and record the write timestamp, then fire
@@ -49,10 +54,9 @@ export interface TodayState {
   assignRecipe: (recipe: { id: string; name: string | null; image: string }) => void;
 
   /**
-   * Optimistically set status = 2 (cooked), then fire
-   * POST /api/schedule/day/{date}/validate with { status: 2 } in the background.
+   * Record cooking for a specific recipe. Complete today's slot only if its recipe matches.
    */
-  markCooked: () => void;
+  markCooked: (recipeId: string) => Promise<void>;
 
   /**
    * Optimistically set status = 3 (ordered in / skipped), then fire
@@ -72,7 +76,11 @@ export interface TodayState {
    * Apply a server-pushed slot_updated event. Authoritative — always applies,
    * except when optimisticWriteAt is within 2 seconds (echo suppression).
    */
-  applyServerUpdate: (update: { recipe: ScheduleRecipeDto | null; status: number }) => void;
+  applyServerUpdate: (update: {
+    recipe: ScheduleRecipeDto | null;
+    status: number;
+    nonCooking?: NonCookingPlanDto | null;
+  }) => void;
 
   /**
    * Clear optimisticWriteAt unconditionally. Called on SSE reconnect so the
@@ -85,6 +93,7 @@ export interface TodayState {
 
 export const useTodayStore = create<TodayState>((set, get) => ({
   currentRecipe: null,
+  nonCooking: null,
   status: 0,
   isLoading: false,
   lastSyncedAt: null,
@@ -92,7 +101,7 @@ export const useTodayStore = create<TodayState>((set, get) => ({
   skipCookedCelebration: false,
 
   // ── init ──────────────────────────────────────────────────────────────────
-  init(recipe, status) {
+  init(recipe, status, nonCooking) {
     const { optimisticWriteAt, currentRecipe: existingRecipe, status: existingStatus } = get();
     const optimisticIsRecent =
       optimisticWriteAt !== null && Date.now() - optimisticWriteAt < 20_000;
@@ -114,16 +123,30 @@ export const useTodayStore = create<TodayState>((set, get) => ({
           optimisticWriteAt,
         });
       }
+    } else if (
+      recipe === null &&
+      (status === 0 || (status === 3 && nonCooking == null)) &&
+      existingStatus === 3 &&
+      get().nonCooking !== null
+    ) {
+      // Empty or metadata-free skipped SSR can arrive after a richer live snapshot.
+      // Preserve that occupied plan until the existing client sync reconciles it.
+      set({ optimisticWriteAt: null });
     } else if (recipe === null && existingRecipe !== null) {
       // SSR returned null but the store already has a recipe (e.g. from an SSE
       // connected event that raced ahead of TodayStoreInitializer). Preserve it —
       // SSR null means "unknown", not "definitely empty".
-      set({ status, optimisticWriteAt: null });
+      set({
+        status,
+        nonCooking: status === 3 ? (nonCooking ?? null) : null,
+        optimisticWriteAt: null,
+      });
     } else {
       // Fresh mount or optimistic window expired: use provided server data.
       set({
         currentRecipe: recipe,
         status,
+        nonCooking: status === 3 ? (nonCooking ?? null) : null,
         optimisticWriteAt: null,
       });
     }
@@ -137,7 +160,12 @@ export const useTodayStore = create<TodayState>((set, get) => ({
       name: recipe.name ?? '',
       image: recipe.image,
     };
-    set({ currentRecipe: optimistic, status: 0, optimisticWriteAt: Date.now() });
+    set({
+      currentRecipe: optimistic,
+      nonCooking: null,
+      status: 0,
+      optimisticWriteAt: Date.now(),
+    });
 
     // Background network write — no await, no router.refresh()
     const dayIndex = (new Date().getDay() + 6) % 7;
@@ -170,21 +198,28 @@ export const useTodayStore = create<TodayState>((set, get) => ({
   },
 
   // ── markCooked ────────────────────────────────────────────────────────────
-  markCooked() {
-    set({ status: 2 });
-
+  async markCooked(recipeId) {
     const todayDate = DateOnly.parse(getTodayString());
-    if (!todayDate) return;
+    if (!todayDate || !recipeId) throw new Error('A recipe and date are required');
 
-    apiClient.api.schedule.day
+    const result = await apiClient.api.schedule.day
       .byDate(todayDate)
-      .validate.post({ status: 2 })
-      .catch((err) => console.error('[todayStore] markCooked failed:', err));
+      .validate.post({ status: 2, recipeId: recipeId as Guid });
+
+    if (result?.data?.mealMarkedCooked && get().currentRecipe?.id === recipeId) {
+      set({ status: 2, nonCooking: null });
+    }
   },
 
   // ── markOrderedIn ─────────────────────────────────────────────────────────
   markOrderedIn() {
-    set({ status: 3 });
+    set({
+      status: 3,
+      nonCooking: get().nonCooking ?? {
+        kind: 'order_in',
+        customLabel: null,
+      },
+    });
 
     const todayDate = DateOnly.parse(getTodayString());
     if (!todayDate) return;
@@ -199,25 +234,47 @@ export const useTodayStore = create<TodayState>((set, get) => ({
   async sync() {
     set({ isLoading: true });
     try {
-      const schedule = await getSchedule(0);
+      let schedule = await getSchedule(0);
       const todayStr = getTodayString();
-      const todaysEntry = schedule?.days?.find((d) => d.date === todayStr);
+      let todaysEntry = schedule?.days?.find((d) => d.date === todayStr);
+
+      // The API's week is based on UTC; the browser's local Sunday may still
+      // belong to the previous week. Resolve coverage from server-provided dates.
+      if (!todaysEntry && schedule?.days?.length) {
+        const dates = schedule.days.flatMap((day) => (day.date ? [day.date] : [])).sort();
+        const first = dates[0];
+        const last = dates[dates.length - 1];
+        const direction = first && todayStr < first ? -1 : last && todayStr > last ? 1 : 0;
+        if (direction) {
+          schedule = await getSchedule((schedule.weekOffset ?? 0) + direction);
+          todaysEntry = schedule?.days?.find((day) => day.date === todayStr);
+        }
+      }
 
       const { optimisticWriteAt } = get();
       const optimisticIsRecent =
         optimisticWriteAt !== null && Date.now() - optimisticWriteAt < 20_000;
 
       if (todaysEntry?.status === 2) {
-        set({ status: 2, lastSyncedAt: Date.now() });
+        set({ status: 2, nonCooking: null, lastSyncedAt: Date.now() });
       } else if (todaysEntry?.status === 3) {
-        set({ status: 3, lastSyncedAt: Date.now() });
+        set({
+          currentRecipe: normalizeScheduleRecipe(todaysEntry.recipe),
+          status: 3,
+          nonCooking: todaysEntry.nonCooking ?? null,
+          lastSyncedAt: Date.now(),
+        });
       } else if (optimisticIsRecent) {
         // Optimistic write is recent — usually keep currentRecipe as-is to avoid flickering.
         // EXCEPTION: If the IDs match, allow updating details (description, ingredients)
         // so the card hydrates as soon as the server response is ready.
         const recipe = normalizeScheduleRecipe(todaysEntry?.recipe);
         if (recipe && recipe.id === get().currentRecipe?.id) {
-          set({ currentRecipe: recipe, lastSyncedAt: Date.now() });
+          set({
+            currentRecipe: recipe,
+            nonCooking: null,
+            lastSyncedAt: Date.now(),
+          });
         } else {
           set({ lastSyncedAt: Date.now() });
         }
@@ -225,9 +282,19 @@ export const useTodayStore = create<TodayState>((set, get) => ({
         // Optimistic window expired — treat server as authoritative
         const recipe = normalizeScheduleRecipe(todaysEntry?.recipe);
         if (recipe) {
-          set({ currentRecipe: recipe, lastSyncedAt: Date.now() });
+          set({
+            currentRecipe: recipe,
+            status: 0,
+            nonCooking: null,
+            lastSyncedAt: Date.now(),
+          });
         } else {
-          set({ currentRecipe: null, lastSyncedAt: Date.now() });
+          set({
+            currentRecipe: null,
+            status: 0,
+            nonCooking: null,
+            lastSyncedAt: Date.now(),
+          });
         }
       }
     } catch (err) {
@@ -238,7 +305,7 @@ export const useTodayStore = create<TodayState>((set, get) => ({
   },
 
   // ── applyServerUpdate ─────────────────────────────────────────────────────
-  applyServerUpdate({ recipe, status }) {
+  applyServerUpdate({ recipe, status, nonCooking }) {
     // Server push is authoritative — always apply, even if optimistic write is recent.
     // Exception: if optimisticWriteAt is within 2 seconds, the push may be echoing
     // our own write back to us — skip to avoid flicker UNLESS the ID matches
@@ -252,6 +319,7 @@ export const useTodayStore = create<TodayState>((set, get) => ({
 
     set({
       currentRecipe: recipe,
+      nonCooking: status === 3 ? (nonCooking ?? null) : null,
       status: status as 0 | 2 | 3,
       optimisticWriteAt: null, // clear optimistic guard — server is now authoritative
       // For status:2 pushed from another family member's Cook's Mode completion,

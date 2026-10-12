@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Check } from 'lucide-react';
+import { Check, ChevronRight } from 'lucide-react';
+import { NonCookingIcon } from '../planner/NonCookingIcon';
 import {
   QuickCaptureTrigger,
   CookedSuccessCard,
@@ -27,6 +28,7 @@ import { useGotoStore } from '@/store/gotoStore';
 import { useWeekStore } from '@/store/weekStore';
 import { useUiStore } from '@/store/uiStore';
 import { t } from '@/locales';
+import { nonCookingLabel, nonCookingNote } from '@/lib/planner/nonCooking';
 import { ROUTES } from '@/lib/constants/routes';
 import type { GoToItem } from '@/lib/api/generated/models/index';
 
@@ -49,19 +51,25 @@ function getMondayBasedDayIndex(dateString: string) {
 export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCenterProps) {
   // ── UI-only state (not domain state) ──────────────────────────────────────
   const [showCooksMode, setShowCooksMode] = useState(false);
-  const [recoveryFlow, setRecoveryFlow] = useState<RecoveryFlowState>({ kind: 'closed' });
+  const [recoveryFlow, setRecoveryFlow] = useState<RecoveryFlowState>({
+    kind: 'closed',
+  });
   const [cookedDismissed, setCookedDismissed] = useState(false);
-  const [votingNudge, setVotingNudge] = useState<{ plannedCount: number } | null>(null);
+  const [votingNudge, setVotingNudge] = useState<{
+    plannedCount: number;
+  } | null>(null);
   const [votingNudgeDismissed, setVotingNudgeDismissed] = useState(false);
 
   // ── Domain state from todayStore ──────────────────────────────────────────
   // NOTE: init() is intentionally excluded here — TodayStoreInitializer is the sole initialiser.
-  const { currentRecipe, status, isLoading, assignRecipe, markCooked, markOrderedIn, sync } =
+  const { currentRecipe, status, nonCooking, isLoading, assignRecipe, markOrderedIn, sync } =
     useTodayStore();
 
   const isCooked = status === 2;
   const isSkipped = status === 3;
   const sessionDone = status === 2 || status === 3;
+  const isMysteryNight = isSkipped && nonCooking?.kind === 'mystery';
+  const showSupperChoices = !currentRecipe && !isCooked && (!sessionDone || isMysteryNight);
 
   // ── Family / GOTO settings ────────────────────────────────────────────────
   const { loadActiveGoTo } = useFamilyStore();
@@ -106,7 +114,9 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
     let isMounted = true;
     const fetchVotingStatus = async () => {
       try {
-        const result = await apiClient.api.schedule.get({ queryParameters: { weekOffset: 1 } });
+        const result = await apiClient.api.schedule.get({
+          queryParameters: { weekOffset: 1 },
+        });
         const data = result?.data;
         if (!isMounted) return;
         if (data?.status === 1 && data.days) {
@@ -131,10 +141,6 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
 
   const handleSkipTrigger = () => {
     setRecoveryFlow({ kind: 'step1' });
-  };
-
-  const handleCookedMark = () => {
-    markCooked();
   };
 
   const handleRecoveryAction = useCallback(
@@ -165,9 +171,16 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
             return;
           }
 
-          setRecoveryFlow({ kind: 'step2', intent: 'order_in', pendingRecipe: currentRecipe });
+          setRecoveryFlow({
+            kind: 'step2',
+            intent: 'order_in',
+            pendingRecipe: currentRecipe,
+          });
         } else if (action === 'pick_else') {
-          setRecoveryFlow({ kind: 'quick_find', intent: 'pick_else' });
+          setRecoveryFlow({
+            kind: 'quick_find',
+            intent: 'pick_else',
+          });
         } else if (action === 'tomorrow') {
           const recipeToReassign =
             recoveryFlow.kind === 'step2' ? recoveryFlow.pendingRecipe : null;
@@ -272,9 +285,17 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
     setRecoveryFlow({ kind: 'closed' });
     if (!recipe) return;
     if (quickFindIntent === 'pick_else') {
-      setRecoveryFlow({ kind: 'step2', intent: 'pick_else', pendingRecipe: recipe });
+      setRecoveryFlow({
+        kind: 'step2',
+        intent: 'pick_else',
+        pendingRecipe: recipe,
+      });
     } else {
-      assignRecipe({ id: recipe.id, name: recipe.name ?? null, image: recipe.image ?? '' });
+      assignRecipe({
+        id: recipe.id,
+        name: recipe.name ?? null,
+        image: recipe.image ?? '',
+      });
     }
   };
 
@@ -290,7 +311,43 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
         </div>
       ) : (
         <>
-          {!currentRecipe && !isSkipped && !sessionDone && !isCooked && (
+          {isSkipped && !isMysteryNight && !currentRecipe && (
+            <button
+              data-testid="today-non-cooking-plan"
+              aria-label={`${t('home.tonight', 'Tonight')} ${[nonCookingLabel(nonCooking), nonCookingNote(nonCooking)].filter(Boolean).join(' ')} ${t('planner.editSupperPlan', 'Edit supper plan')}`}
+              onClick={() =>
+                router.push(`${ROUTES.PLANNER}?weekOffset=0&planDate=${getTodayString()}`)
+              }
+              className="flex w-full items-center gap-4 rounded-[2rem] border border-sage/20 bg-sage/10 p-5 text-left transition-colors hover:bg-sage/15 focus-visible:outline-2 focus-visible:outline-sage-700"
+            >
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-sage/15 text-sage-700">
+                <NonCookingIcon kind={nonCooking?.kind} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block mb-1 text-xs font-bold text-charcoal/70">
+                  {t('home.tonight', 'Tonight')}
+                </span>
+                <span
+                  data-testid="today-non-cooking-label"
+                  className="line-clamp-2 break-words font-heading text-lg font-bold text-charcoal"
+                >
+                  {nonCookingLabel(nonCooking)}
+                </span>
+                {nonCookingNote(nonCooking) && (
+                  <span
+                    data-testid="today-non-cooking-note"
+                    title={nonCookingNote(nonCooking) ?? undefined}
+                    className="block line-clamp-2 break-words text-sm text-charcoal/70"
+                  >
+                    {nonCookingNote(nonCooking)}
+                  </span>
+                )}
+                <span className="sr-only">{t('planner.editSupperPlan', 'Edit supper plan')}</span>
+              </span>
+              <ChevronRight size={20} aria-hidden="true" className="shrink-0 text-charcoal/60" />
+            </button>
+          )}
+          {showSupperChoices && (
             <TonightPivotCard
               gotoDescription={gotoDescription}
               gotoRecipeId={gotoRecipeId}
@@ -304,10 +361,18 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
                     image: gotoImageUrl || '',
                   });
                 } else {
-                  setRecoveryFlow({ kind: 'quick_find', intent: null });
+                  setRecoveryFlow({
+                    kind: 'quick_find',
+                    intent: null,
+                  });
                 }
               }}
-              onDiscover={() => setRecoveryFlow({ kind: 'quick_find', intent: null })}
+              onDiscover={() =>
+                setRecoveryFlow({
+                  kind: 'quick_find',
+                  intent: null,
+                })
+              }
               onOrderIn={async () => {
                 if (!currentRecipe) {
                   // B5: No recipe — write status:3 unconditionally via store
@@ -392,7 +457,6 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
             onClose={() => {
               setShowCooksMode(false);
             }}
-            onCooked={handleCookedMark}
           />
         )}
       </AnimatePresence>

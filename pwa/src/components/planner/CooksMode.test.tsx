@@ -21,6 +21,11 @@ vi.mock('framer-motion', () => ({
 }));
 
 const routerMocks = vi.hoisted(() => ({ push: vi.fn() }));
+const cookingMocks = vi.hoisted(() => ({ markCooked: vi.fn() }));
+
+vi.mock('@/store/todayStore', () => ({
+  useTodayStore: { getState: () => cookingMocks },
+}));
 
 vi.mock('next/navigation', () => ({
   useRouter: () => routerMocks,
@@ -67,8 +72,48 @@ describe('CooksMode', () => {
     saveRecipeImportIssueMock.mockReset();
     resolveRecipeImportIssueMock.mockReset();
     routerMocks.push.mockReset();
+    cookingMocks.markCooked.mockReset().mockResolvedValue(undefined);
     usePlannerStore.setState({ cookProgress: {} });
     useFeatureFlagStore.setState({ flags: {} });
+  });
+
+  it.each([false, true])(
+    'records the viewed recipe on completion without a parent callback (single page: %s)',
+    async (singlePage) => {
+      const id = '550e8400-e29b-41d4-a716-446655440102';
+      getRecipeMock.mockResolvedValue({ id, name: 'Lunch', recipeInstructions: ['Cook lunch.'] });
+      if (singlePage) {
+        useFeatureFlagStore.setState({
+          flags: {
+            'single-page-recipe-steps': {
+              key: 'single-page-recipe-steps',
+              mode: 'on',
+              enabled: true,
+            },
+          },
+        });
+      }
+      const onClose = vi.fn();
+      render(<CooksMode recipe={{ id, name: 'Lunch', image: '' }} onClose={onClose} />);
+      fireEvent.click(await screen.findByTestId('cooks-mode-step-next'));
+      await screen.findByText('Cook lunch.');
+      fireEvent.click(screen.getByTestId('cooks-mode-step-next'));
+      await waitFor(() => expect(cookingMocks.markCooked).toHaveBeenCalledWith(id));
+      await waitFor(() => expect(onClose).toHaveBeenCalledOnce());
+    }
+  );
+
+  it('keeps cooking open and shows an error if saving completion fails', async () => {
+    const id = '550e8400-e29b-41d4-a716-446655440102';
+    getRecipeMock.mockResolvedValue({ id, recipeInstructions: ['Cook lunch.'] });
+    cookingMocks.markCooked.mockRejectedValueOnce(new Error('Saving failed'));
+    const onClose = vi.fn();
+    render(<CooksMode recipe={{ id, name: 'Lunch', image: '' }} onClose={onClose} />);
+    fireEvent.click(await screen.findByTestId('cooks-mode-step-next'));
+    await screen.findByText('Cook lunch.');
+    fireEvent.click(screen.getByTestId('cooks-mode-step-next'));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Could not save cooking completion');
+    expect(onClose).not.toHaveBeenCalled();
   });
 
   it('returns to ingredients without losing checks, the step bookmark, or the reading offset', async () => {

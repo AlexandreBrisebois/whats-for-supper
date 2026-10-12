@@ -12,6 +12,7 @@ vi.mock('@/lib/api/planner', async (importActual) => {
 import { useTodayStore } from './todayStore';
 import { assignRecipeToDay, getSchedule } from '@/lib/api/planner';
 import { apiClient } from '@/lib/api/api-client';
+import { getTodayString } from '@/lib/imageUtils';
 
 vi.mock('@/lib/api/api-client', () => ({
   apiClient: {
@@ -46,6 +47,7 @@ vi.mock('@/lib/api/api-client', () => ({
 beforeEach(() => {
   useTodayStore.setState({
     currentRecipe: null,
+    nonCooking: null,
     status: 0,
     isLoading: false,
     lastSyncedAt: null,
@@ -59,6 +61,60 @@ const mockRecipe = {
   name: 'Pasta Bolognese',
   image: '/api/recipes/recipe-1/original/0',
 };
+
+describe('todayStore — recipe-specific cooking', () => {
+  const supper = {
+    id: '550e8400-e29b-41d4-a716-446655440101',
+    name: 'Supper',
+    image: '',
+  };
+  const lunchId = '550e8400-e29b-41d4-a716-446655440102';
+
+  it('records lunch without marking the scheduled supper cooked', async () => {
+    useTodayStore.setState({ currentRecipe: supper, status: 0 });
+    const post = apiClient.api.schedule.day.byDate({} as any).validate.post;
+    vi.mocked(post).mockClear();
+
+    await useTodayStore.getState().markCooked(lunchId);
+
+    expect(post).toHaveBeenCalledWith({ status: 2, recipeId: lunchId });
+    expect(useTodayStore.getState().currentRecipe).toEqual(supper);
+    expect(useTodayStore.getState().status).toBe(0);
+  });
+
+  it('still marks the scheduled supper cooked when its recipe matches', async () => {
+    useTodayStore.setState({ currentRecipe: supper, status: 0 });
+    vi.mocked(apiClient.api.schedule.day.byDate({} as any).validate.post).mockResolvedValueOnce({
+      data: { mealMarkedCooked: true },
+    });
+    await useTodayStore.getState().markCooked(supper.id);
+    expect(useTodayStore.getState().status).toBe(2);
+  });
+
+  it('does not complete a stale local supper when the server reports a different scheduled recipe', async () => {
+    useTodayStore.setState({ currentRecipe: supper, status: 0 });
+    vi.mocked(apiClient.api.schedule.day.byDate({} as any).validate.post).mockResolvedValueOnce({
+      data: { mealMarkedCooked: false },
+    });
+    await useTodayStore.getState().markCooked(supper.id);
+    expect(useTodayStore.getState().status).toBe(0);
+  });
+
+  it('records an unscheduled recipe when there is no planned supper', async () => {
+    await useTodayStore.getState().markCooked(lunchId);
+    expect(useTodayStore.getState().status).toBe(0);
+    expect(useTodayStore.getState().currentRecipe).toBeNull();
+  });
+
+  it('does not mark supper cooked if saving the cooking event fails', async () => {
+    useTodayStore.setState({ currentRecipe: supper, status: 0 });
+    const post = apiClient.api.schedule.day.byDate({} as any).validate.post;
+    vi.mocked(post).mockRejectedValueOnce(new Error('Saving failed'));
+
+    await expect(useTodayStore.getState().markCooked(supper.id)).rejects.toThrow('Saving failed');
+    expect(useTodayStore.getState().status).toBe(0);
+  });
+});
 
 describe('todayStore — applyServerUpdate', () => {
   it('updates currentRecipe and status from server push', () => {
@@ -138,7 +194,11 @@ describe('todayStore — applyServerUpdate', () => {
   });
   it('updates details from server push even within 2s echo window if ID matches', () => {
     const recipeId = 'recipe-1';
-    const optimisticRecipe = { id: recipeId, name: 'Pasta', image: '/img.jpg' };
+    const optimisticRecipe = {
+      id: recipeId,
+      name: 'Pasta',
+      image: '/img.jpg',
+    };
 
     useTodayStore.setState({
       currentRecipe: optimisticRecipe as any,
@@ -215,9 +275,51 @@ describe('todayStore — assignRecipe', () => {
 });
 
 describe('todayStore — sync', () => {
+  it.each([
+    { kind: 'order_in', customLabel: null },
+    { kind: 'eating_out', customLabel: null },
+    { kind: 'custom', customLabel: 'Supper at Grandma’s' },
+  ] as const)('clears a removed $kind plan when Home synchronizes', async (plan) => {
+    useTodayStore.setState({ status: 3, nonCooking: plan });
+    vi.mocked(getSchedule).mockResolvedValueOnce({
+      weekOffset: 0,
+      days: [{ date: getTodayString(), status: 0, recipe: null, nonCooking: null }],
+    });
+
+    await useTodayStore.getState().sync();
+
+    expect(useTodayStore.getState()).toMatchObject({
+      status: 0,
+      currentRecipe: null,
+      nonCooking: null,
+      isLoading: false,
+    });
+  });
+
+  it('shows the recipe when a saved plan has been replaced on the server', async () => {
+    const recipe = { id: '22222222-2222-2222-2222-222222222222', name: 'Pasta' };
+    useTodayStore.setState({ status: 3, nonCooking: { kind: 'order_in' } });
+    vi.mocked(getSchedule).mockResolvedValueOnce({
+      weekOffset: 0,
+      days: [{ date: getTodayString(), status: 0, recipe, nonCooking: null }],
+    });
+
+    await useTodayStore.getState().sync();
+
+    expect(useTodayStore.getState()).toMatchObject({
+      status: 0,
+      currentRecipe: recipe,
+      nonCooking: null,
+    });
+  });
+
   it('updates details if ID matches during optimistic window (SMART RECONCILIATION)', async () => {
     const recipeId = 'recipe-1';
-    const initialRecipe = { id: recipeId, name: 'Pasta', image: '/img.jpg' };
+    const initialRecipe = {
+      id: recipeId,
+      name: 'Pasta',
+      image: '/img.jpg',
+    };
 
     // Set optimistic state
     useTodayStore.setState({
@@ -280,7 +382,11 @@ describe('todayStore — clearOptimisticGuard', () => {
 describe('todayStore — init', () => {
   it('updates details if ID matches during optimistic window', () => {
     const recipeId = 'recipe-1';
-    const optimisticRecipe = { id: recipeId, name: 'Pasta', image: '/img.jpg' };
+    const optimisticRecipe = {
+      id: recipeId,
+      name: 'Pasta',
+      image: '/img.jpg',
+    };
 
     useTodayStore.setState({
       currentRecipe: optimisticRecipe as any,
@@ -302,4 +408,104 @@ describe('todayStore — init', () => {
     // SHOULD preserve optimisticWriteAt
     expect(useTodayStore.getState().optimisticWriteAt).not.toBeNull();
   });
+});
+
+it('keeps a custom non-cooking message from shared state and clears it on replacement', () => {
+  useTodayStore.getState().applyServerUpdate({
+    recipe: null,
+    status: 3,
+    nonCooking: { kind: 'custom', customLabel: 'Emma’s birthday supper' },
+  });
+  expect(useTodayStore.getState().nonCooking?.customLabel).toBe('Emma’s birthday supper');
+  useTodayStore.getState().applyServerUpdate({ recipe: null, status: 0 });
+  expect(useTodayStore.getState().nonCooking).toBeNull();
+});
+
+it('preserves optimistic non-cooking metadata against stale SSR initialization', () => {
+  useTodayStore.setState({
+    currentRecipe: null,
+    status: 3,
+    nonCooking: { kind: 'custom', customLabel: 'Birthday' },
+    optimisticWriteAt: Date.now(),
+  });
+  useTodayStore.getState().init(null, 0, null);
+  expect(useTodayStore.getState().status).toBe(3);
+  expect(useTodayStore.getState().nonCooking?.customLabel).toBe('Birthday');
+});
+
+it('preserves an authoritative non-cooking snapshot when empty SSR arrives later', () => {
+  useTodayStore.getState().applyServerUpdate({
+    recipe: null,
+    status: 3,
+    nonCooking: { kind: 'custom', customLabel: 'Grandma' },
+  });
+  useTodayStore.getState().init(null, 0, null);
+  expect(useTodayStore.getState().status).toBe(3);
+  expect(useTodayStore.getState().nonCooking?.customLabel).toBe('Grandma');
+});
+
+it('recording an unscheduled recipe keeps the saved non-cooking plan', async () => {
+  const plan = {
+    kind: 'custom',
+    customLabel: 'Supper at Grandma’s',
+  } as const;
+  useTodayStore.setState({
+    currentRecipe: null,
+    status: 3,
+    nonCooking: plan,
+  });
+  vi.mocked(apiClient.api.schedule.day.byDate({} as any).validate.post).mockResolvedValueOnce({
+    data: { mealMarkedCooked: false },
+  });
+  await useTodayStore.getState().markCooked('11111111-1111-1111-1111-111111111111');
+  expect(useTodayStore.getState().status).toBe(3);
+  expect(useTodayStore.getState().nonCooking).toEqual(plan);
+});
+
+it.each([
+  { kind: 'eating_out' as const, customLabel: null },
+  { kind: 'custom' as const, customLabel: "Supper at mom's" },
+])('keeps a shared $kind plan when skipped SSR has no plan details', (plan) => {
+  useTodayStore.getState().applyServerUpdate({ recipe: null, status: 3, nonCooking: plan });
+  useTodayStore.getState().init(null, 3, null);
+  expect(useTodayStore.getState().status).toBe(3);
+  expect(useTodayStore.getState().nonCooking).toEqual(plan);
+});
+
+it.each([
+  { kind: 'eating_out' as const, customLabel: null },
+  { kind: 'custom' as const, customLabel: "Supper at mom's" },
+])('sync resolves the local Sunday plan across the API UTC week boundary ($kind)', async (plan) => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date(2026, 9, 11, 23, 30));
+  try {
+    vi.mocked(getSchedule).mockReset();
+    vi.mocked(getSchedule)
+      .mockResolvedValueOnce({
+        weekOffset: 0,
+        days: [
+          {
+            day: 'Mon',
+            date: '2026-10-12',
+            status: 3,
+            recipe: null,
+            nonCooking: { kind: 'order_in' },
+          },
+          { day: 'Sun', date: '2026-10-18', status: 0, recipe: null },
+        ],
+      })
+      .mockResolvedValueOnce({
+        weekOffset: -1,
+        days: [{ day: 'Sun', date: '2026-10-11', status: 3, recipe: null, nonCooking: plan }],
+      });
+    useTodayStore.setState({ currentRecipe: mockRecipe, status: 0 });
+    await useTodayStore.getState().sync();
+    expect(getSchedule).toHaveBeenNthCalledWith(1, 0);
+    expect(getSchedule).toHaveBeenNthCalledWith(2, -1);
+    expect(useTodayStore.getState().status).toBe(3);
+    expect(useTodayStore.getState().currentRecipe).toBeNull();
+    expect(useTodayStore.getState().nonCooking).toEqual(plan);
+  } finally {
+    vi.useRealTimers();
+  }
 });

@@ -171,9 +171,10 @@ def content_paths(root: Path) -> list[str]:
         output = subprocess.check_output(
             ["git", "ls-files", "-co", "--exclude-standard", "-z"], cwd=root
         )
-        return sorted(set(output.decode().split("\0")) - {""})
+        return sorted(set(output.decode().split("\0")) - {""} - VOLATILE_GENERATED_PATHS)
     return sorted(str(p.relative_to(root)) for p in root.rglob("*")
-                  if p.is_file() and ".task" not in p.parts and "__pycache__" not in p.parts)
+                  if p.is_file() and ".task" not in p.parts and "__pycache__" not in p.parts
+                  and str(p.relative_to(root)) not in VOLATILE_GENERATED_PATHS)
 
 
 def runtime_identity() -> str:
@@ -204,7 +205,10 @@ def build_impact_digest(root: Path, changed_files: list[str], tests: list[str]) 
     digest = hashlib.sha256(runtime_identity().encode())
     # Include unchanged sources and test helpers: a changed-file-only digest can
     # reuse evidence after switching branches or editing an unselected dependency.
-    for relative_path in sorted(set(content_paths(root)) | set(changed_files) | set(CACHE_CONTEXT_FILES)):
+    # Next rewrites this generated declaration when switching dev/build mode.
+    # It is already excluded from session attribution; exclude it from identity too.
+    paths = (set(content_paths(root)) | set(changed_files) | set(CACHE_CONTEXT_FILES)) - VOLATILE_GENERATED_PATHS
+    for relative_path in sorted(paths):
         add_file_to_digest(digest, root, relative_path)
     for test in sorted(tests):
         digest.update(test.encode() + b"\0")

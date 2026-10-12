@@ -1,29 +1,59 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, Search, Trash2, ChevronRight, X, RefreshCw } from 'lucide-react';
+import { Sparkles, Search, Trash2, ChevronRight, X, RefreshCw, CalendarCheck } from 'lucide-react';
 import { t } from '@/locales';
+import { formatSupperPlanDate } from '@/lib/planner/nonCooking';
 
 interface PlanningPivotSheetProps {
   isOpen: boolean;
   onClose: () => void;
   dayIndex: number;
+  date?: string;
   onQuickFind: () => void;
   onSearchLibrary: () => void;
   onRemoveRecipe?: () => void;
   onPlanLater?: () => void;
   hasRecipe: boolean;
+  onNoCooking?: () => void;
+  isNonCooking?: boolean;
 }
 
 export const PlanningPivotSheet: React.FC<PlanningPivotSheetProps> = ({
   isOpen,
   onClose,
-  dayIndex,
+  date,
   onQuickFind,
   onSearchLibrary,
   onRemoveRecipe,
   onPlanLater,
   hasRecipe,
+  onNoCooking,
+  isNonCooking = false,
 }) => {
+  const removeAction = hasRecipe && (
+    <button
+      onClick={onRemoveRecipe}
+      data-testid="pivot-remove-recipe"
+      className="flex items-center gap-4 p-5 rounded-[2rem] border-2 border-charcoal/5 hover:border-charcoal/20 hover:bg-charcoal/5 transition-all text-left mt-2 group"
+    >
+      <div className="h-12 w-12 rounded-2xl bg-charcoal/5 text-charcoal/40 flex items-center justify-center group-hover:text-charcoal/60 transition-colors">
+        <Trash2 size={24} />
+      </div>
+      <div className="flex-1">
+        <h4 className="font-heading text-lg font-black text-charcoal tracking-tight">
+          {isNonCooking
+            ? t('planner.clearDay', 'Remove supper plan')
+            : t('planner.removeRecipeAction', 'Remove recipe')}
+        </h4>
+        <p className="text-xs text-charcoal/70 font-medium">
+          {isNonCooking
+            ? t('planner.leaveDayUnplanned', 'Leave this day unplanned')
+            : 'Clear this slot'}
+        </p>
+      </div>
+    </button>
+  );
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -42,7 +72,7 @@ export const PlanningPivotSheet: React.FC<PlanningPivotSheetProps> = ({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 32 }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="relative w-full max-w-sm rounded-[3rem] overflow-hidden border border-white/60 bg-[rgba(253,252,240,0.78)] p-8 shadow-[0_24px_60px_-16px_rgba(74,55,40,0.18)] backdrop-blur-xl"
+            className="relative w-full max-w-sm max-h-[calc(100dvh-3rem)] rounded-[3rem] overflow-y-auto border border-white/60 bg-[rgba(253,252,240,0.78)] p-8 shadow-[0_24px_60px_-16px_rgba(74,55,40,0.18)] backdrop-blur-xl"
           >
             <div className="flex items-center justify-between mb-8">
               <div className="flex flex-col gap-1">
@@ -50,10 +80,19 @@ export const PlanningPivotSheet: React.FC<PlanningPivotSheetProps> = ({
                   {t('planner.choosePathLabel', 'Planner options')}
                 </h2>
                 <h3 className="text-3xl font-heading font-black text-charcoal leading-none tracking-tighter">
-                  {t('planner.choosePathTitle', 'Change this recipe')}
+                  {isNonCooking
+                    ? t('planner.changeSupperPlans', 'Change supper plans')
+                    : hasRecipe
+                      ? t('planner.choosePathTitle', 'Change this recipe')
+                      : t('planner.planSupper', 'Plan supper')}
                 </h3>
                 <p className="text-[11px] text-charcoal/45 font-medium mt-1">
-                  {t('planner.choosePathSubtitle', 'Choose how to replace or remove this recipe')}
+                  {!hasRecipe || isNonCooking
+                    ? t('planner.supperOptionsSubtitle', 'Choose what works for this day')
+                    : t(
+                        'planner.choosePathSubtitle',
+                        'Choose how to replace or remove this recipe'
+                      )}
                 </p>
               </div>
               <button
@@ -66,9 +105,11 @@ export const PlanningPivotSheet: React.FC<PlanningPivotSheetProps> = ({
               </button>
             </div>
 
-            <div className="inline-flex items-center rounded-full bg-terracotta/5 text-terracotta font-bold text-[10px] uppercase tracking-wider px-3 py-1.5 mb-6">
-              Day {dayIndex + 1}
-            </div>
+            {date && (
+              <div className="inline-flex items-center rounded-full bg-terracotta/5 text-terracotta-700 font-bold text-xs px-3 py-1.5 mb-6">
+                <time dateTime={date}>{formatSupperPlanDate(date)}</time>
+              </div>
+            )}
 
             <div className="grid grid-cols-1 gap-4">
               {hasRecipe && onPlanLater && (
@@ -128,23 +169,34 @@ export const PlanningPivotSheet: React.FC<PlanningPivotSheetProps> = ({
                 <ChevronRight size={18} className="text-charcoal/20" />
               </button>
 
-              {hasRecipe && (
+              {!isNonCooking && removeAction}
+              {onNoCooking && (
                 <button
-                  onClick={onRemoveRecipe}
-                  data-testid="pivot-remove-recipe"
-                  className="flex items-center gap-4 p-5 rounded-[2rem] border-2 border-charcoal/5 hover:border-charcoal/20 hover:bg-charcoal/5 transition-all text-left mt-2 group"
+                  onClick={onNoCooking}
+                  data-testid="pivot-no-cooking"
+                  className="flex items-center gap-4 rounded-[2rem] border-2 border-charcoal/5 p-5 text-left hover:border-sage/30 hover:bg-sage/5 transition-colors group"
                 >
-                  <div className="h-12 w-12 rounded-2xl bg-charcoal/5 text-charcoal/40 flex items-center justify-center group-hover:text-charcoal/60 transition-colors">
-                    <Trash2 size={24} />
+                  <div className="h-12 w-12 rounded-2xl bg-sage/10 text-sage-700 flex items-center justify-center shrink-0">
+                    <CalendarCheck size={24} aria-hidden="true" />
                   </div>
                   <div className="flex-1">
                     <h4 className="font-heading text-lg font-black text-charcoal tracking-tight">
-                      {t('planner.removeRecipeAction', 'Remove recipe')}
+                      {isNonCooking
+                        ? t('planner.editSupperPlan', 'Edit supper plan')
+                        : t('planner.noCooking', 'Other plans')}
                     </h4>
-                    <p className="text-[11px] text-charcoal/40 font-medium">Clear this slot</p>
+                    <p className="text-xs text-charcoal/70 font-medium">
+                      {t('planner.otherPlansSubtitle', 'Order in, eat out, or add your own')}
+                    </p>
                   </div>
+                  <ChevronRight
+                    size={18}
+                    aria-hidden="true"
+                    className="text-charcoal/40 shrink-0"
+                  />
                 </button>
               )}
+              {isNonCooking && removeAction}
             </div>
           </motion.div>
         </div>

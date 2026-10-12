@@ -14,7 +14,7 @@ public class SuccessWrappingFilter(ILogger<SuccessWrappingFilter> logger) : IAsy
     public async Task OnResultExecutionAsync(ResultExecutingContext context, ResultExecutionDelegate next)
     {
         if (context.Result is ObjectResult objectResult &&
-            context.HttpContext.Response.StatusCode is >= 200 and < 300)
+            (objectResult.StatusCode ?? context.HttpContext.Response.StatusCode) is >= 200 and < 300)
         {
             var value = objectResult.Value;
 

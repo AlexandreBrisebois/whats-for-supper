@@ -699,3 +699,26 @@ describe('weekStore — preservation (Property 2)', () => {
     });
   });
 });
+
+it('drag onto a custom skipped day moves the message with its status and restores both on failure', async () => {
+  const original = [
+    makeDay(0, {
+      recipe: { id: '550e8400-e29b-41d4-a716-446655440001', name: 'Pasta', image: '' },
+      nonCooking: null,
+    }),
+    makeDay(1, {
+      recipe: undefined,
+      status: 3,
+      nonCooking: { kind: 'custom', customLabel: 'Supper at Grandma’s' },
+    }),
+  ];
+  useWeekStore.setState({ schedule: original, weekOffset: 0 });
+  vi.mocked(plannerApi.moveRecipe).mockRejectedValueOnce(new Error('offline'));
+  useWeekStore.getState().reorderLocally(0, 1, original);
+  expect(useWeekStore.getState().schedule[0].nonCooking?.customLabel).toBe('Supper at Grandma’s');
+  expect(useWeekStore.getState().schedule[0].date).toBe(original[0].date);
+  expect(useWeekStore.getState().schedule[1].nonCooking).toBeNull();
+  useWeekStore.getState().commitMove(0, 1, original);
+  await Promise.resolve();
+  expect(useWeekStore.getState().schedule).toEqual(original);
+});

@@ -425,6 +425,17 @@ export function createMoveScheduleDtoFromDiscriminatorValue(
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {NonCookingPlanDto}
+ */
+// @ts-ignore
+export function createNonCookingPlanDtoFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoNonCookingPlanDto;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {PaginationDto}
  */
 // @ts-ignore
@@ -1689,6 +1700,24 @@ export function deserializeIntoMoveScheduleDto(
 }
 /**
  * The deserialization information for the current model
+ * @param NonCookingPlanDto The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoNonCookingPlanDto(
+  nonCookingPlanDto: Partial<NonCookingPlanDto> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    customLabel: (n) => {
+      nonCookingPlanDto.customLabel = n.getStringValue();
+    },
+    kind: (n) => {
+      nonCookingPlanDto.kind = n.getEnumValue<NonCookingPlanDto_kind>(NonCookingPlanDto_kindObject);
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
  * @param PaginationDto The instance to deserialize into.
  * @returns {Record<string, (node: ParseNode) => void>}
  */
@@ -2613,6 +2642,11 @@ export function deserializeIntoScheduleDayDto(
     day: (n) => {
       scheduleDayDto.day = n.getStringValue();
     },
+    nonCooking: (n) => {
+      scheduleDayDto.nonCooking = n.getObjectValue<NonCookingPlanDto>(
+        createNonCookingPlanDtoFromDiscriminatorValue
+      );
+    },
     recipe: (n) => {
       scheduleDayDto.recipe = n.getObjectValue<ScheduleRecipeDto>(
         createScheduleRecipeDtoFromDiscriminatorValue
@@ -2896,6 +2930,14 @@ export function deserializeIntoValidationDto(
   validationDto: Partial<ValidationDto> | undefined = {}
 ): Record<string, (node: ParseNode) => void> {
   return {
+    nonCooking: (n) => {
+      validationDto.nonCooking = n.getObjectValue<NonCookingPlanDto>(
+        createNonCookingPlanDtoFromDiscriminatorValue
+      );
+    },
+    recipeId: (n) => {
+      validationDto.recipeId = n.getGuidValue();
+    },
     status: (n) => {
       validationDto.status = n.getNumberValue();
     },
@@ -3436,6 +3478,21 @@ export interface MoveScheduleDto extends AdditionalDataHolder, Parsable {
 }
 export type MoveScheduleDto_intent =
   (typeof MoveScheduleDto_intentObject)[keyof typeof MoveScheduleDto_intentObject];
+/**
+ * Recipe-free supper plan. customLabel is required for custom and optional for order_in/eating_out; trimmed to 1-80 Unicode scalar values when present. Blank optional notes normalize to null. Mystery requires null or absent customLabel.
+ */
+export interface NonCookingPlanDto extends AdditionalDataHolder, Parsable {
+  /**
+   * The customLabel property
+   */
+  customLabel?: string | null;
+  /**
+   * The kind property
+   */
+  kind?: NonCookingPlanDto_kind | null;
+}
+export type NonCookingPlanDto_kind =
+  (typeof NonCookingPlanDto_kindObject)[keyof typeof NonCookingPlanDto_kindObject];
 export interface PaginationDto extends AdditionalDataHolder, Parsable {
   /**
    * The limit property
@@ -4136,6 +4193,10 @@ export interface ScheduleDayDto extends AdditionalDataHolder, Parsable {
    */
   day?: string | null;
   /**
+   * The nonCooking property
+   */
+  nonCooking?: NonCookingPlanDto | null;
+  /**
    * The recipe property
    */
   recipe?: ScheduleRecipeDto | null;
@@ -4795,6 +4856,25 @@ export function serializeMoveScheduleDto(
   writer.writeNumberValue('toIndex', moveScheduleDto.toIndex);
   writer.writeNumberValue('weekOffset', moveScheduleDto.weekOffset);
   writer.writeAdditionalData(moveScheduleDto.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param NonCookingPlanDto The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeNonCookingPlanDto(
+  writer: SerializationWriter,
+  nonCookingPlanDto: Partial<NonCookingPlanDto> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!nonCookingPlanDto || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeStringValue('customLabel', nonCookingPlanDto.customLabel);
+  writer.writeEnumValue<NonCookingPlanDto_kind>('kind', nonCookingPlanDto.kind);
+  writer.writeAdditionalData(nonCookingPlanDto.additionalData);
 }
 /**
  * Serializes information the current object
@@ -5639,6 +5719,11 @@ export function serializeScheduleDayDto(
   }
   writer.writeStringValue('date', scheduleDayDto.date);
   writer.writeStringValue('day', scheduleDayDto.day);
+  writer.writeObjectValue<NonCookingPlanDto>(
+    'nonCooking',
+    scheduleDayDto.nonCooking,
+    serializeNonCookingPlanDto
+  );
   writer.writeObjectValue<ScheduleRecipeDto>(
     'recipe',
     scheduleDayDto.recipe,
@@ -5915,6 +6000,12 @@ export function serializeValidationDto(
   if (!validationDto || isSerializingDerivedType) {
     return;
   }
+  writer.writeObjectValue<NonCookingPlanDto>(
+    'nonCooking',
+    validationDto.nonCooking,
+    serializeNonCookingPlanDto
+  );
+  writer.writeGuidValue('recipeId', validationDto.recipeId);
   writer.writeNumberValue('status', validationDto.status);
   writer.writeAdditionalData(validationDto.additionalData);
 }
@@ -6254,6 +6345,14 @@ export type UpdateRecipeDto_mealTypes =
   (typeof UpdateRecipeDto_mealTypesObject)[keyof typeof UpdateRecipeDto_mealTypesObject];
 export interface ValidationDto extends AdditionalDataHolder, Parsable {
   /**
+   * Only valid with status 3. Cannot overwrite a persisted recipe; legacy status-only requests remain supported.
+   */
+  nonCooking?: NonCookingPlanDto | null;
+  /**
+   * For status 2, record cooking for this recipe. Only mark the scheduled day cooked when its recipe matches. Omit for legacy day-only validation.
+   */
+  recipeId?: Guid | null;
+  /**
    * 1: Planned, 2: Cooked, 3: Skipped, 4: AwaitingConsensus
    */
   status?: number | null;
@@ -6474,6 +6573,12 @@ export const ManagementTaskStatusResponse_statusObject = {
 export const MoveScheduleDto_intentObject = {
   Swap: 'swap',
   Push: 'push',
+} as const;
+export const NonCookingPlanDto_kindObject = {
+  Order_in: 'order_in',
+  Eating_out: 'eating_out',
+  Mystery: 'mystery',
+  Custom: 'custom',
 } as const;
 export const RecipeDto_mealTypesObject = {
   Breakfast: 'Breakfast',

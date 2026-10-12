@@ -76,6 +76,7 @@ export function useScheduleStream() {
         useTodayStore.getState().applyServerUpdate({
           recipe: todayEntry.recipe ?? null,
           status: todayEntry.status ?? 0,
+          nonCooking: todayEntry.nonCooking ?? null,
         });
       }
     });
@@ -86,14 +87,14 @@ export function useScheduleStream() {
     // (applySlotUpdate's inCurrentWeek guard handles the filtering).
     source.addEventListener('slot_updated', (e: MessageEvent) => {
       console.log('[SSE] Received "slot_updated" event');
-      const { date, recipe, status } = JSON.parse(e.data);
+      const { date, recipe, status, nonCooking } = JSON.parse(e.data);
       const today = getTodayString();
 
       if (date === today) {
-        useTodayStore.getState().applyServerUpdate({ recipe, status });
+        useTodayStore.getState().applyServerUpdate({ recipe, status, nonCooking });
       }
 
-      useWeekStore.getState().applySlotUpdate({ date, recipe, status });
+      useWeekStore.getState().applySlotUpdate({ date, recipe, status, nonCooking });
       useSearchPromotionStore.getState().invalidate();
     });
 
@@ -114,6 +115,7 @@ export function useScheduleStream() {
         useTodayStore.getState().applyServerUpdate({
           recipe: todayEntry.recipe ?? null,
           status: todayEntry.status ?? 0,
+          nonCooking: todayEntry.nonCooking ?? null,
         });
       }
     });

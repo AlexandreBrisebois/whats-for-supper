@@ -397,6 +397,14 @@ components:
           items: { $ref: '#/components/schemas/GroceryLineItemDto' }
           nullable: true
 
+    NonCookingPlanDto:
+      type: object
+      required: [kind]
+      description: Recipe-free supper plan. customLabel is required for custom and optional for order_in/eating_out; trimmed to 1-80 Unicode scalar values when present. Blank optional notes normalize to null. Mystery requires null or absent customLabel.
+      properties:
+        kind: { type: string, enum: [order_in, eating_out, mystery, custom] }
+        customLabel: { type: [string, 'null'], maxLength: 80 }
+
     ScheduleDayDto:
       type: object
       required: [day, date]
@@ -409,6 +417,9 @@ components:
             - { $ref: '#/components/schemas/ScheduleRecipeDto' }
             - { type: 'null' }
         status: { type: integer, description: '0: Planned, 1: Locked, 2: Cooked, 3: Skipped, 4: AwaitingConsensus' }
+        nonCooking:
+          nullable: true
+          allOf: [{ $ref: '#/components/schemas/NonCookingPlanDto' }]
 
     ScheduleRecipeDto:
       type: object
@@ -628,6 +639,15 @@ components:
       required: [status]
       properties:
         status: { type: integer, description: '1: Planned, 2: Cooked, 3: Skipped, 4: AwaitingConsensus' }
+        nonCooking:
+          nullable: true
+          description: Only valid with status 3. Cannot overwrite a persisted recipe; legacy status-only requests remain supported.
+          allOf: [{ $ref: '#/components/schemas/NonCookingPlanDto' }]
+        recipeId:
+          type: string
+          format: uuid
+          nullable: true
+          description: 'For status 2, record cooking for this recipe. Only mark the scheduled day cooked when its recipe matches. Omit for legacy day-only validation.'
 
     # --- Settings ---
     GoToItem:
@@ -729,6 +749,9 @@ components:
                 - $ref: '#/components/schemas/ScheduleRecipeDto'
                 - type: 'null'
             status: { type: integer, description: '0: Planned, 1: Locked, 2: Cooked, 3: Skipped' }
+            nonCooking:
+              nullable: true
+              allOf: [{ $ref: '#/components/schemas/NonCookingPlanDto' }]
 
     WeekUpdatedEvent:
       allOf:
@@ -2441,12 +2464,15 @@ paths:
         schema: { type: string, format: date }
     post:
       summary: Validate a scheduled day (Cooked/Skipped)
+      description: 'With status 2 and recipeId, updates the specified recipe cooking history even if it is not scheduled. The scheduled meal is marked cooked only when its recipe ID matches.'
       requestBody:
         required: true
         content:
           application/json:
             schema: { $ref: '#/components/schemas/ValidationDto' }
       responses:
+        '404':
+          description: Recipe not found
         '200':
           description: OK
           content:
@@ -2457,7 +2483,29 @@ paths:
                   data:
                     type: object
                     properties:
+                      mealMarkedCooked: { type: boolean, description: 'True only when the scheduled meal was marked cooked.' }
                       message: { type: string }
+
+        '400':
+          description: Invalid non-cooking kind, label, or validation status
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, message]
+                properties:
+                  status: { type: integer }
+                  message: { type: string }
+        '409':
+          description: The date is now occupied by a recipe or another non-skipped entry
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, message]
+                properties:
+                  status: { type: integer }
+                  message: { type: string }
 
   /api/schedule/{weekOffset}/smart-defaults:
     get:

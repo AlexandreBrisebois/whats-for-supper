@@ -77,4 +77,33 @@ public class ManagementBackupIntegrationTests : IAsyncLifetime
         var store = _factory.Services.GetRequiredService<IRecipeStore>();
         Assert.False(await store.InfoExistsAsync(recipe.Id), $"recipe.info should NOT have been written for an unready recipe with no payload, but was found in store for {recipe.Id}");
     }
+
+    [Theory]
+    [InlineData("custom", "Emma’s birthday supper")]
+    [InlineData("order_in", "Luigi’s")]
+    [InlineData("eating_out", "Try the new café")]
+    [InlineData(null, null)]
+    public async Task NonCookingCalendarBackup_RestoresCustomAndLegacyPlans(string? kind, string? note)
+    {
+        var entry = new CalendarEvent
+        {
+            Id = Guid.NewGuid(), Date = new DateOnly(2026, 10, 12), Status = CalendarEventStatus.Skipped,
+            NonCookingKind = kind, NonCookingLabel = note
+        };
+        _db.CalendarEvents.Add(entry);
+        await _db.SaveChangesAsync();
+        await _management.BackupAsync();
+        var path = Path.Combine(_scope.ServiceProvider.GetRequiredService<DataRootResolver>().Root, "calendar-events.json");
+        if (kind == null)
+            await File.WriteAllTextAsync(path, System.Text.Json.JsonSerializer.Serialize(new[] { new { id = entry.Id, date = "2026-10-12", status = 3, recipeId = (Guid?)null } }));
+        _db.CalendarEvents.Remove(entry);
+        await _db.SaveChangesAsync();
+        _db.ChangeTracker.Clear();
+        await _management.RestoreAsync();
+        var restored = _db.CalendarEvents.Single(e => e.Id == entry.Id);
+        Assert.Equal(CalendarEventStatus.Skipped, restored.Status);
+        Assert.Null(restored.RecipeId);
+        Assert.Equal(entry.NonCookingKind, restored.NonCookingKind);
+        Assert.Equal(entry.NonCookingLabel, restored.NonCookingLabel);
+    }
 }

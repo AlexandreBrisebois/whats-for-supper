@@ -6,6 +6,7 @@ import { serializeValidationDto, type ValidationDto } from '../../../../../model
 // @ts-ignore
 import {
   type AdditionalDataHolder,
+  type ApiError,
   type BaseRequestBuilder,
   type Parsable,
   type ParsableFactory,
@@ -16,6 +17,28 @@ import {
   type SerializationWriter,
 } from '@microsoft/kiota-abstractions';
 
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {Validate400Error}
+ */
+// @ts-ignore
+export function createValidate400ErrorFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoValidate400Error;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {Validate409Error}
+ */
+// @ts-ignore
+export function createValidate409ErrorFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoValidate409Error;
+}
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
@@ -37,6 +60,42 @@ export function createValidatePostResponseFromDiscriminatorValue(
   parseNode: ParseNode | undefined
 ): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
   return deserializeIntoValidatePostResponse;
+}
+/**
+ * The deserialization information for the current model
+ * @param Validate400Error The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoValidate400Error(
+  validate400Error: Partial<Validate400Error> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    message: (n) => {
+      validate400Error.messageEscaped = n.getStringValue();
+    },
+    status: (n) => {
+      validate400Error.status = n.getNumberValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param Validate409Error The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoValidate409Error(
+  validate409Error: Partial<Validate409Error> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    message: (n) => {
+      validate409Error.messageEscaped = n.getStringValue();
+    },
+    status: (n) => {
+      validate409Error.status = n.getNumberValue();
+    },
+  };
 }
 /**
  * The deserialization information for the current model
@@ -65,10 +124,51 @@ export function deserializeIntoValidatePostResponse_data(
   validatePostResponse_data: Partial<ValidatePostResponse_data> | undefined = {}
 ): Record<string, (node: ParseNode) => void> {
   return {
+    mealMarkedCooked: (n) => {
+      validatePostResponse_data.mealMarkedCooked = n.getBooleanValue();
+    },
     message: (n) => {
       validatePostResponse_data.message = n.getStringValue();
     },
   };
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param Validate400Error The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeValidate400Error(
+  writer: SerializationWriter,
+  validate400Error: Partial<Validate400Error> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!validate400Error || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeStringValue('message', validate400Error.messageEscaped);
+  writer.writeNumberValue('status', validate400Error.status);
+  writer.writeAdditionalData(validate400Error.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param Validate409Error The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeValidate409Error(
+  writer: SerializationWriter,
+  validate409Error: Partial<Validate409Error> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!validate409Error || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeStringValue('message', validate409Error.messageEscaped);
+  writer.writeNumberValue('status', validate409Error.status);
+  writer.writeAdditionalData(validate409Error.additionalData);
 }
 /**
  * Serializes information the current object
@@ -107,8 +207,29 @@ export function serializeValidatePostResponse_data(
   if (!validatePostResponse_data || isSerializingDerivedType) {
     return;
   }
+  writer.writeBooleanValue('mealMarkedCooked', validatePostResponse_data.mealMarkedCooked);
   writer.writeStringValue('message', validatePostResponse_data.message);
   writer.writeAdditionalData(validatePostResponse_data.additionalData);
+}
+export interface Validate400Error extends AdditionalDataHolder, ApiError, Parsable {
+  /**
+   * The message property
+   */
+  messageEscaped?: string | null;
+  /**
+   * The status property
+   */
+  status?: number | null;
+}
+export interface Validate409Error extends AdditionalDataHolder, ApiError, Parsable {
+  /**
+   * The message property
+   */
+  messageEscaped?: string | null;
+  /**
+   * The status property
+   */
+  status?: number | null;
 }
 export interface ValidatePostResponse extends AdditionalDataHolder, Parsable {
   /**
@@ -117,6 +238,10 @@ export interface ValidatePostResponse extends AdditionalDataHolder, Parsable {
   data?: ValidatePostResponse_data | null;
 }
 export interface ValidatePostResponse_data extends AdditionalDataHolder, Parsable {
+  /**
+   * True only when the scheduled meal was marked cooked.
+   */
+  mealMarkedCooked?: boolean | null;
   /**
    * The message property
    */
@@ -127,17 +252,19 @@ export interface ValidatePostResponse_data extends AdditionalDataHolder, Parsabl
  */
 export interface ValidateRequestBuilder extends BaseRequestBuilder<ValidateRequestBuilder> {
   /**
-   * Validate a scheduled day (Cooked/Skipped)
+   * With status 2 and recipeId, updates the specified recipe cooking history even if it is not scheduled. The scheduled meal is marked cooked only when its recipe ID matches.
    * @param body The request body
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {Promise<ValidatePostResponse>}
+   * @throws {Validate400Error} error when the service returns a 400 status code
+   * @throws {Validate409Error} error when the service returns a 409 status code
    */
   post(
     body: ValidationDto,
     requestConfiguration?: RequestConfiguration<object> | undefined
   ): Promise<ValidatePostResponse | undefined>;
   /**
-   * Validate a scheduled day (Cooked/Skipped)
+   * With status 2 and recipeId, updates the specified recipe cooking history even if it is not scheduled. The scheduled meal is marked cooked only when its recipe ID matches.
    * @param body The request body
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {RequestInformation}
@@ -158,6 +285,10 @@ export const ValidateRequestBuilderRequestsMetadata: RequestsMetadata = {
   post: {
     uriTemplate: ValidateRequestBuilderUriTemplate,
     responseBodyContentType: 'application/json',
+    errorMappings: {
+      400: createValidate400ErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
+      409: createValidate409ErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
+    },
     adapterMethodName: 'send',
     responseBodyFactory: createValidatePostResponseFromDiscriminatorValue,
     requestBodyContentType: 'application/json',

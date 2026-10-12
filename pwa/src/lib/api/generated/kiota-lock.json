@@ -1,8 +1,8 @@
 {
-  "descriptionHash": "ED4B117C576F5C2D91CD9FC3EF5FACD42399DD1BAEEB256823E6F13F2014872AE0B061F43577F78CA083C152F372B31C8AF8B027A21FF2E99EDFFE7A0A0C3D42",
+  "descriptionHash": "2D89DC9A6305A7A17AF3CDFE669FD95EB19434F4A6C720FBC27096EA6FC11D07B8FDE6F2C16DEEA47354D108E321E43D7DAF7D21E2A81DDDCB51383B79DFEE6B",
   "descriptionLocation": "../../../../../specs/openapi.yaml",
   "lockFileVersion": "1.0.0",
-  "kiotaVersion": "1.35.0",
+  "kiotaVersion": "1.36.0",
   "clientClassName": "ApiClient",
   "typeAccessModifier": "Public",
   "clientNamespaceName": "ApiSdk",

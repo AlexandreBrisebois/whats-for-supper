@@ -43,3 +43,15 @@ describe('resolveOccupiedSlot', () => {
     expect(mocks.movePost).not.toHaveBeenCalled();
   });
 });
+
+it('first-open placement skips recipe-free non-cooking days', async () => {
+  const { getSchedule } = await import('@/lib/api/planner');
+  const { findFirstOpenPlannerSlot } = await import('./slotAssignment');
+  vi.mocked(getSchedule).mockResolvedValue({
+    days: [
+      { day: 'Mon', date: '2026-10-12', status: 3, recipe: null },
+      { day: 'Tue', date: '2026-10-13', status: 0, recipe: null },
+    ],
+  } as any);
+  expect(await findFirstOpenPlannerSlot(0, 0, 1)).toEqual({ weekOffset: 0, dayIndex: 1 });
+});

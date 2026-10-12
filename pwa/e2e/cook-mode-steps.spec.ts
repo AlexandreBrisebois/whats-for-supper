@@ -20,6 +20,7 @@ import {
   currentMonday,
   toDateStr,
   mockFeatureFlags,
+  mockSseWithConnectedSchedule,
 } from './mock-api';
 import { REALISTIC_RECIPES } from '../src/testing/realistic-recipes';
 
@@ -129,6 +130,71 @@ test.describe('Cook Mode — HowToSection[] steps display', () => {
       }
     });
   });
+
+  for (const matchesSupper of [false, true]) {
+    test(`recipe-details cooking completes supper only for its assigned recipe (matches: ${matchesSupper})`, async ({
+      page,
+    }) => {
+      const recipeId = matchesSupper ? MOCK_IDS.RECIPE_SPAGHETTI : MOCK_IDS.RECIPE_LASAGNA;
+      const recipe = {
+        ...builders.recipe({ id: recipeId, name: 'Recipe being cooked' }),
+        recipeInstructions: ['Cook this recipe.'],
+      };
+      const schedule = buildSpaghettiSchedule().data;
+      await mockFeatureFlags(page, [
+        { key: 'single-page-recipe-steps', enabled: true, mode: 'on', memberEnabled: false },
+      ]);
+      await mockSseWithConnectedSchedule(page, schedule);
+      await page.route('**/api/schedule?**', async (route) => {
+        await route.fulfill({ json: { data: schedule } });
+      });
+      await page.route(`**/api/recipes/${recipeId}`, async (route) => {
+        await route.fulfill({ json: { recipe } });
+      });
+      await page.route('**/api/recipes/search', async (route) => {
+        await route.fulfill({
+          json: {
+            data: {
+              topPick: null,
+              results: [recipe],
+              appliedFilters: {},
+              searchMode: 'standard',
+              resultPath: 'lexical-only',
+            },
+          },
+        });
+      });
+      let cookingRequest: unknown;
+      await page.route('**/api/schedule/day/*/validate', async (route) => {
+        cookingRequest = route.request().postDataJSON();
+        expect(new URL(route.request().url()).pathname).toContain('/day/2026-05-04/validate');
+        if (matchesSupper) schedule.days[0].status = 2;
+        await route.fulfill({
+          json: { data: { message: 'Cooking status updated', mealMarkedCooked: matchesSupper } },
+        });
+      });
+
+      await page.goto('/recipes');
+      await page.getByTestId(`recipe-card-${recipeId}`).click();
+      await page.getByTestId('time-cook-btn').click();
+      await page.getByTestId('cooks-mode-step-next').click();
+      await expect(page.getByTestId('cooks-mode-step-next')).toHaveAccessibleName(
+        'Mark recipe as cooked'
+      );
+      await page.getByTestId('cooks-mode-step-next').click();
+      await expect(page.getByTestId('cooks-mode-overlay')).toHaveCount(0);
+      expect(cookingRequest).toEqual({ status: 2, recipeId });
+
+      await page.goto('/home');
+      if (matchesSupper) {
+        await expect(page.getByTestId('cooked-success-card')).toBeVisible();
+      } else {
+        await expect(page.getByTestId('tonight-menu-card')).toBeVisible();
+        await expect(page.getByTestId('cooked-success-card')).toHaveCount(0);
+        await expect(page.getByTestId('cooked-compact-badge')).toHaveCount(0);
+      }
+    });
+  }
 
   for (const viewport of [
     { width: 390, height: 844 },

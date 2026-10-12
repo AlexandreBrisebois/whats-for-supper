@@ -48,7 +48,7 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
                     @event.Recipe.TotalTime)
                 : null;
 
-            days.Add(new ScheduleDayDto(dayNames[i], date.ToString("yyyy-MM-dd"), recipe, (int)(@event?.Status ?? CalendarEventStatus.Planned)));
+            days.Add(new ScheduleDayDto(dayNames[i], date.ToString("yyyy-MM-dd"), recipe, (int)(@event?.Status ?? CalendarEventStatus.Planned), GetNonCookingPlan(@event)));
         }
 
         var groceryState = plan?.GroceryState != null
@@ -120,7 +120,8 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
 
         foreach (var @event in events)
         {
-            @event.Status = CalendarEventStatus.Locked;
+            if (@event.Status != CalendarEventStatus.Skipped || @event.RecipeId != null)
+                @event.Status = CalendarEventStatus.Locked;
             if (@event.RecipeId is { } recipeId && voteCountDict.TryGetValue(recipeId, out var voteCount))
             {
                 @event.VoteCount = voteCount;
@@ -452,6 +453,8 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
             (fromEvent.RecipeId, toEvent.RecipeId) = (toEvent.RecipeId, fromEvent.RecipeId);
             (fromEvent.VoteCount, toEvent.VoteCount) = (toEvent.VoteCount, fromEvent.VoteCount);
             (fromEvent.Status, toEvent.Status) = (toEvent.Status, fromEvent.Status);
+            (fromEvent.NonCookingKind, toEvent.NonCookingKind) = (toEvent.NonCookingKind, fromEvent.NonCookingKind);
+            (fromEvent.NonCookingLabel, toEvent.NonCookingLabel) = (toEvent.NonCookingLabel, fromEvent.NonCookingLabel);
         }
         else if (fromEvent != null)
         {
@@ -493,6 +496,8 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
                 {
                     nextMonday_slot.RecipeId = existingEvent.RecipeId;
                     nextMonday_slot.Status = CalendarEventStatus.Planned;
+                    nextMonday_slot.NonCookingKind = null;
+                    nextMonday_slot.NonCookingLabel = null;
                 }
                 else
                 {
@@ -514,6 +519,8 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
 
             existingEvent.RecipeId = dto.RecipeId;
             existingEvent.Status = CalendarEventStatus.Planned;
+            existingEvent.NonCookingKind = null;
+            existingEvent.NonCookingLabel = null;
         }
         else
         {
@@ -732,12 +739,43 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
         );
     }
 
-    public async Task ValidateDayAsync(string dateStr, ValidationDto dto, string? excludeConnectionId = null)
+    public async Task<bool> ValidateDayAsync(string dateStr, ValidationDto dto, string? excludeConnectionId = null)
     {
+        var plan = dto.NonCooking;
+        if (plan != null)
+        {
+            var label = plan.CustomLabel?.Trim();
+            if (dto.Status != 3 || plan.Kind is not ("order_in" or "eating_out" or "mystery" or "custom") ||
+                (plan.Kind == "mystery" ? plan.CustomLabel != null :
+                    (plan.Kind == "custom" && string.IsNullOrWhiteSpace(label)) || (label?.EnumerateRunes().Count() ?? 0) > 80))
+                throw new ArgumentException("Choose a valid non-cooking plan; messages must contain at most 80 characters and custom messages are required.");
+            plan = plan with { CustomLabel = string.IsNullOrWhiteSpace(label) ? null : label };
+        }
+        await using var transaction = plan != null && _dbContext.Database.IsRelational()
+            ? await _dbContext.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable)
+            : null;
         var date = DateOnly.Parse(dateStr);
         var @event = await _dbContext.CalendarEvents
             .Include(e => e.Recipe)
             .FirstOrDefaultAsync(e => e.Date == date);
+
+        if (plan != null && @event != null && (@event.RecipeId != null || @event.Status != CalendarEventStatus.Skipped))
+            throw new NonCookingPlanConflictException("This day’s plan changed. Refresh it before marking it as non-cooking.");
+
+        if (dto.Status == 2 && dto.RecipeId is { } cookedRecipeId)
+        {
+            var cookedRecipe = await _dbContext.Recipes.FirstOrDefaultAsync(r => r.Id == cookedRecipeId && r.DeletedAt == null)
+                ?? throw new KeyNotFoundException("Recipe not found");
+            cookedRecipe.LastCookedDate = _clock.UtcNow;
+
+            // Cooking an unscheduled recipe must not complete another recipe's meal.
+            if (@event?.RecipeId != cookedRecipeId)
+            {
+                await _dbContext.SaveChangesAsync();
+                await _publisher.PublishFillTheGapInvalidatedAsync(GetWeekOffset(GetMonday(date)), excludeConnectionId);
+                return false;
+            }
+        }
 
         if (@event == null)
         {
@@ -749,19 +787,40 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
                     RecipeId = null,
                     Date = date,
                     Status = CalendarEventStatus.Skipped,
+                    NonCookingKind = plan?.Kind,
+                    NonCookingLabel = plan?.CustomLabel,
                 };
                 _dbContext.CalendarEvents.Add(newEvent);
-                await _dbContext.SaveChangesAsync();
+                try
+                {
+                    await _dbContext.SaveChangesAsync();
+                    if (transaction != null) await transaction.CommitAsync();
+                }
+                catch (DbUpdateException ex) when (plan != null && ex.InnerException is Npgsql.PostgresException { SqlState: "23505" or "40001" })
+                {
+                    _dbContext.Entry(newEvent).State = EntityState.Detached;
+                    throw new NonCookingPlanConflictException("This day’s plan changed. Refresh it before retrying.");
+                }
                 _logger.LogInformation("Created ordered-in CalendarEvent for date {Date} with no recipe", date);
 
-                await _publisher.PublishSlotUpdatedAsync(date, null, dto.Status, excludeConnectionId);
-                return;
+                await _publisher.PublishSlotUpdatedAsync(date, null, dto.Status, excludeConnectionId, GetNonCookingPlan(newEvent));
+                return false;
             }
             throw new Exception("No meal planned for this date");
         }
 
         var oldStatus = @event.Status;
         @event.Status = (CalendarEventStatus)dto.Status;
+        if (plan != null)
+        {
+            @event.NonCookingKind = plan.Kind;
+            @event.NonCookingLabel = plan.CustomLabel;
+        }
+        else if (dto.Status != 3)
+        {
+            @event.NonCookingKind = null;
+            @event.NonCookingLabel = null;
+        }
 
         // Consensus Purge (Global Purge #2)
         if (oldStatus == CalendarEventStatus.AwaitingConsensus && @event.Status == CalendarEventStatus.Locked)
@@ -780,7 +839,15 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
             _logger.LogInformation("Updated LastCookedDate for recipe {RecipeId}", @event.RecipeId);
         }
 
-        await _dbContext.SaveChangesAsync();
+        try
+        {
+            await _dbContext.SaveChangesAsync();
+            if (transaction != null) await transaction.CommitAsync();
+        }
+        catch (DbUpdateException ex) when (plan != null && ex.InnerException is Npgsql.PostgresException { SqlState: "40001" })
+        {
+            throw new NonCookingPlanConflictException("This day’s plan changed. Refresh it before retrying.");
+        }
 
         // Build ScheduleRecipeDto for the slot (may be null for ordered-in)
         ScheduleRecipeDto? recipeDto = null;
@@ -796,8 +863,14 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
                 @event.Recipe.TotalTime);
         }
 
-        await _publisher.PublishSlotUpdatedAsync(date, recipeDto, dto.Status, excludeConnectionId);
+        await _publisher.PublishSlotUpdatedAsync(date, recipeDto, dto.Status, excludeConnectionId, GetNonCookingPlan(@event));
+        return dto.Status == 2;
     }
+
+    private static NonCookingPlanDto? GetNonCookingPlan(CalendarEvent? entry) =>
+        entry is { Status: CalendarEventStatus.Skipped, RecipeId: null }
+            ? new NonCookingPlanDto(entry.NonCookingKind ?? "order_in", entry.NonCookingLabel)
+            : null;
 
     public async Task<Dictionary<string, bool>> UpdateGroceryStateAsync(
         int weekOffset,

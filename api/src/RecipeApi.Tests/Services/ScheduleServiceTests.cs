@@ -92,6 +92,48 @@ public class ScheduleServiceTests : IAsyncLifetime
         Assert.Equal(CalendarEventStatus.Cooked, updatedEvent.Status);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Cooking_UnscheduledRecipe_UpdatesItsHistoryWithoutCookingSupper(bool hasSupper)
+    {
+        var lunchId = Guid.NewGuid();
+        var supperId = Guid.NewGuid();
+        var date = new DateOnly(2026, 10, 11);
+        var clock = new FixedClock(new DateTimeOffset(2026, 10, 11, 12, 0, 0, TimeSpan.Zero));
+        _db.Recipes.AddRange(new Recipe { Id = lunchId, Name = "Lunch" }, new Recipe { Id = supperId, Name = "Supper" });
+        if (hasSupper)
+            _db.CalendarEvents.Add(new CalendarEvent { Id = Guid.NewGuid(), RecipeId = supperId, Date = date, Status = CalendarEventStatus.Planned });
+        await _db.SaveChangesAsync();
+
+        await CreateService(clock).ValidateDayAsync(date.ToString("yyyy-MM-dd"), new ValidationDto(2, lunchId));
+
+        Assert.Equal(clock.UtcNow, _db.Recipes.Single(r => r.Id == lunchId).LastCookedDate);
+        Assert.Null(_db.Recipes.Single(r => r.Id == supperId).LastCookedDate);
+        if (hasSupper)
+            Assert.Equal(CalendarEventStatus.Planned, _db.CalendarEvents.Single(e => e.Date == date).Status);
+        else
+            Assert.Empty(_db.CalendarEvents.Where(e => e.Date == date));
+        _publisherMock.Verify(p => p.PublishSlotUpdatedAsync(It.IsAny<DateOnly>(), It.IsAny<ScheduleRecipeDto>(), It.IsAny<int>(), It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Cooking_MatchingRecipe_StillCompletesPlannedSupper()
+    {
+        var recipeId = Guid.NewGuid();
+        var date = new DateOnly(2026, 10, 11);
+        var clock = new FixedClock(new DateTimeOffset(2026, 10, 11, 18, 0, 0, TimeSpan.Zero));
+        _db.Recipes.Add(new Recipe { Id = recipeId, Name = "Supper" });
+        _db.CalendarEvents.Add(new CalendarEvent { Id = Guid.NewGuid(), RecipeId = recipeId, Date = date, Status = CalendarEventStatus.Planned });
+        await _db.SaveChangesAsync();
+
+        await CreateService(clock).ValidateDayAsync(date.ToString("yyyy-MM-dd"), new ValidationDto(2, recipeId));
+
+        Assert.Equal(CalendarEventStatus.Cooked, _db.CalendarEvents.Single(e => e.Date == date).Status);
+        Assert.Equal(clock.UtcNow, _db.Recipes.Single(r => r.Id == recipeId).LastCookedDate);
+        _publisherMock.Verify(p => p.PublishSlotUpdatedAsync(date, It.Is<ScheduleRecipeDto>(r => r.Id == recipeId), 2, null), Times.Once);
+    }
+
     [Fact]
     public async Task DeferRecipe_MovesLockedSourceToFirstFreeDateAndPublishesBothWeeks()
     {

@@ -748,3 +748,42 @@ describe('weekStore — applySmartDefaultsUpdate week guard', () => {
     expect(state.schedule[0].recipe).toBeUndefined();
   });
 });
+
+it('keeps a skipped day occupied when stale smart defaults and snapshots arrive', async () => {
+  const date = '2026-10-12';
+  vi.mocked(getSchedule).mockResolvedValue({
+    weekOffset: 0,
+    status: 1,
+    locked: false,
+    days: [
+      {
+        date,
+        day: 'Mon',
+        status: 3,
+        recipe: null,
+        nonCooking: { kind: 'custom', customLabel: 'Supper at Grandma’s' },
+      },
+    ],
+  });
+  vi.mocked(getSmartDefaults).mockResolvedValue({
+    weekOffset: 0,
+    familySize: 3,
+    consensusThreshold: 2,
+    consensusRecipesCount: 0,
+    openSlots: [],
+    preSelectedRecipes: [
+      { dayIndex: 0, recipeId: '550e8400-e29b-41d4-a716-446655440001', name: 'Pasta' },
+    ],
+  });
+  await useWeekStore.getState().init(0);
+  expect(useWeekStore.getState().schedule[0].recipe).toBeUndefined();
+  useWeekStore.getState().applySmartDefaultsUpdate({
+    weekOffset: 0,
+    familySize: 3,
+    consensusThreshold: 2,
+    consensusRecipesCount: 0,
+    openSlots: [],
+    preSelectedRecipes: [{ dayIndex: 0, recipeId: '550e8400-e29b-41d4-a716-446655440001' }],
+  });
+  expect(useWeekStore.getState().schedule[0].recipe).toBeUndefined();
+});

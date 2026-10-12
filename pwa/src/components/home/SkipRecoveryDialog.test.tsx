@@ -24,6 +24,9 @@ describe('SkipRecoveryDialog', () => {
       <SkipRecoveryDialog isOpen step={1} onClose={vi.fn()} onBack={vi.fn()} onAction={onAction} />
     );
 
+    expect(
+      screen.getByTestId('recovery-action-order-in').querySelector('.lucide-shopping-bag')
+    ).not.toBeNull();
     fireEvent.click(screen.getByTestId('recovery-action-order-in'));
     fireEvent.click(screen.getByTestId('recovery-action-pick-else'));
 

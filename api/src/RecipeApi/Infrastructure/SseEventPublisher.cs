@@ -16,12 +16,13 @@ public class SseEventPublisher : IScheduleEventPublisher
         _manager = manager;
     }
 
-    public Task PublishSlotUpdatedAsync(DateOnly date, ScheduleRecipeDto? recipe, int status, string? excludeConnectionId = null)
+    public Task PublishSlotUpdatedAsync(DateOnly date, ScheduleRecipeDto? recipe, int status, string? excludeConnectionId = null, NonCookingPlanDto? nonCooking = null)
         => _manager.BroadcastAsync("slot_updated", new
         {
             date = date.ToString("yyyy-MM-dd"),
             recipe,
-            status
+            status,
+            nonCooking
         }, excludeConnectionId);
 
     public Task PublishWeekUpdatedAsync(ScheduleDays schedule, string? excludeConnectionId = null, int? echoSeq = null)

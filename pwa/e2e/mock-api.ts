@@ -921,7 +921,12 @@ export async function setupCommonRoutes(page: Page) {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ data: { valid: true } }),
+      body: JSON.stringify({
+        data: {
+          message: 'Cooking status updated',
+          mealMarkedCooked: route.request().postDataJSON()?.status === 2,
+        },
+      }),
     });
   });
 
@@ -1611,4 +1616,103 @@ export async function mockSseWithRecipeFailed(
       ]),
     });
   });
+}
+
+/** Stateful schedule boundary for non-cooking planner acceptance. */
+export async function mockNonCookingSchedule(
+  page: Page,
+  schedule: import('../src/lib/api/generated/models').ScheduleDays
+) {
+  await mockSseWithConnectedSchedule(page, schedule);
+  await page.route('**/api/schedule**', async (route) => {
+    const url = new URL(route.request().url());
+    const method = route.request().method();
+    const days = schedule.days ?? [];
+    const date = url.pathname.match(/\/day\/([^/]+)\//)?.[1];
+    const day = days.find((item) => item.date === date);
+    if (url.pathname === '/api/schedule' && method === 'GET') {
+      await route.fulfill({ json: { data: schedule } });
+      return;
+    }
+    if (url.pathname.endsWith('/smart-defaults')) {
+      await route.fulfill({
+        json: {
+          data: {
+            weekOffset: schedule.weekOffset,
+            familySize: 3,
+            consensusThreshold: 2,
+            preSelectedRecipes: [],
+            openSlots: days.flatMap((item, dayIndex) =>
+              item.status !== 3 && !item.recipe ? [{ dayIndex }] : []
+            ),
+            consensusRecipesCount: 0,
+          },
+        },
+      });
+      return;
+    }
+    if (url.pathname.endsWith('/validate') && method === 'POST' && day) {
+      if (day.recipe) {
+        await route.fulfill({ status: 409, json: { status: 409, message: 'Day occupied' } });
+        return;
+      }
+      const body = route.request().postDataJSON();
+      day.status = body.status;
+      day.nonCooking = body.nonCooking ?? day.nonCooking ?? { kind: 'order_in', customLabel: null };
+      day.recipe = null;
+      await route.fulfill({
+        json: { data: { message: 'Day validated', mealMarkedCooked: false } },
+      });
+      return;
+    }
+    if (url.pathname.endsWith('/remove') && method === 'DELETE' && day) {
+      day.status = 0;
+      day.recipe = null;
+      day.nonCooking = null;
+      await route.fulfill({ status: 204 });
+      return;
+    }
+    if (url.pathname.endsWith('/voting/open') && method === 'POST') {
+      schedule.status = 1;
+      schedule.locked = false;
+      await route.fulfill({ json: { data: { message: 'Voting opened' } } });
+      return;
+    }
+    if (url.pathname.endsWith('/lock') && method === 'POST') {
+      schedule.status = 2;
+      schedule.locked = true;
+      for (const item of days) if (item.status !== 3) item.status = 1;
+      await route.fulfill({ json: { data: { message: 'Schedule locked' } } });
+      return;
+    }
+    if (url.pathname.endsWith('/move') && method === 'POST') {
+      const body = route.request().postDataJSON();
+      const source = days[body.fromIndex],
+        target = days[body.toIndex];
+      if (source && target) {
+        for (const field of ['recipe', 'status', 'nonCooking'] as const) {
+          const value = source[field];
+          (source as any)[field] = target[field];
+          (target as any)[field] = value;
+        }
+      }
+      await route.fulfill({ json: { data: { message: 'Recipe moved' } } });
+      return;
+    }
+    if (url.pathname.endsWith('/assign') && method === 'POST') {
+      const body = route.request().postDataJSON();
+      const target = days[body.dayIndex];
+      if (target) {
+        target.recipe = builders.scheduleRecipe({ id: body.recipeId });
+        target.status = 0;
+        target.nonCooking = null;
+      }
+      await route.fulfill({
+        json: { data: { message: 'Recipe assigned', displacedRecipe: null } },
+      });
+      return;
+    }
+    await route.fallback();
+  });
+  return schedule;
 }

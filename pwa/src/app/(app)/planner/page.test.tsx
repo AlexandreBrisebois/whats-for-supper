@@ -17,6 +17,9 @@ const mocks = vi.hoisted(() => {
   const reorderLocally = vi.fn();
   const resolveOccupiedSlot = vi.fn();
   const addToast = vi.fn();
+  const saveNonCookingDay = vi.fn();
+  const getSchedule = vi.fn();
+  const applySnapshot = vi.fn();
   let weekState: any;
   let plannerState: any;
   let searchParams = '';
@@ -37,6 +40,9 @@ const mocks = vi.hoisted(() => {
     reorderLocally,
     resolveOccupiedSlot,
     addToast,
+    saveNonCookingDay,
+    getSchedule,
+    applySnapshot,
     getWeekState: () => weekState,
     getPlannerState: () => plannerState,
     setWeekState: (value: any) => {
@@ -81,6 +87,7 @@ vi.mock('framer-motion', () => ({
 vi.mock('@/locales', () => ({
   t: (_key: string, fallback: string) => fallback,
   tWithVars: (_key: string, fallback: string) => fallback,
+  getLocale: () => 'en',
 }));
 
 vi.mock('@/lib/utils', () => ({
@@ -97,7 +104,9 @@ vi.mock('@/lib/auth', () => ({
 }));
 
 vi.mock('@/store/plannerStore', () => ({
-  usePlannerStore: () => mocks.getPlannerState(),
+  usePlannerStore: Object.assign(() => mocks.getPlannerState(), {
+    getState: () => mocks.getPlannerState(),
+  }),
 }));
 
 vi.mock('@/store/weekStore', () => ({
@@ -129,6 +138,9 @@ vi.mock('@/lib/api/planner', () => ({
   lockSchedule: vi.fn().mockResolvedValue(undefined),
   assignRecipeToDay: vi.fn().mockResolvedValue(undefined),
   openVoting: vi.fn().mockResolvedValue(undefined),
+  saveNonCookingDay: (...args: unknown[]) => mocks.saveNonCookingDay(...args),
+  getSchedule: (...args: unknown[]) => mocks.getSchedule(...args),
+  removeRecipeFromDay: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('@/lib/api/api-client', () => ({
@@ -166,12 +178,16 @@ vi.mock('@/components/planner/PlanningPivotSheet', () => ({
     hasRecipe,
     onPlanLater,
     onQuickFind,
+    onNoCooking,
+    onClose,
   }: {
     isOpen: boolean;
     dayIndex: number;
     hasRecipe: boolean;
     onPlanLater?: () => void;
     onQuickFind: () => void;
+    onNoCooking?: () => void;
+    onClose: () => void;
   }) =>
     isOpen ? (
       <div
@@ -179,10 +195,17 @@ vi.mock('@/components/planner/PlanningPivotSheet', () => ({
         data-day-index={dayIndex}
         data-has-recipe={hasRecipe ? 'true' : 'false'}
         data-has-plan-later={onPlanLater ? 'true' : 'false'}
+        data-has-no-cooking={onNoCooking ? 'true' : 'false'}
       >
+        <button onClick={onClose}>Close</button>
         <button data-testid="mock-pivot-quick-find" onClick={onQuickFind}>
           Quick replace
         </button>
+        {onNoCooking && (
+          <button data-testid="mock-pivot-no-cooking" onClick={onNoCooking}>
+            Other plans
+          </button>
+        )}
       </div>
     ) : null,
 }));
@@ -251,6 +274,7 @@ function makeSchedule(sundayDate: string) {
       _uiId: `day-${index}`,
       day: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][index],
       date: date.toISOString().slice(0, 10),
+      status: 0,
       recipe:
         index === 0
           ? {
@@ -286,6 +310,8 @@ function renderPlanner(status: 0 | 1 | 2, sundayDate = '2026-05-17') {
     setGroceryState: mocks.setGroceryState,
   });
   mocks.setWeekState({
+    weekOffset: 0,
+    applySnapshot: mocks.applySnapshot,
     schedule: makeSchedule(sundayDate),
     isLoading: false,
     status,
@@ -308,6 +334,13 @@ describe('PlannerPage voting action row', () => {
     mocks.getVotingLink.mockResolvedValue('http://example.com/discovery');
     mocks.assignRecipe.mockResolvedValue(undefined);
     mocks.resolveOccupiedSlot.mockResolvedValue(undefined);
+    mocks.saveNonCookingDay.mockResolvedValue(undefined);
+    mocks.getSchedule.mockResolvedValue({
+      weekOffset: 0,
+      status: 0,
+      locked: false,
+      days: makeSchedule('2026-05-17'),
+    });
 
     Object.defineProperty(window, 'matchMedia', {
       writable: true,
@@ -339,6 +372,164 @@ describe('PlannerPage voting action row', () => {
 
     expect(screen.getByTestId('ask-family-cta')).toBeInTheDocument();
     expect(screen.queryByTestId('nudge-family-cta')).not.toBeInTheDocument();
+  });
+
+  it('does not offer the empty-day conversion on a legacy recipe-backed skipped day', () => {
+    const view = renderPlanner(0);
+    const state = mocks.getWeekState();
+    state.schedule[0] = {
+      ...state.schedule[0],
+      status: 3,
+      recipe: { id: '11111111-1111-1111-1111-111111111111', name: 'Pasta' },
+    };
+    view.rerender(<PlannerPage />);
+    fireEvent.click(within(screen.getByTestId('day-card-0')).getByTestId('ordered-in-indicator'));
+    expect(screen.getByTestId('mock-planning-pivot-sheet')).toHaveAttribute(
+      'data-has-no-cooking',
+      'false'
+    );
+  });
+
+  it.each([0, 1, 2] as const)('allows the empty-day action in week state %s', (status) => {
+    renderPlanner(status);
+    fireEvent.click(within(screen.getByTestId('day-card-1')).getByTestId('plan-meal-button'));
+    fireEvent.click(screen.getByTestId('mock-pivot-no-cooking'));
+    expect(screen.getByTestId('non-cooking-sheet')).toHaveTextContent('Tuesday, May 12');
+  });
+
+  it.each(['order_in', 'eating_out', 'mystery', 'custom'] as const)(
+    'renders the saved %s icon on the meal plan',
+    (kind) => {
+      const view = renderPlanner(0);
+      const state = mocks.getWeekState();
+      state.schedule[1] = {
+        ...state.schedule[1],
+        recipe: null,
+        status: 3,
+        nonCooking: { kind, customLabel: kind === 'custom' ? 'Family supper' : null },
+      };
+      mocks.setWeekState({ ...state, schedule: [...state.schedule] });
+      view.rerender(<PlannerPage />);
+      const indicator = within(screen.getByTestId('day-card-1')).getByTestId(
+        'ordered-in-indicator'
+      );
+      const iconClass =
+        kind === 'custom'
+          ? 'lucide-calendar-days'
+          : kind === 'eating_out'
+            ? 'lucide-utensils-crossed'
+            : kind === 'mystery'
+              ? 'lucide-sparkles'
+              : 'lucide-shopping-bag';
+      expect(indicator.querySelector(`.${iconClass}`)).not.toBeNull();
+      expect(indicator).not.toHaveTextContent('🥡');
+      if (kind === 'mystery') {
+        expect(indicator).toHaveTextContent('We’ll figure out supper that day.');
+        expect(indicator).not.toHaveTextContent('No cook tonight');
+      } else {
+        expect(indicator).not.toHaveTextContent('No cook tonight');
+        expect(indicator).not.toHaveTextContent('We’ll figure out supper that day.');
+      }
+    }
+  );
+
+  it.each(['order_in', 'eating_out'] as const)(
+    'shows the %s note beneath its preset heading',
+    (kind) => {
+      const view = renderPlanner(0);
+      const state = mocks.getWeekState();
+      state.schedule[1] = {
+        ...state.schedule[1],
+        recipe: null,
+        status: 3,
+        nonCooking: { kind, customLabel: 'Try Luigi’s' },
+      };
+      mocks.setWeekState({ ...state, schedule: [...state.schedule] });
+      view.rerender(<PlannerPage />);
+      const day = within(screen.getByTestId('day-card-1'));
+      expect(day.getByTestId('non-cooking-indicator')).toHaveTextContent(
+        kind === 'order_in' ? 'Order In' : 'Eating out'
+      );
+      expect(day.getByTestId('non-cooking-note')).toHaveTextContent('Try Luigi’s');
+      expect(day.getByTestId('ordered-in-indicator')).not.toHaveTextContent('No cook tonight');
+    }
+  );
+
+  it('opens the change menu from Home once and can edit the saved plan', async () => {
+    mocks.setSearchParams('weekOffset=0&planDate=2026-05-12');
+    const view = renderPlanner(0);
+    const state = mocks.getWeekState();
+    state.schedule[1] = {
+      ...state.schedule[1],
+      recipe: null,
+      status: 3,
+      nonCooking: { kind: 'custom', customLabel: 'Supper at Grandma’s' },
+    };
+    mocks.setWeekState({ ...state, schedule: [...state.schedule] });
+    view.rerender(<PlannerPage />);
+    const pivot = await screen.findByTestId('mock-planning-pivot-sheet');
+    expect(pivot).toHaveAttribute('data-day-index', '1');
+    expect(screen.queryByTestId('non-cooking-sheet')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('mock-pivot-no-cooking'));
+    expect(screen.getByTestId('non-cooking-custom-label')).toHaveValue('Supper at Grandma’s');
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    view.rerender(<PlannerPage />);
+    expect(screen.queryByTestId('non-cooking-sheet')).not.toBeInTheDocument();
+    expect(mocks.saveNonCookingDay).not.toHaveBeenCalled();
+  });
+
+  it('does not apply a late save response to the newly selected week', async () => {
+    let resolveSave!: () => void;
+    mocks.saveNonCookingDay.mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveSave = resolve;
+        })
+    );
+    const view = renderPlanner(0);
+    fireEvent.click(within(screen.getByTestId('day-card-1')).getByTestId('plan-meal-button'));
+    fireEvent.click(screen.getByTestId('mock-pivot-no-cooking'));
+    fireEvent.click(screen.getByTestId('non-cooking-save'));
+    await waitFor(() =>
+      expect(mocks.saveNonCookingDay).toHaveBeenCalledWith('2026-05-12', {
+        kind: 'mystery',
+        customLabel: null,
+      })
+    );
+    mocks.setPlannerState({ ...mocks.getPlannerState(), currentWeekOffset: 1 });
+    mocks.setWeekState({
+      ...mocks.getWeekState(),
+      weekOffset: 1,
+      schedule: makeSchedule('2026-05-24'),
+    });
+    view.rerender(<PlannerPage />);
+    await act(async () => resolveSave());
+    await waitFor(() => expect(mocks.getSchedule).toHaveBeenCalledWith(0));
+    expect(mocks.applySnapshot).not.toHaveBeenCalled();
+  });
+
+  it('refreshes a conflicting recipe assignment and retains the editable custom draft', async () => {
+    const refreshed = {
+      weekOffset: 0,
+      status: 0,
+      locked: false,
+      days: makeAssignedSchedule('2026-05-17', 1),
+    };
+    mocks.getSchedule.mockResolvedValue(refreshed);
+    mocks.saveNonCookingDay.mockRejectedValue({ responseStatusCode: 409 });
+    renderPlanner(0);
+    fireEvent.click(within(screen.getByTestId('day-card-1')).getByTestId('plan-meal-button'));
+    fireEvent.click(screen.getByTestId('mock-pivot-no-cooking'));
+    fireEvent.click(screen.getByTestId('non-cooking-other-plans'));
+    fireEvent.change(screen.getByTestId('non-cooking-custom-label'), {
+      target: { value: 'Birthday' },
+    });
+    fireEvent.click(screen.getByTestId('non-cooking-save'));
+    await waitFor(() => expect(mocks.applySnapshot).toHaveBeenCalledWith(refreshed));
+    expect(screen.getByTestId('non-cooking-custom-label')).toHaveValue('Birthday');
+    expect(screen.getByRole('alert')).toHaveTextContent('plan changed');
+    expect(mocks.assignRecipe).not.toHaveBeenCalled();
+    expect(mocks.removeRecipe).not.toHaveBeenCalled();
   });
 
   it('shows Ask the Family for a locked non-past week', () => {

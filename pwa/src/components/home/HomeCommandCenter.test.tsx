@@ -18,6 +18,7 @@ const mocks = vi.hoisted(() => ({
   loadActiveGoTo: vi.fn().mockResolvedValue(null),
   currentRecipe: null as any,
   todayStatus: 0 as 0 | 2 | 3,
+  nonCooking: null as { kind: string; customLabel: string | null } | null,
   todayString: '2026-05-07',
 }));
 
@@ -41,14 +42,31 @@ vi.mock('@/components/home/HomeSections', () => ({
 }));
 
 vi.mock('@/components/home/TonightPivotCard', () => ({
-  TonightPivotCard: ({ onOrderIn }: { onOrderIn: () => void }) => (
-    <button data-testid="order-in-btn" onClick={onOrderIn}>
-      Order In
-    </button>
+  TonightPivotCard: ({
+    onOrderIn,
+    onDiscover,
+    onConfirmGoto,
+  }: {
+    onOrderIn: () => void;
+    onDiscover: () => void;
+    onConfirmGoto: () => void;
+  }) => (
+    <div data-testid="tonight-pivot-card">
+      <button data-testid="order-in-btn" onClick={onOrderIn}>
+        Order In
+      </button>
+      <button data-testid="discover-btn" onClick={onDiscover}>
+        Quick Find
+      </button>
+      <button data-testid="confirm-goto-btn" onClick={onConfirmGoto}>
+        Make This Tonight
+      </button>
+    </div>
   ),
 }));
 
-vi.mock('@/components/home/TonightMenuCard', () => ({
+vi.mock('@/components/home/TonightMenuCard', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('./TonightMenuCard')>()),
   TonightMenuCard: ({ onSkip }: { onSkip: () => void }) => (
     <button data-testid="skip-btn" onClick={onSkip}>
       Skip
@@ -130,6 +148,7 @@ vi.mock('@/store/todayStore', () => ({
     () => ({
       currentRecipe: mocks.currentRecipe,
       status: mocks.todayStatus,
+      nonCooking: mocks.nonCooking,
       isLoading: false,
       assignRecipe: mocks.assignRecipe,
       markCooked: vi.fn(),
@@ -223,8 +242,78 @@ describe('HomeCommandCenter', () => {
     vi.clearAllMocks();
     mocks.currentRecipe = null;
     mocks.todayStatus = 0;
+    mocks.nonCooking = null;
     mocks.todayString = '2026-05-07';
     mocks.loadActiveGoTo.mockResolvedValue(null);
+  });
+
+  it.each(['order_in', 'eating_out'])('shows the saved %s note on Home', async (kind) => {
+    mocks.todayStatus = 3;
+    mocks.nonCooking = { kind, customLabel: 'Try Luigi’s' };
+    render(<HomeCommandCenter todaysRecipe={null} todayStatus={3} />);
+    expect(await screen.findByTestId('today-non-cooking-label')).toHaveTextContent(
+      kind === 'order_in' ? 'Order In' : 'Eating out'
+    );
+    expect(screen.getByTestId('today-non-cooking-note')).toHaveTextContent('Try Luigi’s');
+    expect(screen.getByTestId('today-non-cooking-plan')).toHaveAccessibleName(
+      `Tonight ${kind === 'order_in' ? 'Order In' : 'Eating out'} Try Luigi’s Edit supper plan`
+    );
+  });
+
+  it.each([
+    ['order_in', null, 'Order In'],
+    ['eating_out', null, 'Eating out'],
+    ['custom', 'Supper at Grandma’s', 'Supper at Grandma’s'],
+    ['custom', 'Emma’s birthday supper', 'Emma’s birthday supper'],
+  ])(
+    'shows the saved %s plan on Home without meal recovery controls',
+    async (kind, customLabel, label) => {
+      mocks.todayStatus = 3;
+      mocks.nonCooking = { kind: kind!, customLabel };
+
+      render(<HomeCommandCenter todaysRecipe={null} todayStatus={3} />);
+
+      expect(await screen.findByTestId('today-non-cooking-label')).toHaveTextContent(label!);
+      const iconClass =
+        kind === 'custom'
+          ? 'lucide-calendar-days'
+          : kind === 'eating_out'
+            ? 'lucide-utensils-crossed'
+            : 'lucide-shopping-bag';
+      expect(
+        screen.getByTestId('today-non-cooking-plan').querySelector(`.${iconClass}`)
+      ).not.toBeNull();
+      fireEvent.click(screen.getByRole('button', { name: `Tonight ${label} Edit supper plan` }));
+      expect(mocks.push).toHaveBeenCalledWith('/planner?weekOffset=0&planDate=2026-05-07');
+      expect(screen.queryByRole('summary')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('order-in-btn')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('tonight-menu-card')).not.toBeInTheDocument();
+    }
+  );
+
+  it('offers empty-night recipe choices for Mystery night without clearing its saved plan', async () => {
+    mocks.todayStatus = 3;
+    mocks.nonCooking = { kind: 'mystery', customLabel: null };
+    render(<HomeCommandCenter todaysRecipe={null} todayStatus={3} />);
+    expect(screen.getByTestId('tonight-pivot-card')).toBeInTheDocument();
+    expect(screen.queryByTestId('today-non-cooking-plan')).not.toBeInTheDocument();
+    expect(mocks.nonCooking).toEqual({ kind: 'mystery', customLabel: null });
+    fireEvent.click(screen.getByTestId('discover-btn'));
+    expect(await screen.findByTestId('quick-find-select')).toBeInTheDocument();
+    expect(mocks.markOrderedIn).not.toHaveBeenCalled();
+  });
+
+  it('keeps the existing empty-day fallback and planned-meal controls', async () => {
+    const view = render(<HomeCommandCenter todaysRecipe={null} todayStatus={0} />);
+    expect(screen.getByTestId('order-in-btn')).toBeInTheDocument();
+    expect(screen.queryByTestId('today-non-cooking-plan')).not.toBeInTheDocument();
+    mocks.currentRecipe = { id: '11111111-1111-1111-1111-111111111111', name: 'Pasta' };
+    view.rerender(<HomeCommandCenter todaysRecipe={mocks.currentRecipe} todayStatus={0} />);
+    expect(screen.getByTestId('skip-btn')).toBeInTheDocument();
+    expect(screen.queryByTestId('order-in-btn')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('today-non-cooking-plan')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('skip-btn'));
+    expect(screen.getByTestId('recovery-action-order-in')).toBeInTheDocument();
   });
 
   it('re-fetches a pending GOTO when its recipe is already marked ready by SSE', async () => {

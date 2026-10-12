@@ -55,6 +55,17 @@ public class SseEventPublisherTests
     // -------------------------------------------------------------------------
 
     [Fact]
+    public async Task NonCookingSlotUpdate_CarriesCustomMessage()
+    {
+        var (manager, body) = MakeManager();
+        var publisher = new SseEventPublisher(manager);
+        await publisher.PublishSlotUpdatedAsync(new DateOnly(2026, 10, 12), null, 3, nonCooking: new NonCookingPlanDto("custom", "Birthday supper"));
+        var (_, data) = ParseSseFrame(ReadBody(body));
+        Assert.Equal("custom", data.GetProperty("nonCooking").GetProperty("kind").GetString());
+        Assert.Equal("Birthday supper", data.GetProperty("nonCooking").GetProperty("customLabel").GetString());
+    }
+
+    [Fact]
     public async Task PublishSlotUpdatedAsync_BroadcastsCorrectEventTypeAndPayload()
     {
         var (manager, body) = MakeManager();

@@ -30,6 +30,7 @@ import { parseRecipeSteps, type CookingStep } from '@/lib/cooking/stepParser';
 import { formatCookingInstruction } from '@/lib/cooking/instructionPresentation';
 import { getImageUrl } from '@/lib/imageUtils';
 import { usePlannerStore } from '@/store/plannerStore';
+import { useTodayStore } from '@/store/todayStore';
 import { useFeatureFlag } from '@/store/featureFlagStore';
 
 interface CooksModeProps {
@@ -41,7 +42,7 @@ interface CooksModeProps {
     isCold?: boolean;
   };
   onClose: () => void;
-  /** Called when the user taps "Done" on the last step — marks the meal as cooked. */
+  /** Optional notification after the viewed recipe's cooking completion has been saved. */
   onCooked?: () => void;
 }
 
@@ -84,6 +85,9 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
   const [gathered, setGathered] = useState<Record<string, boolean>>({});
   const [showIngredients, setShowIngredients] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
+  const [isCompleting, setIsCompleting] = useState(false);
+  const [completionError, setCompletionError] = useState(false);
+  const completionInFlight = useRef(false);
   const [showDetailId, setShowDetailId] = useState<string | null>(null);
   const [reportContext, setReportContext] = useState<RecipeImportIssueReason | null>(null);
   const [reimportAcknowledgement, setReimportAcknowledgement] = useState(false);
@@ -183,6 +187,25 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
 
   const editingStep = editingStepIndex === null ? null : steps[editingStepIndex];
 
+  const finishCooking = async () => {
+    if (completionInFlight.current) return;
+    completionInFlight.current = true;
+    setIsCompleting(true);
+    setCompletionError(false);
+    try {
+      await useTodayStore.getState().markCooked(initialRecipe.id);
+      setShowCelebration(true);
+      setTimeout(() => {
+        onCooked?.();
+        onClose();
+      }, 600);
+    } catch {
+      completionInFlight.current = false;
+      setIsCompleting(false);
+      setCompletionError(true);
+    }
+  };
+
   const nextStep = () => {
     if (isPrepStep) {
       if (!isResumingSteps) setCookProgress(initialRecipe.id, 1);
@@ -190,11 +213,7 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
     } else if (currentStep < steps.length) {
       setCookProgress(initialRecipe.id, currentStep + 1);
     } else {
-      setShowCelebration(true);
-      setTimeout(() => {
-        onCooked?.();
-        onClose();
-      }, 600);
+      void finishCooking();
     }
   };
 
@@ -735,6 +754,11 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
         </div>
 
         {/* Controls */}
+        {completionError && (
+          <p role="alert" className="px-6 py-2 text-sm text-terracotta">
+            {t('cook.completionFailed', 'Could not save cooking completion. Please try again.')}
+          </p>
+        )}
         <div
           data-testid="cooks-mode-controls"
           className={`${singlePageEnabled ? 'px-4 py-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] md:px-6' : 'p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] md:p-8 md:pb-[calc(2rem+env(safe-area-inset-bottom))]'} grid ${singlePageEnabled && isPrepStep ? 'grid-cols-1' : 'grid-cols-[1fr_1.5fr]'} gap-3 bg-white/80 backdrop-blur-xl border-t border-charcoal/5 shrink-0`}
@@ -754,17 +778,8 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
             </Button>
           )}
           <Button
-            onClick={
-              !isPrepStep && singlePageEnabled
-                ? () => {
-                    setShowCelebration(true);
-                    setTimeout(() => {
-                      onCooked?.();
-                      onClose();
-                    }, 600);
-                  }
-                : nextStep
-            }
+            disabled={isCompleting}
+            onClick={!isPrepStep && singlePageEnabled ? finishCooking : nextStep}
             data-testid="cooks-mode-step-next"
             aria-label={
               isCompletionAction ? t('cook.markCooked', 'Mark recipe as cooked') : undefined

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { RecipeDetailSheet } from './RecipeDetailSheet';
 
 const mockGetRecipe = vi.fn();
@@ -238,7 +238,7 @@ describe('RecipeDetailSheet', () => {
       .mockResolvedValueOnce({ status: 'Processing', errorMessage: null })
       .mockResolvedValueOnce({ status: 'Completed', errorMessage: null });
 
-    render(
+    const view = render(
       <RecipeDetailSheet
         recipeId="550e8400-e29b-41d4-a716-446655440111"
         plannerDayLabel={null}
@@ -255,24 +255,43 @@ describe('RecipeDetailSheet', () => {
     fireEvent.change(screen.getByLabelText('What should we check?'), {
       target: { value: 'Missing amounts' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    vi.useFakeTimers();
+    try {
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+      });
 
-    await waitFor(
-      () =>
-        expect(mockGetRecipeImportStatus).toHaveBeenCalledWith(
-          '550e8400-e29b-41d4-a716-446655440222'
-        ),
-      {
-        timeout: 4000,
-      }
-    );
-    expect(screen.queryByRole('dialog', { name: 'Report issue' })).toBeNull();
-    expect(mockAddToast).toHaveBeenCalledWith({
-      type: 'success',
-      message: 'Reimporting in background',
-    });
-    await waitFor(() => expect(mockGetRecipe).toHaveBeenCalledTimes(2));
-    expect(await screen.findByLabelText('Recipe updated — ready to review')).toBeVisible();
+      expect(mockGetRecipeImportStatus).toHaveBeenCalledExactlyOnceWith(
+        '550e8400-e29b-41d4-a716-446655440222'
+      );
+      expect(mockGetRecipe).toHaveBeenCalledTimes(1);
+      expect(screen.queryByRole('dialog', { name: 'Report issue' })).toBeNull();
+      expect(mockAddToast).toHaveBeenCalledWith({
+        type: 'success',
+        message: 'Reimporting in background',
+      });
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1000);
+      });
+
+      expect(mockGetRecipeImportStatus).toHaveBeenNthCalledWith(
+        2,
+        '550e8400-e29b-41d4-a716-446655440222'
+      );
+      expect(mockGetRecipe).toHaveBeenCalledTimes(2);
+      expect(mockGetRecipe).toHaveBeenLastCalledWith('550e8400-e29b-41d4-a716-446655440111');
+      expect(screen.getByLabelText('Recipe updated — ready to review')).toBeVisible();
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(2000);
+      });
+      expect(mockGetRecipeImportStatus).toHaveBeenCalledTimes(2);
+      expect(mockGetRecipe).toHaveBeenCalledTimes(2);
+    } finally {
+      view.unmount();
+      vi.useRealTimers();
+    }
   });
 
   it('hides the share button if the recipe has no hero image', async () => {
