@@ -93,7 +93,7 @@ export function SkipRecoveryDialog({
                     </div>
                     <div className="flex flex-1 flex-col items-start text-left">
                       <span className="font-heading text-xl font-black text-charcoal tracking-tight">
-                        {t('home.orderingIn', 'Ordering In')}
+                        {t('home.orderingIn', 'Order In')}
                       </span>
                       <span className="text-[10px] font-black uppercase tracking-widest text-charcoal/30">
                         {t('home.takeoutOrDelivery', 'Takeout or Delivery')}

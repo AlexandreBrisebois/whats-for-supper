@@ -1,14 +1,14 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Check } from 'lucide-react';
+import { Check, CalendarCheck, ChevronRight } from 'lucide-react';
 import {
   QuickCaptureTrigger,
   CookedSuccessCard,
   VotingNudgeCard,
   BrowseLibraryTrigger,
 } from './HomeSections';
-import { TonightCardBase, TonightMenuCard } from './TonightMenuCard';
+import { TonightMenuCard } from './TonightMenuCard';
 import { TonightPivotCard } from './TonightPivotCard';
 import { SkipRecoveryDialog } from './SkipRecoveryDialog';
 import { QuickFindModal } from '../planner/QuickFindModal';
@@ -309,19 +309,31 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
       ) : (
         <>
           {isSkipped && !currentRecipe && (
-            <TonightCardBase className="p-6">
-              <details>
-                <summary
+            <button
+              data-testid="today-non-cooking-plan"
+              aria-label={`${t('home.tonight', 'Tonight')} ${nonCookingLabel(nonCooking)} ${t('planner.editSupperPlan', 'Edit supper plan')}`}
+              onClick={() =>
+                router.push(`${ROUTES.PLANNER}?weekOffset=0&planDate=${getTodayString()}`)
+              }
+              className="flex w-full items-center gap-4 rounded-[2rem] border border-sage/20 bg-sage/10 p-5 text-left transition-colors hover:bg-sage/15 focus-visible:outline-2 focus-visible:outline-sage-700"
+            >
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-sage/15 text-sage-700">
+                <CalendarCheck size={24} aria-hidden="true" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block mb-1 text-xs font-bold text-charcoal/70">
+                  {t('home.tonight', 'Tonight')}
+                </span>
+                <span
                   data-testid="today-non-cooking-label"
-                  className="line-clamp-2 cursor-pointer font-heading text-3xl font-black text-charcoal"
+                  className="line-clamp-2 break-words font-heading text-lg font-bold text-charcoal"
                 >
                   {nonCookingLabel(nonCooking)}
-                </summary>
-                <p className="mt-3 whitespace-pre-wrap break-words text-charcoal">
-                  {nonCookingLabel(nonCooking)}
-                </p>
-              </details>
-            </TonightCardBase>
+                </span>
+                <span className="sr-only">{t('planner.editSupperPlan', 'Edit supper plan')}</span>
+              </span>
+              <ChevronRight size={20} aria-hidden="true" className="shrink-0 text-charcoal/60" />
+            </button>
           )}
           {!currentRecipe && !isSkipped && !sessionDone && !isCooked && (
             <TonightPivotCard

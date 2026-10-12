@@ -44,6 +44,7 @@ vi.mock('framer-motion', () => ({
 
 vi.mock('@/locales', () => ({
   t: (key: string, fallback: string) => localeMock.translate(key, fallback),
+  getLocale: () => 'en',
 }));
 
 import { PlanningPivotSheet } from './PlanningPivotSheet';
@@ -72,6 +73,30 @@ function renderSheet({
 }
 
 describe('PlanningPivotSheet', () => {
+  it.each([false, true])('uses supper context for an empty or marked day (%s)', (isNonCooking) => {
+    localeMock.setLanguage('en');
+    render(
+      <PlanningPivotSheet
+        isOpen
+        onClose={vi.fn()}
+        dayIndex={0}
+        date="2026-10-12"
+        hasRecipe={isNonCooking}
+        isNonCooking={isNonCooking}
+        onNoCooking={vi.fn()}
+        onQuickFind={vi.fn()}
+        onSearchLibrary={vi.fn()}
+      />
+    );
+    expect(
+      screen.getByText(isNonCooking ? 'Change supper plans' : 'Plan supper')
+    ).toBeInTheDocument();
+    expect(screen.getByText('Monday, October 12')).toBeInTheDocument();
+    expect(screen.queryByText('Change this recipe')).not.toBeInTheDocument();
+    expect(screen.getByTestId('pivot-no-cooking')).toHaveTextContent(
+      isNonCooking ? 'Edit supper plan' : 'Other plans'
+    );
+  });
   it('renders explicit recipe-change copy in English', () => {
     localeMock.setLanguage('en');
     renderSheet();

@@ -170,6 +170,7 @@
     "profile": "Profile"
   },
   "home": {
+    "tonight": "Tonight",
     "nothingPlanned": "Nothing Planned?",
     "quickFixes": "Quick Fixes",
     "fix15min": "15 Min Fix",
@@ -193,7 +194,7 @@
     "recoveryFlow": "Plan B",
     "backupPlanTitle": "What are we doing instead?",
     "backupPlanSubtitle": "Plans changed. We get it. What are we eating instead?",
-    "orderingIn": "Ordering In",
+    "orderingIn": "Order In",
     "takeoutOrDelivery": "Takeout or Delivery",
     "pickSomethingElse": "Find Something Quick",
     "searchRecipes": "Swap tonight's meal",
@@ -246,7 +247,7 @@
     "closeVoting": "Close Voting",
     "diversify": "Diversify",
     "holdToMove": "Hold to move",
-    "noCooking": "No cooking",
+    "noCooking": "Other plans",
     "eatingOut": "Eating out",
     "otherPlans": "Other plans",
     "editSupperPlan": "Edit supper plan",
@@ -256,7 +257,14 @@
     "nonCookingInvalid": "Enter a message with 1–80 characters.",
     "nonCookingConflict": "This day’s plan changed. Review it before trying again.",
     "nonCookingSaveError": "Could not save this plan. Try again.",
-    "clearDay": "Clear day"
+    "clearDay": "Clear day",
+    "otherPlansSubtitle": "Order in, eat out, or add your own",
+    "supperPlanTitle": "What’s the supper plan?",
+    "planSupper": "Plan supper",
+    "changeSupperPlans": "Change supper plans",
+    "supperOptionsSubtitle": "Choose what works for this day",
+    "savePlan": "Save plan",
+    "savingPlan": "Saving…"
   },
   "grocery": {
     "smartShopping": "Smart Shopping",

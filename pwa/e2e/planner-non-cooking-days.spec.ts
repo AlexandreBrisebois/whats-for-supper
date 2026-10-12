@@ -45,7 +45,7 @@ function emptyWeek(): ScheduleDays {
 }
 
 for (const [choice, label, message] of [
-  ['non-cooking-order-in', 'Ordering In', null],
+  ['non-cooking-order-in', 'Order In', null],
   ['non-cooking-eating-out', 'Eating out', null],
   ['non-cooking-other-plans', 'Supper at Grandma’s', 'Supper at Grandma’s'],
   ['non-cooking-other-plans', 'Emma’s birthday supper', 'Emma’s birthday supper'],
@@ -103,7 +103,7 @@ test('cancel and failed save retain the empty day and editable message', async (
 });
 
 for (const [kind, label, customLabel] of [
-  ['order_in', 'Ordering In', null],
+  ['order_in', 'Order In', null],
   ['eating_out', 'Eating out', null],
   ['custom', 'Emma’s birthday supper', 'Emma’s birthday supper'],
 ] as const) {
@@ -157,4 +157,42 @@ test('Home reconciles and reloads a custom message saved in planner', async ({ p
   await expect(page.getByTestId('today-non-cooking-label')).toHaveText('Supper at Grandma’s');
   await page.reload();
   await expect(page.getByTestId('today-non-cooking-label')).toHaveText('Supper at Grandma’s');
+  await page.getByTestId('today-non-cooking-plan').click();
+  await expect(page.getByTestId('non-cooking-custom-label')).toHaveValue('Supper at Grandma’s');
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect(page.getByTestId('non-cooking-sheet')).toBeHidden();
+  await expect(page.getByTestId('day-card-0').getByTestId('non-cooking-indicator')).toHaveText(
+    'Supper at Grandma’s'
+  );
+});
+
+test('Other plans stays readable and reachable on a phone', async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await setupCommonRoutes(page);
+  await mockNonCookingSchedule(page, emptyWeek());
+  await page.goto('/planner');
+  await page.getByTestId('day-card-0').getByTestId('plan-meal-button').click();
+  await expect(
+    page.getByTestId('pivot-sheet').getByRole('heading', { name: 'Plan supper', exact: true })
+  ).toBeVisible();
+  await expect(page.getByTestId('pivot-no-cooking')).toContainText('Other plans');
+  await expect(page.getByTestId('pivot-sheet')).toHaveCSS('opacity', '1');
+  await page.screenshot({ path: testInfo.outputPath('other-plans-menu.png') });
+  await page.getByTestId('pivot-no-cooking').click();
+  await expect(page.getByRole('dialog')).toHaveAccessibleName(
+    'What’s the supper plan? Monday, May 4'
+  );
+  await expect(page.getByRole('button', { name: 'Order In', exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'true'
+  );
+  await expect(page.getByRole('button', { name: 'Save plan', exact: true })).toBeInViewport();
+  await page.screenshot({ path: testInfo.outputPath('other-plans-sheet.png') });
+  await page.getByTestId('non-cooking-other-plans').click();
+  await page.getByTestId('non-cooking-custom-label').fill('Supper at Grandma’s');
+  await page.getByTestId('non-cooking-save').click();
+  await expect(page.getByTestId('non-cooking-sheet')).toBeHidden();
+  await page.goto('/home');
+  await expect(page.getByTestId('today-non-cooking-plan')).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath('other-plans-home.png') });
 });

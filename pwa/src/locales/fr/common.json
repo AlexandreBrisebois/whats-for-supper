@@ -170,6 +170,7 @@
     "profile": "Profil"
   },
   "home": {
+    "tonight": "Ce soir",
     "nothingPlanned": "Rien de prévu ?",
     "quickFixes": "Solutions Rapides",
     "fix15min": "Prêt en 15 Min",
@@ -246,7 +247,7 @@
     "closeVoting": "Fermer le vote",
     "diversify": "Diversifier",
     "holdToMove": "Maintenir pour déplacer",
-    "noCooking": "Pas de cuisine",
+    "noCooking": "Autres plans",
     "eatingOut": "Manger à l’extérieur",
     "otherPlans": "Autres plans",
     "editSupperPlan": "Modifier le souper",
@@ -256,7 +257,14 @@
     "nonCookingInvalid": "Entrez un message de 1 à 80 caractères.",
     "nonCookingConflict": "Le plan de cette journée a changé. Vérifiez-le avant de réessayer.",
     "nonCookingSaveError": "Impossible d’enregistrer ce plan. Réessayez.",
-    "clearDay": "Libérer la journée"
+    "clearDay": "Libérer la journée",
+    "otherPlansSubtitle": "Commandez, sortez ou ajoutez votre plan",
+    "supperPlanTitle": "Quel est le plan pour le souper?",
+    "planSupper": "Planifier le souper",
+    "changeSupperPlans": "Changer les plans du souper",
+    "supperOptionsSubtitle": "Choisissez ce qui convient pour cette journée",
+    "savePlan": "Enregistrer le plan",
+    "savingPlan": "Enregistrement…"
   },
   "grocery": {
     "smartShopping": "Courses Intelligentes",

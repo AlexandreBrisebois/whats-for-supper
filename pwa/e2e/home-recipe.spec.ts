@@ -448,7 +448,7 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
 
     await expect(page.getByTestId('recovery-dialog-title')).toBeVisible();
 
-    // Click "Ordering In" → step 2
+    // Click "Order In" → step 2
     await page.getByTestId('recovery-action-order-in').click();
     await expect(page.getByText("What about tonight's recipe?")).toBeVisible();
 
@@ -569,7 +569,7 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
 
     await expect(page.getByTestId('recovery-dialog-title')).toBeVisible();
 
-    // Click "Ordering In" → step 2
+    // Click "Order In" → step 2
     await page.getByTestId('recovery-action-order-in').click();
     await expect(page.getByText("What about tonight's recipe?")).toBeVisible();
 

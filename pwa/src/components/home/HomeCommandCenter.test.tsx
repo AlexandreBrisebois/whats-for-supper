@@ -232,7 +232,7 @@ describe('HomeCommandCenter', () => {
   });
 
   it.each([
-    ['order_in', null, 'Ordering In'],
+    ['order_in', null, 'Order In'],
     ['eating_out', null, 'Eating out'],
     ['custom', 'Supper at Grandma’s', 'Supper at Grandma’s'],
     ['custom', 'Emma’s birthday supper', 'Emma’s birthday supper'],
@@ -245,10 +245,26 @@ describe('HomeCommandCenter', () => {
       render(<HomeCommandCenter todaysRecipe={null} todayStatus={3} />);
 
       expect(await screen.findByTestId('today-non-cooking-label')).toHaveTextContent(label!);
+      fireEvent.click(screen.getByRole('button', { name: `Tonight ${label} Edit supper plan` }));
+      expect(mocks.push).toHaveBeenCalledWith('/planner?weekOffset=0&planDate=2026-05-07');
+      expect(screen.queryByRole('summary')).not.toBeInTheDocument();
       expect(screen.queryByTestId('order-in-btn')).not.toBeInTheDocument();
       expect(screen.queryByTestId('tonight-menu-card')).not.toBeInTheDocument();
     }
   );
+
+  it('keeps the existing empty-day fallback and planned-meal controls', async () => {
+    const view = render(<HomeCommandCenter todaysRecipe={null} todayStatus={0} />);
+    expect(screen.getByTestId('order-in-btn')).toBeInTheDocument();
+    expect(screen.queryByTestId('today-non-cooking-plan')).not.toBeInTheDocument();
+    mocks.currentRecipe = { id: '11111111-1111-1111-1111-111111111111', name: 'Pasta' };
+    view.rerender(<HomeCommandCenter todaysRecipe={mocks.currentRecipe} todayStatus={0} />);
+    expect(screen.getByTestId('skip-btn')).toBeInTheDocument();
+    expect(screen.queryByTestId('order-in-btn')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('today-non-cooking-plan')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('skip-btn'));
+    expect(screen.getByTestId('recovery-action-order-in')).toBeInTheDocument();
+  });
 
   it('re-fetches a pending GOTO when its recipe is already marked ready by SSE', async () => {
     mocks.loadActiveGoTo

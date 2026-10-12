@@ -148,7 +148,7 @@ export function TonightPivotCard({
                   : 'flex items-center justify-center h-12 rounded-[1.5rem] bg-charcoal/10 text-charcoal/60 transition-all active:scale-95 hover:bg-charcoal/20 text-[10px] font-black uppercase tracking-widest'
               }
             >
-              {t('home.orderingIn', 'Ordering In')}
+              {t('home.orderingIn', 'Order In')}
             </button>
           </div>
         </div>

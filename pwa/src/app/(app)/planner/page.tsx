@@ -95,6 +95,8 @@ export default function PlannerPage() {
   } | null>(null);
   const { setHasPendingCards } = useDiscoveryStore();
   const searchParams = useSearchParams();
+  const planDate = searchParams.get('planDate');
+  const openedPlanDate = useRef<string | null>(null);
   const successParam = searchParams.get('success');
   const [prevOffset, setPrevOffset] = useState(currentWeekOffset);
   const preDragSnapshotRef = useRef<UILocalScheduleDay[] | null>(null);
@@ -146,6 +148,22 @@ export default function PlannerPage() {
   useEffect(() => {
     useWeekStore.getState().init(currentWeekOffset);
   }, [currentWeekOffset, successParam]);
+
+  useEffect(() => {
+    if (!planDate) {
+      openedPlanDate.current = null;
+      return;
+    }
+    if (isLoading || currentWeekOffset !== 0 || openedPlanDate.current === planDate) return;
+    const day = schedule.find((item) => item.date === planDate);
+    if (!day || day.status !== 3 || day.recipe?.id) return;
+    const timer = window.setTimeout(() => {
+      openedPlanDate.current = planDate;
+      setActiveTab('planner');
+      setNonCookingTarget({ date: planDate, weekOffset: 0, plan: day.nonCooking, existing: true });
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [planDate, isLoading, currentWeekOffset, schedule, setActiveTab]);
 
   useEffect(() => {
     if (pendingQuickFindDayIndex === null || showPivot !== null) return;
@@ -759,6 +777,7 @@ export default function PlannerPage() {
         />
       )}
       <PlanningPivotSheet
+        date={showPivot !== null ? (schedule[showPivot.dayIndex]?.date ?? undefined) : undefined}
         isNonCooking={showPivot !== null && schedule[showPivot.dayIndex]?.status === 3}
         onNoCooking={
           showPivot !== null &&

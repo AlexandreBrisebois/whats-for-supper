@@ -87,6 +87,7 @@ vi.mock('framer-motion', () => ({
 vi.mock('@/locales', () => ({
   t: (_key: string, fallback: string) => fallback,
   tWithVars: (_key: string, fallback: string) => fallback,
+  getLocale: () => 'en',
 }));
 
 vi.mock('@/lib/utils', () => ({
@@ -199,7 +200,7 @@ vi.mock('@/components/planner/PlanningPivotSheet', () => ({
         </button>
         {onNoCooking && (
           <button data-testid="mock-pivot-no-cooking" onClick={onNoCooking}>
-            No cooking
+            Other plans
           </button>
         )}
       </div>
@@ -390,7 +391,28 @@ describe('PlannerPage voting action row', () => {
     renderPlanner(status);
     fireEvent.click(within(screen.getByTestId('day-card-1')).getByTestId('plan-meal-button'));
     fireEvent.click(screen.getByTestId('mock-pivot-no-cooking'));
-    expect(screen.getByTestId('non-cooking-sheet')).toHaveTextContent('2026-05-12');
+    expect(screen.getByTestId('non-cooking-sheet')).toHaveTextContent('Tuesday, May 12');
+  });
+
+  it('opens the saved plan from Home once and stays closed after dismissal', async () => {
+    mocks.setSearchParams('weekOffset=0&planDate=2026-05-12');
+    const view = renderPlanner(0);
+    const state = mocks.getWeekState();
+    state.schedule[1] = {
+      ...state.schedule[1],
+      recipe: null,
+      status: 3,
+      nonCooking: { kind: 'custom', customLabel: 'Supper at Grandma’s' },
+    };
+    mocks.setWeekState({ ...state, schedule: [...state.schedule] });
+    view.rerender(<PlannerPage />);
+    expect(await screen.findByTestId('non-cooking-custom-label')).toHaveValue(
+      'Supper at Grandma’s'
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    view.rerender(<PlannerPage />);
+    expect(screen.queryByTestId('non-cooking-sheet')).not.toBeInTheDocument();
+    expect(mocks.saveNonCookingDay).not.toHaveBeenCalled();
   });
 
   it('does not apply a late save response to the newly selected week', async () => {
