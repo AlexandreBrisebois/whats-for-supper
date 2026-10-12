@@ -161,7 +161,7 @@ export default function PlannerPage() {
     const timer = window.setTimeout(() => {
       openedPlanDate.current = planDate;
       setActiveTab('planner');
-      setNonCookingTarget({ date: planDate, weekOffset: 0, plan: day.nonCooking, existing: true });
+      setShowPivot({ dayIndex: schedule.indexOf(day) });
     }, 0);
     return () => window.clearTimeout(timer);
   }, [planDate, isLoading, currentWeekOffset, schedule, setActiveTab]);

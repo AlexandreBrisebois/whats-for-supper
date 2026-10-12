@@ -179,6 +179,7 @@ vi.mock('@/components/planner/PlanningPivotSheet', () => ({
     onPlanLater,
     onQuickFind,
     onNoCooking,
+    onClose,
   }: {
     isOpen: boolean;
     dayIndex: number;
@@ -186,6 +187,7 @@ vi.mock('@/components/planner/PlanningPivotSheet', () => ({
     onPlanLater?: () => void;
     onQuickFind: () => void;
     onNoCooking?: () => void;
+    onClose: () => void;
   }) =>
     isOpen ? (
       <div
@@ -195,6 +197,7 @@ vi.mock('@/components/planner/PlanningPivotSheet', () => ({
         data-has-plan-later={onPlanLater ? 'true' : 'false'}
         data-has-no-cooking={onNoCooking ? 'true' : 'false'}
       >
+        <button onClick={onClose}>Close</button>
         <button data-testid="mock-pivot-quick-find" onClick={onQuickFind}>
           Quick replace
         </button>
@@ -421,7 +424,7 @@ describe('PlannerPage voting action row', () => {
     }
   );
 
-  it('opens the saved plan from Home once and stays closed after dismissal', async () => {
+  it('opens the change menu from Home once and can edit the saved plan', async () => {
     mocks.setSearchParams('weekOffset=0&planDate=2026-05-12');
     const view = renderPlanner(0);
     const state = mocks.getWeekState();
@@ -433,9 +436,11 @@ describe('PlannerPage voting action row', () => {
     };
     mocks.setWeekState({ ...state, schedule: [...state.schedule] });
     view.rerender(<PlannerPage />);
-    expect(await screen.findByTestId('non-cooking-custom-label')).toHaveValue(
-      'Supper at Grandma’s'
-    );
+    const pivot = await screen.findByTestId('mock-planning-pivot-sheet');
+    expect(pivot).toHaveAttribute('data-day-index', '1');
+    expect(screen.queryByTestId('non-cooking-sheet')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('mock-pivot-no-cooking'));
+    expect(screen.getByTestId('non-cooking-custom-label')).toHaveValue('Supper at Grandma’s');
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     view.rerender(<PlannerPage />);
     expect(screen.queryByTestId('non-cooking-sheet')).not.toBeInTheDocument();

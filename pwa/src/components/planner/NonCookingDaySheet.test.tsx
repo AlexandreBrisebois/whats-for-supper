@@ -3,6 +3,26 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { NonCookingDaySheet } from './NonCookingDaySheet';
 
 describe('NonCookingDaySheet', () => {
+  it('offers removing the plan above Cancel and only clears the day', async () => {
+    const onClear = vi.fn().mockResolvedValue(undefined);
+    const onSave = vi.fn();
+    render(
+      <NonCookingDaySheet
+        date="2026-10-12"
+        plan={{ kind: 'order_in' }}
+        onSave={onSave}
+        onClear={onClear}
+        onClose={vi.fn()}
+      />
+    );
+    const remove = screen.getByRole('button', { name: 'Remove supper plan' });
+    const cancel = screen.getByRole('button', { name: 'Cancel' });
+    expect(remove.compareDocumentPosition(cancel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    await act(async () => fireEvent.click(remove));
+    expect(onClear).toHaveBeenCalledOnce();
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
   it('localizes the sheet, choices and date in French', () => {
     localStorage.setItem('locale', 'fr');
     try {

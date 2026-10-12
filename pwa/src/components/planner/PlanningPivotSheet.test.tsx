@@ -117,6 +117,12 @@ describe('PlanningPivotSheet', () => {
     ).toBeInTheDocument();
     expect(screen.getByText('Monday, October 12')).toBeInTheDocument();
     expect(screen.queryByText('Change this recipe')).not.toBeInTheDocument();
+    if (isNonCooking) {
+      expect(
+        screen.getByRole('button', { name: 'Remove supper plan Leave this day unplanned' })
+      ).toBeInTheDocument();
+      expect(screen.queryByText('Remove recipe')).not.toBeInTheDocument();
+    }
     expect(screen.getByTestId('pivot-no-cooking')).toHaveTextContent(
       isNonCooking ? 'Edit supper plan' : 'Other plans'
     );

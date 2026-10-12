@@ -319,7 +319,7 @@ test.describe('Planner — Ordered-In State', () => {
 
     await todayCard.getByTestId('ordered-in-indicator').click();
     await expect(page.getByTestId('pivot-remove-recipe')).toHaveAccessibleName(
-      'Remove recipe Clear this slot'
+      'Remove supper plan Leave this day unplanned'
     );
     await page.getByTestId('pivot-remove-recipe').click();
     await expect(todayCard.getByTestId('plan-meal-button')).toBeVisible();

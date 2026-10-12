@@ -156,9 +156,15 @@ export const PlanningPivotSheet: React.FC<PlanningPivotSheetProps> = ({
                   </div>
                   <div className="flex-1">
                     <h4 className="font-heading text-lg font-black text-charcoal tracking-tight">
-                      {t('planner.removeRecipeAction', 'Remove recipe')}
+                      {isNonCooking
+                        ? t('planner.clearDay', 'Remove supper plan')
+                        : t('planner.removeRecipeAction', 'Remove recipe')}
                     </h4>
-                    <p className="text-[11px] text-charcoal/40 font-medium">Clear this slot</p>
+                    <p className="text-xs text-charcoal/70 font-medium">
+                      {isNonCooking
+                        ? t('planner.leaveDayUnplanned', 'Leave this day unplanned')
+                        : 'Clear this slot'}
+                    </p>
                   </div>
                 </button>
               )}

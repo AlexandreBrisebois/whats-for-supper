@@ -284,12 +284,14 @@ export const useTodayStore = create<TodayState>((set, get) => ({
         if (recipe) {
           set({
             currentRecipe: recipe,
+            status: 0,
             nonCooking: null,
             lastSyncedAt: Date.now(),
           });
         } else {
           set({
             currentRecipe: null,
+            status: 0,
             nonCooking: null,
             lastSyncedAt: Date.now(),
           });

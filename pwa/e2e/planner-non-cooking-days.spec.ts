@@ -158,6 +158,9 @@ test('Home reconciles and reloads a custom message saved in planner', async ({ p
   await page.reload();
   await expect(page.getByTestId('today-non-cooking-label')).toHaveText('Supper at Grandma’s');
   await page.getByTestId('today-non-cooking-plan').click();
+  await expect(page.getByTestId('pivot-sheet')).toContainText('Change supper plans');
+  await expect(page.getByTestId('non-cooking-sheet')).toBeHidden();
+  await page.getByTestId('pivot-no-cooking').click();
   await expect(page.getByTestId('non-cooking-custom-label')).toHaveValue('Supper at Grandma’s');
   await page.getByRole('button', { name: 'Cancel', exact: true }).click();
   await expect(page.getByTestId('non-cooking-sheet')).toBeHidden();
@@ -254,3 +257,56 @@ test.describe('Home local calendar day', () => {
     });
   }
 });
+
+test('Home Order In opens the change menu with recipe and removal paths', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await setupCommonRoutes(page);
+  const state = emptyWeek();
+  state.days![0].status = 3;
+  state.days![0].nonCooking = { kind: 'order_in', customLabel: null };
+  await mockNonCookingSchedule(page, state);
+  await page.goto('/home');
+  await page.getByTestId('today-non-cooking-plan').click();
+  await expect(page.getByTestId('pivot-sheet')).toContainText('Change supper plans');
+  await expect(page.getByTestId('non-cooking-sheet')).toBeHidden();
+  await expect(page.getByTestId('pivot-quick-find')).toBeVisible();
+  await expect(page.getByTestId('pivot-remove-recipe')).toContainText('Remove supper plan');
+  await page.getByTestId('pivot-search-library').click();
+  await expect(page).toHaveURL(/\/recipes\?addToDay=0&weekOffset=0/);
+  await page.goto('/home');
+  await page.getByTestId('today-non-cooking-plan').click();
+  await page.getByTestId('pivot-remove-recipe').click();
+  await expect(page.getByTestId('day-card-0').getByTestId('plan-meal-button')).toBeVisible();
+  expect(state.days![0].nonCooking).toBeNull();
+});
+
+for (const removalPath of ['menu', 'editor'] as const) {
+  test(`removing today's plan from the ${removalPath} updates Home without reload`, async ({
+    page,
+  }) => {
+    await setupCommonRoutes(page);
+    const state = emptyWeek();
+    state.days![0].status = 3;
+    state.days![0].nonCooking = { kind: 'order_in', customLabel: null };
+    await mockNonCookingSchedule(page, state);
+    await page.goto('/home');
+    await page.getByTestId('today-non-cooking-plan').click();
+    await expect(page.getByTestId('pivot-sheet')).toBeVisible();
+    const removed = page.waitForResponse(
+      (response) => response.request().method() === 'DELETE' && response.url().endsWith('/remove')
+    );
+    if (removalPath === 'editor') {
+      await page.getByTestId('pivot-no-cooking').click();
+      await page.getByTestId('non-cooking-clear').click();
+    } else {
+      await page.getByTestId('pivot-remove-recipe').click();
+    }
+    expect((await removed).status()).toBe(204);
+    await expect(page.getByTestId('day-card-0').getByTestId('plan-meal-button')).toBeVisible();
+    await page.getByTestId('nav-item-home').click();
+    await expect(page).toHaveURL(/\/home$/);
+    await expect(page.getByTestId('today-non-cooking-plan')).toBeHidden();
+    await expect(page.getByTestId('tonight-pivot-card')).toBeVisible();
+    expect(state.days![0]).toMatchObject({ status: 0, nonCooking: null });
+  });
+}

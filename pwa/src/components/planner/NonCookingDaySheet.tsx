@@ -205,6 +205,16 @@ export function NonCookingDaySheet({ date, plan, onSave, onClear, onClose }: Pro
           >
             {busy ? t('planner.savingPlan', 'Saving…') : t('planner.savePlan', 'Save plan')}
           </button>
+          {onClear && (
+            <button
+              disabled={busy}
+              onClick={() => submit(true)}
+              data-testid="non-cooking-clear"
+              className="min-h-12 w-full rounded-2xl border-2 border-charcoal/20 bg-white/50 px-4 py-3 font-bold text-charcoal hover:bg-charcoal/5 focus-visible:outline-2 focus-visible:outline-terracotta disabled:opacity-50"
+            >
+              {t('planner.clearDay', 'Remove supper plan')}
+            </button>
+          )}
           <button
             disabled={busy}
             onClick={onClose}
@@ -213,16 +223,6 @@ export function NonCookingDaySheet({ date, plan, onSave, onClear, onClose }: Pro
             {t('common.cancel', 'Cancel')}
           </button>
         </div>
-        {onClear && (
-          <button
-            disabled={busy}
-            onClick={() => submit(true)}
-            data-testid="non-cooking-clear"
-            className="mt-4 min-h-11 w-full border-t border-charcoal/10 px-4 pt-4 pb-2 text-sm font-bold text-charcoal/70 hover:text-terracotta-700 disabled:opacity-50"
-          >
-            {t('planner.clearDay', 'Clear day')}
-          </button>
-        )}
       </div>
     </div>
   );

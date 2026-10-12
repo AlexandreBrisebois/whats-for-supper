@@ -12,6 +12,7 @@ vi.mock('@/lib/api/planner', async (importActual) => {
 import { useTodayStore } from './todayStore';
 import { assignRecipeToDay, getSchedule } from '@/lib/api/planner';
 import { apiClient } from '@/lib/api/api-client';
+import { getTodayString } from '@/lib/imageUtils';
 
 vi.mock('@/lib/api/api-client', () => ({
   apiClient: {
@@ -274,6 +275,44 @@ describe('todayStore — assignRecipe', () => {
 });
 
 describe('todayStore — sync', () => {
+  it.each([
+    { kind: 'order_in', customLabel: null },
+    { kind: 'eating_out', customLabel: null },
+    { kind: 'custom', customLabel: 'Supper at Grandma’s' },
+  ] as const)('clears a removed $kind plan when Home synchronizes', async (plan) => {
+    useTodayStore.setState({ status: 3, nonCooking: plan });
+    vi.mocked(getSchedule).mockResolvedValueOnce({
+      weekOffset: 0,
+      days: [{ date: getTodayString(), status: 0, recipe: null, nonCooking: null }],
+    });
+
+    await useTodayStore.getState().sync();
+
+    expect(useTodayStore.getState()).toMatchObject({
+      status: 0,
+      currentRecipe: null,
+      nonCooking: null,
+      isLoading: false,
+    });
+  });
+
+  it('shows the recipe when a saved plan has been replaced on the server', async () => {
+    const recipe = { id: '22222222-2222-2222-2222-222222222222', name: 'Pasta' };
+    useTodayStore.setState({ status: 3, nonCooking: { kind: 'order_in' } });
+    vi.mocked(getSchedule).mockResolvedValueOnce({
+      weekOffset: 0,
+      days: [{ date: getTodayString(), status: 0, recipe, nonCooking: null }],
+    });
+
+    await useTodayStore.getState().sync();
+
+    expect(useTodayStore.getState()).toMatchObject({
+      status: 0,
+      currentRecipe: recipe,
+      nonCooking: null,
+    });
+  });
+
   it('updates details if ID matches during optimistic window (SMART RECONCILIATION)', async () => {
     const recipeId = 'recipe-1';
     const initialRecipe = {
