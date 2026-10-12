@@ -142,6 +142,23 @@ it('shows a custom supper plan as the primary text instead of a GOTO suggestion'
   expect(screen.queryByText('Nothing planned yet')).not.toBeInTheDocument();
 });
 
+it.each([
+  ['order_in', 'lucide-shopping-bag'],
+  ['eating_out', 'lucide-utensils-crossed'],
+  ['custom', 'lucide-calendar-days'],
+] as const)('shows the %s icon in the non-cooking hero', (kind, iconClass) => {
+  render(
+    <TonightPivotCard
+      {...baseProps}
+      gotoDescription={null}
+      gotoRecipeId={null}
+      nonCookingLabel="Saved plan"
+      nonCookingKind={kind}
+    />
+  );
+  expect(screen.getByTestId('pivot-card-image-area').querySelector(`.${iconClass}`)).not.toBeNull();
+});
+
 it('does not show a GOTO recipe image on a non-cooking day', () => {
   render(
     <TonightPivotCard

@@ -34,6 +34,7 @@ import { apiClient } from '@/lib/api/api-client';
 import { DateOnly } from '@microsoft/kiota-abstractions';
 import { Button } from '@/components/ui/button';
 import { NonCookingDaySheet } from '@/components/planner/NonCookingDaySheet';
+import { NonCookingIcon } from '@/components/planner/NonCookingIcon';
 import { nonCookingLabel } from '@/lib/planner/nonCooking';
 import type { NonCookingPlanDto } from '@/lib/api/generated/models';
 import { PlanningPivotSheet } from '@/components/planner/PlanningPivotSheet';
@@ -1081,8 +1082,8 @@ const PlannerDayCard = memo(function PlannerDayCard({
               data-testid="ordered-in-indicator"
               className="flex items-center gap-3 w-full text-left hover:opacity-80 transition-opacity"
             >
-              <div className="h-10 w-10 rounded-xl bg-charcoal/5 flex items-center justify-center flex-shrink-0">
-                <span className="text-xl">🥡</span>
+              <div className="h-10 w-10 rounded-xl bg-sage/10 text-sage-700 flex items-center justify-center flex-shrink-0">
+                <NonCookingIcon kind={day.nonCooking?.kind} />
               </div>
               <div className="flex flex-col gap-0.5">
                 <span

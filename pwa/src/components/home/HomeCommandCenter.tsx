@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Check, CalendarCheck, ChevronRight } from 'lucide-react';
+import { Check, ChevronRight } from 'lucide-react';
+import { NonCookingIcon } from '../planner/NonCookingIcon';
 import {
   QuickCaptureTrigger,
   CookedSuccessCard,
@@ -318,7 +319,7 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
               className="flex w-full items-center gap-4 rounded-[2rem] border border-sage/20 bg-sage/10 p-5 text-left transition-colors hover:bg-sage/15 focus-visible:outline-2 focus-visible:outline-sage-700"
             >
               <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-sage/15 text-sage-700">
-                <CalendarCheck size={24} aria-hidden="true" />
+                <NonCookingIcon kind={nonCooking?.kind} />
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block mb-1 text-xs font-bold text-charcoal/70">
@@ -362,6 +363,7 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
                 })
               }
               nonCookingLabel={isSkipped ? nonCookingLabel(nonCooking) : null}
+              nonCookingKind={nonCooking?.kind}
               onOrderIn={async () => {
                 if (!currentRecipe) {
                   // B5: No recipe — write status:3 unconditionally via store

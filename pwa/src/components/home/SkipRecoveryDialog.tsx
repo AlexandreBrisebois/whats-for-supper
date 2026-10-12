@@ -2,7 +2,8 @@
 
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Utensils, Pizza, RefreshCw, Calendar, ArrowRight, Trash2 } from 'lucide-react';
+import { X, Utensils, RefreshCw, Calendar, ArrowRight, Trash2 } from 'lucide-react';
+import { NonCookingIcon } from '../planner/NonCookingIcon';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { t } from '@/locales';
@@ -89,7 +90,7 @@ export function SkipRecoveryDialog({
                     className="flex w-full items-center gap-4 p-5 rounded-[2rem] border-2 border-charcoal/5 hover:border-terracotta/30 hover:bg-terracotta/5 transition-all text-left group"
                   >
                     <div className="h-14 w-14 rounded-2xl bg-terracotta/10 text-terracotta flex items-center justify-center group-hover:scale-110 transition-transform">
-                      <Pizza size={28} />
+                      <NonCookingIcon kind="order_in" size={28} />
                     </div>
                     <div className="flex flex-1 flex-col items-start text-left">
                       <span className="font-heading text-xl font-black text-charcoal tracking-tight">

@@ -3,7 +3,8 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
 import type { NonCookingPlanDto } from '@/lib/api/generated/models';
 import { t } from '@/locales';
-import { X, ShoppingBag, UtensilsCrossed, CalendarDays, Check } from 'lucide-react';
+import { X, Check } from 'lucide-react';
+import { NonCookingIcon } from './NonCookingIcon';
 import { formatSupperPlanDate } from '@/lib/planner/nonCooking';
 
 interface Props {
@@ -143,21 +144,11 @@ export function NonCookingDaySheet({ date, plan, onSave, onClear, onClose }: Pro
         >
           {(
             [
-              ['order_in', t('home.orderingIn', 'Order In'), 'non-cooking-order-in', ShoppingBag],
-              [
-                'eating_out',
-                t('planner.eatingOut', 'Eating out'),
-                'non-cooking-eating-out',
-                UtensilsCrossed,
-              ],
-              [
-                'custom',
-                t('planner.otherPlans', 'Other plans'),
-                'non-cooking-other-plans',
-                CalendarDays,
-              ],
+              ['order_in', t('home.orderingIn', 'Order In'), 'non-cooking-order-in'],
+              ['eating_out', t('planner.eatingOut', 'Eating out'), 'non-cooking-eating-out'],
+              ['custom', t('planner.otherPlans', 'Other plans'), 'non-cooking-other-plans'],
             ] as const
-          ).map(([value, label, testId, Icon]) => (
+          ).map(([value, label, testId]) => (
             <button
               key={value}
               disabled={busy}
@@ -170,7 +161,7 @@ export function NonCookingDaySheet({ date, plan, onSave, onClear, onClose }: Pro
               className={`flex w-full items-center gap-3 rounded-[1.5rem] border-2 p-4 text-left transition-colors focus-visible:outline-2 focus-visible:outline-terracotta disabled:opacity-50 ${kind === value ? 'border-sage/40 bg-sage/10 text-charcoal' : 'border-charcoal/5 text-charcoal hover:border-sage/30 hover:bg-sage/5'}`}
             >
               <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-sage/10 text-sage-700">
-                <Icon size={24} aria-hidden="true" />
+                <NonCookingIcon kind={value} />
               </span>
               <span className="flex-1 font-heading text-lg font-bold">{label}</span>
               {kind === value && (

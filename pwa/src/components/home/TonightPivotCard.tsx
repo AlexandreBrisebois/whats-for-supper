@@ -1,6 +1,8 @@
 'use client';
 
 import { Utensils } from 'lucide-react';
+import { NonCookingIcon } from '../planner/NonCookingIcon';
+import type { NonCookingPlanDto } from '@/lib/api/generated/models';
 import { TonightCardBase } from './TonightMenuCard';
 import { getImageUrl } from '@/lib/imageUtils';
 import Link from 'next/link';
@@ -17,6 +19,7 @@ interface TonightPivotCardProps {
   onDiscover: () => void;
   onOrderIn: () => void;
   nonCookingLabel?: string | null;
+  nonCookingKind?: NonCookingPlanDto['kind'] | null;
 }
 
 export function TonightPivotCard({
@@ -28,6 +31,7 @@ export function TonightPivotCard({
   onDiscover,
   onOrderIn,
   nonCookingLabel,
+  nonCookingKind,
 }: TonightPivotCardProps) {
   // A GOTO is only actionable when it exists AND is ready.
   // Existing values without a status field (set before Phase 13) are treated as ready.
@@ -70,6 +74,8 @@ export function TonightPivotCard({
               alt={gotoDescription ?? 'Recipe image'}
               className="absolute inset-0 h-full w-full object-cover"
             />
+          ) : nonCookingLabel ? (
+            <NonCookingIcon kind={nonCookingKind} size={48} className="text-sage-700" />
           ) : (
             <Utensils size={48} className="text-charcoal/10" />
           )}

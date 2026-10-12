@@ -245,6 +245,15 @@ describe('HomeCommandCenter', () => {
       render(<HomeCommandCenter todaysRecipe={null} todayStatus={3} />);
 
       expect(await screen.findByTestId('today-non-cooking-label')).toHaveTextContent(label!);
+      const iconClass =
+        kind === 'custom'
+          ? 'lucide-calendar-days'
+          : kind === 'eating_out'
+            ? 'lucide-utensils-crossed'
+            : 'lucide-shopping-bag';
+      expect(
+        screen.getByTestId('today-non-cooking-plan').querySelector(`.${iconClass}`)
+      ).not.toBeNull();
       fireEvent.click(screen.getByRole('button', { name: `Tonight ${label} Edit supper plan` }));
       expect(mocks.push).toHaveBeenCalledWith('/planner?weekOffset=0&planDate=2026-05-07');
       expect(screen.queryByRole('summary')).not.toBeInTheDocument();

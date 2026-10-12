@@ -394,6 +394,33 @@ describe('PlannerPage voting action row', () => {
     expect(screen.getByTestId('non-cooking-sheet')).toHaveTextContent('Tuesday, May 12');
   });
 
+  it.each(['order_in', 'eating_out', 'custom'] as const)(
+    'renders the saved %s icon on the meal plan',
+    (kind) => {
+      const view = renderPlanner(0);
+      const state = mocks.getWeekState();
+      state.schedule[1] = {
+        ...state.schedule[1],
+        recipe: null,
+        status: 3,
+        nonCooking: { kind, customLabel: kind === 'custom' ? 'Family supper' : null },
+      };
+      mocks.setWeekState({ ...state, schedule: [...state.schedule] });
+      view.rerender(<PlannerPage />);
+      const indicator = within(screen.getByTestId('day-card-1')).getByTestId(
+        'ordered-in-indicator'
+      );
+      const iconClass =
+        kind === 'custom'
+          ? 'lucide-calendar-days'
+          : kind === 'eating_out'
+            ? 'lucide-utensils-crossed'
+            : 'lucide-shopping-bag';
+      expect(indicator.querySelector(`.${iconClass}`)).not.toBeNull();
+      expect(indicator).not.toHaveTextContent('🥡');
+    }
+  );
+
   it('opens the saved plan from Home once and stays closed after dismissal', async () => {
     mocks.setSearchParams('weekOffset=0&planDate=2026-05-12');
     const view = renderPlanner(0);
