@@ -88,32 +88,6 @@ export const PlanningPivotSheet: React.FC<PlanningPivotSheetProps> = ({
             )}
 
             <div className="grid grid-cols-1 gap-4">
-              {onNoCooking && (
-                <button
-                  onClick={onNoCooking}
-                  data-testid="pivot-no-cooking"
-                  className="flex items-center gap-4 rounded-[2rem] border-2 border-charcoal/5 p-5 text-left hover:border-sage/30 hover:bg-sage/5 transition-colors group"
-                >
-                  <div className="h-12 w-12 rounded-2xl bg-sage/10 text-sage-700 flex items-center justify-center shrink-0">
-                    <CalendarCheck size={24} aria-hidden="true" />
-                  </div>
-                  <div className="flex-1">
-                    <h4 className="font-heading text-lg font-black text-charcoal tracking-tight">
-                      {isNonCooking
-                        ? t('planner.editSupperPlan', 'Edit supper plan')
-                        : t('planner.noCooking', 'Other plans')}
-                    </h4>
-                    <p className="text-xs text-charcoal/70 font-medium">
-                      {t('planner.otherPlansSubtitle', 'Order in, eat out, or add your own')}
-                    </p>
-                  </div>
-                  <ChevronRight
-                    size={18}
-                    aria-hidden="true"
-                    className="text-charcoal/40 shrink-0"
-                  />
-                </button>
-              )}
               {hasRecipe && onPlanLater && (
                 <button
                   onClick={onPlanLater}
@@ -186,6 +160,32 @@ export const PlanningPivotSheet: React.FC<PlanningPivotSheetProps> = ({
                     </h4>
                     <p className="text-[11px] text-charcoal/40 font-medium">Clear this slot</p>
                   </div>
+                </button>
+              )}
+              {onNoCooking && (
+                <button
+                  onClick={onNoCooking}
+                  data-testid="pivot-no-cooking"
+                  className="flex items-center gap-4 rounded-[2rem] border-2 border-charcoal/5 p-5 text-left hover:border-sage/30 hover:bg-sage/5 transition-colors group"
+                >
+                  <div className="h-12 w-12 rounded-2xl bg-sage/10 text-sage-700 flex items-center justify-center shrink-0">
+                    <CalendarCheck size={24} aria-hidden="true" />
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="font-heading text-lg font-black text-charcoal tracking-tight">
+                      {isNonCooking
+                        ? t('planner.editSupperPlan', 'Edit supper plan')
+                        : t('planner.noCooking', 'Other plans')}
+                    </h4>
+                    <p className="text-xs text-charcoal/70 font-medium">
+                      {t('planner.otherPlansSubtitle', 'Order in, eat out, or add your own')}
+                    </p>
+                  </div>
+                  <ChevronRight
+                    size={18}
+                    aria-hidden="true"
+                    className="text-charcoal/40 shrink-0"
+                  />
                 </button>
               )}
             </div>

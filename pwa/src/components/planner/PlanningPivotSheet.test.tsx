@@ -73,6 +73,30 @@ function renderSheet({
 }
 
 describe('PlanningPivotSheet', () => {
+  it.each([
+    { hasRecipe: false, isNonCooking: false },
+    { hasRecipe: true, isNonCooking: false },
+    { hasRecipe: true, isNonCooking: true },
+  ])('keeps other plans last for slot state %j', ({ hasRecipe, isNonCooking }) => {
+    localeMock.setLanguage('en');
+    render(
+      <PlanningPivotSheet
+        isOpen
+        onClose={vi.fn()}
+        dayIndex={0}
+        hasRecipe={hasRecipe}
+        isNonCooking={isNonCooking}
+        onNoCooking={vi.fn()}
+        onPlanLater={vi.fn()}
+        onQuickFind={vi.fn()}
+        onSearchLibrary={vi.fn()}
+      />
+    );
+
+    const otherPlans = screen.getByTestId('pivot-no-cooking');
+    expect(otherPlans.parentElement?.lastElementChild).toBe(otherPlans);
+  });
+
   it.each([false, true])('uses supper context for an empty or marked day (%s)', (isNonCooking) => {
     localeMock.setLanguage('en');
     render(
