@@ -88,7 +88,7 @@ for (const [choice, label, message] of [
   });
 }
 
-test('cancel and failed save retain the empty day and editable message', async ({ page }) => {
+test('close and failed save retain the empty day and editable message', async ({ page }) => {
   await setupCommonRoutes(page);
   await mockNonCookingSchedule(page, emptyWeek());
   await page.goto('/planner');
@@ -105,7 +105,10 @@ test('cancel and failed save retain the empty day and editable message', async (
   await page.getByTestId('non-cooking-save').click();
   await expect(page.getByTestId('non-cooking-sheet').getByRole('alert')).toBeVisible();
   await expect(page.getByTestId('non-cooking-custom-label')).toHaveValue('Birthday supper');
-  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect(
+    page.getByTestId('non-cooking-sheet').getByRole('button', { name: 'Cancel', exact: true })
+  ).toHaveCount(0);
+  await page.getByTestId('non-cooking-close').click();
   await expect(page.getByTestId('day-card-0').getByTestId('plan-meal-button')).toBeVisible();
 });
 
@@ -169,7 +172,7 @@ test('Home reconciles and reloads a custom message saved in planner', async ({ p
   await expect(page.getByTestId('non-cooking-sheet')).toBeHidden();
   await page.getByTestId('pivot-no-cooking').click();
   await expect(page.getByTestId('non-cooking-custom-label')).toHaveValue('Supper at Grandma’s');
-  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await page.getByTestId('non-cooking-close').click();
   await expect(page.getByTestId('non-cooking-sheet')).toBeHidden();
   await expect(page.getByTestId('day-card-0').getByTestId('non-cooking-indicator')).toHaveText(
     'Supper at Grandma’s'
@@ -189,9 +192,7 @@ test('Other plans stays readable and reachable on a phone', async ({ page }, tes
   await expect(page.getByTestId('pivot-sheet')).toHaveCSS('opacity', '1');
   await page.screenshot({ path: testInfo.outputPath('other-plans-menu.png') });
   await page.getByTestId('pivot-no-cooking').click();
-  await expect(page.getByRole('dialog')).toHaveAccessibleName(
-    'What’s the supper plan? Monday, May 4'
-  );
+  await expect(page.getByRole('dialog')).toHaveAccessibleName('What’s the plan? Monday, May 4');
   await expect(page.getByRole('button', { name: 'Order In', exact: true })).toHaveAttribute(
     'aria-pressed',
     'true'

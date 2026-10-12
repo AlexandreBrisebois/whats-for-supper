@@ -13,14 +13,14 @@ describe('NonCookingDaySheet', () => {
     fireEvent.change(input, { target: { value: 'Supper at Grandma’s' } });
     fireEvent.click(screen.getByRole('button', { name: 'Mystery night' }));
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
-    expect(screen.getByText('We’ll figure out supper that day.')).toBeInTheDocument();
+    expect(screen.queryByText('We’ll figure out supper that day.')).not.toBeInTheDocument();
     await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Save' })));
     expect(onSave).toHaveBeenCalledWith({ kind: 'mystery', customLabel: null });
     fireEvent.click(screen.getByTestId('non-cooking-other-plans'));
     expect(screen.getByLabelText('Tell the family the plan')).toHaveValue('Supper at Grandma’s');
   });
 
-  it('offers removing the plan above Cancel and only clears the day', async () => {
+  it('offers removing the plan without a Cancel button and only clears the day', async () => {
     const onClear = vi.fn().mockResolvedValue(undefined);
     const onSave = vi.fn();
     render(
@@ -33,8 +33,7 @@ describe('NonCookingDaySheet', () => {
       />
     );
     const remove = screen.getByRole('button', { name: 'Remove supper plan' });
-    const cancel = screen.getByRole('button', { name: 'Cancel' });
-    expect(remove.compareDocumentPosition(cancel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument();
     await act(async () => fireEvent.click(remove));
     expect(onClear).toHaveBeenCalledOnce();
     expect(onSave).not.toHaveBeenCalled();
@@ -44,9 +43,7 @@ describe('NonCookingDaySheet', () => {
     localStorage.setItem('locale', 'fr');
     try {
       render(<NonCookingDaySheet date="2026-10-12" onSave={vi.fn()} onClose={vi.fn()} />);
-      expect(screen.getByRole('dialog')).toHaveAccessibleName(
-        'Quel est le plan pour le souper? lundi 12 octobre'
-      );
+      expect(screen.getByRole('dialog')).toHaveAccessibleName('Quel est le plan? lundi 12 octobre');
       expect(screen.getByRole('button', { name: 'Commander' })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Souper mystère' })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'On a des plans' })).toBeInTheDocument();
@@ -64,9 +61,7 @@ describe('NonCookingDaySheet', () => {
         })
     );
     render(<NonCookingDaySheet date="2026-10-12" onSave={onSave} onClose={vi.fn()} />);
-    expect(screen.getByRole('dialog')).toHaveAccessibleName(
-      'What’s the supper plan? Monday, October 12'
-    );
+    expect(screen.getByRole('dialog')).toHaveAccessibleName('What’s the plan? Monday, October 12');
     expect(screen.getByRole('button', { name: 'Order In' })).toHaveAttribute(
       'aria-pressed',
       'true'
@@ -77,18 +72,19 @@ describe('NonCookingDaySheet', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     expect(screen.getByRole('button', { name: 'Saving…' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Close' })).toBeDisabled();
     await act(async () => finish());
   });
 
-  it('cancels without saving and restores focus to the trigger', () => {
+  it('closes with the top X without saving and restores focus to the trigger', () => {
     const trigger = document.createElement('button');
     document.body.appendChild(trigger);
     trigger.focus();
     const onSave = vi.fn();
     const onClose = vi.fn();
     const view = render(<NonCookingDaySheet date="2026-10-12" onSave={onSave} onClose={onClose} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
     expect(onClose).toHaveBeenCalledOnce();
     expect(onSave).not.toHaveBeenCalled();
     view.unmount();

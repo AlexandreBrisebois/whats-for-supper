@@ -423,6 +423,13 @@ describe('PlannerPage voting action row', () => {
               : 'lucide-shopping-bag';
       expect(indicator.querySelector(`.${iconClass}`)).not.toBeNull();
       expect(indicator).not.toHaveTextContent('🥡');
+      if (kind === 'mystery') {
+        expect(indicator).toHaveTextContent('We’ll figure out supper that day.');
+        expect(indicator).not.toHaveTextContent('No cook tonight');
+      } else {
+        expect(indicator).toHaveTextContent('No cook tonight');
+        expect(indicator).not.toHaveTextContent('We’ll figure out supper that day.');
+      }
     }
   );
 
@@ -443,7 +450,7 @@ describe('PlannerPage voting action row', () => {
     expect(screen.queryByTestId('non-cooking-sheet')).not.toBeInTheDocument();
     fireEvent.click(screen.getByTestId('mock-pivot-no-cooking'));
     expect(screen.getByTestId('non-cooking-custom-label')).toHaveValue('Supper at Grandma’s');
-    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
     view.rerender(<PlannerPage />);
     expect(screen.queryByTestId('non-cooking-sheet')).not.toBeInTheDocument();
     expect(mocks.saveNonCookingDay).not.toHaveBeenCalled();

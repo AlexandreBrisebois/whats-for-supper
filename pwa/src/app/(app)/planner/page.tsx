@@ -1093,7 +1093,11 @@ const PlannerDayCard = memo(function PlannerDayCard({
                 >
                   {nonCookingLabel(day.nonCooking)}
                 </span>
-                <span className="text-[10px] text-charcoal/30 font-medium">No cook tonight</span>
+                <span className="text-[10px] text-charcoal/30 font-medium">
+                  {day.nonCooking?.kind === 'mystery'
+                    ? t('planner.mysteryNightHint', 'We’ll figure out supper that day.')
+                    : 'No cook tonight'}
+                </span>
               </div>
             </button>
           ) : day.recipe?.id ? (

@@ -60,6 +60,11 @@ class CompletionTests(IsolatedGitTestCase):
     def test_documentation_has_no_e2e_impact(self):
         self.assertFalse(test_ops.build_impact_plan(['docs/help.md']).tests)
 
+    def test_gitignore_is_harness_configuration_for_preparation(self):
+        f = self.finish()
+        self.assertEqual(f.classes_for(['.gitignore']), {'harness'})
+        self.assertIn('test:agent', f.checks_for(['.gitignore']))
+
     def test_mixed_and_unknown_checks_take_union(self):
         f = self.finish()
         docs = set(f.checks_for(['docs/help.md']))
@@ -99,6 +104,38 @@ class CompletionTests(IsolatedGitTestCase):
                 self.assertEqual(before, test_ops.runtime_identity())
                 dependency.write_text('second dependency')
                 self.assertNotEqual(before, test_ops.runtime_identity())
+
+    def test_next_environment_rewrites_do_not_change_impact_or_finish_identity(self):
+        f = self.finish()
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            generated = root / 'pwa/next-env.d.ts'
+            generated.parent.mkdir(parents=True)
+            source = root / 'pwa/source.ts'
+            source.write_text('export const value = 1;\n')
+            generated.write_text('import "./.next/types/routes.d.ts";\n')
+            # Include the file explicitly too, as callers may supply changed paths.
+            with mock.patch.object(test_ops, 'runtime_identity', return_value='runtime'), \
+                 mock.patch.object(f, 'ROOT', root), \
+                 mock.patch.object(test_ops, 'get_changed_files', return_value=['pwa/next-env.d.ts']):
+                impact_before = test_ops.build_impact_digest(root, ['pwa/next-env.d.ts'], [])
+                finish_before = f.identity()
+                generated.write_text('import "./.next/dev/types/routes.d.ts";\n')
+                self.assertEqual(impact_before, test_ops.build_impact_digest(root, ['pwa/next-env.d.ts'], []))
+                self.assertEqual(finish_before, f.identity())
+                source.write_text('export const value = 2;\n')
+                self.assertNotEqual(impact_before, test_ops.build_impact_digest(root, [], []))
+                self.assertNotEqual(finish_before, f.identity())
+
+    def test_tracked_next_environment_declaration_is_excluded_from_digest(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            subprocess.run(['git', 'init', '-q'], cwd=root, check=True)
+            generated = root / 'pwa/next-env.d.ts'
+            generated.parent.mkdir(parents=True)
+            generated.write_text('generated types\n')
+            subprocess.run(['git', 'add', 'pwa/next-env.d.ts'], cwd=root, check=True)
+            self.assertNotIn('pwa/next-env.d.ts', test_ops.content_paths(root))
 
     def test_unavailable_service_is_blocked_not_zero_mismatches(self):
         with mock.patch('urllib.request.urlopen', side_effect=OSError('unavailable')) as probe:

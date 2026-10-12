@@ -124,13 +124,14 @@ export function NonCookingDaySheet({ date, plan, onSave, onClear, onClose }: Pro
               id={titleId}
               className="font-heading text-3xl font-black tracking-tight leading-tight text-charcoal"
             >
-              {t('planner.supperPlanTitle', 'What’s the supper plan?')}
+              {t('planner.supperPlanTitle', 'What’s the plan?')}
             </h2>
           </div>
           <button
             ref={close}
             disabled={busy}
             onClick={onClose}
+            data-testid="non-cooking-close"
             aria-label={t('common.close', 'Close')}
             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-charcoal/5 text-charcoal/70 hover:bg-charcoal/10 focus-visible:outline-2 focus-visible:outline-terracotta disabled:opacity-50"
           >
@@ -171,11 +172,6 @@ export function NonCookingDaySheet({ date, plan, onSave, onClear, onClose }: Pro
             </button>
           ))}
         </div>
-        {kind === 'mystery' && (
-          <p className="mb-4 text-sm text-charcoal/70">
-            {t('planner.mysteryNightHint', 'We’ll figure out supper that day.')}
-          </p>
-        )}
         {kind === 'custom' && (
           <div className="mb-4">
             <label htmlFor={inputId} className="block text-sm font-bold text-charcoal">
@@ -221,13 +217,6 @@ export function NonCookingDaySheet({ date, plan, onSave, onClear, onClose }: Pro
               {t('planner.clearDay', 'Remove supper plan')}
             </button>
           )}
-          <button
-            disabled={busy}
-            onClick={onClose}
-            className="min-h-11 rounded-2xl px-4 py-3 font-bold text-charcoal/70 hover:bg-charcoal/5 disabled:opacity-50"
-          >
-            {t('common.cancel', 'Cancel')}
-          </button>
         </div>
       </div>
     </div>

@@ -77,7 +77,7 @@ describe('PlanningPivotSheet', () => {
     { hasRecipe: false, isNonCooking: false },
     { hasRecipe: true, isNonCooking: false },
     { hasRecipe: true, isNonCooking: true },
-  ])('keeps other plans last for slot state %j', ({ hasRecipe, isNonCooking }) => {
+  ])('orders the final actions for slot state %j', ({ hasRecipe, isNonCooking }) => {
     localeMock.setLanguage('en');
     render(
       <PlanningPivotSheet
@@ -94,7 +94,13 @@ describe('PlanningPivotSheet', () => {
     );
 
     const otherPlans = screen.getByTestId('pivot-no-cooking');
-    expect(otherPlans.parentElement?.lastElementChild).toBe(otherPlans);
+    if (isNonCooking) {
+      const remove = screen.getByTestId('pivot-remove-recipe');
+      expect(remove.parentElement?.lastElementChild).toBe(remove);
+      expect(remove.previousElementSibling).toBe(otherPlans);
+    } else {
+      expect(otherPlans.parentElement?.lastElementChild).toBe(otherPlans);
+    }
   });
 
   it.each([false, true])('uses supper context for an empty or marked day (%s)', (isNonCooking) => {
