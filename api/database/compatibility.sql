@@ -11,7 +11,7 @@ BEGIN
         ALTER TABLE calendar_events ADD COLUMN IF NOT EXISTS non_cooking_kind text;
         ALTER TABLE calendar_events ADD COLUMN IF NOT EXISTS non_cooking_label text;
         IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'calendar_events_non_cooking_check' AND conrelid = 'calendar_events'::regclass) THEN
-            ALTER TABLE calendar_events ADD CONSTRAINT calendar_events_non_cooking_check CHECK ((non_cooking_kind IS NULL AND non_cooking_label IS NULL) OR (non_cooking_kind IS NOT NULL AND status = 3 AND recipe_id IS NULL AND ((non_cooking_kind IN ('order_in', 'eating_out') AND non_cooking_label IS NULL) OR (non_cooking_kind = 'custom' AND non_cooking_label IS NOT NULL AND char_length(btrim(non_cooking_label)) BETWEEN 1 AND 80))));
+            ALTER TABLE calendar_events ADD CONSTRAINT calendar_events_non_cooking_check CHECK ((non_cooking_kind IS NULL AND non_cooking_label IS NULL) OR (non_cooking_kind IS NOT NULL AND status = 3 AND recipe_id IS NULL AND ((non_cooking_kind IN ('order_in', 'eating_out') AND non_cooking_label IS NULL) OR (non_cooking_kind = 'custom' AND non_cooking_label IS NOT NULL AND char_length(btrim(non_cooking_label)) >= 1 AND char_length(btrim(non_cooking_label)) <= 80))));
         END IF;
     END IF;
 END
