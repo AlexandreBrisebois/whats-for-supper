@@ -3,6 +3,23 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { NonCookingDaySheet } from './NonCookingDaySheet';
 
 describe('NonCookingDaySheet', () => {
+  it('saves Mystery night without typing and preserves the custom draft', async () => {
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    render(<NonCookingDaySheet date="2026-10-12" onSave={onSave} onClose={vi.fn()} />);
+    expect(screen.getByRole('button', { name: 'We made plans' })).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('non-cooking-other-plans'));
+    const input = screen.getByLabelText('Tell the family the plan');
+    expect(input).toHaveFocus();
+    fireEvent.change(input, { target: { value: 'Supper at Grandma’s' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Mystery night' }));
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+    expect(screen.getByText('We’ll figure out supper that day.')).toBeInTheDocument();
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Save' })));
+    expect(onSave).toHaveBeenCalledWith({ kind: 'mystery', customLabel: null });
+    fireEvent.click(screen.getByTestId('non-cooking-other-plans'));
+    expect(screen.getByLabelText('Tell the family the plan')).toHaveValue('Supper at Grandma’s');
+  });
+
   it('offers removing the plan above Cancel and only clears the day', async () => {
     const onClear = vi.fn().mockResolvedValue(undefined);
     const onSave = vi.fn();
@@ -31,7 +48,9 @@ describe('NonCookingDaySheet', () => {
         'Quel est le plan pour le souper? lundi 12 octobre'
       );
       expect(screen.getByRole('button', { name: 'Commander' })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Enregistrer le plan' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Souper mystère' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'On a des plans' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Enregistrer' })).toBeInTheDocument();
     } finally {
       localStorage.removeItem('locale');
     }
@@ -56,7 +75,7 @@ describe('NonCookingDaySheet', () => {
       'aria-pressed',
       'false'
     );
-    fireEvent.click(screen.getByRole('button', { name: 'Save plan' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     expect(screen.getByRole('button', { name: 'Saving…' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled();
     await act(async () => finish());
@@ -76,7 +95,7 @@ describe('NonCookingDaySheet', () => {
     expect(trigger).toHaveFocus();
     trigger.remove();
   });
-  it('shows three choices and preserves custom typing while saving only the selected preset', async () => {
+  it('shows four choices and preserves custom typing while saving only the selected preset', async () => {
     const onSave = vi.fn().mockResolvedValue(undefined);
     render(<NonCookingDaySheet date="2026-10-12" onSave={onSave} onClose={vi.fn()} />);
     expect(screen.queryByTestId('non-cooking-custom-label')).not.toBeInTheDocument();

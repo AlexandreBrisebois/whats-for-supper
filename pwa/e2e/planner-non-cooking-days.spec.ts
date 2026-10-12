@@ -47,6 +47,7 @@ function emptyWeek(): ScheduleDays {
 for (const [choice, label, message] of [
   ['non-cooking-order-in', 'Order In', null],
   ['non-cooking-eating-out', 'Eating out', null],
+  ['non-cooking-mystery', 'Mystery night', null],
   ['non-cooking-other-plans', 'Supper at Grandma’s', 'Supper at Grandma’s'],
   ['non-cooking-other-plans', 'Emma’s birthday supper', 'Emma’s birthday supper'],
 ] as const) {
@@ -64,7 +65,13 @@ for (const [choice, label, message] of [
     );
     await page.getByTestId('non-cooking-save').click();
     expect((await write).postDataJSON().nonCooking.kind).toBe(
-      message ? 'custom' : choice === 'non-cooking-order-in' ? 'order_in' : 'eating_out'
+      message
+        ? 'custom'
+        : choice === 'non-cooking-order-in'
+          ? 'order_in'
+          : choice === 'non-cooking-mystery'
+            ? 'mystery'
+            : 'eating_out'
     );
     await expect(day.getByTestId('non-cooking-indicator')).toHaveText(label);
     await page.getByTestId('ask-family-cta').click();
@@ -189,7 +196,9 @@ test('Other plans stays readable and reachable on a phone', async ({ page }, tes
     'aria-pressed',
     'true'
   );
-  await expect(page.getByRole('button', { name: 'Save plan', exact: true })).toBeInViewport();
+  await expect(
+    page.getByTestId('non-cooking-sheet').getByRole('button', { name: 'Save', exact: true })
+  ).toBeInViewport();
   await page.screenshot({ path: testInfo.outputPath('other-plans-sheet.png') });
   await page.getByTestId('non-cooking-other-plans').click();
   await page.getByTestId('non-cooking-custom-label').fill('Supper at Grandma’s');
@@ -205,6 +214,7 @@ test.describe('Home local calendar day', () => {
 
   for (const [kind, customLabel, label] of [
     ['eating_out', null, 'Eating out'],
+    ['mystery', null, 'Mystery night'],
     ['custom', "Supper at mom's", "Supper at mom's"],
   ] as const) {
     test(`shows ${kind} on local Sunday after the API advances to Monday`, async ({
@@ -250,10 +260,18 @@ test.describe('Home local calendar day', () => {
       );
       await page.goto('/home');
       await localWeek;
-      await expect(page.getByTestId('today-non-cooking-label')).toHaveText(label);
-      await expect(page.getByTestId('order-in-btn')).toBeHidden();
-      await page.reload();
-      await expect(page.getByTestId('today-non-cooking-label')).toHaveText(label);
+      for (const reload of [false, true]) {
+        if (reload) await page.reload();
+        if (kind === 'mystery') {
+          await expect(page.getByTestId('tonight-pivot-card')).toBeVisible();
+          await expect(page.getByTestId('discover-btn')).toBeVisible();
+          await expect(page.getByTestId('order-in-btn')).toBeVisible();
+          await expect(page.getByTestId('today-non-cooking-plan')).toBeHidden();
+        } else {
+          await expect(page.getByTestId('today-non-cooking-label')).toHaveText(label);
+          await expect(page.getByTestId('order-in-btn')).toBeHidden();
+        }
+      }
     });
   }
 });

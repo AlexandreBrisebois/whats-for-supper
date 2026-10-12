@@ -71,3 +71,5 @@ See [implementation evidence and per-file review](evidence.md). NCD-T1 through N
 Latest local hook evidence: API review, PWA 684 units/types/lint and production build passed; Playwright had 212 passes, 10 failures and two skips. Focused Home contract/mock and feature member-selection/SSE corrections are implemented; local browser rerun is pending. Global spec registry validation passes after the separately authorized identity registration. See evidence.md for details.
 
 Home display follow-up: the rebuilt local affected-browser suite reports 20 passed and one failed. The remaining primary-label render was unreachable under the skipped-day condition; a compact saved-plan card reusing TonightCardBase now resolves it. Four added Home regressions and the full 688-unit PWA suite pass, with types/lint/format. The final rebuilt Home/reload browser rerun is pending; task acceptance boxes remain unchanged.
+
+Mystery night / We made plans follow-up: see [bounded implementation and verification evidence](mystery-night-evidence.md). Client generation is complete and typecheck passes; local completion checks remain pending.

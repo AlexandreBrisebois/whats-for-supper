@@ -397,7 +397,7 @@ describe('PlannerPage voting action row', () => {
     expect(screen.getByTestId('non-cooking-sheet')).toHaveTextContent('Tuesday, May 12');
   });
 
-  it.each(['order_in', 'eating_out', 'custom'] as const)(
+  it.each(['order_in', 'eating_out', 'mystery', 'custom'] as const)(
     'renders the saved %s icon on the meal plan',
     (kind) => {
       const view = renderPlanner(0);
@@ -418,7 +418,9 @@ describe('PlannerPage voting action row', () => {
           ? 'lucide-calendar-days'
           : kind === 'eating_out'
             ? 'lucide-utensils-crossed'
-            : 'lucide-shopping-bag';
+            : kind === 'mystery'
+              ? 'lucide-sparkles'
+              : 'lucide-shopping-bag';
       expect(indicator.querySelector(`.${iconClass}`)).not.toBeNull();
       expect(indicator).not.toHaveTextContent('🥡');
     }

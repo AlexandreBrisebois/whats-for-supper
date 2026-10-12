@@ -226,7 +226,7 @@ public class RecipeDbContext(DbContextOptions<RecipeDbContext> options) : DbCont
             entity.ToTable("calendar_events", t =>
             {
                 t.HasCheckConstraint("CK_calendar_events_status", "status >= 0 AND status <= 4");
-                t.HasCheckConstraint("calendar_events_non_cooking_check", "((non_cooking_kind IS NULL AND non_cooking_label IS NULL) OR (non_cooking_kind IS NOT NULL AND status = 3 AND recipe_id IS NULL AND ((non_cooking_kind IN ('order_in', 'eating_out') AND non_cooking_label IS NULL) OR (non_cooking_kind = 'custom' AND non_cooking_label IS NOT NULL AND char_length(btrim(non_cooking_label)) >= 1 AND char_length(btrim(non_cooking_label)) <= 80))))");
+                t.HasCheckConstraint("calendar_events_non_cooking_check", "((non_cooking_kind IS NULL AND non_cooking_label IS NULL) OR (non_cooking_kind IS NOT NULL AND status = 3 AND recipe_id IS NULL AND ((non_cooking_kind IN ('order_in', 'eating_out', 'mystery') AND non_cooking_label IS NULL) OR (non_cooking_kind = 'custom' AND non_cooking_label IS NOT NULL AND char_length(btrim(non_cooking_label)) >= 1 AND char_length(btrim(non_cooking_label)) <= 80))))");
             });
 
             entity.HasOne(e => e.Recipe)

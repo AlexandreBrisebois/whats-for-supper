@@ -68,6 +68,8 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
   const isCooked = status === 2;
   const isSkipped = status === 3;
   const sessionDone = status === 2 || status === 3;
+  const isMysteryNight = isSkipped && nonCooking?.kind === 'mystery';
+  const showSupperChoices = !currentRecipe && !isCooked && (!sessionDone || isMysteryNight);
 
   // ── Family / GOTO settings ────────────────────────────────────────────────
   const { loadActiveGoTo } = useFamilyStore();
@@ -309,7 +311,7 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
         </div>
       ) : (
         <>
-          {isSkipped && !currentRecipe && (
+          {isSkipped && !isMysteryNight && !currentRecipe && (
             <button
               data-testid="today-non-cooking-plan"
               aria-label={`${t('home.tonight', 'Tonight')} ${nonCookingLabel(nonCooking)} ${t('planner.editSupperPlan', 'Edit supper plan')}`}
@@ -336,7 +338,7 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
               <ChevronRight size={20} aria-hidden="true" className="shrink-0 text-charcoal/60" />
             </button>
           )}
-          {!currentRecipe && !isSkipped && !sessionDone && !isCooked && (
+          {showSupperChoices && (
             <TonightPivotCard
               gotoDescription={gotoDescription}
               gotoRecipeId={gotoRecipeId}
@@ -362,8 +364,6 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
                   intent: null,
                 })
               }
-              nonCookingLabel={isSkipped ? nonCookingLabel(nonCooking) : null}
-              nonCookingKind={nonCooking?.kind}
               onOrderIn={async () => {
                 if (!currentRecipe) {
                   // B5: No recipe — write status:3 unconditionally via store

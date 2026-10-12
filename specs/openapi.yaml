@@ -402,7 +402,7 @@ components:
       required: [kind]
       description: Recipe-free supper plan. customLabel is required and trimmed to 1-80 Unicode scalar values for custom; null or absent for presets.
       properties:
-        kind: { type: string, enum: [order_in, eating_out, custom] }
+        kind: { type: string, enum: [order_in, eating_out, mystery, custom] }
         customLabel: { type: [string, 'null'], maxLength: 80 }
 
     ScheduleDayDto:

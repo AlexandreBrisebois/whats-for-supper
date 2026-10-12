@@ -6577,6 +6577,7 @@ export const MoveScheduleDto_intentObject = {
 export const NonCookingPlanDto_kindObject = {
   Order_in: 'order_in',
   Eating_out: 'eating_out',
+  Mystery: 'mystery',
   Custom: 'custom',
 } as const;
 export const RecipeDto_mealTypesObject = {

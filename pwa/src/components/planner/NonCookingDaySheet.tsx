@@ -146,7 +146,8 @@ export function NonCookingDaySheet({ date, plan, onSave, onClear, onClose }: Pro
             [
               ['order_in', t('home.orderingIn', 'Order In'), 'non-cooking-order-in'],
               ['eating_out', t('planner.eatingOut', 'Eating out'), 'non-cooking-eating-out'],
-              ['custom', t('planner.otherPlans', 'Other plans'), 'non-cooking-other-plans'],
+              ['mystery', t('planner.mysteryNight', 'Mystery night'), 'non-cooking-mystery'],
+              ['custom', t('planner.otherPlans', 'We made plans'), 'non-cooking-other-plans'],
             ] as const
           ).map(([value, label, testId]) => (
             <button
@@ -170,10 +171,15 @@ export function NonCookingDaySheet({ date, plan, onSave, onClear, onClose }: Pro
             </button>
           ))}
         </div>
+        {kind === 'mystery' && (
+          <p className="mb-4 text-sm text-charcoal/70">
+            {t('planner.mysteryNightHint', 'We’ll figure out supper that day.')}
+          </p>
+        )}
         {kind === 'custom' && (
           <div className="mb-4">
             <label htmlFor={inputId} className="block text-sm font-bold text-charcoal">
-              {t('planner.nonCookingMessage', 'What’s the plan?')}
+              {t('planner.nonCookingMessage', 'Tell the family the plan')}
             </label>
             <input
               ref={input}
@@ -203,7 +209,7 @@ export function NonCookingDaySheet({ date, plan, onSave, onClear, onClose }: Pro
             data-testid="non-cooking-save"
             className="w-full min-h-12 rounded-2xl bg-terracotta-600 px-4 py-3 font-bold text-white hover:bg-terracotta-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-terracotta disabled:opacity-50"
           >
-            {busy ? t('planner.savingPlan', 'Saving…') : t('planner.savePlan', 'Save plan')}
+            {busy ? t('planner.savingPlan', 'Saving…') : t('common.save', 'Save')}
           </button>
           {onClear && (
             <button

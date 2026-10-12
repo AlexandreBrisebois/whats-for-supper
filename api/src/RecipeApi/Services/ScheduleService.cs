@@ -745,7 +745,7 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
         if (plan != null)
         {
             var label = plan.CustomLabel?.Trim();
-            if (dto.Status != 3 || plan.Kind is not ("order_in" or "eating_out" or "custom") ||
+            if (dto.Status != 3 || plan.Kind is not ("order_in" or "eating_out" or "mystery" or "custom") ||
                 (plan.Kind == "custom" ? string.IsNullOrWhiteSpace(label) || label.EnumerateRunes().Count() > 80 : plan.CustomLabel != null))
                 throw new ArgumentException("Choose a valid non-cooking plan; custom messages must contain 1–80 characters.");
             plan = plan with { CustomLabel = plan.Kind == "custom" ? label : null };

@@ -42,10 +42,26 @@ vi.mock('@/components/home/HomeSections', () => ({
 }));
 
 vi.mock('@/components/home/TonightPivotCard', () => ({
-  TonightPivotCard: ({ onOrderIn }: { onOrderIn: () => void }) => (
-    <button data-testid="order-in-btn" onClick={onOrderIn}>
-      Order In
-    </button>
+  TonightPivotCard: ({
+    onOrderIn,
+    onDiscover,
+    onConfirmGoto,
+  }: {
+    onOrderIn: () => void;
+    onDiscover: () => void;
+    onConfirmGoto: () => void;
+  }) => (
+    <div data-testid="tonight-pivot-card">
+      <button data-testid="order-in-btn" onClick={onOrderIn}>
+        Order In
+      </button>
+      <button data-testid="discover-btn" onClick={onDiscover}>
+        Quick Find
+      </button>
+      <button data-testid="confirm-goto-btn" onClick={onConfirmGoto}>
+        Make This Tonight
+      </button>
+    </div>
   ),
 }));
 
@@ -261,6 +277,18 @@ describe('HomeCommandCenter', () => {
       expect(screen.queryByTestId('tonight-menu-card')).not.toBeInTheDocument();
     }
   );
+
+  it('offers empty-night recipe choices for Mystery night without clearing its saved plan', async () => {
+    mocks.todayStatus = 3;
+    mocks.nonCooking = { kind: 'mystery', customLabel: null };
+    render(<HomeCommandCenter todaysRecipe={null} todayStatus={3} />);
+    expect(screen.getByTestId('tonight-pivot-card')).toBeInTheDocument();
+    expect(screen.queryByTestId('today-non-cooking-plan')).not.toBeInTheDocument();
+    expect(mocks.nonCooking).toEqual({ kind: 'mystery', customLabel: null });
+    fireEvent.click(screen.getByTestId('discover-btn'));
+    expect(await screen.findByTestId('quick-find-select')).toBeInTheDocument();
+    expect(mocks.markOrderedIn).not.toHaveBeenCalled();
+  });
 
   it('keeps the existing empty-day fallback and planned-meal controls', async () => {
     const view = render(<HomeCommandCenter todaysRecipe={null} todayStatus={0} />);

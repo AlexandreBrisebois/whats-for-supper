@@ -33,6 +33,21 @@ public class NonCookingScheduleTests : IDisposable
 
     private async Task<JsonElement> Day(int index = 0) => JsonSerializer.SerializeToElement((await _service.GetScheduleAsync(0)).Days[index]);
 
+    [Fact]
+    public async Task MysteryNight_SurvivesVotingLockAndExcludesAutomaticPlacement()
+    {
+        await _service.ValidateDayAsync("2026-10-12", Plan("mystery"));
+        await _service.OpenVotingAsync(0);
+        await _service.LockScheduleAsync(0);
+        _db.ChangeTracker.Clear();
+        var day = await Day();
+        Assert.Equal("mystery", day.GetProperty("nonCooking").GetProperty("kind").GetString());
+        Assert.Equal(3, day.GetProperty("status").GetInt32());
+        Assert.Null(_db.CalendarEvents.Single().RecipeId);
+        Assert.Null(_db.CalendarEvents.Single().NonCookingLabel);
+        Assert.DoesNotContain((await _service.GetSmartDefaultsAsync(0)).OpenSlots, slot => slot.DayIndex == 0);
+    }
+
     [Theory]
     [InlineData(WeeklyPlanStatus.Draft)]
     [InlineData(WeeklyPlanStatus.VotingOpen)]
@@ -53,6 +68,7 @@ public class NonCookingScheduleTests : IDisposable
     [Theory]
     [InlineData("order_in", null)]
     [InlineData("eating_out", null)]
+    [InlineData("mystery", null)]
     [InlineData("custom", "Emma’s birthday supper")]
     public async Task DragOntoPlan_SwapsSkippedPlanAndMessageToSource(string kind, string? label)
     {
@@ -74,6 +90,7 @@ public class NonCookingScheduleTests : IDisposable
     [InlineData("custom", " ", 3)]
     [InlineData("unexpected", null, 3)]
     [InlineData("eating_out", "not applicable", 3)]
+    [InlineData("mystery", "not applicable", 3)]
     [InlineData("custom", "Birthday", 2)]
     public async Task InvalidPlan_DoesNotMutate(string kind, string? label, int status)
     {

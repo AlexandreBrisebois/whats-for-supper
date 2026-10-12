@@ -40,6 +40,10 @@ public class NonCookingPostgresTests
             if (upgrade)
             {
                 await new NpgsqlCommand(ReadSql("compatibility.sql"), connection).ExecuteNonQueryAsync();
+                // Simulate an existing installation with the original three-choice constraint.
+                var oldConstraint = ReadSql("schema.sql").Split('\n').Single(line => line.Contains("CONSTRAINT calendar_events_non_cooking_check"))
+                    .Trim().TrimEnd(',').Replace("'eating_out', 'mystery'", "'eating_out'");
+                await new NpgsqlCommand($"ALTER TABLE calendar_events DROP CONSTRAINT calendar_events_non_cooking_check; ALTER TABLE calendar_events ADD {oldConstraint}", connection).ExecuteNonQueryAsync();
                 await new NpgsqlCommand(ReadSql("compatibility.sql"), connection).ExecuteNonQueryAsync();
             }
             await using var db = new RecipeDbContext(new DbContextOptionsBuilder<RecipeDbContext>().UseNpgsql(settings.ConnectionString).Options);
@@ -64,6 +68,12 @@ public class NonCookingPostgresTests
             Assert.Null((await db.CalendarEvents.SingleAsync(e => e.Date == monday.AddDays(1))).NonCookingKind);
             var schedule = await service.GetScheduleAsync(0);
             Assert.Equal("order_in", schedule.Days[2].NonCooking?.Kind);
+            await service.ValidateDayAsync("2026-10-18", new ValidationDto(3, NonCooking: new NonCookingPlanDto("mystery")));
+            db.ChangeTracker.Clear();
+            var mystery = await db.CalendarEvents.SingleAsync(e => e.Date == monday.AddDays(6));
+            Assert.Equal("mystery", mystery.NonCookingKind);
+            Assert.Null(mystery.NonCookingLabel);
+            Assert.Null(mystery.RecipeId);
             var failure = await Assert.ThrowsAsync<PostgresException>(() => new NpgsqlCommand("INSERT INTO calendar_events (date,status,non_cooking_kind,non_cooking_label) VALUES ('2026-10-15',3,'custom','')", connection).ExecuteNonQueryAsync());
             Assert.Equal("23514", failure.SqlState);
 
