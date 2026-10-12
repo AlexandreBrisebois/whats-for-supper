@@ -33,6 +33,25 @@ public class NonCookingScheduleTests : IDisposable
 
     private async Task<JsonElement> Day(int index = 0) => JsonSerializer.SerializeToElement((await _service.GetScheduleAsync(0)).Days[index]);
 
+    [Theory]
+    [InlineData("order_in")]
+    [InlineData("eating_out")]
+    public async Task OptionalNote_PersistsTrimmedTextAndCanBeCleared(string kind)
+    {
+        await _service.ValidateDayAsync("2026-10-12", Plan(kind, "  Luigi’s  "));
+        _db.ChangeTracker.Clear();
+        Assert.Equal("Luigi’s", (await Day()).GetProperty("nonCooking").GetProperty("customLabel").GetString());
+        Assert.Equal(kind, _db.CalendarEvents.Single().NonCookingKind);
+        await Assert.ThrowsAsync<ArgumentException>(() => _service.ValidateDayAsync("2026-10-12", Plan(kind, new string('x', 81))));
+        Assert.Equal("Luigi’s", _db.CalendarEvents.Single().NonCookingLabel);
+        await _service.ValidateDayAsync("2026-10-12", Plan(kind, "   "));
+        Assert.Null(_db.CalendarEvents.Single().NonCookingLabel);
+        await _service.ValidateDayAsync("2026-10-12", Plan(kind, string.Concat(Enumerable.Repeat("🍕", 80))));
+        Assert.Equal(80, _db.CalendarEvents.Single().NonCookingLabel!.EnumerateRunes().Count());
+        await _service.ValidateDayAsync("2026-10-12", Plan(kind));
+        Assert.Null(_db.CalendarEvents.Single().NonCookingLabel);
+    }
+
     [Fact]
     public async Task MysteryNight_SurvivesVotingLockAndExcludesAutomaticPlacement()
     {
@@ -66,6 +85,8 @@ public class NonCookingScheduleTests : IDisposable
     }
 
     [Theory]
+    [InlineData("order_in", "Luigi’s")]
+    [InlineData("eating_out", "Try the new café")]
     [InlineData("order_in", null)]
     [InlineData("eating_out", null)]
     [InlineData("mystery", null)]
@@ -89,7 +110,7 @@ public class NonCookingScheduleTests : IDisposable
     [Theory]
     [InlineData("custom", " ", 3)]
     [InlineData("unexpected", null, 3)]
-    [InlineData("eating_out", "not applicable", 3)]
+    [InlineData("eating_out", "not applicable", 2)]
     [InlineData("mystery", "not applicable", 3)]
     [InlineData("custom", "Birthday", 2)]
     public async Task InvalidPlan_DoesNotMutate(string kind, string? label, int status)

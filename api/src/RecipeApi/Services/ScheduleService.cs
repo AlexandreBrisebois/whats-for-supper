@@ -746,9 +746,10 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
         {
             var label = plan.CustomLabel?.Trim();
             if (dto.Status != 3 || plan.Kind is not ("order_in" or "eating_out" or "mystery" or "custom") ||
-                (plan.Kind == "custom" ? string.IsNullOrWhiteSpace(label) || label.EnumerateRunes().Count() > 80 : plan.CustomLabel != null))
-                throw new ArgumentException("Choose a valid non-cooking plan; custom messages must contain 1–80 characters.");
-            plan = plan with { CustomLabel = plan.Kind == "custom" ? label : null };
+                (plan.Kind == "mystery" ? plan.CustomLabel != null :
+                    (plan.Kind == "custom" && string.IsNullOrWhiteSpace(label)) || (label?.EnumerateRunes().Count() ?? 0) > 80))
+                throw new ArgumentException("Choose a valid non-cooking plan; messages must contain at most 80 characters and custom messages are required.");
+            plan = plan with { CustomLabel = string.IsNullOrWhiteSpace(label) ? null : label };
         }
         await using var transaction = plan != null && _dbContext.Database.IsRelational()
             ? await _dbContext.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable)

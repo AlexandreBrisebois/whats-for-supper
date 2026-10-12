@@ -35,7 +35,7 @@ import { DateOnly } from '@microsoft/kiota-abstractions';
 import { Button } from '@/components/ui/button';
 import { NonCookingDaySheet } from '@/components/planner/NonCookingDaySheet';
 import { NonCookingIcon } from '@/components/planner/NonCookingIcon';
-import { nonCookingLabel } from '@/lib/planner/nonCooking';
+import { nonCookingLabel, nonCookingNote } from '@/lib/planner/nonCooking';
 import type { NonCookingPlanDto } from '@/lib/api/generated/models';
 import { PlanningPivotSheet } from '@/components/planner/PlanningPivotSheet';
 import { cn } from '@/lib/utils';
@@ -1085,7 +1085,7 @@ const PlannerDayCard = memo(function PlannerDayCard({
               <div className="h-10 w-10 rounded-xl bg-sage/10 text-sage-700 flex items-center justify-center flex-shrink-0">
                 <NonCookingIcon kind={day.nonCooking?.kind} />
               </div>
-              <div className="flex flex-col gap-0.5">
+              <div className="min-w-0 flex flex-col gap-0.5">
                 <span
                   data-testid="non-cooking-indicator"
                   title={nonCookingLabel(day.nonCooking)}
@@ -1093,11 +1093,19 @@ const PlannerDayCard = memo(function PlannerDayCard({
                 >
                   {nonCookingLabel(day.nonCooking)}
                 </span>
-                <span className="text-[10px] text-charcoal/30 font-medium">
-                  {day.nonCooking?.kind === 'mystery'
-                    ? t('planner.mysteryNightHint', 'We’ll figure out supper that day.')
-                    : 'No cook tonight'}
-                </span>
+                {day.nonCooking?.kind === 'mystery' ? (
+                  <span className="text-[10px] text-charcoal/30 font-medium">
+                    {t('planner.mysteryNightHint', 'We’ll figure out supper that day.')}
+                  </span>
+                ) : nonCookingNote(day.nonCooking) ? (
+                  <span
+                    data-testid="non-cooking-note"
+                    title={nonCookingNote(day.nonCooking) ?? undefined}
+                    className="line-clamp-2 break-words text-xs text-charcoal/70 font-medium"
+                  >
+                    {nonCookingNote(day.nonCooking)}
+                  </span>
+                ) : null}
               </div>
             </button>
           ) : day.recipe?.id ? (

@@ -400,7 +400,7 @@ components:
     NonCookingPlanDto:
       type: object
       required: [kind]
-      description: Recipe-free supper plan. customLabel is required and trimmed to 1-80 Unicode scalar values for custom; null or absent for presets.
+      description: Recipe-free supper plan. customLabel is required for custom and optional for order_in/eating_out; trimmed to 1-80 Unicode scalar values when present. Blank optional notes normalize to null. Mystery requires null or absent customLabel.
       properties:
         kind: { type: string, enum: [order_in, eating_out, mystery, custom] }
         customLabel: { type: [string, 'null'], maxLength: 80 }

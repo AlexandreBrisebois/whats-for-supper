@@ -28,7 +28,7 @@ import { useGotoStore } from '@/store/gotoStore';
 import { useWeekStore } from '@/store/weekStore';
 import { useUiStore } from '@/store/uiStore';
 import { t } from '@/locales';
-import { nonCookingLabel } from '@/lib/planner/nonCooking';
+import { nonCookingLabel, nonCookingNote } from '@/lib/planner/nonCooking';
 import { ROUTES } from '@/lib/constants/routes';
 import type { GoToItem } from '@/lib/api/generated/models/index';
 
@@ -314,7 +314,7 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
           {isSkipped && !isMysteryNight && !currentRecipe && (
             <button
               data-testid="today-non-cooking-plan"
-              aria-label={`${t('home.tonight', 'Tonight')} ${nonCookingLabel(nonCooking)} ${t('planner.editSupperPlan', 'Edit supper plan')}`}
+              aria-label={`${t('home.tonight', 'Tonight')} ${[nonCookingLabel(nonCooking), nonCookingNote(nonCooking)].filter(Boolean).join(' ')} ${t('planner.editSupperPlan', 'Edit supper plan')}`}
               onClick={() =>
                 router.push(`${ROUTES.PLANNER}?weekOffset=0&planDate=${getTodayString()}`)
               }
@@ -333,6 +333,15 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
                 >
                   {nonCookingLabel(nonCooking)}
                 </span>
+                {nonCookingNote(nonCooking) && (
+                  <span
+                    data-testid="today-non-cooking-note"
+                    title={nonCookingNote(nonCooking) ?? undefined}
+                    className="block line-clamp-2 break-words text-sm text-charcoal/70"
+                  >
+                    {nonCookingNote(nonCooking)}
+                  </span>
+                )}
                 <span className="sr-only">{t('planner.editSupperPlan', 'Edit supper plan')}</span>
               </span>
               <ChevronRight size={20} aria-hidden="true" className="shrink-0 text-charcoal/60" />

@@ -8,6 +8,10 @@ export function nonCookingLabel(plan?: NonCookingPlanDto | null): string {
   return t('home.orderingIn', 'Order In');
 }
 
+export function nonCookingNote(plan?: NonCookingPlanDto | null): string | null {
+  return plan?.kind === 'order_in' || plan?.kind === 'eating_out' ? plan.customLabel || null : null;
+}
+
 export function formatSupperPlanDate(date: string): string {
   return new Intl.DateTimeFormat(getLocale() === 'fr' ? 'fr-CA' : 'en-CA', {
     weekday: 'long',

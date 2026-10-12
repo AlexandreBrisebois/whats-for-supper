@@ -88,6 +88,49 @@ for (const [choice, label, message] of [
   });
 }
 
+for (const [choice, kind, heading] of [
+  ['non-cooking-order-in', 'order_in', 'Order In'],
+  ['non-cooking-eating-out', 'eating_out', 'Eating out'],
+] as const) {
+  test(`${heading} note saves, reloads, edits and clears`, async ({ page }) => {
+    await setupCommonRoutes(page);
+    const state = await mockNonCookingSchedule(page, emptyWeek());
+    await page.goto('/planner');
+    const day = page.getByTestId('day-card-0');
+    await day.getByTestId('plan-meal-button').click();
+    await page.getByTestId('pivot-no-cooking').click();
+    await page.getByTestId(choice).click();
+    await expect(page.getByTestId('non-cooking-custom-label')).toHaveAccessibleName(
+      'Tell the family the plan'
+    );
+    await page.getByTestId('non-cooking-custom-label').fill('  Luigi’s  ');
+    await page.getByTestId('non-cooking-save').click();
+    await expect(day.getByTestId('non-cooking-indicator')).toHaveText(heading);
+    await expect(day.getByTestId('non-cooking-note')).toHaveText('Luigi’s');
+    expect(state.days?.[0].nonCooking).toEqual({ kind, customLabel: 'Luigi’s' });
+    await page.reload();
+    await expect(day.getByTestId('non-cooking-note')).toHaveText('Luigi’s');
+    await page.goto('/home');
+    await expect(page.getByTestId('today-non-cooking-label')).toHaveText(heading);
+    await expect(page.getByTestId('today-non-cooking-note')).toHaveText('Luigi’s');
+    await page.reload();
+    await expect(page.getByTestId('today-non-cooking-note')).toHaveText('Luigi’s');
+    await page.getByTestId('today-non-cooking-plan').click();
+    await page.getByTestId('pivot-no-cooking').click();
+    await expect(page.getByTestId('non-cooking-custom-label')).toHaveValue('Luigi’s');
+    await page.getByTestId('non-cooking-custom-label').fill('Try the new café');
+    await page.getByTestId('non-cooking-save').click();
+    await expect(day.getByTestId('non-cooking-note')).toHaveText('Try the new café');
+    await day.getByTestId('ordered-in-indicator').click();
+    await page.getByTestId('pivot-no-cooking').click();
+    await page.getByTestId('non-cooking-custom-label').fill('');
+    await page.getByTestId('non-cooking-save').click();
+    await expect(day.getByTestId('non-cooking-note')).toHaveCount(0);
+    await expect(day.getByTestId('non-cooking-indicator')).toHaveText(heading);
+    await expect(page.getByText('No cook tonight', { exact: true })).toHaveCount(0);
+  });
+}
+
 test('close and failed save retain the empty day and editable message', async ({ page }) => {
   await setupCommonRoutes(page);
   await mockNonCookingSchedule(page, emptyWeek());

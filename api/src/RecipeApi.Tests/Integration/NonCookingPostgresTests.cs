@@ -40,9 +40,8 @@ public class NonCookingPostgresTests
             if (upgrade)
             {
                 await new NpgsqlCommand(ReadSql("compatibility.sql"), connection).ExecuteNonQueryAsync();
-                // Simulate an existing installation with the original three-choice constraint.
-                var oldConstraint = ReadSql("schema.sql").Split('\n').Single(line => line.Contains("CONSTRAINT calendar_events_non_cooking_check"))
-                    .Trim().TrimEnd(',').Replace("'eating_out', 'mystery'", "'eating_out'");
+                // Simulate an existing installation with the previous constraint that prohibited preset notes.
+                const string oldConstraint = "CONSTRAINT calendar_events_non_cooking_check CHECK ((non_cooking_kind IS NULL AND non_cooking_label IS NULL) OR (non_cooking_kind IS NOT NULL AND status = 3 AND recipe_id IS NULL AND ((non_cooking_kind IN ('order_in', 'eating_out', 'mystery') AND non_cooking_label IS NULL) OR (non_cooking_kind = 'custom' AND non_cooking_label IS NOT NULL AND char_length(btrim(non_cooking_label)) >= 1 AND char_length(btrim(non_cooking_label)) <= 80))))";
                 await new NpgsqlCommand($"ALTER TABLE calendar_events DROP CONSTRAINT calendar_events_non_cooking_check; ALTER TABLE calendar_events ADD {oldConstraint}", connection).ExecuteNonQueryAsync();
                 await new NpgsqlCommand(ReadSql("compatibility.sql"), connection).ExecuteNonQueryAsync();
             }
@@ -76,6 +75,25 @@ public class NonCookingPostgresTests
             Assert.Null(mystery.RecipeId);
             var failure = await Assert.ThrowsAsync<PostgresException>(() => new NpgsqlCommand("INSERT INTO calendar_events (date,status,non_cooking_kind,non_cooking_label) VALUES ('2026-10-15',3,'custom','')", connection).ExecuteNonQueryAsync());
             Assert.Equal("23514", failure.SqlState);
+
+            foreach (var kind in new[] { "order_in", "eating_out" })
+            {
+                await service.ValidateDayAsync("2026-10-17", new ValidationDto(3, NonCooking: new NonCookingPlanDto(kind, "  Luigi’s  ")));
+                db.ChangeTracker.Clear();
+                var noted = await db.CalendarEvents.SingleAsync(e => e.Date == monday.AddDays(5));
+                Assert.Equal(kind, noted.NonCookingKind);
+                Assert.Equal("Luigi’s", noted.NonCookingLabel);
+                // Repeated compatibility application preserves saved notes and its installed constraint.
+                var oidBefore = await new NpgsqlCommand("SELECT oid FROM pg_constraint WHERE conname = 'calendar_events_non_cooking_check'", connection).ExecuteScalarAsync();
+                await new NpgsqlCommand(ReadSql("compatibility.sql"), connection).ExecuteNonQueryAsync();
+                Assert.Equal(oidBefore, await new NpgsqlCommand("SELECT oid FROM pg_constraint WHERE conname = 'calendar_events_non_cooking_check'", connection).ExecuteScalarAsync());
+                Assert.Equal("Luigi’s", (await service.GetScheduleAsync(0)).Days[5].NonCooking?.CustomLabel);
+                await service.ValidateDayAsync("2026-10-17", new ValidationDto(3, NonCooking: new NonCookingPlanDto(kind, "   ")));
+                db.ChangeTracker.Clear();
+                Assert.Null((await db.CalendarEvents.SingleAsync(e => e.Date == monday.AddDays(5))).NonCookingLabel);
+                var invalid = await Assert.ThrowsAsync<PostgresException>(() => new NpgsqlCommand($"UPDATE calendar_events SET non_cooking_label = repeat('x', 81) WHERE date = '2026-10-17'", connection).ExecuteNonQueryAsync());
+                Assert.Equal("23514", invalid.SqlState);
+            }
 
             var barrier = new ConcurrentReadBarrier();
             async Task<bool> ConcurrentSave()

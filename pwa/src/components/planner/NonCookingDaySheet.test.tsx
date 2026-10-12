@@ -94,19 +94,47 @@ describe('NonCookingDaySheet', () => {
   it('shows four choices and preserves custom typing while saving only the selected preset', async () => {
     const onSave = vi.fn().mockResolvedValue(undefined);
     render(<NonCookingDaySheet date="2026-10-12" onSave={onSave} onClose={vi.fn()} />);
-    expect(screen.queryByTestId('non-cooking-custom-label')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Tell the family the plan')).toBeInTheDocument();
     fireEvent.click(screen.getByTestId('non-cooking-other-plans'));
     fireEvent.change(screen.getByTestId('non-cooking-custom-label'), {
       target: { value: 'Supper at Grandma’s' },
     });
     fireEvent.click(screen.getByTestId('non-cooking-eating-out'));
-    expect(screen.queryByTestId('non-cooking-custom-label')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Tell the family the plan')).toBeInTheDocument();
     fireEvent.click(screen.getByTestId('non-cooking-other-plans'));
     expect(screen.getByTestId('non-cooking-custom-label')).toHaveValue('Supper at Grandma’s');
     fireEvent.click(screen.getByTestId('non-cooking-order-in'));
     await act(async () => fireEvent.click(screen.getByTestId('non-cooking-save')));
-    expect(onSave).toHaveBeenCalledWith({ kind: 'order_in', customLabel: null });
+    expect(onSave).toHaveBeenCalledWith({ kind: 'order_in', customLabel: 'Supper at Grandma’s' });
   });
+
+  it.each(['order_in', 'eating_out'] as const)(
+    'edits and clears the optional %s message using the same field',
+    async (kind) => {
+      const onSave = vi.fn().mockResolvedValue(undefined);
+      render(
+        <NonCookingDaySheet
+          date="2026-10-12"
+          plan={{ kind, customLabel: 'Luigi’s' }}
+          onSave={onSave}
+          onClose={vi.fn()}
+        />
+      );
+      const input = screen.getByLabelText('Tell the family the plan');
+      expect(input).toHaveValue('Luigi’s');
+      expect(input).not.toHaveFocus();
+      fireEvent.change(input, { target: { value: 'x'.repeat(81) } });
+      await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Save' })));
+      expect(onSave).not.toHaveBeenCalled();
+      expect(screen.getByRole('alert')).toHaveTextContent('1–80');
+      fireEvent.change(input, { target: { value: '  Try the new café  ' } });
+      await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Save' })));
+      expect(onSave).toHaveBeenLastCalledWith({ kind, customLabel: 'Try the new café' });
+      fireEvent.change(input, { target: { value: '  ' } });
+      await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Save' })));
+      expect(onSave).toHaveBeenLastCalledWith({ kind, customLabel: null });
+    }
+  );
 
   it('requires a custom message and retains it after a failed save', async () => {
     const onSave = vi.fn().mockRejectedValue(new Error('offline'));

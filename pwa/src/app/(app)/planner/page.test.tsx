@@ -427,9 +427,31 @@ describe('PlannerPage voting action row', () => {
         expect(indicator).toHaveTextContent('We’ll figure out supper that day.');
         expect(indicator).not.toHaveTextContent('No cook tonight');
       } else {
-        expect(indicator).toHaveTextContent('No cook tonight');
+        expect(indicator).not.toHaveTextContent('No cook tonight');
         expect(indicator).not.toHaveTextContent('We’ll figure out supper that day.');
       }
+    }
+  );
+
+  it.each(['order_in', 'eating_out'] as const)(
+    'shows the %s note beneath its preset heading',
+    (kind) => {
+      const view = renderPlanner(0);
+      const state = mocks.getWeekState();
+      state.schedule[1] = {
+        ...state.schedule[1],
+        recipe: null,
+        status: 3,
+        nonCooking: { kind, customLabel: 'Try Luigi’s' },
+      };
+      mocks.setWeekState({ ...state, schedule: [...state.schedule] });
+      view.rerender(<PlannerPage />);
+      const day = within(screen.getByTestId('day-card-1'));
+      expect(day.getByTestId('non-cooking-indicator')).toHaveTextContent(
+        kind === 'order_in' ? 'Order In' : 'Eating out'
+      );
+      expect(day.getByTestId('non-cooking-note')).toHaveTextContent('Try Luigi’s');
+      expect(day.getByTestId('ordered-in-indicator')).not.toHaveTextContent('No cook tonight');
     }
   );
 

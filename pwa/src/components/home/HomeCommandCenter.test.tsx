@@ -247,6 +247,19 @@ describe('HomeCommandCenter', () => {
     mocks.loadActiveGoTo.mockResolvedValue(null);
   });
 
+  it.each(['order_in', 'eating_out'])('shows the saved %s note on Home', async (kind) => {
+    mocks.todayStatus = 3;
+    mocks.nonCooking = { kind, customLabel: 'Try Luigi’s' };
+    render(<HomeCommandCenter todaysRecipe={null} todayStatus={3} />);
+    expect(await screen.findByTestId('today-non-cooking-label')).toHaveTextContent(
+      kind === 'order_in' ? 'Order In' : 'Eating out'
+    );
+    expect(screen.getByTestId('today-non-cooking-note')).toHaveTextContent('Try Luigi’s');
+    expect(screen.getByTestId('today-non-cooking-plan')).toHaveAccessibleName(
+      `Tonight ${kind === 'order_in' ? 'Order In' : 'Eating out'} Try Luigi’s Edit supper plan`
+    );
+  });
+
   it.each([
     ['order_in', null, 'Order In'],
     ['eating_out', null, 'Eating out'],

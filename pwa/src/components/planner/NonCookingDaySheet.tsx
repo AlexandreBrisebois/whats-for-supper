@@ -63,7 +63,11 @@ export function NonCookingDaySheet({ date, plan, onSave, onClear, onClose }: Pro
   async function submit(clear = false) {
     if (submitting.current) return;
     const label = message.trim();
-    if (!clear && kind === 'custom' && (!label || Array.from(label).length > 80)) {
+    if (
+      !clear &&
+      kind !== 'mystery' &&
+      ((kind === 'custom' && !label) || Array.from(label).length > 80)
+    ) {
       setError(t('planner.nonCookingInvalid', 'Enter a message with 1–80 characters.'));
       input.current?.focus();
       return;
@@ -73,7 +77,7 @@ export function NonCookingDaySheet({ date, plan, onSave, onClear, onClose }: Pro
     setError(null);
     try {
       if (clear) await onClear?.();
-      else await onSave({ kind, customLabel: kind === 'custom' ? label : null });
+      else await onSave({ kind, customLabel: kind === 'mystery' ? null : label || null });
     } catch (failure) {
       const status = (failure as { responseStatusCode?: number })?.responseStatusCode;
       setError(
@@ -172,7 +176,7 @@ export function NonCookingDaySheet({ date, plan, onSave, onClear, onClose }: Pro
             </button>
           ))}
         </div>
-        {kind === 'custom' && (
+        {kind !== 'mystery' && (
           <div className="mb-4">
             <label htmlFor={inputId} className="block text-sm font-bold text-charcoal">
               {t('planner.nonCookingMessage', 'Tell the family the plan')}

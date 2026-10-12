@@ -3479,7 +3479,7 @@ export interface MoveScheduleDto extends AdditionalDataHolder, Parsable {
 export type MoveScheduleDto_intent =
   (typeof MoveScheduleDto_intentObject)[keyof typeof MoveScheduleDto_intentObject];
 /**
- * Recipe-free supper plan. customLabel is required and trimmed to 1-80 Unicode scalar values for custom; null or absent for presets.
+ * Recipe-free supper plan. customLabel is required for custom and optional for order_in/eating_out; trimmed to 1-80 Unicode scalar values when present. Blank optional notes normalize to null. Mystery requires null or absent customLabel.
  */
 export interface NonCookingPlanDto extends AdditionalDataHolder, Parsable {
   /**

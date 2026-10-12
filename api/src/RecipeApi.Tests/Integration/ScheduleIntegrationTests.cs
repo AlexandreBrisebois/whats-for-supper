@@ -96,6 +96,24 @@ public class ScheduleIntegrationTests : IAsyncLifetime
         Assert.Equal(recipeId, _db.CalendarEvents.Single(e => e.Date.ToString("yyyy-MM-dd") == date).RecipeId);
     }
 
+    [Theory]
+    [InlineData("order_in")]
+    [InlineData("eating_out")]
+    public async Task NonCookingValidation_OptionalNoteRoundTripsAndClears(string kind)
+    {
+        using var client = _factory.CreateClient();
+        var date = DateOnly.FromDateTime(DateTime.UtcNow).ToString("yyyy-MM-dd");
+        foreach (var note in new[] { "  Luigi’s  ", "   " })
+        {
+            var saved = await client.PostAsJsonAsync($"/api/schedule/day/{date}/validate", new { status = 3, nonCooking = new { kind, customLabel = note } });
+            Assert.Equal(System.Net.HttpStatusCode.OK, saved.StatusCode);
+            var schedule = await client.GetFromJsonAsync<JsonElement>("/api/schedule?weekOffset=0");
+            var day = schedule.GetProperty("data").GetProperty("days").EnumerateArray().Single(d => d.GetProperty("date").GetString() == date);
+            Assert.Equal(kind, day.GetProperty("nonCooking").GetProperty("kind").GetString());
+            Assert.Equal(string.IsNullOrWhiteSpace(note) ? null : note.Trim(), day.GetProperty("nonCooking").GetProperty("customLabel").GetString());
+        }
+    }
+
     [Fact]
     public async Task NonCookingValidation_InvalidLabelReturns400WithoutCreatingEntry()
     {

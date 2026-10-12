@@ -79,20 +79,22 @@ public class ManagementBackupIntegrationTests : IAsyncLifetime
     }
 
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task NonCookingCalendarBackup_RestoresCustomAndLegacyPlans(bool legacy)
+    [InlineData("custom", "Emma’s birthday supper")]
+    [InlineData("order_in", "Luigi’s")]
+    [InlineData("eating_out", "Try the new café")]
+    [InlineData(null, null)]
+    public async Task NonCookingCalendarBackup_RestoresCustomAndLegacyPlans(string? kind, string? note)
     {
         var entry = new CalendarEvent
         {
             Id = Guid.NewGuid(), Date = new DateOnly(2026, 10, 12), Status = CalendarEventStatus.Skipped,
-            NonCookingKind = legacy ? null : "custom", NonCookingLabel = legacy ? null : "Emma’s birthday supper"
+            NonCookingKind = kind, NonCookingLabel = note
         };
         _db.CalendarEvents.Add(entry);
         await _db.SaveChangesAsync();
         await _management.BackupAsync();
         var path = Path.Combine(_scope.ServiceProvider.GetRequiredService<DataRootResolver>().Root, "calendar-events.json");
-        if (legacy)
+        if (kind == null)
             await File.WriteAllTextAsync(path, System.Text.Json.JsonSerializer.Serialize(new[] { new { id = entry.Id, date = "2026-10-12", status = 3, recipeId = (Guid?)null } }));
         _db.CalendarEvents.Remove(entry);
         await _db.SaveChangesAsync();
