@@ -42,9 +42,16 @@ public class NonCookingPostgresTests
                 await new NpgsqlCommand(ReadSql("compatibility.sql"), connection).ExecuteNonQueryAsync();
                 // Simulate an existing installation with the previous constraint that prohibited preset notes.
                 const string oldConstraint = "CONSTRAINT calendar_events_non_cooking_check CHECK ((non_cooking_kind IS NULL AND non_cooking_label IS NULL) OR (non_cooking_kind IS NOT NULL AND status = 3 AND recipe_id IS NULL AND ((non_cooking_kind IN ('order_in', 'eating_out', 'mystery') AND non_cooking_label IS NULL) OR (non_cooking_kind = 'custom' AND non_cooking_label IS NOT NULL AND char_length(btrim(non_cooking_label)) >= 1 AND char_length(btrim(non_cooking_label)) <= 80))))";
-                await new NpgsqlCommand($"ALTER TABLE calendar_events DROP CONSTRAINT calendar_events_non_cooking_check; ALTER TABLE calendar_events ADD {oldConstraint}", connection).ExecuteNonQueryAsync();
+                await new NpgsqlCommand($"ALTER TABLE calendar_events DROP CONSTRAINT calendar_events_non_cooking_check; ALTER TABLE calendar_events ADD {oldConstraint}; COMMENT ON COLUMN calendar_events.non_cooking_label IS NULL", connection).ExecuteNonQueryAsync();
                 await new NpgsqlCommand(ReadSql("compatibility.sql"), connection).ExecuteNonQueryAsync();
             }
+            // Upgrade the previous marker without rebuilding an already-current constraint.
+            var markedConstraintOid = await new NpgsqlCommand("SELECT oid FROM pg_constraint WHERE conname = 'calendar_events_non_cooking_check'", connection).ExecuteScalarAsync();
+            await new NpgsqlCommand("COMMENT ON COLUMN calendar_events.non_cooking_label IS NULL; COMMENT ON CONSTRAINT calendar_events_non_cooking_check ON calendar_events IS 'wfs-non-cooking-optional-notes-v1'", connection).ExecuteNonQueryAsync();
+            await new NpgsqlCommand(ReadSql("compatibility.sql"), connection).ExecuteNonQueryAsync();
+            Assert.Equal(markedConstraintOid, await new NpgsqlCommand("SELECT oid FROM pg_constraint WHERE conname = 'calendar_events_non_cooking_check'", connection).ExecuteScalarAsync());
+            Assert.Equal(DBNull.Value, await new NpgsqlCommand("SELECT obj_description(oid, 'pg_constraint') FROM pg_constraint WHERE conname = 'calendar_events_non_cooking_check'", connection).ExecuteScalarAsync());
+            Assert.Equal("wfs-non-cooking-optional-notes-v1", await new NpgsqlCommand("SELECT col_description('calendar_events'::regclass, attnum) FROM pg_attribute WHERE attrelid = 'calendar_events'::regclass AND attname = 'non_cooking_label'", connection).ExecuteScalarAsync());
             await using var db = new RecipeDbContext(new DbContextOptionsBuilder<RecipeDbContext>().UseNpgsql(settings.ConnectionString).Options);
             var publisher = new Mock<IScheduleEventPublisher>().Object;
             var clock = new FixedClock();

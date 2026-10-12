@@ -133,7 +133,7 @@ CREATE TABLE calendar_events (
     CONSTRAINT calendar_events_date_slot_unique UNIQUE (date, meal_slot)
 );
 
-COMMENT ON CONSTRAINT calendar_events_non_cooking_check ON calendar_events IS 'wfs-non-cooking-optional-notes-v1';
+COMMENT ON COLUMN calendar_events.non_cooking_label IS 'wfs-non-cooking-optional-notes-v1';
 
 CREATE TABLE recipe_votes (
     recipe_id uuid NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,

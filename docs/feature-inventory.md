@@ -72,6 +72,9 @@ current behavior.
 - Present tonight's planned recipe, timing, readiness, image, and next actions.
 - Open recipe details or Cook's Mode from the current meal.
 - Reflect schedule changes received from the shared household state.
+- Display recipe-free supper plans and optional notes; allow editing from Home.
+- Keep the empty-night recipe choices available for Mystery night without clearing
+  its saved plan merely by viewing Home.
 
 #### HOME-02 — Empty-night fallback
 
@@ -81,7 +84,7 @@ current behavior.
 
 #### HOME-03 — Changed-plan recovery
 
-- Mark an empty night as Ordered In.
+- Mark an empty night as Order In.
 - For an existing plan, choose another meal, move the recipe to tomorrow, defer it
   to the next available day starting next week, or drop it.
 - Preserve the server-selected destination and surface success or recovery errors.
@@ -111,7 +114,14 @@ current behavior.
 #### PLAN-03 — Schedule movement and exceptions
 
 - Drag meals to reorder or move them across days and weeks.
-- Mark a date as Ordered In, remove a plan, move it to tomorrow, or defer it to an
+- Mark an empty date as Order In, Eating out, Mystery night, or We made plans.
+  Order In and Eating out accept optional notes; We made plans requires a message.
+  Messages are limited to 80 characters; Mystery night has no message.
+- Edit or clear a saved supper plan, or explicitly replace it with a recipe.
+  Recipe-free plans contribute no grocery ingredients or cooked history.
+- Carry saved supper plans and messages through movement; dragging a recipe onto
+  one swaps it to the recipe's source day.
+- Remove a plan, move it to tomorrow, or defer it to an
   available later date.
 - Validate day state and reconcile the displayed week after mutations or failures.
 
@@ -122,11 +132,13 @@ current behavior.
 - Generate a discovery link to nudge the family, with copy and native-share
   actions.
 - Promote household discovery matches into planning suggestions.
+- Preserve recipe-free supper plans when opening voting and locking the week;
+  automatic recipe placement uses only remaining available dates.
 
 #### PLAN-05 — Automatic schedule maintenance
 
 - Mark eligible overdue planned meals as cooked so they do not remain stale.
-- Leave Ordered In, already cooked, and future meals unchanged.
+- Leave recipe-free supper plans, already cooked meals, and future meals unchanged.
 - Seed or curate future suggestions through scheduled planning workflows.
 
 ### Grocery planning
@@ -307,6 +319,8 @@ current behavior.
 - Present recipe instructions as large, focused sections and steps.
 - Move forward and backward while preserving the cook's place.
 - Handle both structured instructions and parsed legacy instruction text.
+- Save cooking completion for the viewed recipe; complete tonight's calendar meal
+  only if it contains that recipe, leaving a different planned meal unchanged.
 
 #### COOK-02 — In-cook recipe feedback
 

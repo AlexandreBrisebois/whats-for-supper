@@ -10,15 +10,19 @@ BEGIN
     IF to_regclass('public.calendar_events') IS NOT NULL THEN
         ALTER TABLE calendar_events ADD COLUMN IF NOT EXISTS non_cooking_kind text;
         ALTER TABLE calendar_events ADD COLUMN IF NOT EXISTS non_cooking_label text;
-        -- Widen preset notes once; retain and validate existing rows.
+        -- Widen preset notes once; retain and validate existing rows. Accept the
+        -- previous constraint marker while moving it to a sqldef-supported column.
         IF EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'calendar_events_non_cooking_check'
-            AND conrelid = 'calendar_events'::regclass AND obj_description(oid, 'pg_constraint') IS DISTINCT FROM 'wfs-non-cooking-optional-notes-v1') THEN
+            AND conrelid = 'calendar_events'::regclass AND obj_description(oid, 'pg_constraint') IS DISTINCT FROM 'wfs-non-cooking-optional-notes-v1'
+            AND col_description(conrelid, (SELECT attnum FROM pg_attribute WHERE attrelid = conrelid AND attname = 'non_cooking_label')) IS DISTINCT FROM 'wfs-non-cooking-optional-notes-v1') THEN
             ALTER TABLE calendar_events DROP CONSTRAINT calendar_events_non_cooking_check;
         END IF;
         IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'calendar_events_non_cooking_check' AND conrelid = 'calendar_events'::regclass) THEN
             ALTER TABLE calendar_events ADD CONSTRAINT calendar_events_non_cooking_check CHECK ((non_cooking_kind IS NULL AND non_cooking_label IS NULL) OR (non_cooking_kind IS NOT NULL AND status = 3 AND recipe_id IS NULL AND ((non_cooking_kind IN ('order_in', 'eating_out') AND (non_cooking_label IS NULL OR (char_length(btrim(non_cooking_label)) >= 1 AND char_length(btrim(non_cooking_label)) <= 80))) OR (non_cooking_kind = 'mystery' AND non_cooking_label IS NULL) OR (non_cooking_kind = 'custom' AND non_cooking_label IS NOT NULL AND char_length(btrim(non_cooking_label)) >= 1 AND char_length(btrim(non_cooking_label)) <= 80))));
         END IF;
-        COMMENT ON CONSTRAINT calendar_events_non_cooking_check ON calendar_events IS 'wfs-non-cooking-optional-notes-v1';
+        COMMENT ON COLUMN calendar_events.non_cooking_label IS 'wfs-non-cooking-optional-notes-v1';
+        -- sqldef 3.11.23 exports constraint comments but panics when diffing them.
+        COMMENT ON CONSTRAINT calendar_events_non_cooking_check ON calendar_events IS NULL;
     END IF;
 END
 $$;

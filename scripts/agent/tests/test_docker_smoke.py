@@ -138,6 +138,17 @@ class DockerSmokeTests(unittest.TestCase):
         self.assertNotEqual(self.run_smoke(), 0)
         self.assertEqual(self.downs(), [])
 
+    def test_migration_marker_avoids_unsupported_constraint_comments(self):
+        schema = (ROOT / 'api/database/schema.sql').read_text()
+        compatibility = (ROOT / 'api/database/compatibility.sql').read_text()
+        # The pinned sqldef panics on constraint comments, including comments
+        # exported from an existing DB. Retain the marker on a supported column.
+        self.assertNotRegex(schema, r'COMMENT ON CONSTRAINT')
+        marker = "COMMENT ON COLUMN calendar_events.non_cooking_label IS 'wfs-non-cooking-optional-notes-v1'"
+        self.assertIn(marker, schema)
+        self.assertIn(marker, compatibility)
+        self.assertIn('COMMENT ON CONSTRAINT calendar_events_non_cooking_check ON calendar_events IS NULL', compatibility)
+
     @unittest.skipUnless(os.environ.get('WFS_TEST_SQLDEF') == '1',
                          'Set WFS_TEST_SQLDEF=1 to qualify the pinned migration parser with Docker.')
     def test_pinned_migration_parser_accepts_declarative_schema_offline(self):

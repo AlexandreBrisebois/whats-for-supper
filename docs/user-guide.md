@@ -18,9 +18,13 @@ The home screen is your command centre. It tells you what's planned for tonight,
 
 If a recipe is set for tonight, you'll see it front and centre with a **Cook's Mode** button. Tap it to work through the recipe one clear, large-text step at a time.
 
+Finishing Cook's Mode records the recipe you cooked. It completes tonight's planned meal only when that same recipe is scheduled for tonight; cooking a different recipe leaves the planned meal unchanged.
+
 If tonight's plan changes, tap **Skip**, choose **Order In** or another backup, then decide what to do with the planned recipe: move it to tomorrow, save it for next week, or drop it. **Save for Next Week** finds the first open day starting next Monday. If next week is full, the app saves it on the next available later date and tells you where it went. You stay on the page you were using.
 
-Overnight, the app marks missed planned meals from earlier days as cooked so recipe rotation stays useful. Meals marked Ordered In, meals already cooked, and future plans are left alone.
+Overnight, the app marks missed planned meals from earlier days as cooked so recipe rotation stays useful. Recipe-free supper plans, meals already cooked, and future plans are left alone.
+
+If tonight is set to **Order In**, **Eating out**, or a custom plan, Home shows the saved plan and any note. Tap the card to edit it. **Mystery night** keeps the usual choices for finding tonight's supper available without clearing the saved plan just because you opened Home.
 
 If nothing is planned yet, you'll see a few fast choices. If your family has **GOTO recipes** saved, the app randomly picks one to show as your featured fallback. Tap **Make This Tonight** to put it on the menu in one step. Refreshing may show another recipe from your GOTO list. You can also use **Quick Find** for a short stack of up to five suggestions. **Skip** moves to the next suggestion; after the stack, you can search your library or start over.
 
@@ -44,7 +48,11 @@ If you have a new idea that isn't in your library yet, use **Describe it** or **
 
 The planner shows the whole week at a glance. Each day shows what's planned — or a gentle nudge to fill the gap.
 
-Tap any day to assign a recipe, swap one out, or mark a night as "ordered in." Drag a recipe to a different day if plans change.
+Tap a day to assign or replace a recipe. For an empty day, choose **Other plans**, then **Order In**, **Eating out**, **Mystery night**, or **We made plans**. Order In and Eating out allow an optional note, such as the restaurant name. We made plans requires a message describing supper; messages can be up to 80 characters. Mystery night means “We’ll figure out supper that day” and needs no message. Tap **Save** to share the plan with the household.
+
+Tap a saved supper plan to edit it, clear the day, or choose a recipe instead. These plans reserve their days through family voting and finalizing the week, and add no grocery ingredients. Clearing one makes the day available again.
+
+Drag a recipe to a different day if plans change. Dragging it onto a saved supper plan swaps the two days, carrying the plan and its message to the recipe's previous day.
 
 The **grocery list** lives here too. Check items off as you shop — your partner's phone updates live, so you won't both come home with two bags of onions.
 
