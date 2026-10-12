@@ -46,6 +46,7 @@ export default async function HomePage() {
       <TodayStoreInitializer
         todaysRecipe={todaysRecipe}
         todayStatus={todayStatus}
+        todayDate={todayStr}
         nonCooking={todaysEntry?.nonCooking ?? null}
       />
       <HomeCommandCenter todaysRecipe={todaysRecipe} todayStatus={todayStatus} />

@@ -125,11 +125,11 @@ export const useTodayStore = create<TodayState>((set, get) => ({
       }
     } else if (
       recipe === null &&
-      status === 0 &&
+      (status === 0 || (status === 3 && nonCooking == null)) &&
       existingStatus === 3 &&
       get().nonCooking !== null
     ) {
-      // Empty SSR can arrive after an authoritative non-cooking snapshot.
+      // Empty or metadata-free skipped SSR can arrive after a richer live snapshot.
       // Preserve that occupied plan until the existing client sync reconciles it.
       set({ optimisticWriteAt: null });
     } else if (recipe === null && existingRecipe !== null) {
@@ -234,9 +234,22 @@ export const useTodayStore = create<TodayState>((set, get) => ({
   async sync() {
     set({ isLoading: true });
     try {
-      const schedule = await getSchedule(0);
+      let schedule = await getSchedule(0);
       const todayStr = getTodayString();
-      const todaysEntry = schedule?.days?.find((d) => d.date === todayStr);
+      let todaysEntry = schedule?.days?.find((d) => d.date === todayStr);
+
+      // The API's week is based on UTC; the browser's local Sunday may still
+      // belong to the previous week. Resolve coverage from server-provided dates.
+      if (!todaysEntry && schedule?.days?.length) {
+        const dates = schedule.days.flatMap((day) => (day.date ? [day.date] : [])).sort();
+        const first = dates[0];
+        const last = dates[dates.length - 1];
+        const direction = first && todayStr < first ? -1 : last && todayStr > last ? 1 : 0;
+        if (direction) {
+          schedule = await getSchedule((schedule.weekOffset ?? 0) + direction);
+          todaysEntry = schedule?.days?.find((day) => day.date === todayStr);
+        }
+      }
 
       const { optimisticWriteAt } = get();
       const optimisticIsRecent =
@@ -246,6 +259,7 @@ export const useTodayStore = create<TodayState>((set, get) => ({
         set({ status: 2, nonCooking: null, lastSyncedAt: Date.now() });
       } else if (todaysEntry?.status === 3) {
         set({
+          currentRecipe: normalizeScheduleRecipe(todaysEntry.recipe),
           status: 3,
           nonCooking: todaysEntry.nonCooking ?? null,
           lastSyncedAt: Date.now(),

@@ -422,3 +422,51 @@ it('recording an unscheduled recipe keeps the saved non-cooking plan', async () 
   expect(useTodayStore.getState().status).toBe(3);
   expect(useTodayStore.getState().nonCooking).toEqual(plan);
 });
+
+it.each([
+  { kind: 'eating_out' as const, customLabel: null },
+  { kind: 'custom' as const, customLabel: "Supper at mom's" },
+])('keeps a shared $kind plan when skipped SSR has no plan details', (plan) => {
+  useTodayStore.getState().applyServerUpdate({ recipe: null, status: 3, nonCooking: plan });
+  useTodayStore.getState().init(null, 3, null);
+  expect(useTodayStore.getState().status).toBe(3);
+  expect(useTodayStore.getState().nonCooking).toEqual(plan);
+});
+
+it.each([
+  { kind: 'eating_out' as const, customLabel: null },
+  { kind: 'custom' as const, customLabel: "Supper at mom's" },
+])('sync resolves the local Sunday plan across the API UTC week boundary ($kind)', async (plan) => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date(2026, 9, 11, 23, 30));
+  try {
+    vi.mocked(getSchedule).mockReset();
+    vi.mocked(getSchedule)
+      .mockResolvedValueOnce({
+        weekOffset: 0,
+        days: [
+          {
+            day: 'Mon',
+            date: '2026-10-12',
+            status: 3,
+            recipe: null,
+            nonCooking: { kind: 'order_in' },
+          },
+          { day: 'Sun', date: '2026-10-18', status: 0, recipe: null },
+        ],
+      })
+      .mockResolvedValueOnce({
+        weekOffset: -1,
+        days: [{ day: 'Sun', date: '2026-10-11', status: 3, recipe: null, nonCooking: plan }],
+      });
+    useTodayStore.setState({ currentRecipe: mockRecipe, status: 0 });
+    await useTodayStore.getState().sync();
+    expect(getSchedule).toHaveBeenNthCalledWith(1, 0);
+    expect(getSchedule).toHaveBeenNthCalledWith(2, -1);
+    expect(useTodayStore.getState().status).toBe(3);
+    expect(useTodayStore.getState().currentRecipe).toBeNull();
+    expect(useTodayStore.getState().nonCooking).toEqual(plan);
+  } finally {
+    vi.useRealTimers();
+  }
+});

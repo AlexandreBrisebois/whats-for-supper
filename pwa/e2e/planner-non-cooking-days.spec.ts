@@ -196,3 +196,61 @@ test('Other plans stays readable and reachable on a phone', async ({ page }, tes
   await expect(page.getByTestId('today-non-cooking-plan')).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath('other-plans-home.png') });
 });
+
+test.describe('Home local calendar day', () => {
+  test.use({ timezoneId: 'America/Toronto' });
+
+  for (const [kind, customLabel, label] of [
+    ['eating_out', null, 'Eating out'],
+    ['custom', "Supper at mom's", "Supper at mom's"],
+  ] as const) {
+    test(`shows ${kind} on local Sunday after the API advances to Monday`, async ({
+      page,
+      baseURL,
+    }) => {
+      await page.clock.setFixedTime(new Date('2026-05-11T03:30:00Z'));
+      await page.context().addCookies([
+        {
+          name: 'wfs-test-date',
+          value: '2026-05-11T03:30:00Z',
+          url: baseURL || 'http://127.0.0.1:3000',
+        },
+      ]);
+      await setupCommonRoutes(page);
+      const previous = emptyWeek();
+      previous.weekOffset = -1;
+      previous.days![6].status = 3;
+      previous.days![6].nonCooking = { kind, customLabel };
+      const current = emptyWeek();
+      current.days = current.days!.map((day) => {
+        const date = new Date(`${day.date}T12:00:00Z`);
+        date.setUTCDate(date.getUTCDate() + 7);
+        return { ...day, date: toDateStr(date) };
+      });
+      current.days[0].status = 3;
+      current.days[0].nonCooking = { kind: 'order_in', customLabel: null };
+      await page.route(
+        (url) => url.pathname === '/api/schedule',
+        (route) => {
+          const offset = new URL(route.request().url()).searchParams.get('weekOffset');
+          return route.fulfill({ json: { data: offset === '-1' ? previous : current } });
+        }
+      );
+      await page.route('**/api/stream', (route) =>
+        route.fulfill({
+          contentType: 'text/event-stream',
+          body: `event: connected\ndata: ${JSON.stringify({ schedule: current, connectionId: 'local-calendar-test' })}\n\n`,
+        })
+      );
+      const localWeek = page.waitForRequest(
+        (request) => new URL(request.url()).searchParams.get('weekOffset') === '-1'
+      );
+      await page.goto('/home');
+      await localWeek;
+      await expect(page.getByTestId('today-non-cooking-label')).toHaveText(label);
+      await expect(page.getByTestId('order-in-btn')).toBeHidden();
+      await page.reload();
+      await expect(page.getByTestId('today-non-cooking-label')).toHaveText(label);
+    });
+  }
+});
