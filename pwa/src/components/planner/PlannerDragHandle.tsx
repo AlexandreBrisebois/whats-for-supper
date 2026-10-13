@@ -7,7 +7,7 @@ import { t } from '@/locales';
 import { cn } from '@/lib/utils';
 
 // A deliberate hold with a small allowance for finger jitter.
-const HOLD_MS = 400;
+const HOLD_MS = 250;
 const SLOP_PX = 8;
 
 export function PlannerDragHandle({ start }: { start: (event: PointerEvent) => void }) {

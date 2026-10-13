@@ -45,10 +45,10 @@ describe('planner hold to move', () => {
       clientX: 20,
       clientY: 20,
     });
-  it('requires a stationary 400ms hold and signals readiness once', () => {
+  it('requires a stationary 250ms hold and signals readiness once', () => {
     render(<PlannerDragHandle start={start} />);
     down();
-    act(() => vi.advanceTimersByTime(399));
+    act(() => vi.advanceTimersByTime(249));
     expect(start).not.toHaveBeenCalled();
     expect(vibrate).not.toHaveBeenCalled();
     act(() => vi.advanceTimersByTime(1));
@@ -78,7 +78,7 @@ describe('planner hold to move', () => {
   it('prevents native scrolling only after activation', () => {
     render(<PlannerDragHandle start={start} />);
     down();
-    act(() => vi.advanceTimersByTime(400));
+    act(() => vi.advanceTimersByTime(250));
     const move = new Event('touchmove', { bubbles: true, cancelable: true });
     screen.getByTestId('planner-drag-handle').dispatchEvent(move);
     expect(move.defaultPrevented).toBe(true);
