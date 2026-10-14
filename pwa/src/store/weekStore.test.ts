@@ -584,6 +584,7 @@ describe('weekStore — closeVoting', () => {
 
     // Status should be 2 (Locked)
     expect(useWeekStore.getState().status).toBe(2);
+    expect(useWeekStore.getState().schedule[0]._isPending).toBe(false);
   });
 });
 

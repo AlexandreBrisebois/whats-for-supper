@@ -396,6 +396,13 @@ export const useWeekStore = create<WeekState>((set, get) => ({
 
       // AC-2: Atomic Lock
       await lockSchedule(weekOffset);
+      if (get().weekOffset === weekOffset) {
+        set({
+          schedule: get().schedule.map((day) =>
+            day._isPending ? { ...day, _isPending: false } : day
+          ),
+        });
+      }
     } catch {
       set({ status: prevStatus });
       throw new Error('Failed to close voting');
