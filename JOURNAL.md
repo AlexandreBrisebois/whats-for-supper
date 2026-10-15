@@ -2,7 +2,7 @@
 
 HM-E completed the unique-history salvage pass. This file is frozen and searchable;
 do not append session records. Historical claims, commands and checkboxes are not
-current authorization or validation. See the [provenance ledger](.kiro/specs/harness-modernization/hm-e-ledger.md)
+current authorization or validation. See the provenance ledger (retired historical reference)
 for verified destinations and obsolete/duplicated facts. Active resume checkpoints
 live in [HANDOVER.md](HANDOVER.md); task evidence belongs in the selected spec.
 
@@ -27,7 +27,7 @@ This file contains the historical session logs and technical archives for the "W
 - Fixed test mocks for synthesized-report deletion and consistent grocery categories across GET/SSE snapshots. No production code, contract, or schema changes were needed.
 - Passed: API 671/4 skipped (including PostgreSQL), PWA unit 507/4 skipped, production E2E 173/6 skipped, generated-client/schema checks, audits, `task gate`, and recovered `task review`.
 - The single `agent:finish` invocation passed impact/drift but failed its API child after cleanup killed Docker's forwarding process on port 9001. Docker and the disposable database were restored; `task review PWA_PORT=55436` then passed with the Docker application ports released. The owner subsequently confirmed completion and requested archival; slice 5 is checked and no retry remains an active task. This acceptance does not change the recorded initial gate outcome.
-- The disposable database container was removed; Docker API/PWA were restored. Removed the active retry entry from `HANDOVER.md`. The completed spec is preserved in [.kiro/specs/archive/recipe-duplicate-and-grocery-reclassification](.kiro/specs/archive/recipe-duplicate-and-grocery-reclassification/tasks.md). Harness cleanup repair is outside this completed spec.
+- The disposable database container was removed; Docker API/PWA were restored. Removed the active retry entry from `HANDOVER.md`. The completed spec is preserved in .kiro/specs/archive/recipe-duplicate-and-grocery-reclassification (retired historical reference). Harness cleanup repair is outside this completed spec.
 
 ---
 

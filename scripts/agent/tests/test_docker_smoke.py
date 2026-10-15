@@ -182,7 +182,7 @@ class DockerSmokeTests(unittest.TestCase):
         task = yaml.safe_load((ROOT / 'Taskfile.yml').read_text())
         validation = yaml.safe_load((ROOT / '.github/workflows/validate.yml').read_text())
         smoke_overrides = yaml.safe_load((ROOT / 'docker/compose/ci-overrides.yml').read_text())
-        self.assertEqual(task['tasks']['test:smoke']['cmds'], ['python3 -B scripts/agent/docker_smoke.py'])
+        self.assertEqual(task['tasks']['test:smoke']['cmds'], ['"{{.PYTHON}}" -B scripts/agent/docker_smoke.py'])
         steps = validation['jobs']['docker-smoke']['steps']
         self.assertTrue(any(s.get('run') == 'python3 -B scripts/agent/docker_smoke.py' for s in steps))
         command = self.smoke.compose_command()

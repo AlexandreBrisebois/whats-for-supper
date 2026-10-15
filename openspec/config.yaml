@@ -1,0 +1,33 @@
+schema: spec-driven
+
+context: |
+  Follow AGENT.md for authority and scope. Shared engineering policy lives in
+  .agents/core/contract-testing.md; command semantics, final verification and evidence
+  identity live in .agents/core/execution-harness.md. Use .agents/core/context-loading.md
+  for conditional repository context. OpenSpec owns planning artifacts and task progression;
+  use its installed skills for artifact discovery, store selection and schema mechanics.
+
+rules:
+  proposal:
+    - Inspect existing behavior and insertion points before proposing changes; state scope and consequential unresolved decisions.
+  specs:
+    - Describe observable behavior, compatibility and failure/recovery scenarios; keep implementation details in design and tasks.
+  design:
+    - Ground affected ownership, interfaces and integration decisions in current source; reuse established patterns and identify material tradeoffs.
+    - Identify the first observable slice, its affected layers and real integration boundaries under .agents/core/contract-testing.md.
+  tasks:
+    - Use bounded dependency-ordered tasks with named acceptance checks and traceability to requirements/scenarios.
+    - Translate the slicing and test-first policy in .agents/core/contract-testing.md into concrete behavior increments, commands and required evidence; identify non-applicable behavior checks for documentation-only work.
+    - For API changes, name the contract, generated client, affected consumers and mock handlers/builders/state behavior required by that policy, with their synchronization and acceptance commands.
+    - For browser/API changes, name applicable unit/API tests, Playwright scenarios, mock owner, route/method and contract shape within the task.
+
+operations:
+  apply:
+    guidance:
+      - Apply the shared engineering policy in .agents/core/contract-testing.md to each selected task.
+      - Mark tasks complete only after their required acceptance checks pass; preserve blockers and tasks outside the selected scope. Distinguish implemented, verified and archived states.
+      - Before reporting selected scope complete, update task progress/evidence and follow the final verification procedure in .agents/core/execution-harness.md. Reconcile task acceptance with repository check results.
+  archive:
+    guidance:
+      - Reconcile task/scenario acceptance and harness evidence; archival does not establish implementation acceptance. Preserve incomplete tasks and blocked evidence if unfinished archival was explicitly requested.
+      - Review synced capability specs and run OpenSpec validation after sync/archive writes. Verify the resulting planning-file state under .agents/core/execution-harness.md; earlier implementation results apply only to their original content identity.

@@ -1,0 +1,2 @@
+# Dependencies for repository Python tooling and its regression suite.
+PyYAML==6.0.3

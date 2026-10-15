@@ -14,7 +14,6 @@ SCRIPTS = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(SCRIPTS))
 import test_ops
 import drift
-import session
 
 
 class CompletionTests(IsolatedGitTestCase):
@@ -27,35 +26,6 @@ class CompletionTests(IsolatedGitTestCase):
                      'api/src/RecipeApi/Services/NewService.cs', 'pwa/e2e/new-helper.ts']:
             with self.subTest(path=path):
                 self.assertTrue(test_ops.build_impact_plan([path]).run_all)
-
-    def test_prepare_and_finish_block_before_using_delta_after_head_change(self):
-        f = self.finish()
-        with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            subprocess.run(['git', 'init', '-q'], cwd=root, check=True)
-            subprocess.run(['git', 'config', 'user.email', 'tests@example.com'], cwd=root, check=True)
-            subprocess.run(['git', 'config', 'user.name', 'Tests'], cwd=root, check=True)
-            (root / '.gitignore').write_text('.task/\n')
-            (root / 'file.txt').write_text('a\n')
-            subprocess.run(['git', 'add', '.'], cwd=root, check=True)
-            subprocess.run(['git', 'commit', '-qm', 'A'], cwd=root, check=True)
-            session_dir = root / '.task/agent-session'
-            session.begin('pilot', root, session_dir)
-            (root / 'file.txt').write_text('b\n')
-            subprocess.run(['git', 'commit', '-am', 'B', '-q'], cwd=root, check=True)
-
-            task_delta = session.task_delta
-            stale_delta = lambda: task_delta(root, session_dir)
-            for prepare in (True, False):
-                with self.subTest(prepare=prepare), \
-                     mock.patch.object(sys, 'argv', ['finish.py'] + (['--prepare'] if prepare else [])), \
-                     mock.patch.object(f.session, 'task_delta', side_effect=stale_delta), \
-                     mock.patch.object(f, 'prepare') as prepare_work, \
-                     mock.patch.object(f, 'verify') as verify_work, \
-                     contextlib.redirect_stderr(io.StringIO()):
-                    self.assertEqual(f.main(), 2)
-                    prepare_work.assert_not_called()
-                    verify_work.assert_not_called()
 
     def test_documentation_has_no_e2e_impact(self):
         self.assertFalse(test_ops.build_impact_plan(['docs/help.md']).tests)
@@ -170,7 +140,7 @@ class CompletionTests(IsolatedGitTestCase):
         with mock.patch.dict(os.environ, {}, clear=True), \
              mock.patch.object(f, 'run_command', return_value=('passed', 'ok')) as run:
             self.assertEqual(f.run_check('agent:test:impact'), ('passed', 'ok'))
-        run.assert_called_once_with(['task', 'agent:test:impact'])
+        run.assert_called_once_with([sys.executable, '-B', 'scripts/agent/test_ops.py', '--impact', '--files'])
 
     def test_api_tests_run_without_an_isolated_runner_assertion(self):
         f = self.finish()
@@ -214,7 +184,7 @@ class CompletionTests(IsolatedGitTestCase):
 
     def test_spec_diff_is_documentation_but_unknown_preparation_blocks_before_writes(self):
         f = self.finish()
-        self.assertEqual(f.classes_for(['.kiro/specs/example/change.patch']), {'documentation'})
+        self.assertEqual(f.classes_for(['docs/examples/change.patch']), {'documentation'})
         with mock.patch.object(f, 'run_command') as run:
             self.assertEqual(f.prepare(['unknown.bin']), 2)
         run.assert_not_called()
@@ -223,7 +193,7 @@ class CompletionTests(IsolatedGitTestCase):
         f = self.finish()
         self.assertEqual(f.classes_for(['docker/compose/infrastructure.yml']), {'contract'})
         with mock.patch.object(f, 'run_command', return_value=('passed', 'ok')) as run, \
-             mock.patch.object(f.session, 'snapshot', return_value={}):
+             mock.patch.object(f.worktree, 'snapshot', return_value={}):
             self.assertEqual(f.prepare(['docker/compose/infrastructure.yml']), 0)
         self.assertEqual(run.call_args_list, [mock.call(['task', 'gen:client'], cwd=None)])
 
@@ -243,12 +213,9 @@ class CompletionTests(IsolatedGitTestCase):
             subprocess.run(['git', 'commit', '-qm', 'baseline'], cwd=root, check=True)
             if dirty is not None:
                 target.write_text(dirty)
-            session_dir = root / '.task/agent-session'
-            session.begin('flags', root, session_dir)
             target.write_text(after)
-            with mock.patch.object(f, 'ROOT', root), \
-                 mock.patch.object(session, 'SESSION_DIR', session_dir):
-                yield f, target, session_dir
+            with mock.patch.object(f, 'ROOT', root):
+                yield f, target, root
 
     def test_feature_flag_compose_and_smoke_edits_keep_application_checks(self):
         before = 'services:\n  api:\n    environment:\n      EXISTING: value\n'
@@ -284,34 +251,17 @@ class CompletionTests(IsolatedGitTestCase):
             with self.subTest(after=after), self.feature_flag_change(before, after) as (f, _, __):
                 self.assertIn('database-behavior', f.checks_for(['docker/compose/apps.yml']))
 
-    def test_flag_changes_compare_against_dirty_session_baseline(self):
+    def test_flag_classifier_includes_all_git_effects_and_rejects_mode_changes(self):
         clean = 'services:\n  api:\n    environment:\n      EXISTING: value\n'
-        dirty = clean + '    image: ambient-image\n'
-        after = dirty.replace('      EXISTING: value\n',
-                              '      EXISTING: value\n      WFS_FEATURE_EXAMPLE: ${WFS_FEATURE_EXAMPLE:-off}\n')
-        with self.feature_flag_change(clean, after, dirty=dirty) as (f, _, __):
-            self.assertNotIn('database-behavior', f.checks_for(['docker/compose/apps.yml']))
-        # Reverting ambient changes is still a task change, even if HEAD looks safe.
-        with self.feature_flag_change(clean, clean, dirty=dirty) as (f, _, __):
+        flag = '      WFS_FEATURE_EXAMPLE: ${WFS_FEATURE_EXAMPLE:-off}\n'
+        with self.feature_flag_change(clean, clean + flag + '    image: ambient-image\n') as (f, _, __):
             self.assertIn('database-behavior', f.checks_for(['docker/compose/apps.yml']))
-
-    def test_flag_classifier_fails_closed_for_missing_baseline_and_mode_changes(self):
-        before = 'services:\n  api:\n    environment:\n      EXISTING: value\n'
-        after = before + '      WFS_FEATURE_EXAMPLE: ${WFS_FEATURE_EXAMPLE:-off}\n'
-        for kind in ['manifest', 'mode', 'deleted', 'corrupt-baseline']:
-            with self.subTest(kind=kind), self.feature_flag_change(before, after, dirty=before) as (f, target, session_dir):
-                if kind == 'manifest':
-                    (session_dir / 'manifest.json').unlink()
-                elif kind == 'mode':
+        for kind in ['mode', 'deleted']:
+            with self.subTest(kind=kind), self.feature_flag_change(clean, clean + flag) as (f, target, _):
+                if kind == 'mode':
                     target.chmod(0o755)
-                elif kind == 'deleted':
-                    target.unlink()
                 else:
-                    # No saved dirty copy exists when the baseline equals HEAD.
-                    import json
-                    manifest = json.loads((session_dir / 'manifest.json').read_text())
-                    manifest['baseline']['docker/compose/apps.yml']['sha256'] = 'invalid'
-                    (session_dir / 'manifest.json').write_text(json.dumps(manifest))
+                    target.unlink()
                 self.assertIn('database-behavior', f.checks_for(['docker/compose/apps.yml']))
 
     def test_github_workflows_are_harness_configuration_not_unknown(self):
@@ -357,35 +307,25 @@ class CompletionTests(IsolatedGitTestCase):
             with self.subTest(path=path), self.feature_flag_change(before, before + addition, path) as (f, _, __):
                 self.assertIn('database-behavior', f.checks_for([path]))
 
-    def test_demo_pass_through_uses_verified_dirty_baseline(self):
+    def test_demo_pass_through_does_not_hide_other_git_effects(self):
         clean = 'services:\n  pwa:\n    environment:\n      EXISTING: value\n'
-        dirty = clean + '    image: ambient\n'
         addition = '      DEMO_MODE: ${DEMO_MODE:-false}\n'
-        after = dirty.replace('      EXISTING: value\n', '      EXISTING: value\n' + addition)
-        with self.feature_flag_change(clean, after, dirty=dirty) as (f, _, __):
-            self.assertNotIn('database-behavior', f.checks_for(['docker/compose/apps.yml']))
-        for kind in ['manifest', 'snapshot', 'mode']:
-            with self.subTest(kind=kind), self.feature_flag_change(clean, after, dirty=dirty) as (f, target, session_dir):
-                if kind == 'manifest':
-                    (session_dir / 'manifest.json').unlink()
-                elif kind == 'snapshot':
-                    (session_dir / 'baseline/docker/compose/apps.yml').write_text('corrupt')
-                else:
-                    target.chmod(0o755)
-                self.assertIn('database-behavior', f.checks_for(['docker/compose/apps.yml']))
+        after = clean + addition + '    image: ambient\n'
+        with self.feature_flag_change(clean, after) as (f, _, __):
+            self.assertIn('database-behavior', f.checks_for(['docker/compose/apps.yml']))
 
     def test_prepare_generation_and_format_precede_any_verification(self):
         f = self.finish()
         with mock.patch.object(f, 'run_command', return_value=('passed', 'ok')) as run, \
-             mock.patch.object(f.session, 'snapshot', return_value={}):
+             mock.patch.object(f.worktree, 'snapshot', return_value={}):
             self.assertEqual(f.prepare(['specs/openapi.yaml']), 0)
         self.assertEqual(run.call_args_list, [mock.call(['task', 'gen:client'], cwd=None)])
 
-    def test_prepare_formats_only_post_begin_application_files(self):
+    def test_prepare_formats_only_selected_application_files(self):
         f = self.finish()
         paths = ['pwa/src/example.ts', 'api/src/RecipeApi/Example.cs']
         with mock.patch.object(f, 'run_command', return_value=('passed', 'ok')) as run, \
-             mock.patch.object(f.session, 'snapshot', return_value={}):
+             mock.patch.object(f.worktree, 'snapshot', return_value={}):
             self.assertEqual(f.prepare(paths), 0)
         self.assertEqual(run.call_args_list, [
             mock.call(['npm', 'exec', '--', 'prettier', '--write', '--', 'src/example.ts'],
@@ -397,7 +337,7 @@ class CompletionTests(IsolatedGitTestCase):
     def test_prepare_blocks_writes_outside_the_calculated_formatter_closure(self):
         f = self.finish()
         with mock.patch.object(f, 'run_command', return_value=('passed', 'ok')), \
-             mock.patch.object(f.session, 'snapshot', side_effect=[
+             mock.patch.object(f.worktree, 'snapshot', side_effect=[
                  {'pwa/src/example.ts': {'sha256': 'before'}},
                  {'pwa/src/example.ts': {'sha256': 'after'},
                   'api/src/RecipeApi/Unexpected.cs': {'sha256': 'new'}},
@@ -423,10 +363,11 @@ class CompletionTests(IsolatedGitTestCase):
     def test_taskfile_final_validation_has_no_format_or_process_kill(self):
         import yaml
         tasks = yaml.safe_load((SCRIPTS.parents[1] / 'Taskfile.yml').read_text())['tasks']
-        self.assertEqual(tasks['agent:finish']['cmds'], ['python3 -B scripts/agent/finish.py'])
-        self.assertEqual(tasks['agent:begin']['cmds'],
-                         ['python3 -B scripts/agent/session.py --begin {{.CLI_ARGS}}'])
-        self.assertIn('python3 -B -m unittest', tasks['test:agent']['cmds'][0])
+        self.assertEqual(tasks['verify']['cmds'], ['"{{.PYTHON}}" -B scripts/agent/finish.py {{.CLI_ARGS}}'])
+        self.assertEqual(tasks['prepare']['cmds'], ['"{{.PYTHON}}" -B scripts/agent/finish.py --prepare {{.CLI_ARGS}}'])
+        for removed in ['agent:prepare', 'agent:finish', 'agent:begin', 'agent:abort', 'agent:session:status']:
+            self.assertNotIn(removed, tasks)
+        self.assertIn('"{{.PYTHON}}" -B -m unittest', tasks['test:agent']['cmds'][0])
         self.assertNotIn({'task': 'format'}, tasks['review']['cmds'])
         self.assertIn('format:check:pwa', tasks['review:validate']['deps'])
         self.assertNotIn({'task': 'dev:kill'}, tasks['review']['cmds'])

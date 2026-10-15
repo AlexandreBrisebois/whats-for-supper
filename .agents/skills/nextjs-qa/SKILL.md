@@ -16,7 +16,8 @@ clarify only consequential unknowns, without a mandatory interview or file-count
    and use isolated resources. Do not retry a harness child already timed out/stopped.
 2. Diagnose locator, data, hydration, contract and environment evidence. Load only the
    relevant [locator](locators-and-stability.md), [hydration](debugging-hydration.md)
-   or [mocking](mocking-strategy.md) reference. Do not infer a race solely from CI failure.
+   or [mocking](mocking-strategy.md) reference. For SSE/event readiness races, use
+   [SSE and async state](sse-and-async-state.md). Do not infer a race solely from CI failure.
 3. Derive a regression from approved intent before implementing the smallest fix.
    Trace affected seams; a mismatch does not authorize rewriting the contract.
 4. Prepare formatting/generation and finish through the shared

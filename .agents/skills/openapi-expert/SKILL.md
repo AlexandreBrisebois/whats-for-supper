@@ -13,9 +13,9 @@ covered by existing authorization. Review may end with findings only.
 
 ## Establish and synchronize the seam
 
-1. Use [shared investigation](../../core/context-loading.md#investigation),
-   `task agent:api` and `task agent:slice -- <route>` to locate the operation in
-   `specs/openapi.yaml`, affected controller/DTO, client wrapper and mocks.
+1. Locate the approved operation and affected controller/DTO, client wrapper and
+   mocks using [shared investigation](../../core/context-loading.md#investigation).
+   Use `task agent:api` or `task agent:slice -- <route>` when helpful for discovery.
 2. For an authorized API change, define paths, parameters, response schemas and
    schema-valid examples first. Preserve camelCase JSON and deterministic valid
    UUIDs. Include applicable empty collections and documented error responses.
@@ -27,8 +27,9 @@ covered by existing authorization. Review may end with findings only.
    DTOs, wrapper calls, builders and Playwright mocks with the approved contract.
    Follow [database](../database/SKILL.md) for persistence changes: storage shapes
    may differ from API DTOs and require explicit conversion/constraint checks.
-5. Use `task agent:reconcile` and applicable drift checks, then the shared
-   [execution harness](../../core/execution-harness.md) completion route.
+5. Follow the shared [execution harness](../../core/execution-harness.md) for final
+   verification. Use individual reconciliation or drift commands when helpful
+   during development.
 
 ## Check coverage
 

@@ -1,6 +1,5 @@
 # Flow: Recipe Synthesis Complete → Library Notification
 
-**Historical spec:** `.kiro/specs/archive/00-live-schedule` — Flow 8 / R11
 **Trigger:** SSE `recipe_ready` event — fires when `RecipeReadyProcessor` confirms recipe is fully synthesized and ready for use.
 **Reviewed by:** The Mère-Designer
 

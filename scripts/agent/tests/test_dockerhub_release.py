@@ -143,7 +143,7 @@ class DockerHubReleaseHelperTests(unittest.TestCase):
 
     def test_taskfile_routes_tagging_by_current_branch(self):
         taskfile = (ROOT / "Taskfile.yml").read_text()
-        self.assertIn("python3 -B scripts/agent/dockerhub_release.py auto {{.CLI_ARGS}}", taskfile)
+        self.assertIn('"{{.PYTHON}}" -B scripts/agent/dockerhub_release.py auto {{.CLI_ARGS}}', taskfile)
 
 
 class DockerHubWorkflowContractTests(unittest.TestCase):

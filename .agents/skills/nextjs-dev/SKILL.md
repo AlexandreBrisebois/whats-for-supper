@@ -9,20 +9,16 @@ You are the Frontend Specialist. Your mission is to build features to spec using
 
 **Scope:** You *build*. You do not debug random CI failures or test flakiness (that is `nextjs-qa`).
 
+OpenSpec owns the selected change, artifacts and task progression. This skill
+provides domain implementation guidance within that scope; it does not select
+additional tasks or impose a separate specification lifecycle.
+
 ## Philosophy
 
-**UI is a reflection of the Contract.** Your code must perfectly map to the OpenAPI spec.
 Follow [contract/testing](../../core/contract-testing.md): approved contract → tests → implementation.
 Update a spec or stale test only against authorized intent; never rewrite the contract merely to match code.
 
-See [vertical-slicing.md](vertical-slicing.md) for how to build features one slice at a time, and [Solar Earth design](../designer/solar-earth-design.md) for UI guidelines.
-
-## Anti-Pattern: Horizontal Slicing
-
-**DO NOT write the entire UI and then test it.** This is horizontal slicing.
-
-*   **Wrong:** Write layout → write all components → write API hooks → write E2E tests.
-*   **Right (Vertical Slicing):** Write 1 test for the core action → implement minimal RSC/Client logic → get to Green → Repeat.
+See the [shared slicing policy](../../core/contract-testing.md#2a-tracer-bullets-and-vertical-slices) for how to build features one slice at a time, and [Solar Earth design](../designer/solar-earth-design.md) for UI guidelines.
 
 ## Workflow
 
@@ -33,24 +29,22 @@ Before writing any UI code:
 3.  After an approved API change run `task gen:client`, then `task typecheck`. The SDK is in `pwa/src/lib/api/generated/`; wrappers are under `pwa/src/lib/api/`.
 
 ### 2. Investigation and tests (Red phase)
-1.  Run `task agent:reconcile` to ensure the mock API matches the spec.
-2.  **Logic First**: If implementing complex utility logic (e.g., date parsing, data transformation), create a unit test in `pwa/src/**/{name}.test.ts` and run `task test:unit`.
-3.  **UI regression**: Open or create a Playwright test in `pwa/e2e/`.
-4.  Use stable `data-testid` interactions; semantic assertions may verify accessible names, roles and disabled state.
-5.  Write the E2E test. **The E2E test assertions and mock data MUST perfectly match the OpenAPI spec examples and schemas.**
-6.  Run it. It must fail.
+1.  **Logic First**: If implementing complex utility logic (e.g., date parsing, data transformation), create a unit test in `pwa/src/**/{name}.test.ts` and run `task test:unit`.
+2.  **UI regression**: Open or create a Playwright test in `pwa/e2e/`.
+3.  Use stable `data-testid` interactions; semantic assertions may verify accessible names, roles and disabled state.
+4.  Write the E2E test.
+5.  Run it. It must fail.
 
 ### 3. Implement Minimum Logic (Green Phase)
 1.  Use the `pwa/src/app/` directory. Default to Server Components.
-2.  Use `"use client"` only at the leaf nodes for interactivity.
+2.  Keep client boundaries as narrow as practical; use client components where state, effects, context, or browser APIs require them.
 3.  Write the minimal code needed to pass the tests (Unit first, then E2E).
 4.  Run the tests. Make it pass.
 
 ### 4. Refactor & Apply Aesthetic
 1.  Ensure all states (Loading, Error, Success) are handled elegantly.
 2.  For major visual changes, consult the `designer` skill.
-3.  Run `task agent:audit` to ensure no brittle CSS selectors were used.
-4.  Use [execution harness](../../core/execution-harness.md) for applicable checks and the `task agent:finish` completion route.
+3.  Use [execution harness](../../core/execution-harness.md) for applicable checks and final repository verification via `task verify`.
 
 ## React Performance & Best Practices
 
@@ -60,7 +54,7 @@ Calling `setState` directly inside an effect causes a cascading render (Initial 
 *   **Right:** Initialize the state in the event handler that triggers the change, or derive it during render if it's computable.
 
 **Preserve effect readiness and freshness**
-Include reactive inputs needed for correctness. For SSE/async state, cover both event/data arrival orders, empty data, duplicate events and stale responses. Use readiness and version guards appropriate to the source; do not hide dependencies in refs merely to suppress reruns. See the shared contract/testing async guidance.
+Include reactive inputs needed for correctness. For SSE/async state, cover both event/data arrival orders, empty data, duplicate events and stale responses. Use readiness and version guards appropriate to the source; do not hide dependencies in refs merely to suppress reruns. See the [SSE and async state reference](../nextjs-qa/sse-and-async-state.md).
 
 ## Testing Asynchronous State
 
@@ -72,7 +66,7 @@ When testing components with asynchronous state updates (e.g., Promises in `useE
     *   **Right:** `await act(async () => { render(<Component />); });`
 3.  **Use `waitFor` for Assertions**: Always use `waitFor` to assert on state changes that happen after an async operation.
     *   **Right:** `await waitFor(() => expect(screen.getByTestId('success')).toBeInTheDocument());`
-4.  **Mock Stores for Isolation**: If a component subscribes to a store (e.g., Zustand), mock the store to control when state changes happen and prevent "act" warnings from external updates.
+4.  Choose real or mocked stores based on the test boundary. Use real stores when verifying subscription and state-transition integration.
 
 ## Feature Implementation Checklist
 

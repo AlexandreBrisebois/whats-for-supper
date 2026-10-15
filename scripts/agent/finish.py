@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-"""Single completion orchestration. Preparation is explicit; verification is observed."""
+"""Repository preparation and verification utilities; task progression belongs to OpenSpec."""
 from __future__ import annotations
 
 import argparse
 import ast
-import hashlib
 import json
 import os
 from pathlib import Path
@@ -14,10 +13,10 @@ import subprocess
 import sys
 
 import test_ops
-import session
+import worktree
 
 ROOT = Path(__file__).resolve().parents[2]
-CHECKS = ('documentation', 'test:agent', 'lint', 'format:check:pwa', 'typecheck', 'test:unit',
+CHECKS = ('documentation', 'spec:check', 'test:agent', 'lint', 'format:check:pwa', 'typecheck', 'test:unit',
           'agent:test:impact', 'test:api', 'review:contracts',
           'agent:drift:endpoints', 'database-behavior')
 
@@ -89,21 +88,13 @@ def deployment_configuration_only(path, *, pwa_demo=False):
     if path not in allowed_paths:
         return False
     try:
-        manifest = session.load_manifest(session.SESSION_DIR)
-        session.validate_identity(manifest, ROOT)
-        baseline = manifest['baseline'][path]
-        current = session.fingerprint(ROOT / path)
-        if (baseline['kind'] != 'file' or current['kind'] != 'file'
-                or baseline['mode'] != current['mode']):
-            return False
-        if path in manifest['ambient_at_start']:
-            before = (session.SESSION_DIR / 'baseline' / path).read_bytes()
-        else:
-            before = subprocess.check_output(
-                ['git', 'show', f"{manifest['head']}:{path}"], cwd=ROOT,
-                stderr=subprocess.DEVNULL)
-        # Do not substitute HEAD for a missing or stale task-boundary snapshot.
-        if hashlib.sha256(before).hexdigest() != baseline['sha256']:
+        before = subprocess.check_output(
+            ['git', 'show', f'HEAD:{path}'], cwd=ROOT, stderr=subprocess.DEVNULL)
+        entry = subprocess.check_output(
+            ['git', 'ls-tree', 'HEAD', '--', path], cwd=ROOT, text=True).split()
+        current = worktree.fingerprint(ROOT / path)
+        expected_mode = '100755' if current.get('mode', 0) & 0o111 else '100644'
+        if current['kind'] != 'file' or not entry or entry[0] != expected_mode:
             return False
         after = (ROOT / path).read_bytes()
         if pwa_demo:
@@ -130,10 +121,11 @@ def classes_for(paths):
                 or path.startswith(('api/src/RecipeApi/Dto/', 'api/src/RecipeApi/Controllers/',
                                     'api/src/RecipeApi/Data/', 'api/src/RecipeApi/Models/'))):
             classes.add('contract')
-        elif path in {'Taskfile.yml', '.gitignore'} or path.startswith(('scripts/agent/', '.agents/', '.github/workflows/')):
+        elif (openspec_class := test_ops.openspec_path_class(path)) is not None:
+            classes.add(openspec_class)
+        elif path in {'Taskfile.yml', '.gitignore', '.pre-commit-config.yaml', '.nvmrc', 'scripts/requirements.txt'} or path.startswith(('scripts/agent/', '.agents/', '.github/workflows/')):
             classes.add('harness')
-        elif path.endswith('.md') or (path.startswith('.kiro/specs/')
-                                        and path.endswith(('.yaml', '.yml', '.json', '.py', '.patch'))):
+        elif path.endswith('.md') or test_ops.documentation_artifact(path):
             classes.add('documentation')
         elif path.startswith(('pwa/', 'api/')):
             classes.add('application')
@@ -145,6 +137,8 @@ def classes_for(paths):
 def checks_for(paths):
     classes = classes_for(paths)
     selected = {'documentation'} if classes else set()
+    if 'unknown' in classes or any(path.startswith('openspec/') for path in paths):
+        selected.add('spec:check')
     if classes & {'harness', 'unknown'}:
         selected.add('test:agent')
     if classes & {'application', 'contract', 'unknown'}:
@@ -156,8 +150,8 @@ def checks_for(paths):
 
 
 def identity():
-    # Phase one deliberately retains the broad repository/runtime identity. Task
-    # attribution narrows check selection, not the dependency boundary being tested.
+    # Verification identity covers the whole repository and runtime, even when
+    # explicit paths select a bounded task's checks.
     return test_ops.build_impact_digest(ROOT, test_ops.get_changed_files(), [])
 
 
@@ -220,7 +214,7 @@ def documentation_check(paths):
             'blocked' if 'blocked' in (worktree[0], staged[0]) else 'passed')
         detail = f'worktree {worktree[1]}; staged {staged[1]}'
     else:
-        status, detail = 'passed', 'no paths changed since session begin'
+        status, detail = 'passed', 'no changed paths selected'
     if problems:
         return 'failed', '; '.join(problems)
     return status, 'introduced links/Python syntax and ' + detail
@@ -229,6 +223,9 @@ def documentation_check(paths):
 def run_check(check, paths=()):
     if check == 'documentation':
         return documentation_check(paths)
+    if check == 'agent:test:impact':
+        return run_command([sys.executable, '-B', 'scripts/agent/test_ops.py',
+                            '--impact', '--files', *paths])
     if check == 'database-behavior':
         return 'blocked', ('Task-specific real database behavior evidence required; '
                            'static parity and generic test:api do not establish it. '
@@ -286,12 +283,12 @@ def prepare(paths):
                          ['dotnet', 'format', '--include', *api_paths], ROOT / 'api'))
     for item in commands:
         name, command, *cwd = item
-        before = session.snapshot(ROOT)
+        before = worktree.snapshot(ROOT)
         status, detail = run_command(command, cwd=cwd[0] if cwd else None)
         print(f'{name}: {status}: {detail}', flush=True)
         if status != 'passed':
             return 2 if status == 'blocked' else 1
-        writes = set(session.changed_between(before, session.snapshot(ROOT)))
+        writes = set(worktree.changed_between(before, worktree.snapshot(ROOT)))
         if name == 'gen:client':
             allowed = {path for path in writes if path.startswith('pwa/src/lib/api/generated/')}
         elif name == 'format:pwa:task':
@@ -302,30 +299,35 @@ def prepare(paths):
         if unexpected:
             print('blocked: preparation changed unexpected paths: ' + ', '.join(unexpected))
             return 2
-    print('Preparation finished; inspect diff before task agent:finish. No verification claim.')
+    print('Preparation finished; inspect diff before task verify. No verification claim.')
     return 0
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--prepare', action='store_true')
+    parser.add_argument('paths', nargs='*', help='Explicit changed repository-relative paths; default: all Git changes')
     args = parser.parse_args()
-    try:
-        delta = session.task_delta()
-    except RuntimeError as error:
-        print(f'blocked: {error}', file=sys.stderr)
+    changed = test_ops.get_changed_files()
+    paths = sorted(set(args.paths)) if args.paths else changed
+    invalid = [path for path in paths if Path(path).is_absolute()
+               or '..' in Path(path).parts or path not in changed]
+    if invalid:
+        print('blocked: paths must be changed repository-relative files: ' + ', '.join(invalid), file=sys.stderr)
         return 2
-    paths = delta['changed_since_begin']
-    print(f"Paths changed since begin (writer unverified): {len(paths)}; "
-          f"unchanged pre-begin paths excluded: {len(delta['ambient'])}; "
-          f"overlapping baseline paths: {len(delta['overlap'])}", flush=True)
+    if args.prepare and changed and not args.paths:
+        print('blocked: preparation requires explicit paths; use task prepare -- <paths>', file=sys.stderr)
+        return 2
+    print(f'Selected changed paths: {len(paths)}; other Git changes excluded: {len(set(changed) - set(paths))}. '
+          'Path selection does not prove edit ownership.', flush=True)
     if args.prepare:
         return prepare(paths)
     selected = checks_for(paths)
     print('Change classes: ' + ', '.join(sorted(classes_for(paths))), flush=True)
     print('Checks: ' + ', '.join(selected), flush=True)
     results = verify(selected, paths)
-    record = {'task_id': session.load_manifest()['task_id'], 'session_delta': delta,
+    record = {'changed_paths': paths, 'selection': 'explicit' if args.paths else 'all-git-changes',
+              'excluded_paths': sorted(set(changed) - set(paths)),
               'checks': results, 'automated_checks_passed': bool(selected) and all(
         value['status'] in ('passed', 'not-applicable') for value in results.values())}
     record['task_acceptance'] = 'not-evaluated: reconcile selected task/fixture/host evidence separately'

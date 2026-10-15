@@ -8,7 +8,7 @@ do not re-read it merely because another document links to it.
 
 | Load | When |
 |---|---|
-| Selected spec requirements, design, task and immediate dependencies | A spec task is selected; load only its relevant manifest entries |
+| Selected specification, task and immediate dependencies | Work on a change is selected; use its workflow to locate artifacts and load only relevant capability behavior |
 | [Mission](mission.md) | Product behavior, UX or engineering posture is relevant |
 | [Contract/testing](contract-testing.md) | Planning, implementing or verifying contract, code or test changes |
 | [Execution harness](execution-harness.md) | Running commands or validating/completing implementation |
@@ -26,28 +26,24 @@ do not load the registry or follow skill cascades to orient yourself. Archives a
 host memory are optional context under the shared trust boundary.
 Repository memory sources are retired; verified facts live with their owners.
 
+For OpenSpec artifact discovery and workflow context, follow the selected installed
+OpenSpec skill.
+
 ## Bound the work
 
 Identify the outcome, authorized files/effects, acceptance checks and stopping
 point before edits. Prefer the smallest sufficient change; preserve unrelated
-tracked and untracked work. For application behavior, prefer vertical slices through the affected seams with
-end-to-end acceptance. Do not fold adjacent cleanup into the task. A selected
+tracked and untracked work. Follow [contract/testing](contract-testing.md) for
+application behavior slices. Do not fold adjacent cleanup into the task. A selected
 slice stays bounded even if later dependencies or unrelated failures are visible.
 
-Before the first edit, run `task agent:begin -- <task-id>`. Its private ignored
-session records HEAD, worktree identity, and enough content identity to distinguish
-post-begin differences from pre-existing tracked/untracked work, including later
-edits to an already dirty file. A post-begin difference does not prove which actor
-wrote it. Do not print or copy untracked content into logs or shared artifacts.
-Reuse the active session when resuming the same task; do not replace its baseline
-and thereby hide task changes. If the harness is unavailable, record an equivalent
-private baseline manually and report that limitation.
+Before editing, inspect `git status --short` and the relevant staged, unstaged and
+untracked differences. Preserve unrelated work, including existing edits inside a
+selected file. Record a private before-image when overlapping edits need comparison.
 
-Before completion, use `task agent:session:status` and review the session delta
-against the requested outcome using the [scope review](execution-harness.md#scope-review).
-Ambient paths are preserved rather than adopted. Overlap means a path was dirty at
-begin and then changed again; it requires particular attribution care. This review
-supplements broad impact checks; tests cannot establish whether an edit was authorized.
+Before completion, review the actual diff against the requested outcome using the
+[scope review](execution-harness.md#scope-review). Git reports differences, not edit
+ownership. Resolve ambiguous overlap before reverting or claiming preservation.
 
 Resolve consequential unknowns about intent or scope before dependent work.
 Existing authorization remains valid within its stated scope. Load targeted
@@ -82,9 +78,9 @@ For implementation, use the approved contract/testing sequence before changing l
 
 ## Delegation handoff
 
-Use the [execution packet](../templates/execution-packet.md) for each independently
-useful assignment: outcome, authorization, allowed effects/file ownership, required
-context, acceptance, checks and stop conditions. Keep optional examples/advice
+For independently useful assignments, pass the selected OpenSpec change/task,
+authorized outcome, file ownership, required context, acceptance checks and stopping
+point directly in the handoff. No separate packet artifact or template is required. Keep optional examples/advice
 separate from mandatory constraints. Resolve shared contracts before dependent
 implementation; do not dispatch competing writers to shared files. Read-only
 reviews can run alongside the sole writer. Agent count or model brand does not

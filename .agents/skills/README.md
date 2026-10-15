@@ -14,11 +14,10 @@ Load skills on demand only — never globally. A skill is loaded when the active
 | `designer` | [designer/SKILL.md](designer/SKILL.md) | Making UI/UX or visual design decisions (Solar Earth aesthetic) | Non-visual backend or infra work |
 | `aws-well-architected` | [aws-architect/SKILL.md](aws-architect/SKILL.md) | Designing AWS infrastructure, choosing services, landing zone setup, cost decisions, or GitHub Actions CI/CD targeting AWS | No AWS infrastructure in scope |
 | `create-a-skill` | [create-a-skill/SKILL.md](create-a-skill/SKILL.md) | Explicit repository skill authoring | Ordinary feature planning |
-| `feature-specification` | [feature-specification/SKILL.md](feature-specification/SKILL.md) | Creating, revising, or classifying a WFS feature specification | A selected implementation task with an already approved spec |
 
-Specification planning and review use the [shared workflow](../core/specification-workflow.md),
-with the [execution-packet template](../templates/execution-packet.md) for bounded handoffs.
-These are conditional procedures, not skill entrypoints.
+OpenSpec owns specification planning, review, artifact formats and task application.
+Repository skills provide technical guidance within the selected change; they do
+not introduce a separate specification writer or task-executor workflow.
 
 Investigation and bounded delegation use [context loading](../core/context-loading.md#investigation)
 and the conditional [WFS source map](../core/wfs-source-map.md). API design guidance

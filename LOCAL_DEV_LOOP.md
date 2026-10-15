@@ -1,5 +1,69 @@
 # Local Development Loop & Infrastructure
 
+## Everyday commit and push flow
+
+Select Node 26.12.0 from `.nvmrc` using your version manager. For example, with nvm:
+
+```sh
+nvm install
+nvm use
+task hooks:setup
+```
+
+`hooks:setup` installs the pinned OpenSpec CLI and Python/PWA/browser dependencies, restores the API test project,
+and installs both Git hooks. Existing installations only need `task hooks:install`
+after pulling hook changes. Docker must be running for API integration tests; the
+push check does not reset the development stack or kill an existing dev server.
+
+Before staging, format or generate only the files required by your change:
+
+```sh
+task prepare -- <reviewed-paths>
+```
+
+Review and stage the diff, then use ordinary Git commands:
+
+```sh
+git add <paths>
+git commit -m "Describe the change"
+git push
+```
+
+Commit runs quick read-only checks selected from staged paths: whitespace, OpenSpec,
+harness tests, static contracts/mocks, client freshness and PWA formatting. It does
+not generate or stage files, build the application, or run integration/E2E suites.
+Use `task check:commit` to run the staged checks manually.
+
+Push runs full spec/harness/contract checks, API formatting/Release build/tests, and
+PWA formatting/lint/types/units/production build/full E2E. Use `task check:push` to
+run the same gate manually after committing. It requires clean tracked and untracked
+source and the checked-out revision being pushed; it never treats a clean worktree
+as "no tests needed". Build output remains ignored. Playwright manages its production
+server and does not reuse an external `BASE_URL`.
+
+Both gates stop on failure. Fix, prepare, stage and commit again before retrying a
+push. CI repeats platform/build tests and adds Docker/security validation. A local
+pass does not establish Linux, Docker-image or deployment acceptance. The Docker
+image currently uses its separately maintained Node base; `.nvmrc` pins local and
+GitHub-hosted Node commands.
+
+## Repository tooling setup
+
+Run `task init:python` once after cloning, or when `scripts/requirements.txt` changes.
+Taskfile's Python tooling uses `.venv/bin/python` without shell activation. To use the
+same interpreter for direct Python/npm helper commands, run `source .venv/bin/activate`.
+An explicit Task variable such as `PYTHON=python3` can select an already-provisioned
+interpreter in CI or another managed environment. Do not install into Homebrew's
+externally managed system Python.
+
+`task spec:check` requires OpenSpec 1.14.1 and validates all capability specs and
+active changes with strict, non-interactive checks. Install the matching CLI with
+`npm install --global @fission-ai/openspec@1.14.1`. The reusable Validate workflow
+installs this exact version and always runs spec validation, including spec-only
+changes. An empty OpenSpec tree reports no items; this does not establish behavior
+or replace implementation acceptance.
+
+
 This is a contributor guide for local development, service orchestration, and discovery. It is not a Synology installation guide; see the current [Synology operator guide](release-template/synology/README.md), whose physical deployment and recovery qualification remain outstanding.
 
 ## Service Dependencies (Internal Network)
@@ -152,14 +216,15 @@ task clean:all         # Deep clean (includes node_modules)
 
 # Workflows & Git Hooks
 task init              # Initialize project (first-time setup)
-task hooks:install     # Install pre-commit git hooks
-task review            # Pre-commit review (format + lint + test)
+task hooks:install     # Install commit + pre-push hooks
+task check:commit      # Quick staged checks
+task check:push        # Full validation after committing (clean source required)
 task ship              # Final ship checklist
 task tag               # 🏷️ Tag and push release (patch|minor|major)
 ```
 
 `task test:smoke` and CI call the same Python runner. It requires Docker Compose
-and Python with PyYAML (`python3 -m pip install pyyaml`). It resets the
+and the repository Python environment (`task init:python`). It resets the
 `whats-for-supper` Compose project, including its PostgreSQL and application-data
 volumes, then builds with `infrastructure.yml`, `apps.yml`, and `ci-overrides.yml`.
 The checked-in synthetic `docker/compose/smoke.env` supplies configuration in both
@@ -266,10 +331,14 @@ task test:unit:watch &
 
 ### Workflow 4: Quick Commands
 
-**Pre-commit checks:**
+**Before committing:**
 ```bash
-# Format + Lint + Test
-task review
+task check:commit
+```
+
+**After committing, before pushing:**
+```bash
+task check:push
 ```
 
 **Full ship checklist:**
@@ -359,29 +428,18 @@ cp docker/.env.example docker/.env.local
 cp pwa/.env.local.example pwa/.env.local
 ```
 
-### 5. **Git Hooks (pre-commit)**
-We use the `pre-commit` framework to ensure code quality before every commit.
-- **Installation**: `task hooks:install`
-- **What it does**: Runs schema drift checks, Kiota client staleness check, lint, typecheck, unit tests, and API tests on staged files.
-- **Manual Run**: `pre-commit run --all-files`
-- **Full pre-commit equivalent**: `task review`
+### 5. **Git hooks**
 
-### Dev Loop vs Pre-commit
-
-| | `task gate` | `task review` | pre-commit hook |
-|---|---|---|---|
-| **When** | During dev | Before commit | On `git commit` |
-| **Contracts** | Route drift + Kiota + schema drift | Route drift + Kiota + schema + mock drift | Kiota + schema + mock drift |
-| **Tests** | Unit + impact-only E2E | Unit + API (dotnet) | Unit + API (dotnet) |
-| **Format** | No | Verify only | No (verify only) |
-| **E2E** | Impact-only | No | No |
-| **Speed** | Fast ⚡ | Medium | Medium |
+Use `task hooks:install` to install commit and push hooks. `task check:commit`
+checks staged content without rewriting it. `task check:push` validates clean,
+committed source with the same production build/E2E environment as CI.
+See the everyday flow at the top of this guide for setup and failure recovery.
 
 ### 6. **Know Your Workflows**
 Use Task's built-in workflows:
 ```bash
 # Prepare formatting/generation, inspect the diff, then validate
-task agent:prepare
+task prepare -- <reviewed-paths>
 task review
 
 # Ship checklist (full validation)
@@ -625,9 +683,9 @@ task agent:summary
 # Fast inner loop — catch what changed
 task gate
 
-# Single completion entrypoint after preparation and diff review
-task agent:prepare
-task agent:finish
+# OpenSpec tracks tasks; prepare when needed, review the diff, then verify once
+task prepare -- <reviewed-paths>
+task verify -- <complete-task-paths>
 
 # If tests fail, check logs
 task logs:api
@@ -794,4 +852,6 @@ See `docker/.env.example` for the full list.
 - [x] Check if services are healthy: `task health`
 - [ ] Open http://pwa.wfs.localhost in browser
 - [ ] During dev: `task gate` (fast loop)
-- [ ] Before pushing: `task review` (full gate)
+- [ ] Install hooks: `task hooks:install`
+- [ ] Before committing: `task check:commit`
+- [ ] After committing: `task check:push` (full local gate)

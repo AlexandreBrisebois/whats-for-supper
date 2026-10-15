@@ -1,6 +1,5 @@
 # Flow: Recipe Search And Library Recovery
 
-**Historical spec:** [agent-friendly-hybrid-recipe-search](../../archive/specs/agent-friendly-hybrid-recipe-search/requirements.md)
 
 This document describes the user experience for:
 - hybrid recipe search (standard and agent-supplied),

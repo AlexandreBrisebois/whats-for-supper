@@ -11,6 +11,24 @@ Build reliable, maintainable capabilities. Avoid zombie code and speculative
 abstractions. Shared correctness policy lives in [contract/testing](contract-testing.md),
 and change boundaries live in [context loading](context-loading.md).
 
+Before adding behavior, inspect the affected code for an existing owner and reusable
+implementation. Keep each business rule in one authoritative place; consumers
+should call it rather than recreate it. Extract a cohesive module when callers
+share the same responsibility and reason to change. Similar syntax alone does not
+justify abstraction. Prefer explicit dependencies and behavior-focused interfaces;
+avoid speculative frameworks and generic utility collections. Keep refactoring
+within the selected scope and preserve regression coverage.
+
+Make inputs, dependencies and side effects explicit. Use names and interfaces that
+reveal the affected behavior and state changes. Keep calculations separate from
+I/O and mutation where useful; expose dependencies such as time, external providers,
+persistence and event publication through parameters or established dependency
+injection. Keep ordering, transaction and failure behavior clear at the operation
+that coordinates those effects. Add abstractions only when they clarify a real
+boundary or make the selected behavior testable.
+
 ## 4. Core Design & UX Patterns
 - **Aesthetics First**: Every UI change must feel premium, using the established Solar Earth design tokens.
-- **Fire and Forget UX**: For background/asynchronous tasks (e.g., photo imports, AI synthesis, link fetching), the UI should prioritize immediate **auto-navigation** back to the primary context (usually the Home screen). The system provides feedback on the background task's status via the destination screen (e.g., "Processing" indicators in the library or home feed) rather than blocking the user on a transition screen.
+- **Background work**: Keep the primary experience responsive while asynchronous
+  work proceeds. Navigation and status behavior live in the
+  [background-task navigation capability](../../openspec/specs/background-task-navigation/spec.md).

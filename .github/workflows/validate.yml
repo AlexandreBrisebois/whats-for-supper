@@ -21,6 +21,26 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
+  spec-validate:
+    name: OpenSpec — validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      OPENSPEC_VERSION: '1.14.1'
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: '.nvmrc'
+      - name: Install pinned OpenSpec CLI
+        run: npm install --global "@fission-ai/openspec@${OPENSPEC_VERSION}"
+      - name: Verify CLI version
+        run: test "$(openspec --version)" = "$OPENSPEC_VERSION"
+      - name: Validate capability specs and changes
+        run: openspec validate --all --strict --no-interactive
+
   changes:
     name: Determine affected validation
     runs-on: ubuntu-latest
@@ -54,10 +74,10 @@ jobs:
           selected() {
             if [ "$FULL_VALIDATION" = 'true' ] || matches "$1"; then echo true; else echo false; fi
           }
-          echo "api=$(selected '^(api/|specs/openapi\.yaml$|scripts/agent/(api_tools|drift)\.py$|\.github/workflows/)')" >> "$GITHUB_OUTPUT"
-          echo "pwa=$(selected '^(pwa/|specs/openapi\.yaml$|\.github/workflows/)')" >> "$GITHUB_OUTPUT"
-          echo "contract=$(selected '^(api/|pwa/|specs/openapi\.yaml$|scripts/agent/(api_tools|drift)\.py$|\.github/workflows/)')" >> "$GITHUB_OUTPUT"
-          echo "docker=$(selected '^(api/|pwa/|docker/|Taskfile\.yml$|scripts/agent/docker_smoke\.py$|\.github/workflows/)')" >> "$GITHUB_OUTPUT"
+          echo "api=$(selected '^(api/|specs/openapi\.yaml$|scripts/requirements\.txt$|scripts/agent/(api_tools|drift)\.py$|\.github/workflows/)')" >> "$GITHUB_OUTPUT"
+          echo "pwa=$(selected '^(pwa/|\.nvmrc$|specs/openapi\.yaml$|\.github/workflows/)')" >> "$GITHUB_OUTPUT"
+          echo "contract=$(selected '^(api/|pwa/|specs/openapi\.yaml$|scripts/requirements\.txt$|scripts/agent/(api_tools|drift)\.py$|\.github/workflows/)')" >> "$GITHUB_OUTPUT"
+          echo "docker=$(selected '^(api/|pwa/|docker/|Taskfile\.yml$|scripts/requirements\.txt$|scripts/agent/docker_smoke\.py$|\.github/workflows/)')" >> "$GITHUB_OUTPUT"
 
   api-validate:
     name: API — validate
@@ -139,20 +159,26 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.ref || github.sha }}
-      - name: Set up Node 22
+      - name: Set up pinned Node
         uses: actions/setup-node@v7
         with:
-          node-version: '22'
+          node-version-file: '.nvmrc'
           cache: npm
           cache-dependency-path: pwa/package-lock.json
       - name: Install PWA dependencies
         run: npm ci
+        working-directory: pwa
+      - name: Formatting check
+        run: npm run format:check
         working-directory: pwa
       - name: Type-check
         run: npm run typecheck
         working-directory: pwa
       - name: Lint
         run: npm run lint
+        working-directory: pwa
+      - name: Unit tests
+        run: npm run test:unit
         working-directory: pwa
 
   contract-integrity:
@@ -169,7 +195,7 @@ jobs:
         with:
           python-version: '3.x'
       - name: Install Python dependencies
-        run: pip install pyyaml
+        run: python3 -m pip install -r scripts/requirements.txt
       - name: Verify API ↔ Spec ↔ Mock parity
         run: python3 scripts/agent/api_tools.py
         env:
@@ -193,10 +219,10 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.ref || github.sha }}
-      - name: Set up Node 22
+      - name: Set up pinned Node
         uses: actions/setup-node@v7
         with:
-          node-version: '22'
+          node-version-file: '.nvmrc'
           cache: npm
           cache-dependency-path: pwa/package-lock.json
       - name: Cache Playwright browsers
@@ -250,7 +276,7 @@ jobs:
         with:
           ref: ${{ inputs.ref || github.sha }}
       - name: Install smoke runner dependency
-        run: python3 -m pip install pyyaml
+        run: python3 -m pip install -r scripts/requirements.txt
       - name: Build, verify and tear down disposable Docker stack
         run: python3 -B scripts/agent/docker_smoke.py
       - name: Fallback teardown after runner cancellation

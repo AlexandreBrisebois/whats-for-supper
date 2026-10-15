@@ -62,7 +62,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
-          node-version: '24'
+          node-version-file: '.nvmrc'
       - run: npm ci
         working-directory: pwa
       - name: Scope-preserving PWA preparation
@@ -110,6 +110,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      - name: Install Python tooling dependencies
+        run: python3 -m pip install -r scripts/requirements.txt
       - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: |
@@ -117,7 +119,7 @@ jobs:
             11.0.100-preview.6.26359.118
       - uses: actions/setup-node@v7
         with:
-          node-version: '24'
+          node-version-file: '.nvmrc'
       - run: dotnet tool restore
       - run: npm ci
         working-directory: pwa
@@ -128,7 +130,7 @@ jobs:
           python3 - <<'PYDOC'
           from pathlib import Path
           import ast, re
-          docs = ['docs/user-guide.md', 'docs/flows/user-flows/pdf-recipe-import.md', 'docs/flows/data-flows/pdf-upload-path.md', 'docs/flows/data-flows/photo-upload-path.md', 'release-template/synology/README.md', 'scripts/pdf/README.md', 'scripts/pdf/qualification-x64.md', '.kiro/specs/pdf-recipe-import/implementation-evidence.md', '.kiro/specs/pdf-recipe-import/scope-review.md', '.kiro/specs/pdf-recipe-import/tasks.md', 'HANDOVER.md']
+          docs = ['docs/user-guide.md', 'docs/flows/user-flows/pdf-recipe-import.md', 'docs/flows/data-flows/pdf-upload-path.md', 'docs/flows/data-flows/photo-upload-path.md', 'release-template/synology/README.md', 'scripts/pdf/README.md', 'scripts/pdf/qualification-x64.md', 'HANDOVER.md']
           for name in docs:
               path = Path(name)
               for link in re.findall(r'\[[^\]]*\]\(([^)]+)\)', path.read_text()):
@@ -151,8 +153,6 @@ jobs:
       - name: Repository agent regression tests
         if: always()
         run: python3 -B -m unittest discover -s scripts/agent/tests -p "test_*.py"
-      - run: python3 -B scripts/agent/spec_registry.py check
-        if: always()
       - run: python3 -B scripts/agent/api_tools.py --route-drift
         if: always()
       - run: python3 -B scripts/agent/drift.py --schema-only

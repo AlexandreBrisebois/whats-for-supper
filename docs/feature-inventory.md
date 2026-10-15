@@ -14,10 +14,8 @@ current behavior.
 
 ### How to use this catalog
 
-- Keep the stable feature ID when splitting an entry into requirements, design,
-  and task documents.
-- Use the completed [feature specification catalog](../.kiro/specs/FEATURE_CATALOG.md)
-  to open the requirements, design, and future-change tasks for any stable ID.
+- Keep stable feature IDs when drafting OpenSpec capability specs and changes.
+- Use OpenSpec to discover existing capabilities and changes before proposing work.
 - Treat every bullet under an entry as a behavior to confirm, change, or reject
   during specification discovery—not as pre-approved acceptance criteria.
 - Start with the **family-facing product features**. Specify supporting platform

@@ -13,7 +13,7 @@ import platform
 import shutil
 from typing import NamedTuple
 
-import session
+import argparse
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -51,11 +51,6 @@ def get_changed_files() -> list[str]:
         *git_lines("ls-files", "--others", "--exclude-standard", "-z"),
     ]
     return sorted(set(filter(None, changed)) - VOLATILE_GENERATED_PATHS)
-
-
-def get_session_files() -> list[str]:
-    """Return content differences since begin; the writer cannot be proven."""
-    return session.task_delta()["changed_since_begin"]
 
 
 def matching_specs(prefix: str) -> set[str]:
@@ -142,11 +137,36 @@ def build_impact_plan(changed_files: list[str]) -> ImpactPlan:
     return ImpactPlan(tuple(sorted(impacted)), tuple(reasons), False)
 
 
+def openspec_path_class(path: str) -> str | None:
+    """Recognize planning inputs without exempting arbitrary code or contracts."""
+    if path in {'openspec/config.yaml', '.agents/skills/.openspec-target'}:
+        return 'harness'
+    parts = Path(path).parts
+    if len(parts) >= 4 and parts[:2] == ('openspec', 'schemas'):
+        if (len(parts) == 4 and parts[-1] == 'schema.yaml') or (
+                len(parts) >= 5 and parts[3] == 'templates' and path.endswith('.md')):
+            return 'harness'
+    if path.startswith(('openspec/specs/', 'openspec/changes/')):
+        if path.endswith(('.md', '/.gitkeep')):
+            return 'documentation'
+        if path.startswith('openspec/changes/') and path.endswith('/.openspec.yaml'):
+            return 'documentation'
+    return None
+
+
+def documentation_artifact(path: str) -> bool:
+    """Recorded metadata and patch evidence under docs are not runtime inputs."""
+    return path.startswith('docs/') and (
+        path.endswith(('.json', '.yaml', '.yml', '.patch')) or Path(path).name == '.config.kiro')
+
+
 def non_application_path(path: str) -> bool:
     if path.endswith('.sql') or path == 'specs/openapi.yaml':
         return False
+    if openspec_path_class(path) is not None or documentation_artifact(path):
+        return True
     return (path.endswith(".md") and not path.startswith(("pwa/", "api/"))) or (
-        path.startswith((".agents/", ".kiro/specs/", "scripts/agent/"))
+        path.startswith((".agents/", "scripts/agent/"))
         and path.endswith(('.md', '.py', '.json', '.yaml', '.yml', '.patch'))
     )
 
@@ -206,7 +226,7 @@ def build_impact_digest(root: Path, changed_files: list[str], tests: list[str]) 
     # Include unchanged sources and test helpers: a changed-file-only digest can
     # reuse evidence after switching branches or editing an unselected dependency.
     # Next rewrites this generated declaration when switching dev/build mode.
-    # It is already excluded from session attribution; exclude it from identity too.
+    # It is excluded from Git change discovery and from content identity.
     paths = (set(content_paths(root)) | set(changed_files) | set(CACHE_CONTEXT_FILES)) - VOLATILE_GENERATED_PATHS
     for relative_path in sorted(paths):
         add_file_to_digest(digest, root, relative_path)
@@ -229,7 +249,7 @@ def has_success_cache(cache_path: Path, digest: str, tests: list[str]) -> bool:
 
 
 def run_impacted(run_all: bool = False, changed_files: list[str] | None = None) -> None:
-    changed_files = get_session_files() if changed_files is None else changed_files
+    changed_files = get_changed_files() if changed_files is None else changed_files
     plan = (
         ImpactPlan((str(E2E_DIR),), ("--all explicitly requested",), True)
         if run_all
@@ -267,8 +287,7 @@ def run_impacted(run_all: bool = False, changed_files: list[str] | None = None) 
         print(f"{status}: impact tests: {detail}")
         raise SystemExit(2 if status == 'blocked' else 1)
 
-    post_test_changed_files = get_session_files()
-    post_test_digest = build_impact_digest(ROOT, post_test_changed_files, tests)
+    post_test_digest = build_impact_digest(ROOT, changed_files, tests)
     if post_test_digest != digest:
         CACHE_PATH.unlink(missing_ok=True)
         print("failed: content/config/runtime mutated during tests; success discarded.")
@@ -280,10 +299,13 @@ def run_impacted(run_all: bool = False, changed_files: list[str] | None = None) 
 
 
 def main() -> None:
-    if "--impact" in sys.argv or "--all" in sys.argv:
-        run_impacted(run_all="--all" in sys.argv)
-    else:
-        print("Usage: python3 test_ops.py [--impact | --all]")
+    parser = argparse.ArgumentParser(description=__doc__)
+    mode = parser.add_mutually_exclusive_group(required=True)
+    mode.add_argument('--impact', action='store_true')
+    mode.add_argument('--all', action='store_true')
+    parser.add_argument('--files', nargs='*', default=None)
+    args = parser.parse_args()
+    run_impacted(run_all=args.all, changed_files=args.files)
 
 
 if __name__ == "__main__":
