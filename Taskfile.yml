@@ -1257,6 +1257,9 @@ tasks:
 
   test:agent:
     desc: "🤖 Unit tests for the repository agent harness"
+    preconditions:
+      - sh: test -f "{{.ROOT_DIR}}/.venv/bin/python"
+        msg: "Python venv not found. Run: task init:python"
     cmds:
       - '"{{.PYTHON}}" -B -m unittest discover -s scripts/agent/tests -p "test_*.py"'
 
