@@ -32,6 +32,19 @@ Record the red and green commands/results in task evidence. Tests added only aft
 production logic do not satisfy TDD. Documentation-only changes have no behavior
 cycle; identify that as not-applicable rather than inventing tests.
 
+Use the approved behavior to judge a failing test. Determine whether the failure
+is a regression, an expectation made stale by the authorized change, or a tooling
+or environment problem before changing code. Update stale expectations to the
+approved behavior; fix actual regressions. A test failure alone does not justify
+undoing an authorized behavior change or weakening a valid test to obtain green.
+
+When work spans sessions, preserve the approved behavior, changed paths, observed
+red/green evidence and unresolved failures in the selected task or a meaningful
+handoff. On resumption, reconcile that checkpoint with current code and tests
+before editing. An unfinished TDD cycle is a checkpoint, not evidence that the
+intended behavior should be reverted. Follow higher-priority host testing rules
+where they constrain this procedure; report any resulting gap explicitly.
+
 ## 2a. Tracer bullets and vertical slices
 
 Start implementation with a **tracer bullet**: the smallest working path through

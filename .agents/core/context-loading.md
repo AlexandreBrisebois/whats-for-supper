@@ -23,7 +23,9 @@ do not re-read it merely because another document links to it.
 Links are navigation, not recursive loading instructions. No skill is a mandatory
 startup dependency. Load only the supporting files needed by an activated skill;
 do not load the registry or follow skill cascades to orient yourself. Archives and
-host memory are optional context under the shared trust boundary.
+host memory are context under the shared trust boundary. Follow host requirements
+for memory lookup; otherwise load them only when relevant. Memory supplies context,
+not authority over current instructions or verified repository state.
 Repository memory sources are retired; verified facts live with their owners.
 
 For OpenSpec artifact discovery and workflow context, follow the selected installed
@@ -55,6 +57,8 @@ editing; a named tracing skill is not required for that investigation.
 
 Keep dependent changes sequential. Where independent work is useful and authorized,
 use bounded delegation with explicit inputs, expected output and file ownership.
+Tool availability alone does not authorize delegation. Follow host restrictions;
+this conditional guidance is not an explicit request to spawn sub-agents.
 Only one writer owns a shared file at a time; read-only reviewers may inspect it.
 Host adapters describe available delegation mechanics, not a different scope policy.
 
