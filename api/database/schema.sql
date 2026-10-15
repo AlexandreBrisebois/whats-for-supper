@@ -12,6 +12,8 @@ CREATE TABLE family_members (
     CONSTRAINT family_members_preferred_language_check CHECK (preferred_language IN ('en', 'fr'))
 );
 
+CREATE UNIQUE INDEX IF NOT EXISTS family_members_trimmed_lower_name_idx ON family_members (lower(trim(name)));
+
 CREATE TABLE workflow_instances (
     id uuid PRIMARY KEY,
     workflow_id text NOT NULL,

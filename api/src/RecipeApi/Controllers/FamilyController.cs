@@ -40,9 +40,16 @@ public class FamilyController(FamilyService familyService, DemoModeOptions demoM
             return StatusCode(StatusCodes.Status403Forbidden, new { message = "New user creation is restricted in Demo Mode." });
         }
 
-        var member = await familyService.CreateFamilyMember(dto.Name);
-        var result = ToDto(member);
-        return CreatedAtAction(nameof(GetAll), null, result);
+        try
+        {
+            var member = await familyService.CreateFamilyMember(dto.Name);
+            var result = ToDto(member);
+            return CreatedAtAction(nameof(GetAll), null, result);
+        }
+        catch (DuplicateFamilyMemberException ex)
+        {
+            return Conflict(new { status = 409, message = ex.Message });
+        }
     }
 
     [HttpPut("{id:guid}")]

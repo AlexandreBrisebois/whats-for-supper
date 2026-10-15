@@ -237,6 +237,12 @@ export async function setupCommonRoutes(page: Page) {
 
   await mockFeatureFlags(page);
 
+  // Stateful family creation: POST 201 is visible in subsequent GETs.
+  const familyMembers = [
+    builders.familyMember({ name: 'Alex' }),
+    builders.familyMember({ id: MOCK_IDS.MEMBER_JORDAN, name: 'Jordan' }),
+  ];
+  let createdMemberCount = 0;
   // GET /api/family
   await page.route('**/api/family', async (route) => {
     if (route.request().method() === 'GET') {
@@ -244,17 +250,41 @@ export async function setupCommonRoutes(page: Page) {
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
-          data: [
-            builders.familyMember({ name: 'Alex' }),
-            builders.familyMember({ id: MOCK_IDS.MEMBER_JORDAN, name: 'Jordan' }),
-          ],
+          data: familyMembers,
         }),
       });
     } else if (route.request().method() === 'POST') {
+      const body = route.request().postDataJSON() as { name: string };
+      const trimmed = (body.name || '').trim();
+      const normalized = trimmed.toLowerCase();
+      const duplicate = familyMembers.some(
+        (m) => (m.name ?? '').trim().toLowerCase() === normalized
+      );
+      if (duplicate) {
+        await route.fulfill({
+          status: 409,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            status: 409,
+            message: 'A family member with this name already exists.',
+          }),
+        });
+        return;
+      }
+      // Deterministic distinct GUIDs based on the shared test-member namespace.
+      const id =
+        MOCK_IDS.MEMBER_TEST.slice(0, -12) +
+        String(Number(MOCK_IDS.MEMBER_TEST.slice(-12)) + createdMemberCount++).padStart(12, '0');
+      const member = builders.familyMember({
+        id,
+        name: trimmed,
+        preferredLanguage: null,
+      });
+      familyMembers.push(member);
       await route.fulfill({
         status: 201,
         contentType: 'application/json',
-        body: JSON.stringify({ data: builders.familyMember() }),
+        body: JSON.stringify({ data: member }),
       });
     } else {
       await route.fallback();

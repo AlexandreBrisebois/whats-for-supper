@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Settings2 } from 'lucide-react';
 import { useFamily } from '@/hooks/useFamily';
 import { t } from '@/locales';
@@ -8,10 +8,16 @@ import { FamilySelector } from '@/components/identity/FamilySelector';
 import { InviteLinkDialog } from '@/components/common/InviteLinkDialog';
 
 export function FamilyManagement() {
-  const { familyMembers, isLoading } = useFamily();
+  const { familyMembers, isLoading, loadFamily, hasLoaded } = useFamily();
   const [inviteTarget, setInviteTarget] = useState<{ memberId: string; memberName: string } | null>(
     null
   );
+
+  useEffect(() => {
+    if (!hasLoaded) {
+      void loadFamily();
+    }
+  }, [hasLoaded, loadFamily]);
 
   return (
     <div className="flex flex-col gap-6">

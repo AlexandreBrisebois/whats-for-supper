@@ -1320,7 +1320,8 @@ paths:
                         updatedAt: '2024-01-01T00:00:00Z'
 
     post:
-      summary: Create or update a family member
+      summary: Create a family member
+      description: Persists a new named family member. The submitted name is trimmed and compared case-insensitively against existing members; duplicate names are rejected with 409 Conflict while preserving trimmed display casing on creation.
       requestBody:
         required: true
         content:
@@ -1331,8 +1332,8 @@ paths:
               properties:
                 name: { type: string }
       responses:
-        '200':
-          description: OK
+        '201':
+          description: Created
           content:
             application/json:
               schema:
@@ -1371,6 +1372,19 @@ paths:
                   message: { type: string }
               example:
                 message: New user creation is restricted in Demo Mode.
+        '409':
+          description: A family member with an equivalent name already exists (matching trimmed, case-insensitive comparison).
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, message]
+                properties:
+                  status: { type: integer, example: 409 }
+                  message: { type: string }
+              example:
+                status: 409
+                message: A family member with this name already exists.
 
   /api/family/me:
     get:

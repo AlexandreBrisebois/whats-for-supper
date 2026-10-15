@@ -86,7 +86,7 @@ export function IdentityValidator({ children }: IdentityValidatorProps) {
 
         // 4. Validate if the stored ID actually exists in the family
         // Only load if not already loaded AND not currently loading
-        if (!hasLoaded && !isLoading && familyMembers?.length === 0) {
+        if (!hasLoaded && !isLoading) {
           await loadFamily();
         }
 
