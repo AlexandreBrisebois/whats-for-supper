@@ -8,7 +8,7 @@ not a feature, refactoring, bug-fixing, or specification-driven implementation p
 A27/A28 explicitly add desired member-name uniqueness to this draft for future work;
 that bounded exception does not imply implementation or verified baseline behavior.
 
-**Current stage: recipe-capture ordinary-household web acquisition promoted, 2026-10-15 (A65).** Main recipe-capture specification created with verbatim Purpose and 9 requirements / 20 scenarios under `openspec/specs/recipe-capture/spec.md`. Main household-identity remains 36/92; main recipe-library remains 55/122; main recipe-sharing remains 9/27. All twelve changes remain active; no archival authorized. BSL-recipe-library-001–027, BSL-household-identity-001–025, BSL-recipe-sharing-001–004, BSL-recipe-capture-001–004, U29–U57, historical member-creation limitations and BSL-015 sentence/caveat remain preserved; U58–U61 added as non-normative. All 84 prior evidence identities rechecked unchanged. Source-supported A10 extraction remains distinct from deferred A34 runtime/database qualification. Stop after promotion; all twelve changes active; no application/runtime work, archival, or successor extraction.
+**Current stage: recipe-capture photo entry promoted, 2026-10-15 (A67).** Exact 10 requirements / 24 scenarios appended from `baseline-recipe-capture-photo-entry` to main `recipe-capture`, now 19/44. Original Purpose and prior content preserved. Main household-identity remains 36/92; recipe-library 55/122; recipe-sharing 9/27. All thirteen changes remain active; none authorized for archival. Prior evidence, uncertainties U29–U64, member-creation history and exact BSL-015 sentence/caveat retained. Source-supported A10 extraction remains distinct from deferred A34 runtime/database qualification. Drafting records reported 23 scenarios; actual delta has 24 and is unchanged. No application/runtime work, archival or successor extraction authorized.
 
 
 | Item | Recorded state |
@@ -20,7 +20,7 @@ that bounded exception does not imply implementation or verified baseline behavi
 | Main specs at plan creation | None, confirmed by `openspec list --specs --json` |
 | Existing user change | Deletion of `openspec/specs/background-task-navigation/spec.md`; preserve it |
 | Runtime evidence | None collected during initial discovery; test source was inspected, not executed |
-| Next action | Stop after A65 promotion of recipe-capture specification. All twelve changes remain active; no application/runtime work, archival, or successor extraction; A34 qualification deferred. |
+| Next action | Promotion complete; await separate selection of further work. All thirteen changes remain active. No archival, application/runtime work or successor extraction authorized; A34 qualification deferred. |
 
 The removed navigation spec is not a baseline authority. Do not restore it or
 recreate its directory by default. Extract navigation behavior from current flows;
@@ -4150,6 +4150,119 @@ Each row maps its owning requirement and exact scenario. Step numbers mean BSL-r
 - `task verify`: passed documentation and content integrity checks.
 
 
+### BSL-recipe-capture-005 — Photo capture entry, client staging, validation, dish photo index, and notes
+
+**Behavior and actor:** A person accessing `/capture` uses camera capture (`capture="environment"`) or gallery photo selection (`multiple`) or drag-and-drop to stage recipe images. The client validates images using `validateImage` and `validateImageCount`: permitting 1–20 photos, enforcing a 20 MB size limit per file, and allowing MIME types `image/jpeg`, `image/png`, and `image/webp`. The client automatically sets the first added photo as the main dish photo (index 0). The person can select any staged photo to change the dish photo designation. Removing photos updates the index (if removing the selected photo, defaults to 0; if removing a preceding photo, decrements the index; otherwise clamps within bounds). The person can also select an appreciation rating (1–3: Dislike, Like, Love) and enter optional notes in a textarea.
+
+**Entry state / trigger / observable outcome:**
+- Trigger: Camera button click, gallery button selection, or file drop.
+- Staging outcome: Image previews rendered, photo count displayed, dish photo badge/star rendered, rating buttons and notes input enabled.
+- Error outcome: Inline error message displayed for invalid mime type, file > 20 MB, or total count > 20.
+
+**Relevant source files and symbols:**
+- `pwa/src/components/capture/MinimalCapture.tsx`: `handleCapture`, `handleGallery`, `handleFileChange`, `handleDrop`, `selectedDishPhotoIndex`, `setSelectedDishPhotoIndex`, `rating`, `setRating`, `notes`, `setNotes`.
+- `pwa/src/hooks/useCapture.ts`: `addImage`, `removeImage`, `setSelectedDishPhotoIndexFn`, `submitRecipe`.
+- `pwa/src/lib/imageUtils.ts`: `validateImage`, `validateImageCount`, `MAX_FILE_SIZE`, `MAX_IMAGE_COUNT`, `ALLOWED_MIME_TYPES`.
+
+**Relevant test assertions and substitutions:**
+- `pwa/e2e/capture-flow.spec.ts`: verifies gallery file input, photo count visibility (`capture-photos-count`), rating button click (`capture-rating-3`), notes filling, and save button enablement.
+- `pwa/src/components/capture/MinimalCapture.submit-lock.test.tsx`: verifies upload overlay and submission locking behavior.
+
+**Evidence class and confidence:** Implementation-supported; high confidence.
+**Requirement/scenario mapping:** Mapped to requirements `Select recipe photos from camera or device gallery`, `Stage and validate uploaded recipe photos`, `Designate finished dish photo with automatic index management`, and `Capture appreciation rating and preparation notes`.
+
+
+### BSL-recipe-capture-006 — Multipart photo submission, upload lock, overlay, and API intake
+
+**Behavior and actor:** Activating Save Recipe with staged photos initiates multipart form data submission. The client sets `photoSubmitLockRef` and `isPhotoSubmitPending` to disable repeated clicks. If upload exceeds 800 ms, `MinimalCapture` displays a delayed modal overlay (`capture-photo-upload-overlay`) prompting the user to keep the screen open. The request is sent via native `fetch` to `POST /api/recipes` with multipart form fields: `files` (array of binaries), `rating` (0–3), `finishedDishImageIndex` (-1 or 0-based index), and optional `notes`, along with header `X-Family-Member-Id`. `RecipeController.Create` validates the member header (returning 400 Bad Request if missing), then invokes `RecipeService.CreateRecipe`. `ValidationService` validates member existence, image count, per-image size/mime, rating range, and dish index. Images are saved to disk via `ImageService.SaveImages`, `RecipeInfo` metadata file is written, and initial DB entities (`Recipe` with `IsReady = false`, `RecipeSearchDocument` with status `pending`) are committed before asynchronously triggering workflow `recipe-import`. The API returns 202 Accepted with `{ id = recipeId }`.
+
+**Relevant source files and symbols:**
+- `pwa/src/components/capture/MinimalCapture.tsx`: `handleSave`, `photoSubmitLockRef`, `isPhotoSubmitPending`, `showPhotoUploadOverlay`.
+- `pwa/src/lib/api/recipes.ts`: `createRecipe`.
+- `specs/openapi.yaml`: `/api/recipes` POST multipart specification.
+- `api/src/RecipeApi/Controllers/RecipeController.cs`: `Create` action.
+- `api/src/RecipeApi/Services/RecipeService.cs`: `CreateRecipe`.
+- `api/src/RecipeApi/Services/ValidationService.cs`: `ValidateImage`, `ValidateImageCount`, `ValidateRating`, `ValidateFinishedDishImageIndex`.
+
+**Relevant test assertions and substitutions:**
+- `pwa/e2e/capture-flow.spec.ts`: mocks `POST /api/recipes`, asserts 800ms delayed upload overlay visibility (`capture-photo-upload-overlay`, `capture-upload-keep-open`), and verifies transition to `capture-success-screen`.
+- `api/src/RecipeApi.Tests/Controllers/RecipeControllerTests.cs`: verifies `Create` validates member ID and queues `recipe-import`.
+
+**Evidence class and confidence:** Implementation-supported; high confidence.
+**Requirement/scenario mapping:** Mapped to requirements `Validate and submit multipart photo capture`, `Client-side photo upload progress feedback and submission lock`, and `Initial recipe persistence and photo workflow dispatch`.
+
+
+### BSL-recipe-capture-007 — Asynchronous vision OCR extraction, refinement, and readiness completion
+
+**Behavior and actor:** Background workflow worker executes `recipe-import.yaml`. The first task, `convert_pdf`, executes `PdfConversionProcessor` which detects that source PDF is null and immediately skips (`{ skipped = true }`), passing through directly for photo uploads. The second task, `extract_recipe`, executes `RecipeAgent.DoExtractRecipeAsync`. The agent reads original image binaries (`GetImageFilesAsync`), inspects magic bytes (PNG, WebP, JPEG), adds them as `DataContent` to the multimodal chat message, and executes extraction against the LLM. It parses and validates structured JSON using `RecipeExtractionParser.ParseAndNormalize`. If semantic completeness fails (missing name, ingredients, or instruction steps), it issues a refinement prompt (`RefineExtractionAsync`). Upon valid completion, it serializes normalized recipe JSON, writes `recipe.info` on disk, and updates description. Subsequent tasks sync recipe and categorize ingredients/recipe. The `recipe_ready` task executes `RecipeReadyProcessor`, updating DB `Recipe.IsReady = true`, `Recipe.IsDiscoverable = true`, `UpdatedAt = UtcNow`, and broadcasts `recipe_ready` SSE event with `{ recipeId, name, imageUrl }`.
+
+**Relevant source files and symbols:**
+- `api/src/RecipeApi/Workflows/recipe-import.yaml`: tasks `convert_pdf`, `extract_recipe`, `generate_hero`, `sync_recipe`, `categorize_ingredients`, `categorize_recipe`, `recipe_ready`.
+- `api/src/RecipeApi/Services/Processors/PdfConversionProcessor.cs`: handles photo pass-through when source PDF is absent.
+- `api/src/RecipeApi/Services/Agents/RecipeAgent.cs`: `DoExtractRecipeAsync`, `AddImagesToMessageAsync`, `RefineExtractionAsync`.
+- `api/src/RecipeApi/Services/Processors/RecipeReadyProcessor.cs`: finalizes readiness and calls `PublishRecipeReadyAsync`.
+- `api/src/RecipeApi/Infrastructure/SseEventPublisher.cs`: `PublishRecipeReadyAsync`.
+
+**Relevant test assertions and substitutions:**
+- `api/src/RecipeApi.Tests/Services/RecipeImportLifecycleTests.cs`: verifies `recipe-import` lifecycle transitions and execution of `RecipeReady`.
+- `api/src/RecipeApi.Tests/Integration/GotoSynthesisIntegrationTests.cs`: asserts `RecipeReadyProcessor` does not alter image count for photo-upload recipes and sets recipe state to ready.
+- `api/src/RecipeApi.Tests/Integration/ScheduleIntegrationTests.cs`: asserts `RecipeReady` broadcasts `recipe_ready` SSE event.
+
+**Evidence class and confidence:** Implementation-supported; high confidence.
+**Requirement/scenario mapping:** Mapped to requirements `Multimodal OCR vision recipe extraction and semantic validation` and `Finalize photo recipe readiness and broadcast completion`.
+
+
+### BSL-recipe-capture-008 — Terminal capture failure notification, SSE broadcast, and recovery banner
+
+**Behavior and actor:** If any non-transient workflow task fails and exhausts retries in `recipe-import`, `WorkflowWorker` catches the failure and executes `PublishRecipeFailedEventAsync`. It resolves the recipe ID from parameters, queries partial recipe info (name and hero/first image URL), and invokes `IScheduleEventPublisher.PublishRecipeFailedAsync` emitting the `recipe_failed` SSE event with `{ recipeId, workflowInstanceId, errorMessage, failedStep, partialData }`. In the PWA client, `useScheduleStream` listens for `recipe_failed`. If `useCaptureStore` holds the recipe ID in `pendingRecipes` (confirming it was submitted in this browser session), it removes the pending entry and pushes a `failed` notification into `useLibraryStore`. The top-level layout component `RecipeFailureBanner` renders a persistent banner (capped at 2 visible) showing the recipe name, friendly failure message, a dismiss button, and a Retry CTA. Clicking Retry calls `POST /api/captures/failures/{id}/retry`, which queues a workflow reset and clears the notification banner.
+
+**Relevant source files and symbols:**
+- `api/src/RecipeApi/Services/WorkflowWorker.cs`: `PublishRecipeFailedEventAsync`.
+- `api/src/RecipeApi/Infrastructure/SseEventPublisher.cs`: `PublishRecipeFailedAsync`.
+- `pwa/src/hooks/useScheduleStream.ts`: `recipe_failed` SSE event listener.
+- `pwa/src/store/captureStore.ts`: `addPending`, `removePending`, `getPending`.
+- `pwa/src/components/capture/RecipeFailureBanner.tsx`: persistent failure banner, retry handling.
+- `api/src/RecipeApi/Controllers/CapturesController.cs`: `Retry` endpoint.
+
+**Relevant test assertions and substitutions:**
+- `api/src/RecipeApi.Tests/Services/WorkflowWorkerTests.cs`: asserts `WorkflowWorker` publishes `recipe_failed` on terminal failure with recipe ID and step name.
+- `pwa/src/hooks/useScheduleStream.test.ts`: verifies `recipe_failed` event pushes notification to `libraryStore` when recipe is in `captureStore`.
+- `pwa/e2e/capture-flow.spec.ts`: verifies `RecipeFailureBanner` appears upon `recipe_failed` event and provides a retry CTA.
+
+**Evidence class and confidence:** Implementation-supported; high confidence.
+**Requirement/scenario mapping:** Mapped to requirement `Persistent failure banner on workflow failure`.
+
+| Input | SHA-256 |
+| --- | --- |
+| `pwa/src/components/capture/MinimalCapture.tsx` | `aadbb37ec2fe548af6e41c5460ea3339377fb215f66f19eac054666416742af5` |
+| `pwa/src/app/(app)/capture/page.tsx` | `28026fd2a95ea0563e13522d10a945030cb4f8ccd45a910e1c594306ebdbdbb9` |
+| `pwa/src/hooks/useCapture.ts` | `758f77485f02a9b32e48e9fab846f5906e94ce1de7594d94c55950d294d1b5e9` |
+| `pwa/src/lib/imageUtils.ts` | `a51d124d0fae2a99257186e607597825299737ca77717813aac3ce72821d46be` |
+| `pwa/src/lib/api/recipes.ts` | `f4e70b39a2060bfc5b25010914f78e288321517db5c52c543d103502718dce7a` |
+| `api/src/RecipeApi/Controllers/RecipeController.cs` | `d1699c2de6f6cca9d879e67c0c7b9c7f0af4b2c4e104bc9ff04634b266eb5a70` |
+| `api/src/RecipeApi/Services/RecipeService.cs` | `9eec9ab5cd7102081b3765b08a41b8de4d45325858d18ab4573a326afa256b74` |
+| `api/src/RecipeApi/Services/ValidationService.cs` | `bf2ed2aaffef7c4e7dd320c3f53f7772eaacfe8cceb4251acc6f0792b19fa1a1` |
+| `api/src/RecipeApi/Workflows/recipe-import.yaml` | `56977712412ec2c0b5a04495e77edbf3b97a71f92ad5f8da8546b58261de5b0a` |
+| `api/src/RecipeApi/Services/Processors/PdfConversionProcessor.cs` | `b97cef43cf9d4f88010180881f3ebbcf463a93b427d7f3632191679ee3a8accb` |
+| `api/src/RecipeApi/Services/Agents/RecipeAgent.cs` | `b23761d819726cf5dd8c50000cabc05198fba855865e6beba05de0ea8a6097af` |
+| `api/src/RecipeApi/Services/Processors/RecipeReadyProcessor.cs` | `4206f98256cadae88d7be13a44e9d9d18b6c46679ba7b9f0aee0dcef8a848a74` |
+| `api/src/RecipeApi/Services/WorkflowWorker.cs` | `69f9023b0003ff2f0a5dda6d85bcb42e13ebf064b5c8529bc6b0866e5b3871df` |
+| `pwa/src/components/capture/RecipeFailureBanner.tsx` | `7aa890d43a873448da7f588e276d0a41a9b06cedb7dd7bc6c73314bca3e1dc30` |
+| `pwa/src/store/captureStore.ts` | `8ba993036ef6c8e3bd05c3e737b51c0541a044dcb2d186b2501da230376f50f1` |
+| `pwa/src/hooks/useScheduleStream.ts` | `0e1f1b91e459b77fd90ca6a071ff5cb8fc0cbcc64e8cab54a00b8232c9ab2107` |
+| `pwa/src/components/capture/MinimalCapture.submit-lock.test.tsx` | `d44c5d335ca8c810a2a7618939c94c977d1bb7af03362132c0a33324198cf288` |
+| `pwa/e2e/capture-flow.spec.ts` | `4683a2c0590f0c4c562ed4350afb6aa208a88d856ff4c27688732f4bc6d42911` |
+| `api/src/RecipeApi.Tests/Services/RecipeImportLifecycleTests.cs` | `fe4b7249603997be939e0b8a2d790ef88f1eaa1863b7101a2011186f258a04cb` |
+
+
+### BSL-recipe-capture-009 — Photo-entry main specification promotion
+
+**Authority:** A67 user “promote baseline-recipe-capture-photo-entry”, 2026-10-15. Authorizes exact delta promotion and plan/task follow-up. No separate acceptance statement or runtime qualification inferred.
+
+**Result:** Exact 10 requirements/24 scenarios appended to main recipe-capture, now 19/44. Original Purpose/prior content preserved verbatim; delta/proposal/design unchanged. Other main specs and all thirteen active changes preserved. Actual delta contains 24 scenarios rather than the 23 reported at drafting; only current task/promotion counts corrected. Prior evidence, U62–U64 and all historical caveats retained. All 90 unique source/dependency paths with SHA-256 table entries rechecked unchanged.
+
+**Checks:** Main/all strict validation, exact delta equality, prior-content/preservation review and final three-path documentation verification required; results in final response/current harness. Runtime/browser/API/database checks not-run A34; behavior TDD not-applicable for documentation-only work.
+
 ## Discrepancy and uncertainty register
 
 All entries below are initial static findings; recheck selected paths before use.
@@ -4220,6 +4333,10 @@ Their presence authorizes documentation of uncertainty, not fixes.
 | U59 | External scraping failure fallback continues with partial metadata | BSL-recipe-capture-002: WebAcquisitionAgent catches HTTP 403 Forbidden, logs a warning, and continues with limited metadata, falling back to "Recipe from " + Uri.Host if no recipe name was extracted. Other HTTP exceptions or unparseable JSON from LLM fail the background task without surfacing fine-grained error reasons to the client. | Non-normative limitation; supported fallback drafted, external site accessibility guarantees withheld |
 | U60 | Queued timer auto-navigation is local to the active browser tab | BSL-recipe-capture-001: MinimalCapture initiates a 10-second countdown to navigate to `/home`. If the user navigates away early or closes the tab, background processing continues asynchronously on the server, but client-side timer completion and inline transition to ready status are lost for that tab session. | Non-normative limitation; supported local timer and inline transition drafted, cross-device/tab synchronization guarantees withheld |
 | U61 | Initial recipe persistence commits before workflow triggering | BSL-recipe-capture-002: RecipeService saves initial Recipe record with `IsReady = false` to DB and disk before awaiting `orchestrator.TriggerAsync("url-import", ...)`. If workflow triggering throws, the exception is caught and logged, leaving a pending non-ready recipe in the library without active workflow execution. | Non-normative discrepancy; supported pending creation and trigger drafted, transactional rollback guarantees withheld |
+| U62 | Multipart upload failure leaves orphaned images on disk | BSL-recipe-capture-006: In RecipeService.CreateRecipe, images are saved to disk before committing to PostgreSQL. If the DB save fails, orphaned image files remain on disk, relying on DisasterRecovery for eventual cleanup. | Non-normative limitation; supported disk staging and error handling drafted, transactional multi-store rollback guarantees withheld |
+| U63 | Post-creation duplicate detection for photo capture relies on asynchronous SSE readiness | BSL-recipe-capture-005/007: Unlike URL capture which performs pre-submission duplicate URL checking, photo recipes have no pre-upload name or URL. Duplicate detection for photos only occurs after vision extraction completes and SSE recipe_ready arrives with the extracted recipe name, offering an optional Discard duplicate button. | Non-normative limitation; supported post-readiness duplicate check drafted, pre-upload duplicate prevention guarantees withheld |
+| U64 | Terminal failure notification scope is restricted to active browser session | BSL-recipe-capture-008: useScheduleStream only pushes a failed notification to libraryStore (and renders RecipeFailureBanner) if the recipeId is present in captureStore.pendingRecipes for that client tab. If a user closes the tab or switches devices during processing, the failure event is not surfaced in the UI upon return. | Non-normative limitation; supported session-bound failure notification drafted, persistent cross-device failure synchronization guarantees withheld |
+
 
 ## Validation and scope review
 
@@ -4333,6 +4450,8 @@ documentation scope; do not create a second competing progress tracker by defaul
 | A63 | Promote only the reviewed recipe-sharing delta into a new main specification | User “promote”, 2026-10-15, immediately following the validated A62 draft. Authorizes creating main specification `openspec/specs/recipe-sharing/spec.md` with exact Purpose and 9 requirements/27 scenarios, and plan/task follow-up. Preserve original Purpose and all prior bytes in existing main specs (`household-identity` 36/92, `recipe-library` 55/122), full delta/evidence/history and all eleven active changes. No separate acceptance statement, archival, successor extraction, application changes or runtime/database qualification inferred. |
 | A64 | Discover and CLI-draft only ordinary-household recipe capture: URL web acquisition entry, validation, workflow dispatch, background progress tracking, error feedback, and initial recipe creation | Authorized 2026-10-15 by user session instruction. CLI-scaffolded proposal, 9 ADDED requirements/20 scenarios in recipe-capture, extraction design/tasks and BSL-recipe-capture-001–003 mapping; U58–U61 retain advisory duplicate limits, external scraping fallback, local queued timer, and DB persistence before trigger. Stop at validated draft for human review; no application/test/contract/client/SQL edits, runtime/database qualification, promotion or archival. |
 | A65 | Promote only the reviewed recipe-capture delta into a new main specification | User “promote”, 2026-10-15, immediately following the validated A64 draft. Authorizes creating main specification `openspec/specs/recipe-capture/spec.md` with exact Purpose and 9 requirements/20 scenarios, and plan/task follow-up. Preserve original Purpose and all prior bytes in existing main specs (`household-identity` 36/92, `recipe-library` 55/122, `recipe-sharing` 9/27), full delta/evidence/history and all twelve active changes. No separate acceptance statement, archival, successor extraction, application changes or runtime/database qualification inferred. |
+| A66 | Discover and CLI-draft only ordinary-household recipe capture: Photo capture and image OCR entry | Authorized 2026-10-15 by user session instruction. CLI-scaffolded proposal, 10 ADDED requirements/23 scenarios in recipe-capture, extraction design/tasks and BSL-recipe-capture-005–008 mapping; U62–U64 retain orphaned image cleanup, post-readiness duplicate check, and session-bound failure notification. Stop at validated draft for human review; no application/test/contract/client/SQL edits, runtime/database qualification, promotion or archival. |
+| A67 | Promote only baseline-recipe-capture-photo-entry into main recipe-capture | User “promote baseline-recipe-capture-photo-entry”, 2026-10-15. Exact 10 requirements/24 actual scenarios appended; main now 19/44. Original Purpose/prior content and full delta preserved; plan/tasks updated. All thirteen changes active. No separate acceptance statement, archival, successor extraction, application changes or runtime/database qualification inferred. |
 
 When recording approval, include date, exact scope, conditions, and the user's
 instruction or durable reference. Do not treat edits to a status cell as approval.
@@ -4341,18 +4460,17 @@ instruction or durable reference. Do not treat edits to a status cell as approva
 ### Latest checkpoint
 
 ```text
-Session: recipe-capture ordinary-household web acquisition promotion, 2026-10-15
-Source: moving-to-openspec / 7e0dcdbe162704debe8a0f916eb1f7327afc77a5 + preserved dirty inputs
-Authorization: A65 user instruction; promote recipe-capture delta
-Delivered: main recipe-capture specification created (9 requirements/20 scenarios); BSL-recipe-capture-004 promotion record
-Main: recipe-capture 9/20, recipe-sharing 9/27, recipe-library 55/122, household-identity 36/92; all four main specs active
-Preserved: all twelve changes active; archives/index/deletions/dirty inputs
-Evidence: BSL-recipe-library-001–027, BSL-household-identity-001–025, BSL-recipe-sharing-001–004, BSL-recipe-capture-001–004; all 84 source/dependency identities match
-Limits: U29–U57, U58–U61, BSL-018–025/U23–U28/creation history and BSL-015 caveat retained
-Checks: main strict (4/4), all-spec strict (4/4) and all-item strict (16/16) passed; documentation/content/preservation passed
-Changed: docs/openspec-baseline-plan.md, openspec/specs/recipe-capture/spec.md, openspec/changes/baseline-recipe-capture-url-entry/tasks.md
-Next: stop after promotion; all twelve changes active; no application/runtime work, archival, or successor extraction;
-  runtime not-run and implementation/database qualification deferred A34
+Session: recipe-capture photo-entry promotion, 2026-10-15
+Authorization: A67 user “promote baseline-recipe-capture-photo-entry”
+Delivered: exact 10 requirements/24 actual scenarios appended; BSL-recipe-capture-009
+Main: recipe-capture 19/44, recipe-sharing 9/27, recipe-library 55/122, household-identity 36/92
+Preserved: original Purpose/prior main content, full delta, other artifacts, thirteen active changes, archives/index/dirty inputs
+Evidence: all 90 unique source/dependency SHA-256 table paths rechecked unchanged
+Limits: prior uncertainties/history and BSL-015 caveat retained; runtime qualification deferred A34
+Count reconciliation: draft reported 23 scenarios; actual delta has 24, preserved unchanged
+Checks: main/all strict, equality/preservation and three-path documentation verification; results in final response/current harness
+Changed: docs/openspec-baseline-plan.md, openspec/specs/recipe-capture/spec.md, openspec/changes/baseline-recipe-capture-photo-entry/tasks.md
+Next: await separate selection of further work; no archival, application/runtime work or successor extraction authorized
 ```
 
 ### Session log
@@ -4422,6 +4540,8 @@ Next: stop after promotion; all twelve changes active; no application/runtime wo
 | 2026-10-15 | A63 user “promote”; created main recipe-sharing specification with verbatim Purpose and nine requirements/27 scenarios; now recipe-sharing 9/27 | Original Purpose/prior content retained in existing main specs (household-identity 36/92, recipe-library 55/122); full delta and all 72 source/dependency identities unchanged; eleven active changes, archives/index/unrelated work/deletions preserved. Main/specs strict passed; final all strict/three-path docs/content/equality/preservation in final response/current harness. Runtime not-run A34; no archival/application/successor work. |
 | 2026-10-15 | A64 discovered and CLI-drafted only ordinary-household recipe capture: nine additions/20 scenarios in recipe-capture, proposal/extraction design/tasks and BSL-recipe-capture-001–003 mapping; U58–U61 retain advisory duplicate limits, external scraping fallback, local queued timer, and DB persistence before trigger | All 72 prior evidence hashes unchanged; 12 new inputs recorded (84 total); main library 55/122, identity 36/92, sharing 9/27, twelve active changes, archives/index/unrelated dirty work/deletions preserved. Selected strict passed; final all-strict/six-path documentation/content/mapping/preservation in final response/current harness. Runtime not-run A34; stop for review, no lifecycle/application/successor work. |
 | 2026-10-15 | A65 user “promote”; created main recipe-capture specification with verbatim Purpose and nine requirements/20 scenarios; now recipe-capture 9/20 | Original Purpose/prior content retained in existing main specs (household-identity 36/92, recipe-library 55/122, recipe-sharing 9/27); full delta and all 84 source/dependency identities unchanged; twelve active changes, archives/index/unrelated work/deletions preserved. Main/specs strict passed; final all strict/three-path docs/content/equality/preservation in final response/current harness. Runtime not-run A34; no archival/application/successor work. |
+| 2026-10-15 | A66 discovered and CLI-drafted only ordinary-household recipe capture photo capture and OCR vision entry: 10 additions/23 scenarios in recipe-capture, proposal/extraction design/tasks and BSL-recipe-capture-005–008 mapping; U62–U64 retain orphaned image cleanup, post-readiness duplicate check, and session-bound failure notification | All 84 prior evidence hashes unchanged; 11 new inputs recorded (95 total); main library 55/122, identity 36/92, sharing 9/27, capture 9/20, thirteen active changes, archives/index/unrelated dirty work/deletions preserved. Selected strict passed; final all-strict/six-path documentation/content/mapping/preservation in final response/current harness. Runtime not-run A34; stop for review, no lifecycle/application/successor work. |
+| 2026-10-15 | A67 promoted exact 10 requirements/24 actual scenarios to main recipe-capture, now 19/44 | Draft count 23 reconciled to actual 24; delta unchanged. Original Purpose/prior content and other artifacts preserved; 90 unique evidence table hashes match. Thirteen changes remain active. Main/all strict, equality/preservation and three-path docs results in final response/current harness. Runtime not-run A34; no archival/application/successor work. |
 ### End-of-session update template
 
 ```text
