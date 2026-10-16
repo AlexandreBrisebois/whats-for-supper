@@ -46,17 +46,33 @@ export function isScheduleRecipe(recipe: any | null | undefined): recipe is Sche
   return normalizeScheduleRecipe(recipe) !== null;
 }
 
-export const getSchedule = async (weekOffset: number): Promise<ScheduleResponse | undefined> => {
+export function referenceRequest(referenceWeekStartDate?: string) {
+  return referenceWeekStartDate
+    ? {
+        queryParameters: { referenceWeekStartDate: DateOnly.parse(referenceWeekStartDate)! },
+      }
+    : undefined;
+}
+
+export const getSchedule = async (
+  weekOffset: number,
+  referenceWeekStartDate?: string
+): Promise<ScheduleResponse | undefined> => {
   const result = await apiClient.api.schedule.get({
-    queryParameters: { weekOffset },
+    queryParameters: {
+      weekOffset,
+      ...(referenceWeekStartDate
+        ? { referenceWeekStartDate: DateOnly.parse(referenceWeekStartDate)! }
+        : {}),
+    },
   });
   const data = result?.data;
   return data?.weekOffset !== undefined ? data : undefined;
 };
 
-export const lockSchedule = async (weekOffset: number) => {
+export const lockSchedule = async (weekOffset: number, referenceWeekStartDate?: string) => {
   const result = await apiClient.api.schedule.lock.post({
-    queryParameters: { weekOffset },
+    queryParameters: { weekOffset, ...referenceRequest(referenceWeekStartDate)?.queryParameters },
   });
   return result?.data || result;
 };
@@ -65,24 +81,28 @@ export const moveRecipe = async (
   weekOffset: number,
   recipeId: string,
   toIndex: number,
-  fromIndex: number
+  fromIndex: number,
+  referenceWeekStartDate?: string
 ) => {
   // Increment the move sequence counter before the request so HearthAuthProvider
   // stamps the new value on X-Move-Seq. The server echoes it back in week_updated,
   // letting applySnapshot identify and skip its own echo.
   usePlannerStore.getState().nextMoveSeq();
-  const result = await apiClient.api.schedule.move.post({
-    weekOffset,
-    recipeId,
-    toIndex,
-    fromIndex,
-  });
+  const result = await apiClient.api.schedule.move.post(
+    {
+      weekOffset,
+      recipeId,
+      toIndex,
+      fromIndex,
+    },
+    referenceRequest(referenceWeekStartDate)
+  );
   return result;
 };
 
-export const getFillTheGap = async (weekOffset = 0) => {
+export const getFillTheGap = async (weekOffset = 0, referenceWeekStartDate?: string) => {
   const result = await apiClient.api.schedule.fillTheGap.get({
-    queryParameters: { weekOffset },
+    queryParameters: { weekOffset, ...referenceRequest(referenceWeekStartDate)?.queryParameters },
   });
   const data = result?.data || result;
   return Array.isArray(data) ? data : [];
@@ -91,18 +111,24 @@ export const getFillTheGap = async (weekOffset = 0) => {
 export const assignRecipeToDay = async (
   weekOffset: number,
   dayIndex: number,
-  recipe: { id: string; name: string | null; image: string }
+  recipe: { id: string; name: string | null; image: string },
+  referenceWeekStartDate?: string
 ) => {
-  return await apiClient.api.schedule.assign.post({
-    weekOffset,
-    dayIndex,
-    recipeId: recipe.id,
-  });
+  return await apiClient.api.schedule.assign.post(
+    {
+      weekOffset,
+      dayIndex,
+      recipeId: recipe.id,
+    },
+    referenceWeekStartDate
+      ? { queryParameters: { referenceWeekStartDate: DateOnly.parse(referenceWeekStartDate)! } }
+      : undefined
+  );
 };
 
-export const openVoting = async (weekOffset: number) => {
+export const openVoting = async (weekOffset: number, referenceWeekStartDate?: string) => {
   return await apiClient.api.schedule.voting.open.post({
-    queryParameters: { weekOffset },
+    queryParameters: { weekOffset, ...referenceRequest(referenceWeekStartDate)?.queryParameters },
   });
 };
 
@@ -111,10 +137,13 @@ export const removeRecipeFromDay = async (date: string) => {
 };
 
 export const getSmartDefaults = async (
-  weekOffset: number
+  weekOffset: number,
+  referenceWeekStartDate?: string
 ): Promise<SmartDefaultsResponse | null> => {
   try {
-    const result = await apiClient.api.schedule.byWeekOffset(weekOffset).smartDefaults.get();
+    const result = await apiClient.api.schedule
+      .byWeekOffset(weekOffset)
+      .smartDefaults.get(referenceRequest(referenceWeekStartDate));
     const data = result?.data;
     return data?.weekOffset !== undefined ? data : null;
   } catch {

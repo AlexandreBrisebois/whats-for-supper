@@ -1,3 +1,4 @@
+import { DateOnly } from '@microsoft/kiota-abstractions';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 
@@ -143,9 +144,19 @@ vi.mock('framer-motion', () => ({
   AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
+const fixtureCalendar = () => ({
+  timeZone: 'UTC',
+  today: mocks.todayString,
+  capturedAtUtc: '2026-05-07T12:00:00Z',
+  currentWeekStartDate: '2026-05-04',
+  referenceWeekStartDate: '2026-05-04',
+  nextDayAtUtc: '2026-05-08T00:00:00Z',
+});
+
 vi.mock('@/store/todayStore', () => ({
   useTodayStore: Object.assign(
     () => ({
+      calendar: fixtureCalendar(),
       currentRecipe: mocks.currentRecipe,
       status: mocks.todayStatus,
       nonCooking: mocks.nonCooking,
@@ -157,6 +168,10 @@ vi.mock('@/store/todayStore', () => ({
     }),
     {
       getState: () => ({
+        calendar: fixtureCalendar(),
+        calendarIsFresh: () => true,
+        ensureCalendar: async () => fixtureCalendar(),
+        currentRecipe: mocks.currentRecipe,
         applyServerUpdate: mocks.applyServerUpdate,
       }),
     }
@@ -227,7 +242,8 @@ vi.mock('@/lib/api/api-client', () => ({
   },
 }));
 
-vi.mock('@/lib/api/planner', () => ({
+vi.mock('@/lib/api/planner', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/api/planner')>()),
   assignRecipeToDay: vi.fn(),
 }));
 
@@ -284,7 +300,9 @@ describe('HomeCommandCenter', () => {
         screen.getByTestId('today-non-cooking-plan').querySelector(`.${iconClass}`)
       ).not.toBeNull();
       fireEvent.click(screen.getByRole('button', { name: `Tonight ${label} Edit supper plan` }));
-      expect(mocks.push).toHaveBeenCalledWith('/planner?weekOffset=0&planDate=2026-05-07');
+      expect(mocks.push).toHaveBeenCalledWith(
+        '/planner?weekOffset=0&referenceWeekStartDate=2026-05-04&planDate=2026-05-07'
+      );
       expect(screen.queryByRole('summary')).not.toBeInTheDocument();
       expect(screen.queryByTestId('order-in-btn')).not.toBeInTheDocument();
       expect(screen.queryByTestId('tonight-menu-card')).not.toBeInTheDocument();
@@ -368,7 +386,11 @@ describe('HomeCommandCenter', () => {
       fireEvent.click(screen.getByTestId('recovery-action-tomorrow'));
     });
 
-    expect(mocks.applyServerUpdate).toHaveBeenCalledWith({ recipe: null, status: 3 });
+    expect(mocks.applyServerUpdate).toHaveBeenCalledWith({
+      date: mocks.todayString,
+      recipe: null,
+      status: 3,
+    });
     expect(mocks.applySlotUpdate).toHaveBeenCalledWith({
       date: '2026-05-07',
       recipe: null,
@@ -377,9 +399,11 @@ describe('HomeCommandCenter', () => {
     expect(mocks.validatePost).toHaveBeenCalledWith({ status: 3 });
     expect(mocks.movePost).toHaveBeenCalledTimes(1);
     await waitFor(() => {
-      expect(mocks.weekInit).toHaveBeenCalledWith(0);
+      expect(mocks.weekInit).toHaveBeenCalledWith(0, '2026-05-04');
       expect(mocks.sync).toHaveBeenCalled();
-      expect(mocks.push).toHaveBeenCalledWith('/planner');
+      expect(mocks.push).toHaveBeenCalledWith(
+        '/planner?weekOffset=0&referenceWeekStartDate=2026-05-04'
+      );
     });
   });
 
@@ -400,14 +424,17 @@ describe('HomeCommandCenter', () => {
       fireEvent.click(screen.getByTestId('recovery-action-tomorrow'));
     });
 
-    expect(mocks.movePost).toHaveBeenCalledWith({
-      weekOffset: 0,
-      fromIndex: 6,
-      toIndex: 0,
-      targetWeekOffset: 1,
-      intent: 'push',
-      recipeId: 'recipe-1',
-    });
+    expect(mocks.movePost).toHaveBeenCalledWith(
+      {
+        weekOffset: 0,
+        fromIndex: 6,
+        toIndex: 0,
+        targetWeekOffset: 1,
+        intent: 'push',
+        recipeId: 'recipe-1',
+      },
+      { queryParameters: { referenceWeekStartDate: DateOnly.parse('2026-05-04') } }
+    );
   });
 
   it('treats closing the order-in recovery flow as an abort', () => {
@@ -447,7 +474,8 @@ describe('HomeCommandCenter', () => {
 
     await waitFor(() => {
       expect(mocks.deferPost).toHaveBeenCalledWith(
-        expect.objectContaining({ recipeId: 'recipe-1' })
+        expect.objectContaining({ recipeId: 'recipe-1' }),
+        { queryParameters: { referenceWeekStartDate: DateOnly.parse('2026-05-04') } }
       );
       expect(mocks.movePost).not.toHaveBeenCalled();
       expect(mocks.addToast).toHaveBeenCalledWith('Moved meal to Monday, May 18.');
@@ -473,10 +501,12 @@ describe('HomeCommandCenter', () => {
     });
 
     expect(mocks.movePost).toHaveBeenCalledWith(
-      expect.objectContaining({ recipeId: 'planned-recipe' })
+      expect.objectContaining({ recipeId: 'planned-recipe' }),
+      { queryParameters: { referenceWeekStartDate: DateOnly.parse('2026-05-04') } }
     );
     expect(mocks.assignRecipe).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'replacement-recipe' })
+      expect.objectContaining({ id: 'replacement-recipe' }),
+      fixtureCalendar()
     );
   });
 
@@ -498,7 +528,37 @@ describe('HomeCommandCenter', () => {
     await waitFor(() => {
       expect(mocks.validatePost).toHaveBeenCalledWith({ status: 3 });
       expect(mocks.removeDelete).not.toHaveBeenCalled();
-      expect(mocks.push).toHaveBeenCalledWith('/planner');
+      expect(mocks.push).toHaveBeenCalledWith(
+        '/planner?weekOffset=0&referenceWeekStartDate=2026-05-04'
+      );
     });
+  });
+  it('keeps a started Sunday recovery on its source date after Today changes', async () => {
+    mocks.todayString = '2026-05-10';
+    mocks.currentRecipe = { id: 'sunday-recipe', name: 'Sunday' };
+    const view = render(<HomeCommandCenter todaysRecipe={mocks.currentRecipe} />);
+    fireEvent.click(screen.getByTestId('skip-btn'));
+    fireEvent.click(screen.getByTestId('recovery-action-pick-else'));
+    fireEvent.click(screen.getByTestId('quick-find-select'));
+    mocks.todayString = '2026-05-11';
+    mocks.currentRecipe = { id: 'monday-recipe', name: 'Monday' };
+    view.rerender(<HomeCommandCenter todaysRecipe={mocks.currentRecipe} />);
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('recovery-action-tomorrow'));
+    });
+    expect(mocks.movePost).toHaveBeenCalledWith(
+      expect.objectContaining({
+        weekOffset: 0,
+        fromIndex: 6,
+        toIndex: 0,
+        targetWeekOffset: 1,
+        recipeId: 'sunday-recipe',
+      }),
+      { queryParameters: { referenceWeekStartDate: DateOnly.parse('2026-05-04') } }
+    );
+    expect(mocks.assignRecipe).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'replacement-recipe' }),
+      expect.objectContaining({ today: '2026-05-10', referenceWeekStartDate: '2026-05-04' })
+    );
   });
 });

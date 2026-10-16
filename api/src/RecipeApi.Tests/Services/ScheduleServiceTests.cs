@@ -21,13 +21,13 @@ public class ScheduleServiceTests : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
-        _factory = await TestWebApplicationFactory.CreateAsync();
+        _factory = await TestWebApplicationFactory.CreateAsync(new RecipeApi.Tests.Integration.DeploymentCalendarIntegrationTests.CalendarClock());
         _scope = _factory.Services.CreateScope();
         _db = _scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
         var logger = _scope.ServiceProvider.GetRequiredService<ILogger<ScheduleService>>();
         _publisherMock = new Mock<IScheduleEventPublisher>();
         var groceryRecomputeService = _scope.ServiceProvider.GetRequiredService<GroceryRecomputeService>();
-        _service = new ScheduleService(_db, logger, _publisherMock.Object, groceryRecomputeService);
+        _service = new ScheduleService(_db, logger, _publisherMock.Object, groceryRecomputeService, _scope.ServiceProvider.GetRequiredService<IClock>(), new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()));
     }
 
     public async Task DisposeAsync()
@@ -43,7 +43,7 @@ public class ScheduleServiceTests : IAsyncLifetime
         await _service.OpenVotingAsync(0);
 
         // Assert
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = DateOnly.FromDateTime(new DateTime(2026, 10, 12, 1, 30, 0, DateTimeKind.Utc));
         var daysToMonday = ((int)today.DayOfWeek - 1 + 7) % 7;
         var monday = today.AddDays(-daysToMonday);
 
@@ -78,7 +78,7 @@ public class ScheduleServiceTests : IAsyncLifetime
         var recipeId = Guid.NewGuid();
         var recipe = new Recipe { Id = recipeId, Name = "Test" };
         _db.Recipes.Add(recipe);
-        var date = DateOnly.FromDateTime(DateTime.UtcNow);
+        var date = DateOnly.FromDateTime(new DateTime(2026, 10, 12, 1, 30, 0, DateTimeKind.Utc));
         _db.CalendarEvents.Add(new CalendarEvent { Id = Guid.NewGuid(), RecipeId = recipeId, Date = date, Status = CalendarEventStatus.Planned });
         await _db.SaveChangesAsync();
 
@@ -139,7 +139,7 @@ public class ScheduleServiceTests : IAsyncLifetime
     {
         var recipeId = Guid.NewGuid();
         _db.Recipes.Add(new Recipe { Id = recipeId, Name = "Soup" });
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = DateOnly.FromDateTime(new DateTime(2026, 10, 12, 1, 30, 0, DateTimeKind.Utc));
         var nextMonday = today.AddDays(7 - ((int)today.DayOfWeek + 6) % 7);
         _db.CalendarEvents.Add(new CalendarEvent
         {
@@ -162,7 +162,7 @@ public class ScheduleServiceTests : IAsyncLifetime
     {
         var recipeId = Guid.NewGuid();
         _db.Recipes.Add(new Recipe { Id = recipeId, Name = "Soup" });
-        var sourceDate = DateOnly.FromDateTime(DateTime.UtcNow);
+        var sourceDate = DateOnly.FromDateTime(new DateTime(2026, 10, 12, 1, 30, 0, DateTimeKind.Utc));
         _db.CalendarEvents.Add(new CalendarEvent
         {
             Id = Guid.NewGuid(), RecipeId = recipeId, Date = sourceDate,
@@ -206,8 +206,8 @@ public class ScheduleServiceTests : IAsyncLifetime
     {
         var recipeId = Guid.NewGuid();
         _db.Recipes.Add(new Recipe { Id = recipeId, Name = "Soup" });
-        var yesterday = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(-1);
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var yesterday = DateOnly.FromDateTime(new DateTime(2026, 10, 12, 1, 30, 0, DateTimeKind.Utc)).AddDays(-1);
+        var today = DateOnly.FromDateTime(new DateTime(2026, 10, 12, 1, 30, 0, DateTimeKind.Utc));
         _db.CalendarEvents.AddRange(
             new CalendarEvent { Id = Guid.NewGuid(), RecipeId = recipeId, Date = yesterday, Status = CalendarEventStatus.Planned },
             new CalendarEvent { Id = Guid.NewGuid(), RecipeId = recipeId, Date = today, Status = CalendarEventStatus.Locked },
@@ -286,7 +286,7 @@ public class ScheduleServiceTests : IAsyncLifetime
     {
         var logger = _scope.ServiceProvider.GetRequiredService<ILogger<ScheduleService>>();
         var groceryRecomputeService = _scope.ServiceProvider.GetRequiredService<GroceryRecomputeService>();
-        return new ScheduleService(_db, logger, _publisherMock.Object, groceryRecomputeService, clock);
+        return new ScheduleService(_db, logger, _publisherMock.Object, groceryRecomputeService, clock, new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()));
     }
 
     private sealed class FixedClock(DateTimeOffset now) : IClock
@@ -302,7 +302,7 @@ public class ScheduleServiceTests : IAsyncLifetime
         var recipe2Id = Guid.NewGuid();
         _db.Recipes.AddRange(new Recipe { Id = recipe1Id, Name = "R1" }, new Recipe { Id = recipe2Id, Name = "R2" });
         
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = DateOnly.FromDateTime(new DateTime(2026, 10, 12, 1, 30, 0, DateTimeKind.Utc));
         var daysToMonday = ((int)today.DayOfWeek - 1 + 7) % 7;
         var monday = today.AddDays(-daysToMonday);
         
@@ -330,7 +330,7 @@ public class ScheduleServiceTests : IAsyncLifetime
         var r2Id = Guid.NewGuid();
         _db.Recipes.AddRange(new Recipe { Id = r1Id, Name = "R1" }, new Recipe { Id = r2Id, Name = "R2" });
         
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = DateOnly.FromDateTime(new DateTime(2026, 10, 12, 1, 30, 0, DateTimeKind.Utc));
         var daysToMonday = ((int)today.DayOfWeek - 1 + 7) % 7;
         var monday = today.AddDays(-daysToMonday);
         
@@ -361,7 +361,7 @@ public class ScheduleServiceTests : IAsyncLifetime
         var recipeId = Guid.NewGuid();
         _db.Recipes.Add(new Recipe { Id = recipeId, Name = "R1" });
 
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = DateOnly.FromDateTime(new DateTime(2026, 10, 12, 1, 30, 0, DateTimeKind.Utc));
         var daysToMonday = ((int)today.DayOfWeek - 1 + 7) % 7;
         var monday = today.AddDays(-daysToMonday);
 
@@ -397,7 +397,7 @@ public class ScheduleServiceTests : IAsyncLifetime
         var recipeId = Guid.NewGuid();
         _db.Recipes.Add(new Recipe { Id = recipeId, Name = "R1" });
 
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = DateOnly.FromDateTime(new DateTime(2026, 10, 12, 1, 30, 0, DateTimeKind.Utc));
         var daysToMonday = ((int)today.DayOfWeek - 1 + 7) % 7;
         var monday = today.AddDays(-daysToMonday);
 
@@ -437,7 +437,7 @@ public class ScheduleServiceTests : IAsyncLifetime
             new Recipe { Id = recipeId, Name = "Repeated Recipe" },
             new Recipe { Id = otherRecipeId, Name = "Other Recipe" });
 
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = DateOnly.FromDateTime(new DateTime(2026, 10, 12, 1, 30, 0, DateTimeKind.Utc));
         var daysToMonday = ((int)today.DayOfWeek - 1 + 7) % 7;
         var monday = today.AddDays(-daysToMonday);
 
@@ -482,7 +482,7 @@ public class ScheduleServiceTests : IAsyncLifetime
         var recipe2Id = Guid.NewGuid();
         _db.Recipes.AddRange(new Recipe { Id = recipe1Id, Name = "R1" }, new Recipe { Id = recipe2Id, Name = "R2" });
 
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = DateOnly.FromDateTime(new DateTime(2026, 10, 12, 1, 30, 0, DateTimeKind.Utc));
         var daysToMonday = ((int)today.DayOfWeek - 1 + 7) % 7;
         var monday = today.AddDays(-daysToMonday);
 
@@ -510,7 +510,7 @@ public class ScheduleServiceTests : IAsyncLifetime
         _db.Recipes.Add(new Recipe { Id = recipeId, Name = "Test" });
         _db.RecipeVotes.Add(new RecipeVote { RecipeId = recipeId, FamilyMemberId = memberId, Vote = VoteType.Like });
         
-        var date = DateOnly.FromDateTime(DateTime.UtcNow);
+        var date = DateOnly.FromDateTime(new DateTime(2026, 10, 12, 1, 30, 0, DateTimeKind.Utc));
         _db.CalendarEvents.Add(new CalendarEvent 
         { 
             Id = Guid.NewGuid(), 
@@ -532,7 +532,7 @@ public class ScheduleServiceTests : IAsyncLifetime
     public async Task GetScheduleAsync_IncludesGroceryState()
     {
         // Arrange
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = DateOnly.FromDateTime(new DateTime(2026, 10, 12, 1, 30, 0, DateTimeKind.Utc));
         var daysToMonday = ((int)today.DayOfWeek - 1 + 7) % 7;
         var monday = today.AddDays(-daysToMonday);
 

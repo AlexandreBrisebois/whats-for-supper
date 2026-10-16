@@ -25,22 +25,21 @@ class WorkflowSecurityTests(unittest.TestCase):
         self.assertNotIn("secrets.", validation)
         self.assertIn("HEARTH_SECRET: Paris-Montreal", validation)
 
-    def test_aws_secrets_are_confined_to_the_aws_delivery_workflow(self):
+    def test_retired_aws_delivery_workflow_and_secrets_are_absent(self):
+        self.assertFalse((WORKFLOWS / "aws-deploy.yml").exists())
         aws_secret_names = (
             "AWS_ROLE_ARN",
             "GEMINI_API_KEY",
             "ELEVATED_ACTIONS_PIN",
         )
         for secret_name in aws_secret_names:
-            self.assertIn(secret_name, self.text["aws-deploy.yml"])
             for name, content in self.text.items():
-                if name != "aws-deploy.yml":
-                    with self.subTest(secret=secret_name, workflow=name):
-                        self.assertNotIn(secret_name, content)
+                with self.subTest(secret=secret_name, workflow=name):
+                    self.assertNotIn(secret_name, content)
 
-    def test_synology_and_validation_workflows_do_not_reference_aws_delivery(self):
+    def test_workflows_do_not_reference_retired_aws_delivery(self):
         forbidden = ("infrastructure/aws", "aws-actions/", "aws-cdk", "amazon-ecr")
-        for name in ("ci.yml", "validate.yml", "publish-dockerhub.yml"):
+        for name in self.text:
             for token in forbidden:
                 with self.subTest(workflow=name, token=token):
                     self.assertNotIn(token, self.text[name].lower())

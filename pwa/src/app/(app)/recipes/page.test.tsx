@@ -222,6 +222,15 @@ describe('RecipesPage', () => {
     mocks.assignRecipeToDay.mockResolvedValue(undefined);
     mocks.getSchedule.mockResolvedValue({
       weekOffset: 0,
+      weekStartDate: '2026-05-04',
+      calendar: {
+        timeZone: 'UTC',
+        today: '2026-05-04',
+        capturedAtUtc: '2026-05-04T12:00:00Z',
+        currentWeekStartDate: '2026-05-04',
+        referenceWeekStartDate: '2026-05-04',
+        nextDayAtUtc: '2026-05-05T00:00:00Z',
+      },
       days: Array.from({ length: 7 }, (_, index) => ({
         day: `Day ${index + 1}`,
         date: `2026-05-${String(4 + index).padStart(2, '0')}`,
@@ -1034,14 +1043,21 @@ describe('RecipesPage', () => {
     fireEvent.click(screen.getByTestId('action-add-to-day'));
 
     await waitFor(() => {
-      expect(mocks.assignRecipeToDay).toHaveBeenCalledWith(0, 2, {
-        id: '11111111-1111-1111-1111-111111111111',
-        name: 'Chicken Soup',
-        image: 'https://example.com/chicken-soup.jpg',
-      });
+      expect(mocks.assignRecipeToDay).toHaveBeenCalledWith(
+        0,
+        2,
+        {
+          id: '11111111-1111-1111-1111-111111111111',
+          name: 'Chicken Soup',
+          image: 'https://example.com/chicken-soup.jpg',
+        },
+        '2026-05-04'
+      );
     });
 
-    expect(mocks.push).toHaveBeenCalledWith('/planner?success=1&dayIndex=2&weekOffset=0');
+    expect(mocks.push).toHaveBeenCalledWith(
+      '/planner?success=1&dayIndex=2&weekOffset=0&referenceWeekStartDate=2026-05-04'
+    );
   });
 
   describe('Filter controls', () => {

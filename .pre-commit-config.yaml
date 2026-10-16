@@ -1,45 +1,61 @@
+default_install_hook_types: [pre-commit, pre-push]
+default_stages: [pre-commit]
+
 repos:
   - repo: local
     hooks:
+      - id: whitespace
+        name: Staged whitespace
+        language: system
+        entry: git diff --cached --check
+        stages: [pre-commit]
+        always_run: true
+        pass_filenames: false
+
+      - id: openspec
+        name: OpenSpec validation
+        language: system
+        entry: task spec:check
+        files: ^(openspec/|\.agents/skills/openspec-|Taskfile\.yml$|\.pre-commit-config\.yaml$)
+        stages: [pre-commit]
+        pass_filenames: false
+
       - id: agent-harness
         name: Agent harness tests
         language: system
         entry: task test:agent
-        files: ^(scripts/agent/|\.agents/|Taskfile\.yml$|\.pre-commit-config\.yaml$)
+        files: ^(scripts/agent/|scripts/requirements\.txt$|\.agents/|Taskfile\.yml$|\.pre-commit-config\.yaml$|\.github/workflows/)
+        stages: [pre-commit]
         pass_filenames: false
 
-      - id: openapi-schema-drift
-        name: OpenAPI schema drift (spec vs C# DTOs)
-        language: python
-        additional_dependencies: [pyyaml]
-        entry: python3 scripts/agent/drift.py --schema-only
-        files: ^(specs/openapi\.yaml|api/src/RecipeApi/Dto/.+\.cs)$
-        pass_filenames: false
-
-      - id: mock-drift-audit
-        name: E2E Mock Compliance (Valid GUIDs & Builders)
-        language: python
-        entry: python3 scripts/agent/drift_mocks.py
-        files: ^pwa/e2e/
-        pass_filenames: false
-
-      - id: api-review
-        name: API Review (Lint & Test)
+      - id: contract-static
+        name: Static API contract and mock checks
         language: system
-        entry: bash -c "cd api && DOTNET_CLI_HOME=\"${TMPDIR:-$HOME/.dotnet}\" dotnet format RecipeApi.csproj --verify-no-changes --no-restore && DOTNET_CLI_HOME=\"${TMPDIR:-$HOME/.dotnet}\" dotnet test src/RecipeApi.Tests/RecipeApi.Tests.csproj --no-restore"
-        files: ^(api/|specs/openapi\.yaml$|\.github/workflows/|\.pre-commit-config\.yaml$)
+        entry: task check:contracts
+        files: ^(api/|specs/openapi\.yaml$|pwa/e2e/|scripts/agent/(api_tools|drift|drift_mocks)\.py$)
+        stages: [pre-commit]
         pass_filenames: false
 
-      - id: kiota-client-sync
-        name: Kiota client sync (Auto-generate)
+      - id: kiota-client-check
+        name: Generated API client check
         language: system
-        entry: bash -c "if [ \"$CI\" = \"true\" ] || [ \"$GITHUB_ACTIONS\" = \"true\" ]; then task gen:client:check; else task gen:client:sync; fi"
-        files: ^specs/openapi\.yaml$
+        entry: task gen:client:check
+        files: ^(specs/openapi\.yaml$|pwa/src/lib/api/generated/|scripts/agent/kiota_client\.py$)
+        stages: [pre-commit]
         pass_filenames: false
 
-      - id: pwa-review
-        name: PWA Review (Lint, Types, Unit, Production Build & E2E)
+      - id: pwa-format
+        name: PWA formatting check
         language: system
-        entry: bash -c "cd pwa && npm run lint && npm run typecheck && npm run test:unit && unset BASE_URL && export CI=true NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:5001 API_INTERNAL_URL=http://127.0.0.1:5001 NEXT_PUBLIC_ENABLE_AGENT_SEARCH=true NEXT_PUBLIC_ENABLE_PHOTO_SEARCH=true HEARTH_SECRET=Paris-Montreal && npm run build && npm run test:e2e"
-        files: ^(pwa/|specs/openapi\.yaml$|\.github/workflows/|\.pre-commit-config\.yaml$)
+        entry: task format:check:pwa
+        files: ^pwa/
+        stages: [pre-commit]
+        pass_filenames: false
+
+      - id: push-validation
+        name: Full committed-source validation
+        language: system
+        entry: task check:push
+        stages: [pre-push]
+        always_run: true
         pass_filenames: false

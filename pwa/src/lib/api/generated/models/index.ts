@@ -238,6 +238,17 @@ export function createDeferScheduleResultDtoFromDiscriminatorValue(
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {DeploymentCalendarContext}
+ */
+// @ts-ignore
+export function createDeploymentCalendarContextFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoDeploymentCalendarContext;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {DescribeRecipeDto}
  */
 // @ts-ignore
@@ -1051,6 +1062,35 @@ export interface DeferScheduleResultDto extends AdditionalDataHolder, Parsable {
    */
   scheduledWeekOffset?: number | null;
 }
+/**
+ * Authoritative supper calendar captured once at operation entry. Calendar:TimeZone selects the deployment IANA timezone; absence defaults to UTC. Browser and host OS timezones do not select meal dates. Stored civil dates and UTC timestamps are unchanged.
+ */
+export interface DeploymentCalendarContext extends AdditionalDataHolder, Parsable {
+  /**
+   * The capturedAtUtc property
+   */
+  capturedAtUtc?: Date | null;
+  /**
+   * Monday containing today.
+   */
+  currentWeekStartDate?: DateOnly | null;
+  /**
+   * Next deployment midnight as a UTC instant.
+   */
+  nextDayAtUtc?: Date | null;
+  /**
+   * Monday used to interpret request offsets.
+   */
+  referenceWeekStartDate?: DateOnly | null;
+  /**
+   * The timeZone property
+   */
+  timeZone?: string | null;
+  /**
+   * The today property
+   */
+  today?: DateOnly | null;
+}
 export interface DescribeRecipeDto extends AdditionalDataHolder, Parsable {
   /**
    * Free-text description used to synthesize the full recipe via AI
@@ -1265,6 +1305,36 @@ export function deserializeIntoDeferScheduleResultDto(
     },
     scheduledWeekOffset: (n) => {
       deferScheduleResultDto.scheduledWeekOffset = n.getNumberValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param DeploymentCalendarContext The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoDeploymentCalendarContext(
+  deploymentCalendarContext: Partial<DeploymentCalendarContext> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    capturedAtUtc: (n) => {
+      deploymentCalendarContext.capturedAtUtc = n.getDateValue();
+    },
+    currentWeekStartDate: (n) => {
+      deploymentCalendarContext.currentWeekStartDate = n.getDateOnlyValue();
+    },
+    nextDayAtUtc: (n) => {
+      deploymentCalendarContext.nextDayAtUtc = n.getDateValue();
+    },
+    referenceWeekStartDate: (n) => {
+      deploymentCalendarContext.referenceWeekStartDate = n.getDateOnlyValue();
+    },
+    timeZone: (n) => {
+      deploymentCalendarContext.timeZone = n.getStringValue();
+    },
+    today: (n) => {
+      deploymentCalendarContext.today = n.getDateOnlyValue();
     },
   };
 }
@@ -2667,6 +2737,11 @@ export function deserializeIntoScheduleDays(
   scheduleDays: Partial<ScheduleDays> | undefined = {}
 ): Record<string, (node: ParseNode) => void> {
   return {
+    calendar: (n) => {
+      scheduleDays.calendar = n.getObjectValue<DeploymentCalendarContext>(
+        createDeploymentCalendarContextFromDiscriminatorValue
+      );
+    },
     days: (n) => {
       scheduleDays.days = n.getCollectionOfObjectValues<ScheduleDayDto>(
         createScheduleDayDtoFromDiscriminatorValue
@@ -2690,6 +2765,9 @@ export function deserializeIntoScheduleDays(
     },
     weekOffset: (n) => {
       scheduleDays.weekOffset = n.getNumberValue();
+    },
+    weekStartDate: (n) => {
+      scheduleDays.weekStartDate = n.getDateOnlyValue();
     },
   };
 }
@@ -2817,6 +2895,9 @@ export function deserializeIntoSmartDefaultsDto(
     },
     weekOffset: (n) => {
       smartDefaultsDto.weekOffset = n.getNumberValue();
+    },
+    weekStartDate: (n) => {
+      smartDefaultsDto.weekStartDate = n.getDateOnlyValue();
     },
   };
 }
@@ -4207,6 +4288,10 @@ export interface ScheduleDayDto extends AdditionalDataHolder, Parsable {
 }
 export interface ScheduleDays extends AdditionalDataHolder, Parsable {
   /**
+   * Authoritative supper calendar captured once at operation entry. Calendar:TimeZone selects the deployment IANA timezone; absence defaults to UTC. Browser and host OS timezones do not select meal dates. Stored civil dates and UTC timestamps are unchanged.
+   */
+  calendar?: DeploymentCalendarContext | null;
+  /**
    * The days property
    */
   days?: ScheduleDayDto[] | null;
@@ -4230,6 +4315,10 @@ export interface ScheduleDays extends AdditionalDataHolder, Parsable {
    * The weekOffset property
    */
   weekOffset?: number | null;
+  /**
+   * Requested Monday, calendar.referenceWeekStartDate plus seven times weekOffset days.
+   */
+  weekStartDate?: DateOnly | null;
 }
 export interface ScheduleDays_groceryState extends AdditionalDataHolder, Parsable {}
 export interface ScheduleRecipeDto extends AdditionalDataHolder, Parsable {
@@ -4452,6 +4541,32 @@ export function serializeDeferScheduleResultDto(
   writer.writeDateOnlyValue('scheduledDate', deferScheduleResultDto.scheduledDate);
   writer.writeNumberValue('scheduledWeekOffset', deferScheduleResultDto.scheduledWeekOffset);
   writer.writeAdditionalData(deferScheduleResultDto.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param DeploymentCalendarContext The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeDeploymentCalendarContext(
+  writer: SerializationWriter,
+  deploymentCalendarContext: Partial<DeploymentCalendarContext> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!deploymentCalendarContext || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeDateValue('capturedAtUtc', deploymentCalendarContext.capturedAtUtc);
+  writer.writeDateOnlyValue('currentWeekStartDate', deploymentCalendarContext.currentWeekStartDate);
+  writer.writeDateValue('nextDayAtUtc', deploymentCalendarContext.nextDayAtUtc);
+  writer.writeDateOnlyValue(
+    'referenceWeekStartDate',
+    deploymentCalendarContext.referenceWeekStartDate
+  );
+  writer.writeStringValue('timeZone', deploymentCalendarContext.timeZone);
+  writer.writeDateOnlyValue('today', deploymentCalendarContext.today);
+  writer.writeAdditionalData(deploymentCalendarContext.additionalData);
 }
 /**
  * Serializes information the current object
@@ -5747,6 +5862,11 @@ export function serializeScheduleDays(
   if (!scheduleDays || isSerializingDerivedType) {
     return;
   }
+  writer.writeObjectValue<DeploymentCalendarContext>(
+    'calendar',
+    scheduleDays.calendar,
+    serializeDeploymentCalendarContext
+  );
   writer.writeCollectionOfObjectValues<ScheduleDayDto>(
     'days',
     scheduleDays.days,
@@ -5765,6 +5885,7 @@ export function serializeScheduleDays(
   writer.writeBooleanValue('locked', scheduleDays.locked);
   writer.writeNumberValue('status', scheduleDays.status);
   writer.writeNumberValue('weekOffset', scheduleDays.weekOffset);
+  writer.writeDateOnlyValue('weekStartDate', scheduleDays.weekStartDate);
   writer.writeAdditionalData(scheduleDays.additionalData);
 }
 /**
@@ -5896,6 +6017,7 @@ export function serializeSmartDefaultsDto(
     serializePreSelectedRecipeDto
   );
   writer.writeNumberValue('weekOffset', smartDefaultsDto.weekOffset);
+  writer.writeDateOnlyValue('weekStartDate', smartDefaultsDto.weekStartDate);
   writer.writeAdditionalData(smartDefaultsDto.additionalData);
 }
 /**
@@ -6268,6 +6390,10 @@ export interface SmartDefaultsDto extends AdditionalDataHolder, Parsable {
    * The weekOffset property
    */
   weekOffset?: number | null;
+  /**
+   * Absolute Monday identifying these suggestions.
+   */
+  weekStartDate?: DateOnly | null;
 }
 export interface SmartDefaultsDto_openSlots extends AdditionalDataHolder, Parsable {
   /**

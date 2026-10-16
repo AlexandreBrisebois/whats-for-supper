@@ -42,7 +42,7 @@ public class FamilyControllerTests : IAsyncLifetime
     [Fact]
     public async Task Create_Returns_Created_With_Member()
     {
-        var response = await _client.PostAsJsonAsync("/api/family", new { name = "Test Member" });
+        var response = await _client.PostAsJsonAsync("/api/family", new { name = " Test Member " });
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
 
@@ -52,6 +52,9 @@ public class FamilyControllerTests : IAsyncLifetime
         Assert.Equal("Test Member", data.GetProperty("name").GetString());
         Assert.Equal("stack", data.GetProperty("browseViewMode").GetString());
         Assert.NotEqual(Guid.Empty, data.GetProperty("id").GetGuid());
+        Assert.Equal(JsonValueKind.Null, data.GetProperty("preferredLanguage").ValueKind);
+        Assert.True(data.GetProperty("createdAt").TryGetDateTimeOffset(out _));
+        Assert.True(data.GetProperty("updatedAt").TryGetDateTimeOffset(out _));
     }
 
     [Fact]
@@ -59,7 +62,10 @@ public class FamilyControllerTests : IAsyncLifetime
     {
         var uniqueName = $"Member_{Guid.NewGuid():N}";
 
-        await _client.PostAsJsonAsync("/api/family", new { name = uniqueName });
+        var createdResponse = await _client.PostAsJsonAsync("/api/family", new { name = uniqueName });
+        Assert.Equal(HttpStatusCode.Created, createdResponse.StatusCode);
+        using var created = JsonDocument.Parse(await createdResponse.Content.ReadAsStringAsync());
+        var createdId = created.RootElement.GetProperty("data").GetProperty("id").GetGuid();
 
         var listResponse = await _client.GetAsync("/api/family");
         var json = await listResponse.Content.ReadAsStringAsync();
@@ -69,6 +75,9 @@ public class FamilyControllerTests : IAsyncLifetime
             .Select(e => e.GetProperty("name").GetString())
             .ToList();
         Assert.Contains(uniqueName, names);
+        Assert.Contains(doc.RootElement.GetProperty("data").EnumerateArray(),
+            member => member.GetProperty("id").GetGuid() == createdId
+                && member.GetProperty("name").GetString() == uniqueName);
     }
 
     [Fact]
@@ -85,6 +94,51 @@ public class FamilyControllerTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
         var json = await response.Content.ReadAsStringAsync();
         Assert.Contains("New user creation is restricted in Demo Mode.", json);
+    }
+
+    [Fact]
+    public async Task Create_Duplicate_Exact_Returns_Conflict_With_Envelope()
+    {
+        var name = $"Dupe_{Guid.NewGuid():N}";
+        var first = await _client.PostAsJsonAsync("/api/family", new { name });
+        Assert.Equal(HttpStatusCode.Created, first.StatusCode);
+
+        var second = await _client.PostAsJsonAsync("/api/family", new { name });
+        Assert.Equal(HttpStatusCode.Conflict, second.StatusCode);
+
+        var json = await second.Content.ReadAsStringAsync();
+        using var doc = JsonDocument.Parse(json);
+        Assert.Equal(409, doc.RootElement.GetProperty("status").GetInt32());
+        Assert.False(string.IsNullOrWhiteSpace(doc.RootElement.GetProperty("message").GetString()));
+
+        // Verify existing list count is unchanged
+        var listResponse = await _client.GetAsync("/api/family");
+        using var listDoc = JsonDocument.Parse(await listResponse.Content.ReadAsStringAsync());
+        var matches = listDoc.RootElement.GetProperty("data").EnumerateArray()
+            .Count(m => m.GetProperty("name").GetString() == name);
+        Assert.Equal(1, matches);
+    }
+
+    [Fact]
+    public async Task Create_Duplicate_CasingVariant_Returns_Conflict()
+    {
+        var suffix = Guid.NewGuid().ToString("N")[..8];
+        var first = await _client.PostAsJsonAsync("/api/family", new { name = $"Alex_{suffix}" });
+        Assert.Equal(HttpStatusCode.Created, first.StatusCode);
+
+        var second = await _client.PostAsJsonAsync("/api/family", new { name = $"alex_{suffix}" });
+        Assert.Equal(HttpStatusCode.Conflict, second.StatusCode);
+    }
+
+    [Fact]
+    public async Task Create_Duplicate_WhitespaceVariant_Returns_Conflict()
+    {
+        var suffix = Guid.NewGuid().ToString("N")[..8];
+        var first = await _client.PostAsJsonAsync("/api/family", new { name = $"Jordan_{suffix}" });
+        Assert.Equal(HttpStatusCode.Created, first.StatusCode);
+
+        var second = await _client.PostAsJsonAsync("/api/family", new { name = $"  Jordan_{suffix}  " });
+        Assert.Equal(HttpStatusCode.Conflict, second.StatusCode);
     }
 
     // ── PUT /api/family/{id} ──────────────────────────────────────────────────

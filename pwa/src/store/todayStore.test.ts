@@ -1,4 +1,5 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { calendarTime } from '@/lib/deployment-calendar';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 vi.mock('@/lib/api/planner', async (importActual) => {
   const actual = (await importActual()) as any;
@@ -13,6 +14,7 @@ import { useTodayStore } from './todayStore';
 import { assignRecipeToDay, getSchedule } from '@/lib/api/planner';
 import { apiClient } from '@/lib/api/api-client';
 import { getTodayString } from '@/lib/imageUtils';
+import * as imageDate from '@/lib/imageUtils';
 
 vi.mock('@/lib/api/api-client', () => ({
   apiClient: {
@@ -43,9 +45,32 @@ vi.mock('@/lib/api/api-client', () => ({
   },
 }));
 
+const calendar = {
+  timeZone: 'UTC',
+  capturedAtUtc: '2026-05-04T12:00:00Z',
+  today: '2026-05-04',
+  currentWeekStartDate: '2026-05-04',
+  referenceWeekStartDate: '2026-05-04',
+  nextDayAtUtc: '2026-05-05T00:00:00Z',
+};
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.useRealTimers();
+});
 // Reset store state before each test
 beforeEach(() => {
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(new Date('2026-05-04T12:00:00Z'));
+  vi.mocked(getSchedule)
+    .mockReset()
+    .mockResolvedValue({ calendar, weekOffset: 0, weekStartDate: '2026-05-04', days: [] } as any);
   useTodayStore.setState({
+    calendar,
+    calendarAnchor: { receivedAtElapsed: calendarTime.elapsed(), expiresAfterMs: 43_200_000 },
+    calendarVersion: 0,
+    calendarError: null,
+    pendingCalendarAction: null,
+    optimisticDate: '2026-05-04',
     currentRecipe: null,
     nonCooking: null,
     status: 0,
@@ -143,7 +168,7 @@ describe('todayStore — applyServerUpdate', () => {
     useTodayStore.setState({
       currentRecipe: mockRecipe,
       status: 0,
-      optimisticWriteAt: Date.now() - 500,
+      optimisticWriteAt: calendarTime.elapsed() - 500,
     });
 
     const serverRecipe = {
@@ -164,7 +189,7 @@ describe('todayStore — applyServerUpdate', () => {
     useTodayStore.setState({
       currentRecipe: mockRecipe,
       status: 0,
-      optimisticWriteAt: Date.now() - 3_000,
+      optimisticWriteAt: calendarTime.elapsed() - 3_000,
     });
 
     const serverRecipe = {
@@ -186,7 +211,7 @@ describe('todayStore — applyServerUpdate', () => {
   });
 
   it('clears optimisticWriteAt after applying server update', () => {
-    useTodayStore.setState({ optimisticWriteAt: Date.now() - 5_000 });
+    useTodayStore.setState({ optimisticWriteAt: calendarTime.elapsed() - 5_000 });
 
     useTodayStore.getState().applyServerUpdate({ recipe: mockRecipe, status: 0 });
 
@@ -203,7 +228,7 @@ describe('todayStore — applyServerUpdate', () => {
     useTodayStore.setState({
       currentRecipe: optimisticRecipe as any,
       status: 0,
-      optimisticWriteAt: Date.now() - 500, // 0.5s ago (within echo window)
+      optimisticWriteAt: calendarTime.elapsed() - 500, // 0.5s ago (within echo window)
     });
 
     const serverRecipe = {
@@ -283,6 +308,7 @@ describe('todayStore — sync', () => {
     useTodayStore.setState({ status: 3, nonCooking: plan });
     vi.mocked(getSchedule).mockResolvedValueOnce({
       weekOffset: 0,
+      calendar: calendar as any,
       days: [{ date: getTodayString(), status: 0, recipe: null, nonCooking: null }],
     });
 
@@ -301,6 +327,7 @@ describe('todayStore — sync', () => {
     useTodayStore.setState({ status: 3, nonCooking: { kind: 'order_in' } });
     vi.mocked(getSchedule).mockResolvedValueOnce({
       weekOffset: 0,
+      calendar: calendar as any,
       days: [{ date: getTodayString(), status: 0, recipe, nonCooking: null }],
     });
 
@@ -325,7 +352,7 @@ describe('todayStore — sync', () => {
     useTodayStore.setState({
       currentRecipe: initialRecipe as any,
       status: 0,
-      optimisticWriteAt: Date.now() - 1000, // 1s ago (recent)
+      optimisticWriteAt: calendarTime.elapsed() - 1000, // 1s ago (recent)
     });
 
     // Mock schedule response with full details for the SAME recipe
@@ -344,6 +371,7 @@ describe('todayStore — sync', () => {
     const todayStr = `${year}-${month}-${day}`;
 
     (getSchedule as any).mockResolvedValue({
+      calendar,
       days: [
         {
           date: todayStr,
@@ -363,7 +391,7 @@ describe('todayStore — sync', () => {
 
 describe('todayStore — clearOptimisticGuard', () => {
   it('clears optimisticWriteAt unconditionally', () => {
-    useTodayStore.setState({ optimisticWriteAt: Date.now() });
+    useTodayStore.setState({ optimisticWriteAt: calendarTime.elapsed() });
 
     useTodayStore.getState().clearOptimisticGuard();
 
@@ -391,7 +419,7 @@ describe('todayStore — init', () => {
     useTodayStore.setState({
       currentRecipe: optimisticRecipe as any,
       status: 0,
-      optimisticWriteAt: Date.now() - 5000,
+      optimisticWriteAt: calendarTime.elapsed() - 5000,
     });
 
     const serverRecipe = {
@@ -426,7 +454,7 @@ it('preserves optimistic non-cooking metadata against stale SSR initialization',
     currentRecipe: null,
     status: 3,
     nonCooking: { kind: 'custom', customLabel: 'Birthday' },
-    optimisticWriteAt: Date.now(),
+    optimisticWriteAt: calendarTime.elapsed(),
   });
   useTodayStore.getState().init(null, 0, null);
   expect(useTodayStore.getState().status).toBe(3);
@@ -475,37 +503,268 @@ it.each([
 it.each([
   { kind: 'eating_out' as const, customLabel: null },
   { kind: 'custom' as const, customLabel: "Supper at mom's" },
-])('sync resolves the local Sunday plan across the API UTC week boundary ($kind)', async (plan) => {
-  vi.useFakeTimers();
-  vi.setSystemTime(new Date(2026, 9, 11, 23, 30));
-  try {
-    vi.mocked(getSchedule).mockReset();
-    vi.mocked(getSchedule)
-      .mockResolvedValueOnce({
-        weekOffset: 0,
-        days: [
-          {
-            day: 'Mon',
-            date: '2026-10-12',
-            status: 3,
-            recipe: null,
-            nonCooking: { kind: 'order_in' },
-          },
-          { day: 'Sun', date: '2026-10-18', status: 0, recipe: null },
-        ],
-      })
-      .mockResolvedValueOnce({
-        weekOffset: -1,
-        days: [{ day: 'Sun', date: '2026-10-11', status: 3, recipe: null, nonCooking: plan }],
-      });
-    useTodayStore.setState({ currentRecipe: mockRecipe, status: 0 });
-    await useTodayStore.getState().sync();
-    expect(getSchedule).toHaveBeenNthCalledWith(1, 0);
-    expect(getSchedule).toHaveBeenNthCalledWith(2, -1);
-    expect(useTodayStore.getState().status).toBe(3);
-    expect(useTodayStore.getState().currentRecipe).toBeNull();
-    expect(useTodayStore.getState().nonCooking).toEqual(plan);
-  } finally {
-    vi.useRealTimers();
+])('sync resolves the deployment Sunday plan regardless of browser week ($kind)', async (plan) => {
+  vi.mocked(getSchedule).mockReset();
+  vi.mocked(getSchedule).mockResolvedValueOnce({
+    weekOffset: 0,
+    calendar: {
+      ...calendar,
+      timeZone: 'America/Toronto',
+      today: '2026-10-11',
+      currentWeekStartDate: '2026-10-05',
+      referenceWeekStartDate: '2026-10-05',
+      capturedAtUtc: '2026-10-12T01:30:00Z',
+      nextDayAtUtc: '2026-10-12T04:00:00Z',
+    } as any,
+    days: [{ day: 'Sun', date: '2026-10-11', status: 3, recipe: null, nonCooking: plan }],
+  });
+  useTodayStore.setState({ currentRecipe: mockRecipe, status: 0 });
+  await useTodayStore.getState().sync();
+  expect(getSchedule).toHaveBeenCalledExactlyOnceWith(0);
+  expect(useTodayStore.getState().status).toBe(3);
+  expect(useTodayStore.getState().currentRecipe).toBeNull();
+  expect(useTodayStore.getState().nonCooking).toEqual(plan);
+});
+
+describe('todayStore deployment calendar', () => {
+  it('reads Toronto Sunday even when the device date is Monday', async () => {
+    const browserToday = vi.spyOn(imageDate, 'getTodayString').mockReturnValue('2026-10-12');
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-10-12T01:30:00Z'));
+    const sunday = { ...mockRecipe, id: '550e8400-e29b-41d4-a716-446655440101' };
+    vi.mocked(getSchedule).mockResolvedValueOnce({
+      weekOffset: 0,
+      weekStartDate: '2026-10-05',
+      calendar: {
+        timeZone: 'America/Toronto',
+        capturedAtUtc: '2026-10-12T01:30:00Z',
+        today: '2026-10-11',
+        currentWeekStartDate: '2026-10-05',
+        referenceWeekStartDate: '2026-10-05',
+        nextDayAtUtc: '2026-10-12T04:00:00Z',
+      },
+      days: [{ day: 'Sun', date: '2026-10-11', recipe: sunday, status: 0 }],
+    } as any);
+    try {
+      await useTodayStore.getState().sync();
+      expect(useTodayStore.getState().currentRecipe?.id).toBe(sunday.id);
+    } finally {
+      browserToday.mockRestore();
+      vi.useRealTimers();
+    }
+  });
+});
+
+it.each(['cooked', 'ordered_in'] as const)(
+  'submits %s for deployment Sunday while the device is Monday',
+  async (action) => {
+    const browserToday = vi.spyOn(imageDate, 'getTodayString').mockReturnValue('2026-10-12');
+    useTodayStore.setState({
+      calendar: {
+        timeZone: 'America/Toronto',
+        capturedAtUtc: '2026-10-12T01:30:00Z',
+        today: '2026-10-11',
+        currentWeekStartDate: '2026-10-05',
+        referenceWeekStartDate: '2026-10-05',
+        nextDayAtUtc: '2026-10-12T04:00:00Z',
+      },
+    });
+    vi.mocked(getSchedule).mockResolvedValueOnce({
+      calendar: useTodayStore.getState().calendar,
+      weekOffset: 0,
+    } as any);
+    vi.mocked(apiClient.api.schedule.day.byDate).mockClear();
+    try {
+      if (action === 'cooked')
+        await useTodayStore.getState().markCooked('660e8400-e29b-41d4-a716-446655440011');
+      else useTodayStore.getState().markOrderedIn();
+      const date = vi.mocked(apiClient.api.schedule.day.byDate).mock.calls[0][0];
+      expect(date.toString()).toBe('2026-10-11');
+    } finally {
+      browserToday.mockRestore();
+    }
   }
+);
+
+it('keeps cooking retryable without posting when authoritative date refresh fails', async () => {
+  const recipeId = '660e8400-e29b-41d4-a716-446655440011';
+  const validation = apiClient.api.schedule.day.byDate({} as any).validate.post;
+  vi.mocked(validation).mockClear();
+  vi.mocked(getSchedule).mockRejectedValueOnce(new Error('calendar offline'));
+  useTodayStore.setState({ currentRecipe: mockRecipe });
+  await expect(useTodayStore.getState().markCooked(recipeId)).rejects.toThrow(
+    "Could not confirm today's date. Try again."
+  );
+  expect(validation).not.toHaveBeenCalled();
+  expect(useTodayStore.getState().currentRecipe).toEqual(mockRecipe);
+  await useTodayStore.getState().markCooked(recipeId);
+  expect(validation).toHaveBeenCalledExactlyOnceWith({ status: 2, recipeId });
+});
+
+describe('Today calendar generations and elapsed guards', () => {
+  const sunday = {
+    timeZone: 'America/Toronto',
+    capturedAtUtc: '2026-10-12T01:30:00Z',
+    today: '2026-10-11',
+    currentWeekStartDate: '2026-10-05',
+    referenceWeekStartDate: '2026-10-05',
+    nextDayAtUtc: '2026-10-12T04:00:00Z',
+  };
+  const monday = {
+    ...sunday,
+    capturedAtUtc: '2026-10-12T04:30:00Z',
+    today: '2026-10-12',
+    currentWeekStartDate: '2026-10-12',
+    referenceWeekStartDate: '2026-10-12',
+    nextDayAtUtc: '2026-10-13T04:00:00Z',
+  };
+
+  it('a new date with the same recipe does not inherit yesterday’s cooked guard', () => {
+    useTodayStore.setState({
+      calendar: sunday,
+      currentRecipe: mockRecipe,
+      status: 2,
+      optimisticWriteAt: calendarTime.elapsed(),
+      optimisticDate: '2026-10-11',
+    } as any);
+    useTodayStore.getState().init(mockRecipe, 0, null, monday);
+    expect(useTodayStore.getState().status).toBe(0);
+  });
+
+  it('late Sunday sync cannot replace a newer Monday context', async () => {
+    let resolve!: (value: any) => void;
+    vi.mocked(getSchedule).mockReturnValueOnce(
+      new Promise((complete) => {
+        resolve = complete;
+      })
+    );
+    useTodayStore.setState({ calendar: sunday, optimisticWriteAt: null });
+    const pending = useTodayStore.getState().sync();
+    const newer = { ...mockRecipe, id: '660e8400-e29b-41d4-a716-446655440010' };
+    useTodayStore.getState().init(newer, 0, null, monday);
+    resolve({
+      calendar: sunday,
+      weekOffset: 0,
+      days: [{ date: '2026-10-11', status: 0, recipe: mockRecipe }],
+    });
+    await pending;
+    expect(useTodayStore.getState().calendar?.today).toBe('2026-10-12');
+    expect(useTodayStore.getState().currentRecipe?.id).toBe(newer.id);
+  });
+
+  it('keeps the two-second guard on elapsed time despite a device wall-clock jump', async () => {
+    const { calendarTime } = await import('@/lib/deployment-calendar');
+    const elapsed = vi.spyOn(calendarTime, 'elapsed').mockReturnValue(1500);
+    useTodayStore.setState({
+      calendar: sunday,
+      currentRecipe: mockRecipe,
+      optimisticWriteAt: 1000,
+      optimisticDate: '2026-10-11',
+    } as any);
+    useTodayStore
+      .getState()
+      .applyServerUpdate({ recipe: null, status: 0, date: '2026-10-11' } as any);
+    expect(useTodayStore.getState().currentRecipe?.id).toBe(mockRecipe.id);
+    elapsed.mockRestore();
+  });
+
+  it('refreshes an expired action before choosing its weekday and reference', async () => {
+    const { calendarTime } = await import('@/lib/deployment-calendar');
+    vi.spyOn(calendarTime, 'elapsed').mockReturnValue(9_000_001);
+    useTodayStore.setState({
+      calendar: sunday,
+      calendarAnchor: { receivedAtElapsed: 0, expiresAfterMs: 9_000_000 },
+    } as any);
+    vi.mocked(assignRecipeToDay).mockClear();
+    vi.mocked(getSchedule).mockResolvedValueOnce({
+      calendar: monday,
+      weekOffset: 0,
+      weekStartDate: '2026-10-12',
+      days: [],
+    } as any);
+    useTodayStore.getState().assignRecipe(mockRecipe);
+    await vi.waitFor(() =>
+      expect(assignRecipeToDay).toHaveBeenCalledWith(0, 0, mockRecipe, '2026-10-12')
+    );
+  });
+});
+
+it('does not let a wall-clock correction extend the two-second elapsed guard', async () => {
+  const { calendarTime } = await import('@/lib/deployment-calendar');
+  vi.spyOn(calendarTime, 'elapsed').mockReturnValue(5000);
+  useTodayStore.setState({
+    currentRecipe: mockRecipe,
+    optimisticWriteAt: 1000,
+    optimisticDate: '2026-05-04',
+  } as any);
+  vi.setSystemTime(new Date('1970-01-01T00:00:00Z'));
+  useTodayStore
+    .getState()
+    .applyServerUpdate({ recipe: null, status: 0, date: '2026-05-04' } as any);
+  expect(useTodayStore.getState().currentRecipe).toBeNull();
+});
+
+it('keeps the twenty-second sync guard on the injected elapsed clock', async () => {
+  const { calendarTime } = await import('@/lib/deployment-calendar');
+  vi.spyOn(calendarTime, 'elapsed').mockReturnValue(1500);
+  useTodayStore.setState({
+    currentRecipe: mockRecipe,
+    optimisticWriteAt: 1000,
+    optimisticDate: '2026-05-04',
+  } as any);
+  vi.mocked(getSchedule).mockResolvedValueOnce({
+    calendar,
+    weekOffset: 0,
+    days: [{ date: '2026-05-04', status: 0, recipe: null }],
+  } as any);
+  vi.setSystemTime(new Date('2040-01-01T00:00:00Z'));
+  await useTodayStore.getState().sync();
+  expect(useTodayStore.getState().currentRecipe?.id).toBe(mockRecipe.id);
+});
+
+it('retains the chosen recipe and a retry when expired calendar refresh fails', async () => {
+  const { calendarTime } = await import('@/lib/deployment-calendar');
+  vi.spyOn(calendarTime, 'elapsed').mockReturnValue(1500);
+  useTodayStore.setState({ calendarAnchor: { receivedAtElapsed: 0, expiresAfterMs: 1000 } } as any);
+  vi.mocked(assignRecipeToDay).mockClear();
+  vi.mocked(getSchedule).mockRejectedValueOnce(new Error('offline'));
+  useTodayStore.getState().assignRecipe(mockRecipe);
+  await vi.waitFor(() =>
+    expect((useTodayStore.getState() as any).calendarError).toBe(
+      "Could not confirm today's date. Try again."
+    )
+  );
+  expect(assignRecipeToDay).not.toHaveBeenCalled();
+  expect((useTodayStore.getState() as any).pendingCalendarAction?.recipe).toEqual(mockRecipe);
+  vi.mocked(getSchedule).mockResolvedValueOnce({ calendar, weekOffset: 0, days: [] } as any);
+  (useTodayStore.getState() as any).retryCalendarAction();
+  await vi.waitFor(() =>
+    expect(assignRecipeToDay).toHaveBeenCalledWith(0, 0, mockRecipe, '2026-05-04')
+  );
+});
+
+it('a started assignment and its late hydration stay on Sunday after rollover', async () => {
+  const sunday = { ...calendar, today: '2026-05-10' };
+  const monday = {
+    ...calendar,
+    today: '2026-05-11',
+    currentWeekStartDate: '2026-05-11',
+    referenceWeekStartDate: '2026-05-11',
+    capturedAtUtc: '2026-05-11T00:00:00Z',
+    nextDayAtUtc: '2026-05-12T00:00:00Z',
+  };
+  let finish!: (value: any) => void;
+  vi.mocked(apiClient.api.recipes.byId(mockRecipe.id as any).get).mockReturnValueOnce(
+    new Promise((resolve) => {
+      finish = resolve;
+    })
+  );
+  useTodayStore.setState({ calendar: sunday });
+  useTodayStore.getState().assignRecipe(mockRecipe);
+  useTodayStore.getState().init({ ...mockRecipe, name: 'Monday choice' }, 0, null, monday);
+  finish({ recipe: { ...mockRecipe, description: 'Old Sunday hydration' } });
+  await Promise.resolve();
+  expect(assignRecipeToDay).toHaveBeenLastCalledWith(0, 6, mockRecipe, '2026-05-04');
+  expect(useTodayStore.getState().calendar?.today).toBe('2026-05-11');
+  expect(useTodayStore.getState().currentRecipe?.description).not.toBe('Old Sunday hydration');
 });

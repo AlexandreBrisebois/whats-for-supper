@@ -43,6 +43,58 @@ public class FamilyServiceTests
         await Assert.ThrowsAsync<ArgumentException>(() => service.CreateFamilyMember("   "));
     }
 
+    [Fact]
+    public async Task CreateFamilyMember_Exact_Duplicate_Throws_DuplicateFamilyMemberException()
+    {
+        await using var ctx = TestDbContextFactory.Create();
+        var service = new FamilyService(ctx);
+
+        await service.CreateFamilyMember("Alex");
+        await Assert.ThrowsAsync<DuplicateFamilyMemberException>(() => service.CreateFamilyMember("Alex"));
+    }
+
+    [Fact]
+    public async Task CreateFamilyMember_Casing_Variant_Throws_DuplicateFamilyMemberException()
+    {
+        await using var ctx = TestDbContextFactory.Create();
+        var service = new FamilyService(ctx);
+
+        await service.CreateFamilyMember("Alex");
+        await Assert.ThrowsAsync<DuplicateFamilyMemberException>(() => service.CreateFamilyMember("alex"));
+    }
+
+    [Fact]
+    public async Task CreateFamilyMember_Whitespace_Variant_Throws_DuplicateFamilyMemberException()
+    {
+        await using var ctx = TestDbContextFactory.Create();
+        var service = new FamilyService(ctx);
+
+        await service.CreateFamilyMember("Alex");
+        await Assert.ThrowsAsync<DuplicateFamilyMemberException>(() => service.CreateFamilyMember(" Alex "));
+    }
+
+    [Fact]
+    public async Task CreateFamilyMember_Stored_Whitespace_Variant_Throws_DuplicateFamilyMemberException()
+    {
+        await using var ctx = TestDbContextFactory.Create();
+        // Insert a member with stored untrimmed whitespace directly
+        ctx.FamilyMembers.Add(new RecipeApi.Models.FamilyMember { Name = " Alex " });
+        await ctx.SaveChangesAsync();
+
+        var service = new FamilyService(ctx);
+        await Assert.ThrowsAsync<DuplicateFamilyMemberException>(() => service.CreateFamilyMember("alex"));
+    }
+
+    [Fact]
+    public async Task CreateFamilyMember_Distinct_Name_Preserves_Display_Casing()
+    {
+        await using var ctx = TestDbContextFactory.Create();
+        var service = new FamilyService(ctx);
+
+        var member = await service.CreateFamilyMember(" aLeX ");
+        Assert.Equal("aLeX", member.Name);
+    }
+
     // ── GetAllFamilyMembers ────────────────────────────────────────────────────
 
     [Fact]

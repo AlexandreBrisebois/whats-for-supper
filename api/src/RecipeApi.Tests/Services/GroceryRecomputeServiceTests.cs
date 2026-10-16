@@ -41,7 +41,7 @@ public class GroceryRecomputeServiceTests : IAsyncLifetime
         _db = _scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
         var logger = _scope.ServiceProvider.GetRequiredService<ILogger<GroceryRecomputeService>>();
         var aisleMapper = new AisleMapper();
-        _service = new GroceryRecomputeService(_db, aisleMapper, logger);
+        _service = new GroceryRecomputeService(_db, aisleMapper, logger, new SystemClock(), new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()));
     }
 
     public async Task DisposeAsync()
@@ -396,12 +396,7 @@ public class GroceryRecomputeServiceTests : IAsyncLifetime
     {
         var monday = new DateOnly(2025, 3, 3);
         var publisher = new Mock<IScheduleEventPublisher>();
-        var service = new GroceryRecomputeService(
-            _db,
-            new AisleMapper(),
-            _scope.ServiceProvider.GetRequiredService<ILogger<GroceryRecomputeService>>(),
-            publisher.Object,
-            new FixedClock(new DateTimeOffset(2025, 3, 4, 12, 0, 0, TimeSpan.Zero)));
+        var service = new GroceryRecomputeService(_db, new AisleMapper(), _scope.ServiceProvider.GetRequiredService<ILogger<GroceryRecomputeService>>(), new FixedClock(new DateTimeOffset(2025, 3, 4, 12, 0, 0, TimeSpan.Zero)), new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()), publisher.Object);
         var predecessorLines = new List<GroceryLineItemDto>
         {
             new("huile d'olive", "huile d'olive", "Pantry", 1, "ml", []),
@@ -427,6 +422,7 @@ public class GroceryRecomputeServiceTests : IAsyncLifetime
         publisher.Verify(p => p.PublishGroceryUpdatedAsync(
             0,
             It.Is<Dictionary<string, bool>>(published => MatchesState(published, state)),
+            new DateOnly(2025, 3, 3),
             null),
             Times.Once);
     }

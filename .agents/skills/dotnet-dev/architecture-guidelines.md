@@ -3,7 +3,8 @@
 ## 1. Deep Modules
 From "A Philosophy of Software Design":
 
-**Deep module** = small interface + lots of implementation
+**Deep module** = useful behavior behind a small interface. Judge the knowledge
+and coordination it removes from callers, rather than implementation line count.
 
 ```
 ┌─────────────────────┐
@@ -59,13 +60,13 @@ Good interfaces make testing natural:
    ```
 
 3. **Small surface area**
-   - Fewer methods = fewer tests needed
+   - Test obligations follow observable behavior, not the number of methods
    - Fewer params = simpler test setup
 
 ## 3. Refactor Candidates
 Within the selected scope after Green, consider these only when needed for the change. Do not turn observations into adjacent cleanup:
 
-- **Duplication** → Extract function/class
+- **Duplication** → Extract only when callers share responsibility and reason to change
 - **Long methods** → Break into private helpers (keep tests on public interface)
 - **Shallow modules** → Combine or deepen
 - **Feature envy** → Move logic to where data lives

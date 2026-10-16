@@ -40,6 +40,7 @@ BEGIN
             updated_at timestamptz DEFAULT now() NOT NULL,
             PRIMARY KEY (member_id, flag_key)
         );
+        CREATE UNIQUE INDEX IF NOT EXISTS family_members_trimmed_lower_name_idx ON family_members (lower(trim(name)));
     END IF;
 END
 $$;

@@ -1,6 +1,6 @@
 ---
 name: database
-description: Procedural guidance for managing PostgreSQL schema and migrations using psqldef and EF Core.
+description: Change or review WFS PostgreSQL schema, compatibility SQL, EF mappings and migration behavior. Use when persistence schema or mapping work is in scope.
 ---
 
 # Database and schema evolution

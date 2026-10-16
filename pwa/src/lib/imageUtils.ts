@@ -4,7 +4,8 @@ export function getImageUrl(path: string | null | undefined): string {
 
   const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
   if (baseUrl && path.startsWith('/api')) {
-    return `${baseUrl}${path}`;
+    const cleanBaseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+    return `${cleanBaseUrl}${path}`;
   }
 
   return path;

@@ -34,14 +34,14 @@ public class ScheduleIntegrationTests : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
-        _factory = await TestWebApplicationFactory.CreateAsync();
+        _factory = await TestWebApplicationFactory.CreateAsync(new RecipeApi.Tests.Integration.DeploymentCalendarIntegrationTests.CalendarClock());
         _scope = _factory.Services.CreateScope();
         _db = _scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
         var logger = _scope.ServiceProvider.GetRequiredService<ILogger<ScheduleService>>();
         _publisherMock = new Mock<IScheduleEventPublisher>();
         var groceryRecomputeService = _scope.ServiceProvider.GetRequiredService<GroceryRecomputeService>();
-        _service = new ScheduleService(_db, logger, _publisherMock.Object, groceryRecomputeService);
-        _discoveryService = new DiscoveryService(_db, _publisherMock.Object);
+        _service = new ScheduleService(_db, logger, _publisherMock.Object, groceryRecomputeService, _scope.ServiceProvider.GetRequiredService<IClock>(), new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()));
+        _discoveryService = new DiscoveryService(_db, _publisherMock.Object, _scope.ServiceProvider.GetRequiredService<IClock>(), new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()));
         _client = _factory.CreateClient();
     }
 
@@ -53,7 +53,7 @@ public class ScheduleIntegrationTests : IAsyncLifetime
 
     private static DateOnly GetWeekMonday(int weekOffset = 0)
     {
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = DateOnly.FromDateTime(new DateTime(2026, 10, 12, 1, 30, 0, DateTimeKind.Utc));
         return today.AddDays(-((int)today.DayOfWeek + 6) % 7).AddDays(weekOffset * 7);
     }
 
@@ -75,7 +75,7 @@ public class ScheduleIntegrationTests : IAsyncLifetime
     public async Task NonCookingValidation_RoundTripsAndRejectsRecipeConflict()
     {
         using var client = _factory.CreateClient();
-        var date = DateOnly.FromDateTime(DateTime.UtcNow).ToString("yyyy-MM-dd");
+        var date = DateOnly.FromDateTime(new DateTime(2026, 10, 12, 1, 30, 0, DateTimeKind.Utc)).ToString("yyyy-MM-dd");
         var saved = await client.PostAsJsonAsync($"/api/schedule/day/{date}/validate", new { status = 3, nonCooking = new { kind = "custom", customLabel = "Supper at Grandma’s" } });
         Assert.Equal(System.Net.HttpStatusCode.OK, saved.StatusCode);
         var savedBody = await saved.Content.ReadFromJsonAsync<JsonElement>();
@@ -86,7 +86,7 @@ public class ScheduleIntegrationTests : IAsyncLifetime
         var recipeId = Guid.NewGuid();
         _db.Recipes.Add(new Recipe { Id = recipeId, Name = "Pasta" });
         await _db.SaveChangesAsync();
-        await _service.AssignRecipeAsync(new AssignScheduleDto(0, ((int)DateTime.UtcNow.DayOfWeek + 6) % 7, recipeId));
+        await _service.AssignRecipeAsync(new AssignScheduleDto(0, ((int)new DateTime(2026, 10, 12, 1, 30, 0, DateTimeKind.Utc).DayOfWeek + 6) % 7, recipeId));
         var conflict = await client.PostAsJsonAsync($"/api/schedule/day/{date}/validate", new { status = 3, nonCooking = new { kind = "eating_out" } });
         Assert.Equal(System.Net.HttpStatusCode.Conflict, conflict.StatusCode);
         var conflictBody = await conflict.Content.ReadFromJsonAsync<JsonElement>();
@@ -102,7 +102,7 @@ public class ScheduleIntegrationTests : IAsyncLifetime
     public async Task NonCookingValidation_OptionalNoteRoundTripsAndClears(string kind)
     {
         using var client = _factory.CreateClient();
-        var date = DateOnly.FromDateTime(DateTime.UtcNow).ToString("yyyy-MM-dd");
+        var date = DateOnly.FromDateTime(new DateTime(2026, 10, 12, 1, 30, 0, DateTimeKind.Utc)).ToString("yyyy-MM-dd");
         foreach (var note in new[] { "  Luigi’s  ", "   " })
         {
             var saved = await client.PostAsJsonAsync($"/api/schedule/day/{date}/validate", new { status = 3, nonCooking = new { kind, customLabel = note } });
@@ -118,7 +118,7 @@ public class ScheduleIntegrationTests : IAsyncLifetime
     public async Task NonCookingValidation_InvalidLabelReturns400WithoutCreatingEntry()
     {
         using var client = _factory.CreateClient();
-        var date = DateOnly.FromDateTime(DateTime.UtcNow).ToString("yyyy-MM-dd");
+        var date = DateOnly.FromDateTime(new DateTime(2026, 10, 12, 1, 30, 0, DateTimeKind.Utc)).ToString("yyyy-MM-dd");
         var response = await client.PostAsJsonAsync($"/api/schedule/day/{date}/validate", new { status = 3, nonCooking = new { kind = "custom", customLabel = "   " } });
         Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
@@ -140,7 +140,7 @@ public class ScheduleIntegrationTests : IAsyncLifetime
         await _service.AssignRecipeAsync(new AssignScheduleDto(0, 0, recipeId));
 
         // Assert: a CalendarEvent exists with the correct RecipeId and today's Monday date
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = DateOnly.FromDateTime(new DateTime(2026, 10, 12, 1, 30, 0, DateTimeKind.Utc));
         var daysToMonday = ((int)today.DayOfWeek - 1 + 7) % 7;
         var monday = today.AddDays(-daysToMonday);
 
@@ -161,7 +161,7 @@ public class ScheduleIntegrationTests : IAsyncLifetime
         var newRecipe = new Recipe { Id = newRecipeId, Name = "New Recipe" };
         _db.Recipes.AddRange(originalRecipe, newRecipe);
 
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = DateOnly.FromDateTime(new DateTime(2026, 10, 12, 1, 30, 0, DateTimeKind.Utc));
         var daysToMonday = ((int)today.DayOfWeek - 1 + 7) % 7;
         var monday = today.AddDays(-daysToMonday);
 
@@ -190,7 +190,7 @@ public class ScheduleIntegrationTests : IAsyncLifetime
         var newRecipeId = Guid.NewGuid();
         _db.Recipes.Add(new Recipe { Id = newRecipeId, Name = "Changed Mind Recipe" });
 
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = DateOnly.FromDateTime(new DateTime(2026, 10, 12, 1, 30, 0, DateTimeKind.Utc));
         var daysToMonday = ((int)today.DayOfWeek - 1 + 7) % 7;
         var monday = today.AddDays(-daysToMonday);
 
@@ -216,7 +216,7 @@ public class ScheduleIntegrationTests : IAsyncLifetime
     public async Task ValidateDay_OrderedIn_WithNoExistingEvent_CreatesSkippedEvent()
     {
         // Arrange: no CalendarEvent for today
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = DateOnly.FromDateTime(new DateTime(2026, 10, 12, 1, 30, 0, DateTimeKind.Utc));
 
         // Act: validate with status 3 (Skipped / Ordered In) — no event exists
         // EXPECTED OUTCOME on unfixed code: throws "No meal planned for this date"
@@ -237,7 +237,7 @@ public class ScheduleIntegrationTests : IAsyncLifetime
         var recipe = new Recipe { Id = recipeId, Name = "Test Recipe" };
         _db.Recipes.Add(recipe);
 
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = DateOnly.FromDateTime(new DateTime(2026, 10, 12, 1, 30, 0, DateTimeKind.Utc));
         _db.CalendarEvents.Add(new CalendarEvent
         {
             Id = Guid.NewGuid(),
@@ -264,7 +264,7 @@ public class ScheduleIntegrationTests : IAsyncLifetime
         var recipeId = Guid.NewGuid();
         _db.Recipes.Add(new Recipe { Id = recipeId, Name = "HTTP Flow Recipe" });
 
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = DateOnly.FromDateTime(new DateTime(2026, 10, 12, 1, 30, 0, DateTimeKind.Utc));
         _db.CalendarEvents.Add(new CalendarEvent
         {
             Id = Guid.NewGuid(),
@@ -312,7 +312,7 @@ public class ScheduleIntegrationTests : IAsyncLifetime
         var recipeId = Guid.NewGuid();
         _db.Recipes.Add(new Recipe { Id = recipeId, Name = "Duplicated HTTP Flow Recipe" });
 
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = DateOnly.FromDateTime(new DateTime(2026, 10, 12, 1, 30, 0, DateTimeKind.Utc));
         _db.CalendarEvents.AddRange(
             new CalendarEvent
             {
@@ -384,7 +384,7 @@ public class ScheduleIntegrationTests : IAsyncLifetime
         await _service.OpenVotingAsync(0);
 
         // Assert
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = DateOnly.FromDateTime(new DateTime(2026, 10, 12, 1, 30, 0, DateTimeKind.Utc));
         var daysToMonday = ((int)today.DayOfWeek - 1 + 7) % 7;
         var monday = today.AddDays(-daysToMonday);
 
@@ -435,7 +435,7 @@ public class ScheduleIntegrationTests : IAsyncLifetime
         var recipe = new Recipe { Id = recipeId, Name = "Grilled Fish", LastCookedDate = null };
         _db.Recipes.Add(recipe);
 
-        var date = DateOnly.FromDateTime(DateTime.UtcNow);
+        var date = DateOnly.FromDateTime(new DateTime(2026, 10, 12, 1, 30, 0, DateTimeKind.Utc));
         _db.CalendarEvents.Add(
             new CalendarEvent
             {
@@ -465,7 +465,7 @@ public class ScheduleIntegrationTests : IAsyncLifetime
         var recipe = new Recipe { Id = recipeId, Name = "Risotto" };
         _db.Recipes.Add(recipe);
 
-        var date = DateOnly.FromDateTime(DateTime.UtcNow);
+        var date = DateOnly.FromDateTime(new DateTime(2026, 10, 12, 1, 30, 0, DateTimeKind.Utc));
         _db.CalendarEvents.Add(
             new CalendarEvent
             {
@@ -484,7 +484,7 @@ public class ScheduleIntegrationTests : IAsyncLifetime
         var updatedRecipe = _db.Recipes.Find(recipeId);
         Assert.NotNull(updatedRecipe?.LastCookedDate);
         var lastCookedDate = DateOnly.FromDateTime(updatedRecipe.LastCookedDate.Value.DateTime);
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = DateOnly.FromDateTime(new DateTime(2026, 10, 12, 1, 30, 0, DateTimeKind.Utc));
         Assert.Equal(today, lastCookedDate);
 
         var updatedEvent = _db.CalendarEvents.FirstOrDefault();
@@ -672,7 +672,7 @@ public class ScheduleIntegrationTests : IAsyncLifetime
     public async Task GroceryState_Persists_And_Can_Be_Retrieved()
     {
         // Arrange
-        var date = DateOnly.FromDateTime(DateTime.UtcNow);
+        var date = DateOnly.FromDateTime(new DateTime(2026, 10, 12, 1, 30, 0, DateTimeKind.Utc));
         var daysToMonday = ((int)date.DayOfWeek - 1 + 7) % 7;
         var monday = date.AddDays(-daysToMonday);
 
@@ -707,7 +707,7 @@ public class ScheduleIntegrationTests : IAsyncLifetime
         var recipe = new Recipe { Id = recipeId, Name = "Soup" };
         _db.Recipes.Add(recipe);
 
-        var date = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(1); // Tomorrow
+        var date = DateOnly.FromDateTime(new DateTime(2026, 10, 12, 1, 30, 0, DateTimeKind.Utc)).AddDays(1); // Tomorrow
         var skipEvent = new CalendarEvent
         {
             Id = Guid.NewGuid(),
@@ -732,7 +732,7 @@ public class ScheduleIntegrationTests : IAsyncLifetime
     public async Task Move_To_Next_Week_Creates_New_WeeklyPlan_In_Draft_Status()
     {
         // Arrange
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = DateOnly.FromDateTime(new DateTime(2026, 10, 12, 1, 30, 0, DateTimeKind.Utc));
         var daysToMonday = ((int)today.DayOfWeek - 1 + 7) % 7;
         var monday = today.AddDays(-daysToMonday);
 
@@ -772,7 +772,7 @@ public class ScheduleIntegrationTests : IAsyncLifetime
     public async Task UpdateGroceryStateAsync_Persists_State_To_Database()
     {
         // Arrange
-        var date = DateOnly.FromDateTime(DateTime.UtcNow);
+        var date = DateOnly.FromDateTime(new DateTime(2026, 10, 12, 1, 30, 0, DateTimeKind.Utc));
         var daysToMonday = ((int)date.DayOfWeek - 1 + 7) % 7;
         var monday = date.AddDays(-daysToMonday);
 
@@ -804,7 +804,7 @@ public class ScheduleIntegrationTests : IAsyncLifetime
     public async Task UpdateGroceryState_PublishesGroceryUpdatedEvent()
     {
         // Arrange
-        var date = DateOnly.FromDateTime(DateTime.UtcNow);
+        var date = DateOnly.FromDateTime(new DateTime(2026, 10, 12, 1, 30, 0, DateTimeKind.Utc));
         var daysToMonday = ((int)date.DayOfWeek - 1 + 7) % 7;
         var monday = date.AddDays(-daysToMonday);
 
@@ -833,7 +833,8 @@ public class ScheduleIntegrationTests : IAsyncLifetime
                 0,
                 It.Is<Dictionary<string, bool>>(s =>
                     s.ContainsKey("tomatoes") && s["tomatoes"] == true &&
-                    s.ContainsKey("milk") && s["milk"] == false)),
+                    s.ContainsKey("milk") && s["milk"] == false),
+                new DateOnly(2026, 10, 12)),
             Times.Once);
     }
 
@@ -849,7 +850,7 @@ public class ScheduleIntegrationTests : IAsyncLifetime
         var recipe = new Recipe { Id = recipeId, Name = "Tacos" };
         _db.Recipes.Add(recipe);
 
-        var date = DateOnly.FromDateTime(DateTime.UtcNow);
+        var date = DateOnly.FromDateTime(new DateTime(2026, 10, 12, 1, 30, 0, DateTimeKind.Utc));
         var consensusEvent = new CalendarEvent
         {
             Id = Guid.NewGuid(),
@@ -943,7 +944,7 @@ public class ScheduleIntegrationTests : IAsyncLifetime
         var recipeAfterCooked = _db.Recipes.Find(recipeId);
         Assert.NotNull(recipeAfterCooked?.LastCookedDate);
         var cookedDateOnly = DateOnly.FromDateTime(recipeAfterCooked.LastCookedDate.Value.DateTime);
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = DateOnly.FromDateTime(new DateTime(2026, 10, 12, 1, 30, 0, DateTimeKind.Utc));
         Assert.Equal(today, cookedDateOnly);
 
         // Verify event status updated
@@ -974,7 +975,7 @@ public class ScheduleIntegrationTests : IAsyncLifetime
 
         // Assert: fill_the_gap_invalidated published for weekOffset 0
         _publisherMock.Verify(
-            p => p.PublishFillTheGapInvalidatedAsync(0),
+            p => p.PublishFillTheGapInvalidatedAsync(0, new DateOnly(2026, 10, 12)),
             Times.Once);
     }
 
@@ -986,7 +987,7 @@ public class ScheduleIntegrationTests : IAsyncLifetime
         var recipe = new Recipe { Id = recipeId, Name = "Pasta" };
         _db.Recipes.Add(recipe);
 
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = DateOnly.FromDateTime(new DateTime(2026, 10, 12, 1, 30, 0, DateTimeKind.Utc));
         _db.CalendarEvents.Add(new CalendarEvent
         {
             Id = Guid.NewGuid(),
@@ -1034,7 +1035,7 @@ public class ScheduleIntegrationTests : IAsyncLifetime
         var recipe = new Recipe { Id = recipeId, Name = "Tacos" };
         _db.Recipes.Add(recipe);
 
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = DateOnly.FromDateTime(new DateTime(2026, 10, 12, 1, 30, 0, DateTimeKind.Utc));
         _db.CalendarEvents.Add(new CalendarEvent
         {
             Id = Guid.NewGuid(),
@@ -1054,7 +1055,7 @@ public class ScheduleIntegrationTests : IAsyncLifetime
 
         // Assert: fill_the_gap_invalidated published
         _publisherMock.Verify(
-            p => p.PublishFillTheGapInvalidatedAsync(It.IsAny<int>()),
+            p => p.PublishFillTheGapInvalidatedAsync(It.IsAny<int>(), It.IsAny<DateOnly>()),
             Times.Once);
     }
 
@@ -1134,8 +1135,8 @@ public class ScheduleIntegrationTests : IAsyncLifetime
             ImageCount = 0,
             IsSynthesized = true,
             IsDiscoverable = false,
-            CreatedAt = DateTimeOffset.UtcNow,
-            UpdatedAt = DateTimeOffset.UtcNow,
+            CreatedAt = new DateTimeOffset(2026, 10, 12, 1, 30, 0, TimeSpan.Zero),
+            UpdatedAt = new DateTimeOffset(2026, 10, 12, 1, 30, 0, TimeSpan.Zero),
         });
         await _db.SaveChangesAsync();
 
@@ -1154,8 +1155,8 @@ public class ScheduleIntegrationTests : IAsyncLifetime
             Payload = System.Text.Json.JsonSerializer.Serialize(new { recipeId = recipeId.ToString() }),
             Status = RecipeApi.Models.TaskStatus.Pending,
             DependsOn = [],
-            CreatedAt = DateTimeOffset.UtcNow,
-            UpdatedAt = DateTimeOffset.UtcNow,
+            CreatedAt = new DateTimeOffset(2026, 10, 12, 1, 30, 0, TimeSpan.Zero),
+            UpdatedAt = new DateTimeOffset(2026, 10, 12, 1, 30, 0, TimeSpan.Zero),
         };
 
         // Act
@@ -1179,8 +1180,8 @@ public class ScheduleIntegrationTests : IAsyncLifetime
             ImageCount = 2,
             IsSynthesized = false,
             IsDiscoverable = false,
-            CreatedAt = DateTimeOffset.UtcNow,
-            UpdatedAt = DateTimeOffset.UtcNow,
+            CreatedAt = new DateTimeOffset(2026, 10, 12, 1, 30, 0, TimeSpan.Zero),
+            UpdatedAt = new DateTimeOffset(2026, 10, 12, 1, 30, 0, TimeSpan.Zero),
         });
         await _db.SaveChangesAsync();
 
@@ -1199,8 +1200,8 @@ public class ScheduleIntegrationTests : IAsyncLifetime
             Payload = System.Text.Json.JsonSerializer.Serialize(new { recipeId = recipeId.ToString() }),
             Status = RecipeApi.Models.TaskStatus.Pending,
             DependsOn = [],
-            CreatedAt = DateTimeOffset.UtcNow,
-            UpdatedAt = DateTimeOffset.UtcNow,
+            CreatedAt = new DateTimeOffset(2026, 10, 12, 1, 30, 0, TimeSpan.Zero),
+            UpdatedAt = new DateTimeOffset(2026, 10, 12, 1, 30, 0, TimeSpan.Zero),
         };
 
         // Act

@@ -1,40 +1,13 @@
 import { test, expect } from './fixtures';
-import { MOCK_IDS, builders, setupCommonRoutes } from './mock-api';
+import { MOCK_IDS, setupCommonRoutes } from './mock-api';
 
-const NEW_MEMBER_ID = '550e8400-e29b-41d4-a716-446655440099';
+const NEW_MEMBER_ID = MOCK_IDS.MEMBER_TEST;
 
 test.describe.configure({ mode: 'serial' });
 
 test.describe('Onboarding', () => {
   test.beforeEach(async ({ page }) => {
     await setupCommonRoutes(page);
-    const members = [builders.familyMember({ name: 'Alex' })];
-
-    // Override the family mock to handle the stateful members list
-    await page.route('**/api/family', async (route) => {
-      if (route.request().method() === 'GET') {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({ data: members }),
-        });
-      } else if (route.request().method() === 'POST') {
-        const body = route.request().postDataJSON() as { name?: string };
-        const newMember = builders.familyMember({
-          id: NEW_MEMBER_ID,
-          name: body.name ?? 'New Member',
-        });
-        members.push(newMember);
-        await route.fulfill({
-          status: 201,
-          contentType: 'application/json',
-          body: JSON.stringify({ data: newMember }),
-        });
-      } else {
-        await route.continue();
-      }
-    });
-
     await page.route('**/api/schedule', async (route) => {
       if (route.request().method() === 'GET') {
         await route.fulfill({
@@ -73,21 +46,54 @@ test.describe('Onboarding', () => {
 
   test('adding a new family member shows the form and accepts input', async ({ page }) => {
     // Seam: the add-member form renders, accepts input, and POSTs to /api/family.
-    // The /home redirect requires the full backend (HttpOnly cookie + SSR fetch);
-    // that flow is covered by auth-flow.spec.ts.
+    // This checks the browser API seam; durable Home arrival is separate.
     await page.goto('/onboarding');
     await expect(page.getByTestId('family-list')).toBeVisible({ timeout: 10_000 });
 
     await page.getByTestId('add-member-trigger').click();
 
     const nameInput = page.getByTestId('family-name-input');
-    await nameInput.fill('TestUser-Pinned');
-    await expect(nameInput).toHaveValue('TestUser-Pinned');
+    await nameInput.fill(' TestUser-Pinned ');
+    await expect(nameInput).toHaveValue(' TestUser-Pinned ');
 
+    const responsePromise = page.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname === '/api/family' && response.request().method() === 'POST'
+    );
     await page.getByTestId('add-member-submit').click();
-    // Verify the POST was made — new member appears in the list after reload
+    const response = await responsePromise;
+    expect(response.status()).toBe(201);
+    expect(response.request().postDataJSON()).toEqual({ name: 'TestUser-Pinned' });
+    expect((await response.json()).data).toMatchObject({
+      id: NEW_MEMBER_ID,
+      name: 'TestUser-Pinned',
+    });
+    // The store appends the returned member without reloading.
     await expect(page.getByTestId(`family-member-${NEW_MEMBER_ID}`)).toBeVisible({
       timeout: 10_000,
     });
+  });
+
+  test('duplicate member creation returns 409 without adding a duplicate to the list', async ({
+    page,
+  }) => {
+    await page.goto('/onboarding');
+    await expect(page.getByTestId('family-list')).toBeVisible({ timeout: 10_000 });
+
+    await page.getByTestId('add-member-trigger').click();
+
+    const nameInput = page.getByTestId('family-name-input');
+    await nameInput.fill(' Alex ');
+
+    const responsePromise = page.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname === '/api/family' && response.request().method() === 'POST'
+    );
+    await page.getByTestId('add-member-submit').click();
+    const response = await responsePromise;
+    expect(response.status()).toBe(409);
+
+    // Initial 2 members (Alex and Jordan) remain, no duplicate Alex added
+    await expect(page.getByTestId('family-list').locator('li')).toHaveCount(2);
   });
 });

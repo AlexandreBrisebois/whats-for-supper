@@ -188,6 +188,7 @@ test.describe('Supper Planner', () => {
           contentType: 'application/json',
           body: JSON.stringify({
             data: {
+              ...builders.scheduleDays(),
               weekOffset: 0,
               locked: isLockedState,
               status: currentStatus,
@@ -393,14 +394,17 @@ test.describe('Supper Planner', () => {
     const handle = page.getByTestId('day-card-0').getByTestId('planner-drag-handle');
     await expect(handle).toHaveAttribute('aria-label', 'Hold to move');
     const moves: unknown[] = [];
-    await page.route('**/api/schedule/move', async (route) => {
-      moves.push(route.request().postDataJSON());
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ data: { message: 'ok' } }),
-      });
-    });
+    await page.route(
+      (url) => url.pathname === '/api/schedule/move',
+      async (route) => {
+        moves.push(route.request().postDataJSON());
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ data: { message: 'ok' } }),
+        });
+      }
+    );
     const client = await context.newCDPSession(page);
     await client.send('Emulation.setTouchEmulationEnabled', { enabled: true });
     await handle.scrollIntoViewIfNeeded();
@@ -499,6 +503,7 @@ test.describe('Supper Planner', () => {
           contentType: 'application/json',
           body: JSON.stringify({
             data: {
+              ...builders.scheduleDays(),
               weekOffset: 0,
               locked: false,
               status: 0,
@@ -548,4 +553,180 @@ test.describe('Supper Planner', () => {
     await expect(overlay).toBeVisible();
     await expect(overlay.getByTestId('cooks-mode-recipe-name')).toContainText(/No Image Lasagna/i);
   });
+});
+
+// These flows use the shared stateful handlers, independently of the legacy fixtures above.
+test.describe('Quick Replace relative next week', () => {
+  test.beforeEach(async ({ page, baseURL }) => {
+    await page.clock.setFixedTime(new Date('2026-10-14T12:00:00Z'));
+    await setupCommonRoutes(
+      page,
+      builders.deploymentCalendar({
+        today: '2026-10-14',
+        currentWeekStartDate: '2026-10-12',
+        referenceWeekStartDate: '2026-10-12',
+        capturedAtUtc: '2026-10-14T12:00:00Z',
+        nextDayAtUtc: '2026-10-15T00:00:00Z',
+      })
+    );
+    await page
+      .context()
+      .addCookies([{ name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: baseURL! }]);
+    await page.addInitScript(
+      (id) =>
+        localStorage.setItem(
+          'family-storage',
+          JSON.stringify({ state: { selectedFamilyMemberId: id }, version: 0 })
+        ),
+      MOCK_IDS.MEMBER_ALEX
+    );
+    await page.goto('/onboarding');
+    await page.evaluate(async (id) => {
+      await fetch('/api/schedule/assign?referenceWeekStartDate=2026-10-12', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ weekOffset: 1, dayIndex: 2, recipeId: id }),
+      });
+    }, MOCK_IDS.RECIPE_CHICKEN);
+    await page.route('**/api/schedule/fill-the-gap**', (route) =>
+      route.fulfill({
+        json: { data: [builders.scheduleRecipe({ id: MOCK_IDS.RECIPE_CARBONARA })] },
+      })
+    );
+  });
+
+  test('saves the old meal in week two before replacing week one and survives reload', async ({
+    page,
+  }) => {
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let deferComplete = false;
+    let deferrals = 0;
+    let replacements = 0;
+    await page.route('**/api/schedule/defer**', async (route) => {
+      deferrals++;
+      expect(route.request().method()).toBe('POST');
+      const url = new URL(route.request().url());
+      expect(url.searchParams.get('referenceWeekStartDate')).toBe('2026-10-12');
+      expect(url.searchParams.get('targetWeekOffset')).toBe('2');
+      expect(route.request().postDataJSON()).toEqual({
+        sourceDate: '2026-10-21',
+        recipeId: MOCK_IDS.RECIPE_CHICKEN,
+      });
+      await gate;
+      deferComplete = true;
+      await route.fallback();
+    });
+    await page.route('**/api/schedule/assign**', async (route) => {
+      expect(deferComplete).toBe(true);
+      expect(route.request().postDataJSON()).toMatchObject({
+        weekOffset: 1,
+        dayIndex: 2,
+        recipeId: MOCK_IDS.RECIPE_CARBONARA,
+      });
+      expect(new URL(route.request().url()).searchParams.get('referenceWeekStartDate')).toBe(
+        '2026-10-12'
+      );
+      replacements++;
+      await route.fallback();
+    });
+    await page.goto('/planner?weekOffset=1');
+    await expect(page.getByTestId('day-card-2')).toContainText('Chicken');
+    await page.getByTestId('day-card-2').getByTestId('change-recipe-button').click();
+    await page.getByTestId('pivot-quick-find').click();
+    await page.getByTestId('quick-find-select').click();
+    await page.evaluate((id) => {
+      (window as any).__sseSource.addEventListener('week_updated', (event: MessageEvent) => {
+        const schedule = JSON.parse(event.data).schedule;
+        if (schedule.weekOffset === 1 && schedule.days[2].recipe?.id === id)
+          (window as any).__replacementSnapshot = true;
+      });
+    }, MOCK_IDS.RECIPE_CARBONARA);
+    const pending = page.waitForRequest(
+      (request) => new URL(request.url()).pathname === '/api/schedule/defer'
+    );
+    await page.getByRole('button', { name: /Save for Next Week/ }).click();
+    await pending;
+    await page.getByRole('button', { name: /Save for Next Week/ }).click();
+    expect(deferrals).toBe(1);
+    expect(replacements).toBe(0);
+    release();
+    await expect(page.getByTestId('day-card-2')).toContainText(
+      builders.scheduleRecipe({ id: MOCK_IDS.RECIPE_CARBONARA }).name!
+    );
+    await page.waitForFunction(() => (window as any).__replacementSnapshot === true);
+    await page.reload();
+    await expect(page.getByTestId('day-card-2')).toContainText(
+      builders.scheduleRecipe({ id: MOCK_IDS.RECIPE_CARBONARA }).name!
+    );
+    await expect(page.getByTestId('day-card-0')).not.toContainText('Chicken');
+    await expect(page.getByTestId('day-card-1')).not.toContainText('Chicken');
+    await page.getByTestId('next-week').click();
+    await expect(
+      page.getByTestId('day-card-0').and(page.locator('[data-date="2026-10-26"]'))
+    ).toContainText('Chicken');
+    await page.reload();
+    await expect(
+      page.getByTestId('day-card-0').and(page.locator('[data-date="2026-10-26"]'))
+    ).toContainText('Chicken');
+    expect(replacements).toBe(1);
+  });
+
+  for (const failure of ['defer', 'replacement'] as const) {
+    test(`${failure} rejection preserves recovery and retry does not repeat completed defer`, async ({
+      page,
+    }) => {
+      let deferrals = 0;
+      let assignments = 0;
+      await page.route('**/api/schedule/defer**', async (route) => {
+        deferrals++;
+        if (failure === 'defer')
+          return route.fulfill({ status: 409, json: { message: 'Cannot defer' } });
+        await route.fallback();
+      });
+      await page.route('**/api/schedule/assign**', async (route) => {
+        assignments++;
+        if (assignments === 1)
+          return route.fulfill({ status: 500, json: { message: 'Assignment failed' } });
+        await route.fallback();
+      });
+      await page.goto('/planner?weekOffset=1');
+      await page.getByTestId('day-card-2').getByTestId('change-recipe-button').click();
+      await page.getByTestId('pivot-quick-find').click();
+      await page.getByTestId('quick-find-select').click();
+      await page.getByRole('button', { name: /Save for Next Week/ }).click();
+      await expect(
+        page.getByText(
+          failure === 'defer'
+            ? 'The current meal could not be moved. Your plan was refreshed; please try again.'
+            : 'The previous meal was moved, but the replacement could not be added. Your plan was refreshed; please try again.'
+        )
+      ).toBeVisible();
+      expect(deferrals).toBe(1);
+      expect(assignments).toBe(failure === 'defer' ? 0 : 1);
+      if (failure === 'defer') {
+        await expect(page.getByTestId('day-card-2')).toContainText('Chicken');
+      } else {
+        await page.getByRole('button', { name: /Save for Next Week/ }).click();
+        await expect(page.getByTestId('day-card-2')).toContainText(
+          builders.scheduleRecipe({ id: MOCK_IDS.RECIPE_CARBONARA }).name!
+        );
+        expect(assignments).toBe(2);
+        expect(deferrals).toBe(1);
+        const destination = await page.evaluate(
+          async () =>
+            (
+              await (
+                await fetch('/api/schedule?weekOffset=2&referenceWeekStartDate=2026-10-12')
+              ).json()
+            ).data
+        );
+        expect(
+          destination.days.filter((day: any) => day.recipe?.id === MOCK_IDS.RECIPE_CHICKEN)
+        ).toHaveLength(1);
+      }
+    });
+  }
 });

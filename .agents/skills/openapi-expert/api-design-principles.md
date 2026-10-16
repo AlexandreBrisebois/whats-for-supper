@@ -1,22 +1,20 @@
-# API Design Principles (OpenAPI)
+# API design principles
 
-When defining or updating the OpenAPI specification (`specs/openapi.yaml`), ensure the contract is designed for developer ergonomics and testability.
+For an approved API surface change, minimize what callers must know while keeping
+operation semantics explicit. Preserve established compatibility and naming patterns.
+A smaller endpoint count is not itself a simpler contract.
 
-## 1. Small Surface Area
-Keep endpoints highly focused.
-- Fewer endpoints and parameters mean a simpler contract and easier client integration.
-- Avoid "god endpoints" that take massive, generic JSON payloads.
+Choose resource updates or explicit action endpoints according to the behavior:
+use an update shape when modifying resource state fits the contract, and an action
+when a distinct domain operation needs its own inputs, outcomes or failure rules.
+Neither PATCH nor an action endpoint is a universal default. Avoid opaque action
+payloads that force consumers to reconstruct business policy.
 
-## 2. SDK-Style Interface Generation
-The OpenAPI spec is used to generate Kiota SDK clients for the Next.js frontend.
-Design your routes so that the generated SDK functions are intuitive:
-- **Avoid Generic Fetchers:** Don't design APIs where the client must construct complex query strings or generic payloads to determine the action.
-- **Specific Actions:** Design specific endpoints for specific actions (e.g., `POST /recipes/{id}/veto`) rather than a generic `PATCH /recipes/{id}` with a complex action payload.
+Inspect the generated Kiota request builders and types for the affected operation.
+Keep parameters, optionality, response shapes and documented errors usable by the
+existing client wrappers. Define schema-valid examples, including relevant empty
+and failure cases.
 
-The SDK approach supports:
-- Typed operation shapes
-- Stateful mocks with explicit method dispatch and domain side effects where needed
-- Easier to see which endpoints a test exercises
-- Typed endpoint interfaces, verified against schemas and runtime behavior
-
-This ensures the generated mock data and SDK clients are strongly typed and independently mockable by the frontend and backend teams.
+Generation and compilation check client shape and usage; they do not prove runtime
+behavior. Exercise affected stateful mocks and real application seams according to
+shared acceptance policy, including observable effects on subsequent reads.

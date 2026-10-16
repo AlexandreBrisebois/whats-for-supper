@@ -100,13 +100,14 @@ public async Task<IActionResult> BulkTrigger()
 
 Register the service in `Program.cs`.
 
-### Step 5: Verify the approved seam
-The contract and tests were established before implementation. Run `task gen:client`
-for approved API edits, `task typecheck` and affected tests, then
-`task agent:reconcile`. Follow the shared execution harness for completion.
+### Step 5: Update affected REST examples
+When the selected change adds or alters an operation exercised by a REST client,
+update its example in `api/src/RestClient/` before final verification.
 
-### Step 6: Add to REST Client
-Add a call to the relevant file in `api/src/RestClient/`.
+### Step 6: Verify the approved seam
+The contract and tests were established before implementation. Run `task gen:client`
+for approved API edits, `task typecheck` and affected tests. Follow the shared
+execution harness for completion.
 
 ---
 

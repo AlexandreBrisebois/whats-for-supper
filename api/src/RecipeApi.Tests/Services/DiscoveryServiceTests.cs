@@ -12,7 +12,7 @@ namespace RecipeApi.Tests.Services;
 public class DiscoveryServiceTests
 {
     private static DiscoveryService MakeService(RecipeDbContext ctx)
-        => new(ctx, new Mock<IScheduleEventPublisher>().Object);
+        => new(ctx, new Mock<IScheduleEventPublisher>().Object, new SystemClock(), new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()));
 
     [Fact]
     public async Task GetRecipesForDiscoveryAsync_Returns_Only_Unvoted_Recipes()

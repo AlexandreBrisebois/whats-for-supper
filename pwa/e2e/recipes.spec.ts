@@ -446,14 +446,17 @@ test.describe('Recipes Search Page', () => {
   }) => {
     let assignRequestBody: Record<string, unknown> | null = null;
 
-    await page.route('**/api/schedule/assign', async (route) => {
-      assignRequestBody = route.request().postDataJSON() as Record<string, unknown>;
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ success: true }),
-      });
-    });
+    await page.route(
+      (url) => url.pathname === '/api/schedule/assign',
+      async (route) => {
+        assignRequestBody = route.request().postDataJSON() as Record<string, unknown>;
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ success: true }),
+        });
+      }
+    );
 
     await page.goto('/recipes?addToDay=2&weekOffset=0');
 

@@ -2129,7 +2129,7 @@ public class CapturingEventPublisher(
     public Task PublishWeekUpdatedAsync(RecipeApi.Dto.ScheduleDays schedule, string? excludeConnectionId = null, int? echoSeq = null) => Task.CompletedTask;
     public Task PublishVoteUpdatedAsync(Guid recipeId, int voteCount, string? excludeConnectionId = null) => Task.CompletedTask;
     public Task PublishSmartDefaultsUpdatedAsync(int weekOffset, RecipeApi.Dto.SmartDefaultsDto defaults, string? excludeConnectionId = null) => Task.CompletedTask;
-    public Task PublishFillTheGapInvalidatedAsync(int weekOffset, string? excludeConnectionId = null) => Task.CompletedTask;
+    public Task PublishFillTheGapInvalidatedAsync(int weekOffset, DateOnly weekStartDate, string? excludeConnectionId = null) => Task.CompletedTask;
     public Task PublishRecipeReadyAsync(Guid recipeId, string name, string? imageUrl, string? excludeConnectionId = null) => Task.CompletedTask;
 
     public Task PublishRecipeFailedAsync(Guid recipeId, Guid workflowInstanceId, string errorMessage, string failedStep, object? partialData, string? excludeConnectionId = null)
@@ -2138,5 +2138,5 @@ public class CapturingEventPublisher(
         return Task.CompletedTask;
     }
 
-    public Task PublishGroceryUpdatedAsync(int weekOffset, Dictionary<string, bool> groceryState, string? excludeConnectionId = null) => Task.CompletedTask;
+    public Task PublishGroceryUpdatedAsync(int weekOffset, Dictionary<string, bool> groceryState, DateOnly weekStartDate, string? excludeConnectionId = null) => Task.CompletedTask;
 }

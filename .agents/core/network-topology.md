@@ -33,8 +33,8 @@ be `/`, or that internal absolute URLs inherently break SSR cookies, was incorre
   produce the same storage path. Verify rendered env and mounts before deployment.
 - Both production files default Traefik host ports to 9100 (HTTP) and 9180 (admin),
   with overrides. These are legacy configuration facts, not public-release requirements.
-  The [public release spec](../../.kiro/specs/01-public-synology-release/design.md)
-  owns its planned public exposure and qualification gates.
+  Current public installation and qualification guidance lives in
+  [release-template/synology/README.md](../../release-template/synology/README.md).
 - `DOMAIN_NAME` is a host routing value, not a URL with scheme/path.
   [auth.ts](../../pwa/src/lib/auth.ts) and
   [identity cookies](../../pwa/src/lib/identity/cookie.ts) read optional

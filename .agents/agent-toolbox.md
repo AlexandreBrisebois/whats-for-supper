@@ -11,7 +11,6 @@ A registry of custom scripts and tools designed to optimize agent efficiency.
 | `drift.py` | Live endpoint comparison and static DTO property/requiredness checks. | `task agent:drift` |
 | `test_ops.py` | Explainable, cache-aware impact runner with untracked-file coverage. | `task agent:test:impact` |
 | `kiota_client.py` | Runtime-safe Kiota generation and drift checking with a one-shot timeout. | `task gen:client` or `task gen:client:check` |
-| `run-e2e-ci.sh` | Runs full E2E suite in a stable environment. | `task test:e2e:ci` |
 
 ---
 
@@ -61,7 +60,7 @@ Generated Kiota files:
 - ... (one file per sub-route)
 ```
 
-Use the output to understand the full contract ↔ backend ↔ client chain before making any changes. If a layer is missing from the output, that is a signal of drift or a missing implementation.
+Use this optional viewer for route discovery. Confirm missing matches against current source; its output does not establish drift or behavioral parity.
 
 ### drift.py
 - **Source**: [scripts/agent/drift.py](file:///Users/alex/Code/whats-for-supper/scripts/agent/drift.py)
@@ -79,14 +78,11 @@ Use the output to understand the full contract ↔ backend ↔ client chain befo
 - **Problem Solved**: Hidden overwrite prompts and incompatible runtime roll-forward made Kiota appear to hang.
 - **Behavior**: Resolves the manifest-pinned Kiota DLL, removes global runtime roll-forward, always uses `--clean-output`, preserves progress output, and stops once after `WFS_KIOTA_TIMEOUT_SECONDS` (default 20 seconds).
 
-### run-e2e-ci.sh
-- **Source**: [scripts/run-e2e-ci.sh](file:///Users/alex/Code/whats-for-supper/scripts/run-e2e-ci.sh)
-- **Problem Solved**: Environment drift during E2E runs.
+### Preparation, verification and advisory audit
 
-### Completion and advisory audit
-
-`task agent:prepare` prepares applicable generation/formatting; `task agent:finish`
-selects change-class checks and records immutable evidence. See
+`task prepare` prepares applicable generation/formatting; `task verify`
+selects change-class checks and records immutable evidence. OpenSpec owns task
+progression; these commands provide repository utilities within that workflow. See
 [execution harness](core/execution-harness.md) for effects and blocked checks.
 
 `task agent:audit AREA=<keyword>` retains `scripts/agent/test_audit.py` through

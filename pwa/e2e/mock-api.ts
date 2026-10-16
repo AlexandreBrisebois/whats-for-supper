@@ -1,4 +1,5 @@
-import { type Page } from '@playwright/test';
+import { type Page, type Route } from '@playwright/test';
+import type { CalendarContext } from '../src/lib/deployment-calendar';
 import {
   type RecipeDto,
   type RecipeImportIssueDto,
@@ -56,19 +57,7 @@ function buildSseBody(frames: string[]): string {
 }
 
 function buildDefaultConnectedSchedule(): ScheduleDays {
-  const monday = currentMonday();
-  const days = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(monday);
-    d.setUTCDate(monday.getUTCDate() + i);
-    return {
-      day: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i],
-      date: toDateStr(d),
-      recipe: null,
-      status: 0,
-    };
-  });
-
-  return { weekOffset: 0, locked: false, status: 0, days } as ScheduleDays;
+  return builders.scheduleDays() as unknown as ScheduleDays;
 }
 
 /**
@@ -230,13 +219,63 @@ export async function mockFeatureFlags(
 /**
  * Setup common API routes with sane defaults.
  */
-export async function setupCommonRoutes(page: Page) {
+export async function setupCommonRoutes(page: Page, calendarContext?: CalendarContext) {
+  const scheduleEntries = new Map<
+    string,
+    { recipe: ScheduleRecipeDto | null; status: number; nonCooking?: any }
+  >();
+  const weekStatuses = new Map<string, number>();
+  const scheduleCalendar = calendarContext ?? builders.deploymentCalendar();
+  function readReference(url: URL): string | null {
+    const reference =
+      url.searchParams.get('referenceWeekStartDate') ?? scheduleCalendar.referenceWeekStartDate;
+    const date = new Date(`${reference}T00:00:00Z`);
+    return /^\d{4}-\d{2}-\d{2}$/.test(reference) &&
+      Number.isFinite(date.getTime()) &&
+      toDateStr(date) === reference &&
+      date.getUTCDay() === 1
+      ? reference
+      : null;
+  }
+  const addDays = (date: string, days: number) =>
+    toDateStr(new Date(Date.parse(`${date}T00:00:00Z`) + days * 86400000));
+  const makeSchedule = (weekOffset: number, reference: string) => {
+    const schedule = builders.scheduleDays(weekOffset, {
+      ...scheduleCalendar,
+      referenceWeekStartDate: reference,
+    });
+    schedule.status = weekStatuses.get(schedule.weekStartDate) ?? 0;
+    schedule.locked = schedule.status === 2;
+    for (const day of schedule.days) {
+      const entry = scheduleEntries.get(day.date);
+      if (entry) Object.assign(day, entry);
+    }
+    return schedule;
+  };
+  const emitSchedule = async (weekOffset: number, reference: string) =>
+    page.evaluate(
+      (schedule) => {
+        const source = (window as any).__sseSource as EventSource | undefined;
+        source?.dispatchEvent(
+          new MessageEvent('week_updated', {
+            data: JSON.stringify({ type: 'week_updated', schedule }),
+          })
+        );
+      },
+      makeSchedule(weekOffset, reference)
+    );
   let activeImportIssue: RecipeImportIssueDto | null = null;
   let activeImportId: string | null = null;
   let importStatusReads = 0;
 
   await mockFeatureFlags(page);
 
+  // Stateful family creation: POST 201 is visible in subsequent GETs.
+  const familyMembers = [
+    builders.familyMember({ name: 'Alex' }),
+    builders.familyMember({ id: MOCK_IDS.MEMBER_JORDAN, name: 'Jordan' }),
+  ];
+  let createdMemberCount = 0;
   // GET /api/family
   await page.route('**/api/family', async (route) => {
     if (route.request().method() === 'GET') {
@@ -244,17 +283,41 @@ export async function setupCommonRoutes(page: Page) {
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
-          data: [
-            builders.familyMember({ name: 'Alex' }),
-            builders.familyMember({ id: MOCK_IDS.MEMBER_JORDAN, name: 'Jordan' }),
-          ],
+          data: familyMembers,
         }),
       });
     } else if (route.request().method() === 'POST') {
+      const body = route.request().postDataJSON() as { name: string };
+      const trimmed = (body.name || '').trim();
+      const normalized = trimmed.toLowerCase();
+      const duplicate = familyMembers.some(
+        (m) => (m.name ?? '').trim().toLowerCase() === normalized
+      );
+      if (duplicate) {
+        await route.fulfill({
+          status: 409,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            status: 409,
+            message: 'A family member with this name already exists.',
+          }),
+        });
+        return;
+      }
+      // Deterministic distinct GUIDs based on the shared test-member namespace.
+      const id =
+        MOCK_IDS.MEMBER_TEST.slice(0, -12) +
+        String(Number(MOCK_IDS.MEMBER_TEST.slice(-12)) + createdMemberCount++).padStart(12, '0');
+      const member = builders.familyMember({
+        id,
+        name: trimmed,
+        preferredLanguage: null,
+      });
+      familyMembers.push(member);
       await route.fulfill({
         status: 201,
         contentType: 'application/json',
-        body: JSON.stringify({ data: builders.familyMember() }),
+        body: JSON.stringify({ data: member }),
       });
     } else {
       await route.fallback();
@@ -351,30 +414,16 @@ export async function setupCommonRoutes(page: Page) {
     (url) => url.pathname === '/api/schedule',
     async (route) => {
       if (route.request().method() === 'GET') {
-        const monday = currentMonday();
-        const days = Array.from({ length: 7 }, (_, i) => {
-          const d = new Date(monday);
-          d.setUTCDate(monday.getUTCDate() + i);
-          return {
-            day: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i],
-            date: toDateStr(d),
-            recipe: null,
-            status: 0,
-          };
-        });
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({
-            data: {
-              weekOffset: 0,
-              locked: false,
-              status: 0,
-              days,
-              groceryState: {},
-            },
-          }),
-        });
+        const url = new URL(route.request().url());
+        const reference = readReference(url);
+        if (!reference)
+          return route.fulfill({
+            status: 400,
+            json: { message: 'referenceWeekStartDate must be a yyyy-MM-dd Monday.' },
+          });
+        const weekOffset = Number(url.searchParams.get('weekOffset') ?? 0);
+        const schedule = makeSchedule(weekOffset, reference);
+        await route.fulfill({ json: { data: schedule } });
       } else {
         await route.continue();
       }
@@ -848,94 +897,285 @@ export async function setupCommonRoutes(page: Page) {
   });
 
   // POST /api/schedule/assign
-  await page.route('**/api/schedule/assign', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ data: { success: true } }),
+  await page.route('**/api/schedule/assign**', async (route) => {
+    if (route.request().method() !== 'POST') return route.fallback();
+    const reference = readReference(new URL(route.request().url()));
+    if (!reference)
+      return route.fulfill({
+        status: 400,
+        json: { message: 'referenceWeekStartDate must be a yyyy-MM-dd Monday.' },
+      });
+    const body = route.request().postDataJSON();
+    const schedule = builders.scheduleDays(body.weekOffset, {
+      ...scheduleCalendar,
+      referenceWeekStartDate: reference,
     });
+    const day = schedule.days[body.dayIndex];
+    if (!day) return route.fulfill({ status: 400, json: { message: 'Invalid dayIndex.' } });
+    const existing = scheduleEntries.get(day.date);
+    let displacedRecipe = null;
+    if (body.dayIndex === 6 && existing?.recipe) {
+      const nextWeek = builders.scheduleDays(body.weekOffset + 1, {
+        ...scheduleCalendar,
+        referenceWeekStartDate: reference,
+      });
+      scheduleEntries.set(nextWeek.days[0].date, existing);
+      displacedRecipe = {
+        id: existing.recipe.id,
+        name: existing.recipe.name,
+        movedToWeekOffset: body.weekOffset + 1,
+        movedToDayIndex: 0,
+      };
+    }
+    scheduleEntries.set(day.date, {
+      recipe: builders.scheduleRecipe({ id: body.recipeId }),
+      status: 0,
+    });
+    await route.fulfill({ json: { data: { message: 'Recipe assigned', displacedRecipe } } });
+    for (const slot of schedule.days) {
+      const entry = scheduleEntries.get(slot.date);
+      if (entry) Object.assign(slot, entry);
+    }
+    await page.evaluate((snapshot) => {
+      const source = (window as any).__sseSource as EventSource | undefined;
+      source?.dispatchEvent(
+        new MessageEvent('week_updated', {
+          data: JSON.stringify({ type: 'week_updated', schedule: snapshot }),
+        })
+      );
+    }, schedule);
   });
 
-  // POST /api/schedule/lock
-  await page.route('**/api/schedule/lock', async (route) => {
+  const setWeekStatus = (status: number) => async (route: Route) => {
+    if (route.request().method() !== 'POST') return route.fallback();
+    const url = new URL(route.request().url());
+    const reference = readReference(url);
+    if (!reference)
+      return route.fulfill({
+        status: 400,
+        json: { message: 'Invalid referenceWeekStartDate.' },
+      });
+    const offset = Number(url.searchParams.get('weekOffset') ?? 0);
+    const schedule = makeSchedule(offset, reference);
+    weekStatuses.set(schedule.weekStartDate, status);
+    if (status === 2)
+      for (const day of schedule.days) {
+        const entry = scheduleEntries.get(day.date);
+        if (entry?.recipe && entry.status === 0) entry.status = 1;
+      }
     await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ data: { success: true } }),
+      json: { data: { message: status === 2 ? 'Schedule locked' : 'Voting opened' } },
     });
+    await emitSchedule(offset, reference);
+  };
+  await page.route('**/api/schedule/lock**', setWeekStatus(2));
+  await page.route('**/api/schedule/voting/open**', setWeekStatus(1));
+
+  await page.route('**/api/schedule/move**', async (route) => {
+    if (route.request().method() !== 'POST') return route.fallback();
+    const reference = readReference(new URL(route.request().url()));
+    if (!reference)
+      return route.fulfill({ status: 400, json: { message: 'Invalid referenceWeekStartDate.' } });
+    const body = route.request().postDataJSON();
+    const monday = addDays(reference, body.weekOffset * 7);
+    const targetOffset = body.targetWeekOffset ?? body.weekOffset;
+    let sourceDate = body.fromIndex == null ? undefined : addDays(monday, body.fromIndex);
+    if (!sourceDate || !scheduleEntries.has(sourceDate))
+      sourceDate = [...scheduleEntries].find(
+        ([date, entry]) =>
+          entry.recipe?.id === body.recipeId &&
+          (targetOffset !== body.weekOffset || (date >= monday && date <= addDays(monday, 6)))
+      )?.[0];
+    const source = sourceDate ? scheduleEntries.get(sourceDate) : undefined;
+    if (sourceDate && source && source.recipe?.id === body.recipeId) {
+      let destination = addDays(reference, targetOffset * 7 + body.toIndex);
+      let canMove = true;
+      if (targetOffset !== body.weekOffset) {
+        let index = body.toIndex;
+        while (index < 7 && scheduleEntries.has(addDays(reference, targetOffset * 7 + index)))
+          index++;
+        canMove = index < 7;
+        destination = addDays(reference, targetOffset * 7 + index);
+      } else if (body.intent === 'push') {
+        let index = body.toIndex;
+        while (index < 14 && scheduleEntries.has(addDays(monday, index))) index++;
+        if (index < 14) {
+          for (let position = index; position > body.toIndex; position--) {
+            const previous = addDays(monday, position - 1);
+            const entry = scheduleEntries.get(previous);
+            if (entry) {
+              scheduleEntries.delete(previous);
+              scheduleEntries.set(addDays(monday, position), entry);
+            }
+          }
+        } else {
+          const occupied = scheduleEntries.get(destination);
+          if (occupied) scheduleEntries.set(sourceDate, occupied);
+        }
+      } else {
+        const occupied = scheduleEntries.get(destination);
+        if (occupied) scheduleEntries.set(sourceDate, occupied);
+      }
+      if (canMove) {
+        for (const [date, entry] of scheduleEntries)
+          if (entry === source) scheduleEntries.delete(date);
+        if (source.status === 3) {
+          scheduleEntries.set(sourceDate, { ...source, recipe: null });
+          scheduleEntries.set(destination, { recipe: source.recipe, status: 0 });
+        } else scheduleEntries.set(destination, source);
+      }
+    }
+    await route.fulfill({ json: { data: { message: 'Recipe moved' } } });
+    await emitSchedule(body.weekOffset, reference);
   });
 
-  // POST /api/schedule/move
-  await page.route('**/api/schedule/move', async (route) => {
+  await page.route('**/api/schedule/defer**', async (route) => {
+    if (route.request().method() !== 'POST') return route.fallback();
+    const url = new URL(route.request().url());
+    const reference = readReference(url);
+    if (!reference)
+      return route.fulfill({ status: 400, json: { message: 'Invalid referenceWeekStartDate.' } });
+    const rawOffset = url.searchParams.get('targetWeekOffset');
+    const targetOffset = rawOffset === null ? 1 : Number(rawOffset);
+    const destinationTime = Date.parse(`${reference}T00:00:00Z`) + targetOffset * 7 * 86400000;
+    if (
+      (rawOffset !== null && !/^[+-]?\d+$/.test(rawOffset)) ||
+      !Number.isInteger(targetOffset) ||
+      targetOffset < -2147483648 ||
+      targetOffset > 2147483647 ||
+      !Number.isFinite(destinationTime) ||
+      destinationTime < Date.parse('0001-01-01T00:00:00Z') ||
+      destinationTime > Date.parse('9999-12-31T00:00:00Z')
+    )
+      return route.fulfill({ status: 400, json: { message: 'Invalid targetWeekOffset.' } });
+    const start = toDateStr(new Date(destinationTime));
+    const body = route.request().postDataJSON();
+    const source = scheduleEntries.get(body.sourceDate);
+    if (!source || !source.recipe || source.recipe.id !== body.recipeId)
+      return route.fulfill({ status: 404, json: { message: 'Scheduled recipe not found.' } });
+    if (source.status === 4)
+      return route.fulfill({
+        status: 409,
+        json: { message: 'Meals awaiting consensus cannot be deferred.' },
+      });
+    let destination = start;
+    while (scheduleEntries.has(destination)) destination = addDays(destination, 1);
+    if (source.status === 3) scheduleEntries.set(body.sourceDate, { ...source, recipe: null });
+    else scheduleEntries.delete(body.sourceDate);
+    scheduleEntries.set(destination, { recipe: source.recipe, status: 0 });
+    const destinationOffset = Math.floor(
+      (Date.parse(destination) - Date.parse(reference)) / (7 * 86400000)
+    );
     await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ data: { message: 'Moved' } }),
-    });
-  });
-
-  // POST /api/schedule/defer
-  await page.route('**/api/schedule/defer', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
+      json: {
         data: {
-          scheduledDate: '2026-05-18',
-          scheduledWeekOffset: 1,
-          message: 'Moved meal to Monday, May 18.',
+          scheduledDate: destination,
+          scheduledWeekOffset: destinationOffset,
+          message: `${destinationOffset > targetOffset ? 'Next week is full. ' : ''}Moved meal to ${destination}.`,
         },
-      }),
+      },
     });
+    await emitSchedule(
+      Math.floor((Date.parse(body.sourceDate) - Date.parse(reference)) / (7 * 86400000)),
+      reference
+    );
+    await emitSchedule(destinationOffset, reference);
   });
 
-  // GET /api/schedule/fill-the-gap
-  await page.route('**/api/schedule/fill-the-gap', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ data: [] }),
-    });
+  await page.route('**/api/schedule/fill-the-gap**', async (route) => {
+    if (route.request().method() !== 'GET') return route.fallback();
+    if (!readReference(new URL(route.request().url())))
+      return route.fulfill({ status: 400, json: { message: 'Invalid referenceWeekStartDate.' } });
+    await route.fulfill({ json: { data: [] } });
   });
 
-  // POST /api/schedule/voting/open
-  await page.route('**/api/schedule/voting/open', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ data: { success: true } }),
-    });
-  });
-
-  // DELETE /api/schedule/day/{date}/remove
   await page.route('**/api/schedule/day/*/remove', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ data: { success: true } }),
-    });
+    if (route.request().method() !== 'DELETE') return route.fallback();
+    const date = new URL(route.request().url()).pathname.split('/')[4];
+    const removed = scheduleEntries.delete(date);
+    await route.fulfill({ status: 204 });
+    if (removed)
+      await emitSchedule(
+        Math.floor(
+          (Date.parse(date) - Date.parse(scheduleCalendar.referenceWeekStartDate)) / (7 * 86400000)
+        ),
+        scheduleCalendar.referenceWeekStartDate
+      );
   });
 
-  // POST /api/schedule/day/{date}/validate
-  await page.route('**/api/schedule/day/*/validate', async (route) => {
+  await page.route(
+    (url) => /^\/api\/schedule\/day\/[^/]+\/validate$/.test(url.pathname),
+    async (route) => {
+      if (route.request().method() !== 'POST') return route.fallback();
+      const date = new URL(route.request().url()).pathname.split('/')[4];
+      const body = route.request().postDataJSON();
+      const previous = scheduleEntries.get(date);
+      if (body.nonCooking && previous && (previous.recipe || previous.status !== 3))
+        return route.fulfill({ status: 409, json: { status: 409, message: 'Day occupied' } });
+      const viewedId = body.recipeId ?? previous?.recipe?.id;
+      if (body.status === 2) {
+        const knownRecipe = Object.entries(MOCK_IDS).some(
+          ([key, id]) => key.startsWith('RECIPE_') && id === viewedId
+        );
+        if (!knownRecipe)
+          return route.fulfill({ status: 404, json: { message: 'Recipe not found' } });
+      }
+      const mealMarkedCooked = body.status === 2 && previous?.recipe?.id === viewedId;
+      if (body.status !== 2 || mealMarkedCooked) {
+        const entry = {
+          recipe: previous?.recipe ?? null,
+          status: body.status,
+          nonCooking:
+            body.status === 3 && !previous?.recipe
+              ? (body.nonCooking ?? previous?.nonCooking ?? { kind: 'order_in', customLabel: null })
+              : null,
+        };
+        scheduleEntries.set(date, entry);
+      }
+      await route.fulfill({
+        json: { data: { message: 'Cooking status updated', mealMarkedCooked } },
+      });
+      const entry = scheduleEntries.get(date);
+      if (body.status !== 2 || mealMarkedCooked)
+        await page.evaluate(
+          (payload) => {
+            const source = (window as any).__sseSource as EventSource | undefined;
+            source?.dispatchEvent(
+              new MessageEvent('slot_updated', { data: JSON.stringify(payload) })
+            );
+          },
+          {
+            date,
+            recipe: entry?.recipe ?? null,
+            status: body.status,
+            nonCooking: entry?.nonCooking ?? null,
+          }
+        );
+    }
+  );
+
+  await page.route('**/api/schedule/*/smart-defaults**', async (route) => {
+    if (route.request().method() !== 'GET') return route.fallback();
+    const url = new URL(route.request().url());
+    const reference = readReference(url);
+    if (!reference)
+      return route.fulfill({ status: 400, json: { message: 'Invalid referenceWeekStartDate.' } });
+    const offset = Number(url.pathname.split('/')[3]);
+    const schedule = makeSchedule(offset, reference);
     await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
+      json: {
         data: {
-          message: 'Cooking status updated',
-          mealMarkedCooked: route.request().postDataJSON()?.status === 2,
+          weekOffset: offset,
+          weekStartDate: schedule.weekStartDate,
+          familySize: 2,
+          consensusThreshold: 2,
+          preSelectedRecipes: [],
+          consensusRecipesCount: 0,
+          openSlots: schedule.days.flatMap((day, dayIndex) =>
+            scheduleEntries.has(day.date) ? [] : [{ dayIndex }]
+          ),
         },
-      }),
-    });
-  });
-
-  // GET /api/schedule/{weekOffset}/smart-defaults
-  await page.route('**/api/schedule/*/smart-defaults', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ data: [] }),
+      },
     });
   });
 
@@ -1132,7 +1372,11 @@ export async function setupCommonRoutes(page: Page) {
         Connection: 'keep-alive',
         'X-Accel-Buffering': 'no',
       },
-      body: buildSseBody([buildConnectedEvent()]),
+      body: buildSseBody([
+        buildConnectedEvent(
+          makeSchedule(0, scheduleCalendar.referenceWeekStartDate) as unknown as ScheduleDays
+        ),
+      ]),
     });
   });
 
@@ -1398,6 +1642,7 @@ export async function mockSseWithFillTheGapInvalidated(page: Page, weekOffset = 
         buildSseFrame('fill_the_gap_invalidated', {
           type: 'fill_the_gap_invalidated',
           weekOffset,
+          weekStartDate: builders.scheduleDays(weekOffset).weekStartDate,
         }),
       ]),
     });
@@ -1430,7 +1675,12 @@ export async function mockSseWithSmartDefaultsUpdated(
         buildSseFrame('smart_defaults_updated', {
           type: 'smart_defaults_updated',
           weekOffset: defaults.weekOffset ?? 0,
-          defaults,
+          defaults: {
+            ...defaults,
+            weekStartDate:
+              defaults.weekStartDate ??
+              builders.scheduleDays(defaults.weekOffset ?? 0).weekStartDate,
+          },
         }),
       ]),
     });
@@ -1526,7 +1776,12 @@ export async function mockSseWithGroceryUpdated(
       },
       body: buildSseBody([
         buildConnectedEvent(),
-        buildSseFrame('grocery_updated', { type: 'grocery_updated', weekOffset, groceryState }),
+        buildSseFrame('grocery_updated', {
+          type: 'grocery_updated',
+          weekOffset,
+          weekStartDate: builders.scheduleDays(weekOffset).weekStartDate,
+          groceryState,
+        }),
       ]),
     });
   });

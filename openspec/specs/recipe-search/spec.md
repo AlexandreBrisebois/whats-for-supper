@@ -1,0 +1,705 @@
+# recipe-search Specification
+
+## Purpose
+
+Find existing household recipes through Search, with evidenced retrieval, selection and recovery boundaries.
+
+## Requirements
+
+### Requirement: Enter Search with optional planning and detail context
+
+The household Search navigation SHALL open `/recipes`. The Search page SHALL initialize its text to empty and request an initial batch of 12 alternatives, forwarding supplied `addToDay` as dayIndex, weekOffset and similarTo context. An `open` recipe identity SHALL select detail independently of the initial search.
+
+#### Scenario: Ordinary entry
+
+- **WHEN** the person opens Search without mode parameters
+- **THEN** an empty-query initial request is made and the standard search input is shown
+
+#### Scenario: Planning entry
+
+- **WHEN** Search opens with addToDay and weekOffset
+- **THEN** the request carries that target and a planning banner offers Cancel back to `/planner`
+
+#### Scenario: Detail link
+
+- **WHEN** Search opens with an open recipe identity
+- **THEN** that identity opens in detail while the page can load its initial results
+
+### Requirement: Submit typed search after settling or Enter
+
+The text input SHALL schedule a search after 500 ms without another text change. Enter SHALL clear its pending debounce, blur the input and submit the current query. The client SHALL transmit the text as supplied; server retrieval SHALL trim it without rewriting the request text.
+
+#### Scenario: Settled typing
+
+- **WHEN** the person changes the text again within the debounce interval
+- **THEN** the pending typing timer is replaced by one for the latest value
+
+#### Scenario: Submit now
+
+- **WHEN** the person presses Enter
+- **THEN** the current text is submitted immediately and the input loses focus
+
+### Requirement: Represent search results and loading feedback
+
+While the current initial or replacement search is loading, Search SHALL show a loading indicator. A current successful response SHALL display its available Top Pick separately from alternatives, with recipe names, image references and formatted times. The Top Pick SHALL show the first supplied reason label when present. Public import issue status SHALL be displayed on matching alternatives.
+
+#### Scenario: Results available
+
+- **WHEN** the current response supplies a Top Pick and alternatives
+- **THEN** their cards render separately and the first Top Pick reason is displayed
+
+#### Scenario: Replacement pending
+
+- **WHEN** another search is loading
+- **THEN** loading feedback replaces the results presentation
+
+### Requirement: Offer recovery navigation for successful empty results
+
+When a current successful response contains no Top Pick and no alternatives, Search SHALL show an empty-state message, Clear Filters and Browse Library navigation to `/browse-all-stack`. With active filters or concepts it SHALL use the filter-specific no-match message. Clear Filters SHALL apply empty filters and preferences while retaining current text and similar context.
+
+#### Scenario: Unfiltered empty response
+
+- **WHEN** a current successful search returns no cards with no active filters
+- **THEN** the general empty message and recovery controls appear
+
+#### Scenario: Filtered empty response
+
+- **WHEN** a current successful search returns no cards with active filters or concepts
+- **THEN** the filter-specific message appears and Clear Filters can submit the cleared selections
+
+### Requirement: Return from Search detail to mounted results
+
+Selecting a search card SHALL open recipe detail without replacing the mounted Search state. Closing detail SHALL dismiss it and request restoration of the recorded scroll position without a close-triggered search. Detail retrieval and editing SHALL retain recipe-library ownership, including Retrieve the selected library recipe for detail reading and the applicable detail-update requirements.
+
+#### Scenario: Close a card
+
+- **WHEN** the person opens a loaded card and then closes detail
+- **THEN** the mounted query, filters and loaded cards remain without a close-triggered search
+
+#### Scenario: Open another linked identity
+
+- **WHEN** the open URL parameter changes
+- **THEN** the detail selection follows the new identity
+
+### Requirement: Refresh Search after a successful detail deletion
+
+When detail invokes its successful-deletion callback, Search SHALL request replacement results using its current text, similar context, filters, preferences and planning target. Soft deletion eligibility and persistence SHALL follow recipe-library Soft-delete the loaded recipe when not assigned to active planner slots and Exclude soft-deleted recipes from standard library listings and search.
+
+#### Scenario: Deleted card
+
+- **WHEN** detail successfully deletes a recipe and invokes the callback
+- **THEN** a new search is requested rather than treating old cards as authoritative
+
+#### Scenario: Deletion rejected
+
+- **WHEN** detail deletion fails before its success callback
+- **THEN** Search does not request replacement through that callback
+
+### Requirement: Apply or discard filter drafts
+
+Search SHALL offer one Filters chooser for narrow and wide layouts. Opening SHALL copy active filters and preferences into a draft. Apply SHALL replace active selections, close the chooser and request search with current query, similar and planning context. Closing by Close, Escape or backdrop SHALL discard unsubmitted changes.
+
+#### Scenario: Dismiss selection
+
+- **WHEN** the person changes a draft then closes the chooser
+- **THEN** active selections and search requests remain unchanged by that draft
+
+#### Scenario: Apply selection
+
+- **WHEN** the person selects Quick and applies
+- **THEN** Quick becomes active and a new search carries quickOnly
+
+### Requirement: Clear selections without clearing the search text
+
+Clear filters within the chooser SHALL clear draft filters and preferences, taking effect on Apply. Search SHALL count selected array values, true boolean filters and Focus concepts in its active count. Query text SHALL remain independent of filter reset.
+
+#### Scenario: Clear then dismiss
+
+- **WHEN** the person clears a draft and closes without Apply
+- **THEN** the active selections remain
+
+#### Scenario: Apply cleared draft
+
+- **WHEN** the person clears then applies
+- **THEN** active filters and preferences are empty and the current query is retained
+
+### Requirement: Expose supported shortcut and grouped controls
+
+The chooser SHALL offer Quick, Family Favorite and Never Tried initially, with New, It's Been a While, Reported and Ready to review behind More filters unless selected. Selected secondary choices SHALL remain visible after collapse. It SHALL offer Meal, Focus and available Cuisine groups with pressed-state feedback.
+
+#### Scenario: Retain visible selection
+
+- **WHEN** the person selects Reported then collapses More filters
+- **THEN** the selected Reported choice remains visible
+
+#### Scenario: Reveal additional vocabulary
+
+- **WHEN** configured Focus choices exceed six or unpromoted cuisines exist
+- **THEN** disclosure controls expose additional choices and selected additional choices remain visible when collapsed
+
+### Requirement: Separate Focus preferences from hard selections
+
+Non-vegetarian Focus controls SHALL populate preference concepts. Vegetarian SHALL populate vegetarianOnly. Meal and Cuisine SHALL populate their respective filter arrays. Applying combinations SHALL preserve these separate representations instead of converting Focus to an exact ingredient filter.
+
+#### Scenario: Combined selection
+
+- **WHEN** the person applies fish Focus, Vegetarian, Supper and Japanese
+- **THEN** the request carries fish as a concept and vegetarianOnly, mealTypes and cuisines as filters
+
+#### Scenario: Toggle off
+
+- **WHEN** the person toggles a selected choice off and applies
+- **THEN** that choice no longer contributes a selected value
+
+### Requirement: Constrain cuisine and meal groups together
+
+Search SHALL normalize nonblank Cuisine and Meal filter values by trimming, case folding and deduplicating. Values within a group SHALL be alternatives; supplied groups SHALL constrain results together. A missing recipe field SHALL not match a selected group. Ranked database retrieval SHALL apply these constraints before its candidate limit.
+
+#### Scenario: Multiple values
+
+- **WHEN** Japanese or Italian and Supper or Lunch are selected
+- **THEN** eligible recipes must match one cuisine and at least one selected meal type
+
+#### Scenario: No matching group
+
+- **WHEN** a candidate matches cuisine but none of the selected meal types
+- **THEN** it is excluded before the ranked candidate limit
+
+### Requirement: Apply supported boolean filters from stored facts
+
+Search SHALL combine active supported boolean filters: New uses creation within 30 days of the current UTC instant; Never Tried uses no last-cooked date; Family Favorite uses rating at least Like plus discoverability or non-null notes; Vegetarian uses known true; It's Been a While requires a last-cooked date. Quick SHALL restrict initial browse and ranked database retrieval to supported durations of at most 30 minutes.
+
+#### Scenario: Contradictory cooking filters
+
+- **WHEN** Never Tried and It's Been a While are both active
+- **THEN** no recipe satisfies both date predicates
+
+#### Scenario: Unknown vegetarian classification
+
+- **WHEN** Vegetarian is active for a candidate with unknown vegetarian value
+- **THEN** the candidate is excluded
+
+#### Scenario: Duration unknown
+
+- **WHEN** Quick is active for a candidate whose duration cannot satisfy the serving path duration predicate
+- **THEN** the candidate is excluded
+
+### Requirement: Use report membership without a separate review route
+
+Search SHALL consume recipe-quality Select saved issue membership for review for Reported and Ready to review membership and precedence. Its text, hard filters and Focus retrieval SHALL continue to constrain those candidates. Discover and apply recipe review filters and Present review matches as ordinary results remain with recipe-quality; Search adds no Needs review route.
+
+#### Scenario: Both report choices
+
+- **WHEN** Reported and Ready to review are applied together
+- **THEN** only ready-to-review report members can match
+
+#### Scenario: Reported with other constraints
+
+- **WHEN** Reported and Vegetarian are active with a query
+- **THEN** results must satisfy the report predicate, vegetarian fact and retrieval criteria
+
+### Requirement: Keep mounted search state through detail and chooser use
+
+Query, applied filters and preferences SHALL remain in the mounted Search page through detail open/close and chooser dismissal. A new page mount SHALL initialize these selections empty; similarTo and open context SHALL initialize from the URL. This SHALL NOT establish storage persistence across remount or browser reload.
+
+#### Scenario: Return from detail
+
+- **WHEN** detail is closed while Search remains mounted
+- **THEN** the current query and active selections remain
+
+#### Scenario: Reload Search
+
+- **WHEN** Search mounts afresh without similarTo or open context
+- **THEN** text, filters and preferences begin empty
+
+### Requirement: Load filter vocabulary without blocking built-in choices
+
+On the first Filters opening in a Search mount, Search SHALL request filter vocabulary. A successful response SHALL supply configured Focus order, fixed Meal choices and stored promoted/all Cuisine lists. If unavailable, built-in Focus and Meal choices SHALL remain usable. Missing or malformed materialized Cuisine state SHALL return empty Cuisine lists and null generatedAt rather than discover the catalog on that request.
+
+#### Scenario: No materialized state
+
+- **WHEN** filter vocabulary is read without a usable saved Cuisine snapshot
+- **THEN** the server returns configured Focus, fixed Meals and empty Cuisine lists with null generatedAt
+
+#### Scenario: Metadata request fails
+
+- **WHEN** the browser filter metadata request rejects
+- **THEN** the chooser retains built-in Focus and Meal choices
+
+#### Scenario: Stored snapshot is old
+
+- **WHEN** the saved Cuisine snapshot has an old generatedAt
+- **THEN** the endpoint returns that snapshot without a freshness or catalog-recompute guarantee
+
+### Requirement: Use validated filter configuration defaults
+
+Filter vocabulary SHALL preserve a valid configured Focus list order, requiring unique nonblank IDs, nonblank concepts and labels for custom IDs. Invalid or absent configuration SHALL use built-in Beef, Poultry, Pork, Fish, Pasta and Vegetarian definitions. The server rediscovery interval SHALL default to 28 days unless configured within 7 through 365 days.
+
+#### Scenario: Invalid custom definition
+
+- **WHEN** configured custom Focus has no nonblank label or duplicates an ID
+- **THEN** the entire Focus list falls back to built-ins
+
+#### Scenario: Invalid interval
+
+- **WHEN** the rediscovery interval is absent or outside 7 through 365
+- **THEN** server browse eligibility uses the 28-day default
+
+### Requirement: Choose browse only without usable search content
+
+With no similar target, no nonblank text and no usable preference concepts, Search SHALL return browse results without generating a query embedding. Candidates SHALL use recipe-library readiness/deletion facts; recipes need not be discoverable unless a supported filter restricts them. Browse SHALL remain available without a published lexical or semantic document.
+
+#### Scenario: Blank content
+
+- **WHEN** a request has whitespace text and only blank concepts without a similar target
+- **THEN** the service follows browse without query embedding generation
+
+#### Scenario: Recipe not indexed
+
+- **WHEN** an otherwise browse-eligible recipe has no search document
+- **THEN** the missing document alone does not exclude it from browse
+
+### Requirement: Retrieve typed lexical candidates from published documents
+
+Typed ranked search SHALL retrieve a bounded set of ready, undeleted recipes whose published nonempty canonical search documents match the query phrase or a query term. Retrieval SHALL rank lexical candidates using the document match score before later modifiers. A rating or vote boost SHALL NOT independently retrieve an otherwise absent candidate.
+
+#### Scenario: Published text matches
+
+- **WHEN** an eligible published document matches a query term
+- **THEN** it can enter the bounded lexical candidate pool
+
+#### Scenario: No matching document
+
+- **WHEN** a loved recipe has no matching published lexical document and is not retrieved semantically
+- **THEN** its rating alone does not add it to results
+
+### Requirement: Attempt compatible semantic retrieval when enabled
+
+For ranked text or concept search with semantic retrieval enabled and available dependencies, Search SHALL attempt query embedding and bounded vector retrieval. Semantic candidates SHALL require a ready document and ready embedding matching its source fingerprint, configured model, version and dimensions, in addition to hard filters and recipe eligibility.
+
+#### Scenario: Stale or incompatible vector
+
+- **WHEN** a candidate embedding has a different fingerprint, model, version or dimension
+- **THEN** that vector is excluded from semantic candidate retrieval
+
+#### Scenario: Compatible pool
+
+- **WHEN** eligible vectors satisfy configured compatibility and hard filters
+- **THEN** the nearest bounded candidates can participate in ranked results
+
+### Requirement: Use Focus concepts as semantic search content
+
+Search SHALL trim and deduplicate nonblank preference concepts, joining them with nonblank query text for semantic retrieval. With only usable concepts it SHALL use a ranked semantic attempt rather than browse. A successful concept-only semantic attempt returning no candidates SHALL remain empty instead of substituting lexical matches.
+
+#### Scenario: Concept-only request
+
+- **WHEN** text is blank and a nonblank fish concept is supplied
+- **THEN** ranked semantic retrieval is attempted when enabled and available
+
+#### Scenario: Semantic zero match
+
+- **WHEN** that concept-only semantic attempt succeeds with no compatible candidates while a lexical match exists
+- **THEN** the response remains empty rather than treating zero candidates as a provider failure
+
+### Requirement: Fall back from unavailable semantic work without promising relevance
+
+Disabled or unavailable semantic retrieval SHALL allow typed lexical serving. A semantic timeout or provider/vector exception SHALL fall back to lexical candidates; concept-only fallback SHALL search using the usable concepts. Caller cancellation observed during semantic work SHALL propagate rather than be converted to semantic-failure fallback.
+
+#### Scenario: Typed provider failure
+
+- **WHEN** an attempted semantic provider throws while the caller remains active
+- **THEN** the already retrieved typed lexical candidates are served
+
+#### Scenario: Concept fallback
+
+- **WHEN** semantic work is disabled, unavailable, times out or errors for a concept-only request
+- **THEN** lexical retrieval uses the nonblank concepts with the active hard filters
+
+#### Scenario: Caller cancels
+
+- **WHEN** the caller cancellation token is canceled during semantic work
+- **THEN** cancellation propagates instead of being handled as a fallback-only timeout
+
+### Requirement: Enter Similar from loaded detail
+
+Activating Find similar in Search detail SHALL dismiss detail, clear the visible query and submit the loaded recipe identity as the similar target while retaining active filters, preferences and planning context. Similar SHALL exclude the source recipe and return no candidates when that source is missing, deleted or not ready.
+
+#### Scenario: Find similar action
+
+- **WHEN** the person activates Find similar on a loaded recipe
+- **THEN** detail closes and an empty-query request identifies that recipe as similar target
+
+#### Scenario: Source unavailable
+
+- **WHEN** the source is missing, deleted or not ready when Similar is evaluated
+- **THEN** no similar candidates are returned
+
+### Requirement: Rank Similar using source recipe facts with lexical recovery
+
+Similar SHALL use a compatible ready source embedding for candidate retrieval when enabled and available, falling back to a bounded lexical query from source facts if unavailable or failed. Candidate filters and source exclusion SHALL apply before retrieval limits. Ranking SHALL combine source/candidate ingredient, cuisine, category, meal-type, known vegetarian and time similarity with the semantic term; family rating and vote boosts SHALL not apply.
+
+#### Scenario: Source embedding unavailable
+
+- **WHEN** the source has no compatible ready embedding
+- **THEN** source facts produce a bounded lexical candidate query with the same hard filters and source exclusion
+
+#### Scenario: Strongly aligned recipe
+
+- **WHEN** a candidate aligns on structured source facts while another only has a closer vector
+- **THEN** the structured score participates in the final order rather than vector distance alone
+
+#### Scenario: Family favorite unrelated
+
+- **WHEN** a similar candidate has high family rating or votes
+- **THEN** those facts do not add family-fit boosts in Similar
+
+### Requirement: Keep semantic availability a serving option
+
+Search SHALL honor the server semantic-enabled option and configured candidate/model/version/dimension settings. Turning semantic retrieval off SHALL retain lexical and browse paths and make Similar use its lexical recovery path. This SHALL NOT establish model relevance, successful external service access or a total-request deadline.
+
+#### Scenario: Semantic disabled
+
+- **WHEN** semantic retrieval is configured off
+- **THEN** browse and lexical search remain available and Similar uses lexical source-fact retrieval
+
+#### Scenario: External embedding endpoint unavailable
+
+- **WHEN** query embedding fails for an enabled typed request
+- **THEN** the lexical fallback behavior applies instead of requiring semantic success
+
+### Requirement: Combine ranked retrieval candidates by recipe identity
+
+For a successful semantic attempt alongside typed lexical retrieval, Search SHALL combine the bounded candidate pools by recipe identity. A candidate found in both SHALL receive their normalized, weighted retrieval contributions without becoming two cards. Later applicable modifiers SHALL participate in final ordering.
+
+#### Scenario: Both paths retrieve the recipe
+
+- **WHEN** lexical and semantic retrieval return the same recipe identity
+- **THEN** it enters final ranking once with both retrieval contributions
+
+#### Scenario: Semantic-only candidate in a typed search
+
+- **WHEN** an eligible candidate is returned only by successful semantic retrieval
+- **THEN** it can enter the combined ranked pool without an exact lexical match
+
+### Requirement: Keep browse rediscovery eligibility on the server
+
+Browse promotion eligibility SHALL require positive saved affinity, a saved last-cooked event date at or before the configured rediscovery cutoff, and no calendar guard. The cutoff SHALL use server UTC today and the configured interval. Active Planned, Locked or AwaitingConsensus entries dated today or later, and Cooked entries in the selected server week, SHALL block promotion without removing ordinary result membership.
+
+#### Scenario: No cooked evidence
+
+- **WHEN** a candidate has positive affinity but no saved last-cooked event date
+- **THEN** it is not browse-promotion eligible
+
+#### Scenario: Active future calendar entry
+
+- **WHEN** an otherwise eligible candidate has an active future assignment
+- **THEN** it remains an ordinary candidate but is not promotion eligible
+
+#### Scenario: Skipped entry only
+
+- **WHEN** an otherwise eligible candidate has only a Skipped entry and no blocking event
+- **THEN** that entry does not block browse promotion
+
+### Requirement: Order browse promotion before ordinary rediscovery
+
+Browse SHALL rank promotion-eligible candidates first by affinity descending and saved cooked-event date ascending. Remaining ordering SHALL use never-cooked recipes first, recipe last-cooked date ascending, creation descending and identity. With no active review filter, its initial bounded candidate window SHALL select the first promotion-eligible report-free candidate as Top Pick, removing it from alternatives.
+
+#### Scenario: Two eligible favorites
+
+- **WHEN** eligible candidates differ in saved affinity
+- **THEN** the larger affinity ranks first
+
+#### Scenario: No promotable candidate in initial window
+
+- **WHEN** the initial candidate window has no eligible report-free candidate
+- **THEN** Top Pick is absent and ordinary alternatives remain
+
+#### Scenario: Equal ordinary cooking dates
+
+- **WHEN** ordinary candidates share a last-cooked date
+- **THEN** creation descending then identity break the remaining ties
+
+### Requirement: Apply family signals only to retrieved standard ranked candidates
+
+Standard ranked search SHALL add household rating and stored like-vote modifiers only to retrieved candidates. Love and Like SHALL increase scores, Dislike SHALL decrease them, and the like-count boost SHALL be capped. Like totals SHALL follow recipe-discovery Count likes separately from passes. These signals SHALL NOT establish consensus, suggestion acceptance or assignment.
+
+#### Scenario: Equivalent candidates
+
+- **WHEN** otherwise equivalent standard candidates have Love and no rating
+- **THEN** Love increases the rated candidate score
+
+#### Scenario: More likes than cap
+
+- **WHEN** a standard candidate has enough likes to reach the vote cap
+- **THEN** further likes do not increase its vote modifier
+
+#### Scenario: Similar mode
+
+- **WHEN** the request is Similar
+- **THEN** standard rating and vote modifiers do not apply
+
+### Requirement: Demote ranked candidates already shown in the target week
+
+When both weekOffset and dayIndex are supplied, ranked Search SHALL demote candidates whose identities appear as recipe content in the selected schedule and add an Already planned for this week explanation. It SHALL retain those candidates rather than exclude them. This check SHALL use persisted schedule recipe content; browser-composed voting suggestions alone SHALL not establish that content or a persisted assignment.
+
+#### Scenario: Candidate appears in selected schedule
+
+- **WHEN** ranked Search has both target parameters and a candidate appears in the returned week recipe content
+- **THEN** that candidate receives the demotion and explanation while remaining eligible for ordinary results
+
+#### Scenario: Context incomplete
+
+- **WHEN** a ranked request omits weekOffset or dayIndex
+- **THEN** this planner demotion does not apply
+
+### Requirement: Select ranked Top Pick separately from browse promotion flags
+
+Ranked Search SHALL order candidates by score descending, creation descending and identity. For standard ranked search with It's Been a While, last-cooked date SHALL replace the creation tie-breaker. Outside review-filter mode, Top Pick SHALL be the first candidate without an active import report and SHALL be omitted from alternatives. Browse-only promotion flags SHALL NOT be required for this ranked Top Pick.
+
+#### Scenario: Highest ranked has a report
+
+- **WHEN** a reported candidate ranks first and an ordinary report-free candidate follows
+- **THEN** the report-free candidate is Top Pick and the reported candidate remains an alternative
+
+#### Scenario: All candidates reported
+
+- **WHEN** every ranked candidate has an active report
+- **THEN** Top Pick is absent without discarding ordinary results
+
+#### Scenario: Review mode
+
+- **WHEN** a review filter is active
+- **THEN** recipe-quality Present review matches as ordinary results applies and no Top Pick is selected
+
+### Requirement: Use server eligibility for local Surprise Me
+
+Surprise Me SHALL choose only a loaded alternative carrying true server promotion eligibility, without import issue status and different from the current Top Pick. It SHALL replace the displayed Top Pick locally, remove the chosen alternative and return the previous Top Pick to alternatives when present. It SHALL NOT request search or persist a meal assignment.
+
+#### Scenario: Eligible alternate exists
+
+- **WHEN** the person activates Surprise Me with eligible loaded alternatives
+- **THEN** one eligible alternative becomes the displayed Top Pick without a search or assignment request
+
+#### Scenario: No eligible alternate
+
+- **WHEN** all loaded alternatives are unflagged or have issue status
+- **THEN** Surprise Me is disabled with an unavailable explanation and retains the result set
+
+#### Scenario: Obsolete promotion generation
+
+- **WHEN** loaded data belongs to a prior promotion generation
+- **THEN** it cannot be used by Surprise Me
+
+### Requirement: Bound alternatives and reject unsupported requests
+
+POST search SHALL default to 12 alternatives and reject supplied limits outside 1 through 50 with 400. A Top Pick SHALL be separate from that alternatives count. A nonempty excludedIngredients list SHALL return 400 rather than promise exclusions. The browser adapter SHALL accept raw or data-enveloped successful responses and retain HTTP failure status for continuation recovery.
+
+#### Scenario: Out-of-range limit
+
+- **WHEN** a household search supplies limit 99
+- **THEN** the server returns 400
+
+#### Scenario: Unsupported exclusion
+
+- **WHEN** a household search supplies a nonempty excludedIngredients list
+- **THEN** the server returns 400
+
+#### Scenario: Top Pick plus alternatives
+
+- **WHEN** a successful response has enough candidates for the requested alternatives and a Top Pick
+- **THEN** Top Pick does not consume an alternative slot
+
+### Requirement: Load continuation through the result sentinel
+
+When a current response has nextCursor and an observer reports the result sentinel intersecting, Search SHALL request continuation with current query, filters, preferences, similar and planning context. Browse SHALL request 24 alternatives and ranked paths 12. Only one continuation SHALL be in flight for that search generation.
+
+#### Scenario: Repeated observer notifications
+
+- **WHEN** the sentinel is reported intersecting repeatedly while its generation continuation is pending
+- **THEN** only one continuation request starts
+
+#### Scenario: No cursor
+
+- **WHEN** the response supplies no nextCursor
+- **THEN** Search presents no continuation sentinel or request through that cursor
+
+### Requirement: Append current continuation without repeating loaded alternatives
+
+A continuation success belonging to the current search and promotion generation SHALL append alternatives whose identities are absent from already loaded alternatives, retain the existing Top Pick and adopt the next cursor. A ranked continuation SHALL not return another Top Pick. Exhaustion SHALL be represented by no next cursor.
+
+#### Scenario: Page arrives
+
+- **WHEN** a current continuation contains both an already loaded alternate identity and a new one
+- **THEN** the existing alternate is not appended again and the new one is appended
+
+#### Scenario: Ranked pool exhausted
+
+- **WHEN** the final ranked snapshot page is returned
+- **THEN** it has no Top Pick or next cursor
+
+### Requirement: Keep ranked continuation eligibility narrower than a fresh search
+
+Ranked continuation SHALL retain its initial candidate order while rechecking current recipe readiness, deletion and the supported current recipe-field predicates, including Cuisine and Meal. It SHALL NOT promise reranking or replacement of stored display fields, report status or promotion flags from a fresh search.
+
+#### Scenario: Cuisine changes
+
+- **WHEN** an unserved ranked candidate no longer satisfies selected Cuisine or Meal at continuation time
+- **THEN** it is excluded by the eligibility recheck
+
+#### Scenario: Ranked state changes
+
+- **WHEN** ranking or display facts change after the initial ranked search
+- **THEN** continuation does not establish fresh ordering or fresh display fields
+
+### Requirement: Reject unavailable or incompatible continuation state
+
+A continuation token SHALL be rejected with 409 and restart guidance when missing from the current process store, expired, evicted or incompatible with the request fingerprint. Fingerprinting SHALL include query, similar target, planner target, filters and preferences while allowing continuation page size to differ. Cursor availability SHALL be bounded to process-local retained state with a ten-minute entry lifetime and capacity limit.
+
+#### Scenario: Unknown token
+
+- **WHEN** a search supplies a token absent from the current process
+- **THEN** the response is 409 with restart guidance
+
+#### Scenario: Changed preferences
+
+- **WHEN** a retained token is reused with changed preferences
+- **THEN** the token is rejected with restart guidance
+
+#### Scenario: Changed batch size
+
+- **WHEN** a retained compatible token is reused with only a valid limit change
+- **THEN** that limit difference alone does not invalidate the fingerprint
+
+### Requirement: Retain cards and expose continuation retry or restart
+
+A continuation request failure for the current search generation SHALL retain loaded cards. A 409 SHALL expose Restart search, submitting a fresh initial request with current search context; other failures SHALL expose Load more retry using the cursor. These actions SHALL offer another attempt without promising successful recovery.
+
+#### Scenario: Continuation expired
+
+- **WHEN** a current continuation request returns 409
+- **THEN** loaded cards remain and Restart search is offered
+
+#### Scenario: Continuation fails otherwise
+
+- **WHEN** a current continuation request fails with another status
+- **THEN** loaded cards remain and Load more retry is offered
+
+### Requirement: Suppress obsolete search success without claiming network cancellation
+
+Initial, replacement and continuation successes SHALL be ignored when their captured search generation or promotion version no longer matches current state. The initial effect SHALL also ignore completion after its cleanup. These guards SHALL NOT establish cancellation of browser network requests or suppression of every obsolete failure presentation.
+
+#### Scenario: Older initial browse finishes
+
+- **WHEN** a newer text search has already advanced the search generation
+- **THEN** the old initial success cannot replace the newer results
+
+#### Scenario: Old continuation finishes
+
+- **WHEN** a replacement search or promotion invalidation occurred before continuation success
+- **THEN** that success is not appended to current data
+
+### Requirement: Restart mounted browse after received promotion invalidation
+
+When Search observes a changed promotion generation, cards from the previous generation SHALL not be displayed or used for Surprise Me. For loaded browse data, Search SHALL attempt a fresh initial request retaining query, filters, preferences, similar and planner context. Invalidation delivery SHALL remain with household-live-updates Signal candidate freshness separately from fetching results.
+
+#### Scenario: Browse invalidated
+
+- **WHEN** a mounted browse observes a newer promotion generation
+- **THEN** old cards are withheld and a replacement initial request is scheduled with active context
+
+#### Scenario: Ranked data invalidated
+
+- **WHEN** a mounted non-browse response becomes obsolete
+- **THEN** old cards are withheld but this browse-only effect does not establish an automatic ranked refresh
+
+### Requirement: Materialize affinity from eligible stored recipes
+
+Filter materialization SHALL use ready, undeleted recipes with nonblank Cuisine. Each selected recipe's affinity SHALL be likes minus dislikes plus its Cooked calendar-event count; last-cooked date SHALL be the latest such event date, or null.
+
+#### Scenario: Ineligible recipe facts
+- **WHEN** materialization encounters unready, deleted or absent-cuisine recipes
+- **THEN** those recipes do not contribute materialized facts or cuisine vocabulary
+
+#### Scenario: Stored cooking evidence
+- **WHEN** a selected recipe has two likes, one dislike and two Cooked events
+- **THEN** its affinity is three and its last-cooked date is the later Cooked event date
+
+### Requirement: Materialize deterministic cuisine choices
+
+Materialization SHALL produce ordinal-distinct, ordinal-sorted full cuisines and at most six promoted cuisines. For equal promotion scores and summed affinity, cuisine ordinal order SHALL determine promotion order. The calendar reference and recency-window policy are withheld pending WFS-BL-005; current source behavior is recorded non-normatively in design.md.
+
+#### Scenario: Stable materialization inputs
+- **WHEN** materialization is repeated with identical stored evidence and injected clock value
+- **THEN** it produces equivalent cuisine choices
+
+#### Scenario: Equal cuisine scores
+- **WHEN** cuisine scores and summed affinity tie
+- **THEN** ordinal cuisine order determines promotion order
+
+### Requirement: Persist filter snapshot and facts as one materialization
+
+When database saves and commit succeed, materialization SHALL replace prior affinity facts and persist the singleton full/promoted cuisine snapshot with its generation time through one transaction. Search requests SHALL consume stored state rather than invoking this producer. This documents the persistence boundary, not runtime-qualified rollback or crash recovery.
+
+#### Scenario: Repeated successful generation
+- **WHEN** materialization succeeds again with unchanged inputs and clock
+- **THEN** the stored facts and cuisine choices remain equivalent and there is one current snapshot
+
+#### Scenario: Cancellation before generation completes
+- **WHEN** cancellation stops materialization before its writes
+- **THEN** it does not replace the previously stored snapshot
+
+### Requirement: Initialize filters after overdue finalization
+
+Startup initialization SHALL invoke overdue-meal finalization before materialization. Its hosted boundary SHALL log an initialization exception. A later startup SHALL be able to invoke initialization again; no current-process retry loop or freshness deadline is established. Scheduled Dreaming dependencies remain owned by data-backup-and-recovery.
+
+#### Scenario: Startup initializes cooking facts
+- **WHEN** startup initialization successfully finalizes an overdue planned recipe and materializes filters
+- **THEN** the resulting facts include the newly Cooked event
+
+#### Scenario: Initialization fails
+- **WHEN** startup initialization throws
+- **THEN** the hosted boundary logs the failure without establishing successful new materialization
+
+### Requirement: Skip obsolete or contentless search index work
+
+Index work SHALL return without publishing when the recipe is absent/deleted, a supplied nonempty fingerprint differs from current content, canonical text is empty, or the search document is absent at publication. Such returns SHALL NOT establish that an index was created.
+
+#### Scenario: Stale fingerprint
+- **WHEN** the requested fingerprint differs from current recipe content
+- **THEN** the work leaves the search document unchanged
+
+#### Scenario: Pending PDF has no text
+- **WHEN** a retained PDF recipe has no extracted canonical text
+- **THEN** indexing leaves its pending search document unpublished
+
+### Requirement: Publish lexical content before optional embedding work
+
+Indexing eligible content SHALL persist canonical text, metadata, schema version, source fingerprint, lexical ready status and indexing time before generating an embedding. With no embedding provider it SHALL leave embedding status pending while preserving published lexical content.
+
+#### Scenario: Provider unavailable
+- **WHEN** lexical publication succeeds and no embedding provider is supplied
+- **THEN** the document remains lexical-ready with embedding pending
+
+#### Scenario: Embedding succeeds
+- **WHEN** the provider returns a nonempty vector and the stored source fingerprint still matches
+- **THEN** indexing persists the vector with its model, matching embedding fingerprint and ready embedding status
+
+### Requirement: Protect superseding search content during embedding publication
+
+Before persisting an embedding result, indexing SHALL reload the search document and compare its source fingerprint to the indexed content. A different fingerprint SHALL prevent the older embedding from being published.
+
+#### Scenario: Newer content arrives during provider work
+- **WHEN** the reloaded document has a different source fingerprint
+- **THEN** the old embedding result is not saved over that document
+
+### Requirement: Retain lexical content when embedding work fails
+
+An embedding exception or empty vector SHALL enter the indexing failure path. When the stored fingerprint still matches and failure persistence succeeds, embedding status SHALL become failed while lexical content remains ready. The exception SHALL propagate to shared workflow handling; successful retry is not guaranteed.
+
+#### Scenario: Provider exception
+- **WHEN** embedding generation throws after lexical publication
+- **THEN** matching content remains lexical-ready, embedding status is marked failed and the exception propagates
+
+#### Scenario: Empty provider result
+- **WHEN** the provider returns an empty vector for nonempty content
+- **THEN** indexing rejects that result through the failure path without publishing an empty embedding

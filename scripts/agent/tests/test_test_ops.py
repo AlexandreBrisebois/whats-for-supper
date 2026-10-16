@@ -23,29 +23,6 @@ def load_module():
 
 
 class ImpactPlanningTests(IsolatedGitTestCase):
-    def test_impact_selection_blocks_on_changed_head_before_planning(self):
-        module = load_module()
-        with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            subprocess.run(["git", "init", "-q"], cwd=root, check=True)
-            subprocess.run(["git", "config", "user.email", "tests@example.com"], cwd=root, check=True)
-            subprocess.run(["git", "config", "user.name", "Tests"], cwd=root, check=True)
-            (root / ".gitignore").write_text(".task/\n")
-            (root / "file.txt").write_text("a\n")
-            subprocess.run(["git", "add", "."], cwd=root, check=True)
-            subprocess.run(["git", "commit", "-qm", "A"], cwd=root, check=True)
-            session_dir = root / ".task/agent-session"
-            module.session.begin("pilot", root, session_dir)
-            (root / "file.txt").write_text("b\n")
-            subprocess.run(["git", "commit", "-am", "B", "-q"], cwd=root, check=True)
-
-            task_delta = module.session.task_delta
-            with mock.patch.object(module.session, "task_delta",
-                                   side_effect=lambda: task_delta(root, session_dir)), \
-                 mock.patch.object(module, "build_impact_plan") as plan:
-                with self.assertRaisesRegex(RuntimeError, "baseline HEAD"):
-                    module.get_session_files()
-                plan.assert_not_called()
     def test_changed_files_include_untracked_paths(self):
         module = load_module()
 
@@ -138,7 +115,7 @@ class ImpactPlanningTests(IsolatedGitTestCase):
 
             with mock.patch.object(module, "ROOT", root), \
                 mock.patch.object(module, "CACHE_PATH", cache_path), \
-                mock.patch.object(module, "get_session_files", return_value=["changed.ts"]), \
+                mock.patch.object(module, "get_changed_files", return_value=["changed.ts"]), \
                 mock.patch.object(module, "build_impact_plan", return_value=plan), \
                 mock.patch("finish.run_command", side_effect=run_and_mutate), \
                 mock.patch.dict(os.environ, {"WFS_DISABLE_TEST_CACHE": "1"}, clear=True):
@@ -153,7 +130,7 @@ class ImpactPlanningTests(IsolatedGitTestCase):
         module = load_module()
         with tempfile.TemporaryDirectory() as tmp:
             cache = Path(tmp) / 'cache.json'
-            with mock.patch.object(module, 'get_session_files', return_value=['unknown.ts']), \
+            with mock.patch.object(module, 'get_changed_files', return_value=['unknown.ts']), \
                  mock.patch.object(module, 'build_impact_digest', return_value='tested'), \
                  mock.patch.object(module, 'CACHE_PATH', cache), \
                  mock.patch.dict(os.environ, {'WFS_ISOLATED_RUNNER': '1'}, clear=True), \
@@ -167,7 +144,7 @@ class ImpactPlanningTests(IsolatedGitTestCase):
         module = load_module()
         with tempfile.TemporaryDirectory() as tmp:
             cache = Path(tmp) / 'cache.json'
-            with mock.patch.object(module, 'get_session_files', return_value=['unknown.ts']), \
+            with mock.patch.object(module, 'get_changed_files', return_value=['unknown.ts']), \
                  mock.patch.object(module, 'build_impact_digest', return_value='before'), \
                  mock.patch.object(module, 'CACHE_PATH', cache), \
                  mock.patch('finish.run_command', return_value=('blocked', 'TimeoutExpired')) as run:

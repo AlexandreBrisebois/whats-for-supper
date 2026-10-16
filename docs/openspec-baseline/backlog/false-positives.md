@@ -1,0 +1,26 @@
+# False positives, closed components and counter-evidence
+
+These are distinct from duplicates, intentional limitations, superseded findings and unresolved reports. Closure below applies only to the exact overbroad claim, not the entire journey. Coordinator independently inspected the critical source boundaries. No production-runtime correctness claim follows.
+
+| Claim / component | Disposition | Affirmative evidence / reviewer | Remaining scope |
+| --- | --- | --- | --- |
+| Feature Flags have no specification coverage | **False positive, closed as broad omission** | Independent requested feature-flags agent mapped 12 requirements/28 scenarios,3 keys; coordinator checked matrix and main titles.13 focused tests and strict member spec validation passed | WFS-BL-029 improves discoverability; preference races/contracts/deployment remain023/024/008 |
+| Stack has a hardcoded26 limit / always reaches recipe26 | **False positive for hardcoded/universal claim; original report unresolved** | page size20; existing Chromium180 test asserts actual ID180 and return ID1.126 actual-callback probe reaches ID126 with displayed26/126; coordinator read merge/position/prefetch source |010/011 retain ordinal, missing middle pages, late filter response and user's actual-dataset identity check |
+| Forced vegetarian backfill ignores string force from YAML | **False positive, closed** | WorkflowOrchestrator.SubstituteVariables bool.TryParse converts true/True before JSON; coordinator read127–130; force processor test asserts known recipe queued | No force bug; operator extraction027 and actual model qualification separate |
+| Every cross-week move omits grocery recomputation | **False positive for blanket claim** | MoveCrossWeekAsync recomputes both weeks; Sunday AssignRecipeAsync also recomputes/publishes next week; independent library/tonight review and coordinator source read | Same-offset spill and destination move publication remain012 |
+| Order In Drop calls DELETE and clears original assignment | **False claim, closed** | Home test expressly expects no DELETE; source status3 retains recipe association |022 requires product decision on supplies/retention |
+| Grocery canonical unit handling proves canonical ingredient IDs already implemented | **Withdrawn stale hypothesis** | GroceryRecomputeService groups NormalizedKey/BucketUnit; PWA keys displayName; agent corrected initial interpretation and coordinator retained warning | U06/022 remain ingredient identity investigation |
+| Arbitrary ineligible recipe can be local Surprise Me | **False positive for blanket claim** | server IsPromotionEligible filtering and existing tests exclude ineligible/issue candidates and disable no-alternate action | Server freshness/continuation still006/019 |
+| Discoverability toggle has no rollback | **False positive for blanket claim** | StackActionBar finally clears pendingValue/loading to derive the original currentRecipe flag; RecipeDetailSheet catch explicitly restores !next; StackActionBar.test329 asserts the original aria-label after rejection | File/SSE/overlap limits U41–43 remain |
+| Stale stored pending GOTO always prevents active recipe use | **False positive for blanket claim** | GoToService recalculates active readiness from recipe; independent Tonight supplemental source review | Settings freshness and separate list writes remain distinct |
+| Feature-flag store lacks any member ABA/pending-key protection | **False positive for blanket claim** | request/member generation guards and passing store tests; independent Tonight/Feature Flags audit | Same-member fetch/save ordering still U-MP06 |
+| Invalid language after browse mutation proves persisted corruption | **Unsupported inference rejected** | mutation occurs on tracked entity but branch throws before SaveChanges; independent source review | Wire validation/atomic request semantics still023 |
+| Member create201/409 absent from current API source | **Superseded historical component of U19** | Current controller/service/OpenAPI contain201/409; existing409 component test preserves list/identity | Length/status qualification, U20 silent failure, historical U22 acceptance provenance not closed |
+| Missing test alone is an implementation bug | **Not a valid defect classification** | U47/U50 and shared U10 record absent/substituted evidence, no failing behavior by themselves |030 qualification backlog |
+| Native original site availability, offline or exactly-once guaranteed | **Unsupported guarantee / intentional limitation, not false-positive closure** | Source leaves external availability, empty cache, separate stores and in-memory delivery boundaries | Product/qualification gates024/025/030 |
+
+Duplicates are routed by root cause in the queue and discrepancy register; they are not deleted or marked false. A failed reproduction of the user's original stack report does not close that report.
+
+## Closed documentation findings after consolidation
+
+WFS-BL-027 and028 are closed as **resolved documentation omissions**, not false positives: the missing behavior was real, then drafted, explicitly accepted, promoted and archived. See [completion](consolidation-completion.md).

@@ -21,3 +21,8 @@ The [Mère-Designer lens](../../prompts/mere-designer.md) is optional when expli
 requested. It is not an approval gate, required persona or persistent voice.
 Use the shared scope and verification owners; this skill adds no second completion
 workflow. Report the user-visible change and actual focused validation.
+
+Match verification to the claim: inspect the rendered result for visual changes
+and exercise affected interactions for behavior changes. Report when either is
+unavailable; source inspection or a screenshot alone cannot establish interaction
+behavior.

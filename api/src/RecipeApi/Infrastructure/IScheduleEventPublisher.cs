@@ -8,7 +8,7 @@ public interface IScheduleEventPublisher
     Task PublishWeekUpdatedAsync(ScheduleDays schedule, string? excludeConnectionId = null, int? echoSeq = null);
     Task PublishVoteUpdatedAsync(Guid recipeId, int voteCount, string? excludeConnectionId = null);
     Task PublishSmartDefaultsUpdatedAsync(int weekOffset, SmartDefaultsDto defaults, string? excludeConnectionId = null);
-    Task PublishFillTheGapInvalidatedAsync(int weekOffset, string? excludeConnectionId = null);
+    Task PublishFillTheGapInvalidatedAsync(int weekOffset, DateOnly weekStartDate, string? excludeConnectionId = null);
     Task PublishRecipeReadyAsync(Guid recipeId, string name, string? imageUrl, string? excludeConnectionId = null);
 
     /// <summary>
@@ -17,5 +17,5 @@ public interface IScheduleEventPublisher
     /// </summary>
     Task PublishRecipeFailedAsync(Guid recipeId, Guid workflowInstanceId, string errorMessage, string failedStep, object? partialData, string? excludeConnectionId = null);
 
-    Task PublishGroceryUpdatedAsync(int weekOffset, Dictionary<string, bool> groceryState, string? excludeConnectionId = null);
+    Task PublishGroceryUpdatedAsync(int weekOffset, Dictionary<string, bool> groceryState, DateOnly weekStartDate, string? excludeConnectionId = null);
 }

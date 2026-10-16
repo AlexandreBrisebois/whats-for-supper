@@ -132,7 +132,7 @@ describe('QuickFindModal — initial fetch', () => {
     await waitFor(() => {
       expect(mockGetFillTheGap).toHaveBeenCalledTimes(1);
     });
-    expect(mockGetFillTheGap).toHaveBeenCalledWith(0);
+    expect(mockGetFillTheGap).toHaveBeenCalledWith(0, undefined);
   });
 
   it('renders standardized time display', async () => {

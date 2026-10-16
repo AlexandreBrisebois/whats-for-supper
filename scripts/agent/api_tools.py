@@ -59,6 +59,8 @@ def get_mock_endpoints(spec=None):
                 for m in matches:
                     # 1. Strip Playwright glob prefix (**/)
                     clean = re.sub(r'^\*+/', '', m)
+                    # Trailing globs allow the same handler to accept query parameters.
+                    clean = re.sub(r'(?<=[\w-])\*+$', '', clean)
                     # 2. Remove any remaining leading slashes
                     clean = clean.lstrip('/')
                     # 3. Convert glob wildcards (*) in path segments to {id}

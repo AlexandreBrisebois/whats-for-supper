@@ -6,7 +6,7 @@ using RecipeApi.Models;
 
 namespace RecipeApi.Services;
 
-public class DiscoveryService(RecipeDbContext dbContext, IScheduleEventPublisher publisher)
+public class DiscoveryService(RecipeDbContext dbContext, IScheduleEventPublisher publisher, IClock clock, DeploymentCalendar calendar)
 {
     private readonly RecipeDbContext _dbContext = dbContext;
     private readonly IScheduleEventPublisher _publisher = publisher;
@@ -59,6 +59,7 @@ public class DiscoveryService(RecipeDbContext dbContext, IScheduleEventPublisher
 
     public async Task SubmitVoteAsync(Guid recipeId, Guid familyMemberId, VoteType vote)
     {
+        var context = calendar.Capture(clock.UtcNow);
         var existingVote = await _dbContext.RecipeVotes
             .FirstOrDefaultAsync(v => v.RecipeId == recipeId && v.FamilyMemberId == familyMemberId);
 
@@ -92,16 +93,14 @@ public class DiscoveryService(RecipeDbContext dbContext, IScheduleEventPublisher
         var threshold = (int)Math.Ceiling((familySize + 1.0) / 2);
         if (voteCount == threshold || voteCount == threshold - 1)
         {
-            var defaults = await GetSmartDefaultsAsync(0);
+            var defaults = await GetSmartDefaultsAsync(0, context);
             await _publisher.PublishSmartDefaultsUpdatedAsync(0, defaults);
         }
     }
 
-    private async Task<SmartDefaultsDto> GetSmartDefaultsAsync(int weekOffset)
+    private async Task<SmartDefaultsDto> GetSmartDefaultsAsync(int weekOffset, DeploymentCalendarContext context)
     {
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
-        var daysToMonday = ((int)today.DayOfWeek - 1 + 7) % 7;
-        var monday = today.AddDays(-daysToMonday + weekOffset * 7);
+        var monday = context.WeekStart(weekOffset);
         var sunday = monday.AddDays(6);
 
         var familySize = await _dbContext.FamilyMembers.CountAsync();
@@ -174,7 +173,8 @@ public class DiscoveryService(RecipeDbContext dbContext, IScheduleEventPublisher
             ConsensusThreshold: consensusThreshold,
             PreSelectedRecipes: preSelectedRecipes,
             OpenSlots: openSlots,
-            ConsensusRecipesCount: filteredVotes.Count);
+            ConsensusRecipesCount: filteredVotes.Count,
+            WeekStartDate: monday);
     }
 
 

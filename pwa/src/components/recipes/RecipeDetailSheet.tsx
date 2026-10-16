@@ -1,4 +1,5 @@
 'use client';
+import { CalendarUnavailableError } from '@/lib/deployment-calendar';
 
 import { useEffect, useState, useRef } from 'react';
 import { AnimatePresence } from 'framer-motion';
@@ -286,11 +287,16 @@ export function RecipeDetailSheet({
     }
   };
 
+  const [actionError, setActionError] = useState<string | null>(null);
   const handleUseRecipe = async () => {
     if (!recipe) return;
+    setActionError(null);
     setIsSavingAction(true);
     try {
       await onUseForDay(recipe);
+    } catch (error) {
+      if (error instanceof CalendarUnavailableError) setActionError(error.message);
+      else console.error(error);
     } finally {
       setIsSavingAction(false);
     }
@@ -298,9 +304,13 @@ export function RecipeDetailSheet({
 
   const handlePlanForLater = async () => {
     if (!recipe) return;
+    setActionError(null);
     setIsSavingAction(true);
     try {
       await (onPlanForLater ? onPlanForLater(recipe) : onUseForDay(recipe));
+    } catch (error) {
+      if (error instanceof CalendarUnavailableError) setActionError(error.message);
+      else console.error(error);
     } finally {
       setIsSavingAction(false);
     }
@@ -972,6 +982,11 @@ export function RecipeDetailSheet({
 
             {!isEditing && (
               <div className="flex flex-col gap-4 border-t border-charcoal/8 pt-5">
+                {actionError && (
+                  <p role="alert" className="text-sm text-terracotta">
+                    {actionError}
+                  </p>
+                )}
                 {!showActionPivot ? (
                   <button
                     type="button"

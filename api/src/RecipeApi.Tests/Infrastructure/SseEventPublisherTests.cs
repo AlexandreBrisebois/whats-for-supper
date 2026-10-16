@@ -110,7 +110,9 @@ public class SseEventPublisherTests
         var (manager, body) = MakeManager();
         var publisher = new SseEventPublisher(manager);
 
-        var schedule = new ScheduleDays(0, false, 0, []);
+        var schedule = new ScheduleDays(0, false, 0, [],
+            new RecipeApi.Services.DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager())
+                .Capture(DateTimeOffset.Parse("2026-10-12T01:30:00Z")), new DateOnly(2026, 10, 12));
 
         await publisher.PublishWeekUpdatedAsync(schedule);
 
@@ -126,7 +128,9 @@ public class SseEventPublisherTests
         var (manager, body) = MakeManager();
         var publisher = new SseEventPublisher(manager);
 
-        var schedule = new ScheduleDays(0, false, 0, []);
+        var schedule = new ScheduleDays(0, false, 0, [],
+            new RecipeApi.Services.DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager())
+                .Capture(DateTimeOffset.Parse("2026-10-12T01:30:00Z")), new DateOnly(2026, 10, 12));
 
         await publisher.PublishWeekUpdatedAsync(schedule, echoSeq: 5);
 
@@ -168,7 +172,7 @@ public class SseEventPublisherTests
         var (manager, body) = MakeManager();
         var publisher = new SseEventPublisher(manager);
 
-        var defaults = new SmartDefaultsDto(0, 4, 3, [], [], 0);
+        var defaults = new SmartDefaultsDto(0, 4, 3, [], [], 0, new DateOnly(2025, 1, 6));
 
         await publisher.PublishSmartDefaultsUpdatedAsync(0, defaults);
 
@@ -189,7 +193,7 @@ public class SseEventPublisherTests
         var (manager, body) = MakeManager();
         var publisher = new SseEventPublisher(manager);
 
-        await publisher.PublishFillTheGapInvalidatedAsync(1);
+        await publisher.PublishFillTheGapInvalidatedAsync(1, new DateOnly(2025, 1, 13));
 
         var (eventType, data) = ParseSseFrame(ReadBody(body));
 

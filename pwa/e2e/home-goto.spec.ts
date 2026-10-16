@@ -44,7 +44,14 @@ test.describe('Home Command Center — GOTO & Pivot Flow', () => {
           await route.fulfill({
             status: 200,
             contentType: 'application/json',
-            body: JSON.stringify({ data: { weekOffset: 0, days: [] } }),
+            body: JSON.stringify({
+              data: {
+                weekOffset: 0,
+                calendar: builders.deploymentCalendar() as any,
+                weekStartDate: '2026-05-04' as any,
+                days: [],
+              },
+            }),
           });
         } else {
           await route.continue();
@@ -153,7 +160,14 @@ test.describe('Home Command Center — GOTO & Pivot Flow', () => {
           await route.fulfill({
             status: 200,
             contentType: 'application/json',
-            body: JSON.stringify({ data: { weekOffset: 0, days: [] } }),
+            body: JSON.stringify({
+              data: {
+                weekOffset: 0,
+                calendar: builders.deploymentCalendar() as any,
+                weekStartDate: '2026-05-04' as any,
+                days: [],
+              },
+            }),
           });
         } else {
           await route.continue();
@@ -222,7 +236,14 @@ test.describe('Home Command Center — GOTO & Pivot Flow', () => {
           await route.fulfill({
             status: 200,
             contentType: 'application/json',
-            body: JSON.stringify({ data: { weekOffset: 0, days: [] } }),
+            body: JSON.stringify({
+              data: {
+                weekOffset: 0,
+                calendar: builders.deploymentCalendar() as any,
+                weekStartDate: '2026-05-04' as any,
+                days: [],
+              },
+            }),
           });
         } else {
           await route.continue();
@@ -454,7 +475,14 @@ test.describe('Home Command Center — todayStore (Group C)', () => {
             await route.fulfill({
               status: 200,
               contentType: 'application/json',
-              body: JSON.stringify({ data: { weekOffset: 0, days: [] } }),
+              body: JSON.stringify({
+                data: {
+                  weekOffset: 0,
+                  calendar: builders.deploymentCalendar() as any,
+                  weekStartDate: '2026-05-04' as any,
+                  days: [],
+                },
+              }),
             });
           } else {
             const days = Array.from({ length: 7 }, (_, i) => {
@@ -477,7 +505,14 @@ test.describe('Home Command Center — todayStore (Group C)', () => {
             await route.fulfill({
               status: 200,
               contentType: 'application/json',
-              body: JSON.stringify({ data: { weekOffset: 0, days } }),
+              body: JSON.stringify({
+                data: {
+                  weekOffset: 0,
+                  calendar: builders.deploymentCalendar() as any,
+                  weekStartDate: '2026-05-04' as any,
+                  days,
+                },
+              }),
             });
           }
         } else {
@@ -544,7 +579,16 @@ test.describe('Home Command Center — todayStore (Group C)', () => {
             await route.fulfill({
               status: 200,
               contentType: 'application/json',
-              body: JSON.stringify({ data: { weekOffset: 0, locked: false, status: 0, days: [] } }),
+              body: JSON.stringify({
+                data: {
+                  weekOffset: 0,
+                  calendar: builders.deploymentCalendar() as any,
+                  weekStartDate: '2026-05-04' as any,
+                  locked: false,
+                  status: 0,
+                  days: [],
+                },
+              }),
             });
           } else {
             const days = Array.from({ length: 7 }, (_, i) => {
@@ -564,7 +608,16 @@ test.describe('Home Command Center — todayStore (Group C)', () => {
             await route.fulfill({
               status: 200,
               contentType: 'application/json',
-              body: JSON.stringify({ data: { weekOffset: 0, locked: false, status: 0, days } }),
+              body: JSON.stringify({
+                data: {
+                  weekOffset: 0,
+                  calendar: builders.deploymentCalendar() as any,
+                  weekStartDate: '2026-05-04' as any,
+                  locked: false,
+                  status: 0,
+                  days,
+                },
+              }),
             });
           }
         } else if (route.request().url().includes('smart-defaults')) {
@@ -574,6 +627,8 @@ test.describe('Home Command Center — todayStore (Group C)', () => {
             body: JSON.stringify({
               data: {
                 weekOffset: 0,
+                calendar: builders.deploymentCalendar() as any,
+                weekStartDate: '2026-05-04' as any,
                 familySize: 3,
                 consensusThreshold: 2,
                 preSelectedRecipes: [],

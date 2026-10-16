@@ -182,7 +182,7 @@ class DockerSmokeTests(unittest.TestCase):
         task = yaml.safe_load((ROOT / 'Taskfile.yml').read_text())
         validation = yaml.safe_load((ROOT / '.github/workflows/validate.yml').read_text())
         smoke_overrides = yaml.safe_load((ROOT / 'docker/compose/ci-overrides.yml').read_text())
-        self.assertEqual(task['tasks']['test:smoke']['cmds'], ['python3 -B scripts/agent/docker_smoke.py'])
+        self.assertEqual(task['tasks']['test:smoke']['cmds'], ['"{{.PYTHON}}" -B scripts/agent/docker_smoke.py'])
         steps = validation['jobs']['docker-smoke']['steps']
         self.assertTrue(any(s.get('run') == 'python3 -B scripts/agent/docker_smoke.py' for s in steps))
         command = self.smoke.compose_command()
@@ -195,7 +195,7 @@ class DockerSmokeTests(unittest.TestCase):
     def test_all_compose_interpolation_inputs_have_pinned_smoke_values(self):
         inputs = set()
         for name in ('infrastructure.yml', 'apps.yml', 'ci-overrides.yml'):
-            inputs.update(re.findall(r'(?<!\$)\$\{([A-Z_][A-Z_0-9]*)',
+            inputs.update(re.findall(r'(?<!\$)\$\{([A-Za-z_][A-Za-z_0-9]*)',
                                      (ROOT / 'docker/compose' / name).read_text()))
         pinned = {line.split('=', 1)[0] for line in self.smoke.ENV_FILE.read_text().splitlines()
                   if line and not line.startswith('#')}

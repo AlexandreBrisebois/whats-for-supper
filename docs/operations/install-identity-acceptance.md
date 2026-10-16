@@ -35,7 +35,7 @@ production uses `.next/types`, while the development server used by finish's
 impact checks uses `.next/dev/types`. A first finish that changes those imports
 must discard its success under the immutable-content guard. Review the exact
 generated diff, retain the dev declarations, prepare/review the resulting delta,
-then run `task agent:finish` again without another production build in between.
+then run `task verify` again without another production build in between.
 Do not hand-edit generated declarations, reset the task baseline, ignore the
 mutation result or weaken the guard. This is a framework-generated prerequisite;
 the production matrix remains separate acceptance evidence for its recorded
@@ -82,5 +82,5 @@ Artifacts and remaining blockers:
 If devices, origins or exact image identity are unavailable, record that
 acceptance as **blocked**. Do not mark ID-T4 complete until its required browser
 and physical-device acceptance passes. The user's T3 GitHub amd64 deferral is
-recorded in the [task evidence](../../.kiro/specs/pwa-install-identity/tasks.md);
-arm64 results do not prove amd64 agreement.
+a historical scope decision; arm64 results do not prove amd64 agreement. Record
+new acceptance decisions and actual results with the selected OpenSpec change.

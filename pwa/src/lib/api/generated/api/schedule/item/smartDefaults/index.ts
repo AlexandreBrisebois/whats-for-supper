@@ -11,6 +11,7 @@ import {
 import {
   type AdditionalDataHolder,
   type BaseRequestBuilder,
+  type DateOnly,
   type Parsable,
   type ParsableFactory,
   type ParseNode,
@@ -86,7 +87,8 @@ export interface SmartDefaultsRequestBuilder extends BaseRequestBuilder<SmartDef
    * @returns {Promise<SmartDefaultsGetResponse>}
    */
   get(
-    requestConfiguration?: RequestConfiguration<object> | undefined
+    requestConfiguration?:
+      RequestConfiguration<SmartDefaultsRequestBuilderGetQueryParameters> | undefined
   ): Promise<SmartDefaultsGetResponse | undefined>;
   /**
    * Get smart defaults for a week
@@ -94,14 +96,24 @@ export interface SmartDefaultsRequestBuilder extends BaseRequestBuilder<SmartDef
    * @returns {RequestInformation}
    */
   toGetRequestInformation(
-    requestConfiguration?: RequestConfiguration<object> | undefined
+    requestConfiguration?:
+      RequestConfiguration<SmartDefaultsRequestBuilderGetQueryParameters> | undefined
   ): RequestInformation;
+}
+/**
+ * Get smart defaults for a week
+ */
+export interface SmartDefaultsRequestBuilderGetQueryParameters {
+  /**
+   * Optional yyyy-MM-dd Monday anchoring all relative offsets and defer's next-week base. Omission captures the deployment current Monday (UTC by default). Literal source dates remain unchanged. Invalid or non-Monday references return 400 before work.
+   */
+  referenceWeekStartDate?: DateOnly;
 }
 /**
  * Uri template for the request builder.
  */
 export const SmartDefaultsRequestBuilderUriTemplate =
-  '{+baseurl}/api/schedule/{weekOffset}/smart-defaults';
+  '{+baseurl}/api/schedule/{weekOffset}/smart-defaults{?referenceWeekStartDate*}';
 /**
  * Metadata for all the requests in the request builder.
  */

@@ -110,21 +110,41 @@ test.describe('Recipe Action Pivot', () => {
     await page.clock.setFixedTime(new Date('2026-05-13T12:00:00Z'));
     const todayIndex = 2;
 
-    await page.route('**/api/schedule?weekOffset=0', async (route) => {
-      const days = Array.from({ length: 7 }, (_, dayIndex) => ({
-        day: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][dayIndex],
-        date: `2026-05-${String(4 + dayIndex).padStart(2, '0')}`,
-        recipe:
-          dayIndex === todayIndex ? builders.scheduleRecipe({ id: MOCK_IDS.RECIPE_CHICKEN }) : null,
-        status: 0,
-      }));
+    await page.route(
+      (url) => url.pathname === '/api/schedule' && url.searchParams.get('weekOffset') === '0',
+      async (route) => {
+        const days = Array.from({ length: 7 }, (_, dayIndex) => ({
+          day: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][dayIndex],
+          date: `2026-05-${String(11 + dayIndex).padStart(2, '0')}`,
+          recipe:
+            dayIndex === todayIndex
+              ? builders.scheduleRecipe({ id: MOCK_IDS.RECIPE_CHICKEN })
+              : null,
+          status: 0,
+        }));
 
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ data: { weekOffset: 0, locked: false, status: 0, days } }),
-      });
-    });
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            data: {
+              weekOffset: 0,
+              weekStartDate: '2026-05-11',
+              calendar: builders.deploymentCalendar({
+                today: '2026-05-13',
+                capturedAtUtc: '2026-05-13T12:00:00Z',
+                currentWeekStartDate: '2026-05-11',
+                referenceWeekStartDate: '2026-05-11',
+                nextDayAtUtc: '2026-05-14T00:00:00Z',
+              }),
+              locked: false,
+              status: 0,
+              days,
+            },
+          }),
+        });
+      }
+    );
 
     await page.goto('/recipes');
     await page.getByTestId('recipe-search-input').fill('lasagna');
@@ -201,21 +221,32 @@ test.describe('Recipe Action Pivot', () => {
     await page.clock.setFixedTime(wednesday);
 
     // Mock schedule: all days empty
-    await page.route('**/api/schedule?weekOffset=0', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          data: {
-            weekOffset: 0,
-            days: Array.from({ length: 7 }, (_, i) => ({
-              date: `2026-05-${11 + i}`, // Mon 11 to Sun 17
-              recipe: null,
-            })),
-          },
-        }),
-      });
-    });
+    await page.route(
+      (url) => url.pathname === '/api/schedule' && url.searchParams.get('weekOffset') === '0',
+      async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            data: {
+              weekOffset: 0,
+              weekStartDate: '2026-05-11',
+              calendar: builders.deploymentCalendar({
+                today: '2026-05-13',
+                capturedAtUtc: '2026-05-13T12:00:00Z',
+                currentWeekStartDate: '2026-05-11',
+                referenceWeekStartDate: '2026-05-11',
+                nextDayAtUtc: '2026-05-14T00:00:00Z',
+              }),
+              days: Array.from({ length: 7 }, (_, i) => ({
+                date: `2026-05-${11 + i}`, // Mon 11 to Sun 17
+                recipe: null,
+              })),
+            },
+          }),
+        });
+      }
+    );
 
     await page.goto('/recipes');
     await page.getByTestId('recipe-search-input').fill('lasagna');

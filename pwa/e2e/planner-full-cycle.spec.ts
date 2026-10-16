@@ -129,6 +129,8 @@ async function setupPlanner(page: Page, locked = false) {
           body: JSON.stringify({
             data: {
               weekOffset: 0,
+              calendar: builders.deploymentCalendar() as any,
+              weekStartDate: '2026-05-04' as any,
               familySize: 3,
               consensusThreshold: 2,
               preSelectedRecipes: [],
@@ -146,6 +148,8 @@ async function setupPlanner(page: Page, locked = false) {
         body: JSON.stringify({
           data: {
             weekOffset: 0,
+            calendar: builders.deploymentCalendar() as any,
+            weekStartDate: '2026-05-04' as any,
             locked: isLockedState,
             status: currentStatus,
             days: isLockedState ? buildLockedDays() : draftDays,
@@ -260,7 +264,14 @@ test.describe('Planner — Ordered-In State', () => {
         status: dateStr === today ? 3 : 0,
       };
     });
-    const schedule = { weekOffset: 0, locked: false, status: 0, days };
+    const schedule = {
+      weekOffset: 0,
+      calendar: builders.deploymentCalendar() as any,
+      weekStartDate: '2026-05-04' as any,
+      locked: false,
+      status: 0,
+      days,
+    };
 
     await page.route(
       (url) => url.pathname.includes('/api/schedule'),
@@ -289,6 +300,8 @@ test.describe('Planner — Ordered-In State', () => {
             body: JSON.stringify({
               data: {
                 weekOffset: 0,
+                calendar: builders.deploymentCalendar() as any,
+                weekStartDate: '2026-05-04' as any,
                 familySize: 3,
                 consensusThreshold: 2,
                 preSelectedRecipes: [],
@@ -358,6 +371,8 @@ test.describe('Planner — Voting Flow', () => {
             body: JSON.stringify({
               data: {
                 weekOffset: 0,
+                calendar: builders.deploymentCalendar() as any,
+                weekStartDate: '2026-05-04' as any,
                 familySize: 3,
                 consensusThreshold: 2,
                 preSelectedRecipes: [],
@@ -375,6 +390,8 @@ test.describe('Planner — Voting Flow', () => {
           body: JSON.stringify({
             data: {
               weekOffset: 0,
+              calendar: builders.deploymentCalendar() as any,
+              weekStartDate: '2026-05-04' as any,
               locked: false,
               status: 1,
               days: buildDraftDays(
@@ -450,7 +467,14 @@ test.describe('Planner — SSE Live Updates', () => {
             status: 200,
             contentType: 'application/json',
             body: JSON.stringify({
-              data: { weekOffset: 0, locked: false, status: 0, days: emptyDays },
+              data: {
+                weekOffset: 0,
+                calendar: builders.deploymentCalendar() as any,
+                weekStartDate: '2026-05-04' as any,
+                locked: false,
+                status: 0,
+                days: emptyDays,
+              },
             }),
           });
           return;
@@ -462,6 +486,8 @@ test.describe('Planner — SSE Live Updates', () => {
             body: JSON.stringify({
               data: {
                 weekOffset: 0,
+                calendar: builders.deploymentCalendar() as any,
+                weekStartDate: '2026-05-04' as any,
                 familySize: 3,
                 consensusThreshold: 2,
                 preSelectedRecipes: [],

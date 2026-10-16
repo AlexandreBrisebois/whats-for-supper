@@ -119,9 +119,19 @@ function buildReorderedSchedule(
 
 // ─── Reset store and mock before each test ────────────────────────────────────
 
+const calendar = {
+  timeZone: 'UTC',
+  today: '2026-05-04',
+  capturedAtUtc: '2026-05-04T12:00:00Z',
+  currentWeekStartDate: '2026-05-04',
+  referenceWeekStartDate: '2026-05-04',
+  nextDayAtUtc: '2026-05-05T00:00:00Z',
+};
 beforeEach(() => {
   useWeekStore.setState({
     weekOffset: 0,
+    weekStartDate: '2026-05-04',
+    calendar: calendar as any,
     schedule: makeSevenDaySchedule(),
     status: 0,
     isLoading: false,
@@ -176,7 +186,7 @@ describe('weekStore — drag debounce bug condition (Property 1)', () => {
     // The planner must identify the source slot as well as the recipe. Recipes
     // can appear more than once in a week; without fromIndex the API falls back
     // to the first matching recipe (often Monday) instead of the dragged card.
-    expect(moveRecipeMock).toHaveBeenCalledWith(0, 'recipe-1', 4, 1);
+    expect(moveRecipeMock).toHaveBeenCalledWith(0, 'recipe-1', 4, 1, '2026-05-04');
   });
 
   /**
@@ -272,6 +282,8 @@ describe('weekStore — preservation (Property 2)', () => {
           const preDragSnapshot = makeSevenDaySchedule();
           useWeekStore.setState({
             weekOffset: 0,
+            weekStartDate: '2026-05-04',
+            calendar: calendar as any,
             schedule: preDragSnapshot,
             status: 0,
             isLoading: false,
@@ -321,6 +333,8 @@ describe('weekStore — preservation (Property 2)', () => {
           const preDragSnapshot = makeSevenDaySchedule();
           useWeekStore.setState({
             weekOffset: 0,
+            weekStartDate: '2026-05-04',
+            calendar: calendar as any,
             schedule: preDragSnapshot,
             status: 0,
             isLoading: false,
@@ -367,6 +381,8 @@ describe('weekStore — preservation (Property 2)', () => {
     const initialSchedule = makeSevenDaySchedule();
     useWeekStore.setState({
       weekOffset: 0,
+      weekStartDate: '2026-05-04',
+      calendar: calendar as any,
       schedule: initialSchedule,
       status: 0,
       isLoading: false,
@@ -418,6 +434,8 @@ describe('weekStore — preservation (Property 2)', () => {
 
     useWeekStore.setState({
       weekOffset: 0,
+      weekStartDate: '2026-05-04',
+      calendar: calendar as any,
       schedule: makeSevenDaySchedule(),
       status: 0,
       isLoading: false,
@@ -463,6 +481,8 @@ describe('weekStore — preservation (Property 2)', () => {
   it('swaps the dragged slot with the destination slot instead of shifting the intermediate stack', () => {
     useWeekStore.setState({
       weekOffset: 0,
+      weekStartDate: '2026-05-04',
+      calendar: calendar as any,
       schedule: makeSevenDaySchedule(),
       status: 0,
       isLoading: false,
@@ -503,6 +523,8 @@ describe('weekStore — preservation (Property 2)', () => {
 
     useWeekStore.setState({
       weekOffset: 0,
+      weekStartDate: '2026-05-04',
+      calendar: calendar as any,
       schedule: makeSevenDaySchedule(),
       status: 0,
       isLoading: false,
@@ -534,6 +556,8 @@ describe('weekStore — preservation (Property 2)', () => {
 
     useWeekStore.setState({
       weekOffset: 0,
+      weekStartDate: '2026-05-04',
+      calendar: calendar as any,
       schedule: makeSevenDaySchedule(),
       status: 0,
       isLoading: false,
@@ -564,6 +588,8 @@ describe('weekStore — preservation (Property 2)', () => {
     assignMock.mockResolvedValueOnce(undefined as any);
     getScheduleMock.mockResolvedValueOnce({
       weekOffset: 0,
+      weekStartDate: '2026-05-04',
+      calendar: calendar as any,
       status: 0,
       days: makeSevenDaySchedule(),
       groceryItems: [
@@ -582,6 +608,8 @@ describe('weekStore — preservation (Property 2)', () => {
     const schedule = makeSevenDaySchedule();
     useWeekStore.setState({
       weekOffset: 0,
+      weekStartDate: '2026-05-04',
+      calendar: calendar as any,
       schedule,
       groceryItems: [],
       status: 0,
@@ -593,6 +621,8 @@ describe('weekStore — preservation (Property 2)', () => {
     assignMock.mockResolvedValueOnce(undefined as any);
     getScheduleMock.mockResolvedValueOnce({
       weekOffset: 0,
+      weekStartDate: '2026-05-04',
+      calendar: calendar as any,
       status: 0,
       days: makeSevenDaySchedule(),
       groceryItems: [
@@ -613,7 +643,7 @@ describe('weekStore — preservation (Property 2)', () => {
 
     await vi.waitFor(() => {
       expect(assignMock).toHaveBeenCalledTimes(1);
-      expect(getScheduleMock).toHaveBeenCalledWith(0);
+      expect(getScheduleMock).toHaveBeenCalledWith(0, '2026-05-04');
     });
 
     expect(useWeekStore.getState().groceryItems).toHaveLength(1);
@@ -627,6 +657,8 @@ describe('weekStore — preservation (Property 2)', () => {
     const schedule = makeSevenDaySchedule();
     useWeekStore.setState({
       weekOffset: 0,
+      weekStartDate: '2026-05-04',
+      calendar: calendar as any,
       schedule,
       status: 0,
       isLoading: false,
@@ -657,6 +689,8 @@ describe('weekStore — preservation (Property 2)', () => {
     const schedule = makeSevenDaySchedule();
     useWeekStore.setState({
       weekOffset: 0,
+      weekStartDate: '2026-05-04',
+      calendar: calendar as any,
       schedule,
       groceryItems: [
         {

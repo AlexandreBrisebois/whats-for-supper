@@ -11,33 +11,45 @@ public class ScheduleController(ScheduleService scheduleService) : ControllerBas
     private readonly ScheduleService _scheduleService = scheduleService;
 
     [HttpGet]
-    public async Task<IActionResult> GetSchedule([FromQuery] int weekOffset = 0)
+    public async Task<IActionResult> GetSchedule([FromQuery] int weekOffset = 0, [FromQuery] string? referenceWeekStartDate = null)
     {
-        var schedule = await _scheduleService.GetScheduleAsync(weekOffset);
+        if (!TryReadReference(referenceWeekStartDate, out var reference))
+            return BadRequest(new { message = "referenceWeekStartDate must be a yyyy-MM-dd Monday." });
+        var schedule = await _scheduleService.GetScheduleAsync(weekOffset, reference);
         return Ok(schedule);
     }
 
     [HttpPost("lock")]
-    public async Task<IActionResult> LockSchedule([FromQuery] int weekOffset = 0)
+    public async Task<IActionResult> LockSchedule([FromQuery] int weekOffset = 0, [FromQuery] string? referenceWeekStartDate = null)
     {
-        await _scheduleService.LockScheduleAsync(weekOffset, GetConnectionId());
+        if (!TryReadReference(referenceWeekStartDate, out var reference))
+            return BadRequest(new { message = "referenceWeekStartDate must be a yyyy-MM-dd Monday." });
+        await _scheduleService.LockScheduleAsync(weekOffset, GetConnectionId(), reference);
         return Ok(new { message = "Schedule locked" });
     }
 
     [HttpPost("move")]
-    public async Task<IActionResult> MoveRecipe([FromBody] MoveScheduleDto dto)
+    public async Task<IActionResult> MoveRecipe([FromBody] MoveScheduleDto dto, [FromQuery] string? referenceWeekStartDate = null)
     {
-        await _scheduleService.MoveScheduleEventAsync(dto, GetConnectionId(), GetMoveSeq());
+        if (!TryReadReference(referenceWeekStartDate, out var reference))
+            return BadRequest(new { message = "referenceWeekStartDate must be a yyyy-MM-dd Monday." });
+        await _scheduleService.MoveScheduleEventAsync(dto, GetConnectionId(), GetMoveSeq(), reference);
         return Ok(new { message = "Recipe moved" });
     }
 
     [HttpPost("defer")]
-    public async Task<IActionResult> DeferRecipe([FromBody] DeferScheduleDto dto)
+    public async Task<IActionResult> DeferRecipe([FromBody] DeferScheduleDto dto, [FromQuery] string? referenceWeekStartDate = null, [FromQuery] int targetWeekOffset = 1)
     {
+        if (!TryReadReference(referenceWeekStartDate, out var reference))
+            return BadRequest(new { message = "referenceWeekStartDate must be a yyyy-MM-dd Monday." });
         try
         {
-            var result = await _scheduleService.DeferRecipeAsync(dto, GetConnectionId(), GetMoveSeq());
+            var result = await _scheduleService.DeferRecipeAsync(dto, GetConnectionId(), GetMoveSeq(), referenceWeekStartDate: reference, targetWeekOffset: targetWeekOffset);
             return Ok(result);
+        }
+        catch (Exception ex) when (ex is ArgumentOutOfRangeException or OverflowException)
+        {
+            return BadRequest(new { message = "targetWeekOffset must resolve to a supported calendar date." });
         }
         catch (KeyNotFoundException ex)
         {
@@ -50,23 +62,29 @@ public class ScheduleController(ScheduleService scheduleService) : ControllerBas
     }
 
     [HttpPost("assign")]
-    public async Task<IActionResult> AssignRecipe([FromBody] AssignScheduleDto dto)
+    public async Task<IActionResult> AssignRecipe([FromBody] AssignScheduleDto dto, [FromQuery] string? referenceWeekStartDate = null)
     {
-        var displaced = await _scheduleService.AssignRecipeAsync(dto, GetConnectionId());
+        if (!TryReadReference(referenceWeekStartDate, out var reference))
+            return BadRequest(new { message = "referenceWeekStartDate must be a yyyy-MM-dd Monday." });
+        var displaced = await _scheduleService.AssignRecipeAsync(dto, GetConnectionId(), reference);
         return Ok(new { message = "Recipe assigned", displacedRecipe = displaced });
     }
 
     [HttpGet("fill-the-gap")]
-    public async Task<IActionResult> FillTheGap([FromQuery] int weekOffset = 0)
+    public async Task<IActionResult> FillTheGap([FromQuery] int weekOffset = 0, [FromQuery] string? referenceWeekStartDate = null)
     {
-        var recipes = await _scheduleService.FillTheGapAsync(weekOffset);
+        if (!TryReadReference(referenceWeekStartDate, out var reference))
+            return BadRequest(new { message = "referenceWeekStartDate must be a yyyy-MM-dd Monday." });
+        var recipes = await _scheduleService.FillTheGapAsync(weekOffset, reference);
         return Ok(recipes);
     }
 
     [HttpGet("{weekOffset}/smart-defaults")]
-    public async Task<IActionResult> GetSmartDefaults(int weekOffset = 0)
+    public async Task<IActionResult> GetSmartDefaults(int weekOffset = 0, [FromQuery] string? referenceWeekStartDate = null)
     {
-        var defaults = await _scheduleService.GetSmartDefaultsAsync(weekOffset);
+        if (!TryReadReference(referenceWeekStartDate, out var reference))
+            return BadRequest(new { message = "referenceWeekStartDate must be a yyyy-MM-dd Monday." });
+        var defaults = await _scheduleService.GetSmartDefaultsAsync(weekOffset, reference);
         return Ok(defaults);
     }
 
@@ -93,9 +111,11 @@ public class ScheduleController(ScheduleService scheduleService) : ControllerBas
     }
 
     [HttpPost("voting/open")]
-    public async Task<IActionResult> OpenVoting([FromQuery] int weekOffset = 0)
+    public async Task<IActionResult> OpenVoting([FromQuery] int weekOffset = 0, [FromQuery] string? referenceWeekStartDate = null)
     {
-        await _scheduleService.OpenVotingAsync(weekOffset, GetConnectionId());
+        if (!TryReadReference(referenceWeekStartDate, out var reference))
+            return BadRequest(new { message = "referenceWeekStartDate must be a yyyy-MM-dd Monday." });
+        await _scheduleService.OpenVotingAsync(weekOffset, GetConnectionId(), reference);
         return Ok(new { message = "Voting opened" });
     }
 
@@ -124,6 +144,9 @@ public class ScheduleController(ScheduleService scheduleService) : ControllerBas
         var result = await _scheduleService.UpdateGroceryStateAsync(weekOffset, groceryState, GetConnectionId());
         return Ok(new { data = result });
     }
+
+    private bool TryReadReference(string? value, out DateOnly? reference) =>
+        DeploymentCalendar.TryParseReference(value ?? (Request.Query.ContainsKey("referenceWeekStartDate") ? "" : null), out reference);
 
     private string? GetConnectionId() => Request.Headers["X-SSE-Connection-ID"].FirstOrDefault();
 

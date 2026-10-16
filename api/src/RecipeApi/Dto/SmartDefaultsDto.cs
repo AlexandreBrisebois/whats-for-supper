@@ -22,5 +22,6 @@ public record SmartDefaultsDto(
     [property: JsonPropertyName("consensusThreshold")] int ConsensusThreshold,
     [property: JsonPropertyName("preSelectedRecipes")] List<PreSelectedRecipeDto> PreSelectedRecipes,
     [property: JsonPropertyName("openSlots")] List<OpenSlotDto> OpenSlots,
-    [property: JsonPropertyName("consensusRecipesCount")] int ConsensusRecipesCount
+    [property: JsonPropertyName("consensusRecipesCount")] int ConsensusRecipesCount,
+    [property: JsonPropertyName("weekStartDate")] DateOnly WeekStartDate
 );

@@ -1,3 +1,0 @@
-# SEARCH-03 — Faceted filters: future work
-## T1 — Localize remaining literal sheet controls if product accepts the copy change
-**Test seam:** unit: `RecipeFiltersSheet.test.tsx`, `page.test.tsx`; API: retain `RecipeSearchFilterDiscoveryIntegrationTests`; Playwright: French sheet exposes translated disclosure/cuisine labels and applies the same draft; mock owner: sheet props and `search-hardening.spec.ts` search route; route/method: `GET /api/recipes/search/filters`, `POST /api/recipes/search`; contract: discovery `{generatedAt,main,mealTypes,cuisines}` and search `{filters?,preferences?}` remain unchanged.

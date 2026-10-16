@@ -19,20 +19,10 @@ public class GroceryRecomputeService(
     RecipeDbContext db,
     AisleMapper aisleMapper,
     ILogger<GroceryRecomputeService> logger,
-    IScheduleEventPublisher? publisher = null,
-    IClock? clock = null)
+    IClock clock,
+    DeploymentCalendar calendar,
+    IScheduleEventPublisher? publisher = null)
 {
-    private readonly IClock _clock = clock ?? new SystemClock();
-
-    public GroceryRecomputeService(
-        RecipeDbContext db,
-        AisleMapper aisleMapper,
-        ILogger<GroceryRecomputeService> logger,
-        IScheduleEventPublisher? publisher)
-        : this(db, aisleMapper, logger, publisher, null)
-    {
-    }
-
     private sealed record IntermediateItem(
         string DisplayName,
         string NormalizedKey,
@@ -67,8 +57,9 @@ public class GroceryRecomputeService(
     /// Recomputes <c>grocery_items</c> for the week starting on <paramref name="monday"/>.
     /// Creates the <c>weekly_plans</c> row if it does not yet exist.
     /// </summary>
-    public async Task RecomputeForWeekAsync(DateOnly monday, CancellationToken ct)
+    public async Task RecomputeForWeekAsync(DateOnly monday, CancellationToken ct, DeploymentCalendarContext? context = null)
     {
+        context ??= calendar.Capture(clock.UtcNow);
         var sunday = monday.AddDays(6);
 
         // 1. Load all CalendarEvents for the week, including Recipe.RawMetadata.
@@ -270,7 +261,7 @@ public class GroceryRecomputeService(
         await db.SaveChangesAsync(ct);
 
         if (changedState && publisher != null)
-            await publisher.PublishGroceryUpdatedAsync(GetWeekOffset(monday), groceryState);
+            await publisher.PublishGroceryUpdatedAsync(GetWeekOffset(monday, context), groceryState, monday);
 
         logger.LogInformation(
             "Recomputed grocery_items for week starting {Monday}: {Count} line items",
@@ -529,10 +520,6 @@ public class GroceryRecomputeService(
         return changed;
     }
 
-    private int GetWeekOffset(DateOnly monday)
-    {
-        var today = DateOnly.FromDateTime(_clock.UtcNow.UtcDateTime);
-        var days = monday.DayNumber - GetMonday(today).DayNumber;
-        return days / 7;
-    }
+    private static int GetWeekOffset(DateOnly monday, DeploymentCalendarContext context) =>
+        (monday.DayNumber - context.ReferenceWeekStartDate.DayNumber) / 7;
 }

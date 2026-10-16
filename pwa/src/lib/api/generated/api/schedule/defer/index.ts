@@ -13,6 +13,7 @@ import {
 import {
   type AdditionalDataHolder,
   type BaseRequestBuilder,
+  type DateOnly,
   type Parsable,
   type ParsableFactory,
   type ParseNode,
@@ -44,25 +45,38 @@ export interface DeferPostResponse extends AdditionalDataHolder, Parsable {
  */
 export interface DeferRequestBuilder extends BaseRequestBuilder<DeferRequestBuilder> {
   /**
-   * Defer a scheduled recipe to the first free date next week or later
+   * Keeps the exact source date and recipe body and existing response shape. Searches from reference Monday plus targetWeekOffset weeks, continuing past occupied dates into later weeks. Feedback reports the actual destination and claims next week is full only when placement spills beyond the requested destination week. Invalid inputs reject before mutation.
    * @param body The request body
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {Promise<DeferPostResponse>}
    */
   post(
     body: DeferScheduleDto,
-    requestConfiguration?: RequestConfiguration<object> | undefined
+    requestConfiguration?: RequestConfiguration<DeferRequestBuilderPostQueryParameters> | undefined
   ): Promise<DeferPostResponse | undefined>;
   /**
-   * Defer a scheduled recipe to the first free date next week or later
+   * Keeps the exact source date and recipe body and existing response shape. Searches from reference Monday plus targetWeekOffset weeks, continuing past occupied dates into later weeks. Feedback reports the actual destination and claims next week is full only when placement spills beyond the requested destination week. Invalid inputs reject before mutation.
    * @param body The request body
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {RequestInformation}
    */
   toPostRequestInformation(
     body: DeferScheduleDto,
-    requestConfiguration?: RequestConfiguration<object> | undefined
+    requestConfiguration?: RequestConfiguration<DeferRequestBuilderPostQueryParameters> | undefined
   ): RequestInformation;
+}
+/**
+ * Keeps the exact source date and recipe body and existing response shape. Searches from reference Monday plus targetWeekOffset weeks, continuing past occupied dates into later weeks. Feedback reports the actual destination and claims next week is full only when placement spills beyond the requested destination week. Invalid inputs reject before mutation.
+ */
+export interface DeferRequestBuilderPostQueryParameters {
+  /**
+   * Optional yyyy-MM-dd Monday anchoring all relative offsets. Omission captures the deployment current Monday (UTC by default). Literal source dates remain unchanged. Invalid or non-Monday references return 400 before work.
+   */
+  referenceWeekStartDate?: DateOnly;
+  /**
+   * Search-start week relative to referenceWeekStartDate. Omission retains offset one.
+   */
+  targetWeekOffset?: number;
 }
 /**
  * The deserialization information for the current model
@@ -106,7 +120,8 @@ export function serializeDeferPostResponse(
 /**
  * Uri template for the request builder.
  */
-export const DeferRequestBuilderUriTemplate = '{+baseurl}/api/schedule/defer';
+export const DeferRequestBuilderUriTemplate =
+  '{+baseurl}/api/schedule/defer{?referenceWeekStartDate*,targetWeekOffset*}';
 /**
  * Metadata for all the requests in the request builder.
  */

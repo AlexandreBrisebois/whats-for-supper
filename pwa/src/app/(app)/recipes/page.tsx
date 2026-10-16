@@ -1,5 +1,12 @@
 'use client';
 
+import { useTodayStore } from '@/store/todayStore';
+import {
+  CalendarUnavailableError,
+  calendarDayIndex,
+  type CalendarContext,
+} from '@/lib/deployment-calendar';
+
 import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Search as SearchIcon,
@@ -46,26 +53,22 @@ import { useSearchPromotionStore } from '@/store/searchPromotionStore';
 
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-function resolveDayName(weekOffset: number, dayIndex: number): string {
-  const today = new Date();
-  // Get start of CURRENT week (Monday)
-  const currentMonday = new Date(today);
-  currentMonday.setDate(today.getDate() - ((today.getDay() + 6) % 7));
-  currentMonday.setHours(0, 0, 0, 0);
-
-  // Get target date
-  const target = new Date(currentMonday);
-  target.setDate(currentMonday.getDate() + dayIndex + weekOffset * 7);
-
-  // Check if target is today
-  const todayDate = new Date(today);
-  todayDate.setHours(0, 0, 0, 0);
-
-  if (target.getTime() === todayDate.getTime()) {
-    return 'Tonight';
+function resolveDayName(
+  weekOffset: number,
+  dayIndex: number,
+  calendar: CalendarContext | null,
+  reference?: string | null
+): string {
+  if (calendar) {
+    const monday = reference || calendar.referenceWeekStartDate;
+    const date = new Date(
+      Date.parse(`${monday}T00:00:00Z`) + (weekOffset * 7 + dayIndex) * 86400000
+    )
+      .toISOString()
+      .slice(0, 10);
+    if (date === calendar.today) return 'Tonight';
   }
-
-  return WEEKDAYS[target.getDay()];
+  return WEEKDAYS[(dayIndex + 1) % 7];
 }
 
 const INITIAL_LIMIT = 12;
@@ -116,6 +119,21 @@ export default function RecipesPage() {
 
   const addToDay = searchParams.get('addToDay');
   const weekOffset = searchParams.get('weekOffset');
+  const [planningCalendar, setPlanningCalendar] = useState<CalendarContext | null>(null);
+  useEffect(() => {
+    if (addToDay === null || weekOffset === null) return;
+    let active = true;
+    void useTodayStore
+      .getState()
+      .ensureCalendar()
+      .then((calendar) => {
+        if (active) setPlanningCalendar(calendar);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [addToDay, weekOffset]);
 
   const parsedDayIndex = addToDay !== null ? parseInt(addToDay, 10) : undefined;
   const parsedWeekOffset = weekOffset !== null ? parseInt(weekOffset, 10) : undefined;
@@ -130,7 +148,12 @@ export default function RecipesPage() {
   try {
     dayName =
       parsedDayIndex !== undefined && parsedWeekOffset !== undefined
-        ? resolveDayName(parsedWeekOffset, parsedDayIndex)
+        ? resolveDayName(
+            parsedWeekOffset,
+            parsedDayIndex,
+            planningCalendar,
+            searchParams.get('referenceWeekStartDate')
+          )
         : null;
   } catch (err) {
     console.error('[RecipesPage] resolveDayName error:', err);
@@ -292,10 +315,14 @@ export default function RecipesPage() {
     weekOffsetValue: number,
     dayIndexValue: number,
     recipe: Recipe,
-    options: { home?: boolean } = {}
+    options: { home?: boolean; referenceWeekStartDate?: string } = {}
   ) => {
     const assignmentRecipe = toAssignmentRecipe(recipe);
-    const slot = await getPlannerSlot(weekOffsetValue, dayIndexValue);
+    const reference =
+      options.referenceWeekStartDate ??
+      searchParams.get('referenceWeekStartDate') ??
+      (await useTodayStore.getState().ensureCalendar()).referenceWeekStartDate;
+    const slot = await getPlannerSlot(weekOffsetValue, dayIndexValue, reference);
 
     if (slot?.recipe) {
       setOpenDetailRecipeId(null);
@@ -307,11 +334,13 @@ export default function RecipesPage() {
       return;
     }
 
-    await assignRecipeToEmptySlot(weekOffsetValue, dayIndexValue, assignmentRecipe);
+    await assignRecipeToEmptySlot(weekOffsetValue, dayIndexValue, assignmentRecipe, reference);
     if (options.home) {
       router.push('/home');
     } else {
-      router.push(`/planner?success=1&dayIndex=${dayIndexValue}&weekOffset=${weekOffsetValue}`);
+      router.push(
+        `/planner?success=1&dayIndex=${dayIndexValue}&weekOffset=${weekOffsetValue}&referenceWeekStartDate=${reference}`
+      );
     }
   };
 
@@ -324,6 +353,7 @@ export default function RecipesPage() {
       } catch (error) {
         console.error('Failed to assign recipe:', error);
         setIsAssigning(false);
+        if (error instanceof CalendarUnavailableError) throw error;
       }
       return;
     }
@@ -339,16 +369,22 @@ export default function RecipesPage() {
       } catch (error) {
         console.error('Failed to assign recipe:', error);
         setIsAssigning(false);
+        if (error instanceof CalendarUnavailableError) throw error;
       }
     } else {
       // Discovery flow - Cook it tonight
-      const todayIndex = (new Date().getDay() + 6) % 7;
+      const calendar = await useTodayStore.getState().ensureCalendar();
+      const todayIndex = calendarDayIndex(calendar);
       setIsAssigning(true);
       try {
-        await assignWithRecoveryGuard(0, todayIndex, recipe, { home: true });
+        await assignWithRecoveryGuard(0, todayIndex, recipe, {
+          home: true,
+          referenceWeekStartDate: calendar.referenceWeekStartDate,
+        });
       } catch (error) {
         console.error('Failed to assign recipe:', error);
         setIsAssigning(false);
+        if (error instanceof CalendarUnavailableError) throw error;
       }
     }
   };
@@ -357,7 +393,8 @@ export default function RecipesPage() {
     setIsAssigning(true);
     try {
       // "Plan for Later" starts from tomorrow onwards
-      const todayIndex = (new Date().getDay() + 6) % 7;
+      const calendar = await useTodayStore.getState().ensureCalendar();
+      const todayIndex = calendarDayIndex(calendar);
       let startDayIndex = todayIndex + 1;
       let startWeekOffset = 0;
 
@@ -366,7 +403,12 @@ export default function RecipesPage() {
         startWeekOffset = 1;
       }
 
-      const openSlot = await findFirstOpenPlannerSlot(startWeekOffset, startDayIndex);
+      const openSlot = await findFirstOpenPlannerSlot(
+        startWeekOffset,
+        startDayIndex,
+        520,
+        calendar.referenceWeekStartDate
+      );
       if (!openSlot) {
         setIsAssigning(false);
         return;
@@ -375,14 +417,16 @@ export default function RecipesPage() {
       await assignRecipeToEmptySlot(
         openSlot.weekOffset,
         openSlot.dayIndex,
-        toAssignmentRecipe(recipe)
+        toAssignmentRecipe(recipe),
+        openSlot.referenceWeekStartDate
       );
       router.push(
-        `/planner?success=1&dayIndex=${openSlot.dayIndex}&weekOffset=${openSlot.weekOffset}`
+        `/planner?success=1&dayIndex=${openSlot.dayIndex}&weekOffset=${openSlot.weekOffset}&referenceWeekStartDate=${openSlot.referenceWeekStartDate}`
       );
     } catch (error) {
       console.error('Failed to plan recipe for later:', error);
       setIsAssigning(false);
+      if (error instanceof CalendarUnavailableError) throw error;
     }
   };
 
@@ -396,7 +440,8 @@ export default function RecipesPage() {
       await assignRecipeToEmptySlot(
         pendingRecovery.navigateTo.weekOffset,
         pendingRecovery.navigateTo.dayIndex,
-        pendingRecovery.recipe
+        pendingRecovery.recipe,
+        pendingRecovery.slot.referenceWeekStartDate
       );
 
       const { weekOffset: targetWeekOffset, dayIndex, home } = pendingRecovery.navigateTo;
@@ -404,7 +449,9 @@ export default function RecipesPage() {
       if (home) {
         router.push('/home');
       } else {
-        router.push(`/planner?success=1&dayIndex=${dayIndex}&weekOffset=${targetWeekOffset}`);
+        router.push(
+          `/planner?success=1&dayIndex=${dayIndex}&weekOffset=${targetWeekOffset}&referenceWeekStartDate=${pendingRecovery.slot.referenceWeekStartDate}`
+        );
       }
     } catch (error) {
       console.error('Failed recovery action:', error);

@@ -49,15 +49,26 @@ public class HybridRecipeSearchBaselinePostgresTests : IAsyncLifetime
     [PostgresFact]
     public async Task BaselineHarness_RecordsVersionedRelevanceMeasurements()
     {
-        var grocery = new GroceryRecomputeService(_db, new AisleMapper(), NullLogger<GroceryRecomputeService>.Instance);
-        var schedule = new ScheduleService(_db, NullLogger<ScheduleService>.Instance, new Mock<IScheduleEventPublisher>().Object, grocery);
-        var service = new RecipeSearchService(_db, schedule, new FixtureEmbeddingProvider());
+        var grocery = new GroceryRecomputeService(_db, new AisleMapper(), NullLogger<GroceryRecomputeService>.Instance, new SystemClock(), new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()));
+        var schedule = new ScheduleService(_db, NullLogger<ScheduleService>.Instance, new Mock<IScheduleEventPublisher>().Object, grocery, new SystemClock(), new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()));
+        var service = new RecipeSearchService(_db, schedule, new FixtureEmbeddingProvider(),
+            lexicalRepository: new RecipeLexicalSearchRepository(_db),
+            semanticRepository: new RecipeSemanticSearchRepository(_db),
+            rolloutOptions: new RecipeSearchRolloutOptions
+            {
+                Semantic = new RecipeSemanticSearchOptions
+                {
+                    EmbeddingModel = "fixture-v1",
+                    EmbeddingVersion = HybridRecipeSearchBaselineFixture.Version
+                }
+            });
 
         var reports = new List<BaselineReport>();
         foreach (var fixtureCase in HybridRecipeSearchBaselineFixture.Cases)
         {
             var started = System.Diagnostics.Stopwatch.StartNew();
             var response = await service.SearchAsync(new RecipeSearchRequestDto { Query = fixtureCase.Query, Limit = 20 });
+            Assert.Equal("hybrid", response.ResultPath);
             started.Stop();
             var ids = new[] { response.TopPick?.Id }.Concat(response.Results.Select(result => (Guid?)result.Id)).Where(id => id.HasValue).Select(id => id!.Value).ToArray();
             reports.Add(new(
@@ -88,7 +99,7 @@ public class HybridRecipeSearchBaselinePostgresTests : IAsyncLifetime
         {
             var recipe = new Recipe { Id = fixture.Id, Name = fixture.Name, Ingredients = fixture.IngredientsJson, CuisineType = fixture.Cuisine, MealTypes = fixture.MealTypes, Category = fixture.Category, TotalTime = fixture.TotalTime, RawMetadata = fixture.RawMetadata, IsReady = true, IsDiscoverable = true, CreatedAt = DateTimeOffset.UtcNow, UpdatedAt = DateTimeOffset.UtcNow };
             _db.Recipes.Add(recipe);
-            _db.RecipeSearchDocuments.Add(new RecipeSearchDocument { RecipeId = recipe.Id, DocumentText = $"{recipe.Name}. Ingredients: {string.Join(", ", HybridRecipeSearchBaselineFixture.NormalizeIncludedIngredients(recipe.Ingredients))}.", SearchMetadata = "{}", Embedding = HybridRecipeSearchBaselineFixture.EmbeddingFor(fixture.SemanticGroup), EmbeddingModel = "fixture-v1", IndexStatus = "ready", SourceFingerprint = "fixture", LastIndexedAt = DateTimeOffset.UtcNow });
+            _db.RecipeSearchDocuments.Add(new RecipeSearchDocument { RecipeId = recipe.Id, DocumentText = $"{recipe.Name}. Ingredients: {string.Join(", ", HybridRecipeSearchBaselineFixture.NormalizeIncludedIngredients(recipe.Ingredients))}.", SearchMetadata = "{}", Embedding = HybridRecipeSearchBaselineFixture.EmbeddingFor(fixture.SemanticGroup), EmbeddingModel = "fixture-v1", EmbeddingVersion = HybridRecipeSearchBaselineFixture.Version, EmbeddingStatus = "ready", EmbeddingFingerprint = "fixture", IndexStatus = "ready", SourceFingerprint = "fixture", LastIndexedAt = DateTimeOffset.UtcNow });
         }
         await _db.SaveChangesAsync();
     }

@@ -8,6 +8,7 @@ import {
 } from '../lib/api/generated/models/index';
 import { type FamilyGetResponse_data } from '../lib/api/generated/api/family/index';
 import { MOCK_IDS } from './mock-ids';
+import type { CalendarContext } from '../lib/deployment-calendar';
 import { REALISTIC_RECIPES, REALISTIC_SCHEDULE_RECIPES } from './realistic-recipes';
 
 /**
@@ -25,7 +26,35 @@ export const toDateStr = (d: Date) => d.toISOString().split('T')[0];
  * Schema-compliant builders for mock data.
  * These ensure that mock objects match the generated API client models.
  */
+const deploymentCalendar = (overrides: Partial<CalendarContext> = {}): CalendarContext => ({
+  timeZone: 'UTC',
+  capturedAtUtc: '2026-05-04T12:00:00Z',
+  today: '2026-05-04',
+  currentWeekStartDate: '2026-05-04',
+  referenceWeekStartDate: '2026-05-04',
+  nextDayAtUtc: '2026-05-05T00:00:00Z',
+  ...overrides,
+});
+
 export const builders = {
+  deploymentCalendar,
+  scheduleDays: (weekOffset = 0, calendar = deploymentCalendar()) => {
+    const monday = new Date(`${calendar.referenceWeekStartDate}T00:00:00Z`);
+    monday.setUTCDate(monday.getUTCDate() + 7 * weekOffset);
+    return {
+      weekOffset,
+      calendar,
+      weekStartDate: toDateStr(monday),
+      locked: false,
+      status: 0,
+      days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, index) => {
+        const date = new Date(monday);
+        date.setUTCDate(date.getUTCDate() + index);
+        return { day, date: toDateStr(date), recipe: null as ScheduleRecipeDto | null, status: 0 };
+      }),
+      groceryState: {} as Record<string, boolean>,
+    };
+  },
   recipe: (overrides: Partial<RecipeDto> = {}): RecipeDto => {
     const base =
       overrides.id && REALISTIC_RECIPES[overrides.id]

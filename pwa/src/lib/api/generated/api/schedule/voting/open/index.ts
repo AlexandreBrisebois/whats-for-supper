@@ -5,6 +5,7 @@
 import {
   type AdditionalDataHolder,
   type BaseRequestBuilder,
+  type DateOnly,
   type Parsable,
   type ParsableFactory,
   type ParseNode,
@@ -105,6 +106,10 @@ export interface OpenRequestBuilder extends BaseRequestBuilder<OpenRequestBuilde
  * Open voting for a week
  */
 export interface OpenRequestBuilderPostQueryParameters {
+  /**
+   * Optional yyyy-MM-dd Monday anchoring all relative offsets and defer's next-week base. Omission captures the deployment current Monday (UTC by default). Literal source dates remain unchanged. Invalid or non-Monday references return 400 before work.
+   */
+  referenceWeekStartDate?: DateOnly;
   weekOffset?: number;
 }
 /**
@@ -150,7 +155,8 @@ export function serializeOpenPostResponse_data(
 /**
  * Uri template for the request builder.
  */
-export const OpenRequestBuilderUriTemplate = '{+baseurl}/api/schedule/voting/open{?weekOffset*}';
+export const OpenRequestBuilderUriTemplate =
+  '{+baseurl}/api/schedule/voting/open{?referenceWeekStartDate*,weekOffset*}';
 /**
  * Metadata for all the requests in the request builder.
  */

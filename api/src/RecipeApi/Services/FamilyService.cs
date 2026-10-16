@@ -22,10 +22,30 @@ public class FamilyService(RecipeDbContext db)
         if (string.IsNullOrEmpty(trimmed))
             throw new ArgumentException("Family member name must not be empty.");
 
+        var normalized = trimmed.ToLowerInvariant();
+        var exists = await db.FamilyMembers
+            .AnyAsync(m => m.Name.Trim().ToLower() == normalized);
+        if (exists)
+            throw new DuplicateFamilyMemberException("A family member with this name already exists.");
+
         var member = new FamilyMember { Name = trimmed };
         db.FamilyMembers.Add(member);
-        await db.SaveChangesAsync();
+        try
+        {
+            await db.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex) when (IsUniqueConstraintViolation(ex))
+        {
+            throw new DuplicateFamilyMemberException("A family member with this name already exists.");
+        }
         return member;
+    }
+
+    private static bool IsUniqueConstraintViolation(DbUpdateException ex)
+    {
+        return ex.InnerException is Npgsql.PostgresException { SqlState: "23505" }
+            || ex.InnerException?.Message.Contains("UNIQUE constraint failed") == true
+            || ex.InnerException?.Message.Contains("duplicate key value") == true;
     }
 
     public async Task<FamilyMember> UpdateFamilyMember(Guid id, string name)

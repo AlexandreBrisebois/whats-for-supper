@@ -13,6 +13,7 @@ import {
 import {
   type AdditionalDataHolder,
   type BaseRequestBuilder,
+  type DateOnly,
   type Parsable,
   type ParsableFactory,
   type ParseNode,
@@ -43,25 +44,34 @@ export interface AssignPostResponse_data extends AdditionalDataHolder, Parsable 
  */
 export interface AssignRequestBuilder extends BaseRequestBuilder<AssignRequestBuilder> {
   /**
-   * Assigns a recipe to the specified day. If the target slot is already occupied and falls on Sunday (dayIndex 6), the displaced recipe is automatically carried forward to Monday of the following week (weekOffset+1, dayIndex 0) rather than being silently dropped.
+   * Resolves the target as reference Monday plus seven times weekOffset plus dayIndex days. The optional reference pins a started action across midnight; omission uses the deployment current Monday captured at operation entry, with UTC as the default deployment timezone. Assigns a recipe to the specified day. If the target slot is already occupied and falls on Sunday (dayIndex 6), the displaced recipe is automatically carried forward to Monday of the following week (weekOffset+1, dayIndex 0) rather than being silently dropped.
    * @param body The request body
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {Promise<AssignPostResponse>}
    */
   post(
     body: AssignScheduleDto,
-    requestConfiguration?: RequestConfiguration<object> | undefined
+    requestConfiguration?: RequestConfiguration<AssignRequestBuilderPostQueryParameters> | undefined
   ): Promise<AssignPostResponse | undefined>;
   /**
-   * Assigns a recipe to the specified day. If the target slot is already occupied and falls on Sunday (dayIndex 6), the displaced recipe is automatically carried forward to Monday of the following week (weekOffset+1, dayIndex 0) rather than being silently dropped.
+   * Resolves the target as reference Monday plus seven times weekOffset plus dayIndex days. The optional reference pins a started action across midnight; omission uses the deployment current Monday captured at operation entry, with UTC as the default deployment timezone. Assigns a recipe to the specified day. If the target slot is already occupied and falls on Sunday (dayIndex 6), the displaced recipe is automatically carried forward to Monday of the following week (weekOffset+1, dayIndex 0) rather than being silently dropped.
    * @param body The request body
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {RequestInformation}
    */
   toPostRequestInformation(
     body: AssignScheduleDto,
-    requestConfiguration?: RequestConfiguration<object> | undefined
+    requestConfiguration?: RequestConfiguration<AssignRequestBuilderPostQueryParameters> | undefined
   ): RequestInformation;
+}
+/**
+ * Resolves the target as reference Monday plus seven times weekOffset plus dayIndex days. The optional reference pins a started action across midnight; omission uses the deployment current Monday captured at operation entry, with UTC as the default deployment timezone. Assigns a recipe to the specified day. If the target slot is already occupied and falls on Sunday (dayIndex 6), the displaced recipe is automatically carried forward to Monday of the following week (weekOffset+1, dayIndex 0) rather than being silently dropped.
+ */
+export interface AssignRequestBuilderPostQueryParameters {
+  /**
+   * Explicit yyyy-MM-dd Monday anchoring weekOffset. Malformed or non-Monday values return 400 before mutation.
+   */
+  referenceWeekStartDate?: DateOnly;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -170,7 +180,8 @@ export function serializeAssignPostResponse_data(
 /**
  * Uri template for the request builder.
  */
-export const AssignRequestBuilderUriTemplate = '{+baseurl}/api/schedule/assign';
+export const AssignRequestBuilderUriTemplate =
+  '{+baseurl}/api/schedule/assign{?referenceWeekStartDate*}';
 /**
  * Metadata for all the requests in the request builder.
  */

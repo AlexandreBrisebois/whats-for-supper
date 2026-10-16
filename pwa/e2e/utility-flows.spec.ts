@@ -94,6 +94,8 @@ test.describe("Cook's Mode and Grocery Flows", () => {
             body: JSON.stringify({
               data: {
                 weekOffset: 0,
+                calendar: builders.deploymentCalendar() as any,
+                weekStartDate: '2026-05-04' as any,
                 locked: true,
                 status: 2,
                 days,
@@ -113,6 +115,8 @@ test.describe("Cook's Mode and Grocery Flows", () => {
 
     await mockSseWithConnectedSchedule(page, {
       weekOffset: 0,
+      calendar: builders.deploymentCalendar() as any,
+      weekStartDate: '2026-05-04' as any,
       locked: true,
       status: 2,
       days: Array.from({ length: 7 }, (_, i) => {
@@ -146,6 +150,8 @@ test.describe("Cook's Mode and Grocery Flows", () => {
           json: {
             data: {
               weekOffset: 0,
+              calendar: builders.deploymentCalendar() as any,
+              weekStartDate: '2026-05-04' as any,
               familySize: 3,
               consensusThreshold: 2,
               preSelectedRecipes: [],
@@ -212,6 +218,8 @@ test.describe("Cook's Mode and Grocery Flows", () => {
             body: JSON.stringify({
               data: {
                 weekOffset: 0,
+                calendar: builders.deploymentCalendar() as any,
+                weekStartDate: '2026-05-04' as any,
                 locked: true,
                 status: 2,
                 days: [
@@ -238,6 +246,8 @@ test.describe("Cook's Mode and Grocery Flows", () => {
 
     await mockSseWithConnectedSchedule(page, {
       weekOffset: 0,
+      calendar: builders.deploymentCalendar() as any,
+      weekStartDate: '2026-05-04' as any,
       locked: true,
       status: 2,
       days: [

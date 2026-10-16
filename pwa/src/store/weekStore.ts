@@ -1,5 +1,12 @@
 import { create } from 'zustand';
 import {
+  readCalendar,
+  absoluteMonday,
+  weekOffsetFor,
+  calendarTime,
+  type CalendarContext,
+} from '@/lib/deployment-calendar';
+import {
   getSchedule,
   assignRecipeToDay,
   removeRecipeFromDay,
@@ -32,6 +39,8 @@ export type UILocalScheduleDay = Omit<ScheduleDay, 'recipe'> & {
 };
 
 export interface WeekState {
+  calendar: CalendarContext | null;
+  weekStartDate: string | null;
   weekOffset: number;
   schedule: UILocalScheduleDay[];
   /** Pre-computed grocery items from the API, grouped by section for display */
@@ -45,16 +54,18 @@ export interface WeekState {
    * sync() will not overwrite schedule while this is within the 10-second window.
    */
   optimisticWriteAt: number | null;
+  optimisticWeekStartDate: string | null;
 
   // Derived (not stored):
   // isVotingOpen = status === 1
   // isLocked     = status === 2
 
   // Actions
-  init: (weekOffset: number) => Promise<void>;
+  init: (weekOffset: number, referenceWeekStartDate?: string) => Promise<void>;
   assignRecipe: (
     dayIndex: number,
-    recipe: { id: string; name: string | null; image: string }
+    recipe: { id: string; name: string | null; image: string },
+    target?: { weekOffset: number; referenceWeekStartDate?: string }
   ) => Promise<void>;
   removeRecipe: (dayIndex: number, date: string) => void;
   /**
@@ -167,470 +178,601 @@ function removeRecipeFromGroceryItems(
 
 // ─── Store ──────────────────────────────────────────────────────────────────
 
-export const useWeekStore = create<WeekState>((set, get) => ({
-  weekOffset: 0,
-  schedule: [],
-  groceryItems: [],
-  status: 0,
-  isLoading: false,
-  lastSyncedAt: null,
-  optimisticWriteAt: null,
+export const useWeekStore = create<WeekState>((set, get) => {
+  let loadingFrame = '';
+  return {
+    calendar: null,
+    weekStartDate: null,
+    weekOffset: 0,
+    schedule: [],
+    groceryItems: [],
+    status: 0,
+    isLoading: false,
+    lastSyncedAt: null,
+    optimisticWriteAt: null,
+    optimisticWeekStartDate: null,
 
-  // ── init ──────────────────────────────────────────────────────────────────
-  async init(weekOffset) {
-    set({ weekOffset, isLoading: true });
-    try {
-      const scheduleData = await getSchedule(weekOffset);
+    // ── init ──────────────────────────────────────────────────────────────────
+    async init(weekOffset, referenceWeekStartDate) {
+      const frame = `${weekOffset}:${referenceWeekStartDate ?? 'current'}`;
+      loadingFrame = frame;
+      set({ weekOffset, isLoading: true });
+      try {
+        const scheduleData = await getSchedule(weekOffset, referenceWeekStartDate);
 
-      if (get().weekOffset !== weekOffset) return;
+        if (get().weekOffset !== weekOffset || loadingFrame !== frame) return;
 
-      if (!scheduleData) {
+        if (!scheduleData) {
+          set({ isLoading: false });
+          return;
+        }
+
+        const calendar = readCalendar(scheduleData.calendar);
+        const weekStartDate = absoluteMonday(scheduleData.weekStartDate);
+        if (!calendar || !weekStartDate) return;
+        if (
+          get().calendar?.timeZone === calendar.timeZone &&
+          get().calendar!.today > calendar.today
+        )
+          return;
+        const status = (scheduleData.status ?? 0) as 0 | 1 | 2;
+
+        // Smart defaults are only fetched when voting is open (status === 1).
+        // Loading them unconditionally pre-fills the planner before mom has asked
+        // the family — breaking the Ask → Vote → Lock flow entirely.
+        // When status === 0 (draft), the planner starts blank and mom controls it.
+        // When status === 1 (voting open), the family's votes surface as pending suggestions.
+        const candidateDefaults =
+          status === 1 ? await getSmartDefaults(weekOffset, calendar.referenceWeekStartDate) : null;
+        const defaultsData =
+          candidateDefaults && absoluteMonday(candidateDefaults.weekStartDate) === weekStartDate
+            ? candidateDefaults
+            : null;
+        if (candidateDefaults && !absoluteMonday(candidateDefaults.weekStartDate))
+          void get().sync();
+
+        if (get().weekOffset !== weekOffset || loadingFrame !== frame) return;
+
+        const mergedDays = buildScheduleDays(
+          scheduleData,
+          defaultsData ?? undefined,
+          get().schedule
+        );
+
+        // Restore persisted grocery state from API if present.
+        // groceryState is a Kiota AdditionalDataHolder — the actual key/value pairs
+        // live in .additionalData (typed as Record<string, unknown> by Kiota).
+        const serverGroceryState = scheduleData.groceryState?.additionalData as
+          Record<string, boolean> | undefined;
+        if (serverGroceryState && typeof serverGroceryState === 'object') {
+          usePlannerStore.getState().setGroceryState(serverGroceryState);
+        }
+
+        set({
+          calendar,
+          weekStartDate,
+          ...(get().weekStartDate !== weekStartDate
+            ? { optimisticWriteAt: null, optimisticWeekStartDate: null }
+            : {}),
+          schedule: mergedDays,
+          groceryItems: scheduleData.groceryItems ?? [],
+          status,
+          lastSyncedAt: calendarTime.instant(),
+          isLoading: false,
+        });
+      } catch {
         set({ isLoading: false });
+      }
+    },
+
+    // ── assignRecipe ──────────────────────────────────────────────────────────
+    async assignRecipe(dayIndex, recipe, target) {
+      const { calendar } = get();
+      const reference = target?.referenceWeekStartDate ?? calendar?.referenceWeekStartDate;
+      if (!reference) throw new Error("Could not confirm today's date. Try again.");
+      const weekOffset = target?.weekOffset ?? get().weekOffset;
+      const weekStartDate = new Date(
+        Date.parse(`${reference}T00:00:00Z`) + weekOffset * 7 * 86400000
+      )
+        .toISOString()
+        .slice(0, 10);
+      const prev = get().schedule;
+      const next = prev.map((d, i) =>
+        i === dayIndex
+          ? {
+              ...d,
+              status: 0,
+              nonCooking: null,
+              recipe: {
+                id: recipe.id,
+                name: recipe.name ?? '',
+                image: recipe.image,
+              } as ScheduleRecipeDto,
+            }
+          : d
+      );
+      if (get().weekStartDate === weekStartDate)
+        set({
+          schedule: next,
+          optimisticWriteAt: calendarTime.elapsed(),
+          optimisticWeekStartDate: get().weekStartDate,
+        });
+      try {
+        await assignRecipeToDay(weekOffset, dayIndex, recipe, reference);
+        const data = await getSchedule(weekOffset, reference);
+        if (!data || get().weekStartDate !== weekStartDate) return;
+
+        set({
+          groceryItems: data.groceryItems ?? [],
+          status: (data.status ?? 0) as 0 | 1 | 2,
+          lastSyncedAt: calendarTime.instant(),
+        });
+      } catch {
+        if (get().weekStartDate === weekStartDate) set({ schedule: prev });
+        throw new Error('Failed to assign recipe');
+      }
+    },
+
+    // ── removeRecipe ──────────────────────────────────────────────────────────
+    removeRecipe(dayIndex, date) {
+      const prev = get().schedule;
+      const prevGroceryItems = get().groceryItems;
+      const recipeId = prev[dayIndex]?.recipe?.id;
+      const removedRecipeId = typeof recipeId === 'string' ? recipeId : undefined;
+      const next = prev.map((d, i) =>
+        i === dayIndex
+          ? {
+              ...d,
+              status: 0,
+              nonCooking: null,
+              recipe: undefined,
+              _isPending: false,
+              _userCleared: true,
+            }
+          : d
+      );
+      set({
+        schedule: next,
+        groceryItems: removeRecipeFromGroceryItems(prevGroceryItems, removedRecipeId),
+        optimisticWriteAt: calendarTime.elapsed(),
+        optimisticWeekStartDate: get().weekStartDate,
+      });
+      removeRecipeFromDay(date).catch(() =>
+        set({ schedule: prev, groceryItems: prevGroceryItems })
+      );
+    },
+
+    // ── reorderLocally ────────────────────────────────────────────────────────
+    reorderLocally(from, to, baseSchedule) {
+      const prev = baseSchedule ?? get().schedule;
+      if (from < 0 || to < 0) return;
+
+      if (from === to) {
+        if (baseSchedule) {
+          set({
+            schedule: [...baseSchedule],
+            optimisticWriteAt: calendarTime.elapsed(),
+            optimisticWeekStartDate: get().weekStartDate,
+          });
+        }
         return;
       }
 
-      const status = (scheduleData.status ?? 0) as 0 | 1 | 2;
+      const next = [...prev];
+      // Swap the dragged recipe with the destination day instead of shifting the
+      // intermediate stack. This matches the backend's default swap semantics.
+      [next[from], next[to]] = [next[to], next[from]];
 
-      // Smart defaults are only fetched when voting is open (status === 1).
-      // Loading them unconditionally pre-fills the planner before mom has asked
-      // the family — breaking the Ask → Vote → Lock flow entirely.
-      // When status === 0 (draft), the planner starts blank and mom controls it.
-      // When status === 1 (voting open), the family's votes surface as pending suggestions.
-      const defaultsData = status === 1 ? await getSmartDefaults(weekOffset) : null;
+      // Reconcile only the two affected slots so unaffected cards keep their
+      // object identity during drag and do not all re-render on each midpoint.
+      const reconciled = [...prev];
+      reconciled[from] = {
+        ...next[from],
+        day: prev[from].day,
+        date: prev[from].date,
+      };
+      reconciled[to] = {
+        ...next[to],
+        day: prev[to].day,
+        date: prev[to].date,
+      };
 
-      if (get().weekOffset !== weekOffset) return;
+      set({
+        schedule: reconciled,
+        optimisticWriteAt: calendarTime.elapsed(),
+        optimisticWeekStartDate: get().weekStartDate,
+      });
+      // No API call — this is intentionally local-only for smooth drag feedback.
+    },
 
-      const mergedDays = buildScheduleDays(scheduleData, defaultsData ?? undefined, get().schedule);
+    // ── commitMove ────────────────────────────────────────────────────────────
+    commitMove(from, to, preDragSnapshot) {
+      if (from === to || from < 0 || to < 0) return;
 
-      // Restore persisted grocery state from API if present.
-      // groceryState is a Kiota AdditionalDataHolder — the actual key/value pairs
-      // live in .additionalData (typed as Record<string, unknown> by Kiota).
-      const serverGroceryState = scheduleData.groceryState?.additionalData as
+      const recipeToMove = preDragSnapshot[from].recipe;
+      if (!recipeToMove?.id) return;
+
+      // Identify the source slot too: the same recipe may be scheduled more than once.
+      moveRecipeApi(
+        get().weekOffset,
+        recipeToMove.id,
+        to,
+        from,
+        get().calendar?.referenceWeekStartDate
+      ).catch(() => set({ schedule: preDragSnapshot, optimisticWriteAt: null }));
+    },
+
+    // ── moveRecipe ────────────────────────────────────────────────────────────
+    /** @deprecated Use reorderLocally + commitMove instead. Kept for callers outside the planner page. */
+    moveRecipe(from, to) {
+      const prev = get().schedule;
+      if (from === to || from < 0 || to < 0) return;
+
+      const recipeToMove = prev[from].recipe;
+      if (!recipeToMove?.id) return;
+
+      get().reorderLocally(from, to, prev);
+
+      // Identify the source slot too: the same recipe may be scheduled more than once.
+      moveRecipeApi(
+        get().weekOffset,
+        recipeToMove.id,
+        to,
+        from,
+        get().calendar?.referenceWeekStartDate
+      ).catch(() => set({ schedule: prev }));
+    },
+
+    // ── openVoting ────────────────────────────────────────────────────────────
+    async openVoting() {
+      const { weekOffset, calendar, weekStartDate } = get();
+      if (!calendar) throw new Error("Could not confirm today's date. Try again.");
+      const reference = calendar.referenceWeekStartDate;
+      const prevStatus = get().status;
+      const prevSchedule = get().schedule;
+      set({ status: 1 });
+      try {
+        await openVotingApi(weekOffset, reference);
+        // Fetch defaults immediately so they appear without waiting for the next sync
+
+        const [scheduleData, defaultsData] = await Promise.all([
+          getSchedule(weekOffset, reference),
+          getSmartDefaults(weekOffset, reference),
+        ]);
+        if (
+          scheduleData &&
+          absoluteMonday(scheduleData.weekStartDate) === weekStartDate &&
+          get().weekStartDate === weekStartDate
+        ) {
+          const defaults =
+            absoluteMonday(defaultsData?.weekStartDate) === weekStartDate
+              ? defaultsData
+              : undefined;
+          set({ schedule: buildScheduleDays(scheduleData, defaults, get().schedule) });
+        }
+      } catch {
+        set({ status: prevStatus, schedule: prevSchedule });
+        throw new Error('Failed to open voting');
+      }
+    },
+
+    // ── closeVoting ───────────────────────────────────────────────────────────
+    async closeVoting() {
+      const { weekOffset, calendar, weekStartDate } = get();
+      if (!calendar) throw new Error("Could not confirm today's date. Try again.");
+      const reference = calendar.referenceWeekStartDate;
+      const prevStatus = get().status;
+      const schedule = get().schedule;
+
+      // AC-1: Suggestion Promotion
+      // Identify slots with pending suggestions that need to be committed
+      const pendingSlots = schedule
+        .map((slot, index) => ({ slot, index }))
+        .filter(({ slot }) => slot.status !== 3 && slot._isPending && slot.recipe?.id);
+
+      set({ status: 2 });
+
+      try {
+        // Commit all pending suggestions in parallel
+        await Promise.all(
+          pendingSlots.map(({ slot, index }) =>
+            assignRecipeToDay(
+              weekOffset,
+              index,
+              {
+                id: slot.recipe!.id!,
+                name: slot.recipe!.name ?? null,
+                image: slot.recipe!.image ?? '',
+              },
+              reference
+            )
+          )
+        );
+
+        // AC-2: Atomic Lock
+        await lockSchedule(weekOffset, reference);
+        if (get().weekOffset === weekOffset && get().weekStartDate === weekStartDate) {
+          set({
+            schedule: get().schedule.map((day) =>
+              day._isPending ? { ...day, _isPending: false } : day
+            ),
+          });
+        }
+      } catch {
+        set({ status: prevStatus });
+        throw new Error('Failed to close voting');
+      }
+    },
+
+    // ── lockWeek ──────────────────────────────────────────────────────────────
+    async lockWeek() {
+      const { weekOffset, calendar, weekStartDate } = get();
+      if (!calendar) throw new Error("Could not confirm today's date. Try again.");
+      const reference = calendar.referenceWeekStartDate;
+      const prev = get().status;
+      set({ status: 2 });
+      try {
+        await lockSchedule(weekOffset, reference);
+      } catch {
+        set({ status: prev });
+        throw new Error('Failed to lock week');
+      }
+    },
+
+    // ── sync ──────────────────────────────────────────────────────────────────
+    async sync() {
+      const { weekOffset, calendar, weekStartDate } = get();
+      set({ isLoading: true });
+      try {
+        const data = await getSchedule(weekOffset, calendar?.referenceWeekStartDate);
+        if (!data || get().weekOffset !== weekOffset || get().weekStartDate !== weekStartDate)
+          return;
+        const monday = absoluteMonday(data.weekStartDate);
+        const context = readCalendar(data.calendar);
+        if (!monday || !context || (weekStartDate && monday !== weekStartDate)) return;
+        if (get().calendar?.timeZone === context.timeZone && get().calendar!.today > context.today)
+          return;
+        set({ calendar: context, weekStartDate: monday });
+
+        const { optimisticWriteAt } = get();
+        const optimisticIsRecent =
+          optimisticWriteAt !== null &&
+          calendarTime.elapsed() - optimisticWriteAt >= 0 &&
+          calendarTime.elapsed() - optimisticWriteAt < 10_000 &&
+          get().optimisticWeekStartDate === get().weekStartDate;
+
+        const status = ((data as any).status ?? 0) as 0 | 1 | 2;
+
+        if (!optimisticIsRecent) {
+          const defaultsData =
+            status === 1
+              ? await getSmartDefaults(weekOffset, context.referenceWeekStartDate)
+              : undefined;
+          if (get().weekStartDate !== monday) return;
+          const defaults =
+            defaultsData && absoluteMonday(defaultsData.weekStartDate) === monday
+              ? defaultsData
+              : undefined;
+          set({
+            schedule: buildScheduleDays(data, defaults, get().schedule),
+            status,
+            lastSyncedAt: calendarTime.instant(),
+          });
+        } else {
+          // Protect optimistic schedule; still update status (authoritative)
+          set({
+            status,
+            lastSyncedAt: calendarTime.instant(),
+          });
+        }
+      } catch {
+        // silent
+      } finally {
+        set({ isLoading: false });
+      }
+    },
+
+    reclassifyGroceryItem(normalizedKey, section) {
+      set((state) => ({
+        groceryItems: state.groceryItems.map((item) =>
+          item.normalizedKey === normalizedKey && item.section !== section
+            ? { ...item, section }
+            : item
+        ),
+      }));
+    },
+
+    // ── applySnapshot ─────────────────────────────────────────────────────────
+    applySnapshot(schedule: ScheduleDays, echoSeq?: number) {
+      const plannerStore = usePlannerStore.getState();
+
+      // If the server echoed back a move sequence number, this event is our own
+      // response — confirm it and skip the schedule update (our optimistic state
+      // is already correct). Still fall through for non-move SSE events (no echoSeq).
+      if (echoSeq !== undefined) {
+        plannerStore.confirmMoveSeq(echoSeq);
+        const refreshedPlannerStore = usePlannerStore.getState();
+        const deferredSnapshot = refreshedPlannerStore.deferredWeekSnapshot;
+        if (
+          deferredSnapshot &&
+          !refreshedPlannerStore.isDragActive &&
+          refreshedPlannerStore.localMoveSeq === refreshedPlannerStore.confirmedMoveSeq
+        ) {
+          refreshedPlannerStore.setDeferredWeekSnapshot(null);
+          get().applySnapshot(deferredSnapshot);
+        }
+        if (!absoluteMonday(schedule.weekStartDate)) void get().sync();
+        return;
+      }
+
+      const monday = absoluteMonday(schedule.weekStartDate);
+      if (!monday) {
+        void get().sync();
+        return;
+      }
+      if (!get().weekStartDate) {
+        const context = readCalendar(schedule.calendar);
+        if (!context || weekOffsetFor(monday, context.referenceWeekStartDate) !== get().weekOffset)
+          return;
+        set({ calendar: context, weekStartDate: monday });
+      }
+      if (
+        monday !== get().weekStartDate ||
+        weekOffsetFor(monday, get().calendar?.referenceWeekStartDate) !== get().weekOffset
+      )
+        return;
+
+      // Another family member's update — only apply when we have no unconfirmed
+      // moves in flight. This replaces the wall-clock window entirely.
+      const hasPendingMoves =
+        plannerStore.localMoveSeq > plannerStore.confirmedMoveSeq || plannerStore.isDragActive;
+
+      // Authoritative status update (always apply)
+      const nextStatus = (schedule.status ?? 0) as 0 | 1 | 2;
+
+      if (hasPendingMoves) {
+        plannerStore.setDeferredWeekSnapshot(schedule);
+        set({ status: nextStatus, lastSyncedAt: calendarTime.instant() });
+        return;
+      }
+
+      if (plannerStore.deferredWeekSnapshot) {
+        plannerStore.setDeferredWeekSnapshot(null);
+      }
+
+      const mergedDays = buildScheduleDays(schedule, undefined, get().schedule);
+      const prev = get().schedule;
+
+      // Preserve smart-defaults metadata for pending slots that the snapshot does not
+      // have a server-assigned recipe for. Without this, a reconnect strips all
+      // _isPending/_voteCount/_unanimousVote fields, causing visible flicker on the planner.
+      const snapshotIsEmpty = mergedDays.every((d) => !d.recipe);
+
+      const preserved = mergedDays.map((day) => {
+        if (day.recipe || day.status === 3) return day; // persisted recipe or non-cooking plan
+        const prevDay = prev.find((p) => p.date === day.date);
+        if (prevDay?._isPending) {
+          return {
+            ...day,
+            recipe: prevDay.recipe,
+            _isPending: prevDay._isPending,
+            _voteCount: prevDay._voteCount,
+            _unanimousVote: prevDay._unanimousVote,
+          };
+        }
+        if (snapshotIsEmpty && prevDay?.recipe) {
+          return { ...day, recipe: prevDay.recipe, status: prevDay.status ?? day.status };
+        }
+        return day;
+      });
+
+      const incomingGroceryState = schedule.groceryState?.additionalData as
         Record<string, boolean> | undefined;
-      if (serverGroceryState && typeof serverGroceryState === 'object') {
-        usePlannerStore.getState().setGroceryState(serverGroceryState);
-      }
 
       set({
-        schedule: mergedDays,
-        groceryItems: scheduleData.groceryItems ?? [],
-        status,
-        lastSyncedAt: Date.now(),
-        isLoading: false,
+        schedule: preserved,
+        status:
+          snapshotIsEmpty && prev.length > 0 ? get().status : ((schedule.status ?? 0) as 0 | 1 | 2),
+        groceryItems: schedule.groceryItems ?? [],
+        lastSyncedAt: calendarTime.instant(),
       });
-    } catch {
-      set({ isLoading: false });
-    }
-  },
 
-  // ── assignRecipe ──────────────────────────────────────────────────────────
-  async assignRecipe(dayIndex, recipe) {
-    const prev = get().schedule;
-    const next = prev.map((d, i) =>
-      i === dayIndex
-        ? {
-            ...d,
-            status: 0,
-            nonCooking: null,
-            recipe: {
-              id: recipe.id,
-              name: recipe.name ?? '',
-              image: recipe.image,
-            } as ScheduleRecipeDto,
-          }
-        : d
-    );
-    set({ schedule: next, optimisticWriteAt: Date.now() });
-    try {
-      await assignRecipeToDay(get().weekOffset, dayIndex, recipe);
-      const data = await getSchedule(get().weekOffset);
-      if (!data) return;
-
-      set({
-        groceryItems: data.groceryItems ?? [],
-        status: (data.status ?? 0) as 0 | 1 | 2,
-        lastSyncedAt: Date.now(),
-      });
-    } catch {
-      set({ schedule: prev });
-      throw new Error('Failed to assign recipe');
-    }
-  },
-
-  // ── removeRecipe ──────────────────────────────────────────────────────────
-  removeRecipe(dayIndex, date) {
-    const prev = get().schedule;
-    const prevGroceryItems = get().groceryItems;
-    const recipeId = prev[dayIndex]?.recipe?.id;
-    const removedRecipeId = typeof recipeId === 'string' ? recipeId : undefined;
-    const next = prev.map((d, i) =>
-      i === dayIndex
-        ? {
-            ...d,
-            status: 0,
-            nonCooking: null,
-            recipe: undefined,
-            _isPending: false,
-            _userCleared: true,
-          }
-        : d
-    );
-    set({
-      schedule: next,
-      groceryItems: removeRecipeFromGroceryItems(prevGroceryItems, removedRecipeId),
-      optimisticWriteAt: Date.now(),
-    });
-    removeRecipeFromDay(date).catch(() => set({ schedule: prev, groceryItems: prevGroceryItems }));
-  },
-
-  // ── reorderLocally ────────────────────────────────────────────────────────
-  reorderLocally(from, to, baseSchedule) {
-    const prev = baseSchedule ?? get().schedule;
-    if (from < 0 || to < 0) return;
-
-    if (from === to) {
-      if (baseSchedule) {
-        set({ schedule: [...baseSchedule], optimisticWriteAt: Date.now() });
+      if (incomingGroceryState && typeof incomingGroceryState === 'object') {
+        usePlannerStore.getState().setGroceryState(incomingGroceryState);
       }
-      return;
-    }
+    },
 
-    const next = [...prev];
-    // Swap the dragged recipe with the destination day instead of shifting the
-    // intermediate stack. This matches the backend's default swap semantics.
-    [next[from], next[to]] = [next[to], next[from]];
+    // ── applySlotUpdate ───────────────────────────────────────────────────────
+    applySlotUpdate({
+      date,
+      recipe,
+      status,
+      nonCooking,
+    }: {
+      date: string;
+      recipe: any;
+      status: number;
+      nonCooking?: NonCookingPlanDto | null;
+    }) {
+      const prev = get().schedule;
+      if (prev.length === 0) return;
+      const inCurrentWeek = prev.some((d) => d.date === date);
+      if (!inCurrentWeek) return;
+      const next = prev.map((d) =>
+        d.date === date
+          ? {
+              ...d,
+              recipe: recipe ?? undefined,
+              status,
+              nonCooking: status === 3 ? (nonCooking ?? null) : null,
+              _isPending: false,
+            }
+          : d
+      );
+      set({ schedule: next });
+    },
 
-    // Reconcile only the two affected slots so unaffected cards keep their
-    // object identity during drag and do not all re-render on each midpoint.
-    const reconciled = [...prev];
-    reconciled[from] = {
-      ...next[from],
-      day: prev[from].day,
-      date: prev[from].date,
-    };
-    reconciled[to] = {
-      ...next[to],
-      day: prev[to].day,
-      date: prev[to].date,
-    };
+    // ── applyVoteUpdate ───────────────────────────────────────────────────────
+    applyVoteUpdate({ recipeId, voteCount }: { recipeId: string; voteCount: number }) {
+      const prev = get().schedule;
+      const next = prev.map((d) =>
+        d.recipe?.id === recipeId ? { ...d, recipe: { ...d.recipe, voteCount } } : d
+      );
+      set({ schedule: next });
+    },
 
-    set({ schedule: reconciled, optimisticWriteAt: Date.now() });
-    // No API call — this is intentionally local-only for smooth drag feedback.
-  },
-
-  // ── commitMove ────────────────────────────────────────────────────────────
-  commitMove(from, to, preDragSnapshot) {
-    if (from === to || from < 0 || to < 0) return;
-
-    const recipeToMove = preDragSnapshot[from].recipe;
-    if (!recipeToMove?.id) return;
-
-    // Identify the source slot too: the same recipe may be scheduled more than once.
-    moveRecipeApi(get().weekOffset, recipeToMove.id, to, from).catch(() =>
-      set({ schedule: preDragSnapshot, optimisticWriteAt: null })
-    );
-  },
-
-  // ── moveRecipe ────────────────────────────────────────────────────────────
-  /** @deprecated Use reorderLocally + commitMove instead. Kept for callers outside the planner page. */
-  moveRecipe(from, to) {
-    const prev = get().schedule;
-    if (from === to || from < 0 || to < 0) return;
-
-    const recipeToMove = prev[from].recipe;
-    if (!recipeToMove?.id) return;
-
-    get().reorderLocally(from, to, prev);
-
-    // Identify the source slot too: the same recipe may be scheduled more than once.
-    moveRecipeApi(get().weekOffset, recipeToMove.id, to, from).catch(() => set({ schedule: prev }));
-  },
-
-  // ── openVoting ────────────────────────────────────────────────────────────
-  async openVoting() {
-    const prevStatus = get().status;
-    const prevSchedule = get().schedule;
-    set({ status: 1 });
-    try {
-      await openVotingApi(get().weekOffset);
-      // Fetch defaults immediately so they appear without waiting for the next sync
-      const weekOffset = get().weekOffset;
-      const [scheduleData, defaultsData] = await Promise.all([
-        getSchedule(weekOffset),
-        getSmartDefaults(weekOffset),
-      ]);
-      if (scheduleData) {
-        set({ schedule: buildScheduleDays(scheduleData, defaultsData, get().schedule) });
+    // ── applySmartDefaultsUpdate ──────────────────────────────────────────────
+    applySmartDefaultsUpdate(defaults: SmartDefaultsDto) {
+      const monday = absoluteMonday(defaults.weekStartDate);
+      if (!monday) {
+        void get().sync();
+        return;
       }
-    } catch {
-      set({ status: prevStatus, schedule: prevSchedule });
-      throw new Error('Failed to open voting');
-    }
-  },
+      if (
+        monday !== get().weekStartDate ||
+        weekOffsetFor(monday, get().calendar?.referenceWeekStartDate) !== get().weekOffset
+      )
+        return;
 
-  // ── closeVoting ───────────────────────────────────────────────────────────
-  async closeVoting() {
-    const prevStatus = get().status;
-    const schedule = get().schedule;
-    const weekOffset = get().weekOffset;
-
-    // AC-1: Suggestion Promotion
-    // Identify slots with pending suggestions that need to be committed
-    const pendingSlots = schedule
-      .map((slot, index) => ({ slot, index }))
-      .filter(({ slot }) => slot.status !== 3 && slot._isPending && slot.recipe?.id);
-
-    set({ status: 2 });
-
-    try {
-      // Commit all pending suggestions in parallel
-      await Promise.all(
-        pendingSlots.map(({ slot, index }) =>
-          assignRecipeToDay(weekOffset, index, {
-            id: slot.recipe!.id!,
-            name: slot.recipe!.name ?? null,
-            image: slot.recipe!.image ?? '',
-          })
-        )
+      const prev = get().schedule;
+      const defaultsByDayIndex = new Map(
+        defaults.preSelectedRecipes?.map((r) => [r.dayIndex, r]) ?? []
       );
 
-      // AC-2: Atomic Lock
-      await lockSchedule(weekOffset);
-      if (get().weekOffset === weekOffset) {
-        set({
-          schedule: get().schedule.map((day) =>
-            day._isPending ? { ...day, _isPending: false } : day
-          ),
-        });
-      }
-    } catch {
-      set({ status: prevStatus });
-      throw new Error('Failed to close voting');
-    }
-  },
+      const next = prev.map((d, index) => {
+        if (d.status === 3 || (d.recipe && !d._isPending)) return d;
 
-  // ── lockWeek ──────────────────────────────────────────────────────────────
-  async lockWeek() {
-    const prev = get().status;
-    set({ status: 2 });
-    try {
-      await lockSchedule(get().weekOffset);
-    } catch {
-      set({ status: prev });
-      throw new Error('Failed to lock week');
-    }
-  },
-
-  // ── sync ──────────────────────────────────────────────────────────────────
-  async sync() {
-    set({ isLoading: true });
-    try {
-      const data = await getSchedule(get().weekOffset);
-      if (!data) return;
-
-      const { optimisticWriteAt } = get();
-      const optimisticIsRecent =
-        optimisticWriteAt !== null && Date.now() - optimisticWriteAt < 10_000;
-
-      const status = ((data as any).status ?? 0) as 0 | 1 | 2;
-
-      const weekOffset = get().weekOffset;
-      if (!optimisticIsRecent) {
-        const defaultsData = status === 1 ? await getSmartDefaults(weekOffset) : undefined;
-        set({
-          schedule: buildScheduleDays(data, defaultsData, get().schedule),
-          status,
-          lastSyncedAt: Date.now(),
-        });
-      } else {
-        // Protect optimistic schedule; still update status (authoritative)
-        set({
-          status,
-          lastSyncedAt: Date.now(),
-        });
-      }
-    } catch {
-      // silent
-    } finally {
-      set({ isLoading: false });
-    }
-  },
-
-  reclassifyGroceryItem(normalizedKey, section) {
-    set((state) => ({
-      groceryItems: state.groceryItems.map((item) =>
-        item.normalizedKey === normalizedKey && item.section !== section
-          ? { ...item, section }
-          : item
-      ),
-    }));
-  },
-
-  // ── applySnapshot ─────────────────────────────────────────────────────────
-  applySnapshot(schedule: ScheduleDays, echoSeq?: number) {
-    const plannerStore = usePlannerStore.getState();
-
-    // If the server echoed back a move sequence number, this event is our own
-    // response — confirm it and skip the schedule update (our optimistic state
-    // is already correct). Still fall through for non-move SSE events (no echoSeq).
-    if (echoSeq !== undefined) {
-      plannerStore.confirmMoveSeq(echoSeq);
-      const refreshedPlannerStore = usePlannerStore.getState();
-      const deferredSnapshot = refreshedPlannerStore.deferredWeekSnapshot;
-      if (
-        deferredSnapshot &&
-        !refreshedPlannerStore.isDragActive &&
-        refreshedPlannerStore.localMoveSeq === refreshedPlannerStore.confirmedMoveSeq
-      ) {
-        refreshedPlannerStore.setDeferredWeekSnapshot(null);
-        get().applySnapshot(deferredSnapshot);
-      }
-      return;
-    }
-
-    if ((schedule.weekOffset ?? 0) !== get().weekOffset) return;
-
-    // Another family member's update — only apply when we have no unconfirmed
-    // moves in flight. This replaces the wall-clock window entirely.
-    const hasPendingMoves =
-      plannerStore.localMoveSeq > plannerStore.confirmedMoveSeq || plannerStore.isDragActive;
-
-    // Authoritative status update (always apply)
-    const nextStatus = (schedule.status ?? 0) as 0 | 1 | 2;
-
-    if (hasPendingMoves) {
-      plannerStore.setDeferredWeekSnapshot(schedule);
-      set({ status: nextStatus, lastSyncedAt: Date.now() });
-      return;
-    }
-
-    if (plannerStore.deferredWeekSnapshot) {
-      plannerStore.setDeferredWeekSnapshot(null);
-    }
-
-    const mergedDays = buildScheduleDays(schedule, undefined, get().schedule);
-    const prev = get().schedule;
-
-    // Preserve smart-defaults metadata for pending slots that the snapshot does not
-    // have a server-assigned recipe for. Without this, a reconnect strips all
-    // _isPending/_voteCount/_unanimousVote fields, causing visible flicker on the planner.
-    const snapshotIsEmpty = mergedDays.every((d) => !d.recipe);
-
-    const preserved = mergedDays.map((day) => {
-      if (day.recipe || day.status === 3) return day; // persisted recipe or non-cooking plan
-      const prevDay = prev.find((p) => p.date === day.date);
-      if (prevDay?._isPending) {
-        return {
-          ...day,
-          recipe: prevDay.recipe,
-          _isPending: prevDay._isPending,
-          _voteCount: prevDay._voteCount,
-          _unanimousVote: prevDay._unanimousVote,
-        };
-      }
-      if (snapshotIsEmpty && prevDay?.recipe) {
-        return { ...day, recipe: prevDay.recipe, status: prevDay.status ?? day.status };
-      }
-      return day;
-    });
-
-    const incomingGroceryState = schedule.groceryState?.additionalData as
-      Record<string, boolean> | undefined;
-
-    set({
-      schedule: preserved,
-      status:
-        snapshotIsEmpty && prev.length > 0 ? get().status : ((schedule.status ?? 0) as 0 | 1 | 2),
-      groceryItems: schedule.groceryItems ?? [],
-      lastSyncedAt: Date.now(),
-    });
-
-    if (incomingGroceryState && typeof incomingGroceryState === 'object') {
-      usePlannerStore.getState().setGroceryState(incomingGroceryState);
-    }
-  },
-
-  // ── applySlotUpdate ───────────────────────────────────────────────────────
-  applySlotUpdate({
-    date,
-    recipe,
-    status,
-    nonCooking,
-  }: {
-    date: string;
-    recipe: any;
-    status: number;
-    nonCooking?: NonCookingPlanDto | null;
-  }) {
-    const prev = get().schedule;
-    if (prev.length === 0) return;
-    const inCurrentWeek = prev.some((d) => d.date === date);
-    if (!inCurrentWeek) return;
-    const next = prev.map((d) =>
-      d.date === date
-        ? {
+        const smartDefault = defaultsByDayIndex.get(index);
+        if (smartDefault) {
+          return {
             ...d,
-            recipe: recipe ?? undefined,
-            status,
-            nonCooking: status === 3 ? (nonCooking ?? null) : null,
+            recipe: {
+              id: smartDefault.recipeId ?? '',
+              name: smartDefault.name ?? '',
+              image: smartDefault.heroImageUrl ?? '',
+              voteCount: smartDefault.voteCount ?? 0,
+            },
+            _isPending: true,
+            _voteCount: smartDefault.voteCount,
+            _unanimousVote: smartDefault.unanimousVote,
+            _isLocked: smartDefault.isLocked,
+          };
+        }
+
+        if (d._isPending) {
+          return {
+            ...d,
+            recipe: undefined,
             _isPending: false,
-          }
-        : d
-    );
-    set({ schedule: next });
-  },
+            _voteCount: null,
+            _unanimousVote: null,
+          };
+        }
 
-  // ── applyVoteUpdate ───────────────────────────────────────────────────────
-  applyVoteUpdate({ recipeId, voteCount }: { recipeId: string; voteCount: number }) {
-    const prev = get().schedule;
-    const next = prev.map((d) =>
-      d.recipe?.id === recipeId ? { ...d, recipe: { ...d.recipe, voteCount } } : d
-    );
-    set({ schedule: next });
-  },
+        return d;
+      });
 
-  // ── applySmartDefaultsUpdate ──────────────────────────────────────────────
-  applySmartDefaultsUpdate(defaults: SmartDefaultsDto) {
-    if ((defaults.weekOffset ?? 0) !== get().weekOffset) return;
-
-    const prev = get().schedule;
-    const defaultsByDayIndex = new Map(
-      defaults.preSelectedRecipes?.map((r) => [r.dayIndex, r]) ?? []
-    );
-
-    const next = prev.map((d, index) => {
-      if (d.status === 3 || (d.recipe && !d._isPending)) return d;
-
-      const smartDefault = defaultsByDayIndex.get(index);
-      if (smartDefault) {
-        return {
-          ...d,
-          recipe: {
-            id: smartDefault.recipeId ?? '',
-            name: smartDefault.name ?? '',
-            image: smartDefault.heroImageUrl ?? '',
-            voteCount: smartDefault.voteCount ?? 0,
-          },
-          _isPending: true,
-          _voteCount: smartDefault.voteCount,
-          _unanimousVote: smartDefault.unanimousVote,
-          _isLocked: smartDefault.isLocked,
-        };
-      }
-
-      if (d._isPending) {
-        return {
-          ...d,
-          recipe: undefined,
-          _isPending: false,
-          _voteCount: null,
-          _unanimousVote: null,
-        };
-      }
-
-      return d;
-    });
-
-    set({ schedule: next });
-  },
-}));
+      set({ schedule: next });
+    },
+  };
+});

@@ -40,6 +40,17 @@ export function createFamily403ErrorFromDiscriminatorValue(
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {Family409Error}
+ */
+// @ts-ignore
+export function createFamily409ErrorFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoFamily409Error;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {FamilyGetResponse_data}
  */
 // @ts-ignore
@@ -104,6 +115,24 @@ export function deserializeIntoFamily403Error(
   return {
     message: (n) => {
       family403Error.messageEscaped = n.getStringValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param Family409Error The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoFamily409Error(
+  family409Error: Partial<Family409Error> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    message: (n) => {
+      family409Error.messageEscaped = n.getStringValue();
+    },
+    status: (n) => {
+      family409Error.status = n.getNumberValue();
     },
   };
 }
@@ -233,6 +262,16 @@ export interface Family403Error extends AdditionalDataHolder, ApiError, Parsable
    */
   messageEscaped?: string | null;
 }
+export interface Family409Error extends AdditionalDataHolder, ApiError, Parsable {
+  /**
+   * The message property
+   */
+  messageEscaped?: string | null;
+  /**
+   * The status property
+   */
+  status?: number | null;
+}
 export interface FamilyGetResponse extends AdditionalDataHolder, Parsable {
   /**
    * The data property
@@ -334,11 +373,12 @@ export interface FamilyRequestBuilder extends BaseRequestBuilder<FamilyRequestBu
     requestConfiguration?: RequestConfiguration<object> | undefined
   ): Promise<FamilyGetResponse | undefined>;
   /**
-   * Create or update a family member
+   * Persists a new named family member. The submitted name is trimmed and compared case-insensitively against existing members; duplicate names are rejected with 409 Conflict while preserving trimmed display casing on creation.
    * @param body The request body
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {Promise<FamilyPostResponse>}
    * @throws {Family403Error} error when the service returns a 403 status code
+   * @throws {Family409Error} error when the service returns a 409 status code
    */
   post(
     body: FamilyPostRequestBody,
@@ -353,7 +393,7 @@ export interface FamilyRequestBuilder extends BaseRequestBuilder<FamilyRequestBu
     requestConfiguration?: RequestConfiguration<object> | undefined
   ): RequestInformation;
   /**
-   * Create or update a family member
+   * Persists a new named family member. The submitted name is trimmed and compared case-insensitively against existing members; duplicate names are rejected with 409 Conflict while preserving trimmed display casing on creation.
    * @param body The request body
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {RequestInformation}
@@ -380,6 +420,25 @@ export function serializeFamily403Error(
   }
   writer.writeStringValue('message', family403Error.messageEscaped);
   writer.writeAdditionalData(family403Error.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param Family409Error The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeFamily409Error(
+  writer: SerializationWriter,
+  family409Error: Partial<Family409Error> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!family409Error || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeStringValue('message', family409Error.messageEscaped);
+  writer.writeNumberValue('status', family409Error.status);
+  writer.writeAdditionalData(family409Error.additionalData);
 }
 /**
  * Serializes information the current object
@@ -552,6 +611,7 @@ export const FamilyRequestBuilderRequestsMetadata: RequestsMetadata = {
     responseBodyContentType: 'application/json',
     errorMappings: {
       403: createFamily403ErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
+      409: createFamily409ErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
     },
     adapterMethodName: 'send',
     responseBodyFactory: createFamilyPostResponseFromDiscriminatorValue,
