@@ -1,0 +1,38 @@
+# Design
+
+## Context
+
+See proposal.md for motivation and scope. This is extraction of existing integration, not a design for application implementation. A75 authorizes documentation only. BSL-recipe-quality-007–010 in `docs/openspec-baseline-plan.md` records sources, identities, assertions and mappings.
+
+The first observable slice is a manual Duplicate report's resolution: RecipesPage filter draft → POST `/api/recipes/search` → report-existence predicate/status projection → ordinary card → detail GET → gear Review issue → Mark as resolved → recipes.ts → Kiota importReport.delete → RecipeController.DeleteImportReport → RecipeImportReportService.DeleteAsync → remove recipe_import_reports row → unwrapped RecipeDetailResponse → local detail replacement/dialog dismissal/toast. Subsequent new detail/search reads query saved report state. These internal boundaries were inspected; none was executed in this session.
+
+## Goals / Non-Goals
+
+**Goals:** Add review/resolution-specific observable behavior, preserve established ownership, distinguish saved report deletion from semantic correction, and make response/read/loaded-parent differences reviewable.
+
+**Non-Goals:** Add invalidation, repair contracts/mocks, broaden authorization, qualify databases or implement tests. No new recipe-search capability or new runtime abstractions.
+
+## Decisions
+
+1. **Extend only recipe-quality.** The CLI resolves the nearest repository root and five existing capabilities. Main recipe-quality already owns entry/form initialization, reasons/notes, Save policy, polling, conditional processing and badges. Reuse those blocks unchanged, plus household-identity for access/member context and recipe-library for detail reads/dismissal. Alternative: repeat initialization, failure guidance and background requirements here; rejected because it duplicates promoted ownership.
+2. **Keep review-filter consequences bounded.** RecipesPage uses one Filters button/sheet at all widths, despite mobile test IDs. More filters reveals unselected review choices; selected choices remain after collapse. Apply sets filters, closes and calls search; dismissal discards the sheet draft. Small screens bottom-align the sheet; md centers it. There is no separate Needs review route: that phrase occurs in resolve explanation; actual filter labels are Reported/Ready to review (localized in French). Both LINQ and SQL predicates implement any report versus ready subset, ready taking precedence. Normal search constraints continue to apply. Active review hides Top Pick and uses Results. Alternative: extract general retrieval/ranking/continuation policy; rejected as uncreated recipe-search ownership. The delta states only immediate consequences and records that dependency.
+3. **Use the actual resolution resource and guards.** The wrapper calls generated DELETE with recipe ID, no feedback body, and requires returned recipe. The auth provider supplies member header from selection/cookie; the binder accepts parseable header then cookie. Controller rejects absent context (400); service checks member then recipe (missing maps through middleware to 404). DeleteAsync does not compare AddedBy, reporter or updater, and does not require CanReimport. This inspection is not full household-access qualification; factory tests disable household auth. Alternative: infer cross-member access from service checks or prior reporting tests; rejected. Related import-ID access retains U76.
+4. **Separate public pending display from linked-workflow rejection.** UI busy disables Save/Resolve, and isReimporting disables both plus reason/note controls with an explanation. Foreground busy does not lock reason/note editing or dismissal. DeleteAsync shares a static per-recipe semaphore with SubmitAsync, checks LastWorkflowInstanceId against an existing Pending/Processing workflow, then removes the report and saves. It does not reject solely because report.Status is Reimporting; missing/terminal linked workflows do not trigger this guard. The lock is process-local. Controller returns 409/message for the active exception, but DELETE OpenAPI/generated errors list only 400/404. Alternative: state complete typed conflict parity; withheld as U81. The delta specifies rejection without prescribing the disputed contract status.
+5. **Treat success as report removal.** No recipe correction validation occurs. No re-import, explicit search-index rebuild, SSE publication, parent callback or promotion invalidation is issued by DeleteAsync/resolve handler. A permitted saved removal returns 200 updatedAt/recipe/importIssue null; missing report returns the same cleared shape without a save. Detail replaces recipe, closes form and toasts Marked as resolved. CooksMode shares the wrapper/form but sets its own local details and clears context without the detail toast; it remains an entry dependency only. Alternative: infer automatic correction/resolution or a uniform caller acknowledgement; rejected.
+6. **Bound retry and freshness.** The sheet catches resolution rejection, sets the dedicated retry error and clears busy without resetting local reasons/note. Another enabled activation clears error and calls resolve again. Success busy remains true because detail unmounts the form. Dismissal remains possible while pending, and the detail resolution callback has no dedicated stale-target guard; no universal ordering/cancellation guarantee. Subsequent new successful detail GET reads reports AsNoTracking; new search predicates/status queries see removal absent a new report. RecipesPage onClose only clears selection/restores scroll, onDeleted refreshes search, and resolution invokes neither. Loaded cards can therefore retain report badges/membership until a separate search. Existing continuation state is recipe-search owned and not a freshness guarantee. Alternative: promise immediate parent refresh or guaranteed retry recovery; withheld as U82/U83.
+
+## Risks / Trade-offs
+
+- [Needs review copy sounds like a separate view] → U80 records actual labels and shared responsive entry; no invented route.
+- [Contract omits implemented DELETE 409] → U81 records exact controller/generated mismatch; no contract/client edit or normative typed-error guarantee.
+- [Loaded list and authoritative detail disagree after resolution] → U82 distinguishes new persisted reads from loaded results; no invalidation implementation task.
+- [Coverage substitutes real boundaries] → Inspect assertions, not names. API factory uses EF InMemory, disabled household auth and mocked orchestration persisting Processing workflows. Component tests stub API/toast; browser routes implement their own state; PostgreSQL tests cover lifecycle guards, not DELETE. U83 retains unexecuted retry/access/read-after-delete/concurrency gaps.
+- [Prior checkpoint text is stale] → Actual main headers are identity 36/92, library 55/122, sharing 9/34, capture 37/92, quality 13/35. Update current checkpoint while preserving historical 9/27 statements and every prior qualification.
+
+## Migration Plan
+
+None. No runtime, SQL, client generation, deployment, promotion or archive. Review this validated documentation draft before any separately authorized lifecycle action.
+
+## Open Questions
+
+No consequential unresolved choice blocks the extraction: uncertain guarantees are withheld. Cross-member authenticated DELETE qualification, dedicated retry/error assertions, real PostgreSQL DELETE/new-read behavior and future refresh/error-contract policy require separate authorization. A34 remains deferred; existing URL dispatch/observation/completion limitations U01/U75–U79 are unchanged.
