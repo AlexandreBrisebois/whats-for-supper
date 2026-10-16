@@ -38,14 +38,18 @@ public class ScheduleController(ScheduleService scheduleService) : ControllerBas
     }
 
     [HttpPost("defer")]
-    public async Task<IActionResult> DeferRecipe([FromBody] DeferScheduleDto dto, [FromQuery] string? referenceWeekStartDate = null)
+    public async Task<IActionResult> DeferRecipe([FromBody] DeferScheduleDto dto, [FromQuery] string? referenceWeekStartDate = null, [FromQuery] int targetWeekOffset = 1)
     {
         if (!TryReadReference(referenceWeekStartDate, out var reference))
             return BadRequest(new { message = "referenceWeekStartDate must be a yyyy-MM-dd Monday." });
         try
         {
-            var result = await _scheduleService.DeferRecipeAsync(dto, GetConnectionId(), GetMoveSeq(), referenceWeekStartDate: reference);
+            var result = await _scheduleService.DeferRecipeAsync(dto, GetConnectionId(), GetMoveSeq(), referenceWeekStartDate: reference, targetWeekOffset: targetWeekOffset);
             return Ok(result);
+        }
+        catch (Exception ex) when (ex is ArgumentOutOfRangeException or OverflowException)
+        {
+            return BadRequest(new { message = "targetWeekOffset must resolve to a supported calendar date." });
         }
         catch (KeyNotFoundException ex)
         {

@@ -510,3 +510,77 @@ test('Planner displays the literal November civil month in Toronto during fall D
     await context.close();
   }
 });
+
+test('defer mock validates query and exact source before mutation with explicit and legacy offsets', async ({
+  page,
+}) => {
+  await setupCommonRoutes(
+    page,
+    builders.deploymentCalendar({
+      referenceWeekStartDate: '2026-10-12',
+      currentWeekStartDate: '2026-10-12',
+      today: '2026-10-14',
+      capturedAtUtc: '2026-10-14T12:00:00Z',
+      nextDayAtUtc: '2026-10-15T00:00:00Z',
+    })
+  );
+  await page.goto('/onboarding');
+  const result = await page.evaluate(async (id) => {
+    const post = (path: string, body: object) =>
+      fetch(`/api/schedule/${path}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+    const read = async (offset: number) =>
+      (await (await fetch(`/api/schedule?weekOffset=${offset}`)).json()).data;
+    await post('assign', { weekOffset: 1, dayIndex: 2, recipeId: id });
+    const body = { sourceDate: '2026-10-21', recipeId: id };
+    const before = await read(1);
+    const rejected = [];
+    for (const query of [
+      'targetWeekOffset=abc',
+      'targetWeekOffset=1.5',
+      'targetWeekOffset=2147483648',
+      'targetWeekOffset=2147483647',
+      'referenceWeekStartDate=2026-10-13',
+    ])
+      rejected.push((await post(`defer?${query}`, body)).status);
+    const missing = (await post('defer?targetWeekOffset=2', { ...body, sourceDate: '2026-10-20' }))
+      .status;
+    await fetch('/api/schedule/defer?targetWeekOffset=2', { method: 'GET' });
+    const after = await read(1);
+    const explicit = await (await post('defer?targetWeekOffset=2', body)).json();
+    const destination = await read(2);
+    const source = await read(1);
+    // Omitted target keeps the legacy reference-next-week base even for a source in week two.
+    const legacy = await (await post('defer', { sourceDate: '2026-10-26', recipeId: id })).json();
+    await post('assign', { weekOffset: 1, dayIndex: 2, recipeId: id });
+    await post('day/2026-10-21/validate', { status: 4, recipeId: id });
+    const conflictBefore = await read(1);
+    const conflict = (await post('defer?targetWeekOffset=2', body)).status;
+    return {
+      before,
+      after,
+      rejected,
+      missing,
+      explicit: explicit.data,
+      destination,
+      source,
+      legacy: legacy.data,
+      conflict,
+      conflictBefore,
+      conflictAfter: await read(1),
+    };
+  }, MOCK_IDS.RECIPE_CHICKEN);
+  expect(result.rejected).toEqual([400, 400, 400, 400, 400]);
+  expect(result.missing).toBe(404);
+  expect(result.after).toEqual(result.before);
+  expect(result.explicit).toMatchObject({ scheduledDate: '2026-10-26', scheduledWeekOffset: 2 });
+  expect(result.explicit.message).not.toContain('full');
+  expect(result.destination.days[0].recipe.id).toBe(MOCK_IDS.RECIPE_CHICKEN);
+  expect(result.source.days[2].recipe).toBeNull();
+  expect(result.legacy).toMatchObject({ scheduledDate: '2026-10-19', scheduledWeekOffset: 1 });
+  expect(result.conflict).toBe(409);
+  expect(result.conflictAfter).toEqual(result.conflictBefore);
+});

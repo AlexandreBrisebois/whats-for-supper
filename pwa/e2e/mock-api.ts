@@ -1031,9 +1031,24 @@ export async function setupCommonRoutes(page: Page, calendarContext?: CalendarCo
 
   await page.route('**/api/schedule/defer**', async (route) => {
     if (route.request().method() !== 'POST') return route.fallback();
-    const reference = readReference(new URL(route.request().url()));
+    const url = new URL(route.request().url());
+    const reference = readReference(url);
     if (!reference)
       return route.fulfill({ status: 400, json: { message: 'Invalid referenceWeekStartDate.' } });
+    const rawOffset = url.searchParams.get('targetWeekOffset');
+    const targetOffset = rawOffset === null ? 1 : Number(rawOffset);
+    const destinationTime = Date.parse(`${reference}T00:00:00Z`) + targetOffset * 7 * 86400000;
+    if (
+      (rawOffset !== null && !/^[+-]?\d+$/.test(rawOffset)) ||
+      !Number.isInteger(targetOffset) ||
+      targetOffset < -2147483648 ||
+      targetOffset > 2147483647 ||
+      !Number.isFinite(destinationTime) ||
+      destinationTime < Date.parse('0001-01-01T00:00:00Z') ||
+      destinationTime > Date.parse('9999-12-31T00:00:00Z')
+    )
+      return route.fulfill({ status: 400, json: { message: 'Invalid targetWeekOffset.' } });
+    const start = toDateStr(new Date(destinationTime));
     const body = route.request().postDataJSON();
     const source = scheduleEntries.get(body.sourceDate);
     if (!source || !source.recipe || source.recipe.id !== body.recipeId)
@@ -1043,7 +1058,7 @@ export async function setupCommonRoutes(page: Page, calendarContext?: CalendarCo
         status: 409,
         json: { message: 'Meals awaiting consensus cannot be deferred.' },
       });
-    let destination = addDays(reference, 7);
+    let destination = start;
     while (scheduleEntries.has(destination)) destination = addDays(destination, 1);
     if (source.status === 3) scheduleEntries.set(body.sourceDate, { ...source, recipe: null });
     else scheduleEntries.delete(body.sourceDate);
@@ -1056,7 +1071,7 @@ export async function setupCommonRoutes(page: Page, calendarContext?: CalendarCo
         data: {
           scheduledDate: destination,
           scheduledWeekOffset: destinationOffset,
-          message: `Moved meal to ${destination}.`,
+          message: `${destinationOffset > targetOffset ? 'Next week is full. ' : ''}Moved meal to ${destination}.`,
         },
       },
     });

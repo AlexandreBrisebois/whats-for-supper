@@ -165,6 +165,11 @@ tasks:
     cmds:
       - dotnet test src/RecipeApi.Tests/RecipeApi.Tests.csproj {{.CLI_ARGS}}
 
+  test:database:
+    desc: "Run real PostgreSQL tests using an isolated local database; no API/PWA deployment"
+    cmds:
+      - '"{{.PYTHON}}" -B scripts/agent/database_tests.py {{.CLI_ARGS}}'
+
   test:api:watch:
     desc: "Test API in watch mode"
     dir: api

@@ -170,6 +170,14 @@ class CompletionTests(IsolatedGitTestCase):
             self.assertEqual(f.run_check('agent:test:impact'), ('passed', 'ok'))
         run.assert_called_once_with([sys.executable, '-B', 'scripts/agent/test_ops.py', '--impact', '--files'])
 
+    def test_database_gate_executes_relational_runner_instead_of_permanent_blocker(self):
+        f = self.finish()
+        runner = mock.Mock()
+        runner.run_database_tests.return_value = ('passed', 'database record')
+        with mock.patch.dict(sys.modules, {'database_tests': runner}):
+            self.assertEqual(f.run_check('database-behavior'), ('passed', 'database record'))
+        runner.run_database_tests.assert_called_once_with()
+
     def test_api_tests_run_without_an_isolated_runner_assertion(self):
         f = self.finish()
         with mock.patch.dict(os.environ, {}, clear=True), \

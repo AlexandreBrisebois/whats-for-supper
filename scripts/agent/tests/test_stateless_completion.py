@@ -37,7 +37,8 @@ class StatelessCompletionTests(unittest.TestCase):
         self.assertEqual([check['name'] for check in plan['checks']], finish.checks_for(paths))
         database = next(check for check in plan['checks'] if check['name'] == 'database-behavior')
         self.assertIn('unknown.bin', database['selected_by'])
-        self.assertIn('blocked', database['limitations'])
+        self.assertIn('local PostgreSQL', database['limitations'])
+        self.assertIn('Docker', database['prerequisites'])
 
     def test_plan_rejects_unchanged_paths(self):
         with mock.patch.object(sys, 'argv', ['finish.py', '--plan', 'docs/unchanged.md']), \

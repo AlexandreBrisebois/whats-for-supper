@@ -145,10 +145,22 @@ mocked API boundary.
   `agent:drift:mocks` audits ID/GUID patterns. None proves live API/database behavior.
 - `task agent:drift:endpoints` probes the generated live API specification once.
   Unavailable service is blocked (script exit 2), not zero mismatches.
-- Finish runs both `agent:test:impact` and `test:api` locally. Impact Playwright suites use
-  the repository's mocked API boundary. Their results do not establish task-specific real
-  database behavior, which remains explicitly blocked until recorded with its actual command
-  and tested identity.
+- Finish runs `agent:test:impact` and `test:api` locally. Contract/unknown changes also
+  run `database-behavior` through the same runner exposed as `task test:database`.
+  It runs the existing PostgreSQL integration suites against disposable databases,
+  using `WFS_TEST_POSTGRES_CONNECTION` when configured or an automatically owned,
+  temporary PostgreSQL/pgvector container otherwise. It does not deploy the API/PWA,
+  use development Compose volumes, or run the opt-in live browser qualification.
+  Docker (when no connection is supplied) and the repository .NET toolchain are required.
+  Only the runner's own container is removed, including after test/startup failure.
+  Failed tests fail the gate; unavailable prerequisites, zero matched tests or skipped
+  relational tests block it. TRX results, executed test names and database runtime
+  metadata are recorded under `.task/database-tests/runs/`; credentials are omitted.
+  `task test:database -- --filter FullyQualifiedName~DeferRecipe` narrows feedback
+  within the PostgreSQL suite; final verification runs that entire suite.
+  Impact Playwright uses mocked APIs. Passing database suites establish their actual
+  relational scenarios, while additional selected-task acceptance remains separately
+  required. Deployment/release qualification remains separate from local verification.
 - A timed-out/interrupted finish child group is stopped and reaped without retry.
   Kiota retains its compatible runtime, clean-output and one-shot timeout behavior.
   Correct the cause before a new authorized attempt; monitor a running command only.

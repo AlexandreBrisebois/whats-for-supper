@@ -2441,12 +2441,22 @@ paths:
   /api/schedule/defer:
     post:
       summary: Defer a scheduled recipe to the first free date next week or later
+      description: >
+        Keeps the exact source date and recipe body and existing response shape. Searches from
+        reference Monday plus targetWeekOffset weeks, continuing past occupied dates into later
+        weeks. Feedback reports the actual destination and claims next week is full only when
+        placement spills beyond the requested destination week. Invalid inputs reject before mutation.
       parameters:
+        - name: targetWeekOffset
+          in: query
+          required: false
+          schema: { type: integer, default: 1 }
+          description: Search-start week relative to referenceWeekStartDate. Omission retains offset one.
         - name: referenceWeekStartDate
           in: query
           required: false
           schema: { type: string, format: date }
-          description: Optional yyyy-MM-dd Monday anchoring all relative offsets and defer's next-week base. Omission captures the deployment current Monday (UTC by default). Literal source dates remain unchanged. Invalid or non-Monday references return 400 before work.
+          description: Optional yyyy-MM-dd Monday anchoring all relative offsets. Omission captures the deployment current Monday (UTC by default). Literal source dates remain unchanged. Invalid or non-Monday references return 400 before work.
       requestBody:
         required: true
         content:
@@ -2454,7 +2464,7 @@ paths:
             schema: { $ref: '#/components/schemas/DeferScheduleDto' }
       responses:
         '400':
-          description: Invalid or non-Monday referenceWeekStartDate; no mutation is performed.
+          description: Invalid query binding, non-Monday referenceWeekStartDate or unrepresentable destination; no mutation is performed.
         '200':
           description: Deferred
           content:

@@ -119,7 +119,12 @@ export async function resolveOccupiedSlot(
     if (!sourceDate) return;
     return apiClient.api.schedule.defer.post(
       { sourceDate, recipeId },
-      referenceRequest(slot.referenceWeekStartDate)
+      {
+        queryParameters: {
+          ...referenceRequest(slot.referenceWeekStartDate)?.queryParameters,
+          targetWeekOffset: slot.weekOffset + 1,
+        },
+      }
     );
   }
 

@@ -179,8 +179,8 @@ def verification_plan(paths, changed, *, explicit):
     for check in checks_for(paths):
         item = {'name': check, 'selected_by': [path for path in paths if check in by_path[path]]}
         if check == 'database-behavior':
-            item['prerequisites'] = 'Task-specific real database acceptance evidence.'
-            item['limitations'] = 'Always blocked in this runner; reconcile task evidence separately.'
+            item['prerequisites'] = 'Repository .NET SDK and Docker, or WFS_TEST_POSTGRES_CONNECTION.'
+            item['limitations'] = 'Runs local PostgreSQL suites without deploying the application; selected task acceptance remains separate.'
         elif check == 'agent:drift:endpoints':
             item['prerequisites'] = 'Running API exposing its generated OpenAPI document.'
             item['limitations'] = 'Live endpoint parity only; does not prove database behavior.'
@@ -366,9 +366,8 @@ def run_check(check, paths=()):
         return run_command([sys.executable, '-B', 'scripts/agent/test_ops.py',
                             '--impact', '--files', *paths])
     if check == 'database-behavior':
-        return 'blocked', ('Task-specific real database behavior evidence required; '
-                           'static parity and generic test:api do not establish it. '
-                           'Record the approved task-specific database check in task evidence.')
+        import database_tests
+        return database_tests.run_database_tests()
     # Invoke scripts directly where Task wraps distinct exits as 201, preserving
     # blocked live/Kiota evidence. Public commands remain Taskfile entrypoints.
     if check == 'agent:drift:endpoints':

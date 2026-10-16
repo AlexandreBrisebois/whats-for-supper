@@ -25,6 +25,158 @@ public class DeploymentCalendarPostgresTests(ITestOutputHelper output)
     private static readonly Guid SentinelId = Guid.Parse("660e8400-e29b-41d4-a716-446655440010");
 
     [CalendarPostgresFact]
+    public async Task DeferRecipe_InvalidQueryOrSourceRejectsBeforeAnyRelationalMutation()
+    {
+        await WithDatabase(async settings =>
+        {
+            await using var factory = await CreateFactory(settings);
+            await Seed(factory);
+            using var scope = factory.Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+            db.CalendarEvents.Add(new CalendarEvent { Date = new DateOnly(2026, 10, 21), RecipeId = SelectedId, Status = CalendarEventStatus.AwaitingConsensus, VoteCount = 3 });
+            await db.SaveChangesAsync();
+            using var client = factory.CreateAuthenticatedClient();
+            foreach (var query in new[] {
+                "referenceWeekStartDate=2026-10-13", "referenceWeekStartDate=invalid",
+                "targetWeekOffset=abc", "targetWeekOffset=1.5", "targetWeekOffset=2147483648",
+                "targetWeekOffset=2147483647", "targetWeekOffset=-2147483648", "targetWeekOffset=1000000",
+            })
+            {
+                var result = await client.PostAsJsonAsync($"/api/schedule/defer?{query}", new { sourceDate = "2026-10-21", recipeId = SelectedId });
+                Assert.Equal(HttpStatusCode.BadRequest, result.StatusCode);
+            }
+            Assert.Equal(HttpStatusCode.Conflict, (await client.PostAsJsonAsync("/api/schedule/defer?targetWeekOffset=2&referenceWeekStartDate=2026-10-12", new { sourceDate = "2026-10-21", recipeId = SelectedId })).StatusCode);
+            Assert.Equal(HttpStatusCode.NotFound, (await client.PostAsJsonAsync("/api/schedule/defer?targetWeekOffset=2&referenceWeekStartDate=2026-10-12", new { sourceDate = "2026-10-20", recipeId = SelectedId })).StatusCode);
+            Assert.Equal(HttpStatusCode.NotFound, (await client.PostAsJsonAsync("/api/schedule/defer?targetWeekOffset=2&referenceWeekStartDate=2026-10-12", new { sourceDate = "2026-10-21", recipeId = SentinelId })).StatusCode);
+            db.ChangeTracker.Clear();
+            var events = await db.CalendarEvents.AsNoTracking().ToListAsync();
+            Assert.Equal(2, events.Count);
+            var source = Assert.Single(events, e => e.Date == new DateOnly(2026, 10, 21));
+            Assert.Equal(SelectedId, source.RecipeId);
+            Assert.Equal(CalendarEventStatus.AwaitingConsensus, source.Status);
+            Assert.Equal(3, source.VoteCount);
+            Assert.Empty(await db.WeeklyPlans.ToListAsync());
+            Assert.Single(await db.RecipeVotes.ToListAsync());
+        });
+    }
+
+    [CalendarPostgresFact]
+    public async Task DeferRecipe_DefaultExplicitSpilloverAndRolloverPreserveRelationalState()
+    {
+        // Omitted target retains reference-next week even for future sources; explicit targets
+        // follow their requested week. Each case owns an isolated relational database.
+        var cases = new[] {
+            (Source: "2026-10-14", Target: (int?)null, Reference: true, Occupied: 0, Status: CalendarEventStatus.Locked, Expected: "2026-10-19"),
+            (Source: "2026-10-28", Target: (int?)null, Reference: true, Occupied: 0, Status: CalendarEventStatus.Planned, Expected: "2026-10-19"),
+            (Source: "2026-10-14", Target: (int?)null, Reference: false, Occupied: 0, Status: CalendarEventStatus.Planned, Expected: "2026-10-12"),
+            (Source: "2026-10-28", Target: (int?)3, Reference: true, Occupied: 0, Status: CalendarEventStatus.Cooked, Expected: "2026-11-02"),
+            (Source: "2026-10-21", Target: (int?)2, Reference: true, Occupied: 1, Status: CalendarEventStatus.Skipped, Expected: "2026-10-27"),
+            (Source: "2026-10-21", Target: (int?)2, Reference: true, Occupied: 8, Status: CalendarEventStatus.Locked, Expected: "2026-11-03"),
+        };
+        foreach (var item in cases)
+        await WithDatabase(async settings =>
+        {
+            var clock = new DeploymentCalendarIntegrationTests.CalendarClock();
+            await using var factory = await CreateFactory(settings, clock: clock);
+            await Seed(factory);
+            var sourceDate = DateOnly.Parse(item.Source);
+            var expected = DateOnly.Parse(item.Expected);
+            var reference = item.Reference ? new DateOnly(2026, 10, 12) : new DateOnly(2026, 10, 5);
+            var target = item.Target ?? 1;
+            using (var setupScope = factory.Services.CreateScope())
+            {
+                var db = setupScope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+                db.CalendarEvents.Add(new CalendarEvent { Date = sourceDate, RecipeId = SelectedId, Status = item.Status, VoteCount = 4 });
+                for (var n = 0; n < item.Occupied; n++)
+                    db.CalendarEvents.Add(new CalendarEvent { Date = reference.AddDays(target * 7 + n), Status = CalendarEventStatus.Skipped });
+                db.WeeklyPlans.Add(new WeeklyPlan { WeekStartDate = expected.AddDays(-((int)expected.DayOfWeek + 6) % 7), Status = WeeklyPlanStatus.Locked });
+                if (item.Status == CalendarEventStatus.Cooked)
+                    (await db.Recipes.FindAsync(SelectedId))!.LastCookedDate = new DateTimeOffset(sourceDate.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero);
+                await db.SaveChangesAsync();
+            }
+            // Advance deployment week after capturing the reference, before dispatch.
+            if (item.Reference) clock.UtcNow = DateTimeOffset.Parse("2026-10-19T12:00:00Z");
+            using var client = factory.CreateAuthenticatedClient();
+            var query = item.Reference ? "referenceWeekStartDate=2026-10-12" : "";
+            if (item.Target is { } offset) query += $"&targetWeekOffset={offset}";
+            var response = await client.PostAsJsonAsync($"/api/schedule/defer?{query}", new { sourceDate = item.Source, recipeId = SelectedId });
+            response.EnsureSuccessStatusCode();
+            using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            var data = body.RootElement.GetProperty("data");
+            Assert.Equal(item.Expected, data.GetProperty("scheduledDate").GetString());
+            Assert.Equal((expected.DayNumber - reference.DayNumber) / 7, data.GetProperty("scheduledWeekOffset").GetInt32());
+            Assert.Equal(item.Occupied >= 7, data.GetProperty("message").GetString()!.Contains("Next week is full."));
+            using var scope = factory.Services.CreateScope();
+            var stored = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+            var destination = await stored.CalendarEvents.AsNoTracking().SingleAsync(e => e.Date == expected);
+            Assert.Equal(SelectedId, destination.RecipeId);
+            Assert.Equal(CalendarEventStatus.Planned, destination.Status);
+            Assert.Equal(4, destination.VoteCount);
+            Assert.Equal(WeeklyPlanStatus.Locked, (await stored.WeeklyPlans.AsNoTracking().SingleAsync(p => p.WeekStartDate == expected.AddDays(-((int)expected.DayOfWeek + 6) % 7))).Status);
+            Assert.Equal(1, await stored.RecipeVotes.CountAsync(v => v.RecipeId == SelectedId));
+            if (item.Status == CalendarEventStatus.Skipped)
+            {
+                var source = await stored.CalendarEvents.AsNoTracking().SingleAsync(e => e.Date == sourceDate);
+                Assert.Null(source.RecipeId);
+                Assert.Equal(CalendarEventStatus.Skipped, source.Status);
+                Assert.Equal(4, source.VoteCount);
+            }
+            else Assert.False(await stored.CalendarEvents.AnyAsync(e => e.Date == sourceDate));
+            if (item.Status == CalendarEventStatus.Cooked) Assert.Null((await stored.Recipes.FindAsync(SelectedId))!.LastCookedDate);
+            for (var n = 0; n < item.Occupied; n++)
+                Assert.Null((await stored.CalendarEvents.SingleAsync(e => e.Date == reference.AddDays(target * 7 + n))).RecipeId);
+        });
+    }
+
+    [CalendarPostgresFact]
+    public async Task DeferRecipe_HttpQueryMovesFutureSourceToOffsetTwoAndRereadsBothWeeks()
+    {
+        await WithDatabase(async settings =>
+        {
+            await using var factory = await CreateFactory(settings);
+            await Seed(factory);
+            using var client = factory.CreateAuthenticatedClient();
+            (await client.PostAsJsonAsync("/api/schedule/assign?referenceWeekStartDate=2026-10-12",
+                new { weekOffset = 1, dayIndex = 2, recipeId = SelectedId })).EnsureSuccessStatusCode();
+            client.DefaultRequestHeaders.Add("Cookie", $"x-family-member-id={factory.DefaultFamilyMemberId}");
+            using var stream = await client.GetAsync("/api/stream", HttpCompletionOption.ResponseHeadersRead);
+            stream.EnsureSuccessStatusCode();
+            using var reader = new StreamReader(await stream.Content.ReadAsStreamAsync());
+            using var connected = await ReadEvent(reader, "connected");
+            var response = await client.PostAsJsonAsync("/api/schedule/defer?referenceWeekStartDate=2026-10-12&targetWeekOffset=2",
+                new { sourceDate = "2026-10-21", recipeId = SelectedId });
+            response.EnsureSuccessStatusCode();
+            using var result = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            var data = result.RootElement.GetProperty("data");
+            Assert.Equal("2026-10-26", data.GetProperty("scheduledDate").GetString());
+            Assert.Equal(2, data.GetProperty("scheduledWeekOffset").GetInt32());
+            Assert.DoesNotContain("full", data.GetProperty("message").GetString());
+            using var sourceSnapshot = await ReadEvent(reader, "week_updated");
+            using var destinationSnapshot = await ReadEvent(reader, "week_updated");
+            Assert.Equal("2026-10-19", sourceSnapshot.RootElement.GetProperty("schedule").GetProperty("weekStartDate").GetString());
+            Assert.Equal("2026-10-26", destinationSnapshot.RootElement.GetProperty("schedule").GetProperty("weekStartDate").GetString());
+            Assert.Equal(SelectedId, destinationSnapshot.RootElement.GetProperty("schedule").GetProperty("days")[0].GetProperty("recipe").GetProperty("id").GetGuid());
+
+            (await client.PostAsJsonAsync("/api/schedule/assign?referenceWeekStartDate=2026-10-12",
+                new { weekOffset = 1, dayIndex = 2, recipeId = SentinelId })).EnsureSuccessStatusCode();
+            using var source = JsonDocument.Parse(await client.GetStringAsync("/api/schedule?weekOffset=1&referenceWeekStartDate=2026-10-12"));
+            using var destination = JsonDocument.Parse(await client.GetStringAsync("/api/schedule?weekOffset=2&referenceWeekStartDate=2026-10-12"));
+            var days = source.RootElement.GetProperty("data").GetProperty("days");
+            Assert.Equal(JsonValueKind.Null, days[0].GetProperty("recipe").ValueKind);
+            Assert.Equal(JsonValueKind.Null, days[1].GetProperty("recipe").ValueKind);
+            Assert.Equal(SentinelId, days[2].GetProperty("recipe").GetProperty("id").GetGuid());
+            Assert.Equal(SelectedId, destination.RootElement.GetProperty("data").GetProperty("days")[0].GetProperty("recipe").GetProperty("id").GetGuid());
+            Assert.Contains("carrot", destination.RootElement.GetProperty("data").GetProperty("groceryItems").GetRawText());
+            Assert.DoesNotContain("carrot", source.RootElement.GetProperty("data").GetProperty("groceryItems").GetRawText());
+            using var scope = factory.Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+            Assert.Equal(WeeklyPlanStatus.Draft, (await db.WeeklyPlans.AsNoTracking().SingleAsync(p => p.WeekStartDate == new DateOnly(2026, 10, 26))).Status);
+            Assert.Equal(SelectedId, (await db.CalendarEvents.AsNoTracking().SingleAsync(e => e.Date == new DateOnly(2026, 10, 26))).RecipeId);
+            Assert.Equal(SentinelId, (await db.CalendarEvents.AsNoTracking().SingleAsync(e => e.Date == new DateOnly(2026, 10, 21))).RecipeId);
+        });
+    }
+
+    [CalendarPostgresFact]
     public async Task HttpAssignment_PersistsDeploymentSundayAndCorrectWeeklyGroceries()
     {
         await WithDatabase(async settings =>

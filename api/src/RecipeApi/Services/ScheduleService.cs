@@ -335,9 +335,11 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
         string? excludeConnectionId = null,
         int? echoSeq = null,
         CancellationToken ct = default,
-        DateOnly? referenceWeekStartDate = null)
+        DateOnly? referenceWeekStartDate = null,
+        int targetWeekOffset = 1)
     {
         var context = _calendar.Capture(_clock.UtcNow, referenceWeekStartDate);
+        var nextWeekStart = context.WeekStart(targetWeekOffset);
         var source = await _dbContext.CalendarEvents
             .Include(e => e.Recipe)
             .SingleOrDefaultAsync(e => e.Date == dto.SourceDate && e.RecipeId == dto.RecipeId, ct)
@@ -347,7 +349,6 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
             throw new DeferScheduleConflictException("Meals awaiting consensus cannot be deferred.");
 
         var sourceMonday = GetMonday(source.Date);
-        var nextWeekStart = context.ReferenceWeekStartDate.AddDays(7);
         var destinationDate = await FindFirstAvailableDateAsync(nextWeekStart, ct);
         var destinationMonday = GetMonday(destinationDate);
         var voteCount = source.VoteCount;
@@ -395,7 +396,7 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
 
         var offsetFromCurrent = GetWeekOffset(destinationMonday, context);
         var recipeName = source.Recipe?.Name ?? "meal";
-        var spillPrefix = offsetFromCurrent > 1 ? "Next week is full. " : string.Empty;
+        var spillPrefix = destinationMonday > nextWeekStart ? "Next week is full. " : string.Empty;
         return new DeferScheduleResultDto(
             destinationDate,
             offsetFromCurrent,
