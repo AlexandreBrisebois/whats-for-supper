@@ -6,14 +6,14 @@
 | Finding type | accepted product policy / implementation investigation |
 | Affected journey / capability | meal-planning, tonight-meal-decisions, background-processing, household-live-updates |
 | Origin IDs | U99, TM-U01, U102–109; user decision 2026-10-16 |
-| Workflow status | selected 2026-10-16; supper-calendar increment implemented; remaining clock inventory open |
+| Workflow status | selected 2026-10-16; supper-calendar increment implemented and archived; remaining clock inventory open |
 | Confidence | High for traced source; runtime reach/frequency unmeasured |
 | Owner | Selected OpenSpec change; single writer during application |
 | Independent review | Lane evidence reviewed by coordinator; un-reproduced impact remains investigation, not closed runtime defect |
 
 ## User problem and reproduction trigger
 
-Selected under the user's request to take the most impactful backlog item. The active [deployment-calendar-supper-dates proposal](../../../openspec/changes/deployment-calendar-supper-dates/proposal.md) defines the bounded supper-calendar scope, design and test-first tasks. User decision in this session: default to UTC when configuration is absent, with an explicit deployment timezone override. Implementation and bounded runtime acceptance are recorded in the selected change’s [tasks](../../../openspec/changes/deployment-calendar-supper-dates/tasks.md); this does not close the parent clock inventory. Unrelated workflow/health/management clocks and remaining UX-date consumers stay open under this item.
+Selected under the user's request to take the most impactful backlog item. The archived [deployment-calendar-supper-dates proposal](../../../openspec/changes/archive/2026-10-16-deployment-calendar-supper-dates/proposal.md) defines the bounded supper-calendar scope, design and test-first tasks. User decision in this session: default to UTC when configuration is absent, with an explicit deployment timezone override. Implementation and bounded runtime acceptance are recorded in the selected change’s [tasks](../../../openspec/changes/archive/2026-10-16-deployment-calendar-supper-dates/tasks.md); this does not close the parent clock inventory. Unrelated workflow/health/management clocks and remaining UX-date consumers stay open under this item.
 
 Deployment local day/week differs from UTC or client device timezone; test at midnight/Sunday/DST.
 

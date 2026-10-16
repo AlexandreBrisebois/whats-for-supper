@@ -1,6 +1,6 @@
 # Tasks
 
-Implementation is in progress; see evidence below. These tasks select WFS-BL-005's supper-calendar increment; the remaining repository clock inventory stays open. Use the [design](design.md) wire names and [proposal](proposal.md) exclusions. Newly named test files below are implementation deliverables, not existing passing coverage.
+Implementation is complete (15/15 tasks); see evidence below. These tasks select WFS-BL-005's supper-calendar increment; the remaining repository clock inventory stays open. Use the [design](design.md) wire names and [proposal](proposal.md) exclusions. Newly named test files below are implementation deliverables, not existing passing coverage.
 
 **Existing-test reconciliation is required within each slice's test-first and green tasks.** Update affected existing tests, fixtures, builders and mock handlers alongside the new regression cases. Replace wall-clock-derived expected dates and browser-local/UTC-week assumptions only where the approved deployment-calendar behavior supersedes them. Use explicit fixed UTC instants, deployment zones and independently specified expected civil dates; do not derive expected dates with the production helper under test. Update test names/descriptions and constructor/DI setup as needed. Keep UTC-default compatibility cases and preserve unrelated assertions; do not delete, skip or weaken coverage to make the change pass.
 
@@ -122,3 +122,16 @@ Run the affected existing suites as well as the new cases during each slice's gr
 
 - Initial final-verification record `.task/agent-finish/runs/705abb37f8cd47a9ba31d4fc3538c73b.json` passed content identity, documentation, specs, lint/format/types, all 769 PWA units, all 244 mocked browser regressions (11 opt-in/other skips), general API 928 passed/46 opt-in skips, generated client and live endpoint parity. It exposed two affected static-tool limits and the smoke fixture input: the smoke scanner read the mixed-case Calendar__TimeZone key as C; DTO discovery did not recognize a sealed record with a body; mock discovery lost query-tolerant handlers. Those failed checks were not waived.
 - Reconciled the synthetic CI smoke env with Calendar__TimeZone=UTC and a case-correct variable scanner. CI Compose rendered API UTC/no independent PWA zone. DTO discovery now recognizes the new record form; mock handlers use standard query-tolerant Playwright glob registrations and discovery preserves segment wildcards while removing only trailing query globs. Two focused discovery tests cover required/nullable JSON properties and distinguish real segment wildcards from query suffixes; schema and core route/mock reconciliation now pass. These bounded additions to previously clean harness files are required by the selected contract/deployment seam; pre-existing staged harness changes remain preserved. The final verifier is rerun because its initial invocation found these concrete failures. Database-behavior remains a separate task-evidence reconciliation, not an automated static success.
+
+## Lifecycle closure — 2026-10-16
+
+The user authorized archival after implementation and the separate search test
+repair were complete. All four calendar capability deltas were synchronized to
+main specs and verified before this package was moved to the archive. Historical
+red/green results and the generic database-behavior blocked label above remain
+unchanged; recorded task-specific 36/36 calendar and 9/9 live browser acceptance
+supply the separate calendar qualification. The later search repair is recorded
+in [SR-R01](../../../../docs/openspec-baseline/recipe-search.md), with final record
+`.task/agent-finish/runs/fba12f63b434407a841289c4fdcfc163.json`.
+The parent WFS-BL-005 clock inventory and adjacent backlog items remain open.
+Archival is documentation lifecycle work; no commit or deployment is included.

@@ -6,7 +6,7 @@ Home, Planner and the API can disagree about today's date and current week. At `
 
 ## Outcome and Scope
 
-Select [WFS-BL-005](../../../docs/openspec-baseline/backlog/WFS-BL-005.md) as the highest-impact prerequisite: it affects core meal actions and unblocks WFS-BL-001. This change is its bounded supper-calendar increment. Home, Planner, Search/Browse planning handoffs, cooking completion, overdue processing and received schedule events must agree on deployment dates, with deterministic injected time.
+Select [WFS-BL-005](../../../../docs/openspec-baseline/backlog/WFS-BL-005.md) as the highest-impact prerequisite: it affects core meal actions and unblocks WFS-BL-001. This change is its bounded supper-calendar increment. Home, Planner, Search/Browse planning handoffs, cooking completion, overdue processing and received schedule events must agree on deployment dates, with deterministic injected time.
 
 The user selected UTC when no timezone is configured, with an explicit deployment override. The deployment owns the timezone; browser preferences and host OS timezone do not select meal dates. Internal timestamps remain UTC. Existing stored civil dates and cooking-history anchors are not migrated.
 
@@ -41,4 +41,4 @@ Affected API owners: `IClock`, `ScheduleService`, the calendar-sensitive portion
 
 Required deployment/documentation deliverables: `release-template/synology/.env.example`, `release-template/synology/compose.yaml`, `release-template/synology/README.md`, `docker/.env.example`, supported API Compose entry paths and `docs/user-guide.md`. The new setting must reach the API from the shipped templates; a code-only setting is insufficient. Existing installation secrets and operator overrides must be preserved.
 
-Affected PWA owners: schedule API wrapper, shared calendar/time composition, SSR Home, Today initializer/store, week store, Home command center, Planner, Search/Browse planning actions and schedule stream hook. Existing date parsing/formatting stays civil-date based; pure parsing is not a clock read. See the [source audit](../../../docs/openspec-baseline/backlog/time-policy-audit.md) and design for the precise integration boundary. No application code, contract, deployment configuration, main-spec promotion or archival is changed by this proposal.
+Affected PWA owners: schedule API wrapper, shared calendar/time composition, SSR Home, Today initializer/store, week store, Home command center, Planner, Search/Browse planning actions and schedule stream hook. Existing date parsing/formatting stays civil-date based; pure parsing is not a clock read. See the [source audit](../../../../docs/openspec-baseline/backlog/time-policy-audit.md) and design for the precise integration boundary. No application code, contract, deployment configuration, main-spec promotion or archival is changed by this proposal.

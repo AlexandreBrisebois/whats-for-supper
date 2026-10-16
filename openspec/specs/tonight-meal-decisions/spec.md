@@ -32,24 +32,24 @@ source changes remain active. No archival or application implementation occurs.
 
 ## Requirements
 
-### Requirement: Seed Home only for the matching browser date
+### Requirement: Seed Home only for the matching deployment date
 
-Home SHALL use returned schedule content to seed Tonight only when its supplied server date matches browser-local today. A different supplied date SHALL leave seeding to client reconciliation. Page reading SHALL consume meal-planning’s protected schedule read and date projection requirements.
+Home SHALL use returned schedule content to seed Tonight only when its supplied authoritative deployment date matches deployment-local today. A different supplied date SHALL leave seeding to client reconciliation. Page reading SHALL consume meal-planning’s protected schedule read and date projection requirements.
 
 #### Scenario: Matching date
-- **WHEN** Home receives a server date equal to browser-local today
+- **WHEN** Home receives an authoritative deployment date equal to deployment-local today
 - **THEN** the returned recipe, status and non-cooking context are offered for Tonight initialization
 
 #### Scenario: Different date
-- **WHEN** the supplied server date differs from browser-local today
+- **WHEN** the supplied authoritative deployment date differs from deployment-local today
 - **THEN** that initialization does not seed another date’s plan
 
 ### Requirement: Reconcile Tonight on Home entry
 
-Home SHALL request a current-week schedule read on mount and show Aligning your day while Tonight synchronization is loading. If returned dates exclude browser-local today, it SHALL try the adjacent relative week in that date’s direction. Failed reads SHALL end loading and retain prior Tonight content without dedicated Retry feedback.
+Home SHALL request a current-week schedule read on mount and show Aligning your day while Tonight synchronization is loading. If returned dates exclude deployment-local today, it SHALL try the adjacent relative week in that date’s direction. Failed reads SHALL end loading and retain prior Tonight content without dedicated Retry feedback.
 
 #### Scenario: Local date outside returned week
-- **WHEN** browser-local today precedes the first returned date
+- **WHEN** deployment-local today precedes the first returned date
 - **THEN** Tonight requests the preceding relative week before selecting its date
 
 #### Scenario: Read failure
@@ -110,7 +110,7 @@ With no current recipe and no Cooked status, Home SHALL offer supper choices for
 
 ### Requirement: Select or cancel Home Quick Find
 
-Home Quick Find SHALL target week zero and the browser-local Monday-based weekday. Its deck, loading, exhaustion, inspection, dismissal and invalidation SHALL follow the accepted meal-planning Quick Find requirements. Ordinary selection SHALL close the modal and offer that recipe for Tonight assignment; dismissal SHALL not submit selection.
+Home Quick Find SHALL target week zero and the deployment-local Monday-based weekday. Its deck, loading, exhaustion, inspection, dismissal and invalidation SHALL follow the accepted meal-planning Quick Find requirements. Ordinary selection SHALL close the modal and offer that recipe for Tonight assignment; dismissal SHALL not submit selection.
 
 #### Scenario: Select from empty Tonight
 - **WHEN** a person selects an available recipe through Home Quick Find without replacement intent
@@ -126,7 +126,7 @@ Home Quick Find SHALL target week zero and the browser-local Monday-based weekda
 
 ### Requirement: Display Tonight assignment before server confirmation
 
-Tonight choice SHALL immediately display the chosen recipe, clear non-cooking metadata and use ordinary status while dispatching the shared chosen-recipe assignment for week zero and the browser-local weekday in the background. Rejection SHALL be logged without automatic local rollback or dedicated assignment-error feedback. Display SHALL NOT establish persisted assignment.
+Tonight choice SHALL immediately display the chosen recipe, clear non-cooking metadata and use ordinary status while dispatching the shared chosen-recipe assignment for week zero and the deployment-local weekday in the background. Rejection SHALL be logged without automatic local rollback or dedicated assignment-error feedback. Display SHALL NOT establish persisted assignment.
 
 #### Scenario: Assignment pending
 - **WHEN** a person chooses a Tonight recipe and its assignment request remains pending
@@ -262,7 +262,7 @@ Recipe detail SHALL offer a pressed GOTO action when the loaded recipe is in the
 
 ### Requirement: Order in from an empty Tonight choice
 
-Activating Order In with no current Tonight recipe SHALL immediately set local Skipped status, preserve existing non-cooking metadata or supply Order In, and offer the same date as recipe-free Skipped to the loaded week. It SHALL dispatch status-only three validation for browser-local today. Persistence and read fallback SHALL follow meal-planning’s Retain status-only day-validation compatibility requirement.
+Activating Order In with no current Tonight recipe SHALL immediately set local Skipped status, preserve existing non-cooking metadata or supply Order In, and offer the same date as recipe-free Skipped to the loaded week. It SHALL dispatch status-only three validation for deployment-local today. Persistence and read fallback SHALL follow meal-planning’s Retain status-only day-validation compatibility requirement.
 
 #### Scenario: Empty night
 - **WHEN** a person activates Order In with no current Tonight recipe
@@ -298,7 +298,7 @@ Home recovery SHALL offer Close and backdrop dismissal, with Back from the dispo
 
 ### Requirement: Mark Order In before planned-recipe disposition
 
-When an Order In recovery disposition starts with a current recipe identity, Home SHALL first offer recipe-free Skipped state locally for browser-local today and await status-only three validation. It SHALL perform the selected move or defer only after that request resolves. Order In Drop SHALL use that validation without date deletion.
+When an Order In recovery disposition starts with a current recipe identity, Home SHALL first offer recipe-free Skipped state locally for deployment-local today and await status-only three validation. It SHALL perform the selected move or defer only after that request resolves. Order In Drop SHALL use that validation without date deletion.
 
 #### Scenario: Move after validation
 - **WHEN** Order In recovery chooses Tomorrow and validation remains pending
@@ -310,7 +310,7 @@ When an Order In recovery disposition starts with a current recipe identity, Hom
 
 ### Requirement: Request tomorrow for the current Tonight recipe
 
-Home Tomorrow recovery SHALL submit push movement for the current Tonight recipe, week zero and the Monday-based source index of browser-local today. Monday through Saturday SHALL target the following index in week zero; Sunday SHALL target index zero in week one. Destination and skipped-source semantics SHALL follow the accepted meal-planning movement requirements.
+Home Tomorrow recovery SHALL submit push movement for the current Tonight recipe, week zero and the Monday-based source index of deployment-local today. Monday through Saturday SHALL target the following index in week zero; Sunday SHALL target index zero in week one. Destination and skipped-source semantics SHALL follow the accepted meal-planning movement requirements.
 
 #### Scenario: Weekday request
 - **WHEN** Tomorrow disposition starts on Thursday with a current recipe identity
@@ -322,7 +322,7 @@ Home Tomorrow recovery SHALL submit push movement for the current Tonight recipe
 
 ### Requirement: Defer Tonight through the explicit-date operation
 
-Home Save for Next Week SHALL submit browser-local today as sourceDate and the current Tonight recipe ID to the shared defer operation, without substituting a client-selected destination. A returned message SHALL be shown as a toast. Destination choice, conflicts and persisted consequences SHALL remain meal-planning-owned.
+Home Save for Next Week SHALL submit deployment-local today as sourceDate and the current Tonight recipe ID to the shared defer operation, without substituting a client-selected destination. A returned message SHALL be shown as a toast. Destination choice, conflicts and persisted consequences SHALL remain meal-planning-owned.
 
 #### Scenario: Defer returns a destination message
 - **WHEN** Save for Next Week resolves with a message
@@ -367,3 +367,19 @@ An awaited recovery rejection SHALL be logged and stop subsequent steps in that 
 #### Scenario: Disposition rejects
 - **WHEN** Pick Something Else movement, defer or deletion rejects before replacement
 - **THEN** that invocation does not dispatch the retained replacement
+
+### Requirement: Share authoritative Today context across Home rendering and actions
+
+SSR and mounted Home SHALL consume meal-planning's authoritative calendar context. Today assignment, Quick Find, Order In and recovery SHALL use that context's date, weekday and captured reference Monday. A started recovery SHALL retain its date across awaits; a new action SHALL follow Refresh expired Today context before a new action. Browser timezone SHALL NOT select the supper slot.
+
+#### Scenario: SSR and browser have different local dates
+- **WHEN** Toronto deployment context identifies October 11 while the SSR host and Tokyo browser identify October 12 locally
+- **THEN** both Home renderings identify October 11 as Tonight and a new selection targets that date
+
+#### Scenario: Recovery crosses midnight
+- **WHEN** recovery begins on deployment October 11 and an awaited disposition finishes on October 12
+- **THEN** its subsequent replacement retains the captured October 11 target and reference Monday
+
+#### Scenario: Returning after the deployment day changed
+- **WHEN** Home resumes after its authoritative context expires
+- **THEN** it refreshes Today before another date-dependent action and does not display yesterday's recipe as the newly resolved Tonight

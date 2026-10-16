@@ -2,7 +2,7 @@
 
 ## Context and Existing Ownership
 
-Scope and exclusions are in [proposal.md](proposal.md). The [time audit](../../../docs/openspec-baseline/backlog/time-policy-audit.md) supplies historical tracing; the following insertion points were checked against current source during planning:
+Scope and exclusions are in [proposal.md](proposal.md). The [time audit](../../../../docs/openspec-baseline/backlog/time-policy-audit.md) supplies historical tracing; the following insertion points were checked against current source during planning:
 
 - `api/src/RecipeApi/Services/IClock.cs` already supplies UTC instants and is registered in `Program.cs`. `ScheduleService` accepts an optional clock and constructs a fallback; its week bounds, defer base and overdue cutoff project UTC directly to dates. Reuse the clock, make it required in affected production services and add one cohesive deployment-calendar owner.
 - `ScheduleDays.cs` exposes offsets and seven dated entries without calendar context. `ScheduleController` relative endpoints and `pwa/src/lib/api/planner.ts` use offsets without an absolute reference. The API wrapper is the consumer mapping boundary; generated types remain generated.
