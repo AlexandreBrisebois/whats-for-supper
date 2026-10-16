@@ -11,6 +11,57 @@ See [consolidation completion](backlog/consolidation-completion.md) for accepted
 scope, preserved corrections, archive warnings and verification. Archival does not
 establish application correctness, runtime qualification or resolution of defects.
 
+## SR-R01 — bounded PostgreSQL test repair, 2026-10-16
+
+The user authorized repair of two reproduced search tests, without commit,
+deployment, spec synchronization or archival. This section tracks that correction;
+it does not absorb related backlog items or change serving/ranking policy. Entry
+HEAD was `e41e1c6b9a41c6f77c6d9eaefd68c48f930b4461` on
+`moving-to-openspec`, with a clean index/worktree. Historical baseline results and
+source hashes below describe their original snapshots, not these later test edits.
+
+- **Baseline cause/correction:** the relational harness omitted the required
+  lexical repository. Register both real PostgreSQL retrieval repositories and
+  publish compatible ready fixture embeddings with matching model, version and
+  fingerprint. Lexical-only wiring still failed the existing cross-language
+  relevance assertion. Retain all seven top-five relevance cases and timing
+  assertions; additionally require the hybrid path. Synthetic `fixture-v1`
+  embeddings qualify fixture behavior only, not external model relevance.
+- **Similar cause/correction:** all four candidates have equal structured scores.
+  Serving sorts score descending, creation time descending, then ID ascending;
+  insertion order is not a ranking rule. The shared `ResultIds` helper also
+  appends Top Pick after alternatives. The corrected test explicitly checks Top
+  Pick and its alternate, uses controlled creation times plus an ID tie, and
+  asserts all four IDs in their exact initial order through two continuations.
+  Changing a remaining candidate's creation time after the first page must not
+  rerank the snapshot. Source exclusion, uniqueness, lexical reasons and equal
+  scores remain asserted. Rename the test to
+  `FindSimilar_UnavailableSemanticRetrievalFallsBackWithStableContinuations`;
+  the former zero-contribution name made a claim it did not test. SR-U02 remains
+  unresolved: the common semantic offset does not explain this ordering failure.
+- **Scope:** only the two test files and this evidence document changed. No
+  production code, contract, SQL, main spec or corrective ranking policy changed.
+  A production red/green cycle is not applicable to this fixture/expectation
+  correction; both original failures were observed before edits.
+- **Real PostgreSQL evidence:** a new labelled disposable container,
+  `wfs-search-repair-20261016`, used `pgvector/pgvector:pg18-trixie`, loopback
+  port `52363`, admin database `postgres`, and the fixtures' isolated
+  create/schema/drop databases. The existing `wfs-search-check` container was
+  left untouched. With `WFS_TEST_POSTGRES_CONNECTION` set to the new container,
+  `task test:api -- --filter '<filter>' --logger 'console;verbosity=detailed'`
+  produced these results:
+
+  | Check / filter | Result | Local log |
+  | --- | --- | --- |
+  | `FullyQualifiedName~BaselineHarness_RecordsVersionedRelevanceMeasurements\|FullyQualifiedName~FindSimilar_UnavailableSemanticRetrievalFallsBackWithZeroSemanticContributionAndStableContinuations` | Failed 2/2 before edits: missing repository; incorrect first ID | `/tmp/wfs-search-repair-red.log` |
+  | `FullyQualifiedName~BaselineHarness_RecordsVersionedRelevanceMeasurements\|FullyQualifiedName~FindSimilar_UnavailableSemanticRetrievalFallsBackWithStableContinuations` | Passed 2/2 after correction; no skips | `/tmp/wfs-search-repair-green.log` |
+  | `FullyQualifiedName~HybridRecipeSearchBaselinePostgresTests\|FullyQualifiedName~RecipeLexicalSearchPostgresTests\|FullyQualifiedName~RecipeSearchFilterMaterializerPostgresTests` | Passed 32/32; no skips | `/tmp/wfs-search-repair-suites.log` |
+
+Preparation and final repository verification use the complete three-path scope
+above. Their durable `record_path` and check statuses are reported by the final
+verifier, separately from this task-specific database acceptance. External model,
+live HTTP and real browser qualification are not run by these database suites.
+
 ## Current checkpoint and scope
 
 **SR-P01 (2026-10-16):** the user's “promote” accepts the five reviewed,
@@ -163,7 +214,7 @@ make the observed defect a normative requirement or authorize its repair.
 | U80 | Actual Reported/Ready to review controls use the shared responsive chooser, active drafts and ready-subset precedence. BSL-005/007/016. | Reconciled with accepted recipe-quality requirements; no Needs review route or separate desktop review view. |
 | U82 | Detail resolution changes local recipe; only successful deletion invokes parent refresh; close restores scroll. BSL-004/016/022. | Reconciled with recipe-quality later-read requirement. Immediate loaded-card badge/membership refresh and continuation freshness withheld. |
 | SR-U01 | `SearchAsync` emits resultPath `semantic-only` and `similar`; approved enum omits both. Similar lexical reason emits `lexical-match`, absent approved reason enum. BSL-010/011/012. | Contract mismatch remains unresolved; describe settled outcomes without adopting those enum additions. Do not edit contract/generated output or promise strict live parity. |
-| SR-U02 | Similar lexical fallback passes raw semantic 0, but scorer normalizes it to .5 (weighted .20). Docs/test name say zero contribution; tests assert IDs, not zero component. BSL-012. | Withhold zero semantic contribution; structured ranking and fallback remain supported. No score repair. |
+| SR-U02 | Similar lexical fallback passes raw semantic 0, but scorer normalizes it to .5 (weighted .20). Original docs/test name said zero contribution; tests did not assert zero component. SR-R01 removes that unsupported test name, without changing the scorer. BSL-012. | Withhold zero semantic contribution; structured ranking and fallback remain supported. No score repair. |
 | SR-U03 | DTO/contract fields includedIngredients, categories, maximumTotalMinutes, preferences.ingredients/cuisines have no executing serving predicate/modifier. ExcludedIngredients nonempty explicitly400. BSL-006/007/018. | Unused fields missing/incomplete; no normative filtering/preference claims. Broader agent/API-only inputs deferred, not promoted from schemas. |
 | SR-U04 | Quick browse regex and ranked indexed minutes use different representations; ranked continuation LINQ has no Quick check; indexed duration can lag. BSL-007/020. | Initial Quick behavior drafted with supported-duration boundary. Uniform parsing and current Quick revalidation on ranked continuation withheld. |
 | SR-U05 | Initial/replacement failures are logged then represented as empty search; no distinct initial error/retry state. BSL-003/021. | Missing/incomplete error journey; normative empty scenarios require successful responses. Do not adopt hidden errors as desired behavior. |
@@ -227,10 +278,11 @@ repository registration in that path. Search's factory-only in-memory lexical
 scorer is not available to relational serving. PostgreSQL suites instead create
 isolated databases from schema.sql when WFS_TEST_POSTGRES_CONNECTION is set; their
 fixed/delayed/failing embedding providers do not qualify a live model. The older
-HybridRecipeSearchBaselinePostgresTests constructs a relational service without
-a lexical repository: current typed search would hit the explicit registration
-exception. It therefore cannot be cited as a current passing baseline. Its
-assertions measure fixture top-five relevance and nonnegative timings only.
+HybridRecipeSearchBaselinePostgresTests originally constructed a relational service
+without a lexical repository, hitting the explicit registration exception. That
+historical fixture could not be cited as a passing baseline. SR-R01 above records
+the later repository/embedding wiring repair and actual PostgreSQL execution;
+its relevance/timing checks still do not qualify a live embedding model.
 
 Browser recipes/search-hardening fixtures fulfill HTTP responses and inject
 member/auth state and fixed time. search-hardening's vector timeout case returns
@@ -520,7 +572,7 @@ search-contract tests inspect file text/symbols rather than prove runtime parity
   - [api/src/RecipeApi/Services/RecipeSearchService.cs](../../api/src/RecipeApi/Services/RecipeSearchService.cs) (SimilarSearchAsync; SimilarLexicalFallbackAsync; BuildSimilarLexicalQuery)
   - [api/src/RecipeApi/Services/RecipeSimilarityScorer.cs](../../api/src/RecipeApi/Services/RecipeSimilarityScorer.cs) (Score; NormalizeSemanticScore)
   - [api/src/RecipeApi/Services/RecipeSemanticSearchRepository.cs](../../api/src/RecipeApi/Services/RecipeSemanticSearchRepository.cs) (source exclusion)
-- **Relevant test assertions and substitutions:** page.test.tsx: action submits empty text/source and closes detail (mocked API). RecipeSearchIntegrationTests: Similar structured vs family signals and planner explanation, factory lexical substitute. RecipeLexicalSearchPostgresTests.Similar: semantic/lexical source exclusion+filters before caps, structured candidate promoted, failure fallback, stable unique continuation IDs and caller cancellation. Test titled ZeroSemanticContribution asserts IDs/order, not zero score component.
+- **Relevant test assertions and substitutions:** page.test.tsx: action submits empty text/source and closes detail (mocked API). RecipeSearchIntegrationTests: Similar structured vs family signals and planner explanation, factory lexical substitute. RecipeLexicalSearchPostgresTests.Similar: semantic/lexical source exclusion+filters before caps, structured candidate promoted, failure fallback, stable unique continuation IDs and caller cancellation. The original ZeroSemanticContribution title did not establish a zero score component; SR-R01 records its corrected name and stronger order assertions.
 - **API/implementation/test/documentation agreement:** SearchMode similar supported; resultPath similar and reason lexical-match absent approved enums. Docs/test name zero semantic contribution contradict normalization; withhold exact zero claim (SR-U02).
 - **Evidence class and confidence:** implementation-supported / medium; test assertions inspected, not run.
 - **Check command / outcome / environment / content identity:** runtime/API/database/browser/model checks not-run by authorization; static trace at recorded HEAD plus source SHA-256 table below. Artifact check outcomes are in Verification.

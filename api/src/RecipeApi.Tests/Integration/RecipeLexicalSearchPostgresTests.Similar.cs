@@ -80,7 +80,7 @@ public partial class RecipeLexicalSearchPostgresTests
     }
 
     [PostgresFact]
-    public async Task FindSimilar_UnavailableSemanticRetrievalFallsBackWithZeroSemanticContributionAndStableContinuations()
+    public async Task FindSimilar_UnavailableSemanticRetrievalFallsBackWithStableContinuations()
     {
         var source = await SeedReadyDocumentAsync("Tomato pasta", "[\"tomato\", \"basil\", \"pasta\"]");
         source.CuisineType = "Italian";
@@ -91,20 +91,52 @@ public partial class RecipeLexicalSearchPostgresTests
             recipe.CuisineType = "Italian";
             aligned.Add(recipe);
         }
+        // All four candidates have equal structured scores. Exercise both final
+        // tie-breakers, with the newest pair deliberately inserted after index 0.
+        var createdAt = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
+        aligned[0].CreatedAt = createdAt.AddDays(1);
+        aligned[1].CreatedAt = createdAt.AddDays(2);
+        aligned[2].CreatedAt = createdAt.AddDays(2);
+        aligned[3].CreatedAt = createdAt;
+        var expected = new[] { aligned[1].Id, aligned[2].Id }.Order().Concat([aligned[0].Id, aligned[3].Id]).ToArray();
         await _db.SaveChangesAsync();
 
         var service = CreateSimilarService(useSemanticRepository: false);
         var request = new RecipeSearchRequestDto { SimilarToRecipeId = source.Id, Limit = 1 };
         var first = await service.SearchAsync(request);
-        var served = ResultIds(first).ToList();
+        Assert.Equal("similar", first.SearchMode);
+        Assert.Equal(expected[0], first.TopPick?.Id);
+        Assert.Equal(expected[1], Assert.Single(first.Results).Id);
+        Assert.NotNull(first.NextCursor);
+        var initialScore = first.TopPick!.Score;
+        Assert.All(first.Results.Append(first.TopPick!), result =>
+        {
+            Assert.Equal(initialScore, result.Score);
+            Assert.Contains(result.Reasons, reason => reason.Source == "lexical-match");
+        });
+
+        // A fresh search would now rank the last candidate first. Continuations
+        // must keep the original snapshot order instead of reranking the tail.
+        aligned[3].CreatedAt = createdAt.AddDays(3);
+        await _db.SaveChangesAsync();
+        // ResultIds is a set-oriented helper that appends Top Pick after Results;
+        // traverse the serving order explicitly here.
+        var served = new[] { first.TopPick!.Id }.Concat(first.Results.Select(result => result.Id)).ToList();
+        var continuationPages = 0;
         while (first.NextCursor is not null)
         {
+            Assert.True(++continuationPages <= 2, "Expected exactly two remaining one-result pages.");
             request.ContinuationToken = first.NextCursor;
             first = await service.SearchAsync(request);
+            Assert.Null(first.TopPick);
+            Assert.Single(first.Results);
+            Assert.Equal(initialScore, first.Results[0].Score);
+            Assert.Contains(first.Results[0].Reasons, reason => reason.Source == "lexical-match");
             served.AddRange(ResultIds(first));
         }
 
-        Assert.Equal(aligned[0].Id, served[0]);
+        Assert.Equal(2, continuationPages);
+        Assert.Equal(expected, served);
         Assert.Equal(served.Count, served.Distinct().Count());
         Assert.DoesNotContain(source.Id, served);
     }
