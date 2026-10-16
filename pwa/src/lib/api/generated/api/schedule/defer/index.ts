@@ -13,6 +13,7 @@ import {
 import {
   type AdditionalDataHolder,
   type BaseRequestBuilder,
+  type DateOnly,
   type Parsable,
   type ParsableFactory,
   type ParseNode,
@@ -51,7 +52,7 @@ export interface DeferRequestBuilder extends BaseRequestBuilder<DeferRequestBuil
    */
   post(
     body: DeferScheduleDto,
-    requestConfiguration?: RequestConfiguration<object> | undefined
+    requestConfiguration?: RequestConfiguration<DeferRequestBuilderPostQueryParameters> | undefined
   ): Promise<DeferPostResponse | undefined>;
   /**
    * Defer a scheduled recipe to the first free date next week or later
@@ -61,8 +62,17 @@ export interface DeferRequestBuilder extends BaseRequestBuilder<DeferRequestBuil
    */
   toPostRequestInformation(
     body: DeferScheduleDto,
-    requestConfiguration?: RequestConfiguration<object> | undefined
+    requestConfiguration?: RequestConfiguration<DeferRequestBuilderPostQueryParameters> | undefined
   ): RequestInformation;
+}
+/**
+ * Defer a scheduled recipe to the first free date next week or later
+ */
+export interface DeferRequestBuilderPostQueryParameters {
+  /**
+   * Optional yyyy-MM-dd Monday anchoring all relative offsets and defer's next-week base. Omission captures the deployment current Monday (UTC by default). Literal source dates remain unchanged. Invalid or non-Monday references return 400 before work.
+   */
+  referenceWeekStartDate?: DateOnly;
 }
 /**
  * The deserialization information for the current model
@@ -106,7 +116,8 @@ export function serializeDeferPostResponse(
 /**
  * Uri template for the request builder.
  */
-export const DeferRequestBuilderUriTemplate = '{+baseurl}/api/schedule/defer';
+export const DeferRequestBuilderUriTemplate =
+  '{+baseurl}/api/schedule/defer{?referenceWeekStartDate*}';
 /**
  * Metadata for all the requests in the request builder.
  */

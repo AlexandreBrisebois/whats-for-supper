@@ -9,7 +9,12 @@ import { useCaptureStore } from '@/store/captureStore';
 import { useLibraryStore } from '@/store/libraryStore';
 import { usePlannerStore } from '@/store/plannerStore';
 import { useSearchPromotionStore } from '@/store/searchPromotionStore';
-import { getTodayString } from '@/lib/imageUtils';
+import {
+  absoluteMonday,
+  civilDate,
+  weekOffsetFor,
+  type CalendarContext,
+} from '@/lib/deployment-calendar';
 
 /**
  * Singleton SSE hook — mount once at the app layout level.
@@ -54,6 +59,44 @@ export function useScheduleStream() {
     // Expose for E2E tests that need to trigger a reconnect after swapping the route mock.
     if (typeof window !== 'undefined') (window as any).__sseSource = source;
 
+    const withCalendar = (apply: (calendar: CalendarContext | null) => void) => {
+      const state = useTodayStore.getState();
+      if (state.calendarIsFresh()) {
+        apply(state.calendar);
+        return;
+      }
+      void state
+        .ensureCalendar()
+        .then(apply)
+        .catch(() => apply(null));
+    };
+    const offerToday = (schedule: any) => {
+      if (!absoluteMonday(schedule?.weekStartDate)) {
+        void useTodayStore.getState().sync();
+        return;
+      }
+      withCalendar((calendar) => {
+        if (!calendar) return;
+        const entry = schedule?.days?.find((day: { date: string }) => day.date === calendar.today);
+        if (entry !== undefined)
+          useTodayStore.getState().applyServerUpdate({
+            date: entry.date,
+            recipe: entry.recipe ?? null,
+            status: entry.status ?? 0,
+            nonCooking: entry.nonCooking ?? null,
+          });
+      });
+    };
+    const onResume = () => {
+      useTodayStore.getState().invalidateCalendar();
+      void useTodayStore.getState().sync();
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') onResume();
+    };
+    window.addEventListener('pageshow', onResume);
+    document.addEventListener('visibilitychange', onVisibility);
+
     // ── connected ──────────────────────────────────────────────────────────
     // Server sends the current week-0 schedule snapshot on every connect or
     // reconnect. We capture the connectionId for echo suppression (BS-11).
@@ -67,18 +110,7 @@ export function useScheduleStream() {
       }
       useWeekStore.getState().applySnapshot(schedule);
 
-      // Seed todayStore from the snapshot so it doesn't rely solely on SSR.
-      // When the home page SSR fetch returns null (e.g. backend unreachable or
-      // no recipe today), the connected snapshot is authoritative.
-      const today = getTodayString();
-      const todayEntry = schedule?.days?.find((d: { date: string }) => d.date === today);
-      if (todayEntry !== undefined) {
-        useTodayStore.getState().applyServerUpdate({
-          recipe: todayEntry.recipe ?? null,
-          status: todayEntry.status ?? 0,
-          nonCooking: todayEntry.nonCooking ?? null,
-        });
-      }
+      offerToday(schedule);
     });
 
     // ── slot_updated ───────────────────────────────────────────────────────
@@ -88,14 +120,17 @@ export function useScheduleStream() {
     source.addEventListener('slot_updated', (e: MessageEvent) => {
       console.log('[SSE] Received "slot_updated" event');
       const { date, recipe, status, nonCooking } = JSON.parse(e.data);
-      const today = getTodayString();
-
-      if (date === today) {
-        useTodayStore.getState().applyServerUpdate({ recipe, status, nonCooking });
+      const finish = (calendar: CalendarContext | null) => {
+        if (calendar && date === calendar.today)
+          useTodayStore.getState().applyServerUpdate({ date, recipe, status, nonCooking });
+        useWeekStore.getState().applySlotUpdate({ date, recipe, status, nonCooking });
+        useSearchPromotionStore.getState().invalidate();
+      };
+      if (!civilDate(date)) {
+        void useTodayStore.getState().sync();
+        return;
       }
-
-      useWeekStore.getState().applySlotUpdate({ date, recipe, status, nonCooking });
-      useSearchPromotionStore.getState().invalidate();
+      withCalendar(finish);
     });
 
     // ── week_updated ───────────────────────────────────────────────────────
@@ -108,16 +143,7 @@ export function useScheduleStream() {
       useWeekStore.getState().applySnapshot(schedule, echoSeq);
       useSearchPromotionStore.getState().invalidate();
 
-      // Keep todayStore in sync with the week snapshot
-      const today = getTodayString();
-      const todayEntry = schedule?.days?.find((d: { date: string }) => d.date === today);
-      if (todayEntry !== undefined) {
-        useTodayStore.getState().applyServerUpdate({
-          recipe: todayEntry.recipe ?? null,
-          status: todayEntry.status ?? 0,
-          nonCooking: todayEntry.nonCooking ?? null,
-        });
-      }
+      offerToday(schedule);
     });
 
     // ── vote_updated ───────────────────────────────────────────────────────
@@ -136,8 +162,12 @@ export function useScheduleStream() {
     source.addEventListener('smart_defaults_updated', (e: MessageEvent) => {
       console.log('[SSE] Received "smart_defaults_updated" event');
       const { defaults } = JSON.parse(e.data);
-      if (defaults?.weekOffset !== useWeekStore.getState().weekOffset) return;
-      useWeekStore.getState().applySmartDefaultsUpdate(defaults);
+      const state = useWeekStore.getState();
+      if (!absoluteMonday(defaults?.weekStartDate)) {
+        void state.sync();
+        return;
+      }
+      if (defaults.weekStartDate === state.weekStartDate) state.applySmartDefaultsUpdate(defaults);
     });
 
     // ── fill_the_gap_invalidated ───────────────────────────────────────────
@@ -145,8 +175,17 @@ export function useScheduleStream() {
     // refetch so already-planned recipes disappear from the list.
     source.addEventListener('fill_the_gap_invalidated', (e: MessageEvent) => {
       console.log('[SSE] Received "fill_the_gap_invalidated" event');
-      const { weekOffset } = JSON.parse(e.data);
-      useDiscoveryStore.getState().invalidateFillTheGap(weekOffset);
+      const { weekStartDate } = JSON.parse(e.data);
+      if (!absoluteMonday(weekStartDate)) {
+        void useWeekStore.getState().sync();
+        return;
+      }
+      const offsets = new Set([
+        weekOffsetFor(weekStartDate, useWeekStore.getState().calendar?.referenceWeekStartDate),
+        weekOffsetFor(weekStartDate, useTodayStore.getState().calendar?.referenceWeekStartDate),
+      ]);
+      for (const offset of offsets)
+        if (offset !== null) useDiscoveryStore.getState().invalidateFillTheGap(offset);
       useSearchPromotionStore.getState().invalidate();
     });
 
@@ -206,8 +245,16 @@ export function useScheduleStream() {
     // Only apply if the event is for the currently-loaded week.
     source.addEventListener('grocery_updated', (e: MessageEvent) => {
       console.log('[SSE] Received "grocery_updated" event');
-      const { weekOffset, groceryState } = JSON.parse(e.data);
-      if (weekOffset === useWeekStore.getState().weekOffset) {
+      const { weekStartDate, groceryState } = JSON.parse(e.data);
+      const state = useWeekStore.getState();
+      if (!absoluteMonday(weekStartDate)) {
+        void state.sync();
+        return;
+      }
+      if (
+        weekStartDate === state.weekStartDate &&
+        weekOffsetFor(weekStartDate, state.calendar?.referenceWeekStartDate) === state.weekOffset
+      ) {
         usePlannerStore.getState().setGroceryState(groceryState);
       }
     });
@@ -215,6 +262,8 @@ export function useScheduleStream() {
     // ── cleanup ────────────────────────────────────────────────────────────
     return () => {
       console.log('[SSE] Hook effect cleanup (closing connection)');
+      window.removeEventListener('pageshow', onResume);
+      document.removeEventListener('visibilitychange', onVisibility);
       source.close();
     };
   }, []);

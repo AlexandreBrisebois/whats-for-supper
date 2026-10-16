@@ -189,3 +189,19 @@ The grocery list works the same way. Two people in the same store, checking thin
 Demo Mode is a managed showcase environment. The host captures a master snapshot, and the app restores recipes, plans, and votes from it on a configured schedule.
 
 To keep the showcase predictable and avoid AI costs, AI-powered recipe processing is disabled. You can still use the planner, browse the library, and use regular search.
+
+## Today and the household calendar
+
+Tonight and the Planner's Monday-based weeks follow the deployment timezone set
+by your administrator, even when a family member's device is in another timezone.
+The default is UTC. Administrators can set `Calendar__TimeZone=America/Toronto`
+(or another IANA timezone) in the existing deployment `.env`, then recreate the API
+container in Container Manager. Preserve secrets and custom values when upgrading.
+An invalid explicit timezone prevents API startup; the container log identifies
+`Calendar:TimeZone` so the administrator can correct it and recreate the API.
+
+Changing this setting changes which date is Today without rewriting stored meal
+dates, cooking-history dates or UTC timestamps. Maintenance settings named
+`*_CRON_UTC` retain their UTC schedules. The PWA uses the API calendar and needs no
+separate timezone setting. An administrator can verify the zone and dates in the
+`calendar` and `weekStartDate` fields of an authenticated schedule response.

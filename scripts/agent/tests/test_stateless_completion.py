@@ -1,5 +1,6 @@
 import contextlib
 import io
+import json
 from pathlib import Path
 import sys
 import tempfile
@@ -12,6 +13,38 @@ import test_ops
 
 
 class StatelessCompletionTests(unittest.TestCase):
+    def test_plan_explains_selection_without_execution_fingerprinting_or_writes(self):
+        output = io.StringIO()
+        with tempfile.TemporaryDirectory() as tmp, \
+             mock.patch.object(finish, 'ROOT', Path(tmp)), \
+             mock.patch.object(sys, 'argv', ['finish.py', '--plan', 'docs/task.md']), \
+             mock.patch.object(test_ops, 'get_changed_files', return_value=['docs/task.md', 'pwa/src/ambient.ts']), \
+             mock.patch.object(finish, 'verify', side_effect=AssertionError('must not verify')), \
+             mock.patch.object(test_ops, 'runtime_identity', side_effect=AssertionError('must not fingerprint')), \
+             mock.patch.object(finish, 'run_command', side_effect=AssertionError('must not execute checks')), \
+             contextlib.redirect_stdout(output):
+            self.assertEqual(finish.main(), 0)
+            self.assertEqual(list(Path(tmp).iterdir()), [])
+        plan = json.loads(output.getvalue())
+        self.assertEqual(plan['excluded_paths'], ['pwa/src/ambient.ts'])
+        self.assertEqual([check['name'] for check in plan['checks']], ['documentation'])
+        self.assertEqual(plan['checks'][0]['selected_by'], ['docs/task.md'])
+        self.assertEqual(plan['task_acceptance'], 'not-evaluated')
+
+    def test_plan_preserves_unknown_fallback_and_mixed_selection(self):
+        paths = ['docs/task.md', 'scripts/agent/finish.py', 'unknown.bin']
+        plan = finish.verification_plan(paths, paths, explicit=False)
+        self.assertEqual([check['name'] for check in plan['checks']], finish.checks_for(paths))
+        database = next(check for check in plan['checks'] if check['name'] == 'database-behavior')
+        self.assertIn('unknown.bin', database['selected_by'])
+        self.assertIn('blocked', database['limitations'])
+
+    def test_plan_rejects_unchanged_paths(self):
+        with mock.patch.object(sys, 'argv', ['finish.py', '--plan', 'docs/unchanged.md']), \
+             mock.patch.object(test_ops, 'get_changed_files', return_value=[]), \
+             contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(finish.main(), 2)
+
     def test_prepare_requires_explicit_paths_before_any_write(self):
         with mock.patch.object(sys, 'argv', ['finish.py', '--prepare']), \
              mock.patch.object(test_ops, 'get_changed_files', return_value=['pwa/src/example.ts']), \

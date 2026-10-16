@@ -37,8 +37,8 @@ public class SseEventPublisher : IScheduleEventPublisher
     public Task PublishSmartDefaultsUpdatedAsync(int weekOffset, SmartDefaultsDto defaults, string? excludeConnectionId = null)
         => _manager.BroadcastAsync("smart_defaults_updated", new { weekOffset, defaults }, excludeConnectionId);
 
-    public Task PublishFillTheGapInvalidatedAsync(int weekOffset, string? excludeConnectionId = null)
-        => _manager.BroadcastAsync("fill_the_gap_invalidated", new { weekOffset }, excludeConnectionId);
+    public Task PublishFillTheGapInvalidatedAsync(int weekOffset, DateOnly weekStartDate, string? excludeConnectionId = null)
+        => _manager.BroadcastAsync("fill_the_gap_invalidated", new { weekOffset, weekStartDate }, excludeConnectionId);
 
     public Task PublishRecipeReadyAsync(Guid recipeId, string name, string? imageUrl, string? excludeConnectionId = null)
         => _manager.BroadcastAsync("recipe_ready", new { recipeId, name, imageUrl }, excludeConnectionId);
@@ -53,6 +53,6 @@ public class SseEventPublisher : IScheduleEventPublisher
             partialData
         }, excludeConnectionId);
 
-    public Task PublishGroceryUpdatedAsync(int weekOffset, Dictionary<string, bool> groceryState, string? excludeConnectionId = null)
-        => _manager.BroadcastAsync("grocery_updated", new { weekOffset, groceryState }, excludeConnectionId);
+    public Task PublishGroceryUpdatedAsync(int weekOffset, Dictionary<string, bool> groceryState, DateOnly weekStartDate, string? excludeConnectionId = null)
+        => _manager.BroadcastAsync("grocery_updated", new { weekOffset, weekStartDate, groceryState }, excludeConnectionId);
 }

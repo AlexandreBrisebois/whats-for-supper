@@ -127,3 +127,31 @@ The API image pins PDFtoImage 5.4.0, includes fonts and shipped dependency notic
 Keep the whole `data/app` tree, including each recipe's internal `original/source.pdf`, rendered pages and metadata, with the database backup. Soft delete keeps artifacts; permanent purge or failed-import Delete maintenance removes the aggregate. Existing backup/restore is not a durable workflow-queue backup: restoring a pending PDF preserves its source and pending metadata but does not recreate lost workflow tasks automatically. Check pending jobs explicitly after recovery. Never expose the retained PDF through a public file server; View original serves page images only.
 
 Release qualification must record native fixture measurements, timeout/cleanup, source lifecycle, real Android OS sharing, the iOS picker and phone usability. `off → opt-in → on` is a possible later rollout, requiring separate deployment authorization and those results. No live `.env`, secrets, deployment or rollout is changed by this work.
+
+## Deployment timezone
+
+The administrator selects the household's supper calendar in the project's `.env`:
+
+```dotenv
+Calendar__TimeZone=UTC
+# To follow Toronto's civil dates, including daylight saving changes:
+# Calendar__TimeZone=America/Toronto
+```
+
+UTC is the default when the setting is omitted or empty in Compose. Use an IANA
+identifier such as `America/Toronto`; invalid explicit values stop API startup and
+identify `Calendar:TimeZone` / `Calendar__TimeZone` in the container log. Correct the
+value in `.env` and recreate the API container through Container Manager so it
+receives the new environment. A restart alone does not reload Compose environment.
+No PWA, database or NAS timezone setting is needed.
+
+During upgrades, add this key to the existing `.env`; preserve existing secrets
+and operator overrides instead of replacing that file with the example. Changing
+the zone changes Today and Monday-based week interpretation. It does not migrate
+stored meal dates, cooking-history dates or UTC operation timestamps. Existing
+`*_CRON_UTC` maintenance schedules continue to use UTC.
+
+After recreation, inspect an authenticated `GET /api/schedule?weekOffset=0`
+response: `data.calendar.timeZone`, `today`, `currentWeekStartDate`,
+`referenceWeekStartDate`, `nextDayAtUtc` and `data.weekStartDate` establish the API's
+calendar. Verify those values rather than relying on the NAS or browser clock.

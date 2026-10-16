@@ -17,8 +17,9 @@ covered by existing authorization. Review may end with findings only.
    mocks using [shared investigation](../../core/context-loading.md#investigation).
    Use `task agent:api` or `task agent:slice -- <route>` when helpful for discovery.
 2. For an authorized API change, define paths, parameters, response schemas and
-   schema-valid examples first. Preserve camelCase JSON and deterministic valid
-   UUIDs. Include applicable empty collections and documented error responses.
+   schema-valid examples first. Preserve camelCase JSON; use deterministic valid
+   UUIDs in examples and test fixtures. Production identifier behavior follows the
+   approved contract. Include applicable empty collections and documented errors.
 3. Regenerate with `task gen:client`; its pipeline is
    `scripts/agent/kiota_client.py` and `pwa/scripts/fix-kiota-imports.js`.
    Inspect the affected route/models under `pwa/src/lib/api/generated/`; validate
@@ -33,20 +34,10 @@ covered by existing authorization. Review may end with findings only.
 
 ## Check coverage
 
-| Command | Observation |
-|---|---|
-| `task agent:api` / `task agent:slice -- <route>` | Static discovery and navigation |
-| `task agent:reconcile` | Static comparison of contract, backend and mock surfaces |
-| `task agent:drift:endpoints` | Live API OpenAPI endpoint comparison; requires configured API (default 127.0.0.1:5001) |
-| `task agent:drift:schemas` | Static DTO/schema comparison |
-| `task agent:drift:mocks` | Static hardcoded-ID/GUID pattern audit; not schema validation |
-| `task agent:drift` | Aggregate checks; inspect each result and unavailable service limitations |
-| `task test:api`, `task test:unit`, `task test:e2e:ci` | Applicable backend, PWA unit and production-build Playwright behavior |
-
-A skipped live probe or green aggregate log cannot establish live parity. Record
-actual subcheck results and blocked dependencies; do not rewrite the contract to
-clear drift automatically. Tooling behavior and completion changes have their
-shared owner, not a separate model-tier policy here.
+Use the [execution harness](../../core/execution-harness.md#effects-blockers-and-supporting-commands)
+for command coverage and prerequisites. Static discovery, DTO comparison and mock
+pattern checks establish only the properties they inspect; live endpoint parity
+and behavior tests require their own evidence. Record unavailable checks as blocked.
 
 ## Mock and client behavior
 

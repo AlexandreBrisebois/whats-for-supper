@@ -1,10 +1,14 @@
 'use client';
 
 import { useEffect } from 'react';
-import { getTodayString } from '@/lib/imageUtils';
+import { readCalendar } from '@/lib/deployment-calendar';
 import { useTodayStore } from '@/store/todayStore';
 import { normalizeScheduleRecipe } from '@/lib/api/planner';
-import type { NonCookingPlanDto, ScheduleRecipeDto } from '@/lib/api/generated/models';
+import type {
+  DeploymentCalendarContext,
+  NonCookingPlanDto,
+  ScheduleRecipeDto,
+} from '@/lib/api/generated/models';
 
 /**
  * Initialises todayStore once at the layout/page level from SSR props (BS-1 fix).
@@ -23,21 +27,22 @@ export function TodayStoreInitializer({
   todayStatus,
   todayDate,
   nonCooking,
+  calendar,
 }: {
   todaysRecipe: any;
   todayStatus: 0 | 2 | 3;
   todayDate?: string;
+  calendar?: DeploymentCalendarContext | null;
   nonCooking?: NonCookingPlanDto | null;
 }) {
   useEffect(() => {
-    // SSR uses the server's calendar date, which can differ from the browser's.
-    // Client sync resolves the actual local day; never seed a different day's plan.
-    if (todayDate && todayDate !== getTodayString()) return;
+    const context = readCalendar(calendar);
+    if (!context || todayDate !== context.today) return;
 
     // Resolve the SSR recipe to a plain ScheduleRecipeDto (or null)
     const ssrRecipe: ScheduleRecipeDto | null = normalizeScheduleRecipe(todaysRecipe);
 
-    useTodayStore.getState().init(ssrRecipe, todayStatus, nonCooking);
+    useTodayStore.getState().init(ssrRecipe, todayStatus, nonCooking, context);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional mount-only init; SSE keeps the store current after that
   }, []);
 

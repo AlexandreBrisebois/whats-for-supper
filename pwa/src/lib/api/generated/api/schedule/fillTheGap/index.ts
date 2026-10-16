@@ -11,6 +11,7 @@ import {
 import {
   type AdditionalDataHolder,
   type BaseRequestBuilder,
+  type DateOnly,
   type Parsable,
   type ParsableFactory,
   type ParseNode,
@@ -82,6 +83,10 @@ export interface FillTheGapRequestBuilder extends BaseRequestBuilder<FillTheGapR
  */
 export interface FillTheGapRequestBuilderGetQueryParameters {
   /**
+   * Optional yyyy-MM-dd Monday anchoring all relative offsets and defer's next-week base. Omission captures the deployment current Monday (UTC by default). Literal source dates remain unchanged. Invalid or non-Monday references return 400 before work.
+   */
+  referenceWeekStartDate?: DateOnly;
+  /**
    * Week offset from the current week (0 = this week, 1 = next week, -1 = last week). Recipes already assigned to any day in the target week are excluded from results.
    */
   weekOffset?: number;
@@ -112,7 +117,7 @@ export function serializeFillTheGapGetResponse(
  * Uri template for the request builder.
  */
 export const FillTheGapRequestBuilderUriTemplate =
-  '{+baseurl}/api/schedule/fill-the-gap{?weekOffset*}';
+  '{+baseurl}/api/schedule/fill-the-gap{?referenceWeekStartDate*,weekOffset*}';
 /**
  * Metadata for all the requests in the request builder.
  */

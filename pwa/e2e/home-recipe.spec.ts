@@ -70,7 +70,7 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
           await route.fulfill({
             status: 200,
             contentType: 'application/json',
-            body: JSON.stringify({ data: { weekOffset: 0, days } }),
+            body: JSON.stringify({ data: { ...builders.scheduleDays(), weekOffset: 0, days } }),
           });
         } else {
           await route.continue();
@@ -131,7 +131,9 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
           await route.fulfill({
             status: 200,
             contentType: 'application/json',
-            body: JSON.stringify({ data: { weekOffset: 0, locked: false, status: 0, days } }),
+            body: JSON.stringify({
+              data: { ...builders.scheduleDays(), weekOffset: 0, locked: false, status: 0, days },
+            }),
           });
         } else {
           await route.continue();
@@ -162,7 +164,7 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
           await route.fulfill({
             status: 200,
             contentType: 'application/json',
-            body: JSON.stringify({ data: { weekOffset: 0, days: [] } }),
+            body: JSON.stringify({ data: { ...builders.scheduleDays(), weekOffset: 0, days: [] } }),
           });
         } else {
           await route.continue();
@@ -232,7 +234,7 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
           await route.fulfill({
             status: 200,
             contentType: 'application/json',
-            body: JSON.stringify({ data: { weekOffset: 0, days } }),
+            body: JSON.stringify({ data: { ...builders.scheduleDays(), weekOffset: 0, days } }),
           });
         } else {
           await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
@@ -345,7 +347,7 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
           await route.fulfill({
             status: 200,
             contentType: 'application/json',
-            body: JSON.stringify({ data: { weekOffset: 0, days } }),
+            body: JSON.stringify({ data: { ...builders.scheduleDays(), weekOffset: 0, days } }),
           });
         } else {
           await route.continue();
@@ -429,7 +431,7 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
           await route.fulfill({
             status: 200,
             contentType: 'application/json',
-            body: JSON.stringify({ data: { weekOffset: 0, days } }),
+            body: JSON.stringify({ data: { ...builders.scheduleDays(), weekOffset: 0, days } }),
           });
         } else {
           await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
@@ -492,7 +494,13 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
           recipe: dateStr === today && !isOrderedIn ? lasagnaRecipe : null,
         };
       });
-      const schedule = { weekOffset: 0, locked: false, status: 0, days };
+      const schedule = {
+        ...builders.scheduleDays(),
+        weekOffset: 0,
+        locked: false,
+        status: 0,
+        days,
+      };
       const slotUpdate = {
         type: 'slot_updated',
         date: today,
@@ -550,7 +558,7 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
           await route.fulfill({
             status: 200,
             contentType: 'application/json',
-            body: JSON.stringify({ data: { weekOffset: 0, days } }),
+            body: JSON.stringify({ data: { ...builders.scheduleDays(), weekOffset: 0, days } }),
           });
         } else {
           await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
@@ -655,7 +663,7 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
           await route.fulfill({
             status: 200,
             contentType: 'application/json',
-            body: JSON.stringify({ data: { weekOffset: 0, days } }),
+            body: JSON.stringify({ data: { ...builders.scheduleDays(), weekOffset: 0, days } }),
           });
         } else {
           await route.continue();
@@ -705,7 +713,9 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
             await route.fulfill({
               status: 200,
               contentType: 'application/json',
-              body: JSON.stringify({ data: { weekOffset: 0, days: [] } }),
+              body: JSON.stringify({
+                data: { ...builders.scheduleDays(), weekOffset: 0, days: [] },
+              }),
             });
           } else {
             // After "Order In": return status:3 for today (simulates server state after write)
@@ -718,7 +728,7 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
             await route.fulfill({
               status: 200,
               contentType: 'application/json',
-              body: JSON.stringify({ data: { weekOffset: 0, days } }),
+              body: JSON.stringify({ data: { ...builders.scheduleDays(), weekOffset: 0, days } }),
             });
           }
         } else {
@@ -765,7 +775,7 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
           status: dateStr === today ? 3 : 0,
         };
       });
-      const body = `event: connected\ndata: ${JSON.stringify({ type: 'connected', schedule: { weekOffset: 0, locked: false, status: 0, days } })}\n\n`;
+      const body = `event: connected\ndata: ${JSON.stringify({ type: 'connected', schedule: { ...builders.scheduleDays(), weekOffset: 0, locked: false, status: 0, days } })}\n\n`;
       await route.fulfill({
         status: 200,
         contentType: 'text/event-stream',
@@ -878,6 +888,7 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
     let validateCalled = false;
     let cookedReconnects = 0;
     const schedule = () => ({
+      ...builders.scheduleDays(),
       weekOffset: 0,
       days: Array.from({ length: 7 }, (_, i) => {
         const d = new Date(monday);
@@ -1013,7 +1024,9 @@ test.describe('Home Command Center — Planner → todayStore propagation (Group
             await route.fulfill({
               status: 200,
               contentType: 'application/json',
-              body: JSON.stringify({ data: { weekOffset: 0, days: [] } }),
+              body: JSON.stringify({
+                data: { ...builders.scheduleDays(), weekOffset: 0, days: [] },
+              }),
             });
           } else {
             const days = Array.from({ length: 7 }, (_, i) => {
@@ -1025,7 +1038,7 @@ test.describe('Home Command Center — Planner → todayStore propagation (Group
             await route.fulfill({
               status: 200,
               contentType: 'application/json',
-              body: JSON.stringify({ data: { weekOffset: 0, days } }),
+              body: JSON.stringify({ data: { ...builders.scheduleDays(), weekOffset: 0, days } }),
             });
           }
         } else {
@@ -1068,7 +1081,7 @@ test.describe('Home Command Center — Planner → todayStore propagation (Group
           status: dateStr === today ? 3 : 0,
         };
       });
-      const body = `event: connected\ndata: ${JSON.stringify({ type: 'connected', schedule: { weekOffset: 0, locked: false, status: 0, days } })}\n\n`;
+      const body = `event: connected\ndata: ${JSON.stringify({ type: 'connected', schedule: { ...builders.scheduleDays(), weekOffset: 0, locked: false, status: 0, days } })}\n\n`;
       await route.fulfill({
         status: 200,
         contentType: 'text/event-stream',

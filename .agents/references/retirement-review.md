@@ -1,12 +1,7 @@
----
-name: death-audit
-description: Explicitly invoked, bounded maintenance to identify and retire obsolete WFS code or documentation after verified salvage and caller migration. Not automatic session cleanup.
----
-
 # Bounded retirement audit
 
 Use only for an explicit maintenance invocation with named targets or boundaries.
-The selected request/manifest supplies scope; follow [AGENT.md](../../../AGENT.md)
+The selected request/manifest supplies scope; follow [AGENT.md](../../AGENT.md)
 for authority. HANDOVER is a resume checkpoint, never a competing rule owner.
 
 Inspect only target content and incoming dependencies. Look for duplicated facts,
@@ -24,4 +19,5 @@ retirement plan within its boundaries; a second generic approval interview is no
 required. Unresolved unique content or consumers block that specific retirement.
 Verify incoming links, discovery and affected executable behavior using applicable
 Taskfile checks. Report removed paths, provenance, preservation and remaining limits.
-Do not expand into unrelated cleanup or invoke this skill at every turn end.
+Keep the review within the named retirement scope; this is an optional reference,
+not a routine completion step.

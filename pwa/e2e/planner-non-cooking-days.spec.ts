@@ -27,6 +27,7 @@ test.beforeEach(async ({ page, baseURL }) => {
 
 function emptyWeek(): ScheduleDays {
   return {
+    ...(builders.scheduleDays() as any),
     weekOffset: 0,
     status: 0,
     locked: false,
@@ -176,7 +177,8 @@ for (const [kind, label, customLabel] of [
     const to = await target.boundingBox();
     if (!from || !to) throw new Error('Missing planner drag surfaces');
     const move = page.waitForRequest(
-      (request) => request.method() === 'POST' && request.url().endsWith('/api/schedule/move')
+      (request) =>
+        request.method() === 'POST' && new URL(request.url()).pathname === '/api/schedule/move'
     );
     await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
     await page.mouse.down();
@@ -265,7 +267,7 @@ test.describe('Home local calendar day', () => {
     ['mystery', null, 'Mystery night'],
     ['custom', "Supper at mom's", "Supper at mom's"],
   ] as const) {
-    test(`shows ${kind} on local Sunday after the API advances to Monday`, async ({
+    test(`shows ${kind} on deployment Sunday while the browser is Monday`, async ({
       page,
       baseURL,
     }) => {
@@ -279,7 +281,15 @@ test.describe('Home local calendar day', () => {
       ]);
       await setupCommonRoutes(page);
       const previous = emptyWeek();
-      previous.weekOffset = -1;
+      previous.weekOffset = 0;
+      previous.calendar = builders.deploymentCalendar({
+        timeZone: 'America/Toronto',
+        capturedAtUtc: '2026-05-11T03:30:00Z',
+        today: '2026-05-10',
+        currentWeekStartDate: '2026-05-04',
+        referenceWeekStartDate: '2026-05-04',
+        nextDayAtUtc: '2026-05-11T04:00:00Z',
+      }) as any;
       previous.days![6].status = 3;
       previous.days![6].nonCooking = { kind, customLabel };
       const current = emptyWeek();
@@ -294,20 +304,22 @@ test.describe('Home local calendar day', () => {
         (url) => url.pathname === '/api/schedule',
         (route) => {
           const offset = new URL(route.request().url()).searchParams.get('weekOffset');
-          return route.fulfill({ json: { data: offset === '-1' ? previous : current } });
+          return route.fulfill({ json: { data: offset === '0' ? previous : current } });
         }
       );
       await page.route('**/api/stream', (route) =>
         route.fulfill({
           contentType: 'text/event-stream',
-          body: `event: connected\ndata: ${JSON.stringify({ schedule: current, connectionId: 'local-calendar-test' })}\n\n`,
+          body: `event: connected\ndata: ${JSON.stringify({ schedule: previous, connectionId: 'local-calendar-test' })}\n\n`,
         })
       );
-      const localWeek = page.waitForRequest(
-        (request) => new URL(request.url()).searchParams.get('weekOffset') === '-1'
+      const deploymentWeek = page.waitForRequest(
+        (request) =>
+          new URL(request.url()).pathname === '/api/schedule' &&
+          new URL(request.url()).searchParams.get('weekOffset') === '0'
       );
       await page.goto('/home');
-      await localWeek;
+      await deploymentWeek;
       for (const reload of [false, true]) {
         if (reload) await page.reload();
         if (kind === 'mystery') {

@@ -13,10 +13,12 @@ import shutil
 import signal
 import subprocess
 import sys
+import time
 import uuid
 
 import test_ops
 import worktree
+import harness_identity as harness_runtime
 
 ROOT = Path(__file__).resolve().parents[2]
 CHECKS = ('documentation', 'spec:check', 'test:agent', 'lint', 'format:check:pwa', 'typecheck', 'test:unit',
@@ -156,6 +158,52 @@ def identity():
     # Verification identity covers the whole repository and runtime, even when
     # explicit paths select a bounded task's checks.
     return test_ops.build_impact_digest(ROOT, test_ops.get_changed_files(), [])
+
+
+def can_scope_harness(paths, checks):
+    classes = classes_for(paths)
+    return ('harness' in classes and classes <= {'harness', 'documentation'}
+            and bool(checks) and set(checks) <= {'documentation', 'test:agent', 'spec:check'}
+            and os.environ.get('WFS_TEST_SQLDEF') != '1')
+
+
+def harness_identity(checks):
+    return test_ops.build_impact_digest(ROOT, test_ops.get_changed_files(), [],
+                                       runtime_digest=harness_runtime.runtime_identity(checks))
+
+
+def verification_plan(paths, changed, *, explicit):
+    """Explain existing selection without executing checks or hashing runtime inputs."""
+    by_path = {path: checks_for([path]) for path in paths}
+    checks = []
+    for check in checks_for(paths):
+        item = {'name': check, 'selected_by': [path for path in paths if check in by_path[path]]}
+        if check == 'database-behavior':
+            item['prerequisites'] = 'Task-specific real database acceptance evidence.'
+            item['limitations'] = 'Always blocked in this runner; reconcile task evidence separately.'
+        elif check == 'agent:drift:endpoints':
+            item['prerequisites'] = 'Running API exposing its generated OpenAPI document.'
+            item['limitations'] = 'Live endpoint parity only; does not prove database behavior.'
+        elif check == 'spec:check':
+            item['prerequisites'] = 'Taskfile-pinned OpenSpec CLI.'
+        elif check == 'documentation':
+            item['prerequisites'] = 'Git and readable selected documents/link targets.'
+        else:
+            item['prerequisites'] = 'Installed repository toolchain and dependencies for this check; see Taskfile.yml.'
+        checks.append(item)
+    return {
+        'mode': 'plan',
+        'selection': 'explicit' if explicit else 'all-git-changes',
+        'changed_paths': paths,
+        'excluded_paths': sorted(set(changed) - set(paths)),
+        'path_classes': {path: sorted(classes_for([path])) for path in paths},
+        'runtime_scope_candidate': 'harness' if can_scope_harness(paths, [c['name'] for c in checks]) else 'existing-policy',
+        'checks': checks,
+        'verification_scope': 'selected-documentation' if explicit and can_scope_documentation(paths) else 'repository',
+        'effects': 'Preview only: no checks, preparation, runtime fingerprinting or evidence writes. Verification may launch tools, tests and services and write generated test outputs.',
+        'task_acceptance': 'not-evaluated',
+        'limitations': 'Selection preview only; prerequisites are not probed. Paths do not establish ownership. Recompute after edits.',
+    }
 
 
 def documentation_spec_targets(paths):
@@ -339,20 +387,64 @@ def run_check(check, paths=()):
 
 def verify(checks, paths=(), *, scoped_documentation=False):
     current_identity = (lambda: documentation_identity(paths)) if scoped_documentation else identity
-    tested = current_identity()
+    runtime_scope = 'selected-documentation' if scoped_documentation else 'full'
+    runtime_scope_reason = ''
+    if not scoped_documentation and can_scope_harness(paths, checks):
+        current_identity = lambda: harness_identity(checks)
+        runtime_scope = 'harness'
+    started = time.perf_counter()
+    identity_started = time.perf_counter()
+    try:
+        tested = current_identity()
+    except (OSError, ValueError) as error:
+        if runtime_scope != 'harness':
+            raise
+        current_identity = identity
+        runtime_scope = 'full'
+        runtime_scope_reason = str(error)
+        tested = current_identity()
+    initial_identity_seconds = time.perf_counter() - identity_started
+    timing = {'initial_identity_seconds': initial_identity_seconds,
+              'identity_seconds': initial_identity_seconds, 'identity_calls': 1,
+              'checks_seconds': 0.0}
     results = {check: {'status': 'not-run' if check in checks else 'not-applicable'}
                for check in CHECKS}
     results['content'] = {'status': 'passed', 'tested_identity': tested}
+    results['content'].update(runtime_scope=runtime_scope, runtime_scope_reason=runtime_scope_reason)
     if scoped_documentation:
         results['content'].update(scope='selected-documentation', input_paths=documentation_inputs(paths)[0])
     for check in checks:
+        check_started = time.perf_counter()
         status, detail = (documentation_spec_check(paths) if scoped_documentation and check == 'spec:check'
                           else run_check(check, paths))
-        results[check] = {'status': status, 'detail': detail, 'tested_identity': tested}
-        if current_identity() != tested:
+        duration = time.perf_counter() - check_started
+        timing['checks_seconds'] += duration
+        identity_started = time.perf_counter()
+        try:
+            after = current_identity()
+        except (OSError, ValueError) as error:
+            if runtime_scope != 'harness':
+                raise
+            # A previously discoverable runtime disappearing/changing layout
+            # is mutation, not an opportunity to switch identities mid-run.
+            identity_duration = time.perf_counter() - identity_started
+            results[check] = {'status': status, 'detail': detail, 'tested_identity': tested,
+                              'duration_seconds': duration, 'identity_duration_seconds': identity_duration}
+            results['content'].update(status='failed', detail=f'Runtime identity unavailable after check: {error}')
+            timing['identity_seconds'] += identity_duration
+            timing['identity_calls'] += 1
+            break
+        identity_duration = time.perf_counter() - identity_started
+        timing['identity_seconds'] += identity_duration
+        timing['identity_calls'] += 1
+        results[check] = {'status': status, 'detail': detail, 'tested_identity': tested,
+                          'duration_seconds': duration, 'identity_duration_seconds': identity_duration}
+        if after != tested:
             results['content']['status'] = 'failed'
             results['content']['detail'] = 'Mutation during verification; no success for final content.'
             break
+    timing['total_seconds'] = time.perf_counter() - started
+    results['content']['timing'] = timing
     return results
 
 
@@ -400,7 +492,9 @@ def prepare(paths):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--prepare', action='store_true')
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument('--prepare', action='store_true')
+    mode.add_argument('--plan', action='store_true', help='Print selection as JSON without running checks or writing evidence')
     parser.add_argument('paths', nargs='*', help='Explicit changed repository-relative paths; default: all Git changes')
     args = parser.parse_args()
     changed = test_ops.get_changed_files()
@@ -413,6 +507,9 @@ def main():
     if args.prepare and changed and not args.paths:
         print('blocked: preparation requires explicit paths; use task prepare -- <paths>', file=sys.stderr)
         return 2
+    if args.plan:
+        print(json.dumps(verification_plan(paths, changed, explicit=bool(args.paths)), indent=2))
+        return 0
     print(f'Selected changed paths: {len(paths)}; other Git changes excluded: {len(set(changed) - set(paths))}. '
           'Path selection does not prove edit ownership.', flush=True)
     if args.prepare:

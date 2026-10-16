@@ -29,6 +29,7 @@ import {
   saveNonCookingDay,
   getSchedule,
   removeRecipeFromDay,
+  referenceRequest,
 } from '@/lib/api/planner';
 import { apiClient } from '@/lib/api/api-client';
 import { DateOnly } from '@microsoft/kiota-abstractions';
@@ -45,7 +46,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { SolarLoader } from '@/components/ui/SolarLoader';
 import { CooksMode } from '@/components/planner/CooksMode';
 import { RecipeDetailSheet } from '@/components/recipes/RecipeDetailSheet';
-import { getImageUrl, getTodayString } from '@/lib/imageUtils';
+import { getImageUrl } from '@/lib/imageUtils';
 import { GroceryList } from '@/components/planner/GroceryList';
 import { useDiscoveryStore } from '@/store/discoveryStore';
 import { useTodayStore } from '@/store/todayStore';
@@ -69,6 +70,7 @@ export default function PlannerPage() {
   const [nonCookingTarget, setNonCookingTarget] = useState<{
     date: string;
     weekOffset: number;
+    referenceWeekStartDate?: string;
     plan?: NonCookingPlanDto | null;
     existing: boolean;
   } | null>(null);
@@ -87,6 +89,7 @@ export default function PlannerPage() {
   const [copied, setCopied] = useState(false);
   const [pendingRecovery, setPendingRecovery] = useState<{
     slot: {
+      referenceWeekStartDate?: string;
       weekOffset: number;
       dayIndex: number;
       date: string;
@@ -97,6 +100,7 @@ export default function PlannerPage() {
   const { setHasPendingCards } = useDiscoveryStore();
   const searchParams = useSearchParams();
   const planDate = searchParams.get('planDate');
+  const referenceWeekStartDate = searchParams.get('referenceWeekStartDate') ?? undefined;
   const openedPlanDate = useRef<string | null>(null);
   const successParam = searchParams.get('success');
   const [prevOffset, setPrevOffset] = useState(currentWeekOffset);
@@ -147,8 +151,8 @@ export default function PlannerPage() {
   }, [searchParams, currentWeekOffset, setWeekOffset]);
 
   useEffect(() => {
-    useWeekStore.getState().init(currentWeekOffset);
-  }, [currentWeekOffset, successParam]);
+    useWeekStore.getState().init(currentWeekOffset, referenceWeekStartDate);
+  }, [currentWeekOffset, successParam, referenceWeekStartDate]);
 
   useEffect(() => {
     if (!planDate) {
@@ -274,6 +278,7 @@ export default function PlannerPage() {
       setPendingRecovery({
         slot: {
           weekOffset: currentWeekOffset,
+          referenceWeekStartDate: useWeekStore.getState().calendar?.referenceWeekStartDate,
           dayIndex: selectedDayIndex,
           date: selectedDay.date,
           recipe: selectedDay.recipe,
@@ -294,8 +299,10 @@ export default function PlannerPage() {
 
       // Propagate to todayStore if this is today's slot
       const assignedDate = schedule[selectedDayIndex]?.date;
-      if (currentWeekOffset === 0 && assignedDate === getTodayString()) {
-        useTodayStore.getState().assignRecipe(nextRecipe);
+      if (currentWeekOffset === 0 && assignedDate === useTodayStore.getState().calendar?.today) {
+        useTodayStore
+          .getState()
+          .applyServerUpdate({ date: assignedDate, recipe: nextRecipe, status: 0 });
       }
 
       setShowQuickFind(false);
@@ -303,7 +310,7 @@ export default function PlannerPage() {
       setSelectedDayIndex(null);
       setPendingQuickFindDayIndex(null);
     } catch {
-      await useWeekStore.getState().init(currentWeekOffset);
+      await useWeekStore.getState().init(currentWeekOffset, referenceWeekStartDate);
       useUiStore.getState().addToast({
         type: 'error',
         message: 'That recipe could not be added. Your plan was refreshed; please try again.',
@@ -330,10 +337,10 @@ export default function PlannerPage() {
         }
       }
 
-      await useWeekStore.getState().assignRecipe(slot.dayIndex, recipe);
+      await useWeekStore.getState().assignRecipe(slot.dayIndex, recipe, slot);
 
-      if (slot.weekOffset === 0 && slot.date === getTodayString()) {
-        useTodayStore.getState().assignRecipe(recipe);
+      if (slot.weekOffset === 0 && slot.date === useTodayStore.getState().calendar?.today) {
+        useTodayStore.getState().applyServerUpdate({ date: slot.date, recipe, status: 0 });
       }
 
       setPendingRecovery(null);
@@ -341,9 +348,9 @@ export default function PlannerPage() {
       setShowPivot(null);
       setSelectedDayIndex(null);
       setPendingQuickFindDayIndex(null);
-      await useWeekStore.getState().init(currentWeekOffset);
+      await useWeekStore.getState().init(currentWeekOffset, referenceWeekStartDate);
     } catch {
-      await useWeekStore.getState().init(currentWeekOffset);
+      await useWeekStore.getState().init(currentWeekOffset, referenceWeekStartDate);
       useUiStore.getState().addToast({
         type: 'error',
         message: priorRecipeResolved
@@ -358,7 +365,9 @@ export default function PlannerPage() {
   const handleSearchPath = () => {
     const dayIndex = showPivot?.dayIndex ?? selectedDayIndex;
     if (dayIndex === null) return;
-    router.push(`/recipes?addToDay=${dayIndex}&weekOffset=${currentWeekOffset}`);
+    router.push(
+      `/recipes?addToDay=${dayIndex}&weekOffset=${currentWeekOffset}&referenceWeekStartDate=${useWeekStore.getState().calendar?.referenceWeekStartDate ?? ''}`
+    );
   };
 
   const handleAskFamily = async () => {
@@ -389,18 +398,22 @@ export default function PlannerPage() {
       setSelectedDayIndex(null);
       setPendingQuickFindDayIndex(null);
 
-      await apiClient.api.schedule.move.post({
-        weekOffset: currentWeekOffset,
-        fromIndex: dayIndex,
-        toIndex: 0,
-        targetWeekOffset: currentWeekOffset + 1,
-        intent: 'push',
-        recipeId,
-      });
+      const reference = useWeekStore.getState().calendar?.referenceWeekStartDate;
+      await apiClient.api.schedule.move.post(
+        {
+          weekOffset: currentWeekOffset,
+          fromIndex: dayIndex,
+          toIndex: 0,
+          targetWeekOffset: currentWeekOffset + 1,
+          intent: 'push',
+          recipeId,
+        },
+        referenceRequest(reference)
+      );
 
-      await useWeekStore.getState().init(currentWeekOffset);
+      await useWeekStore.getState().init(currentWeekOffset, referenceWeekStartDate);
 
-      if (currentWeekOffset === 0 && day.date === getTodayString()) {
+      if (currentWeekOffset === 0 && day.date === useTodayStore.getState().calendar?.today) {
         await useTodayStore.getState().sync();
       }
     } catch (error) {
@@ -429,7 +442,7 @@ export default function PlannerPage() {
   const isFinalized = isLocked;
   const weekIsPast = useMemo(() => {
     if (schedule.length < 7) return false;
-    return (schedule[6].date ?? '') < getTodayString();
+    return (schedule[6].date ?? '') < (useTodayStore.getState().calendar?.today ?? '');
   }, [schedule]);
   const canOpenVoting = !weekIsPast && (status === 0 || status === 2);
   const canShare = typeof navigator !== 'undefined' && !!navigator.share;
@@ -745,12 +758,15 @@ export default function PlannerPage() {
             try {
               await saveNonCookingDay(target.date, plan);
             } catch (failure) {
-              const refreshed = await getSchedule(target.weekOffset).catch(() => undefined);
+              const refreshed = await getSchedule(
+                target.weekOffset,
+                target.referenceWeekStartDate
+              ).catch(() => undefined);
               if (refreshed && useWeekStore.getState().weekOffset === target.weekOffset)
                 useWeekStore.getState().applySnapshot(refreshed);
               throw failure;
             }
-            const refreshed = await getSchedule(target.weekOffset);
+            const refreshed = await getSchedule(target.weekOffset, target.referenceWeekStartDate);
             if (refreshed && useWeekStore.getState().weekOffset === target.weekOffset)
               useWeekStore.getState().applySnapshot(refreshed);
             if (
@@ -764,7 +780,10 @@ export default function PlannerPage() {
               ? async () => {
                   const target = nonCookingTarget;
                   await removeRecipeFromDay(target.date);
-                  const refreshed = await getSchedule(target.weekOffset);
+                  const refreshed = await getSchedule(
+                    target.weekOffset,
+                    target.referenceWeekStartDate
+                  );
                   if (refreshed && useWeekStore.getState().weekOffset === target.weekOffset)
                     useWeekStore.getState().applySnapshot(refreshed);
                   if (
@@ -790,6 +809,7 @@ export default function PlannerPage() {
                 setNonCookingTarget({
                   date: day.date,
                   weekOffset: currentWeekOffset,
+                  referenceWeekStartDate: useWeekStore.getState().calendar?.referenceWeekStartDate,
                   plan: day.nonCooking,
                   existing: day.status === 3,
                 });
@@ -907,6 +927,7 @@ export default function PlannerPage() {
       <AnimatePresence>
         {showQuickFind && (
           <QuickFindModal
+            referenceWeekStartDate={useWeekStore.getState().calendar?.referenceWeekStartDate}
             onClose={() => {
               setShowQuickFind(false);
               setSelectedDayIndex(null);
@@ -1070,7 +1091,7 @@ const PlannerDayCard = memo(function PlannerDayCard({
             {(() => {
               if (!day.date) return '';
               const d = new Date(day.date);
-              return d.toLocaleDateString('en-US', { month: 'short' });
+              return d.toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' });
             })()}
           </span>
         </div>

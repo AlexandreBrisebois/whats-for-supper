@@ -27,6 +27,17 @@ const mockSetGroceryState = vi.fn();
 
 // weekStore weekOffset — default to 0; tests can override via mockWeekOffset
 let mockWeekOffset = 0;
+let mockWeekStartDate = '2025-01-13';
+let mockCalendar = {
+  timeZone: 'UTC',
+  capturedAtUtc: '2025-01-15T12:00:00Z',
+  today: '2025-01-15',
+  currentWeekStartDate: '2025-01-13',
+  referenceWeekStartDate: '2025-01-13',
+  nextDayAtUtc: '2025-01-16T00:00:00Z',
+};
+const mockWeekSync = vi.fn().mockResolvedValue(undefined);
+const mockInvalidateCalendar = vi.fn();
 
 // captureStore mock — getPending returns undefined by default; tests override as needed
 const mockGetPending = vi.fn<
@@ -40,6 +51,11 @@ const mockPushNotification = vi.fn();
 vi.mock('@/store/todayStore', () => ({
   useTodayStore: {
     getState: () => ({
+      sync: mockWeekSync,
+      calendar: mockCalendar,
+      calendarIsFresh: () => true,
+      ensureCalendar: async () => mockCalendar,
+      invalidateCalendar: mockInvalidateCalendar,
       clearOptimisticGuard: mockClearOptimisticGuard,
       applyServerUpdate: mockApplyServerUpdate,
     }),
@@ -50,6 +66,9 @@ vi.mock('@/store/weekStore', () => ({
   useWeekStore: {
     getState: () => ({
       weekOffset: mockWeekOffset,
+      weekStartDate: mockWeekStartDate,
+      calendar: mockCalendar,
+      sync: mockWeekSync,
       applySnapshot: mockApplySnapshot,
       applySlotUpdate: mockApplySlotUpdate,
       applyVoteUpdate: mockApplyVoteUpdate,
@@ -153,6 +172,15 @@ beforeEach(() => {
   global.EventSource = MockEventSource;
   MockEventSource.instances = [];
   mockWeekOffset = 0;
+  mockWeekStartDate = '2025-01-13';
+  mockCalendar = {
+    timeZone: 'UTC',
+    capturedAtUtc: '2025-01-15T12:00:00Z',
+    today: '2025-01-15',
+    currentWeekStartDate: '2025-01-13',
+    referenceWeekStartDate: '2025-01-13',
+    nextDayAtUtc: '2025-01-16T00:00:00Z',
+  };
   vi.clearAllMocks();
   useSearchPromotionStore.getState().reset();
 });
@@ -246,7 +274,7 @@ describe('slot_updated event', () => {
     const recipe = { id: 'r1', name: 'Pasta', image: '' };
     source.emit('slot_updated', { date: '2025-01-15', recipe, status: 0 });
 
-    expect(mockApplyServerUpdate).toHaveBeenCalledWith({ recipe, status: 0 });
+    expect(mockApplyServerUpdate).toHaveBeenCalledWith({ date: '2025-01-15', recipe, status: 0 });
   });
 
   it('does NOT call applyServerUpdate on todayStore when date does not match today', () => {
@@ -309,6 +337,7 @@ describe('week_updated event', () => {
 
     const recipe = { id: 'r-today', name: 'Today’s Pasta', image: '' };
     const schedule = {
+      weekStartDate: '2025-01-13',
       days: [
         { date: '2025-01-15', recipe, status: 1 }, // today
         { date: '2025-01-16', recipe: null, status: 0 },
@@ -319,6 +348,7 @@ describe('week_updated event', () => {
     source.emit('week_updated', { schedule });
 
     expect(mockApplyServerUpdate).toHaveBeenCalledWith({
+      date: '2025-01-15',
       recipe,
       status: 1,
       nonCooking: null,
@@ -358,7 +388,11 @@ describe('smart_defaults_updated event', () => {
   it('calls applySmartDefaultsUpdate on weekStore with defaults for current week', () => {
     const { source } = setupHook();
 
-    const defaults = { weekOffset: 0, preSelectedRecipes: [{ dayIndex: 0, recipeId: 'r1' }] };
+    const defaults = {
+      weekOffset: 0,
+      weekStartDate: '2025-01-13',
+      preSelectedRecipes: [{ dayIndex: 0, recipeId: 'r1' }],
+    };
     source.emit('smart_defaults_updated', { defaults });
 
     expect(mockApplySmartDefaultsUpdate).toHaveBeenCalledWith(defaults);
@@ -368,7 +402,11 @@ describe('smart_defaults_updated event', () => {
     const { source } = setupHook();
     mockWeekOffset = 0;
 
-    const defaults = { weekOffset: 1, preSelectedRecipes: [{ dayIndex: 0, recipeId: 'r1' }] };
+    const defaults = {
+      weekOffset: 1,
+      weekStartDate: '2025-01-20',
+      preSelectedRecipes: [{ dayIndex: 0, recipeId: 'r1' }],
+    };
     source.emit('smart_defaults_updated', { defaults });
 
     expect(mockApplySmartDefaultsUpdate).not.toHaveBeenCalled();
@@ -381,7 +419,7 @@ describe('fill_the_gap_invalidated event', () => {
   it('calls invalidateFillTheGap on discoveryStore with weekOffset', () => {
     const { source } = setupHook();
 
-    source.emit('fill_the_gap_invalidated', { weekOffset: 0 });
+    source.emit('fill_the_gap_invalidated', { weekOffset: 0, weekStartDate: '2025-01-13' });
 
     expect(mockInvalidateFillTheGap).toHaveBeenCalledWith(0);
   });
@@ -389,7 +427,7 @@ describe('fill_the_gap_invalidated event', () => {
   it('passes the weekOffset value through correctly', () => {
     const { source } = setupHook();
 
-    source.emit('fill_the_gap_invalidated', { weekOffset: 1 });
+    source.emit('fill_the_gap_invalidated', { weekOffset: 1, weekStartDate: '2025-01-20' });
 
     expect(mockInvalidateFillTheGap).toHaveBeenCalledWith(1);
   });
@@ -553,7 +591,7 @@ describe('grocery_updated event', () => {
     const { source } = setupHook();
 
     const groceryState = { flour: true, eggs: false };
-    source.emit('grocery_updated', { weekOffset: 0, groceryState });
+    source.emit('grocery_updated', { weekOffset: 0, weekStartDate: '2025-01-13', groceryState });
 
     expect(mockSetGroceryState).toHaveBeenCalledWith(groceryState);
   });
@@ -563,7 +601,7 @@ describe('grocery_updated event', () => {
     const { source } = setupHook();
 
     const groceryState = { flour: true };
-    source.emit('grocery_updated', { weekOffset: 1, groceryState });
+    source.emit('grocery_updated', { weekOffset: 1, weekStartDate: '2025-01-20', groceryState });
 
     expect(mockSetGroceryState).not.toHaveBeenCalled();
   });
@@ -587,7 +625,12 @@ it('passes custom non-cooking metadata through slot updates to planner and today
   const { source } = setupHook();
   const plan = { kind: 'custom', customLabel: 'Birthday supper' };
   source.emit('slot_updated', { date: '2025-01-15', recipe: null, status: 3, nonCooking: plan });
-  expect(mockApplyServerUpdate).toHaveBeenCalledWith({ recipe: null, status: 3, nonCooking: plan });
+  expect(mockApplyServerUpdate).toHaveBeenCalledWith({
+    date: '2025-01-15',
+    recipe: null,
+    status: 3,
+    nonCooking: plan,
+  });
   expect(mockApplySlotUpdate).toHaveBeenCalledWith({
     date: '2025-01-15',
     recipe: null,
@@ -603,14 +646,45 @@ it.each(['connected', 'week_updated'])(
     const plan = { kind: 'eating_out', customLabel: null };
     const schedule = {
       weekOffset: 0,
+      weekStartDate: '2025-01-13',
       days: [{ date: '2025-01-15', recipe: null, status: 3, nonCooking: plan }],
     };
     source.emit(event, { schedule });
     expect(mockApplySnapshot.mock.calls.at(-1)?.[0]).toEqual(schedule);
     expect(mockApplyServerUpdate).toHaveBeenCalledWith({
+      date: '2025-01-15',
       recipe: null,
       status: 3,
       nonCooking: plan,
     });
   }
 );
+
+it('selects Today from deployment context when the browser date differs', async () => {
+  mockCalendar = {
+    timeZone: 'America/Toronto',
+    capturedAtUtc: '2026-10-12T01:30:00Z',
+    today: '2026-10-11',
+    currentWeekStartDate: '2026-10-05',
+    referenceWeekStartDate: '2026-10-05',
+    nextDayAtUtc: '2026-10-12T04:00:00Z',
+  };
+  renderHook(() => useScheduleStream());
+  MockEventSource.instances.at(-1)!.emit('slot_updated', {
+    date: '2026-10-11',
+    recipe: { id: '660e8400-e29b-41d4-a716-446655440011' },
+    status: 0,
+  });
+  await Promise.resolve();
+  expect(mockApplyServerUpdate).toHaveBeenCalled();
+});
+
+it('does not apply grocery checks from a different absolute Monday with the same offset', () => {
+  renderHook(() => useScheduleStream());
+  MockEventSource.instances.at(-1)!.emit('grocery_updated', {
+    weekOffset: 0,
+    weekStartDate: '2025-01-06',
+    groceryState: { old: true },
+  });
+  expect(mockSetGroceryState).not.toHaveBeenCalled();
+});

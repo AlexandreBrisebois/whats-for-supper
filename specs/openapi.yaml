@@ -376,11 +376,31 @@ components:
         image: { type: string, description: 'Relative path proxied through /backend', example: '/api/recipes/550e8400-e29b-41d4-a716-446655440001/hero' }
 
     # --- Schedule ---
+    DeploymentCalendarContext:
+      type: object
+      description: >
+        Authoritative supper calendar captured once at operation entry. Calendar:TimeZone
+        selects the deployment IANA timezone; absence defaults to UTC. Browser and host
+        OS timezones do not select meal dates. Stored civil dates and UTC timestamps are unchanged.
+      required: [timeZone, capturedAtUtc, today, currentWeekStartDate, referenceWeekStartDate, nextDayAtUtc]
+      properties:
+        timeZone: { type: string, example: America/Toronto }
+        capturedAtUtc: { type: string, format: date-time, example: '2026-10-12T01:30:00Z' }
+        today: { type: string, format: date, example: '2026-10-11' }
+        currentWeekStartDate: { type: string, format: date, description: Monday containing today., example: '2026-10-05' }
+        referenceWeekStartDate: { type: string, format: date, description: Monday used to interpret request offsets., example: '2026-10-05' }
+        nextDayAtUtc: { type: string, format: date-time, description: Next deployment midnight as a UTC instant., example: '2026-10-12T04:00:00Z' }
+
     ScheduleDays:
       type: object
-      required: [weekOffset, locked, days, status]
+      required: [weekOffset, locked, days, status, calendar, weekStartDate]
       properties:
         weekOffset: { type: integer }
+        calendar: { $ref: '#/components/schemas/DeploymentCalendarContext' }
+        weekStartDate:
+          type: string
+          format: date
+          description: Requested Monday, calendar.referenceWeekStartDate plus seven times weekOffset days.
         locked: { type: boolean }
         status: { type: integer, description: '0: Draft, 1: VotingOpen, 2: Locked' }
         days:
@@ -480,9 +500,10 @@ components:
 
     SmartDefaultsDto:
       type: object
-      required: [weekOffset, familySize, consensusThreshold, preSelectedRecipes, openSlots, consensusRecipesCount]
+      required: [weekOffset, weekStartDate, familySize, consensusThreshold, preSelectedRecipes, openSlots, consensusRecipesCount]
       properties:
         weekOffset: { type: integer }
+        weekStartDate: { type: string, format: date, description: Absolute Monday identifying these suggestions. }
         familySize: { type: integer }
         consensusThreshold: { type: integer }
         preSelectedRecipes:
@@ -786,9 +807,10 @@ components:
       allOf:
         - $ref: '#/components/schemas/ScheduleStreamEvent'
         - type: object
-          required: [weekOffset]
+          required: [weekStartDate, weekOffset]
           properties:
             weekOffset: { type: integer }
+            weekStartDate: { type: string, format: date, description: Absolute Monday; consumers map it before relative offset guards. }
 
     RecipeReadyEvent:
       allOf:
@@ -821,9 +843,10 @@ components:
       allOf:
         - $ref: '#/components/schemas/ScheduleStreamEvent'
         - type: object
-          required: [weekOffset, groceryState]
+          required: [weekStartDate, weekOffset, groceryState]
           properties:
             weekOffset: { type: integer }
+            weekStartDate: { type: string, format: date, description: Absolute Monday; consumers map it before relative offset guards. }
             groceryState:
               type: object
               additionalProperties: { type: boolean }
@@ -2244,11 +2267,22 @@ paths:
   /api/schedule:
     get:
       summary: Get schedule for a week
+      description: >
+        Returns seven Monday-through-Sunday dates and authoritative calendar context from
+        one captured instant. Offsets use the explicit reference Monday when supplied,
+        otherwise the deployment current Monday. The deployment timezone defaults to UTC.
       parameters:
         - name: weekOffset
           in: query
           schema: { type: integer, default: 0 }
+        - name: referenceWeekStartDate
+          in: query
+          required: false
+          schema: { type: string, format: date }
+          description: Explicit yyyy-MM-dd Monday anchoring weekOffset. Malformed or non-Monday values return 400 before work.
       responses:
+        '400':
+          description: referenceWeekStartDate is malformed or is not a Monday; no schedule work is performed.
         '200':
           description: OK
           content:
@@ -2260,7 +2294,16 @@ paths:
                 example:
                   data:
                     weekOffset: 0
+                    weekStartDate: '2026-04-27'
+                    calendar:
+                      timeZone: UTC
+                      capturedAtUtc: '2026-04-27T12:00:00Z'
+                      today: '2026-04-27'
+                      currentWeekStartDate: '2026-04-27'
+                      referenceWeekStartDate: '2026-04-27'
+                      nextDayAtUtc: '2026-04-28T00:00:00Z'
                     locked: false
+                    status: 0
                     days:
                       - day: Monday
                         date: '2026-04-27'
@@ -2307,7 +2350,14 @@ paths:
         - name: weekOffset
           in: query
           schema: { type: integer, default: 0 }
+        - name: referenceWeekStartDate
+          in: query
+          required: false
+          schema: { type: string, format: date }
+          description: Optional yyyy-MM-dd Monday anchoring all relative offsets and defer's next-week base. Omission captures the deployment current Monday (UTC by default). Literal source dates remain unchanged. Invalid or non-Monday references return 400 before work.
       responses:
+        '400':
+          description: Invalid or non-Monday referenceWeekStartDate; no mutation is performed.
         '200':
           description: OK
           content:
@@ -2339,7 +2389,14 @@ paths:
         - name: weekOffset
           in: query
           schema: { type: integer, default: 0 }
+        - name: referenceWeekStartDate
+          in: query
+          required: false
+          schema: { type: string, format: date }
+          description: Optional yyyy-MM-dd Monday anchoring all relative offsets and defer's next-week base. Omission captures the deployment current Monday (UTC by default). Literal source dates remain unchanged. Invalid or non-Monday references return 400 before work.
       responses:
+        '400':
+          description: Invalid or non-Monday referenceWeekStartDate; no mutation is performed.
         '200':
           description: OK
           content:
@@ -2355,12 +2412,20 @@ paths:
   /api/schedule/move:
     post:
       summary: Move a recipe in the schedule
+      parameters:
+        - name: referenceWeekStartDate
+          in: query
+          required: false
+          schema: { type: string, format: date }
+          description: Optional yyyy-MM-dd Monday anchoring all relative offsets and defer's next-week base. Omission captures the deployment current Monday (UTC by default). Literal source dates remain unchanged. Invalid or non-Monday references return 400 before work.
       requestBody:
         required: true
         content:
           application/json:
             schema: { $ref: '#/components/schemas/MoveScheduleDto' }
       responses:
+        '400':
+          description: Invalid or non-Monday referenceWeekStartDate; no mutation is performed.
         '200':
           description: OK
           content:
@@ -2376,12 +2441,20 @@ paths:
   /api/schedule/defer:
     post:
       summary: Defer a scheduled recipe to the first free date next week or later
+      parameters:
+        - name: referenceWeekStartDate
+          in: query
+          required: false
+          schema: { type: string, format: date }
+          description: Optional yyyy-MM-dd Monday anchoring all relative offsets and defer's next-week base. Omission captures the deployment current Monday (UTC by default). Literal source dates remain unchanged. Invalid or non-Monday references return 400 before work.
       requestBody:
         required: true
         content:
           application/json:
             schema: { $ref: '#/components/schemas/DeferScheduleDto' }
       responses:
+        '400':
+          description: Invalid or non-Monday referenceWeekStartDate; no mutation is performed.
         '200':
           description: Deferred
           content:
@@ -2400,15 +2473,26 @@ paths:
     post:
       summary: Assign a recipe to a schedule slot
       description: >
+        Resolves the target as reference Monday plus seven times weekOffset plus dayIndex days.
+        The optional reference pins a started action across midnight; omission uses the deployment
+        current Monday captured at operation entry, with UTC as the default deployment timezone.
         Assigns a recipe to the specified day. If the target slot is already occupied and falls
         on Sunday (dayIndex 6), the displaced recipe is automatically carried forward to Monday
         of the following week (weekOffset+1, dayIndex 0) rather than being silently dropped.
+      parameters:
+        - name: referenceWeekStartDate
+          in: query
+          required: false
+          schema: { type: string, format: date }
+          description: Explicit yyyy-MM-dd Monday anchoring weekOffset. Malformed or non-Monday values return 400 before mutation.
       requestBody:
         required: true
         content:
           application/json:
             schema: { $ref: '#/components/schemas/AssignScheduleDto' }
       responses:
+        '400':
+          description: referenceWeekStartDate is malformed or is not a Monday; no calendar entry or weekly plan is changed.
         '200':
           description: OK
           content:
@@ -2446,7 +2530,14 @@ paths:
           description: >
             Week offset from the current week (0 = this week, 1 = next week, -1 = last week).
             Recipes already assigned to any day in the target week are excluded from results.
+        - name: referenceWeekStartDate
+          in: query
+          required: false
+          schema: { type: string, format: date }
+          description: Optional yyyy-MM-dd Monday anchoring all relative offsets and defer's next-week base. Omission captures the deployment current Monday (UTC by default). Literal source dates remain unchanged. Invalid or non-Monday references return 400 before work.
       responses:
+        '400':
+          description: Invalid or non-Monday referenceWeekStartDate; no mutation is performed.
         '200':
           description: OK
           content:
@@ -2478,7 +2569,7 @@ paths:
         schema: { type: string, format: date }
     post:
       summary: Validate a scheduled day (Cooked/Skipped)
-      description: 'With status 2 and recipeId, updates the specified recipe cooking history even if it is not scheduled. The scheduled meal is marked cooked only when its recipe ID matches.'
+      description: 'The path date remains literal. Today cooking and Order In callers select it from authoritative deployment calendar context at action start; browser timezone does not select the date. With status 2 and recipeId, records the viewed recipe cooking history at the captured UTC operation instant even if it is not scheduled. The scheduled meal is marked cooked only when its recipe ID matches. Existing stored civil dates and midnight-UTC history anchors are not migrated.'
       requestBody:
         required: true
         content:
@@ -2529,7 +2620,14 @@ paths:
           in: path
           required: true
           schema: { type: integer }
+        - name: referenceWeekStartDate
+          in: query
+          required: false
+          schema: { type: string, format: date }
+          description: Optional yyyy-MM-dd Monday anchoring all relative offsets and defer's next-week base. Omission captures the deployment current Monday (UTC by default). Literal source dates remain unchanged. Invalid or non-Monday references return 400 before work.
       responses:
+        '400':
+          description: Invalid or non-Monday referenceWeekStartDate; no mutation is performed.
         '200':
           description: OK
           content:
@@ -2541,6 +2639,7 @@ paths:
                 example:
                   data:
                     weekOffset: 0
+                    weekStartDate: '2026-05-04'
                     familySize: 4
                     consensusThreshold: 3
                     preSelectedRecipes:

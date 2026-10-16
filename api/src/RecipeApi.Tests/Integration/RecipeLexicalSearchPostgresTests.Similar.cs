@@ -140,8 +140,8 @@ public partial class RecipeLexicalSearchPostgresTests
         bool useSemanticRepository = true,
         RecipeSemanticSearchRepository? semanticRepository = null)
     {
-        var grocery = new GroceryRecomputeService(_db, new AisleMapper(), NullLogger<GroceryRecomputeService>.Instance);
-        var schedule = new ScheduleService(_db, NullLogger<ScheduleService>.Instance, new Mock<IScheduleEventPublisher>().Object, grocery);
+        var grocery = new GroceryRecomputeService(_db, new AisleMapper(), NullLogger<GroceryRecomputeService>.Instance, new SystemClock(), new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()));
+        var schedule = new ScheduleService(_db, NullLogger<ScheduleService>.Instance, new Mock<IScheduleEventPublisher>().Object, grocery, new SystemClock(), new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()));
         return new RecipeSearchService(_db, schedule,
             lexicalRepository: new RecipeLexicalSearchRepository(_db), semanticRepository: semanticRepository ?? (useSemanticRepository ? new RecipeSemanticSearchRepository(_db) : null),
             rolloutOptions: SearchOptions(candidateLimit), continuationStore: new RecipeSearchContinuationStore());

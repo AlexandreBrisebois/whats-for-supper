@@ -7,6 +7,7 @@ import { serializeMoveScheduleDto, type MoveScheduleDto } from '../../../models/
 import {
   type AdditionalDataHolder,
   type BaseRequestBuilder,
+  type DateOnly,
   type Parsable,
   type ParsableFactory,
   type ParseNode,
@@ -94,7 +95,7 @@ export interface MoveRequestBuilder extends BaseRequestBuilder<MoveRequestBuilde
    */
   post(
     body: MoveScheduleDto,
-    requestConfiguration?: RequestConfiguration<object> | undefined
+    requestConfiguration?: RequestConfiguration<MoveRequestBuilderPostQueryParameters> | undefined
   ): Promise<MovePostResponse | undefined>;
   /**
    * Move a recipe in the schedule
@@ -104,8 +105,17 @@ export interface MoveRequestBuilder extends BaseRequestBuilder<MoveRequestBuilde
    */
   toPostRequestInformation(
     body: MoveScheduleDto,
-    requestConfiguration?: RequestConfiguration<object> | undefined
+    requestConfiguration?: RequestConfiguration<MoveRequestBuilderPostQueryParameters> | undefined
   ): RequestInformation;
+}
+/**
+ * Move a recipe in the schedule
+ */
+export interface MoveRequestBuilderPostQueryParameters {
+  /**
+   * Optional yyyy-MM-dd Monday anchoring all relative offsets and defer's next-week base. Omission captures the deployment current Monday (UTC by default). Literal source dates remain unchanged. Invalid or non-Monday references return 400 before work.
+   */
+  referenceWeekStartDate?: DateOnly;
 }
 /**
  * Serializes information the current object
@@ -150,7 +160,8 @@ export function serializeMovePostResponse_data(
 /**
  * Uri template for the request builder.
  */
-export const MoveRequestBuilderUriTemplate = '{+baseurl}/api/schedule/move';
+export const MoveRequestBuilderUriTemplate =
+  '{+baseurl}/api/schedule/move{?referenceWeekStartDate*}';
 /**
  * Metadata for all the requests in the request builder.
  */

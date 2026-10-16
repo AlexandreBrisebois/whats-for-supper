@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures';
-import { MOCK_IDS, currentMonday, toDateStr, setupCommonRoutes } from './mock-api';
+import { MOCK_IDS, builders, currentMonday, toDateStr, setupCommonRoutes } from './mock-api';
 
 test.describe('Planner smart defaults on active non-zero voting week', () => {
   test('shows pending vote signal on weekOffset=1 when voting is open', async ({
@@ -45,6 +45,8 @@ test.describe('Planner smart defaults on active non-zero voting week', () => {
           body: JSON.stringify({
             data: {
               weekOffset,
+              calendar: builders.deploymentCalendar(),
+              weekStartDate: builders.scheduleDays(weekOffset).weekStartDate,
               locked: false,
               status,
               days: buildWeekDays(weekOffset),
@@ -54,7 +56,7 @@ test.describe('Planner smart defaults on active non-zero voting week', () => {
       }
     );
 
-    await page.route('**/api/schedule/*/smart-defaults', async (route) => {
+    await page.route('**/api/schedule/*/smart-defaults**', async (route) => {
       const weekOffset = Number(
         route
           .request()
@@ -68,6 +70,8 @@ test.describe('Planner smart defaults on active non-zero voting week', () => {
           body: JSON.stringify({
             data: {
               weekOffset,
+              calendar: builders.deploymentCalendar(),
+              weekStartDate: builders.scheduleDays(weekOffset).weekStartDate,
               familySize: 3,
               consensusThreshold: 2,
               preSelectedRecipes: [],
@@ -86,6 +90,7 @@ test.describe('Planner smart defaults on active non-zero voting week', () => {
         body: JSON.stringify({
           data: {
             weekOffset: 1,
+            weekStartDate: '2026-05-11',
             familySize: 3,
             consensusThreshold: 2,
             preSelectedRecipes: [

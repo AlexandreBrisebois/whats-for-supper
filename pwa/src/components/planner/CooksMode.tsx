@@ -1,4 +1,5 @@
 'use client';
+import { CalendarUnavailableError } from '@/lib/deployment-calendar';
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -86,7 +87,7 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
   const [showIngredients, setShowIngredients] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
   const [isCompleting, setIsCompleting] = useState(false);
-  const [completionError, setCompletionError] = useState(false);
+  const [completionError, setCompletionError] = useState<string | null>(null);
   const completionInFlight = useRef(false);
   const [showDetailId, setShowDetailId] = useState<string | null>(null);
   const [reportContext, setReportContext] = useState<RecipeImportIssueReason | null>(null);
@@ -191,7 +192,7 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
     if (completionInFlight.current) return;
     completionInFlight.current = true;
     setIsCompleting(true);
-    setCompletionError(false);
+    setCompletionError(null);
     try {
       await useTodayStore.getState().markCooked(initialRecipe.id);
       setShowCelebration(true);
@@ -199,10 +200,14 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
         onCooked?.();
         onClose();
       }, 600);
-    } catch {
+    } catch (error) {
       completionInFlight.current = false;
       setIsCompleting(false);
-      setCompletionError(true);
+      setCompletionError(
+        error instanceof CalendarUnavailableError
+          ? error.message
+          : t('cook.completionFailed', 'Could not save cooking completion. Please try again.')
+      );
     }
   };
 
@@ -756,7 +761,7 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
         {/* Controls */}
         {completionError && (
           <p role="alert" className="px-6 py-2 text-sm text-terracotta">
-            {t('cook.completionFailed', 'Could not save cooking completion. Please try again.')}
+            {completionError}
           </p>
         )}
         <div

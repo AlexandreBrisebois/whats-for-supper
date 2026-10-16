@@ -12,9 +12,11 @@ mock state, missing runtime/service or permissions. Reuse supplied authorization
 clarify only consequential unknowns, without a mandatory interview or file-count stop.
 
 1. Read the failing test, output and affected DOM/network/state path. Reproduce with
-   `task test:unit` or `task test:e2e -- <spec>` as appropriate; inspect command effects
+   `task test:unit -- <test-file>` or `task test:e2e -- <spec>` as appropriate; inspect command effects
    and use isolated resources. Do not retry a harness child already timed out/stopped.
-2. Diagnose locator, data, hydration, contract and environment evidence. Load only the
+2. Diagnose locator, data, hydration, contract and environment evidence. Use the
+   [shared investigation guidance](../../core/context-loading.md#investigation)
+   when the cause is uncertain or a correction fails. Load only the
    relevant [locator](locators-and-stability.md), [hydration](debugging-hydration.md)
    or [mocking](mocking-strategy.md) reference. For SSE/event readiness races, use
    [SSE and async state](sse-and-async-state.md). Do not infer a race solely from CI failure.
@@ -33,4 +35,5 @@ logic/mock-heavy candidates and selector heuristics. Confirm findings against th
 actual test; semantic accessibility assertions are not brittle interactions. Within
 an authorized test migration, move pure logic to unit tests using shared builders and
 retain E2E seam coverage. Record unrelated findings without refactoring or deleting
-suites. Do not cascade into death-audit or invent a separate mock server command.
+suites. Keep retirement work separately scoped; the PWA uses route mocks rather
+than a separate mock server command.

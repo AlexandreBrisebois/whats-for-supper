@@ -9,6 +9,7 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     environment:
+      Calendar__TimeZone: ${Calendar__TimeZone:-UTC}
 
       POSTGRES_CONNECTION_STRING: ${POSTGRES_CONNECTION_STRING:-postgres://recipe_app:secure_dev_password@postgres:5432/recipe_app_db}
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}

@@ -221,8 +221,8 @@ def runtime_identity() -> str:
     return digest.hexdigest()
 
 
-def build_impact_digest(root: Path, changed_files: list[str], tests: list[str]) -> str:
-    digest = hashlib.sha256(runtime_identity().encode())
+def build_impact_digest(root: Path, changed_files: list[str], tests: list[str], *, runtime_digest=None) -> str:
+    digest = hashlib.sha256((runtime_identity() if runtime_digest is None else runtime_digest).encode())
     # Include unchanged sources and test helpers: a changed-file-only digest can
     # reuse evidence after switching branches or editing an unselected dependency.
     # Next rewrites this generated declaration when switching dev/build mode.

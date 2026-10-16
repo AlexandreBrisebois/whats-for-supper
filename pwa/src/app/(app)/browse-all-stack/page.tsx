@@ -1,5 +1,8 @@
 'use client';
 
+import { useTodayStore } from '@/store/todayStore';
+import { calendarDayIndex } from '@/lib/deployment-calendar';
+
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence } from 'framer-motion';
@@ -482,9 +485,10 @@ export default function BrowseAllStackPage() {
 
   const handleCookTonight = useCallback(
     async (recipe: Recipe) => {
-      const todayIndex = (new Date().getDay() + 6) % 7;
+      const calendar = await useTodayStore.getState().ensureCalendar();
+      const todayIndex = calendarDayIndex(calendar);
       const assignmentRecipe = toAssignmentRecipe(recipe);
-      const slot = await getPlannerSlot(0, todayIndex);
+      const slot = await getPlannerSlot(0, todayIndex, calendar.referenceWeekStartDate);
 
       if (slot?.recipe) {
         setPendingRecovery({
@@ -495,8 +499,15 @@ export default function BrowseAllStackPage() {
         return;
       }
 
-      await assignRecipeToEmptySlot(0, todayIndex, assignmentRecipe);
-      router.push(`/planner?success=1&dayIndex=${todayIndex}&weekOffset=0`);
+      await assignRecipeToEmptySlot(
+        0,
+        todayIndex,
+        assignmentRecipe,
+        calendar.referenceWeekStartDate
+      );
+      router.push(
+        `/planner?success=1&dayIndex=${todayIndex}&weekOffset=0&referenceWeekStartDate=${calendar.referenceWeekStartDate}`
+      );
     },
     [router]
   );
@@ -504,7 +515,8 @@ export default function BrowseAllStackPage() {
   const handlePlanForLater = useCallback(
     async (recipe: Recipe) => {
       // "Plan for Later" starts from tomorrow onwards
-      const todayIndex = (new Date().getDay() + 6) % 7;
+      const calendar = await useTodayStore.getState().ensureCalendar();
+      const todayIndex = calendarDayIndex(calendar);
       let startDayIndex = todayIndex + 1;
       let startWeekOffset = 0;
 
@@ -513,16 +525,22 @@ export default function BrowseAllStackPage() {
         startWeekOffset = 1;
       }
 
-      const openSlot = await findFirstOpenPlannerSlot(startWeekOffset, startDayIndex);
+      const openSlot = await findFirstOpenPlannerSlot(
+        startWeekOffset,
+        startDayIndex,
+        520,
+        calendar.referenceWeekStartDate
+      );
       if (!openSlot) return;
 
       await assignRecipeToEmptySlot(
         openSlot.weekOffset,
         openSlot.dayIndex,
-        toAssignmentRecipe(recipe)
+        toAssignmentRecipe(recipe),
+        openSlot.referenceWeekStartDate
       );
       router.push(
-        `/planner?success=1&dayIndex=${openSlot.dayIndex}&weekOffset=${openSlot.weekOffset}`
+        `/planner?success=1&dayIndex=${openSlot.dayIndex}&weekOffset=${openSlot.weekOffset}&referenceWeekStartDate=${openSlot.referenceWeekStartDate}`
       );
     },
     [router]
@@ -537,12 +555,15 @@ export default function BrowseAllStackPage() {
       await assignRecipeToEmptySlot(
         pendingRecovery.navigateTo.weekOffset,
         pendingRecovery.navigateTo.dayIndex,
-        pendingRecovery.recipe
+        pendingRecovery.recipe,
+        pendingRecovery.slot.referenceWeekStartDate
       );
 
       const { weekOffset, dayIndex } = pendingRecovery.navigateTo;
       setPendingRecovery(null);
-      router.push(`/planner?success=1&dayIndex=${dayIndex}&weekOffset=${weekOffset}`);
+      router.push(
+        `/planner?success=1&dayIndex=${dayIndex}&weekOffset=${weekOffset}&referenceWeekStartDate=${pendingRecovery.slot.referenceWeekStartDate}`
+      );
     },
     [pendingRecovery, router]
   );

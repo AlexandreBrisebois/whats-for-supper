@@ -16,6 +16,8 @@ Audit snapshot: 2026-10-16 at `04a1c4570f9bbb01b47436790d4248635ac3179a`, plus e
 
 ## Prioritized queue
 
+**Selected 2026-10-16:** [WFS-BL-005](WFS-BL-005.md), the shared calendar prerequisite for WFS-BL-001, now has the active [deployment-calendar-supper-dates change](../../../openspec/changes/deployment-calendar-supper-dates/proposal.md). Its supper-calendar increment is planned; implementation and runtime acceptance are pending. The user selected UTC as the default with an explicit deployment timezone override. Remaining clock inventory stays open.
+
 Priority ranks harm, reach and recovery burden. Source-confirmed conditions and high-impact investigations remain visible without claiming production reproduction. No P0 is established. Within a priority, prerequisite order can differ from urgency.
 
 | Item | Priority | Title | Origins |

@@ -27,8 +27,7 @@ public class SyncRecipeProcessorTests : IDisposable
         _recipeRepository = new RecipeRepository(_storage);
         
         var aisleMapper = new AisleMapper();
-        var groceryRecomputeService = new GroceryRecomputeService(
-            _db, aisleMapper, new Mock<ILogger<GroceryRecomputeService>>().Object);
+        var groceryRecomputeService = new GroceryRecomputeService(_db, aisleMapper, new Mock<ILogger<GroceryRecomputeService>>().Object, new SystemClock(), new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()));
         _processor = new SyncRecipeProcessor(_db, _recipeRepository, groceryRecomputeService, _loggerMock.Object);
     }
 

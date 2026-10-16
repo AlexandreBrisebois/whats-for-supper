@@ -133,7 +133,7 @@ def parse_cs_dto(file_path):
             props[prop_name] = {"required": is_required}
 
     # Record constructor parameters
-    record_pattern = r"public\s+record\s+\w+\((.*?)\);"
+    record_pattern = r"public\s+(?:sealed\s+)?record\s+\w+\((.*?)\)\s*(?:;|\{)"
     for rm in re.finditer(record_pattern, content, re.DOTALL):
         for p in _split_record_params(rm.group(1)):
             p = p.strip()

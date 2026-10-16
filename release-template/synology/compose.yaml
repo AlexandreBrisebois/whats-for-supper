@@ -49,6 +49,7 @@ services:
     image: brisebois/whats-for-supper-api:${WFS_VERSION}
     restart: unless-stopped
     environment:
+      Calendar__TimeZone: ${Calendar__TimeZone:-UTC}
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_URLS: http://+:9001
       POSTGRES_CONNECTION_STRING: postgres://recipe_app:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@postgres:5432/recipe_app_db

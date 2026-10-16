@@ -18,6 +18,7 @@ interface QuickFindModalProps {
   onSelect: (recipe: any) => void;
   weekOffset?: number;
   dayIndex?: number | null;
+  referenceWeekStartDate?: string;
 }
 
 export function QuickFindModal({
@@ -25,6 +26,7 @@ export function QuickFindModal({
   onSelect,
   weekOffset = 0,
   dayIndex = null,
+  referenceWeekStartDate,
 }: QuickFindModalProps) {
   const [isFlipped, setIsFlipped] = useState(false);
   const [recipes, setRecipes] = useState<any[]>([]);
@@ -45,7 +47,7 @@ export function QuickFindModal({
   const fetchSuggestions = async () => {
     const fetchId = ++latestFetchId.current;
     try {
-      const data = await getFillTheGap(weekOffset);
+      const data = await getFillTheGap(weekOffset, referenceWeekStartDate);
       if (fetchId !== latestFetchId.current) return false;
 
       const nextRecipes = data || [];
@@ -104,7 +106,9 @@ export function QuickFindModal({
   const hasNextCard = recipes.length > 0;
 
   const searchUrl =
-    dayIndex !== null ? `/recipes?addToDay=${dayIndex}&weekOffset=${weekOffset}` : '/recipes';
+    dayIndex !== null
+      ? `/recipes?addToDay=${dayIndex}&weekOffset=${weekOffset}${referenceWeekStartDate ? `&referenceWeekStartDate=${referenceWeekStartDate}` : ''}`
+      : '/recipes';
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center px-6">

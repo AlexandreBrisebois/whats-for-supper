@@ -73,6 +73,8 @@ test.describe('Home Command Center — Optimistic UI Race Fix', () => {
             body: JSON.stringify({
               data: {
                 weekOffset: 0,
+                calendar: builders.deploymentCalendar() as any,
+                weekStartDate: '2026-05-04' as any,
                 days: [],
               },
             }),

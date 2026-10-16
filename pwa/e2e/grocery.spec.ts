@@ -79,6 +79,8 @@ async function setupGroceryPage(page: import('@playwright/test').Page) {
           body: JSON.stringify({
             data: {
               weekOffset: 0,
+              calendar: builders.deploymentCalendar() as any,
+              weekStartDate: '2026-05-04' as any,
               locked: false,
               status: 0,
               days,
@@ -103,6 +105,8 @@ async function setupGroceryPage(page: import('@playwright/test').Page) {
 
   await mockSseWithConnectedSchedule(page, {
     weekOffset: 0,
+    calendar: builders.deploymentCalendar() as any,
+    weekStartDate: '2026-05-04' as any,
     locked: false,
     status: 0,
     days,
@@ -291,6 +295,8 @@ test.describe('Grocery List — SSE sync', () => {
             body: JSON.stringify({
               data: {
                 weekOffset: 0,
+                calendar: builders.deploymentCalendar() as any,
+                weekStartDate: '2026-05-04' as any,
                 locked: false,
                 status: 0,
                 days,
@@ -389,6 +395,8 @@ test.describe('Grocery List — SSE sync', () => {
     // groceryState.additionalData matches the Kiota AdditionalDataHolder pattern.
     const scheduleWithGrocery = {
       weekOffset: 0,
+      calendar: builders.deploymentCalendar() as any,
+      weekStartDate: '2026-05-04' as any,
       locked: false,
       status: 0,
       days,
@@ -420,6 +428,8 @@ test.describe('Grocery List — SSE sync', () => {
             body: JSON.stringify({
               data: {
                 weekOffset: 0,
+                calendar: builders.deploymentCalendar() as any,
+                weekStartDate: '2026-05-04' as any,
                 locked: false,
                 status: 0,
                 days,

@@ -195,7 +195,7 @@ class DockerSmokeTests(unittest.TestCase):
     def test_all_compose_interpolation_inputs_have_pinned_smoke_values(self):
         inputs = set()
         for name in ('infrastructure.yml', 'apps.yml', 'ci-overrides.yml'):
-            inputs.update(re.findall(r'(?<!\$)\$\{([A-Z_][A-Z_0-9]*)',
+            inputs.update(re.findall(r'(?<!\$)\$\{([A-Za-z_][A-Za-z_0-9]*)',
                                      (ROOT / 'docker/compose' / name).read_text()))
         pinned = {line.split('=', 1)[0] for line in self.smoke.ENV_FILE.read_text().splitlines()
                   if line and not line.startswith('#')}

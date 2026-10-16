@@ -6,6 +6,7 @@ services:
     image: ${WFS_REGISTRY:-brisebois}/whats-for-supper-api:${TAG:?TAG must be set to a published release version}
     build: null # Disable local build in production
     environment:
+      Calendar__TimeZone: ${Calendar__TimeZone:-UTC}
       ASPNETCORE_ENVIRONMENT: Production
       POSTGRES_CONNECTION_STRING: ${POSTGRES_CONNECTION_STRING}
       ELEVATED_ACTIONS_PIN: ${ELEVATED_ACTIONS_PIN:-}

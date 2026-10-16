@@ -9,17 +9,22 @@ using static RecipeApi.Dto.SmartDefaultsDto;
 
 namespace RecipeApi.Services;
 
-public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService> logger, IScheduleEventPublisher publisher, GroceryRecomputeService groceryRecomputeService, IClock? clock = null)
+public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService> logger, IScheduleEventPublisher publisher, GroceryRecomputeService groceryRecomputeService, IClock clock, DeploymentCalendar calendar)
 {
     private readonly RecipeDbContext _dbContext = dbContext;
     private readonly ILogger<ScheduleService> _logger = logger;
     private readonly IScheduleEventPublisher _publisher = publisher;
     private readonly GroceryRecomputeService _groceryRecomputeService = groceryRecomputeService;
-    private readonly IClock _clock = clock ?? new SystemClock();
+    private readonly IClock _clock = clock;
+    private readonly DeploymentCalendar _calendar = calendar;
 
-    public async Task<ScheduleDays> GetScheduleAsync(int weekOffset)
+    public Task<ScheduleDays> GetScheduleAsync(int weekOffset, DateOnly? referenceWeekStartDate = null) =>
+        ReadScheduleAsync(weekOffset, _calendar.Capture(_clock.UtcNow, referenceWeekStartDate));
+
+    private async Task<ScheduleDays> ReadScheduleAsync(int weekOffset, DeploymentCalendarContext context)
     {
-        var (monday, sunday) = GetWeekBounds(weekOffset);
+        var monday = context.WeekStart(weekOffset);
+        var sunday = monday.AddDays(6);
 
         var events = await _dbContext.CalendarEvents
             .Include(e => e.Recipe)
@@ -59,12 +64,13 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
             ? JsonSerializer.Deserialize<List<GroceryLineItemDto>>(plan.GroceryItems)
             : null;
 
-        return new ScheduleDays(weekOffset, isLocked, status, days, groceryState, groceryItems);
+        return new ScheduleDays(weekOffset, isLocked, status, days, context, monday, groceryState, groceryItems);
     }
 
-    public async Task OpenVotingAsync(int weekOffset, string? excludeConnectionId = null)
+    public async Task OpenVotingAsync(int weekOffset, string? excludeConnectionId = null, DateOnly? referenceWeekStartDate = null)
     {
-        var (monday, _) = GetWeekBounds(weekOffset);
+        var context = _calendar.Capture(_clock.UtcNow, referenceWeekStartDate);
+        var monday = context.WeekStart(weekOffset);
         var plan = await _dbContext.WeeklyPlans.FirstOrDefaultAsync(p => p.WeekStartDate == monday);
 
         if (plan == null)
@@ -86,13 +92,15 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
 
         await _dbContext.SaveChangesAsync();
 
-        var schedule = await GetScheduleAsync(weekOffset);
+        var schedule = await ReadScheduleAsync(weekOffset, context);
         await _publisher.PublishWeekUpdatedAsync(schedule, excludeConnectionId);
     }
 
-    public async Task LockScheduleAsync(int weekOffset, string? excludeConnectionId = null)
+    public async Task LockScheduleAsync(int weekOffset, string? excludeConnectionId = null, DateOnly? referenceWeekStartDate = null)
     {
-        var (monday, sunday) = GetWeekBounds(weekOffset);
+        var context = _calendar.Capture(_clock.UtcNow, referenceWeekStartDate);
+        var monday = context.WeekStart(weekOffset);
+        var sunday = monday.AddDays(6);
 
         // 1. Update WeeklyPlan
         var plan = await _dbContext.WeeklyPlans.FirstOrDefaultAsync(p => p.WeekStartDate == monday);
@@ -135,22 +143,23 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
 
         await _dbContext.SaveChangesAsync();
 
-        var schedule = await GetScheduleAsync(weekOffset);
+        var schedule = await ReadScheduleAsync(weekOffset, context);
         await _publisher.PublishWeekUpdatedAsync(schedule, excludeConnectionId);
     }
 
-    public async Task MoveScheduleEventAsync(MoveScheduleDto dto, string? excludeConnectionId = null, int? echoSeq = null)
+    public async Task MoveScheduleEventAsync(MoveScheduleDto dto, string? excludeConnectionId = null, int? echoSeq = null, DateOnly? referenceWeekStartDate = null)
     {
+        var context = _calendar.Capture(_clock.UtcNow, referenceWeekStartDate);
         var targetWeekOffset = dto.TargetWeekOffset ?? dto.WeekOffset;
         if (targetWeekOffset != dto.WeekOffset)
         {
-            await MoveCrossWeekAsync(dto, targetWeekOffset);
-            var crossWeekSchedule = await GetScheduleAsync(dto.WeekOffset);
+            await MoveCrossWeekAsync(dto, targetWeekOffset, context);
+            var crossWeekSchedule = await ReadScheduleAsync(dto.WeekOffset, context);
             await _publisher.PublishWeekUpdatedAsync(crossWeekSchedule, excludeConnectionId, echoSeq);
             return;
         }
 
-        var (monday, _) = GetWeekBounds(dto.WeekOffset);
+        var monday = context.WeekStart(dto.WeekOffset);
         var toDate = monday.AddDays(dto.ToIndex);
 
         var fromDate = dto.FromIndex is { } fromIndex ? monday.AddDays(fromIndex) : (DateOnly?)null;
@@ -250,14 +259,14 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
 
         await _dbContext.SaveChangesAsync();
 
-        var schedule = await GetScheduleAsync(dto.WeekOffset);
+        var schedule = await ReadScheduleAsync(dto.WeekOffset, context);
         await _publisher.PublishWeekUpdatedAsync(schedule, excludeConnectionId, echoSeq);
     }
 
-    private async Task MoveCrossWeekAsync(MoveScheduleDto dto, int targetWeekOffset)
+    private async Task MoveCrossWeekAsync(MoveScheduleDto dto, int targetWeekOffset, DeploymentCalendarContext context)
     {
-        var (sourceMonday, _) = GetWeekBounds(dto.WeekOffset);
-        var (targetMonday, _) = GetWeekBounds(targetWeekOffset);
+        var sourceMonday = context.WeekStart(dto.WeekOffset);
+        var targetMonday = context.WeekStart(targetWeekOffset);
 
         var fromDate = dto.FromIndex is { } fromIndex ? sourceMonday.AddDays(fromIndex) : (DateOnly?)null;
         var fromEvent = fromDate is { } explicitFromDate
@@ -317,16 +326,18 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
         }
         await _dbContext.SaveChangesAsync();
 
-        await _groceryRecomputeService.RecomputeForWeekAsync(sourceMonday, CancellationToken.None);
-        await _groceryRecomputeService.RecomputeForWeekAsync(targetMonday, CancellationToken.None);
+        await _groceryRecomputeService.RecomputeForWeekAsync(sourceMonday, CancellationToken.None, context);
+        await _groceryRecomputeService.RecomputeForWeekAsync(targetMonday, CancellationToken.None, context);
     }
 
     public async Task<DeferScheduleResultDto> DeferRecipeAsync(
         DeferScheduleDto dto,
         string? excludeConnectionId = null,
         int? echoSeq = null,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        DateOnly? referenceWeekStartDate = null)
     {
+        var context = _calendar.Capture(_clock.UtcNow, referenceWeekStartDate);
         var source = await _dbContext.CalendarEvents
             .Include(e => e.Recipe)
             .SingleOrDefaultAsync(e => e.Date == dto.SourceDate && e.RecipeId == dto.RecipeId, ct)
@@ -336,7 +347,7 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
             throw new DeferScheduleConflictException("Meals awaiting consensus cannot be deferred.");
 
         var sourceMonday = GetMonday(source.Date);
-        var nextWeekStart = GetMonday(DateOnly.FromDateTime(_clock.UtcNow.UtcDateTime)).AddDays(7);
+        var nextWeekStart = context.ReferenceWeekStartDate.AddDays(7);
         var destinationDate = await FindFirstAvailableDateAsync(nextWeekStart, ct);
         var destinationMonday = GetMonday(destinationDate);
         var voteCount = source.VoteCount;
@@ -374,15 +385,15 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
 
         var mondays = new[] { sourceMonday, destinationMonday }.Distinct().ToArray();
         foreach (var monday in mondays)
-            await _groceryRecomputeService.RecomputeForWeekAsync(monday, ct);
+            await _groceryRecomputeService.RecomputeForWeekAsync(monday, ct, context);
 
         foreach (var monday in mondays)
         {
-            var offset = GetWeekOffset(monday);
-            await _publisher.PublishWeekUpdatedAsync(await GetScheduleAsync(offset), excludeConnectionId, echoSeq);
+            var offset = GetWeekOffset(monday, context);
+            await _publisher.PublishWeekUpdatedAsync(await ReadScheduleAsync(offset, context), excludeConnectionId, echoSeq);
         }
 
-        var offsetFromCurrent = GetWeekOffset(destinationMonday);
+        var offsetFromCurrent = GetWeekOffset(destinationMonday, context);
         var recipeName = source.Recipe?.Name ?? "meal";
         var spillPrefix = offsetFromCurrent > 1 ? "Next week is full. " : string.Empty;
         return new DeferScheduleResultDto(
@@ -393,7 +404,8 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
 
     public async Task FinalizeOverdueMealsAsync(CancellationToken ct = default)
     {
-        var today = DateOnly.FromDateTime(_clock.UtcNow.UtcDateTime);
+        var context = _calendar.Capture(_clock.UtcNow);
+        var today = context.Today;
         var overdue = await _dbContext.CalendarEvents
             .Where(e => e.Date < today && e.RecipeId != null &&
                 (e.Status == CalendarEventStatus.Planned || e.Status == CalendarEventStatus.Locked))
@@ -406,8 +418,8 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
 
         foreach (var monday in overdue.Select(e => GetMonday(e.Date)).Distinct())
         {
-            var offset = GetWeekOffset(monday);
-            await _publisher.PublishWeekUpdatedAsync(await GetScheduleAsync(offset));
+            var offset = GetWeekOffset(monday, context);
+            await _publisher.PublishWeekUpdatedAsync(await ReadScheduleAsync(offset, context));
         }
     }
 
@@ -466,9 +478,10 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
         }
     }
 
-    public async Task<DisplacedRecipeDto?> AssignRecipeAsync(AssignScheduleDto dto, string? excludeConnectionId = null)
+    public async Task<DisplacedRecipeDto?> AssignRecipeAsync(AssignScheduleDto dto, string? excludeConnectionId = null, DateOnly? referenceWeekStartDate = null)
     {
-        var (monday, _) = GetWeekBounds(dto.WeekOffset);
+        var context = _calendar.Capture(_clock.UtcNow, referenceWeekStartDate);
+        var monday = context.WeekStart(dto.WeekOffset);
         var date = monday.AddDays(dto.DayIndex);
 
         await EnsureWeekPlanExistsAsync(monday);
@@ -486,7 +499,7 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
             if (existingEvent.RecipeId.HasValue && dto.DayIndex == 6)
             {
                 var nextWeekOffset = dto.WeekOffset + 1;
-                var (nextMonday, _) = GetWeekBounds(nextWeekOffset);
+                var nextMonday = context.WeekStart(nextWeekOffset);
                 await EnsureWeekPlanExistsAsync(nextMonday);
 
                 var nextMonday_slot = await _dbContext.CalendarEvents
@@ -535,26 +548,28 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
 
         await _dbContext.SaveChangesAsync();
 
-        await _groceryRecomputeService.RecomputeForWeekAsync(monday, CancellationToken.None);
+        await _groceryRecomputeService.RecomputeForWeekAsync(monday, CancellationToken.None, context);
 
-        var schedule = await GetScheduleAsync(dto.WeekOffset);
+        var schedule = await ReadScheduleAsync(dto.WeekOffset, context);
         await _publisher.PublishWeekUpdatedAsync(schedule, excludeConnectionId);
-        await _publisher.PublishFillTheGapInvalidatedAsync(dto.WeekOffset, excludeConnectionId);
+        await _publisher.PublishFillTheGapInvalidatedAsync(dto.WeekOffset, monday, excludeConnectionId);
 
         if (displaced != null)
         {
-            var (nextMonday2, _) = GetWeekBounds(dto.WeekOffset + 1);
-            await _groceryRecomputeService.RecomputeForWeekAsync(nextMonday2, CancellationToken.None);
-            var nextSchedule = await GetScheduleAsync(dto.WeekOffset + 1);
+            var nextMonday2 = context.WeekStart(dto.WeekOffset + 1);
+            await _groceryRecomputeService.RecomputeForWeekAsync(nextMonday2, CancellationToken.None, context);
+            var nextSchedule = await ReadScheduleAsync(dto.WeekOffset + 1, context);
             await _publisher.PublishWeekUpdatedAsync(nextSchedule, excludeConnectionId);
         }
 
         return displaced;
     }
 
-    public async Task<List<ScheduleRecipeDto>> FillTheGapAsync(int weekOffset = 0)
+    public async Task<List<ScheduleRecipeDto>> FillTheGapAsync(int weekOffset = 0, DateOnly? referenceWeekStartDate = null)
     {
-        var (monday, sunday) = GetWeekBounds(weekOffset);
+        var context = _calendar.Capture(_clock.UtcNow, referenceWeekStartDate);
+        var monday = context.WeekStart(weekOffset);
+        var sunday = monday.AddDays(6);
 
         var assignedIds = await _dbContext.CalendarEvents
             .Where(e => e.Date >= monday && e.Date <= sunday)
@@ -611,28 +626,33 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
 
     public async Task RemoveRecipeAsync(DateOnly date, string? excludeConnectionId = null)
     {
+        var context = _calendar.Capture(_clock.UtcNow);
         var @event = await _dbContext.CalendarEvents.FirstOrDefaultAsync(e => e.Date == date);
         if (@event != null)
         {
             // Derive the Monday of the week containing the removed event's date
             var monday = GetMonday(date);
-            var weekOffset = GetWeekOffset(monday);
+            var weekOffset = GetWeekOffset(monday, context);
 
             _dbContext.CalendarEvents.Remove(@event);
             await _dbContext.SaveChangesAsync();
             _logger.LogInformation("Removed recipe from date {Date}", date);
 
-            await _groceryRecomputeService.RecomputeForWeekAsync(monday, CancellationToken.None);
+            await _groceryRecomputeService.RecomputeForWeekAsync(monday, CancellationToken.None, context);
 
-            var schedule = await GetScheduleAsync(weekOffset);
+            var schedule = await ReadScheduleAsync(weekOffset, context);
             await _publisher.PublishWeekUpdatedAsync(schedule, excludeConnectionId);
-            await _publisher.PublishFillTheGapInvalidatedAsync(weekOffset, excludeConnectionId);
+            await _publisher.PublishFillTheGapInvalidatedAsync(weekOffset, monday, excludeConnectionId);
         }
     }
 
-    public async Task<SmartDefaultsDto> GetSmartDefaultsAsync(int weekOffset)
+    public Task<SmartDefaultsDto> GetSmartDefaultsAsync(int weekOffset, DateOnly? referenceWeekStartDate = null) =>
+        ReadSmartDefaultsAsync(weekOffset, _calendar.Capture(_clock.UtcNow, referenceWeekStartDate));
+
+    private async Task<SmartDefaultsDto> ReadSmartDefaultsAsync(int weekOffset, DeploymentCalendarContext context)
     {
-        var (monday, sunday) = GetWeekBounds(weekOffset);
+        var monday = context.WeekStart(weekOffset);
+        var sunday = monday.AddDays(6);
 
         // Get family size
         var familySize = await _dbContext.FamilyMembers.CountAsync();
@@ -735,12 +755,14 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
             ConsensusThreshold: consensusThreshold,
             PreSelectedRecipes: preSelectedRecipes,
             OpenSlots: openSlots,
-            ConsensusRecipesCount: filteredVotes.Count
+            ConsensusRecipesCount: filteredVotes.Count,
+            WeekStartDate: monday
         );
     }
 
     public async Task<bool> ValidateDayAsync(string dateStr, ValidationDto dto, string? excludeConnectionId = null)
     {
+        var context = _calendar.Capture(_clock.UtcNow);
         var plan = dto.NonCooking;
         if (plan != null)
         {
@@ -766,13 +788,13 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
         {
             var cookedRecipe = await _dbContext.Recipes.FirstOrDefaultAsync(r => r.Id == cookedRecipeId && r.DeletedAt == null)
                 ?? throw new KeyNotFoundException("Recipe not found");
-            cookedRecipe.LastCookedDate = _clock.UtcNow;
+            cookedRecipe.LastCookedDate = context.CapturedAtUtc;
 
             // Cooking an unscheduled recipe must not complete another recipe's meal.
             if (@event?.RecipeId != cookedRecipeId)
             {
                 await _dbContext.SaveChangesAsync();
-                await _publisher.PublishFillTheGapInvalidatedAsync(GetWeekOffset(GetMonday(date)), excludeConnectionId);
+                await _publisher.PublishFillTheGapInvalidatedAsync(GetWeekOffset(GetMonday(date), context), GetMonday(date), excludeConnectionId);
                 return false;
             }
         }
@@ -835,7 +857,7 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
 
         if (dto.Status == 2 && @event.Recipe != null) // 2 = Cooked
         {
-            @event.Recipe.LastCookedDate = _clock.UtcNow;
+            @event.Recipe.LastCookedDate = context.CapturedAtUtc;
             _logger.LogInformation("Updated LastCookedDate for recipe {RecipeId}", @event.RecipeId);
         }
 
@@ -883,7 +905,7 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
 
         weekPlan.GroceryState = System.Text.Json.JsonSerializer.Serialize(groceryState);
         await _dbContext.SaveChangesAsync();
-        await _publisher.PublishGroceryUpdatedAsync(weekOffset, groceryState, excludeConnectionId);
+        await _publisher.PublishGroceryUpdatedAsync(weekOffset, groceryState, monday, excludeConnectionId);
         return groceryState;
     }
 
@@ -908,7 +930,7 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
         current[ingredientName] = checked_;
         weekPlan.GroceryState = System.Text.Json.JsonSerializer.Serialize(current);
         await _dbContext.SaveChangesAsync();
-        await _publisher.PublishGroceryUpdatedAsync(weekOffset, current, excludeConnectionId);
+        await _publisher.PublishGroceryUpdatedAsync(weekOffset, current, monday, excludeConnectionId);
     }
 
     /// <summary>
@@ -934,13 +956,13 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
 
     private (DateOnly Monday, DateOnly Sunday) GetWeekBounds(int weekOffset)
     {
-        var monday = GetMonday(DateOnly.FromDateTime(_clock.UtcNow.UtcDateTime)).AddDays(weekOffset * 7);
+        var monday = _calendar.Capture(_clock.UtcNow).WeekStart(weekOffset);
         var sunday = monday.AddDays(6);
         return (monday, sunday);
     }
 
     private static DateOnly GetMonday(DateOnly date) => date.AddDays(-((int)date.DayOfWeek + 6) % 7);
 
-    private int GetWeekOffset(DateOnly monday) =>
-        (monday.DayNumber - GetMonday(DateOnly.FromDateTime(_clock.UtcNow.UtcDateTime)).DayNumber) / 7;
+    private int GetWeekOffset(DateOnly monday, DeploymentCalendarContext? context = null) =>
+        (monday.DayNumber - (context ?? _calendar.Capture(_clock.UtcNow)).ReferenceWeekStartDate.DayNumber) / 7;
 }

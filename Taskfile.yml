@@ -163,7 +163,7 @@ tasks:
     desc: "Test API (unit + integration)"
     dir: api
     cmds:
-      - dotnet test src/RecipeApi.Tests/RecipeApi.Tests.csproj
+      - dotnet test src/RecipeApi.Tests/RecipeApi.Tests.csproj {{.CLI_ARGS}}
 
   test:api:watch:
     desc: "Test API in watch mode"
@@ -175,7 +175,7 @@ tasks:
     desc: "🧪 Run PWA unit tests (Vitest — fast, no server needed)"
     dir: pwa
     cmds:
-      - npm run test:unit
+      - npm run test:unit -- {{.CLI_ARGS}}
 
   test:unit:coverage:
     desc: "🧪 Run PWA unit tests with coverage report (requires @vitest/coverage-v8)"
@@ -199,7 +199,7 @@ tasks:
     desc: "🎭 Run E2E suites against an existing local PWA to avoid Playwright webServer startup"
     dir: pwa
     cmds:
-      - BASE_URL="${BASE_URL:-http://127.0.0.1:3000}" npm run test:e2e:reuse-server
+      - BASE_URL="${BASE_URL:-http://127.0.0.1:3000}" npm run test:e2e:reuse-server -- {{.CLI_ARGS}}
 
   test:e2e:ci:
     desc: "Run E2E against production build (CI parity: build + test)"
@@ -1254,6 +1254,11 @@ tasks:
     desc: "Validate selected changes and record evidence; reconcile task acceptance separately"
     cmds:
       - '"{{.PYTHON}}" -B scripts/agent/finish.py {{.CLI_ARGS}}'
+
+  verify:plan:
+    desc: "Preview verification selection and reasons as JSON; no checks or evidence writes"
+    cmds:
+      - '"{{.PYTHON}}" -B scripts/agent/finish.py --plan {{.CLI_ARGS}}'
 
   test:agent:
     desc: "🤖 Unit tests for the repository agent harness"

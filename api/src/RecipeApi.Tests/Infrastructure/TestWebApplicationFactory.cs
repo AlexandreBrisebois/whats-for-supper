@@ -3,6 +3,8 @@ using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Hosting.Server;
+using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Authorization;
 using Microsoft.AspNetCore.TestHost;
@@ -45,6 +47,7 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
     private readonly bool _enableAuth;
     private readonly IChatClient? _chatClient;
     private readonly IClock? _clock;
+    private readonly Action<WebApplication>? _configureApplication;
     private readonly Dictionary<string, string?> _configurationOverrides = [];
 
     private ISearchTelemetry? _telemetry;
@@ -52,11 +55,13 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
         bool enableAuth = false,
         Dictionary<string, string?>? configurationOverrides = null,
         IChatClient? chatClient = null,
-        IClock? clock = null)
+        IClock? clock = null,
+        Action<WebApplication>? configureApplication = null)
     {
         _enableAuth = enableAuth;
         _chatClient = chatClient;
         _clock = clock;
+        _configureApplication = configureApplication;
         if (configurationOverrides is not null)
         {
             _configurationOverrides = configurationOverrides;
@@ -98,9 +103,12 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
     /// Use <see cref="CreateAuthenticatedClient"/> to get a pre-credentialed client,
     /// or <see cref="CreateClient"/> for an unauthenticated one.
     /// </summary>
-    public static async Task<TestWebApplicationFactory> CreateWithAuthAsync()
+    public static async Task<TestWebApplicationFactory> CreateWithAuthAsync(
+        IClock? clock = null,
+        Dictionary<string, string?>? configurationOverrides = null,
+        Action<WebApplication>? configureApplication = null)
     {
-        var factory = new TestWebApplicationFactory(enableAuth: true);
+        var factory = new TestWebApplicationFactory(enableAuth: true, configurationOverrides, clock: clock, configureApplication: configureApplication);
         await factory.StartAsync();
         return factory;
     }
@@ -173,6 +181,7 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
         builder.Services.AddScoped<ScheduleService>();
         builder.Services.AddScoped<DiscoveryService>();
         builder.Services.AddScoped<FamilyService>();
+        builder.Services.AddScoped<GoToService>();
         builder.Services.AddScoped<IValidationService, ValidationService>();
         builder.Services.AddScoped<ImageService>();
         builder.Services.AddScoped<RecipeService>();
@@ -182,6 +191,11 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
         builder.Services.AddScoped<RecipePurgeService>();
         builder.Services.AddScoped<CaptureFailureService>();
         builder.Services.AddScoped<RecipeSearchService>();
+        if (_configurationOverrides.GetValueOrDefault("Tests:PostgresConnectionString") is not null)
+        {
+            builder.Services.AddScoped<RecipeLexicalSearchRepository>();
+            builder.Services.AddScoped<RecipeSemanticSearchRepository>();
+        }
         builder.Services.AddSingleton(sp => new RecipeSearchFilterOptions(
             builder.Configuration,
             sp.GetRequiredService<ILogger<RecipeSearchFilterOptions>>()));
@@ -199,6 +213,7 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
         builder.Services.AddScoped<RecipeImportBulkService>();
         builder.Services.AddScoped<SettingsService>();
         builder.Services.AddSingleton<IClock>(_clock ?? new SystemClock());
+        builder.Services.AddSingleton<DeploymentCalendar>();
         builder.Services.AddSingleton<CronScheduleCalculator>();
         builder.Services.AddSingleton<DemoModeOptions>();
         builder.Services.AddScoped<ManagementService>();
@@ -268,9 +283,14 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
         });
 
         // ── Test server ──────────────────────────────────────────────────────
-        builder.WebHost.UseTestServer();
+        if (_configurationOverrides.GetValueOrDefault("Tests:HttpUrl") is { } httpUrl)
+        {
+            builder.WebHost.UseKestrel().UseUrls(httpUrl);
+        }
+        else builder.WebHost.UseTestServer();
 
         _app = builder.Build();
+        _ = _app.Services.GetRequiredService<DeploymentCalendar>();
 
         // ── Schema ───────────────────────────────────────────────────────────
         using (var scope = _app.Services.CreateScope())
@@ -296,14 +316,20 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
             _app.UseAuthorization();
         }
         _app.MapControllers();
+        _configureApplication?.Invoke(_app);
         _app.MapOpenApi();
 
         await _app.StartAsync();
     }
 
+    public string HttpAddress => _app!.Services.GetRequiredService<IServer>()
+        .Features.Get<IServerAddressesFeature>()!.Addresses.Single();
+
     /// <summary>Returns an unauthenticated HttpClient connected to the test server.</summary>
     public HttpClient CreateClient() =>
-        _app?.GetTestClient()
+        _configurationOverrides.GetValueOrDefault("Tests:HttpUrl") is not null
+        ? new HttpClient { BaseAddress = new Uri(HttpAddress) }
+        : _app?.GetTestClient()
         ?? throw new InvalidOperationException("Factory not started — call CreateAsync() first.");
 
     /// <summary>

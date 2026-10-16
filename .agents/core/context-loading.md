@@ -75,6 +75,13 @@ source and immediate dependencies. Use the conditional [WFS source map](wfs-sour
 as navigation, then verify current code. `task agent:slice -- <route>` and
 `task agent:api` support discovery; their static output is not proof of live parity.
 
+When a bug's cause is uncertain or an attempted correction fails, choose the
+smallest repeatable experiment that distinguishes plausible causes. State the
+observation, hypothesis and predicted result; vary one relevant factor at a time,
+then compare the actual result before choosing the next correction. Source
+inspection can help construct the experiment. Keep the evidence in existing task
+notes or a concise update; no separate artifact or fixed hypothesis count is needed.
+
 Record the ordered source paths, representation changes (DTO/entity/client/state),
 contract agreement or mismatch, observed side effects and likely failure point.
 Investigation in review/plan mode ends in findings; it does not authorize fixes.

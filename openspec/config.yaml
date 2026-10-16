@@ -1,25 +1,35 @@
-schema: spec-driven
+schema: wfs
 
 context: |
-  Follow AGENT.md for authority and scope. Shared engineering policy lives in
+  Follow AGENT.md for authority and scope and .agents/core/mission.md for ownership,
+  reuse and explicit-dependency design principles. Shared engineering policy lives in
   .agents/core/contract-testing.md; command semantics, final verification and evidence
   identity live in .agents/core/execution-harness.md. Use .agents/core/context-loading.md
   for conditional repository context. OpenSpec owns planning artifacts and task progression;
   use its installed skills for artifact discovery, store selection and schema mechanics.
+  Iterate within the authorized scope without adding phase approval gates. When a
+  decision changes, reconcile affected requirements, design, tasks and acceptance;
+  preserve unaffected work and identify evidence made stale by the change.
 
 rules:
   proposal:
     - Inspect existing behavior and insertion points before proposing changes; state scope and consequential unresolved decisions.
+    - For bug fixes, distinguish the reproducible defect, intended correction and nearby behavior that must remain working; do not turn a fix into a feature expansion.
   specs:
     - Describe observable behavior, compatibility and failure/recovery scenarios; keep implementation details in design and tasks.
+    - State concrete triggers, relevant starting states and observable outcomes; define ambiguous terms and separate distinct obligations while retaining OpenSpec requirement/scenario syntax.
+    - For interacting requirements, check contradictions, conflicting constraints, unstated assumptions and missing boundary/failure/concurrency cases before dependent design or tasks. Surface consequential decisions one at a time; keep review proportional and avoid a separate mandatory artifact.
   design:
     - Ground affected ownership, interfaces and integration decisions in current source; reuse established patterns and identify material tradeoffs.
     - Identify the first observable slice, its affected layers and real integration boundaries under .agents/core/contract-testing.md.
+    - Where useful, derive testable correctness properties from approved requirements; state preconditions, input domain, invariant and suitable test approach. Use property-based tests only when they add meaningful coverage; retain examples and real-seam acceptance, and do not treat generated tests as proof.
+    - For bug fixes, ground the cause in reproduction/source evidence and identify the preservation boundaries the correction could affect.
   tasks:
     - Use bounded dependency-ordered tasks with named acceptance checks and traceability to requirements/scenarios.
     - Translate the slicing and test-first policy in .agents/core/contract-testing.md into concrete behavior increments, commands and required evidence; identify non-applicable behavior checks for documentation-only work.
     - For API changes, name the contract, generated client, affected consumers and mock handlers/builders/state behavior required by that policy, with their synchronization and acceptance commands.
     - For browser/API changes, name applicable unit/API tests, Playwright scenarios, mock owner, route/method and contract shape within the task.
+    - Turn selected correctness properties and bugfix preservation boundaries into concrete acceptance checks linked to requirements/scenarios. Required acceptance is not optional; configuration rules themselves are not verification evidence.
 
 operations:
   apply:

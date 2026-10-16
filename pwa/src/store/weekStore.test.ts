@@ -1,3 +1,4 @@
+import { calendarTime } from '@/lib/deployment-calendar';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useWeekStore } from './weekStore';
 import type { UILocalScheduleDay } from './weekStore';
@@ -23,6 +24,15 @@ import {
   openVoting,
 } from '@/lib/api/planner';
 
+const calendar = {
+  timeZone: 'UTC',
+  today: '2025-01-06',
+  capturedAtUtc: '2025-01-06T12:00:00Z',
+  currentWeekStartDate: '2025-01-06',
+  referenceWeekStartDate: '2025-01-06',
+  nextDayAtUtc: '2025-01-07T00:00:00Z',
+};
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function makeDay(overrides: Partial<UILocalScheduleDay> = {}): UILocalScheduleDay {
@@ -38,6 +48,8 @@ function makeDay(overrides: Partial<UILocalScheduleDay> = {}): UILocalScheduleDa
 function makeScheduleDays(days: Partial<UILocalScheduleDay>[] = []) {
   const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
   return {
+    calendar,
+    weekStartDate: '2025-01-06',
     weekOffset: 0,
     locked: false,
     status: 0,
@@ -54,6 +66,8 @@ function makeScheduleDays(days: Partial<UILocalScheduleDay>[] = []) {
 beforeEach(() => {
   vi.clearAllMocks();
   useWeekStore.setState({
+    calendar,
+    weekStartDate: '2025-01-06',
     weekOffset: 0,
     schedule: [],
     groceryItems: [],
@@ -61,6 +75,7 @@ beforeEach(() => {
     isLoading: false,
     lastSyncedAt: null,
     optimisticWriteAt: null,
+    optimisticWeekStartDate: '2025-01-06',
   });
   usePlannerStore.setState({
     groceryState: {},
@@ -446,6 +461,7 @@ describe('weekStore — applySmartDefaultsUpdate', () => {
 
     const defaults = {
       weekOffset: 0,
+      weekStartDate: '2025-01-06' as any,
       familySize: 4,
       consensusThreshold: 3,
       consensusRecipesCount: 1,
@@ -490,6 +506,7 @@ describe('weekStore — applySmartDefaultsUpdate', () => {
 
     const defaults = {
       weekOffset: 0,
+      weekStartDate: '2025-01-06' as any,
       familySize: 4,
       consensusThreshold: 3,
       consensusRecipesCount: 1,
@@ -532,6 +549,7 @@ describe('weekStore — applySmartDefaultsUpdate', () => {
     // Empty preSelectedRecipes — recipe dropped below threshold
     const defaults = {
       weekOffset: 0,
+      weekStartDate: '2025-01-06' as any,
       familySize: 4,
       consensusThreshold: 3,
       consensusRecipesCount: 0,
@@ -564,6 +582,7 @@ describe('weekStore — closeVoting', () => {
 
     useWeekStore.setState({
       weekOffset: 0,
+      weekStartDate: '2025-01-06' as any,
       status: 1, // Voting Open
       schedule: [
         makeDay({ date: '2025-01-06', recipe: pendingRecipe as any, _isPending: true }),
@@ -576,11 +595,16 @@ describe('weekStore — closeVoting', () => {
 
     // Should have called assignRecipeToDay for the pending item ONLY
     expect(mockedAssign).toHaveBeenCalledTimes(1);
-    expect(mockedAssign).toHaveBeenCalledWith(0, 0, expect.objectContaining({ id: 'p1' }));
+    expect(mockedAssign).toHaveBeenCalledWith(
+      0,
+      0,
+      expect.objectContaining({ id: 'p1' }),
+      '2025-01-06'
+    );
 
     // Should have called lockSchedule AFTER assignments
     expect(mockedLock).toHaveBeenCalledTimes(1);
-    expect(mockedLock).toHaveBeenCalledWith(0);
+    expect(mockedLock).toHaveBeenCalledWith(0, '2025-01-06');
 
     // Status should be 2 (Locked)
     expect(useWeekStore.getState().status).toBe(2);
@@ -622,15 +646,16 @@ describe('weekStore — active voting week smart-defaults regression (red)', () 
     mockedGetSchedule.mockResolvedValue(scheduleData as any);
     mockedGetSmartDefaults.mockResolvedValue({
       weekOffset: 1,
+      weekStartDate: '2025-01-13' as any,
       preSelectedRecipes: [],
       openSlots: [],
     } as any);
 
     await useWeekStore.getState().init(1);
 
-    expect(mockedGetSchedule).toHaveBeenCalledWith(1);
-    expect(mockedGetSmartDefaults).toHaveBeenCalledWith(1);
-    expect(mockedGetSmartDefaults).not.toHaveBeenCalledWith(0);
+    expect(mockedGetSchedule).toHaveBeenCalledWith(1, undefined);
+    expect(mockedGetSmartDefaults).toHaveBeenCalledWith(1, '2025-01-06');
+    expect(mockedGetSmartDefaults).not.toHaveBeenCalledWith(0, expect.anything());
   });
 
   it('openVoting() at weekOffset=1 requests getSchedule(1) and getSmartDefaults(1), not week 0', async () => {
@@ -648,17 +673,18 @@ describe('weekStore — active voting week smart-defaults regression (red)', () 
     mockedGetSchedule.mockResolvedValue(scheduleData as any);
     mockedGetSmartDefaults.mockResolvedValue({
       weekOffset: 1,
+      weekStartDate: '2025-01-13' as any,
       preSelectedRecipes: [],
       openSlots: [],
     } as any);
 
     await useWeekStore.getState().openVoting();
 
-    expect(mockedOpenVoting).toHaveBeenCalledWith(1);
-    expect(mockedGetSchedule).toHaveBeenCalledWith(1);
-    expect(mockedGetSmartDefaults).toHaveBeenCalledWith(1);
-    expect(mockedGetSchedule).not.toHaveBeenCalledWith(0);
-    expect(mockedGetSmartDefaults).not.toHaveBeenCalledWith(0);
+    expect(mockedOpenVoting).toHaveBeenCalledWith(1, '2025-01-06');
+    expect(mockedGetSchedule).toHaveBeenCalledWith(1, '2025-01-06');
+    expect(mockedGetSmartDefaults).toHaveBeenCalledWith(1, '2025-01-06');
+    expect(mockedGetSchedule).not.toHaveBeenCalledWith(0, expect.anything());
+    expect(mockedGetSmartDefaults).not.toHaveBeenCalledWith(0, expect.anything());
   });
 
   it('sync() at weekOffset=1 with status=1 requests getSmartDefaults(1), not getSmartDefaults(0)', async () => {
@@ -674,15 +700,16 @@ describe('weekStore — active voting week smart-defaults regression (red)', () 
     mockedGetSchedule.mockResolvedValue(scheduleData as any);
     mockedGetSmartDefaults.mockResolvedValue({
       weekOffset: 1,
+      weekStartDate: '2025-01-13' as any,
       preSelectedRecipes: [],
       openSlots: [],
     } as any);
 
     await useWeekStore.getState().sync();
 
-    expect(mockedGetSchedule).toHaveBeenCalledWith(1);
-    expect(mockedGetSmartDefaults).toHaveBeenCalledWith(1);
-    expect(mockedGetSmartDefaults).not.toHaveBeenCalledWith(0);
+    expect(mockedGetSchedule).toHaveBeenCalledWith(1, '2025-01-06');
+    expect(mockedGetSmartDefaults).toHaveBeenCalledWith(1, '2025-01-06');
+    expect(mockedGetSmartDefaults).not.toHaveBeenCalledWith(0, expect.anything());
   });
 });
 
@@ -690,11 +717,14 @@ describe('weekStore — applySmartDefaultsUpdate week guard', () => {
   it('applies smart defaults when defaults.weekOffset matches current weekOffset', () => {
     useWeekStore.setState({
       weekOffset: 1,
+      calendar,
+      weekStartDate: '2025-01-13',
       schedule: [makeDay({ date: '2025-01-06', day: 'Mon' })],
     });
 
     useWeekStore.getState().applySmartDefaultsUpdate({
       weekOffset: 1,
+      weekStartDate: '2025-01-13' as any,
       preSelectedRecipes: [
         {
           dayIndex: 0,
@@ -721,11 +751,13 @@ describe('weekStore — applySmartDefaultsUpdate week guard', () => {
   it('ignores smart defaults when defaults.weekOffset differs from current weekOffset', () => {
     useWeekStore.setState({
       weekOffset: 0,
+      weekStartDate: '2025-01-06' as any,
       schedule: [makeDay({ date: '2025-01-06', day: 'Mon' })],
     });
 
     useWeekStore.getState().applySmartDefaultsUpdate({
       weekOffset: 1,
+      weekStartDate: '2025-01-13' as any,
       preSelectedRecipes: [
         {
           dayIndex: 0,
@@ -751,9 +783,18 @@ describe('weekStore — applySmartDefaultsUpdate week guard', () => {
 });
 
 it('keeps a skipped day occupied when stale smart defaults and snapshots arrive', async () => {
-  const date = '2026-10-12';
+  const date = '2025-01-06';
   vi.mocked(getSchedule).mockResolvedValue({
     weekOffset: 0,
+    weekStartDate: '2025-01-06' as any,
+    calendar: {
+      timeZone: 'UTC',
+      today: date,
+      capturedAtUtc: '2025-01-06T12:00:00Z',
+      currentWeekStartDate: date,
+      referenceWeekStartDate: date,
+      nextDayAtUtc: '2025-01-07T00:00:00Z',
+    } as any,
     status: 1,
     locked: false,
     days: [
@@ -768,6 +809,7 @@ it('keeps a skipped day occupied when stale smart defaults and snapshots arrive'
   });
   vi.mocked(getSmartDefaults).mockResolvedValue({
     weekOffset: 0,
+    weekStartDate: '2025-01-06' as any,
     familySize: 3,
     consensusThreshold: 2,
     consensusRecipesCount: 0,
@@ -780,6 +822,7 @@ it('keeps a skipped day occupied when stale smart defaults and snapshots arrive'
   expect(useWeekStore.getState().schedule[0].recipe).toBeUndefined();
   useWeekStore.getState().applySmartDefaultsUpdate({
     weekOffset: 0,
+    weekStartDate: '2025-01-06' as any,
     familySize: 3,
     consensusThreshold: 2,
     consensusRecipesCount: 0,
@@ -787,4 +830,137 @@ it('keeps a skipped day occupied when stale smart defaults and snapshots arrive'
     preSelectedRecipes: [{ dayIndex: 0, recipeId: '550e8400-e29b-41d4-a716-446655440001' }],
   });
   expect(useWeekStore.getState().schedule[0].recipe).toBeUndefined();
+});
+
+describe('weekStore deployment reference', () => {
+  it('retains the loaded reference for assignment and its follow-up read', async () => {
+    vi.mocked(getSchedule).mockResolvedValue({
+      weekOffset: 1,
+      weekStartDate: '2026-10-12',
+      status: 0,
+      calendar: {
+        timeZone: 'America/Toronto',
+        today: '2026-10-11',
+        capturedAtUtc: '2026-10-12T01:30:00Z',
+        currentWeekStartDate: '2026-10-05',
+        referenceWeekStartDate: '2026-10-05',
+        nextDayAtUtc: '2026-10-12T04:00:00Z',
+      },
+      days: [{ date: '2026-10-12', day: 'Mon', recipe: null }],
+    } as any);
+    vi.mocked(assignRecipeToDay).mockResolvedValue(undefined);
+    await useWeekStore.getState().init(1);
+    const recipe = { id: '660e8400-e29b-41d4-a716-446655440011', name: 'Monday', image: '' };
+    await useWeekStore.getState().assignRecipe(0, recipe);
+    expect(assignRecipeToDay).toHaveBeenCalledWith(1, 0, recipe, '2026-10-05');
+    expect(getSchedule).toHaveBeenLastCalledWith(1, '2026-10-05');
+  });
+});
+
+describe('weekStore absolute Monday identity', () => {
+  const context = {
+    timeZone: 'America/Toronto',
+    today: '2026-10-12',
+    capturedAtUtc: '2026-10-12T04:30:00Z',
+    currentWeekStartDate: '2026-10-12',
+    referenceWeekStartDate: '2026-10-12',
+    nextDayAtUtc: '2026-10-13T04:00:00Z',
+  };
+  const current = {
+    day: 'Mon',
+    date: '2026-10-12',
+    recipe: null,
+    _uiId: 'current-monday',
+    status: 0,
+  };
+  beforeEach(() =>
+    useWeekStore.setState({
+      weekOffset: 0,
+      weekStartDate: '2026-10-12',
+      calendar: context,
+      schedule: [current],
+    })
+  );
+
+  it('rejects an old October 5 snapshot despite offset zero', () => {
+    useWeekStore.getState().applySnapshot({
+      weekOffset: 0,
+      weekStartDate: '2026-10-05',
+      days: [{ day: 'Mon', date: '2026-10-05', recipe: mockRecipeForCalendar() }],
+    } as any);
+    expect(useWeekStore.getState().schedule[0].date).toBe('2026-10-12');
+  });
+
+  it('maps October 12 from another reference before checking numeric offsets', () => {
+    useWeekStore.getState().applySnapshot({
+      weekOffset: 1,
+      weekStartDate: '2026-10-12',
+      days: [{ day: 'Mon', date: '2026-10-12', recipe: mockRecipeForCalendar() }],
+    } as any);
+    expect(useWeekStore.getState().schedule[0].recipe?.id).toBe(
+      '660e8400-e29b-41d4-a716-446655440011'
+    );
+  });
+
+  it('refreshes a snapshot without identity instead of applying it to week zero', () => {
+    const sync = vi.spyOn(useWeekStore.getState(), 'sync').mockResolvedValue(undefined);
+    try {
+      useWeekStore.getState().applySnapshot({
+        weekOffset: 0,
+        days: [{ day: 'Mon', date: '2026-10-05', recipe: mockRecipeForCalendar() }],
+      } as any);
+      expect(sync).toHaveBeenCalledOnce();
+      expect(useWeekStore.getState().schedule[0].date).toBe('2026-10-12');
+    } finally {
+      sync.mockRestore();
+    }
+  });
+
+  it('does not overlay old-week smart defaults onto a new Monday', () => {
+    useWeekStore.getState().applySmartDefaultsUpdate({
+      weekOffset: 0,
+      weekStartDate: '2026-10-05',
+      preSelectedRecipes: [
+        { recipeId: '660e8400-e29b-41d4-a716-446655440011', name: 'Old candidate', dayIndex: 0 },
+      ],
+    } as any);
+    expect(useWeekStore.getState().schedule[0].recipe).toBeFalsy();
+  });
+});
+
+function mockRecipeForCalendar() {
+  return { id: '660e8400-e29b-41d4-a716-446655440011', name: 'Pinned Monday', image: '' };
+}
+
+it('uses elapsed time for the loaded-week optimistic window', async () => {
+  const { calendarTime } = await import('@/lib/deployment-calendar');
+  const elapsed = vi.spyOn(calendarTime, 'elapsed').mockReturnValue(1500);
+  const recipe = mockRecipeForCalendar();
+  useWeekStore.setState({
+    schedule: [makeDay({ recipe })],
+    optimisticWriteAt: 1000,
+    optimisticWeekStartDate: '2025-01-06',
+  } as any);
+  vi.mocked(getSchedule).mockResolvedValueOnce(makeScheduleDays([{ recipe: undefined }]));
+  await useWeekStore.getState().sync();
+  expect(useWeekStore.getState().schedule[0].recipe?.id).toBe(recipe.id);
+  elapsed.mockRestore();
+});
+
+it('does not merge a delayed HTTP response after the loaded absolute week changes', async () => {
+  let resolve!: (value: any) => void;
+  vi.mocked(getSchedule).mockReturnValueOnce(
+    new Promise((complete) => {
+      resolve = complete;
+    })
+  );
+  const pending = useWeekStore.getState().sync();
+  useWeekStore.setState({
+    weekOffset: 0,
+    weekStartDate: '2026-10-12',
+    schedule: [makeDay({ date: '2026-10-12' })],
+  });
+  resolve(makeScheduleDays([{ date: '2025-01-06' }]));
+  await pending;
+  expect(useWeekStore.getState().schedule[0].date).toBe('2026-10-12');
 });

@@ -159,6 +159,7 @@ try
     builder.Services.AddScoped<FeatureFlagService>();
     builder.Services.AddScoped<GoToService>();
     builder.Services.AddSingleton<IClock, SystemClock>();
+    builder.Services.AddSingleton<DeploymentCalendar>();
     builder.Services.Configure<VegetarianClassificationOptions>(builder.Configuration.GetSection("VegetarianClassification"));
     builder.Services.AddSingleton<VegetarianClassificationPolicy>();
     builder.Services.AddSingleton<CronScheduleCalculator>();
@@ -398,6 +399,7 @@ try
 
     // ── Build ─────────────────────────────────────────────────────────────────
     var app = builder.Build();
+    _ = app.Services.GetRequiredService<DeploymentCalendar>();
 
     Log.Information("DataRoot: {DataRoot}", app.Services.GetRequiredService<DataRootResolver>().Root.ToString());
     Log.Information("RecipesRoot: {RecipesRoot}", app.Services.GetRequiredService<RecipesRootResolver>().Root.ToString());

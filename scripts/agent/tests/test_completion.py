@@ -127,6 +127,34 @@ class CompletionTests(IsolatedGitTestCase):
         self.assertEqual(results['content']['status'], 'failed')
         self.assertEqual(results['test:agent']['status'], 'not-run')
 
+    def test_verification_timings_separate_checks_from_identity_and_preserve_blockers(self):
+        f = self.finish()
+        clock = [0.0]
+
+        def identity():
+            clock[0] += 2.0
+            return 'same'
+
+        def check(*args):
+            clock[0] += 3.0
+            return 'blocked', 'missing service'
+
+        with mock.patch.object(f, 'identity', side_effect=identity), \
+             mock.patch.object(f, 'run_check', side_effect=check), \
+             mock.patch('time.perf_counter', side_effect=lambda: clock[0]):
+            results = f.verify(['agent:drift:endpoints'])
+        self.assertEqual(results['agent:drift:endpoints']['status'], 'blocked')
+        self.assertEqual(results['agent:drift:endpoints']['duration_seconds'], 3.0)
+        self.assertEqual(results['agent:drift:endpoints']['identity_duration_seconds'], 2.0)
+        self.assertEqual(results['content']['timing'], {
+            'initial_identity_seconds': 2.0,
+            'identity_seconds': 4.0,
+            'identity_calls': 2,
+            'checks_seconds': 3.0,
+            'total_seconds': 7.0,
+        })
+        self.assertNotIn('duration_seconds', results['test:api'])
+
     def test_blocked_check_does_not_skip_independent_checks(self):
         f = self.finish()
         with mock.patch.object(f, 'identity', return_value='same'), \

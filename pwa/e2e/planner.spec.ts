@@ -188,6 +188,7 @@ test.describe('Supper Planner', () => {
           contentType: 'application/json',
           body: JSON.stringify({
             data: {
+              ...builders.scheduleDays(),
               weekOffset: 0,
               locked: isLockedState,
               status: currentStatus,
@@ -393,14 +394,17 @@ test.describe('Supper Planner', () => {
     const handle = page.getByTestId('day-card-0').getByTestId('planner-drag-handle');
     await expect(handle).toHaveAttribute('aria-label', 'Hold to move');
     const moves: unknown[] = [];
-    await page.route('**/api/schedule/move', async (route) => {
-      moves.push(route.request().postDataJSON());
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ data: { message: 'ok' } }),
-      });
-    });
+    await page.route(
+      (url) => url.pathname === '/api/schedule/move',
+      async (route) => {
+        moves.push(route.request().postDataJSON());
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ data: { message: 'ok' } }),
+        });
+      }
+    );
     const client = await context.newCDPSession(page);
     await client.send('Emulation.setTouchEmulationEnabled', { enabled: true });
     await handle.scrollIntoViewIfNeeded();
@@ -499,6 +503,7 @@ test.describe('Supper Planner', () => {
           contentType: 'application/json',
           body: JSON.stringify({
             data: {
+              ...builders.scheduleDays(),
               weekOffset: 0,
               locked: false,
               status: 0,

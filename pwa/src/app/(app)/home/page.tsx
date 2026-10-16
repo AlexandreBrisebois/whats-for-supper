@@ -1,7 +1,7 @@
 import { StoreInitializer } from '@/components/common/StoreInitializer';
 import { TodayStoreInitializer } from '@/components/TodayStoreInitializer';
 import { serverFetch } from '@/lib/api/server-client';
-import { getServerTodayString } from '@/lib/server-date';
+import { readCalendar } from '@/lib/deployment-calendar';
 import type { FamilyMember } from '@/types/domain';
 
 export const dynamic = 'force-dynamic';
@@ -30,7 +30,7 @@ export default async function HomePage() {
     console.error('Failed to fetch home data on server:', error);
   }
 
-  const todayStr = await getServerTodayString();
+  const todayStr = readCalendar(schedule?.calendar)?.today;
 
   // Find today's recipe (only if not already cooked or skipped)
   const todaysEntry = schedule?.days?.find((d) => d.date === todayStr);
@@ -47,6 +47,7 @@ export default async function HomePage() {
         todaysRecipe={todaysRecipe}
         todayStatus={todayStatus}
         todayDate={todayStr}
+        calendar={schedule?.calendar}
         nonCooking={todaysEntry?.nonCooking ?? null}
       />
       <HomeCommandCenter todaysRecipe={todaysRecipe} todayStatus={todayStatus} />

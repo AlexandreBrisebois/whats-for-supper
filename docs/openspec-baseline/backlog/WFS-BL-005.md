@@ -6,12 +6,14 @@
 | Finding type | accepted product policy / implementation investigation |
 | Affected journey / capability | meal-planning, tonight-meal-decisions, background-processing, household-live-updates |
 | Origin IDs | U99, TM-U01, U102–109; user decision 2026-10-16 |
-| Workflow status | awaiting human scope selection |
+| Workflow status | selected 2026-10-16; supper-calendar increment implemented; remaining clock inventory open |
 | Confidence | High for traced source; runtime reach/frequency unmeasured |
-| Owner | Unassigned; human selects one bounded scope |
+| Owner | Selected OpenSpec change; single writer during application |
 | Independent review | Lane evidence reviewed by coordinator; un-reproduced impact remains investigation, not closed runtime defect |
 
 ## User problem and reproduction trigger
+
+Selected under the user's request to take the most impactful backlog item. The active [deployment-calendar-supper-dates proposal](../../../openspec/changes/deployment-calendar-supper-dates/proposal.md) defines the bounded supper-calendar scope, design and test-first tasks. User decision in this session: default to UTC when configuration is absent, with an explicit deployment timezone override. Implementation and bounded runtime acceptance are recorded in the selected change’s [tasks](../../../openspec/changes/deployment-calendar-supper-dates/tasks.md); this does not close the parent clock inventory. Unrelated workflow/health/management clocks and remaining UX-date consumers stay open under this item.
 
 Deployment local day/week differs from UTC or client device timezone; test at midnight/Sunday/DST.
 
@@ -41,7 +43,7 @@ Verification evidence: source/assertion inspection; focused observed results onl
 
 Affected files/state: `IClock implementations; ScheduleService.cs; todayStore.ts; weekStore.ts; HomeCommandCenter.tsx; scheduling/time consumers`. Includes associated client/contract/persistence/workflow side effects described above; do not silently edit every listed dependency.
 
-Dependencies: No hard prerequisite established; inspect shared-file conflicts before assignment. Parallel eligibility is conditional on disjoint owned files in [README.md](README.md). Reserve shared RecipeDetailSheet, ScheduleService, weekStore, contracts and generated clients to one writer. No implementation assignment exists yet.
+Dependencies: No hard prerequisite established; inspect shared-file conflicts before application. The selected change defines its implementation boundary and acceptance; implementation has not started. Reserve ScheduleService, weekStore, contracts and generated clients to one writer. Parallel eligibility remains conditional on disjoint owned files in [README.md](README.md).
 
 ## Proposed bounded resolution and acceptance
 

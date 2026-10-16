@@ -223,8 +223,8 @@ public partial class RecipeLexicalSearchPostgresTests
 
     private RecipeSearchService CreateFilterService(IEmbeddingProvider? provider, bool enabled = true, int candidateLimit = 50)
     {
-        var grocery = new GroceryRecomputeService(_db, new AisleMapper(), NullLogger<GroceryRecomputeService>.Instance);
-        var schedule = new ScheduleService(_db, NullLogger<ScheduleService>.Instance, new Mock<IScheduleEventPublisher>().Object, grocery);
+        var grocery = new GroceryRecomputeService(_db, new AisleMapper(), NullLogger<GroceryRecomputeService>.Instance, new SystemClock(), new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()));
+        var schedule = new ScheduleService(_db, NullLogger<ScheduleService>.Instance, new Mock<IScheduleEventPublisher>().Object, grocery, new SystemClock(), new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()));
         return new RecipeSearchService(_db, schedule, provider,
             lexicalRepository: new RecipeLexicalSearchRepository(_db), semanticRepository: new RecipeSemanticSearchRepository(_db),
             rolloutOptions: new() { Semantic = new() { Enabled = enabled, CandidateLimit = candidateLimit, EmbeddingModel = "task4", EmbeddingVersion = "v1" } },

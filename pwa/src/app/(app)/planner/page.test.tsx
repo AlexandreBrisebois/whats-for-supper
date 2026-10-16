@@ -124,7 +124,11 @@ vi.mock('@/store/discoveryStore', () => ({
 
 vi.mock('@/store/todayStore', () => ({
   useTodayStore: {
-    getState: () => ({ assignRecipe: vi.fn() }),
+    getState: () => ({
+      calendar: { today: '2026-05-10' },
+      assignRecipe: vi.fn(),
+      applyServerUpdate: vi.fn(),
+    }),
   },
 }));
 
@@ -504,7 +508,7 @@ describe('PlannerPage voting action row', () => {
     });
     view.rerender(<PlannerPage />);
     await act(async () => resolveSave());
-    await waitFor(() => expect(mocks.getSchedule).toHaveBeenCalledWith(0));
+    await waitFor(() => expect(mocks.getSchedule).toHaveBeenCalledWith(0, undefined));
     expect(mocks.applySnapshot).not.toHaveBeenCalled();
   });
 

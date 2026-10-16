@@ -49,8 +49,8 @@ public class HybridRecipeSearchBaselinePostgresTests : IAsyncLifetime
     [PostgresFact]
     public async Task BaselineHarness_RecordsVersionedRelevanceMeasurements()
     {
-        var grocery = new GroceryRecomputeService(_db, new AisleMapper(), NullLogger<GroceryRecomputeService>.Instance);
-        var schedule = new ScheduleService(_db, NullLogger<ScheduleService>.Instance, new Mock<IScheduleEventPublisher>().Object, grocery);
+        var grocery = new GroceryRecomputeService(_db, new AisleMapper(), NullLogger<GroceryRecomputeService>.Instance, new SystemClock(), new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()));
+        var schedule = new ScheduleService(_db, NullLogger<ScheduleService>.Instance, new Mock<IScheduleEventPublisher>().Object, grocery, new SystemClock(), new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()));
         var service = new RecipeSearchService(_db, schedule, new FixtureEmbeddingProvider());
 
         var reports = new List<BaselineReport>();

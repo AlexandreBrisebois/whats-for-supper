@@ -53,6 +53,8 @@ function buildSpaghettiSchedule() {
   return {
     data: {
       weekOffset: 0,
+      calendar: builders.deploymentCalendar() as any,
+      weekStartDate: '2026-05-04' as any,
       locked: false,
       status: 0,
       days,
@@ -98,7 +100,7 @@ test.describe('Cook Mode — HowToSection[] steps display', () => {
       name: 'Spaghetti with Toasted Garlic Bread',
     });
     await page.route(/\/(?:backend\/)?api\/stream/, async (route) => {
-      const connected = `event: connected\ndata: ${JSON.stringify({ type: 'connected', schedule: { weekOffset: 0, locked: false, status: 0, days: buildSpaghettiSchedule().data.days } })}\n\n`;
+      const connected = `event: connected\ndata: ${JSON.stringify({ type: 'connected', schedule: { weekOffset: 0, calendar: builders.deploymentCalendar() as any, weekStartDate: '2026-05-04' as any, locked: false, status: 0, days: buildSpaghettiSchedule().data.days } })}\n\n`;
       const slotUpdated = `event: slot_updated\ndata: ${JSON.stringify({ type: 'slot_updated', date: '2026-05-04', recipe: spaghettiRecipe, status: 0 })}\n\n`;
       await route.fulfill({
         status: 200,

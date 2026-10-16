@@ -29,6 +29,6 @@ boundary or make the selected behavior testable.
 
 ## 4. Core Design & UX Patterns
 - **Aesthetics First**: Every UI change must feel premium, using the established Solar Earth design tokens.
-- **Background work**: Keep the primary experience responsive while asynchronous
-  work proceeds. Navigation and status behavior live in the
-  [background-task navigation capability](../../openspec/specs/background-task-navigation/spec.md).
+- **Background work**: Keep the primary experience responsive and preserve navigation
+  while asynchronous work proceeds. Persisted workflow lifecycle and status behavior
+  are defined in the [background-processing capability](../../openspec/specs/background-processing/spec.md).

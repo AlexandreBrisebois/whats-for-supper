@@ -33,6 +33,7 @@ import { type VotingRequestBuilder, VotingRequestBuilderNavigationMetadata } fro
 import {
   type AdditionalDataHolder,
   type BaseRequestBuilder,
+  type DateOnly,
   type KeysToExcludeForNavigationMetadata,
   type NavigationMetadata,
   type Parsable,
@@ -117,7 +118,7 @@ export interface ScheduleRequestBuilder extends BaseRequestBuilder<ScheduleReque
    */
   byWeekOffset(weekOffset: number): WithWeekOffsetItemRequestBuilder;
   /**
-   * Get schedule for a week
+   * Returns seven Monday-through-Sunday dates and authoritative calendar context from one captured instant. Offsets use the explicit reference Monday when supplied, otherwise the deployment current Monday. The deployment timezone defaults to UTC.
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {Promise<ScheduleGetResponse>}
    */
@@ -126,7 +127,7 @@ export interface ScheduleRequestBuilder extends BaseRequestBuilder<ScheduleReque
       RequestConfiguration<ScheduleRequestBuilderGetQueryParameters> | undefined
   ): Promise<ScheduleGetResponse | undefined>;
   /**
-   * Get schedule for a week
+   * Returns seven Monday-through-Sunday dates and authoritative calendar context from one captured instant. Offsets use the explicit reference Monday when supplied, otherwise the deployment current Monday. The deployment timezone defaults to UTC.
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {RequestInformation}
    */
@@ -136,9 +137,13 @@ export interface ScheduleRequestBuilder extends BaseRequestBuilder<ScheduleReque
   ): RequestInformation;
 }
 /**
- * Get schedule for a week
+ * Returns seven Monday-through-Sunday dates and authoritative calendar context from one captured instant. Offsets use the explicit reference Monday when supplied, otherwise the deployment current Monday. The deployment timezone defaults to UTC.
  */
 export interface ScheduleRequestBuilderGetQueryParameters {
+  /**
+   * Explicit yyyy-MM-dd Monday anchoring weekOffset. Malformed or non-Monday values return 400 before work.
+   */
+  referenceWeekStartDate?: DateOnly;
   weekOffset?: number;
 }
 /**
@@ -162,7 +167,8 @@ export function serializeScheduleGetResponse(
 /**
  * Uri template for the request builder.
  */
-export const ScheduleRequestBuilderUriTemplate = '{+baseurl}/api/schedule{?weekOffset*}';
+export const ScheduleRequestBuilderUriTemplate =
+  '{+baseurl}/api/schedule{?referenceWeekStartDate*,weekOffset*}';
 /**
  * Metadata for all the navigation properties in the request builder.
  */

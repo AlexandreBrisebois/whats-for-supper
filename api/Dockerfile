@@ -13,6 +13,7 @@ FROM ubuntu:resolute AS extractor
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libgssapi-krb5-2 \
     fonts-dejavu-core \
+    tzdata \
     && rm -rf /var/lib/apt/lists/*
 
 # Robust architecture-agnostic library extraction for GSSAPI
@@ -29,6 +30,10 @@ RUN LIB_PATH=$(find /usr/lib -name "libgssapi_krb5.so.2" | head -n 1 | xargs dir
 RUN mkdir -p /rootfs/usr/share/fonts /rootfs/app/licenses/fonts && \
     cp -a /usr/share/fonts/truetype /rootfs/usr/share/fonts/ && \
     cp /usr/share/doc/fonts-dejavu-core/copyright /rootfs/app/licenses/fonts/DejaVu-copyright.txt
+
+# Deployment supper calendars need IANA rules in the chiseled runtime.
+RUN mkdir -p /rootfs/usr/share/zoneinfo && \
+    cp -a /usr/share/zoneinfo/. /rootfs/usr/share/zoneinfo/
 
 # PDFium's NuGet package omits the native third-party notices. Retain the
 # exact matching upstream binary-distribution bundles, verified by release digest.

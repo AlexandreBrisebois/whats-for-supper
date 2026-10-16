@@ -5,6 +5,7 @@
 import {
   type AdditionalDataHolder,
   type BaseRequestBuilder,
+  type DateOnly,
   type Parsable,
   type ParsableFactory,
   type ParseNode,
@@ -105,6 +106,10 @@ export interface LockRequestBuilder extends BaseRequestBuilder<LockRequestBuilde
  * Lock schedule for a week
  */
 export interface LockRequestBuilderPostQueryParameters {
+  /**
+   * Optional yyyy-MM-dd Monday anchoring all relative offsets and defer's next-week base. Omission captures the deployment current Monday (UTC by default). Literal source dates remain unchanged. Invalid or non-Monday references return 400 before work.
+   */
+  referenceWeekStartDate?: DateOnly;
   weekOffset?: number;
 }
 /**
@@ -150,7 +155,8 @@ export function serializeLockPostResponse_data(
 /**
  * Uri template for the request builder.
  */
-export const LockRequestBuilderUriTemplate = '{+baseurl}/api/schedule/lock{?weekOffset*}';
+export const LockRequestBuilderUriTemplate =
+  '{+baseurl}/api/schedule/lock{?referenceWeekStartDate*,weekOffset*}';
 /**
  * Metadata for all the requests in the request builder.
  */

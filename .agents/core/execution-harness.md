@@ -7,6 +7,17 @@ processes, ports or databases.
 
 ## Preparation and verification
 
+Use `task verify:plan -- <paths>` to preview the existing verification selection
+as JSON, including selecting paths/classes, prerequisites and excluded scope.
+With no paths it uses all current Git changes. It runs no checks, computes no
+runtime fingerprints and writes no evidence; it does not establish readiness or
+acceptance. Recompute after edits. Unknown impact retains the conservative union.
+
+For focused red/green feedback, `task test:api -- --filter <expression>` forwards
+arguments to the API test runner; `task test:unit -- <test-file>` forwards arguments
+to Vitest (paths relative to `pwa/`). `task test:e2e -- <spec-file>` already supports
+Playwright selection. A focused run does not replace applicable final verification.
+
 Before editing, inspect Git status and relevant diffs.
 Preserve unrelated changes and review overlapping edits
 manually; Git differences and explicit path selection do not prove edit ownership.
@@ -70,8 +81,20 @@ and still kills processes: inspect its effects and use dedicated resources.
 
 Finish captures input identity before verification and checks it after every check.
 Mutation fails content evidence and leaves remaining checks not-run. Application,
-contract, harness, unknown and default all-Git-change runs retain repository/runtime
-identity. Explicit paths containing only recognized documentation use bounded
+contract and unknown runs retain full repository/runtime identity. Harness-only
+runs (optionally including documentation) retain all repository source inputs but
+fingerprint the audited Python/PyYAML, Node/npm, Git, Task and shell toolchain;
+OpenSpec's installed package is included when `spec:check` is selected. They omit
+application `node_modules` and browser installations. The environment and dotenv
+inputs remain hashed; no persistent fingerprint cache is introduced. Only
+`documentation`, `test:agent` and `spec:check` qualify for this runtime scope.
+Mixed application changes, the opt-in `WFS_TEST_SQLDEF=1` Docker qualification and
+unrecognized runtime layouts retain the existing full fingerprint. Extend the
+runtime inventory when harness tests introduce real external dependencies.
+`checks.content.runtime_scope` records the actual choice and
+`runtime_scope_reason` explains discovery fallback. Runtime discovery failure
+after a check fails mutation evidence instead of switching scope mid-run.
+Explicit paths containing only recognized documentation use bounded
 identity: selected documents, whole selected active changes, their corresponding
 main specs, linked shared main specs, schema/configuration and verification tools.
 Link target existence and selected staged entries are also checked. This validates
@@ -89,6 +112,13 @@ use `task spec:check -- <name> --type change` (or `--type spec`).
 
 Each invocation writes its own `.task/agent-finish/runs/<id>.json`, reported as
 `record_path`. Cite that path for durable evidence during parallel work.
+Executed checks record `duration_seconds` and the following identity check's
+`identity_duration_seconds`. `checks.content.timing` separates initial/total
+identity time, identity call count, check time and total verification-loop time
+using a monotonic clock. Selection and record serialization are outside that total.
+Check time includes any fingerprinting internal to a child runner; these fields
+measure the outer verifier, not nested phases or model/token usage. Unexecuted
+checks have no duration. Timings are observations, not completion evidence.
 `.task/agent-finish/last-run.json` is an atomically updated convenience copy and can
 belong to another agent. Later edits to the tested inputs invalidate that identity
 and require new applicable verification. Record evidence-file updates as later
@@ -160,6 +190,13 @@ unrelated refactors, changed defaults, removed behavior and weakened tests can p
 broad checks. Resolve unexpected edits against authorization. Remove your own
 unnecessary edits while preserving pre-existing and concurrent work; never reset a
 whole dirty file to discard a task-local change.
+
+Review two questions explicitly, in proportion to the change: does the diff deliver
+the authorized behavior with appropriate acceptance evidence, and does its
+implementation preserve ownership, handle relevant failures and avoid unnecessary
+complexity or regressions? Report gaps in either dimension; a strong result in one
+does not compensate for a gap in the other. Use the existing scope review, without
+requiring separate reviewers or a new report.
 
 Report unresolved differences. Recheck scope if preparation, fixes or later edits
 change content. If
