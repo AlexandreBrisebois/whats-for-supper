@@ -1,0 +1,78 @@
+# Accepted deployment calendar and injected-time policy — bounded audit
+
+Read-only, 2026-10-16, HEAD `04a1c4570f9bbb01b47436790d4248635ac3179a`. No application, contract, test, configuration or spec edits. No runtime service started. Coordinator assigns stable WFS-BL ID; recommended **P1 investigation/implementation planning**, accepted policy with source-confirmed mismatch, runtime defect reproduction not-run.
+
+## Authority and required outcome
+
+The user explicitly decided that dates affecting UX (supper, Home, Planner) use the deployment-fixed local timezone; internal server timestamps remain UTC; time is always injected rather than direct wall-clock calls so tests and UX are deterministic. This overrides older baseline descriptions as desired policy without authorizing this lane to change those specs or implementation. Do not ask whether browser or UTC should own Today again. The timezone value/configuration transport is not established by this audit; no matching timezone setting was found in the inspected API/Compose/Synology seams. Do not assume Alex's personal timezone is the deployment value.
+
+The user separately clarified **Move to Tomorrow pushes the chain one day into following weeks as needed**, not merely next week. The current <14 same-week search window and <7 cross-week search/abort are insufficient for that expected behavior. This does not redefine Save for Next Week's placement policy.
+
+## Concrete P1 trigger and consequences
+
+Freeze instant `2026-10-12T01:30:00Z`; fixture deployment zone America/Toronto (Sunday October11 21:30), browser Tokyo (Monday October12), SSR UTC. Existing API GetWeekBounds uses UTC Monday October12, browser Today uses October12, deployment's intended supper date is October11. Even a Toronto browser reads the proper Sunday via todayStore's adjacent-week recovery, but assignment still posts week0/day6, targeting October18. Home Tomorrow sends source offset0/day6 with target offset1/day0: wrong week versus displayed Sunday. Overdue finalization sees server UTC October12 and can finalize October11 supper while it is still the deployment's Sunday evening. This is source-derived wrong-date risk; no live write was made.
+
+Impact spans tonight's recipe assignment, order-in/cooking validation, occupied destination movement, groceries, overdue Cooked state/LastCookedDate, family live updates and next-week navigation. A read-only adjacent-week workaround does not correct write targeting. No general workaround should be presented as safe; user can inspect explicit planner dates, but direct explicit-date actions still derive Today from the browser.
+
+## Exact source inventory
+
+| File/symbol | Current time source or conversion | Gap / distinction |
+| --- | --- | --- |
+| `api/src/RecipeApi/Services/IClock.cs:3–10`, IClock/SystemClock | UtcNow interface; SystemClock delegates DateTimeOffset.UtcNow | Existing injection seam is useful. Only composition-root clock adapter should access real time; banning wallclock in domain code does not remove the need for a production adapter. |
+| `api/src/RecipeApi/Program.cs:161` | AddSingleton<IClock,SystemClock> | DI installed. Keep UTC instant production/test providers; add shared deployment calendar projection rather than duplicate timezone logic. |
+| `ScheduleService.cs:12,18` constructor | optional IClock, fallback `new SystemClock()` | Caller can omit injection; make required dependency under accepted policy or document controlled composition-root alternative. No direct DateTime.Now in ScheduleService, so do not falsely report it as wholly un-injected. |
+| `ScheduleService.GetWeekBounds:935–940` and GetWeekOffset944–945 | DateOnly.FromDateTime(_clock.UtcNow.UtcDateTime) | Injected instant but WRONG policy projection: date/week derives UTC rather than deployment local date. Affects reads, assignments, moves, voting, locking, groceries and suggested weekdays using these helpers. |
+| `ScheduleService.DeferRecipeAsync:339` | nextWeekStart derived from UTC current date | Same first-available behavior may remain, but reference week must use deployment calendar. Separate from Tomorrow push-chain placement. |
+| `ScheduleService.FinalizeOverdueMealsAsync:396` | overdue cutoff UTC current date | Can mark same deployment-local day Cooked early. P1 consequence, shares clock policy with scheduled/manual/startup callers; injected invocation alone does not fix it. |
+| `ScheduleService.ValidateDayAsync:769,838` | LastCookedDate `_clock.UtcNow` | UTC timestamp fits policy and already injected; retain instant semantics for actual completion unless separately approved. |
+| `ScheduleService.RecalculateLastCookedDateAsync:419–431` | latest CalendarEvent.Date converted to midnight UTC | Not a direct clock read. Potential semantics decision: calendar-derived last-cooked anchor versus actual UTC completion instant. Do not automatically timezone-shift stored instants in a broad migration. |
+| `pwa/src/lib/imageUtils.ts:14–20` getTodayString | zero-argument new Date; local getFullYear/getMonth/getDate | Direct host/browser clock, implicit host timezone, no injected instant or deployment zone. Used by Home, stores, Planner, live stream. Extract date policy from image utility in eventual bounded implementation. |
+| `pwa/src/lib/server-date.ts:6–13` getServerTodayString | unvalidated date-prefix from wfs-test-date cookie else getTodayString | SSR uses server OS timezone; test cookie aligns some fixtures only, not deployment policy or injected-clock architecture. This audit does not claim security impact. |
+| `pwa/src/app/(app)/home/page.tsx:24–36` HomePage | fetch schedule offset0 then getServerTodayString, find exact date | Independent clocks/week projections; obtains date after request (possible boundary crossing). Needs consistent injected reference instant/calendar context. |
+| `pwa/src/components/TodayStoreInitializer.tsx:32–35` | compare server prop with getTodayString | Currently rejects server seed based on browser local day; accepted policy needs agreement on deployment day. Mount-only behavior does not guarantee midnight refresh. |
+| `pwa/src/store/todayStore.ts:171` assignRecipe | new Date().getDay, always week0 | Wrong write target even when sync read resolved adjacent UTC week; direct uninjected clock and browser zone. |
+| `todayStore.markCooked:200–207`, markOrderedIn224–229 | DateOnly.parse(getTodayString()) | Explicit date request still derived browser clock; cooking wrong-date match/false completion and ordered-in wrong slot possible. |
+| `todayStore.sync:238–253` | getTodayString; adjacent-week rescue using response range | Compensates browser/API date disagreement for reads only. Needs deployment calendar; no new timer automatically advances day. |
+| `todayStore:107,167,256,259,265,276,279,289,296,314` | Date.now for optimistic suppression and sync markers | Also uninjected time under accepted “always injected” policy. Separate duration/monotonic clock from calendar conversion; wall-clock changes can distort 20s/2s guards. Do not convert elapsed windows using timezone. |
+| `pwa/src/components/home/HomeCommandCenter.tsx:48` getMondayBasedDayIndex | new Date(explicit date + local midnight).getDay | Deterministic input parsing, NOT direct wallclock, but implicit local timezone civil-date semantics. Replace with calendar-safe operation if common policy requires it. |
+| `HomeCommandCenter.handleRecoveryAction:150–205,233` | getTodayString; Tomorrow offset0 browser weekday; nextWeek defer explicit browser sourceDate | User-visible dates conflict. Need injected operation context held stable across async multi-step action; separate handling of a deliberately new action after midnight. |
+| `HomeCommandCenter.tsx:481` QuickFind props | zero-arg new Date().getDay, offset0 | Suggestions and eventual assign may target wrong context. Must share Today calendar ownership, not independently reconstruct weekday. |
+| `pwa/src/store/weekStore.ts:218,243,252,281,293,317,433,443,449,503,545` | Date.now sync/optimistic windows | Inject elapsed/instant source for deterministic race tests; weekStore does not directly compute calendar day in these locations. |
+| `pwa/src/app/(app)/planner/page.tsx:297,335,403,432` | getTodayString checks for Today handoff and past week | Implicit browser-day policy; comparison to selected week0 can differ from API UTC week. |
+| Planner page512–513 and1065–1073 | parses explicit DateOnly strings; header/day use UTC fields but month toLocaleDateString no timeZone | Parsing is not current-time access. Existing month can disagree with day at month boundary in western zones. Preserve civil date display, use explicit calendar formatting; blindly converting UTC-midnight date to deployment zone produces previous day. |
+| `pwa/src/hooks/useScheduleStream.ts:73,91,112` | getTodayString before applying snapshot/slot/week to Today | Different browser zones apply different household Today entries; server connected snapshot is offset0 UTC. Shared live owner must adopt same deployment date. |
+| `pwa/src/app/(app)/recipes/page.tsx:50–61,345,360` | new Date() date eligibility/default target; local weekday for plan-later/tonight | Search handoff can choose a different day than Home/Planner; include consumer seam after shared policy. |
+| `pwa/src/app/(app)/browse-all-stack/page.tsx:485,507` | new Date().getDay | Browse plan-for-later/tonight has same consumer gap. |
+| `pwa/src/lib/planner/nonCooking.ts:15–21` formatSupperPlanDate | explicit date + noonZ formatted with timezone UTC | Pure civil-date formatter, NOT wallclock. It intentionally avoids host-zone conversion; can remain if date input is already authoritative deployment calendar date. Do not classify every `new Date(value)` as direct-clock violation. |
+
+Ancillary direct server timestamp uses observed while tracing: WorkflowController108 ScheduledAt=DateTimeOffset.UtcNow, HealthController55/69 now and next-occurrence checks, ManagementController162 cron validation. They are UTC correctly but not injected; route to background/operations owner, not bundle into first supper-date fix. This is bounded inventory, not a claim all repository wallclock calls were inventoried.
+
+## Main-spec conflicts requiring a later approved coordinated change
+
+Existing baselines intentionally documented current behavior. Accepted new policy requires explicit modifications, not silently treating historical scenarios as desired tests:
+
+- meal-planning `Return seven dates from the server UTC week`89–101, assignment UTC interpretation311, move843, defer963, voting1055, lock1103, overdue1195. `Find first-open placement after browser-local today`1025 and local Today handoffs667/739/935 must share deployment calendar.
+- tonight-meal-decisions `Seed Home only for the matching browser date`35, reconciliation49, Quick Find113, assignment129, order-in265/301, Tomorrow313, defer325.
+- cooking `Submit completion for the viewed recipe and current local date`281–291 explicitly says browser-local current date.
+- household-live-updates connected UTC week scenario67 and browser-local Today filtering179/391/426.
+- grocery-shopping receives affected week IDs/offsets from meal planning. Its aggregation/check policy need not be reimplemented; verify source/destination lists and check retention for correctly selected deployment weeks.
+- TM-U01, U99/U107/U109/U114/U121, MP-U04/06/11 and schedule/live references should link one stable calendar-policy backlog item rather than duplicate “timezone bugs.” Historical uncertainty is now partially resolved by explicit user decision; runtime conformity remains unresolved.
+
+## Proposed stable backlog item and first tracer
+
+Suggested title: **Use one injected deployment calendar for supper dates and week targeting**. Type: accepted-policy implementation gap / wrong-date investigation. Priority P1: common core actions near UTC/local boundary can select/complete wrong meal; magnitude includes a whole-week assignment error. Confidence high source path; runtime reproduced=no. Owner meal-planning with Tonight/cooking/live consumers. Dependencies: choose existing/new deployment timezone configuration authority and expose an approved calendar context to SSR/browser; exact zone value is configuration, not per-browser preference. Resolve contract shape before generated clients/mocks. Overlaps T1/T2/T4 ScheduleService/Home/todayStore, so do this before or coordinate with Tomorrow implementation; avoid parallel conflicting writers. No data migration is implied.
+
+First observable tracer, using fixture zone America/Toronto solely for testing:
+
+1. Inject frozen UTC instant `2026-10-12T01:30:00Z` into API and PWA test composition; server OS UTC, browser Tokyo, deployment Toronto. Seed distinct recipes on Oct11 and Oct18 and unique ingredient names. GET offset0 must represent deployment week Oct5–11. SSR Home, browser Home, Planner and incoming slot events must agree Tonight=Oct11 regardless host/browser zone.
+2. Select replacement for Oct11 through real client→approved contract→ScheduleService→PostgreSQL. Verify persisted Oct11 identity, Oct18 unchanged, correct grocery-week recomputation and second-client view. No paid models required. Read after write must assert recipe ID/date, not only label/counter.
+3. Freeze at `2026-10-12T03:59:59Z` (Toronto Oct11 23:59:59), then advance injected instant to04:00Z (Oct12 00:00). Verify a newly initiated action targets Oct12 and week Oct12–18. Define/preserve an in-flight action's captured date rather than recomputing midway; this is an implementation consistency choice requiring visible review, not permission to write the preceding day accidentally.
+4. Overdue processor at01:30Z must not finalize Oct11; after04:00Z Oct11 qualifies while Oct12 does not. Stored operation timestamps remain exact UTC instants. Inspect last-cooked history semantics separately from day cutoff.
+5. DST fixtures validated with Python zoneinfo: 2026-03-08 06:59:59Z=01:59:59 EST,07:00Z=03:00 EDT, same calendar day; 2026-11-01 05:30Z and06:30Z both01:30 local with different offsets, same date. Tomorrow uses calendar-day addition (not24 elapsed hours). Test one event per date/no duplicated or skipped date and deterministic elapsed guards across repeated hour.
+6. Tomorrow chain fixture: Sunday source plus consecutive occupied entries across at least **two following full weeks**, first gap later. Each affected recipe moves exactly one calendar day with identity preserved, every affected weekly plan/grocery list/live publication reconciled. This replaces arbitrary14-day/no-op logic. Save for Next Week keeps its distinct first-available policy while deriving reference week from the same deployment calendar.
+
+Meaningful current counter-evidence: todayStore.test.ts475+ already asserts fallback offset0→-1 and correct local Sunday non-cooking state; TodayStoreInitializer tests fake local23:30 and reject mismatched SSR date. These are useful read guards, but use fake global Date/mocked schedule and do not prove injected deployment calendar or safe write. Do not erase them before replacement regression proves the new contract.
+
+## Verification status
+
+Passed: targeted source/spec search and Python zoneinfo fixture conversion (7 instants). No new application tests run for this read-only policy audit. Earlier108 passing component tests belong to prior audit identity and do not qualify this proposed policy. Not-run: deterministic tracer API/browser/PostgreSQL/multi-client/DST integration. Not blocked: no environment attempt failed; prerequisites are explicit isolated fixture/config/schema identity. Not-applicable: implementation/TDD red-green, client generation, migrations, deployment. No new spec or source changes made.

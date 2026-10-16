@@ -231,6 +231,31 @@ A capability is baseline-complete only when its approved scope is accepted,
 promoted, mapped to evidence, and validated. Known excluded/uncertain behavior must
 remain visible. Do not mark the application itself fully tested or qualified.
 
+## Current cross-capability checkpoint — DBR-P01, 2026-10-16
+
+After R12, the user's “promote” accepts the six reviewed backup/recovery drafts and
+authorizes their documentation-only synchronization. The supported inventoried
+baseline now has all 17 main capabilities promoted, 633 requirements / 1,525
+scenarios, with no remaining supported generation or review/promotion queue.
+The [backup/recovery record](data-backup-and-recovery.md#dbr-p01--acceptance-and-promotion-2026-10-16)
+and [reconciliation checkpoint](reconciliation.md) preserve the exact scope.
+Historical R12 pending-review labels below remain provenance. A34, all exclusions
+and unresolved/qualification limits remain intact; no runtime acceptance, archival,
+implementation, staging or commit is inferred.
+
+## Historical cross-capability checkpoint — R12, 2026-10-16
+
+The user authorized all remaining documentation-only generation across the approved
+17 capabilities and phase-12 reconciliation in the attached request. That sequence
+supersedes the default one-slice-per-session limit for this run, without authorizing
+acceptance, promotion, archival, application changes or runtime qualification.
+The [phase-12 reconciliation](reconciliation.md) reconciles current checkpoints,
+main specs, active deltas, evidence identities, shared ownership and exclusions.
+It found no supported generation gap: 16 main capabilities were already promoted;
+six backup/recovery drafts remain ready for human review. Phase-12 generation review
+is reconciled; final human acceptance/promotion remains pending. Historical progress
+columns and A83/A84 remain provenance, not current status. A34 is unchanged.
+
 ## Validation and scope review
 
 Use [Taskfile.yml](../../Taskfile.yml) and the
@@ -254,7 +279,10 @@ Use [Taskfile.yml](../../Taskfile.yml) and the
   ```
 
   Prefer validating the selected change/spec during a slice; validate all at final
-  reconciliation. An empty spec inventory does not establish baseline acceptance.
+  repository reconciliation once concurrent generation is finished. An unrelated
+  agent's incomplete draft is a failed global check, not a defect in a validated
+  selected slice. Do not repair or complete that agent's draft merely to pass the
+  global check. An empty spec inventory does not establish baseline acceptance.
 - Before completion, review actual changed/new/deleted files. Run the bounded
   documentation verification with the complete task-owned path set, for example:
 
@@ -266,6 +294,12 @@ Use [Taskfile.yml](../../Taskfile.yml) and the
   user's unrelated deletion from task ownership; do not claim it was validated by
   an explicit path selection that excludes it. Inspect the generated verification
   record and report passed/failed/blocked/not-run/not-applicable accurately.
+  Explicit documentation-only verification scopes OpenSpec checks and input
+  identity to the selected artifacts and their validation dependencies; see the
+  execution harness for exact boundaries. Concurrent edits to a selected index or
+  shared owner still invalidate that run. Use its reported `record_path` under
+  `.task/agent-finish/runs/` rather than another agent's overwritten `last-run.json`.
+  A scoped pass does not replace the final global reconciliation.
 
 
 ## Shared recorded decisions

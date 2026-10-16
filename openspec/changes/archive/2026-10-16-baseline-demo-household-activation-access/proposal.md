@@ -1,0 +1,28 @@
+# Proposal
+
+## Why
+
+Extract demo activation and household access from current executable paths into reviewable brownfield requirements. Source support and inspected assertions are documented separately from runtime qualification.
+
+## What Changes
+
+- Draft only the evidenced demo-household behavior for this slice.
+- Reconcile BSL-demo-household-001, BSL-demo-household-002, BSL-demo-household-003, BSL-demo-household-004 in the [capability evidence plan](../../../../docs/openspec-baseline/demo-household.md).
+- Review in dependency order after none.
+- Retain these non-normative boundaries: No automatic login, production authentication qualification, configuration synchronization guarantee or device installation guarantee. API health and PWA runtime identity are distinct inputs.
+
+## Capabilities
+
+### New Capabilities
+
+- `demo-household`: Resettable showcase behavior, with this delta restricted to demo activation and household access. No main demo-household specification exists; the sibling deltas add distinct requirements to the same capability.
+
+### Modified Capabilities
+
+None. Existing household-identity and background-processing owners retain their shared rules; this delta describes demo-specific consequences.
+
+## Impact
+
+Documentation extraction only: proposal, demo-household delta, documentation tasks and capability evidence plan. Source/API/client/persistence/workflow/provider paths are read-only evidence, linked by the stable evidence IDs. No application, contract, test, configuration, dependency or SQL changes. No acceptance, promotion, sync, archival or runtime qualification; A34 remains deferred.
+
+Optional design.md is omitted under the installed schema's conditional rule: this extraction introduces no implementation, external dependency, model, migration or architectural decision. Existing cross-service behavior is traced in the evidence plan rather than redesigned.

@@ -16,6 +16,8 @@ That sentence records the earlier review state. The user's report of later autho
 
 Review/manual-resolution additions promoted under A76 from `baseline-recipe-quality-review-resolution`; BSL-recipe-quality-007–011 and U80–U83 in the durable plan retain the actual review labels, DELETE conflict-contract gap, loaded-parent freshness and unqualified retry/access/database boundaries. General search remains a dependency of the uncreated recipe-search capability. Promotion adds documentation only, without runtime qualification or archival.
 
+Remaining baseline additions accepted and promoted under RQ-P01 (2026-10-16) from `baseline-recipe-quality-cooking-feedback`, `baseline-recipe-quality-failure-references` and `baseline-recipe-quality-bulk-import-observation`. BSL-recipe-quality-017–019 and the completeness audit in the [capability plan](../../../docs/openspec-baseline/recipe-quality.md) record evidence and ownership. A34, U01, U75–U88 (including the U83 assertion correction), RQ-Q01–RQ-Q04 and all historical qualifications remain. Promotion establishes documentation acceptance, not runtime/database/clipboard/model qualification, execution, repair, cleanup, delivery or report resolution. The changes remain active and unarchived.
+
 ## Requirements
 
 ### Requirement: Offer reporting from loaded recipe detail
@@ -534,3 +536,107 @@ After accepted retry or clear persistence, a subsequent successful list read SHA
 #### Scenario: Work changes while Settings remains mounted
 - **WHEN** a retried workflow completes or fails again while the same Settings section remains mounted
 - **THEN** its existing local row and Retrying… acknowledgement are not automatically reconciled with that outcome
+
+### Requirement: Merge contextual issue reasons with loaded saved feedback
+
+When opened with a contextual reason, the shared issue form SHALL initialize with the saved issue reasons and note and add that reason only if absent. Context initialization SHALL NOT discard a saved Duplicate reason. Subsequent reason toggling and server manual-only Duplicate policy SHALL retain their existing recipe-quality meanings. Cooking entry, return and acknowledgement SHALL remain cooking-owned.
+
+#### Scenario: Initialize a new contextual report
+- **WHEN** the form opens without a saved issue and with Ingredients context
+- **THEN** Ingredients is selected and the note starts empty
+
+#### Scenario: Extend saved content feedback
+- **WHEN** the form opens with saved Ingredients feedback and a note using Steps context
+- **THEN** Ingredients and Steps are selected once each and the saved note remains
+
+#### Scenario: Context overlaps a saved Duplicate reason
+- **WHEN** the form opens with saved Duplicate feedback and Steps context
+- **THEN** Duplicate and Steps initialize together, and an unchanged submission remains subject to the existing manual-only Duplicate policy
+
+### Requirement: Offer failure reference copy controls when identifiers are returned
+
+When the issue form receives both re-import failure guidance and a failed import ID, it SHALL offer Copy import ID and, when supplied, Copy recipe ID. Without both guidance and failed import ID it SHALL omit these controls. The controls SHALL use returned identifiers, without inferring that the attempt repaired the recipe or resolved its report.
+
+#### Scenario: Both references are available
+- **WHEN** the mounted issue form receives failure guidance, a failed import ID and a recipe ID
+- **THEN** Copy import ID and Copy recipe ID are available
+
+#### Scenario: Only the failed import reference is available
+- **WHEN** the form receives failure guidance and failed import ID without a recipe ID
+- **THEN** Copy import ID is available and Copy recipe ID is absent
+
+#### Scenario: Failure guidance or import reference is absent
+- **WHEN** the form lacks either failure guidance or a failed import ID
+- **THEN** neither reference-copy control is shown
+
+### Requirement: Acknowledge successful failure reference copying
+
+Activating a failure reference control SHALL request clipboard writing of its corresponding identifier. After that request succeeds while the form remains mounted, the selected control SHALL display Copied and schedule its acknowledgement to clear after 1500 milliseconds. This SHALL NOT save feedback, resolve a report or retry an import.
+
+#### Scenario: Copy a recipe reference successfully
+- **WHEN** Copy recipe ID is activated and its clipboard write succeeds
+- **THEN** the supplied recipe ID has been passed to clipboard writing and that control displays Copied with timed reset scheduled
+
+#### Scenario: Copy an import reference successfully
+- **WHEN** Copy import ID is activated and its clipboard write succeeds
+- **THEN** the supplied failed import ID has been passed to clipboard writing and that control displays Copied with timed reset scheduled
+
+### Requirement: Select unnamed stored recipes for bulk import requests
+
+POST `/api/recipes/imports/bulk` SHALL select nondeleted recipes whose name is null and request a recipe-import workflow for each selected identity. A nonnull name, including an empty name, SHALL exclude a recipe. Selection SHALL NOT require a saved issue, failed task or eligible contextual feedback. Shared household authentication SHALL retain household-identity ownership.
+
+#### Scenario: Select unnamed recipes
+- **WHEN** bulk import is requested with two nondeleted recipes whose names are null and orchestration succeeds
+- **THEN** one recipe-import request is made for each selected recipe with its recipe identity
+
+#### Scenario: Exclude named or deleted records
+- **WHEN** stored recipes have nonnull names or have been soft-deleted
+- **THEN** those recipes are excluded from bulk selection
+
+#### Scenario: An unnamed recipe already has work
+- **WHEN** an unnamed nondeleted recipe has an existing workflow and bulk import is requested again
+- **THEN** that existing workflow does not exclude it from another import request
+
+### Requirement: Return accepted bulk workflow identities without certifying repair
+
+After all selected bulk import requests return successfully, the API SHALL return unwrapped 202 with queuedCount equal to the number of returned workflow identities and instanceIds containing those identities. An empty selection SHALL return zero and an empty list. This acknowledgement SHALL NOT certify worker execution, recipe readiness, corrected content or report resolution.
+
+#### Scenario: Nonempty bulk acceptance
+- **WHEN** every selected recipe's workflow trigger returns successfully
+- **THEN** the response is 202 with queuedCount matching instanceIds and the returned identities describe workflows rather than recipe IDs
+
+#### Scenario: No eligible unnamed records
+- **WHEN** bulk selection is empty
+- **THEN** the response is 202 with queuedCount zero and instanceIds empty
+
+### Requirement: Count stored recipe-import workflows in the import summary
+
+GET `/api/recipes/import-status` SHALL return unwrapped 200 with importedCount counting Completed recipe-import instances, queueCount counting Pending plus Processing recipe-import instances and failedCount counting Failed recipe-import instances. It SHALL count workflow instances rather than recipes or reports and SHALL exclude other workflow types and Paused instances from these counts.
+
+#### Scenario: Count stored import states
+- **WHEN** recipe-import instances exist in Completed, Pending, Processing, Failed and Paused states
+- **THEN** the first four contribute to their specified counters and Paused contributes to none
+
+#### Scenario: Other workflow types exist
+- **WHEN** url-import or other workflow types have stored states
+- **THEN** they contribute to none of these import-summary counters
+
+#### Scenario: No counted instances exist
+- **WHEN** no recipe-import instances occupy a counted state
+- **THEN** all three counters are zero
+
+### Requirement: Restrict import identity reads to attributed recipe context
+
+GET `/api/recipe-imports/{importId}` SHALL require bindable existing member context and an existing nondeleted recipe identified by the workflow's recipeId parameter with matching added-by attribution. A permitted read SHALL return unwrapped 200 with stored workflow detail. Missing or inaccessible imports SHALL return 404. Shared identity transport and background-processing stored-state meanings SHALL retain their existing ownership.
+
+#### Scenario: Read an attributed import
+- **WHEN** an existing member requests an existing import whose recipeId names that member's nondeleted recipe
+- **THEN** the API returns 200 with that stored instance's identity, status and workflow detail
+
+#### Scenario: Another known member requests the import
+- **WHEN** a known member requests an import whose associated recipe was added by another member
+- **THEN** the API returns 404 rather than that workflow detail
+
+#### Scenario: Import or recipe context is absent
+- **WHEN** the import is absent or its recipeId does not identify an accessible nondeleted recipe
+- **THEN** the API returns 404 without successful import detail

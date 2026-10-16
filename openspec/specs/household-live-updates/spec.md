@@ -225,3 +225,227 @@ Publication SHALL attempt named frames only for responses registered in the curr
 #### Scenario: Registered response fails during output
 - **WHEN** a registered response throws inside broadcast write or flush handling
 - **THEN** that registration is removed during the broadcast and other reachable healthy responses remain eligible
+
+### Requirement: Forward received vote totals to existing consumers
+
+A parsed `vote_updated` event SHALL offer its recipe identity and vote count first to the displayed-week consumer and then to Discovery, provided preceding steps return. Matching loaded planner recipes SHALL receive that recipe vote count without creating missing entries. Discovery SHALL receive the same update for its own interest and ranking policy; vote meaning remains owned by recipe discovery.
+
+#### Scenario: Loaded recipe receives a total
+- **WHEN** a vote event identifies a recipe in the displayed schedule
+- **THEN** matching planner recipe objects receive the count and Discovery is offered the same identity and count
+
+#### Scenario: Planner has no matching recipe
+- **WHEN** no displayed planner recipe matches the event identity
+- **THEN** planner content remains unchanged and Discovery is still offered the update without inserting a planner recipe
+
+### Requirement: Filter received smart defaults by their nested week
+
+A parsed `smart_defaults_updated` event SHALL offer its defaults for application only when `defaults.weekOffset` strictly equals the loaded week offset. A different or absent nested offset SHALL leave the displayed schedule unchanged through this handler. The outer event offset SHALL NOT override this gate.
+
+#### Scenario: Nested week matches
+- **WHEN** defaults identify the loaded week offset
+- **THEN** those defaults are offered for pending-slot reconciliation
+
+#### Scenario: Outer and nested offsets differ
+- **WHEN** the outer event identifies the loaded week but its defaults identify another week
+- **THEN** the handler ignores those defaults
+
+#### Scenario: Nested offset is absent
+- **WHEN** the event has no nested defaults week offset
+- **THEN** it does not pass this handler's week gate even when the loaded week is zero
+
+### Requirement: Reconcile received suggestions without replacing occupied slots
+
+Eligible smart defaults SHALL fill empty or pending displayed slots by day index, retaining supplied recipe display data and pending vote metadata. Persisted recipe slots and status-three non-cooking slots SHALL remain unchanged. A pending slot absent from the new defaults SHALL clear its suggestion and pending vote metadata. This consequence SHALL NOT assign a recipe on the server or define consensus eligibility.
+
+#### Scenario: Suggestion replaces an eligible slot
+- **WHEN** eligible defaults contain a preselected recipe for an empty or pending day index
+- **THEN** that slot contains the suggestion with pending marker and supplied vote metadata
+
+#### Scenario: Persisted or non-cooking slot is occupied
+- **WHEN** eligible defaults address a persisted recipe slot or status-three non-cooking slot
+- **THEN** that slot remains unchanged
+
+#### Scenario: Suggestion is withdrawn
+- **WHEN** a previously pending slot has no preselected entry in eligible new defaults
+- **THEN** its recipe clears, pending becomes false and its pending vote and unanimous metadata become null
+
+### Requirement: Attempt invalidation at supported schedule publication boundaries
+
+The server SHALL attempt `fill_the_gap_invalidated` for the affected week after assignment or removal of an existing dated entry reaches its preceding week-publication boundary successfully. The unscheduled-cooking validation branch SHALL attempt this invalidation after saving cooking history. An available request connection exclusion SHALL be forwarded; invalidation SHALL NOT imply refreshed candidate data.
+
+#### Scenario: Assignment or removal reaches invalidation
+- **WHEN** the supported operation completes its preceding persistence, recomputation and week-publication call
+- **THEN** a fill-the-gap invalidation is attempted with the affected week offset and supplied exclusion
+
+#### Scenario: Cooking history changes without matching scheduled recipe
+- **WHEN** the unscheduled-cooking validation branch saves the recipe's cooking history and reaches publication
+- **THEN** it attempts a fill-the-gap invalidation for the date's week without a slot update from that branch
+
+### Requirement: Signal candidate freshness separately from fetching results
+
+A parsed `fill_the_gap_invalidated` event SHALL advance the shared Discovery invalidation generation and the generation for its supplied week, then invalidate Search promotion data if preceding steps return. Other week-specific generations SHALL remain unchanged. These signals SHALL NOT by themselves supply results, rerun server eligibility policy or establish a successful refresh.
+
+#### Scenario: Invalidate one week's candidates
+- **WHEN** a parsed invalidation identifies week one
+- **THEN** the global generation and week-one generation advance, other week generations remain and Search promotion data is invalidated
+
+#### Scenario: Matching Quick Find is ready
+- **WHEN** a mounted Quick Find has completed initial fetching and observes a newer generation for its week
+- **THEN** it attempts another suggestion fetch for that week without a successful-result guarantee
+
+#### Scenario: Other week's Quick Find observes unchanged generation
+- **WHEN** an invalidation changes only another week's generation
+- **THEN** that invalidation does not trigger the modal's week-generation refresh effect
+
+### Requirement: Attempt publication of saved vote consequences
+
+After a submitted vote saves and its resulting like count is read successfully, the server SHALL attempt a vote update with recipe identity and count. When discovery's smart-default recalculation boundary is reached and defaults retrieval succeeds, it SHALL attempt a smart-default update for week zero. These event attempts SHALL NOT define vote eligibility, guarantee a threshold transition or establish consumer receipt.
+
+#### Scenario: Saved vote reaches publication
+- **WHEN** vote persistence and resulting like-count retrieval succeed and publication is reached
+- **THEN** a vote update is attempted with that recipe identity and count without a request connection exclusion
+
+#### Scenario: Discovery recalculation reaches publication
+- **WHEN** discovery selects its recalculation boundary and week-zero defaults retrieval succeeds
+- **THEN** a smart-default update is attempted carrying outer week zero and those defaults without a request connection exclusion
+
+### Requirement: Attempt grocery check-map publication at supported saves
+
+After a full grocery-state update or single-item toggle saves successfully and reaches publication, the server SHALL attempt `grocery_updated` with its week offset and resulting check map, forwarding an available request exclusion. Grocery recomputation SHALL attempt this event only when its check-state transition changed the map and a publisher is available. Publication SHALL NOT imply browser application.
+
+#### Scenario: Grocery mutation reaches publication
+- **WHEN** a full map update or single-item toggle completes its save and reaches publication
+- **THEN** the event attempt carries the affected week and resulting complete check map with the supplied exclusion
+
+#### Scenario: Recompute changes check state
+- **WHEN** recomputation saves a changed check map and has a publisher
+- **THEN** it attempts a grocery update for that week without a request exclusion
+
+#### Scenario: Recompute has no check-state transition
+- **WHEN** recomputation does not change its check map
+- **THEN** it does not publish a grocery event from that recomputation path merely because grocery line items were recalculated
+
+### Requirement: Replace received grocery checks only for the loaded week
+
+A parsed `grocery_updated` event SHALL replace the loaded grocery check map with its supplied dictionary only when its week offset strictly equals the displayed week's loaded offset. A different or absent offset SHALL leave that map unchanged. This event SHALL NOT itself replace grocery line items, change the displayed week or use the snapshot additional-data wrapper.
+
+#### Scenario: Matching week replaces checks
+- **WHEN** a grocery event identifies the loaded week and supplies a valid check dictionary
+- **THEN** that dictionary replaces the loaded check map, including removal of prior keys absent from the event, while line items remain unchanged
+
+#### Scenario: Another or missing week
+- **WHEN** a grocery event identifies another week or omits its week offset
+- **THEN** the loaded check map remains unchanged through this handler
+
+### Requirement: Forward ready hints beyond pending capture tracking
+
+After parsing `recipe_ready` and completing any matching capture dispatch, the browser SHALL record the recipe identity in its session ready-hint set even when no pending capture matches. Repeated identities SHALL remain a single set membership. This hint SHALL NOT itself persist recipe readiness or replay missed notifications; capture presentation remains with “Inline transition to ready status upon completion” in recipe-capture.
+
+#### Scenario: No capture is pending
+- **WHEN** a parsed ready event has no matching pending capture and handler steps return
+- **THEN** the session ready set contains its identity without adding a capture notification
+
+#### Scenario: Ready identity repeats
+- **WHEN** the same ready identity is handled again and handler steps return
+- **THEN** it remains one set membership without establishing exactly-once transport
+
+### Requirement: Preserve available lifecycle context at the capture handoff
+
+When a parsed lifecycle event matches pending capture tracking, shared dispatch SHALL forward available event context to the existing capture notification consumer. Ready context includes identity, display name and image; failure context includes recipe and workflow identities, diagnostics and partial data. Capture SHALL retain ownership of “Persistent failure banner on workflow failure”; forwarding context SHALL NOT expose raw diagnostics as user guidance.
+
+#### Scenario: Ready context reaches the journey
+- **WHEN** a ready event matches pending capture tracking
+- **THEN** dispatch removes that pending identity and appends ready context using event name, then pending name, then identity as nullish fallbacks, with the supplied image
+
+#### Scenario: Failure context reaches the journey
+- **WHEN** a failed event matches pending capture tracking
+- **THEN** dispatch removes that pending identity and appends failure context with workflow identity, error, failed step and partial data, using partial name, pending name and identity as nullish name fallbacks
+
+#### Scenario: Failure has no pending match
+- **WHEN** a failed event has no matching pending capture
+- **THEN** this handler adds no capture notification and does not mark the identity ready
+
+### Requirement: Attempt incremental schedule publication after supported saves
+
+After a supported schedule mutation reaches its publication boundary, the server SHALL attempt its named slot or week update with the saved date or reread schedule. An available request connection exclusion SHALL be passed to publication. Saved state SHALL NOT by itself imply emitted bytes, browser receipt or applied consumer state.
+
+#### Scenario: Week mutation reaches publication
+- **WHEN** opening voting, locking, assignment, removal of an existing entry or a same-week move completes its preceding save and required reads or recomputation
+- **THEN** publication is attempted with a reread schedule for that operation's week
+
+#### Scenario: Defer reaches both publication boundaries
+- **WHEN** a defer operation completes its preceding saves and recomputation and both publication calls are reached
+- **THEN** snapshots are attempted for each distinct source and destination week with the supplied exclusion and optional move sequence
+
+#### Scenario: Overdue finalization reaches publication
+- **WHEN** overdue finalization saves changes and reads an affected week's schedule successfully
+- **THEN** a week update is attempted for that week without a request exclusion identity
+
+#### Scenario: Slot validation reaches publication
+- **WHEN** validation saves a changed scheduled entry or creates a recipe-free skipped entry and reaches publication
+- **THEN** a slot update is attempted with its ISO date, recipe or null, status and available non-cooking metadata
+
+### Requirement: Dispatch received slot updates by date
+
+On successful parsing and completion of preceding handler steps, a received `slot_updated` event SHALL offer recipe, status and non-cooking data to Today only for the browser-local current date, then offer the dated update to the displayed week and invalidate Search promotion data. Today's accepted recent optimistic recipe guard SHALL still apply.
+
+#### Scenario: Slot date is today
+- **WHEN** a parsed slot event identifies the browser-local current date
+- **THEN** Today is offered the payload before displayed-week reconciliation and Search invalidation
+
+#### Scenario: Slot date is another day
+- **WHEN** a parsed slot event identifies another date
+- **THEN** Today is left untouched by this handler while the dated update is still offered to the displayed week and Search is invalidated
+
+### Requirement: Apply slot changes only to loaded dates
+
+A received slot update SHALL replace recipe and status only on matching dates already in the loaded displayed schedule. A null recipe SHALL clear that date's recipe; non-cooking metadata SHALL remain only for status three, and the pending marker SHALL clear. Empty or unmatched schedules SHALL retain their days.
+
+#### Scenario: Matching loaded date
+- **WHEN** a slot event matches a loaded date
+- **THEN** that date receives recipe and status, applicable non-cooking data and a cleared pending marker while other dates remain unchanged
+
+#### Scenario: Matching date clears a recipe
+- **WHEN** a matching slot event supplies a null recipe and ordinary status
+- **THEN** that date's recipe and non-cooking metadata clear
+
+#### Scenario: No loaded match
+- **WHEN** the displayed schedule is empty or contains no matching date
+- **THEN** its days remain unchanged without inserting or queuing the slot
+
+### Requirement: Dispatch week updates through existing snapshot guards
+
+A parsed `week_updated` event SHALL pass its schedule and optional echo sequence to displayed-week reconciliation, invalidate Search promotion data and then offer its local-current-date entry to Today if present, provided preceding steps return. Accepted snapshot merge, adjunct and Today guards SHALL apply; a displayed-week rejection SHALL NOT itself suppress the independent Today offer.
+
+#### Scenario: Ordinary matching week update
+- **WHEN** a received week event has no echo sequence and matches the loaded offset
+- **THEN** its snapshot uses the accepted displayed-week merge or deferral rules and Search is invalidated
+
+#### Scenario: Another week includes today
+- **WHEN** a week event without an echo identifies another displayed offset but contains the browser-local current date
+- **THEN** the displayed week ignores it while Search is invalidated and Today is still offered that entry
+
+#### Scenario: Week omits today
+- **WHEN** a parsed week event contains no local-current-date entry and displayed-week reconciliation returns
+- **THEN** Search is invalidated and Today remains untouched through this handler
+
+### Requirement: Consume move echoes as confirmation before offset filtering
+
+A received week snapshot with an echo sequence SHALL advance confirmed move sequence to the maximum of its current value and the echo, then skip that supplied snapshot before week-offset filtering. If a deferred snapshot exists with no active drag and equal local and confirmed sequences, it SHALL be cleared and reconciled using the accepted snapshot rules. Confirmation SHALL NOT imply all stores applied the echo payload.
+
+#### Scenario: Echo supplies another offset
+- **WHEN** a week event includes echo sequence five while confirmed sequence is three, regardless of its snapshot offset
+- **THEN** confirmed sequence becomes five and that supplied snapshot is skipped by displayed-week reconciliation
+
+#### Scenario: Older echo arrives
+- **WHEN** an echo sequence is lower than the confirmed sequence
+- **THEN** confirmed sequence does not decrease and the supplied snapshot remains skipped
+
+#### Scenario: Deferred snapshot becomes eligible after echo
+- **WHEN** an echo leaves local and confirmed sequences equal, no drag is active and a deferred snapshot exists
+- **THEN** the deferred snapshot is cleared from its slot and offered again to ordinary snapshot reconciliation
+
+#### Scenario: Drag or sequence mismatch remains
+- **WHEN** an echo leaves a drag active or local and confirmed sequences unequal
+- **THEN** the deferred snapshot is retained without release by this echo path

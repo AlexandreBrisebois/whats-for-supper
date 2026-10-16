@@ -4,13 +4,16 @@ from __future__ import annotations
 
 import argparse
 import ast
+import hashlib
 import json
 import os
 from pathlib import Path
 import re
+import shutil
 import signal
 import subprocess
 import sys
+import uuid
 
 import test_ops
 import worktree
@@ -155,6 +158,94 @@ def identity():
     return test_ops.build_impact_digest(ROOT, test_ops.get_changed_files(), [])
 
 
+def documentation_spec_targets(paths):
+    """Resolve only local, active spec/change names; retain explicit item types."""
+    targets = set()
+    for name in paths:
+        parts = Path(name).parts
+        if parts[:2] == ('openspec', 'changes') and len(parts) >= 4:
+            if parts[2] == 'archive' or not re.fullmatch(r'[a-z0-9]+(?:-[a-z0-9]+)*', parts[2]):
+                return None
+            targets.add((parts[2], 'change'))
+        elif parts[:2] == ('openspec', 'specs') and name.endswith('/spec.md'):
+            capability = '/'.join(parts[2:-1])
+            if not re.fullmatch(r'[a-z0-9-]+(?:/[a-z0-9-]+)*', capability):
+                return None
+            targets.add((capability, 'spec'))
+    return sorted(targets)
+
+
+def can_scope_documentation(paths):
+    return bool(paths) and classes_for(paths) == {'documentation'} and documentation_spec_targets(paths) is not None
+
+
+def documentation_inputs(paths):
+    """Inputs to bounded link/grammar checks, not application qualification."""
+    inputs = set(paths) | {'Taskfile.yml', '.gitignore', 'openspec/config.yaml',
+                           'openspec/config.yml', 'scripts/agent/finish.py',
+                           'scripts/agent/test_ops.py', 'scripts/agent/worktree.py'}
+    directories = {ROOT / 'openspec/schemas'}
+    for name, kind in documentation_spec_targets(paths):
+        directory = ROOT / 'openspec' / ('changes' if kind == 'change' else 'specs') / name
+        directories.add(directory)
+        if kind == 'change':
+            for delta in (directory / 'specs').rglob('spec.md'):
+                inputs.add('openspec/specs/' + str(delta.relative_to(directory / 'specs')))
+    for directory in directories:
+        inputs.update(str(p.relative_to(ROOT)) for p in directory.rglob('*') if p.is_file() or p.is_symlink())
+    # The link check observes existence. Shared main-spec links also identify
+    # policy dependencies; do not pull an index's unrelated draft plans into scope.
+    links = {}
+    pending = list(inputs)
+    visited = set()
+    while pending:
+        name = pending.pop()
+        path = ROOT / name
+        if name in visited or path.suffix != '.md' or not path.is_file():
+            continue
+        visited.add(name)
+        for link in re.findall(r'\]\(([^)\s]+)\)', path.read_text()):
+            if '://' in link or link.startswith(('#', '/')):
+                continue
+            target = (path.parent / link.split('#')[0]).resolve()
+            links[str(target)] = target.exists()
+            if target.is_relative_to(ROOT.resolve() / 'openspec/specs'):
+                relative = str(target.relative_to(ROOT.resolve()))
+                if relative not in inputs:
+                    inputs.add(relative)
+                    pending.append(relative)
+    return sorted(inputs), links
+
+
+def documentation_identity(paths):
+    inputs, links = documentation_inputs(paths)
+    # Retain tooling/environment sensitivity without hashing unrelated app code
+    # and installed browser/application dependencies for link/grammar checks.
+    digest = hashlib.sha256(json.dumps(dict(os.environ), sort_keys=True).encode())
+    digest.update(sys.version.encode())
+    for tool in (sys.executable, shutil.which('task'), shutil.which('node'), shutil.which('openspec')):
+        if tool:
+            executable = Path(tool).resolve()
+            digest.update(json.dumps([str(executable), worktree.fingerprint(executable)], sort_keys=True).encode())
+    for name in inputs:
+        digest.update(json.dumps([name, worktree.fingerprint(ROOT / name)], sort_keys=True).encode())
+    digest.update(json.dumps(links, sort_keys=True).encode())
+    # HEAD supplies link baselines; selected index entries supply staged whitespace.
+    for command in (['git', 'rev-parse', '--verify', 'HEAD'],
+                    ['git', 'ls-files', '--stage', '-z', '--', *inputs]):
+        result = subprocess.run(command, cwd=ROOT, capture_output=True)
+        digest.update(str(result.returncode).encode() + result.stdout)
+    return digest.hexdigest()
+
+
+def documentation_spec_check(paths):
+    results = [(name, kind, *run_command(['task', 'spec:check', '--', name, '--type', kind]))
+               for name, kind in documentation_spec_targets(paths)]
+    status = 'failed' if any(r[2] == 'failed' for r in results) else (
+        'blocked' if any(r[2] == 'blocked' for r in results) else 'passed')
+    return status, json.dumps(results) + '; selected artifacts only; no repository-wide reconciliation claim'
+
+
 def run_command(command, timeout=1200, cwd=None):
     """Own just this process group; stop/reap on timeout or interruption, no retry."""
     try:
@@ -246,15 +337,19 @@ def run_check(check, paths=()):
     return run_command(['task', check])
 
 
-def verify(checks, paths=()):
-    tested = identity()
+def verify(checks, paths=(), *, scoped_documentation=False):
+    current_identity = (lambda: documentation_identity(paths)) if scoped_documentation else identity
+    tested = current_identity()
     results = {check: {'status': 'not-run' if check in checks else 'not-applicable'}
                for check in CHECKS}
     results['content'] = {'status': 'passed', 'tested_identity': tested}
+    if scoped_documentation:
+        results['content'].update(scope='selected-documentation', input_paths=documentation_inputs(paths)[0])
     for check in checks:
-        status, detail = run_check(check, paths)
+        status, detail = (documentation_spec_check(paths) if scoped_documentation and check == 'spec:check'
+                          else run_check(check, paths))
         results[check] = {'status': status, 'detail': detail, 'tested_identity': tested}
-        if identity() != tested:
+        if current_identity() != tested:
             results['content']['status'] = 'failed'
             results['content']['detail'] = 'Mutation during verification; no success for final content.'
             break
@@ -325,16 +420,26 @@ def main():
     selected = checks_for(paths)
     print('Change classes: ' + ', '.join(sorted(classes_for(paths))), flush=True)
     print('Checks: ' + ', '.join(selected), flush=True)
-    results = verify(selected, paths)
+    scoped = bool(args.paths) and can_scope_documentation(paths)
+    results = verify(selected, paths, scoped_documentation=True) if scoped else verify(selected, paths)
     record = {'changed_paths': paths, 'selection': 'explicit' if args.paths else 'all-git-changes',
               'excluded_paths': sorted(set(changed) - set(paths)),
               'checks': results, 'automated_checks_passed': bool(selected) and all(
         value['status'] in ('passed', 'not-applicable') for value in results.values())}
     record['task_acceptance'] = 'not-evaluated: reconcile selected task/fixture/host evidence separately'
-    # .task is ignored output, never part of the tested input. Never cache finish.
+    record['verification_scope'] = 'selected-documentation' if scoped else 'repository'
+    # Preserve every invocation; publish the convenience pointer atomically.
+    run_id = uuid.uuid4().hex
+    record['record_path'] = f'.task/agent-finish/runs/{run_id}.json'
+    run_output = ROOT / record['record_path']
+    run_output.parent.mkdir(parents=True, exist_ok=True)
+    encoded = json.dumps(record, indent=2) + '\n'
+    with run_output.open('x') as output_file:
+        output_file.write(encoded)
     output = ROOT / '.task/agent-finish/last-run.json'
-    output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(json.dumps(record, indent=2) + '\n')
+    temporary = output.with_name(f'.{run_id}.tmp')
+    temporary.write_text(encoded)
+    os.replace(temporary, output)
     print(json.dumps(record, indent=2))
     if record['automated_checks_passed']:
         return 0

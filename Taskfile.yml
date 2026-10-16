@@ -12,7 +12,7 @@ shopt: [globstar]
 
 vars:
   PYTHON: '{{.ROOT_DIR}}/.venv/bin/python'
-  OPENSPEC_VERSION: '1.14.1'
+  OPENSPEC_VERSION: '1.14.2'
   API_PORT: '5050'
   PWA_PORT: '3000'
   DB_PORT: '5432'
@@ -1079,12 +1079,12 @@ tasks:
   # ============================================================================
 
   spec:check:
-    desc: "Validate OpenSpec changes and capability specs with the pinned CLI"
+    desc: "Validate all OpenSpec artifacts, or a selected name/type via CLI args, with the pinned CLI"
     preconditions:
       - sh: 'test "$(openspec --version)" = "{{.OPENSPEC_VERSION}}"'
         msg: 'OpenSpec {{.OPENSPEC_VERSION}} is required. Install with npm install --global @fission-ai/openspec@{{.OPENSPEC_VERSION}}.'
     cmds:
-      - openspec validate --all --strict --no-interactive
+      - openspec validate {{.CLI_ARGS | default "--all"}} --strict --no-interactive
 
   spec:search:
     desc: "Search specification documents before creating or revising a spec"

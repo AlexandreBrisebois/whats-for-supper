@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Capture recipes from external web links into the household library. This capability covers link URL entry, validation, background extraction, and initial library readiness.
+Capture recipes from photos, web links, descriptions and feature-enabled PDFs into the household library. This capability covers source entry and shared-link review, validation and metadata, intake acceptance, background extraction, initial readiness feedback, duplicate advice and configured processing-language requests.
 
 ## Requirements
 
@@ -40,54 +40,69 @@ When a link URL is entered in the review form, the client SHALL check for existi
 
 ### Requirement: Validate and submit recipe link for acquisition
 
-When Save Recipe is activated with a non-empty link, the client SHALL submit POST `/api/recipes/capture-url` with the trimmed URL, optional notes, and rating. The API SHALL require an authorized household member context and return 202 Accepted with the queued recipe ID.
+When Save Recipe is activated with a non-empty link, the client SHALL submit POST `/api/recipes/capture-url` with the trimmed URL, optional notes, and rating. Under the household-identity access and member-binding rules, the API SHALL reject absent bindable member context and return 202 Accepted with the persisted recipe ID after successful initial persistence. Acceptance SHALL NOT certify workflow delivery.
 
 #### Scenario: Submit valid recipe link
 - **WHEN** a person activates Save Recipe with a valid URL, optional notes, and selected rating
 - **THEN** the client sends POST `/api/recipes/capture-url` with the payload and member header
-- **AND** the API creates an initial recipe record, triggers the acquisition workflow, and returns 202 Accepted with the recipe ID
+- **AND** the API creates an initial recipe record, requests acquisition workflow dispatch, and returns 202 Accepted with the recipe ID
 
 #### Scenario: Save disabled when URL is empty
 - **WHEN** the link input is empty or contains only whitespace
 - **THEN** the Save Recipe button is disabled
 
 #### Scenario: Missing member context rejects submission
-- **WHEN** POST `/api/recipes/capture-url` is received without a valid household member context
+- **WHEN** POST `/api/recipes/capture-url` is received without bindable household member context
 - **THEN** the API rejects the request with 400 Bad Request
+
+#### Scenario: Invalid URL request metadata
+- **WHEN** URL intake omits its required URL, fails URL format validation, or supplies a rating outside 0–3
+- **THEN** request validation rejects it before recipe creation
 
 ### Requirement: Initial recipe creation and workflow dispatch
 
-Upon accepting a URL capture request, the API SHALL persist an initial recipe entity in the library database and disk store with default placeholder name, provided notes, rating, source URL, and readiness set to false, then dispatch the background URL import workflow.
+Upon accepting a URL capture request, the API SHALL persist an initial recipe entity in the library database and disk store with default placeholder name, provided notes, rating, source URL, and database readiness set to false, then request the background URL import workflow. A caught dispatch failure SHALL leave the persisted recipe pending and still return its intake identity.
 
 #### Scenario: Initial recipe stored with pending readiness
 - **WHEN** the API accepts POST `/api/recipes/capture-url`
-- **THEN** it creates a database recipe and initial recipe info file with `IsReady = false`, `ImageCount = 0`, and `IsDiscoverable = false`
-- **AND** it triggers the background `url-import` workflow with the recipe ID and URL
+- **THEN** it creates a database recipe and initial recipe info file with database `IsReady = false`, `ImageCount = 0`, and `IsDiscoverable = false`
+- **AND** it requests the background `url-import` workflow with the recipe ID and URL
+
+#### Scenario: Dispatch fails after initial persistence
+- **WHEN** the recipe is persisted but its background dispatch throws
+- **THEN** the intake identity is still returned and the stored recipe remains pending
+- **AND** acceptance alone does not establish an executing workflow
 
 ### Requirement: Background web acquisition and recipe extraction
 
-The background acquisition workflow SHALL fetch HTML from the source URL, extract recipe context and hero image, execute AI-assisted recipe extraction, and save normalized recipe artifacts.
+When acquisition executes, the system SHALL attempt to fetch source HTML and obtain recipe context. After successful context processing, it SHALL retain the source URL and acquired HTML. A supplied hero URL SHALL be attempted without making hero download success a prerequisite. Recipe extraction SHALL persist normalized content only after semantic validation succeeds.
 
 #### Scenario: Fetch webpage content and hero image
 - **WHEN** the acquisition task executes for a recipe URL
-- **THEN** it fetches the webpage HTML, extracts title and hero image URL, downloads the hero image, and saves `original/content.html`
+- **THEN** after successful context processing it retains the source URL and HTML, uses a host-based title fallback if no title is returned, and attempts download only when a hero URL is supplied
 
 #### Scenario: Scraping forbidden fallback
 - **WHEN** fetching the source URL returns HTTP 403 Forbidden
-- **THEN** the acquisition logs a warning and extraction proceeds with limited metadata using the URL host as a title fallback
+- **THEN** the acquisition logs a warning and context processing proceeds with empty HTML and uses the URL host as a title fallback when no title is returned
 
 #### Scenario: AI-assisted extraction and semantic validation
 - **WHEN** recipe extraction runs against source HTML
-- **THEN** it produces structured recipe JSON requiring a name, ingredients, and instruction steps, normalizing and persisting the extracted recipe
+- **THEN** it validates candidate structured content for a name, ingredients and usable instruction steps before normalizing and persisting it
+- **AND** an invalid final candidate fails extraction rather than certifying successful capture
 
 ### Requirement: Finalize recipe readiness and broadcast completion
 
-Upon successful completion of extraction and categorization tasks, the workflow SHALL finalize the recipe state to ready and discoverable, and publish a real-time recipe ready event to the household.
+When finalization executes for an existing recipe that is not already ready and discoverable, the system SHALL set those database facts and update its timestamp before attempting household ready-event publication. Ordinary finalization SHALL NOT require writing readiness into a non-PDF metadata file.
 
 #### Scenario: State transition to ready
-- **WHEN** the recipe ready workflow step executes for an extracted recipe
-- **THEN** the API updates the recipe in database and storage to `IsReady = true` and `IsDiscoverable = true`
-- **AND** it publishes a `recipe_ready` SSE event with the recipe ID, name, and hero image path
+- **WHEN** the recipe ready step successfully finalizes an existing recipe not already ready and discoverable
+- **THEN** it persists database readiness and discoverability and then attempts publication of recipe identity, name and optional hero path
+- **AND** delivery follows the household-live-updates rules rather than being certified by the database save
+
+#### Scenario: Missing or already finalized recipe
+- **WHEN** finalization is invoked for a missing recipe or one already ready and discoverable
+- **THEN** it does not publish a new ready event
+- **AND** the existing retained-PDF readiness behavior still applies to an already finalized PDF
 
 ### Requirement: Track background capture progress and auto-redirect
 
@@ -132,21 +147,21 @@ The capture screen at `/capture` SHALL provide camera capture and gallery photo 
 
 #### Scenario: Open device camera from capture controls
 - **WHEN** a person activates the camera capture control
-- **THEN** the device opens the camera interface configured for environment capture
+- **THEN** the client activates image input configured to request the environment camera
 
 #### Scenario: Pick multiple photos from device gallery
 - **WHEN** a person activates the gallery photo selection control
-- **THEN** the device file picker opens allowing selection of multiple image files
+- **THEN** the client activates image input configured for multiple file selection
 
 #### Scenario: Drag and drop image files onto capture area
 - **WHEN** a person drags and drops image files onto the capture area
 - **THEN** the dropped image files are added to the staged photo list
 
 ### Requirement: Stage and validate uploaded recipe photos
-The client SHALL stage selected photos for review and enforce image constraints before upload. The client SHALL permit between 1 and 20 images, require each image to be under 20 MB, and restrict image MIME types to JPEG, PNG, or WebP.
+The client SHALL stage selected photos for review and enforce image constraints before upload. The client SHALL permit between 1 and 20 images, permit each image up to 20 MiB (20,971,520 bytes), and restrict image MIME types to JPEG, PNG, or WebP.
 
 #### Scenario: Valid images added to staging list
-- **WHEN** a person selects valid JPEG, PNG, or WebP images each under 20 MB
+- **WHEN** a person selects valid JPEG, PNG, or WebP images each at or below 20,971,520 bytes
 - **THEN** the client stages the images, renders previews, and displays the total photo count
 
 #### Scenario: Unsupported file type rejected
@@ -154,7 +169,7 @@ The client SHALL stage selected photos for review and enforce image constraints 
 - **THEN** the client rejects the file and displays an error message indicating supported types are JPEG, PNG, or WebP
 
 #### Scenario: Image exceeding size limit rejected
-- **WHEN** a person attempts to add an image exceeding 20 MB
+- **WHEN** a person attempts to add an image exceeding 20,971,520 bytes
 - **THEN** the client rejects the file and displays an error message indicating the file exceeds the 20 MB limit
 
 #### Scenario: Photo count limit enforced
@@ -162,7 +177,7 @@ The client SHALL stage selected photos for review and enforce image constraints 
 - **THEN** the client retains the existing images and displays an error message indicating a maximum of 20 photos
 
 ### Requirement: Designate finished dish photo with automatic index management
-The client SHALL allow designating one staged photo as the finished dish photo. The first staged photo SHALL be automatically designated as the finished dish photo. Removing a photo SHALL update or preserve the designation within valid bounds.
+The client SHALL allow designating at most one staged photo as the finished dish photo and clearing that selection by activating it again. The first staged photo SHALL be automatically designated as the finished dish photo. Removing a photo SHALL update the designation using the remaining staged photos.
 
 #### Scenario: Initial photo automatically designated as finished dish
 - **WHEN** the first photo is added to an empty staging list
@@ -173,12 +188,16 @@ The client SHALL allow designating one staged photo as the finished dish photo. 
 - **THEN** the client marks the selected photo as the finished dish photo and clears the previous designation
 
 #### Scenario: Remove designated dish photo defaults to first remaining photo
-- **WHEN** a person removes the photo that was currently designated as the finished dish
+- **WHEN** a person removes the photo that was currently designated as the finished dish while other staged photos remain
 - **THEN** the client removes the photo and defaults the finished dish designation to the first remaining photo at index 0
 
 #### Scenario: Remove photo preceding designated dish photo adjusts index
 - **WHEN** a person removes a photo located before the currently designated dish photo
 - **THEN** the client removes the photo and decrements the designated dish photo index to maintain the selection
+
+#### Scenario: Clear a dish photo selection
+- **WHEN** a person activates the currently selected finished-dish photo again
+- **THEN** no staged photo remains designated and photo submission represents that choice as index -1
 
 ### Requirement: Capture appreciation rating and preparation notes
 The staged photo review view SHALL provide an appreciation rating selector (1–3: Not for me, It was OK, Loved it!) and an optional multi-line notes textarea.
@@ -192,19 +211,19 @@ The staged photo review view SHALL provide an appreciation rating selector (1–
 - **THEN** the client retains the text as captured recipe notes
 
 ### Requirement: Validate and submit multipart photo capture
-When Save Recipe is activated with staged photos, the client SHALL submit POST `/api/recipes` as multipart form data including the image files, rating, finished dish index, and optional notes. The API SHALL require an authorized household member context and return 202 Accepted with the queued recipe ID.
+When Save Recipe is activated with staged photos, the client SHALL submit POST `/api/recipes` as multipart form data including the image files, rating, finished dish index, and optional notes. Under household-identity access and member-binding rules, the API SHALL reject absent bindable member context. Successful initial persistence SHALL return 202 Accepted with the persisted recipe ID without certifying workflow delivery.
 
 #### Scenario: Submit valid multipart photo upload
 - **WHEN** a person activates Save Recipe with at least one staged image, valid rating, and finished dish index
 - **THEN** the client sends POST `/api/recipes` with multipart form data and member header
-- **AND** the API creates initial recipe records, dispatches the background import workflow, and returns 202 Accepted with the recipe ID
+- **AND** the API creates initial recipe records, requests background import dispatch, and returns 202 Accepted with the recipe ID
 
 #### Scenario: Save disabled without staged photos
 - **WHEN** no photos are currently staged in the capture view
 - **THEN** the Save Recipe button is not displayed
 
 #### Scenario: Missing member context rejects submission
-- **WHEN** POST `/api/recipes` is received without a valid household member context
+- **WHEN** POST `/api/recipes` is received without bindable household member context
 - **THEN** the API rejects the request with 400 Bad Request
 
 ### Requirement: Client-side photo upload progress feedback and submission lock
@@ -219,11 +238,16 @@ While photo upload is in progress, the client SHALL lock submission controls to 
 - **THEN** the client displays an upload overlay stating that photos are being uploaded and requesting the screen remain open
 
 ### Requirement: Initial recipe persistence and photo workflow dispatch
-Upon accepting a valid multipart photo upload, the API SHALL save image files to the recipe store, persist initial metadata and recipe entity records with readiness set to false, and asynchronously dispatch the `recipe-import` workflow.
+Upon accepting a valid multipart photo upload, the API SHALL save image files to the recipe store, persist initial metadata and recipe entity records with database readiness set to false, and request the `recipe-import` workflow after persistence. A caught dispatch failure SHALL retain the pending recipe and return its intake identity.
 
 #### Scenario: Initial photo recipe persisted with pending readiness
 - **WHEN** the API accepts POST `/api/recipes`
-- **THEN** it stores original images on disk, writes initial recipe metadata, creates a database recipe with `IsReady = false`, and queues the `recipe-import` workflow with the recipe ID
+- **THEN** it stores original images on disk, writes initial recipe metadata, creates a database recipe with `IsReady = false`, and requests the `recipe-import` workflow with the recipe ID
+
+#### Scenario: Dispatch fails after initial persistence
+- **WHEN** the recipe is persisted but its background dispatch throws
+- **THEN** the intake identity is still returned and the stored recipe remains pending
+- **AND** acceptance alone does not establish an executing workflow
 
 ### Requirement: Multimodal OCR vision recipe extraction and semantic validation
 The background `recipe-import` workflow SHALL execute recipe extraction using multimodal AI vision across all staged recipe images, validate semantic completeness, and persist structured recipe data.
@@ -237,12 +261,18 @@ The background `recipe-import` workflow SHALL execute recipe extraction using mu
 - **THEN** the extractor triggers a refinement prompt to complete missing details before finalizing extraction
 
 ### Requirement: Finalize photo recipe readiness and broadcast completion
-Upon completing recipe extraction and categorization, the `recipe-import` workflow SHALL finalize the recipe state to ready and discoverable, and publish a real-time `recipe_ready` SSE event to the household.
+
+When finalization executes for an existing recipe that is not already ready and discoverable, the system SHALL set those database facts and update its timestamp before attempting household ready-event publication. Ordinary finalization SHALL NOT require writing readiness into a non-PDF metadata file.
 
 #### Scenario: Transition photo recipe state to ready
-- **WHEN** the recipe ready workflow step executes for an extracted photo recipe
-- **THEN** the API updates the recipe in database and storage to `IsReady = true` and `IsDiscoverable = true`
-- **AND** it publishes a `recipe_ready` SSE event with the recipe ID, name, and hero image path
+- **WHEN** the recipe ready step successfully finalizes an existing recipe not already ready and discoverable
+- **THEN** it persists database readiness and discoverability and then attempts publication of recipe identity, name and optional hero path
+- **AND** delivery follows the household-live-updates rules rather than being certified by the database save
+
+#### Scenario: Missing or already finalized recipe
+- **WHEN** finalization is invoked for a missing recipe or one already ready and discoverable
+- **THEN** it does not publish a new ready event
+- **AND** the existing retained-PDF readiness behavior still applies to an already finalized PDF
 
 ### Requirement: Persistent failure banner on workflow failure
 If the background import workflow fails all retry attempts, the API SHALL publish a `recipe_failed` SSE event. When received for a pending recipe submitted in the current session, the client SHALL display a persistent recovery banner with a retry action.
@@ -535,3 +565,74 @@ A paused PDF import with a failed task SHALL appear in existing Settings failed 
 #### Scenario: Settings recovery request fails
 - **WHEN** Retry or Clear fails in the Settings failure list
 - **THEN** the row remains and displays retry error feedback
+
+### Requirement: Reject invalid photo intake before storing a recipe
+
+Photo intake SHALL validate the submitting member exists, one to twenty nonempty JPEG, PNG or WebP files of at most 20,971,520 bytes each, rating 0–3, and finished-dish index -1 or a valid image index before saving images or creating the recipe.
+
+#### Scenario: Invalid photo transport or metadata
+- **WHEN** photo intake has no files, an empty file, unsupported MIME type, excessive size or count, rating outside 0–3, or out-of-range finished-dish index
+- **THEN** validation rejects intake before saving images or creating a recipe
+
+#### Scenario: No finished dish or appreciation selected
+- **WHEN** valid photo intake has rating zero and finished-dish index -1
+- **THEN** those values alone do not reject intake
+- **AND** the client omits blank notes and submits nonblank notes trimmed
+
+#### Scenario: Removed member submits photo intake
+- **WHEN** a bound member ID no longer identifies an existing member
+- **THEN** photo intake rejects it before saving images or creating a recipe
+
+### Requirement: Offer inline advice for another ready recipe with the completed name
+
+After an ordinary capture reaches its inline ready presentation, the client SHALL look up the completed name through the existing library lookup. A returned recipe with a different identity SHALL produce advisory name feedback and a View existing recipe action. The captured recipe SHALL remain available unless the person explicitly requests its removal.
+
+#### Scenario: Another identity returned for the completed name
+- **WHEN** inline completion has a name and pending recipe identity and the name lookup returns another recipe identity
+- **THEN** capture displays the matching recipe name, View existing recipe and Discard duplicate actions
+- **AND** View existing recipe opens that returned recipe for reading
+
+#### Scenario: Lookup returns only the newly captured identity
+- **WHEN** the completed-name lookup returns only the current pending recipe or no recipes
+- **THEN** the inline ready presentation shows no name-duplicate advice
+
+#### Scenario: Keep the captured recipe
+- **WHEN** the person chooses Done or Add to this week instead of Discard duplicate
+- **THEN** capture navigates to Home or the planner respectively without sending a delete request
+- **AND** navigation alone does not assign the recipe to a planner day
+
+### Requirement: Request discard of the newly captured duplicate from inline completion
+
+Discard duplicate SHALL request deletion of the newly captured pending identity using the existing recipe-library deletion operation. While the request is pending, repeated discard activation SHALL be disabled. On success the client SHALL show duplicate-discard feedback and navigate to the root entry. A rejected request SHALL release the control without success feedback or navigation.
+
+#### Scenario: Discard request succeeds
+- **WHEN** the person activates Discard duplicate and the deletion operation succeeds
+- **THEN** the request targets the newly captured identity rather than the matching existing recipe
+- **AND** the client displays Duplicate recipe discarded. and navigates to `/`
+
+#### Scenario: Discard request rejects
+- **WHEN** the deletion operation rejects the discard request
+- **THEN** the control becomes available again and the client does not show success feedback or navigate away
+
+### Requirement: Request the configured processing language without certifying output language
+
+When IMPORT_TARGET_LANGUAGE contains a nonblank value other than case-insensitive NONE, capture processing SHALL request that language for recipe extraction, description synthesis and generated recipe descriptions. Missing, whitespace-only or NONE values SHALL add no target-language override. This request SHALL NOT certify the language or accuracy of persisted provider output.
+
+#### Scenario: Extract recipe content with an enabled target
+- **WHEN** photo, rendered PDF or web-content extraction executes with an enabled target-language value
+- **THEN** the provider request asks for the recipe name, ingredients, instructions and sections in that language
+- **AND** ordinary semantic validation still governs whether extracted recipe content can be persisted
+
+#### Scenario: Synthesize from a description with an enabled target
+- **WHEN** description synthesis executes with an enabled target-language value
+- **THEN** the provider request includes the target-language request alongside the submitted description
+- **AND** the existing synthesis parsing and fallback rules remain in effect without a language-conformance guarantee
+
+#### Scenario: Generate a recipe description with an enabled target
+- **WHEN** generated recipe-description processing executes with an enabled target-language value
+- **THEN** the provider request asks for that description in the configured language
+
+#### Scenario: Target override disabled
+- **WHEN** processing configuration is absent, whitespace-only, or equals NONE without regard to case
+- **THEN** processing adds no configured target-language override to those requests
+- **AND** this absence does not certify preservation of the source language

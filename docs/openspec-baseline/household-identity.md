@@ -1,19 +1,41 @@
 # Household identity baseline plan
 
+## Current lifecycle checkpoint — consolidated, 2026-10-16
+
+This capability's main spec now contains **42 requirements / 105 scenarios**.
+All baseline source changes were archived after the user's explicit approval;
+there is no active baseline extraction/promotion queue. Historical checkpoint,
+next-session and "changes active" text below records earlier sessions only.
+Evidence limitations and unresolved findings remain in the [live backlog](backlog/README.md).
+See [consolidation completion](backlog/consolidation-completion.md) for accepted
+scope, preserved corrections, archive warnings and verification. Archival does not
+establish application correctness, runtime qualification or resolution of defects.
+
 ## Current checkpoint and scope
 
-Promoted baseline: **36/92 requirements/scenarios** at A84 (2026-10-16).
-This covers recorded slices, not the entire capability.
-Runtime qualification remains not-run/deferred under A34. Next action: await a
-separately selected bounded slice or lifecycle action; no successor is authorized
-by this reorganization. Slice headings and next-step recommendations retained
-below are historical; later promotion records supersede earlier draft labels.
+Generation coverage reconciled **2026-10-16 (HI-G01 / BSL-026–030)** for the
+ordinary-household capability within the supported, explicitly qualified boundary.
+Promoted baseline: **42 requirements/105 scenarios**, including the three member-
+context and capture-attribution deltas promoted on 2026-10-16. A34 and creation
+provenance/qualification caveats remain deferred. No further supported ordinary-
+household gap was identified in the generation audit. Promotion documents existing
+behavior; implementation acceptance and runtime qualification are separate.
+Earlier next-action sections below are historical. Do not regenerate promoted
+renaming, removal or Profile switching.
 
 Read [AGENT.md](../../AGENT.md) and [shared workflow](workflow.md), then this file.
 No other capability plan or full project history is required up front. Follow only
 immediate owner/spec dependencies needed for the selected work.
 
 Accepted baseline: [main household-identity specification](../../openspec/specs/household-identity/spec.md).
+
+**Phase-12 reconciliation R12 (2026-10-16):** Recorded promoted documentation remains 42 requirements / 105 scenarios; no additional supported extraction gap was found within this plan's explicit boundary.
+[Cross-capability review](reconciliation.md) records current inventory, shared-owner
+reconciliation, evidence drift and exclusions. Current main SHA-256: `4c7f5a1faafd5439ab6f261b1efb140a4b0c10643cf16d087874c3c52ee9b749`.
+This session grants no new acceptance or promotion. Earlier session-specific
+“current user” and next-action statements retain their historical scope. A34 and
+all local unresolved/excluded behavior remain in force; runtime checks are not-run.
+
 
 ## Capability map and starting points
 
@@ -73,7 +95,7 @@ Cross-capability entries are included where the selected evidence depends on the
 
 | ID | Finding / risk | Evidence and required extraction treatment | Status / withheld claim |
 | --- | --- | --- | --- |
-| U08 | Shared access is not personal identity; token age is not enforced | BSL-household-identity-003–005 rechecks both validators: no date parse, age/future cutoff or persisted session; one-year cookie retention is not server expiry. Household principal has no member/role binding; workflow diagnostics and import AddedBy checks differ. A17 settles token-age extraction treatment as a non-normative limitation; withhold expiry guarantees. Capturer/reporting reconciliation remains deferred. | Partly settled 2026-10-15 (A17); boundary reconciliation open |
+| U08 | Shared access is not personal identity; token age is not enforced | BSL-household-identity-003–005 rechecks both validators: no date parse, age/future cutoff or persisted session; one-year cookie retention is not server expiry. Household principal has no member/role binding; workflow diagnostics and import AddedBy checks differ. A17 settles token-age extraction treatment as a non-normative limitation; withhold expiry guarantees. Capturer/reporting reconciliation is now recorded in BSL-027/028; import polling asymmetry remains non-normative. | Token-age treatment settled A17; owner reconciliation complete 2026-10-16, underlying limitations retained |
 | U10 | Tests may prove substituted behavior only | [API factory](../../api/src/RecipeApi.Tests/Infrastructure/TestWebApplicationFactory.cs) defaults to in-memory storage/DB, mocked orchestration and disabled auth; [browser fixtures](../../pwa/e2e/fixtures.ts) mock API and [Playwright config](../../pwa/playwright.config.ts) blocks service workers. Read assertions, not names; [search tests](../../api/src/RecipeApi.Tests/Integration/RecipeSearchIntegrationTests.cs) retain an exclusion name for demotion assertions. | Open |
 | U11 | Runtime/device/deployment qualification is incomplete | [PostgreSQL PDF tests](../../api/src/RecipeApi.Tests/Integration/PdfCapturePostgresTests.cs) require explicit configuration; [PDF flow](../flows/user-flows/pdf-recipe-import.md), [release status](../../README.md), [template](../../release-template/synology/compose.yaml). Device sharing, offline use, NAS rendering/recovery and deployment flag propagation require separate evidence. | Open |
 | U13 | Existing-member recovery has contract and qualification limits | BSL-household-identity-001: `/api/family/me` implements 404 absent from OpenAPI; browser mock supplies success without identity; UI does not await all selection writes. Withhold universal persistence/recovery guarantees; no fixes authorized. | Open; rechecked 2026-10-15 |
@@ -1706,10 +1728,10 @@ generated item PUT, service/controller, OpenAPI, schema and Settings browser tes
 The full main spec was re-read; no existing requirement redefined.
 
 **Artifacts / status:**
-[proposal](../../openspec/changes/baseline-household-identity-member-renaming/proposal.md),
-[delta](../../openspec/changes/baseline-household-identity-member-renaming/specs/household-identity/spec.md),
-[design](../../openspec/changes/baseline-household-identity-member-renaming/design.md),
-[tasks](../../openspec/changes/baseline-household-identity-member-renaming/tasks.md)
+[proposal](../../openspec/changes/archive/2026-10-16-baseline-household-identity-member-renaming/proposal.md),
+[delta](../../openspec/changes/archive/2026-10-16-baseline-household-identity-member-renaming/specs/household-identity/spec.md),
+[design](../../openspec/changes/archive/2026-10-16-baseline-household-identity-member-renaming/design.md),
+[tasks](../../openspec/changes/archive/2026-10-16-baseline-household-identity-member-renaming/tasks.md)
 and CLI metadata. All four planning artifacts exist; no optional artifact omitted.
 Design captures cross-layer contract/constraint ambiguity and extraction choices.
 Four completed tasks concern extraction/reconciliation/documentation validation only;
@@ -1977,10 +1999,10 @@ rehashed unchanged before drafting. Reuse those traces, actual assertions,
 dependencies, negative paths and medium overall confidence without another scan.
 Behavior is implementation-supported; no current removal runtime result.
 
-**Artifacts / status:** [Proposal](../../openspec/changes/baseline-household-identity-member-removal/proposal.md),
-[delta](../../openspec/changes/baseline-household-identity-member-removal/specs/household-identity/spec.md),
-[design](../../openspec/changes/baseline-household-identity-member-removal/design.md),
-[tasks](../../openspec/changes/baseline-household-identity-member-removal/tasks.md) and
+**Artifacts / status:** [Proposal](../../openspec/changes/archive/2026-10-16-baseline-household-identity-member-removal/proposal.md),
+[delta](../../openspec/changes/archive/2026-10-16-baseline-household-identity-member-removal/specs/household-identity/spec.md),
+[design](../../openspec/changes/archive/2026-10-16-baseline-household-identity-member-removal/design.md),
+[tasks](../../openspec/changes/archive/2026-10-16-baseline-household-identity-member-removal/tasks.md) and
 CLI-created `.openspec.yaml`. All four planning artifacts exist; strict selected
 change validation passed, exit 0. Design included because authorization metadata,
 relational effects and separate browser cleanup create material baseline ambiguity;
@@ -2287,10 +2309,10 @@ no runtime observation added. Source allows mouse-outside dismissal through
 | Continue from Profile with the loaded selected member | One: Continue-as requests Home without new selection, cookie writes or completion change. BSL-024 conditional Continue-as button and navigation-only handler. | profile.spec.ts asserts visible Alex control and Home URL with preseeded HttpOnly identity/common API mocks. No current execution, backend qualification or fresh validation implied. |
 
 **Artifacts / status:**
-[proposal](../../openspec/changes/baseline-household-identity-profile-switching/proposal.md),
-[delta](../../openspec/changes/baseline-household-identity-profile-switching/specs/household-identity/spec.md),
-[design](../../openspec/changes/baseline-household-identity-profile-switching/design.md)
-and [tasks](../../openspec/changes/baseline-household-identity-profile-switching/tasks.md)
+[proposal](../../openspec/changes/archive/2026-10-16-baseline-household-identity-profile-switching/proposal.md),
+[delta](../../openspec/changes/archive/2026-10-16-baseline-household-identity-profile-switching/specs/household-identity/spec.md),
+[design](../../openspec/changes/archive/2026-10-16-baseline-household-identity-profile-switching/design.md)
+and [tasks](../../openspec/changes/archive/2026-10-16-baseline-household-identity-profile-switching/tasks.md)
 exist with CLI metadata. Four ADDED requirements/eight scenarios; no existing
 requirement is modified. Extraction design is included for the material
 cookie/store/navigation ambiguity, not a behavior repair. Delta retains BSL-015's
@@ -2344,6 +2366,336 @@ variants/preferences. Recommend separately selected ordinary-household
 recipe-library list-visibility discovery; no successor capability extracted here.
 
 
+## Generation completion audit — 2026-10-16
+
+### HI-G01 — scope and reconciled artifact status
+
+The current user explicitly authorizes remaining documentation-only discovery,
+reconciliation and generation for household-identity in sequential bounded slices.
+This supersedes earlier recommendations to stop after one slice or move to another
+capability; it authorizes no acceptance, promotion, archival, application edits or
+runtime qualification. No consequential unresolved question blocked the supported
+extraction: A10/A12/A17/A22/A28/A34 and the recorded slice decisions were reused.
+
+HEAD `04a1c4570f9bbb01b47436790d4248635ac3179a`, branch
+`moving-to-openspec`. Initial staged/unstaged/untracked inputs were inventoried;
+a private 1,607-file content manifest and staged-diff before-image were saved before
+writes. Relevant pre-existing unstaged identity edits are the member-renaming,
+member-removal and Profile-switching design/delta files; those edits were read as
+current inputs and preserved, not regenerated. Main identity was clean and has
+36 actual requirement headers/92 actual scenario headers. Existing active and
+archived slices account for those requirements; task completion/location alone
+supplies no acceptance or runtime evidence. Unrelated dirty Taskfile/CI/index,
+meal/library/quality/sharing and background-processing work remains outside scope.
+Other capability work appeared concurrently; checks below identify their snapshots.
+
+CLI `list --json` and `context --json` resolved the nearest repo-local root
+`/Users/alex/Code/whats-for-supper`; no store selection, init or configuration write.
+Installed spec-driven instructions and resolved artifact paths were used. CLI
+scaffolded each new change sequentially. All three contain metadata, proposal,
+design, identity delta and documentation-extraction tasks:
+
+| Change under `openspec/changes/` | Additions | Status |
+| --- | --- | --- |
+| `baseline-household-identity-member-context-transport` | 3 requirements / 8 scenarios | Draft; strict validated, not accepted/promoted/archived |
+| `baseline-household-identity-capture-attribution` | 1 requirement / 2 scenarios | Draft; strict validated, not accepted/promoted/archived |
+| `baseline-household-identity-member-context-lifecycle` | 2 requirements / 3 scenarios | Draft; strict validated, not accepted/promoted/archived |
+
+### BSL-household-identity-026 — shared request member-context transport
+
+**Actor/trigger/outcome:** A person with selected browser identity uses an existing
+SDK-backed journey (report Save/Resolve/import polling are inspected callers), or a
+server-rendered journey uses `serverFetch`. Context is transported separately from
+household authentication. **Implementation-supported; medium confidence**, no
+current runtime observation.
+
+**Ordered trace:** `RecipeDetailSheet.tsx` Save/Resolve/watch →
+`pwa/src/lib/api/recipes.ts` submit/resolve/status wrappers → generated
+`api/recipes/item/importReport/index.ts` or `api/recipeImports/item/index.ts` →
+`pwa/src/lib/api/api-client.ts:HearthAuthProvider` → `specs/openapi.yaml`
+POST/DELETE import-report and GET recipe-imports → `RecipeController` /
+`RecipeImportController` → `FamilyMemberIdModelBinder` → report/import services →
+`RecipeDbContext` report/recipe/workflow records. Header is selected store ID, else
+readable member cookie; no value means provider adds no header. This applies to
+the shared SDK, not every native fetch. Server path:
+Home/server caller → `server-client.ts:serverFetch` → nonempty member cookie as
+header (overwrites supplied header), access cookie forwarded separately → API.
+`Program.cs` registers binder provider and shared authorization independently.
+Binder GUID precedence is header then cookie, syntax-only, with no membership
+lookup or fallback because a parseable header identifies an unknown member.
+Endpoint statuses remain with their existing owners; `/me` is already specified.
+
+**Assertions/substitutions:** `server-client.test.ts` supplies absent cookies and
+mock fetch and asserts URL construction only. No direct provider/binder assertion
+was located in targeted tests. `AuthEnforcementTests` enables real authentication
+and asserts no/wrong credential 401 and a valid raw-secret request succeeds, but
+not context precedence or personal ownership. Report integration tests default to
+auth-disabled InMemory EF/store and an orchestrator mock that persists workflow
+rows; they are not household-access or PostgreSQL qualification. Detail's
+Processing→Completed fake-time test substitutes API functions and asserts returned
+ID polling and terminal detail refresh, not request headers or backend policy.
+Browser fixtures preseed access, mock API and block unhandled calls; Playwright
+blocks service workers. These tests were inspected, not run.
+
+**Agreement/limits:** Approved contract uses `FamilyMemberId` header security;
+implementation also binds cookie and separately requires household authentication.
+U14/U15 are retained; no blanket metadata parity, generic missing-ID status,
+network delivery, credentials isolation or member-existence guarantee is drafted.
+
+**Mapping / disposition:** Drafted in transport change: `Carry browser member
+context on shared SDK requests` (selected precedence, cookie fallback, no readable
+context); `Forward server-rendered household request context` (both cookies,
+caller-header override); `Bind shared API member context independently of membership
+validation` (header precedence, absent/malformed fallback, no GUID). All eight
+scenarios source-supported; none runtime verified.
+
+### BSL-household-identity-027 — initial capture attribution
+
+**Actor/entry/outcome:** Existing bound household member submits ordinary URL/photo
+capture; successful initial writes store that ID as submitter attribution in row
+and initial metadata. **Implementation-supported; medium confidence.**
+
+**Ordered trace:** `MinimalCapture` → `useCapture.submitUrl` / photo submit →
+`recipes.ts:captureUrl` (generated captureUrl POST/shared SDK) / `createRecipe`
+(native multipart fetch with explicit selected ID) → approved OpenAPI POST
+`/api/recipes/capture-url` / `/api/recipes` → `RecipeController.CaptureUrl` / `Create`
+→ shared binder → `RecipeService.CaptureUrl` / `CreateRecipe` →
+`ImageService.CreateRecipeInfo` → recipe store `RecipeInfo.AddedBy`, and
+`RecipeDbContext.Recipes` → `Recipe.AddedBy` / SQL `recipes.added_by`.
+Service writes both before dispatch; partial disk/DB failures are not atomic.
+Photo prechecks known member; URL/description do not uniformly do so. No uniform
+unknown-member response is generated. EF/SQL nullable SET NULL attribution exists,
+but relational deletion/history effects remain qualified under U25/A34.
+
+**Assertions/substitutions:** `RecipeControllerTests` photo happy path asserts
+202/nonempty returned ID and queued mocked workflow, not both stored attribution
+fields. `recipes.test.ts` mocks state/fetch and asserts top-level/wrapped ID parsing,
+not backend persistence. `RecipeDescribeIntegrationTests` explicitly asserts row
+and metadata AddedBy plus creation timestamp; it covers description, not URL/photo.
+Factory defaults to InMemory EF and recipe store with mocked orchestration; no
+PostgreSQL/browser/current runtime result. `SyncRecipeProcessor` changes content
+fields without assigning AddedBy, but no universal lifetime-retention guarantee is
+extracted. Public nullable addedBy DTO/contract projection stays library-owned.
+
+**Mapping / disposition:** Drafted `Attribute initial URL and photo captures to the
+bound member`, two scenarios for successful initial URL/photo persistence. The rule
+adds attribution only, referencing capture acceptance/dispatch/readiness ownership.
+Existing description, PDF and sharing attribution is reused, not regenerated.
+
+### BSL-household-identity-028 — capturer/reporting owner reconciliation
+
+**Ordered trace:** Loaded detail/Cooks contextual entry → issue sheet → Save through
+recipes wrapper/generated importReport client → OpenAPI → shared household filter
+and member binder → `RecipeImportReportService.RequireRecipeAndMemberAsync`,
+`PersistAsync` → `RecipeImportReport` / EF / SQL report row. It checks existing
+member and recipe, not capturer/reporter equality. First save sets ReportedBy and
+UpdatedBy to submitting member; later save retains ReportedBy and changes UpdatedBy.
+Public issue projection omits those private IDs. The recipe AddedBy is not changed.
+DELETE resolution has the same existence checks and no attribution equality check.
+Existing recipe-quality requirements `Validate report input at submission`,
+`Persist recipe-level feedback before attempting re-import` and `Address manual
+resolution to the loaded recipe with member context` already own these behaviors.
+No new reporting delta is needed or manufactured.
+
+**Polling discrepancy:** Returned import ID → detail watch → shared SDK GET
+`/api/recipe-imports/{importId}` → `RecipeImportController.GetById` →
+`RecipeImportService.GetImportByIdAsync` → existing member check, workflow parameter
+recipeId parse, then recipe AddedBy equality. Missing/nonmatching result returns
+404. `RecipeImportReportIntegrationTests.GetImportById_RequiresFamilyAccessToItsRecipe`
+actually seeds an existing second member and asserts capturer 200 / second member
+404. Its name is not proof of all-household access. A report can be submitted by
+another known member yet its polling be unavailable. Preserve U08/recipe-quality
+U76 as **non-normative missing/incomplete integration**; neither equal polling
+access nor the restrictive behavior is newly prescribed. No fix or new access role
+is inferred. Missing-context GET 400 is implemented but absent from this OpenAPI
+operation; retain metadata/error coverage limitation rather than generate parity.
+
+**Assertions:** Initial-report integration test checks stored ReportedBy/UpdatedBy;
+its caller is also capturer, so it does not qualify cross-member submission/update.
+Cross-member update retention is executable-source supported, without a directly
+inspected two-member assertion. Public-projection test checks reasons/status/note,
+not a complete absence-of-private-fields contract. Test substitutions are BSL-026.
+No current runtime checks. **Disposition:** ownership reconciled; existing positive
+requirements reused; underlying asymmetry/qualification remains open, not a new
+product decision or extraction blocker under A12.
+
+### BSL-household-identity-029 — cookie and landing context lifecycle
+
+**Ordered trace:** Onboarding/Profile selection → `familyStore.selectFamilyMember`
+→ `auth.ts:setFamilyMemberCookie` → Next cookie write; later proxy/member binder
+read the cookie under existing access rules. Primary action writes HttpOnly,
+Lax, path `/`, 365-day Max-Age; domain/Secure predicates match the accepted access
+cookie options. Store then attempts the same-name readable fallback before state
+selection. `cookie.ts` uses document.cookie, HTTPS-dependent Secure and optional
+domain; its removal omits domain. These writes do not prove retention, no same-name
+collision or universal cleanup. Existing U15/U26 and non-awaited selection limits
+remain. No session-expiry guarantee or deployment qualification is inferred.
+
+Root layout → `IdentityValidator` → when hydrated and pathname is `/`, router
+replace Home if selected ID exists, otherwise onboarding; this branch does not
+perform `/me` lookup or membership validation. Proxy gates precede it. The static
+landing page's middleware-Home comment overstates actual proxy behavior; executable
+client branch is evidence. `clearAuth` has no connected logout caller found in the
+PWA, so there is no generated sign-out journey. Installation hints/preferences
+remain separate owners.
+
+**Assertions/substitutions:** Identity browser tests preseed cookies/localStorage
+and assert visible Alex across Profile/Home/Profile, loaded Settings family row
+and preserved name with intercepted list error. They do not assert actual cookie
+options or hydrated landing branches. Profile unit test substitutes hook/dropdown/
+router; no dedicated IdentityValidator/auth-cookie unit test was found in the
+targeted inventory. Existing shared tests are inspected only. **Implementation-
+supported; medium confidence**, runtime not-run.
+
+**Mapping / disposition:** Drafted `Set primary member identity-cookie options`
+(one successful primary action scenario) and `Route hydrated landing context to the
+next household page` (selected/no selected context scenarios). No duplicate existing
+selection, recovery, Profile menu or access gate requirements.
+
+### BSL-household-identity-030 — final owner coverage and exclusions
+
+| Owner responsibility | Disposition and requirement/evidence anchors |
+| --- | --- |
+| Shared passphrase, pending/error retry, access cookie, page/API gates, health exemption | Existing main requirements from BSL-003–005; current auth/proxy/Program/handler agree on scoped successful paths, U08/U14/U15 retained |
+| List/select/current member, supported recovery, Profile selected name | Existing main first five requirements / BSL-001; current store/controller/binder/validator rechecked, U13/U26 retained |
+| Invite generation/copy/share/dismiss/validation/handoff/recovery | Existing main BSL-006–008; A22/U16–U18 continue, redirect/voting-link variants and partial handoff not promoted into guarantees |
+| Member creation, uniqueness, Settings context and onboarding handoff | Existing main BSL-009–016; 201/409 current controller/service source present, acceptance/provenance/real uniqueness qualification still unresolved under U19–U22/A34 |
+| Rename / API removal / connected Profile switching | Existing main and active deltas BSL-018–025; dirty designs/deltas preserved; no new copies; U23–U28 remain |
+| Shared browser/server transport, syntax-only binding | New transport draft / BSL-026, 3/8 |
+| Initial URL/photo submitter attribution | New capture-attribution draft / BSL-027, 1/2 |
+| Description/PDF/import attribution and public recipe facts | Existing recipe-capture `Create an initial recipe from description intake`, `Persist a pending PDF before acknowledging intake`; recipe-sharing `Accept and persist imported recipe bundle into library`; recipe-library `Represent persisted recipe attribution and readiness` reused |
+| Report creation/update attribution and resolution eligibility | Existing quality requirements reused, BSL-028; cross-member polling discrepancy retained non-normatively |
+| Primary member cookie / hydrated landing routing | New lifecycle draft / BSL-029, 2/3 |
+| Shared library visibility across attribution | Existing library `Return only eligible household library recipes`; no per-member collection or exclusive ownership is invented |
+| Demo, preview eligibility, deployment variants, member preferences, installation | Explicit separate owners; no extraction or qualification here |
+
+No further supported ordinary-household identity behavior needing a new normative
+requirement was identified after this responsibility audit. The conclusion is
+bounded by inspected connected paths and retained exclusions, not the numeric
+count. Header/cookie/transport context is not personal authentication, and capture
+attribution is not an exclusive ownership guarantee.
+
+**Explicit exclusions/limits:** Existing U08/U10/U11/U13–U28 are preserved, including
+no server token age guarantee; cookie security metadata/delivery/cleanup and API
+rejection recovery limits; invite eligibility/binding/redirect and partial handoff;
+creation provenance, PostgreSQL/collation/concurrency/compatibility/test-first
+qualification; rename feedback/collision handling; related-member removal and stale
+identity cleanup; Profile pending/atomicity and fresh Home arrival. BSL-028 adds no
+new normative guarantee for the capturer/reporting polling asymmetry or missing GET
+400 metadata. Demo/preview/deployment/member preferences stay with their owners.
+Runtime checks remain not-run under A34, not silently failed or passed.
+
+**Validation:** Selected three new drafts, main identity and pre-existing dirty
+rename/removal/Profile deltas pass strict validation. An all-item strict snapshot
+found 48/49 passed and one unrelated concurrently appearing
+`baseline-household-live-updates-discovery-events` scaffold without deltas; this is
+outside household-identity and was not changed here. The later repository-required
+`task verify` observed that concurrent change completed: strict validation passed
+**50/50**, with zero failures. Existing library duplicate-on-archive INFO messages
+are unrelated and do not authorize archival or repair. New-draft non-normative
+notes initially produced carry-forward warnings in CLI 1.14.2; resolved by retaining
+the exact historical sentence in spec comments and visible design notes. Comments
+are not promoted by archive; no archival is authorized.
+
+The explicit **17-path** documentation verification passed changed-link/Python-
+where-applicable/staged-worktree whitespace checks, strict all-item spec checking
+and content identity. A final rerun covers these completion-record edits; its
+current outcomes are in the final response and `.task/agent-finish/last-run.json`.
+All 69 evidence inputs matched the private before-image; new requirement names
+have no duplicates in main or existing active/archived identity deltas. No failed
+or blocked selected checks remain. The earlier broad-scaffold failure and resolved
+new-note warnings are historical check attempts, not current artifact failures.
+Application/browser/API/DB runtime checks are not-run under A34; behavior TDD,
+client generation, migrations and implementation tests are not-applicable.
+
+**Next-session record — 2026-10-16:** HI-G01 generation is complete within the
+explicit boundary. Human review is next for the three drafts (6/13), their evidence
+and exclusions. Main remains 36/92 promoted, unchanged. No new acceptance,
+promotion, archival, implementation acceptance or runtime qualification. No
+consequential unresolved product question is required for these supported drafts;
+future correction of reporting access/metadata, original member-creation authority
+reference and qualification are separate review/work decisions. Do not generate
+more slices or advance to another capability without a new selected scope.
+
+### Current evidence identity — BSL-026–030
+
+The following current input hashes were checked against the pre-edit snapshot;
+all matched. They identify inspected support and immediate owner dependencies,
+not runtime-tested content. Six dirty prior identity design/delta inputs are
+included without modification. Rehash these inputs before reusing this evidence.
+
+| Repository-relative evidence input | SHA-256 |
+| --- | --- |
+| `api/database/schema.sql` | `3f7767cd704299374ebdcd89a11709680013ba26a477ad23f41da54e6da55161` |
+| `api/src/RecipeApi.Tests/Controllers/RecipeControllerTests.cs` | `903493f2d741b315edf8ca44a83c5083500f70c9d30117c89db979ca805ff385` |
+| `api/src/RecipeApi.Tests/Infrastructure/TestWebApplicationFactory.cs` | `0ee567443fc0b5c11fffe631c94ea0407681b371224d8083a0e32b94b280804c` |
+| `api/src/RecipeApi.Tests/Integration/AuthEnforcementTests.cs` | `8c5dd1e1ad5e2bad392d7217c411ad9bcf173cf5b785eb69ec9e30449964f6aa` |
+| `api/src/RecipeApi.Tests/Integration/RecipeDescribeIntegrationTests.cs` | `4e1e0fa8b5277f30668ccefe8a4e122cfe25869cfd994b7a77f84a9f99e8fcd5` |
+| `api/src/RecipeApi.Tests/Integration/RecipeImportReportIntegrationTests.cs` | `0ed0a2308f813e83ac5742288fd5f8268018e232aeda2778ff44153e888bac75` |
+| `api/src/RecipeApi/Controllers/FamilyController.cs` | `a6c1bced4b82ecf32927ad801b7c0c037914ea51577fb3ceabfd8291e41852ee` |
+| `api/src/RecipeApi/Controllers/PdfCaptureController.cs` | `c0319aec6b7eecc9a131efee6c90e6ce9ad501d9f55d91dcbb6b0b3d408b1f2e` |
+| `api/src/RecipeApi/Controllers/RecipeController.cs` | `d1699c2de6f6cca9d879e67c0c7b9c7f0af4b2c4e104bc9ff04634b266eb5a70` |
+| `api/src/RecipeApi/Controllers/RecipeImportController.cs` | `a5fe04c228c90f4f85bc4681df800a74af53d676599cac965c9ba60b27fe550b` |
+| `api/src/RecipeApi/Data/RecipeDbContext.cs` | `92084cf105ec2941e713fca9053609f4974156b6440fb72f9b623cf918916447` |
+| `api/src/RecipeApi/Dto/RecipeDto.cs` | `45f2c035b157b448dfa6d4ba399262492585b795fa60704e147a758c76d9eb1d` |
+| `api/src/RecipeApi/Infrastructure/FamilyMemberIdModelBinder.cs` | `4d5dcc9f7d9993abb4c59802f770da139c4875c55544df8410553332a04a2f64` |
+| `api/src/RecipeApi/Infrastructure/HearthAuthenticationHandler.cs` | `51ecd8a5be459e1ffaae7e3a33646de57aa13bf0fec088a7e388083da08ee817` |
+| `api/src/RecipeApi/Models/Recipe.cs` | `810b9ddb9bdcacdb894d713680952f5a32c89256070366dff99b3c16f82bbe82` |
+| `api/src/RecipeApi/Models/RecipeImportReport.cs` | `2fa6fb2814f07dc9a2226156c01894a01c8006ff4c249c5573c830cd2fd6fc56` |
+| `api/src/RecipeApi/Models/RecipeInfo.cs` | `7a154a58b5f360279cd1891f9a9e33c4ad3097f382f088dccc855ec27c957452` |
+| `api/src/RecipeApi/Program.cs` | `a4a2510b9cf0bbeb0e05072ab2bf2b299f4029e449bff17e7386b62f5321c523` |
+| `api/src/RecipeApi/Services/FamilyService.cs` | `60ee6f8d6a638a08de88a0794dddd1195efee1624bcffa41423fe0f74f370586` |
+| `api/src/RecipeApi/Services/ImageService.cs` | `c73bb4f976bd6355ec9aa6c18937bed12d4dc14ff7efe718a84351cb4f1abc2d` |
+| `api/src/RecipeApi/Services/PdfCaptureService.cs` | `f48ec3c8ec789cbbbcc4951a6a7e0139ab70e7272b5dcac228843e0f6273cc79` |
+| `api/src/RecipeApi/Services/Processors/SyncRecipeProcessor.cs` | `246f5ffe2effb7ddc6b0019e5f6ab0436cc20a93b06cf1cdc337007f4ccd2945` |
+| `api/src/RecipeApi/Services/RecipeImportReportService.cs` | `99776d8ddfb954d0def99460d868d43a3f3f24e08c4459bd30c132959e30acb3` |
+| `api/src/RecipeApi/Services/RecipeImportService.cs` | `3016a8e38da063513813e813fad5f8fddf10f285abfa1ef3e0743c200ac1af14` |
+| `api/src/RecipeApi/Services/RecipeService.cs` | `9eec9ab5cd7102081b3765b08a41b8de4d45325858d18ab4573a326afa256b74` |
+| `openspec/changes/baseline-household-identity-member-removal/design.md` | `51de2172ce115fed549960c19742258847f418f37eaf5138a747c70d5abdd083` |
+| `openspec/changes/baseline-household-identity-member-removal/specs/household-identity/spec.md` | `eb302a79c0d06f45788770498d3d67c16ff5be522becdd899329fc35f1f270e2` |
+| `openspec/changes/baseline-household-identity-member-renaming/design.md` | `fdfc328b00d4c6a29d4b5f4dd612bbabb27ab3278da24d06a9f5b5f3a983a102` |
+| `openspec/changes/baseline-household-identity-member-renaming/specs/household-identity/spec.md` | `158b5ff2e102888f4752b5d62dba6f9a5f562d6dd5b4ba212032db16a507de27` |
+| `openspec/changes/baseline-household-identity-profile-switching/design.md` | `0ae935b4ababee09d5e2296b5c84f6fcb2a05031ff20f0e7fea1fce69286dce2` |
+| `openspec/changes/baseline-household-identity-profile-switching/specs/household-identity/spec.md` | `2c4a5adc892c3ea7d0d121afca781c2daaf3729ea9383877a1345abc78c341a1` |
+| `openspec/specs/household-identity/spec.md` | `bbf4dc2eaf241f573307cba356b3b9cacce340b31d6249520af02b140b54479b` |
+| `openspec/specs/recipe-capture/spec.md` | `26c3bac67a723424f2e3d6a4888524bff4eb3ea56629d8b505a57e0320b7104b` |
+| `openspec/specs/recipe-library/spec.md` | `7fd80218a8551dba51d70f057f82d40cce9cd3fe5356c6d3d82d6a07a4f857d2` |
+| `openspec/specs/recipe-quality/spec.md` | `73877aa85c761de351c650769577be65b9d75325a8ba4ff474c9283445ffb796` |
+| `openspec/specs/recipe-sharing/spec.md` | `5099666d97b25c235c0b7b0d42eb81048d027744c8f4dc206811c70ab300f186` |
+| `pwa/e2e/fixtures.ts` | `402b5a1b872f625dc1425f46afdede2c9378dcc473088159774a8455b5d188e2` |
+| `pwa/e2e/identity-persistence.spec.ts` | `f1abb139b6977ccb77260a7666513886445e69d1ac431c1c32c4785875839665` |
+| `pwa/e2e/mock-api.ts` | `063ed6d6629ccde163487a92543ae36918183a81b7301dd01a5389248cbcbd07` |
+| `pwa/playwright.config.ts` | `6e15ab7bb105dea06751d9e8dc5d3e4d280f0eb2d465553fbea5e2da65e91532` |
+| `pwa/src/app/(app)/profile/page.tsx` | `2276868bc76ec0f13f2293ea5f1ae46ed2c1181cb386fb9c45e1ae6c7ef200c4` |
+| `pwa/src/app/(auth)/invite/page.tsx` | `68202e387563aad4796dc9c55676494f0e3c22fbd09b8fa7d33e5d9c17579e2f` |
+| `pwa/src/app/(auth)/onboarding/page.tsx` | `e1c3a4253b15627c8bcf69791cf44ee48819fba50ca82bee1c3cdf16cb01ef88` |
+| `pwa/src/app/layout.tsx` | `96482e0e3859142238b3d99c98e5e685e884d26a2f75907281c0dc18ddc8d5f6` |
+| `pwa/src/app/page.tsx` | `bb1f1e98dc4a2590233cceee64216e4f3f0e7895b7552da40e29c052a49b2990` |
+| `pwa/src/components/capture/MinimalCapture.tsx` | `aadbb37ec2fe548af6e41c5460ea3339377fb215f66f19eac054666416742af5` |
+| `pwa/src/components/identity/FamilyMemberList.tsx` | `f8cb32a3a4cc0437fc4199cda4dd50c8f5028c0fd3f43947e8248e130958b479` |
+| `pwa/src/components/identity/FamilySelector.tsx` | `bea6c16f429206d2c10acc0d717e52b8b307cb3917834f0c9439cf557a3c70c8` |
+| `pwa/src/components/identity/IdentityValidator.tsx` | `f35b0f71bd2abc70e79c2c9169cd57f9bf71eff72fa8ca04eda6d94f20384f1b` |
+| `pwa/src/components/profile/ProfileDropdown.tsx` | `c9e7c7f140e49d23df034480755472421b45080b812c076acd92b3a29426cf77` |
+| `pwa/src/components/recipes/RecipeDetailSheet.test.tsx` | `21727367dee891c473635cc2eafde324b0f6863e0dd4db1a7e82203d5e650da0` |
+| `pwa/src/components/recipes/RecipeDetailSheet.tsx` | `bbc1bba8f16f3fa305775d072cb1c3850af34a24bd3979e2228b63984ca1a19c` |
+| `pwa/src/hooks/useCapture.ts` | `758f77485f02a9b32e48e9fab846f5906e94ce1de7594d94c55950d294d1b5e9` |
+| `pwa/src/hooks/useFamily.ts` | `b760c59f10b9eb69a7ecf453ee97fd62d35406fe3fa594c321181422a95c10e8` |
+| `pwa/src/lib/api/api-client.ts` | `c5cd4cfebddd8d5c1f2827c522a236fe12c504130ea0991c07bc8fc46376aa95` |
+| `pwa/src/lib/api/family.ts` | `23315b8d44b2a0b1d745d180e37257eb4c2709e0edbe6571513cfd909faf35ad` |
+| `pwa/src/lib/api/generated/api/recipeImports/item/index.ts` | `1ae62eeebd51f7e92a148f19fc356d38134406263c5275b0a917640b698f7454` |
+| `pwa/src/lib/api/generated/api/recipes/captureUrl/index.ts` | `11d9ffc93713c35404d2d863a2cff4bc1291e57a635a239b8fab6604c0407a87` |
+| `pwa/src/lib/api/generated/api/recipes/item/importReport/index.ts` | `da2d1d8454fa6a1e64e9d82b7e5a8ae965f0d02272d5b48941aabbef60c86930` |
+| `pwa/src/lib/api/recipes.test.ts` | `02b75d719bddca5b88e9cc9760d183fd8e8defd316b0d04cdabf1006bf45ebe4` |
+| `pwa/src/lib/api/recipes.ts` | `f4e70b39a2060bfc5b25010914f78e288321517db5c52c543d103502718dce7a` |
+| `pwa/src/lib/api/server-client.test.ts` | `4540c42a5b721e6ded7cf3235a0f72b7ae927401472ddf914001414f2863b517` |
+| `pwa/src/lib/api/server-client.ts` | `04426cad934ca6cdeacd5302ca558688033cdf23738557cd816d34d2f90b89ea` |
+| `pwa/src/lib/auth-utils.ts` | `e280e68d3a4a4063df229b66e6164f2ac9291a9d1015de1740f2f10f24e6acde` |
+| `pwa/src/lib/auth.ts` | `d9b122b42cccfdc8a589c05a3e05deaa4a4864dee9cf17c4a403ec5f6db09f2a` |
+| `pwa/src/lib/identity/cookie.ts` | `f899606ac6d2cc7b800b0e03a5b16dbe908e7967e8d7f9802baff52c4f5e640b` |
+| `pwa/src/proxy.ts` | `5070867f5cb42505922f4cacb491aa77d254e12684a04a1e57e683df0b2e1aef` |
+| `pwa/src/store/familyStore.ts` | `68d09caecfb61d69a663cd20f7082dc1306cd3c4986203c72ced84b4c6b1566a` |
+| `specs/openapi.yaml` | `0fbd27813611e16474ec17a48ede372d5a41af02db3fa9ded82295a6357046ff` |
+
 ## Execution prompt
 
 Paste this prompt and replace the session instruction with the desired bounded
@@ -2383,13 +2735,37 @@ Use this section for new capability sessions after the split. The earlier eviden
 and lifecycle records above retain their original chronology.
 
 ```text
-Session/date:
-Branch, commit, relevant dirty inputs:
-Current user authorization and selected capability/slice:
-Completed discovery/evidence IDs:
-Artifact paths and status (draft/validated/accepted/promoted separately):
-Human decisions and unresolved questions:
-Checks: passed / failed / blocked / not-run / not-applicable, with reasons:
-Limitations and excluded assertions:
-Exact next bounded action:
+Session/date: 2026-10-16 — HI-G01 remaining-generation completion.
+Branch/commit: moving-to-openspec / 04a1c4570f9bbb01b47436790d4248635ac3179a.
+Dirty inputs: six prior identity design/delta edits preserved; staged diff unchanged;
+  concurrent unrelated background/live-update documentation remains untouched.
+Authorization: sequential remaining household-identity documentation generation only.
+Discovery: BSL-household-identity-026–030; 69 current evidence hashes recorded above.
+Artifacts: three new changes under openspec/changes/baseline-household-identity-:
+  member-context-transport (3/8), capture-attribution (1/2),
+  member-context-lifecycle (2/3). Each is draft/strict validated, not accepted,
+  promoted or archived. Main remains unchanged at promoted 36/92.
+Human review: review the six new requirements/thirteen scenarios and exclusions.
+  No consequential question blocked generation. Creation authority reference and
+  runtime qualification remain deferred; report/polling asymmetry is non-normative.
+Checks: strict selected/main/prior identity and 17-path documentation checks passed;
+  later all-item strict snapshot 50/50 passed. Final harness record/response owns
+  current outcomes. Earlier concurrent scaffold failure resolved independently.
+  Blocked: none selected. Runtime browser/API/DB: not-run (A34).
+  TDD/application implementation checks/client generation/migrations: not-applicable.
+Limits: all existing caveats and separate demo/preview/deployment/preferences owners.
+Next action: human review only. Do not regenerate existing slices, promote/archive,
+  implement, qualify runtime or advance to another capability without new scope.
 ```
+
+## Promotion record — 2026-10-16
+
+User authorization: “promote all the openspec changes”. Applied the active deltas
+through `openspec-sync-specs` after resolving all 42 active changes and their
+CLI-reported spec paths and rules. This capability's added requirements/scenarios
+are now in its main spec. Existing Purpose and requirement blocks are preserved.
+Source evidence, exclusions and uncertainty records above retain their original
+qualification; promotion adds no runtime evidence. Change artifacts remain active.
+No staging, commit, archival, application edits or runtime qualification performed.
+Validation outcomes are reported with this execution rather than inferred from
+completed extraction tasks.

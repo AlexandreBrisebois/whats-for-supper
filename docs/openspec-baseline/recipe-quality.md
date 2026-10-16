@@ -1,19 +1,40 @@
 # Recipe quality baseline plan
 
+## Current lifecycle checkpoint — consolidated, 2026-10-16
+
+This capability's main spec now contains **44 requirements / 111 scenarios**.
+All baseline source changes were archived after the user's explicit approval;
+there is no active baseline extraction/promotion queue. Historical checkpoint,
+next-session and "changes active" text below records earlier sessions only.
+Evidence limitations and unresolved findings remain in the [live backlog](backlog/README.md).
+See [consolidation completion](backlog/consolidation-completion.md) for accepted
+scope, preserved corrections, archive warnings and verification. Archival does not
+establish application correctness, runtime qualification or resolution of defects.
+
 ## Current checkpoint and scope
 
-Promoted baseline: **37/92 requirements/scenarios** at A84 (2026-10-16).
-This covers recorded slices, not the entire capability.
-Runtime qualification remains not-run/deferred under A34. Next action: await a
-separately selected bounded slice or lifecycle action; no successor is authorized
-by this reorganization. Slice headings and next-step recommendations retained
-below are historical; later promotion records supersede earlier draft labels.
+Promoted baseline: **44 requirements / 111 scenarios** at RQ-P01 (2026-10-16).
+The user accepted and authorized promotion of the three reviewed remaining drafts
+(7/19) after the completed capability audit. Generation and documentation promotion
+are complete within the inventoried connected recipe-quality boundary. All six
+quality changes remain active and unarchived. A34 runtime qualification remains
+deferred; U01/U75–U88, RQ-Q01–RQ-Q04 and historical qualifications remain intact.
+Earlier draft/pending labels below are historical; the RQ-P01 record supersedes
+them for documentation acceptance and promotion only.
 
 Read [AGENT.md](../../AGENT.md) and [shared workflow](workflow.md), then this file.
 No other capability plan or full project history is required up front. Follow only
 immediate owner/spec dependencies needed for the selected work.
 
 Accepted baseline: [main recipe-quality specification](../../openspec/specs/recipe-quality/spec.md).
+
+**Phase-12 reconciliation R12 (2026-10-16):** Recorded promoted documentation remains 44 requirements / 111 scenarios; no additional supported extraction gap was found within this plan's explicit boundary.
+[Cross-capability review](reconciliation.md) records current inventory, shared-owner
+reconciliation, evidence drift and exclusions. Current main SHA-256: `8e564c9f00e9ee157cfff812c90d8d23c343d0a99a529143c9512c2d751f61c9`.
+This session grants no new acceptance or promotion. Earlier session-specific
+“current user” and next-action statements retain their historical scope. A34 and
+all local unresolved/excluded behavior remain in force; runtime checks are not-run.
+
 
 ## Capability map and starting points
 
@@ -533,3 +554,605 @@ Checks: passed / failed / blocked / not-run / not-applicable, with reasons:
 Limitations and excluded assertions:
 Exact next bounded action:
 ```
+
+## Completeness audit and remaining draft generation — 2026-10-16
+
+### Authorization, identity and preservation
+
+The current user request authorizes a capability completeness audit and sequential
+generation of every remaining implementation-supported recipe-quality draft,
+including connected API-only behavior. This supersedes historical successor-slice
+restrictions for **generation only**. Settled A04/A10–A12/A34 and the approved
+capability structure are reused. No new consequential product decision was needed:
+uncertain execution, repair, access and recovery guarantees remain withheld.
+
+Branch: `moving-to-openspec`; HEAD:
+`04a1c4570f9bbb01b47436790d4248635ac3179a`. Initial Git includes staged workflow,
+Taskfile, baseline-plan, other capability plans/main specs and many active-change
+artifacts; unstaged recipe-capture/discovery/meal-planning documentation and
+untracked capture/discovery/meal-planning changes. The existing quality
+issue-reporting design/delta are staged modifications. These inputs are preserved,
+not owned by this session. A private full tracked/untracked file digest, porcelain
+status and exact staged binary diff snapshot was captured before writes in
+`/tmp/recipe-quality-before.json`. No source/configuration/index change is authorized.
+
+Loaded AGENT/context-loading/Codex adapter, applicable mission/contract-testing/
+execution-harness rules, shared baseline workflow, this plan and main quality spec.
+No subtree AGENTS.md was found under docs or openspec. Installed openspec-propose
+and project spec-driven configuration control scaffolding, dependency order and
+artifact paths. CLI context/list resolve nearest root `/Users/alex/Code/whats-for-supper`;
+no external store is selected and no initialization/configuration write is needed.
+All existing active quality artifacts were inspected before scaffolding; their
+names are retained and no duplicate change is generated.
+
+### Reconciliation of the three promoted journeys
+
+| Journey / active change | Main coverage | Evidence and present reconciliation |
+| --- | --- | --- |
+| `baseline-recipe-quality-issue-reporting` | 13 requirements / 35 scenarios, exact delta blocks present in main | BSL-001–006; detail/gear/shared form → recipes.ts/generated POST/OpenAPI → controller/report service → report row/attempt snapshot → returned recipe, ID watch and conditional terminal projection. U01 and U75–U79 remain. |
+| `baseline-recipe-quality-review-resolution` | 11 / 28, exact delta blocks present in main | BSL-007–011; filters/search predicates and returned badges → loaded-ID DELETE → linked active guard/report removal → local detail and subsequent persisted reads. U80–U83 remain, with the assertion correction below. |
+| `baseline-recipe-quality-failed-capture-recovery` | 13 / 29, exact delta blocks present in main | BSL-012–016; Profile/Settings → captures wrapper/generated resources → paused-failed eligibility → reset or clear/maintenance command → acknowledgement, conditional cleanup and fresh-mount reads. U84–U88 remain. |
+
+The three pre-existing active quality changes contain exactly the promoted **37/92** requirement/scenario
+blocks; none requires finishing, redrafting or modification. Main, existing active
+quality changes, qualifications and unrelated work remain preservation inputs.
+Actual inspected assertions include report normalization/manual/active/launch-failure
+cases; idempotent DELETE returning null issue twice; new-search reported superset
+and ready subset with Top Pick null; Settings reset/clear/maintenance assertions;
+and fake-timer terminal detail refresh. Default API factory omits household auth,
+uses EF InMemory and persists mocked Processing/Mock-task workflows. Browser routes
+supply their own state; opt-in PostgreSQL tests are not executed. None of these
+assertions proves installed orchestration, real database behavior or model repair.
+
+**U83 evidence correction, not resolution:** Reinspection of
+`RecipeImportReportIntegrationTests.Submit_MatchingActiveFeedback_ReusesWorkflow_WhileChangedFeedbackAndResolveAreRejected`
+finds an explicit DELETE Conflict assertion plus retained reasons/note/link and
+single-workflow assertions. The earlier phrase “dedicated resolution rejection/retry
+... not asserted” must not be read as absence of *all* active-resolution rejection
+coverage. Active rejection has substituted integration coverage. Dedicated UI
+resolution rejection/retry, busy/terminal/missing-linked paths, authenticated
+cross-member DELETE, PostgreSQL DELETE/read-after-delete and concurrency remain
+unqualified. U81's omitted DELETE conflict contract is unchanged; no normative exact
+conflict status or runtime pass is added. This corrects interpretation of unchanged
+evidence, rather than claiming a new implementation or silently closing U83.
+
+### Finite connected coverage inventory
+
+“Remaining supported behavior” below means the gap identified during this audit;
+its disposition is now drafted. The boundary includes ordinary household issue
+entry, review/resolution, failure management, their connected presentation/callers,
+and API-only import recovery/observation. It excludes source acquisition, general
+cooking/search, shared workflow administration and deployment variants.
+
+| ID | Connected behavior / boundary | Classification | Final disposition / owner |
+| --- | --- | --- | --- |
+| RQ-01 | Detail gear entry, report draft, dismissal, reason/note controls and Save failure | Already specified | Main reporting requirements; BSL-001/002. |
+| RQ-02 | Report validation, recipe-level persistence, manual Duplicate, contextual eligibility, active reuse/terminal suppression | Already specified | Main reporting requirements; BSL-002/003; U01/U75/U79 withheld claims stay separate. |
+| RQ-03 | Returned-ID detail polling, guarded outcomes and supplied detail/library badges | Already specified | Main observation/outcome/indicator requirements; BSL-003/004, U76–U79. API read eligibility separately drafted as RQ-10. |
+| RQ-04 | Review filters, saved membership, immediate review results | Already specified | Main review requirements; BSL-007; general search remains dependency. |
+| RQ-05 | Manual resolution guard/removal/repeat, detail acknowledgement, retry and subsequent reads | Already specified | Main resolution requirements; BSL-008/009; U81–U83 retained with correction above. |
+| RQ-06 | Settings failed list/guidance, retry, confirmed clear, queued residue protection and stale mounted state | Already specified | Main failed-capture requirements; BSL-012–014; U84–U88. |
+| RQ-07 | Shared-form contextual reason merge and saved note retention | Remaining supported behavior | Drafted `baseline-recipe-quality-cooking-feedback`, BSL-017, 1/3; cooking-owned entry/return/acknowledgement are excluded. |
+| RQ-08 | Failed-import/recipe reference-copy controls and conditional clipboard acknowledgement | Remaining supported behavior | Drafted `baseline-recipe-quality-failure-references`, BSL-018, 2/5. |
+| RQ-09 | Bulk unnamed-recipe import request/accepted IDs and stored import summary | Remaining supported behavior | Drafted `baseline-recipe-quality-bulk-import-observation`, BSL-019, first three requirements, 3/8. |
+| RQ-10 | API import-ID read eligibility and attributed result | Remaining supported behavior | Same API draft, BSL-019, fourth requirement, 1/3; complements client polling without copying shared workflow representation. |
+| RQ-11 | Initial URL/photo/description/PDF acquisition, source extraction, readiness and processing language | Owned by another capability | recipe-capture main/intake-boundaries/processing-language/completion-advice; immediate source/workflow dependencies only. No extraction/model success inferred here. |
+| RQ-12 | Persisted recipe facts, original/hero retrieval, manual editing, ordinary trash/restore/purge and report cascade on hard deletion | Owned by another capability | recipe-library. A direct EF remove cascade assertion is not a public quality deletion journey or ordinary purge qualification. |
+| RQ-13 | Household auth/member transport; generic workflow trigger/detail/task diagnostics/reset/reclamation/history; SSE delivery | Owned by another capability | household-identity, background-processing, household-live-updates. Reuse actual shared requirements instead of duplicating them. |
+| RQ-14 | General search/ranking/continuation, cooking progression/completion, quality-form handoff/return/acknowledgement and planner state | Owned by another capability | recipe-search/cooking/meal-planning as approved owners; concurrently created `baseline-cooking-edit-report-handoffs` owns caller entry/return/acknowledgement. No placeholder owner is created here. |
+| RQ-15 | Contextual URL dispatch, response/contract/access/freshness claims, action races, clipboard failure handling, batch recovery | Disputed/incomplete | U01/U75–U88 and RQ-Q01–Q04 below; withhold stronger claims, no repair tasks. |
+| RQ-16 | Generic TriggerImport/GetImportStatus helpers and retired recipe-scoped import routes | Disputed/incomplete | Service methods have unit tests but no production callers found. Integration asserts old POST/GET `/api/recipes/{id}/import` are 404. No connected single-recipe endpoint to draft; helper capability claims withheld. |
+| RQ-17 | Real API/browser/authenticated/database/worker/clipboard/model/deployment qualification; demo/preview variants | Deferred runtime qualification | A34, U22/U70–U74 and U88 preserved. Variants remain separate selection under A09; no runtime work or configuration writes. |
+
+Inventory closure: **RQ-01–RQ-17 exhaust the inspected connected boundary**.
+No supported behavior in that boundary remains unextracted after RQ-07–RQ-10.
+There is no invented successor or empty artifact. This conclusion does not claim
+all WFS capabilities, preview/demo variants or runtime qualification are complete.
+
+### BSL-recipe-quality-017 — Cooking caller trace and assertion limits
+
+Actor/entry: person in loaded CooksMode, outside the step editor, with returned
+canReimport. Preparation selects Ingredients; a recipe step selects Steps. Ordered
+trace: `pwa/src/components/planner/CooksMode.tsx` flag/reportContext →
+`RecipeImportIssueSheet.tsx` mergeReasons/shared form →
+`pwa/src/lib/api/recipes.ts` save/resolve → generated importReport POST/DELETE and
+`specs/openapi.yaml` → RecipeController → RecipeImportReportService SubmitAsync/
+DeleteAsync → `recipe_import_reports`, conditional immutable workflow feedback and
+linked-attempt guards → returned recipe → local detail/form/acknowledgement state.
+BSL-001–004/008 retain the deeper persistence/workflow evidence and failure rules.
+
+mergeReasons adds the contextual reason once to saved reasons and retains note;
+it can retain Duplicate mixed with content (U75), while later toggling and server
+manual-only policy remain unchanged. Save sets recipeDetails before checking launch
+failure; failure throws into the shared mounted draft's retry guidance. Successful
+Save clears reportContext and sets acknowledgement to reimportStarted. Resolve
+replaces local detail and closes without the detail caller's toast. Neither callback
+changes ingredient checks or cookProgress. parsedSteps are not refreshed by these
+callbacks; no updated instruction rendering/repair claim. There is no import-ID
+poller, watch cancellation or dedicated stale-target callback guard. Dismissal
+unmounts a draft without cancelling already issued work; a rejected mounted request
+retains the shared form's error/retry behavior (U77/U83, RQ-Q04).
+
+Assertions inspected in `CooksMode.test.tsx`: Ingredients test checks initial reason,
+combined payload with null note, closed dialog, checked ingredient and unchanged
+Check & Prep/progress; Steps test checks saved reason/note merge, dismissal/reopen,
+exact saved payload and active step/progress; ineligible recipe test checks no flag.
+API module, flags/router/instruction provider are substituted. No resolution,
+launch-failure, caller race or terminal-observation assertion was located in those
+tests. Browser contextual reports use intercepted HTTP/state. These are inspected
+assertions, not test executions. Classification: implementation-supported; high for
+local positive paths, medium for unasserted errors and callback lifecycle.
+
+### BSL-recipe-quality-018 — Failure reference controls
+
+Actor/entry: issue form receives safe failure guidance and failed import ID.
+Ordered trace: matching WorkflowWorker failure → best-effort MarkFailedAsync →
+persisted linked failure → RecipeImportReportService.ToPublicDto → generated
+RecipeImportIssueDto/recipes.ts → RecipeDetailSheet or CooksMode props →
+RecipeImportIssueSheet copyId → navigator.clipboard.writeText → copiedId and timeout.
+Failure status/id provenance remains BSL-004/main guarded-outcome ownership.
+
+Nested rendering requires both nonempty failure message and import ID; recipe ID
+is additionally required for its control. A successful clipboard promise sets the
+chosen label to Copied and schedules reset at 1500 ms. No feedback or workflow
+mutation occurs. There is no catch, dedicated clipboard error, fallback, timer
+cancellation or overlapping-copy ordering guarantee. Rejected writes do not establish
+that call's acknowledgement. Source-only support; no dedicated copy/clipboard
+assertion found in issue-sheet/detail tests or recipe-import-reporting browser tests.
+Browser permission/device/timing qualification remains not-run (RQ-Q01/A34).
+
+### BSL-recipe-quality-019 — API-only bulk recovery and observation
+
+Actor/entry: authorized API consumer; no connected PWA application caller found for
+bulk/summary beyond generated builders and browser stub handlers. Ordered bulk
+trace: generated `api/recipes/imports/bulk/index.ts` / OpenAPI bodyless POST →
+RecipeController.BulkTriggerImport → RecipeImportBulkService.TriggerAllPendingAsync
+→ Recipes global DeletedAt == null filter plus Name == null snapshot → sequential
+orchestrator.TriggerAsync("recipe-import", recipeId only) → WorkflowRepository stored
+YAML / required-parameter checks / per-instance transaction and workflow/tasks →
+BulkImportTriggerResponseDto unwrapped 202. No readiness/source/active/report/member
+predicate, contextual feedback snapshot, attempt-link update or cancellation token.
+A later exception escapes before Accepted and can leave earlier per-instance saves;
+no batch rollback, resume cursor, duplicate suppression or successful repair promise.
+These boundaries are source-supported, with no asserted partial-failure/repeat path.
+
+Summary trace: generated `api/recipes/importStatus/index.ts` / OpenAPI GET →
+RecipeController.GetImportSummary → RecipeImportService.GetImportSummary → group
+only recipe-import instances by status → unwrapped 200 RecipeImportSummaryDto.
+Completed → importedCount, Pending+Processing → queueCount, Failed → failedCount;
+Paused and URL/other workflows excluded. Counts are instances, not ready recipes,
+reports, failed-capture list rows or time-window health. No dedicated summary
+assertion located; common browser mock returns constants.
+
+Import-ID trace: recipes.ts getRecipeImportStatus/generated recipeImports GET /
+OpenAPI → RecipeImportController.GetById / FamilyMemberIdModelBinder →
+RecipeImportService.GetImportByIdAsync → existing member and instance/tasks →
+exact recipeId JSON parameter → nondeleted recipe/AddedBy equality →
+WorkflowInstanceDetailDto.FromModel → unwrapped 200; absent/inaccessible → 404.
+Missing member context is implemented 400 but omitted from this OpenAPI operation;
+withhold exact missing-context status parity. Unknown member throws to controller
+404. Missing/unparseable GUID recipeId gives no result; malformed JSON itself can
+throw. No workflow-type gate, new diagnostic sanitization or all-member access
+promise. Background-processing owns stored state meaning, identity owns transport;
+the detail wrapper only consumes status, while raw API detail includes parameters/
+tasks. U76 remains confirmed. GET is observation, not retry or report resolution.
+
+`RecipeControllerTests` bulk assertions: empty database → 202/zero/empty array;
+two null-name recipes → 202/count two/two identities; named plus unnamed → count
+one. They do not assert actual processor execution, exact payload, deleted/empty
+names, repeats, partial failure, source eligibility or summary counters. Factory
+substitutes EF InMemory/orchestration/household auth. `RecipeImportReportIntegrationTests`
+assert attributed import GET 200 versus other known member 404; retired recipe-scoped
+POST/GET 404. `RecipeImportLifecycleTests` directly call TriggerImport/GetImportStatus
+with mock orchestrator; no public caller is inferred. Common browser bulk mock
+returns **200**, versus actual/contract **202**, and no method check or persistent
+mutation; summary is fixed zeros. Do not promote mocks into parity or runtime evidence.
+Confidence: high for selection/counters and attributed branches; medium across
+real orchestration/auth/database, not-run under A34.
+
+### New qualifications and retained uncertainty disposition
+
+New identifiers use a capability-local prefix to avoid colliding with shared U IDs.
+
+| ID | Disputed, incomplete or missing evidence | Disposition |
+| --- | --- | --- |
+| RQ-Q01 | Clipboard availability/rejection has no dedicated recovery; multiple uncancelled timers and no copy assertions | Only conditional successful copy is drafted; browser/permission/device/error/timing qualification not-run. |
+| RQ-Q02 | Bulk repeats can enqueue again; per-instance saves lack batch transaction/resume/cancel/dedup; source eligibility unchecked; browser bulk 200 disagrees with actual/contract 202 | Record source limits, no safe-repeat/rollback/repair guarantee. Summary counts are source-only and do not count Paused or URL imports. No contract/mock repair. |
+| RQ-Q03 | Import GET contract omits implemented missing-context 400; raw detail includes parameters/tasks; malformed JSON can throw; complete payload/error/auth/real-store assertions absent | Only attributed successful read and missing/inaccessible 404 drafted; no universal sanitized response, complete parity or household-wide polling guarantee. |
+| RQ-Q04 | Cooking callbacks lack a stale-target guard/poller; returned detail does not reparse instructions; error/resolve/launch/cancellation paths lack dedicated caller assertions | Source-supported local outcomes only. No repaired-content display, terminal refresh or guaranteed cancellation/recovery. |
+
+All existing uncertainty remains open/deferred at its recorded scope: **U01** URL
+required parameter; **U75** reason/eligibility mismatch; **U76** attribution-restricted
+observation; **U77** memory/caller-specific watch; **U78** conditional completion,
+no repair/resolution/delivery guarantee; **U79** response/contract/mock freshness;
+**U80** actual review labels/search boundary; **U81** omitted DELETE conflict;
+**U82** loaded parent freshness; **U83** missing UI retry/authenticated/real-store/
+concurrency qualification, narrowed by the explicit active-rejection assertion;
+**U84** hidden initial errors/stale mounted state; **U85** retry conflict/status gap;
+**U86** generic reason/provenance; **U87** action races/conditional cleanup;
+**U88** missing negative/auth/real-store qualification. U22, U70–U74, A69 and all
+historical qualifications are retained unchanged. No uncertainty is silently
+resolved, no model accuracy or runtime result inferred from source or mocked tests.
+
+### Complete new requirement/scenario mappings and overlap reconciliation
+
+Every row maps the exact requirement and every scenario header. All are ADDED to
+the existing recipe-quality capability, with no MODIFIED/REMOVED blocks. Evidence
+is implementation-supported, not runtime verified.
+
+**baseline-recipe-quality-cooking-feedback:** Shared-form initialization only; cooking owns entry/return/acknowledgement and main quality owns later toggling/submission/policy.
+
+| Exact requirement | All exact scenario headers | Evidence / assertion boundary |
+| --- | --- | --- |
+| Merge contextual issue reasons with loaded saved feedback | Initialize a new contextual report; Extend saved content feedback; Context overlaps a saved Duplicate reason | BSL-recipe-quality-017; merged content/note assertions inspected, mixed Duplicate initialization source-only |
+
+**baseline-recipe-quality-failure-references:** Copy controls only; reuse main returned failure guidance and guarded outcome projection.
+
+| Exact requirement | All exact scenario headers | Evidence / assertion boundary |
+| --- | --- | --- |
+| Offer failure reference copy controls when identifiers are returned
+
+When the issue form receives both re-import failure guidance and a failed import ID, it SHALL offer Copy import ID and, when supplied, Copy recipe ID. Without both guidance and failed import ID it SHALL omit these controls. The controls SHALL use returned identifiers, without inferring that the attempt repaired the recipe or resolved its report.
+
+#### Scenario: Both references are available
+- **WHEN** the mounted issue form receives failure guidance, a failed import ID and a recipe ID
+- **THEN** Copy import ID and Copy recipe ID are available
+
+#### Scenario: Only the failed import reference is available
+- **WHEN** the form receives failure guidance and failed import ID without a recipe ID
+- **THEN** Copy import ID is available and Copy recipe ID is absent
+
+#### Scenario: Failure guidance or import reference is absent
+- **WHEN** the form lacks either failure guidance or a failed import ID
+- **THEN** neither reference-copy control is shown
+
+### Requirement: Acknowledge successful failure reference copying
+
+Activating a failure reference control SHALL request clipboard writing of its corresponding identifier. After that request succeeds while the form remains mounted, the selected control SHALL display Copied and schedule its acknowledgement to clear after 1500 milliseconds. This SHALL NOT save feedback, resolve a report or retry an import.
+
+#### Scenario: Copy a recipe reference successfully
+- **WHEN** Copy recipe ID is activated and its clipboard write succeeds
+- **THEN** the supplied recipe ID has been passed to clipboard writing and that control displays Copied with timed reset scheduled
+
+#### Scenario: Copy an import reference successfully
+- **WHEN** Copy import ID is activated and its clipboard write succeeds
+- **THEN** the supplied failed import ID has been passed to clipboard writing and that control displays Copied with timed reset scheduled |  | BSL-recipe-quality-018; assertions and missing paths recorded above; no runtime pass |
+
+**baseline-recipe-quality-bulk-import-observation:** Bulk/count/attributed-resource semantics only; reuse main polling and shared auth/workflow state representation.
+
+| Exact requirement | All exact scenario headers | Evidence / assertion boundary |
+| --- | --- | --- |
+| Select unnamed stored recipes for bulk import requests
+
+POST `/api/recipes/imports/bulk` SHALL select nondeleted recipes whose name is null and request a recipe-import workflow for each selected identity. A nonnull name, including an empty name, SHALL exclude a recipe. Selection SHALL NOT require a saved issue, failed task or eligible contextual feedback. Shared household authentication SHALL retain household-identity ownership.
+
+#### Scenario: Select unnamed recipes
+- **WHEN** bulk import is requested with two nondeleted recipes whose names are null and orchestration succeeds
+- **THEN** one recipe-import request is made for each selected recipe with its recipe identity
+
+#### Scenario: Exclude named or deleted records
+- **WHEN** stored recipes have nonnull names or have been soft-deleted
+- **THEN** those recipes are excluded from bulk selection
+
+#### Scenario: An unnamed recipe already has work
+- **WHEN** an unnamed nondeleted recipe has an existing workflow and bulk import is requested again
+- **THEN** that existing workflow does not exclude it from another import request
+
+### Requirement: Return accepted bulk workflow identities without certifying repair
+
+After all selected bulk import requests return successfully, the API SHALL return unwrapped 202 with queuedCount equal to the number of returned workflow identities and instanceIds containing those identities. An empty selection SHALL return zero and an empty list. This acknowledgement SHALL NOT certify worker execution, recipe readiness, corrected content or report resolution.
+
+#### Scenario: Nonempty bulk acceptance
+- **WHEN** every selected recipe's workflow trigger returns successfully
+- **THEN** the response is 202 with queuedCount matching instanceIds and the returned identities describe workflows rather than recipe IDs
+
+#### Scenario: No eligible unnamed records
+- **WHEN** bulk selection is empty
+- **THEN** the response is 202 with queuedCount zero and instanceIds empty
+
+### Requirement: Count stored recipe-import workflows in the import summary
+
+GET `/api/recipes/import-status` SHALL return unwrapped 200 with importedCount counting Completed recipe-import instances, queueCount counting Pending plus Processing recipe-import instances and failedCount counting Failed recipe-import instances. It SHALL count workflow instances rather than recipes or reports and SHALL exclude other workflow types and Paused instances from these counts.
+
+#### Scenario: Count stored import states
+- **WHEN** recipe-import instances exist in Completed, Pending, Processing, Failed and Paused states
+- **THEN** the first four contribute to their specified counters and Paused contributes to none
+
+#### Scenario: Other workflow types exist
+- **WHEN** url-import or other workflow types have stored states
+- **THEN** they contribute to none of these import-summary counters
+
+#### Scenario: No counted instances exist
+- **WHEN** no recipe-import instances occupy a counted state
+- **THEN** all three counters are zero
+
+### Requirement: Restrict import identity reads to attributed recipe context
+
+GET `/api/recipe-imports/{importId}` SHALL require bindable existing member context and an existing nondeleted recipe identified by the workflow's recipeId parameter with matching added-by attribution. A permitted read SHALL return unwrapped 200 with stored workflow detail. Missing or inaccessible imports SHALL return 404. Shared identity transport and background-processing stored-state meanings SHALL retain their existing ownership.
+
+#### Scenario: Read an attributed import
+- **WHEN** an existing member requests an existing import whose recipeId names that member's nondeleted recipe
+- **THEN** the API returns 200 with that stored instance's identity, status and workflow detail
+
+#### Scenario: Another known member requests the import
+- **WHEN** a known member requests an import whose associated recipe was added by another member
+- **THEN** the API returns 404 rather than that workflow detail
+
+#### Scenario: Import or recipe context is absent
+- **WHEN** the import is absent or its recipeId does not identify an accessible nondeleted recipe
+- **THEN** the API returns 404 without successful import detail |  | BSL-recipe-quality-019; assertions and missing paths recorded above; no runtime pass |
+
+### Source identity reconciliation
+
+All **89 unique source paths / 131 hash rows actually present in this capability
+plan before edits** match their recorded SHA-256 values. Historical 148/172/178/198
+cross-plan manifest counts remain historical; this audit does not misstate them
+as 198 rows in the split file. All current tracked/untracked bytes were also
+snapshotted before writes. The following explicit current manifest identifies
+immediate rechecked sources/tests/contracts/dependencies for this audit. Hashes
+identify content, not test execution or environment qualification.
+
+| Source | SHA-256 |
+| --- | --- |
+| `api/database/compatibility.sql` | `bd3828fc1ce8b898b0feaa8f2e41be2e211cecadbefbfe9a68e14df435b859d5` |
+| `api/database/schema.sql` | `3f7767cd704299374ebdcd89a11709680013ba26a477ad23f41da54e6da55161` |
+| `api/src/RecipeApi.Tests/Controllers/RecipeControllerTests.cs` | `903493f2d741b315edf8ca44a83c5083500f70c9d30117c89db979ca805ff385` |
+| `api/src/RecipeApi.Tests/Infrastructure/TestWebApplicationFactory.cs` | `0ee567443fc0b5c11fffe631c94ea0407681b371224d8083a0e32b94b280804c` |
+| `api/src/RecipeApi.Tests/Integration/CaptureFailureIntegrationTests.cs` | `a16687f8b455625fb73002cc1e6327972014018b4d788ee645b3079bd84a00ae` |
+| `api/src/RecipeApi.Tests/Integration/RecipeImportReportIntegrationTests.cs` | `0ed0a2308f813e83ac5742288fd5f8268018e232aeda2778ff44153e888bac75` |
+| `api/src/RecipeApi.Tests/Integration/RecipeImportReportPostgresTests.cs` | `917bb45c566d0704fb95ea66f4271ec442932cfee2c7c0a698e6ce684b74e6e4` |
+| `api/src/RecipeApi.Tests/Integration/RecipeSearchIntegrationTests.cs` | `27fc0d86492bcaa25f440543e65ff5e4df5f05f3e1fc315bc4c6b73bd9aa1ce6` |
+| `api/src/RecipeApi.Tests/Services/Agents/RecipeAgentPromptSelectionTests.cs` | `f221b4c7359e6c821101e7ad2276c922dde48549235b5e50939c9c73ec2768f1` |
+| `api/src/RecipeApi.Tests/Services/RecipeImportLifecycleTests.cs` | `fe4b7249603997be939e0b8a2d790ef88f1eaa1863b7101a2011186f258a04cb` |
+| `api/src/RecipeApi.Tests/Services/WorkflowWorkerTests.cs` | `b701d122fa95c23309741e209dbd2f9f8da40404a0f59e221e2809cc11448434` |
+| `api/src/RecipeApi/Controllers/CapturesController.cs` | `2c6288fcac9627acefd02de76a77822d4a51955cd8db8b32ae967bf5c035e85f` |
+| `api/src/RecipeApi/Controllers/RecipeController.cs` | `d1699c2de6f6cca9d879e67c0c7b9c7f0af4b2c4e104bc9ff04634b266eb5a70` |
+| `api/src/RecipeApi/Controllers/RecipeImportController.cs` | `a5fe04c228c90f4f85bc4681df800a74af53d676599cac965c9ba60b27fe550b` |
+| `api/src/RecipeApi/Data/RecipeDbContext.cs` | `92084cf105ec2941e713fca9053609f4974156b6440fb72f9b623cf918916447` |
+| `api/src/RecipeApi/Dto/BulkImportTriggerResponseDto.cs` | `b9a5bdee301aaedba85558c00ae3fff3eaf23b0bed6689c324dcb77f6ce418ff` |
+| `api/src/RecipeApi/Dto/CaptureFailureClearResponseDto.cs` | `f6f678f3352b466bbacf8ed3226ef34cb0551482b0a9f92ab28d2c26316852ba` |
+| `api/src/RecipeApi/Dto/CaptureFailureDto.cs` | `2c4556469d5bb3125b7638ab900baf967f5b6d6c8df9af80a2b4b6b98272b258` |
+| `api/src/RecipeApi/Dto/RecipeDetailResponseDto.cs` | `a7a0e1c3190cf711feea3a618716d54fb5b1bcd4f19349c32ec813c13771d342` |
+| `api/src/RecipeApi/Dto/RecipeImportIssueDto.cs` | `dfb97589523119034893672b27df15559938ff51370fc87a441642c34eb3daa1` |
+| `api/src/RecipeApi/Dto/RecipeImportSummaryDto.cs` | `565768c56831cc99316b4bb6fda4e6a104e99b03004ee6207f02c390d1efbbfa` |
+| `api/src/RecipeApi/Dto/WorkflowInstanceDetailDto.cs` | `c86b463339d6abc8ab761741a2c670a36077903dfe1090a8faa657655a5375b1` |
+| `api/src/RecipeApi/Infrastructure/FamilyMemberIdModelBinder.cs` | `4d5dcc9f7d9993abb4c59802f770da139c4875c55544df8410553332a04a2f64` |
+| `api/src/RecipeApi/Middleware/ErrorHandlingMiddleware.cs` | `b5849eb709ca2bc85efa3051d3a953ca955ef8704848327ad88d0297299d949b` |
+| `api/src/RecipeApi/Models/MaintenanceCommand.cs` | `662a52cec600eab7434f8b8b45c4b28e31573dec129ad538acad08dc40415b84` |
+| `api/src/RecipeApi/Models/RecipeImportReport.cs` | `2fa6fb2814f07dc9a2226156c01894a01c8006ff4c249c5573c830cd2fd6fc56` |
+| `api/src/RecipeApi/Models/WorkflowInstance.cs` | `82d14b99d40c02ec5b10c188a16d190e865fd1b6246bc514ee37021b7d537641` |
+| `api/src/RecipeApi/Models/WorkflowTask.cs` | `3408be49a3afafc7ac70d6104124dcfcdd8df7509162ff9186d3581bb30f6e06` |
+| `api/src/RecipeApi/Program.cs` | `a4a2510b9cf0bbeb0e05072ab2bf2b299f4029e449bff17e7386b62f5321c523` |
+| `api/src/RecipeApi/Services/Agents/RecipeAgent.cs` | `b23761d819726cf5dd8c50000cabc05198fba855865e6beba05de0ea8a6097af` |
+| `api/src/RecipeApi/Services/CaptureFailureReasonMapper.cs` | `c31eb1c126d14ceea54f0313e3bddbdc370c47d5a1c4ab1a27b16218ddcb2de3` |
+| `api/src/RecipeApi/Services/CaptureFailureService.cs` | `88a7b76335db0873e0d5e4bcde15783a2ec792d84f97f967a24f3bcf5b79db29` |
+| `api/src/RecipeApi/Services/ManagementService.cs` | `c24464baa8f853c7195e30de61b168ef2b8eda059545a5449580807448811c4f` |
+| `api/src/RecipeApi/Services/Processors/CompleteRecipeImportReportProcessor.cs` | `0e5d13ababefa89cda1e3bc74e65065d7e9a51a49142a0e96b6b1c50a8e54b4d` |
+| `api/src/RecipeApi/Services/Processors/ManagementProcessor.cs` | `484abcf7eb3d3e5c2882c785edea3a4a3083f7f7c2efc3c5e479aad7e561096f` |
+| `api/src/RecipeApi/Services/Processors/RecipeReadyProcessor.cs` | `4206f98256cadae88d7be13a44e9d9d18b6c46679ba7b9f0aee0dcef8a848a74` |
+| `api/src/RecipeApi/Services/Processors/SyncRecipeProcessor.cs` | `246f5ffe2effb7ddc6b0019e5f6ab0436cc20a93b06cf1cdc337007f4ccd2945` |
+| `api/src/RecipeApi/Services/RecipeImportBulkService.cs` | `699e706d68c3dc221a57a6724bf6b10dc7e3060620fe03d77cfeef48866d8ce1` |
+| `api/src/RecipeApi/Services/RecipeImportReportService.cs` | `99776d8ddfb954d0def99460d868d43a3f3f24e08c4459bd30c132959e30acb3` |
+| `api/src/RecipeApi/Services/RecipeImportService.cs` | `3016a8e38da063513813e813fad5f8fddf10f285abfa1ef3e0743c200ac1af14` |
+| `api/src/RecipeApi/Services/RecipeSearchPredicate.cs` | `188a9a6285d5762f275fe16c3a7cc62f1f25395ddc59ae51a2b17d1c36d82e9b` |
+| `api/src/RecipeApi/Services/RecipeSearchService.cs` | `31e2bf8a197582b4852ce3a98820827504f410a5ae281bc3a247aa19b5674377` |
+| `api/src/RecipeApi/Services/RecipeService.cs` | `9eec9ab5cd7102081b3765b08a41b8de4d45325858d18ab4573a326afa256b74` |
+| `api/src/RecipeApi/Services/RetryScheduler.cs` | `e3849aceddc86ccca36766c284c4c90f0bddf65ed7398d7c0140efbf136ff965` |
+| `api/src/RecipeApi/Services/WorkflowOrchestrator.cs` | `9812d17bface86d79fef75eab2ef7668c7c0bde18455c1ea46774b46dcc0b14c` |
+| `api/src/RecipeApi/Services/WorkflowRepository.cs` | `1356e4b126077506c07633c2d977a419d96641e8a03f976d45f4e945775214d3` |
+| `api/src/RecipeApi/Services/WorkflowWorker.cs` | `69f9023b0003ff2f0a5dda6d85bcb42e13ebf064b5c8529bc6b0866e5b3871df` |
+| `api/src/RecipeApi/Workflows/dreaming.yaml` | `862cf700ca717dd5b09b5f6dfb84b6f8810448c6080b805e2b3ff62289f9853d` |
+| `api/src/RecipeApi/Workflows/recipe-import.yaml` | `56977712412ec2c0b5a04495e77edbf3b97a71f92ad5f8da8546b58261de5b0a` |
+| `api/src/RecipeApi/Workflows/url-import.yaml` | `6f142f8831390021091f5c3ca9603f056d138719d1904ae72cd75827beb73787` |
+| `pwa/e2e/fixtures.ts` | `402b5a1b872f625dc1425f46afdede2c9378dcc473088159774a8455b5d188e2` |
+| `pwa/e2e/mock-api.ts` | `063ed6d6629ccde163487a92543ae36918183a81b7301dd01a5389248cbcbd07` |
+| `pwa/e2e/recipe-import-reporting.spec.ts` | `644a942cb84682530cd938c2a7235cf43e1f61e9a0827232060e8785324c8b28` |
+| `pwa/e2e/search-hardening.spec.ts` | `5ced566ad08583dd75abf434d0a15bc6c5be0e380483f7147cbc29e9b1bf6a03` |
+| `pwa/e2e/settings.spec.ts` | `2663d9e27dc756b6e60be57c1d440d00bd99d6b73c8cccc54add595eecc50a82` |
+| `pwa/playwright.config.ts` | `6e15ab7bb105dea06751d9e8dc5d3e4d280f0eb2d465553fbea5e2da65e91532` |
+| `pwa/src/app/(app)/browse-all-stack/page.tsx` | `2beaa3dd23a1817db55c037a27fbe92f881444d4285726af1b034a15d8ece947` |
+| `pwa/src/app/(app)/profile/page.test.tsx` | `529e954a8515fa92b21b2fc7796185a5681b914fc206e4bd62f3c96ecae6a8c4` |
+| `pwa/src/app/(app)/profile/page.tsx` | `2276868bc76ec0f13f2293ea5f1ae46ed2c1181cb386fb9c45e1ae6c7ef200c4` |
+| `pwa/src/app/(app)/profile/settings/SettingsPageContent.tsx` | `3deed0d88c6ac8f4ab5b94cc4724ae163dae344fd39c7aaccdf8a0c67d7e9aec` |
+| `pwa/src/app/(app)/profile/settings/page.test.tsx` | `f4f9abe7689432b86e8aff39e70969473792c97210ea38282eb57c3896d0feab` |
+| `pwa/src/app/(app)/profile/settings/page.tsx` | `50a78692d92af7d84de69c1b4d9990e4ed00f83961b0d6ab580b63fd979b0e18` |
+| `pwa/src/app/(app)/recipes/page.test.tsx` | `4e43afaf0d59302a1c219fba02e5df5c08bb03e143dc4d2c8f9b0393f69257e6` |
+| `pwa/src/app/(app)/recipes/page.tsx` | `18b9605e8078e8ee46674a0e781836886697ce18e9166c0591aeac6c8fe78bb4` |
+| `pwa/src/components/planner/CooksMode.test.tsx` | `2509bef1abf8a7c5a45d96820269b7debd6112a3f52fee3e0f14b2d9b3c2c026` |
+| `pwa/src/components/planner/CooksMode.tsx` | `daddc803a112db04791b202e546021e86d3985acf11dbdc3e4e15e60c211d91a` |
+| `pwa/src/components/profile/FailedCapturesSection.test.tsx` | `f518c27b3116b7b0641370e7acae81d1e45742aeed115d5f3089b9b837690e56` |
+| `pwa/src/components/profile/FailedCapturesSection.tsx` | `2632d08670b6b1b9959fe39e7141bb8cc15932082877ce7402a5dcd24ba0b6af` |
+| `pwa/src/components/recipes/ActionGearMenu.test.tsx` | `29e263dcc11fbbe33233e9f8884d94b070f6ffe4548334da0bfe99099f51b896` |
+| `pwa/src/components/recipes/ActionGearMenu.tsx` | `d0c0c5ee92658de43cfb9fddc40b4d69030a02c348396e9044d1c77e218b8e75` |
+| `pwa/src/components/recipes/RecipeDetailSheet.test.tsx` | `21727367dee891c473635cc2eafde324b0f6863e0dd4db1a7e82203d5e650da0` |
+| `pwa/src/components/recipes/RecipeDetailSheet.tsx` | `bbc1bba8f16f3fa305775d072cb1c3850af34a24bd3979e2228b63984ca1a19c` |
+| `pwa/src/components/recipes/RecipeFiltersSheet.test.tsx` | `de916aec12545ffccd3a6a40baafcfd7a901ce9a94b7d089bf9bc3aee28e259d` |
+| `pwa/src/components/recipes/RecipeFiltersSheet.tsx` | `c588ae862e5482fcbd64c16803705829e3cd73b7d8f47b7628d3737bb8782e78` |
+| `pwa/src/components/recipes/RecipeImportIssueBadge.test.tsx` | `5bd1eb668e0826b844467a613ca1b023401e903947c7c571ce2d72e3912b01dc` |
+| `pwa/src/components/recipes/RecipeImportIssueBadge.tsx` | `9b95eac67d842a064c9a54a3b94f87a93c4664153a51646e11b7da8ff625b5e3` |
+| `pwa/src/components/recipes/RecipeImportIssueSheet.test.tsx` | `abe9245f3286bbc94debc3f9b720cf388ca4145e76a04813f3555dee21a56fe0` |
+| `pwa/src/components/recipes/RecipeImportIssueSheet.tsx` | `e7c8376cf97f3f9c642fc874a892d461aac9da72e2abc82f70ad09c56a4c9ae3` |
+| `pwa/src/components/recipes/RecipeStackCard.tsx` | `6c9633e0414e9608ea8628efe3d22de9a9f9db4da7d8afe7b3de84ea255362ca` |
+| `pwa/src/lib/api/api-client.ts` | `c5cd4cfebddd8d5c1f2827c522a236fe12c504130ea0991c07bc8fc46376aa95` |
+| `pwa/src/lib/api/captures.ts` | `ca0d112b46ce3bf0c60dc7a1ce7de4039d70ac6028dfb7d37314805e510b302f` |
+| `pwa/src/lib/api/failed-captures-contract.test.ts` | `bd0cb4b0f407f632479c6c219086e88bfdfbf62642da757212d6f4da4794927a` |
+| `pwa/src/lib/api/generated/api/captures/failures/index.ts` | `941616534120bd48410e3777e40e1192fd0c9742a2e4aa94510d51b019472116` |
+| `pwa/src/lib/api/generated/api/captures/failures/item/index.ts` | `dda1ec302ddb8a01030b3e320633aa9de79dc31528d63c0a564cffeeb9962f86` |
+| `pwa/src/lib/api/generated/api/captures/failures/item/retry/index.ts` | `53b502626fc323702aa1c2ff93efbb17f8b23135e135c6a9b32f170c0e9d2fd5` |
+| `pwa/src/lib/api/generated/api/recipeImports/item/index.ts` | `1ae62eeebd51f7e92a148f19fc356d38134406263c5275b0a917640b698f7454` |
+| `pwa/src/lib/api/generated/api/recipes/importStatus/index.ts` | `542c17d4919d294f42fa961236a89747e907cd0f4da9c19e5a106b981fe8ac35` |
+| `pwa/src/lib/api/generated/api/recipes/imports/bulk/index.ts` | `76df8f64634281a6e90ff2feb5dce21d15bef01e68eee23940fbab1221b5d990` |
+| `pwa/src/lib/api/generated/api/recipes/item/importReport/index.ts` | `da2d1d8454fa6a1e64e9d82b7e5a8ae965f0d02272d5b48941aabbef60c86930` |
+| `pwa/src/lib/api/generated/api/recipes/search/index.ts` | `a3515a1910d6028767770a4080284e1d47bdfcf475e9257da3d2f1d33d6f3666` |
+| `pwa/src/lib/api/generated/models/index.ts` | `03e19537845755d2cd0d30071284bc8a11007237e380433184d3edbe1ddb05e6` |
+| `pwa/src/lib/api/recipe-import-report-contract.test.ts` | `8a0f34127f2580ea58d782b0d6aa7aedd142c485ac7c97d7c06f584d96d8d8a7` |
+| `pwa/src/lib/api/recipes.ts` | `f4e70b39a2060bfc5b25010914f78e288321517db5c52c543d103502718dce7a` |
+| `pwa/src/lib/constants/routes.ts` | `790d2da3e039578fd7d291dead52213bfd2282b17517f973029bafac37f34d70` |
+| `pwa/src/locales/en/common.json` | `3519f2d7e0140a11786597976b6868fa195312e0bc3feb3e4d3c3e144a41d0bc` |
+| `pwa/src/locales/fr/common.json` | `b5d957a8f395091038e1c3ab64fed1b300cd7f015e0e11172ed1cba611d4e198` |
+| `pwa/src/store/searchPromotionStore.ts` | `9b1fd64d9ea5549161233734a976392b1ba8cbd75333492296284784004e2fd8` |
+| `specs/openapi.yaml` | `0fbd27813611e16474ec17a48ede372d5a41af02db3fa9ded82295a6357046ff` |
+
+### Artifact and lifecycle status / session handoff
+
+The CLI scaffolded these three new changes sequentially, with proposal, design,
+recipe-quality delta, documentation-extraction tasks and `.openspec.yaml` in each:
+
+- `openspec/changes/baseline-recipe-quality-cooking-feedback/`: 1 requirement / 3 scenarios.
+- `openspec/changes/baseline-recipe-quality-failure-references/`: 2 / 5.
+- `openspec/changes/baseline-recipe-quality-bulk-import-observation/`: 4 / 11.
+
+Selected strict validation passed for each drafted slice. The final integration
+acceptance is strict validation of **all six selected quality changes**, the entire
+OpenSpec set, exact promoted-block/new-mapping/count/identity/preservation checks,
+full task-owned diff review and `task verify` with every changed/new documentation
+path (this plan, the single changed index summary row and all 15 new artifact files).
+Final observed results/content identity belong to the response and current
+`.task/agent-finish/last-run.json`; no earlier verification identity is attached to
+later edited bytes. No preparation is needed for documentation-only changes.
+
+Generation is complete within RQ-01–RQ-17: accepted main remains 37/92; remaining
+7/19 additions are generated drafts for human review, not human acceptance or
+promotion. Existing quality artifacts and main specifications are preserved; concurrent
+foreign documentation/index activity is recorded below without being reverted. The index's quality summary alone changes to route this status.
+No application/tests/contracts/clients/SQL/configuration/dependencies are edited;
+no runtime/API/browser/database/worker/model qualification is performed.
+
+Checks: selected strict validation passed; complete-set strict validation and
+explicit-path documentation verification are required final checks and their
+observed outcomes are reported in the final response/current harness. Failed and
+blocked checks are reported separately if present. Runtime/API/browser/worker/
+PostgreSQL/model/clipboard qualification is **not-run** by instruction/A34;
+application TDD, client regeneration, migrations, implementation acceptance and
+archive checks are **not-applicable** to these documentation drafts.
+
+**Exact next lifecycle action:** human review of the three proposals/designs/deltas,
+all 19 scenario evidence mappings, U83 correction and retained/new qualifications.
+Only after acceptance and separate authorization may reviewed deltas be promoted
+into main specifications. Do not run apply, promote, archive, stage, commit, publish
+or deploy as part of this generation session. Runtime qualification remains a
+separate deferred action under A34.
+
+
+### Concurrent work and ownership reconciliation
+
+During final integration review, the initial whole-worktree preservation assertion
+reported an unexpected change in `docs/openspec-baseline/cooking.md`. Reinspection
+found four concurrently generated `baseline-cooking-*` changes, including
+`baseline-cooking-edit-report-handoffs`. These are foreign work, not generated by
+this quality session, and are preserved. That draft owns cooking entry, local
+return/state and background acknowledgement; the quality cooking-feedback delta
+was narrowed from 4/10 to **1/3**, solely shared-form contextual initialization.
+All inventories/counts/mappings above reflect the narrowed result: **7/19** new,
+**44/111** if later promoted. Cooking's concurrent proposal references an early
+quality proposal state; it is not rewritten in this session. Its review should use
+this final ownership reconciliation rather than infer acceptance of either draft.
+
+The initial global index equality assertion cannot establish preservation across
+concurrent foreign staging. This session issued no stage/index mutation command.
+Final preservation checks compare all task-owned and evidence paths and report
+foreign drift separately, rather than reverting it or claiming sole ownership of
+the worktree. The early assertion failure is a concurrency finding, not a failed
+OpenSpec validation or runtime behavior test. Final selected/all validation and
+explicit-path checks are rerun for the reconciled final bytes.
+
+
+Final full task-path verification command (17 files):
+
+```sh
+task verify -- docs/openspec-baseline/recipe-quality.md docs/openspec-baseline-plan.md openspec/changes/baseline-recipe-quality-cooking-feedback/.openspec.yaml openspec/changes/baseline-recipe-quality-cooking-feedback/design.md openspec/changes/baseline-recipe-quality-cooking-feedback/proposal.md openspec/changes/baseline-recipe-quality-cooking-feedback/specs/recipe-quality/spec.md openspec/changes/baseline-recipe-quality-cooking-feedback/tasks.md openspec/changes/baseline-recipe-quality-failure-references/.openspec.yaml openspec/changes/baseline-recipe-quality-failure-references/design.md openspec/changes/baseline-recipe-quality-failure-references/proposal.md openspec/changes/baseline-recipe-quality-failure-references/specs/recipe-quality/spec.md openspec/changes/baseline-recipe-quality-failure-references/tasks.md openspec/changes/baseline-recipe-quality-bulk-import-observation/.openspec.yaml openspec/changes/baseline-recipe-quality-bulk-import-observation/design.md openspec/changes/baseline-recipe-quality-bulk-import-observation/proposal.md openspec/changes/baseline-recipe-quality-bulk-import-observation/specs/recipe-quality/spec.md openspec/changes/baseline-recipe-quality-bulk-import-observation/tasks.md
+```
+
+### Observed final documentation acceptance
+
+All six quality changes passed selected strict validation. The complete OpenSpec
+set passed **69/69**, including the concurrent cooking drafts; informational
+archive-readiness notices for already-promoted capture/library additions are not
+validation failures and no archive was attempted. The explicit **17-path**
+`task verify` passed **documentation**, **spec:check** and **content**. Exact
+promoted blocks, every new header/scenario mapping, all 98 current unique source
+identities, unchanged original quality artifacts/main specs/application/contracts
+and the one-row index-summary edit were reviewed. All extraction tasks are complete.
+
+The initial whole-worktree assertion failed because foreign cooking documentation
+and foreign staging changed concurrently; that assumption was corrected and the
+ownership overlap removed. No file was reset or index mutated by this session.
+Final review found continuing changes limited to foreign cooking documentation/
+tasks, with index bytes stable across that review interval. Such foreign edits are
+excluded from this session's preservation claim; all task evidence and original
+quality/source inputs remain preserved. Required final documentation checks have
+**no remaining failures or blockers**. Runtime/API/browser/worker/PostgreSQL/model/
+clipboard checks are **not-run** under A34; application TDD/client generation/
+migrations and promotion/archive acceptance are **not-applicable**.
+
+Artifact status: **generation complete; three validated drafts for human review**.
+Human acceptance **pending**; main-spec promotion **not performed**; runtime
+qualification **deferred/not-run**. The exact next lifecycle action remains human
+review, including retained qualifications and the concurrent cooking ownership
+reconciliation. Final verification repeats after this record so the harness identity
+covers these final documentation bytes; no earlier digest is asserted for them.
+
+
+## RQ-P01 — Accepted remaining baseline promotion, 2026-10-16
+
+**Authorization:** User “promote” following the completed generation report accepts
+the three reviewed quality deltas and authorizes their main-spec synchronization
+and bounded documentation records. No archive, application implementation, runtime
+qualification, staging, commit, publish or deployment is authorized.
+
+**Context and identity:** Branch `moving-to-openspec`, HEAD
+`04a1c4570f9bbb01b47436790d4248635ac3179a`; installed openspec-sync-specs used.
+Current CLI list/context and all three statuses resolve the local repository root;
+delta paths come from status artifactPaths.specs.existingOutputPaths. Current specs
+rules obtained for each before writes. Private before-images/digests and staged
+binary diff snapshot are held under `/tmp/recipe-quality-promotion`. Existing staged,
+unstaged and untracked work, including concurrent cooking drafts, is preserved.
+All **98** current evidence-source hashes match before promotion; no changed source
+requires reinterpretation of the reviewed behavior or qualifications.
+
+**Result:** Exact **1/3** contextual initialization, **2/5** failure-reference controls
+and **4/11** bulk/import observation blocks appended from the selected deltas.
+Main recipe-quality now **44/111**, retaining its original Purpose, prior **37/92**
+requirement/scenario blocks and all earlier qualification text. A non-normative
+promotion note points to the audit and retained limitations. The three selected
+proposal/design/delta/metadata files remain unchanged; tasks gain additive lifecycle
+follow-up only. The index quality summary changes to promoted 44/111. No other
+main specification or cooking artifact is selected for modification.
+
+**Qualifications:** A34, U01, U75–U88 with the explicit U83 evidence correction,
+RQ-Q01–RQ-Q04, U22/U70–U74/A69 and all historical limitations remain at their recorded
+scope. Accepted requests do not certify execution; processing completion does not
+resolve reports; source support does not certify repair, cleanup, delivery,
+clipboard availability or model accuracy. Cooking entry/return/acknowledgement
+ownership stays with its separate cooking draft. No uncertainty is closed by sync.
+
+**Required checks and reviewed path set:** Exact old-main preservation after removal
+of the new note/additions; exact delta-to-main equality; unique 44/111 counts;
+source/index/foreign-work preservation; six-path documentation diff review; selected
+changes/main/all-spec/all-item strict validation; explicit `task verify` for main,
+this capability plan, the index and the three selected tasks files. Final observed
+outcomes/content identity belong to the final response/current harness; earlier
+successful checks identify earlier bytes only.
+
+**Lifecycle status:** Generation **complete**; human documentation acceptance
+**recorded by “promote”**; main-spec promotion **performed**, subject to successful
+final documentation checks; changes **active, not archived**; runtime/API/browser/
+worker/PostgreSQL/model/clipboard qualification **not-run/deferred under A34**.
+Application TDD/client generation/migrations are **not-applicable**. Report any failed
+or blocked required checks separately. No further lifecycle action is performed;
+archival or qualification requires a separate request.
+
+RQ-P01 observed checks before final explicit-path verification: all three selected
+changes strictly valid; all **10 main specifications passed** strict validation;
+exact prior-main plus delta equality and unique **44/111** counts passed; all 98
+source identities match. The first complete-set strict check reported **70 passed,
+1 failed / 71 items**: concurrent foreign
+`baseline-grocery-shopping-scheduled-needs` has no delta yet. Its direct strict
+validation confirms “Change must have at least one delta. No deltas found.” This is
+outside recipe-quality promotion scope and is not repaired, skipped or configured
+away. No selected quality failure is implied. Final `task verify` still runs its
+full spec check; report its observed outcome separately rather than claim a green
+complete-set gate from selected validation alone. Concurrent cooking plan/index
+updates are preserved. Promotion is applied; full-set verification may remain
+blocked by foreign work until its author completes that draft. No runtime check
+was executed and no index mutation was performed by this session.

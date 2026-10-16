@@ -536,3 +536,83 @@ When Profile has a loaded selected member, it SHALL offer a Continue-as control 
 #### Scenario: Continue as the selected member
 - **WHEN** Profile has a loaded selected member and a person activates Continue-as
 - **THEN** Home navigation is requested for the existing context without requesting a new selection, writing identity cookies or changing onboarding completion
+
+### Requirement: Attribute initial URL and photo captures to the bound member
+
+For authorized ordinary-household URL or photo capture with an existing bound member, when initial persistence succeeds, the API SHALL record that member's ID as `addedBy` in both the recipe row and initial recipe metadata. This attribution SHALL identify the submitting member without establishing a personal account or exclusive ownership of the shared recipe. Capture acceptance, dispatch and readiness SHALL follow recipe-capture requirements.
+
+#### Scenario: Attribute a successfully persisted URL intake
+- **WHEN** POST `/api/recipes/capture-url` binds an existing member and initial persistence succeeds
+- **THEN** the new recipe row and initial recipe metadata record that member as addedBy
+- **AND** this records the submitter without certifying background completion
+
+#### Scenario: Attribute a successfully persisted photo intake
+- **WHEN** POST `/api/recipes` binds an existing member and initial photo persistence succeeds
+- **THEN** the new recipe row and initial recipe metadata record that member as addedBy
+- **AND** this records the submitter without certifying background completion
+
+### Requirement: Set primary member identity-cookie options
+
+The primary member-cookie action SHALL write the supplied ID as the HttpOnly `x-family-member-id` cookie with SameSite=Lax, path `/` and Max-Age 31,536,000 seconds. Configured domain inclusion and Secure selection SHALL follow the same conditions as `Set household access-cookie options`. These options SHALL NOT guarantee browser retention or completed identity handoff.
+
+#### Scenario: Primary identity-cookie write succeeds
+- **WHEN** the primary member-cookie action successfully writes a selected existing member's ID
+- **THEN** it configures that ID's cookie as HttpOnly with SameSite=Lax, root path and one-year Max-Age
+- **AND** domain and Secure options follow the existing access-cookie option conditions
+
+### Requirement: Route hydrated landing context to the next household page
+
+When the landing route reaches hydrated client identity validation, the application SHALL request Home if a member ID is selected, otherwise onboarding. This request SHALL NOT create or validate a member. Existing household page access, member resolution and recovery requirements SHALL continue to apply; a navigation request SHALL NOT guarantee arrival.
+
+#### Scenario: Landing client has selected context
+- **WHEN** hydrated client identity validation handles the landing route with a selected member ID
+- **THEN** it requests replacement navigation to `/home` without creating or validating a member
+
+#### Scenario: Landing client has no selected context
+- **WHEN** hydrated client identity validation handles the landing route without a selected member ID
+- **THEN** it requests replacement navigation to `/onboarding` subject to the existing page access rules
+
+### Requirement: Carry browser member context on shared SDK requests
+
+Requests through the shared browser API client SHALL send the selected member ID as `X-Family-Member-Id`, falling back to the readable member cookie when no selected ID is available. If neither supplies a value, this provider SHALL omit the member header. Household authentication SHALL follow `Authenticate protected API requests independently` separately.
+
+#### Scenario: Selected member takes precedence in the browser
+- **WHEN** a shared browser SDK request is prepared with a selected member and a different readable member cookie
+- **THEN** its member header contains the selected ID
+
+#### Scenario: Readable cookie supplies browser context
+- **WHEN** a shared browser SDK request is prepared without a selected ID and with a readable member cookie
+- **THEN** its member header contains the cookie value
+
+#### Scenario: Browser has no readable member context
+- **WHEN** neither selection nor readable member cookie supplies an ID for a shared browser SDK request
+- **THEN** this provider adds no member header
+- **AND** endpoint binding and validation still apply, including any server-readable cookie
+
+### Requirement: Forward server-rendered household request context
+
+Requests through the server API fetch helper SHALL forward a nonempty incoming member cookie as `X-Family-Member-Id` and a nonempty incoming household access cookie as `h_access` in the Cookie header. The member cookie SHALL replace a caller-supplied member header when present. This transport SHALL NOT establish member existence or successful household authentication.
+
+#### Scenario: Server request has both context cookies
+- **WHEN** the server fetch helper receives nonempty member and household access cookies
+- **THEN** its API request carries the member cookie value in the member header and forwards the household access cookie
+
+#### Scenario: Server cookie overrides supplied member header
+- **WHEN** a server fetch caller supplies a member header and the incoming member cookie has a different nonempty value
+- **THEN** the API request member header contains the incoming cookie value
+
+### Requirement: Bind shared API member context independently of membership validation
+
+For API actions using shared member-context binding, a parseable GUID in `X-Family-Member-Id` SHALL take precedence over the `x-family-member-id` cookie. Absent or unparseable headers SHALL allow a parseable cookie GUID to supply context. Binding SHALL NOT establish member existence, household access or permission for the operation; endpoint-specific checks SHALL remain separate.
+
+#### Scenario: Parseable header wins over the cookie
+- **WHEN** an authorized request to a shared-binding action supplies different parseable header and cookie GUIDs
+- **THEN** binding supplies the header GUID without looking up membership or falling back based on membership
+
+#### Scenario: Invalid header permits cookie fallback
+- **WHEN** a shared-binding action receives an absent or malformed member header and a parseable member cookie
+- **THEN** binding supplies the cookie GUID
+
+#### Scenario: Neither transport supplies a GUID
+- **WHEN** neither member header nor member cookie contains a parseable GUID
+- **THEN** binding supplies no member identity and the action applies its own missing-context response

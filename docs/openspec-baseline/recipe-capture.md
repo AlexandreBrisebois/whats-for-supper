@@ -1,6 +1,38 @@
 # Recipe capture baseline plan
 
+## Current lifecycle checkpoint — consolidated, 2026-10-16
+
+This capability's main spec now contains **41 requirements / 110 scenarios**.
+All baseline source changes were archived after the user's explicit approval;
+there is no active baseline extraction/promotion queue. Historical checkpoint,
+next-session and "changes active" text below records earlier sessions only.
+Evidence limitations and unresolved findings remain in the [live backlog](backlog/README.md).
+See [consolidation completion](backlog/consolidation-completion.md) for accepted
+scope, preserved corrections, archive warnings and verification. Archival does not
+establish application correctness, runtime qualification or resolution of defects.
+
 ## Current checkpoint and scope
+
+Promoted main is now **41 requirements / 110 scenarios** under RC-P1 (2026-10-16).
+The user accepted promotion of all three RC-G1 review drafts: **4 added
+requirements and 10 full modifications**, covering intake boundaries, completion
+advice and configured processing-language requests. All approved areas are
+accounted for with recorded exclusions and uncertainties. Source-supported
+baseline extraction is accepted/promoted; runtime qualification remains not-run
+under A34. All changes remain active; no archival or application work occurred.
+Next lifecycle action: separately select any runtime qualification or archival;
+no further work is authorized by this promotion. See the
+[promotion record](#bsl-recipe-capture-025--remaining-scope-promotion).
+
+**Phase-12 reconciliation R12 (2026-10-16):** Recorded promoted documentation remains 41 requirements / 110 scenarios; no additional supported extraction gap was found within this plan's explicit boundary.
+[Cross-capability review](reconciliation.md) records current inventory, shared-owner
+reconciliation, evidence drift and exclusions. Current main SHA-256: `b7d563542abc9cbdbe1e470cbdc9fa44ddd4dee54f806ef7ecfc914dfebd456c`.
+This session grants no new acceptance or promotion. Earlier session-specific
+“current user” and next-action statements retain their historical scope. A34 and
+all local unresolved/excluded behavior remain in force; runtime checks are not-run.
+
+
+## Historical checkpoint before RC-G1
 
 Promoted baseline: **37/92 requirements/scenarios** at A84 (2026-10-16).
 This covers recorded slices, not the entire capability.
@@ -163,10 +195,10 @@ Cross-capability entries are included where the selected evidence depends on the
 **Artifacts produced:**
 | Artifact | Status |
 | --- | --- |
-| [Proposal](../../openspec/changes/baseline-recipe-capture-url-entry/proposal.md) | Draft; documentation only |
-| [Delta](../../openspec/changes/baseline-recipe-capture-url-entry/specs/recipe-capture/spec.md) | 9 ADDED requirements / 20 scenarios; new capability `recipe-capture` |
-| [Design](../../openspec/changes/baseline-recipe-capture-url-entry/design.md) | Technical architecture, component boundaries, and risks; no application design change |
-| [Tasks](../../openspec/changes/baseline-recipe-capture-url-entry/tasks.md) | Documentation extraction/validation checklist only; all 8 tasks checked |
+| [Proposal](../../openspec/changes/archive/2026-10-16-baseline-recipe-capture-url-entry/proposal.md) | Draft; documentation only |
+| [Delta](../../openspec/changes/archive/2026-10-16-baseline-recipe-capture-url-entry/specs/recipe-capture/spec.md) | 9 ADDED requirements / 20 scenarios; new capability `recipe-capture` |
+| [Design](../../openspec/changes/archive/2026-10-16-baseline-recipe-capture-url-entry/design.md) | Technical architecture, component boundaries, and risks; no application design change |
+| [Tasks](../../openspec/changes/archive/2026-10-16-baseline-recipe-capture-url-entry/tasks.md) | Documentation extraction/validation checklist only; all 8 tasks checked |
 | Main / lifecycle | Recipe-sharing 9/27, recipe-library 55/122, household-identity 36/92 unchanged; all twelve changes remain active; no archival |
 | Review handoff | Human draft review pending; promotion and archival require separate authorization |
 
@@ -688,3 +720,176 @@ Checks: passed / failed / blocked / not-run / not-applicable, with reasons:
 Limitations and excluded assertions:
 Exact next bounded action:
 ```
+
+## 2026-10-16 remaining-scope generation — current review checkpoint
+
+**Authority RC-G1:** The current user instruction authorizes discovery, evidence reconciliation and sequential generation of every remaining approved recipe-capture baseline draft. Historical single-slice stop points below are superseded for this sequence only. Stop at validated human-review drafts; no promotion, archival, implementation, runtime qualification, staging or commits.
+
+**Identity/preservation:** Branch `moving-to-openspec`, HEAD `04a1c4570f9bbb01b47436790d4248635ac3179a`. Initial porcelain inventory: 139 entries, 137 with index changes, one with unstaged changes, two untracked entries, no observed deletions (categories overlap). Staged/unstaged patches and a tracked/untracked file hash manifest were captured privately before task edits. Existing edits in this plan/index are retained; only current-checkpoint text and the records here are added/reconciled. No application source input was dirty. During extraction, unrelated `docs/openspec-baseline/meal-planning.md` and meal-planning/discovery change directories (including the pre-existing untracked occupied-recipe-replacement draft) changed concurrently; they were not edited or included in this task's verification. The staged binary patch remained identical to the initial snapshot. OpenSpec `context --json` and `list --json` resolved nearest local root `/Users/alex/Code/whats-for-supper`, no store indirection. Project `spec-driven` schema and installed proposal/status/instructions workflow used; no init/configuration change.
+
+**Checkpoint reconciled:** Counted **37 requirements / 92 scenarios** in main. URL **9/20**, photo **10/24**, description **7/18**, PDF **11/30** active deltas are already present verbatim in main; none is an unfinished capture draft. Their checked extraction tasks are not runtime acceptance. All **95 unique source paths with recorded SHA-256 entries in this plan** still match at least one recorded identity; historical statements of 110/148 identities are not the current unique-path count. Main Purpose still describes only links; broadening it belongs to authorized promotion review, not this draft-only sequence.
+
+### Coverage matrix — all approved areas accounted for
+
+“Promoted” below means accepted documentation coverage at the recorded lifecycle checkpoint, not verified application behavior. New draft counts include full MODIFIED blocks rather than new requirements only.
+
+| Area | Existing promoted coverage | Remaining supported extraction / disposition | Owner dependencies | Uncertainty / exclusion |
+| --- | --- | --- | --- | --- |
+| Photo | Select/stage/validate, dish index, rating/notes, multipart, progress/lock, extraction and failure banner; BSL-005–008 | Intake delta clarifies input activation, inclusive byte limit, clearing dish selection, server constraints and persistence/dispatch | Identity attribution; library readiness; background workflow | Device UI/decodability, cross-store rollback and model accuracy unqualified; multipart naming mismatch below |
+| URL | Entry/review, advisory lookup, intake, web extraction, countdown/inline ready/errors; BSL-001–002 | Intake delta clarifies validation, acceptance and conditional context/hero acquisition | Identity binding; background acceptance; library lookup | Fetch/context/hero can fail; no site-access or transactional-delivery guarantee |
+| Description | Direct/manual form, cancel, name advice, trimming/fallback, initial creation, synthesis/fallback, waiting/error retention; BSL-010–013 | No additional acquisition requirement; shared inline advice and language request apply when reached | Identity, library, workflow | A69 exact 200/202 remains withheld; U67 incomplete fallback and U68 successful retry remain non-normative limits |
+| Link-share entry | Main `Enter and review a recipe link at capture entry`, shared URL/text scenarios; BSL-001 | Rechecked entry chain BSL-024; already covered, no duplicate delta | Identity page gates; installation owns OS delivery; manifest/worker transport dependency | `title` is read but unused; no title-only acquisition, installed share-sheet, cross-login draft survival or device availability promise |
+| Enabled PDF | All 11/30 promoted requirements; BSL-015–018 | No further supported PDF-only gap; processing-language request applies to rendered pages | Member preview eligibility, library originals, workflow and SSE | Existing U70–U74 retained; native/provider/OS/NAS qualification and multi-recipe splitting excluded |
+| Validation | Nonblank client URL/name, photo transport, PDF transport/intake and description required values | Intake delta adds photo backend constraints and URL request-validation scenario; distinguishes client size copy from inclusive bytes | Contract authoritative; identity binder separate from membership | No universal semantic validity or malformed-input recovery guarantee; client zero-byte image check differs from server |
+| Metadata | URL/photo rating/notes, photo dish index, description identity, PDF metadata | Intake delta covers unrated/no dish and blank/trimmed photo notes | Identity owns attribution; library persisted facts | URL context may replace disk notes; no invariant that acquisition preserves user notes in every projection |
+| Acceptance vs delivery | Initial persistence in all four sources; description/PDF already explicit | Intake delta corrects URL/photo stronger dispatch language | Background-processing acceptance requirements referenced below | Dispatch exceptions caught after persistence; no automatic recovery, rollback or exactly-once creation claim |
+| Readiness | Capture inline/session feedback; main URL/photo finalizers; PDF retained readiness | Completion delta corrects ordinary file-ready overclaim and bounds publication | Library owns stored readiness/status; SSE owns delivery; workflow owns terminal states | Missing/already-ready processor can return without publication; ordinary file readiness not guaranteed |
+| Duplicate advice | Pre-submit URL/name advisory; bundle duplicates owned by recipe-sharing | Completion delta extracts post-inline-ready advice, self-identity exclusion, keep navigation and explicit discard request | Library lookup, detail read, soft deletion and planner guard | No exhaustive/race-free/global prevention, success after delete conflict, inline discard error copy or physical purge |
+| Configured processing language | No main capture requirement | Language delta adds one request-boundary requirement / four scenarios | Member-preferences retains display/browse language; deployment owns env propagation | No output-language/translation accuracy, supported-language list, per-member override or intake-time config snapshot guarantee |
+
+### BSL-recipe-capture-021 — Intake boundaries and optional photo metadata
+
+**Behavior/actor/trigger/outcome:** Ordinary household capture stages or submits URL/photos. Client validation/metadata produce intake payloads; backend rejects invalid photo transport/metadata before saving. Successful initial persistence returns identity even when subsequent workflow dispatch throws. These are implementation-supported paths, not observed runtime guarantees.
+
+**Ordered trace and durable symbols:**
+
+1. `pwa/src/app/(app)/capture/page.tsx:CapturePage` -> `pwa/src/components/capture/CaptureWithPdf.tsx:CaptureWithPdf` -> `MinimalCapture.tsx` camera/gallery input refs, `handleUrlCapture`, staged photo actions.
+2. `pwa/src/hooks/useCapture.ts:useCapture`, `addImage`, `setSelectedDishPhotoIndexFn`, `submitRecipe`, `submitUrl` -> `pwa/src/lib/imageUtils.ts:validateImage/validateImageCount` -> `pwa/src/lib/api/recipes.ts:createRecipe/captureUrl`. Photos use native fetch FormData with `files`, rating, index and optional trimmed notes; URL uses generated `api.recipes.captureUrl.post`. Shared SDK member transport is owned by identity; native photo helper adds the selected member header explicitly.
+3. `specs/openapi.yaml`: POST `/api/recipes`, POST `/api/recipes/capture-url`, `CaptureUrlDto`. `api/src/RecipeApi/Dto/CreateRecipeDto.cs` defaults rating 0/index -1; `CaptureUrlDto.cs` has Required/Url/Range annotations. `RecipeController.cs:Create/CaptureUrl` checks missing bound context; ApiController model validation precedes service calls.
+4. `RecipeService.cs:CreateRecipe` checks member existence, calls `ValidationService.ValidateImageCount/ValidateImage/ValidateRating/ValidateFinishedDishImageIndex`, saves images and info, database recipe/pending search sidecar, then catches `TriggerAsync` errors. `CaptureUrl` stores initial URL metadata/database entity, then catches trigger errors. Both leave persisted state on caught dispatch error. `ImageService.CreateRecipeInfo/SaveImages` and `RecipeDbContext` are persistence boundaries.
+5. `Workflows/recipe-import.yaml` and `url-import.yaml` select existing processors. `Agents/WebAcquisitionAgent.cs:ProcessUrlAsync` attempts HTML/context and optional hero, catches 403 and image download errors, saves HTML/source only after prior processing succeeds. `Agents/RecipeAgent.cs:DoExtractRecipeAsync` chooses HTML/image prompt, refines if needed and refuses an incomplete final candidate before saving normalized JSON. Subsequent readiness remains conditional.
+
+**Inspected assertions/substitutions:** `api/src/RecipeApi.Tests/Services/ValidationServiceTests.cs` asserts zero/21 count rejection, 1/20 acceptance, rating/index boundary acceptance/rejection, empty/oversize/type rejection, and exact 20 MiB acceptance (`ValidateImage_Accepts_File_At_20MB_Boundary`). Uses mocked IFormFile, not decoded image files. `Controllers/RecipeControllerTests.cs:CreateRecipe_Without_Images_Returns_BadRequest`, `CreateRecipe_With_Invalid_Rating_Returns_BadRequest`, `CreateRecipe_Without_FamilyMemberHeader_Returns_BadRequest`, `CreateRecipe_With_Valid_Data_Returns_Accepted_With_RecipeId` assert HTTP and persisted workflow identity under `TestWebApplicationFactory` (EF in-memory default, temp local storage, stub chat, substituted orchestrator that writes mock workflow/task rows). `Services/RecipeServiceTests.cs:Photo_acceptance_starts_import_without_indexing_unextracted_content` asserts 202, database not-ready, pending search sidecar and recipe-import instance; it does not run extraction. `Services/Agents/WebAcquisitionAgentTests.cs:ProcessUrlAsync_WritesContentHtml`, `ProcessUrlAsync_SetsSourceUrlInRecipeInfo`, `ProcessUrlAsync_DoesNotWriteRecipeJson` use fake HTTP/model/storage; no live scraper proof. Existing `MinimalCapture.submit-lock.test.tsx` and `capture-flow.spec.ts` assert submission UI/payload with substituted hook/API. Missing-member service check, caught dispatch failures, URL annotation negatives and dish-toggle sentinel are supported by current executable source; no newly observed checks claimed.
+
+**Evidence class/confidence:** Implementation-supported; high for transport boundaries with aligned assertions, medium for dispatch-error and web fallback branches and disputed contract seams. All application checks not-run under A34.
+
+**Agreement/discrepancy:** OpenAPI describes photo property `images` while client submits `files` and controller binds IFormFileCollection; withhold normative field-name reconciliation and successful `images` intake. OpenAPI URL/photo 202 descriptions imply workflow launch more strongly than the caught-error source; retain contract unchanged, draft observable intake without certified delivery. Client accepts a zero-byte image of allowed type but server rejects it; no empty-image success requirement. UI says “under 20 MB” while executable validation is inclusive 20 MiB; draft exact bound. Camera activation requests device input, not qualified device opening. Existing metadata does not set ordinary file readiness explicitly.
+
+**Mapping — `baseline-recipe-capture-intake-boundaries`:** All unchanged scenario details retain BSL-001–002/005–008 support; the table maps every block, including each added or narrowed scenario. Removing the final staged photo leaves no designation; the default-to-first scenario is explicitly conditioned on remaining photos.
+
+| Delta requirement | Scenario mapping (all scenarios in each block) |
+| --- | --- |
+| Select recipe photos from camera or device gallery | Camera / gallery / drag-drop: MinimalCapture input refs/handlers; existing BSL-005 assertions; activation request only |
+| Validate and submit recipe link for acquisition | Valid link / empty Save / missing context: existing BSL-001–002 plus submitUrl/controller; Invalid URL request metadata: CaptureUrlDto annotations + ApiController, no dedicated negative assertion inspected |
+| Initial recipe creation and workflow dispatch | Initial pending + dispatch failure: RecipeService.CaptureUrl, initial metadata/database and caught TriggerAsync |
+| Background web acquisition and recipe extraction | HTML/hero + 403 fallback + semantic validation: ProcessUrlAsync and DoExtractRecipeAsync; web artifact and prompt/parser assertions |
+| Stage and validate uploaded recipe photos | Valid images / type / size / count: imageUtils, useCapture and BSL-005; inclusive size supported by ValidationService boundary assertion |
+| Designate finished dish photo with automatic index management | Initial / change / remove selected / remove preceding: existing BSL-005 plus useCapture; Clear selection: setSelectedDishPhotoIndexFn and submitRecipe sentinel |
+| Validate and submit multipart photo capture | Valid / no staged images / missing context: submitRecipe, Create and controller assertions; dispatch wording corrected only |
+| Initial recipe persistence and photo workflow dispatch | Initial pending + dispatch failure: CreateRecipe storage/DB/trigger ordering and service acceptance assertion |
+| Reject invalid photo intake before storing a recipe | Invalid transport/metadata: ValidationService tests and ordering; No dish/appreciation: DTO defaults, sentinel tests and trimmed notes source; Removed member: CreateRecipe.AnyAsync guard before storage |
+
+### BSL-recipe-capture-022 — Readiness handoff, inline advice and discard
+
+**Ordered journey:** Successfully executing `RecipeReadyProcessor.ExecuteAsync` sets database ready/discoverable before `PublishRecipeReadyAsync`; `RecordPdfReadinessAsync` only writes info when a retained PDF exists. Missing recipe returns; already-ready/discoverable repairs PDF info if needed then returns without new publication. `Infrastructure/SseEventPublisher.cs:PublishRecipeReadyAsync` -> `pwa/src/hooks/useScheduleStream.ts` -> capture/library stores -> `MinimalCapture` notification subscription/immediate notification check -> readyRecipeName/name lookup -> first returned different identity -> inline warning/detail/discard controls. This effect has no photo-only guard, so ordinary URL/photo/description share it; PDF direct-Home completion does not promise this screen. `handleDiscardDuplicate` -> generated DELETE `/api/recipes/{id}` -> `RecipeController.Delete` -> `RecipeService.SoftDeleteRecipe` -> database deletion marker/search-sidecar removal if allowed -> success toast/root navigation. Rejection logs and releases the button without new UI error text. Done/Add-to-this-week navigate Home/planner; they do not assign or delete.
+
+**Owner references:** `recipe-library` — `Return only eligible household library recipes`, `Constrain library lookups by supplied predicates`, `Represent persisted recipe attribution and readiness`, `Read the persisted recipe readiness status`, `Soft-delete the loaded recipe when not assigned to active planner slots`, `Reject soft-delete when recipe is assigned to active planner slots`. `household-live-updates` — `Bound delivery to current process registrations`, `Preserve available lifecycle context at the capture handoff`. `background-processing` retains retry/terminal-state rules. This delta does not re-own those policies.
+
+**Inspected assertions:** `MinimalCapture.recipe-import.test.tsx:Photo Success Duplicate & Discard action: shows warning, keeping anyway works, and discarding deletes the recipe` manually invokes store subscribers, supplies a mocked name lookup, checks warning/discard visibility, new-identity delete builder call, toast and `push('/')`. It does not actually assert every behavior its title names; keep/navigation, self exclusion, reject/release and ordinary URL/description reuse are source-supported only. Hook, router, API/delete, detail sheet and notifications are substituted. `PdfRecipeReadyTests.cs:Ordinary_ready_processor_records_retained_PDF_completion_and_idempotent_retry` asserts file readiness/database ready/source retention under factory substitutions; no non-PDF info write or event delivery proof. `RecipeImportLifecycleTests.cs:CompletionWorkflow_ReachesRecipeReadyWithoutRetiredHealthProcessors` inspects YAML dependencies/payload only, not stored/deployed execution.
+
+**Evidence/confidence:** Implementation-supported; high for photo warning/delete request assertions and processor ordering; medium for notification timing and unasserted reuse/failure branches. Runtime checks not-run. Lookup is one returned page, not an exhaustive uniqueness query; no stale-response guard, event replay or atomic delivery. Discard can be rejected by established deletion policy. Main's ordinary disk-ready claim is not supported; corrective MODIFIED blocks retain original scenario names and place the limitation here.
+
+**Mapping — `baseline-recipe-capture-completion-advice`:** Both existing `Finalize recipe readiness and broadcast completion` and `Finalize photo recipe readiness and broadcast completion`: original transition scenario -> processor DB save/publication order; new missing/already-finalized scenario -> early returns/conditional PDF repair. `Offer inline advice for another ready recipe with the completed name`: returned other identity -> effect/find + rendered controls; self-only/no result -> find exclusion; keep -> button route handlers with no delete/assign. `Request discard of the newly captured duplicate from inline completion`: success -> handleDiscardDuplicate and mocked assertion above; rejection -> catch/finally source. Every scenario is mapped; no deleted-record purge guarantee.
+
+### BSL-recipe-capture-023 — Configured processing-language requests
+
+**Trace:** Existing entry/client/contract/intake/persistence paths above -> `recipe-import` (photo/PDF), `url-import` or `goto-synthesis` -> `RecipeAgent.DoExtractRecipeAsync` / `DoSynthesizeRecipeAsync` -> `GetTranslationInstruction` reads `IConfiguration["IMPORT_TARGET_LANGUAGE"]` -> external chat request -> existing parser/fallback and recipe JSON/info persistence -> later sync/readiness/library. `GenerateDescriptionAsync` uses the same enablement check and appends a target constraint. No intake field or selected member language supplies this value. `docker/compose/apps.yml` sets a NONE default; deployment propagation remains outside this capability extraction.
+
+**Inspected assertions/substitutions:** `RecipeAgentPromptSelectionTests.cs:TranslationLanguageSet_InjectsInstructionIntoPrompts` checks “French” in any captured message, not translated output or every individual branch. `TranslationLanguageNone_DoesNotInjectInstruction` checks absence of “Translate”. Factory replaces configuration, prompt repository, chat client, storage and EF with mocks/in-memory state; valid recipe/description strings are supplied. `ImageExtraction_SendsEveryPageInOrder_WithItsActualMediaType` asserts attachments/order/types, not language. Blank/NONE branches, synthesis and generated-description application are traced in source; no live language qualification or dedicated all-branch assertion claimed.
+
+**Evidence/confidence:** Implementation-supported; high for configuration switch and extraction request construction, medium for unasserted branches/provider behavior. Runtime/model checks not-run. NONE is case-insensitive but surrounding whitespace is not normalized for sentinel matching; no enumeration of supported values or configuration snapshot. Provider language conformance is unvalidated and stays non-normative.
+
+**Mapping — `baseline-recipe-capture-processing-language`:** `Request the configured processing language without certifying output language` — extraction scenario -> DoExtractRecipeAsync/GetTranslationInstruction, photo/web prompt selection and PDF same-agent attachment trace; synthesis -> DoSynthesizeRecipeAsync/GetTranslationInstruction with unchanged parser/fallback; generated description -> GenerateDescriptionAsync constraint; disabled -> IsNullOrWhiteSpace/case-insensitive NONE branch. The requirement specifies outbound requests only; prompt instructions are not promoted into achieved output guarantees.
+
+### BSL-recipe-capture-024 — Link-share recheck and owner/exclusion reconciliation
+
+`pwa/src/lib/baseManifest.json:share_target` declares GET `/capture` with url/text/title; `pdfManifest.ts:pdfManifest` retains that or selects multipart `/share-target`. `pwa/public/pdf-share.js:handle` forwards text-only multipart shares with a 303 to `/capture?...`; file staging/claim remains the existing PDF entry dependency. `CapturePage` forwards initial values through `CaptureWithPdf`; `MinimalCapture:extractUrl/sharedUrl/sharedText` prefers supplied URL then extracts an HTTP(S) link from text into the already specified review form. The form requires explicit Save, proceeding through submitUrl/client/contract/controller/service/storage/workflow as BSL-021; forwarding alone creates no recipe. `sharedTitle` is unused; no recipe identity or metadata guarantee from it.
+
+`pwa/e2e/capture-flow.spec.ts:user can enter recipe URL, view review screen, and save recipe` uses direct query navigation and checks URL, rating and notes payload; `navigating with text param containing a URL should show the review form` checks input prefill. API routes are mocked by the browser test setup; direct navigation simulates entry, not OS transport. A comment claims no auto-redirect, but its assertion checks only success-screen visibility; current timer source/component assertion controls the extracted behavior. `pdfManifest.test.ts:deployment-selected manifest` asserts GET vs POST manifest configuration, not installation. No further normative link-entry draft is justified.
+
+**Disposition/evidence/confidence:** Already-promoted coverage, implementation-supported/high for query review; medium for conditional multipart bridge; installed device delivery excluded. Identity rules remain `Gate protected page entry with household access`, `Apply member context after household access`, `Bind shared API member context independently of membership validation`. Installation and deployment have no accepted main requirements to cite for their deferred behavior; do not invent them. Member-preferences has no main spec; existing PDF capture eligibility stays as promoted without completing that owner. Family GOTO list maintenance, recipe-sharing bundle import, quality re-import, installation, demo, operations/bulk reprocessing, shared retry scheduling and SSE reconnection remain with their established capabilities. U01 URL contextual repair, U68 description retry, U70–U74 PDF limits and A34 are unchanged. No necessary product decision blocks the supported drafts; disputed guarantees remain withheld rather than silently resolved.
+
+### Draft inventory, validation and exact lifecycle handoff
+
+| Change / artifact directory | Counts | State |
+| --- | --- | --- |
+| [Intake boundaries](../../openspec/changes/archive/2026-10-16-baseline-recipe-capture-intake-boundaries/proposal.md) | 8 MODIFIED / 26 scenarios; 1 ADDED / 3 scenarios | Validated draft; human review pending |
+| [Completion advice](../../openspec/changes/archive/2026-10-16-baseline-recipe-capture-completion-advice/proposal.md) | 2 MODIFIED / 4 scenarios; 2 ADDED / 5 scenarios | Validated draft; human review pending |
+| [Processing language](../../openspec/changes/archive/2026-10-16-baseline-recipe-capture-processing-language/proposal.md) | 1 ADDED / 4 scenarios | Validated draft; human review pending |
+
+Each CLI-scaffolded directory contains `.openspec.yaml`, `proposal.md`, `design.md`, `specs/recipe-capture/spec.md` and documentation extraction/validation `tasks.md`. Total **14 delta requirement blocks / 42 scenarios**, comprising **4 new requirements** and **10 full modifications**. These are not 14 new main requirements. Main remains **37/92**, byte-preserved. If reviewed/promoted together, the candidate main would be **41/110**; this arithmetic is not promotion or acceptance. Earlier active ADDED deltas are already promoted history and must not be reapplied over the corrections.
+
+**Check scope/results:** Selected strict validation passed for all three drafts; `openspec validate --all --strict --no-interactive` passed **61 items / zero failures** at reconciliation. CLI informational archive-replay notices concern existing recipe-library deltas and do not fail validation; no archival attempted. Scenario preservation/count/mapping and source identity review passed. Complete **17-path** explicit `task verify` passed documentation, spec:check and content-identity checks at the first documentation checkpoint. Validation task checkboxes/results were then finalized; the final verification rerun covers those final bytes, with outcomes in this session/current harness. All other implementation check classes were not-applicable. Final observed results are reported by this session/current harness record; a pre-final success does not cover later edits. No application check failed or was blocked because none was run. Runtime/API/browser/database/device/native/model/service checks **not-run** under A34 and current scope. Behavior TDD, client generation, migrations, deployments and application implementation acceptance **not-applicable**. CLI discovery path/glob misses were corrected by repository lookup; they are not behavior-test failures.
+
+**Exact next lifecycle action:** Human review of all three new deltas with BSL-021–024 and the coverage matrix, including the narrower corrections to promoted wording. Acceptance/promotion requires a separate user instruction; when selected, reconcile these deltas against current main/owning specs, preserve the exact-description-status decision, and broaden the link-only Purpose as part of that review. No sync, promotion, archival or application work performed here. Every approved recipe-capture area is accounted for; capability baseline-complete is **not claimed** pending acceptance and promotion. Runtime qualification remains a separate deferred lifecycle.
+
+
+### RC-G1 source identities — SHA-256
+
+Current inspected inputs at the recorded HEAD; hashes identify bytes, not execution. All 95 historical unique paths were also rechecked unchanged.
+
+| Source | SHA-256 |
+| --- | --- |
+| `pwa/src/app/(app)/capture/page.tsx` | `28026fd2a95ea0563e13522d10a945030cb4f8ccd45a910e1c594306ebdbdbb9` |
+| `pwa/src/components/capture/CaptureWithPdf.tsx` | `84de2ebfb72d572380350b771ad9fb62deb1052086d1876ba09db12d782bcffb` |
+| `pwa/src/components/capture/MinimalCapture.tsx` | `aadbb37ec2fe548af6e41c5460ea3339377fb215f66f19eac054666416742af5` |
+| `pwa/src/hooks/useCapture.ts` | `758f77485f02a9b32e48e9fab846f5906e94ce1de7594d94c55950d294d1b5e9` |
+| `pwa/src/lib/imageUtils.ts` | `a51d124d0fae2a99257186e607597825299737ca77717813aac3ce72821d46be` |
+| `pwa/src/lib/api/recipes.ts` | `f4e70b39a2060bfc5b25010914f78e288321517db5c52c543d103502718dce7a` |
+| `pwa/src/lib/api/generated/api/recipes/captureUrl/index.ts` | `11d9ffc93713c35404d2d863a2cff4bc1291e57a635a239b8fab6604c0407a87` |
+| `pwa/src/lib/api/generated/api/recipes/item/index.ts` | `687fbde658edd62de7455ec634b1d36e8c8b67ee508c689b2ae9de9f8ff4ba2d` |
+| `pwa/src/lib/api/api-client.ts` | `c5cd4cfebddd8d5c1f2827c522a236fe12c504130ea0991c07bc8fc46376aa95` |
+| `pwa/src/store/captureStore.ts` | `8ba993036ef6c8e3bd05c3e737b51c0541a044dcb2d186b2501da230376f50f1` |
+| `pwa/src/store/libraryStore.ts` | `21763b997c1ed09faf5b666ed4ea81f3c8f9f9a8ff366150db5fd8a6563df1b0` |
+| `pwa/src/hooks/useScheduleStream.ts` | `0e1f1b91e459b77fd90ca6a071ff5cb8fc0cbcc64e8cab54a00b8232c9ab2107` |
+| `pwa/src/lib/baseManifest.json` | `12ee4a7efc73bd5da6c927f82277aae6528f5bf0d83fb1562a13a6ba9f1bb36e` |
+| `pwa/src/lib/pdfManifest.ts` | `308881a198428eb21890caa9cbaa4f323b2c51f678f09495c2093eec3f8d82ac` |
+| `pwa/src/app/manifest.json/route.ts` | `70cde023700c660c39dac2cd090607143ab1bfcc81393941cf9929e211864c95` |
+| `pwa/public/pdf-share.js` | `0b33895e50aa8473cb236f030179f3b1288889d172ce13863fb04b6daecfbd14` |
+| `pwa/src/lib/pdfManifest.test.ts` | `b0dced372fa7289693f95aa889354e832af63790f333075322141c2b7955ea5c` |
+| `pwa/src/lib/pdfShare.test.ts` | `e56b002f29a66fbec771933a8acf47629cd1378243de9b65c7e6c4a3d0875d82` |
+| `pwa/src/components/capture/MinimalCapture.recipe-import.test.tsx` | `a34f4e0686200f03800c12b8c2433f770f2b3a041e9734cb55e170de45be0fb8` |
+| `pwa/src/components/capture/MinimalCapture.test.tsx` | `8a8c1d66ccae98223cb0754cdd155c30a2d75911aea6cfff09284f54816bbf53` |
+| `pwa/src/components/capture/MinimalCapture.submit-lock.test.tsx` | `d44c5d335ca8c810a2a7618939c94c977d1bb7af03362132c0a33324198cf288` |
+| `pwa/e2e/capture-flow.spec.ts` | `4683a2c0590f0c4c562ed4350afb6aa208a88d856ff4c27688732f4bc6d42911` |
+| `pwa/e2e/mock-api.ts` | `063ed6d6629ccde163487a92543ae36918183a81b7301dd01a5389248cbcbd07` |
+| `specs/openapi.yaml` | `0fbd27813611e16474ec17a48ede372d5a41af02db3fa9ded82295a6357046ff` |
+| `api/src/RecipeApi/Controllers/RecipeController.cs` | `d1699c2de6f6cca9d879e67c0c7b9c7f0af4b2c4e104bc9ff04634b266eb5a70` |
+| `api/src/RecipeApi/Dto/CreateRecipeDto.cs` | `02131bd03db478dd5bad49adf1bd37e2fae47e6f3aaac127880d311f6b8a65f8` |
+| `api/src/RecipeApi/Dto/CaptureUrlDto.cs` | `80d058f88a003061eba520d97ec32ff2e166767c332aff610c706892ca4525e1` |
+| `api/src/RecipeApi/Services/RecipeService.cs` | `9eec9ab5cd7102081b3765b08a41b8de4d45325858d18ab4573a326afa256b74` |
+| `api/src/RecipeApi/Services/ImageService.cs` | `c73bb4f976bd6355ec9aa6c18937bed12d4dc14ff7efe718a84351cb4f1abc2d` |
+| `api/src/RecipeApi/Services/ValidationService.cs` | `bf2ed2aaffef7c4e7dd320c3f53f7772eaacfe8cceb4251acc6f0792b19fa1a1` |
+| `api/src/RecipeApi/Services/Agents/RecipeAgent.cs` | `b23761d819726cf5dd8c50000cabc05198fba855865e6beba05de0ea8a6097af` |
+| `api/src/RecipeApi/Services/Agents/WebAcquisitionAgent.cs` | `688cfe3ff3c1b0dad7885794f725fcfca29e990477b3e2ce1246c7e2ebb743b2` |
+| `api/src/RecipeApi/Services/Processors/RecipeReadyProcessor.cs` | `4206f98256cadae88d7be13a44e9d9d18b6c46679ba7b9f0aee0dcef8a848a74` |
+| `api/src/RecipeApi/Infrastructure/SseEventPublisher.cs` | `8378000101a36943903b8c7f7dcb560c3202464258410ac127d6d34b512c1696` |
+| `api/src/RecipeApi/Workflows/recipe-import.yaml` | `56977712412ec2c0b5a04495e77edbf3b97a71f92ad5f8da8546b58261de5b0a` |
+| `api/src/RecipeApi/Workflows/url-import.yaml` | `6f142f8831390021091f5c3ca9603f056d138719d1904ae72cd75827beb73787` |
+| `api/src/RecipeApi/Workflows/goto-synthesis.yaml` | `d614552797656dacbfe941e8d761b0c111e80d98b96c1216a197435163d6c6c1` |
+| `api/src/RecipeApi/Program.cs` | `a4a2510b9cf0bbeb0e05072ab2bf2b299f4029e449bff17e7386b62f5321c523` |
+| `api/src/RecipeApi.Tests/Controllers/RecipeControllerTests.cs` | `903493f2d741b315edf8ca44a83c5083500f70c9d30117c89db979ca805ff385` |
+| `api/src/RecipeApi.Tests/Services/ValidationServiceTests.cs` | `1957400792e1899c0e93f979532930f797baa45c909b8f5e9f0eedec76298acb` |
+| `api/src/RecipeApi.Tests/Services/RecipeServiceTests.cs` | `0019a5854fcf0468783607ff9bbe7d9c58ccc4abd3e48658f2ee3e1c54a50e27` |
+| `api/src/RecipeApi.Tests/Services/RecipeImportLifecycleTests.cs` | `fe4b7249603997be939e0b8a2d790ef88f1eaa1863b7101a2011186f258a04cb` |
+| `api/src/RecipeApi.Tests/Services/Agents/WebAcquisitionAgentTests.cs` | `f414a13b7756ff6fa8dcc1824cb515fc05aba9f5b83aa8e22f17542513bd278d` |
+| `api/src/RecipeApi.Tests/Services/Agents/RecipeAgentPromptSelectionTests.cs` | `f221b4c7359e6c821101e7ad2276c922dde48549235b5e50939c9c73ec2768f1` |
+| `api/src/RecipeApi.Tests/Services/PdfRecipeReadyTests.cs` | `c4ef4aee35be8d91f4b43731b716cabee1bf220fc43645f5205bf87163339b0f` |
+| `api/src/RecipeApi.Tests/Infrastructure/TestWebApplicationFactory.cs` | `0ee567443fc0b5c11fffe631c94ea0407681b371224d8083a0e32b94b280804c` |
+| `docker/compose/apps.yml` | `84890a4d95cde113b58f5c0981be1afa9d688f5417c57e5cb1bdc6e91c3b20e2` |
+
+### BSL-recipe-capture-025 — Remaining-scope promotion
+
+**Authority RC-P1:** User “promote”, 2026-10-16, following the three validated RC-G1 drafts. Accepts and authorizes their documentation promotion into main recipe-capture and bounded plan/index/task lifecycle updates. No archival, application implementation, staging, commits or runtime qualification authorized.
+
+**Snapshot/root:** Branch `moving-to-openspec`, HEAD `04a1c4570f9bbb01b47436790d4248635ac3179a`. Staged/unstaged/untracked state, patches, hashes and main before-image captured privately before promotion. Installed `openspec-sync-specs` workflow used. List/context/status resolve local root `/Users/alex/Code/whats-for-supper`; each selected status supplies exactly its recipe-capture delta path. Current specs rules loaded for each change before writes. All **108 unique source paths** now recorded in this plan match their recorded identities; this extends RC-G1's historical 95-path recheck without changing its result.
+
+**Accepted/promoted artifacts:** `baseline-recipe-capture-intake-boundaries` (1 added / 8 modified, 29 draft scenarios), `baseline-recipe-capture-completion-advice` (2 added / 2 modified, 9 draft scenarios), and `baseline-recipe-capture-processing-language` (1 added, 4 draft scenarios). Their proposals, designs, deltas and CLI metadata remain unchanged. Task workflow follow-ups record promotion without changing extraction evidence. Human documentation review accepted through the explicit promotion instruction; all three changes remain active.
+
+**Result:** Main `openspec/specs/recipe-capture/spec.md` now contains **41 requirements / 110 scenarios**: 4 additions and 10 full modifications merged from the reviewed deltas. All original scenario names remain, and 27 unaffected original requirement blocks are byte-preserved. All 14 selected delta blocks match their resulting main blocks exactly. No delta operation headings entered main. Purpose was broadened from links alone to photo, URL/shared-link entry, description and enabled PDF plus the evidenced validation/metadata/acceptance/readiness/advice/language boundaries. Earlier active URL/photo ADDED deltas are promoted history; do not replay their older wording over these reviewed corrections.
+
+**Scope/limitations:** Accepted coverage uses BSL-021–024 mappings and the RC-G1 matrix. Description's exact numeric success status remains withheld under A69. Multipart contract naming disagreement, intake/delivery and storage atomicity limits, session-bound/racy/non-exhaustive duplicate advice, conditional readiness publication, PDF eligibility/native/device limits and provider output-language uncertainty remain as recorded. Identity, library, shared workflow/SSE, member preferences, installation and deployment retain their owners. Documentation baseline scope is accepted/promoted with explicit exclusions; no application or runtime completeness claim follows.
+
+**Verification:** Main-spec strict validation passed (8 specs). Selected strict checks for all three deltas, all-item strict validation, exact-merge/preservation/identity review and complete explicit **six-path** `task verify` are the final promotion checks. Final observed outcomes are reported in this session and `.task/agent-finish/last-run.json`; prior runs do not cover later documentation bytes. Required failures/blockers must be reported separately. Runtime/browser/API/database/native/device/model checks not-run under A34. Behavior TDD, generated-client changes, migrations, deployments and implementation acceptance are not-applicable to this documentation promotion.
+
+**Exact next lifecycle action:** No remaining recipe-capture drafting is required for the approved scope. Separately select runtime qualification (with suitable services/database/provider/device resources) or archival if desired; neither is performed or authorized here. Preserve the accepted uncertainties and existing evidence when selecting later work.
