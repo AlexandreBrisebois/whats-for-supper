@@ -49,3 +49,66 @@ describe('SkipRecoveryDialog', () => {
     expect(onBack).toHaveBeenCalledTimes(1);
   });
 });
+
+it('announces an uncertain save and offers checking without another disposition', () => {
+  const retry = vi.fn();
+  render(
+    <SkipRecoveryDialog
+      isOpen
+      step={2}
+      onClose={vi.fn()}
+      onBack={vi.fn()}
+      onAction={vi.fn()}
+      replacement={{
+        phase: 'unknown',
+        message: 'Your new meal could not be confirmed.',
+        recipeName: 'Pasta',
+      }}
+      onRetryReplacement={retry}
+    />
+  );
+  expect(screen.getByRole('alert')).toHaveTextContent('could not be confirmed');
+  expect(screen.getByRole('alert')).toHaveFocus();
+  expect(screen.queryByTestId('recovery-action-tomorrow')).not.toBeInTheDocument();
+  fireEvent.click(screen.getByTestId('recovery-retry-check'));
+  expect(retry).toHaveBeenCalledOnce();
+});
+
+it('disables dismissal while saving and explicitly confirms partial abandonment', () => {
+  const close = vi.fn(),
+    abandon = vi.fn(),
+    cancel = vi.fn();
+  const props = {
+    isOpen: true,
+    step: 2 as const,
+    onClose: close,
+    onBack: vi.fn(),
+    onAction: vi.fn(),
+    replacement: { phase: 'saving' as const, message: 'Saving…', recipeName: 'Pasta' },
+  };
+  const view = render(<SkipRecoveryDialog {...props} pending />);
+  fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+  expect(close).not.toHaveBeenCalled();
+  view.rerender(
+    <SkipRecoveryDialog
+      {...props}
+      replacement={{ ...props.replacement, phase: 'retry' }}
+      onRetryReplacement={vi.fn()}
+    />
+  );
+  view.rerender(
+    <SkipRecoveryDialog
+      {...props}
+      replacement={{ ...props.replacement, phase: 'retry' }}
+      confirmAbandon
+      onAbandon={abandon}
+      onCancelAbandon={cancel}
+    />
+  );
+  expect(screen.getByRole('alert')).toHaveTextContent('Completed changes');
+  expect(screen.getByTestId('recovery-keep-editing')).toHaveFocus();
+  fireEvent.click(screen.getByTestId('recovery-keep-editing'));
+  expect(cancel).toHaveBeenCalledOnce();
+  fireEvent.click(screen.getByTestId('recovery-abandon'));
+  expect(abandon).toHaveBeenCalledOnce();
+});

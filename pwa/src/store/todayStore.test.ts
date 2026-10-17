@@ -768,3 +768,22 @@ it('a started assignment and its late hydration stay on Sunday after rollover', 
   expect(useTodayStore.getState().calendar?.today).toBe('2026-05-11');
   expect(useTodayStore.getState().currentRecipe?.description).not.toBe('Old Sunday hydration');
 });
+
+it('does not present a recovery choice before persistence and propagates rejection', async () => {
+  let reject!: (reason: Error) => void;
+  vi.mocked(assignRecipeToDay).mockReturnValueOnce(
+    new Promise((_, fail) => {
+      reject = fail;
+    })
+  );
+  const before = useTodayStore.getState().currentRecipe;
+  const save = (useTodayStore.getState() as any).saveRecoveryRecipe(
+    { id: 'replacement', name: 'B', image: '' },
+    calendar
+  );
+  expect(useTodayStore.getState().currentRecipe).toEqual(before);
+  const rejection = expect(save).rejects.toThrow('Rejected');
+  reject(new Error('Rejected'));
+  await rejection;
+  expect(useTodayStore.getState().currentRecipe).toEqual(before);
+});

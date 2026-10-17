@@ -506,6 +506,10 @@ components:
         weekOffset: { type: integer }
         dayIndex: { type: integer }
         recipeId: { type: string, format: uuid }
+        requireEmpty:
+          type: boolean
+          default: false
+          description: When true, require an explicit reference Monday and dayIndex 0-6; insert only into an absent supper slot (mealSlot zero). Any existing supper entry returns 409 without mutation or displacement.
 
     DisplacedRecipeDto:
       type: object
@@ -2513,7 +2517,10 @@ paths:
         Resolves the target as reference Monday plus seven times weekOffset plus dayIndex days.
         The optional reference pins a started action across midnight; omission uses the deployment
         current Monday captured at operation entry, with UTC as the default deployment timezone.
-        Assigns a recipe to the specified day. If the target slot is already occupied and falls
+        With requireEmpty true, an explicit reference Monday and dayIndex 0-6 are required.
+        The absence check and supper insertion are atomic; an existing supper entry returns 409
+        without calendar, plan, grocery or publication changes. Other meal slots are preserved.
+        When requireEmpty is omitted or false, assigns a recipe to the specified day. If the target slot is already occupied and falls
         on Sunday (dayIndex 6), the displaced recipe is automatically carried forward to Monday
         of the following week (weekOffset+1, dayIndex 0) rather than being silently dropped.
       parameters:
@@ -2529,7 +2536,15 @@ paths:
             schema: { $ref: '#/components/schemas/AssignScheduleDto' }
       responses:
         '400':
-          description: referenceWeekStartDate is malformed or is not a Monday; no calendar entry or weekly plan is changed.
+          description: Invalid reference Monday or guarded target (missing reference, out-of-range index/date); no calendar entry or weekly plan is changed.
+        '409':
+          description: Guarded supper target is occupied or a competing guarded insert won; no mutation or displacement.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
         '200':
           description: OK
           content:

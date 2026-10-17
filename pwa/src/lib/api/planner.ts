@@ -1,3 +1,4 @@
+import { RetryHandlerOptions } from '@microsoft/kiota-http-fetchlibrary';
 import { DateOnly } from '@microsoft/kiota-abstractions';
 import { apiClient } from './api-client';
 import { usePlannerStore } from '@/store/plannerStore';
@@ -56,9 +57,11 @@ export function referenceRequest(referenceWeekStartDate?: string) {
 
 export const getSchedule = async (
   weekOffset: number,
-  referenceWeekStartDate?: string
+  referenceWeekStartDate?: string,
+  noRetry = false
 ): Promise<ScheduleResponse | undefined> => {
   const result = await apiClient.api.schedule.get({
+    ...(noRetry ? { options: [new RetryHandlerOptions({ maxRetries: 0 })] } : {}),
     queryParameters: {
       weekOffset,
       ...(referenceWeekStartDate
@@ -112,16 +115,21 @@ export const assignRecipeToDay = async (
   weekOffset: number,
   dayIndex: number,
   recipe: { id: string; name: string | null; image: string },
-  referenceWeekStartDate?: string
+  referenceWeekStartDate?: string,
+  requireEmpty = false
 ) => {
   return await apiClient.api.schedule.assign.post(
     {
       weekOffset,
       dayIndex,
       recipeId: recipe.id,
+      ...(requireEmpty ? { requireEmpty: true } : {}),
     },
     referenceWeekStartDate
-      ? { queryParameters: { referenceWeekStartDate: DateOnly.parse(referenceWeekStartDate)! } }
+      ? {
+          queryParameters: { referenceWeekStartDate: DateOnly.parse(referenceWeekStartDate)! },
+          ...(requireEmpty ? { options: [new RetryHandlerOptions({ maxRetries: 0 })] } : {}),
+        }
       : undefined
   );
 };

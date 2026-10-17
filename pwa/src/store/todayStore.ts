@@ -80,6 +80,12 @@ export interface TodayState {
     capturedCalendar?: CalendarContext
   ) => void;
 
+  /** Await guarded persistence; the recovery session owns applying confirmed display state. */
+  saveRecoveryRecipe: (
+    recipe: { id: string; name: string | null; image: string },
+    capturedCalendar: CalendarContext
+  ) => Promise<void>;
+
   /**
    * Record cooking for a specific recipe. Complete today's slot only if its recipe matches.
    */
@@ -274,6 +280,16 @@ export const useTodayStore = create<TodayState>((set, get) => {
           optimisticWriteAt: null,
         });
       }
+    },
+
+    async saveRecoveryRecipe(recipe, context) {
+      await assignRecipeToDay(
+        0,
+        calendarDayIndex(context),
+        recipe,
+        context.referenceWeekStartDate,
+        true
+      );
     },
 
     // ── assignRecipe ──────────────────────────────────────────────────────────

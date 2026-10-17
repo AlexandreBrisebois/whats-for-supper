@@ -12,6 +12,7 @@ import {
 // @ts-ignore
 import {
   type AdditionalDataHolder,
+  type ApiError,
   type BaseRequestBuilder,
   type DateOnly,
   type Parsable,
@@ -23,6 +24,12 @@ import {
   type SerializationWriter,
 } from '@microsoft/kiota-abstractions';
 
+export interface Assign409Error extends AdditionalDataHolder, ApiError, Parsable {
+  /**
+   * The message property
+   */
+  messageEscaped?: string | null;
+}
 export interface AssignPostResponse extends AdditionalDataHolder, Parsable {
   /**
    * The data property
@@ -44,17 +51,18 @@ export interface AssignPostResponse_data extends AdditionalDataHolder, Parsable 
  */
 export interface AssignRequestBuilder extends BaseRequestBuilder<AssignRequestBuilder> {
   /**
-   * Resolves the target as reference Monday plus seven times weekOffset plus dayIndex days. The optional reference pins a started action across midnight; omission uses the deployment current Monday captured at operation entry, with UTC as the default deployment timezone. Assigns a recipe to the specified day. If the target slot is already occupied and falls on Sunday (dayIndex 6), the displaced recipe is automatically carried forward to Monday of the following week (weekOffset+1, dayIndex 0) rather than being silently dropped.
+   * Resolves the target as reference Monday plus seven times weekOffset plus dayIndex days. The optional reference pins a started action across midnight; omission uses the deployment current Monday captured at operation entry, with UTC as the default deployment timezone. With requireEmpty true, an explicit reference Monday and dayIndex 0-6 are required. The absence check and supper insertion are atomic; an existing supper entry returns 409 without calendar, plan, grocery or publication changes. Other meal slots are preserved. When requireEmpty is omitted or false, assigns a recipe to the specified day. If the target slot is already occupied and falls on Sunday (dayIndex 6), the displaced recipe is automatically carried forward to Monday of the following week (weekOffset+1, dayIndex 0) rather than being silently dropped.
    * @param body The request body
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {Promise<AssignPostResponse>}
+   * @throws {Assign409Error} error when the service returns a 409 status code
    */
   post(
     body: AssignScheduleDto,
     requestConfiguration?: RequestConfiguration<AssignRequestBuilderPostQueryParameters> | undefined
   ): Promise<AssignPostResponse | undefined>;
   /**
-   * Resolves the target as reference Monday plus seven times weekOffset plus dayIndex days. The optional reference pins a started action across midnight; omission uses the deployment current Monday captured at operation entry, with UTC as the default deployment timezone. Assigns a recipe to the specified day. If the target slot is already occupied and falls on Sunday (dayIndex 6), the displaced recipe is automatically carried forward to Monday of the following week (weekOffset+1, dayIndex 0) rather than being silently dropped.
+   * Resolves the target as reference Monday plus seven times weekOffset plus dayIndex days. The optional reference pins a started action across midnight; omission uses the deployment current Monday captured at operation entry, with UTC as the default deployment timezone. With requireEmpty true, an explicit reference Monday and dayIndex 0-6 are required. The absence check and supper insertion are atomic; an existing supper entry returns 409 without calendar, plan, grocery or publication changes. Other meal slots are preserved. When requireEmpty is omitted or false, assigns a recipe to the specified day. If the target slot is already occupied and falls on Sunday (dayIndex 6), the displaced recipe is automatically carried forward to Monday of the following week (weekOffset+1, dayIndex 0) rather than being silently dropped.
    * @param body The request body
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {RequestInformation}
@@ -65,13 +73,24 @@ export interface AssignRequestBuilder extends BaseRequestBuilder<AssignRequestBu
   ): RequestInformation;
 }
 /**
- * Resolves the target as reference Monday plus seven times weekOffset plus dayIndex days. The optional reference pins a started action across midnight; omission uses the deployment current Monday captured at operation entry, with UTC as the default deployment timezone. Assigns a recipe to the specified day. If the target slot is already occupied and falls on Sunday (dayIndex 6), the displaced recipe is automatically carried forward to Monday of the following week (weekOffset+1, dayIndex 0) rather than being silently dropped.
+ * Resolves the target as reference Monday plus seven times weekOffset plus dayIndex days. The optional reference pins a started action across midnight; omission uses the deployment current Monday captured at operation entry, with UTC as the default deployment timezone. With requireEmpty true, an explicit reference Monday and dayIndex 0-6 are required. The absence check and supper insertion are atomic; an existing supper entry returns 409 without calendar, plan, grocery or publication changes. Other meal slots are preserved. When requireEmpty is omitted or false, assigns a recipe to the specified day. If the target slot is already occupied and falls on Sunday (dayIndex 6), the displaced recipe is automatically carried forward to Monday of the following week (weekOffset+1, dayIndex 0) rather than being silently dropped.
  */
 export interface AssignRequestBuilderPostQueryParameters {
   /**
    * Explicit yyyy-MM-dd Monday anchoring weekOffset. Malformed or non-Monday values return 400 before mutation.
    */
   referenceWeekStartDate?: DateOnly;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {Assign409Error}
+ */
+// @ts-ignore
+export function createAssign409ErrorFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoAssign409Error;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -94,6 +113,21 @@ export function createAssignPostResponseFromDiscriminatorValue(
   parseNode: ParseNode | undefined
 ): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
   return deserializeIntoAssignPostResponse;
+}
+/**
+ * The deserialization information for the current model
+ * @param Assign409Error The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoAssign409Error(
+  assign409Error: Partial<Assign409Error> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    message: (n) => {
+      assign409Error.messageEscaped = n.getStringValue();
+    },
+  };
 }
 /**
  * The deserialization information for the current model
@@ -131,6 +165,24 @@ export function deserializeIntoAssignPostResponse_data(
       assignPostResponse_data.message = n.getStringValue();
     },
   };
+}
+/**
+ * Serializes information the current object
+ * @param Assign409Error The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeAssign409Error(
+  writer: SerializationWriter,
+  assign409Error: Partial<Assign409Error> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!assign409Error || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeStringValue('message', assign409Error.messageEscaped);
+  writer.writeAdditionalData(assign409Error.additionalData);
 }
 /**
  * Serializes information the current object
@@ -189,6 +241,9 @@ export const AssignRequestBuilderRequestsMetadata: RequestsMetadata = {
   post: {
     uriTemplate: AssignRequestBuilderUriTemplate,
     responseBodyContentType: 'application/json',
+    errorMappings: {
+      409: createAssign409ErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
+    },
     adapterMethodName: 'send',
     responseBodyFactory: createAssignPostResponseFromDiscriminatorValue,
     requestBodyContentType: 'application/json',

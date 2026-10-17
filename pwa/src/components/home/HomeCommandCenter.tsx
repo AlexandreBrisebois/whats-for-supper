@@ -11,12 +11,14 @@ import {
 } from './HomeSections';
 import { TonightMenuCard } from './TonightMenuCard';
 import { TonightPivotCard } from './TonightPivotCard';
-import { SkipRecoveryDialog } from './SkipRecoveryDialog';
+import { SkipRecoveryDialog, type ReplacementFeedback } from './SkipRecoveryDialog';
 import { QuickFindModal } from '../planner/QuickFindModal';
 import { CooksMode } from '../planner/CooksMode';
 import { AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { apiClient } from '@/lib/api/api-client';
+import { getSchedule, normalizeScheduleRecipe } from '@/lib/api/planner';
+import { RetryHandlerOptions } from '@microsoft/kiota-http-fetchlibrary';
 import { DateOnly } from '@microsoft/kiota-abstractions';
 import { calendarDayIndex, type CalendarContext } from '@/lib/deployment-calendar';
 import { moveTomorrow, type PlannerSlot } from '@/lib/planner/slotAssignment';
@@ -75,6 +77,7 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
     nonCooking,
     isLoading,
     assignRecipe,
+    saveRecoveryRecipe,
     markOrderedIn,
     sync,
   } = useTodayStore();
@@ -159,6 +162,8 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
       const state = useTodayStore.getState();
       const context = state.calendarIsFresh() ? state.calendar! : await state.ensureCalendar();
       tomorrowSourceRef.current = null;
+      replacementSession.current = null;
+      setReplacementFeedback(null);
       setActionContext(context);
       actionRecipe.current = useTodayStore.getState().currentRecipe;
       setRetryStart(null);
@@ -177,9 +182,224 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
   const tomorrowSourceRef = useRef<PlannerSlot | null>(null);
   const [recoveryPending, setRecoveryPending] = useState(false);
 
+  const replacementSession = useRef<{
+    context: CalendarContext;
+    original: any;
+    recipe: any;
+    action: 'tomorrow' | 'next_week' | 'drop';
+    disposed: boolean;
+    saved: boolean;
+    saveUnknown?: boolean;
+    blocked?: boolean;
+  } | null>(null);
+  const [replacementFeedback, setReplacementFeedback] = useState<ReplacementFeedback | null>(null);
+  const [confirmAbandon, setConfirmAbandon] = useState(false);
+  useEffect(
+    () => () => {
+      replacementSession.current = null;
+    },
+    []
+  );
+
+  const continueReplacement = useCallback(
+    async function continueSession(): Promise<void> {
+      const session = replacementSession.current;
+      if (!session || recoverySubmissionRef.current) return;
+      recoverySubmissionRef.current = true;
+      setRecoveryPending(true);
+      const active = () => replacementSession.current === session;
+      const feedback = (phase: ReplacementFeedback['phase'], message: string) => {
+        if (active()) setReplacementFeedback({ phase, message, recipeName: session.recipe.name });
+      };
+      const { context, recipe, action } = session;
+      let finishReconciledSave = false;
+      const reconcileSave = async () => {
+        try {
+          const snapshot = await getSchedule(0, context.referenceWeekStartDate, true);
+          const day = snapshot?.days?.find((day) => day.date === context.today);
+          if (!day) throw new Error('No authoritative slot');
+          if (!active()) return;
+          const persisted = normalizeScheduleRecipe(day.recipe);
+          useTodayStore.getState().applyServerUpdate({
+            date: context.today,
+            recipe: persisted,
+            status: day.status ?? 0,
+            nonCooking: day.nonCooking,
+          });
+          useWeekStore.getState().applySlotUpdate({
+            date: context.today,
+            recipe: persisted,
+            status: day.status ?? 0,
+            nonCooking: day.nonCooking,
+          });
+          session.saveUnknown = false;
+          if (persisted?.id === recipe.id && day.status === 0 && !day.nonCooking?.kind) {
+            session.saved = true;
+          } else if (!persisted && !day.nonCooking?.kind && day.status === 0) {
+            feedback('retry', "Your original meal was updated. Your new meal wasn't saved.");
+          } else {
+            session.blocked = true;
+            feedback('conflict', 'Your plan changed. Review it before replacing this meal.');
+          }
+        } catch {
+          session.saveUnknown = true;
+          feedback(
+            'unknown',
+            'Your new meal could not be confirmed. Check your plan before saving again.'
+          );
+        }
+      };
+      try {
+        if (session.blocked) return;
+        if (session.saveUnknown) {
+          await reconcileSave();
+          if (!session.saved) return;
+        }
+        if (!session.disposed) {
+          feedback('moving', 'Updating your original meal…');
+          if (action === 'tomorrow') {
+            tomorrowSourceRef.current ??= {
+              weekOffset: 0,
+              dayIndex: calendarDayIndex(context),
+              date: context.today,
+              recipe: session.original,
+              referenceWeekStartDate: context.referenceWeekStartDate,
+            };
+            await moveTomorrow(tomorrowSourceRef.current);
+          } else if (action === 'next_week') {
+            const result = await apiClient.api.schedule.defer.post(
+              { sourceDate: DateOnly.parse(context.today)!, recipeId: session.original.id },
+              {
+                ...referenceRequest(context.referenceWeekStartDate),
+                options: [new RetryHandlerOptions({ maxRetries: 0 })],
+              }
+            );
+            if (active() && result?.data?.message)
+              useUiStore.getState().addToast(result.data.message);
+          } else {
+            await apiClient.api.schedule.day
+              .byDate(DateOnly.parse(context.today)!)
+              .remove.delete({ options: [new RetryHandlerOptions({ maxRetries: 0 })] });
+          }
+          session.disposed = true;
+          if (!active()) return;
+          useTodayStore
+            .getState()
+            .applyServerUpdate({ date: context.today, recipe: null, status: 0 });
+          useWeekStore.getState().applySlotUpdate({ date: context.today, recipe: null, status: 0 });
+        }
+        if (!session.saved) {
+          feedback('saving', 'Saving your new meal…');
+          await saveRecoveryRecipe(recipe, context);
+          session.saved = true;
+        }
+        if (!active()) return;
+        // A confirmed write remains confirmed even if this separate refresh fails.
+        const snapshot = await getSchedule(0, context.referenceWeekStartDate, true);
+        if (!snapshot?.days) throw new Error('Plan refresh failed');
+        if (!active()) return;
+        const day = snapshot.days.find((day) => day.date === context.today);
+        if (!day) throw new Error('Plan refresh failed');
+        useTodayStore.getState().applyServerUpdate({
+          date: context.today,
+          recipe: normalizeScheduleRecipe(day.recipe),
+          status: day.status ?? 0,
+          nonCooking: day.nonCooking,
+        });
+        if (
+          !useWeekStore.getState().weekStartDate ||
+          useWeekStore.getState().weekStartDate === context.currentWeekStartDate
+        )
+          await useWeekStore.getState().init(0, context.referenceWeekStartDate);
+        if (!active()) return;
+        setRecoveryFlow({ kind: 'closed' });
+        setReplacementFeedback(null);
+        replacementSession.current = null;
+        void sync();
+        if (action !== 'next_week')
+          router.push(
+            `${ROUTES.PLANNER}?weekOffset=0&referenceWeekStartDate=${context.referenceWeekStartDate}`
+          );
+      } catch {
+        if (!active()) return;
+        if (session.saved)
+          feedback('refresh', 'Your new meal is saved, but your plan could not refresh.');
+        else if (session.disposed) {
+          session.saveUnknown = true;
+          await reconcileSave();
+          // A follow-up error can be returned after persistence, even for a 4xx response.
+          if (session.saved && active()) {
+            finishReconciledSave = true;
+            useUiStore.getState().addToast({
+              type: 'error',
+              message:
+                'Your new meal is saved. Some plan updates could not be confirmed. Refresh your plan if needed.',
+            });
+            setReplacementFeedback({
+              phase: 'refresh',
+              message: 'Your new meal is saved. Refreshing your plan…',
+              recipeName: recipe.name,
+            });
+          }
+        } else {
+          session.blocked = true;
+          feedback(
+            'disposition_unknown',
+            'The original meal could not be confirmed. Review your plan before choosing again.'
+          );
+        }
+      } finally {
+        if (active() || replacementSession.current === null) {
+          recoverySubmissionRef.current = false;
+          setRecoveryPending(false);
+        }
+      }
+      if (active() && finishReconciledSave) await continueSession();
+    },
+    [router, saveRecoveryRecipe, sync]
+  );
+
+  const closeRecovery = () => {
+    if (recoverySubmissionRef.current) return;
+    if (replacementSession.current?.saved) {
+      replacementSession.current = null;
+      setReplacementFeedback(null);
+      void sync();
+    }
+    if (replacementSession.current) {
+      setConfirmAbandon(true);
+      return;
+    }
+    setRecoveryFlow({ kind: 'closed' });
+  };
+  const abandonReplacement = () => {
+    replacementSession.current = null;
+    setConfirmAbandon(false);
+    setReplacementFeedback(null);
+    setRecoveryFlow({ kind: 'closed' });
+    void sync();
+  };
+
   const handleRecoveryAction = useCallback(
     async (action: string) => {
       if (recoverySubmissionRef.current) return;
+      if (
+        recoveryFlow.kind === 'step2' &&
+        recoveryFlow.intent === 'pick_else' &&
+        (action === 'tomorrow' || action === 'next_week' || action === 'drop')
+      ) {
+        if (!actionContext || !actionRecipe.current) return;
+        replacementSession.current ??= {
+          context: actionContext,
+          original: actionRecipe.current,
+          recipe: recoveryFlow.pendingRecipe,
+          action,
+          disposed: false,
+          saved: false,
+        };
+        await continueReplacement();
+        return;
+      }
       recoverySubmissionRef.current = true;
       setRecoveryPending(true);
       try {
@@ -245,10 +465,6 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
             useWeekStore.getState().applySlotUpdate({ date: todayStr, recipe: null, status: 3 });
           }
 
-          if (recoveryFlow.kind === 'step2' && recoveryFlow.intent === 'pick_else') {
-            assignRecipe(recoveryFlow.pendingRecipe, context);
-          }
-
           setRecoveryFlow({ kind: 'closed' });
           if (
             !useWeekStore.getState().weekStartDate ||
@@ -285,9 +501,6 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
             useUiStore.getState().addToast(deferResult.data.message);
           }
 
-          if (recoveryFlow.kind === 'step2' && recoveryFlow.intent === 'pick_else') {
-            assignRecipe(recoveryFlow.pendingRecipe, context);
-          }
           setRecoveryFlow({ kind: 'closed' });
           if (
             !useWeekStore.getState().weekStartDate ||
@@ -309,9 +522,6 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
             await apiClient.api.schedule.day.byDate(todayDate).remove.delete();
             // Reset today's slot so the user can re-plan after dropping
             useTodayStore.getState().applyServerUpdate({ date: todayStr, recipe: null, status: 0 });
-          }
-          if (recoveryFlow.kind === 'step2' && recoveryFlow.intent === 'pick_else') {
-            assignRecipe(recoveryFlow.pendingRecipe, context);
           }
           setRecoveryFlow({ kind: 'closed' });
           if (
@@ -346,7 +556,7 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
         setRecoveryPending(false);
       }
     },
-    [markOrderedIn, sync, recoveryFlow, assignRecipe, router, actionContext]
+    [markOrderedIn, sync, recoveryFlow, router, actionContext, continueReplacement]
   );
 
   const handleQuickFindSelect = async (recipe: any) => {
@@ -549,18 +759,29 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
         )}
       </AnimatePresence>
 
-      <AnimatePresence>
-        {showRecovery && (
-          <SkipRecoveryDialog
-            pending={recoveryPending}
-            isOpen={showRecovery}
-            step={recoveryStep}
-            onClose={() => setRecoveryFlow({ kind: 'closed' })}
-            onBack={() => setRecoveryFlow({ kind: 'step1' })}
-            onAction={handleRecoveryAction}
-          />
-        )}
-      </AnimatePresence>
+      {showRecovery && (
+        <SkipRecoveryDialog
+          pending={recoveryPending}
+          isOpen={showRecovery}
+          step={recoveryStep}
+          replacement={replacementFeedback}
+          onRetryReplacement={() => void continueReplacement()}
+          confirmAbandon={confirmAbandon}
+          onCancelAbandon={() => setConfirmAbandon(false)}
+          onAbandon={abandonReplacement}
+          onReviewPlan={() =>
+            router.push(
+              `${ROUTES.PLANNER}?weekOffset=0&referenceWeekStartDate=${actionContext?.referenceWeekStartDate}`
+            )
+          }
+          onClose={closeRecovery}
+          onBack={() => {
+            if (!replacementSession.current && !recoverySubmissionRef.current)
+              setRecoveryFlow({ kind: 'step1' });
+          }}
+          onAction={handleRecoveryAction}
+        />
+      )}
 
       <AnimatePresence>
         {showQuickFind && (

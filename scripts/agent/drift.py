@@ -1,4 +1,5 @@
 import argparse
+import json
 import os
 import re
 import sys
@@ -154,6 +155,14 @@ def parse_cs_dto(file_path):
                     if prop_name not in props:
                         props[prop_name] = {"required": "?" not in type_name}
 
+            default_match = re.search(r"\s=\s*(.+)$", p)
+            property_name = name if jpn else (m.group(2) if m else None)
+            if default_match and property_name in props:
+                try:
+                    props[property_name]["default"] = json.loads(default_match.group(1))
+                except (ValueError, TypeError):
+                    pass  # Non-JSON C# expressions are not evidence of a matching API default.
+
     return props
 
 
@@ -193,7 +202,13 @@ def run_schema_drift(verbose=True):
                 print(f"    ⚠️  `{p}` in spec but missing in C#")
                 issues += 1
             else:
-                if (p in spec_required) != cs_props[match]["required"]:
+                cs_required = cs_props[match]["required"]
+                if (p not in spec_required and "default" in spec_props[p]
+                        and "default" in cs_props[match]
+                        and type(spec_props[p]["default"]) is type(cs_props[match]["default"])
+                        and spec_props[p]["default"] == cs_props[match]["default"]):
+                    cs_required = False
+                if (p in spec_required) != cs_required:
                     print(
                         f"    ⚠️  `{p}` nullability mismatch — "
                         f"spec required={p in spec_required}, C# required={cs_props[match]['required']}"

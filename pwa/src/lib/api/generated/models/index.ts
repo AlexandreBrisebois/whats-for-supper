@@ -24,6 +24,10 @@ export interface AssignScheduleDto extends AdditionalDataHolder, Parsable {
    */
   recipeId?: Guid | null;
   /**
+   * When true, require an explicit reference Monday and dayIndex 0-6; insert only into an absent supper slot (mealSlot zero). Any existing supper entry returns 409 without mutation or displacement.
+   */
+  requireEmpty?: boolean | null;
+  /**
    * The weekOffset property
    */
   weekOffset?: number | null;
@@ -1127,6 +1131,9 @@ export function deserializeIntoAssignScheduleDto(
     },
     recipeId: (n) => {
       assignScheduleDto.recipeId = n.getGuidValue();
+    },
+    requireEmpty: (n) => {
+      assignScheduleDto.requireEmpty = n.getBooleanValue() ?? false;
     },
     weekOffset: (n) => {
       assignScheduleDto.weekOffset = n.getNumberValue();
@@ -4450,6 +4457,7 @@ export function serializeAssignScheduleDto(
   }
   writer.writeNumberValue('dayIndex', assignScheduleDto.dayIndex);
   writer.writeGuidValue('recipeId', assignScheduleDto.recipeId);
+  writer.writeBooleanValue('requireEmpty', assignScheduleDto.requireEmpty ?? false);
   writer.writeNumberValue('weekOffset', assignScheduleDto.weekOffset);
   writer.writeAdditionalData(assignScheduleDto.additionalData);
 }

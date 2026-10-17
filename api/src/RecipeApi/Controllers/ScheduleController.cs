@@ -72,8 +72,16 @@ public class ScheduleController(ScheduleService scheduleService) : ControllerBas
     {
         if (!TryReadReference(referenceWeekStartDate, out var reference))
             return BadRequest(new { message = "referenceWeekStartDate must be a yyyy-MM-dd Monday." });
-        var displaced = await _scheduleService.AssignRecipeAsync(dto, GetConnectionId(), reference);
-        return Ok(new { message = "Recipe assigned", displacedRecipe = displaced });
+        if (dto.RequireEmpty && (reference is null || dto.DayIndex is < 0 or > 6))
+            return BadRequest(new { message = "Guarded assignment requires a reference Monday and dayIndex 0-6." });
+        try
+        {
+            var displaced = await _scheduleService.AssignRecipeAsync(dto, GetConnectionId(), reference);
+            return Ok(new { message = "Recipe assigned", displacedRecipe = displaced });
+        }
+        catch (AssignmentConflictException ex) { return Conflict(new { message = ex.Message }); }
+        catch (Exception ex) when (dto.RequireEmpty && ex is ArgumentException or OverflowException)
+        { return BadRequest(new { message = "Choose a valid captured supper date." }); }
     }
 
     [HttpGet("fill-the-gap")]

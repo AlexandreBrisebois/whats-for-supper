@@ -10,7 +10,9 @@ const mocks = vi.hoisted(() => ({
   loadSetting: vi.fn(),
   push: vi.fn(),
   assignRecipe: vi.fn(),
+  saveRecoveryRecipe: vi.fn().mockResolvedValue(undefined),
   sync: vi.fn(),
+  readSchedule: vi.fn(),
   movePost: vi.fn().mockResolvedValue({ data: { moved: true, refreshComplete: true } }),
   deferPost: vi.fn().mockResolvedValue({ data: { message: 'Moved meal to Monday, May 18.' } }),
   addToast: vi.fn(),
@@ -80,12 +82,22 @@ vi.mock('@/components/home/SkipRecoveryDialog', () => ({
     step,
     onAction,
     onClose,
+    replacement,
+    onRetryReplacement,
   }: {
     step: 1 | 2;
     onAction: (action: any) => void;
     onClose: () => void;
+    replacement?: any;
+    onRetryReplacement?: () => void;
   }) => (
     <div>
+      {replacement && <p>{replacement.message}</p>}
+      {replacement && (
+        <button data-testid="retry-replacement" onClick={onRetryReplacement}>
+          Retry
+        </button>
+      )}
       <button data-testid="recovery-close" onClick={onClose}>
         Close
       </button>
@@ -162,6 +174,7 @@ vi.mock('@/store/todayStore', () => ({
       nonCooking: mocks.nonCooking,
       isLoading: false,
       assignRecipe: mocks.assignRecipe,
+      saveRecoveryRecipe: mocks.saveRecoveryRecipe,
       markCooked: vi.fn(),
       markOrderedIn: mocks.markOrderedIn,
       sync: mocks.sync,
@@ -245,6 +258,7 @@ vi.mock('@/lib/api/api-client', () => ({
 vi.mock('@/lib/api/planner', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/api/planner')>()),
   assignRecipeToDay: vi.fn(),
+  getSchedule: mocks.readSchedule,
 }));
 
 vi.mock('@/lib/formatTime', () => ({
@@ -261,6 +275,10 @@ describe('HomeCommandCenter', () => {
     mocks.nonCooking = null;
     mocks.todayString = '2026-05-07';
     mocks.loadActiveGoTo.mockResolvedValue(null);
+    mocks.saveRecoveryRecipe.mockReset().mockResolvedValue(undefined);
+    mocks.readSchedule.mockReset().mockImplementation(async () => ({
+      days: [{ date: mocks.todayString, status: 0, recipe: { id: 'replacement-recipe' } }],
+    }));
   });
 
   it.each(['order_in', 'eating_out'])('shows the saved %s note on Home', async (kind) => {
@@ -511,7 +529,7 @@ describe('HomeCommandCenter', () => {
         options: [expect.objectContaining({ maxRetries: 0 })],
       }
     );
-    expect(mocks.assignRecipe).toHaveBeenCalledWith(
+    expect(mocks.saveRecoveryRecipe).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'replacement-recipe' }),
       fixtureCalendar()
     );
@@ -566,7 +584,7 @@ describe('HomeCommandCenter', () => {
         options: [expect.objectContaining({ maxRetries: 0 })],
       }
     );
-    expect(mocks.assignRecipe).toHaveBeenCalledWith(
+    expect(mocks.saveRecoveryRecipe).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'replacement-recipe' }),
       expect.objectContaining({ today: '2026-05-10', referenceWeekStartDate: '2026-05-04' })
     );
@@ -599,4 +617,252 @@ describe('atomic Tomorrow disposition', () => {
     expect(screen.getByTestId('recovery-action-tomorrow')).toBeVisible();
     expect(mocks.addToast).toHaveBeenCalled();
   });
+});
+
+it('keeps recovery open until the replacement save is acknowledged', async () => {
+  vi.clearAllMocks();
+  mocks.readSchedule.mockResolvedValue({
+    days: [{ date: mocks.todayString, status: 0, recipe: { id: 'replacement-recipe' } }],
+  });
+  mocks.currentRecipe = { id: 'planned-recipe', name: 'Pasta', image: '' };
+  let finish!: () => void;
+  mocks.saveRecoveryRecipe.mockReturnValueOnce(
+    new Promise<void>((resolve) => {
+      finish = resolve;
+    })
+  );
+  render(<HomeCommandCenter todaysRecipe={mocks.currentRecipe} todayStatus={0} />);
+  fireEvent.click(screen.getByTestId('skip-btn'));
+  fireEvent.click(screen.getByTestId('recovery-action-pick-else'));
+  fireEvent.click(screen.getByTestId('quick-find-select'));
+  await act(async () => {
+    fireEvent.click(screen.getByTestId('recovery-action-tomorrow'));
+  });
+  expect(mocks.movePost).toHaveBeenCalledTimes(1);
+  expect(screen.getByTestId('recovery-action-tomorrow')).toBeInTheDocument();
+  expect(mocks.push).not.toHaveBeenCalled();
+  await act(async () => finish());
+  await waitFor(() =>
+    expect(screen.queryByTestId('recovery-action-tomorrow')).not.toBeInTheDocument()
+  );
+});
+
+describe('Home acknowledged replacement recovery', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.currentRecipe = { id: 'original', name: 'A', image: '' };
+    mocks.todayStatus = 0;
+    mocks.nonCooking = null;
+    mocks.todayString = '2026-05-07';
+    mocks.saveRecoveryRecipe.mockReset().mockResolvedValue(undefined);
+    mocks.readSchedule.mockReset().mockImplementation(async () => ({
+      days: [{ date: '2026-05-07', recipe: { id: 'replacement-recipe' }, status: 0 }],
+    }));
+    mocks.deferPost.mockReset().mockResolvedValue({ data: { scheduledDate: '2026-05-11' } });
+    mocks.removeDelete.mockReset().mockResolvedValue(undefined);
+  });
+  const open = async (action = 'tomorrow') => {
+    render(<HomeCommandCenter todaysRecipe={mocks.currentRecipe} todayStatus={0} />);
+    fireEvent.click(screen.getByTestId('skip-btn'));
+    fireEvent.click(screen.getByTestId('recovery-action-pick-else'));
+    fireEvent.click(screen.getByTestId('quick-find-select'));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId(`recovery-action-${action}`));
+    });
+  };
+  it.each(['next-week', 'drop'])(
+    'retries only save after %s and keeps the captured date',
+    async (action) => {
+      mocks.saveRecoveryRecipe.mockRejectedValueOnce({ responseStatusCode: 400 });
+      mocks.readSchedule.mockResolvedValueOnce({
+        days: [{ date: '2026-05-07', recipe: null, status: 0 }],
+      });
+      await open(action);
+      mocks.todayString = '2026-05-08';
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('retry-replacement'));
+      });
+      expect(action === 'drop' ? mocks.removeDelete : mocks.deferPost).toHaveBeenCalledTimes(1);
+      expect(mocks.saveRecoveryRecipe).toHaveBeenLastCalledWith(
+        expect.objectContaining({ id: 'replacement-recipe' }),
+        expect.objectContaining({ today: '2026-05-07', referenceWeekStartDate: '2026-05-04' })
+      );
+    }
+  );
+  it('recognizes a committed replacement after a lost response without another POST', async () => {
+    mocks.saveRecoveryRecipe.mockRejectedValueOnce({ responseStatusCode: 504 });
+    await open();
+    expect(mocks.readSchedule).toHaveBeenCalledWith(0, '2026-05-04', true);
+    expect(screen.queryByTestId('retry-replacement')).not.toBeInTheDocument();
+    expect(mocks.saveRecoveryRecipe).toHaveBeenCalledTimes(1);
+    expect(mocks.movePost).toHaveBeenCalledTimes(1);
+  });
+  it('offers Retry check when an uncertain save cannot be read', async () => {
+    mocks.saveRecoveryRecipe.mockRejectedValueOnce({ responseStatusCode: 504 });
+    mocks.readSchedule.mockRejectedValueOnce(new Error('Offline'));
+    await open();
+    expect(screen.getByText(/could not be confirmed/i)).toBeInTheDocument();
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('retry-replacement'));
+    });
+    expect(mocks.saveRecoveryRecipe).toHaveBeenCalledTimes(1);
+    expect(mocks.movePost).toHaveBeenCalledTimes(1);
+    expect(screen.queryByTestId('retry-replacement')).not.toBeInTheDocument();
+  });
+  it('protects remote completed or non-cooking content after uncertain save', async () => {
+    mocks.saveRecoveryRecipe.mockRejectedValueOnce({ responseStatusCode: 409 });
+    mocks.readSchedule.mockResolvedValue({
+      days: [{ date: '2026-05-07', recipe: null, status: 3, nonCooking: { kind: 'order_in' } }],
+    });
+    await open();
+    expect(screen.getByText(/plan changed/i)).toBeInTheDocument();
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('retry-replacement'));
+    });
+    expect(mocks.saveRecoveryRecipe).toHaveBeenCalledTimes(1);
+    expect(mocks.applyServerUpdate).toHaveBeenLastCalledWith(
+      expect.objectContaining({ status: 3, nonCooking: { kind: 'order_in' } })
+    );
+  });
+  it('does not replay an unknown defer even when source is empty', async () => {
+    mocks.deferPost.mockRejectedValueOnce({ responseStatusCode: 504 });
+    mocks.readSchedule.mockResolvedValue({
+      days: [{ date: '2026-05-07', recipe: null, status: 0 }],
+    });
+    await open('next-week');
+    expect(screen.getByText(/original meal could not be confirmed/i)).toBeInTheDocument();
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('retry-replacement'));
+    });
+    expect(mocks.deferPost).toHaveBeenCalledTimes(1);
+    expect(mocks.saveRecoveryRecipe).not.toHaveBeenCalled();
+  });
+  it('keeps confirmed save after refresh failure and refreshes without another mutation', async () => {
+    mocks.readSchedule.mockRejectedValueOnce(new Error('Read failed'));
+    await open();
+    expect(screen.getByText(/new meal is saved/i)).toBeInTheDocument();
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('retry-replacement'));
+    });
+    expect(mocks.saveRecoveryRecipe).toHaveBeenCalledTimes(1);
+    expect(mocks.movePost).toHaveBeenCalledTimes(1);
+  });
+});
+
+it('disables transport replay for a Pick Something Else defer', async () => {
+  vi.clearAllMocks();
+  mocks.currentRecipe = { id: 'original', name: 'A', image: '' };
+  mocks.deferPost.mockResolvedValueOnce({ data: {} });
+  mocks.saveRecoveryRecipe.mockResolvedValueOnce(undefined);
+  mocks.readSchedule.mockResolvedValue({
+    days: [{ date: mocks.todayString, status: 0, recipe: { id: 'replacement-recipe' } }],
+  });
+  render(<HomeCommandCenter todaysRecipe={mocks.currentRecipe} todayStatus={0} />);
+  fireEvent.click(screen.getByTestId('skip-btn'));
+  fireEvent.click(screen.getByTestId('recovery-action-pick-else'));
+  fireEvent.click(screen.getByTestId('quick-find-select'));
+  await act(async () => {
+    fireEvent.click(screen.getByTestId('recovery-action-next-week'));
+  });
+  expect(mocks.deferPost).toHaveBeenCalledWith(
+    expect.anything(),
+    expect.objectContaining({ options: [expect.objectContaining({ maxRetries: 0 })] })
+  );
+});
+
+it('ignores a late replacement reconciliation after Home unmounts', async () => {
+  vi.clearAllMocks();
+  mocks.currentRecipe = { id: 'original', name: 'A', image: '' };
+  mocks.saveRecoveryRecipe.mockRejectedValueOnce({ responseStatusCode: 504 });
+  let release!: (data: any) => void;
+  mocks.readSchedule.mockReturnValueOnce(
+    new Promise((resolve) => {
+      release = resolve;
+    })
+  );
+  const view = render(<HomeCommandCenter todaysRecipe={mocks.currentRecipe} todayStatus={0} />);
+  fireEvent.click(screen.getByTestId('skip-btn'));
+  fireEvent.click(screen.getByTestId('recovery-action-pick-else'));
+  fireEvent.click(screen.getByTestId('quick-find-select'));
+  await act(async () => {
+    fireEvent.click(screen.getByTestId('recovery-action-tomorrow'));
+  });
+  view.unmount();
+  mocks.applyServerUpdate.mockClear();
+  await act(async () =>
+    release({
+      days: [{ date: mocks.todayString, status: 0, recipe: { id: 'replacement-recipe' } }],
+    })
+  );
+  expect(mocks.applyServerUpdate).not.toHaveBeenCalled();
+  expect(mocks.push).not.toHaveBeenCalled();
+});
+
+it.each([400, 504])(
+  'recognizes saved state after error %s when Kiota decodes null nonCooking as an empty object',
+  async (status) => {
+    vi.clearAllMocks();
+    mocks.currentRecipe = { id: 'original', name: 'A', image: '' };
+    mocks.saveRecoveryRecipe.mockRejectedValueOnce({ responseStatusCode: status });
+    mocks.readSchedule.mockResolvedValue({
+      days: [
+        {
+          date: mocks.todayString,
+          status: 0,
+          recipe: { id: 'replacement-recipe' },
+          nonCooking: {},
+        },
+      ],
+    });
+    render(<HomeCommandCenter todaysRecipe={mocks.currentRecipe} todayStatus={0} />);
+    fireEvent.click(screen.getByTestId('skip-btn'));
+    fireEvent.click(screen.getByTestId('recovery-action-pick-else'));
+    fireEvent.click(screen.getByTestId('quick-find-select'));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('recovery-action-tomorrow'));
+    });
+    expect(screen.queryByTestId('retry-replacement')).not.toBeInTheDocument();
+    expect(mocks.addToast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: expect.stringMatching(/plan updates could not be confirmed/),
+      })
+    );
+  }
+);
+
+it('can leave after a confirmed save and failed refresh without claiming the meal is unsaved', async () => {
+  vi.clearAllMocks();
+  mocks.currentRecipe = { id: 'original', name: 'A', image: '' };
+  mocks.saveRecoveryRecipe.mockResolvedValueOnce(undefined);
+  mocks.readSchedule.mockRejectedValueOnce(new Error('Read failed'));
+  render(<HomeCommandCenter todaysRecipe={mocks.currentRecipe} todayStatus={0} />);
+  fireEvent.click(screen.getByTestId('skip-btn'));
+  fireEvent.click(screen.getByTestId('recovery-action-pick-else'));
+  fireEvent.click(screen.getByTestId('quick-find-select'));
+  await act(async () => {
+    fireEvent.click(screen.getByTestId('recovery-action-tomorrow'));
+  });
+  expect(screen.getByText(/new meal is saved/i)).toBeInTheDocument();
+  fireEvent.click(screen.getByTestId('recovery-close'));
+  expect(screen.queryByTestId('recovery-close')).not.toBeInTheDocument();
+  expect(mocks.saveRecoveryRecipe).toHaveBeenCalledTimes(1);
+});
+
+it('retains the server destination toast when Pick Something Else defers the original', async () => {
+  vi.clearAllMocks();
+  mocks.currentRecipe = { id: 'original', name: 'A', image: '' };
+  mocks.deferPost.mockResolvedValueOnce({ data: { message: 'Moved meal to Monday, May 18.' } });
+  mocks.saveRecoveryRecipe.mockResolvedValueOnce(undefined);
+  mocks.readSchedule.mockResolvedValue({
+    days: [{ date: mocks.todayString, status: 0, recipe: { id: 'replacement-recipe' } }],
+  });
+  render(<HomeCommandCenter todaysRecipe={mocks.currentRecipe} todayStatus={0} />);
+  fireEvent.click(screen.getByTestId('skip-btn'));
+  fireEvent.click(screen.getByTestId('recovery-action-pick-else'));
+  fireEvent.click(screen.getByTestId('quick-find-select'));
+  await act(async () => {
+    fireEvent.click(screen.getByTestId('recovery-action-next-week'));
+  });
+  expect(mocks.addToast).toHaveBeenCalledWith('Moved meal to Monday, May 18.');
+  expect(mocks.deferPost).toHaveBeenCalledTimes(1);
 });

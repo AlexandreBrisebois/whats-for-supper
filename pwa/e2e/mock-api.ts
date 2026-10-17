@@ -913,6 +913,16 @@ export async function setupCommonRoutes(page: Page, calendarContext?: CalendarCo
     const day = schedule.days[body.dayIndex];
     if (!day) return route.fulfill({ status: 400, json: { message: 'Invalid dayIndex.' } });
     const existing = scheduleEntries.get(day.date);
+    if (
+      body.requireEmpty &&
+      !new URL(route.request().url()).searchParams.has('referenceWeekStartDate')
+    )
+      return route.fulfill({
+        status: 400,
+        json: { message: 'An explicit reference Monday is required.' },
+      });
+    if (body.requireEmpty && existing)
+      return route.fulfill({ status: 409, json: { message: 'That supper slot changed.' } });
     let displacedRecipe = null;
     if (body.dayIndex === 6 && existing?.recipe) {
       const nextWeek = builders.scheduleDays(body.weekOffset + 1, {

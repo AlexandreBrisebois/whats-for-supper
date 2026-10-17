@@ -490,69 +490,78 @@ public partial class ScheduleService(RecipeDbContext dbContext, ILogger<Schedule
         var monday = context.WeekStart(dto.WeekOffset);
         var date = monday.AddDays(dto.DayIndex);
 
-        await EnsureWeekPlanExistsAsync(monday);
-
-        var existingEvent = await _dbContext.CalendarEvents
-            .Include(e => e.Recipe)
-            .FirstOrDefaultAsync(e => e.Date == date);
-
         DisplacedRecipeDto? displaced = null;
-
-        if (existingEvent != null)
+        if (dto.RequireEmpty)
         {
-            // Sunday (dayIndex 6) displacement: carry the evicted recipe forward to next week Monday
-            // rather than silently dropping it.
-            if (existingEvent.RecipeId.HasValue && dto.DayIndex == 6)
-            {
-                var nextWeekOffset = dto.WeekOffset + 1;
-                var nextMonday = context.WeekStart(nextWeekOffset);
-                await EnsureWeekPlanExistsAsync(nextMonday);
-
-                var nextMonday_slot = await _dbContext.CalendarEvents
-                    .FirstOrDefaultAsync(e => e.Date == nextMonday);
-
-                if (nextMonday_slot != null)
-                {
-                    nextMonday_slot.RecipeId = existingEvent.RecipeId;
-                    nextMonday_slot.Status = CalendarEventStatus.Planned;
-                    nextMonday_slot.NonCookingKind = null;
-                    nextMonday_slot.NonCookingLabel = null;
-                }
-                else
-                {
-                    _dbContext.CalendarEvents.Add(new CalendarEvent
-                    {
-                        Id = Guid.NewGuid(),
-                        RecipeId = existingEvent.RecipeId,
-                        Date = nextMonday,
-                        Status = CalendarEventStatus.Planned
-                    });
-                }
-
-                displaced = new DisplacedRecipeDto(
-                    existingEvent.RecipeId.Value,
-                    existingEvent.Recipe?.Name,
-                    nextWeekOffset,
-                    0);
-            }
-
-            existingEvent.RecipeId = dto.RecipeId;
-            existingEvent.Status = CalendarEventStatus.Planned;
-            existingEvent.NonCookingKind = null;
-            existingEvent.NonCookingLabel = null;
+            if (referenceWeekStartDate is null || dto.DayIndex is < 0 or > 6)
+                throw new ArgumentException("Guarded assignment requires an explicit target.");
+            await AssignEmptySupperAsync(dto.RecipeId, date, monday);
         }
         else
         {
-            _dbContext.CalendarEvents.Add(new CalendarEvent
-            {
-                Id = Guid.NewGuid(),
-                RecipeId = dto.RecipeId,
-                Date = date,
-                Status = CalendarEventStatus.Planned
-            });
-        }
+            await EnsureWeekPlanExistsAsync(monday);
 
-        await _dbContext.SaveChangesAsync();
+            var existingEvent = await _dbContext.CalendarEvents
+                .Include(e => e.Recipe)
+                .FirstOrDefaultAsync(e => e.Date == date);
+
+            if (existingEvent != null)
+            {
+                // Sunday (dayIndex 6) displacement: carry the evicted recipe forward to next week Monday
+                // rather than silently dropping it.
+                if (existingEvent.RecipeId.HasValue && dto.DayIndex == 6)
+                {
+                    var nextWeekOffset = dto.WeekOffset + 1;
+                    var nextMonday = context.WeekStart(nextWeekOffset);
+                    await EnsureWeekPlanExistsAsync(nextMonday);
+
+                    var nextMonday_slot = await _dbContext.CalendarEvents
+                        .FirstOrDefaultAsync(e => e.Date == nextMonday);
+
+                    if (nextMonday_slot != null)
+                    {
+                        nextMonday_slot.RecipeId = existingEvent.RecipeId;
+                        nextMonday_slot.Status = CalendarEventStatus.Planned;
+                        nextMonday_slot.NonCookingKind = null;
+                        nextMonday_slot.NonCookingLabel = null;
+                    }
+                    else
+                    {
+                        _dbContext.CalendarEvents.Add(new CalendarEvent
+                        {
+                            Id = Guid.NewGuid(),
+                            RecipeId = existingEvent.RecipeId,
+                            Date = nextMonday,
+                            Status = CalendarEventStatus.Planned
+                        });
+                    }
+
+                    displaced = new DisplacedRecipeDto(
+                        existingEvent.RecipeId.Value,
+                        existingEvent.Recipe?.Name,
+                        nextWeekOffset,
+                        0);
+                }
+
+                existingEvent.RecipeId = dto.RecipeId;
+                existingEvent.Status = CalendarEventStatus.Planned;
+                existingEvent.NonCookingKind = null;
+                existingEvent.NonCookingLabel = null;
+            }
+            else
+            {
+                _dbContext.CalendarEvents.Add(new CalendarEvent
+                {
+                    Id = Guid.NewGuid(),
+                    RecipeId = dto.RecipeId,
+                    Date = date,
+                    Status = CalendarEventStatus.Planned
+                });
+            }
+
+            await _dbContext.SaveChangesAsync();
+
+        }
 
         await _groceryRecomputeService.RecomputeForWeekAsync(monday, CancellationToken.None, context);
 

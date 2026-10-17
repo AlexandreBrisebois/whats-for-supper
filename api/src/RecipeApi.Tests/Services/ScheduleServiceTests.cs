@@ -37,6 +37,20 @@ public class ScheduleServiceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task TonightReplacement_GuardConflictHasNoPlanOrPublicationSideEffects()
+    {
+        var recipe = Guid.NewGuid();
+        _db.Recipes.Add(new Recipe { Id = recipe, Name = "Retained supper", Ingredients = "[]" });
+        _db.CalendarEvents.Add(new CalendarEvent { Date = new(2026, 10, 11), RecipeId = recipe });
+        await _db.SaveChangesAsync();
+        var plansBefore = _db.WeeklyPlans.Count();
+        await Assert.ThrowsAsync<AssignmentConflictException>(() => _service.AssignRecipeAsync(
+            new AssignScheduleDto(0, 6, recipe, RequireEmpty: true), referenceWeekStartDate: new(2026, 10, 5)));
+        Assert.Equal(plansBefore, _db.WeeklyPlans.Count());
+        _publisherMock.VerifyNoOtherCalls();
+    }
+
+    [Fact]
     public async Task TomorrowPush_FirstGapStopsMovementAndPublicationFailureNeverMeansRollback()
     {
         var sunday = new DateOnly(2026,10,11);var recipe=Guid.NewGuid();
