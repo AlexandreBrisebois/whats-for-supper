@@ -87,6 +87,7 @@ export default function RecipesPage() {
   const [data, setData] = useState<RecipeSearchResponse | null>(null);
   const [dataPromotionVersion, setDataPromotionVersion] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [searchError, setSearchError] = useState(false);
   const [isAssigning, setIsAssigning] = useState(false);
   const [openDetailRecipeId, setOpenDetailRecipeId] = useState<string | null>(() =>
     searchParams.get('open')
@@ -111,6 +112,8 @@ export default function RecipesPage() {
     navigateTo: { weekOffset: number; dayIndex: number; home?: boolean };
   } | null>(null);
   const searchPromotionVersion = useSearchPromotionStore((state) => state.version);
+  const handledPromotionVersionRef = useRef(searchPromotionVersion);
+  const initialSimilarToRef = useRef(similarToRecipeId);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const resultsSentinelRef = useRef<HTMLDivElement | null>(null);
   const requestGenerationRef = useRef(0);
@@ -143,6 +146,8 @@ export default function RecipesPage() {
   useEffect(() => {
     return () => {
       filterMetadataRequestRef.current += 1;
+      requestGenerationRef.current += 1;
+      if (debounceRef.current) clearTimeout(debounceRef.current);
     };
   }, []);
 
@@ -173,6 +178,8 @@ export default function RecipesPage() {
       const promotionVersion = useSearchPromotionStore.getState().version;
       continuationGenerationRef.current = null;
       setIsLoading(true);
+      setSearchError(false);
+      setSimilarToRecipeId(nextSimilarToRecipeId ?? null);
       try {
         const filters = nextFilters ?? activeFilters;
         const preferences = nextPreferences ?? activePreferences;
@@ -193,7 +200,6 @@ export default function RecipesPage() {
           return;
         setData(response);
         setDataPromotionVersion(promotionVersion);
-        setSimilarToRecipeId(nextSimilarToRecipeId ?? null);
       } catch (error) {
         console.error('Failed to search recipes', error);
         if (
@@ -201,14 +207,7 @@ export default function RecipesPage() {
           promotionVersion !== useSearchPromotionStore.getState().version
         )
           return;
-        setData({
-          topPick: null,
-          results: [],
-          appliedFilters: {},
-          searchMode: 'standard',
-          resultPath: 'lexical-only',
-          nextCursor: null,
-        });
+        setSearchError(true);
         setDataPromotionVersion(promotionVersion);
       } finally {
         if (generation === requestGenerationRef.current) setIsLoading(false);
@@ -230,7 +229,7 @@ export default function RecipesPage() {
           limit: INITIAL_LIMIT,
           weekOffset: parsedWeekOffset,
           dayIndex: parsedDayIndex,
-          similarToRecipeId: similarToRecipeId ?? undefined,
+          similarToRecipeId: initialSimilarToRef.current ?? undefined,
         });
 
         if (
@@ -249,14 +248,7 @@ export default function RecipesPage() {
         )
           return;
         console.error('Failed to search recipes', error);
-        setData({
-          topPick: null,
-          results: [],
-          appliedFilters: {},
-          searchMode: 'standard',
-          resultPath: 'lexical-only',
-          nextCursor: null,
-        });
+        setSearchError(true);
         setDataPromotionVersion(promotionVersion);
       } finally {
         if (isActive && generation === requestGenerationRef.current) {
@@ -268,18 +260,19 @@ export default function RecipesPage() {
     return () => {
       isActive = false;
     };
-  }, [parsedDayIndex, parsedWeekOffset, similarToRecipeId]);
+  }, [parsedDayIndex, parsedWeekOffset]);
 
   useEffect(() => {
-    if (searchPromotionVersion === 0 || data?.resultPath !== 'browse') return;
+    if (searchPromotionVersion === handledPromotionVersionRef.current) return;
     const refreshTimer = window.setTimeout(() => {
+      handledPromotionVersionRef.current = searchPromotionVersion;
+      if (debounceRef.current) clearTimeout(debounceRef.current);
       void runSearch(query, similarToRecipeId, activeFilters, INITIAL_LIMIT, activePreferences);
     }, 0);
     return () => window.clearTimeout(refreshTimer);
   }, [
     activeFilters,
     activePreferences,
-    data?.resultPath,
     query,
     runSearch,
     searchPromotionVersion,
@@ -732,6 +725,30 @@ export default function RecipesPage() {
         {isLoading || !isPromotionDataCurrent ? (
           <div className="flex h-48 w-full items-center justify-center">
             <Loader2 className="animate-spin text-ochre" size={48} data-testid="recipe-loader" />
+          </div>
+        ) : searchError ? (
+          <div
+            data-testid="search-request-error"
+            role="alert"
+            className="rounded-[2rem] border border-charcoal/15 bg-white/60 p-8 text-center"
+          >
+            <p className="font-bold text-terracotta-700">Could not load recipes. Try again.</p>
+            <button
+              type="button"
+              data-testid="search-request-retry"
+              onClick={() =>
+                void runSearch(
+                  query,
+                  similarToRecipeId,
+                  activeFilters,
+                  INITIAL_LIMIT,
+                  activePreferences
+                )
+              }
+              className="mt-4 rounded-full bg-terracotta px-4 py-2 text-sm font-bold text-white"
+            >
+              Retry
+            </button>
           </div>
         ) : !data ? null : showEmptyState ? (
           <div

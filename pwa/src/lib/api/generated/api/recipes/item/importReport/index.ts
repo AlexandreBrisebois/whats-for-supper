@@ -182,7 +182,7 @@ export interface ImportReportRequestBuilder extends BaseRequestBuilder<ImportRep
     requestConfiguration?: RequestConfiguration<object> | undefined
   ): Promise<RecipeDetailResponse | undefined>;
   /**
-   * Submit a recipe import issue and start contextual re-import when eligible
+   * Eligible contextual URL repair uses the recipe's saved source URL and normalized feedback. Active matching feedback reuses its attempt; unchanged terminal feedback does not start another attempt. A failed launch retains the report and exposes reimportLaunchFailed for retry.
    * @param body The request body
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {Promise<RecipeImportReportSubmissionResponseDto>}
@@ -203,7 +203,7 @@ export interface ImportReportRequestBuilder extends BaseRequestBuilder<ImportRep
     requestConfiguration?: RequestConfiguration<object> | undefined
   ): RequestInformation;
   /**
-   * Submit a recipe import issue and start contextual re-import when eligible
+   * Eligible contextual URL repair uses the recipe's saved source URL and normalized feedback. Active matching feedback reuses its attempt; unchanged terminal feedback does not start another attempt. A failed launch retains the report and exposes reimportLaunchFailed for retry.
    * @param body The request body
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {RequestInformation}

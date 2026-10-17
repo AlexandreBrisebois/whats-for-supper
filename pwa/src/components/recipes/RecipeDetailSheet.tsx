@@ -2,6 +2,13 @@
 import { CalendarUnavailableError } from '@/lib/deployment-calendar';
 
 import { useEffect, useState, useRef } from 'react';
+import {
+  useRecipeNotesStore,
+  initializeRecipeNotes,
+  editRecipeNotes,
+  flushRecipeNotes,
+  retryRecipeNotes,
+} from '@/store/recipeNotesStore';
 import { AnimatePresence } from 'framer-motion';
 import {
   X,
@@ -101,7 +108,9 @@ export function RecipeDetailSheet({
   onFindSimilar,
 }: RecipeDetailSheetProps) {
   const [recipe, setRecipe] = useState<Recipe | null>(null);
-  const [notes, setNotes] = useState('');
+  const notesDraft = useRecipeNotesStore((state) => state.drafts[recipeId]);
+  const notes = notesDraft?.text ?? '';
+  const notesSaved = notesDraft?.status === 'saved';
   const [draftName, setDraftName] = useState('');
   const [draftDescription, setDraftDescription] = useState('');
   const [draftIngredients, setDraftIngredients] = useState<string[]>([]);
@@ -114,7 +123,6 @@ export function RecipeDetailSheet({
   const [isSavingAction, setIsSavingAction] = useState(false);
   const [isSavingRecipe, setIsSavingRecipe] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
-  const [notesSaved, setNotesSaved] = useState(false);
   const [showActionPivot, setShowActionPivot] = useState(false);
   const [isUpdatingDiscovery, setIsUpdatingDiscovery] = useState(false);
   const [isSavingGoto, setIsSavingGoto] = useState(false);
@@ -129,7 +137,6 @@ export function RecipeDetailSheet({
   const familySettings = useFamilyStore((state) => state.familySettings);
   const loadGoTo = useFamilyStore((state) => state.loadGoTo);
   const saveGoTo = useFamilyStore((state) => state.saveGoTo);
-  const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const importPollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const watchedImportIdRef = useRef<string | null>(null);
 
@@ -142,10 +149,11 @@ export function RecipeDetailSheet({
     void (async () => {
       setIsLoading(true);
       try {
+        const notesAtReadStart = useRecipeNotesStore.getState().drafts[recipeId];
         const nextRecipe = await getRecipe(recipeId);
         if (!isActive) return;
         setRecipe(nextRecipe);
-        setNotes(nextRecipe.notes ?? '');
+        initializeRecipeNotes(recipeId, nextRecipe.notes ?? '', notesAtReadStart);
         setDraftName(nextRecipe.name);
         setDraftDescription(nextRecipe.description ?? '');
         setDraftIngredients(nextRecipe.ingredients ?? []);
@@ -182,20 +190,18 @@ export function RecipeDetailSheet({
   }, [loadGoTo]);
 
   useEffect(() => {
-    if (!recipe) return;
-    if ((recipe.notes ?? '') === notes) return;
-
-    const timeoutId = window.setTimeout(() => {
-      void updateRecipe(recipe.id, { notes });
-      setNotesSaved(true);
-      if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
-      savedTimerRef.current = setTimeout(() => setNotesSaved(false), 2000);
-    }, 800);
-
     return () => {
-      window.clearTimeout(timeoutId);
+      void flushRecipeNotes(recipeId).then(() => {
+        if (useRecipeNotesStore.getState().drafts[recipeId]?.status === 'error') {
+          addToast({
+            type: 'error',
+            message:
+              'Notes could not be saved. Reopen the recipe to retry; your draft is retained.',
+          });
+        }
+      });
     };
-  }, [notes, recipe]);
+  }, [recipeId, addToast]);
 
   const handleRatingChange = async (nextRating: number) => {
     // Toggle off if tapping the already-selected rating
@@ -883,8 +889,17 @@ export function RecipeDetailSheet({
                     >
                       {t('recipes.notes', 'Notes')}
                     </label>
+                    {(notesDraft?.status === 'pending' || notesDraft?.status === 'saving') && (
+                      <span role="status" className="text-xs text-charcoal/60">
+                        Saving…
+                      </span>
+                    )}
                     {notesSaved && (
-                      <span className="flex items-center gap-1 text-[10px] font-bold text-sage animate-in fade-in duration-200">
+                      <span
+                        data-testid="recipe-notes-saved"
+                        role="status"
+                        className="flex items-center gap-1 text-[10px] font-bold text-sage animate-in fade-in duration-200"
+                      >
                         <Check size={11} strokeWidth={3} />
                         Saved
                       </span>
@@ -893,10 +908,30 @@ export function RecipeDetailSheet({
                   <textarea
                     id="recipe-notes-input"
                     data-testid="recipe-notes-input"
+                    aria-describedby={
+                      notesDraft?.status === 'error' ? 'recipe-notes-error' : undefined
+                    }
                     value={notes}
-                    onChange={(event) => setNotes(event.target.value)}
+                    onChange={(event) => editRecipeNotes(recipeId, event.target.value)}
                     className="min-h-28 w-full rounded-[1.5rem] border border-charcoal/10 bg-white/90 px-4 py-3 text-sm text-charcoal shadow-sm outline-none transition focus:border-terracotta/30"
                   />
+                  {notesDraft?.status === 'error' && (
+                    <div
+                      id="recipe-notes-error"
+                      role="alert"
+                      className="mt-2 text-sm text-terracotta"
+                    >
+                      Notes could not be saved. Your draft is retained.
+                      <button
+                        type="button"
+                        data-testid="recipe-notes-retry"
+                        className="ml-2 font-bold underline"
+                        onClick={() => void retryRecipeNotes(recipeId)}
+                      >
+                        Retry save
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 <div>

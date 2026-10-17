@@ -207,6 +207,34 @@ public class RecipeServiceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task PatchNotes_RestoresOriginalAndPreservesExactTextOnReread()
+    {
+        var recipeId = Guid.NewGuid();
+        using (var seedScope = _factory.Services.CreateScope())
+        {
+            var db = seedScope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+            db.Recipes.Add(new RecipeApi.Models.Recipe
+            {
+                Id = recipeId, Name = "Notes persistence", Notes = "A", Rating = RecipeApi.Models.RecipeRating.Love,
+                AddedBy = _factory.DefaultFamilyMemberId, IsReady = true,
+                CreatedAt = DateTimeOffset.UtcNow, UpdatedAt = DateTimeOffset.UtcNow
+            });
+            await db.SaveChangesAsync();
+        }
+        foreach (var notes in new[] { "B", "A", "  exact text  ", "" })
+        {
+            using var response = await _client.PatchAsJsonAsync($"/api/recipes/{recipeId}", new { notes });
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            using var reread = await _client.GetAsync($"/api/recipes/{recipeId}");
+            reread.EnsureSuccessStatusCode();
+            using var json = JsonDocument.Parse(await reread.Content.ReadAsStringAsync());
+            var recipe = json.RootElement.GetProperty("recipe");
+            Assert.Equal(notes, recipe.GetProperty("notes").GetString());
+            Assert.Equal(3, recipe.GetProperty("rating").GetInt32());
+        }
+    }
+
+    [Fact]
     public async Task PatchRecipe_WhenMultipleEditableFieldsChange_QueuesSearchIndexWorkflowOnce()
     {
         var recipeId = Guid.NewGuid();

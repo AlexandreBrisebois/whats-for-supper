@@ -1010,3 +1010,95 @@ describe('BrowseAllStack — Recipe Detail Sheet', () => {
     await waitFor(() => expect(screen.queryByTestId('trash-list')).not.toBeInTheDocument());
   });
 });
+
+describe('complete stack traversal', () => {
+  it.each([126, 180])(
+    'visits every ID and ordinal in both directions for %i recipes',
+    async (count) => {
+      const ids = makeRecipeIds(count);
+      mocks.librarySummaryGet.mockResolvedValue(makeSummaryResponse(count));
+      mocks.recipesGet.mockImplementation(async (request: any) => {
+        const { page = 1, limit = 20 } = request.queryParameters;
+        return makePageResponse(ids.slice((page - 1) * limit, page * limit), count, page);
+      });
+      await act(async () => {
+        render(<BrowseAllStackPage />);
+      });
+      const assertCard = (index: number) => {
+        expect(screen.getByTestId('stack-card-front')).toHaveAttribute(
+          'data-recipe-id',
+          ids[index]
+        );
+        expect(screen.getByTestId('stack-depth-indicator')).toHaveTextContent(
+          `${index + 1} / ${count}`
+        );
+      };
+      assertCard(0);
+      for (let i = count - 1; i >= 0; i--) {
+        await act(async () => {
+          await mocks.getCapturedOnDragEnd()!(null, makeDragInfo(120));
+        });
+        await waitFor(() => assertCard(i));
+      }
+      for (let i = 1; i <= count; i++) {
+        await act(async () => {
+          await mocks.getCapturedOnDragEnd()!(null, makeDragInfo(-120));
+        });
+        await waitFor(() => assertCard(i % count));
+      }
+    },
+    30000
+  );
+});
+
+describe('stack page recovery', () => {
+  it('retains the current card on failed wrap and retries the requested page', async () => {
+    const ids = makeRecipeIds(126);
+    mocks.librarySummaryGet.mockResolvedValue(makeSummaryResponse(126));
+    mocks.recipesGet
+      .mockResolvedValueOnce(makePageResponse(ids.slice(0, 20), 126, 1))
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockResolvedValueOnce(makePageResponse(ids.slice(120), 126, 7));
+    await act(async () => {
+      render(<BrowseAllStackPage />);
+    });
+    await act(async () => {
+      await mocks.getCapturedOnDragEnd()!(null, makeDragInfo(120));
+    });
+    expect(screen.getByTestId('stack-card-front')).toHaveAttribute('data-recipe-id', ids[0]);
+    fireEvent.click(screen.getByTestId('stack-page-retry'));
+    await waitFor(() =>
+      expect(screen.getByTestId('stack-card-front')).toHaveAttribute('data-recipe-id', ids[125])
+    );
+    expect(screen.getByTestId('stack-depth-indicator')).toHaveTextContent('126 / 126');
+  });
+
+  it('ignores a delayed All wrap after switching to Discovery', async () => {
+    const ids = makeRecipeIds(126);
+    let finish!: (value: unknown) => void;
+    mocks.librarySummaryGet.mockResolvedValue(makeSummaryResponse(126));
+    mocks.recipesGet.mockImplementation(async (request: any) => {
+      if (request.queryParameters.discoverableOnly) return makePageResponse([ids[3]], 1, 1);
+      if (request.queryParameters.page === 7)
+        return new Promise((resolve) => {
+          finish = resolve;
+        });
+      return makePageResponse(ids.slice(0, 20), 126, 1);
+    });
+    await act(async () => {
+      render(<BrowseAllStackPage />);
+    });
+    await act(async () => {
+      await mocks.getCapturedOnDragEnd()!(null, makeDragInfo(120));
+    });
+    fireEvent.click(screen.getByTestId('stack-toggle-discoverable'));
+    await waitFor(() =>
+      expect(screen.getByTestId('stack-card-front')).toHaveAttribute('data-recipe-id', ids[3])
+    );
+    await act(async () => {
+      finish(makePageResponse(ids.slice(120), 126, 7));
+    });
+    expect(screen.getByTestId('stack-card-front')).toHaveAttribute('data-recipe-id', ids[3]);
+    expect(screen.getByTestId('stack-depth-indicator')).toHaveTextContent('1 / 1');
+  });
+});

@@ -54,3 +54,7 @@ Exclusions: no adjacent refactoring, universal transaction/exactly-once promises
 ## Human review gate
 
 Human selects this item and approves unresolved policy plus its concrete spec/task/file scope before implementation. Review evidence and actual diff before integration or closure. Draft generation, human acceptance, promotion and runtime qualification are separate states. Failed reproduction does not close the report automatically.
+
+## Retained household stack report after WFS-BL-010
+
+The 2026-10-17 paging correction passes complete controlled 126/180 recipe cycles. The user separately reports backward from the first card showing card26 rather than200. That 200-recipe household dataset has not been reproduced or tested; do not label the report a counter-only error. The current strategy calculates page10 for total200 and limit20, but this arithmetic is not dataset acceptance. Preserve this bounded qualification without reopening the completed paging implementation automatically.
