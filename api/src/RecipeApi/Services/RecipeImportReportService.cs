@@ -123,17 +123,16 @@ public class RecipeImportReportService(RecipeDbContext db, IWorkflowOrchestrator
         var now = DateTimeOffset.UtcNow;
         if (db.Database.IsRelational())
         {
-            await db.RecipeImportReports
-                .Where(report =>
-                    report.RecipeId == recipeId
-                    && (report.Reasons.Contains("ingredients") || report.Reasons.Contains("steps")))
-                .ExecuteUpdateAsync(setters => setters
-                    .SetProperty(report => report.Status, RecipeImportReportStatus.Reimporting)
-                    .SetProperty(report => report.LastWorkflowInstanceId, workflowInstanceId)
-                    .SetProperty(report => report.LastAttemptAt, now)
-                    .SetProperty(report => report.ReimportedAt, (DateTimeOffset?)null)
-                    .SetProperty(report => report.LastError, (string?)null)
-                    .SetProperty(report => report.UpdatedAt, now));
+            // Keep the predicate and state transition atomic; the RC1 provider cannot
+            // translate primitive-array membership inside ExecuteUpdate.
+            await db.Database.ExecuteSqlAsync($"""
+                UPDATE recipe_import_reports
+                SET status = 'reimporting', last_workflow_instance_id = {workflowInstanceId},
+                    last_attempt_at = {now}, reimported_at = NULL, last_error = NULL,
+                    updated_at = {now}
+                WHERE recipe_id = {recipeId}
+                  AND reasons && ARRAY['ingredients', 'steps']::text[]
+                """);
             return;
         }
 
@@ -155,19 +154,13 @@ public class RecipeImportReportService(RecipeDbContext db, IWorkflowOrchestrator
         var now = DateTimeOffset.UtcNow;
         if (db.Database.IsRelational())
         {
-            await db.RecipeImportReports
-                .Where(report =>
-                    report.RecipeId == recipeId
-                    && report.LastWorkflowInstanceId == workflowInstanceId)
-                .ExecuteUpdateAsync(setters => setters
-                    .SetProperty(
-                        report => report.Status,
-                        report => report.Reasons.Contains("duplicate")
-                            ? RecipeImportReportStatus.Reported
-                            : RecipeImportReportStatus.ReadyToReview)
-                    .SetProperty(report => report.ReimportedAt, now)
-                    .SetProperty(report => report.LastError, (string?)null)
-                    .SetProperty(report => report.UpdatedAt, now));
+            await db.Database.ExecuteSqlAsync($"""
+                UPDATE recipe_import_reports
+                SET status = CASE WHEN 'duplicate' = ANY(reasons)
+                                  THEN 'reported' ELSE 'ready_to_review' END,
+                    reimported_at = {now}, last_error = NULL, updated_at = {now}
+                WHERE recipe_id = {recipeId} AND last_workflow_instance_id = {workflowInstanceId}
+                """);
             return;
         }
 

@@ -12,7 +12,7 @@ shopt: [globstar]
 
 vars:
   PYTHON: '{{.ROOT_DIR}}/.venv/bin/python'
-  OPENSPEC_VERSION: '1.14.2'
+  OPENSPEC_VERSION: '1.14.3'
   API_PORT: '5050'
   PWA_PORT: '3000'
   DB_PORT: '5432'
@@ -476,7 +476,7 @@ tasks:
       - |
         DRY_FLAG=""
         if [ "{{.DRY_RUN}}" == "true" ]; then DRY_FLAG="--dry-run"; fi
-        docker run --rm -v $(pwd)/api/database/schema.sql:/schema.sql:ro --network wfs-internal -e PGPASSWORD={{.POSTGRES_PASSWORD}} sqldef/psqldef:latest -h postgres -U {{.POSTGRES_USER}} {{.POSTGRES_DB}} $DRY_FLAG -f /schema.sql
+        docker run --rm -v $(pwd)/api/database/schema.sql:/schema.sql:ro --network wfs-internal -e PGPASSWORD={{.POSTGRES_PASSWORD}} sqldef/psqldef:3.11.26 -h postgres -U {{.POSTGRES_USER}} {{.POSTGRES_DB}} $DRY_FLAG -f /schema.sql
 
   seed:
     desc: "Populate database with test data"
@@ -1013,6 +1013,7 @@ tasks:
       - task: init:python
       - npm install --global "@fission-ai/openspec@{{.OPENSPEC_VERSION}}"
       - task: spec:check
+      - npm install --global npm@11.21.1
       - npm ci --prefix pwa
       - npm exec --prefix pwa -- playwright install chromium
       - dotnet restore api/src/RecipeApi.Tests/RecipeApi.Tests.csproj

@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: pgvector/pgvector:pg18-trixie
+        image: pgvector/pgvector:0.8.7-pg18-trixie
         env:
           POSTGRES_USER: qualification
           POSTGRES_PASSWORD: qualification
@@ -26,7 +26,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: '11.0.100-preview.6.26359.118'
+          dotnet-version: '11.0.100-rc.2.26504.105'
       - name: API tests
         run: dotnet test api/src/RecipeApi.Tests/RecipeApi.Tests.csproj --configuration Release --filter 'FullyQualifiedName!~PdfCapturePostgresTests' --logger 'trx;LogFileName=api.trx' --results-directory results
       - name: PDF PostgreSQL disk recovery and lifecycle
@@ -63,6 +63,7 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version-file: '.nvmrc'
+      - run: npm install --global npm@11.21.1
       - run: npm ci
         working-directory: pwa
       - name: Scope-preserving PWA preparation
@@ -116,11 +117,12 @@ jobs:
         with:
           dotnet-version: |
             10.0.x
-            11.0.100-preview.6.26359.118
+            11.0.100-rc.2.26504.105
       - uses: actions/setup-node@v7
         with:
           node-version-file: '.nvmrc'
       - run: dotnet tool restore
+      - run: npm install --global npm@11.21.1
       - run: npm ci
         working-directory: pwa
       - run: python3 -B scripts/agent/kiota_client.py check
@@ -172,7 +174,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: '11.0.100-preview.6.26359.118'
+          dotnet-version: '11.0.100-rc.2.26504.105'
       - name: Qualification tools
         run: sudo apt-get update && sudo apt-get install -y qpdf python3-pil fonts-dejavu-core
       - name: Synthetic fixtures

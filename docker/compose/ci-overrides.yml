@@ -5,7 +5,7 @@ services:
 
   # Sidecar to prepare named volume permissions for the chiseled API image
   volume-fixer:
-    image: alpine
+    image: alpine:3.23
     command: chown -R 1654:1654 /data
     volumes:
       - wfs_data:/data

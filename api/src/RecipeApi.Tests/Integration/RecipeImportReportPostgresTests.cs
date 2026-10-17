@@ -138,6 +138,27 @@ public class RecipeImportReportPostgresTests : IAsyncLifetime
     }
 
     [PostgresFact]
+    public async Task StepsOnlyAttempt_UpdatesOnlyTheRequestedRecipe()
+    {
+        var target = await SeedAsync(["steps"]);
+        var other = await SeedAsync(["steps", "duplicate"]);
+        var before = await ReadAsync(other.RecipeId);
+        var attempt = Guid.NewGuid();
+        var service = new RecipeImportReportService(_db);
+
+        await service.MarkAttemptStartedAsync(target.RecipeId, attempt);
+        await service.MarkSucceededAsync(target.RecipeId, attempt);
+
+        var completed = await ReadAsync(target.RecipeId);
+        Assert.Equal(RecipeImportReportStatus.ReadyToReview, completed.Status);
+        Assert.Equal(attempt, completed.LastWorkflowInstanceId);
+        var untouched = await ReadAsync(other.RecipeId);
+        Assert.Equal(before.Status, untouched.Status);
+        Assert.Equal(before.LastWorkflowInstanceId, untouched.LastWorkflowInstanceId);
+        Assert.Equal(before.UpdatedAt, untouched.UpdatedAt);
+    }
+
+    [PostgresFact]
     public async Task MissingReport_LifecycleCallsDoNotCreateOne()
     {
         var service = new RecipeImportReportService(_db);

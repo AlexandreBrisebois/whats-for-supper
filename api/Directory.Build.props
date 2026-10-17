@@ -1,8 +1,12 @@
 <Project>
+  <PropertyGroup>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <RestoreLockedMode Condition="'$(CI)' == 'true'">true</RestoreLockedMode>
+  </PropertyGroup>
   <!-- Centralise the EF Core version to avoid transitive version conflicts
        with the Npgsql provider. Both projects inherit this override. -->
   <ItemGroup>
-    <PackageReference Update="Microsoft.EntityFrameworkCore.Relational" Version="11.0.0-preview.6.26359.118" />
-    <PackageReference Update="Microsoft.EntityFrameworkCore.Relational.Design" Version="11.0.0-preview.6.26359.118" />
+    <PackageReference Update="Microsoft.EntityFrameworkCore.Relational" Version="11.0.0-rc.1.26425.128" />
+    <PackageReference Update="Microsoft.EntityFrameworkCore.Relational.Design" Version="11.0.0-rc.1.26425.128" />
   </ItemGroup>
 </Project>
