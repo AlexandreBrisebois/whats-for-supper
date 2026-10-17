@@ -4,6 +4,15 @@
 
 Collect member recipe preferences and expose discovery queues and voting suggestions while keeping suggestions distinct from persisted meal assignments.
 
+## Planning dependencies (non-normative)
+
+References in preserved requirements to the former combined meal-planning owner resolve through the current capability links below. The referenced behavior and each existing requirement body remain unchanged.
+
+- [Compose voting suggestions separately from persisted assignments](../meal-planning/spec.md#requirement-compose-voting-suggestions-separately-from-persisted-assignments)
+- [Submit chosen-recipe assignment through the protected operation](../meal-assignment/spec.md#requirement-submit-chosen-recipe-assignment-through-the-protected-operation)
+- [Persist a protected week lock independently of browser promotion](../planning-lifecycle/spec.md#requirement-persist-a-protected-week-lock-independently-of-browser-promotion)
+- [Keep relative operations anchored to their intended calendar week](../deployment-calendar/spec.md#requirement-keep-relative-operations-anchored-to-their-intended-calendar-week)
+
 ## Evidence and qualifications (non-normative)
 
 Accepted and promoted on 2026-10-16 under DISC-D03 from the three reviewed discovery deltas. The [capability plan](../../../docs/openspec-baseline/recipe-discovery.md) retains BSL-recipe-discovery-001–013, full scenario mappings, U04 and DISC-U01–U08. These requirements describe implementation-supported behavior; runtime/API/browser/database qualification remains not-run under A34.

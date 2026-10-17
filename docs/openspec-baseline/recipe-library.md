@@ -1,5 +1,18 @@
 # Recipe library baseline plan
 
+## Current capability ownership after domain split — 2026-10-16
+
+Use the current owners below for this former combined capability. All dated extraction records, source digests, BSL/U/A identifiers and qualification limits below remain historical evidence. Requirements and ordered scenarios were relocated unchanged; no runtime qualification is inferred. Earlier meal-planning navigation remains applicable.
+
+| Current capability | Requirements / scenarios |
+|---|---:|
+| [recipe-library](../../openspec/specs/recipe-library/spec.md) | 46 / 100 |
+| [recipe-editing](../../openspec/specs/recipe-editing/spec.md) | 25 / 54 |
+| [recipe-media](../../openspec/specs/recipe-media/spec.md) | 12 / 27 |
+| [recipe-recycle-bin](../../openspec/specs/recipe-recycle-bin/spec.md) | 13 / 31 |
+
+The complete cross-source block identities and ownership map are recorded in the [archived split ownership map](../../openspec/changes/archive/2026-10-16-split-remaining-broad-capabilities/design.md). The existing source evidence below is preserved, including any older combined-capability counts and exclusions.
+
 ## Current lifecycle checkpoint — consolidated, 2026-10-16
 
 This capability's main spec now contains **96 requirements / 212 scenarios**.

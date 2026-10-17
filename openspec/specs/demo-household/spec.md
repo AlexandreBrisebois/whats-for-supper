@@ -28,6 +28,13 @@ Approved-contract disagreements and custom workflow-root limitations remain outs
 normative claims. Promotion changes documentation only; the six changes stay active
 and unarchived, with no application implementation authorized or performed.
 
+## Relocated requirement references (non-normative)
+
+References in preserved requirements to a combined capability now resolve to these exact requirement owners. This navigation does not change their policy.
+
+- [List existing household members for selection](../member-context/spec.md#requirement-list-existing-household-members-for-selection)
+- [Resolve the current member through the API](../member-context/spec.md#requirement-resolve-the-current-member-through-the-api)
+
 ## Requirements
 
 ### Requirement: Resolve demo activation from API configuration

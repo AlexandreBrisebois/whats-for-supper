@@ -1,5 +1,13 @@
 # Grocery shopping baseline plan
 
+## Current planning ownership — 2026-10-16
+
+The combined meal-planning spec has been split by responsibility. Use these current requirement owners; earlier extraction references to the combined owner, source identities and evidence below remain historical. Qualification limits are unchanged.
+
+- [Read week status and stored adjuncts without creating a plan](../../openspec/specs/meal-planning/spec.md#requirement-read-week-status-and-stored-adjuncts-without-creating-a-plan)
+- [Resolve supper dates through the deployment calendar](../../openspec/specs/deployment-calendar/spec.md#requirement-resolve-supper-dates-through-the-deployment-calendar)
+- [Complete defer after affected-week follow-ups](../../openspec/specs/meal-rescheduling/spec.md#requirement-complete-defer-after-affected-week-follow-ups)
+
 ## Current lifecycle checkpoint — consolidated, 2026-10-16
 
 This capability's main spec now contains **37 requirements / 82 scenarios**.
@@ -33,7 +41,6 @@ reconciliation, evidence drift and exclusions. Current main SHA-256: `f30bac5e8d
 This session grants no new acceptance or promotion. Earlier session-specific
 “current user” and next-action statements retain their historical scope. A34 and
 all local unresolved/excluded behavior remain in force; runtime checks are not-run.
-
 
 ## Source identity and preserved inputs
 

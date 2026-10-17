@@ -7,6 +7,13 @@ Expose install-facing identity and household entry points, and describe conditio
 Shared rule owners: [household identity](../household-identity/spec.md) and
 [recipe capture](../recipe-capture/spec.md). Named requirements below refer to those owners.
 
+## Relocated requirement references (non-normative)
+
+References in preserved requirements to a combined capability now resolve to these exact requirement owners. This navigation does not change their policy.
+
+- [Apply member context after household access](../member-context/spec.md#requirement-apply-member-context-after-household-access)
+- [Route hydrated landing context to the next household page](../member-context/spec.md#requirement-route-hydrated-landing-context-to-the-next-household-page)
+
 ## Requirements
 
 ### Requirement: Publish ordinary household install identity

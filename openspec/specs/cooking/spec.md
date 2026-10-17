@@ -4,6 +4,14 @@
 
 Let household members prepare and follow the viewed recipe, then request recording that recipe as cooked while keeping calendar matching with meal planning.
 
+## Planning dependencies (non-normative)
+
+References in preserved requirements to the former combined meal-planning owner resolve through the current capability links below. The referenced behavior and each existing requirement body remain unchanged.
+
+- [Resolve supper dates through the deployment calendar](../deployment-calendar/spec.md#requirement-resolve-supper-dates-through-the-deployment-calendar)
+- [Refresh expired Today context before a new action](../deployment-calendar/spec.md#requirement-refresh-expired-today-context-before-a-new-action)
+- [Validate recipe-specific cooking without completing another assignment](../planning-lifecycle/spec.md#requirement-validate-recipe-specific-cooking-without-completing-another-assignment)
+
 ## Requirements
 
 ### Requirement: Enter cooking with the displayed recipe identity

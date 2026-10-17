@@ -1,5 +1,30 @@
 # Meal planning baseline plan
 
+## Incoming branch reconciliation — 2026-10-16
+
+The local branch was fast-forwarded from `b43f8ab3` to `e4a48c85`, incorporating `8357a8bd` / PR #242 before restoring the complete uncommitted spec splits. A retained Git safety stash and private file/patch snapshot preserve the pre-reconciliation work. No commit, deployment or new archival was performed.
+
+All four incoming changes to existing planning requirements were applied to their relocated owners: two assignment/replacement rules in meal-assignment and two legacy movement rules in meal-rescheduling. Six new Tomorrow movement requirements belong to meal-rescheduling; the new shared-caller gating requirement belongs to meal-assignment. Home retains its three modified and one added Tomorrow requirements in tonight-meal-decisions. The six planning owners now match all 111 upstream planning blocks / 263 scenarios exactly; Home matches upstream under its existing owner. The other five capability splits retain all 260 blocks / 609 scenarios unchanged.
+
+The original split archive and its 104/249 block identities remain a historical snapshot, not a delta to replay over later accepted Tomorrow behavior. The incoming [Tomorrow change](../../openspec/changes/archive/2026-10-16-tomorrow-preserve-meals/design.md) and its [recorded test/qualification evidence](../../openspec/changes/archive/2026-10-16-tomorrow-preserve-meals/tasks.md) are preserved untouched. This reconciliation verifies documentation alignment and Git preservation only; previous application evidence is not promoted into a new runtime result. Historical uncertainties remain unless explicitly superseded by the accepted incoming requirements.
+
+Reconciliation acceptance: the complete current main-spec union matches incoming HEAD `e4a48c85` exactly by requirement title and canonical block content: **667 unique requirements / 1,615 ordered scenarios across 30 owners**. All incoming non-overlap files and deletions match that commit; 58 of the 66 original changed/untracked files remain byte-identical, and exactly eight documentation files contain the authorized reconciliation. No staged changes or unresolved merge entries remain. Strict OpenSpec validation passed for all 31 items; link, whitespace and preservation checks passed. Application/runtime tests were not rerun during this synchronization. Final documentation-harness evidence is reported with its unique record_path in the completion response.
+
+## Current capability ownership — 2026-10-16
+
+The six current main specs contain **111 requirements / 263 scenarios**, matching upstream `e4a48c85` after the Tomorrow reconciliation. The original split conserved 104/249 from combined-spec SHA-256 `84a098961a8972ae17925266e8a3ac47b28ef8d7b7aa0875f799436b7a763d32`; that identity remains a historical input. Incoming PR #242 adds seven requirements and fourteen scenarios and updates four existing requirement blocks, all copied exactly under their current owners. This file remains the shared historical evidence record for those owners; BSL/U/A mappings, old source digests and runtime limits below are preserved, not newly qualified.
+
+| Current capability | Requirements / scenarios | Responsibility |
+|---|---:|---|
+| [meal-planning](../../openspec/specs/meal-planning/spec.md) | 17 / 44 | Week reads, navigation, display and direct suggestion reads |
+| [deployment-calendar](../../openspec/specs/deployment-calendar/spec.md) | 7 / 20 | Timezone, date context, captured references and rollover |
+| [meal-assignment](../../openspec/specs/meal-assignment/spec.md) | 29 / 64 | Quick Find, assignment, first-open placement and replacement recovery |
+| [meal-rescheduling](../../openspec/specs/meal-rescheduling/spec.md) | 26 / 65 | Movement, drag, defer, recipe removal and shared deletion |
+| [non-cooking-plans](../../openspec/specs/non-cooking-plans/spec.md) | 18 / 39 | Recipe-free supper plans and editing/clearing UI |
+| [planning-lifecycle](../../openspec/specs/planning-lifecycle/spec.md) | 14 / 31 | Voting, locking, day validation and overdue finalization |
+
+The shared date-delete lifecycle belongs to [Delete the recipe-free entry before clear follow-up work](../../openspec/specs/meal-rescheduling/spec.md#requirement-delete-the-recipe-free-entry-before-clear-follow-up-work). The [preserved qualifications](../../openspec/specs/meal-planning/spec.md#evidence-and-qualifications-non-normative) apply to transferred requirements. The following lifecycle counts and combined-owner references are historical checkpoints; they do not describe the current split.
+
 ## Current lifecycle checkpoint — consolidated, 2026-10-16
 
 This capability's main spec now contains **96 requirements / 222 scenarios**.

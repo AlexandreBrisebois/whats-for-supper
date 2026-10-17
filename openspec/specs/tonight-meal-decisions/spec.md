@@ -4,6 +4,19 @@
 
 Help ordinary households understand tonight’s supper and choose or recover a meal using existing planning, recipe and cooking capabilities.
 
+## Planning dependencies (non-normative)
+
+References in preserved requirements to the former combined meal-planning owner resolve through the current capability links below. The referenced behavior and each existing requirement body remain unchanged.
+
+- [Read the household schedule through the protected GET operation](../meal-planning/spec.md#requirement-read-the-household-schedule-through-the-protected-get-operation)
+- [Hand eligible Home plans back to Planner editing](../non-cooking-plans/spec.md#requirement-hand-eligible-home-plans-back-to-planner-editing)
+- [Present Quick Find reads and failed-read retention](../meal-assignment/spec.md#requirement-present-quick-find-reads-and-failed-read-retention)
+- [Retain status-only day-validation compatibility](../planning-lifecycle/spec.md#requirement-retain-status-only-day-validation-compatibility)
+- [Submit dated-source movement through the protected operation](../meal-rescheduling/spec.md#requirement-submit-dated-source-movement-through-the-protected-operation)
+- [Defer the exact dated recipe through a protected operation](../meal-rescheduling/spec.md#requirement-defer-the-exact-dated-recipe-through-a-protected-operation)
+- [Expose one authoritative calendar context with schedule reads](../deployment-calendar/spec.md#requirement-expose-one-authoritative-calendar-context-with-schedule-reads)
+- [Refresh expired Today context before a new action](../deployment-calendar/spec.md#requirement-refresh-expired-today-context-before-a-new-action)
+
 ## Evidence and qualifications (non-normative)
 
 Accepted and promoted as documentation under TM-P01 (2026-10-16), user “promote”,
@@ -29,6 +42,15 @@ owners as referenced below and in the evidence record. Behavior is
 implementation-supported under A10; existing test execution and runtime/API/browser/
 database/device/network/model qualification remain not-run under A34. All three
 source changes remain active. No archival or application implementation occurs.
+
+## Incoming Tomorrow reconciliation (non-normative)
+
+The accepted Tomorrow change from upstream commit `8357a8bd` (PR #242, merged at `e4a48c85`) is incorporated under the current owners. Its normative blocks are copied exactly from upstream. This supersedes the original split snapshot only for the changed/added Tomorrow requirements; all other original blocks and evidence records remain intact. See the [upstream change design](../../changes/archive/2026-10-16-tomorrow-preserve-meals/design.md) and [recorded acceptance evidence](../../changes/archive/2026-10-16-tomorrow-preserve-meals/tasks.md). This reconciliation did not rerun application/runtime qualification.
+
+- [Preserve the Tomorrow supper chain across weeks](../meal-rescheduling/spec.md#requirement-preserve-the-tomorrow-supper-chain-across-weeks)
+- [Preserve non-cooking source disposition with Tomorrow](../meal-rescheduling/spec.md#requirement-preserve-non-cooking-source-disposition-with-tomorrow)
+- [Persist Tomorrow as one calendar change](../meal-rescheduling/spec.md#requirement-persist-tomorrow-as-one-calendar-change)
+- [Refresh every week touched by Tomorrow](../meal-rescheduling/spec.md#requirement-refresh-every-week-touched-by-tomorrow)
 
 ## Requirements
 

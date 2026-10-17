@@ -1,5 +1,13 @@
 # Cooking baseline plan
 
+## Current planning ownership — 2026-10-16
+
+The combined meal-planning spec has been split by responsibility. Use these current requirement owners; earlier extraction references to the combined owner, source identities and evidence below remain historical. Qualification limits are unchanged.
+
+- [Resolve supper dates through the deployment calendar](../../openspec/specs/deployment-calendar/spec.md#requirement-resolve-supper-dates-through-the-deployment-calendar)
+- [Refresh expired Today context before a new action](../../openspec/specs/deployment-calendar/spec.md#requirement-refresh-expired-today-context-before-a-new-action)
+- [Validate recipe-specific cooking without completing another assignment](../../openspec/specs/planning-lifecycle/spec.md#requirement-validate-recipe-specific-cooking-without-completing-another-assignment)
+
 ## Current lifecycle checkpoint — consolidated, 2026-10-16
 
 This capability's main spec now contains **26 requirements / 58 scenarios**.
@@ -33,7 +41,6 @@ reconciliation, evidence drift and exclusions. Current main SHA-256: `1d6baff148
 This session grants no new acceptance or promotion. Earlier session-specific
 “current user” and next-action statements retain their historical scope. A34 and
 all local unresolved/excluded behavior remain in force; runtime checks are not-run.
-
 
 ## Authorization and settled decisions
 

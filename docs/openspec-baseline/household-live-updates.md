@@ -1,5 +1,12 @@
 # Household live updates baseline plan
 
+## Current planning ownership — 2026-10-16
+
+The combined meal-planning spec has been split by responsibility. Use these current requirement owners; earlier extraction references to the combined owner, source identities and evidence below remain historical. Qualification limits are unchanged.
+
+- [Expose one authoritative calendar context with schedule reads](../../openspec/specs/deployment-calendar/spec.md#requirement-expose-one-authoritative-calendar-context-with-schedule-reads)
+- [Refresh expired Today context before a new action](../../openspec/specs/deployment-calendar/spec.md#requirement-refresh-expired-today-context-before-a-new-action)
+
 ## Current lifecycle checkpoint — consolidated, 2026-10-16
 
 This capability's main spec now contains **30 requirements / 79 scenarios**.
@@ -33,7 +40,6 @@ reconciliation, evidence drift and exclusions. Current main SHA-256: `1c1c906831
 This session grants no new acceptance or promotion. Earlier session-specific
 “current user” and next-action statements retain their historical scope. A34 and
 all local unresolved/excluded behavior remain in force; runtime checks are not-run.
-
 
 ## Capability map and starting points
 

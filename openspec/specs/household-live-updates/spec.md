@@ -4,6 +4,13 @@
 
 Provide the shared household live-update connection and initial schedule snapshot, and describe how received snapshots reconcile the displayed week and Today without implying lossless recovery or complete state convergence.
 
+## Planning dependencies (non-normative)
+
+References in preserved requirements to the former combined meal-planning owner resolve through the current capability links below. The referenced behavior and each existing requirement body remain unchanged.
+
+- [Expose one authoritative calendar context with schedule reads](../deployment-calendar/spec.md#requirement-expose-one-authoritative-calendar-context-with-schedule-reads)
+- [Refresh expired Today context before a new action](../deployment-calendar/spec.md#requirement-refresh-expired-today-context-before-a-new-action)
+
 ## Evidence and qualifications (non-normative)
 
 Promoted under A82 from the reviewed `baseline-household-live-updates-connection-reconciliation` delta. BSL-household-live-updates-001–006 in the [durable plan](../../../docs/openspec-baseline-plan.md) records source identities, complete requirement/scenario mappings, inspected assertions and promotion evidence. These requirements describe implementation-supported behavior; runtime/API/browser/network/database/model qualification remains deferred under A34.

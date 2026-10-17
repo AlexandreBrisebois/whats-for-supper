@@ -1,5 +1,22 @@
 # Tonight meal decisions baseline plan
 
+## Current Tomorrow reconciliation — 2026-10-16
+
+Current Home requirements match upstream `e4a48c85` after PR #242: **29 requirements / 64 scenarios**. Three existing Tomorrow/Order In recovery blocks were updated and the committed-result requirement was added exactly as accepted upstream. Current movement semantics live in [meal-rescheduling](../../openspec/specs/meal-rescheduling/spec.md), and replacement gating in [meal-assignment](../../openspec/specs/meal-assignment/spec.md). Earlier extraction counts and limitations below remain historical; see the [branch reconciliation record](meal-planning.md#incoming-branch-reconciliation--2026-10-16). No application/runtime qualification was rerun for this documentation reconciliation.
+
+## Current planning ownership — 2026-10-16
+
+The combined meal-planning spec has been split by responsibility. Use these current requirement owners; earlier extraction references to the combined owner, source identities and evidence below remain historical. Qualification limits are unchanged.
+
+- [Read the household schedule through the protected GET operation](../../openspec/specs/meal-planning/spec.md#requirement-read-the-household-schedule-through-the-protected-get-operation)
+- [Hand eligible Home plans back to Planner editing](../../openspec/specs/non-cooking-plans/spec.md#requirement-hand-eligible-home-plans-back-to-planner-editing)
+- [Present Quick Find reads and failed-read retention](../../openspec/specs/meal-assignment/spec.md#requirement-present-quick-find-reads-and-failed-read-retention)
+- [Retain status-only day-validation compatibility](../../openspec/specs/planning-lifecycle/spec.md#requirement-retain-status-only-day-validation-compatibility)
+- [Submit dated-source movement through the protected operation](../../openspec/specs/meal-rescheduling/spec.md#requirement-submit-dated-source-movement-through-the-protected-operation)
+- [Defer the exact dated recipe through a protected operation](../../openspec/specs/meal-rescheduling/spec.md#requirement-defer-the-exact-dated-recipe-through-a-protected-operation)
+- [Expose one authoritative calendar context with schedule reads](../../openspec/specs/deployment-calendar/spec.md#requirement-expose-one-authoritative-calendar-context-with-schedule-reads)
+- [Refresh expired Today context before a new action](../../openspec/specs/deployment-calendar/spec.md#requirement-refresh-expired-today-context-before-a-new-action)
+
 ## Current lifecycle checkpoint — consolidated, 2026-10-16
 
 This capability's main spec now contains **27 requirements / 57 scenarios**.

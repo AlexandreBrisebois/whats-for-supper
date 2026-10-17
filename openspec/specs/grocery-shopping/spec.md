@@ -4,6 +4,14 @@
 
 Describe existing household grocery derivation and shopping progress, with explicit compatibility and recovery boundaries.
 
+## Planning dependencies (non-normative)
+
+References in preserved requirements to the former combined meal-planning owner resolve through the current capability links below. The referenced behavior and each existing requirement body remain unchanged.
+
+- [Read week status and stored adjuncts without creating a plan](../meal-planning/spec.md#requirement-read-week-status-and-stored-adjuncts-without-creating-a-plan)
+- [Resolve supper dates through the deployment calendar](../deployment-calendar/spec.md#requirement-resolve-supper-dates-through-the-deployment-calendar)
+- [Complete defer after affected-week follow-ups](../meal-rescheduling/spec.md#requirement-complete-defer-after-affected-week-follow-ups)
+
 ## Requirements
 
 ### Requirement: Derive grocery needs from recipe-bearing entries in the selected week

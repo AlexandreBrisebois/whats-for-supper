@@ -1,5 +1,40 @@
 # OpenSpec brownfield baseline plan
 
+## Current ownership after five capability splits — 2026-10-16
+
+Recipe library, Search, quality, household identity and backup/recovery are now organized into the 13 owners below. Their combined **260 requirements / 609 scenarios** are preserved unchanged. Earlier combined-owner counts and ownership statements are historical; the prior meal-planning split and its current directory remain in effect. This reorganization adds no runtime qualification.
+
+| Current capability | Requirements / scenarios | Responsibility |
+|---|---:|---|
+| [recipe-library](../openspec/specs/recipe-library/spec.md) | 46 / 100 | Catalog browsing, stored detail/facts, summaries and readiness |
+| [recipe-editing](../openspec/specs/recipe-editing/spec.md) | 25 / 54 | Content, ratings, notes, discoverability and shared PATCH effects |
+| [recipe-media](../openspec/specs/recipe-media/spec.md) | 12 / 27 | Original sources/photos, image assets and hero regeneration requests |
+| [recipe-recycle-bin](../openspec/specs/recipe-recycle-bin/spec.md) | 13 / 31 | Soft deletion, Recycle Bin, restore and PIN-protected purge |
+| [recipe-search](../openspec/specs/recipe-search/spec.md) | 39 / 90 | Search/filter/retrieval/ranking, Similar and continuation |
+| [search-indexing](../openspec/specs/search-indexing/spec.md) | 10 / 19 | Search publication, filter/affinity materialization and bounded repair |
+| [recipe-quality](../openspec/specs/recipe-quality/spec.md) | 28 / 74 | Saved-recipe issues, contextual re-import, review and resolution |
+| [capture-recovery](../openspec/specs/capture-recovery/spec.md) | 16 / 37 | Failed captures, retry/clear, bulk imports and workflow summaries |
+| [household-identity](../openspec/specs/household-identity/spec.md) | 12 / 37 | Household authentication, shared access and invitations |
+| [household-members](../openspec/specs/household-members/spec.md) | 14 / 35 | Member record creation, rename and removal |
+| [member-context](../openspec/specs/member-context/spec.md) | 16 / 33 | Active-member selection/recovery, identity transport and binding |
+| [data-backup-and-recovery](../openspec/specs/data-backup-and-recovery/spec.md) | 24 / 58 | Data export, reconstruction and report/search sidecar compatibility |
+| [scheduled-maintenance](../openspec/specs/scheduled-maintenance/spec.md) | 5 / 14 | Recurring maintenance, commands, cleanup and reports |
+
+Historical evidence and original BSL/U/A mappings remain in [recipe-library](openspec-baseline/recipe-library.md), [recipe-search](openspec-baseline/recipe-search.md), [recipe-quality](openspec-baseline/recipe-quality.md), [household-identity](openspec-baseline/household-identity.md), [data-backup-and-recovery](openspec-baseline/data-backup-and-recovery.md). Search-indexing retains provenance from both Search and backup/recovery.
+
+## Current meal-planning ownership — 2026-10-16
+
+Meal-planning documentation is organized into six owners with **111 requirements / 263 scenarios**, matching accepted upstream `e4a48c85` after PR #242 reconciliation. The original split conserved 104/249; incoming Tomorrow changes add seven requirements and fourteen scenarios and update four existing blocks under their current owners. Earlier combined-owner counts, active-change totals and extraction records below are historical; use this directory for current planning ownership. Shared evidence remains in the [meal-planning evidence record](openspec-baseline/meal-planning.md). Qualification limits and historical source identities remain unchanged.
+
+| Current capability | Requirements / scenarios | Responsibility |
+|---|---:|---|
+| [meal-planning](../openspec/specs/meal-planning/spec.md) | 17 / 44 | Week reads, navigation, display and direct suggestion reads |
+| [deployment-calendar](../openspec/specs/deployment-calendar/spec.md) | 7 / 20 | Timezone, date context, captured references and rollover |
+| [meal-assignment](../openspec/specs/meal-assignment/spec.md) | 29 / 64 | Quick Find, assignment, first-open placement and replacement recovery |
+| [meal-rescheduling](../openspec/specs/meal-rescheduling/spec.md) | 26 / 65 | Movement, drag, defer, recipe removal and shared deletion |
+| [non-cooking-plans](../openspec/specs/non-cooking-plans/spec.md) | 18 / 39 | Recipe-free supper plans and editing/clearing UI |
+| [planning-lifecycle](../openspec/specs/planning-lifecycle/spec.md) | 14 / 31 | Voting, locking, day validation and overdue finalization |
+
 Progressively document WFS's existing behavior as an OpenSpec baseline. This is
 brownfield documentation work. The plan is split by capability so each execution
 prompt needs only the shared workflow and its selected capability plan.

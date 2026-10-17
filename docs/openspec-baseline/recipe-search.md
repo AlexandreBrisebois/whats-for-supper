@@ -1,5 +1,28 @@
 # Recipe search baseline plan
 
+## Current capability ownership after domain split — 2026-10-16
+
+Use the current owners below for this former combined capability. All dated extraction records, source digests, BSL/U/A identifiers and qualification limits below remain historical evidence. Requirements and ordered scenarios were relocated unchanged; no runtime qualification is inferred. Earlier meal-planning navigation remains applicable.
+
+| Current capability | Requirements / scenarios |
+|---|---:|
+| [recipe-search](../../openspec/specs/recipe-search/spec.md) | 39 / 90 |
+| [search-indexing](../../openspec/specs/search-indexing/spec.md) | 10 / 19 |
+| [data-backup-and-recovery](../../openspec/specs/data-backup-and-recovery/spec.md) | 24 / 58 |
+| [scheduled-maintenance](../../openspec/specs/scheduled-maintenance/spec.md) | 5 / 14 |
+
+The complete cross-source block identities and ownership map are recorded in the [archived split ownership map](../../openspec/changes/archive/2026-10-16-split-remaining-broad-capabilities/design.md). The existing source evidence below is preserved, including any older combined-capability counts and exclusions.
+
+## Current planning ownership — 2026-10-16
+
+The combined meal-planning spec has been split by responsibility. Use these current requirement owners; earlier extraction references to the combined owner, source identities and evidence below remain historical. Qualification limits are unchanged.
+
+- [Read the explicit Search target before assignment](../../openspec/specs/meal-assignment/spec.md#requirement-read-the-explicit-search-target-before-assignment)
+- [Preserve caller-specific Search and Browse recovery routes](../../openspec/specs/meal-assignment/spec.md#requirement-preserve-caller-specific-search-and-browse-recovery-routes)
+- [Assign first-open placement through the shared assignment operation](../../openspec/specs/meal-assignment/spec.md#requirement-assign-first-open-placement-through-the-shared-assignment-operation)
+- [Compose voting suggestions separately from persisted assignments](../../openspec/specs/meal-planning/spec.md#requirement-compose-voting-suggestions-separately-from-persisted-assignments)
+- [Keep relative operations anchored to their intended calendar week](../../openspec/specs/deployment-calendar/spec.md#requirement-keep-relative-operations-anchored-to-their-intended-calendar-week)
+
 ## Current lifecycle checkpoint — consolidated, 2026-10-16
 
 This capability's main spec now contains **47 requirements / 105 scenarios**.

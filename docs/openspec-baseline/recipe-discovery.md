@@ -1,5 +1,14 @@
 # Recipe discovery baseline plan
 
+## Current planning ownership — 2026-10-16
+
+The combined meal-planning spec has been split by responsibility. Use these current requirement owners; earlier extraction references to the combined owner, source identities and evidence below remain historical. Qualification limits are unchanged.
+
+- [Compose voting suggestions separately from persisted assignments](../../openspec/specs/meal-planning/spec.md#requirement-compose-voting-suggestions-separately-from-persisted-assignments)
+- [Submit chosen-recipe assignment through the protected operation](../../openspec/specs/meal-assignment/spec.md#requirement-submit-chosen-recipe-assignment-through-the-protected-operation)
+- [Persist a protected week lock independently of browser promotion](../../openspec/specs/planning-lifecycle/spec.md#requirement-persist-a-protected-week-lock-independently-of-browser-promotion)
+- [Keep relative operations anchored to their intended calendar week](../../openspec/specs/deployment-calendar/spec.md#requirement-keep-relative-operations-anchored-to-their-intended-calendar-week)
+
 ## Current lifecycle checkpoint — consolidated, 2026-10-16
 
 This capability's main spec now contains **21 requirements / 47 scenarios**.
