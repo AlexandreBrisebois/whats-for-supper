@@ -33,7 +33,7 @@ None.
 
 Primary PWA owners: `HomeCommandCenter`, `SkipRecoveryDialog`, `todayStore`, planner API wrapper and the existing `moveTomorrow` helper. Backend boundary: assignment DTO/controller/service, approved OpenAPI, generated Kiota client and method-sensitive assignment mocks/builders. Tests cover real HTTP/PostgreSQL persistence, the generated browser client, grocery follow-ups and household updates.
 
-Evidence: [backlog item](../../../../docs/openspec-baseline/backlog/WFS-BL-002.md), `pwa/src/store/todayStore.ts` background assignment, `pwa/src/components/home/HomeCommandCenter.tsx` disposition/close sequencing and `api/src/RecipeApi/Services/ScheduleService.cs` occupied/Sunday assignment. Current code was inspected; no new runtime reproduction has been run. Planning writes are restricted to this change directory; main specs, application code and backlog status are unchanged.
+Evidence: [original audit register](../../../../docs/openspec-baseline/backlog/discrepancy-register.md), `pwa/src/store/todayStore.ts` background assignment, `pwa/src/components/home/HomeCommandCenter.tsx` disposition/close sequencing and `api/src/RecipeApi/Services/ScheduleService.cs` occupied/Sunday assignment. Current code was inspected; no new runtime reproduction has been run. Planning writes are restricted to this change directory; main specs, application code and backlog status are unchanged.
 
 ## Approved verification-harness correction
 

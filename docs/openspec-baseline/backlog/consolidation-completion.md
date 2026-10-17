@@ -13,7 +13,7 @@ disclosed and preserved as warnings. No placeholder designs were fabricated.
 - Main inventory:17 capabilities,648 requirements,1559 scenarios.
 - Active queue:0. All98 baseline changes retained under `openspec/changes/archive/2026-10-16-baseline-*`; prior unrelated archive entries preserved.
 - Main Purpose and existing requirement content preserved. The15 superseded older blocks identified in the readiness manifest were not replayed.
-- WFS-BL-027/028 closed as documentation resolved. Other backlog risks and accepted Tomorrow/calendar policies remain open implementation work.
+- The search/operator and Planner drag documentation omissions closed during consolidation. Their queue artifacts were later removed after archive verification. Subsequent corrective archives also completed the bounded Tomorrow and Tonight replacement-recovery items; other backlog risks remain open.
 
 ## Checks and evidence
 

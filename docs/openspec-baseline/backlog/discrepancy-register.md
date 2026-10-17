@@ -290,25 +290,25 @@ Current routing: [WFS-BL-025](WFS-BL-025.md); grouped current reassessment in [w
 
 ### MP-U01
 
-Current routing: [WFS-BL-002](WFS-BL-002.md); grouped current reassessment in [tonight-audit.md](tonight-audit.md). **Status: retained/open unless the exact component appears in [false-positive dispositions](false-positives.md).** Evidence class: source-supported or qualification/product limitation as stated in the report; runtime not-run except named checks. Confidence and workflow status belong to the routed item, not the age or count of this register.
+Closure evidence: [archived Tonight replacement recovery](../../../openspec/changes/archive/2026-10-16-tonight-replacement-recovery/tasks.md); grouped reassessment remains in [tonight-audit.md](tonight-audit.md). **Status: closed for this exact selected component; archive exclusions and unrelated register findings remain open.**
 
 - `docs/openspec-baseline/meal-planning.md:726`:  /  MP-U01  /  Prior resolution and replacement are separate calls; failed response/read may follow saved work. Planner remembers returned resolution only, has no server idempotency/compensation, and may continue after dismissal/navigation. No atomic replacement, safe retry, latest-request-wins, exact rollback or immediate Today guarantee. Preserve U95–U122.  /
 
 ### MP-U02
 
-Current routing: [WFS-BL-001](WFS-BL-001.md); grouped current reassessment in [tonight-audit.md](tonight-audit.md). **Status: retained/open unless the exact component appears in [false-positive dispositions](false-positives.md).** Evidence class: source-supported or qualification/product limitation as stated in the report; runtime not-run except named checks. Confidence and workflow status belong to the routed item, not the age or count of this register.
+Closure evidence: [archived Tomorrow preservation](../../../openspec/changes/archive/2026-10-16-tomorrow-preserve-meals/tasks.md); grouped reassessment remains in [tonight-audit.md](tonight-audit.md). **Status: closed for this exact selected component; WFS-BL-012 retains ordinary-push side effects.**
 
 - `docs/openspec-baseline/meal-planning.md:727`:  /  MP-U02  /  Sunday assignment overwrites an occupied next Monday without preserving that Monday's recipe; inherited vote fields can describe displaced content. Draft only supported carry-forward with absent destination and completion envelope. Collision safety/desirability and vote freshness remain unresolved, not a lossless policy guarantee. No fix proposed.  /
 
 ### MP-U03
 
-Current routing: [WFS-BL-002](WFS-BL-002.md); grouped current reassessment in [tonight-audit.md](tonight-audit.md). **Status: retained/open unless the exact component appears in [false-positive dispositions](false-positives.md).** Evidence class: source-supported or qualification/product limitation as stated in the report; runtime not-run except named checks. Confidence and workflow status belong to the routed item, not the age or count of this register.
+Closure evidence: [archived Tonight replacement recovery](../../../openspec/changes/archive/2026-10-16-tonight-replacement-recovery/tasks.md); grouped reassessment remains in [tonight-audit.md](tonight-audit.md). **Status: closed for this exact selected component; archive exclusions and unrelated register findings remain open.**
 
 - `docs/openspec-baseline/meal-planning.md:728`:  /  MP-U03  /  Search/Browse recovery lacks Planner-style operation memory and single-flight guard. Their repeated actions can repeat resolution after partial success. Keep next-week semantics caller-specific; no common retry/feedback guarantee. Recovery and Quick Find include English literals; no complete locale or keyboard-modal compliance claim.  /
 
 ### MP-U04
 
-Current routing: [WFS-BL-002](WFS-BL-002.md); grouped current reassessment in [tonight-audit.md](tonight-audit.md). **Status: retained/open unless the exact component appears in [false-positive dispositions](false-positives.md).** Evidence class: source-supported or qualification/product limitation as stated in the report; runtime not-run except named checks. Confidence and workflow status belong to the routed item, not the age or count of this register.
+Current routing: [WFS-BL-030](WFS-BL-030.md); grouped current reassessment in [tonight-audit.md](tonight-audit.md). **Status: retained/open; the completed replacement-recovery slice did not close this broader component.** Evidence class: source-supported or qualification/product limitation as stated in the report; runtime not-run except named checks. Confidence and workflow status belong to the routed item, not the age or count of this register.
 
 - `docs/openspec-baseline/meal-planning.md:810`:  /  MP-U04  /  First-by-date across meal slots, global recipe fallback, no request range/row-version precondition and multi-row Date changes do not establish relational collision safety, exact source selection for missing explicit dates, concurrency order or unbounded index acceptance. Normative ordinary cases are conditioned on successful persistence.  /
 
@@ -320,13 +320,13 @@ Current routing: [WFS-BL-012](WFS-BL-012.md); grouped current reassessment in [t
 
 ### MP-U06
 
-Current routing: [WFS-BL-002](WFS-BL-002.md); grouped current reassessment in [tonight-audit.md](tonight-audit.md). **Status: retained/open unless the exact component appears in [false-positive dispositions](false-positives.md).** Evidence class: source-supported or qualification/product limitation as stated in the report; runtime not-run except named checks. Confidence and workflow status belong to the routed item, not the age or count of this register.
+Current routing: [WFS-BL-030](WFS-BL-030.md); grouped current reassessment in [tonight-audit.md](tonight-audit.md). **Status: retained/open; the completed replacement-recovery slice did not close this broader component.** Evidence class: source-supported or qualification/product limitation as stated in the report; runtime not-run except named checks. Confidence and workflow status belong to the routed item, not the age or count of this register.
 
 - `docs/openspec-baseline/meal-planning.md:891`:  /  MP-U06  /  Defer destination AnyAsync search precedes save without reservation, explicit source carries no expected status/version, and multiple meal slots can violate SingleOrDefault assumptions. No exact concurrency ordering, cancellation rollback of later side effects, unlimited date availability or safe retry guarantee. Browser placement has separate 520-week bound and UTC/local mismatch.  /
 
 ### MP-U07
 
-Current routing: [WFS-BL-002](WFS-BL-002.md); grouped current reassessment in [tonight-audit.md](tonight-audit.md). **Status: retained/open unless the exact component appears in [false-positive dispositions](false-positives.md).** Evidence class: source-supported or qualification/product limitation as stated in the report; runtime not-run except named checks. Confidence and workflow status belong to the routed item, not the age or count of this register.
+Current routing: [WFS-BL-030](WFS-BL-030.md); grouped current reassessment in [tonight-audit.md](tonight-audit.md). **Status: retained/open; the completed replacement-recovery slice did not close this broader component.** Evidence class: source-supported or qualification/product limitation as stated in the report; runtime not-run except named checks. Confidence and workflow status belong to the routed item, not the age or count of this register.
 
 - `docs/openspec-baseline/meal-planning.md:892`:  /  MP-U07  /  Removing a Cooked entry does not recalculate LastCookedDate; defer does. Defer ordinary state reset does not explicitly clear all old non-cooking metadata, and skipped source retains count unlike push. Preserve observed differences without a universal metadata/history-consistency rule. Cooking-history accepted owner coverage is absent; no repair or owner extraction.  /
 
@@ -338,7 +338,7 @@ Current routing: [WFS-BL-009](WFS-BL-009.md); grouped current reassessment in [t
 
 ### MP-U09
 
-Current routing: [WFS-BL-002](WFS-BL-002.md); grouped current reassessment in [tonight-audit.md](tonight-audit.md). **Status: retained/open unless the exact component appears in [false-positive dispositions](false-positives.md).** Evidence class: source-supported or qualification/product limitation as stated in the report; runtime not-run except named checks. Confidence and workflow status belong to the routed item, not the age or count of this register.
+Current routing: [WFS-BL-030](WFS-BL-030.md); grouped current reassessment in [tonight-audit.md](tonight-audit.md). **Status: retained/open; the completed replacement-recovery slice did not close this broader component.** Evidence class: source-supported or qualification/product limitation as stated in the report; runtime not-run except named checks. Confidence and workflow status belong to the routed item, not the age or count of this register.
 
 - `docs/openspec-baseline/meal-planning.md:981`:  /  MP-U09  /  ValidationDto contract says 1 Planned, entity says 1 Locked. Executable cast has no general status range/state-transition validation; 4→1 purges recipe votes. Withhold disputed status1 and arbitrary-code success guarantees; record legacy missing-entry non-three exception without inventing exact error body/status. Keep U122 and contract unchanged.  /
 
@@ -356,7 +356,7 @@ Current routing: [completed WFS-BL-005](../../../openspec/changes/archive/2026-1
 
 ### MP-U12
 
-Current routing: [WFS-BL-002](WFS-BL-002.md); grouped current reassessment in [tonight-audit.md](tonight-audit.md). **Status: retained/open unless the exact component appears in [false-positive dispositions](false-positives.md).** Evidence class: source-supported or qualification/product limitation as stated in the report; runtime not-run except named checks. Confidence and workflow status belong to the routed item, not the age or count of this register.
+Current routing: [WFS-BL-030](WFS-BL-030.md); grouped current reassessment in [tonight-audit.md](tonight-audit.md). **Status: retained/open; the completed replacement-recovery slice did not close this broader component.** Evidence class: source-supported or qualification/product limitation as stated in the report; runtime not-run except named checks. Confidence and workflow status belong to the routed item, not the age or count of this register.
 
 - `docs/openspec-baseline/meal-planning.md:1068`:  /  MP-U12  /  API/controller/SDK operations exist but default factories and browser mocks substitute auth/provider/transport/state. Status1 vocabulary, nullable displacement contract versus actual null, invalid indices/status/date binding and mock-only day POST remain unqualified. No exhaustive schema/SDK/live endpoint parity or new compatibility route is claimed.  /
 
@@ -470,7 +470,7 @@ Current routing: [WFS-BL-026](WFS-BL-026.md); grouped current reassessment in [l
 
 ### SR-U10
 
-Current routing: [WFS-BL-027](WFS-BL-027.md); grouped current reassessment in [library-audit.md](library-audit.md). **Status: retained/open unless the exact component appears in [false-positive dispositions](false-positives.md).** Evidence class: source-supported or qualification/product limitation as stated in the report; runtime not-run except named checks. Confidence and workflow status belong to the routed item, not the age or count of this register.
+Current routing: [WFS-BL-030](WFS-BL-030.md); the documentation omission is closed by the [archived producer/operator extraction](../../../openspec/changes/archive/2026-10-16-baseline-recipe-search-operator-maintenance/tasks.md), with grouped reassessment in [library-audit.md](library-audit.md). **Status: retained/open only for runtime qualification not established by documentation extraction.**
 
 - `docs/openspec-baseline/recipe-search.md:163`:  /  SR-U10  /  Materialized affinity/cuisine state and search documents update separately; Search never refreshes them synchronously; metadata fetch once per mount. BSL-013/014/022.  /  Snapshot/config fallback drafted; immediate materialization/index completion and request-time cuisine discovery withheld. Full maintenance/backfill/index/backup workflows separately scoped operator/API-only work deferred.  /
 
@@ -482,43 +482,43 @@ Current routing: [completed WFS-BL-005](../../../openspec/changes/archive/2026-1
 
 ### TM-U02
 
-Current routing: [WFS-BL-002](WFS-BL-002.md); grouped current reassessment in [tonight-audit.md](tonight-audit.md). **Status: retained/open unless the exact component appears in [false-positive dispositions](false-positives.md).** Evidence class: source-supported or qualification/product limitation as stated in the report; runtime not-run except named checks. Confidence and workflow status belong to the routed item, not the age or count of this register.
+Current routing: [WFS-BL-030](WFS-BL-030.md); grouped current reassessment in [tonight-audit.md](tonight-audit.md). **Status: retained/open; the completed replacement-recovery slice did not close this broader component.** Evidence class: source-supported or qualification/product limitation as stated in the report; runtime not-run except named checks. Confidence and workflow status belong to the routed item, not the age or count of this register.
 
 - `docs/openspec-baseline/tonight-meal-decisions.md:169`:  /  TM-U02  /  SSR, REST sync and live writers race; ordinary sync has a 20s guard, received-update offers have a 2s differing-ID guard and same-ID hydration guard is not request-generation ordering  /  Withhold latest-wins/convergence/atomic-store guarantees; accepted live owner remains authoritative  /
 
 ### TM-U03
 
-Current routing: [WFS-BL-002](WFS-BL-002.md); grouped current reassessment in [tonight-audit.md](tonight-audit.md). **Status: retained/open unless the exact component appears in [false-positive dispositions](false-positives.md).** Evidence class: source-supported or qualification/product limitation as stated in the report; runtime not-run except named checks. Confidence and workflow status belong to the routed item, not the age or count of this register.
+Current routing: [WFS-BL-030](WFS-BL-030.md); grouped current reassessment in [tonight-audit.md](tonight-audit.md). **Status: retained/open; the completed replacement-recovery slice did not close this broader component.** Evidence class: source-supported or qualification/product limitation as stated in the report; runtime not-run except named checks. Confidence and workflow status belong to the routed item, not the age or count of this register.
 
 - `docs/openspec-baseline/tonight-meal-decisions.md:170`:  /  TM-U03  /  Active GOTO contract says random READY; service returns only ready nondeleted Recipes or 404. Home unit/E2E inject pending active data  /  Pending-active-to-ready Home journey unreachable from this current endpoint; record tests as substitutions, not a production capability  /
 
 ### TM-U04
 
-Current routing: [WFS-BL-002](WFS-BL-002.md); grouped current reassessment in [tonight-audit.md](tonight-audit.md). **Status: retained/open unless the exact component appears in [false-positive dispositions](false-positives.md).** Evidence class: source-supported or qualification/product limitation as stated in the report; runtime not-run except named checks. Confidence and workflow status belong to the routed item, not the age or count of this register.
+Current routing: [WFS-BL-030](WFS-BL-030.md); grouped current reassessment in [tonight-audit.md](tonight-audit.md). **Status: retained/open; the completed replacement-recovery slice did not close this broader component.** Evidence class: source-supported or qualification/product limitation as stated in the report; runtime not-run except named checks. Confidence and workflow status belong to the routed item, not the age or count of this register.
 
 - `docs/openspec-baseline/tonight-meal-decisions.md:171`:  /  TM-U04  /  RecipeReadyProcessor never changes family_goto; list GET deserializes JSON unchanged. Settings refetch does not promote stored pending status/name  /  Withhold automatic ready-list transition/name replacement despite comments referring to retired MarkGotoReadyProcessor  /
 
 ### TM-U05
 
-Current routing: [WFS-BL-002](WFS-BL-002.md); grouped current reassessment in [tonight-audit.md](tonight-audit.md). **Status: retained/open unless the exact component appears in [false-positive dispositions](false-positives.md).** Evidence class: source-supported or qualification/product limitation as stated in the report; runtime not-run except named checks. Confidence and workflow status belong to the routed item, not the age or count of this register.
+Current routing: [WFS-BL-030](WFS-BL-030.md); grouped current reassessment in [tonight-audit.md](tonight-audit.md). **Status: retained/open; the completed replacement-recovery slice did not close this broader component.** Evidence class: source-supported or qualification/product limitation as stated in the report; runtime not-run except named checks. Confidence and workflow status belong to the routed item, not the age or count of this register.
 
 - `docs/openspec-baseline/tonight-meal-decisions.md:172`:  /  TM-U05  /  Capture may persist and accept background work before separate list PUT fails; MinimalCapture failure UI does not compensate/delete that recipe  /  Withhold all-or-nothing GOTO creation, no-orphan guarantee and safe unchanged retry; source-only failure branches remain limitations  /
 
 ### TM-U06
 
-Current routing: [WFS-BL-002](WFS-BL-002.md); grouped current reassessment in [tonight-audit.md](tonight-audit.md). **Status: retained/open unless the exact component appears in [false-positive dispositions](false-positives.md).** Evidence class: source-supported or qualification/product limitation as stated in the report; runtime not-run except named checks. Confidence and workflow status belong to the routed item, not the age or count of this register.
+Current routing: [WFS-BL-030](WFS-BL-030.md); grouped current reassessment in [tonight-audit.md](tonight-audit.md). **Status: retained/open; the completed replacement-recovery slice did not close this broader component.** Evidence class: source-supported or qualification/product limitation as stated in the report; runtime not-run except named checks. Confidence and workflow status belong to the routed item, not the age or count of this register.
 
 - `docs/openspec-baseline/tonight-meal-decisions.md:173`:  /  TM-U06  /  Whole-list read/modify/PUT has no merge/version/idempotency protocol. GET no-list contract permits 404; service returns empty list, including deserialization failure  /  Draft normal stored read/replace only; withhold precise missing/corrupt-list contract and safe concurrent updates; no repair  /
 
 ### TM-U07
 
-Current routing: [WFS-BL-002](WFS-BL-002.md); grouped current reassessment in [tonight-audit.md](tonight-audit.md). **Status: retained/open unless the exact component appears in [false-positive dispositions](false-positives.md).** Evidence class: source-supported or qualification/product limitation as stated in the report; runtime not-run except named checks. Confidence and workflow status belong to the routed item, not the age or count of this register.
+Closure evidence: [archived Tonight replacement recovery](../../../openspec/changes/archive/2026-10-16-tonight-replacement-recovery/tasks.md); grouped reassessment remains in [tonight-audit.md](tonight-audit.md). **Status: closed for this exact selected component; archive exclusions and unrelated register findings remain open.**
 
 - `docs/openspec-baseline/tonight-meal-decisions.md:174`:  /  TM-U07  /  Home validates Order In before disposition, posts replacement in background, closes before awaited week init and logs errors without compensation  /  Withhold atomic success, confirmed replacement, rollback, dedicated recovery error panel and safe-retry memory; do not copy Planner guarantees  /
 
 ### TM-U08
 
-Current routing: [WFS-BL-002](WFS-BL-002.md); grouped current reassessment in [tonight-audit.md](tonight-audit.md). **Status: retained/open unless the exact component appears in [false-positive dispositions](false-positives.md).** Evidence class: source-supported or qualification/product limitation as stated in the report; runtime not-run except named checks. Confidence and workflow status belong to the routed item, not the age or count of this register.
+Closure evidence: [archived Tonight replacement recovery](../../../openspec/changes/archive/2026-10-16-tonight-replacement-recovery/tasks.md); grouped reassessment remains in [tonight-audit.md](tonight-audit.md). **Status: closed for this exact selected component; archive exclusions and unrelated register findings remain open.**
 
 - `docs/openspec-baseline/tonight-meal-decisions.md:175`:  /  TM-U08  /  Home has no submission ref lock; disposition reads currentRecipe at action time instead of a separately captured original identity. Other clients/local choices may alter it  /  Withhold double-submit suppression, captured-original guarantee and concurrent reservation/conflict safety  /
 
@@ -530,7 +530,7 @@ Current routing: [WFS-BL-022](WFS-BL-022.md); grouped current reassessment in [t
 
 ### TM-U10
 
-Current routing: [WFS-BL-002](WFS-BL-002.md); grouped current reassessment in [tonight-audit.md](tonight-audit.md). **Status: retained/open unless the exact component appears in [false-positive dispositions](false-positives.md).** Evidence class: source-supported or qualification/product limitation as stated in the report; runtime not-run except named checks. Confidence and workflow status belong to the routed item, not the age or count of this register.
+Current routing: [WFS-BL-030](WFS-BL-030.md); grouped current reassessment in [tonight-audit.md](tonight-audit.md). **Status: retained/open; the completed replacement-recovery slice did not close this broader component.** Evidence class: source-supported or qualification/product limitation as stated in the report; runtime not-run except named checks. Confidence and workflow status belong to the routed item, not the age or count of this register.
 
 - `docs/openspec-baseline/tonight-meal-decisions.md:177`:  /  TM-U10  /  FillTheGapAsync reads RecipeMatches joined Recipes then DiscoveryRecipes fallback, excludes assigned IDs and caps at five; first query lacks explicit ready/deleted filtering. Factories/views and mocks differ from relational production  /  No universal ready/available, reservation or uniform ranking guarantee; keep server policy ownership and exact query observation non-normative  /
 
@@ -828,61 +828,61 @@ Current routing: [WFS-BL-024](WFS-BL-024.md); grouped current reassessment in [c
 
 ### U110
 
-Current routing: [WFS-BL-002](WFS-BL-002.md); grouped current reassessment in [tonight-audit.md](tonight-audit.md). **Status: retained/open unless the exact component appears in [false-positive dispositions](false-positives.md).** Evidence class: source-supported or qualification/product limitation as stated in the report; runtime not-run except named checks. Confidence and workflow status belong to the routed item, not the age or count of this register.
+Closure evidence: [archived Tonight replacement recovery](../../../openspec/changes/archive/2026-10-16-tonight-replacement-recovery/tasks.md); grouped reassessment remains in [tonight-audit.md](tonight-audit.md). **Status: closed for this exact selected component; archive exclusions and unrelated register findings remain open.**
 
 - `docs/openspec-baseline/meal-planning.md:75`:  /  U110  /  Empty UI/read classification is not an atomic server precondition  /  BSL-meal-planning-007–009: ordinary UI empty differs from pending suggestion/status-three; Search helper drops status/nonCooking and returns null for missing day/date, yet null proceeds to POST. Endpoint selects first event by date and can overwrite occupied target (including Sunday displacement).  /  No atomic empty-slot reservation, missing-target refusal, status-three protection or occupied recovery policy is extracted; compatibility/race limitation only  /
 
 ### U111
 
-Current routing: [WFS-BL-002](WFS-BL-002.md); grouped current reassessment in [tonight-audit.md](tonight-audit.md). **Status: retained/open unless the exact component appears in [false-positive dispositions](false-positives.md).** Evidence class: source-supported or qualification/product limitation as stated in the report; runtime not-run except named checks. Confidence and workflow status belong to the routed item, not the age or count of this register.
+Closure evidence: [archived Tonight replacement recovery](../../../openspec/changes/archive/2026-10-16-tonight-replacement-recovery/tasks.md); grouped reassessment remains in [tonight-audit.md](tonight-audit.md). **Status: closed for this exact selected component; archive exclusions and unrelated register findings remain open.**
 
 - `docs/openspec-baseline/meal-planning.md:76`:  /  U111  /  Assignment validation/default/error and response contract limits  /  BSL-meal-planning-009: required OpenAPI fields lack bounds/defaults; generated optional/null fields and unannotated C# int/int/Guid differ; no explicit recipe eligibility lookup or index clamp. Empty response displacement is null despite non-null schema when present; operation documents 200 only.  /  Withhold omitted-value defaults, accepted index/offset range, eligibility enforcement and precise malformed/missing/constraint error matrix; no contract/client fix or runtime binding qualification  /
 
 ### U112
 
-Current routing: [WFS-BL-002](WFS-BL-002.md); grouped current reassessment in [tonight-audit.md](tonight-audit.md). **Status: retained/open unless the exact component appears in [false-positive dispositions](false-positives.md).** Evidence class: source-supported or qualification/product limitation as stated in the report; runtime not-run except named checks. Confidence and workflow status belong to the routed item, not the age or count of this register.
+Closure evidence: [archived Tonight replacement recovery](../../../openspec/changes/archive/2026-10-16-tonight-replacement-recovery/tasks.md); grouped reassessment remains in [tonight-audit.md](tonight-audit.md). **Status: closed for this exact selected component; archive exclusions and unrelated register findings remain open.**
 
 - `docs/openspec-baseline/meal-planning.md:77`:  /  U112  /  Persistence precedes fallible follow-up work  /  BSL-meal-planning-009–011: new plan saved separately, calendar saved before grocery save/query/publication; no enclosing transaction/compensation. Client POST or later GET may reject after persisted assignment.  /  Record observable partial-success possibility; no exact server/local rollback, atomic operation, safe retry, persistence inference from feedback or successful failure-injection claim  /
 
 ### U113
 
-Current routing: [WFS-BL-002](WFS-BL-002.md); grouped current reassessment in [tonight-audit.md](tonight-audit.md). **Status: retained/open unless the exact component appears in [false-positive dispositions](false-positives.md).** Evidence class: source-supported or qualification/product limitation as stated in the report; runtime not-run except named checks. Confidence and workflow status belong to the routed item, not the age or count of this register.
+Closure evidence: [archived Tonight replacement recovery](../../../openspec/changes/archive/2026-10-16-tonight-replacement-recovery/tasks.md); grouped reassessment remains in [tonight-audit.md](tonight-audit.md). **Status: closed for this exact selected component; archive exclusions and unrelated register findings remain open.**
 
 - `docs/openspec-baseline/meal-planning.md:78`:  /  U113  /  Local pending controls do not serialize or cancel assignment  /  BSL-meal-planning-007/008/011: Quick Find callback lacks await/submission latch; detail only disables local action. Week store reread uses current offset and failure resets captured whole schedule; no assignment generation/abort guard.  /  No duplicate-submission prevention, idempotency, latest-write-wins, navigation isolation, exact rollback or guaranteed modal/selection state after independent dismissal/overlap  /
 
 ### U114
 
-Current routing: [WFS-BL-002](WFS-BL-002.md); grouped current reassessment in [tonight-audit.md](tonight-audit.md). **Status: retained/open unless the exact component appears in [false-positive dispositions](false-positives.md).** Evidence class: source-supported or qualification/product limitation as stated in the report; runtime not-run except named checks. Confidence and workflow status belong to the routed item, not the age or count of this register.
+Closure evidence: [archived Tonight replacement recovery](../../../openspec/changes/archive/2026-10-16-tonight-replacement-recovery/tasks.md); grouped reassessment remains in [tonight-audit.md](tonight-audit.md). **Status: closed for this exact selected component; archive exclusions and unrelated register findings remain open.**
 
 - `docs/openspec-baseline/meal-planning.md:79`:  /  U114  /  Today handoff performs another mutation  /  BSL-meal-planning-011: captured zero-week/today match calls todayStore.assignRecipe, which updates display, fires another POST using local weekday and hydrates detail; errors log independently.  /  Non-normative side-effect record only; no one-POST guarantee, UTC/local date equivalence, completion/rollback of second write or duplicate-write policy approval  /
 
 ### U115
 
-Current routing: [WFS-BL-002](WFS-BL-002.md); grouped current reassessment in [tonight-audit.md](tonight-audit.md). **Status: retained/open unless the exact component appears in [false-positive dispositions](false-positives.md).** Evidence class: source-supported or qualification/product limitation as stated in the report; runtime not-run except named checks. Confidence and workflow status belong to the routed item, not the age or count of this register.
+Closure evidence: [archived Tonight replacement recovery](../../../openspec/changes/archive/2026-10-16-tonight-replacement-recovery/tasks.md); grouped reassessment remains in [tonight-audit.md](tonight-audit.md). **Status: closed for this exact selected component; archive exclusions and unrelated register findings remain open.**
 
 - `docs/openspec-baseline/meal-planning.md:80`:  /  U115  /  Assertions substitute service/client/transport boundaries  /  BSL-meal-planning-007–011: mock page stores, wrapper mocks, direct service/InMemory auth-disabled factory, invocation-count publishers, static schedule browser mocks and substituted success responses.  /  Source support and inspected assertions only; no executed unit/API/browser/relational/auth/partial-failure/race/convergence qualification; retain U95–U109/A34  /
 
 ### U116
 
-Current routing: [WFS-BL-002](WFS-BL-002.md); grouped current reassessment in [tonight-audit.md](tonight-audit.md). **Status: retained/open unless the exact component appears in [false-positive dispositions](false-positives.md).** Evidence class: source-supported or qualification/product limitation as stated in the report; runtime not-run except named checks. Confidence and workflow status belong to the routed item, not the age or count of this register.
+Current routing: [WFS-BL-030](WFS-BL-030.md); grouped current reassessment in [tonight-audit.md](tonight-audit.md). **Status: retained/open; the completed replacement-recovery slice did not close this broader component.** Evidence class: source-supported or qualification/product limitation as stated in the report; runtime not-run except named checks. Confidence and workflow status belong to the routed item, not the age or count of this register.
 
 - `docs/openspec-baseline/meal-planning.md:86`:  /  U116  /  BSL-014: pivot condition accepts pending suggestions, but pending recipe cards have no Change button; captured displayed dates and selected offsets can differ during navigation under U106. Nonnegative offset gate does not restrict a past date inside the current week.  /  No general pending-card conversion entry, server future-date restriction or atomic displayed-target freshness claim. Preserve ordinary/pending/persisted/recipe-free skipped/legacy distinctions.  /
 
 ### U117
 
-Current routing: [WFS-BL-002](WFS-BL-002.md); grouped current reassessment in [tonight-audit.md](tonight-audit.md). **Status: retained/open unless the exact component appears in [false-positive dispositions](false-positives.md).** Evidence class: source-supported or qualification/product limitation as stated in the report; runtime not-run except named checks. Confidence and workflow status belong to the routed item, not the age or count of this register.
+Current routing: [WFS-BL-030](WFS-BL-030.md); grouped current reassessment in [tonight-audit.md](tonight-audit.md). **Status: retained/open; the completed replacement-recovery slice did not close this broader component.** Evidence class: source-supported or qualification/product limitation as stated in the report; runtime not-run except named checks. Confidence and workflow status belong to the routed item, not the age or count of this register.
 
 - `docs/openspec-baseline/meal-planning.md:87`:  /  U117  /  BSL-015/018: mounted-sheet ref latch and disabled controls are local; no abort/unmount cancellation, request generation, server version or idempotency key. Date/offset key resets mounted state only on target change; captured props do not rebase an existing draft. Closure checks active date and selected offset, application checks loaded offset; same-offset/ABA responses can still apply.  /  No cross-sheet serialization, latest-response-wins, cancellation, navigation isolation or exactly-once save/clear. Clear via pivot has no sheet busy controls.  /
 
 ### U118
 
-Current routing: [WFS-BL-002](WFS-BL-002.md); grouped current reassessment in [tonight-audit.md](tonight-audit.md). **Status: retained/open unless the exact component appears in [false-positive dispositions](false-positives.md).** Evidence class: source-supported or qualification/product limitation as stated in the report; runtime not-run except named checks. Confidence and workflow status belong to the routed item, not the age or count of this register.
+Current routing: [WFS-BL-030](WFS-BL-030.md); grouped current reassessment in [tonight-audit.md](tonight-audit.md). **Status: retained/open; the completed replacement-recovery slice did not close this broader component.** Evidence class: source-supported or qualification/product limitation as stated in the report; runtime not-run except named checks. Confidence and workflow status belong to the routed item, not the age or count of this register.
 
 - `docs/openspec-baseline/meal-planning.md:88`:  /  U118  /  BSL-017: SQL install/compatibility permit optional preset notes; EF check constraint still permits only null preset labels. SQL has unique (date,meal_slot), not unique date; service uses first-by-date, no slot selector or row version. Serializable begins only for explicit plan + relational provider; selected PostgreSQL 23505/40001 handling is not exhaustive concurrency proof.  /  Withhold universal deployed schema parity, actual enforcement, date-wide uniqueness, atomic reservation/assignment-race protection, exact rollback and guaranteed winning writer. InMemory ignores transactions/constraints. No database inspected or run.  /
 
 ### U119
 
-Current routing: [WFS-BL-002](WFS-BL-002.md); grouped current reassessment in [tonight-audit.md](tonight-audit.md). **Status: retained/open unless the exact component appears in [false-positive dispositions](false-positives.md).** Evidence class: source-supported or qualification/product limitation as stated in the report; runtime not-run except named checks. Confidence and workflow status belong to the routed item, not the age or count of this register.
+Current routing: [WFS-BL-030](WFS-BL-030.md); grouped current reassessment in [tonight-audit.md](tonight-audit.md). **Status: retained/open; the completed replacement-recovery slice did not close this broader component.** Evidence class: source-supported or qualification/product limitation as stated in the report; runtime not-run except named checks. Confidence and workflow status belong to the routed item, not the age or count of this register.
 
 - `docs/openspec-baseline/meal-planning.md:89`:  /  U119  /  BSL-017–019: save commits before slot publication; clear saves deletion before recomputation, its separate save/conditional grocery publication, schedule read and further publications. No compensation spans these steps; client follow-up GET can fail after server success or resolve unusably then close.  /  Failure feedback does not prove no persistence, server/local rollback, successful reread or complete success. Retrying editable state is available, not promised safe/idempotent. No failure injection executed.  /
 
@@ -896,19 +896,19 @@ Current routing: [WFS-BL-017](WFS-BL-017.md); grouped current reassessment in [c
 
 ### U120
 
-Current routing: [WFS-BL-002](WFS-BL-002.md); grouped current reassessment in [tonight-audit.md](tonight-audit.md). **Status: retained/open unless the exact component appears in [false-positive dispositions](false-positives.md).** Evidence class: source-supported or qualification/product limitation as stated in the report; runtime not-run except named checks. Confidence and workflow status belong to the routed item, not the age or count of this register.
+Current routing: [WFS-BL-030](WFS-BL-030.md); grouped current reassessment in [tonight-audit.md](tonight-audit.md). **Status: retained/open; the completed replacement-recovery slice did not close this broader component.** Evidence class: source-supported or qualification/product limitation as stated in the report; runtime not-run except named checks. Confidence and workflow status belong to the routed item, not the age or count of this register.
 
 - `docs/openspec-baseline/meal-planning.md:90`:  /  U120  /  BSL-019: shared DELETE has no expected-kind/recipe/version check and deletes the first entry by date. Sheet has no failure-refresh branch for DELETE; pivot clear optimistically clears by array index, fires DELETE and restores captured whole schedule/items on rejection without toast.  /  No compare-and-clear protection if a recipe acquired the date, safe general recipe removal, equivalent feedback across clear callers or isolation of rollback from later changes. General removal policy remains excluded.  /
 
 ### U121
 
-Current routing: [WFS-BL-002](WFS-BL-002.md); grouped current reassessment in [tonight-audit.md](tonight-audit.md). **Status: retained/open unless the exact component appears in [false-positive dispositions](false-positives.md).** Evidence class: source-supported or qualification/product limitation as stated in the report; runtime not-run except named checks. Confidence and workflow status belong to the routed item, not the age or count of this register.
+Current routing: [WFS-BL-030](WFS-BL-030.md); grouped current reassessment in [tonight-audit.md](tonight-audit.md). **Status: retained/open; the completed replacement-recovery slice did not close this broader component.** Evidence class: source-supported or qualification/product limitation as stated in the report; runtime not-run except named checks. Confidence and workflow status belong to the routed item, not the age or count of this register.
 
 - `docs/openspec-baseline/meal-planning.md:91`:  /  U121  /  BSL-018: save/clear have no direct Today sync/update; origin-excluded events may not return. Snapshot merge can preserve old/pending content or defer; all-recipeless snapshots retain old week status. Home mount/SSR/client sync are independent and guarded; planDate targets only selected week zero although local Today may require adjacent UTC week.  /  No immediate Today reconciliation, combined-store atomicity, clearing guarantee from snapshot, timezone-equivalent handoff or guaranteed convergence/recovery. Preserve U95–U109 including U100.  /
 
 ### U122
 
-Current routing: [WFS-BL-002](WFS-BL-002.md); grouped current reassessment in [tonight-audit.md](tonight-audit.md). **Status: retained/open unless the exact component appears in [false-positive dispositions](false-positives.md).** Evidence class: source-supported or qualification/product limitation as stated in the report; runtime not-run except named checks. Confidence and workflow status belong to the routed item, not the age or count of this register.
+Current routing: [WFS-BL-030](WFS-BL-030.md); grouped current reassessment in [tonight-audit.md](tonight-audit.md). **Status: retained/open; the completed replacement-recovery slice did not close this broader component.** Evidence class: source-supported or qualification/product limitation as stated in the report; runtime not-run except named checks. Confidence and workflow status belong to the routed item, not the age or count of this register.
 
 - `docs/openspec-baseline/meal-planning.md:92`:  /  U122  /  BSL-016/020: OpenAPI raw maxLength and trimmed/scalar prose are not equivalent acceptance rules for whitespace-padded raw input; ValidationDto status description says 1 Planned while model Planned=0/Locked=1. Generated required fields are optional/null in TS; wire missing/malformed binding not qualified. Mock validation ignores real trim/length/status/schema checks; GET ignores offset; default API factory disables auth and uses InMemory.  /  No full contract/schema/client parity or exhaustive malformed-input/status/date matrix; no relational/auth/race/transport evidence inferred from mocks or test names. API/DB/browser/unit/network/model checks not-run A34.  /
 

@@ -22,8 +22,6 @@ Priority ranks harm, reach and recovery burden. Source-confirmed conditions and 
 
 | Item | Priority | Title | Origins |
 | --- | --- | --- | --- |
-| [WFS-BL-001](WFS-BL-001.md) | P1 | Preserve every meal when Tomorrow pushes into following weeks | MP-U02, MP-U05, TM-U07; Tonight BSL changed-plan recovery |
-| [WFS-BL-002](WFS-BL-002.md) | P1 | Make replacement acknowledgement match persisted Tonight | TM-U07–08, MP-U01/03, U110–115 |
 | [WFS-BL-003](WFS-BL-003.md) | P1 | Supply required URL to contextual repair launch | U01; BSL-recipe-quality-002/003 |
 | [WFS-BL-004](WFS-BL-004.md) | P1 | Make recipe notes Saved reflect durable acknowledgement | U38–40; BSL-recipe-library-012/013 |
 | [WFS-BL-035](WFS-BL-035.md) | P1 | Inject remaining application clocks | Remaining clock-injection policy from WFS-BL-005 |
@@ -53,9 +51,6 @@ Priority ranks harm, reach and recovery burden. Source-confirmed conditions and 
 | [WFS-BL-025](WFS-BL-025.md) | P3 | Define recovery for interrupted workflow maintenance and recurrence | U89–94, BP-U01–05, DBR-U08 |
 | [WFS-BL-030](WFS-BL-030.md) | P3 | Close remaining runtime and product qualification gaps by bounded fixtures | U10/11/12 and register entries not independently closed |
 | [WFS-BL-026](WFS-BL-026.md) | P4 | Reconcile contracts placeholders and stale explanatory claims | U02/03/09/19/22/29/36/45/47/50/65/80/81/85/95; SR-U01–04/06/09; DISC-U01/02/04/05/07/08; DH-U07 |
-| [WFS-BL-027](WFS-BL-027.md) | P4 | Review missing search producers and operator classification baseline | SR-X03, SR-U10; new audit omission |
-| [WFS-BL-028](WFS-BL-028.md) | P4 | Review missing Planner hold and cancellation baseline | X-MP03; new audit omission |
-| [WFS-BL-029](WFS-BL-029.md) | P4 | Make Feature Flags coverage discoverable without duplicating it | BSL-MP009–016, U-MP06/07/09/10, DH-U03; user Feature Flags report |
 
 ## Proposed implementation waves and conflict map
 
@@ -70,9 +65,9 @@ The deployment-calendar prerequisite is complete; see the [archived acceptance r
 
 WFS-BL-015 member feedback is an alternative independent first-wave lane. Keep FamilyStore ownership reserved from concurrent preference work.
 
-**Wave 1:** WFS-BL-001/002/012 execute sequentially or under one ScheduleService/Home/today/weekStore owner after calendar/result contracts. WFS-BL-011 follows/coordinated with010 in the same Browse files. WFS-BL-004 notes and016 quality observation both touch RecipeDetailSheet and must be serialized; cooking014 may also touch report handoff. Search006 and019 have distinct UI/backend cores but shared response context decisions.
+**Wave 1:** WFS-BL-012 retains the ordinary-push grocery/publication remainder after the completed [Tomorrow preservation](../../../openspec/changes/archive/2026-10-16-tomorrow-preserve-meals/tasks.md) and [Tonight replacement recovery](../../../openspec/changes/archive/2026-10-16-tonight-replacement-recovery/tasks.md) work. WFS-BL-011 follows/coordinated with010 in the same Browse files. WFS-BL-004 notes and016 quality observation both touch RecipeDetailSheet and must be serialized; cooking014 may also touch report handoff. Search006 and019 have distinct UI/backend cores but shared response context decisions.
 
-**Wave 2:** recovery/export/demo007/008 require disposable DB/assets and explicit destructive-test authorization if operations extend beyond safe isolated fixtures. Workflow025, installation024 and wire013 follow selected boundary evidence. Documentation027/028 are closed as accepted/promoted/archived baseline work. Their runtime limitations remain in the relevant implementation items.
+**Wave 2:** recovery/export/demo007/008 require disposable DB/assets and explicit destructive-test authorization if operations extend beyond safe isolated fixtures. Workflow025, installation024 and wire013 follow selected boundary evidence. Completed documentation-extraction evidence remains in the archived baseline changes; runtime limitations remain in the relevant implementation items.
 
 Contracts/generated clients/mocks/SQL are shared single-writer resources. A future worker receives exactly one approved item, its selected spec/task, owned files, dependencies, required checks and stopping point. No one implements from this queue alone.
 
