@@ -7,7 +7,7 @@ Extract demo ai bypass and provider boundaries from current executable paths int
 ## What Changes
 
 - Draft only the evidenced demo-household behavior for this slice.
-- Reconcile BSL-demo-household-012, BSL-demo-household-013, BSL-demo-household-014, BSL-demo-household-015 in the [capability evidence plan](../../../../docs/openspec-baseline/demo-household.md).
+- Reconcile BSL-demo-household-012, BSL-demo-household-013, BSL-demo-household-014, BSL-demo-household-015 in the [capability evidence plan](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline/demo-household.md).
 - Review in dependency order after `baseline-demo-household-activation-access`, `baseline-demo-household-workflow-observation`.
 - Retain these non-normative boundaries: U07 remains an explicit no-global-block/no-cost exclusion. GenerateHero and embedding HTTP calls are outside the chat decorator. WebAcquisition ordinarily fetches HTML before decorated chat, but worker dispatch selects its demo bypass. Bypass completion does not prove acquisition or recipe readiness.
 

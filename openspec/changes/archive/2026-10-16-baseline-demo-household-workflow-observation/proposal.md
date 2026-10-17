@@ -7,7 +7,7 @@ Extract demo workflow execution and diagnostics from current executable paths in
 ## What Changes
 
 - Draft only the evidenced demo-household behavior for this slice.
-- Reconcile BSL-demo-household-005, BSL-demo-household-006, BSL-demo-household-008, BSL-demo-household-010, BSL-demo-household-011, BSL-demo-household-016 in the [capability evidence plan](../../../../docs/openspec-baseline/demo-household.md).
+- Reconcile BSL-demo-household-005, BSL-demo-household-006, BSL-demo-household-008, BSL-demo-household-010, BSL-demo-household-011, BSL-demo-household-016 in the [capability evidence plan](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline/demo-household.md).
 - Review in dependency order after `baseline-demo-household-automatic-restore`.
 - Retain these non-normative boundaries: No sample recipe generation or fictional seed data. DemoWorkflowSeeder seeds a restore workflow only. Latest-management status is not a per-request completion monitor, and its healthy flag means cron-valid only. No management UI was found.
 

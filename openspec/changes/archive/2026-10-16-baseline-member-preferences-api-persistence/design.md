@@ -16,7 +16,7 @@ See proposal.md for motivation. The first observable slice is a contract-valid a
 - Describe canonical enum values and status codes; withhold the exact 400 envelope because OpenAPI documents error while middleware emits status/message.
 - Use the companion language slice for explicitly accepted language-only behavior. Other source normalization and partial/empty payload behavior remains evidence only.
 
-Evidence and requirement/scenario mappings: BSL-member-preferences-007–008 in the [capability plan](../../../../docs/openspec-baseline/member-preferences.md). A10 implementation support is distinct from A34 runtime evidence.
+Evidence and requirement/scenario mappings: BSL-member-preferences-007–008 in the [capability plan](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline/member-preferences.md). A10 implementation support is distinct from A34 runtime evidence.
 
 ## Risks / Trade-offs
 

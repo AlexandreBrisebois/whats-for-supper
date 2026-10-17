@@ -1,6 +1,6 @@
 # Tasks
 
-Documentation-only extraction under A45 in the [durable plan](../../../../docs/openspec-baseline-plan.md). No application implementation tasks. BSL-024/025 maps four requirements/eight scenarios; U27/U28 treatment is settled as non-normative. Behavior TDD, API/client generation and application tests are not applicable to these documentation edits; runtime browser/API/database qualification remains not-run under A34.
+Documentation-only extraction under A45 in the [durable plan](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline-plan.md). No application implementation tasks. BSL-024/025 maps four requirements/eight scenarios; U27/U28 treatment is settled as non-normative. Behavior TDD, API/client generation and application tests are not applicable to these documentation edits; runtime browser/API/database qualification remains not-run under A34.
 
 ## 1. Extract and reconcile the baseline
 

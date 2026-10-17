@@ -2,7 +2,7 @@
 
 ## Context
 
-See [proposal](proposal.md) for motivation and [delta](specs/household-identity/spec.md) for the observable baseline. The [durable plan](../../../../docs/openspec-baseline-plan.md), BSL-018/019, owns source evidence and confidence. This is extraction design, not application design: the existing UI, store, contract, controller/service and SQL already supply the supported path. Include this document because cross-layer validation and the new uniqueness index create material ambiguity about unsupported rename failures.
+See [proposal](proposal.md) for motivation and [delta](specs/household-identity/spec.md) for the observable baseline. The [durable plan](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline-plan.md), BSL-018/019, owns source evidence and confidence. This is extraction design, not application design: the existing UI, store, contract, controller/service and SQL already supply the supported path. Include this document because cross-layer validation and the new uniqueness index create material ambiguity about unsupported rename failures.
 
 The first observable slice is opening a loaded member's editor in Settings or onboarding, saving a valid nonconflicting name, and seeing the returned name on the same member row. The trace is FamilyMemberList → useFamily/familyStore.updateMember → family adapter/generated item PUT → OpenAPI → FamilyController.Update → FamilyService.UpdateFamilyMember → EF family_members → 200/data → client list replacement. Current shared access and selected-name requirements remain their own owners.
 
@@ -36,7 +36,7 @@ No deployment, migration, service startup or database action applies. Deliver a 
 
 The following non-normative material was moved from this change’s delta preamble to satisfy the upgraded validator. Requirement/scenario blocks and main specifications are unchanged by this relocation. Earlier draft/lifecycle statements remain historical; later recorded authorizations still govern. Relative links retain their original targets.
 
-Evidence: BSL-018/019 and U23/U24 in the [durable plan](../../../../docs/openspec-baseline-plan.md). This draft records source-supported ordinary-household behavior; runtime checks are not-run. Household access follows “Authenticate protected API requests independently”; selected-name display follows “Display the selected member on Profile”.
+Evidence: BSL-018/019 and U23/U24 in the [durable plan](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline-plan.md). This draft records source-supported ordinary-household behavior; runtime checks are not-run. Household access follows “Authenticate protected API requests independently”; selected-name display follows “Display the selected member on Profile”.
 
 Non-normative historical status note requested by the user (BSL-015):
 

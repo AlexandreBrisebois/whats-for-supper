@@ -13,7 +13,7 @@ below refer to those owners without changing their shared policy.
 Accepted and promoted under DH-P01 (2026-10-16) after the user's conditional
 verification-and-promotion instruction and a passing pre-promotion verification.
 The six selected demo-household deltas contribute 26 requirements and 62 scenarios.
-[Capability evidence and lifecycle record](../../../docs/openspec-baseline/demo-household.md)
+[Capability evidence and lifecycle record](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline/demo-household.md)
 contains BSL-demo-household-001–016, all requirement/scenario mappings, inspected
 assertion/substitution limits and source identities.
 

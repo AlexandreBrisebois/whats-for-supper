@@ -12,7 +12,7 @@ See proposal.md for motivation. The first observable slice is Profile English/Fr
 
 ## Decisions
 
-- Use implementation-supported requirements under A10; keep actual test substitutions and mappings in BSL-member-preferences-001–004 in the [plan](../../../../docs/openspec-baseline/member-preferences.md).
+- Use implementation-supported requirements under A10; keep actual test substitutions and mappings in BSL-member-preferences-001–004 in the [plan](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline/member-preferences.md).
 - The user explicitly accepted current language-only API behavior on 2026-10-16. Include it with the OpenAPI disagreement visible; the alternative of withholding it was declined. No contract or client edits follow from this documentation decision.
 - Describe provider resolution separately from translation lookup. Treating provider locale as a universal translation guarantee would contradict locales/index.ts and the call sites.
 - Reference household-identity “Resolve the current member through the API” and “Recover identity when the protected client has no selection” for identity establishment, rather than restating cookie/access policy.

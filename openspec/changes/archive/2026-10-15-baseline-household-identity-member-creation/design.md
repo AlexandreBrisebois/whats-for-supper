@@ -2,7 +2,7 @@
 
 ## Context
 
-See [proposal](proposal.md) for motivation and [delta](specs/household-identity/spec.md) for behavior. BSL-household-identity-009–011 in the [durable plan](../../../docs/openspec-baseline-plan.md) trace the complete path at commit `7e0dcdbe162704debe8a0f916eb1f7327afc77a5`; application inputs are unchanged locally. Test assertions were inspected, not executed. Design is warranted by the contract/client/persistence boundary, concurrent uniqueness and migration complexity.
+See [proposal](proposal.md) for motivation and [delta](specs/household-identity/spec.md) for behavior. BSL-household-identity-009–011 in the [durable plan](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline-plan.md) trace the complete path at commit `7e0dcdbe162704debe8a0f916eb1f7327afc77a5`; application inputs are unchanged locally. Test assertions were inspected, not executed. Design is warranted by the contract/client/persistence boundary, concurrent uniqueness and migration complexity.
 
 Current path: onboarding or Settings → FamilySelector/AddFamilyMemberForm → useFamily → familyStore.addMember → family API adapter → generated POST builder → OpenAPI/FamilyController.Create → FamilyService.CreateFamilyMember → EF FamilyMembers/SQL family_members → success filter/data envelope → adapter → store append/list. Onboarding subsequently invokes its async cookie/selection/navigation callback without awaiting it; Settings supplies a no-op callback.
 

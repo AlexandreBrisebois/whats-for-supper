@@ -1,6 +1,6 @@
 # Tasks
 
-Documentation-only extraction under A37 in the [durable plan](../../../../docs/openspec-baseline-plan.md). No application implementation tasks. BSL-018/019 maps all five requirements/12 scenarios; application TDD, API/client regeneration and runtime qualification are not applicable to this edit. Runtime observations remain not-run under A34.
+Documentation-only extraction under A37 in the [durable plan](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline-plan.md). No application implementation tasks. BSL-018/019 maps all five requirements/12 scenarios; application TDD, API/client regeneration and runtime qualification are not applicable to this edit. Runtime observations remain not-run under A34.
 
 ## 1. Extract and reconcile the baseline
 

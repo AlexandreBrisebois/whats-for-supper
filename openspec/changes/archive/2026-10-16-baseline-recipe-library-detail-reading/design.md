@@ -2,7 +2,7 @@
 
 ## Context
 
-See [proposal](proposal.md) for motivation and scope. This is documentation extraction, not an application implementation design. A50 authorizes the loaded ordinary-household library → selected detail → GET → persisted returned content → close slice. BSL-recipe-library-004–006 in the [plan](../../../../docs/openspec-baseline-plan.md) records source identity, assertions and discrepancies.
+See [proposal](proposal.md) for motivation and scope. This is documentation extraction, not an application implementation design. A50 authorizes the loaded ordinary-household library → selected detail → GET → persisted returned content → close slice. BSL-recipe-library-004–006 in the [plan](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline-plan.md) records source identity, assertions and discrepancies.
 
 ## Goals / Non-Goals
 
@@ -36,7 +36,7 @@ The following non-normative material was moved from this change’s delta preamb
 
 ## Evidence and status (non-normative)
 
-Documentation-only draft under A50 and BSL-recipe-library-004–006 in the [durable plan](../../../../docs/openspec-baseline-plan.md). Implementation-supported under A10; browser/API/database checks are not-run under A34. Not accepted, promoted or archived. Existing main recipe-library (nine requirements/18 scenarios) and household-identity (36/92) remain unchanged.
+Documentation-only draft under A50 and BSL-recipe-library-004–006 in the [durable plan](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline-plan.md). Implementation-supported under A10; browser/API/database checks are not-run under A34. Not accepted, promoted or archived. Existing main recipe-library (nine requirements/18 scenarios) and household-identity (36/92) remain unchanged.
 
 The main library requirement “Display successfully returned library items” already owns activation of the loaded recipe button. These additions start with its requested detail sheet. Household-identity retains page access, API authentication and member context; member preferences retains browse-mode policy. No attribution ownership or list eligibility is redefined. The detail query uses FindAsync by ID, with no IsReady, IsDiscoverable or AddedBy predicate. The ordinary database lookup uses the context's DeletedAt == null filter; an already tracked entity can be returned by FindAsync without another filtered query. No universal deletion exclusion or not-ready rejection requirement is inferred from list behavior.
 

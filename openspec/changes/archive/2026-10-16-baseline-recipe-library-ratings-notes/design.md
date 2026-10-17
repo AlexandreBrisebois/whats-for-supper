@@ -6,7 +6,7 @@ See [proposal](proposal.md) for motivation and [delta](specs/recipe-library/spec
 
 ## Goals / Non-Goals
 
-**Goals:** keep the established fact/read/update and household-access owners; trace a single loaded-library-detail slice; map each scenario to inspected source and actual assertion coverage in BSL-recipe-library-012–014 of the [plan](../../../../docs/openspec-baseline-plan.md).
+**Goals:** keep the established fact/read/update and household-access owners; trace a single loaded-library-detail slice; map each scenario to inspected source and actual assertion coverage in BSL-recipe-library-012–014 of the [plan](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline-plan.md).
 
 **Non-Goals:** error-recovery design, timer/race repair, contract alignment or runtime qualification. No implementation, migration or deployment is applicable.
 
@@ -32,7 +32,7 @@ The following non-normative material was moved from this change’s delta preamb
 
 ## Evidence and status (non-normative)
 
-Documentation-only draft under A54 and BSL-recipe-library-012–014 in the [durable plan](../../../../docs/openspec-baseline-plan.md). Implementation-supported under A10; runtime browser/API/database checks not-run under A34. Not accepted, promoted or archived. Main recipe-library remains 25 requirements/48 scenarios and household-identity remains 36/92; the six prior changes remain active.
+Documentation-only draft under A54 and BSL-recipe-library-012–014 in the [durable plan](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline-plan.md). Implementation-supported under A10; runtime browser/API/database checks not-run under A34. Not accepted, promoted or archived. Main recipe-library remains 25 requirements/48 scenarios and household-identity remains 36/92; the six prior changes remain active.
 
 Reuse existing library requirements “Retrieve the selected library recipe for detail reading”, “Return persisted recipe detail for an available record” and “Apply supplied non-null recipe-detail update fields”. These additions cover only missing rating/notes facts and controls after successful detail loading. Household-identity retains “Gate protected page entry with household access”, “Apply member context after household access” and “Authenticate protected API requests independently”. The recipe rating is a shared recipe fact, distinct from member-specific discovery votes and household consensus; no personal ownership or new access rule is added.
 

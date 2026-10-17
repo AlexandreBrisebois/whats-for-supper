@@ -4,7 +4,7 @@ Documentation extraction only. Optional design omitted under the installed condi
 
 ## 1. Reconcile and extract this slice
 
-- [x] 1.1 Trace this slice and inspect actual assertions/substitutions; evidence delivered as BSL-cooking-008–009 in [the cooking plan](../../../../docs/openspec-baseline/cooking.md).
+- [x] 1.1 Trace this slice and inspect actual assertions/substitutions; evidence delivered as BSL-cooking-008–009 in [the cooking plan](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline/cooking.md).
 - [x] 1.2 Draft supported requirements and all scenarios in [the delta](specs/cooking/spec.md); review every assertion against the plan mapping and keep uncertain claims outside normative text.
 - [x] 1.3 Reconcile shared owners and predecessor cooking slices; verify unique requirement names, owner references and exclusions in the cooking plan coverage table.
 

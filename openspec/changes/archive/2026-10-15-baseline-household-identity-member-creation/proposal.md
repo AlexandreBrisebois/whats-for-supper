@@ -24,6 +24,6 @@ None.
 
 ## Impact
 
-Current evidence: [durable plan](../../../docs/openspec-baseline-plan.md), BSL-household-identity-009–011, source `moving-to-openspec` / `7e0dcdbe162704debe8a0f916eb1f7327afc77a5`. No runtime checks establish these paths in this session.
+Current evidence: [durable plan](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline-plan.md), BSL-household-identity-009–011, source `moving-to-openspec` / `7e0dcdbe162704debe8a0f916eb1f7327afc77a5`. No runtime checks establish these paths in this session.
 
 Future implementation affects `specs/openapi.yaml`, generated Kiota family client, family adapter/store/form consumers, `FamilyController`, `FamilyService`, EF/SQL persistence and API/browser tests/mocks. No new dependency is selected. Shared access, selection, lookup/recovery and Profile display reuse existing requirements. Rename/removal, invite/voting, deployment variants and existing duplicate-data remediation remain outside this creation draft; migration/collision policy must be reviewed before enforcement rollout.

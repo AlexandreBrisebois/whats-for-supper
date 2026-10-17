@@ -1,6 +1,6 @@
 # Tasks
 
-Documentation extraction only under NC-A01 in the [capability plan](../../../../docs/openspec-baseline/meal-planning.md). R1–R19 denote that plan's exact 19-requirement/44-scenario mapping. Checkboxes concern this draft, not implementation, human acceptance, promotion, runtime qualification or archival.
+Documentation extraction only under NC-A01 in the [capability plan](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline/meal-planning.md). R1–R19 denote that plan's exact 19-requirement/44-scenario mapping. Checkboxes concern this draft, not implementation, human acceptance, promotion, runtime qualification or archival.
 
 ## 1. Trace the recipe-free lifecycle and record evidence
 

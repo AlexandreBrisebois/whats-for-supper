@@ -2,7 +2,7 @@
 
 ## Context
 
-See [proposal](proposal.md) for motivation and [delta](specs/household-identity/spec.md) for the two observable requirements. The [durable plan](../../../../docs/openspec-baseline-plan.md), BSL-020–022, owns the source trace, inspected assertions and confidence. This extraction design is included because shared authorization, EF/SQL side effects and separate browser cleanup create material ambiguity about which behavior belongs in the baseline.
+See [proposal](proposal.md) for motivation and [delta](specs/household-identity/spec.md) for the two observable requirements. The [durable plan](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline-plan.md), BSL-020–022, owns the source trace, inspected assertions and confidence. This extraction design is included because shared authorization, EF/SQL side effects and separate browser cleanup create material ambiguity about which behavior belongs in the baseline.
 
 The first observable slice is an authorized consumer deleting an existing unreferenced member, receiving 204, then observing its absence from the family list. The existing path is family adapter/generated item DELETE → OpenAPI → FamilyController.Delete → FamilyService.DeleteFamilyMember → EF remove/save → NoContent; the later GET uses GetAll/GetAllFamilyMembers and the success envelope. The PWA store/hook exposes removal but no connected component invokes it. Source manifest inputs were rechecked unchanged before drafting.
 
@@ -38,7 +38,7 @@ The following non-normative material was moved from this change’s delta preamb
 
 ## Evidence and status (non-normative)
 
-This documentation-only baseline draft uses implementation-supported evidence in the [durable plan](../../../../docs/openspec-baseline-plan.md), BSL-020–022. Runtime API/browser/PostgreSQL checks are not-run; implementation/database qualification remains deferred under A34. U25/U26 remain non-normative under A40: no connected deletion UI, referenced-member safety, complete error-contract parity or browser cleanup/recovery guarantee is asserted.
+This documentation-only baseline draft uses implementation-supported evidence in the [durable plan](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline-plan.md), BSL-020–022. Runtime API/browser/PostgreSQL checks are not-run; implementation/database qualification remains deferred under A34. U25/U26 remain non-normative under A40: no connected deletion UI, referenced-member safety, complete error-contract parity or browser cleanup/recovery guarantee is asserted.
 
 Historical member-creation limitation retained under BSL-015/U22:
 

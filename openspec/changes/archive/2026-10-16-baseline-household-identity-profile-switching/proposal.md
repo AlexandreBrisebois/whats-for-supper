@@ -9,7 +9,7 @@ Household identity covers onboarding selection and Profile name display but lack
 - Add the Profile member menu, loading placeholder, current-member marker and dismissal before selection.
 - Add the Profile-specific member-selection/completion/Home request, conditional identity update, and Continue-as navigation without reselection.
 - Reuse existing household access, family listing, current-member resolution, recovery and selected-name requirements.
-- Keep U27/U28 pending/failure, freshness and qualification limits non-normative under the confirmed boundary. Record scenario mapping in the [durable plan](../../../../docs/openspec-baseline-plan.md), BSL-024/025.
+- Keep U27/U28 pending/failure, freshness and qualification limits non-normative under the confirmed boundary. Record scenario mapping in the [durable plan](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline-plan.md), BSL-024/025.
 
 ## Capabilities
 

@@ -37,7 +37,7 @@ The public Synology release is in preparation and is **not available to install 
 ## Read on
 
 - [Family guide](docs/user-guide.md) — how planning, shopping, choosing, and cooking fit together.
-- [OpenSpec baseline plan](docs/openspec-baseline-plan.md) — the progressive, source-backed specification extraction plan; proposed capabilities await review.
+- [OpenSpec specifications](openspec/specs) — canonical capability requirements; [outstanding baseline work](https://github.com/AlexandreBrisebois/whats-for-supper/issues?q=is%3Aissue+WFS-BL-+in%3Atitle) is tracked in GitHub issues with historical evidence and acceptance criteria.
 - [Architecture](docs/architecture.md) — a concise technical view for contributors and operators.
 - [Synology operator guide](release-template/synology/README.md) — the current template; physical deployment, recovery, and public-release qualification remain outstanding.
 - [Local development guide](LOCAL_DEV_LOOP.md) — contributor setup and day-to-day development.

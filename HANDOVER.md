@@ -1,5 +1,14 @@
 # Active resume checkpoints
 
+## OpenSpec baseline issue migration
+
+Task/spec: User-requested documentation cleanup and migration of outstanding baseline work; no application change.
+Worktree/branch: `docs/migrate-openspec-baseline-issues`, rebased onto remote main `e433b12ad51d11812841107c9be792681fad23fb`; immutable migration evidence remains at `46234524072c1df2ca7f67b40d592559770bd440`.
+Authorized scope and source: Move all outstanding baseline items to GitHub issues, remove baseline docs, preserve canonical specs and archives, and open a review PR without merging or deploying.
+Current checkpoint: All 25 items were created and read back as open issues [#244–#268](https://github.com/AlexandreBrisebois/whats-for-supper/issues?q=is%3Aissue+WFS-BL-+in%3Atitle), with original IDs, priorities, acceptance, partial/deferred qualification and immutable historical evidence. The cleanup removes 64 baseline documents and repairs evidence links; README points to canonical specs and issues.
+Verification evidence and content identity: Issue bodies and titles matched the migration drafts on connector readback. Final repository checks and the full ID-to-issue mapping are recorded in the cleanup PR; this checkpoint is not a claim of application acceptance.
+Blocker or next action: Review the cleanup PR. Dependency repair and new feature drafts remain separate; do not merge or deploy from this task.
+
 ## Dietary separation Phase 1
 
 Task/spec: User-directed simplification of the user-pasted `WFS Dietary Separation Migration — Phase 1: EXPAND`; no repository spec package exists.

@@ -13,7 +13,7 @@ References in preserved requirements to the former combined meal-planning owner 
 
 ## Evidence and qualifications (non-normative)
 
-Promoted under A82 from the reviewed `baseline-household-live-updates-connection-reconciliation` delta. BSL-household-live-updates-001–006 in the [durable plan](../../../docs/openspec-baseline-plan.md) records source identities, complete requirement/scenario mappings, inspected assertions and promotion evidence. These requirements describe implementation-supported behavior; runtime/API/browser/network/database/model qualification remains deferred under A34.
+Promoted under A82 from the reviewed `baseline-household-live-updates-connection-reconciliation` delta. BSL-household-live-updates-001–006 in the [durable plan](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline-plan.md) records source identities, complete requirement/scenario mappings, inspected assertions and promotion evidence. These requirements describe implementation-supported behavior; runtime/API/browser/network/database/model qualification remains deferred under A34.
 
 U95–U101 retain stream contract omissions, unlocked controller writes, native reconnect limits, conditional or stale snapshot application, browser-local Today guards, the raw grocery dictionary/additionalData mismatch and substituted assertion limits. Attempted connection, registration, emitted data, receipt and applied state remain separate. No durable replay, Last-Event-ID recovery, exactly-once delivery, global ordering, cross-replica broadcast, guaranteed reconnection, immediate freshness or complete convergence is established.
 

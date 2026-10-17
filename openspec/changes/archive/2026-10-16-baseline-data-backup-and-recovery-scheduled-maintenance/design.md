@@ -2,7 +2,7 @@
 
 ## Context
 
-See [proposal](proposal.md) for motivation and the [delta](specs/data-backup-and-recovery/spec.md) for observable behavior. Evidence BSL-data-backup-and-recovery-018–020 is recorded in the [capability plan](../../../../docs/openspec-baseline/data-backup-and-recovery.md), at commit 04a1c4570f9bbb01b47436790d4248635ac3179a.
+See [proposal](proposal.md) for motivation and the [delta](specs/data-backup-and-recovery/spec.md) for observable behavior. Evidence BSL-data-backup-and-recovery-018–020 is recorded in the [capability plan](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline/data-backup-and-recovery.md), at commit 04a1c4570f9bbb01b47436790d4248635ac3179a.
 
 Program registers DreamingWorkflowSeederHostedService → DreamingWorkflowSeeder.SeedAsync → CronScheduleCalculator/shared acceptance; dreaming.yaml → prune/backup/maintenance/finalize/reconcile/materialize/report/reschedule → ManagementProcessor → ManagementService. StartWorkflow returns child acceptance without awaiting child completion.
 

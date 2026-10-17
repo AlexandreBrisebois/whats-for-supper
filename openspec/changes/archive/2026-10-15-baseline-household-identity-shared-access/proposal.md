@@ -12,7 +12,7 @@ The accepted household-identity baseline begins with household access already es
 
 - Add baseline requirements for passphrase entry, submission feedback/retry, access-cookie options, PWA access/context gate ordering and independent API household authentication.
 - Extend only the `household-identity` specification through an ADDED delta. Preserve the five accepted member-selection requirements and their ten scenarios.
-- Map supported observations to BSL-household-identity-003/004/005 in the [durable plan](../../../../docs/openspec-baseline-plan.md). This is documentation extraction; no application behavior changes.
+- Map supported observations to BSL-household-identity-003/004/005 in the [durable plan](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline-plan.md). This is documentation extraction; no application behavior changes.
 - Keep absent server token-age enforcement outside normative claims under A17. Keep U14 cookie-auth contract metadata and U15 transport/automatic recovery gaps visible; do not turn them into guarantees or repairs.
 - Stop at a validated draft for human review. Acceptance, promotion, archival and application changes require separate authorization.
 

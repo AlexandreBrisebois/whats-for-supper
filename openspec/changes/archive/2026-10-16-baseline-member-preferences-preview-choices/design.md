@@ -16,7 +16,7 @@ See proposal.md for motivation. The first observable preview slice is Settings d
 - Keep server deployment-mode precedence in the companion preview-resolution delta. Settings only exposes opt-in entries.
 - Scope stale-result protection to member-generation changes. The alternative of claiming universal newest-request-wins is not supported for overlapping loads of the same member.
 
-Evidence and requirement/scenario mappings: BSL-member-preferences-009–012 in the [capability plan](../../../../docs/openspec-baseline/member-preferences.md). A10 implementation support is distinct from A34 runtime evidence.
+Evidence and requirement/scenario mappings: BSL-member-preferences-009–012 in the [capability plan](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline/member-preferences.md). A10 implementation support is distinct from A34 runtime evidence.
 
 ## Risks / Trade-offs
 

@@ -2,7 +2,7 @@
 
 ## Context
 
-See proposal.md for motivation. Evidence BSL-recipe-discovery-010–013 in the [capability plan](../../../../docs/openspec-baseline/recipe-discovery.md) identifies inspected source and assertions. All behavior is implementation-supported, not runtime-qualified. This design records extraction choices, not application modifications.
+See proposal.md for motivation. Evidence BSL-recipe-discovery-010–013 in the [capability plan](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline/recipe-discovery.md) identifies inspected source and assertions. All behavior is implementation-supported, not runtime-qualified. This design records extraction choices, not application modifications.
 
 ## Goals / Non-Goals
 

@@ -2,7 +2,7 @@
 
 ## Context
 
-See the [proposal](proposal.md) for motivation and [delta](specs/household-identity/spec.md) for four additions/eight scenarios. The [durable plan](../../../../docs/openspec-baseline-plan.md), BSL-024/025, owns the source trace and assertion mapping. This extraction design is included because the separate cookie, store and navigation effects create ambiguity about the supported handoff.
+See the [proposal](proposal.md) for motivation and [delta](specs/household-identity/spec.md) for four additions/eight scenarios. The [durable plan](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline-plan.md), BSL-024/025, owns the source trace and assertion mapping. This extraction design is included because the separate cookie, store and navigation effects create ambiguity about the supported handoff.
 
 The first observable slice is ProfilePage → ProfileDropdown toggle → inline named choices without identity change. Option activation calls Profile's handler → useFamily/familyStore.selectFamilyMember → awaited server cookie action → readable-cookie fallback → selected ID. Independently, Profile marks onboarding complete and pushes Home without awaiting selection. Continue-as only pushes Home. All 31 BSL-024 evidence inputs were rechecked unchanged before drafting.
 
@@ -39,7 +39,7 @@ The following non-normative material was moved from this change’s delta preamb
 
 ## Evidence and status (non-normative)
 
-This documentation-only draft uses implementation-supported evidence in the [durable plan](../../../../docs/openspec-baseline-plan.md), BSL-024/025. Runtime browser/API/database checks are not-run; implementation/database qualification remains deferred under A34. U27/U28 remain non-normative under A45: no atomic cookie/state/navigation handoff, fresh server membership validation, selection busy lock, guaranteed failure recovery, cancellation after selection starts or cross-tab/device synchronization is asserted. Opening the control reveals choices on Profile; it does not navigate to onboarding or change identity.
+This documentation-only draft uses implementation-supported evidence in the [durable plan](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline-plan.md), BSL-024/025. Runtime browser/API/database checks are not-run; implementation/database qualification remains deferred under A34. U27/U28 remain non-normative under A45: no atomic cookie/state/navigation handoff, fresh server membership validation, selection busy lock, guaranteed failure recovery, cancellation after selection starts or cross-tab/device synchronization is asserted. Opening the control reveals choices on Profile; it does not navigate to onboarding or change identity.
 
 Historical member-creation limitation retained under BSL-015/U22:
 

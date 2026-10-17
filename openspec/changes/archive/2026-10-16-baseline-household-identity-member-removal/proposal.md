@@ -9,7 +9,7 @@ Household identity lacks baseline requirements for the existing member-removal A
 - Add requirements for an authorized ordinary-household DELETE of an existing member when persistence succeeds: 204 with no content, followed by absence from a subsequent successful family-list response.
 - Use an unreferenced-member scenario and reuse existing household-access requirements. No connected UI caller was found.
 - Keep FK effects, undocumented missing-ID/provider errors, authorization metadata differences and partial browser cleanup/recovery non-normative under A40/U25/U26.
-- Record source support, test substitutions and scenario mapping in the [durable plan](../../../../docs/openspec-baseline-plan.md), BSL-020–022. Implementation/database qualification remains deferred under A34.
+- Record source support, test substitutions and scenario mapping in the [durable plan](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline-plan.md), BSL-020–022. Implementation/database qualification remains deferred under A34.
 
 ## Capabilities
 
