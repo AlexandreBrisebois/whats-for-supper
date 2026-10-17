@@ -36,7 +36,7 @@ Opening voting and locking SHALL save their week changes before reading and atte
 
 #### Scenario: Publication rejects after save
 - **WHEN** week snapshot publication throws after open or lock persistence
-- **THEN** the successful response is not reached without establishing reversal of saved week or vote changes
+- **THEN** the request reports failure while saved week changes remain committed; retry or reload can recover a completed close without repeating vote clearing
 
 ### Requirement: Reconcile Planner after opening voting
 
@@ -72,7 +72,7 @@ Planner Close Voting SHALL capture its loaded week and displayed pending recipe 
 
 ### Requirement: Finish the Planner close-voting presentation
 
-After lock returns, Planner SHALL clear displayed pending markers only while the captured offset and absolute week remain loaded and show its temporary voting-complete feedback. On rejection it SHALL reread the captured week and recover a confirmed Locked outcome only when its round identity matches the captured request. Otherwise it SHALL restore captured status only while the captured week remains loaded and log failure without a dedicated close-voting retry panel. A successful lock response SHALL not require a schedule reread for this presentation.
+Planner SHALL clear pending markers and show voting-complete feedback after lock succeeds, without requiring a reread. On rejection it SHALL reread the captured week and recover Locked only for the captured round identity; otherwise it SHALL restore captured status and log failure without a dedicated retry panel. Presentation changes SHALL apply only while the captured offset and absolute week remain loaded.
 
 #### Scenario: Lock completes in the same loaded week
 - **WHEN** promotion and lock resolve with the captured offset and absolute week still loaded
