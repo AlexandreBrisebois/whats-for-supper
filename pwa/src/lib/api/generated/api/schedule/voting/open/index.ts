@@ -86,7 +86,7 @@ export interface OpenPostResponse_data extends AdditionalDataHolder, Parsable {
  */
 export interface OpenRequestBuilder extends BaseRequestBuilder<OpenRequestBuilder> {
   /**
-   * Open voting for a week
+   * Preserves early votes. Only one week can own the live round. Opening the same active week is idempotent; reopening a closed week creates a new identity returned by schedule reads.
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {Promise<OpenPostResponse>}
    */
@@ -94,7 +94,7 @@ export interface OpenRequestBuilder extends BaseRequestBuilder<OpenRequestBuilde
     requestConfiguration?: RequestConfiguration<OpenRequestBuilderPostQueryParameters> | undefined
   ): Promise<OpenPostResponse | undefined>;
   /**
-   * Open voting for a week
+   * Preserves early votes. Only one week can own the live round. Opening the same active week is idempotent; reopening a closed week creates a new identity returned by schedule reads.
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {RequestInformation}
    */
@@ -103,7 +103,7 @@ export interface OpenRequestBuilder extends BaseRequestBuilder<OpenRequestBuilde
   ): RequestInformation;
 }
 /**
- * Open voting for a week
+ * Preserves early votes. Only one week can own the live round. Opening the same active week is idempotent; reopening a closed week creates a new identity returned by schedule reads.
  */
 export interface OpenRequestBuilderPostQueryParameters {
   /**

@@ -5,6 +5,7 @@
  * This is in a separate file to avoid circular dependencies.
  */
 export const MOCK_IDS = {
+  VOTING_ROUND: '990e8400-e29b-41d4-a716-000000000001',
   // Members
   MEMBER_ALEX: '550e8400-e29b-41d4-a716-446655440001',
   MEMBER_JORDAN: '550e8400-e29b-41d4-a716-446655440002',

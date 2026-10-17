@@ -1,0 +1,39 @@
+# Design
+
+## Context and Existing Ownership
+
+ScheduleService.FillTheGapAsync owns Quick Find's two-tier five-card retrieval; QuickFindModal owns deck and Search escape. DiscoveryService owns member queue order. RecipeService.GetRecipesList owns offset-paged Explore. RecipeSearchService owns blank Browse promotion, lexical/semantic standard Search, Similar and continuations. These algorithms differ purposefully; retain the separate existing algorithms. No common ranker replacement is proposed.
+
+## Decisions and Tradeoffs
+
+Accepted: all five paths receive historical augmentation. Quick Find/Replace uses three ordered pools: (1) eligible current live-liked recipes, including supported early votes before explicit opening; (2) eligible positive historical liked-but-unselected recipes in the four-complete-week window; (3) existing Discovery fallback candidates. Fill at most five unique results, deduplicating across pools. Preserve existing within-live ordering: never-cooked first, oldest cooked date, then current likes descending; use stable ID only for otherwise equal ties. Historical-only candidates use never/oldest cooked then stable ID; raw historical counts are not added to live likes. Preserve existing fallback ordering, hard constraints, target-week assignment exclusions and effective Dreaming-maintained cooked cooldown. No VotingOpen gate is added. Other surfaces retain their separate augmentative policies. Filter before taking five; deduplicate by recipe across all pools. Current raw match tier lacks explicit ready/deleted checks: new safety acceptance requires unavailable recipes absent, an intentional compatibility correction to document, not exact old-output parity. Cooldown gate reads effective persisted suppression, cleared by temporary early return; unrelated manual Discovery-off is not a new exclusion from historical/live-liked pools.
+
+Other paths keep substantive existing keys; H resolves remaining ties before created/ID. H=count qualifying weeks/N, at most one contribution per recipe/week. Do not change retrieval candidate caps or manufacture a candidate solely for typed Search relevance. Similar remains unchanged. Live totals and stored ratings remain distinct. Never feed H into materialized affinity, consensus or badges. Four weeks is configurable policy, not research-calibrated optimal weighting. Qualifying history remains positive unselected recipe-week evidence; the current-week Discovery gate uses existing events, not a new selection ledger or a global historical veto.
+
+## First Observable Slice
+
+After history capture, seed two eligible live-liked candidates, two additional historical candidates and Discovery fallback. GET /api/schedule/fill-the-gap returns five unique IDs: the two live recipes, two historical recipes, then one fallback. Also test six live recipes filling five slots; zero live recipes letting history lead; a recipe present in every pool appearing only in the first; and early votes ranking before explicit open. QuickFindModal displays server order and selection uses existing assignment. Empty cooldown results retain target-aware Search Library and leave the meal unchanged. This is sequencing only; remaining surfaces stay in scope.
+
+## State, Concurrency and Recovery
+
+Calculate W once per request using the deployment calendar. Historical lookback `[W−7N days, W)` excludes the current calendar week and active reopened week; next-week target slots do not shift W. Proposed env name `HISTORICAL_INTEREST_WEEKS`, positive integer default 4; reject malformed/nonpositive values. Practical maximum is an implementation validation recommendation requiring documented bounds, not an invented product knob. Configuration change affects ranking, not stored history.
+
+Read snapshot facts coherently with active-round exclusion. Blank Browse affinity contains materialized live votes; after close it may lag. Before enabling history on that path, establish generation compatibility or refresh/reject stale materialization so one closed round is not counted as current affinity plus history. Do not zero out legitimate existing affinity merely to simplify the new signal.
+
+Typed Search already stores remaining ranked results: preserve that order and current readiness/filter rechecks. Blank Browse currently recomputes order after an anchor; pin historical input/window/config generation for the chain or use existing explicit invalid-token restart behavior when they change. Explore currently has only offsets: propose optional historical generation in response/request; a mismatch triggers restart while retaining cards until replacement succeeds. The optional `historyGeneration` field/query uses HTTP 409 with `history_generation_expired` for an Explore mismatch; blank Browse retains its existing expired-continuation contract. Never silently reorder a page locally. This protects changes introduced by history; it does not claim full snapshot isolation from every existing live fact mutation.
+
+Reuse current SSE publication/invalidation owners. After a committed close/revote/restore, publish history-dependent invalidations to Discovery/FillTheGap and Search promotion consumers through existing mechanisms. For Explore, a generation mismatch is recovery even if an event was missed. A vote update remains only a live vote count. Guard obsolete responses using existing client request generations; preserve PR243 mounted Search and Browse-stack retry behavior. Do not add a bespoke event bus.
+
+## Compatibility, Rollout and Reversal
+
+Keep existing response envelopes: FillTheGap data array, Explore unwrapped recipes/pagination, Search TopPick/results/cursor. New generation fields must be optional and versioned in specs/openapi.yaml, generated client, API DTO and pwa/e2e/mock-api.ts together. Existing route methods remain unchanged. If existing clients cannot send required continuation context, use a compatible fallback or explicit restart contract, never silent mixing.
+
+Missing/disabled history yields existing ordering keys, except final ID stabilization, accepted cooked cooldown and unavailable-candidate safety. A new recipe with no H remains eligible in every appropriate fallback; a full five-live or live-plus-history deck can temporarily omit it by accepted priority. No permanent exclusion follows. Feature disable removes history from ranking without deleting aggregates. Reverting to the prior rank policy is data-safe; active continuation fingerprints must invalidate if policy changes.
+
+## User Experience
+
+No shelf, badge or tuning widget. Existing guide explains that old unselected likes receive another chance. Empty Quick Find exposes keyboard-accessible Search Library with preserved target. Search/Browse retain relevant non-Discovery recipes. Keep loading, error, retry and focus behavior already fixed in PR243. Simulated family disagreement: strong priority may hide new ideas in one deck; retain easy full Search rather than inventing a quota. An optional fixture comparison is sufficient for initial ranking review; no household recruitment is authorized.
+
+## Live round versus historical interest
+
+Live likes feed Quick Find/Replace while the operational voting round is live, before close. Valid early votes received after the previous close and before the next explicit open are still working round data and remain usable; no strict VotingOpen gate is introduced. Close snapshots positive aggregate history and clears working votes. Historical interest then gives previously unselected recipes a route back into suggestions without needing the cleared live likes to persist. New early votes can also begin the next round's live signal. The completed caller trace confirms manual Quick Find/Search assignment does not clear votes or call status-1 validation; it persists Planned (0).

@@ -9,7 +9,7 @@ using static RecipeApi.Dto.SmartDefaultsDto;
 
 namespace RecipeApi.Services;
 
-public partial class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService> logger, IScheduleEventPublisher publisher, GroceryRecomputeService groceryRecomputeService, IClock clock, DeploymentCalendar calendar)
+public partial class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService> logger, IScheduleEventPublisher publisher, GroceryRecomputeService groceryRecomputeService, IClock clock, DeploymentCalendar calendar, HistoricalInterestService? historicalInterest = null)
 {
     private readonly RecipeDbContext _dbContext = dbContext;
     private readonly ILogger<ScheduleService> _logger = logger;
@@ -17,6 +17,7 @@ public partial class ScheduleService(RecipeDbContext dbContext, ILogger<Schedule
     private readonly GroceryRecomputeService _groceryRecomputeService = groceryRecomputeService;
     private readonly IClock _clock = clock;
     private readonly DeploymentCalendar _calendar = calendar;
+    private readonly HistoricalInterestService _historicalInterest = historicalInterest ?? HistoricalInterestService.Default(dbContext, clock, calendar);
 
     public Task<ScheduleDays> GetScheduleAsync(int weekOffset, DateOnly? referenceWeekStartDate = null) =>
         ReadScheduleAsync(weekOffset, _calendar.Capture(_clock.UtcNow, referenceWeekStartDate));
@@ -64,87 +65,137 @@ public partial class ScheduleService(RecipeDbContext dbContext, ILogger<Schedule
             ? JsonSerializer.Deserialize<List<GroceryLineItemDto>>(plan.GroceryItems)
             : null;
 
-        return new ScheduleDays(weekOffset, isLocked, status, days, context, monday, groceryState, groceryItems);
+        var round = await _dbContext.VotingRoundStates.AsNoTracking().SingleOrDefaultAsync();
+        var roundId = plan?.VotingRoundId ?? plan?.LastClosedRoundId ??
+            (round?.WeekStartDate is null || round.WeekStartDate == monday ? round?.RoundId : null);
+        return new ScheduleDays(weekOffset, isLocked, status, days, context, monday, groceryState, groceryItems, roundId);
     }
 
     public async Task OpenVotingAsync(int weekOffset, string? excludeConnectionId = null, DateOnly? referenceWeekStartDate = null)
     {
         var context = _calendar.Capture(_clock.UtcNow, referenceWeekStartDate);
         var monday = context.WeekStart(weekOffset);
-        var plan = await _dbContext.WeeklyPlans.FirstOrDefaultAsync(p => p.WeekStartDate == monday);
-
-        if (plan == null)
+        await using (var transaction = await VotingBoundary.BeginAsync(_dbContext))
         {
-            plan = new WeeklyPlan
+            var state = await VotingBoundary.StateAsync(_dbContext);
+            var legacyOpen = await _dbContext.WeeklyPlans.Where(p => p.Status == WeeklyPlanStatus.VotingOpen).ToListAsync();
+            if (state.WeekStartDate is null && legacyOpen.Count > 1 && legacyOpen.All(p => p.VotingRoundId is null) &&
+                legacyOpen.Any(p => p.WeekStartDate == monday))
             {
-                Id = Guid.NewGuid(),
-                WeekStartDate = monday,
-                Status = WeeklyPlanStatus.VotingOpen
-            };
-            _dbContext.WeeklyPlans.Add(plan);
-            _logger.LogInformation("Created new WeeklyPlan for week starting {Date} with status VotingOpen", monday);
-        }
-        else
-        {
+                // An explicit open chooses the owner of an ambiguous pre-upgrade round.
+                // Keep every vote and calendar entry; do not invent a historical close.
+                foreach (var legacy in legacyOpen)
+                {
+                    legacy.Status = legacy.WeekStartDate == monday ? WeeklyPlanStatus.VotingOpen : WeeklyPlanStatus.Draft;
+                    legacy.RequiresRoundIdentity = true;
+                }
+                await _dbContext.SaveChangesAsync();
+            }
+            if ((state.WeekStartDate is { } owner && owner != monday) ||
+                await _dbContext.WeeklyPlans.AnyAsync(p => p.Status == WeeklyPlanStatus.VotingOpen && p.WeekStartDate != monday))
+                throw new VotingConflictException("Another week owns voting. Refresh the planner.");
+            var plan = await _dbContext.WeeklyPlans.FirstOrDefaultAsync(p => p.WeekStartDate == monday);
+            if (plan is null)
+            {
+                plan = new WeeklyPlan { WeekStartDate = monday };
+                _dbContext.WeeklyPlans.Add(plan);
+            }
+            if (plan.Status != WeeklyPlanStatus.VotingOpen || plan.VotingRoundId is null)
+            {
+                plan.RequiresRoundIdentity |= plan.Status == WeeklyPlanStatus.Locked || plan.LastClosedRoundId is not null;
+                plan.VotingRoundId = state.RoundId;
+            }
             plan.Status = WeeklyPlanStatus.VotingOpen;
-            _logger.LogInformation("Updated WeeklyPlan for week starting {Date} to status VotingOpen", monday);
+            state.WeekStartDate = monday;
+            state.HistoryGeneration = Guid.NewGuid();
+            await _dbContext.SaveChangesAsync();
+            if (transaction is not null) await transaction.CommitAsync();
         }
-
-        await _dbContext.SaveChangesAsync();
-
-        var schedule = await ReadScheduleAsync(weekOffset, context);
-        await _publisher.PublishWeekUpdatedAsync(schedule, excludeConnectionId);
+        await _publisher.PublishWeekUpdatedAsync(await ReadScheduleAsync(weekOffset, context), excludeConnectionId);
+        await _publisher.PublishAllSuggestionsInvalidatedAsync();
     }
 
-    public async Task LockScheduleAsync(int weekOffset, string? excludeConnectionId = null, DateOnly? referenceWeekStartDate = null)
+    public async Task LockScheduleAsync(int weekOffset, string? excludeConnectionId = null,
+        DateOnly? referenceWeekStartDate = null, Guid? votingRoundId = null)
     {
         var context = _calendar.Capture(_clock.UtcNow, referenceWeekStartDate);
         var monday = context.WeekStart(weekOffset);
         var sunday = monday.AddDays(6);
-
-        // 1. Update WeeklyPlan
-        var plan = await _dbContext.WeeklyPlans.FirstOrDefaultAsync(p => p.WeekStartDate == monday);
-        if (plan == null)
+        await using (var transaction = await VotingBoundary.BeginAsync(_dbContext))
         {
-            plan = new WeeklyPlan { WeekStartDate = monday };
-            _dbContext.WeeklyPlans.Add(plan);
-        }
-        plan.Status = WeeklyPlanStatus.Locked;
-
-        // 2. Lock all events for this week
-        var events = await _dbContext.CalendarEvents
-            .Include(e => e.Recipe)
-            .Where(e => e.Date >= monday && e.Date <= sunday)
-            .ToListAsync();
-
-        // Get vote counts for recipes in this week and persist them before clearing votes
-        var voteCountsByRecipe = await _dbContext.RecipeVotes
-            .Where(v => v.Vote == VoteType.Like)
-            .GroupBy(v => v.RecipeId)
-            .Select(g => new { RecipeId = g.Key, VoteCount = g.Count() })
-            .ToListAsync();
-
-        var voteCountDict = voteCountsByRecipe.ToDictionary(x => x.RecipeId, x => x.VoteCount);
-
-        foreach (var @event in events)
-        {
-            if (@event.Status != CalendarEventStatus.Skipped || @event.RecipeId != null)
-                @event.Status = CalendarEventStatus.Locked;
-            if (@event.RecipeId is { } recipeId && voteCountDict.TryGetValue(recipeId, out var voteCount))
+            var state = await VotingBoundary.StateAsync(_dbContext);
+            var plan = await _dbContext.WeeklyPlans.FirstOrDefaultAsync(p => p.WeekStartDate == monday);
+            // A receipt is checked before current-round ownership: replay never mutates a newer round.
+            var replay = plan?.LastClosedRoundId is { } receipt &&
+                (votingRoundId == receipt || (votingRoundId is null && plan.Status == WeeklyPlanStatus.Locked));
+            if (!replay)
             {
-                @event.VoteCount = voteCount;
+                if ((state.WeekStartDate is { } owner && owner != monday) ||
+                    await _dbContext.WeeklyPlans.AnyAsync(p => p.Status == WeeklyPlanStatus.VotingOpen && p.WeekStartDate != monday) ||
+                    (votingRoundId is { } requested && requested != state.RoundId) ||
+                    (votingRoundId is null && (plan?.RequiresRoundIdentity == true || state.RequiresRoundIdentity)))
+                    throw new VotingConflictException("Voting changed. Refresh the planner before closing this round.");
+                if (plan is null)
+                {
+                    plan = new WeeklyPlan { WeekStartDate = monday };
+                    _dbContext.WeeklyPlans.Add(plan);
+                }
+                var events = await _dbContext.CalendarEvents.Where(e => e.Date >= monday && e.Date <= sunday).ToListAsync();
+                var votes = await _dbContext.RecipeVotes.ToListAsync();
+                var selected = events.Where(e => e.RecipeId != null &&
+                    e.Status is CalendarEventStatus.Planned or CalendarEventStatus.Locked or CalendarEventStatus.Cooked)
+                    .Select(e => e.RecipeId!.Value).ToHashSet();
+                var history = await _dbContext.WeeklyHouseholdInterests.Where(x => x.WeekStartDate == monday).ToDictionaryAsync(x => x.RecipeId);
+                foreach (var group in votes.GroupBy(v => v.RecipeId))
+                {
+                    var likes = group.Count(v => v.Vote == VoteType.Like);
+                    history.TryGetValue(group.Key, out var row);
+                    if (likes == 0)
+                    {
+                        if (row is not null) _dbContext.WeeklyHouseholdInterests.Remove(row);
+                        continue;
+                    }
+                    if (row is null)
+                    {
+                        row = new WeeklyHouseholdInterest { WeekStartDate = monday, RecipeId = group.Key };
+                        _dbContext.WeeklyHouseholdInterests.Add(row);
+                    }
+                    row.PositiveCount = likes;
+                    row.Selected = selected.Contains(group.Key);
+                    row.CapturedAt = _clock.UtcNow;
+                    row.CloseId = state.RoundId;
+                }
+                var counts = votes.Where(v => v.Vote == VoteType.Like).GroupBy(v => v.RecipeId).ToDictionary(g => g.Key, g => g.Count());
+                // Retire the materialized live contribution with the round. Preserve cooked
+                // affinity; legacy facts lack a decomposition, so rebuild that component.
+                var facts = await _dbContext.RecipeSearchAffinityFacts.ToListAsync();
+                var cookedCounts = await _dbContext.CalendarEvents.Where(e => e.RecipeId != null && e.Status == CalendarEventStatus.Cooked)
+                    .GroupBy(e => e.RecipeId!.Value).Select(g => new { Id = g.Key, Count = g.Count() }).ToDictionaryAsync(x => x.Id, x => x.Count);
+                foreach (var fact in facts)
+                {
+                    fact.Affinity = fact.LiveVoteContribution is { } live ? fact.Affinity - live : cookedCounts.GetValueOrDefault(fact.RecipeId);
+                    fact.LiveVoteContribution = 0;
+                }
+                foreach (var entry in events)
+                {
+                    if (entry.Status != CalendarEventStatus.Skipped || entry.RecipeId != null)
+                        entry.Status = CalendarEventStatus.Locked;
+                    if (entry.RecipeId is { } id && counts.TryGetValue(id, out var count)) entry.VoteCount = count;
+                }
+                plan.Status = WeeklyPlanStatus.Locked;
+                plan.LastClosedRoundId = state.RoundId;
+                plan.VotingRoundId = null;
+                state.RoundId = Guid.NewGuid();
+                state.WeekStartDate = null;
+                state.HistoryGeneration = Guid.NewGuid();
+                _dbContext.RecipeVotes.RemoveRange(votes);
+                await _dbContext.SaveChangesAsync();
             }
+            if (transaction is not null) await transaction.CommitAsync();
         }
-
-        // 3. Global Purge #1: Delete all recipe votes
-        var votes = await _dbContext.RecipeVotes.ToListAsync();
-        _dbContext.RecipeVotes.RemoveRange(votes);
-        _logger.LogInformation("Global Purge #1: Deleted {Count} votes from recipe_votes", votes.Count);
-
-        await _dbContext.SaveChangesAsync();
-
-        var schedule = await ReadScheduleAsync(weekOffset, context);
-        await _publisher.PublishWeekUpdatedAsync(schedule, excludeConnectionId);
+        await _publisher.PublishWeekUpdatedAsync(await ReadScheduleAsync(weekOffset, context), excludeConnectionId);
+        await _publisher.PublishFillTheGapInvalidatedAsync(weekOffset, monday, excludeConnectionId);
+        await _publisher.PublishAllSuggestionsInvalidatedAsync();
     }
 
     public async Task<MoveScheduleResultDto?> MoveScheduleEventAsync(MoveScheduleDto dto, string? excludeConnectionId = null, int? echoSeq = null, DateOnly? referenceWeekStartDate = null, CancellationToken ct = default)
@@ -582,6 +633,8 @@ public partial class ScheduleService(RecipeDbContext dbContext, ILogger<Schedule
 
     public async Task<List<ScheduleRecipeDto>> FillTheGapAsync(int weekOffset = 0, DateOnly? referenceWeekStartDate = null)
     {
+        await using var rankingBoundary = await VotingBoundary.BeginAsync(_dbContext);
+        var history = await _historicalInterest.CaptureAsync();
         var context = _calendar.Capture(_clock.UtcNow, referenceWeekStartDate);
         var monday = context.WeekStart(weekOffset);
         var sunday = monday.AddDays(6);
@@ -594,10 +647,11 @@ public partial class ScheduleService(RecipeDbContext dbContext, ILogger<Schedule
 
         var results = await _dbContext.RecipeMatches
             .Join(_dbContext.Recipes, m => m.RecipeId, r => r.Id, (m, r) => new { Match = m, Recipe = r })
-            .Where(x => !assignedIds.Contains(x.Recipe.Id))
+            .Where(x => !assignedIds.Contains(x.Recipe.Id) && x.Recipe.IsReady && !x.Recipe.CookedSuppressed)
             .OrderBy(x => x.Recipe.LastCookedDate == null ? 0 : 1)
             .ThenBy(x => x.Recipe.LastCookedDate)
             .ThenByDescending(x => x.Match.LikeCount)
+            .ThenBy(x => x.Recipe.Id)
             .Take(5)
             .ToListAsync();
 
@@ -612,16 +666,30 @@ public partial class ScheduleService(RecipeDbContext dbContext, ILogger<Schedule
                 x.Recipe.TotalTime))
             .ToList();
 
+        if (dtos.Count < 5 && history.Counts.Count > 0)
+        {
+            var historicalIds = history.Counts.Keys.ToArray();
+            var used = dtos.Select(x => x.Id).ToArray();
+            var historical = await _dbContext.Recipes
+                .Where(r => r.IsReady && !r.CookedSuppressed && historicalIds.Contains(r.Id) && !used.Contains(r.Id) && !assignedIds.Contains(r.Id))
+                .OrderBy(r => r.LastCookedDate == null ? 0 : 1).ThenBy(r => r.LastCookedDate).ThenBy(r => r.Id)
+                .Take(5 - dtos.Count).ToListAsync();
+            dtos.AddRange(historical.Select(r => new ScheduleRecipeDto(r.Id, r.Name, $"/api/recipes/{r.Id}/hero", null,
+                RecipeService.DeserializeIngredients(r.Ingredients), r.Description, r.TotalTime)));
+        }
+
         if (dtos.Count < 5)
         {
             var remaining = 5 - dtos.Count;
-            var usedIds = results.Select(x => x.Recipe.Id).ToHashSet();
+            var usedIds = dtos.Select(x => x.Id).ToHashSet();
 
             var fallback = await _dbContext.DiscoveryRecipes
                 .Where(r => !usedIds.Contains(r.Id) && !assignedIds.Contains(r.Id))
+                .Where(r => !_dbContext.Recipes.Any(recipe => recipe.Id == r.Id && recipe.CookedSuppressed))
                 .OrderBy(r => r.LastCookedDate == null ? 0 : 1)
                 .ThenBy(r => r.LastCookedDate)
                 .ThenByDescending(r => r.VoteCount)
+                .ThenBy(r => r.Id)
                 .Take(remaining)
                 .ToListAsync();
 

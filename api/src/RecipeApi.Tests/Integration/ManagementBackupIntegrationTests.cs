@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.EntityFrameworkCore;
 using RecipeApi.Data;
 using RecipeApi.Infrastructure;
 using RecipeApi.Models;
@@ -32,6 +33,53 @@ public class ManagementBackupIntegrationTests : IAsyncLifetime
     {
         _scope.Dispose();
         await _factory.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task HistoryRestore_RebuildsAffinityFromCurrentVotesAndCookedEvents()
+    {
+        var recipe = new Recipe { Name = "Restored supper", IsReady = true, CuisineType = "Italian", ImageCount = 1 };
+        _db.Recipes.Add(recipe);
+        _db.CalendarEvents.Add(new CalendarEvent { RecipeId = recipe.Id, Date = new(2026, 10, 1), Status = CalendarEventStatus.Cooked });
+        _db.RecipeSearchAffinityFacts.Add(new RecipeSearchAffinityFact { RecipeId = recipe.Id, Affinity = 8, LiveVoteContribution = 7 });
+        await _db.SaveChangesAsync();
+        await _management.BackupAsync();
+        await _management.RestoreAsync();
+        var fact = await _db.RecipeSearchAffinityFacts.SingleAsync(x => x.RecipeId == recipe.Id);
+        Assert.Equal(1, fact.Affinity);
+        Assert.Equal(0, fact.LiveVoteContribution);
+        Assert.Equal(new DateOnly(2026, 10, 1), fact.LastCookedOn);
+    }
+
+    [Fact]
+    public async Task WeeklyInterest_BackupExplicitEmptyDoesNotResurrectRemovedHistory()
+    {
+        var recipe = new Recipe { Name = "History supper", ImageCount = 1 };
+        _db.Recipes.Add(recipe);
+        _db.WeeklyHouseholdInterests.Add(new WeeklyHouseholdInterest
+        {
+            RecipeId = recipe.Id, WeekStartDate = new(2026, 10, 5), PositiveCount = 2,
+            CloseId = Guid.NewGuid(), CapturedAt = DateTimeOffset.UtcNow
+        });
+        await _db.SaveChangesAsync();
+        await _management.BackupAsync();
+        var path = Path.Combine(_scope.ServiceProvider.GetRequiredService<DataRootResolver>().Root, "weekly-household-interest.json");
+        Assert.True(File.Exists(path));
+        var snapshot = await File.ReadAllTextAsync(path);
+        Assert.DoesNotContain("familyMember", snapshot, StringComparison.OrdinalIgnoreCase);
+        _db.WeeklyHouseholdInterests.RemoveRange(_db.WeeklyHouseholdInterests);
+        await _db.SaveChangesAsync();
+        await _management.RestoreAsync();
+        Assert.Equal(2, Assert.Single(_db.WeeklyHouseholdInterests).PositiveCount);
+        _db.WeeklyHouseholdInterests.RemoveRange(_db.WeeklyHouseholdInterests);
+        await _db.SaveChangesAsync();
+        await _management.BackupAsync();
+        _db.WeeklyHouseholdInterests.Add(new WeeklyHouseholdInterest { RecipeId = recipe.Id, WeekStartDate = new(2026, 10, 5), PositiveCount = 9 });
+        await _db.SaveChangesAsync();
+        await _management.RestoreAsync();
+        Assert.Empty(_db.WeeklyHouseholdInterests);
+        await _management.RestoreAsync();
+        Assert.Empty(_db.WeeklyHouseholdInterests);
     }
 
     [Fact]
@@ -76,6 +124,32 @@ public class ManagementBackupIntegrationTests : IAsyncLifetime
 
         var store = _factory.Services.GetRequiredService<IRecipeStore>();
         Assert.False(await store.InfoExistsAsync(recipe.Id), $"recipe.info should NOT have been written for an unready recipe with no payload, but was found in store for {recipe.Id}");
+    }
+
+    [Fact]
+    public async Task HistoryBackup_PreservesUnavailableRecipeDependency_AndRotationIntent_OnRepeatedRestore()
+    {
+        var recipe = new Recipe { Name = "Unavailable supper", DeletedAt = DateTimeOffset.UtcNow,
+            RotationHumanOff = true, RotationSource = "Human", CookedSuppressed = true, SupperSuitable = false };
+        _db.Recipes.Add(recipe);
+        _db.WeeklyHouseholdInterests.Add(new WeeklyHouseholdInterest
+        { RecipeId = recipe.Id, WeekStartDate = new(2026, 10, 5), PositiveCount = 2, Selected = true });
+        await _db.SaveChangesAsync();
+        await _management.BackupAsync();
+        _db.WeeklyHouseholdInterests.RemoveRange(_db.WeeklyHouseholdInterests);
+        _db.Recipes.Remove(recipe);
+        await _db.SaveChangesAsync();
+        _db.ChangeTracker.Clear();
+        await _management.RestoreAsync();
+        await _management.RestoreAsync();
+        var restored = await _db.Recipes.IgnoreQueryFilters().SingleAsync(r => r.Id == recipe.Id);
+        Assert.NotNull(restored.DeletedAt);
+        Assert.False(restored.IsReady);
+        Assert.True(restored.RotationHumanOff);
+        Assert.Equal("Human", restored.RotationSource);
+        Assert.True(restored.CookedSuppressed);
+        Assert.False(restored.SupperSuitable);
+        Assert.Equal(2, (await _db.WeeklyHouseholdInterests.SingleAsync()).PositiveCount);
     }
 
     [Theory]

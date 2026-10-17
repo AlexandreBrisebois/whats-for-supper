@@ -239,6 +239,10 @@ try
     builder.Services.AddScoped<IWorkflowProcessor, VegetarianClassificationStatusProcessor>();
     builder.Services.AddScoped<IWorkflowProcessor, RecipeReadyProcessor>();
     builder.Services.AddScoped<IWorkflowProcessor, FinalizeOverdueMealsProcessor>();
+    builder.Services.AddSingleton<RecipeRotationOptions>();
+    builder.Services.AddSingleton<HistoricalInterestOptions>();
+    builder.Services.AddScoped<HistoricalInterestService>();
+    builder.Services.AddScoped<IWorkflowProcessor, ReconcileRecipeRotationProcessor>();
     builder.Services.AddScoped<IWorkflowProcessor, MaterializeRecipeSearchFiltersProcessor>();
     builder.Services.AddScoped<IWorkflowProcessor, CompleteRecipeImportReportProcessor>();
     builder.Services.AddScoped<IWorkflowProcessor, QueueRecipeSearchIndexProcessor>();
@@ -400,6 +404,8 @@ try
     // ── Build ─────────────────────────────────────────────────────────────────
     var app = builder.Build();
     _ = app.Services.GetRequiredService<DeploymentCalendar>();
+    _ = app.Services.GetRequiredService<RecipeRotationOptions>();
+    _ = app.Services.GetRequiredService<HistoricalInterestOptions>();
 
     Log.Information("DataRoot: {DataRoot}", app.Services.GetRequiredService<DataRootResolver>().Root.ToString());
     Log.Information("RecipesRoot: {RecipesRoot}", app.Services.GetRequiredService<RecipesRootResolver>().Root.ToString());

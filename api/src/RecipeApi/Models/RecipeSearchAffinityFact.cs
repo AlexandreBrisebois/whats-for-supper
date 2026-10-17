@@ -14,6 +14,9 @@ public class RecipeSearchAffinityFact
     [Column("affinity")]
     public int Affinity { get; set; }
 
+    [Column("live_vote_contribution")]
+    public int? LiveVoteContribution { get; set; }
+
     [Column("last_cooked_on")]
     public DateOnly? LastCookedOn { get; set; }
 

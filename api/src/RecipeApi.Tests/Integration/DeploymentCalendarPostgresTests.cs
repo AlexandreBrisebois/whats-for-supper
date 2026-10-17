@@ -397,7 +397,7 @@ public class DeploymentCalendarPostgresTests(ITestOutputHelper output)
         });
     }
 
-    private static void ConfigureEnvironment(ProcessStartInfo process, string apiUrl, string pwaUrl)
+    internal static void ConfigureEnvironment(ProcessStartInfo process, string apiUrl, string pwaUrl)
     {
         process.Environment["BASE_URL"] = apiUrl;
         process.Environment["CALENDAR_API_URL"] = apiUrl;
@@ -408,7 +408,7 @@ public class DeploymentCalendarPostgresTests(ITestOutputHelper output)
         process.Environment["TZ"] = "UTC";
     }
 
-    private static Task<TestWebApplicationFactory> CreateFactory(NpgsqlConnectionStringBuilder settings, string? browserOrigin = null, DeploymentCalendarIntegrationTests.CalendarClock? clock = null)
+    internal static Task<TestWebApplicationFactory> CreateFactory(NpgsqlConnectionStringBuilder settings, string? browserOrigin = null, DeploymentCalendarIntegrationTests.CalendarClock? clock = null)
     {
         var calendarClock = clock ?? new DeploymentCalendarIntegrationTests.CalendarClock();
         var calendarAvailable = 1;
@@ -550,14 +550,14 @@ public class DeploymentCalendarPostgresTests(ITestOutputHelper output)
         finally { await new NpgsqlCommand($"DROP DATABASE IF EXISTS {database} WITH (FORCE)", admin).ExecuteNonQueryAsync(); }
     }
 
-    private static string RepositoryRoot()
+    internal static string RepositoryRoot()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
         while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Taskfile.yml"))) directory = directory.Parent;
         return directory?.FullName ?? throw new DirectoryNotFoundException("Repository root");
     }
 
-    private static int FreePort()
+    internal static int FreePort()
     {
         using var listener = new TcpListener(IPAddress.Loopback, 0);
         listener.Start();

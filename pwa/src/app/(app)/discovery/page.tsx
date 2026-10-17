@@ -24,9 +24,13 @@ export default function DiscoveryPage() {
   const [matchCount, setMatchCount] = useState(0);
   const categoriesRef = useRef<string[]>([]);
   const categoryIndexRef = useRef(0);
+  const fetchGenerationRef = useRef(0);
   // Tracks the last fillTheGapVersion we already handled (prevents double-refetch
   // when recipes.length dep re-fires the effect after the stack loads).
   const lastHandledFillTheGapVersionRef = useRef(0);
+  const lastHandledAllSuggestionsVersionRef = useRef(
+    useDiscoveryStore.getState().allSuggestionsVersion
+  );
   // Tracks whether the initial stack has been committed to the store
   const stackIsLoadedRef = useRef(false);
   // Micro-badge: "Just planned ✓" shown when a card is removed from the visible top 4
@@ -34,9 +38,11 @@ export default function DiscoveryPage() {
   const justPlannedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchCategories = useCallback(async () => {
+    const generation = ++fetchGenerationRef.current;
     setIsLoading(true);
     try {
       const cats = await getCategories();
+      if (generation !== fetchGenerationRef.current) return;
       const resolvedCategories = PINNED_DISCOVERY_CATEGORY ? [PINNED_DISCOVERY_CATEGORY] : cats;
       categoriesRef.current = resolvedCategories;
       categoryIndexRef.current = 0;
@@ -45,6 +51,7 @@ export default function DiscoveryPage() {
       for (let i = 0; i < resolvedCategories.length; i++) {
         const categoryToLoad = resolvedCategories[i];
         const stack = await getDiscoveryStack(categoryToLoad);
+        if (generation !== fetchGenerationRef.current) return;
         if (stack.length > 0) {
           setActiveCategory(categoryToLoad);
           categoryIndexRef.current = i;
@@ -67,7 +74,7 @@ export default function DiscoveryPage() {
     } catch (error) {
       console.error('Failed to fetch discovery data', error);
     } finally {
-      setIsLoading(false);
+      if (generation === fetchGenerationRef.current) setIsLoading(false);
     }
   }, [setActiveCategory]);
 
@@ -75,10 +82,11 @@ export default function DiscoveryPage() {
     if (!_hasHydrated || !selectedFamilyMemberId) return;
 
     let ignore = false;
+    const generation = ++fetchGenerationRef.current;
     const initialize = async () => {
       try {
         const cats = await getCategories();
-        if (ignore) return;
+        if (ignore || generation !== fetchGenerationRef.current) return;
         const resolvedCategories = PINNED_DISCOVERY_CATEGORY ? [PINNED_DISCOVERY_CATEGORY] : cats;
         categoriesRef.current = resolvedCategories;
 
@@ -104,7 +112,7 @@ export default function DiscoveryPage() {
             const tryIndex = (resolvedIndex + i) % resolvedCategories.length;
             const categoryToLoad = resolvedCategories[tryIndex];
             const stack = await getDiscoveryStack(categoryToLoad);
-            if (ignore) break;
+            if (ignore || generation !== fetchGenerationRef.current) return;
             if (stack.length > 0) {
               categoryIndexRef.current = tryIndex;
               setActiveCategory(categoryToLoad);
@@ -128,13 +136,14 @@ export default function DiscoveryPage() {
       } catch (error) {
         console.error('Initial discovery fetch failed', error);
       } finally {
-        if (!ignore) setIsLoading(false);
+        if (!ignore && generation === fetchGenerationRef.current) setIsLoading(false);
       }
     };
 
     initialize();
     return () => {
       ignore = true;
+      fetchGenerationRef.current = generation + 1;
     };
     // activeCategory is intentionally NOT a dep — we read it from the store at call-time
     // inside initialize() to avoid re-triggering this effect when we call setActiveCategory.
@@ -148,6 +157,7 @@ export default function DiscoveryPage() {
   }, [recipes.length, setHasPendingCards]);
 
   const loadNextCategory = useCallback(async () => {
+    const generation = ++fetchGenerationRef.current;
     const cats = categoriesRef.current;
     const startIndex = categoryIndexRef.current;
 
@@ -159,6 +169,7 @@ export default function DiscoveryPage() {
         const nextIndex = (startIndex + i) % cats.length;
         const nextCategory = cats[nextIndex];
         const stack = await getDiscoveryStack(nextCategory);
+        if (generation !== fetchGenerationRef.current) return;
         if (stack.length > 0) {
           const mappedStack = stack.map((r) => ({
             ...r,
@@ -177,66 +188,84 @@ export default function DiscoveryPage() {
     } catch (error) {
       console.error('Failed to fetch next category stack', error);
     } finally {
-      setIsLoading(false);
+      if (generation === fetchGenerationRef.current) setIsLoading(false);
     }
   }, [setActiveCategory]);
 
   /**
    * Silent refetch of the current category stack triggered by fill-the-gap
    * invalidation SSE events. Diffs IDs against the current discoveryStack and
-   * removes any recipes that are no longer in the response (they were planned).
+   * reconciles recipes removed or restored by planning, history and rotation changes.
    * Does NOT flash a loading state — existing cards stay visible until the diff
    * is applied.
    *
    * Uses refs for categories/index so it never needs to be recreated and avoids
    * stale closure issues.
    */
-  const refetchCurrentCategory = useCallback(async () => {
-    const cats = categoriesRef.current;
-    const idx = categoryIndexRef.current;
-    if (cats.length === 0) return;
-    try {
-      const currentCategory = cats[idx];
-      const rawStack = await getDiscoveryStack(currentCategory);
-      const freshStack = rawStack.map((r) => ({
-        ...r,
-        imageUrl: getImageUrl(`/api/recipes/${r.id}/hero`),
-      }));
+  const voteRevisionRef = useRef(0);
+  const pendingVotesRef = useRef(new Set<string>());
 
-      const freshIds = new Set(freshStack.map((r) => r.id));
-      const currentStack = useDiscoveryStore.getState().discoveryStack;
-
-      // Determine which IDs were removed and whether any were in the visible top 4
-      const visibleTop4Ids = new Set(currentStack.slice(-4).map((r) => r.id));
-      let removedFromVisible = false;
-
-      for (const recipe of currentStack) {
-        if (!freshIds.has(recipe.id)) {
-          if (visibleTop4Ids.has(recipe.id)) {
-            removedFromVisible = true;
-          }
-          useDiscoveryStore.getState().removeFromStack(recipe.id);
+  const refetchCurrentCategory = useCallback(
+    async function refreshCurrentCategory(plannedChange = false): Promise<void> {
+      const voteRevision = voteRevisionRef.current;
+      const generation = ++fetchGenerationRef.current;
+      const cats = categoriesRef.current;
+      const idx = categoryIndexRef.current;
+      if (cats.length === 0) return;
+      try {
+        const currentCategory = cats[idx];
+        const rawStack = await getDiscoveryStack(currentCategory);
+        if (generation !== fetchGenerationRef.current) return;
+        if (voteRevision !== voteRevisionRef.current) {
+          void refreshCurrentCategory(plannedChange);
+          return;
         }
-      }
+        const freshStack = rawStack
+          .filter((r) => !pendingVotesRef.current.has(r.id))
+          .map((r) => ({
+            ...r,
+            imageUrl: getImageUrl(`/api/recipes/${r.id}/hero`),
+          }));
 
-      // If SSE-driven removals emptied the category, advance to the next one
-      if (useDiscoveryStore.getState().discoveryStack.length === 0) {
-        loadNextCategory();
-        return;
-      }
+        const freshIds = new Set(freshStack.map((r) => r.id));
+        const currentStack = useDiscoveryStore.getState().discoveryStack;
 
-      // Show micro-badge if any visible card was removed
-      if (removedFromVisible) {
-        setShowJustPlannedBadge(true);
-        if (justPlannedTimerRef.current) clearTimeout(justPlannedTimerRef.current);
-        justPlannedTimerRef.current = setTimeout(() => {
-          setShowJustPlannedBadge(false);
-        }, 2000);
+        // Determine which IDs were removed and whether any were in the visible top 4
+        const visibleTop4Ids = new Set(currentStack.slice(0, 4).map((r) => r.id));
+        let removedFromVisible = false;
+
+        for (const recipe of currentStack) {
+          if (!freshIds.has(recipe.id)) {
+            if (visibleTop4Ids.has(recipe.id)) {
+              removedFromVisible = true;
+            }
+            useDiscoveryStore.getState().removeFromStack(recipe.id);
+          }
+        }
+
+        // A successful reconciliation can also restore cards or change historical ties.
+        useDiscoveryStore.getState().setStack(freshStack);
+
+        // If SSE-driven removals emptied the category, advance to the next one
+        if (useDiscoveryStore.getState().discoveryStack.length === 0) {
+          loadNextCategory();
+          return;
+        }
+
+        // Show micro-badge if any visible card was removed
+        if (removedFromVisible && plannedChange) {
+          setShowJustPlannedBadge(true);
+          if (justPlannedTimerRef.current) clearTimeout(justPlannedTimerRef.current);
+          justPlannedTimerRef.current = setTimeout(() => {
+            setShowJustPlannedBadge(false);
+          }, 2000);
+        }
+      } catch (error) {
+        console.error('Silent refetch of discovery category failed', error);
       }
-    } catch (error) {
-      console.error('Silent refetch of discovery category failed', error);
-    }
-  }, [loadNextCategory]); // loadNextCategory is stable (ref-based)
+    },
+    [loadNextCategory]
+  ); // loadNextCategory is stable (ref-based)
 
   // Subscribe to fill-the-gap invalidation signal from SSE.
   // recipes.length is included so the effect re-fires once the stack loads,
@@ -245,10 +274,13 @@ export default function DiscoveryPage() {
   // when recipes.length changes for other reasons (e.g. a swipe).
   useEffect(() => {
     if (fillTheGapVersion === 0) return; // skip initial mount
-    if (!stackIsLoadedRef.current || recipes.length === 0) return; // stack not ready yet
+    if (!stackIsLoadedRef.current) return; // stack not ready yet
     if (fillTheGapVersion <= lastHandledFillTheGapVersionRef.current) return; // already handled
+    const globalVersion = useDiscoveryStore.getState().allSuggestionsVersion;
+    const plannedChange = globalVersion === lastHandledAllSuggestionsVersionRef.current;
+    lastHandledAllSuggestionsVersionRef.current = globalVersion;
     lastHandledFillTheGapVersionRef.current = fillTheGapVersion;
-    refetchCurrentCategory();
+    refetchCurrentCategory(plannedChange);
   }, [fillTheGapVersion, refetchCurrentCategory, recipes.length]);
 
   // Cleanup timer on unmount
@@ -259,6 +291,8 @@ export default function DiscoveryPage() {
   }, []);
 
   const handleSwipeRight = (recipeId: string) => {
+    ++voteRevisionRef.current;
+    pendingVotesRef.current.add(recipeId);
     // Optimistic Update
     const recipe = recipes.find((r) => r.id === recipeId);
     console.log('handleSwipeRight:', {
@@ -276,10 +310,16 @@ export default function DiscoveryPage() {
     }
 
     // Background Vote
-    submitVote(recipeId, 1).catch((error) => {
-      console.error('Failed to submit like vote', error);
-      // Optional: Re-insert or show toast
-    });
+    submitVote(recipeId, 1)
+      .then(() => {
+        pendingVotesRef.current.delete(recipeId);
+        ++voteRevisionRef.current;
+      })
+      .catch((error) => {
+        pendingVotesRef.current.delete(recipeId);
+        console.error('Failed to submit like vote', error);
+        refetchCurrentCategory();
+      });
 
     if (updatedRecipes.length === 0) {
       loadNextCategory();
@@ -287,14 +327,23 @@ export default function DiscoveryPage() {
   };
 
   const handleSwipeLeft = (recipeId: string) => {
+    ++voteRevisionRef.current;
+    pendingVotesRef.current.add(recipeId);
     // Optimistic Update
     const updatedRecipes = recipes.filter((r) => r.id !== recipeId);
     useDiscoveryStore.getState().setStack(updatedRecipes);
 
     // Background Vote
-    submitVote(recipeId, 2).catch((error) => {
-      console.error('Failed to submit dislike vote', error);
-    });
+    submitVote(recipeId, 2)
+      .then(() => {
+        pendingVotesRef.current.delete(recipeId);
+        ++voteRevisionRef.current;
+      })
+      .catch((error) => {
+        pendingVotesRef.current.delete(recipeId);
+        console.error('Failed to submit dislike vote', error);
+        refetchCurrentCategory();
+      });
 
     if (updatedRecipes.length === 0) {
       loadNextCategory();

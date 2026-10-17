@@ -10,6 +10,10 @@ services:
     restart: unless-stopped
     environment:
       Calendar__TimeZone: ${Calendar__TimeZone:-UTC}
+      HISTORICAL_INTEREST_WEEKS: ${HISTORICAL_INTEREST_WEEKS:-4}
+      HISTORICAL_INTEREST_ENABLED: ${HISTORICAL_INTEREST_ENABLED:-true}
+      COOKED_COOLDOWN_WEEKS: ${COOKED_COOLDOWN_WEEKS:-4}
+      DREAMING_ROTATION_ENABLED: ${DREAMING_ROTATION_ENABLED:-true}
 
       POSTGRES_CONNECTION_STRING: ${POSTGRES_CONNECTION_STRING:-postgres://recipe_app:secure_dev_password@postgres:5432/recipe_app_db}
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}

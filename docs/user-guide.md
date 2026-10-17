@@ -66,6 +66,14 @@ Swipe through recipe cards like a family vote. Heart the ones you love, pass on 
 
 When enough family members like the same recipe, it rises to the top of the planner suggestions. No group chat needed.
 
+You can vote before voting is opened; opening keeps those votes. Closing saves positive family totals for that week, then clears the working votes for the next round. Individual votes and passes are not kept in history. When you revote a week, only recipes voted on again change their saved totals.
+
+**Quick Find** and **Quick Replace** show current family likes first, then liked recipes left unselected during the previous four complete weeks, then other suggestions—up to five different recipes. Elsewhere, old unselected likes break ties without replacing search relevance, ratings, or cooking recency. **Search Library** remains available when suggestions are empty and can still find recipes outside Discovery.
+
+A recipe already planned for the current calendar week leaves Discovery immediately. Dreaming periodically pauses recently cooked recipes and returns eligible ones after they age out. The default cutoff is four complete calendar weeks before the current Monday, including that cutoff date; return waits for a successful Dreaming run.
+
+Turning **Ask the Family** off keeps a recipe off until you turn it on. Turning it on returns an eligible recipe immediately, but Dreaming may pause it again if recently cooked. Select **Supper** in the recipe's meal types to qualify it for supper voting, including lunch or breakfast recipes your household eats for supper. These controls do not remove recipes from your library.
+
 Discovery saves you from the "I don't know, what do *you* want?" loop that ends in cereal.
 
 ---

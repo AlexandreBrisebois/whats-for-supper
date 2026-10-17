@@ -30,6 +30,8 @@ public class RecipeReadyProcessor(
 
         var recipeId = idProp.GetGuid();
 
+        await using var transaction = await RecipeRotation.LockAsync(db, recipeId, ct);
+
         var recipe = await db.Recipes.FindAsync([recipeId], ct);
         if (recipe is null)
         {
@@ -39,7 +41,7 @@ public class RecipeReadyProcessor(
 
         // If already finalized, this is a no-op to avoid unnecessary DB writes and 
         // to maintain the integrity of UpdatedAt (fixes integration tests).
-        if (recipe.IsReady && recipe.IsDiscoverable)
+        if (recipe.IsReady)
         {
             // Repair metadata if an earlier attempt committed the DB before its file write failed.
             await RecordPdfReadinessAsync(recipeId, ct);
@@ -47,11 +49,13 @@ public class RecipeReadyProcessor(
             return new { Status = "AlreadyReady", RecipeId = recipeId };
         }
 
-        recipe.IsDiscoverable = true;
+        recipe.IsDiscoverable = RecipeRotation.Suitable(recipe) && !recipe.RotationHumanOff && !recipe.CookedSuppressed;
+        if (!recipe.RotationHumanOff) recipe.RotationSource = "AI";
         recipe.IsReady = true;
         recipe.UpdatedAt = DateTimeOffset.UtcNow;
 
         await db.SaveChangesAsync(ct);
+        if (transaction is not null) await transaction.CommitAsync(ct);
         await RecordPdfReadinessAsync(recipeId, ct);
 
         logger.LogInformation("Recipe {RecipeId} marked as READY and DISCOVERABLE", recipeId);

@@ -55,6 +55,18 @@ public class Recipe
     [Column("is_discoverable")]
     public bool IsDiscoverable { get; set; } = false;
 
+    [Column("rotation_human_off")]
+    public bool RotationHumanOff { get; set; }
+
+    [Column("rotation_source")]
+    public string RotationSource { get; set; } = "Unknown";
+
+    [Column("cooked_suppressed")]
+    public bool CookedSuppressed { get; set; }
+
+    [Column("supper_suitable")]
+    public bool? SupperSuitable { get; set; }
+
     [Column("is_ready")]
     public bool IsReady { get; set; } = false;
 

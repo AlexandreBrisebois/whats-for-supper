@@ -24,6 +24,12 @@ tasks:
     payload:
       workflowId: search-reconciliation
 
+  - name: reconcile-recipe-rotation
+    processor: ReconcileRecipeRotation
+    depends_on:
+      - finalize-overdue-meals
+    payload: {}
+
   - name: materialize-recipe-search-filters
     processor: MaterializeRecipeSearchFilters
     depends_on:
@@ -38,6 +44,7 @@ tasks:
       - maintenance
       - finalize-overdue-meals
       - reconcile-search
+      - reconcile-recipe-rotation
       - materialize-recipe-search-filters
     payload: {}
 

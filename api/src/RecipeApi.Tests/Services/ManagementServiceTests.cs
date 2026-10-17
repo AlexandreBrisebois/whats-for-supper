@@ -38,6 +38,28 @@ public class ManagementServiceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task WeeklyInterest_DemoRestoresHistoryAndInvalidatesOldRound()
+    {
+        var recipe = new Recipe { Name = "Demo interest" };
+        _db.Recipes.Add(recipe);
+        var row = new WeeklyHouseholdInterest { RecipeId = recipe.Id, WeekStartDate = new(2026, 10, 5), PositiveCount = 3 };
+        _db.WeeklyHouseholdInterests.Add(row);
+        var state = new VotingRoundState();
+        _db.VotingRoundStates.Add(state);
+        await _db.SaveChangesAsync();
+        var oldRound = state.RoundId;
+        await _service.CaptureDemoStateAsync();
+        row.PositiveCount = 8;
+        await _db.SaveChangesAsync();
+        await _service.RestoreDemoStateAsync();
+        Assert.Equal(3, (await _db.WeeklyHouseholdInterests.SingleAsync()).PositiveCount);
+        Assert.NotEqual(oldRound, (await _db.VotingRoundStates.SingleAsync()).RoundId);
+        File.Delete(Path.Combine(DemoRoot, "weekly-household-interest.json"));
+        await _service.RestoreDemoStateAsync();
+        Assert.Empty(_db.WeeklyHouseholdInterests);
+    }
+
+    [Fact]
     public async Task Retained_pending_pdf_restores_metadata_without_becoming_ready()
     {
         var id = Guid.NewGuid();

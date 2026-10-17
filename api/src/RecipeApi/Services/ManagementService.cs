@@ -19,13 +19,14 @@ public record DreamingReportResult(string Path, int FailedWorkflows, int StuckWo
 
 public record DemoStateResult(string Message, int FamilyMembers, int Recipes, int SearchDocuments);
 
-public class ManagementService(
+public partial class ManagementService(
     RecipeDbContext db,
     IRecipeStore recipeStore,
     RecipesRootResolver recipesRoot,
     DataRootResolver dataRoot,
     IClock clock,
-    ILogger<ManagementService> logger)
+    ILogger<ManagementService> logger,
+    IScheduleEventPublisher? publisher = null)
 {
     private static readonly HashSet<string> RetiredRecipeBackupFields = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -53,12 +54,16 @@ public class ManagementService(
 
     public async Task<object> BackupAsync()
     {
+        await using var snapshotTransaction = await VotingBoundary.BeginAsync(db);
+        if (db.Database.IsRelational())
+            await db.Database.ExecuteSqlRawAsync("LOCK TABLE recipes IN SHARE MODE");
         // 1. Merge Family Members (Append only)
         var dbMembers = await db.FamilyMembers.ToListAsync();
         await MergeFamilyMembersAsync(dbMembers);
 
         // 2. Backup Recipes (Update notes/rating or create missing)
-        var recipes = await db.Recipes.ToListAsync();
+        var historyRecipeIds = await db.WeeklyHouseholdInterests.Select(h => h.RecipeId).Distinct().ToArrayAsync();
+        var recipes = await db.Recipes.IgnoreQueryFilters().AsNoTracking().Where(r => r.DeletedAt == null || historyRecipeIds.Contains(r.Id)).ToListAsync();
         int backedUpCount = 0;
         foreach (var recipe in recipes)
         {
@@ -66,7 +71,7 @@ public class ManagementService(
             // Skip if recipe is not ready and has no payload worth persisting
             var isReady = (!string.IsNullOrEmpty(recipe.Name) && recipe.ImageCount > 0)
                        || (!string.IsNullOrEmpty(recipe.Name) && recipe.IsSynthesized);
-            if (pdfSource is null && !isReady &&
+            if (!historyRecipeIds.Contains(recipe.Id) && pdfSource is null && !isReady &&
                 string.IsNullOrEmpty(recipe.RawMetadata) &&
                 string.IsNullOrEmpty(recipe.Notes) &&
                 recipe.Rating == RecipeRating.Unknown)
@@ -78,13 +83,19 @@ public class ManagementService(
             var existing = await recipeStore.ReadInfoAsync(recipe.Id);
             if (existing != null)
             {
-                if (pdfSource is not null) existing.IsReady = recipe.IsReady;
+                existing.RotationVersion = 1;
+                if (pdfSource is not null || historyRecipeIds.Contains(recipe.Id)) existing.IsReady = recipe.IsReady;
+                existing.DeletedAt = recipe.DeletedAt;
                 existing.Notes = recipe.Notes;
                 existing.Rating = recipe.Rating;
                 existing.Description = recipe.Description;
                 existing.Name = recipe.Name;
                 existing.Category = recipe.Category;
                 existing.IsDiscoverable = recipe.IsDiscoverable;
+                existing.RotationHumanOff = recipe.RotationHumanOff;
+                existing.RotationSource = recipe.RotationSource;
+                existing.CookedSuppressed = recipe.CookedSuppressed;
+                existing.SupperSuitable = recipe.SupperSuitable;
                 existing.IsVegetarian = recipe.IsVegetarian;
                 existing.TotalTime = recipe.TotalTime;
                 existing.LastCookedDate = recipe.LastCookedDate;
@@ -99,7 +110,8 @@ public class ManagementService(
             {
                 var info = new RecipeInfo
                 {
-                    IsReady = pdfSource is not null ? recipe.IsReady : null,
+                    IsReady = pdfSource is not null || historyRecipeIds.Contains(recipe.Id) ? recipe.IsReady : null,
+                    DeletedAt = recipe.DeletedAt,
                     Id = recipe.Id,
                     Notes = recipe.Notes,
                     Rating = recipe.Rating,
@@ -111,6 +123,11 @@ public class ManagementService(
                     CreatedAt = recipe.CreatedAt,
                     Category = recipe.Category,
                     IsDiscoverable = recipe.IsDiscoverable,
+                    RotationVersion = 1,
+                    RotationHumanOff = recipe.RotationHumanOff,
+                    RotationSource = recipe.RotationSource,
+                    CookedSuppressed = recipe.CookedSuppressed,
+                    SupperSuitable = recipe.SupperSuitable,
                     IsVegetarian = recipe.IsVegetarian,
                     TotalTime = recipe.TotalTime,
                     LastCookedDate = recipe.LastCookedDate,
@@ -135,6 +152,7 @@ public class ManagementService(
 
         // 3. Backup Weekly Plans
         var weeklyPlans = await db.WeeklyPlans.AsNoTracking().ToListAsync();
+        foreach (var plan in weeklyPlans) { plan.VotingRoundId = null; plan.LastClosedRoundId = null; }
         if (weeklyPlans.Count > 0)
         {
             var plansPath = Path.Combine(DataRoot, "weekly-plans.json");
@@ -241,6 +259,8 @@ public class ManagementService(
             importReports.Count,
             RecipeImportReportsBackupPath);
 
+        await ExportInterestAsync(Path.Combine(DataRoot, "weekly-household-interest.json"), CancellationToken.None, boundaryHeld: true);
+        if (snapshotTransaction is not null) await snapshotTransaction.CommitAsync();
         logger.LogInformation("Backed up {Count} recipes", backedUpCount);
         return new { Message = $"Updated/Created {backedUpCount} metadata files. Weekly plans and calendar events also backed up.", FilesProcessed = backedUpCount };
     }
@@ -248,14 +268,21 @@ public class ManagementService(
     public async Task<DemoStateResult> CaptureDemoStateAsync(CancellationToken ct = default)
     {
         Directory.CreateDirectory(DemoRoot);
+        await using var transaction = await VotingBoundary.BeginAsync(db, ct);
+        var round = await VotingBoundary.StateAsync(db, ct);
+        if (db.Database.IsRelational()) await db.Database.ExecuteSqlRawAsync("LOCK TABLE recipes IN SHARE MODE", ct);
 
         var familyMembers = await db.FamilyMembers.AsNoTracking().ToListAsync(ct);
-        var recipes = await db.Recipes.AsNoTracking().ToListAsync(ct);
+        var recipes = await db.Recipes.IgnoreQueryFilters().AsNoTracking().ToListAsync(ct);
         var searchDocuments = await db.RecipeSearchDocuments.AsNoTracking().ToListAsync(ct);
 
         await WriteJsonAsync(Path.Combine(DemoRoot, "family-members.json"), familyMembers, ct);
         await File.WriteAllTextAsync(Path.Combine(DemoRoot, "recipes.json"), SerializeRecipeBackups(recipes), ct);
         await WriteJsonAsync(Path.Combine(DemoRoot, "recipe-search-documents.json"), searchDocuments, ct);
+        var history = await db.WeeklyHouseholdInterests.AsNoTracking().ToListAsync(ct);
+        await WriteJsonAsync(Path.Combine(DemoRoot, "weekly-household-interest.json"), new InterestSnapshot(1, round.HistoryGeneration, history), ct);
+        // Capture ownership as context, never export a replayable operational token.
+        await WriteJsonAsync(Path.Combine(DemoRoot, "voting-round.json"), new { version = 1, round.WeekStartDate, capturedAt = clock.UtcNow }, ct);
 
         var demoRecipesRoot = Path.Combine(DemoRoot, "recipes");
         ReplaceDirectory(ActiveRecipesRoot, demoRecipesRoot);
@@ -272,6 +299,8 @@ public class ManagementService(
                 : 0
         };
         await WriteJsonAsync(Path.Combine(DemoRoot, "manifest.json"), manifest, ct);
+        await db.SaveChangesAsync(ct);
+        if (transaction is not null) await transaction.CommitAsync(ct);
 
         logger.LogInformation(
             "Captured demo state to {DemoRoot}: members={Members}, recipes={Recipes}, searchDocuments={SearchDocuments}",
@@ -290,16 +319,20 @@ public class ManagementService(
         var familyMembers = await ReadJsonAsync<List<FamilyMember>>(Path.Combine(DemoRoot, "family-members.json"), ct) ?? [];
         var recipes = await ReadJsonAsync<List<Recipe>>(Path.Combine(DemoRoot, "recipes.json"), ct) ?? [];
         var searchDocuments = await ReadJsonAsync<List<RecipeSearchDocument>>(Path.Combine(DemoRoot, "recipe-search-documents.json"), ct) ?? [];
+        var history = (await ReadInterestAsync(Path.Combine(DemoRoot, "weekly-household-interest.json"), true, ct))!;
+        if (history.Rows.Any(row => !recipes.Any(recipe => recipe.Id == row.RecipeId)))
+            throw new InvalidDataException("Demo aggregate history references a recipe outside its core snapshot.");
 
-        await using var transaction = await db.Database.BeginTransactionAsync(ct);
+        await using var transaction = await VotingBoundary.BeginAsync(db, ct);
         try
         {
+            db.WeeklyHouseholdInterests.RemoveRange(db.WeeklyHouseholdInterests);
             db.RecipeImportReports.RemoveRange(db.RecipeImportReports);
             db.RecipeVotes.RemoveRange(db.RecipeVotes);
             db.WeeklyPlans.RemoveRange(db.WeeklyPlans);
             db.CalendarEvents.RemoveRange(db.CalendarEvents);
             db.RecipeSearchDocuments.RemoveRange(db.RecipeSearchDocuments);
-            db.Recipes.RemoveRange(db.Recipes);
+            db.Recipes.RemoveRange(db.Recipes.IgnoreQueryFilters());
             db.FamilyMembers.RemoveRange(db.FamilyMembers);
 
             var staleWorkflows = await db.WorkflowInstances
@@ -314,16 +347,18 @@ public class ManagementService(
             db.Recipes.AddRange(recipes);
             db.RecipeSearchDocuments.AddRange(searchDocuments);
             await db.SaveChangesAsync(ct);
+            await ReplaceInterestAsync(history, ct);
 
-            await transaction.CommitAsync(ct);
+            ReplaceDirectory(Path.Combine(DemoRoot, "recipes"), ActiveRecipesRoot);
+            if (transaction is not null) await transaction.CommitAsync(ct);
         }
         catch
         {
-            await transaction.RollbackAsync(ct);
+            if (transaction is not null) await transaction.RollbackAsync(ct);
             throw;
         }
 
-        ReplaceDirectory(Path.Combine(DemoRoot, "recipes"), ActiveRecipesRoot);
+        if (publisher is not null) await publisher.PublishAllSuggestionsInvalidatedAsync();
 
         logger.LogInformation(
             "Restored demo state from {DemoRoot}: members={Members}, recipes={Recipes}, searchDocuments={SearchDocuments}",
@@ -811,6 +846,7 @@ public class ManagementService(
         var missingMemberIds = new HashSet<Guid>();
         var recipesToRestore = new List<Recipe>();
         var pendingPdfIds = new HashSet<Guid>();
+        var explicitReadiness = new Dictionary<Guid, bool>();
 
         foreach (var recipeId in recipeIds)
         {
@@ -836,10 +872,16 @@ public class ManagementService(
                     var info = await recipeStore.ReadInfoAsync(recipeId, ct);
                     if (info != null)
                     {
+                        if (info.RotationVersion is < 0 or > 1 ||
+                            (info.RotationVersion == 1 &&
+                             (info.RotationSource is not ("Unknown" or "Human" or "AI" or "Dreaming") ||
+                              (info.RotationHumanOff && info.RotationSource != "Human"))))
+                            throw new InvalidDataException($"Unsupported or inconsistent rotation metadata for {recipeId}.");
                         await using var pdfSource = await recipeStore.ReadSourcePdfAsync(recipeId, ct);
                         var pendingPdf = pdfSource is not null && info.IsReady != true;
                         if (pendingPdf) pendingPdfIds.Add(recipeId);
-                        if (info.Id != recipeId || (string.IsNullOrWhiteSpace(info.Name) && !pendingPdf))
+                        if (info.IsReady is { } ready) explicitReadiness[recipeId] = ready;
+                        if (info.Id != recipeId || (string.IsNullOrWhiteSpace(info.Name) && !pendingPdf && info.IsReady != false))
                             throw new InvalidDataException($"Recipe info for {recipeId} is missing its required current id or name.");
 
                         logger.LogDebug("Loaded recipe.info for {RecipeId}: name={Name}", recipeId, info.Name);
@@ -863,11 +905,16 @@ public class ManagementService(
                             CuisineType = info.CuisineType,
                             MealTypes = info.MealTypes,
                             IsDiscoverable = info.IsDiscoverable,
+                            RotationHumanOff = info.RotationVersion == 1 && info.RotationHumanOff,
+                            RotationSource = info.RotationVersion == 1 ? info.RotationSource : "Unknown",
+                            CookedSuppressed = info.RotationVersion == 1 && info.CookedSuppressed,
+                            SupperSuitable = info.RotationVersion == 1 ? info.SupperSuitable : null,
                             IsVegetarian = info.IsVegetarian,
                             TotalTime = info.TotalTime,
                             LastCookedDate = info.LastCookedDate,
+                            DeletedAt = info.DeletedAt,
                             SourceUrl = info.SourceUrl,
-                            IsReady = !pendingPdf
+                            IsReady = info.IsReady ?? !pendingPdf
                         };
                     }
                 }
@@ -962,6 +1009,7 @@ public class ManagementService(
         {
             try
             {
+                await using var rotationTransaction = await RecipeRotation.LockAsync(db, recipe.Id, ct);
                 var existing = await db.Recipes.IgnoreQueryFilters().FirstOrDefaultAsync(r => r.Id == recipe.Id, ct);
                 if (existing == null)
                 {
@@ -986,19 +1034,29 @@ public class ManagementService(
                     existing.IsSynthesized = recipe.IsSynthesized;
                     existing.Category = recipe.Category;
                     existing.IsDiscoverable = recipe.IsDiscoverable;
+                    existing.RotationHumanOff = recipe.RotationHumanOff;
+                    existing.RotationSource = recipe.RotationSource;
+                    existing.CookedSuppressed = recipe.CookedSuppressed;
+                    existing.SupperSuitable = recipe.SupperSuitable;
                     existing.IsVegetarian = recipe.IsVegetarian;
                     existing.LastCookedDate = recipe.LastCookedDate;
                     existing.SourceUrl = recipe.SourceUrl;
                     existing.CuisineType = recipe.CuisineType;
                     existing.MealTypes = recipe.MealTypes;
-                    existing.IsReady = !pendingPdfIds.Contains(recipe.Id);
+                    existing.IsReady = explicitReadiness.GetValueOrDefault(recipe.Id, !pendingPdfIds.Contains(recipe.Id));
+                    if (recipe.DeletedAt.HasValue) existing.DeletedAt = recipe.DeletedAt;
                     existing.UpdatedAt = DateTimeOffset.UtcNow;
                     result.RecipesUpdated++;
                 }
+                await db.SaveChangesAsync(ct);
+                if (rotationTransaction is not null) await rotationTransaction.CommitAsync(ct);
             }
             catch (Exception ex)
             {
                 logger.LogError(ex, "Error saving recipe {Id}", recipe.Id);
+                // A later SaveChanges must not retry this failed row outside its lock.
+                foreach (var entry in db.ChangeTracker.Entries<Recipe>().Where(e => e.Entity.Id == recipe.Id).ToList())
+                    entry.State = EntityState.Detached;
                 result.Errors++;
             }
         }
@@ -1262,6 +1320,7 @@ public class ManagementService(
 
         // 9. Backfill Finished Dish Indices from disk metadata
         result.FinishedDishIndicesBackfilled = await BackfillFinishedDishIndicesAsync(ct);
+        await RestoreInterestAsync(Path.Combine(DataRoot, "weekly-household-interest.json"), false, ct);
 
         logger.LogInformation("Restore complete - Added: {Added}, Updated: {Updated}, Skipped: {Skipped}, WeeklyPlans: {WeeklyPlans}, CalendarEvents: {CalendarEvents}, Backfilled: {Backfilled}, Errors: {Errors}",
             result.RecipesAdded, result.RecipesUpdated, result.RecipesSkipped, result.WeeklyPlansRestored, result.CalendarEventsRestored, result.FinishedDishIndicesBackfilled, result.Errors);

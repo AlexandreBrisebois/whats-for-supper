@@ -189,6 +189,7 @@ components:
       type: object
       required: [updatedAt, recipes, pagination]
       properties:
+        historyGeneration: { type: [string, 'null'], description: Explore ordering generation. Send on later pages; HTTP 409 requires restarting at page one. }
         updatedAt: { type: string, format: date-time }
         recipes:
           type: array
@@ -396,6 +397,10 @@ components:
       required: [weekOffset, locked, days, status, calendar, weekStartDate]
       properties:
         weekOffset: { type: integer }
+        votingRoundId:
+          type: [string, 'null']
+          format: uuid
+          description: Opaque operational round identity. Capture with this schedule and send unchanged when closing; retain it when retrying a lost close response.
         calendar: { $ref: '#/components/schemas/DeploymentCalendarContext' }
         weekStartDate:
           type: string
@@ -554,10 +559,13 @@ components:
           description: 'Parsed recipe instructions (string array or HowToStep objects)'
         notes: { type: [string, 'null'] }
         rating: { type: [integer, 'null'], minimum: 0, maximum: 3 }
-        isDiscoverable: { type: [boolean, 'null'] }
+        isDiscoverable:
+          type: [boolean, 'null']
+          description: Human OFF remains off until explicit ON. ON requires supper suitability and clears effective cooldown until the next successful Dreaming pass. Omitted/null preserves intent.
         cuisineType: { type: [string, 'null'] }
         mealTypes:
           type: [array, 'null']
+          description: Explicit household meal suitability. Including Supper qualifies this recipe for Supper Discovery; empty retains the existing Supper default.
           items:
             type: string
             enum: [Breakfast, Brunch, Snack, Lunch, Supper, Sides, Dessert, Appetizer, Beverage]
@@ -829,8 +837,8 @@ components:
       allOf:
         - $ref: '#/components/schemas/ScheduleStreamEvent'
         - type: object
-          required: [weekStartDate, weekOffset]
           properties:
+            allWeeks: { type: boolean, description: When true, refresh Discovery and suggestions for every planning week. Otherwise weekStartDate and weekOffset identify the affected week. }
             weekOffset: { type: integer }
             weekStartDate: { type: string, format: date, description: Absolute Monday; consumers map it before relative offset guards. }
 
@@ -1594,6 +1602,11 @@ paths:
       summary: List recipes
       description: Returns ready, non-soft-deleted recipes only. Pending imports are hidden until the recipe has a name and either at least one image or completed synthesis.
       parameters:
+        - name: historyGeneration
+          in: query
+          required: false
+          schema: { type: string }
+          description: Generation returned by the first Explore page. A changed history window/configuration or round returns 409; restart from page one. Omit only for page one. Later Explore pages require this token; older clients must restart or update.
         - name: page
           in: query
           schema: { type: integer, default: 1 }
@@ -1608,7 +1621,7 @@ paths:
             enum: [explore]
           description: |
             Sort order for recipes. When "explore" is specified, recipes are ordered by
-            lastCookedDate ASC NULLS FIRST (never-cooked first, then oldest-cooked first).
+            lastCookedDate ASC NULLS FIRST, then recent unselected household interest, creation time and stable identity.
             When absent, default ordering (newest-created first) is applied.
             Returns HTTP 400 for unrecognised values.
         - name: discoverableOnly
@@ -1635,6 +1648,15 @@ paths:
           schema: { type: string }
           description: Optional exact, case-insensitive source URL filter to find duplicate recipes.
       responses:
+        '409':
+          description: Explore history generation expired; restart from page one.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  code: { type: string }
         '200':
           description: OK (Not wrapped in data envelope)
           content:
@@ -2369,6 +2391,7 @@ paths:
   /api/schedule/voting/open:
     post:
       summary: Open voting for a week
+      description: Preserves early votes. Only one week can own the live round. Opening the same active week is idempotent; reopening a closed week creates a new identity returned by schedule reads.
       parameters:
         - name: weekOffset
           in: query
@@ -2379,6 +2402,8 @@ paths:
           schema: { type: string, format: date }
           description: Optional yyyy-MM-dd Monday anchoring all relative offsets and defer's next-week base. Omission captures the deployment current Monday (UTC by default). Literal source dates remain unchanged. Invalid or non-Monday references return 400 before work.
       responses:
+        '409':
+          description: Another week owns the operational round. Refresh the planner; no votes are moved or cleared.
         '400':
           description: Invalid or non-Monday referenceWeekStartDate; no mutation is performed.
         '200':
@@ -2408,7 +2433,13 @@ paths:
   /api/schedule/lock:
     post:
       summary: Lock schedule for a week
+      description: Atomically captures positive aggregate family history and clears working votes once. Retry the same votingRoundId after a lost response. Completed retries preserve later early votes. Tokenless legacy closes are accepted only for a first close or unambiguous already-closed outcome; reopened rounds require an identity and otherwise return 409.
       parameters:
+        - name: votingRoundId
+          in: query
+          required: false
+          schema: { type: string, format: uuid }
+          description: Identity captured from the target schedule. A stale or restored-away identity cannot close a new round.
         - name: weekOffset
           in: query
           schema: { type: integer, default: 0 }
@@ -2418,6 +2449,8 @@ paths:
           schema: { type: string, format: date }
           description: Optional yyyy-MM-dd Monday anchoring all relative offsets and defer's next-week base. Omission captures the deployment current Monday (UTC by default). Literal source dates remain unchanged. Invalid or non-Monday references return 400 before work.
       responses:
+        '409':
+          description: Conflicting week, stale round, or ambiguous legacy close. Refresh the planner before a new deliberate close; no history or votes are changed.
         '400':
           description: Invalid or non-Monday referenceWeekStartDate; no mutation is performed.
         '200':

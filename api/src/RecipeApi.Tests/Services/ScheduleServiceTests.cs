@@ -37,6 +37,96 @@ public class ScheduleServiceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task WeeklyInterest_RevoteReplacesTouchedRowsRemovesZeroAndPreservesUntouched()
+    {
+        var a = new Recipe { Id = Guid.NewGuid(), Name = "Touched" };
+        var b = new Recipe { Id = Guid.NewGuid(), Name = "Untouched" };
+        var c = new Recipe { Id = Guid.NewGuid(), Name = "Zero" };
+        _db.Recipes.AddRange(a, b, c);
+        foreach (var recipe in new[] { a, b, c })
+            _db.RecipeVotes.Add(new RecipeVote { RecipeId = recipe.Id, FamilyMemberId = _factory.DefaultFamilyMemberId, Vote = VoteType.Like });
+        await _db.SaveChangesAsync();
+        await _service.OpenVotingAsync(0);
+        var first = (await _service.GetScheduleAsync(0)).VotingRoundId;
+        await _service.LockScheduleAsync(0, votingRoundId: first);
+        var original = _db.WeeklyHouseholdInterests.Single(x => x.RecipeId == b.Id);
+        var originalClose = original.CloseId;
+        await _service.OpenVotingAsync(0);
+        var second = (await _service.GetScheduleAsync(0)).VotingRoundId;
+        Assert.NotEqual(first, second);
+        _db.RecipeVotes.AddRange(
+            new RecipeVote { RecipeId = a.Id, FamilyMemberId = _factory.DefaultFamilyMemberId, Vote = VoteType.Like },
+            new RecipeVote { RecipeId = c.Id, FamilyMemberId = _factory.DefaultFamilyMemberId, Vote = VoteType.Dislike });
+        await _db.SaveChangesAsync();
+        await _service.LockScheduleAsync(0, votingRoundId: first);
+        Assert.Equal(2, _db.RecipeVotes.Count());
+        await Assert.ThrowsAsync<VotingConflictException>(() => _service.LockScheduleAsync(0));
+        await _service.LockScheduleAsync(0, votingRoundId: second);
+        Assert.Equal(2, _db.WeeklyHouseholdInterests.Count());
+        Assert.Equal(1, _db.WeeklyHouseholdInterests.Single(x => x.RecipeId == a.Id).PositiveCount);
+        Assert.Equal(originalClose, original.CloseId);
+        Assert.DoesNotContain(_db.WeeklyHouseholdInterests, x => x.RecipeId == c.Id);
+        await _service.OpenVotingAsync(0);
+        await _service.LockScheduleAsync(0, votingRoundId: (await _service.GetScheduleAsync(0)).VotingRoundId);
+        Assert.Equal(2, _db.WeeklyHouseholdInterests.Count());
+    }
+
+    [Fact]
+    public async Task WeeklyInterest_ConflictingOpenPreservesTheActiveWeekAndVotes()
+    {
+        await _service.OpenVotingAsync(0);
+        var first = (await _service.GetScheduleAsync(0)).VotingRoundId;
+        await _service.OpenVotingAsync(0);
+        Assert.Equal(first, (await _service.GetScheduleAsync(0)).VotingRoundId);
+        await Assert.ThrowsAsync<VotingConflictException>(() => _service.OpenVotingAsync(1));
+        Assert.Single(_db.WeeklyPlans);
+    }
+
+    [Fact]
+    public async Task WeeklyInterest_CloseCapturesSelectedAndUnselectedPositiveTotals()
+    {
+        var selected = new Recipe { Id = Guid.NewGuid(), Name = "Selected" };
+        var overlooked = new Recipe { Id = Guid.NewGuid(), Name = "Overlooked" };
+        var passed = new Recipe { Id = Guid.NewGuid(), Name = "Passed" };
+        _db.Recipes.AddRange(selected, overlooked, passed);
+        foreach (var recipe in new[] { selected, overlooked, passed })
+            _db.RecipeVotes.Add(new RecipeVote { RecipeId = recipe.Id, FamilyMemberId = _factory.DefaultFamilyMemberId,
+                Vote = recipe == passed ? VoteType.Dislike : VoteType.Like });
+        _db.CalendarEvents.Add(new CalendarEvent { RecipeId = selected.Id, Date = new(2026, 10, 12) });
+        await _db.SaveChangesAsync();
+        await _service.OpenVotingAsync(0);
+        Assert.Equal(3, _db.RecipeVotes.Count());
+
+        await _service.LockScheduleAsync(0);
+
+        var history = _db.WeeklyHouseholdInterests.ToList();
+        Assert.Equal(2, history.Count);
+        Assert.True(history.Single(x => x.RecipeId == selected.Id).Selected);
+        Assert.False(history.Single(x => x.RecipeId == overlooked.Id).Selected);
+        Assert.All(history, row => { Assert.Equal(1, row.PositiveCount); Assert.Equal(new DateOnly(2026, 10, 12), row.WeekStartDate); });
+        Assert.Empty(_db.RecipeVotes);
+        Assert.Null(selected.LastCookedDate);
+    }
+
+    [Fact]
+    public async Task WeeklyInterest_CompletedCloseRetryPreservesSubsequentEarlyVotes()
+    {
+        await _service.OpenVotingAsync(0);
+        await _service.LockScheduleAsync(0);
+        var recipe = new Recipe { Id = Guid.NewGuid(), Name = "Next round" };
+        _db.Recipes.Add(recipe);
+        _db.RecipeVotes.Add(new RecipeVote
+        {
+            RecipeId = recipe.Id, FamilyMemberId = _factory.DefaultFamilyMemberId, Vote = VoteType.Like
+        });
+        await _db.SaveChangesAsync();
+
+        await _service.LockScheduleAsync(0);
+
+        Assert.Single(_db.RecipeVotes);
+    }
+
+    [Fact]
     public async Task TonightReplacement_GuardConflictHasNoPlanOrPublicationSideEffects()
     {
         var recipe = Guid.NewGuid();

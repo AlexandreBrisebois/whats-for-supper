@@ -50,6 +50,7 @@ function makeScheduleDays(days: Partial<UILocalScheduleDay>[] = []) {
   return {
     calendar,
     weekStartDate: '2025-01-06',
+    votingRoundId: null,
     weekOffset: 0,
     locked: false,
     status: 0,
@@ -68,6 +69,7 @@ beforeEach(() => {
   useWeekStore.setState({
     calendar,
     weekStartDate: '2025-01-06',
+    votingRoundId: null,
     weekOffset: 0,
     schedule: [],
     groceryItems: [],
@@ -87,6 +89,52 @@ beforeEach(() => {
 });
 
 describe('weekStore — assignment rollback', () => {
+  it.each(['closeVoting', 'lockWeek'] as const)(
+    'does not roll back a newly viewed week after failed %s',
+    async (action) => {
+      let rejectClose!: (reason: Error) => void;
+      vi.mocked(lockSchedule).mockImplementationOnce(
+        () =>
+          new Promise((_, reject) => {
+            rejectClose = reject;
+          })
+      );
+      vi.mocked(getSchedule).mockResolvedValue(makeScheduleDays([]));
+      const pending = useWeekStore.getState()[action]();
+      await Promise.resolve();
+      useWeekStore.setState({ weekOffset: 1, weekStartDate: '2025-01-13', status: 1 });
+      rejectClose(new Error('Lost old response'));
+      await expect(pending).rejects.toThrow();
+      expect(useWeekStore.getState().status).toBe(1);
+      expect(useWeekStore.getState().weekStartDate).toBe('2025-01-13');
+    }
+  );
+
+  it('recovers a committed close after publication or response failure', async () => {
+    const data = makeScheduleDays([]);
+    data.status = 1;
+    data.votingRoundId = '01111111-1111-4111-8111-111111111111';
+    vi.mocked(getSchedule)
+      .mockResolvedValueOnce(data)
+      .mockResolvedValue({ ...data, status: 2, locked: true });
+    vi.mocked(getSmartDefaults).mockResolvedValue(null);
+    vi.mocked(lockSchedule).mockRejectedValueOnce(new Error('Lost response'));
+    await useWeekStore.getState().init(0);
+    await expect(useWeekStore.getState().closeVoting()).resolves.toBeUndefined();
+    expect(useWeekStore.getState().status).toBe(2);
+  });
+
+  it('closes using the round identity captured with the loaded schedule', async () => {
+    const data = makeScheduleDays([]);
+    data.status = 1;
+    data.votingRoundId = '01111111-1111-4111-8111-111111111111';
+    vi.mocked(getSchedule).mockResolvedValue(data);
+    vi.mocked(getSmartDefaults).mockResolvedValue(null);
+    await useWeekStore.getState().init(0);
+    await useWeekStore.getState().closeVoting();
+    expect(lockSchedule).toHaveBeenCalledWith(0, '2025-01-06', data.votingRoundId);
+  });
+
   it('restores the optimistic slot when assignment fails', async () => {
     const existingDay = makeDay({ _uiId: 'existing-day' });
     useWeekStore.setState({ schedule: [existingDay] });

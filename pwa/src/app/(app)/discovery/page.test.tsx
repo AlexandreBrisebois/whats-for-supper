@@ -100,6 +100,7 @@ describe('DiscoveryPage card order', () => {
       activeCategory: null,
       hasPendingCards: false,
       fillTheGapVersion: 0,
+      allSuggestionsVersion: 0,
     });
   });
 
@@ -125,6 +126,47 @@ describe('DiscoveryPage card order', () => {
     await waitFor(() =>
       expect(mocks.submitVote).toHaveBeenLastCalledWith(MOCK_IDS.RECIPE_CHICKEN, 1)
     );
+  });
+
+  it('removes cooled-down cards without claiming they were just planned', async () => {
+    render(<DiscoveryPage />);
+    await screen.findByText('Oldest ranked recipe');
+    mocks.getDiscoveryStack.mockResolvedValue(
+      ORDERED_RECIPES.filter((r) => r.id !== MOCK_IDS.RECIPE_GNOCCHI)
+    );
+    await act(async () => useDiscoveryStore.getState().invalidateAllSuggestions());
+    await waitFor(() => expect(screen.queryByText('Third ranked recipe')).not.toBeInTheDocument());
+    expect(screen.queryByText(/Just planned/)).not.toBeInTheDocument();
+  });
+
+  it('restores cards into an empty stack after global rotation invalidation', async () => {
+    mocks.getCategories.mockResolvedValue([]);
+    mocks.getDiscoveryStack.mockResolvedValue([]);
+    render(<DiscoveryPage />);
+    await waitFor(() => expect(mocks.getDiscoveryStack).toHaveBeenCalled());
+    mocks.getDiscoveryStack.mockResolvedValue(ORDERED_RECIPES);
+    await act(async () => useDiscoveryStore.getState().invalidateAllSuggestions());
+    await screen.findByText('Oldest ranked recipe');
+    expect(screen.queryByText(/Just planned/)).not.toBeInTheDocument();
+  });
+
+  it('does not resurrect a swiped card from an older invalidation response', async () => {
+    render(<DiscoveryPage />);
+    await screen.findByText('Oldest ranked recipe');
+    let resolveRefresh!: (value: typeof ORDERED_RECIPES) => void;
+    mocks.getDiscoveryStack.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveRefresh = resolve;
+        })
+    );
+    await act(async () => useDiscoveryStore.getState().invalidateAllSuggestions());
+    await waitFor(() => expect(mocks.getDiscoveryStack).toHaveBeenCalledTimes(2));
+    await act(async () => fireEvent.click(screen.getByTestId('like-button')));
+    mocks.getDiscoveryStack.mockResolvedValue(ORDERED_RECIPES.slice(1));
+    await act(async () => resolveRefresh(ORDERED_RECIPES));
+    expect(screen.queryByText('Oldest ranked recipe')).not.toBeInTheDocument();
+    expect(screen.getByText('Second ranked recipe')).toBeVisible();
   });
 
   it('routes Dislike to the first server recipe, then the original second recipe', async () => {

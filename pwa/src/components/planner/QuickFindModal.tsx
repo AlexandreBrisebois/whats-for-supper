@@ -36,7 +36,9 @@ export function QuickFindModal({
   // BS-7: watch for fill-the-gap invalidation signals from SSE.
   // When another client assigns a recipe, the version increments and we silently
   // refetch so already-planned recipes disappear from the list.
-  const fillTheGapVersion = useDiscoveryStore((s) => s.fillTheGapVersions[weekOffset] ?? 0);
+  const fillTheGapVersion = useDiscoveryStore(
+    (s) => (s.fillTheGapVersions[weekOffset] ?? 0) + (s.allSuggestionsVersion ?? 0)
+  );
 
   // Track whether the initial fetch has completed so the invalidation effect
   // does not fire a redundant second fetch on mount (version 0 is the initial value).
@@ -255,7 +257,16 @@ export function QuickFindModal({
               </AnimatePresence>
             </div>
           ) : (
-            <p className="text-center py-10 text-charcoal/40">No recipes found.</p>
+            <div className="py-10 text-center">
+              <p className="mb-5 text-charcoal/40">No recipes found.</p>
+              <Link
+                href={searchUrl}
+                data-testid="quick-find-search-library"
+                className="inline-flex min-h-12 items-center justify-center rounded-2xl bg-ochre px-6 font-bold text-white"
+              >
+                Search Library
+              </Link>
+            </div>
           )}
 
           <div className="grid grid-cols-2 gap-4">

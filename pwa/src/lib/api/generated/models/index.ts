@@ -2227,6 +2227,9 @@ export function deserializeIntoRecipeListResponse(
   recipeListResponse: Partial<RecipeListResponse> | undefined = {}
 ): Record<string, (node: ParseNode) => void> {
   return {
+    historyGeneration: (n) => {
+      recipeListResponse.historyGeneration = n.getStringValue();
+    },
     pagination: (n) => {
       recipeListResponse.pagination = n.getObjectValue<PaginationDto>(
         createPaginationDtoFromDiscriminatorValue
@@ -2816,6 +2819,9 @@ export function deserializeIntoScheduleDays(
     },
     status: (n) => {
       scheduleDays.status = n.getNumberValue();
+    },
+    votingRoundId: (n) => {
+      scheduleDays.votingRoundId = n.getGuidValue();
     },
     weekOffset: (n) => {
       scheduleDays.weekOffset = n.getNumberValue();
@@ -3967,6 +3973,10 @@ export interface RecipeLibrarySummaryDto_ratings extends AdditionalDataHolder, P
 }
 export interface RecipeListResponse extends AdditionalDataHolder, Parsable {
   /**
+   * Explore ordering generation. Send on later pages; HTTP 409 requires restarting at page one.
+   */
+  historyGeneration?: string | null;
+  /**
    * The pagination property
    */
   pagination?: PaginationDto | null;
@@ -4400,6 +4410,10 @@ export interface ScheduleDays extends AdditionalDataHolder, Parsable {
    * 0: Draft, 1: VotingOpen, 2: Locked
    */
   status?: number | null;
+  /**
+   * Opaque operational round identity. Capture with this schedule and send unchanged when closing; retain it when retrying a lost close response.
+   */
+  votingRoundId?: Guid | null;
   /**
    * The weekOffset property
    */
@@ -5446,6 +5460,7 @@ export function serializeRecipeListResponse(
   if (!recipeListResponse || isSerializingDerivedType) {
     return;
   }
+  writer.writeStringValue('historyGeneration', recipeListResponse.historyGeneration);
   writer.writeObjectValue<PaginationDto>(
     'pagination',
     recipeListResponse.pagination,
@@ -6004,6 +6019,7 @@ export function serializeScheduleDays(
   );
   writer.writeBooleanValue('locked', scheduleDays.locked);
   writer.writeNumberValue('status', scheduleDays.status);
+  writer.writeGuidValue('votingRoundId', scheduleDays.votingRoundId);
   writer.writeNumberValue('weekOffset', scheduleDays.weekOffset);
   writer.writeDateOnlyValue('weekStartDate', scheduleDays.weekStartDate);
   writer.writeAdditionalData(scheduleDays.additionalData);
@@ -6563,11 +6579,11 @@ export interface UpdateRecipeDto extends AdditionalDataHolder, Parsable {
    */
   ingredients?: string[] | null;
   /**
-   * The isDiscoverable property
+   * Human OFF remains off until explicit ON. ON requires supper suitability and clears effective cooldown until the next successful Dreaming pass. Omitted/null preserves intent.
    */
   isDiscoverable?: boolean | null;
   /**
-   * The mealTypes property
+   * Explicit household meal suitability. Including Supper qualifies this recipe for Supper Discovery; empty retains the existing Supper default.
    */
   mealTypes?: UpdateRecipeDto_mealTypes[] | null;
   /**

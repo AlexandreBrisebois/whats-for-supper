@@ -11,6 +11,8 @@ interface DiscoveryState {
    * BS-7: was missing from the original stub.
    */
   fillTheGapVersion: number;
+  allSuggestionsVersion: number;
+  invalidateAllSuggestions: () => void;
   /** Per-week invalidation versions for week-scoped Quick Find refreshes. */
   fillTheGapVersions: Record<number, number>;
   invalidateFillTheGap: (weekOffset: number) => void;
@@ -58,6 +60,12 @@ export const useDiscoveryStore = create<DiscoveryState>((set, get) => ({
   hasPendingCards: false,
   setHasPendingCards: (hasCards) => set({ hasPendingCards: hasCards }),
   fillTheGapVersion: 0,
+  allSuggestionsVersion: 0,
+  invalidateAllSuggestions: () =>
+    set((s) => ({
+      allSuggestionsVersion: s.allSuggestionsVersion + 1,
+      fillTheGapVersion: s.fillTheGapVersion + 1,
+    })),
   fillTheGapVersions: {},
   invalidateFillTheGap: (weekOffset) =>
     set((s) => ({

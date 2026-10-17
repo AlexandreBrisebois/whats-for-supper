@@ -20,11 +20,12 @@ public class ScheduleController(ScheduleService scheduleService) : ControllerBas
     }
 
     [HttpPost("lock")]
-    public async Task<IActionResult> LockSchedule([FromQuery] int weekOffset = 0, [FromQuery] string? referenceWeekStartDate = null)
+    public async Task<IActionResult> LockSchedule([FromQuery] int weekOffset = 0, [FromQuery] string? referenceWeekStartDate = null, [FromQuery] Guid? votingRoundId = null)
     {
         if (!TryReadReference(referenceWeekStartDate, out var reference))
             return BadRequest(new { message = "referenceWeekStartDate must be a yyyy-MM-dd Monday." });
-        await _scheduleService.LockScheduleAsync(weekOffset, GetConnectionId(), reference);
+        try { await _scheduleService.LockScheduleAsync(weekOffset, GetConnectionId(), reference, votingRoundId); }
+        catch (VotingConflictException ex) { return Conflict(new { message = ex.Message }); }
         return Ok(new { message = "Schedule locked" });
     }
 
@@ -129,7 +130,8 @@ public class ScheduleController(ScheduleService scheduleService) : ControllerBas
     {
         if (!TryReadReference(referenceWeekStartDate, out var reference))
             return BadRequest(new { message = "referenceWeekStartDate must be a yyyy-MM-dd Monday." });
-        await _scheduleService.OpenVotingAsync(weekOffset, GetConnectionId(), reference);
+        try { await _scheduleService.OpenVotingAsync(weekOffset, GetConnectionId(), reference); }
+        catch (VotingConflictException ex) { return Conflict(new { message = ex.Message }); }
         return Ok(new { message = "Voting opened" });
     }
 

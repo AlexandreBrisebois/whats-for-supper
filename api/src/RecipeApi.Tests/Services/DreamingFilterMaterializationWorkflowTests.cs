@@ -11,6 +11,19 @@ namespace RecipeApi.Tests.Services;
 public class DreamingFilterMaterializationWorkflowTests
 {
     [Fact]
+    public async Task Dreaming_ReconcilesRotationAfterCooking_AndReportWaitsForActualCompletion()
+    {
+        var storage = new InMemoryStorageProvider();
+        await storage.SaveAsync("workflows", "dreaming.yaml", await File.ReadAllTextAsync(FindDreamingWorkflow()));
+        await using var db = TestDbContextFactory.Create();
+        var definition = await new WorkflowOrchestrator(new WorkflowRepository(storage), db).GetDefinitionAsync("dreaming");
+        var rotation = Assert.Single(definition.Tasks, task => task.Name == "reconcile-recipe-rotation");
+        Assert.Equal("ReconcileRecipeRotation", rotation.Processor);
+        Assert.Contains("finalize-overdue-meals", rotation.DependsOn);
+        Assert.Contains("reconcile-recipe-rotation", Assert.Single(definition.Tasks, task => task.Name == "report").DependsOn);
+    }
+
+    [Fact]
     public async Task Dreaming_MaterializesOnlyAfterFinalization_AndReportWaitsForMaterialization()
     {
         var storage = new InMemoryStorageProvider();

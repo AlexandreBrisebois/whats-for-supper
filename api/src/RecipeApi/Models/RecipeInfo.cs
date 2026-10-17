@@ -21,12 +21,18 @@ public class RecipeInfo
     public string? CuisineType { get; set; }
     public string[]? MealTypes { get; set; }
     public bool IsDiscoverable { get; set; } = false;
+    public int RotationVersion { get; set; }
+    public bool RotationHumanOff { get; set; }
+    public string RotationSource { get; set; } = "Unknown";
+    public bool CookedSuppressed { get; set; }
+    public bool? SupperSuitable { get; set; }
     // PDF recovery must distinguish extracted metadata from workflow completion.
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public bool? IsReady { get; set; }
     public bool? IsVegetarian { get; set; }
     public string? TotalTime { get; set; }
     public DateTimeOffset? LastCookedDate { get; set; }
+    public DateTimeOffset? DeletedAt { get; set; }
     public string? SourceUrl { get; set; }
     public object? RecipeInstructions { get; set; }
 }

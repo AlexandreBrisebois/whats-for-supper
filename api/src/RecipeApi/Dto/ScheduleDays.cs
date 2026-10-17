@@ -26,4 +26,5 @@ public record ScheduleDays(
     [property: JsonPropertyName("calendar")] DeploymentCalendarContext Calendar,
     [property: JsonPropertyName("weekStartDate")] DateOnly WeekStartDate,
     [property: JsonPropertyName("groceryState")] Dictionary<string, bool>? GroceryState = null,
-    [property: JsonPropertyName("groceryItems")] List<GroceryLineItemDto>? GroceryItems = null);
+    [property: JsonPropertyName("groceryItems")] List<GroceryLineItemDto>? GroceryItems = null,
+    [property: JsonPropertyName("votingRoundId")] Guid? VotingRoundId = null);
