@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { useRecipeNotesStore } from '@/store/recipeNotesStore';
 import { RecipeDetailSheet } from './RecipeDetailSheet';
 
 const mockGetRecipe = vi.fn();
@@ -649,5 +650,71 @@ describe('RecipeDetailSheet', () => {
         })
       );
     });
+  });
+});
+
+describe('recipe notes acknowledgement', () => {
+  beforeEach(() => {
+    useRecipeNotesStore.setState({ drafts: {} });
+    mockUpdateRecipe.mockReset();
+  });
+  const props = {
+    recipeId: '550e8400-e29b-41d4-a716-446655440111',
+    plannerDayLabel: null,
+    onClose: vi.fn(),
+    onUseForDay: vi.fn(),
+    onFindSimilar: vi.fn(),
+  };
+
+  it('does not show Saved until the notes request acknowledges', async () => {
+    let finish!: () => void;
+    mockUpdateRecipe.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          finish = resolve;
+        })
+    );
+    render(<RecipeDetailSheet {...props} />);
+    fireEvent.change(await screen.findByTestId('recipe-notes-input'), {
+      target: { value: 'pending notes' },
+    });
+    await waitFor(
+      () =>
+        expect(mockUpdateRecipe).toHaveBeenCalledWith(props.recipeId, { notes: 'pending notes' }),
+      { timeout: 2000 }
+    );
+    expect(screen.queryByText('Saved')).not.toBeInTheDocument();
+    await act(async () => finish());
+    expect(await screen.findByText('Saved')).toBeVisible();
+  });
+
+  it('saves restoration to the original notes after an acknowledged edit', async () => {
+    mockUpdateRecipe.mockResolvedValue(undefined);
+    render(<RecipeDetailSheet {...props} />);
+    const input = await screen.findByTestId('recipe-notes-input');
+    const original = (input as HTMLTextAreaElement).value;
+    fireEvent.change(input, { target: { value: 'changed notes' } });
+    await waitFor(
+      () =>
+        expect(mockUpdateRecipe).toHaveBeenCalledWith(props.recipeId, { notes: 'changed notes' }),
+      { timeout: 2000 }
+    );
+    fireEvent.change(input, { target: { value: original } });
+    await waitFor(
+      () => expect(mockUpdateRecipe).toHaveBeenCalledWith(props.recipeId, { notes: original }),
+      { timeout: 2000 }
+    );
+  });
+
+  it('flushes an undispatched draft when detail unmounts', async () => {
+    mockUpdateRecipe.mockResolvedValue(undefined);
+    const view = render(<RecipeDetailSheet {...props} />);
+    fireEvent.change(await screen.findByTestId('recipe-notes-input'), {
+      target: { value: 'keep on close' },
+    });
+    view.unmount();
+    await waitFor(() =>
+      expect(mockUpdateRecipe).toHaveBeenCalledWith(props.recipeId, { notes: 'keep on close' })
+    );
   });
 });

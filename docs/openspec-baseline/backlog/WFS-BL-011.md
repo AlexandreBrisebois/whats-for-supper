@@ -17,9 +17,9 @@ Hold last-page fetch; change All to Discovery or list mode; release old response
 
 ## Observed behavior and expected authority
 
-Callback compares old closure value with itself and only new wrap increments request ID; probe contaminates filtered deck/count with old All result.
+Historical finding: the callback compared its old closure value with itself, and only a new wrap incremented its request ID. The [completed paging correction](../../../openspec/changes/archive/2026-10-17-complete-library-stack/tasks.md) replaced this with filter/presentation/unmount generations; delayed All→Discovery and failed-wrap recovery now have passing browser evidence. Do not reimplement that guard. Remaining qualification is delayed success/error after presentation change or unmount, including count/position/feedback preservation.
 
-Version every deck generation including filter/mode/unmount; bounded cancellation/error recovery. Coordinate with stack paging item.
+The generation guard and retry implementation are complete under WFS-BL-010. Qualify delayed success/error after presentation change or unmount before deciding whether any further implementation is needed; retain current count, position and feedback assertions.
 
 Authority: original current implementation and exact requirement/scenario mappings in [library-audit.md](library-audit.md); user decisions in [decisions.md](decisions.md) supersede inferred intent. When expected behavior is not settled there, it remains a review question, not a new normative policy.
 
@@ -41,11 +41,11 @@ Verification evidence: source/assertion inspection; focused observed results onl
 
 Affected files/state: `browse-all-stack/page.tsx; browseStackStore.ts`. Includes associated client/contract/persistence/workflow side effects described above; do not silently edit every listed dependency.
 
-Dependencies: WFS-BL-010. Parallel eligibility is conditional on disjoint owned files in [README.md](README.md). Reserve shared RecipeDetailSheet, ScheduleService, weekStore, contracts and generated clients to one writer. No implementation assignment exists yet.
+Dependencies: WFS-BL-010 implementation is complete; retain only the remaining qualification above. Parallel eligibility is conditional on disjoint owned files in [README.md](README.md). Reserve shared RecipeDetailSheet, ScheduleService, weekStore, contracts and generated clients to one writer. No implementation assignment exists yet.
 
 ## Proposed bounded resolution and acceptance
 
-Version every deck generation including filter/mode/unmount; bounded cancellation/error recovery. Coordinate with stack paging item.
+The generation guard and retry implementation are complete under WFS-BL-010. Qualify delayed success/error after presentation change or unmount before deciding whether any further implementation is needed; retain current count, position and feedback assertions.
 
 Required acceptance/regression/integration/browser checks: Delayed old response after new filtered first page, mode switch, unmount, failure and retry; assert IDs/count/filter remain current.
 

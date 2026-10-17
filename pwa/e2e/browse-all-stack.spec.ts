@@ -772,3 +772,101 @@ test.describe('Browse All Stack — Recycle Bin', () => {
     expect(recycleBox.x).toBeLessThan(closeBox.x);
   });
 });
+
+async function expectFrontRecipe(page: Page, id: string) {
+  // A swipe starts its exit animation before React swaps the front card. Read
+  // identity and cardinality together, so that transient two-card overlap is
+  // retried rather than triggering Playwright's strict-locator error.
+  await expect
+    .poll(
+      () =>
+        page
+          .getByTestId('stack-card-front')
+          .evaluateAll((cards) => cards.map((card) => card.getAttribute('data-recipe-id'))),
+      { timeout: 10_000, intervals: [50, 100] }
+    )
+    .toEqual([id]);
+}
+
+for (const count of [126, 180]) {
+  test(`complete ${count} recipe cycles retain identities and ordinals`, async ({ page }) => {
+    test.setTimeout(600_000);
+    const recipes = LARGE_LIBRARY_RECIPES.slice(0, count);
+    await setupBrowseAllStack(page, { recipes, total: count });
+    await page.goto('/browse-all-stack');
+    const check = async (index: number) => {
+      await expect(page.getByTestId('stack-card-front')).toHaveCount(1);
+      await expectFrontRecipe(page, recipes[index].id as string);
+      await expect(page.getByTestId('stack-depth-indicator')).toHaveText(`${index + 1} / ${count}`);
+    };
+    await check(0);
+    for (let i = count - 1; i >= 0; i--) {
+      await swipeRight(page);
+      await check(i);
+    }
+    for (let i = 1; i <= count; i++) {
+      await swipeLeft(page);
+      await check(i % count);
+    }
+  });
+}
+
+test('failed wrap keeps the current card and retries the requested page', async ({ page }) => {
+  await setupBrowseAllStack(page, { recipes: LARGE_LIBRARY_RECIPES, total: 180 });
+  let fail = true;
+  await page.route('**/api/recipes?**order=explore**', async (route) => {
+    if (new URL(route.request().url()).searchParams.get('page') === '9' && fail) {
+      await route.fulfill({ status: 400, json: { message: 'Page unavailable' } });
+    } else await route.fallback();
+  });
+  await page.goto('/browse-all-stack');
+  await swipeRight(page);
+  await expect(page.getByTestId('stack-page-retry')).toBeVisible();
+  await expectFrontRecipe(page, LARGE_LIBRARY_RECIPES[0].id as string);
+  await expect(page.getByTestId('stack-card-front')).toHaveCSS('opacity', '1');
+  await expect(page.getByTestId('stack-depth-indicator')).toHaveText('1 / 180');
+  fail = false;
+  await page.getByTestId('stack-page-retry').click();
+  await expectFrontRecipe(page, LARGE_LIBRARY_RECIPES[179].id as string);
+  await expect(page.getByTestId('stack-depth-indicator')).toHaveText('180 / 180');
+});
+
+test('a delayed All wrap cannot replace the new Discovery collection', async ({ page }) => {
+  await setupBrowseAllStack(page, { recipes: LARGE_LIBRARY_RECIPES, total: 180 });
+  let release: (() => void) | undefined;
+  let completed = false;
+  await page.route('**/api/recipes?**order=explore**', async (route) => {
+    const query = new URL(route.request().url()).searchParams;
+    if (query.get('discoverableOnly') === 'true') {
+      await route.fulfill({
+        json: {
+          updatedAt: FIXED_NOW,
+          recipes: [RECIPE_1],
+          pagination: { page: 1, limit: 20, total: 1 },
+        },
+      });
+    } else if (query.get('page') === '9') {
+      await new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      await route.fulfill({
+        json: {
+          updatedAt: FIXED_NOW,
+          recipes: LARGE_LIBRARY_RECIPES.slice(160),
+          pagination: { page: 9, limit: 20, total: 180 },
+        },
+      });
+      completed = true;
+    } else await route.fallback();
+  });
+  await page.goto('/browse-all-stack');
+  await swipeRight(page);
+  await expect.poll(() => Boolean(release)).toBe(true);
+  await page.getByTestId('stack-toggle-discoverable').click();
+  await expectFrontRecipe(page, RECIPE_1.id as string);
+  release!();
+  await expect.poll(() => completed).toBe(true);
+  await expect(page.getByTestId('stack-depth-indicator')).toHaveText('1 / 1');
+  await swipeLeft(page);
+  await expectFrontRecipe(page, RECIPE_1.id as string);
+});

@@ -66,8 +66,6 @@ export default function BrowseAllStackPage() {
     appendRecipes,
     setCurrentIndex,
     setTotalCount,
-    nextCard,
-    previousCard,
     reset,
   } = useBrowseStackStore();
 
@@ -104,14 +102,15 @@ export default function BrowseAllStackPage() {
   const prefetchInFlightRef = useRef(false);
   const listScrollContainerRef = useRef<HTMLDivElement | null>(null);
   const listSentinelRef = useRef<HTMLDivElement | null>(null);
-  const wrapRequestIdRef = useRef(0);
-  const wrapPrefetchCooldownRef = useRef(false);
-  // Ref to track the page/filter being prefetched to avoid races
-  const currentRequestRef = useRef<{
-    page: number;
-    discoverableOnly: boolean;
-    viewMode: BrowseViewMode;
-  } | null>(null);
+  const generationRef = useRef(0);
+  const stackPagesRef = useRef(new Map<number, RecipeDto[]>());
+  const pageRequestsRef = useRef(new Map<number, Promise<RecipeDto[]>>());
+  const navigationPendingRef = useRef(false);
+  const [stackPage, setStackPage] = useState(1);
+  const [stackRenderVersion, setStackRenderVersion] = useState(0);
+  const [failedNavigation, setFailedNavigation] = useState<{ page: number; last: boolean } | null>(
+    null
+  );
 
   useEffect(() => {
     if (selectedFamilyMemberId && familyMembers.length === 0) {
@@ -125,6 +124,7 @@ export default function BrowseAllStackPage() {
   const fetchLibraryData = useCallback(
     async (page: number, discoverable: boolean, append = false) => {
       const pageSize = browseViewMode === 'list' ? LIST_PAGE_SIZE : STACK_PAGE_SIZE;
+      const generation = generationRef.current;
       let summaryTotalForRequest: number | null = null;
       try {
         if (!append) {
@@ -136,15 +136,10 @@ export default function BrowseAllStackPage() {
           setPrefetchFailed(false);
         }
 
-        currentRequestRef.current = {
-          page,
-          discoverableOnly: discoverable,
-          viewMode: browseViewMode,
-        };
-
         // Fetch library summary for total counts (only on first load)
         if (!append) {
           const summaryResult = await apiClient.api.recipes.librarySummary.get();
+          if (generation !== generationRef.current) return;
           const total = summaryResult?.data?.total ?? 0;
           summaryTotalForRequest = total;
           setAllLibraryTotal(total);
@@ -161,14 +156,7 @@ export default function BrowseAllStackPage() {
           },
         });
 
-        // Check if this request is still relevant (not superseded by a filter toggle)
-        if (
-          currentRequestRef.current?.page !== page ||
-          currentRequestRef.current?.discoverableOnly !== discoverable ||
-          currentRequestRef.current?.viewMode !== browseViewMode
-        ) {
-          return;
-        }
+        if (generation !== generationRef.current) return;
 
         const fetchedRecipes = (result?.recipes ?? []) as RecipeDto[];
         const paginationTotal = result?.pagination?.total ?? 0;
@@ -178,6 +166,8 @@ export default function BrowseAllStackPage() {
         } else {
           setRecipes(fetchedRecipes);
           setCurrentIndex(0);
+          setStackPage(1);
+          if (browseViewMode === 'stack') stackPagesRef.current.set(1, fetchedRecipes);
         }
 
         const effectiveTotal =
@@ -192,6 +182,7 @@ export default function BrowseAllStackPage() {
           hasMorePages: page * pageSize < effectiveTotal,
         });
       } catch (err) {
+        if (generation !== generationRef.current) return;
         console.error('BrowseAllStack: fetch failed', err);
         if (append) {
           setPrefetchFailed(true);
@@ -199,189 +190,148 @@ export default function BrowseAllStackPage() {
           setLoadError(true);
         }
       } finally {
-        setIsInitialLoading(false);
-        setIsPrefetching(false);
-        prefetchInFlightRef.current = false;
+        if (generation === generationRef.current) {
+          setIsInitialLoading(false);
+          setIsPrefetching(false);
+          prefetchInFlightRef.current = false;
+        }
       }
     },
     [appendRecipes, browseViewMode, setRecipes, setCurrentIndex, setTotalCount]
   );
 
-  // ---------------------------------------------------------------------------
-  // Wrap-to-last-page: fetch the last page and land on its last recipe.
-  // Called when swiping left from card 1 or left from the End Card.
-  // ---------------------------------------------------------------------------
-  const wrapToLastPage = useCallback(async () => {
-    const wrapRequestId = wrapRequestIdRef.current + 1;
-    wrapRequestIdRef.current = wrapRequestId;
-    const modeAtWrapStart = isDiscoverableOnly;
-    const modeTotalAtWrapStart = modeAtWrapStart
-      ? totalCount > 0
-        ? totalCount
-        : recipes.length
-      : allLibraryTotal && allLibraryTotal > 0
-        ? allLibraryTotal
-        : totalCount > 0
-          ? totalCount
-          : recipes.length;
-
-    // If all pages are already in memory, jump instantly.
-    if (!hasMorePages && recipes.length >= modeTotalAtWrapStart) {
-      setIsEndCard(false);
-      setCurrentIndex(recipes.length - 1);
-      return;
-    }
-
-    if (modeTotalAtWrapStart <= 0) {
-      return;
-    }
-
-    // Otherwise calculate the last page number within the active filter mode.
-    const LIMIT = STACK_PAGE_SIZE;
-    const lastPage = Math.max(1, Math.ceil(modeTotalAtWrapStart / LIMIT));
-
-    setIsWrappingToEnd(true);
-    setIsEndCard(false);
-    try {
-      // If toggles or a newer wrap started, discard this wrap.
-      if (wrapRequestIdRef.current !== wrapRequestId || modeAtWrapStart !== isDiscoverableOnly) {
-        return;
-      }
-
-      let targetPage = lastPage;
-      let fetchedRecipes: RecipeDto[] = [];
-      let attempts = 0;
-      while (targetPage >= 1 && attempts < 3) {
-        const result = await apiClient.api.recipes.get({
+  const getStackPage = useCallback(
+    (page: number, force = false): Promise<RecipeDto[]> => {
+      const cached = stackPagesRef.current.get(page);
+      if (!force && cached) return Promise.resolve(cached);
+      const pending = pageRequestsRef.current.get(page);
+      if (pending) return pending;
+      const generation = generationRef.current;
+      const request = apiClient.api.recipes
+        .get({
           queryParameters: {
             order: GetOrderQueryParameterTypeObject.Explore,
-            page: targetPage,
-            limit: LIMIT,
-            // Backward wrap respects the active mode (Discovery vs All).
-            discoverableOnly: modeAtWrapStart,
+            page,
+            limit: STACK_PAGE_SIZE,
+            discoverableOnly: isDiscoverableOnly,
           },
+        })
+        .then((result) => {
+          const items = (result?.recipes ?? []) as RecipeDto[];
+          if (generation === generationRef.current) stackPagesRef.current.set(page, items);
+          return items;
+        })
+        .finally(() => {
+          if (generation === generationRef.current) pageRequestsRef.current.delete(page);
         });
+      pageRequestsRef.current.set(page, request);
+      return request;
+    },
+    [isDiscoverableOnly]
+  );
 
-        if (wrapRequestIdRef.current !== wrapRequestId || modeAtWrapStart !== isDiscoverableOnly) {
-          return;
+  const navigatePage = useCallback(
+    async (page: number, last: boolean) => {
+      if (navigationPendingRef.current) return;
+      const generation = generationRef.current;
+      navigationPendingRef.current = true;
+      setIsWrappingToEnd(true);
+      // A completed swipe has animated its originating card out. Remount the
+      // retained page so pending/failed navigation keeps that card visible.
+      setStackRenderVersion((version) => version + 1);
+      setFailedNavigation(null);
+      // Preserve local curation changes when revisiting a cached page.
+      stackPagesRef.current.set(stackPage, useBrowseStackStore.getState().recipes);
+      try {
+        let target = page;
+        let items = await getStackPage(target);
+        // Preserve bounded probing for a count which became stale on the server.
+        for (
+          let attempts = 1;
+          last && items.length === 0 && target > 1 && attempts < 3;
+          attempts++
+        ) {
+          if (generation !== generationRef.current) return;
+          items = await getStackPage(--target, true);
         }
-
-        fetchedRecipes = (result?.recipes ?? []) as RecipeDto[];
-        if (fetchedRecipes.length > 0 || targetPage === 1) {
-          break;
+        if (generation !== generationRef.current) return;
+        if (!items.length) throw new Error('Requested recipe page is empty');
+        setStackPage(target);
+        setRecipes(items);
+        setCurrentIndex(last ? items.length - 1 : 0);
+        setIsEndCard(false);
+        setPrefetchFailed(false);
+        useBrowseStackStore.setState({
+          currentPage: target,
+          hasMorePages: target * STACK_PAGE_SIZE < totalCount,
+        });
+      } catch (error) {
+        if (generation !== generationRef.current) return;
+        console.error('BrowseAllStack: page navigation failed', error);
+        setFailedNavigation({ page, last });
+      } finally {
+        if (generation === generationRef.current) {
+          navigationPendingRef.current = false;
+          setIsWrappingToEnd(false);
         }
-
-        targetPage -= 1;
-        attempts += 1;
       }
+    },
+    [getStackPage, stackPage, setRecipes, setCurrentIndex, totalCount]
+  );
 
-      if (fetchedRecipes.length === 0) {
-        setCurrentIndex(Math.max(0, recipes.length - 1));
-        return;
-      }
-
-      // Replace the store recipes with page 1 already in memory + this last
-      // page so the user can swipe left naturally from here.
-      // We only prepend page-1 recipes (already loaded) + last-page recipes.
-      // The middle pages are intentionally skipped; they'll load on forward
-      // swipe if the user reverses direction.
-      const firstPageRecipes = useBrowseStackStore.getState().recipes.slice(0, LIMIT);
-      const merged = [...firstPageRecipes, ...fetchedRecipes];
-      setRecipes(merged);
-
-      // Update pagination state so the store knows we're "at" the last page.
-      useBrowseStackStore.setState({
-        currentPage: targetPage,
-        hasMorePages: false,
-      });
-      setTotalCount(modeTotalAtWrapStart);
-
-      // Land on the last recipe.
-      setCurrentIndex(merged.length - 1);
-      wrapPrefetchCooldownRef.current = true;
-    } catch (err) {
-      console.error('BrowseAllStack: wrapToLastPage failed', err);
-      // Fall back gracefully: just land on the last recipe we have.
-      setCurrentIndex(Math.max(0, recipes.length - 1));
-    } finally {
-      if (wrapRequestIdRef.current === wrapRequestId) {
-        setIsWrappingToEnd(false);
-      }
-    }
-  }, [
-    hasMorePages,
-    isDiscoverableOnly,
-    allLibraryTotal,
-    totalCount,
-    recipes,
-    setRecipes,
-    setCurrentIndex,
-    setTotalCount,
-  ]);
-
-  // Initial load or filter change
   useEffect(() => {
-    // Defer to avoid "setState in effect" lint error
+    const generation = ++generationRef.current;
+    stackPagesRef.current.clear();
+    pageRequestsRef.current.clear();
+    navigationPendingRef.current = false;
+    prefetchInFlightRef.current = false;
     Promise.resolve().then(() => {
-      fetchLibraryData(1, isDiscoverableOnly);
+      if (generation !== generationRef.current) return;
+      setFailedNavigation(null);
+      setIsWrappingToEnd(false);
+      setPrefetchFailed(false);
+      void fetchLibraryData(1, isDiscoverableOnly);
     });
+    return () => {
+      generationRef.current = generation + 1;
+    };
   }, [isDiscoverableOnly, browseViewMode, fetchLibraryData]);
 
-  // Unmount: reset store state
-  useEffect(() => {
-    return () => {
-      reset();
-    };
-  }, [reset]);
+  useEffect(() => () => reset(), [reset]);
 
   useEffect(() => {
     if (recipes.length === 0) return;
-    if (currentIndex < 0) {
-      setCurrentIndex(0);
-      return;
-    }
-    if (currentIndex >= recipes.length) {
-      setCurrentIndex(recipes.length - 1);
-    }
+    if (currentIndex < 0) setCurrentIndex(0);
+    else if (currentIndex >= recipes.length) setCurrentIndex(recipes.length - 1);
   }, [currentIndex, recipes.length, setCurrentIndex]);
 
-  // ---------------------------------------------------------------------------
-  // Pre-fetch next page when remainingCards <= 5 (requirement 5.3)
-  // ---------------------------------------------------------------------------
   useEffect(() => {
+    const nextPage = stackPage + 1;
     if (
       browseViewMode !== 'stack' ||
       isInitialLoading ||
       isEndCard ||
-      !hasMorePages ||
-      prefetchInFlightRef.current
-    ) {
+      prefetchFailed ||
+      recipes.length - currentIndex - 1 > 5 ||
+      nextPage > Math.ceil(totalCount / STACK_PAGE_SIZE) ||
+      stackPagesRef.current.has(nextPage) ||
+      pageRequestsRef.current.has(nextPage)
+    )
       return;
-    }
-    if (wrapPrefetchCooldownRef.current) {
-      wrapPrefetchCooldownRef.current = false;
-      return;
-    }
-
-    const remainingCards = recipes.length - currentIndex - 1;
-
-    if (remainingCards <= 5) {
-      prefetchInFlightRef.current = true;
-      // Defer to avoid "setState in effect" lint error
-      Promise.resolve().then(() => {
-        fetchLibraryData(currentPage + 1, isDiscoverableOnly, true);
-      });
-    }
+    const generation = generationRef.current;
+    void getStackPage(nextPage).catch(() => {
+      if (generation === generationRef.current) setPrefetchFailed(true);
+    });
   }, [
-    currentIndex,
-    recipes.length,
-    hasMorePages,
+    browseViewMode,
     isInitialLoading,
     isEndCard,
-    currentPage,
-    isDiscoverableOnly,
-    fetchLibraryData,
-    browseViewMode,
+    prefetchFailed,
+    stackPage,
+    recipes.length,
+    currentIndex,
+    totalCount,
+    getStackPage,
   ]);
 
   const loadNextListPage = useCallback(() => {
@@ -448,25 +398,26 @@ export default function BrowseAllStackPage() {
   // Navigation handlers
   // ---------------------------------------------------------------------------
   const handleSwipeLeft = useCallback(() => {
-    const isLastCard = currentIndex >= recipes.length - 1;
-
-    if (isLastCard && hasMorePages && isPrefetching) return;
-
-    if (isLastCard) {
-      setCurrentIndex(0);
-      return;
+    if (navigationPendingRef.current) return;
+    if (currentIndex < recipes.length - 1) {
+      setCurrentIndex(currentIndex + 1);
+    } else {
+      void navigatePage(
+        stackPage < Math.ceil(totalCount / STACK_PAGE_SIZE) ? stackPage + 1 : 1,
+        false
+      );
     }
-
-    setCurrentIndex(currentIndex + 1);
-  }, [currentIndex, recipes.length, hasMorePages, isPrefetching, setCurrentIndex]);
+  }, [currentIndex, recipes.length, stackPage, totalCount, navigatePage, setCurrentIndex]);
 
   const handleSwipeRight = useCallback(() => {
-    if (currentIndex <= 0) {
-      wrapToLastPage();
-      return;
-    }
-    previousCard();
-  }, [currentIndex, previousCard, wrapToLastPage]);
+    if (navigationPendingRef.current) return;
+    if (currentIndex > 0) setCurrentIndex(currentIndex - 1);
+    else
+      void navigatePage(
+        stackPage > 1 ? stackPage - 1 : Math.max(1, Math.ceil(totalCount / STACK_PAGE_SIZE)),
+        true
+      );
+  }, [currentIndex, stackPage, totalCount, navigatePage, setCurrentIndex]);
 
   // ---------------------------------------------------------------------------
   // Recipe Detail Sheet handlers
@@ -651,13 +602,9 @@ export default function BrowseAllStackPage() {
   }, [recipes, currentIndex]);
 
   const currentRecipe = recipes[currentIndex] ?? null;
-  const position = currentIndex + 1;
+  const globalIndex = (stackPage - 1) * STACK_PAGE_SIZE + currentIndex;
   const displayTotal = totalCount;
 
-  const isAtLastLoadedCard = currentIndex >= recipes.length - 1;
-  const showLoader =
-    browseViewMode === 'stack' &&
-    ((isAtLastLoadedCard && isPrefetching && !isEndCard && recipes.length > 0) || isWrappingToEnd);
   const isEmpty = !isInitialLoading && !loadError && recipes.length === 0 && !isDiscoverableOnly;
 
   // ---------------------------------------------------------------------------
@@ -824,42 +771,51 @@ export default function BrowseAllStackPage() {
           <div className="w-full max-w-sm md:max-w-xl flex-1 flex flex-col min-h-0 max-h-[82vh] md:max-h-[880px] lg:max-h-[780px] transition-all duration-500 ease-in-out">
             <div className="relative flex-1 min-h-0">
               <AnimatePresence mode="popLayout">
-                {showLoader ? (
-                  <div
-                    data-testid="browse-all-loader"
-                    className="absolute inset-0 flex items-center justify-center"
-                  >
-                    <Loader2 className="animate-spin text-ochre" size={48} />
-                  </div>
-                ) : (
-                  visibleRecipes.map((recipe, i) => (
-                    <RecipeStackCard
-                      key={recipe.id}
-                      id={recipe.id!}
-                      name={recipe.name!}
-                      description={recipe.description || ''}
-                      imageUrl={getImageUrl(`/api/recipes/${recipe.id}/hero`)}
-                      totalTime={recipe.totalTime || ''}
-                      category={recipe.category || ''}
-                      cuisineType={recipe.cuisineType ?? null}
-                      mealTypes={recipe.mealTypes ?? null}
-                      importIssueStatus={recipe.importIssue?.status ?? null}
-                      isFront={i === 0}
-                      stackIndex={i}
-                      onSwipeRight={handleSwipeRight}
-                      onSwipeLeft={handleSwipeLeft}
-                      onTap={() => handleCardTap(recipe.id!)}
-                    />
-                  ))
-                )}
+                {visibleRecipes.map((recipe, i) => (
+                  <RecipeStackCard
+                    key={`${recipe.id}:${stackRenderVersion}`}
+                    id={recipe.id!}
+                    name={recipe.name!}
+                    description={recipe.description || ''}
+                    imageUrl={getImageUrl(`/api/recipes/${recipe.id}/hero`)}
+                    totalTime={recipe.totalTime || ''}
+                    category={recipe.category || ''}
+                    cuisineType={recipe.cuisineType ?? null}
+                    mealTypes={recipe.mealTypes ?? null}
+                    importIssueStatus={recipe.importIssue?.status ?? null}
+                    isFront={i === 0}
+                    stackIndex={i}
+                    onSwipeRight={handleSwipeRight}
+                    onSwipeLeft={handleSwipeLeft}
+                    onTap={() => handleCardTap(recipe.id!)}
+                  />
+                ))}
               </AnimatePresence>
             </div>
 
+            {isWrappingToEnd && (
+              <p role="status" className="text-center text-sm text-charcoal/60">
+                Loading recipes…
+              </p>
+            )}
+            {failedNavigation && (
+              <div role="alert" className="text-center text-sm text-terracotta">
+                Could not load that page. Your place is kept.
+                <button
+                  type="button"
+                  data-testid="stack-page-retry"
+                  className="ml-2 font-bold underline"
+                  onClick={() => void navigatePage(failedNavigation.page, failedNavigation.last)}
+                >
+                  Retry
+                </button>
+              </div>
+            )}
             {/* Stack Action Bar */}
             {!isEndCard && currentRecipe && (
               <StackActionBar
                 currentRecipe={currentRecipe}
-                currentIndex={currentIndex}
+                currentIndex={globalIndex}
                 totalCount={totalCount}
                 onToggleIndividualCuration={handleIndividualToggleDiscoverable}
               />

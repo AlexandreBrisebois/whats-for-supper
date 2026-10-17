@@ -23,14 +23,12 @@ Priority ranks harm, reach and recovery burden. Source-confirmed conditions and 
 | Item | Priority | Title | Origins |
 | --- | --- | --- | --- |
 | [WFS-BL-003](WFS-BL-003.md) | P1 | Supply required URL to contextual repair launch | U01; BSL-recipe-quality-002/003 |
-| [WFS-BL-004](WFS-BL-004.md) | P1 | Make recipe notes Saved reflect durable acknowledgement | U38–40; BSL-recipe-library-012/013 |
 | [WFS-BL-035](WFS-BL-035.md) | P1 | Inject remaining application clocks | Remaining clock-injection policy from WFS-BL-005 |
 | [WFS-BL-006](WFS-BL-006.md) | P1 | Recover typed and Similar Search after invalidation | SR-U08 |
 | [WFS-BL-007](WFS-BL-007.md) | P1 | Protect recovery exports from stale and partial content | DBR-U02–07, U12 |
 | [WFS-BL-008](WFS-BL-008.md) | P1 | Protect demo assets and reset semantics | DH-U01–04, DH-U06/09 |
 | [WFS-BL-009](WFS-BL-009.md) | P1 | Preserve cooked and skipped state during planner relock | U04, MP-U08/10, DISC-U06 |
 | [WFS-BL-031](WFS-BL-031.md) | P1 | Protect historical meal records during permanent recipe purge | U52 |
-| [WFS-BL-010](WFS-BL-010.md) | P2 | Make stack position and traversal match the full deck | U31; BSL-recipe-library-002; reported first-backward card26 |
 | [WFS-BL-011](WFS-BL-011.md) | P2 | Reject obsolete stack wrap responses | U31 |
 | [WFS-BL-012](WFS-BL-012.md) | P2 | Recompute groceries and publish every week touched by push | MP-U05, HLU-U02 |
 | [WFS-BL-013](WFS-BL-013.md) | P2 | Read grocery check maps consistently from SSE snapshots | U100, HLU-U03 |
@@ -52,6 +50,8 @@ Priority ranks harm, reach and recovery burden. Source-confirmed conditions and 
 | [WFS-BL-030](WFS-BL-030.md) | P3 | Close remaining runtime and product qualification gaps by bounded fixtures | U10/11/12 and register entries not independently closed |
 | [WFS-BL-026](WFS-BL-026.md) | P4 | Reconcile contracts placeholders and stale explanatory claims | U02/03/09/19/22/29/36/45/47/50/65/80/81/85/95; SR-U01–04/06/09; DISC-U01/02/04/05/07/08; DH-U07 |
 
+Completed 2026-10-17: [durable recipe notes](../../../openspec/changes/archive/2026-10-17-durable-recipe-notes/tasks.md) and [complete stack traversal](../../../openspec/changes/archive/2026-10-17-complete-library-stack/tasks.md). These records distinguish controlled acceptance from production/device qualification. The reported 200-recipe dataset remains unqualified under WFS-BL-030.
+
 ## Proposed implementation waves and conflict map
 
 The deployment-calendar prerequisite is complete; see the [archived acceptance record](../../../openspec/changes/archive/2026-10-16-deployment-calendar-supper-dates/tasks.md). WFS-BL-035 covers only remaining application clocks and is not a prerequisite for Tomorrow calendar work.
@@ -61,11 +61,10 @@ The deployment-calendar prerequisite is complete; see the [archived acceptance r
 | Assignment | Spec/task to prepare | Owned files | Dependencies / acceptance / stopping point |
 | --- | --- | --- | --- |
 | WFS-BL-003 contextual URL repair | New corrective quality task using existing report rules | RecipeImportReportService and focused real-orchestrator/API test ownership | No shared ScheduleService; real packaged url-import required. Stop after launch/failure/retry evidence and reviewed diff. |
-| WFS-BL-010 stack paging | New corrective library task; existing baseline currently describes loaded position | browse-all-stack page, browseStackStore, StackActionBar, focused tests | Calendar consumer changes are complete.126/180 exact-ID full-cycle checks. Stop at reviewed paging diff. |
 
 WFS-BL-015 member feedback is an alternative independent first-wave lane. Keep FamilyStore ownership reserved from concurrent preference work.
 
-**Wave 1:** WFS-BL-012 retains the ordinary-push grocery/publication remainder after the completed [Tomorrow preservation](../../../openspec/changes/archive/2026-10-16-tomorrow-preserve-meals/tasks.md) and [Tonight replacement recovery](../../../openspec/changes/archive/2026-10-16-tonight-replacement-recovery/tasks.md) work. WFS-BL-011 follows/coordinated with010 in the same Browse files. WFS-BL-004 notes and016 quality observation both touch RecipeDetailSheet and must be serialized; cooking014 may also touch report handoff. Search006 and019 have distinct UI/backend cores but shared response context decisions.
+**Wave 1:** WFS-BL-012 retains the ordinary-push grocery/publication remainder after the completed [Tomorrow preservation](../../../openspec/changes/archive/2026-10-16-tomorrow-preserve-meals/tasks.md) and [Tonight replacement recovery](../../../openspec/changes/archive/2026-10-16-tonight-replacement-recovery/tasks.md) work. WFS-BL-011 retains presentation/unmount qualification after completed stack paging; do not reimplement its generation guard. WFS-BL-016 quality observation and cooking014 may share RecipeDetailSheet/report handoff ownership. Search006 and019 have distinct UI/backend cores but shared response context decisions.
 
 **Wave 2:** recovery/export/demo007/008 require disposable DB/assets and explicit destructive-test authorization if operations extend beyond safe isolated fixtures. Workflow025, installation024 and wire013 follow selected boundary evidence. Completed documentation-extraction evidence remains in the archived baseline changes; runtime limitations remain in the relevant implementation items.
 

@@ -20,7 +20,7 @@ and runtime gates remain separate.
 
 - Review queue ranking and select one remaining bounded item. Deployment calendar, Tomorrow preservation and Tonight replacement recovery are complete; do not reopen them as prerequisites for unrelated work.
 - Decide Order In → Drop retention/grocery consequences separately; current status-only behavior retains association.
-- Decide notes close/save behavior and cooking unavailable-content presentation before their individual fixes.
+- Notes now flush on detail close/switch and retain failed drafts within the tab; see [accepted implementation](../../../openspec/changes/archive/2026-10-17-durable-recipe-notes/tasks.md). Browser termination durability is not promised. Cooking unavailable-content presentation remains a separate decision.
 - Decide household repair observation access and backup/demo recovery promises before those bounded scopes.
 - The two final baseline changes are accepted, promoted and archived. Select a new implementation scope when ready; no further baseline lifecycle approval is pending.
 
