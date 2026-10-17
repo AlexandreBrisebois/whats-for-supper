@@ -131,7 +131,7 @@ main specs and verified before this package was moved to the archive. Historical
 red/green results and the generic database-behavior blocked label above remain
 unchanged; recorded task-specific 36/36 calendar and 9/9 live browser acceptance
 supply the separate calendar qualification. The later search repair is recorded
-in [SR-R01](../../../../docs/openspec-baseline/recipe-search.md), with final record
+in [SR-R01](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline/recipe-search.md), with final record
 `.task/agent-finish/runs/fba12f63b434407a841289c4fdcfc163.json`.
 The parent WFS-BL-005 clock inventory and adjacent backlog items remain open.
 Archival is documentation lifecycle work; no commit or deployment is included.

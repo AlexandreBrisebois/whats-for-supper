@@ -6,7 +6,7 @@ Let household members report and review saved recipe issues, request eligible co
 
 ## Evidence and qualifications (non-normative)
 
-Promoted under A74 from the reviewed recipe-quality baseline delta. BSL-recipe-quality-001–006 in the [durable plan](../../../docs/openspec-baseline-plan.md) records source support, inspected assertions and promotion evidence. Application behavior was not runtime-qualified; A34 remains deferred. U01/U75–U79 retain contextual URL dispatch, member polling access, resumed observation, response freshness and completion limitations. Successful processing retains a report for review; automatic resolution is not claimed.
+Promoted under A74 from the reviewed recipe-quality baseline delta. BSL-recipe-quality-001–006 in the [durable plan](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline-plan.md) records source support, inspected assertions and promotion evidence. Application behavior was not runtime-qualified; A34 remains deferred. U01/U75–U79 retain contextual URL dispatch, member polling access, resumed observation, response freshness and completion limitations. Successful processing retains a report for review; automatic resolution is not claimed.
 
 Historical BSL-household-identity-014/015 and U22 qualification retained:
 
@@ -16,13 +16,13 @@ That sentence records the earlier review state. The user's report of later autho
 
 Review/manual-resolution additions promoted under A76 from `baseline-recipe-quality-review-resolution`; BSL-recipe-quality-007–011 and U80–U83 in the durable plan retain the actual review labels, DELETE conflict-contract gap, loaded-parent freshness and unqualified retry/access/database boundaries. General search remains a dependency of the uncreated recipe-search capability. Promotion adds documentation only, without runtime qualification or archival.
 
-Remaining baseline additions accepted and promoted under RQ-P01 (2026-10-16) from `baseline-recipe-quality-cooking-feedback`, `baseline-recipe-quality-failure-references` and `baseline-recipe-quality-bulk-import-observation`. BSL-recipe-quality-017–019 and the completeness audit in the [capability plan](../../../docs/openspec-baseline/recipe-quality.md) record evidence and ownership. A34, U01, U75–U88 (including the U83 assertion correction), RQ-Q01–RQ-Q04 and all historical qualifications remain. Promotion establishes documentation acceptance, not runtime/database/clipboard/model qualification, execution, repair, cleanup, delivery or report resolution. The changes remain active and unarchived.
+Remaining baseline additions accepted and promoted under RQ-P01 (2026-10-16) from `baseline-recipe-quality-cooking-feedback`, `baseline-recipe-quality-failure-references` and `baseline-recipe-quality-bulk-import-observation`. BSL-recipe-quality-017–019 and the completeness audit in the [capability plan](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline/recipe-quality.md) record evidence and ownership. A34, U01, U75–U88 (including the U83 assertion correction), RQ-Q01–RQ-Q04 and all historical qualifications remain. Promotion establishes documentation acceptance, not runtime/database/clipboard/model qualification, execution, repair, cleanup, delivery or report resolution. The changes remain active and unarchived.
 
 ## Relocation provenance (non-normative)
 
 The original preamble and qualification records above describe earlier combined-capability checkpoints. Their historical counts, exclusions and lifecycle status remain evidence, not current ownership. All applicable limitations continue to apply after relocation.
 
-- [recipe-quality evidence record](../../../docs/openspec-baseline/recipe-quality.md) and [preserved qualification text](../recipe-quality/spec.md#evidence-and-qualifications-non-normative)
+- [recipe-quality evidence record](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline/recipe-quality.md) and [preserved qualification text](../recipe-quality/spec.md#evidence-and-qualifications-non-normative)
 
 ## Capability dependencies (non-normative)
 

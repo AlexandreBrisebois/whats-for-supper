@@ -2,7 +2,7 @@
 
 ## Context
 
-See [proposal](proposal.md) for motivation. This documents an existing cross-layer lifecycle; no new runtime design is authorized. BSL-background-processing-001–005 in the [durable plan](../../../../docs/openspec-baseline-plan.md) contains source identities, assertions and complete delta mapping.
+See [proposal](proposal.md) for motivation. This documents an existing cross-layer lifecycle; no new runtime design is authorized. BSL-background-processing-001–005 in the [durable plan](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline-plan.md) contains source identities, assertions and complete delta mapping.
 
 The first observable slice is a valid orchestration call committing a Pending instance and dependency-based task snapshot, then a successful identity-based status read. Real boundaries are stored workflow YAML through IStorageProvider, EF/PostgreSQL persistence, the hosted worker and scoped IWorkflowProcessor dispatch. Worker/API test doubles do not establish that entire path at runtime.
 

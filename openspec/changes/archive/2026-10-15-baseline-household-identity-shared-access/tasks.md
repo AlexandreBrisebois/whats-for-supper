@@ -1,6 +1,6 @@
 # Tasks
 
-Documentation extraction only. The seven added requirements and 21 scenarios describe existing behavior; these tasks introduce no application implementation. Behavior TDD, application test execution and client generation are not-applicable to these edits. Runtime API/browser/PostgreSQL/device checks remain not-run. Source and inspected assertions are mapped in BSL-household-identity-003/004/005 in the [durable plan](../../../../docs/openspec-baseline-plan.md).
+Documentation extraction only. The seven added requirements and 21 scenarios describe existing behavior; these tasks introduce no application implementation. Behavior TDD, application test execution and client generation are not-applicable to these edits. Runtime API/browser/PostgreSQL/device checks remain not-run. Source and inspected assertions are mapped in BSL-household-identity-003/004/005 in the [durable plan](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline-plan.md).
 
 ## 1. Reconcile the selected evidence
 

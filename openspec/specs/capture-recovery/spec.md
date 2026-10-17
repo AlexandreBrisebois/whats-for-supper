@@ -8,7 +8,7 @@ Let household members inspect, retry and clear failed capture workflows and requ
 
 These requirements were relocated unchanged from their original capability owners. All applicable BSL/U/A qualifications, partial-success boundaries and deferred runtime/API/browser/database/model evidence transfer with them. Relocation establishes no new behavioral guarantee.
 
-- [recipe-quality evidence record](../../../docs/openspec-baseline/recipe-quality.md) and [preserved qualification text](../recipe-quality/spec.md#evidence-and-qualifications-non-normative)
+- [recipe-quality evidence record](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline/recipe-quality.md) and [preserved qualification text](../recipe-quality/spec.md#evidence-and-qualifications-non-normative)
 
 ## Capability dependencies (non-normative)
 

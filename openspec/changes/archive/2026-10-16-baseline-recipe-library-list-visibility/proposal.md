@@ -10,7 +10,7 @@ The baseline has no recipe-library requirements despite a connected household li
 - Describe the connected explore ordering, paginated response, display and append of returned items, loading, All-mode empty feedback and initial-load Retry.
 - Reuse household-identity access/member context and member-preference ownership; do not duplicate their policy.
 - Keep U29–U31 non-normative under the confirmed boundary: no readiness derivation, badge enrichment, complete/fresh/stable pagination, Discovery-empty feedback or universal recovery guarantees.
-- Map requirements/scenarios to BSL-recipe-library-001/002 in the [durable plan](../../../../docs/openspec-baseline-plan.md).
+- Map requirements/scenarios to BSL-recipe-library-001/002 in the [durable plan](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline-plan.md).
 
 ## Capabilities
 

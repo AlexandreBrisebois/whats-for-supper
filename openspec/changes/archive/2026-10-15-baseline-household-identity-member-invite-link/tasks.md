@@ -1,6 +1,6 @@
 # Tasks
 
-Documentation extraction only: six ADDED requirements/18 scenarios describe existing repository behavior. No application implementation tasks follow. Behavior TDD, new/changed tests, client generation and application verification are not-applicable to these edits. Browser/API/PostgreSQL/device runtime checks remain not-run. Evidence and assertion limits are in BSL-household-identity-006/007/008 in the [durable plan](../../../../docs/openspec-baseline-plan.md).
+Documentation extraction only: six ADDED requirements/18 scenarios describe existing repository behavior. No application implementation tasks follow. Behavior TDD, new/changed tests, client generation and application verification are not-applicable to these edits. Browser/API/PostgreSQL/device runtime checks remain not-run. Evidence and assertion limits are in BSL-household-identity-006/007/008 in the [durable plan](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline-plan.md).
 
 ## 1. Reconcile selected evidence and authority
 

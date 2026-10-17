@@ -2,7 +2,7 @@
 
 ## Context
 
-See proposal.md. Existing cross-module boundary: manifest `pdfManifest` → controlling `sw.js` → `WfsPdfShare.matches/handle` in `pwa/public/pdf-share.js` → bounded body parse → stage transaction → 303 → capture. No server `/share-target` route or equivalent fallback was found. Source and scenario mapping: BSL-app-installation-004–006 in [capability plan](../../../../docs/openspec-baseline/app-installation.md).
+See proposal.md. Existing cross-module boundary: manifest `pdfManifest` → controlling `sw.js` → `WfsPdfShare.matches/handle` in `pwa/public/pdf-share.js` → bounded body parse → stage transaction → 303 → capture. No server `/share-target` route or equivalent fallback was found. Source and scenario mapping: BSL-app-installation-004–006 in [capability plan](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline/app-installation.md).
 
 ## Goals / Non-Goals
 

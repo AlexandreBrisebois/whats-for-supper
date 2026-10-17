@@ -2,7 +2,7 @@
 
 ## Context
 
-See `proposal.md` for motivation. This documentation extraction crosses the two existing browser journeys and benefits from explicit boundary decisions: a disabled UI action is not server idempotency, and preview cancellation is not request cancellation. Current source identities, assertions and full coverage mapping are recorded in BSL-recipe-sharing-005–008 in [the capability plan](../../../../docs/openspec-baseline/recipe-sharing.md).
+See `proposal.md` for motivation. This documentation extraction crosses the two existing browser journeys and benefits from explicit boundary decisions: a disabled UI action is not server idempotency, and preview cancellation is not request cancellation. Current source identities, assertions and full coverage mapping are recorded in BSL-recipe-sharing-005–008 in [the capability plan](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline/recipe-sharing.md).
 
 ## Goals / Non-Goals
 

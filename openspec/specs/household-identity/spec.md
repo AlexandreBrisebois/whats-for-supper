@@ -8,7 +8,7 @@ Establish shared household access through passphrase entry and member invitation
 
 The original preamble and qualification records above describe earlier combined-capability checkpoints. Their historical counts, exclusions and lifecycle status remain evidence, not current ownership. All applicable limitations continue to apply after relocation.
 
-- [household-identity evidence record](../../../docs/openspec-baseline/household-identity.md)
+- [household-identity evidence record](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline/household-identity.md)
 
 ## Capability dependencies (non-normative)
 

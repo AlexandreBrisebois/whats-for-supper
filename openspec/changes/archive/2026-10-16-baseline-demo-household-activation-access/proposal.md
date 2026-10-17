@@ -7,7 +7,7 @@ Extract demo activation and household access from current executable paths into 
 ## What Changes
 
 - Draft only the evidenced demo-household behavior for this slice.
-- Reconcile BSL-demo-household-001, BSL-demo-household-002, BSL-demo-household-003, BSL-demo-household-004 in the [capability evidence plan](../../../../docs/openspec-baseline/demo-household.md).
+- Reconcile BSL-demo-household-001, BSL-demo-household-002, BSL-demo-household-003, BSL-demo-household-004 in the [capability evidence plan](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline/demo-household.md).
 - Review in dependency order after none.
 - Retain these non-normative boundaries: No automatic login, production authentication qualification, configuration synchronization guarantee or device installation guarantee. API health and PWA runtime identity are distinct inputs.
 

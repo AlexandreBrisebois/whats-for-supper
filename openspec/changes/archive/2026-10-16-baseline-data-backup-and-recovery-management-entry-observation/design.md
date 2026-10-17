@@ -2,7 +2,7 @@
 
 ## Context
 
-See [proposal](proposal.md) for motivation and the [delta](specs/data-backup-and-recovery/spec.md) for observable behavior. Evidence BSL-data-backup-and-recovery-001–003 is recorded in the [capability plan](../../../../docs/openspec-baseline/data-backup-and-recovery.md), at commit 04a1c4570f9bbb01b47436790d4248635ac3179a.
+See [proposal](proposal.md) for motivation and the [delta](specs/data-backup-and-recovery/spec.md) for observable behavior. Evidence BSL-data-backup-and-recovery-001–003 is recorded in the [capability plan](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline/data-backup-and-recovery.md), at commit 04a1c4570f9bbb01b47436790d4248635ac3179a.
 
 ManagementController.Backup/Restore/DisasterRecovery → IWorkflowOrchestrator.TriggerAsync → db-backup/db-restore/db-disaster-recovery YAML → ManagementProcessor → ManagementService. GetStatus reads persisted instances/tasks. Program applies global household authorization and SkipWrapping preserves the flat management response.
 

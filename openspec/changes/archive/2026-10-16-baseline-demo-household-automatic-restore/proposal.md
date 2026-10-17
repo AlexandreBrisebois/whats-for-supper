@@ -7,7 +7,7 @@ Extract automatic demo restore scheduling from current executable paths into rev
 ## What Changes
 
 - Draft only the evidenced demo-household behavior for this slice.
-- Reconcile BSL-demo-household-001, BSL-demo-household-010, BSL-demo-household-011 in the [capability evidence plan](../../../../docs/openspec-baseline/demo-household.md).
+- Reconcile BSL-demo-household-001, BSL-demo-household-010, BSL-demo-household-011 in the [capability evidence plan](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline/demo-household.md).
 - Review in dependency order after `baseline-demo-household-snapshot-restore-activity`.
 - Retain these non-normative boundaries: No exactly-once startup or recurrence, distributed lock, guaranteed reset deadline, catch-up replay or automatic recovery chain. Snapshot presence is not a seeding prerequisite. Paused workflows do not suppress startup seeding; Pending/Processing workflows do.
 

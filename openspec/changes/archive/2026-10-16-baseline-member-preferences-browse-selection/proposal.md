@@ -7,7 +7,7 @@ Existing member browse presentation selection needs a source-supported brownfiel
 ## What Changes
 
 - Draft only the implemented member browse presentation selection behavior and its evidenced failure/recovery boundaries.
-- Record substitutions, uncertainty and exclusions in the [capability plan](../../../../docs/openspec-baseline/member-preferences.md), evidence BSL-member-preferences-005–006.
+- Record substitutions, uncertainty and exclusions in the [capability plan](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline/member-preferences.md), evidence BSL-member-preferences-005–006.
 - Stop at validated drafts under A10/A34; acceptance, promotion, archival and runtime qualification are separate.
 
 ## Capabilities

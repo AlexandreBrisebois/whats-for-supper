@@ -62,7 +62,7 @@ The following non-normative material was moved from this change’s delta preamb
 
 ## Evidence and status (non-normative)
 
-Documentation-only draft under A62, backed by BSL-recipe-sharing-001–003 in the [durable plan](../../../../docs/openspec-baseline-plan.md). Evidence is implementation-supported under A10; runtime browser/API/database checks are not-run and qualification remains deferred under A34. This draft is not accepted or promoted.
+Documentation-only draft under A62, backed by BSL-recipe-sharing-001–003 in the [durable plan](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline-plan.md). Evidence is implementation-supported under A10; runtime browser/API/database checks are not-run and qualification remains deferred under A34. This draft is not accepted or promoted.
 
 Household-identity owns access and member context. Reuse its existing requirements “Gate protected page entry with household access”, “Apply member context after household access”, and “Authenticate protected API requests independently”. Recipe-library owns recipe lifecycle, detail sheet presentation, readiness status, soft-deletion exclusion, and entity persistence. Background-processing is not invoked for bundle import: bundle import synchronously creates a ready recipe without queued workflow execution. Real-time live update broadcasts (SSE) are omitted during bundle import.
 

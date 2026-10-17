@@ -7,7 +7,7 @@ Extract demo snapshot capture from current executable paths into reviewable brow
 ## What Changes
 
 - Draft only the evidenced demo-household behavior for this slice.
-- Reconcile BSL-demo-household-005, BSL-demo-household-006, BSL-demo-household-007 in the [capability evidence plan](../../../../docs/openspec-baseline/demo-household.md).
+- Reconcile BSL-demo-household-005, BSL-demo-household-006, BSL-demo-household-007 in the [capability evidence plan](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline/demo-household.md).
 - Review in dependency order after `baseline-demo-household-activation-access`.
 - Retain these non-normative boundaries: Not a complete database backup. No coherent concurrent snapshot, atomic publication, complete asset coverage outside the recipe root, manifest checksum/version validation or recovery guarantee. Soft-deleted recipe rows are not captured by the filtered recipe query.
 

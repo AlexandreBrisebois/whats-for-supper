@@ -17,7 +17,7 @@ See proposal.md for motivation. The first observable configuration slice is the 
 - Describe only the planner mode-selection consequence here. Calendar mutation policy remains meal-planning; its exact touch thresholds and gesture cancellation are consumer details recorded as evidence/exclusion.
 - Bound API status claims to aligned contract paths. Snapshot nonexistent-member 404 is implementation-supported but omitted from GET OpenAPI; do not make that disputed response normative.
 
-Evidence and requirement/scenario mappings: BSL-member-preferences-013–016 in the [capability plan](../../../../docs/openspec-baseline/member-preferences.md). A10 implementation support is distinct from A34 runtime evidence.
+Evidence and requirement/scenario mappings: BSL-member-preferences-013–016 in the [capability plan](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline/member-preferences.md). A10 implementation support is distinct from A34 runtime evidence.
 
 ## Risks / Trade-offs
 

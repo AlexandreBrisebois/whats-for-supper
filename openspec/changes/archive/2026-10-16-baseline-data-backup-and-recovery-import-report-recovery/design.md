@@ -2,7 +2,7 @@
 
 ## Context
 
-See [proposal](proposal.md) for motivation and the [delta](specs/data-backup-and-recovery/spec.md) for observable behavior. Evidence BSL-data-backup-and-recovery-013–014 is recorded in the [capability plan](../../../../docs/openspec-baseline/data-backup-and-recovery.md), at commit 04a1c4570f9bbb01b47436790d4248635ac3179a.
+See [proposal](proposal.md) for motivation and the [delta](specs/data-backup-and-recovery/spec.md) for observable behavior. Evidence BSL-data-backup-and-recovery-013–014 is recorded in the [capability plan](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline/data-backup-and-recovery.md), at commit 04a1c4570f9bbb01b47436790d4248635ac3179a.
 
 ManagementService.BackupAsync → RecipeImportReportBackup.FromEntity → recipe-import-reports.json; RestoreAsync saves recipe/member dependencies before RestoreRecipeImportReportsAsync → upsert by RecipeId. Recipe quality owns report/re-import policy outside this projection.
 

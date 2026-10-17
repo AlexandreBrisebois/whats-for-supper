@@ -8,7 +8,7 @@ Main recipe-library covers list visibility through requesting a detail sheet, bu
 
 - Add only missing detail retrieval, returned-content presentation, pending feedback and dismissal requirements to recipe-library in an ADDED delta.
 - Record the actual detail readiness/deletion query, optional fields, formatting/fallbacks, absent inline instructions and failure/recovery limitations outside normative requirements.
-- Provide extraction design, documentation validation tasks and scenario-to-source/assertion mapping in BSL-recipe-library-004–006 of the [durable plan](../../../../docs/openspec-baseline-plan.md), under A50.
+- Provide extraction design, documentation validation tasks and scenario-to-source/assertion mapping in BSL-recipe-library-004–006 of the [durable plan](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline-plan.md), under A50.
 - Stop at a validated draft; no acceptance, promotion, archival or successor extraction.
 
 ## Capabilities

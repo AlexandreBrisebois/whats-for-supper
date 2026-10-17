@@ -8,7 +8,7 @@ Let household members view original recipe sources and photos, obtain recipe ima
 
 These requirements were relocated unchanged from their original capability owners. All applicable BSL/U/A qualifications, partial-success boundaries and deferred runtime/API/browser/database/model evidence transfer with them. Relocation establishes no new behavioral guarantee.
 
-- [recipe-library evidence record](../../../docs/openspec-baseline/recipe-library.md)
+- [recipe-library evidence record](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline/recipe-library.md)
 
 ## Capability dependencies (non-normative)
 

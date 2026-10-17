@@ -8,7 +8,7 @@ Schedule and compose recurring application maintenance, process due maintenance 
 
 These requirements were relocated unchanged from their original capability owners. All applicable BSL/U/A qualifications, partial-success boundaries and deferred runtime/API/browser/database/model evidence transfer with them. Relocation establishes no new behavioral guarantee.
 
-- [data-backup-and-recovery evidence record](../../../docs/openspec-baseline/data-backup-and-recovery.md) and [preserved qualification text](../data-backup-and-recovery/spec.md#evidence-and-qualifications-non-normative)
+- [data-backup-and-recovery evidence record](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline/data-backup-and-recovery.md) and [preserved qualification text](../data-backup-and-recovery/spec.md#evidence-and-qualifications-non-normative)
 
 ## Capability dependencies (non-normative)
 

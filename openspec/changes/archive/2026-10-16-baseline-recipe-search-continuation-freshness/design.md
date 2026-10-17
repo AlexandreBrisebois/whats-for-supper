@@ -17,7 +17,7 @@ Keep one approved `recipe-search` path across additive sibling changes instead o
 
 ## Risks / Trade-offs
 
-[Source or fixture mismatch] → retain the exact discrepancy and withhold the disputed assertion in [the capability plan](../../../../docs/openspec-baseline/recipe-search.md). PostgreSQL paths, test-factory substitutes and browser route fixtures differ; no existing test result is claimed for the current identity. A source-supported extraction cannot establish relevance quality, live freshness, universal timing or durable cursor availability.
+[Source or fixture mismatch] → retain the exact discrepancy and withhold the disputed assertion in [the capability plan](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline/recipe-search.md). PostgreSQL paths, test-factory substitutes and browser route fixtures differ; no existing test result is claimed for the current identity. A source-supported extraction cannot establish relevance quality, live freshness, universal timing or durable cursor availability.
 
 ## Migration Plan
 

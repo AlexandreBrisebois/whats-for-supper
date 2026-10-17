@@ -2,7 +2,7 @@
 
 ## Context
 
-See proposal.md for motivation. This records existing cross-module behavior, not future architecture. First observable slice: public manifest and initial HTML → app-identity/baseManifest → proxy/IdentityValidator at launch. There is no API or persistence mutation in metadata generation. Evidence and requirement/scenario mapping: BSL-app-installation-001–003 in [capability plan](../../../../docs/openspec-baseline/app-installation.md).
+See proposal.md for motivation. This records existing cross-module behavior, not future architecture. First observable slice: public manifest and initial HTML → app-identity/baseManifest → proxy/IdentityValidator at launch. There is no API or persistence mutation in metadata generation. Evidence and requirement/scenario mapping: BSL-app-installation-001–003 in [capability plan](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline/app-installation.md).
 
 ## Goals / Non-Goals
 

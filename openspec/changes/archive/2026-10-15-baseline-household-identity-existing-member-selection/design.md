@@ -4,7 +4,7 @@
 
 See [proposal.md](proposal.md) for motivation and [the spec delta](specs/household-identity/spec.md) for the five requirements and ten scenarios accepted by the user on 2026-10-15. The subsequent request explicitly authorizes this design artifact, replacing its earlier conditional omission. It documents how the baseline represents the existing application; it introduces no application implementation work.
 
-Reference content is commit `7e0dcdbe162704debe8a0f916eb1f7327afc77a5` on `moving-to-openspec`. Application inputs remain unchanged. [The durable plan](../../../../docs/openspec-baseline-plan.md) owns source evidence, confidence, uncertainty and scenario mappings under BSL-household-identity-001/002 and U13. Behavior remains implementation-supported, with runtime checks not-run.
+Reference content is commit `7e0dcdbe162704debe8a0f916eb1f7327afc77a5` on `moving-to-openspec`. Application inputs remain unchanged. [The durable plan](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline-plan.md) owns source evidence, confidence, uncertainty and scenario mappings under BSL-household-identity-001/002 and U13. Behavior remains implementation-supported, with runtime checks not-run.
 
 ## Goals / Non-Goals
 

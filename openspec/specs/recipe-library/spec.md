@@ -8,7 +8,7 @@ Let household members browse eligible reusable recipes, read stored detail and s
 
 The original preamble and qualification records above describe earlier combined-capability checkpoints. Their historical counts, exclusions and lifecycle status remain evidence, not current ownership. All applicable limitations continue to apply after relocation.
 
-- [recipe-library evidence record](../../../docs/openspec-baseline/recipe-library.md)
+- [recipe-library evidence record](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline/recipe-library.md)
 
 ## Capability dependencies (non-normative)
 
