@@ -33,8 +33,14 @@ public class ScheduleController(ScheduleService scheduleService) : ControllerBas
     {
         if (!TryReadReference(referenceWeekStartDate, out var reference))
             return BadRequest(new { message = "referenceWeekStartDate must be a yyyy-MM-dd Monday." });
-        await _scheduleService.MoveScheduleEventAsync(dto, GetConnectionId(), GetMoveSeq(), reference);
-        return Ok(new { message = "Recipe moved" });
+        try
+        {
+            var result = await _scheduleService.MoveScheduleEventAsync(dto, GetConnectionId(), GetMoveSeq(), reference, HttpContext.RequestAborted);
+            return result is null ? Ok(new { message = "Recipe moved" }) : Ok(result);
+        }
+        catch (TomorrowMoveConflictException ex) { return Conflict(new { message = ex.Message }); }
+        catch (Exception ex) when (ex is ArgumentException or OverflowException)
+        { return BadRequest(new { message = "Choose a valid source and its next calendar day." }); }
     }
 
     [HttpPost("defer")]

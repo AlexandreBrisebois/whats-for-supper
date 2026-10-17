@@ -1,5 +1,7 @@
 'use client';
 
+import { useUiStore } from '@/store/uiStore';
+
 import { useTodayStore } from '@/store/todayStore';
 import {
   CalendarUnavailableError,
@@ -430,9 +432,15 @@ export default function RecipesPage() {
     }
   };
 
+  const recoverySubmissionRef = useRef(false);
+  const [recoveryPending, setRecoveryPending] = useState(false);
+
   const handleRecoveryAction = async (action: string) => {
     if (!pendingRecovery) return;
     if (action !== 'tomorrow' && action !== 'next_week' && action !== 'drop') return;
+    if (recoverySubmissionRef.current) return;
+    recoverySubmissionRef.current = true;
+    setRecoveryPending(true);
 
     setIsAssigning(true);
     try {
@@ -455,7 +463,17 @@ export default function RecipesPage() {
       }
     } catch (error) {
       console.error('Failed recovery action:', error);
+      useUiStore.getState().addToast({
+        type: 'error',
+        message:
+          error instanceof Error
+            ? error.message
+            : 'This meal could not be moved. Refresh your plan.',
+      });
       setIsAssigning(false);
+    } finally {
+      recoverySubmissionRef.current = false;
+      setRecoveryPending(false);
     }
   };
 
@@ -945,10 +963,15 @@ export default function RecipesPage() {
 
       {pendingRecovery && (
         <SkipRecoveryDialog
+          pending={recoveryPending}
           isOpen={true}
           step={2}
-          onClose={() => setPendingRecovery(null)}
-          onBack={() => setPendingRecovery(null)}
+          onClose={() => {
+            if (!recoverySubmissionRef.current) setPendingRecovery(null);
+          }}
+          onBack={() => {
+            if (!recoverySubmissionRef.current) setPendingRecovery(null);
+          }}
           onAction={handleRecoveryAction}
         />
       )}

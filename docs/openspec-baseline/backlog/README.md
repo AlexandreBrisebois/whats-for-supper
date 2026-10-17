@@ -16,7 +16,7 @@ Audit snapshot: 2026-10-16 at `04a1c4570f9bbb01b47436790d4248635ac3179a`, plus e
 
 ## Prioritized queue
 
-**Completed and archived 2026-10-16:** [WFS-BL-005](WFS-BL-005.md), the shared calendar prerequisite for WFS-BL-001, has its bounded supper-calendar increment implemented, verified and [archived](../../../openspec/changes/archive/2026-10-16-deployment-calendar-supper-dates/proposal.md), with its four capability deltas synchronized to main specs. UTC is the default with an explicit deployment timezone override. The remaining clock inventory and parent backlog item stay open.
+Completed items are removed from this queue. Completion evidence remains in archived OpenSpec changes; unfinished remainders receive their own bounded backlog item.
 
 Priority ranks harm, reach and recovery burden. Source-confirmed conditions and high-impact investigations remain visible without claiming production reproduction. No P0 is established. Within a priority, prerequisite order can differ from urgency.
 
@@ -26,7 +26,7 @@ Priority ranks harm, reach and recovery burden. Source-confirmed conditions and 
 | [WFS-BL-002](WFS-BL-002.md) | P1 | Make replacement acknowledgement match persisted Tonight | TM-U07–08, MP-U01/03, U110–115 |
 | [WFS-BL-003](WFS-BL-003.md) | P1 | Supply required URL to contextual repair launch | U01; BSL-recipe-quality-002/003 |
 | [WFS-BL-004](WFS-BL-004.md) | P1 | Make recipe notes Saved reflect durable acknowledgement | U38–40; BSL-recipe-library-012/013 |
-| [WFS-BL-005](WFS-BL-005.md) | P1 | Use deployment local time for UX and inject every clock | U99, TM-U01, U102–109; user decision 2026-10-16 |
+| [WFS-BL-035](WFS-BL-035.md) | P1 | Inject remaining application clocks | Remaining clock-injection policy from WFS-BL-005 |
 | [WFS-BL-006](WFS-BL-006.md) | P1 | Recover typed and Similar Search after invalidation | SR-U08 |
 | [WFS-BL-007](WFS-BL-007.md) | P1 | Protect recovery exports from stale and partial content | DBR-U02–07, U12 |
 | [WFS-BL-008](WFS-BL-008.md) | P1 | Protect demo assets and reset semantics | DH-U01–04, DH-U06/09 |
@@ -59,17 +59,16 @@ Priority ranks harm, reach and recovery burden. Source-confirmed conditions and 
 
 ## Proposed implementation waves and conflict map
 
-**Wave 0 — policy/contract tracer:** WFS-BL-005 owns one injected deployment calendar. Review configuration and API/browser calendar context before generating clients or changing consumers. Then WFS-BL-001 specifies Tomorrow push across following weeks using that calendar. This is the proposed next planning scope, not permission to implement.
+The deployment-calendar prerequisite is complete; see the [archived acceptance record](../../../openspec/changes/archive/2026-10-16-deployment-calendar-supper-dates/tasks.md). WFS-BL-035 covers only remaining application clocks and is not a prerequisite for Tomorrow calendar work.
 
 **First parallel implementation wave, after individual approval:**
 
 | Assignment | Spec/task to prepare | Owned files | Dependencies / acceptance / stopping point |
 | --- | --- | --- | --- |
-| WFS-BL-005 calendar tracer | New corrective OpenSpec task; no executable task yet | IClock/calendar composition, ScheduleService date helpers, Home/today consumers and approved contract | Shared calendar decision first; exact Oct11/Oct18 IDs across Toronto deployment/Tokyo browser fixture, midnight/DST. Stop at reviewed tracer diff; no migration/promotion. |
 | WFS-BL-003 contextual URL repair | New corrective quality task using existing report rules | RecipeImportReportService and focused real-orchestrator/API test ownership | No shared ScheduleService; real packaged url-import required. Stop after launch/failure/retry evidence and reviewed diff. |
-| WFS-BL-010 stack paging | New corrective library task; existing baseline currently describes loaded position | browse-all-stack page, browseStackStore, StackActionBar, focused tests | Coordinate calendar consumer edit in same page: defer those calendar changes or serialize the file.126/180 exact-ID full-cycle checks. Stop at reviewed paging diff. |
+| WFS-BL-010 stack paging | New corrective library task; existing baseline currently describes loaded position | browse-all-stack page, browseStackStore, StackActionBar, focused tests | Calendar consumer changes are complete.126/180 exact-ID full-cycle checks. Stop at reviewed paging diff. |
 
-WFS-BL-015 member feedback is an alternative independent first-wave lane if calendar work owns Browse. Keep FamilyStore ownership reserved from concurrent preference work.
+WFS-BL-015 member feedback is an alternative independent first-wave lane. Keep FamilyStore ownership reserved from concurrent preference work.
 
 **Wave 1:** WFS-BL-001/002/012 execute sequentially or under one ScheduleService/Home/today/weekStore owner after calendar/result contracts. WFS-BL-011 follows/coordinated with010 in the same Browse files. WFS-BL-004 notes and016 quality observation both touch RecipeDetailSheet and must be serialized; cooking014 may also touch report handoff. Search006 and019 have distinct UI/backend cores but shared response context decisions.
 

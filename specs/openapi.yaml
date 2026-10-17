@@ -463,8 +463,26 @@ components:
         recipeId: { type: string, format: uuid }
         fromIndex: { type: [integer, 'null'] }
         toIndex: { type: integer }
-        intent: { type: string, enum: [swap, push], default: swap }
+        intent: { type: string, enum: [swap, push, tomorrow], default: swap }
         targetWeekOffset: { type: [integer, 'null'] }
+        sourceDisposition:
+          type: [string, 'null']
+          enum: [order_in, null]
+          description: Tomorrow only. Leave a recipe-free Order In source in the same commit as movement.
+
+    MoveScheduleResultDto:
+      type: object
+      required: [message]
+      description: Tomorrow always returns moved=true and all date/refresh fields. Legacy intents return message only.
+      properties:
+        message: { type: string }
+        moved: { type: boolean }
+        sourceDate: { type: string, format: date }
+        destinationDate: { type: string, format: date }
+        affectedWeekStartDates:
+          type: array
+          items: { type: string, format: date }
+        refreshComplete: { type: boolean }
 
     DeferScheduleDto:
       type: object
@@ -2412,12 +2430,21 @@ paths:
   /api/schedule/move:
     post:
       summary: Move a recipe in the schedule
+      description: >
+        Legacy swap and push retain their existing behavior. Intent tomorrow requires fromIndex
+        in 0..6 and the exact matching recipe at supper slot zero. The target must be the next
+        calendar day, using targetWeekOffset plus toIndex across Sunday. Tomorrow shifts the
+        contiguous occupied supper chain through all required weeks, stopping at the first empty
+        supper slot. Cooked, AwaitingConsensus or stale sources reject without mutation.
+        Source disposition order_in is allowed only for tomorrow and commits atomically with shifts.
+        A 200 tomorrow response confirms moved=true; refreshComplete=false means calendar changes
+        committed but some affected-week grocery/publication follow-ups failed. Do not repeat movement.
       parameters:
         - name: referenceWeekStartDate
           in: query
           required: false
           schema: { type: string, format: date }
-          description: Optional yyyy-MM-dd Monday anchoring all relative offsets and defer's next-week base. Omission captures the deployment current Monday (UTC by default). Literal source dates remain unchanged. Invalid or non-Monday references return 400 before work.
+          description: Optional yyyy-MM-dd Monday anchoring relative offsets. Omission captures the deployment current Monday (UTC by default). Invalid or non-Monday references return 400 before work.
       requestBody:
         required: true
         content:
@@ -2425,18 +2452,18 @@ paths:
             schema: { $ref: '#/components/schemas/MoveScheduleDto' }
       responses:
         '400':
-          description: Invalid or non-Monday referenceWeekStartDate; no mutation is performed.
+          description: Invalid reference, index, date, destination or disposition; no mutation.
+        '409':
+          description: Tomorrow source changed, cooked or awaiting-consensus entry blocks movement, or concurrent conflict; no mutation.
         '200':
-          description: OK
+          description: Legacy completion or committed Tomorrow movement; inspect moved and refreshComplete for Tomorrow.
           content:
             application/json:
               schema:
                 type: object
                 properties:
                   data:
-                    type: object
-                    properties:
-                      message: { type: string }
+                    $ref: '#/components/schemas/MoveScheduleResultDto'
 
   /api/schedule/defer:
     post:

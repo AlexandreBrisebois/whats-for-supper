@@ -436,6 +436,17 @@ export function createMoveScheduleDtoFromDiscriminatorValue(
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {MoveScheduleResultDto}
+ */
+// @ts-ignore
+export function createMoveScheduleResultDtoFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoMoveScheduleResultDto;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {NonCookingPlanDto}
  */
 // @ts-ignore
@@ -1757,6 +1768,11 @@ export function deserializeIntoMoveScheduleDto(
     recipeId: (n) => {
       moveScheduleDto.recipeId = n.getGuidValue();
     },
+    sourceDisposition: (n) => {
+      moveScheduleDto.sourceDisposition = n.getEnumValue<MoveScheduleDto_sourceDisposition>(
+        MoveScheduleDto_sourceDispositionObject
+      );
+    },
     targetWeekOffset: (n) => {
       moveScheduleDto.targetWeekOffset = n.getNumberValue();
     },
@@ -1765,6 +1781,37 @@ export function deserializeIntoMoveScheduleDto(
     },
     weekOffset: (n) => {
       moveScheduleDto.weekOffset = n.getNumberValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param MoveScheduleResultDto The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoMoveScheduleResultDto(
+  moveScheduleResultDto: Partial<MoveScheduleResultDto> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    affectedWeekStartDates: (n) => {
+      moveScheduleResultDto.affectedWeekStartDates =
+        n.getCollectionOfPrimitiveValues<DateOnly>('DateOnly');
+    },
+    destinationDate: (n) => {
+      moveScheduleResultDto.destinationDate = n.getDateOnlyValue();
+    },
+    message: (n) => {
+      moveScheduleResultDto.message = n.getStringValue();
+    },
+    moved: (n) => {
+      moveScheduleResultDto.moved = n.getBooleanValue();
+    },
+    refreshComplete: (n) => {
+      moveScheduleResultDto.refreshComplete = n.getBooleanValue();
+    },
+    sourceDate: (n) => {
+      moveScheduleResultDto.sourceDate = n.getDateOnlyValue();
     },
   };
 }
@@ -3545,6 +3592,10 @@ export interface MoveScheduleDto extends AdditionalDataHolder, Parsable {
    */
   recipeId?: Guid | null;
   /**
+   * Tomorrow only. Leave a recipe-free Order In source in the same commit as movement.
+   */
+  sourceDisposition?: MoveScheduleDto_sourceDisposition | null;
+  /**
    * The targetWeekOffset property
    */
   targetWeekOffset?: number | null;
@@ -3559,6 +3610,37 @@ export interface MoveScheduleDto extends AdditionalDataHolder, Parsable {
 }
 export type MoveScheduleDto_intent =
   (typeof MoveScheduleDto_intentObject)[keyof typeof MoveScheduleDto_intentObject];
+export type MoveScheduleDto_sourceDisposition =
+  (typeof MoveScheduleDto_sourceDispositionObject)[keyof typeof MoveScheduleDto_sourceDispositionObject];
+/**
+ * Tomorrow always returns moved=true and all date/refresh fields. Legacy intents return message only.
+ */
+export interface MoveScheduleResultDto extends AdditionalDataHolder, Parsable {
+  /**
+   * The affectedWeekStartDates property
+   */
+  affectedWeekStartDates?: DateOnly[] | null;
+  /**
+   * The destinationDate property
+   */
+  destinationDate?: DateOnly | null;
+  /**
+   * The message property
+   */
+  message?: string | null;
+  /**
+   * The moved property
+   */
+  moved?: boolean | null;
+  /**
+   * The refreshComplete property
+   */
+  refreshComplete?: boolean | null;
+  /**
+   * The sourceDate property
+   */
+  sourceDate?: DateOnly | null;
+}
 /**
  * Recipe-free supper plan. customLabel is required for custom and optional for order_in/eating_out; trimmed to 1-80 Unicode scalar values when present. Blank optional notes normalize to null. Mystery requires null or absent customLabel.
  */
@@ -4967,10 +5049,40 @@ export function serializeMoveScheduleDto(
     moveScheduleDto.intent ?? MoveScheduleDto_intentObject.Swap
   );
   writer.writeGuidValue('recipeId', moveScheduleDto.recipeId);
+  writer.writeEnumValue<MoveScheduleDto_sourceDisposition>(
+    'sourceDisposition',
+    moveScheduleDto.sourceDisposition
+  );
   writer.writeNumberValue('targetWeekOffset', moveScheduleDto.targetWeekOffset);
   writer.writeNumberValue('toIndex', moveScheduleDto.toIndex);
   writer.writeNumberValue('weekOffset', moveScheduleDto.weekOffset);
   writer.writeAdditionalData(moveScheduleDto.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param MoveScheduleResultDto The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeMoveScheduleResultDto(
+  writer: SerializationWriter,
+  moveScheduleResultDto: Partial<MoveScheduleResultDto> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!moveScheduleResultDto || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeCollectionOfPrimitiveValues<DateOnly>(
+    'affectedWeekStartDates',
+    moveScheduleResultDto.affectedWeekStartDates
+  );
+  writer.writeDateOnlyValue('destinationDate', moveScheduleResultDto.destinationDate);
+  writer.writeStringValue('message', moveScheduleResultDto.message);
+  writer.writeBooleanValue('moved', moveScheduleResultDto.moved);
+  writer.writeBooleanValue('refreshComplete', moveScheduleResultDto.refreshComplete);
+  writer.writeDateOnlyValue('sourceDate', moveScheduleResultDto.sourceDate);
+  writer.writeAdditionalData(moveScheduleResultDto.additionalData);
 }
 /**
  * Serializes information the current object
@@ -6699,6 +6811,15 @@ export const ManagementTaskStatusResponse_statusObject = {
 export const MoveScheduleDto_intentObject = {
   Swap: 'swap',
   Push: 'push',
+  Tomorrow: 'tomorrow',
+} as const;
+/**
+ * Tomorrow only. Leave a recipe-free Order In source in the same commit as movement.
+ */
+export const MoveScheduleDto_sourceDispositionObject = {
+  Order_in: 'order_in',
+  OpenapiJsonNullSentinelValue2BF936000FE44250987AE5DDB203E464:
+    'openapi-json-null-sentinel-value-2BF93600-0FE4-4250-987A-E5DDB203E464',
 } as const;
 export const NonCookingPlanDto_kindObject = {
   Order_in: 'order_in',

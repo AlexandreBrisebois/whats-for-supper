@@ -11,7 +11,7 @@ const mocks = vi.hoisted(() => ({
   push: vi.fn(),
   assignRecipe: vi.fn(),
   sync: vi.fn(),
-  movePost: vi.fn().mockResolvedValue(undefined),
+  movePost: vi.fn().mockResolvedValue({ data: { moved: true, refreshComplete: true } }),
   deferPost: vi.fn().mockResolvedValue({ data: { message: 'Moved meal to Monday, May 18.' } }),
   addToast: vi.fn(),
   removeDelete: vi.fn().mockResolvedValue(undefined),
@@ -396,7 +396,7 @@ describe('HomeCommandCenter', () => {
       recipe: null,
       status: 3,
     });
-    expect(mocks.validatePost).toHaveBeenCalledWith({ status: 3 });
+    expect(mocks.validatePost).not.toHaveBeenCalled();
     expect(mocks.movePost).toHaveBeenCalledTimes(1);
     await waitFor(() => {
       expect(mocks.weekInit).toHaveBeenCalledWith(0, '2026-05-04');
@@ -430,10 +430,14 @@ describe('HomeCommandCenter', () => {
         fromIndex: 6,
         toIndex: 0,
         targetWeekOffset: 1,
-        intent: 'push',
+        intent: 'tomorrow',
+        sourceDisposition: 'order_in',
         recipeId: 'recipe-1',
       },
-      { queryParameters: { referenceWeekStartDate: DateOnly.parse('2026-05-04') } }
+      {
+        queryParameters: { referenceWeekStartDate: DateOnly.parse('2026-05-04') },
+        options: [expect.objectContaining({ maxRetries: 0 })],
+      }
     );
   });
 
@@ -502,7 +506,10 @@ describe('HomeCommandCenter', () => {
 
     expect(mocks.movePost).toHaveBeenCalledWith(
       expect.objectContaining({ recipeId: 'planned-recipe' }),
-      { queryParameters: { referenceWeekStartDate: DateOnly.parse('2026-05-04') } }
+      {
+        queryParameters: { referenceWeekStartDate: DateOnly.parse('2026-05-04') },
+        options: [expect.objectContaining({ maxRetries: 0 })],
+      }
     );
     expect(mocks.assignRecipe).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'replacement-recipe' }),
@@ -554,11 +561,42 @@ describe('HomeCommandCenter', () => {
         targetWeekOffset: 1,
         recipeId: 'sunday-recipe',
       }),
-      { queryParameters: { referenceWeekStartDate: DateOnly.parse('2026-05-04') } }
+      {
+        queryParameters: { referenceWeekStartDate: DateOnly.parse('2026-05-04') },
+        options: [expect.objectContaining({ maxRetries: 0 })],
+      }
     );
     expect(mocks.assignRecipe).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'replacement-recipe' }),
       expect.objectContaining({ today: '2026-05-10', referenceWeekStartDate: '2026-05-04' })
     );
+  });
+});
+
+describe('atomic Tomorrow disposition', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+  it('does not validate Order In before a rejected Tomorrow and retains recovery', async () => {
+    mocks.currentRecipe = { id: 'recipe-1', name: 'Pasta', image: '/img/pasta' };
+    mocks.movePost.mockRejectedValueOnce({
+      responseStatusCode: 409,
+      message: 'A cooked meal blocks this move.',
+    });
+    render(<HomeCommandCenter todaysRecipe={mocks.currentRecipe} todayStatus={0} />);
+    fireEvent.click(screen.getByTestId('skip-btn'));
+    fireEvent.click(screen.getByTestId('recovery-action-order-in'));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('recovery-action-tomorrow'));
+    });
+    expect(mocks.validatePost).not.toHaveBeenCalled();
+    expect(mocks.applyServerUpdate).not.toHaveBeenCalled();
+    expect(mocks.movePost).toHaveBeenCalledWith(
+      expect.objectContaining({ intent: 'tomorrow', sourceDisposition: 'order_in' }),
+      expect.anything()
+    );
+    expect(mocks.assignRecipe).not.toHaveBeenCalled();
+    expect(screen.getByTestId('recovery-action-tomorrow')).toBeVisible();
+    expect(mocks.addToast).toHaveBeenCalled();
   });
 });

@@ -41,7 +41,7 @@ Verification evidence: source/assertion inspection; focused observed results onl
 
 Affected files/state: `HomeCommandCenter.tsx; todayStore.ts; ScheduleController.cs; ScheduleService.cs; planner API/contract`. Includes associated client/contract/persistence/workflow side effects described above; do not silently edit every listed dependency.
 
-Dependencies: WFS-BL-005 timezone/clock policy; agree push-result contract before dependent pivot work. Parallel eligibility is conditional on disjoint owned files in [README.md](README.md). Reserve shared RecipeDetailSheet, ScheduleService, weekStore, contracts and generated clients to one writer. No implementation assignment exists yet.
+Dependencies: deployment-calendar prerequisite completed (archived WFS-BL-005); agree push-result contract before dependent pivot work. Parallel eligibility is conditional on disjoint owned files in [README.md](README.md). Reserve shared RecipeDetailSheet, ScheduleService, weekStore, contracts and generated clients to one writer. No implementation assignment exists yet.
 
 ## Proposed bounded resolution and acceptance
 

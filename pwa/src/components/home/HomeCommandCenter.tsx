@@ -19,6 +19,7 @@ import { useRouter } from 'next/navigation';
 import { apiClient } from '@/lib/api/api-client';
 import { DateOnly } from '@microsoft/kiota-abstractions';
 import { calendarDayIndex, type CalendarContext } from '@/lib/deployment-calendar';
+import { moveTomorrow, type PlannerSlot } from '@/lib/planner/slotAssignment';
 import { referenceRequest } from '@/lib/api/planner';
 import { formatTotalTime } from '@/lib/formatTime';
 import { SolarLoader } from '../ui/SolarLoader';
@@ -157,6 +158,7 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
     try {
       const state = useTodayStore.getState();
       const context = state.calendarIsFresh() ? state.calendar! : await state.ensureCalendar();
+      tomorrowSourceRef.current = null;
       setActionContext(context);
       actionRecipe.current = useTodayStore.getState().currentRecipe;
       setRetryStart(null);
@@ -171,8 +173,15 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
     void startAction('step1');
   };
 
+  const recoverySubmissionRef = useRef(false);
+  const tomorrowSourceRef = useRef<PlannerSlot | null>(null);
+  const [recoveryPending, setRecoveryPending] = useState(false);
+
   const handleRecoveryAction = useCallback(
     async (action: string) => {
+      if (recoverySubmissionRef.current) return;
+      recoverySubmissionRef.current = true;
+      setRecoveryPending(true);
       try {
         const context = actionContext;
         if (!context) throw new Error("Could not confirm today's date. Try again.");
@@ -217,23 +226,24 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
             setRecoveryFlow({ kind: 'closed' });
             return;
           }
-          if (recoveryFlow.kind === 'step2' && recoveryFlow.intent === 'order_in') {
-            await finalizeOrderedIn();
-          }
-          // Reschedule tonight's meal to tomorrow
           const fromIndex = getMondayBasedDayIndex(todayStr);
-          const targetDayIndex = fromIndex + 1;
-          await apiClient.api.schedule.move.post(
-            {
-              weekOffset: 0,
-              fromIndex,
-              toIndex: targetDayIndex <= 6 ? targetDayIndex : 0,
-              targetWeekOffset: targetDayIndex <= 6 ? 0 : 1,
-              intent: 'push',
-              recipeId,
-            },
-            referenceRequest(context.referenceWeekStartDate)
+          tomorrowSourceRef.current ??= {
+            weekOffset: 0,
+            dayIndex: fromIndex,
+            date: todayStr,
+            recipe: actionRecipe.current,
+            referenceWeekStartDate: context.referenceWeekStartDate,
+          };
+          await moveTomorrow(
+            tomorrowSourceRef.current,
+            recoveryFlow.kind === 'step2' && recoveryFlow.intent === 'order_in'
+              ? 'order_in'
+              : undefined
           );
+          if (recoveryFlow.kind === 'step2' && recoveryFlow.intent === 'order_in') {
+            useTodayStore.getState().applyServerUpdate({ date: todayStr, recipe: null, status: 3 });
+            useWeekStore.getState().applySlotUpdate({ date: todayStr, recipe: null, status: 3 });
+          }
 
           if (recoveryFlow.kind === 'step2' && recoveryFlow.intent === 'pick_else') {
             assignRecipe(recoveryFlow.pendingRecipe, context);
@@ -322,7 +332,18 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
           );
         }
       } catch (error) {
-        console.error('Failed recovery action:', error);
+        console.warn('Recovery action stopped:', error instanceof Error ? error.message : error);
+        if (action === 'tomorrow') await sync();
+        useUiStore.getState().addToast({
+          type: 'error',
+          message:
+            error instanceof Error
+              ? error.message
+              : 'This meal could not be moved. Please refresh your plan.',
+        });
+      } finally {
+        recoverySubmissionRef.current = false;
+        setRecoveryPending(false);
       }
     },
     [markOrderedIn, sync, recoveryFlow, assignRecipe, router, actionContext]
@@ -531,6 +552,7 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
       <AnimatePresence>
         {showRecovery && (
           <SkipRecoveryDialog
+            pending={recoveryPending}
             isOpen={showRecovery}
             step={recoveryStep}
             onClose={() => setRecoveryFlow({ kind: 'closed' })}

@@ -649,7 +649,8 @@ test.describe('Quick Replace relative next week', () => {
     );
     await page.getByRole('button', { name: /Save for Next Week/ }).click();
     await pending;
-    await page.getByRole('button', { name: /Save for Next Week/ }).click();
+    await expect(page.getByRole('button', { name: /Save for Next Week/ })).toBeDisabled();
+    await page.getByRole('button', { name: /Save for Next Week/ }).dispatchEvent('click');
     expect(deferrals).toBe(1);
     expect(replacements).toBe(0);
     release();
