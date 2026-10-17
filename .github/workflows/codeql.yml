@@ -39,7 +39,7 @@ jobs:
       if: matrix.language == 'csharp'
       uses: actions/setup-dotnet@v6
       with:
-        dotnet-version: '11.0.100-preview.6.26359.118'
+        dotnet-version: '11.0.100-rc.2.26504.105'
 
     - name: Build C# (api only)
       if: matrix.language == 'csharp'
