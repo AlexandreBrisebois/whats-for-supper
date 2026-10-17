@@ -15,7 +15,7 @@ References in preserved requirements to a combined capability now resolve to the
 
 The original preamble and qualification records above describe earlier combined-capability checkpoints. Their historical counts, exclusions and lifecycle status remain evidence, not current ownership. All applicable limitations continue to apply after relocation.
 
-- [recipe-search evidence record](../../../docs/openspec-baseline/recipe-search.md)
+- [recipe-search evidence record](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline/recipe-search.md)
 
 ## Capability dependencies (non-normative)
 

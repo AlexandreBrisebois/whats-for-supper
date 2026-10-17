@@ -15,7 +15,7 @@ References in preserved requirements to the former combined meal-planning owner 
 
 ## Evidence and qualifications (non-normative)
 
-Accepted and promoted on 2026-10-16 under DISC-D03 from the three reviewed discovery deltas. The [capability plan](../../../docs/openspec-baseline/recipe-discovery.md) retains BSL-recipe-discovery-001–013, full scenario mappings, U04 and DISC-U01–U08. These requirements describe implementation-supported behavior; runtime/API/browser/database qualification remains not-run under A34.
+Accepted and promoted on 2026-10-16 under DISC-D03 from the three reviewed discovery deltas. The [capability plan](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline/recipe-discovery.md) retains BSL-recipe-discovery-001–013, full scenario mappings, U04 and DISC-U01–U08. These requirements describe implementation-supported behavior; runtime/API/browser/database qualification remains not-run under A34.
 
 Acceptance covers the mapped requirements and their explicit exclusions. It does not adopt disputed vote values/labels, planned-recipe exclusion, complete error recovery, queue movement range, badge causation, global vote-clearing policy, atomic promotion/lock, household isolation or durable delivery as requirements. Match, consensus, suggestion, promotion, assignment and lock remain distinct. Broader planning and live-update semantics retain their existing owners. Source changes remain active and unarchived; this promotion makes no application changes.
 

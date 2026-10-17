@@ -1,6 +1,6 @@
 # Tasks
 
-Drafting authority: A27/A28 in the [durable plan](../../../docs/openspec-baseline-plan.md). The user requires 201 contract alignment and trimmed case-insensitive name uniqueness with 409 rejection. A30 authorizes task 2.1 only; tasks 2.2–2.4 remain unauthorized in this session. A29 records user approval and main-spec promotion on 2026-10-15; application completion is a separate status. Four future implementation tasks remain open.
+Drafting authority: A27/A28 in the [durable plan](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline-plan.md). The user requires 201 contract alignment and trimmed case-insensitive name uniqueness with 409 rejection. A30 authorizes task 2.1 only; tasks 2.2–2.4 remain unauthorized in this session. A29 records user approval and main-spec promotion on 2026-10-15; application completion is a separate status. Four future implementation tasks remain open.
 
 ## 1. Evidence and draft extraction
 

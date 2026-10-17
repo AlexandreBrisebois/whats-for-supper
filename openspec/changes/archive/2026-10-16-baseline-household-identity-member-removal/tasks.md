@@ -1,6 +1,6 @@
 # Tasks
 
-Documentation-only extraction under A41 in the [durable plan](../../../../docs/openspec-baseline-plan.md). No application implementation tasks. BSL-020–022 maps the two requirements/two scenarios. Behavior TDD, API/client generation and application tests are not applicable to these documentation edits; runtime API/browser/database observations remain not-run under A34. No unresolved question changes the A40 draft boundary.
+Documentation-only extraction under A41 in the [durable plan](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline-plan.md). No application implementation tasks. BSL-020–022 maps the two requirements/two scenarios. Behavior TDD, API/client generation and application tests are not applicable to these documentation edits; runtime API/browser/database observations remain not-run under A34. No unresolved question changes the A40 draft boundary.
 
 ## 1. Extract and reconcile the baseline
 

@@ -2,7 +2,7 @@
 
 ## Context
 
-See [proposal](proposal.md) for motivation and [delta](specs/recipe-library/spec.md) for the behavior boundary. The [durable plan](../../../../docs/openspec-baseline-plan.md), BSL-recipe-library-001–003, owns the trace, actual assertions and mapping. All 33 recorded source/spec/test inputs were rechecked unchanged before drafting. Design is included to resolve ambiguity across the list, summary, eligibility and paging seams without prescribing repairs.
+See [proposal](proposal.md) for motivation and [delta](specs/recipe-library/spec.md) for the behavior boundary. The [durable plan](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline-plan.md), BSL-recipe-library-001–003, owns the trace, actual assertions and mapping. All 33 recorded source/spec/test inputs were rechecked unchanged before drafting. Design is included to resolve ambiguity across the list, summary, eligibility and paging seams without prescribing repairs.
 
 The first observable slice is HomeCommandCenter → BrowseLibraryTrigger → `/browse-all-stack` → Show recipe list. BrowseAllStackPage directly uses the generated API client: summary GET followed by list GET with lowercase explore, page 1, list limit 12 and a discoverable boolean. RecipeController.List → RecipeService.GetRecipesList → EF recipes query → MapToDto/RecipeListResponseDto → generated DTO deserialization → browseStackStore → named grid buttons. Neither the general getRecipes adapter nor libraryStore's notification queue owns these list records. Search `/recipes` uses another endpoint and is not included.
 
@@ -40,7 +40,7 @@ The following non-normative material was moved from this change’s delta preamb
 
 ## Evidence and status (non-normative)
 
-Documentation-only draft under A48, backed by BSL-recipe-library-001–003 in the [durable plan](../../../../docs/openspec-baseline-plan.md). Evidence is implementation-supported under A10; runtime browser/API/database checks are not-run and qualification remains deferred under A34. This draft is not accepted or promoted.
+Documentation-only draft under A48, backed by BSL-recipe-library-001–003 in the [durable plan](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline-plan.md). Evidence is implementation-supported under A10; runtime browser/API/database checks are not-run and qualification remains deferred under A34. This draft is not accepted or promoted.
 
 Household-identity owns access and member context. Reuse its existing requirements “Gate protected page entry with household access”, “Apply member context after household access”, “Authenticate protected API requests independently”, and current-member resolution/recovery. Member preferences owns selection/persistence of browse mode; this slice describes the local list presentation once selected. The library is not filtered to the active member's own captures.
 

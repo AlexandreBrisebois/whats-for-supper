@@ -6,7 +6,7 @@ Existing active issue report export and interrupted re-import recovery needs an 
 
 ## What Changes
 
-- Document this bounded existing-behavior slice with evidence BSL-data-backup-and-recovery-013–014 in the [capability plan](../../../../docs/openspec-baseline/data-backup-and-recovery.md).
+- Document this bounded existing-behavior slice with evidence BSL-data-backup-and-recovery-013–014 in the [capability plan](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline/data-backup-and-recovery.md).
 - Keep discrepancies and unsupported guarantees outside normative requirements.
 - Produce documentation only; human review remains pending.
 

@@ -1,6 +1,6 @@
 # Tasks
 
-Documentation-only extraction under A48 in the [durable plan](../../../../docs/openspec-baseline-plan.md). No application implementation tasks. BSL-recipe-library-001–003 maps nine additions/18 scenarios. U29–U31 are confirmed non-normative. Behavior TDD, application tests and API/client regeneration are not applicable; browser/API/database runtime qualification is not-run under A34.
+Documentation-only extraction under A48 in the [durable plan](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline-plan.md). No application implementation tasks. BSL-recipe-library-001–003 maps nine additions/18 scenarios. U29–U31 are confirmed non-normative. Behavior TDD, application tests and API/client regeneration are not applicable; browser/API/database runtime qualification is not-run under A34.
 
 ## 1. Extract and reconcile the baseline
 

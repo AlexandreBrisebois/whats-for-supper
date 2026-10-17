@@ -7,7 +7,7 @@ Extract demo restore and activity clearing from current executable paths into re
 ## What Changes
 
 - Draft only the evidenced demo-household behavior for this slice.
-- Reconcile BSL-demo-household-005, BSL-demo-household-007, BSL-demo-household-008, BSL-demo-household-009 in the [capability evidence plan](../../../../docs/openspec-baseline/demo-household.md).
+- Reconcile BSL-demo-household-005, BSL-demo-household-007, BSL-demo-household-008, BSL-demo-household-009 in the [capability evidence plan](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline/demo-household.md).
 - Review in dependency order after `baseline-demo-household-snapshot-capture`.
 - Retain these non-normative boundaries: No separate clear-activity route exists. No all-table reset, soft-deleted recipe reset, filesystem/database atomicity, concurrent-work cancellation, browser refresh/SSE guarantee or automatic reconstruction of omitted data. Missing asset directory and partial filesystem failure remain limitations.
 

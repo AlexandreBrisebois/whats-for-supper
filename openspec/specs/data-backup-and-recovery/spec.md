@@ -7,7 +7,7 @@ Export and reconstruct retained application data, including report and compatibl
 ## Evidence and qualifications (non-normative)
 
 Promoted under DBR-P01 (2026-10-16) from the six reviewed backup/recovery deltas.
-The [capability evidence record](../../../docs/openspec-baseline/data-backup-and-recovery.md)
+The [capability evidence record](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline/data-backup-and-recovery.md)
 maps every requirement/scenario to BSL-data-backup-and-recovery-001–020. DBR-U01–U08,
 U12 and A34 remain intact: source-supported extraction is not runtime qualification,
 a complete infrastructure backup or an atomic file/database recovery guarantee.
@@ -17,7 +17,7 @@ The changes remain active and unarchived.
 
 The original preamble and qualification records above describe earlier combined-capability checkpoints. Their historical counts, exclusions and lifecycle status remain evidence, not current ownership. All applicable limitations continue to apply after relocation.
 
-- [data-backup-and-recovery evidence record](../../../docs/openspec-baseline/data-backup-and-recovery.md) and [preserved qualification text](../data-backup-and-recovery/spec.md#evidence-and-qualifications-non-normative)
+- [data-backup-and-recovery evidence record](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline/data-backup-and-recovery.md) and [preserved qualification text](../data-backup-and-recovery/spec.md#evidence-and-qualifications-non-normative)
 
 ## Capability dependencies (non-normative)
 

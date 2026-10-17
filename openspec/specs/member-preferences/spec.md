@@ -8,7 +8,7 @@ Promotion MP-P01 (2026-10-16) accepts the five member-preferences deltas selecte
 by the user: language-selection, browse-selection, api-persistence, preview-choices
 and preview-resolution. Their 26 requirements and 57 scenarios are promoted without
 changing their wording. Evidence BSL-member-preferences-001–016, source identities,
-actual test substitutions and mappings remain in the [capability plan](../../../docs/openspec-baseline/member-preferences.md).
+actual test substitutions and mappings remain in the [capability plan](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline/member-preferences.md).
 
 U-MP01–13 and X-MP01–04 remain non-normative limitations and exclusions, including
 browser/member translation divergence, save/refresh races, deployment/build input

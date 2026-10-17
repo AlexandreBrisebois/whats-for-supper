@@ -8,7 +8,7 @@ Select and recover the active household member and carry that context through br
 
 These requirements were relocated unchanged from their original capability owners. All applicable BSL/U/A qualifications, partial-success boundaries and deferred runtime/API/browser/database/model evidence transfer with them. Relocation establishes no new behavioral guarantee.
 
-- [household-identity evidence record](../../../docs/openspec-baseline/household-identity.md)
+- [household-identity evidence record](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline/household-identity.md)
 
 ## Capability dependencies (non-normative)
 

@@ -8,7 +8,7 @@ scenarios. See [archive record](tasks.md#archive-record--2026-10-15).
 
 See [proposal](proposal.md) for motivation and [delta](specs/household-identity/spec.md) for the seven added requirements. This is an extraction design, included because shared-access security spans PWA actions, browser cookies, page gates and API authorization. It records existing seams and claim boundaries; it introduces no architecture or implementation work.
 
-Source identity: `moving-to-openspec`, commit `7e0dcdbe162704debe8a0f916eb1f7327afc77a5`. BSL-household-identity-003/004/005 in the [durable plan](../../../../docs/openspec-baseline-plan.md) provide source/test anchors and confidence. The accepted [main identity spec](../../../specs/household-identity/spec.md) remains unchanged, with five requirements/ten scenarios. A17 keeps absent server token-age enforcement non-normative; A18 authorizes this bounded draft only.
+Source identity: `moving-to-openspec`, commit `7e0dcdbe162704debe8a0f916eb1f7327afc77a5`. BSL-household-identity-003/004/005 in the [durable plan](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline-plan.md) provide source/test anchors and confidence. The accepted [main identity spec](../../../specs/household-identity/spec.md) remains unchanged, with five requirements/ten scenarios. A17 keeps absent server token-age enforcement non-normative; A18 authorizes this bounded draft only.
 
 ## Goals / Non-Goals
 

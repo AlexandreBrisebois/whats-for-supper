@@ -2,7 +2,7 @@
 
 ## Context
 
-See proposal.md. Cross-module source: `pdf-share.js` readwrite IndexedDB transactions on one pending key → `pdfShare.ts` bridge → `PdfCapturePanel` delivery epoch/token/member checks → `pdfCaptureStore` generation ownership → capture-owned confirmation. Root `PdfShareLifecycle` sits outside IdentityValidator, so token discard and URL removal can run on unlock/onboarding. Evidence: BSL-app-installation-007–009 in [capability plan](../../../../docs/openspec-baseline/app-installation.md).
+See proposal.md. Cross-module source: `pdf-share.js` readwrite IndexedDB transactions on one pending key → `pdfShare.ts` bridge → `PdfCapturePanel` delivery epoch/token/member checks → `pdfCaptureStore` generation ownership → capture-owned confirmation. Root `PdfShareLifecycle` sits outside IdentityValidator, so token discard and URL removal can run on unlock/onboarding. Evidence: BSL-app-installation-007–009 in [capability plan](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline/app-installation.md).
 
 ## Goals / Non-Goals
 

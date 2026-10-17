@@ -22,7 +22,7 @@ References in preserved requirements to the former combined meal-planning owner 
 Accepted and promoted as documentation under TM-P01 (2026-10-16), user “promote”,
 from the reviewed home-states, goto-choices and changed-plan-recovery deltas,
 each prefixed `baseline-tonight-meal-decisions-`. The 27 requirements and 57
-scenarios below preserve those deltas verbatim. The [capability evidence record](../../../docs/openspec-baseline/tonight-meal-decisions.md)
+scenarios below preserve those deltas verbatim. The [capability evidence record](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline/tonight-meal-decisions.md)
 retains BSL-tonight-meal-decisions-001–012, exact mappings, source/test identities,
 assertion substitutions, shared ownership and all excluded topics.
 

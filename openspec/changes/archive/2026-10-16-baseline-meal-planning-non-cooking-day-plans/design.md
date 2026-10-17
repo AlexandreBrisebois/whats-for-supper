@@ -2,7 +2,7 @@
 
 ## Context
 
-See [proposal](proposal.md) for motivation and [delta](specs/meal-planning/spec.md) for the supported behavior. This design records extraction decisions across the existing UI/API/persistence/live boundaries; it proposes no application architecture change. BSL-meal-planning-014–020 in the [capability plan](../../../../docs/openspec-baseline/meal-planning.md) owns evidence, identities and complete mappings.
+See [proposal](proposal.md) for motivation and [delta](specs/meal-planning/spec.md) for the supported behavior. This design records extraction decisions across the existing UI/API/persistence/live boundaries; it proposes no application architecture change. BSL-meal-planning-014–020 in the [capability plan](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline/meal-planning.md) owns evidence, identities and complete mappings.
 
 The first observable slice is a person opening Other plans on an ordinary dated empty card, saving the default Mystery night, and seeing recipe-free skipped content after a reread. The same sheet edits captured metadata and clears existing recipe-free plans. Source spans Planner/pivot/sheet, `nonCooking.ts`, browser `planner.ts`, Kiota date builders/models, OpenAPI validation/removal operations, ScheduleController/Service, CalendarEvent/WeeklyPlan, grocery follow-up and SSE/store/Home reconciliation. These are inspected paths, not executed integration evidence.
 

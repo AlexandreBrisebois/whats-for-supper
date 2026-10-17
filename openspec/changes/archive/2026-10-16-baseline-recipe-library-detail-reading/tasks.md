@@ -1,6 +1,6 @@
 # Tasks
 
-Documentation extraction only under A50 in the [durable plan](../../../../docs/openspec-baseline-plan.md). Seven additions/13 scenarios mapped in BSL-recipe-library-006; U32–U34 non-normative under A12. No application implementation tasks. Behavior TDD, application/API test execution and client regeneration are not-applicable to this edit. Runtime browser/API/PostgreSQL qualification is not-run under A34.
+Documentation extraction only under A50 in the [durable plan](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline-plan.md). Seven additions/13 scenarios mapped in BSL-recipe-library-006; U32–U34 non-normative under A12. No application implementation tasks. Behavior TDD, application/API test execution and client regeneration are not-applicable to this edit. Runtime browser/API/PostgreSQL qualification is not-run under A34.
 
 ## 1. Extract and reconcile the bounded documentation
 

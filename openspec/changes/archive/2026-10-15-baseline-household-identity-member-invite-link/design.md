@@ -8,7 +8,7 @@ scenarios. See [archive record](tasks.md#archive-record--2026-10-15).
 
 See [proposal](proposal.md) for motivation and [identity delta](specs/household-identity/spec.md) for the six additions/18 scenarios. This is a documentation extraction design, included because the journey crosses sharing, signed household access, cookie writes, client identity and navigation boundaries. It introduces no architecture or application implementation.
 
-Source identity: `moving-to-openspec`, commit `7e0dcdbe162704debe8a0f916eb1f7327afc77a5`. BSL-household-identity-006/007/008 in the [durable plan](../../../../docs/openspec-baseline-plan.md) supply ordered source/test traces. A23 authorizes this draft; A17 and A22 govern excluded claims. The [main identity spec](../../../specs/household-identity/spec.md) stays unchanged at 12 requirements/31 scenarios.
+Source identity: `moving-to-openspec`, commit `7e0dcdbe162704debe8a0f916eb1f7327afc77a5`. BSL-household-identity-006/007/008 in the [durable plan](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline-plan.md) supply ordered source/test traces. A23 authorizes this draft; A17 and A22 govern excluded claims. The [main identity spec](../../../specs/household-identity/spec.md) stays unchanged at 12 requirements/31 scenarios.
 
 ## Goals / Non-Goals
 

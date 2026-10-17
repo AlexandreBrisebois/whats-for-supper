@@ -6,7 +6,7 @@ See [proposal](proposal.md) for motivation and [delta](specs/recipe-library/spec
 
 ## Goals / Non-Goals
 
-**Goals:** preserve the existing library and household owners, distinguish draft normalization from stored facts, and map every scenario to inspected source and actual assertion coverage in BSL-recipe-library-008–010 of the [plan](../../../../docs/openspec-baseline-plan.md).
+**Goals:** preserve the existing library and household owners, distinguish draft normalization from stored facts, and map every scenario to inspected source and actual assertion coverage in BSL-recipe-library-008–010 of the [plan](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline-plan.md).
 
 **Non-Goals:** implementation, defect repair, contract alignment, testing application mutations, lifecycle actions or completion of adjacent capabilities. No migration or deployment is applicable.
 
@@ -32,7 +32,7 @@ The following non-normative material was moved from this change’s delta preamb
 
 ## Evidence and status (non-normative)
 
-Documentation-only draft under A52 and BSL-recipe-library-008–010 in the [durable plan](../../../../docs/openspec-baseline-plan.md). Implementation-supported under A10; browser/API/database checks not-run under A34. Not accepted, promoted or archived. Main recipe-library remains 16 requirements/31 scenarios; household-identity remains 36/92.
+Documentation-only draft under A52 and BSL-recipe-library-008–010 in the [durable plan](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline-plan.md). Implementation-supported under A10; browser/API/database checks not-run under A34. Not accepted, promoted or archived. Main recipe-library remains 16 requirements/31 scenarios; household-identity remains 36/92.
 
 Existing library requirements “Retrieve the selected library recipe for detail reading”, “Return persisted recipe detail for an available record”, “Display returned recipe text and image reference”, “Display available recipe metadata in detail” and “Display returned ingredient strings in detail” retain retrieval/fact/display ownership. These additions begin with successfully loaded detail. Household-identity retains “Gate protected page entry with household access”, “Apply member context after household access” and “Authenticate protected API requests independently”; no per-member ownership or tenant-isolation rule is added.
 

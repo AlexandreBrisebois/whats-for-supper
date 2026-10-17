@@ -46,7 +46,7 @@ The following non-normative material was moved from this change’s delta preamb
 
 ## Evidence and status (non-normative)
 
-Implementation-supported draft under A73 and BSL-recipe-quality-001–005 in the [durable plan](../../../../docs/openspec-baseline-plan.md). Inspected assertions were not executed; A34 qualification remains deferred. U01/U75–U79 withhold successful contextual URL delivery, universal member polling access, automatic resolution and resumed observation guarantees. This draft is not accepted, promoted or archived.
+Implementation-supported draft under A73 and BSL-recipe-quality-001–005 in the [durable plan](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline-plan.md). Inspected assertions were not executed; A34 qualification remains deferred. U01/U75–U79 withhold successful contextual URL delivery, universal member polling access, automatic resolution and resumed observation guarantees. This draft is not accepted, promoted or archived.
 
 Historical BSL-household-identity-014/015 and U22 qualification retained:
 

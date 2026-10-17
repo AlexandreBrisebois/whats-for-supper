@@ -9,7 +9,7 @@ Household identity has no baseline requirements for the connected member-name ed
 - Add only member-renaming requirements: open/cancel editing, trim and submit nonblank names, update the existing member through PUT, and display the returned name without changing selected identity.
 - Reuse accepted household-access, member-context and selected-name display requirements.
 - Keep U23 validation/constraint differences and U24 failure/pending limitations outside normative claims. Do not extend creation's desired duplicate-name policy to rename.
-- Record extraction evidence and scenario mapping in the [durable plan](../../../../docs/openspec-baseline-plan.md), BSL-018/019. Runtime and implementation work remain deferred under A34.
+- Record extraction evidence and scenario mapping in the [durable plan](https://github.com/AlexandreBrisebois/whats-for-supper/blob/46234524072c1df2ca7f67b40d592559770bd440/docs/openspec-baseline-plan.md), BSL-018/019. Runtime and implementation work remain deferred under A34.
 
 ## Capabilities
 
