@@ -617,6 +617,146 @@ describe('RecipesPage', () => {
     }
   });
 
+  it.each(['typed', 'similar'])(
+    'refreshes %s results after invalidation without losing context',
+    async (mode) => {
+      mocks.setSearchParams(
+        `addToDay=2&weekOffset=1${mode === 'similar' ? '&similarTo=recipe-123' : ''}`
+      );
+      mocks.searchRecipes.mockResolvedValue(makeSearchResponse({ resultPath: 'lexical-only' }));
+      await act(async () => {
+        render(<RecipesPage />);
+      });
+      if (mode === 'typed') {
+        fireEvent.change(screen.getByTestId('recipe-search-input'), {
+          target: { value: 'chicken' },
+        });
+        fireEvent.keyDown(screen.getByTestId('recipe-search-input'), { key: 'Enter' });
+      }
+      await waitFor(() => expect(screen.queryByTestId('recipe-loader')).not.toBeInTheDocument());
+      const before = mocks.searchRecipes.mock.calls.length;
+      mocks.searchRecipes.mockResolvedValueOnce(
+        makeSearchResponse({
+          topPick: null,
+          results: [{ ...makeSearchResult(31), name: 'Fresh ranked recipe' }],
+        })
+      );
+      await act(async () => {
+        useSearchPromotionStore.getState().invalidate();
+      });
+      expect(await screen.findByText('Fresh ranked recipe')).toBeInTheDocument();
+      expect(mocks.searchRecipes).toHaveBeenCalledTimes(before + 1);
+      expect(mocks.searchRecipes).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          query: mode === 'typed' ? 'chicken' : '',
+          weekOffset: 1,
+          dayIndex: 2,
+          similarToRecipeId: mode === 'similar' ? 'recipe-123' : undefined,
+        })
+      );
+      expect(screen.getByTestId('recipe-search-input')).toHaveValue(
+        mode === 'typed' ? 'chicken' : ''
+      );
+    }
+  );
+
+  it.each(['success', 'failure'])(
+    'refreshes a pending initial request and ignores obsolete %s',
+    async (outcome) => {
+      let resolveOld!: (value: ReturnType<typeof makeSearchResponse>) => void;
+      let rejectOld!: (error: Error) => void;
+      mocks.searchRecipes.mockImplementationOnce(
+        () =>
+          new Promise((resolve, reject) => {
+            resolveOld = resolve;
+            rejectOld = reject;
+          })
+      );
+      mocks.searchRecipes.mockResolvedValueOnce(
+        makeSearchResponse({
+          topPick: null,
+          results: [{ ...makeSearchResult(31), name: 'Current generation' }],
+        })
+      );
+      await act(async () => {
+        render(<RecipesPage />);
+      });
+      await act(async () => {
+        useSearchPromotionStore.getState().invalidate();
+      });
+      expect(await screen.findByText('Current generation')).toBeInTheDocument();
+      await act(async () => {
+        if (outcome === 'success') resolveOld(makeSearchResponse());
+        else rejectOld(new Error('Obsolete failure'));
+      });
+      expect(screen.getByText('Current generation')).toBeInTheDocument();
+      expect(screen.queryByTestId('search-request-error')).not.toBeInTheDocument();
+      expect(mocks.searchRecipes).toHaveBeenCalledTimes(2);
+    }
+  );
+
+  it('handles repeated invalidations without replaying them when typing later', async () => {
+    mocks.searchRecipes.mockResolvedValue(makeSearchResponse({ resultPath: 'lexical-only' }));
+    await act(async () => {
+      render(<RecipesPage />);
+    });
+    await act(async () => {
+      useSearchPromotionStore.getState().invalidate();
+    });
+    await waitFor(() => expect(mocks.searchRecipes).toHaveBeenCalledTimes(2));
+    await act(async () => {
+      useSearchPromotionStore.getState().invalidate();
+    });
+    await waitFor(() => expect(mocks.searchRecipes).toHaveBeenCalledTimes(3));
+    await waitFor(() => expect(screen.queryByTestId('recipe-loader')).not.toBeInTheDocument());
+    vi.useFakeTimers();
+    try {
+      fireEvent.change(screen.getByTestId('recipe-search-input'), {
+        target: { value: 'new query' },
+      });
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(499);
+      });
+      expect(mocks.searchRecipes).toHaveBeenCalledTimes(3);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1);
+      });
+      expect(mocks.searchRecipes).toHaveBeenCalledTimes(4);
+      expect(mocks.searchRecipes).toHaveBeenLastCalledWith(
+        expect.objectContaining({ query: 'new query' })
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('shows refresh failure and retries retained typed input instead of claiming no matches', async () => {
+    mocks.searchRecipes.mockResolvedValue(makeSearchResponse({ resultPath: 'lexical-only' }));
+    await act(async () => {
+      render(<RecipesPage />);
+    });
+    fireEvent.change(screen.getByTestId('recipe-search-input'), { target: { value: 'chicken' } });
+    fireEvent.keyDown(screen.getByTestId('recipe-search-input'), { key: 'Enter' });
+    await waitFor(() => expect(screen.queryByTestId('recipe-loader')).not.toBeInTheDocument());
+    mocks.searchRecipes.mockRejectedValueOnce(new Error('Network unavailable'));
+    await act(async () => {
+      useSearchPromotionStore.getState().invalidate();
+    });
+    expect(await screen.findByTestId('search-request-error')).toBeInTheDocument();
+    expect(screen.queryByTestId('search-empty-state')).not.toBeInTheDocument();
+    mocks.searchRecipes.mockResolvedValueOnce(
+      makeSearchResponse({
+        topPick: null,
+        results: [{ ...makeSearchResult(31), name: 'Recovered search' }],
+      })
+    );
+    fireEvent.click(screen.getByTestId('search-request-retry'));
+    expect(await screen.findByText('Recovered search')).toBeInTheDocument();
+    expect(mocks.searchRecipes).toHaveBeenLastCalledWith(
+      expect.objectContaining({ query: 'chicken' })
+    );
+  });
+
   it('restarts an open browse generation when Search promotion eligibility is invalidated', async () => {
     mocks.searchRecipes.mockResolvedValueOnce(
       makeSearchResponse({ resultPath: 'browse', nextCursor: 'stale-cursor' })
@@ -646,49 +786,64 @@ describe('RecipesPage', () => {
     expect(await screen.findByText('Fresh after schedule change')).toBeInTheDocument();
   });
 
-  it('retains active filters, Focus concepts, and planning context when promotion eligibility refreshes', async () => {
-    mocks.setSearchParams('addToDay=2&weekOffset=1');
-    mocks.searchRecipes.mockResolvedValue(makeSearchResponse({ resultPath: 'browse' }));
-
-    await act(async () => {
-      render(<RecipesPage />);
-    });
-    await waitFor(() => expect(mocks.searchRecipes).toHaveBeenCalledTimes(1));
-
-    fireEvent.click(screen.getByTestId('mobile-filters-button'));
-    const dialog = screen.getByRole('dialog', { name: 'Filter recipes' });
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Supper' }));
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Beef' }));
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Apply filters' }));
-
-    await waitFor(() => {
-      expect(mocks.searchRecipes).toHaveBeenLastCalledWith(
-        expect.objectContaining({
-          query: '',
-          weekOffset: 1,
-          dayIndex: 2,
-          filters: { mealTypes: ['Supper'] },
-          preferences: { concepts: ['beef'] },
-        })
+  it.each(['browse', 'typed', 'similar'])(
+    'retains filters, Focus concepts and planning context in %s refresh',
+    async (mode) => {
+      mocks.setSearchParams(
+        `addToDay=2&weekOffset=1${mode === 'similar' ? '&similarTo=recipe-123' : ''}`
       );
-    });
-
-    await act(async () => {
-      useSearchPromotionStore.getState().invalidate();
-    });
-
-    await waitFor(() => {
-      expect(mocks.searchRecipes).toHaveBeenLastCalledWith(
-        expect.objectContaining({
-          query: '',
-          weekOffset: 1,
-          dayIndex: 2,
-          filters: { mealTypes: ['Supper'] },
-          preferences: { concepts: ['beef'] },
-        })
+      mocks.searchRecipes.mockResolvedValue(
+        makeSearchResponse({ resultPath: mode === 'browse' ? 'browse' : 'lexical-only' })
       );
-    });
-  });
+
+      await act(async () => {
+        render(<RecipesPage />);
+      });
+      await waitFor(() => expect(mocks.searchRecipes).toHaveBeenCalledTimes(1));
+
+      if (mode === 'typed') {
+        fireEvent.change(screen.getByTestId('recipe-search-input'), {
+          target: { value: 'chicken' },
+        });
+        fireEvent.keyDown(screen.getByTestId('recipe-search-input'), { key: 'Enter' });
+      }
+      fireEvent.click(screen.getByTestId('mobile-filters-button'));
+      const dialog = screen.getByRole('dialog', { name: 'Filter recipes' });
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Supper' }));
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Beef' }));
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Apply filters' }));
+
+      await waitFor(() => {
+        expect(mocks.searchRecipes).toHaveBeenLastCalledWith(
+          expect.objectContaining({
+            query: mode === 'typed' ? 'chicken' : '',
+            similarToRecipeId: mode === 'similar' ? 'recipe-123' : undefined,
+            weekOffset: 1,
+            dayIndex: 2,
+            filters: { mealTypes: ['Supper'] },
+            preferences: { concepts: ['beef'] },
+          })
+        );
+      });
+
+      await act(async () => {
+        useSearchPromotionStore.getState().invalidate();
+      });
+
+      await waitFor(() => {
+        expect(mocks.searchRecipes).toHaveBeenLastCalledWith(
+          expect.objectContaining({
+            query: mode === 'typed' ? 'chicken' : '',
+            similarToRecipeId: mode === 'similar' ? 'recipe-123' : undefined,
+            weekOffset: 1,
+            dayIndex: 2,
+            filters: { mealTypes: ['Supper'] },
+            preferences: { concepts: ['beef'] },
+          })
+        );
+      });
+    }
+  );
 
   it('renders the empty state when search returns no top pick and no results', async () => {
     mocks.searchRecipes.mockResolvedValue(

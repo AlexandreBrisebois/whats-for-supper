@@ -82,6 +82,8 @@ Use the **Vegetarian** filter to find recipes that WFS has confirmed as vegetari
 
 Tap any search result to open its recipe detail view. From there you can cook it tonight, plan it for later, find similar recipes, edit notes, or tap the **star** to add it to your family's GOTO list.
 
+When Search receives a library update, it refreshes your current results automatically so newly available recipes can appear. Your search words, filters, similar-recipe choice and planner day stay selected. If loading fails, choose **Retry** to try the same search again; an error does not mean your library is empty.
+
 Search saves you from the "I don't know, what do *you* want?" loop that ends in cereal.
 
 ---
@@ -157,6 +159,10 @@ Choose what needs a closer look:
 You only need to tap **Save**. The app decides the safe next step. A report with no note is still saved for review, but it will not start a re-import.
 
 When a re-import starts, you can close the sheet and keep using the app. The recipe shows **Reimporting in background** while it works. When it finishes, it is marked **Reimported — check recipe**. Review the recipe, then choose **Mark as resolved** when it looks right.
+
+For a recipe saved from a website, this focused repair uses its saved original link together with your feedback, so you do not need to find and paste the link again. A source may still be unavailable, and you should review the result before marking the issue resolved.
+
+If the app cannot start the repair, your report stays saved and the sheet explains the problem. Tap **Save** again to retry starting it with the same feedback.
 
 If re-import cannot finish, your report stays saved. Add or change a detail and tap **Save** to request another attempt. Saving unchanged feedback will not repeatedly restart it.
 

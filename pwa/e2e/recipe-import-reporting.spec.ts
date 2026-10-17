@@ -17,6 +17,8 @@ interface RecipeHarnessState {
   terminalStatus: ImportTerminalStatus;
   importStatusReads: number;
   lastReportBody: Record<string, unknown> | null;
+  failNextLaunch: boolean;
+  acceptedLaunches: number;
 }
 
 const searchResult = (
@@ -73,6 +75,8 @@ async function installRecipeHarness(
     terminalStatus,
     importStatusReads: 0,
     lastReportBody: null,
+    failNextLaunch: false,
+    acceptedLaunches: 0,
   };
 
   await page.route('**/api/recipes/search', async (route) => {
@@ -111,7 +115,11 @@ async function installRecipeHarness(
               reason === RecipeImportIssueReasonObject.Ingredients ||
               reason === RecipeImportIssueReasonObject.Steps
           );
-        const reimportStarted = state.recipe.canReimport === true && contentOnly && note !== null;
+        const eligible = state.recipe.canReimport === true && contentOnly && note !== null;
+        const reimportLaunchFailed = eligible && state.failNextLaunch;
+        state.failNextLaunch = false;
+        const reimportStarted = eligible && !reimportLaunchFailed;
+        if (reimportStarted) state.acceptedLaunches += 1;
         state.recipe = {
           ...state.recipe,
           importIssue: {
@@ -128,7 +136,7 @@ async function installRecipeHarness(
             recipe: state.recipe,
             reimportStarted,
             ...(reimportStarted ? { importId: MOCK_IDS.PHOTO_NEW } : {}),
-            reimportLaunchFailed: false,
+            reimportLaunchFailed,
           }),
         });
         return;
@@ -213,6 +221,31 @@ async function openRecipeDetail(page: Page, recipeId = MOCK_IDS.RECIPE_LASAGNA) 
 }
 
 test.describe('Recipe import issue reporting', () => {
+  test('retains saved URL feedback after launch failure and retries without retyping', async ({
+    page,
+  }) => {
+    const state = await installRecipeHarness(page);
+    state.failNextLaunch = true;
+    await openRecipeDetail(page);
+    await page.getByTestId('action-gear-menu').click();
+    await page.getByTestId('action-report-import-issue').click();
+    await page.getByTestId('import-issue-reason-ingredients').click();
+    await page.getByTestId('import-issue-note').fill('Check the URL quantities.');
+    await page.getByTestId('import-issue-save').click();
+    await expect(page.getByRole('dialog', { name: 'Review issue' }).getByRole('alert')).toHaveText(
+      'We saved your report, but couldn’t start re-import. Try again later.'
+    );
+    await expect(page.getByTestId('import-issue-note')).toHaveValue('Check the URL quantities.');
+    await expect(page.getByTestId('import-issue-save')).toBeEnabled();
+    await expect.poll(() => state.recipe.importIssue?.note).toBe('Check the URL quantities.');
+    expect(state.acceptedLaunches).toBe(0);
+    expect(state.importStatusReads).toBe(0);
+    await page.getByTestId('import-issue-save').click();
+    await expect.poll(() => state.acceptedLaunches).toBe(1);
+    await expect.poll(() => state.importStatusReads).toBeGreaterThan(0);
+    await expect(page.getByTestId('recipe-import-issue-status-readyToReview')).toBeVisible();
+  });
+
   test('starts eligible content feedback, polls its returned ID, and keeps the durable outcome', async ({
     page,
   }) => {

@@ -22,9 +22,7 @@ Priority ranks harm, reach and recovery burden. Source-confirmed conditions and 
 
 | Item | Priority | Title | Origins |
 | --- | --- | --- | --- |
-| [WFS-BL-003](WFS-BL-003.md) | P1 | Supply required URL to contextual repair launch | U01; BSL-recipe-quality-002/003 |
 | [WFS-BL-035](WFS-BL-035.md) | P1 | Inject remaining application clocks | Remaining clock-injection policy from WFS-BL-005 |
-| [WFS-BL-006](WFS-BL-006.md) | P1 | Recover typed and Similar Search after invalidation | SR-U08 |
 | [WFS-BL-007](WFS-BL-007.md) | P1 | Protect recovery exports from stale and partial content | DBR-U02–07, U12 |
 | [WFS-BL-008](WFS-BL-008.md) | P1 | Protect demo assets and reset semantics | DH-U01–04, DH-U06/09 |
 | [WFS-BL-009](WFS-BL-009.md) | P1 | Preserve cooked and skipped state during planner relock | U04, MP-U08/10, DISC-U06 |
@@ -52,19 +50,15 @@ Priority ranks harm, reach and recovery burden. Source-confirmed conditions and 
 
 Completed 2026-10-17: [durable recipe notes](../../../openspec/changes/archive/2026-10-17-durable-recipe-notes/tasks.md) and [complete stack traversal](../../../openspec/changes/archive/2026-10-17-complete-library-stack/tasks.md). These records distinguish controlled acceptance from production/device qualification. The reported 200-recipe dataset remains unqualified under WFS-BL-030.
 
+Completed 2026-10-17: [contextual URL repair](../../../openspec/changes/archive/2026-10-17-contextual-url-repair/tasks.md) and [Search invalidation recovery](../../../openspec/changes/archive/2026-10-17-search-invalidation-recovery/tasks.md). Acceptance includes packaged workflow launch with PostgreSQL, browser feedback retry, and browse/typed/Similar recovery through fixture SSE events. Provider correction quality and production event delivery are not established.
+
 ## Proposed implementation waves and conflict map
 
 The deployment-calendar prerequisite is complete; see the [archived acceptance record](../../../openspec/changes/archive/2026-10-16-deployment-calendar-supper-dates/tasks.md). WFS-BL-035 covers only remaining application clocks and is not a prerequisite for Tomorrow calendar work.
 
-**First parallel implementation wave, after individual approval:**
+WFS-BL-015 member feedback remains an independent candidate after its own selection. Keep FamilyStore ownership reserved from concurrent preference work.
 
-| Assignment | Spec/task to prepare | Owned files | Dependencies / acceptance / stopping point |
-| --- | --- | --- | --- |
-| WFS-BL-003 contextual URL repair | New corrective quality task using existing report rules | RecipeImportReportService and focused real-orchestrator/API test ownership | No shared ScheduleService; real packaged url-import required. Stop after launch/failure/retry evidence and reviewed diff. |
-
-WFS-BL-015 member feedback is an alternative independent first-wave lane. Keep FamilyStore ownership reserved from concurrent preference work.
-
-**Wave 1:** WFS-BL-012 retains the ordinary-push grocery/publication remainder after the completed [Tomorrow preservation](../../../openspec/changes/archive/2026-10-16-tomorrow-preserve-meals/tasks.md) and [Tonight replacement recovery](../../../openspec/changes/archive/2026-10-16-tonight-replacement-recovery/tasks.md) work. WFS-BL-011 retains presentation/unmount qualification after completed stack paging; do not reimplement its generation guard. WFS-BL-016 quality observation and cooking014 may share RecipeDetailSheet/report handoff ownership. Search006 and019 have distinct UI/backend cores but shared response context decisions.
+**Wave 1:** WFS-BL-012 retains the ordinary-push grocery/publication remainder after the completed [Tomorrow preservation](../../../openspec/changes/archive/2026-10-16-tomorrow-preserve-meals/tasks.md) and [Tonight replacement recovery](../../../openspec/changes/archive/2026-10-16-tonight-replacement-recovery/tasks.md) work. WFS-BL-011 retains presentation/unmount qualification after completed stack paging; do not reimplement its generation guard. WFS-BL-016 quality observation and cooking014 may share RecipeDetailSheet/report handoff ownership. WFS-BL-019 retains its backend continuation-context scope after completed Search invalidation recovery.
 
 **Wave 2:** recovery/export/demo007/008 require disposable DB/assets and explicit destructive-test authorization if operations extend beyond safe isolated fixtures. Workflow025, installation024 and wire013 follow selected boundary evidence. Completed documentation-extraction evidence remains in the archived baseline changes; runtime limitations remain in the relevant implementation items.
 

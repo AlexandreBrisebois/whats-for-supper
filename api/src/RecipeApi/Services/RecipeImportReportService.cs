@@ -325,12 +325,17 @@ public class RecipeImportReportService(RecipeDbContext db, IWorkflowOrchestrator
             ? "recipe-import"
             : throw new InvalidOperationException("Synthesized recipes cannot be reimported.");
 
-    private static Dictionary<string, string> WorkflowParameters(Recipe recipe, string[] reasons, string? note) => new()
+    private static Dictionary<string, string> WorkflowParameters(Recipe recipe, string[] reasons, string? note)
     {
-        ["recipeId"] = recipe.Id.ToString(),
-        ["repairReasons"] = string.Join(',', reasons),
-        ["repairNote"] = note!
-    };
+        var parameters = new Dictionary<string, string>
+        {
+            ["recipeId"] = recipe.Id.ToString(),
+            ["repairReasons"] = string.Join(',', reasons),
+            ["repairNote"] = note!
+        };
+        if (!string.IsNullOrEmpty(recipe.SourceUrl)) parameters["url"] = recipe.SourceUrl;
+        return parameters;
+    }
 
     private static bool MatchesSnapshot(WorkflowInstance workflow, string[] reasons, string? note)
     {

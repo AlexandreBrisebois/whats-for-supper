@@ -3,6 +3,9 @@ using Npgsql;
 using RecipeApi.Data;
 using RecipeApi.Models;
 using RecipeApi.Services;
+using RecipeApi.Infrastructure;
+using RecipeApi.Dto;
+using System.Text.Json;
 using Xunit;
 
 namespace RecipeApi.Tests.Integration;
@@ -42,6 +45,32 @@ public class RecipeImportReportPostgresTests : IAsyncLifetime
                 await new NpgsqlCommand($"DROP DATABASE IF EXISTS {_databaseName} WITH (FORCE)", _admin).ExecuteNonQueryAsync();
             await _admin.DisposeAsync();
         }
+    }
+
+    [PostgresFact]
+    public async Task ContextualUrlRepair_PackagedLaunchPersistsAndReusesOneAttempt()
+    {
+        var member = new FamilyMember { Id = Guid.NewGuid(), Name = "Alex" };
+        var recipe = new Recipe { Id = Guid.NewGuid(), Name = "URL recipe", SourceUrl = "https://example.com/saved", AddedBy = member.Id };
+        _db.FamilyMembers.Add(member);
+        _db.Recipes.Add(recipe);
+        await _db.SaveChangesAsync();
+        var storage = new InMemoryStorageProvider();
+        await storage.SaveAsync("workflows", "url-import.yaml", await File.ReadAllTextAsync(
+            Path.Combine(AppContext.BaseDirectory, "src", "RecipeApi", "Workflows", "url-import.yaml")));
+        var service = new RecipeImportReportService(_db, new WorkflowOrchestrator(new WorkflowRepository(storage), _db));
+        var feedback = new RecipeImportIssueRequest { Reasons = ["ingredients"], Note = "Check amounts" };
+        var started = await service.SubmitAsync(recipe.Id, member.Id, feedback);
+        Assert.True(started.ReimportStarted);
+        _db.ChangeTracker.Clear();
+        var report = await ReadAsync(recipe.Id);
+        Assert.Equal(RecipeImportReportStatus.Reimporting, report.Status);
+        Assert.Equal(started.ImportId, report.LastWorkflowInstanceId);
+        var workflow = await _db.WorkflowInstances.AsNoTracking().SingleAsync();
+        Assert.Equal(recipe.SourceUrl, JsonDocument.Parse(workflow.Parameters!).RootElement.GetProperty("url").GetString());
+        Assert.NotEmpty(await _db.WorkflowTasks.Where(t => t.InstanceId == workflow.Id).ToListAsync());
+        Assert.Equal(started.ImportId, (await service.SubmitAsync(recipe.Id, member.Id, feedback)).ImportId);
+        Assert.Equal(1, await _db.WorkflowInstances.CountAsync());
     }
 
     [PostgresFact]

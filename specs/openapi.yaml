@@ -1824,6 +1824,7 @@ paths:
     post:
       summary: Submit a recipe import issue and start contextual re-import when eligible
       operationId: postRecipeImportReport
+      description: Eligible contextual URL repair uses the recipe's saved source URL and normalized feedback. Active matching feedback reuses its attempt; unchanged terminal feedback does not start another attempt. A failed launch retains the report and exposes reimportLaunchFailed for retry.
       security: [{ FamilyMemberId: [] }]
       requestBody:
         required: true

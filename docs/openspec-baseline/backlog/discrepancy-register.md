@@ -458,7 +458,7 @@ Current routing: [WFS-BL-019](WFS-BL-019.md); grouped current reassessment in [l
 
 ### SR-U08
 
-Current routing: [WFS-BL-006](WFS-BL-006.md); grouped current reassessment in [library-audit.md](library-audit.md). **Status: retained/open unless the exact component appears in [false-positive dispositions](false-positives.md).** Evidence class: source-supported or qualification/product limitation as stated in the report; runtime not-run except named checks. Confidence and workflow status belong to the routed item, not the age or count of this register.
+Current routing: [WFS-BL-006 completed](../../../openspec/changes/archive/2026-10-17-search-invalidation-recovery/tasks.md); grouped current reassessment in [library-audit.md](library-audit.md). **Status: bounded corrective scope completed; see the archived acceptance record.** Evidence class: source-supported or qualification/product limitation as stated in the report; runtime evidence is limited to the named archived checks; historical source observations below remain provenance. Confidence and workflow status belong to the routed item, not the age or count of this register.
 
 - `docs/openspec-baseline/recipe-search.md:161`:  /  SR-U08  /  Only browse has automatic version refresh; non-browse can remain withheld/loading after invalidation. Obsolete failures check generation, not always promotion version. No browser AbortController; timers not uniformly canceled across filter/similar/unmount actions. BSL-002/021/022.  /  Missing/incomplete general recovery; claim only observed success suppression and browse refresh attempt. Withhold universal cancellation, race freedom, failure immunity or immediate loaded-result freshness.  /
 
@@ -668,7 +668,7 @@ Current routing: [WFS-BL-014](WFS-BL-014.md); grouped current reassessment in [t
 
 ### U01
 
-Current routing: [WFS-BL-003](WFS-BL-003.md); grouped current reassessment in [capture-identity-audit.md](capture-identity-audit.md). **Status: retained/open unless the exact component appears in [false-positive dispositions](false-positives.md).** Evidence class: source-supported or qualification/product limitation as stated in the report; runtime not-run except named checks. Confidence and workflow status belong to the routed item, not the age or count of this register.
+Current routing: [WFS-BL-003 completed](../../../openspec/changes/archive/2026-10-17-contextual-url-repair/tasks.md); grouped current reassessment in [capture-identity-audit.md](capture-identity-audit.md). **Status: bounded corrective scope completed; see the archived acceptance record.** Evidence class: source-supported or qualification/product limitation as stated in the report; runtime evidence is limited to the named archived checks; historical source observations below remain provenance. Confidence and workflow status belong to the routed item, not the age or count of this register.
 
 - `docs/openspec-baseline/background-processing.md:55`:  /  U01  /  Contextual URL repair omits a required workflow parameter  /  Compare `WorkflowParameters` in report service, required `url` in URL workflow, and orchestrator validation. Mocked workflow launch is not real launch evidence. Do not claim successful URL correction.  /  Open  /
 - `docs/openspec-baseline/history.md:114`:  /  U01  /  Contextual URL repair omits a required workflow parameter  /  Compare `WorkflowParameters` in report service, required `url` in URL workflow, and orchestrator validation. Mocked workflow launch is not real launch evidence. Do not claim successful URL correction.  /  Open  /
