@@ -318,6 +318,8 @@ export default function PlannerPage() {
     }
   };
 
+  const [recoveryPending, setRecoveryPending] = useState(false);
+
   const handleRecoveryAction = async (action: string) => {
     if (!pendingRecovery) return;
     if (action !== 'tomorrow' && action !== 'next_week' && action !== 'drop') return;
@@ -325,6 +327,7 @@ export default function PlannerPage() {
 
     const { slot, recipe } = pendingRecovery;
     recoverySubmissionRef.current = true;
+    setRecoveryPending(true);
     let priorRecipeResolved = recoveryRecipeResolvedRef.current;
 
     try {
@@ -349,16 +352,19 @@ export default function PlannerPage() {
       setSelectedDayIndex(null);
       setPendingQuickFindDayIndex(null);
       await useWeekStore.getState().init(currentWeekOffset, referenceWeekStartDate);
-    } catch {
+    } catch (error) {
       await useWeekStore.getState().init(currentWeekOffset, referenceWeekStartDate);
       useUiStore.getState().addToast({
         type: 'error',
         message: priorRecipeResolved
           ? 'The previous meal was moved, but the replacement could not be added. Your plan was refreshed; please try again.'
-          : 'The current meal could not be moved. Your plan was refreshed; please try again.',
+          : error instanceof Error && error.name === 'TomorrowMoveError'
+            ? error.message
+            : 'The current meal could not be moved. Your plan was refreshed; please try again.',
       });
     } finally {
       recoverySubmissionRef.current = false;
+      setRecoveryPending(false);
     }
   };
 
@@ -957,6 +963,7 @@ export default function PlannerPage() {
       <AnimatePresence>
         {pendingRecovery && (
           <SkipRecoveryDialog
+            pending={recoveryPending}
             isOpen={true}
             step={2}
             onClose={() => {

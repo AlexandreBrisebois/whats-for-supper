@@ -323,7 +323,9 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
           await route.fulfill({
             status: 200,
             contentType: 'application/json',
-            body: JSON.stringify({ success: true }),
+            body: JSON.stringify({
+              data: { message: 'Recipe moved', moved: true, refreshComplete: true },
+            }),
           });
         } else if (url.pathname.endsWith('/assign') && method === 'POST') {
           assignCalled = true;
@@ -419,7 +421,9 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
           await route.fulfill({
             status: 200,
             contentType: 'application/json',
-            body: JSON.stringify({ data: { message: 'Recipe moved' } }),
+            body: JSON.stringify({
+              data: { message: 'Recipe moved', moved: true, refreshComplete: true },
+            }),
           });
         } else if (url.pathname.endsWith('/api/schedule') && method === 'GET') {
           const days = Array.from({ length: 7 }, (_, i) => {
@@ -640,7 +644,9 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
           await route.fulfill({
             status: 200,
             contentType: 'application/json',
-            body: JSON.stringify({ success: true }),
+            body: JSON.stringify({
+              data: { message: 'Recipe moved', moved: true, refreshComplete: true },
+            }),
           });
         } else if (url.pathname.endsWith('/assign') && method === 'POST') {
           assignCalled = true;

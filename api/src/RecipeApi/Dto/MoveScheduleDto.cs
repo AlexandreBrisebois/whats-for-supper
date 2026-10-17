@@ -8,4 +8,16 @@ public record MoveScheduleDto(
     [property: JsonPropertyName("toIndex")] int ToIndex,
     [property: JsonPropertyName("intent")] string? Intent = "swap",
     [property: JsonPropertyName("targetWeekOffset")] int? TargetWeekOffset = null,
-    [property: JsonPropertyName("fromIndex")] int? FromIndex = null);
+    [property: JsonPropertyName("fromIndex")] int? FromIndex = null,
+    [property: JsonPropertyName("sourceDisposition")] string? SourceDisposition = null);
+
+
+public sealed record MoveScheduleResultDto(
+    string Message,
+    bool Moved,
+    DateOnly SourceDate,
+    DateOnly DestinationDate,
+    IReadOnlyList<DateOnly> AffectedWeekStartDates,
+    bool RefreshComplete);
+
+public sealed class TomorrowMoveConflictException(string message) : Exception(message);

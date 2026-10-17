@@ -31,7 +31,10 @@ vi.mock('@/lib/api/planner', async (importOriginal) => ({
 
 import { resolveOccupiedSlot } from './slotAssignment';
 
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => {
+  vi.clearAllMocks();
+  mocks.movePost.mockResolvedValue({ data: { moved: true, refreshComplete: true } });
+});
 
 describe('resolveOccupiedSlot', () => {
   it('uses defer with the exact source date for next-week recovery', async () => {
@@ -197,7 +200,10 @@ it.each([2, 6])('preserves Tomorrow movement for day %i', async (dayIndex) => {
       toIndex: dayIndex === 6 ? 0 : dayIndex + 1,
       targetWeekOffset: dayIndex === 6 ? 2 : 1,
     }),
-    { queryParameters: { referenceWeekStartDate: '2026-10-12' } }
+    {
+      queryParameters: { referenceWeekStartDate: '2026-10-12' },
+      options: [expect.objectContaining({ maxRetries: 0 })],
+    }
   );
   expect(mocks.deferPost).not.toHaveBeenCalled();
 });
@@ -211,4 +217,92 @@ it('preserves Drop without deferral or movement', async () => {
   expect(mocks.removeDelete).toHaveBeenCalledOnce();
   expect(mocks.deferPost).not.toHaveBeenCalled();
   expect(mocks.movePost).not.toHaveBeenCalled();
+});
+
+it('Tomorrow requires an explicit committed result and uses the dedicated intent', async () => {
+  mocks.movePost.mockResolvedValueOnce({ data: { message: 'Recipe moved' } });
+  const slot = {
+    weekOffset: 0,
+    dayIndex: 6,
+    date: '2026-10-11',
+    referenceWeekStartDate: '2026-10-05',
+    recipe: { id: '550e8400-e29b-41d4-a716-446655440000' } as any,
+  };
+  await expect(resolveOccupiedSlot(slot, 'tomorrow')).rejects.toThrow();
+  expect(mocks.movePost).toHaveBeenCalledWith(
+    expect.objectContaining({ intent: 'tomorrow', fromIndex: 6, toIndex: 0, targetWeekOffset: 1 }),
+    expect.anything()
+  );
+});
+
+it('does not replay a committed Tomorrow when replacement needs another attempt', async () => {
+  mocks.movePost.mockResolvedValue({ data: { moved: true, refreshComplete: true } });
+  const slot = {
+    weekOffset: 0,
+    dayIndex: 6,
+    date: '2026-10-11',
+    referenceWeekStartDate: '2026-10-05',
+    recipe: { id: '550e8400-e29b-41d4-a716-446655440000' } as any,
+  };
+  await resolveOccupiedSlot(slot, 'tomorrow');
+  await resolveOccupiedSlot(slot, 'tomorrow');
+  expect(mocks.movePost).toHaveBeenCalledTimes(1);
+});
+
+it('rereads unknown outcomes and blocks a blind repeat even when the reread fails', async () => {
+  const { getSchedule } = await import('@/lib/api/planner');
+  vi.mocked(getSchedule).mockRejectedValue(new Error('offline'));
+  mocks.movePost.mockRejectedValue(new Error('response lost'));
+  const slot = {
+    weekOffset: 0,
+    dayIndex: 6,
+    date: '2026-10-11',
+    referenceWeekStartDate: '2026-10-05',
+    recipe: { id: '550e8400-e29b-41d4-a716-446655440000' } as any,
+  };
+  await expect(resolveOccupiedSlot(slot, 'tomorrow')).rejects.toThrow();
+  await expect(resolveOccupiedSlot(slot, 'tomorrow')).rejects.toThrow();
+  expect(getSchedule).toHaveBeenCalled();
+  expect(mocks.movePost).toHaveBeenCalledTimes(1);
+});
+
+it('refreshes every server-reported week without replay after an incomplete refresh', async () => {
+  const { getSchedule } = await import('@/lib/api/planner');
+  vi.mocked(getSchedule).mockResolvedValue(undefined);
+  mocks.movePost.mockResolvedValueOnce({
+    data: {
+      moved: true,
+      refreshComplete: false,
+      affectedWeekStartDates: ['2026-10-05', '2026-10-12', '2026-10-19', '2026-10-26'],
+    },
+  });
+  const source = {
+    weekOffset: 0,
+    dayIndex: 6,
+    date: '2026-10-11',
+    referenceWeekStartDate: '2026-10-05',
+    recipe: { id: '550e8400-e29b-41d4-a716-446655440000' } as any,
+  };
+  await resolveOccupiedSlot(source, 'tomorrow');
+  expect(getSchedule).toHaveBeenCalledWith(2, '2026-10-05');
+  expect(getSchedule).toHaveBeenCalledWith(3, '2026-10-05');
+  await resolveOccupiedSlot(source, 'tomorrow');
+  expect(mocks.movePost).toHaveBeenCalledTimes(1);
+});
+
+it('disables transport retries for the non-idempotent Tomorrow request', async () => {
+  mocks.movePost.mockResolvedValueOnce({ data: { moved: true, refreshComplete: true } });
+  await resolveOccupiedSlot(
+    {
+      weekOffset: 0,
+      dayIndex: 6,
+      date: '2026-10-11',
+      referenceWeekStartDate: '2026-10-05',
+      recipe: { id: '550e8400-e29b-41d4-a716-446655440000' } as any,
+    },
+    'tomorrow'
+  );
+  expect(mocks.movePost.mock.calls[0][1].options).toEqual(
+    expect.arrayContaining([expect.objectContaining({ maxRetries: 0 })])
+  );
 });

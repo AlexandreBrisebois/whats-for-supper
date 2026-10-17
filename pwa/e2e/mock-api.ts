@@ -977,6 +977,110 @@ export async function setupCommonRoutes(page: Page, calendarContext?: CalendarCo
     if (!reference)
       return route.fulfill({ status: 400, json: { message: 'Invalid referenceWeekStartDate.' } });
     const body = route.request().postDataJSON();
+    if (body.intent === 'tomorrow') {
+      const sourceDate = addDays(reference, body.weekOffset * 7 + body.fromIndex);
+      const destination = addDays(
+        reference,
+        (body.targetWeekOffset ?? body.weekOffset) * 7 + body.toIndex
+      );
+      if (
+        !Number.isInteger(body.fromIndex) ||
+        body.fromIndex < 0 ||
+        body.fromIndex > 6 ||
+        !Number.isInteger(body.toIndex) ||
+        body.toIndex < 0 ||
+        body.toIndex > 6 ||
+        destination !== addDays(sourceDate, 1) ||
+        (body.sourceDisposition != null && body.sourceDisposition !== 'order_in')
+      )
+        return route.fulfill({
+          status: 400,
+          json: { message: 'Choose a valid source and its next day.' },
+        });
+      const source = scheduleEntries.get(sourceDate);
+      const chain: string[] = [];
+      let empty = destination;
+      while (scheduleEntries.has(empty)) {
+        chain.push(empty);
+        empty = addDays(empty, 1);
+      }
+      if (
+        !source ||
+        source.recipe?.id !== body.recipeId ||
+        [source, ...chain.map((date) => scheduleEntries.get(date)!)].some(
+          (entry) => entry.status === 2 || entry.status === 4
+        )
+      )
+        return route.fulfill({
+          status: 409,
+          json: { message: 'A completed meal or changed plan blocks this move.' },
+        });
+      const changedDates = [
+        sourceDate,
+        destination,
+        ...chain,
+        ...chain.map((date) => addDays(date, 1)),
+      ];
+      for (const date of chain.reverse()) {
+        scheduleEntries.set(addDays(date, 1), scheduleEntries.get(date)!);
+        scheduleEntries.delete(date);
+      }
+      if (body.sourceDisposition === 'order_in' || source.status === 3) {
+        scheduleEntries.set(sourceDate, {
+          ...source,
+          recipe: null,
+          status: 3,
+          ...(body.sourceDisposition
+            ? { nonCooking: { kind: 'order_in', customLabel: null } }
+            : {}),
+        });
+        scheduleEntries.set(destination, { recipe: source.recipe, status: 0 });
+      } else {
+        scheduleEntries.delete(sourceDate);
+        scheduleEntries.set(destination, source);
+      }
+      const offsets = [
+        ...new Set(
+          changedDates.map((date) =>
+            Math.floor(
+              (Date.parse(date + 'T00:00:00Z') - Date.parse(reference + 'T00:00:00Z')) / 604800000
+            )
+          )
+        ),
+      ].sort((a, b) => a - b);
+      await route.fulfill({
+        json: {
+          data: builders.tomorrowMoveResult(
+            sourceDate,
+            destination,
+            offsets.map((offset) => addDays(reference, offset * 7))
+          ),
+        },
+      });
+      for (const offset of offsets) {
+        await emitSchedule(offset, reference);
+        await page.evaluate(
+          ({ weekOffset, weekStartDate }) => {
+            (window as any).__sseSource?.dispatchEvent(
+              new MessageEvent('fill_the_gap_invalidated', {
+                data: JSON.stringify({
+                  type: 'fill_the_gap_invalidated',
+                  weekOffset,
+                  weekStartDate,
+                }),
+              })
+            );
+          },
+          { weekOffset: offset, weekStartDate: addDays(reference, offset * 7) }
+        );
+      }
+      return;
+    }
+    if (body.sourceDisposition != null)
+      return route.fulfill({
+        status: 400,
+        json: { message: 'Source disposition requires Tomorrow.' },
+      });
     const monday = addDays(reference, body.weekOffset * 7);
     const targetOffset = body.targetWeekOffset ?? body.weekOffset;
     let sourceDate = body.fromIndex == null ? undefined : addDays(monday, body.fromIndex);

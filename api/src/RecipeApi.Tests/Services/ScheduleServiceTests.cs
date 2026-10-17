@@ -37,6 +37,37 @@ public class ScheduleServiceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task TomorrowPush_FirstGapStopsMovementAndPublicationFailureNeverMeansRollback()
+    {
+        var sunday = new DateOnly(2026,10,11);var recipe=Guid.NewGuid();
+        _db.Recipes.Add(new Recipe {Id=recipe,Name="First gap",Ingredients="[]"});
+        var source=new CalendarEvent {Id=Guid.NewGuid(),Date=sunday,RecipeId=recipe};
+        var monday=new CalendarEvent {Id=Guid.NewGuid(),Date=sunday.AddDays(1),RecipeId=recipe,Status=CalendarEventStatus.Locked,VoteCount=7};
+        var sentinel=new CalendarEvent {Id=Guid.NewGuid(),Date=sunday.AddDays(3),RecipeId=recipe};
+        _db.CalendarEvents.AddRange(source,monday,sentinel);await _db.SaveChangesAsync();
+        using var cancellation=new CancellationTokenSource();
+        _publisherMock.Setup(p=>p.PublishWeekUpdatedAsync(It.IsAny<ScheduleDays>(),It.IsAny<string?>(),It.IsAny<int?>()))
+            .Callback(()=>cancellation.Cancel()).ThrowsAsync(new IOException("injected publication failure"));
+        var result=await _service.MoveScheduleEventAsync(new MoveScheduleDto(0,recipe,0,"tomorrow",1,6),referenceWeekStartDate:new DateOnly(2026,10,5),ct:cancellation.Token);
+        Assert.True(cancellation.IsCancellationRequested);
+        Assert.NotNull(result);Assert.True(result.Moved);Assert.False(result.RefreshComplete);
+        Assert.Equal(sunday.AddDays(1),source.Date);Assert.Equal(sunday.AddDays(2),monday.Date);Assert.Equal(7,monday.VoteCount);Assert.Equal(CalendarEventStatus.Locked,monday.Status);
+        Assert.Equal(sunday.AddDays(3),sentinel.Date);
+        _publisherMock.Verify(p=>p.PublishFillTheGapInvalidatedAsync(It.IsAny<int>(),It.IsAny<DateOnly>(),It.IsAny<string?>()),Times.Exactly(2));
+    }
+
+    [Fact]
+    public async Task TomorrowPush_CancellationBeforeCommitLeavesSourceUntouched()
+    {
+        var recipe=Guid.NewGuid();var source=new CalendarEvent {Date=new(2026,10,11),RecipeId=recipe};
+        _db.Recipes.Add(new Recipe {Id=recipe,Name="Cancelled",Ingredients="[]"});_db.CalendarEvents.Add(source);await _db.SaveChangesAsync();
+        using var cancellation=new CancellationTokenSource();cancellation.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(()=>_service.MoveScheduleEventAsync(new MoveScheduleDto(0,recipe,0,"tomorrow",1,6),referenceWeekStartDate:new DateOnly(2026,10,5),ct:cancellation.Token));
+        Assert.Equal(new DateOnly(2026,10,11),source.Date);
+        _publisherMock.Verify(p=>p.PublishWeekUpdatedAsync(It.IsAny<ScheduleDays>(),It.IsAny<string?>(),It.IsAny<int?>()),Times.Never);
+    }
+
+    [Fact]
     public async Task Should_Open_Voting_And_Create_WeeklyPlan()
     {
         // Act

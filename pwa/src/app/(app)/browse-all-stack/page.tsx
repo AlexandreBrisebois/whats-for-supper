@@ -1,5 +1,7 @@
 'use client';
 
+import { useUiStore } from '@/store/uiStore';
+
 import { useTodayStore } from '@/store/todayStore';
 import { calendarDayIndex } from '@/lib/deployment-calendar';
 
@@ -491,6 +493,7 @@ export default function BrowseAllStackPage() {
       const slot = await getPlannerSlot(0, todayIndex, calendar.referenceWeekStartDate);
 
       if (slot?.recipe) {
+        setDetailRecipeId(null);
         setPendingRecovery({
           slot,
           recipe: assignmentRecipe,
@@ -546,24 +549,43 @@ export default function BrowseAllStackPage() {
     [router]
   );
 
+  const recoverySubmissionRef = useRef(false);
+  const [recoveryPending, setRecoveryPending] = useState(false);
+
   const handleRecoveryAction = useCallback(
     async (action: string) => {
       if (!pendingRecovery) return;
       if (action !== 'tomorrow' && action !== 'next_week' && action !== 'drop') return;
+      if (recoverySubmissionRef.current) return;
+      recoverySubmissionRef.current = true;
+      setRecoveryPending(true);
 
-      await resolveOccupiedSlot(pendingRecovery.slot, action);
-      await assignRecipeToEmptySlot(
-        pendingRecovery.navigateTo.weekOffset,
-        pendingRecovery.navigateTo.dayIndex,
-        pendingRecovery.recipe,
-        pendingRecovery.slot.referenceWeekStartDate
-      );
+      try {
+        await resolveOccupiedSlot(pendingRecovery.slot, action);
+        await assignRecipeToEmptySlot(
+          pendingRecovery.navigateTo.weekOffset,
+          pendingRecovery.navigateTo.dayIndex,
+          pendingRecovery.recipe,
+          pendingRecovery.slot.referenceWeekStartDate
+        );
 
-      const { weekOffset, dayIndex } = pendingRecovery.navigateTo;
-      setPendingRecovery(null);
-      router.push(
-        `/planner?success=1&dayIndex=${dayIndex}&weekOffset=${weekOffset}&referenceWeekStartDate=${pendingRecovery.slot.referenceWeekStartDate}`
-      );
+        const { weekOffset, dayIndex } = pendingRecovery.navigateTo;
+        setPendingRecovery(null);
+        router.push(
+          `/planner?success=1&dayIndex=${dayIndex}&weekOffset=${weekOffset}&referenceWeekStartDate=${pendingRecovery.slot.referenceWeekStartDate}`
+        );
+      } catch (error) {
+        useUiStore.getState().addToast({
+          type: 'error',
+          message:
+            error instanceof Error
+              ? error.message
+              : 'This meal could not be moved. Refresh your plan.',
+        });
+      } finally {
+        recoverySubmissionRef.current = false;
+        setRecoveryPending(false);
+      }
     },
     [pendingRecovery, router]
   );
@@ -861,10 +883,15 @@ export default function BrowseAllStackPage() {
 
       {pendingRecovery && (
         <SkipRecoveryDialog
+          pending={recoveryPending}
           isOpen={true}
           step={2}
-          onClose={() => setPendingRecovery(null)}
-          onBack={() => setPendingRecovery(null)}
+          onClose={() => {
+            if (!recoverySubmissionRef.current) setPendingRecovery(null);
+          }}
+          onBack={() => {
+            if (!recoverySubmissionRef.current) setPendingRecovery(null);
+          }}
           onAction={handleRecoveryAction}
         />
       )}

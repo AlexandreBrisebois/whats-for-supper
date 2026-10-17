@@ -9,7 +9,7 @@ using static RecipeApi.Dto.SmartDefaultsDto;
 
 namespace RecipeApi.Services;
 
-public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService> logger, IScheduleEventPublisher publisher, GroceryRecomputeService groceryRecomputeService, IClock clock, DeploymentCalendar calendar)
+public partial class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService> logger, IScheduleEventPublisher publisher, GroceryRecomputeService groceryRecomputeService, IClock clock, DeploymentCalendar calendar)
 {
     private readonly RecipeDbContext _dbContext = dbContext;
     private readonly ILogger<ScheduleService> _logger = logger;
@@ -147,16 +147,20 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
         await _publisher.PublishWeekUpdatedAsync(schedule, excludeConnectionId);
     }
 
-    public async Task MoveScheduleEventAsync(MoveScheduleDto dto, string? excludeConnectionId = null, int? echoSeq = null, DateOnly? referenceWeekStartDate = null)
+    public async Task<MoveScheduleResultDto?> MoveScheduleEventAsync(MoveScheduleDto dto, string? excludeConnectionId = null, int? echoSeq = null, DateOnly? referenceWeekStartDate = null, CancellationToken ct = default)
     {
         var context = _calendar.Capture(_clock.UtcNow, referenceWeekStartDate);
+        if (dto.SourceDisposition != null && (dto.Intent != "tomorrow" || dto.SourceDisposition != "order_in"))
+            throw new ArgumentException("Source disposition is only supported for Tomorrow Order In.");
+        if (dto.Intent == "tomorrow")
+            return await MoveTomorrowAsync(dto, context, excludeConnectionId, echoSeq, ct);
         var targetWeekOffset = dto.TargetWeekOffset ?? dto.WeekOffset;
         if (targetWeekOffset != dto.WeekOffset)
         {
             await MoveCrossWeekAsync(dto, targetWeekOffset, context);
             var crossWeekSchedule = await ReadScheduleAsync(dto.WeekOffset, context);
             await _publisher.PublishWeekUpdatedAsync(crossWeekSchedule, excludeConnectionId, echoSeq);
-            return;
+            return null;
         }
 
         var monday = context.WeekStart(dto.WeekOffset);
@@ -175,7 +179,7 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
         if (fromEvent == null)
         {
             _logger.LogWarning("Move ignored: Recipe {RecipeId} not found in schedule.", dto.RecipeId);
-            return;
+            return null;
         }
 
         if (fromEvent.RecipeId != dto.RecipeId)
@@ -184,7 +188,7 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
                 "Move ignored: source slot {FromDate} does not contain recipe {RecipeId}.",
                 fromEvent.Date,
                 dto.RecipeId);
-            return;
+            return null;
         }
 
         var preserveOrderedInSource = fromEvent.Status == CalendarEventStatus.Skipped;
@@ -261,6 +265,7 @@ public class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService>
 
         var schedule = await ReadScheduleAsync(dto.WeekOffset, context);
         await _publisher.PublishWeekUpdatedAsync(schedule, excludeConnectionId, echoSeq);
+        return null;
     }
 
     private async Task MoveCrossWeekAsync(MoveScheduleDto dto, int targetWeekOffset, DeploymentCalendarContext context)

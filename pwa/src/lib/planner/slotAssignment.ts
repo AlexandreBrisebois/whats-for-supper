@@ -1,4 +1,7 @@
-import { readCalendar } from '@/lib/deployment-calendar';
+import { RetryHandlerOptions } from '@microsoft/kiota-http-fetchlibrary';
+import { useUiStore } from '@/store/uiStore';
+import type { MoveScheduleResultDto } from '@/lib/api/generated/models/index';
+import { readCalendar, weekOffsetFor } from '@/lib/deployment-calendar';
 import { DateOnly } from '@microsoft/kiota-abstractions';
 import { apiClient } from '@/lib/api/api-client';
 import {
@@ -99,18 +102,7 @@ export async function resolveOccupiedSlot(
   if (!recipeId) return;
 
   if (action === 'tomorrow') {
-    const targetDayIndex = slot.dayIndex + 1;
-    await apiClient.api.schedule.move.post(
-      {
-        weekOffset: slot.weekOffset,
-        fromIndex: slot.dayIndex,
-        toIndex: targetDayIndex <= 6 ? targetDayIndex : 0,
-        targetWeekOffset: targetDayIndex <= 6 ? slot.weekOffset : slot.weekOffset + 1,
-        intent: 'push',
-        recipeId,
-      },
-      referenceRequest(slot.referenceWeekStartDate)
-    );
+    await moveTomorrow(slot);
     return;
   }
 
@@ -139,4 +131,107 @@ export async function resolveOccupiedSlot(
     },
     referenceRequest(slot.referenceWeekStartDate)
   );
+}
+
+export class TomorrowMoveError extends Error {
+  override name = 'TomorrowMoveError';
+}
+
+type TomorrowSource = Pick<
+  PlannerSlot,
+  'weekOffset' | 'dayIndex' | 'date' | 'recipe' | 'referenceWeekStartDate'
+>;
+type TomorrowAttempt = {
+  result?: MoveScheduleResultDto;
+  unknown?: boolean;
+  pending?: Promise<MoveScheduleResultDto>;
+};
+const tomorrowAttempts = new WeakMap<TomorrowSource, TomorrowAttempt>();
+
+async function rereadTomorrow(
+  source: TomorrowSource,
+  affected?: MoveScheduleResultDto['affectedWeekStartDates']
+) {
+  const offsets = new Set([
+    source.weekOffset,
+    source.dayIndex === 6 ? source.weekOffset + 1 : source.weekOffset,
+  ]);
+  for (const monday of affected ?? []) {
+    const offset = weekOffsetFor(monday, source.referenceWeekStartDate);
+    if (offset !== null) offsets.add(offset);
+  }
+  await Promise.allSettled(
+    [...offsets].map((offset) => getSchedule(offset, source.referenceWeekStartDate))
+  );
+}
+
+/** One recovery session retains its known outcome; a lost reply must never cause blind replay. */
+export async function moveTomorrow(
+  source: TomorrowSource,
+  sourceDisposition?: 'order_in'
+): Promise<MoveScheduleResultDto> {
+  const previous = tomorrowAttempts.get(source);
+  if (previous?.result) return previous.result;
+  if (previous?.pending) return previous.pending;
+  if (previous?.unknown) {
+    await rereadTomorrow(source);
+    throw new TomorrowMoveError(
+      'The move could not be confirmed. Review the refreshed plan before choosing again.'
+    );
+  }
+  if (!source.recipe?.id || !source.referenceWeekStartDate)
+    throw new TomorrowMoveError('Refresh your plan before moving this meal.');
+  const attempt: TomorrowAttempt = {};
+  tomorrowAttempts.set(source, attempt);
+  attempt.pending = (async () => {
+    try {
+      const target = source.dayIndex + 1;
+      const response = await apiClient.api.schedule.move.post(
+        {
+          weekOffset: source.weekOffset,
+          fromIndex: source.dayIndex,
+          toIndex: target <= 6 ? target : 0,
+          targetWeekOffset: target <= 6 ? source.weekOffset : source.weekOffset + 1,
+          recipeId: source.recipe!.id!,
+          intent: 'tomorrow',
+          ...(sourceDisposition ? { sourceDisposition } : {}),
+        },
+        {
+          ...referenceRequest(source.referenceWeekStartDate),
+          options: [new RetryHandlerOptions({ maxRetries: 0 })],
+        }
+      );
+      if (response?.data?.moved !== true)
+        throw new TomorrowMoveError('Movement was not confirmed.');
+      attempt.result = response.data;
+      if (response.data.refreshComplete !== true) {
+        await rereadTomorrow(source, response.data.affectedWeekStartDates);
+        useUiStore.getState().addToast({
+          type: 'error',
+          message:
+            'Your meal was moved, but some plan updates could not refresh. Please refresh your plan.',
+        });
+      }
+      return response.data;
+    } catch (error) {
+      if (attempt.result) return attempt.result;
+      const status = (error as { responseStatusCode?: number })?.responseStatusCode;
+      if (status === 400 || status === 409 || status === 401 || status === 403) {
+        tomorrowAttempts.delete(source);
+        throw new TomorrowMoveError(
+          status === 409
+            ? 'A completed meal or changed plan blocks this move. Refresh your plan before trying again.'
+            : 'This meal could not be moved. Refresh your plan before trying again.'
+        );
+      }
+      attempt.unknown = true;
+      await rereadTomorrow(source);
+      throw new TomorrowMoveError(
+        'The move could not be confirmed. Review the refreshed plan before choosing again.'
+      );
+    } finally {
+      attempt.pending = undefined;
+    }
+  })();
+  return attempt.pending;
 }

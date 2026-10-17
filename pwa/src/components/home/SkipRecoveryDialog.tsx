@@ -10,6 +10,7 @@ import { t } from '@/locales';
 
 interface SkipRecoveryDialogProps {
   isOpen: boolean;
+  pending?: boolean;
   step: 1 | 2;
   onClose: () => void;
   onBack: () => void;
@@ -18,6 +19,7 @@ interface SkipRecoveryDialogProps {
 
 export function SkipRecoveryDialog({
   isOpen,
+  pending = false,
   step,
   onClose,
   onBack,
@@ -31,7 +33,7 @@ export function SkipRecoveryDialog({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        onClick={onClose}
+        onClick={pending ? undefined : onClose}
         className="absolute inset-0 bg-cream/55 backdrop-blur-xl"
       />
 
@@ -50,7 +52,8 @@ export function SkipRecoveryDialog({
             {t('home.recoveryFlow', 'Recovery Flow')}
           </h2>
           <button
-            onClick={onClose}
+            disabled={pending}
+            onClick={pending ? undefined : onClose}
             aria-label={t('common.close', 'Close')}
             title={t('common.close', 'Close')}
             className="p-2 rounded-full bg-charcoal/5 text-charcoal/40 hover:bg-charcoal/10 transition-colors"
@@ -59,7 +62,12 @@ export function SkipRecoveryDialog({
           </button>
         </div>
 
-        <div className="relative overflow-hidden">
+        <div className="relative overflow-hidden" aria-busy={pending}>
+          {pending && (
+            <p role="status" className="text-sm text-charcoal">
+              Updating your plan…
+            </p>
+          )}
           <AnimatePresence initial={false} mode="wait">
             {step === 1 ? (
               <motion.div
@@ -83,6 +91,7 @@ export function SkipRecoveryDialog({
 
                 <div className="grid gap-3">
                   <button
+                    disabled={pending}
                     onClick={() => {
                       onAction('order_in');
                     }}
@@ -103,6 +112,7 @@ export function SkipRecoveryDialog({
                   </button>
 
                   <button
+                    disabled={pending}
                     onClick={() => {
                       onAction('pick_else');
                     }}
@@ -145,6 +155,7 @@ export function SkipRecoveryDialog({
 
                 <div className="grid gap-3">
                   <button
+                    disabled={pending}
                     onClick={() => onAction('tomorrow')}
                     data-testid="recovery-action-tomorrow"
                     className="flex w-full items-center justify-between p-5 rounded-[2rem] border-2 border-charcoal/5 hover:border-terracotta/30 hover:bg-terracotta/5 transition-all text-left group"
@@ -168,6 +179,7 @@ export function SkipRecoveryDialog({
                   </button>
 
                   <button
+                    disabled={pending}
                     onClick={() => onAction('next_week')}
                     className="flex w-full items-center justify-between p-5 rounded-[2rem] border-2 border-charcoal/5 hover:border-sage/30 hover:bg-sage/5 transition-all text-left group"
                   >
@@ -190,6 +202,7 @@ export function SkipRecoveryDialog({
                   </button>
 
                   <button
+                    disabled={pending}
                     onClick={() => onAction('drop')}
                     className="flex w-full items-center gap-4 p-5 rounded-[2rem] border-2 border-charcoal/5 hover:border-charcoal/20 hover:bg-charcoal/5 transition-all text-left group"
                   >
@@ -208,7 +221,8 @@ export function SkipRecoveryDialog({
                 </div>
 
                 <button
-                  onClick={onBack}
+                  disabled={pending}
+                  onClick={pending ? undefined : onBack}
                   className="mt-4 text-xs font-black uppercase tracking-widest text-charcoal/30 hover:text-charcoal/60 transition-colors"
                 >
                   {t('home.goBack', 'Go back')}

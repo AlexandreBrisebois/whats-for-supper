@@ -37,6 +37,20 @@ const deploymentCalendar = (overrides: Partial<CalendarContext> = {}): CalendarC
 });
 
 export const builders = {
+  tomorrowMoveResult: (
+    sourceDate: string,
+    destinationDate: string,
+    affectedWeekStartDates: string[],
+    refreshComplete = true
+  ) => ({
+    message: 'Recipe moved',
+    moved: true,
+    sourceDate,
+    destinationDate,
+    affectedWeekStartDates,
+    refreshComplete,
+  }),
+
   deploymentCalendar,
   scheduleDays: (weekOffset = 0, calendar = deploymentCalendar()) => {
     const monday = new Date(`${calendar.referenceWeekStartDate}T00:00:00Z`);
