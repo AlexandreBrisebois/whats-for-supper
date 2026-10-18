@@ -4,7 +4,9 @@
 // @ts-ignore
 import {
   createManagementTaskAcceptedResponseFromDiscriminatorValue,
+  createRecoveryBusyErrorFromDiscriminatorValue,
   type ManagementTaskAcceptedResponse,
+  type RecoveryBusyError,
 } from '../../../models/index';
 // @ts-ignore
 import {
@@ -24,6 +26,7 @@ export interface DisasterRecoveryRequestBuilder extends BaseRequestBuilder<Disas
    * Trigger an asynchronous disaster recovery
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {Promise<ManagementTaskAcceptedResponse>}
+   * @throws {RecoveryBusyError} error when the service returns a 503 status code
    */
   post(
     requestConfiguration?: RequestConfiguration<object> | undefined
@@ -49,6 +52,9 @@ export const DisasterRecoveryRequestBuilderRequestsMetadata: RequestsMetadata = 
   post: {
     uriTemplate: DisasterRecoveryRequestBuilderUriTemplate,
     responseBodyContentType: 'application/json',
+    errorMappings: {
+      503: createRecoveryBusyErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
+    },
     adapterMethodName: 'send',
     responseBodyFactory: createManagementTaskAcceptedResponseFromDiscriminatorValue,
   },

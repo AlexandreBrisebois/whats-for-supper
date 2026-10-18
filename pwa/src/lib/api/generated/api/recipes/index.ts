@@ -4,7 +4,9 @@
 // @ts-ignore
 import {
   createRecipeListResponseFromDiscriminatorValue,
+  createRecoveryBusyErrorFromDiscriminatorValue,
   type RecipeListResponse,
+  type RecoveryBusyError,
 } from '../../models/index';
 // @ts-ignore
 import {
@@ -274,6 +276,7 @@ export interface RecipesRequestBuilder extends BaseRequestBuilder<RecipesRequest
    * @returns {Promise<RecipeListResponse>}
    * @throws {RecipeListResponse400Error} error when the service returns a 400 status code
    * @throws {RecipeListResponse409Error} error when the service returns a 409 status code
+   * @throws {RecoveryBusyError} error when the service returns a 503 status code
    */
   get(
     requestConfiguration?: RequestConfiguration<RecipesRequestBuilderGetQueryParameters> | undefined
@@ -283,6 +286,7 @@ export interface RecipesRequestBuilder extends BaseRequestBuilder<RecipesRequest
    * @param body The request body
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {Promise<RecipesPostResponse>}
+   * @throws {RecoveryBusyError} error when the service returns a 503 status code
    */
   post(
     body: MultipartBody,
@@ -477,6 +481,7 @@ export const RecipesRequestBuilderRequestsMetadata: RequestsMetadata = {
     errorMappings: {
       400: createRecipeListResponse400ErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
       409: createRecipeListResponse409ErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
+      503: createRecoveryBusyErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
     },
     adapterMethodName: 'send',
     responseBodyFactory: createRecipeListResponseFromDiscriminatorValue,
@@ -484,6 +489,9 @@ export const RecipesRequestBuilderRequestsMetadata: RequestsMetadata = {
   post: {
     uriTemplate: RecipesRequestBuilderUriTemplate,
     responseBodyContentType: 'application/json',
+    errorMappings: {
+      503: createRecoveryBusyErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
+    },
     adapterMethodName: 'send',
     responseBodyFactory: createRecipesPostResponseFromDiscriminatorValue,
     requestBodyContentType: 'multipart/form-data',

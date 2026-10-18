@@ -4,8 +4,10 @@
 // @ts-ignore
 import {
   createRecommendationsResponseFromDiscriminatorValue,
+  createRecoveryBusyErrorFromDiscriminatorValue,
   serializeRecommendationsResponse,
   type RecommendationsResponse,
+  type RecoveryBusyError,
 } from '../../../models/index';
 // @ts-ignore
 import {
@@ -62,6 +64,7 @@ export interface RecommendationsRequestBuilder extends BaseRequestBuilder<Recomm
    * Get recipe recommendations
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {Promise<RecommendationsGetResponse>}
+   * @throws {RecoveryBusyError} error when the service returns a 503 status code
    */
   get(
     requestConfiguration?: RequestConfiguration<object> | undefined
@@ -108,6 +111,9 @@ export const RecommendationsRequestBuilderRequestsMetadata: RequestsMetadata = {
   get: {
     uriTemplate: RecommendationsRequestBuilderUriTemplate,
     responseBodyContentType: 'application/json',
+    errorMappings: {
+      503: createRecoveryBusyErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
+    },
     adapterMethodName: 'send',
     responseBodyFactory: createRecommendationsGetResponseFromDiscriminatorValue,
   },

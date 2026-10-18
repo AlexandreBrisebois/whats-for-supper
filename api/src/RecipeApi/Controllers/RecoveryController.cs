@@ -19,16 +19,16 @@ public sealed class RecoveryController(RecoverySnapshotService recovery) : Contr
     public Task<IActionResult> Resume(CancellationToken ct) => Execute(() => recovery.ResumeAsync(ct));
 
     [HttpGet("status")]
-    public IActionResult Status() => Ok(recovery.Status());
+    public Task<IActionResult> Status(CancellationToken ct) => Execute(() => recovery.StatusAsync(ct));
 
     private async Task<IActionResult> Execute(Func<Task<RecoveryResult>> operation)
     {
         try { return Ok(await operation()); }
         catch (OperationCanceledException) when (!HttpContext.RequestAborted.IsCancellationRequested)
-        { Response.Headers.RetryAfter = "5"; return StatusCode(503, new RecoveryResult("timed-out", "Recovery coordination duration exceeded; prior or committed state was reconciled. Check recovery status before retrying.")); }
-        catch (RecoveryBusyException ex) { Response.Headers.RetryAfter = "5"; return Conflict(new RecoveryResult("busy", ex.Message)); }
-        catch (Exception ex) when (ex is InvalidDataException or System.Text.Json.JsonException or KeyNotFoundException or FormatException or Npgsql.PostgresException)
-        { return BadRequest(new RecoveryResult("invalid", ex.Message)); }
-        catch (InvalidOperationException ex) { return StatusCode(503, new RecoveryResult("unavailable", ex.Message)); }
+        { Response.Headers.RetryAfter = "5"; return StatusCode(503, new RecoveryError("timed-out", "Recovery coordination duration exceeded; prior or committed state was reconciled. Check recovery status before retrying.")); }
+        catch (RecoveryBusyException ex) { Response.Headers.RetryAfter = "5"; return Conflict(new RecoveryError("busy", ex.Message)); }
+        catch (Exception ex) when (ex is InvalidDataException or System.Text.Json.JsonException or KeyNotFoundException or FormatException)
+        { return BadRequest(new RecoveryError("invalid", ex.Message)); }
+        catch (InvalidOperationException ex) { return StatusCode(503, new RecoveryError("unavailable", ex.Message)); }
     }
 }

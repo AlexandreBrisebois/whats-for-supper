@@ -4,7 +4,9 @@
 // @ts-ignore
 import {
   createRecipeDetailResponseFromDiscriminatorValue,
+  createRecoveryBusyErrorFromDiscriminatorValue,
   type RecipeDetailResponse,
+  type RecoveryBusyError,
 } from '../../../../models/index';
 // @ts-ignore
 import {
@@ -24,6 +26,7 @@ export interface RestoreRequestBuilder extends BaseRequestBuilder<RestoreRequest
    * Restore a soft-deleted recipe
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {Promise<RecipeDetailResponse>}
+   * @throws {RecoveryBusyError} error when the service returns a 503 status code
    */
   post(
     requestConfiguration?: RequestConfiguration<object> | undefined
@@ -48,6 +51,9 @@ export const RestoreRequestBuilderRequestsMetadata: RequestsMetadata = {
   post: {
     uriTemplate: RestoreRequestBuilderUriTemplate,
     responseBodyContentType: 'application/json',
+    errorMappings: {
+      503: createRecoveryBusyErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
+    },
     adapterMethodName: 'send',
     responseBodyFactory: createRecipeDetailResponseFromDiscriminatorValue,
   },

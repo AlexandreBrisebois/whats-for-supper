@@ -4,8 +4,10 @@
 // @ts-ignore
 import {
   createRecipeDtoFromDiscriminatorValue,
+  createRecoveryBusyErrorFromDiscriminatorValue,
   serializeRecipeDto,
   type RecipeDto,
+  type RecoveryBusyError,
 } from '../../models/index';
 // @ts-ignore
 import {
@@ -85,6 +87,7 @@ export interface DiscoveryRequestBuilder extends BaseRequestBuilder<DiscoveryReq
    * Get recipes for discovery stack
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {Promise<DiscoveryGetResponse>}
+   * @throws {RecoveryBusyError} error when the service returns a 503 status code
    */
   get(
     requestConfiguration?:
@@ -155,6 +158,9 @@ export const DiscoveryRequestBuilderRequestsMetadata: RequestsMetadata = {
   get: {
     uriTemplate: DiscoveryRequestBuilderUriTemplate,
     responseBodyContentType: 'application/json',
+    errorMappings: {
+      503: createRecoveryBusyErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
+    },
     adapterMethodName: 'send',
     responseBodyFactory: createDiscoveryGetResponseFromDiscriminatorValue,
   },

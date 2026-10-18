@@ -4,10 +4,12 @@
 // @ts-ignore
 import {
   createRecipeSearchResponseDtoFromDiscriminatorValue,
+  createRecoveryBusyErrorFromDiscriminatorValue,
   serializeRecipeSearchRequestDto,
   serializeRecipeSearchResponseDto,
   type RecipeSearchRequestDto,
   type RecipeSearchResponseDto,
+  type RecoveryBusyError,
 } from '../../../models/index';
 // @ts-ignore
 import { FiltersRequestBuilderRequestsMetadata, type FiltersRequestBuilder } from './filters/index';
@@ -36,6 +38,7 @@ export interface SearchRequestBuilder extends BaseRequestBuilder<SearchRequestBu
    * @param body The request body
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {Promise<RecipeSearchResponseDto>}
+   * @throws {RecoveryBusyError} error when the service returns a 503 status code
    */
   post(
     body: RecipeSearchRequestDto,
@@ -74,6 +77,9 @@ export const SearchRequestBuilderRequestsMetadata: RequestsMetadata = {
   post: {
     uriTemplate: SearchRequestBuilderUriTemplate,
     responseBodyContentType: 'application/json',
+    errorMappings: {
+      503: createRecoveryBusyErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
+    },
     adapterMethodName: 'send',
     responseBodyFactory: createRecipeSearchResponseDtoFromDiscriminatorValue,
     requestBodyContentType: 'application/json',

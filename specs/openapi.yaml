@@ -35,6 +35,14 @@ components:
         errorCode: { type: string, enum: [RECOVERY_BUSY] }
         message: { type: string }
 
+    RecoveryError:
+      type: object
+      required: [state, message]
+      properties:
+        state: { type: string }
+        message: { type: string }
+        snapshotId: { type: string, format: uuid, nullable: true }
+
     RecoveryResult:
       type: object
       required: [state, message]
@@ -1195,6 +1203,11 @@ paths:
           schema: { type: string, format: uuid }
       security: [{ HearthSecret: [] }, { HearthToken: [] }]
       responses:
+        '503':
+          description: Initial schedule snapshot is waiting for recovery publication; retry after five seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '200':
           description: >
             SSE stream. The response body is a sequence of SSE frames. Each frame carries a
@@ -3039,17 +3052,17 @@ paths:
           description: Invalid or incomplete snapshot; live state not changed
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/RecoveryResult' }
+              schema: { $ref: '#/components/schemas/RecoveryError' }
         '409':
           description: Recovery already active or pending reconciliation
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/RecoveryResult' }
+              schema: { $ref: '#/components/schemas/RecoveryError' }
         '503':
           description: Recovery not configured or coordination timed out; retry safely
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/RecoveryResult' }
+              schema: { $ref: '#/components/schemas/RecoveryError' }
 
   /api/management/recovery/restore/{snapshotId}:
     post:
@@ -3069,17 +3082,17 @@ paths:
           description: Invalid or incomplete snapshot; live state not changed
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/RecoveryResult' }
+              schema: { $ref: '#/components/schemas/RecoveryError' }
         '409':
           description: Recovery already active or pending reconciliation
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/RecoveryResult' }
+              schema: { $ref: '#/components/schemas/RecoveryError' }
         '503':
           description: Recovery not configured or coordination timed out; retry safely
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/RecoveryResult' }
+              schema: { $ref: '#/components/schemas/RecoveryError' }
 
   /api/management/recovery/resume:
     post:
@@ -3094,17 +3107,17 @@ paths:
           description: Invalid or incomplete snapshot; live state not changed
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/RecoveryResult' }
+              schema: { $ref: '#/components/schemas/RecoveryError' }
         '409':
           description: Recovery already active or pending reconciliation
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/RecoveryResult' }
+              schema: { $ref: '#/components/schemas/RecoveryError' }
         '503':
           description: Recovery not configured or coordination timed out; retry safely
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/RecoveryResult' }
+              schema: { $ref: '#/components/schemas/RecoveryError' }
 
   /api/management/recovery/status:
     get:
@@ -3119,17 +3132,17 @@ paths:
           description: Invalid or incomplete snapshot; live state not changed
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/RecoveryResult' }
+              schema: { $ref: '#/components/schemas/RecoveryError' }
         '409':
           description: Recovery already active or pending reconciliation
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/RecoveryResult' }
+              schema: { $ref: '#/components/schemas/RecoveryError' }
         '503':
           description: Recovery not configured or coordination timed out; retry safely
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/RecoveryResult' }
+              schema: { $ref: '#/components/schemas/RecoveryError' }
 
   /api/management/backup:
     post:

@@ -4,8 +4,10 @@
 // @ts-ignore
 import {
   createCaptureFailureRetryResponseFromDiscriminatorValue,
+  createRecoveryBusyErrorFromDiscriminatorValue,
   serializeCaptureFailureRetryResponse,
   type CaptureFailureRetryResponse,
+  type RecoveryBusyError,
 } from '../../../../../models/index';
 // @ts-ignore
 import {
@@ -103,6 +105,7 @@ export interface RetryRequestBuilder extends BaseRequestBuilder<RetryRequestBuil
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {Promise<RetryPostResponse>}
    * @throws {Retry409Error} error when the service returns a 409 status code
+   * @throws {RecoveryBusyError} error when the service returns a 503 status code
    */
   post(
     requestConfiguration?: RequestConfiguration<object> | undefined
@@ -170,6 +173,7 @@ export const RetryRequestBuilderRequestsMetadata: RequestsMetadata = {
     responseBodyContentType: 'application/json',
     errorMappings: {
       409: createRetry409ErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
+      503: createRecoveryBusyErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
     },
     adapterMethodName: 'send',
     responseBodyFactory: createRetryPostResponseFromDiscriminatorValue,

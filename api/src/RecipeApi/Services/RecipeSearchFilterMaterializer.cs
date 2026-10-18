@@ -128,6 +128,8 @@ public class RecipeSearchFilterBackfillHostedService(
         try
         {
             using var scope = scopeFactory.CreateScope();
+            await using var recoveryLease = scope.ServiceProvider.GetService<RecoveryBoundary>() is { } recovery
+                ? await recovery.EnterAsync(RecoveryAccess.Write, cancellationToken) : null;
             await scope.ServiceProvider.GetRequiredService<RecipeSearchFilterBackfillService>().InitializeAsync(cancellationToken);
         }
         catch (Exception ex)

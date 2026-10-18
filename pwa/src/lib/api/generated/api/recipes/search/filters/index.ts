@@ -4,7 +4,9 @@
 // @ts-ignore
 import {
   createRecipeSearchFilterDiscoveryDtoFromDiscriminatorValue,
+  createRecoveryBusyErrorFromDiscriminatorValue,
   type RecipeSearchFilterDiscoveryDto,
+  type RecoveryBusyError,
 } from '../../../../models/index';
 // @ts-ignore
 import {
@@ -24,6 +26,7 @@ export interface FiltersRequestBuilder extends BaseRequestBuilder<FiltersRequest
    * Returns configured Main definitions, fixed Meal Types, and the latest materialized cuisine state. It does not aggregate votes/calendar history or query the recipe catalog at request time.
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {Promise<RecipeSearchFilterDiscoveryDto>}
+   * @throws {RecoveryBusyError} error when the service returns a 503 status code
    */
   get(
     requestConfiguration?: RequestConfiguration<object> | undefined
@@ -48,6 +51,9 @@ export const FiltersRequestBuilderRequestsMetadata: RequestsMetadata = {
   get: {
     uriTemplate: FiltersRequestBuilderUriTemplate,
     responseBodyContentType: 'application/json',
+    errorMappings: {
+      503: createRecoveryBusyErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
+    },
     adapterMethodName: 'send',
     responseBodyFactory: createRecipeSearchFilterDiscoveryDtoFromDiscriminatorValue,
   },

@@ -17,7 +17,7 @@ namespace RecipeApi.Controllers;
 [ApiController]
 [Route("api/stream")]
 [SkipWrapping]
-public class StreamController(SseConnectionManager manager, ScheduleService scheduleService) : ControllerBase
+public class StreamController(SseConnectionManager manager, ScheduleService scheduleService, RecoveryBoundary? recovery = null) : ControllerBase
 {
     private readonly SseConnectionManager _manager = manager;
     private readonly ScheduleService _scheduleService = scheduleService;
@@ -44,7 +44,9 @@ public class StreamController(SseConnectionManager manager, ScheduleService sche
         try
         {
             // Send connected event with current schedule snapshot for weekOffset=0.
-            var schedule = await _scheduleService.GetScheduleAsync(0);
+            RecipeApi.Dto.ScheduleDays schedule;
+            await using (var lease = recovery is null ? null : await recovery.EnterAsync(RecoveryAccess.Read, cancellationToken))
+                schedule = await _scheduleService.GetScheduleAsync(0);
             var connectedPayload = JsonSerializer.Serialize(
                 new { type = "connected", schedule, connectionId },
                 new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
@@ -61,6 +63,12 @@ public class StreamController(SseConnectionManager manager, ScheduleService sche
                 await Response.WriteAsync(": ping\n\n", cancellationToken);
                 await Response.Body.FlushAsync(cancellationToken);
             }
+        }
+        catch (RecoveryBusyException ex)
+        {
+            Response.StatusCode = 503;
+            Response.Headers.RetryAfter = "5";
+            await Response.WriteAsJsonAsync(new { errorCode = "RECOVERY_BUSY", message = ex.Message }, cancellationToken);
         }
         catch (OperationCanceledException)
         {

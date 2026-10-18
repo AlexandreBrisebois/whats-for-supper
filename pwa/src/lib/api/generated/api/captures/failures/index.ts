@@ -4,8 +4,10 @@
 // @ts-ignore
 import {
   createCaptureFailureListResponseFromDiscriminatorValue,
+  createRecoveryBusyErrorFromDiscriminatorValue,
   serializeCaptureFailureListResponse,
   type CaptureFailureListResponse,
+  type RecoveryBusyError,
 } from '../../../models/index';
 // @ts-ignore
 import {
@@ -77,6 +79,7 @@ export interface FailuresRequestBuilder extends BaseRequestBuilder<FailuresReque
    * List active failed capture records
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {Promise<FailuresGetResponse>}
+   * @throws {RecoveryBusyError} error when the service returns a 503 status code
    */
   get(
     requestConfiguration?: RequestConfiguration<object> | undefined
@@ -136,6 +139,9 @@ export const FailuresRequestBuilderRequestsMetadata: RequestsMetadata = {
   get: {
     uriTemplate: FailuresRequestBuilderUriTemplate,
     responseBodyContentType: 'application/json',
+    errorMappings: {
+      503: createRecoveryBusyErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
+    },
     adapterMethodName: 'send',
     responseBodyFactory: createFailuresGetResponseFromDiscriminatorValue,
   },

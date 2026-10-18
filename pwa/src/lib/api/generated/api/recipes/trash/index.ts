@@ -4,8 +4,10 @@
 // @ts-ignore
 import {
   createRecipeTrashListResponseFromDiscriminatorValue,
+  createRecoveryBusyErrorFromDiscriminatorValue,
   serializeRecipeTrashListResponse,
   type RecipeTrashListResponse,
+  type RecoveryBusyError,
 } from '../../../models/index';
 // @ts-ignore
 import {
@@ -84,6 +86,7 @@ export interface TrashRequestBuilder extends BaseRequestBuilder<TrashRequestBuil
    * List soft-deleted recipes (Recycle Bin)
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {Promise<TrashGetResponse>}
+   * @throws {RecoveryBusyError} error when the service returns a 503 status code
    */
   get(
     requestConfiguration?: RequestConfiguration<object> | undefined
@@ -108,6 +111,9 @@ export const TrashRequestBuilderRequestsMetadata: RequestsMetadata = {
   get: {
     uriTemplate: TrashRequestBuilderUriTemplate,
     responseBodyContentType: 'application/json',
+    errorMappings: {
+      503: createRecoveryBusyErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
+    },
     adapterMethodName: 'send',
     responseBodyFactory: createTrashGetResponseFromDiscriminatorValue,
   },

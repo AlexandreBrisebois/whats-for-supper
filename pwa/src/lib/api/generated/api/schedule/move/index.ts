@@ -4,10 +4,12 @@
 // @ts-ignore
 import {
   createMoveScheduleResultDtoFromDiscriminatorValue,
+  createRecoveryBusyErrorFromDiscriminatorValue,
   serializeMoveScheduleDto,
   serializeMoveScheduleResultDto,
   type MoveScheduleDto,
   type MoveScheduleResultDto,
+  type RecoveryBusyError,
 } from '../../../models/index';
 // @ts-ignore
 import {
@@ -66,6 +68,7 @@ export interface MoveRequestBuilder extends BaseRequestBuilder<MoveRequestBuilde
    * @param body The request body
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {Promise<MovePostResponse>}
+   * @throws {RecoveryBusyError} error when the service returns a 503 status code
    */
   post(
     body: MoveScheduleDto,
@@ -125,6 +128,9 @@ export const MoveRequestBuilderRequestsMetadata: RequestsMetadata = {
   post: {
     uriTemplate: MoveRequestBuilderUriTemplate,
     responseBodyContentType: 'application/json',
+    errorMappings: {
+      503: createRecoveryBusyErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
+    },
     adapterMethodName: 'send',
     responseBodyFactory: createMovePostResponseFromDiscriminatorValue,
     requestBodyContentType: 'application/json',

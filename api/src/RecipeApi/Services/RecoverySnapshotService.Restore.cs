@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using RecipeApi.Data;
 using RecipeApi.Models;
+using RecipeApi.Infrastructure;
 
 namespace RecipeApi.Services;
 
@@ -12,14 +13,23 @@ public partial class RecoverySnapshotService
     private sealed record Journal(Guid Operation, Guid Snapshot, string? Previous, string Next);
     private string JournalPath => Path.Combine(recipes.BaseRoot, ".recovery-journal.json");
     private string PointerPath => Path.Combine(recipes.BaseRoot, ".recovery-active");
-    public RecoveryResult Status() => new(File.Exists(JournalPath) ? "reconciliation-required" : "available",
-        boundary.Enabled ? "Online recovery configured." : "Configure Recovery:BackupRoot to enable exact recovery.");
+    public async Task<RecoveryResult> StatusAsync(CancellationToken ct)
+    {
+        if (!boundary.Enabled) return new("disabled", "Configure Recovery:BackupRoot to enable exact recovery.");
+        if (File.Exists(JournalPath)) return new("reconciliation-required", "Household operations wait for interrupted publication reconciliation.");
+        var publication = await db.RecoveryPublications.AsNoTracking().SingleOrDefaultAsync(ct);
+        return publication is null ? new("available", "Online recovery configured; no exact restore has committed.")
+            : new("available", "Last committed exact restore is identified by snapshotId.", publication.SnapshotId);
+    }
 
     public async Task<RecoveryResult> RestoreExactAsync(Guid snapshotId, CancellationToken ct)
     {
         var source = Path.Combine(BackupRoot, snapshotId.ToString("N"));
         var operation = Guid.NewGuid();
         var stage = Path.Combine(recipes.BaseRoot, ".recovery-generations", operation.ToString("N"));
+        RejectLinks(stage);
+        RejectLinks(JournalPath);
+        RejectLinks(PointerPath);
         Directory.CreateDirectory(stage);
         var journalWritten = false;
         try
@@ -27,8 +37,11 @@ public partial class RecoverySnapshotService
             var manifest = await ValidateAndStageAsync(source, stage, snapshotId, ct);
             await using var connection = await OpenAsync(ct);
             await using var transaction = await connection.BeginTransactionAsync(ct);
-            await ValidateTablesAsync(connection, stage, manifest, ct);
+            try { await ValidateTablesAsync(connection, stage, manifest, ct); }
+            catch (PostgresException ex) { throw new InvalidDataException("Snapshot database validation failed: " + ex.MessageText, ex); }
             Directory.Delete(Path.Combine(stage, ".snapshot"), true);
+            RecoveryDurability.FlushTree(stage, ct);
+            RecoveryDurability.Flush(recipes.BaseRoot);
             if (checkpoint is not null) await checkpoint.ReachedAsync("staged", ct);
             // No live changes above this line. Existing users can continue reading/writing during preflight.
             await using var lease = await boundary.EnterAsync(RecoveryAccess.Publish, ct);
@@ -38,8 +51,15 @@ public partial class RecoverySnapshotService
             ct = duration.Token;
             ct.ThrowIfCancellationRequested();
             var journal = new Journal(operation, snapshotId, recipes.Generation, operation.ToString("N"));
-            await WriteAsync(JournalPath, journal, CancellationToken.None);
-            journalWritten = true;
+            var pendingJournal = JournalPath + "." + operation.ToString("N");
+            try
+            {
+                await WriteAsync(pendingJournal, journal, CancellationToken.None);
+                File.Move(pendingJournal, JournalPath);
+                journalWritten = true;
+                RecoveryDurability.Flush(recipes.BaseRoot);
+            }
+            finally { if (File.Exists(pendingJournal)) File.Delete(pendingJournal); }
             try
             {
                 if (checkpoint is not null) await checkpoint.ReachedAsync("journal", ct);
@@ -48,12 +68,14 @@ public partial class RecoverySnapshotService
                 await ScalarAsync(connection, "DELETE FROM recipe_votes; DELETE FROM voting_round_state; DELETE FROM recipe_search_filter_state; DELETE FROM recipe_search_affinity_facts; DELETE FROM recipe_search_documents", ct);
                 var round = Guid.NewGuid();
                 await ScalarAsync(connection, $"INSERT INTO voting_round_state(id,round_id,history_generation,requires_round_identity,week_start_date) VALUES(1,'{round}','{Guid.NewGuid()}',true,(SELECT CASE WHEN count(*)=1 THEN min(week_start_date) END FROM weekly_plans WHERE status=1)); UPDATE weekly_plans SET requires_round_identity=true,last_closed_round_id=NULL,voting_round_id=CASE WHEN status=1 AND (SELECT count(*) FROM weekly_plans WHERE status=1)=1 THEN '{round}'::uuid ELSE NULL END", ct);
-                await ScalarAsync(connection, "UPDATE workflow_tasks SET status=4,error_message='Invalidated by exact recovery' WHERE status IN (0,1,2); UPDATE workflow_instances SET status=3 WHERE status IN (0,1,4); UPDATE maintenance_commands SET status='skipped',last_error='Invalidated by exact recovery' WHERE status IN ('pending','processing')", ct);
+                await ScalarAsync(connection, "UPDATE workflow_tasks SET status=4,error_message='Invalidated by exact recovery' WHERE status IN (0,1,2) AND instance_id IN (SELECT id FROM workflow_instances WHERE workflow_id NOT IN ('dreaming','demo-restore')); UPDATE workflow_instances SET status=3 WHERE status IN (0,1,4) AND workflow_id NOT IN ('dreaming','demo-restore'); UPDATE maintenance_commands SET status='skipped',last_error='Invalidated by exact recovery' WHERE status IN ('pending','processing')", ct);
                 await using (var restored = new RecipeDbContext(new DbContextOptionsBuilder<RecipeDbContext>().UseNpgsql(connection).Options))
                 {
                     await restored.Database.UseTransactionAsync(transaction, ct);
                     await new RecipeApi.Services.RecipeSearchFilterMaterializer(restored, clock).MaterializeAsync(ct);
                 }
+                await ScalarAsync(connection, "UPDATE recipe_import_reports SET last_workflow_instance_id=NULL,last_error=CASE WHEN status='reimporting' THEN 'Exact recovery invalidated the unfinished import; retry reimport.' ELSE last_error END,status=CASE WHEN status='reimporting' THEN 'reimport_failed' ELSE status END", ct);
+                await QueueDerivedRepairAsync(connection, ct);
                 await ScalarAsync(connection, $"INSERT INTO recovery_publication(id,operation_id,snapshot_id) VALUES(1,'{operation}','{snapshotId}') ON CONFLICT(id) DO UPDATE SET operation_id=excluded.operation_id,snapshot_id=excluded.snapshot_id", ct);
                 await ActivateAsync(journal.Next);
                 if (checkpoint is not null) await checkpoint.ReachedAsync("pointer", ct);
@@ -62,6 +84,7 @@ public partial class RecoverySnapshotService
                 if (checkpoint is not null) await checkpoint.ReachedAsync("committed", CancellationToken.None);
                 CleanupPrevious(journal);
                 File.Delete(JournalPath);
+                RecoveryDurability.Flush(recipes.BaseRoot);
                 return new("completed", "Exact state restored. Old workflow/round identities invalidated; derived search is pending reconciliation.", snapshotId);
             }
             catch
@@ -89,7 +112,7 @@ public partial class RecoverySnapshotService
         if (!File.Exists(JournalPath)) return new("available", "No interrupted restore.");
         var journal = JsonSerializer.Deserialize<Journal>(await File.ReadAllTextAsync(JournalPath, ct), Json)
             ?? throw new InvalidDataException("Recovery journal is invalid; household access remains blocked.");
-        if (!Guid.TryParseExact(journal.Next, "N", out _) || journal.Previous is not null && !Guid.TryParseExact(journal.Previous, "N", out _))
+        if (journal.Next != journal.Operation.ToString("N") || journal.Next == journal.Previous || journal.Snapshot == Guid.Empty || !Guid.TryParseExact(journal.Next, "N", out _) || journal.Previous is not null && !Guid.TryParseExact(journal.Previous, "N", out _))
             throw new InvalidDataException("Recovery journal has invalid generations.");
         await using var connection = await OpenAsync(ct);
         var committed = await ScalarAsync(connection, "SELECT operation_id::text FROM recovery_publication WHERE id=1", ct);
@@ -102,6 +125,7 @@ public partial class RecoverySnapshotService
             if (Directory.Exists(abandoned)) Directory.Delete(abandoned, true);
         }
         File.Delete(JournalPath);
+        RecoveryDurability.Flush(recipes.BaseRoot);
         return new("reconciled", committed == journal.Operation.ToString() ? "Committed generation recovered." : "Prior generation recovered; database transaction did not commit.", journal.Snapshot);
     }
     private void CleanupPrevious(Journal journal)
@@ -120,7 +144,7 @@ public partial class RecoverySnapshotService
 
     private async Task ActivateAsync(string? generation)
     {
-        if (generation is null) { File.Delete(PointerPath); return; }
+        if (generation is null) { File.Delete(PointerPath); RecoveryDurability.Flush(recipes.BaseRoot); return; }
         if (!Directory.Exists(Path.Combine(recipes.BaseRoot, ".recovery-generations", generation)))
             throw new InvalidDataException("Recovery generation is missing; access remains blocked.");
         var temporary = PointerPath + "." + Guid.NewGuid().ToString("N");
@@ -132,6 +156,7 @@ public partial class RecoverySnapshotService
                 stream.Flush(true);
             }
             File.Move(temporary, PointerPath, true);
+            RecoveryDurability.Flush(recipes.BaseRoot);
         }
         finally { if (File.Exists(temporary)) File.Delete(temporary); }
     }
@@ -217,6 +242,21 @@ public partial class RecoverySnapshotService
         foreach (var name in new[] { "rawMetadata", "ingredients" })
             if (content[name] is { } value) content[name] = value.ToJsonString();
         await File.WriteAllTextAsync(Path.Combine(folder, "recipe.json"), content.ToJsonString(), ct);
+    }
+
+    private async Task QueueDerivedRepairAsync(NpgsqlConnection connection, CancellationToken ct)
+    {
+        var instance = Guid.NewGuid();
+        await using var command = new NpgsqlCommand("""
+            INSERT INTO workflow_instances(id,workflow_id,status,parameters,created_at,updated_at)
+            VALUES(@instance,'search-reconciliation',0,'{}',@now,@now);
+            INSERT INTO workflow_tasks(task_id,instance_id,task_name,processor_name,payload,status,depends_on,created_at,updated_at)
+            VALUES(@task,@instance,'reconcile','ReconcileRecipeSearch','{}',1,'{}',@now,@now);
+            """, connection);
+        command.Parameters.AddWithValue("instance", instance);
+        command.Parameters.AddWithValue("task", Guid.NewGuid());
+        command.Parameters.AddWithValue("now", clock.UtcNow);
+        await command.ExecuteNonQueryAsync(ct);
     }
 
     private async Task ValidateTablesAsync(NpgsqlConnection connection, string stage, RecoveryManifest manifest, CancellationToken ct)

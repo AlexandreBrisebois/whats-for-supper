@@ -4,10 +4,12 @@
 // @ts-ignore
 import {
   createDisplacedRecipeDtoFromDiscriminatorValue,
+  createRecoveryBusyErrorFromDiscriminatorValue,
   serializeAssignScheduleDto,
   serializeDisplacedRecipeDto,
   type AssignScheduleDto,
   type DisplacedRecipeDto,
+  type RecoveryBusyError,
 } from '../../../models/index';
 // @ts-ignore
 import {
@@ -56,6 +58,7 @@ export interface AssignRequestBuilder extends BaseRequestBuilder<AssignRequestBu
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {Promise<AssignPostResponse>}
    * @throws {Assign409Error} error when the service returns a 409 status code
+   * @throws {RecoveryBusyError} error when the service returns a 503 status code
    */
   post(
     body: AssignScheduleDto,
@@ -243,6 +246,7 @@ export const AssignRequestBuilderRequestsMetadata: RequestsMetadata = {
     responseBodyContentType: 'application/json',
     errorMappings: {
       409: createAssign409ErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
+      503: createRecoveryBusyErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
     },
     adapterMethodName: 'send',
     responseBodyFactory: createAssignPostResponseFromDiscriminatorValue,

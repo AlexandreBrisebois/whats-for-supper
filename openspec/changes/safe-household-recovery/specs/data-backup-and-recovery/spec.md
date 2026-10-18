@@ -112,7 +112,6 @@ Current recipe exports SHALL identify content format version 1. Merge restore SH
 - **THEN** merge restore counts that recipe as a load error instead of interpreting its envelope as raw content
 
 
-## ADDED Requirements
 
 ### Requirement: Online independent exact recovery
 The system SHALL provide explicit exact snapshot and restore operations distinct from merge/import, with operator-configured independent storage outside live roots. Snapshot version 1 SHALL contain authoritative supported row membership, explicit empty collections, complete version-1 history and verified media bytes. Soft-deleted recipes SHALL retain history dependencies; permanently purged recipes and history SHALL be absent.

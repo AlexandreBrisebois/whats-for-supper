@@ -4,9 +4,11 @@
 // @ts-ignore
 import {
   createFeatureFlagDtoFromDiscriminatorValue,
+  createRecoveryBusyErrorFromDiscriminatorValue,
   serializeFeatureFlagDto,
   serializeUpdateFeatureFlagRequest,
   type FeatureFlagDto,
+  type RecoveryBusyError,
   type UpdateFeatureFlagRequest,
 } from '../../../models/index';
 // @ts-ignore
@@ -81,6 +83,7 @@ export interface WithKeyItemRequestBuilder extends BaseRequestBuilder<WithKeyIte
    * @param body The request body
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {Promise<WithKeyPatchResponse>}
+   * @throws {RecoveryBusyError} error when the service returns a 503 status code
    */
   patch(
     body: UpdateFeatureFlagRequest,
@@ -114,6 +117,9 @@ export const WithKeyItemRequestBuilderRequestsMetadata: RequestsMetadata = {
   patch: {
     uriTemplate: WithKeyItemRequestBuilderUriTemplate,
     responseBodyContentType: 'application/json',
+    errorMappings: {
+      503: createRecoveryBusyErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
+    },
     adapterMethodName: 'send',
     responseBodyFactory: createWithKeyPatchResponseFromDiscriminatorValue,
     requestBodyContentType: 'application/json',

@@ -4,10 +4,12 @@
 // @ts-ignore
 import {
   createRecipeDtoFromDiscriminatorValue,
+  createRecoveryBusyErrorFromDiscriminatorValue,
   serializeDescribeRecipeDto,
   serializeRecipeDto,
   type DescribeRecipeDto,
   type RecipeDto,
+  type RecoveryBusyError,
 } from '../../../models/index';
 // @ts-ignore
 import {
@@ -48,6 +50,7 @@ export interface DescribeRequestBuilder extends BaseRequestBuilder<DescribeReque
    * @param body The request body
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {Promise<DescribePostResponse>}
+   * @throws {RecoveryBusyError} error when the service returns a 503 status code
    */
   post(
     body: DescribeRecipeDto,
@@ -110,6 +113,9 @@ export const DescribeRequestBuilderRequestsMetadata: RequestsMetadata = {
   post: {
     uriTemplate: DescribeRequestBuilderUriTemplate,
     responseBodyContentType: 'application/json',
+    errorMappings: {
+      503: createRecoveryBusyErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
+    },
     adapterMethodName: 'send',
     responseBodyFactory: createDescribePostResponseFromDiscriminatorValue,
     requestBodyContentType: 'application/json',

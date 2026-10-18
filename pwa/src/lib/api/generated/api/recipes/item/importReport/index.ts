@@ -5,11 +5,13 @@
 import {
   createRecipeDetailResponseFromDiscriminatorValue,
   createRecipeImportReportSubmissionResponseDtoFromDiscriminatorValue,
+  createRecoveryBusyErrorFromDiscriminatorValue,
   serializeRecipeImportIssueRequest,
   serializeRecipeImportReportSubmissionResponseDto,
   type RecipeDetailResponse,
   type RecipeImportIssueRequest,
   type RecipeImportReportSubmissionResponseDto,
+  type RecoveryBusyError,
 } from '../../../../models/index';
 // @ts-ignore
 import {
@@ -177,6 +179,7 @@ export interface ImportReportRequestBuilder extends BaseRequestBuilder<ImportRep
    * @returns {Promise<RecipeDetailResponse>}
    * @throws {RecipeDetailResponse400Error} error when the service returns a 400 status code
    * @throws {RecipeDetailResponse404Error} error when the service returns a 404 status code
+   * @throws {RecoveryBusyError} error when the service returns a 503 status code
    */
   delete(
     requestConfiguration?: RequestConfiguration<object> | undefined
@@ -189,6 +192,7 @@ export interface ImportReportRequestBuilder extends BaseRequestBuilder<ImportRep
    * @throws {RecipeImportReportSubmissionResponseDto400Error} error when the service returns a 400 status code
    * @throws {RecipeImportReportSubmissionResponseDto404Error} error when the service returns a 404 status code
    * @throws {RecipeImportReportSubmissionResponseDto409Error} error when the service returns a 409 status code
+   * @throws {RecoveryBusyError} error when the service returns a 503 status code
    */
   post(
     body: RecipeImportIssueRequest,
@@ -377,6 +381,7 @@ export const ImportReportRequestBuilderRequestsMetadata: RequestsMetadata = {
     errorMappings: {
       400: createRecipeDetailResponse400ErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
       404: createRecipeDetailResponse404ErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
+      503: createRecoveryBusyErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
     },
     adapterMethodName: 'send',
     responseBodyFactory: createRecipeDetailResponseFromDiscriminatorValue,
@@ -388,6 +393,7 @@ export const ImportReportRequestBuilderRequestsMetadata: RequestsMetadata = {
       400: createRecipeImportReportSubmissionResponseDto400ErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
       404: createRecipeImportReportSubmissionResponseDto404ErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
       409: createRecipeImportReportSubmissionResponseDto409ErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
+      503: createRecoveryBusyErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
     },
     adapterMethodName: 'send',
     responseBodyFactory: createRecipeImportReportSubmissionResponseDtoFromDiscriminatorValue,

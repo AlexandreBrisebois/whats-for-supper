@@ -6,7 +6,7 @@ Issue #244 requires household recovery that reproduces a complete saved snapshot
 
 ## Outcome and Scope
 
-Deliver the agreed #244 scope on a review branch based on verified main after the user merged #281. Begin with the independently settled fresh-export behavior. Exact snapshot storage/publication, full validation and recoverable restore follow after resolving whether an offline operator command is acceptable or online operation is required. This operational decision changes the concurrency boundary and remains pending; it does not block freshness regressions.
+Deliver the agreed #244 scope on a review branch based on verified main after the user merged #281. The owner selected online operation. Independent exact snapshots and staged restoration coordinate cooperating HTTP/background writes while the app remains running; whole-set preflight precedes mutation and journal/commit identity makes publication recoverable.
 
 ## What Changes
 
@@ -28,4 +28,4 @@ None.
 
 ## Impact
 
-Existing ownership: ManagementService, LocalRecipeStore, history partial, PostgreSQL mappings and management regression tests. Later exact-recovery entrypoint and concurrency ownership depend on the operational decision. User documentation and recovery specifications accompany each implemented slice. No merge, deployment, production restore, provider/account setup, history UI or individual history records.
+Existing ownership: ManagementService, LocalRecipeStore, history partial, PostgreSQL mappings and management regression tests. RecoveryController, RecoverySnapshotService, PostgreSQL coordination, generation resolution and journal reconciliation own the online exact path. User documentation and recovery specifications accompany each implemented slice. No merge, deployment, production restore, provider/account setup, history UI or individual history records.

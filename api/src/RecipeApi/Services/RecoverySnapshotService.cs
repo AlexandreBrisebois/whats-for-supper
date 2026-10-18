@@ -9,6 +9,7 @@ using RecipeApi.Models;
 
 namespace RecipeApi.Services;
 
+public sealed record RecoveryError(string State, string Message, Guid? SnapshotId = null);
 public sealed record RecoveryResult(string State, string Message, Guid? SnapshotId = null);
 public sealed record RecoveryFile(string Path, long Length, string Sha256);
 public sealed record RecoveryManifest(int Version, Guid Id, DateTimeOffset CapturedAt, string Schema, string[] Tables, RecoveryFile[] Files);
@@ -29,8 +30,11 @@ public partial class RecoverySnapshotService(RecipeDbContext db, RecipesRootReso
                 throw new InvalidOperationException("Configure an absolute Recovery:BackupRoot outside live data and recipe roots.");
             root = Path.GetFullPath(root);
             foreach (var live in new[] { data.Root, recipes.BaseRoot })
+            {
+                RejectLinks(live);
                 if (Contains(root, live) || Contains(live, root))
                     throw new InvalidOperationException("Recovery storage must be independent of live roots (neither ancestor nor descendant).");
+            }
             RejectLinks(root);
             return root;
         }
@@ -56,8 +60,15 @@ public partial class RecoverySnapshotService(RecipeDbContext db, RecipesRootReso
         if (json is not null) command.Parameters.AddWithValue("json", NpgsqlDbType.Jsonb, json);
         return Convert.ToString(await command.ExecuteScalarAsync(ct), System.Globalization.CultureInfo.InvariantCulture) ?? "";
     }
-    internal static async Task<string> SchemaAsync(NpgsqlConnection connection, CancellationToken ct) => await ScalarAsync(connection,
-        "SELECT coalesce(jsonb_agg(jsonb_build_array(table_name,column_name,data_type,udt_name,is_nullable,column_default) ORDER BY table_name,ordinal_position)::text,'[]') FROM information_schema.columns WHERE table_schema='public' AND table_name IN (" + string.Join(',', Tables.Select(t => "'" + t + "'")) + ")", ct);
+    internal static async Task<string> SchemaAsync(NpgsqlConnection connection, CancellationToken ct)
+    {
+        var names = string.Join(',', Tables.Select(t => "'" + t + "'"));
+        var columns = await ScalarAsync(connection,
+            "SELECT coalesce(jsonb_agg(jsonb_build_array(table_name,column_name,data_type,udt_name,is_nullable,column_default) ORDER BY table_name,ordinal_position)::text,'[]') FROM information_schema.columns WHERE table_schema='public' AND table_name IN (" + names + ")", ct);
+        var constraints = await ScalarAsync(connection,
+            "SELECT coalesce(jsonb_agg(jsonb_build_array(t.relname,pg_get_constraintdef(c.oid)) ORDER BY t.relname,c.conname)::text,'[]') FROM pg_constraint c JOIN pg_class t ON t.oid=c.conrelid JOIN pg_namespace n ON n.oid=t.relnamespace WHERE n.nspname='public' AND t.relname IN (" + names + ")", ct);
+        return Convert.ToHexString(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(columns + constraints)));
+    }
 
     public async Task<RecoveryResult> CaptureAsync(CancellationToken ct)
     {
@@ -99,7 +110,9 @@ public partial class RecoverySnapshotService(RecipeDbContext db, RecipesRootReso
             await transaction.CommitAsync(ct);
             if (checkpoint is not null) await checkpoint.ReachedAsync("export-staged", ct);
             ct.ThrowIfCancellationRequested();
+            RecoveryDurability.FlushTree(stage, ct);
             Directory.Move(stage, target);
+            RecoveryDurability.Flush(root);
             return new("completed", "Independent snapshot published; copy to a separate failure domain for disk-loss protection.", id);
         }
         finally { if (Directory.Exists(stage)) Directory.Delete(stage, true); }
@@ -150,6 +163,7 @@ public partial class RecoverySnapshotService(RecipeDbContext db, RecipesRootReso
         await JsonSerializer.SerializeAsync(stream, value, Json, ct);
         await stream.FlushAsync(ct);
         stream.Flush(true);
+        RecoveryDurability.Flush(Path.GetDirectoryName(path)!);
     }
     internal static async Task<RecoveryFile> InventoryAsync(string root, string path, CancellationToken ct)
     {

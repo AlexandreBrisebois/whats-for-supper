@@ -285,6 +285,7 @@ export function serializePurgeDeleteResponse(
 export const PurgeRequestBuilderUriTemplate = '{+baseurl}/api/recipes/{%2Did}/purge';
 export const Purge503Error_errorCodeObject = {
   PIN_NOT_CONFIGURED: 'PIN_NOT_CONFIGURED',
+  RECOVERY_BUSY: 'RECOVERY_BUSY',
 } as const;
 /**
  * Metadata for all the requests in the request builder.
