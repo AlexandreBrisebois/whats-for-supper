@@ -57,9 +57,9 @@ public partial class ManagementService(
         await using var snapshotTransaction = await VotingBoundary.BeginAsync(db);
         if (db.Database.IsRelational())
             await db.Database.ExecuteSqlRawAsync("LOCK TABLE recipes IN SHARE MODE");
-        // 1. Merge Family Members (Append only)
-        var dbMembers = await db.FamilyMembers.ToListAsync();
-        await MergeFamilyMembersAsync(dbMembers);
+        // 1. Refresh current member values and membership, including an empty household.
+        var dbMembers = await db.FamilyMembers.AsNoTracking().ToListAsync();
+        await WriteJsonAsync(Path.Combine(DataRoot, "family-members.json"), dbMembers, CancellationToken.None);
 
         // 2. Backup Recipes (Update notes/rating or create missing)
         var historyRecipeIds = await db.WeeklyHouseholdInterests.Select(h => h.RecipeId).Distinct().ToArrayAsync();
@@ -139,13 +139,8 @@ public partial class ManagementService(
                 await recipeStore.WriteInfoAsync(info);
             }
 
-            // recipe.json — never overwrite; only write if missing and there is content
-            if (!await recipeStore.RecipeJsonExistsAsync(recipe.Id) &&
-                (!string.IsNullOrEmpty(recipe.RawMetadata) || !string.IsNullOrEmpty(recipe.Ingredients)))
-            {
-                var recipeJson = SerializeRecipeBackup(recipe);
-                await recipeStore.WriteRecipeJsonAsync(recipe.Id, recipeJson);
-            }
+            // Refresh supported content, including cleared values, without touching media.
+            await recipeStore.WriteRecipeJsonAsync(recipe.Id, SerializeRecipeBackup(recipe));
 
             backedUpCount++;
         }
@@ -153,7 +148,6 @@ public partial class ManagementService(
         // 3. Backup Weekly Plans
         var weeklyPlans = await db.WeeklyPlans.AsNoTracking().ToListAsync();
         foreach (var plan in weeklyPlans) { plan.VotingRoundId = null; plan.LastClosedRoundId = null; }
-        if (weeklyPlans.Count > 0)
         {
             var plansPath = Path.Combine(DataRoot, "weekly-plans.json");
             var plansJson = JsonSerializer.Serialize(weeklyPlans, JsonDefaults.CamelCase);
@@ -163,7 +157,6 @@ public partial class ManagementService(
 
         // 4. Backup Calendar Events
         var calendarEvents = await db.CalendarEvents.AsNoTracking().ToListAsync();
-        if (calendarEvents.Count > 0)
         {
             var eventsPath = Path.Combine(DataRoot, "calendar-events.json");
             var eventsJson = JsonSerializer.Serialize(calendarEvents, JsonDefaults.CamelCase);
@@ -181,7 +174,7 @@ public partial class ManagementService(
         foreach (var cat in ingredientCategories)
         {
             var createdAt = cat.CreatedAt.UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ssZ");
-            csvLines.Add($"{EscapeCsvField(cat.NormalizedKey)},{EscapeCsvField(cat.GrocerySection)},{cat.Confidence},{EscapeCsvField(cat.Source)},{createdAt}");
+            csvLines.Add($"{EscapeCsvField(cat.NormalizedKey)},{EscapeCsvField(cat.GrocerySection)},{cat.Confidence.ToString(System.Globalization.CultureInfo.InvariantCulture)},{EscapeCsvField(cat.Source)},{createdAt}");
         }
         await File.WriteAllLinesAsync(categoriesPath, csvLines);
         logger.LogInformation("Backed up {Count} ingredient categories to {Path}", ingredientCategories.Count, categoriesPath);
@@ -726,6 +719,7 @@ public partial class ManagementService(
         var root = JsonSerializer.SerializeToNode(recipe, _cycleIgnoreOptions)?.AsObject()
             ?? throw new InvalidOperationException("Recipe backup serialization did not produce an object.");
         RemoveRetiredRecipeFields(root);
+        root["backupContentVersion"] = 1;
         return root.ToJsonString(_cycleIgnoreOptions);
     }
 
@@ -936,9 +930,13 @@ public partial class ManagementService(
 
                         logger.LogDebug("Loaded recipe.json for {RecipeId}", recipeId);
 
-                        recipe.RawMetadata = currentJson;
+                        var exportedContent = RecipeExportContent.Read(rootElement);
+                        recipe.RawMetadata = exportedContent is null ? currentJson
+                            : exportedContent.RawMetadata is null ? null
+                            : RemoveRetiredRecipeFields(exportedContent.RawMetadata);
 
-                        if (rootElement.TryGetProperty("recipeIngredient", out var ingProp) && ingProp.ValueKind == JsonValueKind.Array)
+                        if (exportedContent is not null) recipe.Ingredients = exportedContent.Ingredients;
+                        else if (rootElement.TryGetProperty("recipeIngredient", out var ingProp) && ingProp.ValueKind == JsonValueKind.Array)
                             recipe.Ingredients = ingProp.GetRawText();
                         else if (rootElement.TryGetProperty("ingredients", out var legacyIngProp) && legacyIngProp.ValueKind == JsonValueKind.Array)
                             recipe.Ingredients = legacyIngProp.GetRawText();
@@ -1235,18 +1233,18 @@ public partial class ManagementService(
         var categoriesPath = Path.Combine(DataRoot, "ingredient-categories.csv");
         if (File.Exists(categoriesPath))
         {
-            var lines = await File.ReadAllLinesAsync(categoriesPath, ct);
+            var lines = await ReadCsvRecordsAsync(categoriesPath, ct);
             int categoriesUpserted = 0;
             // Skip header row (index 0)
-            for (int i = 1; i < lines.Length; i++)
+            for (int i = 1; i < lines.Count; i++)
             {
                 if (ct.IsCancellationRequested) break;
-                var line = lines[i];
+                var fields = lines[i];
+                var line = string.Join(",", fields);
                 if (string.IsNullOrWhiteSpace(line)) continue;
 
                 try
                 {
-                    var fields = ParseCsvLine(line);
                     if (fields.Length < 5)
                     {
                         logger.LogError("Malformed row at line {Line} in ingredient-categories.csv (expected 5 fields, got {Count}): {Row}",
@@ -1357,68 +1355,27 @@ public partial class ManagementService(
         }
     }
 
-    /// <summary>
-    /// Parses a single CSV line, handling quoted fields (RFC 4180).
-    /// Returns an array of unescaped field values.
-    /// </summary>
-    private static string[] ParseCsvLine(string line)
+    private static async Task<List<string[]>> ReadCsvRecordsAsync(string path, CancellationToken ct)
     {
-        var fields = new List<string>();
-        int pos = 0;
-        while (pos <= line.Length)
+        var text = await File.ReadAllTextAsync(path, ct);
+        using var parser = new Microsoft.VisualBasic.FileIO.TextFieldParser(new StringReader(text))
         {
-            if (pos == line.Length)
+            HasFieldsEnclosedInQuotes = true,
+            TrimWhiteSpace = false
+        };
+        parser.SetDelimiters(",");
+        var records = new List<string[]>();
+        while (!parser.EndOfData)
+        {
+            ct.ThrowIfCancellationRequested();
+            try { records.Add(parser.ReadFields() ?? []); }
+            catch (Microsoft.VisualBasic.FileIO.MalformedLineException)
             {
-                fields.Add(string.Empty);
-                break;
-            }
-
-            if (line[pos] == '"')
-            {
-                // Quoted field
-                pos++; // skip opening quote
-                var sb = new System.Text.StringBuilder();
-                while (pos < line.Length)
-                {
-                    if (line[pos] == '"')
-                    {
-                        if (pos + 1 < line.Length && line[pos + 1] == '"')
-                        {
-                            // Escaped double-quote
-                            sb.Append('"');
-                            pos += 2;
-                        }
-                        else
-                        {
-                            pos++; // skip closing quote
-                            break;
-                        }
-                    }
-                    else
-                    {
-                        sb.Append(line[pos]);
-                        pos++;
-                    }
-                }
-                fields.Add(sb.ToString());
-                // Skip comma separator
-                if (pos < line.Length && line[pos] == ',')
-                    pos++;
-            }
-            else
-            {
-                // Unquoted field — read until comma or end
-                int start = pos;
-                while (pos < line.Length && line[pos] != ',')
-                    pos++;
-                fields.Add(line[start..pos]);
-                if (pos < line.Length)
-                    pos++; // skip comma
-                else
-                    break;
+                // Preserve the existing merge policy: report/skip a malformed record.
+                records.Add([parser.ErrorLine]);
             }
         }
-        return fields.ToArray();
+        return records;
     }
 
     private static DateOnly GetMonday(DateOnly date)

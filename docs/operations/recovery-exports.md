@@ -1,0 +1,9 @@
+# Recovery exports
+
+The existing authenticated `POST /api/management/backup` operation queues an export. Whenever that workflow runs, it now refreshes current member names/preferences and membership, supported recipe content, weekly plans and calendar events. Empty member or planning collections replace older files with empty arrays. This prevents an older export from replaying values that have since changed or been cleared. The existing workflow/task status reports completion separately from request acceptance; no new schedule is introduced.
+
+Recipe content files use `backupContentVersion: 1` to distinguish the exported database envelope from legacy raw recipe JSON. Restore decodes its raw content without repeatedly nesting envelopes. Unversioned ingredient-array and serialized-array formats remain accepted. Unsupported envelope versions are reported as recipe-load errors. Category CSV supports quoted multiline fields and invariant confidence values across machine cultures.
+
+Use `POST /api/management/seed` for the existing intentional merge/import behavior. It keeps unrelated destination rows and preserves history when a legacy export omits the history sidecar. An explicit empty version-1 history sidecar clears its aggregate scope. The existing disaster-recovery attribution helper remains a separate member-file repair operation.
+
+These in-place exports are **not yet an independent disaster-recovery backup**. This slice does not establish complete recipe membership, media reconstruction, whole-set validation or recoverable database/filesystem publication. Keep a separately verified backup of data and media; a second directory on the same disk does not protect against disk loss. The remaining exact-snapshot work is tracked in [issue #244](https://github.com/AlexandreBrisebois/whats-for-supper/issues/244). Do not run restore against household data to test this change.

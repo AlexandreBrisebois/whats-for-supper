@@ -56,10 +56,15 @@ public class SyncRecipeProcessor(
         }
 
         // Update database record
-        recipe.RawMetadata = recipeJsonContent;
+        var exportedContent = RecipeExportContent.Read(root);
+        recipe.RawMetadata = exportedContent is null ? recipeJsonContent : exportedContent.RawMetadata;
 
         // Try to get ingredients from multiple possible locations (Schema.org vs legacy)
-        if (root.TryGetProperty("recipeIngredient", out var ingProp) && ingProp.ValueKind == JsonValueKind.Array)
+        if (exportedContent is not null)
+        {
+            recipe.Ingredients = exportedContent.Ingredients;
+        }
+        else if (root.TryGetProperty("recipeIngredient", out var ingProp) && ingProp.ValueKind == JsonValueKind.Array)
         {
             recipe.Ingredients = ingProp.GetRawText();
         }
