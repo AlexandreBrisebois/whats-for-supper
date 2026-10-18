@@ -29,7 +29,7 @@ public class MaintenanceCommand
     public Guid? RequestedBy { get; set; }
 
     [Column("created_at")]
-    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset CreatedAt { get; set; }
 
     [Column("scheduled_for")]
     public DateTimeOffset? ScheduledFor { get; set; }

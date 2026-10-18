@@ -18,7 +18,7 @@ public class WorkflowProcessorTests : IDisposable
 
     public WorkflowProcessorTests()
     {
-        _orchestrator = new WorkflowOrchestrator(new WorkflowRepository(_storage), _db);
+        _orchestrator = new WorkflowOrchestrator(new RecipeApi.Services.SystemClock(), new WorkflowRepository(_storage), _db);
     }
 
     public void Dispose()

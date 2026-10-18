@@ -14,6 +14,8 @@ namespace RecipeApi.Tests.Services;
 
 public class WorkflowWorkerReaperTests
 {
+    private readonly RecipeApi.Tests.Integration.DeploymentCalendarIntegrationTests.CalendarClock _clock = new() { UtcNow = new DateTimeOffset(2026, 10, 12, 12, 0, 0, TimeSpan.Zero) };
+
     [Fact]
     public async Task ZombieReaper_ShouldReclaimStaleTasks()
     {
@@ -28,12 +30,12 @@ public class WorkflowWorkerReaperTests
         var scopeFactory = serviceProvider.GetRequiredService<IServiceScopeFactory>();
 
         var testWorker = new WorkflowWorker(
-            scopeFactory, 
+            _clock, scopeFactory, 
             new Mock<ILogger<WorkflowWorker>>().Object, 
-            new AiExceptionHandler(new Mock<ILogger<AiExceptionHandler>>().Object), 
+            new AiExceptionHandler(_clock, new Mock<ILogger<AiExceptionHandler>>().Object), 
             Options.Create(new WorkflowRetryOptions()));
 
-        var now = DateTimeOffset.UtcNow;
+        var now = _clock.UtcNow;
         var staleTime = now.AddMinutes(-20); // More than 15 minutes
         
         var instance = new WorkflowInstance 

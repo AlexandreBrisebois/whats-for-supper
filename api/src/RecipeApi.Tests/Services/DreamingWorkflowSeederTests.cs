@@ -68,7 +68,7 @@ public class DreamingWorkflowSeederTests : IDisposable
         var configuration = new ConfigurationBuilder().Build();
         var seeder = new DreamingWorkflowSeeder(
             _db,
-            new WorkflowOrchestrator(new WorkflowRepository(_storage), _db),
+            new WorkflowOrchestrator(new RecipeApi.Services.SystemClock(), new WorkflowRepository(_storage), _db),
             new CronScheduleCalculator(configuration),
             _clock,
             NullLogger<DreamingWorkflowSeeder>.Instance);
@@ -87,7 +87,7 @@ public class DreamingWorkflowSeederTests : IDisposable
                 ["DREAMING_CRON_UTC"] = "0 3 * * *"
             })
             .Build();
-        var orchestrator = new WorkflowOrchestrator(new WorkflowRepository(_storage), _db);
+        var orchestrator = new WorkflowOrchestrator(new RecipeApi.Services.SystemClock(), new WorkflowRepository(_storage), _db);
 
         return new DreamingWorkflowSeeder(
             _db,

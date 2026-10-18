@@ -24,8 +24,8 @@ public partial class RecipeLexicalSearchPostgresTests
 
         var filters = new RecipeSearchFiltersDto { VegetarianOnly = true };
         var candidateIds = path == "lexical"
-            ? (await new RecipeLexicalSearchRepository(_db).SearchAsync("chili", filters, 1)).Select(candidate => candidate.RecipeId)
-            : (await new RecipeSemanticSearchRepository(_db).SearchAsync(UnitVector(0), filters, SearchOptions(1).Semantic, null)).Select(candidate => candidate.RecipeId);
+            ? (await new RecipeLexicalSearchRepository(_db, new RecipeApi.Services.SystemClock()).SearchAsync("chili", filters, 1)).Select(candidate => candidate.RecipeId)
+            : (await new RecipeSemanticSearchRepository(_db, new RecipeApi.Services.SystemClock()).SearchAsync(UnitVector(0), filters, SearchOptions(1).Semantic, null)).Select(candidate => candidate.RecipeId);
 
         Assert.Equal([vegetarian.Id], candidateIds);
     }
@@ -55,8 +55,8 @@ public partial class RecipeLexicalSearchPostgresTests
         if (group == "cuisine") expected.Add(wrongMeal.Id);
 
         async Task<Guid[]> Retrieve(int limit) => path == "lexical"
-            ? (await new RecipeLexicalSearchRepository(_db).SearchAsync("fish", filters, limit)).Select(x => x.RecipeId).ToArray()
-            : (await new RecipeSemanticSearchRepository(_db).SearchAsync(UnitVector(0), filters, SearchOptions(limit).Semantic, null)).Select(x => x.RecipeId).ToArray();
+            ? (await new RecipeLexicalSearchRepository(_db, new RecipeApi.Services.SystemClock()).SearchAsync("fish", filters, limit)).Select(x => x.RecipeId).ToArray()
+            : (await new RecipeSemanticSearchRepository(_db, new RecipeApi.Services.SystemClock()).SearchAsync(UnitVector(0), filters, SearchOptions(limit).Semantic, null)).Select(x => x.RecipeId).ToArray();
 
         Assert.Equal(expected.Order(), (await Retrieve(50)).Order());
         // A post-limit filter can underfill when an ineligible row sorts first.
@@ -224,11 +224,8 @@ public partial class RecipeLexicalSearchPostgresTests
     private RecipeSearchService CreateFilterService(IEmbeddingProvider? provider, bool enabled = true, int candidateLimit = 50)
     {
         var grocery = new GroceryRecomputeService(_db, new AisleMapper(), NullLogger<GroceryRecomputeService>.Instance, new SystemClock(), new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()));
-        var schedule = new ScheduleService(_db, NullLogger<ScheduleService>.Instance, new Mock<IScheduleEventPublisher>().Object, grocery, new SystemClock(), new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()));
-        return new RecipeSearchService(_db, schedule, provider,
-            lexicalRepository: new RecipeLexicalSearchRepository(_db), semanticRepository: new RecipeSemanticSearchRepository(_db),
-            rolloutOptions: new() { Semantic = new() { Enabled = enabled, CandidateLimit = candidateLimit, EmbeddingModel = "task4", EmbeddingVersion = "v1" } },
-            continuationStore: new RecipeSearchContinuationStore());
+        var schedule = new ScheduleService(_db, NullLogger<ScheduleService>.Instance, new Mock<IScheduleEventPublisher>().Object, grocery, new SystemClock(), new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()), RecipeApi.Tests.Infrastructure.TestHistoricalInterest.Create(_db, new SystemClock(), new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager())));
+        return new RecipeSearchService(new SystemClock(), RecipeApi.Tests.Infrastructure.TestHistoricalInterest.Create(_db, new SystemClock(), new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager())), _db, schedule, provider, lexicalRepository: new RecipeLexicalSearchRepository(_db, new RecipeApi.Services.SystemClock()), semanticRepository: new RecipeSemanticSearchRepository(_db, new RecipeApi.Services.SystemClock()), rolloutOptions: new() { Semantic = new() { Enabled = enabled, CandidateLimit = candidateLimit, EmbeddingModel = "task4", EmbeddingVersion = "v1" } }, continuationStore: new RecipeSearchContinuationStore(new RecipeApi.Services.SystemClock()));
     }
 
     private static Guid[] ResultIds(RecipeSearchResponseDto response) => response.Results

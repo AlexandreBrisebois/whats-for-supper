@@ -80,7 +80,7 @@ public sealed class FeatureFlagRegistry
     }
 }
 
-public sealed class FeatureFlagService(RecipeDbContext db, FeatureFlagRegistry registry)
+public sealed class FeatureFlagService(IClock clock, RecipeDbContext db, FeatureFlagRegistry registry)
 {
     public Task<bool> MemberExistsAsync(Guid memberId, CancellationToken cancellationToken = default) =>
         db.FamilyMembers.AnyAsync(member => member.Id == memberId, cancellationToken);
@@ -112,7 +112,7 @@ public sealed class FeatureFlagService(RecipeDbContext db, FeatureFlagRegistry r
             db.FeatureFlagOverrides.Add(value);
         }
         value.Enabled = enabled;
-        value.UpdatedAt = DateTimeOffset.UtcNow;
+        value.UpdatedAt = clock.UtcNow;
         await db.SaveChangesAsync(cancellationToken);
         return ToDto(definition, enabled);
     }

@@ -10,7 +10,7 @@ namespace RecipeApi.Services.Processors;
 /// Finalizes the recipe state to mark it as ready for discovery.
 /// This processor runs as the final step in recipe import/describe workflows.
 /// </summary>
-public class RecipeReadyProcessor(
+public class RecipeReadyProcessor(IClock clock, 
     RecipeDbContext db,
     ILogger<RecipeReadyProcessor> logger,
     IScheduleEventPublisher publisher,
@@ -52,7 +52,7 @@ public class RecipeReadyProcessor(
         recipe.IsDiscoverable = RecipeRotation.Suitable(recipe) && !recipe.RotationHumanOff && !recipe.CookedSuppressed;
         if (!recipe.RotationHumanOff) recipe.RotationSource = "AI";
         recipe.IsReady = true;
-        recipe.UpdatedAt = DateTimeOffset.UtcNow;
+        recipe.UpdatedAt = clock.UtcNow;
 
         await db.SaveChangesAsync(ct);
         if (transaction is not null) await transaction.CommitAsync(ct);

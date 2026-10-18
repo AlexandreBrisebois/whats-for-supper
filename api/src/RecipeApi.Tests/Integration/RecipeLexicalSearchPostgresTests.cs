@@ -48,6 +48,28 @@ public partial class RecipeLexicalSearchPostgresTests : IAsyncLifetime
     }
 
     [PostgresFact]
+    public async Task ClockSearch_LexicalAndSemanticUseSuppliedNewRecipeCutoff()
+    {
+        var clock = new DeploymentCalendarIntegrationTests.CalendarClock
+        { UtcNow = new DateTimeOffset(2001, 2, 5, 12, 0, 0, TimeSpan.Zero) };
+        var rows = new List<Recipe>();
+        foreach (var offset in new[] { -1, 0, 1 })
+        {
+            var row = await SeedReadyDocumentAsync($"Chicken clock {offset}", "[\"chicken\"]", embedding: Enumerable.Repeat(1f, 1536).ToArray());
+            row.CreatedAt = clock.UtcNow.AddDays(-30).AddSeconds(offset);
+            rows.Add(row);
+        }
+        await _db.SaveChangesAsync();
+        var filters = new RecipeSearchFiltersDto { NewRecipes = true };
+        var lexical = await new RecipeLexicalSearchRepository(_db, clock).SearchAsync("chicken", filters, 50, null);
+        var semantic = await new RecipeSemanticSearchRepository(_db, clock).SearchAsync(Enumerable.Repeat(1f, 1536).ToArray(), filters,
+            new RecipeSemanticSearchOptions { EmbeddingModel = "task4", EmbeddingVersion = "v1" }, null);
+        var expected = rows.Skip(1).Select(x => x.Id).Order();
+        Assert.Equal(expected, lexical.Select(x => x.RecipeId).Order());
+        Assert.Equal(expected, semantic.Select(x => x.RecipeId).Order());
+    }
+
+    [PostgresFact]
     public async Task SearchAsync_ReturnsBoundedCanonicalMatches_WithEligibilityAndHardFilters()
     {
         var chicken = await SeedReadyDocumentAsync("Poulet rôti au citron", "[\"poulet\",\"citron\"]");
@@ -57,7 +79,7 @@ public partial class RecipeLexicalSearchPostgresTests : IAsyncLifetime
         for (var index = 0; index < 60; index++)
             await SeedReadyDocumentAsync($"Chicken candidate {index}", "[\"chicken\"]");
 
-        var repository = new RecipeLexicalSearchRepository(_db);
+        var repository = new RecipeLexicalSearchRepository(_db, new RecipeApi.Services.SystemClock());
         var accented = await repository.SearchAsync("rôti", new RecipeSearchFiltersDto(), 50);
         var bounded = await repository.SearchAsync("chicken", new RecipeSearchFiltersDto(), 5);
         var partial = await repository.SearchAsync("chic", new RecipeSearchFiltersDto(), 50);
@@ -119,14 +141,8 @@ public partial class RecipeLexicalSearchPostgresTests : IAsyncLifetime
     {
         var recipe = await SeedReadyDocumentAsync("Chicken soup", "[\"chicken\"]");
         var grocery = new GroceryRecomputeService(_db, new AisleMapper(), NullLogger<GroceryRecomputeService>.Instance, new SystemClock(), new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()));
-        var schedule = new ScheduleService(_db, NullLogger<ScheduleService>.Instance, new Mock<IScheduleEventPublisher>().Object, grocery, new SystemClock(), new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()));
-        var service = new RecipeSearchService(
-            _db,
-            schedule,
-            new FailingEmbeddingProvider(),
-            lexicalRepository: new RecipeLexicalSearchRepository(_db),
-            semanticRepository: new RecipeSemanticSearchRepository(_db),
-            rolloutOptions: SearchOptions());
+        var schedule = new ScheduleService(_db, NullLogger<ScheduleService>.Instance, new Mock<IScheduleEventPublisher>().Object, grocery, new SystemClock(), new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()), RecipeApi.Tests.Infrastructure.TestHistoricalInterest.Create(_db, new SystemClock(), new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager())));
+        var service = new RecipeSearchService(new SystemClock(), RecipeApi.Tests.Infrastructure.TestHistoricalInterest.Create(_db, new SystemClock(), new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager())), _db, schedule, new FailingEmbeddingProvider(), lexicalRepository: new RecipeLexicalSearchRepository(_db, new RecipeApi.Services.SystemClock()), semanticRepository: new RecipeSemanticSearchRepository(_db, new RecipeApi.Services.SystemClock()), rolloutOptions: SearchOptions());
 
         var response = await service.SearchAsync(new RecipeSearchRequestDto { Query = "chicken" });
 
@@ -143,7 +159,7 @@ public partial class RecipeLexicalSearchPostgresTests : IAsyncLifetime
         await SeedReadyDocumentAsync("Wrong model beef", "[\"beef\"]", embedding: UnitVector(0), embeddingModel: "other", embeddingVersion: "v1");
         await SeedReadyDocumentAsync("Pending beef", "[\"beef\"]", embedding: UnitVector(0), embeddingModel: "task4", embeddingVersion: "v1", embeddingStatus: "pending");
 
-        var semantic = new RecipeSemanticSearchRepository(_db);
+        var semantic = new RecipeSemanticSearchRepository(_db, new RecipeApi.Services.SystemClock());
         var semanticCandidates = await semantic.SearchAsync(UnitVector(0), new RecipeSearchFiltersDto(), SearchOptions(2).Semantic, null);
         var service = CreateService(new FixedEmbeddingProvider(UnitVector(0)), candidateLimit: 2);
         var response = await service.SearchAsync(new RecipeSearchRequestDto { Query = "beef", Limit = 10 });
@@ -177,8 +193,8 @@ public partial class RecipeLexicalSearchPostgresTests : IAsyncLifetime
     private RecipeSearchService CreateService(IEmbeddingProvider provider, int candidateLimit = 50)
     {
         var grocery = new GroceryRecomputeService(_db, new AisleMapper(), NullLogger<GroceryRecomputeService>.Instance, new SystemClock(), new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()));
-        var schedule = new ScheduleService(_db, NullLogger<ScheduleService>.Instance, new Mock<IScheduleEventPublisher>().Object, grocery, new SystemClock(), new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()));
-        return new RecipeSearchService(_db, schedule, provider, lexicalRepository: new RecipeLexicalSearchRepository(_db), semanticRepository: new RecipeSemanticSearchRepository(_db), rolloutOptions: SearchOptions(candidateLimit));
+        var schedule = new ScheduleService(_db, NullLogger<ScheduleService>.Instance, new Mock<IScheduleEventPublisher>().Object, grocery, new SystemClock(), new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()), RecipeApi.Tests.Infrastructure.TestHistoricalInterest.Create(_db, new SystemClock(), new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager())));
+        return new RecipeSearchService(new SystemClock(), RecipeApi.Tests.Infrastructure.TestHistoricalInterest.Create(_db, new SystemClock(), new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager())), _db, schedule, provider, lexicalRepository: new RecipeLexicalSearchRepository(_db, new RecipeApi.Services.SystemClock()), semanticRepository: new RecipeSemanticSearchRepository(_db, new RecipeApi.Services.SystemClock()), rolloutOptions: SearchOptions(candidateLimit));
     }
 
     private static RecipeSearchRolloutOptions SearchOptions(int candidateLimit = 50) => new()

@@ -15,7 +15,7 @@ namespace RecipeApi.Services.Processors;
 /// Checks the <c>ingredient_categories</c> cache first; only uncached names are sent to the LLM
 /// in a single batch call. Results are upserted with <c>source='llm'</c>.
 /// </summary>
-public class CategorizeIngredientsProcessor(
+public class CategorizeIngredientsProcessor(IClock clock, 
     RecipeDbContext db,
     IChatClient chatClient,
     ILogger<CategorizeIngredientsProcessor> logger) : IWorkflowProcessor
@@ -149,7 +149,7 @@ public class CategorizeIngredientsProcessor(
         }
 
         // 5. Validate each returned section and upsert valid results.
-        var now = DateTimeOffset.UtcNow;
+        var now = clock.UtcNow;
         int upserted = 0;
 
         foreach (var result in llmResults)

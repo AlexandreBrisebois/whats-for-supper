@@ -12,7 +12,7 @@ namespace RecipeApi.Services;
 
 public class InvalidWorkflowException(string message) : Exception(message);
 
-public class WorkflowOrchestrator(WorkflowRepository workflowRepository, RecipeDbContext dbContext) : IWorkflowOrchestrator
+public class WorkflowOrchestrator(IClock clock, WorkflowRepository workflowRepository, RecipeDbContext dbContext) : IWorkflowOrchestrator
 {
     private readonly RecipeDbContext _dbContext = dbContext;
 
@@ -58,8 +58,8 @@ public class WorkflowOrchestrator(WorkflowRepository workflowRepository, RecipeD
             WorkflowId = workflowId,
             Status = WorkflowStatus.Pending,
             Parameters = System.Text.Json.JsonSerializer.Serialize(parameters),
-            CreatedAt = DateTimeOffset.UtcNow,
-            UpdatedAt = DateTimeOffset.UtcNow
+            CreatedAt = clock.UtcNow,
+            UpdatedAt = clock.UtcNow
         };
 
         foreach (var taskDef in definition.Tasks)

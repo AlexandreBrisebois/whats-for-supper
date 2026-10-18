@@ -26,7 +26,7 @@ public sealed class PdfRecipeReadyTests
         await db.SaveChangesAsync();
         await store.SaveSourcePdfAsync(id, new MemoryStream("%PDF"u8.ToArray()));
         await store.WriteInfoAsync(new RecipeInfo { Id = id, Name = "Lemon chicken", ImageCount = 1 });
-        var processor = new RecipeReadyProcessor(db, NullLogger<RecipeReadyProcessor>.Instance, scope.ServiceProvider.GetRequiredService<IScheduleEventPublisher>(), store);
+        var processor = new RecipeReadyProcessor(new RecipeApi.Services.SystemClock(), db, NullLogger<RecipeReadyProcessor>.Instance, scope.ServiceProvider.GetRequiredService<IScheduleEventPublisher>(), store);
         var task = new WorkflowTask { Payload = JsonSerializer.Serialize(new { recipeId = id }) };
         await processor.ExecuteAsync(task, CancellationToken.None);
         var info = await store.ReadInfoAsync(id);

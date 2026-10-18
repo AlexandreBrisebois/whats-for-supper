@@ -31,7 +31,7 @@ public class PdfConversionProcessorTests
         using var db = Db();
         var store = new InMemoryRecipeStore();
         var renderer = new Renderer(2);
-        await new PdfConversionProcessor(db, store, renderer).ExecuteAsync(TaskFor(Guid.NewGuid()), default);
+        await new PdfConversionProcessor(new RecipeApi.Services.SystemClock(), db, store, renderer).ExecuteAsync(TaskFor(Guid.NewGuid()), default);
         Assert.Equal(0, renderer.Calls);
     }
 
@@ -48,7 +48,7 @@ public class PdfConversionProcessorTests
         await store.SaveSourcePdfAsync(id, new MemoryStream([7, 8]));
         await store.WriteInfoAsync(new RecipeInfo { Id = id, Notes = "less salt", Rating = RecipeRating.Love });
         var renderer = new Renderer(count);
-        var processor = new PdfConversionProcessor(db, store, renderer);
+        var processor = new PdfConversionProcessor(new RecipeApi.Services.SystemClock(), db, store, renderer);
         await processor.ExecuteAsync(TaskFor(id), default);
         await processor.ExecuteAsync(TaskFor(id), default);
         Assert.Equal(1, renderer.Calls);
@@ -80,7 +80,7 @@ public class PdfConversionProcessorTests
         var store = new InMemoryRecipeStore();
         await store.SaveSourcePdfAsync(id, new MemoryStream([7]));
         await store.WriteInfoAsync(new RecipeInfo { Id = id });
-        var processor = new PdfConversionProcessor(db, store, new Renderer(count, fail));
+        var processor = new PdfConversionProcessor(new RecipeApi.Services.SystemClock(), db, store, new Renderer(count, fail));
         await Assert.ThrowsAsync<InvalidDataException>(() => processor.ExecuteAsync(TaskFor(id), default));
         Assert.Equal(0, (await db.Recipes.SingleAsync()).ImageCount);
         Assert.False(await store.HasOriginalImagesAsync(id));

@@ -7,7 +7,7 @@ using System.Text.RegularExpressions;
 namespace RecipeApi.Services;
 
 /// <summary>Bounded PostgreSQL lexical candidate query over published canonical documents.</summary>
-public sealed class RecipeLexicalSearchRepository(RecipeDbContext db)
+public sealed class RecipeLexicalSearchRepository(RecipeDbContext db, IClock clock)
 {
     public async Task<IReadOnlyList<RecipeLexicalCandidate>> SearchAsync(
         string query,
@@ -36,7 +36,7 @@ public sealed class RecipeLexicalSearchRepository(RecipeDbContext db)
         // recall while individual meaningful terms admit documents where the words are
         // separated or reordered; word_similarity still ranks the original request.
         var matchPredicate = $"({string.Join(" OR ", matchPredicates)})";
-        var hardFilters = RecipeSearchPredicate.BuildSql(filters, parameters);
+        var hardFilters = RecipeSearchPredicate.BuildSql(filters, parameters, clock.UtcNow);
 
         var sql = $"""
             SELECT d.recipe_id AS "RecipeId", word_similarity(@query, d.document_text) AS "Score"

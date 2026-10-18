@@ -15,7 +15,7 @@ public class FeatureFlagOverride
     public bool Enabled { get; set; }
 
     [Column("updated_at")]
-    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset UpdatedAt { get; set; }
 
     public FamilyMember Member { get; set; } = null!;
 }

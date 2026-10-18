@@ -15,7 +15,7 @@ public class AiExceptionHandlerTests
     public AiExceptionHandlerTests()
     {
         _loggerMock = new Mock<ILogger<AiExceptionHandler>>();
-        _handler = new AiExceptionHandler(_loggerMock.Object);
+        _handler = new AiExceptionHandler(new RecipeApi.Services.SystemClock(), _loggerMock.Object);
     }
 
     [Fact]

@@ -75,7 +75,7 @@ public class WorkflowStandardizationIntegrationTests : IAsyncLifetime
             .ReturnsAsync(new ChatResponse(new ChatMessage(ChatRole.Assistant, chatResponseText)));
 
         var processor = new CategorizeRecipeProcessor(
-            _db,
+            new RecipeApi.Services.SystemClock(), _db,
             chatClientMock.Object,
             NullLogger<CategorizeRecipeProcessor>.Instance
         );
@@ -133,7 +133,7 @@ public class WorkflowStandardizationIntegrationTests : IAsyncLifetime
             .ThrowsAsync(new InvalidOperationException("LLM is down"));
 
         var processor = new CategorizeRecipeProcessor(
-            _db,
+            new RecipeApi.Services.SystemClock(), _db,
             chatClientMock.Object,
             NullLogger<CategorizeRecipeProcessor>.Instance
         );

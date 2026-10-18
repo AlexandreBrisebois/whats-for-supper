@@ -17,7 +17,7 @@ namespace RecipeApi.Services;
 /// Generic workflow worker that handles high-concurrency task pickup with PostgreSQL row-level locking
 /// and per-processor throttling using semaphores.
 /// </summary>
-public class WorkflowWorker(
+public class WorkflowWorker(IClock clock, 
     IServiceScopeFactory scopeFactory,
     ILogger<WorkflowWorker> logger,
     AiExceptionHandler aiExceptionHandler,
@@ -50,10 +50,10 @@ public class WorkflowWorker(
             try
             {
                 // 1. Periodic cleanup of stale (zombie) tasks
-                if (DateTimeOffset.UtcNow - _lastReapTime > TimeSpan.FromMinutes(ReapIntervalMinutes))
+                if (clock.UtcNow - _lastReapTime > TimeSpan.FromMinutes(ReapIntervalMinutes))
                 {
                     await ReapStaleTasksAsync(stoppingToken);
-                    _lastReapTime = DateTimeOffset.UtcNow;
+                    _lastReapTime = clock.UtcNow;
                 }
 
                 // 2. Process regular pending tasks
@@ -154,7 +154,7 @@ public class WorkflowWorker(
         var services = scope.ServiceProvider;
         var db = services.GetRequiredService<RecipeDbContext>();
 
-        var now = DateTimeOffset.UtcNow;
+        var now = clock.UtcNow;
         List<WorkflowTask> pendingTasks = [];
 
         // Try to use PostgreSQL's FOR UPDATE SKIP LOCKED for high concurrency.
@@ -268,7 +268,7 @@ public class WorkflowWorker(
 
             // If the task was rescheduled (e.g. by a 429 from another parallel task) while we were waiting
             // for the throttle, skip it now so we don't hit the rate limit again immediately.
-            if (task.ScheduledAt > DateTimeOffset.UtcNow)
+            if (task.ScheduledAt > clock.UtcNow)
             {
                 logger.LogInformation("Task {TaskId} ({ProcessorName}) was rescheduled while waiting for throttle slot. Skipping execution.",
                     task.TaskId, task.ProcessorName);
@@ -302,7 +302,7 @@ public class WorkflowWorker(
 
             // Mark as completed and handle promotion in a single transaction
             task.Status = TaskStatus.Completed;
-            task.UpdatedAt = DateTimeOffset.UtcNow;
+            task.UpdatedAt = clock.UtcNow;
 
             if (result != null)
             {
@@ -323,9 +323,9 @@ public class WorkflowWorker(
             var failureType = is429 ? "rate-limit" : "transient";
             task.RetryCount++;
             task.Status = TaskStatus.Pending;
-            task.ScheduledAt = _retryScheduler.ComputeNextScheduledAt(task.RetryCount, DateTimeOffset.UtcNow);
+            task.ScheduledAt = _retryScheduler.ComputeNextScheduledAt(task.RetryCount, clock.UtcNow);
             task.ErrorMessage = ex.Message;
-            task.UpdatedAt = DateTimeOffset.UtcNow;
+            task.UpdatedAt = clock.UtcNow;
 
             var isQuietWindow = task.RetryCount > retryOptions.Value.RetryScheduleMinutes.Length;
             var quietWindowLabel = isQuietWindow ? " [quiet-window]" : "";
@@ -361,12 +361,12 @@ public class WorkflowWorker(
                     if (otherTasks.Any())
                     {
                         // Stagger the other tasks starting from 1 minute after the current task's next retry
-                        var staggerTime = task.ScheduledAt ?? DateTimeOffset.UtcNow;
+                        var staggerTime = task.ScheduledAt ?? clock.UtcNow;
                         foreach (var t in otherTasks)
                         {
                             staggerTime = staggerTime.AddMinutes(1);
                             t.ScheduledAt = staggerTime;
-                            t.UpdatedAt = DateTimeOffset.UtcNow;
+                            t.UpdatedAt = clock.UtcNow;
                         }
 
                         await db.SaveChangesAsync(ct);
@@ -391,7 +391,7 @@ public class WorkflowWorker(
             var aiError = aiExceptionHandler.MapException(ex);
             task.ErrorMessage = aiError.ToString();
             task.StackTrace = ex.StackTrace;
-            task.UpdatedAt = DateTimeOffset.UtcNow;
+            task.UpdatedAt = clock.UtcNow;
 
             // 1. SAVE THE TASK FAILURE FIRST
             try
@@ -413,7 +413,7 @@ public class WorkflowWorker(
                 if (instance != null)
                 {
                     instance.Status = WorkflowStatus.Paused;
-                    instance.UpdatedAt = DateTimeOffset.UtcNow;
+                    instance.UpdatedAt = clock.UtcNow;
                     await db.SaveChangesAsync(ct);
 
                     await RecordImportReportFailureAsync(instance, task, ct);
@@ -437,7 +437,7 @@ public class WorkflowWorker(
             using var scope = scopeFactory.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
 
-            var staleThreshold = DateTimeOffset.UtcNow.AddMinutes(-StaleTimeoutMinutes);
+            var staleThreshold = clock.UtcNow.AddMinutes(-StaleTimeoutMinutes);
 
             // Find tasks stuck in Processing for too long.
             // We increment retry_count to ensure poison pills eventually stop.
@@ -452,7 +452,7 @@ public class WorkflowWorker(
                     var originalTime = task.UpdatedAt;
                     task.Status = TaskStatus.Pending;
                     task.RetryCount++;
-                    task.UpdatedAt = DateTimeOffset.UtcNow;
+                    task.UpdatedAt = clock.UtcNow;
                     task.ErrorMessage = $"Reclaimed by Zombie Reaper (stuck in Processing since {originalTime:u})";
                 }
 
@@ -493,7 +493,7 @@ public class WorkflowWorker(
                 if (task.DependsOn.All(d => completedTaskNames.Contains(d)))
                 {
                     task.Status = TaskStatus.Pending;
-                    task.UpdatedAt = DateTimeOffset.UtcNow;
+                    task.UpdatedAt = clock.UtcNow;
                     anyChanges = true;
                     logger.LogInformation("Promoted task {TaskId} ({TaskName}) from Waiting to Pending",
                         task.TaskId, task.TaskName);
@@ -520,7 +520,7 @@ public class WorkflowWorker(
                     if (instance.Status != targetStatus && instance.Status != WorkflowStatus.Paused)
                     {
                         instance.Status = targetStatus;
-                        instance.UpdatedAt = DateTimeOffset.UtcNow;
+                        instance.UpdatedAt = clock.UtcNow;
                         anyChanges = true;
                         logger.LogInformation("Workflow instance {InstanceId} marked as {Status}", instanceId, targetStatus);
                     }

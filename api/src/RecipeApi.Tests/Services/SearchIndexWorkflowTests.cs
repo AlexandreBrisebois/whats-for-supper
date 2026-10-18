@@ -77,7 +77,7 @@ public class SearchIndexWorkflowTests : IAsyncLifetime
         
 
         var embeddingProvider = new FakeEmbeddingProvider();
-        var service = new SearchIndexWorkflow(_db, embeddingProvider, null, new NullSearchTelemetry());
+        var service = new SearchIndexWorkflow(new RecipeApi.Services.SystemClock(), _db, embeddingProvider, null, new NullSearchTelemetry());
 
         var fingerprint = SearchFingerprintService.ComputeSourceFingerprint(recipe);
         var task = new WorkflowTask 
@@ -103,7 +103,7 @@ public class SearchIndexWorkflowTests : IAsyncLifetime
         
 
         var embeddingProvider = new FakeEmbeddingProvider();
-        var service = new SearchIndexWorkflow(_db, embeddingProvider, null, new NullSearchTelemetry());
+        var service = new SearchIndexWorkflow(new RecipeApi.Services.SystemClock(), _db, embeddingProvider, null, new NullSearchTelemetry());
 
         var staleFingerprint = "0000000000000000000000000000000000000000000000000000000000000000";
         var task = new WorkflowTask 
@@ -127,7 +127,7 @@ public class SearchIndexWorkflowTests : IAsyncLifetime
         
 
         var failingProvider = new FailingEmbeddingProvider();
-        var service = new SearchIndexWorkflow(_db, failingProvider, null, new NullSearchTelemetry());
+        var service = new SearchIndexWorkflow(new RecipeApi.Services.SystemClock(), _db, failingProvider, null, new NullSearchTelemetry());
 
         var fingerprint = SearchFingerprintService.ComputeSourceFingerprint(recipe);
         var task = new WorkflowTask 
@@ -164,7 +164,7 @@ public class SearchIndexWorkflowTests : IAsyncLifetime
         
 
         var embeddingProvider = new FakeEmbeddingProvider();
-        var service = new SearchIndexWorkflow(_db, embeddingProvider, null, new NullSearchTelemetry());
+        var service = new SearchIndexWorkflow(new RecipeApi.Services.SystemClock(), _db, embeddingProvider, null, new NullSearchTelemetry());
 
         var fingerprint = SearchFingerprintService.ComputeSourceFingerprint(recipe);
         var task = new WorkflowTask 
@@ -189,7 +189,7 @@ public class SearchIndexWorkflowTests : IAsyncLifetime
         
 
         var embeddingProvider = new FakeEmbeddingProvider();
-        var service = new SearchIndexWorkflow(_db, embeddingProvider, null, new NullSearchTelemetry());
+        var service = new SearchIndexWorkflow(new RecipeApi.Services.SystemClock(), _db, embeddingProvider, null, new NullSearchTelemetry());
 
         var fingerprint = SearchFingerprintService.ComputeSourceFingerprint(recipe);
         var task = new WorkflowTask 
@@ -217,7 +217,7 @@ public class SearchIndexWorkflowTests : IAsyncLifetime
             UpdatedAt = DateTimeOffset.UtcNow
         };
         await SeedDocumentAsync(recipe);
-        var service = new SearchIndexWorkflow(_db, new FailingEmbeddingProvider());
+        var service = new SearchIndexWorkflow(new RecipeApi.Services.SystemClock(), _db, new FailingEmbeddingProvider());
         var task = new WorkflowTask
         {
             Payload = JsonSerializer.Serialize(new { recipeId = recipe.Id })
@@ -237,7 +237,7 @@ public class SearchIndexWorkflowTests : IAsyncLifetime
         recipe.IsReady = true;
         recipe.IsDiscoverable = true;
         await _db.SaveChangesAsync();
-        await new SearchIndexWorkflow(_db, new FakeEmbeddingProvider()).ExecuteAsync(task, CancellationToken.None);
+        await new SearchIndexWorkflow(new RecipeApi.Services.SystemClock(), _db, new FakeEmbeddingProvider()).ExecuteAsync(task, CancellationToken.None);
         await _db.Entry(doc).ReloadAsync();
         Assert.Equal("ready", doc.IndexStatus);
         Assert.Equal("ready", doc.EmbeddingStatus);
@@ -250,7 +250,7 @@ public class SearchIndexWorkflowTests : IAsyncLifetime
     {
         var recipe = BuildRecipe();
         await SeedDocumentAsync(recipe);
-        var service = new SearchIndexWorkflow(_db, new EmptyEmbeddingProvider());
+        var service = new SearchIndexWorkflow(new RecipeApi.Services.SystemClock(), _db, new EmptyEmbeddingProvider());
         var task = new WorkflowTask
         {
             Payload = JsonSerializer.Serialize(new { recipeId = recipe.Id })

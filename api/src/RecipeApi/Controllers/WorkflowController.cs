@@ -9,7 +9,7 @@ namespace RecipeApi.Controllers;
 
 [ApiController]
 [Route("api/workflows")]
-public class WorkflowController(
+public class WorkflowController(IClock clock, 
     IWorkflowOrchestrator orchestrator,
     RecipeDbContext db) : ControllerBase
 {
@@ -105,7 +105,7 @@ public class WorkflowController(
 
         task.Status = Models.TaskStatus.Pending;
         task.RetryCount = 0;
-        task.ScheduledAt = DateTimeOffset.UtcNow;
+        task.ScheduledAt = clock.UtcNow;
         task.ErrorMessage = null;
         task.StackTrace = null;
 

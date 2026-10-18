@@ -6,7 +6,7 @@ using RecipeApi.Models;
 
 namespace RecipeApi.Services;
 
-public class DiscoveryService(RecipeDbContext dbContext, IScheduleEventPublisher publisher, IClock clock, DeploymentCalendar calendar, HistoricalInterestService? historicalInterest = null)
+public class DiscoveryService(RecipeDbContext dbContext, IScheduleEventPublisher publisher, IClock clock, DeploymentCalendar calendar, HistoricalInterestService historicalInterest)
 {
     private readonly RecipeDbContext _dbContext = dbContext;
     private readonly IScheduleEventPublisher _publisher = publisher;
@@ -14,7 +14,7 @@ public class DiscoveryService(RecipeDbContext dbContext, IScheduleEventPublisher
     public async Task<List<RecipeDto>> GetRecipesForDiscoveryAsync(Guid familyMemberId, string? category = null, string? cuisine = null)
     {
         await using var rankingBoundary = await VotingBoundary.BeginAsync(_dbContext);
-        var history = await (historicalInterest ?? HistoricalInterestService.Default(_dbContext, clock, calendar)).CaptureAsync();
+        var history = await historicalInterest.CaptureAsync();
         var query = EligibleQueue(familyMemberId);
 
         if (!string.IsNullOrEmpty(category))
@@ -82,7 +82,7 @@ public class DiscoveryService(RecipeDbContext dbContext, IScheduleEventPublisher
             if (existingVote != null)
             {
                 existingVote.Vote = vote;
-                existingVote.VotedAt = DateTimeOffset.UtcNow;
+                existingVote.VotedAt = clock.UtcNow;
             }
             else
             {
@@ -90,7 +90,8 @@ public class DiscoveryService(RecipeDbContext dbContext, IScheduleEventPublisher
                 {
                     RecipeId = recipeId,
                     FamilyMemberId = familyMemberId,
-                    Vote = vote
+                    Vote = vote,
+                    VotedAt = clock.UtcNow
                 });
             }
 

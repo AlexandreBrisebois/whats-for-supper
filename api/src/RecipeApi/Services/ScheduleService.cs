@@ -9,7 +9,7 @@ using static RecipeApi.Dto.SmartDefaultsDto;
 
 namespace RecipeApi.Services;
 
-public partial class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService> logger, IScheduleEventPublisher publisher, GroceryRecomputeService groceryRecomputeService, IClock clock, DeploymentCalendar calendar, HistoricalInterestService? historicalInterest = null)
+public partial class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService> logger, IScheduleEventPublisher publisher, GroceryRecomputeService groceryRecomputeService, IClock clock, DeploymentCalendar calendar, HistoricalInterestService historicalInterest)
 {
     private readonly RecipeDbContext _dbContext = dbContext;
     private readonly ILogger<ScheduleService> _logger = logger;
@@ -17,7 +17,7 @@ public partial class ScheduleService(RecipeDbContext dbContext, ILogger<Schedule
     private readonly GroceryRecomputeService _groceryRecomputeService = groceryRecomputeService;
     private readonly IClock _clock = clock;
     private readonly DeploymentCalendar _calendar = calendar;
-    private readonly HistoricalInterestService _historicalInterest = historicalInterest ?? HistoricalInterestService.Default(dbContext, clock, calendar);
+    private readonly HistoricalInterestService _historicalInterest = historicalInterest;
 
     public Task<ScheduleDays> GetScheduleAsync(int weekOffset, DateOnly? referenceWeekStartDate = null) =>
         ReadScheduleAsync(weekOffset, _calendar.Capture(_clock.UtcNow, referenceWeekStartDate));
@@ -97,7 +97,7 @@ public partial class ScheduleService(RecipeDbContext dbContext, ILogger<Schedule
             var plan = await _dbContext.WeeklyPlans.FirstOrDefaultAsync(p => p.WeekStartDate == monday);
             if (plan is null)
             {
-                plan = new WeeklyPlan { WeekStartDate = monday };
+                plan = new WeeklyPlan { WeekStartDate = monday, CreatedAt = _clock.UtcNow };
                 _dbContext.WeeklyPlans.Add(plan);
             }
             if (plan.Status != WeeklyPlanStatus.VotingOpen || plan.VotingRoundId is null)
@@ -137,7 +137,7 @@ public partial class ScheduleService(RecipeDbContext dbContext, ILogger<Schedule
                     throw new VotingConflictException("Voting changed. Refresh the planner before closing this round.");
                 if (plan is null)
                 {
-                    plan = new WeeklyPlan { WeekStartDate = monday };
+                    plan = new WeeklyPlan { WeekStartDate = monday, CreatedAt = _clock.UtcNow };
                     _dbContext.WeeklyPlans.Add(plan);
                 }
                 var events = await _dbContext.CalendarEvents.Where(e => e.Date >= monday && e.Date <= sunday).ToListAsync();
@@ -414,6 +414,7 @@ public partial class ScheduleService(RecipeDbContext dbContext, ILogger<Schedule
         {
             _dbContext.WeeklyPlans.Add(new WeeklyPlan
             {
+                CreatedAt = _clock.UtcNow,
                 Id = Guid.NewGuid(),
                 WeekStartDate = destinationMonday,
                 Status = WeeklyPlanStatus.Draft
@@ -1028,6 +1029,7 @@ public partial class ScheduleService(RecipeDbContext dbContext, ILogger<Schedule
         {
             _dbContext.WeeklyPlans.Add(new WeeklyPlan
             {
+                CreatedAt = _clock.UtcNow,
                 Id = Guid.NewGuid(),
                 WeekStartDate = monday,
                 Status = WeeklyPlanStatus.Draft

@@ -16,7 +16,7 @@ public class DreamingFilterMaterializationWorkflowTests
         var storage = new InMemoryStorageProvider();
         await storage.SaveAsync("workflows", "dreaming.yaml", await File.ReadAllTextAsync(FindDreamingWorkflow()));
         await using var db = TestDbContextFactory.Create();
-        var definition = await new WorkflowOrchestrator(new WorkflowRepository(storage), db).GetDefinitionAsync("dreaming");
+        var definition = await new WorkflowOrchestrator(new RecipeApi.Services.SystemClock(), new WorkflowRepository(storage), db).GetDefinitionAsync("dreaming");
         var rotation = Assert.Single(definition.Tasks, task => task.Name == "reconcile-recipe-rotation");
         Assert.Equal("ReconcileRecipeRotation", rotation.Processor);
         Assert.Contains("finalize-overdue-meals", rotation.DependsOn);
@@ -30,7 +30,7 @@ public class DreamingFilterMaterializationWorkflowTests
         var yaml = await File.ReadAllTextAsync(FindDreamingWorkflow());
         await storage.SaveAsync("workflows", "dreaming.yaml", yaml);
         await using var db = TestDbContextFactory.Create();
-        var definition = await new WorkflowOrchestrator(new WorkflowRepository(storage), db).GetDefinitionAsync("dreaming");
+        var definition = await new WorkflowOrchestrator(new RecipeApi.Services.SystemClock(), new WorkflowRepository(storage), db).GetDefinitionAsync("dreaming");
 
         var materialize = Assert.Single(definition.Tasks, task => task.Name == "materialize-recipe-search-filters");
         var report = Assert.Single(definition.Tasks, task => task.Name == "report");
@@ -44,7 +44,7 @@ public class DreamingFilterMaterializationWorkflowTests
         var storage = new InMemoryStorageProvider();
         await storage.SaveAsync("workflows", "dreaming.yaml", await File.ReadAllTextAsync(FindDreamingWorkflow()));
         await using var db = TestDbContextFactory.Create();
-        var orchestrator = new WorkflowOrchestrator(new WorkflowRepository(storage), db);
+        var orchestrator = new WorkflowOrchestrator(new RecipeApi.Services.SystemClock(), new WorkflowRepository(storage), db);
         var instance = await orchestrator.TriggerAsync("dreaming", []);
         var state = new RecipeSearchFilterState
         {

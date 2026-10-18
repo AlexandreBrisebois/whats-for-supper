@@ -61,8 +61,8 @@ public class WeeklyInterestPostgresTests(Xunit.Abstractions.ITestOutputHelper ou
 
     private RecipeDbContext Context() => new(new DbContextOptionsBuilder<RecipeDbContext>().UseNpgsql(connection).Options);
     private ScheduleService Schedule(RecipeDbContext context, IScheduleEventPublisher? publisher = null) =>
-        new(context, NullLogger<ScheduleService>.Instance, publisher ?? Mock.Of<IScheduleEventPublisher>(), null!, clock, calendar);
-    private DiscoveryService Voting(RecipeDbContext context) => new(context, Mock.Of<IScheduleEventPublisher>(), clock, calendar);
+        new(context, NullLogger<ScheduleService>.Instance, publisher ?? Mock.Of<IScheduleEventPublisher>(), null!, clock, calendar, RecipeApi.Tests.Infrastructure.TestHistoricalInterest.Create(context, clock, calendar));
+    private DiscoveryService Voting(RecipeDbContext context) => new(context, Mock.Of<IScheduleEventPublisher>(), clock, calendar, RecipeApi.Tests.Infrastructure.TestHistoricalInterest.Create(context, clock, calendar));
 
     [DeploymentCalendarPostgresTests.CalendarLiveFact]
     public async Task LiveBrowser_WeeklyInterestOrderingAndClose()
@@ -195,7 +195,7 @@ public class WeeklyInterestPostgresTests(Xunit.Abstractions.ITestOutputHelper ou
         await db.SaveChangesAsync();
         Assert.Equal(old.Id, (await Voting(db).GetRecipesForDiscoveryAsync(member, "Supper"))[0].Id);
         var history = new HistoricalInterestService(db, clock, calendar, new(new ConfigurationManager()));
-        var search = new RecipeSearchService(db, Schedule(db), continuationStore: new(), clock: clock, historicalInterest: history);
+        var search = new RecipeSearchService(clock, history, db, Schedule(db), continuationStore: new(clock));
         var browse = await search.SearchAsync(new RecipeSearchRequestDto { Query = "", Limit = 1 });
         Assert.Null(browse.TopPick);
         Assert.Equal(old.Id, Assert.Single(browse.Results).Id);
@@ -240,6 +240,8 @@ public class WeeklyInterestPostgresTests(Xunit.Abstractions.ITestOutputHelper ou
         foreach (var zone in new[] { "UTC", "America/Toronto" })
         foreach (var monday in new[] { new DateOnly(2026, 10, 12), new DateOnly(2026, 11, 2), new DateOnly(2026, 3, 9) })
         {
+            db.CalendarEvents.RemoveRange(db.CalendarEvents);
+            await db.SaveChangesAsync();
             var calendarClock = new DeploymentCalendarIntegrationTests.CalendarClock
             { UtcNow = new DateTimeOffset(monday.ToDateTime(new TimeOnly(12, 0)), TimeSpan.Zero) };
             var localCalendar = new DeploymentCalendar(new ConfigurationManager { ["Calendar:TimeZone"] = zone });
@@ -250,8 +252,7 @@ public class WeeklyInterestPostgresTests(Xunit.Abstractions.ITestOutputHelper ou
             for (var i = 0; i < rows.Length; i++)
                 db.CalendarEvents.Add(new CalendarEvent { RecipeId = rows[i].Id, Date = cutoff.AddDays(i - 1), Status = CalendarEventStatus.Planned });
             await db.SaveChangesAsync();
-            var schedule = new ScheduleService(db, NullLogger<ScheduleService>.Instance,
-                Mock.Of<IScheduleEventPublisher>(), null!, calendarClock, localCalendar);
+            var schedule = new ScheduleService(db, NullLogger<ScheduleService>.Instance, Mock.Of<IScheduleEventPublisher>(), null!, calendarClock, localCalendar, RecipeApi.Tests.Infrastructure.TestHistoricalInterest.Create(db, calendarClock, localCalendar));
             await schedule.FinalizeOverdueMealsAsync();
             for (var i = 0; i < rows.Length; i++)
             {
@@ -275,6 +276,27 @@ public class WeeklyInterestPostgresTests(Xunit.Abstractions.ITestOutputHelper ou
             Assert.False(rows[2].IsDiscoverable);
             Assert.True(rows[2].RotationHumanOff);
         }
+    }
+
+    [PostgresFact]
+    public async Task ClockCooldown_LegacyInstantRequiresMatchingCivilEvidence()
+    {
+        var localCalendar = new DeploymentCalendar(new ConfigurationManager { ["Calendar:TimeZone"] = "America/Toronto" });
+        var row = await db.Recipes.SingleAsync();
+        row.Category = "Supper";
+        row.LastCookedDate = new DateTimeOffset(2026, 9, 14, 0, 0, 0, TimeSpan.Zero);
+        var processor = new ReconcileRecipeRotationProcessor(db, clock, localCalendar,
+            new(new ConfigurationManager()), Mock.Of<IScheduleEventPublisher>(), NullLogger<ReconcileRecipeRotationProcessor>.Instance);
+        await processor.ExecuteAsync(new WorkflowTask(), default);
+        Assert.False(row.CookedSuppressed); // Imported midnight is still Sunday locally.
+        db.CalendarEvents.Add(new CalendarEvent { RecipeId = row.Id, Date = new(2026, 9, 15), Status = CalendarEventStatus.Cooked });
+        await db.SaveChangesAsync();
+        await processor.ExecuteAsync(new WorkflowTask(), default);
+        Assert.False(row.CookedSuppressed); // Unmatched event must not replace imported value.
+        row.LastCookedDate = new DateTimeOffset(2026, 9, 14, 4, 0, 0, TimeSpan.Zero);
+        await db.SaveChangesAsync();
+        await processor.ExecuteAsync(new WorkflowTask(), default);
+        Assert.True(row.CookedSuppressed); // Real Toronto Monday instant remains Monday.
     }
 
     [PostgresFact]

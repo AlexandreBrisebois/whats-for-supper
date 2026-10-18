@@ -55,8 +55,7 @@ public class NonCookingPostgresTests
             await using var db = new RecipeDbContext(new DbContextOptionsBuilder<RecipeDbContext>().UseNpgsql(settings.ConnectionString).Options);
             var publisher = new Mock<IScheduleEventPublisher>().Object;
             var clock = new FixedClock();
-            var service = new ScheduleService(db, NullLogger<ScheduleService>.Instance,
-                publisher, new GroceryRecomputeService(db, new AisleMapper(), NullLogger<GroceryRecomputeService>.Instance, clock, new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()), publisher), clock, new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()));
+            var service = new ScheduleService(db, NullLogger<ScheduleService>.Instance, publisher, new GroceryRecomputeService(db, new AisleMapper(), NullLogger<GroceryRecomputeService>.Instance, clock, new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()), publisher), clock, new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()), RecipeApi.Tests.Infrastructure.TestHistoricalInterest.Create(db, clock, new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager())));
             await service.ValidateDayAsync("2026-10-13", new ValidationDto(3, NonCooking: new NonCookingPlanDto("custom", "Supper at Grandma’s")));
             await service.OpenVotingAsync(0);
             await service.LockScheduleAsync(0);
@@ -107,8 +106,7 @@ public class NonCookingPostgresTests
             {
                 await using var concurrentDb = new RecipeDbContext(new DbContextOptionsBuilder<RecipeDbContext>()
                     .UseNpgsql(settings.ConnectionString).AddInterceptors(barrier).Options);
-                var concurrentService = new ScheduleService(concurrentDb, NullLogger<ScheduleService>.Instance, publisher,
-                    new GroceryRecomputeService(concurrentDb, new AisleMapper(), NullLogger<GroceryRecomputeService>.Instance, clock, new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()), publisher), clock, new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()));
+                var concurrentService = new ScheduleService(concurrentDb, NullLogger<ScheduleService>.Instance, publisher, new GroceryRecomputeService(concurrentDb, new AisleMapper(), NullLogger<GroceryRecomputeService>.Instance, clock, new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()), publisher), clock, new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()), RecipeApi.Tests.Infrastructure.TestHistoricalInterest.Create(concurrentDb, clock, new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager())));
                 try
                 {
                     await concurrentService.ValidateDayAsync("2026-10-16", new ValidationDto(3, NonCooking: new NonCookingPlanDto("eating_out")));

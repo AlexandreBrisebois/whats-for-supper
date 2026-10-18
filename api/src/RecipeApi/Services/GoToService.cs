@@ -6,7 +6,7 @@ using RecipeApi.Models;
 
 namespace RecipeApi.Services;
 
-public class GoToService(RecipeDbContext db, ILogger<GoToService> logger)
+public class GoToService(IClock clock, RecipeDbContext db, ILogger<GoToService> logger)
 {
     private const string GoToKey = "family_goto";
 
@@ -46,14 +46,14 @@ public class GoToService(RecipeDbContext db, ILogger<GoToService> logger)
                 Id = Guid.NewGuid(),
                 Key = GoToKey,
                 Value = doc.RootElement.Clone(),
-                UpdatedAt = DateTimeOffset.UtcNow
+                UpdatedAt = clock.UtcNow
             };
             db.FamilySettings.Add(existing);
         }
         else
         {
             existing.Value = doc.RootElement.Clone();
-            existing.UpdatedAt = DateTimeOffset.UtcNow;
+            existing.UpdatedAt = clock.UtcNow;
         }
 
         await db.SaveChangesAsync();
