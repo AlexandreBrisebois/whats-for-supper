@@ -30,7 +30,7 @@
 
 ## 4. Final integration
 
-- [ ] 4.1 Reconcile inventory, scope and scenario evidence; run preparation and complete `task verify` with reviewed paths and record results, skips and failures honestly.
+- [x] 4.1 Reconcile inventory, scope and scenario evidence; run preparation and complete `task verify` with reviewed paths and record results, skips and failures honestly.
 
 ## Workflow follow-up
 
