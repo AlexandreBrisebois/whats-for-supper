@@ -51,7 +51,8 @@ public partial class RecipeSearchService(
         var semanticQuery = CreateSemanticQuery(query, concepts);
         var limit = Math.Clamp(dto.Limit ?? DefaultLimit, 1, MaxLimit);
         var appliedFilters = dto.Filters ?? new RecipeSearchFiltersDto();
-        var continuationFingerprint = CreateContinuationFingerprint(dto, query);
+        var recoveryGeneration = await db.RecoveryPublications.AsNoTracking().Select(r => (Guid?)r.OperationId).SingleOrDefaultAsync(ct);
+        var continuationFingerprint = CreateContinuationFingerprint(dto, query) + ":" + recoveryGeneration;
 
         var searchMode = dto.SimilarToRecipeId is not null ? "similar" : "standard";
 

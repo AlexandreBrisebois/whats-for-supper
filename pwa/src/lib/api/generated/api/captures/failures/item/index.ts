@@ -4,8 +4,10 @@
 // @ts-ignore
 import {
   createCaptureFailureClearResponseFromDiscriminatorValue,
+  createRecoveryBusyErrorFromDiscriminatorValue,
   serializeCaptureFailureClearResponse,
   type CaptureFailureClearResponse,
+  type RecoveryBusyError,
 } from '../../../../models/index';
 // @ts-ignore
 import { RetryRequestBuilderRequestsMetadata, type RetryRequestBuilder } from './retry/index';
@@ -151,6 +153,7 @@ export interface FailuresItemRequestBuilder extends BaseRequestBuilder<FailuresI
    * @returns {Promise<FailuresDeleteResponse>}
    * @throws {Failures409Error} error when the service returns a 409 status code
    * @throws {Failures422Error} error when the service returns a 422 status code
+   * @throws {RecoveryBusyError} error when the service returns a 503 status code
    */
   delete(
     requestConfiguration?: RequestConfiguration<object> | undefined
@@ -249,6 +252,7 @@ export const FailuresItemRequestBuilderRequestsMetadata: RequestsMetadata = {
     errorMappings: {
       409: createFailures409ErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
       422: createFailures422ErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
+      503: createRecoveryBusyErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
     },
     adapterMethodName: 'send',
     responseBodyFactory: createFailuresDeleteResponseFromDiscriminatorValue,

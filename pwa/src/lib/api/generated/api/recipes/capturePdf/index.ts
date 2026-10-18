@@ -5,8 +5,10 @@
 import {
   createPdfCaptureAcceptedFromDiscriminatorValue,
   createPdfCaptureErrorFromDiscriminatorValue,
+  createRecoveryBusyErrorFromDiscriminatorValue,
   type PdfCaptureAccepted,
   type PdfCaptureError,
+  type RecoveryBusyError,
 } from '../../../models/index';
 // @ts-ignore
 import {
@@ -33,6 +35,7 @@ export interface CapturePdfRequestBuilder extends BaseRequestBuilder<CapturePdfR
    * @throws {PdfCaptureError} error when the service returns a 409 status code
    * @throws {PdfCaptureError} error when the service returns a 413 status code
    * @throws {PdfCaptureError} error when the service returns a 415 status code
+   * @throws {RecoveryBusyError} error when the service returns a 503 status code
    */
   post(
     body: MultipartBody,
@@ -65,6 +68,7 @@ export const CapturePdfRequestBuilderRequestsMetadata: RequestsMetadata = {
       409: createPdfCaptureErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
       413: createPdfCaptureErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
       415: createPdfCaptureErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
+      503: createRecoveryBusyErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
     },
     adapterMethodName: 'send',
     responseBodyFactory: createPdfCaptureAcceptedFromDiscriminatorValue,

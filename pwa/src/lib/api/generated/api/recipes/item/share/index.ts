@@ -4,7 +4,9 @@
 // @ts-ignore
 import {
   createRecipeShareBundleDtoFromDiscriminatorValue,
+  createRecoveryBusyErrorFromDiscriminatorValue,
   type RecipeShareBundleDto,
+  type RecoveryBusyError,
 } from '../../../../models/index';
 // @ts-ignore
 import {
@@ -79,6 +81,7 @@ export interface ShareRequestBuilder extends BaseRequestBuilder<ShareRequestBuil
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {Promise<RecipeShareBundleDto>}
    * @throws {RecipeShareBundleDto400Error} error when the service returns a 400 status code
+   * @throws {RecoveryBusyError} error when the service returns a 503 status code
    */
   get(
     requestConfiguration?: RequestConfiguration<object> | undefined
@@ -105,6 +108,7 @@ export const ShareRequestBuilderRequestsMetadata: RequestsMetadata = {
     responseBodyContentType: 'application/json',
     errorMappings: {
       400: createRecipeShareBundleDto400ErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
+      503: createRecoveryBusyErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
     },
     adapterMethodName: 'send',
     responseBodyFactory: createRecipeShareBundleDtoFromDiscriminatorValue,

@@ -4,8 +4,10 @@
 // @ts-ignore
 import {
   createGoToItemFromDiscriminatorValue,
+  createRecoveryBusyErrorFromDiscriminatorValue,
   serializeGoToItem,
   type GoToItem,
+  type RecoveryBusyError,
 } from '../../../models/index';
 // @ts-ignore
 import {
@@ -34,6 +36,7 @@ export interface ActiveRequestBuilder extends BaseRequestBuilder<ActiveRequestBu
    * Get a single random READY GOTO recipe for the Home screen
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {Promise<ActiveGetResponse>}
+   * @throws {RecoveryBusyError} error when the service returns a 503 status code
    */
   get(
     requestConfiguration?: RequestConfiguration<object> | undefined
@@ -102,6 +105,9 @@ export const ActiveRequestBuilderRequestsMetadata: RequestsMetadata = {
   get: {
     uriTemplate: ActiveRequestBuilderUriTemplate,
     responseBodyContentType: 'application/json',
+    errorMappings: {
+      503: createRecoveryBusyErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
+    },
     adapterMethodName: 'send',
     responseBodyFactory: createActiveGetResponseFromDiscriminatorValue,
   },

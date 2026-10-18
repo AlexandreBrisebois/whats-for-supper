@@ -4,8 +4,10 @@
 // @ts-ignore
 import {
   createFeatureFlagListDtoFromDiscriminatorValue,
+  createRecoveryBusyErrorFromDiscriminatorValue,
   serializeFeatureFlagListDto,
   type FeatureFlagListDto,
+  type RecoveryBusyError,
 } from '../../models/index';
 // @ts-ignore
 import {
@@ -75,6 +77,7 @@ export interface FeatureFlagsRequestBuilder extends BaseRequestBuilder<FeatureFl
    * Get the effective feature-flag snapshot for the authenticated member
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {Promise<FeatureFlagsGetResponse>}
+   * @throws {RecoveryBusyError} error when the service returns a 503 status code
    */
   get(
     requestConfiguration?: RequestConfiguration<object> | undefined
@@ -133,6 +136,9 @@ export const FeatureFlagsRequestBuilderRequestsMetadata: RequestsMetadata = {
   get: {
     uriTemplate: FeatureFlagsRequestBuilderUriTemplate,
     responseBodyContentType: 'application/json',
+    errorMappings: {
+      503: createRecoveryBusyErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
+    },
     adapterMethodName: 'send',
     responseBodyFactory: createFeatureFlagsGetResponseFromDiscriminatorValue,
   },

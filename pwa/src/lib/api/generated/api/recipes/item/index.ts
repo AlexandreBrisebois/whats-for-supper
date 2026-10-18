@@ -4,8 +4,10 @@
 // @ts-ignore
 import {
   createRecipeDetailResponseFromDiscriminatorValue,
+  createRecoveryBusyErrorFromDiscriminatorValue,
   serializeUpdateRecipeDto,
   type RecipeDetailResponse,
+  type RecoveryBusyError,
   type UpdateRecipeDto,
 } from '../../../models/index';
 // @ts-ignore
@@ -181,6 +183,7 @@ export interface ItemRequestBuilder extends BaseRequestBuilder<ItemRequestBuilde
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {Promise<RecipeDetailResponse>}
    * @throws {RecipeDetailResponse409Error} error when the service returns a 409 status code
+   * @throws {RecoveryBusyError} error when the service returns a 503 status code
    */
   delete(
     requestConfiguration?: RequestConfiguration<object> | undefined
@@ -189,6 +192,7 @@ export interface ItemRequestBuilder extends BaseRequestBuilder<ItemRequestBuilde
    * Get recipe detail
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {Promise<RecipeDetailResponse>}
+   * @throws {RecoveryBusyError} error when the service returns a 503 status code
    */
   get(
     requestConfiguration?: RequestConfiguration<object> | undefined
@@ -198,6 +202,7 @@ export interface ItemRequestBuilder extends BaseRequestBuilder<ItemRequestBuilde
    * @param body The request body
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {Promise<PatchResponse>}
+   * @throws {RecoveryBusyError} error when the service returns a 503 status code
    */
   patch(
     body: UpdateRecipeDto,
@@ -364,6 +369,7 @@ export const ItemRequestBuilderRequestsMetadata: RequestsMetadata = {
     responseBodyContentType: 'application/json',
     errorMappings: {
       409: createRecipeDetailResponse409ErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
+      503: createRecoveryBusyErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
     },
     adapterMethodName: 'send',
     responseBodyFactory: createRecipeDetailResponseFromDiscriminatorValue,
@@ -371,12 +377,18 @@ export const ItemRequestBuilderRequestsMetadata: RequestsMetadata = {
   get: {
     uriTemplate: ItemRequestBuilderUriTemplate,
     responseBodyContentType: 'application/json',
+    errorMappings: {
+      503: createRecoveryBusyErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
+    },
     adapterMethodName: 'send',
     responseBodyFactory: createRecipeDetailResponseFromDiscriminatorValue,
   },
   patch: {
     uriTemplate: ItemRequestBuilderUriTemplate,
     responseBodyContentType: 'application/json',
+    errorMappings: {
+      503: createRecoveryBusyErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
+    },
     adapterMethodName: 'send',
     responseBodyFactory: createPatchResponseFromDiscriminatorValue,
     requestBodyContentType: 'application/json',

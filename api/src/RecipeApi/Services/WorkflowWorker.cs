@@ -235,6 +235,8 @@ public class WorkflowWorker(
                 using var taskScope = scopeFactory.CreateScope();
                 var services = taskScope.ServiceProvider;
                 var db = services.GetRequiredService<RecipeDbContext>();
+                await using var recoveryLease = services.GetService<RecoveryBoundary>() is { } recovery
+                    ? await recovery.EnterAsync(RecoveryAccess.Write, ct) : null;
                 await ProcessTaskAsync(task, db, ct);
             }
             finally
@@ -264,6 +266,7 @@ public class WorkflowWorker(
                 .FirstOrDefaultAsync(t => t.TaskId == task.TaskId, cancellationToken: ct)
                 ?? throw new InvalidOperationException($"Task {task.TaskId} not found");
 
+            if (refreshedTask.Status is not (TaskStatus.Pending or TaskStatus.Processing)) return;
             task = refreshedTask;
             db.WorkflowTasks.Attach(task);
 

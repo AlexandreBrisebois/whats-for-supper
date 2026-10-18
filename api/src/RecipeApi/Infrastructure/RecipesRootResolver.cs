@@ -7,8 +7,20 @@ namespace RecipeApi.Infrastructure;
 /// </summary>
 public sealed class RecipesRootResolver(DataRootResolver dataRoot, IConfiguration configuration)
 {
-    public string Root =>
+    public string BaseRoot =>
         Environment.GetEnvironmentVariable("RECIPES_ROOT")
         ?? configuration["RecipesRoot"]
         ?? Path.Combine(dataRoot.Root, "recipes");
+    public string? Generation => File.Exists(Path.Combine(BaseRoot, ".recovery-active"))
+        ? File.ReadAllText(Path.Combine(BaseRoot, ".recovery-active")).Trim() : null;
+    public string Root
+    {
+        get
+        {
+            var generation = Generation;
+            if (generation is null) return BaseRoot;
+            if (!Guid.TryParseExact(generation, "N", out _)) throw new InvalidDataException("Invalid recovery generation pointer.");
+            return Path.Combine(BaseRoot, ".recovery-generations", generation);
+        }
+    }
 }

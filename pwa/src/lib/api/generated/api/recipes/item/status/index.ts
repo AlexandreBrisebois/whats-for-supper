@@ -4,8 +4,10 @@
 // @ts-ignore
 import {
   createRecipeStatusDtoFromDiscriminatorValue,
+  createRecoveryBusyErrorFromDiscriminatorValue,
   serializeRecipeStatusDto,
   type RecipeStatusDto,
+  type RecoveryBusyError,
 } from '../../../../models/index';
 // @ts-ignore
 import {
@@ -84,6 +86,7 @@ export interface StatusRequestBuilder extends BaseRequestBuilder<StatusRequestBu
    * Get the synthesis status of a recipe
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {Promise<StatusGetResponse>}
+   * @throws {RecoveryBusyError} error when the service returns a 503 status code
    */
   get(
     requestConfiguration?: RequestConfiguration<object> | undefined
@@ -108,6 +111,9 @@ export const StatusRequestBuilderRequestsMetadata: RequestsMetadata = {
   get: {
     uriTemplate: StatusRequestBuilderUriTemplate,
     responseBodyContentType: 'application/json',
+    errorMappings: {
+      503: createRecoveryBusyErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
+    },
     adapterMethodName: 'send',
     responseBodyFactory: createStatusGetResponseFromDiscriminatorValue,
   },

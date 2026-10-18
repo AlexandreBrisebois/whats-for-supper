@@ -4,7 +4,9 @@
 // @ts-ignore
 import {
   createManagementTaskStatusResponseFromDiscriminatorValue,
+  createRecoveryBusyErrorFromDiscriminatorValue,
   type ManagementTaskStatusResponse,
+  type RecoveryBusyError,
 } from '../../../models/index';
 // @ts-ignore
 import {
@@ -24,6 +26,7 @@ export interface StatusRequestBuilder extends BaseRequestBuilder<StatusRequestBu
    * Get status of the current or most recent management task
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {Promise<ManagementTaskStatusResponse>}
+   * @throws {RecoveryBusyError} error when the service returns a 503 status code
    */
   get(
     requestConfiguration?: RequestConfiguration<object> | undefined
@@ -48,6 +51,9 @@ export const StatusRequestBuilderRequestsMetadata: RequestsMetadata = {
   get: {
     uriTemplate: StatusRequestBuilderUriTemplate,
     responseBodyContentType: 'application/json',
+    errorMappings: {
+      503: createRecoveryBusyErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
+    },
     adapterMethodName: 'send',
     responseBodyFactory: createManagementTaskStatusResponseFromDiscriminatorValue,
   },

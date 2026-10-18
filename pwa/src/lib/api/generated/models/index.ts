@@ -814,6 +814,39 @@ export function createRecommendationsResponseFromDiscriminatorValue(
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {RecoveryBusyError}
+ */
+// @ts-ignore
+export function createRecoveryBusyErrorFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoRecoveryBusyError;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {RecoveryError}
+ */
+// @ts-ignore
+export function createRecoveryErrorFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoRecoveryError;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {RecoveryResult}
+ */
+// @ts-ignore
+export function createRecoveryResultFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoRecoveryResult;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {ScheduleDayDto}
  */
 // @ts-ignore
@@ -2755,6 +2788,68 @@ export function deserializeIntoRecommendationsResponse(
 }
 /**
  * The deserialization information for the current model
+ * @param RecoveryBusyError The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoRecoveryBusyError(
+  recoveryBusyError: Partial<RecoveryBusyError> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    errorCode: (n) => {
+      recoveryBusyError.errorCode = n.getEnumValue<RecoveryBusyError_errorCode>(
+        RecoveryBusyError_errorCodeObject
+      );
+    },
+    message: (n) => {
+      recoveryBusyError.messageEscaped = n.getStringValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param RecoveryError The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoRecoveryError(
+  recoveryError: Partial<RecoveryError> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    message: (n) => {
+      recoveryError.messageEscaped = n.getStringValue();
+    },
+    snapshotId: (n) => {
+      recoveryError.snapshotId = n.getGuidValue();
+    },
+    state: (n) => {
+      recoveryError.state = n.getStringValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param RecoveryResult The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoRecoveryResult(
+  recoveryResult: Partial<RecoveryResult> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    message: (n) => {
+      recoveryResult.message = n.getStringValue();
+    },
+    snapshotId: (n) => {
+      recoveryResult.snapshotId = n.getGuidValue();
+    },
+    state: (n) => {
+      recoveryResult.state = n.getStringValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
  * @param ScheduleDayDto The instance to deserialize into.
  * @returns {Record<string, (node: ParseNode) => void>}
  */
@@ -4363,6 +4458,46 @@ export interface RecommendationsResponse extends AdditionalDataHolder, Parsable 
    */
   topPick?: TopPickDto | null;
 }
+export interface RecoveryBusyError extends AdditionalDataHolder, ApiError, Parsable {
+  /**
+   * The errorCode property
+   */
+  errorCode?: RecoveryBusyError_errorCode | null;
+  /**
+   * The message property
+   */
+  messageEscaped?: string | null;
+}
+export type RecoveryBusyError_errorCode =
+  (typeof RecoveryBusyError_errorCodeObject)[keyof typeof RecoveryBusyError_errorCodeObject];
+export interface RecoveryError extends AdditionalDataHolder, ApiError, Parsable {
+  /**
+   * The message property
+   */
+  messageEscaped?: string | null;
+  /**
+   * The snapshotId property
+   */
+  snapshotId?: Guid | null;
+  /**
+   * The state property
+   */
+  state?: string | null;
+}
+export interface RecoveryResult extends AdditionalDataHolder, Parsable {
+  /**
+   * The message property
+   */
+  message?: string | null;
+  /**
+   * The snapshotId property
+   */
+  snapshotId?: Guid | null;
+  /**
+   * The state property
+   */
+  state?: string | null;
+}
 export interface ScheduleDayDto extends AdditionalDataHolder, Parsable {
   /**
    * The date property
@@ -5955,6 +6090,65 @@ export function serializeRecommendationsResponse(
 /**
  * Serializes information the current object
  * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param RecoveryBusyError The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeRecoveryBusyError(
+  writer: SerializationWriter,
+  recoveryBusyError: Partial<RecoveryBusyError> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!recoveryBusyError || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeEnumValue<RecoveryBusyError_errorCode>('errorCode', recoveryBusyError.errorCode);
+  writer.writeStringValue('message', recoveryBusyError.messageEscaped);
+  writer.writeAdditionalData(recoveryBusyError.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param RecoveryError The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeRecoveryError(
+  writer: SerializationWriter,
+  recoveryError: Partial<RecoveryError> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!recoveryError || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeStringValue('message', recoveryError.messageEscaped);
+  writer.writeGuidValue('snapshotId', recoveryError.snapshotId);
+  writer.writeStringValue('state', recoveryError.state);
+  writer.writeAdditionalData(recoveryError.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param RecoveryResult The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeRecoveryResult(
+  writer: SerializationWriter,
+  recoveryResult: Partial<RecoveryResult> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!recoveryResult || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeStringValue('message', recoveryResult.message);
+  writer.writeGuidValue('snapshotId', recoveryResult.snapshotId);
+  writer.writeStringValue('state', recoveryResult.state);
+  writer.writeAdditionalData(recoveryResult.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
  * @param ScheduleDayDto The instance to serialize from.
  * @param writer Serialization writer to use to serialize this model
  */
@@ -6921,6 +7115,9 @@ export const ReclassifyIngredientRequest_grocerySectionObject = {
   Beverages: 'Beverages',
   Deli: 'Deli',
   Grocery: 'Grocery',
+} as const;
+export const RecoveryBusyError_errorCodeObject = {
+  RECOVERY_BUSY: 'RECOVERY_BUSY',
 } as const;
 export const UpdateRecipeDto_mealTypesObject = {
   Breakfast: 'Breakfast',

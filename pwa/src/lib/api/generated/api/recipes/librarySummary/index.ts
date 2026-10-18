@@ -4,8 +4,10 @@
 // @ts-ignore
 import {
   createRecipeLibrarySummaryDtoFromDiscriminatorValue,
+  createRecoveryBusyErrorFromDiscriminatorValue,
   serializeRecipeLibrarySummaryDto,
   type RecipeLibrarySummaryDto,
+  type RecoveryBusyError,
 } from '../../../models/index';
 // @ts-ignore
 import {
@@ -62,6 +64,7 @@ export interface LibrarySummaryRequestBuilder extends BaseRequestBuilder<Library
    * Returns a lightweight summary of the recipe library for use in the depth indicator.All counts exclude soft-deleted recipes.
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {Promise<LibrarySummaryGetResponse>}
+   * @throws {RecoveryBusyError} error when the service returns a 503 status code
    */
   get(
     requestConfiguration?: RequestConfiguration<object> | undefined
@@ -108,6 +111,9 @@ export const LibrarySummaryRequestBuilderRequestsMetadata: RequestsMetadata = {
   get: {
     uriTemplate: LibrarySummaryRequestBuilderUriTemplate,
     responseBodyContentType: 'application/json',
+    errorMappings: {
+      503: createRecoveryBusyErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
+    },
     adapterMethodName: 'send',
     responseBodyFactory: createLibrarySummaryGetResponseFromDiscriminatorValue,
   },

@@ -4,7 +4,9 @@
 // @ts-ignore
 import {
   createBulkImportTriggerResponseDtoFromDiscriminatorValue,
+  createRecoveryBusyErrorFromDiscriminatorValue,
   type BulkImportTriggerResponseDto,
+  type RecoveryBusyError,
 } from '../../../../models/index';
 // @ts-ignore
 import {
@@ -24,6 +26,7 @@ export interface BulkRequestBuilder extends BaseRequestBuilder<BulkRequestBuilde
    * Bulk-trigger recipe-import for all unimported recipes
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {Promise<BulkImportTriggerResponseDto>}
+   * @throws {RecoveryBusyError} error when the service returns a 503 status code
    */
   post(
     requestConfiguration?: RequestConfiguration<object> | undefined
@@ -48,6 +51,9 @@ export const BulkRequestBuilderRequestsMetadata: RequestsMetadata = {
   post: {
     uriTemplate: BulkRequestBuilderUriTemplate,
     responseBodyContentType: 'application/json',
+    errorMappings: {
+      503: createRecoveryBusyErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
+    },
     adapterMethodName: 'send',
     responseBodyFactory: createBulkImportTriggerResponseDtoFromDiscriminatorValue,
   },

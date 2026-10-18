@@ -4,8 +4,10 @@
 // @ts-ignore
 import {
   createGoToListDtoFromDiscriminatorValue,
+  createRecoveryBusyErrorFromDiscriminatorValue,
   serializeGoToListDto,
   type GoToListDto,
+  type RecoveryBusyError,
 } from '../../models/index';
 // @ts-ignore
 import { ActiveRequestBuilderRequestsMetadata, type ActiveRequestBuilder } from './active/index';
@@ -100,6 +102,7 @@ export interface GotoRequestBuilder extends BaseRequestBuilder<GotoRequestBuilde
    * Get the full family GOTO recipe list (Management)
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {Promise<GotoGetResponse>}
+   * @throws {RecoveryBusyError} error when the service returns a 503 status code
    */
   get(
     requestConfiguration?: RequestConfiguration<object> | undefined
@@ -109,6 +112,7 @@ export interface GotoRequestBuilder extends BaseRequestBuilder<GotoRequestBuilde
    * @param body The request body
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {Promise<GotoPutResponse>}
+   * @throws {RecoveryBusyError} error when the service returns a 503 status code
    */
   put(
     body: GoToListDto,
@@ -191,12 +195,18 @@ export const GotoRequestBuilderRequestsMetadata: RequestsMetadata = {
   get: {
     uriTemplate: GotoRequestBuilderUriTemplate,
     responseBodyContentType: 'application/json',
+    errorMappings: {
+      503: createRecoveryBusyErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
+    },
     adapterMethodName: 'send',
     responseBodyFactory: createGotoGetResponseFromDiscriminatorValue,
   },
   put: {
     uriTemplate: GotoRequestBuilderUriTemplate,
     responseBodyContentType: 'application/json',
+    errorMappings: {
+      503: createRecoveryBusyErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
+    },
     adapterMethodName: 'send',
     responseBodyFactory: createGotoPutResponseFromDiscriminatorValue,
     requestBodyContentType: 'application/json',

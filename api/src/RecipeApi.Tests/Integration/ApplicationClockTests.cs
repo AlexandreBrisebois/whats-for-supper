@@ -168,6 +168,8 @@ public class ApplicationClockTests
         else
         {
             await File.WriteAllTextAsync(Path.Combine(root, "family-members.json"), members);
+            // Import legacy omissions before the authoritative export replaces file membership.
+            await management.RestoreAsync();
             await management.BackupAsync();
             using var output = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine(root, "family-members.json")));
             var member = output.RootElement.EnumerateArray().Single(x => x.GetProperty("id").GetGuid() == memberId);

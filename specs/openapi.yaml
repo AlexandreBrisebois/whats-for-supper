@@ -28,6 +28,29 @@ components:
       bearerFormat: HMAC
 
   schemas:
+    RecoveryBusyError:
+      type: object
+      required: [errorCode, message]
+      properties:
+        errorCode: { type: string, enum: [RECOVERY_BUSY] }
+        message: { type: string }
+
+    RecoveryError:
+      type: object
+      required: [state, message]
+      properties:
+        state: { type: string }
+        message: { type: string }
+        snapshotId: { type: string, format: uuid, nullable: true }
+
+    RecoveryResult:
+      type: object
+      required: [state, message]
+      properties:
+        state: { type: string }
+        message: { type: string }
+        snapshotId: { type: string, format: uuid, nullable: true }
+
     PdfCaptureRequest:
       type: object
       required: [file]
@@ -1180,6 +1203,11 @@ paths:
           schema: { type: string, format: uuid }
       security: [{ HearthSecret: [] }, { HearthToken: [] }]
       responses:
+        '503':
+          description: Initial schedule snapshot is waiting for recovery publication; retry after five seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '200':
           description: >
             SSE stream. The response body is a sequence of SSE frames. Each frame carries a
@@ -1236,6 +1264,11 @@ paths:
             schema:
               $ref: '#/components/schemas/ReclassifyIngredientRequest'
       responses:
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '204':
           description: Reclassification persisted and grocery lists recomputed.
         '400':
@@ -1246,6 +1279,11 @@ paths:
       summary: Get recipe discovery categories
       security: [{ FamilyMemberId: [] }]
       responses:
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '200':
           description: OK
           content:
@@ -1271,6 +1309,11 @@ paths:
           in: query
           schema: { type: string }
       responses:
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '200':
           description: OK
           content:
@@ -1307,6 +1350,11 @@ paths:
           application/json:
             schema: { $ref: '#/components/schemas/VoteDto' }
       responses:
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '200':
           description: OK
           content:
@@ -1326,6 +1374,11 @@ paths:
     get:
       summary: Get all family members
       responses:
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '200':
           description: OK
           content:
@@ -1385,6 +1438,11 @@ paths:
               properties:
                 name: { type: string }
       responses:
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '201':
           description: Created
           content:
@@ -1444,6 +1502,11 @@ paths:
       summary: Get the profile of the currently selected family member
       description: Resolves the identity from the X-Family-Member-Id header or cookie.
       responses:
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '200':
           description: OK
           content:
@@ -1495,6 +1558,11 @@ paths:
               properties:
                 name: { type: string }
       responses:
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '200':
           description: OK
           content:
@@ -1528,6 +1596,11 @@ paths:
       summary: Delete a family member
       security: [{ FamilyMemberId: [] }]
       responses:
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '204':
           description: Deleted
 
@@ -1555,6 +1628,11 @@ paths:
                   type: [string, 'null']
                   enum: [en, fr]
       responses:
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '200':
           description: OK
           content:
@@ -1648,6 +1726,11 @@ paths:
           schema: { type: string }
           description: Optional exact, case-insensitive source URL filter to find duplicate recipes.
       responses:
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '409':
           description: Explore history generation expired; restart from page one.
           content:
@@ -1690,6 +1773,11 @@ paths:
                     format: binary
 
       responses:
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '202':
           description: Accepted (Import workflow triggered)
           content:
@@ -1727,6 +1815,11 @@ paths:
               file:
                 contentType: application/pdf
       responses:
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '202':
           description: Pending recipe persisted before conversion
           content:
@@ -1763,6 +1856,11 @@ paths:
         All counts exclude soft-deleted recipes.
       security: [{ FamilyMemberId: [] }]
       responses:
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '200':
           description: OK
           content:
@@ -1792,6 +1890,11 @@ paths:
     get:
       summary: Get recipe detail
       responses:
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '200':
           description: OK
           content:
@@ -1806,6 +1909,11 @@ paths:
           application/json:
             schema: { $ref: '#/components/schemas/UpdateRecipeDto' }
       responses:
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '200':
           description: OK
           content:
@@ -1818,6 +1926,11 @@ paths:
       summary: Soft-delete a recipe (returns updated recipe with deletedAt set)
       security: [{ FamilyMemberId: [] }]
       responses:
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '200':
           description: Soft-deleted
           content:
@@ -1865,6 +1978,11 @@ paths:
                   reasons: [ingredients, steps]
                   note: 'The quantities and final two steps need another pass.'
       responses:
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '200':
           description: The authoritative recipe detail and contextual re-import outcome
           content:
@@ -1928,6 +2046,11 @@ paths:
       operationId: deleteRecipeImportReport
       security: [{ FamilyMemberId: [] }]
       responses:
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '200':
           description: The authoritative recipe detail with importIssue cleared
           content:
@@ -1981,6 +2104,11 @@ paths:
       operationId: exportRecipeShareBundle
       security: [{ FamilyMemberId: [] }]
       responses:
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '200':
           description: OK
           content:
@@ -2033,6 +2161,11 @@ paths:
           application/json:
             schema: { $ref: '#/components/schemas/RecipeShareBundleDto' }
       responses:
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '201':
           description: Created
           content:
@@ -2056,6 +2189,11 @@ paths:
       summary: List soft-deleted recipes (Recycle Bin)
       security: [{ FamilyMemberId: [] }]
       responses:
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '200':
           description: OK
           content:
@@ -2076,6 +2214,11 @@ paths:
       summary: Restore a soft-deleted recipe
       security: [{ FamilyMemberId: [] }]
       responses:
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '200':
           description: Restored
           content:
@@ -2124,13 +2267,13 @@ paths:
                   errorCode: { type: string }
                   message: { type: string }
         '503':
-          description: Elevated PIN not configured
+          description: Elevated PIN not configured or online recovery busy (retry after Retry-After)
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  errorCode: { type: string, enum: [PIN_NOT_CONFIGURED] }
+                  errorCode: { type: string, enum: [PIN_NOT_CONFIGURED, RECOVERY_BUSY] }
                   message: { type: string }
 
   /api/recipes/{recipeId}/original/{photoIndex}:
@@ -2148,6 +2291,11 @@ paths:
       operationId: getRecipeOriginalImage
       tags: [Recipes]
       responses:
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '200':
           description: Raw image binary
           content:
@@ -2167,6 +2315,11 @@ paths:
     get:
       summary: Get recipe hero image
       responses:
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '200':
           description: Image binary data
           content:
@@ -2199,6 +2352,11 @@ paths:
                   type: string
                   format: binary
       responses:
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '201':
           description: Created
           content:
@@ -2220,6 +2378,11 @@ paths:
       operationId: regenerateRecipeHero
       tags: [Recipes]
       responses:
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '202':
           description: Accepted
           content:
@@ -2230,6 +2393,11 @@ paths:
     get:
       summary: Get recipe recommendations
       responses:
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '200':
           description: OK (Wrapped in data envelope because it doesn't end in ResponseDto)
           content:
@@ -2267,6 +2435,11 @@ paths:
           application/json:
             schema: { $ref: '#/components/schemas/RecipeSearchRequestDto' }
       responses:
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '200':
           description: OK
           content:
@@ -2290,6 +2463,11 @@ paths:
       description: Returns configured Main definitions, fixed Meal Types, and the latest materialized cuisine state. It does not aggregate votes/calendar history or query the recipe catalog at request time.
       operationId: getRecipeSearchFilters
       responses:
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '200':
           description: Filter vocabulary. Without materialized cuisine state, generatedAt is null and both cuisine arrays are empty.
           content:
@@ -2326,6 +2504,11 @@ paths:
           schema: { type: string, format: date }
           description: Explicit yyyy-MM-dd Monday anchoring weekOffset. Malformed or non-Monday values return 400 before work.
       responses:
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '400':
           description: referenceWeekStartDate is malformed or is not a Monday; no schedule work is performed.
         '200':
@@ -2402,6 +2585,11 @@ paths:
           schema: { type: string, format: date }
           description: Optional yyyy-MM-dd Monday anchoring all relative offsets and defer's next-week base. Omission captures the deployment current Monday (UTC by default). Literal source dates remain unchanged. Invalid or non-Monday references return 400 before work.
       responses:
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '409':
           description: Another week owns the operational round. Refresh the planner; no votes are moved or cleared.
         '400':
@@ -2427,6 +2615,11 @@ paths:
           required: true
           schema: { type: string, format: date }
       responses:
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '204':
           description: Removed
 
@@ -2449,6 +2642,11 @@ paths:
           schema: { type: string, format: date }
           description: Optional yyyy-MM-dd Monday anchoring all relative offsets and defer's next-week base. Omission captures the deployment current Monday (UTC by default). Literal source dates remain unchanged. Invalid or non-Monday references return 400 before work.
       responses:
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '409':
           description: Conflicting week, stale round, or ambiguous legacy close. Refresh the planner before a new deliberate close; no history or votes are changed.
         '400':
@@ -2489,6 +2687,11 @@ paths:
           application/json:
             schema: { $ref: '#/components/schemas/MoveScheduleDto' }
       responses:
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '400':
           description: Invalid reference, index, date, destination or disposition; no mutation.
         '409':
@@ -2528,6 +2731,11 @@ paths:
           application/json:
             schema: { $ref: '#/components/schemas/DeferScheduleDto' }
       responses:
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '400':
           description: Invalid query binding, non-Monday referenceWeekStartDate or unrepresentable destination; no mutation is performed.
         '200':
@@ -2569,6 +2777,11 @@ paths:
           application/json:
             schema: { $ref: '#/components/schemas/AssignScheduleDto' }
       responses:
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '400':
           description: Invalid reference Monday or guarded target (missing reference, out-of-range index/date); no calendar entry or weekly plan is changed.
         '409':
@@ -2622,6 +2835,11 @@ paths:
           schema: { type: string, format: date }
           description: Optional yyyy-MM-dd Monday anchoring all relative offsets and defer's next-week base. Omission captures the deployment current Monday (UTC by default). Literal source dates remain unchanged. Invalid or non-Monday references return 400 before work.
       responses:
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '400':
           description: Invalid or non-Monday referenceWeekStartDate; no mutation is performed.
         '200':
@@ -2662,6 +2880,11 @@ paths:
           application/json:
             schema: { $ref: '#/components/schemas/ValidationDto' }
       responses:
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '404':
           description: Recipe not found
         '200':
@@ -2712,6 +2935,11 @@ paths:
           schema: { type: string, format: date }
           description: Optional yyyy-MM-dd Monday anchoring all relative offsets and defer's next-week base. Omission captures the deployment current Monday (UTC by default). Literal source dates remain unchanged. Invalid or non-Monday references return 400 before work.
       responses:
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '400':
           description: Invalid or non-Monday referenceWeekStartDate; no mutation is performed.
         '200':
@@ -2766,6 +2994,11 @@ paths:
                   type: boolean
                   example: true
       responses:
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '204':
           description: No Content
 
@@ -2789,6 +3022,11 @@ paths:
                 'Chicken Breast': true
                 'Olive Oil': false
       responses:
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '200':
           description: OK
           content:
@@ -2801,10 +3039,120 @@ paths:
                     additionalProperties:
                       type: boolean
 
+  /api/management/recovery/snapshots:
+    post:
+      summary: Capture an independent exact snapshot while the app remains online
+      responses:
+        '200':
+          description: Operation completed or current status
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryResult' }
+        '400':
+          description: Invalid or incomplete snapshot; live state not changed
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryError' }
+        '409':
+          description: Recovery already active or pending reconciliation
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryError' }
+        '503':
+          description: Recovery not configured or coordination timed out; retry safely
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryError' }
+
+  /api/management/recovery/restore/{snapshotId}:
+    post:
+      summary: Replace household state from a validated exact snapshot
+      parameters:
+        - in: path
+          name: snapshotId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Operation completed or current status
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryResult' }
+        '400':
+          description: Invalid or incomplete snapshot; live state not changed
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryError' }
+        '409':
+          description: Recovery already active or pending reconciliation
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryError' }
+        '503':
+          description: Recovery not configured or coordination timed out; retry safely
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryError' }
+
+  /api/management/recovery/resume:
+    post:
+      summary: Reconcile an interrupted exact restore
+      responses:
+        '200':
+          description: Operation completed or current status
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryResult' }
+        '400':
+          description: Invalid or incomplete snapshot; live state not changed
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryError' }
+        '409':
+          description: Recovery already active or pending reconciliation
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryError' }
+        '503':
+          description: Recovery not configured or coordination timed out; retry safely
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryError' }
+
+  /api/management/recovery/status:
+    get:
+      summary: Read online recovery availability
+      responses:
+        '200':
+          description: Operation completed or current status
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryResult' }
+        '400':
+          description: Invalid or incomplete snapshot; live state not changed
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryError' }
+        '409':
+          description: Recovery already active or pending reconciliation
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryError' }
+        '503':
+          description: Recovery not configured or coordination timed out; retry safely
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryError' }
+
   /api/management/backup:
     post:
       summary: Trigger an asynchronous backup
       responses:
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '202':
           description: Accepted
           content:
@@ -2815,6 +3163,11 @@ paths:
     post:
       summary: Trigger an asynchronous restore (seed)
       responses:
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '202':
           description: Accepted
           content:
@@ -2825,6 +3178,11 @@ paths:
     post:
       summary: Trigger an asynchronous disaster recovery
       responses:
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '202':
           description: Accepted
           content:
@@ -2835,6 +3193,11 @@ paths:
     post:
       summary: Trigger a search index backfill
       responses:
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '202':
           description: Accepted
           content:
@@ -2846,6 +3209,11 @@ paths:
     post:
       summary: Capture the current core state as the Demo Mode master snapshot
       responses:
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '202':
           description: Accepted
           content:
@@ -2859,6 +3227,11 @@ paths:
     post:
       summary: Restore the Demo Mode master snapshot
       responses:
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '202':
           description: Accepted
           content:
@@ -2872,6 +3245,11 @@ paths:
     get:
       summary: Get status of the current or most recent management task
       responses:
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '200':
           description: OK
           content:
@@ -2889,6 +3267,11 @@ paths:
       operationId: getRecipeImportById
       security: [{ FamilyMemberId: [] }]
       responses:
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '200':
           description: OK
           content:
@@ -2901,6 +3284,11 @@ paths:
     get:
       summary: Get summary of the import pipeline's health
       responses:
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '200':
           description: OK
           content:
@@ -2911,6 +3299,11 @@ paths:
     post:
       summary: Bulk-trigger recipe-import for all unimported recipes
       responses:
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '202':
           description: Accepted
           content:
@@ -2935,6 +3328,11 @@ paths:
               name: 'Our family spaghetti'
               description: 'Homemade tomato sauce with meatballs, slow-cooked for two hours'
       responses:
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '202':
           description: Accepted — stub recipe created; synthesis workflow triggered
           content:
@@ -2961,6 +3359,11 @@ paths:
           application/json:
             schema: { $ref: '#/components/schemas/CaptureUrlDto' }
       responses:
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '202':
           description: Accepted (Capture workflow triggered)
           content:
@@ -2982,6 +3385,11 @@ paths:
     get:
       summary: Get the synthesis status of a recipe
       responses:
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '200':
           description: OK
           content:
@@ -3016,6 +3424,11 @@ paths:
               parameters:
                 recipeUrl: 'https://www.recipetineats.com/beef-and-broccoli-stir-fry/'
       responses:
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '202':
           description: Accepted
           content:
@@ -3039,6 +3452,11 @@ paths:
     get:
       summary: Get workflow instance details with all tasks
       responses:
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '200':
           description: OK
           content:
@@ -3082,6 +3500,11 @@ paths:
     get:
       summary: Get all active (Processing or Paused) workflow instances
       responses:
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '200':
           description: OK
           content:
@@ -3117,6 +3540,11 @@ paths:
           required: true
           schema: { type: string, format: uuid }
       responses:
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '200':
           description: OK
           content:
@@ -3137,6 +3565,11 @@ paths:
           required: true
           schema: { type: string, format: uuid }
       responses:
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '200':
           description: OK
           content:
@@ -3164,6 +3597,11 @@ paths:
       summary: Get a setting by key
       security: [{ FamilyMemberId: [] }]
       responses:
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '200':
           description: OK
           content:
@@ -3183,6 +3621,11 @@ paths:
           application/json:
             schema: { $ref: '#/components/schemas/SettingsDto' }
       responses:
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '200':
           description: OK
           content:
@@ -3197,6 +3640,11 @@ paths:
       summary: Get the effective feature-flag snapshot for the authenticated member
       security: [{ FamilyMemberId: [] }]
       responses:
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '200':
           description: Effective registered feature flags
           content:
@@ -3232,6 +3680,11 @@ paths:
           application/json:
             schema: { $ref: '#/components/schemas/UpdateFeatureFlagRequest' }
       responses:
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '200':
           description: Updated effective feature flag
           content:
@@ -3251,6 +3704,11 @@ paths:
       summary: Get the full family GOTO recipe list (Management)
       security: [{ FamilyMemberId: [] }]
       responses:
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '200':
           description: OK
           content:
@@ -3270,6 +3728,11 @@ paths:
           application/json:
             schema: { $ref: '#/components/schemas/GoToListDto' }
       responses:
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '200':
           description: OK
           content:
@@ -3284,6 +3747,11 @@ paths:
       summary: Get a single random READY GOTO recipe for the Home screen
       security: [{ FamilyMemberId: [] }]
       responses:
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '200':
           description: OK
           content:
@@ -3299,6 +3767,11 @@ paths:
     get:
       summary: List active failed capture records
       responses:
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '200':
           description: List of failed captures
           content:
@@ -3317,6 +3790,11 @@ paths:
           required: true
           schema: { type: string, format: uuid }
       responses:
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '202':
           description: Retry queued
           content:
@@ -3344,6 +3822,11 @@ paths:
           required: true
           schema: { type: string, format: uuid }
       responses:
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '202':
           description: Failed capture cleared and cleanup queued
           content:

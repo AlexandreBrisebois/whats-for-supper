@@ -7,6 +7,7 @@ namespace RecipeApi.Data;
 
 public class RecipeDbContext(DbContextOptions<RecipeDbContext> options) : DbContext(options)
 {
+    public DbSet<RecoveryPublication> RecoveryPublications => Set<RecoveryPublication>();
     public DbSet<FamilyMember> FamilyMembers => Set<FamilyMember>();
     public DbSet<Recipe> Recipes => Set<Recipe>();
     public DbSet<RecipeImportReport> RecipeImportReports => Set<RecipeImportReport>();
@@ -31,6 +32,7 @@ public class RecipeDbContext(DbContextOptions<RecipeDbContext> options) : DbCont
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+        modelBuilder.Entity<RecoveryPublication>().ToTable("recovery_publication", t => t.HasCheckConstraint("recovery_publication_singleton", "id = 1"));
         modelBuilder.Entity<VotingRoundState>().HasKey(x => x.Id);
         modelBuilder.Entity<WeeklyHouseholdInterest>(entity =>
         {

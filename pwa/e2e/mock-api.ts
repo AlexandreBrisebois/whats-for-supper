@@ -2,6 +2,7 @@ import { type Page, type Route } from '@playwright/test';
 import type { CalendarContext } from '../src/lib/deployment-calendar';
 import {
   type RecipeDto,
+  type RecoveryResult,
   type RecipeImportIssueDto,
   type RecipeImportIssueRequest,
   RecipeImportIssueReasonObject,
@@ -219,7 +220,11 @@ export async function mockFeatureFlags(
 /**
  * Setup common API routes with sane defaults.
  */
-export async function setupCommonRoutes(page: Page, calendarContext?: CalendarContext) {
+export async function setupCommonRoutes(
+  page: Page,
+  calendarContext?: CalendarContext,
+  recoveryOptions: { busy?: boolean } = {}
+) {
   const scheduleEntries = new Map<
     string,
     { recipe: ScheduleRecipeDto | null; status: number; nonCooking?: any }
@@ -1441,6 +1446,127 @@ export async function setupCommonRoutes(page: Page, calendarContext?: CalendarCo
       body: JSON.stringify({ data: {} }),
     });
   });
+
+  // Exact recovery is separate from the legacy merge mocks. Persist supported mock
+  // facts, not live round identities; ordinary reads observe restored membership.
+  type SavedRecovery = {
+    members: typeof familyMembers;
+    updates: Array<[string, Partial<RecipeDto>]>;
+    schedule: Array<
+      [string, { recipe: ScheduleRecipeDto | null; status: number; nonCooking?: any }]
+    >;
+    weeks: Array<[string, number]>;
+    interest: Array<[string, { recipeId: string; week: string; count: number; selected: boolean }]>;
+  };
+  const recoverySnapshots = new Map<string, SavedRecovery>();
+  let recoverySequence = 0;
+  let restoredSnapshot: string | undefined;
+  const recoveryReply = (route: Route, status: number, body: RecoveryResult) =>
+    route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
+  const recoveryBusy = (route: Route) =>
+    recoveryReply(route, 409, {
+      state: 'busy',
+      message: 'Recovery is coordinating household operations.',
+    });
+
+  await page.route('**/api/management/recovery/snapshots', async (route) => {
+    if (route.request().method() !== 'POST') return route.fallback();
+    if (recoveryOptions.busy) return recoveryBusy(route);
+    const snapshotId =
+      MOCK_IDS.RECOVERY_SNAPSHOT.slice(0, -12) + String(++recoverySequence).padStart(12, '0');
+    recoverySnapshots.set(
+      snapshotId,
+      structuredClone({
+        members: familyMembers,
+        updates: [...recipeUpdates],
+        schedule: [...scheduleEntries],
+        weeks: [...weekStatuses],
+        interest: [...history],
+      })
+    );
+    return recoveryReply(route, 200, {
+      state: 'completed',
+      message: 'Independent snapshot published.',
+      snapshotId,
+    });
+  });
+  await page.route('**/api/management/recovery/restore/*', async (route) => {
+    if (route.request().method() !== 'POST') return route.fallback();
+    if (recoveryOptions.busy) return recoveryBusy(route);
+    const id = new URL(route.request().url()).pathname.split('/').pop()!;
+    const saved = recoverySnapshots.get(id);
+    if (!saved)
+      return recoveryReply(route, 400, {
+        state: 'invalid',
+        message: 'Snapshot manifest is missing.',
+      });
+    const restored = structuredClone(saved);
+    familyMembers.splice(0, familyMembers.length, ...restored.members);
+    recipeUpdates.clear();
+    restored.updates.forEach(([key, value]) => recipeUpdates.set(key, value));
+    scheduleEntries.clear();
+    restored.schedule.forEach(([key, value]) => scheduleEntries.set(key, value));
+    weekStatuses.clear();
+    restored.weeks.forEach(([key, value]) => weekStatuses.set(key, value));
+    history.clear();
+    restored.interest.forEach(([key, value]) => history.set(key, value));
+    liveVotes.clear();
+    roundIds.clear();
+    closeReceipts.clear();
+    requiresIdentity.clear();
+    activeRoundId = MOCK_IDS.VOTING_ROUND.slice(0, -12) + String(++roundSequence).padStart(12, '0');
+    activeRoundWeek = null;
+    historyGeneration++;
+    const openWeeks = [...weekStatuses.values()].filter((status) => status === 1).length;
+    for (const [week, status] of weekStatuses) {
+      requiresIdentity.add(week);
+      if (status === 1 && openWeeks === 1) {
+        activeRoundWeek = week;
+        roundIds.set(week, activeRoundId);
+      }
+    }
+    restoredSnapshot = id;
+    return recoveryReply(route, 200, {
+      state: 'completed',
+      message: 'Exact state restored.',
+      snapshotId: id,
+    });
+  });
+  await page.route('**/api/management/recovery/resume', async (route) => {
+    if (route.request().method() !== 'POST') return route.fallback();
+    if (recoveryOptions.busy) return recoveryBusy(route);
+    return recoveryReply(route, 200, {
+      state: 'available',
+      message: 'No interrupted restore.',
+      snapshotId: restoredSnapshot,
+    });
+  });
+  await page.route('**/api/management/recovery/status', async (route) => {
+    if (route.request().method() !== 'GET') return route.fallback();
+    return recoveryReply(route, 200, {
+      state: 'available',
+      message: 'Online recovery configured.',
+      snapshotId: restoredSnapshot,
+    });
+  });
+  if (recoveryOptions.busy) {
+    await page.route('**/api/**', async (route) => {
+      if (
+        ['GET', 'HEAD'].includes(route.request().method()) ||
+        new URL(route.request().url()).pathname.startsWith('/api/management/recovery/')
+      )
+        return route.fallback();
+      return route.fulfill({
+        status: 503,
+        headers: { 'Retry-After': '5' },
+        contentType: 'application/json',
+        body: JSON.stringify({
+          errorCode: 'RECOVERY_BUSY',
+          message: 'Retry after recovery coordination.',
+        }),
+      });
+    });
+  }
 
   // POST /api/management/backup
   await page.route('**/api/management/backup', async (route) => {

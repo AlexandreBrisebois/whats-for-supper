@@ -4,10 +4,12 @@
 // @ts-ignore
 import {
   createDeferScheduleResultDtoFromDiscriminatorValue,
+  createRecoveryBusyErrorFromDiscriminatorValue,
   serializeDeferScheduleDto,
   serializeDeferScheduleResultDto,
   type DeferScheduleDto,
   type DeferScheduleResultDto,
+  type RecoveryBusyError,
 } from '../../../models/index';
 // @ts-ignore
 import {
@@ -49,6 +51,7 @@ export interface DeferRequestBuilder extends BaseRequestBuilder<DeferRequestBuil
    * @param body The request body
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {Promise<DeferPostResponse>}
+   * @throws {RecoveryBusyError} error when the service returns a 503 status code
    */
   post(
     body: DeferScheduleDto,
@@ -129,6 +132,9 @@ export const DeferRequestBuilderRequestsMetadata: RequestsMetadata = {
   post: {
     uriTemplate: DeferRequestBuilderUriTemplate,
     responseBodyContentType: 'application/json',
+    errorMappings: {
+      503: createRecoveryBusyErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
+    },
     adapterMethodName: 'send',
     responseBodyFactory: createDeferPostResponseFromDiscriminatorValue,
     requestBodyContentType: 'application/json',

@@ -4,7 +4,9 @@
 // @ts-ignore
 import {
   createManagementTaskAcceptedResponseFromDiscriminatorValue,
+  createRecoveryBusyErrorFromDiscriminatorValue,
   type ManagementTaskAcceptedResponse,
+  type RecoveryBusyError,
 } from '../../../models/index';
 // @ts-ignore
 import {
@@ -24,6 +26,7 @@ export interface DemoCaptureRequestBuilder extends BaseRequestBuilder<DemoCaptur
    * Capture the current core state as the Demo Mode master snapshot
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {Promise<ManagementTaskAcceptedResponse>}
+   * @throws {RecoveryBusyError} error when the service returns a 503 status code
    */
   post(
     requestConfiguration?: RequestConfiguration<object> | undefined
@@ -48,6 +51,9 @@ export const DemoCaptureRequestBuilderRequestsMetadata: RequestsMetadata = {
   post: {
     uriTemplate: DemoCaptureRequestBuilderUriTemplate,
     responseBodyContentType: 'application/json',
+    errorMappings: {
+      503: createRecoveryBusyErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
+    },
     adapterMethodName: 'send',
     responseBodyFactory: createManagementTaskAcceptedResponseFromDiscriminatorValue,
   },
