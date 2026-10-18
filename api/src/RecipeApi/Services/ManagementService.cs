@@ -317,7 +317,14 @@ public partial class ManagementService(
         EnsureDemoSnapshotExists();
 
         var familyMembers = await ReadJsonAsync<List<FamilyMember>>(Path.Combine(DemoRoot, "family-members.json"), ct) ?? [];
+        FillMissingMemberTimestamps(familyMembers);
         var recipes = await ReadJsonAsync<List<Recipe>>(Path.Combine(DemoRoot, "recipes.json"), ct) ?? [];
+        var restoredAt = clock.UtcNow;
+        foreach (var recipe in recipes)
+        {
+            if (recipe.CreatedAt == default) recipe.CreatedAt = restoredAt;
+            if (recipe.UpdatedAt == default) recipe.UpdatedAt = restoredAt;
+        }
         var searchDocuments = await ReadJsonAsync<List<RecipeSearchDocument>>(Path.Combine(DemoRoot, "recipe-search-documents.json"), ct) ?? [];
         var history = (await ReadInterestAsync(Path.Combine(DemoRoot, "weekly-household-interest.json"), true, ct))!;
         if (history.Rows.Any(row => !recipes.Any(recipe => recipe.Id == row.RecipeId)))
@@ -813,12 +820,11 @@ public partial class ManagementService(
         {
             var json3 = await File.ReadAllTextAsync(membersPath, ct);
             var members = JsonSerializer.Deserialize<List<FamilyMember>>(json3, JsonDefaults.CamelCase) ?? [];
+            FillMissingMemberTimestamps(members);
             logger.LogInformation("Found {Count} family members to restore", members.Count);
             foreach (var member in members)
             {
                 if (ct.IsCancellationRequested) break;
-                if (member.CreatedAt == default) member.CreatedAt = clock.UtcNow;
-                if (member.UpdatedAt == default) member.UpdatedAt = clock.UtcNow;
                 var existing = await db.FamilyMembers.FindAsync(new object[] { member.Id }, ct);
                 if (existing == null)
                 {
@@ -1601,6 +1607,16 @@ public partial class ManagementService(
             RecipeImportReportsBackupPath);
     }
 
+    private void FillMissingMemberTimestamps(IEnumerable<FamilyMember> members)
+    {
+        var now = clock.UtcNow;
+        foreach (var member in members)
+        {
+            if (member.CreatedAt == default) member.CreatedAt = now;
+            if (member.UpdatedAt == default) member.UpdatedAt = now;
+        }
+    }
+
     private async Task<int> MergeFamilyMembersAsync(List<FamilyMember> sourceMembers)
     {
         var membersPath = Path.Combine(DataRoot, "family-members.json");
@@ -1609,6 +1625,7 @@ public partial class ManagementService(
         {
             var json9 = await File.ReadAllTextAsync(membersPath);
             existingMembers = JsonSerializer.Deserialize<List<FamilyMember>>(json9, JsonDefaults.CamelCase) ?? [];
+            FillMissingMemberTimestamps(existingMembers);
         }
 
         int addedCount = 0;
