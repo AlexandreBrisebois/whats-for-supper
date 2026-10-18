@@ -341,6 +341,45 @@ test.describe('Supper Planner', () => {
     await expect(overlay).not.toBeVisible();
   });
 
+  test('Find Similar from Planner requests alternatives without reopening detail', async ({
+    page,
+  }) => {
+    let searchBody: Record<string, unknown> | null = null;
+    await page.route('**/api/recipes/search', async (route) => {
+      expect(route.request().method()).toBe('POST');
+      searchBody = route.request().postDataJSON() as Record<string, unknown>;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          topPick: null,
+          results: [],
+          appliedFilters: {},
+          searchMode: 'similar',
+          resultPath: 'similar',
+        }),
+      });
+    });
+    await page.goto('/planner');
+    const card = page.getByTestId('day-card-0');
+    await expect(card).toBeVisible();
+    await card.getByTestId('edit-recipe-button').click();
+    await expect(page.getByTestId('recipe-detail-sheet')).toBeVisible();
+    const action = page.getByTestId('action-find-similar');
+    await expect(action).toHaveAccessibleName(/Find Similar/i);
+    await action.click();
+    await expect(page).toHaveURL(`/recipes?similarTo=${MOCK_IDS.RECIPE_LASAGNA}`);
+    await expect
+      .poll(() => searchBody)
+      .toMatchObject({
+        query: '',
+        similarToRecipeId: MOCK_IDS.RECIPE_LASAGNA,
+      });
+    expect(searchBody).not.toHaveProperty('dayIndex');
+    expect(searchBody).not.toHaveProperty('weekOffset');
+    await expect(page.getByTestId('recipe-detail-sheet')).not.toBeVisible();
+  });
+
   test('uses fixed date fixtures to verify cards layout and details link', async ({ page }) => {
     const PINNED_DATE = '2026-05-04T12:00:00Z';
     await page.addInitScript((isoDate) => {

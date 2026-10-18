@@ -955,7 +955,7 @@ export default function PlannerPage() {
             // Planner opens details for viewing; assignment flows stay in planner/recipes entrypoints.
           }}
           onFindSimilar={(recipeId) => {
-            router.push(`/recipes?open=${recipeId}`);
+            router.push(`/recipes?similarTo=${recipeId}`);
           }}
         />
       )}

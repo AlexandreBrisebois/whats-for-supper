@@ -240,8 +240,19 @@ vi.mock('@/components/planner/CooksMode', () => ({
 }));
 
 vi.mock('@/components/recipes/RecipeDetailSheet', () => ({
-  RecipeDetailSheet: ({ recipeId, onClose }: { recipeId: string; onClose: () => void }) => (
+  RecipeDetailSheet: ({
+    recipeId,
+    onClose,
+    onFindSimilar,
+  }: {
+    recipeId: string;
+    onClose: () => void;
+    onFindSimilar: (recipeId: string) => void;
+  }) => (
     <div data-testid="mock-recipe-detail-sheet" data-recipe-id={recipeId}>
+      <button data-testid="mock-find-similar" onClick={() => onFindSimilar(recipeId)}>
+        Find Similar
+      </button>
       <button data-testid="mock-recipe-detail-close" onClick={onClose}>
         Close
       </button>
@@ -612,7 +623,7 @@ describe('PlannerPage voting action row', () => {
     });
   });
 
-  it('shows recipe details sheet when clicking the recipe name', () => {
+  it('opens recipe details and starts Similar without an assignment target', () => {
     mocks.setPlannerState({
       currentWeekOffset: 0,
       activeTab: 'planner',
@@ -642,6 +653,10 @@ describe('PlannerPage voting action row', () => {
     const detailSheet = screen.getByTestId('mock-recipe-detail-sheet');
     expect(detailSheet).toBeInTheDocument();
     expect(detailSheet.getAttribute('data-recipe-id')).toBe('11111111-1111-1111-1111-111111111111');
+    fireEvent.click(within(detailSheet).getByRole('button', { name: 'Find Similar' }));
+    expect(mocks.push).toHaveBeenCalledWith(
+      '/recipes?similarTo=11111111-1111-1111-1111-111111111111'
+    );
   });
 
   it('shows planning pivot sheet when clicking the change recipe button', () => {
