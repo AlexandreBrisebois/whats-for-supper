@@ -269,6 +269,8 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
 
         builder.Services.AddSingleton<DataRootResolver>();
         builder.Services.AddSingleton<RecipesRootResolver>();
+        builder.Services.AddScoped<RecoverySnapshotService>();
+        builder.Services.AddScoped<RecoveryBoundary>();
         builder.Services.AddSingleton<WorkflowRootResolver>();
         builder.Services.AddSingleton<IStorageProvider, LocalStorageProvider>();
         if (_configurationOverrides.GetValueOrDefault("Tests:LocalRecipeStore") == "true")
@@ -317,6 +319,7 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
             _app.UseAuthentication();
             _app.UseAuthorization();
         }
+        _app.UseMiddleware<RecoveryBoundaryMiddleware>();
         _app.MapControllers();
         _configureApplication?.Invoke(_app);
         _app.MapOpenApi();

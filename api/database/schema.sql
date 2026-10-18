@@ -271,3 +271,9 @@ COALESCE(v.vote_count, 0) AS vote_count, r.supper_suitable
 FROM recipes r
 LEFT JOIN (SELECT recipe_id, count(recipe_id) AS vote_count FROM recipe_votes WHERE vote = 1 GROUP BY recipe_id) v ON r.id = v.recipe_id
 WHERE r.is_discoverable = true AND r.is_ready = true AND r.deleted_at IS NULL;
+
+CREATE TABLE recovery_publication (
+    id integer PRIMARY KEY CONSTRAINT recovery_publication_singleton CHECK (id = 1),
+    operation_id uuid NOT NULL,
+    snapshot_id uuid NOT NULL
+);

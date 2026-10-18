@@ -112,6 +112,9 @@ try
     builder.Services.AddScoped<IScheduleEventPublisher, SseEventPublisher>();
     builder.Services.AddSingleton<DataRootResolver>();
     builder.Services.AddSingleton<RecipesRootResolver>();
+        builder.Services.AddScoped<RecoverySnapshotService>();
+        builder.Services.AddScoped<RecoveryBoundary>();
+        builder.Services.AddHostedService<RecoveryReconciler>();
     builder.Services.AddSingleton<WorkflowRootResolver>();
     builder.Services.AddSingleton<IStorageProvider, LocalStorageProvider>();
     builder.Services.AddSingleton<IRecipeStore, LocalRecipeStore>();
@@ -439,6 +442,7 @@ try
     app.UseCors();
     app.UseAuthentication();
     app.UseAuthorization();
+        app.UseMiddleware<RecoveryBoundaryMiddleware>();
     app.MapControllers();
 
     await app.RunAsync();

@@ -20,3 +20,12 @@ Only the independent freshness slice has a settled implementation breakdown. The
 ## Workflow follow-up
 
 - Synchronize/archive only once all #244 requirements and verification pass; verify resulting planning content. No merge or deployment.
+
+## 3. Online exact recovery (owner selected online operation)
+
+- [ ] 3.1 Extend OpenAPI and first PostgreSQL HTTP acceptance for independent snapshot capture; observe red before implementation.
+- [ ] 3.2 Implement versioned rows/media inventory, independent staged publication and complete preflight; prove fresh/empty/deleted/media round trips.
+- [ ] 3.3 Coordinate HTTP and worker writers; prove concurrent capture cannot mix database/media generations and busy behavior is bounded and documented.
+- [ ] 3.4 Implement online staged restore with durable journal/commit marker, restart reconciliation and stale-work invalidation; test every interruption boundary and retry.
+- [ ] 3.5 Preserve history compatibility, invalidate rounds/continuations, rebuild affinity/search; qualify fresh/nonempty PostgreSQL and original-root-unavailable restores.
+- [ ] 3.6 Update generated client and method-sensitive mocks; run live endpoint, schema/database and full harness checks, scope review, then synchronize/archive and verify final-head CI. Keep draft until qualified.

@@ -9,11 +9,13 @@ using System.Threading.Tasks;
 /// Physical disk implementation of <see cref="IStorageProvider"/>, adapted from the agent-framework experiment.
 /// Uses <see cref="DataRootResolver"/> as the base path for all partitions.
 /// </summary>
-public class LocalStorageProvider(DataRootResolver dataRoot) : IStorageProvider
+public class LocalStorageProvider(DataRootResolver dataRoot, RecipesRootResolver? recipes = null) : IStorageProvider
 {
     private string GetFullPath(string partition, string key)
     {
-        return Path.Combine(dataRoot.Root, partition, key);
+        return partition == "recipes"
+            ? Path.Combine((recipes ?? new RecipesRootResolver(dataRoot, new ConfigurationManager())).Root, key)
+            : Path.Combine(dataRoot.Root, partition, key);
     }
 
     public async Task SaveAsync(string partition, string key, string value)
@@ -56,7 +58,7 @@ public class LocalStorageProvider(DataRootResolver dataRoot) : IStorageProvider
 
     public List<string> List(string partition)
     {
-        var folderPath = Path.Combine(dataRoot.Root, partition);
+        var folderPath = GetFullPath(partition, "");
         if (Directory.Exists(folderPath))
         {
             return Directory.GetDirectories(folderPath)
