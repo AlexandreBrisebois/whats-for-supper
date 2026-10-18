@@ -31,7 +31,7 @@ public class CategorizeIngredientsProcessorTests : IDisposable
         _chatClientMock = new Mock<IChatClient>();
 
         _processor = new CategorizeIngredientsProcessor(
-            _db,
+            new RecipeApi.Services.SystemClock(), _db,
             _chatClientMock.Object,
             new Mock<ILogger<CategorizeIngredientsProcessor>>().Object);
     }

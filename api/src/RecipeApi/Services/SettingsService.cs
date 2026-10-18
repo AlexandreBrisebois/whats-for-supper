@@ -7,7 +7,7 @@ using RecipeApi.Models;
 
 namespace RecipeApi.Services;
 
-public class SettingsService(RecipeDbContext dbContext, ILogger<SettingsService> logger)
+public class SettingsService(IClock clock, RecipeDbContext dbContext, ILogger<SettingsService> logger)
 {
     private readonly RecipeDbContext _dbContext = dbContext;
     private readonly ILogger<SettingsService> _logger = logger;
@@ -32,7 +32,7 @@ public class SettingsService(RecipeDbContext dbContext, ILogger<SettingsService>
                 Id = Guid.NewGuid(),
                 Key = key,
                 Value = value,
-                UpdatedAt = DateTimeOffset.UtcNow,
+                UpdatedAt = clock.UtcNow,
             };
             _dbContext.FamilySettings.Add(existing);
             _logger.LogInformation("Created new setting: {Key}", key);
@@ -40,7 +40,7 @@ public class SettingsService(RecipeDbContext dbContext, ILogger<SettingsService>
         else
         {
             existing.Value = value;
-            existing.UpdatedAt = DateTimeOffset.UtcNow;
+            existing.UpdatedAt = clock.UtcNow;
             _logger.LogInformation("Updated setting: {Key}", key);
         }
 
@@ -70,7 +70,7 @@ public class SettingsService(RecipeDbContext dbContext, ILogger<SettingsService>
             AddedBy = null,
             Ingredients = [],
             RecipeInstructions = null,
-            CreatedAt = DateTimeOffset.UtcNow,
+            CreatedAt = clock.UtcNow,
             SourceType = "synthesized",
             CanReimport = false,
             ImageCount = 0

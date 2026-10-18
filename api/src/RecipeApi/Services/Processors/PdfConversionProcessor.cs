@@ -8,7 +8,7 @@ using RecipeApi.Workflow;
 namespace RecipeApi.Services.Processors;
 
 /// <summary>Adapts a retained PDF to the ordinary photo workflow, without acquisition flag checks.</summary>
-public sealed class PdfConversionProcessor(RecipeDbContext db, IRecipeStore store, IPdfPageRenderer renderer) : IWorkflowProcessor
+public sealed class PdfConversionProcessor(IClock clock, RecipeDbContext db, IRecipeStore store, IPdfPageRenderer renderer) : IWorkflowProcessor
 {
     // Includes publication/metadata updates so two attempts cannot interleave.
     private static readonly SemaphoreSlim Gate = new(1, 1);
@@ -47,7 +47,7 @@ public sealed class PdfConversionProcessor(RecipeDbContext db, IRecipeStore stor
             }
             recipe.ImageCount = info.ImageCount;
             recipe.FinishedDishIndex = -1;
-            recipe.UpdatedAt = DateTimeOffset.UtcNow;
+            recipe.UpdatedAt = clock.UtcNow;
             await db.SaveChangesAsync(ct);
             return new { recipeId = id, imageCount = info.ImageCount };
         }

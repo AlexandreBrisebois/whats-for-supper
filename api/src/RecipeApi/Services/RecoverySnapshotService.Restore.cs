@@ -34,7 +34,9 @@ public partial class RecoverySnapshotService
         var journalWritten = false;
         try
         {
-            var manifest = await ValidateAndStageAsync(source, stage, snapshotId, ct);
+            RecoveryManifest manifest;
+            try { manifest = await ValidateAndStageAsync(source, stage, snapshotId, ct); }
+            catch (InvalidOperationException ex) { throw new InvalidDataException("Snapshot JSON has an invalid content shape.", ex); }
             await using var connection = await OpenAsync(ct);
             await using var transaction = await connection.BeginTransactionAsync(ct);
             try { await ValidateTablesAsync(connection, stage, manifest, ct); }
@@ -174,7 +176,7 @@ public partial class RecoverySnapshotService
         var names = new HashSet<string>(StringComparer.Ordinal);
         foreach (var file in manifest.Files)
         {
-            if (file.Path is null || file.Path.Contains('\\') || Path.IsPathRooted(file.Path) || file.Path.Split('/').Any(p => p is "" or "." or "..") || !names.Add(file.Path) || file.Length < 0)
+            if (file is null || file.Path is null || file.Path.Contains('\\') || Path.IsPathRooted(file.Path) || file.Path.Split('/').Any(p => p is "" or "." or "..") || !names.Add(file.Path) || file.Length < 0)
                 throw new InvalidDataException("Unsafe or duplicate inventory path.");
             var original = Path.Combine(source, file.Path);
             if (!File.Exists(original)) throw new InvalidDataException($"Missing required artifact: {file.Path}");

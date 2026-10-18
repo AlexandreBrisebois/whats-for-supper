@@ -35,10 +35,10 @@ public class RecipeImportReport
     public Guid? UpdatedBy { get; set; }
 
     [Column("created_at")]
-    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset CreatedAt { get; set; }
 
     [Column("updated_at")]
-    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset UpdatedAt { get; set; }
 
     [Column("last_workflow_instance_id")]
     public Guid? LastWorkflowInstanceId { get; set; }

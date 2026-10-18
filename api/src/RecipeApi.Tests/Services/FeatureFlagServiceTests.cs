@@ -87,7 +87,7 @@ public class FeatureFlagServiceTests
             ["WFS_FEATURE_PLANNER_HOLD_TO_MOVE"] = mode
         }).Build();
         var registry = new FeatureFlagRegistry(configuration, NullLogger<FeatureFlagRegistry>.Instance);
-        return new FeatureFlagService(db, registry);
+        return new FeatureFlagService(new RecipeApi.Services.SystemClock(), db, registry);
     }
 
     private static RecipeDbContext CreateDb()

@@ -25,7 +25,7 @@ public sealed class RecipeImportIndexingTests
             var yaml = await File.ReadAllTextAsync(Path.Combine(root!.FullName, "api", "src", "RecipeApi", "Workflows", name + ".yaml"));
             await storage.SaveAsync("workflows", name + ".yaml", yaml);
         }
-        return new WorkflowOrchestrator(new WorkflowRepository(storage), db);
+        return new WorkflowOrchestrator(new RecipeApi.Services.SystemClock(), new WorkflowRepository(storage), db);
     }
 
     [Fact]

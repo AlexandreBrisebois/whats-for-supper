@@ -39,7 +39,7 @@ public class IngredientCategoryServiceTests : IAsyncLifetime
             .Returns(Task.CompletedTask);
 
         var serviceLogger = _scope.ServiceProvider.GetRequiredService<ILogger<IngredientCategoryService>>();
-        _service = new IngredientCategoryService(_db, _recomputeMock.Object, serviceLogger);
+        _service = new IngredientCategoryService(new RecipeApi.Services.SystemClock(), _db, _recomputeMock.Object, serviceLogger);
     }
 
     public async Task DisposeAsync()

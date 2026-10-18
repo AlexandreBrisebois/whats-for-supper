@@ -157,7 +157,7 @@ public class RecoveryExportFreshnessTests : IAsyncLifetime
         Db.Recipes.Add(recipe);
         await Db.SaveChangesAsync();
         await Service.BackupAsync();
-        var processor = new SyncRecipeProcessor(Db,
+        var processor = new SyncRecipeProcessor(_scope.ServiceProvider.GetRequiredService<IClock>(), Db,
             new RecipeRepository(_scope.ServiceProvider.GetRequiredService<IStorageProvider>()),
             _scope.ServiceProvider.GetRequiredService<GroceryRecomputeService>(),
             Microsoft.Extensions.Logging.Abstractions.NullLogger<SyncRecipeProcessor>.Instance);

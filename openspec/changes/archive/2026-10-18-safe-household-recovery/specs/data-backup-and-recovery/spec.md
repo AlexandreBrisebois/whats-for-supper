@@ -129,7 +129,7 @@ The system SHALL provide explicit exact snapshot and restore operations distinct
 
 #### Scenario: Interrupted cross-store publication
 - **WHEN** interruption occurs around file-generation activation or database commit
-- **THEN** a durable operation journal and database commit identity select the committed generation or roll back to the prior generation before household operations resume
+- **THEN** recovery selects the complete committed state or restores the complete prior state before household operations resume
 - **AND** retry neither duplicates facts/history nor reports an incomplete restore as successful
 
 #### Scenario: Legacy omission is not exact emptiness

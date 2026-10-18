@@ -11,7 +11,8 @@ public sealed class RecoveryBusyException(string message) : Exception(message);
 /// <summary>Cross-process leases. Order is always publication, then writes; never upgrade a held lease.</summary>
 public sealed class RecoveryBoundary(RecipeDbContext db, IConfiguration configuration, RecipesRootResolver recipes)
 {
-    public bool Enabled => !string.IsNullOrWhiteSpace(configuration["Recovery:BackupRoot"]);
+    public bool Enabled => !string.IsNullOrWhiteSpace(configuration["Recovery:BackupRoot"])
+        || File.Exists(Path.Combine(recipes.BaseRoot, ".recovery-journal.json"));
     public async Task<IAsyncDisposable> EnterAsync(RecoveryAccess access, CancellationToken ct)
     {
         if (!Enabled) return new EmptyLease();

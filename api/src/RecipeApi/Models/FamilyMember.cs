@@ -23,10 +23,10 @@ public class FamilyMember
     public string? PreferredLanguage { get; set; }
 
     [Column("created_at")]
-    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset CreatedAt { get; set; }
 
     [Column("updated_at")]
-    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset UpdatedAt { get; set; }
 
     public ICollection<Recipe> Recipes { get; set; } = [];
 }

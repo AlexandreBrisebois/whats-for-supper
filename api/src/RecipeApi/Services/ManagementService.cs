@@ -210,7 +210,7 @@ public partial class ManagementService(
                     ["embeddingStatus"] = canReuseEmbedding ? "ready" : "pending",
                     ["embeddingFingerprint"] = canReuseEmbedding ? sourceFingerprint : null,
                     ["sourceFingerprint"] = sourceFingerprint,
-                    ["exportedAt"] = DateTimeOffset.UtcNow.ToString("O")
+                    ["exportedAt"] = clock.UtcNow.ToString("O")
                 };
 
                 // Embed the raw float array if present
@@ -310,7 +310,14 @@ public partial class ManagementService(
         EnsureDemoSnapshotExists();
 
         var familyMembers = await ReadJsonAsync<List<FamilyMember>>(Path.Combine(DemoRoot, "family-members.json"), ct) ?? [];
+        FillMissingMemberTimestamps(familyMembers);
         var recipes = await ReadJsonAsync<List<Recipe>>(Path.Combine(DemoRoot, "recipes.json"), ct) ?? [];
+        var restoredAt = clock.UtcNow;
+        foreach (var recipe in recipes)
+        {
+            if (recipe.CreatedAt == default) recipe.CreatedAt = restoredAt;
+            if (recipe.UpdatedAt == default) recipe.UpdatedAt = restoredAt;
+        }
         var searchDocuments = await ReadJsonAsync<List<RecipeSearchDocument>>(Path.Combine(DemoRoot, "recipe-search-documents.json"), ct) ?? [];
         var history = (await ReadInterestAsync(Path.Combine(DemoRoot, "weekly-household-interest.json"), true, ct))!;
         if (history.Rows.Any(row => !recipes.Any(recipe => recipe.Id == row.RecipeId)))
@@ -807,6 +814,7 @@ public partial class ManagementService(
         {
             var json3 = await File.ReadAllTextAsync(membersPath, ct);
             var members = JsonSerializer.Deserialize<List<FamilyMember>>(json3, JsonDefaults.CamelCase) ?? [];
+            FillMissingMemberTimestamps(members);
             logger.LogInformation("Found {Count} family members to restore", members.Count);
             foreach (var member in members)
             {
@@ -822,7 +830,7 @@ public partial class ManagementService(
                     existing.Name = member.Name;
                     existing.BrowseViewMode = member.BrowseViewMode;
                     existing.PreferredLanguage = member.PreferredLanguage;
-                    existing.UpdatedAt = DateTimeOffset.UtcNow;
+                    existing.UpdatedAt = clock.UtcNow;
                     result.MembersUpdated++;
                 }
             }
@@ -893,8 +901,8 @@ public partial class ManagementService(
                             ImageCount = info.ImageCount,
                             FinishedDishIndex = info.FinishedDishImageIndex,
                             IsSynthesized = info.IsSynthesized,
-                            CreatedAt = info.CreatedAt == default ? DateTimeOffset.UtcNow : info.CreatedAt,
-                            UpdatedAt = DateTimeOffset.UtcNow,
+                            CreatedAt = info.CreatedAt == default ? clock.UtcNow : info.CreatedAt,
+                            UpdatedAt = clock.UtcNow,
                             Category = info.Category,
                             CuisineType = info.CuisineType,
                             MealTypes = info.MealTypes,
@@ -926,7 +934,7 @@ public partial class ManagementService(
                         using var doc = JsonDocument.Parse(currentJson);
                         var rootElement = doc.RootElement;
 
-                        recipe ??= new Recipe { Id = recipeId };
+                        recipe ??= new Recipe { Id = recipeId, CreatedAt = clock.UtcNow, UpdatedAt = clock.UtcNow };
 
                         logger.LogDebug("Loaded recipe.json for {RecipeId}", recipeId);
 
@@ -993,8 +1001,8 @@ public partial class ManagementService(
                 {
                     Id = memberId,
                     Name = $"Recovered Member {memberId.ToString()[..4]}",
-                    CreatedAt = DateTimeOffset.UtcNow,
-                    UpdatedAt = DateTimeOffset.UtcNow
+                    CreatedAt = clock.UtcNow,
+                    UpdatedAt = clock.UtcNow
                 });
                 result.MembersAdded++;
             }
@@ -1043,7 +1051,7 @@ public partial class ManagementService(
                     existing.MealTypes = recipe.MealTypes;
                     existing.IsReady = explicitReadiness.GetValueOrDefault(recipe.Id, !pendingPdfIds.Contains(recipe.Id));
                     if (recipe.DeletedAt.HasValue) existing.DeletedAt = recipe.DeletedAt;
-                    existing.UpdatedAt = DateTimeOffset.UtcNow;
+                    existing.UpdatedAt = clock.UtcNow;
                     result.RecipesUpdated++;
                 }
                 await db.SaveChangesAsync(ct);
@@ -1120,7 +1128,7 @@ public partial class ManagementService(
                         EmbeddingStatus = embeddingModel == configuredModel && embeddingFingerprint == sourceFingerprint && embeddingStatus == "ready" ? "ready" : "pending",
                         EmbeddingFingerprint = embeddingModel == configuredModel && embeddingFingerprint == sourceFingerprint ? embeddingFingerprint : null,
                         SourceFingerprint = sourceFingerprint,
-                        LastIndexedAt = DateTimeOffset.UtcNow,
+                        LastIndexedAt = clock.UtcNow,
                         SchemaVersion = RecipeSearchDocumentBuilder.CurrentSchemaVersion
                     });
                 }
@@ -1135,7 +1143,7 @@ public partial class ManagementService(
                     existing.EmbeddingStatus = embeddingModel == configuredModel && embeddingFingerprint == sourceFingerprint && embeddingStatus == "ready" ? "ready" : "pending";
                     existing.EmbeddingFingerprint = embeddingModel == configuredModel && embeddingFingerprint == sourceFingerprint ? embeddingFingerprint : null;
                     existing.SourceFingerprint = sourceFingerprint;
-                    existing.LastIndexedAt = DateTimeOffset.UtcNow;
+                    existing.LastIndexedAt = clock.UtcNow;
                     existing.SchemaVersion = RecipeSearchDocumentBuilder.CurrentSchemaVersion;
                 }
 
@@ -1157,6 +1165,7 @@ public partial class ManagementService(
             foreach (var plan in plans)
             {
                 if (ct.IsCancellationRequested) break;
+                if (plan.CreatedAt == default) plan.CreatedAt = clock.UtcNow;
                 var existing = await db.WeeklyPlans.FindAsync(new object[] { plan.Id }, ct);
                 if (existing == null) db.WeeklyPlans.Add(plan);
                 else db.Entry(existing).CurrentValues.SetValues(plan);
@@ -1218,7 +1227,7 @@ public partial class ManagementService(
                     Id = Guid.NewGuid(),
                     WeekStartDate = monday,
                     Status = WeeklyPlanStatus.Locked, // Historical data is assumed Locked
-                    CreatedAt = DateTimeOffset.UtcNow
+                    CreatedAt = clock.UtcNow
                 });
                 initializedPlans++;
             }
@@ -1291,7 +1300,7 @@ public partial class ManagementService(
                             Confidence = confidence,
                             Source = source,
                             CreatedAt = createdAt,
-                            UpdatedAt = DateTimeOffset.UtcNow
+                            UpdatedAt = clock.UtcNow
                         });
                     }
                     else
@@ -1299,7 +1308,7 @@ public partial class ManagementService(
                         existing.GrocerySection = grocerySection;
                         existing.Confidence = confidence;
                         existing.Source = source;
-                        existing.UpdatedAt = DateTimeOffset.UtcNow;
+                        existing.UpdatedAt = clock.UtcNow;
                     }
                     categoriesUpserted++;
                 }
@@ -1427,8 +1436,8 @@ public partial class ManagementService(
         {
             Id = id,
             Name = $"Recovered Member {id.ToString()[..4]}",
-            CreatedAt = DateTimeOffset.UtcNow,
-            UpdatedAt = DateTimeOffset.UtcNow
+            CreatedAt = clock.UtcNow,
+            UpdatedAt = clock.UtcNow
         }).ToList();
 
         result.MembersAdded = await MergeFamilyMembersAsync(placeholders);
@@ -1555,6 +1564,16 @@ public partial class ManagementService(
             RecipeImportReportsBackupPath);
     }
 
+    private void FillMissingMemberTimestamps(IEnumerable<FamilyMember> members)
+    {
+        var now = clock.UtcNow;
+        foreach (var member in members)
+        {
+            if (member.CreatedAt == default) member.CreatedAt = now;
+            if (member.UpdatedAt == default) member.UpdatedAt = now;
+        }
+    }
+
     private async Task<int> MergeFamilyMembersAsync(List<FamilyMember> sourceMembers)
     {
         var membersPath = Path.Combine(DataRoot, "family-members.json");
@@ -1563,6 +1582,7 @@ public partial class ManagementService(
         {
             var json9 = await File.ReadAllTextAsync(membersPath);
             existingMembers = JsonSerializer.Deserialize<List<FamilyMember>>(json9, JsonDefaults.CamelCase) ?? [];
+            FillMissingMemberTimestamps(existingMembers);
         }
 
         int addedCount = 0;

@@ -46,9 +46,6 @@ public sealed record HistoricalInterestSnapshot(string Generation, int Weeks, IR
 
 public sealed class HistoricalInterestService(RecipeDbContext db, IClock clock, DeploymentCalendar calendar, HistoricalInterestOptions options)
 {
-    internal static HistoricalInterestService Default(RecipeDbContext db, IClock? clock = null, DeploymentCalendar? calendar = null)
-        => new(db, clock ?? new SystemClock(), calendar ?? new(new ConfigurationManager()), new(new ConfigurationManager()));
-
     public async Task<HistoricalInterestSnapshot> CaptureAsync(CancellationToken ct = default)
     {
         var monday = calendar.Capture(clock.UtcNow).CurrentWeekStartDate;

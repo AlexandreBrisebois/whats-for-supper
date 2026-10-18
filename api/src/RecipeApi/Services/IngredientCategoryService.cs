@@ -5,6 +5,7 @@ using RecipeApi.Models;
 namespace RecipeApi.Services;
 
 public class IngredientCategoryService(
+    IClock clock,
     RecipeDbContext db,
     GroceryRecomputeService groceryRecompute,
     ILogger<IngredientCategoryService> logger)
@@ -29,8 +30,8 @@ public class IngredientCategoryService(
                 GrocerySection = grocerySection,
                 Confidence = 1.0,
                 Source = "manual",
-                CreatedAt = DateTimeOffset.UtcNow,
-                UpdatedAt = DateTimeOffset.UtcNow,
+                CreatedAt = clock.UtcNow,
+                UpdatedAt = clock.UtcNow,
             });
         }
         else
@@ -38,7 +39,7 @@ public class IngredientCategoryService(
             existing.GrocerySection = grocerySection;
             existing.Source = "manual";
             existing.Confidence = 1.0;
-            existing.UpdatedAt = DateTimeOffset.UtcNow;
+            existing.UpdatedAt = clock.UtcNow;
         }
 
         await db.SaveChangesAsync(ct);

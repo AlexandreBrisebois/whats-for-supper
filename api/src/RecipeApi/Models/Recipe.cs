@@ -101,10 +101,10 @@ public class Recipe
     public string? DeleteNote { get; set; }
 
     [Column("created_at")]
-    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset CreatedAt { get; set; }
 
     [Column("updated_at")]
-    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset UpdatedAt { get; set; }
 
     [Column("last_cooked_date")]
     public DateTimeOffset? LastCookedDate { get; set; }

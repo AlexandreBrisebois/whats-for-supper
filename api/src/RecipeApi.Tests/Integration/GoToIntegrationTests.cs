@@ -22,7 +22,7 @@ public class GoToIntegrationTests : IAsyncLifetime
         _scope = _factory.Services.CreateScope();
         _db = _scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
         var logger = _scope.ServiceProvider.GetRequiredService<ILogger<GoToService>>();
-        _service = new GoToService(_db, logger);
+        _service = new GoToService(new RecipeApi.Services.SystemClock(), _db, logger);
     }
 
     public async Task DisposeAsync()

@@ -13,6 +13,7 @@ namespace RecipeApi.Controllers;
 [SkipWrapping]
 [Microsoft.AspNetCore.Authorization.AllowAnonymous]
 public class HealthController(
+    IClock clock,
     RecipeDbContext db,
     DemoModeOptions demoMode,
     CronScheduleCalculator scheduleCalculator) : ControllerBase
@@ -52,21 +53,21 @@ public class HealthController(
         var response = new HealthCheckResponseDto
         {
             Status = overallHealthy ? "healthy" : "unhealthy",
-            Timestamp = DateTimeOffset.UtcNow,
+            Timestamp = clock.UtcNow,
             Checks = checks,
             DemoMode = demoMode.Enabled,
             DemoModeRawValue = demoMode.RawValue ?? string.Empty,
-            DemoRestoreCronValid = IsCronValid(demoMode.RestoreCronUtc, scheduleCalculator)
+            DemoRestoreCronValid = IsCronValid(demoMode.RestoreCronUtc, scheduleCalculator, clock.UtcNow)
         };
 
         return overallHealthy ? Ok(response) : StatusCode(503, response);
     }
 
-    private static bool IsCronValid(string cronExpression, CronScheduleCalculator scheduleCalculator)
+    private static bool IsCronValid(string cronExpression, CronScheduleCalculator scheduleCalculator, DateTimeOffset now)
     {
         try
         {
-            _ = scheduleCalculator.GetNextOccurrence(cronExpression, DateTimeOffset.UtcNow);
+            _ = scheduleCalculator.GetNextOccurrence(cronExpression, now);
             return true;
         }
         catch

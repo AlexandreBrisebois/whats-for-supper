@@ -23,7 +23,7 @@ public class DiscoveryServiceTests
         await using var ctx = TestDbContextFactory.Create();
         var id = Guid.NewGuid();
         var member = Guid.NewGuid();
-        var monday = DeploymentCalendar.Monday(DateOnly.FromDateTime(DateTime.UtcNow));
+        var monday = new DateOnly(2026, 10, 12);
         ctx.DiscoveryRecipes.Add(new DiscoveryRecipe { Id = id, Category = "Supper" });
         ctx.CalendarEvents.Add(new CalendarEvent { Id = Guid.NewGuid(), RecipeId = id, Date = monday.AddDays(days), Status = status });
         await ctx.SaveChangesAsync();
@@ -33,7 +33,12 @@ public class DiscoveryServiceTests
     }
 
     private static DiscoveryService MakeService(RecipeDbContext ctx)
-        => new(ctx, new Mock<IScheduleEventPublisher>().Object, new SystemClock(), new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()));
+        {
+        var clock = new RecipeApi.Tests.Integration.DeploymentCalendarIntegrationTests.CalendarClock();
+        var calendar = new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager());
+        return new(ctx, new Mock<IScheduleEventPublisher>().Object, clock, calendar,
+            TestHistoricalInterest.Create(ctx, clock, calendar));
+    }
 
     [Fact]
     public async Task GetRecipesForDiscoveryAsync_Returns_Only_Unvoted_Recipes()

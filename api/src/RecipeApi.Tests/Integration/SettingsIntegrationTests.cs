@@ -25,7 +25,7 @@ public class SettingsIntegrationTests : IAsyncLifetime
         _scope = _factory.Services.CreateScope();
         _db = _scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
         var logger = _scope.ServiceProvider.GetRequiredService<ILogger<SettingsService>>();
-        _service = new SettingsService(_db, logger);
+        _service = new SettingsService(new RecipeApi.Services.SystemClock(), _db, logger);
     }
 
     public async Task DisposeAsync()

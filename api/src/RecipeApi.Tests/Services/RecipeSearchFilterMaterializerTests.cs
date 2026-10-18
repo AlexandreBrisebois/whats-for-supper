@@ -102,7 +102,7 @@ public class RecipeSearchFilterMaterializerTests : IDisposable
         });
         await _db.SaveChangesAsync();
         var grocery = new GroceryRecomputeService(_db, new AisleMapper(), NullLogger<GroceryRecomputeService>.Instance, new SystemClock(), new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()));
-        var schedule = new ScheduleService(_db, NullLogger<ScheduleService>.Instance, new Mock<IScheduleEventPublisher>().Object, grocery, _clock, new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()));
+        var schedule = new ScheduleService(_db, NullLogger<ScheduleService>.Instance, new Mock<IScheduleEventPublisher>().Object, grocery, _clock, new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()), RecipeApi.Tests.Infrastructure.TestHistoricalInterest.Create(_db, _clock, new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager())));
         var backfill = new RecipeSearchFilterBackfillService(schedule, new RecipeSearchFilterMaterializer(_db, _clock));
 
         await backfill.InitializeAsync(CancellationToken.None);

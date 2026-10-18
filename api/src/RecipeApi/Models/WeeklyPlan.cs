@@ -36,5 +36,5 @@ public class WeeklyPlan
     public string GroceryItems { get; set; } = "[]";
 
     [Column("created_at")]
-    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset CreatedAt { get; set; }
 }

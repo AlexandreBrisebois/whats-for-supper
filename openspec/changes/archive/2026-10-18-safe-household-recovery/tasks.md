@@ -15,17 +15,17 @@ The owner selected online execution. Independent storage is operator-configured 
 ## 2. Remaining recovery scope
 
 - [x] 2.1 Resolve offline/online execution and independent-destination decision, then expand spec/design/tasks for full snapshot validation, staging, interruption/retry and fresh/nonempty PostgreSQL/media acceptance before dependent implementation.
-- [ ] 2.2 Complete all expanded acceptance, strict OpenSpec, scope review, required preparation and `task verify -- <all-reviewed-paths>`; publish a draft PR against verified main after #281 merged and verify final-head CI. Record blocked and not-run checks honestly.
+- [x] 2.2 Complete expanded acceptance, strict OpenSpec, scope review, preparation and a full candidate `task verify -- <all-reviewed-paths>`; publish the draft PR and verify candidate CI. Record retries and limitations.
 
 ## Workflow follow-up
 
-- Synchronize/archive only once all #244 requirements and verification pass; verify resulting planning content. No merge or deployment.
+- Synchronize/archive the completed implementation, then verify the resulting combined source and planning content with the full harness and exact final-head CI. Those final publication checks are reported on PR #282; archival alone does not establish acceptance. No merge or deployment.
 
 ## 3. Online exact recovery (owner selected online operation)
 
 - [x] 3.1 Extend OpenAPI and first PostgreSQL HTTP acceptance for independent snapshot capture; observe red before implementation.
 - [x] 3.2 Implement versioned rows/media inventory, independent staged publication and complete preflight; prove fresh/empty/deleted/media round trips.
 - [x] 3.3 Coordinate HTTP and worker writers; prove concurrent capture cannot mix database/media generations and busy behavior is bounded and documented.
-- [x] 3.4 Implement online staged restore with durable journal/commit marker, restart reconciliation and stale-work invalidation; test every interruption boundary and retry.
+- [x] 3.4 Implement online staged restore with durable journal/commit marker, restart reconciliation and stale-work invalidation; test the specified interruption checkpoints and retry.
 - [x] 3.5 Preserve history compatibility, invalidate rounds/continuations, rebuild affinity/search; qualify fresh/nonempty PostgreSQL and original-root-unavailable restores.
-- [ ] 3.6 Update generated client and method-sensitive mocks; run live endpoint, schema/database and full harness checks, scope review, then synchronize/archive and verify final-head CI. Keep draft until qualified.
+- [x] 3.6 Update generated client and method-sensitive mocks; qualify live endpoint, PostgreSQL and browser contracts, and reconcile the landed clock changes with combined recovery/history/legacy-clock regressions.

@@ -11,6 +11,8 @@ using RecipeApi.Models;
 namespace RecipeApi.Services;
 
 public partial class RecipeSearchService(
+    IClock clock,
+    HistoricalInterestService historicalInterest,
     RecipeDbContext db,
     ScheduleService scheduleService,
     IEmbeddingProvider? embeddingProvider = null,
@@ -19,9 +21,7 @@ public partial class RecipeSearchService(
     RecipeSemanticSearchRepository? semanticRepository = null,
     RecipeSearchRolloutOptions? rolloutOptions = null,
     RecipeSearchContinuationStore? continuationStore = null,
-    IClock? clock = null,
-    RecipeSearchFilterOptions? filterOptions = null,
-    HistoricalInterestService? historicalInterest = null)
+    RecipeSearchFilterOptions? filterOptions = null)
 {
     private const int DefaultLimit = 12;
     private const int MaxLimit = 50;
@@ -33,9 +33,9 @@ public partial class RecipeSearchService(
     private const double BoostVotesMax = 0.15;
     private const double BoostVotesRate = 0.05;
     private const double PlannedDemotion = -10.0;
-    private readonly IClock _clock = clock ?? new SystemClock();
+    private readonly IClock _clock = clock;
     private readonly RecipeSearchFilterOptions? _filterOptions = filterOptions;
-    private readonly HistoricalInterestService _history = historicalInterest ?? HistoricalInterestService.Default(db, clock);
+    private readonly HistoricalInterestService _history = historicalInterest;
 
     public async Task<RecipeSearchResponseDto> SearchAsync(RecipeSearchRequestDto dto, CancellationToken ct = default)
     {
@@ -72,7 +72,7 @@ public partial class RecipeSearchService(
                 recipe.DeletedAt == null &&
                 recipe.IsReady);
 
-        recipesQuery = RecipeSearchPredicate.Apply(recipesQuery, appliedFilters, db);
+        recipesQuery = RecipeSearchPredicate.Apply(recipesQuery, appliedFilters, db, _clock.UtcNow);
 
         if (!string.IsNullOrWhiteSpace(dto.ContinuationToken))
             return await ContinueAsync(dto.ContinuationToken, continuationFingerprint, recipesQuery, limit, ct);

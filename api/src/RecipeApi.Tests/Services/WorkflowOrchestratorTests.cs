@@ -27,7 +27,7 @@ public class WorkflowOrchestratorTests : IDisposable
         _dbContext = TestDbContextFactory.Create();
         _storage = new InMemoryStorageProvider();
         _workflowRepository = new WorkflowRepository(_storage);
-        _orchestrator = new WorkflowOrchestrator(_workflowRepository, _dbContext);
+        _orchestrator = new WorkflowOrchestrator(new RecipeApi.Services.SystemClock(), _workflowRepository, _dbContext);
     }
 
     public void Dispose()

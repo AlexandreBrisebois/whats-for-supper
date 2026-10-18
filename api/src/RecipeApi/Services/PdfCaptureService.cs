@@ -7,6 +7,7 @@ namespace RecipeApi.Services;
 
 /// <summary>Acceptance only. PDF validity and page rendering belong to recipe-import.</summary>
 public sealed class PdfCaptureService(
+    IClock clock,
     RecipeDbContext db, IRecipeStore store, IWorkflowOrchestrator orchestrator,
     ILogger<PdfCaptureService> logger)
 {
@@ -29,7 +30,7 @@ public sealed class PdfCaptureService(
         buffer.Position = 0;
 
         var id = Guid.NewGuid();
-        var now = DateTimeOffset.UtcNow;
+        var now = clock.UtcNow;
         notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim();
         await store.SaveSourcePdfAsync(id, buffer, ct);
         await store.WriteInfoAsync(new RecipeInfo

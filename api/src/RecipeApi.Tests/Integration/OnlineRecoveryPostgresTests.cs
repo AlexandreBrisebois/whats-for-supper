@@ -224,6 +224,7 @@ public class OnlineRecoveryPostgresTests : IAsyncLifetime
     [InlineData("history")]
     [InlineData("unlisted")]
     [InlineData("missing-media")]
+    [InlineData("null-inventory-entry")]
     public async Task Preflight_RejectsIncompleteOrIncompatibleSetsWithoutLiveMutation(string corruption)
     {
         using var scope = app.Services.CreateScope();
@@ -231,10 +232,11 @@ public class OnlineRecoveryPostgresTests : IAsyncLifetime
         var capture = await service.CaptureAsync(CancellationToken.None);
         var folder = Path.Combine(backup, capture.SnapshotId!.Value.ToString("N"));
         var manifestPath = Path.Combine(folder, "manifest.json");
-        if (corruption == "version")
+        if (corruption is "version" or "null-inventory-entry")
         {
             var manifest = System.Text.Json.Nodes.JsonNode.Parse(await File.ReadAllTextAsync(manifestPath))!;
-            manifest["version"] = 999;
+            if (corruption == "version") manifest["version"] = 999;
+            else manifest["files"]!.AsArray().Add((System.Text.Json.Nodes.JsonNode?)null);
             await File.WriteAllTextAsync(manifestPath, manifest.ToJsonString());
         }
         else if (corruption == "history") File.Delete(Path.Combine(folder, "weekly-household-interest.json"));
@@ -271,6 +273,10 @@ public class OnlineRecoveryPostgresTests : IAsyncLifetime
         }
         using var client = app.CreateAuthenticatedClient();
         Assert.Equal(HttpStatusCode.ServiceUnavailable, (await client.GetAsync("/api/family")).StatusCode);
+        var configuration = services.GetRequiredService<IConfiguration>();
+        configuration["Recovery:BackupRoot"] = null;
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, (await client.GetAsync("/api/family")).StatusCode);
+        configuration["Recovery:BackupRoot"] = backup;
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/management/recovery/status")).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await client.PostAsync("/api/management/recovery/resume", null)).StatusCode);
         Assert.Equal(committed ? generation : null, root.Generation);
@@ -331,7 +337,8 @@ public class OnlineRecoveryPostgresTests : IAsyncLifetime
     [PostgresTheory]
     [InlineData("foreign-key")]
     [InlineData("duplicate-key")]
-    public async Task NativePreflight_RejectsRelationalCorruptionEvenWhenHashesMatch(string corruption)
+    [InlineData("recipe-shape")]
+    public async Task NativePreflight_RejectsInvalidRowsEvenWhenHashesMatch(string corruption)
     {
         using var scope = app.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
@@ -339,13 +346,14 @@ public class OnlineRecoveryPostgresTests : IAsyncLifetime
         await db.SaveChangesAsync();
         var snapshot = await scope.ServiceProvider.GetRequiredService<RecoverySnapshotService>().CaptureAsync(CancellationToken.None);
         var folder = Path.Combine(backup, snapshot.SnapshotId!.Value.ToString("N"));
-        var path = Path.Combine(folder, "tables/family_members.json");
+        var tablePath = corruption == "recipe-shape" ? "tables/recipes.json" : "tables/family_members.json";
+        var path = Path.Combine(folder, tablePath);
         var rows = System.Text.Json.Nodes.JsonNode.Parse(await File.ReadAllTextAsync(path))!.AsArray();
-        if (corruption == "foreign-key") rows.Clear(); else rows.Add(rows[0]!.DeepClone());
-        await File.WriteAllTextAsync(path, rows.ToJsonString());
+        if (corruption == "foreign-key") rows.Clear(); else if (corruption == "duplicate-key") rows.Add(rows[0]!.DeepClone());
+        await File.WriteAllTextAsync(path, corruption == "recipe-shape" ? "{}" : rows.ToJsonString());
         var manifestPath = Path.Combine(folder, "manifest.json");
         var manifest = System.Text.Json.Nodes.JsonNode.Parse(await File.ReadAllTextAsync(manifestPath))!;
-        var entry = manifest["files"]!.AsArray().Single(f => f!["path"]!.GetValue<string>() == "tables/family_members.json")!;
+        var entry = manifest["files"]!.AsArray().Single(f => f!["path"]!.GetValue<string>() == tablePath)!;
         var bytes = await File.ReadAllBytesAsync(path);
         entry["length"] = bytes.Length;
         entry["sha256"] = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(bytes));
@@ -426,9 +434,9 @@ public class OnlineRecoveryPostgresTests : IAsyncLifetime
         db.WorkflowTasks.Add(task);
         await db.SaveChangesAsync();
         var lease = await services.GetRequiredService<RecoveryBoundary>().EnterAsync(RecoveryAccess.Publish, CancellationToken.None);
-        using var worker = new WorkflowWorker(app.Services.GetRequiredService<IServiceScopeFactory>(),
+        using var worker = new WorkflowWorker(services.GetRequiredService<IClock>(), app.Services.GetRequiredService<IServiceScopeFactory>(),
             Microsoft.Extensions.Logging.Abstractions.NullLogger<WorkflowWorker>.Instance,
-            new RecipeApi.Services.Ai.AiExceptionHandler(Microsoft.Extensions.Logging.Abstractions.NullLogger<RecipeApi.Services.Ai.AiExceptionHandler>.Instance),
+            new RecipeApi.Services.Ai.AiExceptionHandler(services.GetRequiredService<IClock>(), Microsoft.Extensions.Logging.Abstractions.NullLogger<RecipeApi.Services.Ai.AiExceptionHandler>.Instance),
             Microsoft.Extensions.Options.Options.Create(new WorkflowRetryOptions()));
         var processing = worker.ProcessPendingTasksAsync(CancellationToken.None);
         try
