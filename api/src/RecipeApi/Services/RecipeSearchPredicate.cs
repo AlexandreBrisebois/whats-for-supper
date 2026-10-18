@@ -9,7 +9,7 @@ namespace RecipeApi.Services;
 /// <summary>Shared eligible-recipe and existing public hard-filter predicates for both retrieval paths.</summary>
 internal static class RecipeSearchPredicate
 {
-    public static IQueryable<Recipe> Apply(IQueryable<Recipe> query, RecipeSearchFiltersDto filters, RecipeDbContext db)
+    public static IQueryable<Recipe> Apply(IQueryable<Recipe> query, RecipeSearchFiltersDto filters, RecipeDbContext db, DateTimeOffset now)
     {
         var cuisines = NormalizeValues(filters.Cuisines);
         if (cuisines.Length > 0)
@@ -20,7 +20,7 @@ internal static class RecipeSearchPredicate
             query = query.Where(recipe => recipe.MealTypes != null && recipe.MealTypes.Any(mealType => mealTypes.Contains(mealType.ToLower())));
 
         if (filters.NewRecipes == true)
-            query = query.Where(recipe => recipe.CreatedAt >= DateTimeOffset.UtcNow.AddDays(-30));
+            query = query.Where(recipe => recipe.CreatedAt >= now.AddDays(-30));
         if (filters.NeverCooked == true)
             query = query.Where(recipe => recipe.LastCookedDate == null);
         if (filters.FamilyFavorite == true)
@@ -39,7 +39,7 @@ internal static class RecipeSearchPredicate
         return query;
     }
 
-    public static string BuildSql(RecipeSearchFiltersDto filters, List<NpgsqlParameter> parameters)
+    public static string BuildSql(RecipeSearchFiltersDto filters, List<NpgsqlParameter> parameters, DateTimeOffset now)
     {
         var predicates = new List<string>();
         var cuisines = NormalizeValues(filters.Cuisines);
@@ -58,7 +58,7 @@ internal static class RecipeSearchPredicate
 
         if (filters.NewRecipes == true)
         {
-            parameters.Add(new NpgsqlParameter("newerThan", DateTimeOffset.UtcNow.AddDays(-30)));
+            parameters.Add(new NpgsqlParameter("newerThan", now.AddDays(-30)));
             predicates.Add("r.created_at >= @newerThan");
         }
         if (filters.NeverCooked == true) predicates.Add("r.last_cooked_date IS NULL");

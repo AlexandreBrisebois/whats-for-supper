@@ -20,6 +20,8 @@ namespace RecipeApi.Tests.Services;
 
 public class WorkflowWorkerTests : IAsyncLifetime
 {
+    private readonly RecipeApi.Tests.Integration.DeploymentCalendarIntegrationTests.CalendarClock _clock = new() { UtcNow = new DateTimeOffset(2026, 10, 12, 12, 0, 0, TimeSpan.Zero) };
+
     private readonly RecipeDbContext _db;
     private readonly WorkflowWorker _worker;
     private readonly IServiceProvider _serviceProvider;
@@ -75,7 +77,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
         var logger = loggerFactory.CreateLogger<WorkflowWorker>();
         var scopeFactory = _serviceProvider.GetRequiredService<IServiceScopeFactory>();
 
-        _worker = new WorkflowWorker(scopeFactory, logger, new AiExceptionHandler(new Mock<ILogger<AiExceptionHandler>>().Object), Options.Create(new WorkflowRetryOptions
+        _worker = new WorkflowWorker(_clock, scopeFactory, logger, new AiExceptionHandler(_clock, new Mock<ILogger<AiExceptionHandler>>().Object), Options.Create(new WorkflowRetryOptions
         {
             RetryScheduleMinutes = [1, 5, 20, 60, 300],
             MaxRetries = 10,
@@ -108,7 +110,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
     public async Task Worker_PicksUpPendingTasks_WhenScheduled()
     {
         // Arrange: Create workflow instance and pending task
-        var now = DateTimeOffset.UtcNow;
+        var now = _clock.UtcNow;
         var instance = new WorkflowInstance
         {
             Id = Guid.NewGuid(),
@@ -172,10 +174,10 @@ public class WorkflowWorkerTests : IAsyncLifetime
                 TaskName = $"extract_{i}",
                 ProcessorName = "ExtractRecipe",
                 Status = TaskStatus.Pending,
-                ScheduledAt = DateTimeOffset.UtcNow.AddSeconds(-1),
+                ScheduledAt = _clock.UtcNow.AddSeconds(-1),
                 Instance = instance,
-                CreatedAt = DateTimeOffset.UtcNow,
-                UpdatedAt = DateTimeOffset.UtcNow
+                CreatedAt = _clock.UtcNow,
+                UpdatedAt = _clock.UtcNow
             };
             _db.WorkflowTasks.Add(task);
             taskIds.Add(task.TaskId);
@@ -223,10 +225,10 @@ public class WorkflowWorkerTests : IAsyncLifetime
                 TaskName = $"extract_{i}",
                 ProcessorName = "ExtractRecipe",
                 Status = TaskStatus.Pending,
-                ScheduledAt = DateTimeOffset.UtcNow.AddSeconds(-1),
+                ScheduledAt = _clock.UtcNow.AddSeconds(-1),
                 Instance = instance,
-                CreatedAt = DateTimeOffset.UtcNow,
-                UpdatedAt = DateTimeOffset.UtcNow
+                CreatedAt = _clock.UtcNow,
+                UpdatedAt = _clock.UtcNow
             };
             _db.WorkflowTasks.Add(task);
         }
@@ -264,7 +266,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
             TaskName = "future_task",
             ProcessorName = "ExtractRecipe",
             Status = TaskStatus.Pending,
-            ScheduledAt = DateTimeOffset.UtcNow.AddSeconds(10),
+            ScheduledAt = _clock.UtcNow.AddSeconds(10),
             Instance = instance
         };
         _db.WorkflowTasks.Add(task);
@@ -322,7 +324,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
 
         await db.Database.EnsureCreatedAsync();
 
-        var testWorker = new WorkflowWorker(scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>(), new AiExceptionHandler(new Mock<ILogger<AiExceptionHandler>>().Object), Options.Create(new WorkflowRetryOptions
+        var testWorker = new WorkflowWorker(_clock, scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>(), new AiExceptionHandler(_clock, new Mock<ILogger<AiExceptionHandler>>().Object), Options.Create(new WorkflowRetryOptions
         {
             RetryScheduleMinutes = [1, 5, 20, 60, 300],
             MaxRetries = 10,
@@ -338,7 +340,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
         try { await initTask; } catch (OperationCanceledException) { }
 
         // Create instance and task
-        var now = DateTimeOffset.UtcNow;
+        var now = _clock.UtcNow;
         var instance = new WorkflowInstance
         {
             Id = Guid.NewGuid(),
@@ -383,7 +385,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
             $"ScheduledAt {updatedTask.ScheduledAt} not within 0.1 min of {expectedSchedule}");
 
         // Act: Manually set ScheduledAt to past, execute again — should retry with 4 minute backoff
-        var beforeSecondTry = DateTimeOffset.UtcNow;
+        var beforeSecondTry = _clock.UtcNow;
         updatedTask.ScheduledAt = now.AddSeconds(-1);
         await queryDb1.SaveChangesAsync();
 
@@ -439,7 +441,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
 
         await db.Database.EnsureCreatedAsync();
 
-        var testWorker = new WorkflowWorker(scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>(), new AiExceptionHandler(new Mock<ILogger<AiExceptionHandler>>().Object), Options.Create(new WorkflowRetryOptions
+        var testWorker = new WorkflowWorker(_clock, scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>(), new AiExceptionHandler(_clock, new Mock<ILogger<AiExceptionHandler>>().Object), Options.Create(new WorkflowRetryOptions
         {
             RetryScheduleMinutes = [1, 5, 20, 60, 300],
             MaxRetries = 10,
@@ -455,7 +457,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
         try { await initTask; } catch (OperationCanceledException) { }
 
         // Create instance and task
-        var now = DateTimeOffset.UtcNow;
+        var now = _clock.UtcNow;
         var instance = new WorkflowInstance
         {
             Id = Guid.NewGuid(),
@@ -510,7 +512,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
     public async Task DependencyPromotion_SimplestCase()
     {
         // Arrange: Single pending task with a waiting dependent
-        var now = DateTimeOffset.UtcNow;
+        var now = _clock.UtcNow;
         var instance = new WorkflowInstance
         {
             Id = Guid.NewGuid(),
@@ -584,7 +586,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
     public async Task DependencyPromotion_LinearChain_A_B_C()
     {
         // Arrange: Create 3-step linear chain A -> B -> C
-        var now = DateTimeOffset.UtcNow;
+        var now = _clock.UtcNow;
         var instance = new WorkflowInstance
         {
             Id = Guid.NewGuid(),
@@ -684,7 +686,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
     public async Task DependencyPromotion_DiamondDependencies()
     {
         // Arrange: Create diamond dependency structure: A -> B, A -> C, [B,C] -> D
-        var now = DateTimeOffset.UtcNow;
+        var now = _clock.UtcNow;
         var instance = new WorkflowInstance
         {
             Id = Guid.NewGuid(),
@@ -834,7 +836,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
 
         await db.Database.EnsureCreatedAsync();
 
-        var testWorker = new WorkflowWorker(scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>(), new AiExceptionHandler(new Mock<ILogger<AiExceptionHandler>>().Object), Options.Create(new WorkflowRetryOptions
+        var testWorker = new WorkflowWorker(_clock, scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>(), new AiExceptionHandler(_clock, new Mock<ILogger<AiExceptionHandler>>().Object), Options.Create(new WorkflowRetryOptions
         {
             RetryScheduleMinutes = [1, 5, 20, 60, 300],
             MaxRetries = 10,
@@ -849,7 +851,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
         initCts.Cancel();
         try { await initTask; } catch (OperationCanceledException) { }
 
-        var now = DateTimeOffset.UtcNow;
+        var now = _clock.UtcNow;
         var instance = new WorkflowInstance
         {
             Id = Guid.NewGuid(),
@@ -948,7 +950,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
 
         await db.Database.EnsureCreatedAsync();
 
-        var testWorker = new WorkflowWorker(scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>(), new AiExceptionHandler(new Mock<ILogger<AiExceptionHandler>>().Object), Options.Create(new WorkflowRetryOptions
+        var testWorker = new WorkflowWorker(_clock, scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>(), new AiExceptionHandler(_clock, new Mock<ILogger<AiExceptionHandler>>().Object), Options.Create(new WorkflowRetryOptions
         {
             RetryScheduleMinutes = [1, 5, 20, 60, 300],
             MaxRetries = 10,
@@ -963,7 +965,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
         initCts.Cancel();
         try { await initTask; } catch (OperationCanceledException) { }
 
-        var now = DateTimeOffset.UtcNow;
+        var now = _clock.UtcNow;
         var instance = new WorkflowInstance
         {
             Id = Guid.NewGuid(),
@@ -1047,13 +1049,13 @@ public class WorkflowWorkerTests : IAsyncLifetime
         var db = serviceProvider.GetRequiredService<RecipeDbContext>();
         var scopeFactory = serviceProvider.GetRequiredService<IServiceScopeFactory>();
 
-        var testWorker = new WorkflowWorker(scopeFactory, new Mock<ILogger<WorkflowWorker>>().Object, new AiExceptionHandler(new Mock<ILogger<AiExceptionHandler>>().Object), Options.Create(new WorkflowRetryOptions
+        var testWorker = new WorkflowWorker(_clock, scopeFactory, new Mock<ILogger<WorkflowWorker>>().Object, new AiExceptionHandler(_clock, new Mock<ILogger<AiExceptionHandler>>().Object), Options.Create(new WorkflowRetryOptions
         {
             RetryScheduleMinutes = [1],
             MaxRetries = 10
         }));
 
-        var now = DateTimeOffset.UtcNow;
+        var now = _clock.UtcNow;
         var instance = new WorkflowInstance { Id = Guid.NewGuid(), WorkflowId = "test", Status = WorkflowStatus.Processing };
         db.WorkflowInstances.Add(instance);
 
@@ -1190,7 +1192,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
 
         await db.Database.EnsureCreatedAsync();
 
-        var testWorker = new WorkflowWorker(scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>(), new AiExceptionHandler(new Mock<ILogger<AiExceptionHandler>>().Object), Options.Create(new WorkflowRetryOptions
+        var testWorker = new WorkflowWorker(_clock, scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>(), new AiExceptionHandler(_clock, new Mock<ILogger<AiExceptionHandler>>().Object), Options.Create(new WorkflowRetryOptions
         {
             RetryScheduleMinutes = [1, 5, 20, 60, 300],
             MaxRetries = 10,
@@ -1204,7 +1206,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
         initCts.Cancel();
         try { await initTask; } catch (OperationCanceledException) { }
 
-        var now = DateTimeOffset.UtcNow;
+        var now = _clock.UtcNow;
         var instance = new WorkflowInstance
         {
             Id = Guid.NewGuid(),
@@ -1298,7 +1300,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
 
         await db.Database.EnsureCreatedAsync();
 
-        var testWorker = new WorkflowWorker(scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>(), new AiExceptionHandler(new Mock<ILogger<AiExceptionHandler>>().Object), Options.Create(new WorkflowRetryOptions
+        var testWorker = new WorkflowWorker(_clock, scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>(), new AiExceptionHandler(_clock, new Mock<ILogger<AiExceptionHandler>>().Object), Options.Create(new WorkflowRetryOptions
         {
             RetryScheduleMinutes = [1, 5, 20, 60, 300],
             MaxRetries = 10,
@@ -1312,7 +1314,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
         initCts.Cancel();
         try { await initTask; } catch (OperationCanceledException) { }
 
-        var now = DateTimeOffset.UtcNow;
+        var now = _clock.UtcNow;
         var instance = new WorkflowInstance
         {
             Id = Guid.NewGuid(),
@@ -1405,7 +1407,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
 
         await db.Database.EnsureCreatedAsync();
 
-        var testWorker = new WorkflowWorker(scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>(), new AiExceptionHandler(new Mock<ILogger<AiExceptionHandler>>().Object), Options.Create(new WorkflowRetryOptions
+        var testWorker = new WorkflowWorker(_clock, scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>(), new AiExceptionHandler(_clock, new Mock<ILogger<AiExceptionHandler>>().Object), Options.Create(new WorkflowRetryOptions
         {
             RetryScheduleMinutes = [1, 5, 20, 60, 300],
             MaxRetries = 10,
@@ -1419,7 +1421,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
         initCts.Cancel();
         try { await initTask; } catch (OperationCanceledException) { }
 
-        var now = DateTimeOffset.UtcNow;
+        var now = _clock.UtcNow;
         var instance = new WorkflowInstance
         {
             Id = Guid.NewGuid(),
@@ -1519,7 +1521,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
 
         await db.Database.EnsureCreatedAsync();
 
-        var testWorker = new WorkflowWorker(scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>(), new AiExceptionHandler(new Mock<ILogger<AiExceptionHandler>>().Object), Options.Create(new WorkflowRetryOptions
+        var testWorker = new WorkflowWorker(_clock, scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>(), new AiExceptionHandler(_clock, new Mock<ILogger<AiExceptionHandler>>().Object), Options.Create(new WorkflowRetryOptions
         {
             RetryScheduleMinutes = [1, 5, 20, 60, 300],
             MaxRetries = 10,
@@ -1533,7 +1535,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
         initCts.Cancel();
         try { await initTask; } catch (OperationCanceledException) { }
 
-        var now = DateTimeOffset.UtcNow;
+        var now = _clock.UtcNow;
         var instance = new WorkflowInstance
         {
             Id = Guid.NewGuid(),
@@ -1618,6 +1620,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
         services.AddDbContext<RecipeDbContext>(opts =>
             opts.UseInMemoryDatabase(dbName));
         services.AddScoped<RecipeImportReportService>();
+        services.AddSingleton<IClock>(_clock);
 
         // Fatal exception — not transient, not 429 — exhausts retries immediately
         services.AddScoped<IWorkflowProcessor>(sp =>
@@ -1637,7 +1640,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
 
         await db.Database.EnsureCreatedAsync();
 
-        var testWorker = new WorkflowWorker(scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>(), new AiExceptionHandler(new Mock<ILogger<AiExceptionHandler>>().Object), Options.Create(new WorkflowRetryOptions
+        var testWorker = new WorkflowWorker(_clock, scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>(), new AiExceptionHandler(_clock, new Mock<ILogger<AiExceptionHandler>>().Object), Options.Create(new WorkflowRetryOptions
         {
             RetryScheduleMinutes = [1, 5, 20, 60, 300],
             MaxRetries = 10,
@@ -1652,7 +1655,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
         initCts.Cancel();
         try { await initTask; } catch (OperationCanceledException) { }
 
-        var now = DateTimeOffset.UtcNow;
+        var now = _clock.UtcNow;
         var recipeId = Guid.NewGuid();
 
         // Seed a Recipe row so partialData can be populated
@@ -1718,7 +1721,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
         Assert.Equal(TaskStatus.Failed, failedTask.Status);
         Assert.Contains("AI pipeline exploded", failedTask.ErrorMessage);
 
-        var failures = await new CaptureFailureService(queryDb, new SystemClock()).GetActiveFailuresAsync();
+        var failures = await new CaptureFailureService(queryDb, _clock).GetActiveFailuresAsync();
         var report = await queryDb.RecipeImportReports.SingleAsync(r => r.RecipeId == recipeId);
         if (!importFailed)
         {
@@ -1799,7 +1802,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
 
         await db.Database.EnsureCreatedAsync();
 
-        var testWorker = new WorkflowWorker(scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>(), new AiExceptionHandler(new Mock<ILogger<AiExceptionHandler>>().Object), Options.Create(new WorkflowRetryOptions
+        var testWorker = new WorkflowWorker(_clock, scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>(), new AiExceptionHandler(_clock, new Mock<ILogger<AiExceptionHandler>>().Object), Options.Create(new WorkflowRetryOptions
         {
             RetryScheduleMinutes = [1, 5, 20, 60, 300],
             MaxRetries = 10,
@@ -1813,7 +1816,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
         initCts.Cancel();
         try { await initTask; } catch (OperationCanceledException) { }
 
-        var now = DateTimeOffset.UtcNow;
+        var now = _clock.UtcNow;
         var recipeId = Guid.NewGuid();
 
         var instance = new WorkflowInstance
@@ -1916,7 +1919,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
             QuietWindowStartHour = 1,
             QuietWindowEndHour = 5
         });
-        var testWorker = new WorkflowWorker(scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>(), new AiExceptionHandler(new Mock<ILogger<AiExceptionHandler>>().Object), retryOpts);
+        var testWorker = new WorkflowWorker(_clock, scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>(), new AiExceptionHandler(_clock, new Mock<ILogger<AiExceptionHandler>>().Object), retryOpts);
 
         var initCts = new CancellationTokenSource();
         var initTask = testWorker.StartAsync(initCts.Token);
@@ -1924,7 +1927,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
         initCts.Cancel();
         try { await initTask; } catch (OperationCanceledException) { }
 
-        var now = DateTimeOffset.UtcNow;
+        var now = _clock.UtcNow;
         var instance = new WorkflowInstance
         {
             Id = Guid.NewGuid(),
@@ -2025,7 +2028,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
             QuietWindowStartHour = 1,
             QuietWindowEndHour = 5
         });
-        var testWorker = new WorkflowWorker(scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>(), new AiExceptionHandler(new Mock<ILogger<AiExceptionHandler>>().Object), retryOpts);
+        var testWorker = new WorkflowWorker(_clock, scopeFactory, loggerFactory.CreateLogger<WorkflowWorker>(), new AiExceptionHandler(_clock, new Mock<ILogger<AiExceptionHandler>>().Object), retryOpts);
 
         var initCts = new CancellationTokenSource();
         var initTask = testWorker.StartAsync(initCts.Token);
@@ -2033,7 +2036,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
         initCts.Cancel();
         try { await initTask; } catch (OperationCanceledException) { }
 
-        var now = DateTimeOffset.UtcNow;
+        var now = _clock.UtcNow;
         var instance = new WorkflowInstance
         {
             Id = Guid.NewGuid(),

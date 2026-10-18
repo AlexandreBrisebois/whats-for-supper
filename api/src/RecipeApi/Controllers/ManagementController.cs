@@ -12,6 +12,7 @@ namespace RecipeApi.Controllers;
 [Route("api/management")]
 [SkipWrapping]
 public class ManagementController(
+    IClock clock,
     IWorkflowOrchestrator orchestrator,
     RecipeDbContext db,
     IServiceScopeFactory scopeFactory,
@@ -159,7 +160,7 @@ public class ManagementController(
     {
         try
         {
-            _ = scheduleCalculator.GetNextOccurrence(demoModeOptions.RestoreCronUtc, DateTimeOffset.UtcNow);
+            _ = scheduleCalculator.GetNextOccurrence(demoModeOptions.RestoreCronUtc, clock.UtcNow);
             return true;
         }
         catch

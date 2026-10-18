@@ -7,12 +7,13 @@ namespace RecipeApi.Services.Ai;
 /// <summary>
 /// Reusable utility for mapping complex AI exceptions to structured diagnostic data.
 /// </summary>
-public class AiExceptionHandler(ILogger<AiExceptionHandler> logger)
+public class AiExceptionHandler(IClock clock, ILogger<AiExceptionHandler> logger)
 {
     public AiErrorDetail MapException(Exception ex, string? modelId = null, string? endpoint = null)
     {
         var detail = new AiErrorDetail
         {
+            Timestamp = clock.UtcNow,
             ModelId = modelId,
             Endpoint = endpoint,
             Message = ex.Message

@@ -243,6 +243,7 @@ public class GroceryRecomputeService(
         {
             plan = new WeeklyPlan
             {
+                CreatedAt = clock.UtcNow,
                 Id = Guid.NewGuid(),
                 WeekStartDate = monday,
                 Status = WeeklyPlanStatus.Draft,

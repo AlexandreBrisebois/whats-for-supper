@@ -6,7 +6,7 @@ using RecipeApi.Models;
 
 namespace RecipeApi.Services;
 
-public class RecipeImportReportService(RecipeDbContext db, IWorkflowOrchestrator? orchestrator = null)
+public class RecipeImportReportService(IClock clock, RecipeDbContext db, IWorkflowOrchestrator? orchestrator = null)
 {
     private const int MaxErrorLength = 2000;
     // This is intentionally in-process only; adding concurrent API replicas needs a new durability design.
@@ -120,7 +120,7 @@ public class RecipeImportReportService(RecipeDbContext db, IWorkflowOrchestrator
 
     public async Task MarkAttemptStartedAsync(Guid recipeId, Guid workflowInstanceId)
     {
-        var now = DateTimeOffset.UtcNow;
+        var now = clock.UtcNow;
         if (db.Database.IsRelational())
         {
             // Keep the predicate and state transition atomic; the RC1 provider cannot
@@ -151,7 +151,7 @@ public class RecipeImportReportService(RecipeDbContext db, IWorkflowOrchestrator
 
     public async Task MarkSucceededAsync(Guid recipeId, Guid workflowInstanceId)
     {
-        var now = DateTimeOffset.UtcNow;
+        var now = clock.UtcNow;
         if (db.Database.IsRelational())
         {
             await db.Database.ExecuteSqlAsync($"""
@@ -183,7 +183,7 @@ public class RecipeImportReportService(RecipeDbContext db, IWorkflowOrchestrator
         string failedStep,
         string errorSummary)
     {
-        var now = DateTimeOffset.UtcNow;
+        var now = clock.UtcNow;
         var failureSummary = BuildFailureSummary(failedStep, errorSummary);
         if (db.Database.IsRelational())
         {
@@ -267,7 +267,7 @@ public class RecipeImportReportService(RecipeDbContext db, IWorkflowOrchestrator
         string[] reasons,
         string? note)
     {
-        var now = DateTimeOffset.UtcNow;
+        var now = clock.UtcNow;
         var report = await db.RecipeImportReports.SingleOrDefaultAsync(r => r.RecipeId == recipeId);
         if (report is null)
         {
@@ -368,22 +368,22 @@ public class RecipeImportReportService(RecipeDbContext db, IWorkflowOrchestrator
         report.LastAttemptAt = null;
         report.ReimportedAt = null;
         report.LastError = null;
-        report.UpdatedAt = DateTimeOffset.UtcNow;
+        report.UpdatedAt = clock.UtcNow;
         await db.SaveChangesAsync();
     }
 
-    private static RecipeDetailResponseDto ToDetailResponse(Recipe recipe, RecipeImportReport? report)
+    private RecipeDetailResponseDto ToDetailResponse(Recipe recipe, RecipeImportReport? report)
     {
         var dto = RecipeService.MapToDto(recipe);
         dto.ImportIssue = ToPublicDto(report);
         return new RecipeDetailResponseDto
         {
-            UpdatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = clock.UtcNow,
             Recipe = dto
         };
     }
 
-    private static RecipeImportReportSubmissionResponseDto ToSubmissionResponse(
+    private RecipeImportReportSubmissionResponseDto ToSubmissionResponse(
         Recipe recipe,
         RecipeImportReport report,
         bool reimportStarted,

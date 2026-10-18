@@ -5,21 +5,21 @@ using RecipeApi.Dto;
 namespace RecipeApi.Services;
 
 /// <summary>Bounded, process-local continuation state for recipe search.</summary>
-public sealed class RecipeSearchContinuationStore
+public sealed class RecipeSearchContinuationStore(IClock clock)
 {
     private const int Capacity = 1_000;
     private static readonly TimeSpan Lifetime = TimeSpan.FromMinutes(10);
     private readonly ConcurrentDictionary<string, SearchContinuation> _entries = new(StringComparer.Ordinal);
 
     public string StoreRanked(string fingerprint, IReadOnlyList<RecipeSearchResultDto> results, RecipeSearchResponseDto response)
-        => Store(new RankedContinuation(fingerprint, results.Select(Clone).ToList(), Clone(response), DateTimeOffset.UtcNow.Add(Lifetime)));
+        => Store(new RankedContinuation(fingerprint, results.Select(Clone).ToList(), Clone(response), clock.UtcNow.Add(Lifetime)));
 
     public string StoreBrowse(string fingerprint, BrowsePosition position, Guid? topPickId, RecipeSearchResponseDto response)
-        => Store(new BrowseContinuation(fingerprint, position, topPickId, Clone(response), DateTimeOffset.UtcNow.Add(Lifetime)));
+        => Store(new BrowseContinuation(fingerprint, position, topPickId, Clone(response), clock.UtcNow.Add(Lifetime)));
 
     public SearchContinuation Get(string token, string fingerprint)
     {
-        if (!_entries.TryGetValue(token, out var entry) || entry.ExpiresAt <= DateTimeOffset.UtcNow || entry.Fingerprint != fingerprint)
+        if (!_entries.TryGetValue(token, out var entry) || entry.ExpiresAt <= clock.UtcNow || entry.Fingerprint != fingerprint)
         {
             _entries.TryRemove(token, out _);
             throw new RecipeSearchContinuationExpiredException();
@@ -30,7 +30,7 @@ public sealed class RecipeSearchContinuationStore
 
     private string Store(SearchContinuation continuation)
     {
-        foreach (var expired in _entries.Where(entry => entry.Value.ExpiresAt <= DateTimeOffset.UtcNow).Select(entry => entry.Key))
+        foreach (var expired in _entries.Where(entry => entry.Value.ExpiresAt <= clock.UtcNow).Select(entry => entry.Key))
             _entries.TryRemove(expired, out _);
         while (_entries.Count >= Capacity && _entries.TryRemove(_entries.Keys.FirstOrDefault() ?? string.Empty, out _)) { }
 

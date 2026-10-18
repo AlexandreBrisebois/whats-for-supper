@@ -50,11 +50,8 @@ public class HybridRecipeSearchBaselinePostgresTests : IAsyncLifetime
     public async Task BaselineHarness_RecordsVersionedRelevanceMeasurements()
     {
         var grocery = new GroceryRecomputeService(_db, new AisleMapper(), NullLogger<GroceryRecomputeService>.Instance, new SystemClock(), new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()));
-        var schedule = new ScheduleService(_db, NullLogger<ScheduleService>.Instance, new Mock<IScheduleEventPublisher>().Object, grocery, new SystemClock(), new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()));
-        var service = new RecipeSearchService(_db, schedule, new FixtureEmbeddingProvider(),
-            lexicalRepository: new RecipeLexicalSearchRepository(_db),
-            semanticRepository: new RecipeSemanticSearchRepository(_db),
-            rolloutOptions: new RecipeSearchRolloutOptions
+        var schedule = new ScheduleService(_db, NullLogger<ScheduleService>.Instance, new Mock<IScheduleEventPublisher>().Object, grocery, new SystemClock(), new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()), RecipeApi.Tests.Infrastructure.TestHistoricalInterest.Create(_db, new SystemClock(), new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager())));
+        var service = new RecipeSearchService(new SystemClock(), RecipeApi.Tests.Infrastructure.TestHistoricalInterest.Create(_db, new SystemClock(), new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager())), _db, schedule, new FixtureEmbeddingProvider(), lexicalRepository: new RecipeLexicalSearchRepository(_db, new RecipeApi.Services.SystemClock()), semanticRepository: new RecipeSemanticSearchRepository(_db, new RecipeApi.Services.SystemClock()), rolloutOptions: new RecipeSearchRolloutOptions
             {
                 Semantic = new RecipeSemanticSearchOptions
                 {

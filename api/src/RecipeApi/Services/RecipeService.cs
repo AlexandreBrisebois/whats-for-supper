@@ -10,14 +10,15 @@ using RecipeApi.Models;
 namespace RecipeApi.Services;
 
 public class RecipeService(
+    IClock clock,
+    HistoricalInterestService historicalInterest,
     RecipeDbContext db,
     IValidationService validation,
     ImageService images,
     IRecipeStore recipeStore,
     IWorkflowOrchestrator orchestrator,
     ILogger<RecipeService> logger,
-    IScheduleEventPublisher? publisher = null,
-    HistoricalInterestService? historicalInterest = null)
+    IScheduleEventPublisher? publisher = null)
 {
     private const string RecipeShareBundleVersion = "1.0";
 
@@ -45,7 +46,7 @@ public class RecipeService(
         validation.ValidateFinishedDishImageIndex(request.FinishedDishImageIndex, files.Count);
 
         var recipeId = Guid.NewGuid();
-        var now = DateTimeOffset.UtcNow;
+        var now = clock.UtcNow;
 
         // Save images to disk first — fail fast before writing to DB.
         // NOTE: If the DB save below fails, orphaned image files are left on disk.
@@ -152,7 +153,7 @@ public class RecipeService(
         await using var rankingBoundary = order == "explore" ? await VotingBoundary.BeginAsync(db) : null;
         if (order == "explore")
         {
-            history = await (historicalInterest ?? HistoricalInterestService.Default(db)).CaptureAsync();
+            history = await historicalInterest.CaptureAsync();
             if ((page > 1 && historyGeneration is null) ||
                 (historyGeneration is not null && historyGeneration != history.Generation))
                 throw new RecipeSearchContinuationExpiredException();
@@ -177,7 +178,7 @@ public class RecipeService(
         return new RecipeListResponseDto
         {
             HistoryGeneration = history?.Generation,
-            UpdatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = clock.UtcNow,
             Recipes = recipes,
             Pagination = new PaginationDto
             {
@@ -242,7 +243,7 @@ public class RecipeService(
 
         return new RecipeDetailResponseDto
         {
-            UpdatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = clock.UtcNow,
             Recipe = dto
         };
     }
@@ -274,7 +275,7 @@ public class RecipeService(
             },
             Info = new RecipeShareInfoDto
             {
-                ExportedAtUtc = DateTimeOffset.UtcNow,
+                ExportedAtUtc = clock.UtcNow,
                 BundleSource = "wfs-share",
                 AppVersion = null,
                 RecipeId = id,
@@ -288,7 +289,7 @@ public class RecipeService(
     {
         ValidateBundle(bundle);
 
-        var now = DateTimeOffset.UtcNow;
+        var now = clock.UtcNow;
         var recipeId = bundle.Info.RecipeId ?? Guid.NewGuid();
 
         if (await db.Recipes.AnyAsync(r => r.Id == recipeId))
@@ -434,7 +435,7 @@ public class RecipeService(
             dto.MealTypes is not null ||
             dto.RecipeInstructions is not null;
 
-        recipe.UpdatedAt = DateTimeOffset.UtcNow;
+        recipe.UpdatedAt = clock.UtcNow;
         if (searchRelevantChanged)
         {
             var sidecar = await db.RecipeSearchDocuments.FindAsync(id);
@@ -523,7 +524,7 @@ public class RecipeService(
     public async Task<RecipeDto> DescribeRecipe(DescribeRecipeDto dto, Guid? familyMemberId = null)
     {
         var recipeId = Guid.NewGuid();
-        var now = DateTimeOffset.UtcNow;
+        var now = clock.UtcNow;
 
         var recipe = new Recipe
         {
@@ -574,7 +575,7 @@ public class RecipeService(
     public async Task<Guid> CaptureUrl(CaptureUrlDto dto, Guid familyMemberId)
     {
         var recipeId = Guid.NewGuid();
-        var now = DateTimeOffset.UtcNow;
+        var now = clock.UtcNow;
 
         var recipe = new Recipe
         {
@@ -668,7 +669,7 @@ public class RecipeService(
         var recipe = await db.Recipes.FindAsync(id)
             ?? throw new KeyNotFoundException($"Recipe {id} not found.");
 
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = DateOnly.FromDateTime(clock.UtcNow.UtcDateTime);
         var assignedDates = await db.CalendarEvents
             .Where(e => e.RecipeId == id && e.Date >= today)
             .Select(e => e.Date.ToString("yyyy-MM-dd"))
@@ -677,7 +678,7 @@ public class RecipeService(
         if (assignedDates.Count > 0)
             return (null!, assignedDates);
 
-        recipe.DeletedAt = DateTimeOffset.UtcNow;
+        recipe.DeletedAt = clock.UtcNow;
         recipe.DeletedBy = deletedBy;
 
         var searchDoc = await db.RecipeSearchDocuments.FindAsync(id);
@@ -717,7 +718,7 @@ public class RecipeService(
 
         recipe.DeletedAt = null;
         recipe.DeletedBy = null;
-        recipe.UpdatedAt = DateTimeOffset.UtcNow;
+        recipe.UpdatedAt = clock.UtcNow;
         await db.SaveChangesAsync();
 
         // Re-enqueue search index when restored. 
@@ -743,7 +744,7 @@ public class RecipeService(
     private RecipeDetailResponseDto MapToDetailResponse(Recipe recipe) =>
         new()
         {
-            UpdatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = clock.UtcNow,
             Recipe = MapToDto(recipe)
         };
 
@@ -1076,7 +1077,7 @@ public class RecipeService(
 
         // 2. Update DB
         recipe.ImageCount++;
-        recipe.UpdatedAt = DateTimeOffset.UtcNow;
+        recipe.UpdatedAt = clock.UtcNow;
         await db.SaveChangesAsync();
 
         // 3. Trigger regeneration (forced)

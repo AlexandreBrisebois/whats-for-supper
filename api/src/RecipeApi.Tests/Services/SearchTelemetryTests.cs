@@ -143,7 +143,7 @@ public class SearchTelemetryTests : IAsyncLifetime
 
         var scope = _factory.Services.GetRequiredService<IServiceScopeFactory>().CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
-        var workflow = new SearchIndexWorkflow(db, new FakeEmbeddingProvider(), telemetry: _telemetry);
+        var workflow = new SearchIndexWorkflow(new RecipeApi.Services.SystemClock(), db, new FakeEmbeddingProvider(), telemetry: _telemetry);
 
         var fingerprint = SearchFingerprintService.ComputeSourceFingerprint(recipe);
         var task = new WorkflowTask { Payload = JsonSerializer.Serialize(new Dictionary<string, string> { ["recipeId"] = recipe.Id.ToString(), ["fingerprint"] = fingerprint }) };
@@ -163,7 +163,7 @@ public class SearchTelemetryTests : IAsyncLifetime
 
         var scope = _factory.Services.GetRequiredService<IServiceScopeFactory>().CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
-        var workflow = new SearchIndexWorkflow(db, new FailingEmbeddingProvider(), telemetry: _telemetry);
+        var workflow = new SearchIndexWorkflow(new RecipeApi.Services.SystemClock(), db, new FailingEmbeddingProvider(), telemetry: _telemetry);
 
         var fingerprint = SearchFingerprintService.ComputeSourceFingerprint(recipe);
         var task = new WorkflowTask { Payload = JsonSerializer.Serialize(new Dictionary<string, string> { ["recipeId"] = recipe.Id.ToString(), ["fingerprint"] = fingerprint }) };
@@ -184,7 +184,7 @@ public class SearchTelemetryTests : IAsyncLifetime
 
         var scope = _factory.Services.GetRequiredService<IServiceScopeFactory>().CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
-        var workflow = new SearchIndexWorkflow(db, new FakeEmbeddingProvider(), telemetry: _telemetry);
+        var workflow = new SearchIndexWorkflow(new RecipeApi.Services.SystemClock(), db, new FakeEmbeddingProvider(), telemetry: _telemetry);
 
         var staleFingerprint = "0000000000000000000000000000000000000000000000000000000000000000";
         var task = new WorkflowTask 

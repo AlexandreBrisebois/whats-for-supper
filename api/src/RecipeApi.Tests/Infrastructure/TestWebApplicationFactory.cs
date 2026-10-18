@@ -300,10 +300,13 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
             var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
             await db.Database.EnsureCreatedAsync();
 
-            // Seed a default family member for tests that need a valid identity
+            // Seed with the same supplied clock as application creation owners.
+            var seededAt = scope.ServiceProvider.GetRequiredService<IClock>().UtcNow;
             var member = new RecipeApi.Models.FamilyMember
             {
-                Name = "CI Test User"
+                Name = "CI Test User",
+                CreatedAt = seededAt,
+                UpdatedAt = seededAt
             };
             db.FamilyMembers.Add(member);
             await db.SaveChangesAsync();

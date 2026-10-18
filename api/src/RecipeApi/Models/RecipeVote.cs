@@ -21,7 +21,7 @@ public class RecipeVote
     public VoteType Vote { get; set; }
 
     [Column("voted_at")]
-    public DateTimeOffset VotedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset VotedAt { get; set; }
 
     [ForeignKey(nameof(RecipeId))]
     public Recipe? Recipe { get; set; }

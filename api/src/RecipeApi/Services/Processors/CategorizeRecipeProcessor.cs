@@ -9,6 +9,7 @@ using RecipeApi.Workflow;
 namespace RecipeApi.Services.Processors;
 
 public class CategorizeRecipeProcessor(
+    IClock clock,
     RecipeDbContext db,
     IChatClient chatClient,
     ILogger<CategorizeRecipeProcessor> logger,
@@ -183,7 +184,7 @@ public class CategorizeRecipeProcessor(
         {
             recipe.IsVegetarian = classifiedVegetarian;
         }
-        recipe.UpdatedAt = DateTimeOffset.UtcNow;
+        recipe.UpdatedAt = clock.UtcNow;
 
         await db.SaveChangesAsync(ct);
 

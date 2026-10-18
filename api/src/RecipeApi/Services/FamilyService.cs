@@ -4,7 +4,7 @@ using RecipeApi.Models;
 
 namespace RecipeApi.Services;
 
-public class FamilyService(RecipeDbContext db)
+public class FamilyService(IClock clock, RecipeDbContext db)
 {
     public const string BrowseViewModeStack = "stack";
     public const string BrowseViewModeList = "list";
@@ -28,7 +28,7 @@ public class FamilyService(RecipeDbContext db)
         if (exists)
             throw new DuplicateFamilyMemberException("A family member with this name already exists.");
 
-        var member = new FamilyMember { Name = trimmed };
+        var member = new FamilyMember { Name = trimmed, CreatedAt = clock.UtcNow, UpdatedAt = clock.UtcNow };
         db.FamilyMembers.Add(member);
         try
         {
@@ -58,7 +58,7 @@ public class FamilyService(RecipeDbContext db)
             ?? throw new KeyNotFoundException($"Family member {id} not found.");
 
         member.Name = trimmed;
-        member.UpdatedAt = DateTimeOffset.UtcNow;
+        member.UpdatedAt = clock.UtcNow;
         await db.SaveChangesAsync();
         return member;
     }
@@ -84,7 +84,7 @@ public class FamilyService(RecipeDbContext db)
             member.PreferredLanguage = normalizedLang;
         }
 
-        member.UpdatedAt = DateTimeOffset.UtcNow;
+        member.UpdatedAt = clock.UtcNow;
         await db.SaveChangesAsync();
         return member;
     }

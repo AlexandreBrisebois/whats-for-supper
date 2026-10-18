@@ -27,7 +27,20 @@ public sealed class ReconcileRecipeRotationProcessor(
             {
                 var recipe = await db.Recipes.SingleOrDefaultAsync(r => r.Id == id && r.IsReady, ct);
                 if (recipe is null) continue;
-                var suppressed = recipe.LastCookedDate is { } cooked && calendar.Capture(cooked).Today >= cutoff;
+                DateOnly? cookedDate = null;
+                if (recipe.LastCookedDate is { } cooked)
+                {
+                    // ScheduleService encodes civil dates as UTC midnight. Matching event
+                    // evidence preserves that date; midnight alone cannot identify legacy
+                    // imported timestamps, which retain deployment-local interpretation.
+                    var latestEvent = await db.CalendarEvents
+                        .Where(e => e.RecipeId == id && e.Status == CalendarEventStatus.Cooked)
+                        .Select(e => (DateOnly?)e.Date).MaxAsync(ct);
+                    cookedDate = latestEvent is { } date &&
+                        cooked == new DateTimeOffset(date.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero)
+                        ? date : calendar.Capture(cooked).Today;
+                }
+                var suppressed = cookedDate >= cutoff;
                 var discoverable = RecipeRotation.Suitable(recipe) && !recipe.RotationHumanOff && !suppressed;
                 if (recipe.CookedSuppressed != suppressed || recipe.IsDiscoverable != discoverable)
                 {

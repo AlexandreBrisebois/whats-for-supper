@@ -30,7 +30,7 @@ public class ContextualUrlRepairTests : IDisposable
         return recipe;
     }
 
-    private RecipeImportReportService Service() => new(_db, new WorkflowOrchestrator(new WorkflowRepository(_storage), _db));
+    private RecipeImportReportService Service() => new(new RecipeApi.Services.SystemClock(), _db, new WorkflowOrchestrator(new RecipeApi.Services.SystemClock(), new WorkflowRepository(_storage), _db));
     private static RecipeImportIssueRequest Feedback(string note = "  Check the quantities  ") =>
         new() { Reasons = ["steps", "ingredients"], Note = note };
 

@@ -13,7 +13,7 @@ public class AiErrorDetail
     public string? ErrorCode { get; set; }
     public string? Message { get; set; }
     public string? ResponseBody { get; set; }
-    public DateTimeOffset Timestamp { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset Timestamp { get; set; }
 
     public override string ToString()
     {

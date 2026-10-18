@@ -8,6 +8,7 @@ using RecipeApi.Workflow;
 namespace RecipeApi.Services.Processors;
 
 public class SyncRecipeProcessor(
+    IClock clock,
     RecipeDbContext db,
     RecipeRepository recipeRepository,
     GroceryRecomputeService groceryRecomputeService,
@@ -106,7 +107,7 @@ public class SyncRecipeProcessor(
         recipe.IsSynthesized = recipeInfo.IsSynthesized;
         // Effective rotation and human intent belong to the database. Import metadata
         // can predate a human toggle or Dreaming; RecipeReady owns initial eligibility.
-        recipe.UpdatedAt = DateTimeOffset.UtcNow;
+        recipe.UpdatedAt = clock.UtcNow;
 
         await db.SaveChangesAsync(ct);
         logger.LogInformation("Synchronized recipe {RecipeId} from disk to database.", recipeId);

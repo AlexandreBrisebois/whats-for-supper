@@ -90,7 +90,7 @@ public class GotoSynthesisIntegrationTests : IAsyncLifetime
         });
         await _db.SaveChangesAsync();
 
-        var processor = new RecipeReadyProcessor(_db, NullLogger<RecipeReadyProcessor>.Instance, new Mock<IScheduleEventPublisher>().Object);
+        var processor = new RecipeReadyProcessor(new RecipeApi.Services.SystemClock(), _db, NullLogger<RecipeReadyProcessor>.Instance, new Mock<IScheduleEventPublisher>().Object);
         var task = new WorkflowTask
         {
             TaskId = Guid.NewGuid(),
@@ -128,7 +128,7 @@ public class GotoSynthesisIntegrationTests : IAsyncLifetime
         });
         await _db.SaveChangesAsync();
 
-        var processor = new RecipeReadyProcessor(_db, NullLogger<RecipeReadyProcessor>.Instance, new Mock<IScheduleEventPublisher>().Object);
+        var processor = new RecipeReadyProcessor(new RecipeApi.Services.SystemClock(), _db, NullLogger<RecipeReadyProcessor>.Instance, new Mock<IScheduleEventPublisher>().Object);
         var task = new WorkflowTask
         {
             TaskId = Guid.NewGuid(),
@@ -182,7 +182,7 @@ public class GotoSynthesisIntegrationTests : IAsyncLifetime
         await _db.SaveChangesAsync();
 
         // Act
-        var processor = new RecipeReadyProcessor(_db, NullLogger<RecipeReadyProcessor>.Instance, new Mock<IScheduleEventPublisher>().Object);
+        var processor = new RecipeReadyProcessor(new RecipeApi.Services.SystemClock(), _db, NullLogger<RecipeReadyProcessor>.Instance, new Mock<IScheduleEventPublisher>().Object);
         var task = new WorkflowTask
         {
             TaskId = Guid.NewGuid(),
@@ -220,7 +220,7 @@ public class GotoSynthesisIntegrationTests : IAsyncLifetime
         });
         await _db.SaveChangesAsync();
 
-        var processor = new RecipeReadyProcessor(_db, NullLogger<RecipeReadyProcessor>.Instance, new Mock<IScheduleEventPublisher>().Object);
+        var processor = new RecipeReadyProcessor(new RecipeApi.Services.SystemClock(), _db, NullLogger<RecipeReadyProcessor>.Instance, new Mock<IScheduleEventPublisher>().Object);
         var task = new WorkflowTask
         {
             TaskId = Guid.NewGuid(),
@@ -281,7 +281,7 @@ public class GotoSynthesisIntegrationTests : IAsyncLifetime
             .ReturnsAsync(new ChatResponse(new ChatMessage(ChatRole.Assistant, chatResponseText)));
 
         var processor = new CategorizeRecipeProcessor(
-            _db,
+            new RecipeApi.Services.SystemClock(), _db,
             chatClientMock.Object,
             NullLogger<CategorizeRecipeProcessor>.Instance
         );

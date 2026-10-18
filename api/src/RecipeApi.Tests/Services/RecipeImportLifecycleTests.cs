@@ -29,7 +29,7 @@ public class RecipeImportLifecycleTests
                 It.IsAny<Dictionary<string, string>>(),
                 null))
             .ReturnsAsync(instance);
-        var reportService = new RecipeImportReportService(db);
+        var reportService = new RecipeImportReportService(new RecipeApi.Services.SystemClock(), db);
         var service = new RecipeImportService(db, orchestrator.Object, reportService);
 
         var result = await service.TriggerImport(recipe.Id);
@@ -61,7 +61,7 @@ public class RecipeImportLifecycleTests
         var service = new RecipeImportService(
             db,
             orchestrator.Object,
-            new RecipeImportReportService(db));
+            new RecipeImportReportService(new RecipeApi.Services.SystemClock(), db));
 
         await service.TriggerImport(recipe.Id);
 
@@ -81,7 +81,7 @@ public class RecipeImportLifecycleTests
         var service = new RecipeImportService(
             db,
             Mock.Of<IWorkflowOrchestrator>(),
-            new RecipeImportReportService(db));
+            new RecipeImportReportService(new RecipeApi.Services.SystemClock(), db));
 
         var result = await service.GetImportStatus(recipe.Id);
 
@@ -96,7 +96,7 @@ public class RecipeImportLifecycleTests
         var recipe = SeedRecipe(db, imageCount: 1);
         SeedReport(db, recipe.Id);
         await db.SaveChangesAsync();
-        var service = new RecipeImportReportService(db);
+        var service = new RecipeImportReportService(new RecipeApi.Services.SystemClock(), db);
         var olderAttempt = Guid.NewGuid();
         var newerAttempt = Guid.NewGuid();
 
@@ -150,7 +150,7 @@ public class RecipeImportLifecycleTests
         report.UpdatedAt = originalUpdated;
         await db.SaveChangesAsync();
 
-        await new RecipeImportReportService(db).MarkAttemptStartedAsync(recipe.Id, Guid.NewGuid());
+        await new RecipeImportReportService(new RecipeApi.Services.SystemClock(), db).MarkAttemptStartedAsync(recipe.Id, Guid.NewGuid());
 
         report = await db.RecipeImportReports.SingleAsync();
         Assert.Equal(RecipeImportReportStatus.Reported, report.Status);
@@ -174,7 +174,7 @@ public class RecipeImportLifecycleTests
             ? ["ingredients", "duplicate"]
             : ["ingredients"]);
         await db.SaveChangesAsync();
-        var service = new RecipeImportReportService(db);
+        var service = new RecipeImportReportService(new RecipeApi.Services.SystemClock(), db);
         var attempt = Guid.NewGuid();
 
         await service.MarkAttemptStartedAsync(recipe.Id, attempt);
@@ -194,7 +194,7 @@ public class RecipeImportLifecycleTests
         var recipe = SeedRecipe(db, imageCount: 1);
         SeedReport(db, recipe.Id, ["steps", "duplicate"]);
         await db.SaveChangesAsync();
-        var service = new RecipeImportReportService(db);
+        var service = new RecipeImportReportService(new RecipeApi.Services.SystemClock(), db);
         var staleAttempt = Guid.NewGuid();
         var currentAttempt = Guid.NewGuid();
 

@@ -58,7 +58,7 @@ public class RecipeImportReportPostgresTests : IAsyncLifetime
         var storage = new InMemoryStorageProvider();
         await storage.SaveAsync("workflows", "url-import.yaml", await File.ReadAllTextAsync(
             Path.Combine(AppContext.BaseDirectory, "src", "RecipeApi", "Workflows", "url-import.yaml")));
-        var service = new RecipeImportReportService(_db, new WorkflowOrchestrator(new WorkflowRepository(storage), _db));
+        var service = new RecipeImportReportService(new RecipeApi.Services.SystemClock(), _db, new WorkflowOrchestrator(new RecipeApi.Services.SystemClock(), new WorkflowRepository(storage), _db));
         var feedback = new RecipeImportIssueRequest { Reasons = ["ingredients"], Note = "Check amounts" };
         var started = await service.SubmitAsync(recipe.Id, member.Id, feedback);
         Assert.True(started.ReimportStarted);
@@ -84,7 +84,7 @@ public class RecipeImportReportPostgresTests : IAsyncLifetime
         await _db.SaveChangesAsync();
         var before = await ReadAsync(report.RecipeId);
 
-        await new RecipeImportReportService(_db).MarkAttemptStartedAsync(report.RecipeId, Guid.NewGuid());
+        await new RecipeImportReportService(new RecipeApi.Services.SystemClock(), _db).MarkAttemptStartedAsync(report.RecipeId, Guid.NewGuid());
 
         var after = await ReadAsync(report.RecipeId);
         Assert.Equal(before.Status, after.Status);
@@ -103,7 +103,7 @@ public class RecipeImportReportPostgresTests : IAsyncLifetime
     {
         var reasons = mixed ? new[] { "ingredients", "steps", "duplicate" } : ["ingredients", "steps"];
         var report = await SeedAsync(reasons);
-        var service = new RecipeImportReportService(_db);
+        var service = new RecipeImportReportService(new RecipeApi.Services.SystemClock(), _db);
         var stale = Guid.NewGuid();
         var current = Guid.NewGuid();
         await service.MarkAttemptStartedAsync(report.RecipeId, stale);
@@ -144,7 +144,7 @@ public class RecipeImportReportPostgresTests : IAsyncLifetime
         var other = await SeedAsync(["steps", "duplicate"]);
         var before = await ReadAsync(other.RecipeId);
         var attempt = Guid.NewGuid();
-        var service = new RecipeImportReportService(_db);
+        var service = new RecipeImportReportService(new RecipeApi.Services.SystemClock(), _db);
 
         await service.MarkAttemptStartedAsync(target.RecipeId, attempt);
         await service.MarkSucceededAsync(target.RecipeId, attempt);
@@ -161,7 +161,7 @@ public class RecipeImportReportPostgresTests : IAsyncLifetime
     [PostgresFact]
     public async Task MissingReport_LifecycleCallsDoNotCreateOne()
     {
-        var service = new RecipeImportReportService(_db);
+        var service = new RecipeImportReportService(new RecipeApi.Services.SystemClock(), _db);
         var recipeId = Guid.NewGuid();
         var attempt = Guid.NewGuid();
         await service.MarkAttemptStartedAsync(recipeId, attempt);

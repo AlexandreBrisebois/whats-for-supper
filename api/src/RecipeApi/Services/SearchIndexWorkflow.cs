@@ -7,6 +7,7 @@ using RecipeApi.Workflow;
 namespace RecipeApi.Services;
 
 public class SearchIndexWorkflow(
+    IClock clock,
     RecipeDbContext db,
     IEmbeddingProvider? embeddingProvider = null,
     ILogger<SearchIndexWorkflow>? logger = null,
@@ -88,7 +89,7 @@ public class SearchIndexWorkflow(
         doc.SchemaVersion = content.SchemaVersion;
         doc.SourceFingerprint = currentFingerprint;
         doc.IndexStatus = "ready";
-        doc.LastIndexedAt = DateTimeOffset.UtcNow;
+        doc.LastIndexedAt = clock.UtcNow;
         doc.EmbeddingStatus = "indexing";
         await db.SaveChangesAsync(ct);
 
