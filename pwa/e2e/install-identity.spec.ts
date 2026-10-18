@@ -23,7 +23,7 @@ test('public install metadata agrees in initial HTML and retains access policy',
   // The Web App Manifest id is an origin-relative URL, not a domain entity GUID.
   expect(manifest.id).toBe('/');
   expect(manifest).toMatchObject({
-    description: 'Swipe, Match, Cook.',
+    description: 'Swipe, Match, Cook!',
     start_url: '/',
     display: 'standalone',
     name,
