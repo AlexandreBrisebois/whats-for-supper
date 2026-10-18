@@ -12,7 +12,8 @@ namespace RecipeApi.Controllers;
 [Route("api/health")]
 [SkipWrapping]
 [Microsoft.AspNetCore.Authorization.AllowAnonymous]
-public class HealthController(IClock clock, 
+public class HealthController(
+    IClock clock,
     RecipeDbContext db,
     DemoModeOptions demoMode,
     CronScheduleCalculator scheduleCalculator) : ControllerBase

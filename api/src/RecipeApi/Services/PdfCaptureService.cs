@@ -6,7 +6,8 @@ using RecipeApi.Models;
 namespace RecipeApi.Services;
 
 /// <summary>Acceptance only. PDF validity and page rendering belong to recipe-import.</summary>
-public sealed class PdfCaptureService(IClock clock, 
+public sealed class PdfCaptureService(
+    IClock clock,
     RecipeDbContext db, IRecipeStore store, IWorkflowOrchestrator orchestrator,
     ILogger<PdfCaptureService> logger)
 {

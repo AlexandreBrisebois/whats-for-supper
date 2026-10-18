@@ -9,7 +9,8 @@ namespace RecipeApi.Controllers;
 
 [ApiController]
 [Route("api/workflows")]
-public class WorkflowController(IClock clock, 
+public class WorkflowController(
+    IClock clock,
     IWorkflowOrchestrator orchestrator,
     RecipeDbContext db) : ControllerBase
 {

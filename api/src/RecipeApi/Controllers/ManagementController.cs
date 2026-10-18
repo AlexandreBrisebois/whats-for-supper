@@ -11,7 +11,8 @@ namespace RecipeApi.Controllers;
 [ApiController]
 [Route("api/management")]
 [SkipWrapping]
-public class ManagementController(IClock clock, 
+public class ManagementController(
+    IClock clock,
     IWorkflowOrchestrator orchestrator,
     RecipeDbContext db,
     IServiceScopeFactory scopeFactory,

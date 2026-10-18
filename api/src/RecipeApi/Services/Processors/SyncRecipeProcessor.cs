@@ -7,7 +7,8 @@ using RecipeApi.Workflow;
 
 namespace RecipeApi.Services.Processors;
 
-public class SyncRecipeProcessor(IClock clock, 
+public class SyncRecipeProcessor(
+    IClock clock,
     RecipeDbContext db,
     RecipeRepository recipeRepository,
     GroceryRecomputeService groceryRecomputeService,

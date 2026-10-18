@@ -6,7 +6,8 @@ using RecipeApi.Workflow;
 
 namespace RecipeApi.Services;
 
-public class SearchIndexWorkflow(IClock clock, 
+public class SearchIndexWorkflow(
+    IClock clock,
     RecipeDbContext db,
     IEmbeddingProvider? embeddingProvider = null,
     ILogger<SearchIndexWorkflow>? logger = null,

@@ -17,7 +17,8 @@ namespace RecipeApi.Services;
 /// Generic workflow worker that handles high-concurrency task pickup with PostgreSQL row-level locking
 /// and per-processor throttling using semaphores.
 /// </summary>
-public class WorkflowWorker(IClock clock, 
+public class WorkflowWorker(
+    IClock clock,
     IServiceScopeFactory scopeFactory,
     ILogger<WorkflowWorker> logger,
     AiExceptionHandler aiExceptionHandler,

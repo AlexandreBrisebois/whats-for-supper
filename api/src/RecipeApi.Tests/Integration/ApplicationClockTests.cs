@@ -6,6 +6,7 @@ using RecipeApi.Controllers;
 using RecipeApi.Data;
 using RecipeApi.Dto;
 using RecipeApi.Models;
+using RecipeApi.Infrastructure;
 using RecipeApi.Services;
 using RecipeApi.Services.Ai;
 using RecipeApi.Services.Processors;
@@ -104,6 +105,55 @@ public class ApplicationClockTests
                 break;
         }
         Assert.Equal(clock.UtcNow, actual);
+    }
+
+    [Fact]
+    public async Task Restore_StampsMissingDatesAndPreservesExplicitImportedDates()
+    {
+        var clock = FixedClock();
+        await using var app = await TestWebApplicationFactory.CreateAsync(clock);
+        using var scope = app.Services.CreateScope();
+        var services = scope.ServiceProvider;
+        var db = services.GetRequiredService<RecipeDbContext>();
+        var root = services.GetRequiredService<DataRootResolver>().Root;
+        var missing = Guid.NewGuid();
+        var explicitId = Guid.NewGuid();
+        var imported = clock.UtcNow.AddYears(-1);
+        Directory.CreateDirectory(root);
+        await File.WriteAllTextAsync(Path.Combine(root, "family-members.json"), JsonSerializer.Serialize(new object[]
+        {
+            new { id = missing, name = "Missing clock date" },
+            new { id = explicitId, name = "Imported clock date", createdAt = imported, updatedAt = imported }
+        }));
+        var plan = Guid.NewGuid();
+        await File.WriteAllTextAsync(Path.Combine(root, "weekly-plans.json"),
+            JsonSerializer.Serialize(new[] { new { id = plan, weekStartDate = "2001-02-05" } }));
+        await services.GetRequiredService<ManagementService>().RestoreAsync();
+        var missingMember = await db.FamilyMembers.SingleAsync(x => x.Id == missing);
+        var importedMember = await db.FamilyMembers.SingleAsync(x => x.Id == explicitId);
+        Assert.Equal(clock.UtcNow, missingMember.CreatedAt);
+        Assert.Equal(clock.UtcNow, missingMember.UpdatedAt);
+        Assert.Equal(imported, importedMember.CreatedAt);
+        Assert.Equal(imported, importedMember.UpdatedAt);
+        Assert.Equal(clock.UtcNow, (await db.WeeklyPlans.SingleAsync(x => x.Id == plan)).CreatedAt);
+    }
+
+    [Fact]
+    public async Task Orchestrator_UsesSuppliedInstantAndPreservesExplicitSchedule()
+    {
+        var clock = FixedClock();
+        await using var db = TestDbContextFactory.Create();
+        var storage = new InMemoryStorageProvider();
+        await storage.SaveAsync("workflows", "clock.yaml", "name: clock\ntasks:\n  - name: work\n    processor: Clock\n");
+        var orchestrator = new WorkflowOrchestrator(clock, new WorkflowRepository(storage), db);
+        var due = clock.UtcNow.AddHours(1);
+        var instance = await orchestrator.TriggerAsync("clock", new(), due);
+        Assert.Equal(clock.UtcNow, instance.CreatedAt);
+        Assert.Equal(clock.UtcNow, instance.UpdatedAt);
+        var task = Assert.Single(instance.Tasks);
+        Assert.Equal(due, task.ScheduledAt);
+        Assert.Equal(clock.UtcNow, task.CreatedAt);
+        Assert.Equal(clock.UtcNow, task.UpdatedAt);
     }
 
     [Fact]

@@ -8,7 +8,8 @@ using RecipeApi.Workflow;
 
 namespace RecipeApi.Services.Processors;
 
-public class CategorizeRecipeProcessor(IClock clock, 
+public class CategorizeRecipeProcessor(
+    IClock clock,
     RecipeDbContext db,
     IChatClient chatClient,
     ILogger<CategorizeRecipeProcessor> logger,

@@ -52,20 +52,23 @@ public class WorkflowOrchestrator(IClock clock, WorkflowRepository workflowRepos
             }
         }
 
+        var now = clock.UtcNow;
         var instance = new WorkflowInstance
         {
             Id = Guid.NewGuid(),
             WorkflowId = workflowId,
             Status = WorkflowStatus.Pending,
             Parameters = System.Text.Json.JsonSerializer.Serialize(parameters),
-            CreatedAt = clock.UtcNow,
-            UpdatedAt = clock.UtcNow
+            CreatedAt = now,
+            UpdatedAt = now
         };
 
         foreach (var taskDef in definition.Tasks)
         {
             var task = new WorkflowTask
             {
+                CreatedAt = now,
+                UpdatedAt = now,
                 TaskId = Guid.NewGuid(),
                 InstanceId = instance.Id,
                 TaskName = taskDef.Name,

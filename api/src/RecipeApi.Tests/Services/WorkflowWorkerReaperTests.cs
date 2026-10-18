@@ -16,8 +16,11 @@ public class WorkflowWorkerReaperTests
 {
     private readonly RecipeApi.Tests.Integration.DeploymentCalendarIntegrationTests.CalendarClock _clock = new() { UtcNow = new DateTimeOffset(2026, 10, 12, 12, 0, 0, TimeSpan.Zero) };
 
-    [Fact]
-    public async Task ZombieReaper_ShouldReclaimStaleTasks()
+    [Theory]
+    [InlineData(-1, true)]
+    [InlineData(0, false)]
+    [InlineData(1, false)]
+    public async Task ZombieReaper_ShouldReclaimOnlyStrictlyStaleTasks(int cutoffTicks, bool reclaimed)
     {
         // Arrange
         var services = new ServiceCollection();
@@ -30,13 +33,13 @@ public class WorkflowWorkerReaperTests
         var scopeFactory = serviceProvider.GetRequiredService<IServiceScopeFactory>();
 
         var testWorker = new WorkflowWorker(
-            _clock, scopeFactory, 
+            _clock, scopeFactory,
             new Mock<ILogger<WorkflowWorker>>().Object, 
-            new AiExceptionHandler(_clock, new Mock<ILogger<AiExceptionHandler>>().Object), 
+            new AiExceptionHandler(_clock, new Mock<ILogger<AiExceptionHandler>>().Object),
             Options.Create(new WorkflowRetryOptions()));
 
         var now = _clock.UtcNow;
-        var staleTime = now.AddMinutes(-20); // More than 15 minutes
+        var staleTime = now.AddMinutes(-15).AddTicks(cutoffTicks);
         
         var instance = new WorkflowInstance 
         { 
@@ -75,6 +78,14 @@ public class WorkflowWorkerReaperTests
         var queryDb = queryScope.ServiceProvider.GetRequiredService<RecipeDbContext>();
         var updatedTask = await queryDb.WorkflowTasks.FirstAsync(t => t.TaskId == task.TaskId);
 
+        if (!reclaimed)
+        {
+            Assert.Equal(TaskStatus.Processing, updatedTask.Status);
+            Assert.Equal(0, updatedTask.RetryCount);
+            Assert.Equal(staleTime, updatedTask.UpdatedAt);
+            return;
+        }
+        Assert.Equal(now, updatedTask.UpdatedAt);
         Assert.Equal(TaskStatus.Pending, updatedTask.Status);
         Assert.Equal(1, updatedTask.RetryCount);
         Assert.Contains("Reclaimed by Zombie Reaper", updatedTask.ErrorMessage);

@@ -10,7 +10,8 @@ namespace RecipeApi.Services.Processors;
 /// Finalizes the recipe state to mark it as ready for discovery.
 /// This processor runs as the final step in recipe import/describe workflows.
 /// </summary>
-public class RecipeReadyProcessor(IClock clock, 
+public class RecipeReadyProcessor(
+    IClock clock,
     RecipeDbContext db,
     ILogger<RecipeReadyProcessor> logger,
     IScheduleEventPublisher publisher,

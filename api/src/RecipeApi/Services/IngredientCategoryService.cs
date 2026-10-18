@@ -4,7 +4,8 @@ using RecipeApi.Models;
 
 namespace RecipeApi.Services;
 
-public class IngredientCategoryService(IClock clock, 
+public class IngredientCategoryService(
+    IClock clock,
     RecipeDbContext db,
     GroceryRecomputeService groceryRecompute,
     ILogger<IngredientCategoryService> logger)

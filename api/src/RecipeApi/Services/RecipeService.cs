@@ -9,7 +9,9 @@ using RecipeApi.Models;
 
 namespace RecipeApi.Services;
 
-public class RecipeService(IClock clock, HistoricalInterestService historicalInterest, 
+public class RecipeService(
+    IClock clock,
+    HistoricalInterestService historicalInterest,
     RecipeDbContext db,
     IValidationService validation,
     ImageService images,
