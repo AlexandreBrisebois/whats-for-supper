@@ -96,7 +96,7 @@ test('public install metadata agrees in initial HTML and retains access policy',
     expect(head).toContain(
       `name="apple-mobile-web-app-title" content="${name.replaceAll("'", '&#x27;')}"`
     );
-    expect(head).toContain('name="description" content="Swipe, Match, Cook."');
+    expect(head).toContain('name="description" content="Swipe, Match, Cook!"');
     expect(head).toContain('rel="manifest" href="/manifest.json"');
     expect(head).toContain(`rel="icon" href="${prefix}/favicon-32x32.png"`);
     if (prefix) {
