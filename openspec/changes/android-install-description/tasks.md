@@ -20,7 +20,9 @@
 ## 3. Final integration
 
 - [ ] 3.1 Prepare reviewed paths, scope-review the complete diff and run `task verify` with all task paths; report the invocation record and every failed/blocked check.
-- [ ] 3.2 Check equivalent PRs, publish a separate draft PR and inspect final-head CI; keep issue #274 open and this change active while Android qualification is incomplete.
+- [x] 3.2 Check equivalent PRs, publish a separate draft PR and inspect final-head CI; keep issue #274 open and this change active while Android qualification is incomplete.
+
+The final local harness completed with one unreproduced Home/QuickFind timeout; 3.1 remains incomplete as an all-green verification claim. Five traced repetitions and exact implementation-head CI passed. See evidence and PR #286 for final documentation-head CI.
 
 ## Workflow follow-up
 
