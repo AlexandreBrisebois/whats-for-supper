@@ -235,6 +235,49 @@ public class WeeklyInterestPostgresTests(Xunit.Abstractions.ITestOutputHelper ou
     }
 
     [PostgresFact]
+    public async Task ClockCooldown_FinalizedCivilDatesSurviveTimezoneAndWeekBoundaries()
+    {
+        foreach (var zone in new[] { "UTC", "America/Toronto" })
+        foreach (var monday in new[] { new DateOnly(2026, 10, 12), new DateOnly(2026, 11, 2), new DateOnly(2026, 3, 9) })
+        {
+            var calendarClock = new DeploymentCalendarIntegrationTests.CalendarClock
+            { UtcNow = new DateTimeOffset(monday.ToDateTime(new TimeOnly(12, 0)), TimeSpan.Zero) };
+            var localCalendar = new DeploymentCalendar(new ConfigurationManager { ["Calendar:TimeZone"] = zone });
+            var cutoff = monday.AddDays(-28);
+            var rows = Enumerable.Range(-1, 3).Select(offset => new Recipe
+            { Name = $"{zone} {monday} {offset}", Category = "Supper", IsReady = true, IsDiscoverable = true }).ToArray();
+            db.Recipes.AddRange(rows);
+            for (var i = 0; i < rows.Length; i++)
+                db.CalendarEvents.Add(new CalendarEvent { RecipeId = rows[i].Id, Date = cutoff.AddDays(i - 1), Status = CalendarEventStatus.Planned });
+            await db.SaveChangesAsync();
+            var schedule = new ScheduleService(db, NullLogger<ScheduleService>.Instance,
+                Mock.Of<IScheduleEventPublisher>(), null!, calendarClock, localCalendar);
+            await schedule.FinalizeOverdueMealsAsync();
+            for (var i = 0; i < rows.Length; i++)
+            {
+                await db.Entry(rows[i]).ReloadAsync();
+                Assert.Equal(new DateTimeOffset(cutoff.AddDays(i - 1).ToDateTime(TimeOnly.MinValue), TimeSpan.Zero), rows[i].LastCookedDate);
+                Assert.True(rows[i].IsDiscoverable); // Finalization does not recompute cooldown.
+            }
+            var processor = new ReconcileRecipeRotationProcessor(db, calendarClock, localCalendar,
+                new(new ConfigurationManager()), Mock.Of<IScheduleEventPublisher>(), NullLogger<ReconcileRecipeRotationProcessor>.Instance);
+            await processor.ExecuteAsync(new WorkflowTask(), default);
+            Assert.False(rows[0].CookedSuppressed);
+            Assert.True(rows[1].CookedSuppressed, $"Exact civil cutoff lost in {zone}, current Monday {monday}");
+            Assert.True(rows[2].CookedSuppressed);
+            rows[2].RotationHumanOff = true;
+            await db.SaveChangesAsync();
+            calendarClock.UtcNow = calendarClock.UtcNow.AddDays(7);
+            Assert.True(rows[1].CookedSuppressed); // Aging alone does not reconcile.
+            await processor.ExecuteAsync(new WorkflowTask(), default);
+            Assert.False(rows[1].CookedSuppressed);
+            Assert.True(rows[1].IsDiscoverable);
+            Assert.False(rows[2].IsDiscoverable);
+            Assert.True(rows[2].RotationHumanOff);
+        }
+    }
+
+    [PostgresFact]
     public async Task Dreaming_UsesCalendarCutoff_AndPreservesHumanOffAcrossExplicitReturn()
     {
         var recent = await db.Recipes.SingleAsync();
