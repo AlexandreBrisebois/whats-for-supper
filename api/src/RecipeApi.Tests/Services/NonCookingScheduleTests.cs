@@ -77,7 +77,8 @@ public class NonCookingScheduleTests : IDisposable
         await _db.SaveChangesAsync();
         await _service.ValidateDayAsync("2026-10-12", Plan("custom", "  Supper at Grandma’s  "));
         await _service.OpenVotingAsync(0);
-        await _service.LockScheduleAsync(0);
+        var opened = await _service.GetScheduleAsync(0);
+        await _service.LockScheduleAsync(0, votingRoundId: opened.VotingRoundId);
         var day = await Day();
         Assert.Equal(3, day.GetProperty("status").GetInt32());
         Assert.Equal("Supper at Grandma’s", day.GetProperty("nonCooking").GetProperty("customLabel").GetString());

@@ -23,7 +23,7 @@ Cross-capability requirement references resolve to the following authoritative o
 
 ### Requirement: Open or reopen a protected planner week for voting
 
-POST /api/schedule/voting/open SHALL accept optional weekOffset defaulting to zero and resolve its Monday by the accepted deployment calendar week rule. It SHALL create a missing plan as VotingOpen or set an existing plan VotingOpen without changing its calendar entries. Access SHALL follow household-identity's Authenticate protected API requests independently requirement.
+POST /api/schedule/voting/open SHALL accept optional weekOffset defaulting to zero and resolve its Monday by the accepted deployment calendar week rule. It SHALL create a missing plan as VotingOpen or set an existing plan VotingOpen without changing its calendar entries or discarding valid early votes. Only one week SHALL own the operational voting round at a time. Access SHALL follow household-identity's Authenticate protected API requests independently requirement.
 
 #### Scenario: Missing weekly plan
 - **WHEN** an authorized open request persists for a week with no plan
@@ -35,39 +35,55 @@ POST /api/schedule/voting/open SHALL accept optional weekOffset defaulting to ze
 
 ### Requirement: Reconcile Planner after opening voting
 
-Planner SHALL optimistically show VotingOpen before awaiting the open operation. After it resolves, Planner SHALL read schedule and smart defaults for its then-loaded offset and rebuild displayed days when schedule data is usable. Rejection SHALL restore the captured local week status and schedule and log failure through the page handler.
+Planner SHALL capture the loaded absolute week before opening voting and read that week's schedule and smart defaults after the open operation resolves. It SHALL publish VotingOpen status, the returned round identity and rebuilt days together only while the captured week remains loaded. Rejection SHALL restore captured local status and days only while that same week remains loaded and log failure through the page handler.
 
 #### Scenario: Open completes
-- **WHEN** open and its subsequent reads resolve with usable schedule data
-- **THEN** displayed days are rebuilt using the accepted persisted-content and pending-suggestion composition rules
+- **WHEN** open and its subsequent reads resolve with usable schedule data while the captured week remains loaded
+- **THEN** displayed days are rebuilt using the accepted persisted-content and pending-suggestion composition rules, and the returned round identity accompanies VotingOpen status
 
 #### Scenario: Open or its follow-up rejects
-- **WHEN** the open operation or a rejecting follow-up throws
+- **WHEN** the open operation or a rejecting follow-up throws while the captured week remains loaded
 - **THEN** captured local status and days are restored without implying reversal of server voting state
+
+#### Scenario: Open response arrives after navigation
+- **WHEN** the household navigates to another week before the open response or failure arrives
+- **THEN** that response does not replace the newly viewed week's status, identity or days
+
+#### Scenario: Round identity is still loading
+- **WHEN** opening has persisted but the confirming schedule has not returned
+- **THEN** Planner does not expose the newly opened round as closable using the preceding round's identity
 
 ### Requirement: Promote displayed pending suggestions before closing voting
 
-Planner Close Voting SHALL capture its loaded week and displayed pending recipe slots whose status is not Skipped, optimistically show Locked, and await assignment requests for those slots before posting lock. Confirmed recipes and Skipped slots SHALL not be newly assigned by this promotion step. These separate requests SHALL NOT constitute an atomic close.
+Planner Close Voting SHALL capture its loaded week and displayed pending recipe slots whose status is not Skipped, optimistically show Locked, and await assignment requests for those slots before posting lock with the captured round identity. Confirmed recipes and Skipped slots SHALL not be newly assigned by this promotion step. These separate requests SHALL NOT constitute an atomic close. A failure SHALL affect local status only while the captured absolute week remains loaded.
 
 #### Scenario: One pending and one confirmed recipe
 - **WHEN** Close Voting runs with one ordinary pending recipe and one confirmed recipe
 - **THEN** only the pending recipe is submitted for assignment before lock
 
 #### Scenario: Some assignments fail
-- **WHEN** an assignment rejects while other promotion requests may have succeeded
+- **WHEN** an assignment rejects while other promotion requests may have succeeded and the captured week remains loaded
 - **THEN** lock is not started through that invocation and local week status is restored without rolling back successful assignments
 
 ### Requirement: Finish the Planner close-voting presentation
 
-After lock returns, Planner SHALL clear displayed pending markers only while the captured offset remains loaded and show its temporary voting-complete feedback. On rejection it SHALL restore captured week status and log failure without a dedicated close-voting retry panel. It SHALL not require a schedule reread for this success presentation.
+Planner SHALL clear pending markers and show voting-complete feedback after lock succeeds, without requiring a reread. On rejection it SHALL reread the captured week and recover Locked only for the captured round identity; otherwise it SHALL restore captured status and log failure without a dedicated retry panel. Presentation changes SHALL apply only while the captured offset and absolute week remain loaded.
 
 #### Scenario: Lock completes in the same loaded week
-- **WHEN** promotion and lock resolve with the captured offset still loaded
+- **WHEN** promotion and lock resolve with the captured offset and absolute week still loaded
 - **THEN** displayed pending markers clear and temporary success feedback appears
 
 #### Scenario: Lock rejects after promotion
-- **WHEN** lock rejects after assignment requests have returned
-- **THEN** local week status is restored while completed server assignments are not compensated by this handler
+- **WHEN** lock rejects after assignment requests have returned and rereading does not confirm the captured close
+- **THEN** local status is restored only for the still-loaded captured week while completed server assignments are not compensated by this handler
+
+#### Scenario: Committed close loses its response
+- **WHEN** the close response fails but rereading confirms Locked for the captured round and the same week remains loaded
+- **THEN** Planner recovers the confirmed closed schedule without reporting the week as open
+
+#### Scenario: Failed close arrives after navigation
+- **WHEN** close or direct week lock fails after the household navigates to another absolute week
+- **THEN** recovery of the old request does not overwrite the newly viewed week's status
 
 ### Requirement: Persist a protected week lock independently of browser promotion
 
@@ -83,7 +99,7 @@ POST /api/schedule/lock SHALL accept optional weekOffset defaulting to zero, res
 
 ### Requirement: Lock persisted ordinary assignments while preserving recipe-free skips
 
-On successful week locking, ordinary Planned entries in the selected Monday-through-Sunday range SHALL become day Locked while recipe-free Skipped entries SHALL remain Skipped. Available current Like counts SHALL be copied to matching recipe-backed entries before vote clearing. Lock SHALL not record cooking completion or change recipe last-cooked values through this action.
+On successful week locking, ordinary Planned entries in the selected Monday-through-Sunday range SHALL become day Locked while recipe-free Skipped entries SHALL remain Skipped. Available current Like counts SHALL be copied to matching recipe-backed entries before vote clearing. Positive weekly history SHALL be captured under weekly-household-interest in the same consistent close boundary. Lock SHALL not record cooking completion or change recipe last-cooked values through this action.
 
 #### Scenario: Planned recipe and non-cooking date
 - **WHEN** locking succeeds with a Planned recipe and a recipe-free skipped plan
@@ -95,7 +111,7 @@ On successful week locking, ordinary Planned entries in the selected Monday-thro
 
 ### Requirement: Attempt voting-state publication after persistence
 
-Opening voting and locking SHALL save their week changes before reading and attempting a week snapshot with the request connection exclusion. Lock SHALL invoke clearing of stored recipe votes as a planning consequence of closure, without defining discovery vote eligibility or meaning. Successful operations SHALL return 200 data.message Voting opened or Schedule locked respectively after publication returns.
+Opening voting and locking SHALL save their week changes before reading and attempting a week snapshot with the request connection exclusion. Lock SHALL persist its lock, aggregate snapshot, close receipt and round vote clearing consistently before publication; a completed close retry SHALL NOT repeat clearing. Successful operations SHALL return 200 data.message Voting opened or Schedule locked respectively after publication returns.
 
 #### Scenario: Lock completes
 - **WHEN** lock persistence and its subsequent read/publication return
@@ -103,7 +119,7 @@ Opening voting and locking SHALL save their week changes before reading and atte
 
 #### Scenario: Publication rejects after save
 - **WHEN** week snapshot publication throws after open or lock persistence
-- **THEN** the successful response is not reached without establishing reversal of saved week or vote changes
+- **THEN** the request reports failure while saved week changes remain committed; retry or reload can recover a completed close without repeating vote clearing
 
 ### Requirement: Validate recipe-specific cooking without completing another assignment
 
@@ -200,3 +216,51 @@ After overdue persistence completes, finalization SHALL read and attempt a snaps
 #### Scenario: Publication fails after completion save
 - **WHEN** an affected-week read or publication throws after persistence
 - **THEN** the invocation fails without establishing reversal of saved Cooked states or publication of remaining weeks
+
+### Requirement: Close atomically with retry-safe round ownership
+
+Close SHALL capture the intended round and persisted plan, commit its aggregate snapshot and lock, and clear that round once as one durable outcome. A failed persistence boundary SHALL leave the round votes available. A retry after committed close SHALL return or recover that outcome without clearing later votes.
+
+#### Scenario: Snapshot failure
+- **WHEN** snapshot persistence fails before close commit
+- **THEN** no lock/history/clear partial outcome is committed; votes can be retried
+
+#### Scenario: Lost response
+- **WHEN** close commits but its response is lost; early votes arrive and the same close is retried
+- **THEN** the retry recognizes completion and preserves every later vote
+
+#### Scenario: Publication failure
+- **WHEN** close commits but SSE publication fails
+- **THEN** durable state remains closed; retry/reload can recover it without duplicate history or clearing
+
+#### Scenario: Late vote
+- **WHEN** a vote races the serialized close boundary
+- **THEN** it is included in the closed snapshot and cleared, or retained as a next-round vote, never silently lost
+
+#### Scenario: Concurrent closes
+- **WHEN** two closes target the same round
+- **THEN** one durable close outcome is produced; neither can replace history with an empty retry
+
+#### Scenario: Reopen versus stale close
+- **WHEN** a closed week reopens and a stale close request from the prior round arrives
+- **THEN** the stale request cannot close or clear the new round
+
+#### Scenario: Pending browser suggestion
+- **WHEN** a displayed suggestion has not been persisted when close takes its plan snapshot
+- **THEN** it is not selected in history; browser promotion remains its existing separate operation
+
+### Requirement: Preserve one operational round across open and close
+
+Opening a week SHALL preserve votes received since the previous completed close. Opening another week while a different week owns the active round SHALL fail without moving or clearing votes. These rules SHALL NOT make live vote rows persistent week-owned preferences.
+
+#### Scenario: Early votes
+- **WHEN** A closes, then two votes arrive before B opens
+- **THEN** opening B retains both votes for that round
+
+#### Scenario: Competing opens
+- **WHEN** two different weeks are opened concurrently
+- **THEN** only one obtains the round; the other request reports conflict without changing votes
+
+#### Scenario: Same week open retry
+- **WHEN** the active week receives the same open again
+- **THEN** the operation is idempotent and retains votes

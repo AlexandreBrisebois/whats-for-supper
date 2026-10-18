@@ -73,9 +73,17 @@ export const getSchedule = async (
   return data?.weekOffset !== undefined ? data : undefined;
 };
 
-export const lockSchedule = async (weekOffset: number, referenceWeekStartDate?: string) => {
+export const lockSchedule = async (
+  weekOffset: number,
+  referenceWeekStartDate?: string,
+  votingRoundId?: string
+) => {
   const result = await apiClient.api.schedule.lock.post({
-    queryParameters: { weekOffset, ...referenceRequest(referenceWeekStartDate)?.queryParameters },
+    queryParameters: {
+      weekOffset,
+      ...referenceRequest(referenceWeekStartDate)?.queryParameters,
+      ...(votingRoundId ? { votingRoundId } : {}),
+    },
   });
   return result?.data || result;
 };

@@ -6,18 +6,22 @@ using RecipeApi.Models;
 
 namespace RecipeApi.Services;
 
-public class DiscoveryService(RecipeDbContext dbContext, IScheduleEventPublisher publisher, IClock clock, DeploymentCalendar calendar)
+public class DiscoveryService(RecipeDbContext dbContext, IScheduleEventPublisher publisher, IClock clock, DeploymentCalendar calendar, HistoricalInterestService? historicalInterest = null)
 {
     private readonly RecipeDbContext _dbContext = dbContext;
     private readonly IScheduleEventPublisher _publisher = publisher;
 
     public async Task<List<RecipeDto>> GetRecipesForDiscoveryAsync(Guid familyMemberId, string? category = null, string? cuisine = null)
     {
-        var query = _dbContext.DiscoveryRecipes.AsQueryable();
+        await using var rankingBoundary = await VotingBoundary.BeginAsync(_dbContext);
+        var history = await (historicalInterest ?? HistoricalInterestService.Default(_dbContext, clock, calendar)).CaptureAsync();
+        var query = EligibleQueue(familyMemberId);
 
         if (!string.IsNullOrEmpty(category))
         {
-            query = query.Where(r => r.Category == category);
+            query = category == "Supper"
+                ? query.Where(r => r.SupperSuitable ?? (r.Category == "Supper" || (r.MealTypes != null && r.MealTypes.Contains("Supper"))))
+                : query.Where(r => r.Category == category);
         }
 
         if (!string.IsNullOrEmpty(cuisine))
@@ -35,7 +39,9 @@ public class DiscoveryService(RecipeDbContext dbContext, IScheduleEventPublisher
         // on the table in a while, driving conversion toward high-momentum picks.
         query = query
             .OrderByDescending(r => r.VoteCount)
-            .ThenBy(r => r.LastCookedDate ?? DateTimeOffset.MinValue);
+            .ThenBy(r => r.LastCookedDate ?? DateTimeOffset.MinValue)
+            .ThenByDescending(history.OrderKey<DiscoveryRecipe>())
+            .ThenBy(r => r.Id);
 
         var results = await query.ToListAsync();
 
@@ -49,36 +55,48 @@ public class DiscoveryService(RecipeDbContext dbContext, IScheduleEventPublisher
 
     public async Task<List<string>> GetAvailableCategoriesAsync(Guid familyMemberId)
     {
-        return await _dbContext.DiscoveryRecipes
-            .Where(r => !_dbContext.RecipeVotes.Any(v => v.RecipeId == r.Id && v.FamilyMemberId == familyMemberId))
-            .Where(r => r.Category != null)
-            .Select(r => r.Category!)
-            .Distinct()
-            .ToListAsync();
+        var eligible = EligibleQueue(familyMemberId);
+        return await eligible.Where(r => r.Category != null && r.Category != "Supper").Select(r => r.Category!)
+            .Union(eligible.Where(r => r.SupperSuitable ?? (r.Category == "Supper" || (r.MealTypes != null && r.MealTypes.Contains("Supper"))))
+                .Select(r => "Supper")).ToListAsync();
+    }
+
+    private IQueryable<DiscoveryRecipe> EligibleQueue(Guid memberId)
+    {
+        var monday = calendar.Capture(clock.UtcNow).CurrentWeekStartDate;
+        var sunday = monday.AddDays(6);
+        return _dbContext.DiscoveryRecipes.Where(r =>
+            !_dbContext.CalendarEvents.Any(e => e.RecipeId == r.Id && e.Date >= monday && e.Date <= sunday &&
+                (e.Status == CalendarEventStatus.Planned || e.Status == CalendarEventStatus.Locked || e.Status == CalendarEventStatus.Cooked)) &&
+            !_dbContext.RecipeVotes.Any(v => v.RecipeId == r.Id && v.FamilyMemberId == memberId));
     }
 
     public async Task SubmitVoteAsync(Guid recipeId, Guid familyMemberId, VoteType vote)
     {
         var context = calendar.Capture(clock.UtcNow);
-        var existingVote = await _dbContext.RecipeVotes
-            .FirstOrDefaultAsync(v => v.RecipeId == recipeId && v.FamilyMemberId == familyMemberId);
+        await using (var transaction = await VotingBoundary.BeginAsync(_dbContext))
+        {
+            var existingVote = await _dbContext.RecipeVotes
+                .FirstOrDefaultAsync(v => v.RecipeId == recipeId && v.FamilyMemberId == familyMemberId);
 
-        if (existingVote != null)
-        {
-            existingVote.Vote = vote;
-            existingVote.VotedAt = DateTimeOffset.UtcNow;
-        }
-        else
-        {
-            _dbContext.RecipeVotes.Add(new RecipeVote
+            if (existingVote != null)
             {
-                RecipeId = recipeId,
-                FamilyMemberId = familyMemberId,
-                Vote = vote
-            });
-        }
+                existingVote.Vote = vote;
+                existingVote.VotedAt = DateTimeOffset.UtcNow;
+            }
+            else
+            {
+                _dbContext.RecipeVotes.Add(new RecipeVote
+                {
+                    RecipeId = recipeId,
+                    FamilyMemberId = familyMemberId,
+                    Vote = vote
+                });
+            }
 
-        await _dbContext.SaveChangesAsync();
+            await _dbContext.SaveChangesAsync();
+            if (transaction is not null) await transaction.CommitAsync();
+        }
 
         // Publish live vote count
         var voteCount = await _dbContext.RecipeVotes

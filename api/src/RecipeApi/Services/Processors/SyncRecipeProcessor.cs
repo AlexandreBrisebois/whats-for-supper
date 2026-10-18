@@ -104,7 +104,8 @@ public class SyncRecipeProcessor(
 
         recipe.ImageCount = recipeInfo.ImageCount;
         recipe.IsSynthesized = recipeInfo.IsSynthesized;
-        recipe.IsDiscoverable = recipeInfo.IsDiscoverable;
+        // Effective rotation and human intent belong to the database. Import metadata
+        // can predate a human toggle or Dreaming; RecipeReady owns initial eligibility.
         recipe.UpdatedAt = DateTimeOffset.UtcNow;
 
         await db.SaveChangesAsync(ct);

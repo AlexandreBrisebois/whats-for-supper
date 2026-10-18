@@ -1052,6 +1052,47 @@ describe('complete stack traversal', () => {
 });
 
 describe('stack page recovery', () => {
+  it('keeps cards through history expiry and a failed restart, then replaces the sequence', async () => {
+    const ids = makeRecipeIds(126);
+    mocks.librarySummaryGet.mockResolvedValue(makeSummaryResponse(126));
+    mocks.recipesGet
+      .mockResolvedValueOnce({
+        ...makePageResponse(ids.slice(0, 20), 126, 1),
+        historyGeneration: 'before',
+      })
+      .mockRejectedValueOnce({ responseStatusCode: 409 })
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockResolvedValueOnce({
+        ...makePageResponse(ids.slice(20, 40), 126, 1),
+        historyGeneration: 'after',
+      });
+    await act(async () => {
+      render(<BrowseAllStackPage />);
+    });
+    await act(async () => {
+      await mocks.getCapturedOnDragEnd()!(null, makeDragInfo(120));
+    });
+    expect(mocks.recipesGet).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        queryParameters: expect.objectContaining({ historyGeneration: 'before' }),
+      })
+    );
+    expect(screen.getByTestId('stack-card-front')).toHaveAttribute('data-recipe-id', ids[0]);
+    await act(async () =>
+      fireEvent.click(screen.getByRole('button', { name: 'Restart from first page' }))
+    );
+    expect(screen.getByTestId('stack-card-front')).toHaveAttribute('data-recipe-id', ids[0]);
+    await act(async () =>
+      fireEvent.click(screen.getByRole('button', { name: 'Restart from first page' }))
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId('stack-card-front')).toHaveAttribute('data-recipe-id', ids[20])
+    );
+    expect(
+      screen.queryByRole('button', { name: 'Restart from first page' })
+    ).not.toBeInTheDocument();
+  });
+
   it('retains the current card on failed wrap and retries the requested page', async () => {
     const ids = makeRecipeIds(126);
     mocks.librarySummaryGet.mockResolvedValue(makeSummaryResponse(126));

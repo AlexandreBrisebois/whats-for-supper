@@ -13,6 +13,9 @@ public enum WeeklyPlanStatus : short
 [Table("weekly_plans")]
 public class WeeklyPlan
 {
+    [Column("voting_round_id")] public Guid? VotingRoundId { get; set; }
+    [Column("last_closed_round_id")] public Guid? LastClosedRoundId { get; set; }
+    [Column("requires_round_identity")] public bool RequiresRoundIdentity { get; set; }
     [Key]
     [Column("id")]
     public Guid Id { get; set; } = Guid.NewGuid();

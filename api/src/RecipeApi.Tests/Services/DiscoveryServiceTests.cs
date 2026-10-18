@@ -11,6 +11,27 @@ namespace RecipeApi.Tests.Services;
 
 public class DiscoveryServiceTests
 {
+    [Theory]
+    [InlineData(CalendarEventStatus.Planned, 0, false)]
+    [InlineData(CalendarEventStatus.Locked, 0, false)]
+    [InlineData(CalendarEventStatus.Cooked, 0, false)]
+    [InlineData(CalendarEventStatus.AwaitingConsensus, 0, true)]
+    [InlineData(CalendarEventStatus.Skipped, 0, true)]
+    [InlineData(CalendarEventStatus.Planned, 7, true)]
+    public async Task CurrentCommittedPlan_ExcludesDiscoveryAndCategories(CalendarEventStatus status, int days, bool visible)
+    {
+        await using var ctx = TestDbContextFactory.Create();
+        var id = Guid.NewGuid();
+        var member = Guid.NewGuid();
+        var monday = DeploymentCalendar.Monday(DateOnly.FromDateTime(DateTime.UtcNow));
+        ctx.DiscoveryRecipes.Add(new DiscoveryRecipe { Id = id, Category = "Supper" });
+        ctx.CalendarEvents.Add(new CalendarEvent { Id = Guid.NewGuid(), RecipeId = id, Date = monday.AddDays(days), Status = status });
+        await ctx.SaveChangesAsync();
+        var service = MakeService(ctx);
+        Assert.Equal(visible ? 1 : 0, (await service.GetRecipesForDiscoveryAsync(member)).Count);
+        Assert.Equal(visible ? 1 : 0, (await service.GetAvailableCategoriesAsync(member)).Count);
+    }
+
     private static DiscoveryService MakeService(RecipeDbContext ctx)
         => new(ctx, new Mock<IScheduleEventPublisher>().Object, new SystemClock(), new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()));
 

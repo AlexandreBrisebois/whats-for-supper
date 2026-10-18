@@ -35,6 +35,10 @@ CREATE TABLE recipes (
     image_count integer DEFAULT 0 NOT NULL,
     is_synthesized boolean DEFAULT false NOT NULL,
     is_discoverable boolean NOT NULL,
+    rotation_human_off boolean NOT NULL DEFAULT false,
+    rotation_source text NOT NULL DEFAULT 'Unknown',
+    cooked_suppressed boolean NOT NULL DEFAULT false,
+    supper_suitable boolean,
     category text,
     is_vegetarian boolean,
     raw_metadata jsonb,
@@ -114,10 +118,33 @@ CREATE TABLE IF NOT EXISTS weekly_plans (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     week_start_date date UNIQUE NOT NULL,
     status smallint NOT NULL DEFAULT 0, -- 0=Draft, 1=VotingOpen, 2=Locked
+    voting_round_id uuid,
+    last_closed_round_id uuid,
+    requires_round_identity boolean NOT NULL DEFAULT false,
     notified_at timestamptz,
     grocery_state jsonb NOT NULL DEFAULT '{}'::jsonb,
     grocery_items jsonb NOT NULL DEFAULT '[]'::jsonb,
     created_at timestamptz DEFAULT now() NOT NULL
+);
+
+CREATE TABLE voting_round_state (
+    id integer PRIMARY KEY CHECK (id = 1),
+    round_id uuid NOT NULL,
+    week_start_date date,
+    history_generation uuid NOT NULL,
+    requires_round_identity boolean NOT NULL DEFAULT false
+);
+
+CREATE TABLE weekly_household_interest (
+    week_start_date date NOT NULL,
+    recipe_id uuid NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
+    positive_count integer NOT NULL,
+    selected boolean NOT NULL,
+    captured_at timestamptz NOT NULL,
+    close_id uuid NOT NULL,
+    PRIMARY KEY (week_start_date, recipe_id),
+    CONSTRAINT weekly_interest_positive CHECK (positive_count > 0),
+    CONSTRAINT weekly_interest_monday CHECK (EXTRACT(ISODOW FROM week_start_date) = 1)
 );
 
 CREATE TABLE calendar_events (
@@ -155,6 +182,7 @@ CREATE TABLE IF NOT EXISTS recipe_search_filter_state (
 CREATE TABLE IF NOT EXISTS recipe_search_affinity_facts (
     recipe_id uuid PRIMARY KEY REFERENCES recipes(id) ON DELETE CASCADE,
     affinity integer NOT NULL,
+    live_vote_contribution integer,
     last_cooked_on date,
     generated_at timestamptz NOT NULL
 );
@@ -239,7 +267,7 @@ GROUP BY recipe_id;
 
 CREATE OR REPLACE VIEW vw_discovery_recipes AS
 SELECT r.id, r.name, r.category, r.cuisine_type, r.meal_types, r.description, r.ingredients, r.image_count, r.total_time, r.is_vegetarian, r.last_cooked_date, r.created_at, r.finished_dish_index,
-COALESCE(v.vote_count, 0) AS vote_count
+COALESCE(v.vote_count, 0) AS vote_count, r.supper_suitable
 FROM recipes r
 LEFT JOIN (SELECT recipe_id, count(recipe_id) AS vote_count FROM recipe_votes WHERE vote = 1 GROUP BY recipe_id) v ON r.id = v.recipe_id
 WHERE r.is_discoverable = true AND r.is_ready = true AND r.deleted_at IS NULL;

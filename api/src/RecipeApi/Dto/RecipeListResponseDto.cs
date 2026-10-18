@@ -4,6 +4,9 @@ namespace RecipeApi.Dto;
 
 public class RecipeListResponseDto
 {
+    [JsonPropertyName("historyGeneration")]
+    public string? HistoryGeneration { get; set; }
+
     [JsonPropertyName("updatedAt")]
     public DateTimeOffset UpdatedAt { get; set; }
 

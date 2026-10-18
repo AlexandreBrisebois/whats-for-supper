@@ -175,7 +175,12 @@ export function useScheduleStream() {
     // refetch so already-planned recipes disappear from the list.
     source.addEventListener('fill_the_gap_invalidated', (e: MessageEvent) => {
       console.log('[SSE] Received "fill_the_gap_invalidated" event');
-      const { weekStartDate } = JSON.parse(e.data);
+      const { weekStartDate, allWeeks } = JSON.parse(e.data);
+      if (allWeeks === true) {
+        useDiscoveryStore.getState().invalidateAllSuggestions();
+        useSearchPromotionStore.getState().invalidate();
+        return;
+      }
       if (!absoluteMonday(weekStartDate)) {
         void useWeekStore.getState().sync();
         return;

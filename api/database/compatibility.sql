@@ -4,6 +4,43 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 BEGIN;
 
+-- Additive weekly-interest/rotation upgrade. No historical preference backfill;
+-- a legacy false flag has unknown provenance, never inferred Human intent.
+DO $$
+BEGIN
+    IF to_regclass('public.recipes') IS NOT NULL THEN
+        ALTER TABLE recipes ADD COLUMN IF NOT EXISTS rotation_human_off boolean NOT NULL DEFAULT false;
+        ALTER TABLE recipes ADD COLUMN IF NOT EXISTS rotation_source text NOT NULL DEFAULT 'Unknown';
+        ALTER TABLE recipes ADD COLUMN IF NOT EXISTS cooked_suppressed boolean NOT NULL DEFAULT false;
+        ALTER TABLE recipes ADD COLUMN IF NOT EXISTS supper_suitable boolean;
+        CREATE TABLE IF NOT EXISTS weekly_household_interest (
+            week_start_date date NOT NULL,
+            recipe_id uuid NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
+            positive_count integer NOT NULL,
+            selected boolean NOT NULL,
+            captured_at timestamptz NOT NULL,
+            close_id uuid NOT NULL,
+            PRIMARY KEY (week_start_date, recipe_id),
+            CONSTRAINT weekly_interest_positive CHECK (positive_count > 0),
+            CONSTRAINT weekly_interest_monday CHECK (EXTRACT(ISODOW FROM week_start_date) = 1)
+        );
+        CREATE TABLE IF NOT EXISTS voting_round_state (
+            id integer PRIMARY KEY CHECK (id = 1), round_id uuid NOT NULL,
+            week_start_date date, history_generation uuid NOT NULL,
+            requires_round_identity boolean NOT NULL DEFAULT false
+        );
+    END IF;
+    IF to_regclass('public.weekly_plans') IS NOT NULL THEN
+        ALTER TABLE weekly_plans ADD COLUMN IF NOT EXISTS voting_round_id uuid;
+        ALTER TABLE weekly_plans ADD COLUMN IF NOT EXISTS last_closed_round_id uuid;
+        ALTER TABLE weekly_plans ADD COLUMN IF NOT EXISTS requires_round_identity boolean NOT NULL DEFAULT false;
+    END IF;
+    IF to_regclass('public.recipe_search_affinity_facts') IS NOT NULL THEN
+        ALTER TABLE recipe_search_affinity_facts ADD COLUMN IF NOT EXISTS live_vote_contribution integer;
+    END IF;
+END
+$$;
+
 -- Optional non-cooking metadata preserves all existing calendar rows.
 DO $$
 BEGIN

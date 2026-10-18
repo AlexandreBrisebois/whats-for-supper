@@ -225,6 +225,19 @@ export async function setupCommonRoutes(page: Page, calendarContext?: CalendarCo
     { recipe: ScheduleRecipeDto | null; status: number; nonCooking?: any }
   >();
   const weekStatuses = new Map<string, number>();
+  let roundSequence = 1;
+  let historyGeneration = 1;
+  const recipeUpdates = new Map<string, Partial<RecipeDto>>();
+  let activeRoundId: string = MOCK_IDS.VOTING_ROUND;
+  let activeRoundWeek: string | null = null;
+  const roundIds = new Map<string, string>();
+  const closeReceipts = new Map<string, string>();
+  const requiresIdentity = new Set<string>();
+  const liveVotes = new Map<string, { recipeId: string; vote: number }>();
+  const history = new Map<
+    string,
+    { recipeId: string; week: string; count: number; selected: boolean }
+  >();
   const scheduleCalendar = calendarContext ?? builders.deploymentCalendar();
   function readReference(url: URL): string | null {
     const reference =
@@ -246,6 +259,10 @@ export async function setupCommonRoutes(page: Page, calendarContext?: CalendarCo
     });
     schedule.status = weekStatuses.get(schedule.weekStartDate) ?? 0;
     schedule.locked = schedule.status === 2;
+    schedule.votingRoundId =
+      roundIds.get(schedule.weekStartDate) ??
+      closeReceipts.get(schedule.weekStartDate) ??
+      (!activeRoundWeek || activeRoundWeek === schedule.weekStartDate ? activeRoundId : null);
     for (const day of schedule.days) {
       const entry = scheduleEntries.get(day.date);
       if (entry) Object.assign(day, entry);
@@ -402,6 +419,10 @@ export async function setupCommonRoutes(page: Page, calendarContext?: CalendarCo
 
   // POST /api/discovery/{id}/vote
   await page.route('**/api/discovery/*/vote', async (route) => {
+    if (route.request().method() !== 'POST') return route.fallback();
+    const recipeId = new URL(route.request().url()).pathname.split('/')[3];
+    const member = route.request().headers()['x-family-member-id'] ?? MOCK_IDS.MEMBER_ALEX;
+    liveVotes.set(`${recipeId}:${member}`, { recipeId, vote: route.request().postDataJSON().vote });
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -658,6 +679,7 @@ export async function setupCommonRoutes(page: Page, calendarContext?: CalendarCo
     async (route) => {
       const url = new URL(route.request().url());
       const order = url.searchParams.get('order');
+      const requestedPage = Number(url.searchParams.get('page') ?? '1');
 
       if (route.request().method() === 'POST') {
         await route.fulfill({
@@ -666,6 +688,19 @@ export async function setupCommonRoutes(page: Page, calendarContext?: CalendarCo
           body: JSON.stringify({ recipe: builders.recipe(), updatedAt: new Date().toISOString() }),
         });
       } else {
+        const suppliedGeneration = url.searchParams.get('historyGeneration');
+        if (
+          order === 'explore' &&
+          ((requestedPage > 1 && !suppliedGeneration) ||
+            (suppliedGeneration && suppliedGeneration !== `mock-history-${historyGeneration}`))
+        )
+          return route.fulfill({
+            status: 409,
+            json: {
+              code: 'history_generation_expired',
+              message: 'Recipe order changed. Restart Explore.',
+            },
+          });
         const isDiscoverableOnly = url.searchParams.get('discoverableOnly') === 'true';
         await route.fulfill({
           status: 200,
@@ -682,6 +717,8 @@ export async function setupCommonRoutes(page: Page, calendarContext?: CalendarCo
                 : [],
             updatedAt: new Date().toISOString(),
             pagination: { page: 1, limit: 20, total: order === 'explore' ? 1 : 0 },
+            historyGeneration:
+              order === 'explore' ? `mock-history-${historyGeneration}` : undefined,
           }),
         });
       }
@@ -722,10 +759,25 @@ export async function setupCommonRoutes(page: Page, calendarContext?: CalendarCo
         }),
       });
     } else if (route.request().method() === 'PATCH') {
+      const id = new URL(route.request().url()).pathname.split('/')[3];
+      const changes = route.request().postDataJSON() as Partial<RecipeDto>;
+      if (
+        changes.isDiscoverable === true &&
+        changes.mealTypes?.length &&
+        !changes.mealTypes.includes('Supper')
+      )
+        return route.fulfill({
+          status: 400,
+          json: { message: 'Choose Supper in meal types before turning on Ask the Family.' },
+        });
+      recipeUpdates.set(id, { ...recipeUpdates.get(id), ...changes });
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ recipe: builders.recipe(), updatedAt: new Date().toISOString() }),
+        body: JSON.stringify({
+          recipe: builders.recipe({ id, ...recipeUpdates.get(id) }),
+          updatedAt: new Date().toISOString(),
+        }),
       });
     } else {
       const id =
@@ -737,7 +789,7 @@ export async function setupCommonRoutes(page: Page, calendarContext?: CalendarCo
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
-          recipe: builders.recipe({ id, importIssue: activeImportIssue }),
+          recipe: builders.recipe({ id, importIssue: activeImportIssue, ...recipeUpdates.get(id) }),
           updatedAt: FIXED_E2E_TIMESTAMP,
         }),
       });
@@ -967,6 +1019,54 @@ export async function setupCommonRoutes(page: Page, calendarContext?: CalendarCo
       });
     const offset = Number(url.searchParams.get('weekOffset') ?? 0);
     const schedule = makeSchedule(offset, reference);
+    const week = schedule.weekStartDate;
+    const requestedRound = url.searchParams.get('votingRoundId');
+    const replay =
+      status === 2 &&
+      closeReceipts.has(week) &&
+      (requestedRound === closeReceipts.get(week) ||
+        (!requestedRound && weekStatuses.get(week) === 2));
+    if (
+      !replay &&
+      ((activeRoundWeek && activeRoundWeek !== week) ||
+        (status === 2 &&
+          ((requestedRound && requestedRound !== activeRoundId) ||
+            (!requestedRound && requiresIdentity.has(week)))))
+    )
+      return route.fulfill({
+        status: 409,
+        json: { message: 'Voting changed. Refresh the planner.' },
+      });
+    if (replay) return route.fulfill({ json: { data: { message: 'Schedule locked' } } });
+    if (status === 1) {
+      if (weekStatuses.get(week) === 2) requiresIdentity.add(week);
+      activeRoundWeek = week;
+      roundIds.set(week, activeRoundId);
+    } else {
+      for (const recipeId of new Set([...liveVotes.values()].map((vote) => vote.recipeId))) {
+        const count = [...liveVotes.values()].filter(
+          (vote) => vote.recipeId === recipeId && vote.vote === 1
+        ).length;
+        const key = `${week}:${recipeId}`;
+        if (count)
+          history.set(key, {
+            recipeId,
+            week,
+            count,
+            selected: schedule.days.some(
+              (day) => day.recipe?.id === recipeId && [0, 1, 2].includes(day.status)
+            ),
+          });
+        else history.delete(key);
+      }
+      liveVotes.clear();
+      closeReceipts.set(week, activeRoundId);
+      roundIds.delete(week);
+      activeRoundWeek = null;
+      activeRoundId =
+        MOCK_IDS.VOTING_ROUND.slice(0, -12) + String(++roundSequence).padStart(12, '0');
+    }
+    historyGeneration++;
     weekStatuses.set(schedule.weekStartDate, status);
     if (status === 2)
       for (const day of schedule.days) {
@@ -1200,7 +1300,42 @@ export async function setupCommonRoutes(page: Page, calendarContext?: CalendarCo
     if (route.request().method() !== 'GET') return route.fallback();
     if (!readReference(new URL(route.request().url())))
       return route.fulfill({ status: 400, json: { message: 'Invalid referenceWeekStartDate.' } });
-    await route.fulfill({ json: { data: [] } });
+    const url = new URL(route.request().url());
+    const schedule = makeSchedule(
+      Number(url.searchParams.get('weekOffset') ?? 0),
+      readReference(url)!
+    );
+    const assigned = new Set(schedule.days.map((day) => day.recipe?.id));
+    const likes = new Map<string, number>();
+    for (const vote of liveVotes.values())
+      if (vote.vote === 1) likes.set(vote.recipeId, (likes.get(vote.recipeId) ?? 0) + 1);
+    const current = scheduleCalendar.currentWeekStartDate;
+    const cutoff = new Date(Date.parse(current) - 28 * 86400000).toISOString().slice(0, 10);
+    const historical = [...history.values()]
+      .filter(
+        (row) =>
+          !row.selected && row.week >= cutoff && row.week < current && row.week !== activeRoundWeek
+      )
+      .map((row) => row.recipeId);
+    const ids = [
+      ...new Set(
+        [...likes.keys()]
+          .sort((a, b) => likes.get(b)! - likes.get(a)! || a.localeCompare(b))
+          .concat(historical.sort())
+      ),
+    ]
+      .filter((id) => !assigned.has(id))
+      .slice(0, 5);
+    await route.fulfill({
+      json: {
+        data: ids.map((id) => ({
+          id,
+          name: REALISTIC_RECIPES[id]?.name ?? 'Mock Recipe',
+          image: `/api/recipes/${id}/hero`,
+          voteCount: likes.get(id) ?? null,
+        })),
+      },
+    });
   });
 
   await page.route('**/api/schedule/day/*/remove', async (route) => {

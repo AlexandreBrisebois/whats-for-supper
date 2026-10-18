@@ -27,6 +27,7 @@ export const DiscoveryToggleCard: React.FC<DiscoveryToggleCardProps> = ({
           : 'bg-white/85 text-charcoal/65 border-charcoal/8 hover:bg-white/95 hover:text-charcoal'
       } ${isLoading ? 'opacity-50 cursor-wait' : ''}`}
       data-testid={testId}
+      aria-pressed={isDiscoverable}
       aria-label={
         isDiscoverable
           ? t('recipes.turnOffDiscovery', 'Turn off Discovery for this recipe')
@@ -38,7 +39,9 @@ export const DiscoveryToggleCard: React.FC<DiscoveryToggleCardProps> = ({
           {t('planner.askFamily', 'Ask the Family')}
         </span>
         <span className="text-[11px] font-bold text-charcoal/50">
-          {t('discovery.showsInDiscovery', 'Shows in Discovery voting')}
+          {isDiscoverable
+            ? 'Available for voting. Dreaming may pause recently cooked recipes.'
+            : 'Turn on to return to voting. Turning off keeps it off until you turn it on.'}
         </span>
       </span>
       <div

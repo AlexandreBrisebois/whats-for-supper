@@ -18,6 +18,7 @@ public class RecipeSearchFilterMaterializer(RecipeDbContext db, IClock clock)
 
     public async Task<RecipeSearchFilterSnapshot> MaterializeAsync(CancellationToken ct)
     {
+        await using var transaction = await VotingBoundary.BeginAsync(db, ct);
         var generatedAt = clock.UtcNow;
         var eligibleRecipes = await db.Recipes
             .Where(recipe => recipe.IsReady && !string.IsNullOrWhiteSpace(recipe.CuisineType))
@@ -41,7 +42,6 @@ public class RecipeSearchFilterMaterializer(RecipeDbContext db, IClock clock)
             .ToList();
         var snapshot = BuildSnapshot(eligibleRecipes, facts, cookedEvents, generatedAt);
 
-        await using var transaction = await db.Database.BeginTransactionAsync(ct);
         db.RecipeSearchAffinityFacts.RemoveRange(db.RecipeSearchAffinityFacts);
         db.RecipeSearchAffinityFacts.AddRange(facts);
         var state = await db.RecipeSearchFilterStates.SingleOrDefaultAsync(item => item.Id == RecipeSearchFilterState.SingletonId, ct);
@@ -54,7 +54,7 @@ public class RecipeSearchFilterMaterializer(RecipeDbContext db, IClock clock)
         state.GeneratedAt = snapshot.GeneratedAt;
         state.CuisinePayload = JsonSerializer.Serialize(new CuisinePayload(snapshot.PromotedCuisines, snapshot.AllCuisines));
         await db.SaveChangesAsync(ct);
-        await transaction.CommitAsync(ct);
+        if (transaction is not null) await transaction.CommitAsync(ct);
         return snapshot;
     }
 
@@ -73,6 +73,7 @@ public class RecipeSearchFilterMaterializer(RecipeDbContext db, IClock clock)
         {
             RecipeId = recipe.Id,
             Affinity = affinity,
+            LiveVoteContribution = recipeVotes.Count(v => v.Vote == VoteType.Like) - recipeVotes.Count(v => v.Vote == VoteType.Dislike),
             LastCookedOn = recipeCooks.Select(@event => (DateOnly?)@event.Date).Max(),
             GeneratedAt = generatedAt
         };

@@ -20,7 +20,8 @@ public partial class RecipeSearchService(
     RecipeSearchRolloutOptions? rolloutOptions = null,
     RecipeSearchContinuationStore? continuationStore = null,
     IClock? clock = null,
-    RecipeSearchFilterOptions? filterOptions = null)
+    RecipeSearchFilterOptions? filterOptions = null,
+    HistoricalInterestService? historicalInterest = null)
 {
     private const int DefaultLimit = 12;
     private const int MaxLimit = 50;
@@ -34,6 +35,7 @@ public partial class RecipeSearchService(
     private const double PlannedDemotion = -10.0;
     private readonly IClock _clock = clock ?? new SystemClock();
     private readonly RecipeSearchFilterOptions? _filterOptions = filterOptions;
+    private readonly HistoricalInterestService _history = historicalInterest ?? HistoricalInterestService.Default(db, clock);
 
     public async Task<RecipeSearchResponseDto> SearchAsync(RecipeSearchRequestDto dto, CancellationToken ct = default)
     {
@@ -160,6 +162,7 @@ public partial class RecipeSearchService(
             }
         }
         // 3. Reranking
+        await using var rankingBoundary = await VotingBoundary.BeginAsync(db, ct);
         var rerankingStopwatch = System.Diagnostics.Stopwatch.StartNew();
         if (dto.WeekOffset is not null && dto.DayIndex is not null)
         {
@@ -174,8 +177,10 @@ public partial class RecipeSearchService(
         rerankingDurationMs = rerankingStopwatch.ElapsedMilliseconds;
 
         // 4. Map & Limit
+        var history = dto.SimilarToRecipeId is null ? await _history.CaptureAsync(ct) : null;
         var finalCandidates = candidates
             .OrderByDescending(candidate => candidate.Score)
+            .ThenByDescending(candidate => history?.Signal(candidate.Recipe.Id) ?? 0)
             .ThenByDescending(candidate => candidate.Recipe.CreatedAt)
             .ThenBy(candidate => candidate.Recipe.Id)
             .ToList();
@@ -186,6 +191,7 @@ public partial class RecipeSearchService(
             finalCandidates = candidates
                 .OrderByDescending(c => c.Score)
                 .ThenBy(c => c.Recipe.LastCookedDate)
+                .ThenByDescending(c => history?.Signal(c.Recipe.Id) ?? 0)
                 .ThenBy(c => c.Recipe.Id)
                 .ToList();
         }
@@ -318,7 +324,9 @@ public partial class RecipeSearchService(
         int? weekOffset,
         CancellationToken ct)
     {
-        var ranked = await GetBrowseRankedRecipesAsync(recipesQuery, filters, weekOffset, ct);
+        await using var rankingBoundary = await VotingBoundary.BeginAsync(db, ct);
+        var history = await _history.CaptureAsync(ct);
+        var ranked = await GetBrowseRankedRecipesAsync(recipesQuery, filters, weekOffset, history, ct);
         var recipes = ranked.Take(limit + 2).Select(candidate => candidate.Recipe).ToList();
         var candidates = BuildDefaultCandidates(recipes, filters);
         var promotionEligibleIds = ranked.Where(candidate => candidate.IsPromotionEligible).Select(candidate => candidate.Recipe.Id).ToHashSet();
@@ -343,7 +351,7 @@ public partial class RecipeSearchService(
             var store = continuationStore ?? throw new InvalidOperationException("Search continuation storage must be registered.");
             response.NextCursor = store.StoreBrowse(
                 fingerprint,
-                new RecipeSearchContinuationStore.BrowsePosition(last.LastCookedDate, last.CreatedAt, last.Id, weekOffset),
+                new RecipeSearchContinuationStore.BrowsePosition(last.LastCookedDate, last.CreatedAt, last.Id, weekOffset, history.Generation),
                 topPick?.Recipe.Id,
                 response);
         }
@@ -359,7 +367,10 @@ public partial class RecipeSearchService(
         RecipeSearchContinuationStore store,
         CancellationToken ct)
     {
-        var ranked = await GetBrowseRankedRecipesAsync(recipesQuery, continuation.Response.AppliedFilters, continuation.Position.WeekOffset, ct);
+        await using var rankingBoundary = await VotingBoundary.BeginAsync(db, ct);
+        var history = await _history.CaptureAsync(ct);
+        if (continuation.Position.HistoryGeneration != history.Generation) throw new RecipeSearchContinuationExpiredException();
+        var ranked = await GetBrowseRankedRecipesAsync(recipesQuery, continuation.Response.AppliedFilters, continuation.Position.WeekOffset, history, ct);
         var afterPosition = ranked.SkipWhile(candidate => candidate.Recipe.Id != continuation.Position.Id).Skip(1);
         if (continuation.TopPickId is Guid topPickId)
             afterPosition = afterPosition.Where(candidate => candidate.Recipe.Id != topPickId);
@@ -372,7 +383,7 @@ public partial class RecipeSearchService(
         response.TopPick = null;
         response.Results = results;
         response.NextCursor = candidates.Count > limit && results.Count > 0
-            ? store.StoreBrowse(fingerprint, new RecipeSearchContinuationStore.BrowsePosition(candidates[limit - 1].Recipe.LastCookedDate, candidates[limit - 1].Recipe.CreatedAt, candidates[limit - 1].Recipe.Id), continuation.TopPickId, response)
+            ? store.StoreBrowse(fingerprint, new RecipeSearchContinuationStore.BrowsePosition(candidates[limit - 1].Recipe.LastCookedDate, candidates[limit - 1].Recipe.CreatedAt, candidates[limit - 1].Recipe.Id, continuation.Position.WeekOffset, history.Generation), continuation.TopPickId, response)
             : null;
         return response;
     }
@@ -415,6 +426,7 @@ public partial class RecipeSearchService(
         IQueryable<Recipe> recipesQuery,
         RecipeSearchFiltersDto filters,
         int? selectedWeekOffset,
+        HistoricalInterestSnapshot history,
         CancellationToken ct)
     {
         var now = _clock.UtcNow;
@@ -447,6 +459,7 @@ public partial class RecipeSearchService(
             .ThenBy(candidate => candidate.IsPromotionEligible ? candidate.AffinityLastCookedOn : null)
             .ThenBy(candidate => candidate.Recipe.LastCookedDate.HasValue ? 1 : 0)
             .ThenBy(candidate => candidate.Recipe.LastCookedDate)
+            .ThenByDescending(candidate => history.Signal(candidate.Recipe.Id))
             .ThenByDescending(candidate => candidate.Recipe.CreatedAt)
             .ThenBy(candidate => candidate.Recipe.Id)
             .ToList();

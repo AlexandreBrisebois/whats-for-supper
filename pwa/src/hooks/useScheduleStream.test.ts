@@ -20,6 +20,7 @@ const mockApplySlotUpdate = vi.fn();
 const mockApplyVoteUpdate = vi.fn();
 const mockApplySmartDefaultsUpdate = vi.fn();
 const mockInvalidateFillTheGap = vi.fn();
+const mockInvalidateAllSuggestions = vi.fn();
 const mockDiscoveryApplyVoteUpdate = vi.fn();
 const mockSetActiveCategory = vi.fn();
 const mockMarkReady = vi.fn();
@@ -81,6 +82,7 @@ vi.mock('@/store/discoveryStore', () => ({
   useDiscoveryStore: {
     getState: () => ({
       invalidateFillTheGap: mockInvalidateFillTheGap,
+      invalidateAllSuggestions: mockInvalidateAllSuggestions,
       applyVoteUpdate: mockDiscoveryApplyVoteUpdate,
       setActiveCategory: mockSetActiveCategory,
     }),
@@ -416,6 +418,12 @@ describe('smart_defaults_updated event', () => {
 // ── fill_the_gap_invalidated event ───────────────────────────────────────────
 
 describe('fill_the_gap_invalidated event', () => {
+  it('refreshes all suggestion weeks for a household rotation or history change', () => {
+    const { source } = setupHook();
+    source.emit('fill_the_gap_invalidated', { allWeeks: true });
+    expect(mockInvalidateAllSuggestions).toHaveBeenCalledOnce();
+    expect(mockInvalidateFillTheGap).not.toHaveBeenCalled();
+  });
   it('calls invalidateFillTheGap on discoveryStore with weekOffset', () => {
     const { source } = setupHook();
 

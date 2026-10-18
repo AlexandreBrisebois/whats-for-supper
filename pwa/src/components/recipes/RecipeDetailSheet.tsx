@@ -220,6 +220,12 @@ export function RecipeDetailSheet({
       await updateRecipe(recipe.id, { isDiscoverable: next });
     } catch (error) {
       console.error('Failed to toggle discovery', error);
+      addToast({
+        message: next
+          ? 'Could not turn on Ask the Family. Check that Supper is selected in meal types, then try again.'
+          : 'Could not turn off Ask the Family. Try again.',
+        type: 'error',
+      });
       // Revert optimistic state on error
       setIsDiscoverable(!next);
     } finally {

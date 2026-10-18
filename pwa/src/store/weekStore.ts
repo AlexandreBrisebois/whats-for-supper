@@ -41,6 +41,7 @@ export type UILocalScheduleDay = Omit<ScheduleDay, 'recipe'> & {
 export interface WeekState {
   calendar: CalendarContext | null;
   weekStartDate: string | null;
+  votingRoundId: string | null;
   weekOffset: number;
   schedule: UILocalScheduleDay[];
   /** Pre-computed grocery items from the API, grouped by section for display */
@@ -183,6 +184,7 @@ export const useWeekStore = create<WeekState>((set, get) => {
   return {
     calendar: null,
     weekStartDate: null,
+    votingRoundId: null,
     weekOffset: 0,
     schedule: [],
     groceryItems: [],
@@ -254,6 +256,7 @@ export const useWeekStore = create<WeekState>((set, get) => {
           ...(get().weekStartDate !== weekStartDate
             ? { optimisticWriteAt: null, optimisticWeekStartDate: null }
             : {}),
+          votingRoundId: scheduleData.votingRoundId ?? null,
           schedule: mergedDays,
           groceryItems: scheduleData.groceryItems ?? [],
           status,
@@ -430,7 +433,6 @@ export const useWeekStore = create<WeekState>((set, get) => {
       const reference = calendar.referenceWeekStartDate;
       const prevStatus = get().status;
       const prevSchedule = get().schedule;
-      set({ status: 1 });
       try {
         await openVotingApi(weekOffset, reference);
         // Fetch defaults immediately so they appear without waiting for the next sync
@@ -448,17 +450,22 @@ export const useWeekStore = create<WeekState>((set, get) => {
             absoluteMonday(defaultsData?.weekStartDate) === weekStartDate
               ? defaultsData
               : undefined;
-          set({ schedule: buildScheduleDays(scheduleData, defaults, get().schedule) });
+          set({
+            status: 1,
+            votingRoundId: scheduleData.votingRoundId ?? null,
+            schedule: buildScheduleDays(scheduleData, defaults, get().schedule),
+          });
         }
       } catch {
-        set({ status: prevStatus, schedule: prevSchedule });
+        if (get().weekStartDate === weekStartDate)
+          set({ status: prevStatus, schedule: prevSchedule });
         throw new Error('Failed to open voting');
       }
     },
 
     // ── closeVoting ───────────────────────────────────────────────────────────
     async closeVoting() {
-      const { weekOffset, calendar, weekStartDate } = get();
+      const { weekOffset, calendar, weekStartDate, votingRoundId } = get();
       if (!calendar) throw new Error("Could not confirm today's date. Try again.");
       const reference = calendar.referenceWeekStartDate;
       const prevStatus = get().status;
@@ -490,7 +497,7 @@ export const useWeekStore = create<WeekState>((set, get) => {
         );
 
         // AC-2: Atomic Lock
-        await lockSchedule(weekOffset, reference);
+        await lockSchedule(weekOffset, reference, ...(votingRoundId ? [votingRoundId] : []));
         if (get().weekOffset === weekOffset && get().weekStartDate === weekStartDate) {
           set({
             schedule: get().schedule.map((day) =>
@@ -499,22 +506,46 @@ export const useWeekStore = create<WeekState>((set, get) => {
           });
         }
       } catch {
-        set({ status: prevStatus });
+        // Persistence can succeed before publication or the HTTP response fails.
+        // Recover only this captured round, never a newer close for the same week.
+        const confirmed = await getSchedule(weekOffset, reference).catch(() => undefined);
+        if (
+          votingRoundId &&
+          confirmed?.votingRoundId === votingRoundId &&
+          confirmed.status === 2 &&
+          absoluteMonday(confirmed.weekStartDate) === weekStartDate &&
+          get().weekStartDate === weekStartDate
+        ) {
+          set({ status: 2, schedule: buildScheduleDays(confirmed, undefined, get().schedule) });
+          return;
+        }
+        if (get().weekStartDate === weekStartDate) set({ status: prevStatus });
         throw new Error('Failed to close voting');
       }
     },
 
     // ── lockWeek ──────────────────────────────────────────────────────────────
     async lockWeek() {
-      const { weekOffset, calendar, weekStartDate } = get();
+      const { weekOffset, calendar, weekStartDate, votingRoundId } = get();
       if (!calendar) throw new Error("Could not confirm today's date. Try again.");
       const reference = calendar.referenceWeekStartDate;
       const prev = get().status;
       set({ status: 2 });
       try {
-        await lockSchedule(weekOffset, reference);
+        await lockSchedule(weekOffset, reference, ...(votingRoundId ? [votingRoundId] : []));
       } catch {
-        set({ status: prev });
+        const confirmed = await getSchedule(weekOffset, reference).catch(() => undefined);
+        if (
+          votingRoundId &&
+          confirmed?.votingRoundId === votingRoundId &&
+          confirmed.status === 2 &&
+          absoluteMonday(confirmed.weekStartDate) === weekStartDate &&
+          get().weekStartDate === weekStartDate
+        ) {
+          set({ status: 2, schedule: buildScheduleDays(confirmed, undefined, get().schedule) });
+          return;
+        }
+        if (get().weekStartDate === weekStartDate) set({ status: prev });
         throw new Error('Failed to lock week');
       }
     },
@@ -532,7 +563,11 @@ export const useWeekStore = create<WeekState>((set, get) => {
         if (!monday || !context || (weekStartDate && monday !== weekStartDate)) return;
         if (get().calendar?.timeZone === context.timeZone && get().calendar!.today > context.today)
           return;
-        set({ calendar: context, weekStartDate: monday });
+        set({
+          calendar: context,
+          weekStartDate: monday,
+          votingRoundId: data.votingRoundId ?? null,
+        });
 
         const { optimisticWriteAt } = get();
         const optimisticIsRecent =
@@ -629,6 +664,7 @@ export const useWeekStore = create<WeekState>((set, get) => {
 
       // Authoritative status update (always apply)
       const nextStatus = (schedule.status ?? 0) as 0 | 1 | 2;
+      set({ votingRoundId: schedule.votingRoundId ?? null });
 
       if (hasPendingMoves) {
         plannerStore.setDeferredWeekSnapshot(schedule);

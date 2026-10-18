@@ -60,6 +60,7 @@ export const builders = {
       calendar,
       weekStartDate: toDateStr(monday),
       locked: false,
+      votingRoundId: null as string | null,
       status: 0,
       days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, index) => {
         const date = new Date(monday);

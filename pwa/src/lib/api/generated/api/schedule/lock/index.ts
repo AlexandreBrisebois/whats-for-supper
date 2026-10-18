@@ -6,6 +6,7 @@ import {
   type AdditionalDataHolder,
   type BaseRequestBuilder,
   type DateOnly,
+  type Guid,
   type Parsable,
   type ParsableFactory,
   type ParseNode,
@@ -86,7 +87,7 @@ export interface LockPostResponse_data extends AdditionalDataHolder, Parsable {
  */
 export interface LockRequestBuilder extends BaseRequestBuilder<LockRequestBuilder> {
   /**
-   * Lock schedule for a week
+   * Atomically captures positive aggregate family history and clears working votes once. Retry the same votingRoundId after a lost response. Completed retries preserve later early votes. Tokenless legacy closes are accepted only for a first close or unambiguous already-closed outcome; reopened rounds require an identity and otherwise return 409.
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {Promise<LockPostResponse>}
    */
@@ -94,7 +95,7 @@ export interface LockRequestBuilder extends BaseRequestBuilder<LockRequestBuilde
     requestConfiguration?: RequestConfiguration<LockRequestBuilderPostQueryParameters> | undefined
   ): Promise<LockPostResponse | undefined>;
   /**
-   * Lock schedule for a week
+   * Atomically captures positive aggregate family history and clears working votes once. Retry the same votingRoundId after a lost response. Completed retries preserve later early votes. Tokenless legacy closes are accepted only for a first close or unambiguous already-closed outcome; reopened rounds require an identity and otherwise return 409.
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {RequestInformation}
    */
@@ -103,13 +104,17 @@ export interface LockRequestBuilder extends BaseRequestBuilder<LockRequestBuilde
   ): RequestInformation;
 }
 /**
- * Lock schedule for a week
+ * Atomically captures positive aggregate family history and clears working votes once. Retry the same votingRoundId after a lost response. Completed retries preserve later early votes. Tokenless legacy closes are accepted only for a first close or unambiguous already-closed outcome; reopened rounds require an identity and otherwise return 409.
  */
 export interface LockRequestBuilderPostQueryParameters {
   /**
    * Optional yyyy-MM-dd Monday anchoring all relative offsets and defer's next-week base. Omission captures the deployment current Monday (UTC by default). Literal source dates remain unchanged. Invalid or non-Monday references return 400 before work.
    */
   referenceWeekStartDate?: DateOnly;
+  /**
+   * Identity captured from the target schedule. A stale or restored-away identity cannot close a new round.
+   */
+  votingRoundId?: Guid;
   weekOffset?: number;
 }
 /**
@@ -156,7 +161,7 @@ export function serializeLockPostResponse_data(
  * Uri template for the request builder.
  */
 export const LockRequestBuilderUriTemplate =
-  '{+baseurl}/api/schedule/lock{?referenceWeekStartDate*,weekOffset*}';
+  '{+baseurl}/api/schedule/lock{?referenceWeekStartDate*,votingRoundId*,weekOffset*}';
 /**
  * Metadata for all the requests in the request builder.
  */

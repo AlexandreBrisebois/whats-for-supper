@@ -239,9 +239,13 @@ Activating an enabled detail discoverability button SHALL immediately display th
 - **WHEN** a person activates the enabled on button for loaded recipe R
 - **THEN** the detail control immediately displays off and requests PATCH for R with isDiscoverable false and no unrelated recipe fields
 
+#### Scenario: Record human control
+- **WHEN** an explicit human discoverability action succeeds
+- **THEN** false records durable Human-off; true clears that intent and cooked suppression, without bypassing current-plan visibility or suitability
+
 ### Requirement: Persist the supplied recipe discoverability fact
 
-For an authorized PATCH of an existing recipe, when persistence and response completion succeed, the API SHALL store a supplied non-null isDiscoverable boolean on that recipe, available through existing detail reading. Omitted or null values SHALL preserve the flag. A discoverability-only update SHALL retain unrelated recipe content, attribution, readiness and deletion state, subject to the existing timestamp and connected side effects.
+For an authorized PATCH of an existing recipe, when persistence and response completion succeed, the API SHALL validate supper suitability before enabling and store a supplied non-null isDiscoverable boolean on that recipe, available through existing detail reading. Omitted or null values SHALL preserve the flag. A discoverability-only update SHALL retain unrelated recipe content, attribution, readiness and deletion state, subject to the existing timestamp and connected side effects.
 
 #### Scenario: Store enabled discoverability
 - **WHEN** a successful authorized PATCH supplies isDiscoverable true for an existing recipe
@@ -258,6 +262,18 @@ For an authorized PATCH of an existing recipe, when persistence and response com
 #### Scenario: Retain unrelated facts during a discoverability update
 - **WHEN** a successful authorized PATCH supplies only isDiscoverable
 - **THEN** name, description, ingredients, instructions, cuisine, meal types, rating, notes, attribution, readiness and deletion state retain their stored values
+
+#### Scenario: Record human control
+- **WHEN** an explicit human discoverability action succeeds
+- **THEN** false records durable Human-off; true clears that intent and cooked suppression, without bypassing current-plan visibility or suitability
+
+#### Scenario: Reject unsuitable enable
+- **WHEN** an explicit human PATCH requests true for an unsuitable recipe
+- **THEN** the request fails without partial mutation
+
+#### Scenario: Preserve omitted intent
+- **WHEN** isDiscoverable is omitted or null
+- **THEN** existing Human-off intent and provenance also remain unchanged
 
 ### Requirement: Disable the detail discoverability button while pending
 

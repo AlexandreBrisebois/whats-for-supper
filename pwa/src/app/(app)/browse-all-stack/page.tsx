@@ -39,6 +39,14 @@ type BrowseViewMode = 'stack' | 'list';
 
 const STACK_PAGE_SIZE = 20;
 const LIST_PAGE_SIZE = 12;
+const isHistoryExpired = (error: unknown) => {
+  const failure = error as { responseStatusCode?: number; status?: number; code?: string } | null;
+  return (
+    failure?.responseStatusCode === 409 ||
+    failure?.status === 409 ||
+    failure?.code === 'history_generation_expired'
+  );
+};
 
 // ---------------------------------------------------------------------------
 // BrowseAllStack page
@@ -103,6 +111,8 @@ export default function BrowseAllStackPage() {
   const listScrollContainerRef = useRef<HTMLDivElement | null>(null);
   const listSentinelRef = useRef<HTMLDivElement | null>(null);
   const generationRef = useRef(0);
+  const historyGenerationRef = useRef<string | undefined>(undefined);
+  const [historyRestartRequired, setHistoryRestartRequired] = useState(false);
   const stackPagesRef = useRef(new Map<number, RecipeDto[]>());
   const pageRequestsRef = useRef(new Map<number, Promise<RecipeDto[]>>());
   const navigationPendingRef = useRef(false);
@@ -122,9 +132,9 @@ export default function BrowseAllStackPage() {
   // Data Fetching: fetch summary + first page
   // ---------------------------------------------------------------------------
   const fetchLibraryData = useCallback(
-    async (page: number, discoverable: boolean, append = false) => {
+    async (page: number, discoverable: boolean, append = false, restart = false) => {
       const pageSize = browseViewMode === 'list' ? LIST_PAGE_SIZE : STACK_PAGE_SIZE;
-      const generation = generationRef.current;
+      const generation = restart ? ++generationRef.current : generationRef.current;
       let summaryTotalForRequest: number | null = null;
       try {
         if (!append) {
@@ -153,6 +163,7 @@ export default function BrowseAllStackPage() {
             page: page,
             limit: pageSize,
             discoverableOnly: discoverable,
+            historyGeneration: append && !restart ? historyGenerationRef.current : undefined,
           },
         });
 
@@ -161,9 +172,13 @@ export default function BrowseAllStackPage() {
         const fetchedRecipes = (result?.recipes ?? []) as RecipeDto[];
         const paginationTotal = result?.pagination?.total ?? 0;
 
-        if (append) {
+        if (append && !restart) {
           appendRecipes(fetchedRecipes);
         } else {
+          historyGenerationRef.current = result?.historyGeneration ?? undefined;
+          stackPagesRef.current.clear();
+          pageRequestsRef.current.clear();
+          setHistoryRestartRequired(false);
           setRecipes(fetchedRecipes);
           setCurrentIndex(0);
           setStackPage(1);
@@ -183,6 +198,7 @@ export default function BrowseAllStackPage() {
         });
       } catch (err) {
         if (generation !== generationRef.current) return;
+        if (isHistoryExpired(err)) setHistoryRestartRequired(true);
         console.error('BrowseAllStack: fetch failed', err);
         if (append) {
           setPrefetchFailed(true);
@@ -214,12 +230,18 @@ export default function BrowseAllStackPage() {
             page,
             limit: STACK_PAGE_SIZE,
             discoverableOnly: isDiscoverableOnly,
+            historyGeneration: historyGenerationRef.current,
           },
         })
         .then((result) => {
           const items = (result?.recipes ?? []) as RecipeDto[];
           if (generation === generationRef.current) stackPagesRef.current.set(page, items);
           return items;
+        })
+        .catch((error) => {
+          if (generation === generationRef.current && isHistoryExpired(error))
+            setHistoryRestartRequired(true);
+          throw error;
         })
         .finally(() => {
           if (generation === generationRef.current) pageRequestsRef.current.delete(page);
@@ -281,12 +303,14 @@ export default function BrowseAllStackPage() {
 
   useEffect(() => {
     const generation = ++generationRef.current;
+    historyGenerationRef.current = undefined;
     stackPagesRef.current.clear();
     pageRequestsRef.current.clear();
     navigationPendingRef.current = false;
     prefetchInFlightRef.current = false;
     Promise.resolve().then(() => {
       if (generation !== generationRef.current) return;
+      setHistoryRestartRequired(false);
       setFailedNavigation(null);
       setIsWrappingToEnd(false);
       setPrefetchFailed(false);
@@ -707,6 +731,20 @@ export default function BrowseAllStackPage() {
               className="px-6 py-3 rounded-full bg-ochre text-white font-bold text-sm shadow-md"
             >
               Retry
+            </button>
+          </div>
+        )}
+
+        {historyRestartRequired && (
+          <div role="status" className="rounded-2xl bg-white/90 p-4 text-center">
+            <p>Recipe order changed. Your current cards are kept until the first page reloads.</p>
+            <button
+              type="button"
+              disabled={isPrefetching}
+              onClick={() => void fetchLibraryData(1, isDiscoverableOnly, true, true)}
+              className="mt-2 min-h-12 rounded-full bg-ochre px-6 font-bold text-white"
+            >
+              Restart from first page
             </button>
           </div>
         )}

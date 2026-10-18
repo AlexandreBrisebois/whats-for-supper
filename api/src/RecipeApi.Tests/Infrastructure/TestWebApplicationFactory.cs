@@ -180,6 +180,8 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
         builder.Services.AddScoped<IngredientCategoryService>();
         builder.Services.AddScoped<ScheduleService>();
         builder.Services.AddScoped<DiscoveryService>();
+        builder.Services.AddSingleton<HistoricalInterestOptions>();
+        builder.Services.AddScoped<HistoricalInterestService>();
         builder.Services.AddScoped<FamilyService>();
         builder.Services.AddScoped<GoToService>();
         builder.Services.AddScoped<IValidationService, ValidationService>();

@@ -13,6 +13,8 @@ public class RecipeDbContext(DbContextOptions<RecipeDbContext> options) : DbCont
     public DbSet<WorkflowInstance> WorkflowInstances => Set<WorkflowInstance>();
     public DbSet<WorkflowTask> WorkflowTasks => Set<WorkflowTask>();
     public DbSet<RecipeVote> RecipeVotes => Set<RecipeVote>();
+    public DbSet<WeeklyHouseholdInterest> WeeklyHouseholdInterests => Set<WeeklyHouseholdInterest>();
+    public DbSet<VotingRoundState> VotingRoundStates => Set<VotingRoundState>();
     public DbSet<RecipeMatch> RecipeMatches => Set<RecipeMatch>();
     public DbSet<DiscoveryRecipe> DiscoveryRecipes => Set<DiscoveryRecipe>();
     public DbSet<CalendarEvent> CalendarEvents => Set<CalendarEvent>();
@@ -29,6 +31,17 @@ public class RecipeDbContext(DbContextOptions<RecipeDbContext> options) : DbCont
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+        modelBuilder.Entity<VotingRoundState>().HasKey(x => x.Id);
+        modelBuilder.Entity<WeeklyHouseholdInterest>(entity =>
+        {
+            entity.HasKey(x => new { x.WeekStartDate, x.RecipeId });
+            entity.HasOne<Recipe>().WithMany().HasForeignKey(x => x.RecipeId).OnDelete(DeleteBehavior.Cascade);
+            entity.ToTable("weekly_household_interest", table =>
+            {
+                table.HasCheckConstraint("weekly_interest_positive", "positive_count > 0");
+                table.HasCheckConstraint("weekly_interest_monday", "EXTRACT(ISODOW FROM week_start_date) = 1");
+            });
+        });
 
         modelBuilder.Entity<FamilyMember>(entity =>
         {

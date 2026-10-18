@@ -15,7 +15,9 @@ public class RecipeService(
     ImageService images,
     IRecipeStore recipeStore,
     IWorkflowOrchestrator orchestrator,
-    ILogger<RecipeService> logger)
+    ILogger<RecipeService> logger,
+    IScheduleEventPublisher? publisher = null,
+    HistoricalInterestService? historicalInterest = null)
 {
     private const string RecipeShareBundleVersion = "1.0";
 
@@ -116,7 +118,8 @@ public class RecipeService(
         bool? discoverableOnly = null,
         Guid? id = null,
         string? name = null,
-        string? url = null)
+        string? url = null,
+        string? historyGeneration = null)
     {
         page = Math.Max(1, page);
         limit = Math.Clamp(limit, 1, 100);
@@ -145,11 +148,19 @@ public class RecipeService(
 
         var total = await query.CountAsync();
 
+        HistoricalInterestSnapshot? history = null;
+        await using var rankingBoundary = order == "explore" ? await VotingBoundary.BeginAsync(db) : null;
         if (order == "explore")
         {
+            history = await (historicalInterest ?? HistoricalInterestService.Default(db)).CaptureAsync();
+            if ((page > 1 && historyGeneration is null) ||
+                (historyGeneration is not null && historyGeneration != history.Generation))
+                throw new RecipeSearchContinuationExpiredException();
             query = query.OrderBy(r => r.LastCookedDate == null ? 0 : 1)
                          .ThenBy(r => r.LastCookedDate)
-                         .ThenByDescending(r => r.CreatedAt);
+                         .ThenByDescending(history.OrderKey<Recipe>())
+                         .ThenByDescending(r => r.CreatedAt)
+                         .ThenBy(r => r.Id);
         }
         else
         {
@@ -165,6 +176,7 @@ public class RecipeService(
 
         return new RecipeListResponseDto
         {
+            HistoryGeneration = history?.Generation,
             UpdatedAt = DateTimeOffset.UtcNow,
             Recipes = recipes,
             Pagination = new PaginationDto
@@ -353,8 +365,14 @@ public class RecipeService(
     /// </summary>
     public async Task<RecipeDetailResponseDto> UpdateRecipe(Guid id, UpdateRecipeDto dto)
     {
+        await using var rotationTransaction = await RecipeRotation.LockAsync(db, id);
         var recipe = await db.Recipes.FindAsync(id)
             ?? throw new KeyNotFoundException($"Recipe {id} not found.");
+
+        var suitable = dto.MealTypes is null ? RecipeRotation.Suitable(recipe) :
+            dto.MealTypes.Length == 0 || dto.MealTypes.Contains("Supper");
+        if (dto.IsDiscoverable == true && !suitable)
+            throw new ArgumentException("Choose Supper in this recipe's meal types before turning on Ask the Family.");
 
         if (dto.Name is not null)
             recipe.Name = dto.Name;
@@ -375,7 +393,12 @@ public class RecipeService(
             recipe.Notes = dto.Notes;
 
         if (dto.IsDiscoverable.HasValue)
+        {
             recipe.IsDiscoverable = dto.IsDiscoverable.Value;
+            recipe.RotationHumanOff = !dto.IsDiscoverable.Value;
+            recipe.RotationSource = "Human";
+            if (dto.IsDiscoverable.Value) recipe.CookedSuppressed = false;
+        }
 
         if (dto.CuisineType is not null)
             recipe.CuisineType = dto.CuisineType;
@@ -383,6 +406,8 @@ public class RecipeService(
         if (dto.MealTypes is not null)
         {
             recipe.MealTypes = dto.MealTypes;
+            recipe.SupperSuitable = suitable;
+            if (!suitable) recipe.IsDiscoverable = false;
             if (dto.MealTypes.Length == 0)
             {
                 recipe.Category = "Supper";
@@ -435,6 +460,12 @@ public class RecipeService(
         }
         await db.SaveChangesAsync();
 
+        if (rotationTransaction is not null)
+        {
+            await rotationTransaction.CommitAsync();
+            await rotationTransaction.DisposeAsync();
+        }
+
         // Re-enqueue search index after the recipe and pending sidecar commit.
         if (searchRelevantChanged)
         {
@@ -450,6 +481,7 @@ public class RecipeService(
         }
 
         // Keep recipe.info on disk in sync with the DB
+        await using var metadataTransaction = await RecipeRotation.LockAsync(db, id);
         await images.UpdateRecipeInfo(
             id,
             dto.Notes is not null ? recipe.Notes : null,
@@ -457,6 +489,24 @@ public class RecipeService(
             dto.Name is not null ? recipe.Name : null,
             dto.Description is not null ? recipe.Description : null,
             dto.RecipeInstructions is not null ? dto.RecipeInstructions : null);
+
+        if (dto.IsDiscoverable.HasValue || dto.MealTypes is not null)
+        {
+            // The lock reloads the current row; an older request must not replace newer intent on disk.
+            var info = await recipeStore.ReadInfoAsync(id) ?? new RecipeInfo { Id = id };
+            info.IsDiscoverable = recipe.IsDiscoverable;
+            info.RotationVersion = 1;
+            info.RotationHumanOff = recipe.RotationHumanOff;
+            info.RotationSource = recipe.RotationSource;
+            info.CookedSuppressed = recipe.CookedSuppressed;
+            info.SupperSuitable = recipe.SupperSuitable;
+            info.MealTypes = recipe.MealTypes;
+            info.Category = recipe.Category;
+            await recipeStore.WriteInfoAsync(info);
+        }
+        if (metadataTransaction is not null) await metadataTransaction.CommitAsync();
+        if (publisher is not null && (dto.IsDiscoverable.HasValue || dto.MealTypes is not null))
+            await publisher.PublishAllSuggestionsInvalidatedAsync();
 
         return new RecipeDetailResponseDto
         {

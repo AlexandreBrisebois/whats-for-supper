@@ -92,13 +92,21 @@ public class RecipeController(
         [FromQuery] bool? discoverableOnly = null,
         [FromQuery] Guid? id = null,
         [FromQuery] string? name = null,
-        [FromQuery] string? url = null)
+        [FromQuery] string? url = null,
+        [FromQuery] string? historyGeneration = null)
     {
         if (order is not null && !string.Equals(order, "explore", StringComparison.OrdinalIgnoreCase))
             return BadRequest(new { error = "Invalid order parameter. Allowed values: explore" });
 
-        var result = await recipeService.GetRecipesList(page, limit, order, discoverableOnly, id, name, url);
-        return Ok(result);
+        try
+        {
+            var result = await recipeService.GetRecipesList(page, limit, order, discoverableOnly, id, name, url, historyGeneration);
+            return Ok(result);
+        }
+        catch (RecipeSearchContinuationExpiredException)
+        {
+            return Conflict(new { message = "Recipe ordering changed. Restart Explore from its first page.", code = "history_generation_expired" });
+        }
     }
 
     /// <summary>GET /api/recipes/library-summary — lightweight library health counts.</summary>

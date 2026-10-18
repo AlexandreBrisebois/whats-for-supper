@@ -40,6 +40,9 @@ public class SseEventPublisher : IScheduleEventPublisher
     public Task PublishFillTheGapInvalidatedAsync(int weekOffset, DateOnly weekStartDate, string? excludeConnectionId = null)
         => _manager.BroadcastAsync("fill_the_gap_invalidated", new { weekOffset, weekStartDate }, excludeConnectionId);
 
+    public Task PublishAllSuggestionsInvalidatedAsync()
+        => _manager.BroadcastAsync("fill_the_gap_invalidated", new { allWeeks = true });
+
     public Task PublishRecipeReadyAsync(Guid recipeId, string name, string? imageUrl, string? excludeConnectionId = null)
         => _manager.BroadcastAsync("recipe_ready", new { recipeId, name, imageUrl }, excludeConnectionId);
 

@@ -93,6 +93,17 @@ export function createRecipeListResponse400ErrorFromDiscriminatorValue(
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {RecipeListResponse409Error}
+ */
+// @ts-ignore
+export function createRecipeListResponse409ErrorFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoRecipeListResponse409Error;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {RecipesPostResponse_data}
  */
 // @ts-ignore
@@ -124,6 +135,24 @@ export function deserializeIntoRecipeListResponse400Error(
   return {
     error: (n) => {
       recipeListResponse400Error.errorEscaped = n.getStringValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param RecipeListResponse409Error The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoRecipeListResponse409Error(
+  recipeListResponse409Error: Partial<RecipeListResponse409Error> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    code: (n) => {
+      recipeListResponse409Error.code = n.getStringValue();
+    },
+    message: (n) => {
+      recipeListResponse409Error.messageEscaped = n.getStringValue();
     },
   };
 }
@@ -166,6 +195,16 @@ export interface RecipeListResponse400Error extends AdditionalDataHolder, ApiErr
    * The error property
    */
   errorEscaped?: string | null;
+}
+export interface RecipeListResponse409Error extends AdditionalDataHolder, ApiError, Parsable {
+  /**
+   * The code property
+   */
+  code?: string | null;
+  /**
+   * The message property
+   */
+  messageEscaped?: string | null;
 }
 export interface RecipesPostResponse extends AdditionalDataHolder, Parsable {
   /**
@@ -234,6 +273,7 @@ export interface RecipesRequestBuilder extends BaseRequestBuilder<RecipesRequest
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {Promise<RecipeListResponse>}
    * @throws {RecipeListResponse400Error} error when the service returns a 400 status code
+   * @throws {RecipeListResponse409Error} error when the service returns a 409 status code
    */
   get(
     requestConfiguration?: RequestConfiguration<RecipesRequestBuilderGetQueryParameters> | undefined
@@ -276,6 +316,10 @@ export interface RecipesRequestBuilderGetQueryParameters {
    */
   discoverableOnly?: boolean;
   /**
+   * Generation returned by the first Explore page. A changed history window/configuration or round returns 409; restart from page one. Omit only for page one. Later Explore pages require this token; older clients must restart or update.
+   */
+  historyGeneration?: string;
+  /**
    * Optional exact ID filter to find duplicate recipes by original GUID.
    */
   id?: Guid;
@@ -285,7 +329,7 @@ export interface RecipesRequestBuilderGetQueryParameters {
    */
   name?: string;
   /**
-   * Sort order for recipes. When "explore" is specified, recipes are ordered bylastCookedDate ASC NULLS FIRST (never-cooked first, then oldest-cooked first).When absent, default ordering (newest-created first) is applied.Returns HTTP 400 for unrecognised values.
+   * Sort order for recipes. When "explore" is specified, recipes are ordered bylastCookedDate ASC NULLS FIRST, then recent unselected household interest, creation time and stable identity.When absent, default ordering (newest-created first) is applied.Returns HTTP 400 for unrecognised values.
    */
   order?: GetOrderQueryParameterType;
   page?: number;
@@ -311,6 +355,25 @@ export function serializeRecipeListResponse400Error(
   }
   writer.writeStringValue('error', recipeListResponse400Error.errorEscaped);
   writer.writeAdditionalData(recipeListResponse400Error.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param RecipeListResponse409Error The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeRecipeListResponse409Error(
+  writer: SerializationWriter,
+  recipeListResponse409Error: Partial<RecipeListResponse409Error> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!recipeListResponse409Error || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeStringValue('code', recipeListResponse409Error.code);
+  writer.writeStringValue('message', recipeListResponse409Error.messageEscaped);
+  writer.writeAdditionalData(recipeListResponse409Error.additionalData);
 }
 /**
  * Serializes information the current object
@@ -356,7 +419,7 @@ export function serializeRecipesPostResponse_data(
  * Uri template for the request builder.
  */
 export const RecipesRequestBuilderUriTemplate =
-  '{+baseurl}/api/recipes{?discoverableOnly*,id*,limit*,name*,order*,page*,url*}';
+  '{+baseurl}/api/recipes{?discoverableOnly*,historyGeneration*,id*,limit*,name*,order*,page*,url*}';
 export const GetOrderQueryParameterTypeObject = {
   Explore: 'explore',
 } as const;
@@ -413,6 +476,7 @@ export const RecipesRequestBuilderRequestsMetadata: RequestsMetadata = {
     responseBodyContentType: 'application/json',
     errorMappings: {
       400: createRecipeListResponse400ErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
+      409: createRecipeListResponse409ErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
     },
     adapterMethodName: 'send',
     responseBodyFactory: createRecipeListResponseFromDiscriminatorValue,
