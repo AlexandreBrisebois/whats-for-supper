@@ -9,6 +9,7 @@
  */
 
 import { test, expect, type Page } from './fixtures';
+import { expectDiscoveryGeometry } from './helpers/discovery-geometry';
 import { MOCK_IDS, builders, setupCommonRoutes } from './mock-api';
 import type { RecipeDto } from '../src/lib/api/generated/models/index';
 
@@ -541,6 +542,42 @@ test.describe('Browse All Stack — Discoverable Toggle', () => {
     await expect(page.getByTestId('browse-all-stack-container')).toBeVisible({ timeout: 10_000 });
     await expect(page.getByTestId('stack-card-front')).toBeVisible({ timeout: 10_000 });
   });
+
+  for (const width of [320, 390, 1280]) {
+    test(`shared discovery geometry at ${width}px`, async ({ page }, testInfo) => {
+      await page.setViewportSize({ width, height: 900 });
+      const patches: Record<string, unknown>[] = [];
+      const patchedIds: string[] = [];
+      await page.route('**/api/recipes/*', async (route) => {
+        if (route.request().method() !== 'PATCH') {
+          await route.fallback();
+          return;
+        }
+        const body = route.request().postDataJSON();
+        patches.push(body);
+        patchedIds.push(new URL(route.request().url()).pathname.split('/').pop()!);
+        await route.fulfill({ json: { recipe: { ...RECIPE_1, ...body } } });
+      });
+      const toggle = page.getByTestId(`card-toggle-discovery-${MOCK_IDS.RECIPE_LASAGNA}`);
+      for (const [index, pressed] of [true, false, true, false].entries()) {
+        if (index > 0) {
+          await toggle.click();
+          await expect
+            .poll(() => patches)
+            .toEqual(
+              [false, true, false].slice(0, index).map((isDiscoverable) => ({ isDiscoverable }))
+            );
+        }
+        await expect(toggle).toHaveAttribute('aria-pressed', String(pressed));
+        await expect(toggle).toBeEnabled();
+        await expectDiscoveryGeometry(toggle, pressed, testInfo, `stack-${index}`);
+        await expectFrontRecipe(page, MOCK_IDS.RECIPE_LASAGNA);
+        await expect(page.getByTestId('stack-depth-indicator')).toHaveText('1 / 3');
+      }
+      expect(patchedIds).toEqual(Array(3).fill(MOCK_IDS.RECIPE_LASAGNA));
+      await expect(page).toHaveURL(/\/browse-all-stack/);
+    });
+  }
 
   // Requirement 4.5
   test('discoverable toggle is visible for the front card', async ({ page }) => {

@@ -1,4 +1,6 @@
 import { test, expect } from './fixtures';
+import type { Locator } from '@playwright/test';
+import { expectDiscoveryGeometry } from './helpers/discovery-geometry';
 import { MOCK_IDS, builders, setupCommonRoutes } from './mock-api';
 
 const FILTER_MAIN_IDS = {
@@ -606,48 +608,246 @@ test.describe('Recipes Search Page', () => {
 
   // ── Discovery toggle ───────────────────────────────────────────────────────
 
-  test('toggling discovery from the detail sheet calls PATCH with isDiscoverable without navigating', async ({
-    page,
-  }) => {
-    let lastPatchBody: Record<string, unknown> | null = null;
-
-    await page.unroute('**/api/recipes/*');
-    await page.route('**/api/recipes/*', async (route) => {
-      const method = route.request().method();
-
-      if (method === 'GET') {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({ recipe: MOCK_DETAIL_RECIPE }),
+  for (const width of [360, 390, 430]) {
+    for (const hasTopPick of [true, false]) {
+      test(`compact search cards at ${width}px with Top Pick ${hasTopPick}`, async ({
+        page,
+      }, testInfo) => {
+        await page.setViewportSize({ width, height: 900 });
+        const names = [
+          'Roasted vegetables with lemon and herb couscous for the whole family',
+          'Slow cooked tomato and white bean supper with fresh garden herbs',
+        ];
+        const results = MOCK_SEARCH_RESULTS.secondary.map((recipe, index) => ({
+          ...recipe,
+          name: names[index],
+          imageUrl: '/test-card.svg',
+          importIssueStatus: index === 0 ? 'reported' : 'readyToReview',
+          isPromotionEligible: false,
+        }));
+        const topPick = hasTopPick
+          ? { ...MOCK_SEARCH_RESULTS.topPick, imageUrl: '/test-card.svg' }
+          : null;
+        let searchCount = 0;
+        await page.route('**/test-card.svg', (route) =>
+          route.fulfill({
+            contentType: 'image/svg+xml',
+            body: '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300"><rect width="400" height="300" fill="#bcc9a8"/><circle cx="200" cy="150" r="100" fill="#f4e5c5"/><circle cx="200" cy="150" r="70" fill="#c07b46"/></svg>',
+          })
+        );
+        await page.route('**/api/recipes/search', (route) => {
+          searchCount++;
+          return route.fulfill({
+            json: {
+              data: {
+                topPick,
+                results,
+                appliedFilters: {},
+                searchMode: 'standard',
+                resultPath: 'lexical-only',
+              },
+            },
+          });
         });
-        return;
-      }
+        await page.goto('/recipes');
+        await expect(page.getByTestId('recipe-loader')).not.toBeVisible({ timeout: 15_000 });
+        const cards = results.map((recipe) => page.getByTestId(`recipe-card-${recipe.id}`));
+        await expect(cards[0]).toBeVisible();
+        await expect(page.getByTestId('recipe-card-top-pick')).toHaveCount(hasTopPick ? 1 : 0);
+        if (hasTopPick) {
+          await expect(page.getByTestId('recipe-card-top-pick')).toContainText(
+            'Name matches your search'
+          );
+          await expect(page.getByTestId('top-pick-feeling-lucky')).toBeDisabled();
+        }
+        await expect(cards[0].getByTestId('recipe-import-issue-status-reported')).toBeVisible();
+        await expect(
+          cards[1].getByTestId('recipe-import-issue-status-readyToReview')
+        ).toBeVisible();
+        const measure = (card: Locator) =>
+          card.evaluate((element) => {
+            const image = element.querySelector('img')!.parentElement!;
+            const content = image.nextElementSibling!;
+            const title = content.querySelector('h4, p')!;
+            const time = Array.from(content.children).find((child) =>
+              child.textContent?.includes('READY IN')
+            )!;
+            const badge = image.querySelector('[data-testid^="recipe-import-issue-status"]')!;
+            const c = element.getBoundingClientRect(),
+              i = image.getBoundingClientRect();
+            const n = title.getBoundingClientRect(),
+              b = badge.getBoundingClientRect();
+            const round = (v: number) => Math.round(v * 100) / 100;
+            return {
+              imageRatio: round(i.width / i.height),
+              imageInset: round(i.left - c.left),
+              imageToTitle: round(n.top - i.bottom),
+              textInset: round(n.left - i.left),
+              radius: parseFloat(getComputedStyle(element).borderTopLeftRadius),
+              titleLines: round(n.height / parseFloat(getComputedStyle(title).lineHeight)),
+              timeSize: parseFloat(getComputedStyle(time).fontSize),
+              gridGap: parseFloat(getComputedStyle(element.parentElement!).columnGap),
+              badgeContained:
+                b.left >= i.left && b.right <= i.right && b.top >= i.top && b.bottom <= i.bottom,
+              noOverflow: element.scrollWidth <= element.clientWidth,
+            };
+          });
+        // Geometry can be correct while entrance animations are still transparent.
+        // Wait for the actual cards and their ancestors before capturing review proof.
+        for (const card of cards) {
+          await expect
+            .poll(() =>
+              card.evaluate((element) => {
+                let current: Element | null = element;
+                while (current) {
+                  if (getComputedStyle(current).opacity !== '1') return false;
+                  current = current.parentElement;
+                }
+                return true;
+              })
+            )
+            .toBe(true);
+        }
+        const expected = {
+          imageRatio: 1.33,
+          imageInset: 1,
+          imageToTitle: 12,
+          textInset: 12,
+          radius: 8,
+          titleLines: 2,
+          timeSize: 12,
+          gridGap: 12,
+          badgeContained: true,
+          noOverflow: true,
+        };
+        try {
+          for (const card of cards) await expect.poll(() => measure(card)).toEqual(expected);
+        } finally {
+          await testInfo.attach('search-card-geometry', {
+            body: JSON.stringify(await measure(cards[0])),
+            contentType: 'application/json',
+          });
+          await testInfo.attach('search-synthetic', {
+            body: await page.screenshot({ fullPage: true }),
+            contentType: 'image/png',
+          });
+        }
+        const before = searchCount;
+        const url = page.url();
+        await cards[0].click();
+        await expect(page.getByTestId('recipe-detail-sheet')).toBeVisible();
+        await page.getByTestId('action-close-sheet').click();
+        await expect(page.getByTestId('recipe-detail-sheet')).not.toBeVisible();
+        await expect(page).toHaveURL(url);
+        await expect.poll(() => measure(cards[0])).toEqual(expected);
+        expect(searchCount).toBe(before);
+        await expect(cards[0]).toContainText(names[0]);
+        await expect(cards[1]).toContainText(names[1]);
 
-      if (method === 'PATCH') {
-        lastPatchBody = route.request().postDataJSON() as Record<string, unknown>;
-        await route.fulfill({
-          status: 200,
+        // Compare the unchanged Browse list's actual geometry with the same long-name fixtures.
+        const recipes = results.map((recipe) =>
+          builders.recipe({
+            ...recipe,
+            importIssue: {
+              status: recipe.importIssueStatus as 'reported' | 'readyToReview',
+              reasons: [],
+              note: null,
+            },
+          })
+        );
+        await page.route('**/api/recipes?**order=explore**', (route) =>
+          route.fulfill({
+            json: {
+              updatedAt: '2026-05-04T12:00:00Z',
+              recipes,
+              pagination: { page: 1, limit: 20, total: 2 },
+            },
+          })
+        );
+        await page.route('**/api/family', (route) =>
+          route.fulfill({
+            json: {
+              data: [
+                builders.familyMember({
+                  id: MOCK_IDS.MEMBER_ALEX,
+                  name: 'Alex',
+                  browseViewMode: 'list',
+                }),
+              ],
+            },
+          })
+        );
+        await page.goto('/browse-all-stack');
+        await expect(page.getByTestId('browse-list-grid')).toBeVisible();
+        const browseCard = page.getByTestId('browse-list-recipe-card').first();
+        await expect.poll(() => measure(browseCard)).toEqual(expected);
+        await testInfo.attach('browse-card-geometry', {
+          body: JSON.stringify(await measure(browseCard)),
           contentType: 'application/json',
-          body: JSON.stringify({ recipe: { ...MOCK_DETAIL_RECIPE, ...lastPatchBody } }),
         });
-        return;
-      }
+      });
+    }
+  }
 
-      await route.fallback();
+  for (const width of [320, 390, 1280]) {
+    test(`discovery geometry and exact PATCH states at ${width}px`, async ({ page }, testInfo) => {
+      await page.setViewportSize({ width, height: 900 });
+      let recipe = { ...MOCK_DETAIL_RECIPE, isDiscoverable: true };
+      const patches: Record<string, unknown>[] = [];
+      await page.unroute('**/api/recipes/*');
+      await page.route('**/api/recipes/*', async (route) => {
+        const method = route.request().method();
+        if (method === 'PATCH') {
+          const body = route.request().postDataJSON() as { isDiscoverable: boolean };
+          patches.push(body);
+          recipe = { ...recipe, ...body };
+        } else if (method !== 'GET') {
+          await route.fallback();
+          return;
+        }
+        await route.fulfill({ json: { recipe } });
+      });
+      await page.goto('/recipes');
+      await expect(page.getByTestId('recipe-loader')).not.toBeVisible({ timeout: 15_000 });
+      await page.getByTestId('recipe-search-input').fill('chicken');
+      await page.getByTestId('recipe-search-input').press('Enter');
+      await page.getByTestId('recipe-card-top-pick').click();
+      const toggle = page.getByTestId('action-toggle-discovery');
+      const url = page.url();
+      for (const [index, pressed] of [true, false, true, false].entries()) {
+        if (index > 0) {
+          await toggle.click();
+          await expect
+            .poll(() => patches)
+            .toEqual(
+              [false, true, false].slice(0, index).map((isDiscoverable) => ({ isDiscoverable }))
+            );
+        }
+        await expect(toggle).toBeEnabled();
+        await expect(toggle).toHaveAttribute('aria-pressed', String(pressed));
+        await expectDiscoveryGeometry(toggle, pressed, testInfo, `detail-${index}`);
+        await expect(toggle).toContainText('Shows in Discovery voting');
+        // Stress a longer translation in the real layout without changing application logic.
+        const subtitle = toggle.locator('span').nth(2);
+        const original = await subtitle.textContent();
+        await subtitle.evaluate((element) => {
+          element.textContent =
+            'Apparaît dans les votes de découverte pour toute la famille et les prochaines semaines';
+        });
+        await expectDiscoveryGeometry(toggle, pressed, testInfo, `detail-long-${index}`);
+        await subtitle.evaluate((element, text) => {
+          element.textContent = text;
+        }, original);
+        await expect(page.getByTestId('recipe-detail-sheet')).toBeVisible();
+        await expect(page).toHaveURL(url);
+      }
+      // The route's state is used by subsequent GETs, not just the PATCH response.
+      await page.reload();
+      await expect(page.getByTestId('recipe-loader')).not.toBeVisible({ timeout: 15_000 });
+      await page.getByTestId('recipe-search-input').fill('chicken');
+      await page.getByTestId('recipe-search-input').press('Enter');
+      await page.getByTestId('recipe-card-top-pick').click();
+      await expect(toggle).toHaveAttribute('aria-pressed', 'false');
     });
-
-    await page.goto('/recipes');
-    await expect(page.getByTestId('recipe-loader')).not.toBeVisible({ timeout: 15_000 });
-    await page.getByTestId('recipe-search-input').fill('chicken');
-    await page.getByTestId('recipe-search-input').press('Enter');
-    await page.getByTestId('recipe-card-top-pick').click();
-
-    await expect(page.getByTestId('action-toggle-discovery')).toBeVisible();
-    await page.getByTestId('action-toggle-discovery').click();
-
-    await expect.poll(() => lastPatchBody).toMatchObject({ isDiscoverable: expect.any(Boolean) });
-    await expect(page.getByTestId('recipe-detail-sheet')).toBeVisible();
-    await expect(page).toHaveURL(/\/recipes/);
-  });
+  }
 });
