@@ -41,6 +41,10 @@ These screenshots show the demo app. Select an image to see it at full size.
   </tr>
 </table>
 
+## Try the demo
+
+[Try the demo](https://dm.srvrlss.dev) before setting it up at home. The shared demo family passphrase is **welcome-demo**.
+
 ## Run it at home
 
 What's for Supper? is designed for self-hosting with **Docker Compose**. Synology is one way to run it, not a hardware requirement. Start with the public [Compose template](release-template/synology/compose.yaml) and [Synology installation guide](release-template/synology/README.md), adapting host-specific steps if you use another Compose host.
