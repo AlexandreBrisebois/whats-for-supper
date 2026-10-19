@@ -28,17 +28,18 @@ Your recipe collection and meal plans are stored on your own server. AI features
 
 These screenshots show the demo app. Select an image to see it at full size.
 
-### Swipe for the meals you’d like.
-
-<a href="docs/screenshots/demo-discovery.png"><img src="docs/screenshots/demo-discovery.png" alt="Demo Discovery card for Mediterranean Baked Cod with Quinoa, with pass and heart voting controls." width="320" /></a>
-
-### Make a supper plan that fits your week.
-
-<a href="docs/screenshots/demo-weekly-planner.png"><img src="docs/screenshots/demo-weekly-planner.png" alt="Demo weekly planner with chosen recipes, a mystery night, and other supper plans." width="320" /></a>
-
-### Keep the recipe beside you while you cook.
-
-<a href="docs/screenshots/demo-cooks-mode.png"><img src="docs/screenshots/demo-cooks-mode.png" alt="Demo Cook's Mode showing quinoa and fish preparation instructions, plus Ingredients and Cooked controls." width="320" /></a>
+<table>
+  <tr>
+    <td align="center" valign="top"><a href="docs/screenshots/demo-discovery.png"><img src="docs/screenshots/demo-discovery.png" alt="Demo Discovery card for Mediterranean Baked Cod with Quinoa, with pass and heart voting controls." width="260" /></a></td>
+    <td align="center" valign="top"><a href="docs/screenshots/demo-weekly-planner.png"><img src="docs/screenshots/demo-weekly-planner.png" alt="Demo weekly planner with chosen recipes, a mystery night, and other supper plans." width="260" /></a></td>
+    <td align="center" valign="top"><a href="docs/screenshots/demo-cooks-mode.png"><img src="docs/screenshots/demo-cooks-mode.png" alt="Demo Cook's Mode showing quinoa and fish preparation instructions, plus Ingredients and Cooked controls." width="260" /></a></td>
+  </tr>
+  <tr>
+    <td align="center">Choose together.</td>
+    <td align="center">Plan your week.</td>
+    <td align="center">Cook with your recipe.</td>
+  </tr>
+</table>
 
 ## Run it at home
 
