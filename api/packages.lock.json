@@ -39,12 +39,12 @@
       },
       "Microsoft.EntityFrameworkCore": {
         "type": "Direct",
-        "requested": "[11.0.0-rc.1.26425.128, )",
-        "resolved": "11.0.0-rc.1.26425.128",
-        "contentHash": "nichlvtvebHy90cJoHQjTr6TvWhdxbUxK1mQac/6NJcVMz/HYRQF0ihJ1ZkE/JeKr2ys3jDjl1IdNhHiWpQ/HQ==",
+        "requested": "[11.0.0-rc.2.26504.105, )",
+        "resolved": "11.0.0-rc.2.26504.105",
+        "contentHash": "dHEmvHIhRLZ5lgiNDR4IoRk1IczZaxw6uC2AuLJMnUX1hIt3kt9/UrxUOdAGXayxqQPQK+LZWCuxFaNR7MnwUA==",
         "dependencies": {
-          "Microsoft.EntityFrameworkCore.Abstractions": "[11.0.0-rc.1.26425.128, 12.0.0-a)",
-          "Microsoft.EntityFrameworkCore.Analyzers": "[11.0.0-rc.1.26425.128, 12.0.0-a)"
+          "Microsoft.EntityFrameworkCore.Abstractions": "[11.0.0-rc.2.26504.105, 12.0.0-a)",
+          "Microsoft.EntityFrameworkCore.Analyzers": "[11.0.0-rc.2.26504.105, 12.0.0-a)"
         }
       },
       "Microsoft.EntityFrameworkCore.Design": {
@@ -373,13 +373,13 @@
       },
       "Microsoft.EntityFrameworkCore.Abstractions": {
         "type": "Transitive",
-        "resolved": "11.0.0-rc.1.26425.128",
-        "contentHash": "WFsX+C+h2e/BKr//Cv9c82+zPweVUQN/dWXJiW8KvXwhkpJXB5tj3E3vgDmjX0nHbVnrrnE9G7iJlMSf0l2VoQ=="
+        "resolved": "11.0.0-rc.2.26504.105",
+        "contentHash": "OUJq1A6g+oRwduQAW96IiyzNwQCe2AwOlB6kuaIOnE8Vjgga+q1NcFsXSCSVeleeEriEZkW5791u0BXfDaZi5g=="
       },
       "Microsoft.EntityFrameworkCore.Analyzers": {
         "type": "Transitive",
-        "resolved": "11.0.0-rc.1.26425.128",
-        "contentHash": "EC8SOxAcKbRGToF7MpHr0zPZ2QSZ3mkHuqI+rxu3ITz19ctvep0dzaHPN3F/JQ1vVQBbMr7gN0a9KxMqDhRcoQ=="
+        "resolved": "11.0.0-rc.2.26504.105",
+        "contentHash": "mWtRP3ZrPK+4eVSF78T1cfD3sjoPbWGAU4cFNtPuPLyTSKp0b6+2CwgG5mezOVTKA0qVVjAtE72zZHHFqZt4HQ=="
       },
       "Microsoft.EntityFrameworkCore.Relational": {
         "type": "Transitive",
