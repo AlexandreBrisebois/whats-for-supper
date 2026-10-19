@@ -41,7 +41,7 @@ These screenshots show the demo app. Select an image to see it at full size.
   </tr>
   <tr>
     <td align="center" valign="top"><a href="docs/screenshots/demo-add-recipe.png"><img src="docs/screenshots/demo-add-recipe.png" alt="Demo Add a Recipe screen with camera, gallery, recipe link, description, and recipe file options." width="260" /></a></td>
-    <td align="center" valign="top"><a href="docs/screenshots/demo-tonights-menu.png"><img src="docs/screenshots/demo-tonights-menu.png" alt="Demo Tonight’s Menu showing Mediterranean Baked Cod with Quinoa, ready in 35 minutes, with a link to ingredients." width="260" /></a></td>
+    <td align="center" valign="top"><a href="docs/screenshots/demo-tonights-supper.png"><img src="docs/screenshots/demo-tonights-supper.png" alt="Demo Tonight’s Menu showing Mediterranean Baked Cod with Quinoa, ready in 35 minutes, with a link to ingredients." width="260" /></a></td>
     <td align="center" valign="top"><a href="docs/screenshots/demo-cooks-mode.png"><img src="docs/screenshots/demo-cooks-mode.png" alt="Demo Cook's Mode showing quinoa and fish preparation instructions, plus Ingredients and Cooked controls." width="260" /></a></td>
   </tr>
   <tr>
