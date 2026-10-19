@@ -42,7 +42,7 @@ These screenshots show the demo app. Select an image to see it at full size.
 
 ## Synology release status
 
-The public Synology release is in preparation and is **not available to install yet**. Docker Hub publication and a Container Manager template are being prepared, but neither makes a public installation supported. Its first supported path will be a versioned beta for Synology DSM 7.2+ Container Manager on 64-bit Intel/AMD and ARM systems. Until it has completed physical deployment and recovery qualification, this repository is for contributors rather than a public installation guide.
+The public Synology installation is available and easy to try. Follow the [Synology installation guide](release-template/synology/README.md) to get started. A few last issues remain before v1, and all feedback is welcome.
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-BUSL--1.1-CD5D45?style=flat-square" alt="Business Source License 1.1" /></a>
@@ -57,7 +57,7 @@ The public Synology release is in preparation and is **not available to install 
 - [Family guide](docs/user-guide.md) — how planning, shopping, choosing, and cooking fit together.
 - [OpenSpec specifications](openspec/specs) — canonical capability requirements; [outstanding baseline work](https://github.com/AlexandreBrisebois/whats-for-supper/issues?q=is%3Aissue+WFS-BL-+in%3Atitle) is tracked in GitHub issues with historical evidence and acceptance criteria.
 - [Architecture](docs/architecture.md) — a concise technical view for contributors and operators.
-- [Synology operator guide](release-template/synology/README.md) — the current template; physical deployment, recovery, and public-release qualification remain outstanding.
+- [Synology installation guide](release-template/synology/README.md) — setup instructions for trying the public installation before v1.
 - [Local development guide](LOCAL_DEV_LOOP.md) — contributor setup and day-to-day development.
 - [Contributor guide](AGENT.md) — project conventions for human and AI collaborators.
 
