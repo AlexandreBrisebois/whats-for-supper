@@ -190,6 +190,24 @@ jobs:
             done
           done
 
+      - name: Verify multi-platform image manifests
+        env:
+          VERSION: ${{ needs.validate-tag.outputs.version }}
+        run: |
+          set -euo pipefail
+          for image in api pwa db-migration; do
+            ref="docker.io/brisebois/whats-for-supper-${image}:${VERSION}"
+            docker buildx imagetools inspect "$ref" --raw > manifest.json
+            python3 - "$ref" <<'PY'
+          import json, sys
+          manifest=json.load(open("manifest.json"))
+          platforms={(x.get("platform",{}).get("os"),x.get("platform",{}).get("architecture")) for x in manifest.get("manifests",[])}
+          required={("linux","amd64"),("linux","arm64")}
+          if not required.issubset(platforms):
+              sys.exit(f"{sys.argv[1]} missing platforms: {required-platforms}")
+          PY
+          done
+
       - name: Build and validate installation ZIP
         env:
           VERSION: ${{ needs.validate-tag.outputs.version }}
@@ -217,8 +235,14 @@ jobs:
           set -euo pipefail
           asset="dist/whats-for-supper-install-${VERSION}.zip"
           sha256sum "$asset" > "$asset.sha256"
+          assets=("$asset" "$asset.sha256")
+          if [[ "$VERSION" != *-beta.* ]]; then
+            cp "$asset" dist/whats-for-supper-install.zip
+            sha256sum dist/whats-for-supper-install.zip > dist/whats-for-supper-install.zip.sha256
+            assets+=(dist/whats-for-supper-install.zip dist/whats-for-supper-install.zip.sha256)
+          fi
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" "$asset" "$asset.sha256" --clobber
+            gh release upload "$TAG" "${assets[@]}" --clobber
           else
             release_flags=()
             if [[ "$VERSION" == *-beta.* ]]; then
@@ -226,5 +250,5 @@ jobs:
             else
               release_flags+=(--latest)
             fi
-            gh release create "$TAG" "$asset" "$asset.sha256" --title "What's for Supper ${VERSION}" --notes "Docker images and matching Linux Docker Compose installation bundle." "${release_flags[@]}"
+            gh release create "$TAG" "${assets[@]}" --title "What's for Supper ${VERSION}" --notes "Docker images and matching Linux Docker Compose installation bundle." "${release_flags[@]}"
           fi
