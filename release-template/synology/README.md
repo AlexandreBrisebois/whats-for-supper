@@ -1,17 +1,36 @@
-# Synology Container Manager Project
+# Home Server Installation Guide
 
-Create a project folder on the NAS, then copy these files into it unchanged:
+Install What's for Supper on a home server using Docker Compose. The included
+Compose template provides the application, database, reverse proxy, and Cloudflare
+Tunnel connector. Synology Container Manager is one way to deploy this template;
+the shared configuration below is not tied to a particular NAS brand.
+
+## Before you begin
+
+You need a home server with a working Docker Engine and Docker Compose deployment
+method, persistent storage, and permission to create project files and directories.
+You also need the values documented in `.env.example`, including a Gemini API key,
+Cloudflare Tunnel token, and the application's required secrets. Follow the
+Cloudflare HTTPS setup below before giving household members access.
+
+The template is currently maintained in `release-template/synology/` for
+compatibility with existing installations and links. That directory name does not
+make Synology hardware mandatory. Support, filesystem permissions, architecture,
+and available capacity must be verified for your chosen host.
+
+## Install with Docker Compose
+
+Create a project directory on the home server and copy these template files into it:
 
 - `compose.yaml`
 - `traefik.yml`
 - `.env.example`
 
-Rename `.env.example` to `.env`, edit only `.env`, and leave `compose.yaml` and
-`traefik.yml` unchanged. The required values are first in `.env`; set all five
-before deployment.
+Rename `.env.example` to `.env` and set all five required values at the top
+of that file. Leave `compose.yaml` and `traefik.yml` unchanged for the documented
+baseline configuration. Keep secrets out of version control.
 
-Before deploying, create the required bind-mount directories inside the project
-folder. The final folder structure must be:
+Before starting the stack, create the required bind-mount directories:
 
 ```text
 whats-for-supper/
@@ -23,15 +42,44 @@ whats-for-supper/
     └── postgres/
 ```
 
-Do not place `data` elsewhere: `./data/app` and `./data/postgres` are relative
-to `compose.yaml`.
+Keep `data` beside `compose.yaml`: `./data/app` and `./data/postgres`
+are relative bind mounts. Ensure the container's application user can write to
+`data/app`, and ensure PostgreSQL can access `data/postgres` with appropriate
+ownership. The two directories may require different permissions. Do **not**
+apply broad, world-writable permissions to the entire project or database.
 
-In File Station, give `Everyone` **Read/Write** permission on `data/app` only.
-The API runs as an image-specific user and must create `/data/recipes` there.
-Do not grant this permission to the parent shared folder or infer the same
-ownership for `data/postgres`.
+From the project directory, validate the resolved configuration and start it
+using Docker Compose:
 
-In Synology Container Manager, create a Project from this folder and deploy it.
+```sh
+docker compose config
+docker compose up -d
+docker compose ps
+```
+
+Check container logs for startup errors. If permissions or environment variables
+prevent startup, correct the host configuration and recreate affected services.
+The application requires an HTTPS Cloudflare hostname for browser authentication;
+follow the next section rather than using the HTTP origin as a household URL.
+
+### Synology Container Manager
+
+If using Synology, create the same project directory and files in File Station.
+For the documented Synology setup, grant `Everyone` **Read/Write** on
+`data/app` **only**, as required by the current API image user. Do not grant
+that permission to the parent shared folder or `data/postgres`. This is a
+Synology-specific workaround, not general Docker guidance.
+
+In Container Manager, create a **Project** from that folder and deploy it.
+Use the Container Manager interface to recreate services when configuration
+changes. Verify actual permissions and capacity for your NAS model.
+
+### Other Docker Compose hosts
+
+Use the Docker Compose commands above with host-appropriate filesystem ownership
+and security controls. Do not copy Synology File Station permissions to Linux
+or other platforms. This guide documents a general Compose workflow, not a
+claim that every CPU architecture, OS, or host has been qualified.
 
 ## Configure Cloudflare Tunnel
 
@@ -46,9 +94,9 @@ host port. This avoids relying on Synology-generated container names or IPs.
 
 1. In the [Cloudflare dashboard](https://one.dash.cloudflare.com/), go to
    **Networking** > **Tunnels**, create a named tunnel, choose **Docker**, and
-   copy its tunnel token. Set it as `CLOUDFLARE_TUNNEL_TOKEN` in this Project's
+   copy its tunnel token. Set it as `CLOUDFLARE_TUNNEL_TOKEN` in this deployment's
    `.env`. Treat it like a password: never commit or share it.
-2. Redeploy the Project. The `cloudflared` service needs no published ports,
+2. Redeploy the deployment. The `cloudflared` service needs no published ports,
    volumes, or access to the Docker socket.
 3. When the connector is healthy, select the tunnel in Cloudflare, choose
    **Routes** > **Add route** > **Published application**, and configure:
@@ -60,7 +108,7 @@ host port. This avoids relying on Synology-generated container names or IPs.
    | URL | `http://127.0.0.1:80` |
 
    This loopback address is inside the shared `cloudflared` and Traefik network
-   namespace. Do not use a generated container IP, the NAS LAN address, or the
+   namespace. Do not use a generated container IP, the home-server LAN address, or the
    public hostname as the service URL. Cloudflare creates the DNS record for the
    hostname when the route is saved.
 4. Open `https://<your-public-hostname>` and use that HTTPS address going
@@ -120,7 +168,7 @@ rollback.
 
 Installed Android metadata can remain stale. After a future authorized deployment change, reopen the HTTPS app and allow the browser to refresh installation metadata; if the PDF target remains absent, reinstall the PWA. Verify OS registration from several compatible PDF-sharing apps on the supported Android/browser versions. A stale target remains subject to foreground and API member gates. iOS uses the file picker. This template update does not deploy or enable the preview.
 
-PDF rendering uses a fixed profile in API code; there are no deployment tuning variables. The measured profile is 200 DPI PNG, a maximum dimension of 4096 pixels, 16,777,216 pixels per page, 64 MiB total PNG output, a 512 MiB native-child resident-memory guard and a 60-second timeout. The native child runs sequentially; page dimensions/output are validated and the parent monitors resident memory and kills/reaps it on timeout or a budget breach. RSS monitoring is sampled and is not an operating-system hard memory ceiling. Actual NAS architecture and household-load qualification remains required before enabling the preview; leave capacity for the API, PostgreSQL and temporary files.
+PDF rendering uses a fixed profile in API code; there are no deployment tuning variables. The measured profile is 200 DPI PNG, a maximum dimension of 4096 pixels, 16,777,216 pixels per page, 64 MiB total PNG output, a 512 MiB native-child resident-memory guard and a 60-second timeout. The native child runs sequentially; page dimensions/output are validated and the parent monitors resident memory and kills/reaps it on timeout or a budget breach. RSS monitoring is sampled and is not an operating-system hard memory ceiling. Actual host architecture and household-load qualification remains required before enabling the preview; leave capacity for the API, PostgreSQL and temporary files.
 
 The API image pins PDFtoImage 5.4.0, includes fonts and shipped dependency notices, and runs the PDF worker inside the production chiseled container. See [renderer qualification](../../scripts/pdf/README.md) for repeatable fixture/container commands and evidence. An x64 CI result does not establish ARM64 or Synology support. A document that exceeds the fixed renderer limits remains a failed job, recoverable through Settings; its accepted PDF is retained. Disabling acquisition does not stop already submitted workflow retries. Enabling the preview does not require additional renderer configuration.
 
@@ -141,9 +189,9 @@ Calendar__TimeZone=UTC
 UTC is the default when the setting is omitted or empty in Compose. Use an IANA
 identifier such as `America/Toronto`; invalid explicit values stop API startup and
 identify `Calendar:TimeZone` / `Calendar__TimeZone` in the container log. Correct the
-value in `.env` and recreate the API container through Container Manager so it
+value in `.env` and recreate the API container through your Compose deployment method so it
 receives the new environment. A restart alone does not reload Compose environment.
-No PWA, database or NAS timezone setting is needed.
+No PWA, database or host timezone setting is needed.
 
 During upgrades, add this key to the existing `.env`; preserve existing secrets
 and operator overrides instead of replacing that file with the example. Changing
