@@ -205,28 +205,48 @@ Release qualification must record native fixture measurements, timeout/cleanup, 
 
 ## Deployment timezone
 
-The administrator selects the household's supper calendar in the project's `.env`:
+The installation bundle defaults to **Toronto local time**:
 
 ```dotenv
-Calendar__TimeZone=UTC
-# To follow Toronto's civil dates, including daylight saving changes:
-# Calendar__TimeZone=America/Toronto
+Calendar__TimeZone=America/Toronto
 ```
 
-UTC is the default when the setting is omitted or empty in Compose. Use an IANA
-identifier such as `America/Toronto`; invalid explicit values stop API startup and
-identify `Calendar:TimeZone` / `Calendar__TimeZone` in the container log. Correct the
-value in `.env` and recreate the API container through your Compose deployment method so it
-receives the new environment. A restart alone does not reload Compose environment.
-No PWA, database or host timezone setting is needed.
+This is an IANA timezone identifier, not a fixed `EST` offset. It automatically
+follows **EST in winter and EDT in summer**. Change the value in `.env` if
+your household lives elsewhere. Ten common examples:
 
-During upgrades, add this key to the existing `.env`; preserve existing secrets
-and operator overrides instead of replacing that file with the example. Changing
-the zone changes Today and Monday-based week interpretation. It does not migrate
+| City | `Calendar__TimeZone` |
+| --- | --- |
+| Toronto | `America/Toronto` |
+| New York | `America/New_York` |
+| London | `Europe/London` |
+| Paris | `Europe/Paris` |
+| Berlin | `Europe/Berlin` |
+| Tokyo | `Asia/Tokyo` |
+| Seoul | `Asia/Seoul` |
+| New Delhi | `Asia/Kolkata` |
+| Canberra / Sydney | `Australia/Sydney` |
+| Wellington / Auckland | `Pacific/Auckland` |
+
+The table provides examples, not a complete list; use the IANA identifier for
+your own location. The Compose configuration retains `UTC` as a compatibility
+fallback **only if this setting is missing or empty**. A fresh installation
+using the supplied `.env.example` defaults to Toronto.
+
+Invalid explicit values stop API startup and identify `Calendar:TimeZone` /
+`Calendar__TimeZone` in the container log. After changing the value in
+`.env`, recreate the API container so it receives the new environment; a
+restart alone does not reload Compose environment. No PWA, database or host
+timezone change is required.
+
+For existing installations, **do not overwrite your `.env`** with a new bundle.
+Preserve your current timezone unless you deliberately change it. Changing the
+zone changes Today and Monday-based week interpretation; it does not migrate
 stored meal dates, cooking-history dates or UTC operation timestamps. Existing
 `*_CRON_UTC` maintenance schedules continue to use UTC.
 
-After recreation, inspect an authenticated `GET /api/schedule?weekOffset=0`
+To verify, inspect the authenticated `GET /api/schedule?weekOffset=0`
 response: `data.calendar.timeZone`, `today`, `currentWeekStartDate`,
-`referenceWeekStartDate`, `nextDayAtUtc` and `data.weekStartDate` establish the API's
-calendar. Verify those values rather than relying on the NAS or browser clock.
+`referenceWeekStartDate`, `nextDayAtUtc` and `data.weekStartDate` establish
+the API calendar. Verify those values rather than relying on the server or
+browser clock.
