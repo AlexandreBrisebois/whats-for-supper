@@ -59,7 +59,7 @@ These screenshots show the demo app. Select an image to see it at full size.
 
 ## Run it at home
 
-What's for Supper? is designed for self-hosting with **Docker Compose**. Start with the public [Compose template](release-template/synology/compose.yaml) and [home server installation guide](release-template/synology/README.md), adapting host-specific steps if you use another Compose host.
+What's for Supper? is designed for self-hosting with **Docker Compose**. Start with the [quick installation guide](docs/install/quick-start.md) and a matching release ZIP. Experienced operators can use the [Compose template](release-template/synology/compose.yaml) and [installation reference](release-template/synology/README.md).
 
 The provided setup needs a Gemini API key, a Cloudflare Tunnel with an HTTPS hostname, and the required secrets in [`.env.example`](release-template/synology/.env.example). It also needs persistent data directories. Follow the guide before deploying, and plan your backups: the template does not configure backup, restore, updates, or rollback. Compatibility and capacity still need checking on your chosen host.
 
