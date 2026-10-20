@@ -10,7 +10,7 @@ Your family's recipes, on your home server. **Recommended:** Linux + Docker Comp
 
 **Stable bundle not published yet?** Wait for the first stable release; beta packages are for testing, not the recommended family installation.
 
-You'll need Docker Engine with the Compose plugin, a [Gemini API key](gemini-key.md), a Cloudflare account, and a domain managed through Cloudflare.
+**Before you begin:** Have Docker Compose installed on your Linux server. You'll also need a [Gemini API key](gemini-key.md) and a Cloudflare account with a domain. The linked guides show you how.
 
 ## 2. Configure
 
@@ -20,16 +20,20 @@ From the extracted `whats-for-supper` directory, run:
 bash setup.sh
 ```
 
-The helper creates a private `.env`, generates database and internal application secrets, asks for your Gemini key, Cloudflare Tunnel token, and administrator PIN, then offers to start the app. The default household timezone is **Toronto (EST/EDT)**; to change it, edit `Calendar__TimeZone` in `.env` using the [timezone examples](timezones.md). It will not overwrite an existing `.env`.
+The helper asks for your credentials, prepares your private configuration, and offers to start the app. It won't overwrite an existing setup.
+
+Your household timezone defaults to Toronto. [Using another timezone?](timezones.md)
 
 New to Cloudflare? Follow the [short Cloudflare walkthrough](cloudflare.md).
 
 ## 3. Open What's for Supper
 
-The setup helper offers to start the application for you. Follow the [Cloudflare walkthrough](cloudflare.md) to connect your secure hostname, then open it in your browser. That's it.
+Follow the [Cloudflare walkthrough](cloudflare.md) to connect your secure hostname. Open that address in your browser to start adding recipes.
 
 Need help? See [installation troubleshooting](troubleshooting.md) and the [full installation reference](https://github.com/AlexandreBrisebois/whats-for-supper/blob/main/release-template/synology/README.md).
 
-Experienced with Compose? You can edit `.env` and run Compose directly. The bundled `WFS_VERSION` matches the release's Docker images. Keep your existing `.env` and persistent `data/` during updates; **do not replace them with files from a newer ZIP**. For an existing installation, `bash update.sh RELEASE_ZIP BACKUP_EVIDENCE_PATH` provides a guarded, manual update path. **Back up and test recovery of both the database and recipe assets first.** The helper refuses changed Compose/proxy templates and cannot prove migration reversibility. See [update details](updates.md).
+**Already running What's for Supper?** [Update your installation](updates.md).
 
-> Tailscale Serve is a possible future alternative ([tracking issue #300](https://github.com/AlexandreBrisebois/whats-for-supper/issues/300)), not part of the recommended setup.
+**Comfortable with Docker?** [Explore the advanced installation reference](../../release-template/synology/README.md).
+
+> Other access methods, such as Tailscale, are [future options](https://github.com/AlexandreBrisebois/whats-for-supper/issues/300). Cloudflare remains the recommended path.
