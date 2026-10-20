@@ -81,12 +81,31 @@ and security controls. Do not copy Synology File Station permissions to Linux
 or other platforms. This guide documents a general Compose workflow, not a
 claim that every CPU architecture, OS, or host has been qualified.
 
+## Optional local HTTP diagnostics port
+
+The default Compose deployment publishes **no host HTTP port**. Cloudflare Tunnel
+connects directly to Traefik inside the shared container network, so port 9100
+is not required.
+
+For local troubleshooting only, also copy `compose.local-port.yaml` into
+the project folder and start with:
+
+```sh
+docker compose -f compose.yaml -f compose.local-port.yaml up -d
+```
+
+This binds the optional HTTP origin to `127.0.0.1:9100` on the **server only**
+(or `WFS_HTTP_PORT` if configured). It is not accessible from other LAN devices
+and is **not** a supported browser sign-in URL: secure authentication cookies
+require HTTPS. Remove the override and recreate the stack to disable the port.
+On Synology, the Container Manager project workflow uses the default Compose
+file without this override.
+
 ## Configure Cloudflare Tunnel
 
-Users must access this application through an HTTPS Cloudflare hostname. Direct
-HTTP access to `http://<nas-lan-address>:<WFS_HTTP_PORT>` is the private origin
-for the Tunnel only; it cannot retain the production authentication cookie in a
-browser. Do not give this LAN address to users.
+Users must access this application through an HTTPS Cloudflare hostname. The Tunnel connects to Traefik at `http://127.0.0.1:80` within its shared
+container network namespace. Do not direct users to an HTTP LAN address;
+production authentication cookies require HTTPS.
 
 The template runs `cloudflared` as part of this Project. It shares Traefik's
 network namespace, forwards only to Traefik on loopback, and opens no additional
