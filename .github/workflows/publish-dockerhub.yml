@@ -220,5 +220,11 @@ jobs:
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" "$asset" "$asset.sha256" --clobber
           else
-            gh release create "$TAG" "$asset" "$asset.sha256" --title "What's for Supper ${VERSION}" --notes "Docker images and matching Linux Docker Compose installation bundle."
+            release_flags=()
+            if [[ "$VERSION" == *-beta.* ]]; then
+              release_flags+=(--prerelease)
+            else
+              release_flags+=(--latest)
+            fi
+            gh release create "$TAG" "$asset" "$asset.sha256" --title "What's for Supper ${VERSION}" --notes "Docker images and matching Linux Docker Compose installation bundle." "${release_flags[@]}"
           fi
