@@ -1,0 +1,6 @@
+# Optional localhost-only HTTP origin for troubleshooting. Not a browser login URL.
+# Usage: docker compose -f compose.yaml -f compose.local-port.yaml up -d
+services:
+  traefik:
+    ports:
+      - "127.0.0.1:${WFS_HTTP_PORT:-9100}:80"
