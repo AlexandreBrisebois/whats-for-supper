@@ -108,9 +108,9 @@ public partial class RecipeSearchService(
                 var semanticAttemptStopwatch = System.Diagnostics.Stopwatch.StartNew();
                 try
                 {
-                    // The provider call and PostgreSQL vector query share one 300 ms budget.
+                    // The provider call and PostgreSQL vector query share one 2000 ms budget.
                     using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-                    cts.CancelAfter(TimeSpan.FromMilliseconds(300));
+                    cts.CancelAfter(TimeSpan.FromMilliseconds(2000));
 
                     var vectorCandidates = await VectorSearchAsync(semanticQuery, recipesQuery, appliedFilters, cts.Token);
                     candidates = conceptOnly ? vectorCandidates : MergeCandidates(lexicalCandidates, vectorCandidates);
