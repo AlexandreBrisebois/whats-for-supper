@@ -142,6 +142,25 @@ for current dashboard details and connector troubleshooting.
 
 This template does not configure backup, restore, updates, or rollback.
 
+## Optional alternatives and performance notes
+
+**Recommended:** use the Cloudflare Tunnel setup above. It provides HTTPS for
+family devices without requiring a VPN app on each device.
+
+**Tailscale (future option):** Tailscale Serve can provide private HTTPS access
+through a tailnet, typically without owning a domain. Family devices must join
+the tailnet. A tested What's for Supper deployment template is **not available
+yet**; see [the tracked Tailscale option](https://github.com/AlexandreBrisebois/whats-for-supper/issues/300).
+Don't change the recommended Cloudflare setup just to try it.
+
+**Optional Cloudflare caching:** Cloudflare can cache eligible public static
+assets (such as versioned JavaScript and CSS) at its edge, reducing repeat
+requests to your home server and potentially improving remote load times.
+Review [Cloudflare Cache Rules](https://developers.cloudflare.com/cache/)
+before changing defaults. Never apply broad `Cache Everything` rules to
+private recipe images, authenticated pages, API responses, or live updates;
+verify which assets are actually public before enabling any extra caching.
+
 ## Install identity and demo configuration
 
 Set the existing `DEMO_MODE=true` in `.env` to enable demo behavior and the small
