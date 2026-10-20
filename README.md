@@ -61,14 +61,11 @@ These screenshots show the demo app. Select an image to see it at full size.
 
 ## Run it at home
 
-**Recommended: latest stable release.** [Download the stable installation ZIP](https://github.com/AlexandreBrisebois/whats-for-supper/releases/latest/download/whats-for-supper-install.zip). Until a stable GitHub Release is published, no stable installation ZIP is available; beta builds are for testing only.
+**Start with the [quick installation guide](docs/install/quick-start.md).** It walks you through downloading the matching installation package and setting up your home server.
 
+[Latest stable release](https://github.com/AlexandreBrisebois/whats-for-supper/releases/latest) · [Docker Compose and advanced setup](release-template/synology/README.md)
 
-What's for Supper? is designed for self-hosting with **Docker Compose**. Start with the [quick installation guide](docs/install/quick-start.md) and a matching release ZIP. Experienced operators can use the [Compose template](release-template/synology/compose.yaml) and [installation reference](release-template/synology/README.md).
-
-The provided setup needs a Gemini API key, a Cloudflare Tunnel with an HTTPS hostname, and the required secrets in [`.env.example`](release-template/synology/.env.example). It also needs persistent data directories. Follow the guide before deploying, and plan your backups: the template does not configure backup, restore, updates, or rollback. Compatibility and capacity still need checking on your chosen host.
-
-The public installation is available to try. A few last issues remain before v1, and all feedback is welcome.
+**Release status:** The stable installation ZIP will be available with the first published stable GitHub Release. Until then, beta builds are for testing.
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-BUSL--1.1-CD5D45?style=flat-square" alt="Business Source License 1.1" /></a>
