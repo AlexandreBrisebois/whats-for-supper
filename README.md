@@ -6,6 +6,8 @@
 
 **Swipe, Match, Cook!**
 
+[![Latest stable release](https://img.shields.io/github/v/release/AlexandreBrisebois/whats-for-supper?display_name=release&include_prereleases=false&label=stable%20release)](https://github.com/AlexandreBrisebois/whats-for-supper/releases/latest)
+
 ## A supper plan the family helps choose
 
 What's for Supper? helps you **involve the whole family in choosing what’s for supper**. Bring your favourite recipes, weekly meal plan, and shared grocery list together in a self-hosted app for your household.
@@ -58,6 +60,9 @@ These screenshots show the demo app. Select an image to see it at full size.
 [Try the demo](https://dm.srvrlss.dev) before setting it up at home. The shared demo family passphrase is **welcome-demo**.
 
 ## Run it at home
+
+**Recommended: latest stable release.** [Get the stable installation bundle](https://github.com/AlexandreBrisebois/whats-for-supper/releases/latest). Until a stable GitHub Release is published, no stable installation ZIP is available; beta builds are for testing only.
+
 
 What's for Supper? is designed for self-hosting with **Docker Compose**. Start with the [quick installation guide](docs/install/quick-start.md) and a matching release ZIP. Experienced operators can use the [Compose template](release-template/synology/compose.yaml) and [installation reference](release-template/synology/README.md).
 
