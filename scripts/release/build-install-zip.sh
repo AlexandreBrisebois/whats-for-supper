@@ -14,7 +14,7 @@ done
 sed -i -E "s/^WFS_VERSION=.*/WFS_VERSION=$version/" "$tmp/whats-for-supper/.env.example"
 cp "$root/docs/install/quick-start.md" "$tmp/whats-for-supper/README.md"
 mkdir -p "$tmp/whats-for-supper/docs/install"
-for file in cloudflare.md gemini-key.md troubleshooting.md; do
+for file in cloudflare.md gemini-key.md troubleshooting.md updates.md; do
   cp "$root/docs/install/$file" "$tmp/whats-for-supper/docs/install/$file"
 done
 chmod +x "$tmp/whats-for-supper/setup.sh" "$tmp/whats-for-supper/update.sh"
