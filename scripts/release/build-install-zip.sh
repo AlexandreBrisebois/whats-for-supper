@@ -13,8 +13,12 @@ for file in compose.yaml compose.local-port.yaml compose.postgres-debug.yaml tra
 done
 sed -i -E "s/^WFS_VERSION=.*/WFS_VERSION=$version/" "$tmp/whats-for-supper/.env.example"
 cp "$root/docs/install/quick-start.md" "$tmp/whats-for-supper/README.md"
+# In the ZIP, README is at the root; linked guides are under docs/install.
+for name in gemini-key.md cloudflare.md troubleshooting.md updates.md timezones.md; do
+  sed -i "s|]($name)|](docs/install/$name)|g" "$tmp/whats-for-supper/README.md"
+done
 mkdir -p "$tmp/whats-for-supper/docs/install"
-for file in cloudflare.md gemini-key.md troubleshooting.md updates.md; do
+for file in cloudflare.md gemini-key.md troubleshooting.md updates.md timezones.md; do
   cp "$root/docs/install/$file" "$tmp/whats-for-supper/docs/install/$file"
 done
 chmod +x "$tmp/whats-for-supper/setup.sh" "$tmp/whats-for-supper/update.sh"
