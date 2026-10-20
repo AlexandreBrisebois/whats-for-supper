@@ -164,3 +164,61 @@ jobs:
           labels: |
             org.opencontainers.image.revision=${{ needs.validate-tag.outputs.revision }}
             org.opencontainers.image.version=${{ needs.validate-tag.outputs.version }}
+
+  install-bundle:
+    name: Publish matching installation ZIP
+    needs: [validate-tag, publish]
+    if: github.actor == vars.DOCKERHUB_PUBLISHER_GITHUB_LOGIN
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Verify all published image tags exist
+        env:
+          VERSION: ${{ needs.validate-tag.outputs.version }}
+        run: |
+          set -euo pipefail
+          for image in api pwa db-migration; do
+            repository="brisebois/whats-for-supper-${image}"
+            for attempt in 1 2 3 4 5; do
+              status="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' "https://hub.docker.com/v2/repositories/${repository}/tags/${VERSION}/" || true)"
+              if [ "$status" = 200 ]; then break; fi
+              if [ "$attempt" = 5 ]; then echo "Missing image ${repository}:${VERSION} (HTTP $status)" >&2; exit 1; fi
+              sleep 15
+            done
+          done
+
+      - name: Build and validate installation ZIP
+        env:
+          VERSION: ${{ needs.validate-tag.outputs.version }}
+        run: |
+          set -euo pipefail
+          bash scripts/release/build-install-zip.sh "$VERSION" "dist/whats-for-supper-install-${VERSION}.zip"
+          unzip -t "dist/whats-for-supper-install-${VERSION}.zip"
+          unzip -q "dist/whats-for-supper-install-${VERSION}.zip" -d /tmp/wfs-install-check
+          cd /tmp/wfs-install-check/whats-for-supper
+          cp .env.example .env
+          sed -i -e 's/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=testpassword/' \
+                 -e 's/^HEARTH_SECRET=.*/HEARTH_SECRET=testsecret/' \
+                 -e 's/^GEMINI_API_KEY=.*/GEMINI_API_KEY=testkey/' \
+                 -e 's/^CLOUDFLARE_TUNNEL_TOKEN=.*/CLOUDFLARE_TUNNEL_TOKEN=testtoken/' \
+                 -e 's/^ELEVATED_ACTIONS_PIN=.*/ELEVATED_ACTIONS_PIN=123456/' .env
+          docker compose config --quiet
+          rm .env
+
+      - name: Publish GitHub release asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.validate-tag.outputs.version }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          asset="dist/whats-for-supper-install-${VERSION}.zip"
+          sha256sum "$asset" > "$asset.sha256"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$asset" "$asset.sha256" --clobber
+          else
+            gh release create "$TAG" "$asset" "$asset.sha256" --title "What's for Supper ${VERSION}" --notes "Docker images and matching Linux Docker Compose installation bundle."
+          fi
