@@ -37,5 +37,31 @@ awk -v db="$password" -v hearth="$secret" -v gemini="$gemini" -v tunnel="$tunnel
 if [[ -e .env ]]; then echo ".env appeared during setup; refusing to overwrite." >&2; exit 1; fi
 mv -n "$tmp" .env
 mkdir -p data/app data/postgres
-echo "Configuration saved in .env (private). Next: docker compose up -d"
-echo "Open the HTTPS hostname configured in Cloudflare when the containers are ready."
+echo "Configuration saved securely."
+if ! command -v docker >/dev/null 2>&1; then
+  echo "Docker is not installed. See the installation troubleshooting guide."
+  exit 0
+fi
+if ! docker compose version >/dev/null 2>&1; then
+  echo "Docker Compose is missing. See the installation troubleshooting guide."
+  exit 0
+fi
+if ! docker info >/dev/null 2>&1; then
+  echo "Docker isn't accessible to your account. See the installation troubleshooting guide."
+  exit 0
+fi
+if ! docker compose config --quiet; then
+  echo "Configuration needs attention. Check .env and the troubleshooting guide."
+  exit 0
+fi
+read -r -p "Start What's for Supper now? [Y/n] " start
+if [[ "$start" =~ ^[Nn]([Oo])?$ ]]; then
+  echo "When ready, run: docker compose up -d"
+  exit 0
+fi
+if docker compose up -d; then
+  echo "Containers started. Complete your Cloudflare hostname setup, then open its HTTPS address."
+else
+  echo "Startup needs attention. Check docs/install/troubleshooting.md."
+  exit 1
+fi
