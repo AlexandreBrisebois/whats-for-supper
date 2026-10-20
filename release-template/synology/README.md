@@ -90,6 +90,26 @@ This binds `127.0.0.1:9100` on the server only; it is not a browser login
 URL because secure authentication cookies require HTTPS. The Cloudflare Tunnel
 connects to Traefik directly in their shared container network namespace.
 
+## Optional PostgreSQL debugging access
+
+By default, PostgreSQL has **no published host port** and is reachable only by
+services attached to the Compose internal network. Backups, restore operations,
+and update tooling should use `docker compose exec` or a temporary container
+on that network; opening a database port is not required.
+
+Advanced users can opt in to **server-local** database access by adding the
+`compose.postgres-debug.yaml` override to their Compose invocation:
+
+```sh
+docker compose -f compose.yaml -f compose.postgres-debug.yaml up -d
+```
+
+The override binds `127.0.0.1:5432` on the **home server only**; change
+`WFS_POSTGRES_DEBUG_PORT` if needed. It does not expose the database to the
+LAN or internet. Remote troubleshooting should use an authenticated SSH
+tunnel rather than a public database port. Remove the override and recreate
+the stack when debugging is finished. Protect `.env` and database credentials.
+
 ## Configure Cloudflare Tunnel
 
 Users must access this application through an HTTPS Cloudflare hostname. The Tunnel uses `http://127.0.0.1:80` within the shared container network
