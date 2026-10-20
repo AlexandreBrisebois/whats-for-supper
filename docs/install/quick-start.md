@@ -1,10 +1,14 @@
 # Install What's for Supper
 
+[![Latest stable release](https://img.shields.io/github/v/release/AlexandreBrisebois/whats-for-supper?display_name=release&include_prereleases=false&label=stable%20release)](https://github.com/AlexandreBrisebois/whats-for-supper/releases/latest)
+
 Your family's recipes, on your home server. **Recommended:** Linux + Docker Compose + Cloudflare Tunnel for HTTPS.
 
 ## 1. Download
 
-Download the installation ZIP attached to the matching [GitHub release](https://github.com/AlexandreBrisebois/whats-for-supper/releases) and extract it on your Linux home server. No Git required.
+**Use the latest stable release:** [Download the stable installation bundle](https://github.com/AlexandreBrisebois/whats-for-supper/releases/latest) from its Assets section, then extract it on your Linux home server. No Git required.
+
+**Stable bundle not published yet?** Wait for the first stable release; beta packages are for testing, not the recommended family installation.
 
 You'll need Docker Engine with the Compose plugin, a [Gemini API key](https://github.com/AlexandreBrisebois/whats-for-supper/blob/main/docs/install/gemini-key.md), a Cloudflare account, and a domain managed through Cloudflare.
 
