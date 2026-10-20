@@ -91,11 +91,6 @@ X-Hearth-Secret: {{hearthSecret}}
 # IMPORT
 # ============================================================================
 
-### Trigger import for a single recipe
-POST {{baseUrl}}/api/recipes/{{recipeId}}/import
-Accept: application/json
-X-Hearth-Secret: {{hearthSecret}}
-
 ### Bulk-trigger import for all unimported recipes
 POST {{baseUrl}}/api/recipes/imports/bulk
 Accept: application/json
