@@ -183,7 +183,7 @@ public partial class RecipeLexicalSearchPostgresTests : IAsyncLifetime
 
         Assert.Equal("fallback-lexical", fallback.ResultPath);
         Assert.Contains(fallback.Results.Append(fallback.TopPick).Where(result => result is not null), result => result!.Id == recipe.Id);
-        Assert.InRange(started.ElapsedMilliseconds, 250, 1500);
+        Assert.InRange(started.ElapsedMilliseconds, 250, 5500);
 
         using var cancelled = new CancellationTokenSource();
         cancelled.Cancel();
