@@ -16,7 +16,7 @@ From the extracted `whats-for-supper` directory, run:
 bash setup.sh
 ```
 
-The helper creates a private `.env`, generates database and internal application secrets, and asks for your Gemini key, Cloudflare Tunnel token, and administrator PIN. It will not overwrite an existing `.env`.
+The helper creates a private `.env`, generates database and internal application secrets, and asks for your Gemini key, Cloudflare Tunnel token, and administrator PIN. The default household timezone is **Toronto (EST/EDT)**; to change it, edit `Calendar__TimeZone` in `.env` using the [timezone examples](https://github.com/AlexandreBrisebois/whats-for-supper/blob/main/release-template/synology/README.md#deployment-timezone). It will not overwrite an existing `.env`.
 
 New to Cloudflare? Follow the [short Cloudflare walkthrough](https://github.com/AlexandreBrisebois/whats-for-supper/blob/main/docs/install/cloudflare.md).
 
