@@ -8,12 +8,16 @@ root="$(cd "$(dirname "$0")/../.." && pwd)"
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 mkdir -p "$tmp/whats-for-supper"
-for file in compose.yaml traefik.yml .env.example setup.sh; do
+for file in compose.yaml traefik.yml .env.example setup.sh update.sh; do
   cp "$root/release-template/synology/$file" "$tmp/whats-for-supper/$file"
 done
 sed -i -E "s/^WFS_VERSION=.*/WFS_VERSION=$version/" "$tmp/whats-for-supper/.env.example"
 cp "$root/docs/install/quick-start.md" "$tmp/whats-for-supper/README.md"
-chmod +x "$tmp/whats-for-supper/setup.sh"
+mkdir -p "$tmp/whats-for-supper/docs/install"
+for file in cloudflare.md gemini-key.md troubleshooting.md; do
+  cp "$root/docs/install/$file" "$tmp/whats-for-supper/docs/install/$file"
+done
+chmod +x "$tmp/whats-for-supper/setup.sh" "$tmp/whats-for-supper/update.sh"
 mkdir -p "$(dirname "$output")"
 output="$(cd "$(dirname "$output")" && pwd)/$(basename "$output")"
 (cd "$tmp" && zip -q -r "$output" whats-for-supper)
