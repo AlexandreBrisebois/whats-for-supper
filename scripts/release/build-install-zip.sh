@@ -8,7 +8,7 @@ root="$(cd "$(dirname "$0")/../.." && pwd)"
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 mkdir -p "$tmp/whats-for-supper"
-for file in compose.yaml traefik.yml .env.example setup.sh update.sh; do
+for file in compose.yaml compose.local-port.yaml compose.postgres-debug.yaml traefik.yml .env.example setup.sh update.sh; do
   cp "$root/release-template/synology/$file" "$tmp/whats-for-supper/$file"
 done
 sed -i -E "s/^WFS_VERSION=.*/WFS_VERSION=$version/" "$tmp/whats-for-supper/.env.example"
