@@ -80,6 +80,7 @@ The public installation is available to try. A few last issues remain before v1,
 - [Architecture](docs/architecture.md) — a concise technical view for contributors and operators.
 - [Home server installation guide](release-template/synology/README.md) — Docker Compose setup, HTTPS configuration, and platform-specific Synology notes.
 - [Local development guide](LOCAL_DEV_LOOP.md) — contributor setup and day-to-day development.
+- [Feature flag development and lifecycle](docs/feature-flags.md) — reuse previews, graduate features, and retire individual flags without removing the system.
 - [Contributor guide](AGENT.md) — project conventions for human and AI collaborators.
 
 ## License
