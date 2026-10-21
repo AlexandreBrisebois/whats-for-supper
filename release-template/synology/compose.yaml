@@ -5,8 +5,6 @@ services:
     command:
       - --entrypoints.web.address=:80
       - --providers.file.filename=/etc/traefik/dynamic.yml
-    ports:
-      - ${WFS_HTTP_PORT:-9100}:80
     volumes:
       - ./traefik.yml:/etc/traefik/dynamic.yml:ro
     networks:

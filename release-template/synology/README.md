@@ -81,12 +81,39 @@ and security controls. Do not copy Synology File Station permissions to Linux
 or other platforms. This guide documents a general Compose workflow, not a
 claim that every CPU architecture, OS, or host has been qualified.
 
+## Optional localhost-only diagnostics port
+
+The default Compose stack publishes no HTTP host port. If you need a local
+HTTP origin for diagnostics, add `compose.local-port.yaml` from this template
+and run `docker compose -f compose.yaml -f compose.local-port.yaml up -d`.
+This binds `127.0.0.1:9100` on the server only; it is not a browser login
+URL because secure authentication cookies require HTTPS. The Cloudflare Tunnel
+connects to Traefik directly in their shared container network namespace.
+
+## Optional PostgreSQL debugging access
+
+By default, PostgreSQL has **no published host port** and is reachable only by
+services attached to the Compose internal network. Backups, restore operations,
+and update tooling should use `docker compose exec` or a temporary container
+on that network; opening a database port is not required.
+
+Advanced users can opt in to **server-local** database access by adding the
+`compose.postgres-debug.yaml` override to their Compose invocation:
+
+```sh
+docker compose -f compose.yaml -f compose.postgres-debug.yaml up -d
+```
+
+The override binds `127.0.0.1:5432` on the **home server only**; change
+`WFS_POSTGRES_DEBUG_PORT` if needed. It does not expose the database to the
+LAN or internet. Remote troubleshooting should use an authenticated SSH
+tunnel rather than a public database port. Remove the override and recreate
+the stack when debugging is finished. Protect `.env` and database credentials.
+
 ## Configure Cloudflare Tunnel
 
-Users must access this application through an HTTPS Cloudflare hostname. Direct
-HTTP access to `http://<nas-lan-address>:<WFS_HTTP_PORT>` is the private origin
-for the Tunnel only; it cannot retain the production authentication cookie in a
-browser. Do not give this LAN address to users.
+Users must access this application through an HTTPS Cloudflare hostname. The Tunnel uses `http://127.0.0.1:80` within the shared container network
+namespace. Do not direct users to a LAN HTTP URL; authentication requires HTTPS.
 
 The template runs `cloudflared` as part of this Project. It shares Traefik's
 network namespace, forwards only to Traefik on loopback, and opens no additional
@@ -178,28 +205,48 @@ Release qualification must record native fixture measurements, timeout/cleanup, 
 
 ## Deployment timezone
 
-The administrator selects the household's supper calendar in the project's `.env`:
+The installation bundle defaults to **Toronto local time**:
 
 ```dotenv
-Calendar__TimeZone=UTC
-# To follow Toronto's civil dates, including daylight saving changes:
-# Calendar__TimeZone=America/Toronto
+Calendar__TimeZone=America/Toronto
 ```
 
-UTC is the default when the setting is omitted or empty in Compose. Use an IANA
-identifier such as `America/Toronto`; invalid explicit values stop API startup and
-identify `Calendar:TimeZone` / `Calendar__TimeZone` in the container log. Correct the
-value in `.env` and recreate the API container through your Compose deployment method so it
-receives the new environment. A restart alone does not reload Compose environment.
-No PWA, database or host timezone setting is needed.
+This is an IANA timezone identifier, not a fixed `EST` offset. It automatically
+follows **EST in winter and EDT in summer**. Change the value in `.env` if
+your household lives elsewhere. Ten common examples:
 
-During upgrades, add this key to the existing `.env`; preserve existing secrets
-and operator overrides instead of replacing that file with the example. Changing
-the zone changes Today and Monday-based week interpretation. It does not migrate
+| City | `Calendar__TimeZone` |
+| --- | --- |
+| Toronto | `America/Toronto` |
+| New York | `America/New_York` |
+| London | `Europe/London` |
+| Paris | `Europe/Paris` |
+| Berlin | `Europe/Berlin` |
+| Tokyo | `Asia/Tokyo` |
+| Seoul | `Asia/Seoul` |
+| New Delhi | `Asia/Kolkata` |
+| Canberra / Sydney | `Australia/Sydney` |
+| Wellington / Auckland | `Pacific/Auckland` |
+
+The table provides examples, not a complete list; use the IANA identifier for
+your own location. The Compose configuration retains `UTC` as a compatibility
+fallback **only if this setting is missing or empty**. A fresh installation
+using the supplied `.env.example` defaults to Toronto.
+
+Invalid explicit values stop API startup and identify `Calendar:TimeZone` /
+`Calendar__TimeZone` in the container log. After changing the value in
+`.env`, recreate the API container so it receives the new environment; a
+restart alone does not reload Compose environment. No PWA, database or host
+timezone change is required.
+
+For existing installations, **do not overwrite your `.env`** with a new bundle.
+Preserve your current timezone unless you deliberately change it. Changing the
+zone changes Today and Monday-based week interpretation; it does not migrate
 stored meal dates, cooking-history dates or UTC operation timestamps. Existing
 `*_CRON_UTC` maintenance schedules continue to use UTC.
 
-After recreation, inspect an authenticated `GET /api/schedule?weekOffset=0`
+To verify, inspect the authenticated `GET /api/schedule?weekOffset=0`
 response: `data.calendar.timeZone`, `today`, `currentWeekStartDate`,
-`referenceWeekStartDate`, `nextDayAtUtc` and `data.weekStartDate` establish the API's
-calendar. Verify those values rather than relying on the NAS or browser clock.
+`referenceWeekStartDate`, `nextDayAtUtc` and `data.weekStartDate` establish
+the API calendar. Verify those values rather than relying on the server or
+browser clock.
