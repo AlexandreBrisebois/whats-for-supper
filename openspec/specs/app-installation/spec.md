@@ -103,22 +103,18 @@ After document interaction is enabled, the application SHALL request registratio
 - **WHEN** the registration script runs without service-worker support
 - **THEN** it makes no service-worker registration request
 
-### Requirement: Select share advertisement from PWA configuration
+### Requirement: Advertise PDF and text share transport
 
-The manifest SHALL advertise GET link sharing to `/capture` with title, text and url parameters unless the PWA server's `WFS_FEATURE_PREVIEW_PDF_RECIPE_IMPORT`, trimmed and lowercased, is `on` or `opt-in`. Those modes SHALL advertise multipart POST sharing to `/share-target` with the same text fields and a files field accepting application/pdf and .pdf. Advertisement SHALL NOT establish member eligibility.
+The manifest SHALL advertise multipart POST sharing to `/share-target` with title, text and url parameters plus a files field accepting application/pdf and .pdf. Advertisement SHALL NOT bypass member validation or establish successful native delivery.
 
-#### Scenario: Default link advertisement
-- **WHEN** the PWA mode is absent, blank, off or unrecognized
-- **THEN** the manifest advertises GET `/capture` with title, text and url parameters
-
-#### Scenario: PDF transport advertisement
-- **WHEN** the PWA mode normalizes to on or opt-in
+#### Scenario: Normal share advertisement
+- **WHEN** the manifest is requested with or without legacy PDF feature configuration
 - **THEN** the manifest advertises POST `/share-target` with multipart/form-data and the PDF files descriptor
 - **AND** manifest identity, launch destination and shortcuts remain unchanged
 
-#### Scenario: Member has not enabled opt-in
-- **WHEN** the manifest advertises PDF transport in opt-in mode for a member who has not enabled acquisition
-- **THEN** advertisement does not bypass recipe-capture requirement `Gate PDF acquisition by effective member eligibility`
+#### Scenario: Text or link is shared
+- **WHEN** POST share transport contains no PDF and supplies text or a link
+- **THEN** the existing text-only handoff remains available
 
 ### Requirement: Handle share transport only on its worker request boundary
 

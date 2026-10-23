@@ -187,12 +187,6 @@ export async function mockFeatureFlags(
     const memberId = request.headers()['x-family-member-id'];
     if (!memberId || ![MOCK_IDS.MEMBER_ALEX, MOCK_IDS.MEMBER_JORDAN].includes(memberId))
       return reject(400, 'An established family member is required.');
-    if (
-      !snapshotFor(memberId).some(
-        (flag) => flag.key === 'preview-pdf-recipe-import' && flag.enabled
-      )
-    )
-      return reject(409, "PDF import preview isn't enabled. This file hasn't been added.");
     if (!request.headers()['content-type']?.startsWith('multipart/form-data'))
       return reject(415, 'Choose a PDF file.');
     try {

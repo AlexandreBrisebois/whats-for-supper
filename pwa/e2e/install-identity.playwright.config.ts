@@ -24,10 +24,6 @@ export default defineConfig({
       API_INTERNAL_URL: 'http://127.0.0.1:9',
       HEARTH_SECRET: 'Paris-Montreal',
       DEMO_MODE: process.env.WFS_IDENTITY_TEST_DEMO_MODE ?? process.env.DEMO_MODE ?? 'false',
-      WFS_FEATURE_PREVIEW_PDF_RECIPE_IMPORT:
-        process.env.WFS_IDENTITY_TEST_PDF_MODE ??
-        process.env.WFS_FEATURE_PREVIEW_PDF_RECIPE_IMPORT ??
-        'off',
     },
   },
 });

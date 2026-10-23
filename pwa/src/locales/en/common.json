@@ -101,13 +101,9 @@
       "preparing": "Preparing your PDF…",
       "receipt": "Wait for the upload to finish. An interrupted upload may need to be restarted.",
       "uncertain": "Couldn’t confirm the upload. Try again; another submission may create a duplicate.",
-      "disabled": "PDF import preview isn’t enabled. This file hasn’t been added.",
       "size": "Choose a PDF up to 20 MiB.",
       "type": "Choose a PDF file.",
-      "restart": "Choose or share the PDF again.",
-      "loading": "Loading preview features…",
-      "previewFeatures": "Preview features",
-      "chooseAnotherWay": "Choose another way"
+      "restart": "Choose or share the PDF again."
     }
   },
   "profile": {

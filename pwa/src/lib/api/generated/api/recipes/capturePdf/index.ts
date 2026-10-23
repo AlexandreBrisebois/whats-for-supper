@@ -27,12 +27,11 @@ import {
  */
 export interface CapturePdfRequestBuilder extends BaseRequestBuilder<CapturePdfRequestBuilder> {
   /**
-   * Requires household authentication, an established member and the effectivepreview-pdf-recipe-import flag. Stores unchanged source bytes and a pendingrecipe before returning. Conversion is a separate recipe-import task; 202establishes persistence, not readiness or verified workflow launch.Corrupt, encrypted and over-10-page documents fail the workflow and remainin Settings for Retry/Delete. No page truncation or PDF download.
+   * Requires household authentication and an established member. Stores unchangedsource bytes and a pending recipe before returning. Conversion is a separate recipe-import task; 202establishes persistence, not readiness or verified workflow launch.Corrupt, encrypted and over-10-page documents fail the workflow and remainin Settings for Retry/Delete. No page truncation or PDF download.
    * @param body The request body
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {Promise<PdfCaptureAccepted>}
    * @throws {PdfCaptureError} error when the service returns a 400 status code
-   * @throws {PdfCaptureError} error when the service returns a 409 status code
    * @throws {PdfCaptureError} error when the service returns a 413 status code
    * @throws {PdfCaptureError} error when the service returns a 415 status code
    * @throws {RecoveryBusyError} error when the service returns a 503 status code
@@ -42,7 +41,7 @@ export interface CapturePdfRequestBuilder extends BaseRequestBuilder<CapturePdfR
     requestConfiguration?: RequestConfiguration<object> | undefined
   ): Promise<PdfCaptureAccepted | undefined>;
   /**
-   * Requires household authentication, an established member and the effectivepreview-pdf-recipe-import flag. Stores unchanged source bytes and a pendingrecipe before returning. Conversion is a separate recipe-import task; 202establishes persistence, not readiness or verified workflow launch.Corrupt, encrypted and over-10-page documents fail the workflow and remainin Settings for Retry/Delete. No page truncation or PDF download.
+   * Requires household authentication and an established member. Stores unchangedsource bytes and a pending recipe before returning. Conversion is a separate recipe-import task; 202establishes persistence, not readiness or verified workflow launch.Corrupt, encrypted and over-10-page documents fail the workflow and remainin Settings for Retry/Delete. No page truncation or PDF download.
    * @param body The request body
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {RequestInformation}
@@ -65,7 +64,6 @@ export const CapturePdfRequestBuilderRequestsMetadata: RequestsMetadata = {
     responseBodyContentType: 'application/json',
     errorMappings: {
       400: createPdfCaptureErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
-      409: createPdfCaptureErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
       413: createPdfCaptureErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
       415: createPdfCaptureErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
       503: createRecoveryBusyErrorFromDiscriminatorValue as ParsableFactory<Parsable>,

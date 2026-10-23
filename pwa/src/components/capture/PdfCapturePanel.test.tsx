@@ -3,7 +3,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PdfCapturePanel } from './PdfCapturePanel';
 import { usePdfCaptureStore } from '@/store/pdfCaptureStore';
 import { useFamilyStore } from '@/store/familyStore';
-import { useFeatureFlagStore } from '@/store/featureFlagStore';
 import { claimSharedPdf } from '@/lib/pdfShare';
 
 const navigation = vi.hoisted(() => ({ query: '' }));
@@ -26,14 +25,6 @@ beforeEach(() => {
   vi.clearAllMocks();
   usePdfCaptureStore.getState().reset();
   useFamilyStore.setState({ selectedFamilyMemberId: member });
-  useFeatureFlagStore.setState({
-    memberId: member,
-    loading: false,
-    error: null,
-    flags: {
-      'preview-pdf-recipe-import': { key: 'preview-pdf-recipe-import', mode: 'on', enabled: true },
-    },
-  });
 });
 afterEach(() => {
   cleanup();

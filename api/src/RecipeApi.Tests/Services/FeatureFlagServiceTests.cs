@@ -11,15 +11,14 @@ namespace RecipeApi.Tests.Services;
 public class FeatureFlagServiceTests
 {
     [Fact]
-    public void Pdf_registry_defaults_off_and_uses_existing_modes()
+    public void Retired_pdf_registry_key_and_environment_variable_have_no_effect()
     {
         foreach (var mode in new[] { "off", "opt-in", "on", "invalid" })
         {
             var registry = new FeatureFlagRegistry(
                 new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> { ["WFS_FEATURE_PREVIEW_PDF_RECIPE_IMPORT"] = mode }).Build(),
                 NullLogger<FeatureFlagRegistry>.Instance);
-            Assert.Equal(mode == "on" ? FeatureFlagMode.On : mode == "opt-in" ? FeatureFlagMode.OptIn : FeatureFlagMode.Off,
-                registry.Get("preview-pdf-recipe-import")!.Mode);
+            Assert.Null(registry.Get("preview-pdf-recipe-import"));
         }
     }
 
@@ -54,7 +53,7 @@ public class FeatureFlagServiceTests
         Assert.Equal(expected, FeatureFlagService.Resolve(mode, memberEnabled));
 
     [Fact]
-    public async Task Snapshot_ignores_a_legacy_planner_override_when_cleanup_has_not_run()
+    public async Task Snapshot_ignores_legacy_graduated_overrides_when_cleanup_has_not_run()
     {
         await using var db = CreateDb();
         var member = new FamilyMember { Name = "Alex" };
@@ -65,12 +64,19 @@ public class FeatureFlagServiceTests
             FlagKey = "planner-hold-to-move",
             Enabled = false
         });
+        db.FeatureFlagOverrides.Add(new FeatureFlagOverride
+        {
+            MemberId = member.Id,
+            FlagKey = "preview-pdf-recipe-import",
+            Enabled = false
+        });
         await db.SaveChangesAsync();
         var service = CreateService(db, "opt-in");
 
         var snapshot = await service.GetSnapshotAsync(member.Id);
 
         Assert.DoesNotContain(snapshot, flag => flag.Key == "planner-hold-to-move");
+        Assert.DoesNotContain(snapshot, flag => flag.Key == "preview-pdf-recipe-import");
     }
 
     [Theory]

@@ -1,12 +1,12 @@
 import { test, expect } from './fixtures';
-import { setupCommonRoutes, mockFeatureFlags, MOCK_IDS } from './mock-api';
+import { setupCommonRoutes, MOCK_IDS } from './mock-api';
 
 const pdf = {
   name: 'supper.pdf',
   mimeType: 'application/pdf',
   buffer: Buffer.from('%PDF-corrupt'),
 };
-test.describe('PDF import preview', () => {
+test.describe('PDF import', () => {
   test.beforeEach(async ({ page }) => {
     const origin = process.env.BASE_URL || 'http://127.0.0.1:3000';
     await page
@@ -14,71 +14,23 @@ test.describe('PDF import preview', () => {
       .addCookies([{ name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: origin }]);
     await setupCommonRoutes(page);
   });
-  async function enable(page: Parameters<typeof mockFeatureFlags>[0]) {
-    await mockFeatureFlags(page, [{ key: 'preview-pdf-recipe-import', mode: 'on', enabled: true }]);
-  }
-  test('picker includes PDF only when enabled and GOTO excludes it', async ({ page }) => {
+  test('picker includes PDF for ordinary capture and GOTO excludes it', async ({ page }) => {
     await page.goto('/capture');
-    await expect(page.getByTestId('import-recipe-file-input')).not.toHaveAttribute('accept', /pdf/);
-    await enable(page);
-    await page.reload();
     await expect(page.getByTestId('import-recipe-file-input')).toHaveAttribute('accept', /pdf/);
     await page.goto('/capture?intent=goto');
     await expect(page.getByTestId('import-recipe-file-input')).not.toHaveAttribute('accept', /pdf/);
   });
-  for (const enabled of [true, false]) {
-    test(`file picker waits for the focus refresh to resolve ${enabled ? 'on' : 'off'}`, async ({
-      page,
-    }) => {
-      await enable(page);
-      await page.goto('/capture');
-      await expect(page.getByTestId('import-recipe-file-input')).toHaveAttribute('accept', /pdf/);
-
-      let release!: () => void;
-      const pending = new Promise<void>((resolve) => {
-        release = resolve;
-      });
-      let requests = 0;
-      await page.route('**/api/feature-flags', async (route) => {
-        requests++;
-        await pending;
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({
-            data: {
-              items: [
-                {
-                  key: 'preview-pdf-recipe-import',
-                  mode: enabled ? 'on' : 'off',
-                  enabled,
-                },
-              ],
-            },
-          }),
-        });
-      });
-      await page.evaluate(() => window.dispatchEvent(new Event('focus')));
-      await expect.poll(() => requests).toBeGreaterThan(0);
-      await page.getByTestId('import-recipe-file-input').setInputFiles(pdf);
-      try {
-        await expect(page.getByRole('status')).toContainText('Loading preview features');
-        await expect(page.getByTestId('bundle-import-error')).toHaveCount(0);
-      } finally {
-        release();
-      }
-      if (enabled) {
-        await expect(page.getByTestId('pdf-confirmation')).toBeVisible();
-      } else {
-        await expect(page.getByTestId('pdf-disabled')).toContainText('isn’t enabled');
-        await expect(page.getByTestId('pdf-confirmation')).toHaveCount(0);
-      }
-    });
-  }
+  test('feature snapshot failure and stale disabled state cannot block PDF confirmation', async ({
+    page,
+  }) => {
+    await page.route('**/api/feature-flags', (route) => route.abort());
+    await page.goto('/capture');
+    await page.getByTestId('import-recipe-file-input').setInputFiles(pdf);
+    await expect(page.getByTestId('pdf-confirmation')).toBeVisible();
+  });
   test('metadata is submitted once and acceptance returns Home without conversion', async ({
     page,
   }) => {
-    await enable(page);
     let submissions = 0;
     let body = '';
     await page.route('**/api/recipes/capture-pdf', async (route) => {
@@ -105,7 +57,6 @@ test.describe('PDF import preview', () => {
     expect(body).not.toContain('finishedDishImageIndex');
   });
   test('leaving and returning loses the draft; oversize is rejected locally', async ({ page }) => {
-    await enable(page);
     await page.goto('/capture');
     await expect(page.getByTestId('import-recipe-file-input')).toHaveAttribute('accept', /pdf/);
     await page.getByTestId('import-recipe-file-input').setInputFiles(pdf);
@@ -120,7 +71,6 @@ test.describe('PDF import preview', () => {
   test('a staged cold share is claimed once; a warm replacement owns its token', async ({
     page,
   }) => {
-    await enable(page);
     await page.goto('/capture');
     await page.waitForFunction(() => Boolean(window.WfsPdfShare));
     const stage = async (name: string) =>
@@ -143,7 +93,6 @@ test.describe('PDF import preview', () => {
     await expect(page.getByTestId('pdf-confirmation')).toContainText('warm.pdf');
   });
   test('interruption while claiming a share cannot restore a draft', async ({ page }) => {
-    await enable(page);
     await page.addInitScript(() => {
       const poll = window.setInterval(() => {
         if (!window.WfsPdfShare) return;
@@ -177,7 +126,9 @@ test.describe('PDF import preview', () => {
     await expect(page.getByTestId('pdf-confirmation')).toHaveCount(0);
   });
 
-  test('common PDF transport mock follows disabled and accepted contract', async ({ page }) => {
+  test('common PDF transport mock accepts an established member without a flag snapshot', async ({
+    page,
+  }) => {
     await page.goto('/capture');
     const upload = async () =>
       page.evaluate(async (memberId) => {
@@ -191,10 +142,6 @@ test.describe('PDF import preview', () => {
         });
         return { status: response.status, body: await response.json() };
       }, MOCK_IDS.MEMBER_ALEX);
-    const disabled = await upload();
-    expect(disabled.status).toBe(409);
-    expect(disabled.body.status).toBe(409);
-    await enable(page);
     const accepted = await upload();
     expect(accepted.status).toBe(202);
     expect(accepted.body).toEqual({ data: { id: MOCK_IDS.RECIPE_LASAGNA } });

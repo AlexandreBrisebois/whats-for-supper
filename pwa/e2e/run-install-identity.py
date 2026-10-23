@@ -35,14 +35,13 @@ def main():
         ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True
     ).strip()
     cases = [
-        (channel, demo, pdf)
+        (channel, demo)
         for channel in ("stable", "beta")
         for demo in ("false", "true")
-        for pdf in ("off", "on")
-    ] + [(channel, "invalid", "off") for channel in ("stable", "beta")]
+    ] + [(channel, "invalid") for channel in ("stable", "beta")]
     records = [
-        {"channel": channel, "demo": demo, "pdf": pdf, "status": "not-run"}
-        for channel, demo, pdf in cases
+        {"channel": channel, "demo": demo, "status": "not-run"}
+        for channel, demo in cases
     ]
     expected_artifact = original
     try:
@@ -53,21 +52,19 @@ def main():
             ARTIFACT.write_bytes(expected_artifact)
             env = {key: value for key, value in os.environ.items()
                    if not key.startswith("WFS_FEATURE_") and key != "BASE_URL"}
-            # Build with opposite demo/PDF values: a static build-time read must fail.
+            # Build with the opposite demo value: a static build-time read must fail.
             env.update({
                 "CI": "true",
                 "NEXT_PUBLIC_ENVIRONMENT": "test",
                 "NEXT_PUBLIC_API_BASE_URL": "",
                 "API_INTERNAL_URL": "http://127.0.0.1:9",
                 "DEMO_MODE": "false" if record["demo"] == "true" else "true",
-                "WFS_FEATURE_PREVIEW_PDF_RECIPE_IMPORT": "off" if record["pdf"] == "on" else "on",
                 "WFS_IDENTITY_TEST_DEMO_MODE": record["demo"],
-                "WFS_IDENTITY_TEST_PDF_MODE": record["pdf"],
                 "WFS_RELEASE_CHANNEL": "beta" if record["channel"] == "stable" else "stable",
             })
             command = ["task", "test:e2e:ci", "--",
                        "--config=e2e/install-identity.playwright.config.ts"]
-            label = f'{index + 1:02}-{record["channel"]}-{record["demo"]}-{record["pdf"]}'
+            label = f'{index + 1:02}-{record["channel"]}-{record["demo"]}'
             print(f"Production matrix: {label}", flush=True)
             record.update({"revision": revision, "command": command,
                            "channel_artifact_sha256": hashlib.sha256(expected_artifact).hexdigest(),

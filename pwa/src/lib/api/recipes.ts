@@ -754,14 +754,11 @@ export async function createPdfRecipe(
     const key =
       response.status === 413
         ? 'size'
-        : response.status === 409
-          ? 'disabled'
-          : response.status === 415 || response.status === 400
-            ? 'type'
-            : 'uncertain';
+        : response.status === 415 || response.status === 400
+          ? 'type'
+          : 'uncertain';
     const defaults = {
       size: 'Choose a PDF up to 20 MiB.',
-      disabled: 'PDF import preview isn’t enabled. This file hasn’t been added.',
       type: 'Choose a PDF file.',
       uncertain:
         'Couldn’t confirm the upload. Try again; another submission may create a duplicate.',
