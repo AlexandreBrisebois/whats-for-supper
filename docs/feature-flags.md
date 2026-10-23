@@ -4,10 +4,9 @@ The feature-flag system is a reusable product capability. Keep it when individua
 previews graduate or are abandoned. Retire a particular flag, not the registry,
 resolution service, member-override storage, API, client store or Settings framework.
 
-This guide describes the implementation inspected at
-[1d1e786](https://github.com/AlexandreBrisebois/whats-for-supper/commit/1d1e7868632ba093254ef59c56d14c2e88216ea0).
-The lifecycle checklists below guide future changes; they do not claim that any
-flag has graduated, change deployment defaults, or authorize a rollout.
+This guide describes the feature-flag framework and its current 0.1.21 state.
+The lifecycle checklists guide future changes; they do not authorize a deployment
+or rollout.
 
 Canonical behavior belongs in [member preferences](../openspec/specs/member-preferences/spec.md)
 and each feature's owning capability. API contracts belong in
@@ -77,39 +76,36 @@ keep existing identity, permission and input-validation requirements.
 
 ## Current flags and deployment surfaces
 
-The remaining registry default is currently `off`. Actual deployments may override
-it; checked-in defaults do not establish the state of a running installation.
+Version 0.1.21 ships no registered previews. Cook Mode views, planner hold-to-move
+and PDF recipe import are ordinary member features. The registry, resolution
+service, member-override storage, API and Settings framework remain available for
+future previews; Settings hides Preview features when there are no opt-in entries.
 
-| Key | API environment variable | Owner / consumers |
-| --- | --- | --- |
+The retired keys are `single-page-recipe-steps`, `planner-hold-to-move` and
+`preview-pdf-recipe-import`. Their former `WFS_FEATURE_SINGLE_PAGE_RECIPE_STEPS`,
+`WFS_FEATURE_PLANNER_HOLD_TO_MOVE` and `WFS_FEATURE_PREVIEW_PDF_RECIPE_IMPORT`
+environment variables no longer control behavior. A leftover entry in an existing
+`.env` or older example does not re-enable a preview gate. No replacement
+deployment variable is required.
 
-For an opt-in rollout, supply the flag's variable as `opt-in` to the API process,
-restart/recreate it, select an established member and enable the preview under
-Settings > Preview features. Confirm the effective GET response and consumer
-behavior. Use `off` to suppress it without deleting member choices, or `on`
-for everyone while retaining the gate.
+The [compatibility migration](../api/database/compatibility.sql) removes overrides
+for those three keys while retaining the shared override table. Cook Mode now
+saves a separate member view preference; old preview choices are not converted
+into that preference.
 
-Inspect the deployment actually used. A dotenv entry alone does not pass a
-variable into a container:
+PDF sharing is always advertised by the
+[manifest](../pwa/src/app/manifest.json/route.ts), and the
+[PDF API](../api/src/RecipeApi/Controllers/PdfCaptureController.cs) still enforces
+established-member identity and document validation. Install metadata can remain
+stale on a device; see the
+[installation reference](../release-template/synology/README.md#pdf-recipe-import).
+Retiring a preview does not remove its independent identity, validation or
+recovery controls.
 
-- [apps.yml](../docker/compose/apps.yml), [production.yml](../docker/compose/production.yml)
-  and the [public Compose template](../release-template/synology/compose.yaml) pass
-  the cooking variable to the API with an `off` fallback.
-- The public template's [.env.example](../release-template/synology/.env.example)
-  lists the cooking variable.
-- [smoke.env](../docker/compose/smoke.env) explicitly supplies cooking as `off`.
-  Keep deployment examples, smoke fixtures and operator instructions
-  aligned when a future change touches these surfaces.
-
-PDF has two distinct checks. The
-[manifest route](../pwa/src/app/manifest.json/route.ts) calls
-[pdfManifest](../pwa/src/lib/pdfManifest.ts) using the PWA server environment.
-Both `on` and `opt-in` advertise multipart PDF sharing; other values use the base
-link-sharing target. Advertisement does not establish a member's eligibility.
-The [PDF API](../api/src/RecipeApi/Controllers/PdfCaptureController.cs) independently
-checks established-member identity and effective PDF enablement before reading
-the form. Keep API/PWA configuration and installed-app behavior in scope; do not
-replace server checks with a client-only gate.
+For upgrades, use the
+[0.1.21 update instructions](install/updates.md#upgrading-from-0120-to-0121).
+A dotenv entry alone does not pass a value into a container; wire any future
+preview explicitly into the deployment that needs it.
 
 ## Add a future flag
 
@@ -168,11 +164,10 @@ equivalent to deleting the focused view or keeping a preview switch forever.
 Define preference defaults and treatment of existing users/overrides explicitly;
 do not silently reinterpret an old preview boolean as a new durable preference.
 
-[PDF #304](https://github.com/AlexandreBrisebois/whats-for-supper/issues/304)
-tracks always-on PDF import. Planner touch hold-to-move has graduated: it is now
-unconditional, its rollout configuration and stored choices are retired, and
-operators need no Planner preview setup. Feature-specific validation, identity
-checks and failure handling remain even when preview checks are retired.
+Cook Mode views, [PDF import #304](https://github.com/AlexandreBrisebois/whats-for-supper/issues/304)
+and planner hold-to-move have graduated. Their rollout configuration and stored
+preview choices are retired; operators need no preview setup. Feature-specific
+identity, validation and recovery controls remain.
 
 ### Abandon: remove the experiment, retain supported behavior
 
@@ -222,7 +217,7 @@ decisions before destructive cleanup.
   provider/store/adapter, persistence or Settings framework just because no
   currently shipped feature needs a gate.
 
-For the current keys, search these additional seams:
+When reviewing the graduated features, search these additional seams:
 cooking's `CooksMode`, instruction-view tests and cooking/member-preferences
 specs; PDF's capture components/controller, manifest route/helper, share/install
 tests, renderer/deployment qualification and recipe-capture/app-installation
