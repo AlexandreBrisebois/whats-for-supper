@@ -19,7 +19,6 @@ import {
   setupCommonRoutes,
   currentMonday,
   toDateStr,
-  mockFeatureFlags,
   mockSseWithConnectedSchedule,
 } from './mock-api';
 import { REALISTIC_RECIPES } from '../src/testing/realistic-recipes';
@@ -133,6 +132,41 @@ test.describe('Cook Mode — HowToSection[] steps display', () => {
     });
   });
 
+  test('changes and remembers the selected member cooking view without a preview flag', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 320, height: 700 });
+    await page.goto('/home');
+    await page.getByTestId('tonight-menu-card').click();
+    await page.getByTestId('cook-mode-btn').click();
+
+    const trigger = page.getByTestId('cooking-view-trigger');
+    await expect(trigger).toHaveAccessibleName('Cooking view: All steps');
+    const bounds = await trigger.boundingBox();
+    expect(bounds!.height).toBeGreaterThanOrEqual(44);
+    await trigger.click();
+    await expect(page.getByRole('menuitemradio', { name: 'All steps' })).toHaveAttribute(
+      'aria-checked',
+      'true'
+    );
+    const save = page.waitForRequest(
+      (request) =>
+        request.method() === 'PUT' &&
+        request.url().includes('/api/family/') &&
+        request.url().endsWith('/preferences')
+    );
+    await page.getByRole('menuitemradio', { name: 'Step by step' }).click();
+    expect((await save).postDataJSON()).toEqual({ cookingViewMode: 'step-by-step' });
+    await expect(trigger).toHaveAccessibleName('Cooking view: Step by step');
+    await expect(trigger).toBeFocused();
+
+    await page.getByTestId('close-cooks-mode').click();
+    await page.getByTestId('cook-mode-btn').click();
+    await expect(page.getByTestId('cooking-view-trigger')).toHaveAccessibleName(
+      'Cooking view: Step by step'
+    );
+  });
+
   for (const matchesSupper of [false, true]) {
     test(`recipe-details cooking completes supper only for its assigned recipe (matches: ${matchesSupper})`, async ({
       page,
@@ -143,9 +177,6 @@ test.describe('Cook Mode — HowToSection[] steps display', () => {
         recipeInstructions: ['Cook this recipe.'],
       };
       const schedule = buildSpaghettiSchedule().data;
-      await mockFeatureFlags(page, [
-        { key: 'single-page-recipe-steps', enabled: true, mode: 'on', memberEnabled: false },
-      ]);
       await mockSseWithConnectedSchedule(page, schedule);
       await page.route('**/api/schedule?**', async (route) => {
         await route.fulfill({ json: { data: schedule } });
@@ -199,6 +230,8 @@ test.describe('Cook Mode — HowToSection[] steps display', () => {
   }
 
   for (const viewport of [
+    { width: 320, height: 700 },
+    { width: 375, height: 812 },
     { width: 390, height: 844 },
     { width: 1180, height: 820 },
   ]) {
@@ -206,9 +239,6 @@ test.describe('Cook Mode — HowToSection[] steps display', () => {
       page,
     }, testInfo) => {
       await page.setViewportSize(viewport);
-      await mockFeatureFlags(page, [
-        { key: 'single-page-recipe-steps', enabled: true, mode: 'on', memberEnabled: false },
-      ]);
       await page.route('**/api/recipes/*', async (route) => {
         if (route.request().method() !== 'GET') return route.fallback();
         await route.fulfill({
@@ -231,7 +261,7 @@ test.describe('Cook Mode — HowToSection[] steps display', () => {
       const ingredient = page.getByTestId('ingredient-toggle').first();
       await ingredient.click();
       await page.getByTestId('cooks-mode-step-next').click();
-      const list = page.getByTestId('single-page-recipe-steps');
+      const list = page.getByTestId('all-steps-recipe-list');
       await expect(list).toBeVisible();
       await expect(page.getByRole('heading', { name: /^Step \d+$/ })).toHaveCount(0);
       await expect(page.getByRole('heading', { name: 'Cooking steps' })).toHaveCount(0);

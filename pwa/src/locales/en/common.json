@@ -299,6 +299,14 @@
     "cooked": "Cooked",
     "markCooked": "Mark recipe as cooked",
     "completionFailed": "Could not save cooking completion. Please try again.",
+    "view": "View",
+    "viewStepByStep": "Step by step",
+    "viewAllSteps": "All steps",
+    "viewAccessible": "Cooking view: {{view}}",
+    "viewRemembered": "Remembered for {{name}}",
+    "viewSaveFailed": "View changed for now. Couldn't save for {{name}}.",
+    "viewRetry": "Retry",
+    "viewEditBlocked": "Save or cancel your edit to change view.",
     "next": "Next",
     "total": "total",
     "noCookFresh": "No-Cook / Fresh",
@@ -443,12 +451,7 @@
     "saveError": "Couldn't save. Try again.",
     "enabled": "Preview enabled",
     "disabled": "Preview turned off",
-    "flags": {
-      "single-page-recipe-steps": {
-        "name": "Recipe on one page",
-        "description": "After getting ready, scroll through all the cooking steps on one page."
-      }
-    }
+    "flags": {}
   },
   "familyGoto": {
     "title": "Family GOTO",

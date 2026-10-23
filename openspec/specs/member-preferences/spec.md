@@ -144,11 +144,11 @@ After a successful browse preference save, a fresh library entry with a newly lo
 
 ### Requirement: Return member preference defaults and saved values
 
-For successful authorized family list and current-member reads, the API SHALL expose each returned member's browse mode and saved language preference when present. Newly created members SHALL start with stack mode and no preferred language.
+For successful authorized family list and current-member reads, the API SHALL expose each returned member's browse mode, saved language and nullable cooking view preference. Newly created members SHALL start with stack mode, no preferred language and no explicit cooking view; clients SHALL interpret an absent cooking view as All steps.
 
 #### Scenario: Read a new member
 - **WHEN** a newly created member is returned by a successful family read
-- **THEN** browseViewMode is stack and preferredLanguage is unset
+- **THEN** browseViewMode is stack, preferredLanguage and cookingViewMode are unset, and cooking uses All steps
 
 #### Scenario: Read saved preferences
 - **WHEN** the requested existing member has saved list mode and French language
@@ -156,7 +156,7 @@ For successful authorized family list and current-member reads, the API SHALL ex
 
 ### Requirement: Persist contract-valid member preference updates
 
-For an existing target member, authorized PUT /api/family/{id}/preferences with stack or list and optional en or fr SHALL save the supplied preferences, preserve the member name and return the updated profile in data. A browse-only update SHALL preserve the saved language.
+For an existing target member, authorized PUT /api/family/{id}/preferences SHALL update only supplied contract-valid properties: browseViewMode stack or list, preferredLanguage en or fr, and cookingViewMode step-by-step or all-steps. Omitted preferences and the member name SHALL be preserved. The response and later family reads SHALL return the committed profile. At least one preference SHALL be supplied.
 
 #### Scenario: Save both preferences
 - **WHEN** a request for an existing member supplies browseViewMode list and preferredLanguage fr and persistence succeeds
@@ -166,13 +166,21 @@ For an existing target member, authorized PUT /api/family/{id}/preferences with 
 - **WHEN** a request for a French-preferring member supplies browseViewMode stack without language and persistence succeeds
 - **THEN** the returned and subsequently read profile has stack mode and retains fr
 
-### Requirement: Reject invalid browse preferences and unavailable targets
+#### Scenario: Save cooking view alone
+- **WHEN** a request supplies cookingViewMode step-by-step and omits browse mode and language
+- **THEN** the saved cooking view is step-by-step while the member name, browse mode and language remain unchanged
 
-The preference API SHALL return 400 for an existing member's unsupported browse mode and 404 for a nonexistent target member. Rejection SHALL not be presented by the client as a successful saved preference.
+### Requirement: Reject invalid preferences and unavailable targets
+
+The preference API SHALL return 400 for an unsupported supplied preference or an empty update and 404 for a nonexistent target member. Rejection SHALL not be presented by the client as a successful saved preference.
 
 #### Scenario: Unsupported browse value
 - **WHEN** a request for an existing member supplies browseViewMode carousel
 - **THEN** the API returns 400
+
+#### Scenario: Unsupported cooking view
+- **WHEN** a request for an existing member supplies cookingViewMode carousel
+- **THEN** the API returns 400 without changing any saved preference
 
 #### Scenario: Target does not exist
 - **WHEN** a preference update targets a nonexistent member ID
@@ -272,15 +280,11 @@ Preview controls SHALL use catalog text for known preview names, descriptions an
 
 ### Requirement: Resolve registered preview deployment modes fail closed
 
-For single-page-recipe-steps, the server SHALL read WFS_FEATURE_SINGLE_PAGE_RECIPE_STEPS. Modes SHALL be trimmed and case-insensitive. Missing, blank, off or invalid values SHALL resolve off; opt-in and on SHALL select those modes. The retired planner-hold-to-move and preview-pdf-recipe-import keys SHALL NOT be registered or returned, and their former deployment variables SHALL have no effect.
+The retired single-page-recipe-steps, planner-hold-to-move and preview-pdf-recipe-import keys SHALL NOT be registered or returned, and their former deployment variables SHALL have no effect. The reusable registry, override persistence and Preview features UI SHALL remain available for future registered previews.
 
-#### Scenario: Enabled and optional modes
-- **WHEN** a registered preview is configured with padded uppercase ON or OPT-IN
-- **THEN** the server resolves on or opt-in respectively
-
-#### Scenario: Default or invalid mode
-- **WHEN** a registered preview setting is missing, blank, off or unrecognized
-- **THEN** it resolves off
+#### Scenario: Retired cooking flag configuration
+- **WHEN** WFS_FEATURE_SINGLE_PAGE_RECIPE_STEPS or an old member override is present
+- **THEN** it does not affect cooking presentation or appear in the preview snapshot
 
 ### Requirement: Give deployment mode precedence over member overrides
 

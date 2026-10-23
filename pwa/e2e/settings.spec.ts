@@ -88,12 +88,12 @@ test.describe('Settings — FamilyGOTOSettings card', () => {
             scenario.preview
               ? [
                   {
-                    key: 'single-page-recipe-steps',
+                    key: 'future-test-preview',
                     enabled: false,
                     mode: 'opt-in',
                     memberEnabled: false,
-                    displayName: 'Recipe on one page',
-                    description: 'Scroll through all the cooking steps on one page.',
+                    displayName: 'Future test preview',
+                    description: 'Exercises the reusable preview controls.',
                   },
                 ]
               : []
@@ -151,13 +151,11 @@ test.describe('Settings — FamilyGOTOSettings card', () => {
             await preview.scrollIntoViewIfNeeded();
             await expect(preview).toBeInViewport();
             await preview.click();
-            const toggle = page.getByTestId('feature-toggle-single-page-recipe-steps');
-            await expect(toggle).toHaveAccessibleName(
-              scenario.locale === 'fr' ? /Recette sur une seule page/ : /Recipe on one page/
-            );
+            const toggle = page.getByTestId('feature-toggle-future-test-preview');
+            await expect(toggle).toHaveAccessibleName(/Future test preview/);
             await toggle.scrollIntoViewIfNeeded();
             await expect(toggle).toBeInViewport();
-            const label = page.locator('label[for="feature-single-page-recipe-steps"]');
+            const label = page.locator('label[for="feature-future-test-preview"]');
             const labelBounds = await label.boundingBox();
             const toggleBounds = await toggle.boundingBox();
             expect(labelBounds!.x).toBeGreaterThanOrEqual(0);
@@ -188,15 +186,15 @@ test.describe('Settings — FamilyGOTOSettings card', () => {
     await expect(page.getByTestId('preview-features-section')).toHaveCount(0);
   });
 
-  test('shows Recipe on one page as a collapsed preview disclosure', async ({ page }) => {
+  test('shows a registered opt-in as a collapsed preview disclosure', async ({ page }) => {
     await mockFeatureFlags(page, [
       {
-        key: 'single-page-recipe-steps',
+        key: 'future-test-preview',
         enabled: false,
         mode: 'opt-in',
         memberEnabled: false,
-        displayName: 'Recipe on one page',
-        description: 'After getting ready, scroll through all the cooking steps on one page.',
+        displayName: 'Future test preview',
+        description: 'Exercises the reusable preview controls.',
       },
     ]);
     await page.goto('/profile/settings');
@@ -206,9 +204,9 @@ test.describe('Settings — FamilyGOTOSettings card', () => {
     const disclosure = page.getByRole('button', { name: /Preview features/i });
     await expect(disclosure).toHaveAttribute('aria-expanded', 'false');
     await disclosure.click();
-    const previewSwitch = page.getByTestId('feature-toggle-single-page-recipe-steps');
+    const previewSwitch = page.getByTestId('feature-toggle-future-test-preview');
     await expect(previewSwitch).toBeVisible();
-    await expect(previewSwitch).toHaveAccessibleName(/Recipe on one page/i);
+    await expect(previewSwitch).toHaveAccessibleName(/Future test preview/i);
 
     // Effective state changes only after server confirmation. Hold the response
     // so the pending state is covered independently of network timing.
@@ -216,7 +214,7 @@ test.describe('Settings — FamilyGOTOSettings card', () => {
     const saveAllowed = new Promise<void>((resolve) => {
       confirmSave = resolve;
     });
-    await page.route('**/api/feature-flags/single-page-recipe-steps', async (route) => {
+    await page.route('**/api/feature-flags/future-test-preview', async (route) => {
       if (route.request().method() === 'PATCH') await saveAllowed;
       await route.fallback();
     });
@@ -231,7 +229,7 @@ test.describe('Settings — FamilyGOTOSettings card', () => {
     await expect(previewSwitch).toBeEnabled();
     await page.reload();
     await page.getByRole('button', { name: /Preview features/i }).click();
-    await expect(page.getByRole('switch', { name: /Recipe on one page/i })).toBeChecked();
+    await expect(page.getByRole('switch', { name: /Future test preview/i })).toBeChecked();
     await page.screenshot({ path: 'test-results/settings-preview-mobile.png', fullPage: true });
   });
 

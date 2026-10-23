@@ -124,6 +124,7 @@ export const builders = {
     id: MOCK_IDS.MEMBER_ALEX,
     name: 'Alex',
     browseViewMode: 'stack',
+    cookingViewMode: null,
     preferredLanguage: 'en' as any,
     createdAt: new Date(),
     updatedAt: new Date(),

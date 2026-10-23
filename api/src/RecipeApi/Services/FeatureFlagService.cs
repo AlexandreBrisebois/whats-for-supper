@@ -23,20 +23,7 @@ public sealed class FeatureFlagRegistry
 
     public FeatureFlagRegistry(IConfiguration configuration, ILogger<FeatureFlagRegistry> logger)
     {
-        var definition = Create(
-            "single-page-recipe-steps",
-            "WFS_FEATURE_SINGLE_PAGE_RECIPE_STEPS",
-            "cooking-experience",
-            "Recipe on one page",
-            "After getting ready, scroll through all the cooking steps on one page.",
-            new DateOnly(2026, 9, 30),
-            "Responsive and accessibility acceptance passes and the owner approves graduation after the opt-in observation period.",
-            configuration,
-            logger);
-        _definitions = new Dictionary<string, FeatureFlagDefinition>(StringComparer.Ordinal)
-        {
-            [definition.Key] = definition
-        };
+        _definitions = new Dictionary<string, FeatureFlagDefinition>(StringComparer.Ordinal);
     }
 
     public IEnumerable<FeatureFlagDefinition> All => _definitions.Values;

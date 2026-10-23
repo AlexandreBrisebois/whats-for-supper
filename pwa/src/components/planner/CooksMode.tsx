@@ -13,6 +13,7 @@ import {
   Pencil,
   Check,
   Flag,
+  Layers3,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
@@ -26,13 +27,15 @@ import type { Recipe, RecipeImportIssueDraft, RecipeImportIssueReason } from '@/
 import { SolarLoader } from '@/components/ui/SolarLoader';
 import { RecipeDetailSheet } from '@/components/recipes/RecipeDetailSheet';
 import { RecipeImportIssueSheet } from '@/components/recipes/RecipeImportIssueSheet';
-import { t } from '@/locales';
+import { t, tWithVars } from '@/locales';
 import { parseRecipeSteps, type CookingStep } from '@/lib/cooking/stepParser';
 import { formatCookingInstruction } from '@/lib/cooking/instructionPresentation';
 import { getImageUrl } from '@/lib/imageUtils';
 import { usePlannerStore } from '@/store/plannerStore';
 import { useTodayStore } from '@/store/todayStore';
-import { useFeatureFlag } from '@/store/featureFlagStore';
+import { useFamilyStore } from '@/store/familyStore';
+
+type CookingViewMode = 'step-by-step' | 'all-steps';
 
 interface CooksModeProps {
   recipe: {
@@ -98,9 +101,42 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
   const [editPending, setEditPending] = useState(false);
   const [editError, setEditError] = useState(false);
   const [editAnnouncement, setEditAnnouncement] = useState('');
-  const singlePageEnabled = useFeatureFlag('single-page-recipe-steps');
+  const selectedFamilyMemberId = useFamilyStore((state) => state.selectedFamilyMemberId);
+  const selectedFamilyMember = useFamilyStore((state) =>
+    state.familyMembers.find((member) => member.id === state.selectedFamilyMemberId)
+  );
+  const updateMemberPreferences = useFamilyStore((state) => state.updateMemberPreferences);
+  const [viewOverride, setViewOverride] = useState<{
+    memberId: string | null;
+    mode: CookingViewMode;
+  } | null>(null);
+  const [viewChooserOpen, setViewChooserOpen] = useState(false);
+  const [viewSaveState, setViewSaveState] = useState<'idle' | 'saving' | 'saved' | 'failed'>(
+    'idle'
+  );
+  const [viewSaveMemberId, setViewSaveMemberId] = useState<string | null>(null);
+  const viewButtonRef = useRef<HTMLButtonElement>(null);
+  const failedViewModeRef = useRef<CookingViewMode | null>(null);
+  const viewSaveGenerationRef = useRef(0);
+  const viewSelectionRef = useRef({ memberId: selectedFamilyMemberId, generation: 0 });
+  const allStepsScrollRef = useRef<{ step: number; top: number } | null>(null);
+  const cookingViewMode =
+    viewOverride?.memberId === selectedFamilyMemberId
+      ? viewOverride.mode
+      : (selectedFamilyMember?.cookingViewMode ?? 'all-steps');
+  const currentViewSaveState = viewSaveMemberId === selectedFamilyMemberId ? viewSaveState : 'idle';
+  const singlePageEnabled = cookingViewMode === 'all-steps';
   const { cookProgress, setCookProgress } = usePlannerStore();
   const currentStep = cookProgress[initialRecipe.id] ?? 0;
+
+  useLayoutEffect(() => {
+    if (viewSelectionRef.current.memberId !== selectedFamilyMemberId) {
+      viewSelectionRef.current = {
+        memberId: selectedFamilyMemberId,
+        generation: viewSelectionRef.current.generation + 1,
+      };
+    }
+  }, [selectedFamilyMemberId]);
 
   useEffect(() => {
     const previous = document.body.style.overflow;
@@ -141,6 +177,46 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
   const isCompletionAction = !isPrepStep && (singlePageEnabled || currentStep === steps.length);
   const instructionScrollRef = useRef<HTMLDivElement>(null);
   const resumeScrollTopRef = useRef<number | null>(null);
+
+  const saveCookingView = async (mode: CookingViewMode) => {
+    if (!selectedFamilyMemberId) return;
+    const memberId = selectedFamilyMemberId;
+    const generation = ++viewSaveGenerationRef.current;
+    const selectionGeneration = viewSelectionRef.current.generation;
+    setViewSaveMemberId(selectedFamilyMemberId);
+    setViewSaveState('saving');
+    const saved = await updateMemberPreferences(selectedFamilyMemberId, {
+      cookingViewMode: mode,
+    });
+    if (
+      generation !== viewSaveGenerationRef.current ||
+      memberId !== useFamilyStore.getState().selectedFamilyMemberId ||
+      selectionGeneration !== viewSelectionRef.current.generation
+    )
+      return;
+    if (saved) {
+      failedViewModeRef.current = null;
+      setViewSaveState('saved');
+    } else {
+      failedViewModeRef.current = mode;
+      setViewSaveState('failed');
+    }
+  };
+
+  const chooseCookingView = (mode: CookingViewMode) => {
+    if (mode === cookingViewMode || isEditing || isCompleting) return;
+    const surface = instructionScrollRef.current;
+    if (singlePageEnabled && surface) {
+      allStepsScrollRef.current = { step: currentStep, top: surface.scrollTop };
+    }
+    setViewOverride({ memberId: selectedFamilyMemberId, mode });
+    setViewChooserOpen(false);
+    if (mode === 'all-steps' && allStepsScrollRef.current?.step === currentStep) {
+      resumeScrollTopRef.current = allStepsScrollRef.current.top;
+    }
+    requestAnimationFrame(() => viewButtonRef.current?.focus());
+    void saveCookingView(mode);
+  };
 
   // Restore only when entering the list. Reading-position updates must not remount
   // the list, scroll it again, or replace an in-progress editor.
@@ -450,6 +526,77 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
         </div>
       </div>
 
+      <div className="absolute left-4 top-4 z-[110]">
+        <button
+          ref={viewButtonRef}
+          type="button"
+          data-testid="cooking-view-trigger"
+          aria-expanded={viewChooserOpen}
+          aria-haspopup="menu"
+          aria-label={tWithVars('cook.viewAccessible', 'Cooking view: {{view}}', {
+            view:
+              cookingViewMode === 'all-steps'
+                ? t('cook.viewAllSteps', 'All steps')
+                : t('cook.viewStepByStep', 'Step by step'),
+          })}
+          disabled={isEditing || isCompleting}
+          title={
+            isEditing ? t('cook.viewEditBlocked', 'Save or cancel your edit to change view.') : ''
+          }
+          onClick={(event) => {
+            event.stopPropagation();
+            setViewChooserOpen((open) => !open);
+          }}
+          className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/40 bg-white/90 px-4 font-bold text-charcoal shadow-md backdrop-blur-md transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          <Layers3 size={18} aria-hidden="true" />
+          <span>{t('cook.view', 'View')}</span>
+        </button>
+        {viewChooserOpen && (
+          <div
+            role="menu"
+            aria-label={t('cook.view', 'View')}
+            onKeyDown={(event) => {
+              if (event.key === 'Escape') {
+                setViewChooserOpen(false);
+                viewButtonRef.current?.focus();
+              }
+            }}
+            className="mt-2 w-64 rounded-2xl border border-charcoal/10 bg-white p-2 text-charcoal shadow-xl"
+          >
+            {(['step-by-step', 'all-steps'] as const).map((mode) => {
+              const label =
+                mode === 'all-steps'
+                  ? t('cook.viewAllSteps', 'All steps')
+                  : t('cook.viewStepByStep', 'Step by step');
+              return (
+                <button
+                  key={mode}
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked={cookingViewMode === mode}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    chooseCookingView(mode);
+                  }}
+                  className="flex min-h-11 w-full items-center justify-between rounded-xl px-3 text-left font-semibold hover:bg-sage/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta"
+                >
+                  <span>{label}</span>
+                  {cookingViewMode === mode && <Check size={18} aria-hidden="true" />}
+                </button>
+              );
+            })}
+            {selectedFamilyMember && currentViewSaveState !== 'failed' && (
+              <p className="px-3 pb-2 pt-3 text-xs font-semibold text-charcoal/55">
+                {tWithVars('cook.viewRemembered', 'Remembered for {{name}}', {
+                  name: selectedFamilyMember.name,
+                })}
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+
       {!showDetailId && (
         <button
           data-testid="close-cooks-mode"
@@ -595,7 +742,7 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
                     )}
                   </div>
                 ) : singlePageEnabled ? (
-                  <div data-testid="single-page-recipe-steps">
+                  <div data-testid="all-steps-recipe-list">
                     <ol role="list" aria-label="Cooking steps" className="list-none space-y-4">
                       {steps.map((step, index) => {
                         const rowEditing = editingStepIndex === index;
@@ -759,6 +906,23 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
         </div>
 
         {/* Controls */}
+        {currentViewSaveState === 'failed' && selectedFamilyMember && (
+          <p role="alert" className="px-6 py-2 text-sm font-semibold text-terracotta">
+            {tWithVars('cook.viewSaveFailed', "View changed for now. Couldn't save for {{name}}.", {
+              name: selectedFamilyMember.name,
+            })}{' '}
+            <button
+              type="button"
+              className="min-h-11 underline"
+              onClick={() => {
+                const failedMode = failedViewModeRef.current;
+                if (failedMode) void saveCookingView(failedMode);
+              }}
+            >
+              {t('cook.viewRetry', 'Retry')}
+            </button>
+          </p>
+        )}
         {completionError && (
           <p role="alert" className="px-6 py-2 text-sm text-terracotta">
             {completionError}

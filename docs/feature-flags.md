@@ -82,7 +82,6 @@ it; checked-in defaults do not establish the state of a running installation.
 
 | Key | API environment variable | Owner / consumers |
 | --- | --- | --- |
-| `single-page-recipe-steps` | `WFS_FEATURE_SINGLE_PAGE_RECIPE_STEPS` | cooking-experience; `CooksMode.tsx` |
 
 For an opt-in rollout, supply the flag's variable as `opt-in` to the API process,
 restart/recreate it, select an established member and enable the preview under
@@ -164,7 +163,7 @@ fallback branch, deployment variable and override records still exist.
 
 Keep legitimate long-term user preferences separate from preview eligibility.
 For example, [Cook Mode #303](https://github.com/AlexandreBrisebois/whats-for-supper/issues/303)
-plans all-steps as the default with a saved member view preference. It is not
+uses all-steps as the default with a saved member view preference. It is not
 equivalent to deleting the focused view or keeping a preview switch forever.
 Define preference defaults and treatment of existing users/overrides explicitly;
 do not silently reinterpret an old preview boolean as a new durable preference.

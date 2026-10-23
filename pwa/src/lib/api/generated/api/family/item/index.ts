@@ -107,6 +107,12 @@ export function deserializeIntoFamilyPutResponse_data(
         FamilyPutResponse_data_browseViewModeObject
       );
     },
+    cookingViewMode: (n) => {
+      familyPutResponse_data.cookingViewMode =
+        n.getEnumValue<FamilyPutResponse_data_cookingViewMode>(
+          FamilyPutResponse_data_cookingViewModeObject
+        );
+    },
     createdAt: (n) => {
       familyPutResponse_data.createdAt = n.getDateValue();
     },
@@ -189,6 +195,10 @@ export interface FamilyPutResponse_data extends AdditionalDataHolder, Parsable {
    */
   browseViewMode?: FamilyPutResponse_data_browseViewMode | null;
   /**
+   * The cookingViewMode property
+   */
+  cookingViewMode?: FamilyPutResponse_data_cookingViewMode | null;
+  /**
    * The createdAt property
    */
   createdAt?: Date | null;
@@ -211,6 +221,8 @@ export interface FamilyPutResponse_data extends AdditionalDataHolder, Parsable {
 }
 export type FamilyPutResponse_data_browseViewMode =
   (typeof FamilyPutResponse_data_browseViewModeObject)[keyof typeof FamilyPutResponse_data_browseViewModeObject];
+export type FamilyPutResponse_data_cookingViewMode =
+  (typeof FamilyPutResponse_data_cookingViewModeObject)[keyof typeof FamilyPutResponse_data_cookingViewModeObject];
 export type FamilyPutResponse_data_preferredLanguage =
   (typeof FamilyPutResponse_data_preferredLanguageObject)[keyof typeof FamilyPutResponse_data_preferredLanguageObject];
 /**
@@ -272,6 +284,10 @@ export function serializeFamilyPutResponse_data(
     'browseViewMode',
     familyPutResponse_data.browseViewMode
   );
+  writer.writeEnumValue<FamilyPutResponse_data_cookingViewMode>(
+    'cookingViewMode',
+    familyPutResponse_data.cookingViewMode
+  );
   writer.writeDateValue('createdAt', familyPutResponse_data.createdAt);
   writer.writeGuidValue('id', familyPutResponse_data.id);
   writer.writeStringValue('name', familyPutResponse_data.name);
@@ -325,6 +341,10 @@ export const FamilyItemRequestBuilderRequestsMetadata: RequestsMetadata = {
 export const FamilyPutResponse_data_browseViewModeObject = {
   Stack: 'stack',
   List: 'list',
+} as const;
+export const FamilyPutResponse_data_cookingViewModeObject = {
+  StepByStep: 'step-by-step',
+  AllSteps: 'all-steps',
 } as const;
 export const FamilyPutResponse_data_preferredLanguageObject = {
   En: 'en',

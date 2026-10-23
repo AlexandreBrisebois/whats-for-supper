@@ -173,6 +173,12 @@ export function deserializeIntoFamilyGetResponse_data(
         FamilyGetResponse_data_browseViewModeObject
       );
     },
+    cookingViewMode: (n) => {
+      familyGetResponse_data.cookingViewMode =
+        n.getEnumValue<FamilyGetResponse_data_cookingViewMode>(
+          FamilyGetResponse_data_cookingViewModeObject
+        );
+    },
     createdAt: (n) => {
       familyGetResponse_data.createdAt = n.getDateValue();
     },
@@ -241,6 +247,12 @@ export function deserializeIntoFamilyPostResponse_data(
           FamilyPostResponse_data_browseViewModeObject
         );
     },
+    cookingViewMode: (n) => {
+      familyPostResponse_data.cookingViewMode =
+        n.getEnumValue<FamilyPostResponse_data_cookingViewMode>(
+          FamilyPostResponse_data_cookingViewModeObject
+        );
+    },
     createdAt: (n) => {
       familyPostResponse_data.createdAt = n.getDateValue();
     },
@@ -289,6 +301,10 @@ export interface FamilyGetResponse_data extends AdditionalDataHolder, Parsable {
    */
   browseViewMode?: FamilyGetResponse_data_browseViewMode | null;
   /**
+   * The cookingViewMode property
+   */
+  cookingViewMode?: FamilyGetResponse_data_cookingViewMode | null;
+  /**
    * The createdAt property
    */
   createdAt?: Date | null;
@@ -311,6 +327,8 @@ export interface FamilyGetResponse_data extends AdditionalDataHolder, Parsable {
 }
 export type FamilyGetResponse_data_browseViewMode =
   (typeof FamilyGetResponse_data_browseViewModeObject)[keyof typeof FamilyGetResponse_data_browseViewModeObject];
+export type FamilyGetResponse_data_cookingViewMode =
+  (typeof FamilyGetResponse_data_cookingViewModeObject)[keyof typeof FamilyGetResponse_data_cookingViewModeObject];
 export type FamilyGetResponse_data_preferredLanguage =
   (typeof FamilyGetResponse_data_preferredLanguageObject)[keyof typeof FamilyGetResponse_data_preferredLanguageObject];
 export interface FamilyPostRequestBody extends AdditionalDataHolder, Parsable {
@@ -330,6 +348,10 @@ export interface FamilyPostResponse_data extends AdditionalDataHolder, Parsable 
    * The browseViewMode property
    */
   browseViewMode?: FamilyPostResponse_data_browseViewMode | null;
+  /**
+   * The cookingViewMode property
+   */
+  cookingViewMode?: FamilyPostResponse_data_cookingViewMode | null;
   /**
    * The createdAt property
    */
@@ -353,6 +375,8 @@ export interface FamilyPostResponse_data extends AdditionalDataHolder, Parsable 
 }
 export type FamilyPostResponse_data_browseViewMode =
   (typeof FamilyPostResponse_data_browseViewModeObject)[keyof typeof FamilyPostResponse_data_browseViewModeObject];
+export type FamilyPostResponse_data_cookingViewMode =
+  (typeof FamilyPostResponse_data_cookingViewModeObject)[keyof typeof FamilyPostResponse_data_cookingViewModeObject];
 export type FamilyPostResponse_data_preferredLanguage =
   (typeof FamilyPostResponse_data_preferredLanguageObject)[keyof typeof FamilyPostResponse_data_preferredLanguageObject];
 /**
@@ -488,6 +512,10 @@ export function serializeFamilyGetResponse_data(
     'browseViewMode',
     familyGetResponse_data.browseViewMode
   );
+  writer.writeEnumValue<FamilyGetResponse_data_cookingViewMode>(
+    'cookingViewMode',
+    familyGetResponse_data.cookingViewMode
+  );
   writer.writeDateValue('createdAt', familyGetResponse_data.createdAt);
   writer.writeGuidValue('id', familyGetResponse_data.id);
   writer.writeStringValue('name', familyGetResponse_data.name);
@@ -557,6 +585,10 @@ export function serializeFamilyPostResponse_data(
     'browseViewMode',
     familyPostResponse_data.browseViewMode
   );
+  writer.writeEnumValue<FamilyPostResponse_data_cookingViewMode>(
+    'cookingViewMode',
+    familyPostResponse_data.cookingViewMode
+  );
   writer.writeDateValue('createdAt', familyPostResponse_data.createdAt);
   writer.writeGuidValue('id', familyPostResponse_data.id);
   writer.writeStringValue('name', familyPostResponse_data.name);
@@ -575,6 +607,10 @@ export const FamilyGetResponse_data_browseViewModeObject = {
   Stack: 'stack',
   List: 'list',
 } as const;
+export const FamilyGetResponse_data_cookingViewModeObject = {
+  StepByStep: 'step-by-step',
+  AllSteps: 'all-steps',
+} as const;
 export const FamilyGetResponse_data_preferredLanguageObject = {
   En: 'en',
   Fr: 'fr',
@@ -582,6 +618,10 @@ export const FamilyGetResponse_data_preferredLanguageObject = {
 export const FamilyPostResponse_data_browseViewModeObject = {
   Stack: 'stack',
   List: 'list',
+} as const;
+export const FamilyPostResponse_data_cookingViewModeObject = {
+  StepByStep: 'step-by-step',
+  AllSteps: 'all-steps',
 } as const;
 export const FamilyPostResponse_data_preferredLanguageObject = {
   En: 'en',
