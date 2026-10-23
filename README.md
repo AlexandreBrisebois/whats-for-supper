@@ -21,7 +21,7 @@ Every household's collection will look different. Vegetarian favourites, food in
 - **Choose together.** Swipe and vote on recipes in Discovery, then turn those choices into the week’s supper plan. Figure out the week's meals together as a family, even when you're on the go.
 - **Plan for real life.** See the week at a glance and adjust when plans change.
 - **Shop from one shared list.** Planned suppers become a grocery list that stays in sync as the household shops.
-- **Cook your way.** Follow the instructions in **Cook's Mode**, or use **View original** to keep the saved recipe card beside you.
+- **Cook your way.** Read **All steps** or choose **Step by step** in **Cook's Mode**, or use **View original** to keep the saved recipe card beside you.
 - **Find your next supper.** Browse your collection, search for a favourite, or look for similar dishes.
 
 Have a favourite on a handwritten recipe card? Take a photo to add it to your collection. AI helps turn it into a digital recipe and can generate an image of the dish. That image is an illustration, not a photo of a meal you cooked. Check the extracted ingredients and steps against the original before cooking. You can also add recipes from a link or a short description.
@@ -65,7 +65,7 @@ These screenshots show the demo app. Select an image to see it at full size.
 
 [Latest stable release](https://github.com/AlexandreBrisebois/whats-for-supper/releases/latest) · [Docker Compose and advanced setup](release-template/synology/README.md)
 
-**Release status:** The stable installation ZIP will be available with the first published stable GitHub Release. Until then, beta builds are for testing.
+**Updating an existing installation?** Read the [update guide](docs/install/updates.md), including the configuration review needed when moving from 0.1.20 to 0.1.21. Keep your existing private configuration and data.
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-BUSL--1.1-CD5D45?style=flat-square" alt="Business Source License 1.1" /></a>
