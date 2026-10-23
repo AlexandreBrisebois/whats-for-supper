@@ -380,13 +380,13 @@ export async function setupCommonRoutes(
     const cookies = await page.context().cookies();
     const cookie = cookies.find((c) => c.name === 'x-family-member-id');
     const memberId = cookie?.value || MOCK_IDS.MEMBER_ALEX;
-    const name = memberId === MOCK_IDS.MEMBER_JORDAN ? 'Jordan' : 'Alex';
+    const member = familyMembers.find((candidate) => candidate.id === memberId);
 
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
       headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' },
-      body: JSON.stringify({ data: builders.familyMember({ id: memberId, name }) }),
+      body: JSON.stringify({ data: member ?? builders.familyMember({ id: memberId }) }),
     });
   });
 
@@ -396,15 +396,29 @@ export async function setupCommonRoutes(
       const body = route.request().postDataJSON() as {
         browseViewMode?: 'stack' | 'list';
         preferredLanguage?: string;
+        cookingViewMode?: 'step-by-step' | 'all-steps';
       };
+      const id = new URL(route.request().url()).pathname.split('/').at(-2);
+      const current = familyMembers.find((member) => member.id === id);
+      if (!current) {
+        await route.fulfill({ status: 404 });
+        return;
+      }
+      const updated = {
+        ...current,
+        ...(body.browseViewMode === undefined ? {} : { browseViewMode: body.browseViewMode }),
+        ...(body.preferredLanguage === undefined
+          ? {}
+          : { preferredLanguage: body.preferredLanguage as any }),
+        ...(body.cookingViewMode === undefined ? {} : { cookingViewMode: body.cookingViewMode }),
+        updatedAt: new Date(),
+      };
+      Object.assign(current, updated);
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
-          data: builders.familyMember({
-            browseViewMode: body.browseViewMode ?? 'stack',
-            preferredLanguage: (body.preferredLanguage ?? 'en') as any,
-          }),
+          data: updated,
         }),
       });
     } else {

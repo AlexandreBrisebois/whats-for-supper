@@ -70,6 +70,10 @@ $$;
 DO $$
 BEGIN
     IF to_regclass('public.family_members') IS NOT NULL THEN
+        ALTER TABLE family_members ADD COLUMN IF NOT EXISTS cooking_view_mode text;
+        IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'family_members_cooking_view_mode_check' AND conrelid = 'family_members'::regclass) THEN
+            ALTER TABLE family_members ADD CONSTRAINT family_members_cooking_view_mode_check CHECK (cooking_view_mode IS NULL OR cooking_view_mode IN ('step-by-step', 'all-steps'));
+        END IF;
         CREATE TABLE IF NOT EXISTS feature_flag_overrides (
             member_id uuid NOT NULL REFERENCES family_members(id) ON DELETE CASCADE,
             flag_key text NOT NULL,
@@ -81,7 +85,8 @@ BEGIN
         -- only their obsolete member choices; the reusable override store remains.
         DELETE FROM feature_flag_overrides
         WHERE flag_key = 'planner-hold-to-move'
-           OR flag_key = 'preview-pdf-recipe-import';
+           OR flag_key = 'preview-pdf-recipe-import'
+           OR flag_key = 'single-page-recipe-steps';
         CREATE UNIQUE INDEX IF NOT EXISTS family_members_trimmed_lower_name_idx ON family_members (lower(trim(name)));
     END IF;
 END

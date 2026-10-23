@@ -33,6 +33,11 @@ vi.mock('next/navigation', () => ({
 
 vi.mock('@/locales', () => ({
   t: (_key: string, fallback: string) => fallback,
+  tWithVars: (_key: string, fallback: string, vars: Record<string, string | number>) =>
+    Object.entries(vars).reduce(
+      (value, [key, replacement]) => value.replace(`{{${key}}}`, String(replacement)),
+      fallback
+    ),
 }));
 
 vi.mock('@/components/ui/SolarLoader', () => ({
@@ -63,7 +68,24 @@ vi.mock('@/components/recipes/RecipeDetailSheet', () => ({
 
 import { CooksMode } from './CooksMode';
 import { usePlannerStore } from '@/store/plannerStore';
-import { useFeatureFlagStore } from '@/store/featureFlagStore';
+import { useFamilyStore } from '@/store/familyStore';
+
+const member = {
+  id: '11111111-1111-4111-8111-111111111119',
+  name: 'Alex',
+  browseViewMode: 'stack' as const,
+  preferredLanguage: 'en',
+  cookingViewMode: 'step-by-step' as const,
+};
+
+function setCookingView(cookingViewMode: 'step-by-step' | 'all-steps' | null) {
+  useFamilyStore.setState({
+    selectedFamilyMemberId: member.id,
+    familyMembers: [{ ...member, cookingViewMode }],
+  });
+}
+
+const originalUpdateMemberPreferences = useFamilyStore.getState().updateMemberPreferences;
 
 describe('CooksMode', () => {
   beforeEach(() => {
@@ -74,7 +96,68 @@ describe('CooksMode', () => {
     routerMocks.push.mockReset();
     cookingMocks.markCooked.mockReset().mockResolvedValue(undefined);
     usePlannerStore.setState({ cookProgress: {} });
-    useFeatureFlagStore.setState({ flags: {} });
+    setCookingView('step-by-step');
+    useFamilyStore.setState({ updateMemberPreferences: originalUpdateMemberPreferences });
+  });
+
+  it('defaults missing cooking preferences to All steps without a feature snapshot', async () => {
+    const id = '11111111-1111-4111-8111-111111111118';
+    setCookingView(null);
+    getRecipeMock.mockResolvedValue({ id, recipeInstructions: ['Boil water', 'Cook pasta'] });
+
+    render(<CooksMode recipe={{ id, name: 'Pasta', image: '' }} onClose={vi.fn()} />);
+
+    expect(await screen.findByTestId('cooking-view-trigger')).toHaveAccessibleName(
+      'Cooking view: All steps'
+    );
+    fireEvent.click(screen.getByTestId('cooks-mode-step-next'));
+    expect(screen.getByTestId('all-steps-recipe-list')).toHaveTextContent('Cook pasta');
+  });
+
+  it('switches views locally and persists only for the selected member', async () => {
+    const id = '11111111-1111-4111-8111-111111111117';
+    const updateMemberPreferences = vi.fn().mockResolvedValue({
+      ...member,
+      cookingViewMode: 'all-steps',
+    });
+    useFamilyStore.setState({ updateMemberPreferences });
+    getRecipeMock.mockResolvedValue({ id, recipeInstructions: ['Boil water', 'Cook pasta'] });
+    render(<CooksMode recipe={{ id, name: 'Pasta', image: '' }} onClose={vi.fn()} />);
+
+    const trigger = await screen.findByTestId('cooking-view-trigger');
+    fireEvent.click(trigger);
+    fireEvent.click(screen.getByRole('menuitemradio', { name: 'All steps' }));
+
+    expect(updateMemberPreferences).toHaveBeenCalledWith(member.id, {
+      cookingViewMode: 'all-steps',
+    });
+    expect(trigger).toHaveAccessibleName('Cooking view: All steps');
+    await waitFor(() => expect(trigger).toHaveFocus());
+    fireEvent.click(screen.getByTestId('cooks-mode-step-next'));
+    expect(screen.getByTestId('all-steps-recipe-list')).toHaveTextContent('Cook pasta');
+  });
+
+  it('keeps a session view and offers retry when preference persistence fails', async () => {
+    const id = '11111111-1111-4111-8111-111111111116';
+    const updateMemberPreferences = vi
+      .fn()
+      .mockResolvedValueOnce(null)
+      .mockResolvedValue({
+        ...member,
+        cookingViewMode: 'all-steps',
+      });
+    useFamilyStore.setState({ updateMemberPreferences });
+    getRecipeMock.mockResolvedValue({ id, recipeInstructions: ['Boil water'] });
+    render(<CooksMode recipe={{ id, name: 'Pasta', image: '' }} onClose={vi.fn()} />);
+
+    fireEvent.click(await screen.findByTestId('cooking-view-trigger'));
+    fireEvent.click(screen.getByRole('menuitemradio', { name: 'All steps' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent("Couldn't save for Alex");
+    expect(screen.getByTestId('cooking-view-trigger')).toHaveAccessibleName(
+      'Cooking view: All steps'
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    await waitFor(() => expect(updateMemberPreferences).toHaveBeenCalledTimes(2));
   });
 
   it.each([false, true])(
@@ -83,15 +166,7 @@ describe('CooksMode', () => {
       const id = '550e8400-e29b-41d4-a716-446655440102';
       getRecipeMock.mockResolvedValue({ id, name: 'Lunch', recipeInstructions: ['Cook lunch.'] });
       if (singlePage) {
-        useFeatureFlagStore.setState({
-          flags: {
-            'single-page-recipe-steps': {
-              key: 'single-page-recipe-steps',
-              mode: 'on',
-              enabled: true,
-            },
-          },
-        });
+        setCookingView('all-steps');
       }
       const onClose = vi.fn();
       render(<CooksMode recipe={{ id, name: 'Lunch', image: '' }} onClose={onClose} />);
@@ -123,16 +198,7 @@ describe('CooksMode', () => {
       ingredients: ['Pasta', 'Butter'],
       recipeInstructions: ['Boil water.', 'Cook pasta.'],
     });
-    useFeatureFlagStore.setState({
-      flags: {
-        'single-page-recipe-steps': {
-          key: 'single-page-recipe-steps',
-          mode: 'on',
-          enabled: true,
-          memberEnabled: false,
-        },
-      },
-    });
+    setCookingView('all-steps');
     const onCooked = vi.fn();
     render(
       <CooksMode recipe={{ id, name: 'Pasta', image: '' }} onClose={vi.fn()} onCooked={onCooked} />
@@ -149,7 +215,7 @@ describe('CooksMode', () => {
     expect(screen.getAllByTestId('ingredient-toggle')[0]).toHaveAttribute('aria-checked', 'true');
     expect(usePlannerStore.getState().cookProgress[id]).toBe(2);
     fireEvent.click(screen.getByRole('button', { name: /Resume steps/ }));
-    expect(screen.getByTestId('single-page-recipe-steps')).toBeInTheDocument();
+    expect(screen.getByTestId('all-steps-recipe-list')).toBeInTheDocument();
     expect(scroll.scrollTop).toBe(137);
     expect(screen.getByTestId('cooks-mode-step-indicator')).toHaveTextContent('2 / 2');
     expect(onCooked).not.toHaveBeenCalled();
@@ -171,16 +237,7 @@ describe('CooksMode', () => {
       },
     ];
     getRecipeMock.mockResolvedValue({ id, recipeInstructions });
-    useFeatureFlagStore.setState({
-      flags: {
-        'single-page-recipe-steps': {
-          key: 'single-page-recipe-steps',
-          mode: 'on',
-          enabled: true,
-          memberEnabled: false,
-        },
-      },
-    });
+    setCookingView('all-steps');
     render(<CooksMode recipe={{ id, name: 'Crêpes', image: '' }} onClose={vi.fn()} />);
     fireEvent.click(await screen.findByTestId('cooks-mode-step-next'));
     expect(screen.getAllByText('Crêpes de base')).toHaveLength(1);
@@ -202,6 +259,11 @@ describe('CooksMode', () => {
     fireEvent.click(within(row).getByRole('button', { name: 'Edit step 1' }));
     expect(screen.getByLabelText('Edit step 1 instructions')).toHaveValue(text);
     expect(screen.getByRole('button', { name: 'Ingredients' })).toBeDisabled();
+    expect(screen.getByTestId('cooking-view-trigger')).toBeDisabled();
+    expect(screen.getByTestId('cooking-view-trigger')).toHaveAttribute(
+      'title',
+      'Save or cancel your edit to change view.'
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(screen.getByRole('button', { name: 'Ingredients' })).toBeEnabled();
   });
@@ -214,16 +276,7 @@ describe('CooksMode', () => {
       recipeInstructions: ['Boil water', 'Cook pasta'],
     });
     updateRecipeMock.mockResolvedValue(undefined);
-    useFeatureFlagStore.setState({
-      flags: {
-        'single-page-recipe-steps': {
-          key: 'single-page-recipe-steps',
-          mode: 'opt-in',
-          enabled: true,
-          memberEnabled: true,
-        },
-      },
-    });
+    setCookingView('all-steps');
 
     render(
       <CooksMode recipe={{ id: 'recipe-1', name: 'Pasta Night', image: '' }} onClose={vi.fn()} />
@@ -231,8 +284,8 @@ describe('CooksMode', () => {
 
     expect(await screen.findByRole('heading', { name: 'Check & Prep' })).toBeInTheDocument();
     fireEvent.click(screen.getByTestId('cooks-mode-step-next'));
-    expect(await screen.findByTestId('single-page-recipe-steps')).toHaveTextContent('Boil water');
-    expect(screen.getByTestId('single-page-recipe-steps')).toHaveTextContent('Cook pasta');
+    expect(await screen.findByTestId('all-steps-recipe-list')).toHaveTextContent('Boil water');
+    expect(screen.getByTestId('all-steps-recipe-list')).toHaveTextContent('Cook pasta');
     expect(screen.queryByRole('heading', { name: /^Step \d+$/ })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Edit step 2' }));
     fireEvent.change(screen.getByLabelText('Edit step 2 instructions'), {
@@ -256,16 +309,7 @@ describe('CooksMode', () => {
         { name: 'Simmer gently', text: 'Cook pasta' },
       ],
     });
-    useFeatureFlagStore.setState({
-      flags: {
-        'single-page-recipe-steps': {
-          key: 'single-page-recipe-steps',
-          mode: 'on',
-          enabled: true,
-          memberEnabled: false,
-        },
-      },
-    });
+    setCookingView('all-steps');
     const onCooked = vi.fn();
     const { unmount } = render(
       <CooksMode recipe={{ id, name: 'Pasta', image: '' }} onClose={vi.fn()} onCooked={onCooked} />
@@ -339,7 +383,7 @@ describe('CooksMode', () => {
     expect(screen.getByTestId('cooks-mode-step-next').querySelector('svg')).toBeNull();
     fireEvent.click(screen.getByTestId('cooks-mode-step-prev'));
     expect(screen.getByTestId('cooks-mode-step-text')).toHaveTextContent('Boil water');
-    expect(screen.queryByTestId('single-page-recipe-steps')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('all-steps-recipe-list')).not.toBeInTheDocument();
   });
 
   it('completes Cook Mode in place so the Home cooked state is not remounted', async () => {

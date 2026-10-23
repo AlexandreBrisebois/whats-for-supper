@@ -96,6 +96,12 @@ export function deserializeIntoPreferencesPutRequestBody(
           PreferencesPutRequestBody_browseViewModeObject
         );
     },
+    cookingViewMode: (n) => {
+      preferencesPutRequestBody.cookingViewMode =
+        n.getEnumValue<PreferencesPutRequestBody_cookingViewMode>(
+          PreferencesPutRequestBody_cookingViewModeObject
+        );
+    },
     preferredLanguage: (n) => {
       preferencesPutRequestBody.preferredLanguage =
         n.getEnumValue<PreferencesPutRequestBody_preferredLanguage>(
@@ -137,6 +143,12 @@ export function deserializeIntoPreferencesPutResponse_data(
           PreferencesPutResponse_data_browseViewModeObject
         );
     },
+    cookingViewMode: (n) => {
+      preferencesPutResponse_data.cookingViewMode =
+        n.getEnumValue<PreferencesPutResponse_data_cookingViewMode>(
+          PreferencesPutResponse_data_cookingViewModeObject
+        );
+    },
     createdAt: (n) => {
       preferencesPutResponse_data.createdAt = n.getDateValue();
     },
@@ -163,11 +175,18 @@ export interface Preferences400Error extends AdditionalDataHolder, ApiError, Par
    */
   errorEscaped?: string | null;
 }
+/**
+ * Only supplied properties are updated; omitted preferences retain their persisted values.
+ */
 export interface PreferencesPutRequestBody extends AdditionalDataHolder, Parsable {
   /**
    * The browseViewMode property
    */
   browseViewMode?: PreferencesPutRequestBody_browseViewMode | null;
+  /**
+   * The cookingViewMode property
+   */
+  cookingViewMode?: PreferencesPutRequestBody_cookingViewMode | null;
   /**
    * The preferredLanguage property
    */
@@ -175,6 +194,8 @@ export interface PreferencesPutRequestBody extends AdditionalDataHolder, Parsabl
 }
 export type PreferencesPutRequestBody_browseViewMode =
   (typeof PreferencesPutRequestBody_browseViewModeObject)[keyof typeof PreferencesPutRequestBody_browseViewModeObject];
+export type PreferencesPutRequestBody_cookingViewMode =
+  (typeof PreferencesPutRequestBody_cookingViewModeObject)[keyof typeof PreferencesPutRequestBody_cookingViewModeObject];
 export type PreferencesPutRequestBody_preferredLanguage =
   (typeof PreferencesPutRequestBody_preferredLanguageObject)[keyof typeof PreferencesPutRequestBody_preferredLanguageObject];
 export interface PreferencesPutResponse extends AdditionalDataHolder, Parsable {
@@ -188,6 +209,10 @@ export interface PreferencesPutResponse_data extends AdditionalDataHolder, Parsa
    * The browseViewMode property
    */
   browseViewMode?: PreferencesPutResponse_data_browseViewMode | null;
+  /**
+   * The cookingViewMode property
+   */
+  cookingViewMode?: PreferencesPutResponse_data_cookingViewMode | null;
   /**
    * The createdAt property
    */
@@ -211,6 +236,8 @@ export interface PreferencesPutResponse_data extends AdditionalDataHolder, Parsa
 }
 export type PreferencesPutResponse_data_browseViewMode =
   (typeof PreferencesPutResponse_data_browseViewModeObject)[keyof typeof PreferencesPutResponse_data_browseViewModeObject];
+export type PreferencesPutResponse_data_cookingViewMode =
+  (typeof PreferencesPutResponse_data_cookingViewModeObject)[keyof typeof PreferencesPutResponse_data_cookingViewModeObject];
 export type PreferencesPutResponse_data_preferredLanguage =
   (typeof PreferencesPutResponse_data_preferredLanguageObject)[keyof typeof PreferencesPutResponse_data_preferredLanguageObject];
 /**
@@ -219,7 +246,7 @@ export type PreferencesPutResponse_data_preferredLanguage =
 export interface PreferencesRequestBuilder extends BaseRequestBuilder<PreferencesRequestBuilder> {
   /**
    * Update family member preferences
-   * @param body The request body
+   * @param body Only supplied properties are updated; omitted preferences retain their persisted values.
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {Promise<PreferencesPutResponse>}
    * @throws {Preferences400Error} error when the service returns a 400 status code
@@ -231,7 +258,7 @@ export interface PreferencesRequestBuilder extends BaseRequestBuilder<Preference
   ): Promise<PreferencesPutResponse | undefined>;
   /**
    * Update family member preferences
-   * @param body The request body
+   * @param body Only supplied properties are updated; omitted preferences retain their persisted values.
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {RequestInformation}
    */
@@ -276,6 +303,10 @@ export function serializePreferencesPutRequestBody(
   writer.writeEnumValue<PreferencesPutRequestBody_browseViewMode>(
     'browseViewMode',
     preferencesPutRequestBody.browseViewMode
+  );
+  writer.writeEnumValue<PreferencesPutRequestBody_cookingViewMode>(
+    'cookingViewMode',
+    preferencesPutRequestBody.cookingViewMode
   );
   writer.writeEnumValue<PreferencesPutRequestBody_preferredLanguage>(
     'preferredLanguage',
@@ -324,6 +355,10 @@ export function serializePreferencesPutResponse_data(
     'browseViewMode',
     preferencesPutResponse_data.browseViewMode
   );
+  writer.writeEnumValue<PreferencesPutResponse_data_cookingViewMode>(
+    'cookingViewMode',
+    preferencesPutResponse_data.cookingViewMode
+  );
   writer.writeDateValue('createdAt', preferencesPutResponse_data.createdAt);
   writer.writeGuidValue('id', preferencesPutResponse_data.id);
   writer.writeStringValue('name', preferencesPutResponse_data.name);
@@ -342,6 +377,10 @@ export const PreferencesPutRequestBody_browseViewModeObject = {
   Stack: 'stack',
   List: 'list',
 } as const;
+export const PreferencesPutRequestBody_cookingViewModeObject = {
+  StepByStep: 'step-by-step',
+  AllSteps: 'all-steps',
+} as const;
 export const PreferencesPutRequestBody_preferredLanguageObject = {
   En: 'en',
   Fr: 'fr',
@@ -349,6 +388,10 @@ export const PreferencesPutRequestBody_preferredLanguageObject = {
 export const PreferencesPutResponse_data_browseViewModeObject = {
   Stack: 'stack',
   List: 'list',
+} as const;
+export const PreferencesPutResponse_data_cookingViewModeObject = {
+  StepByStep: 'step-by-step',
+  AllSteps: 'all-steps',
 } as const;
 export const PreferencesPutResponse_data_preferredLanguageObject = {
   En: 'en',

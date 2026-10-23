@@ -177,16 +177,10 @@ manifest identity; it does not create a separate installation.
 
 ## Feature previews
 
-The deployment administrator controls whether **Recipe on one page** is unavailable,
-available as a per-member preview, or enabled for everyone:
-
-```dotenv
-WFS_FEATURE_SINGLE_PAGE_RECIPE_STEPS=off # off | opt-in | on
-```
-
-After changing the value, recreate the API container. Missing or invalid values
-fail closed to `off`. Changing back to `off` is the rollback and requires no data
-rollback.
+Cook Mode views, planner hold-to-move and PDF recipe import are graduated member
+features and have no deployment preview variables. The generic preview service and
+member override storage remain available for future registered previews; this
+release does not expose any preview configuration.
 
 ## PDF recipe import
 

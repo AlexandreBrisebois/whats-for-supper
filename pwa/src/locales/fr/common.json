@@ -299,6 +299,14 @@
     "cooked": "Cuisiné",
     "markCooked": "Marquer la recette comme cuisinée",
     "completionFailed": "Impossible d’enregistrer la recette comme cuisinée. Veuillez réessayer.",
+    "view": "Vue",
+    "viewStepByStep": "Étape par étape",
+    "viewAllSteps": "Toutes les étapes",
+    "viewAccessible": "Vue de cuisson : {{view}}",
+    "viewRemembered": "Mémorisée pour {{name}}",
+    "viewSaveFailed": "Vue modifiée pour cette fois. Impossible de l’enregistrer pour {{name}}.",
+    "viewRetry": "Réessayer",
+    "viewEditBlocked": "Enregistrez ou annulez votre modification pour changer de vue.",
     "next": "Suivant",
     "total": "total",
     "noCookFresh": "Sans Cuisson / Frais",
@@ -443,12 +451,7 @@
     "saveError": "Impossible d’enregistrer. Réessayez.",
     "enabled": "Aperçu activé",
     "disabled": "Aperçu désactivé",
-    "flags": {
-      "single-page-recipe-steps": {
-        "name": "Recette sur une seule page",
-        "description": "Après la préparation, faites défiler toutes les étapes sur une seule page."
-      }
-    }
+    "flags": {}
   },
   "familyGoto": {
     "title": "Repas de secours",

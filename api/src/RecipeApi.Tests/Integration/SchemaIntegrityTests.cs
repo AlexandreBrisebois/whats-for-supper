@@ -137,7 +137,18 @@ public class SchemaIntegrityTests
         Assert.Contains("DELETE FROM feature_flag_overrides", _compatibilityContent, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("flag_key = 'planner-hold-to-move'", _compatibilityContent, StringComparison.Ordinal);
         Assert.Contains("flag_key = 'preview-pdf-recipe-import'", _compatibilityContent, StringComparison.Ordinal);
+        Assert.Contains("flag_key = 'single-page-recipe-steps'", _compatibilityContent, StringComparison.Ordinal);
         Assert.DoesNotContain("TRUNCATE", _compatibilityContent, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void FamilyMembers_Schema_And_Compatibility_ConstrainNullableCookingView()
+    {
+        var table = GetTableDefinition("family_members");
+        Assert.Contains("cooking_view_mode text", table, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("cooking_view_mode IN ('step-by-step', 'all-steps')", table, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("ADD COLUMN IF NOT EXISTS cooking_view_mode text", _compatibilityContent, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("family_members_cooking_view_mode_check", _compatibilityContent, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

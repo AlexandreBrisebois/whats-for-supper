@@ -22,6 +22,9 @@ public class FamilyMember
     [Column("preferred_language")]
     public string? PreferredLanguage { get; set; }
 
+    [Column("cooking_view_mode")]
+    public string? CookingViewMode { get; set; }
+
     [Column("created_at")]
     public DateTimeOffset CreatedAt { get; set; }
 

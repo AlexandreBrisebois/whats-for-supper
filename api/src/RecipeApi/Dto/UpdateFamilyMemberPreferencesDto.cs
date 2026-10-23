@@ -9,4 +9,7 @@ public class UpdateFamilyMemberPreferencesDto
 
     [JsonPropertyName("preferredLanguage")]
     public string? PreferredLanguage { get; set; }
+
+    [JsonPropertyName("cookingViewMode")]
+    public string? CookingViewMode { get; set; }
 }

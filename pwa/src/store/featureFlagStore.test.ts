@@ -9,7 +9,7 @@ vi.mock('@/lib/api/featureFlags', () => ({
 
 const memberA = '11111111-1111-4111-8111-111111111111';
 const memberB = '22222222-2222-4222-8222-222222222222';
-const key = 'single-page-recipe-steps';
+const key = 'future-test-preview';
 const flag = (enabled = false): FeatureFlag => ({
   key,
   enabled,

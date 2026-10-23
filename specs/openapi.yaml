@@ -1390,13 +1390,16 @@ paths:
                     type: array
                     items:
                       type: object
-                      required: [id, name, browseViewMode, createdAt, updatedAt]
+                      required: [id, name, browseViewMode, cookingViewMode, createdAt, updatedAt]
                       properties:
                         id: { type: string, format: uuid }
                         name: { type: string }
                         browseViewMode:
                           type: string
                           enum: [stack, list]
+                        cookingViewMode:
+                          type: [string, 'null']
+                          enum: [step-by-step, all-steps]
                         preferredLanguage:
                           type: [string, 'null']
                           enum: [en, fr]
@@ -1409,18 +1412,21 @@ paths:
                       - id: '550e8400-e29b-41d4-a716-446655440001'
                         name: 'Alex'
                         browseViewMode: 'stack'
+                        cookingViewMode: 'all-steps'
                         preferredLanguage: 'en'
                         createdAt: '2024-01-01T00:00:00Z'
                         updatedAt: '2024-01-01T00:00:00Z'
                       - id: '550e8400-e29b-41d4-a716-446655440002'
                         name: 'Jordan'
                         browseViewMode: 'list'
+                        cookingViewMode: 'step-by-step'
                         preferredLanguage: 'en'
                         createdAt: '2024-01-01T00:00:00Z'
                         updatedAt: '2024-01-01T00:00:00Z'
                       - id: '550e8400-e29b-41d4-a716-446655440003'
                         name: 'Test User'
                         browseViewMode: 'stack'
+                        cookingViewMode: null
                         preferredLanguage: 'en'
                         createdAt: '2024-01-01T00:00:00Z'
                         updatedAt: '2024-01-01T00:00:00Z'
@@ -1452,13 +1458,16 @@ paths:
                 properties:
                   data:
                     type: object
-                    required: [id, name, browseViewMode, createdAt, updatedAt]
+                    required: [id, name, browseViewMode, cookingViewMode, createdAt, updatedAt]
                     properties:
                       id: { type: string, format: uuid }
                       name: { type: string }
                       browseViewMode:
                         type: string
                         enum: [stack, list]
+                      cookingViewMode:
+                        type: [string, 'null']
+                        enum: [step-by-step, all-steps]
                       preferredLanguage:
                         type: [string, 'null']
                         enum: [en, fr]
@@ -1469,6 +1478,7 @@ paths:
                   id: '550e8400-e29b-41d4-a716-446655440003'
                   name: 'Test User'
                   browseViewMode: 'stack'
+                  cookingViewMode: null
                   preferredLanguage: 'en'
                   createdAt: '2024-01-01T00:00:00Z'
                   updatedAt: '2024-01-01T00:00:00Z'
@@ -1516,13 +1526,16 @@ paths:
                 properties:
                   data:
                     type: object
-                    required: [id, name, browseViewMode, createdAt, updatedAt]
+                    required: [id, name, browseViewMode, cookingViewMode, createdAt, updatedAt]
                     properties:
                       id: { type: string, format: uuid }
                       name: { type: string }
                       browseViewMode:
                         type: string
                         enum: [stack, list]
+                      cookingViewMode:
+                        type: [string, 'null']
+                        enum: [step-by-step, all-steps]
                       preferredLanguage:
                         type: [string, 'null']
                         enum: [en, fr]
@@ -1572,13 +1585,16 @@ paths:
                 properties:
                   data:
                     type: object
-                    required: [id, name, browseViewMode, createdAt, updatedAt]
+                    required: [id, name, browseViewMode, cookingViewMode, createdAt, updatedAt]
                     properties:
                       id: { type: string, format: uuid }
                       name: { type: string }
                       browseViewMode:
                         type: string
                         enum: [stack, list]
+                      cookingViewMode:
+                        type: [string, 'null']
+                        enum: [step-by-step, all-steps]
                       preferredLanguage:
                         type: [string, 'null']
                         enum: [en, fr]
@@ -1589,6 +1605,7 @@ paths:
                   id: '550e8400-e29b-41d4-a716-446655440001'
                   name: 'Alex'
                   browseViewMode: 'stack'
+                  cookingViewMode: null
                   preferredLanguage: 'en'
                   createdAt: '2024-01-01T00:00:00Z'
                   updatedAt: '2024-01-01T00:00:00Z'
@@ -1619,7 +1636,6 @@ paths:
           application/json:
             schema:
               type: object
-              required: [browseViewMode]
               properties:
                 browseViewMode:
                   type: string
@@ -1627,6 +1643,11 @@ paths:
                 preferredLanguage:
                   type: [string, 'null']
                   enum: [en, fr]
+                cookingViewMode:
+                  type: string
+                  enum: [step-by-step, all-steps]
+              minProperties: 1
+              description: Only supplied properties are updated; omitted preferences retain their persisted values.
       responses:
         '503':
           description: Online recovery coordination is busy; retry after Retry-After seconds
@@ -1642,13 +1663,16 @@ paths:
                 properties:
                   data:
                     type: object
-                    required: [id, name, browseViewMode, createdAt, updatedAt]
+                    required: [id, name, browseViewMode, cookingViewMode, createdAt, updatedAt]
                     properties:
                       id: { type: string, format: uuid }
                       name: { type: string }
                       browseViewMode:
                         type: string
                         enum: [stack, list]
+                      cookingViewMode:
+                        type: [string, 'null']
+                        enum: [step-by-step, all-steps]
                       preferredLanguage:
                         type: [string, 'null']
                         enum: [en, fr]
@@ -1659,11 +1683,12 @@ paths:
                   id: '550e8400-e29b-41d4-a716-446655440001'
                   name: 'Alex'
                   browseViewMode: 'list'
+                  cookingViewMode: 'all-steps'
                   preferredLanguage: 'fr'
                   createdAt: '2024-01-01T00:00:00Z'
                   updatedAt: '2024-01-01T00:00:00Z'
         '400':
-          description: Invalid browse view mode
+          description: Invalid supplied preference value
           content:
             application/json:
               schema:
@@ -1671,7 +1696,7 @@ paths:
                 properties:
                   error: { type: string }
               example:
-                error: "browseViewMode must be stack or list."
+                error: "The supplied preference value is invalid."
         '404':
           description: Family member not found
 
@@ -3650,13 +3675,7 @@ paths:
                   data: { $ref: '#/components/schemas/FeatureFlagListDto' }
               example:
                 data:
-                  items:
-                    - key: single-page-recipe-steps
-                      enabled: false
-                      mode: opt-in
-                      memberEnabled: false
-                      displayName: Recipe on one page
-                      description: After getting ready, scroll through all the cooking steps on one page.
+                  items: []
         '401': { description: Family member identity is required }
 
   /api/feature-flags/{key}:

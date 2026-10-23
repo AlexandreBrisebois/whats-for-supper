@@ -23,12 +23,12 @@ public class FeatureFlagServiceTests
     }
 
     [Theory]
-    [InlineData(null, FeatureFlagMode.Off)]
-    [InlineData("off", FeatureFlagMode.Off)]
-    [InlineData("OPT-IN", FeatureFlagMode.OptIn)]
-    [InlineData(" on ", FeatureFlagMode.On)]
-    [InlineData("invalid", FeatureFlagMode.Off)]
-    public void Registry_parses_modes_fail_closed(string? value, FeatureFlagMode expected)
+    [InlineData(null)]
+    [InlineData("off")]
+    [InlineData("OPT-IN")]
+    [InlineData(" on ")]
+    [InlineData("invalid")]
+    public void Retired_cooking_registry_key_and_environment_variable_have_no_effect(string? value)
     {
         var values = value is null
             ? new Dictionary<string, string?>()
@@ -37,7 +37,7 @@ public class FeatureFlagServiceTests
             new ConfigurationBuilder().AddInMemoryCollection(values).Build(),
             NullLogger<FeatureFlagRegistry>.Instance);
 
-        Assert.Equal(expected, registry.Get("single-page-recipe-steps")!.Mode);
+        Assert.Null(registry.Get("single-page-recipe-steps"));
         Assert.Null(registry.Get("planner-hold-to-move"));
         Assert.Null(registry.Get("unknown"));
     }
@@ -67,6 +67,12 @@ public class FeatureFlagServiceTests
         db.FeatureFlagOverrides.Add(new FeatureFlagOverride
         {
             MemberId = member.Id,
+            FlagKey = "single-page-recipe-steps",
+            Enabled = false
+        });
+        db.FeatureFlagOverrides.Add(new FeatureFlagOverride
+        {
+            MemberId = member.Id,
             FlagKey = "preview-pdf-recipe-import",
             Enabled = false
         });
@@ -77,27 +83,7 @@ public class FeatureFlagServiceTests
 
         Assert.DoesNotContain(snapshot, flag => flag.Key == "planner-hold-to-move");
         Assert.DoesNotContain(snapshot, flag => flag.Key == "preview-pdf-recipe-import");
-    }
-
-    [Theory]
-    [InlineData("single-page-recipe-steps")]
-    public async Task SetOverride_is_member_specific_and_upserts(string key)
-    {
-        await using var db = CreateDb();
-        var first = new FamilyMember { Name = "Alex" };
-        var second = new FamilyMember { Name = "Sam" };
-        db.FamilyMembers.AddRange(first, second);
-        await db.SaveChangesAsync();
-        var service = CreateService(db, "opt-in");
-
-        await service.SetOverrideAsync(first.Id, key, true);
-        Assert.True((await service.GetSnapshotAsync(first.Id)).Single(flag => flag.Key == key).Enabled);
-        Assert.False((await service.GetSnapshotAsync(second.Id)).Single(flag => flag.Key == key).Enabled);
-        await service.SetOverrideAsync(first.Id, key, false);
-
-        Assert.False((await service.GetSnapshotAsync(first.Id)).Single(flag => flag.Key == key).Enabled);
-        Assert.False((await service.GetSnapshotAsync(second.Id)).Single(flag => flag.Key == key).Enabled);
-        Assert.Single(db.FeatureFlagOverrides);
+        Assert.DoesNotContain(snapshot, flag => flag.Key == "single-page-recipe-steps");
     }
 
     private static FeatureFlagService CreateService(RecipeDbContext db, string mode)

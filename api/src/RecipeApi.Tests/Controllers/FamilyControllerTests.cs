@@ -53,6 +53,7 @@ public class FamilyControllerTests : IAsyncLifetime
         Assert.Equal("stack", data.GetProperty("browseViewMode").GetString());
         Assert.NotEqual(Guid.Empty, data.GetProperty("id").GetGuid());
         Assert.Equal(JsonValueKind.Null, data.GetProperty("preferredLanguage").ValueKind);
+        Assert.Equal(JsonValueKind.Null, data.GetProperty("cookingViewMode").ValueKind);
         Assert.True(data.GetProperty("createdAt").TryGetDateTimeOffset(out _));
         Assert.True(data.GetProperty("updatedAt").TryGetDateTimeOffset(out _));
     }
@@ -225,6 +226,42 @@ public class FamilyControllerTests : IAsyncLifetime
         var response = await _client.PutAsJsonAsync(
             $"/api/family/{id}/preferences",
             new { browseViewMode = "carousel" });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("step-by-step")]
+    [InlineData("all-steps")]
+    public async Task UpdatePreferences_Persists_CookingView_Without_Changing_Other_Fields(string cookingViewMode)
+    {
+        var createResponse = await _client.PostAsJsonAsync("/api/family", new { name = $"Cook_{Guid.NewGuid():N}" });
+        using var createDoc = JsonDocument.Parse(await createResponse.Content.ReadAsStringAsync());
+        var created = createDoc.RootElement.GetProperty("data");
+        var id = created.GetProperty("id").GetGuid();
+
+        var response = await _client.PutAsJsonAsync(
+            $"/api/family/{id}/preferences",
+            new { cookingViewMode });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var data = document.RootElement.GetProperty("data");
+        Assert.Equal(cookingViewMode, data.GetProperty("cookingViewMode").GetString());
+        Assert.Equal("stack", data.GetProperty("browseViewMode").GetString());
+        Assert.Equal(created.GetProperty("name").GetString(), data.GetProperty("name").GetString());
+    }
+
+    [Fact]
+    public async Task UpdatePreferences_Invalid_CookingView_Returns_BadRequest()
+    {
+        var createResponse = await _client.PostAsJsonAsync("/api/family", new { name = $"Cook_{Guid.NewGuid():N}" });
+        using var createDoc = JsonDocument.Parse(await createResponse.Content.ReadAsStringAsync());
+        var id = createDoc.RootElement.GetProperty("data").GetProperty("id").GetGuid();
+
+        var response = await _client.PutAsJsonAsync(
+            $"/api/family/{id}/preferences",
+            new { cookingViewMode = "carousel" });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
