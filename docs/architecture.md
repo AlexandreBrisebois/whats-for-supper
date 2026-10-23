@@ -1,6 +1,6 @@
 # Architecture
 
-This is a concise technical reference for contributors and operators. It describes the current application shape, not a public installation path. The current template is documented in the [Synology operator guide](../release-template/synology/README.md); physical deployment, recovery, and public-release qualification remain separate work.
+This is a concise technical reference for contributors and operators. For installation, start with the [quick start](install/quick-start.md) or the [home server installation reference](../release-template/synology/README.md). Published images and bundles do not by themselves qualify a particular host, backup destination or device.
 
 ```mermaid
 flowchart LR
@@ -25,6 +25,8 @@ flowchart LR
 ## Shared state and access
 
 Planning, grocery, and voting changes are shared through Server-Sent Events, so household devices receive updates without manual refreshes. A household uses a shared `HEARTH_SECRET`; the app also records the active family member in cookies for requests and the event stream.
+
+The documented public stack runs one API and one PWA on a single Docker host. SSE connections and broadcasts are held in the API process; they are not a durable or cross-replica event bus. Keep this single-instance topology rather than treating shared PostgreSQL alone as support for replicated API deployment.
 
 ## Where to read next
 
