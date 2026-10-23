@@ -142,8 +142,17 @@ test.describe('Cook Mode — HowToSection[] steps display', () => {
 
     const trigger = page.getByTestId('cooking-view-trigger');
     await expect(trigger).toHaveAccessibleName('Cooking view: All steps');
+    expect(await trigger.textContent()).toBe('');
+    const heroBounds = await page.getByTestId('cooks-mode-hero').boundingBox();
     const bounds = await trigger.boundingBox();
     expect(bounds!.height).toBeGreaterThanOrEqual(44);
+    expect(bounds!.y).toBeGreaterThan(heroBounds!.y + heroBounds!.height / 2);
+    expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(heroBounds!.y + heroBounds!.height);
+    const stepIndicatorBounds = await page
+      .getByTestId('cooks-mode-step-indicator')
+      .locator('..')
+      .boundingBox();
+    expect(bounds!.x).toBeLessThan(stepIndicatorBounds!.x);
     await trigger.click();
     await expect(page.getByRole('menuitemradio', { name: 'All steps' })).toHaveAttribute(
       'aria-checked',
