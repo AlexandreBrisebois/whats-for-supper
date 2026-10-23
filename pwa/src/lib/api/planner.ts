@@ -2,6 +2,7 @@ import { RetryHandlerOptions } from '@microsoft/kiota-http-fetchlibrary';
 import { DateOnly } from '@microsoft/kiota-abstractions';
 import { apiClient } from './api-client';
 import { usePlannerStore } from '@/store/plannerStore';
+import { useDiscoveryStore } from '@/store/discoveryStore';
 import type {
   NonCookingPlanDto,
   ScheduleDays,
@@ -85,6 +86,7 @@ export const lockSchedule = async (
       ...(votingRoundId ? { votingRoundId } : {}),
     },
   });
+  void useDiscoveryStore.getState().refreshSession();
   return result?.data || result;
 };
 
@@ -108,6 +110,7 @@ export const moveRecipe = async (
     },
     referenceRequest(referenceWeekStartDate)
   );
+  void useDiscoveryStore.getState().refreshSession();
   return result;
 };
 
@@ -126,7 +129,7 @@ export const assignRecipeToDay = async (
   referenceWeekStartDate?: string,
   requireEmpty = false
 ) => {
-  return await apiClient.api.schedule.assign.post(
+  const result = await apiClient.api.schedule.assign.post(
     {
       weekOffset,
       dayIndex,
@@ -140,16 +143,22 @@ export const assignRecipeToDay = async (
         }
       : undefined
   );
+  void useDiscoveryStore.getState().refreshSession();
+  return result;
 };
 
 export const openVoting = async (weekOffset: number, referenceWeekStartDate?: string) => {
-  return await apiClient.api.schedule.voting.open.post({
+  const result = await apiClient.api.schedule.voting.open.post({
     queryParameters: { weekOffset, ...referenceRequest(referenceWeekStartDate)?.queryParameters },
   });
+  void useDiscoveryStore.getState().refreshSession();
+  return result;
 };
 
 export const removeRecipeFromDay = async (date: string) => {
-  return await apiClient.api.schedule.day.byDate(DateOnly.parse(date)!).remove.delete();
+  const result = await apiClient.api.schedule.day.byDate(DateOnly.parse(date)!).remove.delete();
+  void useDiscoveryStore.getState().refreshSession();
+  return result;
 };
 
 export const getSmartDefaults = async (
@@ -170,5 +179,9 @@ export const getSmartDefaults = async (
 export async function saveNonCookingDay(date: string, plan: NonCookingPlanDto) {
   const parsed = DateOnly.parse(date);
   if (!parsed) throw new Error('Invalid date');
-  return apiClient.api.schedule.day.byDate(parsed).validate.post({ status: 3, nonCooking: plan });
+  const result = await apiClient.api.schedule.day
+    .byDate(parsed)
+    .validate.post({ status: 3, nonCooking: plan });
+  void useDiscoveryStore.getState().refreshSession();
+  return result;
 }

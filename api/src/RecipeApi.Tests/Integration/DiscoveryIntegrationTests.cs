@@ -25,7 +25,7 @@ public class DiscoveryIntegrationTests : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
-        _factory = await TestWebApplicationFactory.CreateAsync();
+        _factory = await TestWebApplicationFactory.CreateAsync(new DeploymentCalendarIntegrationTests.CalendarClock());
         _client = _factory.CreateClient();
         _scope = _factory.Services.CreateScope();
         _db = _scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
@@ -36,6 +36,47 @@ public class DiscoveryIntegrationTests : IAsyncLifetime
     {
         _scope.Dispose();
         await _factory.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task VotingSession_ThreeDistinctMatchesCoverThreeSlotsWithoutAssigningMeals()
+    {
+        var monday = new DateOnly(2026, 10, 19);
+        var second = new FamilyMember { Id = Guid.NewGuid(), Name = "Second member" };
+        _db.FamilyMembers.Add(second);
+        for (var i = 0; i < 4; i++)
+            _db.CalendarEvents.Add(new CalendarEvent { Id = Guid.NewGuid(), Date = monday.AddDays(i),
+                Status = CalendarEventStatus.Skipped, NonCookingKind = "eating_out" });
+        var recipes = Enumerable.Range(0, 3).Select(i => new Recipe
+            { Id = Guid.NewGuid(), Name = $"Candidate {i}", IsDiscoverable = true }).ToArray();
+        _db.Recipes.AddRange(recipes);
+        await _db.SaveChangesAsync();
+        _client.DefaultRequestHeaders.Add("X-Family-Member-Id", _familyMemberId.ToString());
+        (await _client.PostAsync("/api/schedule/voting/open?weekOffset=1", null)).EnsureSuccessStatusCode();
+        foreach (var recipe in recipes)
+        {
+            (await _client.PostAsJsonAsync($"/api/discovery/{recipe.Id}/vote", new { vote = 1 })).EnsureSuccessStatusCode();
+            _client.DefaultRequestHeaders.Remove("X-Family-Member-Id");
+            _client.DefaultRequestHeaders.Add("X-Family-Member-Id", second.Id.ToString());
+            (await _client.PostAsJsonAsync($"/api/discovery/{recipe.Id}/vote", new { vote = 1 })).EnsureSuccessStatusCode();
+            _client.DefaultRequestHeaders.Remove("X-Family-Member-Id");
+            _client.DefaultRequestHeaders.Add("X-Family-Member-Id", _familyMemberId.ToString());
+        }
+
+        var response = await _client.GetAsync("/api/discovery/session");
+        response.EnsureSuccessStatusCode();
+        using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var session = json.RootElement.GetProperty("data");
+        Assert.Equal("converged", session.GetProperty("phase").GetString());
+        Assert.Equal("2026-10-19", session.GetProperty("weekStartDate").GetString());
+        Assert.Equal(3, session.GetProperty("requiredSlots").GetInt32());
+        Assert.Equal(3, session.GetProperty("coveredSlots").GetInt32());
+        Assert.Equal(3, session.GetProperty("candidateCount").GetInt32());
+        Assert.Equal(4, _db.CalendarEvents.Count());
+        Assert.All(_db.CalendarEvents, e => Assert.Null(e.RecipeId));
+        Assert.Empty(_db.WeeklyHouseholdInterests);
+        Assert.Equal(6, _db.RecipeVotes.Count());
+        Assert.Equal(WeeklyPlanStatus.VotingOpen, Assert.Single(_db.WeeklyPlans).Status);
     }
 
     [Fact]

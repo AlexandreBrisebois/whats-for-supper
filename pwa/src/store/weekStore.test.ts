@@ -3,6 +3,10 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useWeekStore } from './weekStore';
 import type { UILocalScheduleDay } from './weekStore';
 import { usePlannerStore } from './plannerStore';
+import { useDiscoveryStore } from './discoveryStore';
+vi.mock('@/lib/api/discovery', () => ({
+  getVotingSession: vi.fn().mockRejectedValue(new Error('unavailable')),
+}));
 import { builders } from '@/testing/builders';
 
 vi.mock('@/lib/api/planner', async (importOriginal) => {
@@ -67,6 +71,7 @@ function makeScheduleDays(days: Partial<UILocalScheduleDay>[] = []) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  useDiscoveryStore.setState({ session: null, sessionStatus: 'unknown' });
   useWeekStore.setState({
     calendar,
     weekStartDate: '2025-01-06',
@@ -233,8 +238,16 @@ describe('weekStore — assignment rollback', () => {
     vi.mocked(getSmartDefaults).mockResolvedValue(null);
     vi.mocked(lockSchedule).mockRejectedValueOnce(new Error('Lost response'));
     await useWeekStore.getState().init(0);
-    await expect(useWeekStore.getState().closeVoting()).resolves.toBeUndefined();
-    expect(useWeekStore.getState().status).toBe(2);
+    const refresh = vi
+      .spyOn(useDiscoveryStore.getState(), 'refreshSession')
+      .mockResolvedValue(undefined);
+    try {
+      await expect(useWeekStore.getState().closeVoting()).resolves.toBeUndefined();
+      expect(useWeekStore.getState().status).toBe(2);
+      expect(refresh).toHaveBeenCalled();
+    } finally {
+      refresh.mockRestore();
+    }
   });
 
   it('closes using the round identity captured with the loaded schedule', async () => {
@@ -760,7 +773,8 @@ describe('weekStore — closeVoting', () => {
       0,
       0,
       expect.objectContaining({ id: 'p1' }),
-      '2025-01-06'
+      '2025-01-06',
+      true
     );
 
     // Should have called lockSchedule AFTER assignments
@@ -1124,4 +1138,344 @@ it('does not merge a delayed HTTP response after the loaded absolute week change
   resolve(makeScheduleDays([{ date: '2025-01-06' }]));
   await pending;
   expect(useWeekStore.getState().schedule[0].date).toBe('2026-10-12');
+});
+
+describe('session pending suggestion authority', () => {
+  const session = (revision: number, recipes: any[] = []) =>
+    ({
+      incarnationId: '00000000-0000-4000-8000-000000000001',
+      revision,
+      roundId: '00000000-0000-4000-8000-000000000002',
+      weekStartDate: '2025-01-06',
+      phase: 'collecting',
+      requiredSlots: 7,
+      coveredSlots: recipes.length,
+      candidateCount: recipes.length,
+      smartDefaults: {
+        weekStartDate: '2025-01-06',
+        weekOffset: 0,
+        preSelectedRecipes: recipes,
+        openSlots: [],
+      },
+    }) as any;
+  it('an obsolete initialization result cannot restore a withdrawn pending recipe', async () => {
+    let resolve!: (value: any) => void;
+    vi.mocked(getSchedule).mockResolvedValue({
+      ...makeScheduleDays([{}]),
+      status: 1,
+      votingRoundId: '00000000-0000-4000-8000-000000000002',
+    });
+    vi.mocked(getSmartDefaults).mockReturnValue(
+      new Promise((r) => {
+        resolve = r;
+      })
+    );
+    const init = useWeekStore.getState().init(0);
+    await vi.waitFor(() => expect(getSmartDefaults).toHaveBeenCalled());
+    useDiscoveryStore.getState().applySession(session(2), true);
+    resolve({
+      weekStartDate: '2025-01-06',
+      preSelectedRecipes: [{ dayIndex: 0, recipeId: 'old', name: 'Old' }],
+    });
+    await init;
+    expect(useWeekStore.getState().schedule[0].recipe).toBeUndefined();
+  });
+  it('an ordinary week snapshot cannot resurrect replaced pending suggestions', () => {
+    useWeekStore.setState({
+      status: 1,
+      votingRoundId: '00000000-0000-4000-8000-000000000002',
+      schedule: [makeDay({ recipe: { id: 'old' } as any, _isPending: true })],
+    });
+    useDiscoveryStore.getState().applySession(session(2), true);
+    // An old snapshot contains no pending assignments; accepted session remains authoritative.
+    useWeekStore.getState().applySnapshot({
+      ...makeScheduleDays([{}]),
+      status: 1,
+      votingRoundId: '00000000-0000-4000-8000-000000000002',
+    });
+    expect(useWeekStore.getState().schedule[0].recipe).toBeUndefined();
+  });
+  it('reconciles successful promotions after another target conflicts, without locking', async () => {
+    useWeekStore.setState({
+      status: 1,
+      schedule: [
+        makeDay({ recipe: { id: 'a', name: 'A' } as any, _isPending: true }),
+        makeDay({ date: '2025-01-07', recipe: { id: 'b', name: 'B' } as any, _isPending: true }),
+      ],
+    });
+    vi.mocked(assignRecipeToDay)
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new Error('occupied'));
+    const persisted = makeScheduleDays([
+      { recipe: { id: 'a', name: 'A' } as any },
+      { date: '2025-01-07' },
+    ]);
+    persisted.days[1] = {
+      ...persisted.days[1],
+      status: 3,
+      nonCooking: { kind: 'custom', customLabel: 'Party' },
+    };
+    vi.mocked(getSchedule).mockResolvedValue({ ...persisted, status: 1 });
+    await expect(useWeekStore.getState().closeVoting()).rejects.toThrow('Failed to close voting');
+    expect(lockSchedule).not.toHaveBeenCalled();
+    expect(useWeekStore.getState().schedule[0]._isPending).not.toBe(true);
+    expect(useWeekStore.getState().schedule[1].status).toBe(3);
+  });
+});
+
+it('serializes guarded promotions and locks only after they all succeed', async () => {
+  let resolve!: (value: any) => void;
+  useWeekStore.setState({
+    status: 1,
+    schedule: [
+      makeDay({ recipe: { id: 'a' } as any, _isPending: true }),
+      makeDay({ date: '2025-01-07', recipe: { id: 'b' } as any, _isPending: true }),
+    ],
+  });
+  vi.mocked(assignRecipeToDay)
+    .mockReturnValueOnce(
+      new Promise((r) => {
+        resolve = r;
+      })
+    )
+    .mockResolvedValueOnce(undefined);
+  vi.mocked(lockSchedule).mockResolvedValue(undefined);
+  const closing = useWeekStore.getState().closeVoting();
+  await Promise.resolve();
+  expect(assignRecipeToDay).toHaveBeenCalledTimes(1);
+  expect(lockSchedule).not.toHaveBeenCalled();
+  resolve(undefined);
+  await closing;
+  expect(assignRecipeToDay).toHaveBeenCalledTimes(2);
+  expect(lockSchedule).toHaveBeenCalledTimes(1);
+});
+it('does not apply an earlier round session defaults when the same week reopens', async () => {
+  const oldRound = '00000000-0000-4000-8000-000000000002';
+  const newRound = '00000000-0000-4000-8000-000000000003';
+  useWeekStore.setState({ status: 1, votingRoundId: oldRound });
+  useDiscoveryStore.getState().applySession(
+    {
+      incarnationId: '00000000-0000-4000-8000-000000000001',
+      revision: 2,
+      roundId: oldRound,
+      weekStartDate: '2025-01-06',
+      phase: 'converged',
+      requiredSlots: 1,
+      coveredSlots: 1,
+      candidateCount: 1,
+      smartDefaults: {
+        weekStartDate: '2025-01-06',
+        preSelectedRecipes: [{ dayIndex: 0, recipeId: 'old' }],
+      },
+    } as any,
+    true
+  );
+  vi.mocked(getSchedule).mockResolvedValue({
+    ...makeScheduleDays([{}]),
+    status: 1,
+    votingRoundId: newRound,
+  });
+  vi.mocked(getSmartDefaults).mockResolvedValue({
+    weekStartDate: '2025-01-06',
+    preSelectedRecipes: [{ dayIndex: 0, recipeId: 'old' }],
+  } as any);
+  await useWeekStore.getState().init(0);
+  expect(useWeekStore.getState().schedule[0].recipe).toBeUndefined();
+});
+it('confirmed close removes prior pending suggestion retention', () => {
+  useWeekStore.setState({
+    status: 1,
+    schedule: [makeDay({ recipe: { id: 'old' } as any, _isPending: true })],
+  });
+  useWeekStore.getState().applySnapshot({ ...makeScheduleDays([{}]), status: 2 });
+  expect(useWeekStore.getState().schedule[0].recipe).toBeUndefined();
+});
+
+it('a delayed initialization cannot reopen a confirmed closed round', async () => {
+  const oldRound = '00000000-0000-4000-8000-000000000002';
+  let resolve!: (value: any) => void;
+  useWeekStore.setState({ status: 1, votingRoundId: oldRound });
+  vi.mocked(getSchedule).mockResolvedValue({
+    ...makeScheduleDays([{}]),
+    status: 1,
+    votingRoundId: oldRound,
+  });
+  vi.mocked(getSmartDefaults).mockReturnValue(
+    new Promise((r) => {
+      resolve = r;
+    })
+  );
+  const init = useWeekStore.getState().init(0);
+  await vi.waitFor(() => expect(getSmartDefaults).toHaveBeenCalled());
+  useWeekStore
+    .getState()
+    .applySnapshot({ ...makeScheduleDays([{}]), status: 2, votingRoundId: oldRound });
+  useDiscoveryStore.getState().applySession(
+    {
+      incarnationId: '00000000-0000-4000-8000-000000000001',
+      revision: 3,
+      roundId: '00000000-0000-4000-8000-000000000003',
+      weekStartDate: null,
+      phase: 'unowned',
+      requiredSlots: null,
+      coveredSlots: null,
+      candidateCount: null,
+      smartDefaults: null,
+    } as any,
+    true
+  );
+  resolve({ weekStartDate: '2025-01-06', preSelectedRecipes: [{ dayIndex: 0, recipeId: 'old' }] });
+  await init;
+  expect(useWeekStore.getState().status).toBe(2);
+  expect(useWeekStore.getState().schedule[0].recipe).toBeUndefined();
+  expect(useWeekStore.getState().isLoading).toBe(false);
+});
+
+it('a delayed sync cannot restore the previous round identity after reopening', async () => {
+  const oldRound = '00000000-0000-4000-8000-000000000002';
+  const newRound = '00000000-0000-4000-8000-000000000003';
+  let resolve!: (value: any) => void;
+  useWeekStore.setState({ status: 1, votingRoundId: oldRound, schedule: [makeDay()] });
+  vi.mocked(getSchedule).mockReturnValue(
+    new Promise((r) => {
+      resolve = r;
+    })
+  );
+  vi.mocked(getSmartDefaults).mockResolvedValue(null);
+  const syncing = useWeekStore.getState().sync();
+  useWeekStore
+    .getState()
+    .applySnapshot({ ...makeScheduleDays([{}]), status: 1, votingRoundId: newRound });
+  resolve({ ...makeScheduleDays([{}]), status: 1, votingRoundId: oldRound });
+  await syncing;
+  expect(useWeekStore.getState().votingRoundId).toBe(newRound);
+});
+
+it('delayed open results cannot restore a round closed by another member', async () => {
+  const round = '00000000-0000-4000-8000-000000000002';
+  let resolve!: (value: any) => void;
+  vi.mocked(openVoting).mockResolvedValue(undefined);
+  vi.mocked(getSchedule).mockResolvedValue({
+    ...makeScheduleDays([{}]),
+    status: 1,
+    votingRoundId: round,
+  });
+  vi.mocked(getSmartDefaults).mockReturnValue(
+    new Promise((r) => {
+      resolve = r;
+    })
+  );
+  const opening = useWeekStore.getState().openVoting();
+  await vi.waitFor(() => expect(getSmartDefaults).toHaveBeenCalled());
+  useWeekStore
+    .getState()
+    .applySnapshot({ ...makeScheduleDays([{}]), status: 2, votingRoundId: round });
+  resolve({ weekStartDate: '2025-01-06', preSelectedRecipes: [{ dayIndex: 0, recipeId: 'old' }] });
+  await opening;
+  expect(useWeekStore.getState().status).toBe(2);
+  expect(useWeekStore.getState().schedule[0].recipe).toBeUndefined();
+});
+
+it('failed old open completion cannot roll back a later confirmed round', async () => {
+  let reject!: (error: Error) => void;
+  vi.mocked(openVoting).mockReturnValue(
+    new Promise((_, r) => {
+      reject = r;
+    })
+  );
+  const opening = useWeekStore.getState().openVoting();
+  const round = '00000000-0000-4000-8000-000000000003';
+  useWeekStore
+    .getState()
+    .applySnapshot({ ...makeScheduleDays([{}]), status: 1, votingRoundId: round });
+  reject(new Error('lost old response'));
+  await expect(opening).rejects.toThrow();
+  expect(useWeekStore.getState().status).toBe(1);
+  expect(useWeekStore.getState().votingRoundId).toBe(round);
+});
+
+it('a recovered old close receipt cannot replace a subsequently reopened round', async () => {
+  const oldRound = '00000000-0000-4000-8000-000000000002';
+  const newRound = '00000000-0000-4000-8000-000000000003';
+  let reject!: (error: Error) => void;
+  useWeekStore.setState({ status: 1, votingRoundId: oldRound });
+  vi.mocked(lockSchedule).mockReturnValue(
+    new Promise((_, r) => {
+      reject = r;
+    })
+  );
+  vi.mocked(getSchedule).mockResolvedValue({
+    ...makeScheduleDays([{}]),
+    status: 2,
+    votingRoundId: oldRound,
+  });
+  const closing = useWeekStore.getState().closeVoting();
+  useWeekStore.setState({
+    status: 1,
+    votingRoundId: newRound,
+    schedule: [makeDay({ recipe: { id: 'new-pending' } as any, _isPending: true })],
+  });
+  reject(new Error('old close response lost'));
+  await closing;
+  expect(useWeekStore.getState().status).toBe(1);
+  expect(useWeekStore.getState().votingRoundId).toBe(newRound);
+  expect(useWeekStore.getState().schedule[0].recipe?.id).toBe('new-pending');
+  expect(useWeekStore.getState().schedule[0]._isPending).toBe(true);
+});
+
+it.each(['init', 'sync', 'openVoting'] as const)(
+  'accepts compatible bootstrap data when SSE establishes the same round during %s',
+  async (action) => {
+    const round = '00000000-0000-4000-8000-000000000002';
+    let resolve!: (value: any) => void;
+    vi.mocked(openVoting).mockResolvedValue(undefined);
+    vi.mocked(getSchedule).mockReturnValue(
+      new Promise((r) => {
+        resolve = r;
+      })
+    );
+    vi.mocked(getSmartDefaults).mockResolvedValue(null);
+    const pending =
+      action === 'init' ? useWeekStore.getState().init(0) : useWeekStore.getState()[action]();
+    await vi.waitFor(() => expect(getSchedule).toHaveBeenCalled());
+    const status = action === 'openVoting' ? 1 : 0;
+    useWeekStore
+      .getState()
+      .applySnapshot({ ...makeScheduleDays([{}]), status, votingRoundId: round });
+    resolve({
+      ...makeScheduleDays([{ recipe: { id: 'saved', name: 'Saved supper' } as any }]),
+      status,
+      votingRoundId: round,
+    });
+    await pending;
+    expect(useWeekStore.getState().schedule[0].recipe?.id).toBe('saved');
+  }
+);
+
+it('shows persisted promotions after session updates withdraw their pending suggestions', async () => {
+  const round = '00000000-0000-4000-8000-000000000002';
+  const saved = { id: 'saved', name: 'Saved supper', image: '' };
+  useWeekStore.setState({
+    status: 1,
+    votingRoundId: round,
+    schedule: [makeDay({ recipe: saved as any, _isPending: true })],
+  });
+  vi.mocked(assignRecipeToDay).mockImplementation(async () => {
+    // The initiating connection is excluded from ordinary schedule echo, but receives session state.
+    useWeekStore.getState().applySmartDefaultsUpdate({
+      weekStartDate: '2025-01-06',
+      weekOffset: 0,
+      preSelectedRecipes: [],
+    } as any);
+    return undefined;
+  });
+  vi.mocked(lockSchedule).mockResolvedValue(undefined);
+  vi.mocked(getSchedule).mockResolvedValue({
+    ...makeScheduleDays([{ recipe: saved as any }]),
+    status: 2,
+    votingRoundId: round,
+  });
+  await useWeekStore.getState().closeVoting();
+  expect(useWeekStore.getState().schedule[0].recipe?.id).toBe(saved.id);
+  expect(useWeekStore.getState().schedule[0]._isPending).not.toBe(true);
 });

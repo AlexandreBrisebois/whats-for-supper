@@ -151,8 +151,15 @@ mocked API boundary.
   using `WFS_TEST_POSTGRES_CONNECTION` when configured or an automatically owned,
   temporary PostgreSQL/pgvector container otherwise. It does not deploy the API/PWA,
   use development Compose volumes, or run the opt-in live browser qualification.
-  Docker (when no connection is supplied) and the repository .NET toolchain are required.
-  Only the runner's own container is removed, including after test/startup failure.
+  On macOS with no configured connection, the runner also uses the Linux SDK image
+  pinned by `api/Dockerfile`, so Linux recovery durability checks execute on their
+  supported filesystem. Repository source is copied into an ephemeral Linux workspace;
+  host build outputs are excluded. SDK/PostgreSQL containers share an owned private
+  network; the runner removes those resources after success, failure or timeout.
+  This path requires Docker, without requiring a host .NET installation. Native Linux
+  and explicitly configured connections retain host .NET execution; configured
+  connections therefore require a supported host for Linux-only recovery coverage.
+  Only the runner's own resources are removed, including after test/startup failure.
   Failed tests fail the gate; unavailable prerequisites, zero matched tests or skipped
   relational tests block it. TRX results, executed test names and database runtime
   metadata are recorded under `.task/database-tests/runs/`; credentials are omitted.

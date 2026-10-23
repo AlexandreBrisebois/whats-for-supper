@@ -1,5 +1,7 @@
 'use client';
 
+import Image from 'next/image';
+import { FamilyNudgeDialog } from '@/components/discovery/FamilyNudgeDialog';
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { DiscoveryCard } from '@/components/discovery/DiscoveryCard';
@@ -18,6 +20,11 @@ export default function DiscoveryPage() {
   const { setHasPendingCards, setActiveCategory } = useDiscoveryStore();
   // Lift state to store — SSE can now update the stack without the page being mounted
   const recipes = useDiscoveryStore((s) => s.discoveryStack);
+  const [showNudgeDialog, setShowNudgeDialog] = useState(false);
+  const closeNudgeDialog = useCallback(() => setShowNudgeDialog(false), []);
+  const ownsRound = useDiscoveryStore((s) => s.session?.phase === 'collecting');
+  const converged = useDiscoveryStore((s) => s.session?.phase === 'converged');
+  const refreshSession = useDiscoveryStore((s) => s.refreshSession);
   const fillTheGapVersion = useDiscoveryStore((s) => s.fillTheGapVersion);
   const { selectedFamilyMemberId, _hasHydrated } = useFamily();
   const [isLoading, setIsLoading] = useState(true);
@@ -140,6 +147,7 @@ export default function DiscoveryPage() {
       }
     };
 
+    void refreshSession();
     initialize();
     return () => {
       ignore = true;
@@ -148,13 +156,13 @@ export default function DiscoveryPage() {
     // activeCategory is intentionally NOT a dep — we read it from the store at call-time
     // inside initialize() to avoid re-triggering this effect when we call setActiveCategory.
     // A separate effect below handles nudge-driven category switches.
-  }, [_hasHydrated, selectedFamilyMemberId, setActiveCategory]);
+  }, [_hasHydrated, selectedFamilyMemberId, setActiveCategory, refreshSession]);
 
   // Sync pending cards status to store
   useEffect(() => {
-    setHasPendingCards(recipes.length > 0);
+    setHasPendingCards(!converged && recipes.length > 0);
     return () => setHasPendingCards(false);
-  }, [recipes.length, setHasPendingCards]);
+  }, [recipes.length, setHasPendingCards, converged]);
 
   const loadNextCategory = useCallback(async () => {
     const generation = ++fetchGenerationRef.current;
@@ -291,6 +299,7 @@ export default function DiscoveryPage() {
   }, []);
 
   const handleSwipeRight = (recipeId: string) => {
+    if (useDiscoveryStore.getState().session?.phase === 'converged') return;
     ++voteRevisionRef.current;
     pendingVotesRef.current.add(recipeId);
     // Optimistic Update
@@ -314,10 +323,12 @@ export default function DiscoveryPage() {
       .then(() => {
         pendingVotesRef.current.delete(recipeId);
         ++voteRevisionRef.current;
+        void refreshSession();
       })
       .catch((error) => {
         pendingVotesRef.current.delete(recipeId);
         console.error('Failed to submit like vote', error);
+        void refreshSession();
         refetchCurrentCategory();
       });
 
@@ -327,6 +338,7 @@ export default function DiscoveryPage() {
   };
 
   const handleSwipeLeft = (recipeId: string) => {
+    if (useDiscoveryStore.getState().session?.phase === 'converged') return;
     ++voteRevisionRef.current;
     pendingVotesRef.current.add(recipeId);
     // Optimistic Update
@@ -338,10 +350,12 @@ export default function DiscoveryPage() {
       .then(() => {
         pendingVotesRef.current.delete(recipeId);
         ++voteRevisionRef.current;
+        void refreshSession();
       })
       .catch((error) => {
         pendingVotesRef.current.delete(recipeId);
         console.error('Failed to submit dislike vote', error);
+        void refreshSession();
         refetchCurrentCategory();
       });
 
@@ -354,6 +368,28 @@ export default function DiscoveryPage() {
   const visibleRecipes = useMemo(() => {
     return recipes.slice(0, 4);
   }, [recipes]);
+
+  if (converged) {
+    return (
+      <div
+        role="status"
+        aria-live="polite"
+        data-testid="discovery-converged"
+        className="flex min-h-[calc(100dvh-6rem)] flex-col items-center justify-center gap-4 px-6 py-12 text-center text-charcoal"
+      >
+        <Image
+          src="/android-chrome-512x512.png"
+          alt=""
+          width={256}
+          height={256}
+          sizes="(min-width: 640px) 256px, 192px"
+          className="h-auto w-48 max-w-full sm:w-64"
+        />
+        <h1 className="font-heading text-3xl font-bold">{t('discovery.weDidIt', 'We did it!')}</h1>
+        <h2 className="font-heading text-2xl font-bold">{t('discovery.menuIsIn', "Menu's In!")}</h2>
+      </div>
+    );
+  }
 
   if (isLoading && recipes.length === 0) {
     return (
@@ -436,6 +472,24 @@ export default function DiscoveryPage() {
                       : t('discovery.captureNew', 'Capture a New Recipe')}
                   </button>
 
+                  {matchCount > 0 && (
+                    <button
+                      onClick={() => router.push('/capture')}
+                      className="w-full rounded-full bg-white/50 px-8 py-3.5 font-bold text-charcoal/60 border border-charcoal/10"
+                    >
+                      {t('discovery.captureNew', 'Capture a New Recipe')}
+                    </button>
+                  )}
+                  {ownsRound && (
+                    <button
+                      data-testid="discovery-nudge-family"
+                      onClick={() => setShowNudgeDialog(true)}
+                      className="w-full rounded-full bg-white/50 px-8 py-3.5 font-bold text-charcoal/60 border border-charcoal/10"
+                    >
+                      {t('planner.nudgeFamily', 'Nudge family')}
+                    </button>
+                  )}
+
                   <button
                     onClick={fetchCategories}
                     className="w-full rounded-full bg-white/50 px-8 py-3.5 font-bold text-charcoal/60 border border-charcoal/10 active:scale-95 transition-all hover:bg-white"
@@ -448,6 +502,8 @@ export default function DiscoveryPage() {
           </AnimatePresence>
         </div>
       </div>
+
+      <FamilyNudgeDialog open={showNudgeDialog} onClose={closeNudgeDialog} />
 
       {/* Control Buttons (Thumb Zone) */}
       <div className="mt-10 flex w-full max-w-sm shrink-0 items-center justify-between px-8 pb-4">

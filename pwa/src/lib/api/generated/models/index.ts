@@ -1070,6 +1070,17 @@ export function createVoteDtoFromDiscriminatorValue(
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {VotingSessionSnapshot}
+ */
+// @ts-ignore
+export function createVotingSessionSnapshotFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoVotingSessionSnapshot;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {WorkflowInstanceDetailDto_parameters}
  */
 // @ts-ignore
@@ -3394,6 +3405,49 @@ export function deserializeIntoVoteDto(
   return {
     vote: (n) => {
       voteDto.vote = n.getNumberValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param VotingSessionSnapshot The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoVotingSessionSnapshot(
+  votingSessionSnapshot: Partial<VotingSessionSnapshot> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    candidateCount: (n) => {
+      votingSessionSnapshot.candidateCount = n.getNumberValue();
+    },
+    coveredSlots: (n) => {
+      votingSessionSnapshot.coveredSlots = n.getNumberValue();
+    },
+    incarnationId: (n) => {
+      votingSessionSnapshot.incarnationId = n.getGuidValue();
+    },
+    phase: (n) => {
+      votingSessionSnapshot.phase = n.getEnumValue<VotingSessionSnapshot_phase>(
+        VotingSessionSnapshot_phaseObject
+      );
+    },
+    requiredSlots: (n) => {
+      votingSessionSnapshot.requiredSlots = n.getNumberValue();
+    },
+    revision: (n) => {
+      votingSessionSnapshot.revision = n.getNumberValue();
+    },
+    roundId: (n) => {
+      votingSessionSnapshot.roundId = n.getGuidValue();
+    },
+    smartDefaults: (n) => {
+      votingSessionSnapshot.smartDefaults = n.getObjectValue<SmartDefaultsDto>(
+        createSmartDefaultsDtoFromDiscriminatorValue
+      );
+    },
+    weekStartDate: (n) => {
+      votingSessionSnapshot.weekStartDate = n.getDateOnlyValue();
     },
   };
 }
@@ -6863,6 +6917,36 @@ export function serializeVoteDto(
 /**
  * Serializes information the current object
  * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param VotingSessionSnapshot The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeVotingSessionSnapshot(
+  writer: SerializationWriter,
+  votingSessionSnapshot: Partial<VotingSessionSnapshot> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!votingSessionSnapshot || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeNumberValue('candidateCount', votingSessionSnapshot.candidateCount);
+  writer.writeNumberValue('coveredSlots', votingSessionSnapshot.coveredSlots);
+  writer.writeGuidValue('incarnationId', votingSessionSnapshot.incarnationId);
+  writer.writeEnumValue<VotingSessionSnapshot_phase>('phase', votingSessionSnapshot.phase);
+  writer.writeNumberValue('requiredSlots', votingSessionSnapshot.requiredSlots);
+  writer.writeNumberValue('revision', votingSessionSnapshot.revision);
+  writer.writeGuidValue('roundId', votingSessionSnapshot.roundId);
+  writer.writeObjectValue<SmartDefaultsDto>(
+    'smartDefaults',
+    votingSessionSnapshot.smartDefaults,
+    serializeSmartDefaultsDto
+  );
+  writer.writeDateOnlyValue('weekStartDate', votingSessionSnapshot.weekStartDate);
+  writer.writeAdditionalData(votingSessionSnapshot.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
  * @param WorkflowInstanceDetailDto The instance to serialize from.
  * @param writer Serialization writer to use to serialize this model
  */
@@ -7225,6 +7309,49 @@ export interface VoteDto extends AdditionalDataHolder, Parsable {
    */
   vote?: number | null;
 }
+/**
+ * Fresh projection of the single operational voting round. Convergence is latched only for this host lifetime and never saves meals or closes voting.
+ */
+export interface VotingSessionSnapshot extends AdditionalDataHolder, Parsable {
+  /**
+   * Distinct consensus candidates excluding selected recipes.
+   */
+  candidateCount?: number | null;
+  /**
+   * The coveredSlots property
+   */
+  coveredSlots?: number | null;
+  /**
+   * Opaque host lifetime identity; only an authoritative read establishes a changed incarnation.
+   */
+  incarnationId?: Guid | null;
+  /**
+   * The phase property
+   */
+  phase?: VotingSessionSnapshot_phase | null;
+  /**
+   * Persisted empty dates before suggestions; null when unowned.
+   */
+  requiredSlots?: number | null;
+  /**
+   * Monotonic across rounds within this incarnation.
+   */
+  revision?: number | null;
+  /**
+   * The roundId property
+   */
+  roundId?: Guid | null;
+  /**
+   * The smartDefaults property
+   */
+  smartDefaults?: SmartDefaultsDto | null;
+  /**
+   * Active absolute Monday; null when unowned.
+   */
+  weekStartDate?: DateOnly | null;
+}
+export type VotingSessionSnapshot_phase =
+  (typeof VotingSessionSnapshot_phaseObject)[keyof typeof VotingSessionSnapshot_phaseObject];
 export interface WorkflowInstanceDetailDto extends AdditionalDataHolder, Parsable {
   /**
    * The createdAt property
@@ -7548,6 +7675,11 @@ export const UpdateRecipeDto_mealTypesObject = {
   Dessert: 'Dessert',
   Appetizer: 'Appetizer',
   Beverage: 'Beverage',
+} as const;
+export const VotingSessionSnapshot_phaseObject = {
+  Unowned: 'unowned',
+  Collecting: 'collecting',
+  Converged: 'converged',
 } as const;
 export const WorkflowInstanceDetailDto_statusObject = {
   Pending: 'Pending',

@@ -36,6 +36,121 @@ public class ScheduleServiceTests : IAsyncLifetime
         await _factory.DisposeAsync();
     }
 
+    public static IEnumerable<object[]> CoverageCases() =>
+        from required in Enumerable.Range(0, 8)
+        from candidates in Enumerable.Range(0, 10)
+        select new object[] { required, candidates };
+
+    [Theory]
+    [MemberData(nameof(CoverageCases))]
+    public async Task SmartDefaults_BoundedDistinctCoverage(int required, int candidates)
+    {
+        var monday = new DateOnly(2026, 10, 19);
+        var selected = new Recipe { Id = Guid.NewGuid(), Name = "Selected consensus" };
+        var recipes = Enumerable.Range(0, candidates).Select(i => new Recipe
+            { Id = Guid.NewGuid(), Name = $"Candidate {i}" }).ToArray();
+        _db.Recipes.AddRange(recipes.Append(selected));
+        foreach (var recipe in recipes.Append(selected))
+            _db.RecipeVotes.Add(new RecipeVote { RecipeId = recipe.Id,
+                FamilyMemberId = _factory.DefaultFamilyMemberId, Vote = VoteType.Like });
+        var occupied = Enumerable.Range(0, 7 - required).ToHashSet();
+        foreach (var day in occupied)
+            _db.CalendarEvents.Add(new CalendarEvent { Id = Guid.NewGuid(), Date = monday.AddDays(day),
+                RecipeId = day == 0 ? selected.Id : null,
+                Status = day == 0 ? CalendarEventStatus.Planned : CalendarEventStatus.Skipped,
+                NonCookingKind = day == 0 ? null : "eating_out" });
+        // In the fully empty case there is no selected recipe identity to exclude.
+        if (required == 7) _db.RecipeVotes.Remove(_db.RecipeVotes.Local.Single(v => v.RecipeId == selected.Id));
+        await _db.SaveChangesAsync();
+
+        var defaults = await _service.GetSmartDefaultsAsync(1);
+
+        Assert.Equal(candidates, defaults.ConsensusRecipesCount);
+        Assert.Equal(Math.Min(required, candidates), defaults.PreSelectedRecipes.Count);
+        Assert.Equal(required - Math.Min(required, candidates), defaults.OpenSlots.Count);
+        Assert.Equal(defaults.PreSelectedRecipes.Count,
+            defaults.PreSelectedRecipes.Select(x => x.RecipeId).Distinct().Count());
+        Assert.All(defaults.PreSelectedRecipes, x =>
+        {
+            Assert.InRange(x.DayIndex, 0, 6);
+            Assert.DoesNotContain(x.DayIndex, occupied);
+            Assert.NotEqual(selected.Id, x.RecipeId);
+        });
+        Assert.Equal(required, defaults.PreSelectedRecipes.Select(x => x.DayIndex)
+            .Concat(defaults.OpenSlots.Select(x => x.DayIndex)).Distinct().Count());
+        Assert.Equal(occupied.Count, _db.CalendarEvents.Count());
+    }
+
+    [Fact]
+    public async Task SmartDefaults_ExcludesSelectedIdentityFromPlacementAndCandidateCount()
+    {
+        var monday = new DateOnly(2026, 10, 19);
+        var selected = new Recipe { Id = Guid.NewGuid(), Name = "Already saved" };
+        var candidate = new Recipe { Id = Guid.NewGuid(), Name = "New candidate" };
+        _db.Recipes.AddRange(selected, candidate);
+        foreach (var recipe in new[] { selected, candidate })
+            _db.RecipeVotes.Add(new RecipeVote { RecipeId = recipe.Id,
+                FamilyMemberId = _factory.DefaultFamilyMemberId, Vote = VoteType.Like });
+        _db.CalendarEvents.Add(new CalendarEvent { Id = Guid.NewGuid(), Date = monday,
+            RecipeId = selected.Id, Status = CalendarEventStatus.Planned });
+        await _db.SaveChangesAsync();
+
+        var defaults = await _service.GetSmartDefaultsAsync(1);
+
+        Assert.Equal(monday, defaults.WeekStartDate);
+        Assert.Equal(1, defaults.ConsensusRecipesCount);
+        var placement = Assert.Single(defaults.PreSelectedRecipes);
+        Assert.Equal(candidate.Id, placement.RecipeId);
+        Assert.Equal(1, placement.DayIndex);
+        Assert.Equal(5, defaults.OpenSlots.Count);
+    }
+
+    [Fact]
+    public async Task SmartDefaults_FourOtherPlansLeaveExactlyThreePlacementsInRequestedWeek()
+    {
+        var monday = new DateOnly(2026, 10, 19);
+        for (var i = 0; i < 4; i++)
+            _db.CalendarEvents.Add(new CalendarEvent { Id = Guid.NewGuid(), Date = monday.AddDays(i),
+                Status = CalendarEventStatus.Skipped, NonCookingKind = "eating_out" });
+        for (var i = 0; i < 3; i++)
+        {
+            var recipe = new Recipe { Id = Guid.NewGuid(), Name = $"Candidate {i}" };
+            _db.Recipes.Add(recipe);
+            _db.RecipeVotes.Add(new RecipeVote { RecipeId = recipe.Id,
+                FamilyMemberId = _factory.DefaultFamilyMemberId, Vote = VoteType.Like });
+        }
+        await _db.SaveChangesAsync();
+
+        var defaults = await _service.GetSmartDefaultsAsync(1);
+
+        Assert.Equal(monday, defaults.WeekStartDate);
+        Assert.Equal(3, defaults.ConsensusRecipesCount);
+        Assert.Equal(new[] { 4, 5, 6 }, defaults.PreSelectedRecipes.Select(x => x.DayIndex));
+        Assert.Empty(defaults.OpenSlots);
+        Assert.Equal(4, _db.CalendarEvents.Count());
+    }
+
+    [Fact]
+    public async Task SmartDefaults_FourMembersStillRequireThreeLikes()
+    {
+        var others = Enumerable.Range(0, 3).Select(i => new FamilyMember
+            { Id = Guid.NewGuid(), Name = $"Member {i}" }).ToArray();
+        _db.FamilyMembers.AddRange(others);
+        var recipe = new Recipe { Id = Guid.NewGuid(), Name = "Not yet consensus" };
+        _db.Recipes.Add(recipe);
+        _db.RecipeVotes.AddRange(
+            new RecipeVote { RecipeId = recipe.Id, FamilyMemberId = _factory.DefaultFamilyMemberId, Vote = VoteType.Like },
+            new RecipeVote { RecipeId = recipe.Id, FamilyMemberId = others[0].Id, Vote = VoteType.Like });
+        await _db.SaveChangesAsync();
+
+        var defaults = await _service.GetSmartDefaultsAsync(1);
+
+        Assert.Equal(4, defaults.FamilySize);
+        Assert.Equal(3, defaults.ConsensusThreshold);
+        Assert.Equal(0, defaults.ConsensusRecipesCount);
+        Assert.Empty(defaults.PreSelectedRecipes);
+    }
+
     [Fact]
     public async Task WeeklyInterest_RevoteReplacesTouchedRowsRemovesZeroAndPreservesUntouched()
     {

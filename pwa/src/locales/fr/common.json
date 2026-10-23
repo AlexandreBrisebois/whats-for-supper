@@ -340,6 +340,8 @@
     "plantPoweredEmoji": "Végétarien ! 🌿"
   },
   "discovery": {
+    "weDidIt": "On a réussi !",
+    "menuIsIn": "Le menu est prêt !",
     "wrap": "C'est tout pour aujourd'hui !",
     "wrapUpTitle": "C'est tout pour aujourd'hui !",
     "matchesFound": "Vous avez trouvé {{count}} matchs avec votre famille ! On cuisine ?",

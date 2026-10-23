@@ -20,6 +20,8 @@ import {
   type DiscoveryItemRequestBuilder,
 } from './item/index';
 // @ts-ignore
+import { SessionRequestBuilderRequestsMetadata, type SessionRequestBuilder } from './session/index';
+// @ts-ignore
 import {
   type AdditionalDataHolder,
   type BaseRequestBuilder,
@@ -77,6 +79,10 @@ export interface DiscoveryRequestBuilder extends BaseRequestBuilder<DiscoveryReq
    * The categories property
    */
   get categories(): CategoriesRequestBuilder;
+  /**
+   * The session property
+   */
+  get session(): SessionRequestBuilder;
   /**
    * Gets an item from the ApiSdk.api.discovery.item collection
    * @param id Unique identifier of the item
@@ -149,6 +155,9 @@ export const DiscoveryRequestBuilderNavigationMetadata: Record<
   },
   categories: {
     requestsMetadata: CategoriesRequestBuilderRequestsMetadata,
+  },
+  session: {
+    requestsMetadata: SessionRequestBuilderRequestsMetadata,
   },
 };
 /**

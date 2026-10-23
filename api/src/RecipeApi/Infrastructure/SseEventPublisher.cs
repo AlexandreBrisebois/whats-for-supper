@@ -1,4 +1,5 @@
 using RecipeApi.Dto;
+using RecipeApi.Services;
 
 namespace RecipeApi.Infrastructure;
 
@@ -10,26 +11,31 @@ namespace RecipeApi.Infrastructure;
 public class SseEventPublisher : IScheduleEventPublisher
 {
     private readonly SseConnectionManager _manager;
+    private readonly VotingSession? _session;
 
-    public SseEventPublisher(SseConnectionManager manager)
+    public SseEventPublisher(SseConnectionManager manager, VotingSession? session = null)
     {
         _manager = manager;
+        _session = session;
     }
 
     public Task PublishSlotUpdatedAsync(DateOnly date, ScheduleRecipeDto? recipe, int status, string? excludeConnectionId = null, NonCookingPlanDto? nonCooking = null)
-        => _manager.BroadcastAsync("slot_updated", new
+        => PublishAndRefreshAsync("slot_updated", new
         {
             date = date.ToString("yyyy-MM-dd"),
             recipe,
             status,
             nonCooking
-        }, excludeConnectionId);
+        }, excludeConnectionId, DeploymentCalendar.Monday(date));
 
     public Task PublishWeekUpdatedAsync(ScheduleDays schedule, string? excludeConnectionId = null, int? echoSeq = null)
-        => _manager.BroadcastAsync(
+        => PublishAndRefreshAsync(
             "week_updated",
             echoSeq.HasValue ? new { schedule, echoSeq } : new { schedule },
-            excludeConnectionId);
+            excludeConnectionId, schedule.WeekStartDate);
+
+    public Task PublishVotingSessionUpdatedAsync(VotingSessionSnapshot session)
+        => _manager.BroadcastAsync("voting_session_updated", new { session });
 
     public Task PublishVoteUpdatedAsync(Guid recipeId, int voteCount, string? excludeConnectionId = null)
         => _manager.BroadcastAsync("vote_updated", new { recipeId, voteCount }, excludeConnectionId);
@@ -41,13 +47,13 @@ public class SseEventPublisher : IScheduleEventPublisher
         => _manager.BroadcastAsync("fill_the_gap_invalidated", new { weekOffset, weekStartDate }, excludeConnectionId);
 
     public Task PublishAllSuggestionsInvalidatedAsync()
-        => _manager.BroadcastAsync("fill_the_gap_invalidated", new { allWeeks = true });
+        => PublishAndRefreshAsync("fill_the_gap_invalidated", new { allWeeks = true });
 
     public Task PublishRecipeReadyAsync(Guid recipeId, string name, string? imageUrl, string? excludeConnectionId = null)
-        => _manager.BroadcastAsync("recipe_ready", new { recipeId, name, imageUrl }, excludeConnectionId);
+        => PublishAndRefreshAsync("recipe_ready", new { recipeId, name, imageUrl }, excludeConnectionId);
 
     public Task PublishRecipeFailedAsync(Guid recipeId, Guid workflowInstanceId, string errorMessage, string failedStep, object? partialData, string? excludeConnectionId = null)
-        => _manager.BroadcastAsync("recipe_failed", new
+        => PublishAndRefreshAsync("recipe_failed", new
         {
             recipeId,
             workflowInstanceId,
@@ -77,4 +83,10 @@ public class SseEventPublisher : IScheduleEventPublisher
                 readOnly = x.ReadOnly
             })
         }, excludeConnectionId);
+    private async Task PublishAndRefreshAsync(string eventType, object payload, string? excludeConnectionId = null, DateOnly? affectedWeek = null)
+    {
+        await _manager.BroadcastAsync(eventType, payload, excludeConnectionId);
+        if (_session is not null) await _session.RefreshAfterMutationAsync(affectedWeek);
+    }
+
 }
