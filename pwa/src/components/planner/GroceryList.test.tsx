@@ -258,6 +258,17 @@ describe('GroceryList — everyday extras', () => {
     );
   });
 
+  it('keeps the composer focused when the Add button is pressed', () => {
+    render(<GroceryList weekOffset={0} items={[]} extras={[]} />);
+    const input = screen.getByRole('combobox', { name: 'Add an extra' });
+    const add = screen.getByRole('button', { name: 'Add' });
+    input.focus();
+    expect(input).toHaveFocus();
+
+    expect(fireEvent.pointerDown(add)).toBe(false);
+    expect(input).toHaveFocus();
+  });
+
   it('queries only while the eligible composer is focused and cancels on focus exit', async () => {
     vi.useFakeTimers();
     mockSuggestExtras.mockResolvedValue(['Coffee beans']);

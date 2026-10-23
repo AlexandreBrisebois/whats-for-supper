@@ -1043,6 +1043,7 @@ export function GroceryList({
             <button
               type="submit"
               disabled={!extraName.trim() || addState === 'pending'}
+              onPointerDown={(event) => event.preventDefault()}
               className="min-h-12 rounded-2xl bg-terracotta px-5 font-bold text-white disabled:opacity-50 focus:ring-2 focus:ring-charcoal"
             >
               {addState === 'pending'
