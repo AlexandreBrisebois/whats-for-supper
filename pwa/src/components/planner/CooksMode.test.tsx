@@ -110,7 +110,7 @@ describe('CooksMode', () => {
     const allStepsButton = await screen.findByRole('button', { name: 'All steps' });
     expect(allStepsButton).toHaveAttribute('aria-pressed', 'true');
     expect(allStepsButton).toHaveTextContent('');
-    expect(allStepsButton.querySelector('.lucide-layers-3')).toBeInTheDocument();
+    expect(allStepsButton.querySelector('.lucide-file')).toBeInTheDocument();
     fireEvent.click(screen.getByTestId('cooks-mode-step-next'));
     expect(screen.getByTestId('all-steps-recipe-list')).toHaveTextContent('Cook pasta');
   });
@@ -128,7 +128,7 @@ describe('CooksMode', () => {
     const stepByStepButton = await screen.findByRole('button', { name: 'Step by step' });
     const allStepsButton = screen.getByRole('button', { name: 'All steps' });
     expect(stepByStepButton).toHaveAttribute('aria-pressed', 'true');
-    expect(stepByStepButton.querySelector('.lucide-file')).toBeInTheDocument();
+    expect(stepByStepButton.querySelector('.lucide-layers-3')).toBeInTheDocument();
     expect(screen.queryByText('Remembered for Alex')).not.toBeInTheDocument();
     fireEvent.click(allStepsButton);
 
@@ -137,7 +137,7 @@ describe('CooksMode', () => {
     });
     expect(allStepsButton).toHaveAttribute('aria-pressed', 'true');
     expect(stepByStepButton).toHaveAttribute('aria-pressed', 'false');
-    expect(allStepsButton.querySelector('.lucide-layers-3')).toBeInTheDocument();
+    expect(allStepsButton.querySelector('.lucide-file')).toBeInTheDocument();
     fireEvent.click(screen.getByTestId('cooks-mode-step-next'));
     expect(screen.getByTestId('all-steps-recipe-list')).toHaveTextContent('Cook pasta');
     expect(screen.getByTestId('cooks-mode-hero')).toHaveClass('h-48');

@@ -501,9 +501,9 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
                       }`}
                     >
                       {mode === 'all-steps' ? (
-                        <Layers3 size={20} aria-hidden="true" />
-                      ) : (
                         <File size={20} aria-hidden="true" />
+                      ) : (
+                        <Layers3 size={20} aria-hidden="true" />
                       )}
                     </button>
                   );
@@ -617,13 +617,10 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
           <div
             className={`min-h-full flex flex-col items-start justify-start ${singlePageCooking ? 'px-4 pt-5 pb-8 md:px-10 md:pt-8 lg:px-16' : 'px-8 pt-12 pb-24 md:px-16 md:pt-16 lg:px-24 lg:pt-16'} text-left`}
           >
-            <AnimatePresence mode="wait">
+            <AnimatePresence>
               <motion.div
                 key={singlePageEnabled ? 'single-page' : currentStep}
-                initial={singlePageEnabled ? false : { opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.2 }}
+                initial={false}
                 className="w-full max-w-4xl"
               >
                 {!isPrepStep && !singlePageEnabled && (

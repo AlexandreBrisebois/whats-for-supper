@@ -221,13 +221,17 @@ test.describe('Grocery List — everyday extras', () => {
   test('adds a distinct extra from the bottom composer and preserves it after reload', async ({
     page,
   }) => {
+    await page.setViewportSize({ width: 320, height: 500 });
     await setupGroceryPage(page);
     const composer = page.getByTestId('grocery-extra-composer');
     await expect(composer).toBeVisible();
-    await composer.getByRole('combobox').fill('Coffee');
+    const input = composer.getByRole('combobox');
+    await input.fill('Coffee');
     await composer.getByRole('button', { name: 'Add' }).click();
     const toast = page.getByTestId('toast');
     await expect(toast).toContainText('Saved to Grocery');
+    await expect(toast).toBeInViewport();
+    await expect(input).toBeFocused();
     await expect
       .poll(() =>
         toast.evaluate((element) => {
