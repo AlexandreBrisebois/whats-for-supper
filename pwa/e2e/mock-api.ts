@@ -1583,74 +1583,74 @@ export async function setupCommonRoutes(
       .slice(0, 3);
     await route.fulfill({ status: 200, json: { names } });
   });
-  await page.route(
-    (url) => /^\/api\/grocery-extras\/[^/]+$/.test(url.pathname),
-    async (route) => {
-      const request = route.request();
-      const id = decodeURIComponent(new URL(request.url()).pathname.split('/').at(-1) ?? '');
-      const current = groceryExtras.get(id);
-      if (current?.removed)
-        return route.fulfill({ status: 409, json: { message: 'Already removed.', absent: true } });
-      if (!current) return route.fulfill({ status: 404, json: { message: 'Not found.' } });
-      if (request.method() === 'PATCH') {
-        const body = request.postDataJSON() as Record<string, unknown>;
-        const fields = ['name', 'checked', 'grocerySection'].filter(
-          (field) => body[field] !== undefined
-        );
-        if (
-          body.weekStartDate !== current.occurrenceWeekStartDate ||
-          current.occurrenceWeekStartDate !== scheduleCalendar.currentWeekStartDate ||
-          fields.length !== 1 ||
-          (fields[0] === 'name' && (typeof body.name !== 'string' || !body.name.trim())) ||
-          (fields[0] === 'grocerySection' &&
-            ![
-              'Produce',
-              'Deli',
-              'Bakery',
-              'Meat',
-              'Seafood',
-              'Dairy & Eggs',
-              'Frozen',
-              'Pantry',
-              'Beverages',
-              'Grocery',
-            ].includes(String(body.grocerySection)))
-        )
-          return route.fulfill({
-            status: 400,
-            json: { message: 'Supply one valid current-week change.' },
-          });
-        if (body.expectedVersion !== current.version)
-          return route.fulfill({ status: 409, json: { message: 'Changed elsewhere.', current } });
-        const updated = { ...current, version: current.version + 1 };
-        if (typeof body.name === 'string') {
-          updated.name = body.name.trim();
-          updated.normalizedKey = updated.name.toLowerCase().replace(/\s+/g, ' ');
-          extraHistory.unshift(updated.name);
-        }
-        if (typeof body.checked === 'boolean') updated.checked = body.checked;
-        if (typeof body.grocerySection === 'string') updated.grocerySection = body.grocerySection;
-        groceryExtras.set(id, updated);
-        await emitExtras();
-        return route.fulfill({ status: 200, json: updated });
+  await page.route('**/api/grocery-extras/*', async (route) => {
+    const requestUrl = new URL(route.request().url());
+    if (requestUrl.pathname.endsWith('/suggestions')) return route.fallback();
+
+    const request = route.request();
+    const id = decodeURIComponent(requestUrl.pathname.split('/').at(-1) ?? '');
+    const current = groceryExtras.get(id);
+    if (current?.removed)
+      return route.fulfill({ status: 409, json: { message: 'Already removed.', absent: true } });
+    if (!current) return route.fulfill({ status: 404, json: { message: 'Not found.' } });
+    if (request.method() === 'PATCH') {
+      const body = request.postDataJSON() as Record<string, unknown>;
+      const fields = ['name', 'checked', 'grocerySection'].filter(
+        (field) => body[field] !== undefined
+      );
+      if (
+        body.weekStartDate !== current.occurrenceWeekStartDate ||
+        current.occurrenceWeekStartDate !== scheduleCalendar.currentWeekStartDate ||
+        fields.length !== 1 ||
+        (fields[0] === 'name' && (typeof body.name !== 'string' || !body.name.trim())) ||
+        (fields[0] === 'grocerySection' &&
+          ![
+            'Produce',
+            'Deli',
+            'Bakery',
+            'Meat',
+            'Seafood',
+            'Dairy & Eggs',
+            'Frozen',
+            'Pantry',
+            'Beverages',
+            'Grocery',
+          ].includes(String(body.grocerySection)))
+      )
+        return route.fulfill({
+          status: 400,
+          json: { message: 'Supply one valid current-week change.' },
+        });
+      if (body.expectedVersion !== current.version)
+        return route.fulfill({ status: 409, json: { message: 'Changed elsewhere.', current } });
+      const updated = { ...current, version: current.version + 1 };
+      if (typeof body.name === 'string') {
+        updated.name = body.name.trim();
+        updated.normalizedKey = updated.name.toLowerCase().replace(/\s+/g, ' ');
+        extraHistory.unshift(updated.name);
       }
-      if (request.method() === 'DELETE') {
-        const url = new URL(request.url());
-        const expected = Number(url.searchParams.get('expectedVersion'));
-        if (
-          url.searchParams.get('weekStartDate') !== current.occurrenceWeekStartDate ||
-          current.occurrenceWeekStartDate !== scheduleCalendar.currentWeekStartDate
-        )
-          return route.fulfill({ status: 400, json: { message: 'Current occurrence required.' } });
-        if (expected !== current.version)
-          return route.fulfill({ status: 409, json: { message: 'Changed elsewhere.', current } });
-        groceryExtras.set(id, { ...current, removed: true, version: current.version + 1 });
-        await emitExtras();
-        return route.fulfill({ status: 204 });
-      }
-      return route.fallback();
+      if (typeof body.checked === 'boolean') updated.checked = body.checked;
+      if (typeof body.grocerySection === 'string') updated.grocerySection = body.grocerySection;
+      groceryExtras.set(id, updated);
+      await emitExtras();
+      return route.fulfill({ status: 200, json: updated });
     }
-  );
+    if (request.method() === 'DELETE') {
+      const url = new URL(request.url());
+      const expected = Number(url.searchParams.get('expectedVersion'));
+      if (
+        url.searchParams.get('weekStartDate') !== current.occurrenceWeekStartDate ||
+        current.occurrenceWeekStartDate !== scheduleCalendar.currentWeekStartDate
+      )
+        return route.fulfill({ status: 400, json: { message: 'Current occurrence required.' } });
+      if (expected !== current.version)
+        return route.fulfill({ status: 409, json: { message: 'Changed elsewhere.', current } });
+      groceryExtras.set(id, { ...current, removed: true, version: current.version + 1 });
+      await emitExtras();
+      return route.fulfill({ status: 204 });
+    }
+    return route.fallback();
+  });
   await page.route('**/api/grocery-extras', async (route) => {
     if (route.request().method() !== 'POST') return route.fallback();
     const body = route.request().postDataJSON() as {
