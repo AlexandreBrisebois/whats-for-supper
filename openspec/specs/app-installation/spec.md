@@ -29,6 +29,20 @@ For the ordinary stable non-demo application, GET `/manifest.json` SHALL return 
 - **THEN** it requests standalone portrait presentation, cream background `#FDFCF0` and theme color `#CD5D45`
 - **AND** this metadata does not establish that a browser installed or honored that presentation
 
+### Requirement: Publish consistent app-controlled description
+
+The manifest and initial document description SHALL be exactly `Swipe, Match, Cook.` across stable/beta and production/demo variants, independently of PDF sharing configuration. This description change SHALL preserve names, IDs, origin, manifest URL, start URL, icons and launch behavior. These declarations SHALL NOT certify Android installed-app details or existing-install refresh.
+
+#### Scenario: Read public description metadata
+- **WHEN** a visitor reads the public manifest and initial Welcome HTML for any identity variant
+- **THEN** both descriptions are exactly `Swipe, Match, Cook.`
+- **AND** existing installation identity and presentation fields remain unchanged
+
+#### Scenario: Existing installation retains browser-owned metadata
+- **WHEN** app-controlled description metadata changes while an installation already exists
+- **THEN** the application does not replace installation identity to force a refresh
+- **AND** a successful manifest or HTML response alone does not establish that Android displays the new description
+
 ### Requirement: Advertise ordinary install icons
 
 The ordinary stable non-demo manifest SHALL advertise PNG icons at 32, 180, 192 and 512 pixels, including separate maskable 192 and 512 pixel icons. The document metadata SHALL identify the 32 pixel favicon and 180 pixel Apple touch icon from the same ordinary icon set.
