@@ -14,6 +14,7 @@ import {
   Check,
   Flag,
   Layers3,
+  File,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
@@ -402,6 +403,10 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
   }
 
   const currentStepData = steps[activeRecipeStepIndex];
+  const cookingViewLabel =
+    cookingViewMode === 'all-steps'
+      ? t('cook.viewAllSteps', 'All steps')
+      : t('cook.viewStepByStep', 'Step by step');
 
   return (
     <motion.div
@@ -430,22 +435,24 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
       {/* Large Hero Header */}
       <div
         data-testid="cooks-mode-hero"
-        className={`relative ${singlePageCooking ? 'h-36' : 'h-48'} md:h-full w-full md:w-[40%] shrink-0 overflow-hidden cursor-pointer group border-b md:border-b-0 md:border-r border-charcoal/5`}
+        className={`relative ${singlePageCooking ? 'h-36' : 'h-48'} md:h-full w-full md:w-[40%] shrink-0 overflow-visible cursor-pointer group border-b md:border-b-0 md:border-r border-charcoal/5`}
         onClick={() => setShowDetailId(initialRecipe.id)}
       >
-        {initialRecipe.image ? (
-          /* eslint-disable-next-line @next/next/no-img-element */
-          <img
-            src={getImageUrl(initialRecipe.image)}
-            alt={initialRecipe.name || 'Recipe'}
-            className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
-          />
-        ) : (
-          <div className="absolute inset-0 bg-charcoal/5 flex items-center justify-center">
-            <UtensilsCrossed size={48} className="text-charcoal/10" />
-          </div>
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-charcoal via-charcoal/50 to-transparent" />
+        <div className="absolute inset-0 overflow-hidden">
+          {initialRecipe.image ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={getImageUrl(initialRecipe.image)}
+              alt={initialRecipe.name || 'Recipe'}
+              className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+            />
+          ) : (
+            <div className="absolute inset-0 bg-charcoal/5 flex items-center justify-center">
+              <UtensilsCrossed size={48} className="text-charcoal/10" />
+            </div>
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-charcoal via-charcoal/50 to-transparent" />
+        </div>
 
         <div
           className={`absolute ${singlePageCooking ? 'bottom-3 left-5 right-5 md:bottom-6 md:left-8 md:right-8' : 'bottom-6 left-8 right-8'}`}
@@ -457,13 +464,94 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
           </p>
           <h2
             data-testid="cooks-mode-recipe-name"
-            className={`${singlePageCooking ? 'line-clamp-2 md:line-clamp-none mb-2 md:mb-4' : 'mb-4'} pr-12 text-xl md:text-3xl font-heading font-black text-white leading-tight drop-shadow-md`}
+            className={`${singlePageCooking ? 'line-clamp-2 md:line-clamp-none mb-2 md:mb-4' : 'mb-4'} ${recipeDetails?.canReimport ? 'pr-28' : 'pr-14'} text-xl md:text-3xl font-heading font-black text-white leading-tight drop-shadow-md`}
           >
             {initialRecipe.name || t('cook.untitledRecipe', 'Untitled Recipe')}
           </h2>
 
           <div className="flex items-end justify-between gap-3">
-            <div className="flex flex-wrap gap-2">
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
+              <div className="relative z-20">
+                <button
+                  ref={viewButtonRef}
+                  type="button"
+                  data-testid="cooking-view-trigger"
+                  aria-expanded={viewChooserOpen}
+                  aria-haspopup="menu"
+                  aria-label={tWithVars('cook.viewAccessible', 'Cooking view: {{view}}', {
+                    view: cookingViewLabel,
+                  })}
+                  disabled={isEditing || isCompleting}
+                  title={
+                    isEditing
+                      ? t('cook.viewEditBlocked', 'Save or cancel your edit to change view.')
+                      : cookingViewLabel
+                  }
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setViewChooserOpen((open) => !open);
+                  }}
+                  className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/40 bg-white/90 text-charcoal shadow-md backdrop-blur-md transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {cookingViewMode === 'all-steps' ? (
+                    <Layers3 size={20} aria-hidden="true" />
+                  ) : (
+                    <File size={20} aria-hidden="true" />
+                  )}
+                </button>
+                {viewChooserOpen && (
+                  <div
+                    role="menu"
+                    aria-label={t('cook.view', 'View')}
+                    onClick={(event) => event.stopPropagation()}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Escape') {
+                        setViewChooserOpen(false);
+                        viewButtonRef.current?.focus();
+                      }
+                    }}
+                    className="absolute left-0 top-full mt-2 w-64 rounded-2xl border border-charcoal/10 bg-white p-2 text-charcoal shadow-xl md:bottom-full md:top-auto md:mb-2 md:mt-0"
+                  >
+                    {(['step-by-step', 'all-steps'] as const).map((mode) => {
+                      const label =
+                        mode === 'all-steps'
+                          ? t('cook.viewAllSteps', 'All steps')
+                          : t('cook.viewStepByStep', 'Step by step');
+                      return (
+                        <button
+                          key={mode}
+                          type="button"
+                          role="menuitemradio"
+                          aria-checked={cookingViewMode === mode}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            chooseCookingView(mode);
+                          }}
+                          className="flex min-h-11 w-full items-center justify-between rounded-xl px-3 text-left font-semibold hover:bg-sage/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta"
+                        >
+                          <span className="flex items-center gap-3">
+                            {mode === 'all-steps' ? (
+                              <Layers3 size={18} aria-hidden="true" />
+                            ) : (
+                              <File size={18} aria-hidden="true" />
+                            )}
+                            {label}
+                          </span>
+                          {cookingViewMode === mode && <Check size={18} aria-hidden="true" />}
+                        </button>
+                      );
+                    })}
+                    {selectedFamilyMember && currentViewSaveState !== 'failed' && (
+                      <p className="px-3 pb-2 pt-3 text-xs font-semibold text-charcoal/55">
+                        {tWithVars('cook.viewRemembered', 'Remembered for {{name}}', {
+                          name: selectedFamilyMember.name,
+                        })}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+
               {/* Status Pills: Glassmorphic Overlay */}
               <div className="inline-flex items-center space-x-2 bg-white/20 backdrop-blur-md border border-white/30 px-4 py-2 rounded-full text-white shadow-xl">
                 <span
@@ -482,135 +570,63 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
               )}
             </div>
 
-            {!isEditing && (!isPrepStep || recipeDetails?.canReimport) && (
-              <div className="flex shrink-0 items-center gap-2">
-                {recipeDetails?.canReimport && (
-                  <button
-                    type="button"
-                    data-testid={
-                      isPrepStep ? 'cooks-mode-report-ingredients' : 'cooks-mode-report-steps'
-                    }
-                    aria-label={
-                      isPrepStep ? 'Report issue with ingredients' : 'Report issue with steps'
-                    }
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      setReportContext(isPrepStep ? 'ingredients' : 'steps');
-                    }}
-                    className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/40 bg-white/80 text-terracotta/70 shadow-md backdrop-blur-md transition hover:bg-white active:scale-90"
-                  >
-                    <Flag size={20} aria-hidden="true" />
-                  </button>
-                )}
-                {!isPrepStep && !singlePageEnabled && (
-                  <button
-                    type="button"
-                    data-testid="cooks-mode-edit-step"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      setIsEditing(true);
-                      setEditingStepIndex(activeRecipeStepIndex);
-                      setEditingValue(
-                        currentStepData.editableInstruction ?? currentStepData.instruction
-                      );
-                    }}
-                    className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/40 bg-white/80 text-charcoal/60 shadow-md backdrop-blur-md transition hover:bg-white active:scale-90"
-                    aria-label="Edit step"
-                  >
-                    <Pencil size={20} aria-hidden="true" />
-                  </button>
-                )}
+            {!isEditing && !isPrepStep && !singlePageEnabled && (
+              <div className="flex shrink-0 items-center">
+                <button
+                  type="button"
+                  data-testid="cooks-mode-edit-step"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setIsEditing(true);
+                    setEditingStepIndex(activeRecipeStepIndex);
+                    setEditingValue(
+                      currentStepData.editableInstruction ?? currentStepData.instruction
+                    );
+                  }}
+                  className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/40 bg-white/80 text-charcoal/60 shadow-md backdrop-blur-md transition hover:bg-white active:scale-90"
+                  aria-label="Edit step"
+                >
+                  <Pencil size={20} aria-hidden="true" />
+                </button>
               </div>
             )}
           </div>
         </div>
       </div>
 
-      <div className="absolute left-4 top-4 z-[110]">
-        <button
-          ref={viewButtonRef}
-          type="button"
-          data-testid="cooking-view-trigger"
-          aria-expanded={viewChooserOpen}
-          aria-haspopup="menu"
-          aria-label={tWithVars('cook.viewAccessible', 'Cooking view: {{view}}', {
-            view:
-              cookingViewMode === 'all-steps'
-                ? t('cook.viewAllSteps', 'All steps')
-                : t('cook.viewStepByStep', 'Step by step'),
-          })}
-          disabled={isEditing || isCompleting}
-          title={
-            isEditing ? t('cook.viewEditBlocked', 'Save or cancel your edit to change view.') : ''
-          }
-          onClick={(event) => {
-            event.stopPropagation();
-            setViewChooserOpen((open) => !open);
-          }}
-          className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/40 bg-white/90 px-4 font-bold text-charcoal shadow-md backdrop-blur-md transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          <Layers3 size={18} aria-hidden="true" />
-          <span>{t('cook.view', 'View')}</span>
-        </button>
-        {viewChooserOpen && (
-          <div
-            role="menu"
-            aria-label={t('cook.view', 'View')}
-            onKeyDown={(event) => {
-              if (event.key === 'Escape') {
-                setViewChooserOpen(false);
-                viewButtonRef.current?.focus();
-              }
+      <div
+        data-testid="cooks-mode-top-actions"
+        className="absolute right-4 top-4 z-[110] flex items-center gap-2"
+      >
+        {!isEditing && recipeDetails?.canReimport && (
+          <button
+            type="button"
+            data-testid={isPrepStep ? 'cooks-mode-report-ingredients' : 'cooks-mode-report-steps'}
+            aria-label={isPrepStep ? 'Report issue with ingredients' : 'Report issue with steps'}
+            onClick={(event) => {
+              event.stopPropagation();
+              setReportContext(isPrepStep ? 'ingredients' : 'steps');
             }}
-            className="mt-2 w-64 rounded-2xl border border-charcoal/10 bg-white p-2 text-charcoal shadow-xl"
+            className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/40 bg-white/80 text-terracotta/70 shadow-md backdrop-blur-md transition hover:bg-white active:scale-90"
           >
-            {(['step-by-step', 'all-steps'] as const).map((mode) => {
-              const label =
-                mode === 'all-steps'
-                  ? t('cook.viewAllSteps', 'All steps')
-                  : t('cook.viewStepByStep', 'Step by step');
-              return (
-                <button
-                  key={mode}
-                  type="button"
-                  role="menuitemradio"
-                  aria-checked={cookingViewMode === mode}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    chooseCookingView(mode);
-                  }}
-                  className="flex min-h-11 w-full items-center justify-between rounded-xl px-3 text-left font-semibold hover:bg-sage/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta"
-                >
-                  <span>{label}</span>
-                  {cookingViewMode === mode && <Check size={18} aria-hidden="true" />}
-                </button>
-              );
-            })}
-            {selectedFamilyMember && currentViewSaveState !== 'failed' && (
-              <p className="px-3 pb-2 pt-3 text-xs font-semibold text-charcoal/55">
-                {tWithVars('cook.viewRemembered', 'Remembered for {{name}}', {
-                  name: selectedFamilyMember.name,
-                })}
-              </p>
-            )}
-          </div>
+            <Flag size={20} aria-hidden="true" />
+          </button>
+        )}
+        {!showDetailId && (
+          <button
+            data-testid="close-cooks-mode"
+            aria-label="Close cook's mode"
+            title="Close cook's mode"
+            onClick={(event) => {
+              event.stopPropagation();
+              onClose();
+            }}
+            className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/40 bg-white/80 text-charcoal/60 shadow-md backdrop-blur-md transition hover:bg-white active:scale-90"
+          >
+            <X size={20} aria-hidden="true" />
+          </button>
         )}
       </div>
-
-      {!showDetailId && (
-        <button
-          data-testid="close-cooks-mode"
-          aria-label="Close cook's mode"
-          title="Close cook's mode"
-          onClick={(e) => {
-            e.stopPropagation();
-            onClose();
-          }}
-          className="absolute top-4 right-4 z-[110] p-3 rounded-full bg-white/80 backdrop-blur-md text-charcoal/60 border border-charcoal/10 hover:bg-white active:scale-90 transition-all shadow-md"
-        >
-          <X size={20} />
-        </button>
-      )}
 
       <div className="flex-1 flex flex-col h-full overflow-hidden">
         {/* Progress Bar */}

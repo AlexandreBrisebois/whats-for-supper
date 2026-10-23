@@ -18,7 +18,7 @@ public sealed record RecoveryManifest(int Version, Guid Id, DateTimeOffset Captu
 public partial class RecoverySnapshotService(RecipeDbContext db, RecipesRootResolver recipes,
     DataRootResolver data, IConfiguration configuration, IClock clock, RecoveryBoundary boundary, IRecoveryCheckpoint? checkpoint = null)
 {
-    internal static readonly string[] Tables = ["family_members", "recipes", "feature_flag_overrides", "recipe_import_reports", "weekly_plans", "calendar_events", "family_settings", "ingredient_categories", "weekly_household_interest"];
+    internal static readonly string[] Tables = ["family_members", "recipes", "feature_flag_overrides", "recipe_import_reports", "weekly_plans", "calendar_events", "family_settings", "ingredient_categories", "weekly_household_interest", "grocery_extra_occurrences"];
     private static readonly JsonSerializerOptions Json = JsonDefaults.CamelCase;
     private static readonly string[] ImageExtensions = [".jpg", ".jpeg", ".png", ".webp"];
     internal string BackupRoot

@@ -177,6 +177,8 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
         builder.Services.AddSingleton<SseConnectionManager>();
         builder.Services.AddScoped<IScheduleEventPublisher, SseEventPublisher>();
         builder.Services.AddScoped<GroceryRecomputeService>();
+        builder.Services.AddScoped<GroceryExtraService>();
+        builder.Services.AddScoped<GroceryExtraRolloverService>();
         builder.Services.AddScoped<IngredientCategoryService>();
         builder.Services.AddScoped<ScheduleService>();
         builder.Services.AddScoped<DiscoveryService>();

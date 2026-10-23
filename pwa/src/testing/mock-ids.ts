@@ -5,6 +5,7 @@
  * This is in a separate file to avoid circular dependencies.
  */
 export const MOCK_IDS = {
+  GROCERY_EXTRA: '71111111-1111-4111-8111-111111111111',
   RECOVERY_SNAPSHOT: 'a2440000-e29b-41d4-a716-000000000001',
   VOTING_ROUND: '990e8400-e29b-41d4-a716-000000000001',
   // Members

@@ -21,6 +21,8 @@ public record DreamingReportResult(string Path, int FailedWorkflows, int StuckWo
 
 public record DemoStateResult(string Message, int FamilyMembers, int Recipes, int SearchDocuments);
 
+public sealed record GroceryExtraBackup(int Version, IReadOnlyList<GroceryExtraOccurrence> Occurrences);
+
 public partial class ManagementService(
     RecipeDbContext db,
     IRecipeStore recipeStore,
@@ -53,6 +55,7 @@ public partial class ManagementService(
     private string DemoRoot => Path.Combine(DataRoot, "demo");
     private string ActiveRecipesRoot => recipesRoot.Root;
     private string RecipeImportReportsBackupPath => Path.Combine(DataRoot, "recipe-import-reports.json");
+    private string GroceryExtrasBackupPath => Path.Combine(DataRoot, "grocery-extras.json");
 
     public async Task<object> BackupAsync()
     {
@@ -253,6 +256,13 @@ public partial class ManagementService(
             "Backed up {Count} recipe import reports to {Path}",
             importReports.Count,
             RecipeImportReportsBackupPath);
+
+        var groceryExtras = await db.GroceryExtraOccurrences.AsNoTracking()
+            .OrderBy(extra => extra.WeekStartDate)
+            .ThenBy(extra => extra.Id)
+            .ToListAsync();
+        await WriteJsonAsync(GroceryExtrasBackupPath, new GroceryExtraBackup(1, groceryExtras), CancellationToken.None);
+        logger.LogInformation("Backed up {Count} grocery extras to {Path}", groceryExtras.Count, GroceryExtrasBackupPath);
 
         await ExportInterestAsync(Path.Combine(DataRoot, "weekly-household-interest.json"), CancellationToken.None, boundaryHeld: true);
         if (snapshotTransaction is not null) await snapshotTransaction.CommitAsync();
@@ -590,6 +600,7 @@ public partial class ManagementService(
         WorkflowPruneResult? pruneResult = null,
         MaintenanceCommandBatchResult? maintenanceResult = null,
         MaintenanceCommandPruneResult? maintenancePruneResult = null,
+        GroceryExtraRolloverResult? groceryExtraRolloverResult = null,
         CancellationToken ct = default)
     {
         pruneResult ??= new WorkflowPruneResult(0, 0);
@@ -634,7 +645,8 @@ public partial class ManagementService(
             .Take(20)
             .ToListAsync(ct);
 
-        var markdown = BuildDreamingReport(now, pruneResult, maintenanceResult, maintenancePruneResult, pendingMaintenanceCommands, latestBackup, recentFailures, stuckWorkflows);
+        var markdown = BuildDreamingReport(now, pruneResult, maintenanceResult, maintenancePruneResult,
+            groceryExtraRolloverResult, pendingMaintenanceCommands, latestBackup, recentFailures, stuckWorkflows);
         await File.WriteAllTextAsync(reportPath, markdown, ct);
 
         logger.LogInformation(
@@ -651,6 +663,7 @@ public partial class ManagementService(
         WorkflowPruneResult pruneResult,
         MaintenanceCommandBatchResult maintenanceResult,
         MaintenanceCommandPruneResult maintenancePruneResult,
+        GroceryExtraRolloverResult? groceryExtraRolloverResult,
         List<MaintenanceCommand> pendingMaintenanceCommands,
         WorkflowInstance? latestBackup,
         List<WorkflowInstance> recentFailures,
@@ -670,6 +683,12 @@ public partial class ManagementService(
         report.AppendLine($"- Maintenance commands failed: {maintenanceResult.Failed}");
         report.AppendLine($"- Terminal maintenance commands pruned: {maintenancePruneResult.PrunedCommands}");
         report.AppendLine($"- Legacy completion timestamps initialized: {maintenancePruneResult.InitializedCompletionTimestamps}");
+        report.AppendLine(groceryExtraRolloverResult switch
+        {
+            null => "- Grocery-extra rollover: no completed result",
+            { Succeeded: false } => $"- Grocery-extra rollover: failed (not completed); code={groceryExtraRolloverResult.FailureCode ?? "Unknown"}",
+            _ => $"- Grocery-extra rollover: {groceryExtraRolloverResult.Created} occurrence(s) created through {groceryExtraRolloverResult.ThroughWeek:yyyy-MM-dd}"
+        });
         report.AppendLine($"- Failed workflows in last 24h: {recentFailures.Count}");
         report.AppendLine($"- Stuck workflows: {stuckWorkflows.Count}");
         report.AppendLine();
@@ -880,6 +899,16 @@ public partial class ManagementService(
     public async Task<SeedResult> RestoreAsync(CancellationToken ct = default)
     {
         var result = new SeedResult();
+        GroceryExtraBackup? groceryExtraBackup = null;
+        try
+        {
+            groceryExtraBackup = await ReadGroceryExtraBackupAsync(ct);
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidDataException)
+        {
+            result.Errors++;
+            logger.LogWarning("Skipping invalid grocery-extras backup artifact: {Reason}", ex.Message);
+        }
 
         logger.LogInformation("Starting restore");
 
@@ -1404,10 +1433,83 @@ public partial class ManagementService(
         // 9. Backfill Finished Dish Indices from disk metadata
         result.FinishedDishIndicesBackfilled = await BackfillFinishedDishIndicesAsync(ct);
         await RestoreInterestAsync(Path.Combine(DataRoot, "weekly-household-interest.json"), false, ct);
+        if (groceryExtraBackup is not null) await MergeGroceryExtraBackupAsync(groceryExtraBackup, ct);
 
         logger.LogInformation("Restore complete - Added: {Added}, Updated: {Updated}, Skipped: {Skipped}, WeeklyPlans: {WeeklyPlans}, CalendarEvents: {CalendarEvents}, Backfilled: {Backfilled}, Errors: {Errors}",
             result.RecipesAdded, result.RecipesUpdated, result.RecipesSkipped, result.WeeklyPlansRestored, result.CalendarEventsRestored, result.FinishedDishIndicesBackfilled, result.Errors);
         return result;
+    }
+
+    private async Task<GroceryExtraBackup?> ReadGroceryExtraBackupAsync(CancellationToken ct)
+    {
+        if (!File.Exists(GroceryExtrasBackupPath)) return null;
+        var backup = JsonSerializer.Deserialize<GroceryExtraBackup>(
+            await File.ReadAllTextAsync(GroceryExtrasBackupPath, ct), JsonDefaults.CamelCase)
+            ?? throw new InvalidDataException("grocery-extras.json is invalid.");
+        if (backup.Version != 1 || backup.Occurrences is null)
+            throw new InvalidDataException("grocery-extras.json has an unsupported or incomplete envelope.");
+
+        var rows = backup.Occurrences;
+        if (rows.Any(row => row.Id == Guid.Empty || row.LineageId == Guid.Empty || row.Version < 1
+            || row.WeekStartDate.DayOfWeek != DayOfWeek.Monday || string.IsNullOrWhiteSpace(row.Name)
+            || string.IsNullOrWhiteSpace(row.NormalizedKey) || string.IsNullOrWhiteSpace(row.GrocerySection))
+            || rows.Select(row => row.Id).Distinct().Count() != rows.Count
+            || rows.GroupBy(row => (row.LineageId, row.WeekStartDate)).Any(group => group.Count() != 1)
+            || rows.Where(row => row.PredecessorId is not null).GroupBy(row => row.PredecessorId).Any(group => group.Count() != 1))
+            throw new InvalidDataException("grocery-extras.json contains invalid identities or occurrence values.");
+
+        var byId = rows.ToDictionary(row => row.Id);
+        foreach (var row in rows.Where(row => row.PredecessorId is not null))
+        {
+            if (!byId.TryGetValue(row.PredecessorId!.Value, out var predecessor)
+                || predecessor.LineageId != row.LineageId
+                || predecessor.WeekStartDate.AddDays(7) != row.WeekStartDate)
+                throw new InvalidDataException("grocery-extras.json contains an invalid lineage.");
+        }
+        return backup;
+    }
+
+    private async Task MergeGroceryExtraBackupAsync(GroceryExtraBackup backup, CancellationToken ct)
+    {
+        await using var transaction = db.Database.IsRelational() ? await db.Database.BeginTransactionAsync(ct) : null;
+        foreach (var source in backup.Occurrences)
+        {
+            var target = await db.GroceryExtraOccurrences.SingleOrDefaultAsync(row => row.Id == source.Id, ct);
+            if (target is null)
+            {
+                db.GroceryExtraOccurrences.Add(new GroceryExtraOccurrence
+                {
+                    Id = source.Id,
+                    LineageId = source.LineageId,
+                    PredecessorId = source.PredecessorId,
+                    WeekStartDate = source.WeekStartDate,
+                    Name = source.Name,
+                    NormalizedKey = source.NormalizedKey,
+                    GrocerySection = source.GrocerySection,
+                    Checked = source.Checked,
+                    RemovedAt = source.RemovedAt,
+                    Version = source.Version,
+                    CreatedAt = source.CreatedAt,
+                    UpdatedAt = source.UpdatedAt
+                });
+            }
+            else
+            {
+                target.LineageId = source.LineageId;
+                target.PredecessorId = source.PredecessorId;
+                target.WeekStartDate = source.WeekStartDate;
+                target.Name = source.Name;
+                target.NormalizedKey = source.NormalizedKey;
+                target.GrocerySection = source.GrocerySection;
+                target.Checked = source.Checked;
+                target.RemovedAt = source.RemovedAt;
+                target.Version = source.Version;
+                target.CreatedAt = source.CreatedAt;
+                target.UpdatedAt = source.UpdatedAt;
+            }
+        }
+        await db.SaveChangesAsync(ct);
+        if (transaction is not null) await transaction.CommitAsync(ct);
     }
 
     private async Task<int> BackfillFinishedDishIndicesAsync(CancellationToken ct)

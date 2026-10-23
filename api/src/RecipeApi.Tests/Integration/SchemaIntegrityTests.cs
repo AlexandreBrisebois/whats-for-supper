@@ -171,6 +171,32 @@ public class SchemaIntegrityTests
     }
 
     [Fact]
+    public async Task GroceryExtra_NameConstraint_IsAlignedAndAvoidsUnsupportedBetweenSyntax()
+    {
+        var schemaTable = GetTableDefinition("grocery_extra_occurrences");
+        var compatibilityTable = GetCompatibilityTableDefinition("grocery_extra_occurrences");
+
+        Assert.DoesNotContain("BETWEEN", schemaTable, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("BETWEEN", compatibilityTable, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("char_length(btrim(name)) >= 1", schemaTable, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("char_length(btrim(name)) <= 200", schemaTable, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("char_length(btrim(name)) >= 1", compatibilityTable, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("char_length(btrim(name)) <= 200", compatibilityTable, StringComparison.OrdinalIgnoreCase);
+
+        await using var factory = await TestWebApplicationFactory.CreateAsync();
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+        var constraint = db.GetService<IDesignTimeModel>().Model
+            .FindEntityType(typeof(GroceryExtraOccurrence))!
+            .GetCheckConstraints()
+            .Single(check => check.Name == "grocery_extra_occurrences_name");
+
+        Assert.DoesNotContain("BETWEEN", constraint.Sql, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("char_length(btrim(name)) >= 1", constraint.Sql, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("char_length(btrim(name)) <= 200", constraint.Sql, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task RecipeImportReport_Model_UsesCascadeAndNullableMemberReferences()
     {
         await using var factory = await TestWebApplicationFactory.CreateAsync();

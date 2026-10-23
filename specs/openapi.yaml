@@ -444,6 +444,10 @@ components:
           type: [array, 'null']
           items: { $ref: '#/components/schemas/GroceryLineItemDto' }
           nullable: true
+        groceryExtras:
+          type: array
+          description: Authoritative extra occurrences eligible for the selected shopping view; projected rows retain their own occurrence week.
+          items: { $ref: '#/components/schemas/GroceryExtraDto' }
 
     NonCookingPlanDto:
       type: object
@@ -799,6 +803,7 @@ components:
           recipe_ready: '#/components/schemas/RecipeReadyEvent'
           recipe_failed: '#/components/schemas/RecipeFailedEvent'
           grocery_updated: '#/components/schemas/GroceryUpdatedEvent'
+          grocery_extras_updated: '#/components/schemas/GroceryExtrasUpdatedEvent'
           discovery_nudge: '#/components/schemas/DiscoveryNudgeEvent'
       properties:
         type: { type: string }
@@ -810,6 +815,17 @@ components:
           required: [schedule]
           properties:
             schedule: { $ref: '#/components/schemas/ScheduleDays' }
+
+    GroceryExtrasUpdatedEvent:
+      allOf:
+        - $ref: '#/components/schemas/ScheduleStreamEvent'
+        - type: object
+          required: [weekStartDate, groceryExtras]
+          properties:
+            weekStartDate: { type: string, format: date, description: Absolute Monday owning the authoritative occurrences. }
+            groceryExtras:
+              type: array
+              items: { $ref: '#/components/schemas/GroceryExtraDto' }
 
     SlotUpdatedEvent:
       allOf:
@@ -1096,6 +1112,78 @@ components:
           type: array
           items: { type: string, format: uuid }
 
+    GrocerySection:
+      type: string
+      enum: [Produce, Meat, Seafood, Dairy & Eggs, Frozen, Bakery, Pantry, Beverages, Deli, Grocery]
+
+    GroceryExtraDto:
+      type: object
+      additionalProperties: false
+      required: [id, lineageId, occurrenceWeekStartDate, name, normalizedKey, grocerySection, checked, version, source, readOnly]
+      properties:
+        id: { type: string, format: uuid, description: Stable weekly occurrence identity. }
+        lineageId: { type: string, format: uuid }
+        occurrenceWeekStartDate: { type: string, format: date, description: Absolute Monday owning this occurrence. }
+        name: { type: string, minLength: 1, maxLength: 200 }
+        normalizedKey: { type: string, minLength: 1 }
+        grocerySection: { $ref: '#/components/schemas/GrocerySection' }
+        checked: { type: boolean }
+        version: { type: integer, minimum: 1 }
+        source: { type: string, const: extra }
+        readOnly: { type: boolean }
+      example: { id: 8de23b7a-48f7-4bb8-9631-b18926f90101, lineageId: b4dc4658-b59b-45f7-b40d-a303a2cb0f01, occurrenceWeekStartDate: '2026-10-19', name: Coffee, normalizedKey: coffee, grocerySection: Grocery, checked: false, version: 1, source: extra, readOnly: false }
+
+    CreateGroceryExtraRequest:
+      type: object
+      additionalProperties: false
+      required: [clientId, weekStartDate, name]
+      properties:
+        clientId: { type: string, format: uuid, description: Client idempotency identity reused only for retrying the same submission. }
+        weekStartDate: { type: string, format: date, description: Absolute Monday; only the deployment current week is accepted. }
+        name: { type: string, minLength: 1, maxLength: 200, description: Trimmed nonblank name and the only household-entered item field. }
+      example: { clientId: ddc16052-6591-45a7-bb64-9d1208c70a01, weekStartDate: '2026-10-19', name: Coffee }
+
+    UpdateGroceryExtraRequest:
+      type: object
+      additionalProperties: false
+      required: [weekStartDate, expectedVersion]
+      minProperties: 3
+      maxProperties: 3
+      description: Exactly one of name, checked, or grocerySection is supplied with the concurrency fields.
+      properties:
+        weekStartDate: { type: string, format: date }
+        expectedVersion: { type: integer, minimum: 1 }
+        name: { type: string, minLength: 1, maxLength: 200 }
+        checked: { type: boolean }
+        grocerySection: { $ref: '#/components/schemas/GrocerySection' }
+      oneOf:
+        - required: [name]
+        - required: [checked]
+        - required: [grocerySection]
+
+    GroceryExtraConflictResponse:
+      type: object
+      additionalProperties: false
+      required: [message, absent, current]
+      properties:
+        message: { type: string }
+        absent: { type: boolean }
+        current:
+          oneOf:
+            - { $ref: '#/components/schemas/GroceryExtraDto' }
+            - { type: 'null' }
+
+    GroceryExtraSuggestionResponse:
+      type: object
+      additionalProperties: false
+      required: [names]
+      properties:
+        names:
+          type: array
+          maxItems: 3
+          uniqueItems: true
+          items: { type: string, minLength: 1 }
+
     ReclassifyIngredientRequest:
       type: object
       required: [grocerySection]
@@ -1180,6 +1268,86 @@ components:
         cleanupCommandId: { type: string, format: uuid }
 
 paths:
+  /api/grocery-extras:
+    post:
+      operationId: createGroceryExtra
+      summary: Add a distinct extra to the deployment current grocery week
+      parameters:
+        - { name: X-SSE-Connection-ID, in: header, required: false, schema: { type: string }, description: Excludes the initiating SSE connection from post-commit publication. }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/CreateGroceryExtraRequest' } } }
+      responses:
+        '201':
+          description: A distinct extra occurrence was created.
+          content: { application/json: { schema: { $ref: '#/components/schemas/GroceryExtraDto' } } }
+        '200':
+          description: Idempotent replay of the same accepted client identity.
+          content: { application/json: { schema: { $ref: '#/components/schemas/GroceryExtraDto' } } }
+        '400': { description: 'Blank/invalid name, malformed/non-Monday week, or a week other than the deployment current week.' }
+        '409':
+          description: The client identity is bound to a different submission.
+          content: { application/json: { schema: { $ref: '#/components/schemas/GroceryExtraConflictResponse' } } }
+
+  /api/grocery-extras/suggestions:
+    get:
+      operationId: suggestGroceryExtraNames
+      summary: Suggest names from authenticated household extra history
+      description: Names only; prefix before substring and newest first, excluding removed and outstanding names. Recipe groceries are not candidates.
+      parameters:
+        - name: query
+          in: query
+          required: true
+          schema: { type: string, minLength: 2 }
+          description: Trimmed query of at least two characters.
+      responses:
+        '200':
+          description: At most three household-scoped, normalized-key-deduplicated names.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GroceryExtraSuggestionResponse' }
+              example: { names: [Milk, Milk bags, Almond milk] }
+        '400': { description: The trimmed query contains fewer than two characters. }
+
+  /api/grocery-extras/{occurrenceId}:
+    parameters:
+      - { name: occurrenceId, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: X-SSE-Connection-ID, in: header, required: false, schema: { type: string }, description: Excludes the initiating SSE connection from post-commit publication. }
+    patch:
+      operationId: updateGroceryExtra
+      summary: Apply one versioned mutation to the current grocery-extra occurrence
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateGroceryExtraRequest' }
+            examples:
+              rename: { value: { weekStartDate: '2026-10-19', expectedVersion: 1, name: Coffee beans } }
+              check: { value: { weekStartDate: '2026-10-19', expectedVersion: 1, checked: true } }
+              recategorize: { value: { weekStartDate: '2026-10-19', expectedVersion: 1, grocerySection: Pantry } }
+      responses:
+        '200':
+          description: Updated authoritative occurrence.
+          content: { application/json: { schema: { $ref: '#/components/schemas/GroceryExtraDto' } } }
+        '400': { description: Invalid week/name/section or other than exactly one mutation field. }
+        '404': { description: Authoritative absence is known. }
+        '409':
+          description: Stale version or ownership conflict with authoritative current state or absent marker.
+          content: { application/json: { schema: { $ref: '#/components/schemas/GroceryExtraConflictResponse' } } }
+    delete:
+      operationId: deleteGroceryExtra
+      summary: Tombstone the current grocery-extra occurrence at an expected version
+      parameters:
+        - { name: weekStartDate, in: query, required: true, schema: { type: string, format: date } }
+        - { name: expectedVersion, in: query, required: true, schema: { type: integer, minimum: 1 } }
+      responses:
+        '204': { description: Occurrence tombstoned; historical occurrences remain unchanged. }
+        '400': { description: Invalid absolute week or version. }
+        '404': { description: Authoritative absence is known. }
+        '409':
+          description: Stale version or ownership conflict with authoritative current state or absent marker.
+          content: { application/json: { schema: { $ref: '#/components/schemas/GroceryExtraConflictResponse' } } }
+
   /api/stream:
     get:
       summary: Server-Sent Events stream for real-time schedule updates

@@ -58,4 +58,23 @@ public class SseEventPublisher : IScheduleEventPublisher
 
     public Task PublishGroceryUpdatedAsync(int weekOffset, Dictionary<string, bool> groceryState, DateOnly weekStartDate, string? excludeConnectionId = null)
         => _manager.BroadcastAsync("grocery_updated", new { weekOffset, weekStartDate, groceryState }, excludeConnectionId);
+
+    public Task PublishGroceryExtrasUpdatedAsync(DateOnly weekStartDate, IReadOnlyList<GroceryExtraDto> groceryExtras, string? excludeConnectionId = null)
+        => _manager.BroadcastAsync("grocery_extras_updated", new
+        {
+            weekStartDate,
+            groceryExtras = groceryExtras.Select(x => new
+            {
+                id = x.Id,
+                lineageId = x.LineageId,
+                occurrenceWeekStartDate = x.OccurrenceWeekStartDate,
+                name = x.Name,
+                normalizedKey = x.NormalizedKey,
+                grocerySection = x.GrocerySection,
+                @checked = x.Checked,
+                version = x.Version,
+                source = x.Source,
+                readOnly = x.ReadOnly
+            })
+        }, excludeConnectionId);
 }

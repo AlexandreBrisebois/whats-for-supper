@@ -4,6 +4,29 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 BEGIN;
 
+CREATE TABLE IF NOT EXISTS grocery_extra_occurrences (
+    id uuid PRIMARY KEY,
+    lineage_id uuid NOT NULL,
+    predecessor_id uuid REFERENCES grocery_extra_occurrences(id) ON DELETE RESTRICT,
+    week_start_date date NOT NULL,
+    name text NOT NULL,
+    normalized_key text NOT NULL,
+    grocery_section text NOT NULL DEFAULT 'Grocery',
+    checked boolean NOT NULL DEFAULT false,
+    removed_at timestamptz,
+    version integer NOT NULL DEFAULT 1,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now(),
+    CONSTRAINT grocery_extra_occurrences_lineage_week_unique UNIQUE (lineage_id, week_start_date),
+    CONSTRAINT grocery_extra_occurrences_predecessor_unique UNIQUE (predecessor_id),
+    CONSTRAINT grocery_extra_occurrences_monday CHECK (EXTRACT(ISODOW FROM week_start_date) = 1),
+    CONSTRAINT grocery_extra_occurrences_name CHECK (char_length(btrim(name)) >= 1 AND char_length(btrim(name)) <= 200),
+    CONSTRAINT grocery_extra_occurrences_version CHECK (version >= 1),
+    CONSTRAINT grocery_extra_occurrences_section CHECK (grocery_section IN ('Produce','Meat','Seafood','Dairy & Eggs','Frozen','Bakery','Pantry','Beverages','Deli','Grocery'))
+);
+CREATE INDEX IF NOT EXISTS idx_grocery_extra_occurrences_week ON grocery_extra_occurrences (week_start_date);
+CREATE INDEX IF NOT EXISTS idx_grocery_extra_occurrences_normalized ON grocery_extra_occurrences (normalized_key);
+
 -- Additive weekly-interest/rotation upgrade. No historical preference backfill;
 -- a legacy false flag has unknown provenance, never inferred Human intent.
 DO $$

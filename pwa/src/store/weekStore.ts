@@ -19,6 +19,7 @@ import {
 import { usePlannerStore } from '@/store/plannerStore';
 import type {
   GroceryLineItemDto,
+  GroceryExtraDto,
   ScheduleRecipeDto,
   SmartDefaultsDto,
   NonCookingPlanDto,
@@ -46,6 +47,9 @@ export interface WeekState {
   schedule: UILocalScheduleDay[];
   /** Pre-computed grocery items from the API, grouped by section for display */
   groceryItems: GroceryLineItemDto[];
+  /** Identity-bearing household-entered rows, kept separate from recipe groceries. */
+  groceryExtras: GroceryExtraDto[];
+  pendingGroceryExtraIds: Set<string>;
   /** 0 = Draft, 1 = VotingOpen, 2 = Locked — seeded from WeeklyPlan.Status */
   status: 0 | 1 | 2;
   isLoading: boolean;
@@ -88,6 +92,10 @@ export interface WeekState {
   lockWeek: () => Promise<void>;
   sync: () => Promise<void>;
   reclassifyGroceryItem: (normalizedKey: string, section: GrocerySection) => void;
+  upsertGroceryExtra: (extra: GroceryExtraDto) => void;
+  removeGroceryExtra: (id: string) => void;
+  setGroceryExtraPending: (id: string, pending: boolean) => void;
+  applyGroceryExtrasUpdate: (weekStartDate: string, extras: GroceryExtraDto[]) => void;
 
   // SSE-driven actions
   applySnapshot: (schedule: ScheduleDays, echoSeq?: number) => void;
@@ -107,6 +115,45 @@ const generateUiId = (): string =>
   typeof crypto !== 'undefined' && crypto.randomUUID
     ? crypto.randomUUID()
     : Math.random().toString(36).substring(7);
+
+const reconcileExtras = (
+  existing: GroceryExtraDto[],
+  incoming: GroceryExtraDto[],
+  pending: Set<string>
+) => {
+  const eligibleIncoming = incoming.filter((item) => !item.id || !pending.has(item.id));
+  const byId = new Map(eligibleIncoming.filter((item) => item.id).map((item) => [item.id!, item]));
+  const preserved = existing.filter((item) => {
+    if (!item.id) return true;
+    if (pending.has(item.id)) return true;
+    const next = byId.get(item.id);
+    return next !== undefined && (item.version ?? 0) > (next.version ?? 0);
+  });
+  const ids = new Set(preserved.map((item) => item.id));
+  return [...preserved, ...eligibleIncoming.filter((item) => !ids.has(item.id))];
+};
+
+const extraIsEligibleForView = (
+  extra: GroceryExtraDto,
+  selectedWeek: string | null,
+  currentWeek: string | null
+) => {
+  const selected = absoluteMonday(selectedWeek);
+  const current = absoluteMonday(currentWeek);
+  const occurrence = absoluteMonday(String(extra.occurrenceWeekStartDate ?? ''));
+  if (!selected || !current || !occurrence) return false;
+  if (occurrence === selected) return true;
+  const next = new Date(Date.parse(`${current}T00:00:00Z`) + 7 * 86400000)
+    .toISOString()
+    .slice(0, 10);
+  return selected === next && occurrence === current && !extra.checked;
+};
+
+const eligibleExtras = (
+  extras: GroceryExtraDto[],
+  selectedWeek: string | null,
+  currentWeek: string | null
+) => extras.filter((extra) => extraIsEligibleForView(extra, selectedWeek, currentWeek));
 
 /**
  * Merges schedule data with optional smart defaults into UILocalScheduleDay[].
@@ -188,6 +235,8 @@ export const useWeekStore = create<WeekState>((set, get) => {
     weekOffset: 0,
     schedule: [],
     groceryItems: [],
+    groceryExtras: [],
+    pendingGroceryExtraIds: new Set(),
     status: 0,
     isLoading: false,
     lastSyncedAt: null,
@@ -259,6 +308,15 @@ export const useWeekStore = create<WeekState>((set, get) => {
           votingRoundId: scheduleData.votingRoundId ?? null,
           schedule: mergedDays,
           groceryItems: scheduleData.groceryItems ?? [],
+          groceryExtras: reconcileExtras(
+            get().groceryExtras,
+            eligibleExtras(
+              scheduleData.groceryExtras ?? [],
+              weekStartDate,
+              calendar.currentWeekStartDate
+            ),
+            get().pendingGroceryExtraIds
+          ),
           status,
           lastSyncedAt: calendarTime.instant(),
           isLoading: false,
@@ -307,6 +365,15 @@ export const useWeekStore = create<WeekState>((set, get) => {
 
         set({
           groceryItems: data.groceryItems ?? [],
+          groceryExtras: reconcileExtras(
+            get().groceryExtras,
+            eligibleExtras(
+              data.groceryExtras ?? [],
+              weekStartDate,
+              get().calendar?.currentWeekStartDate ?? null
+            ),
+            get().pendingGroceryExtraIds
+          ),
           status: (data.status ?? 0) as 0 | 1 | 2,
           lastSyncedAt: calendarTime.instant(),
         });
@@ -567,6 +634,12 @@ export const useWeekStore = create<WeekState>((set, get) => {
           calendar: context,
           weekStartDate: monday,
           votingRoundId: data.votingRoundId ?? null,
+          groceryItems: data.groceryItems ?? [],
+          groceryExtras: reconcileExtras(
+            get().groceryExtras,
+            eligibleExtras(data.groceryExtras ?? [], monday, context.currentWeekStartDate),
+            get().pendingGroceryExtraIds
+          ),
         });
 
         const { optimisticWriteAt } = get();
@@ -615,6 +688,91 @@ export const useWeekStore = create<WeekState>((set, get) => {
             : item
         ),
       }));
+    },
+
+    upsertGroceryExtra(extra) {
+      if (!extra.id) return;
+      set((state) => {
+        if (
+          !extraIsEligibleForView(
+            extra,
+            state.weekStartDate,
+            state.calendar?.currentWeekStartDate ?? null
+          )
+        )
+          return state;
+        const existing = state.groceryExtras.find((item) => item.id === extra.id);
+        if ((existing?.version ?? -1) > (extra.version ?? -1)) return state;
+        return {
+          groceryExtras: existing
+            ? state.groceryExtras.map((item) => (item.id === extra.id ? extra : item))
+            : [...state.groceryExtras, extra],
+        };
+      });
+    },
+
+    removeGroceryExtra(id) {
+      set((state) => ({ groceryExtras: state.groceryExtras.filter((item) => item.id !== id) }));
+    },
+
+    setGroceryExtraPending(id, pending) {
+      set((state) => {
+        const next = new Set(state.pendingGroceryExtraIds);
+        if (pending) next.add(id);
+        else next.delete(id);
+        return { pendingGroceryExtraIds: next };
+      });
+    },
+
+    applyGroceryExtrasUpdate(occurrenceWeek, extras) {
+      const state = get();
+      const selected = absoluteMonday(state.weekStartDate);
+      const current = absoluteMonday(state.calendar?.currentWeekStartDate);
+      if (!selected || !current || !absoluteMonday(occurrenceWeek)) {
+        void state.sync();
+        return;
+      }
+      const nextWeek = new Date(new Date(`${current}T12:00:00Z`).getTime() + 7 * 86400000)
+        .toISOString()
+        .slice(0, 10);
+      const eligible =
+        occurrenceWeek === selected || (occurrenceWeek === current && selected === nextWeek);
+      if (!eligible) return;
+      if (
+        extras.some(
+          (extra) =>
+            !extra.id ||
+            !absoluteMonday(String(extra.occurrenceWeekStartDate ?? '')) ||
+            absoluteMonday(String(extra.occurrenceWeekStartDate ?? '')) !== occurrenceWeek
+        )
+      ) {
+        void state.sync();
+        return;
+      }
+      const incoming = new Map(
+        extras
+          .filter(
+            (extra) =>
+              !state.pendingGroceryExtraIds.has(extra.id!) &&
+              (selected === occurrenceWeek || !extra.checked)
+          )
+          .map((extra) => [extra.id!, extra])
+      );
+      set((latest) => {
+        const retained = latest.groceryExtras.filter((existing) => {
+          if (!existing.id) return true;
+          if (latest.pendingGroceryExtraIds.has(existing.id)) return true;
+          const replacement = incoming.get(existing.id);
+          return replacement ? (existing.version ?? 0) > (replacement.version ?? 0) : false;
+        });
+        const retainedIds = new Set(retained.map((item) => item.id));
+        return {
+          groceryExtras: [
+            ...retained,
+            ...[...incoming.values()].filter((item) => !retainedIds.has(item.id)),
+          ],
+        };
+      });
     },
 
     // ── applySnapshot ─────────────────────────────────────────────────────────
@@ -705,11 +863,21 @@ export const useWeekStore = create<WeekState>((set, get) => {
       const incomingGroceryState = schedule.groceryState?.additionalData as
         Record<string, boolean> | undefined;
 
+      const incomingExtras = eligibleExtras(
+        schedule.groceryExtras ?? [],
+        monday,
+        get().calendar?.currentWeekStartDate ?? null
+      );
+      const loadedExtras = get().groceryExtras;
+      const pendingIds = get().pendingGroceryExtraIds;
+      const reconciledExtras = reconcileExtras(loadedExtras, incomingExtras, pendingIds);
+
       set({
         schedule: preserved,
         status:
           snapshotIsEmpty && prev.length > 0 ? get().status : ((schedule.status ?? 0) as 0 | 1 | 2),
         groceryItems: schedule.groceryItems ?? [],
+        groceryExtras: reconciledExtras,
         lastSyncedAt: calendarTime.instant(),
       });
 

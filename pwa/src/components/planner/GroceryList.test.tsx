@@ -11,8 +11,18 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, act, within, waitFor } from '@testing-library/react';
 
-const { mockToggleGroceryItem } = vi.hoisted(() => ({
+const {
+  mockToggleGroceryItem,
+  mockCreateExtra,
+  mockSuggestExtras,
+  mockUpdateExtra,
+  mockDeleteExtra,
+} = vi.hoisted(() => ({
   mockToggleGroceryItem: vi.fn(),
+  mockCreateExtra: vi.fn(),
+  mockSuggestExtras: vi.fn(),
+  mockUpdateExtra: vi.fn(),
+  mockDeleteExtra: vi.fn(),
 }));
 
 // ── Store mock ────────────────────────────────────────────────────────────────
@@ -43,6 +53,13 @@ vi.mock('@/lib/api/ingredients', () => ({
   reclassifyIngredient: vi.fn(),
 }));
 
+vi.mock('@/lib/api/grocery-extras', () => ({
+  createGroceryExtra: mockCreateExtra,
+  suggestGroceryExtraNames: mockSuggestExtras,
+  updateGroceryExtra: mockUpdateExtra,
+  deleteGroceryExtra: mockDeleteExtra,
+}));
+
 // ── aisleOrder mock — pin to a single section so tests are deterministic ──────
 
 vi.mock('@/lib/grocery/aisleOrder', () => ({
@@ -69,7 +86,11 @@ vi.mock('framer-motion', () => ({
 
 vi.mock('@/locales', () => ({
   t: (_key: string, fallback: string) => fallback,
-  tWithVars: (_key: string, fallback: string) => fallback,
+  tWithVars: (_key: string, fallback: string, vars: Record<string, string | number>) =>
+    Object.entries(vars).reduce(
+      (result, [name, value]) => result.replace(`{{${name}}}`, String(value)),
+      fallback
+    ),
 }));
 
 // ── Import component AFTER mocks ──────────────────────────────────────────────
@@ -124,6 +145,152 @@ beforeEach(() => {
   mockToggleGroceryItem.mockResolvedValue(undefined);
   vi.mocked(reclassifyIngredient).mockReset();
   useWeekStore.setState({ weekOffset: 0, groceryItems: [] });
+  useWeekStore.setState({
+    weekStartDate: '2025-01-06',
+    calendar: {
+      timeZone: 'UTC',
+      today: '2025-01-06',
+      capturedAtUtc: '2025-01-06T12:00:00Z',
+      currentWeekStartDate: '2025-01-06',
+      referenceWeekStartDate: '2025-01-06',
+      nextDayAtUtc: '2025-01-07T00:00:00Z',
+    },
+    groceryExtras: [],
+    pendingGroceryExtraIds: new Set(),
+  });
+  mockCreateExtra.mockReset();
+  mockSuggestExtras.mockReset();
+  mockUpdateExtra.mockReset();
+  mockDeleteExtra.mockReset();
+});
+
+describe('GroceryList — everyday extras', () => {
+  const extra = {
+    id: '11111111-1111-4111-8111-111111111111',
+    lineageId: '11111111-1111-4111-8111-111111111111',
+    name: 'Coffee',
+    normalizedKey: 'coffee',
+    grocerySection: 'Pantry' as any,
+    checked: false,
+    occurrenceWeekStartDate: '2025-01-06' as any,
+    readOnly: false,
+    source: 'extra',
+    version: 1,
+  };
+
+  it('shows the composer only for the current week and suggestions fill without submitting', async () => {
+    vi.useFakeTimers();
+    mockSuggestExtras.mockResolvedValue(['Coffee beans']);
+    const { rerender } = render(<GroceryList weekOffset={0} items={[]} extras={[]} />);
+    const input = screen.getByRole('combobox', { name: 'Add an extra' });
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: 'co' } });
+    await act(async () => vi.advanceTimersByTimeAsync(200));
+    expect(screen.getByRole('status')).toHaveTextContent('1 suggestion available');
+    fireEvent.click(screen.getByRole('option').querySelector('button')!);
+    expect(input).toHaveValue('Coffee beans');
+    expect(mockCreateExtra).not.toHaveBeenCalled();
+    useWeekStore.setState({ weekStartDate: '2025-01-13' });
+    rerender(<GroceryList weekOffset={1} items={[]} extras={[]} />);
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+    vi.useRealTimers();
+  });
+
+  it('uses absolute Monday rather than offset and supports active-option keyboard selection', async () => {
+    vi.useFakeTimers();
+    mockSuggestExtras.mockResolvedValue(['Coffee beans', 'Coffee filters']);
+    render(<GroceryList weekOffset={7} items={[]} extras={[]} />);
+    const input = screen.getByRole('combobox', { name: 'Add an extra' });
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: 'co' } });
+    await act(async () => vi.advanceTimersByTimeAsync(200));
+    fireEvent.keyDown(input, { key: 'ArrowDown' });
+    expect(input).toHaveAttribute('aria-activedescendant', 'grocery-extra-option-0');
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(input).toHaveValue('Coffee beans');
+    expect(mockCreateExtra).not.toHaveBeenCalled();
+    vi.useRealTimers();
+  });
+
+  it('queries only while the eligible composer is focused and cancels on focus exit', async () => {
+    vi.useFakeTimers();
+    mockSuggestExtras.mockResolvedValue(['Coffee beans']);
+    render(<GroceryList weekOffset={0} items={[]} extras={[]} />);
+    const input = screen.getByRole('combobox', { name: 'Add an extra' });
+
+    fireEvent.change(input, { target: { value: 'co' } });
+    await act(async () => vi.advanceTimersByTimeAsync(250));
+    expect(mockSuggestExtras).not.toHaveBeenCalled();
+
+    fireEvent.focus(input);
+    fireEvent.blur(input, { relatedTarget: null });
+    await act(async () => vi.advanceTimersByTimeAsync(250));
+    expect(mockSuggestExtras).not.toHaveBeenCalled();
+    expect(screen.queryByRole('option')).not.toBeInTheDocument();
+    vi.useRealTimers();
+  });
+
+  it('reuses its idempotency UUID after an uncertain create outcome', async () => {
+    mockCreateExtra.mockRejectedValueOnce(new Error('response lost')).mockResolvedValueOnce(extra);
+    render(<GroceryList weekOffset={0} items={[]} extras={[]} />);
+    const input = screen.getByRole('combobox');
+    fireEvent.change(input, { target: { value: 'Coffee' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+    await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+    await waitFor(() => expect(mockCreateExtra).toHaveBeenCalledTimes(2));
+    expect(mockCreateExtra.mock.calls[1][2]).toBe(mockCreateExtra.mock.calls[0][2]);
+  });
+
+  it('adds explicitly and keeps duplicate extras distinct from recipe rows', async () => {
+    mockCreateExtra.mockResolvedValue(extra);
+    render(
+      <GroceryList
+        weekOffset={0}
+        items={[makeItem('Coffee', 'Pantry')]}
+        extras={[extra, { ...extra, id: '22222222-2222-4222-8222-222222222222' }]}
+      />
+    );
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'Coffee' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+    await waitFor(() => expect(mockCreateExtra).toHaveBeenCalled());
+    expect(screen.getAllByTestId('grocery-extra-row')).toHaveLength(2);
+    expect(screen.getByTestId('grocery-item-label')).toHaveTextContent('Coffee');
+  });
+
+  it('renders historical extras without mutation controls', () => {
+    render(
+      <GroceryList
+        weekOffset={-1}
+        items={[]}
+        extras={[{ ...extra, readOnly: true, checked: true }]}
+      />
+    );
+    expect(screen.getByText('Bought')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Edit Coffee/ })).not.toBeInTheDocument();
+    expect(screen.queryByTestId('grocery-extra-checkbox')).not.toBeInTheDocument();
+  });
+
+  it('checks an occurrence by identity and retains its noninteractive Extra label', async () => {
+    mockUpdateExtra.mockResolvedValue({ ...extra, checked: true, version: 2 });
+    render(<GroceryList weekOffset={0} items={[]} extras={[extra]} />);
+    fireEvent.click(screen.getByTestId('grocery-extra-checkbox'));
+    await waitFor(() => expect(mockUpdateExtra).toHaveBeenCalledWith(extra, { checked: true }));
+    expect(screen.getByText('Extra').tagName).toBe('SPAN');
+  });
+
+  it('clears the pending guard before an uncertain mutation rereads authoritative state', async () => {
+    mockUpdateExtra.mockRejectedValueOnce(new Error('response lost'));
+    const sync = vi.fn().mockImplementation(async () => {
+      expect(useWeekStore.getState().pendingGroceryExtraIds.has(extra.id)).toBe(false);
+    });
+    useWeekStore.setState({ sync });
+    render(<GroceryList weekOffset={0} items={[]} extras={[extra]} />);
+
+    fireEvent.click(screen.getByTestId('grocery-extra-checkbox'));
+
+    await waitFor(() => expect(sync).toHaveBeenCalledOnce());
+  });
 });
 
 describe('GroceryList — checked item ordering', () => {

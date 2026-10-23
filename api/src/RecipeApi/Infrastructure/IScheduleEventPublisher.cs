@@ -19,4 +19,6 @@ public interface IScheduleEventPublisher
     Task PublishRecipeFailedAsync(Guid recipeId, Guid workflowInstanceId, string errorMessage, string failedStep, object? partialData, string? excludeConnectionId = null);
 
     Task PublishGroceryUpdatedAsync(int weekOffset, Dictionary<string, bool> groceryState, DateOnly weekStartDate, string? excludeConnectionId = null);
+    Task PublishGroceryExtrasUpdatedAsync(DateOnly weekStartDate, IReadOnlyList<GroceryExtraDto> groceryExtras, string? excludeConnectionId = null)
+        => Task.CompletedTask;
 }

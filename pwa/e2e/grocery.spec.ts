@@ -41,6 +41,7 @@ async function setupGroceryPage(page: import('@playwright/test').Page) {
     Cheese: 'Dairy & Eggs',
   };
   const categoryOverrides: Record<string, string> = {};
+  const groceryExtras: Array<Record<string, unknown>> = [];
   const currentGroceryItems = () =>
     builders.groceryItems(
       GROCERY_INGREDIENTS,
@@ -85,12 +86,39 @@ async function setupGroceryPage(page: import('@playwright/test').Page) {
               status: 0,
               days,
               groceryItems: currentGroceryItems(),
+              groceryExtras,
             },
           }),
         });
       } else {
         await route.fallback();
       }
+    }
+  );
+  await page.route(
+    (url) => /^\/api\/grocery-extras\/[^/]+$/.test(url.pathname),
+    async (route) => {
+      const id = new URL(route.request().url()).pathname.split('/').at(-1);
+      const index = groceryExtras.findIndex((extra) => extra.id === id);
+      if (index < 0) return route.fulfill({ status: 404 });
+      if (route.request().method() === 'DELETE') {
+        groceryExtras.splice(index, 1);
+        return route.fulfill({ status: 204 });
+      }
+      if (route.request().method() !== 'PATCH') return route.fallback();
+      const change = route.request().postDataJSON() as Record<string, unknown>;
+      const current = groceryExtras[index];
+      const updated = {
+        ...current,
+        ...Object.fromEntries(
+          ['name', 'checked', 'grocerySection']
+            .filter((key) => change[key] !== undefined)
+            .map((key) => [key, change[key]])
+        ),
+        version: Number(current.version) + 1,
+      };
+      groceryExtras[index] = updated;
+      await route.fulfill({ status: 200, json: updated });
     }
   );
 
@@ -103,6 +131,32 @@ async function setupGroceryPage(page: import('@playwright/test').Page) {
     await route.fulfill({ status: 204 });
   });
 
+  await page.route(
+    (url) => url.pathname === '/api/grocery-extras',
+    async (route) => {
+      if (route.request().method() !== 'POST') return route.fallback();
+      const body = route.request().postDataJSON() as {
+        clientId: string;
+        name: string;
+        weekStartDate: string;
+      };
+      const extra = {
+        id: body.clientId,
+        lineageId: body.clientId,
+        name: body.name.trim(),
+        normalizedKey: body.name.trim().toLowerCase(),
+        grocerySection: 'Grocery',
+        checked: false,
+        occurrenceWeekStartDate: body.weekStartDate,
+        readOnly: false,
+        source: 'extra',
+        version: 1,
+      };
+      groceryExtras.push(extra);
+      await route.fulfill({ status: 201, json: extra });
+    }
+  );
+
   await mockSseWithConnectedSchedule(page, {
     weekOffset: 0,
     calendar: builders.deploymentCalendar() as any,
@@ -112,6 +166,9 @@ async function setupGroceryPage(page: import('@playwright/test').Page) {
     days,
     get groceryItems() {
       return currentGroceryItems();
+    },
+    get groceryExtras() {
+      return groceryExtras;
     },
     groceryState: { additionalData: {} },
   } as any);
@@ -124,8 +181,57 @@ async function setupGroceryPage(page: import('@playwright/test').Page) {
   await expect(page.getByTestId('grocery-checklist')).toBeVisible({ timeout: 10_000 });
   await expect(page.getByTestId('aisle-section-Meat')).toBeVisible();
 
-  return { categoryOverrides };
+  return { categoryOverrides, groceryExtras };
 }
+
+test.describe('Grocery List — everyday extras', () => {
+  test('adds a distinct extra from the bottom composer and preserves it after reload', async ({
+    page,
+  }) => {
+    await setupGroceryPage(page);
+    const composer = page.getByTestId('grocery-extra-composer');
+    await expect(composer).toBeVisible();
+    await composer.getByRole('combobox').fill('Coffee');
+    await composer.getByRole('button', { name: 'Add' }).click();
+    await expect(page.getByTestId('grocery-extra-row')).toContainText('Coffee');
+    await expect(page.getByTestId('grocery-extra-row').getByText('Extra')).toBeVisible();
+
+    await page.reload();
+    await expect(page.getByTestId('day-card-0')).toBeVisible({ timeout: 10_000 });
+    await page.getByTestId('grocery-tab').click();
+    await expect(page.getByTestId('grocery-extra-row')).toContainText('Coffee');
+  });
+
+  test('composer and upward tray remain reachable at the narrow supported viewport', async ({
+    page,
+  }) => {
+    await setupGroceryPage(page);
+    const composer = page.getByTestId('grocery-extra-composer');
+    await expect(composer).toBeInViewport();
+    await expect(composer.getByRole('button', { name: 'Add' })).toBeInViewport();
+  });
+
+  test('checks, renames, recategorizes, and deletes only the selected occurrence', async ({
+    page,
+  }) => {
+    await setupGroceryPage(page);
+    const composer = page.getByTestId('grocery-extra-composer');
+    await composer.getByRole('combobox').fill('Milk');
+    await composer.getByRole('button', { name: 'Add' }).click();
+    const row = page.getByTestId('grocery-extra-row');
+    await row.getByRole('checkbox').click();
+    await expect(row.getByRole('checkbox')).toHaveAttribute('aria-checked', 'true');
+    await row.getByRole('button', { name: 'Edit Milk' }).click();
+    await row.getByRole('textbox', { name: 'Extra name' }).fill('Oat milk');
+    await row.getByRole('button', { name: 'Save' }).click();
+    await expect(row).toContainText('Oat milk');
+    await row.getByRole('button', { name: /Change section/ }).click();
+    await row.getByRole('button', { name: 'Pantry' }).click();
+    await row.getByRole('button', { name: 'Edit Oat milk' }).click();
+    await row.getByRole('button', { name: 'Delete' }).click();
+    await expect(row).toHaveCount(0);
+  });
+});
 
 test.describe('Grocery List — category reclassification', () => {
   test('failed category PATCH preserves the item and a successful retry survives reconciliation', async ({

@@ -56,6 +56,18 @@ Drag a recipe to a different day if plans change. Dragging it onto a saved suppe
 
 The **grocery list** lives here too. Check items off as you shop — your partner's phone updates live, so you won't both come home with two bags of onions.
 
+You can also add everyday household extras—such as coffee, foil, or toilet paper—from
+the field fixed to the bottom of the current week's grocery list. After two letters,
+optional suggestions from your household's own previously used extras appear above the
+field. Choosing one only fills the field: press **Add** to submit it. If suggestions are
+unavailable, free text continues to work, and repeated names remain separate items.
+
+An unchecked extra carries into each new week when weekly maintenance or the first
+current-week read repairs the rollover. Checking or deleting it stops future carry-forward.
+You can shop the immediately following week using the current outstanding extras, while
+older weeks remain read-only snapshots showing the name, section, and whether each extra
+was bought at that time.
+
 The planner saves you from the Sunday-night panic of figuring out five dinners from scratch.
 
 ---
@@ -74,7 +86,7 @@ A recipe already planned for the current calendar week leaves Discovery immediat
 
 Turning **Ask the Family** off keeps a recipe off until you turn it on. Turning it on returns an eligible recipe immediately, but Dreaming may pause it again if recently cooked. Select **Supper** in the recipe's meal types to qualify it for supper voting, including lunch or breakfast recipes your household eats for supper. These controls do not remove recipes from your library.
 
-Discovery saves you from the "I don't know, what do *you* want?" loop that ends in cereal.
+Discovery saves you from the "I don't know, what do _you_ want?" loop that ends in cereal.
 
 ---
 
@@ -92,7 +104,7 @@ Tap any search result to open its recipe detail view. From there you can cook it
 
 When Search receives a library update, it refreshes your current results automatically so newly available recipes can appear. Your search words, filters, similar-recipe choice and planner day stay selected. If loading fails, choose **Retry** to try the same search again; an error does not mean your library is empty.
 
-Search saves you from the "I don't know, what do *you* want?" loop that ends in cereal.
+Search saves you from the "I don't know, what do _you_ want?" loop that ends in cereal.
 
 ---
 
@@ -146,6 +158,7 @@ Corrupt, encrypted and unsupported documents can be accepted for preparation and
 Your household can be configured to process new recipes in a preferred language (for example, French). This applies during the initial processing of **Photo**, enabled **PDF**, **URL**, and **Describe it** recipes.
 
 When translation is active:
+
 - **Consistent Library**: The recipe-processing workflow requests ingredients, steps, and descriptions in your chosen language.
 - **Existing recipes**: Open the recipe's gear menu and choose **Report issue**. Choose **Ingredients** or **Steps**, add a note explaining what needs attention, and tap **Save**. For recipes with an original photo or website source, the app may re-read that source and update the recipe in the background.
 

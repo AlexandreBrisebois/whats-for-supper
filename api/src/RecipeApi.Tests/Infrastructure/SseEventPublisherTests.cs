@@ -14,6 +14,21 @@ namespace RecipeApi.Tests.Infrastructure;
 /// </summary>
 public class SseEventPublisherTests
 {
+    [Fact]
+    public async Task PublishGroceryExtrasUpdatedAsync_UsesDedicatedAbsoluteWeekPayload()
+    {
+        var (manager, body) = MakeManager();
+        var publisher = new SseEventPublisher(manager);
+        var week = new DateOnly(2026, 10, 19);
+        var extra = new GroceryExtraDto(Guid.NewGuid(), Guid.NewGuid(), week, "Coffee", "coffee", "Beverages", false, 2, "extra", false);
+
+        await publisher.PublishGroceryExtrasUpdatedAsync(week, [extra]);
+
+        var (eventType, data) = ParseSseFrame(ReadBody(body));
+        Assert.Equal("grocery_extras_updated", eventType);
+        Assert.Equal("2026-10-19", data.GetProperty("weekStartDate").GetString());
+        Assert.Equal(extra.Id, data.GetProperty("groceryExtras")[0].GetProperty("id").GetGuid());
+    }
     // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------

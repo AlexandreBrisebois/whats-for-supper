@@ -33,6 +33,7 @@ public class ManagementProcessor(
                 await GetPruneResultAsync(task, ct),
                 await GetMaintenanceResultAsync(task, ct),
                 await GetMaintenancePruneResultAsync(task, ct),
+                await GetGroceryExtraRolloverResultAsync(task, ct),
                 ct),
             _ => throw new NotSupportedException($"Processor {ProcessorName} is not supported by ManagementProcessor.")
         };
@@ -105,5 +106,18 @@ public class ManagementProcessor(
         return string.IsNullOrWhiteSpace(pruneTask?.Result)
             ? null
             : JsonSerializer.Deserialize<MaintenanceCommandPruneResult>(pruneTask.Result, JsonDefaults.CamelCase);
+    }
+
+    private async Task<GroceryExtraRolloverResult?> GetGroceryExtraRolloverResultAsync(WorkflowTask task, CancellationToken ct)
+    {
+        var rolloverTask = await db.WorkflowTasks
+            .AsNoTracking()
+            .Where(t => t.InstanceId == task.InstanceId && t.ProcessorName == "RolloverGroceryExtras" && t.Result != null)
+            .OrderByDescending(t => t.UpdatedAt)
+            .FirstOrDefaultAsync(ct);
+
+        return string.IsNullOrWhiteSpace(rolloverTask?.Result)
+            ? null
+            : JsonSerializer.Deserialize<GroceryExtraRolloverResult>(rolloverTask.Result, JsonDefaults.CamelCase);
     }
 }

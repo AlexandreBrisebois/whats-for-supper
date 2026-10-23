@@ -107,9 +107,10 @@ describe('CooksMode', () => {
 
     render(<CooksMode recipe={{ id, name: 'Pasta', image: '' }} onClose={vi.fn()} />);
 
-    expect(await screen.findByTestId('cooking-view-trigger')).toHaveAccessibleName(
-      'Cooking view: All steps'
-    );
+    const trigger = await screen.findByTestId('cooking-view-trigger');
+    expect(trigger).toHaveAccessibleName('Cooking view: All steps');
+    expect(trigger).toHaveTextContent('');
+    expect(trigger.querySelector('.lucide-layers-3')).toBeInTheDocument();
     fireEvent.click(screen.getByTestId('cooks-mode-step-next'));
     expect(screen.getByTestId('all-steps-recipe-list')).toHaveTextContent('Cook pasta');
   });
@@ -125,6 +126,7 @@ describe('CooksMode', () => {
     render(<CooksMode recipe={{ id, name: 'Pasta', image: '' }} onClose={vi.fn()} />);
 
     const trigger = await screen.findByTestId('cooking-view-trigger');
+    expect(trigger.querySelector('.lucide-file')).toBeInTheDocument();
     fireEvent.click(trigger);
     fireEvent.click(screen.getByRole('menuitemradio', { name: 'All steps' }));
 
@@ -132,6 +134,7 @@ describe('CooksMode', () => {
       cookingViewMode: 'all-steps',
     });
     expect(trigger).toHaveAccessibleName('Cooking view: All steps');
+    expect(trigger.querySelector('.lucide-layers-3')).toBeInTheDocument();
     await waitFor(() => expect(trigger).toHaveFocus());
     fireEvent.click(screen.getByTestId('cooks-mode-step-next'));
     expect(screen.getByTestId('all-steps-recipe-list')).toHaveTextContent('Cook pasta');
@@ -453,9 +456,12 @@ describe('CooksMode', () => {
     fireEvent.click(firstIngredient);
 
     const reportAction = screen.getByRole('button', { name: 'Report issue with ingredients' });
+    const topActions = screen.getByTestId('cooks-mode-top-actions');
     expect(reportAction).toHaveClass('h-12', 'w-12', 'text-terracotta/70');
     expect(reportAction).toHaveTextContent('');
-    expect(reportAction.closest('[data-testid="cooks-mode-hero"]')).toBeInTheDocument();
+    expect(topActions).toContainElement(reportAction);
+    expect(topActions).toContainElement(screen.getByRole('button', { name: "Close cook's mode" }));
+    expect(reportAction.closest('[data-testid="cooks-mode-hero"]')).toBeNull();
     expect(reportAction.closest('[data-testid="cooks-mode-controls"]')).toBeNull();
     expect(screen.queryByTestId('cooks-mode-report-duplicate')).toBeNull();
     fireEvent.click(reportAction);
@@ -524,7 +530,8 @@ describe('CooksMode', () => {
     expect(editAction).toHaveClass('h-12', 'w-12');
     expect(reportAction).toHaveTextContent('');
     expect(editAction).toHaveTextContent('');
-    expect(reportAction.closest('[data-testid="cooks-mode-hero"]')).toBeInTheDocument();
+    expect(screen.getByTestId('cooks-mode-top-actions')).toContainElement(reportAction);
+    expect(reportAction.closest('[data-testid="cooks-mode-hero"]')).toBeNull();
     expect(editAction.closest('[data-testid="cooks-mode-hero"]')).toBeInTheDocument();
     expect(reportAction.closest('[data-testid="cooks-mode-controls"]')).toBeNull();
     fireEvent.click(reportAction);
@@ -648,7 +655,7 @@ describe('CooksMode', () => {
     );
 
     const heroImage = await screen.findByAltText('Pasta Night');
-    const heroContainer = heroImage.closest('div');
+    const heroContainer = screen.getByTestId('cooks-mode-hero');
 
     // Requirement: Larger, editorial hero image (not h-14 w-14)
     expect(heroContainer).not.toHaveClass('h-14');

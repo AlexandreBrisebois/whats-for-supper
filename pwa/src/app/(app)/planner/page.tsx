@@ -65,6 +65,7 @@ export default function PlannerPage() {
   const isLoading = useWeekStore((s) => s.isLoading);
   const status = useWeekStore((s) => s.status);
   const groceryItems = useWeekStore((s) => s.groceryItems);
+  const groceryExtras = useWeekStore((s) => s.groceryExtras);
   const isVotingOpen = status === 1;
   const isLocked = status === 2;
   const [nonCookingTarget, setNonCookingTarget] = useState<{
@@ -614,6 +615,7 @@ export default function PlannerPage() {
               <GroceryList
                 weekOffset={currentWeekOffset}
                 items={groceryItems ?? []}
+                extras={groceryExtras ?? []}
                 onClose={() => setActiveTab('planner')}
               />
             </motion.div>
@@ -722,7 +724,12 @@ export default function PlannerPage() {
             animate={{ opacity: 1, x: 0 }}
             className="sticky top-[72px] h-[calc(100vh-285px)] rounded-[2.5rem] overflow-hidden border border-white/20 shadow-2xl glass flex flex-col"
           >
-            <GroceryList weekOffset={currentWeekOffset} items={groceryItems ?? []} isEmbedded />
+            <GroceryList
+              weekOffset={currentWeekOffset}
+              items={groceryItems ?? []}
+              extras={groceryExtras ?? []}
+              isEmbedded
+            />
           </motion.div>
         )}
       </main>
