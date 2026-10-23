@@ -328,6 +328,9 @@ test.describe('Supper Planner', () => {
     await expect(page.getByTestId('cooks-mode-step-indicator')).toContainText(/Check & Prep/i);
     await expect(page.getByTestId('cooks-mode-step-next')).toContainText(/Let's Cook/i);
 
+    await page.getByTestId('cooking-view-trigger').click();
+    await page.getByRole('menuitemradio', { name: 'Step by step' }).click();
+
     // Navigate steps — text from builders.recipe() default: Step 1, Step 2
     await page.getByTestId('cooks-mode-step-next').click();
     await expect(page.getByTestId('cooks-mode-step-text')).toContainText(/Step 1/i);

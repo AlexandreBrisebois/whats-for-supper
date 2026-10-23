@@ -364,6 +364,8 @@ test.describe('Recipe import issue reporting', () => {
     const firstIngredient = page.getByTestId('ingredient-toggle').first();
     await firstIngredient.click();
     await expect(firstIngredient).toHaveAttribute('aria-checked', 'true');
+    await page.getByTestId('cooking-view-trigger').click();
+    await page.getByRole('menuitemradio', { name: 'Step by step' }).click();
     await page.getByTestId('cooks-mode-step-next').click();
     const stepText = await page.getByTestId('cooks-mode-step-text').textContent();
 
