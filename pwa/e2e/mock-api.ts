@@ -38,6 +38,41 @@ const FILTER_MAIN_IDS = {
   VEGETARIAN: 'vegetarian',
 } as const;
 
+const ACTIVE_SEARCH_BOOLEAN_FILTERS = [
+  'newRecipes',
+  'neverCooked',
+  'familyFavorite',
+  'quickOnly',
+  'vegetarianOnly',
+  'notCookedInLongTime',
+  'reportedOnly',
+  'readyToReviewOnly',
+  'discoverableOnly',
+] as const;
+
+function mockSearchMode(requestBody: unknown): 'discovery' | 'explicit' | 'similar' {
+  const request = (requestBody ?? {}) as Record<string, unknown>;
+  if (request.similarToRecipeId) return 'similar';
+  if (typeof request.query === 'string' && request.query.trim()) return 'explicit';
+
+  const preferences = (request.preferences ?? {}) as Record<string, unknown>;
+  if (
+    Array.isArray(preferences.concepts) &&
+    preferences.concepts.some((concept) => typeof concept === 'string' && concept.trim())
+  ) {
+    return 'explicit';
+  }
+
+  const filters = (request.filters ?? {}) as Record<string, unknown>;
+  const hasSelection = ['cuisines', 'mealTypes'].some(
+    (key) =>
+      Array.isArray(filters[key]) &&
+      filters[key].some((value) => typeof value === 'string' && value.trim())
+  );
+  const hasTrueFlag = ACTIVE_SEARCH_BOOLEAN_FILTERS.some((key) => filters[key] === true);
+  return hasSelection || hasTrueFlag ? 'explicit' : 'discovery';
+}
+
 // ---------------------------------------------------------------------------
 // SSE helpers — internal
 // ---------------------------------------------------------------------------
@@ -508,6 +543,7 @@ export async function setupCommonRoutes(
 
   // POST /api/recipes/search
   await page.route('**/api/recipes/search', async (route) => {
+    const searchMode = mockSearchMode(route.request().postDataJSON());
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -516,8 +552,8 @@ export async function setupCommonRoutes(
           topPick: null,
           results: [],
           appliedFilters: {},
-          searchMode: 'standard',
-          resultPath: 'lexical-only',
+          searchMode,
+          resultPath: searchMode === 'discovery' ? 'browse' : 'lexical-only',
         },
       }),
     });

@@ -110,7 +110,7 @@ for (const entry of ['Home', 'Planner', 'Search', 'Browse'] as const) {
             },
             results: [],
             appliedFilters: {},
-            searchMode: 'standard',
+            searchMode: 'explicit',
             resultPath: 'lexical-only',
           },
         },

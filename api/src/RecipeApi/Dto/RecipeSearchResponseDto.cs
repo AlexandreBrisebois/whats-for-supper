@@ -14,7 +14,7 @@ public class RecipeSearchResponseDto
     public RecipeSearchFiltersDto AppliedFilters { get; set; } = new();
 
     [JsonPropertyName("searchMode")]
-    public string SearchMode { get; set; } = "standard";
+    public string SearchMode { get; set; } = "discovery";
 
     [JsonPropertyName("resultPath")]
     public string ResultPath { get; set; } = "lexical-only";

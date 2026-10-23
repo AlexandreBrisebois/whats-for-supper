@@ -162,7 +162,7 @@ function makeSearchResponse(overrides: Record<string, unknown> = {}) {
       },
     ],
     appliedFilters: {},
-    searchMode: 'standard',
+    searchMode: 'explicit',
     resultPath: 'lexical-only',
     ...overrides,
   };

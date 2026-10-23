@@ -18,7 +18,7 @@
 # Inspect the unwrapped JSON response:
 #   topPick and results: count BOTH; limit counts alternatives, not topPick.
 #   appliedFilters: hard filters only; does not echo preferences.concepts.
-#   searchMode: standard for these probes.
+#   searchMode: discovery for the empty probe and explicit for constrained probes.
 #   resultPath: browse, lexical-only, hybrid, fallback-lexical,
 #               or semantic-only (emitted by current implementation for chips).
 #   results[].id/name/score/reasons and topPick.id/name/score/reasons.

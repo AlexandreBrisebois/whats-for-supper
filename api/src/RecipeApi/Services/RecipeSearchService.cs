@@ -27,15 +27,10 @@ public partial class RecipeSearchService(
     private const int MaxLimit = 50;
     private const int LexicalCandidateLimit = 50;
     private const string QuickRecipePattern = "^(?:\\s*)(?:pt(?:0h(?:[0-2]?\\d|30)m?|(?:[0-2]?\\d|30)m)|(?:[1-9]|[12]\\d|30)\\s*(?:m|min|mins|minute|minutes))(?:\\s*)$";
-    private const double BoostLove = 0.15;
-    private const double BoostLike = 0.08;
-    private const double BoostDislike = 0.10;
-    private const double BoostVotesMax = 0.15;
-    private const double BoostVotesRate = 0.05;
-    private const double PlannedDemotion = -10.0;
     private readonly IClock _clock = clock;
     private readonly RecipeSearchFilterOptions? _filterOptions = filterOptions;
     private readonly HistoricalInterestService _history = historicalInterest;
+    private readonly ScheduleService _scheduleService = scheduleService;
 
     public async Task<RecipeSearchResponseDto> SearchAsync(RecipeSearchRequestDto dto, CancellationToken ct = default)
     {
@@ -51,10 +46,11 @@ public partial class RecipeSearchService(
         var semanticQuery = CreateSemanticQuery(query, concepts);
         var limit = Math.Clamp(dto.Limit ?? DefaultLimit, 1, MaxLimit);
         var appliedFilters = dto.Filters ?? new RecipeSearchFiltersDto();
+        var canonicalFilters = RecipeSearchPredicate.Canonicalize(appliedFilters);
+        var hasEffectiveFilters = canonicalFilters.HasAny;
+        var searchMode = ClassifySearchMode(dto.SimilarToRecipeId, query, concepts, hasEffectiveFilters);
         var recoveryGeneration = await db.RecoveryPublications.AsNoTracking().Select(r => (Guid?)r.OperationId).SingleOrDefaultAsync(ct);
-        var continuationFingerprint = CreateContinuationFingerprint(dto, query) + ":" + recoveryGeneration;
-
-        var searchMode = dto.SimilarToRecipeId is not null ? "similar" : "standard";
+        var continuationFingerprint = CreateContinuationFingerprint(dto, query, concepts, searchMode, canonicalFilters) + ":" + recoveryGeneration;
 
         telemetry?.Emit(SearchTelemetryEvents.SearchRequested, new()
         {
@@ -62,7 +58,7 @@ public partial class RecipeSearchService(
             ["configurationVersion"] = configurationVersion,
             ["mode"] = searchMode,
             ["hasPlanner"] = dto.WeekOffset is not null,
-            ["hasFilters"] = dto.Filters is not null
+            ["hasFilters"] = hasEffectiveFilters
         });
 
         // 1. Build Base Query with Filters
@@ -77,8 +73,11 @@ public partial class RecipeSearchService(
         if (!string.IsNullOrWhiteSpace(dto.ContinuationToken))
             return await ContinueAsync(dto.ContinuationToken, continuationFingerprint, recipesQuery, limit, ct);
 
-        if (string.IsNullOrWhiteSpace(semanticQuery) && dto.SimilarToRecipeId is null)
+        if (searchMode == "discovery")
             return await BrowseAsync(recipesQuery, appliedFilters, searchMode, limit, continuationFingerprint, dto.WeekOffset, ct);
+
+        if (string.IsNullOrWhiteSpace(semanticQuery) && searchMode == "explicit")
+            return await FilterOnlyAsync(recipesQuery, appliedFilters, limit, continuationFingerprint, ct);
 
         // 2. Retrieval
         var candidates = new List<RankedRecipe>();
@@ -162,40 +161,8 @@ public partial class RecipeSearchService(
                 resultPath = conceptOnly ? "fallback-lexical" : resultPath;
             }
         }
-        // 3. Reranking
-        await using var rankingBoundary = await VotingBoundary.BeginAsync(db, ct);
-        var rerankingStopwatch = System.Diagnostics.Stopwatch.StartNew();
-        if (dto.WeekOffset is not null && dto.DayIndex is not null)
-        {
-            candidates = await ApplyPlannerAwareRerankingAsync(candidates, dto.WeekOffset.Value, ct);
-        }
-
-        if (dto.SimilarToRecipeId is null)
-        {
-            candidates = await ApplyFamilyFitRerankingAsync(candidates, ct);
-        }
-        rerankingStopwatch.Stop();
-        rerankingDurationMs = rerankingStopwatch.ElapsedMilliseconds;
-
-        // 4. Map & Limit
-        var history = dto.SimilarToRecipeId is null ? await _history.CaptureAsync(ct) : null;
-        var finalCandidates = candidates
-            .OrderByDescending(candidate => candidate.Score)
-            .ThenByDescending(candidate => history?.Signal(candidate.Recipe.Id) ?? 0)
-            .ThenByDescending(candidate => candidate.Recipe.CreatedAt)
-            .ThenBy(candidate => candidate.Recipe.Id)
-            .ToList();
-
-        if (dto.SimilarToRecipeId is null && dto.Filters?.NotCookedInLongTime == true)
-        {
-            // If explicitly looking for recipes that have been away longest, prioritize by LastCookedDate ASC.
-            finalCandidates = candidates
-                .OrderByDescending(c => c.Score)
-                .ThenBy(c => c.Recipe.LastCookedDate)
-                .ThenByDescending(c => history?.Signal(c.Recipe.Id) ?? 0)
-                .ThenBy(c => c.Recipe.Id)
-                .ToList();
-        }
+        // 3. Strict-mode ordering. Discovery returns above through its separately personalized browse pipeline.
+        var finalCandidates = OrderStrictCandidates(candidates, searchMode, appliedFilters);
 
         var candidateIds = finalCandidates.Select(candidate => candidate.Recipe.Id).ToList();
         var reportStatuses = candidateIds.Count == 0
@@ -206,15 +173,7 @@ public partial class RecipeSearchService(
                 .ToDictionaryAsync(report => report.RecipeId, report => report.Status, ct);
 
         var reviewFilterActive = appliedFilters.ReportedOnly == true || appliedFilters.ReadyToReviewOnly == true;
-        var promotionCandidates = reviewFilterActive
-            ? []
-            : finalCandidates
-                .Where(candidate => !reportStatuses.ContainsKey(candidate.Recipe.Id))
-                .ToList();
-        var topPick = promotionCandidates.FirstOrDefault();
-        var resultsList = finalCandidates
-            .Where(candidate => candidate.Recipe.Id != topPick?.Recipe.Id)
-            .ToList();
+        var (topPick, resultsList) = SelectStrictTopPick(finalCandidates, reportStatuses, reviewFilterActive);
 
         RecipeSearchResultDto? finalTopPick = topPick != null ? MapResult(topPick, reportStatuses) : null;
 
@@ -360,6 +319,48 @@ public partial class RecipeSearchService(
         return response;
     }
 
+    private async Task<RecipeSearchResponseDto> FilterOnlyAsync(
+        IQueryable<Recipe> recipesQuery,
+        RecipeSearchFiltersDto filters,
+        int limit,
+        string fingerprint,
+        CancellationToken ct)
+    {
+        var recipes = await BrowseProjection(ApplyBrowseQuickEligibility(recipesQuery, filters)).ToListAsync(ct);
+        var orderedRecipes = filters.NotCookedInLongTime == true
+            ? recipes
+                .OrderBy(recipe => recipe.LastCookedDate)
+                .ThenByDescending(recipe => recipe.CreatedAt)
+                .ThenBy(recipe => Normalize(recipe.Name), StringComparer.Ordinal)
+                .ToList()
+            : recipes
+                .OrderByDescending(recipe => recipe.CreatedAt)
+                .ThenBy(recipe => Normalize(recipe.Name), StringComparer.Ordinal)
+                .ToList();
+        var candidates = BuildDefaultCandidates(orderedRecipes, filters);
+        var reportStatuses = await GetReportStatusesAsync(candidates.Select(candidate => candidate.Recipe.Id), ct);
+        var reviewFilterActive = filters.ReportedOnly == true || filters.ReadyToReviewOnly == true;
+        var (topPick, alternatives) = SelectStrictTopPick(candidates, reportStatuses, reviewFilterActive);
+        var results = alternatives.Take(limit).Select(candidate => MapResult(candidate, reportStatuses)).ToList();
+        var response = new RecipeSearchResponseDto
+        {
+            TopPick = topPick is null ? null : MapResult(topPick, reportStatuses),
+            Results = results,
+            AppliedFilters = filters,
+            SearchMode = "explicit",
+            ResultPath = "browse"
+        };
+
+        var remaining = alternatives.Skip(limit).Select(candidate => MapResult(candidate, reportStatuses)).ToList();
+        if (remaining.Count > 0)
+        {
+            var store = continuationStore ?? throw new InvalidOperationException("Search continuation storage must be registered.");
+            response.NextCursor = store.StoreRanked(fingerprint, remaining, response);
+        }
+
+        return response;
+    }
+
     private async Task<RecipeSearchResponseDto> ContinueBrowseAsync(
         RecipeSearchContinuationStore.BrowseContinuation continuation,
         string fingerprint,
@@ -481,10 +482,36 @@ public partial class RecipeSearchService(
                 .ToDictionaryAsync(report => report.RecipeId, report => report.Status, ct);
     }
 
-    private static string CreateContinuationFingerprint(RecipeSearchRequestDto dto, string query)
+    private static string CreateContinuationFingerprint(
+        RecipeSearchRequestDto dto,
+        string query,
+        IReadOnlyCollection<string> concepts,
+        string searchMode,
+        RecipeSearchPredicate.CanonicalFilters filters)
     {
-        var serialized = JsonSerializer.Serialize(new { query, dto.SimilarToRecipeId, dto.WeekOffset, dto.DayIndex, dto.Filters, dto.Preferences }, JsonDefaults.CamelCase);
+        var serialized = JsonSerializer.Serialize(new
+        {
+            searchMode,
+            query,
+            concepts,
+            filters,
+            dto.SimilarToRecipeId,
+            dto.WeekOffset,
+            dto.DayIndex
+        }, JsonDefaults.CamelCase);
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(serialized)));
+    }
+
+    private static string ClassifySearchMode(
+        Guid? similarToRecipeId,
+        string query,
+        IReadOnlyCollection<string> concepts,
+        bool hasEffectiveFilters)
+    {
+        if (similarToRecipeId is not null) return "similar";
+        return !string.IsNullOrWhiteSpace(query) || concepts.Count > 0 || hasEffectiveFilters
+            ? "explicit"
+            : "discovery";
     }
 
     private static string[] NormalizeConcepts(IEnumerable<string>? concepts) => concepts?
@@ -513,104 +540,36 @@ public partial class RecipeSearchService(
         return candidates;
     }
 
-    private async Task<List<RankedRecipe>> ApplyFamilyFitRerankingAsync(
+    private static List<RankedRecipe> OrderStrictCandidates(
         List<RankedRecipe> candidates,
-        CancellationToken ct)
+        string searchMode,
+        RecipeSearchFiltersDto filters)
     {
-        ct.ThrowIfCancellationRequested();
+        if (searchMode == "similar")
+            return candidates
+                .OrderByDescending(candidate => candidate.Score)
+                .ThenByDescending(candidate => candidate.Recipe.CreatedAt)
+                .ThenBy(candidate => Normalize(candidate.Recipe.Name), StringComparer.Ordinal)
+                .ToList();
 
-        if (candidates.Count == 0)
-        {
-            return candidates;
-        }
-
-        var candidateIds = candidates.Select(candidate => candidate.Recipe.Id).ToList();
-        var voteCounts = await db.RecipeVotes
-            .AsNoTracking()
-            .Where(vote => candidateIds.Contains(vote.RecipeId) && vote.Vote == VoteType.Like)
-            .GroupBy(vote => vote.RecipeId)
-            .Select(group => new { RecipeId = group.Key, VoteCount = group.Count() })
-            .ToDictionaryAsync(x => x.RecipeId, x => x.VoteCount, ct);
-
-        return candidates
-            .Select(candidate => ApplyFamilySignals(candidate, voteCounts.GetValueOrDefault(candidate.Recipe.Id)))
+        var ordered = candidates.OrderByDescending(candidate => candidate.Score);
+        return (filters.NotCookedInLongTime == true
+                ? ordered.ThenBy(candidate => candidate.Recipe.LastCookedDate)
+                : ordered.ThenByDescending(candidate => candidate.Recipe.CreatedAt))
+            .ThenBy(candidate => Normalize(candidate.Recipe.Name), StringComparer.Ordinal)
             .ToList();
     }
 
-    private static RankedRecipe ApplyFamilySignals(RankedRecipe candidate, int likeVoteCount)
-    {
-        var score = candidate.Score;
-        var reasons = candidate.Reasons.ToList();
-
-        var (ratingDelta, ratingLabel) = candidate.Recipe.Rating switch
-        {
-            RecipeRating.Love => (BoostLove, "Loved by your household"),
-            RecipeRating.Like => (BoostLike, "Liked by your household"),
-            RecipeRating.Dislike => (-BoostDislike, "Previously marked as a dislike"),
-            _ => (0d, (string?)null)
-        };
-
-        if (ratingDelta != 0 && ratingLabel is not null)
-        {
-            score += ratingDelta;
-            reasons.Add(new RecipeSearchReasonDto
-            {
-                Source = "rating-boost",
-                Label = ratingLabel
-            });
-        }
-
-        var voteBoost = Math.Min(likeVoteCount * BoostVotesRate, BoostVotesMax);
-        if (voteBoost > 0)
-        {
-            score += voteBoost;
-            reasons.Add(new RecipeSearchReasonDto
-            {
-                Source = "vote-boost",
-                Label = "Family has shown interest"
-            });
-        }
-
-        return candidate with
-        {
-            Score = score,
-            Reasons = reasons,
-            ScoreComponents = WithComponents(candidate.ScoreComponents, ("family.rating", ratingDelta), ("family.votes", voteBoost))
-        };
-    }
-
-    private async Task<List<RankedRecipe>> ApplyPlannerAwareRerankingAsync(
+    private static (RankedRecipe? TopPick, List<RankedRecipe> Alternatives) SelectStrictTopPick(
         List<RankedRecipe> candidates,
-        int weekOffset,
-        CancellationToken ct)
+        IReadOnlyDictionary<Guid, RecipeImportReportStatus> reportStatuses,
+        bool reviewFilterActive)
     {
-        ct.ThrowIfCancellationRequested();
+        var first = candidates.FirstOrDefault();
+        if (reviewFilterActive || first is null || reportStatuses.ContainsKey(first.Recipe.Id))
+            return (null, candidates);
 
-        var schedule = await scheduleService.GetScheduleAsync(weekOffset);
-        var assignedRecipeIds = schedule.Days
-            .Where(day => day.Recipe is not null)
-            .Select(day => day.Recipe!.Id)
-            .ToHashSet();
-
-        var reranked = candidates
-            .Select(candidate =>
-            {
-                var isPlanned = assignedRecipeIds.Contains(candidate.Recipe.Id);
-                if (isPlanned)
-                {
-                    var reasons = candidate.Reasons.ToList();
-                    reasons.Add(new RecipeSearchReasonDto
-                    {
-                        Source = "planner-fit",
-                        Label = "Already planned for this week"
-                    });
-                    return candidate with { Score = candidate.Score + PlannedDemotion, Reasons = reasons, ScoreComponents = WithComponents(candidate.ScoreComponents, ("schedule.already-planned", PlannedDemotion)) };
-                }
-                return candidate;
-            })
-            .ToList();
-
-        return reranked;
+        return (first, candidates.Skip(1).ToList());
     }
 
 
@@ -949,7 +908,7 @@ public partial class RecipeSearchService(
             }
         }
 
-        return all.Values.OrderBy(candidate => candidate.Recipe.Id).ToList();
+        return all.Values.ToList();
     }
 
     // Lexical similarity is already a 0-1 score. Cosine similarity is -1 to 1;

@@ -91,14 +91,14 @@ public partial class RecipeLexicalSearchPostgresTests
             recipe.CuisineType = "Italian";
             aligned.Add(recipe);
         }
-        // All four candidates have equal structured scores. Exercise both final
-        // tie-breakers, with the newest pair deliberately inserted after index 0.
+        // All four candidates have equal structured scores. Exercise the meaningful
+        // creation/name tie-breakers, with the newest pair deliberately inserted after index 0.
         var createdAt = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
         aligned[0].CreatedAt = createdAt.AddDays(1);
         aligned[1].CreatedAt = createdAt.AddDays(2);
         aligned[2].CreatedAt = createdAt.AddDays(2);
         aligned[3].CreatedAt = createdAt;
-        var expected = new[] { aligned[1].Id, aligned[2].Id }.Order().Concat([aligned[0].Id, aligned[3].Id]).ToArray();
+        var expected = new[] { aligned[1].Id, aligned[2].Id, aligned[0].Id, aligned[3].Id };
         await _db.SaveChangesAsync();
 
         var service = CreateSimilarService(useSemanticRepository: false);

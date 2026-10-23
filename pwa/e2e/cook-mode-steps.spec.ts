@@ -160,7 +160,7 @@ test.describe('Cook Mode — HowToSection[] steps display', () => {
               topPick: null,
               results: [recipe],
               appliedFilters: {},
-              searchMode: 'standard',
+              searchMode: 'explicit',
               resultPath: 'lexical-only',
             },
           },

@@ -43,7 +43,7 @@ test.describe('Recipe Action Pivot', () => {
               },
               results: [],
               appliedFilters: {},
-              searchMode: 'standard',
+              searchMode: 'explicit',
               resultPath: 'lexical-only',
             },
           }),

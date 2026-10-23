@@ -211,7 +211,12 @@ public class ApplicationClockTests
         await db.SaveChangesAsync();
         var response = await scope.ServiceProvider.GetRequiredService<RecipeSearchService>().SearchAsync(
             new RecipeSearchRequestDto { Query = "", Filters = new() { NewRecipes = true } });
-        Assert.Equal(new[] { exact.Id, after.Id }.Order(), response.Results.Select(x => x.Id).Order());
+        var returnedIds = response.Results
+            .Append(response.TopPick)
+            .Where(result => result is not null)
+            .Select(result => result!.Id)
+            .Order();
+        Assert.Equal(new[] { exact.Id, after.Id }.Order(), returnedIds);
     }
 
     [Fact]
