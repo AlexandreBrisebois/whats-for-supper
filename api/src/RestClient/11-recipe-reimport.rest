@@ -1,0 +1,77 @@
+# ONE-RECIPE REPAIR TEMPLATE. Prepared only; no request has been executed.
+# Do NOT use Send All Requests, a loop, or a bulk run.
+# Verified against GitHub commit e84a2d786d900b7757b43a0bf61606ba249be442.
+# https://github.com/AlexandreBrisebois/whats-for-supper/blob/e84a2d786d900b7757b43a0bf61606ba249be442/api/src/RecipeApi/Controllers/RecipeController.cs#L171
+# https://github.com/AlexandreBrisebois/whats-for-supper/blob/e84a2d786d900b7757b43a0bf61606ba249be442/api/src/RecipeApi/Dto/RecipeImportIssueDto.cs
+# Production deployment/version has NOT been verified.
+# The old POST /api/recipes/{id}/import in 03-recipes.rest is retired (404).
+# Existing baseUrl and hearthSecret must come from your private REST environment.
+# Confirm baseUrl points to the intended production API before sending anything.
+# Do not paste credentials into chat or commit them to source control.
+@recipeId = REPLACE_WITH_ONE_VERIFIED_RECIPE_UUID
+@familyMemberId = 4bc839ac-5be0-4a75-8a9d-6a6630c9d2a7
+@importId = REPLACE_WITH_UUID_RETURNED_BY_THE_SINGLE_POST
+
+### 1. READ ONLY: inspect and save the current recipe before repair
+GET {{baseUrl}}/api/recipes/{{recipeId}}
+Accept: application/json
+X-Hearth-Secret: {{hearthSecret}}
+X-Family-Member-Id: {{familyMemberId}}
+
+# Inspect the returned recipe: correct ID/title, canReimport true, original source
+# available, and no import already running. Preserve its current content/backups.
+# A source URL or image count alone does not establish that originals are readable.
+# STOP if the target/environment is uncertain or a prior request outcome is unknown.
+
+
+### 2. MUTATION: manually send ONCE only after reviewing request 1
+# Saves an import report and can queue chargeable AI extraction from URL/photos.
+# This reimports the WHOLE recipe: it can replace ingredients, name, language,
+# instructions and generated media. It is NOT a steps-only patch.
+# No is_ready/name guard suppresses this eligible report merely because it is ready.
+# A meaningful note is needed; a duplicate reason would suppress automatic launch.
+POST {{baseUrl}}/api/recipes/{{recipeId}}/import-report
+Content-Type: application/json
+Accept: application/json
+X-Hearth-Secret: {{hearthSecret}}
+X-Family-Member-Id: {{familyMemberId}}
+
+{
+  "reasons": ["steps"],
+  "note": "The saved instructions are missing their full cooking-step bodies. Recover every complete instruction from the original URL or recipe images, not just headings. Preserve source fidelity and do not invent instructions absent from the original."
+}
+
+# Inspect the HTTP status and UNWRAPPED response body immediately.
+# HTTP 200 alone does not mean a workflow launched. Expected launch evidence:
+# reimportStarted: true, importId: a UUID, reimportLaunchFailed: false.
+# A matching active report can return its EXISTING importId; true is not necessarily
+# proof of a newly created instance. Copy and retain the exact returned importId.
+# If reimportStarted is false or reimportLaunchFailed is true, stop and inspect.
+# Unchanged feedback after a terminal attempt can save without launching again.
+# Missing member header: 400. Ineligible source or conflicting active feedback: 409.
+# A timeout/connection failure is uncertain: inspect state before any retry.
+# Do not repeatedly change the note simply to force new workflows.
+
+### 3. READ ONLY: inspect the exact returned workflow ID
+# Only send after setting importId from the actual response above.
+# This read currently requires familyMemberId to match the recipe's addedBy.
+# A 404 with a different household member does NOT prove the workflow is absent.
+# Inspect workflow status and task error details. Completed is not proof of fidelity;
+# Paused/Failed requires diagnosis, not an automatic rerun of the POST.
+GET {{baseUrl}}/api/recipe-imports/{{importId}}
+Accept: application/json
+X-Hearth-Secret: {{hearthSecret}}
+X-Family-Member-Id: {{familyMemberId}}
+
+### 4. READ ONLY: refresh THIS recipe after the workflow completes
+# Reuse request 1 for detail; do not repeat the POST to check status.
+GET {{baseUrl}}/api/recipes/{{recipeId}}
+Accept: application/json
+X-Hearth-Secret: {{hearthSecret}}
+X-Family-Member-Id: {{familyMemberId}}
+
+# Confirm real nonempty step bodies, compare against the saved original recipe,
+# and review unintended ingredient/name/language changes before considering others.
+# Stored workflow_instances statuses differ from workflow_tasks:
+# instances: 0 Pending, 1 Processing, 2 Completed, 3 Failed, 4 Paused.
+# tasks:     0 Waiting, 1 Pending, 2 Processing, 3 Completed, 4 Failed.

@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { connection } from 'next/server';
+import baseManifest from '@/lib/baseManifest.json';
 import { resolveAppIdentity } from '@/lib/server/app-identity';
 import Script from 'next/script';
 import { Suspense } from 'react';
@@ -27,7 +28,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const identity = resolveAppIdentity();
   return {
     title: identity.name,
-    description: 'Capture recipes, plan your week, discover what to cook next.',
+    description: baseManifest.description,
     manifest: '/manifest.json',
     appleWebApp: {
       capable: true,

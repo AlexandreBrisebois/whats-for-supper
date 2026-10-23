@@ -34,18 +34,16 @@ export const DiscoveryToggleCard: React.FC<DiscoveryToggleCardProps> = ({
           : t('recipes.turnOnDiscovery', 'Turn on Discovery for this recipe')
       }
     >
-      <span className="flex flex-col gap-0.5 leading-tight">
+      <span className="flex min-w-0 flex-1 flex-col gap-0.5 leading-tight">
         <span className="text-sm font-black tracking-wide text-charcoal">
           {t('planner.askFamily', 'Ask the Family')}
         </span>
         <span className="text-[11px] font-bold text-charcoal/50">
-          {isDiscoverable
-            ? 'Available for voting. Dreaming may pause recently cooked recipes.'
-            : 'Turn on to return to voting. Turning off keeps it off until you turn it on.'}
+          {t('discovery.showsInDiscovery', 'Shows in Discovery voting')}
         </span>
       </span>
       <div
-        className={`relative h-8 w-14 rounded-full transition-colors duration-300 ${
+        className={`relative h-8 w-14 shrink-0 rounded-full transition-colors duration-300 ${
           isDiscoverable ? 'bg-sage' : 'bg-charcoal/20'
         }`}
         aria-hidden="true"

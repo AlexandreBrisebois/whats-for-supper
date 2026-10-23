@@ -93,9 +93,8 @@ describe('runtime install identity', () => {
         apple: manifest.icons[1].src,
         ...(prefix ? { shortcut: `${prefix}/favicon.ico` } : {}),
       });
-      expect(metadata.description).toBe(
-        'Capture recipes, plan your week, discover what to cook next.'
-      );
+      expect(metadata.description).toBe('Swipe, Match, Cook!');
+      expect(manifest.description).toBe('Swipe, Match, Cook!');
       expect(manifest.icons.map((icon: { src: string }) => icon.src)).toEqual(
         base.icons.map((icon) => prefix + icon.src)
       );
@@ -122,6 +121,8 @@ describe('runtime install identity', () => {
         expect(response.headers.get('cache-control')).toContain('no-store');
         const manifest = await response.json();
         expect(manifest.name).toBe(base.name);
+        expect(manifest.description).toBe('Swipe, Match, Cook!');
+        expect((await generateMetadata()).description).toBe('Swipe, Match, Cook!');
         expect((await generateMetadata()).title).toBe(manifest.name);
         expect(manifest.share_target.method).toBe(pdf === 'on' ? 'POST' : 'GET');
         expect(manifest.share_target.action).toBe(pdf === 'on' ? '/share-target' : '/capture');

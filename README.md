@@ -2,6 +2,71 @@
   <img src="docs/whats-for-supper.webp" alt="What's For Supper?" width="1024" />
 </p>
 
+# What's for Supper?
+
+**Swipe, Match, Cook!**
+
+[![Latest stable release](https://img.shields.io/github/v/release/AlexandreBrisebois/whats-for-supper?display_name=release&include_prereleases=false&label=stable%20release)](https://github.com/AlexandreBrisebois/whats-for-supper/releases/latest)
+
+## A supper plan the family helps choose
+
+What's for Supper? helps you **involve the whole family in choosing what’s for supper**. Bring your favourite recipes, weekly meal plan, and shared grocery list together in a self-hosted app for your household.
+
+**Built by your home, for your home.** Your household curates the collection, one recipe at a time. Keep the meals you love, add new favourites, and let it grow with you.
+
+Every household's collection will look different. Vegetarian favourites, food intolerances, a tight grocery budget, or simply different tastes. What matters is that the collection reflects the people around your table, including the recipes and traditions passed down through generations.
+
+## From family favourites to supper on the table
+
+- **Choose together.** Swipe and vote on recipes in Discovery, then turn those choices into the week’s supper plan. Figure out the week's meals together as a family, even when you're on the go.
+- **Plan for real life.** See the week at a glance and adjust when plans change.
+- **Shop from one shared list.** Planned suppers become a grocery list that stays in sync as the household shops.
+- **Cook your way.** Follow the instructions in **Cook's Mode**, or use **View original** to keep the saved recipe card beside you.
+- **Find your next supper.** Browse your collection, search for a favourite, or look for similar dishes.
+
+Have a favourite on a handwritten recipe card? Take a photo to add it to your collection. AI helps turn it into a digital recipe and can generate an image of the dish. That image is an illustration, not a photo of a meal you cooked. Check the extracted ingredients and steps against the original before cooking. You can also add recipes from a link or a short description.
+
+Your recipe collection and meal plans are stored on your own server. AI features use Gemini; self-hosting does not mean all processing happens locally. There are no individual accounts to manage; your household shares access through a family passphrase.
+
+## A look inside
+
+These screenshots show the demo app. Select an image to see it at full size.
+
+<table>
+  <tr>
+    <td align="center" valign="top"><a href="docs/screenshots/demo-discovery.png"><img src="docs/screenshots/demo-discovery.png" alt="Demo Discovery card for Mediterranean Baked Cod with Quinoa, with pass and heart voting controls." width="260" /></a></td>
+    <td align="center" valign="top"><a href="docs/screenshots/demo-weekly-planner.png"><img src="docs/screenshots/demo-weekly-planner.png" alt="Demo weekly planner with chosen recipes, a mystery night, and other supper plans." width="260" /></a></td>
+    <td align="center" valign="top"><a href="docs/screenshots/demo-grocery-list.png"><img src="docs/screenshots/demo-grocery-list.png" alt="Demo grocery checklist grouped by Produce, Bakery, Meat, and Dairy & Eggs, with item checkboxes and shopping progress." width="260" /></a></td>
+  </tr>
+  <tr>
+    <td align="center">Choose together.</td>
+    <td align="center">Plan your week.</td>
+    <td align="center">Shop from one list.</td>
+  </tr>
+  <tr>
+    <td align="center" valign="top"><a href="docs/screenshots/demo-add-recipe.png"><img src="docs/screenshots/demo-add-recipe.png" alt="Demo Add a Recipe screen with camera, gallery, recipe link, description, and recipe file options." width="260" /></a></td>
+    <td align="center" valign="top"><a href="docs/screenshots/demo-tonights-supper.png"><img src="docs/screenshots/demo-tonights-supper.png" alt="Demo Tonight’s Menu showing Mediterranean Baked Cod with Quinoa, ready in 35 minutes, with a link to ingredients." width="260" /></a></td>
+    <td align="center" valign="top"><a href="docs/screenshots/demo-cooks-mode.png"><img src="docs/screenshots/demo-cooks-mode.png" alt="Demo Cook's Mode showing quinoa and fish preparation instructions, plus Ingredients and Cooked controls." width="260" /></a></td>
+  </tr>
+  <tr>
+    <td align="center">Add your family favourites.</td>
+    <td align="center">See tonight’s supper.</td>
+    <td align="center">Cook step by step.</td>
+  </tr>
+</table>
+
+## Try the demo
+
+[Try the demo](https://dm.srvrlss.dev) before setting it up at home. The shared demo family passphrase is **welcome-demo**.
+
+## Run it at home
+
+**Start with the [quick installation guide](docs/install/quick-start.md).** It walks you through downloading the matching installation package and setting up your home server.
+
+[Latest stable release](https://github.com/AlexandreBrisebois/whats-for-supper/releases/latest) · [Docker Compose and advanced setup](release-template/synology/README.md)
+
+**Release status:** The stable installation ZIP will be available with the first published stable GitHub Release. Until then, beta builds are for testing.
+
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-BUSL--1.1-CD5D45?style=flat-square" alt="Business Source License 1.1" /></a>
   <img src="https://img.shields.io/badge/.NET-11_RC2-512BD4?style=flat-square&logo=dotnet" alt=".NET 11 RC2" />
@@ -10,37 +75,14 @@
   <img src="https://img.shields.io/badge/AI-Gemini_Flash-4285F4?style=flat-square&logo=google" alt="Gemini Flash" />
 </p>
 
-# What's for Supper?
-
-**Swipe, match, cook. 🍽️**
-
-Turn “What’s for supper?” from the daily dreaded question into a fun family activity where kids actually want to help decide.
-
-## Why this exists
-
-Because that question is rarely just one question. It is remembering what everyone likes, making a plan, buying what is needed, and starting again when plans change. What's for Supper? lets the whole household share the work—and the fun of choosing what comes next.
-
-What's for Supper? keeps the small, everyday decisions in one calm place: choose meals everyone will eat, see the week at a glance, shop from one shared list, and cook without losing your place. It is designed for real kitchens—interruptions, changed plans, and all.
-
-- Plan dinners for the week and keep a live grocery list in sync across the household.
-- Let family members vote on recipes, then turn favourites into a plan.
-- Save recipes from a photo, link, or short description instead of retyping them.
-- Filter for confirmed vegetarian recipes and find similar dishes from a favourite.
-- Use Cook's Mode for simple, step-by-step help when it is time to make dinner.
-
-Recipes and household planning stay on your own server. There are no individual accounts to manage; a household shares access to its private app.
-
-## Synology release status
-
-The public Synology release is in preparation and is **not available to install yet**. Docker Hub publication and a Container Manager template are being prepared, but neither makes a public installation supported. Its first supported path will be a versioned beta for Synology DSM 7.2+ Container Manager on 64-bit Intel/AMD and ARM systems. Until it has completed physical deployment and recovery qualification, this repository is for contributors rather than a public installation guide.
-
 ## Read on
 
 - [Family guide](docs/user-guide.md) — how planning, shopping, choosing, and cooking fit together.
 - [OpenSpec specifications](openspec/specs) — canonical capability requirements; [outstanding baseline work](https://github.com/AlexandreBrisebois/whats-for-supper/issues?q=is%3Aissue+WFS-BL-+in%3Atitle) is tracked in GitHub issues with historical evidence and acceptance criteria.
 - [Architecture](docs/architecture.md) — a concise technical view for contributors and operators.
-- [Synology operator guide](release-template/synology/README.md) — the current template; physical deployment, recovery, and public-release qualification remain outstanding.
+- [Home server installation guide](release-template/synology/README.md) — Docker Compose setup, HTTPS configuration, and platform-specific Synology notes.
 - [Local development guide](LOCAL_DEV_LOOP.md) — contributor setup and day-to-day development.
+- [Feature flag development and lifecycle](docs/feature-flags.md) — reuse previews, graduate features, and retire individual flags without removing the system.
 - [Contributor guide](AGENT.md) — project conventions for human and AI collaborators.
 
 ## License

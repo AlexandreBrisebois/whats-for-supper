@@ -865,7 +865,7 @@ export default function RecipesPage() {
             )}
 
             {/* Secondary Results */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
               {displayedResults.map((recipe, idx) => (
                 <motion.div
                   key={recipe.id}
@@ -875,33 +875,32 @@ export default function RecipesPage() {
                   onClick={() => handleOpenRecipe(recipe.id)}
                   data-testid={`recipe-card-${recipe.id}`}
                   className={cn(
-                    'group flex flex-col justify-start items-stretch gap-3 p-3 bg-white/50 backdrop-blur-sm rounded-[2rem] border border-charcoal/5 shadow-sm hover:shadow-md transition-all cursor-pointer active:scale-95',
+                    'group flex flex-col justify-start items-stretch overflow-hidden rounded-lg bg-white/85 text-left shadow-sm border border-charcoal/8 backdrop-blur-sm transition hover:-translate-y-0.5 hover:shadow-md cursor-pointer active:scale-95',
                     isAssigning && 'opacity-50 pointer-events-none'
                   )}
                 >
-                  <div className="relative aspect-video overflow-hidden rounded-3xl mb-6 shadow-sm ring-1 ring-charcoal/5">
+                  <div className="relative aspect-[4/3] bg-sage/10 overflow-hidden">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={getImageUrl(recipe.imageUrl) || '/placeholder-recipe.jpg'}
                       alt={recipe.name}
-                      className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
                     />
                     {recipe.importIssueStatus && (
-                      <div className="absolute left-3 top-3">
+                      <div className="absolute left-2 top-2">
                         <RecipeImportIssueBadge status={recipe.importIssueStatus} />
                       </div>
                     )}
                   </div>
-                  <div className="flex flex-col gap-1 px-1.5 pb-1">
-                    <span className="text-[9px] font-black uppercase tracking-widest text-charcoal/30 flex items-center gap-1">
-                      <Clock size={9} />{' '}
+                  <div className="p-3">
+                    <h4 className="line-clamp-2 text-sm font-black leading-tight text-charcoal">
+                      {recipe.name}
+                    </h4>
+                    <p className="mt-1 text-xs font-semibold text-charcoal/50">
                       {tWithVars('common.readyIn', 'READY IN {{time}}', {
                         time: formatRecipeTime(recipe.totalTime),
                       })}
-                    </span>
-                    <h4 className="text-base font-black tracking-tighter leading-tight text-charcoal truncate">
-                      {recipe.name}
-                    </h4>
+                    </p>
                   </div>
                 </motion.div>
               ))}
