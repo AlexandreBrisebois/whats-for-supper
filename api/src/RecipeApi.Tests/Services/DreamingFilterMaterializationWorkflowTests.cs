@@ -51,8 +51,8 @@ public class DreamingFilterMaterializationWorkflowTests
         Assert.Equal("PruneMaintenanceCommands", prune.Processor);
         Assert.Contains("maintenance", prune.DependsOn);
         Assert.Contains("prune-maintenance-commands", report.DependsOn);
-        Assert.Contains("\"retentionDays\":30", prune.Payload);
-        Assert.Contains("\"batchSize\":500", prune.Payload);
+        Assert.Equal("30", Assert.IsType<string>(prune.Payload["retentionDays"]));
+        Assert.Equal("500", Assert.IsType<string>(prune.Payload["batchSize"]));
     }
 
     [Fact]
