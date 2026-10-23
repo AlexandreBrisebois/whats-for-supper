@@ -584,7 +584,9 @@ public class ManagementServiceTests : IAsyncLifetime
         await _db.SaveChangesAsync();
 
         // Act
-        var result = await _service.GenerateDreamingReportAsync(new WorkflowPruneResult(3, 4));
+        var result = await _service.GenerateDreamingReportAsync(
+            new WorkflowPruneResult(3, 4),
+            maintenancePruneResult: new MaintenanceCommandPruneResult(5, 2, now.AddDays(-30)));
 
         // Assert
         Assert.True(File.Exists(result.Path));
@@ -596,6 +598,9 @@ public class ManagementServiceTests : IAsyncLifetime
         Assert.Contains("# Dreaming Report", markdown);
         Assert.Contains("Pruned workflow instances: 3", markdown);
         Assert.Contains("Pruned workflow tasks: 4", markdown);
+        Assert.Contains("Terminal maintenance commands pruned: 5", markdown);
+        Assert.Contains("Legacy completion timestamps initialized: 2", markdown);
+        Assert.Contains($"Retention cutoff (inclusive): {now.AddDays(-30):O}", markdown);
         Assert.Contains("db-backup", markdown);
         Assert.Contains("failed-import", markdown);
         Assert.Contains("Extraction failed", markdown);

@@ -313,6 +313,9 @@ public class RecipeDbContext(DbContextOptions<RecipeDbContext> options) : DbCont
                 t.HasCheckConstraint("CK_maintenance_commands_status", "status IN ('pending', 'processing', 'completed', 'failed', 'skipped')"));
             entity.HasIndex(e => new { e.Status, e.ScheduledFor, e.CreatedAt })
                   .HasDatabaseName("idx_maintenance_commands_status_scheduled");
+            entity.HasIndex(e => new { e.CompletedAt, e.Id })
+                  .HasDatabaseName("idx_maintenance_commands_terminal_completed")
+                  .HasFilter("status IN ('completed', 'skipped')");
         });
 
         modelBuilder.Entity<RecipeSearchFilterState>(entity =>

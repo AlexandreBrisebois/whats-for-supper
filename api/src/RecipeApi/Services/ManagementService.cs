@@ -11,6 +11,8 @@ namespace RecipeApi.Services;
 
 public record WorkflowPruneResult(int PrunedInstances, int PrunedTasks);
 
+public record MaintenanceCommandPruneResult(int PrunedCommands, int InitializedCompletionTimestamps, DateTimeOffset Cutoff);
+
 public record MaintenanceCommandBatchResult(int PendingAtStart, int Completed, int Skipped, int Failed, List<MaintenanceCommandReportItem> Items);
 
 public record MaintenanceCommandReportItem(Guid CommandId, string CommandType, string Status, Guid? RecipeId, Guid? WorkflowInstanceId, string? Reason);
@@ -442,6 +444,72 @@ public partial class ManagementService(
             Items: items);
     }
 
+    public async Task<MaintenanceCommandPruneResult> PruneMaintenanceCommandsAsync(
+        int retentionDays = 30,
+        int batchSize = 500,
+        CancellationToken ct = default)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(retentionDays, 1);
+        ArgumentOutOfRangeException.ThrowIfLessThan(batchSize, 1);
+
+        var now = clock.UtcNow;
+        var cutoff = now.AddDays(-retentionDays);
+        await using var transaction = db.Database.IsRelational()
+            ? await db.Database.BeginTransactionAsync(ct)
+            : null;
+
+        try
+        {
+            // Legacy terminal rows and recovery-invalidated rows from older releases did
+            // not always have a completion time. Start their retention clock now rather
+            // than treating an old creation time as evidence that they are safe to erase.
+            var missingCompletionTimes = await db.MaintenanceCommands
+                .Where(c =>
+                    (c.Status == "completed" || c.Status == "skipped")
+                    && c.CompletedAt == null)
+                .OrderBy(c => c.CreatedAt)
+                .ThenBy(c => c.Id)
+                .Take(batchSize)
+                .ToListAsync(ct);
+            foreach (var command in missingCompletionTimes)
+                command.CompletedAt = now;
+
+            var expired = await db.MaintenanceCommands
+                .Where(c =>
+                    (c.Status == "completed" || c.Status == "skipped")
+                    && c.CompletedAt != null
+                    && c.CompletedAt <= cutoff)
+                .OrderBy(c => c.CompletedAt)
+                .ThenBy(c => c.Id)
+                .Take(batchSize)
+                .ToListAsync(ct);
+
+            db.MaintenanceCommands.RemoveRange(expired);
+            await db.SaveChangesAsync(ct);
+            if (transaction is not null)
+            {
+                ct.ThrowIfCancellationRequested();
+                await transaction.CommitAsync(CancellationToken.None);
+            }
+
+            logger.LogInformation(
+                "Pruned {PrunedCount} terminal maintenance commands at or before {Cutoff}; initialized {InitializedCount} missing completion timestamps; retentionDays={RetentionDays}; batchSize={BatchSize}",
+                expired.Count,
+                cutoff,
+                missingCompletionTimes.Count,
+                retentionDays,
+                batchSize);
+
+            return new MaintenanceCommandPruneResult(expired.Count, missingCompletionTimes.Count, cutoff);
+        }
+        catch
+        {
+            if (transaction is not null)
+                await transaction.RollbackAsync(CancellationToken.None);
+            throw;
+        }
+    }
+
     private async Task<MaintenanceCommandReportItem> ProcessDeleteFailedCaptureResidueAsync(MaintenanceCommand command, CancellationToken ct)
     {
         var payload = JsonSerializer.Deserialize<DeleteFailedCaptureResiduePayload>(command.Payload, JsonDefaults.CamelCase)
@@ -521,11 +589,13 @@ public partial class ManagementService(
     public async Task<DreamingReportResult> GenerateDreamingReportAsync(
         WorkflowPruneResult? pruneResult = null,
         MaintenanceCommandBatchResult? maintenanceResult = null,
+        MaintenanceCommandPruneResult? maintenancePruneResult = null,
         CancellationToken ct = default)
     {
         pruneResult ??= new WorkflowPruneResult(0, 0);
         maintenanceResult ??= new MaintenanceCommandBatchResult(0, 0, 0, 0, []);
         var now = clock.UtcNow;
+        maintenancePruneResult ??= new MaintenanceCommandPruneResult(0, 0, now.AddDays(-30));
         var since = now.AddHours(-24);
         var stuckCutoff = now.AddHours(-1);
         var dreamingStuckCutoff = now.AddHours(-24);
@@ -564,7 +634,7 @@ public partial class ManagementService(
             .Take(20)
             .ToListAsync(ct);
 
-        var markdown = BuildDreamingReport(now, pruneResult, maintenanceResult, pendingMaintenanceCommands, latestBackup, recentFailures, stuckWorkflows);
+        var markdown = BuildDreamingReport(now, pruneResult, maintenanceResult, maintenancePruneResult, pendingMaintenanceCommands, latestBackup, recentFailures, stuckWorkflows);
         await File.WriteAllTextAsync(reportPath, markdown, ct);
 
         logger.LogInformation(
@@ -580,6 +650,7 @@ public partial class ManagementService(
         DateTimeOffset now,
         WorkflowPruneResult pruneResult,
         MaintenanceCommandBatchResult maintenanceResult,
+        MaintenanceCommandPruneResult maintenancePruneResult,
         List<MaintenanceCommand> pendingMaintenanceCommands,
         WorkflowInstance? latestBackup,
         List<WorkflowInstance> recentFailures,
@@ -597,6 +668,8 @@ public partial class ManagementService(
         report.AppendLine($"- Maintenance commands completed: {maintenanceResult.Completed}");
         report.AppendLine($"- Maintenance commands skipped: {maintenanceResult.Skipped}");
         report.AppendLine($"- Maintenance commands failed: {maintenanceResult.Failed}");
+        report.AppendLine($"- Terminal maintenance commands pruned: {maintenancePruneResult.PrunedCommands}");
+        report.AppendLine($"- Legacy completion timestamps initialized: {maintenancePruneResult.InitializedCompletionTimestamps}");
         report.AppendLine($"- Failed workflows in last 24h: {recentFailures.Count}");
         report.AppendLine($"- Stuck workflows: {stuckWorkflows.Count}");
         report.AppendLine();
@@ -606,6 +679,9 @@ public partial class ManagementService(
         report.AppendLine($"- Completed: {maintenanceResult.Completed}");
         report.AppendLine($"- Skipped: {maintenanceResult.Skipped}");
         report.AppendLine($"- Failed: {maintenanceResult.Failed}");
+        report.AppendLine($"- Terminal history pruned: {maintenancePruneResult.PrunedCommands}");
+        report.AppendLine($"- Completion timestamps initialized: {maintenancePruneResult.InitializedCompletionTimestamps}");
+        report.AppendLine($"- Retention cutoff (inclusive): {maintenancePruneResult.Cutoff:O}");
         report.AppendLine($"- Pending/failed after run: {pendingMaintenanceCommands.Count}");
         report.AppendLine();
         if (maintenanceResult.Items.Count == 0)

@@ -142,6 +142,25 @@ public class SchemaIntegrityTests
     }
 
     [Fact]
+    public async Task MaintenanceCommandTerminalRetentionIndex_IsAlignedAcrossSchemaCompatibilityAndEf()
+    {
+        Assert.Contains("idx_maintenance_commands_terminal_completed", _schemaContent, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("idx_maintenance_commands_terminal_completed", _compatibilityContent, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("WHERE status IN ('completed', 'skipped')", _schemaContent, StringComparison.OrdinalIgnoreCase);
+
+        await using var factory = await TestWebApplicationFactory.CreateAsync();
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+        var index = db.GetService<IDesignTimeModel>().Model
+            .FindEntityType(typeof(MaintenanceCommand))!
+            .GetIndexes()
+            .Single(candidate => candidate.GetDatabaseName() == "idx_maintenance_commands_terminal_completed");
+
+        Assert.Equal([nameof(MaintenanceCommand.CompletedAt), nameof(MaintenanceCommand.Id)], index.Properties.Select(property => property.Name));
+        Assert.Equal("status IN ('completed', 'skipped')", index.GetFilter());
+    }
+
+    [Fact]
     public void FamilyMembers_Schema_And_Compatibility_ConstrainNullableCookingView()
     {
         var table = GetTableDefinition("family_members");
