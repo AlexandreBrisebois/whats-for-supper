@@ -55,6 +55,11 @@ function buildDraftDays(mondayRecipe?: object) {
   });
 }
 
+async function collapseDevelopmentBadge(page: Page) {
+  const devBadge = page.getByRole('button', { name: 'Collapse issues badge' });
+  if (await devBadge.isVisible()) await devBadge.click();
+}
+
 async function setupPlanner(page: Page, locked = false) {
   const baseUrl = process.env.BASE_URL || 'http://127.0.0.1:3000';
 
@@ -221,8 +226,8 @@ test.describe("Planner — Cook's Mode", () => {
     await expect(page.getByTestId('cooks-mode-step-indicator')).toContainText(/Check & Prep/i);
     await expect(page.getByTestId('cooks-mode-step-next')).toContainText(/Let's Cook/i);
 
-    await page.getByTestId('cooking-view-trigger').click();
-    await page.getByRole('menuitemradio', { name: 'Step by step' }).click();
+    await collapseDevelopmentBadge(page);
+    await page.getByTestId('cooking-view-step-by-step').click();
 
     await page.getByTestId('cooks-mode-step-next').click();
     await expect(page.getByTestId('cooks-mode-step-indicator')).toContainText(/1 \/ /i);

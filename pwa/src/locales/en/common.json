@@ -269,6 +269,7 @@
   "grocery": {
     "smartShopping": "Smart Shopping",
     "checklist": "Grocery Checklist",
+    "close": "Close grocery list",
     "noIngredients": "No ingredients in this week's plan",
     "emptyTitle": "Your list is empty",
     "emptySubtext": "Add meals to your planner and your grocery list will build itself — organized by store section.",
@@ -279,6 +280,7 @@
     "extraPlaceholder": "Add milk, coffee, foil…",
     "addExtra": "Add",
     "addingExtra": "Adding…",
+    "extraSavedToSection": "Saved to {{section}}",
     "addExtraError": "Could not add this extra. Your text is still here; try again.",
     "extraSuggestions": "Extra suggestions",
     "suggestionCountOne": "{{count}} suggestion available",
@@ -308,6 +310,7 @@
   "cook": {
     "gettingReady": "Getting your kitchen ready...",
     "cooksMode": "Cook's mode",
+    "openRecipeDetails": "Open recipe details",
     "untitledRecipe": "Untitled Recipe",
     "stepXofY": "Step {{current}} of {{total}}",
     "plantPowered": "Plant-Powered Choice!",

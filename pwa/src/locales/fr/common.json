@@ -269,6 +269,7 @@
   "grocery": {
     "smartShopping": "Courses Intelligentes",
     "checklist": "Liste de Courses",
+    "close": "Fermer la liste de courses",
     "noIngredients": "Aucun ingrédient pour cette semaine",
     "emptyTitle": "Votre liste vous attend",
     "emptySubtext": "Prévoyez quelques repas pour voir vos ingrédients organisés par rayon.",
@@ -279,6 +280,7 @@
     "extraPlaceholder": "Ajouter lait, café, papier…",
     "addExtra": "Ajouter",
     "addingExtra": "Ajout…",
+    "extraSavedToSection": "Enregistré dans {{section}}",
     "addExtraError": "Impossible d’ajouter cet extra. Votre texte est conservé; réessayez.",
     "extraSuggestions": "Suggestions d’extras",
     "suggestionCountOne": "{{count}} suggestion disponible",
@@ -308,6 +310,7 @@
   "cook": {
     "gettingReady": "Préparation de votre cuisine...",
     "cooksMode": "Mode Cuisine",
+    "openRecipeDetails": "Ouvrir les détails de la recette",
     "untitledRecipe": "Recette sans titre",
     "stepXofY": "Étape {{current}} sur {{total}}",
     "plantPowered": "Choix Végétarien !",

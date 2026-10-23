@@ -42,7 +42,6 @@ public partial class ManagementService(
         "healthEvent",
         "balanceSummary"
     };
-
     private string DataRoot => dataRoot.Root;
 
     private static readonly JsonSerializerOptions _cycleIgnoreOptions = new()
@@ -904,7 +903,7 @@ public partial class ManagementService(
         {
             groceryExtraBackup = await ReadGroceryExtraBackupAsync(ct);
         }
-        catch (Exception ex) when (ex is JsonException or InvalidDataException)
+        catch (Exception ex) when (ex is JsonException or InvalidDataException or IOException or UnauthorizedAccessException)
         {
             result.Errors++;
             logger.LogWarning("Skipping invalid grocery-extras backup artifact: {Reason}", ex.Message);
@@ -1451,20 +1450,28 @@ public partial class ManagementService(
 
         var rows = backup.Occurrences;
         if (rows.Any(row => row.Id == Guid.Empty || row.LineageId == Guid.Empty || row.Version < 1
-            || row.WeekStartDate.DayOfWeek != DayOfWeek.Monday || string.IsNullOrWhiteSpace(row.Name)
-            || string.IsNullOrWhiteSpace(row.NormalizedKey) || string.IsNullOrWhiteSpace(row.GrocerySection))
+            || row.WeekStartDate.DayOfWeek != DayOfWeek.Monday || string.IsNullOrWhiteSpace(row.Name) || row.Name.Length > 200
+            || string.IsNullOrWhiteSpace(row.NormalizedKey) || !GrocerySections.IsCanonicalName(row.GrocerySection))
             || rows.Select(row => row.Id).Distinct().Count() != rows.Count
             || rows.GroupBy(row => (row.LineageId, row.WeekStartDate)).Any(group => group.Count() != 1)
             || rows.Where(row => row.PredecessorId is not null).GroupBy(row => row.PredecessorId).Any(group => group.Count() != 1))
             throw new InvalidDataException("grocery-extras.json contains invalid identities or occurrence values.");
 
-        var byId = rows.ToDictionary(row => row.Id);
-        foreach (var row in rows.Where(row => row.PredecessorId is not null))
+        foreach (var lineage in rows.GroupBy(row => row.LineageId))
         {
-            if (!byId.TryGetValue(row.PredecessorId!.Value, out var predecessor)
-                || predecessor.LineageId != row.LineageId
-                || predecessor.WeekStartDate.AddDays(7) != row.WeekStartDate)
-                throw new InvalidDataException("grocery-extras.json contains an invalid lineage.");
+            var ordered = lineage.OrderBy(row => row.WeekStartDate).ToArray();
+            if (ordered[0].PredecessorId is not null)
+                throw new InvalidDataException("grocery-extras.json contains an invalid lineage root.");
+            for (var index = 1; index < ordered.Length; index++)
+            {
+                var predecessor = ordered[index - 1];
+                var row = ordered[index];
+                if (row.PredecessorId != predecessor.Id
+                    || predecessor.WeekStartDate.AddDays(7) != row.WeekStartDate
+                    || predecessor.Checked
+                    || predecessor.RemovedAt is not null)
+                    throw new InvalidDataException("grocery-extras.json contains an invalid lineage.");
+            }
         }
         return backup;
     }

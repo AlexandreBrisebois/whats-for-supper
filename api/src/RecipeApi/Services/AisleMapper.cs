@@ -17,6 +17,35 @@ public enum GrocerySection
     Grocery
 }
 
+public static class GrocerySections
+{
+    private static readonly string[] CanonicalNames = Enum.GetValues<GrocerySection>()
+        .Select(ToDisplayName)
+        .ToArray();
+    private static readonly IReadOnlyDictionary<string, string> CanonicalNamesByInput = CanonicalNames
+        .ToDictionary(name => name, name => name, StringComparer.OrdinalIgnoreCase);
+
+    public static IReadOnlyList<string> Names => CanonicalNames;
+
+    public static bool TryGetCanonicalName(string? value, out string canonicalName)
+    {
+        if (value is not null && CanonicalNamesByInput.TryGetValue(value, out var match))
+        {
+            canonicalName = match;
+            return true;
+        }
+
+        canonicalName = string.Empty;
+        return false;
+    }
+
+    public static bool IsCanonicalName(string? value) =>
+        value is not null && CanonicalNames.Contains(value, StringComparer.Ordinal);
+
+    public static string ToDisplayName(GrocerySection section) =>
+        section == GrocerySection.DairyAndEggs ? "Dairy & Eggs" : section.ToString();
+}
+
 /// <summary>
 /// Maps a canonical ingredient name to a <see cref="GrocerySection"/> using
 /// longest-match keyword lookup. Falls back to <see cref="GrocerySection.Grocery"/>

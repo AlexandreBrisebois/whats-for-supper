@@ -261,6 +261,15 @@ describe('connected event', () => {
     expect(mockApplySnapshot).toHaveBeenCalledWith(schedule);
   });
 
+  it('refreshes the selected week after the document becomes visible', () => {
+    setupHook();
+    Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' });
+
+    document.dispatchEvent(new Event('visibilitychange'));
+
+    expect(mockWeekSync).toHaveBeenCalled();
+  });
+
   it('refreshes the selected next-week view when reconnect only supplies current week', () => {
     mockWeekOffset = 1;
     mockWeekStartDate = '2025-01-20';

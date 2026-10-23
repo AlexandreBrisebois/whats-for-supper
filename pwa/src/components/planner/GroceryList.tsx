@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   AlertCircle,
+  Check,
   CheckCircle2,
   ChevronDown,
   Circle,
@@ -21,6 +22,7 @@ import { useSchedule } from '@/lib/api/schedule';
 import { reclassifyIngredient } from '@/lib/api/ingredients';
 import type { GroceryExtraDto, GroceryLineItemDto } from '@/lib/api/generated/models';
 import { useWeekStore } from '@/store/weekStore';
+import { useUiStore } from '@/store/uiStore';
 import {
   createGroceryExtra,
   deleteGroceryExtra,
@@ -66,6 +68,14 @@ function formatQuantityHint(
   return `(${rounded} ${unitText})`;
 }
 
+function matchesOccurrenceIdentity(candidate: GroceryExtraDto, expected: GroceryExtraDto) {
+  return (
+    candidate.id === expected.id &&
+    String(candidate.occurrenceWeekStartDate ?? '') ===
+      String(expected.occurrenceWeekStartDate ?? '')
+  );
+}
+
 export function GroceryList({
   weekOffset,
   items,
@@ -83,6 +93,7 @@ export function GroceryList({
   const upsertExtra = useWeekStore((state) => state.upsertGroceryExtra);
   const removeExtra = useWeekStore((state) => state.removeGroceryExtra);
   const setGroceryExtraPending = useWeekStore((state) => state.setGroceryExtraPending);
+  const addToast = useUiStore((state) => state.addToast);
   const storePendingExtras = useWeekStore((state) => state.pendingGroceryExtraIds);
   const weekStartDate = useWeekStore((state) => state.weekStartDate);
   const currentWeekStartDate = useWeekStore((state) => state.calendar?.currentWeekStartDate);
@@ -178,6 +189,12 @@ export function GroceryList({
       upsertExtra({ ...extra, ...change } as GroceryExtraDto);
     try {
       const authoritative = await updateGroceryExtra(extra, change);
+      if (!matchesOccurrenceIdentity(authoritative, extra)) {
+        markExtraError(id);
+        markExtraPending(id, false);
+        await useWeekStore.getState().sync();
+        return;
+      }
       const selectedWeek = useWeekStore.getState().weekStartDate;
       const isProjected =
         absoluteMonday(selectedWeek) !==
@@ -188,7 +205,8 @@ export function GroceryList({
       requestAnimationFrame(() => editButtons.current.get(id)?.focus());
     } catch (error) {
       const conflict = error as { current?: GroceryExtraDto | null; absent?: boolean };
-      if (conflict.current) upsertExtra(conflict.current);
+      if (conflict.current && matchesOccurrenceIdentity(conflict.current, extra))
+        upsertExtra(conflict.current);
       else if (conflict.absent) removeExtra(id);
       else upsertExtra(extra);
       markExtraError(id);
@@ -209,7 +227,8 @@ export function GroceryList({
       setEditingExtra(null);
     } catch (error) {
       const conflict = error as { current?: GroceryExtraDto | null; absent?: boolean };
-      if (conflict.current) upsertExtra(conflict.current);
+      if (conflict.current && matchesOccurrenceIdentity(conflict.current, extra))
+        upsertExtra(conflict.current);
       else if (!conflict.absent) upsertExtra(extra);
       markExtraError(id);
       markExtraPending(id, false);
@@ -231,7 +250,22 @@ export function GroceryList({
     setSuggestionsOpen(false);
     try {
       const extra = await createGroceryExtra(attempt.name, attempt.week, attempt.clientId);
+      if (
+        extra.id !== attempt.clientId ||
+        String(extra.occurrenceWeekStartDate ?? '') !== attempt.week
+      ) {
+        await useWeekStore.getState().sync();
+        setAddState('error');
+        inputRef.current?.focus();
+        return;
+      }
       upsertExtra(extra);
+      addToast({
+        type: 'success',
+        message: tWithVars('grocery.extraSavedToSection', 'Saved to {{section}}', {
+          section: extra.grocerySection ?? 'Grocery',
+        }),
+      });
       createAttempt.current = null;
       setExtraName('');
       setSuggestions([]);
@@ -268,13 +302,15 @@ export function GroceryList({
       new Set(
         AISLE_ORDER.filter((aisle) => {
           const aisleItems = grouped[aisle] ?? [];
+          const aisleExtras = extrasBySection[aisle] ?? [];
           return (
-            aisleItems.length > 0 &&
-            aisleItems.every((item) => groceryState[item.displayName ?? ''])
+            aisleItems.length + aisleExtras.length > 0 &&
+            aisleItems.every((item) => groceryState[item.displayName ?? '']) &&
+            aisleExtras.every((extra) => extra.checked)
           );
         })
       ),
-    [grouped, groceryState]
+    [extrasBySection, grouped, groceryState]
   );
   const [collapsedAisles, setCollapsedAisles] = useState<Set<GrocerySection>>(
     () => new Set(completedAisles)
@@ -388,6 +424,153 @@ export function GroceryList({
     });
   };
 
+  const renderExtraRow = (extra: GroceryExtraDto) => {
+    const id = extra.id ?? '';
+    const pending = pendingExtras.has(id) || storePendingExtras.has(id);
+    const error = extraErrors.has(id);
+    const editable = extra.readOnly !== true;
+    const editing = editingExtra === id;
+    return (
+      <div key={`extra-${id}`} className="relative py-2" data-testid="grocery-extra-row">
+        {editing ? (
+          <div className="flex items-center gap-2">
+            <label className="sr-only" htmlFor={`extra-name-${id}`}>
+              {t('grocery.editExtraName', 'Extra name')}
+            </label>
+            <input
+              id={`extra-name-${id}`}
+              value={editingName}
+              onChange={(event) => setEditingName(event.target.value)}
+              className="min-h-11 w-full min-w-0 flex-1 rounded-xl border border-sage/30 bg-white px-3 focus:outline-none focus:ring-2 focus:ring-sage"
+              autoFocus
+            />
+            <button
+              type="button"
+              className="h-11 w-11 shrink-0 rounded-full bg-sage text-white focus:outline-none focus:ring-2 focus:ring-charcoal disabled:opacity-50"
+              disabled={!editingName.trim() || pending}
+              onClick={() => void mutateExtra(extra, { name: editingName.trim() })}
+              aria-label={t('grocery.save', 'Save')}
+            >
+              <Check className="mx-auto" size={20} aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              className="h-11 w-11 shrink-0 rounded-full text-terracotta focus:outline-none focus:ring-2 focus:ring-terracotta disabled:opacity-50"
+              onClick={() => void handleDeleteExtra(extra)}
+              disabled={pending}
+              aria-label={t('grocery.delete', 'Delete')}
+            >
+              <Trash2 className="mx-auto" size={20} aria-hidden="true" />
+            </button>
+          </div>
+        ) : (
+          <div className="flex min-h-12 items-center gap-3 rounded-2xl px-2">
+            {editable ? (
+              <button
+                type="button"
+                role="checkbox"
+                aria-checked={extra.checked === true}
+                aria-label={`${extra.checked ? t('grocery.uncheck', 'Uncheck') : t('grocery.check', 'Check')} ${extra.name ?? ''}`}
+                disabled={pending}
+                onClick={() => void mutateExtra(extra, { checked: extra.checked !== true })}
+                className="flex min-h-11 min-w-0 flex-1 items-center gap-3 text-left focus:outline-none focus:ring-2 focus:ring-sage"
+                data-testid="grocery-extra-checkbox"
+              >
+                {extra.checked ? (
+                  <CheckCircle2 className="shrink-0 text-sage" size={20} />
+                ) : (
+                  <Circle className="shrink-0 text-charcoal/20" size={20} />
+                )}
+                <span className={cn('min-w-0 flex-1', extra.checked && 'line-through opacity-60')}>
+                  <span className="block font-medium" data-testid="grocery-extra-name">
+                    {extra.name}
+                  </span>
+                  <span className="text-xs font-bold text-ochre-800">
+                    {t('grocery.extra', 'Extra')}
+                  </span>
+                </span>
+              </button>
+            ) : (
+              <div className="flex min-h-11 min-w-0 flex-1 items-center gap-3">
+                {extra.checked ? (
+                  <CheckCircle2 className="shrink-0 text-sage" size={20} aria-hidden="true" />
+                ) : (
+                  <Circle className="shrink-0 text-charcoal/30" size={20} aria-hidden="true" />
+                )}
+                <span className="min-w-0 flex-1">
+                  <span className="block font-medium" data-testid="grocery-extra-name">
+                    {extra.name}
+                  </span>
+                  <span className="text-xs font-bold text-ochre-800">
+                    {t('grocery.extra', 'Extra')}
+                  </span>
+                  <span className="ml-2 text-xs font-bold text-charcoal/70">
+                    {extra.checked
+                      ? t('grocery.bought', 'Bought')
+                      : t('grocery.notBought', 'Not bought')}
+                  </span>
+                </span>
+              </div>
+            )}
+            {editable && (
+              <>
+                <button
+                  type="button"
+                  className="min-h-11 min-w-11 rounded-full focus:ring-2 focus:ring-sage"
+                  aria-label={`${t('grocery.changeSection', 'Change section for')} ${extra.name ?? ''}`}
+                  onClick={() => setReclassifyOpen(reclassifyOpen === id ? null : id)}
+                >
+                  <Tag size={16} className="mx-auto" />
+                </button>
+                <button
+                  type="button"
+                  ref={(node) => {
+                    if (node) editButtons.current.set(id, node);
+                    else editButtons.current.delete(id);
+                  }}
+                  className="min-h-11 min-w-11 rounded-full focus:ring-2 focus:ring-sage"
+                  aria-label={`${t('grocery.edit', 'Edit')} ${extra.name ?? ''}`}
+                  onClick={() => {
+                    setEditingExtra(id);
+                    setEditingName(extra.name ?? '');
+                  }}
+                >
+                  <Edit3 size={16} className="mx-auto" />
+                </button>
+              </>
+            )}
+          </div>
+        )}
+        {reclassifyOpen === id && editable && (
+          <div
+            className="flex flex-wrap gap-2 px-3 pb-2"
+            role="group"
+            aria-label={t('grocery.chooseSection', 'Choose section')}
+          >
+            {AISLE_ORDER.map((nextSection) => (
+              <button
+                type="button"
+                key={nextSection}
+                disabled={pending}
+                className="min-h-11 rounded-full bg-charcoal/5 px-3 text-xs font-bold focus:ring-2 focus:ring-sage"
+                onClick={() => void mutateExtra(extra, { grocerySection: nextSection })}
+              >
+                {t(`grocery.aisles.${nextSection}`, nextSection)}
+              </button>
+            ))}
+          </div>
+        )}
+        {(pending || error) && (
+          <p className="px-3 text-xs font-bold" role={error ? 'alert' : 'status'}>
+            {pending
+              ? t('grocery.savingExtra', 'Saving…')
+              : t('grocery.extraSaveError', 'Could not save. Refreshing; try again.')}
+          </p>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div
       className={cn('flex flex-col bg-cream', isEmbedded ? 'h-full' : 'fixed inset-0 z-[100]')}
@@ -419,6 +602,7 @@ export function GroceryList({
           <Button
             variant="secondary"
             onClick={onClose}
+            aria-label={t('grocery.close', 'Close grocery list')}
             className="rounded-full h-14 w-14 p-0 border-charcoal/10"
           >
             ×
@@ -434,206 +618,6 @@ export function GroceryList({
             isEmbedded ? 'max-w-full pt-2 pb-20 px-4' : 'max-w-2xl py-8 px-6'
           )}
         >
-          {AISLE_ORDER.map((section) => {
-            const sectionExtras = extrasBySection[section] ?? [];
-            if (sectionExtras.length === 0) return null;
-            return (
-              <section
-                key={`extras-${section}`}
-                className="mb-6 overflow-hidden rounded-3xl border border-charcoal/5 bg-white shadow-sm"
-                data-testid={`extra-section-${section}`}
-              >
-                <h3 className="border-b border-charcoal/5 px-6 py-4 font-black text-charcoal">
-                  {AISLE_ICONS[section]} {t(`grocery.aisles.${section}`, section)}
-                </h3>
-                <div className="divide-y divide-charcoal/5 p-3">
-                  {sectionExtras.map((extra) => {
-                    const id = extra.id ?? '';
-                    const pending = pendingExtras.has(id) || storePendingExtras.has(id);
-                    const error = extraErrors.has(id);
-                    const editable = extra.readOnly !== true;
-                    const editing = editingExtra === id;
-                    return (
-                      <div key={id} className="py-2" data-testid="grocery-extra-row">
-                        {editing ? (
-                          <div className="flex flex-wrap items-center gap-2">
-                            <label className="sr-only" htmlFor={`extra-name-${id}`}>
-                              {t('grocery.editExtraName', 'Extra name')}
-                            </label>
-                            <input
-                              id={`extra-name-${id}`}
-                              value={editingName}
-                              onChange={(event) => setEditingName(event.target.value)}
-                              className="min-h-11 min-w-0 flex-1 rounded-xl border border-sage/30 bg-white px-3 focus:outline-none focus:ring-2 focus:ring-sage"
-                              autoFocus
-                            />
-                            <button
-                              type="button"
-                              className="min-h-11 rounded-xl bg-sage px-3 font-bold text-white focus:ring-2 focus:ring-charcoal"
-                              disabled={!editingName.trim() || pending}
-                              onClick={() => void mutateExtra(extra, { name: editingName.trim() })}
-                            >
-                              {t('grocery.save', 'Save')}
-                            </button>
-                            <button
-                              type="button"
-                              className="min-h-11 rounded-xl px-3 font-bold focus:ring-2 focus:ring-charcoal"
-                              onClick={() => {
-                                setEditingExtra(null);
-                                requestAnimationFrame(() => editButtons.current.get(id)?.focus());
-                              }}
-                            >
-                              {t('grocery.cancel', 'Cancel')}
-                            </button>
-                            <button
-                              type="button"
-                              className="min-h-11 rounded-xl px-3 font-bold text-terracotta focus:ring-2 focus:ring-terracotta"
-                              onClick={() => void handleDeleteExtra(extra)}
-                              disabled={pending}
-                            >
-                              <Trash2 className="mr-1 inline" size={16} aria-hidden="true" />
-                              {t('grocery.delete', 'Delete')}
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="flex min-h-12 items-center gap-3 rounded-2xl px-2">
-                            {editable ? (
-                              <button
-                                type="button"
-                                role="checkbox"
-                                aria-checked={extra.checked === true}
-                                aria-label={`${extra.checked ? t('grocery.uncheck', 'Uncheck') : t('grocery.check', 'Check')} ${extra.name ?? ''}`}
-                                disabled={pending}
-                                onClick={() =>
-                                  void mutateExtra(extra, { checked: extra.checked !== true })
-                                }
-                                className="flex min-h-11 min-w-0 flex-1 items-center gap-3 text-left focus:outline-none focus:ring-2 focus:ring-sage"
-                                data-testid="grocery-extra-checkbox"
-                              >
-                                {extra.checked ? (
-                                  <CheckCircle2 className="shrink-0 text-sage" size={20} />
-                                ) : (
-                                  <Circle className="shrink-0 text-charcoal/20" size={20} />
-                                )}
-                                <span
-                                  className={cn(
-                                    'min-w-0 flex-1',
-                                    extra.checked && 'line-through opacity-60'
-                                  )}
-                                >
-                                  <span
-                                    className="block font-medium"
-                                    data-testid="grocery-extra-name"
-                                  >
-                                    {extra.name}
-                                  </span>
-                                  <span className="text-xs font-bold text-ochre-800">
-                                    {t('grocery.extra', 'Extra')}
-                                  </span>
-                                </span>
-                              </button>
-                            ) : (
-                              <div className="flex min-h-11 min-w-0 flex-1 items-center gap-3">
-                                {extra.checked ? (
-                                  <CheckCircle2
-                                    className="shrink-0 text-sage"
-                                    size={20}
-                                    aria-hidden="true"
-                                  />
-                                ) : (
-                                  <Circle
-                                    className="shrink-0 text-charcoal/30"
-                                    size={20}
-                                    aria-hidden="true"
-                                  />
-                                )}
-                                <span className="min-w-0 flex-1">
-                                  <span
-                                    className="block font-medium"
-                                    data-testid="grocery-extra-name"
-                                  >
-                                    {extra.name}
-                                  </span>
-                                  <span className="text-xs font-bold text-ochre-800">
-                                    {t('grocery.extra', 'Extra')}
-                                  </span>
-                                  <span className="ml-2 text-xs font-bold text-charcoal/70">
-                                    {extra.checked
-                                      ? t('grocery.bought', 'Bought')
-                                      : t('grocery.notBought', 'Not bought')}
-                                  </span>
-                                </span>
-                              </div>
-                            )}
-                            {editable && (
-                              <>
-                                <button
-                                  type="button"
-                                  className="min-h-11 min-w-11 rounded-full focus:ring-2 focus:ring-sage"
-                                  aria-label={`${t('grocery.changeSection', 'Change section for')} ${extra.name ?? ''}`}
-                                  onClick={() =>
-                                    setReclassifyOpen(reclassifyOpen === id ? null : id)
-                                  }
-                                >
-                                  <Tag size={16} className="mx-auto" />
-                                </button>
-                                <button
-                                  type="button"
-                                  ref={(node) => {
-                                    if (node) editButtons.current.set(id, node);
-                                    else editButtons.current.delete(id);
-                                  }}
-                                  className="min-h-11 min-w-11 rounded-full focus:ring-2 focus:ring-sage"
-                                  aria-label={`${t('grocery.edit', 'Edit')} ${extra.name ?? ''}`}
-                                  onClick={() => {
-                                    setEditingExtra(id);
-                                    setEditingName(extra.name ?? '');
-                                  }}
-                                >
-                                  <Edit3 size={16} className="mx-auto" />
-                                </button>
-                              </>
-                            )}
-                          </div>
-                        )}
-                        {reclassifyOpen === id && editable && (
-                          <div
-                            className="flex flex-wrap gap-2 px-3 pb-2"
-                            role="group"
-                            aria-label={t('grocery.chooseSection', 'Choose section')}
-                          >
-                            {AISLE_ORDER.map((nextSection) => (
-                              <button
-                                type="button"
-                                key={nextSection}
-                                disabled={pending}
-                                className="min-h-11 rounded-full bg-charcoal/5 px-3 text-xs font-bold focus:ring-2 focus:ring-sage"
-                                onClick={() =>
-                                  void mutateExtra(extra, { grocerySection: nextSection })
-                                }
-                              >
-                                {t(`grocery.aisles.${nextSection}`, nextSection)}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                        {(pending || error) && (
-                          <p className="px-3 text-xs font-bold" role={error ? 'alert' : 'status'}>
-                            {pending
-                              ? t('grocery.savingExtra', 'Saving…')
-                              : t(
-                                  'grocery.extraSaveError',
-                                  'Could not save. Refreshing; try again.'
-                                )}
-                          </p>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </section>
-            );
-          })}
           <AnimatePresence mode="wait">
             {Object.keys(grouped).length === 0 && extras.length === 0 ? (
               <motion.div
@@ -666,7 +650,8 @@ export function GroceryList({
               <div className="space-y-8">
                 {AISLE_ORDER.map((aisle) => {
                   const aisleItems = grouped[aisle] || [];
-                  if (aisleItems.length === 0) return null;
+                  const aisleExtras = extrasBySection[aisle] ?? [];
+                  if (aisleItems.length === 0 && aisleExtras.length === 0) return null;
 
                   // The API's check-state contract is keyed by displayName, but a grocery
                   // line is identified by its normalized ingredient and unit bucket. Retain
@@ -685,9 +670,10 @@ export function GroceryList({
                     ),
                   ];
 
-                  const checkedCount = aisleItems.filter(
-                    (item) => groceryState[item.displayName ?? '']
-                  ).length;
+                  const checkedCount =
+                    aisleItems.filter((item) => groceryState[item.displayName ?? '']).length +
+                    aisleExtras.filter((extra) => extra.checked).length;
+                  const totalCount = aisleItems.length + aisleExtras.length;
                   const isCollapsed = collapsedAisles.has(aisle);
                   const itemsRegionId = `aisle-items-${aisle.replace(/\s+/g, '-').toLowerCase()}`;
 
@@ -702,8 +688,7 @@ export function GroceryList({
                     >
                       {/* Aisle Header */}
                       {(() => {
-                        const isComplete =
-                          aisleItems.length > 0 && checkedCount === aisleItems.length;
+                        const isComplete = totalCount > 0 && checkedCount === totalCount;
                         return (
                           <button
                             type="button"
@@ -729,10 +714,10 @@ export function GroceryList({
                                   <p className="text-xs text-charcoal/40 font-medium">
                                     {tWithVars(
                                       'grocery.itemsCount',
-                                      `${checkedCount}/${aisleItems.length} items`,
+                                      `${checkedCount}/${totalCount} items`,
                                       {
                                         checked: checkedCount,
-                                        total: aisleItems.length,
+                                        total: totalCount,
                                       }
                                     )}
                                   </p>
@@ -748,7 +733,7 @@ export function GroceryList({
                                     />
                                   ) : (
                                     <span className="text-xs font-black text-sage">
-                                      {Math.round((checkedCount / aisleItems.length) * 100)}%
+                                      {Math.round((checkedCount / totalCount) * 100)}%
                                     </span>
                                   )}
                                 </div>
@@ -773,6 +758,7 @@ export function GroceryList({
                         hidden={isCollapsed}
                         aria-hidden={isCollapsed}
                       >
+                        {aisleExtras.map(renderExtraRow)}
                         {displayedItems.map(({ item, renderKey }) => {
                           const key = item.displayName ?? '';
                           const quantityHint = formatQuantityHint(item.quantity, item.unitText);

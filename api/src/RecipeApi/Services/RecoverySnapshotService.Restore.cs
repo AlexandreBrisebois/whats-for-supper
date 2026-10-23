@@ -285,6 +285,28 @@ public partial class RecoverySnapshotService
             foreach (var referenced in Tables) rewritten = rewritten.Replace("REFERENCES " + referenced + "(", "REFERENCES pg_temp.recovery_" + referenced + "(", StringComparison.Ordinal);
             await ScalarAsync(connection, $"ALTER TABLE pg_temp.recovery_{table} ADD {rewritten}", ct);
         }
+        var invalidGroceryExtraLineageCount = await ScalarAsync(connection, """
+            WITH invalid_roots AS (
+                SELECT lineage_id
+                FROM pg_temp.recovery_grocery_extra_occurrences
+                GROUP BY lineage_id
+                HAVING count(*) FILTER (WHERE predecessor_id IS NULL) <> 1
+            ), invalid_links AS (
+                SELECT child.id
+                FROM pg_temp.recovery_grocery_extra_occurrences child
+                LEFT JOIN pg_temp.recovery_grocery_extra_occurrences predecessor
+                    ON predecessor.id = child.predecessor_id
+                WHERE child.predecessor_id IS NOT NULL
+                  AND (predecessor.id IS NULL
+                    OR predecessor.lineage_id <> child.lineage_id
+                    OR predecessor.week_start_date + 7 <> child.week_start_date
+                    OR predecessor.checked
+                    OR predecessor.removed_at IS NOT NULL)
+            )
+            SELECT (SELECT count(*) FROM invalid_roots) + (SELECT count(*) FROM invalid_links)
+            """, ct);
+        if (!long.TryParse(invalidGroceryExtraLineageCount, out var invalidLineages) || invalidLineages != 0)
+            throw new InvalidDataException("grocery_extra_occurrences contains invalid lineage relationships.");
         using var history = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine(stage, ".snapshot/weekly-household-interest.json"), ct));
         if (history.RootElement.GetProperty("version").GetInt32() != 1 || history.RootElement.GetProperty("generation").GetGuid() == Guid.Empty)
             throw new InvalidDataException("Invalid history sidecar version or generation.");

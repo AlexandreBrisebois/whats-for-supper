@@ -61,6 +61,11 @@ function buildSpaghettiSchedule() {
   };
 }
 
+async function collapseDevelopmentBadge(page: import('@playwright/test').Page) {
+  const devBadge = page.getByRole('button', { name: 'Collapse issues badge' });
+  if (await devBadge.isVisible()) await devBadge.click();
+}
+
 test.describe('Cook Mode — HowToSection[] steps display', () => {
   test.beforeEach(async ({ page }) => {
     // Pin the browser clock to the fixed test Monday so getTodayString() matches
@@ -139,12 +144,15 @@ test.describe('Cook Mode — HowToSection[] steps display', () => {
     await page.goto('/home');
     await page.getByTestId('tonight-menu-card').click();
     await page.getByTestId('cook-mode-btn').click();
+    await collapseDevelopmentBadge(page);
 
-    const trigger = page.getByTestId('cooking-view-trigger');
-    await expect(trigger).toHaveAccessibleName('Cooking view: All steps');
-    expect(await trigger.textContent()).toBe('');
+    const toggle = page.getByTestId('cooking-view-toggle');
+    const allStepsButton = page.getByRole('button', { name: 'All steps' });
+    const stepByStepButton = page.getByRole('button', { name: 'Step by step' });
+    await expect(allStepsButton).toHaveAttribute('aria-pressed', 'true');
+    expect(await allStepsButton.textContent()).toBe('');
     const heroBounds = await page.getByTestId('cooks-mode-hero').boundingBox();
-    const bounds = await trigger.boundingBox();
+    const bounds = await toggle.boundingBox();
     expect(bounds!.height).toBeGreaterThanOrEqual(44);
     expect(bounds!.y).toBeGreaterThan(heroBounds!.y + heroBounds!.height / 2);
     expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(heroBounds!.y + heroBounds!.height);
@@ -153,26 +161,31 @@ test.describe('Cook Mode — HowToSection[] steps display', () => {
       .locator('..')
       .boundingBox();
     expect(bounds!.x).toBeLessThan(stepIndicatorBounds!.x);
-    await trigger.click();
-    await expect(page.getByRole('menuitemradio', { name: 'All steps' })).toHaveAttribute(
-      'aria-checked',
-      'true'
-    );
+    await page.getByTestId('cooks-mode-step-next').click();
+    await expect(page.getByTestId('all-steps-recipe-list')).toBeVisible();
+    const allStepsHeroHeight = (await page.getByTestId('cooks-mode-hero').boundingBox())!.height;
+    await expect(page.getByText('Remembered for Alex')).toHaveCount(0);
     const save = page.waitForRequest(
       (request) =>
         request.method() === 'PUT' &&
         request.url().includes('/api/family/') &&
         request.url().endsWith('/preferences')
     );
-    await page.getByRole('menuitemradio', { name: 'Step by step' }).click();
+    await stepByStepButton.click();
     expect((await save).postDataJSON()).toEqual({ cookingViewMode: 'step-by-step' });
-    await expect(trigger).toHaveAccessibleName('Cooking view: Step by step');
-    await expect(trigger).toBeFocused();
+    await expect(stepByStepButton).toHaveAttribute('aria-pressed', 'true');
+    await expect(allStepsButton).toHaveAttribute('aria-pressed', 'false');
+    await expect(stepByStepButton).toBeFocused();
+    expect((await page.getByTestId('cooks-mode-hero').boundingBox())!.height).toBe(
+      allStepsHeroHeight
+    );
 
     await page.getByTestId('close-cooks-mode').click();
     await page.getByTestId('cook-mode-btn').click();
-    await expect(page.getByTestId('cooking-view-trigger')).toHaveAccessibleName(
-      'Cooking view: Step by step'
+    await collapseDevelopmentBadge(page);
+    await expect(page.getByRole('button', { name: 'Step by step' })).toHaveAttribute(
+      'aria-pressed',
+      'true'
     );
   });
 
@@ -267,6 +280,7 @@ test.describe('Cook Mode — HowToSection[] steps display', () => {
       await page.goto('/home');
       await page.getByTestId('tonight-menu-card').click();
       await page.getByTestId('cook-mode-btn').click();
+      await collapseDevelopmentBadge(page);
       const ingredient = page.getByTestId('ingredient-toggle').first();
       await ingredient.click();
       await page.getByTestId('cooks-mode-step-next').click();
@@ -304,9 +318,6 @@ test.describe('Cook Mode — HowToSection[] steps display', () => {
       await expect(page.getByTestId('cooks-mode-step-indicator')).toHaveText('3 / 6');
       await expect(page.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '3');
       const readingOffset = await scroll.evaluate((surface) => surface.scrollTop);
-      // The development-only issues badge overlaps the phone's left dock action.
-      const devBadge = page.getByRole('button', { name: 'Collapse issues badge' });
-      if (await devBadge.isVisible()) await devBadge.click();
       await page.getByTestId('cooks-mode-step-prev').click();
       await expect(ingredient).toHaveAttribute('aria-checked', 'true');
       await expect(page.getByTestId('cooks-mode-step-next')).toHaveText('Resume steps');
@@ -315,6 +326,7 @@ test.describe('Cook Mode — HowToSection[] steps display', () => {
       await expect.poll(() => scroll.evaluate((surface) => surface.scrollTop)).toBe(readingOffset);
       await page.getByTestId('close-cooks-mode').click();
       await page.getByTestId('cook-mode-btn').click();
+      await collapseDevelopmentBadge(page);
       await expect(page.getByTestId('cooks-mode-step-indicator')).toHaveText('3 / 6');
       await expect
         .poll(() =>

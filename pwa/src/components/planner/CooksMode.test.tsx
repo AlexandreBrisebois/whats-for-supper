@@ -107,10 +107,10 @@ describe('CooksMode', () => {
 
     render(<CooksMode recipe={{ id, name: 'Pasta', image: '' }} onClose={vi.fn()} />);
 
-    const trigger = await screen.findByTestId('cooking-view-trigger');
-    expect(trigger).toHaveAccessibleName('Cooking view: All steps');
-    expect(trigger).toHaveTextContent('');
-    expect(trigger.querySelector('.lucide-layers-3')).toBeInTheDocument();
+    const allStepsButton = await screen.findByRole('button', { name: 'All steps' });
+    expect(allStepsButton).toHaveAttribute('aria-pressed', 'true');
+    expect(allStepsButton).toHaveTextContent('');
+    expect(allStepsButton.querySelector('.lucide-layers-3')).toBeInTheDocument();
     fireEvent.click(screen.getByTestId('cooks-mode-step-next'));
     expect(screen.getByTestId('all-steps-recipe-list')).toHaveTextContent('Cook pasta');
   });
@@ -125,19 +125,22 @@ describe('CooksMode', () => {
     getRecipeMock.mockResolvedValue({ id, recipeInstructions: ['Boil water', 'Cook pasta'] });
     render(<CooksMode recipe={{ id, name: 'Pasta', image: '' }} onClose={vi.fn()} />);
 
-    const trigger = await screen.findByTestId('cooking-view-trigger');
-    expect(trigger.querySelector('.lucide-file')).toBeInTheDocument();
-    fireEvent.click(trigger);
-    fireEvent.click(screen.getByRole('menuitemradio', { name: 'All steps' }));
+    const stepByStepButton = await screen.findByRole('button', { name: 'Step by step' });
+    const allStepsButton = screen.getByRole('button', { name: 'All steps' });
+    expect(stepByStepButton).toHaveAttribute('aria-pressed', 'true');
+    expect(stepByStepButton.querySelector('.lucide-file')).toBeInTheDocument();
+    expect(screen.queryByText('Remembered for Alex')).not.toBeInTheDocument();
+    fireEvent.click(allStepsButton);
 
     expect(updateMemberPreferences).toHaveBeenCalledWith(member.id, {
       cookingViewMode: 'all-steps',
     });
-    expect(trigger).toHaveAccessibleName('Cooking view: All steps');
-    expect(trigger.querySelector('.lucide-layers-3')).toBeInTheDocument();
-    await waitFor(() => expect(trigger).toHaveFocus());
+    expect(allStepsButton).toHaveAttribute('aria-pressed', 'true');
+    expect(stepByStepButton).toHaveAttribute('aria-pressed', 'false');
+    expect(allStepsButton.querySelector('.lucide-layers-3')).toBeInTheDocument();
     fireEvent.click(screen.getByTestId('cooks-mode-step-next'));
     expect(screen.getByTestId('all-steps-recipe-list')).toHaveTextContent('Cook pasta');
+    expect(screen.getByTestId('cooks-mode-hero')).toHaveClass('h-48');
   });
 
   it('keeps a session view and offers retry when preference persistence fails', async () => {
@@ -153,11 +156,11 @@ describe('CooksMode', () => {
     getRecipeMock.mockResolvedValue({ id, recipeInstructions: ['Boil water'] });
     render(<CooksMode recipe={{ id, name: 'Pasta', image: '' }} onClose={vi.fn()} />);
 
-    fireEvent.click(await screen.findByTestId('cooking-view-trigger'));
-    fireEvent.click(screen.getByRole('menuitemradio', { name: 'All steps' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'All steps' }));
     expect(await screen.findByRole('alert')).toHaveTextContent("Couldn't save for Alex");
-    expect(screen.getByTestId('cooking-view-trigger')).toHaveAccessibleName(
-      'Cooking view: All steps'
+    expect(screen.getByRole('button', { name: 'All steps' })).toHaveAttribute(
+      'aria-pressed',
+      'true'
     );
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
     await waitFor(() => expect(updateMemberPreferences).toHaveBeenCalledTimes(2));
@@ -262,11 +265,13 @@ describe('CooksMode', () => {
     fireEvent.click(within(row).getByRole('button', { name: 'Edit step 1' }));
     expect(screen.getByLabelText('Edit step 1 instructions')).toHaveValue(text);
     expect(screen.getByRole('button', { name: 'Ingredients' })).toBeDisabled();
-    expect(screen.getByTestId('cooking-view-trigger')).toBeDisabled();
-    expect(screen.getByTestId('cooking-view-trigger')).toHaveAttribute(
-      'title',
-      'Save or cancel your edit to change view.'
-    );
+    for (const label of ['Step by step', 'All steps']) {
+      expect(screen.getByRole('button', { name: label })).toBeDisabled();
+      expect(screen.getByRole('button', { name: label })).toHaveAttribute(
+        'title',
+        'Save or cancel your edit to change view.'
+      );
+    }
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(screen.getByRole('button', { name: 'Ingredients' })).toBeEnabled();
   });
@@ -640,7 +645,7 @@ describe('CooksMode', () => {
     expect(instructionArea).toBeInTheDocument();
   });
 
-  it('renders a large editorial hero image and opens detail sheet on tap', async () => {
+  it('renders a large editorial hero image and opens detail sheet from its accessible action', async () => {
     getRecipeMock.mockResolvedValue({
       id: 'recipe-1',
       name: 'Pasta Night',
@@ -661,8 +666,9 @@ describe('CooksMode', () => {
     expect(heroContainer).not.toHaveClass('h-14');
     expect(heroContainer).toHaveClass('h-48'); // Assuming h-48 or similar for "large"
 
-    // Tapping the hero image should open the detail sheet
-    fireEvent.click(heroImage);
+    const openDetails = screen.getByRole('button', { name: 'Open recipe details' });
+    expect(openDetails).toBeInTheDocument();
+    fireEvent.click(openDetails);
     expect(screen.getByTestId('recipe-detail-sheet')).toBeInTheDocument();
   });
 

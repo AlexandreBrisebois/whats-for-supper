@@ -5,6 +5,7 @@ using RecipeApi.Data;
 using RecipeApi.Infrastructure;
 using RecipeApi.Models;
 using RecipeApi.Services;
+using RecipeApi.Services.Processors;
 using RecipeApi.Tests.Infrastructure;
 using Xunit;
 using TaskStatus = RecipeApi.Models.TaskStatus;
@@ -190,6 +191,68 @@ public class ManagementServiceTests : IAsyncLifetime
 
         Assert.Equal(1, result.Errors);
         Assert.Equal(row.Id, (await _db.GroceryExtraOccurrences.AsNoTracking().SingleAsync()).Id);
+    }
+
+    [Theory]
+    [InlineData("unsupported-envelope")]
+    [InlineData("unsupported-section")]
+    [InlineData("noncanonical-section")]
+    [InlineData("overlong-name")]
+    [InlineData("invalid-version")]
+    [InlineData("cross-lineage")]
+    [InlineData("nonconsecutive")]
+    [InlineData("multiple-roots")]
+    [InlineData("terminal-successor")]
+    public async Task GroceryExtras_InvalidCompleteHistoryIsReportedBeforeAnyMerge(string invalidCase)
+    {
+        var lineage = Guid.NewGuid();
+        var rootId = Guid.NewGuid();
+        var childId = Guid.NewGuid();
+        var root = new
+        {
+            id = rootId,
+            lineageId = lineage,
+            predecessorId = (Guid?)null,
+            weekStartDate = "2026-10-12",
+            name = invalidCase == "overlong-name" ? new string('x', 201) : "Coffee",
+            normalizedKey = "coffee",
+            grocerySection = invalidCase switch
+            {
+                "unsupported-section" => "Garage",
+                "noncanonical-section" => "grocery",
+                _ => "Grocery"
+            },
+            @checked = invalidCase == "terminal-successor",
+            removedAt = (string?)null,
+            version = invalidCase == "invalid-version" ? 0 : 1,
+            createdAt = DateTimeOffset.Parse("2026-10-12T12:00:00Z"),
+            updatedAt = DateTimeOffset.Parse("2026-10-12T12:00:00Z")
+        };
+        var child = new
+        {
+            id = childId,
+            lineageId = invalidCase == "cross-lineage" ? Guid.NewGuid() : lineage,
+            predecessorId = invalidCase == "multiple-roots" ? (Guid?)null : rootId,
+            weekStartDate = invalidCase == "nonconsecutive" ? "2026-10-26" : "2026-10-19",
+            name = "Coffee",
+            normalizedKey = "coffee",
+            grocerySection = "Grocery",
+            @checked = false,
+            removedAt = (string?)null,
+            version = 1,
+            createdAt = DateTimeOffset.Parse("2026-10-19T12:00:00Z"),
+            updatedAt = DateTimeOffset.Parse("2026-10-19T12:00:00Z")
+        };
+        await File.WriteAllTextAsync(GroceryExtrasPath, JsonSerializer.Serialize(new
+        {
+            version = invalidCase == "unsupported-envelope" ? 2 : 1,
+            occurrences = new object[] { root, child }
+        }, JsonDefaults.CamelCase));
+
+        var result = await _service.RestoreAsync();
+
+        Assert.Equal(1, result.Errors);
+        Assert.Empty(_db.GroceryExtraOccurrences);
     }
 
     [Fact]
@@ -708,6 +771,46 @@ public class ManagementServiceTests : IAsyncLifetime
         var markdown = await File.ReadAllTextAsync(result.Path);
         Assert.Contains("Grocery-extra rollover: failed (not completed); code=DbUpdateException", markdown);
         Assert.DoesNotContain("occurrence(s) created", markdown);
+    }
+
+    [Fact]
+    public async Task GenerateDreamingReportProcessor_PreservesMaintenancePruneAndFailedRolloverResults()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var instance = new WorkflowInstance
+        {
+            Id = Guid.NewGuid(),
+            WorkflowId = "dreaming",
+            Status = WorkflowStatus.Processing,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        instance.Tasks.Add(new WorkflowTask
+        {
+            TaskId = Guid.NewGuid(), InstanceId = instance.Id, TaskName = "prune-maintenance-commands",
+            ProcessorName = "PruneMaintenanceCommands", Status = TaskStatus.Completed,
+            Result = JsonSerializer.Serialize(new MaintenanceCommandPruneResult(7, 2, now.AddDays(-30)), JsonDefaults.CamelCase),
+            CreatedAt = now, UpdatedAt = now
+        });
+        instance.Tasks.Add(new WorkflowTask
+        {
+            TaskId = Guid.NewGuid(), InstanceId = instance.Id, TaskName = "rollover-grocery-extras",
+            ProcessorName = "RolloverGroceryExtras", Status = TaskStatus.Completed,
+            Result = JsonSerializer.Serialize(new GroceryExtraRolloverResult(0, default, false, "DbUpdateException"), JsonDefaults.CamelCase),
+            CreatedAt = now, UpdatedAt = now
+        });
+        _db.WorkflowInstances.Add(instance);
+        await _db.SaveChangesAsync();
+        var reportTask = new WorkflowTask { InstanceId = instance.Id };
+
+        var result = Assert.IsType<DreamingReportResult>(await new ManagementProcessor(
+            _service, _db, "GenerateDreamingReport").ExecuteAsync(reportTask, CancellationToken.None));
+
+        var markdown = await File.ReadAllTextAsync(result.Path);
+        Assert.Contains("Terminal maintenance commands pruned: 7", markdown);
+        Assert.Contains("Legacy completion timestamps initialized: 2", markdown);
+        Assert.Contains("Grocery-extra rollover: failed (not completed); code=DbUpdateException", markdown);
+        Assert.DoesNotContain("Grocery-extra rollover: 0 occurrence(s) created", markdown);
     }
 
     // ── Restore step 8 ────────────────────────────────────────────────────────

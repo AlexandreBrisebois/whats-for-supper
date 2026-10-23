@@ -42,6 +42,11 @@ async function setupGroceryPage(page: import('@playwright/test').Page) {
   };
   const categoryOverrides: Record<string, string> = {};
   const groceryExtras: Array<Record<string, unknown>> = [];
+  const weekStartForOffset = (offset: number) => {
+    const date = new Date('2026-05-04T12:00:00Z');
+    date.setUTCDate(date.getUTCDate() + offset * 7);
+    return toDateStr(date);
+  };
   const currentGroceryItems = () =>
     builders.groceryItems(
       GROCERY_INGREDIENTS,
@@ -74,19 +79,47 @@ async function setupGroceryPage(page: import('@playwright/test').Page) {
     (url) => url.pathname === '/api/schedule',
     async (route) => {
       if (route.request().method() === 'GET') {
+        const offset = Number(new URL(route.request().url()).searchParams.get('weekOffset') ?? 0);
+        const selectedWeekStartDate = weekStartForOffset(offset);
+        const selectedDays = days.map((day) => {
+          const date = new Date(`${day.date}T12:00:00Z`);
+          date.setUTCDate(date.getUTCDate() + offset * 7);
+          return { ...day, date: toDateStr(date) };
+        });
+        const selectedExtras =
+          offset === 0
+            ? groceryExtras
+            : offset === 1
+              ? groceryExtras.filter((extra) => extra.checked !== true)
+              : offset === -1
+                ? [
+                    {
+                      id: '33333333-3333-4333-8333-333333333333',
+                      lineageId: '33333333-3333-4333-8333-333333333333',
+                      name: 'Toilet paper',
+                      normalizedKey: 'toilet paper',
+                      grocerySection: 'Grocery',
+                      checked: true,
+                      occurrenceWeekStartDate: selectedWeekStartDate,
+                      readOnly: true,
+                      source: 'extra',
+                      version: 1,
+                    },
+                  ]
+                : [];
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
           body: JSON.stringify({
             data: {
-              weekOffset: 0,
+              weekOffset: offset,
               calendar: builders.deploymentCalendar() as any,
-              weekStartDate: '2026-05-04' as any,
+              weekStartDate: selectedWeekStartDate as any,
               locked: false,
               status: 0,
-              days,
+              days: selectedDays,
               groceryItems: currentGroceryItems(),
-              groceryExtras,
+              groceryExtras: selectedExtras,
             },
           }),
         });
@@ -193,6 +226,20 @@ test.describe('Grocery List — everyday extras', () => {
     await expect(composer).toBeVisible();
     await composer.getByRole('combobox').fill('Coffee');
     await composer.getByRole('button', { name: 'Add' }).click();
+    const toast = page.getByTestId('toast');
+    await expect(toast).toContainText('Saved to Grocery');
+    await expect
+      .poll(() =>
+        toast.evaluate((element) => {
+          const bounds = element.getBoundingClientRect();
+          const topmost = document.elementFromPoint(
+            bounds.left + bounds.width / 2,
+            bounds.top + bounds.height / 2
+          );
+          return topmost === element || element.contains(topmost);
+        })
+      )
+      .toBe(true);
     await expect(page.getByTestId('grocery-extra-row')).toContainText('Coffee');
     await expect(page.getByTestId('grocery-extra-row').getByText('Extra')).toBeVisible();
 
@@ -206,9 +253,76 @@ test.describe('Grocery List — everyday extras', () => {
     page,
   }) => {
     await setupGroceryPage(page);
+    await page.route('**/api/grocery-extras/suggestions*', async (route) => {
+      await route.fulfill({
+        status: 200,
+        json: { names: ['Coffee beans', 'Coffee filters', 'Coffee cream'] },
+      });
+    });
+    await page.setViewportSize({ width: 320, height: 500 });
     const composer = page.getByTestId('grocery-extra-composer');
+    const input = composer.getByRole('combobox');
+    await input.focus();
+    await input.evaluate((element) => {
+      const inputElement = element as HTMLInputElement;
+      const valueSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+      valueSetter?.call(inputElement, 'co');
+      inputElement.dispatchEvent(
+        new InputEvent('input', {
+          bubbles: true,
+          data: 'co',
+          inputType: 'insertReplacementText',
+        })
+      );
+    });
+    const options = page.getByRole('option');
+    await expect(options).toHaveCount(3);
     await expect(composer).toBeInViewport();
     await expect(composer.getByRole('button', { name: 'Add' })).toBeInViewport();
+    const trayBox = await page.getByRole('listbox').boundingBox();
+    const composerBox = await composer.boundingBox();
+    expect(trayBox).not.toBeNull();
+    expect(composerBox).not.toBeNull();
+    expect(trayBox!.y + trayBox!.height).toBeLessThanOrEqual(composerBox!.y + 2);
+    await input.press('ArrowDown');
+    await input.press('Enter');
+    await expect(input).toHaveValue('Coffee beans');
+    await expect(page.getByTestId('grocery-extra-row')).toHaveCount(0);
+  });
+
+  test('shows editable projections only next week and read-only snapshots in the past', async ({
+    page,
+  }) => {
+    await setupGroceryPage(page);
+    const composer = page.getByTestId('grocery-extra-composer');
+    await composer.getByRole('combobox').fill('Coffee');
+    await composer.getByRole('button', { name: 'Add' }).click();
+    await expect(page.getByTestId('grocery-extra-row')).toContainText('Coffee');
+
+    await page.getByRole('button', { name: 'Close grocery list' }).click();
+    await page.getByTestId('next-week').click();
+    await expect(page).toHaveURL(/weekOffset=1/);
+    await page.getByTestId('grocery-tab').click();
+    await expect(page.getByTestId('grocery-extra-composer')).toHaveCount(0);
+    await expect(page.getByTestId('grocery-extra-row')).toContainText('Coffee');
+    await expect(page.getByRole('button', { name: 'Edit Coffee' })).toBeVisible();
+
+    await page.getByRole('button', { name: 'Close grocery list' }).click();
+    await page.getByTestId('next-week').click();
+    await expect(page).toHaveURL(/weekOffset=2/);
+    await page.getByTestId('grocery-tab').click();
+    await expect(page.getByTestId('grocery-extra-row')).toHaveCount(0);
+
+    await page.getByRole('button', { name: 'Close grocery list' }).click();
+    await page.getByTestId('prev-week').click();
+    await page.getByTestId('prev-week').click();
+    await page.getByTestId('prev-week').click();
+    await expect(page).toHaveURL(/weekOffset=-1/);
+    await page.getByTestId('grocery-tab').click();
+    const historical = page.getByTestId('grocery-extra-row');
+    await expect(historical).toContainText('Toilet paper');
+    await expect(historical).toContainText('Bought');
+    await expect(historical.getByRole('button')).toHaveCount(0);
   });
 
   test('checks, renames, recategorizes, and deletes only the selected occurrence', async ({
@@ -222,8 +336,18 @@ test.describe('Grocery List — everyday extras', () => {
     await row.getByRole('checkbox').click();
     await expect(row.getByRole('checkbox')).toHaveAttribute('aria-checked', 'true');
     await row.getByRole('button', { name: 'Edit Milk' }).click();
-    await row.getByRole('textbox', { name: 'Extra name' }).fill('Oat milk');
-    await row.getByRole('button', { name: 'Save' }).click();
+    const editor = row.getByRole('textbox', { name: 'Extra name' });
+    const save = row.getByRole('button', { name: 'Save' });
+    const remove = row.getByRole('button', { name: 'Delete' });
+    await expect(row.getByRole('button', { name: 'Cancel' })).toHaveCount(0);
+    await expect(save).toHaveText('');
+    await expect(remove).toHaveText('');
+    const editorBox = await editor.boundingBox();
+    const saveBox = await save.boundingBox();
+    const removeBox = await remove.boundingBox();
+    expect(editorBox?.width ?? 0).toBeGreaterThan((saveBox?.width ?? 0) + (removeBox?.width ?? 0));
+    await editor.fill('Oat milk');
+    await save.click();
     await expect(row).toContainText('Oat milk');
     await row.getByRole('button', { name: /Change section/ }).click();
     await row.getByRole('button', { name: 'Pantry' }).click();

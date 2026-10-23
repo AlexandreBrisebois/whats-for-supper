@@ -10,6 +10,11 @@ import {
 
 // Compute current week's Monday at noon UTC — avoids timezone rollback
 
+async function collapseDevelopmentBadge(page: import('@playwright/test').Page) {
+  const devBadge = page.getByRole('button', { name: 'Collapse issues badge' });
+  if (await devBadge.isVisible()) await devBadge.click();
+}
+
 test.describe('Supper Planner', () => {
   test.beforeEach(async ({ page, baseURL }) => {
     await setupCommonRoutes(page);
@@ -328,8 +333,8 @@ test.describe('Supper Planner', () => {
     await expect(page.getByTestId('cooks-mode-step-indicator')).toContainText(/Check & Prep/i);
     await expect(page.getByTestId('cooks-mode-step-next')).toContainText(/Let's Cook/i);
 
-    await page.getByTestId('cooking-view-trigger').click();
-    await page.getByRole('menuitemradio', { name: 'Step by step' }).click();
+    await collapseDevelopmentBadge(page);
+    await page.getByTestId('cooking-view-step-by-step').click();
 
     // Navigate steps — text from builders.recipe() default: Step 1, Step 2
     await page.getByTestId('cooks-mode-step-next').click();
