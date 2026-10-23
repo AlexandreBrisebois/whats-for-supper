@@ -4,9 +4,9 @@
     "net11.0": {
       "Google.GenAI": {
         "type": "Direct",
-        "requested": "[1.26.1, )",
-        "resolved": "1.26.1",
-        "contentHash": "1LjIqW+cVzGvWsvzCoEqhVfrUclHcEvYF3hAsDGHtHul9DtqI9D/XHx7Ag5sxP0+wScpzO5gmCsuiGZJi+8sGA==",
+        "requested": "[1.27.0, )",
+        "resolved": "1.27.0",
+        "contentHash": "hIoqvTL8Vf5E+kxGws/PkWlGgUFEZicl3kslIMOHf1u4cQGgbgQLJHvfLK2IqLzy9nAdjrrO4TIgqBTmMQG7qQ==",
         "dependencies": {
           "Google.Apis.Auth": "1.69.0",
           "Microsoft.Extensions.AI.Abstractions": "10.6.0",
