@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { GripVertical } from 'lucide-react';
-import { useFeatureFlag } from '@/store/featureFlagStore';
 import { t } from '@/locales';
 import { cn } from '@/lib/utils';
 
@@ -10,8 +9,13 @@ import { cn } from '@/lib/utils';
 const HOLD_MS = 250;
 const SLOP_PX = 8;
 
-export function PlannerDragHandle({ start }: { start: (event: PointerEvent) => void }) {
-  const enabled = useFeatureFlag('planner-hold-to-move');
+export function PlannerDragHandle({
+  start,
+  moveBySlot,
+}: {
+  start: (event: PointerEvent) => void;
+  moveBySlot?: (direction: -1 | 1) => void;
+}) {
   const ref = useRef<HTMLDivElement>(null);
   const [grabbed, setGrabbed] = useState(false);
 
@@ -29,10 +33,6 @@ export function PlannerDragHandle({ start }: { start: (event: PointerEvent) => v
     };
     const down = (event: PointerEvent) => {
       if (event.button !== 0 || event.isPrimary === false) return;
-      if (!enabled) {
-        start(event);
-        return;
-      }
       reset();
       pending = event;
       timer = setTimeout(() => {
@@ -60,9 +60,7 @@ export function PlannerDragHandle({ start }: { start: (event: PointerEvent) => v
     const end = (event: PointerEvent) => {
       if (pending && event.pointerId === pending.pointerId) reset();
     };
-    const contextMenu = (event: Event) => {
-      if (enabled) event.preventDefault();
-    };
+    const contextMenu = (event: Event) => event.preventDefault();
     handle.addEventListener('pointerdown', down);
     handle.addEventListener('touchmove', touchMove, { passive: false });
     handle.addEventListener('contextmenu', contextMenu);
@@ -82,9 +80,13 @@ export function PlannerDragHandle({ start }: { start: (event: PointerEvent) => v
       window.removeEventListener('pointercancel', end);
       window.removeEventListener('blur', reset);
     };
-  }, [enabled, start]);
+  }, [start]);
 
-  const label = enabled ? t('planner.holdToMove', 'Hold to move') : 'Drag to reorder';
+  const label = t('planner.holdToMove', 'Hold to move');
+  const instructions = t(
+    'planner.moveInstructions',
+    'Hold to move. Use the Up and Down arrow keys to move one day.'
+  );
   return (
     <div
       ref={ref}
@@ -92,12 +94,20 @@ export function PlannerDragHandle({ start }: { start: (event: PointerEvent) => v
       data-grabbed={grabbed}
       className={cn(
         'h-full min-h-[44px] flex items-center px-2.5 cursor-grab active:cursor-grabbing select-none group/handle rounded-r-2xl',
-        enabled ? 'touch-auto' : 'touch-none',
+        'touch-auto',
         grabbed && 'bg-sage/20 ring-2 ring-sage'
       )}
       style={{ WebkitTouchCallout: 'none' }}
-      aria-label={label}
+      role="button"
+      tabIndex={0}
+      aria-label={instructions}
+      aria-keyshortcuts="ArrowUp ArrowDown"
       title={label}
+      onKeyDown={(event) => {
+        if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
+        event.preventDefault();
+        moveBySlot?.(event.key === 'ArrowUp' ? -1 : 1);
+      }}
     >
       <GripVertical
         className="text-charcoal/20 group-hover/handle:text-sage transition-colors"

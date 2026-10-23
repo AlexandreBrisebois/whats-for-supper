@@ -5,11 +5,13 @@ CREATE TABLE family_members (
     id uuid PRIMARY KEY,
     name varchar(100) NOT NULL,
     browse_view_mode text DEFAULT 'stack' NOT NULL,
+    cooking_view_mode text,
     preferred_language text,
     created_at timestamptz DEFAULT now() NOT NULL,
     updated_at timestamptz DEFAULT now() NOT NULL,
     CONSTRAINT family_members_browse_view_mode_check CHECK (browse_view_mode IN ('stack', 'list')),
-    CONSTRAINT family_members_preferred_language_check CHECK (preferred_language IN ('en', 'fr'))
+    CONSTRAINT family_members_preferred_language_check CHECK (preferred_language IN ('en', 'fr')),
+    CONSTRAINT family_members_cooking_view_mode_check CHECK (cooking_view_mode IS NULL OR cooking_view_mode IN ('step-by-step', 'all-steps'))
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS family_members_trimmed_lower_name_idx ON family_members (lower(trim(name)));
@@ -126,6 +128,30 @@ CREATE TABLE IF NOT EXISTS weekly_plans (
     grocery_items jsonb NOT NULL DEFAULT '[]'::jsonb,
     created_at timestamptz DEFAULT now() NOT NULL
 );
+
+CREATE TABLE grocery_extra_occurrences (
+    id uuid PRIMARY KEY,
+    lineage_id uuid NOT NULL,
+    predecessor_id uuid REFERENCES grocery_extra_occurrences(id) ON DELETE RESTRICT,
+    week_start_date date NOT NULL,
+    name text NOT NULL,
+    normalized_key text NOT NULL,
+    grocery_section text NOT NULL DEFAULT 'Grocery',
+    checked boolean NOT NULL DEFAULT false,
+    removed_at timestamptz,
+    version integer NOT NULL DEFAULT 1,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now(),
+    CONSTRAINT grocery_extra_occurrences_lineage_week_unique UNIQUE (lineage_id, week_start_date),
+    CONSTRAINT grocery_extra_occurrences_predecessor_unique UNIQUE (predecessor_id),
+    CONSTRAINT grocery_extra_occurrences_monday CHECK (EXTRACT(ISODOW FROM week_start_date) = 1),
+    CONSTRAINT grocery_extra_occurrences_name CHECK (char_length(btrim(name)) >= 1 AND char_length(btrim(name)) <= 200),
+    CONSTRAINT grocery_extra_occurrences_version CHECK (version >= 1),
+    CONSTRAINT grocery_extra_occurrences_section CHECK (grocery_section IN ('Produce','Meat','Seafood','Dairy & Eggs','Frozen','Bakery','Pantry','Beverages','Deli','Grocery'))
+);
+
+CREATE INDEX idx_grocery_extra_occurrences_week ON grocery_extra_occurrences (week_start_date);
+CREATE INDEX idx_grocery_extra_occurrences_normalized ON grocery_extra_occurrences (normalized_key);
 
 CREATE TABLE voting_round_state (
     id integer PRIMARY KEY CHECK (id = 1),
@@ -258,6 +284,7 @@ CREATE INDEX idx_recipes_discovery_lookup ON recipes (category, id) WHERE (is_di
 CREATE INDEX idx_recipe_import_reports_status ON recipe_import_reports (status);
 CREATE INDEX IF NOT EXISTS idx_recipes_cuisine_type ON recipes (cuisine_type) WHERE (cuisine_type IS NOT NULL);
 CREATE INDEX IF NOT EXISTS idx_maintenance_commands_status_scheduled ON maintenance_commands (status, scheduled_for, created_at);
+CREATE INDEX IF NOT EXISTS idx_maintenance_commands_terminal_completed ON maintenance_commands (completed_at, id) WHERE status IN ('completed', 'skipped');
 
 CREATE OR REPLACE VIEW vw_recipe_matches AS 
 SELECT recipe_id, count(recipe_id) AS vote_count 

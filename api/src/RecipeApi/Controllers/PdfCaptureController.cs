@@ -2,6 +2,8 @@ using System.Globalization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.EntityFrameworkCore;
+using RecipeApi.Data;
 using RecipeApi.Infrastructure;
 using RecipeApi.Services;
 
@@ -9,7 +11,7 @@ namespace RecipeApi.Controllers;
 
 [ApiController]
 [Route("api/recipes")]
-public sealed class PdfCaptureController(FeatureFlagService flags, PdfCaptureService capture) : ControllerBase
+public sealed class PdfCaptureController(RecipeDbContext db, PdfCaptureService capture) : ControllerBase
 {
     [HttpPost("capture-pdf")]
     [SkipWrapping]
@@ -20,11 +22,9 @@ public sealed class PdfCaptureController(FeatureFlagService flags, PdfCaptureSer
         [ModelBinder(BinderType = typeof(FamilyMemberIdModelBinder))] Guid? familyMemberId,
         CancellationToken ct)
     {
-        if (familyMemberId is null || !await flags.MemberExistsAsync(familyMemberId.Value, ct))
+        if (familyMemberId is null
+            || !await db.FamilyMembers.AnyAsync(member => member.Id == familyMemberId.Value, ct))
             return Reject(400, "An established family member is required.");
-        var snapshot = await flags.GetSnapshotAsync(familyMemberId.Value, ct);
-        if (!snapshot.Any(flag => flag.Key == "preview-pdf-recipe-import" && flag.Enabled))
-            return Reject(409, "PDF import preview isn't enabled. This file hasn't been added.");
         if (!Request.HasFormContentType || !Request.ContentType!.StartsWith("multipart/form-data", StringComparison.OrdinalIgnoreCase))
             return Reject(415, "Choose a PDF file.");
 

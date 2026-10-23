@@ -365,18 +365,15 @@ test.describe('Browse All Stack — Card Navigation', () => {
 
   // Requirement 2.2
   test('swipe right returns to previous card', async ({ page }) => {
-    // Advance to second card first
+    await expectFrontRecipe(page, MOCK_IDS.RECIPE_LASAGNA);
+
+    // Advance to the second card and wait for it to become the active front card.
     await swipeLeft(page);
-    await expect(page.getByTestId(`stack-card-${MOCK_IDS.RECIPE_CARBONARA}`)).toBeVisible({
-      timeout: 5_000,
-    });
+    await expectFrontRecipe(page, MOCK_IDS.RECIPE_CARBONARA);
 
     // Now swipe right to go back
     await swipeRight(page);
-
-    await expect(page.getByTestId(`stack-card-${MOCK_IDS.RECIPE_LASAGNA}`)).toBeVisible({
-      timeout: 5_000,
-    });
+    await expectFrontRecipe(page, MOCK_IDS.RECIPE_LASAGNA);
   });
 
   // Requirement 2.3 — backward endless navigation: swipe right on first card wraps to last recipe

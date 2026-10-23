@@ -182,6 +182,7 @@ for (const [kind, label, customLabel] of [
     );
     await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
     await page.mouse.down();
+    await page.waitForTimeout(275);
     await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 20 });
     await page.mouse.up();
     expect((await move).postDataJSON()).toMatchObject({ fromIndex: 0, toIndex: 1 });

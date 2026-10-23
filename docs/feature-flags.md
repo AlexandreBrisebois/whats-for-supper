@@ -77,14 +77,11 @@ keep existing identity, permission and input-validation requirements.
 
 ## Current flags and deployment surfaces
 
-All three registry defaults are currently `off`. Actual deployments may override
-them; checked-in defaults do not establish the state of a running installation.
+The remaining registry default is currently `off`. Actual deployments may override
+it; checked-in defaults do not establish the state of a running installation.
 
 | Key | API environment variable | Owner / consumers |
 | --- | --- | --- |
-| `single-page-recipe-steps` | `WFS_FEATURE_SINGLE_PAGE_RECIPE_STEPS` | cooking-experience; `CooksMode.tsx` |
-| `preview-pdf-recipe-import` | `WFS_FEATURE_PREVIEW_PDF_RECIPE_IMPORT` | recipe-capture; `MinimalCapture.tsx`, `PdfCapturePanel.tsx`, `PdfCaptureController.cs`; PWA manifest also reads the deployment mode |
-| `planner-hold-to-move` | `WFS_FEATURE_PLANNER_HOLD_TO_MOVE` | meal-planning; `PlannerDragHandle.tsx` |
 
 For an opt-in rollout, supply the flag's variable as `opt-in` to the API process,
 restart/recreate it, select an established member and enable the preview under
@@ -95,16 +92,13 @@ for everyone while retaining the gate.
 Inspect the deployment actually used. A dotenv entry alone does not pass a
 variable into a container:
 
-- [apps.yml](../docker/compose/apps.yml) and
-  [production.yml](../docker/compose/production.yml) pass cooking and planner
-  variables to the API with `off` fallbacks; they do not currently pass the PDF
-  variable.
-- The [public Compose template](../release-template/synology/compose.yaml) passes
-  all three to the API and the PDF variable to the PWA, with `off` fallbacks.
-  Its [.env.example](../release-template/synology/.env.example) lists cooking and
-  PDF, but not planner; the Compose fallback still applies to planner.
-- [smoke.env](../docker/compose/smoke.env) explicitly supplies cooking and planner
-  as `off`. Keep deployment examples, smoke fixtures and operator instructions
+- [apps.yml](../docker/compose/apps.yml), [production.yml](../docker/compose/production.yml)
+  and the [public Compose template](../release-template/synology/compose.yaml) pass
+  the cooking variable to the API with an `off` fallback.
+- The public template's [.env.example](../release-template/synology/.env.example)
+  lists the cooking variable.
+- [smoke.env](../docker/compose/smoke.env) explicitly supplies cooking as `off`.
+  Keep deployment examples, smoke fixtures and operator instructions
   aligned when a future change touches these surfaces.
 
 PDF has two distinct checks. The
@@ -169,16 +163,16 @@ fallback branch, deployment variable and override records still exist.
 
 Keep legitimate long-term user preferences separate from preview eligibility.
 For example, [Cook Mode #303](https://github.com/AlexandreBrisebois/whats-for-supper/issues/303)
-plans all-steps as the default with a saved member view preference. It is not
+uses all-steps as the default with a saved member view preference. It is not
 equivalent to deleting the focused view or keeping a preview switch forever.
 Define preference defaults and treatment of existing users/overrides explicitly;
 do not silently reinterpret an old preview boolean as a new durable preference.
 
 [PDF #304](https://github.com/AlexandreBrisebois/whats-for-supper/issues/304)
-tracks always-on PDF import; [planner #305](https://github.com/AlexandreBrisebois/whats-for-supper/issues/305)
-tracks always-on touch hold-to-move. These links track planned work, not completed
-promotion. Feature-specific validation, identity checks and failure handling
-remain even when preview checks are retired.
+tracks always-on PDF import. Planner touch hold-to-move has graduated: it is now
+unconditional, its rollout configuration and stored choices are retired, and
+operators need no Planner preview setup. Feature-specific validation, identity
+checks and failure handling remain even when preview checks are retired.
 
 ### Abandon: remove the experiment, retain supported behavior
 

@@ -187,12 +187,6 @@ export async function mockFeatureFlags(
     const memberId = request.headers()['x-family-member-id'];
     if (!memberId || ![MOCK_IDS.MEMBER_ALEX, MOCK_IDS.MEMBER_JORDAN].includes(memberId))
       return reject(400, 'An established family member is required.');
-    if (
-      !snapshotFor(memberId).some(
-        (flag) => flag.key === 'preview-pdf-recipe-import' && flag.enabled
-      )
-    )
-      return reject(409, "PDF import preview isn't enabled. This file hasn't been added.");
     if (!request.headers()['content-type']?.startsWith('multipart/form-data'))
       return reject(415, 'Choose a PDF file.');
     try {
@@ -279,6 +273,22 @@ export async function setupCommonRoutes(
     { recipeId: string; week: string; count: number; selected: boolean }
   >();
   const scheduleCalendar = calendarContext ?? builders.deploymentCalendar();
+  type MockExtra = {
+    id: string;
+    lineageId: string;
+    name: string;
+    normalizedKey: string;
+    grocerySection: string;
+    checked: boolean;
+    occurrenceWeekStartDate: string;
+    readOnly: boolean;
+    source: string;
+    version: number;
+    removed?: boolean;
+  };
+  const groceryExtras = new Map<string, MockExtra>();
+  const extraSubmissions = new Map<string, { id: string; name: string; week: string }>();
+  const extraHistory: string[] = [];
   function readReference(url: URL): string | null {
     const reference =
       url.searchParams.get('referenceWeekStartDate') ?? scheduleCalendar.referenceWeekStartDate;
@@ -307,6 +317,23 @@ export async function setupCommonRoutes(
       const entry = scheduleEntries.get(day.date);
       if (entry) Object.assign(day, entry);
     }
+    const selectedMonday = addDays(reference, weekOffset * 7);
+    const currentMonday = scheduleCalendar.currentWeekStartDate;
+    (schedule as typeof schedule & { groceryExtras: MockExtra[] }).groceryExtras = [
+      ...groceryExtras.values(),
+    ]
+      .filter((extra) => {
+        if (extra.removed) return false;
+        if (selectedMonday === currentMonday)
+          return extra.occurrenceWeekStartDate === currentMonday;
+        if (selectedMonday === addDays(currentMonday, 7))
+          return extra.occurrenceWeekStartDate === currentMonday && !extra.checked;
+        return extra.occurrenceWeekStartDate === selectedMonday;
+      })
+      .map((extra) => ({
+        ...extra,
+        readOnly: selectedMonday < currentMonday,
+      })) as any;
     return schedule;
   };
   const emitSchedule = async (weekOffset: number, reference: string) =>
@@ -321,6 +348,25 @@ export async function setupCommonRoutes(
       },
       makeSchedule(weekOffset, reference)
     );
+  const emitExtras = async () => {
+    const weekStartDate = scheduleCalendar.currentWeekStartDate;
+    const visible = [...groceryExtras.values()].filter((extra) => !extra.removed);
+    await page.evaluate(
+      ({ week, extras }) => {
+        const source = (window as any).__sseSource as EventSource | undefined;
+        source?.dispatchEvent(
+          new MessageEvent('grocery_extras_updated', {
+            data: JSON.stringify({
+              type: 'grocery_extras_updated',
+              weekStartDate: week,
+              groceryExtras: extras,
+            }),
+          })
+        );
+      },
+      { week: weekStartDate, extras: visible }
+    );
+  };
   let activeImportIssue: RecipeImportIssueDto | null = null;
   let activeImportId: string | null = null;
   let importStatusReads = 0;
@@ -386,13 +432,13 @@ export async function setupCommonRoutes(
     const cookies = await page.context().cookies();
     const cookie = cookies.find((c) => c.name === 'x-family-member-id');
     const memberId = cookie?.value || MOCK_IDS.MEMBER_ALEX;
-    const name = memberId === MOCK_IDS.MEMBER_JORDAN ? 'Jordan' : 'Alex';
+    const member = familyMembers.find((candidate) => candidate.id === memberId);
 
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
       headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' },
-      body: JSON.stringify({ data: builders.familyMember({ id: memberId, name }) }),
+      body: JSON.stringify({ data: member ?? builders.familyMember({ id: memberId }) }),
     });
   });
 
@@ -402,15 +448,29 @@ export async function setupCommonRoutes(
       const body = route.request().postDataJSON() as {
         browseViewMode?: 'stack' | 'list';
         preferredLanguage?: string;
+        cookingViewMode?: 'step-by-step' | 'all-steps';
       };
+      const id = new URL(route.request().url()).pathname.split('/').at(-2);
+      const current = familyMembers.find((member) => member.id === id);
+      if (!current) {
+        await route.fulfill({ status: 404 });
+        return;
+      }
+      const updated = {
+        ...current,
+        ...(body.browseViewMode === undefined ? {} : { browseViewMode: body.browseViewMode }),
+        ...(body.preferredLanguage === undefined
+          ? {}
+          : { preferredLanguage: body.preferredLanguage as any }),
+        ...(body.cookingViewMode === undefined ? {} : { cookingViewMode: body.cookingViewMode }),
+        updatedAt: new Date(),
+      };
+      Object.assign(current, updated);
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
-          data: builders.familyMember({
-            browseViewMode: body.browseViewMode ?? 'stack',
-            preferredLanguage: (body.preferredLanguage ?? 'en') as any,
-          }),
+          data: updated,
         }),
       });
     } else {
@@ -1483,6 +1543,159 @@ export async function setupCommonRoutes(
     });
   });
 
+  // Stateful everyday grocery extras. These handlers intentionally preserve distinct
+  // same-name occurrences and expose writes through subsequent schedule reads.
+  await page.route('**/api/grocery-extras/suggestions', async (route) => {
+    if (route.request().method() !== 'GET') return route.fallback();
+    const query =
+      new URL(route.request().url()).searchParams.get('query')?.trim().toLowerCase() ?? '';
+    if (query.length < 2)
+      return route.fulfill({ status: 400, json: { message: 'Enter two characters.' } });
+    const outstanding = new Set(
+      [...groceryExtras.values()]
+        .filter((x) => !x.removed && !x.checked)
+        .map((x) => x.normalizedKey)
+    );
+    const latestByName = new Map<string, MockExtra>();
+    for (const occurrence of groceryExtras.values()) {
+      const latest = latestByName.get(occurrence.normalizedKey);
+      if (!latest || occurrence.version >= latest.version)
+        latestByName.set(occurrence.normalizedKey, occurrence);
+    }
+    const seen = new Set<string>();
+    const names = extraHistory
+      .filter((name) => {
+        const key = name.trim().toLowerCase().replace(/\s+/g, ' ');
+        if (
+          seen.has(key) ||
+          outstanding.has(key) ||
+          latestByName.get(key)?.removed ||
+          !key.includes(query)
+        )
+          return false;
+        seen.add(key);
+        return true;
+      })
+      .sort(
+        (a, b) =>
+          Number(!a.toLowerCase().startsWith(query)) - Number(!b.toLowerCase().startsWith(query))
+      )
+      .slice(0, 3);
+    await route.fulfill({ status: 200, json: { names } });
+  });
+  await page.route('**/api/grocery-extras/*', async (route) => {
+    const requestUrl = new URL(route.request().url());
+    if (requestUrl.pathname.endsWith('/suggestions')) return route.fallback();
+
+    const request = route.request();
+    const id = decodeURIComponent(requestUrl.pathname.split('/').at(-1) ?? '');
+    const current = groceryExtras.get(id);
+    if (current?.removed)
+      return route.fulfill({ status: 409, json: { message: 'Already removed.', absent: true } });
+    if (!current) return route.fulfill({ status: 404, json: { message: 'Not found.' } });
+    if (request.method() === 'PATCH') {
+      const body = request.postDataJSON() as Record<string, unknown>;
+      const fields = ['name', 'checked', 'grocerySection'].filter(
+        (field) => body[field] !== undefined
+      );
+      if (
+        body.weekStartDate !== current.occurrenceWeekStartDate ||
+        current.occurrenceWeekStartDate !== scheduleCalendar.currentWeekStartDate ||
+        fields.length !== 1 ||
+        (fields[0] === 'name' && (typeof body.name !== 'string' || !body.name.trim())) ||
+        (fields[0] === 'grocerySection' &&
+          ![
+            'Produce',
+            'Deli',
+            'Bakery',
+            'Meat',
+            'Seafood',
+            'Dairy & Eggs',
+            'Frozen',
+            'Pantry',
+            'Beverages',
+            'Grocery',
+          ].includes(String(body.grocerySection)))
+      )
+        return route.fulfill({
+          status: 400,
+          json: { message: 'Supply one valid current-week change.' },
+        });
+      if (body.expectedVersion !== current.version)
+        return route.fulfill({ status: 409, json: { message: 'Changed elsewhere.', current } });
+      const updated = { ...current, version: current.version + 1 };
+      if (typeof body.name === 'string') {
+        updated.name = body.name.trim();
+        updated.normalizedKey = updated.name.toLowerCase().replace(/\s+/g, ' ');
+        extraHistory.unshift(updated.name);
+      }
+      if (typeof body.checked === 'boolean') updated.checked = body.checked;
+      if (typeof body.grocerySection === 'string') updated.grocerySection = body.grocerySection;
+      groceryExtras.set(id, updated);
+      await emitExtras();
+      return route.fulfill({ status: 200, json: updated });
+    }
+    if (request.method() === 'DELETE') {
+      const url = new URL(request.url());
+      const expected = Number(url.searchParams.get('expectedVersion'));
+      if (
+        url.searchParams.get('weekStartDate') !== current.occurrenceWeekStartDate ||
+        current.occurrenceWeekStartDate !== scheduleCalendar.currentWeekStartDate
+      )
+        return route.fulfill({ status: 400, json: { message: 'Current occurrence required.' } });
+      if (expected !== current.version)
+        return route.fulfill({ status: 409, json: { message: 'Changed elsewhere.', current } });
+      groceryExtras.set(id, { ...current, removed: true, version: current.version + 1 });
+      await emitExtras();
+      return route.fulfill({ status: 204 });
+    }
+    return route.fallback();
+  });
+  await page.route('**/api/grocery-extras', async (route) => {
+    if (route.request().method() !== 'POST') return route.fallback();
+    const body = route.request().postDataJSON() as {
+      clientId?: string;
+      name?: string;
+      weekStartDate?: string;
+    };
+    const name = body.name?.trim() ?? '';
+    if (!name || body.weekStartDate !== scheduleCalendar.currentWeekStartDate)
+      return route.fulfill({
+        status: 400,
+        json: { message: 'Current week and name are required.' },
+      });
+    const replay = body.clientId && extraSubmissions.get(body.clientId);
+    if (replay) {
+      if (replay.name !== name || replay.week !== body.weekStartDate)
+        return route.fulfill({
+          status: 409,
+          json: {
+            message: 'Client identity belongs to another submission.',
+            current: groceryExtras.get(replay.id),
+          },
+        });
+      return route.fulfill({ status: 200, json: groceryExtras.get(replay.id) });
+    }
+    const id = body.clientId ?? crypto.randomUUID();
+    const extra: MockExtra = {
+      id,
+      lineageId: id,
+      name,
+      normalizedKey: name.toLowerCase().replace(/\s+/g, ' '),
+      grocerySection: 'Grocery',
+      checked: false,
+      occurrenceWeekStartDate: body.weekStartDate,
+      readOnly: false,
+      source: 'extra',
+      version: 1,
+    };
+    groceryExtras.set(id, extra);
+    if (body.clientId) extraSubmissions.set(body.clientId, { id, name, week: body.weekStartDate });
+    extraHistory.unshift(name);
+    await emitExtras();
+    await route.fulfill({ status: 201, json: extra });
+  });
+
   // Exact recovery is separate from the legacy merge mocks. Persist supported mock
   // facts, not live round identities; ordinary reads observe restored membership.
   type SavedRecovery = {
@@ -2192,6 +2405,28 @@ export async function mockSseWithGroceryUpdated(
           weekOffset,
           weekStartDate: builders.scheduleDays(weekOffset).weekStartDate,
           groceryState,
+        }),
+      ]),
+    });
+  });
+}
+
+export async function mockSseWithGroceryExtrasUpdated(
+  page: Page,
+  weekStartDate: string,
+  groceryExtras: ReturnType<typeof builders.groceryExtra>[]
+): Promise<void> {
+  await page.route(/\/(?:backend\/)?api\/stream/, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'text/event-stream',
+      headers: { 'Cache-Control': 'no-cache', Connection: 'keep-alive', 'X-Accel-Buffering': 'no' },
+      body: buildSseBody([
+        buildConnectedEvent(),
+        buildSseFrame('grocery_extras_updated', {
+          type: 'grocery_extras_updated',
+          weekStartDate,
+          groceryExtras,
         }),
       ]),
     });

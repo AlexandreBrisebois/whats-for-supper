@@ -9,7 +9,7 @@ using static RecipeApi.Dto.SmartDefaultsDto;
 
 namespace RecipeApi.Services;
 
-public partial class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService> logger, IScheduleEventPublisher publisher, GroceryRecomputeService groceryRecomputeService, IClock clock, DeploymentCalendar calendar, HistoricalInterestService historicalInterest)
+public partial class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService> logger, IScheduleEventPublisher publisher, GroceryRecomputeService groceryRecomputeService, IClock clock, DeploymentCalendar calendar, HistoricalInterestService historicalInterest, GroceryExtraService? groceryExtras = null, GroceryExtraRolloverService? groceryExtraRollover = null)
 {
     private readonly RecipeDbContext _dbContext = dbContext;
     private readonly ILogger<ScheduleService> _logger = logger;
@@ -18,6 +18,8 @@ public partial class ScheduleService(RecipeDbContext dbContext, ILogger<Schedule
     private readonly IClock _clock = clock;
     private readonly DeploymentCalendar _calendar = calendar;
     private readonly HistoricalInterestService _historicalInterest = historicalInterest;
+    private readonly GroceryExtraService? _groceryExtras = groceryExtras;
+    private readonly GroceryExtraRolloverService? _groceryExtraRollover = groceryExtraRollover;
 
     public Task<ScheduleDays> GetScheduleAsync(int weekOffset, DateOnly? referenceWeekStartDate = null) =>
         ReadScheduleAsync(weekOffset, _calendar.Capture(_clock.UtcNow, referenceWeekStartDate));
@@ -26,6 +28,9 @@ public partial class ScheduleService(RecipeDbContext dbContext, ILogger<Schedule
     {
         var monday = context.WeekStart(weekOffset);
         var sunday = monday.AddDays(6);
+
+        if (monday == context.CurrentWeekStartDate && _groceryExtraRollover is not null)
+            await _groceryExtraRollover.ReconcileAsync(context.CurrentWeekStartDate);
 
         var events = await _dbContext.CalendarEvents
             .Include(e => e.Recipe)
@@ -68,7 +73,8 @@ public partial class ScheduleService(RecipeDbContext dbContext, ILogger<Schedule
         var round = await _dbContext.VotingRoundStates.AsNoTracking().SingleOrDefaultAsync();
         var roundId = plan?.VotingRoundId ?? plan?.LastClosedRoundId ??
             (round?.WeekStartDate is null || round.WeekStartDate == monday ? round?.RoundId : null);
-        return new ScheduleDays(weekOffset, isLocked, status, days, context, monday, groceryState, groceryItems, roundId);
+        var extras = _groceryExtras is null ? [] : await _groceryExtras.ReadForViewAsync(monday, context.CurrentWeekStartDate);
+        return new ScheduleDays(weekOffset, isLocked, status, days, context, monday, groceryState, groceryItems, roundId, extras);
     }
 
     public async Task OpenVotingAsync(int weekOffset, string? excludeConnectionId = null, DateOnly? referenceWeekStartDate = null)

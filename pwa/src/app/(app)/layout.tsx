@@ -92,7 +92,7 @@ export default function AppRouteLayout({ children }: { children: React.ReactNode
       {/* Notification layer — fixed at the top, stackable flex column */}
       <div
         data-testid="notification-zone"
-        className="fixed left-4 right-4 top-[calc(1rem+env(safe-area-inset-top))] z-[100] flex flex-col items-center gap-2 pointer-events-none"
+        className="fixed left-4 right-4 top-[calc(1rem+env(safe-area-inset-top))] z-[200] flex flex-col items-center gap-2 pointer-events-none"
       >
         <LanguageSwitchProposal />
         <RecipeFailureBanner />

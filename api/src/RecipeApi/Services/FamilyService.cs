@@ -8,6 +8,8 @@ public class FamilyService(IClock clock, RecipeDbContext db)
 {
     public const string BrowseViewModeStack = "stack";
     public const string BrowseViewModeList = "list";
+    public const string CookingViewModeStepByStep = "step-by-step";
+    public const string CookingViewModeAllSteps = "all-steps";
 
     public async Task<List<FamilyMember>> GetAllFamilyMembers()
     {
@@ -63,7 +65,11 @@ public class FamilyService(IClock clock, RecipeDbContext db)
         return member;
     }
 
-    public async Task<FamilyMember> UpdateFamilyMemberPreferences(Guid id, string? browseViewMode, string? preferredLanguage)
+    public async Task<FamilyMember> UpdateFamilyMemberPreferences(
+        Guid id,
+        string? browseViewMode,
+        string? preferredLanguage,
+        string? cookingViewMode)
     {
         var member = await db.FamilyMembers.FindAsync(id)
             ?? throw new KeyNotFoundException($"Family member {id} not found.");
@@ -83,6 +89,19 @@ public class FamilyService(IClock clock, RecipeDbContext db)
                 throw new ArgumentException("preferredLanguage must be en or fr.");
             member.PreferredLanguage = normalizedLang;
         }
+
+        if (!string.IsNullOrEmpty(cookingViewMode))
+        {
+            var normalizedCookingView = cookingViewMode.Trim().ToLowerInvariant();
+            if (normalizedCookingView is not (CookingViewModeStepByStep or CookingViewModeAllSteps))
+                throw new ArgumentException("cookingViewMode must be step-by-step or all-steps.");
+            member.CookingViewMode = normalizedCookingView;
+        }
+
+        if (string.IsNullOrEmpty(browseViewMode)
+            && string.IsNullOrEmpty(preferredLanguage)
+            && string.IsNullOrEmpty(cookingViewMode))
+            throw new ArgumentException("At least one preference must be supplied.");
 
         member.UpdatedAt = clock.UtcNow;
         await db.SaveChangesAsync();

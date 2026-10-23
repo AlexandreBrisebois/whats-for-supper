@@ -25,7 +25,7 @@ class WorkflowSecurityTests(unittest.TestCase):
         self.assertNotIn("secrets.", validation)
         self.assertIn("HEARTH_SECRET: Paris-Montreal", validation)
 
-    def test_retired_aws_delivery_workflow_and_secrets_are_absent(self):
+    def test_retired_aws_delivery_workflow_and_secret_references_are_absent(self):
         self.assertFalse((WORKFLOWS / "aws-deploy.yml").exists())
         retired_secret_names = (
             "GEMINI_API_KEY",

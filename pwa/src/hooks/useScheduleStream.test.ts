@@ -25,6 +25,7 @@ const mockDiscoveryApplyVoteUpdate = vi.fn();
 const mockSetActiveCategory = vi.fn();
 const mockMarkReady = vi.fn();
 const mockSetGroceryState = vi.fn();
+const mockApplyGroceryExtrasUpdate = vi.fn();
 
 // weekStore weekOffset — default to 0; tests can override via mockWeekOffset
 let mockWeekOffset = 0;
@@ -74,6 +75,7 @@ vi.mock('@/store/weekStore', () => ({
       applySlotUpdate: mockApplySlotUpdate,
       applyVoteUpdate: mockApplyVoteUpdate,
       applySmartDefaultsUpdate: mockApplySmartDefaultsUpdate,
+      applyGroceryExtrasUpdate: mockApplyGroceryExtrasUpdate,
     }),
   },
 }));
@@ -257,6 +259,27 @@ describe('connected event', () => {
     source.emit('connected', { schedule });
 
     expect(mockApplySnapshot).toHaveBeenCalledWith(schedule);
+  });
+
+  it('refreshes the selected week after the document becomes visible', () => {
+    setupHook();
+    Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' });
+
+    document.dispatchEvent(new Event('visibilitychange'));
+
+    expect(mockWeekSync).toHaveBeenCalled();
+  });
+
+  it('refreshes the selected next-week view when reconnect only supplies current week', () => {
+    mockWeekOffset = 1;
+    mockWeekStartDate = '2025-01-20';
+    const { source } = setupHook();
+    const schedule = { weekStartDate: '2025-01-13', days: [] };
+
+    source.emit('connected', { schedule });
+
+    expect(mockWeekSync).toHaveBeenCalled();
+    expect(mockApplySnapshot).not.toHaveBeenCalled();
   });
 });
 
@@ -612,6 +635,28 @@ describe('grocery_updated event', () => {
     source.emit('grocery_updated', { weekOffset: 1, weekStartDate: '2025-01-20', groceryState });
 
     expect(mockSetGroceryState).not.toHaveBeenCalled();
+  });
+});
+
+describe('grocery_extras_updated event', () => {
+  it('forwards the absolute occurrence week and authoritative collection', () => {
+    const { source } = setupHook();
+    const extras = [
+      {
+        id: '11111111-1111-4111-8111-111111111111',
+        occurrenceWeekStartDate: '2025-01-13',
+        version: 2,
+      },
+    ];
+    source.emit('grocery_extras_updated', { weekStartDate: '2025-01-13', groceryExtras: extras });
+    expect(mockApplyGroceryExtrasUpdate).toHaveBeenCalledWith('2025-01-13', extras);
+  });
+
+  it('refreshes rather than guessing when absolute week identity is absent', () => {
+    const { source } = setupHook();
+    source.emit('grocery_extras_updated', { groceryExtras: [] });
+    expect(mockWeekSync).toHaveBeenCalled();
+    expect(mockApplyGroceryExtrasUpdate).not.toHaveBeenCalled();
   });
 });
 

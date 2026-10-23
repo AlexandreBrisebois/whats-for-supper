@@ -4,11 +4,15 @@
 
 ### Requirement: Add a name-only extra to the current grocery week
 
-The grocery view SHALL accept a trimmed nonblank extra name for the deployment-calendar current week. A successful add SHALL return and display one distinct unchecked extra with server-owned identity, `Extra` source label, default section, and current-week editability. Name SHALL be the only household-entered field.
+The grocery view SHALL accept a trimmed nonblank extra name for the deployment-calendar current week. A successful add SHALL return and display one distinct unchecked extra with server-owned identity, `Extra` source label, default section, and current-week editability. It SHALL also announce a brief confirmation naming the server-selected section so the member does not need to find the inserted row. Name SHALL be the only household-entered field.
 
 #### Scenario: Add one extra
 - **WHEN** a member adds `Coffee` while the current deployment week is displayed
 - **THEN** one unchecked Coffee row marked `Extra` appears in its server-selected section for that week
+
+#### Scenario: Confirm the selected section
+- **WHEN** an extra is added successfully outside the member's current scroll position
+- **THEN** a temporary success message identifies the section where it was saved without navigating or moving focus away from the composer
 
 #### Scenario: Blank name
 - **WHEN** a member submits a name containing only whitespace
@@ -113,6 +117,10 @@ The suggestion tray SHALL attach to the current-week bottom composer and grow up
 #### Scenario: Keyboard selection
 - **WHEN** a keyboard user moves through suggestions and presses Enter on an active option
 - **THEN** that option fills the composer, a subsequent submit adds it, and pressing Enter with no active option submits the current free text
+
+#### Scenario: Mobile keyboard commits completed text
+- **WHEN** an on-screen keyboard autocomplete replaces or completes the focused composer value
+- **THEN** the resulting current value drives the same debounced household-history lookup as directly typed text
 
 #### Scenario: Dismiss suggestions
 - **WHEN** the member presses Escape, clears the text below the threshold, submits successfully, or leaves the composer

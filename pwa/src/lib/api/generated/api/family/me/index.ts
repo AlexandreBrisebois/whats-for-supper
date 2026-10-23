@@ -101,6 +101,11 @@ export function deserializeIntoMeGetResponse_data(
         MeGetResponse_data_browseViewModeObject
       );
     },
+    cookingViewMode: (n) => {
+      meGetResponse_data.cookingViewMode = n.getEnumValue<MeGetResponse_data_cookingViewMode>(
+        MeGetResponse_data_cookingViewModeObject
+      );
+    },
     createdAt: (n) => {
       meGetResponse_data.createdAt = n.getDateValue();
     },
@@ -138,6 +143,10 @@ export interface MeGetResponse_data extends AdditionalDataHolder, Parsable {
    */
   browseViewMode?: MeGetResponse_data_browseViewMode | null;
   /**
+   * The cookingViewMode property
+   */
+  cookingViewMode?: MeGetResponse_data_cookingViewMode | null;
+  /**
    * The createdAt property
    */
   createdAt?: Date | null;
@@ -160,6 +169,8 @@ export interface MeGetResponse_data extends AdditionalDataHolder, Parsable {
 }
 export type MeGetResponse_data_browseViewMode =
   (typeof MeGetResponse_data_browseViewModeObject)[keyof typeof MeGetResponse_data_browseViewModeObject];
+export type MeGetResponse_data_cookingViewMode =
+  (typeof MeGetResponse_data_cookingViewModeObject)[keyof typeof MeGetResponse_data_cookingViewModeObject];
 export type MeGetResponse_data_preferredLanguage =
   (typeof MeGetResponse_data_preferredLanguageObject)[keyof typeof MeGetResponse_data_preferredLanguageObject];
 /**
@@ -244,6 +255,10 @@ export function serializeMeGetResponse_data(
     'browseViewMode',
     meGetResponse_data.browseViewMode
   );
+  writer.writeEnumValue<MeGetResponse_data_cookingViewMode>(
+    'cookingViewMode',
+    meGetResponse_data.cookingViewMode
+  );
   writer.writeDateValue('createdAt', meGetResponse_data.createdAt);
   writer.writeGuidValue('id', meGetResponse_data.id);
   writer.writeStringValue('name', meGetResponse_data.name);
@@ -261,6 +276,10 @@ export const MeRequestBuilderUriTemplate = '{+baseurl}/api/family/me';
 export const MeGetResponse_data_browseViewModeObject = {
   Stack: 'stack',
   List: 'list',
+} as const;
+export const MeGetResponse_data_cookingViewModeObject = {
+  StepByStep: 'step-by-step',
+  AllSteps: 'all-steps',
 } as const;
 export const MeGetResponse_data_preferredLanguageObject = {
   En: 'en',

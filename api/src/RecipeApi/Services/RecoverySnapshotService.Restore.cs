@@ -70,7 +70,7 @@ public partial class RecoverySnapshotService
                 await ScalarAsync(connection, "DELETE FROM recipe_votes; DELETE FROM voting_round_state; DELETE FROM recipe_search_filter_state; DELETE FROM recipe_search_affinity_facts; DELETE FROM recipe_search_documents", ct);
                 var round = Guid.NewGuid();
                 await ScalarAsync(connection, $"INSERT INTO voting_round_state(id,round_id,history_generation,requires_round_identity,week_start_date) VALUES(1,'{round}','{Guid.NewGuid()}',true,(SELECT CASE WHEN count(*)=1 THEN min(week_start_date) END FROM weekly_plans WHERE status=1)); UPDATE weekly_plans SET requires_round_identity=true,last_closed_round_id=NULL,voting_round_id=CASE WHEN status=1 AND (SELECT count(*) FROM weekly_plans WHERE status=1)=1 THEN '{round}'::uuid ELSE NULL END", ct);
-                await ScalarAsync(connection, "UPDATE workflow_tasks SET status=4,error_message='Invalidated by exact recovery' WHERE status IN (0,1,2) AND instance_id IN (SELECT id FROM workflow_instances WHERE workflow_id NOT IN ('dreaming','demo-restore')); UPDATE workflow_instances SET status=3 WHERE status IN (0,1,4) AND workflow_id NOT IN ('dreaming','demo-restore'); UPDATE maintenance_commands SET status='skipped',last_error='Invalidated by exact recovery' WHERE status IN ('pending','processing')", ct);
+                await ScalarAsync(connection, $"UPDATE workflow_tasks SET status=4,error_message='Invalidated by exact recovery' WHERE status IN (0,1,2) AND instance_id IN (SELECT id FROM workflow_instances WHERE workflow_id NOT IN ('dreaming','demo-restore')); UPDATE workflow_instances SET status=3 WHERE status IN (0,1,4) AND workflow_id NOT IN ('dreaming','demo-restore'); UPDATE maintenance_commands SET status='skipped',completed_at='{clock.UtcNow:O}'::timestamptz,last_error='Invalidated by exact recovery' WHERE status IN ('pending','processing')", ct);
                 await using (var restored = new RecipeDbContext(new DbContextOptionsBuilder<RecipeDbContext>().UseNpgsql(connection).Options))
                 {
                     await restored.Database.UseTransactionAsync(transaction, ct);
@@ -285,6 +285,28 @@ public partial class RecoverySnapshotService
             foreach (var referenced in Tables) rewritten = rewritten.Replace("REFERENCES " + referenced + "(", "REFERENCES pg_temp.recovery_" + referenced + "(", StringComparison.Ordinal);
             await ScalarAsync(connection, $"ALTER TABLE pg_temp.recovery_{table} ADD {rewritten}", ct);
         }
+        var invalidGroceryExtraLineageCount = await ScalarAsync(connection, """
+            WITH invalid_roots AS (
+                SELECT lineage_id
+                FROM pg_temp.recovery_grocery_extra_occurrences
+                GROUP BY lineage_id
+                HAVING count(*) FILTER (WHERE predecessor_id IS NULL) <> 1
+            ), invalid_links AS (
+                SELECT child.id
+                FROM pg_temp.recovery_grocery_extra_occurrences child
+                LEFT JOIN pg_temp.recovery_grocery_extra_occurrences predecessor
+                    ON predecessor.id = child.predecessor_id
+                WHERE child.predecessor_id IS NOT NULL
+                  AND (predecessor.id IS NULL
+                    OR predecessor.lineage_id <> child.lineage_id
+                    OR predecessor.week_start_date + 7 <> child.week_start_date
+                    OR predecessor.checked
+                    OR predecessor.removed_at IS NOT NULL)
+            )
+            SELECT (SELECT count(*) FROM invalid_roots) + (SELECT count(*) FROM invalid_links)
+            """, ct);
+        if (!long.TryParse(invalidGroceryExtraLineageCount, out var invalidLineages) || invalidLineages != 0)
+            throw new InvalidDataException("grocery_extra_occurrences contains invalid lineage relationships.");
         using var history = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine(stage, ".snapshot/weekly-household-interest.json"), ct));
         if (history.RootElement.GetProperty("version").GetInt32() != 1 || history.RootElement.GetProperty("generation").GetGuid() == Guid.Empty)
             throw new InvalidDataException("Invalid history sidecar version or generation.");

@@ -3,6 +3,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useWeekStore } from './weekStore';
 import type { UILocalScheduleDay } from './weekStore';
 import { usePlannerStore } from './plannerStore';
+import { builders } from '@/testing/builders';
 
 vi.mock('@/lib/api/planner', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/api/planner')>();
@@ -73,6 +74,8 @@ beforeEach(() => {
     weekOffset: 0,
     schedule: [],
     groceryItems: [],
+    groceryExtras: [],
+    pendingGroceryExtraIds: new Set(),
     status: 0,
     isLoading: false,
     lastSyncedAt: null,
@@ -85,6 +88,116 @@ beforeEach(() => {
     confirmedMoveSeq: 0,
     isDragActive: false,
     deferredWeekSnapshot: null,
+  });
+});
+
+describe('weekStore — grocery extra identity and version', () => {
+  it('reconciles current extras into the next-week view without overwriting newer or pending rows', () => {
+    const current = '2026-10-19';
+    const older = builders.groceryExtra({
+      id: '11111111-1111-4111-8111-111111111111',
+      occurrenceWeekStartDate: current as any,
+      version: 5,
+    });
+    const pending = builders.groceryExtra({
+      id: '22222222-2222-4222-8222-222222222222',
+      occurrenceWeekStartDate: current as any,
+      version: 1,
+    });
+    useWeekStore.setState({
+      weekStartDate: '2026-10-26',
+      calendar: { currentWeekStartDate: current, referenceWeekStartDate: current } as any,
+      groceryExtras: [older, pending],
+      pendingGroceryExtraIds: new Set([pending.id!]),
+    });
+
+    useWeekStore.getState().applyGroceryExtrasUpdate(current, [
+      { ...older, name: 'Stale', version: 4 },
+      { ...pending, name: 'Server value', version: 2 },
+      builders.groceryExtra({
+        id: '33333333-3333-4333-8333-333333333333',
+        occurrenceWeekStartDate: current as any,
+        version: 1,
+      }),
+    ]);
+
+    expect(useWeekStore.getState().groceryExtras.map((item) => item.name)).toEqual([
+      older.name,
+      pending.name,
+      'Coffee',
+    ]);
+  });
+  it('upserts by occurrence identity without allowing an older response to win', () => {
+    const base = {
+      id: '11111111-1111-4111-8111-111111111111' as any,
+      name: 'Coffee',
+      version: 5,
+      occurrenceWeekStartDate: '2025-01-06' as any,
+    };
+    useWeekStore.setState({ groceryExtras: [base] });
+    useWeekStore.getState().upsertGroceryExtra({ ...base, name: 'Old coffee', version: 4 });
+    expect(useWeekStore.getState().groceryExtras[0]?.name).toBe('Coffee');
+    useWeekStore.getState().upsertGroceryExtra({ ...base, name: 'Beans', version: 6 });
+    expect(useWeekStore.getState().groceryExtras[0]?.name).toBe('Beans');
+  });
+
+  it('removes only the selected duplicate occurrence', () => {
+    useWeekStore.setState({
+      groceryExtras: [
+        { id: '11111111-1111-4111-8111-111111111111' as any, name: 'Milk', version: 1 },
+        { id: '22222222-2222-4222-8222-222222222222' as any, name: 'Milk', version: 1 },
+      ],
+    });
+    useWeekStore.getState().removeGroceryExtra('11111111-1111-4111-8111-111111111111');
+    expect(useWeekStore.getState().groceryExtras.map((item) => item.id)).toEqual([
+      '22222222-2222-4222-8222-222222222222',
+    ]);
+  });
+
+  it('does not resurrect a pending optimistic deletion from a snapshot', () => {
+    const extra = {
+      id: '11111111-1111-4111-8111-111111111111' as any,
+      name: 'Milk',
+      version: 1,
+      checked: false,
+      occurrenceWeekStartDate: '2025-01-06' as any,
+    };
+    useWeekStore.setState({ groceryExtras: [], pendingGroceryExtraIds: new Set([extra.id]) });
+    useWeekStore.getState().applyGroceryExtrasUpdate('2025-01-06', [extra]);
+    expect(useWeekStore.getState().groceryExtras).toEqual([]);
+  });
+
+  it('removes checked current occurrences from the immediately-next-week projection', () => {
+    const extra = {
+      id: '11111111-1111-4111-8111-111111111111' as any,
+      name: 'Milk',
+      version: 1,
+      checked: false,
+      occurrenceWeekStartDate: '2025-01-06' as any,
+    };
+    useWeekStore.setState({ weekStartDate: '2025-01-13', weekOffset: 1, groceryExtras: [extra] });
+    useWeekStore
+      .getState()
+      .applyGroceryExtrasUpdate('2025-01-06', [{ ...extra, checked: true, version: 2 }]);
+    expect(useWeekStore.getState().groceryExtras).toEqual([]);
+  });
+
+  it('refreshes instead of guessing when an event item lacks occurrence identity', () => {
+    const originalSync = useWeekStore.getState().sync;
+    const sync = vi.fn().mockResolvedValue(undefined);
+    useWeekStore.setState({ sync });
+    try {
+      useWeekStore
+        .getState()
+        .applyGroceryExtrasUpdate('2025-01-06', [
+          { name: 'Unidentified', occurrenceWeekStartDate: '2025-01-06' as any } as any,
+        ]);
+
+      expect(sync).toHaveBeenCalledOnce();
+      expect(useWeekStore.getState().groceryExtras).toEqual([]);
+    } finally {
+      useWeekStore.setState({ sync: originalSync });
+    }
   });
 });
 

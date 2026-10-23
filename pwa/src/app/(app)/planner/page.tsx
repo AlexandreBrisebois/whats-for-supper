@@ -65,6 +65,7 @@ export default function PlannerPage() {
   const isLoading = useWeekStore((s) => s.isLoading);
   const status = useWeekStore((s) => s.status);
   const groceryItems = useWeekStore((s) => s.groceryItems);
+  const groceryExtras = useWeekStore((s) => s.groceryExtras);
   const isVotingOpen = status === 1;
   const isLocked = status === 2;
   const [nonCookingTarget, setNonCookingTarget] = useState<{
@@ -614,6 +615,7 @@ export default function PlannerPage() {
               <GroceryList
                 weekOffset={currentWeekOffset}
                 items={groceryItems ?? []}
+                extras={groceryExtras ?? []}
                 onClose={() => setActiveTab('planner')}
               />
             </motion.div>
@@ -722,7 +724,12 @@ export default function PlannerPage() {
             animate={{ opacity: 1, x: 0 }}
             className="sticky top-[72px] h-[calc(100vh-285px)] rounded-[2.5rem] overflow-hidden border border-white/20 shadow-2xl glass flex flex-col"
           >
-            <GroceryList weekOffset={currentWeekOffset} items={groceryItems ?? []} isEmbedded />
+            <GroceryList
+              weekOffset={currentWeekOffset}
+              items={groceryItems ?? []}
+              extras={groceryExtras ?? []}
+              isEmbedded
+            />
           </motion.div>
         )}
       </main>
@@ -1008,6 +1015,17 @@ const PlannerDayCard = memo(function PlannerDayCard({
     (event: PointerEvent) => dragControls.start(event),
     [dragControls]
   );
+  const moveBySlot = React.useCallback(
+    (direction: -1 | 1) => {
+      const snapshot = useWeekStore.getState().schedule;
+      const from = snapshot.findIndex((item) => item._uiId === day._uiId);
+      const to = from + direction;
+      if (from < 0 || to < 0 || to >= snapshot.length || !snapshot[from].recipe?.id) return;
+      useWeekStore.getState().reorderLocally(from, to, snapshot);
+      useWeekStore.getState().commitMove(from, to, snapshot);
+    },
+    [day._uiId]
+  );
 
   return (
     <Reorder.Item
@@ -1217,7 +1235,7 @@ const PlannerDayCard = memo(function PlannerDayCard({
                     <RefreshCw size={18} />
                   </motion.button>
                 )}
-                <PlannerDragHandle start={startDrag} />
+                <PlannerDragHandle start={startDrag} moveBySlot={moveBySlot} />
               </div>
             </div>
           ) : (
@@ -1245,7 +1263,7 @@ const PlannerDayCard = memo(function PlannerDayCard({
                 </div>
               </button>
               <div className="ml-2 pl-2 border-l border-charcoal/8 flex items-center gap-1 self-stretch">
-                <PlannerDragHandle start={startDrag} />
+                <PlannerDragHandle start={startDrag} moveBySlot={moveBySlot} />
               </div>
             </div>
           )}

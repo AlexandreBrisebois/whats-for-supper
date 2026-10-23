@@ -802,4 +802,26 @@ public class GroceryRecomputeServiceTests : IAsyncLifetime
         var updatedPlan = await _db.WeeklyPlans.FirstAsync(p => p.WeekStartDate == TestMonday);
         Assert.Equal(groceryStateJson, updatedPlan.GroceryState);
     }
+
+    [Fact]
+    public async Task GroceryExtra_RecomputePreservesOccurrenceSnapshot()
+    {
+        var extra = GroceryExtraOccurrence.Create(Guid.NewGuid(), Guid.NewGuid(), TestMonday,
+            "Coffee", "coffee", "Beverages", new DateTimeOffset(2025, 1, 6, 12, 0, 0, TimeSpan.Zero));
+        extra.Checked = true;
+        extra.Version = 4;
+        _db.GroceryExtraOccurrences.Add(extra);
+        await _db.SaveChangesAsync();
+
+        await _service.RecomputeForWeekAsync(TestMonday, CancellationToken.None);
+
+        _db.ChangeTracker.Clear();
+        var preserved = await _db.GroceryExtraOccurrences.SingleAsync();
+        Assert.Equal(extra.Id, preserved.Id);
+        Assert.Equal(extra.LineageId, preserved.LineageId);
+        Assert.Equal("Coffee", preserved.Name);
+        Assert.Equal("Beverages", preserved.GrocerySection);
+        Assert.True(preserved.Checked);
+        Assert.Equal(4, preserved.Version);
+    }
 }

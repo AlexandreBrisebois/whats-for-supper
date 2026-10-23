@@ -21,6 +21,11 @@ interface RecipeHarnessState {
   acceptedLaunches: number;
 }
 
+async function collapseDevelopmentBadge(page: Page) {
+  const devBadge = page.getByRole('button', { name: 'Collapse issues badge' });
+  if (await devBadge.isVisible()) await devBadge.click();
+}
+
 const searchResult = (
   recipe: RecipeDto,
   importIssueStatus: RecipeImportIssueDto['status'] | null = null,
@@ -364,6 +369,8 @@ test.describe('Recipe import issue reporting', () => {
     const firstIngredient = page.getByTestId('ingredient-toggle').first();
     await firstIngredient.click();
     await expect(firstIngredient).toHaveAttribute('aria-checked', 'true');
+    await collapseDevelopmentBadge(page);
+    await page.getByTestId('cooking-view-step-by-step').click();
     await page.getByTestId('cooks-mode-step-next').click();
     const stepText = await page.getByTestId('cooks-mode-step-text').textContent();
 

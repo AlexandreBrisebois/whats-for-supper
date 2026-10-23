@@ -27,6 +27,7 @@ public class RecipeDbContext(DbContextOptions<RecipeDbContext> options) : DbCont
     public DbSet<RecipeSearchFilterState> RecipeSearchFilterStates => Set<RecipeSearchFilterState>();
     public DbSet<RecipeSearchAffinityFact> RecipeSearchAffinityFacts => Set<RecipeSearchAffinityFact>();
     public DbSet<FeatureFlagOverride> FeatureFlagOverrides => Set<FeatureFlagOverride>();
+    public DbSet<GroceryExtraOccurrence> GroceryExtraOccurrences => Set<GroceryExtraOccurrence>();
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -50,14 +51,20 @@ public class RecipeDbContext(DbContextOptions<RecipeDbContext> options) : DbCont
             entity.HasKey(e => e.Id);
             entity.Property(e => e.BrowseViewMode)
                   .HasDefaultValue("stack");
+            entity.Property(e => e.CookingViewMode);
             entity.Property(e => e.CreatedAt)
                   .HasDefaultValueSql("NOW()");
             entity.Property(e => e.UpdatedAt)
                   .HasDefaultValueSql("NOW()");
             entity.ToTable("family_members", t =>
+            {
                 t.HasCheckConstraint(
                     "CK_family_members_browse_view_mode",
-                    "browse_view_mode IN ('stack', 'list')"));
+                    "browse_view_mode IN ('stack', 'list')");
+                t.HasCheckConstraint(
+                    "CK_family_members_cooking_view_mode",
+                    "cooking_view_mode IS NULL OR cooking_view_mode IN ('step-by-step', 'all-steps')");
+            });
         });
 
         modelBuilder.Entity<FeatureFlagOverride>(entity =>
@@ -264,6 +271,34 @@ public class RecipeDbContext(DbContextOptions<RecipeDbContext> options) : DbCont
             entity.ToTable("weekly_plans");
         });
 
+        modelBuilder.Entity<GroceryExtraOccurrence>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id").ValueGeneratedNever();
+            entity.Property(e => e.LineageId).HasColumnName("lineage_id");
+            entity.Property(e => e.PredecessorId).HasColumnName("predecessor_id");
+            entity.Property(e => e.WeekStartDate).HasColumnName("week_start_date");
+            entity.Property(e => e.Name).HasColumnName("name");
+            entity.Property(e => e.NormalizedKey).HasColumnName("normalized_key");
+            entity.Property(e => e.GrocerySection).HasColumnName("grocery_section");
+            entity.Property(e => e.Checked).HasColumnName("checked");
+            entity.Property(e => e.RemovedAt).HasColumnName("removed_at");
+            entity.Property(e => e.Version).HasColumnName("version").HasDefaultValue(1).IsConcurrencyToken();
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("NOW()");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasDefaultValueSql("NOW()");
+            entity.HasIndex(e => new { e.LineageId, e.WeekStartDate }).IsUnique();
+            entity.HasIndex(e => e.PredecessorId).IsUnique().HasFilter("predecessor_id IS NOT NULL");
+            entity.HasOne<GroceryExtraOccurrence>().WithMany().HasForeignKey(e => e.PredecessorId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.ToTable("grocery_extra_occurrences", table =>
+            {
+                table.HasCheckConstraint("grocery_extra_occurrences_monday", "EXTRACT(ISODOW FROM week_start_date) = 1");
+                table.HasCheckConstraint("grocery_extra_occurrences_version", "version >= 1");
+                table.HasCheckConstraint("grocery_extra_occurrences_name", "char_length(btrim(name)) >= 1 AND char_length(btrim(name)) <= 200");
+                table.HasCheckConstraint("grocery_extra_occurrences_section", "grocery_section IN ('Produce','Meat','Seafood','Dairy & Eggs','Frozen','Bakery','Pantry','Beverages','Deli','Grocery')");
+            });
+        });
+
         modelBuilder.Entity<FamilySetting>(entity =>
         {
             entity.HasKey(e => e.Id);
@@ -307,6 +342,9 @@ public class RecipeDbContext(DbContextOptions<RecipeDbContext> options) : DbCont
                 t.HasCheckConstraint("CK_maintenance_commands_status", "status IN ('pending', 'processing', 'completed', 'failed', 'skipped')"));
             entity.HasIndex(e => new { e.Status, e.ScheduledFor, e.CreatedAt })
                   .HasDatabaseName("idx_maintenance_commands_status_scheduled");
+            entity.HasIndex(e => new { e.CompletedAt, e.Id })
+                  .HasDatabaseName("idx_maintenance_commands_terminal_completed")
+                  .HasFilter("status IN ('completed', 'skipped')");
         });
 
         modelBuilder.Entity<RecipeSearchFilterState>(entity =>

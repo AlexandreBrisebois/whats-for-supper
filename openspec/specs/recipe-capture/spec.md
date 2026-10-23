@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Capture recipes from photos, web links, descriptions and feature-enabled PDFs into the household library. This capability covers source entry and shared-link review, validation and metadata, intake acceptance, background extraction, initial readiness feedback, duplicate advice and configured processing-language requests.
+Capture recipes from photos, web links, descriptions and PDFs into the household library. This capability covers source entry and shared-link review, validation and metadata, intake acceptance, background extraction, initial readiness feedback, duplicate advice and configured processing-language requests.
 
 ## Requirements
 
@@ -389,23 +389,25 @@ If description submission fails or returns no recipe ID, the client SHALL displa
 - **WHEN** the submission response has no recipe ID
 - **THEN** the form displays No recipe ID returned. and retains the draft for another submission
 
-### Requirement: Gate PDF acquisition by effective member eligibility
+### Requirement: Offer PDF acquisition to established members
 
-PDF acquisition SHALL require household authentication, an established member and effective PDF preview enablement. Off, absent or invalid mode SHALL disable acquisition; opt-in SHALL require that member's enabled preference; on SHALL enable it. The ordinary capture picker SHALL offer PDF only after the selected member's flags resolve enabled without error, and SHALL exclude PDF in Family GOTO.
+PDF acquisition SHALL require household authentication and an established member. The ordinary capture picker SHALL offer PDF without requiring feature-flag configuration or a member preference, and SHALL exclude PDF in Family GOTO.
 
-#### Scenario: Enabled member selects the PDF entry
-- **WHEN** the current established member has effective PDF preview enablement outside Family GOTO
+#### Scenario: Established member selects the PDF entry
+- **WHEN** the current established member uses ordinary capture outside Family GOTO
 - **THEN** Import recipe file includes PDF among its selectable formats
 
-#### Scenario: Disabled or unresolved picker eligibility
-- **WHEN** flags are loading, errored, belong to another member or resolve disabled
-- **THEN** the picker does not advertise PDF
-- **AND** Family GOTO does not advertise PDF regardless of flag enablement
+#### Scenario: Legacy flag state cannot disable PDF
+- **WHEN** PDF feature configuration is absent or a legacy disabled override or empty/loading/failed feature snapshot is present
+- **THEN** the ordinary picker and confirmation remain available
 
-#### Scenario: API rechecks acquisition eligibility
-- **WHEN** PDF intake is requested without household authentication, without an established member, or with that member's PDF preview disabled
-- **THEN** the API rejects it with 401, 400 or 409 respectively
-- **AND** disabled-preview rejection creates no pending recipe or import workflow
+#### Scenario: Family GOTO picker
+- **WHEN** capture is Family GOTO
+- **THEN** the picker does not advertise or stage PDF
+
+#### Scenario: API validates member eligibility
+- **WHEN** PDF intake is requested without household authentication or without an established member
+- **THEN** the API rejects it with 401 or 400 respectively before persistence
 
 ### Requirement: Validate PDF file selection before confirmation
 
@@ -433,18 +435,9 @@ PDF confirmation SHALL show the filename and guidance to choose one recipe in up
 - **THEN** the client submits that rating and trimmed nonblank notes with the file
 - **AND** an untouched rating is submitted as zero and blank notes are omitted
 
-### Requirement: Resolve PDF draft eligibility and discard interrupted drafts
+### Requirement: Discard interrupted PDF drafts
 
-A staged PDF SHALL wait for the selected member's flag snapshot before permitting confirmation. Disabled or errored eligibility SHALL show that the file has not been added and offer Choose another way, with Preview features when mode is opt-in. The unsaved PDF draft SHALL be discarded on page departure, hidden visibility, member change, changed capture query or transition to Family GOTO.
-
-#### Scenario: Picker focus refresh is pending
-- **WHEN** a file is selected while the same member's flag refresh is loading
-- **THEN** the panel shows Loading preview features before resolving to confirmation or unavailable feedback
-
-#### Scenario: Staged selection is disabled
-- **WHEN** a staged file's resolved eligibility is disabled or errored
-- **THEN** the panel withholds Save and explains that the file has not been added
-- **AND** Choose another way clears the selection and returns to capture controls
+A staged PDF for the selected established member SHALL permit confirmation independently of preview snapshots. The unsaved PDF draft SHALL be discarded on page departure, hidden visibility, member change, changed capture query or transition to Family GOTO.
 
 #### Scenario: Draft interrupted or ownership changes
 - **WHEN** the page leaves, becomes hidden, changes member or capture query, or enters Family GOTO
@@ -537,23 +530,23 @@ After receiving a usable PDF intake identity, the client SHALL add it to session
 
 ### Requirement: Access PDF originals through rendered pages
 
-A completed PDF recipe SHALL expose its ordered rendered pages through the existing recipe-library View Original controls and original-image endpoint. The retained source PDF SHALL remain separate from those image responses. Disabling new PDF acquisition SHALL NOT remove completed recipe access or gate its original-page viewing.
+A completed PDF recipe SHALL expose its ordered rendered pages through the existing recipe-library View Original controls and original-image endpoint. The retained source PDF SHALL remain separate from those image responses. Changes to legacy PDF feature configuration SHALL NOT remove completed recipe access or gate its original-page viewing.
 
 #### Scenario: View completed PDF originals
 - **WHEN** a person opens View Original for a completed PDF recipe with rendered pages
 - **THEN** the existing photo viewer displays and navigates its ordered page images
 - **AND** those image requests do not download the retained PDF file
 
-#### Scenario: Acquisition subsequently disabled
-- **WHEN** PDF preview acquisition is disabled after a PDF recipe completes
+#### Scenario: Legacy rollout configuration changes
+- **WHEN** legacy PDF feature configuration changes after a PDF recipe completes
 - **THEN** ordinary library and rendered-original access remain available
 
 ### Requirement: Recover eligible failed PDF imports using retained work
 
 A paused PDF import with a failed task SHALL appear in existing Settings failed captures with Retry and Clear actions. Retry SHALL queue the failed task without rechecking new-acquisition eligibility and SHALL NOT certify successful recovery. Clearing an eligible unfinished conversion failure SHALL remove its failure entry and queue residue cleanup; source removal SHALL occur when cleanup executes while the residue remains eligible.
 
-#### Scenario: Retry failed preparation with preview off
-- **WHEN** a PDF import has a paused failed conversion and a person retries it after PDF acquisition is disabled
+#### Scenario: Retry failed preparation after rollout configuration changes
+- **WHEN** a PDF import has a paused failed conversion and a person retries it after legacy PDF feature configuration changes
 - **THEN** the failed task is queued against its retained source without another upload or flag gate
 - **AND** an invalid source can fail again
 

@@ -90,6 +90,7 @@ export function useScheduleStream() {
     const onResume = () => {
       useTodayStore.getState().invalidateCalendar();
       void useTodayStore.getState().sync();
+      void useWeekStore.getState().sync();
     };
     const onVisibility = () => {
       if (document.visibilityState === 'visible') onResume();
@@ -108,7 +109,11 @@ export function useScheduleStream() {
       if (connectionId) {
         usePlannerStore.getState().setSseConnectionId(connectionId);
       }
-      useWeekStore.getState().applySnapshot(schedule);
+      const weekState = useWeekStore.getState();
+      const connectedWeek = absoluteMonday(schedule?.weekStartDate);
+      const selectedWeek = absoluteMonday(weekState.weekStartDate);
+      if (connectedWeek && selectedWeek && connectedWeek !== selectedWeek) void weekState.sync();
+      else weekState.applySnapshot(schedule);
 
       offerToday(schedule);
     });
@@ -262,6 +267,16 @@ export function useScheduleStream() {
       ) {
         usePlannerStore.getState().setGroceryState(groceryState);
       }
+    });
+
+    source.addEventListener('grocery_extras_updated', (e: MessageEvent) => {
+      const { weekStartDate, groceryExtras } = JSON.parse(e.data);
+      const state = useWeekStore.getState();
+      if (!absoluteMonday(weekStartDate) || !Array.isArray(groceryExtras)) {
+        void state.sync();
+        return;
+      }
+      state.applyGroceryExtrasUpdate(weekStartDate, groceryExtras);
     });
 
     // ── cleanup ────────────────────────────────────────────────────────────

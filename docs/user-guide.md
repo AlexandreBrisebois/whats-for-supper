@@ -56,6 +56,18 @@ Drag a recipe to a different day if plans change. Dragging it onto a saved suppe
 
 The **grocery list** lives here too. Check items off as you shop — your partner's phone updates live, so you won't both come home with two bags of onions.
 
+You can also add everyday household extras—such as coffee, foil, or toilet paper—from
+the field fixed to the bottom of the current week's grocery list. After two letters,
+optional suggestions from your household's own previously used extras appear above the
+field. Choosing one only fills the field: press **Add** to submit it. If suggestions are
+unavailable, free text continues to work, and repeated names remain separate items.
+
+An unchecked extra carries into each new week when weekly maintenance or the first
+current-week read repairs the rollover. Checking or deleting it stops future carry-forward.
+You can shop the immediately following week using the current outstanding extras, while
+older weeks remain read-only snapshots showing the name, section, and whether each extra
+was bought at that time.
+
 The planner saves you from the Sunday-night panic of figuring out five dinners from scratch.
 
 ---
@@ -74,7 +86,7 @@ A recipe already planned for the current calendar week leaves Discovery immediat
 
 Turning **Ask the Family** off keeps a recipe off until you turn it on. Turning it on returns an eligible recipe immediately, but Dreaming may pause it again if recently cooked. Select **Supper** in the recipe's meal types to qualify it for supper voting, including lunch or breakfast recipes your household eats for supper. These controls do not remove recipes from your library.
 
-Discovery saves you from the "I don't know, what do *you* want?" loop that ends in cereal.
+Discovery saves you from the "I don't know, what do _you_ want?" loop that ends in cereal.
 
 ---
 
@@ -92,7 +104,7 @@ Tap any search result to open its recipe detail view. From there you can cook it
 
 When Search receives a library update, it refreshes your current results automatically so newly available recipes can appear. Your search words, filters, similar-recipe choice and planner day stay selected. If loading fails, choose **Retry** to try the same search again; an error does not mean your library is empty.
 
-Search saves you from the "I don't know, what do *you* want?" loop that ends in cereal.
+Search saves you from the "I don't know, what do _you_ want?" loop that ends in cereal.
 
 ---
 
@@ -124,20 +136,18 @@ Adding recipes saves you from retyping Grandma's lasagna off a crumpled index ca
 
 ---
 
-## Importing a PDF recipe (preview)
+## Importing a PDF recipe
 
-Photo capture remains the main way to add a recipe. PDF import is a preview that your household administrator must make available. When offered as an opt-in preview, enable **PDF recipe import** under **Settings → Preview features** for your selected member.
+Photo capture remains the main way to add a recipe. Established members can also import a PDF from ordinary capture without enabling a preview preference.
 
 Use one PDF containing **one recipe**, up to **20 MiB** and **10 pages**. All pages are processed in order, including a cover page. A longer document fails as a whole; pages are never silently dropped. Books containing several recipes are unsupported and are not split automatically.
 
-- **Android:** install What's for Supper from your household's HTTPS address. In any app that can share a PDF, choose **Share → What's for Supper**. You can also choose the PDF through capture's file picker. After the preview is enabled for the deployment, the installed app may need its installation metadata refreshed or to be reinstalled before it appears as a PDF share target.
+- **Android:** install What's for Supper from your household's HTTPS address. In any app that can share a PDF, choose **Share → What's for Supper**. You can also choose the PDF through capture's file picker. After an application update, the installed app may need its installation metadata refreshed or to be reinstalled before it appears as a PDF share target.
 - **iPhone/iPad:** open capture and use the file picker. iOS PDF sharing through a native share extension is not supported.
 
 Review the filename, choose a rating if you want, add notes, and tap **Save**. PDF confirmation has no cooked-dish photo choice and no Cancel button. Acceptance takes you Home while preparation continues. Saving adds the recipe to the shared household library; it does not vote for it, plan a meal, or add groceries. Family GOTO capture excludes PDFs.
 
-Keep capture open while choosing and saving. Leaving, interrupting the app, unlocking, or changing the selected member clears the unsaved selection, rating and notes. Choose or share the PDF again to restart. A new Android share replaces the previous unsaved PDF. A job already submitted continues even if you leave, switch member, receive another share, or the preview is disabled later. If an interrupted upload leaves you unsure whether Save succeeded, check your library and Settings before trying again; retrying an uncertain upload can create another recipe.
-
-A stale Android share target may still open while the preview is disabled. The app explains that the file has not been added and offers ordinary capture, or **Preview features** when opt-in is available. Unlocking does not recover the shared file; share it again after selecting your member.
+Keep capture open while choosing and saving. Leaving, interrupting the app, unlocking, or changing the selected member clears the unsaved selection, rating and notes. Choose or share the PDF again to restart. A new Android share replaces the previous unsaved PDF. A job already submitted continues even if you leave, switch member or receive another share. If an interrupted upload leaves you unsure whether Save succeeded, check your library and Settings before trying again; retrying an uncertain upload can create another recipe. Unlocking does not recover the shared file; share it again after selecting your member.
 
 Corrupt, encrypted and unsupported documents can be accepted for preparation and then fail. Open **Settings → failed imports** and use the existing **Retry** or **Delete** actions. Retry uses the retained source and can fail again for an invalid PDF. Failed imports are retained until you delete them. A completed recipe's **View original** shows the rendered pages in order. The retained PDF is internal and is not offered as a download.
 
@@ -148,6 +158,7 @@ Corrupt, encrypted and unsupported documents can be accepted for preparation and
 Your household can be configured to process new recipes in a preferred language (for example, French). This applies during the initial processing of **Photo**, enabled **PDF**, **URL**, and **Describe it** recipes.
 
 When translation is active:
+
 - **Consistent Library**: The recipe-processing workflow requests ingredients, steps, and descriptions in your chosen language.
 - **Existing recipes**: Open the recipe's gear menu and choose **Report issue**. Choose **Ingredients** or **Steps**, add a note explaining what needs attention, and tap **Save**. For recipes with an original photo or website source, the app may re-read that source and update the recipe in the background.
 

@@ -31,6 +31,12 @@ import {
   type GotoRequestBuilder,
 } from './goto/index';
 // @ts-ignore
+import {
+  GroceryExtrasRequestBuilderNavigationMetadata,
+  GroceryExtrasRequestBuilderRequestsMetadata,
+  type GroceryExtrasRequestBuilder,
+} from './groceryExtras/index';
+// @ts-ignore
 import { HealthRequestBuilderRequestsMetadata, type HealthRequestBuilder } from './health/index';
 // @ts-ignore
 import {
@@ -103,6 +109,10 @@ export interface ApiRequestBuilder extends BaseRequestBuilder<ApiRequestBuilder>
    */
   get goto(): GotoRequestBuilder;
   /**
+   * The groceryExtras property
+   */
+  get groceryExtras(): GroceryExtrasRequestBuilder;
+  /**
    * The health property
    */
   get health(): HealthRequestBuilder;
@@ -168,6 +178,10 @@ export const ApiRequestBuilderNavigationMetadata: Record<
   goto: {
     requestsMetadata: GotoRequestBuilderRequestsMetadata,
     navigationMetadata: GotoRequestBuilderNavigationMetadata,
+  },
+  groceryExtras: {
+    requestsMetadata: GroceryExtrasRequestBuilderRequestsMetadata,
+    navigationMetadata: GroceryExtrasRequestBuilderNavigationMetadata,
   },
   health: {
     requestsMetadata: HealthRequestBuilderRequestsMetadata,

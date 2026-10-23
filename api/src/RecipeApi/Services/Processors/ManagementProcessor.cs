@@ -25,9 +25,15 @@ public class ManagementProcessor(
             "RestoreDemoState" => await managementService.RestoreDemoStateAsync(ct),
             "PruneWorkflows" => await managementService.PruneWorkflowsAsync(GetRetentionDays(task.Payload), ct),
             "ProcessMaintenanceCommands" => await managementService.ProcessMaintenanceCommandsAsync(ct),
+            "PruneMaintenanceCommands" => await managementService.PruneMaintenanceCommandsAsync(
+                GetPositiveInt(task.Payload, "retentionDays", 30),
+                GetPositiveInt(task.Payload, "batchSize", 500),
+                ct),
             "GenerateDreamingReport" => await managementService.GenerateDreamingReportAsync(
                 await GetPruneResultAsync(task, ct),
                 await GetMaintenanceResultAsync(task, ct),
+                await GetMaintenancePruneResultAsync(task, ct),
+                await GetGroceryExtraRolloverResultAsync(task, ct),
                 ct),
             _ => throw new NotSupportedException($"Processor {ProcessorName} is not supported by ManagementProcessor.")
         };
@@ -48,6 +54,19 @@ public class ManagementProcessor(
         }
 
         return 7;
+    }
+
+    private static int GetPositiveInt(string? payload, string propertyName, int defaultValue)
+    {
+        if (string.IsNullOrWhiteSpace(payload))
+            return defaultValue;
+
+        using var document = JsonDocument.Parse(payload);
+        return document.RootElement.TryGetProperty(propertyName, out var property)
+            && property.TryGetInt32(out var value)
+            && value > 0
+                ? value
+                : defaultValue;
     }
 
     private async Task<WorkflowPruneResult?> GetPruneResultAsync(WorkflowTask task, CancellationToken ct)
@@ -74,5 +93,31 @@ public class ManagementProcessor(
         return string.IsNullOrWhiteSpace(maintenanceTask?.Result)
             ? null
             : JsonSerializer.Deserialize<MaintenanceCommandBatchResult>(maintenanceTask.Result, JsonDefaults.CamelCase);
+    }
+
+    private async Task<MaintenanceCommandPruneResult?> GetMaintenancePruneResultAsync(WorkflowTask task, CancellationToken ct)
+    {
+        var pruneTask = await db.WorkflowTasks
+            .AsNoTracking()
+            .Where(t => t.InstanceId == task.InstanceId && t.ProcessorName == "PruneMaintenanceCommands" && t.Result != null)
+            .OrderByDescending(t => t.UpdatedAt)
+            .FirstOrDefaultAsync(ct);
+
+        return string.IsNullOrWhiteSpace(pruneTask?.Result)
+            ? null
+            : JsonSerializer.Deserialize<MaintenanceCommandPruneResult>(pruneTask.Result, JsonDefaults.CamelCase);
+    }
+
+    private async Task<GroceryExtraRolloverResult?> GetGroceryExtraRolloverResultAsync(WorkflowTask task, CancellationToken ct)
+    {
+        var rolloverTask = await db.WorkflowTasks
+            .AsNoTracking()
+            .Where(t => t.InstanceId == task.InstanceId && t.ProcessorName == "RolloverGroceryExtras" && t.Result != null)
+            .OrderByDescending(t => t.UpdatedAt)
+            .FirstOrDefaultAsync(ct);
+
+        return string.IsNullOrWhiteSpace(rolloverTask?.Result)
+            ? null
+            : JsonSerializer.Deserialize<GroceryExtraRolloverResult>(rolloverTask.Result, JsonDefaults.CamelCase);
     }
 }

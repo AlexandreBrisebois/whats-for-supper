@@ -5,6 +5,7 @@ using RecipeApi.Data;
 using RecipeApi.Infrastructure;
 using RecipeApi.Models;
 using RecipeApi.Services;
+using RecipeApi.Services.Processors;
 using RecipeApi.Tests.Infrastructure;
 using Xunit;
 using TaskStatus = RecipeApi.Models.TaskStatus;
@@ -87,6 +88,7 @@ public class ManagementServiceTests : IAsyncLifetime
 
     private string CsvPath => Path.Combine(DataRoot, "ingredient-categories.csv");
     private string ImportReportsPath => Path.Combine(DataRoot, "recipe-import-reports.json");
+    private string GroceryExtrasPath => Path.Combine(DataRoot, "grocery-extras.json");
     private string ReportsRoot => Path.Combine(DataRoot, "reports");
     private string DemoRoot => Path.Combine(DataRoot, "demo");
 
@@ -103,6 +105,154 @@ public class ManagementServiceTests : IAsyncLifetime
         var lines = await File.ReadAllLinesAsync(CsvPath);
         Assert.Single(lines);
         Assert.Equal("normalized_key,grocery_section,confidence,source,created_at", lines[0]);
+    }
+
+    [Fact]
+    public async Task GroceryExtras_BackupWritesExplicitEmptyVersionedArtifact()
+    {
+        await _service.BackupAsync();
+
+        using var document = JsonDocument.Parse(await File.ReadAllTextAsync(GroceryExtrasPath));
+        Assert.Equal(1, document.RootElement.GetProperty("version").GetInt32());
+        Assert.Empty(document.RootElement.GetProperty("occurrences").EnumerateArray());
+    }
+
+    [Fact]
+    public async Task GroceryExtras_BackupAndRepeatedMergeRestorePreserveIdentityAndLineage()
+    {
+        var first = GroceryExtraOccurrence.Create(Guid.NewGuid(), Guid.NewGuid(), new DateOnly(2026, 10, 12),
+            "Toilet paper", "toilet paper", "Grocery", DateTimeOffset.UtcNow.AddDays(-7));
+        var second = GroceryExtraOccurrence.Create(Guid.NewGuid(), first.LineageId, new DateOnly(2026, 10, 19),
+            "Bathroom tissue", "bathroom tissue", "Pantry", DateTimeOffset.UtcNow, first.Id);
+        second.Version = 3;
+        second.Checked = true;
+        _db.GroceryExtraOccurrences.AddRange(first, second);
+        await _db.SaveChangesAsync();
+        await _service.BackupAsync();
+        _db.GroceryExtraOccurrences.RemoveRange(first, second);
+        await _db.SaveChangesAsync();
+
+        await _service.RestoreAsync();
+        await _service.RestoreAsync();
+
+        var restored = await _db.GroceryExtraOccurrences.AsNoTracking().OrderBy(row => row.WeekStartDate).ToListAsync();
+        Assert.Equal(2, restored.Count);
+        Assert.Equal(first.Id, restored[0].Id);
+        Assert.Equal(first.Id, restored[1].PredecessorId);
+        Assert.Equal("Bathroom tissue", restored[1].Name);
+        Assert.Equal("Pantry", restored[1].GrocerySection);
+        Assert.True(restored[1].Checked);
+        Assert.Equal(3, restored[1].Version);
+    }
+
+    [Fact]
+    public async Task GroceryExtras_LegacyArtifactAbsencePreservesDestinationRows()
+    {
+        var row = GroceryExtraOccurrence.Create(Guid.NewGuid(), Guid.NewGuid(), new DateOnly(2026, 10, 19),
+            "Coffee", "coffee", "Grocery", DateTimeOffset.UtcNow);
+        _db.GroceryExtraOccurrences.Add(row);
+        await _db.SaveChangesAsync();
+        File.Delete(GroceryExtrasPath);
+
+        await _service.RestoreAsync();
+
+        Assert.Equal(row.Id, (await _db.GroceryExtraOccurrences.AsNoTracking().SingleAsync()).Id);
+    }
+
+    [Fact]
+    public async Task GroceryExtras_InvalidLineageIsRejectedBeforeMerge()
+    {
+        var id = Guid.NewGuid();
+        await File.WriteAllTextAsync(GroceryExtrasPath, JsonSerializer.Serialize(new
+        {
+            version = 1,
+            occurrences = new[]
+            {
+                new { id, lineageId = Guid.NewGuid(), predecessorId = Guid.NewGuid(), weekStartDate = "2026-10-19", name = "Coffee", normalizedKey = "coffee", grocerySection = "Grocery", @checked = false, removedAt = (string?)null, version = 1, createdAt = DateTimeOffset.UtcNow, updatedAt = DateTimeOffset.UtcNow }
+            }
+        }, JsonDefaults.CamelCase));
+
+        var result = await _service.RestoreAsync();
+
+        Assert.Equal(1, result.Errors);
+        Assert.Empty(_db.GroceryExtraOccurrences);
+    }
+
+    [Fact]
+    public async Task GroceryExtras_UnreadableArtifactIsReportedAndDestinationRowsArePreserved()
+    {
+        var row = GroceryExtraOccurrence.Create(Guid.NewGuid(), Guid.NewGuid(), new DateOnly(2026, 10, 19),
+            "Coffee", "coffee", "Grocery", DateTimeOffset.UtcNow);
+        _db.GroceryExtraOccurrences.Add(row);
+        await _db.SaveChangesAsync();
+        await File.WriteAllTextAsync(GroceryExtrasPath, "{not-json");
+
+        var result = await _service.RestoreAsync();
+
+        Assert.Equal(1, result.Errors);
+        Assert.Equal(row.Id, (await _db.GroceryExtraOccurrences.AsNoTracking().SingleAsync()).Id);
+    }
+
+    [Theory]
+    [InlineData("unsupported-envelope")]
+    [InlineData("unsupported-section")]
+    [InlineData("noncanonical-section")]
+    [InlineData("overlong-name")]
+    [InlineData("invalid-version")]
+    [InlineData("cross-lineage")]
+    [InlineData("nonconsecutive")]
+    [InlineData("multiple-roots")]
+    [InlineData("terminal-successor")]
+    public async Task GroceryExtras_InvalidCompleteHistoryIsReportedBeforeAnyMerge(string invalidCase)
+    {
+        var lineage = Guid.NewGuid();
+        var rootId = Guid.NewGuid();
+        var childId = Guid.NewGuid();
+        var root = new
+        {
+            id = rootId,
+            lineageId = lineage,
+            predecessorId = (Guid?)null,
+            weekStartDate = "2026-10-12",
+            name = invalidCase == "overlong-name" ? new string('x', 201) : "Coffee",
+            normalizedKey = "coffee",
+            grocerySection = invalidCase switch
+            {
+                "unsupported-section" => "Garage",
+                "noncanonical-section" => "grocery",
+                _ => "Grocery"
+            },
+            @checked = invalidCase == "terminal-successor",
+            removedAt = (string?)null,
+            version = invalidCase == "invalid-version" ? 0 : 1,
+            createdAt = DateTimeOffset.Parse("2026-10-12T12:00:00Z"),
+            updatedAt = DateTimeOffset.Parse("2026-10-12T12:00:00Z")
+        };
+        var child = new
+        {
+            id = childId,
+            lineageId = invalidCase == "cross-lineage" ? Guid.NewGuid() : lineage,
+            predecessorId = invalidCase == "multiple-roots" ? (Guid?)null : rootId,
+            weekStartDate = invalidCase == "nonconsecutive" ? "2026-10-26" : "2026-10-19",
+            name = "Coffee",
+            normalizedKey = "coffee",
+            grocerySection = "Grocery",
+            @checked = false,
+            removedAt = (string?)null,
+            version = 1,
+            createdAt = DateTimeOffset.Parse("2026-10-19T12:00:00Z"),
+            updatedAt = DateTimeOffset.Parse("2026-10-19T12:00:00Z")
+        };
+        await File.WriteAllTextAsync(GroceryExtrasPath, JsonSerializer.Serialize(new
+        {
+            version = invalidCase == "unsupported-envelope" ? 2 : 1,
+            occurrences = new object[] { root, child }
+        }, JsonDefaults.CamelCase));
+
+        var result = await _service.RestoreAsync();
+
+        Assert.Equal(1, result.Errors);
+        Assert.Empty(_db.GroceryExtraOccurrences);
     }
 
     [Fact]
@@ -584,7 +734,10 @@ public class ManagementServiceTests : IAsyncLifetime
         await _db.SaveChangesAsync();
 
         // Act
-        var result = await _service.GenerateDreamingReportAsync(new WorkflowPruneResult(3, 4));
+        var result = await _service.GenerateDreamingReportAsync(
+            new WorkflowPruneResult(3, 4),
+            maintenancePruneResult: new MaintenanceCommandPruneResult(5, 2, now.AddDays(-30)),
+            groceryExtraRolloverResult: new GroceryExtraRolloverResult(3, new DateOnly(2026, 10, 19)));
 
         // Assert
         Assert.True(File.Exists(result.Path));
@@ -596,12 +749,68 @@ public class ManagementServiceTests : IAsyncLifetime
         Assert.Contains("# Dreaming Report", markdown);
         Assert.Contains("Pruned workflow instances: 3", markdown);
         Assert.Contains("Pruned workflow tasks: 4", markdown);
+        Assert.Contains("Terminal maintenance commands pruned: 5", markdown);
+        Assert.Contains("Legacy completion timestamps initialized: 2", markdown);
+        Assert.Contains("Grocery-extra rollover: 3 occurrence(s) created through 2026-10-19", markdown);
+        Assert.Contains($"Retention cutoff (inclusive): {now.AddDays(-30):O}", markdown);
         Assert.Contains("db-backup", markdown);
         Assert.Contains("failed-import", markdown);
         Assert.Contains("Extraction failed", markdown);
         Assert.Contains("Keep an eye on these", markdown);
         Assert.Contains("stuck-import", markdown);
         Assert.Equal(1, markdown.Split("dreaming (", StringSplitOptions.None).Length - 1);
+    }
+
+    [Fact]
+    public async Task GenerateDreamingReportAsync_DoesNotDescribeFailedGroceryRolloverAsCompleted()
+    {
+        var result = await _service.GenerateDreamingReportAsync(
+            groceryExtraRolloverResult: new GroceryExtraRolloverResult(
+                0, default, Succeeded: false, FailureCode: "DbUpdateException"));
+
+        var markdown = await File.ReadAllTextAsync(result.Path);
+        Assert.Contains("Grocery-extra rollover: failed (not completed); code=DbUpdateException", markdown);
+        Assert.DoesNotContain("occurrence(s) created", markdown);
+    }
+
+    [Fact]
+    public async Task GenerateDreamingReportProcessor_PreservesMaintenancePruneAndFailedRolloverResults()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var instance = new WorkflowInstance
+        {
+            Id = Guid.NewGuid(),
+            WorkflowId = "dreaming",
+            Status = WorkflowStatus.Processing,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        instance.Tasks.Add(new WorkflowTask
+        {
+            TaskId = Guid.NewGuid(), InstanceId = instance.Id, TaskName = "prune-maintenance-commands",
+            ProcessorName = "PruneMaintenanceCommands", Status = TaskStatus.Completed,
+            Result = JsonSerializer.Serialize(new MaintenanceCommandPruneResult(7, 2, now.AddDays(-30)), JsonDefaults.CamelCase),
+            CreatedAt = now, UpdatedAt = now
+        });
+        instance.Tasks.Add(new WorkflowTask
+        {
+            TaskId = Guid.NewGuid(), InstanceId = instance.Id, TaskName = "rollover-grocery-extras",
+            ProcessorName = "RolloverGroceryExtras", Status = TaskStatus.Completed,
+            Result = JsonSerializer.Serialize(new GroceryExtraRolloverResult(0, default, false, "DbUpdateException"), JsonDefaults.CamelCase),
+            CreatedAt = now, UpdatedAt = now
+        });
+        _db.WorkflowInstances.Add(instance);
+        await _db.SaveChangesAsync();
+        var reportTask = new WorkflowTask { InstanceId = instance.Id };
+
+        var result = Assert.IsType<DreamingReportResult>(await new ManagementProcessor(
+            _service, _db, "GenerateDreamingReport").ExecuteAsync(reportTask, CancellationToken.None));
+
+        var markdown = await File.ReadAllTextAsync(result.Path);
+        Assert.Contains("Terminal maintenance commands pruned: 7", markdown);
+        Assert.Contains("Legacy completion timestamps initialized: 2", markdown);
+        Assert.Contains("Grocery-extra rollover: failed (not completed); code=DbUpdateException", markdown);
+        Assert.DoesNotContain("Grocery-extra rollover: 0 occurrence(s) created", markdown);
     }
 
     // ── Restore step 8 ────────────────────────────────────────────────────────

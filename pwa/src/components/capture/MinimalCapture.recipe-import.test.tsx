@@ -141,9 +141,27 @@ describe('MinimalCapture recipe import', () => {
     vi.useRealTimers();
   });
 
-  it('keeps the selected PDF while the member flag snapshot is refreshing', () => {
+  it.each([
+    ['loading', { memberId, flags: {}, loading: true, error: null }],
+    ['failed', { memberId, flags: {}, loading: false, error: 'unavailable' }],
+    [
+      'legacy disabled override',
+      {
+        memberId,
+        flags: {
+          'preview-pdf-recipe-import': {
+            key: 'preview-pdf-recipe-import',
+            mode: 'opt-in' as const,
+            enabled: false,
+          },
+        },
+        loading: false,
+        error: null,
+      },
+    ],
+  ])('stages a selected PDF while the feature snapshot is %s', (_name, state) => {
     selectedMemberId = memberId;
-    useFeatureFlagStore.setState({ memberId, flags: {}, loading: true });
+    useFeatureFlagStore.setState(state);
     render(<MinimalCapture />);
     const file = new File(['%PDF'], 'supper.pdf', { type: 'application/pdf' });
 
@@ -156,20 +174,16 @@ describe('MinimalCapture recipe import', () => {
     expect(screen.queryByTestId('bundle-import-error')).not.toBeInTheDocument();
   });
 
-  it.each(['disabled', 'goto', 'other-member'])('does not stage a PDF when %s', (scenario) => {
+  it.each(['goto', 'missing-member'])('does not stage a PDF when %s', (scenario) => {
     selectedMemberId = memberId;
-    useFeatureFlagStore.setState({
-      memberId: scenario === 'other-member' ? '22222222-2222-4222-8222-222222222222' : memberId,
-      flags: {},
-      loading: scenario !== 'disabled',
-    });
+    if (scenario === 'missing-member') selectedMemberId = null;
     render(<MinimalCapture intent={scenario === 'goto' ? 'goto' : undefined} />);
     fireEvent.change(screen.getByTestId('import-recipe-file-input'), {
       target: { files: [new File(['%PDF'], 'supper.pdf', { type: 'application/pdf' })] },
     });
 
     expect(usePdfCaptureStore.getState().selection).toBeNull();
-    expect(screen.getByTestId('bundle-import-error')).toHaveTextContent('isn’t enabled');
+    expect(screen.getByTestId('bundle-import-error')).toHaveTextContent('Choose a PDF file');
   });
 
   it('keeps Camera/Gallery primary and renders secondary actions in the required order', () => {
@@ -188,7 +202,7 @@ describe('MinimalCapture recipe import', () => {
     expect(screen.getByTestId('import-recipe-file-btn')).toBeVisible();
     expect(screen.getByTestId('import-recipe-file-input')).toHaveAttribute(
       'accept',
-      '.txt,text/plain'
+      '.txt,text/plain,.pdf,application/pdf'
     );
   });
 

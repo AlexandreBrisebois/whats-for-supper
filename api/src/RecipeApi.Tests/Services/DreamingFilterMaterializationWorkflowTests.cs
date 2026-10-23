@@ -39,6 +39,23 @@ public class DreamingFilterMaterializationWorkflowTests
     }
 
     [Fact]
+    public async Task Dreaming_PrunesMaintenanceHistoryAfterProcessing_AndReportWaitsForPruning()
+    {
+        var storage = new InMemoryStorageProvider();
+        await storage.SaveAsync("workflows", "dreaming.yaml", await File.ReadAllTextAsync(FindDreamingWorkflow()));
+        await using var db = TestDbContextFactory.Create();
+        var definition = await new WorkflowOrchestrator(new RecipeApi.Services.SystemClock(), new WorkflowRepository(storage), db).GetDefinitionAsync("dreaming");
+
+        var prune = Assert.Single(definition.Tasks, task => task.Name == "prune-maintenance-commands");
+        var report = Assert.Single(definition.Tasks, task => task.Name == "report");
+        Assert.Equal("PruneMaintenanceCommands", prune.Processor);
+        Assert.Contains("maintenance", prune.DependsOn);
+        Assert.Contains("prune-maintenance-commands", report.DependsOn);
+        Assert.Equal("30", Assert.IsType<string>(prune.Payload["retentionDays"]));
+        Assert.Equal("500", Assert.IsType<string>(prune.Payload["batchSize"]));
+    }
+
+    [Fact]
     public async Task Dreaming_FailedFinalizationLeavesTheMaterializerWaitingAndPreviousStateAvailable()
     {
         var storage = new InMemoryStorageProvider();

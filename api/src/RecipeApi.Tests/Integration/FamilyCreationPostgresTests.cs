@@ -44,6 +44,7 @@ public sealed class FamilyCreationPostgresTests
             Assert.NotEqual(Guid.Empty, id);
             Assert.Equal("cAsEy", member.GetProperty("name").GetString());
             Assert.Equal("stack", member.GetProperty("browseViewMode").GetString());
+            Assert.Equal(JsonValueKind.Null, member.GetProperty("cookingViewMode").ValueKind);
             Assert.Equal(JsonValueKind.Null, member.GetProperty("preferredLanguage").ValueKind);
             Assert.True(member.GetProperty("createdAt").TryGetDateTimeOffset(out _));
             Assert.True(member.GetProperty("updatedAt").TryGetDateTimeOffset(out _));

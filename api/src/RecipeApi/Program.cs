@@ -245,8 +245,12 @@ try
     builder.Services.AddSingleton<RecipeRotationOptions>();
     builder.Services.AddSingleton<HistoricalInterestOptions>();
     builder.Services.AddScoped<HistoricalInterestService>();
+    builder.Services.AddScoped<AisleMapper>();
+    builder.Services.AddScoped<GroceryExtraService>();
+    builder.Services.AddScoped<GroceryExtraRolloverService>();
     builder.Services.AddScoped<IWorkflowProcessor, ReconcileRecipeRotationProcessor>();
     builder.Services.AddScoped<IWorkflowProcessor, MaterializeRecipeSearchFiltersProcessor>();
+    builder.Services.AddScoped<IWorkflowProcessor, RolloverGroceryExtrasProcessor>();
     builder.Services.AddScoped<IWorkflowProcessor, CompleteRecipeImportReportProcessor>();
     builder.Services.AddScoped<IWorkflowProcessor, QueueRecipeSearchIndexProcessor>();
     builder.Services.AddScoped<IWorkflowProcessor>(sp => sp.GetRequiredService<SearchIndexWorkflow>());
@@ -272,6 +276,10 @@ try
        sp.GetRequiredService<ManagementService>(),
        sp.GetRequiredService<RecipeDbContext>(),
        "ProcessMaintenanceCommands"));
+    builder.Services.AddScoped<IWorkflowProcessor>(sp => new ManagementProcessor(
+       sp.GetRequiredService<ManagementService>(),
+       sp.GetRequiredService<RecipeDbContext>(),
+       "PruneMaintenanceCommands"));
     builder.Services.AddScoped<IWorkflowProcessor>(sp => new ManagementProcessor(
        sp.GetRequiredService<ManagementService>(),
        sp.GetRequiredService<RecipeDbContext>(),
