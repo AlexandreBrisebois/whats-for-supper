@@ -201,7 +201,7 @@ flowchart TD
 
 Find Similar uses a compatible ready source embedding for bounded candidate retrieval when semantic search is enabled and available. Its final score combines the semantic contribution with ingredient overlap, cuisine, category, meal type, known vegetarian compatibility and preparation-time similarity. Vegetarian compatibility requires both values to be known and equal; Similar makes no protein claim.
 
-When the source embedding is unavailable or incompatible, semantic search is disabled, or semantic retrieval fails, the API retrieves bounded lexical candidates from the source recipe's facts and applies the same structured scorer without a semantic contribution. Active filters and source exclusion apply before the retrieval limit. Ratings, family votes, historical interest and planner preferences do not rerank Similar results. Continuation preserves the initial ordered snapshot while rechecking current hard eligibility.
+When the source embedding is unavailable or incompatible, semantic search is disabled, or semantic retrieval fails, the API retrieves bounded lexical candidates from the source recipe's facts and applies the same structured scorer, with no semantic-retrieval signal to distinguish candidates. Active filters and source exclusion apply before the retrieval limit. Ratings, family votes, historical interest and planner preferences do not rerank Similar results. Continuation preserves the initial ordered snapshot while rechecking current hard eligibility.
 
 ---
 
