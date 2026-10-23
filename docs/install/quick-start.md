@@ -8,7 +8,7 @@ Your family's recipes, on your home server. **Recommended:** Linux + Docker Comp
 
 **Use the latest stable release:** [Download the installation ZIP](https://github.com/AlexandreBrisebois/whats-for-supper/releases/latest/download/whats-for-supper-install.zip) and extract it on your Linux home server. No Git required.
 
-**Stable bundle not published yet?** Wait for the first stable release; beta packages are for testing, not the recommended family installation.
+For a specific version, use that release's matching installation ZIP and checksum. Beta packages are for testing; use the stable release for your family installation.
 
 **Before you begin:** Have Docker Compose installed on your Linux server. You'll also need a [Gemini API key](gemini-key.md) and a Cloudflare account with a domain. The linked guides show you how.
 
@@ -30,10 +30,12 @@ New to Cloudflare? Follow the [short Cloudflare walkthrough](cloudflare.md).
 
 Follow the [Cloudflare walkthrough](cloudflare.md) to connect your secure hostname. Open that address in your browser to start adding recipes.
 
+When asked for the family passphrase, use the generated `HEARTH_SECRET` value from your private `.env`. This is different from the administrator PIN you chose during setup. Share the passphrase only with your household; never post your `.env` or tokens.
+
 Need help? See [installation troubleshooting](troubleshooting.md) and the [full installation reference](https://github.com/AlexandreBrisebois/whats-for-supper/blob/main/release-template/synology/README.md).
 
 **Already running What's for Supper?** [Update your installation](updates.md).
 
-**Comfortable with Docker?** [Explore the advanced installation reference](../../release-template/synology/README.md).
+**Comfortable with Docker?** [Explore the advanced installation reference](https://github.com/AlexandreBrisebois/whats-for-supper/blob/main/release-template/synology/README.md).
 
 > Other access methods, such as Tailscale, are [future options](https://github.com/AlexandreBrisebois/whats-for-supper/issues/300). Cloudflare remains the recommended path.
