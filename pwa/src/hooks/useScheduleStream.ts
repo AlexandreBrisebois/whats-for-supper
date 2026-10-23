@@ -54,7 +54,10 @@ export function useScheduleStream() {
       return;
     }
 
-    source.onopen = () => console.log('[SSE] Connection opened successfully');
+    source.onopen = () => {
+      console.log('[SSE] Connection opened successfully');
+      void useDiscoveryStore.getState().refreshSession();
+    };
     source.onerror = (e) => console.error('[SSE] Connection error:', e);
     // Expose for E2E tests that need to trigger a reconnect after swapping the route mock.
     if (typeof window !== 'undefined') (window as any).__sseSource = source;
@@ -88,6 +91,7 @@ export function useScheduleStream() {
       });
     };
     const onResume = () => {
+      void useDiscoveryStore.getState().refreshSession();
       useTodayStore.getState().invalidateCalendar();
       void useTodayStore.getState().sync();
       void useWeekStore.getState().sync();
@@ -161,12 +165,21 @@ export function useScheduleStream() {
       useDiscoveryStore.getState().applyVoteUpdate({ recipeId, voteCount });
     });
 
+    source.addEventListener('voting_session_updated', (e: MessageEvent) => {
+      const { session } = JSON.parse(e.data);
+      useDiscoveryStore.getState().applySession(session);
+    });
+
     // ── smart_defaults_updated ─────────────────────────────────────────────
     // Vote crossed the consensus threshold — merge pre-selected recipes into
     // pending slots only (confirmed slots are left untouched).
     source.addEventListener('smart_defaults_updated', (e: MessageEvent) => {
       console.log('[SSE] Received "smart_defaults_updated" event');
       const { defaults } = JSON.parse(e.data);
+      if (useDiscoveryStore.getState().session) {
+        void useDiscoveryStore.getState().refreshSession();
+        return;
+      }
       const state = useWeekStore.getState();
       if (!absoluteMonday(defaults?.weekStartDate)) {
         void state.sync();

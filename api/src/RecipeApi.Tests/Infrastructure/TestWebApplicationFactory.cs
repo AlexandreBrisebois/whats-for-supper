@@ -181,6 +181,7 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
         builder.Services.AddScoped<GroceryExtraRolloverService>();
         builder.Services.AddScoped<IngredientCategoryService>();
         builder.Services.AddScoped<ScheduleService>();
+        builder.Services.AddSingleton<VotingSession>();
         builder.Services.AddScoped<DiscoveryService>();
         builder.Services.AddSingleton<HistoricalInterestOptions>();
         builder.Services.AddScoped<HistoricalInterestService>();

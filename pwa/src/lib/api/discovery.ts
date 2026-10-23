@@ -1,5 +1,5 @@
 import { apiClient } from './api-client';
-import type { RecipeDto } from './generated/models/index';
+import type { RecipeDto, VotingSessionSnapshot } from './generated/models/index';
 
 export interface DiscoveryRecipe {
   id: string;
@@ -46,4 +46,12 @@ export async function submitVote(recipeId: string, vote: 0 | 1 | 2): Promise<voi
   await apiClient.api.discovery.byId(recipeId as any).vote.post({
     vote,
   });
+}
+
+export type { VotingSessionSnapshot } from './generated/models/index';
+
+export async function getVotingSession(): Promise<VotingSessionSnapshot> {
+  const result = await apiClient.api.discovery.session.get();
+  if (!result?.data) throw new Error('Voting session is unavailable');
+  return result.data;
 }

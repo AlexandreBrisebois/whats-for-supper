@@ -568,6 +568,24 @@ components:
           items: { type: object, required: [dayIndex], properties: { dayIndex: { type: integer } } }
         consensusRecipesCount: { type: integer }
 
+    VotingSessionSnapshot:
+      type: object
+      description: Fresh projection of the single operational voting round. Convergence is latched only for this host lifetime and never saves meals or closes voting.
+      required: [incarnationId, revision, roundId, weekStartDate, phase, requiredSlots, coveredSlots, candidateCount, smartDefaults]
+      properties:
+        incarnationId: { type: string, format: uuid, description: Opaque host lifetime identity; only an authoritative read establishes a changed incarnation. }
+        revision: { type: integer, format: int64, minimum: 0, description: Monotonic across rounds within this incarnation. }
+        roundId: { type: [string, 'null'], format: uuid }
+        weekStartDate: { type: [string, 'null'], format: date, description: Active absolute Monday; null when unowned. }
+        phase: { type: string, enum: [unowned, collecting, converged] }
+        requiredSlots: { type: [integer, 'null'], minimum: 0, maximum: 7, description: Persisted empty dates before suggestions; null when unowned. }
+        coveredSlots: { type: [integer, 'null'], minimum: 0, maximum: 7 }
+        candidateCount: { type: [integer, 'null'], minimum: 0, description: Distinct consensus candidates excluding selected recipes. }
+        smartDefaults:
+          oneOf:
+            - $ref: '#/components/schemas/SmartDefaultsDto'
+            - type: 'null'
+
     UpdateRecipeDto:
       type: object
       properties:
@@ -799,6 +817,7 @@ components:
           week_updated: '#/components/schemas/WeekUpdatedEvent'
           vote_updated: '#/components/schemas/VoteUpdatedEvent'
           smart_defaults_updated: '#/components/schemas/SmartDefaultsUpdatedEvent'
+          voting_session_updated: '#/components/schemas/VotingSessionUpdatedEvent'
           fill_the_gap_invalidated: '#/components/schemas/FillTheGapInvalidatedEvent'
           recipe_ready: '#/components/schemas/RecipeReadyEvent'
           recipe_failed: '#/components/schemas/RecipeFailedEvent'
@@ -871,6 +890,14 @@ components:
           properties:
             weekOffset: { type: integer }
             defaults: { $ref: '#/components/schemas/SmartDefaultsDto' }
+
+    VotingSessionUpdatedEvent:
+      allOf:
+        - $ref: '#/components/schemas/ScheduleStreamEvent'
+        - type: object
+          required: [session]
+          properties:
+            session: { $ref: '#/components/schemas/VotingSessionSnapshot' }
 
     FillTheGapInvalidatedEvent:
       allOf:
@@ -1441,6 +1468,29 @@ paths:
           description: Reclassification persisted and grocery lists recomputed.
         '400':
           description: grocerySection is missing or not a valid GrocerySection value.
+
+  /api/discovery/session:
+    get:
+      summary: Read the authoritative household voting session
+      description: Recalculates from persisted round ownership, votes and occupancy. Does not create a round, assign meals, close voting or capture history. Failed reads never imply zero capacity.
+      security: [{ HearthSecret: [] }, { HearthToken: [] }]
+      responses:
+        '200':
+          description: Current session snapshot
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/VotingSessionSnapshot' }
+        '401':
+          description: Household authorization required.
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
 
   /api/discovery/categories:
     get:

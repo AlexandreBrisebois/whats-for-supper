@@ -31,7 +31,13 @@ public partial class ScheduleService
         }
         catch (Exception ex) when (IsAssignmentRace(ex))
         {
-            if (transaction is not null) await transaction.RollbackAsync();
+            // A failed PostgreSQL commit can already have completed the transaction.
+            // Cleanup must preserve the supported conflict from the original database race.
+            if (transaction is not null)
+            {
+                try { await transaction.RollbackAsync(); }
+                catch (InvalidOperationException) { /* PostgreSQL already completed this failed transaction. */ }
+            }
             _dbContext.ChangeTracker.Clear();
             throw new AssignmentConflictException("That supper slot changed. Review your plan before saving.");
         }

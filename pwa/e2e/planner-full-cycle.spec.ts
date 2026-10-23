@@ -105,6 +105,25 @@ async function setupPlanner(page: Page, locked = false) {
   let currentStatus = locked ? 2 : 0;
   let isLockedState = locked;
 
+  const readScheduleFixture = () => ({
+    weekOffset: 0,
+    calendar: builders.deploymentCalendar(),
+    weekStartDate: '2026-05-04',
+    votingRoundId: MOCK_IDS.VOTING_ROUND,
+    locked: isLockedState,
+    status: currentStatus,
+    days: isLockedState ? buildLockedDays() : draftDays,
+  });
+
+  await page.route(/\/(?:backend\/)?api\/stream/, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'text/event-stream',
+      headers: { 'Cache-Control': 'no-cache' },
+      body: `event: connected\ndata: ${JSON.stringify({ type: 'connected', schedule: readScheduleFixture() })}\n\n`,
+    });
+  });
+
   await page.route(
     (url) => url.pathname.includes('/api/schedule'),
     async (route) => {
@@ -150,16 +169,7 @@ async function setupPlanner(page: Page, locked = false) {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({
-          data: {
-            weekOffset: 0,
-            calendar: builders.deploymentCalendar() as any,
-            weekStartDate: '2026-05-04' as any,
-            locked: isLockedState,
-            status: currentStatus,
-            days: isLockedState ? buildLockedDays() : draftDays,
-          },
-        }),
+        body: JSON.stringify({ data: readScheduleFixture() }),
       });
     }
   );

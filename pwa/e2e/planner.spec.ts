@@ -93,6 +93,45 @@ test.describe('Supper Planner', () => {
     let currentStatus = 0;
     let isLockedState = false;
 
+    const readScheduleFixture = () => {
+      const monday = currentMonday();
+      const days = Array.from({ length: 7 }, (_, i) => {
+        const d = new Date(monday);
+        d.setUTCDate(monday.getUTCDate() + i);
+        return {
+          day: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i],
+          date: toDateStr(d),
+          ...(i === 0 || i === 1
+            ? {
+                recipe: builders.scheduleRecipe({
+                  id: i === 0 ? MOCK_IDS.RECIPE_LASAGNA : MOCK_IDS.RECIPE_TACOS,
+                  name: i === 0 ? 'Homemade Lasagna' : 'Street Tacos',
+                  voteCount: i === 0 ? 3 : 2,
+                  ingredients: ['Pasta', 'Beef', 'Tomato', 'Cheese'],
+                }),
+              }
+            : {}),
+        };
+      });
+      return {
+        ...builders.scheduleDays(),
+        weekOffset: 0,
+        votingRoundId: MOCK_IDS.VOTING_ROUND,
+        locked: isLockedState,
+        status: currentStatus,
+        days,
+      };
+    };
+
+    await page.route(/\/(?:backend\/)?api\/stream/, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'text/event-stream',
+        headers: { 'Cache-Control': 'no-cache' },
+        body: `event: connected\ndata: ${JSON.stringify({ type: 'connected', schedule: readScheduleFixture() })}\n\n`,
+      });
+    });
+
     // Single intercept covering all schedule calls — zero Prism dependency
     await page.route(
       (url) => url.pathname.includes('/api/schedule'),
@@ -167,39 +206,11 @@ test.describe('Supper Planner', () => {
           return;
         }
 
-        // Default GET /api/schedule
-        const monday = currentMonday();
-        const days = Array.from({ length: 7 }, (_, i) => {
-          const d = new Date(monday);
-          d.setUTCDate(monday.getUTCDate() + i);
-          return {
-            day: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i],
-            date: toDateStr(d),
-            ...(i === 0 || i === 1
-              ? {
-                  recipe: builders.scheduleRecipe({
-                    id: i === 0 ? MOCK_IDS.RECIPE_LASAGNA : MOCK_IDS.RECIPE_TACOS,
-                    name: i === 0 ? 'Homemade Lasagna' : 'Street Tacos',
-                    voteCount: i === 0 ? 3 : 2,
-                    ingredients: ['Pasta', 'Beef', 'Tomato', 'Cheese'],
-                  }),
-                }
-              : {}),
-          };
-        });
-
+        // HTTP and stream reads describe the same persisted schedule and round.
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
-          body: JSON.stringify({
-            data: {
-              ...builders.scheduleDays(),
-              weekOffset: 0,
-              locked: isLockedState,
-              status: currentStatus,
-              days,
-            },
-          }),
+          body: JSON.stringify({ data: readScheduleFixture() }),
         });
       }
     );

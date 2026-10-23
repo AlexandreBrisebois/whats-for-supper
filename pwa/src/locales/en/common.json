@@ -340,6 +340,8 @@
     "plantPoweredEmoji": "Plant-Powered! 🌿"
   },
   "discovery": {
+    "weDidIt": "We did it!",
+    "menuIsIn": "Menu's In!",
     "wrap": "That's a wrap!",
     "wrapUpTitle": "That's a wrap!",
     "matchesFound": "You found {{count}} matches with your family! Ready to get cooking?",

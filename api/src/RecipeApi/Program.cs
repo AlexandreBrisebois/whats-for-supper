@@ -153,6 +153,7 @@ try
         sp.GetRequiredService<ILogger<RecipeSearchFilterOptions>>()));
     builder.Services.AddScoped<RecipeImportService>();
     builder.Services.AddScoped<RecipeImportReportService>();
+    builder.Services.AddSingleton<VotingSession>();
     builder.Services.AddScoped<DiscoveryService>();
     builder.Services.AddScoped<ScheduleService>();
     builder.Services.AddScoped<GroceryRecomputeService>();

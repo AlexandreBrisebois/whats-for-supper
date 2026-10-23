@@ -4,7 +4,7 @@ using RecipeApi.Models;
 
 namespace RecipeApi.Services;
 
-public class FamilyService(IClock clock, RecipeDbContext db)
+public class FamilyService(IClock clock, RecipeDbContext db, VotingSession? votingSession = null)
 {
     public const string BrowseViewModeStack = "stack";
     public const string BrowseViewModeList = "list";
@@ -40,6 +40,7 @@ public class FamilyService(IClock clock, RecipeDbContext db)
         {
             throw new DuplicateFamilyMemberException("A family member with this name already exists.");
         }
+        if (votingSession is not null) await votingSession.RefreshAfterMutationAsync();
         return member;
     }
 
@@ -115,5 +116,6 @@ public class FamilyService(IClock clock, RecipeDbContext db)
 
         db.FamilyMembers.Remove(member);
         await db.SaveChangesAsync();
+        if (votingSession is not null) await votingSession.RefreshAfterMutationAsync();
     }
 }

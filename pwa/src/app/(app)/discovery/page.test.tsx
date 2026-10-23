@@ -8,6 +8,12 @@ const mocks = vi.hoisted(() => ({
   getCategories: vi.fn(),
   getDiscoveryStack: vi.fn(),
   submitVote: vi.fn(),
+  getVotingSession: vi.fn(),
+  getVotingLink: vi.fn(),
+}));
+
+vi.mock('@/lib/auth', () => ({
+  getVotingLink: (...args: unknown[]) => mocks.getVotingLink(...args),
 }));
 
 vi.mock('next/navigation', () => ({
@@ -31,6 +37,7 @@ vi.mock('@/lib/api/discovery', () => ({
   getCategories: (...args: unknown[]) => mocks.getCategories(...args),
   getDiscoveryStack: (...args: unknown[]) => mocks.getDiscoveryStack(...args),
   submitVote: (...args: unknown[]) => mocks.submitVote(...args),
+  getVotingSession: (...args: unknown[]) => mocks.getVotingSession(...args),
 }));
 
 vi.mock('@/lib/imageUtils', () => ({
@@ -92,16 +99,41 @@ describe('DiscoveryPage card order', () => {
     mocks.getCategories.mockReset();
     mocks.getDiscoveryStack.mockReset();
     mocks.submitVote.mockReset();
+    mocks.getVotingSession.mockResolvedValue({
+      incarnationId: MOCK_IDS.MEMBER_TEST,
+      revision: 0,
+      phase: 'unowned',
+      roundId: MOCK_IDS.VOTING_ROUND,
+      weekStartDate: null,
+      requiredSlots: null,
+      coveredSlots: null,
+      candidateCount: null,
+      smartDefaults: null,
+    });
     mocks.getCategories.mockResolvedValue(['Supper']);
     mocks.getDiscoveryStack.mockResolvedValue(ORDERED_RECIPES);
     mocks.submitVote.mockResolvedValue(undefined);
+    mocks.getVotingLink.mockResolvedValue('http://example.com/discovery');
     useDiscoveryStore.setState({
+      session: null,
+      sessionStatus: 'unknown',
       discoveryStack: [],
       activeCategory: null,
       hasPendingCards: false,
       fillTheGapVersion: 0,
       allSuggestionsVersion: 0,
     });
+  });
+
+  it('rereads session after a vote response fails because persistence may have succeeded', async () => {
+    mocks.submitVote.mockRejectedValueOnce(new Error('response lost'));
+    render(<DiscoveryPage />);
+    await screen.findByText('Oldest ranked recipe');
+    await waitFor(() => expect(useDiscoveryStore.getState().sessionStatus).toBe('ready'));
+    const reads = mocks.getVotingSession.mock.calls.length;
+    fireEvent.click(screen.getByTestId('like-button'));
+    await waitFor(() => expect(mocks.getDiscoveryStack.mock.calls.length).toBeGreaterThan(1));
+    expect(mocks.getVotingSession.mock.calls.length).toBeGreaterThan(reads);
   });
 
   it('keeps the first four server recipes in direct stack order and votes for the front card', async () => {
@@ -183,5 +215,94 @@ describe('DiscoveryPage card order', () => {
     await waitFor(() =>
       expect(mocks.submitVote).toHaveBeenLastCalledWith(MOCK_IDS.RECIPE_CHICKEN, 2)
     );
+  });
+  it('offers the shared family nudge and Capture when an owned feed is exhausted', async () => {
+    mocks.getDiscoveryStack.mockResolvedValue([]);
+    mocks.getVotingSession.mockResolvedValue({
+      incarnationId: MOCK_IDS.MEMBER_TEST,
+      revision: 1,
+      roundId: MOCK_IDS.VOTING_ROUND,
+      weekStartDate: '2026-05-04',
+      phase: 'collecting',
+      requiredSlots: 3,
+      coveredSlots: 0,
+      candidateCount: 0,
+      smartDefaults: { weekStartDate: '2026-05-04', preSelectedRecipes: [] },
+    });
+    render(<DiscoveryPage />);
+    await screen.findByTestId('discovery-empty-state');
+    expect(screen.getByRole('button', { name: 'Capture a New Recipe' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Refresh Feed' })).toBeVisible();
+    expect(mocks.getVotingLink).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByTestId('discovery-nudge-family'));
+    await screen.findByText('http://example.com/discovery');
+    expect(screen.getByTestId('planner-nudge-copy')).toBeEnabled();
+    fireEvent.click(screen.getByTestId('planner-nudge-close'));
+    expect(screen.queryByTestId('planner-nudge-dialog')).not.toBeInTheDocument();
+  });
+
+  it('keeps the app logo celebration with exact copy and no actions after late updates or image failure', async () => {
+    const snapshot = {
+      incarnationId: MOCK_IDS.MEMBER_TEST,
+      revision: 1,
+      roundId: MOCK_IDS.VOTING_ROUND,
+      weekStartDate: '2026-05-04',
+      phase: 'converged',
+      requiredSlots: 3,
+      coveredSlots: 3,
+      candidateCount: 3,
+      smartDefaults: { weekStartDate: '2026-05-04', preSelectedRecipes: [] },
+    };
+    mocks.getVotingSession.mockResolvedValue(snapshot);
+    render(<DiscoveryPage />);
+    await screen.findByRole('heading', { name: 'We did it!' });
+    expect(screen.getByRole('heading', { name: "Menu's In!" })).toBeVisible();
+    const celebration = screen.getByTestId('discovery-converged');
+    const logo = celebration.querySelector('img')!;
+    expect(logo).toHaveAttribute('alt', '');
+    expect(logo).toHaveAttribute('width', '256');
+    expect(logo).toHaveAttribute('height', '256');
+    expect(logo.getAttribute('src')).toContain('android-chrome-512x512.png');
+    expect(
+      screen.getByRole('heading', { name: 'We did it!' }).compareDocumentPosition(logo) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+    expect(celebration.querySelector('button')).toBeNull();
+    expect(screen.queryByTestId('like-button')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('discovery-nudge-family')).not.toBeInTheDocument();
+    fireEvent.error(logo);
+    expect(screen.getByRole('heading', { name: "Menu's In!" })).toBeVisible();
+    await act(async () =>
+      useDiscoveryStore
+        .getState()
+        .applySession(
+          { ...useDiscoveryStore.getState().session!, revision: 2, candidateCount: 4 },
+          true
+        )
+    );
+    expect(screen.getByTestId('discovery-converged')).toBe(celebration);
+    expect(mocks.submitVote).not.toHaveBeenCalled();
+  });
+
+  it('keeps Capture directly available when local matches make Planner the empty-feed destination', async () => {
+    mocks.getDiscoveryStack.mockResolvedValue([{ ...ORDERED_RECIPES[0], hasFamilyInterest: true }]);
+    mocks.getVotingSession.mockResolvedValue({
+      incarnationId: MOCK_IDS.MEMBER_TEST,
+      revision: 1,
+      roundId: MOCK_IDS.VOTING_ROUND,
+      weekStartDate: '2026-05-04',
+      phase: 'collecting',
+      requiredSlots: 3,
+      coveredSlots: 1,
+      candidateCount: 1,
+      smartDefaults: { weekStartDate: '2026-05-04', preSelectedRecipes: [] },
+    });
+    render(<DiscoveryPage />);
+    await screen.findByText('Oldest ranked recipe');
+    fireEvent.click(screen.getByTestId('like-button'));
+    await screen.findByTestId('discovery-empty-state');
+    expect(screen.getByRole('button', { name: 'Go to Planner' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Capture a New Recipe' })).toBeVisible();
+    expect(screen.getByTestId('discovery-nudge-family')).toBeVisible();
   });
 });

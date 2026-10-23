@@ -80,6 +80,323 @@ test.describe('Discovery Flow', () => {
     );
   });
 
+  test('both members stop on three confirmed matches while cards remain', async ({
+    page,
+    browser,
+  }, testInfo) => {
+    await page.setViewportSize({ width: 320, height: 740 });
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    // This exercises browser/store delivery only. The real PostgreSQL/SSE boundary
+    // is covered separately by VotingSessionPostgresTests and the live suite.
+    const otherContext = await browser.newContext();
+    await otherContext.addCookies(await page.context().cookies());
+    const baseUrl = process.env.BASE_URL || 'http://127.0.0.1:3000';
+    await otherContext.addCookies([
+      { name: 'x-family-member-id', value: MOCK_IDS.MEMBER_JORDAN, url: baseUrl },
+    ]);
+    await otherContext.addInitScript((memberId) => {
+      localStorage.setItem('locale', 'en');
+      localStorage.setItem(
+        'family-storage',
+        JSON.stringify({ state: { selectedFamilyMemberId: memberId }, version: 0 })
+      );
+    }, MOCK_IDS.MEMBER_JORDAN);
+    const otherPage = await otherContext.newPage();
+    await otherPage.clock.setFixedTime(new Date('2026-05-04T12:00:00Z'));
+    await setupCommonRoutes(otherPage);
+
+    const weekStartDate = builders.scheduleDays(1).weekStartDate;
+    let session = {
+      incarnationId: MOCK_IDS.MEMBER_TEST,
+      revision: 1,
+      roundId: MOCK_IDS.VOTING_ROUND,
+      weekStartDate,
+      phase: 'collecting',
+      requiredSlots: 3,
+      coveredSlots: 2,
+      candidateCount: 2,
+      smartDefaults: {
+        familySize: 2,
+        consensusThreshold: 2,
+        consensusRecipesCount: 2,
+        weekOffset: 1,
+        weekStartDate,
+        preSelectedRecipes: ORDERED_SIX_RECIPE_STACK.slice(0, 2).map((recipe, index) => ({
+          dayIndex: index + 4,
+          recipeId: recipe.id,
+          name: recipe.name,
+          voteCount: 2,
+          unanimousVote: false,
+          isLocked: false,
+        })),
+        openSlots: [{ dayIndex: 6 }],
+      },
+    };
+    let submittedVotes = 0;
+    for (const memberPage of [page, otherPage]) {
+      await memberPage.route(
+        (url) => url.pathname === '/api/discovery/categories',
+        (route) => route.fulfill({ json: { data: ['Supper'] } })
+      );
+      await memberPage.route(
+        (url) => url.pathname === '/api/discovery',
+        (route) => route.fulfill({ json: { data: ORDERED_SIX_RECIPE_STACK } })
+      );
+      await memberPage.route(
+        (url) => url.pathname === '/api/discovery/session',
+        async (route) => {
+          if (route.request().method() !== 'GET') return route.fallback();
+          await route.fulfill({ json: { data: session } });
+        }
+      );
+      await memberPage.route('**/api/discovery/*/vote', async (route) => {
+        if (route.request().method() !== 'POST') return route.fallback();
+        submittedVotes++;
+        session = {
+          ...session,
+          revision: 2,
+          phase: 'converged',
+          coveredSlots: 3,
+          candidateCount: 3,
+          smartDefaults: {
+            ...session.smartDefaults,
+            consensusRecipesCount: 3,
+            preSelectedRecipes: ORDERED_SIX_RECIPE_STACK.slice(0, 3).map((recipe, index) => ({
+              dayIndex: index + 4,
+              recipeId: recipe.id,
+              name: recipe.name,
+              voteCount: 2,
+              unanimousVote: false,
+              isLocked: false,
+            })),
+            openSlots: [],
+          },
+        };
+        await route.fulfill({ json: { success: true } });
+        for (const recipient of [page, otherPage]) {
+          await recipient.evaluate((snapshot) => {
+            const source = (window as unknown as Record<string, EventSource>).__sseSource;
+            if (!source) throw new Error('Existing household stream is not mounted');
+            source.dispatchEvent(
+              new MessageEvent('voting_session_updated', {
+                data: JSON.stringify({ type: 'voting_session_updated', session: snapshot }),
+              })
+            );
+          }, session);
+        }
+      });
+    }
+
+    try {
+      await Promise.all([page.goto('/discovery'), otherPage.goto('/discovery')]);
+      for (const memberPage of [page, otherPage]) {
+        await expect(memberPage.getByTestId('discovery-card').first()).toBeVisible();
+      }
+      const front = await page.getByTestId('discovery-card').first().boundingBox();
+      if (!front) throw new Error('Front card has no drag target');
+      await page.mouse.move(front.x + front.width / 2, front.y + front.height / 2);
+      await page.mouse.down();
+      await page.mouse.move(front.x + front.width / 2 + 30, front.y + front.height / 2);
+      await otherPage.getByTestId('like-button').click();
+      for (const memberPage of [page, otherPage]) {
+        await expect(
+          memberPage.getByRole('heading', { name: 'We did it!', exact: true })
+        ).toBeVisible();
+        await expect(
+          memberPage.getByRole('heading', { name: "Menu's In!", exact: true })
+        ).toBeVisible();
+        await expect(memberPage.getByTestId('like-button')).not.toBeVisible();
+        await expect(memberPage.getByTestId('discovery-card')).toHaveCount(0);
+        await expect(memberPage).toHaveURL(/\/discovery$/);
+      }
+      await page.mouse.up();
+      const celebration = page.getByTestId('discovery-converged');
+      await celebration.evaluate((element) => element.setAttribute('data-stable-check', 'same'));
+      await page.evaluate((snapshot) => {
+        const source = (window as unknown as Record<string, EventSource>).__sseSource;
+        source.dispatchEvent(
+          new MessageEvent('voting_session_updated', {
+            data: JSON.stringify({
+              type: 'voting_session_updated',
+              session: { ...snapshot, revision: 3, candidateCount: 4 },
+            }),
+          })
+        );
+      }, session);
+      await expect(celebration).toHaveAttribute('data-stable-check', 'same');
+      const artwork = celebration.locator('img');
+      await expect(artwork).toHaveAttribute('alt', '');
+      await expect(artwork).toHaveAttribute('src', /android-chrome-512x512\.png/);
+      await expect(artwork).toHaveJSProperty('complete', true);
+      await expect
+        .poll(() => artwork.evaluate((image: HTMLImageElement) => image.naturalWidth))
+        .toBeGreaterThan(0);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+        320
+      );
+      const card = page.getByTestId('discovery-celebration-card');
+      const layout = await card.evaluate((element) => {
+        const heading = element.querySelector('h1')!.getBoundingClientRect();
+        const logo = element.querySelector('img')!.parentElement!.getBoundingClientRect();
+        const subheading = element.querySelector('h2')!.getBoundingClientRect();
+        return {
+          headingBeforeLogo: heading.bottom <= logo.top,
+          logoBeforeSubheading: logo.bottom <= subheading.top,
+          animations: element.getAnimations({ subtree: true }).length,
+        };
+      });
+      expect(layout).toEqual({
+        headingBeforeLogo: true,
+        logoBeforeSubheading: true,
+        animations: 0,
+      });
+      await page.screenshot({
+        path: testInfo.outputPath('convergence-mobile.png'),
+        fullPage: true,
+      });
+      await page.setViewportSize({ width: 1280, height: 900 });
+      await page.screenshot({
+        path: testInfo.outputPath('convergence-desktop.png'),
+        fullPage: true,
+      });
+      await otherPage.route(
+        (url) => url.pathname === '/_next/image' || url.pathname === '/android-chrome-512x512.png',
+        (route) => route.abort()
+      );
+      await otherPage.setViewportSize({ width: 320, height: 740 });
+      await otherPage.reload();
+      const unavailableArtwork = otherPage.getByTestId('discovery-converged').locator('img');
+      await expect(unavailableArtwork).toHaveJSProperty('complete', true);
+      await expect(unavailableArtwork).toHaveJSProperty('naturalWidth', 0);
+      await expect(
+        otherPage.getByRole('heading', { name: 'We did it!', exact: true })
+      ).toBeVisible();
+      await expect(
+        otherPage.getByRole('heading', { name: "Menu's In!", exact: true })
+      ).toBeVisible();
+      await expect(otherPage.getByTestId('discovery-converged').locator('button')).toHaveCount(0);
+      await expect(otherPage.getByTestId('nav-item-planner').first()).toBeVisible();
+      await otherPage.screenshot({
+        path: testInfo.outputPath('convergence-image-unavailable.png'),
+        fullPage: true,
+      });
+      const plannerNavigation = page.getByTestId('nav-item-planner').first();
+      await plannerNavigation.focus();
+      await expect(plannerNavigation).toBeFocused();
+      await page.keyboard.press('Enter');
+      await expect(page).toHaveURL(/\/planner/);
+      expect(submittedVotes).toBe(1);
+    } finally {
+      await otherContext.close();
+    }
+  });
+
+  test('close, remove and reopen converge after one new match', async ({ page }) => {
+    // Stateful route mocks verify browser lifecycle integration, not PostgreSQL.
+    await setupCommonRoutes(page);
+    await page.route(
+      (url) => url.pathname === '/api/discovery',
+      (route) => route.fulfill({ json: { data: ORDERED_SIX_RECIPE_STACK } })
+    );
+    await page.goto('/discovery');
+    await expect(page.getByTestId('discovery-card').first()).toBeVisible();
+    const mutate = async (path: string, method: string, body?: unknown, memberId?: string) =>
+      page.evaluate(
+        async ({ path, method, body, memberId }) => {
+          const response = await fetch(path, {
+            method,
+            headers: {
+              'Content-Type': 'application/json',
+              ...(memberId ? { 'x-family-member-id': memberId } : {}),
+            },
+            ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+          });
+          if (!response.ok) throw new Error(`${method} ${path}: ${response.status}`);
+        },
+        { path, method, body, memberId }
+      );
+    for (const date of ['2026-05-04', '2026-05-05', '2026-05-06', '2026-05-07']) {
+      await mutate(`/api/schedule/day/${date}/validate`, 'POST', {
+        status: 3,
+        nonCooking: { kind: 'order_in' },
+      });
+    }
+    await mutate('/api/schedule/voting/open?weekOffset=0', 'POST');
+    for (const recipeId of [
+      MOCK_IDS.RECIPE_LASAGNA,
+      MOCK_IDS.RECIPE_CHICKEN,
+      MOCK_IDS.RECIPE_GNOCCHI,
+    ]) {
+      for (const memberId of [MOCK_IDS.MEMBER_ALEX, MOCK_IDS.MEMBER_JORDAN]) {
+        await mutate(`/api/discovery/${recipeId}/vote`, 'POST', { vote: 1 }, memberId);
+      }
+    }
+    await expect(page.getByTestId('discovery-converged')).toBeVisible();
+    await page.locator('[data-testid="nav-item-planner"]:visible').first().click();
+    await expect(page.getByTestId('close-voting-btn')).toBeVisible();
+    await page.getByTestId('close-voting-btn').click();
+    await expect(page.getByTestId('ask-family-cta')).toBeVisible();
+    await mutate('/api/schedule/day/2026-05-08/remove', 'DELETE');
+    await page.getByTestId('ask-family-cta').click();
+    await expect(page.getByTestId('nudge-family-cta')).toBeVisible();
+    await page.locator('[data-testid="nav-item-discovery"]:visible').first().click();
+    await expect(page.getByTestId('discovery-card').first()).toBeVisible();
+    for (const memberId of [MOCK_IDS.MEMBER_ALEX, MOCK_IDS.MEMBER_JORDAN]) {
+      await mutate(`/api/discovery/${MOCK_IDS.RECIPE_LASAGNA}/vote`, 'POST', { vote: 1 }, memberId);
+    }
+    await expect(page.getByTestId('discovery-converged')).toBeVisible();
+    const snapshot = await page.evaluate(
+      async () => (await (await fetch('/api/discovery/session')).json()).data
+    );
+    expect(snapshot.requiredSlots).toBe(1);
+    expect(snapshot.coveredSlots).toBe(1);
+  });
+
+  test('an exhausted collecting feed offers a user-initiated family nudge', async ({ page }) => {
+    await page.route(
+      (url) => url.pathname === '/api/discovery',
+      (route) => route.fulfill({ json: { data: [] } })
+    );
+    await page.route(
+      (url) => url.pathname === '/api/discovery/session',
+      (route) =>
+        route.fulfill({
+          json: {
+            data: {
+              incarnationId: MOCK_IDS.MEMBER_TEST,
+              revision: 1,
+              roundId: MOCK_IDS.VOTING_ROUND,
+              weekStartDate: '2026-05-04',
+              phase: 'collecting',
+              requiredSlots: 3,
+              coveredSlots: 0,
+              candidateCount: 0,
+              smartDefaults: {
+                weekOffset: 0,
+                weekStartDate: '2026-05-04',
+                familySize: 2,
+                consensusThreshold: 2,
+                consensusRecipesCount: 0,
+                preSelectedRecipes: [],
+                openSlots: [{ dayIndex: 4 }, { dayIndex: 5 }, { dayIndex: 6 }],
+              },
+            },
+          },
+        })
+    );
+    await page.goto('/discovery');
+    await expect(page.getByTestId('discovery-empty-state')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Capture a New Recipe' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Refresh Feed' })).toBeVisible();
+    await expect(page.getByTestId('planner-nudge-dialog')).toHaveCount(0);
+    await page.getByTestId('discovery-nudge-family').click();
+    await expect(page.getByRole('dialog', { name: 'Nudge the family' })).toBeVisible();
+    await expect(page.getByTestId('planner-nudge-copy')).toBeEnabled();
+    await page.keyboard.press('Escape');
+    await expect(page.getByTestId('planner-nudge-dialog')).toHaveCount(0);
+    await expect(page.getByTestId('discovery-nudge-family')).toBeFocused();
+  });
+
   test('should fetch categories and then fetch the first category stack', async ({ page }) => {
     await page.goto('/discovery');
 

@@ -13,6 +13,7 @@ import {
   type ScheduleRecipeDto,
   type ScheduleDays,
   type SmartDefaultsDto,
+  type VotingSessionSnapshot,
   WorkflowInstanceDetailDto_statusObject,
 } from '../src/lib/api/generated/models/index';
 import {
@@ -336,8 +337,110 @@ export async function setupCommonRoutes(
       })) as any;
     return schedule;
   };
-  const emitSchedule = async (weekOffset: number, reference: string) =>
-    page.evaluate(
+  let sessionRevision = 0;
+  let convergedRoundId: string | null = null;
+  const readSmartDefaults = (
+    offset: number,
+    reference: string
+  ): Omit<SmartDefaultsDto, 'weekStartDate'> & { weekStartDate: string } => {
+    const schedule = makeSchedule(offset, reference);
+    const selected = new Set(
+      schedule.days.flatMap((day) => (day.recipe?.id ? [day.recipe.id] : []))
+    );
+    const counts = new Map<string, number>();
+    for (const vote of liveVotes.values()) {
+      if (vote.vote === 1) counts.set(vote.recipeId, (counts.get(vote.recipeId) ?? 0) + 1);
+    }
+    const threshold = Math.floor(familyMembers.length / 2) + 1;
+    const candidates = [...counts].filter(([id, count]) => count >= threshold && !selected.has(id));
+    candidates.sort(
+      (left, right) =>
+        Number(right[1] === familyMembers.length) - Number(left[1] === familyMembers.length)
+    );
+    const empty = schedule.days.flatMap((day, dayIndex) =>
+      scheduleEntries.has(day.date) ? [] : [dayIndex]
+    );
+    return {
+      weekOffset: offset,
+      weekStartDate: schedule.weekStartDate,
+      familySize: familyMembers.length,
+      consensusThreshold: threshold,
+      consensusRecipesCount: candidates.length,
+      preSelectedRecipes: candidates.slice(0, empty.length).map(([recipeId, voteCount], index) => ({
+        dayIndex: empty[index],
+        recipeId,
+        name: REALISTIC_RECIPES[recipeId]?.name ?? builders.recipe({ id: recipeId }).name,
+        voteCount,
+        unanimousVote: voteCount === familyMembers.length,
+        isLocked: false,
+      })),
+      openSlots: empty.slice(candidates.length).map((dayIndex) => ({ dayIndex })),
+    };
+  };
+  const readSession = (): Omit<VotingSessionSnapshot, 'weekStartDate' | 'smartDefaults'> & {
+    weekStartDate: string | null;
+    smartDefaults: ReturnType<typeof readSmartDefaults> | null;
+  } => {
+    if (!activeRoundWeek)
+      return {
+        incarnationId: MOCK_IDS.MEMBER_TEST,
+        revision: sessionRevision,
+        roundId: activeRoundId,
+        weekStartDate: null,
+        phase: 'unowned',
+        requiredSlots: null,
+        coveredSlots: null,
+        candidateCount: null,
+        smartDefaults: null,
+      };
+    const offset = Math.round(
+      (Date.parse(activeRoundWeek) - Date.parse(scheduleCalendar.referenceWeekStartDate)) /
+        (7 * 86400000)
+    );
+    const smartDefaults = readSmartDefaults(offset, scheduleCalendar.referenceWeekStartDate);
+    const requiredSlots = makeSchedule(offset, scheduleCalendar.referenceWeekStartDate).days.filter(
+      (day) => !scheduleEntries.has(day.date)
+    ).length;
+    const candidateCount = smartDefaults.consensusRecipesCount ?? 0;
+    if (candidateCount >= requiredSlots) convergedRoundId = activeRoundId;
+    return {
+      incarnationId: MOCK_IDS.MEMBER_TEST,
+      revision: sessionRevision,
+      roundId: activeRoundId,
+      weekStartDate: activeRoundWeek,
+      phase: convergedRoundId === activeRoundId ? 'converged' : 'collecting',
+      requiredSlots,
+      coveredSlots: Math.min(requiredSlots, candidateCount),
+      candidateCount,
+      smartDefaults,
+    };
+  };
+  const emitSession = async () => {
+    sessionRevision++;
+    const session = readSession();
+    try {
+      await page.evaluate((snapshot) => {
+        const source = (window as any).__sseSource as EventSource | undefined;
+        source?.dispatchEvent(
+          new MessageEvent('voting_session_updated', {
+            data: JSON.stringify({ type: 'voting_session_updated', session: snapshot }),
+          })
+        );
+      }, session);
+    } catch (error) {
+      // Navigation may drop a post-commit notification; the next session GET
+      // still observes the saved state and revision, as on the real stream.
+      const message = error instanceof Error ? error.message.split('\n', 1)[0] : '';
+      if (
+        message !==
+          'page.evaluate: Execution context was destroyed, most likely because of a navigation' &&
+        message !== 'page.evaluate: Target page, context or browser has been closed'
+      )
+        throw error;
+    }
+  };
+  const emitSchedule = async (weekOffset: number, reference: string) => {
+    await page.evaluate(
       (schedule) => {
         const source = (window as any).__sseSource as EventSource | undefined;
         source?.dispatchEvent(
@@ -348,6 +451,9 @@ export async function setupCommonRoutes(
       },
       makeSchedule(weekOffset, reference)
     );
+    if (!activeRoundWeek || activeRoundWeek === addDays(reference, weekOffset * 7))
+      await emitSession();
+  };
   const emitExtras = async () => {
     const weekStartDate = scheduleCalendar.currentWeekStartDate;
     const visible = [...groceryExtras.values()].filter((extra) => !extra.removed);
@@ -517,6 +623,11 @@ export async function setupCommonRoutes(
     });
   });
 
+  await page.route('**/api/discovery/session', async (route) => {
+    if (route.request().method() !== 'GET') return route.fallback();
+    await route.fulfill({ json: { data: readSession() } });
+  });
+
   // POST /api/discovery/{id}/vote
   await page.route('**/api/discovery/*/vote', async (route) => {
     if (route.request().method() !== 'POST') return route.fallback();
@@ -528,6 +639,7 @@ export async function setupCommonRoutes(
       contentType: 'application/json',
       body: JSON.stringify({ data: { message: 'Vote recorded' } }),
     });
+    await emitSession();
   });
 
   // GET /api/schedule (default empty week) — predicate used to match URLs with query strings (e.g. ?weekOffset=0)
@@ -1107,6 +1219,7 @@ export async function setupCommonRoutes(
         })
       );
     }, schedule);
+    await emitSession();
   });
 
   const setWeekStatus = (status: number) => async (route: Route) => {
@@ -1501,6 +1614,7 @@ export async function setupCommonRoutes(
             nonCooking: entry?.nonCooking ?? null,
           }
         );
+      await emitSession();
     }
   );
 
@@ -1511,22 +1625,7 @@ export async function setupCommonRoutes(
     if (!reference)
       return route.fulfill({ status: 400, json: { message: 'Invalid referenceWeekStartDate.' } });
     const offset = Number(url.pathname.split('/')[3]);
-    const schedule = makeSchedule(offset, reference);
-    await route.fulfill({
-      json: {
-        data: {
-          weekOffset: offset,
-          weekStartDate: schedule.weekStartDate,
-          familySize: 2,
-          consensusThreshold: 2,
-          preSelectedRecipes: [],
-          consensusRecipesCount: 0,
-          openSlots: schedule.days.flatMap((day, dayIndex) =>
-            scheduleEntries.has(day.date) ? [] : [{ dayIndex }]
-          ),
-        },
-      },
-    });
+    await route.fulfill({ json: { data: readSmartDefaults(offset, reference) } });
   });
 
   // PATCH /api/schedule/{weekOffset}/grocery/item
