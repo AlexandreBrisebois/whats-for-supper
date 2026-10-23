@@ -263,6 +263,10 @@ describe('DiscoveryPage card order', () => {
     expect(logo).toHaveAttribute('width', '256');
     expect(logo).toHaveAttribute('height', '256');
     expect(logo.getAttribute('src')).toContain('android-chrome-512x512.png');
+    expect(
+      screen.getByRole('heading', { name: 'We did it!' }).compareDocumentPosition(logo) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
     expect(celebration.querySelector('button')).toBeNull();
     expect(screen.queryByTestId('like-button')).not.toBeInTheDocument();
     expect(screen.queryByTestId('discovery-nudge-family')).not.toBeInTheDocument();

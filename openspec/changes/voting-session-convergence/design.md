@@ -109,6 +109,8 @@ No schema migration or irreversible data rewrite is required. Reverting the feat
 
 The celebration is a stable in-place state with the app logo and two text lines: **We did it!** / **Menu's In!**. No CTA, forced navigation, explanatory paragraph, confetti or sound. Keep the existing app navigation accessible. Late updates do not replay the entrance. Respect reduced motion; use a brief existing fade only if appropriate. Render text as localized HTML; decorative image uses empty alternative text so it is not announced twice. Announce the meaningful state once, without moving keyboard focus or trapping it when swipe controls disappear.
 
+The final presentation reuses `pwa/public/android-chrome-512x512.png` unchanged, inside the app’s existing sage success-card surface. Put “We did it!” above the enlarged, softly masked decorative logo and “Menu's In!” below. The user explicitly excluded rays; add no motion or extra controls. Mask only the image region, retaining sharp, readable localized headings and a stable layout on image failure.
+
 The production image remains user-selected. Start with the existing logo so image choice cannot block behavior tests. The selected asset must fit the same component without a layout redesign. On image failure the heading remains legible. Review 320px-wide mobile, normal desktop, keyboard use, reduced motion, foreground return and a second member's completion mid-gesture. Generated-image review alone does not establish these interactions.
 
 Keep Planner's existing post-close “Menu's in!” toast and its historical-vote/reset explanation unchanged. The new Discovery celebration shares the familiar phrase, but does not fire that saved-close feedback or claim votes have been reset.

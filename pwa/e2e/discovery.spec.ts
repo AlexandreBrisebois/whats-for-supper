@@ -234,6 +234,22 @@ test.describe('Discovery Flow', () => {
       expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
         320
       );
+      const card = page.getByTestId('discovery-celebration-card');
+      const layout = await card.evaluate((element) => {
+        const heading = element.querySelector('h1')!.getBoundingClientRect();
+        const logo = element.querySelector('img')!.parentElement!.getBoundingClientRect();
+        const subheading = element.querySelector('h2')!.getBoundingClientRect();
+        return {
+          headingBeforeLogo: heading.bottom <= logo.top,
+          logoBeforeSubheading: logo.bottom <= subheading.top,
+          animations: element.getAnimations({ subtree: true }).length,
+        };
+      });
+      expect(layout).toEqual({
+        headingBeforeLogo: true,
+        logoBeforeSubheading: true,
+        animations: 0,
+      });
       await page.screenshot({
         path: testInfo.outputPath('convergence-mobile.png'),
         fullPage: true,
