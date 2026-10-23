@@ -216,8 +216,8 @@ public class SchemaIntegrityTests
 
     private string GetTableDefinition(string tableName)
     {
-        // Simple regex to extract the CREATE TABLE block for a specific table
-        var pattern = $@"CREATE TABLE IF NOT EXISTS {tableName} \((.*?)\);";
+        // Schema tables may be declared with or without the idempotent IF NOT EXISTS clause.
+        var pattern = $@"CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?{Regex.Escape(tableName)}\s*\((.*?)\)\s*;";
         var match = Regex.Match(_schemaContent, pattern, RegexOptions.Singleline | RegexOptions.IgnoreCase);
         return match.Success ? match.Groups[1].Value : string.Empty;
     }
