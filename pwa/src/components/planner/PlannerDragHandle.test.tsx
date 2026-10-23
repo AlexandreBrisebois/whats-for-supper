@@ -1,7 +1,6 @@
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PlannerDragHandle } from './PlannerDragHandle';
-import { useFeatureFlagStore } from '@/store/featureFlagStore';
 
 describe('planner hold to move', () => {
   const start = vi.fn();
@@ -21,16 +20,6 @@ describe('planner hold to move', () => {
       }
     );
     Object.defineProperty(navigator, 'vibrate', { configurable: true, value: vibrate });
-    useFeatureFlagStore.setState({
-      flags: {
-        'planner-hold-to-move': {
-          key: 'planner-hold-to-move',
-          enabled: true,
-          mode: 'opt-in',
-          memberEnabled: true,
-        },
-      },
-    });
     start.mockClear();
     vibrate.mockClear();
   });
@@ -90,13 +79,6 @@ describe('planner hold to move', () => {
     act(() => vi.advanceTimersByTime(500));
     expect(start).not.toHaveBeenCalled();
   });
-  it('cancels pending activation when the preview is turned off', () => {
-    render(<PlannerDragHandle start={start} />);
-    down();
-    act(() => useFeatureFlagStore.setState({ flags: {} }));
-    act(() => vi.advanceTimersByTime(500));
-    expect(start).not.toHaveBeenCalled();
-  });
   it('cancels the hold when a second finger lands', () => {
     render(<PlannerDragHandle start={start} />);
     down();
@@ -110,10 +92,45 @@ describe('planner hold to move', () => {
     act(() => vi.advanceTimersByTime(500));
     expect(start).not.toHaveBeenCalled();
   });
-  it('preserves immediate activation with preview disabled', () => {
-    useFeatureFlagStore.setState({ flags: {} });
+  it('requires the hold without any feature-flag snapshot', () => {
     render(<PlannerDragHandle start={start} />);
     down();
+    expect(start).not.toHaveBeenCalled();
+    act(() => vi.advanceTimersByTime(250));
     expect(start).toHaveBeenCalledTimes(1);
+  });
+  it('ignores explicitly non-primary pointers', () => {
+    render(<PlannerDragHandle start={start} />);
+    fireEvent.pointerDown(screen.getByTestId('planner-drag-handle'), {
+      button: 0,
+      isPrimary: false,
+    });
+    act(() => vi.advanceTimersByTime(500));
+    expect(start).not.toHaveBeenCalled();
+  });
+  it('still activates when vibration is unsupported', () => {
+    Object.defineProperty(navigator, 'vibrate', { configurable: true, value: undefined });
+    render(<PlannerDragHandle start={start} />);
+    down();
+    act(() => vi.advanceTimersByTime(250));
+    expect(start).toHaveBeenCalledTimes(1);
+  });
+  it.each([
+    ['ArrowUp', -1],
+    ['ArrowDown', 1],
+  ] as const)('offers %s as a keyboard movement alternative', (key, direction) => {
+    const moveBySlot = vi.fn();
+    render(<PlannerDragHandle start={start} moveBySlot={moveBySlot} />);
+    const handle = screen.getByTestId('planner-drag-handle');
+
+    expect(handle).toHaveAttribute('tabindex', '0');
+    expect(handle).toHaveAttribute('aria-keyshortcuts', 'ArrowUp ArrowDown');
+    expect(handle).toHaveAccessibleName(
+      'Hold to move. Use the Up and Down arrow keys to move one day.'
+    );
+    fireEvent.keyDown(handle, { key });
+
+    expect(moveBySlot).toHaveBeenCalledWith(direction);
+    expect(start).not.toHaveBeenCalled();
   });
 });

@@ -33,17 +33,13 @@ public class FeatureFlagServiceTests
     {
         var values = value is null
             ? new Dictionary<string, string?>()
-            : new Dictionary<string, string?>
-            {
-                ["WFS_FEATURE_SINGLE_PAGE_RECIPE_STEPS"] = value,
-                ["WFS_FEATURE_PLANNER_HOLD_TO_MOVE"] = value
-            };
+            : new Dictionary<string, string?> { ["WFS_FEATURE_SINGLE_PAGE_RECIPE_STEPS"] = value };
         var registry = new FeatureFlagRegistry(
             new ConfigurationBuilder().AddInMemoryCollection(values).Build(),
             NullLogger<FeatureFlagRegistry>.Instance);
 
         Assert.Equal(expected, registry.Get("single-page-recipe-steps")!.Mode);
-        Assert.Equal(expected, registry.Get("planner-hold-to-move")!.Mode);
+        Assert.Null(registry.Get("planner-hold-to-move"));
         Assert.Null(registry.Get("unknown"));
     }
 
@@ -57,9 +53,28 @@ public class FeatureFlagServiceTests
     public void Resolver_combines_mode_and_override(FeatureFlagMode mode, bool? memberEnabled, bool expected) =>
         Assert.Equal(expected, FeatureFlagService.Resolve(mode, memberEnabled));
 
+    [Fact]
+    public async Task Snapshot_ignores_a_legacy_planner_override_when_cleanup_has_not_run()
+    {
+        await using var db = CreateDb();
+        var member = new FamilyMember { Name = "Alex" };
+        db.FamilyMembers.Add(member);
+        db.FeatureFlagOverrides.Add(new FeatureFlagOverride
+        {
+            MemberId = member.Id,
+            FlagKey = "planner-hold-to-move",
+            Enabled = false
+        });
+        await db.SaveChangesAsync();
+        var service = CreateService(db, "opt-in");
+
+        var snapshot = await service.GetSnapshotAsync(member.Id);
+
+        Assert.DoesNotContain(snapshot, flag => flag.Key == "planner-hold-to-move");
+    }
+
     [Theory]
     [InlineData("single-page-recipe-steps")]
-    [InlineData("planner-hold-to-move")]
     public async Task SetOverride_is_member_specific_and_upserts(string key)
     {
         await using var db = CreateDb();
@@ -83,8 +98,7 @@ public class FeatureFlagServiceTests
     {
         var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         {
-            ["WFS_FEATURE_SINGLE_PAGE_RECIPE_STEPS"] = mode,
-            ["WFS_FEATURE_PLANNER_HOLD_TO_MOVE"] = mode
+            ["WFS_FEATURE_SINGLE_PAGE_RECIPE_STEPS"] = mode
         }).Build();
         var registry = new FeatureFlagRegistry(configuration, NullLogger<FeatureFlagRegistry>.Instance);
         return new FeatureFlagService(new RecipeApi.Services.SystemClock(), db, registry);

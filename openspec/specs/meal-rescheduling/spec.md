@@ -260,17 +260,17 @@ Recipe-backed removal SHALL use the same protected date-only DELETE and persiste
 - **WHEN** the date is already empty
 - **THEN** deletion returns 204 without invoking the existing-entry follow-up sequence
 
-### Requirement: Activate Planner dragging according to the effective hold preference
+### Requirement: Activate Planner dragging after a deliberate hold
 
-The Planner recipe drag handle SHALL start dragging immediately for an eligible primary-button pointer when hold-to-move is disabled. When enabled it SHALL wait for an uninterrupted 250 millisecond hold before starting, show grabbed feedback on activation, and request a brief vibration when the browser supplies that facility. Secondary-button and explicitly non-primary pointers SHALL not start a hold.
-
-#### Scenario: Immediate mode
-- **WHEN** hold-to-move is disabled and an eligible pointer presses the recipe drag handle
-- **THEN** dragging starts without waiting for the hold duration
+The Planner drag handle SHALL always wait for an uninterrupted 250 millisecond hold before starting for an eligible primary-button pointer, show grabbed feedback on activation, and request a brief vibration when the browser supplies that facility. This behavior SHALL NOT depend on a feature-flag snapshot, deployment variable or saved member override. Secondary-button and explicitly non-primary pointers SHALL not start a hold.
 
 #### Scenario: Hold reaches activation
-- **WHEN** hold-to-move is enabled and an eligible pointer remains pending for 250 milliseconds without cancellation
+- **WHEN** an eligible pointer remains pending for 250 milliseconds without cancellation
 - **THEN** dragging starts once and the handle shows grabbed feedback, with a vibration request when supported
+
+#### Scenario: Retired preview state is absent or stale
+- **WHEN** feature flags are absent, loading or failed, or a legacy hold-to-move override was disabled
+- **THEN** an eligible pointer still requires the deliberate hold and can activate movement
 
 #### Scenario: Ineligible pointer
 - **WHEN** a secondary-button or explicitly non-primary pointer presses the handle
@@ -278,7 +278,7 @@ The Planner recipe drag handle SHALL start dragging immediately for an eligible 
 
 ### Requirement: Cancel pending Planner holds before drag activation
 
-A pending Planner hold SHALL cancel when its pointer moves more than eight pixels from the press position, its pointer ends or cancels, another pointer begins, the window loses focus, or a pre-activation touch movement occurs on the handle. A cancelled hold SHALL not later activate from its retired timer. Removing the handle or changing its effective activation mode SHALL also retire pending activation.
+A pending Planner hold SHALL cancel when its pointer moves more than eight pixels from the press position, its pointer ends or cancels, another pointer begins, the window loses focus, or a pre-activation touch movement occurs on the handle. A cancelled hold SHALL not later activate from its retired timer. Removing the handle SHALL also retire pending activation.
 
 #### Scenario: Scroll movement before activation
 - **WHEN** a pending pointer moves more than eight pixels or the handle receives touch movement before activation
@@ -288,8 +288,8 @@ A pending Planner hold SHALL cancel when its pointer moves more than eight pixel
 - **WHEN** a pending hold receives its pointer end or cancellation, another pointer begins, or the window loses focus
 - **THEN** waiting beyond the hold duration does not start dragging from that hold
 
-#### Scenario: Handle or mode changes
-- **WHEN** the handle unmounts or its effective hold-to-move mode changes while a hold is pending
+#### Scenario: Handle unmounts
+- **WHEN** the handle unmounts while a hold is pending
 - **THEN** the previous pending activation is retired
 
 ### Requirement: Bound Planner grabbed feedback to the active pointer interaction
@@ -303,6 +303,18 @@ After held activation, the handle SHALL prevent cancelable touch movement receiv
 #### Scenario: Activated pointer ends
 - **WHEN** the tracked pointer ends after held activation
 - **THEN** grabbed feedback clears without this feedback change confirming server persistence
+
+### Requirement: Offer keyboard movement through the Planner handle
+
+The Planner drag handle SHALL be keyboard focusable and expose its localized hold guidance as an accessible name. Arrow Up and Arrow Down SHALL move the selected Planner content one available slot through the same optimistic movement, persistence and recovery path used by pointer reordering. A boundary key press SHALL submit no movement.
+
+#### Scenario: Keyboard movement within the week
+- **WHEN** a focused handle receives Arrow Up or Arrow Down and an adjacent slot exists
+- **THEN** Planner optimistically exchanges the selected content with that slot and commits exactly one movement
+
+#### Scenario: Keyboard movement at a boundary
+- **WHEN** the first handle receives Arrow Up or the last handle receives Arrow Down
+- **THEN** Planner leaves the schedule unchanged and submits no movement
 
 ### Requirement: Report deferral relative to the requested destination
 

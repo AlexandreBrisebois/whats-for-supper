@@ -272,7 +272,7 @@ Preview controls SHALL use catalog text for known preview names, descriptions an
 
 ### Requirement: Resolve registered preview deployment modes fail closed
 
-For single-page-recipe-steps, planner-hold-to-move and preview-pdf-recipe-import, the server SHALL read their respective WFS_FEATURE_SINGLE_PAGE_RECIPE_STEPS, WFS_FEATURE_PLANNER_HOLD_TO_MOVE and WFS_FEATURE_PREVIEW_PDF_RECIPE_IMPORT settings. Modes SHALL be trimmed and case-insensitive. Missing, blank, off or invalid values SHALL resolve off; opt-in and on SHALL select those modes.
+For single-page-recipe-steps and preview-pdf-recipe-import, the server SHALL read their respective WFS_FEATURE_SINGLE_PAGE_RECIPE_STEPS and WFS_FEATURE_PREVIEW_PDF_RECIPE_IMPORT settings. Modes SHALL be trimmed and case-insensitive. Missing, blank, off or invalid values SHALL resolve off; opt-in and on SHALL select those modes. The retired planner-hold-to-move key SHALL NOT be registered or returned, and its former deployment variable SHALL have no effect.
 
 #### Scenario: Enabled and optional modes
 - **WHEN** a registered preview is configured with padded uppercase ON or OPT-IN
@@ -341,15 +341,15 @@ Reading a flag or rejecting a non-opt-in mutation SHALL leave its saved member c
 
 ### Requirement: Select consumer experience using effective preview enablement
 
-Cooking and planning SHALL select their preview experience using effective enabled, rather than the stored member choice alone. Cooking SHALL use the accepted cooking single-page/focused-reading requirements. The planner handle SHALL require deliberate hold activation when enabled and use immediate primary-pointer activation when disabled or unavailable. PDF acquisition SHALL remain subject to the accepted recipe-capture eligibility requirement.
+Cooking SHALL select its preview experience using effective enabled, rather than the stored member choice alone, and use the accepted cooking single-page/focused-reading requirements. Planner deliberate activation is unconditional under meal-rescheduling and SHALL NOT consume preview enablement. PDF acquisition SHALL remain subject to the accepted recipe-capture eligibility requirement.
 
 #### Scenario: Effective cooking mode
 - **WHEN** the cooking flag resolves enabled or disabled
 - **THEN** cooking follows “Read all instructions under the effective single-page flag” or “Navigate one focused instruction at a time” respectively
 
-#### Scenario: Planner preview unavailable or enabled
-- **WHEN** the planner handle's effective flag is absent or false, or is true
-- **THEN** primary-pointer activation is immediate, or waits for deliberate hold respectively
+#### Scenario: Retired Planner preview data
+- **WHEN** the planner preview key is absent from a snapshot or remains in legacy stored overrides
+- **THEN** it does not alter Planner activation and is not offered as an editable preview
 
 #### Scenario: PDF consumes shared resolution
 - **WHEN** a PDF preview value is consumed by acquisition

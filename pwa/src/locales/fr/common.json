@@ -247,6 +247,7 @@
     "closeVoting": "Fermer le vote",
     "diversify": "Diversifier",
     "holdToMove": "Maintenir pour déplacer",
+    "moveInstructions": "Maintenez pour déplacer. Utilisez les flèches Haut et Bas pour déplacer d’un jour.",
     "noCooking": "Autres plans",
     "eatingOut": "Manger à l’extérieur",
     "otherPlans": "On a des plans",
@@ -450,10 +451,6 @@
       "single-page-recipe-steps": {
         "name": "Recette sur une seule page",
         "description": "Après la préparation, faites défiler toutes les étapes sur une seule page."
-      },
-      "planner-hold-to-move": {
-        "name": "Maintenir pour déplacer les repas",
-        "description": "Maintenez brièvement la poignée avant de déplacer un repas. Faites défiler sans modifier votre plan."
       }
     }
   },

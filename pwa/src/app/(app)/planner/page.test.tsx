@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => {
   const assignRecipe = vi.fn();
   const removeRecipe = vi.fn();
   const reorderLocally = vi.fn();
+  const commitMove = vi.fn();
   const resolveOccupiedSlot = vi.fn();
   const addToast = vi.fn();
   const saveNonCookingDay = vi.fn();
@@ -38,6 +39,7 @@ const mocks = vi.hoisted(() => {
     assignRecipe,
     removeRecipe,
     reorderLocally,
+    commitMove,
     resolveOccupiedSlot,
     addToast,
     saveNonCookingDay,
@@ -339,6 +341,7 @@ function renderPlanner(status: 0 | 1 | 2, sundayDate = '2026-05-17', offset = 0)
     assignRecipe: mocks.assignRecipe,
     removeRecipe: mocks.removeRecipe,
     reorderLocally: mocks.reorderLocally,
+    commitMove: mocks.commitMove,
   });
 
   return render(<PlannerPage />);
@@ -769,6 +772,34 @@ describe('PlannerPage voting action row', () => {
     expect(pivotSheet).toBeInTheDocument();
     expect(pivotSheet.getAttribute('data-has-recipe')).toBe('true');
     expect(pivotSheet.getAttribute('data-has-plan-later')).toBe('false');
+  });
+});
+
+describe('Planner keyboard movement', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.setSearchParams('');
+  });
+
+  it('moves an eligible meal one slot through the existing optimistic commit path', () => {
+    renderPlanner(0);
+    const handle = within(screen.getByTestId('day-card-0')).getByTestId('planner-drag-handle');
+    const snapshot = mocks.getWeekState().schedule;
+
+    fireEvent.keyDown(handle, { key: 'ArrowDown' });
+
+    expect(mocks.reorderLocally).toHaveBeenCalledWith(0, 1, snapshot);
+    expect(mocks.commitMove).toHaveBeenCalledWith(0, 1, snapshot);
+  });
+
+  it('does not submit a keyboard move beyond the week boundary', () => {
+    renderPlanner(0);
+    const handle = within(screen.getByTestId('day-card-0')).getByTestId('planner-drag-handle');
+
+    fireEvent.keyDown(handle, { key: 'ArrowUp' });
+
+    expect(mocks.reorderLocally).not.toHaveBeenCalled();
+    expect(mocks.commitMove).not.toHaveBeenCalled();
   });
 });
 
