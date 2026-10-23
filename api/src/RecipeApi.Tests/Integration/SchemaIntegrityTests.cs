@@ -132,6 +132,13 @@ public class SchemaIntegrityTests
     }
 
     [Fact]
+    public void FeatureFlagOverrides_Compatibility_RemovesOnlyRetiredPlannerOverrides()
+    {
+        Assert.Contains("DELETE FROM feature_flag_overrides", _compatibilityContent, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("flag_key = 'planner-hold-to-move'", _compatibilityContent, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task RecipeImportReport_Model_UsesCascadeAndNullableMemberReferences()
     {
         await using var factory = await TestWebApplicationFactory.CreateAsync();
