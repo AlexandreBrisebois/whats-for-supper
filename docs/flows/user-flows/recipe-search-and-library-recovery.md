@@ -2,7 +2,7 @@
 
 
 This document describes the user experience for:
-- hybrid recipe search (standard and agent-supplied),
+- Discovery, Explicit and Similar search modes (standard and agent-supplied),
 - planner-aware recipe selection,
 - recipe detail actions (notes, rating, discovery, similar),
 - soft delete and Recycle Bin restore / permanent purge,
@@ -26,11 +26,11 @@ The user should be able to answer "What should we eat?" in seconds, recover from
 
 ```mermaid
 flowchart TD
-    A[User opens /recipes] --> B[Search field + quick filter pills + utility row]
-    B --> C[Types short query and presses Enter]
-    C --> D[Short list returns — max 5 results]
-    D --> E[Top Pick — hero card]
-    D --> F[Alternates 2–5]
+    A[User opens /recipes] --> B[Search field + Filters chooser]
+    B --> C[Types a query; search runs after 500 ms or Enter]
+    C --> D[Initial batch requests up to 12 alternatives]
+    D --> E[Optional Top Pick — hero card]
+    D --> F[Compact result grid; more results load on scroll]
     E --> G[Open recipe detail sheet]
     F --> G
     G --> H{Entry context}
@@ -45,10 +45,9 @@ flowchart TD
 
 ### Expected feel
 
-- Results should feel decisive, not exhaustive. One strong Top Pick reduces decision fatigue.
+- A Top Pick is optional. Explicit and Similar searches show only their first-ranked candidate as Top Pick when eligible; they never promote a lower-ranked replacement.
 - Closing the detail sheet returns to **exactly the same search state** — no re-fetch, no blank page.
 - The main field should feel immediate and cheap.
-- The stars affordance should feel like "help me figure it out," not "open chat."
 
 ---
 
@@ -57,7 +56,7 @@ flowchart TD
 ### 1. Standard search field
 
 - Search icon + `data-testid="recipe-search-input"` text field.
-- `Enter` executes search — no button required.
+- Search runs after 500 ms without another text change; `Enter` submits immediately.
 - No special lane name in the default UI.
 
 ### 2. Agent-supplied search
@@ -83,7 +82,7 @@ sequenceDiagram
     Planner->>Search: Navigate to /recipes?addToDay=X&weekOffset=Y
     Search->>Search: Render planning-mode banner (data-testid="planning-mode-banner")
     Search->>API: POST /api/recipes/search with weekOffset + dayIndex
-    API-->>Search: Top Pick + results + planner-fit reasons
+    API-->>Search: Optional Top Pick + ordered results
     User->>Search: Tap a result card
     Search->>Detail: Open recipe detail sheet (data-testid="recipe-detail-sheet")
     Detail-->>User: Show "Add it to {Day}" (data-testid="action-add-to-day")
@@ -91,11 +90,14 @@ sequenceDiagram
     Detail->>Planner: Assign recipe and return to planner with success highlight
 ```
 
-### Planner reranking rules
+### Search modes and planner context
 
-- Recipes already assigned in the selected week are demoted rather than hidden, with an "Already planned for this week" reason.
-- Planner context does not apply nutritional-gap or urgency scoring.
-- Top Pick is shown only when the API has a promotion-eligible result; otherwise search still returns the ranked results without a Top Pick.
+- **Discovery** is the API's name for an empty Search request with no text, Focus concepts, effective filters or Similar target. It may use household preferences, cooking history and calendar promotion guards. This is distinct from the Discovery voting screen.
+- **Explicit** covers typed text, Focus concepts or any effective filter. Typed and concept searches preserve retrieval order without ratings, votes, historical-interest or planner-preference boosts.
+- Filter-only Explicit results normally use newest creation date, then recipe name. **It's Been a While** instead orders cooked recipes by oldest cooking date before those ties.
+- **Find Similar** takes precedence when a source recipe is supplied and preserves its similarity order.
+- Opening Search from Planner retains the assignment target. Being already planned does not demote an otherwise eligible Explicit or Similar result.
+- In Explicit and Similar, Top Pick is the first-ranked result only when presentation-eligible. If that result has a saved issue report, or a review filter is active, all results stay in their original ordinary-result order without a Top Pick.
 
 ### No-dead-end rules
 
@@ -192,14 +194,14 @@ flowchart TD
     B --> C[Search reopens in similar mode — similarToRecipeId set in page state]
     C --> D[API applies active filters and excludes source before bounded retrieval]
     D --> E[Semantic candidates are structurally ranked; compact lexical fallback uses the same scorer]
-    E --> F[Top Pick + up to 4 similar alternates returned]
+    E --> F[Optional rank-1 Top Pick + paged alternatives]
     F --> G[Same detail sheet and actions as normal search]
     G --> H[User selects via planner CTA or discovery pivot]
 ```
 
-Find Similar uses semantic retrieval for bounded candidate generation and deterministic structured similarity for final ranking. A compatible ready source embedding generates candidates only; ingredient overlap, cuisine, category, meal type, nullable `IsVegetarian` compatibility, and preparation time determine the final Similar score. The nullable vegetarian signal is conservative (both values must be known and equal), and Similar makes no protein claim.
+Find Similar uses a compatible ready source embedding for bounded candidate retrieval when semantic search is enabled and available. Its final score combines the semantic contribution with ingredient overlap, cuisine, category, meal type, known vegetarian compatibility and preparation-time similarity. Vegetarian compatibility requires both values to be known and equal; Similar makes no protein claim.
 
-When the target embedding is unavailable, incompatible, or semantic retrieval fails, the API uses a compact bounded lexical query derived from the source facts. Active filters and source exclusion apply before its candidate limit, and the same structured scorer ranks the fallback. Family/vote and pantry boosts are not part of Similar; planned-recipe demotion applies only in a real planner context. Continuing results preserves the first response's Similar ordering.
+When the source embedding is unavailable or incompatible, semantic search is disabled, or semantic retrieval fails, the API retrieves bounded lexical candidates from the source recipe's facts and applies the same structured scorer without a semantic contribution. Active filters and source exclusion apply before the retrieval limit. Ratings, family votes, historical interest and planner preferences do not rerank Similar results. Continuation preserves the initial ordered snapshot while rechecking current hard eligibility.
 
 ---
 
@@ -226,17 +228,25 @@ All PATCH calls go to `PATCH /api/recipes/{id}`. The sheet stays open; no naviga
 
 ---
 
-## Quick Filter Pills
+## Filters Chooser
 
-| Filter pill | `data-testid` (inactive) | Meaning |
-|-------------|--------------------------|---------|
-| New Recipes | `filter-new-recipes` | `createdAt` within 30 days AND cooked ≤ 2 times |
-| Never Tried | `filter-never-tried` | `lastCookedDate IS NULL` |
-| Family Favorite | `filter-family-favorite` | `rating ≥ 2` AND (`isDiscoverable` OR notes present) |
-| Quick | `filter-quick` | `totalTime ≤ 30 min` (or "quick" keyword) |
-| Haven't Cooked in a Long Time | `filter-not-cooked-long-time` | `lastCookedDate < now − 60 days` |
+Search uses one **Filters** chooser on narrow and wide layouts. Quick, Family Favorite and Never Tried appear first; **More filters** reveals the remaining shortcuts. Selected choices remain visible when their group is collapsed.
 
-Active state: `data-testid="filter-<name>-active"`. Filters are ANDed; max 5 results after filtering. Over-constrained empty state: `data-testid="filter-no-results"`.
+| Shortcut | Meaning |
+|----------|---------|
+| New | Created within the preceding 30 days |
+| Never Tried | No last-cooked date |
+| Family Favorite | Rating at least Like, plus discoverability or saved notes |
+| Quick | A supported recorded duration of at most 30 minutes; unknown durations do not qualify |
+| It's Been a While | Has a last-cooked date; filter-only results put the oldest cooked recipes first |
+| Reported | Has a saved recipe issue report |
+| Ready to review | Has a report marked ready for review; takes precedence when both review shortcuts are selected |
+
+Meal and Cuisine are hard filters: choices within a group are alternatives, while the groups constrain results together. Non-vegetarian Focus choices guide retrieval rather than impose exact ingredient membership. Vegetarian requires a known true recipe classification.
+
+Opening the chooser copies current selections into a draft. **Apply filters** commits the draft and searches; Close, Escape or the backdrop discards it. **Clear filters** clears draft filters and Focus choices without clearing search text, and takes effect on Apply.
+
+Results are paged rather than capped at five. Successful empty results offer **Clear Filters** and **Browse Library**. A failed initial search offers **Retry**; failed continuation retains loaded cards and offers **Load more**, while expired continuation offers **Restart search**.
 
 ---
 
@@ -324,7 +334,7 @@ The user does not need stack traces to recover.
 
 | Surface | Primary action | Secondary action | Escape hatch |
 |---------|---------------|-----------------|--------------|
-| Search page | Open Top Pick or result | Toggle quick filter | Clear query |
+| Search page | Open Top Pick or result | Open Filters | Clear query |
 | Recipe detail sheet | Add to planner day or Cook this pivot | Find similar, discovery toggle, move to bin | Close — same results |
 | Recycle Bin | Restore | Permanent delete (PIN required) | Back to library |
 | Failed Captures | Retry | View friendly reason | Leave item for later |
@@ -338,7 +348,7 @@ The user does not need stack traces to recover.
 Show:
 - A calm explanation.
 - One recovery suggestion: *No close matches yet. Try fewer ingredients or remove a filter.*
-- One action: **Clear Filters**.
+- Recovery actions: **Clear Filters** and **Browse Library**.
 
 ### Filter over-constrained (`data-testid="filter-no-results"`)
 
