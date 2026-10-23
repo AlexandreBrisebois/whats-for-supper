@@ -260,6 +260,7 @@ CREATE INDEX idx_recipes_discovery_lookup ON recipes (category, id) WHERE (is_di
 CREATE INDEX idx_recipe_import_reports_status ON recipe_import_reports (status);
 CREATE INDEX IF NOT EXISTS idx_recipes_cuisine_type ON recipes (cuisine_type) WHERE (cuisine_type IS NOT NULL);
 CREATE INDEX IF NOT EXISTS idx_maintenance_commands_status_scheduled ON maintenance_commands (status, scheduled_for, created_at);
+CREATE INDEX IF NOT EXISTS idx_maintenance_commands_terminal_completed ON maintenance_commands (completed_at, id) WHERE status IN ('completed', 'skipped');
 
 CREATE OR REPLACE VIEW vw_recipe_matches AS 
 SELECT recipe_id, count(recipe_id) AS vote_count 

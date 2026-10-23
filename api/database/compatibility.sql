@@ -237,6 +237,16 @@ DROP TABLE IF EXISTS public.health_week_summaries;
 
 DO $$
 BEGIN
+    IF to_regclass('public.maintenance_commands') IS NOT NULL THEN
+        CREATE INDEX IF NOT EXISTS idx_maintenance_commands_terminal_completed
+            ON public.maintenance_commands (completed_at, id)
+            WHERE status IN ('completed', 'skipped');
+    END IF;
+END
+$$;
+
+DO $$
+BEGIN
     IF to_regclass('public.recipes') IS NOT NULL THEN
         ALTER TABLE public.recipes
             DROP COLUMN IF EXISTS is_healthy_choice,

@@ -462,6 +462,41 @@ public class OnlineRecoveryPostgresTests : IAsyncLifetime
         Assert.Equal("Invalidated by exact recovery", retained.ErrorMessage);
     }
 
+    [PostgresFact]
+    public async Task ExactRecovery_StampsInvalidatedMaintenanceCommands_FromInjectedClock()
+    {
+        var now = new DateTimeOffset(2026, 10, 23, 12, 0, 0, TimeSpan.Zero);
+        using var scope = app.Services.CreateScope();
+        var services = scope.ServiceProvider;
+        var db = services.GetRequiredService<RecipeDbContext>();
+        var recovery = new RecoverySnapshotService(
+            db,
+            services.GetRequiredService<RecipesRootResolver>(),
+            services.GetRequiredService<DataRootResolver>(),
+            services.GetRequiredService<IConfiguration>(),
+            new FixedClock(now),
+            services.GetRequiredService<RecoveryBoundary>());
+        var snapshot = await recovery.CaptureAsync(CancellationToken.None);
+        var command = new MaintenanceCommand
+        {
+            CommandType = CaptureFailureService.DeleteFailedCaptureResidueCommand,
+            Status = "processing",
+            CreatedAt = now.AddDays(-100),
+            StartedAt = now.AddDays(-1),
+            CompletedAt = now.AddDays(-90),
+        };
+        db.MaintenanceCommands.Add(command);
+        await db.SaveChangesAsync();
+
+        await recovery.RestoreExactAsync(snapshot.SnapshotId!.Value, CancellationToken.None);
+
+        db.ChangeTracker.Clear();
+        var invalidated = await db.MaintenanceCommands.SingleAsync(c => c.Id == command.Id);
+        Assert.Equal("skipped", invalidated.Status);
+        Assert.Equal(now, invalidated.CompletedAt);
+        Assert.Equal("Invalidated by exact recovery", invalidated.LastError);
+    }
+
     [PostgresTheory]
     [InlineData("capture-locked")]
     [InlineData("export-staged")]
@@ -503,6 +538,11 @@ public class OnlineRecoveryPostgresTests : IAsyncLifetime
     {
         public Task ReachedAsync(string name, CancellationToken ct) => name == point
             ? Task.FromException(new IOException("Injected interruption at " + name)) : Task.CompletedTask;
+    }
+
+    private sealed class FixedClock(DateTimeOffset now) : IClock
+    {
+        public DateTimeOffset UtcNow => now;
     }
 
 }
