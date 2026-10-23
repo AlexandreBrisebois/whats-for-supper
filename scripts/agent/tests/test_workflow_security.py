@@ -25,7 +25,7 @@ class WorkflowSecurityTests(unittest.TestCase):
         self.assertNotIn("secrets.", validation)
         self.assertIn("HEARTH_SECRET: Paris-Montreal", validation)
 
-    def test_retired_aws_delivery_workflow_and_secrets_are_absent(self):
+    def test_retired_aws_delivery_workflow_and_secret_references_are_absent(self):
         self.assertFalse((WORKFLOWS / "aws-deploy.yml").exists())
         aws_secret_names = (
             "AWS_ROLE_ARN",
@@ -33,9 +33,15 @@ class WorkflowSecurityTests(unittest.TestCase):
             "ELEVATED_ACTIONS_PIN",
         )
         for secret_name in aws_secret_names:
+            secret_references = (
+                f"secrets.{secret_name}",
+                f"secrets['{secret_name}']",
+                f'secrets["{secret_name}"]',
+            )
             for name, content in self.text.items():
-                with self.subTest(secret=secret_name, workflow=name):
-                    self.assertNotIn(secret_name, content)
+                for reference in secret_references:
+                    with self.subTest(secret=secret_name, workflow=name, reference=reference):
+                        self.assertNotIn(reference, content)
 
     def test_workflows_do_not_reference_retired_aws_delivery(self):
         forbidden = ("infrastructure/aws", "aws-actions/", "aws-cdk", "amazon-ecr")
