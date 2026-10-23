@@ -5,6 +5,11 @@ Compose template provides the application, database, reverse proxy, and Cloudfla
 Tunnel connector. Synology Container Manager is one way to deploy this template;
 the shared configuration below is not tied to a particular NAS brand.
 
+For a new installation, use the [quick start](../../docs/install/quick-start.md)
+and the matching published release ZIP. Its `.env.example` is stamped with the
+release version; the source template's `WFS_VERSION` is a packaging placeholder,
+not the latest stable version.
+
 ## Before you begin
 
 You need a home server with a working Docker Engine and Docker Compose deployment
@@ -148,7 +153,12 @@ The app's family passphrase remains required; Access adds a separate outer gate.
 See Cloudflare's [Tunnel setup guide](https://developers.cloudflare.com/tunnel/get-started/)
 for current dashboard details and connector troubleshooting.
 
-This template does not configure backup, restore, updates, or rollback.
+The installation bundle includes an interactive, version-only update helper;
+follow the [update guide](../../docs/install/updates.md), including the 0.1.21
+configuration-change instructions. It does not create backups or guarantee
+rollback. Keep a tested, consistent backup of PostgreSQL and the complete
+`data/app` tree; [exact recovery](../../docs/operations/exact-recovery.md) requires
+separate storage and configuration.
 
 ## Install identity and demo configuration
 
