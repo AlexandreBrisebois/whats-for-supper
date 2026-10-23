@@ -198,7 +198,7 @@ test('Sunday Plan for Later starts at deployment next Monday in Search', async (
           topPick: builders.recipe({ id: MOCK_IDS.RECIPE_LASAGNA, name: 'Sunday Lasagna' }),
           results: [],
           appliedFilters: {},
-          searchMode: 'standard',
+          searchMode: 'explicit',
           resultPath: 'lexical-only',
         },
       },

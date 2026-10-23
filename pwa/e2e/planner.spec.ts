@@ -33,7 +33,7 @@ test.describe('Supper Planner', () => {
             },
             results: [],
             appliedFilters: {},
-            searchMode: 'standard',
+            searchMode: 'explicit',
             resultPath: 'lexical-only',
           },
         }),

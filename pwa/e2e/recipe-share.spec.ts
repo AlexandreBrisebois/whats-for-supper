@@ -46,7 +46,7 @@ test.describe('Recipe Share And Capture', () => {
             },
             results: [],
             appliedFilters: {},
-            searchMode: 'standard',
+            searchMode: 'explicit',
             resultPath: 'lexical-only',
           },
         }),

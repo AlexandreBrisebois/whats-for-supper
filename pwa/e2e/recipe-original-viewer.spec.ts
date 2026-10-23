@@ -56,7 +56,7 @@ test.describe('Recipe Original Viewer', () => {
             topPick: null,
             results: [recipe],
             appliedFilters: {},
-            searchMode: 'standard',
+            searchMode: 'explicit',
             resultPath: 'lexical-only',
           },
         }),

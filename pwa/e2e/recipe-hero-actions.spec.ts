@@ -40,7 +40,7 @@ test.describe('Recipe Hero Actions', () => {
               }),
             ],
             appliedFilters: {},
-            searchMode: 'standard',
+            searchMode: 'explicit',
             resultPath: 'lexical-only',
           },
         }),

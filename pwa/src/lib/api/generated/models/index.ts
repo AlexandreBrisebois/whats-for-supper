@@ -7091,7 +7091,8 @@ export const RecipeSearchResponseDto_resultPathObject = {
   Browse: 'browse',
 } as const;
 export const RecipeSearchResponseDto_searchModeObject = {
-  Standard: 'standard',
+  Discovery: 'discovery',
+  Explicit: 'explicit',
   Similar: 'similar',
 } as const;
 export const RecipeShareInfoDto_bundleSourceObject = {

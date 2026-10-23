@@ -22,7 +22,7 @@ async function setup(page: Page) {
   );
 }
 
-function results(name: string, path = 'lexical-only') {
+function results(name: string, path = 'lexical-only', searchMode = 'explicit') {
   return {
     data: {
       topPick: null,
@@ -40,7 +40,7 @@ function results(name: string, path = 'lexical-only') {
         },
       ],
       appliedFilters: {},
-      searchMode: 'standard',
+      searchMode,
       resultPath: path,
       nextCursor: null,
     },
@@ -62,7 +62,13 @@ for (const mode of ['browse', 'typed', 'similar'] as const) {
         await route.fulfill({ status: 503, json: { message: 'Temporarily unavailable' } });
         return;
       }
-      await route.fulfill({ json: results(label, mode === 'browse' ? 'browse' : 'lexical-only') });
+      await route.fulfill({
+        json: results(
+          label,
+          mode === 'browse' ? 'browse' : 'lexical-only',
+          mode === 'browse' ? 'discovery' : mode === 'similar' ? 'similar' : 'explicit'
+        ),
+      });
     });
     await page.goto(
       `/recipes?addToDay=2&weekOffset=1${mode === 'similar' ? `&similarTo=${MOCK_IDS.RECIPE_TACOS}` : ''}`

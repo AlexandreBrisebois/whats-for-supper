@@ -374,7 +374,7 @@ components:
         appliedFilters: { $ref: '#/components/schemas/RecipeSearchFiltersDto' }
         searchMode:
           type: string
-          enum: [standard, similar]
+          enum: [discovery, explicit, similar]
         resultPath:
           type: string
           enum: [lexical-only, hybrid, fallback-lexical, browse]
@@ -2449,7 +2449,7 @@ paths:
                 topPick: null
                 results: []
                 appliedFilters: {}
-                searchMode: standard
+                searchMode: discovery
                 resultPath: lexical-only
                 nextCursor: null
         '400':
