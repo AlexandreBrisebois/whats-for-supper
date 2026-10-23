@@ -2,7 +2,6 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 using RecipeApi.Data;
@@ -43,8 +42,7 @@ public sealed class PdfCapturePostgresTests : IAsyncLifetime
         {
             ["Tests:PostgresConnectionString"] = connection.ConnectionString,
             ["Tests:LocalRecipeStore"] = "true",
-            ["Tests:PdfWorkflow"] = "true",
-            ["WFS_FEATURE_PREVIEW_PDF_RECIPE_IMPORT"] = "on"
+            ["Tests:PdfWorkflow"] = "true"
         });
     }
 
@@ -59,7 +57,7 @@ public sealed class PdfCapturePostgresTests : IAsyncLifetime
     }
 
     [PostgresFact]
-    public async Task Accepted_source_failure_retry_with_flag_off_and_delete_use_existing_recovery()
+    public async Task Accepted_source_failure_retry_and_delete_use_existing_recovery()
     {
         using var client = factory.CreateClient();
         client.DefaultRequestHeaders.Add("X-Family-Member-Id", factory.DefaultFamilyMemberId.ToString());
@@ -96,7 +94,6 @@ public sealed class PdfCapturePostgresTests : IAsyncLifetime
             Assert.Contains("convert_pdf", body);
         }
         await AssertSourceAsync(store, id, bytes);
-        factory.Services.GetRequiredService<IConfiguration>()["WFS_FEATURE_PREVIEW_PDF_RECIPE_IMPORT"] = "off";
         using var retry = await client.PostAsync($"/api/captures/failures/{instance.Id}/retry", null);
         Assert.Equal(HttpStatusCode.Accepted, retry.StatusCode);
         await db.Entry(instance).ReloadAsync();

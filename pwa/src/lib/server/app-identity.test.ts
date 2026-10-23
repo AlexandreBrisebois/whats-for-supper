@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import base from '../baseManifest.json';
+import { pdfManifest } from '../pdfManifest';
 
 vi.mock('server-only', () => ({}));
 vi.mock('next/server', () => ({ connection: vi.fn().mockResolvedValue(undefined) }));
@@ -102,31 +103,28 @@ describe('runtime install identity', () => {
         manifest.shortcuts.map((shortcut: { icons: { src: string }[] }) => shortcut.icons[0].src)
       ).toEqual(base.shortcuts.map((shortcut) => prefix + shortcut.icons[0].src));
       expect({ ...manifest, icons: base.icons, shortcuts: base.shortcuts }).toEqual({
-        ...base,
+        ...pdfManifest(),
         name,
         short_name: name,
       });
     }
   );
-  it('does not memoize runtime DEMO_MODE or the independent PDF feature gate', async () => {
+  it('does not memoize runtime DEMO_MODE and always advertises PDF sharing', async () => {
     await load('beta');
     const { GET } = await import('@/app/manifest.json/route');
     const { generateMetadata } = await import('@/app/layout');
     for (const demo of ['false', 'true', 'false']) {
       vi.stubEnv('DEMO_MODE', demo);
-      for (const pdf of ['off', 'on', 'off']) {
-        vi.stubEnv('WFS_FEATURE_PREVIEW_PDF_RECIPE_IMPORT', pdf);
-        const response = GET();
-        expect(response.headers.get('content-type')).toBe('application/manifest+json');
-        expect(response.headers.get('cache-control')).toContain('no-store');
-        const manifest = await response.json();
-        expect(manifest.name).toBe(base.name);
-        expect(manifest.description).toBe('Swipe, Match, Cook!');
-        expect((await generateMetadata()).description).toBe('Swipe, Match, Cook!');
-        expect((await generateMetadata()).title).toBe(manifest.name);
-        expect(manifest.share_target.method).toBe(pdf === 'on' ? 'POST' : 'GET');
-        expect(manifest.share_target.action).toBe(pdf === 'on' ? '/share-target' : '/capture');
-      }
+      const response = GET();
+      expect(response.headers.get('content-type')).toBe('application/manifest+json');
+      expect(response.headers.get('cache-control')).toContain('no-store');
+      const manifest = await response.json();
+      expect(manifest.name).toBe(base.name);
+      expect(manifest.description).toBe('Swipe, Match, Cook!');
+      expect((await generateMetadata()).description).toBe('Swipe, Match, Cook!');
+      expect((await generateMetadata()).title).toBe(manifest.name);
+      expect(manifest.share_target.method).toBe('POST');
+      expect(manifest.share_target.action).toBe('/share-target');
     }
   });
 });

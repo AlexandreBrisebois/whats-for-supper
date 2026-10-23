@@ -1,12 +1,10 @@
-name: PDF preview validation (no deployment)
+name: PDF validation (no deployment)
 on:
-  push:
-    branches: [codex/pdf-recipe-import-preview]
   workflow_dispatch:
 permissions:
   contents: read
 concurrency:
-  group: pdf-preview-validation
+  group: pdf-validation
   cancel-in-progress: true
 jobs:
   api:

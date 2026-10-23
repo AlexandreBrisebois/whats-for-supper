@@ -132,10 +132,12 @@ public class SchemaIntegrityTests
     }
 
     [Fact]
-    public void FeatureFlagOverrides_Compatibility_RemovesOnlyRetiredPlannerOverrides()
+    public void FeatureFlagOverrides_Compatibility_RemovesOnlyGraduatedOverrides()
     {
         Assert.Contains("DELETE FROM feature_flag_overrides", _compatibilityContent, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("flag_key = 'planner-hold-to-move'", _compatibilityContent, StringComparison.Ordinal);
+        Assert.Contains("flag_key = 'preview-pdf-recipe-import'", _compatibilityContent, StringComparison.Ordinal);
+        Assert.DoesNotContain("TRUNCATE", _compatibilityContent, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

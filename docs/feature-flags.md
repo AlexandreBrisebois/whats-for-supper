@@ -77,13 +77,12 @@ keep existing identity, permission and input-validation requirements.
 
 ## Current flags and deployment surfaces
 
-Both registry defaults are currently `off`. Actual deployments may override
-them; checked-in defaults do not establish the state of a running installation.
+The remaining registry default is currently `off`. Actual deployments may override
+it; checked-in defaults do not establish the state of a running installation.
 
 | Key | API environment variable | Owner / consumers |
 | --- | --- | --- |
 | `single-page-recipe-steps` | `WFS_FEATURE_SINGLE_PAGE_RECIPE_STEPS` | cooking-experience; `CooksMode.tsx` |
-| `preview-pdf-recipe-import` | `WFS_FEATURE_PREVIEW_PDF_RECIPE_IMPORT` | recipe-capture; `MinimalCapture.tsx`, `PdfCapturePanel.tsx`, `PdfCaptureController.cs`; PWA manifest also reads the deployment mode |
 
 For an opt-in rollout, supply the flag's variable as `opt-in` to the API process,
 restart/recreate it, select an established member and enable the preview under
@@ -94,12 +93,11 @@ for everyone while retaining the gate.
 Inspect the deployment actually used. A dotenv entry alone does not pass a
 variable into a container:
 
-- [apps.yml](../docker/compose/apps.yml) and
-  [production.yml](../docker/compose/production.yml) pass the cooking variable
-  to the API with an `off` fallback; they do not currently pass the PDF variable.
-- The [public Compose template](../release-template/synology/compose.yaml) passes
-  both remaining variables to the API and the PDF variable to the PWA, with `off` fallbacks.
-  Its [.env.example](../release-template/synology/.env.example) lists cooking and PDF.
+- [apps.yml](../docker/compose/apps.yml), [production.yml](../docker/compose/production.yml)
+  and the [public Compose template](../release-template/synology/compose.yaml) pass
+  the cooking variable to the API with an `off` fallback.
+- The public template's [.env.example](../release-template/synology/.env.example)
+  lists the cooking variable.
 - [smoke.env](../docker/compose/smoke.env) explicitly supplies cooking as `off`.
   Keep deployment examples, smoke fixtures and operator instructions
   aligned when a future change touches these surfaces.

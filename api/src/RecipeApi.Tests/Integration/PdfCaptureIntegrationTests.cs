@@ -32,31 +32,31 @@ public class PdfCaptureIntegrationTests
     }
 
     [Fact]
-    public async Task Default_off_rejects_without_recipe_source_or_workflow()
+    public async Task Absent_configuration_and_legacy_disabled_override_do_not_block_acceptance()
     {
         await using var factory = await TestWebApplicationFactory.CreateAsync();
-        using var response = await Send(factory, Form());
-        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
-        Assert.Empty(await db.Recipes.ToListAsync());
-        Assert.Empty(await db.WorkflowInstances.ToListAsync());
-        Assert.Empty(await scope.ServiceProvider.GetRequiredService<IRecipeStore>().ListRecipeIdsAsync());
+        db.FeatureFlagOverrides.Add(new RecipeApi.Models.FeatureFlagOverride
+        {
+            MemberId = factory.DefaultFamilyMemberId,
+            FlagKey = "preview-pdf-recipe-import",
+            Enabled = false
+        });
+        await db.SaveChangesAsync();
+        using var response = await Send(factory, Form());
+        Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
+        Assert.Single(await db.Recipes.ToListAsync());
+        Assert.Single(await db.WorkflowInstances.ToListAsync());
+        Assert.Single(await scope.ServiceProvider.GetRequiredService<IRecipeStore>().ListRecipeIdsAsync());
     }
 
-    [Theory]
-    [InlineData("on")]
-    [InlineData("opt-in")]
-    public async Task Acceptance_persists_unchanged_source_and_metadata_before_conversion(string mode)
+    [Fact]
+    public async Task Acceptance_persists_unchanged_source_and_metadata_before_conversion()
     {
-        await using var factory = await TestWebApplicationFactory.CreateAsync(new Dictionary<string, string?> { ["WFS_FEATURE_PREVIEW_PDF_RECIPE_IMPORT"] = mode });
+        await using var factory = await TestWebApplicationFactory.CreateAsync();
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
-        if (mode == "opt-in")
-        {
-            db.FeatureFlagOverrides.Add(new RecipeApi.Models.FeatureFlagOverride { MemberId = factory.DefaultFamilyMemberId, FlagKey = "preview-pdf-recipe-import", Enabled = true });
-            await db.SaveChangesAsync();
-        }
         using var response = await Send(factory, Form());
         Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
         using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
@@ -94,7 +94,7 @@ public class PdfCaptureIntegrationTests
     [InlineData(0, "application/pdf", "recipe.pdf", "0", 400)]
     public async Task Transport_boundaries_have_no_rejected_import_side_effects(int size, string type, string name, string rating, int status)
     {
-        await using var factory = await TestWebApplicationFactory.CreateAsync(new Dictionary<string, string?> { ["WFS_FEATURE_PREVIEW_PDF_RECIPE_IMPORT"] = "on" });
+        await using var factory = await TestWebApplicationFactory.CreateAsync();
         using var response = await Send(factory, Form(size, type, name, rating));
         Assert.Equal(status, (int)response.StatusCode);
         if (status == 202) return;
@@ -111,7 +111,7 @@ public class PdfCaptureIntegrationTests
     [Fact]
     public async Task Missing_or_multiple_files_rejected()
     {
-        await using var factory = await TestWebApplicationFactory.CreateAsync(new Dictionary<string, string?> { ["WFS_FEATURE_PREVIEW_PDF_RECIPE_IMPORT"] = "on" });
+        await using var factory = await TestWebApplicationFactory.CreateAsync();
         using var empty = await Send(factory, new MultipartFormDataContent());
         Assert.Equal(HttpStatusCode.BadRequest, empty.StatusCode);
         using var form = Form();
@@ -125,7 +125,7 @@ public class PdfCaptureIntegrationTests
     [Fact]
     public async Task Omitted_rating_and_blank_notes_use_photo_defaults()
     {
-        await using var factory = await TestWebApplicationFactory.CreateAsync(new Dictionary<string, string?> { ["WFS_FEATURE_PREVIEW_PDF_RECIPE_IMPORT"] = "on" });
+        await using var factory = await TestWebApplicationFactory.CreateAsync();
         using var response = await Send(factory, Form(rating: null, notes: "   "));
         Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
         using var scope = factory.Services.CreateScope();
@@ -159,8 +159,9 @@ public class PdfCaptureIntegrationTests
         Assert.Equal(0, properties.GetProperty("rating").GetProperty("minimum").GetInt32());
         Assert.Equal(3, properties.GetProperty("rating").GetProperty("maximum").GetInt32());
         Assert.Equal(0, properties.GetProperty("rating").GetProperty("default").GetInt32());
-        foreach (var status in new[] { "202", "400", "401", "409", "413", "415" })
+        foreach (var status in new[] { "202", "400", "401", "413", "415" })
             Assert.True(operation.GetProperty("responses").TryGetProperty(status, out _));
+        Assert.False(operation.GetProperty("responses").TryGetProperty("409", out _));
         var accepted = operation.GetProperty("responses").GetProperty("202").GetProperty("content").GetProperty("application/json").GetProperty("schema");
         Assert.Equal("uuid", accepted.GetProperty("properties").GetProperty("data").GetProperty("properties").GetProperty("id").GetProperty("format").GetString());
     }

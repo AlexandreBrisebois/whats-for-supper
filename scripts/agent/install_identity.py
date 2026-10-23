@@ -97,8 +97,7 @@ def images(architecture='arm64', channel=None):
             try:
                 command(['docker', 'run', '-d', '--name', name, '--platform', 'linux/' + architecture,
                          '-p', '127.0.0.1::3000', '-e', 'DEMO_MODE=' + demo,
-                         '-e', 'WFS_RELEASE_CHANNEL=' + ('beta' if channel == 'stable' else 'stable'),
-                         '-e', 'WFS_FEATURE_PREVIEW_PDF_RECIPE_IMPORT=off', image])
+                         '-e', 'WFS_RELEASE_CHANNEL=' + ('beta' if channel == 'stable' else 'stable'), image])
                 assert command(['docker', 'inspect', '--format', '{{.Image}}', name]) == image
                 bindings = json.loads(command(['docker', 'inspect', '--format', '{{json .NetworkSettings.Ports}}', name]))
                 origin = 'http://127.0.0.1:' + bindings['3000/tcp'][0]['HostPort']
@@ -124,7 +123,8 @@ def images(architecture='arm64', channel=None):
                 with opener.open(urllib.request.Request(origin + '/welcome', headers={'User-Agent': 'Googlebot'}), timeout=20) as response:
                     page = response.read().decode()
                 assert expected in [html.unescape(title) for title in re.findall(r'<title>(.*?)</title>', page)]
-                assert manifest['share_target']['method'] == 'GET'
+                assert manifest['share_target']['method'] == 'POST'
+                assert manifest['share_target']['action'] == '/share-target'
                 metadata = Metadata()
                 metadata.feed(page)
                 assert metadata.apple == expected, (metadata.apple, expected)

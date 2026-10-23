@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useFamilyStore } from '@/store/familyStore';
-import { useFeatureFlagStore } from '@/store/featureFlagStore';
 import { usePdfCaptureStore } from '@/store/pdfCaptureStore';
 import { useCaptureStore } from '@/store/captureStore';
 import { createPdfRecipe } from '@/lib/api/recipes';
@@ -22,7 +21,6 @@ export function PdfCapturePanel({
   const params = useSearchParams();
   const selection = usePdfCaptureStore((state) => state.selection);
   const memberId = useFamilyStore((state) => state.selectedFamilyMemberId);
-  const flags = useFeatureFlagStore();
   const [shareError, setShareError] = useState<string | null>(null);
   const token = params.get('share');
   const processedToken = useRef<string | null>(null);
@@ -128,42 +126,6 @@ export function PdfCapturePanel({
       </p>
     ) : null;
   if (isGoto || selection.memberId !== memberId) return null;
-  const resolved = flags.memberId === memberId && !flags.loading;
-  const flag = flags.flags['preview-pdf-recipe-import'];
-  const enabled = resolved && !flags.error && flag?.enabled === true;
-  if (!resolved)
-    return <p role="status">{t('capture.pdf.loading', 'Loading preview features…')}</p>;
-  if (!enabled)
-    return (
-      <section data-testid="pdf-disabled" className="flex flex-col gap-5">
-        <p>
-          {t(
-            'capture.pdf.disabled',
-            'PDF import preview isn’t enabled. This file hasn’t been added.'
-          )}
-        </p>
-        {flag?.mode === 'opt-in' && (
-          <button
-            type="button"
-            onClick={() => {
-              reset();
-              router.push('/profile/settings');
-            }}
-          >
-            {t('capture.pdf.previewFeatures', 'Preview features')}
-          </button>
-        )}
-        <button
-          type="button"
-          onClick={() => {
-            reset();
-            router.replace('/capture');
-          }}
-        >
-          {t('capture.pdf.chooseAnotherWay', 'Choose another way')}
-        </button>
-      </section>
-    );
   return (
     <PdfCaptureConfirmation
       key={selection.generation}

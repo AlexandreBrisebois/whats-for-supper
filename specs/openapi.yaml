@@ -1796,11 +1796,10 @@ paths:
   /api/recipes/capture-pdf:
     post:
       operationId: capturePdfRecipe
-      summary: Capture one recipe from a PDF (preview)
+      summary: Capture one recipe from a PDF
       description: |
-        Requires household authentication, an established member and the effective
-        preview-pdf-recipe-import flag. Stores unchanged source bytes and a pending
-        recipe before returning. Conversion is a separate recipe-import task; 202
+        Requires household authentication and an established member. Stores unchanged
+        source bytes and a pending recipe before returning. Conversion is a separate recipe-import task; 202
         establishes persistence, not readiness or verified workflow launch.
         Corrupt, encrypted and over-10-page documents fail the workflow and remain
         in Settings for Retry/Delete. No page truncation or PDF download.
@@ -1832,11 +1831,6 @@ paths:
               schema: { $ref: '#/components/schemas/PdfCaptureError' }
         '401':
           description: Household authentication required (existing authentication response)
-        '409':
-          description: PDF preview disabled; no pending recipe or workflow created
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/PdfCaptureError' }
         '413':
           description: File exceeds 20,971,520 bytes; no pending recipe or workflow created
           content:

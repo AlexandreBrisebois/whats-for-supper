@@ -1,11 +1,11 @@
-# PDF recipe import preview — user flow
+# PDF recipe import — user flow
 
-Photo capture stays primary. The existing file picker accepts PDF only when the established member's effective `preview-pdf-recipe-import` flag is enabled; Family GOTO excludes it. Android can deliver one PDF from any compatible sharing app through the installed PWA. iOS uses the picker.
+Photo capture stays primary. The existing file picker accepts PDF for an established member in ordinary capture; Family GOTO excludes it. Android can deliver one PDF from any compatible sharing app through the installed PWA. iOS uses the picker.
 
 ```mermaid
 flowchart TD
-    A[Picker or Android PDF share] --> B{Established member and effective preview?}
-    B -->|No| C[Explain unavailable; ordinary capture or Preview features]
+    A[Picker or Android PDF share] --> B{Established member in ordinary capture?}
+    B -->|No| C[Discard share or keep ordinary capture]
     B -->|Yes| D[Confirm one PDF: optional rating and notes]
     D --> E[Save; lock against repeated submission]
     E --> F[Pending recipe accepted; return Home]
@@ -20,6 +20,6 @@ The confirmation has no cooked-dish photo selection and no Cancel. One recipe pe
 
 Interruption, navigation, unlock and member changes discard the unsaved selection and metadata. Unlock requires a fresh share after selecting a member. One pending Android share replaces its predecessor, using token ownership so old cleanup cannot delete the newer share. Submitted jobs continue independently. If upload outcome is uncertain, checking library/Settings before resubmitting can avoid duplicates; duplicates and missed/shared-device feedback remain accepted limitations.
 
-Disabling acquisition leaves existing jobs and completed recipes available under ordinary shared-library rules. Capture does not vote, plan, add groceries or change GOTO. A failed invalid document stays retained; Retry may fail again, and Delete removes failed-import residue through existing maintenance.
+Existing jobs and completed recipes remain available under ordinary shared-library rules. Capture does not vote, plan, add groceries or change GOTO. A failed invalid document stays retained; Retry may fail again, and Delete removes failed-import residue through existing maintenance.
 
-See the [user guide](../../user-guide.md#importing-a-pdf-recipe-preview), [PDF data flow](../data-flows/pdf-upload-path.md), and [existing failed-import feedback](sse-recipe-failure-flow.md). Installed OS sharing and phone usability require device evidence; synthetic browser handoffs do not establish them.
+See the [user guide](../../user-guide.md#importing-a-pdf-recipe), [PDF data flow](../data-flows/pdf-upload-path.md), and [existing failed-import feedback](sse-recipe-failure-flow.md). Installed OS sharing and phone usability require device evidence; synthetic browser handoffs do not establish them.
