@@ -16,7 +16,7 @@ The app keeps your whole family on the same page — literally. Whatever anyone 
 
 The home screen is your command centre. It tells you what's planned for tonight, how long it takes, and what to do next.
 
-If a recipe is set for tonight, you'll see it front and centre with a **Cook's Mode** button. Tap it to work through the recipe one clear, large-text step at a time.
+If a recipe is set for tonight, you'll see it front and centre with a **Cook's Mode** button. Tap it to check ingredients and read the instructions. Use the **Step by step** or **All steps** view controls in the recipe header; **All steps** is the default until you save a preference. The app remembers a successfully saved choice for the selected family member. Switching views keeps your ingredient checks and reading position; if saving fails, your current view stays available and you can choose **Retry**.
 
 Finishing Cook's Mode records the recipe you cooked. It completes tonight's planned meal only when that same recipe is scheduled for tonight; cooking a different recipe leaves the planned meal unchanged.
 
@@ -80,7 +80,7 @@ When enough family members like the same recipe, it rises to the top of the plan
 
 You can vote before voting is opened; opening keeps those votes. Closing saves positive family totals for that week, then clears the working votes for the next round. Individual votes and passes are not kept in history. When you revote a week, only recipes voted on again change their saved totals.
 
-**Quick Find** and **Quick Replace** show current family likes first, then liked recipes left unselected during the previous four complete weeks, then other suggestions—up to five different recipes. Elsewhere, old unselected likes break ties without replacing search relevance, ratings, or cooking recency. **Search Library** remains available when suggestions are empty and can still find recipes outside Discovery.
+**Quick Find** and **Quick Replace** show current family likes first, then liked recipes left unselected during the previous four complete weeks, then other suggestions—up to five different recipes. Old unselected likes can also break ties in Discovery and unfiltered library suggestions, but do not change typed, filtered or similar-search ordering. **Search Library** remains available when suggestions are empty and can still find recipes outside Discovery.
 
 A recipe already planned for the current calendar week leaves Discovery immediately. Dreaming periodically pauses recently cooked recipes and returns eligible ones after they age out. The default cutoff is four complete calendar weeks before the current Monday, including that cutoff date; return waits for a successful Dreaming run.
 
@@ -94,15 +94,17 @@ Discovery saves you from the "I don't know, what do _you_ want?" loop that ends 
 
 When you know exactly what you're looking for, or have a specific craving, use the **Search** tab.
 
-You don't need to be precise. Type like you talk: "chicken pasta tonight", "quick fish", or "the salmon bowls we liked." The app uses semantic search to find the best matches even if the words don't match perfectly.
+Search by a recipe name, ingredient, or short phrase. The app searches saved recipe text and can also use semantic matching when that service is enabled and available. If semantic matching is unavailable, text search still works. Results depend on your library and its search index; a match is not guaranteed.
 
-Search is **planner-aware**. If you open search from a day in your planner, recipes already planned that week are shown lower in the results so you can avoid accidental repeats while still finding a recipe you need.
+Opening Search from the planner keeps the day you're choosing for. Typed searches, active filters and **Find similar** keep their search or similarity order: ratings, family votes, past interest and already-planned meals do not move a recipe up or down. With no search words, Focus choices or filters, Search instead offers library suggestions that can use household preferences and cooking history.
 
 Use the **Vegetarian** filter to find recipes that WFS has confirmed as vegetarian. It is a recipe classification, not nutritional or dietetic advice.
 
+Open **Filters** for choices such as **Quick**, **Family Favorite** and **Never Tried**, with more choices under **More filters**. You can also choose a meal type, a Focus such as fish or pasta, and available cuisines. Focus choices guide matching rather than guaranteeing an ingredient. Choose **Apply filters** to search, or close the chooser to discard your changes. **Clear filters** keeps your search words.
+
 Tap any search result to open its recipe detail view. From there you can cook it tonight, plan it for later, find similar recipes, edit notes, or tap the **star** to add it to your family's GOTO list.
 
-When Search receives a library update, it refreshes your current results automatically so newly available recipes can appear. Your search words, filters, similar-recipe choice and planner day stay selected. If loading fails, choose **Retry** to try the same search again; an error does not mean your library is empty.
+When Search receives a library update, it refreshes your current results automatically so newly available recipes can appear. Your search words, filters, similar-recipe choice and planner day stay selected. If loading fails, choose **Retry** to try the same search again; an error does not mean your library is empty. More results load as you scroll. If the next page fails, use **Load more**; if that search has expired, choose **Restart search**.
 
 Search saves you from the "I don't know, what do _you_ want?" loop that ends in cereal.
 
@@ -112,9 +114,9 @@ Search saves you from the "I don't know, what do _you_ want?" loop that ends in 
 
 Sometimes you don't know what you want, but you want to be inspired by what you already have. Tap **Browse Library** on the Home screen to enter a full-screen, immersive experience.
 
-Flip through your recipes one by one, just like a physical recipe box. The app shows you recipes you haven't cooked in a while first, helping you rediscover forgotten family favourites.
+Choose the recipe-card stack or the scrollable recipe list using the view controls at the top. A successfully saved choice is remembered for the selected family member. The library helps you rediscover recipes you haven't cooked in a while.
 
-Tap any card to see the full details, or toggle the **Sparkles** icon to see only the recipes you've marked as "Discoverable" for family voting.
+Tap a recipe to see its details. Use the **All / Discovery** control to show the whole library or only recipes marked for Discovery. This library filter does not mean every displayed recipe is currently eligible for your voting queue.
 
 The recipe detail view also has the same **GOTO star** at the top, so you can add a rediscovered favourite to your rotation without going back through Settings.
 
@@ -124,9 +126,10 @@ Browsing saves you from the "we always eat the same three things" rut.
 
 ## Adding Recipes
 
-You can add a recipe three ways:
+You can add a recipe in these ways:
 
 - **Photo** — snap a page from a cookbook or a screenshot
+- **PDF** — import a single-recipe document; see the PDF guide below
 - **URL** — share a link from any recipe site
 - **Describe it** — type a few words and let the app fill in the details
 
@@ -155,7 +158,7 @@ Corrupt, encrypted and unsupported documents can be accepted for preparation and
 
 ## Automated Recipe Translation
 
-Your household can be configured to process new recipes in a preferred language (for example, French). This applies during the initial processing of **Photo**, enabled **PDF**, **URL**, and **Describe it** recipes.
+Your household can be configured to process new recipes in a preferred language (for example, French). This applies during the initial processing of **Photo**, **PDF**, **URL**, and **Describe it** recipes.
 
 When translation is active:
 
@@ -187,7 +190,7 @@ If re-import cannot finish, your report stays saved. Add or change a detail and 
 
 If an import fails before it creates a usable recipe, open **Settings → Failed Captures** to see the friendly reason and retry it when you are ready. When a recipe-level re-import fails, the issue sheet shows the failure details and an import ID that can help an administrator investigate; it does not expose technical diagnostics in the normal family experience.
 
-In **Cook's Mode**, use the flag beside ingredients or a step to open this same reporting flow. Check the result later from the recipe detail screen.
+In **Cook's Mode**, use the flag in the recipe header while viewing ingredients or steps to open this same reporting flow. Check the result later from the recipe detail screen.
 
 ---
 
@@ -219,9 +222,12 @@ To keep the showcase predictable and avoid AI costs, AI-powered recipe processin
 
 Tonight and the Planner's Monday-based weeks follow the deployment timezone set
 by your administrator, even when a family member's device is in another timezone.
-The default is UTC. Administrators can set `Calendar__TimeZone=America/Toronto`
-(or another IANA timezone) in the existing deployment `.env`, then recreate the API
-container in Container Manager. Preserve secrets and custom values when upgrading.
+New installations using the installation bundle default to Toronto local time,
+including daylight saving changes. Existing installations keep their configured
+timezone; the API falls back to UTC when the setting is missing. Administrators
+can set `Calendar__TimeZone=America/Toronto` (or another IANA timezone) in the
+existing deployment `.env`, then recreate the API container using Docker Compose
+or Container Manager. Preserve secrets and custom values when upgrading.
 An invalid explicit timezone prevents API startup; the container log identifies
 `Calendar:TimeZone` so the administrator can correct it and recreate the API.
 
