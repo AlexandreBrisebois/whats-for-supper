@@ -2,6 +2,17 @@
 
 ## MODIFIED Requirements
 
+### Requirement: Accept demo snapshot capture as background work
+An operator-authorized POST /api/management/demo-capture SHALL trigger demo-capture with empty parameters and return 202 containing message Demo capture task enqueued. and taskId identifying the accepted workflow instance. Shared visitor household access alone SHALL NOT authorize capture. Acceptance SHALL follow background-processing requirement `Persist initial workflow and task identities before returning` and SHALL NOT certify completion.
+
+#### Scenario: Capture accepted
+- **WHEN** operator authorization and workflow acceptance succeed for demo-capture
+- **THEN** 202 contains the enqueue message and accepted instance identity as taskId
+
+#### Scenario: Capture outside automatic mode
+- **WHEN** an authorized operator requests demo-capture with DEMO_MODE disabled and workflow acceptance succeeds
+- **THEN** the management action still accepts capture; automatic demo activation is not an action-level prerequisite
+
 ### Requirement: Capture the core demo data set
 A successful demo capture SHALL publish a complete versioned prepared household baseline with explicit membership, including empty collections, for every baseline-owned state category. It SHALL include members, active and soft-deleted recipes, prepared search, plans with grocery state, calendar events, grocery-extra history, settings, member overrides, categories and aggregate history. Operational identities SHALL NOT be replayable.
 
