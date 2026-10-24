@@ -6,7 +6,7 @@
 
 **Swipe, Match, Cook!**
 
-[![Latest stable release](https://img.shields.io/github/v/release/AlexandreBrisebois/whats-for-supper?display_name=release&include_prereleases=false&label=stable%20release)](https://github.com/AlexandreBrisebois/whats-for-supper/releases/latest)
+[![Latest stable release](https://img.shields.io/github/v/release/AlexandreBrisebois/whats-for-supper?display_name=release&label=stable%20release)](https://github.com/AlexandreBrisebois/whats-for-supper/releases/latest)
 
 ## A supper plan the family helps choose
 
