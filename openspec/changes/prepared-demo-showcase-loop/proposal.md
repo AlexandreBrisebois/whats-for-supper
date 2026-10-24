@@ -28,6 +28,8 @@ None.
 
 - `demo-household`: complete prepared-state capture/reset, safe recurrence and visitor no-AI contract. Existing demo-specific rules qualify the shared search/indexing and workflow owners only in visitor mode; ordinary installations and exact/merge recovery retain their existing contracts.
 
+- `data-backup-and-recovery`: qualify the existing demo missing-history cross-reference; ordinary merge and independent exact-recovery behavior are unchanged.
+
 ## Impact
 
 Likely implementation owners: `ManagementService`, `RecoveryBoundary`, `RecoverySnapshotService`, demo workflow processors/seeding, provider composition, search/indexing, dreaming/maintenance, management diagnostics, and affected PWA consumers. No new general snapshot framework is proposed.
