@@ -15,8 +15,9 @@ not the latest stable version.
 You need a home server with a working Docker Engine and Docker Compose deployment
 method, persistent storage, and permission to create project files and directories.
 You also need the values documented in `.env.example`, including a Gemini API key,
-Cloudflare Tunnel token, and the application's required secrets. Follow the
-Cloudflare HTTPS setup below before giving household members access.
+the application's required secrets, and a Cloudflare Tunnel token if using the
+bundled connector. An existing independent tunnel keeps its token in its own
+project. Choose a setup below before starting the app.
 
 The template is currently maintained in `release-template/synology/` for
 compatibility with existing installations and links. That directory name does not
@@ -28,12 +29,25 @@ and available capacity must be verified for your chosen host.
 Create a project directory on the home server and copy these template files into it:
 
 - `compose.yaml`
+- `compose.tunnel.yaml` and `compose.shared-tunnel.yaml`
 - `traefik.yml`
 - `.env.example`
 
-Rename `.env.example` to `.env` and set all five required values at the top
-of that file. Leave `compose.yaml` and `traefik.yml` unchanged for the documented
-baseline configuration. Keep secrets out of version control.
+Run `bash setup.sh` from the matching release bundle, or rename `.env.example`
+to `.env` and configure manually. Set the four required application secrets.
+Choose one scenario through `COMPOSE_FILE` in that private file:
+
+| Scenario | `COMPOSE_FILE` | Additional settings |
+| --- | --- | --- |
+| Bundled tunnel | `compose.yaml:compose.tunnel.yaml` | App-local `CLOUDFLARE_TUNNEL_TOKEN` |
+| Existing independent/shared tunnel | `compose.yaml:compose.shared-tunnel.yaml` | `WFS_PROXY_NETWORK` and unique `WFS_PROXY_ALIAS`; no app-local token |
+
+The helper saves this choice so later plain `docker compose` commands include the
+correct overlay. The base `compose.yaml` contains no connector. Leave the Compose
+files and `traefik.yml` unchanged for a standard fresh installation. Keep secrets
+out of version control. See the [Cloudflare guide](../../docs/install/cloudflare.md)
+for the supplied independent `cloudflared/` project and existing-app migration.
+Agents use the [agent installation guide](../../docs/install/agent-install.md).
 
 Before starting the stack, create the required bind-mount directories:
 
@@ -41,6 +55,8 @@ Before starting the stack, create the required bind-mount directories:
 whats-for-supper/
 ├── .env
 ├── compose.yaml
+├── compose.tunnel.yaml
+├── compose.shared-tunnel.yaml
 ├── traefik.yml
 └── data/
     ├── app/
@@ -57,7 +73,7 @@ From the project directory, validate the resolved configuration and start it
 using Docker Compose:
 
 ```sh
-docker compose config
+docker compose config --quiet
 docker compose up -d
 docker compose ps
 ```
@@ -76,8 +92,10 @@ that permission to the parent shared folder or `data/postgres`. This is a
 Synology-specific workaround, not general Docker guidance.
 
 In Container Manager, create a **Project** from that folder and deploy it.
-Use the Container Manager interface to recreate services when configuration
-changes. Verify actual permissions and capacity for your NAS model.
+Ensure Container Manager includes both the base and selected overlay; if your DSM
+import does not honor `COMPOSE_FILE`, use explicit Compose files through SSH or a
+reviewed merged configuration. Never deploy the base alone. Use the same selection
+when recreating services. Verify actual permissions and capacity for your NAS model.
 
 ### Other Docker Compose hosts
 
@@ -90,10 +108,12 @@ claim that every CPU architecture, OS, or host has been qualified.
 
 The default Compose stack publishes no HTTP host port. If you need a local
 HTTP origin for diagnostics, add `compose.local-port.yaml` from this template
-and run `docker compose -f compose.yaml -f compose.local-port.yaml up -d`.
+and run `docker compose -f compose.yaml -f compose.tunnel.yaml -f compose.local-port.yaml up -d`.
+Substitute `compose.shared-tunnel.yaml` for `compose.tunnel.yaml` in shared mode.
 This binds `127.0.0.1:9100` on the server only; it is not a browser login
 URL because secure authentication cookies require HTTPS. The Cloudflare Tunnel
-connects to Traefik directly in their shared container network namespace.
+connects to Traefik through the bundled namespace or the external bridge network,
+depending on the selected setup.
 
 ## Optional PostgreSQL debugging access
 
@@ -106,9 +126,10 @@ Advanced users can opt in to **server-local** database access by adding the
 `compose.postgres-debug.yaml` override to their Compose invocation:
 
 ```sh
-docker compose -f compose.yaml -f compose.postgres-debug.yaml up -d
+docker compose -f compose.yaml -f compose.tunnel.yaml -f compose.postgres-debug.yaml up -d
 ```
 
+Substitute `compose.shared-tunnel.yaml` for `compose.tunnel.yaml` in shared mode.
 The override binds `127.0.0.1:5432` on the **home server only**; change
 `WFS_POSTGRES_DEBUG_PORT` if needed. It does not expose the database to the
 LAN or internet. Remote troubleshooting should use an authenticated SSH
@@ -117,41 +138,20 @@ the stack when debugging is finished. Protect `.env` and database credentials.
 
 ## Configure Cloudflare Tunnel
 
-Users must access this application through an HTTPS Cloudflare hostname. The Tunnel uses `http://127.0.0.1:80` within the shared container network
-namespace. Do not direct users to a LAN HTTP URL; authentication requires HTTPS.
+Users must access this application through an HTTPS Cloudflare hostname;
+authentication requires HTTPS. Choose either setup in the
+[Cloudflare HTTPS guide](../../docs/install/cloudflare.md):
 
-The template runs `cloudflared` as part of this Project. It shares Traefik's
-network namespace, forwards only to Traefik on loopback, and opens no additional
-host port. This avoids relying on Synology-generated container names or IPs.
+| Setup | What to configure | Cloudflare service URL |
+| --- | --- | --- |
+| One tunnel per deployment (supplied default) | Token in the app's private `.env`; keep the bundled connector | `http://127.0.0.1:80` |
+| One independent tunnel shared by deployments | Token in the connector project only; attach each Traefik to an external network with a unique alias | `http://wfs-prod-proxy:80` (one alias per deployment) |
 
-1. In the [Cloudflare dashboard](https://one.dash.cloudflare.com/), go to
-   **Networking** > **Tunnels**, create a named tunnel, choose **Docker**, and
-   copy its tunnel token. Set it as `CLOUDFLARE_TUNNEL_TOKEN` in this deployment's
-   `.env`. Treat it like a password: never commit or share it.
-2. Redeploy the deployment. The `cloudflared` service needs no published ports,
-   volumes, or access to the Docker socket.
-3. When the connector is healthy, select the tunnel in Cloudflare, choose
-   **Routes** > **Add route** > **Published application**, and configure:
-
-   | Setting | Value |
-   | --- | --- |
-   | Hostname | Your chosen public hostname, such as `supper.example.com` |
-   | Service type | `HTTP` |
-   | URL | `http://127.0.0.1:80` |
-
-   This loopback address is inside the shared `cloudflared` and Traefik network
-   namespace. Do not use a generated container IP, the home-server LAN address, or the
-   public hostname as the service URL. Cloudflare creates the DNS record for the
-   hostname when the route is saved.
-4. Open `https://<your-public-hostname>` and use that HTTPS address going
-   forward. Do not configure router port forwarding or UPnP for this app.
-
-For an Internet-facing household app, consider protecting the hostname with a
-[Cloudflare Access application](https://developers.cloudflare.com/cloudflare-one/applications/configure-apps/).
-The app's family passphrase remains required; Access adds a separate outer gate.
-
-See Cloudflare's [Tunnel setup guide](https://developers.cloudflare.com/tunnel/get-started/)
-for current dashboard details and connector troubleshooting.
+The guide includes standalone connector Compose, attaching to an existing tunnel,
+production/beta/demo aliases, hostname routes, staged migration, verification and
+rollback. Keep all supporting services on their app networks. Existing project
+names, storage paths, private configuration and volume identities must be preserved.
+No host port or router port forwarding is required for either setup.
 
 The installation bundle includes an interactive, version-only update helper;
 follow the [update guide](../../docs/install/updates.md), including the 0.1.21

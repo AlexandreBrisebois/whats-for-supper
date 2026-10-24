@@ -20,7 +20,15 @@ From the extracted `whats-for-supper` directory, run:
 bash setup.sh
 ```
 
-The helper asks for your credentials, prepares your private configuration, and offers to start the app. It won't overwrite an existing setup.
+The helper asks you to choose a bundled tunnel for this deployment, or attach to
+an independent/shared tunnel. It prepares your private configuration, remembers
+the selected Compose overlay, and offers to start the app. It won't overwrite an
+existing setup. Shared mode asks for the Docker network and a unique proxy alias;
+it does not ask for a tunnel token. Prepare the independent connector first using
+the [Cloudflare guide](cloudflare.md).
+
+For scripted or agent-assisted installations, use the [agent installation guide](agent-install.md),
+which uses the same templates and verification steps.
 
 Your household timezone defaults to Toronto. [Using another timezone?](timezones.md)
 

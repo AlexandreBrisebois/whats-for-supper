@@ -86,7 +86,7 @@ jobs:
           selected() {
             if [ "$FULL_VALIDATION" = 'true' ] || matches "$1"; then echo true; else echo false; fi
           }
-          echo "pipeline=$(selected '^(\.github/workflows/|scripts/ci/|pwa/playwright\.config\.ts$|scripts/agent/(docker_smoke|dockerhub_release|install_identity)\.py$|scripts/agent/tests/(test_ci_candidates|test_docker_smoke|test_dockerhub_release|test_workflow_security|test_install_identity)\.py$)')" >> "$GITHUB_OUTPUT"
+          echo "pipeline=$(selected '^(\.github/workflows/|scripts/ci/|scripts/release/|release-template/synology/|pwa/playwright\.config\.ts$|scripts/agent/(docker_smoke|dockerhub_release|install_identity)\.py$|scripts/agent/tests/(test_ci_candidates|test_docker_smoke|test_dockerhub_release|test_workflow_security|test_install_identity|test_install_bundle)\.py$)')" >> "$GITHUB_OUTPUT"
           echo "e2e-suites=$(printf '%s\n' "$files" | node scripts/ci/select-e2e.cjs)" >> "$GITHUB_OUTPUT"
           echo "api=$(selected '^(api/|specs/openapi\.yaml$|scripts/requirements\.txt$|scripts/agent/(api_tools|drift)\.py$|\.github/workflows/)')" >> "$GITHUB_OUTPUT"
           echo "pwa=$(selected '^(pwa/|\.nvmrc$|scripts/ci/|specs/openapi\.yaml$|\.github/workflows/)')" >> "$GITHUB_OUTPUT"
@@ -113,6 +113,7 @@ jobs:
       - name: Test pipeline selection, smoke and release boundaries
         run: |
           node --test scripts/ci/*.test.cjs
+          python3 -B -m unittest scripts.agent.tests.test_install_bundle -v
           python3 -B -m unittest scripts.agent.tests.test_ci_candidates scripts.agent.tests.test_docker_smoke scripts.agent.tests.test_dockerhub_release scripts.agent.tests.test_workflow_security scripts.agent.tests.test_install_identity
 
   api-validate:

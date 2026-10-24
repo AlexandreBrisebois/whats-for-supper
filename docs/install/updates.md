@@ -10,14 +10,56 @@ Updates are **manual**. Don't enable unattended image updates for this stack.
    bash update.sh /path/to/whats-for-supper-install-VERSION.zip /path/to/backup-report.txt
    ```
 
-4. Confirm the displayed current/target versions, backup evidence, and migration warning. The helper only supports a version change **when Compose and Traefik configuration are identical** to the target bundle. If configuration changed, stop and follow release-specific manual instructions, such as the [0.1.20 to 0.1.21 procedure below](#upgrading-from-0120-to-0121).
+4. Confirm the displayed current/target versions, backup evidence, and migration warning. The helper only supports a version change **when the base Compose file, selected overlay and Traefik configuration are identical** to the target bundle. If configuration changed, stop and follow release-specific manual instructions, such as the [0.1.20 to 0.1.21 procedure below](#upgrading-from-0120-to-0121).
 5. Open your HTTPS URL and verify login, saved recipes, meal plans, and shopping list.
 
 The helper checks a backup-evidence file **exists**, but cannot validate its contents or the restore procedure. It does not automatically back up the database or guarantee rollback. Database migrations may be irreversible; restoring an earlier Docker image is **not** equivalent to restoring the database. If the update fails after migration, follow the tested recovery procedure.
 
 The helper preserves the existing `.env` values other than `WFS_VERSION` and saves a private previous copy. Never replace `.env` with a new bundle's example or overwrite the persistent `data/` directories.
 
+The selected `COMPOSE_FILE` in `.env` is preserved. The helper explicitly uses
+that base/overlay pair for validation, pulls and deployment, and never updates
+the independent connector project. Custom file selections require manual review.
+
 **Advanced:** Review Compose changes and release notes manually; update image tags directly only when you understand the schema and deployment compatibility requirements.
+
+## Transition to the scenario templates
+
+Older bundles contain the connector inside `compose.yaml`. New bundles separate
+the app base from `compose.tunnel.yaml` and `compose.shared-tunnel.yaml`. The old
+version-only updater will stop because the Compose file differs. This is expected;
+do not bypass its check or run the fresh-install helper over an existing `.env`.
+
+1. Save the original Compose/proxy files and private `.env`, project identity,
+   network attachments and mount sources. Prepare the consistent recovery set
+   described above. Extract the target ZIP into a separate directory for review.
+2. Select your existing topology. For a bundled tunnel, retain its token and add
+   `COMPOSE_FILE=compose.yaml:compose.tunnel.yaml` to the existing `.env`. For an
+   already migrated shared tunnel, add
+   `COMPOSE_FILE=compose.yaml:compose.shared-tunnel.yaml`, `WFS_PROXY_NETWORK` and
+   the **same unique proxy alias used by its current Cloudflare route**. Do not
+   change hostnames or routes just to adopt these files.
+3. Reconcile the new base and selected overlay against the existing configuration.
+   Keep the same project name and folder, image versions and bind/volume sources,
+   ports, timezone, app settings and private secrets. Copy the reviewed base,
+   selected overlay and new `update.sh` into the existing project folder. Do not
+   replace `.env`, `data/` or a customized `traefik.yml`. Custom storage or settings
+   may require retaining customized files and manual updates thereafter.
+4. Keep `WFS_VERSION` unchanged during this layout transition. Validate locally
+   with `docker compose config --quiet` and inspect mount/network identities
+   privately. The same service names should refer to the existing containers.
+   Apply only the proxy change with `docker compose up -d --no-deps traefik` in
+   shared mode. In bundled mode, recreate Traefik and its namespace-sharing
+   connector together with
+   `docker compose up -d --no-deps --force-recreate traefik cloudflared`.
+5. Run the [public verification checklist](cloudflare.md#verify-either-setup).
+   For rollback, restore the saved files and environment selection, then recreate
+   the original proxy/connector as appropriate. Do not restore a database merely
+   to reverse an ingress/layout change. Upgrade app versions separately afterward.
+
+For an app still moving from bundled to shared ingress, first follow the
+[staged tunnel migration](cloudflare.md#migrate-existing-deployments-in-stages).
+These template changes do not migrate data or change Cloudflare automatically.
 
 ## Upgrading from 0.1.20 to 0.1.21
 

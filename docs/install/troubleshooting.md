@@ -1,6 +1,6 @@
 # Installation troubleshooting
 
-**Can't open the HTTPS address?** Confirm the Cloudflare tunnel is healthy, the published application route points to `http://127.0.0.1:80` inside the shared container namespace, and DNS has updated. Do not use a LAN HTTP URL to sign in.
+**Can't open the HTTPS address?** Confirm the intended Cloudflare connector is healthy and DNS points to its tunnel. For the bundled connector, the origin is `http://127.0.0.1:80` in Traefik's shared network namespace. For an independent/shared connector, use the deployment's unique alias, such as `http://wfs-prod-proxy:80`, and ensure the connector and proxy both join the external network. Loopback does not reach a separate proxy. See the [Cloudflare setup and verification guide](cloudflare.md). Do not use a LAN HTTP URL to sign in.
 
 **Containers aren't starting?** Run `docker compose ps` and `docker compose logs --tail=100`. Check that `.env` has all required values and that the server can pull the images.
 
