@@ -74,6 +74,8 @@ Extend the current demo owner with the minimum demo-specific baseline policy and
 
 ### Zero AI is a serving invariant
 
+Pinned source paths: `api/src/RecipeApi/Program.cs`, `Services/RecipeSearchService.cs`, `Services/GeminiEmbeddingProvider.cs`, `Services/Agents/RecipeHeroAgent.cs`, `Services/SearchIndexWorkflow.cs`, `Services/DreamingWorkflowSeeder.cs`, `Services/RecipeService.cs`, `Controllers/RecipeController.cs`, and `Workflows/dreaming.yaml` / `recipe-hero-regeneration.yaml` (service/controller/workflow paths relative to `api/src/RecipeApi`). Ten core files were reread at the research SHA; no provider calls were made. `WFS_ENABLE_SEMANTIC_RETRIEVAL=false` controls serving search, not indexing or direct image generation. Existing isolated bypass/fake-provider tests do not establish end-to-end zero egress.
+
 The five named worker bypasses and decorated chat client remain defense layers, not the proof boundary. Semantic text search has a native embedding path; hero generation uses a direct Google client; recipe edits dispatch indexing; dreaming/reconciliation can invoke embeddings and categorization. Cover synchronous APIs, workers, retries and startup at every outbound model boundary even if credentials are available. Missing credentials are optional deployment defense in depth, not the mechanism and not an authorized credential change.
 
 Typed visitor search uses lexical retrieval. Similar may use already stored compatible vectors or lexical source facts, never request a new vector. Editing searchable facts regenerates lexical state and invalidates incompatible vectors locally. Prepared hero/content is retained when generation is unavailable. UI and workflow results must not misrepresent a bypass as completed extraction or generation.
