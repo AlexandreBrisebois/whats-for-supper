@@ -9,6 +9,7 @@ Related: #245. This is research and proposed behavior only, not implementation o
 ## What Changes
 
 - Treat recurring workflow reset as the intended product loop, not a defect.
+- Separate operator baseline publication authority from shared visitor household access; visitors cannot overwrite the prepared baseline or enable AI preparation.
 - Capture a versioned, complete prepared household baseline with explicit restore/clear/preserve/rebuild policies and verified assets.
 - Restore plans, calendar, grocery state, preferences, categories and history as well as recipes and members; fence stale visitor work and refresh derived state without AI.
 - Enforce zero outbound model requests throughout visitor mode, including direct image clients, embeddings, edits, maintenance and retries. Operator preparation may use AI only before visitor mode under explicit operator control.
@@ -35,4 +36,4 @@ This branch changes only OpenSpec planning artifacts. It does not change applica
 
 ## Review boundaries
 
-The accompanying design records current-main evidence and all 19 database tables. Proposed requirements are review text, not a claim of implemented safety. Resolve the date policy, prepared votes/reports policy and safe-maintenance allowlist before writing dependent implementation tasks. In particular, the old spec explicitly disclaimed global zero AI and crash-consistent reset: this proposal intentionally strengthens that contract rather than claiming those guarantees already exist.
+The accompanying design records current-main evidence and all 19 database tables. Proposed requirements are review text, not a claim of implemented safety. Resolve the date policy, prepared votes/reports policy and safe-maintenance allowlist and operator-authority mechanism before writing dependent implementation tasks. In particular, the old spec explicitly disclaimed global zero AI and crash-consistent reset: this proposal intentionally strengthens that contract rather than claiming those guarantees already exist.
