@@ -43,6 +43,10 @@ Successful capture SHALL publish a verified inventory of baseline-owned original
 - **WHEN** capture reaches successful publication
 - **THEN** one selected complete generation contains a manifest and all matching data and assets
 
+#### Scenario: Concurrent capture
+- **WHEN** capture overlaps household writes or worker asset updates
+- **THEN** bounded coordination produces mutually consistent database facts and asset bytes; timeout leaves the previously selected baseline unchanged
+
 #### Scenario: Capture interrupted
 - **WHEN** capture is interrupted while staging data or assets
 - **THEN** visitors and later reset still use the previous complete baseline, never the partial generation
