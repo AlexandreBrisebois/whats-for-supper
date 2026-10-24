@@ -29,7 +29,8 @@ public class IngredientCategoryServiceTests : IAsyncLifetime
 #pragma warning disable CS8625
         _recomputeMock = new Mock<GroceryRecomputeService>(_db, new AisleMapper(), logger,
             _scope.ServiceProvider.GetRequiredService<IClock>(),
-            _scope.ServiceProvider.GetRequiredService<DeploymentCalendar>(), null)
+            _scope.ServiceProvider.GetRequiredService<DeploymentCalendar>(),
+            _scope.ServiceProvider.GetRequiredService<GroceryCheckCoordinator>(), null)
 #pragma warning restore CS8625
         {
             CallBase = false

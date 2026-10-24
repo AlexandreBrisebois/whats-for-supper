@@ -702,6 +702,32 @@ describe('GroceryList — optimistic grocery state synchronization', () => {
   const items = [makeItem('Tomato', 'Produce'), makeItem('Lettuce', 'Produce')];
   const rowCount = () => screen.getAllByTestId('grocery-item-checkbox').length;
 
+  it('keeps another item interactive while a check is pending and rolls back only the failed item', async () => {
+    let rejectFirst!: (reason: Error) => void;
+    mockToggleGroceryItem.mockImplementationOnce(
+      () =>
+        new Promise((_, reject) => {
+          rejectFirst = reject;
+        })
+    );
+    mockGroceryState = { Tomato: false, Lettuce: false };
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const { rerender } = render(<GroceryList weekOffset={0} items={items} />);
+    fireEvent.click(screen.getByRole('checkbox', { name: /Tomato/ }));
+    rerender(<GroceryList weekOffset={0} items={items} />);
+    expect(mockGroceryState.Tomato).toBe(true);
+    fireEvent.click(screen.getByRole('checkbox', { name: /Lettuce/ }));
+    expect(mockToggleGroceryItem).toHaveBeenCalledWith(0, 'Lettuce', true);
+    await act(async () => rejectFirst(new Error('save failed')));
+    rerender(<GroceryList weekOffset={0} items={items} />);
+    expect(mockGroceryState).toEqual({ Tomato: false, Lettuce: true });
+    expect(screen.getByRole('checkbox', { name: /Lettuce/ })).toHaveAttribute(
+      'aria-checked',
+      'true'
+    );
+    consoleError.mockRestore();
+  });
+
   it('preserves row cardinality and ordering after a successful optimistic toggle', async () => {
     mockGroceryState = { Tomato: false, Lettuce: false };
     const { rerender } = render(<GroceryList weekOffset={0} items={items} />);

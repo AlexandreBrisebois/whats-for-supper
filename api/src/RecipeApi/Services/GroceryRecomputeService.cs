@@ -21,6 +21,7 @@ public class GroceryRecomputeService(
     ILogger<GroceryRecomputeService> logger,
     IClock clock,
     DeploymentCalendar calendar,
+    GroceryCheckCoordinator groceryChecks,
     IScheduleEventPublisher? publisher = null)
 {
     private sealed record IntermediateItem(
@@ -57,7 +58,15 @@ public class GroceryRecomputeService(
     /// Recomputes <c>grocery_items</c> for the week starting on <paramref name="monday"/>.
     /// Creates the <c>weekly_plans</c> row if it does not yet exist.
     /// </summary>
-    public async Task RecomputeForWeekAsync(DateOnly monday, CancellationToken ct, DeploymentCalendarContext? context = null)
+    public Task RecomputeForWeekAsync(DateOnly monday, CancellationToken ct, DeploymentCalendarContext? context = null) =>
+        groceryChecks.RunAsync(async fresh =>
+        {
+            var operation = new GroceryRecomputeService(fresh, aisleMapper, logger, clock, calendar, groceryChecks, publisher);
+            await operation.RecomputeOwnedAsync(monday, ct, context);
+            return true;
+        }, ct);
+
+    private async Task RecomputeOwnedAsync(DateOnly monday, CancellationToken ct, DeploymentCalendarContext? context)
     {
         context ??= calendar.Capture(clock.UtcNow);
         var sunday = monday.AddDays(6);

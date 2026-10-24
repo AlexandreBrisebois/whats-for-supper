@@ -115,7 +115,7 @@ export interface GroceryRequestBuilder extends BaseRequestBuilder<GroceryRequest
    */
   get item(): Item_EscapedRequestBuilder;
   /**
-   * Update grocery checklist state for a week
+   * Replaces the complete recipe-derived check map, including explicit false values; an empty dictionary clears it. On one application instance this shares processing order with item updates and recomputation. Missing keys are removed even when the supplied body is stale. Returns after persistence and the ordered grocery publication attempt. Delivery failure after commit does not undo the saved map; a fresh read can recover committed state.
    * @param body The request body
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {Promise<GroceryPatchResponse>}
@@ -126,7 +126,7 @@ export interface GroceryRequestBuilder extends BaseRequestBuilder<GroceryRequest
     requestConfiguration?: RequestConfiguration<object> | undefined
   ): Promise<GroceryPatchResponse | undefined>;
   /**
-   * Update grocery checklist state for a week
+   * Replaces the complete recipe-derived check map, including explicit false values; an empty dictionary clears it. On one application instance this shares processing order with item updates and recomputation. Missing keys are removed even when the supplied body is stale. Returns after persistence and the ordered grocery publication attempt. Delivery failure after commit does not undo the saved map; a fresh read can recover committed state.
    * @param body The request body
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {RequestInformation}

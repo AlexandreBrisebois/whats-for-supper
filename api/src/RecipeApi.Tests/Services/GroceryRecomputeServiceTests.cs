@@ -41,7 +41,7 @@ public class GroceryRecomputeServiceTests : IAsyncLifetime
         _db = _scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
         var logger = _scope.ServiceProvider.GetRequiredService<ILogger<GroceryRecomputeService>>();
         var aisleMapper = new AisleMapper();
-        _service = new GroceryRecomputeService(_db, aisleMapper, logger, new SystemClock(), new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()));
+        _service = new GroceryRecomputeService(_db, aisleMapper, logger, new SystemClock(), new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()), RecipeApi.Tests.Infrastructure.TestGroceryChecks.Create(_db));
     }
 
     public async Task DisposeAsync()
@@ -94,14 +94,14 @@ public class GroceryRecomputeServiceTests : IAsyncLifetime
     /// <summary>Reads the persisted grocery_items for <paramref name="monday"/> from the DB.</summary>
     private async Task<List<GroceryLineItemDto>> GetGroceryItemsAsync(DateOnly monday)
     {
-        var plan = await _db.WeeklyPlans.FirstOrDefaultAsync(p => p.WeekStartDate == monday);
+        var plan = await _db.WeeklyPlans.AsNoTracking().FirstOrDefaultAsync(p => p.WeekStartDate == monday);
         if (plan == null) return [];
         return JsonSerializer.Deserialize<List<GroceryLineItemDto>>(plan.GroceryItems,
             new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? [];
     }
 
     private async Task<WeeklyPlan> GetWeeklyPlanAsync(DateOnly monday) =>
-        await _db.WeeklyPlans.SingleAsync(p => p.WeekStartDate == monday);
+        await _db.WeeklyPlans.AsNoTracking().SingleAsync(p => p.WeekStartDate == monday);
 
     /// <summary>
     /// Returns a deterministic Monday offset from a base date using a hash seed,
@@ -396,7 +396,7 @@ public class GroceryRecomputeServiceTests : IAsyncLifetime
     {
         var monday = new DateOnly(2025, 3, 3);
         var publisher = new Mock<IScheduleEventPublisher>();
-        var service = new GroceryRecomputeService(_db, new AisleMapper(), _scope.ServiceProvider.GetRequiredService<ILogger<GroceryRecomputeService>>(), new FixedClock(new DateTimeOffset(2025, 3, 4, 12, 0, 0, TimeSpan.Zero)), new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()), publisher.Object);
+        var service = new GroceryRecomputeService(_db, new AisleMapper(), _scope.ServiceProvider.GetRequiredService<ILogger<GroceryRecomputeService>>(), new FixedClock(new DateTimeOffset(2025, 3, 4, 12, 0, 0, TimeSpan.Zero)), new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()), RecipeApi.Tests.Infrastructure.TestGroceryChecks.Create(_db), publisher.Object);
         var predecessorLines = new List<GroceryLineItemDto>
         {
             new("huile d'olive", "huile d'olive", "Pantry", 1, "ml", []),

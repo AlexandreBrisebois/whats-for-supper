@@ -3215,7 +3215,13 @@ paths:
   /api/schedule/{weekOffset}/grocery/item:
     patch:
       summary: Toggle a single grocery item (checked/unchecked)
-      description: Merges a single item into the server-side grocery state atomically. Safe for concurrent use by multiple family members — each tap is an independent operation that cannot overwrite another member's simultaneous toggles.
+      description: >-
+        On one application instance, saves the supplied checked value using current persisted state,
+        retaining other keys including explicit false values. Overlapping item updates, full-map
+        replacements and recomputation transitions share server processing order, which does not
+        imply click or FIFO arrival order. Distinct-key checks survive overlapping item updates;
+        conflicting values use the last processed intent. Returns after persistence and the ordered
+        grocery publication attempt. Independent snapshots and response delivery can still race.
       parameters:
         - name: weekOffset
           in: path
@@ -3247,6 +3253,12 @@ paths:
   /api/schedule/{weekOffset}/grocery:
     patch:
       summary: Update grocery checklist state for a week
+      description: >-
+        Replaces the complete recipe-derived check map, including explicit false values; an empty
+        dictionary clears it. On one application instance this shares processing order with item
+        updates and recomputation. Missing keys are removed even when the supplied body is stale.
+        Returns after persistence and the ordered grocery publication attempt. Delivery failure
+        after commit does not undo the saved map; a fresh read can recover committed state.
       parameters:
         - name: weekOffset
           in: path

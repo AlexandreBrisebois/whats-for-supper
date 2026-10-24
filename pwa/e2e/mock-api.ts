@@ -260,6 +260,7 @@ export async function setupCommonRoutes(
     { recipe: ScheduleRecipeDto | null; status: number; nonCooking?: any }
   >();
   const weekStatuses = new Map<string, number>();
+  const groceryChecks = new Map<string, Record<string, boolean>>();
   let roundSequence = 1;
   let historyGeneration = 1;
   const recipeUpdates = new Map<string, Partial<RecipeDto>>();
@@ -308,6 +309,7 @@ export async function setupCommonRoutes(
       ...scheduleCalendar,
       referenceWeekStartDate: reference,
     });
+    schedule.groceryState = { ...(groceryChecks.get(schedule.weekStartDate) ?? {}) };
     schedule.status = weekStatuses.get(schedule.weekStartDate) ?? 0;
     schedule.locked = schedule.status === 2;
     schedule.votingRoundId =
@@ -1645,18 +1647,53 @@ export async function setupCommonRoutes(
     await route.fulfill({ json: { data: readSmartDefaults(offset, reference) } });
   });
 
+  const emitGrocery = async (
+    weekOffset: number,
+    weekStartDate: string,
+    groceryState: Record<string, boolean>
+  ) => {
+    try {
+      await page.evaluate(
+        (payload) => {
+          const source = (window as any).__sseSource as EventSource | undefined;
+          source?.dispatchEvent(
+            new MessageEvent('grocery_updated', { data: JSON.stringify(payload) })
+          );
+        },
+        { weekOffset, weekStartDate, groceryState }
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message.split('\n', 1)[0] : '';
+      if (
+        message !==
+          'page.evaluate: Execution context was destroyed, most likely because of a navigation' &&
+        message !== 'page.evaluate: Target page, context or browser has been closed'
+      )
+        throw error;
+    }
+  };
+
   // PATCH /api/schedule/{weekOffset}/grocery/item
   await page.route('**/api/schedule/*/grocery/item', async (route) => {
+    if (route.request().method() !== 'PATCH') return route.fallback();
+    const offset = Number(new URL(route.request().url()).pathname.split('/')[3]);
+    const week = addDays(scheduleCalendar.currentWeekStartDate, offset * 7);
+    const body = route.request().postDataJSON() as { ingredientName: string; checked: boolean };
+    const state = { ...(groceryChecks.get(week) ?? {}), [body.ingredientName]: body.checked };
+    groceryChecks.set(week, state);
+    await emitGrocery(offset, week, state);
     await route.fulfill({ status: 204 });
   });
 
   // PATCH /api/schedule/{weekOffset}/grocery
   await page.route('**/api/schedule/*/grocery', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ data: {} }),
-    });
+    if (route.request().method() !== 'PATCH') return route.fallback();
+    const offset = Number(new URL(route.request().url()).pathname.split('/')[3]);
+    const week = addDays(scheduleCalendar.currentWeekStartDate, offset * 7);
+    const state = route.request().postDataJSON() as Record<string, boolean>;
+    groceryChecks.set(week, { ...state });
+    await emitGrocery(offset, week, state);
+    await route.fulfill({ status: 200, json: { data: state } });
   });
 
   // Stateful everyday grocery extras. These handlers intentionally preserve distinct

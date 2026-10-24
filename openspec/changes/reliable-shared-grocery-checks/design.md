@@ -52,3 +52,11 @@ Keep immediate checkbox feedback and ordinary navigation; the request remains pe
 
 This planning pass used GitHub Connector source/spec inspection only. No runtime reproduction, local OpenSpec CLI, task harness, database test or browser qualification was run. Draft CI can validate artifact syntax, not the proposed concurrency correction. All implementation tasks remain unchecked.
 
+
+## Implementation writer and caller audit (2026-10-24)
+
+- Normal assignments to `WeeklyPlan.GroceryState` are confined to `ScheduleService.UpdateGroceryStateAsync`, `ToggleGroceryItemAsync`, and `GroceryRecomputeService.RecomputeForWeekAsync`. A singleton `GroceryCheckCoordinator` will own one semaphore and create an async service scope after acquisition. Its callback owns a fresh `RecipeDbContext` until save/publication completes. No scoped service is retained by the singleton.
+- Item and replacement each acquire once. Recompute's public week entrypoint acquires once and invokes a private core on the fresh context; recipe/ingredient loops call that entrypoint once per week and never hold the gate themselves. No coordinated public method calls another while owned. Voting and recovery locks are not acquired inside this gate.
+- Schedule assignment/removal/plan-later/Tomorrow callers save or commit before recompute; `SyncRecipeProcessor` and `IngredientCategoryService` also save before recompute. Existing transaction boundaries are preserved. No fresh read requires uncommitted caller input. Administrative restore/reset remains out of scope.
+- Caller contexts retain their unrelated tracked changes. Grocery operations never modify caller-tracked plans; later EF updates of status fields do not mark grocery columns modified. Schedule snapshots use an `AsNoTracking` plan read so a caller does not publish its own stale grocery projection after recompute. No change tracker is cleared or reloaded.
+- `SseConnectionManager.BroadcastAsync` awaits per-connection writes and catches disconnected-client failures; there is no explicit publication timeout. Holding the grocery gate preserves attempt order but adds no latency guarantee.

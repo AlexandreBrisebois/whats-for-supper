@@ -1506,3 +1506,14 @@ it('shows persisted promotions after session updates withdraw their pending sugg
   expect(useWeekStore.getState().schedule[0].recipe?.id).toBe(saved.id);
   expect(useWeekStore.getState().schedule[0]._isPending).not.toBe(true);
 });
+
+it('a fresh snapshot restores distinct checks and explicit false after a stale map', () => {
+  usePlannerStore.setState({ groceryState: { Stale: true } });
+  useWeekStore.getState().applySnapshot({
+    ...makeScheduleDays(),
+    groceryState: { Tomato: true, Lettuce: false },
+  } as any);
+  expect(usePlannerStore.getState().groceryState).toEqual({ Tomato: true, Lettuce: false });
+  useWeekStore.getState().applySnapshot({ ...makeScheduleDays(), groceryState: {} } as any);
+  expect(usePlannerStore.getState().groceryState).toEqual({});
+});

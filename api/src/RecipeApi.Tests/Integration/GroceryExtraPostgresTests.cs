@@ -126,9 +126,9 @@ public sealed partial class GroceryExtraPostgresTests(Xunit.Abstractions.ITestOu
         var extras = Service(db);
         var rollover = new GroceryExtraRolloverService(db, clock, calendar, publisher);
         var recompute = new GroceryRecomputeService(db, new AisleMapper(), NullLogger<GroceryRecomputeService>.Instance,
-            clock, calendar, publisher);
+            clock, calendar,RecipeApi.Tests.Infrastructure.TestGroceryChecks.Create(db), publisher);
         var schedule = new ScheduleService(db, NullLogger<ScheduleService>.Instance, publisher, recompute, clock,
-            calendar, TestHistoricalInterest.Create(db, clock, calendar), extras, rollover);
+            calendar, TestHistoricalInterest.Create(db, clock, calendar), RecipeApi.Tests.Infrastructure.TestGroceryChecks.Create(db),  extras, rollover);
 
         var first = await schedule.GetScheduleAsync(0);
         var second = await schedule.GetScheduleAsync(0);

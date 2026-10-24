@@ -926,3 +926,54 @@ test.describe('Grocery List — SSE sync', () => {
     await expect(beefItem).toHaveAttribute('aria-checked', 'false');
   });
 });
+
+test('common recipe check mocks persist distinct intents, explicit false, replacement and clear', async ({
+  page,
+}) => {
+  await setupCommonRoutes(page);
+  await page.goto('/welcome');
+  const state = await page.evaluate(async () => {
+    const events: Record<string, boolean>[] = [];
+    const source = new EventTarget();
+    (window as any).__sseSource = source;
+    source.addEventListener('grocery_updated', (event) =>
+      events.push(JSON.parse((event as MessageEvent).data).groceryState)
+    );
+    const patch = async (suffix: string, body: unknown) => {
+      const response = await fetch(`/api/schedule/0/grocery${suffix}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!response.ok) throw new Error(`PATCH failed: ${response.status}`);
+      return response.status;
+    };
+    const read = async () =>
+      (await (await fetch('/api/schedule?weekOffset=0')).json()).data.groceryState;
+    await Promise.all([
+      patch('/item', { ingredientName: 'Tomato', checked: true }),
+      patch('/item', { ingredientName: 'Lettuce', checked: true }),
+    ]);
+    const both = await read();
+    await patch('/item', { ingredientName: 'Tomato', checked: false });
+    const unchecked = await read();
+    await patch('', { Tomato: false });
+    const replacement = await read();
+    await patch('', {});
+    return { both, unchecked, replacement, cleared: await read(), events };
+  });
+  expect(state.events).toHaveLength(5);
+  expect(state.events[1]).toEqual({ Tomato: true, Lettuce: true });
+  expect(state.events.at(-1)).toEqual({});
+  expect({
+    both: state.both,
+    unchecked: state.unchecked,
+    replacement: state.replacement,
+    cleared: state.cleared,
+  }).toEqual({
+    both: { Tomato: true, Lettuce: true },
+    unchecked: { Tomato: false, Lettuce: true },
+    replacement: { Tomato: false },
+    cleared: {},
+  });
+});

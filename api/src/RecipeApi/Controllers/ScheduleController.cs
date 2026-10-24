@@ -146,18 +146,18 @@ public class ScheduleController(ScheduleService scheduleService) : ControllerBas
     [HttpPatch("{weekOffset}/grocery/item")]
     public async Task<IActionResult> ToggleGroceryItem(
         int weekOffset,
-        [FromBody] ToggleGroceryItemDto dto)
+        [FromBody] ToggleGroceryItemDto dto, CancellationToken ct)
     {
-        await _scheduleService.ToggleGroceryItemAsync(weekOffset, dto.IngredientName, dto.Checked, GetConnectionId());
+        await _scheduleService.ToggleGroceryItemAsync(weekOffset, dto.IngredientName, dto.Checked, GetConnectionId(), ct);
         return NoContent();
     }
 
     [HttpPatch("{weekOffset}/grocery")]
     public async Task<IActionResult> UpdateGroceryState(
         int weekOffset,
-        [FromBody] Dictionary<string, bool> groceryState)
+        [FromBody] Dictionary<string, bool> groceryState, CancellationToken ct)
     {
-        var result = await _scheduleService.UpdateGroceryStateAsync(weekOffset, groceryState, GetConnectionId());
+        var result = await _scheduleService.UpdateGroceryStateAsync(weekOffset, groceryState, GetConnectionId(), ct);
         return Ok(new { data = result });
     }
 

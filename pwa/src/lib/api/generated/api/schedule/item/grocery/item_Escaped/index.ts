@@ -53,7 +53,7 @@ export function deserializeIntoItemPatchRequestBody(
  */
 export interface Item_EscapedRequestBuilder extends BaseRequestBuilder<Item_EscapedRequestBuilder> {
   /**
-   * Merges a single item into the server-side grocery state atomically. Safe for concurrent use by multiple family members — each tap is an independent operation that cannot overwrite another member's simultaneous toggles.
+   * On one application instance, saves the supplied checked value using current persisted state, retaining other keys including explicit false values. Overlapping item updates, full-map replacements and recomputation transitions share server processing order, which does not imply click or FIFO arrival order. Distinct-key checks survive overlapping item updates; conflicting values use the last processed intent. Returns after persistence and the ordered grocery publication attempt. Independent snapshots and response delivery can still race.
    * @param body The request body
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @throws {RecoveryBusyError} error when the service returns a 503 status code
@@ -63,7 +63,7 @@ export interface Item_EscapedRequestBuilder extends BaseRequestBuilder<Item_Esca
     requestConfiguration?: RequestConfiguration<object> | undefined
   ): Promise<void>;
   /**
-   * Merges a single item into the server-side grocery state atomically. Safe for concurrent use by multiple family members — each tap is an independent operation that cannot overwrite another member's simultaneous toggles.
+   * On one application instance, saves the supplied checked value using current persisted state, retaining other keys including explicit false values. Overlapping item updates, full-map replacements and recomputation transitions share server processing order, which does not imply click or FIFO arrival order. Distinct-key checks survive overlapping item updates; conflicting values use the last processed intent. Returns after persistence and the ordered grocery publication attempt. Independent snapshots and response delivery can still race.
    * @param body The request body
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {RequestInformation}

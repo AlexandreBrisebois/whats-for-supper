@@ -46,6 +46,15 @@ class MockEventSource {
       )
     );
   }
+  grocery(groceryState: Record<string, boolean>, weekStartDate = '2025-01-06') {
+    act(() =>
+      this.listeners.get('grocery_updated')?.(
+        new MessageEvent('grocery_updated', {
+          data: JSON.stringify({ weekOffset: 0, weekStartDate, groceryState }),
+        })
+      )
+    );
+  }
   close() {}
 }
 
@@ -115,4 +124,28 @@ describe('raw grocery snapshots through the stream and real stores', () => {
       expect(usePlannerStore.getState().groceryState).toEqual({ Carrots: true });
     }
   );
+});
+
+it('applies ordered complete grocery maps including false and clear, with absolute week guards', () => {
+  renderHook(() => useScheduleStream());
+  MockEventSource.instance.grocery({ Carrots: true });
+  MockEventSource.instance.grocery({ Carrots: true, Onions: true });
+  expect(usePlannerStore.getState().groceryState).toEqual({ Carrots: true, Onions: true });
+  MockEventSource.instance.grocery({ Carrots: false, Onions: true });
+  expect(usePlannerStore.getState().groceryState).toEqual({ Carrots: false, Onions: true });
+  MockEventSource.instance.grocery({}, '2024-12-30');
+  expect(usePlannerStore.getState().groceryState.Onions).toBe(true);
+  MockEventSource.instance.grocery({});
+  expect(usePlannerStore.getState().groceryState).toEqual({});
+});
+
+it('documents a late independent snapshot and fresh-read recovery without revision tokens', () => {
+  renderHook(() => useScheduleStream());
+  MockEventSource.instance.grocery({ Carrots: true, Onions: true });
+  MockEventSource.instance.emit('week_updated', snapshot({ Carrots: false }));
+  expect(usePlannerStore.getState().groceryState).toEqual({ Carrots: false });
+  act(() =>
+    useWeekStore.getState().applySnapshot(snapshot({ Carrots: true, Onions: true }) as any)
+  );
+  expect(usePlannerStore.getState().groceryState).toEqual({ Carrots: true, Onions: true });
 });
