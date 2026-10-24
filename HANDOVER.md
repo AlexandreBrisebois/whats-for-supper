@@ -122,6 +122,15 @@ Current checkpoint: Required clocks/history dependencies, explicit timestamp own
 Verification evidence and content identity: Complete harness `.task/agent-finish/runs/bb045a5a62e0470187cf5f88ef50a1ad.json`, stable identity `8f819a48e1293e2b90a3238b1d0e0368d949ac3c6f18ee91d39b69a366560cf0`: 833 client unit, 267 browser, 978 API and 81 real PostgreSQL tests passed. Browser 14 prerequisite/explicit skips and ordinary API 79 database-gated skips are documented in the [evidence](openspec/changes/archive/2026-10-18-inject-application-clocks/evidence.md), together with failed/unqualified earlier attempts. Final documentation-only verification and exact published final-head CI are reported in PR #283.
 Blocker or next action: Review the draft PR; preserve #244's separately authorized online restore/concurrency behavior when resolving ManagementService/SyncRecipeProcessor and extracted RecipeExportContent timestamp overlaps. No recovery implementation is included here.
 
+## Find Similar ingredients and execution — issue 271
+
+Task/spec: [investigate-similar-execution](openspec/changes/investigate-similar-execution/tasks.md), active pending ranking decisions and household qualification.
+Worktree/branch: `/workspace/whats-for-supper`, `investigate/271-ingredient-execution`; separate from PR #285/#286, based on verified main `2a5ff0b62484993c14d551aac6e035cf72caec29`.
+Authorized scope/source: owner delegation permits justified settled slices, investigation/evaluation and draft PR; unresolved product questions reserved for morning. Connector-only remote GitHub. No merge, tag, deployment or production data.
+Current checkpoint: traced candidate generation/scoring/constraints; measured 15 synthetic scorer cases; fixed Planner detail Find Similar reopening source instead of starting Similar. Scoring is unchanged. Investigation and morning options are in the active change.
+Verification evidence/content identity: test-first unit/browser failures on old callback; green 74 focused units and two browser cases. Full implementation harness `.task/agent-finish/runs/e0c9ad5b0ba246a8858f4e23779fd566.json` passed: 833 units, 42 browser, 987 API (93 conditional/manual skips), strict specs, lint/types/format and static/client contract parity. Focused PostgreSQL repeat `.task/database-tests/runs/91f842f37e1644b6a9e25dc60effe9ea/result.json`: six passed/zero skipped. Earlier mutation-invalidated runs remain failed. Final documentation and exact-head CI evidence belongs on the draft PR.
+Blocker/next action: draft publication/final CI records, then morning decisions on duplicate fallback, execution definition/evidence and suitability boundaries; obtain owner-reviewed household examples. Synthetic cases establish scorer limitations, not family relevance or quality improvement. Keep active spec and issue open.
+
 ## Android installed-app description — issue 274
 
 Task/spec: [android-install-description](openspec/changes/android-install-description/tasks.md), active; metadata implemented, Android qualification incomplete.
