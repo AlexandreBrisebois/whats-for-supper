@@ -66,6 +66,8 @@ Research is pinned to main `e76332c9e35c3d8584cbed6476ea9c43b4d40ea7` (2026-10-2
 3. **Maintenance:** preserve reset scheduling and only reviewed deterministic work; exclude AI and old visitor jobs. Existing exact recovery exempts dreaming and demo-restore; copying that exemption unchanged is unsafe. Approve a concrete allowlist and cancellation/fencing ownership before implementation.
 4. **Legacy baseline:** recommend fail-closed recapture instead of a partial converter. Upgraded rich reset requires all collections/assets; current version-1 presence checks cannot establish completeness.
 
+5. **Operator authority:** the current capture endpoint uses shared household authorization, not a separate operator role. The new boundary is intentional; choose the smallest existing deployment/management control that keeps capture and baseline selection unavailable to visitor credentials. This is not a claim that operator separation exists today or permission to change live authentication.
+
 These decisions are consequential. The proposal is intentionally **not apply-ready**. The current tasks cover decision resolution and artifact readiness, not a pre-approved implementation backlog.
 
 ### Reuse, not a parallel framework
@@ -98,7 +100,7 @@ Recurrence must not depend solely on reset success. Extend existing workflow acc
 
 No runtime rollout occurs in this PR. Future implementation must update affected OpenAPI behavior/status schemas before code, regenerate the Kiota client and synchronize management/search/recipe consumers and method-sensitive mock handlers. Exact status-code and diagnostic-field decisions belong in that accepted contract slice, not invented here.
 
-Capture the new complete baseline before activating upgraded reset. Preserve the previous artifact during validation and offer explicit recapture guidance for legacy content; do not silently migrate omitted state into empty collections. Rollback requires a version-compatible runtime/baseline pair and existing recovery procedures, not replaying an incompatible baseline. Non-demo installations, ordinary backup merge behavior, independent exact recovery and demo artwork/authorization remain unchanged.
+Capture the new complete baseline before activating upgraded reset. Preserve the previous artifact during validation and offer explicit recapture guidance for legacy content; do not silently migrate omitted state into empty collections. Rollback requires a version-compatible runtime/baseline pair and existing recovery procedures, not replaying an incompatible baseline. Non-demo installations, ordinary backup merge behavior, independent exact recovery, demo artwork and ordinary visitor household access remain unchanged. Demo baseline management gains the explicit operator-only boundary above.
 
 ## Acceptance Strategy and Operational Diagnosis
 
