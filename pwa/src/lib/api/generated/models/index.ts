@@ -4041,7 +4041,7 @@ export type MoveScheduleDto_intent =
 export type MoveScheduleDto_sourceDisposition =
   (typeof MoveScheduleDto_sourceDispositionObject)[keyof typeof MoveScheduleDto_sourceDispositionObject];
 /**
- * Tomorrow always returns moved=true and all date/refresh fields. Legacy intents return message only.
+ * Tomorrow and actual legacy cross-week movement return moved=true and all date/refresh fields. Same-week and cross-week no-op legacy completion return message only.
  */
 export interface MoveScheduleResultDto extends AdditionalDataHolder, Parsable {
   /**
@@ -4850,7 +4850,7 @@ export interface ScheduleDays extends AdditionalDataHolder, Parsable {
    */
   days?: ScheduleDayDto[] | null;
   /**
-   * Authoritative extra occurrences eligible for the selected shopping view; projected rows retain their own occurrence week.
+   * Authoritative extra occurrences for the selected view. Every future week projects outstanding unchecked current-week extras until checked or deleted; projected rows retain their current occurrence identity.
    */
   groceryExtras?: GroceryExtraDto[] | null;
   /**

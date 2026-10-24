@@ -132,6 +132,24 @@ describe('weekStore — grocery extra identity and version', () => {
       'Coffee',
     ]);
   });
+  it('retains an outstanding current occurrence when navigating two weeks ahead', async () => {
+    const extra = builders.groceryExtra({ occurrenceWeekStartDate: '2025-01-06' as any });
+    useWeekStore.setState({
+      groceryExtras: [extra],
+      pendingGroceryExtraIds: new Set([extra.id!]),
+      weekOffset: 2,
+    });
+    vi.mocked(getSchedule).mockResolvedValue({
+      ...makeScheduleDays(),
+      weekOffset: 2,
+      weekStartDate: '2025-01-20',
+      groceryExtras: [],
+    });
+    await useWeekStore.getState().init(2);
+    expect(useWeekStore.getState().weekStartDate).toBe('2025-01-20');
+    expect(useWeekStore.getState().groceryExtras).toEqual([extra]);
+  });
+
   it('upserts by occurrence identity without allowing an older response to win', () => {
     const base = {
       id: '11111111-1111-4111-8111-111111111111' as any,
@@ -520,6 +538,15 @@ describe('weekStore — applySnapshot', () => {
     expect(updateOrder).toContain('planner');
     // week update fires before planner (schedule set before groceryState)
     expect(updateOrder.indexOf('week')).toBeLessThan(updateOrder.indexOf('planner'));
+  });
+
+  it('clears prior checks from an empty generated-client dictionary', () => {
+    usePlannerStore.setState({ groceryState: { Old: true } });
+    useWeekStore.getState().applySnapshot({
+      ...makeScheduleDays(),
+      groceryState: { additionalData: {} },
+    });
+    expect(usePlannerStore.getState().groceryState).toEqual({});
   });
 
   it('applySnapshot does not call setGroceryState when groceryState is absent', () => {

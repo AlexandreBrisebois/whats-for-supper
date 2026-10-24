@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: dockerhub-publish
@@ -79,13 +80,32 @@ jobs:
           fi
           echo "channel=$channel" >> "$GITHUB_OUTPUT"
 
-  validate:
-    name: Validate release source
+  resolve-candidate:
+    name: Find successful exact-commit source validation
+    needs: validate-tag
     if: github.actor == vars.DOCKERHUB_PUBLISHER_GITHUB_LOGIN
+    runs-on: ubuntu-latest
+    outputs:
+      run-id: ${{ steps.find.outputs.run-id }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Find successful source checks
+        id: find
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REVISION: ${{ needs.validate-tag.outputs.revision }}
+          CHANNEL: ${{ needs.validate-tag.outputs.channel }}
+        run: python3 -B scripts/ci/image-candidate.py find
+
+  validate:
+    name: Validate release source when no successful CI run exists
+    needs: [validate-tag, resolve-candidate]
+    if: github.actor == vars.DOCKERHUB_PUBLISHER_GITHUB_LOGIN && needs.resolve-candidate.outputs.run-id == ''
     uses: ./.github/workflows/validate.yml
     with:
       full-validation: true
-      ref: ${{ github.sha }}
+      ref: ${{ needs.validate-tag.outputs.revision }}
+      skip-docker-smoke: true
 
   publish-preflight:
     name: Validate Docker Hub publication
@@ -120,55 +140,90 @@ jobs:
             esac
           done
 
-  publish:
-    name: Build and push Docker Hub images
-    needs: [validate-tag, validate, publish-preflight]
-    if: github.actor == vars.DOCKERHUB_PUBLISHER_GITHUB_LOGIN
-    runs-on: ubuntu-latest
+  build-images:
+    name: Build and smoke release candidates
+    needs: [validate-tag, resolve-candidate, validate, publish-preflight]
+    if: >-
+      !cancelled() && github.actor == vars.DOCKERHUB_PUBLISHER_GITHUB_LOGIN &&
+      needs.validate-tag.result == 'success' && needs.resolve-candidate.result == 'success' &&
+      needs.publish-preflight.result == 'success' &&
+      ((needs.resolve-candidate.outputs.run-id != '' && needs.validate.result == 'skipped') ||
+       (needs.resolve-candidate.outputs.run-id == '' && needs.validate.result == 'success'))
+    uses: ./.github/workflows/container-candidate.yml
+    with:
+      ref: ${{ needs.validate-tag.outputs.revision }}
+      channel: ${{ needs.validate-tag.outputs.channel }}
+
+  publish-platforms:
+    name: Push tested images (${{ matrix.arch }})
+    needs: [validate-tag, build-images]
+    if: ${{ !cancelled() && github.actor == vars.DOCKERHUB_PUBLISHER_GITHUB_LOGIN && needs.build-images.result == 'success' }}
+    runs-on: ${{ matrix.runner }}
     environment: dockerhub-publish
     strategy:
       fail-fast: false
       matrix:
         include:
-          - image: brisebois/whats-for-supper-api
-            context: ./api
-            target: production
-          - image: brisebois/whats-for-supper-pwa
-            context: ./pwa
-            target: production
-          - image: brisebois/whats-for-supper-db-migration
-            context: ./api/database
-            target: ''
-
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    env:
+      REVISION: ${{ needs.validate-tag.outputs.revision }}
+      CHANNEL: ${{ needs.validate-tag.outputs.channel }}
+      ARCH: ${{ matrix.arch }}
+      CANDIDATE_RUN_ID: ${{ github.run_id }}
     steps:
       - uses: actions/checkout@v7
-
+      - uses: actions/download-artifact@v8
+        with:
+          name: container-candidate-v1-${{ needs.validate-tag.outputs.channel }}-${{ matrix.arch }}
+          path: .task/container-candidate
+          github-token: ${{ github.token }}
+          run-id: ${{ env.CANDIDATE_RUN_ID }}
       - name: Log in to Docker Hub
         uses: docker/login-action@v4
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
-
-      - name: Build and push immutable multi-platform image
-        uses: docker/build-push-action@v7
+      - name: Verify and push existing image bytes
+        run: python3 -B scripts/ci/image-candidate.py publish
+      - uses: actions/upload-artifact@v7
         with:
-          context: ${{ matrix.context }}
-          target: ${{ matrix.target }}
-          platforms: linux/amd64,linux/arm64
-          push: true
-          build-args: ${{ matrix.context == './pwa' && format('WFS_RELEASE_CHANNEL={0}', needs.validate-tag.outputs.channel) || '' }}
-          tags: docker.io/${{ matrix.image }}:${{ needs.validate-tag.outputs.version }}
-          labels: |
-            org.opencontainers.image.revision=${{ needs.validate-tag.outputs.revision }}
-            org.opencontainers.image.version=${{ needs.validate-tag.outputs.version }}
+          overwrite: true
+          name: published-${{ matrix.arch }}
+          path: .task/container-candidate/published-${{ matrix.arch }}.json
+          include-hidden-files: true
+          retention-days: 1
+
+  publish:
+    name: Publish tested multi-platform manifests
+    needs: [validate-tag, publish-platforms]
+    if: ${{ !cancelled() && github.actor == vars.DOCKERHUB_PUBLISHER_GITHUB_LOGIN && needs.publish-platforms.result == 'success' }}
+    runs-on: ubuntu-latest
+    environment: dockerhub-publish
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: published-*
+          path: .task/published
+          merge-multiple: true
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - uses: docker/setup-buildx-action@v4
+      - name: Assemble linux/amd64,linux/arm64 manifests without building
+        env:
+          VERSION: ${{ needs.validate-tag.outputs.version }}
+        run: python3 -B scripts/ci/image-candidate.py manifests --directory .task/published
 
   install-bundle:
     name: Publish matching installation ZIP
     needs: [validate-tag, publish]
-    if: github.actor == vars.DOCKERHUB_PUBLISHER_GITHUB_LOGIN
+    if: ${{ !cancelled() && github.actor == vars.DOCKERHUB_PUBLISHER_GITHUB_LOGIN && needs.publish.result == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write

@@ -12,7 +12,7 @@ public enum CaptureFailureClearResultKind { Cleared, NotFound, NotFailedCapture 
 
 public record CaptureFailureClearResult(CaptureFailureClearResultKind Kind, Guid? CleanupCommandId = null);
 
-public class CaptureFailureService(RecipeDbContext db, IClock clock)
+public class CaptureFailureService(RecipeDbContext db, IClock clock, IWorkflowOrchestrator orchestrator)
 {
     public const string DeleteFailedCaptureResidueCommand = "DeleteFailedCaptureResidue";
 
@@ -56,7 +56,9 @@ public class CaptureFailureService(RecipeDbContext db, IClock clock)
                 SourceWorkflowId = instance.WorkflowId,
                 SourceType = ResolveSourceType(instance.WorkflowId),
                 PreviewText = TryGetStringParameter(instance.Parameters, "url") ?? recipe?.SourceUrl,
-                FriendlyReason = CaptureFailureReasonMapper.ToFriendlyReason(null),
+                FriendlyReason = UrlCaptureInitialization.IsPending(instance)
+                    ? "Your recipe was saved, but its import has not started. Retry to start importing it."
+                    : CaptureFailureReasonMapper.ToFriendlyReason(null),
                 FailureCode = null,
                 FailedStep = failedTask?.TaskName,
                 Status = "failed",
@@ -76,6 +78,15 @@ public class CaptureFailureService(RecipeDbContext db, IClock clock)
         if (instance is null) return CaptureFailureRetryResult.NotFound;
         if (!IsFailedCapture(instance)) return CaptureFailureRetryResult.NotFailedCapture;
 
+        if (UrlCaptureInitialization.IsPending(instance))
+        {
+            var initialized = await orchestrator.InitializeUrlCaptureAsync(instance.Id, ct);
+            if (initialized is null) return CaptureFailureRetryResult.NotFound;
+            return UrlCaptureInitialization.IsPending(initialized)
+                ? CaptureFailureRetryResult.NotFailedCapture
+                : CaptureFailureRetryResult.Queued;
+        }
+
         var failedTask = GetFailedTask(instance);
         if (failedTask is null) return CaptureFailureRetryResult.NotFailedCapture;
 
@@ -94,9 +105,8 @@ public class CaptureFailureService(RecipeDbContext db, IClock clock)
 
     public async Task<CaptureFailureClearResult> ClearAsync(Guid workflowInstanceId, Guid? requestedBy = null, CancellationToken ct = default)
     {
-        var instance = await db.WorkflowInstances
-            .Include(i => i.Tasks)
-            .FirstOrDefaultAsync(i => i.Id == workflowInstanceId, ct);
+        await using var transaction = await db.Database.BeginTransactionAsync(ct);
+        var instance = await UrlCaptureInitialization.LoadLockedAsync(db, workflowInstanceId, ct);
 
         if (instance is null) return new(CaptureFailureClearResultKind.NotFound);
         if (!IsFailedCapture(instance)) return new(CaptureFailureClearResultKind.NotFailedCapture);
@@ -138,6 +148,7 @@ public class CaptureFailureService(RecipeDbContext db, IClock clock)
         db.WorkflowInstances.Remove(instance);
         await db.SaveChangesAsync(ct);
 
+        await transaction.CommitAsync(ct);
         return new(CaptureFailureClearResultKind.Cleared, command.Id);
     }
 

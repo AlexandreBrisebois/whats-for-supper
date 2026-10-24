@@ -184,7 +184,7 @@ public partial class ScheduleService(RecipeDbContext dbContext, ILogger<Schedule
                 }
                 foreach (var entry in events)
                 {
-                    if (entry.Status != CalendarEventStatus.Skipped || entry.RecipeId != null)
+                    if (entry.Status is not (CalendarEventStatus.Cooked or CalendarEventStatus.Skipped))
                         entry.Status = CalendarEventStatus.Locked;
                     if (entry.RecipeId is { } id && counts.TryGetValue(id, out var count)) entry.VoteCount = count;
                 }
@@ -214,7 +214,8 @@ public partial class ScheduleService(RecipeDbContext dbContext, ILogger<Schedule
         var targetWeekOffset = dto.TargetWeekOffset ?? dto.WeekOffset;
         if (targetWeekOffset != dto.WeekOffset)
         {
-            await MoveCrossWeekAsync(dto, targetWeekOffset, context);
+            var result = await MoveCrossWeekAsync(dto, targetWeekOffset, context, excludeConnectionId, echoSeq);
+            if (result is not null) return result;
             var crossWeekSchedule = await ReadScheduleAsync(dto.WeekOffset, context);
             await _publisher.PublishWeekUpdatedAsync(crossWeekSchedule, excludeConnectionId, echoSeq);
             return null;
@@ -325,7 +326,7 @@ public partial class ScheduleService(RecipeDbContext dbContext, ILogger<Schedule
         return null;
     }
 
-    private async Task MoveCrossWeekAsync(MoveScheduleDto dto, int targetWeekOffset, DeploymentCalendarContext context)
+    private async Task<MoveScheduleResultDto?> MoveCrossWeekAsync(MoveScheduleDto dto, int targetWeekOffset, DeploymentCalendarContext context, string? excludeConnectionId, int? echoSeq)
     {
         var sourceMonday = context.WeekStart(dto.WeekOffset);
         var targetMonday = context.WeekStart(targetWeekOffset);
@@ -336,7 +337,7 @@ public partial class ScheduleService(RecipeDbContext dbContext, ILogger<Schedule
             : null;
 
         fromEvent ??= await _dbContext.CalendarEvents.FirstOrDefaultAsync(e => e.RecipeId == dto.RecipeId);
-        if (fromEvent == null) return;
+        if (fromEvent == null) return null;
 
         if (fromEvent.RecipeId != dto.RecipeId)
         {
@@ -344,9 +345,10 @@ public partial class ScheduleService(RecipeDbContext dbContext, ILogger<Schedule
                 "Cross-week move ignored: source slot {FromDate} does not contain recipe {RecipeId}.",
                 fromEvent.Date,
                 dto.RecipeId);
-            return;
+            return null;
         }
 
+        var sourceDate = fromEvent.Date;
         var preserveOrderedInSource = fromEvent.Status == CalendarEventStatus.Skipped;
         var sourceRecipeId = fromEvent.RecipeId ?? throw new InvalidOperationException("Scheduled event is missing a recipe association.");
         var sourceVoteCount = fromEvent.VoteCount;
@@ -364,7 +366,7 @@ public partial class ScheduleService(RecipeDbContext dbContext, ILogger<Schedule
         if (targetIndex >= 7)
         {
             _logger.LogWarning("No empty slot in target week {Offset}, cross-week move aborted", targetWeekOffset);
-            return;
+            return null;
         }
 
         await EnsureWeekPlanExistsAsync(targetMonday);
@@ -388,8 +390,18 @@ public partial class ScheduleService(RecipeDbContext dbContext, ILogger<Schedule
         }
         await _dbContext.SaveChangesAsync();
 
-        await _groceryRecomputeService.RecomputeForWeekAsync(sourceMonday, CancellationToken.None, context);
-        await _groceryRecomputeService.RecomputeForWeekAsync(targetMonday, CancellationToken.None, context);
+        // Movement is committed. Follow-up failures must not invite replaying it.
+        var complete = true;
+        foreach (var monday in new[] { sourceMonday, targetMonday })
+        {
+            var offset = GetWeekOffset(monday, context);
+            try { await _groceryRecomputeService.RecomputeForWeekAsync(monday, CancellationToken.None, context); }
+            catch (Exception ex) { complete = false; _logger.LogWarning(ex, "Plan later committed; grocery refresh failed for {Week}", monday); }
+            try { await _publisher.PublishWeekUpdatedAsync(await ReadScheduleAsync(offset, context), excludeConnectionId, echoSeq); }
+            catch (Exception ex) { complete = false; _logger.LogWarning(ex, "Plan later committed; schedule publication failed for {Week}", monday); }
+        }
+        return new MoveScheduleResultDto("Recipe moved", true, sourceDate, targetMonday.AddDays(targetIndex),
+            new[] { sourceMonday, targetMonday }, complete);
     }
 
     public async Task<DeferScheduleResultDto> DeferRecipeAsync(
@@ -725,7 +737,10 @@ public partial class ScheduleService(RecipeDbContext dbContext, ILogger<Schedule
             var weekOffset = GetWeekOffset(monday, context);
 
             _dbContext.CalendarEvents.Remove(@event);
-            await _dbContext.SaveChangesAsync();
+            if (@event.Status == CalendarEventStatus.Cooked && @event.RecipeId is { } cookedRecipeId)
+                await SaveChangesAndRecalculateLastCookedDatesAsync([cookedRecipeId], CancellationToken.None);
+            else
+                await _dbContext.SaveChangesAsync();
             _logger.LogInformation("Removed recipe from date {Date}", date);
 
             await _groceryRecomputeService.RecomputeForWeekAsync(monday, CancellationToken.None, context);

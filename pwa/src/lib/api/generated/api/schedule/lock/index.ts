@@ -92,7 +92,7 @@ export interface LockPostResponse_data extends AdditionalDataHolder, Parsable {
  */
 export interface LockRequestBuilder extends BaseRequestBuilder<LockRequestBuilder> {
   /**
-   * Atomically captures positive aggregate family history and clears working votes once. Retry the same votingRoundId after a lost response. Completed retries preserve later early votes. Tokenless legacy closes are accepted only for a first close or unambiguous already-closed outcome; reopened rounds require an identity and otherwise return 409.
+   * Preserves all Cooked and Skipped outcomes while locking ordinary assignments. Does not recreate removed assignments or change legacy recipe-backed Skipped representation. Does not change last-cooked values. Atomically captures positive aggregate family history and clears working votes once. Retry the same votingRoundId after a lost response. Completed retries preserve later early votes. Tokenless legacy closes are accepted only for a first close or unambiguous already-closed outcome; reopened rounds require an identity and otherwise return 409.
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {Promise<LockPostResponse>}
    * @throws {RecoveryBusyError} error when the service returns a 503 status code
@@ -101,7 +101,7 @@ export interface LockRequestBuilder extends BaseRequestBuilder<LockRequestBuilde
     requestConfiguration?: RequestConfiguration<LockRequestBuilderPostQueryParameters> | undefined
   ): Promise<LockPostResponse | undefined>;
   /**
-   * Atomically captures positive aggregate family history and clears working votes once. Retry the same votingRoundId after a lost response. Completed retries preserve later early votes. Tokenless legacy closes are accepted only for a first close or unambiguous already-closed outcome; reopened rounds require an identity and otherwise return 409.
+   * Preserves all Cooked and Skipped outcomes while locking ordinary assignments. Does not recreate removed assignments or change legacy recipe-backed Skipped representation. Does not change last-cooked values. Atomically captures positive aggregate family history and clears working votes once. Retry the same votingRoundId after a lost response. Completed retries preserve later early votes. Tokenless legacy closes are accepted only for a first close or unambiguous already-closed outcome; reopened rounds require an identity and otherwise return 409.
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {RequestInformation}
    */
@@ -110,7 +110,7 @@ export interface LockRequestBuilder extends BaseRequestBuilder<LockRequestBuilde
   ): RequestInformation;
 }
 /**
- * Atomically captures positive aggregate family history and clears working votes once. Retry the same votingRoundId after a lost response. Completed retries preserve later early votes. Tokenless legacy closes are accepted only for a first close or unambiguous already-closed outcome; reopened rounds require an identity and otherwise return 409.
+ * Preserves all Cooked and Skipped outcomes while locking ordinary assignments. Does not recreate removed assignments or change legacy recipe-backed Skipped representation. Does not change last-cooked values. Atomically captures positive aggregate family history and clears working votes once. Retry the same votingRoundId after a lost response. Completed retries preserve later early votes. Tokenless legacy closes are accepted only for a first close or unambiguous already-closed outcome; reopened rounds require an identity and otherwise return 409.
  */
 export interface LockRequestBuilderPostQueryParameters {
   /**

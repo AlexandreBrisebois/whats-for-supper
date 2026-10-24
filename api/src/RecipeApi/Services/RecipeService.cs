@@ -606,16 +606,15 @@ public class RecipeService(
         });
         logger.LogInformation("Wrote initial recipe.info for recipe {RecipeId} to disk.", recipeId);
 
+        // A crash or unavailable workflow definition must leave visible, retryable work.
+        var initialization = UrlCaptureInitialization.Create(recipeId, dto.Url, now);
+        db.WorkflowInstances.Add(initialization);
         await db.SaveChangesAsync();
 
         // Trigger the url-import workflow
         try
         {
-            await orchestrator.TriggerAsync("url-import", new Dictionary<string, string>
-            {
-                ["recipeId"] = recipeId.ToString(),
-                ["url"] = dto.Url
-            });
+            await orchestrator.InitializeUrlCaptureAsync(initialization.Id);
         }
         catch (Exception ex)
         {

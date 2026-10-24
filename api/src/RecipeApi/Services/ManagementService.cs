@@ -1432,7 +1432,15 @@ public partial class ManagementService(
         // 9. Backfill Finished Dish Indices from disk metadata
         result.FinishedDishIndicesBackfilled = await BackfillFinishedDishIndicesAsync(ct);
         await RestoreInterestAsync(Path.Combine(DataRoot, "weekly-household-interest.json"), false, ct);
-        if (groceryExtraBackup is not null) await MergeGroceryExtraBackupAsync(groceryExtraBackup, ct);
+        if (groceryExtraBackup is not null)
+        {
+            try { await MergeGroceryExtraBackupAsync(groceryExtraBackup, ct); }
+            catch (InvalidDataException ex)
+            {
+                result.Errors++;
+                logger.LogWarning("Skipping incompatible grocery-extras backup artifact: {Reason}", ex.Message);
+            }
+        }
 
         logger.LogInformation("Restore complete - Added: {Added}, Updated: {Updated}, Skipped: {Skipped}, WeeklyPlans: {WeeklyPlans}, CalendarEvents: {CalendarEvents}, Backfilled: {Backfilled}, Errors: {Errors}",
             result.RecipesAdded, result.RecipesUpdated, result.RecipesSkipped, result.WeeklyPlansRestored, result.CalendarEventsRestored, result.FinishedDishIndicesBackfilled, result.Errors);
@@ -1448,7 +1456,12 @@ public partial class ManagementService(
         if (backup.Version != 1 || backup.Occurrences is null)
             throw new InvalidDataException("grocery-extras.json has an unsupported or incomplete envelope.");
 
-        var rows = backup.Occurrences;
+        ValidateGroceryExtraHistory(backup.Occurrences);
+        return backup;
+    }
+
+    private static void ValidateGroceryExtraHistory(IReadOnlyList<GroceryExtraOccurrence> rows)
+    {
         if (rows.Any(row => row.Id == Guid.Empty || row.LineageId == Guid.Empty || row.Version < 1
             || row.WeekStartDate.DayOfWeek != DayOfWeek.Monday || string.IsNullOrWhiteSpace(row.Name) || row.Name.Length > 200
             || string.IsNullOrWhiteSpace(row.NormalizedKey) || !GrocerySections.IsCanonicalName(row.GrocerySection))
@@ -1473,12 +1486,17 @@ public partial class ManagementService(
                     throw new InvalidDataException("grocery-extras.json contains an invalid lineage.");
             }
         }
-        return backup;
     }
 
     private async Task MergeGroceryExtraBackupAsync(GroceryExtraBackup backup, CancellationToken ct)
     {
         await using var transaction = db.Database.IsRelational() ? await db.Database.BeginTransactionAsync(ct) : null;
+        if (db.Database.IsNpgsql())
+            await db.Database.ExecuteSqlRawAsync("LOCK TABLE grocery_extra_occurrences IN SHARE ROW EXCLUSIVE MODE", ct);
+        var representedIds = backup.Occurrences.Select(row => row.Id).ToHashSet();
+        var destination = await db.GroceryExtraOccurrences.AsNoTracking().ToListAsync(ct);
+        ValidateGroceryExtraHistory(destination.Where(row => !representedIds.Contains(row.Id))
+            .Concat(backup.Occurrences).ToArray());
         foreach (var source in backup.Occurrences)
         {
             var target = await db.GroceryExtraOccurrences.SingleOrDefaultAsync(row => row.Id == source.Id, ct);
@@ -1491,6 +1509,7 @@ public partial class ManagementService(
                     PredecessorId = source.PredecessorId,
                     WeekStartDate = source.WeekStartDate,
                     Name = source.Name,
+                    CreationName = source.CreationName,
                     NormalizedKey = source.NormalizedKey,
                     GrocerySection = source.GrocerySection,
                     Checked = source.Checked,
@@ -1506,6 +1525,7 @@ public partial class ManagementService(
                 target.PredecessorId = source.PredecessorId;
                 target.WeekStartDate = source.WeekStartDate;
                 target.Name = source.Name;
+                target.CreationName = source.CreationName ?? target.CreationName;
                 target.NormalizedKey = source.NormalizedKey;
                 target.GrocerySection = source.GrocerySection;
                 target.Checked = source.Checked;

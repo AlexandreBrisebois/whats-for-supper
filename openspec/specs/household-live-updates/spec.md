@@ -171,15 +171,31 @@ An eligible snapshot SHALL preserve prior pending suggestion content for the sam
 
 ### Requirement: Apply available snapshot adjuncts conditionally
 
-An eligible nondeferred snapshot SHALL set the week's grocery items to supplied items or an empty list. Snapshot check-state SHALL replace the loaded grocery check map only when a usable `groceryState.additionalData` object is present. Receipt of a plain check-state dictionary SHALL NOT by itself establish that the grocery check map was reconciled.
+An eligible nondeferred snapshot SHALL replace grocery items and any supplied raw or generated-client boolean check dictionary. Explicit false values and empty dictionaries SHALL be retained. Missing or null check-state SHALL retain loaded checks. Existing absolute-week, move-echo and optimistic deferral guards SHALL apply before replacement.
+
+#### Scenario: Missing snapshot grocery items
+- **WHEN** an eligible snapshot omits grocery items
+- **THEN** the grocery item list SHALL become empty while check-state follows the supplied, missing or null map rules
 
 #### Scenario: Additional-data check map is present
-- **WHEN** an eligible snapshot contains groceryState.additionalData as an object
-- **THEN** its check map is applied synchronously after the week state update
+- **WHEN** an eligible snapshot contains groceryState.additionalData with checked and unchecked entries
+- **THEN** its complete check map replaces the loaded map synchronously after the week state update
+
+#### Scenario: Raw connected or week update reconciles grocery content
+- **WHEN** an eligible connected or week_updated snapshot, including reconnect, supplies raw groceryState with checked and unchecked entries
+- **THEN** its grocery items and complete check map replace the loaded content with explicit false values retained
+
+#### Scenario: Explicit empty map clears checks
+- **WHEN** an eligible snapshot supplies an empty raw or generated-client check dictionary
+- **THEN** prior grocery checks are removed
 
 #### Scenario: Raw or missing check map
-- **WHEN** an eligible snapshot has a plain groceryState dictionary or no groceryState.additionalData
-- **THEN** the existing loaded check map remains while grocery items use the supplied list or an empty list
+- **WHEN** an eligible snapshot omits check-state or supplies null
+- **THEN** loaded checks remain while grocery items use the supplied list or an empty list
+
+#### Scenario: Another week or optimistic move guards adjuncts
+- **WHEN** a snapshot identifies another absolute week or is deferred during an active or unconfirmed move
+- **THEN** it does not replace loaded grocery items or checks until eligible reconciliation
 
 ### Requirement: Select Today independently from the received snapshot
 
@@ -307,15 +323,15 @@ A parsed `fill_the_gap_invalidated` event SHALL advance the shared Discovery inv
 
 ### Requirement: Attempt publication of saved vote consequences
 
-After a submitted vote saves and its resulting like count is read successfully, the server SHALL attempt a vote update with recipe identity and count. When discovery's smart-default recalculation boundary is reached and defaults retrieval succeeds, it SHALL attempt a smart-default update for week zero. These event attempts SHALL NOT define vote eligibility, guarantee a threshold transition or establish consumer receipt.
+After saving a vote and reading its like count, the server SHALL attempt an update with recipe identity and count. In an owned round, successful recalculation SHALL attempt smart-default and session updates for the owner's absolute week after every saved vote, even after convergence. Without an owner, early-vote publication SHALL remain available without claiming convergence. Attempts SHALL NOT define vote eligibility, guarantee threshold transitions or establish receipt.
 
 #### Scenario: Saved vote reaches publication
 - **WHEN** vote persistence and resulting like-count retrieval succeed and publication is reached
 - **THEN** a vote update is attempted with that recipe identity and count without a request connection exclusion
 
 #### Scenario: Discovery recalculation reaches publication
-- **WHEN** discovery selects its recalculation boundary and week-zero defaults retrieval succeeds
-- **THEN** a smart-default update is attempted carrying outer week zero and those defaults without a request connection exclusion
+- **WHEN** an owned round's recalculation succeeds after a saved vote
+- **THEN** a smart-default update is attempted carrying the owner's week and those defaults without a request connection exclusion
 
 ### Requirement: Attempt grocery check-map publication at supported saves
 
@@ -375,7 +391,11 @@ When a parsed lifecycle event matches pending capture tracking, shared dispatch 
 
 ### Requirement: Attempt incremental schedule publication after supported saves
 
-After a supported schedule mutation reaches its publication boundary, the server SHALL attempt its named slot or week update with the saved date or reread schedule. An available request connection exclusion SHALL be passed to publication. Saved state SHALL NOT by itself imply emitted bytes, browser receipt or applied consumer state.
+After a supported schedule mutation reaches its publication boundary, the server SHALL attempt its named slot or week update with the saved date or reread schedule and any available request connection exclusion. Committed cross-week legacy movement SHALL attempt source and destination snapshots independently; failure SHALL NOT prevent the other attempt or undo the move.
+
+#### Scenario: Publication attempt does not establish receipt
+- **WHEN** a supported mutation saves state and attempts publication
+- **THEN** saved state SHALL NOT by itself imply emitted bytes, browser receipt or applied consumer state
 
 #### Scenario: Week mutation reaches publication
 - **WHEN** opening voting, locking, assignment, removal of an existing entry or a same-week move completes its preceding save and required reads or recomputation
@@ -392,6 +412,10 @@ After a supported schedule mutation reaches its publication boundary, the server
 #### Scenario: Slot validation reaches publication
 - **WHEN** validation saves a changed scheduled entry or creates a recipe-free skipped entry and reaches publication
 - **THEN** a slot update is attempted with its ISO date, recipe or null, status and available non-cooking metadata
+
+#### Scenario: Plan later moves to another week
+- **WHEN** Planner cross-week push commits its placement
+- **THEN** both affected weeks receive snapshot publication attempts, even if one follow-up fails
 
 ### Requirement: Dispatch received slot updates by date
 
@@ -488,3 +512,139 @@ Connected, slot and week handlers SHALL select Today using meal-planning's curre
 #### Scenario: Same recipe appears on two dates
 - **WHEN** yesterday's optimistic guard identifies the same recipe as today's newly loaded plan
 - **THEN** the old date's guard does not suppress today's plan
+
+### Requirement: Expose authoritative voting session snapshots
+
+An authorized session read SHALL identify the operational round, active absolute week if any, server incarnation, revision and session phase. Owned snapshots SHALL include required slots, covered slots, candidate count and matching smart defaults from one consistent calculation. Unowned snapshots SHALL distinguish absent capacity from confirmed zero capacity. Reads SHALL NOT assign recipes, close voting or capture history.
+
+#### Scenario: Direct Discovery entry for next week
+- **WHEN** next week owns voting but a fresh browser has initialized Planner at week zero
+- **THEN** the session read identifies next week's round and coverage without navigating Planner or guessing its owner from local state
+
+#### Scenario: Consistent progress and suggestions
+- **WHEN** a saved vote or plan edit changes session coverage
+- **THEN** a returned snapshot's counts and suggestions describe the same calculation, not a client merge of unrelated schedule and defaults reads
+
+### Requirement: Reuse household transport for session updates
+
+Session changes SHALL publish replacement state through the existing household stream, including changes caused by open, close, votes and relevant committed plan edits. Publication SHALL follow persistence; failure SHALL NOT imply rollback. The browser SHALL reconcile on Discovery entry, successful stream reconnect, foreground resume and successful local mutations affecting the session, without a second connection or polling loop.
+
+#### Scenario: Member stops without another swipe
+- **WHEN** a connected member receives a converged session snapshot
+- **THEN** Discovery reflects it without requiring that member to vote again
+
+#### Scenario: Missed event
+- **WHEN** a disconnected member reconnects after another member converges
+- **THEN** the browser reads current session state and adopts that result even when no subsequent vote occurs
+
+#### Scenario: Echo excluded from ordinary schedule event
+- **WHEN** a local plan mutation succeeds but its ordinary schedule event excludes the initiating connection
+- **THEN** the local completion path still refreshes session state
+
+#### Scenario: Publication fails after commit
+- **WHEN** a vote or close persists but SSE publication fails
+- **THEN** later successful session reads recover persisted truth; no duplicate close or compensating vote deletion is triggered by the notification failure
+
+### Requirement: Reject stale session projections
+
+Consumers SHALL reject older revisions within a server incarnation and prevent superseded requests, old rounds and old-week suggestions from replacing newer accepted state. A changed server incarnation SHALL require authoritative reconciliation before accepting its revision baseline. Duplicate state SHALL be idempotent. Session freshness SHALL NOT depend on browser wall clocks.
+
+#### Scenario: Delayed old-round event
+- **WHEN** a prior round's convergence arrives after the next round has been confirmed
+- **THEN** it cannot stop the new round or restore its old suggestions
+
+#### Scenario: Duplicate or reordered update
+- **WHEN** revision eight is accepted before revisions seven and eight are received again
+- **THEN** seven is ignored and duplicate eight adds no assignment, celebration replay or count increment
+
+#### Scenario: Host restarts
+- **WHEN** the client encounters a new server incarnation with a lower revision
+- **THEN** it reconciles through the authoritative read and can accept restarted-host state without remaining stuck on the old revision
+
+#### Scenario: Planner is viewing another week
+- **WHEN** session state identifies a different absolute week than the displayed Planner
+- **THEN** session state can update Discovery but its suggestions do not overwrite the displayed week's days
+
+### Requirement: Keep convergence separate from live suggestion replacement
+
+A newer authoritative session snapshot SHALL continue updating pending suggestions after convergence while preserving persisted recipes and Other plans. It SHALL not revive swiping in the same host round. Existing snapshot retention guards SHALL NOT restore obsolete suggestions after a newer confirmed session projection has withdrawn or reordered them.
+
+#### Scenario: Late unanimity changes ordering
+- **WHEN** a late saved vote changes existing suggestion order after convergence
+- **THEN** the loaded owning Planner week receives the revised pending placement while Discovery retains its celebration
+
+#### Scenario: Older defaults arrive after replacement
+- **WHEN** an older smart-default event or pending read arrives after a newer session projection
+- **THEN** it cannot restore superseded pending content; legacy payloads lacking freshness metadata trigger a read for an active session instead of overwriting it
+
+#### Scenario: Occupied date wins
+- **WHEN** a committed Other plan occupies a formerly pending date
+- **THEN** refreshed suggestions respect the occupied date without overwriting its plan or persisting a replacement meal
+
+### Requirement: Attempt authoritative extra publication after committed changes
+
+After an extra add, check, uncheck, rename, recategorization, deletion, or carry-forward reconciliation commits, the server SHALL attempt a `grocery_extras_updated` event containing the affected absolute Monday and authoritative visible extra occurrences for that week. An available request connection exclusion SHALL be forwarded.
+
+#### Scenario: Extra mutation commits
+- **WHEN** a current-week extra rename commits and reaches publication
+- **THEN** the server attempts an extra update for that absolute week with its authoritative visible extras
+
+#### Scenario: Carry-forward materializes occurrences
+- **WHEN** current-week reconciliation creates one or more carried extra occurrences
+- **THEN** the server attempts an extra update for the current absolute week after those occurrences commit
+
+#### Scenario: Publication fails after save
+- **WHEN** an extra mutation commits but event publication fails
+- **THEN** the mutation remains saved and later schedule read or reconnect can recover authoritative state without reporting the save as rolled back
+
+### Requirement: Apply received extras only to eligible shopping views
+
+A parsed `grocery_extras_updated` event SHALL identify the occurrences' absolute Monday. It SHALL reconcile those rows when the grocery view displays that Monday or any later Monday and the occurrences belong to the deployment current week. Each future-week view SHALL retain only unchecked extras. Other views, absent identity, or unusable collections SHALL trigger no guessed update.
+
+#### Scenario: Matching loaded week
+- **WHEN** an extra update identifies the loaded absolute Monday with a valid authoritative collection
+- **THEN** loaded extra rows are replaced while recipe-derived rows and checks remain unchanged
+
+#### Scenario: Future-week shopping view
+- **WHEN** an extra update identifies the deployment current Monday while any future week is displayed
+- **THEN** that view reconciles its projected extras by identity and version, removes checked or removed extras, and preserves next week's recipe-derived rows
+
+#### Scenario: Another week
+- **WHEN** an extra update identifies a Monday not eligible for the displayed current or future-week shopping view
+- **THEN** the displayed grocery rows remain unchanged through that handler
+
+#### Scenario: Week identity is absent
+- **WHEN** an extra update omits its absolute Monday
+- **THEN** the client requests authoritative state rather than applying the collection to the displayed offset
+
+### Requirement: Keep newer local extra versions during reconciliation
+
+Extra reconciliation SHALL compare stable occurrence identity and version. An incoming occurrence SHALL NOT replace a newer loaded version, and an incoming collection SHALL NOT remove a locally pending occurrence until its mutation resolves or authoritative refresh confirms the result.
+
+#### Scenario: Older event follows local save
+- **WHEN** an event supplies version four for an occurrence already loaded at version five
+- **THEN** version five remains displayed
+
+#### Scenario: Pending optimistic deletion
+- **WHEN** an event still contains an occurrence whose local deletion is pending
+- **THEN** the row remains optimistically absent until deletion resolves or authoritative recovery restores it
+
+#### Scenario: Newer household edit
+- **WHEN** an event supplies a higher version for a nonpending occurrence
+- **THEN** the loaded row adopts the newer authoritative snapshot
+
+### Requirement: Recover extras through schedule snapshots and reconnects
+
+Eligible schedule snapshots SHALL include the authoritative extra occurrences for that shopping view and reconcile them under the same occurrence-week identity, version, and pending-mutation guards as an extra event. Live delivery SHALL remain a freshness hint rather than a durable replay guarantee.
+
+#### Scenario: Event was missed
+- **WHEN** an extra event was not received and a later schedule read returns the affected week
+- **THEN** the returned authoritative extras reconcile the loaded grocery view
+
+#### Scenario: Reconnect current week
+- **WHEN** a browser reconnects after another device changed a current-week extra
+- **THEN** the connected current-week schedule can recover that extra state without event replay
+
+#### Scenario: Snapshot is older than pending work
+- **WHEN** a matching schedule snapshot arrives while a local extra mutation remains pending
+- **THEN** the pending row is not silently replaced until its outcome is reconciled

@@ -53,7 +53,7 @@ repos:
         pass_filenames: false
 
       - id: push-validation
-        name: Full committed-source validation
+        name: Affected committed-source validation
         language: system
         entry: task check:push
         stages: [pre-push]

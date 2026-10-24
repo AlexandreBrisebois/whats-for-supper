@@ -7,6 +7,7 @@ public sealed class GroceryExtraOccurrence
     public Guid? PredecessorId { get; set; }
     public DateOnly WeekStartDate { get; set; }
     public string Name { get; set; } = "";
+    public string? CreationName { get; set; }
     public string NormalizedKey { get; set; } = "";
     public string GrocerySection { get; set; } = "Grocery";
     public bool Checked { get; set; }
@@ -23,6 +24,7 @@ public sealed class GroceryExtraOccurrence
             PredecessorId = predecessorId,
             WeekStartDate = week,
             Name = name,
+            CreationName = name,
             NormalizedKey = normalizedKey,
             GrocerySection = section,
             CreatedAt = now,

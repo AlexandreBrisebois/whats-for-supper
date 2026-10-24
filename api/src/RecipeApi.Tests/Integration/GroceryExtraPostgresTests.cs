@@ -15,7 +15,7 @@ using PostgresFact = RecipeApi.Tests.Integration.RecipeImportReportPostgresTests
 
 namespace RecipeApi.Tests.Integration;
 
-public sealed class GroceryExtraPostgresTests : IAsyncLifetime
+public sealed partial class GroceryExtraPostgresTests(Xunit.Abstractions.ITestOutputHelper output) : IAsyncLifetime
 {
     private readonly string database = $"wfs_grocery_extra_{Guid.NewGuid():N}";
     private NpgsqlConnection admin = null!;
@@ -233,6 +233,81 @@ public sealed class GroceryExtraPostgresTests : IAsyncLifetime
     }
 
     [PostgresFact]
+    public async Task CreateReplayRetainsItsOriginalBindingAcrossFreshContextsAndRename()
+    {
+        var id = Guid.NewGuid();
+        var request = new RecipeApi.Dto.CreateGroceryExtraRequest(id, new(2026, 10, 19), "Coffee");
+        await using (var original = Context())
+        {
+            await Service(original).CreateAsync(request);
+            await Service(original).UpdateAsync(id, new(request.WeekStartDate, 1, Name: "Coffee beans"));
+        }
+        await using var fresh = Context();
+        var replay = await Service(fresh).CreateAsync(request);
+        Assert.False(replay.Created);
+        Assert.Equal("Coffee beans", replay.Extra.Name);
+        Assert.Equal("Coffee", (await fresh.GroceryExtraOccurrences.SingleAsync()).CreationName);
+    }
+
+    [PostgresFact]
+    public async Task DeterministicLifecycleSequencesPreserveHistoricalSnapshotsAndTerminalLineages()
+    {
+        await using var db = Context();
+        var clock = new SequenceClock();
+        var calendar = new DeploymentCalendar(new ConfigurationManager());
+        var service = new GroceryExtraService(db, clock, calendar, new AisleMapper());
+        var rollover = new GroceryExtraRolloverService(db, clock, calendar);
+        var random = new Random(284);
+        for (var sequence = 0; sequence < 12; sequence++)
+        {
+            clock.Week = new(2026, 9, 28);
+            var id = Guid.NewGuid();
+            await service.CreateAsync(new(id, clock.Week, "Toilet paper"));
+            var ended = false;
+            for (var step = 0; step < 4; step++)
+            {
+                var before = await db.GroceryExtraOccurrences.AsNoTracking()
+                    .Where(row => row.LineageId == id).OrderBy(row => row.WeekStartDate).ToListAsync();
+                clock.Week = clock.Week.AddDays(7);
+                await rollover.ReconcileCurrentAsync();
+                await rollover.ReconcileCurrentAsync();
+                var after = await db.GroceryExtraOccurrences.AsNoTracking()
+                    .Where(row => row.LineageId == id).OrderBy(row => row.WeekStartDate).ToListAsync();
+                Assert.Equal(before.Count + (ended ? 0 : 1), after.Count);
+                for (var index = 0; index < before.Count; index++)
+                {
+                    Assert.Equal(before[index].Name, after[index].Name);
+                    Assert.Equal(before[index].GrocerySection, after[index].GrocerySection);
+                    Assert.Equal(before[index].Checked, after[index].Checked);
+                    Assert.Equal(before[index].RemovedAt, after[index].RemovedAt);
+                    Assert.Equal(before[index].Version, after[index].Version);
+                }
+                if (ended) continue;
+                var latest = after[^1];
+                Assert.Equal(after[^2].Id, latest.PredecessorId);
+                var projected = await service.ReadForViewAsync(clock.Week.AddDays(7), clock.Week);
+                Assert.Contains(projected, row => row.Id == latest.Id && !row.ReadOnly);
+                Assert.Contains(await service.ReadForViewAsync(clock.Week.AddDays(14), clock.Week), row => row.Id == latest.Id);
+                Assert.Equal(after.Count, await db.GroceryExtraOccurrences.CountAsync(row => row.LineageId == id));
+                switch (random.Next(4))
+                {
+                    case 0: await service.UpdateAsync(latest.Id, new(clock.Week, latest.Version, Name: "Paper towels")); break;
+                    case 1: await service.UpdateAsync(latest.Id, new(clock.Week, latest.Version, GrocerySection: "Pantry")); break;
+                    case 2: await service.UpdateAsync(latest.Id, new(clock.Week, latest.Version, Checked: true)); ended = true; break;
+                    case 3: await service.DeleteAsync(latest.Id, clock.Week, latest.Version); ended = true; break;
+                }
+            }
+        }
+        Assert.Empty(await db.WeeklyPlans.ToListAsync());
+    }
+
+    private sealed class SequenceClock : IClock
+    {
+        public DateOnly Week { get; set; }
+        public DateTimeOffset UtcNow => new(Week.ToDateTime(new TimeOnly(12, 0)), TimeSpan.Zero);
+    }
+
+    [PostgresFact]
     public async Task CompatibilityMigrationCreatesExtrasIdempotentlyWithoutResettingExistingData()
     {
         await using var sql = new NpgsqlConnection(connection);
@@ -242,6 +317,7 @@ public sealed class GroceryExtraPostgresTests : IAsyncLifetime
 
         await new NpgsqlCommand(compatibility, sql).ExecuteNonQueryAsync();
         await new NpgsqlCommand("INSERT INTO grocery_extra_occurrences (id, lineage_id, week_start_date, name, normalized_key, grocery_section) VALUES (gen_random_uuid(), gen_random_uuid(), '2026-10-19', 'Coffee', 'coffee', 'Beverages')", sql).ExecuteNonQueryAsync();
+        await new NpgsqlCommand("ALTER TABLE grocery_extra_occurrences DROP COLUMN creation_name", sql).ExecuteNonQueryAsync();
         await new NpgsqlCommand(compatibility, sql).ExecuteNonQueryAsync();
 
         Assert.Equal(1L, await new NpgsqlCommand("SELECT count(*) FROM grocery_extra_occurrences", sql).ExecuteScalarAsync());

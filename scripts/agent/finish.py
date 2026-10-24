@@ -322,7 +322,7 @@ def introduced_links(current, baseline):
     return [link for link in re.findall(pattern, current) if link not in existing]
 
 
-def documentation_check(paths):
+def documentation_check(paths, *, baseline_ref="HEAD"):
     """Check changed Markdown links and Python syntax without writing bytecode."""
     problems = []
     for name in paths:
@@ -336,7 +336,7 @@ def documentation_check(paths):
                 problems.append(str(error))
         if name.endswith('.md'):
             try:
-                baseline = subprocess.check_output(['git', 'show', f'HEAD:{name}'],
+                baseline = subprocess.check_output(['git', 'show', f'{baseline_ref}:{name}'],
                                                    cwd=ROOT, stderr=subprocess.DEVNULL).decode()
             except subprocess.CalledProcessError:
                 baseline = ''

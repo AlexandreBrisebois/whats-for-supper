@@ -8,6 +8,8 @@ import {
   ChevronDown,
   Circle,
   Edit3,
+  Plus,
+  LoaderCircle,
   ShoppingCart,
   Tag,
   Trash2,
@@ -185,8 +187,7 @@ export function GroceryList({
       absoluteMonday(selectedWeekAtStart) !==
       absoluteMonday(String(extra.occurrenceWeekStartDate ?? ''));
     if ('checked' in change && change.checked && isProjectedAtStart) removeExtra(id);
-    else if ('checked' in change || 'grocerySection' in change)
-      upsertExtra({ ...extra, ...change } as GroceryExtraDto);
+    else if ('checked' in change) upsertExtra({ ...extra, ...change } as GroceryExtraDto);
     try {
       const authoritative = await updateGroceryExtra(extra, change);
       if (!matchesOccurrenceIdentity(authoritative, extra)) {
@@ -271,8 +272,11 @@ export function GroceryList({
       setSuggestions([]);
       setAddState('idle');
       inputRef.current?.focus();
-    } catch {
+    } catch (error) {
       await useWeekStore.getState().sync();
+      // Confirmed removal ends the old submission. Another explicit Add may
+      // deliberately create a fresh occurrence; uncertain outcomes retain the ID.
+      if ((error as { absent?: boolean }).absent) createAttempt.current = null;
       setAddState('error');
       inputRef.current?.focus();
     }
@@ -1044,11 +1048,19 @@ export function GroceryList({
               type="submit"
               disabled={!extraName.trim() || addState === 'pending'}
               onPointerDown={(event) => event.preventDefault()}
-              className="min-h-12 rounded-2xl bg-terracotta px-5 font-bold text-white disabled:opacity-50 focus:ring-2 focus:ring-charcoal"
+              className="h-12 w-12 shrink-0 rounded-2xl bg-terracotta text-white disabled:opacity-50 focus:ring-2 focus:ring-charcoal"
+              aria-label={
+                addState === 'pending'
+                  ? t('grocery.addingExtra', 'Adding…')
+                  : t('grocery.addExtra', 'Add')
+              }
+              aria-busy={addState === 'pending'}
             >
-              {addState === 'pending'
-                ? t('grocery.addingExtra', 'Adding…')
-                : t('grocery.addExtra', 'Add')}
+              {addState === 'pending' ? (
+                <LoaderCircle className="mx-auto animate-spin" size={20} aria-hidden="true" />
+              ) : (
+                <Plus className="mx-auto" size={20} aria-hidden="true" />
+              )}
             </button>
           </form>
           {(addState === 'error' || suggestionError) && (

@@ -66,6 +66,9 @@ public class BackfillVegetarianClassificationProcessorTests
 
     private sealed class RecordingOrchestrator : IWorkflowOrchestrator
     {
+        public Task<WorkflowInstance?> InitializeUrlCaptureAsync(Guid instanceId, CancellationToken ct = default)
+            => throw new NotSupportedException();
+
         public List<(string WorkflowId, Dictionary<string, string> Parameters)> Calls { get; } = [];
         public Task<WorkflowInstance> TriggerAsync(string workflowId, Dictionary<string, string> parameters, DateTimeOffset? scheduledAt = null)
         {

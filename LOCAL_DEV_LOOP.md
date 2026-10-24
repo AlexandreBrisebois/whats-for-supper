@@ -11,8 +11,8 @@ task hooks:setup
 ```
 
 `hooks:setup` installs the pinned OpenSpec CLI and Python/PWA/browser dependencies, restores the API test project,
-and installs both Git hooks. Existing installations only need `task hooks:install`
-after pulling hook changes. Docker must be running for API integration tests; the
+and installs both Git hooks. Use `task hooks:install` when hooks are missing or the adapter itself changes;
+an installed adapter reads the current repository configuration on each invocation. Docker must be running for API integration tests; the
 push check does not reset the development stack or kill an existing dev server.
 
 Before staging, format or generate only the files required by your change:
@@ -34,12 +34,37 @@ harness tests, static contracts/mocks, client freshness and PWA formatting. It d
 not generate or stage files, build the application, or run integration/E2E suites.
 Use `task check:commit` to run the staged checks manually.
 
-Push runs full spec/harness/contract checks, API formatting/Release build/tests, and
-PWA formatting/lint/types/units/production build/full E2E. Use `task check:push` to
-run the same gate manually after committing. It requires clean tracked and untracked
-source and the checked-out revision being pushed; it never treats a clean worktree
-as "no tests needed". Build output remains ignored. Playwright manages its production
-server and does not reuse an external `BASE_URL`.
+Push selects checks from the complete committed range being pushed. Markdown-only
+changes run committed whitespace and introduced-link checks; OpenSpec planning also
+runs spec validation. Harness changes run existing tooling tests. API changes run
+API checks, PWA changes run production checks with affected E2E capability suites,
+and database changes run relational tests plus an isolated disposable smoke stack.
+Shared contracts/dependencies and unknown impact retain broader checks. Mixed
+changes take the union, so a docs commit after unpushed code still tests that code.
+
+Use the existing command after committing:
+
+```bash
+task check:push                        # Affected checks; manual runs compare to upstream
+task check:push -- --plan               # Explain the committed range and selection; runs no checks
+task check:push -- --base origin/main    # Explicit manual base; hook-supplied refs take precedence
+task check:push -- --full               # Force all push checks
+```
+
+Without a trustworthy base, validation falls back to full checks rather than
+assuming no impact. Deleted files and both sides of renames are included. Execution
+requires clean tracked/untracked source and the checked-out pushed revision, and
+rechecks them between checks and at completion. Preview does not require a clean
+worktree, but still considers committed source only. No success cache is used.
+
+The existing `check:push:pwa` builds once and reuses the CI capability selector;
+`task check:push:pwa SUITES="planning household"` runs those suites, while its
+default remains all E2E. It keeps the fixed CI auth/build flags and never reuses an
+external `BASE_URL`. Push-triggered database smoke calls the existing
+`task test:smoke -- --isolated`, with unique project/container/network/volume names
+and dynamic loopback ports. Its teardown only removes its owned resources. The
+legacy explicit `task test:smoke` retains its development-stack reset behavior.
+No hook reinstall is needed for an already installed pre-commit adapter.
 
 Both gates stop on failure. Fix, prepare, stage and commit again before retrying a
 push. CI repeats platform/build tests and adds Docker/security validation. A local
@@ -56,15 +81,14 @@ An explicit Task variable such as `PYTHON=python3` can select an already-provisi
 interpreter in CI or another managed environment. Do not install into Homebrew's
 externally managed system Python.
 
-`task spec:check` requires OpenSpec 1.14.1 and validates all capability specs and
-active changes with strict, non-interactive checks. Install the matching CLI with
-`npm install --global @fission-ai/openspec@1.14.1`. The reusable Validate workflow
-installs this exact version and always runs spec validation, including spec-only
-changes. An empty OpenSpec tree reports no items; this does not establish behavior
-or replace implementation acceptance.
+`task spec:check` validates capability specs and active changes with the strict,
+non-interactive OpenSpec version pinned by `OPENSPEC_VERSION` in `Taskfile.yml`
+(currently 1.14.3). `task hooks:setup` installs that pin. The reusable CI validation
+workflow also validates specs for documentation-only changes. Spec validity is
+separate from implementation or deployment acceptance.
 
 
-This is a contributor guide for local development, service orchestration, and discovery. It is not a Synology installation guide; see the current [Synology operator guide](release-template/synology/README.md), whose physical deployment and recovery qualification remain outstanding.
+This is a contributor guide for local development, service orchestration, and discovery. It is not a Synology installation guide; see the current [Synology operator guide](release-template/synology/README.md), for deployment and recovery procedures; local checks do not qualify a physical NAS.
 
 ## Service Dependencies (Internal Network)
 
@@ -72,9 +96,9 @@ This is a contributor guide for local development, service orchestration, and di
 graph TD
     User["User (Browser)"] -- "HTTP :80 (Traefik)" --> Traefik["Traefik (Reverse Proxy)"]
     Traefik -- "Host: pwa..." --> PWA["PWA (Next.js)"]
-    Traefik -- "Host: api..." --> API["API (.NET 11 RC1)"]
-    PWA --> DB[("PostgreSQL (pgvector)")]
-    API --> DB
+    Traefik -- "Host: api..." --> API["API (.NET)"]
+    PWA --> API
+    API --> DB[("PostgreSQL (pgvector)")]
 ```
 
 ## Discovery Rules
@@ -129,7 +153,7 @@ task
 | `task down` | Stop all modular services ⛔ |
 | `task dev:api` | Start API with hot reload |
 | `task dev:pwa` | Start PWA with hot reload |
-| `task gate` | ⚡ Fast dev loop: catch what changed |
+| `task gate` | Fast feedback; stops dev/test processes before checking impact |
 | `task review` | 🔒 Application validation (unit/API tests; no E2E) |
 | `task test` | Run all tests 🧪 |
 | `task test:smoke` | Shared local/CI Docker smoke checks; resets development containers and volumes |
@@ -161,9 +185,10 @@ task test:api          # API tests only
 task test:api:watch    # API tests in watch mode
 task test:unit         # PWA unit tests (Vitest — fast, no server)
 task test:unit:watch   # PWA unit tests in watch mode
-task test:e2e          # E2E tests (Playwright — requires running PWA)
-task test:e2e:ci       # E2E tests in CI-parity mode (build + test)
-task test:smoke        # Shared CI smoke workflow; destroys disposable development DB
+task test:e2e          # Playwright manages a local dev server by default
+task check:push:pwa    # Isolated production server, build and all E2E
+task test:database    # Owned PostgreSQL integration test databases
+task test:smoke -- --isolated # Fresh smoke stack with owned names and dynamic ports
 
 # Building & Publishing
 task build             # Force rebuild all images (No-cache + Image removal) 📦
@@ -198,7 +223,7 @@ task shell:pwa         # Shell in PWA container
 task shell:db          # psql in database
 
 # Code quality
-task format            # Format all code
+task format            # Format API, PWA and Markdown (preserves prose wrapping)
 task lint              # Lint all code
 task typecheck         # Type check TypeScript
 task gen:client        # Regenerate Kiota API client from spec
@@ -218,26 +243,25 @@ task clean:all         # Deep clean (includes node_modules)
 task init              # Initialize project (first-time setup)
 task hooks:install     # Install commit + pre-push hooks
 task check:commit      # Quick staged checks
-task check:push        # Full validation after committing (clean source required)
+task check:push        # Affected committed-range validation (clean source required)
 task ship              # Final ship checklist
-task tag               # 🏷️ Tag and push release (patch|minor|major)
+task tag               # Annotated stable release on main; beta on other branches
 ```
 
-`task test:smoke` and CI call the same Python runner. It requires Docker Compose
-and the repository Python environment (`task init:python`). It resets the
-`whats-for-supper` Compose project, including its PostgreSQL and application-data
-volumes, then builds with `infrastructure.yml`, `apps.yml`, and `ci-overrides.yml`.
-The checked-in synthetic `docker/compose/smoke.env` supplies configuration in both
-environments; development overrides and local seed directories are not mounted.
-Ports 9001 and 3000 must be available after the project reset; the runner does not
-kill unrelated processes occupying them.
+`task test:smoke -- --isolated` uses the shared smoke runner with an owned
+Compose project, unique container/image/network/volume names, and dynamically
+assigned loopback ports. Push validation uses this mode. It needs Docker Compose
+and the repository Python environment (`task init:python`). Migration, PostgreSQL,
+API/PWA health and live OpenAPI parity checks run against that disposable stack;
+success, failure and handled interruption attempt teardown. No seed data is mounted.
+Build images/cache may remain locally after teardown.
 
-Smoke checks cover migration success, PostgreSQL readiness, API/PWA health, valid
-API health JSON, and live OpenAPI endpoint drift. Failures dump container logs;
-success, failure, and handled interruption attempt teardown and preserve a failing
-exit status. CI also has an always-run fallback teardown. Local and CI builds use
-their host architecture. Seeding and E2E remain separate checks; after smoke testing,
-restore the development database from local seed data with `task dev:db:sync`.
+The legacy explicit `task test:smoke` resets the development `whats-for-supper`
+Compose containers and volumes and needs ports 9001 and 3000. Use it only when that
+reset is intended; restore development seed data afterward with `task dev:db:sync`.
+Smoke is distinct from relational behavior tests (`task test:database`) and browser
+coverage. Ordinary CI uses AMD smoke for database/container inputs; release tags
+smoke the exact release candidates on native AMD and ARM runners.
 
 ---
 
@@ -294,13 +318,11 @@ task dev:pwa
 - 🐛 Better IDE integration (breakpoints, debugging)
 - 🎯 Exact error messages (not buried in docker logs)
 
-**# API Logic (docker/.env)
-POSTGRES_CONNECTION_STRING=postgres://recipe_app:secure_dev_password@localhost:5432/recipe_app_db
-RECIPES_ROOT=/tmp/recipes
-API_BASE_URL=http://localhost:5000
-
-# PWA Logic (pwa/.env.local)
-NEXT_PUBLIC_API_BASE_URL=http://api.wfs.localhost**
+The local API task binds to `http://localhost:9001` and uses the configured
+PostgreSQL credentials from the Taskfile environment. Configure `pwa/.env.local`
+for that API when using the local PWA server; keep `HEARTH_SECRET` consistent.
+Containerized PWA requests use the internal API service URL. Compose combines
+`docker/.env` with `docker/.env.local` overrides.
 
 **When to use:** Daily development, debugging, feature work.
 
@@ -347,12 +369,6 @@ task check:push
 task ship
 ```
 
-**Guided development workflow:**
-```bash
-# Shows instructions for next steps
-task work
-```
-
 ### Workflow 5: Contract-First Development (The Elite Loop)
 
 **When modifying API endpoints or DTOs:**
@@ -360,7 +376,7 @@ task work
 1. **Update Spec**: Edit `specs/openapi.yaml` first.
 2. **Verify Route Drift**: Run `task agent:drift:routes` to compare C# controller routes against `specs/openapi.yaml` without starting the API.
 3. **Align Backend**: Update C# DTOs/Controllers to match.
-4. **Verify All Drift**: `task agent:drift` should report no route, schema, or mock drift. The live endpoint tier may skip locally if the API is not reachable.
+4. **Verify All Drift**: `task agent:drift` should report no route, schema, or mock drift. An unavailable live API is blocked evidence; it does not establish parity.
 5. **Regenerate Client**: Run `task gen:client` to regenerate the Kiota TypeScript client.
 6. **Run Gate**: `task gate` — catches stale client and type errors immediately.
 
@@ -409,9 +425,9 @@ task dev:pwa
 
 This project uses a **Dual-Config Strategy** to separate your ecosystem settings (Docker) from your service-specific settings (Local PWA dev).
 
-- **[docker/.env](file:///Users/alex/Code/whats-for-supper/docker/.env)**: The primary source of truth for the entire ecosystem (Traefik, API, DB, PWA). 
-- **[pwa/.env.local](file:///Users/alex/Code/whats-for-supper/pwa/.env.local)**: Only used when running `task dev:pwa` (Next.js dev server outside Docker).
-- **[.env.test](file:///Users/alex/Code/whats-for-supper/.env.test)**: Shared overrides for Playwright and unit tests.
+- **`docker/.env`**: The primary source of truth for the entire ecosystem (Traefik, API, DB, PWA).
+- **`pwa/.env.local`**: Only used when running `task dev:pwa` (Next.js dev server outside Docker).
+- **`.env.test`**: Shared overrides for Playwright and unit tests.
 
 **Key Variables:**
 - `HEARTH_SECRET`: The family passphrase for onboarding. **Must be the same** in all active config files for authentication to work across services.
@@ -432,7 +448,7 @@ cp pwa/.env.local.example pwa/.env.local
 
 Use `task hooks:install` to install commit and push hooks. `task check:commit`
 checks staged content without rewriting it. `task check:push` validates clean,
-committed source with the same production build/E2E environment as CI.
+committed source using affected checks and the shared CI E2E suite selector.
 See the everyday flow at the top of this guide for setup and failure recovery.
 
 ### 6. **Know Your Workflows**
@@ -450,198 +466,55 @@ task ship
 
 ## GitHub Actions: Cloud Loop
 
-Full CI/CD pipeline that validates everything on every push/PR.
+The workflow files are executable owners; avoid copying their YAML into this guide.
 
-### Structure
+| Workflow | Trigger and responsibility |
+|---|---|
+| [ci.yml](.github/workflows/ci.yml) | Branch pushes and PRs to main; invokes affected validation. CodeQL retains main/PR scope. |
+| [validate.yml](.github/workflows/validate.yml) | Reusable spec, tooling, API, contract and PWA checks selected by changed inputs. Database/container changes run AMD smoke. |
+| [container-candidate.yml](.github/workflows/container-candidate.yml) | Tag-publication helper: native AMD/ARM builds, exact-image smoke and archived candidate images. |
+| [publish-dockerhub.yml](.github/workflows/publish-dockerhub.yml) | Annotated `dockerhub/v*` tags; reuses successful exact-commit source CI or validates once, then builds, smokes and publishes the same images. |
+| [install-identity-validation.yml](.github/workflows/install-identity-validation.yml) | Targeted identity/manifest/icon/channel/dependency/container PR inputs and manual runs; stable/beta with demo off/on. |
+| [codeql.yml](.github/workflows/codeql.yml) | Security analysis via CI and its own scheduled run. |
 
-```
-.github/workflows/
-├── test.yml           # Runs on every PR: unit tests, lint, type check
-├── build.yml          # Runs on merge to main: build containers
-├── deploy.yml         # Runs on release tag: deploy to production
-└── nightly.yml        # Runs daily: E2E tests, performance tests
-```
+PWA E2E uses affected capability suites (tonight, planning, recipes, household),
+one production build, separate runners, and a merged report. Shared or uncertain
+PWA impact selects all suites. The original `PWA — build & E2E` aggregate check
+requires the build, selected suites and report to pass. Live-service qualification
+remains separate from mocked E2E.
 
-### Workflow 1: Test on PR (`test.yml`)
+Container packaging happens for tags. Both architectures build and smoke in
+parallel; publication loads retained images and assembles final manifests by digest
+without rebuilding. Main produces stable releases and other branches produce beta.
+Use `task tag` only when intentionally creating and pushing a release tag. The
+manual PDF preview workflow is retired; its tests and qualification scripts remain.
+See [CI image promotion](docs/development/ci-image-promotion.md) for artifact and
+failure behavior. Hosted qualification and measured runtime savings remain separate
+from local/static checks.
 
-Runs on every PR to catch bugs early:
+### Local → CI
 
-```yaml
-name: Test & Lint
-
-on:
-  pull_request:
-    branches: [main]
-
-jobs:
-  api-test:
-    runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: pgvector/pgvector:pg17
-        env:
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: recipes
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
-
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-dotnet@v3
-        with:
-          dotnet-version: '11.0.x'
-          include-prerelease: true
-
-      - name: Restore dependencies
-        run: cd api && dotnet restore
-
-      - name: Build
-        run: cd api && dotnet build --no-restore
-
-      - name: Run tests
-        run: cd api && dotnet test --no-build --verbosity normal
-
-      - name: Run analyzers
-        run: cd api && dotnet format --verify-no-changes --verbosity diagnostic
-
-  pwa-test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
-        with:
-          node-version: '18'
-          cache: 'npm'
-          cache-dependency-path: pwa/package-lock.json
-
-      - name: Install dependencies
-        run: cd pwa && npm ci
-
-      - name: Run tests
-        run: cd pwa && npm run test
-
-      - name: Run lint
-        run: cd pwa && npm run lint
-
-      - name: Type check
-        run: cd pwa && npm run typecheck
-
-      - name: Build
-        run: cd pwa && npm run build
-```
-
----
-
-### Workflow 2: Build on Merge (`build.yml`)
-
-Builds Docker images on merge to main:
-
-```yaml
-name: Build
-
-on:
-  push:
-    branches: [main]
-
-jobs:
-  build-containers:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-
-    steps:
-      - uses: actions/checkout@v3
-      - uses: docker/setup-buildx-action@v2
-
-      - name: Build API image
-        run: docker build -t whats-for-supper/api:latest -t whats-for-supper/api:${{ github.sha }} ./api
-
-      - name: Build PWA image
-        run: docker build -t whats-for-supper/pwa:latest -t whats-for-supper/pwa:${{ github.sha }} ./pwa
-
-      # Optional: Push to registry
-      # - uses: docker/login-action@v2
-      #   with:
-      #     registry: ghcr.io
-      #     username: ${{ github.actor }}
-      #     password: ${{ secrets.GITHUB_TOKEN }}
-
-      # - uses: docker/build-push-action@v4
-      #   with:
-      #     context: ./api
-      #     push: true
-      #     tags: ghcr.io/${{ github.repository }}/api:latest
-```
-
----
-
-### Workflow 3: Deploy on Release (`deploy.yml`)
-
-Runs when you create a release tag:
-
-```yaml
-name: Deploy
-
-on:
-  release:
-    types: [published]
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Deploy to production
-        run: |
-          echo "Deploying ${{ github.event.release.tag_name }}"
-          # Add your deployment logic here
-          # e.g., ssh to server, pull images, run docker-compose up
-```
-
----
-
-### Workflow 4: Docker Hub publication
-
-Run `task tag` on `main` to publish the next stable Docker Hub release. Run it on another named branch to publish the next beta build. The GitHub-hosted workflow builds and pushes immutable `linux/amd64` and `linux/arm64` images; it does not use a private registry or self-hosted runner.
-
----
-
-## Sync Between Local & Cloud
-
-### Local → Cloud (Push to GitHub)
 ```bash
-# Make changes locally
-# Run local tests
-make test
-
-# If tests pass, push
+# After preparing, reviewing and committing the intended changes:
+task check:push -- --plan
 git push origin feature-branch
-
-# GitHub Actions automatically:
-# 1. Runs all tests
-# 2. Builds Docker images
-# 3. Checks linting/types
-# 4. Comments on PR with results
 ```
 
-### Cloud → Local (Pull from GitHub)
+The installed hook validates the committed push range. CI then runs affected Linux
+validation; an ordinary PWA correction does not automatically package every image.
+
+### Pulling changes
+
 ```bash
-# Get latest main with all validated changes
 git pull origin main
-
-# Local tests may pass/fail differently (different OS, versions)
-# If tests fail locally, debug with:
-make logs
-make shell-api
-make shell-db
+# Select .nvmrc, refresh changed dependencies, then inspect failures with:
+task logs:api
+task logs:pwa
+task shell:db
 ```
+
+Local and hosted checks exercise different runtimes; success in one is not evidence
+that the other ran.
 
 ---
 
@@ -650,7 +523,7 @@ make shell-db
 ### Setup (first time)
 ```bash
 # Clone repo
-git clone https://github.com/yourorg/whats-for-supper.git
+git clone https://github.com/AlexandreBrisebois/whats-for-supper.git
 cd whats-for-supper
 
 # Install Task if you haven't already
@@ -695,15 +568,14 @@ task logs:pwa
 task shell:db
 
 # If everything passes
-git add .
+git add <reviewed-paths>
 git commit -m "feature: add hint system"
 git push
 
 # GitHub Actions takes over:
-# - Runs full test suite in cloud
-# - Builds Docker images
-# - Checks formatting & types
-# - Comments on PR with results
+# - Runs affected source checks and E2E suites
+# - Smokes database/container inputs when selected
+# - Packages ARM/AMD images only for release tags
 ```
 
 ### Cleanup
@@ -732,16 +604,16 @@ task clean
 2. **Run only the service you're testing:**
    ```bash
    # Only testing PWA?
-   cd pwa && npm run test
+   task test:unit
    
    # Only testing API?
-   cd api && dotnet test
+   task test:api
    ```
 
 3. **Run specific test file for quick feedback:**
    ```bash
-   cd pwa && npm run test -- capture.test.ts
-   cd api && dotnet test -- --filter "CaptureTests"
+   task test:unit -- src/lib/server/deployment-identity.test.ts
+   task test:api -- --filter FullyQualifiedName~CaptureTests
    ```
 
 4. **Clear caches if build seems stuck:**
@@ -759,10 +631,9 @@ task clean
 
 | Problem | Solution |
 |---------|----------|
-| Port 80 in use | Another web server is running. Stop it or change Traefik ports in `infrastructure.yml` |
-| Traefik returns 404 | Docker Provider hasn't discovered services. Check `task health` and `task logs:traefik` |
-| Docker Provider is `null` | Handshake failed. Check `infrastructure.yml` for correct `/var/run/docker.sock` mount |
-| Database won't start | `task clean` then `task up` |
+| Port 80 in use | Another web server is running. Inspect the listener and development Compose port mapping before changing it |
+| Traefik returns 404 | Inspect `task health`, `task logs` and the configured file-provider routes |
+| Database won't start | Inspect `task logs:db`; reserve volume resets for an intentional recovery operation |
 | API can't connect to DB | Check `POSTGRES_CONNECTION_STRING` in `.env`. Ensure DB is healthy. |
 | PWA can't reach API | Check `NEXT_PUBLIC_API_BASE_URL` - should be `http://api.wfs.localhost` |
 | Check service health | `task health` (the single source of truth) |
@@ -792,13 +663,13 @@ This repository is optimized for **Universal Agent Protocol (UAP)** and includes
 | `task agent:summary` | Prints compact source/spec navigation without loading resume context or the skill registry. |
 | `task agent:status` | Explicitly reads HANDOVER for resumption or active-state ambiguity. |
 | `task agent:api` | Maps all C# endpoints to a markdown table (low token cost). |
-| `task agent:drift` | Fuzzes the delta between OpenAPI specs and C# DTOs. |
+| `task agent:drift` | Runs route, live endpoint, schema and mock drift checks; evidence has separate scopes. |
 | `task agent:slice` | Shows the full "vertical slice" (Spec ↔ Backend ↔ Client) for a route. |
 | `task agent:audit` | Scans PWA tests for brittle selectors (missing `data-testid`). |
-| `task agent:test:impact` | Runs only the tests affected by current git changes. |
+| `task agent:test:impact` | Advisory worktree-based selection; unknown impact runs all E2E. Push uses committed refs instead. |
 
 ### Master Rules
-See [AGENT.md](../../AGENT.md) for core architectural constraints and agent instructions.
+See [AGENT.md](AGENT.md) for core architectural constraints and agent instructions.
 
 ## 7. Troubleshooting
 
@@ -854,4 +725,4 @@ See `docker/.env.example` for the full list.
 - [ ] During dev: `task gate` (fast loop)
 - [ ] Install hooks: `task hooks:install`
 - [ ] Before committing: `task check:commit`
-- [ ] After committing: `task check:push` (full local gate)
+- [ ] After committing: `task check:push` (affected local gate; `-- --full` forces all checks)

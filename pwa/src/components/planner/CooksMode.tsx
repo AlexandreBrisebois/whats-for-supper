@@ -51,29 +51,6 @@ interface CooksModeProps {
   onCooked?: () => void;
 }
 
-const getFallbackSteps = (): CookingStep[] => [
-  {
-    index: 1,
-    title: "Let's get everything together",
-    instruction: 'Gather everything you need. Clear the counter and get ready to cook!',
-  },
-  {
-    index: 2,
-    title: 'Prep the Base',
-    instruction: 'Prepare your base ingredients according to the recipe.',
-  },
-  {
-    index: 3,
-    title: 'Cook',
-    instruction: 'Follow the recipe instructions carefully.',
-  },
-  {
-    index: 4,
-    title: 'Finish',
-    instruction: 'Add final touches and plate your dish.',
-  },
-];
-
 function updateInstructionValue(value: unknown, instruction: string): unknown {
   if (typeof value === 'string') return instruction;
   if (typeof value !== 'object' || value === null) return value;
@@ -87,6 +64,8 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
   const [recipeDetails, setRecipeDetails] = useState<Recipe | null>(null);
   const [parsedSteps, setParsedSteps] = useState<CookingStep[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [contentError, setContentError] = useState(false);
+  const [readAttempt, setReadAttempt] = useState(0);
   const [gathered, setGathered] = useState<Record<string, boolean>>({});
   const [showIngredients, setShowIngredients] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
@@ -126,7 +105,7 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
   const currentViewSaveState = viewSaveMemberId === selectedFamilyMemberId ? viewSaveState : 'idle';
   const singlePageEnabled = cookingViewMode === 'all-steps';
   const { cookProgress, setCookProgress } = usePlannerStore();
-  const currentStep = cookProgress[initialRecipe.id] ?? 0;
+  const currentStep = Math.min(cookProgress[initialRecipe.id] ?? 0, parsedSteps.length);
 
   useLayoutEffect(() => {
     if (viewSelectionRef.current.memberId !== selectedFamilyMemberId) {
@@ -146,34 +125,40 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
   }, []);
 
   useEffect(() => {
+    let isActive = true;
     const fetchDetails = async () => {
+      setIsLoading(true);
+      setContentError(false);
       try {
         const details = await getRecipe(initialRecipe.id);
+        if (!isActive) return;
         setRecipeDetails(details);
-
-        const steps = parseRecipeSteps(details.recipeInstructions);
-
-        if (steps.length > 0) {
-          setParsedSteps(steps);
-        } else {
-          setParsedSteps(getFallbackSteps());
-        }
+        setReimportAcknowledgement(details.importIssue?.isReimporting === true);
+        setParsedSteps(parseRecipeSteps(details.recipeInstructions));
       } catch (error) {
+        if (!isActive) return;
         console.error('[CooksMode] Failed to fetch recipe details:', error);
-        setParsedSteps(getFallbackSteps());
+        setRecipeDetails(null);
+        setParsedSteps([]);
+        setContentError(true);
       } finally {
-        setIsLoading(false);
+        if (isActive) setIsLoading(false);
       }
     };
-    fetchDetails();
-  }, [initialRecipe.id]);
+    void fetchDetails();
+    return () => {
+      isActive = false;
+    };
+  }, [initialRecipe.id, readAttempt]);
 
-  const steps = parsedSteps.length > 0 ? parsedSteps : getFallbackSteps();
+  const steps = parsedSteps;
+  const hasInstructions = steps.length > 0;
   const isPrepStep = currentStep === 0 || (singlePageEnabled && showIngredients);
   const isResumingSteps = singlePageEnabled && showIngredients && currentStep > 0;
   const activeRecipeStepIndex = Math.max(currentStep - 1, 0);
-  const singlePageCooking = singlePageEnabled && !isPrepStep;
-  const isCompletionAction = !isPrepStep && (singlePageEnabled || currentStep === steps.length);
+  const singlePageCooking = hasInstructions && singlePageEnabled && !isPrepStep;
+  const isCompletionAction =
+    !hasInstructions || (!isPrepStep && (singlePageEnabled || currentStep === steps.length));
   const instructionScrollRef = useRef<HTMLDivElement>(null);
   const resumeScrollTopRef = useRef<number | null>(null);
 
@@ -375,6 +360,7 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
     if (!recipeDetails) return;
     const submission = await saveRecipeImportIssue(recipeDetails.id, draft);
     setRecipeDetails(submission.recipe);
+    setParsedSteps(parseRecipeSteps(submission.recipe.recipeInstructions));
     if (submission.reimportLaunchFailed) throw new Error('Re-import launch failed');
     setReportContext(null);
     setReimportAcknowledgement(submission.reimportStarted);
@@ -384,6 +370,7 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
     if (!recipeDetails) return;
     const updated = await resolveRecipeImportIssue(recipeDetails.id);
     setRecipeDetails(updated);
+    setParsedSteps(parseRecipeSteps(updated.recipeInstructions));
     setReportContext(null);
   };
 
@@ -516,9 +503,11 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
                   data-testid="cooks-mode-step-indicator"
                   className="text-[10px] font-black uppercase tracking-widest"
                 >
-                  {isPrepStep
-                    ? t('cook.checkAndPrep', 'Check & Prep')
-                    : `${currentStep} / ${steps.length}`}
+                  {!hasInstructions
+                    ? t('cook.stepsUnavailable', 'Steps unavailable')
+                    : isPrepStep
+                      ? t('cook.checkAndPrep', 'Check & Prep')
+                      : `${currentStep} / ${steps.length}`}
                 </span>
               </div>
               {!isPrepStep && initialRecipe.isVegetarian && (
@@ -556,7 +545,7 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
         data-testid="cooks-mode-top-actions"
         className="absolute right-4 top-4 z-[110] flex items-center gap-2"
       >
-        {!isEditing && recipeDetails?.canReimport && (
+        {hasInstructions && !isEditing && recipeDetails?.canReimport && (
           <button
             type="button"
             data-testid={isPrepStep ? 'cooks-mode-report-ingredients' : 'cooks-mode-report-steps'}
@@ -592,7 +581,7 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
           role="progressbar"
           aria-label={singlePageCooking ? 'Reading position' : 'Cooking progress'}
           aria-valuemin={0}
-          aria-valuemax={steps.length}
+          aria-valuemax={Math.max(steps.length, 1)}
           aria-valuenow={currentStep}
           className="flex w-full h-1.5 bg-charcoal/5 shrink-0"
         >
@@ -623,7 +612,7 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
                 initial={false}
                 className="w-full max-w-4xl"
               >
-                {!isPrepStep && !singlePageEnabled && (
+                {hasInstructions && !isPrepStep && !singlePageEnabled && (
                   <div className="mb-8 border-b border-charcoal/5 pb-6">
                     <h3 className="text-2xl md:text-4xl lg:text-5xl font-heading font-black text-charcoal leading-tight">
                       {currentStepData.title}
@@ -631,7 +620,43 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
                   </div>
                 )}
 
-                {isPrepStep ? (
+                {!hasInstructions ? (
+                  <div
+                    data-testid="cooks-mode-no-steps"
+                    className="space-y-5 rounded-3xl border border-charcoal/10 bg-white p-6 text-charcoal"
+                  >
+                    <p role={contentError ? 'alert' : 'status'} className="text-lg font-bold">
+                      {contentError
+                        ? t('cook.instructionsLoadError', 'Could not load cooking instructions.')
+                        : t(
+                            'cook.instructionsUnavailable',
+                            'Cooking instructions are not available for this recipe.'
+                          )}
+                    </p>
+                    <p className="text-sm text-charcoal/70">
+                      {t(
+                        'cook.instructionsRecovery',
+                        'You can open recipe details to view the original, or mark this recipe as cooked.'
+                      )}
+                    </p>
+                    <div className="flex flex-wrap gap-3">
+                      <Button
+                        data-testid="cooks-mode-content-retry"
+                        onClick={() => setReadAttempt((attempt) => attempt + 1)}
+                      >
+                        {t('common.retry', 'Retry')}
+                      </Button>
+                      {recipeDetails?.canReimport && (
+                        <Button variant="secondary" onClick={() => setReportContext('steps')}>
+                          {t('cook.reportSteps', 'Report steps')}
+                        </Button>
+                      )}
+                      <Button variant="secondary" onClick={() => setShowDetailId(initialRecipe.id)}>
+                        {t('cook.recipeDetails', 'Recipe details')}
+                      </Button>
+                    </div>
+                  </div>
+                ) : isPrepStep ? (
                   <div className="space-y-10">
                     <div className="flex flex-col items-start justify-between gap-4 sm:flex-row">
                       <div className="flex flex-col gap-2">
@@ -901,9 +926,9 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
         )}
         <div
           data-testid="cooks-mode-controls"
-          className={`${singlePageEnabled ? 'px-4 py-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] md:px-6' : 'p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] md:p-8 md:pb-[calc(2rem+env(safe-area-inset-bottom))]'} grid ${singlePageEnabled && isPrepStep ? 'grid-cols-1' : 'grid-cols-[1fr_1.5fr]'} gap-3 bg-white/80 backdrop-blur-xl border-t border-charcoal/5 shrink-0`}
+          className={`${singlePageEnabled ? 'px-4 py-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] md:px-6' : 'p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] md:p-8 md:pb-[calc(2rem+env(safe-area-inset-bottom))]'} grid ${!hasInstructions || (singlePageEnabled && isPrepStep) ? 'grid-cols-1' : 'grid-cols-[1fr_1.5fr]'} gap-3 bg-white/80 backdrop-blur-xl border-t border-charcoal/5 shrink-0`}
         >
-          {(!singlePageEnabled || singlePageCooking) && (
+          {hasInstructions && (!singlePageEnabled || singlePageCooking) && (
             <Button
               variant="secondary"
               disabled={singlePageCooking ? isEditing : currentStep === 0}
@@ -919,7 +944,9 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
           )}
           <Button
             disabled={isCompleting}
-            onClick={!isPrepStep && singlePageEnabled ? finishCooking : nextStep}
+            onClick={
+              !hasInstructions || (!isPrepStep && singlePageEnabled) ? finishCooking : nextStep
+            }
             data-testid="cooks-mode-step-next"
             aria-label={
               isCompletionAction ? t('cook.markCooked', 'Mark recipe as cooked') : undefined

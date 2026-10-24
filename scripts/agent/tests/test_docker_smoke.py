@@ -68,6 +68,16 @@ class DockerSmokeTests(unittest.TestCase):
             self.assertIn('whats-for-supper', command)
         self.assertEqual(self.sentinel.read_text(), 'preserve unrelated work')
 
+    def test_candidate_images_are_never_rebuilt_or_pulled(self):
+        with mock.patch.dict(os.environ, {'WFS_SMOKE_IMAGES': '/tmp/candidate-compose.json'}):
+            self.assertEqual(self.run_smoke(), 0)
+        up = next(c for c in self.calls if 'up' in c)
+        self.assertIn('--no-build', up)
+        self.assertNotIn('--build', up)
+        self.assertNotIn('--pull', up)  # Infrastructure may pull; candidate overrides use pull_policy: never.
+        self.assertIn('/tmp/candidate-compose.json', up)
+        self.assertIn('down', self.calls[-1])
+
     def test_build_failure_logs_then_cleans_and_preserves_exit(self):
         def fail(command):
             if 'up' in command:
@@ -182,7 +192,7 @@ class DockerSmokeTests(unittest.TestCase):
         task = yaml.safe_load((ROOT / 'Taskfile.yml').read_text())
         validation = yaml.safe_load((ROOT / '.github/workflows/validate.yml').read_text())
         smoke_overrides = yaml.safe_load((ROOT / 'docker/compose/ci-overrides.yml').read_text())
-        self.assertEqual(task['tasks']['test:smoke']['cmds'], ['"{{.PYTHON}}" -B scripts/agent/docker_smoke.py'])
+        self.assertEqual(task['tasks']['test:smoke']['cmds'], ['"{{.PYTHON}}" -B scripts/agent/docker_smoke.py {{.CLI_ARGS}}'])
         steps = validation['jobs']['docker-smoke']['steps']
         self.assertTrue(any(s.get('run') == 'python3 -B scripts/agent/docker_smoke.py' for s in steps))
         command = self.smoke.compose_command()
@@ -266,6 +276,34 @@ if 'up' in sys.argv:
                     if child.poll() is None:
                         child.kill()
                         child.communicate()
+
+
+
+class IsolatedSmokeTests(unittest.TestCase):
+    def test_isolated_resources_have_owned_names_ports_and_restore_environment(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location('smoke_isolated', ROOT / 'scripts/agent/docker_smoke.py')
+        smoke = importlib.util.module_from_spec(spec); spec.loader.exec_module(smoke)
+        seen = []
+        def capture():
+            command = smoke.compose_command()
+            project = command[command.index('-p') + 1]
+            self.assertTrue(project.startswith('wfs-push-'))
+            self.assertNotEqual(project, 'whats-for-supper')
+            override = Path(os.environ['WFS_SMOKE_OVERRIDE'])
+            content = override.read_text()
+            for service in ('traefik', 'postgres', 'migration', 'volume-fixer', 'api', 'pwa'):
+                self.assertIn(f'container_name: {project}-{service}', content)
+            self.assertIn("ports: !override ['127.0.0.1::9001']", content)
+            self.assertIn("ports: !override ['127.0.0.1::3000']", content)
+            self.assertIn(f'name: {project}-internal', content)
+            seen.append(override)
+            return 0
+        with mock.patch.dict(os.environ, {'WFS_SMOKE_PROJECT': 'original'}), \
+                mock.patch.object(smoke, 'run_smoke', side_effect=capture):
+            self.assertEqual(smoke.run_isolated_smoke(), 0)
+            self.assertEqual(os.environ['WFS_SMOKE_PROJECT'], 'original')
+        self.assertFalse(seen[0].exists())
 
 
 if __name__ == '__main__':

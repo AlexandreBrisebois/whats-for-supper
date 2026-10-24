@@ -26,6 +26,7 @@
     "success": "Done!"
   },
   "common": {
+    "retry": "Retry",
     "cancel": "Cancel",
     "close": "Close",
     "deleting": "Deleting...",
@@ -308,6 +309,12 @@
     }
   },
   "cook": {
+    "instructionsLoadError": "Could not load cooking instructions.",
+    "instructionsRecovery": "You can open recipe details to view the original, or mark this recipe as cooked.",
+    "instructionsUnavailable": "Cooking instructions are not available for this recipe.",
+    "recipeDetails": "Recipe details",
+    "reportSteps": "Report steps",
+    "stepsUnavailable": "Steps unavailable",
     "gettingReady": "Getting your kitchen ready...",
     "cooksMode": "Cook's mode",
     "openRecipeDetails": "Open recipe details",
@@ -358,6 +365,10 @@
     "showsInDiscovery": "Shows in Discovery voting"
   },
   "recipes": {
+    "detailLoadError": "Could not load this recipe.",
+    "moveToBinError": "Could not move this recipe to the Recycle Bin. Try again.",
+    "restoreError": "Could not restore this recipe. Try again.",
+    "trashLoadError": "Could not load the Recycle Bin.",
     "planningMode": "Planning Mode",
     "selectMealDay": "Select a meal for Day {{day}}",
     "cancel": "Cancel",

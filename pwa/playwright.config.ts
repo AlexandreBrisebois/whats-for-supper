@@ -1,5 +1,9 @@
 import { defineConfig, devices } from '@playwright/test';
 
+// CI capability selection is exhaustive; default local discovery is unchanged.
+const { selectSuite, inventory } = require('../scripts/ci/e2e-suites.cjs');
+const suite = process.env.WFS_E2E_SUITE;
+
 const isCI = !!process.env.CI;
 const hasExternalBaseUrl = !!process.env.BASE_URL;
 const shouldManageWebServer = !hasExternalBaseUrl;
@@ -9,7 +13,7 @@ export default defineConfig({
   testDir: './e2e',
 
   // Match all .spec.ts files
-  testMatch: '**/*.spec.ts',
+  testMatch: suite ? selectSuite(suite, inventory()) : '**/*.spec.ts',
 
   // Fail the test run if any test.only is left in source
   forbidOnly: isCI,
@@ -34,8 +38,8 @@ export default defineConfig({
   // Reporters
   reporter: isCI
     ? [
-        ['html', { open: 'never' }],
-        ['json', { outputFile: 'playwright-report/results.json' }],
+        ['blob', { fileName: `report-${suite || 'all'}.zip` }],
+        ['json', { outputFile: 'test-results/results.json' }],
         ['github'],
       ]
     : [['html', { open: 'on-failure' }], ['list']],

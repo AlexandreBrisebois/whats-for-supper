@@ -99,6 +99,112 @@ describe('RecipeDetailSheet', () => {
     mockDownloadRecipeBundleFile.mockResolvedValue(undefined);
   });
 
+  it('recovers a failed first read through Retry while Close remains available', async () => {
+    mockGetRecipe.mockRejectedValueOnce(new Error('offline'));
+    render(
+      <RecipeDetailSheet
+        recipeId="550e8400-e29b-41d4-a716-446655440111"
+        plannerDayLabel={null}
+        onClose={vi.fn()}
+        onUseForDay={vi.fn()}
+        onFindSimilar={vi.fn()}
+      />
+    );
+    expect(await screen.findByRole('alert')).toHaveTextContent('Could not load this recipe.');
+    expect(screen.getByTestId('action-close-sheet')).toBeEnabled();
+    expect(screen.queryByText('Loading recipe...')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('recipe-detail-retry'));
+    expect(await screen.findByTestId('recipe-detail-name')).toHaveTextContent('Shareable Pasta');
+  });
+
+  it('hides old content when a replacement identity fails', async () => {
+    const props = {
+      recipeId: '550e8400-e29b-41d4-a716-446655440111',
+      plannerDayLabel: null,
+      onClose: vi.fn(),
+      onUseForDay: vi.fn(),
+      onFindSimilar: vi.fn(),
+    };
+    const view = render(<RecipeDetailSheet {...props} />);
+    await screen.findByTestId('recipe-detail-name');
+    mockGetRecipe.mockRejectedValueOnce(new Error('offline'));
+    view.rerender(<RecipeDetailSheet {...props} recipeId="550e8400-e29b-41d4-a716-446655440112" />);
+    await screen.findByRole('alert');
+    expect(screen.queryByTestId('recipe-detail-name')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('action-cook-this')).not.toBeInTheDocument();
+  });
+
+  it('ignores a late read response for a departed recipe identity', async () => {
+    let finish!: (recipe: unknown) => void;
+    const next = await mockGetRecipe();
+    mockGetRecipe.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        })
+    );
+    const props = {
+      recipeId: '550e8400-e29b-41d4-a716-446655440110',
+      plannerDayLabel: null,
+      onClose: vi.fn(),
+      onUseForDay: vi.fn(),
+      onFindSimilar: vi.fn(),
+    };
+    const view = render(<RecipeDetailSheet {...props} />);
+    view.rerender(<RecipeDetailSheet {...props} recipeId={next.id} />);
+    await screen.findByTestId('recipe-detail-name');
+    await act(async () => finish({ ...next, id: props.recipeId, name: 'Departed recipe' }));
+    expect(screen.getByTestId('recipe-detail-name')).toHaveTextContent('Shareable Pasta');
+  });
+
+  it('keeps detail open and explains a failed move to bin', async () => {
+    mockDeleteRecipe.mockRejectedValueOnce(new Error('offline'));
+    const onClose = vi.fn();
+    const onDeleted = vi.fn();
+    render(
+      <RecipeDetailSheet
+        recipeId="550e8400-e29b-41d4-a716-446655440111"
+        plannerDayLabel={null}
+        onClose={onClose}
+        onDeleted={onDeleted}
+        onUseForDay={vi.fn()}
+        onFindSimilar={vi.fn()}
+      />
+    );
+    fireEvent.click(await screen.findByTestId('action-gear-menu'));
+    fireEvent.click(await screen.findByTestId('action-move-to-bin'));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Could not move this recipe to the Recycle Bin. Try again.'
+    );
+    expect(screen.getByTestId('recipe-detail-name')).toBeVisible();
+    expect(onClose).not.toHaveBeenCalled();
+    expect(onDeleted).not.toHaveBeenCalled();
+  });
+
+  it('clears failed move feedback when another recipe opens', async () => {
+    mockDeleteRecipe.mockRejectedValueOnce(new Error('offline'));
+    const props = {
+      recipeId: '550e8400-e29b-41d4-a716-446655440111',
+      plannerDayLabel: null,
+      onClose: vi.fn(),
+      onUseForDay: vi.fn(),
+      onFindSimilar: vi.fn(),
+    };
+    const view = render(<RecipeDetailSheet {...props} />);
+    fireEvent.click(await screen.findByTestId('action-gear-menu'));
+    fireEvent.click(await screen.findByTestId('action-move-to-bin'));
+    await screen.findByRole('alert');
+    const next = {
+      ...(await mockGetRecipe()),
+      id: '550e8400-e29b-41d4-a716-446655440112',
+      name: 'Next recipe',
+    };
+    mockGetRecipe.mockResolvedValueOnce(next);
+    view.rerender(<RecipeDetailSheet {...props} recipeId={next.id} />);
+    expect(await screen.findByTestId('recipe-detail-name')).toHaveTextContent('Next recipe');
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
   it('renders Share in the visible action slot while keeping View Original separate', async () => {
     render(
       <RecipeDetailSheet

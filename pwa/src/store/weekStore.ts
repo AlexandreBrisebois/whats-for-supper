@@ -143,11 +143,8 @@ const extraIsEligibleForView = (
   const current = absoluteMonday(currentWeek);
   const occurrence = absoluteMonday(String(extra.occurrenceWeekStartDate ?? ''));
   if (!selected || !current || !occurrence) return false;
-  if (occurrence === selected) return true;
-  const next = new Date(Date.parse(`${current}T00:00:00Z`) + 7 * 86400000)
-    .toISOString()
-    .slice(0, 10);
-  return selected === next && occurrence === current && !extra.checked;
+  if (occurrence === selected && selected <= current) return true;
+  return selected > current && occurrence === current && !extra.checked;
 };
 
 const eligibleExtras = (
@@ -343,7 +340,7 @@ export const useWeekStore = create<WeekState>((set, get) => {
           schedule: mergedDays,
           groceryItems: scheduleData.groceryItems ?? [],
           groceryExtras: reconcileExtras(
-            get().groceryExtras,
+            eligibleExtras(get().groceryExtras, weekStartDate, calendar.currentWeekStartDate),
             eligibleExtras(
               scheduleData.groceryExtras ?? [],
               weekStartDate,
@@ -402,7 +399,11 @@ export const useWeekStore = create<WeekState>((set, get) => {
         set({
           groceryItems: data.groceryItems ?? [],
           groceryExtras: reconcileExtras(
-            get().groceryExtras,
+            eligibleExtras(
+              get().groceryExtras,
+              weekStartDate,
+              get().calendar?.currentWeekStartDate ?? null
+            ),
             eligibleExtras(
               data.groceryExtras ?? [],
               weekStartDate,
@@ -720,7 +721,7 @@ export const useWeekStore = create<WeekState>((set, get) => {
           votingRoundId: data.votingRoundId ?? null,
           groceryItems: data.groceryItems ?? [],
           groceryExtras: reconcileExtras(
-            get().groceryExtras,
+            eligibleExtras(get().groceryExtras, monday, context.currentWeekStartDate),
             eligibleExtras(data.groceryExtras ?? [], monday, context.currentWeekStartDate),
             get().pendingGroceryExtraIds
           ),
@@ -826,11 +827,7 @@ export const useWeekStore = create<WeekState>((set, get) => {
         void state.sync();
         return;
       }
-      const nextWeek = new Date(new Date(`${current}T12:00:00Z`).getTime() + 7 * 86400000)
-        .toISOString()
-        .slice(0, 10);
-      const eligible =
-        occurrenceWeek === selected || (occurrenceWeek === current && selected === nextWeek);
+      const eligible = occurrenceWeek === current && selected >= current;
       if (!eligible) return;
       if (
         extras.some(
@@ -959,15 +956,19 @@ export const useWeekStore = create<WeekState>((set, get) => {
         return day;
       });
 
-      const incomingGroceryState = schedule.groceryState?.additionalData as
-        Record<string, boolean> | undefined;
+      const incomingGroceryState = (schedule.groceryState?.additionalData ??
+        schedule.groceryState) as Record<string, boolean> | undefined;
 
       const incomingExtras = eligibleExtras(
         schedule.groceryExtras ?? [],
         monday,
         get().calendar?.currentWeekStartDate ?? null
       );
-      const loadedExtras = get().groceryExtras;
+      const loadedExtras = eligibleExtras(
+        get().groceryExtras,
+        monday,
+        get().calendar?.currentWeekStartDate ?? null
+      );
       const pendingIds = get().pendingGroceryExtraIds;
       const reconciledExtras = reconcileExtras(loadedExtras, incomingExtras, pendingIds);
 
