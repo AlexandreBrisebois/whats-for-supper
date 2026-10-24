@@ -2,7 +2,7 @@
 
 This flow describes how an operator understands and intervenes in the recurring Dreaming maintenance cycle.
 
-Dreaming is intentionally quiet. A family member should not have to think about it during normal meal planning. It finalizes eligible overdue planned or locked meals as cooked, prunes old workflow history, triggers backup, writes a report, and schedules the next run.
+Dreaming is intentionally quiet. A family member should not have to think about it during normal meal planning. It finalizes eligible overdue planned or locked meals as cooked, prunes old workflow and terminal maintenance-command history, triggers backup, writes a report, and schedules the next run.
 
 ## Normal nightly flow
 
@@ -19,6 +19,8 @@ sequenceDiagram
     Dreaming->>Dreaming: Prune old terminal workflow history
     Dreaming->>Backup: Start db-backup workflow
     Backup->>DataRoot: Flush backup artifacts to disk
+    Dreaming->>Dreaming: Process queued maintenance commands
+    Dreaming->>Dreaming: Prune completed/skipped commands at least 30 days old
     Dreaming->>Dreaming: Finalize overdue planned and locked recipe meals as cooked
     Dreaming->>DataRoot: Write reports/dreaming-yyyy-MM-dd.md
     Dreaming->>Dreaming: Start next dreaming instance with scheduled root task
@@ -67,14 +69,21 @@ Do not use manual triggering as the normal schedule. The final Dreaming task own
 
 ## Human-readable states
 
-| Observation | Meaning | Operator action |
-|-------------|---------|-----------------|
-| Latest report exists and has no failed/stuck workflows | Dreaming is healthy | None |
-| Report lists failed workflows | Some workflow reached terminal failure in the last 24h | Inspect workflow task error messages |
-| Report lists "Keep an eye on these" | Workflow is pending/processing longer than expected | Check whether task is legitimately scheduled or stuck |
-| No recent report and no active `dreaming` instance | Self-reschedule chain likely broke | Trigger `dreaming` through generic workflow API |
-| `dreaming` task failed on `reschedule` | Next run was not scheduled | Fix failure cause, reset/trigger workflow |
+| Observation                                            | Meaning                                                                      | Operator action                                                      |
+| ------------------------------------------------------ | ---------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| Latest report exists and has no failed/stuck workflows | Dreaming is healthy                                                          | None                                                                 |
+| Report lists failed workflows                          | Some workflow reached terminal failure in the last 24h                       | Inspect workflow task error messages                                 |
+| Report lists "Keep an eye on these"                    | Workflow is pending/processing longer than expected                          | Check whether task is legitimately scheduled or stuck                |
+| Report lists terminal command pruning                  | Only committed completed/skipped history crossed the 30-day inclusive cutoff | No action unless the count stays at the 500-row cap across many runs |
+| No recent report and no active `dreaming` instance     | Self-reschedule chain likely broke                                           | Trigger `dreaming` through generic workflow API                      |
+| `dreaming` task failed on `reschedule`                 | Next run was not scheduled                                                   | Fix failure cause, reset/trigger workflow                            |
 
 ## UX principle
 
 Dreaming is operational, not household-facing. It should not interrupt Home, Planner, Search, or Cook's Mode. Its visibility belongs in reports and workflow telemetry until a future admin dashboard exists.
+
+The maintenance-command cleanup never removes pending, processing or failed rows,
+recipe/media data, import reports or workflow history. Recent command results stay
+available for diagnosis. Disabling future pruning stops later deletions but cannot
+restore rows already committed; exact-recovery snapshots do not include this
+operational history.

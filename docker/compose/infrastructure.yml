@@ -1,7 +1,7 @@
 services:
   traefik:
     container_name: whats-for-supper-traefik
-    image: traefik:v3.7.15
+    image: traefik:v3.7.16
     restart: unless-stopped
     command:
       - "--api.insecure=true"

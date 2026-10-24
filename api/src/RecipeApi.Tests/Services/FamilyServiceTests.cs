@@ -171,7 +171,7 @@ public class FamilyServiceTests
         var service = new FamilyService(new RecipeApi.Services.SystemClock(), ctx);
         var member = await service.CreateFamilyMember("Alex");
 
-        var updated = await service.UpdateFamilyMemberPreferences(member.Id, browseViewMode, null);
+        var updated = await service.UpdateFamilyMemberPreferences(member.Id, browseViewMode, null, null);
 
         Assert.Equal("Alex", updated.Name);
         Assert.Equal(browseViewMode, updated.BrowseViewMode);
@@ -189,7 +189,7 @@ public class FamilyServiceTests
         var member = await service.CreateFamilyMember("Alex");
 
         await Assert.ThrowsAsync<ArgumentException>(
-            () => service.UpdateFamilyMemberPreferences(member.Id, "carousel", null));
+            () => service.UpdateFamilyMemberPreferences(member.Id, "carousel", null, null));
     }
 
     [Fact]
@@ -199,7 +199,38 @@ public class FamilyServiceTests
         var service = new FamilyService(new RecipeApi.Services.SystemClock(), ctx);
 
         await Assert.ThrowsAsync<KeyNotFoundException>(
-            () => service.UpdateFamilyMemberPreferences(Guid.NewGuid(), "list", null));
+            () => service.UpdateFamilyMemberPreferences(Guid.NewGuid(), "list", null, null));
+    }
+
+    [Theory]
+    [InlineData("step-by-step")]
+    [InlineData("all-steps")]
+    public async Task UpdateFamilyMemberPreferences_Persists_CookingView_Only(string cookingViewMode)
+    {
+        await using var ctx = TestDbContextFactory.Create();
+        var service = new FamilyService(new RecipeApi.Services.SystemClock(), ctx);
+        var member = await service.CreateFamilyMember("Alex");
+        member.PreferredLanguage = "fr";
+        await ctx.SaveChangesAsync();
+
+        var updated = await service.UpdateFamilyMemberPreferences(member.Id, null, null, cookingViewMode);
+
+        Assert.Equal(cookingViewMode, updated.CookingViewMode);
+        Assert.Equal("stack", updated.BrowseViewMode);
+        Assert.Equal("fr", updated.PreferredLanguage);
+        Assert.Equal("Alex", updated.Name);
+    }
+
+    [Fact]
+    public async Task UpdateFamilyMemberPreferences_Invalid_CookingView_Does_Not_Change_Member()
+    {
+        await using var ctx = TestDbContextFactory.Create();
+        var service = new FamilyService(new RecipeApi.Services.SystemClock(), ctx);
+        var member = await service.CreateFamilyMember("Alex");
+
+        await Assert.ThrowsAsync<ArgumentException>(
+            () => service.UpdateFamilyMemberPreferences(member.Id, null, null, "carousel"));
+        Assert.Null(member.CookingViewMode);
     }
 
     // ── DeleteFamilyMember ────────────────────────────────────────────────────

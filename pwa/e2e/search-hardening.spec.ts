@@ -83,7 +83,7 @@ async function setupPage(page: import('@playwright/test').Page) {
           topPick: MOCK_SEARCH_TOP_PICK,
           results: [],
           appliedFilters: {},
-          searchMode: 'standard',
+          searchMode: 'explicit',
           resultPath: 'lexical-only',
         },
       }),
@@ -411,7 +411,7 @@ test.describe('Scenario 7 — over-constrained filters: deactivate restores resu
             topPick: hasActiveFilter ? null : MOCK_SEARCH_TOP_PICK,
             results: [],
             appliedFilters: activeFilters,
-            searchMode: 'standard',
+            searchMode: 'explicit',
             resultPath: 'lexical-only',
           },
         }),
@@ -467,7 +467,7 @@ test.describe('Scenario 8 — vector timeout fallback', () => {
         topPick: MOCK_SEARCH_TOP_PICK,
         results: [],
         appliedFilters: {},
-        searchMode: 'standard',
+        searchMode: 'explicit',
         resultPath: 'fallback-lexical',
       };
       capturedResultPath = responseBody.resultPath;

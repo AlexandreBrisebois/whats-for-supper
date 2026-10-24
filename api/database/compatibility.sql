@@ -4,6 +4,33 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 BEGIN;
 
+CREATE TABLE IF NOT EXISTS grocery_extra_occurrences (
+    id uuid PRIMARY KEY,
+    lineage_id uuid NOT NULL,
+    predecessor_id uuid REFERENCES grocery_extra_occurrences(id) ON DELETE RESTRICT,
+    week_start_date date NOT NULL,
+    name text NOT NULL,
+    creation_name text,
+    normalized_key text NOT NULL,
+    grocery_section text NOT NULL DEFAULT 'Grocery',
+    checked boolean NOT NULL DEFAULT false,
+    removed_at timestamptz,
+    version integer NOT NULL DEFAULT 1,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now(),
+    CONSTRAINT grocery_extra_occurrences_lineage_week_unique UNIQUE (lineage_id, week_start_date),
+    CONSTRAINT grocery_extra_occurrences_predecessor_unique UNIQUE (predecessor_id),
+    CONSTRAINT grocery_extra_occurrences_monday CHECK (EXTRACT(ISODOW FROM week_start_date) = 1),
+    CONSTRAINT grocery_extra_occurrences_name CHECK (char_length(btrim(name)) >= 1 AND char_length(btrim(name)) <= 200),
+    CONSTRAINT grocery_extra_occurrences_version CHECK (version >= 1),
+    CONSTRAINT grocery_extra_occurrences_section CHECK (grocery_section IN ('Produce','Meat','Seafood','Dairy & Eggs','Frozen','Bakery','Pantry','Beverages','Deli','Grocery'))
+);
+-- Retain original request spelling for new idempotent creates. Legacy rows and
+-- legacy ordinary artifacts lack this fact; do not invent a pre-rename value.
+ALTER TABLE grocery_extra_occurrences ADD COLUMN IF NOT EXISTS creation_name text;
+CREATE INDEX IF NOT EXISTS idx_grocery_extra_occurrences_week ON grocery_extra_occurrences (week_start_date);
+CREATE INDEX IF NOT EXISTS idx_grocery_extra_occurrences_normalized ON grocery_extra_occurrences (normalized_key);
+
 -- Additive weekly-interest/rotation upgrade. No historical preference backfill;
 -- a legacy false flag has unknown provenance, never inferred Human intent.
 DO $$
@@ -70,6 +97,10 @@ $$;
 DO $$
 BEGIN
     IF to_regclass('public.family_members') IS NOT NULL THEN
+        ALTER TABLE family_members ADD COLUMN IF NOT EXISTS cooking_view_mode text;
+        IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'family_members_cooking_view_mode_check' AND conrelid = 'family_members'::regclass) THEN
+            ALTER TABLE family_members ADD CONSTRAINT family_members_cooking_view_mode_check CHECK (cooking_view_mode IS NULL OR cooking_view_mode IN ('step-by-step', 'all-steps'));
+        END IF;
         CREATE TABLE IF NOT EXISTS feature_flag_overrides (
             member_id uuid NOT NULL REFERENCES family_members(id) ON DELETE CASCADE,
             flag_key text NOT NULL,
@@ -77,6 +108,12 @@ BEGIN
             updated_at timestamptz DEFAULT now() NOT NULL,
             PRIMARY KEY (member_id, flag_key)
         );
+        -- These previews graduated to unconditional production behavior. Remove
+        -- only their obsolete member choices; the reusable override store remains.
+        DELETE FROM feature_flag_overrides
+        WHERE flag_key = 'planner-hold-to-move'
+           OR flag_key = 'preview-pdf-recipe-import'
+           OR flag_key = 'single-page-recipe-steps';
         CREATE UNIQUE INDEX IF NOT EXISTS family_members_trimmed_lower_name_idx ON family_members (lower(trim(name)));
     END IF;
 END
@@ -224,6 +261,16 @@ DROP VIEW IF EXISTS public.vw_discovery_recipes;
 DROP TABLE IF EXISTS public.health_events;
 DROP TABLE IF EXISTS public.health_recipe_profiles;
 DROP TABLE IF EXISTS public.health_week_summaries;
+
+DO $$
+BEGIN
+    IF to_regclass('public.maintenance_commands') IS NOT NULL THEN
+        CREATE INDEX IF NOT EXISTS idx_maintenance_commands_terminal_completed
+            ON public.maintenance_commands (completed_at, id)
+            WHERE status IN ('completed', 'skipped');
+    END IF;
+END
+$$;
 
 DO $$
 BEGIN

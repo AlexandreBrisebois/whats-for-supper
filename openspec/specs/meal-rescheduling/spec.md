@@ -146,7 +146,11 @@ When a recipe-backed Skipped source is pushed into an available destination or m
 
 ### Requirement: Distinguish movement follow-ups from movement confirmation
 
-For legacy swap and push intents only: Same-week saved movement SHALL attempt a source-week snapshot without grocery recomputation. Successful cross-week persistence SHALL await source then destination grocery recomputation before source-week publication. Completed move requests SHALL return 200 with data.message Recipe moved, including supported no-op returns. Publication receipt SHALL remain household-live-updates-owned.
+For legacy swap and push intents, same-week saved movement SHALL attempt a source-week snapshot without grocery recomputation. Cross-week persistence SHALL attempt grocery recomputation and snapshot publication for both weeks independently. Follow-up failure SHALL NOT turn committed movement into a failed response. Publication receipt SHALL remain household-live-updates-owned.
+
+#### Scenario: Committed movement reports its refresh outcome
+- **WHEN** an actual cross-week movement completes
+- **THEN** the response SHALL return the existing moved=true, sourceDate, destinationDate, affectedWeekStartDates and refreshComplete result, with refreshComplete=false when any follow-up fails; completed moves, including supported no-op returns, SHALL return 200 with data.message Recipe moved
 
 #### Scenario: Same-week movement completes
 - **WHEN** same-week movement saves and its schedule read and publication return
@@ -154,15 +158,23 @@ For legacy swap and push intents only: Same-week saved movement SHALL attempt a 
 
 #### Scenario: Cross-week movement completes
 - **WHEN** cross-week persistence and both recomputations complete
-- **THEN** source-week snapshot publication is attempted before success without a destination-week snapshot through this movement path
+- **THEN** both affected snapshots are attempted before returning moved=true and refreshComplete=true
 
 #### Scenario: Full target returns completion
 - **WHEN** cross-week destination search finds no free date and the subsequent source read/publication complete
 - **THEN** the response still says Recipe moved and does not confirm relocation
 
+#### Scenario: Publication or recomputation fails after movement
+- **WHEN** cross-week movement is saved and any subsequent recomputation or snapshot publication fails
+- **THEN** remaining affected-week follow-ups are still attempted and the response confirms moved=true and refreshComplete=false without replaying movement
+
 ### Requirement: Request Plan later from the selected Planner week
 
-Planner's recipe-backed Plan later action SHALL close its pivot and submit movement with explicit source index, target offset selected offset plus one, target index zero and push intent. On request completion it SHALL initialize the selected week and, for a week-zero source dated deployment-local today, sync Today. Failure SHALL be logged without a dedicated Plan later error toast.
+Planner's recipe-backed Plan later action SHALL close its pivot and submit explicit source index, target offset selected offset plus one, target index zero and push intent. Completion SHALL initialize the selected week and sync Today for a week-zero source dated deployment-local today. Request failure SHALL be logged without a dedicated Plan later error toast.
+
+#### Scenario: Committed Plan later has incomplete refresh
+- **WHEN** the response confirms moved=true and refreshComplete=false
+- **THEN** Planner SHALL explain that the meal moved and some updates could not refresh, with guidance to refresh the plan rather than repeat movement
 
 #### Scenario: Plan later for next selected week
 - **WHEN** a person chooses Save for Next Week for a recipe in selected offset one
@@ -171,6 +183,10 @@ Planner's recipe-backed Plan later action SHALL close its pivot and submit movem
 #### Scenario: Movement request resolves or rejects
 - **WHEN** the Plan later request resolves, including a supported no-op, or rejects
 - **THEN** resolution proceeds to initialization while rejection is logged without success confirmation of relocation
+
+#### Scenario: Committed move has incomplete refresh
+- **WHEN** Plan later returns moved=true and refreshComplete=false
+- **THEN** Planner rereads the selected week and shows a warning that the meal moved and the plan should be refreshed, without resubmitting movement
 
 ### Requirement: Defer the exact dated recipe through a protected operation
 
@@ -250,7 +266,7 @@ Planner's recipe-backed pivot SHALL offer Remove recipe. Activation SHALL close 
 
 ### Requirement: Apply the shared date-delete lifecycle to recipe-backed entries
 
-Recipe-backed removal SHALL use the same protected date-only DELETE and persistence-before-follow-up lifecycle as the accepted Delete the recipe-free entry before clear follow-up work requirement. It SHALL remove the selected calendar entry rather than delete the recipe. It SHALL add no expected-recipe, day-status or week-status precondition.
+Recipe-backed removal SHALL use the same protected date-only DELETE and persistence-before-follow-up lifecycle as the accepted Delete the recipe-free entry before clear follow-up work requirement. It SHALL remove the selected calendar entry rather than delete the recipe. It SHALL add no expected-recipe, day-status or week-status precondition. Removing a Cooked entry SHALL recalculate that recipe's last-cooked value from remaining Cooked calendar dates before refresh work.
 
 #### Scenario: Recipe-backed date exists
 - **WHEN** the selected date contains a recipe-backed entry and deletion persistence succeeds
@@ -260,17 +276,30 @@ Recipe-backed removal SHALL use the same protected date-only DELETE and persiste
 - **WHEN** the date is already empty
 - **THEN** deletion returns 204 without invoking the existing-entry follow-up sequence
 
-### Requirement: Activate Planner dragging according to the effective hold preference
+#### Scenario: Correct a cooked meal with earlier history
+- **WHEN** the latest Cooked assignment is removed and an earlier Cooked calendar entry remains for that recipe
+- **THEN** its last-cooked value becomes that earlier calendar date at midnight UTC
+- **AND** assigning and marking the actual replacement Cooked uses the existing completion operation independently
 
-The Planner recipe drag handle SHALL start dragging immediately for an eligible primary-button pointer when hold-to-move is disabled. When enabled it SHALL wait for an uninterrupted 250 millisecond hold before starting, show grabbed feedback on activation, and request a brief vibration when the browser supplies that facility. Secondary-button and explicitly non-primary pointers SHALL not start a hold.
+#### Scenario: Remove the only cooked occurrence
+- **WHEN** a recipe's only Cooked assignment is removed
+- **THEN** its last-cooked value becomes null before follow-up publication
 
-#### Scenario: Immediate mode
-- **WHEN** hold-to-move is disabled and an eligible pointer presses the recipe drag handle
-- **THEN** dragging starts without waiting for the hold duration
+#### Scenario: Remove an ordinary planned entry
+- **WHEN** a Planned entry is removed
+- **THEN** removal does not change its recipe's last-cooked value
+
+### Requirement: Activate Planner dragging after a deliberate hold
+
+The Planner drag handle SHALL always wait for an uninterrupted 250 millisecond hold before starting for an eligible primary-button pointer, show grabbed feedback on activation, and request a brief vibration when the browser supplies that facility. This behavior SHALL NOT depend on a feature-flag snapshot, deployment variable or saved member override. Secondary-button and explicitly non-primary pointers SHALL not start a hold.
 
 #### Scenario: Hold reaches activation
-- **WHEN** hold-to-move is enabled and an eligible pointer remains pending for 250 milliseconds without cancellation
+- **WHEN** an eligible pointer remains pending for 250 milliseconds without cancellation
 - **THEN** dragging starts once and the handle shows grabbed feedback, with a vibration request when supported
+
+#### Scenario: Retired preview state is absent or stale
+- **WHEN** feature flags are absent, loading or failed, or a legacy hold-to-move override was disabled
+- **THEN** an eligible pointer still requires the deliberate hold and can activate movement
 
 #### Scenario: Ineligible pointer
 - **WHEN** a secondary-button or explicitly non-primary pointer presses the handle
@@ -278,7 +307,7 @@ The Planner recipe drag handle SHALL start dragging immediately for an eligible 
 
 ### Requirement: Cancel pending Planner holds before drag activation
 
-A pending Planner hold SHALL cancel when its pointer moves more than eight pixels from the press position, its pointer ends or cancels, another pointer begins, the window loses focus, or a pre-activation touch movement occurs on the handle. A cancelled hold SHALL not later activate from its retired timer. Removing the handle or changing its effective activation mode SHALL also retire pending activation.
+A pending Planner hold SHALL cancel when its pointer moves more than eight pixels from the press position, its pointer ends or cancels, another pointer begins, the window loses focus, or a pre-activation touch movement occurs on the handle. A cancelled hold SHALL not later activate from its retired timer. Removing the handle SHALL also retire pending activation.
 
 #### Scenario: Scroll movement before activation
 - **WHEN** a pending pointer moves more than eight pixels or the handle receives touch movement before activation
@@ -288,8 +317,8 @@ A pending Planner hold SHALL cancel when its pointer moves more than eight pixel
 - **WHEN** a pending hold receives its pointer end or cancellation, another pointer begins, or the window loses focus
 - **THEN** waiting beyond the hold duration does not start dragging from that hold
 
-#### Scenario: Handle or mode changes
-- **WHEN** the handle unmounts or its effective hold-to-move mode changes while a hold is pending
+#### Scenario: Handle unmounts
+- **WHEN** the handle unmounts while a hold is pending
 - **THEN** the previous pending activation is retired
 
 ### Requirement: Bound Planner grabbed feedback to the active pointer interaction
@@ -303,6 +332,18 @@ After held activation, the handle SHALL prevent cancelable touch movement receiv
 #### Scenario: Activated pointer ends
 - **WHEN** the tracked pointer ends after held activation
 - **THEN** grabbed feedback clears without this feedback change confirming server persistence
+
+### Requirement: Offer keyboard movement through the Planner handle
+
+The Planner drag handle SHALL be keyboard focusable and expose its localized hold guidance as an accessible name. Arrow Up and Arrow Down SHALL move the selected Planner content one available slot through the same optimistic movement, persistence and recovery path used by pointer reordering. A boundary key press SHALL submit no movement.
+
+#### Scenario: Keyboard movement within the week
+- **WHEN** a focused handle receives Arrow Up or Arrow Down and an adjacent slot exists
+- **THEN** Planner optimistically exchanges the selected content with that slot and commits exactly one movement
+
+#### Scenario: Keyboard movement at a boundary
+- **WHEN** the first handle receives Arrow Up or the last handle receives Arrow Down
+- **THEN** Planner leaves the schedule unchanged and submits no movement
 
 ### Requirement: Report deferral relative to the requested destination
 

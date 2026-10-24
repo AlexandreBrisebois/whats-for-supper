@@ -5,6 +5,7 @@ import {
   type ScheduleRecipeDto,
   type ScheduleDays,
   type SmartDefaultsDto,
+  type GroceryExtraDto,
 } from '../lib/api/generated/models/index';
 import { type FamilyGetResponse_data } from '../lib/api/generated/api/family/index';
 import { MOCK_IDS } from './mock-ids';
@@ -37,6 +38,19 @@ const deploymentCalendar = (overrides: Partial<CalendarContext> = {}): CalendarC
 });
 
 export const builders = {
+  groceryExtra: (overrides: Partial<GroceryExtraDto> = {}): GroceryExtraDto => ({
+    id: MOCK_IDS.GROCERY_EXTRA as any,
+    lineageId: MOCK_IDS.GROCERY_EXTRA as any,
+    name: 'Coffee',
+    normalizedKey: 'coffee',
+    grocerySection: 'Grocery' as any,
+    checked: false,
+    occurrenceWeekStartDate: '2026-05-04' as any,
+    readOnly: false,
+    source: 'extra',
+    version: 1,
+    ...overrides,
+  }),
   tomorrowMoveResult: (
     sourceDate: string,
     destinationDate: string,
@@ -124,6 +138,7 @@ export const builders = {
     id: MOCK_IDS.MEMBER_ALEX,
     name: 'Alex',
     browseViewMode: 'stack',
+    cookingViewMode: null,
     preferredLanguage: 'en' as any,
     createdAt: new Date(),
     updatedAt: new Date(),

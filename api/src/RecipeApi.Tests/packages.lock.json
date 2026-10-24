@@ -10,12 +10,12 @@
       },
       "FsCheck.Xunit": {
         "type": "Direct",
-        "requested": "[3.5.0, )",
-        "resolved": "3.5.0",
-        "contentHash": "MMFnx11dAJWIiHuFFhoMqjl7RZct4oGz0tJncNNQN1Hyac9lRQT5W6zysf6S2gQ09TEq0+R1AAyBQ/qohyHFQA==",
+        "requested": "[3.6.0, )",
+        "resolved": "3.6.0",
+        "contentHash": "+J9ukJ8v79Fc8RyNWhduzHlSCA85pc8EKZqewru9nE6E3ytaDVdkx9FbjFwDsERNLj4VkQ0zfMTLAAo915FhtQ==",
         "dependencies": {
           "FSharp.Core": "5.0.2",
-          "FsCheck": "[3.5.0]",
+          "FsCheck": "[3.6.0]",
           "xunit.extensibility.execution": "[2.4.1, 3.0.0)"
         }
       },
@@ -32,36 +32,36 @@
       },
       "Microsoft.EntityFrameworkCore": {
         "type": "Direct",
-        "requested": "[11.0.0-rc.1.26425.128, )",
-        "resolved": "11.0.0-rc.1.26425.128",
-        "contentHash": "nichlvtvebHy90cJoHQjTr6TvWhdxbUxK1mQac/6NJcVMz/HYRQF0ihJ1ZkE/JeKr2ys3jDjl1IdNhHiWpQ/HQ==",
+        "requested": "[11.0.0-rc.2.26504.105, )",
+        "resolved": "11.0.0-rc.2.26504.105",
+        "contentHash": "dHEmvHIhRLZ5lgiNDR4IoRk1IczZaxw6uC2AuLJMnUX1hIt3kt9/UrxUOdAGXayxqQPQK+LZWCuxFaNR7MnwUA==",
         "dependencies": {
-          "Microsoft.EntityFrameworkCore.Abstractions": "[11.0.0-rc.1.26425.128, 12.0.0-a)",
-          "Microsoft.EntityFrameworkCore.Analyzers": "[11.0.0-rc.1.26425.128, 12.0.0-a)",
-          "Microsoft.Extensions.Caching.Memory": "11.0.0-rc.1.26425.128",
-          "Microsoft.Extensions.Logging": "11.0.0-rc.1.26425.128"
+          "Microsoft.EntityFrameworkCore.Abstractions": "[11.0.0-rc.2.26504.105, 12.0.0-a)",
+          "Microsoft.EntityFrameworkCore.Analyzers": "[11.0.0-rc.2.26504.105, 12.0.0-a)",
+          "Microsoft.Extensions.Caching.Memory": "11.0.0-rc.2.26504.105",
+          "Microsoft.Extensions.Logging": "11.0.0-rc.2.26504.105"
         }
       },
       "Microsoft.EntityFrameworkCore.InMemory": {
         "type": "Direct",
-        "requested": "[11.0.0-rc.1.26425.128, )",
-        "resolved": "11.0.0-rc.1.26425.128",
-        "contentHash": "VP7+d58I4X1p2Z1L8dcuokgdt5sg5kWhzx1t9wxmUhCRF/+M7bZVfXDGcBu0nmLuc4VFXayzWWdq0tHKRYFXOg==",
+        "requested": "[11.0.0-rc.2.26504.105, )",
+        "resolved": "11.0.0-rc.2.26504.105",
+        "contentHash": "BpqnNIwINYT4/9AZATha51LxssxdGnKUZvD1gEkbsqvFWiLFgqu2eNBbab36+3PD6jbr08Gz15WJYbWYsbB3Sw==",
         "dependencies": {
-          "Microsoft.EntityFrameworkCore": "[11.0.0-rc.1.26425.128, 12.0.0-a)",
-          "Microsoft.Extensions.Caching.Memory": "11.0.0-rc.1.26425.128",
-          "Microsoft.Extensions.Logging": "11.0.0-rc.1.26425.128"
+          "Microsoft.EntityFrameworkCore": "[11.0.0-rc.2.26504.105, 12.0.0-a)",
+          "Microsoft.Extensions.Caching.Memory": "11.0.0-rc.2.26504.105",
+          "Microsoft.Extensions.Logging": "11.0.0-rc.2.26504.105"
         }
       },
       "Microsoft.EntityFrameworkCore.Relational": {
         "type": "Direct",
-        "requested": "[11.0.0-rc.1.26425.128, )",
-        "resolved": "11.0.0-rc.1.26425.128",
-        "contentHash": "JOxKBGYUg8aj/flaHdvhkqsRO5iKKiROMjVt+25BzVvSzMb/y1SnuvlGnsDFjtTI9qlZ0+TLsmNe1WDKxBkUMw==",
+        "requested": "[11.0.0-rc.2.26504.105, )",
+        "resolved": "11.0.0-rc.2.26504.105",
+        "contentHash": "nCBPVsohI1UYUT7Tdlh+Niq2aWoWUjFy65yuJdceISq7lGoZZSYDdyOTlGx/FtYrAQ2pzawisE1sxX+BCLLIzQ==",
         "dependencies": {
-          "Microsoft.EntityFrameworkCore": "[11.0.0-rc.1.26425.128, 12.0.0-a)",
-          "Microsoft.Extensions.Caching.Memory": "11.0.0-rc.1.26425.128",
-          "Microsoft.Extensions.Logging": "11.0.0-rc.1.26425.128"
+          "Microsoft.EntityFrameworkCore": "[11.0.0-rc.2.26504.105, 12.0.0-a)",
+          "Microsoft.Extensions.Caching.Memory": "11.0.0-rc.2.26504.105",
+          "Microsoft.Extensions.Logging": "11.0.0-rc.2.26504.105"
         }
       },
       "Microsoft.NET.Test.Sdk": {
@@ -85,12 +85,12 @@
       },
       "Npgsql.EntityFrameworkCore.PostgreSQL": {
         "type": "Direct",
-        "requested": "[11.0.0-rc.1.1, )",
-        "resolved": "11.0.0-rc.1.1",
-        "contentHash": "uBtHFXI04DrFlRXJjDRr44kAJMdetNCIOjDDbNRKBvrPuIQ7TtVLUHzt5RdGTbXQ0++6Tk9101g0858imFQWHA==",
+        "requested": "[11.0.0-rc.2, )",
+        "resolved": "11.0.0-rc.2",
+        "contentHash": "cQfX5VN045Htxy8gY7eIJ5ZsfwaWGEedK2aNzg0ogZf4cgGuf6oKUruzH5HaFBsycH+UXl6OJ5kAqIslpmHYRg==",
         "dependencies": {
-          "Microsoft.EntityFrameworkCore": "[11.0.0-rc.1.26425.128]",
-          "Microsoft.EntityFrameworkCore.Relational": "[11.0.0-rc.1.26425.128]",
+          "Microsoft.EntityFrameworkCore": "[11.0.0-rc.2.26504.105]",
+          "Microsoft.EntityFrameworkCore.Relational": "[11.0.0-rc.2.26504.105]",
           "Npgsql": "10.0.3"
         }
       },
@@ -136,8 +136,8 @@
       },
       "FsCheck": {
         "type": "Transitive",
-        "resolved": "3.5.0",
-        "contentHash": "olekPbZ9M09t1qRK6yXfzvyA/eiLFXK2obJ0BAkk7reEoohbO/6ac8ISbCD3murRnQbwT04TUZKT3boFDUe4kw==",
+        "resolved": "3.6.0",
+        "contentHash": "XjZ5sWf/QKLqB9aMKG7FvrT/8Ak2fPo0ygRstindBWZWU8P3EcmvYJ5UkX0daIL4+bZeaiD9ThkftGlIx3ZewQ==",
         "dependencies": {
           "FSharp.Core": "5.0.2"
         }
@@ -211,10 +211,10 @@
       },
       "Microsoft.Agents.AI": {
         "type": "Transitive",
-        "resolved": "1.25.0",
-        "contentHash": "4tlAYXt8d52vkq9mFb4brThwV+UdRt8mvzW2taNuzg1J3I/GDzzzJekjeRDFWnLiIIfxcTHG6roRDT8Ee3HVqg==",
+        "resolved": "1.26.0",
+        "contentHash": "nnNZXNyuGjj4r4SdJilkeKwmddJfdWboojYk3r0J02ZOMYwsy3/hpvy9C0Pfe96Cl1md7yQZW6rjdCv/kJ8c9g==",
         "dependencies": {
-          "Microsoft.Agents.AI.Abstractions": "1.25.0",
+          "Microsoft.Agents.AI.Abstractions": "1.26.0",
           "Microsoft.Extensions.AI": "10.10.0",
           "Microsoft.Extensions.AI.Abstractions": "10.10.1",
           "Microsoft.Extensions.AI.Evaluation": "10.10.0",
@@ -226,8 +226,8 @@
       },
       "Microsoft.Agents.AI.Abstractions": {
         "type": "Transitive",
-        "resolved": "1.25.0",
-        "contentHash": "HuJ8dlKcippI6ZREvRhcc1h2EkK//EEyjJcZSjKN56aNedjUZrGrgF10i3BoMzo1wFceM1L0y6QbxVsWjgfP2g==",
+        "resolved": "1.26.0",
+        "contentHash": "BeFCZFMdAw1iU7OTDItwPrfWlqmP2lURsSc+V3bH17aJNxiF90TM7vCpYT9sJ/EaNzK1vRq4Rm4Fa+WLxk92Ug==",
         "dependencies": {
           "Microsoft.Extensions.AI.Abstractions": "10.10.1"
         }
@@ -262,13 +262,13 @@
       },
       "Microsoft.EntityFrameworkCore.Abstractions": {
         "type": "Transitive",
-        "resolved": "11.0.0-rc.1.26425.128",
-        "contentHash": "WFsX+C+h2e/BKr//Cv9c82+zPweVUQN/dWXJiW8KvXwhkpJXB5tj3E3vgDmjX0nHbVnrrnE9G7iJlMSf0l2VoQ=="
+        "resolved": "11.0.0-rc.2.26504.105",
+        "contentHash": "OUJq1A6g+oRwduQAW96IiyzNwQCe2AwOlB6kuaIOnE8Vjgga+q1NcFsXSCSVeleeEriEZkW5791u0BXfDaZi5g=="
       },
       "Microsoft.EntityFrameworkCore.Analyzers": {
         "type": "Transitive",
-        "resolved": "11.0.0-rc.1.26425.128",
-        "contentHash": "EC8SOxAcKbRGToF7MpHr0zPZ2QSZ3mkHuqI+rxu3ITz19ctvep0dzaHPN3F/JQ1vVQBbMr7gN0a9KxMqDhRcoQ=="
+        "resolved": "11.0.0-rc.2.26504.105",
+        "contentHash": "mWtRP3ZrPK+4eVSF78T1cfD3sjoPbWGAU4cFNtPuPLyTSKp0b6+2CwgG5mezOVTKA0qVVjAtE72zZHHFqZt4HQ=="
       },
       "Microsoft.Extensions.AI": {
         "type": "Transitive",
@@ -303,8 +303,8 @@
       },
       "Microsoft.Extensions.Caching.Memory": {
         "type": "Transitive",
-        "resolved": "11.0.0-rc.1.26425.128",
-        "contentHash": "vm0cIPeFy1TZWcr7xLY/aqvZmXZ63GvAuieN0Fec1Fz+P/vi1sPFdRTJEbJ/NrOP+DduYE/1Ba7Wv0V01g1hdQ=="
+        "resolved": "11.0.0-rc.2.26504.105",
+        "contentHash": "Kpu0ccfFy/dZijjX1ib38axnfhPhkeGL9Xew7DMBfa24o7Jeaiq/AWQgW7hOsRQk+TkGhfFTW5RiWPnCMGqKUQ=="
       },
       "Microsoft.Extensions.Compliance.Abstractions": {
         "type": "Transitive",
@@ -846,12 +846,12 @@
         "type": "Project",
         "dependencies": {
           "Google.GenAI": "[1.26.1, )",
-          "Microsoft.Agents.AI": "[1.25.0, )",
+          "Microsoft.Agents.AI": "[1.26.0, )",
           "Microsoft.AspNetCore.OpenApi": "[11.0.0-rc.2.26504.105, )",
-          "Microsoft.EntityFrameworkCore": "[11.0.0-rc.1.26425.128, )",
+          "Microsoft.EntityFrameworkCore": "[11.0.0-rc.2.26504.105, )",
           "Microsoft.Extensions.AI.OpenAI": "[10.11.0, )",
           "Microsoft.OpenApi": "[3.10.2, )",
-          "Npgsql.EntityFrameworkCore.PostgreSQL": "[11.0.0-rc.1.1, )",
+          "Npgsql.EntityFrameworkCore.PostgreSQL": "[11.0.0-rc.2, )",
           "OpenTelemetry.Exporter.Console": "[1.20.0, )",
           "OpenTelemetry.Exporter.OpenTelemetryProtocol": "[1.20.0, )",
           "OpenTelemetry.Extensions.Hosting": "[1.20.0, )",

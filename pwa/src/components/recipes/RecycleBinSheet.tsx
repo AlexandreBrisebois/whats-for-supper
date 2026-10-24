@@ -19,6 +19,9 @@ interface PinDialogState {
 export function RecycleBinSheet({ onClose }: RecycleBinSheetProps) {
   const [items, setItems] = useState<TrashItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [readAttempt, setReadAttempt] = useState(0);
+  const [restoreErrors, setRestoreErrors] = useState<Set<string>>(new Set());
   const [restoringIds, setRestoringIds] = useState<Set<string>>(new Set());
   const [pinDialog, setPinDialog] = useState<PinDialogState | null>(null);
 
@@ -26,6 +29,8 @@ export function RecycleBinSheet({ onClose }: RecycleBinSheetProps) {
     let isActive = true;
 
     void (async () => {
+      setIsLoading(true);
+      setLoadError(false);
       try {
         const result = await getTrashItems();
         if (!isActive) return;
@@ -33,6 +38,7 @@ export function RecycleBinSheet({ onClose }: RecycleBinSheetProps) {
       } catch (error) {
         if (!isActive) return;
         console.error('Failed to load trash items', error);
+        setLoadError(true);
       } finally {
         if (isActive) setIsLoading(false);
       }
@@ -41,15 +47,21 @@ export function RecycleBinSheet({ onClose }: RecycleBinSheetProps) {
     return () => {
       isActive = false;
     };
-  }, []);
+  }, [readAttempt]);
 
   const handleRestore = async (id: string) => {
+    setRestoreErrors((previous) => {
+      const next = new Set(previous);
+      next.delete(id);
+      return next;
+    });
     setRestoringIds((prev) => new Set(prev).add(id));
     try {
       await restoreRecipe(id);
       setItems((prev) => prev.filter((item) => item.id !== id));
     } catch (error) {
       console.error('Failed to restore recipe', error);
+      setRestoreErrors((previous) => new Set(previous).add(id));
     } finally {
       setRestoringIds((prev) => {
         const next = new Set(prev);
@@ -115,6 +127,18 @@ export function RecycleBinSheet({ onClose }: RecycleBinSheetProps) {
             <div className="flex h-32 items-center justify-center text-charcoal/40 text-sm">
               {t('common.loading', 'Loading…')}
             </div>
+          ) : loadError ? (
+            <div className="py-6 text-sm text-charcoal">
+              <p role="alert">{t('recipes.trashLoadError', 'Could not load the Recycle Bin.')}</p>
+              <button
+                type="button"
+                data-testid="trash-retry"
+                onClick={() => setReadAttempt((attempt) => attempt + 1)}
+                className="mt-4 rounded-full bg-terracotta px-5 py-3 font-bold text-white"
+              >
+                {t('common.retry', 'Retry')}
+              </button>
+            </div>
           ) : (
             <ul data-testid="trash-list" className="flex flex-col gap-3">
               {items.length === 0 ? (
@@ -138,6 +162,11 @@ export function RecycleBinSheet({ onClose }: RecycleBinSheetProps) {
                       <span className="text-xs text-charcoal/40">
                         {new Date(item.deletedAt).toLocaleDateString()}
                       </span>
+                      {restoreErrors.has(item.id) && (
+                        <p role="alert" className="text-sm text-red-700">
+                          {t('recipes.restoreError', 'Could not restore this recipe. Try again.')}
+                        </p>
+                      )}
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0">

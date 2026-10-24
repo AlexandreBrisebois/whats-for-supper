@@ -8,28 +8,22 @@ namespace RecipeApi.Controllers;
 [Route("api/ingredients")]
 public class IngredientsController(IngredientCategoryService ingredientCategoryService) : ControllerBase
 {
-    private static readonly HashSet<string> ValidSections = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "Produce", "Meat", "Seafood", "Dairy & Eggs",
-        "Frozen", "Bakery", "Pantry", "Beverages", "Deli", "Grocery"
-    };
-
     [HttpPatch("{normalizedKey}/category")]
     public async Task<IActionResult> ReclassifyCategory(
         [FromRoute] string normalizedKey,
         [FromBody] ReclassifyIngredientDto dto,
         CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(dto?.GrocerySection) || !ValidSections.Contains(dto.GrocerySection))
+        if (!GrocerySections.TryGetCanonicalName(dto?.GrocerySection, out var canonicalSection))
         {
             return Problem(
                 statusCode: 400,
                 title: "Invalid grocery section",
                 detail: $"'{dto?.GrocerySection}' is not a valid GrocerySection. " +
-                        $"Valid values: {string.Join(", ", ValidSections)}.");
+                        $"Valid values: {string.Join(", ", GrocerySections.Names)}.");
         }
 
-        await ingredientCategoryService.ReclassifyAsync(normalizedKey, dto.GrocerySection, ct);
+        await ingredientCategoryService.ReclassifyAsync(normalizedKey, canonicalSection, ct);
         return NoContent();
     }
 }

@@ -34,7 +34,11 @@ interface FamilyState {
   updateMember: (id: string, name: string) => Promise<void>;
   updateMemberPreferences: (
     id: string,
-    preferences: { browseViewMode?: 'stack' | 'list'; preferredLanguage?: 'en' | 'fr' }
+    preferences: {
+      browseViewMode?: 'stack' | 'list';
+      preferredLanguage?: 'en' | 'fr';
+      cookingViewMode?: 'step-by-step' | 'all-steps';
+    }
   ) => Promise<FamilyMember | null>;
   removeMember: (id: string) => Promise<void>;
   loadFamilyMembers: () => Promise<void>;
@@ -45,6 +49,8 @@ interface FamilyState {
   loadActiveGoTo: () => Promise<GoToItem | null>;
   loadCurrentIdentity: () => Promise<void>;
 }
+
+const preferenceSaveGeneration = new Map<string, number>();
 
 export const useFamilyStore = create<FamilyState>((set, get) => ({
   familyMembers: [],
@@ -107,11 +113,17 @@ export const useFamilyStore = create<FamilyState>((set, get) => ({
 
   updateMemberPreferences: async (
     id: string,
-    preferences: { browseViewMode?: 'stack' | 'list'; preferredLanguage?: 'en' | 'fr' }
+    preferences: {
+      browseViewMode?: 'stack' | 'list';
+      preferredLanguage?: 'en' | 'fr';
+      cookingViewMode?: 'step-by-step' | 'all-steps';
+    }
   ) => {
     set({ error: null });
     const existing = get().familyMembers.find((member) => member.id === id);
     if (!existing) return null;
+    const generation = (preferenceSaveGeneration.get(id) ?? 0) + 1;
+    preferenceSaveGeneration.set(id, generation);
 
     set((state) => ({
       familyMembers: state.familyMembers.map((member) =>
@@ -121,16 +133,34 @@ export const useFamilyStore = create<FamilyState>((set, get) => ({
 
     try {
       const updated = await updateFamilyMemberPreferences(id, preferences as any);
+      if (preferenceSaveGeneration.get(id) !== generation) return updated;
       set((state) => ({
-        familyMembers: state.familyMembers.map((member) => (member.id === id ? updated : member)),
+        familyMembers: state.familyMembers.map((member) =>
+          member.id === id
+            ? {
+                ...member,
+                browseViewMode: updated.browseViewMode,
+                preferredLanguage: updated.preferredLanguage,
+                cookingViewMode: updated.cookingViewMode,
+              }
+            : member
+        ),
       }));
       return updated;
     } catch (err) {
+      if (preferenceSaveGeneration.get(id) !== generation) return null;
       const message =
         err instanceof Error ? err.message : 'Failed to update family member preferences';
       set((state) => ({
-        familyMembers: state.familyMembers.map((member) => (member.id === id ? existing : member)),
-        error: message,
+        familyMembers: state.familyMembers.map((member) => {
+          if (member.id !== id) return member;
+          const restored = { ...member };
+          for (const key of Object.keys(preferences) as (keyof typeof preferences)[]) {
+            Object.assign(restored, { [key]: existing[key] });
+          }
+          return restored;
+        }),
+        error: state.selectedFamilyMemberId === id ? message : state.error,
       }));
       return null;
     }

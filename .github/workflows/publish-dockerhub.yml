@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: dockerhub-publish
@@ -79,13 +80,32 @@ jobs:
           fi
           echo "channel=$channel" >> "$GITHUB_OUTPUT"
 
-  validate:
-    name: Validate release source
+  resolve-candidate:
+    name: Find successful exact-commit source validation
+    needs: validate-tag
     if: github.actor == vars.DOCKERHUB_PUBLISHER_GITHUB_LOGIN
+    runs-on: ubuntu-latest
+    outputs:
+      run-id: ${{ steps.find.outputs.run-id }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Find successful source checks
+        id: find
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REVISION: ${{ needs.validate-tag.outputs.revision }}
+          CHANNEL: ${{ needs.validate-tag.outputs.channel }}
+        run: python3 -B scripts/ci/image-candidate.py find
+
+  validate:
+    name: Validate release source when no successful CI run exists
+    needs: [validate-tag, resolve-candidate]
+    if: github.actor == vars.DOCKERHUB_PUBLISHER_GITHUB_LOGIN && needs.resolve-candidate.outputs.run-id == ''
     uses: ./.github/workflows/validate.yml
     with:
       full-validation: true
-      ref: ${{ github.sha }}
+      ref: ${{ needs.validate-tag.outputs.revision }}
+      skip-docker-smoke: true
 
   publish-preflight:
     name: Validate Docker Hub publication
@@ -120,47 +140,170 @@ jobs:
             esac
           done
 
-  publish:
-    name: Build and push Docker Hub images
-    needs: [validate-tag, validate, publish-preflight]
-    if: github.actor == vars.DOCKERHUB_PUBLISHER_GITHUB_LOGIN
-    runs-on: ubuntu-latest
+  build-images:
+    name: Build and smoke release candidates
+    needs: [validate-tag, resolve-candidate, validate, publish-preflight]
+    if: >-
+      !cancelled() && github.actor == vars.DOCKERHUB_PUBLISHER_GITHUB_LOGIN &&
+      needs.validate-tag.result == 'success' && needs.resolve-candidate.result == 'success' &&
+      needs.publish-preflight.result == 'success' &&
+      ((needs.resolve-candidate.outputs.run-id != '' && needs.validate.result == 'skipped') ||
+       (needs.resolve-candidate.outputs.run-id == '' && needs.validate.result == 'success'))
+    uses: ./.github/workflows/container-candidate.yml
+    with:
+      ref: ${{ needs.validate-tag.outputs.revision }}
+      channel: ${{ needs.validate-tag.outputs.channel }}
+
+  publish-platforms:
+    name: Push tested images (${{ matrix.arch }})
+    needs: [validate-tag, build-images]
+    if: ${{ !cancelled() && github.actor == vars.DOCKERHUB_PUBLISHER_GITHUB_LOGIN && needs.build-images.result == 'success' }}
+    runs-on: ${{ matrix.runner }}
     environment: dockerhub-publish
     strategy:
       fail-fast: false
       matrix:
         include:
-          - image: brisebois/whats-for-supper-api
-            context: ./api
-            target: production
-          - image: brisebois/whats-for-supper-pwa
-            context: ./pwa
-            target: production
-          - image: brisebois/whats-for-supper-db-migration
-            context: ./api/database
-            target: ''
-
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    env:
+      REVISION: ${{ needs.validate-tag.outputs.revision }}
+      CHANNEL: ${{ needs.validate-tag.outputs.channel }}
+      ARCH: ${{ matrix.arch }}
+      CANDIDATE_RUN_ID: ${{ github.run_id }}
     steps:
       - uses: actions/checkout@v7
-
+      - uses: actions/download-artifact@v8
+        with:
+          name: container-candidate-v1-${{ needs.validate-tag.outputs.channel }}-${{ matrix.arch }}
+          path: .task/container-candidate
+          github-token: ${{ github.token }}
+          run-id: ${{ env.CANDIDATE_RUN_ID }}
       - name: Log in to Docker Hub
         uses: docker/login-action@v4
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
-
-      - name: Build and push immutable multi-platform image
-        uses: docker/build-push-action@v7
+      - name: Verify and push existing image bytes
+        run: python3 -B scripts/ci/image-candidate.py publish
+      - uses: actions/upload-artifact@v7
         with:
-          context: ${{ matrix.context }}
-          target: ${{ matrix.target }}
-          platforms: linux/amd64,linux/arm64
-          push: true
-          build-args: ${{ matrix.context == './pwa' && format('WFS_RELEASE_CHANNEL={0}', needs.validate-tag.outputs.channel) || '' }}
-          tags: docker.io/${{ matrix.image }}:${{ needs.validate-tag.outputs.version }}
-          labels: |
-            org.opencontainers.image.revision=${{ needs.validate-tag.outputs.revision }}
-            org.opencontainers.image.version=${{ needs.validate-tag.outputs.version }}
+          overwrite: true
+          name: published-${{ matrix.arch }}
+          path: .task/container-candidate/published-${{ matrix.arch }}.json
+          include-hidden-files: true
+          retention-days: 1
+
+  publish:
+    name: Publish tested multi-platform manifests
+    needs: [validate-tag, publish-platforms]
+    if: ${{ !cancelled() && github.actor == vars.DOCKERHUB_PUBLISHER_GITHUB_LOGIN && needs.publish-platforms.result == 'success' }}
+    runs-on: ubuntu-latest
+    environment: dockerhub-publish
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: published-*
+          path: .task/published
+          merge-multiple: true
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - uses: docker/setup-buildx-action@v4
+      - name: Assemble linux/amd64,linux/arm64 manifests without building
+        env:
+          VERSION: ${{ needs.validate-tag.outputs.version }}
+        run: python3 -B scripts/ci/image-candidate.py manifests --directory .task/published
+
+  install-bundle:
+    name: Publish matching installation ZIP
+    needs: [validate-tag, publish]
+    if: ${{ !cancelled() && github.actor == vars.DOCKERHUB_PUBLISHER_GITHUB_LOGIN && needs.publish.result == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Verify all published image tags exist
+        env:
+          VERSION: ${{ needs.validate-tag.outputs.version }}
+        run: |
+          set -euo pipefail
+          for image in api pwa db-migration; do
+            repository="brisebois/whats-for-supper-${image}"
+            for attempt in 1 2 3 4 5; do
+              status="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' "https://hub.docker.com/v2/repositories/${repository}/tags/${VERSION}/" || true)"
+              if [ "$status" = 200 ]; then break; fi
+              if [ "$attempt" = 5 ]; then echo "Missing image ${repository}:${VERSION} (HTTP $status)" >&2; exit 1; fi
+              sleep 15
+            done
+          done
+
+      - name: Verify multi-platform image manifests
+        env:
+          VERSION: ${{ needs.validate-tag.outputs.version }}
+        run: |
+          set -euo pipefail
+          for image in api pwa db-migration; do
+            ref="docker.io/brisebois/whats-for-supper-${image}:${VERSION}"
+            docker buildx imagetools inspect "$ref" --raw > manifest.json
+            python3 - "$ref" <<'PY'
+          import json, sys
+          manifest=json.load(open("manifest.json"))
+          platforms={(x.get("platform",{}).get("os"),x.get("platform",{}).get("architecture")) for x in manifest.get("manifests",[])}
+          required={("linux","amd64"),("linux","arm64")}
+          if not required.issubset(platforms):
+              sys.exit(f"{sys.argv[1]} missing platforms: {required-platforms}")
+          PY
+          done
+
+      - name: Build and validate installation ZIP
+        env:
+          VERSION: ${{ needs.validate-tag.outputs.version }}
+        run: |
+          set -euo pipefail
+          bash scripts/release/build-install-zip.sh "$VERSION" "dist/whats-for-supper-install-${VERSION}.zip"
+          unzip -t "dist/whats-for-supper-install-${VERSION}.zip"
+          unzip -q "dist/whats-for-supper-install-${VERSION}.zip" -d /tmp/wfs-install-check
+          cd /tmp/wfs-install-check/whats-for-supper
+          cp .env.example .env
+          sed -i -e 's/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=testpassword/' \
+                 -e 's/^HEARTH_SECRET=.*/HEARTH_SECRET=testsecret/' \
+                 -e 's/^GEMINI_API_KEY=.*/GEMINI_API_KEY=testkey/' \
+                 -e 's/^CLOUDFLARE_TUNNEL_TOKEN=.*/CLOUDFLARE_TUNNEL_TOKEN=testtoken/' \
+                 -e 's/^ELEVATED_ACTIONS_PIN=.*/ELEVATED_ACTIONS_PIN=123456/' .env
+          docker compose config --quiet
+          rm .env
+
+      - name: Publish GitHub release asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.validate-tag.outputs.version }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          asset="dist/whats-for-supper-install-${VERSION}.zip"
+          sha256sum "$asset" > "$asset.sha256"
+          assets=("$asset" "$asset.sha256")
+          if [[ "$VERSION" != *-beta.* ]]; then
+            cp "$asset" dist/whats-for-supper-install.zip
+            sha256sum dist/whats-for-supper-install.zip > dist/whats-for-supper-install.zip.sha256
+            assets+=(dist/whats-for-supper-install.zip dist/whats-for-supper-install.zip.sha256)
+          fi
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "${assets[@]}" --clobber
+          else
+            release_flags=()
+            if [[ "$VERSION" == *-beta.* ]]; then
+              release_flags+=(--prerelease)
+            else
+              release_flags+=(--latest)
+            fi
+            gh release create "$TAG" "${assets[@]}" --title "What's for Supper ${VERSION}" --notes "Docker images and matching Linux Docker Compose installation bundle." "${release_flags[@]}"
+          fi

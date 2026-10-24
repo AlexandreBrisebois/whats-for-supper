@@ -55,7 +55,7 @@ export function deserializeIntoMovePostResponse(
 }
 export interface MovePostResponse extends AdditionalDataHolder, Parsable {
   /**
-   * Tomorrow always returns moved=true and all date/refresh fields. Legacy intents return message only.
+   * Tomorrow and actual legacy cross-week movement return moved=true and all date/refresh fields. Same-week and cross-week no-op legacy completion return message only.
    */
   data?: MoveScheduleResultDto | null;
 }
@@ -64,7 +64,7 @@ export interface MovePostResponse extends AdditionalDataHolder, Parsable {
  */
 export interface MoveRequestBuilder extends BaseRequestBuilder<MoveRequestBuilder> {
   /**
-   * Legacy swap and push retain their existing behavior. Intent tomorrow requires fromIndex in 0..6 and the exact matching recipe at supper slot zero. The target must be the next calendar day, using targetWeekOffset plus toIndex across Sunday. Tomorrow shifts the contiguous occupied supper chain through all required weeks, stopping at the first empty supper slot. Cooked, AwaitingConsensus or stale sources reject without mutation. Source disposition order_in is allowed only for tomorrow and commits atomically with shifts. A 200 tomorrow response confirms moved=true; refreshComplete=false means calendar changes committed but some affected-week grocery/publication follow-ups failed. Do not repeat movement.
+   * Legacy same-week swap and push retain their existing behavior. Actual cross-week placement returns moved=true with sourceDate, destinationDate, affectedWeekStartDates and refreshComplete. Both affected weeks receive independent grocery recomputation and snapshot publication attempts. refreshComplete=false confirms committed movement with incomplete follow-ups; refresh the plan rather than repeat movement. Legacy cross-week no-op completion remains unchanged. Intent tomorrow requires fromIndex in 0..6 and the exact matching recipe at supper slot zero. The target must be the next calendar day, using targetWeekOffset plus toIndex across Sunday. Tomorrow shifts the contiguous occupied supper chain through all required weeks, stopping at the first empty supper slot. Cooked, AwaitingConsensus or stale sources reject without mutation. Source disposition order_in is allowed only for tomorrow and commits atomically with shifts. A 200 tomorrow response confirms moved=true; refreshComplete=false means calendar changes committed but some affected-week grocery/publication follow-ups failed. Do not repeat movement.
    * @param body The request body
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {Promise<MovePostResponse>}
@@ -75,7 +75,7 @@ export interface MoveRequestBuilder extends BaseRequestBuilder<MoveRequestBuilde
     requestConfiguration?: RequestConfiguration<MoveRequestBuilderPostQueryParameters> | undefined
   ): Promise<MovePostResponse | undefined>;
   /**
-   * Legacy swap and push retain their existing behavior. Intent tomorrow requires fromIndex in 0..6 and the exact matching recipe at supper slot zero. The target must be the next calendar day, using targetWeekOffset plus toIndex across Sunday. Tomorrow shifts the contiguous occupied supper chain through all required weeks, stopping at the first empty supper slot. Cooked, AwaitingConsensus or stale sources reject without mutation. Source disposition order_in is allowed only for tomorrow and commits atomically with shifts. A 200 tomorrow response confirms moved=true; refreshComplete=false means calendar changes committed but some affected-week grocery/publication follow-ups failed. Do not repeat movement.
+   * Legacy same-week swap and push retain their existing behavior. Actual cross-week placement returns moved=true with sourceDate, destinationDate, affectedWeekStartDates and refreshComplete. Both affected weeks receive independent grocery recomputation and snapshot publication attempts. refreshComplete=false confirms committed movement with incomplete follow-ups; refresh the plan rather than repeat movement. Legacy cross-week no-op completion remains unchanged. Intent tomorrow requires fromIndex in 0..6 and the exact matching recipe at supper slot zero. The target must be the next calendar day, using targetWeekOffset plus toIndex across Sunday. Tomorrow shifts the contiguous occupied supper chain through all required weeks, stopping at the first empty supper slot. Cooked, AwaitingConsensus or stale sources reject without mutation. Source disposition order_in is allowed only for tomorrow and commits atomically with shifts. A 200 tomorrow response confirms moved=true; refreshComplete=false means calendar changes committed but some affected-week grocery/publication follow-ups failed. Do not repeat movement.
    * @param body The request body
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {RequestInformation}
@@ -86,7 +86,7 @@ export interface MoveRequestBuilder extends BaseRequestBuilder<MoveRequestBuilde
   ): RequestInformation;
 }
 /**
- * Legacy swap and push retain their existing behavior. Intent tomorrow requires fromIndex in 0..6 and the exact matching recipe at supper slot zero. The target must be the next calendar day, using targetWeekOffset plus toIndex across Sunday. Tomorrow shifts the contiguous occupied supper chain through all required weeks, stopping at the first empty supper slot. Cooked, AwaitingConsensus or stale sources reject without mutation. Source disposition order_in is allowed only for tomorrow and commits atomically with shifts. A 200 tomorrow response confirms moved=true; refreshComplete=false means calendar changes committed but some affected-week grocery/publication follow-ups failed. Do not repeat movement.
+ * Legacy same-week swap and push retain their existing behavior. Actual cross-week placement returns moved=true with sourceDate, destinationDate, affectedWeekStartDates and refreshComplete. Both affected weeks receive independent grocery recomputation and snapshot publication attempts. refreshComplete=false confirms committed movement with incomplete follow-ups; refresh the plan rather than repeat movement. Legacy cross-week no-op completion remains unchanged. Intent tomorrow requires fromIndex in 0..6 and the exact matching recipe at supper slot zero. The target must be the next calendar day, using targetWeekOffset plus toIndex across Sunday. Tomorrow shifts the contiguous occupied supper chain through all required weeks, stopping at the first empty supper slot. Cooked, AwaitingConsensus or stale sources reject without mutation. Source disposition order_in is allowed only for tomorrow and commits atomically with shifts. A 200 tomorrow response confirms moved=true; refreshComplete=false means calendar changes committed but some affected-week grocery/publication follow-ups failed. Do not repeat movement.
  */
 export interface MoveRequestBuilderPostQueryParameters {
   /**

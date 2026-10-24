@@ -36,6 +36,221 @@ public class ScheduleServiceTests : IAsyncLifetime
         await _factory.DisposeAsync();
     }
 
+    public static IEnumerable<object[]> CoverageCases() =>
+        from required in Enumerable.Range(0, 8)
+        from candidates in Enumerable.Range(0, 10)
+        select new object[] { required, candidates };
+
+    [Theory]
+    [MemberData(nameof(CoverageCases))]
+    public async Task SmartDefaults_BoundedDistinctCoverage(int required, int candidates)
+    {
+        var monday = new DateOnly(2026, 10, 19);
+        var selected = new Recipe { Id = Guid.NewGuid(), Name = "Selected consensus" };
+        var recipes = Enumerable.Range(0, candidates).Select(i => new Recipe
+            { Id = Guid.NewGuid(), Name = $"Candidate {i}" }).ToArray();
+        _db.Recipes.AddRange(recipes.Append(selected));
+        foreach (var recipe in recipes.Append(selected))
+            _db.RecipeVotes.Add(new RecipeVote { RecipeId = recipe.Id,
+                FamilyMemberId = _factory.DefaultFamilyMemberId, Vote = VoteType.Like });
+        var occupied = Enumerable.Range(0, 7 - required).ToHashSet();
+        foreach (var day in occupied)
+            _db.CalendarEvents.Add(new CalendarEvent { Id = Guid.NewGuid(), Date = monday.AddDays(day),
+                RecipeId = day == 0 ? selected.Id : null,
+                Status = day == 0 ? CalendarEventStatus.Planned : CalendarEventStatus.Skipped,
+                NonCookingKind = day == 0 ? null : "eating_out" });
+        // In the fully empty case there is no selected recipe identity to exclude.
+        if (required == 7) _db.RecipeVotes.Remove(_db.RecipeVotes.Local.Single(v => v.RecipeId == selected.Id));
+        await _db.SaveChangesAsync();
+
+        var defaults = await _service.GetSmartDefaultsAsync(1);
+
+        Assert.Equal(candidates, defaults.ConsensusRecipesCount);
+        Assert.Equal(Math.Min(required, candidates), defaults.PreSelectedRecipes.Count);
+        Assert.Equal(required - Math.Min(required, candidates), defaults.OpenSlots.Count);
+        Assert.Equal(defaults.PreSelectedRecipes.Count,
+            defaults.PreSelectedRecipes.Select(x => x.RecipeId).Distinct().Count());
+        Assert.All(defaults.PreSelectedRecipes, x =>
+        {
+            Assert.InRange(x.DayIndex, 0, 6);
+            Assert.DoesNotContain(x.DayIndex, occupied);
+            Assert.NotEqual(selected.Id, x.RecipeId);
+        });
+        Assert.Equal(required, defaults.PreSelectedRecipes.Select(x => x.DayIndex)
+            .Concat(defaults.OpenSlots.Select(x => x.DayIndex)).Distinct().Count());
+        Assert.Equal(occupied.Count, _db.CalendarEvents.Count());
+    }
+
+    [Fact]
+    public async Task SmartDefaults_ExcludesSelectedIdentityFromPlacementAndCandidateCount()
+    {
+        var monday = new DateOnly(2026, 10, 19);
+        var selected = new Recipe { Id = Guid.NewGuid(), Name = "Already saved" };
+        var candidate = new Recipe { Id = Guid.NewGuid(), Name = "New candidate" };
+        _db.Recipes.AddRange(selected, candidate);
+        foreach (var recipe in new[] { selected, candidate })
+            _db.RecipeVotes.Add(new RecipeVote { RecipeId = recipe.Id,
+                FamilyMemberId = _factory.DefaultFamilyMemberId, Vote = VoteType.Like });
+        _db.CalendarEvents.Add(new CalendarEvent { Id = Guid.NewGuid(), Date = monday,
+            RecipeId = selected.Id, Status = CalendarEventStatus.Planned });
+        await _db.SaveChangesAsync();
+
+        var defaults = await _service.GetSmartDefaultsAsync(1);
+
+        Assert.Equal(monday, defaults.WeekStartDate);
+        Assert.Equal(1, defaults.ConsensusRecipesCount);
+        var placement = Assert.Single(defaults.PreSelectedRecipes);
+        Assert.Equal(candidate.Id, placement.RecipeId);
+        Assert.Equal(1, placement.DayIndex);
+        Assert.Equal(5, defaults.OpenSlots.Count);
+    }
+
+    [Fact]
+    public async Task SmartDefaults_FourOtherPlansLeaveExactlyThreePlacementsInRequestedWeek()
+    {
+        var monday = new DateOnly(2026, 10, 19);
+        for (var i = 0; i < 4; i++)
+            _db.CalendarEvents.Add(new CalendarEvent { Id = Guid.NewGuid(), Date = monday.AddDays(i),
+                Status = CalendarEventStatus.Skipped, NonCookingKind = "eating_out" });
+        for (var i = 0; i < 3; i++)
+        {
+            var recipe = new Recipe { Id = Guid.NewGuid(), Name = $"Candidate {i}" };
+            _db.Recipes.Add(recipe);
+            _db.RecipeVotes.Add(new RecipeVote { RecipeId = recipe.Id,
+                FamilyMemberId = _factory.DefaultFamilyMemberId, Vote = VoteType.Like });
+        }
+        await _db.SaveChangesAsync();
+
+        var defaults = await _service.GetSmartDefaultsAsync(1);
+
+        Assert.Equal(monday, defaults.WeekStartDate);
+        Assert.Equal(3, defaults.ConsensusRecipesCount);
+        Assert.Equal(new[] { 4, 5, 6 }, defaults.PreSelectedRecipes.Select(x => x.DayIndex));
+        Assert.Empty(defaults.OpenSlots);
+        Assert.Equal(4, _db.CalendarEvents.Count());
+    }
+
+    [Fact]
+    public async Task SmartDefaults_FourMembersStillRequireThreeLikes()
+    {
+        var others = Enumerable.Range(0, 3).Select(i => new FamilyMember
+            { Id = Guid.NewGuid(), Name = $"Member {i}" }).ToArray();
+        _db.FamilyMembers.AddRange(others);
+        var recipe = new Recipe { Id = Guid.NewGuid(), Name = "Not yet consensus" };
+        _db.Recipes.Add(recipe);
+        _db.RecipeVotes.AddRange(
+            new RecipeVote { RecipeId = recipe.Id, FamilyMemberId = _factory.DefaultFamilyMemberId, Vote = VoteType.Like },
+            new RecipeVote { RecipeId = recipe.Id, FamilyMemberId = others[0].Id, Vote = VoteType.Like });
+        await _db.SaveChangesAsync();
+
+        var defaults = await _service.GetSmartDefaultsAsync(1);
+
+        Assert.Equal(4, defaults.FamilySize);
+        Assert.Equal(3, defaults.ConsensusThreshold);
+        Assert.Equal(0, defaults.ConsensusRecipesCount);
+        Assert.Empty(defaults.PreSelectedRecipes);
+    }
+
+    [Fact]
+    public async Task ReopenedClose_PreservesCookedHistoryAndOldReplayPreservesNewVotes()
+    {
+        ((RecipeApi.Tests.Integration.DeploymentCalendarIntegrationTests.CalendarClock)_scope.ServiceProvider.GetRequiredService<IClock>()).UtcNow = new(2026, 10, 14, 12, 0, 0, TimeSpan.Zero);
+        var monday = new DateOnly(2026, 10, 12);
+        var cooked = new Recipe { Id = Guid.NewGuid(), Name = "Already cooked", LastCookedDate = new(2026, 10, 12, 0, 0, 0, TimeSpan.Zero) };
+        var planned = new Recipe { Id = Guid.NewGuid(), Name = "Future meal" };
+        var skipped = new Recipe { Id = Guid.NewGuid(), Name = "Legacy skipped" };
+        var removed = new Recipe { Id = Guid.NewGuid(), Name = "Remove frees the slot" };
+        _db.Recipes.AddRange(cooked, planned, skipped, removed);
+        _db.CalendarEvents.AddRange(new CalendarEvent { Date = monday, RecipeId = cooked.Id, Status = CalendarEventStatus.Cooked },
+            new CalendarEvent { Date = monday.AddDays(4), RecipeId = planned.Id },
+            new CalendarEvent { Date = monday.AddDays(3), RecipeId = skipped.Id, Status = CalendarEventStatus.Skipped },
+            new CalendarEvent { Date = monday.AddDays(6), RecipeId = removed.Id },
+            new CalendarEvent { Date = monday.AddDays(5), Status = CalendarEventStatus.Skipped, NonCookingKind = "eating_out" });
+        await _db.SaveChangesAsync();
+        await _service.OpenVotingAsync(0);
+        var first = (await _service.GetScheduleAsync(0)).VotingRoundId;
+        await _service.LockScheduleAsync(0, votingRoundId: first);
+        // Model an already recorded meal before a genuinely new round closes.
+        _db.CalendarEvents.Single(x => x.RecipeId == cooked.Id).Status = CalendarEventStatus.Cooked;
+        _db.CalendarEvents.Single(x => x.RecipeId == skipped.Id).Status = CalendarEventStatus.Skipped;
+        _db.CalendarEvents.Single(x => x.RecipeId == planned.Id).Status = CalendarEventStatus.Planned;
+        await _db.SaveChangesAsync();
+        await _service.RemoveRecipeAsync(monday.AddDays(6));
+        await _service.OpenVotingAsync(0);
+        var second = (await _service.GetScheduleAsync(0)).VotingRoundId;
+        _db.RecipeVotes.Add(new RecipeVote { RecipeId = cooked.Id, FamilyMemberId = _factory.DefaultFamilyMemberId, Vote = VoteType.Like });
+        await _db.SaveChangesAsync();
+        await _service.LockScheduleAsync(0, votingRoundId: first);
+        Assert.Single(_db.RecipeVotes);
+        Assert.Equal(second, (await _service.GetScheduleAsync(0)).VotingRoundId);
+        await _service.LockScheduleAsync(0, votingRoundId: second);
+
+        Assert.Equal(CalendarEventStatus.Cooked, _db.CalendarEvents.Single(x => x.RecipeId == cooked.Id).Status);
+        Assert.Equal(CalendarEventStatus.Skipped, _db.CalendarEvents.Single(x => x.RecipeId == skipped.Id).Status);
+        Assert.DoesNotContain(_db.CalendarEvents, x => x.RecipeId == removed.Id || x.Date == monday.AddDays(6));
+        Assert.Equal(CalendarEventStatus.Locked, _db.CalendarEvents.Single(x => x.RecipeId == planned.Id).Status);
+        Assert.Equal(CalendarEventStatus.Skipped, _db.CalendarEvents.Single(x => x.RecipeId == null).Status);
+        Assert.Equal(new DateTimeOffset(2026, 10, 12, 0, 0, 0, TimeSpan.Zero), cooked.LastCookedDate);
+        Assert.True(_db.WeeklyHouseholdInterests.Single(x => x.RecipeId == cooked.Id).Selected);
+        _db.RecipeVotes.Add(new RecipeVote { RecipeId = planned.Id, FamilyMemberId = _factory.DefaultFamilyMemberId, Vote = VoteType.Like });
+        await _db.SaveChangesAsync();
+        await _service.LockScheduleAsync(0, votingRoundId: second);
+        Assert.Single(_db.RecipeVotes);
+    }
+
+    [Fact]
+    public async Task ReopenedClose_PreservesLegacyRecipeBackedSkipped()
+    {
+        var recipe = new Recipe { Id = Guid.NewGuid(), Name = "Legacy skipped" };
+        _db.Recipes.Add(recipe);
+        var skipped = new CalendarEvent { Date = new(2026, 10, 16), RecipeId = recipe.Id, Status = CalendarEventStatus.Skipped };
+        _db.CalendarEvents.Add(skipped);
+        await _db.SaveChangesAsync();
+        await _service.OpenVotingAsync(0);
+        await _service.LockScheduleAsync(0, votingRoundId: (await _service.GetScheduleAsync(0)).VotingRoundId);
+        skipped.Status = CalendarEventStatus.Skipped;
+        await _db.SaveChangesAsync();
+        await _service.OpenVotingAsync(0);
+        await _service.LockScheduleAsync(0, votingRoundId: (await _service.GetScheduleAsync(0)).VotingRoundId);
+        Assert.Equal(CalendarEventStatus.Skipped, skipped.Status);
+        Assert.Equal(recipe.Id, skipped.RecipeId);
+    }
+
+    [Theory]
+    [InlineData(true, false, false)]
+    [InlineData(false, false, false)]
+    [InlineData(true, true, false)]
+    [InlineData(true, false, true)]
+    public async Task RemoveCooked_RecalculatesFromRemainingEventsBeforePublication(bool earlierExists, bool removeEarlier, bool publicationFails)
+    {
+        var earlier = new DateOnly(2026, 10, 5);
+        var latest = new DateOnly(2026, 10, 12);
+        var recipe = new Recipe { Id = Guid.NewGuid(), Name = "Correct history", Ingredients = "[]", LastCookedDate = new(2026, 10, 12, 0, 0, 0, TimeSpan.Zero) };
+        _db.Recipes.Add(recipe);
+        if (earlierExists) _db.CalendarEvents.Add(new CalendarEvent { Date = earlier, RecipeId = recipe.Id, Status = CalendarEventStatus.Cooked });
+        _db.CalendarEvents.Add(new CalendarEvent { Date = latest, RecipeId = recipe.Id, Status = CalendarEventStatus.Cooked });
+        await _db.SaveChangesAsync();
+        if (publicationFails) _publisherMock.Setup(p => p.PublishWeekUpdatedAsync(It.IsAny<ScheduleDays>(), null, null)).ThrowsAsync(new IOException("Refresh failed"));
+        if (publicationFails) await Assert.ThrowsAsync<IOException>(() => _service.RemoveRecipeAsync(removeEarlier ? earlier : latest));
+        else await _service.RemoveRecipeAsync(removeEarlier ? earlier : latest);
+
+        DateTimeOffset? expected = removeEarlier ? new(2026, 10, 12, 0, 0, 0, TimeSpan.Zero)
+            : earlierExists ? new(2026, 10, 5, 0, 0, 0, TimeSpan.Zero) : null;
+        Assert.Equal(expected, recipe.LastCookedDate);
+        Assert.DoesNotContain(_db.CalendarEvents, x => x.Date == (removeEarlier ? earlier : latest));
+    }
+
+    [Fact]
+    public async Task RemoveCooked_OrdinaryPlannedRemovalPreservesLastCooked()
+    {
+        var recipe = new Recipe { Id = Guid.NewGuid(), Name = "Planned only", Ingredients = "[]", LastCookedDate = new(2026, 10, 5, 0, 0, 0, TimeSpan.Zero) };
+        _db.Recipes.Add(recipe);
+        _db.CalendarEvents.Add(new CalendarEvent { Date = new(2026, 10, 12), RecipeId = recipe.Id });
+        await _db.SaveChangesAsync();
+        await _service.RemoveRecipeAsync(new(2026, 10, 12));
+        Assert.Equal(new DateTimeOffset(2026, 10, 5, 0, 0, 0, TimeSpan.Zero), recipe.LastCookedDate);
+    }
+
     [Fact]
     public async Task WeeklyInterest_RevoteReplacesTouchedRowsRemovesZeroAndPreservesUntouched()
     {
@@ -138,6 +353,85 @@ public class ScheduleServiceTests : IAsyncLifetime
             new AssignScheduleDto(0, 6, recipe, RequireEmpty: true), referenceWeekStartDate: new(2026, 10, 5)));
         Assert.Equal(plansBefore, _db.WeeklyPlans.Count());
         _publisherMock.VerifyNoOtherCalls();
+    }
+
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(0)]
+    [InlineData(1)]
+    public async Task PlanLater_PublishesBothWeeksAndReportsCommittedPublicationFailure(int failedWeek)
+    {
+        var sourceMonday = new DateOnly(2026, 10, 12);
+        var targetMonday = sourceMonday.AddDays(7);
+        var recipe = new Recipe { Id = Guid.NewGuid(), Name = "Carrot supper", Ingredients = "[\"carrots\"]" };
+        var existing = new Recipe { Id = Guid.NewGuid(), Name = "Onion supper", Ingredients = "[\"onions\"]" };
+        _db.Recipes.AddRange(recipe, existing);
+        _db.CalendarEvents.AddRange(
+            new CalendarEvent { Id = Guid.NewGuid(), Date = sourceMonday, RecipeId = recipe.Id },
+            new CalendarEvent { Id = Guid.NewGuid(), Date = targetMonday, RecipeId = existing.Id });
+        await _db.SaveChangesAsync();
+        var snapshots = new List<ScheduleDays>();
+        _publisherMock.Setup(p => p.PublishWeekUpdatedAsync(It.IsAny<ScheduleDays>(), "viewer", 12))
+            .Callback<ScheduleDays, string?, int?>((schedule, _, _) => snapshots.Add(schedule))
+            .Returns<ScheduleDays, string?, int?>((schedule, _, _) => schedule.WeekOffset == failedWeek
+                ? Task.FromException(new IOException("Publication failed")) : Task.CompletedTask);
+
+        var result = await _service.MoveScheduleEventAsync(new MoveScheduleDto(0, recipe.Id, 0, "push", 1, 0), "viewer", 12);
+
+        Assert.NotNull(result);
+        Assert.True(result.Moved);
+        Assert.Equal(failedWeek < 0, result.RefreshComplete);
+        Assert.Equal(sourceMonday, result.SourceDate);
+        Assert.Equal(targetMonday.AddDays(1), result.DestinationDate);
+        Assert.Equal(new[] { sourceMonday, targetMonday }, result.AffectedWeekStartDates);
+        Assert.Equal(new[] { 0, 1 }, snapshots.Select(x => x.WeekOffset));
+        Assert.DoesNotContain(snapshots[0].Days, x => x.Recipe != null);
+        Assert.Empty(snapshots[0].GroceryItems!);
+        Assert.Contains(snapshots[1].Days, x => x.Recipe?.Id == recipe.Id);
+        Assert.Equal(new[] { "carrots", "onions" }, snapshots[1].GroceryItems!.Select(x => x.DisplayName).Order());
+        Assert.Equal(targetMonday.AddDays(1), _db.CalendarEvents.Single(x => x.RecipeId == recipe.Id).Date);
+    }
+
+    [Fact]
+    public async Task PlanLater_RecomputeFailureStillPublishesBothWeeksAndConfirmsMovement()
+    {
+        var sourceMonday = new DateOnly(2026, 10, 12);
+        var moved = new Recipe { Id = Guid.NewGuid(), Name = "Move this", Ingredients = "[\"carrots\"]" };
+        // A valid JSON value with an unsupported metadata shape makes source recomputation fail.
+        var malformed = new Recipe { Id = Guid.NewGuid(), Name = "Existing bad metadata", RawMetadata = "[]" };
+        _db.Recipes.AddRange(moved, malformed);
+        _db.CalendarEvents.AddRange(new CalendarEvent { Date = sourceMonday, RecipeId = moved.Id },
+            new CalendarEvent { Date = sourceMonday.AddDays(1), RecipeId = malformed.Id });
+        await _db.SaveChangesAsync();
+
+        var result = await _service.MoveScheduleEventAsync(new MoveScheduleDto(0, moved.Id, 0, "push", 1, 0));
+
+        Assert.NotNull(result);
+        Assert.True(result.Moved);
+        Assert.False(result.RefreshComplete);
+        Assert.Equal(sourceMonday.AddDays(7), _db.CalendarEvents.Single(x => x.RecipeId == moved.Id).Date);
+        _publisherMock.Verify(p => p.PublishWeekUpdatedAsync(It.Is<ScheduleDays>(x => x.WeekOffset == 0), null, null), Times.Once);
+        _publisherMock.Verify(p => p.PublishWeekUpdatedAsync(It.Is<ScheduleDays>(x => x.WeekOffset == 1 && x.GroceryItems!.Any()), null, null), Times.Once);
+    }
+
+    [Fact]
+    public async Task PlanLater_FullTargetRetainsLegacyNoOpResultAndSource()
+    {
+        var monday = new DateOnly(2026, 10, 12);
+        var recipe = new Recipe { Id = Guid.NewGuid(), Name = "Full week", Ingredients = "[]" };
+        _db.Recipes.Add(recipe);
+        _db.CalendarEvents.Add(new CalendarEvent { Date = monday, RecipeId = recipe.Id });
+        _db.CalendarEvents.AddRange(Enumerable.Range(0, 7).Select(i => new CalendarEvent
+            { Date = monday.AddDays(7 + i), RecipeId = recipe.Id }));
+        await _db.SaveChangesAsync();
+
+        var result = await _service.MoveScheduleEventAsync(new MoveScheduleDto(0, recipe.Id, 0, "push", 1, 0));
+
+        Assert.Null(result);
+        Assert.Equal(8, _db.CalendarEvents.Count());
+        Assert.Contains(_db.CalendarEvents, x => x.Date == monday && x.RecipeId == recipe.Id);
+        _publisherMock.Verify(p => p.PublishWeekUpdatedAsync(It.Is<ScheduleDays>(s => s.WeekOffset == 0), null, null), Times.Once);
+        _publisherMock.Verify(p => p.PublishWeekUpdatedAsync(It.Is<ScheduleDays>(s => s.WeekOffset == 1), null, null), Times.Never);
     }
 
     [Fact]

@@ -1,0 +1,56 @@
+# Direct Gemini query-embedding probe matching current WFS code.
+# Source commit: e84a2d786d900b7757b43a0bf61606ba249be442
+# This goes to Google, NOT the WFS API. No Hearth secret is needed.
+# No calls were executed while preparing this file.
+#
+# Set geminiApiKey privately in your REST Client environment.
+# It must be the key for the SAME deployment you are diagnosing; never commit it.
+# Use the deployment's effective EMBEDDING_MODEL_ID and EMBEDDING_DIMENSIONS.
+# Values below are CODE DEFAULTS, not independently verified deployed settings.
+# The code reads EMBEDDING_MODEL_ID, not GEMINI_MODEL_ID_EMBEDDING.
+# API calls may consume provider quota or incur charges.
+#
+# GEMINI_ENDPOINT contributes ONLY scheme/host/port; its path is discarded.
+# Default configured endpoint /v1beta/openai/ becomes /v1beta/models/...:embedContent.
+# If a deployment overrides the origin, verify it before sending any key there.
+@embeddingOrigin = https://generativelanguage.googleapis.com
+@embeddingModel = gemini-embedding-2
+@embeddingDimensions = 1536
+
+# Exact input for typed "poultry" with no concepts is "poultry".
+# The Poultry chip alone also embeds "poultry".
+# Supper hard filter is NOT included in embedding text.
+# Typed text + selected concepts are joined with a single space; query is trimmed,
+# concepts are trimmed and case-insensitively deduplicated.
+# No taskType, title, search_query prefix, lowercasing, or vector normalization
+# is added by this query-embedding path.
+#
+# Inspect HTTP status, elapsed time, and embedding.values length.
+# This intentionally lets the provider finish rather than imposing WFS's 300 ms
+# shared budget, to distinguish slow success from provider rejection.
+# It does not execute vector SQL or recipe hydration.
+# A Mac measurement is your Mac's path to Google, not the Synology API's path.
+# Successful 1536 output is necessary but does not prove good semantic matching.
+# Do not share the key, full vector, or full request/response export.
+#
+# Source:
+# https://github.com/AlexandreBrisebois/whats-for-supper/blob/e84a2d786d900b7757b43a0bf61606ba249be442/api/src/RecipeApi/Services/GeminiEmbeddingProvider.cs
+# https://github.com/AlexandreBrisebois/whats-for-supper/blob/e84a2d786d900b7757b43a0bf61606ba249be442/api/src/RecipeApi/Services/RecipeSearchService.cs
+# https://github.com/AlexandreBrisebois/whats-for-supper/blob/e84a2d786d900b7757b43a0bf61606ba249be442/api/src/RecipeApi/Program.cs
+
+### Direct query embedding: poultry (provider request only)
+POST {{embeddingOrigin}}/v1beta/models/{{embeddingModel}}:embedContent
+x-goog-api-key: {{geminiApiKey}}
+Content-Type: application/json
+
+{
+  "model": "models/{{embeddingModel}}",
+  "content": {
+    "parts": [
+      {
+        "text": "fish"
+      }
+    ]
+  },
+  "outputDimensionality": {{embeddingDimensions}}
+}

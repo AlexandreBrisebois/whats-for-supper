@@ -17,8 +17,10 @@ import {
   getSmartDefaults,
 } from '@/lib/api/planner';
 import { usePlannerStore } from '@/store/plannerStore';
+import { useDiscoveryStore } from '@/store/discoveryStore';
 import type {
   GroceryLineItemDto,
+  GroceryExtraDto,
   ScheduleRecipeDto,
   SmartDefaultsDto,
   NonCookingPlanDto,
@@ -46,6 +48,9 @@ export interface WeekState {
   schedule: UILocalScheduleDay[];
   /** Pre-computed grocery items from the API, grouped by section for display */
   groceryItems: GroceryLineItemDto[];
+  /** Identity-bearing household-entered rows, kept separate from recipe groceries. */
+  groceryExtras: GroceryExtraDto[];
+  pendingGroceryExtraIds: Set<string>;
   /** 0 = Draft, 1 = VotingOpen, 2 = Locked — seeded from WeeklyPlan.Status */
   status: 0 | 1 | 2;
   isLoading: boolean;
@@ -88,6 +93,10 @@ export interface WeekState {
   lockWeek: () => Promise<void>;
   sync: () => Promise<void>;
   reclassifyGroceryItem: (normalizedKey: string, section: GrocerySection) => void;
+  upsertGroceryExtra: (extra: GroceryExtraDto) => void;
+  removeGroceryExtra: (id: string) => void;
+  setGroceryExtraPending: (id: string, pending: boolean) => void;
+  applyGroceryExtrasUpdate: (weekStartDate: string, extras: GroceryExtraDto[]) => void;
 
   // SSE-driven actions
   applySnapshot: (schedule: ScheduleDays, echoSeq?: number) => void;
@@ -108,6 +117,42 @@ const generateUiId = (): string =>
     ? crypto.randomUUID()
     : Math.random().toString(36).substring(7);
 
+const reconcileExtras = (
+  existing: GroceryExtraDto[],
+  incoming: GroceryExtraDto[],
+  pending: Set<string>
+) => {
+  const eligibleIncoming = incoming.filter((item) => !item.id || !pending.has(item.id));
+  const byId = new Map(eligibleIncoming.filter((item) => item.id).map((item) => [item.id!, item]));
+  const preserved = existing.filter((item) => {
+    if (!item.id) return true;
+    if (pending.has(item.id)) return true;
+    const next = byId.get(item.id);
+    return next !== undefined && (item.version ?? 0) > (next.version ?? 0);
+  });
+  const ids = new Set(preserved.map((item) => item.id));
+  return [...preserved, ...eligibleIncoming.filter((item) => !ids.has(item.id))];
+};
+
+const extraIsEligibleForView = (
+  extra: GroceryExtraDto,
+  selectedWeek: string | null,
+  currentWeek: string | null
+) => {
+  const selected = absoluteMonday(selectedWeek);
+  const current = absoluteMonday(currentWeek);
+  const occurrence = absoluteMonday(String(extra.occurrenceWeekStartDate ?? ''));
+  if (!selected || !current || !occurrence) return false;
+  if (occurrence === selected && selected <= current) return true;
+  return selected > current && occurrence === current && !extra.checked;
+};
+
+const eligibleExtras = (
+  extras: GroceryExtraDto[],
+  selectedWeek: string | null,
+  currentWeek: string | null
+) => extras.filter((extra) => extraIsEligibleForView(extra, selectedWeek, currentWeek));
+
 /**
  * Merges schedule data with optional smart defaults into UILocalScheduleDay[].
  * Replicates the merge logic from the planner page's loadData function.
@@ -118,6 +163,15 @@ function buildScheduleDays(
   existingDays?: UILocalScheduleDay[]
 ): UILocalScheduleDay[] {
   if (!scheduleData.days) return [];
+  const session = useDiscoveryStore.getState().session;
+  if (
+    session?.smartDefaults &&
+    absoluteMonday(session.weekStartDate) === absoluteMonday(scheduleData.weekStartDate)
+  )
+    defaultsData =
+      scheduleData.status === 1 && session.roundId === scheduleData.votingRoundId
+        ? session.smartDefaults
+        : undefined;
 
   const defaultsByDayIndex = new Map(
     defaultsData?.preSelectedRecipes?.map((r) => [r.dayIndex, r]) ?? []
@@ -180,7 +234,17 @@ function removeRecipeFromGroceryItems(
 // ─── Store ──────────────────────────────────────────────────────────────────
 
 export const useWeekStore = create<WeekState>((set, get) => {
-  let loadingFrame = '';
+  let loadingFrame = 0;
+  const applyOwnedSession = () => {
+    const session = useDiscoveryStore.getState().session;
+    if (
+      get().status === 1 &&
+      session?.smartDefaults &&
+      session.roundId === get().votingRoundId &&
+      absoluteMonday(session.weekStartDate) === get().weekStartDate
+    )
+      get().applySmartDefaultsUpdate(session.smartDefaults);
+  };
   return {
     calendar: null,
     weekStartDate: null,
@@ -188,6 +252,8 @@ export const useWeekStore = create<WeekState>((set, get) => {
     weekOffset: 0,
     schedule: [],
     groceryItems: [],
+    groceryExtras: [],
+    pendingGroceryExtraIds: new Set(),
     status: 0,
     isLoading: false,
     lastSyncedAt: null,
@@ -196,8 +262,10 @@ export const useWeekStore = create<WeekState>((set, get) => {
 
     // ── init ──────────────────────────────────────────────────────────────────
     async init(weekOffset, referenceWeekStartDate) {
-      const frame = `${weekOffset}:${referenceWeekStartDate ?? 'current'}`;
-      loadingFrame = frame;
+      const frame = ++loadingFrame;
+      const initialStatus = get().status;
+      const initialRound = get().votingRoundId;
+      const initialSession = useDiscoveryStore.getState().session;
       set({ weekOffset, isLoading: true });
       try {
         const scheduleData = await getSchedule(weekOffset, referenceWeekStartDate);
@@ -235,6 +303,18 @@ export const useWeekStore = create<WeekState>((set, get) => {
 
         if (get().weekOffset !== weekOffset || loadingFrame !== frame) return;
 
+        const session = useDiscoveryStore.getState().session;
+        if (
+          (get().status !== initialStatus && get().status !== status) ||
+          (get().votingRoundId !== initialRound &&
+            get().votingRoundId !== (scheduleData.votingRoundId ?? null)) ||
+          (session !== initialSession &&
+            status === 1 &&
+            session &&
+            (session.phase === 'unowned' || session.roundId !== scheduleData.votingRoundId))
+        )
+          return;
+
         const mergedDays = buildScheduleDays(
           scheduleData,
           defaultsData ?? undefined,
@@ -259,12 +339,23 @@ export const useWeekStore = create<WeekState>((set, get) => {
           votingRoundId: scheduleData.votingRoundId ?? null,
           schedule: mergedDays,
           groceryItems: scheduleData.groceryItems ?? [],
+          groceryExtras: reconcileExtras(
+            eligibleExtras(get().groceryExtras, weekStartDate, calendar.currentWeekStartDate),
+            eligibleExtras(
+              scheduleData.groceryExtras ?? [],
+              weekStartDate,
+              calendar.currentWeekStartDate
+            ),
+            get().pendingGroceryExtraIds
+          ),
           status,
           lastSyncedAt: calendarTime.instant(),
           isLoading: false,
         });
       } catch {
-        set({ isLoading: false });
+        // Existing initialization failure leaves the current schedule available.
+      } finally {
+        if (loadingFrame === frame && get().weekOffset === weekOffset) set({ isLoading: false });
       }
     },
 
@@ -307,6 +398,19 @@ export const useWeekStore = create<WeekState>((set, get) => {
 
         set({
           groceryItems: data.groceryItems ?? [],
+          groceryExtras: reconcileExtras(
+            eligibleExtras(
+              get().groceryExtras,
+              weekStartDate,
+              get().calendar?.currentWeekStartDate ?? null
+            ),
+            eligibleExtras(
+              data.groceryExtras ?? [],
+              weekStartDate,
+              get().calendar?.currentWeekStartDate ?? null
+            ),
+            get().pendingGroceryExtraIds
+          ),
           status: (data.status ?? 0) as 0 | 1 | 2,
           lastSyncedAt: calendarTime.instant(),
         });
@@ -431,10 +535,11 @@ export const useWeekStore = create<WeekState>((set, get) => {
       const { weekOffset, calendar, weekStartDate } = get();
       if (!calendar) throw new Error("Could not confirm today's date. Try again.");
       const reference = calendar.referenceWeekStartDate;
-      const prevStatus = get().status;
-      const prevSchedule = get().schedule;
       try {
         await openVotingApi(weekOffset, reference);
+        const operationRound = get().votingRoundId;
+        const operationStatus = get().status;
+        const operationSession = useDiscoveryStore.getState().session;
         // Fetch defaults immediately so they appear without waiting for the next sync
 
         const [scheduleData, defaultsData] = await Promise.all([
@@ -444,8 +549,22 @@ export const useWeekStore = create<WeekState>((set, get) => {
         if (
           scheduleData &&
           absoluteMonday(scheduleData.weekStartDate) === weekStartDate &&
-          get().weekStartDate === weekStartDate
+          get().weekStartDate === weekStartDate &&
+          (get().votingRoundId === operationRound ||
+            get().votingRoundId === (scheduleData.votingRoundId ?? null)) &&
+          (get().status === operationStatus || get().status === scheduleData.status)
         ) {
+          const session = useDiscoveryStore.getState().session;
+          if (
+            session !== operationSession &&
+            session &&
+            (session.phase === 'unowned' || session.roundId !== scheduleData.votingRoundId)
+          )
+            return;
+          if (scheduleData.status !== 1) {
+            get().applySnapshot(scheduleData);
+            return;
+          }
           const defaults =
             absoluteMonday(defaultsData?.weekStartDate) === weekStartDate
               ? defaultsData
@@ -457,8 +576,7 @@ export const useWeekStore = create<WeekState>((set, get) => {
           });
         }
       } catch {
-        if (get().weekStartDate === weekStartDate)
-          set({ status: prevStatus, schedule: prevSchedule });
+        void useDiscoveryStore.getState().refreshSession();
         throw new Error('Failed to open voting');
       }
     },
@@ -480,46 +598,68 @@ export const useWeekStore = create<WeekState>((set, get) => {
       set({ status: 2 });
 
       try {
-        // Commit all pending suggestions in parallel
-        await Promise.all(
-          pendingSlots.map(({ slot, index }) =>
-            assignRecipeToDay(
-              weekOffset,
-              index,
-              {
-                id: slot.recipe!.id!,
-                name: slot.recipe!.name ?? null,
-                image: slot.recipe!.image ?? '',
-              },
-              reference
-            )
-          )
-        );
+        // Captured targets are guarded and saved one at a time to avoid self-contention.
+        for (const { slot, index } of pendingSlots) {
+          await assignRecipeToDay(
+            weekOffset,
+            index,
+            {
+              id: slot.recipe!.id!,
+              name: slot.recipe!.name ?? null,
+              image: slot.recipe!.image ?? '',
+            },
+            reference,
+            true
+          );
+        }
 
-        // AC-2: Atomic Lock
+        // Existing round-aware lock follows successful suggestion promotions.
         await lockSchedule(weekOffset, reference, ...(votingRoundId ? [votingRoundId] : []));
-        if (get().weekOffset === weekOffset && get().weekStartDate === weekStartDate) {
+        // Own schedule echoes are excluded; session state may already have withdrawn saved suggestions.
+        const confirmed = pendingSlots.length
+          ? await getSchedule(weekOffset, reference).catch(() => undefined)
+          : undefined;
+        if (
+          get().weekOffset === weekOffset &&
+          get().weekStartDate === weekStartDate &&
+          get().votingRoundId === votingRoundId
+        ) {
+          const saved =
+            confirmed?.status === 2 &&
+            confirmed.votingRoundId === votingRoundId &&
+            absoluteMonday(confirmed.weekStartDate) === weekStartDate
+              ? confirmed
+              : undefined;
           set({
-            schedule: get().schedule.map((day) =>
-              day._isPending ? { ...day, _isPending: false } : day
-            ),
+            schedule: saved
+              ? buildScheduleDays(saved, undefined, get().schedule)
+              : get().schedule.map((day) => (day._isPending ? { ...day, _isPending: false } : day)),
           });
         }
       } catch {
         // Persistence can succeed before publication or the HTTP response fails.
         // Recover only this captured round, never a newer close for the same week.
         const confirmed = await getSchedule(weekOffset, reference).catch(() => undefined);
+        void useDiscoveryStore.getState().refreshSession();
         if (
           votingRoundId &&
           confirmed?.votingRoundId === votingRoundId &&
           confirmed.status === 2 &&
-          absoluteMonday(confirmed.weekStartDate) === weekStartDate &&
-          get().weekStartDate === weekStartDate
+          absoluteMonday(confirmed.weekStartDate) === weekStartDate
         ) {
-          set({ status: 2, schedule: buildScheduleDays(confirmed, undefined, get().schedule) });
+          if (get().weekStartDate === weekStartDate && get().votingRoundId === votingRoundId)
+            set({ status: 2, schedule: buildScheduleDays(confirmed, undefined, get().schedule) });
           return;
         }
-        if (get().weekStartDate === weekStartDate) set({ status: prevStatus });
+        if (get().weekStartDate === weekStartDate && get().votingRoundId === votingRoundId) {
+          set({
+            status: prevStatus,
+            ...(confirmed
+              ? { schedule: buildScheduleDays(confirmed, undefined, get().schedule) }
+              : {}),
+          });
+          applyOwnedSession();
+        }
         throw new Error('Failed to close voting');
       }
     },
@@ -535,17 +675,19 @@ export const useWeekStore = create<WeekState>((set, get) => {
         await lockSchedule(weekOffset, reference, ...(votingRoundId ? [votingRoundId] : []));
       } catch {
         const confirmed = await getSchedule(weekOffset, reference).catch(() => undefined);
+        void useDiscoveryStore.getState().refreshSession();
         if (
           votingRoundId &&
           confirmed?.votingRoundId === votingRoundId &&
           confirmed.status === 2 &&
-          absoluteMonday(confirmed.weekStartDate) === weekStartDate &&
-          get().weekStartDate === weekStartDate
+          absoluteMonday(confirmed.weekStartDate) === weekStartDate
         ) {
-          set({ status: 2, schedule: buildScheduleDays(confirmed, undefined, get().schedule) });
+          if (get().weekStartDate === weekStartDate && get().votingRoundId === votingRoundId)
+            set({ status: 2, schedule: buildScheduleDays(confirmed, undefined, get().schedule) });
           return;
         }
-        if (get().weekStartDate === weekStartDate) set({ status: prev });
+        if (get().weekStartDate === weekStartDate && get().votingRoundId === votingRoundId)
+          set({ status: prev });
         throw new Error('Failed to lock week');
       }
     },
@@ -553,10 +695,20 @@ export const useWeekStore = create<WeekState>((set, get) => {
     // ── sync ──────────────────────────────────────────────────────────────────
     async sync() {
       const { weekOffset, calendar, weekStartDate } = get();
+      const initialStatus = get().status;
+      const initialSession = useDiscoveryStore.getState().session;
+      const initialRound = get().votingRoundId;
       set({ isLoading: true });
       try {
         const data = await getSchedule(weekOffset, calendar?.referenceWeekStartDate);
-        if (!data || get().weekOffset !== weekOffset || get().weekStartDate !== weekStartDate)
+        if (
+          !data ||
+          get().weekOffset !== weekOffset ||
+          get().weekStartDate !== weekStartDate ||
+          (get().status !== initialStatus && get().status !== data.status) ||
+          (get().votingRoundId !== initialRound &&
+            get().votingRoundId !== (data.votingRoundId ?? null))
+        )
           return;
         const monday = absoluteMonday(data.weekStartDate);
         const context = readCalendar(data.calendar);
@@ -567,6 +719,12 @@ export const useWeekStore = create<WeekState>((set, get) => {
           calendar: context,
           weekStartDate: monday,
           votingRoundId: data.votingRoundId ?? null,
+          groceryItems: data.groceryItems ?? [],
+          groceryExtras: reconcileExtras(
+            eligibleExtras(get().groceryExtras, monday, context.currentWeekStartDate),
+            eligibleExtras(data.groceryExtras ?? [], monday, context.currentWeekStartDate),
+            get().pendingGroceryExtraIds
+          ),
         });
 
         const { optimisticWriteAt } = get();
@@ -583,7 +741,17 @@ export const useWeekStore = create<WeekState>((set, get) => {
             status === 1
               ? await getSmartDefaults(weekOffset, context.referenceWeekStartDate)
               : undefined;
-          if (get().weekStartDate !== monday) return;
+          const session = useDiscoveryStore.getState().session;
+          if (
+            get().weekStartDate !== monday ||
+            get().votingRoundId !== (data.votingRoundId ?? null) ||
+            (get().status !== initialStatus && get().status !== status) ||
+            (session !== initialSession &&
+              status === 1 &&
+              session &&
+              (session.phase === 'unowned' || session.roundId !== data.votingRoundId))
+          )
+            return;
           const defaults =
             defaultsData && absoluteMonday(defaultsData.weekStartDate) === monday
               ? defaultsData
@@ -615,6 +783,87 @@ export const useWeekStore = create<WeekState>((set, get) => {
             : item
         ),
       }));
+    },
+
+    upsertGroceryExtra(extra) {
+      if (!extra.id) return;
+      set((state) => {
+        if (
+          !extraIsEligibleForView(
+            extra,
+            state.weekStartDate,
+            state.calendar?.currentWeekStartDate ?? null
+          )
+        )
+          return state;
+        const existing = state.groceryExtras.find((item) => item.id === extra.id);
+        if ((existing?.version ?? -1) > (extra.version ?? -1)) return state;
+        return {
+          groceryExtras: existing
+            ? state.groceryExtras.map((item) => (item.id === extra.id ? extra : item))
+            : [...state.groceryExtras, extra],
+        };
+      });
+    },
+
+    removeGroceryExtra(id) {
+      set((state) => ({ groceryExtras: state.groceryExtras.filter((item) => item.id !== id) }));
+    },
+
+    setGroceryExtraPending(id, pending) {
+      set((state) => {
+        const next = new Set(state.pendingGroceryExtraIds);
+        if (pending) next.add(id);
+        else next.delete(id);
+        return { pendingGroceryExtraIds: next };
+      });
+    },
+
+    applyGroceryExtrasUpdate(occurrenceWeek, extras) {
+      const state = get();
+      const selected = absoluteMonday(state.weekStartDate);
+      const current = absoluteMonday(state.calendar?.currentWeekStartDate);
+      if (!selected || !current || !absoluteMonday(occurrenceWeek)) {
+        void state.sync();
+        return;
+      }
+      const eligible = occurrenceWeek === current && selected >= current;
+      if (!eligible) return;
+      if (
+        extras.some(
+          (extra) =>
+            !extra.id ||
+            !absoluteMonday(String(extra.occurrenceWeekStartDate ?? '')) ||
+            absoluteMonday(String(extra.occurrenceWeekStartDate ?? '')) !== occurrenceWeek
+        )
+      ) {
+        void state.sync();
+        return;
+      }
+      const incoming = new Map(
+        extras
+          .filter(
+            (extra) =>
+              !state.pendingGroceryExtraIds.has(extra.id!) &&
+              (selected === occurrenceWeek || !extra.checked)
+          )
+          .map((extra) => [extra.id!, extra])
+      );
+      set((latest) => {
+        const retained = latest.groceryExtras.filter((existing) => {
+          if (!existing.id) return true;
+          if (latest.pendingGroceryExtraIds.has(existing.id)) return true;
+          const replacement = incoming.get(existing.id);
+          return replacement ? (existing.version ?? 0) > (replacement.version ?? 0) : false;
+        });
+        const retainedIds = new Set(retained.map((item) => item.id));
+        return {
+          groceryExtras: [
+            ...retained,
+            ...[...incoming.values()].filter((item) => !retainedIds.has(item.id)),
+          ],
+        };
+      });
     },
 
     // ── applySnapshot ─────────────────────────────────────────────────────────
@@ -664,6 +913,7 @@ export const useWeekStore = create<WeekState>((set, get) => {
 
       // Authoritative status update (always apply)
       const nextStatus = (schedule.status ?? 0) as 0 | 1 | 2;
+      const previousRound = get().votingRoundId;
       set({ votingRoundId: schedule.votingRoundId ?? null });
 
       if (hasPendingMoves) {
@@ -687,7 +937,11 @@ export const useWeekStore = create<WeekState>((set, get) => {
       const preserved = mergedDays.map((day) => {
         if (day.recipe || day.status === 3) return day; // persisted recipe or non-cooking plan
         const prevDay = prev.find((p) => p.date === day.date);
-        if (prevDay?._isPending) {
+        if (
+          prevDay?._isPending &&
+          nextStatus !== 2 &&
+          previousRound === (schedule.votingRoundId ?? null)
+        ) {
           return {
             ...day,
             recipe: prevDay.recipe,
@@ -696,23 +950,37 @@ export const useWeekStore = create<WeekState>((set, get) => {
             _unanimousVote: prevDay._unanimousVote,
           };
         }
-        if (snapshotIsEmpty && prevDay?.recipe) {
+        if (snapshotIsEmpty && prevDay?.recipe && !prevDay._isPending) {
           return { ...day, recipe: prevDay.recipe, status: prevDay.status ?? day.status };
         }
         return day;
       });
 
-      const incomingGroceryState = schedule.groceryState?.additionalData as
-        Record<string, boolean> | undefined;
+      const incomingGroceryState = (schedule.groceryState?.additionalData ??
+        schedule.groceryState) as Record<string, boolean> | undefined;
+
+      const incomingExtras = eligibleExtras(
+        schedule.groceryExtras ?? [],
+        monday,
+        get().calendar?.currentWeekStartDate ?? null
+      );
+      const loadedExtras = eligibleExtras(
+        get().groceryExtras,
+        monday,
+        get().calendar?.currentWeekStartDate ?? null
+      );
+      const pendingIds = get().pendingGroceryExtraIds;
+      const reconciledExtras = reconcileExtras(loadedExtras, incomingExtras, pendingIds);
 
       set({
         schedule: preserved,
-        status:
-          snapshotIsEmpty && prev.length > 0 ? get().status : ((schedule.status ?? 0) as 0 | 1 | 2),
+        status: nextStatus,
         groceryItems: schedule.groceryItems ?? [],
+        groceryExtras: reconciledExtras,
         lastSyncedAt: calendarTime.instant(),
       });
 
+      applyOwnedSession();
       if (incomingGroceryState && typeof incomingGroceryState === 'object') {
         usePlannerStore.getState().setGroceryState(incomingGroceryState);
       }

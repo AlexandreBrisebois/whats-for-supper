@@ -374,7 +374,7 @@ components:
         appliedFilters: { $ref: '#/components/schemas/RecipeSearchFiltersDto' }
         searchMode:
           type: string
-          enum: [standard, similar]
+          enum: [discovery, explicit, similar]
         resultPath:
           type: string
           enum: [lexical-only, hybrid, fallback-lexical, browse]
@@ -444,6 +444,10 @@ components:
           type: [array, 'null']
           items: { $ref: '#/components/schemas/GroceryLineItemDto' }
           nullable: true
+        groceryExtras:
+          type: array
+          description: Authoritative extra occurrences for the selected view. Every future week projects outstanding unchecked current-week extras until checked or deleted; projected rows retain their current occurrence identity.
+          items: { $ref: '#/components/schemas/GroceryExtraDto' }
 
     NonCookingPlanDto:
       type: object
@@ -501,7 +505,7 @@ components:
     MoveScheduleResultDto:
       type: object
       required: [message]
-      description: Tomorrow always returns moved=true and all date/refresh fields. Legacy intents return message only.
+      description: Tomorrow and actual legacy cross-week movement return moved=true and all date/refresh fields. Same-week and cross-week no-op legacy completion return message only.
       properties:
         message: { type: string }
         moved: { type: boolean }
@@ -563,6 +567,24 @@ components:
           type: array
           items: { type: object, required: [dayIndex], properties: { dayIndex: { type: integer } } }
         consensusRecipesCount: { type: integer }
+
+    VotingSessionSnapshot:
+      type: object
+      description: Fresh projection of the single operational voting round. Convergence is latched only for this host lifetime and never saves meals or closes voting.
+      required: [incarnationId, revision, roundId, weekStartDate, phase, requiredSlots, coveredSlots, candidateCount, smartDefaults]
+      properties:
+        incarnationId: { type: string, format: uuid, description: Opaque host lifetime identity; only an authoritative read establishes a changed incarnation. }
+        revision: { type: integer, format: int64, minimum: 0, description: Monotonic across rounds within this incarnation. }
+        roundId: { type: [string, 'null'], format: uuid }
+        weekStartDate: { type: [string, 'null'], format: date, description: Active absolute Monday; null when unowned. }
+        phase: { type: string, enum: [unowned, collecting, converged] }
+        requiredSlots: { type: [integer, 'null'], minimum: 0, maximum: 7, description: Persisted empty dates before suggestions; null when unowned. }
+        coveredSlots: { type: [integer, 'null'], minimum: 0, maximum: 7 }
+        candidateCount: { type: [integer, 'null'], minimum: 0, description: Distinct consensus candidates excluding selected recipes. }
+        smartDefaults:
+          oneOf:
+            - $ref: '#/components/schemas/SmartDefaultsDto'
+            - type: 'null'
 
     UpdateRecipeDto:
       type: object
@@ -795,10 +817,12 @@ components:
           week_updated: '#/components/schemas/WeekUpdatedEvent'
           vote_updated: '#/components/schemas/VoteUpdatedEvent'
           smart_defaults_updated: '#/components/schemas/SmartDefaultsUpdatedEvent'
+          voting_session_updated: '#/components/schemas/VotingSessionUpdatedEvent'
           fill_the_gap_invalidated: '#/components/schemas/FillTheGapInvalidatedEvent'
           recipe_ready: '#/components/schemas/RecipeReadyEvent'
           recipe_failed: '#/components/schemas/RecipeFailedEvent'
           grocery_updated: '#/components/schemas/GroceryUpdatedEvent'
+          grocery_extras_updated: '#/components/schemas/GroceryExtrasUpdatedEvent'
           discovery_nudge: '#/components/schemas/DiscoveryNudgeEvent'
       properties:
         type: { type: string }
@@ -810,6 +834,17 @@ components:
           required: [schedule]
           properties:
             schedule: { $ref: '#/components/schemas/ScheduleDays' }
+
+    GroceryExtrasUpdatedEvent:
+      allOf:
+        - $ref: '#/components/schemas/ScheduleStreamEvent'
+        - type: object
+          required: [weekStartDate, groceryExtras]
+          properties:
+            weekStartDate: { type: string, format: date, description: Absolute Monday owning the authoritative occurrences. }
+            groceryExtras:
+              type: array
+              items: { $ref: '#/components/schemas/GroceryExtraDto' }
 
     SlotUpdatedEvent:
       allOf:
@@ -855,6 +890,14 @@ components:
           properties:
             weekOffset: { type: integer }
             defaults: { $ref: '#/components/schemas/SmartDefaultsDto' }
+
+    VotingSessionUpdatedEvent:
+      allOf:
+        - $ref: '#/components/schemas/ScheduleStreamEvent'
+        - type: object
+          required: [session]
+          properties:
+            session: { $ref: '#/components/schemas/VotingSessionSnapshot' }
 
     FillTheGapInvalidatedEvent:
       allOf:
@@ -1096,6 +1139,78 @@ components:
           type: array
           items: { type: string, format: uuid }
 
+    GrocerySection:
+      type: string
+      enum: [Produce, Meat, Seafood, Dairy & Eggs, Frozen, Bakery, Pantry, Beverages, Deli, Grocery]
+
+    GroceryExtraDto:
+      type: object
+      additionalProperties: false
+      required: [id, lineageId, occurrenceWeekStartDate, name, normalizedKey, grocerySection, checked, version, source, readOnly]
+      properties:
+        id: { type: string, format: uuid, description: Stable weekly occurrence identity. }
+        lineageId: { type: string, format: uuid }
+        occurrenceWeekStartDate: { type: string, format: date, description: Absolute Monday owning this occurrence. }
+        name: { type: string, minLength: 1, maxLength: 200 }
+        normalizedKey: { type: string, minLength: 1 }
+        grocerySection: { $ref: '#/components/schemas/GrocerySection' }
+        checked: { type: boolean }
+        version: { type: integer, minimum: 1 }
+        source: { type: string, const: extra }
+        readOnly: { type: boolean }
+      example: { id: 8de23b7a-48f7-4bb8-9631-b18926f90101, lineageId: b4dc4658-b59b-45f7-b40d-a303a2cb0f01, occurrenceWeekStartDate: '2026-10-19', name: Coffee, normalizedKey: coffee, grocerySection: Grocery, checked: false, version: 1, source: extra, readOnly: false }
+
+    CreateGroceryExtraRequest:
+      type: object
+      additionalProperties: false
+      required: [clientId, weekStartDate, name]
+      properties:
+        clientId: { type: string, format: uuid, description: Client idempotency identity reused only for retrying the same submission. }
+        weekStartDate: { type: string, format: date, description: Absolute Monday; only the deployment current week is accepted. }
+        name: { type: string, minLength: 1, maxLength: 200, description: Trimmed nonblank name and the only household-entered item field. }
+      example: { clientId: ddc16052-6591-45a7-bb64-9d1208c70a01, weekStartDate: '2026-10-19', name: Coffee }
+
+    UpdateGroceryExtraRequest:
+      type: object
+      additionalProperties: false
+      required: [weekStartDate, expectedVersion]
+      minProperties: 3
+      maxProperties: 3
+      description: Exactly one of name, checked, or grocerySection is supplied with the concurrency fields.
+      properties:
+        weekStartDate: { type: string, format: date }
+        expectedVersion: { type: integer, minimum: 1 }
+        name: { type: string, minLength: 1, maxLength: 200 }
+        checked: { type: boolean }
+        grocerySection: { $ref: '#/components/schemas/GrocerySection' }
+      oneOf:
+        - required: [name]
+        - required: [checked]
+        - required: [grocerySection]
+
+    GroceryExtraConflictResponse:
+      type: object
+      additionalProperties: false
+      required: [message, absent, current]
+      properties:
+        message: { type: string }
+        absent: { type: boolean }
+        current:
+          oneOf:
+            - { $ref: '#/components/schemas/GroceryExtraDto' }
+            - { type: 'null' }
+
+    GroceryExtraSuggestionResponse:
+      type: object
+      additionalProperties: false
+      required: [names]
+      properties:
+        names:
+          type: array
+          maxItems: 3
+          uniqueItems: true
+          items: { type: string, minLength: 1 }
+
     ReclassifyIngredientRequest:
       type: object
       required: [grocerySection]
@@ -1180,6 +1295,86 @@ components:
         cleanupCommandId: { type: string, format: uuid }
 
 paths:
+  /api/grocery-extras:
+    post:
+      operationId: createGroceryExtra
+      summary: Add a distinct extra to the deployment current grocery week
+      parameters:
+        - { name: X-SSE-Connection-ID, in: header, required: false, schema: { type: string }, description: Excludes the initiating SSE connection from post-commit publication. }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/CreateGroceryExtraRequest' } } }
+      responses:
+        '201':
+          description: A distinct extra occurrence was created.
+          content: { application/json: { schema: { $ref: '#/components/schemas/GroceryExtraDto' } } }
+        '200':
+          description: Idempotent replay of the same accepted client identity.
+          content: { application/json: { schema: { $ref: '#/components/schemas/GroceryExtraDto' } } }
+        '400': { description: 'Blank/invalid name, malformed/non-Monday week, or a week other than the deployment current week.' }
+        '409':
+          description: The client identity is bound to a different submission.
+          content: { application/json: { schema: { $ref: '#/components/schemas/GroceryExtraConflictResponse' } } }
+
+  /api/grocery-extras/suggestions:
+    get:
+      operationId: suggestGroceryExtraNames
+      summary: Suggest names from authenticated household extra history
+      description: Names only; prefix before substring and newest first, excluding removed and outstanding names. Recipe groceries are not candidates.
+      parameters:
+        - name: query
+          in: query
+          required: true
+          schema: { type: string, minLength: 2 }
+          description: Trimmed query of at least two characters.
+      responses:
+        '200':
+          description: At most three household-scoped, normalized-key-deduplicated names.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GroceryExtraSuggestionResponse' }
+              example: { names: [Milk, Milk bags, Almond milk] }
+        '400': { description: The trimmed query contains fewer than two characters. }
+
+  /api/grocery-extras/{occurrenceId}:
+    parameters:
+      - { name: occurrenceId, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: X-SSE-Connection-ID, in: header, required: false, schema: { type: string }, description: Excludes the initiating SSE connection from post-commit publication. }
+    patch:
+      operationId: updateGroceryExtra
+      summary: Apply one versioned mutation to the current grocery-extra occurrence
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateGroceryExtraRequest' }
+            examples:
+              rename: { value: { weekStartDate: '2026-10-19', expectedVersion: 1, name: Coffee beans } }
+              check: { value: { weekStartDate: '2026-10-19', expectedVersion: 1, checked: true } }
+              recategorize: { value: { weekStartDate: '2026-10-19', expectedVersion: 1, grocerySection: Pantry } }
+      responses:
+        '200':
+          description: Updated authoritative occurrence.
+          content: { application/json: { schema: { $ref: '#/components/schemas/GroceryExtraDto' } } }
+        '400': { description: Invalid week/name/section or other than exactly one mutation field. }
+        '404': { description: Authoritative absence is known. }
+        '409':
+          description: Stale version or ownership conflict with authoritative current state or absent marker.
+          content: { application/json: { schema: { $ref: '#/components/schemas/GroceryExtraConflictResponse' } } }
+    delete:
+      operationId: deleteGroceryExtra
+      summary: Tombstone the current grocery-extra occurrence at an expected version
+      parameters:
+        - { name: weekStartDate, in: query, required: true, schema: { type: string, format: date } }
+        - { name: expectedVersion, in: query, required: true, schema: { type: integer, minimum: 1 } }
+      responses:
+        '204': { description: Occurrence tombstoned; historical occurrences remain unchanged. }
+        '400': { description: Invalid absolute week or version. }
+        '404': { description: Authoritative absence is known. }
+        '409':
+          description: Stale version or ownership conflict with authoritative current state or absent marker.
+          content: { application/json: { schema: { $ref: '#/components/schemas/GroceryExtraConflictResponse' } } }
+
   /api/stream:
     get:
       summary: Server-Sent Events stream for real-time schedule updates
@@ -1273,6 +1468,29 @@ paths:
           description: Reclassification persisted and grocery lists recomputed.
         '400':
           description: grocerySection is missing or not a valid GrocerySection value.
+
+  /api/discovery/session:
+    get:
+      summary: Read the authoritative household voting session
+      description: Recalculates from persisted round ownership, votes and occupancy. Does not create a round, assign meals, close voting or capture history. Failed reads never imply zero capacity.
+      security: [{ HearthSecret: [] }, { HearthToken: [] }]
+      responses:
+        '200':
+          description: Current session snapshot
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/VotingSessionSnapshot' }
+        '401':
+          description: Household authorization required.
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
 
   /api/discovery/categories:
     get:
@@ -1390,13 +1608,16 @@ paths:
                     type: array
                     items:
                       type: object
-                      required: [id, name, browseViewMode, createdAt, updatedAt]
+                      required: [id, name, browseViewMode, cookingViewMode, createdAt, updatedAt]
                       properties:
                         id: { type: string, format: uuid }
                         name: { type: string }
                         browseViewMode:
                           type: string
                           enum: [stack, list]
+                        cookingViewMode:
+                          type: [string, 'null']
+                          enum: [step-by-step, all-steps]
                         preferredLanguage:
                           type: [string, 'null']
                           enum: [en, fr]
@@ -1409,18 +1630,21 @@ paths:
                       - id: '550e8400-e29b-41d4-a716-446655440001'
                         name: 'Alex'
                         browseViewMode: 'stack'
+                        cookingViewMode: 'all-steps'
                         preferredLanguage: 'en'
                         createdAt: '2024-01-01T00:00:00Z'
                         updatedAt: '2024-01-01T00:00:00Z'
                       - id: '550e8400-e29b-41d4-a716-446655440002'
                         name: 'Jordan'
                         browseViewMode: 'list'
+                        cookingViewMode: 'step-by-step'
                         preferredLanguage: 'en'
                         createdAt: '2024-01-01T00:00:00Z'
                         updatedAt: '2024-01-01T00:00:00Z'
                       - id: '550e8400-e29b-41d4-a716-446655440003'
                         name: 'Test User'
                         browseViewMode: 'stack'
+                        cookingViewMode: null
                         preferredLanguage: 'en'
                         createdAt: '2024-01-01T00:00:00Z'
                         updatedAt: '2024-01-01T00:00:00Z'
@@ -1452,13 +1676,16 @@ paths:
                 properties:
                   data:
                     type: object
-                    required: [id, name, browseViewMode, createdAt, updatedAt]
+                    required: [id, name, browseViewMode, cookingViewMode, createdAt, updatedAt]
                     properties:
                       id: { type: string, format: uuid }
                       name: { type: string }
                       browseViewMode:
                         type: string
                         enum: [stack, list]
+                      cookingViewMode:
+                        type: [string, 'null']
+                        enum: [step-by-step, all-steps]
                       preferredLanguage:
                         type: [string, 'null']
                         enum: [en, fr]
@@ -1469,6 +1696,7 @@ paths:
                   id: '550e8400-e29b-41d4-a716-446655440003'
                   name: 'Test User'
                   browseViewMode: 'stack'
+                  cookingViewMode: null
                   preferredLanguage: 'en'
                   createdAt: '2024-01-01T00:00:00Z'
                   updatedAt: '2024-01-01T00:00:00Z'
@@ -1516,13 +1744,16 @@ paths:
                 properties:
                   data:
                     type: object
-                    required: [id, name, browseViewMode, createdAt, updatedAt]
+                    required: [id, name, browseViewMode, cookingViewMode, createdAt, updatedAt]
                     properties:
                       id: { type: string, format: uuid }
                       name: { type: string }
                       browseViewMode:
                         type: string
                         enum: [stack, list]
+                      cookingViewMode:
+                        type: [string, 'null']
+                        enum: [step-by-step, all-steps]
                       preferredLanguage:
                         type: [string, 'null']
                         enum: [en, fr]
@@ -1572,13 +1803,16 @@ paths:
                 properties:
                   data:
                     type: object
-                    required: [id, name, browseViewMode, createdAt, updatedAt]
+                    required: [id, name, browseViewMode, cookingViewMode, createdAt, updatedAt]
                     properties:
                       id: { type: string, format: uuid }
                       name: { type: string }
                       browseViewMode:
                         type: string
                         enum: [stack, list]
+                      cookingViewMode:
+                        type: [string, 'null']
+                        enum: [step-by-step, all-steps]
                       preferredLanguage:
                         type: [string, 'null']
                         enum: [en, fr]
@@ -1589,6 +1823,7 @@ paths:
                   id: '550e8400-e29b-41d4-a716-446655440001'
                   name: 'Alex'
                   browseViewMode: 'stack'
+                  cookingViewMode: null
                   preferredLanguage: 'en'
                   createdAt: '2024-01-01T00:00:00Z'
                   updatedAt: '2024-01-01T00:00:00Z'
@@ -1619,7 +1854,6 @@ paths:
           application/json:
             schema:
               type: object
-              required: [browseViewMode]
               properties:
                 browseViewMode:
                   type: string
@@ -1627,6 +1861,11 @@ paths:
                 preferredLanguage:
                   type: [string, 'null']
                   enum: [en, fr]
+                cookingViewMode:
+                  type: string
+                  enum: [step-by-step, all-steps]
+              minProperties: 1
+              description: Only supplied properties are updated; omitted preferences retain their persisted values.
       responses:
         '503':
           description: Online recovery coordination is busy; retry after Retry-After seconds
@@ -1642,13 +1881,16 @@ paths:
                 properties:
                   data:
                     type: object
-                    required: [id, name, browseViewMode, createdAt, updatedAt]
+                    required: [id, name, browseViewMode, cookingViewMode, createdAt, updatedAt]
                     properties:
                       id: { type: string, format: uuid }
                       name: { type: string }
                       browseViewMode:
                         type: string
                         enum: [stack, list]
+                      cookingViewMode:
+                        type: [string, 'null']
+                        enum: [step-by-step, all-steps]
                       preferredLanguage:
                         type: [string, 'null']
                         enum: [en, fr]
@@ -1659,11 +1901,12 @@ paths:
                   id: '550e8400-e29b-41d4-a716-446655440001'
                   name: 'Alex'
                   browseViewMode: 'list'
+                  cookingViewMode: 'all-steps'
                   preferredLanguage: 'fr'
                   createdAt: '2024-01-01T00:00:00Z'
                   updatedAt: '2024-01-01T00:00:00Z'
         '400':
-          description: Invalid browse view mode
+          description: Invalid supplied preference value
           content:
             application/json:
               schema:
@@ -1671,7 +1914,7 @@ paths:
                 properties:
                   error: { type: string }
               example:
-                error: "browseViewMode must be stack or list."
+                error: "The supplied preference value is invalid."
         '404':
           description: Family member not found
 
@@ -1796,11 +2039,10 @@ paths:
   /api/recipes/capture-pdf:
     post:
       operationId: capturePdfRecipe
-      summary: Capture one recipe from a PDF (preview)
+      summary: Capture one recipe from a PDF
       description: |
-        Requires household authentication, an established member and the effective
-        preview-pdf-recipe-import flag. Stores unchanged source bytes and a pending
-        recipe before returning. Conversion is a separate recipe-import task; 202
+        Requires household authentication and an established member. Stores unchanged
+        source bytes and a pending recipe before returning. Conversion is a separate recipe-import task; 202
         establishes persistence, not readiness or verified workflow launch.
         Corrupt, encrypted and over-10-page documents fail the workflow and remain
         in Settings for Retry/Delete. No page truncation or PDF download.
@@ -1832,11 +2074,6 @@ paths:
               schema: { $ref: '#/components/schemas/PdfCaptureError' }
         '401':
           description: Household authentication required (existing authentication response)
-        '409':
-          description: PDF preview disabled; no pending recipe or workflow created
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/PdfCaptureError' }
         '413':
           description: File exceeds 20,971,520 bytes; no pending recipe or workflow created
           content:
@@ -2449,7 +2686,7 @@ paths:
                 topPick: null
                 results: []
                 appliedFilters: {}
-                searchMode: standard
+                searchMode: discovery
                 resultPath: lexical-only
                 nextCursor: null
         '400':
@@ -2609,6 +2846,7 @@ paths:
   /api/schedule/day/{date}/remove:
     delete:
       summary: Remove a recipe from a scheduled day
+      description: Removing a Cooked calendar entry recalculates its recipe last-cooked value from remaining Cooked calendar dates, or null when none remain, before grocery and publication follow-ups. Ordinary Planned removal does not change last-cooked values.
       parameters:
         - name: date
           in: path
@@ -2626,7 +2864,7 @@ paths:
   /api/schedule/lock:
     post:
       summary: Lock schedule for a week
-      description: Atomically captures positive aggregate family history and clears working votes once. Retry the same votingRoundId after a lost response. Completed retries preserve later early votes. Tokenless legacy closes are accepted only for a first close or unambiguous already-closed outcome; reopened rounds require an identity and otherwise return 409.
+      description: Preserves all Cooked and Skipped outcomes while locking ordinary assignments. Does not recreate removed assignments or change legacy recipe-backed Skipped representation. Does not change last-cooked values. Atomically captures positive aggregate family history and clears working votes once. Retry the same votingRoundId after a lost response. Completed retries preserve later early votes. Tokenless legacy closes are accepted only for a first close or unambiguous already-closed outcome; reopened rounds require an identity and otherwise return 409.
       parameters:
         - name: votingRoundId
           in: query
@@ -2667,7 +2905,11 @@ paths:
     post:
       summary: Move a recipe in the schedule
       description: >
-        Legacy swap and push retain their existing behavior. Intent tomorrow requires fromIndex
+        Legacy same-week swap and push retain their existing behavior. Actual cross-week placement
+        returns moved=true with sourceDate, destinationDate, affectedWeekStartDates and refreshComplete.
+        Both affected weeks receive independent grocery recomputation and snapshot publication attempts.
+        refreshComplete=false confirms committed movement with incomplete follow-ups; refresh the plan
+        rather than repeat movement. Legacy cross-week no-op completion remains unchanged. Intent tomorrow requires fromIndex
         in 0..6 and the exact matching recipe at supper slot zero. The target must be the next
         calendar day, using targetWeekOffset plus toIndex across Sunday. Tomorrow shifts the
         contiguous occupied supper chain through all required weeks, stopping at the first empty
@@ -2697,7 +2939,7 @@ paths:
         '409':
           description: Tomorrow source changed, cooked or awaiting-consensus entry blocks movement, or concurrent conflict; no mutation.
         '200':
-          description: Legacy completion or committed Tomorrow movement; inspect moved and refreshComplete for Tomorrow.
+          description: Legacy completion or committed cross-week/Tomorrow movement; inspect moved and refreshComplete when present.
           content:
             application/json:
               schema:
@@ -3365,7 +3607,7 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '202':
-          description: Accepted (Capture workflow triggered)
+          description: Accepted with a persisted pending recipe and durable workflow recovery identity. Acquisition remains asynchronous; initialization failure is exposed through capture failures and does not invalidate the returned recipe identity.
           content:
             application/json:
               schema:
@@ -3656,13 +3898,7 @@ paths:
                   data: { $ref: '#/components/schemas/FeatureFlagListDto' }
               example:
                 data:
-                  items:
-                    - key: single-page-recipe-steps
-                      enabled: false
-                      mode: opt-in
-                      memberEnabled: false
-                      displayName: Recipe on one page
-                      description: After getting ready, scroll through all the cooking steps on one page.
+                  items: []
         '401': { description: Family member identity is required }
 
   /api/feature-flags/{key}:
@@ -3773,7 +4009,7 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '200':
-          description: List of failed captures
+          description: List of failed captures, including saved URL captures whose acquisition has not started; friendly guidance identifies that saved state.
           content:
             application/json:
               schema:
@@ -3796,7 +4032,7 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '202':
-          description: Retry queued
+          description: Retry queued on the existing workflow and recipe. Saved URL initialization retries reconcile existing work and do not create another capture; acceptance does not certify recipe readiness.
           content:
             application/json:
               schema:

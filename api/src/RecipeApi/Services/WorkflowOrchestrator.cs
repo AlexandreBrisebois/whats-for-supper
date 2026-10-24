@@ -1,4 +1,5 @@
 using RecipeApi.Data;
+using System.Text.Json;
 using RecipeApi.Infrastructure;
 
 using TaskStatus = RecipeApi.Models.TaskStatus;
@@ -63,6 +64,57 @@ public class WorkflowOrchestrator(IClock clock, WorkflowRepository workflowRepos
             UpdatedAt = now
         };
 
+        AddTasks(instance, definition, parameters, now, scheduledAt);
+
+        await using var transaction = await _dbContext.Database.BeginTransactionAsync();
+        try
+        {
+            _dbContext.WorkflowInstances.Add(instance);
+            await _dbContext.SaveChangesAsync();
+            await transaction.CommitAsync();
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
+
+        return instance;
+    }
+
+    public async Task<WorkflowInstance?> InitializeUrlCaptureAsync(Guid instanceId, CancellationToken ct = default)
+    {
+        await using var transaction = await _dbContext.Database.BeginTransactionAsync(ct);
+        var instance = await UrlCaptureInitialization.LoadLockedAsync(_dbContext, instanceId, ct);
+        if (instance is null || !UrlCaptureInitialization.IsPending(instance))
+        {
+            await transaction.CommitAsync(ct);
+            return instance;
+        }
+
+        var definition = await GetDefinitionAsync(instance.WorkflowId);
+        if (definition.Tasks.Count == 0)
+            throw new InvalidWorkflowException("URL import must contain acquisition work.");
+        var parameters = JsonSerializer.Deserialize<Dictionary<string, string>>(instance.Parameters!)!;
+        foreach (var param in definition.Parameters)
+            if (!IsOptionalParameter(param) && !parameters.ContainsKey(ParameterName(param)))
+                throw new InvalidWorkflowException($"Missing required parameter: {ParameterName(param)}");
+
+        _dbContext.WorkflowTasks.RemoveRange(instance.Tasks);
+        instance.Tasks.Clear();
+        var now = clock.UtcNow;
+        AddTasks(instance, definition, parameters, now, null);
+        _dbContext.WorkflowTasks.AddRange(instance.Tasks);
+        instance.Status = WorkflowStatus.Pending;
+        instance.UpdatedAt = now;
+        await _dbContext.SaveChangesAsync(ct);
+        await transaction.CommitAsync(ct);
+        return instance;
+    }
+
+    private void AddTasks(WorkflowInstance instance, WorkflowDefinition definition,
+        Dictionary<string, string> parameters, DateTimeOffset now, DateTimeOffset? scheduledAt)
+    {
         foreach (var taskDef in definition.Tasks)
         {
             var task = new WorkflowTask
@@ -81,20 +133,6 @@ public class WorkflowOrchestrator(IClock clock, WorkflowRepository workflowRepos
             instance.Tasks.Add(task);
         }
 
-        await using var transaction = await _dbContext.Database.BeginTransactionAsync();
-        try
-        {
-            _dbContext.WorkflowInstances.Add(instance);
-            await _dbContext.SaveChangesAsync();
-            await transaction.CommitAsync();
-        }
-        catch
-        {
-            await transaction.RollbackAsync();
-            throw;
-        }
-
-        return instance;
     }
 
     private string SubstituteVariables(

@@ -1,0 +1,6 @@
+# Optional host-local PostgreSQL access for debugging. Never enable on an untrusted host.
+# Usage: docker compose -f compose.yaml -f compose.postgres-debug.yaml up -d
+services:
+  postgres:
+    ports:
+      - "127.0.0.1:${WFS_POSTGRES_DEBUG_PORT:-5432}:5432"

@@ -15,11 +15,13 @@ const mocks = vi.hoisted(() => {
   const assignRecipe = vi.fn();
   const removeRecipe = vi.fn();
   const reorderLocally = vi.fn();
+  const commitMove = vi.fn();
   const resolveOccupiedSlot = vi.fn();
   const addToast = vi.fn();
   const saveNonCookingDay = vi.fn();
   const getSchedule = vi.fn();
   const applySnapshot = vi.fn();
+  const movePost = vi.fn();
   let weekState: any;
   let plannerState: any;
   let searchParams = '';
@@ -38,11 +40,13 @@ const mocks = vi.hoisted(() => {
     assignRecipe,
     removeRecipe,
     reorderLocally,
+    commitMove,
     resolveOccupiedSlot,
     addToast,
     saveNonCookingDay,
     getSchedule,
     applySnapshot,
+    movePost,
     getWeekState: () => weekState,
     getPlannerState: () => plannerState,
     setWeekState: (value: any) => {
@@ -140,6 +144,9 @@ vi.mock('@/store/uiStore', () => ({
 
 vi.mock('@/lib/api/planner', () => ({
   lockSchedule: vi.fn().mockResolvedValue(undefined),
+  referenceRequest: (reference: string) => ({
+    queryParameters: { referenceWeekStartDate: reference },
+  }),
   assignRecipeToDay: vi.fn().mockResolvedValue(undefined),
   openVoting: vi.fn().mockResolvedValue(undefined),
   saveNonCookingDay: (...args: unknown[]) => mocks.saveNonCookingDay(...args),
@@ -151,6 +158,7 @@ vi.mock('@/lib/api/api-client', () => ({
   apiClient: {
     api: {
       schedule: {
+        move: { post: (...args: unknown[]) => mocks.movePost(...args) },
         day: {
           byDate: () => ({
             validate: { post: vi.fn().mockResolvedValue(undefined) },
@@ -202,6 +210,11 @@ vi.mock('@/components/planner/PlanningPivotSheet', () => ({
         data-has-no-cooking={onNoCooking ? 'true' : 'false'}
       >
         <button onClick={onClose}>Close</button>
+        {onPlanLater && (
+          <button data-testid="mock-pivot-plan-later" onClick={onPlanLater}>
+            Plan later
+          </button>
+        )}
         <button data-testid="mock-pivot-quick-find" onClick={onQuickFind}>
           Quick replace
         </button>
@@ -339,6 +352,7 @@ function renderPlanner(status: 0 | 1 | 2, sundayDate = '2026-05-17', offset = 0)
     assignRecipe: mocks.assignRecipe,
     removeRecipe: mocks.removeRecipe,
     reorderLocally: mocks.reorderLocally,
+    commitMove: mocks.commitMove,
   });
 
   return render(<PlannerPage />);
@@ -772,6 +786,34 @@ describe('PlannerPage voting action row', () => {
   });
 });
 
+describe('Planner keyboard movement', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.setSearchParams('');
+  });
+
+  it('moves an eligible meal one slot through the existing optimistic commit path', () => {
+    renderPlanner(0);
+    const handle = within(screen.getByTestId('day-card-0')).getByTestId('planner-drag-handle');
+    const snapshot = mocks.getWeekState().schedule;
+
+    fireEvent.keyDown(handle, { key: 'ArrowDown' });
+
+    expect(mocks.reorderLocally).toHaveBeenCalledWith(0, 1, snapshot);
+    expect(mocks.commitMove).toHaveBeenCalledWith(0, 1, snapshot);
+  });
+
+  it('does not submit a keyboard move beyond the week boundary', () => {
+    renderPlanner(0);
+    const handle = within(screen.getByTestId('day-card-0')).getByTestId('planner-drag-handle');
+
+    fireEvent.keyDown(handle, { key: 'ArrowUp' });
+
+    expect(mocks.reorderLocally).not.toHaveBeenCalled();
+    expect(mocks.commitMove).not.toHaveBeenCalled();
+  });
+});
+
 describe('PlannerPage quick replacement recovery', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -1008,5 +1050,46 @@ describe('PlannerPage quick replacement recovery', () => {
 
     await act(async () => completeAssignment());
     await waitFor(() => expect(mocks.weekInit).toHaveBeenCalledTimes(initCallsBeforeRecovery + 1));
+  });
+});
+
+describe('Planner Plan later completion', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.setSearchParams('');
+  });
+
+  it('warns about incomplete refresh after a committed move and sends movement only once', async () => {
+    mocks.movePost.mockResolvedValue({ data: { moved: true, refreshComplete: false } });
+    mocks.setPlannerState({
+      currentWeekOffset: 1,
+      activeTab: 'planner',
+      setWeekOffset: mocks.setWeekOffset,
+      setActiveTab: mocks.setActiveTab,
+      setGroceryState: mocks.setGroceryState,
+    });
+    mocks.setWeekState({
+      calendar: { referenceWeekStartDate: '2026-05-04' },
+      schedule: makeAssignedSchedule('2026-05-17', 0),
+      isLoading: false,
+      status: 0,
+      groceryItems: [],
+      init: mocks.weekInit,
+    });
+    render(<PlannerPage />);
+    fireEvent.click(within(screen.getByTestId('day-card-0')).getByTestId('change-recipe-button'));
+    fireEvent.click(screen.getByTestId('mock-pivot-plan-later'));
+    await waitFor(() =>
+      expect(mocks.addToast).toHaveBeenCalledWith({
+        type: 'warning',
+        message: 'Meal moved. Some updates could not refresh. Refresh your plan to check it.',
+      })
+    );
+    expect(mocks.movePost).toHaveBeenCalledTimes(1);
+    expect(mocks.movePost).toHaveBeenCalledWith(
+      expect.objectContaining({ weekOffset: 1, targetWeekOffset: 2, intent: 'push' }),
+      expect.anything()
+    );
+    expect(mocks.weekInit).toHaveBeenCalled();
   });
 });

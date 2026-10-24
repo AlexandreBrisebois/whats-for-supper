@@ -220,6 +220,17 @@ export function createCaptureUrlDtoFromDiscriminatorValue(
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {CreateGroceryExtraRequest}
+ */
+// @ts-ignore
+export function createCreateGroceryExtraRequestFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoCreateGroceryExtraRequest;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {DeferScheduleDto}
  */
 // @ts-ignore
@@ -315,6 +326,53 @@ export function createGoToListDtoFromDiscriminatorValue(
   parseNode: ParseNode | undefined
 ): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
   return deserializeIntoGoToListDto;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {GroceryExtraConflictResponse}
+ */
+// @ts-ignore
+export function createGroceryExtraConflictResponseFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoGroceryExtraConflictResponse;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {GroceryExtraDto}
+ */
+// @ts-ignore
+export function createGroceryExtraDtoFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoGroceryExtraDto;
+}
+export interface CreateGroceryExtraRequest extends Parsable {
+  /**
+   * Client idempotency identity reused only for retrying the same submission.
+   */
+  clientId?: Guid | null;
+  /**
+   * Trimmed nonblank name and the only household-entered item field.
+   */
+  name?: string | null;
+  /**
+   * Absolute Monday; only the deployment current week is accepted.
+   */
+  weekStartDate?: DateOnly | null;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {GroceryExtraSuggestionResponse}
+ */
+// @ts-ignore
+export function createGroceryExtraSuggestionResponseFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoGroceryExtraSuggestionResponse;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -968,6 +1026,17 @@ export function createUpdateFeatureFlagRequestFromDiscriminatorValue(
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {UpdateGroceryExtraRequest}
+ */
+// @ts-ignore
+export function createUpdateGroceryExtraRequestFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoUpdateGroceryExtraRequest;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {UpdateRecipeDto}
  */
 // @ts-ignore
@@ -997,6 +1066,17 @@ export function createVoteDtoFromDiscriminatorValue(
   parseNode: ParseNode | undefined
 ): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
   return deserializeIntoVoteDto;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {VotingSessionSnapshot}
+ */
+// @ts-ignore
+export function createVotingSessionSnapshotFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoVotingSessionSnapshot;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -1322,6 +1402,27 @@ export function deserializeIntoCaptureUrlDto(
 }
 /**
  * The deserialization information for the current model
+ * @param CreateGroceryExtraRequest The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoCreateGroceryExtraRequest(
+  createGroceryExtraRequest: Partial<CreateGroceryExtraRequest> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    clientId: (n) => {
+      createGroceryExtraRequest.clientId = n.getGuidValue();
+    },
+    name: (n) => {
+      createGroceryExtraRequest.name = n.getStringValue();
+    },
+    weekStartDate: (n) => {
+      createGroceryExtraRequest.weekStartDate = n.getDateOnlyValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
  * @param DeferScheduleDto The instance to deserialize into.
  * @returns {Record<string, (node: ParseNode) => void>}
  */
@@ -1516,6 +1617,86 @@ export function deserializeIntoGoToListDto(
       goToListDto.items = n.getCollectionOfObjectValues<GoToItem>(
         createGoToItemFromDiscriminatorValue
       );
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param GroceryExtraConflictResponse The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoGroceryExtraConflictResponse(
+  groceryExtraConflictResponse: Partial<GroceryExtraConflictResponse> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    absent: (n) => {
+      groceryExtraConflictResponse.absent = n.getBooleanValue();
+    },
+    current: (n) => {
+      groceryExtraConflictResponse.current = n.getObjectValue<GroceryExtraDto>(
+        createGroceryExtraDtoFromDiscriminatorValue
+      );
+    },
+    message: (n) => {
+      groceryExtraConflictResponse.messageEscaped = n.getStringValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param GroceryExtraDto The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoGroceryExtraDto(
+  groceryExtraDto: Partial<GroceryExtraDto> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    checked: (n) => {
+      groceryExtraDto.checked = n.getBooleanValue();
+    },
+    grocerySection: (n) => {
+      groceryExtraDto.grocerySection = n.getEnumValue<GrocerySection>(GrocerySectionObject);
+    },
+    id: (n) => {
+      groceryExtraDto.id = n.getGuidValue();
+    },
+    lineageId: (n) => {
+      groceryExtraDto.lineageId = n.getGuidValue();
+    },
+    name: (n) => {
+      groceryExtraDto.name = n.getStringValue();
+    },
+    normalizedKey: (n) => {
+      groceryExtraDto.normalizedKey = n.getStringValue();
+    },
+    occurrenceWeekStartDate: (n) => {
+      groceryExtraDto.occurrenceWeekStartDate = n.getDateOnlyValue();
+    },
+    readOnly: (n) => {
+      groceryExtraDto.readOnly = n.getBooleanValue();
+    },
+    source: (n) => {
+      groceryExtraDto.source = n.getStringValue();
+    },
+    version: (n) => {
+      groceryExtraDto.version = n.getNumberValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param GroceryExtraSuggestionResponse The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoGroceryExtraSuggestionResponse(
+  groceryExtraSuggestionResponse: Partial<GroceryExtraSuggestionResponse> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    names: (n) => {
+      groceryExtraSuggestionResponse.names = n.getCollectionOfPrimitiveValues<string>('string');
     },
   };
 }
@@ -2899,6 +3080,11 @@ export function deserializeIntoScheduleDays(
         createScheduleDayDtoFromDiscriminatorValue
       );
     },
+    groceryExtras: (n) => {
+      scheduleDays.groceryExtras = n.getCollectionOfObjectValues<GroceryExtraDto>(
+        createGroceryExtraDtoFromDiscriminatorValue
+      );
+    },
     groceryItems: (n) => {
       scheduleDays.groceryItems = n.getCollectionOfObjectValues<GroceryLineItemDto>(
         createGroceryLineItemDtoFromDiscriminatorValue
@@ -3115,6 +3301,34 @@ export function deserializeIntoUpdateFeatureFlagRequest(
 }
 /**
  * The deserialization information for the current model
+ * @param UpdateGroceryExtraRequest The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoUpdateGroceryExtraRequest(
+  updateGroceryExtraRequest: Partial<UpdateGroceryExtraRequest> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    checked: (n) => {
+      updateGroceryExtraRequest.checked = n.getBooleanValue();
+    },
+    expectedVersion: (n) => {
+      updateGroceryExtraRequest.expectedVersion = n.getNumberValue();
+    },
+    grocerySection: (n) => {
+      updateGroceryExtraRequest.grocerySection =
+        n.getEnumValue<GrocerySection>(GrocerySectionObject);
+    },
+    name: (n) => {
+      updateGroceryExtraRequest.name = n.getStringValue();
+    },
+    weekStartDate: (n) => {
+      updateGroceryExtraRequest.weekStartDate = n.getDateOnlyValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
  * @param UpdateRecipeDto The instance to deserialize into.
  * @returns {Record<string, (node: ParseNode) => void>}
  */
@@ -3191,6 +3405,49 @@ export function deserializeIntoVoteDto(
   return {
     vote: (n) => {
       voteDto.vote = n.getNumberValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param VotingSessionSnapshot The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoVotingSessionSnapshot(
+  votingSessionSnapshot: Partial<VotingSessionSnapshot> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    candidateCount: (n) => {
+      votingSessionSnapshot.candidateCount = n.getNumberValue();
+    },
+    coveredSlots: (n) => {
+      votingSessionSnapshot.coveredSlots = n.getNumberValue();
+    },
+    incarnationId: (n) => {
+      votingSessionSnapshot.incarnationId = n.getGuidValue();
+    },
+    phase: (n) => {
+      votingSessionSnapshot.phase = n.getEnumValue<VotingSessionSnapshot_phase>(
+        VotingSessionSnapshot_phaseObject
+      );
+    },
+    requiredSlots: (n) => {
+      votingSessionSnapshot.requiredSlots = n.getNumberValue();
+    },
+    revision: (n) => {
+      votingSessionSnapshot.revision = n.getNumberValue();
+    },
+    roundId: (n) => {
+      votingSessionSnapshot.roundId = n.getGuidValue();
+    },
+    smartDefaults: (n) => {
+      votingSessionSnapshot.smartDefaults = n.getObjectValue<SmartDefaultsDto>(
+        createSmartDefaultsDtoFromDiscriminatorValue
+      );
+    },
+    weekStartDate: (n) => {
+      votingSessionSnapshot.weekStartDate = n.getDateOnlyValue();
     },
   };
 }
@@ -3484,6 +3741,68 @@ export interface GoToListDto extends AdditionalDataHolder, Parsable {
    */
   items?: GoToItem[] | null;
 }
+export interface GroceryExtraConflictResponse extends ApiError, Parsable {
+  /**
+   * The absent property
+   */
+  absent?: boolean | null;
+  /**
+   * The current property
+   */
+  current?: GroceryExtraDto | null;
+  /**
+   * The message property
+   */
+  messageEscaped?: string | null;
+}
+export interface GroceryExtraDto extends Parsable {
+  /**
+   * The checked property
+   */
+  checked?: boolean | null;
+  /**
+   * The grocerySection property
+   */
+  grocerySection?: GrocerySection | null;
+  /**
+   * Stable weekly occurrence identity.
+   */
+  id?: Guid | null;
+  /**
+   * The lineageId property
+   */
+  lineageId?: Guid | null;
+  /**
+   * The name property
+   */
+  name?: string | null;
+  /**
+   * The normalizedKey property
+   */
+  normalizedKey?: string | null;
+  /**
+   * Absolute Monday owning this occurrence.
+   */
+  occurrenceWeekStartDate?: DateOnly | null;
+  /**
+   * The readOnly property
+   */
+  readOnly?: boolean | null;
+  /**
+   * The source property
+   */
+  source?: string | null;
+  /**
+   * The version property
+   */
+  version?: number | null;
+}
+export interface GroceryExtraSuggestionResponse extends Parsable {
+  /**
+   * The names property
+   */
+  names?: string[] | null;
+}
 export interface GroceryLineItemDto extends AdditionalDataHolder, Parsable {
   /**
    * The displayName property
@@ -3510,6 +3829,7 @@ export interface GroceryLineItemDto extends AdditionalDataHolder, Parsable {
    */
   unitText?: string | null;
 }
+export type GrocerySection = (typeof GrocerySectionObject)[keyof typeof GrocerySectionObject];
 export interface HealthCheckResponse extends AdditionalDataHolder, Parsable {
   /**
    * The checks property
@@ -3721,7 +4041,7 @@ export type MoveScheduleDto_intent =
 export type MoveScheduleDto_sourceDisposition =
   (typeof MoveScheduleDto_sourceDispositionObject)[keyof typeof MoveScheduleDto_sourceDispositionObject];
 /**
- * Tomorrow always returns moved=true and all date/refresh fields. Legacy intents return message only.
+ * Tomorrow and actual legacy cross-week movement return moved=true and all date/refresh fields. Same-week and cross-week no-op legacy completion return message only.
  */
 export interface MoveScheduleResultDto extends AdditionalDataHolder, Parsable {
   /**
@@ -4530,6 +4850,10 @@ export interface ScheduleDays extends AdditionalDataHolder, Parsable {
    */
   days?: ScheduleDayDto[] | null;
   /**
+   * Authoritative extra occurrences for the selected view. Every future week projects outstanding unchecked current-week extras until checked or deleted; projected rows retain their current occurrence identity.
+   */
+  groceryExtras?: GroceryExtraDto[] | null;
+  /**
    * The groceryItems property
    */
   groceryItems?: GroceryLineItemDto[] | null;
@@ -4744,6 +5068,25 @@ export function serializeCaptureUrlDto(
 }
 /**
  * Serializes information the current object
+ * @param CreateGroceryExtraRequest The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeCreateGroceryExtraRequest(
+  writer: SerializationWriter,
+  createGroceryExtraRequest: Partial<CreateGroceryExtraRequest> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!createGroceryExtraRequest || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeGuidValue('clientId', createGroceryExtraRequest.clientId);
+  writer.writeStringValue('name', createGroceryExtraRequest.name);
+  writer.writeDateOnlyValue('weekStartDate', createGroceryExtraRequest.weekStartDate);
+}
+/**
+ * Serializes information the current object
  * @param DeferScheduleDto The instance to serialize from.
  * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
  * @param writer Serialization writer to use to serialize this model
@@ -4930,6 +5273,72 @@ export function serializeGoToListDto(
   }
   writer.writeCollectionOfObjectValues<GoToItem>('items', goToListDto.items, serializeGoToItem);
   writer.writeAdditionalData(goToListDto.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param GroceryExtraConflictResponse The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeGroceryExtraConflictResponse(
+  writer: SerializationWriter,
+  groceryExtraConflictResponse: Partial<GroceryExtraConflictResponse> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!groceryExtraConflictResponse || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeBooleanValue('absent', groceryExtraConflictResponse.absent);
+  writer.writeObjectValue<GroceryExtraDto>(
+    'current',
+    groceryExtraConflictResponse.current,
+    serializeGroceryExtraDto
+  );
+  writer.writeStringValue('message', groceryExtraConflictResponse.messageEscaped);
+}
+/**
+ * Serializes information the current object
+ * @param GroceryExtraDto The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeGroceryExtraDto(
+  writer: SerializationWriter,
+  groceryExtraDto: Partial<GroceryExtraDto> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!groceryExtraDto || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeBooleanValue('checked', groceryExtraDto.checked);
+  writer.writeEnumValue<GrocerySection>('grocerySection', groceryExtraDto.grocerySection);
+  writer.writeGuidValue('id', groceryExtraDto.id);
+  writer.writeGuidValue('lineageId', groceryExtraDto.lineageId);
+  writer.writeStringValue('name', groceryExtraDto.name);
+  writer.writeStringValue('normalizedKey', groceryExtraDto.normalizedKey);
+  writer.writeDateOnlyValue('occurrenceWeekStartDate', groceryExtraDto.occurrenceWeekStartDate);
+  writer.writeBooleanValue('readOnly', groceryExtraDto.readOnly);
+  writer.writeStringValue('source', groceryExtraDto.source);
+  writer.writeNumberValue('version', groceryExtraDto.version);
+}
+/**
+ * Serializes information the current object
+ * @param GroceryExtraSuggestionResponse The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeGroceryExtraSuggestionResponse(
+  writer: SerializationWriter,
+  groceryExtraSuggestionResponse: Partial<GroceryExtraSuggestionResponse> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!groceryExtraSuggestionResponse || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeCollectionOfPrimitiveValues<string>('names', groceryExtraSuggestionResponse.names);
 }
 /**
  * Serializes information the current object
@@ -6201,6 +6610,11 @@ export function serializeScheduleDays(
     scheduleDays.days,
     serializeScheduleDayDto
   );
+  writer.writeCollectionOfObjectValues<GroceryExtraDto>(
+    'groceryExtras',
+    scheduleDays.groceryExtras,
+    serializeGroceryExtraDto
+  );
   writer.writeCollectionOfObjectValues<GroceryLineItemDto>(
     'groceryItems',
     scheduleDays.groceryItems,
@@ -6410,6 +6824,27 @@ export function serializeUpdateFeatureFlagRequest(
 /**
  * Serializes information the current object
  * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param UpdateGroceryExtraRequest The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeUpdateGroceryExtraRequest(
+  writer: SerializationWriter,
+  updateGroceryExtraRequest: Partial<UpdateGroceryExtraRequest> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!updateGroceryExtraRequest || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeBooleanValue('checked', updateGroceryExtraRequest.checked);
+  writer.writeNumberValue('expectedVersion', updateGroceryExtraRequest.expectedVersion);
+  writer.writeEnumValue<GrocerySection>('grocerySection', updateGroceryExtraRequest.grocerySection);
+  writer.writeStringValue('name', updateGroceryExtraRequest.name);
+  writer.writeDateOnlyValue('weekStartDate', updateGroceryExtraRequest.weekStartDate);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
  * @param UpdateRecipeDto The instance to serialize from.
  * @param writer Serialization writer to use to serialize this model
  */
@@ -6478,6 +6913,36 @@ export function serializeVoteDto(
   }
   writer.writeNumberValue('vote', voteDto.vote);
   writer.writeAdditionalData(voteDto.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param VotingSessionSnapshot The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeVotingSessionSnapshot(
+  writer: SerializationWriter,
+  votingSessionSnapshot: Partial<VotingSessionSnapshot> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!votingSessionSnapshot || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeNumberValue('candidateCount', votingSessionSnapshot.candidateCount);
+  writer.writeNumberValue('coveredSlots', votingSessionSnapshot.coveredSlots);
+  writer.writeGuidValue('incarnationId', votingSessionSnapshot.incarnationId);
+  writer.writeEnumValue<VotingSessionSnapshot_phase>('phase', votingSessionSnapshot.phase);
+  writer.writeNumberValue('requiredSlots', votingSessionSnapshot.requiredSlots);
+  writer.writeNumberValue('revision', votingSessionSnapshot.revision);
+  writer.writeGuidValue('roundId', votingSessionSnapshot.roundId);
+  writer.writeObjectValue<SmartDefaultsDto>(
+    'smartDefaults',
+    votingSessionSnapshot.smartDefaults,
+    serializeSmartDefaultsDto
+  );
+  writer.writeDateOnlyValue('weekStartDate', votingSessionSnapshot.weekStartDate);
+  writer.writeAdditionalData(votingSessionSnapshot.additionalData);
 }
 /**
  * Serializes information the current object
@@ -6759,6 +7224,31 @@ export interface UpdateFeatureFlagRequest extends Parsable {
    */
   enabled?: boolean | null;
 }
+/**
+ * Exactly one of name, checked, or grocerySection is supplied with the concurrency fields.
+ */
+export interface UpdateGroceryExtraRequest extends Parsable {
+  /**
+   * The checked property
+   */
+  checked?: boolean | null;
+  /**
+   * The expectedVersion property
+   */
+  expectedVersion?: number | null;
+  /**
+   * The grocerySection property
+   */
+  grocerySection?: GrocerySection | null;
+  /**
+   * The name property
+   */
+  name?: string | null;
+  /**
+   * The weekStartDate property
+   */
+  weekStartDate?: DateOnly | null;
+}
 export interface UpdateRecipeDto extends AdditionalDataHolder, Parsable {
   /**
    * The cuisineType property
@@ -6819,6 +7309,49 @@ export interface VoteDto extends AdditionalDataHolder, Parsable {
    */
   vote?: number | null;
 }
+/**
+ * Fresh projection of the single operational voting round. Convergence is latched only for this host lifetime and never saves meals or closes voting.
+ */
+export interface VotingSessionSnapshot extends AdditionalDataHolder, Parsable {
+  /**
+   * Distinct consensus candidates excluding selected recipes.
+   */
+  candidateCount?: number | null;
+  /**
+   * The coveredSlots property
+   */
+  coveredSlots?: number | null;
+  /**
+   * Opaque host lifetime identity; only an authoritative read establishes a changed incarnation.
+   */
+  incarnationId?: Guid | null;
+  /**
+   * The phase property
+   */
+  phase?: VotingSessionSnapshot_phase | null;
+  /**
+   * Persisted empty dates before suggestions; null when unowned.
+   */
+  requiredSlots?: number | null;
+  /**
+   * Monotonic across rounds within this incarnation.
+   */
+  revision?: number | null;
+  /**
+   * The roundId property
+   */
+  roundId?: Guid | null;
+  /**
+   * The smartDefaults property
+   */
+  smartDefaults?: SmartDefaultsDto | null;
+  /**
+   * Active absolute Monday; null when unowned.
+   */
+  weekStartDate?: DateOnly | null;
+}
+export type VotingSessionSnapshot_phase =
+  (typeof VotingSessionSnapshot_phaseObject)[keyof typeof VotingSessionSnapshot_phaseObject];
 export interface WorkflowInstanceDetailDto extends AdditionalDataHolder, Parsable {
   /**
    * The createdAt property
@@ -7003,6 +7536,18 @@ export const GoToItem_statusObject = {
   Pending: 'pending',
   Ready: 'ready',
 } as const;
+export const GrocerySectionObject = {
+  Produce: 'Produce',
+  Meat: 'Meat',
+  Seafood: 'Seafood',
+  DairyEggs: 'Dairy & Eggs',
+  Frozen: 'Frozen',
+  Bakery: 'Bakery',
+  Pantry: 'Pantry',
+  Beverages: 'Beverages',
+  Deli: 'Deli',
+  Grocery: 'Grocery',
+} as const;
 export const HowToSectionDto_TypeObject = {
   HowToSection: 'HowToSection',
 } as const;
@@ -7091,7 +7636,8 @@ export const RecipeSearchResponseDto_resultPathObject = {
   Browse: 'browse',
 } as const;
 export const RecipeSearchResponseDto_searchModeObject = {
-  Standard: 'standard',
+  Discovery: 'discovery',
+  Explicit: 'explicit',
   Similar: 'similar',
 } as const;
 export const RecipeShareInfoDto_bundleSourceObject = {
@@ -7129,6 +7675,11 @@ export const UpdateRecipeDto_mealTypesObject = {
   Dessert: 'Dessert',
   Appetizer: 'Appetizer',
   Beverage: 'Beverage',
+} as const;
+export const VotingSessionSnapshot_phaseObject = {
+  Unowned: 'unowned',
+  Collecting: 'collecting',
+  Converged: 'converged',
 } as const;
 export const WorkflowInstanceDetailDto_statusObject = {
   Pending: 'Pending',

@@ -47,6 +47,7 @@ describe('family creation contract and client', () => {
             id: MOCK_IDS.MEMBER_TEST,
             name: 'aLeX',
             browseViewMode: 'stack',
+            cookingViewMode: null,
             preferredLanguage: null,
             createdAt: '2026-10-15T12:00:00Z',
             updatedAt: '2026-10-15T12:00:00Z',
@@ -60,6 +61,7 @@ describe('family creation contract and client', () => {
       id: MOCK_IDS.MEMBER_TEST,
       name: 'aLeX',
       browseViewMode: 'stack',
+      cookingViewMode: null,
       preferredLanguage: '',
     });
     expect(fetchMock).toHaveBeenCalledOnce();

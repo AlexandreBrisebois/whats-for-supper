@@ -132,6 +132,71 @@ public class SchemaIntegrityTests
     }
 
     [Fact]
+    public void FeatureFlagOverrides_Compatibility_RemovesOnlyGraduatedOverrides()
+    {
+        Assert.Contains("DELETE FROM feature_flag_overrides", _compatibilityContent, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("flag_key = 'planner-hold-to-move'", _compatibilityContent, StringComparison.Ordinal);
+        Assert.Contains("flag_key = 'preview-pdf-recipe-import'", _compatibilityContent, StringComparison.Ordinal);
+        Assert.Contains("flag_key = 'single-page-recipe-steps'", _compatibilityContent, StringComparison.Ordinal);
+        Assert.DoesNotContain("TRUNCATE", _compatibilityContent, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task MaintenanceCommandTerminalRetentionIndex_IsAlignedAcrossSchemaCompatibilityAndEf()
+    {
+        Assert.Contains("idx_maintenance_commands_terminal_completed", _schemaContent, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("idx_maintenance_commands_terminal_completed", _compatibilityContent, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("WHERE status IN ('completed', 'skipped')", _schemaContent, StringComparison.OrdinalIgnoreCase);
+
+        await using var factory = await TestWebApplicationFactory.CreateAsync();
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+        var index = db.GetService<IDesignTimeModel>().Model
+            .FindEntityType(typeof(MaintenanceCommand))!
+            .GetIndexes()
+            .Single(candidate => candidate.GetDatabaseName() == "idx_maintenance_commands_terminal_completed");
+
+        Assert.Equal([nameof(MaintenanceCommand.CompletedAt), nameof(MaintenanceCommand.Id)], index.Properties.Select(property => property.Name));
+        Assert.Equal("status IN ('completed', 'skipped')", index.GetFilter());
+    }
+
+    [Fact]
+    public void FamilyMembers_Schema_And_Compatibility_ConstrainNullableCookingView()
+    {
+        var table = GetTableDefinition("family_members");
+        Assert.Contains("cooking_view_mode text", table, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("cooking_view_mode IN ('step-by-step', 'all-steps')", table, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("ADD COLUMN IF NOT EXISTS cooking_view_mode text", _compatibilityContent, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("family_members_cooking_view_mode_check", _compatibilityContent, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task GroceryExtra_NameConstraint_IsAlignedAndAvoidsUnsupportedBetweenSyntax()
+    {
+        var schemaTable = GetTableDefinition("grocery_extra_occurrences");
+        var compatibilityTable = GetCompatibilityTableDefinition("grocery_extra_occurrences");
+
+        Assert.DoesNotContain("BETWEEN", schemaTable, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("BETWEEN", compatibilityTable, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("char_length(btrim(name)) >= 1", schemaTable, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("char_length(btrim(name)) <= 200", schemaTable, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("char_length(btrim(name)) >= 1", compatibilityTable, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("char_length(btrim(name)) <= 200", compatibilityTable, StringComparison.OrdinalIgnoreCase);
+
+        await using var factory = await TestWebApplicationFactory.CreateAsync();
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+        var constraint = db.GetService<IDesignTimeModel>().Model
+            .FindEntityType(typeof(GroceryExtraOccurrence))!
+            .GetCheckConstraints()
+            .Single(check => check.Name == "grocery_extra_occurrences_name");
+
+        Assert.DoesNotContain("BETWEEN", constraint.Sql, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("char_length(btrim(name)) >= 1", constraint.Sql, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("char_length(btrim(name)) <= 200", constraint.Sql, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task RecipeImportReport_Model_UsesCascadeAndNullableMemberReferences()
     {
         await using var factory = await TestWebApplicationFactory.CreateAsync();
@@ -177,8 +242,8 @@ public class SchemaIntegrityTests
 
     private string GetTableDefinition(string tableName)
     {
-        // Simple regex to extract the CREATE TABLE block for a specific table
-        var pattern = $@"CREATE TABLE IF NOT EXISTS {tableName} \((.*?)\);";
+        // Schema tables may be declared with or without the idempotent IF NOT EXISTS clause.
+        var pattern = $@"CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?{Regex.Escape(tableName)}\s*\((.*?)\)\s*;";
         var match = Regex.Match(_schemaContent, pattern, RegexOptions.Singleline | RegexOptions.IgnoreCase);
         return match.Success ? match.Groups[1].Value : string.Empty;
     }

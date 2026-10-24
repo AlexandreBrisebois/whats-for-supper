@@ -55,6 +55,11 @@ function buildDraftDays(mondayRecipe?: object) {
   });
 }
 
+async function collapseDevelopmentBadge(page: Page) {
+  const devBadge = page.getByRole('button', { name: 'Collapse issues badge' });
+  if (await devBadge.isVisible()) await devBadge.click();
+}
+
 async function setupPlanner(page: Page, locked = false) {
   const baseUrl = process.env.BASE_URL || 'http://127.0.0.1:3000';
 
@@ -99,6 +104,25 @@ async function setupPlanner(page: Page, locked = false) {
   // Stateful: POST/PUT flips status/isLocked so the next GET reflects new state
   let currentStatus = locked ? 2 : 0;
   let isLockedState = locked;
+
+  const readScheduleFixture = () => ({
+    weekOffset: 0,
+    calendar: builders.deploymentCalendar(),
+    weekStartDate: '2026-05-04',
+    votingRoundId: MOCK_IDS.VOTING_ROUND,
+    locked: isLockedState,
+    status: currentStatus,
+    days: isLockedState ? buildLockedDays() : draftDays,
+  });
+
+  await page.route(/\/(?:backend\/)?api\/stream/, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'text/event-stream',
+      headers: { 'Cache-Control': 'no-cache' },
+      body: `event: connected\ndata: ${JSON.stringify({ type: 'connected', schedule: readScheduleFixture() })}\n\n`,
+    });
+  });
 
   await page.route(
     (url) => url.pathname.includes('/api/schedule'),
@@ -145,16 +169,7 @@ async function setupPlanner(page: Page, locked = false) {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({
-          data: {
-            weekOffset: 0,
-            calendar: builders.deploymentCalendar() as any,
-            weekStartDate: '2026-05-04' as any,
-            locked: isLockedState,
-            status: currentStatus,
-            days: isLockedState ? buildLockedDays() : draftDays,
-          },
-        }),
+        body: JSON.stringify({ data: readScheduleFixture() }),
       });
     }
   );
@@ -220,6 +235,9 @@ test.describe("Planner — Cook's Mode", () => {
     await expect(overlay).toBeVisible();
     await expect(page.getByTestId('cooks-mode-step-indicator')).toContainText(/Check & Prep/i);
     await expect(page.getByTestId('cooks-mode-step-next')).toContainText(/Let's Cook/i);
+
+    await collapseDevelopmentBadge(page);
+    await page.getByTestId('cooking-view-step-by-step').click();
 
     await page.getByTestId('cooks-mode-step-next').click();
     await expect(page.getByTestId('cooks-mode-step-indicator')).toContainText(/1 \/ /i);

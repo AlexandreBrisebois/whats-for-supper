@@ -11,6 +11,36 @@ namespace RecipeApi.Tests.Services;
 
 public class DiscoveryServiceTests
 {
+    [Fact]
+    public async Task SubmitVoteAsync_RefreshesDefaultsForTheNonzeroOwningWeek()
+    {
+        await using var ctx = TestDbContextFactory.Create();
+        var clock = new RecipeApi.Tests.Integration.DeploymentCalendarIntegrationTests.CalendarClock();
+        var calendar = new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager());
+        var publisher = new Mock<IScheduleEventPublisher>();
+        var service = new DiscoveryService(ctx, publisher.Object, clock, calendar,
+            TestHistoricalInterest.Create(ctx, clock, calendar));
+        var monday = new DateOnly(2026, 10, 19);
+        var member = new FamilyMember { Id = Guid.NewGuid(), Name = "Member" };
+        var recipe = new Recipe { Id = Guid.NewGuid(), Name = "Candidate" };
+        ctx.FamilyMembers.Add(member);
+        ctx.Recipes.Add(recipe);
+        ctx.WeeklyPlans.Add(new WeeklyPlan { WeekStartDate = monday,
+            Status = WeeklyPlanStatus.VotingOpen, VotingRoundId = Guid.NewGuid() });
+        for (var i = 0; i < 4; i++)
+            ctx.CalendarEvents.Add(new CalendarEvent { Id = Guid.NewGuid(), Date = monday.AddDays(i),
+                Status = CalendarEventStatus.Skipped, NonCookingKind = "eating_out" });
+        await ctx.SaveChangesAsync();
+
+        await service.SubmitVoteAsync(recipe.Id, member.Id, VoteType.Like);
+
+        publisher.Verify(x => x.PublishSmartDefaultsUpdatedAsync(1,
+            It.Is<RecipeApi.Dto.SmartDefaultsDto>(d => d.WeekStartDate == monday &&
+                d.PreSelectedRecipes.Count == 1 && d.PreSelectedRecipes[0].DayIndex == 4), null), Times.Once);
+        Assert.Single(ctx.RecipeVotes);
+        Assert.Equal(4, ctx.CalendarEvents.Count());
+    }
+
     [Theory]
     [InlineData(CalendarEventStatus.Planned, 0, false)]
     [InlineData(CalendarEventStatus.Locked, 0, false)]

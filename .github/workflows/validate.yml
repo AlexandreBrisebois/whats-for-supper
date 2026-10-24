@@ -8,6 +8,11 @@ on:
         required: false
         default: false
         type: boolean
+      skip-docker-smoke:
+        description: Release packaging owns smoke checks on its exact images.
+        required: false
+        default: false
+        type: boolean
       ref:
         description: Commit or tag to validate. Defaults to the triggering SHA.
         required: false
@@ -16,6 +21,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -26,7 +32,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     env:
-      OPENSPEC_VERSION: '1.14.3'
+      OPENSPEC_VERSION: '1.15.0'
     steps:
       - uses: actions/checkout@v7
         with:
@@ -49,11 +55,16 @@ jobs:
       pwa: ${{ steps.filter.outputs.pwa }}
       contract: ${{ steps.filter.outputs.contract }}
       docker: ${{ steps.filter.outputs.docker }}
+      e2e-suites: ${{ steps.filter.outputs.e2e-suites }}
+      pipeline: ${{ steps.filter.outputs.pipeline }}
     steps:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
           ref: ${{ inputs.ref || github.sha }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: '.nvmrc'
       - id: filter
         env:
           FULL_VALIDATION: ${{ inputs.full-validation }}
@@ -63,10 +74,11 @@ jobs:
           set -euo pipefail
           if [ "$FULL_VALIDATION" = 'true' ] || { [ "$EVENT_NAME" != 'pull_request' ] && [ "$EVENT_NAME" != 'push' ]; }; then
             files='all files selected'
+            export FULL_VALIDATION=true
           elif [ "$EVENT_NAME" = 'pull_request' ]; then
-            files="$(git diff --name-only "${{ github.event.pull_request.base.sha }}" HEAD)"
+            files="$(git diff --no-renames --name-only "${{ github.event.pull_request.base.sha }}" HEAD)"
           elif [ -n "$BEFORE" ] && ! echo "$BEFORE" | grep -Eq '^0+$'; then
-            files="$(git diff --name-only "$BEFORE" HEAD)"
+            files="$(git diff --no-renames --name-only "$BEFORE" HEAD)"
           else
             files="$(git diff-tree --no-commit-id --name-only -r HEAD)"
           fi
@@ -74,10 +86,34 @@ jobs:
           selected() {
             if [ "$FULL_VALIDATION" = 'true' ] || matches "$1"; then echo true; else echo false; fi
           }
+          echo "pipeline=$(selected '^(\.github/workflows/|scripts/ci/|pwa/playwright\.config\.ts$|scripts/agent/(docker_smoke|dockerhub_release|install_identity)\.py$|scripts/agent/tests/(test_ci_candidates|test_docker_smoke|test_dockerhub_release|test_workflow_security|test_install_identity)\.py$)')" >> "$GITHUB_OUTPUT"
+          echo "e2e-suites=$(printf '%s\n' "$files" | node scripts/ci/select-e2e.cjs)" >> "$GITHUB_OUTPUT"
           echo "api=$(selected '^(api/|specs/openapi\.yaml$|scripts/requirements\.txt$|scripts/agent/(api_tools|drift)\.py$|\.github/workflows/)')" >> "$GITHUB_OUTPUT"
-          echo "pwa=$(selected '^(pwa/|\.nvmrc$|specs/openapi\.yaml$|\.github/workflows/)')" >> "$GITHUB_OUTPUT"
+          echo "pwa=$(selected '^(pwa/|\.nvmrc$|scripts/ci/|specs/openapi\.yaml$|\.github/workflows/)')" >> "$GITHUB_OUTPUT"
           echo "contract=$(selected '^(api/|pwa/|specs/openapi\.yaml$|scripts/requirements\.txt$|scripts/agent/(api_tools|drift)\.py$|\.github/workflows/)')" >> "$GITHUB_OUTPUT"
-          echo "docker=$(selected '^(api/|pwa/|docker/|Taskfile\.yml$|scripts/requirements\.txt$|scripts/agent/docker_smoke\.py$|\.github/workflows/)')" >> "$GITHUB_OUTPUT"
+          echo "docker=$(selected '^(api/database/|api/src/RecipeApi/(Data|Models)/|api/Dockerfile$|pwa/Dockerfile$|docker/|release-template/synology/compose\.yaml$|Taskfile\.yml$|scripts/requirements\.txt$|scripts/agent/docker_smoke\.py$|\.github/workflows/)')" >> "$GITHUB_OUTPUT"
+
+  pipeline-tests:
+    name: Pipeline — regression checks
+    needs: changes
+    if: needs.changes.outputs.pipeline == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.x'
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: '.nvmrc'
+      - name: Install tooling test dependency
+        run: python3 -m pip install -r scripts/requirements.txt
+      - name: Test pipeline selection, smoke and release boundaries
+        run: |
+          node --test scripts/ci/*.test.cjs
+          python3 -B -m unittest scripts.agent.tests.test_ci_candidates scripts.agent.tests.test_docker_smoke scripts.agent.tests.test_dockerhub_release scripts.agent.tests.test_workflow_security scripts.agent.tests.test_install_identity
 
   api-validate:
     name: API — validate
@@ -148,6 +184,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
+          overwrite: true
           name: api-test-results
           path: api/test-results/*.trx
 
@@ -167,7 +204,7 @@ jobs:
           cache: npm
           cache-dependency-path: pwa/package-lock.json
       - name: Install pinned npm
-        run: npm install --global npm@11.21.1
+        run: npm install --global npm@12.2.1
       - name: Install PWA dependencies
         run: npm ci
         working-directory: pwa
@@ -206,18 +243,11 @@ jobs:
       - name: Schema drift — Tier 1 (spec vs C# DTOs)
         run: python3 scripts/agent/drift.py --schema-only
 
-  pwa-e2e:
-    name: PWA — build & E2E
-    needs: [changes, pwa-validate, contract-integrity]
-    if: >-
-      needs.changes.outputs.pwa == 'true' && needs.pwa-validate.result == 'success' &&
-      (needs.contract-integrity.result == 'success' || needs.contract-integrity.result == 'skipped')
+  pwa-build:
+    name: PWA — build once for E2E
+    needs: changes
+    if: needs.changes.outputs.pwa == 'true'
     runs-on: ubuntu-latest
-    env:
-      CI: true
-      # Must match playwright.config.ts: its managed Next server validates the
-      # h_access cookie that the E2E fixture signs with this value.
-      HEARTH_SECRET: Paris-Montreal
     steps:
       - uses: actions/checkout@v7
         with:
@@ -228,21 +258,13 @@ jobs:
           node-version-file: '.nvmrc'
           cache: npm
           cache-dependency-path: pwa/package-lock.json
-      - name: Cache Playwright browsers
-        uses: actions/cache@v6
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('pwa/package-lock.json') }}
-          restore-keys: |
-            playwright-${{ runner.os }}-
       - name: Install pinned npm
-        run: npm install --global npm@11.21.1
+        run: npm install --global npm@12.2.1
       - name: Install PWA dependencies
         run: npm ci
         working-directory: pwa
-      - name: Install Playwright browsers
-        run: npx playwright install chromium --with-deps
-        working-directory: pwa
+      - name: Check capability suite inventory
+        run: node --test scripts/ci/*.test.cjs
       - name: Build PWA
         run: npm run build
         working-directory: pwa
@@ -251,39 +273,139 @@ jobs:
           API_INTERNAL_URL: http://127.0.0.1:5001
           NEXT_PUBLIC_ENABLE_AGENT_SEARCH: true
           NEXT_PUBLIC_ENABLE_PHOTO_SEARCH: true
-      - name: E2E — Playwright
+      - name: Archive production build (including hidden Next files)
+        run: tar -cf "$RUNNER_TEMP/pwa-build.tar" -C pwa .next
+      - uses: actions/upload-artifact@v7
+        with:
+          overwrite: true
+          name: pwa-e2e-build
+          path: ${{ runner.temp }}/pwa-build.tar
+          compression-level: 0
+          retention-days: 1
+
+  pwa-e2e:
+    name: PWA — E2E (${{ matrix.suite }})
+    needs: [changes, pwa-build, pwa-validate, contract-integrity]
+    if: >-
+      !cancelled() && needs.changes.outputs.pwa == 'true' &&
+      needs.pwa-build.result == 'success' && needs.pwa-validate.result == 'success' &&
+      (needs.contract-integrity.result == 'success' || needs.contract-integrity.result == 'skipped')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: ${{ fromJSON(needs.changes.outputs.e2e-suites) }}
+    env:
+      CI: true
+      HEARTH_SECRET: Paris-Montreal
+      WFS_E2E_SUITE: ${{ matrix.suite }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+      - name: Set up pinned Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+          cache-dependency-path: pwa/package-lock.json
+      - name: Install pinned npm
+        run: npm install --global npm@12.2.1
+      - name: Install PWA dependencies
+        run: npm ci
+        working-directory: pwa
+      - uses: actions/download-artifact@v8
+        with:
+          name: pwa-e2e-build
+          path: ${{ runner.temp }}
+      - name: Restore production build
+        run: tar -xf "$RUNNER_TEMP/pwa-build.tar" -C pwa
+      - name: Install Chromium
+        run: npx playwright install chromium --with-deps
+        working-directory: pwa
+      - name: Run capability suite
         run: npm run test:e2e
         working-directory: pwa
-      - name: Upload Playwright report
-        if: always()
-        uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@v7
+        if: ${{ !cancelled() }}
         with:
-          name: playwright-report
-          path: pwa/playwright-report/
-          if-no-files-found: ignore
-      - name: Upload service logs on failure
-        if: failure()
-        uses: actions/upload-artifact@v7
-        with:
-          name: service-logs
-          path: pwa/pwa.log
+          overwrite: true
+          name: playwright-${{ matrix.suite }}
+          path: |
+            pwa/blob-report/
+            pwa/test-results/
+          if-no-files-found: error
+          retention-days: 7
 
-  docker-smoke:
-    name: Docker Compose — smoke test
-    needs: [changes, api-test, pwa-e2e]
-    if: >-
-      needs.changes.outputs.docker == 'true' &&
-      (needs.api-test.result == 'success' || needs.api-test.result == 'skipped') &&
-      (needs.pwa-e2e.result == 'success' || needs.pwa-e2e.result == 'skipped')
+  pwa-e2e-report:
+    name: PWA — combined E2E report
+    needs: pwa-e2e
+    if: ${{ !cancelled() && needs.pwa-e2e.result != 'skipped' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.ref || github.sha }}
-      - name: Install smoke runner dependency
+      - name: Set up pinned Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+          cache-dependency-path: pwa/package-lock.json
+      - name: Install pinned npm
+        run: npm install --global npm@12.2.1
+      - name: Install PWA dependencies
+        run: npm ci
+        working-directory: pwa
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: playwright-*
+          path: ${{ runner.temp }}/playwright
+      - name: Gather uniquely named blob reports
+        run: |
+          mkdir -p pwa/all-blob-reports
+          find "$RUNNER_TEMP/playwright" -path '*/blob-report/*.zip' -exec cp {} pwa/all-blob-reports/ \;
+      - name: Merge reports
+        run: npx playwright merge-reports --reporter html ./all-blob-reports
+        working-directory: pwa
+      - uses: actions/upload-artifact@v7
+        if: ${{ !cancelled() }}
+        with:
+          overwrite: true
+          name: playwright-report
+          path: pwa/playwright-report/
+          retention-days: 7
+
+  pwa-e2e-gate:
+    # Keep the original required-check name stable across the matrix transition.
+    name: PWA — build & E2E
+    needs: [changes, pwa-build, pwa-e2e, pwa-e2e-report]
+    if: ${{ !cancelled() && needs.changes.outputs.pwa == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require the build, every suite and merged report
+        env:
+          BUILD: ${{ needs.pwa-build.result }}
+          SUITES: ${{ needs.pwa-e2e.result }}
+          REPORT: ${{ needs.pwa-e2e-report.result }}
+        run: test "$BUILD" = success && test "$SUITES" = success && test "$REPORT" = success
+
+  docker-smoke:
+    name: Database & container changes — smoke
+    needs: changes
+    if: needs.changes.outputs.docker == 'true' && !inputs.skip-docker-smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+      - uses: docker/setup-buildx-action@v4
+      - name: Install smoke runner dependencies
         run: python3 -m pip install -r scripts/requirements.txt
-      - name: Build, verify and tear down disposable Docker stack
+      - name: Build and smoke the disposable database stack
         run: python3 -B scripts/agent/docker_smoke.py
-      - name: Fallback teardown after runner cancellation
+      - name: Fallback teardown
         if: always()
         run: python3 -B scripts/agent/docker_smoke.py --down

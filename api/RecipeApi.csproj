@@ -21,15 +21,15 @@
   <ItemGroup>
     <PackageReference Include="PDFtoImage" Version="5.4.0" />
     <!-- AI / Agents -->
-    <PackageReference Include="Microsoft.Agents.AI" Version="1.25.0" />
+    <PackageReference Include="Microsoft.Agents.AI" Version="1.26.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="11.0.0-rc.2.26504.105" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="11.0.0-rc.1.26425.128">
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="11.0.0-rc.2.26504.105">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.Extensions.AI.OpenAI" Version="10.11.0" />
     <!-- Npgsql EF Core provider + pgvector support -->
-    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="11.0.0-rc.1.1" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="11.0.0-rc.2" />
     <PackageReference Include="Pgvector" Version="0.3.2" />
     <!-- OpenAPI -->
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="11.0.0-rc.2.26504.105" />

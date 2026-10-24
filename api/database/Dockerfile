@@ -1,4 +1,4 @@
-FROM sqldef/psqldef:3.11.26 AS sqldef
+FROM sqldef/psqldef:3.11.27 AS sqldef
 
 FROM postgres:18.6-trixie
 

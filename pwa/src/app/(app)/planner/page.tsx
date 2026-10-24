@@ -8,8 +8,6 @@ import {
   Plus,
   Users,
   Share2,
-  Copy,
-  X,
   Check,
   Calendar,
   ShoppingCart,
@@ -53,7 +51,7 @@ import { useTodayStore } from '@/store/todayStore';
 import { useUiStore } from '@/store/uiStore';
 import { SkipRecoveryDialog } from '@/components/home/SkipRecoveryDialog';
 import { type AssignmentRecipe, resolveOccupiedSlot } from '@/lib/planner/slotAssignment';
-import { getVotingLink } from '@/lib/auth';
+import { FamilyNudgeDialog } from '@/components/discovery/FamilyNudgeDialog';
 import { PlannerDragHandle } from '@/components/planner/PlannerDragHandle';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 
@@ -65,6 +63,7 @@ export default function PlannerPage() {
   const isLoading = useWeekStore((s) => s.isLoading);
   const status = useWeekStore((s) => s.status);
   const groceryItems = useWeekStore((s) => s.groceryItems);
+  const groceryExtras = useWeekStore((s) => s.groceryExtras);
   const isVotingOpen = status === 1;
   const isLocked = status === 2;
   const [nonCookingTarget, setNonCookingTarget] = useState<{
@@ -85,8 +84,6 @@ export default function PlannerPage() {
   const [successDay, setSuccessDay] = useState<number | null>(null);
   const [openDetailRecipeId, setOpenDetailRecipeId] = useState<string | null>(null);
   const [showNudgeDialog, setShowNudgeDialog] = useState(false);
-  const [shareUrl, setShareUrl] = useState('');
-  const [copied, setCopied] = useState(false);
   const [pendingRecovery, setPendingRecovery] = useState<{
     slot: {
       referenceWeekStartDate?: string;
@@ -125,21 +122,6 @@ export default function PlannerPage() {
   useEffect(() => {
     setHasPendingCards(isVotingOpen);
   }, [isVotingOpen, setHasPendingCards]);
-
-  useEffect(() => {
-    if (!showNudgeDialog) return;
-
-    let isActive = true;
-    const baseUrl = window.location.origin;
-    getVotingLink(baseUrl).then((votingLink) => {
-      if (!isActive) return;
-      setShareUrl(votingLink || `${baseUrl}/discovery`);
-    });
-
-    return () => {
-      isActive = false;
-    };
-  }, [showNudgeDialog]);
 
   useEffect(() => {
     const weekOffsetParam = searchParams.get('weekOffset');
@@ -236,34 +218,8 @@ export default function PlannerPage() {
     }
   };
 
-  const handleNudgeFamily = () => {
-    setCopied(false);
-    setShareUrl('');
-    setShowNudgeDialog(true);
-  };
-
-  const handleCopyVotingLink = async () => {
-    try {
-      await navigator.clipboard.writeText(shareUrl);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      console.error('Failed to copy: ', err);
-    }
-  };
-
-  const handleShareVotingLink = async () => {
-    if (!navigator.share || !shareUrl) return;
-    try {
-      await navigator.share({
-        title: "What's for Supper?",
-        text: `Help us choose what's for supper! Vote here:`,
-        url: shareUrl,
-      });
-    } catch (error) {
-      console.error('Error sharing:', error);
-    }
-  };
+  const handleNudgeFamily = () => setShowNudgeDialog(true);
+  const closeNudgeDialog = React.useCallback(() => setShowNudgeDialog(false), []);
 
   const handleQuickFindSelect = async (recipe: any) => {
     if (selectedDayIndex === null) return;
@@ -405,7 +361,7 @@ export default function PlannerPage() {
       setPendingQuickFindDayIndex(null);
 
       const reference = useWeekStore.getState().calendar?.referenceWeekStartDate;
-      await apiClient.api.schedule.move.post(
+      const result = await apiClient.api.schedule.move.post(
         {
           weekOffset: currentWeekOffset,
           fromIndex: dayIndex,
@@ -417,6 +373,12 @@ export default function PlannerPage() {
         referenceRequest(reference)
       );
 
+      if (result?.data?.moved && result.data.refreshComplete === false) {
+        useUiStore.getState().addToast({
+          type: 'warning',
+          message: 'Meal moved. Some updates could not refresh. Refresh your plan to check it.',
+        });
+      }
       await useWeekStore.getState().init(currentWeekOffset, referenceWeekStartDate);
 
       if (currentWeekOffset === 0 && day.date === useTodayStore.getState().calendar?.today) {
@@ -451,7 +413,6 @@ export default function PlannerPage() {
     return (schedule[6].date ?? '') < (useTodayStore.getState().calendar?.today ?? '');
   }, [schedule]);
   const canOpenVoting = !weekIsPast && (status === 0 || status === 2);
-  const canShare = typeof navigator !== 'undefined' && !!navigator.share;
 
   return (
     <div className="flex flex-col min-h-screen pb-20 solar-earth-bg">
@@ -614,6 +575,7 @@ export default function PlannerPage() {
               <GroceryList
                 weekOffset={currentWeekOffset}
                 items={groceryItems ?? []}
+                extras={groceryExtras ?? []}
                 onClose={() => setActiveTab('planner')}
               />
             </motion.div>
@@ -722,7 +684,12 @@ export default function PlannerPage() {
             animate={{ opacity: 1, x: 0 }}
             className="sticky top-[72px] h-[calc(100vh-285px)] rounded-[2.5rem] overflow-hidden border border-white/20 shadow-2xl glass flex flex-col"
           >
-            <GroceryList weekOffset={currentWeekOffset} items={groceryItems ?? []} isEmbedded />
+            <GroceryList
+              weekOffset={currentWeekOffset}
+              items={groceryItems ?? []}
+              extras={groceryExtras ?? []}
+              isEmbedded
+            />
           </motion.div>
         )}
       </main>
@@ -850,85 +817,7 @@ export default function PlannerPage() {
         }
       />
 
-      <AnimatePresence>
-        {showNudgeDialog && (
-          <motion.div
-            key="planner-nudge-dialog-overlay"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[80] flex items-center justify-center bg-charcoal/40 px-4 backdrop-blur-sm"
-            onClick={() => setShowNudgeDialog(false)}
-          >
-            <motion.div
-              data-testid="planner-nudge-dialog"
-              initial={{ opacity: 0, scale: 0.95, y: 16 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 16 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className="flex w-full max-w-sm flex-col gap-5 rounded-[2rem] bg-white p-6 shadow-2xl"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-start justify-between">
-                <div>
-                  <h2 className="text-lg font-bold text-charcoal">Nudge the family</h2>
-                  <p className="mt-0.5 text-xs text-charcoal/50">
-                    Share this week&apos;s voting link
-                  </p>
-                </div>
-                <button
-                  onClick={() => setShowNudgeDialog(false)}
-                  data-testid="planner-nudge-close"
-                  className="rounded-full p-2 text-charcoal/40 transition-colors hover:bg-charcoal/5"
-                  aria-label={t('common.close', 'Close')}
-                  title={t('common.close', 'Close')}
-                >
-                  <X size={18} />
-                </button>
-              </div>
-
-              <div
-                data-testid="planner-nudge-link"
-                className="select-all break-all rounded-xl border border-charcoal/10 bg-cream px-4 py-3 font-mono text-xs text-charcoal/60"
-              >
-                {shareUrl || 'Generating link...'}
-              </div>
-
-              {copied && (
-                <p
-                  data-testid="planner-nudge-copied-feedback"
-                  className="-mt-2 text-center text-xs font-medium text-sage"
-                >
-                  Link copied!
-                </p>
-              )}
-
-              <div className="flex gap-3">
-                <button
-                  onClick={handleCopyVotingLink}
-                  disabled={!shareUrl}
-                  data-testid="planner-nudge-copy"
-                  className="flex h-12 flex-1 items-center justify-center gap-2 rounded-2xl bg-charcoal/5 text-sm font-semibold text-charcoal transition-all hover:bg-charcoal/10 active:scale-95 disabled:opacity-40"
-                >
-                  <Copy size={16} />
-                  Copy
-                </button>
-                {canShare && (
-                  <button
-                    onClick={handleShareVotingLink}
-                    disabled={!shareUrl}
-                    data-testid="planner-nudge-share"
-                    className="flex h-12 flex-1 items-center justify-center gap-2 rounded-2xl bg-ochre text-sm font-semibold text-white shadow-lg shadow-ochre/30 transition-all hover:brightness-110 active:scale-95 disabled:opacity-40"
-                  >
-                    <Share2 size={16} />
-                    Share
-                  </button>
-                )}
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <FamilyNudgeDialog open={showNudgeDialog} onClose={closeNudgeDialog} />
 
       <AnimatePresence>
         {showQuickFind && (
@@ -1007,6 +896,17 @@ const PlannerDayCard = memo(function PlannerDayCard({
   const startDrag = React.useCallback(
     (event: PointerEvent) => dragControls.start(event),
     [dragControls]
+  );
+  const moveBySlot = React.useCallback(
+    (direction: -1 | 1) => {
+      const snapshot = useWeekStore.getState().schedule;
+      const from = snapshot.findIndex((item) => item._uiId === day._uiId);
+      const to = from + direction;
+      if (from < 0 || to < 0 || to >= snapshot.length || !snapshot[from].recipe?.id) return;
+      useWeekStore.getState().reorderLocally(from, to, snapshot);
+      useWeekStore.getState().commitMove(from, to, snapshot);
+    },
+    [day._uiId]
   );
 
   return (
@@ -1217,7 +1117,7 @@ const PlannerDayCard = memo(function PlannerDayCard({
                     <RefreshCw size={18} />
                   </motion.button>
                 )}
-                <PlannerDragHandle start={startDrag} />
+                <PlannerDragHandle start={startDrag} moveBySlot={moveBySlot} />
               </div>
             </div>
           ) : (
@@ -1245,7 +1145,7 @@ const PlannerDayCard = memo(function PlannerDayCard({
                 </div>
               </button>
               <div className="ml-2 pl-2 border-l border-charcoal/8 flex items-center gap-1 self-stretch">
-                <PlannerDragHandle start={startDrag} />
+                <PlannerDragHandle start={startDrag} moveBySlot={moveBySlot} />
               </div>
             </div>
           )}

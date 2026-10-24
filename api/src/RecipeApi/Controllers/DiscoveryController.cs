@@ -7,9 +7,13 @@ namespace RecipeApi.Controllers;
 
 [ApiController]
 [Route("api/discovery")]
-public class DiscoveryController(DiscoveryService discoveryService) : ControllerBase
+public class DiscoveryController(DiscoveryService discoveryService, VotingSession votingSession) : ControllerBase
 {
     private readonly DiscoveryService _discoveryService = discoveryService;
+
+    [HttpGet("session")]
+    public async Task<IActionResult> GetSession(CancellationToken cancellationToken)
+        => Ok(await votingSession.ReadAsync(cancellationToken));
 
     [HttpGet("categories")]
     public async Task<IActionResult> GetCategories(

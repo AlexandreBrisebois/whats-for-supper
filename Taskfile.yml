@@ -12,7 +12,7 @@ shopt: [globstar]
 
 vars:
   PYTHON: '{{.ROOT_DIR}}/.venv/bin/python'
-  OPENSPEC_VERSION: '1.14.3'
+  OPENSPEC_VERSION: '1.15.0'
   API_PORT: '5050'
   PWA_PORT: '3000'
   DB_PORT: '5432'
@@ -224,8 +224,9 @@ tasks:
       Resets development Compose containers and volumes, builds with CI configuration,
       checks migration, Postgres/API/PWA health and endpoint drift, then tears down.
       Uses synthetic configuration; local seed files are not mounted or modified.
+      Pass -- --isolated for owned project/container/network names and dynamic loopback ports.
     cmds:
-      - '"{{.PYTHON}}" -B scripts/agent/docker_smoke.py'
+      - '"{{.PYTHON}}" -B scripts/agent/docker_smoke.py {{.CLI_ARGS}}'
 
   test:smoke:down:
     desc: "Remove disposable development Compose containers and volumes"
@@ -476,7 +477,7 @@ tasks:
       - |
         DRY_FLAG=""
         if [ "{{.DRY_RUN}}" == "true" ]; then DRY_FLAG="--dry-run"; fi
-        docker run --rm -v $(pwd)/api/database/schema.sql:/schema.sql:ro --network wfs-internal -e PGPASSWORD={{.POSTGRES_PASSWORD}} sqldef/psqldef:3.11.26 -h postgres -U {{.POSTGRES_USER}} {{.POSTGRES_DB}} $DRY_FLAG -f /schema.sql
+        docker run --rm -v $(pwd)/api/database/schema.sql:/schema.sql:ro --network wfs-internal -e PGPASSWORD={{.POSTGRES_PASSWORD}} sqldef/psqldef:3.11.27 -h postgres -U {{.POSTGRES_USER}} {{.POSTGRES_DB}} $DRY_FLAG -f /schema.sql
 
   seed:
     desc: "Populate database with test data"
@@ -692,11 +693,12 @@ tasks:
   # ============================================================================
 
   format:
-    desc: "✨ Format code (API + PWA)"
+    desc: "✨ Format code and Markdown (API + PWA + docs)"
     cmds:
       - task: format:api
       - task: format:pwa
-      - echo "✓ Code formatted"
+      - ./pwa/node_modules/.bin/prettier --config pwa/.prettierrc.json --ignore-path .gitignore --prose-wrap preserve --write "**/*.md"
+      - echo "✓ Code and Markdown formatted"
 
   format:api:
     desc: "Format C# code"
@@ -1001,7 +1003,7 @@ tasks:
   # ============================================================================
 
   hooks:install:
-    desc: "Install read-only commit checks and full pre-push validation"
+    desc: "Install read-only commit checks and affected pre-push validation"
     cmds:
       - pre-commit install --hook-type pre-commit --hook-type pre-push --overwrite
       - echo "✓ Commit and push hooks installed. Use task check:commit or task check:push manually."
@@ -1013,7 +1015,7 @@ tasks:
       - task: init:python
       - npm install --global "@fission-ai/openspec@{{.OPENSPEC_VERSION}}"
       - task: spec:check
-      - npm install --global npm@11.21.1
+      - npm install --global npm@12.2.1
       - npm ci --prefix pwa
       - npm exec --prefix pwa -- playwright install chromium
       - dotnet restore api/src/RecipeApi.Tests/RecipeApi.Tests.csproj
@@ -1040,21 +1042,9 @@ tasks:
       - task: agent:drift:mocks
 
   check:push:
-    desc: "Validate clean committed source before pushing (full API/PWA checks)"
-    vars:
-      PUSH_HEAD:
-        sh: git rev-parse HEAD
+    desc: "Validate affected committed source before pushing (--plan, --full, --base REF)"
     cmds:
-      - '"{{.PYTHON}}" -B scripts/agent/push_guard.py --expected-head "{{.PUSH_HEAD}}"'
-      - task: check:node
-      - task: spec:check
-      - task: test:agent
-      - task: check:contracts
-      - task: gen:client:check
-      - task: check:push:api
-      - task: check:push:pwa
-      - '"{{.PYTHON}}" -B scripts/agent/push_guard.py --expected-head "{{.PUSH_HEAD}}"'
-      - echo "✓ Committed source passed local push validation."
+      - '"{{.PYTHON}}" -B scripts/agent/push_guard.py --run {{.CLI_ARGS}}'
 
   check:push:api:
     desc: "C# formatting, Release build and API tests"
@@ -1064,21 +1054,36 @@ tasks:
       - dotnet test api/src/RecipeApi.Tests/RecipeApi.Tests.csproj --no-build --configuration Release
 
   check:push:pwa:
-    desc: "PWA formatting, lint, types, units, production build and full E2E"
+    desc: "PWA production checks and selected E2E suites (SUITES defaults to all)"
     dir: pwa
+    env:
+      WFS_PUSH_E2E_SUITES: '{{.SUITES | default "all"}}'
     cmds:
       - |
         set -e
-        unset BASE_URL
+        unset BASE_URL WFS_E2E_SUITE CALENDAR_API_URL TONIGHT_API_URL TOMORROW_API_URL
         export CI=true HEARTH_SECRET=Paris-Montreal
         export NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:5001 API_INTERNAL_URL=http://127.0.0.1:5001
         export NEXT_PUBLIC_ENABLE_AGENT_SEARCH=true NEXT_PUBLIC_ENABLE_PHOTO_SEARCH=true
+        for suite in $WFS_PUSH_E2E_SUITES; do
+          case "$suite" in
+            all|tonight|planning|recipes|household) ;;
+            *) echo "Unknown E2E suite: $suite" >&2; exit 2 ;;
+          esac
+        done
         npm run format:check
         npm run lint
         npm run typecheck
         npm run test:unit
         npm run build
-        npm run test:e2e
+        for suite in $WFS_PUSH_E2E_SUITES; do
+          case "$suite" in
+            all) unset WFS_E2E_SUITE ;;
+            tonight|planning|recipes|household) export WFS_E2E_SUITE="$suite" ;;
+            *) echo "Unknown E2E suite: $suite" >&2; exit 2 ;;
+          esac
+          npm run test:e2e
+        done
 
   # ============================================================================
   # DOCUMENTATION
@@ -1267,12 +1272,13 @@ tasks:
       - '"{{.PYTHON}}" -B scripts/agent/finish.py --plan {{.CLI_ARGS}}'
 
   test:agent:
-    desc: "🤖 Unit tests for the repository agent harness"
+    desc: "🤖 Repository agent harness and shared CI selector tests"
     preconditions:
       - sh: test -f "{{.ROOT_DIR}}/.venv/bin/python"
         msg: "Python venv not found. Run: task init:python"
     cmds:
       - '"{{.PYTHON}}" -B -m unittest discover -s scripts/agent/tests -p "test_*.py"'
+      - node --test scripts/ci/*.test.cjs
 
   # ============================================================================
   # AUTH

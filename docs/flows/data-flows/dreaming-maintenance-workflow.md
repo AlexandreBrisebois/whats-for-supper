@@ -1,6 +1,6 @@
 # Dreaming Maintenance Workflow Data Flow
 
-How the recurring Dreaming workflow keeps workflow history lean, flushes backup state to disk, and leaves a human-readable maintenance report.
+How the recurring Dreaming workflow keeps workflow and completed maintenance-command history lean, flushes backup state to disk, and leaves a human-readable maintenance report.
 
 ## Core idea
 
@@ -52,21 +52,27 @@ The workflow instance itself does not need a `scheduled_at` column. Scheduling l
 flowchart TD
     A[dreaming root task becomes due] --> B[PruneWorkflows]
     A --> C[StartWorkflow db-backup]
-    B --> D[GenerateDreamingReport]
-    C --> D
-    D --> E[StartWorkflow dreaming with schedule.cron]
-    E --> F[New dreaming instance created]
-    F --> G[New root task scheduled for next DREAMING_CRON_UTC occurrence]
+    A --> D[ProcessMaintenanceCommands]
+    D --> E[PruneMaintenanceCommands]
+    B --> F[GenerateDreamingReport]
+    C --> F
+    D --> F
+    E --> F
+    F --> G[StartWorkflow dreaming with schedule.cron]
+    G --> H[New dreaming instance created]
+    H --> I[New root task scheduled for next DREAMING_CRON_UTC occurrence]
 ```
 
 ## Task responsibilities
 
-| Task | Processor | Responsibility |
-|------|-----------|----------------|
-| `prune` | `PruneWorkflows` | Delete completed/failed workflow instances older than 7 days. |
-| `backup` | `StartWorkflow` | Start the existing `db-backup` workflow instead of duplicating backup logic. |
-| `report` | `GenerateDreamingReport` | Write `DATA_ROOT/reports/dreaming-yyyy-MM-dd.md`. |
-| `reschedule` | `StartWorkflow` | Start a new `dreaming` instance scheduled by `DREAMING_CRON_UTC`. |
+| Task                         | Processor                    | Responsibility                                                                                                     |
+| ---------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `prune`                      | `PruneWorkflows`             | Delete completed/failed workflow instances older than 7 days.                                                      |
+| `backup`                     | `StartWorkflow`              | Start the existing `db-backup` workflow instead of duplicating backup logic.                                       |
+| `maintenance`                | `ProcessMaintenanceCommands` | Process up to 50 due maintenance commands.                                                                         |
+| `prune-maintenance-commands` | `PruneMaintenanceCommands`   | After processing, delete at most 500 completed/skipped commands whose completion time is at least 30 UTC days old. |
+| `report`                     | `GenerateDreamingReport`     | Write `DATA_ROOT/reports/dreaming-yyyy-MM-dd.md`.                                                                  |
+| `reschedule`                 | `StartWorkflow`              | Start a new `dreaming` instance scheduled by `DREAMING_CRON_UTC`.                                                  |
 
 ## Report output
 
@@ -80,16 +86,32 @@ Each report includes:
 
 - pruned workflow instance count,
 - pruned workflow task count,
+- pruned terminal maintenance-command count and initialized legacy timestamps,
 - latest `db-backup` status,
 - workflows that failed in the last 24 hours,
 - workflows that have been pending or processing for more than 1 hour.
 
 ## Failure behavior
 
-If `prune`, `backup`, `report`, or `reschedule` fails, normal workflow retry/failure behavior applies.
+If workflow pruning, backup, maintenance processing, maintenance-command pruning,
+reporting or rescheduling fails, normal workflow retry/failure behavior applies.
+The report waits for command pruning, so a failed or cancelled transaction cannot
+be presented as a successful deletion. Each pruning transaction either commits
+its completion-time initialization and deletion together or reports no result;
+later runs resume from persisted rows.
 
 The most important failure is the final `reschedule` task. If it fails permanently, the recurring chain stops. The last report and workflow telemetry become the human-visible signal that Dreaming needs attention.
 
 ## Configuration boundary
 
 `DREAMING_CRON_UTC` is interpreted as UTC only. Local timezone and DST behavior are intentionally out of scope for this version.
+
+Maintenance-command retention is intentionally separate from the seven-day
+workflow-history policy. The checked-in Dreaming definition uses 30 days and a
+500-row batch. The inclusive cutoff is `IClock.UtcNow - retentionDays`: a terminal
+row exactly at the cutoff is eligible. Pending, processing and failed rows are
+never pruned by this task. A completed/skipped legacy row with no completion time
+is stamped at the current run and retained for a full period; exact recovery does
+the same when it invalidates queued commands. Reverting or disabling future runs
+does not recreate history already deleted, and household recovery snapshots do
+not promise restoration of maintenance-command rows.

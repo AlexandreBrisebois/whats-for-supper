@@ -6,18 +6,22 @@
 
 **Swipe, Match, Cook!**
 
+[![Latest stable release](https://img.shields.io/github/v/release/AlexandreBrisebois/whats-for-supper?display_name=release&label=stable%20release)](https://github.com/AlexandreBrisebois/whats-for-supper/releases/latest)
+
 ## A supper plan the family helps choose
 
 What's for Supper? helps you **involve the whole family in choosing what’s for supper**. Bring your favourite recipes, weekly meal plan, and shared grocery list together in a self-hosted app for your household.
 
 **Built by your home, for your home.** Your household curates the collection, one recipe at a time. Keep the meals you love, add new favourites, and let it grow with you.
 
+Every household's collection will look different. Vegetarian favourites, food intolerances, a tight grocery budget, or simply different tastes. What matters is that the collection reflects the people around your table, including the recipes and traditions passed down through generations.
+
 ## From family favourites to supper on the table
 
-- **Choose together.** Swipe and vote on recipes in Discovery, then turn those choices into the week’s supper plan.
+- **Choose together.** Swipe and vote on recipes in Discovery, then turn those choices into the week’s supper plan. Figure out the week's meals together as a family, even when you're on the go.
 - **Plan for real life.** See the week at a glance and adjust when plans change.
 - **Shop from one shared list.** Planned suppers become a grocery list that stays in sync as the household shops.
-- **Cook your way.** Follow the instructions in **Cook's Mode**, or use **View original** to keep the saved recipe card beside you.
+- **Cook your way.** Read **All steps** or choose **Step by step** in **Cook's Mode**, or use **View original** to keep the saved recipe card beside you.
 - **Find your next supper.** Browse your collection, search for a favourite, or look for similar dishes.
 
 Have a favourite on a handwritten recipe card? Take a photo to add it to your collection. AI helps turn it into a digital recipe and can generate an image of the dish. That image is an illustration, not a photo of a meal you cooked. Check the extracted ingredients and steps against the original before cooking. You can also add recipes from a link or a short description.
@@ -57,11 +61,11 @@ These screenshots show the demo app. Select an image to see it at full size.
 
 ## Run it at home
 
-What's for Supper? is designed for self-hosting with **Docker Compose**. Synology is one way to run it, not a hardware requirement. Start with the public [Compose template](release-template/synology/compose.yaml) and [Synology installation guide](release-template/synology/README.md), adapting host-specific steps if you use another Compose host.
+**Start with the [quick installation guide](docs/install/quick-start.md).** It walks you through downloading the matching installation package and setting up your home server.
 
-The provided setup needs a Gemini API key, a Cloudflare Tunnel with an HTTPS hostname, and the required secrets in [`.env.example`](release-template/synology/.env.example). It also needs persistent data directories. Follow the guide before deploying, and plan your backups: the template does not configure backup, restore, updates, or rollback. Compatibility and capacity still need checking on your chosen host.
+[Latest stable release](https://github.com/AlexandreBrisebois/whats-for-supper/releases/latest) · [Docker Compose and advanced setup](release-template/synology/README.md)
 
-The public installation is available to try. A few last issues remain before v1, and all feedback is welcome.
+**Updating an existing installation?** Read the [update guide](docs/install/updates.md), including the configuration review needed when moving from 0.1.20 to 0.1.21. Keep your existing private configuration and data.
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-BUSL--1.1-CD5D45?style=flat-square" alt="Business Source License 1.1" /></a>
@@ -76,8 +80,9 @@ The public installation is available to try. A few last issues remain before v1,
 - [Family guide](docs/user-guide.md) — how planning, shopping, choosing, and cooking fit together.
 - [OpenSpec specifications](openspec/specs) — canonical capability requirements; [outstanding baseline work](https://github.com/AlexandreBrisebois/whats-for-supper/issues?q=is%3Aissue+WFS-BL-+in%3Atitle) is tracked in GitHub issues with historical evidence and acceptance criteria.
 - [Architecture](docs/architecture.md) — a concise technical view for contributors and operators.
-- [Synology installation guide](release-template/synology/README.md) — a concrete Docker Compose setup using Synology Container Manager.
+- [Home server installation guide](release-template/synology/README.md) — Docker Compose setup, HTTPS configuration, and platform-specific Synology notes.
 - [Local development guide](LOCAL_DEV_LOOP.md) — contributor setup and day-to-day development.
+- [Feature flag development and lifecycle](docs/feature-flags.md) — reuse previews, graduate features, and retire individual flags without removing the system.
 - [Contributor guide](AGENT.md) — project conventions for human and AI collaborators.
 
 ## License

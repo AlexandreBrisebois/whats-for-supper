@@ -114,12 +114,52 @@ For supported section arrays, cooking SHALL flatten nonblank child text or name 
 - **WHEN** a section is named Preparation or Préparation
 - **THEN** focused instructions omit that generic section prefix
 
+### Requirement: Offer a remembered cooking presentation
+
+Cooking SHALL offer a compact, named View chooser with Step by step and All steps choices in preparation and both reading presentations. The selected member's explicit cookingViewMode SHALL select the presentation; an absent member or absent preference SHALL default to All steps. The chooser SHALL expose its current choice and expanded state, use at least a 44 px target, stop hero navigation and restore focus when dismissed.
+
+#### Scenario: No explicit preference
+- **WHEN** cooking opens for a member without a saved cookingViewMode
+- **THEN** All steps is selected without consulting a feature flag
+
+#### Scenario: Saved focused preference
+- **WHEN** cooking opens for a member whose cookingViewMode is step-by-step
+- **THEN** Step by step is selected
+
+### Requirement: Remember cooking presentation for the selected member
+
+Changing presentation SHALL update immediately and persist only for the currently selected loaded member. The chooser SHALL identify the member whose confirmed choice is remembered. A failed save SHALL retain the session presentation and cooking work, report that it was not remembered for that member and offer Retry. A missing profile SHALL permit a session-only choice without saving to a previous or guessed member.
+
+#### Scenario: Change presentation
+- **WHEN** a loaded member chooses the other view and persistence succeeds
+- **THEN** the mounted recipe changes presentation without losing cooking work and the choice is remembered for that member
+
+#### Scenario: Save fails
+- **WHEN** a view change cannot be saved
+- **THEN** the session keeps the chosen presentation and cooking work, reports that it was not remembered and offers Retry
+
+### Requirement: Preserve cooking work while changing presentation
+
+Changing presentation SHALL retain ingredient checks, preparation context, recipe content, current bookmark and completion state. Focused to all-steps SHALL align the current step; all-steps to focused SHALL use the reading bookmark. An all-steps round trip SHALL restore its prior exact offset when the step has not changed, otherwise it SHALL align the new current step.
+
+#### Scenario: Switch from focused reading
+- **WHEN** the cook changes from Step by step to All steps on a later step
+- **THEN** that step is aligned in the list and ingredient checks remain unchanged
+
+### Requirement: Guard cooking work during view changes
+
+Presentation changes SHALL be disabled while an instruction editor or cooking completion is pending. Changing view SHALL never discard an edit, restart cooking, reload recipe content or submit Cooked.
+
+#### Scenario: Editing blocks change
+- **WHEN** an instruction editor is active
+- **THEN** the chooser explains that the edit must be saved or cancelled and no presentation change occurs
+
 ### Requirement: Navigate one focused instruction at a time
 
-With the effective single-page flag disabled or unavailable, cooking SHALL display one active instruction and its heading. Next SHALL advance until the last step, where Cooked becomes the completion action. Back SHALL return to the preceding position, including preparation; it SHALL be disabled at preparation. Scrolling SHALL not change focused position.
+With Step by step selected, cooking SHALL display one active instruction and its heading. Next SHALL advance until the last step, where Cooked becomes the completion action. Back SHALL return to the preceding position, including preparation; it SHALL be disabled at preparation. Scrolling SHALL not change focused position.
 
 #### Scenario: Read focused steps
-- **WHEN** a person starts a two-step recipe with the flag disabled and activates Next
+- **WHEN** a person starts a two-step recipe with Step by step selected and activates Next
 - **THEN** the second instruction is displayed and the action becomes Cooked
 
 #### Scenario: Back to preparation
@@ -130,12 +170,12 @@ With the effective single-page flag disabled or unavailable, cooking SHALL displ
 - **WHEN** a person scrolls focused instructions
 - **THEN** the held step position is unchanged
 
-### Requirement: Read all instructions under the effective single-page flag
+### Requirement: Read all instructions in All steps view
 
-With single-page-recipe-steps effectively enabled, starting from preparation SHALL display every parsed step in one ordered reading list with a Cooked action. The list SHALL show meaningful supplied headings, suppress generic Step-number or instruction-identical headings, and show section context when it changes.
+With All steps selected, starting from preparation SHALL display every parsed step in one ordered reading list with a Cooked action. The list SHALL show meaningful supplied headings, suppress generic Step-number or instruction-identical headings, and show section context when it changes.
 
 #### Scenario: Read the full recipe
-- **WHEN** a person starts a recipe with the effective flag enabled
+- **WHEN** a person starts a recipe with All steps selected
 - **THEN** all parsed instructions appear together and Cooked is available
 
 #### Scenario: Avoid redundant headings
@@ -156,7 +196,7 @@ Single-page reading SHALL retain instruction content and split paragraphs at exp
 
 ### Requirement: Hold recipe reading position within client memory
 
-Cooking SHALL keep its current step by recipe identity in client memory. A newly mounted cooking view in the same client store SHALL use that held position. Single-page scrolling SHALL update the reading bookmark without remounting its rows, replacing an active editor or submitting completion.
+Cooking SHALL keep its current step by recipe identity in client memory. A newly mounted cooking view in the same client store SHALL use that held position. All steps scrolling SHALL update the reading bookmark without remounting its rows, replacing an active editor or submitting completion.
 
 #### Scenario: Reopen the same recipe
 - **WHEN** a recipe has a held second-step bookmark and cooking mounts again using the same client store
@@ -357,3 +397,29 @@ A resolved recipe-specific completion SHALL allow cooking success feedback even 
 #### Scenario: Recipe unavailable
 - **WHEN** the meal-planning validation operation rejects the viewed recipe as unavailable
 - **THEN** the cooking completion request follows the failed-completion feedback path rather than confirming success
+
+### Requirement: Explain unavailable cooking instructions honestly
+Cooking SHALL distinguish a failed detail read from a successful read with no usable instructions and SHALL NOT substitute invented recipe steps. Both states SHALL offer Retry and retain Close, the presentation choices and hero detail access. Mark recipe as cooked SHALL remain available through existing completion pending and failure recovery.
+
+#### Scenario: Detail read rejects
+- **WHEN** the current cooking detail read rejects
+- **THEN** cooking shows a read failure and Retry without invented instructions, retaining completion and detail access
+
+#### Scenario: Stored instructions are absent or unusable
+- **WHEN** the current detail read succeeds without usable instructions
+- **THEN** cooking explains that steps are unavailable and retains Retry, completion and detail access
+
+### Requirement: Report unavailable cooking steps through existing quality recovery
+For a loaded recipe eligible for content reporting with no usable instructions, cooking SHALL offer Report steps using the shared quality form with steps context. Existing server-owned submission and reimport policy SHALL apply. Cooking SHALL apply returned instructions and acknowledge a started reimport as background work, without claiming readiness. Retry SHALL reread current content explicitly.
+
+#### Scenario: Flag missing steps and start reimport
+- **WHEN** an eligible recipe has no usable steps and a report submission starts reimport
+- **THEN** the shared form submits the report, cooking applies its returned recipe and acknowledges background work while Retry remains available
+
+#### Scenario: Read recovered instructions
+- **WHEN** Retry subsequently returns usable instructions
+- **THEN** cooking presents those instructions using the selected reading mode
+
+#### Scenario: Departed recipe response
+- **WHEN** the cooking identity changes before its old detail read settles
+- **THEN** the old response does not replace current content or failure feedback

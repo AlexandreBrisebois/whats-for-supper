@@ -177,8 +177,11 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
         builder.Services.AddSingleton<SseConnectionManager>();
         builder.Services.AddScoped<IScheduleEventPublisher, SseEventPublisher>();
         builder.Services.AddScoped<GroceryRecomputeService>();
+        builder.Services.AddScoped<GroceryExtraService>();
+        builder.Services.AddScoped<GroceryExtraRolloverService>();
         builder.Services.AddScoped<IngredientCategoryService>();
         builder.Services.AddScoped<ScheduleService>();
+        builder.Services.AddSingleton<VotingSession>();
         builder.Services.AddScoped<DiscoveryService>();
         builder.Services.AddSingleton<HistoricalInterestOptions>();
         builder.Services.AddScoped<HistoricalInterestService>();
@@ -264,8 +267,33 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
 
                 return instance;
             });
+        orchestratorMock.Setup(o => o.InitializeUrlCaptureAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Guid id, CancellationToken ct) =>
+            {
+                using var scope = _app!.Services.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+                var instance = db.WorkflowInstances.Include(w => w.Tasks).Single(w => w.Id == id);
+                if (instance.Status != WorkflowStatus.Paused) return instance;
+                db.WorkflowTasks.RemoveRange(instance.Tasks);
+                instance.Tasks.Clear();
+                instance.Tasks.Add(new WorkflowTask
+                {
+                    TaskId = Guid.NewGuid(), InstanceId = id, TaskName = "mock", ProcessorName = "Mock",
+                    Payload = instance.Parameters, Status = RecipeApi.Models.TaskStatus.Pending,
+                    CreatedAt = DateTimeOffset.UtcNow, UpdatedAt = DateTimeOffset.UtcNow
+                });
+                db.WorkflowTasks.AddRange(instance.Tasks);
+                instance.Status = WorkflowStatus.Processing;
+                db.SaveChanges();
+                return instance;
+            });
         WorkflowOrchestratorMock = orchestratorMock;
         builder.Services.AddSingleton<IWorkflowOrchestrator>(orchestratorMock.Object);
+        if (_configurationOverrides.GetValueOrDefault("Tests:RealWorkflowOrchestrator") == "true")
+        {
+            builder.Services.AddScoped<WorkflowRepository>();
+            builder.Services.AddScoped<IWorkflowOrchestrator, WorkflowOrchestrator>();
+        }
 
         builder.Services.AddSingleton<DataRootResolver>();
         builder.Services.AddSingleton<RecipesRootResolver>();

@@ -11,6 +11,7 @@ import { WeekStoreInitializer } from '@/components/WeekStoreInitializer';
 import { LibraryToast } from '@/components/capture/LibraryToast';
 import { RecipeFailureBanner } from '@/components/capture/RecipeFailureBanner';
 import { useEffect } from 'react';
+import { useVisualViewportOffset } from '@/hooks/useVisualViewportOffset';
 import { useLibraryStore } from '@/store/libraryStore';
 import { useCaptureStore } from '@/store/captureStore';
 import { BackgroundBlobs } from '@/components/ui/BackgroundBlobs';
@@ -21,6 +22,7 @@ import { FeatureFlagProvider } from '@/components/featureFlags/FeatureFlagProvid
 
 export default function AppRouteLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const visualViewportOffset = useVisualViewportOffset();
   const pdfActive = usePdfCaptureStore((state) => Boolean(state.selection));
 
   // Mount SSE stream once at layout level — survives page navigation within the app shell
@@ -92,7 +94,8 @@ export default function AppRouteLayout({ children }: { children: React.ReactNode
       {/* Notification layer — fixed at the top, stackable flex column */}
       <div
         data-testid="notification-zone"
-        className="fixed left-4 right-4 top-[calc(1rem+env(safe-area-inset-top))] z-[100] flex flex-col items-center gap-2 pointer-events-none"
+        style={{ top: `calc(1rem + env(safe-area-inset-top) + ${visualViewportOffset}px)` }}
+        className="fixed left-4 right-4 top-[calc(1rem+env(safe-area-inset-top))] z-[200] flex flex-col items-center gap-2 pointer-events-none"
       >
         <LanguageSwitchProposal />
         <RecipeFailureBanner />

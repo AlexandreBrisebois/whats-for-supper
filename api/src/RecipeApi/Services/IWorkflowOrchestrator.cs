@@ -9,5 +9,7 @@ public interface IWorkflowOrchestrator
         Dictionary<string, string> parameters,
         DateTimeOffset? scheduledAt = null);
 
+    Task<WorkflowInstance?> InitializeUrlCaptureAsync(Guid instanceId, CancellationToken ct = default);
+
     Task<WorkflowDefinition> GetDefinitionAsync(string workflowId);
 }

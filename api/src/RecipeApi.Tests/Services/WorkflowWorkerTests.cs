@@ -1721,7 +1721,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
         Assert.Equal(TaskStatus.Failed, failedTask.Status);
         Assert.Contains("AI pipeline exploded", failedTask.ErrorMessage);
 
-        var failures = await new CaptureFailureService(queryDb, _clock).GetActiveFailuresAsync();
+        var failures = await new CaptureFailureService(queryDb, _clock, Mock.Of<IWorkflowOrchestrator>()).GetActiveFailuresAsync();
         var report = await queryDb.RecipeImportReports.SingleAsync(r => r.RecipeId == recipeId);
         if (!importFailed)
         {

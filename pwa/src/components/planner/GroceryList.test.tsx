@@ -11,8 +11,20 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, act, within, waitFor } from '@testing-library/react';
 
-const { mockToggleGroceryItem } = vi.hoisted(() => ({
+const {
+  mockToggleGroceryItem,
+  mockCreateExtra,
+  mockSuggestExtras,
+  mockUpdateExtra,
+  mockDeleteExtra,
+  mockAddToast,
+} = vi.hoisted(() => ({
   mockToggleGroceryItem: vi.fn(),
+  mockCreateExtra: vi.fn(),
+  mockSuggestExtras: vi.fn(),
+  mockUpdateExtra: vi.fn(),
+  mockDeleteExtra: vi.fn(),
+  mockAddToast: vi.fn(),
 }));
 
 // ── Store mock ────────────────────────────────────────────────────────────────
@@ -43,6 +55,18 @@ vi.mock('@/lib/api/ingredients', () => ({
   reclassifyIngredient: vi.fn(),
 }));
 
+vi.mock('@/lib/api/grocery-extras', () => ({
+  createGroceryExtra: mockCreateExtra,
+  suggestGroceryExtraNames: mockSuggestExtras,
+  updateGroceryExtra: mockUpdateExtra,
+  deleteGroceryExtra: mockDeleteExtra,
+}));
+
+vi.mock('@/store/uiStore', () => ({
+  useUiStore: (selector: (state: { addToast: typeof mockAddToast }) => unknown) =>
+    selector({ addToast: mockAddToast }),
+}));
+
 // ── aisleOrder mock — pin to a single section so tests are deterministic ──────
 
 vi.mock('@/lib/grocery/aisleOrder', () => ({
@@ -69,7 +93,11 @@ vi.mock('framer-motion', () => ({
 
 vi.mock('@/locales', () => ({
   t: (_key: string, fallback: string) => fallback,
-  tWithVars: (_key: string, fallback: string) => fallback,
+  tWithVars: (_key: string, fallback: string, vars: Record<string, string | number>) =>
+    Object.entries(vars).reduce(
+      (result, [name, value]) => result.replace(`{{${name}}}`, String(value)),
+      fallback
+    ),
 }));
 
 // ── Import component AFTER mocks ──────────────────────────────────────────────
@@ -124,6 +152,454 @@ beforeEach(() => {
   mockToggleGroceryItem.mockResolvedValue(undefined);
   vi.mocked(reclassifyIngredient).mockReset();
   useWeekStore.setState({ weekOffset: 0, groceryItems: [] });
+  useWeekStore.setState({
+    weekStartDate: '2025-01-06',
+    calendar: {
+      timeZone: 'UTC',
+      today: '2025-01-06',
+      capturedAtUtc: '2025-01-06T12:00:00Z',
+      currentWeekStartDate: '2025-01-06',
+      referenceWeekStartDate: '2025-01-06',
+      nextDayAtUtc: '2025-01-07T00:00:00Z',
+    },
+    groceryExtras: [],
+    pendingGroceryExtraIds: new Set(),
+  });
+  mockCreateExtra.mockReset();
+  mockSuggestExtras.mockReset();
+  mockUpdateExtra.mockReset();
+  mockDeleteExtra.mockReset();
+  mockAddToast.mockReset();
+});
+
+describe('GroceryList — everyday extras', () => {
+  const extra = {
+    id: '11111111-1111-4111-8111-111111111111',
+    lineageId: '11111111-1111-4111-8111-111111111111',
+    name: 'Coffee',
+    normalizedKey: 'coffee',
+    grocerySection: 'Pantry' as any,
+    checked: false,
+    occurrenceWeekStartDate: '2025-01-06' as any,
+    readOnly: false,
+    source: 'extra',
+    version: 1,
+  };
+
+  it('shows the composer only for the current week and suggestions fill without submitting', async () => {
+    vi.useFakeTimers();
+    mockSuggestExtras.mockResolvedValue(['Coffee beans']);
+    const { rerender } = render(<GroceryList weekOffset={0} items={[]} extras={[]} />);
+    const input = screen.getByRole('combobox', { name: 'Add an extra' });
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: 'co' } });
+    await act(async () => vi.advanceTimersByTimeAsync(200));
+    expect(screen.getByRole('status')).toHaveTextContent('1 suggestion available');
+    fireEvent.click(screen.getByRole('option').querySelector('button')!);
+    expect(input).toHaveValue('Coffee beans');
+    expect(mockCreateExtra).not.toHaveBeenCalled();
+    useWeekStore.setState({ weekStartDate: '2025-01-13' });
+    rerender(<GroceryList weekOffset={1} items={[]} extras={[]} />);
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+    vi.useRealTimers();
+  });
+
+  it('uses absolute Monday rather than offset and supports active-option keyboard selection', async () => {
+    vi.useFakeTimers();
+    mockSuggestExtras.mockResolvedValue(['Coffee beans', 'Coffee filters']);
+    render(<GroceryList weekOffset={7} items={[]} extras={[]} />);
+    const input = screen.getByRole('combobox', { name: 'Add an extra' });
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: 'co' } });
+    await act(async () => vi.advanceTimersByTimeAsync(200));
+    fireEvent.keyDown(input, { key: 'ArrowDown' });
+    expect(input).toHaveAttribute('aria-activedescendant', 'grocery-extra-option-0');
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(input).toHaveValue('Coffee beans');
+    expect(mockCreateExtra).not.toHaveBeenCalled();
+    vi.useRealTimers();
+  });
+
+  it('uses mobile-keyboard replacement text for the household-history lookup', async () => {
+    vi.useFakeTimers();
+    mockSuggestExtras.mockResolvedValue(['Coffee beans']);
+    render(<GroceryList weekOffset={0} items={[]} extras={[]} />);
+    const input = screen.getByRole('combobox', { name: 'Add an extra' });
+    fireEvent.focus(input);
+    fireEvent.input(input, {
+      target: { value: 'coffee' },
+      inputType: 'insertReplacementText',
+      data: 'coffee',
+    });
+
+    await act(async () => vi.advanceTimersByTimeAsync(200));
+
+    expect(mockSuggestExtras).toHaveBeenCalledWith('coffee');
+    expect(screen.getByRole('option')).toHaveTextContent('Coffee beans');
+    vi.useRealTimers();
+  });
+
+  it('announces the server-selected section after a successful add', async () => {
+    mockCreateExtra.mockImplementation(async (_name, weekStartDate, clientId) => ({
+      ...extra,
+      id: clientId,
+      occurrenceWeekStartDate: weekStartDate,
+    }));
+    render(<GroceryList weekOffset={0} items={[]} extras={[]} />);
+
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'Coffee' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+
+    await waitFor(() =>
+      expect(mockAddToast).toHaveBeenCalledWith({
+        type: 'success',
+        message: 'Saved to Pantry',
+      })
+    );
+  });
+
+  it('uses an icon-only Add action with an accessible name and a stable touch target', () => {
+    render(<GroceryList weekOffset={0} items={[]} />);
+    const add = screen.getByRole('button', { name: 'Add' });
+    expect(add).toHaveTextContent('');
+    expect(add.querySelector('svg')).toBeInTheDocument();
+    expect(add).toHaveClass('h-12', 'w-12', 'shrink-0');
+  });
+
+  it('keeps the composer focused when the Add button is pressed', () => {
+    render(<GroceryList weekOffset={0} items={[]} extras={[]} />);
+    const input = screen.getByRole('combobox', { name: 'Add an extra' });
+    const add = screen.getByRole('button', { name: 'Add' });
+    input.focus();
+    expect(input).toHaveFocus();
+
+    expect(fireEvent.pointerDown(add)).toBe(false);
+    expect(input).toHaveFocus();
+  });
+
+  it('queries only while the eligible composer is focused and cancels on focus exit', async () => {
+    vi.useFakeTimers();
+    mockSuggestExtras.mockResolvedValue(['Coffee beans']);
+    render(<GroceryList weekOffset={0} items={[]} extras={[]} />);
+    const input = screen.getByRole('combobox', { name: 'Add an extra' });
+
+    fireEvent.change(input, { target: { value: 'co' } });
+    await act(async () => vi.advanceTimersByTimeAsync(250));
+    expect(mockSuggestExtras).not.toHaveBeenCalled();
+
+    fireEvent.focus(input);
+    fireEvent.blur(input, { relatedTarget: null });
+    await act(async () => vi.advanceTimersByTimeAsync(250));
+    expect(mockSuggestExtras).not.toHaveBeenCalled();
+    expect(screen.queryByRole('option')).not.toBeInTheDocument();
+    vi.useRealTimers();
+  });
+
+  it('ignores a stale suggestion response and preserves free text when lookup fails', async () => {
+    vi.useFakeTimers();
+    let resolveFirst!: (names: string[]) => void;
+    let resolveSecond!: (names: string[]) => void;
+    mockSuggestExtras
+      .mockImplementationOnce(() => new Promise<string[]>((resolve) => (resolveFirst = resolve)))
+      .mockImplementationOnce(() => new Promise<string[]>((resolve) => (resolveSecond = resolve)))
+      .mockRejectedValueOnce(new Error('lookup unavailable'));
+    render(<GroceryList weekOffset={0} items={[]} extras={[]} />);
+    const input = screen.getByRole('combobox', { name: 'Add an extra' });
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: 'co' } });
+    await act(async () => vi.advanceTimersByTimeAsync(200));
+    fireEvent.change(input, { target: { value: 'cof' } });
+    await act(async () => vi.advanceTimersByTimeAsync(200));
+    await act(async () => resolveSecond(['Coffee filters']));
+    expect(screen.getByRole('option')).toHaveTextContent('Coffee filters');
+    await act(async () => resolveFirst(['Cocoa']));
+    expect(screen.getByRole('option')).toHaveTextContent('Coffee filters');
+
+    fireEvent.change(input, { target: { value: 'tea' } });
+    await act(async () => vi.advanceTimersByTimeAsync(200));
+    expect(input).toHaveValue('tea');
+    expect(screen.getByRole('button', { name: 'Add' })).toBeEnabled();
+    expect(screen.queryByRole('option')).not.toBeInTheDocument();
+    vi.useRealTimers();
+  });
+
+  it('reuses its idempotency UUID after an uncertain create outcome', async () => {
+    mockCreateExtra.mockRejectedValueOnce(new Error('response lost')).mockResolvedValueOnce(extra);
+    render(<GroceryList weekOffset={0} items={[]} extras={[]} />);
+    const input = screen.getByRole('combobox');
+    fireEvent.change(input, { target: { value: 'Coffee' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+    await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+    await waitFor(() => expect(mockCreateExtra).toHaveBeenCalledTimes(2));
+    expect(mockCreateExtra.mock.calls[1][2]).toBe(mockCreateExtra.mock.calls[0][2]);
+  });
+
+  it('offers a new explicit submission after authoritative absence of an earlier accepted create', async () => {
+    const sync = vi.fn().mockResolvedValue(undefined);
+    useWeekStore.setState({ sync });
+    mockCreateExtra.mockRejectedValueOnce(
+      Object.assign(new Error('Removed elsewhere'), { absent: true })
+    );
+    mockCreateExtra.mockImplementationOnce(async (_name, week, id) => ({
+      ...extra,
+      id,
+      occurrenceWeekStartDate: week,
+    }));
+    render(<GroceryList weekOffset={0} items={[]} />);
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'Coffee' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+    await waitFor(() => expect(sync).toHaveBeenCalledOnce());
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+    await waitFor(() => expect(mockCreateExtra).toHaveBeenCalledTimes(2));
+    expect(mockCreateExtra.mock.calls[1][2]).not.toBe(mockCreateExtra.mock.calls[0][2]);
+  });
+
+  it('rejects a create response with the wrong identity and rereads authoritatively', async () => {
+    const sync = vi.fn().mockResolvedValue(undefined);
+    useWeekStore.setState({ sync });
+    mockCreateExtra.mockImplementationOnce(async (_name, weekStartDate) => ({
+      ...extra,
+      id: '22222222-2222-4222-8222-222222222222',
+      occurrenceWeekStartDate: weekStartDate,
+    }));
+    render(<GroceryList weekOffset={0} items={[]} extras={[]} />);
+
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'Coffee' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+
+    await waitFor(() => expect(sync).toHaveBeenCalledOnce());
+    expect(screen.getByRole('combobox')).toHaveValue('Coffee');
+    expect(screen.getByRole('alert')).toHaveTextContent('Could not add this extra');
+    expect(useWeekStore.getState().groceryExtras).toEqual([]);
+  });
+
+  it('adds explicitly and keeps duplicate extras distinct from recipe rows', async () => {
+    mockCreateExtra.mockResolvedValue(extra);
+    render(
+      <GroceryList
+        weekOffset={0}
+        items={[makeItem('Coffee', 'Pantry')]}
+        extras={[extra, { ...extra, id: '22222222-2222-4222-8222-222222222222' }]}
+      />
+    );
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'Coffee' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+    await waitFor(() => expect(mockCreateExtra).toHaveBeenCalled());
+    expect(screen.getAllByTestId('grocery-extra-row')).toHaveLength(2);
+    expect(screen.getByTestId('grocery-item-label')).toHaveTextContent('Coffee');
+  });
+
+  it('renders historical extras without mutation controls', () => {
+    render(
+      <GroceryList
+        weekOffset={-1}
+        items={[]}
+        extras={[{ ...extra, readOnly: true, checked: true }]}
+      />
+    );
+    expect(screen.getByText('Bought')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Edit Coffee/ })).not.toBeInTheDocument();
+    expect(screen.queryByTestId('grocery-extra-checkbox')).not.toBeInTheDocument();
+  });
+
+  it('checks an occurrence by identity and retains its noninteractive Extra label', async () => {
+    mockUpdateExtra.mockResolvedValue({ ...extra, checked: true, version: 2 });
+    render(<GroceryList weekOffset={0} items={[]} extras={[extra]} />);
+    fireEvent.click(screen.getByTestId('grocery-extra-checkbox'));
+    await waitFor(() => expect(mockUpdateExtra).toHaveBeenCalledWith(extra, { checked: true }));
+    expect(screen.getByText('Extra').tagName).toBe('SPAN');
+  });
+
+  it('uses icon-only save and delete actions without a cancel action while renaming', () => {
+    render(<GroceryList weekOffset={0} items={[]} extras={[extra]} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Coffee' }));
+
+    const save = screen.getByRole('button', { name: 'Save' });
+    const remove = screen.getByRole('button', { name: 'Delete' });
+    expect(screen.queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument();
+    expect(save).toHaveTextContent('');
+    expect(remove).toHaveTextContent('');
+    expect(save.querySelector('svg')).toBeInTheDocument();
+    expect(remove.querySelector('svg')).toBeInTheDocument();
+    expect(save).toHaveClass('h-11', 'w-11');
+    expect(remove).toHaveClass('h-11', 'w-11');
+  });
+
+  it.each(['check', 'delete'] as const)(
+    'optimistically applies %s and restores the row after an uncertain failure',
+    async (operation) => {
+      let fail!: (error: Error) => void;
+      const pending = new Promise((_, reject) => {
+        fail = reject;
+      });
+      const sync = vi.fn().mockResolvedValue(undefined);
+      useWeekStore.setState({ groceryExtras: [extra], sync });
+      const View = () => (
+        <GroceryList
+          weekOffset={0}
+          items={[]}
+          extras={useWeekStore((state) => state.groceryExtras)}
+        />
+      );
+      mockUpdateExtra.mockReturnValue(pending);
+      mockDeleteExtra.mockReturnValue(pending);
+      render(<View />);
+      if (operation === 'check') {
+        fireEvent.click(screen.getByTestId('grocery-extra-checkbox'));
+        expect(screen.getByTestId('grocery-extra-checkbox')).toHaveAttribute(
+          'aria-checked',
+          'true'
+        );
+      } else {
+        fireEvent.click(screen.getByRole('button', { name: 'Edit Coffee' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+        expect(screen.queryByTestId('grocery-extra-row')).not.toBeInTheDocument();
+      }
+      await act(async () => fail(new Error('response lost')));
+      expect(screen.getByTestId('grocery-extra-row')).toBeInTheDocument();
+      expect(useWeekStore.getState().groceryExtras[0].checked).toBe(false);
+      expect(sync).toHaveBeenCalledOnce();
+      expect(screen.getByRole('alert')).toHaveTextContent('Could not save');
+    }
+  );
+
+  it('rejects blank rename and retains the authoritative name on a failed save', async () => {
+    const sync = vi.fn().mockResolvedValue(undefined);
+    useWeekStore.setState({ groceryExtras: [extra], sync });
+    mockUpdateExtra.mockRejectedValue(new Error('save failed'));
+    render(<GroceryList weekOffset={0} items={[]} extras={[extra]} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Coffee' }));
+    const input = screen.getByRole('textbox', { name: 'Extra name' });
+    fireEvent.change(input, { target: { value: '   ' } });
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
+    fireEvent.change(input, { target: { value: 'Changed coffee' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(sync).toHaveBeenCalledOnce());
+    expect(useWeekStore.getState().groceryExtras[0].name).toBe('Coffee');
+    expect(screen.getByRole('alert')).toHaveTextContent('Could not save');
+  });
+
+  it('keeps existing rows usable and announces a pending icon-only add', async () => {
+    let finish!: (value: typeof extra) => void;
+    mockCreateExtra.mockImplementation(
+      (_name, week, id) =>
+        new Promise((resolve) => {
+          finish = () => resolve({ ...extra, id, occurrenceWeekStartDate: week });
+        })
+    );
+    render(<GroceryList weekOffset={0} items={[]} extras={[extra]} />);
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'Coffee' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+    expect(screen.getByRole('button', { name: 'Adding…' })).toBeDisabled();
+    expect(screen.getByText('Adding…')).toHaveAttribute('role', 'status');
+    expect(screen.getByTestId('grocery-extra-checkbox')).not.toBeDisabled();
+    await act(async () => finish(extra));
+    expect(screen.getByRole('combobox')).toHaveValue('');
+  });
+
+  it('keeps the authoritative category while an extra category save is pending', async () => {
+    let finish!: (value: typeof extra) => void;
+    mockUpdateExtra.mockReturnValue(
+      new Promise((resolve) => {
+        finish = resolve;
+      })
+    );
+    useWeekStore.setState({ groceryExtras: [extra] });
+    render(<GroceryList weekOffset={0} items={[]} extras={[extra]} />);
+    fireEvent.click(screen.getByRole('button', { name: /Change section.*Coffee/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Produce' }));
+    expect(useWeekStore.getState().groceryExtras[0].grocerySection).toBe(extra.grocerySection);
+    await act(async () => finish({ ...extra, grocerySection: 'Produce', version: 2 }));
+    expect(useWeekStore.getState().groceryExtras[0].grocerySection).toBe('Produce');
+  });
+
+  it('clears the pending guard before an uncertain mutation rereads authoritative state', async () => {
+    mockUpdateExtra.mockRejectedValueOnce(new Error('response lost'));
+    const sync = vi.fn().mockImplementation(async () => {
+      expect(useWeekStore.getState().pendingGroceryExtraIds.has(extra.id)).toBe(false);
+    });
+    useWeekStore.setState({ sync });
+    render(<GroceryList weekOffset={0} items={[]} extras={[extra]} />);
+
+    fireEvent.click(screen.getByTestId('grocery-extra-checkbox'));
+
+    await waitFor(() => expect(sync).toHaveBeenCalledOnce());
+  });
+
+  it('clears the pending guard before an uncertain delete rereads authoritative state', async () => {
+    mockDeleteExtra.mockRejectedValueOnce(new Error('response lost'));
+    const sync = vi.fn().mockImplementation(async () => {
+      expect(useWeekStore.getState().pendingGroceryExtraIds.has(extra.id)).toBe(false);
+    });
+    useWeekStore.setState({ sync, groceryExtras: [extra] });
+    render(<GroceryList weekOffset={0} items={[]} extras={[extra]} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Coffee' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+
+    await waitFor(() => expect(sync).toHaveBeenCalledOnce());
+  });
+
+  it('reconciles a current occurrence after navigation to its eligible next-week projection', async () => {
+    let resolveUpdate!: (value: typeof extra) => void;
+    mockUpdateExtra.mockImplementationOnce(
+      () => new Promise<typeof extra>((resolve) => (resolveUpdate = resolve))
+    );
+    useWeekStore.setState({ groceryExtras: [extra] });
+    render(<GroceryList weekOffset={0} items={[]} extras={[extra]} />);
+
+    fireEvent.click(screen.getByTestId('grocery-extra-checkbox'));
+    act(() => useWeekStore.setState({ weekOffset: 1, weekStartDate: '2025-01-13' }));
+    await act(async () => resolveUpdate({ ...extra, checked: true, version: 2 }));
+
+    expect(useWeekStore.getState().groceryExtras).toEqual([]);
+  });
+
+  it('rejects a mutation response for a different occurrence and refreshes authoritatively', async () => {
+    const sync = vi.fn().mockResolvedValue(undefined);
+    useWeekStore.setState({ sync, groceryExtras: [extra] });
+    mockUpdateExtra.mockResolvedValueOnce({
+      ...extra,
+      id: '22222222-2222-4222-8222-222222222222',
+      name: 'Wrong occurrence',
+      version: 2,
+    });
+    render(<GroceryList weekOffset={0} items={[]} extras={[extra]} />);
+
+    fireEvent.click(screen.getByTestId('grocery-extra-checkbox'));
+
+    await waitFor(() => expect(sync).toHaveBeenCalledOnce());
+    expect(useWeekStore.getState().groceryExtras).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ name: 'Wrong occurrence' })])
+    );
+  });
+
+  it('combines recipe rows and extras in one aisle with one shared count', () => {
+    render(<GroceryList weekOffset={0} items={[makeItem('Coffee', 'Pantry')]} extras={[extra]} />);
+
+    expect(screen.getAllByTestId('aisle-section-Pantry')).toHaveLength(1);
+    expect(within(screen.getByTestId('aisle-section-Pantry')).getByText('0/2 items')).toBeVisible();
+    expect(
+      within(screen.getByTestId('aisle-section-Pantry')).getByTestId('grocery-extra-row')
+    ).toBeVisible();
+    expect(
+      within(screen.getByTestId('aisle-section-Pantry')).getByTestId('grocery-item-label')
+    ).toHaveTextContent('Coffee');
+  });
+
+  it('counts a checked extra toward aisle completion and initial collapse', () => {
+    render(<GroceryList weekOffset={0} items={[]} extras={[{ ...extra, checked: true }]} />);
+
+    const section = screen.getByTestId('aisle-section-Pantry');
+    expect(within(section).getByTestId('aisle-header-complete')).toHaveAttribute(
+      'aria-expanded',
+      'false'
+    );
+    expect(within(section).getByText('1/1 items')).toBeVisible();
+    expect(within(section).getByTestId('grocery-extra-row')).not.toBeVisible();
+  });
 });
 
 describe('GroceryList — checked item ordering', () => {

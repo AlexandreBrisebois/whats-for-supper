@@ -1,7 +1,18 @@
 import { create } from 'zustand';
-import type { DiscoveryRecipe } from '@/lib/api/discovery';
+import { getVotingSession, type DiscoveryRecipe } from '@/lib/api/discovery';
+import type { VotingSessionSnapshot } from '@/lib/api/generated/models';
+import { useWeekStore } from './weekStore';
+import { absoluteMonday } from '@/lib/deployment-calendar';
+
+let sessionRead: Promise<void> | null = null;
+let sessionGeneration = 0;
+let sessionReadAgain = false;
 
 interface DiscoveryState {
+  session: VotingSessionSnapshot | null;
+  sessionStatus: 'unknown' | 'loading' | 'ready' | 'unavailable';
+  refreshSession: () => Promise<void>;
+  applySession: (session: VotingSessionSnapshot, authoritative?: boolean) => void;
   hasPendingCards: boolean;
   setHasPendingCards: (hasCards: boolean) => void;
   /**
@@ -57,8 +68,76 @@ interface DiscoveryState {
  * (discoveryStack live updates via SSE).
  */
 export const useDiscoveryStore = create<DiscoveryState>((set, get) => ({
+  session: null,
+  sessionStatus: 'unknown',
+  refreshSession() {
+    if (sessionRead) {
+      sessionReadAgain = true;
+      sessionGeneration++;
+      return sessionRead;
+    }
+    sessionRead = (async () => {
+      do {
+        sessionReadAgain = false;
+        const generation = sessionGeneration;
+        set({ sessionStatus: 'loading' });
+        try {
+          const session = await getVotingSession();
+          if (generation === sessionGeneration) get().applySession(session, true);
+        } catch {
+          if (generation === sessionGeneration) set({ sessionStatus: 'unavailable' });
+        }
+      } while (sessionReadAgain);
+    })().finally(() => {
+      sessionRead = null;
+    });
+    return sessionRead;
+  },
+  applySession(session, authoritative = false) {
+    if (
+      !session?.incarnationId ||
+      !Number.isSafeInteger(session.revision) ||
+      !['unowned', 'collecting', 'converged'].includes(session.phase ?? '') ||
+      (session.phase !== 'unowned' &&
+        (!session.roundId ||
+          !session.weekStartDate ||
+          session.requiredSlots == null ||
+          session.coveredSlots == null ||
+          session.candidateCount == null ||
+          !session.smartDefaults))
+    )
+      return;
+    const current = get().session;
+    if (!authoritative && (!current || current.incarnationId !== session.incarnationId)) {
+      sessionGeneration++;
+      // A different host is established by HTTP, never by an unsolicited frame.
+      void get().refreshSession();
+      return;
+    }
+    if (
+      current?.incarnationId === session.incarnationId &&
+      (session.revision ?? -1) <= (current.revision ?? -1)
+    ) {
+      if (authoritative) set({ sessionStatus: 'ready' });
+      return;
+    }
+    sessionGeneration++;
+    set({
+      session,
+      sessionStatus: 'ready',
+      hasPendingCards: session.phase === 'converged' ? false : get().discoveryStack.length > 0,
+    });
+    const week = useWeekStore.getState();
+    if (
+      session.smartDefaults &&
+      session.roundId === week.votingRoundId &&
+      absoluteMonday(session.weekStartDate) === week.weekStartDate
+    )
+      week.applySmartDefaultsUpdate(session.smartDefaults);
+  },
   hasPendingCards: false,
-  setHasPendingCards: (hasCards) => set({ hasPendingCards: hasCards }),
+  setHasPendingCards: (hasCards) =>
+    set({ hasPendingCards: get().session?.phase !== 'converged' && hasCards }),
   fillTheGapVersion: 0,
   allSuggestionsVersion: 0,
   invalidateAllSuggestions: () =>

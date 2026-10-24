@@ -43,7 +43,7 @@ services:
   # ──────────────────────────────────────────────────────────────────────────
   cloudflared:
     container_name: whats-for-supper-cloudflared
-    image: cloudflare/cloudflared:2026.10.1
+    image: cloudflare/cloudflared:2026.10.3
     restart: unless-stopped
     environment:
       TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN}

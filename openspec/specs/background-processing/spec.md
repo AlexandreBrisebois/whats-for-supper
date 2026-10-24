@@ -523,3 +523,43 @@ When invoked, workflow-history pruning SHALL select Completed or Failed parents 
 #### Scenario: Pruned identity reread
 - **WHEN** an instance and its tasks were successfully pruned
 - **THEN** subsequent generic reads for those removed identities return the promoted missing-target outcomes; no history restoration is implied
+
+### Requirement: Retain terminal maintenance-command history for diagnosis
+
+Dreaming SHALL prune only `completed` and `skipped` maintenance commands whose
+`completedAt` is at or before the injected UTC clock time minus the configured
+retention days. The processor SHALL default to 30 days and at most 500 deletions
+per invocation. `pending`, `processing` and `failed` commands SHALL be retained
+regardless of age. This policy SHALL be independent of workflow-history retention.
+
+#### Scenario: Terminal cutoff and protected states
+- **WHEN** terminal commands exist before, at and after the 30-day cutoff alongside old pending, processing and failed commands
+- **THEN** the commands before and exactly at the cutoff are deleted up to the batch limit, newer terminal commands and every protected state remain, and the result reports only committed deletions
+
+#### Scenario: Legacy terminal row without completion time
+- **WHEN** a completed or skipped command has no completion timestamp
+- **THEN** a pruning transaction initializes its completion timestamp to the current injected UTC time and retains it for the full retention period
+
+#### Scenario: Exact recovery invalidation
+- **WHEN** exact recovery changes a pending or processing maintenance command to skipped
+- **THEN** recovery records its completion time from the injected UTC clock so later pruning uses elapsed time since invalidation rather than its original creation time
+
+#### Scenario: Bounded repeatable pruning
+- **WHEN** more eligible commands exist than the configured positive batch size
+- **THEN** one invocation deletes no more than that limit and later invocations safely continue from persisted state
+
+#### Scenario: Atomic result and cancellation
+- **WHEN** persistence fails or cancellation prevents the pruning transaction from committing
+- **THEN** completion-time initialization and deletion are rolled back and no successful deletion result is reported
+
+### Requirement: Report maintenance-command pruning in Dreaming
+
+Dreaming SHALL run maintenance-command pruning after command processing and before
+report generation. The report SHALL include the committed deleted count and the
+count of legacy completion timestamps initialized by that run. A pruning failure
+SHALL follow normal workflow dependency failure behavior and prevent a report from
+claiming that the failed pruning work committed.
+
+#### Scenario: Successful repeated Dreaming runs
+- **WHEN** maintenance processing and pruning succeed on repeated Dreaming runs
+- **THEN** the report waits for both tasks and records each run's committed counts, including zero when no further rows are eligible

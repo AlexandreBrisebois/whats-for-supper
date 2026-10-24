@@ -432,7 +432,7 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task FindSimilar_WithPlannerContextRetainsOnlyPlannedRecipeDemotion()
+    public async Task FindSimilar_WithPlannerContext_PreservesSimilarityOrder()
     {
         var source = CreateRecipe("Tomato Pasta", "Tomato basil pasta", "30 min");
         source.Ingredients = JsonSerializer.Serialize(new[] { "pasta", "tomato", "basil" });
@@ -440,7 +440,7 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
         planned.Ingredients = source.Ingredients;
         planned.CreatedAt = TestNow;
         var available = CreateRecipe("Tomato Pasta Available", "Tomato basil pasta", "30 min");
-        available.Ingredients = source.Ingredients;
+        available.Ingredients = JsonSerializer.Serialize(new[] { "pasta", "tomato" });
         available.CreatedAt = TestNow.AddMinutes(-1);
         await SeedRecipeAsync(source);
         await SeedRecipeAsync(planned);
@@ -449,14 +449,14 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
 
         using var document = await ReadDataAsync(await PostSearchAsync(new { similarToRecipeId = source.Id, weekOffset = 0, dayIndex = 1 }));
         var topPick = document.RootElement.GetProperty("topPick");
-        var plannedResult = document.RootElement.GetProperty("results").EnumerateArray()
-            .Single(result => result.GetProperty("id").GetGuid() == planned.Id);
+        var availableResult = document.RootElement.GetProperty("results").EnumerateArray()
+            .Single(result => result.GetProperty("id").GetGuid() == available.Id);
 
-        Assert.Equal(available.Id, topPick.GetProperty("id").GetGuid());
-        Assert.Contains(plannedResult.GetProperty("reasons").EnumerateArray(), reason =>
+        Assert.Equal(planned.Id, topPick.GetProperty("id").GetGuid());
+        Assert.DoesNotContain(topPick.GetProperty("reasons").EnumerateArray(), reason =>
             reason.GetProperty("source").GetString() == "planner-fit");
-        Assert.DoesNotContain(plannedResult.GetProperty("reasons").EnumerateArray(), reason =>
-            reason.GetProperty("source").GetString() is "rating-boost" or "vote-boost");
+        Assert.DoesNotContain(availableResult.GetProperty("reasons").EnumerateArray(), reason =>
+            reason.GetProperty("source").GetString() == "planner-fit");
     }
 
     [Fact]
@@ -681,14 +681,13 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
         using var document = await ReadDataAsync(response);
         var results = document.RootElement.GetProperty("results").EnumerateArray().ToList();
 
-        Assert.Equal(JsonValueKind.Null, document.RootElement.GetProperty("topPick").ValueKind);
-        Assert.Equal(oldest.Id, results[0].GetProperty("id").GetGuid());
-        Assert.Equal(middle.Id, results[1].GetProperty("id").GetGuid());
-        Assert.Equal(newest.Id, results[2].GetProperty("id").GetGuid());
+        Assert.Equal(oldest.Id, document.RootElement.GetProperty("topPick").GetProperty("id").GetGuid());
+        Assert.Equal(middle.Id, results[0].GetProperty("id").GetGuid());
+        Assert.Equal(newest.Id, results[1].GetProperty("id").GetGuid());
     }
 
     [Fact]
-    public async Task Search_WithPlannerContext_Excludes_Recipes_Already_Assigned_In_TargetWeek()
+    public async Task Search_WithPlannerContext_DoesNotDemote_AlreadyAssigned_ExplicitRecipe()
     {
         var assignedRecipe = CreateRecipe(
             "Assigned Chicken",
@@ -706,7 +705,7 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
             weekOffset: 0,
             assignedRecipeIds: [assignedRecipe.Id]);
 
-        var response = await PostSearchAsync(new { query = "chicken", weekOffset = 0, dayIndex = 2 });
+        var response = await PostSearchAsync(new { query = "assigned chicken", weekOffset = 0, dayIndex = 2 });
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
@@ -714,16 +713,10 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
         var topPick = document.RootElement.GetProperty("topPick");
         var results = document.RootElement.GetProperty("results");
 
-        // NEW BEHAVIOR: Planned recipes are NOT excluded, they are just demoted.
-        // We verify that the assigned recipe is PRESENT but has the "already planned" reason.
-        var assigned = results.EnumerateArray().FirstOrDefault(r => r.GetProperty("id").GetGuid() == assignedRecipe.Id);
-        Assert.NotEqual(default, assigned.ValueKind);
-        Assert.Contains(assigned.GetProperty("reasons").EnumerateArray(), reason =>
-            reason.GetProperty("source").GetString() == "planner-fit" &&
-            reason.GetProperty("label").GetString() == "Already planned for this week");
-
-        var topPickId = topPick.GetProperty("id").GetGuid();
-        Assert.True(topPickId == availableRecipe.Id || results.EnumerateArray().Any(r => r.GetProperty("id").GetGuid() == availableRecipe.Id));
+        Assert.Equal(assignedRecipe.Id, topPick.GetProperty("id").GetGuid());
+        Assert.Contains(results.EnumerateArray(), result => result.GetProperty("id").GetGuid() == availableRecipe.Id);
+        Assert.DoesNotContain(topPick.GetProperty("reasons").EnumerateArray(), reason =>
+            reason.GetProperty("source").GetString() == "planner-fit");
     }
 
     [Fact]
@@ -754,7 +747,7 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Search_Prefers_Love_Rated_Recipe_Over_Equivalent_Unrated_Recipe()
+    public async Task Search_DoesNotEmit_RatingBoost_ForExplicitSearch()
     {
         var neutralRecipe = CreateRecipe("Chicken Pasta", "Bright lemon chicken pasta", "30 min");
         neutralRecipe.Rating = RecipeRating.Unknown;
@@ -771,20 +764,22 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
 
         using var document = await ReadDataAsync(response);
         var topPick = document.RootElement.GetProperty("topPick");
-        var reasons = topPick.GetProperty("reasons");
 
         Assert.Equal(lovedRecipe.Id, topPick.GetProperty("id").GetGuid());
-        Assert.Contains(reasons.EnumerateArray(), reason => reason.GetProperty("source").GetString() == "rating-boost");
+        Assert.DoesNotContain(topPick.GetProperty("reasons").EnumerateArray(), reason =>
+            reason.GetProperty("source").GetString() == "rating-boost");
     }
 
     [Fact]
-    public async Task Search_Demotes_Disliked_Recipe_Below_Equivalent_Unrated_Recipe()
+    public async Task Search_DoesNotDemote_Disliked_ExplicitRecipe()
     {
         var neutralRecipe = CreateRecipe("Chicken Tacos", "Fast chicken taco night", "25 min");
         neutralRecipe.Rating = RecipeRating.Unknown;
 
         var dislikedRecipe = CreateRecipe("Chicken Tacos Deluxe", "Fast chicken taco night", "25 min");
         dislikedRecipe.Rating = RecipeRating.Dislike;
+        dislikedRecipe.CreatedAt = TestNow;
+        neutralRecipe.CreatedAt = TestNow.AddMinutes(-1);
 
         await SeedRecipeAsync(neutralRecipe);
         await SeedRecipeAsync(dislikedRecipe);
@@ -795,12 +790,15 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
 
         using var document = await ReadDataAsync(response);
         var topPick = document.RootElement.GetProperty("topPick");
-        var dislikedResult = document.RootElement.GetProperty("results")
+        var neutralResult = document.RootElement.GetProperty("results")
             .EnumerateArray()
-            .Single(result => result.GetProperty("id").GetGuid() == dislikedRecipe.Id);
+            .Single(result => result.GetProperty("id").GetGuid() == neutralRecipe.Id);
 
-        Assert.Equal(neutralRecipe.Id, topPick.GetProperty("id").GetGuid());
-        Assert.Contains(dislikedResult.GetProperty("reasons").EnumerateArray(), reason => reason.GetProperty("source").GetString() == "rating-boost");
+        Assert.Equal(dislikedRecipe.Id, topPick.GetProperty("id").GetGuid());
+        Assert.DoesNotContain(topPick.GetProperty("reasons").EnumerateArray(), reason =>
+            reason.GetProperty("source").GetString() == "rating-boost");
+        Assert.DoesNotContain(neutralResult.GetProperty("reasons").EnumerateArray(), reason =>
+            reason.GetProperty("source").GetString() == "rating-boost");
     }
 
     [Fact]
@@ -829,7 +827,7 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Search_Applies_Bounded_Vote_Boost_And_Emits_Vote_Reason()
+    public async Task Search_DoesNotEmit_VoteBoost_ForExplicitSearch()
     {
         var neutralRecipe = CreateRecipe("Chicken Rice Bowl", "Fresh bowl for busy nights", "30 min");
         var votedRecipe = CreateRecipe("Chicken Rice Bowl Plus", "Fresh bowl for busy nights", "30 min");
@@ -847,13 +845,12 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
         var results = document.RootElement.GetProperty("results");
 
         Assert.Equal(votedRecipe.Id, topPick.GetProperty("id").GetGuid());
-        Assert.Contains(topPick.GetProperty("reasons").EnumerateArray(), reason =>
-            reason.GetProperty("source").GetString() == "vote-boost" &&
-            reason.GetProperty("label").GetString() == "Family has shown interest");
+        Assert.DoesNotContain(topPick.GetProperty("reasons").EnumerateArray(), reason =>
+            reason.GetProperty("source").GetString() == "vote-boost");
     }
 
     [Fact]
-    public async Task Search_Caps_Vote_Boost_At_Maximum_Value()
+    public async Task Search_DoesNotApply_VoteCounts_ToExplicitOrder()
     {
         var cappedRecipe = CreateRecipe("Chicken Rice Bowl Capped", "Fresh bowl for busy nights", "30 min");
         var baselineRecipe = CreateRecipe("Chicken Rice Bowl Baseline", "Fresh bowl for busy nights", "30 min");
@@ -863,7 +860,7 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
         await SeedLikeVotesAsync(cappedRecipe.Id, 10);
         await SeedLikeVotesAsync(baselineRecipe.Id, 3);
 
-        // Explicitly set cappedRecipe as slightly newer to break ties
+        // Use creation time as the meaningful deterministic tie-break for equal retrieval scores.
         using (var scope = _factory.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
@@ -880,14 +877,12 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
         var results = document.RootElement.GetProperty("results");
 
         Assert.Equal(cappedRecipe.Id, topPick.GetProperty("id").GetGuid());
-        Assert.Contains(topPick.GetProperty("reasons").EnumerateArray(), reason =>
-            reason.GetProperty("source").GetString() == "vote-boost" &&
-            reason.GetProperty("label").GetString() == "Family has shown interest");
+        Assert.DoesNotContain(topPick.GetProperty("reasons").EnumerateArray(), reason =>
+            reason.GetProperty("source").GetString() == "vote-boost");
 
         var baselineResult = results.EnumerateArray().Single(result => result.GetProperty("id").GetGuid() == baselineRecipe.Id);
-        Assert.Contains(baselineResult.GetProperty("reasons").EnumerateArray(), reason =>
-            reason.GetProperty("source").GetString() == "vote-boost" &&
-            reason.GetProperty("label").GetString() == "Family has shown interest");
+        Assert.DoesNotContain(baselineResult.GetProperty("reasons").EnumerateArray(), reason =>
+            reason.GetProperty("source").GetString() == "vote-boost");
     }
 
     [Fact]

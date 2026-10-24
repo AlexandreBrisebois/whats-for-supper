@@ -16,6 +16,9 @@ public class FamilyMemberDto
     [JsonPropertyName("preferredLanguage")]
     public string? PreferredLanguage { get; set; }
 
+    [JsonPropertyName("cookingViewMode")]
+    public string? CookingViewMode { get; set; }
+
     [JsonPropertyName("createdAt")]
     public DateTimeOffset CreatedAt { get; set; }
 

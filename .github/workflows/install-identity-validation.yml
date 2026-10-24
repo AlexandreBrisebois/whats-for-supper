@@ -4,7 +4,19 @@ on:
   workflow_dispatch:
   pull_request:
     paths:
-      - 'pwa/**'
+      - 'pwa/Dockerfile'
+      - 'pwa/package*.json'
+      - 'pwa/next.config.*'
+      - 'pwa/src/app/layout.tsx'
+      - 'pwa/src/app/manifest.json/**'
+      - 'pwa/src/lib/baseManifest.json'
+      - 'pwa/src/lib/pdfManifest*'
+      - 'pwa/src/lib/server/app-identity*'
+      - 'pwa/src/lib/server/deployment-identity*'
+      - 'pwa/src/lib/server/release-channel*'
+      - 'pwa/src/lib/server/install-icons*'
+      - 'pwa/public/**'
+      - '.nvmrc'
       - 'docker/compose/**'
       - 'release-template/synology/compose.yaml'
       - 'scripts/agent/install_identity.py'

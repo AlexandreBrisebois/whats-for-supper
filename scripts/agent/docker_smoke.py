@@ -8,6 +8,8 @@ import signal
 import subprocess
 import sys
 import time
+import tempfile
+import uuid
 import urllib.error
 import urllib.request
 
@@ -36,9 +38,14 @@ def smoke_environment():
 
 
 def compose_command():
-    return ['docker', 'compose', '-p', 'whats-for-supper', '--env-file', str(ENV_FILE),
+    command = ['docker', 'compose', '-p', os.environ.get('WFS_SMOKE_PROJECT', 'whats-for-supper'), '--env-file', str(ENV_FILE),
             '-f', 'docker/compose/infrastructure.yml',
             '-f', 'docker/compose/apps.yml', '-f', 'docker/compose/ci-overrides.yml']
+    if os.environ.get('WFS_SMOKE_IMAGES'):
+        command += ['-f', os.environ['WFS_SMOKE_IMAGES']]
+    if os.environ.get('WFS_SMOKE_OVERRIDE'):
+        command += ['-f', os.environ['WFS_SMOKE_OVERRIDE']]
+    return command
 
 
 def call(command, env, capture=False, timeout=60):
@@ -112,14 +119,20 @@ def run_smoke(down_only=False):
             call(down, env, timeout=120)
             return 0
         call([sys.executable, '-B', '-c', 'import yaml'], env)
-        print('Resetting disposable whats-for-supper containers and volumes; local seed data is not mounted.', flush=True)
+        print(f'Resetting disposable {env.get("WFS_SMOKE_PROJECT", "whats-for-supper")} containers and volumes; local seed data is not mounted.', flush=True)
         cleanup_needed = True
         call(down, env, timeout=120)
-        call(compose + ['up', '--build', '--detach'], env, timeout=1800)
+        build_options = ['--no-build'] if env.get('WFS_SMOKE_IMAGES') else ['--build']
+        call(compose + ['up', *build_options, '--detach'], env, timeout=1800)
         wait_for('migration', lambda: migration_done(env), interval=2)
         wait_for('Postgres health', lambda: state('postgres', env).get('Health', {}).get('Status') == 'healthy', interval=2)
-        wait_for('API health (valid JSON)', lambda: probe('http://127.0.0.1:9001/api/health', require_json=True))
-        wait_for('PWA health', lambda: probe('http://127.0.0.1:3000/api/health'))
+        api_origin, pwa_origin = 'http://127.0.0.1:9001', 'http://127.0.0.1:3000'
+        if env.get('WFS_SMOKE_OVERRIDE'):
+            api_origin = 'http://' + call(compose + ['port', 'api', '9001'], env, True).strip()
+            pwa_origin = 'http://' + call(compose + ['port', 'pwa', '3000'], env, True).strip()
+            env['GENERATED_API_URL'] = api_origin + '/openapi/v1.json'
+        wait_for('API health (valid JSON)', lambda: probe(api_origin + '/api/health', require_json=True))
+        wait_for('PWA health', lambda: probe(pwa_origin + '/api/health'))
         call([sys.executable, '-B', 'scripts/agent/drift.py', '--endpoint-diff'], env)
     except (Exception, KeyboardInterrupt) as error:
         result = error_code(error)
@@ -140,14 +153,46 @@ def run_smoke(down_only=False):
     return result
 
 
+def run_isolated_smoke():
+    """Run existing smoke checks with owned names/volumes and ephemeral host ports."""
+    project = 'wfs-push-' + uuid.uuid4().hex[:12]
+    with tempfile.TemporaryDirectory(prefix='wfs-smoke-') as directory:
+        override = Path(directory) / 'isolated.yml'
+        lines = ['services:']
+        for service in ('traefik', 'postgres', 'migration', 'volume-fixer', 'api', 'pwa'):
+            lines += [f'  {service}:', f'    container_name: {project}-{service}']
+            if service in ('api', 'pwa', 'migration'):
+                lines += [f'    image: {project}-{service}:smoke']
+            if service in ('api', 'pwa'):
+                port = 9001 if service == 'api' else 3000
+                lines += [f"    ports: !override ['127.0.0.1::{port}']"]
+        lines += ['networks:', '  proxy:', f'    name: {project}-proxy',
+                  '  internal:', f'    name: {project}-internal']
+        override.write_text('\n'.join(lines) + '\n')
+        updates = {'WFS_SMOKE_PROJECT': project, 'WFS_SMOKE_OVERRIDE': str(override)}
+        previous = {key: os.environ.get(key) for key in updates}
+        os.environ.update(updates)
+        try:
+            return run_smoke()
+        finally:
+            for key, value in previous.items():
+                if value is None:
+                    os.environ.pop(key, None)
+                else:
+                    os.environ[key] = value
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--down', action='store_true', help='Remove the disposable development Compose containers and volumes')
+    parser.add_argument('--isolated', action='store_true', help='Use owned resources and dynamic loopback ports')
     args = parser.parse_args()
+    if args.down and args.isolated:
+        parser.error('--isolated owns its teardown; do not combine it with --down')
     def interrupt(signum, frame):
         raise Interrupted(signum)
     signal.signal(signal.SIGTERM, interrupt)
-    return run_smoke(args.down)
+    return run_isolated_smoke() if args.isolated else run_smoke(args.down)
 
 
 if __name__ == '__main__':

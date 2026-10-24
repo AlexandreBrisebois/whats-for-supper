@@ -1,5 +1,12 @@
 # Flow: Cook's Mode — Redesign Brief
 
+> **Historical design brief, not current implementation guidance.** The examples
+> and proposed checklist below record an earlier design. For the shipped 0.1.21
+> experience, see the [family guide](../../user-guide.md#whats-for-supper-home)
+> and [cooking specification](../../../openspec/specs/cooking/spec.md).
+> In particular, do not treat the proposed celebration before completion is
+> confirmed as the current completion contract.
+
 **Reviewed by:** The Mère-Designer
 **Context:** Cook's Mode is a full-screen overlay walked by a parent in an active kitchen. Wet hands. Limited attention. Children nearby. Every interaction must be decisive and require zero reading.
 

@@ -35,22 +35,22 @@
     "test:unit:watch": "vitest"
   },
   "dependencies": {
-    "@microsoft/kiota-abstractions": "^1.0.0-preview.110",
-    "@microsoft/kiota-http-fetchlibrary": "^1.0.0-preview.110",
-    "@microsoft/kiota-serialization-form": "^1.0.0-preview.110",
-    "@microsoft/kiota-serialization-json": "^1.0.0-preview.110",
-    "@microsoft/kiota-serialization-multipart": "^1.0.0-preview.110",
-    "@microsoft/kiota-serialization-text": "^1.0.0-preview.110",
+    "@microsoft/kiota-abstractions": "^1.0.0-preview.111",
+    "@microsoft/kiota-http-fetchlibrary": "^1.0.0-preview.111",
+    "@microsoft/kiota-serialization-form": "^1.0.0-preview.111",
+    "@microsoft/kiota-serialization-json": "^1.0.0-preview.111",
+    "@microsoft/kiota-serialization-multipart": "^1.0.0-preview.111",
+    "@microsoft/kiota-serialization-text": "^1.0.0-preview.111",
     "@swc/helpers": "^0.5.23",
     "axios": "^1.20.0",
     "canvas-confetti": "^1.9.4",
-    "framer-motion": "^14.3.0",
-    "lucide-react": "^1.59.0",
-    "next": "^16.4.2",
+    "framer-motion": "^14.6.0",
+    "lucide-react": "^1.61.0",
+    "next": "^16.4.3",
     "next-intl": "^4.14.9",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
-    "zustand": "^5.0.15"
+    "zustand": "^5.0.16"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.7",
@@ -67,21 +67,21 @@
     "@vitest/coverage-v8": "^5.0.5",
     "autoprefixer": "^10.6.1",
     "eslint": "^9.39.5",
-    "eslint-config-next": "^16.4.2",
+    "eslint-config-next": "^16.4.3",
     "fast-check": "^4.10.2",
     "globals": "^17.13.0",
     "jsdom": "^30.1.3",
-    "postcss": "^8.5.30",
+    "postcss": "^8.5.31",
     "prettier": "^3.9.10",
     "sharp": "^0.35.5",
     "tailwindcss": "^4.3.3",
     "typescript": "^6.0.3",
-    "vite": "^8.3.4",
+    "vite": "^8.3.5",
     "vitest": "^5.0.5"
   },
   "engines": {
     "node": "26.12.x",
-    "npm": "11.21.x"
+    "npm": "12.2.x"
   },
-  "packageManager": "npm@11.21.1"
+  "packageManager": "npm@12.2.1"
 }

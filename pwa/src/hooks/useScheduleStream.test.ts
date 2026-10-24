@@ -23,10 +23,14 @@ const mockInvalidateFillTheGap = vi.fn();
 const mockInvalidateAllSuggestions = vi.fn();
 const mockDiscoveryApplyVoteUpdate = vi.fn();
 const mockSetActiveCategory = vi.fn();
+const mockApplySession = vi.fn();
+const mockRefreshSession = vi.fn().mockResolvedValue(undefined);
 const mockMarkReady = vi.fn();
 const mockSetGroceryState = vi.fn();
+const mockApplyGroceryExtrasUpdate = vi.fn();
 
 // weekStore weekOffset — default to 0; tests can override via mockWeekOffset
+let mockSession: { phase: string; weekStartDate: string | null } | null = null;
 let mockWeekOffset = 0;
 let mockWeekStartDate = '2025-01-13';
 let mockCalendar = {
@@ -74,6 +78,7 @@ vi.mock('@/store/weekStore', () => ({
       applySlotUpdate: mockApplySlotUpdate,
       applyVoteUpdate: mockApplyVoteUpdate,
       applySmartDefaultsUpdate: mockApplySmartDefaultsUpdate,
+      applyGroceryExtrasUpdate: mockApplyGroceryExtrasUpdate,
     }),
   },
 }));
@@ -85,6 +90,9 @@ vi.mock('@/store/discoveryStore', () => ({
       invalidateAllSuggestions: mockInvalidateAllSuggestions,
       applyVoteUpdate: mockDiscoveryApplyVoteUpdate,
       setActiveCategory: mockSetActiveCategory,
+      session: mockSession,
+      applySession: mockApplySession,
+      refreshSession: mockRefreshSession,
     }),
   },
 }));
@@ -173,6 +181,7 @@ beforeEach(() => {
   // @ts-expect-error — replacing with mock
   global.EventSource = MockEventSource;
   MockEventSource.instances = [];
+  mockSession = null;
   mockWeekOffset = 0;
   mockWeekStartDate = '2025-01-13';
   mockCalendar = {
@@ -257,6 +266,27 @@ describe('connected event', () => {
     source.emit('connected', { schedule });
 
     expect(mockApplySnapshot).toHaveBeenCalledWith(schedule);
+  });
+
+  it('refreshes the selected week after the document becomes visible', () => {
+    setupHook();
+    Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' });
+
+    document.dispatchEvent(new Event('visibilitychange'));
+
+    expect(mockWeekSync).toHaveBeenCalled();
+  });
+
+  it('refreshes the selected next-week view when reconnect only supplies current week', () => {
+    mockWeekOffset = 1;
+    mockWeekStartDate = '2025-01-20';
+    const { source } = setupHook();
+    const schedule = { weekStartDate: '2025-01-13', days: [] };
+
+    source.emit('connected', { schedule });
+
+    expect(mockWeekSync).toHaveBeenCalled();
+    expect(mockApplySnapshot).not.toHaveBeenCalled();
   });
 });
 
@@ -615,6 +645,28 @@ describe('grocery_updated event', () => {
   });
 });
 
+describe('grocery_extras_updated event', () => {
+  it('forwards the absolute occurrence week and authoritative collection', () => {
+    const { source } = setupHook();
+    const extras = [
+      {
+        id: '11111111-1111-4111-8111-111111111111',
+        occurrenceWeekStartDate: '2025-01-13',
+        version: 2,
+      },
+    ];
+    source.emit('grocery_extras_updated', { weekStartDate: '2025-01-13', groceryExtras: extras });
+    expect(mockApplyGroceryExtrasUpdate).toHaveBeenCalledWith('2025-01-13', extras);
+  });
+
+  it('refreshes rather than guessing when absolute week identity is absent', () => {
+    const { source } = setupHook();
+    source.emit('grocery_extras_updated', { groceryExtras: [] });
+    expect(mockWeekSync).toHaveBeenCalled();
+    expect(mockApplyGroceryExtrasUpdate).not.toHaveBeenCalled();
+  });
+});
+
 // discovery_nudge events are intentionally ignored.
 
 // ── cleanup ──────────────────────────────────────────────────────────────────
@@ -695,4 +747,36 @@ it('does not apply grocery checks from a different absolute Monday with the same
     groceryState: { old: true },
   });
   expect(mockSetGroceryState).not.toHaveBeenCalled();
+});
+
+describe('authoritative voting session', () => {
+  it('dispatches replacement session state from the existing stream', () => {
+    const { source } = setupHook();
+    const session = {
+      incarnationId: '00000000-0000-4000-8000-000000000001',
+      revision: 1,
+      phase: 'converged',
+    };
+    source.emit('voting_session_updated', { session });
+    expect(mockApplySession).toHaveBeenCalledWith(session);
+  });
+  it('reconciles the session on reconnect and foreground return', () => {
+    const { source } = setupHook();
+    (source as unknown as { onopen: () => void }).onopen();
+    window.dispatchEvent(new Event('pageshow'));
+    expect(mockRefreshSession).toHaveBeenCalledTimes(2);
+  });
+});
+
+it('a delayed legacy defaults event cannot repopulate a confirmed unowned session', () => {
+  mockSession = { phase: 'unowned', weekStartDate: null };
+  const { source } = setupHook();
+  source.emit('smart_defaults_updated', {
+    defaults: {
+      weekStartDate: mockWeekStartDate,
+      preSelectedRecipes: [{ dayIndex: 0, recipeId: 'old' }],
+    },
+  });
+  expect(mockApplySmartDefaultsUpdate).not.toHaveBeenCalled();
+  expect(mockRefreshSession).toHaveBeenCalledTimes(1);
 });

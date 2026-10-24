@@ -4,6 +4,7 @@ export interface FamilyMember {
   id: string;
   name: string;
   browseViewMode?: 'stack' | 'list';
+  cookingViewMode?: 'step-by-step' | 'all-steps' | null;
   preferredLanguage?: string;
 }
 

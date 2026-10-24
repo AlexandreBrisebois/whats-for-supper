@@ -1,0 +1,12 @@
+# Design
+
+## Observed Behavior
+The pre-commit pre-push adapter exports from/to refs, while the repository hook always invokes `task check:push`. Its existing guard requires clean tracked/untracked state and the checked-out pushed revision. The Taskfile always invokes every child gate. Existing impact selection reads dirty worktree paths, so it cannot determine a clean committed push range.
+
+## Decisions
+Keep `task check:push`, `check:push:api`, `check:push:pwa`, `check:contracts`, `gen:client:check`, `test:agent`, `test:database` and `test:smoke` as command owners. Extend the existing push guard to plan and execute these commands. `--plan` explains selection without executing checks or requiring a clean worktree; execution checks cleanliness and HEAD before/after checks. Explicit `--base` overrides manual upstream discovery, never the hook-supplied range. Missing/unresolvable or non-ancestor bases use full validation. Invalid/mismatched target refs block execution. Annotated tag targets are peeled to commits.
+
+Diff remote/base to local HEAD with --no-renames and NUL-delimited paths, covering all unpushed commits and both sides of renames. Docs use existing link checking with a committed-base baseline and committed whitespace checking. OpenSpec planning is documentation; OpenSpec configuration/templates and agent/pipeline tooling select harness tests. PWA selection delegates to the existing Node CI suite selector; no mapping is duplicated. PWA task accepts selected suites while retaining a production build, fixed auth/build flags and no external server reuse. Contract/shared dependency and unknown inputs retain broad gates. Database inputs run existing relational tests and smoke. The existing smoke task gains --isolated for owned container/network/volume names and dynamic loopback ports; push always uses it to preserve development resources. No test-success cache is introduced.
+
+## Acceptance
+Temporary real Git repositories exercise multi-commit, first-push, upstream, deletion, rename, docs/mixed changes, dirty state, wrong target and invalid baseline behavior. Stubbed existing task runners assert exact executed checks and failure propagation without launching application services. Existing PWA command tests retain fixed environment and production-build assertions and add suite selection checks. Full harness tests and scoped final verification close the tooling slice; no actual push or deployment is required or performed.

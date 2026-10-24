@@ -4,7 +4,7 @@ import { pdfManifest } from '@/lib/pdfManifest';
 export const dynamic = 'force-dynamic';
 export function GET() {
   const identity = resolveAppIdentity();
-  const manifest = pdfManifest(process.env.WFS_FEATURE_PREVIEW_PDF_RECIPE_IMPORT);
+  const manifest = pdfManifest();
   const icons = manifest.icons.map((icon) => ({ ...icon, src: identity.icons.prefix + icon.src }));
   const shortcuts = manifest.shortcuts.map((shortcut) => ({
     ...shortcut,

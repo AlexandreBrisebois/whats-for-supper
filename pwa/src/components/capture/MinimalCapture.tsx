@@ -15,7 +15,6 @@ import {
 } from 'lucide-react';
 import { useCapture } from '@/hooks/useCapture';
 import { usePdfCaptureStore } from '@/store/pdfCaptureStore';
-import { useFeatureFlagStore } from '@/store/featureFlagStore';
 import { validatePdfSelection } from '@/lib/pdfCapture';
 import { useFamilyStore } from '@/store/familyStore';
 import { useCaptureStore } from '@/store/captureStore';
@@ -146,16 +145,6 @@ export default function MinimalCapture({
   const isGoto = intent === 'goto';
   const memberId = useFamilyStore((state) => state.selectedFamilyMemberId);
   const pdfSelection = usePdfCaptureStore((state) => state.selection);
-  const pdfEnabled = useFeatureFlagStore((state) =>
-    Boolean(
-      !isGoto &&
-      memberId &&
-      state.memberId === memberId &&
-      !state.loading &&
-      !state.error &&
-      state.flags['preview-pdf-recipe-import']?.enabled
-    )
-  );
   useEffect(() => {
     if (pdfSelection) resetCapture?.();
   }, [pdfSelection, resetCapture]);
@@ -398,17 +387,8 @@ export default function MinimalCapture({
 
     if (!file) return;
     if (file.name.toLowerCase().endsWith('.pdf') || file.type === 'application/pdf') {
-      const flags = useFeatureFlagStore.getState();
-      // Returning from the picker can refresh flags on focus. The PDF panel
-      // waits for that member's snapshot before permitting confirmation.
-      const awaitingFlags = flags.memberId === memberId && flags.loading;
-      if ((!pdfEnabled && !awaitingFlags) || !memberId || isGoto) {
-        setBundleImportError(
-          t(
-            'capture.pdf.disabled',
-            'PDF import preview isn’t enabled. This file hasn’t been added.'
-          )
-        );
+      if (!memberId || isGoto) {
+        setBundleImportError(t('capture.pdf.type', 'Choose a PDF file.'));
         return;
       }
       const invalid = validatePdfSelection(file);
@@ -1147,7 +1127,7 @@ export default function MinimalCapture({
               ref={recipeFileInputRef}
               data-testid="import-recipe-file-input"
               type="file"
-              accept={pdfEnabled ? '.txt,text/plain,.pdf,application/pdf' : '.txt,text/plain'}
+              accept={isGoto ? '.txt,text/plain' : '.txt,text/plain,.pdf,application/pdf'}
               aria-label="Import recipe file"
               title="Import recipe file"
               className="hidden"

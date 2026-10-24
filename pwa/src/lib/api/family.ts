@@ -7,11 +7,16 @@ export type FamilyMember = {
   id: string;
   name: string;
   browseViewMode: 'stack' | 'list';
+  cookingViewMode: 'step-by-step' | 'all-steps' | null;
   preferredLanguage: string;
 };
 
 function toBrowseViewMode(value: unknown): 'stack' | 'list' {
   return value === 'list' ? 'list' : 'stack';
+}
+
+function toCookingViewMode(value: unknown): 'step-by-step' | 'all-steps' | null {
+  return value === 'step-by-step' || value === 'all-steps' ? value : null;
 }
 
 export async function getFamilyMembers(): Promise<FamilyMember[]> {
@@ -22,6 +27,7 @@ export async function getFamilyMembers(): Promise<FamilyMember[]> {
       id: m.id || '',
       name: m.name || '',
       browseViewMode: toBrowseViewMode(m.browseViewMode),
+      cookingViewMode: toCookingViewMode(m.cookingViewMode),
       preferredLanguage: m.preferredLanguage || '',
     })) || []
   );
@@ -35,6 +41,7 @@ export async function getCurrentFamilyMember(): Promise<FamilyMember | null> {
       id: result.data.id,
       name: result.data.name || '',
       browseViewMode: toBrowseViewMode(result.data.browseViewMode),
+      cookingViewMode: toCookingViewMode(result.data.cookingViewMode),
       preferredLanguage: result.data.preferredLanguage || '',
     };
   } catch (err) {
@@ -51,6 +58,7 @@ export async function createFamilyMember(payload: FamilyPostRequestBody): Promis
     id: result.data.id,
     name: result.data.name || '',
     browseViewMode: toBrowseViewMode(result.data.browseViewMode),
+    cookingViewMode: toCookingViewMode(result.data.cookingViewMode),
     preferredLanguage: result.data.preferredLanguage || '',
   };
 }
@@ -67,6 +75,7 @@ export async function updateFamilyMember(
     id: result.data.id,
     name: result.data.name || '',
     browseViewMode: toBrowseViewMode(result.data.browseViewMode),
+    cookingViewMode: toCookingViewMode(result.data.cookingViewMode),
     preferredLanguage: result.data.preferredLanguage || '',
   };
 }
@@ -83,6 +92,7 @@ export async function updateFamilyMemberPreferences(
     id: result.data.id,
     name: result.data.name || '',
     browseViewMode: toBrowseViewMode(result.data.browseViewMode),
+    cookingViewMode: toCookingViewMode(result.data.cookingViewMode),
     preferredLanguage: result.data.preferredLanguage || '',
   };
 }

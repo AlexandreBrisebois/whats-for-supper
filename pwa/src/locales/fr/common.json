@@ -26,6 +26,7 @@
     "success": "Terminé !"
   },
   "common": {
+    "retry": "Réessayer",
     "cancel": "Annuler",
     "close": "Fermer",
     "deleting": "Suppression...",
@@ -101,13 +102,9 @@
       "preparing": "Préparation de votre PDF…",
       "receipt": "Attendez la fin du téléversement. Un téléversement interrompu peut nécessiter un nouvel essai.",
       "uncertain": "Impossible de confirmer le téléversement. Réessayez; un nouvel envoi peut créer un doublon.",
-      "disabled": "L’import PDF en aperçu n’est pas activé. Ce fichier n’a pas été ajouté.",
       "size": "Choisissez un PDF de 20 Mio maximum.",
       "type": "Choisissez un fichier PDF.",
-      "restart": "Choisissez ou partagez le PDF à nouveau.",
-      "loading": "Chargement des fonctionnalités en aperçu…",
-      "previewFeatures": "Fonctionnalités en aperçu",
-      "chooseAnotherWay": "Choisir une autre méthode"
+      "restart": "Choisissez ou partagez le PDF à nouveau."
     }
   },
   "profile": {
@@ -247,6 +244,7 @@
     "closeVoting": "Fermer le vote",
     "diversify": "Diversifier",
     "holdToMove": "Maintenir pour déplacer",
+    "moveInstructions": "Maintenez pour déplacer. Utilisez les flèches Haut et Bas pour déplacer d’un jour.",
     "noCooking": "Autres plans",
     "eatingOut": "Manger à l’extérieur",
     "otherPlans": "On a des plans",
@@ -272,11 +270,36 @@
   "grocery": {
     "smartShopping": "Courses Intelligentes",
     "checklist": "Liste de Courses",
+    "close": "Fermer la liste de courses",
     "noIngredients": "Aucun ingrédient pour cette semaine",
     "emptyTitle": "Votre liste vous attend",
     "emptySubtext": "Prévoyez quelques repas pour voir vos ingrédients organisés par rayon.",
     "startPlanning": "Commencer le planning",
     "itemsCount": "{{checked}}/{{total}} articles",
+    "extra": "Extra",
+    "addExtraLabel": "Ajouter un extra",
+    "extraPlaceholder": "Ajouter lait, café, papier…",
+    "addExtra": "Ajouter",
+    "addingExtra": "Ajout…",
+    "extraSavedToSection": "Enregistré dans {{section}}",
+    "addExtraError": "Impossible d’ajouter cet extra. Votre texte est conservé; réessayez.",
+    "extraSuggestions": "Suggestions d’extras",
+    "suggestionCountOne": "{{count}} suggestion disponible",
+    "suggestionCountMany": "{{count}} suggestions disponibles",
+    "suggestionError": "Les suggestions sont indisponibles. Vous pouvez toujours saisir votre propre texte.",
+    "editExtraName": "Nom de l’extra",
+    "edit": "Modifier",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "delete": "Supprimer",
+    "check": "Cocher",
+    "uncheck": "Décocher",
+    "bought": "Acheté",
+    "notBought": "Non acheté",
+    "changeSection": "Changer le rayon pour",
+    "chooseSection": "Choisir le rayon",
+    "savingExtra": "Enregistrement…",
+    "extraSaveError": "Impossible d’enregistrer. Actualisation en cours; réessayez.",
     "aisles": {
       "Vegetables": "Légumes",
       "Meat": "Viande",
@@ -286,8 +309,15 @@
     }
   },
   "cook": {
+    "instructionsLoadError": "Impossible de charger les instructions de cuisson.",
+    "instructionsRecovery": "Vous pouvez ouvrir les détails de la recette pour consulter la source originale ou marquer cette recette comme cuisinée.",
+    "instructionsUnavailable": "Les instructions de cuisson de cette recette ne sont pas disponibles.",
+    "recipeDetails": "Détails de la recette",
+    "reportSteps": "Signaler les étapes",
+    "stepsUnavailable": "Étapes indisponibles",
     "gettingReady": "Préparation de votre cuisine...",
     "cooksMode": "Mode Cuisine",
+    "openRecipeDetails": "Ouvrir les détails de la recette",
     "untitledRecipe": "Recette sans titre",
     "stepXofY": "Étape {{current}} sur {{total}}",
     "plantPowered": "Choix Végétarien !",
@@ -302,6 +332,14 @@
     "cooked": "Cuisiné",
     "markCooked": "Marquer la recette comme cuisinée",
     "completionFailed": "Impossible d’enregistrer la recette comme cuisinée. Veuillez réessayer.",
+    "view": "Vue",
+    "viewStepByStep": "Étape par étape",
+    "viewAllSteps": "Toutes les étapes",
+    "viewAccessible": "Vue de cuisson : {{view}}",
+    "viewRemembered": "Mémorisée pour {{name}}",
+    "viewSaveFailed": "Vue modifiée pour cette fois. Impossible de l’enregistrer pour {{name}}.",
+    "viewRetry": "Réessayer",
+    "viewEditBlocked": "Enregistrez ou annulez votre modification pour changer de vue.",
     "next": "Suivant",
     "total": "total",
     "noCookFresh": "Sans Cuisson / Frais",
@@ -309,6 +347,8 @@
     "plantPoweredEmoji": "Végétarien ! 🌿"
   },
   "discovery": {
+    "weDidIt": "On a réussi !",
+    "menuIsIn": "Le menu est prêt !",
     "wrap": "C'est tout pour aujourd'hui !",
     "wrapUpTitle": "C'est tout pour aujourd'hui !",
     "matchesFound": "Vous avez trouvé {{count}} matchs avec votre famille ! On cuisine ?",
@@ -325,6 +365,10 @@
     "showsInDiscovery": "S'affiche dans les votes de Découverte"
   },
   "recipes": {
+    "detailLoadError": "Impossible de charger cette recette.",
+    "moveToBinError": "Impossible de déplacer cette recette vers la corbeille. Réessayez.",
+    "restoreError": "Impossible de restaurer cette recette. Réessayez.",
+    "trashLoadError": "Impossible de charger la corbeille.",
     "planningMode": "Mode Planning",
     "selectMealDay": "Choisir un repas pour le Jour {{day}}",
     "cancel": "Annuler",
@@ -446,16 +490,7 @@
     "saveError": "Impossible d’enregistrer. Réessayez.",
     "enabled": "Aperçu activé",
     "disabled": "Aperçu désactivé",
-    "flags": {
-      "single-page-recipe-steps": {
-        "name": "Recette sur une seule page",
-        "description": "Après la préparation, faites défiler toutes les étapes sur une seule page."
-      },
-      "planner-hold-to-move": {
-        "name": "Maintenir pour déplacer les repas",
-        "description": "Maintenez brièvement la poignée avant de déplacer un repas. Faites défiler sans modifier votre plan."
-      }
-    }
+    "flags": {}
   },
   "familyGoto": {
     "title": "Repas de secours",

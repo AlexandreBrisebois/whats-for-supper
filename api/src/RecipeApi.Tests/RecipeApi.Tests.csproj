@@ -10,11 +10,11 @@
 
   <ItemGroup>
     <!-- Pin EF Core + Npgsql to the same versions as the main project to avoid transitive conflicts -->
-    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="11.0.0-rc.1.26425.128" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="11.0.0-rc.1.26425.128" />
-    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="11.0.0-rc.1.1" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="11.0.0-rc.2.26504.105" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="11.0.0-rc.2.26504.105" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="11.0.0-rc.2" />
     <!-- In-memory EF provider for unit + integration tests -->
-    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="11.0.0-rc.1.26425.128" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="11.0.0-rc.2.26504.105" />
     <!-- WebApplicationFactory for full HTTP integration tests -->
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="11.0.0-rc.2.26504.105" />
     <!-- Mocking for IFormFile and other interfaces -->
@@ -29,7 +29,7 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="FsCheck.Xunit" Version="3.5.0" />
+    <PackageReference Include="FsCheck.Xunit" Version="3.6.0" />
   </ItemGroup>
 
   <ItemGroup>

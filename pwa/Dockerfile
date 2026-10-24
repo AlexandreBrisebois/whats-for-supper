@@ -1,10 +1,10 @@
 # =============================================================================
 # Stage 1 — Base
 # =============================================================================
-FROM node:26.12.0-alpine3.23 AS base
+FROM node:26.12.1-alpine3.23 AS base
 WORKDIR /app
 RUN apk add --no-cache curl
-RUN npm install --global npm@11.21.1
+RUN npm install --global npm@12.2.1
 
 # =============================================================================
 # Stage 2 — Development

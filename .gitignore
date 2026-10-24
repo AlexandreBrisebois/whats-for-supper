@@ -79,6 +79,7 @@ pwa/next-env.d.ts
 
 # Playwright output
 playwright-report/
+blob-report/
 test-results/
 pwa/e2e-screenshots
 

@@ -37,26 +37,19 @@ test('public install metadata agrees in initial HTML and retains access policy',
     '/discovery',
     '/capture',
   ]);
-  const pdf = ['on', 'opt-in'].includes(
-    (process.env.WFS_IDENTITY_TEST_PDF_MODE ?? process.env.WFS_FEATURE_PREVIEW_PDF_RECIPE_IMPORT)
-      ?.trim()
-      .toLowerCase() ?? ''
-  );
-  expect(manifest.share_target.method).toBe(pdf ? 'POST' : 'GET');
-  expect(manifest.share_target.action).toBe(pdf ? '/share-target' : '/capture');
-  const expectedShareTarget = pdf
-    ? {
-        action: '/share-target',
-        method: 'POST',
-        enctype: 'multipart/form-data',
-        params: {
-          title: 'title',
-          text: 'text',
-          url: 'url',
-          files: [{ name: 'files', accept: ['application/pdf', '.pdf'] }],
-        },
-      }
-    : baseManifest.share_target;
+  expect(manifest.share_target.method).toBe('POST');
+  expect(manifest.share_target.action).toBe('/share-target');
+  const expectedShareTarget = {
+    action: '/share-target',
+    method: 'POST',
+    enctype: 'multipart/form-data',
+    params: {
+      title: 'title',
+      text: 'text',
+      url: 'url',
+      files: [{ name: 'files', accept: ['application/pdf', '.pdf'] }],
+    },
+  };
   // Compare every field, including implicit scope, icon purpose/sizes and shortcut text.
   expect(manifest).toEqual({
     ...baseManifest,

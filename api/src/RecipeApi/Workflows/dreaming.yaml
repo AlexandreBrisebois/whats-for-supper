@@ -15,8 +15,20 @@ tasks:
     processor: ProcessMaintenanceCommands
     payload: {}
 
+  - name: prune-maintenance-commands
+    processor: PruneMaintenanceCommands
+    depends_on:
+      - maintenance
+    payload:
+      retentionDays: 30
+      batchSize: 500
+
   - name: finalize-overdue-meals
     processor: FinalizeOverdueMeals
+    payload: {}
+
+  - name: rollover-grocery-extras
+    processor: RolloverGroceryExtras
     payload: {}
 
   - name: reconcile-search
@@ -42,7 +54,9 @@ tasks:
       - prune
       - backup
       - maintenance
+      - prune-maintenance-commands
       - finalize-overdue-meals
+      - rollover-grocery-extras
       - reconcile-search
       - reconcile-recipe-rotation
       - materialize-recipe-search-filters

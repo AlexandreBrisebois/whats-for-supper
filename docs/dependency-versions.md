@@ -1,46 +1,56 @@
 # Dependency compatibility
 
-The coordinated October 2026 cohort uses .NET SDK **11.0.100-rc.2.26504.105** and
-ASP.NET/runtime **11.0.0-rc.2.26504.105**. EF Core, Relational, Design, InMemory
-and dotnet-ef intentionally use **11.0.0-rc.1.26425.128** with Npgsql EF provider
-**11.0.0-rc.1.1**. The provider requires that EF version exactly; upgrading only
-EF to RC2 breaks compatibility. Update this group together after a matching
-provider is published. These remain prerelease .NET components.
+The October 24, 2026 uplift aligns EF Core, Relational, Design and InMemory at
+**11.0.0-rc.2.26504.105**, with Npgsql EF provider **11.0.0-rc.2**. Its published
+NuGet dependencies require exactly that EF Core/Relational version. SDK
+**11.0.100-rc.2.26504.105**, ASP.NET/runtime RC2 and dotnet-ef RC2 were already
+pinned and remain unchanged. These components remain prerelease.
 
-The API and test projects commit NuGet lockfiles. CI and API container builds
-use locked restore; after an intentional package update, refresh both locks
-locally and verify `dotnet restore api/src/RecipeApi.Tests/RecipeApi.Tests.csproj
---locked-mode`. No database schema or PostgreSQL major-version migration is part
-of this dependency update.
+The earlier RC2 restore failure came from a mixed cohort: the then-current
+Npgsql provider required RC1 exactly. A matching provider now exists; that
+metadata does not prove runtime correctness. Keep the parameterized PostgreSQL
+updates in `RecipeImportReportService`: the separate array-membership translation
+failure has an application workaround and is not claimed fixed upstream.
 
-Use Node **26.12.0** from `.nvmrc` and npm **11.21.1**, then `npm ci --include=dev`
-in `pwa/`. CI, setup tasks and PWA images use the same versions. npm 12.2.0 was
-not selected: its default URL-fetch policy rejected the existing Tailwind WASM
-tarball during clean resolution. No policy override was added. Its replacement
-can be reconsidered when that dependency path installs normally.
+Both API/test NuGet lockfiles are committed. After intentional updates, refresh
+both locks and verify `dotnet restore api/src/RecipeApi.Tests/RecipeApi.Tests.csproj
+--locked-mode`. The uplift also selects Microsoft.Agents.AI **1.26.0** and
+FsCheck.Xunit **3.6.0**. Google.GenAI, Microsoft.OpenApi and the OpenTelemetry
+cohort remain with their existing dependency PRs (#320, #294, #307/#308).
 
-ESLint stays at **9.39.5** because Next's imported lint plugins exclude ESLint 10
-in their peer ranges. TypeScript stays at **6.0.3** because typescript-eslint
-requires `<6.1.0`. These constraints take precedence over the newest registry
-version. Vitest and its coverage package move together to **5.0.5**. OpenSpec CLI **1.14.3** is pinned in local setup and CI; Task **3.54.0** and PyYAML **6.0.3** remain current. Kiota CLI
-**1.36.1** remains current; its TypeScript runtime packages align at preview.110.
+Use Node **26.12.1** from `.nvmrc` and npm **12.2.1**, then `npm ci --include=dev`
+in `pwa/`. Local setup, CI, package metadata and the PWA image share these pins.
+Unlike the earlier npm 12.2.0 attempt, npm 12.2.1 completed a clean disposable
+installation of the selected graph with its default fetch policy. Native package
+install-script protections remain enabled; their warnings are not suppressed.
 
-Container updates retain PostgreSQL **18** and Ubuntu **resolute**. The migration
-image uses PostgreSQL **18.6-trixie** and sqldef **3.11.26**; the database uses
-pgvector **0.8.7-pg18-trixie**. Traefik **3.7.15**, cloudflared **2026.10.1** and
-Alpine **3.23** replace floating or older patch references. The PDF renderer and
-its matching notices stay unchanged because PDFtoImage 5.4.0 is the latest stable
-release. The Lambda adapter remains at 1.1.0; deployment/release behavior is not
-changed.
+PWA updates are Next/eslint-config-next **16.4.3**, Motion **14.6.0**,
+lucide-react **1.61.0**, Zustand **5.0.16**, Vite **8.3.5**, and the six Kiota
+TypeScript runtime packages at **1.0.0-preview.111**. These advance beyond the
+already merged Motion/lucide updates. Vitest/coverage **5.0.5** and React
+**19.3.1** remain unchanged. The follow-redirects lock entry stays **1.16.0**
+under existing PR #309.
 
-These versions were checked against official NuGet/npm metadata, Microsoft's
-.NET release metadata/MCR tags and publisher Docker Hub tags. A successful
-restore alone does not establish runtime compatibility: API/PostgreSQL tests,
-browser tests, generated-client parity and the container smoke gate remain
-required before publication to main.
+ESLint stays **9.39.5** because eslint-plugin-import's peer range excludes 10.
+TypeScript stays **6.0.3** because typescript-eslint requires `<6.1.0`.
+OpenSpec **1.15.0** passed strict validation before its setup/CI pin changed.
+Kiota CLI **1.36.1**, PyYAML **6.0.3**, the current GitHub Action major lines,
+PDFtoImage **5.4.0** and Lambda adapter **1.1.0** remain unchanged. Task's current
+published release is **3.54.0**; the available local Task **3.41.0** executes the
+repository targets and is identified separately in validation evidence.
 
-The provider-compatible RC1 cohort also needs a bounded application adjustment:
-recipe-import attempt-start and success use parameterized PostgreSQL updates
-because the provider cannot translate their array-membership expressions. The
-updates remain atomic and retain recipe and workflow-attempt guards. Existing
-report behavior, status mapping and schema are preserved.
+Infrastructure references align at Traefik **3.7.16**, cloudflared
+**2026.10.3** and sqldef **3.11.27** across development/production templates and
+the migration command/image. PostgreSQL **18.6-trixie**, pgvector
+**0.8.7-pg18-trixie**, Ubuntu **resolute** and Alpine **3.23** remain on their
+existing supported lines. The installation template now pins the same pgvector
+version as development/CI. No schema or PostgreSQL-major migration is included.
+
+Version evidence comes from [NuGet package metadata](https://api.nuget.org/v3-flatcontainer/npgsql.entityframeworkcore.postgresql/index.json),
+[Microsoft SDK metadata](https://builds.dotnet.microsoft.com/dotnet/release-metadata/11.0/releases.json),
+[npm metadata](https://registry.npmjs.org/), and publisher Docker Hub tags.
+[Change evidence](../openspec/changes/coordinated-dependency-uplift-2026-10-24/evidence.md)
+records actual verification. Published metadata and restore success establish
+resolution compatibility; API/PostgreSQL, browser, generated-client and container
+checks establish their own tested behavior. No merge, deployment or release is
+part of this uplift.

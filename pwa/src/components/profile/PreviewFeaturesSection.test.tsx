@@ -41,13 +41,13 @@ describe('PreviewFeaturesSection', () => {
   it('discloses an accessible preview switch', async () => {
     useFeatureFlagStore.setState({
       flags: {
-        'single-page-recipe-steps': {
-          key: 'single-page-recipe-steps',
+        'future-test-preview': {
+          key: 'future-test-preview',
           mode: 'opt-in',
           enabled: false,
           memberEnabled: false,
-          displayName: 'Recipe on one page',
-          description: 'After getting ready, scroll through all the cooking steps on one page.',
+          displayName: 'Future test preview',
+          description: 'Exercises reusable preview controls.',
         },
       },
       setEnabled: vi.fn().mockResolvedValue(true),
@@ -57,11 +57,11 @@ describe('PreviewFeaturesSection', () => {
     expect(disclosure).toHaveAttribute('aria-expanded', 'false');
     fireEvent.click(disclosure);
     expect(disclosure).toHaveAttribute('aria-expanded', 'true');
-    expect(screen.getByRole('switch', { name: /Recipe on one page/i })).not.toBeChecked();
+    expect(screen.getByRole('switch', { name: /Future test preview/i })).not.toBeChecked();
     fireEvent.click(screen.getByRole('switch'));
     await waitFor(() =>
       expect(useFeatureFlagStore.getState().setEnabled).toHaveBeenCalledWith(
-        'single-page-recipe-steps',
+        'future-test-preview',
         true
       )
     );
@@ -97,9 +97,9 @@ describe('PreviewFeaturesSection', () => {
     expect(screen.getByText('Server-provided explanation.')).toBeInTheDocument();
   });
 
-  it('translates feature metadata, save feedback and announcements into French', async () => {
+  it('uses server metadata and translates save feedback and announcements into French', async () => {
     localStorage.setItem('locale', 'fr');
-    const key = 'single-page-recipe-steps';
+    const key = 'future-test-preview';
     useFeatureFlagStore.setState({
       flags: {
         [key]: {
@@ -107,8 +107,8 @@ describe('PreviewFeaturesSection', () => {
           mode: 'opt-in',
           enabled: false,
           memberEnabled: false,
-          displayName: 'Recipe on one page',
-          description: 'After getting ready, scroll through all the cooking steps on one page.',
+          displayName: 'Future test preview',
+          description: 'Exercises reusable preview controls.',
         },
       },
       pending: { [key]: true },
@@ -117,10 +117,8 @@ describe('PreviewFeaturesSection', () => {
     });
     const { rerender } = render(<PreviewFeaturesSection />);
     fireEvent.click(screen.getByRole('button', { name: /Fonctionnalités en aperçu/ }));
-    expect(screen.getByRole('switch', { name: /Recette sur une seule page/ })).toBeDisabled();
-    expect(
-      screen.getByText('Après la préparation, faites défiler toutes les étapes sur une seule page.')
-    ).toBeInTheDocument();
+    expect(screen.getByRole('switch', { name: /Future test preview/ })).toBeDisabled();
+    expect(screen.getByText('Exercises reusable preview controls.')).toBeInTheDocument();
     expect(screen.getByText('Enregistrement…')).toBeInTheDocument();
     expect(screen.getByRole('alert')).toHaveTextContent('Impossible d’enregistrer.');
     fireEvent.click(screen.getByRole('button', { name: 'Réessayer' }));

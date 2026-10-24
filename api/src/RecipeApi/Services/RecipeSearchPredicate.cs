@@ -9,6 +9,26 @@ namespace RecipeApi.Services;
 /// <summary>Shared eligible-recipe and existing public hard-filter predicates for both retrieval paths.</summary>
 internal static class RecipeSearchPredicate
 {
+    public static bool HasEffectiveFilters(RecipeSearchFiltersDto? filters)
+        => Canonicalize(filters).HasAny;
+
+    public static CanonicalFilters Canonicalize(RecipeSearchFiltersDto? filters)
+    {
+        filters ??= new RecipeSearchFiltersDto();
+        return new CanonicalFilters(
+            NormalizeValues(filters.Cuisines).Order(StringComparer.Ordinal).ToArray(),
+            NormalizeValues(filters.MealTypes).Order(StringComparer.Ordinal).ToArray(),
+            filters.NewRecipes == true,
+            filters.NeverCooked == true,
+            filters.FamilyFavorite == true,
+            filters.QuickOnly == true,
+            filters.VegetarianOnly == true,
+            filters.NotCookedInLongTime == true,
+            filters.ReportedOnly == true,
+            filters.ReadyToReviewOnly == true,
+            filters.DiscoverableOnly == true);
+    }
+
     public static IQueryable<Recipe> Apply(IQueryable<Recipe> query, RecipeSearchFiltersDto filters, RecipeDbContext db, DateTimeOffset now)
     {
         var cuisines = NormalizeValues(filters.Cuisines);
@@ -80,4 +100,30 @@ internal static class RecipeSearchPredicate
         .Select(value => value.Trim().ToLowerInvariant())
         .Distinct(StringComparer.Ordinal)
         .ToArray() ?? [];
+
+    internal sealed record CanonicalFilters(
+        string[] Cuisines,
+        string[] MealTypes,
+        bool NewRecipes,
+        bool NeverCooked,
+        bool FamilyFavorite,
+        bool QuickOnly,
+        bool VegetarianOnly,
+        bool NotCookedInLongTime,
+        bool ReportedOnly,
+        bool ReadyToReviewOnly,
+        bool DiscoverableOnly)
+    {
+        public bool HasAny => Cuisines.Length > 0
+            || MealTypes.Length > 0
+            || NewRecipes
+            || NeverCooked
+            || FamilyFavorite
+            || QuickOnly
+            || VegetarianOnly
+            || NotCookedInLongTime
+            || ReportedOnly
+            || ReadyToReviewOnly
+            || DiscoverableOnly;
+    }
 }

@@ -10,6 +10,11 @@ import {
 
 // Compute current week's Monday at noon UTC — avoids timezone rollback
 
+async function collapseDevelopmentBadge(page: import('@playwright/test').Page) {
+  const devBadge = page.getByRole('button', { name: 'Collapse issues badge' });
+  if (await devBadge.isVisible()) await devBadge.click();
+}
+
 test.describe('Supper Planner', () => {
   test.beforeEach(async ({ page, baseURL }) => {
     await setupCommonRoutes(page);
@@ -33,7 +38,7 @@ test.describe('Supper Planner', () => {
             },
             results: [],
             appliedFilters: {},
-            searchMode: 'standard',
+            searchMode: 'explicit',
             resultPath: 'lexical-only',
           },
         }),
@@ -87,6 +92,45 @@ test.describe('Supper Planner', () => {
 
     let currentStatus = 0;
     let isLockedState = false;
+
+    const readScheduleFixture = () => {
+      const monday = currentMonday();
+      const days = Array.from({ length: 7 }, (_, i) => {
+        const d = new Date(monday);
+        d.setUTCDate(monday.getUTCDate() + i);
+        return {
+          day: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i],
+          date: toDateStr(d),
+          ...(i === 0 || i === 1
+            ? {
+                recipe: builders.scheduleRecipe({
+                  id: i === 0 ? MOCK_IDS.RECIPE_LASAGNA : MOCK_IDS.RECIPE_TACOS,
+                  name: i === 0 ? 'Homemade Lasagna' : 'Street Tacos',
+                  voteCount: i === 0 ? 3 : 2,
+                  ingredients: ['Pasta', 'Beef', 'Tomato', 'Cheese'],
+                }),
+              }
+            : {}),
+        };
+      });
+      return {
+        ...builders.scheduleDays(),
+        weekOffset: 0,
+        votingRoundId: MOCK_IDS.VOTING_ROUND,
+        locked: isLockedState,
+        status: currentStatus,
+        days,
+      };
+    };
+
+    await page.route(/\/(?:backend\/)?api\/stream/, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'text/event-stream',
+        headers: { 'Cache-Control': 'no-cache' },
+        body: `event: connected\ndata: ${JSON.stringify({ type: 'connected', schedule: readScheduleFixture() })}\n\n`,
+      });
+    });
 
     // Single intercept covering all schedule calls — zero Prism dependency
     await page.route(
@@ -162,39 +206,11 @@ test.describe('Supper Planner', () => {
           return;
         }
 
-        // Default GET /api/schedule
-        const monday = currentMonday();
-        const days = Array.from({ length: 7 }, (_, i) => {
-          const d = new Date(monday);
-          d.setUTCDate(monday.getUTCDate() + i);
-          return {
-            day: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i],
-            date: toDateStr(d),
-            ...(i === 0 || i === 1
-              ? {
-                  recipe: builders.scheduleRecipe({
-                    id: i === 0 ? MOCK_IDS.RECIPE_LASAGNA : MOCK_IDS.RECIPE_TACOS,
-                    name: i === 0 ? 'Homemade Lasagna' : 'Street Tacos',
-                    voteCount: i === 0 ? 3 : 2,
-                    ingredients: ['Pasta', 'Beef', 'Tomato', 'Cheese'],
-                  }),
-                }
-              : {}),
-          };
-        });
-
+        // HTTP and stream reads describe the same persisted schedule and round.
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
-          body: JSON.stringify({
-            data: {
-              ...builders.scheduleDays(),
-              weekOffset: 0,
-              locked: isLockedState,
-              status: currentStatus,
-              days,
-            },
-          }),
+          body: JSON.stringify({ data: readScheduleFixture() }),
         });
       }
     );
@@ -328,6 +344,9 @@ test.describe('Supper Planner', () => {
     await expect(page.getByTestId('cooks-mode-step-indicator')).toContainText(/Check & Prep/i);
     await expect(page.getByTestId('cooks-mode-step-next')).toContainText(/Let's Cook/i);
 
+    await collapseDevelopmentBadge(page);
+    await page.getByTestId('cooking-view-step-by-step').click();
+
     // Navigate steps — text from builders.recipe() default: Step 1, Step 2
     await page.getByTestId('cooks-mode-step-next').click();
     await expect(page.getByTestId('cooks-mode-step-text')).toContainText(/Step 1/i);
@@ -384,15 +403,16 @@ test.describe('Supper Planner', () => {
     await expect(cards.first()).toBeVisible();
   });
 
-  test('hold-to-move preview lets touch scroll pass and requires a hold before moving', async ({
+  test('always-on hold-to-move lets touch scroll pass and requires a hold before moving', async ({
     page,
     context,
   }) => {
     await page.setViewportSize({ width: 390, height: 600 });
-    await mockFeatureFlags(page, [{ key: 'planner-hold-to-move', mode: 'on', enabled: true }]);
-    await page.reload();
     const handle = page.getByTestId('day-card-0').getByTestId('planner-drag-handle');
-    await expect(handle).toHaveAttribute('aria-label', 'Hold to move');
+    await expect(handle).toHaveAttribute(
+      'aria-label',
+      'Hold to move. Use the Up and Down arrow keys to move one day.'
+    );
     const moves: unknown[] = [];
     await page.route(
       (url) => url.pathname === '/api/schedule/move',
@@ -443,6 +463,29 @@ test.describe('Supper Planner', () => {
     await touch('touchEnd', heldY + 100);
     await expect.poll(() => moves.length).toBe(1);
     await client.detach();
+  });
+
+  test('always-on hold-to-move offers an accessible keyboard move', async ({ page }) => {
+    const moves: Array<{ fromIndex?: number; toIndex?: number }> = [];
+    await page.route(
+      (url) => url.pathname === '/api/schedule/move',
+      async (route) => {
+        moves.push(route.request().postDataJSON());
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ data: { message: 'ok' } }),
+        });
+      }
+    );
+    const handle = page.getByTestId('day-card-0').getByTestId('planner-drag-handle');
+    await expect(handle).toHaveAttribute('aria-keyshortcuts', 'ArrowUp ArrowDown');
+
+    await handle.focus();
+    await page.keyboard.press('ArrowDown');
+
+    await expect.poll(() => moves.length).toBe(1);
+    expect(moves[0]).toMatchObject({ fromIndex: 0, toIndex: 1 });
   });
 
   test('should allow dragging cards to reorder', async ({ page }) => {
