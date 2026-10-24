@@ -25,7 +25,7 @@ describe('install identity deployment configuration', () => {
     ['1.2.3\n', null],
   ])('derives channel from validated version %j', (version, channel) => {
     const program = workflow.match(
-      /name: Derive PWA release channel[\s\S]*?run: \|\n([\s\S]*?)(?=\n  validate:)/
+      /name: Derive PWA release channel[\s\S]*?run: \|\n([\s\S]*?)(?=\n  [a-z][a-z-]*:\n)/
     )?.[1];
     expect(program).toBeDefined();
     const directory = mkdtempSync(path.join(tmpdir(), 'wfs-release-'));
@@ -48,9 +48,29 @@ describe('install identity deployment configuration', () => {
   it('passes one validated channel only to the PWA on both published architectures', () => {
     expect(workflow).toContain('channel: ${{ steps.channel.outputs.channel }}');
     expect(workflow).toContain('VERSION: ${{ steps.validate.outputs.version }}');
-    expect(workflow).toContain('platforms: linux/amd64,linux/arm64');
-    expect(workflow).toContain("matrix.context == './pwa'");
-    expect(workflow).toContain('WFS_RELEASE_CHANNEL={0}');
+    expect(workflow).toContain('uses: ./.github/workflows/container-candidate.yml');
+    const packaging = readFileSync(
+      path.join(repository, '.github/workflows/container-candidate.yml'),
+      'utf8'
+    );
+    expect(packaging).toContain('arch: amd64');
+    expect(packaging).toContain('runner: ubuntu-24.04');
+    expect(packaging).toContain('arch: arm64');
+    expect(packaging).toContain('runner: ubuntu-24.04-arm');
+    expect(packaging).toContain('platforms: linux/${{ matrix.arch }}');
+    for (const service of ['api', 'pwa', 'migration']) {
+      const build = packaging.match(
+        new RegExp(`name: Build ${service} candidate[\\s\\S]*?(?=\\n      - )`)
+      )?.[0];
+      expect(build).toBeDefined();
+      if (service === 'pwa') {
+        expect(build).toContain(
+          'build-args: WFS_RELEASE_CHANNEL=${{ steps.identity.outputs.channel }}'
+        );
+      } else {
+        expect(build).not.toContain('WFS_RELEASE_CHANNEL');
+      }
+    }
     expect(workflow).toContain('needs.validate-tag.outputs.channel');
   });
 

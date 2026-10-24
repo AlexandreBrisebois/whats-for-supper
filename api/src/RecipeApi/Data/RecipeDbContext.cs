@@ -279,6 +279,7 @@ public class RecipeDbContext(DbContextOptions<RecipeDbContext> options) : DbCont
             entity.Property(e => e.PredecessorId).HasColumnName("predecessor_id");
             entity.Property(e => e.WeekStartDate).HasColumnName("week_start_date");
             entity.Property(e => e.Name).HasColumnName("name");
+            entity.Property(e => e.CreationName).HasColumnName("creation_name");
             entity.Property(e => e.NormalizedKey).HasColumnName("normalized_key");
             entity.Property(e => e.GrocerySection).HasColumnName("grocery_section");
             entity.Property(e => e.Checked).HasColumnName("checked");

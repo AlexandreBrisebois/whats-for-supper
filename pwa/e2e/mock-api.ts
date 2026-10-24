@@ -327,7 +327,7 @@ export async function setupCommonRoutes(
         if (extra.removed) return false;
         if (selectedMonday === currentMonday)
           return extra.occurrenceWeekStartDate === currentMonday;
-        if (selectedMonday === addDays(currentMonday, 7))
+        if (selectedMonday > currentMonday)
           return extra.occurrenceWeekStartDate === currentMonday && !extra.checked;
         return extra.occurrenceWeekStartDate === selectedMonday;
       })
@@ -1451,6 +1451,23 @@ export async function setupCommonRoutes(
           scheduleEntries.set(sourceDate, { ...source, recipe: null });
           scheduleEntries.set(destination, { recipe: source.recipe, status: 0 });
         } else scheduleEntries.set(destination, source);
+        if (targetOffset !== body.weekOffset) {
+          await route.fulfill({
+            json: {
+              data: {
+                message: 'Recipe moved',
+                moved: true,
+                sourceDate,
+                destinationDate: destination,
+                affectedWeekStartDates: [monday, addDays(reference, targetOffset * 7)],
+                refreshComplete: true,
+              },
+            },
+          });
+          await emitSchedule(body.weekOffset, reference);
+          await emitSchedule(targetOffset, reference);
+          return;
+        }
       }
     }
     await route.fulfill({ json: { data: { message: 'Recipe moved' } } });
@@ -1644,44 +1661,47 @@ export async function setupCommonRoutes(
 
   // Stateful everyday grocery extras. These handlers intentionally preserve distinct
   // same-name occurrences and expose writes through subsequent schedule reads.
-  await page.route('**/api/grocery-extras/suggestions', async (route) => {
-    if (route.request().method() !== 'GET') return route.fallback();
-    const query =
-      new URL(route.request().url()).searchParams.get('query')?.trim().toLowerCase() ?? '';
-    if (query.length < 2)
-      return route.fulfill({ status: 400, json: { message: 'Enter two characters.' } });
-    const outstanding = new Set(
-      [...groceryExtras.values()]
-        .filter((x) => !x.removed && !x.checked)
-        .map((x) => x.normalizedKey)
-    );
-    const latestByName = new Map<string, MockExtra>();
-    for (const occurrence of groceryExtras.values()) {
-      const latest = latestByName.get(occurrence.normalizedKey);
-      if (!latest || occurrence.version >= latest.version)
-        latestByName.set(occurrence.normalizedKey, occurrence);
-    }
-    const seen = new Set<string>();
-    const names = extraHistory
-      .filter((name) => {
-        const key = name.trim().toLowerCase().replace(/\s+/g, ' ');
-        if (
-          seen.has(key) ||
-          outstanding.has(key) ||
-          latestByName.get(key)?.removed ||
-          !key.includes(query)
+  await page.route(
+    (url) => url.pathname === '/api/grocery-extras/suggestions',
+    async (route) => {
+      if (route.request().method() !== 'GET') return route.fallback();
+      const query =
+        new URL(route.request().url()).searchParams.get('query')?.trim().toLowerCase() ?? '';
+      if (query.length < 2)
+        return route.fulfill({ status: 400, json: { message: 'Enter two characters.' } });
+      const outstanding = new Set(
+        [...groceryExtras.values()]
+          .filter((x) => !x.removed && !x.checked)
+          .map((x) => x.normalizedKey)
+      );
+      const latestByName = new Map<string, MockExtra>();
+      for (const occurrence of groceryExtras.values()) {
+        const latest = latestByName.get(occurrence.normalizedKey);
+        if (!latest || occurrence.version >= latest.version)
+          latestByName.set(occurrence.normalizedKey, occurrence);
+      }
+      const seen = new Set<string>();
+      const names = extraHistory
+        .filter((name) => {
+          const key = name.trim().toLowerCase().replace(/\s+/g, ' ');
+          if (
+            seen.has(key) ||
+            outstanding.has(key) ||
+            latestByName.get(key)?.removed ||
+            !key.includes(query)
+          )
+            return false;
+          seen.add(key);
+          return true;
+        })
+        .sort(
+          (a, b) =>
+            Number(!a.toLowerCase().startsWith(query)) - Number(!b.toLowerCase().startsWith(query))
         )
-          return false;
-        seen.add(key);
-        return true;
-      })
-      .sort(
-        (a, b) =>
-          Number(!a.toLowerCase().startsWith(query)) - Number(!b.toLowerCase().startsWith(query))
-      )
-      .slice(0, 3);
-    await route.fulfill({ status: 200, json: { names } });
-  });
+        .slice(0, 3);
+      await route.fulfill({ status: 200, json: { names } });
+    }
+  );
   await page.route('**/api/grocery-extras/*', async (route) => {
     const requestUrl = new URL(route.request().url());
     if (requestUrl.pathname.endsWith('/suggestions')) return route.fallback();
@@ -1698,10 +1718,11 @@ export async function setupCommonRoutes(
         (field) => body[field] !== undefined
       );
       if (
-        body.weekStartDate !== current.occurrenceWeekStartDate ||
-        current.occurrenceWeekStartDate !== scheduleCalendar.currentWeekStartDate ||
         fields.length !== 1 ||
-        (fields[0] === 'name' && (typeof body.name !== 'string' || !body.name.trim())) ||
+        !Number.isInteger(body.expectedVersion) ||
+        Number(body.expectedVersion) < 1 ||
+        (fields[0] === 'name' &&
+          (typeof body.name !== 'string' || !body.name.trim() || body.name.trim().length > 200)) ||
         (fields[0] === 'grocerySection' &&
           ![
             'Produce',
@@ -1720,8 +1741,15 @@ export async function setupCommonRoutes(
           status: 400,
           json: { message: 'Supply one valid current-week change.' },
         });
-      if (body.expectedVersion !== current.version)
-        return route.fulfill({ status: 409, json: { message: 'Changed elsewhere.', current } });
+      if (
+        body.weekStartDate !== current.occurrenceWeekStartDate ||
+        current.occurrenceWeekStartDate !== scheduleCalendar.currentWeekStartDate ||
+        body.expectedVersion !== current.version
+      )
+        return route.fulfill({
+          status: 409,
+          json: { message: 'Changed elsewhere.', absent: false, current },
+        });
       const updated = { ...current, version: current.version + 1 };
       if (typeof body.name === 'string') {
         updated.name = body.name.trim();
@@ -1737,11 +1765,19 @@ export async function setupCommonRoutes(
     if (request.method() === 'DELETE') {
       const url = new URL(request.url());
       const expected = Number(url.searchParams.get('expectedVersion'));
+      if (!Number.isInteger(expected) || expected < 1)
+        return route.fulfill({
+          status: 400,
+          json: { message: 'expectedVersion must be positive.' },
+        });
       if (
         url.searchParams.get('weekStartDate') !== current.occurrenceWeekStartDate ||
         current.occurrenceWeekStartDate !== scheduleCalendar.currentWeekStartDate
       )
-        return route.fulfill({ status: 400, json: { message: 'Current occurrence required.' } });
+        return route.fulfill({
+          status: 409,
+          json: { message: 'Current occurrence required.', absent: false, current },
+        });
       if (expected !== current.version)
         return route.fulfill({ status: 409, json: { message: 'Changed elsewhere.', current } });
       groceryExtras.set(id, { ...current, removed: true, version: current.version + 1 });
@@ -1758,7 +1794,12 @@ export async function setupCommonRoutes(
       weekStartDate?: string;
     };
     const name = body.name?.trim() ?? '';
-    if (!name || body.weekStartDate !== scheduleCalendar.currentWeekStartDate)
+    if (
+      !name ||
+      name.length > 200 ||
+      !body.clientId ||
+      body.weekStartDate !== scheduleCalendar.currentWeekStartDate
+    )
       return route.fulfill({
         status: 400,
         json: { message: 'Current week and name are required.' },
@@ -1772,6 +1813,11 @@ export async function setupCommonRoutes(
             message: 'Client identity belongs to another submission.',
             current: groceryExtras.get(replay.id),
           },
+        });
+      if (groceryExtras.get(replay.id)?.removed)
+        return route.fulfill({
+          status: 409,
+          json: { message: 'The extra was removed.', absent: true, current: null },
         });
       return route.fulfill({ status: 200, json: groceryExtras.get(replay.id) });
     }

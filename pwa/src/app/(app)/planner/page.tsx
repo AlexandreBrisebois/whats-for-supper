@@ -361,7 +361,7 @@ export default function PlannerPage() {
       setPendingQuickFindDayIndex(null);
 
       const reference = useWeekStore.getState().calendar?.referenceWeekStartDate;
-      await apiClient.api.schedule.move.post(
+      const result = await apiClient.api.schedule.move.post(
         {
           weekOffset: currentWeekOffset,
           fromIndex: dayIndex,
@@ -373,6 +373,12 @@ export default function PlannerPage() {
         referenceRequest(reference)
       );
 
+      if (result?.data?.moved && result.data.refreshComplete === false) {
+        useUiStore.getState().addToast({
+          type: 'warning',
+          message: 'Meal moved. Some updates could not refresh. Refresh your plan to check it.',
+        });
+      }
       await useWeekStore.getState().init(currentWeekOffset, referenceWeekStartDate);
 
       if (currentWeekOffset === 0 && day.date === useTodayStore.getState().calendar?.today) {

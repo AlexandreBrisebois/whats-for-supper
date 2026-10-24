@@ -107,7 +107,11 @@ export function RecipeDetailSheet({
   onPlanForLater,
   onFindSimilar,
 }: RecipeDetailSheetProps) {
-  const [recipe, setRecipe] = useState<Recipe | null>(null);
+  const [loadedRecipe, setRecipe] = useState<Recipe | null>(null);
+  const recipe = loadedRecipe?.id === recipeId ? loadedRecipe : null;
+  const [loadError, setLoadError] = useState(false);
+  const [moveError, setMoveError] = useState(false);
+  const [readAttempt, setReadAttempt] = useState(0);
   const notesDraft = useRecipeNotesStore((state) => state.drafts[recipeId]);
   const notes = notesDraft?.text ?? '';
   const notesSaved = notesDraft?.status === 'saved';
@@ -148,6 +152,8 @@ export function RecipeDetailSheet({
 
     void (async () => {
       setIsLoading(true);
+      setLoadError(false);
+      setMoveError(false);
       try {
         const notesAtReadStart = useRecipeNotesStore.getState().drafts[recipeId];
         const nextRecipe = await getRecipe(recipeId);
@@ -166,6 +172,7 @@ export function RecipeDetailSheet({
       } catch (error) {
         if (!isActive) return;
         console.error('Failed to load recipe detail', error);
+        setLoadError(true);
       } finally {
         if (isActive) {
           setIsLoading(false);
@@ -176,7 +183,7 @@ export function RecipeDetailSheet({
     return () => {
       isActive = false;
     };
-  }, [recipeId]);
+  }, [recipeId, readAttempt]);
 
   useEffect(() => {
     return () => {
@@ -330,6 +337,7 @@ export function RecipeDetailSheet({
 
   const handleMoveToBin = async () => {
     if (!recipe) return;
+    setMoveError(false);
     setIsSavingAction(true);
     try {
       await deleteRecipe(recipe.id);
@@ -337,6 +345,7 @@ export function RecipeDetailSheet({
       onClose();
     } catch (error) {
       console.error('Failed to move recipe to bin', error);
+      setMoveError(true);
     } finally {
       setIsSavingAction(false);
     }
@@ -626,7 +635,27 @@ export function RecipeDetailSheet({
           )}
         </div>
 
-        {isLoading || !recipe ? (
+        {moveError && (
+          <p role="alert" className="px-6 pt-4 text-sm text-red-700">
+            {t(
+              'recipes.moveToBinError',
+              'Could not move this recipe to the Recycle Bin. Try again.'
+            )}
+          </p>
+        )}
+        {loadError && !isLoading ? (
+          <div className="px-6 py-10 text-sm font-medium text-charcoal">
+            <p role="alert">{t('recipes.detailLoadError', 'Could not load this recipe.')}</p>
+            <button
+              type="button"
+              data-testid="recipe-detail-retry"
+              onClick={() => setReadAttempt((attempt) => attempt + 1)}
+              className="mt-4 rounded-full bg-terracotta px-5 py-3 font-bold text-white"
+            >
+              {t('common.retry', 'Retry')}
+            </button>
+          </div>
+        ) : isLoading || !recipe ? (
           <div className="px-6 py-10 text-sm font-medium text-charcoal/60">
             {t('recipes.loadingDetail', 'Loading recipe...')}
           </div>

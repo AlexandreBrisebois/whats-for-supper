@@ -135,6 +135,7 @@ CREATE TABLE grocery_extra_occurrences (
     predecessor_id uuid REFERENCES grocery_extra_occurrences(id) ON DELETE RESTRICT,
     week_start_date date NOT NULL,
     name text NOT NULL,
+    creation_name text,
     normalized_key text NOT NULL,
     grocery_section text NOT NULL DEFAULT 'Grocery',
     checked boolean NOT NULL DEFAULT false,

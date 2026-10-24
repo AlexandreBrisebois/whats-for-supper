@@ -55,12 +55,36 @@ class PrecommitGateTests(unittest.TestCase):
                 self.assertEqual((root / 'calls').read_text().splitlines(), expected)
                 self.assertEqual(result.returncode == 0, not failure, result.stdout + result.stderr)
 
-    def test_push_gate_contains_full_checks_and_no_worktree_impact_selection(self):
+    def test_push_gate_routes_committed_ranges_without_duplicate_task_aliases(self):
         commands = str(self.tasks['check:push']['cmds'])
-        for target in ['spec:check', 'test:agent', 'check:contracts', 'check:push:api', 'check:push:pwa']:
-            self.assertIn(target, commands)
+        self.assertIn('push_guard.py --run {{.CLI_ARGS}}', commands)
         self.assertNotIn('agent:test:impact', commands)
         self.assertNotIn('verify', commands)
+        for duplicate in ['check:push:full', 'check:push:plan', 'check:push:affected']:
+            self.assertNotIn(duplicate, self.tasks)
+
+    def test_pwa_selected_suites_build_once_and_keep_failures(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp); (root / 'pwa').mkdir()
+            npm = root / 'npm'
+            npm.write_text('#!/bin/sh\necho "$2:${WFS_E2E_SUITE:-none}" >> "$CALL_LOG"\n'
+                           '[ "$CI" = true ] && [ -z "$BASE_URL" ] || exit 98\n'
+                           '[ "$WFS_E2E_SUITE" != "$FAIL_SUITE" ] || exit 42\n')
+            npm.chmod(0o755)
+            (root / 'Taskfile.yml').write_text(yaml.safe_dump({'version': '3', 'tasks': {
+                'check:push:pwa': self.tasks['check:push:pwa']}}))
+            for fail in ['', 'planning']:
+                log = root / 'calls'; log.unlink(missing_ok=True)
+                env = dict(os.environ, PATH=f'{tmp}:{os.environ["PATH"]}', CALL_LOG=str(log),
+                           BASE_URL='http://external.invalid', WFS_E2E_SUITE='unrelated', FAIL_SUITE=fail or 'no-failure')
+                result = subprocess.run(['task', 'check:push:pwa', 'SUITES=planning household'],
+                                        cwd=root, env=env, capture_output=True, text=True, timeout=15)
+                expected = [f'{name}:none' for name in ['format:check', 'lint', 'typecheck', 'test:unit', 'build']]
+                expected += ['test:e2e:planning']
+                if not fail:
+                    expected += ['test:e2e:household']
+                self.assertEqual(log.read_text().splitlines(), expected)
+                self.assertEqual(result.returncode == 0, not fail, result.stdout + result.stderr)
 
 
 class NodePinTests(unittest.TestCase):

@@ -146,6 +146,7 @@ public sealed class GroceryExtraRecoveryPostgresTests : IAsyncLifetime
         Assert.Equal(first.Id, restored[0].Id);
         Assert.Equal(first.Id, restored[1].PredecessorId);
         Assert.Equal("Oat milk", restored[1].Name);
+        Assert.Equal("Oat milk", restored[1].CreationName);
         Assert.Equal("Pantry", restored[1].GrocerySection);
         Assert.True(restored[1].Checked);
         Assert.Equal(4, restored[1].Version);
@@ -188,6 +189,32 @@ public sealed class GroceryExtraRecoveryPostgresTests : IAsyncLifetime
         var rows = await db.GroceryExtraOccurrences.AsNoTracking().ToListAsync();
         Assert.Single(rows);
         Assert.Equal(destination.Id, rows[0].Id);
+    }
+
+    [PostgresFact]
+    public async Task OrdinaryMergeRejectsAValidArtifactThatWouldInvalidateDestinationLineage()
+    {
+        using var scope = app.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+        var management = scope.ServiceProvider.GetRequiredService<ManagementService>();
+        var root = GroceryExtraOccurrence.Create(Guid.NewGuid(), Guid.NewGuid(), new(2026, 10, 12),
+            "Coffee", "coffee", "Grocery", DateTimeOffset.UtcNow);
+        root.Checked = true;
+        db.GroceryExtraOccurrences.Add(root);
+        await db.SaveChangesAsync();
+        await management.BackupAsync();
+        root.Checked = false;
+        var successor = GroceryExtraOccurrence.Create(Guid.NewGuid(), root.LineageId, new(2026, 10, 19),
+            "Coffee beans", "coffee beans", "Pantry", DateTimeOffset.UtcNow, root.Id);
+        db.GroceryExtraOccurrences.Add(successor);
+        await db.SaveChangesAsync();
+
+        var result = await management.RestoreAsync();
+
+        Assert.Equal(1, result.Errors);
+        db.ChangeTracker.Clear();
+        Assert.False((await db.GroceryExtraOccurrences.SingleAsync(row => row.Id == root.Id)).Checked);
+        Assert.Equal("Coffee beans", (await db.GroceryExtraOccurrences.SingleAsync(row => row.Id == successor.Id)).Name);
     }
 
     [LinuxPostgresTheory]

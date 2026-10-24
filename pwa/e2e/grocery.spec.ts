@@ -23,7 +23,10 @@ test.beforeEach(async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
 });
 
-async function setupGroceryPage(page: import('@playwright/test').Page) {
+async function setupGroceryPage(
+  page: import('@playwright/test').Page,
+  options: { empty?: boolean; milk?: boolean } = {}
+) {
   const baseUrl = process.env.BASE_URL || 'http://127.0.0.1:3000';
   await page
     .context()
@@ -33,8 +36,13 @@ async function setupGroceryPage(page: import('@playwright/test').Page) {
 
   // Override schedule to return a week with one recipe that has known ingredients
   const monday = currentMonday();
-  const GROCERY_INGREDIENTS = ['Pasta', 'Beef', 'Tomato Sauce', 'Cheese'];
+  const GROCERY_INGREDIENTS = options.empty
+    ? []
+    : options.milk
+      ? ['Milk']
+      : ['Pasta', 'Beef', 'Tomato Sauce', 'Cheese'];
   const GROCERY_SECTION_MAP: Record<string, string> = {
+    Milk: 'Dairy & Eggs',
     Pasta: 'Pantry',
     Beef: 'Meat',
     'Tomato Sauce': 'Pantry',
@@ -64,7 +72,7 @@ async function setupGroceryPage(page: import('@playwright/test').Page) {
       day: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i],
       date: toDateStr(d),
       recipe:
-        i === 0
+        i === 0 && !options.empty
           ? builders.scheduleRecipe({
               id: MOCK_IDS.RECIPE_LASAGNA,
               name: 'Homemade Lasagna',
@@ -89,7 +97,7 @@ async function setupGroceryPage(page: import('@playwright/test').Page) {
         const selectedExtras =
           offset === 0
             ? groceryExtras
-            : offset === 1
+            : offset > 0
               ? groceryExtras.filter((extra) => extra.checked !== true)
               : offset === -1
                 ? [
@@ -212,7 +220,8 @@ async function setupGroceryPage(page: import('@playwright/test').Page) {
   // Switch to the grocery tab
   await page.getByTestId('grocery-tab').click();
   await expect(page.getByTestId('grocery-checklist')).toBeVisible({ timeout: 10_000 });
-  await expect(page.getByTestId('aisle-section-Meat')).toBeVisible();
+  if (!options.empty && !options.milk)
+    await expect(page.getByTestId('aisle-section-Meat')).toBeVisible();
 
   return { categoryOverrides, groceryExtras };
 }
@@ -250,6 +259,219 @@ test.describe('Grocery List — everyday extras', () => {
     await page.reload();
     await expect(page.getByTestId('day-card-0')).toBeVisible({ timeout: 10_000 });
     await page.getByTestId('grocery-tab').click();
+    await expect(page.getByTestId('grocery-extra-row')).toContainText('Coffee');
+  });
+
+  test('saved-section toast follows the keyboard-panned viewport without blurring the composer', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 320, height: 500 });
+    await page.addInitScript(() => {
+      const viewport = Object.assign(new EventTarget(), { offsetTop: 0 });
+      Object.defineProperty(window, 'visualViewport', { configurable: true, value: viewport });
+    });
+    await setupGroceryPage(page);
+    const input = page.getByRole('combobox', { name: 'Add an extra' });
+    await input.fill('Coffee');
+    await input.evaluate((element) => {
+      element.addEventListener('blur', () => element.setAttribute('data-blurred', 'true'));
+      Object.assign(window.visualViewport!, { offsetTop: 160 });
+      window.visualViewport!.dispatchEvent(new Event('scroll'));
+    });
+    await page.getByRole('button', { name: 'Add', exact: true }).click();
+    const toast = page.getByTestId('toast');
+    await expect(toast).toContainText('Saved to Grocery');
+    await expect.poll(async () => (await toast.boundingBox())?.y ?? 0).toBeGreaterThanOrEqual(176);
+    await expect(input).toBeFocused();
+    await expect(input).not.toHaveAttribute('data-blurred', 'true');
+    await expect(toast).toBeInViewport();
+    await page.screenshot({ path: '../.task/grocery-extras-completion/keyboard-panned-toast.png' });
+  });
+
+  test('common stateful mocks preserve explicit add, replay, suggestions and authoritative conflicts', async ({
+    page,
+  }) => {
+    await setupCommonRoutes(page);
+    await page.context().addCookies([
+      {
+        name: 'x-family-member-id',
+        value: MOCK_IDS.MEMBER_ALEX,
+        url: process.env.BASE_URL || 'http://127.0.0.1:3000',
+      },
+    ]);
+    await page.goto('/planner');
+    const result = await page.evaluate(async (id) => {
+      const call = async (path: string, method = 'GET', body?: unknown) => {
+        const response = await fetch(path, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: body ? JSON.stringify(body) : undefined,
+        });
+        return {
+          status: response.status,
+          body: response.status === 204 ? null : await response.json(),
+        };
+      };
+      const create = { clientId: id, weekStartDate: '2026-05-04', name: 'Coffee' };
+      const first = await call('/api/grocery-extras', 'POST', create);
+      const replay = await call('/api/grocery-extras', 'POST', create);
+      const checked = await call(`/api/grocery-extras/${id}`, 'PATCH', {
+        weekStartDate: '2026-05-04',
+        expectedVersion: 1,
+        checked: true,
+      });
+      const suggestions = await call('/api/grocery-extras/suggestions?query=co');
+      const stale = await call(`/api/grocery-extras/${id}`, 'PATCH', {
+        weekStartDate: '2026-05-04',
+        expectedVersion: 1,
+        name: 'Stale',
+      });
+      const wrongWeek = await call(`/api/grocery-extras/${id}`, 'PATCH', {
+        weekStartDate: '2026-05-11',
+        expectedVersion: 2,
+        name: 'Wrong week',
+      });
+      return { first, replay, checked, suggestions, stale, wrongWeek };
+    }, MOCK_IDS.GROCERY_EXTRA);
+    expect(result.first.status).toBe(201);
+    expect(result.replay.status).toBe(200);
+    expect(result.checked.status).toBe(200);
+    expect(result.suggestions).toEqual({ status: 200, body: { names: ['Coffee'] } });
+    expect(result.stale.status).toBe(409);
+    expect(result.stale.body.current.version).toBe(2);
+    expect(result.wrongWeek.status).toBe(409);
+  });
+
+  test('free text survives lookup and add failures and deliberate duplicates remain independent', async ({
+    page,
+  }) => {
+    await setupGroceryPage(page);
+    await page.route('**/api/grocery-extras/suggestions*', (route) =>
+      route.fulfill({ status: 502 })
+    );
+    const input = page.getByRole('combobox', { name: 'Add an extra' });
+    const add = page.getByRole('button', { name: 'Add', exact: true });
+    await input.fill('Milk');
+    await expect(page.getByTestId('grocery-extra-composer').getByRole('alert')).toContainText(
+      'Suggestions are unavailable'
+    );
+    const failAdd = (route: import('@playwright/test').Route) => route.fulfill({ status: 502 });
+    await page.route('**/api/grocery-extras', failAdd);
+    await add.click();
+    await expect(page.getByTestId('grocery-extra-composer').getByRole('alert')).toContainText(
+      'Could not add'
+    );
+    await expect(input).toHaveValue('Milk');
+    await page.unroute('**/api/grocery-extras', failAdd);
+    await add.click();
+    await expect(input).toHaveValue('');
+    await input.fill('Milk');
+    await input.press('Enter');
+    await expect(input).toHaveValue('');
+    await expect(page.getByTestId('grocery-extra-row')).toHaveCount(2);
+  });
+
+  test('stale suggestions cannot replace newer input and choosing a name requires explicit Add', async ({
+    page,
+  }) => {
+    await setupGroceryPage(page);
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    await page.route('**/api/grocery-extras/suggestions*', async (route) => {
+      const query = new URL(route.request().url()).searchParams.get('query');
+      if (query === 'co') await held;
+      await route.fulfill({ json: { names: query === 'co' ? ['Coffee'] : ['Milk bags'] } });
+    });
+    const input = page.getByRole('combobox', { name: 'Add an extra' });
+    await input.fill('co');
+    await page.waitForRequest((request) => request.url().includes('suggestions?query=co'));
+    await input.fill('mi');
+    await expect(page.getByRole('option')).toHaveText('Milk bags');
+    release();
+    await expect(page.getByRole('option')).toHaveText('Milk bags');
+    await page.getByRole('option').getByRole('button').click();
+    await expect(input).toHaveValue('Milk bags');
+    await expect(input).toBeFocused();
+    await expect(page.getByTestId('grocery-extra-row')).toHaveCount(0);
+    await page.getByRole('button', { name: 'Add', exact: true }).click();
+    await expect(page.getByTestId('grocery-extra-row')).toContainText('Milk bags');
+  });
+
+  test('adds without a meal plan and persists the extra after reload', async ({ page }) => {
+    await setupGroceryPage(page, { empty: true });
+    await expect(page.getByTestId('grocery-item-checkbox')).toHaveCount(0);
+    await page.getByRole('combobox').fill('Coffee');
+    await page.getByRole('combobox').press('Enter');
+    await expect(page.getByTestId('grocery-extra-row')).toContainText('Coffee');
+    await page.reload();
+    await page.getByTestId('grocery-tab').click();
+    await expect(page.getByTestId('grocery-extra-row')).toContainText('Coffee');
+  });
+
+  test('keyboard checks keep duplicate extras independent from recipe Milk and failed delete recovers', async ({
+    page,
+  }) => {
+    await setupGroceryPage(page, { milk: true });
+    for (let index = 0; index < 2; index++) {
+      await page.getByRole('combobox').fill('Milk');
+      await page.getByRole('button', { name: 'Add', exact: true }).click();
+      await expect(page.getByRole('combobox')).toHaveValue('');
+    }
+    const rows = page.getByTestId('grocery-extra-row');
+    await expect(rows).toHaveCount(2);
+    const first = rows.first();
+    await first.getByRole('checkbox').press('Space');
+    await expect(first.getByRole('checkbox')).toHaveAttribute('aria-checked', 'true');
+    await expect(rows.nth(1).getByRole('checkbox')).toHaveAttribute('aria-checked', 'false');
+    await expect(page.getByTestId('grocery-item-checkbox')).toHaveAttribute(
+      'aria-checked',
+      'false'
+    );
+    await first.getByRole('checkbox').press('Enter');
+    await expect(first.getByRole('checkbox')).toHaveAttribute('aria-checked', 'false');
+    await first.getByRole('button', { name: 'Edit Milk' }).click();
+    await expect(first.getByRole('button', { name: 'Cancel' })).toHaveCount(0);
+    await first.getByRole('textbox', { name: 'Extra name' }).fill('Oat milk');
+    await first.getByRole('button', { name: 'Save', exact: true }).press('Enter');
+    await expect(first).toContainText('Oat milk');
+    await page.route('**/api/grocery-extras/*', (route) =>
+      route.request().method() === 'DELETE' ? route.fulfill({ status: 502 }) : route.fallback()
+    );
+    await first.getByRole('button', { name: 'Edit Oat milk' }).click();
+    await first.getByRole('button', { name: 'Delete', exact: true }).click();
+    await expect(rows).toHaveCount(2);
+    await expect(page.getByTestId('grocery-checklist').getByRole('alert')).toContainText(
+      'Could not save'
+    );
+    await expect(page.getByTestId('grocery-item-checkbox')).toHaveAttribute(
+      'aria-checked',
+      'false'
+    );
+  });
+
+  test('pending add leaves shopping usable and retains entry focus through completion', async ({
+    page,
+  }) => {
+    await setupGroceryPage(page);
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    await page.route('**/api/grocery-extras', async (route) => {
+      await held;
+      await route.fallback();
+    });
+    const input = page.getByRole('combobox');
+    await input.fill('Coffee');
+    await page.getByRole('button', { name: 'Add', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Adding…' })).toBeDisabled();
+    await expect(input).toBeFocused();
+    await expect(page.getByTestId('grocery-item-checkbox').first()).not.toBeDisabled();
+    release();
+    await expect(input).toHaveValue('');
+    await expect(input).toBeFocused();
     await expect(page.getByTestId('grocery-extra-row')).toContainText('Coffee');
   });
 
@@ -294,7 +516,7 @@ test.describe('Grocery List — everyday extras', () => {
     await expect(page.getByTestId('grocery-extra-row')).toHaveCount(0);
   });
 
-  test('shows editable projections only next week and read-only snapshots in the past', async ({
+  test('shows outstanding extras in every future week and read-only snapshots in the past', async ({
     page,
   }) => {
     await setupGroceryPage(page);
@@ -315,13 +537,19 @@ test.describe('Grocery List — everyday extras', () => {
     await page.getByTestId('next-week').click();
     await expect(page).toHaveURL(/weekOffset=2/);
     await page.getByTestId('grocery-tab').click();
-    await expect(page.getByTestId('grocery-extra-row')).toHaveCount(0);
+    await expect(page.getByTestId('grocery-extra-row')).toContainText('Coffee');
+    await expect(page.getByTestId('grocery-extra-composer')).toHaveCount(0);
 
     await page.getByRole('button', { name: 'Close grocery list' }).click();
     await page.getByTestId('prev-week').click();
+    await expect(page).toHaveURL(/weekOffset=1/);
+    await expect(page.getByRole('heading', { name: 'May 11 — 17', exact: true })).toBeVisible();
     await page.getByTestId('prev-week').click();
+    await expect(page).not.toHaveURL(/weekOffset=/);
+    await expect(page.getByRole('heading', { name: 'May 4 — 10', exact: true })).toBeVisible();
     await page.getByTestId('prev-week').click();
     await expect(page).toHaveURL(/weekOffset=-1/);
+    await expect(page.getByRole('heading', { name: 'Apr 27 — May 3', exact: true })).toBeVisible();
     await page.getByTestId('grocery-tab').click();
     const historical = page.getByTestId('grocery-extra-row');
     await expect(historical).toContainText('Toilet paper');

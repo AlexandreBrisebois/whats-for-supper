@@ -59,12 +59,12 @@ The **grocery list** lives here too. Check items off as you shop — your partne
 You can also add everyday household extras—such as coffee, foil, or toilet paper—from
 the field fixed to the bottom of the current week's grocery list. After two letters,
 optional suggestions from your household's own previously used extras appear above the
-field. Choosing one only fills the field: press **Add** to submit it. If suggestions are
+field. Choosing one only fills the field: tap the **+** Add button to submit it. If suggestions are
 unavailable, free text continues to work, and repeated names remain separate items.
 
 An unchecked extra carries into each new week when weekly maintenance or the first
 current-week read repairs the rollover. Checking or deleting it stops future carry-forward.
-You can shop the immediately following week using the current outstanding extras, while
+You can shop any future week using the current outstanding extras until checked or deleted, while
 older weeks remain read-only snapshots showing the name, section, and whether each extra
 was bought at that time.
 

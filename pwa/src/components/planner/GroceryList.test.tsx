@@ -258,6 +258,14 @@ describe('GroceryList — everyday extras', () => {
     );
   });
 
+  it('uses an icon-only Add action with an accessible name and a stable touch target', () => {
+    render(<GroceryList weekOffset={0} items={[]} />);
+    const add = screen.getByRole('button', { name: 'Add' });
+    expect(add).toHaveTextContent('');
+    expect(add.querySelector('svg')).toBeInTheDocument();
+    expect(add).toHaveClass('h-12', 'w-12', 'shrink-0');
+  });
+
   it('keeps the composer focused when the Add button is pressed', () => {
     render(<GroceryList weekOffset={0} items={[]} extras={[]} />);
     const input = screen.getByRole('combobox', { name: 'Add an extra' });
@@ -325,6 +333,26 @@ describe('GroceryList — everyday extras', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add' }));
     await waitFor(() => expect(mockCreateExtra).toHaveBeenCalledTimes(2));
     expect(mockCreateExtra.mock.calls[1][2]).toBe(mockCreateExtra.mock.calls[0][2]);
+  });
+
+  it('offers a new explicit submission after authoritative absence of an earlier accepted create', async () => {
+    const sync = vi.fn().mockResolvedValue(undefined);
+    useWeekStore.setState({ sync });
+    mockCreateExtra.mockRejectedValueOnce(
+      Object.assign(new Error('Removed elsewhere'), { absent: true })
+    );
+    mockCreateExtra.mockImplementationOnce(async (_name, week, id) => ({
+      ...extra,
+      id,
+      occurrenceWeekStartDate: week,
+    }));
+    render(<GroceryList weekOffset={0} items={[]} />);
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'Coffee' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+    await waitFor(() => expect(sync).toHaveBeenCalledOnce());
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+    await waitFor(() => expect(mockCreateExtra).toHaveBeenCalledTimes(2));
+    expect(mockCreateExtra.mock.calls[1][2]).not.toBe(mockCreateExtra.mock.calls[0][2]);
   });
 
   it('rejects a create response with the wrong identity and rereads authoritatively', async () => {
@@ -397,6 +425,94 @@ describe('GroceryList — everyday extras', () => {
     expect(remove.querySelector('svg')).toBeInTheDocument();
     expect(save).toHaveClass('h-11', 'w-11');
     expect(remove).toHaveClass('h-11', 'w-11');
+  });
+
+  it.each(['check', 'delete'] as const)(
+    'optimistically applies %s and restores the row after an uncertain failure',
+    async (operation) => {
+      let fail!: (error: Error) => void;
+      const pending = new Promise((_, reject) => {
+        fail = reject;
+      });
+      const sync = vi.fn().mockResolvedValue(undefined);
+      useWeekStore.setState({ groceryExtras: [extra], sync });
+      const View = () => (
+        <GroceryList
+          weekOffset={0}
+          items={[]}
+          extras={useWeekStore((state) => state.groceryExtras)}
+        />
+      );
+      mockUpdateExtra.mockReturnValue(pending);
+      mockDeleteExtra.mockReturnValue(pending);
+      render(<View />);
+      if (operation === 'check') {
+        fireEvent.click(screen.getByTestId('grocery-extra-checkbox'));
+        expect(screen.getByTestId('grocery-extra-checkbox')).toHaveAttribute(
+          'aria-checked',
+          'true'
+        );
+      } else {
+        fireEvent.click(screen.getByRole('button', { name: 'Edit Coffee' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+        expect(screen.queryByTestId('grocery-extra-row')).not.toBeInTheDocument();
+      }
+      await act(async () => fail(new Error('response lost')));
+      expect(screen.getByTestId('grocery-extra-row')).toBeInTheDocument();
+      expect(useWeekStore.getState().groceryExtras[0].checked).toBe(false);
+      expect(sync).toHaveBeenCalledOnce();
+      expect(screen.getByRole('alert')).toHaveTextContent('Could not save');
+    }
+  );
+
+  it('rejects blank rename and retains the authoritative name on a failed save', async () => {
+    const sync = vi.fn().mockResolvedValue(undefined);
+    useWeekStore.setState({ groceryExtras: [extra], sync });
+    mockUpdateExtra.mockRejectedValue(new Error('save failed'));
+    render(<GroceryList weekOffset={0} items={[]} extras={[extra]} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Coffee' }));
+    const input = screen.getByRole('textbox', { name: 'Extra name' });
+    fireEvent.change(input, { target: { value: '   ' } });
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
+    fireEvent.change(input, { target: { value: 'Changed coffee' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(sync).toHaveBeenCalledOnce());
+    expect(useWeekStore.getState().groceryExtras[0].name).toBe('Coffee');
+    expect(screen.getByRole('alert')).toHaveTextContent('Could not save');
+  });
+
+  it('keeps existing rows usable and announces a pending icon-only add', async () => {
+    let finish!: (value: typeof extra) => void;
+    mockCreateExtra.mockImplementation(
+      (_name, week, id) =>
+        new Promise((resolve) => {
+          finish = () => resolve({ ...extra, id, occurrenceWeekStartDate: week });
+        })
+    );
+    render(<GroceryList weekOffset={0} items={[]} extras={[extra]} />);
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'Coffee' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+    expect(screen.getByRole('button', { name: 'Adding…' })).toBeDisabled();
+    expect(screen.getByText('Adding…')).toHaveAttribute('role', 'status');
+    expect(screen.getByTestId('grocery-extra-checkbox')).not.toBeDisabled();
+    await act(async () => finish(extra));
+    expect(screen.getByRole('combobox')).toHaveValue('');
+  });
+
+  it('keeps the authoritative category while an extra category save is pending', async () => {
+    let finish!: (value: typeof extra) => void;
+    mockUpdateExtra.mockReturnValue(
+      new Promise((resolve) => {
+        finish = resolve;
+      })
+    );
+    useWeekStore.setState({ groceryExtras: [extra] });
+    render(<GroceryList weekOffset={0} items={[]} extras={[extra]} />);
+    fireEvent.click(screen.getByRole('button', { name: /Change section.*Coffee/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Produce' }));
+    expect(useWeekStore.getState().groceryExtras[0].grocerySection).toBe(extra.grocerySection);
+    await act(async () => finish({ ...extra, grocerySection: 'Produce', version: 2 }));
+    expect(useWeekStore.getState().groceryExtras[0].grocerySection).toBe('Produce');
   });
 
   it('clears the pending guard before an uncertain mutation rereads authoritative state', async () => {

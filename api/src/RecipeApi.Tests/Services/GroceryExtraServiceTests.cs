@@ -162,6 +162,73 @@ public sealed class GroceryExtraServiceTests
         publisher.VerifyAll();
     }
 
+    [Fact]
+    public async Task HistoricalConflictReturnsAReadOnlyAuthoritativeSnapshot()
+    {
+        await using var db = TestDbContextFactory.Create();
+        var monday = new DateOnly(2026, 10, 12);
+        var row = GroceryExtraOccurrence.Create(Guid.NewGuid(), Guid.NewGuid(), monday,
+            "Coffee", "coffee", "Grocery", DateTimeOffset.Parse("2026-10-12T12:00:00Z"));
+        db.GroceryExtraOccurrences.Add(row);
+        await db.SaveChangesAsync();
+        var service = Create(db, new DateTimeOffset(2026, 10, 20, 12, 0, 0, TimeSpan.Zero));
+
+        var conflict = await Assert.ThrowsAsync<GroceryExtraConflictException>(() =>
+            service.UpdateAsync(row.Id, new(monday, 1, Checked: true)));
+
+        Assert.True(conflict.Current!.ReadOnly);
+        Assert.False(conflict.Current.Checked);
+    }
+
+    [Fact]
+    public async Task AcceptedCreateReplaySurvivesRenameWithoutCreatingAnotherOccurrence()
+    {
+        await using var db = TestDbContextFactory.Create();
+        var monday = new DateOnly(2026, 10, 19);
+        var service = Create(db, new DateTimeOffset(2026, 10, 20, 12, 0, 0, TimeSpan.Zero));
+        var request = new RecipeApi.Dto.CreateGroceryExtraRequest(Guid.NewGuid(), monday, "Coffee");
+        var created = await service.CreateAsync(request);
+        var renamed = await service.UpdateAsync(created.Extra.Id, new(monday, 1, Name: "Coffee beans"));
+        var replay = await service.CreateAsync(request);
+        Assert.False(replay.Created);
+        Assert.Equal(renamed, replay.Extra);
+        await Assert.ThrowsAsync<GroceryExtraConflictException>(() => service.CreateAsync(request with { Name = "Soap" }));
+        Assert.Single(await db.GroceryExtraOccurrences.ToListAsync());
+    }
+
+    [Fact]
+    public async Task OutstandingExtrasProjectIntoEveryFutureWeekWithoutCreatingFutureRows()
+    {
+        await using var db = TestDbContextFactory.Create();
+        var monday = new DateOnly(2026, 10, 19);
+        var service = Create(db, new DateTimeOffset(2026, 10, 20, 12, 0, 0, TimeSpan.Zero));
+        var extra = (await service.CreateAsync(new(Guid.NewGuid(), monday, "Coffee"))).Extra;
+        foreach (var offset in new[] { 1, 2, 8 })
+        {
+            var projected = Assert.Single(await service.ReadForViewAsync(monday.AddDays(offset * 7), monday));
+            Assert.Equal(extra.Id, projected.Id);
+            Assert.False(projected.ReadOnly);
+        }
+        await service.UpdateAsync(extra.Id, new(monday, 1, Checked: true));
+        Assert.Empty(await service.ReadForViewAsync(monday.AddDays(14), monday));
+        Assert.Single(await db.GroceryExtraOccurrences.ToListAsync());
+        Assert.Empty(await db.WeeklyPlans.ToListAsync());
+    }
+
+    [Fact]
+    public async Task AcceptedCreateReplayAfterDeletionReturnsAuthoritativeAbsence()
+    {
+        await using var db = TestDbContextFactory.Create();
+        var monday = new DateOnly(2026, 10, 19);
+        var service = Create(db, new DateTimeOffset(2026, 10, 20, 12, 0, 0, TimeSpan.Zero));
+        var request = new RecipeApi.Dto.CreateGroceryExtraRequest(Guid.NewGuid(), monday, "Coffee");
+        await service.CreateAsync(request);
+        await service.DeleteAsync(request.ClientId, monday, 1);
+        var conflict = await Assert.ThrowsAsync<GroceryExtraConflictException>(() => service.CreateAsync(request));
+        Assert.Null(conflict.Current);
+        Assert.Empty(await service.ReadForViewAsync(monday, monday));
+    }
+
     private static GroceryExtraService Create(RecipeDbContext db, DateTimeOffset now) =>
         new(db, new FixedClock(now), new DeploymentCalendar(new ConfigurationManager()), new AisleMapper());
 

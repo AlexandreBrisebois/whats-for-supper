@@ -26,8 +26,9 @@ public sealed class GroceryExtraService(RecipeDbContext db, IClock clock, Deploy
         var existing = await db.GroceryExtraOccurrences.AsNoTracking().SingleOrDefaultAsync(x => x.Id == request.ClientId, ct);
         if (existing is not null)
         {
-            if (existing.WeekStartDate != request.WeekStartDate || existing.Name != name)
+            if (existing.WeekStartDate != request.WeekStartDate || (existing.CreationName ?? existing.Name) != name)
                 throw new GroceryExtraConflictException("That client identity is already bound to another extra.", ToDto(existing, false));
+            if (existing.RemovedAt is not null) throw new GroceryExtraConflictException("The extra was removed.");
             return new(ToDto(existing, false), false);
         }
         var normalized = IngredientNormalizer.Normalize(name);
@@ -48,9 +49,10 @@ public sealed class GroceryExtraService(RecipeDbContext db, IClock clock, Deploy
             existing = await db.GroceryExtraOccurrences.AsNoTracking()
                 .SingleOrDefaultAsync(x => x.Id == request.ClientId, ct);
             if (existing is null) throw;
-            if (existing.WeekStartDate != request.WeekStartDate || existing.Name != name)
+            if (existing.WeekStartDate != request.WeekStartDate || (existing.CreationName ?? existing.Name) != name)
                 throw new GroceryExtraConflictException(
                     "That client identity is already bound to another extra.", ToDto(existing, false));
+            if (existing.RemovedAt is not null) throw new GroceryExtraConflictException("The extra was removed.");
             return new(ToDto(existing, false), false);
         }
         await PublishAsync(current, excludeConnectionId, ct);
@@ -137,7 +139,7 @@ public sealed class GroceryExtraService(RecipeDbContext db, IClock clock, Deploy
     {
         IQueryable<GroceryExtraOccurrence> query = db.GroceryExtraOccurrences.AsNoTracking().Where(x => x.RemovedAt == null);
         if (selectedWeek == currentWeek) query = query.Where(x => x.WeekStartDate == currentWeek);
-        else if (selectedWeek == currentWeek.AddDays(7)) query = query.Where(x => x.WeekStartDate == currentWeek && !x.Checked);
+        else if (selectedWeek > currentWeek) query = query.Where(x => x.WeekStartDate == currentWeek && !x.Checked);
         else if (selectedWeek < currentWeek) query = query.Where(x => x.WeekStartDate == selectedWeek);
         else return [];
         var readOnly = selectedWeek < currentWeek;
@@ -148,7 +150,7 @@ public sealed class GroceryExtraService(RecipeDbContext db, IClock clock, Deploy
     {
         var current = calendar.Capture(clock.UtcNow).CurrentWeekStartDate;
         if (week != current || row.WeekStartDate != current || row.RemovedAt != null || row.Version != version)
-            throw new GroceryExtraConflictException("The extra changed. Refresh before retrying.", row.RemovedAt is null ? ToDto(row, false) : null);
+            throw new GroceryExtraConflictException("The extra changed. Refresh before retrying.", row.RemovedAt is null ? ToDto(row, row.WeekStartDate != current) : null);
     }
     private async Task PublishAsync(DateOnly week, string? exclusion, CancellationToken ct)
     {

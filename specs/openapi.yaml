@@ -446,7 +446,7 @@ components:
           nullable: true
         groceryExtras:
           type: array
-          description: Authoritative extra occurrences eligible for the selected shopping view; projected rows retain their own occurrence week.
+          description: Authoritative extra occurrences for the selected view. Every future week projects outstanding unchecked current-week extras until checked or deleted; projected rows retain their current occurrence identity.
           items: { $ref: '#/components/schemas/GroceryExtraDto' }
 
     NonCookingPlanDto:
@@ -505,7 +505,7 @@ components:
     MoveScheduleResultDto:
       type: object
       required: [message]
-      description: Tomorrow always returns moved=true and all date/refresh fields. Legacy intents return message only.
+      description: Tomorrow and actual legacy cross-week movement return moved=true and all date/refresh fields. Same-week and cross-week no-op legacy completion return message only.
       properties:
         message: { type: string }
         moved: { type: boolean }
@@ -2846,6 +2846,7 @@ paths:
   /api/schedule/day/{date}/remove:
     delete:
       summary: Remove a recipe from a scheduled day
+      description: Removing a Cooked calendar entry recalculates its recipe last-cooked value from remaining Cooked calendar dates, or null when none remain, before grocery and publication follow-ups. Ordinary Planned removal does not change last-cooked values.
       parameters:
         - name: date
           in: path
@@ -2863,7 +2864,7 @@ paths:
   /api/schedule/lock:
     post:
       summary: Lock schedule for a week
-      description: Atomically captures positive aggregate family history and clears working votes once. Retry the same votingRoundId after a lost response. Completed retries preserve later early votes. Tokenless legacy closes are accepted only for a first close or unambiguous already-closed outcome; reopened rounds require an identity and otherwise return 409.
+      description: Preserves all Cooked and Skipped outcomes while locking ordinary assignments. Does not recreate removed assignments or change legacy recipe-backed Skipped representation. Does not change last-cooked values. Atomically captures positive aggregate family history and clears working votes once. Retry the same votingRoundId after a lost response. Completed retries preserve later early votes. Tokenless legacy closes are accepted only for a first close or unambiguous already-closed outcome; reopened rounds require an identity and otherwise return 409.
       parameters:
         - name: votingRoundId
           in: query
@@ -2904,7 +2905,11 @@ paths:
     post:
       summary: Move a recipe in the schedule
       description: >
-        Legacy swap and push retain their existing behavior. Intent tomorrow requires fromIndex
+        Legacy same-week swap and push retain their existing behavior. Actual cross-week placement
+        returns moved=true with sourceDate, destinationDate, affectedWeekStartDates and refreshComplete.
+        Both affected weeks receive independent grocery recomputation and snapshot publication attempts.
+        refreshComplete=false confirms committed movement with incomplete follow-ups; refresh the plan
+        rather than repeat movement. Legacy cross-week no-op completion remains unchanged. Intent tomorrow requires fromIndex
         in 0..6 and the exact matching recipe at supper slot zero. The target must be the next
         calendar day, using targetWeekOffset plus toIndex across Sunday. Tomorrow shifts the
         contiguous occupied supper chain through all required weeks, stopping at the first empty
@@ -2934,7 +2939,7 @@ paths:
         '409':
           description: Tomorrow source changed, cooked or awaiting-consensus entry blocks movement, or concurrent conflict; no mutation.
         '200':
-          description: Legacy completion or committed Tomorrow movement; inspect moved and refreshComplete for Tomorrow.
+          description: Legacy completion or committed cross-week/Tomorrow movement; inspect moved and refreshComplete when present.
           content:
             application/json:
               schema:
@@ -3602,7 +3607,7 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '202':
-          description: Accepted (Capture workflow triggered)
+          description: Accepted with a persisted pending recipe and durable workflow recovery identity. Acquisition remains asynchronous; initialization failure is exposed through capture failures and does not invalidate the returned recipe identity.
           content:
             application/json:
               schema:
@@ -4004,7 +4009,7 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '200':
-          description: List of failed captures
+          description: List of failed captures, including saved URL captures whose acquisition has not started; friendly guidance identifies that saved state.
           content:
             application/json:
               schema:
@@ -4027,7 +4032,7 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '202':
-          description: Retry queued
+          description: Retry queued on the existing workflow and recipe. Saved URL initialization retries reconcile existing work and do not create another capture; acceptance does not certify recipe readiness.
           content:
             application/json:
               schema:

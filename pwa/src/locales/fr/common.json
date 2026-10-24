@@ -26,6 +26,7 @@
     "success": "Terminé !"
   },
   "common": {
+    "retry": "Réessayer",
     "cancel": "Annuler",
     "close": "Fermer",
     "deleting": "Suppression...",
@@ -308,6 +309,12 @@
     }
   },
   "cook": {
+    "instructionsLoadError": "Impossible de charger les instructions de cuisson.",
+    "instructionsRecovery": "Vous pouvez ouvrir les détails de la recette pour consulter la source originale ou marquer cette recette comme cuisinée.",
+    "instructionsUnavailable": "Les instructions de cuisson de cette recette ne sont pas disponibles.",
+    "recipeDetails": "Détails de la recette",
+    "reportSteps": "Signaler les étapes",
+    "stepsUnavailable": "Étapes indisponibles",
     "gettingReady": "Préparation de votre cuisine...",
     "cooksMode": "Mode Cuisine",
     "openRecipeDetails": "Ouvrir les détails de la recette",
@@ -358,6 +365,10 @@
     "showsInDiscovery": "S'affiche dans les votes de Découverte"
   },
   "recipes": {
+    "detailLoadError": "Impossible de charger cette recette.",
+    "moveToBinError": "Impossible de déplacer cette recette vers la corbeille. Réessayez.",
+    "restoreError": "Impossible de restaurer cette recette. Réessayez.",
+    "trashLoadError": "Impossible de charger la corbeille.",
     "planningMode": "Mode Planning",
     "selectMealDay": "Choisir un repas pour le Jour {{day}}",
     "cancel": "Annuler",

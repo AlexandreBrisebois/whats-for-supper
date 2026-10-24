@@ -21,13 +21,13 @@ import {
  */
 export interface RemoveRequestBuilder extends BaseRequestBuilder<RemoveRequestBuilder> {
   /**
-   * Remove a recipe from a scheduled day
+   * Removing a Cooked calendar entry recalculates its recipe last-cooked value from remaining Cooked calendar dates, or null when none remain, before grocery and publication follow-ups. Ordinary Planned removal does not change last-cooked values.
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @throws {RecoveryBusyError} error when the service returns a 503 status code
    */
   delete(requestConfiguration?: RequestConfiguration<object> | undefined): Promise<void>;
   /**
-   * Remove a recipe from a scheduled day
+   * Removing a Cooked calendar entry recalculates its recipe last-cooked value from remaining Cooked calendar dates, or null when none remain, before grocery and publication follow-ups. Ordinary Planned removal does not change last-cooked values.
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {RequestInformation}
    */

@@ -100,6 +100,115 @@ describe('CooksMode', () => {
     useFamilyStore.setState({ updateMemberPreferences: originalUpdateMemberPreferences });
   });
 
+  it('shows a failed read honestly and retries real steps', async () => {
+    getRecipeMock.mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce({
+      id: 'recipe-1',
+      ingredients: [],
+      recipeInstructions: ['Actual instruction'],
+    });
+    render(<CooksMode recipe={{ id: 'recipe-1', name: 'Pasta', image: '' }} onClose={vi.fn()} />);
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Could not load cooking instructions.'
+    );
+    expect(
+      screen.queryByText('Gather everything you need. Clear the counter and get ready to cook!')
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Mark recipe as cooked' })).toBeEnabled();
+    fireEvent.click(screen.getByTestId('cooks-mode-content-retry'));
+    await screen.findByRole('heading', { name: 'Check & Prep' });
+    fireEvent.click(screen.getByTestId('cooks-mode-step-next'));
+    expect(await screen.findByText('Actual instruction')).toBeVisible();
+  });
+
+  it.each([null, [], ['   '], [{ text: '' }]])(
+    'explains absent or unusable instructions %j without invented steps',
+    async (recipeInstructions) => {
+      getRecipeMock.mockResolvedValue({ id: 'recipe-1', canReimport: false, recipeInstructions });
+      render(<CooksMode recipe={{ id: 'recipe-1', name: 'Pasta', image: '' }} onClose={vi.fn()} />);
+      expect(await screen.findByTestId('cooks-mode-no-steps')).toHaveTextContent(
+        'Cooking instructions are not available for this recipe.'
+      );
+      expect(screen.queryByRole('button', { name: 'Report steps' })).not.toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'Open recipe details' }));
+      expect(screen.getByTestId('recipe-detail-sheet')).toHaveTextContent('recipe-1');
+    }
+  );
+
+  it('offers contextual reporting and acknowledges background reimport while keeping completion available', async () => {
+    const recipe = { id: 'recipe-1', canReimport: true, ingredients: [], recipeInstructions: [] };
+    getRecipeMock.mockResolvedValue(recipe);
+    saveRecipeImportIssueMock.mockResolvedValue({
+      recipe: {
+        ...recipe,
+        importIssue: {
+          reasons: ['steps'],
+          note: 'Missing steps',
+          status: 'reported',
+          isReimporting: true,
+        },
+      },
+      reimportStarted: true,
+      reimportLaunchFailed: false,
+    });
+    render(<CooksMode recipe={{ id: 'recipe-1', name: 'Pasta', image: '' }} onClose={vi.fn()} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Report steps' }));
+    expect(screen.getByRole('button', { name: 'Steps' })).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(screen.getByTestId('import-issue-note-disclosure'));
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Missing steps' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect(await screen.findByText('Reimporting in background')).toBeVisible();
+    expect(saveRecipeImportIssueMock).toHaveBeenCalledWith('recipe-1', {
+      reasons: ['steps'],
+      note: 'Missing steps',
+    });
+    expect(screen.getByRole('button', { name: 'Mark recipe as cooked' })).toBeEnabled();
+    expect(screen.getByTestId('cooks-mode-content-retry')).toBeEnabled();
+    getRecipeMock.mockResolvedValueOnce({
+      ...recipe,
+      recipeInstructions: ['Recovered instruction'],
+    });
+    fireEvent.click(screen.getByTestId('cooks-mode-content-retry'));
+    await screen.findByRole('heading', { name: 'Check & Prep' });
+    fireEvent.click(screen.getByTestId('cooks-mode-step-next'));
+    expect(await screen.findByText('Recovered instruction')).toBeVisible();
+  });
+
+  it('keeps existing completion failure recovery when instructions are missing', async () => {
+    getRecipeMock.mockResolvedValue({ id: 'recipe-1', recipeInstructions: [] });
+    cookingMocks.markCooked
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockResolvedValueOnce(undefined);
+    render(<CooksMode recipe={{ id: 'recipe-1', name: 'Pasta', image: '' }} onClose={vi.fn()} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Mark recipe as cooked' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Could not save cooking completion.'
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Mark recipe as cooked' }));
+    await waitFor(() => expect(cookingMocks.markCooked).toHaveBeenCalledTimes(2));
+  });
+
+  it('ignores a departed identity response after the next recipe succeeds', async () => {
+    let finish!: (value: unknown) => void;
+    getRecipeMock
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            finish = resolve;
+          })
+      )
+      .mockResolvedValueOnce({ id: 'recipe-2', recipeInstructions: [] });
+    const view = render(
+      <CooksMode recipe={{ id: 'recipe-1', name: 'Old', image: '' }} onClose={vi.fn()} />
+    );
+    view.rerender(
+      <CooksMode recipe={{ id: 'recipe-2', name: 'New', image: '' }} onClose={vi.fn()} />
+    );
+    await screen.findByTestId('cooks-mode-no-steps');
+    await act(async () => finish({ id: 'recipe-1', recipeInstructions: ['Departed instruction'] }));
+    expect(screen.getByTestId('cooks-mode-no-steps')).toBeVisible();
+    expect(screen.getByTestId('cooks-mode-recipe-name')).toHaveTextContent('New');
+  });
+
   it('defaults missing cooking preferences to All steps without a feature snapshot', async () => {
     const id = '11111111-1111-4111-8111-111111111118';
     setCookingView(null);

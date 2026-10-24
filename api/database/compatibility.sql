@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS grocery_extra_occurrences (
     predecessor_id uuid REFERENCES grocery_extra_occurrences(id) ON DELETE RESTRICT,
     week_start_date date NOT NULL,
     name text NOT NULL,
+    creation_name text,
     normalized_key text NOT NULL,
     grocery_section text NOT NULL DEFAULT 'Grocery',
     checked boolean NOT NULL DEFAULT false,
@@ -24,6 +25,9 @@ CREATE TABLE IF NOT EXISTS grocery_extra_occurrences (
     CONSTRAINT grocery_extra_occurrences_version CHECK (version >= 1),
     CONSTRAINT grocery_extra_occurrences_section CHECK (grocery_section IN ('Produce','Meat','Seafood','Dairy & Eggs','Frozen','Bakery','Pantry','Beverages','Deli','Grocery'))
 );
+-- Retain original request spelling for new idempotent creates. Legacy rows and
+-- legacy ordinary artifacts lack this fact; do not invent a pre-rename value.
+ALTER TABLE grocery_extra_occurrences ADD COLUMN IF NOT EXISTS creation_name text;
 CREATE INDEX IF NOT EXISTS idx_grocery_extra_occurrences_week ON grocery_extra_occurrences (week_start_date);
 CREATE INDEX IF NOT EXISTS idx_grocery_extra_occurrences_normalized ON grocery_extra_occurrences (normalized_key);
 
