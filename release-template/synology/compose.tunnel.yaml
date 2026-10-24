@@ -14,4 +14,3 @@ services:
         condition: service_started
         required: true
     network_mode: service:traefik
-
