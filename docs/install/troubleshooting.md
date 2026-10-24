@@ -8,4 +8,4 @@
 
 **Setup already ran?** `setup.sh` intentionally leaves an existing `.env` untouched. Back up your secrets before changing them. Never paste tokens into public issues.
 
-**Updates and recovery:** Back up both database and recipe assets before upgrades. Changing `WFS_VERSION` alone is not a guaranteed safe rollback after database migrations. See the [installation reference](../../release-template/synology/README.md).
+**Updates and recovery:** Back up both database and recipe assets before upgrades. Changing `WFS_VERSION` alone is not a guaranteed safe rollback after database migrations. See the [installation reference](https://github.com/AlexandreBrisebois/whats-for-supper/blob/main/release-template/synology/README.md).

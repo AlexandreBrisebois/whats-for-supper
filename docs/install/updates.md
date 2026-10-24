@@ -10,7 +10,7 @@ Updates are **manual**. Don't enable unattended image updates for this stack.
    bash update.sh /path/to/whats-for-supper-install-VERSION.zip /path/to/backup-report.txt
    ```
 
-4. Confirm the displayed current/target versions, backup evidence, and migration warning. The helper only supports a version change **when Compose and Traefik configuration are identical** to the target bundle. If configuration changed, stop and follow release-specific manual instructions.
+4. Confirm the displayed current/target versions, backup evidence, and migration warning. The helper only supports a version change **when Compose and Traefik configuration are identical** to the target bundle. If configuration changed, stop and follow release-specific manual instructions, such as the [0.1.20 to 0.1.21 procedure below](#upgrading-from-0120-to-0121).
 5. Open your HTTPS URL and verify login, saved recipes, meal plans, and shopping list.
 
 The helper checks a backup-evidence file **exists**, but cannot validate its contents or the restore procedure. It does not automatically back up the database or guarantee rollback. Database migrations may be irreversible; restoring an earlier Docker image is **not** equivalent to restoring the database. If the update fails after migration, follow the tested recovery procedure.
@@ -18,3 +18,57 @@ The helper checks a backup-evidence file **exists**, but cannot validate its con
 The helper preserves the existing `.env` values other than `WFS_VERSION` and saves a private previous copy. Never replace `.env` with a new bundle's example or overwrite the persistent `data/` directories.
 
 **Advanced:** Review Compose changes and release notes manually; update image tags directly only when you understand the schema and deployment compatibility requirements.
+
+## Upgrading from 0.1.20 to 0.1.21
+
+This upgrade changes `compose.yaml` to remove the retired Cook Mode, planner and
+PDF preview variables. The version-only helper deliberately stops with
+**Compose changed between versions**. Do not bypass that check or overwrite your
+installation with the extracted ZIP.
+
+1. Complete the consistent PostgreSQL + `data/app` backup and restore checks
+   above. Keep private copies of your current `.env`, Compose files and
+   `traefik.yml` with the recovery instructions.
+2. Download `whats-for-supper-install-0.1.21.zip` and its checksum from the
+   [0.1.21 release](https://github.com/AlexandreBrisebois/whats-for-supper/releases/tag/dockerhub/v0.1.21).
+   Verify the checksum and extract the ZIP into a separate directory. Review its
+   `compose.yaml` and `traefik.yml` against your installed files. For an otherwise
+   unmodified 0.1.20 bundle, adopt the target `compose.yaml`; `traefik.yml` is
+   unchanged. If you have custom configuration or overrides, reconcile them
+   deliberately instead of replacing them blindly.
+3. Preserve the existing `.env` and all `data/` contents. Change only
+   `WFS_VERSION` to `0.1.21`; preserve your secrets, timezone and other custom
+   values. The [three retired preview settings](https://github.com/AlexandreBrisebois/whats-for-supper/blob/main/docs/feature-flags.md#current-flags-and-deployment-surfaces)
+   no longer control these features and need no replacement.
+4. From the installed project directory, validate and pull before briefly
+   stopping the application for migration. Use the same reviewed Compose
+   overrides with every command if your installation needs them. Run each
+   command only after the previous one succeeds:
+
+   ```sh
+   docker compose config --quiet
+   docker compose pull
+   docker compose stop api pwa
+   docker compose up -d
+   docker compose ps -a
+   docker compose logs --tail=100 migration
+   ```
+
+5. Confirm that migration exited successfully and the API/PWA are running.
+   Open the HTTPS app, refresh any already-open clients, and check household
+   entry, recipes, plans, recipe groceries and an extra grocery item. Reopen
+   installed apps to refresh their metadata; PDF sharing may require an OS
+   metadata refresh or reinstallation.
+
+The [0.1.21 compatibility migration](https://github.com/AlexandreBrisebois/whats-for-supper/blob/dockerhub/v0.1.21/api/database/compatibility.sql)
+adds grocery-extra storage, a separate cooking-view preference and the
+maintenance-history pruning index, and removes only the three retired preview
+override keys. The matching API, PWA and migration images must all use `0.1.21`.
+If migration or startup fails, stop and inspect the logs; do not assume changing
+the image tag back will undo database changes.
+
+Keep the pre-upgrade recovery set. Exact snapshots require a matching supported
+schema and table inventory: an older 0.1.20 snapshot is not directly restorable by
+0.1.21. See [exact recovery compatibility](https://github.com/AlexandreBrisebois/whats-for-supper/blob/main/docs/operations/exact-recovery.md#authoritative-coverage-and-compatibility),
+and capture/test a new independent snapshot after upgrading if you use that
+facility.
