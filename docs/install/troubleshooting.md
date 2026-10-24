@@ -9,3 +9,9 @@
 **Setup already ran?** `setup.sh` intentionally leaves an existing `.env` untouched. Back up your secrets before changing them. Never paste tokens into public issues.
 
 **Updates and recovery:** Back up both database and recipe assets before upgrades. Changing `WFS_VERSION` alone is not a guaranteed safe rollback after database migrations. See the [installation reference](https://github.com/AlexandreBrisebois/whats-for-supper/blob/main/release-template/synology/README.md).
+
+**Following shared-tunnel instructions?** Main's installation ZIP uses the bundled
+connector and loopback origin above. Separate overlays, proxy aliases and shared
+mode selection belong to an [unreleased preview](cloudflare.md#unreleased-shared-tunnel-preview).
+Do not change the origin to a preview alias without its matching implementation
+and a reviewed migration plan.

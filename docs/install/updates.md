@@ -72,3 +72,14 @@ schema and table inventory: an older 0.1.20 snapshot is not directly restorable 
 0.1.21. See [exact recovery compatibility](https://github.com/AlexandreBrisebois/whats-for-supper/blob/main/docs/operations/exact-recovery.md#authoritative-coverage-and-compatibility),
 and capture/test a new independent snapshot after upgrading if you use that
 facility.
+
+## Shared-tunnel preview compatibility
+
+The [shared-tunnel scenario templates](cloudflare.md#unreleased-shared-tunnel-preview)
+are unreleased and are not part of main's bundled installation. Main's updater
+checks the existing Compose and Traefik files; it does not implement the preview's
+selected-overlay checks. Do not use it to transition between these layouts or
+replace its scripts with individual preview files. Review the matching
+implementation and migration separately, preserving the existing project name,
+project directory, private `.env`, and both storage trees. Keep the working
+bundled configuration until that transition is explicitly planned and verified.

@@ -22,6 +22,10 @@ bash setup.sh
 
 The helper asks for your credentials, prepares your private configuration, and offers to start the app. It won't overwrite an existing setup.
 
+For agent-assisted planning, use the [agent installation guide](https://github.com/AlexandreBrisebois/whats-for-supper/blob/main/docs/install/agent-install.md).
+The shared-tunnel templates described there are an unreleased preview; this ZIP
+uses the bundled connector and the setup steps above.
+
 Your household timezone defaults to Toronto. [Using another timezone?](timezones.md)
 
 New to Cloudflare? Follow the [short Cloudflare walkthrough](cloudflare.md).

@@ -10,6 +10,15 @@ and the matching published release ZIP. Its `.env.example` is stamped with the
 release version; the source template's `WFS_VERSION` is a packaging placeholder,
 not the latest stable version.
 
+## Shared-tunnel preview
+
+This template continues to bundle its connector in `compose.yaml`. Separate
+bundled/shared overlays and mode selection in the setup helper are an
+[unreleased preview](../../docs/install/cloudflare.md#unreleased-shared-tunnel-preview)
+on the installation source branch. They require matching implementation changes;
+keep the installation steps below for main and published bundles. For
+agent-assisted planning, see the [agent installation guide](https://github.com/AlexandreBrisebois/whats-for-supper/blob/main/docs/install/agent-install.md).
+
 ## Before you begin
 
 You need a home server with a working Docker Engine and Docker Compose deployment
