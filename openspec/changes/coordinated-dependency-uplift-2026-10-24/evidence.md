@@ -34,6 +34,16 @@ Additional migration-parser qualification passed all 20 focused Docker-smoke/par
 
 The staged pre-commit gate passed whitespace, strict OpenSpec, harness, static contracts and PWA formatting. Its generated-client hook was not selected by the changed-file filter; the explicit Kiota check and full harness already passed it.
 
-CI completion will be recorded in the PR description at its exact final head; local production-image failures/limitations are not relabeled as local passes.
+## Immutable CI qualification
+
+Implementation head `19b721b81b57bad5dfec6b476344a96048633367` completed both [push CI](https://github.com/AlexandreBrisebois/whats-for-supper/actions/runs/40134650888) and [PR CI](https://github.com/AlexandreBrisebois/whats-for-supper/actions/runs/40134652620) successfully. The PR merge revision `14ba1e5185a28761882262bd26b194fae77d8bb4` has an empty file diff against that head, verified through the connector.
+
+- CI API tests: 1,329 passed, 15 conditional/manual skips. CI capability browser suites: 304 passed, two skips, no reported retries/flakes; local default discovery additionally includes 15 live opt-in skips.
+- Production AMD64 API (including PDFium notices), PWA and migration images built successfully. [Production smoke](https://github.com/AlexandreBrisebois/whats-for-supper/actions/runs/40134652620/job/120993548469) passed fresh migration, PostgreSQL/API/PWA health, endpoint parity and teardown. This qualifies that CI platform and those checks; ARM64 runtime and broader seed behavior are unrun.
+- [Installation identity](https://github.com/AlexandreBrisebois/whats-for-supper/actions/runs/40134652711) passed native AMD64 stable/beta with demo off and on, using the tested PR merge source. No release images were published.
+- Both C# and JavaScript/TypeScript CodeQL analysis jobs succeeded. The [CodeQL aggregate](https://github.com/AlexandreBrisebois/whats-for-supper/runs/120995941314) is neutral: two legacy main JavaScript/TypeScript configurations are absent, so introduced-alert comparison is unavailable. No security workflow or baseline was changed to clear that note.
+- Independent connector diff review found no blocking source issue; both locks are confined to declared updates/transitives, other PR-owned packages are unchanged, and `RecipeImportReportService` matches main.
+
+The final evidence/task update changes documentation only; its verification and exact final-head CI are recorded in the PR description. The final OpenSpec task stays open because the full implementation-range local push gate remains blocked at its production-smoke prerequisite. CI qualification does not relabel local failures or unrun checks as local passes. The change remains active and draft; no archive, merge, release or deployment is claimed.
 
 No merge, release image publication, deployment, billable AI call or household data operation is authorized.
