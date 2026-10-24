@@ -1,7 +1,5 @@
 # Demo household delta
 
-Proposed behavior for review; not implemented or runtime-qualified. References to visitor mode mean API demo mode is enabled. Preparation happens outside visitor mode under explicit operator control. The existing demo identity and household authorization rules remain in force.
-
 ## MODIFIED Requirements
 
 ### Requirement: Capture the core demo data set
@@ -193,6 +191,17 @@ Capture SHALL include complete aggregate history consistent with baseline recipe
 - **THEN** it cannot clear new round votes or recreate prior visitor history
 
 ## ADDED Requirements
+
+### Requirement: Separate operator baseline authority from visitor experiments
+Visitor mode SHALL apply whenever API demo mode is enabled. Baseline capture, replacement and selection SHALL require operator authority unavailable to visitors; shared visitor household access alone SHALL NOT grant it. Visitor requests SHALL NOT disable demo mode or enable AI preparation. Existing demo identity and ordinary household access SHALL remain available.
+
+#### Scenario: Visitor tries to replace the baseline
+- **WHEN** a visitor calls management capture or selection using only demo household access
+- **THEN** the request is rejected before modifying the selected baseline or preparation policy
+
+#### Scenario: Authorized preparation
+- **WHEN** an operator explicitly prepares and captures a baseline outside visitor mode
+- **THEN** normal preparation can proceed under operator authority without exposing that authority to the visitor session
 
 ### Requirement: Enforce visitor mode at every model boundary
 While visitor mode is active, the system SHALL send zero outbound AI/model requests from requests, workflows, retries, startup, maintenance or reset. This includes chat, streaming, query/document embeddings, extraction, synthesis, categorization and image generation, including direct provider clients. A feature override, force flag or available credential SHALL NOT bypass this policy.
