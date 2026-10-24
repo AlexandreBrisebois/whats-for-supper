@@ -12,7 +12,7 @@ This is a research/specification-only proposal. No implementation is authorized 
 - [ ] 1.1 Record the accepted date/clock policy and field-level rebasing versus audit-time classification, including soft-delete retention; reconcile all date scenarios and inventory rows.
 - [ ] 1.2 Record whether prepared votes and import reports are included or cleared, and define round/report normalization; reconcile the fresh-round scenarios without replayable identities.
 - [ ] 1.3 Record the safe-maintenance allowlist and stale-work fencing owner, including dreaming, search reconciliation and maintenance commands; demonstrate that each allowed path is model-free by source review.
-- [ ] 1.4 Accept or amend legacy recapture policy and baseline authority separation; reconcile format, management diagnostics and compatibility scenarios.
+- [ ] 1.4 Accept or amend legacy recapture policy and baseline authority separation and the concrete operator-authority mechanism; reconcile format, management diagnostics and compatibility scenarios.
 
 ## 2. Prepare the accepted implementation plan
 
