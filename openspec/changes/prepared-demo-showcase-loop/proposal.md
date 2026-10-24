@@ -15,7 +15,7 @@ Related: #245. This is research and proposed behavior only, not implementation o
 - Reuse existing exact-recovery coordination, preflight and publication primitives where suitable, without importing their incompatible search-repair behavior.
 - **BREAKING:** require a new complete demo snapshot format for the upgraded reset path; legacy core snapshots require recapture and must never be silently interpreted as a rich empty baseline.
 - **BREAKING:** visitor AI-dependent actions return an honest demo alternative/unavailable outcome rather than attempt a provider request; active pre-reset work no longer survives to mutate the next visitor generation.
-- Propose coherent UTC-week date re-anchoring, a fresh voting round and cleared import reports for review. These are not approved decisions.
+- Propose coherent application-calendar-week date re-anchoring, a fresh voting round and cleared import reports for review. These are not approved decisions.
 
 ## Capabilities
 
