@@ -260,8 +260,8 @@ describe('DiscoveryPage card order', () => {
     mocks.getVotingSession.mockResolvedValue(snapshot);
     render(<DiscoveryPage />);
     await screen.findByRole('heading', { name: "Menu's in!", level: 1 });
-    expect(screen.getByText('Your family found its matches.')).toBeVisible();
     const celebration = screen.getByTestId('discovery-converged');
+    expect(celebration.querySelector('p')).toBeEmptyDOMElement();
     expect(celebration).toHaveAttribute('role', 'status');
     expect(celebration).toHaveAttribute('aria-live', 'polite');
     expect(celebration.querySelector('img')).toBeNull();

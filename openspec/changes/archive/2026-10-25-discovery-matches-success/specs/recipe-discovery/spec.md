@@ -4,7 +4,7 @@
 
 ### Requirement: Celebrate confirmed convergence for the household
 
-Discovery SHALL replace its voting arena with a static green success card when authoritative session state reports convergence, even with cards remaining. English copy SHALL be "Menu's in!", "Your family found its matches." and "See your matches", with French equivalents. The card SHALL reuse the cooked-success visual, centered above navigation, with a decorative circled check. Existing app navigation SHALL remain available; no sound or confetti SHALL occur.
+Discovery SHALL replace its voting arena with a static green success card when authoritative session state reports convergence, even with cards remaining. English copy SHALL be "Menu's in!" and "See your matches", with French equivalents. The localized description field SHALL be empty in both languages. The card SHALL reuse the cooked-success visual, centered above navigation, with a decorative circled check. Existing app navigation SHALL remain available; no sound or confetti SHALL occur.
 
 #### Scenario: Another member completes the menu
 - **WHEN** the client reconciles a converged active round after another member's vote
@@ -31,9 +31,13 @@ Discovery SHALL replace its voting arena with a static green success card when a
 - **WHEN** the card renders on a 320px phone, phone portrait, tablet portrait or desktop
 - **THEN** it is centered in the usable area above the navigation dock without horizontal overflow, and the action remains reachable
 
-#### Scenario: Readable subtitle and action
-- **WHEN** Discovery presents the small subtitle and matches action on the green card
-- **THEN** their rendered foreground/background contrast is at least 4.5:1, including the translucent button hover background
+#### Scenario: Empty description
+- **WHEN** Discovery presents the success card in English or French
+- **THEN** the description field is empty
+
+#### Scenario: Readable action
+- **WHEN** Discovery presents the matches action on the green card
+- **THEN** its rendered foreground/background contrast is at least 4.5:1, including the translucent button hover background
 - **AND** Home's existing cooked-card presentation remains unchanged
 
 ## ADDED Requirements

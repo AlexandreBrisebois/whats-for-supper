@@ -386,7 +386,7 @@ export default function DiscoveryPage() {
             headingAs="h1"
             smallTextTone="dark"
             title={t('discovery.menuIsIn', "Menu's in!")}
-            description={t('discovery.familyMatches', 'Your family found its matches.')}
+            description={t('discovery.familyMatches', '')}
             actionLabel={t('discovery.seeMatches', 'See your matches')}
             onAction={() => {
               const params = new URLSearchParams({

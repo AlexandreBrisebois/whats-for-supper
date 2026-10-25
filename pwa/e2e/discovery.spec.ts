@@ -224,7 +224,7 @@ test.describe('Discovery Flow', () => {
       await expect(celebration).toHaveAttribute('role', 'status');
       await expect(celebration).toHaveAttribute('aria-live', 'polite');
       await expect(celebration.locator('img')).toHaveCount(0);
-      await expect(celebration.getByText('Your family found its matches.')).toBeVisible();
+      await expect(celebration.locator('p')).toBeEmpty();
       for (const viewport of [
         { width: 320, height: 740, name: 'small-phone' },
         { width: 390, height: 844, name: 'phone' },
@@ -285,21 +285,15 @@ test.describe('Discovery Flow', () => {
               return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
             };
             const background = rgba(getComputedStyle(card).backgroundColor);
-            const subtitle = rgba(getComputedStyle(card.querySelector('p')!).color);
             const button = card.querySelector('button')!;
             const buttonStyle = getComputedStyle(button);
             const buttonBackground = over(rgba(buttonStyle.backgroundColor), background);
             const action = rgba(buttonStyle.color);
-            // White decorative glows can only increase contrast with the selected dark text.
-            // Check both base sage and the lightest possible backdrop to bound compositing.
             return {
-              subtitle: ratio(over(subtitle, background), background),
-              subtitleOnWhite: ratio(over(subtitle, [1, 1, 1]), [1, 1, 1]),
               action: ratio(over(action, [...buttonBackground, 1]), buttonBackground),
               buttonAlpha: rgba(buttonStyle.backgroundColor)[3],
               colors: {
                 background: getComputedStyle(card).backgroundColor,
-                subtitle: getComputedStyle(card.querySelector('p')!).color,
                 action: buttonStyle.color,
                 button: buttonStyle.backgroundColor,
               },
@@ -309,8 +303,6 @@ test.describe('Discovery Flow', () => {
         await expect.poll(async () => (await measureContrast()).buttonAlpha).toBeCloseTo(1, 2);
         const contrast = await measureContrast();
         console.log('Discovery rendered contrast', viewport.name, JSON.stringify(contrast));
-        expect(contrast.subtitle).toBeGreaterThanOrEqual(4.5);
-        expect(contrast.subtitleOnWhite).toBeGreaterThanOrEqual(4.5);
         expect(contrast.action).toBeGreaterThanOrEqual(4.5);
         await page.getByTestId('discovery-see-matches').hover();
         await expect.poll(async () => (await measureContrast()).buttonAlpha).toBeCloseTo(0.9, 2);
@@ -403,7 +395,7 @@ test.describe('Discovery Flow', () => {
       );
       await page.goto('/discovery');
       await expect(page.getByRole('heading', { name: 'Le menu est prêt !' })).toBeVisible();
-      await expect(page.getByText('Votre famille a trouvé ses recettes en commun.')).toBeVisible();
+      await expect(page.getByTestId('discovery-celebration-card').locator('p')).toBeEmpty();
       const action = page.getByTestId('discovery-see-matches');
       await expect(action).toHaveAccessibleName('Découvrez vos recettes en commun');
       // Enlarged text may require scrolling, but never horizontal overflow or a clipped action.

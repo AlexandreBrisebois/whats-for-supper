@@ -6,7 +6,7 @@ Issue [#322](https://github.com/AlexandreBrisebois/whats-for-supper/issues/322) 
 
 ## Outcome and Scope
 
-Discovery shows a centered green card with the exact English headline "Menu's in!", secondary text "Your family found its matches." and action "See your matches". Activation opens that round's meal plan. Home confirmation, personal exhaustion, voting lifecycle and suggestions remain unchanged. No merge or deployment is authorized.
+Discovery shows a centered green card with the exact English headline "Menu's in!", an empty description field in both English and French and action "See your matches". Activation opens that round's meal plan. Home confirmation, personal exhaustion, voting lifecycle and suggestions remain unchanged. No merge or deployment is authorized.
 
 ## What Changes
 
@@ -14,7 +14,7 @@ Discovery shows a centered green card with the exact English headline "Menu's in
 - Add explicit, week-anchored meal-plan navigation, including when Planner previously showed groceries.
 - Preserve immediate static rendering, polite status announcements and stability across late updates.
 - Translate the new copy in English and French without claiming assignments or locks.
-- Use a Discovery-only dark sage treatment for small subtitle/action text to achieve at least 4.5:1 contrast; preserve Home styling.
+- Use a Discovery-only dark sage treatment for action text to achieve at least 4.5:1 contrast; preserve Home styling.
 
 ## Capabilities
 
