@@ -1,7 +1,5 @@
 # Demo household delta
 
-This is the proposed remaining capture/reset delta, not implementation approval. Date, fixture, authority, compatibility, maintenance, availability and recurrence choices remain subject to design.md decisions 1–7. The conditionally dependent #348 owns provider refusal, model-free exploration and the context explanation; design.md preserves the removed requirement/scenario mappings. Its unmerged implementation is not current-main behavior.
-
 ## MODIFIED Requirements
 
 ### Requirement: Accept demo snapshot capture as background work
