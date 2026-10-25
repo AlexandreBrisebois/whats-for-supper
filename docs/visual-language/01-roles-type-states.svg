@@ -1,0 +1,92 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1760" viewBox="0 0 800 1760" role="img" aria-labelledby="title desc">
+<title id="title">Solar Earth: roles, type and states</title><desc id="desc">Design reference, not implemented UI. Current values and contrast risks above proposed accessible combinations and component state examples. All ratios describe the exact opaque pair shown, not whole-app conformance.</desc>
+<style>text { font-family: Inter, "DejaVu Sans", sans-serif; } .heading { font-family: Outfit, Inter, "DejaVu Sans", sans-serif; }</style>
+<rect x="0" y="0" width="800" height="1760" rx="0" fill="#FDFCF0"/>
+<text x="32" y="40" font-size="14" fill="#4B5563" font-weight="700">WFS / VISUAL LANGUAGE / V1</text>
+<text x="32" y="84" font-size="30" fill="#1F2937" font-weight="700" class="heading">Warmth with a clear next step</text>
+<text x="32" y="116" font-size="16" fill="#4B5563" font-weight="400">01  Roles, typography and states</text>
+<text x="32" y="140" font-size="16" fill="#4B5563" font-weight="400">Source snapshot: 25 Oct 2026 · Proposed treatments are not shipped UI.</text>
+<rect x="32" y="166" width="736" height="225" rx="16" fill="#FFFFFF"/>
+<text x="52" y="197" font-size="17" fill="#1F2937" font-weight="700">CURRENT VERIFIED VALUES · contrast risks</text>
+<text x="52" y="232" font-size="10" fill="rgba(31,41,55,0.4)" font-weight="900">TONIGHT’S MENU</text>
+<text x="300" y="224" font-size="15" fill="#4B5563" font-weight="400">10 px, charcoal at 40% on white</text>
+<text x="300" y="248" font-size="15" fill="#4B5563" font-weight="400">≈ 2.35:1 · too faint for normal text</text>
+<text x="52" y="278" font-size="11" fill="#CD5D45" font-weight="700">Home</text>
+<text x="300" y="270" font-size="15" fill="#4B5563" font-weight="400">Terracotta on cream: 3.88:1</text>
+<text x="300" y="294" font-size="15" fill="#4B5563" font-weight="400">11 px active label needs 4.5:1</text>
+<rect x="52" y="309" width="190" height="48" rx="14" fill="#E1AD01"/>
+<text x="68" y="339" font-size="16" fill="#FFFFFF" font-weight="700">Cook</text>
+<text x="300" y="330" font-size="15" fill="#4B5563" font-weight="400">White on ochre: 2.06:1</text>
+<text x="300" y="354" font-size="15" fill="#4B5563" font-weight="400">Enabled action, not a disabled state.</text>
+<text x="32" y="431" font-size="19" fill="#1F2937" font-weight="700">PROPOSED PAIRINGS · existing tokens, new role use</text>
+<text x="32" y="459" font-size="15" fill="#4B5563" font-weight="400">Every pair below clears 4.5:1 for normal text. No palette replacement.</text>
+<rect x="32" y="478" width="736" height="56" rx="12" fill="#FDFCF0" stroke="#D1D5DB" stroke-width="2"/>
+<text x="48" y="501" font-size="16" fill="#1F2937" font-weight="700">Body / canvas</text>
+<text x="48" y="522" font-size="13" fill="#1F2937" font-weight="400">charcoal #1F2937 / #FDFCF0</text>
+<text x="674" y="512" font-size="16" fill="#1F2937" font-weight="700">14.23:1</text>
+<rect x="32" y="544" width="736" height="56" rx="12" fill="#FDFCF0" stroke="#D1D5DB" stroke-width="2"/>
+<text x="48" y="567" font-size="16" fill="#4B5563" font-weight="700">Secondary / canvas</text>
+<text x="48" y="588" font-size="13" fill="#4B5563" font-weight="400">charcoal-600 #4B5563 / #FDFCF0</text>
+<text x="674" y="578" font-size="16" fill="#4B5563" font-weight="700">7.33:1</text>
+<rect x="32" y="610" width="736" height="56" rx="12" fill="#A44A37"/>
+<text x="48" y="633" font-size="16" fill="#FFFFFF" font-weight="700">Primary label / fill</text>
+<text x="48" y="654" font-size="13" fill="#FFFFFF" font-weight="400">white #FFFFFF / #A44A37</text>
+<text x="674" y="644" font-size="16" fill="#FFFFFF" font-weight="700">5.81:1</text>
+<rect x="32" y="676" width="736" height="56" rx="12" fill="#7B3829"/>
+<text x="48" y="699" font-size="16" fill="#FFFFFF" font-weight="700">Pressed label / fill</text>
+<text x="48" y="720" font-size="13" fill="#FFFFFF" font-weight="400">white #FFFFFF / #7B3829</text>
+<text x="674" y="710" font-size="16" fill="#FFFFFF" font-weight="700">8.61:1</text>
+<rect x="32" y="742" width="736" height="56" rx="12" fill="#E1AD01"/>
+<text x="48" y="765" font-size="16" fill="#1F2937" font-weight="700">Accent label / fill</text>
+<text x="48" y="786" font-size="13" fill="#1F2937" font-weight="400">charcoal #1F2937 / #E1AD01</text>
+<text x="674" y="776" font-size="16" fill="#1F2937" font-weight="700">7.12:1</text>
+<rect x="32" y="808" width="736" height="56" rx="12" fill="#F1F3EB"/>
+<text x="48" y="831" font-size="16" fill="#525B37" font-weight="700">Success / soft surface</text>
+<text x="48" y="852" font-size="13" fill="#525B37" font-weight="400">sage700 #525B37 / #F1F3EB</text>
+<text x="674" y="842" font-size="16" fill="#525B37" font-weight="700">6.45:1</text>
+<rect x="32" y="874" width="736" height="56" rx="12" fill="#F9ECE9"/>
+<text x="48" y="897" font-size="16" fill="#7B3829" font-weight="700">Error / soft surface</text>
+<text x="48" y="918" font-size="13" fill="#7B3829" font-weight="400">terra700 #7B3829 / #F9ECE9</text>
+<text x="674" y="908" font-size="16" fill="#7B3829" font-weight="700">7.46:1</text>
+<text x="32" y="981" font-size="19" fill="#1F2937" font-weight="700">PROPOSED TYPE ROLES · keep Outfit + Inter</text>
+<text x="32" y="1007" font-size="14" fill="#4B5563" font-weight="400">Diagram fonts fall back locally; sizes are intended CSS px, not a new scale.</text>
+<rect x="32" y="1024" width="736" height="182" rx="16" fill="#FFFFFF"/>
+<text x="52" y="1063" font-size="28" fill="#1F2937" font-weight="700" class="heading">Tonight’s supper</text>
+<text x="408" y="1061" font-size="15" fill="#4B5563" font-weight="400">Outfit · heading · 28 / 34</text>
+<text x="52" y="1097" font-size="16" fill="#1F2937" font-weight="700">Tonight · saved to the plan</text>
+<text x="408" y="1097" font-size="15" fill="#4B5563" font-weight="400">Inter · context · 16 / 24</text>
+<text x="52" y="1131" font-size="16" fill="#1F2937" font-weight="400">Choose what works tonight.</text>
+<text x="408" y="1131" font-size="15" fill="#4B5563" font-weight="400">Inter · body · 16 / 24</text>
+<text x="52" y="1164" font-size="14" fill="#4B5563" font-weight="400">Recipe details</text>
+<text x="408" y="1164" font-size="15" fill="#4B5563" font-weight="400">Inter · supporting · 14 / 21</text>
+<text x="52" y="1189" font-size="14" fill="#4B5563" font-weight="400">Sentence case; never hide essential state in tiny, faint capitals.</text>
+<text x="32" y="1246" font-size="19" fill="#1F2937" font-weight="700">PROPOSED STATES · meaning beyond colour</text>
+<rect x="32" y="1270" width="228" height="48" rx="14" fill="#FDFCF0" stroke="#4B5563" stroke-width="2"/>
+<text x="48" y="1300" font-size="16" fill="#1F2937" font-weight="700">Order In</text>
+<text x="32" y="1340" font-size="15" fill="#1F2937" font-weight="700">Enabled secondary</text>
+<rect x="286" y="1270" width="228" height="48" rx="14" fill="#7B3829"/>
+<text x="302" y="1300" font-size="16" fill="#FFFFFF" font-weight="700">Cook</text>
+<text x="286" y="1340" font-size="15" fill="#1F2937" font-weight="700">Pressed · darker fill</text>
+<rect x="538" y="1266" width="234" height="56" rx="18" fill="#FDFCF0" stroke="#7B3829" stroke-width="2"/>
+<rect x="542" y="1270" width="226" height="48" rx="14" fill="#A44A37"/>
+<text x="558" y="1300" font-size="16" fill="#FFFFFF" font-weight="700">Cook</text>
+<text x="542" y="1340" font-size="15" fill="#1F2937" font-weight="700">Focus · visible outline</text>
+<rect x="32" y="1370" width="228" height="48" rx="14" fill="#A44A37"/>
+<text x="48" y="1400" font-size="16" fill="#FFFFFF" font-weight="700">Saving…</text>
+<text x="32" y="1440" font-size="15" fill="#1F2937" font-weight="700">Busy · stable label/space</text>
+<rect x="286" y="1370" width="228" height="48" rx="14" fill="#D1D5DB"/>
+<text x="302" y="1400" font-size="16" fill="#4B5563" font-weight="700">Not available</text>
+<text x="286" y="1440" font-size="15" fill="#1F2937" font-weight="700">Disabled · explain why</text>
+<rect x="542" y="1370" width="226" height="48" rx="14" fill="#F1F3EB" stroke="#525B37" stroke-width="2"/>
+<text x="558" y="1400" font-size="16" fill="#525B37" font-weight="700">✓  Selected</text>
+<text x="542" y="1440" font-size="15" fill="#1F2937" font-weight="700">Selected · mark + label</text>
+<rect x="32" y="1468" width="736" height="84" rx="16" fill="#F9ECE9"/>
+<text x="52" y="1500" font-size="17" fill="#7B3829" font-weight="700">Not saved. Your choice is still here.</text>
+<text x="52" y="1530" font-size="15" fill="#7B3829" font-weight="400">Retry save  →   (example feedback; retry only the failed stage)</text>
+<text x="32" y="1586" font-size="15" fill="#4B5563" font-weight="400">DO: make enabled Order In visibly actionable; keep a clear label and edge.</text>
+<text x="32" y="1613" font-size="15" fill="#4B5563" font-weight="400">DO: pair status with words or symbols; reserve success for confirmed outcomes.</text>
+<text x="32" y="1640" font-size="15" fill="#4B5563" font-weight="400">DON’T: treat ochre as a universal danger colour, or dim enabled actions.</text>
+<text x="32" y="1667" font-size="15" fill="#4B5563" font-weight="400">CHECK: actual glass/photo composites, pressed states and meaningful boundaries.</text>
+<text x="32" y="1710" font-size="14" fill="#4B5563" font-weight="400">Normal text ≥ 4.5:1 · large text ≥ 3:1 · meaningful non-text ≥ 3:1 where applicable.</text>
+<text x="32" y="1733" font-size="14" fill="#4B5563" font-weight="400">Reference illustrations only. See guide for thresholds, exceptions and source owners.</text>
+</svg>
