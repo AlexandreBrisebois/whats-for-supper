@@ -92,8 +92,7 @@ test('two real members converge next week, receive late suggestions, reconnect a
     await expect(first.getByTestId('discovery-converged')).toBeVisible();
     await expect(second.getByTestId('discovery-converged')).toBeVisible();
     console.log('[voting-live] both members converged');
-    await expect(first.getByRole('heading', { name: 'We did it!', exact: true })).toBeVisible();
-    await expect(first.getByRole('heading', { name: "Menu's In!", exact: true })).toBeVisible();
+    await expect(first.getByRole('heading', { name: "Menu's in!", exact: true })).toBeVisible();
     await expect(first.getByTestId('like-button')).toHaveCount(0);
     const converged = await session();
     expect(converged.weekStartDate).toBe('2026-10-19');
@@ -103,6 +102,21 @@ test('two real members converge next week, receive late suggestions, reconnect a
       await (await request.get(`${api}/api/schedule?weekOffset=1`, { headers })).json()
     ).data;
     expect(beforeClose.days.filter((day: { recipe?: unknown }) => day.recipe)).toHaveLength(0);
+
+    await first.getByTestId('discovery-see-matches').click();
+    await expect(first).toHaveURL('/planner?weekOffset=0&referenceWeekStartDate=2026-10-19');
+    await expect(first.getByTestId('close-voting-btn')).toBeVisible();
+    const afterHandoff = (
+      await (
+        await request.get(`${api}/api/schedule?weekOffset=0&referenceWeekStartDate=2026-10-19`, {
+          headers,
+        })
+      ).json()
+    ).data;
+    expect(afterHandoff.status).toBe(1);
+    expect(afterHandoff.days.filter((day: { recipe?: unknown }) => day.recipe)).toHaveLength(0);
+    await first.getByTestId('nav-item-discovery').click();
+    await expect(first.getByTestId('discovery-converged')).toBeVisible();
 
     const lastSuggestion = converged.smartDefaults.preSelectedRecipes.at(-1).recipeId;
     await vote(members[2], lastSuggestion);

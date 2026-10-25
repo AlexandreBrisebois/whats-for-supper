@@ -980,6 +980,11 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
     await expect(page.getByTestId('cooked-success-card')).toBeVisible();
     await page.reload();
     await expect(page.getByTestId('cooked-success-card')).toBeVisible();
+    await expect(page.getByTestId('cooked-success-title')).toHaveText('Enjoy your meal!');
+    await expect(page.getByTestId('cooked-success-card')).toContainText('Recipe marked as cooked');
+    await page.getByTestId('cooked-success-dismiss').click();
+    await expect(page.getByTestId('cooked-success-card')).toHaveCount(0);
+    await expect(page).toHaveURL(/\/home$/);
   });
 });
 

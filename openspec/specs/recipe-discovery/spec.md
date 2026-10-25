@@ -443,7 +443,7 @@ Coverage SHALL use the active owner's absolute week, persisted occupied dates an
 
 ### Requirement: Celebrate confirmed convergence for the household
 
-Discovery SHALL replace its voting arena with the app-logo celebration when authoritative session state reports convergence, even with cards remaining. English copy SHALL be “We did it!” and “Menu's In!” with localized equivalents. The celebration SHALL contain no call to action, Planner nudge, extra explanation, sound or confetti. Existing app navigation SHALL remain available.
+Discovery SHALL replace its voting arena with a static green success card when authoritative session state reports convergence, even with cards remaining. English copy SHALL be "Menu's in!" and "See your matches", with French equivalents. The localized description field SHALL be empty in both languages. The card SHALL reuse the cooked-success visual, centered above navigation, with a decorative circled check. Existing app navigation SHALL remain available; no sound or confetti SHALL occur.
 
 #### Scenario: Another member completes the menu
 - **WHEN** the client reconciles a converged active round after another member's vote
@@ -459,8 +459,25 @@ Discovery SHALL replace its voting arena with the app-logo celebration when auth
 - **AND** any already submitted vote continues through normal processing
 
 #### Scenario: Asset fails to load
-- **WHEN** the decorative celebration image is unavailable
-- **THEN** accessible text still communicates “We did it!” and “Menu's In!” without dependence on image pixels or color
+- **WHEN** decorative image resources are unavailable
+- **THEN** accessible text still communicates "Menu's in!" and the matches action without dependence on image pixels or color
+
+#### Scenario: Late session update
+- **WHEN** a newer snapshot changes suggestions in the same converged round
+- **THEN** the card remains stable and immediately visible, including with reduced motion, and performs no automatic navigation
+
+#### Scenario: Usable screen area
+- **WHEN** the card renders on a 320px phone, phone portrait, tablet portrait or desktop
+- **THEN** it is centered in the usable area above the navigation dock without horizontal overflow, and the action remains reachable
+
+#### Scenario: Empty description
+- **WHEN** Discovery presents the success card in English or French
+- **THEN** the description field is empty
+
+#### Scenario: Readable action
+- **WHEN** Discovery presents the matches action on the green card
+- **THEN** its rendered foreground/background contrast is at least 4.5:1, including the translucent button hover background
+- **AND** Home's existing cooked-card presentation remains unchanged
 
 ### Requirement: Continue recording votes after convergence
 
@@ -497,3 +514,23 @@ An empty member queue SHALL NOT establish household convergence. Existing warm c
 #### Scenario: New recipe later becomes available
 - **WHEN** the non-converged member returns or refreshes after new eligible recipes are available
 - **THEN** normal discovery queue rules allow voting without any reset of previously stored votes
+
+### Requirement: Open the completed round's meal plan on request
+
+Activating "See your matches" SHALL open the meal-plan tab for the authoritative converged session's absolute week, including after a prior grocery-tab visit. Navigation SHALL use the existing anchored-week route. Rendering or activating the card SHALL NOT assign meals, close voting, lock the week, clear votes or suppress future convergence. Home's cooked confirmation SHALL retain its existing copy and dismiss behavior.
+
+#### Scenario: Completed week differs from browser week
+- **WHEN** a member activates the action for a converged round whose week differs from browser today
+- **THEN** Planner opens with offset zero anchored to that round's week rather than browser today
+
+#### Scenario: Prior grocery tab and keyboard activation
+- **WHEN** Planner previously showed groceries and the member focuses the action and presses Enter or Space
+- **THEN** navigation opens the completed week's meal-plan tab without issuing lifecycle or assignment mutations
+
+#### Scenario: Returning to Discovery
+- **WHEN** the member returns to Discovery while that round remains converged
+- **THEN** the same card is available again
+
+#### Scenario: Home confirmation
+- **WHEN** Home shows its cooked-success card and the member dismisses it
+- **THEN** existing cooked copy and local dismiss behavior remain unchanged
