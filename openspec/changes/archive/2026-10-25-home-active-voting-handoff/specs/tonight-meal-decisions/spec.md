@@ -2,7 +2,7 @@
 
 ### Requirement: Offer Home voting and library handoffs
 
-Home SHALL offer the active open household voting round regardless of target or selected Planner week. Collecting SHALL offer "Vote Now" to Discovery; converged SHALL show "Menu's In", "Your matches are ready to review and save." and "See your matches" to that round's meal plan, exactly in English with equivalent French intent. The invitation SHALL remain without dismissal while open. Copy SHALL NOT assume next week or claim recipe counts from days. Capture and Browse Library SHALL remain available.
+Home SHALL offer the active open household voting round regardless of target or Planner week. Collecting SHALL offer "Vote Now" to Discovery; converged SHALL show "Menu's In", "Your matches are ready to review and save." and "See your matches" to that round's meal plan, exactly in English with equivalent French intent. The invitation SHALL remain without dismissal while open. Copy SHALL NOT assume next week or claim recipe counts from days. Capture and Browse Library SHALL remain available.
 
 #### Scenario: This week open while next week is closed
 - **WHEN** Home receives a confirmed collecting round for this week and next week is not open
