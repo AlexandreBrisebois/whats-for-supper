@@ -35,6 +35,47 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
     }, MOCK_IDS.MEMBER_ALEX);
   });
 
+  for (const appLocale of ['en', 'fr'] as const) {
+    test.describe(`duration units (${appLocale})`, () => {
+      test.use({ appLocale });
+      for (const [device, viewport] of [
+        ['iPad', { width: 820, height: 1180 }],
+        ['iPhone', { width: 390, height: 844 }],
+        ['Pixel', { width: 412, height: 915 }],
+      ] as const) {
+        test(`preserves six hours on ${device}`, async ({ page }, testInfo) => {
+          await page.setViewportSize(viewport);
+          const recipe = builders.scheduleRecipe({
+            id: MOCK_IDS.RECIPE_LASAGNA,
+            name: 'Synthetic slow supper',
+            image: '',
+            totalTime: 'PT6H',
+          });
+          await mockSseWithSlotUpdate(page, {
+            date: toDateStr(currentMonday()),
+            recipe,
+            status: 0,
+          });
+          await page.goto('/home');
+          const card = page.getByTestId('tonight-menu-card');
+          const badge = card.getByText(`${appLocale === 'fr' ? 'PRÊT EN' : 'READY IN'} 6H`, {
+            exact: true,
+          });
+          await expect(badge).toBeVisible();
+          await page.evaluate(() => document.fonts.ready);
+          const bounds = await badge.boundingBox();
+          expect(bounds).not.toBeNull();
+          expect(bounds!.x).toBeGreaterThanOrEqual(0);
+          expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(viewport.width);
+          await testInfo.attach(`${device}-${appLocale}-duration`, {
+            body: await page.screenshot({ animations: 'disabled' }),
+            contentType: 'image/png',
+          });
+        });
+      }
+    });
+  }
+
   test('Shows tonight menu card when recipe is planned', async ({ page }) => {
     const monday = currentMonday();
     const today = toDateStr(monday);
