@@ -31,6 +31,45 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 describe('voting session reconciliation', () => {
+  it('rejects an authoritative non-Monday week using the existing calendar owner', async () => {
+    vi.mocked(getVotingSession).mockResolvedValue(
+      snapshot(1, { weekStartDate: DateOnly.parse('2025-01-07') })
+    );
+    await state().refreshSession();
+    expect(state().sessionStatus).toBe('unavailable');
+    expect(state().session).toBeNull();
+  });
+  it('settles a malformed current authoritative read as unavailable instead of loading forever', async () => {
+    vi.mocked(getVotingSession).mockResolvedValue(snapshot(1, { roundId: null }));
+    await state().refreshSession();
+    expect(state().sessionStatus).toBe('unavailable');
+    expect(state().session).toBeNull();
+  });
+  it('keeps last confirmed data when a malformed read fails, and ignores malformed live frames', async () => {
+    state().applySession(snapshot(4), true);
+    state().applySession(snapshot(5, { weekStartDate: null }));
+    expect(state().sessionStatus).toBe('ready');
+    expect(state().session?.revision).toBe(4);
+    vi.mocked(getVotingSession).mockResolvedValue(snapshot(5, { weekStartDate: null }));
+    await state().refreshSession();
+    expect(state().sessionStatus).toBe('unavailable');
+    expect(state().session?.revision).toBe(4);
+  });
+  it('a superseded malformed read cannot overwrite newer accepted status', async () => {
+    state().applySession(snapshot(1), true);
+    let resolve!: (value: VotingSessionSnapshot) => void;
+    vi.mocked(getVotingSession).mockReturnValueOnce(
+      new Promise((r) => {
+        resolve = r;
+      })
+    );
+    const pending = state().refreshSession();
+    state().applySession(snapshot(3));
+    resolve(snapshot(2, { roundId: null }));
+    await pending;
+    expect(state().session?.revision).toBe(3);
+    expect(state().sessionStatus).toBe('ready');
+  });
   it('rejects duplicate and older revisions across rounds', () => {
     state().applySession(snapshot(8), true);
     state().applySession(snapshot(7, { phase: 'collecting' }));

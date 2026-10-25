@@ -37,10 +37,10 @@ vi.mock('@/lib/imageUtils', () => ({
   getTodayString: () => mocks.todayString,
 }));
 
-vi.mock('@/components/home/HomeSections', () => ({
+vi.mock('@/components/home/HomeSections', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('./HomeSections')>()),
   QuickCaptureTrigger: () => null,
   CookedSuccessCard: () => null,
-  VotingNudgeCard: () => null,
   BrowseLibraryTrigger: () => null,
 }));
 
@@ -266,10 +266,33 @@ vi.mock('@/lib/formatTime', () => ({
 }));
 
 import { HomeCommandCenter } from './HomeCommandCenter';
+import { useDiscoveryStore } from '@/store/discoveryStore';
+import { usePlannerStore } from '@/store/plannerStore';
+import type { VotingSessionSnapshot } from '@/lib/api/generated/models';
+
+const votingSession = (
+  week = '2026-05-04',
+  phase: NonNullable<VotingSessionSnapshot['phase']> = 'collecting'
+): VotingSessionSnapshot => ({
+  incarnationId: '00000000-0000-4000-8000-000000000001',
+  revision: 1,
+  roundId: '00000000-0000-4000-8000-000000000002',
+  weekStartDate: DateOnly.parse(week),
+  phase,
+  requiredSlots: 3,
+  coveredSlots: phase === 'converged' ? 3 : 1,
+  candidateCount: 3,
+  smartDefaults: { preSelectedRecipes: [], openSlots: [] },
+});
 
 describe('HomeCommandCenter', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    useDiscoveryStore.setState({
+      session: null,
+      sessionStatus: 'ready',
+      refreshSession: vi.fn().mockResolvedValue(undefined),
+    });
     mocks.currentRecipe = null;
     mocks.todayStatus = 0;
     mocks.nonCooking = null;
@@ -279,6 +302,90 @@ describe('HomeCommandCenter', () => {
     mocks.readSchedule.mockReset().mockImplementation(async () => ({
       days: [{ date: mocks.todayString, status: 0, recipe: { id: 'replacement-recipe' } }],
     }));
+  });
+
+  it.each(['2026-05-04', '2026-05-11', '2026-06-01'])(
+    'offers the active collecting round for %s without dismissal',
+    async (week) => {
+      useDiscoveryStore.setState({ session: votingSession(week), sessionStatus: 'ready' });
+      usePlannerStore.setState({ currentWeekOffset: 8, activeTab: 'grocery' });
+      render(<HomeCommandCenter todaysRecipe={null} />);
+      fireEvent.click(await screen.findByRole('button', { name: 'Vote Now' }));
+      expect(mocks.push).toHaveBeenCalledWith('/discovery');
+      expect(screen.queryByTestId('voting-nudge-dismiss')).not.toBeInTheDocument();
+      expect(screen.queryByText(/on next week|recipes to vote on/)).not.toBeInTheDocument();
+      expect(useDiscoveryStore.getState().refreshSession).toHaveBeenCalled();
+    }
+  );
+
+  it('updates collecting, converged, closed and reopened state from the shared owner', async () => {
+    useDiscoveryStore.setState({ session: votingSession(), sessionStatus: 'ready' });
+    render(<HomeCommandCenter todaysRecipe={null} />);
+    expect(await screen.findByRole('button', { name: 'Vote Now' })).toBeEnabled();
+    act(() => useDiscoveryStore.setState({ session: votingSession('2026-06-01', 'converged') }));
+    expect(screen.getByText("Menu's In")).toBeVisible();
+    expect(screen.getByText('Your matches are ready to review and save.')).toBeVisible();
+    usePlannerStore.setState({ currentWeekOffset: 8, activeTab: 'grocery' });
+    mocks.todayString = '2026-06-08';
+    fireEvent.click(screen.getByRole('button', { name: 'See your matches' }));
+    expect(mocks.push).toHaveBeenCalledWith(
+      '/planner?weekOffset=0&referenceWeekStartDate=2026-06-01'
+    );
+    expect(usePlannerStore.getState().activeTab).toBe('planner');
+    expect(mocks.assignRecipe).not.toHaveBeenCalled();
+    expect(mocks.validatePost).not.toHaveBeenCalled();
+    act(() => useDiscoveryStore.setState({ session: { ...votingSession(), phase: 'unowned' } }));
+    expect(screen.queryByTestId('voting-nudge-card')).not.toBeInTheDocument();
+    act(() =>
+      useDiscoveryStore.setState({
+        session: { ...votingSession(), roundId: '00000000-0000-4000-8000-000000000003' },
+      })
+    );
+    expect(screen.getByRole('button', { name: 'Vote Now' })).toBeEnabled();
+  });
+
+  it.each(['loading', 'unavailable'] as const)(
+    'keeps usable last-confirmed navigation during %s',
+    async (sessionStatus) => {
+      useDiscoveryStore.setState({
+        session: votingSession('2026-05-11', 'converged'),
+        sessionStatus,
+      });
+      render(<HomeCommandCenter todaysRecipe={null} />);
+      expect(await screen.findByRole('button', { name: 'See your matches' })).toBeEnabled();
+      expect(screen.getByTestId('home-voting-status')).toHaveTextContent(
+        sessionStatus === 'loading' ? 'Checking voting' : 'last confirmed'
+      );
+      fireEvent.click(screen.getByRole('button', { name: 'See your matches' }));
+      expect(mocks.push).toHaveBeenCalledWith(
+        '/planner?weekOffset=0&referenceWeekStartDate=2026-05-11'
+      );
+      expect(mocks.assignRecipe).not.toHaveBeenCalled();
+      expect(mocks.validatePost).not.toHaveBeenCalled();
+      if (sessionStatus === 'unavailable') {
+        fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+        expect(useDiscoveryStore.getState().refreshSession).toHaveBeenCalledTimes(2);
+      }
+    }
+  );
+
+  it.each([
+    null,
+    { ...votingSession(), roundId: null },
+    { ...votingSession(), weekStartDate: DateOnly.parse('2026-05-05') },
+  ])('withholds navigation without a usable accepted identity and Monday', async (session) => {
+    useDiscoveryStore.setState({ session, sessionStatus: 'unavailable' });
+    render(<HomeCommandCenter todaysRecipe={null} />);
+    expect(await screen.findByRole('button', { name: 'Retry' })).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Vote Now' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'See your matches' })).not.toBeInTheDocument();
+  });
+
+  it('shows checking on initial hydration without claiming voting is closed', async () => {
+    useDiscoveryStore.setState({ sessionStatus: 'unknown' });
+    render(<HomeCommandCenter todaysRecipe={null} />);
+    expect(await screen.findByTestId('home-voting-status')).toHaveTextContent('Checking voting');
+    expect(screen.queryByTestId('voting-nudge-vote-now')).not.toBeInTheDocument();
   });
 
   it.each(['order_in', 'eating_out'])('shows the saved %s note on Home', async (kind) => {

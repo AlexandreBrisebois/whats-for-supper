@@ -1,4 +1,5 @@
-import { test, expect } from './fixtures';
+import { test, expect, type Page } from './fixtures';
+import type { ScheduleDays } from '../src/lib/api/generated/models';
 import {
   MOCK_IDS,
   builders,
@@ -6,6 +7,7 @@ import {
   currentMonday,
   toDateStr,
   mockSseWithSlotUpdate,
+  mockSseWithConnectedSchedule,
 } from './mock-api';
 
 test.describe('Home Command Center — Planned Recipe Flow', () => {
@@ -1150,5 +1152,253 @@ test.describe('Home Command Center — Planner → todayStore propagation (Group
     await page.reload();
     await expect(page.getByTestId('home-loader')).not.toBeVisible({ timeout: 5000 });
     await expect(page.getByTestId('tonight-pivot-card')).not.toBeVisible();
+  });
+});
+
+// Home's shared-session handoff uses the existing Home CI suite.
+test.describe('Home active voting handoff', () => {
+  const round = (week = '2026-05-04', phase = 'collecting', revision = 1) => ({
+    incarnationId: MOCK_IDS.MEMBER_TEST,
+    revision,
+    roundId: MOCK_IDS.VOTING_ROUND,
+    weekStartDate: week,
+    phase,
+    requiredSlots: 3,
+    coveredSlots: phase === 'converged' ? 3 : 1,
+    candidateCount: 3,
+    smartDefaults: {
+      familySize: 2,
+      consensusThreshold: 2,
+      consensusRecipesCount: 3,
+      weekOffset: 0,
+      weekStartDate: week,
+      preSelectedRecipes: [],
+      openSlots: [{ dayIndex: 4 }, { dayIndex: 5 }, { dayIndex: 6 }],
+    },
+  });
+
+  async function prepare(page: Page) {
+    await page.context().addCookies([
+      {
+        name: 'x-family-member-id',
+        value: MOCK_IDS.MEMBER_ALEX,
+        url: process.env.BASE_URL || 'http://127.0.0.1:3000',
+      },
+    ]);
+    await setupCommonRoutes(page);
+    // Keep the real layout stream and store, with network delivery at the mock boundary.
+    await mockSseWithConnectedSchedule(page, builders.scheduleDays(0) as unknown as ScheduleDays);
+    await page.addInitScript((id) => {
+      localStorage.setItem(
+        'family-storage',
+        JSON.stringify({
+          state: {
+            selectedFamilyMemberId: id,
+            familyMembers: [{ id, name: 'Alex' }],
+            _hasHydrated: true,
+            hasLoaded: true,
+          },
+          version: 0,
+        })
+      );
+    }, MOCK_IDS.MEMBER_ALEX);
+  }
+
+  async function emit(page: Page, snapshot: ReturnType<typeof round>) {
+    await expect.poll(() => page.evaluate(() => !!(window as any).__sseSource)).toBe(true);
+    await page.evaluate((session) => {
+      (window as any).__sseSource.dispatchEvent(
+        new MessageEvent('voting_session_updated', { data: JSON.stringify({ session }) })
+      );
+    }, snapshot);
+  }
+
+  for (const week of ['2026-05-04', '2026-05-11', '2026-06-01']) {
+    test(`Home joins collecting round ${week} independently of Planner selection`, async ({
+      page,
+    }) => {
+      await prepare(page);
+      await page.route('**/api/discovery/session', (route) =>
+        route.fulfill({ json: { data: round(week) } })
+      );
+      await page.goto('/home');
+      await expect(page.getByRole('button', { name: 'Vote Now', exact: true })).toBeVisible();
+      await expect(page.getByTestId('voting-nudge-dismiss')).toHaveCount(0);
+      await expect(page.getByTestId('quick-capture-trigger')).toBeVisible();
+      await expect(page.getByTestId('home-browse-all-trigger')).toBeVisible();
+      await page.getByRole('button', { name: 'Vote Now', exact: true }).click();
+      await expect(page).toHaveURL(/\/discovery$/);
+    });
+  }
+
+  for (const target of [
+    { name: 'iPad', width: 820, height: 1180 },
+    { name: 'iPhone', width: 390, height: 844 },
+    { name: 'Pixel', width: 412, height: 915 },
+  ]) {
+    test(`Home matches handoff preserves absolute week and Planner tab on ${target.name}`, async ({
+      page,
+    }, testInfo) => {
+      await page.setViewportSize(target);
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      await prepare(page);
+      const current = round('2026-06-01', 'converged');
+      await page.route('**/api/discovery/session', (route) =>
+        route.fulfill({ json: { data: current } })
+      );
+      await page.goto('/home');
+      await expect(page.getByTestId('home-see-matches')).toBeVisible();
+      await page.getByRole('link', { name: 'Planner', exact: true }).click();
+      await page.getByTestId('next-week').click();
+      await page.getByTestId('grocery-tab').click();
+      // Mobile groceries cover shell links. Browser Back preserves the in-memory tab.
+      await page.goBack();
+      await expect(page.getByText("Menu's In", { exact: true })).toBeVisible();
+      await expect(
+        page.getByText('Your matches are ready to review and save.', { exact: true })
+      ).toBeVisible();
+      await expect(page.getByTestId('home-see-matches')).toBeEnabled();
+      await page.getByTestId('voting-nudge-card').scrollIntoViewIfNeeded();
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+        true
+      );
+      await page.screenshot({
+        path: `/tmp/wfs-home-${target.name}.png`,
+        fullPage: true,
+        style: 'nextjs-portal { visibility: hidden; }',
+      });
+      await testInfo.attach(`Home ${target.name}`, {
+        path: `/tmp/wfs-home-${target.name}.png`,
+        contentType: 'image/png',
+      });
+      // Browser week rollover must not reinterpret the round's absolute Monday.
+      await page.clock.setFixedTime(new Date('2026-06-08T12:00:00Z'));
+      const mutations: string[] = [];
+      const reads: string[] = [];
+      page.on('request', (request) => {
+        if (
+          request.url().includes('/api/') &&
+          !['GET', 'HEAD', 'OPTIONS'].includes(request.method())
+        )
+          mutations.push(request.url());
+        if (new URL(request.url()).pathname === '/api/schedule') reads.push(request.url());
+      });
+      await page.getByTestId('home-see-matches').focus();
+      await expect(page.getByTestId('home-see-matches')).toBeFocused();
+      await page.keyboard.press('Enter');
+      await expect(page).toHaveURL(/\/planner\?weekOffset=0&referenceWeekStartDate=2026-06-01$/);
+      await expect(page.getByTestId('planner-tab')).toHaveClass(/bg-white/);
+      await expect
+        .poll(() =>
+          reads.some(
+            (url) => new URL(url).searchParams.get('referenceWeekStartDate') === '2026-06-01'
+          )
+        )
+        .toBe(true);
+      expect(mutations).toEqual([]);
+    });
+  }
+
+  test('Home reconciles live convergence, stale frames, close, reopen and resume', async ({
+    page,
+  }) => {
+    await prepare(page);
+    let current = round();
+    await page.route('**/api/discovery/session', (route) =>
+      route.fulfill({ json: { data: current } })
+    );
+    await page.goto('/home');
+    await expect(page.getByTestId('voting-nudge-vote-now')).toBeVisible();
+    current = round('2026-05-04', 'converged', 3);
+    await emit(page, current);
+    await expect(page.getByTestId('home-see-matches')).toBeVisible();
+    await emit(page, round('2026-05-04', 'collecting', 2));
+    await expect(page.getByTestId('home-see-matches')).toBeVisible();
+    current = round('2026-05-04', 'unowned', 4);
+    await emit(page, current);
+    await expect(page.getByTestId('voting-nudge-card')).toHaveCount(0);
+    current = { ...round('2026-05-11', 'collecting', 5), roundId: MOCK_IDS.MEMBER_JORDAN };
+    // A missed reopen is recovered by the existing pageshow listener.
+    await page.evaluate(() => dispatchEvent(new Event('pageshow')));
+    await expect(page.getByTestId('voting-nudge-vote-now')).toBeVisible();
+    current = { ...current, phase: 'converged', revision: 6, coveredSlots: 3 };
+    await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+    await expect(page.getByTestId('home-see-matches')).toBeVisible();
+  });
+
+  test('Home retains confirmed navigation during recheck/failure and retries without guessing', async ({
+    page,
+  }) => {
+    await prepare(page);
+    let mode: 'failed' | 'ready' | 'pending' = 'failed';
+    let release: (() => void) | undefined;
+    await page.route('**/api/discovery/session', async (route) => {
+      if (mode === 'pending')
+        await new Promise<void>((resolve) => {
+          release = resolve;
+        });
+      if (mode === 'failed')
+        return route.fulfill({ status: 400, json: { message: 'Unavailable' } });
+      return route.fulfill({ json: { data: round('2026-05-11', 'converged') } });
+    });
+    await page.goto('/home');
+    await expect(page.getByRole('button', { name: 'Retry', exact: true })).toBeVisible({
+      timeout: 20000,
+    });
+    await expect(page.getByTestId('home-see-matches')).toHaveCount(0);
+    mode = 'ready';
+    await page.getByRole('button', { name: 'Retry', exact: true }).click();
+    await expect(page.getByTestId('home-see-matches')).toBeEnabled();
+    mode = 'pending';
+    await page.evaluate(() => dispatchEvent(new Event('pageshow')));
+    await expect(page.getByTestId('home-voting-status')).toContainText('Checking voting');
+    await expect(page.getByTestId('home-see-matches')).toBeEnabled();
+    mode = 'failed';
+    release?.();
+    await expect(page.getByTestId('home-voting-status')).toContainText('last confirmed', {
+      timeout: 20000,
+    });
+    await expect(page.getByTestId('home-see-matches')).toBeEnabled();
+    mode = 'ready';
+    await page.getByRole('button', { name: 'Retry', exact: true }).click();
+    await expect(page.getByTestId('home-voting-status')).toHaveCount(0);
+  });
+
+  test.describe('French Home voting', () => {
+    test.use({ appLocale: 'fr' });
+    for (const target of [
+      { name: 'iPad', width: 820, height: 1180 },
+      { name: 'iPhone', width: 390, height: 844 },
+      { name: 'Pixel', width: 412, height: 915 },
+    ]) {
+      test(`communicates unsaved matches on ${target.name} without changing Discovery copy`, async ({
+        page,
+      }, testInfo) => {
+        await page.setViewportSize(target);
+        await prepare(page);
+        await page.route('**/api/discovery/session', (route) =>
+          route.fulfill({ json: { data: round('2026-05-11', 'converged') } })
+        );
+        await page.goto('/home');
+        await expect(page.getByText('Le menu est prêt', { exact: true })).toBeVisible();
+        await expect(
+          page.getByText('Vos choix communs sont prêts à être consultés et enregistrés.', {
+            exact: true,
+          })
+        ).toBeVisible();
+        await expect(
+          page.getByRole('button', { name: 'Voir vos choix communs', exact: true })
+        ).toBeEnabled();
+        await page.screenshot({
+          path: `/tmp/wfs-home-fr-${target.name}.png`,
+          fullPage: true,
+          style: 'nextjs-portal { visibility: hidden; }',
+        });
+        await testInfo.attach('Home French', {
+          path: `/tmp/wfs-home-fr-${target.name}.png`,
+          contentType: 'image/png',
+        });
+      });
+    }
   });
 });

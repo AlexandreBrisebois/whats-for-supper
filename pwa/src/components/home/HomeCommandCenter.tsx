@@ -20,7 +20,7 @@ import { apiClient } from '@/lib/api/api-client';
 import { getSchedule, normalizeScheduleRecipe } from '@/lib/api/planner';
 import { RetryHandlerOptions } from '@microsoft/kiota-http-fetchlibrary';
 import { DateOnly } from '@microsoft/kiota-abstractions';
-import { calendarDayIndex, type CalendarContext } from '@/lib/deployment-calendar';
+import { absoluteMonday, calendarDayIndex, type CalendarContext } from '@/lib/deployment-calendar';
 import { moveTomorrow, type PlannerSlot } from '@/lib/planner/slotAssignment';
 import { referenceRequest } from '@/lib/api/planner';
 import { SolarLoader } from '../ui/SolarLoader';
@@ -29,6 +29,8 @@ import { useTodayStore } from '@/store/todayStore';
 import { useGotoStore } from '@/store/gotoStore';
 import { useWeekStore } from '@/store/weekStore';
 import { useUiStore } from '@/store/uiStore';
+import { useDiscoveryStore } from '@/store/discoveryStore';
+import { usePlannerStore } from '@/store/plannerStore';
 import { t } from '@/locales';
 import { nonCookingLabel, nonCookingNote } from '@/lib/planner/nonCooking';
 import { ROUTES } from '@/lib/constants/routes';
@@ -61,10 +63,21 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
     kind: 'closed',
   });
   const [cookedDismissed, setCookedDismissed] = useState(false);
-  const [votingNudge, setVotingNudge] = useState<{
-    plannedCount: number;
-  } | null>(null);
-  const [votingNudgeDismissed, setVotingNudgeDismissed] = useState(false);
+  const session = useDiscoveryStore((state) => state.session);
+  const sessionStatus = useDiscoveryStore((state) => state.sessionStatus);
+  const refreshSession = useDiscoveryStore((state) => state.refreshSession);
+  const votingPhase =
+    session?.roundId &&
+    absoluteMonday(session.weekStartDate) &&
+    (session.phase === 'collecting' || session.phase === 'converged')
+      ? session.phase
+      : null;
+  const votingStatus =
+    sessionStatus === 'unknown' || sessionStatus === 'loading'
+      ? 'checking'
+      : sessionStatus === 'unavailable' || (session?.phase !== 'unowned' && !votingPhase)
+        ? 'unavailable'
+        : null;
 
   // ── Domain state from todayStore ──────────────────────────────────────────
   // NOTE: init() is intentionally excluded here — TodayStoreInitializer is the sole initialiser.
@@ -125,29 +138,10 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
   // Note: cookedDismissed is only visually meaningful when isCooked is true.
   // Both badge conditions already gate on isCooked, so no explicit reset effect is needed.
 
-  // ── Voting nudge: fetch next-week status after mount (non-blocking) ───────
+  // Reuse the shared read; the app layout owns reconnect and resume reconciliation.
   useEffect(() => {
-    let isMounted = true;
-    const fetchVotingStatus = async () => {
-      try {
-        const result = await apiClient.api.schedule.get({
-          queryParameters: { weekOffset: 1 },
-        });
-        const data = result?.data;
-        if (!isMounted) return;
-        if (data?.status === 1 && data.days) {
-          const plannedCount = data.days.filter((d: any) => d.recipe != null).length;
-          setVotingNudge({ plannedCount });
-        }
-      } catch {
-        // AC8: fetch failure → no card shown, no error surfaced
-      }
-    };
-    fetchVotingStatus();
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+    void refreshSession();
+  }, [refreshSession]);
 
   const router = useRouter();
 
@@ -732,11 +726,26 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
         </>
       )}
 
-      {votingNudge && !votingNudgeDismissed && (
+      {(votingPhase || votingStatus) && (
         <VotingNudgeCard
-          plannedCount={votingNudge.plannedCount}
-          onVote={() => router.push(ROUTES.DISCOVERY as any)}
-          onDismiss={() => setVotingNudgeDismissed(true)}
+          phase={votingPhase}
+          status={votingStatus}
+          onRetry={() => void refreshSession()}
+          onNavigate={() => {
+            const current = useDiscoveryStore.getState().session;
+            const monday = absoluteMonday(current?.weekStartDate);
+            if (!current?.roundId || !monday) return;
+            if (current.phase === 'collecting') {
+              router.push(ROUTES.DISCOVERY);
+            } else if (current.phase === 'converged') {
+              usePlannerStore.getState().setActiveTab('planner');
+              const params = new URLSearchParams({
+                weekOffset: '0',
+                referenceWeekStartDate: monday,
+              });
+              router.push(`${ROUTES.PLANNER}?${params.toString()}`);
+            }
+          }}
         />
       )}
 

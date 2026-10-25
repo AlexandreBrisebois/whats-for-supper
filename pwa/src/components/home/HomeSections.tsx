@@ -1,6 +1,6 @@
 'use client';
 
-import { Camera, ChevronRight, X, Vote, BookOpen } from 'lucide-react';
+import { Camera, ChevronRight, Vote, BookOpen } from 'lucide-react';
 import Link from 'next/link';
 import { ROUTES } from '@/lib/constants/routes';
 import { t } from '@/locales';
@@ -51,48 +51,72 @@ export function CookedSuccessCard({ onDismiss }: { onDismiss?: () => void }) {
 }
 
 interface VotingNudgeCardProps {
-  plannedCount: number;
-  onVote: () => void;
-  onDismiss: () => void;
+  phase: 'collecting' | 'converged' | null;
+  status: 'checking' | 'unavailable' | null;
+  onNavigate: () => void;
+  onRetry: () => void;
 }
 
-export function VotingNudgeCard({ plannedCount, onVote, onDismiss }: VotingNudgeCardProps) {
+export function VotingNudgeCard({ phase, status, onNavigate, onRetry }: VotingNudgeCardProps) {
+  const converged = phase === 'converged';
   return (
-    <div
+    <section
       data-testid="voting-nudge-card"
-      className="relative w-full bg-ochre/10 border border-ochre/20 rounded-[2.5rem] p-6 flex flex-col gap-4 overflow-hidden"
+      aria-label={t('home.votingRound', 'Family voting')}
+      className="w-full bg-ochre/10 border border-ochre/20 rounded-[2.5rem] p-6 flex flex-col gap-4"
     >
-      <button
-        data-testid="voting-nudge-dismiss"
-        onClick={onDismiss}
-        className="absolute top-4 right-4 h-8 w-8 rounded-full bg-ochre/10 flex items-center justify-center text-ochre/60 hover:bg-ochre/20 transition-colors"
-        aria-label="Dismiss"
-      >
-        <X size={14} />
-      </button>
-
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-ochre/20 text-ochre flex-shrink-0">
-          <Vote size={20} />
+      {phase && (
+        <div className="flex items-center gap-3">
+          <div
+            aria-hidden="true"
+            className="flex h-10 w-10 items-center justify-center rounded-2xl bg-ochre/20 text-charcoal flex-shrink-0"
+          >
+            <Vote size={20} />
+          </div>
+          <div>
+            <h2 className="font-heading text-lg font-bold text-charcoal">
+              {converged
+                ? t('home.menuIsIn', "Menu's In")
+                : t('home.familyVoting', 'The family is voting')}
+            </h2>
+            {converged && (
+              <p className="text-sm text-charcoal">
+                {t('home.matchesReady', 'Your matches are ready to review and save.')}
+              </p>
+            )}
+          </div>
         </div>
-        <div className="flex flex-col">
-          <span className="text-sm font-black text-charcoal leading-tight">
-            The family is voting on next week
-          </span>
-          <span className="text-[10px] font-bold uppercase tracking-widest text-ochre/70 mt-0.5">
-            {plannedCount} {plannedCount === 1 ? 'recipe' : 'recipes'} to vote on
-          </span>
-        </div>
-      </div>
-
-      <button
-        data-testid="voting-nudge-vote-now"
-        onClick={onVote}
-        className="w-full h-12 rounded-2xl bg-ochre text-white font-black text-[10px] uppercase tracking-widest transition-all active:scale-95 hover:bg-ochre/90 shadow-lg shadow-ochre/20"
-      >
-        Vote Now →
-      </button>
-    </div>
+      )}
+      {status && (
+        <p role="status" data-testid="home-voting-status" className="text-sm text-charcoal">
+          {status === 'checking'
+            ? t('home.checkingVoting', 'Checking voting…')
+            : phase
+              ? t(
+                  'home.votingUnavailableRetained',
+                  'Voting status unavailable. Showing the last confirmed round.'
+                )
+              : t('home.votingUnavailable', 'Voting status unavailable.')}
+        </p>
+      )}
+      {phase && (
+        <button
+          data-testid={converged ? 'home-see-matches' : 'voting-nudge-vote-now'}
+          onClick={onNavigate}
+          className="w-full min-h-12 rounded-2xl bg-ochre text-charcoal font-bold text-sm px-4 py-3 transition-colors hover:bg-ochre/80 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-charcoal"
+        >
+          {converged ? t('home.seeMatches', 'See your matches') : t('home.voteNow', 'Vote Now')}
+        </button>
+      )}
+      {status === 'unavailable' && (
+        <button
+          onClick={onRetry}
+          className="min-h-12 rounded-2xl border border-charcoal/30 px-4 py-3 font-bold text-sm text-charcoal focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-charcoal"
+        >
+          {t('home.retryVoting', 'Retry')}
+        </button>
+      )}
+    </section>
   );
 }
 

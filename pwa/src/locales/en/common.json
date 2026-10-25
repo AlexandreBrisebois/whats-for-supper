@@ -167,6 +167,16 @@
     "profile": "Profile"
   },
   "home": {
+    "votingRound": "Family voting",
+    "menuIsIn": "Menu's In",
+    "familyVoting": "The family is voting",
+    "matchesReady": "Your matches are ready to review and save.",
+    "checkingVoting": "Checking voting…",
+    "votingUnavailableRetained": "Voting status unavailable. Showing the last confirmed round.",
+    "votingUnavailable": "Voting status unavailable.",
+    "seeMatches": "See your matches",
+    "voteNow": "Vote Now",
+    "retryVoting": "Retry",
     "tonight": "Tonight",
     "nothingPlanned": "Nothing Planned?",
     "quickFixes": "Quick Fixes",
