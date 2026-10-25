@@ -10,7 +10,7 @@ namespace RecipeApi.Tests.Services;
 public class DemoModeBypassProcessorTests
 {
     [Fact]
-    public async Task ExecuteAsync_Returns_Bypass_Result_Without_Invoking_AI_Processor()
+    public async Task ExecuteAsync_Refuses_Without_Claiming_Produced_Content()
     {
         var inner = new ThrowingProcessor("ExtractRecipe");
         var processor = new DemoModeBypassProcessor(
@@ -19,10 +19,9 @@ public class DemoModeBypassProcessorTests
                 .AddInMemoryCollection(new Dictionary<string, string?> { ["DEMO_MODE"] = "true" })
                 .Build()));
 
-        var result = await processor.ExecuteAsync(new WorkflowTask { ProcessorName = "ExtractRecipe" }, CancellationToken.None);
+        await Assert.ThrowsAsync<DemoAiUnavailableException>(() => processor.ExecuteAsync(new WorkflowTask { ProcessorName = "ExtractRecipe" }, CancellationToken.None));
 
         Assert.Equal("ExtractRecipe", processor.ProcessorName);
-        Assert.Contains("Demo Mode Bypass", result?.ToString());
         Assert.False(inner.WasInvoked);
     }
 

@@ -15,10 +15,6 @@ public class DemoModeBypassProcessor(string processorName, DemoModeOptions demoM
             throw new InvalidOperationException($"{ProcessorName} demo bypass processor was invoked while Demo Mode is disabled.");
         }
 
-        return Task.FromResult<object?>(new
-        {
-            Message = "Demo Mode Bypass",
-            ProcessorName
-        });
+        throw new DemoAiUnavailableException();
     }
 }

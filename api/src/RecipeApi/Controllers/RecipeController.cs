@@ -67,6 +67,7 @@ public class RecipeController(
 
     /// <summary>POST /api/recipes — upload images and create a new recipe.</summary>
     [HttpPost]
+    [DemoAiAction]
     [RequestSizeLimit(500 * 1024 * 1024)] // 500 MB outer limit (20 images × 20 MB)
     public async Task<IActionResult> Create(
         [ModelBinder(BinderType = typeof(FamilyMemberIdModelBinder))] Guid? familyMemberId,
@@ -169,6 +170,7 @@ public class RecipeController(
     }
 
     [HttpPost("{id:guid}/import-report")]
+    [DemoAiAction]
     [SkipWrapping]
     public async Task<IActionResult> SubmitImportReport(
         Guid id,
@@ -226,6 +228,7 @@ public class RecipeController(
     /// POST /api/recipes/imports/bulk — queue a recipe-import workflow for every unimported recipe.
     /// </summary>
     [HttpPost("imports/bulk")]
+    [DemoAiAction]
     [SkipWrapping]
     public async Task<IActionResult> BulkTriggerImport()
     {
@@ -238,6 +241,7 @@ public class RecipeController(
     /// Triggers the goto-synthesis workflow (added in Phase C).
     /// </summary>
     [HttpPost("describe")]
+    [DemoAiAction]
     public async Task<IActionResult> Describe(
         [FromBody] DescribeRecipeDto dto,
         [ModelBinder(BinderType = typeof(FamilyMemberIdModelBinder))] Guid? familyMemberId = null)
@@ -272,6 +276,7 @@ public class RecipeController(
     /// Triggers the url-import workflow.
     /// </summary>
     [HttpPost("capture-url")]
+    [DemoAiAction]
     public async Task<IActionResult> CaptureUrl(
         [FromBody] CaptureUrlDto dto,
         [ModelBinder(BinderType = typeof(FamilyMemberIdModelBinder))] Guid? familyMemberId = null)
@@ -388,6 +393,7 @@ public class RecipeController(
 
     /// <summary>POST /api/recipes/{id}/originals — upload a single original photo and trigger regeneration.</summary>
     [HttpPost("{id:guid}/originals")]
+    [DemoAiAction]
     public async Task<IActionResult> UploadOriginal(Guid id, IFormFile file)
     {
         try
@@ -403,6 +409,7 @@ public class RecipeController(
 
     /// <summary>POST /api/recipes/{id}/hero/regenerate — force trigger background hero regeneration.</summary>
     [HttpPost("{id:guid}/hero/regenerate")]
+    [DemoAiAction]
     public async Task<IActionResult> RegenerateHero(Guid id)
     {
         try

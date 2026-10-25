@@ -253,6 +253,17 @@ export function createDeferScheduleResultDtoFromDiscriminatorValue(
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {DemoAiUnavailableError}
+ */
+// @ts-ignore
+export function createDemoAiUnavailableErrorFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoDemoAiUnavailableError;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {DeploymentCalendarContext}
  */
 // @ts-ignore
@@ -1190,6 +1201,22 @@ export interface DeferScheduleResultDto extends AdditionalDataHolder, Parsable {
    */
   scheduledWeekOffset?: number | null;
 }
+export interface DemoAiUnavailableError extends ApiError, Parsable {
+  /**
+   * The code property
+   */
+  code?: DemoAiUnavailableError_code | null;
+  /**
+   * The message property
+   */
+  messageEscaped?: string | null;
+  /**
+   * The status property
+   */
+  status?: number | null;
+}
+export type DemoAiUnavailableError_code =
+  (typeof DemoAiUnavailableError_codeObject)[keyof typeof DemoAiUnavailableError_codeObject];
 /**
  * Authoritative supper calendar captured once at operation entry. Calendar:TimeZone selects the deployment IANA timezone; absence defaults to UTC. Browser and host OS timezones do not select meal dates. Stored civil dates and UTC timestamps are unchanged.
  */
@@ -1457,6 +1484,29 @@ export function deserializeIntoDeferScheduleResultDto(
     },
     scheduledWeekOffset: (n) => {
       deferScheduleResultDto.scheduledWeekOffset = n.getNumberValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param DemoAiUnavailableError The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoDemoAiUnavailableError(
+  demoAiUnavailableError: Partial<DemoAiUnavailableError> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    code: (n) => {
+      demoAiUnavailableError.code = n.getEnumValue<DemoAiUnavailableError_code>(
+        DemoAiUnavailableError_codeObject
+      );
+    },
+    message: (n) => {
+      demoAiUnavailableError.messageEscaped = n.getStringValue();
+    },
+    status: (n) => {
+      demoAiUnavailableError.status = n.getNumberValue();
     },
   };
 }
@@ -5126,6 +5176,25 @@ export function serializeDeferScheduleResultDto(
 }
 /**
  * Serializes information the current object
+ * @param DemoAiUnavailableError The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeDemoAiUnavailableError(
+  writer: SerializationWriter,
+  demoAiUnavailableError: Partial<DemoAiUnavailableError> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!demoAiUnavailableError || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeEnumValue<DemoAiUnavailableError_code>('code', demoAiUnavailableError.code);
+  writer.writeStringValue('message', demoAiUnavailableError.messageEscaped);
+  writer.writeNumberValue('status', demoAiUnavailableError.status);
+}
+/**
+ * Serializes information the current object
  * @param DeploymentCalendarContext The instance to serialize from.
  * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
  * @param writer Serialization writer to use to serialize this model
@@ -7526,6 +7595,9 @@ export const CaptureFailureDto_sourceTypeObject = {
 } as const;
 export const CaptureFailureDto_statusObject = {
   Failed: 'failed',
+} as const;
+export const DemoAiUnavailableError_codeObject = {
+  DEMO_AI_UNAVAILABLE: 'DEMO_AI_UNAVAILABLE',
 } as const;
 export const FeatureFlagModeObject = {
   Off: 'off',

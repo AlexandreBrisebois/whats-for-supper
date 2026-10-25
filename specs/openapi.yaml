@@ -13,6 +13,17 @@ security:
   - HearthToken: []
 
 components:
+  responses:
+    DemoAiUnavailable:
+      description: AI processing is unavailable in demo mode; rejected before request-body processing or model work.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/DemoAiUnavailableError' }
+          example:
+            status: 403
+            code: DEMO_AI_UNAVAILABLE
+            message: AI capture and generation are unavailable in Demo Mode. Explore the prepared recipes instead.
+
   securitySchemes:
     FamilyMemberId:
       type: apiKey
@@ -28,6 +39,15 @@ components:
       bearerFormat: HMAC
 
   schemas:
+    DemoAiUnavailableError:
+      type: object
+      additionalProperties: false
+      required: [status, code, message]
+      properties:
+        status: { type: integer, enum: [403] }
+        code: { type: string, enum: [DEMO_AI_UNAVAILABLE] }
+        message: { type: string }
+
     RecoveryBusyError:
       type: object
       required: [errorCode, message]
@@ -2016,6 +2036,8 @@ paths:
                     format: binary
 
       responses:
+        '403':
+          $ref: '#/components/responses/DemoAiUnavailable'
         '503':
           description: Online recovery coordination is busy; retry after Retry-After seconds
           content:
@@ -2057,6 +2079,8 @@ paths:
               file:
                 contentType: application/pdf
       responses:
+        '403':
+          $ref: '#/components/responses/DemoAiUnavailable'
         '503':
           description: Online recovery coordination is busy; retry after Retry-After seconds
           content:
@@ -2215,6 +2239,8 @@ paths:
                   reasons: [ingredients, steps]
                   note: 'The quantities and final two steps need another pass.'
       responses:
+        '403':
+          $ref: '#/components/responses/DemoAiUnavailable'
         '503':
           description: Online recovery coordination is busy; retry after Retry-After seconds
           content:
@@ -2589,6 +2615,8 @@ paths:
                   type: string
                   format: binary
       responses:
+        '403':
+          $ref: '#/components/responses/DemoAiUnavailable'
         '503':
           description: Online recovery coordination is busy; retry after Retry-After seconds
           content:
@@ -2615,6 +2643,8 @@ paths:
       operationId: regenerateRecipeHero
       tags: [Recipes]
       responses:
+        '403':
+          $ref: '#/components/responses/DemoAiUnavailable'
         '503':
           description: Online recovery coordination is busy; retry after Retry-After seconds
           content:
@@ -3554,6 +3584,8 @@ paths:
     post:
       summary: Bulk-trigger recipe-import for all unimported recipes
       responses:
+        '403':
+          $ref: '#/components/responses/DemoAiUnavailable'
         '503':
           description: Online recovery coordination is busy; retry after Retry-After seconds
           content:
@@ -3583,6 +3615,8 @@ paths:
               name: 'Our family spaghetti'
               description: 'Homemade tomato sauce with meatballs, slow-cooked for two hours'
       responses:
+        '403':
+          $ref: '#/components/responses/DemoAiUnavailable'
         '503':
           description: Online recovery coordination is busy; retry after Retry-After seconds
           content:
@@ -3614,6 +3648,8 @@ paths:
           application/json:
             schema: { $ref: '#/components/schemas/CaptureUrlDto' }
       responses:
+        '403':
+          $ref: '#/components/responses/DemoAiUnavailable'
         '503':
           description: Online recovery coordination is busy; retry after Retry-After seconds
           content:
@@ -4039,6 +4075,8 @@ paths:
           required: true
           schema: { type: string, format: uuid }
       responses:
+        '403':
+          $ref: '#/components/responses/DemoAiUnavailable'
         '503':
           description: Online recovery coordination is busy; retry after Retry-After seconds
           content:

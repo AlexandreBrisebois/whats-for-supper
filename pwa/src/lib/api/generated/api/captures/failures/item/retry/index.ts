@@ -4,9 +4,11 @@
 // @ts-ignore
 import {
   createCaptureFailureRetryResponseFromDiscriminatorValue,
+  createDemoAiUnavailableErrorFromDiscriminatorValue,
   createRecoveryBusyErrorFromDiscriminatorValue,
   serializeCaptureFailureRetryResponse,
   type CaptureFailureRetryResponse,
+  type DemoAiUnavailableError,
   type RecoveryBusyError,
 } from '../../../../../models/index';
 // @ts-ignore
@@ -104,6 +106,7 @@ export interface RetryRequestBuilder extends BaseRequestBuilder<RetryRequestBuil
    * Retry a failed capture
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {Promise<RetryPostResponse>}
+   * @throws {DemoAiUnavailableError} error when the service returns a 403 status code
    * @throws {Retry409Error} error when the service returns a 409 status code
    * @throws {RecoveryBusyError} error when the service returns a 503 status code
    */
@@ -172,6 +175,7 @@ export const RetryRequestBuilderRequestsMetadata: RequestsMetadata = {
     uriTemplate: RetryRequestBuilderUriTemplate,
     responseBodyContentType: 'application/json',
     errorMappings: {
+      403: createDemoAiUnavailableErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
       409: createRetry409ErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
       503: createRecoveryBusyErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
     },

@@ -253,7 +253,7 @@ export async function mockFeatureFlags(
 export async function setupCommonRoutes(
   page: Page,
   calendarContext?: CalendarContext,
-  recoveryOptions: { busy?: boolean } = {}
+  recoveryOptions: { busy?: boolean; demoMode?: boolean } = {}
 ) {
   const scheduleEntries = new Map<
     string,
@@ -1004,7 +1004,12 @@ export async function setupCommonRoutes(
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
-          recipe: builders.recipe({ id, importIssue: activeImportIssue, ...recipeUpdates.get(id) }),
+          recipe: builders.recipe({
+            id,
+            createdAt: new Date(FIXED_E2E_TIMESTAMP),
+            importIssue: activeImportIssue,
+            ...recipeUpdates.get(id),
+          }),
           updatedAt: FIXED_E2E_TIMESTAMP,
         }),
       });
@@ -2160,8 +2165,8 @@ export async function setupCommonRoutes(
         status: 'Healthy',
         timestamp: FIXED_E2E_TIMESTAMP,
         checks: {},
-        demoMode: false,
-        demoModeRawValue: 'false',
+        demoMode: recoveryOptions.demoMode ?? false,
+        demoModeRawValue: recoveryOptions.demoMode ? 'true' : 'false',
         demoRestoreCronValid: true,
       }),
     });
@@ -2314,6 +2319,34 @@ export async function setupCommonRoutes(
       }),
     });
   });
+
+  // Register last so demo POST refusal precedes ordinary stateful mutations.
+  if (recoveryOptions.demoMode) {
+    for (const pattern of [
+      '**/api/recipes',
+      '**/api/recipes/capture-pdf',
+      '**/api/recipes/capture-url',
+      '**/api/recipes/describe',
+      '**/api/recipes/*/originals',
+      '**/api/recipes/*/hero/regenerate',
+      '**/api/recipes/imports/bulk',
+      '**/api/recipes/*/import-report',
+      '**/api/captures/failures/*/retry',
+    ]) {
+      await page.route(pattern, async (route) => {
+        if (route.request().method() !== 'POST') return route.fallback();
+        return route.fulfill({
+          status: 403,
+          json: {
+            status: 403,
+            code: 'DEMO_AI_UNAVAILABLE',
+            message:
+              'AI capture and generation are unavailable in Demo Mode. Explore the prepared recipes instead.',
+          },
+        });
+      });
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------

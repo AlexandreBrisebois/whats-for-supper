@@ -45,8 +45,12 @@ export function getLocale(): Locale {
   if (typeof window === 'undefined') return DEFAULT_LOCALE;
 
   // 1. Check for manual override (user's explicit choice in this browser)
-  const stored = localStorage.getItem(LOCALE_KEY) as Locale | null;
-  if (stored === 'en' || stored === 'fr') return stored;
+  try {
+    const stored = localStorage.getItem(LOCALE_KEY) as Locale | null;
+    if (stored === 'en' || stored === 'fr') return stored;
+  } catch {
+    /* Browser storage denial must not make the app unreadable. */
+  }
 
   // 2. Fallback to environment default
   return DEFAULT_LOCALE;
@@ -54,7 +58,11 @@ export function getLocale(): Locale {
 
 export function setLocale(locale: Locale): void {
   if (typeof window === 'undefined') return;
-  localStorage.setItem(LOCALE_KEY, locale);
+  try {
+    localStorage.setItem(LOCALE_KEY, locale);
+  } catch {
+    /* The current visit can still use its selected locale. */
+  }
 }
 
 function getNestedValue(obj: Record<string, unknown>, keys: string[]): unknown {

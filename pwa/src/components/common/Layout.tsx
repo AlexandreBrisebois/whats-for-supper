@@ -1,6 +1,7 @@
-import type { ReactNode } from 'react';
+import { Suspense, type ReactNode } from 'react';
 
 import { IdentityHint } from '@/components/identity/IdentityHint';
+import { DemoContext } from '@/components/identity/DemoContext';
 import { Header } from './Header';
 import { Navigation } from './Navigation';
 import { BackgroundBlobs } from '../ui/BackgroundBlobs';
@@ -41,6 +42,9 @@ export function Layout({
 }: LayoutProps) {
   return (
     <div className={`relative flex min-h-dvh flex-col bg-cream overflow-x-hidden ${className}`}>
+      <Suspense fallback={null}>
+        <DemoContext />
+      </Suspense>
       {showBackgroundBlobs && <BackgroundBlobs />}
       {hideHeader && (
         <IdentityHint className="right-1 top-[calc(env(safe-area-inset-top)+1px)] z-30" />

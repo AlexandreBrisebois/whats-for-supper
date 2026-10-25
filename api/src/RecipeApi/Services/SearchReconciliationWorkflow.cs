@@ -11,7 +11,8 @@ public sealed class SearchReconciliationWorkflow(
     RecipeDbContext db,
     IWorkflowOrchestrator orchestrator,
     IRecipeSearchDocumentBuilder builder,
-    ILogger<SearchReconciliationWorkflow> logger) : IWorkflowProcessor
+    ILogger<SearchReconciliationWorkflow> logger,
+    DemoModeOptions? demoMode = null) : IWorkflowProcessor
 {
     private const int BatchSize = 50;
     public string ProcessorName => "ReconcileRecipeSearch";
@@ -33,7 +34,8 @@ public sealed class SearchReconciliationWorkflow(
                 sidecar = new RecipeSearchDocument { RecipeId = recipe.Id, DocumentText = string.Empty, SearchMetadata = "{}", IndexStatus = "pending", EmbeddingStatus = "pending", EmbeddingModel = Environment.GetEnvironmentVariable("EMBEDDING_MODEL_ID") ?? "gemini-embedding-2", SchemaVersion = RecipeSearchDocumentBuilder.CurrentSchemaVersion };
                 db.RecipeSearchDocuments.Add(sidecar);
             }
-            var needsIndex = sidecar.IndexStatus != "ready" || sidecar.SchemaVersion != content.SchemaVersion || sidecar.SourceFingerprint != fingerprint || sidecar.EmbeddingStatus is "failed" or "pending";
+            var needsIndex = sidecar.IndexStatus != "ready" || sidecar.SchemaVersion != content.SchemaVersion || sidecar.SourceFingerprint != fingerprint
+                || (demoMode?.Enabled != true && sidecar.EmbeddingStatus is "failed" or "pending");
             if (needsIndex && !await HasActiveIndexAsync(recipe.Id, fingerprint, ct))
             {
                 sidecar.IndexStatus = "pending";

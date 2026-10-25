@@ -11,6 +11,11 @@ public class DemoModeOptions
 
     public string RestoreCronUtc { get; }
 
+    public void EnsureAiAvailable()
+    {
+        if (Enabled) throw new DemoAiUnavailableException();
+    }
+
     public DemoModeOptions(IConfiguration configuration, ILogger<DemoModeOptions>? logger = null)
     {
         RawValue = configuration["DEMO_MODE"];

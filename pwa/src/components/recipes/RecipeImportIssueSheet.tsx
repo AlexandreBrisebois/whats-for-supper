@@ -8,6 +8,8 @@ import type {
   RecipeImportIssueReason,
 } from '@/lib/api/recipes';
 import { RecipeImportIssueReasonObject } from '@/lib/api/generated/models/index';
+import { useDemoMode } from '@/components/demo/DemoModeProvider';
+import { DemoRestrictedDialog } from '@/components/demo/DemoAiActionGate';
 
 interface RecipeImportIssueSheetProps {
   issue: RecipeImportIssue | null;
@@ -31,7 +33,16 @@ function mergeReasons(
   return reasons;
 }
 
-export function RecipeImportIssueSheet({
+export function RecipeImportIssueSheet(props: RecipeImportIssueSheetProps) {
+  const { mode } = useDemoMode();
+  return mode === false ? (
+    <RecipeImportIssueEditor {...props} />
+  ) : (
+    <DemoRestrictedDialog onClose={props.onClose} />
+  );
+}
+
+function RecipeImportIssueEditor({
   issue,
   recipeId,
   contextualReason,

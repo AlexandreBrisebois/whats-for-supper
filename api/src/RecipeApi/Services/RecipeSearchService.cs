@@ -21,7 +21,8 @@ public partial class RecipeSearchService(
     RecipeSemanticSearchRepository? semanticRepository = null,
     RecipeSearchRolloutOptions? rolloutOptions = null,
     RecipeSearchContinuationStore? continuationStore = null,
-    RecipeSearchFilterOptions? filterOptions = null)
+    RecipeSearchFilterOptions? filterOptions = null,
+    DemoModeOptions? demoMode = null)
 {
     private const int DefaultLimit = 12;
     private const int MaxLimit = 50;
@@ -102,7 +103,7 @@ public partial class RecipeSearchService(
                 lexicalDurationMs = lexicalStopwatch.ElapsedMilliseconds;
             }
 
-            if (embeddingProvider is not null && semanticRepository is not null && SemanticOptions.Enabled)
+            if (demoMode?.Enabled != true && embeddingProvider is not null && semanticRepository is not null && SemanticOptions.Enabled)
             {
                 var semanticAttemptStopwatch = System.Diagnostics.Stopwatch.StartNew();
                 try
