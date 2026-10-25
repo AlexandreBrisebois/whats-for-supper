@@ -12,7 +12,7 @@ Observed owners on main and the consolidated development copy:
 - `docs/install/quick-start.md`, `updates.md`, `cloudflare.md` and `release-template/synology/README.md` own the human route and technical reference. The consolidated branch carries the agent guide and both overlays; none is yet shipped on main.
 - `scripts/agent/tests/test_install_identity.py` and `test_dockerhub_release.py` cover existing release tooling on main. `test_install_bundle.py` and its direct CI invocation are carried into the consolidated branch from the unmerged source. Reuse these fixtures; keep legacy bundled release handoffs valid.
 
-The application API, PWA and recovery capability own no new behavior in this increment. Issue #301 retains installation and recovery qualification.
+The application API, PWA and recovery capability own no new behavior in this increment. Historical issue #301 records the separate installation and recovery qualification scope. Its administrative closure does not establish that qualification.
 
 ## Decisions and Tradeoffs
 
@@ -89,6 +89,6 @@ Removal of the new mode/docs in a later release needs no data migration. It cann
 
 ## Operational Diagnosis
 
-The common verification reference records individual outcomes for HTTPS health, fresh/existing login, assets, API routing, authenticated SSE and persistence after planned recreation. Use passed/failed/blocked/not-run, with host/version identity. A setup zero, healthy connector, Compose render or local inspection cannot fill those outcomes. Record backup/schema/restore evidence separately under #301.
+The common verification reference records individual outcomes for HTTPS health, fresh/existing login, assets, API routing, authenticated SSE and persistence after planned recreation. Use passed/failed/blocked/not-run, with host/version identity. A setup zero, healthy connector, Compose render or local inspection cannot fill those outcomes. Record backup/schema/restore evidence separately from installation-assistance results; #301 remains a historical reference.
 
 Remaining product decision: whether to accept and later implement this proposed increment. Flag spelling, schema and deadlines above are concrete proposal choices for review, not unresolved implementation dependencies. There are no consequential questions left open within this chosen approach.

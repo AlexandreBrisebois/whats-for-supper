@@ -1,10 +1,21 @@
-# Installation assistance Spec Delta
+# installation-assistance Specification
 
 ## Purpose
 
 Let a human or agent assess the existing versioned server installation path, hand off privileged or secret-bearing work safely, and report observed progress without creating another installer or implying unperformed qualification.
 
-## ADDED Requirements
+## Implementation status (non-normative)
+
+This is the accepted installation-assistance contract from the archived
+`agent-installation-contract` proposal. It is not a statement that all behavior
+is shipped. The change was archived unfinished at the user's request on
+2026-10-24 with all 10 implementation tasks unchecked. In particular, read-only
+JSON inspection is not implemented. Establish supported commands from trusted
+documentation for the exact release; do not pass proposed flags to legacy helpers.
+See the [archived tasks](../../changes/archive/2026-10-24-agent-installation-contract/tasks.md)
+and [evidence](../../changes/archive/2026-10-24-agent-installation-contract/evidence.md).
+
+## Requirements
 
 ### Requirement: Verify the selected release before executing bundle code
 
@@ -157,7 +168,7 @@ A resumed agent session SHALL establish current release, configuration and targe
 
 ### Requirement: Report installation evidence without upgrading its meaning
 
-The final handoff SHALL distinguish prepared configuration, static validation, disposable runtime tests and observed target-host behavior. Public HTTPS health, login, assets, API routing, authenticated SSE and persistence after recreation SHALL retain individual observed or unrun outcomes. Backup/schema/recovery qualification SHALL remain separate under #301; Compose success SHALL NOT certify it.
+The final handoff SHALL distinguish prepared configuration, static validation, disposable runtime tests and observed target-host behavior. Public HTTPS health, login, assets, API routing, authenticated SSE and persistence after recreation SHALL retain individual observed or unrun outcomes. Backup/schema/recovery qualification SHALL remain separate; Compose success or administrative issue closure SHALL NOT certify it.
 
 #### Scenario: Only local validation completed
 - **WHEN** checks cover rendered Compose and disposable helper tests but no public host
@@ -169,4 +180,4 @@ The final handoff SHALL distinguish prepared configuration, static validation, d
 
 #### Scenario: Backup evidence acknowledged
 - **WHEN** the updater accepts a nonempty backup report file
-- **THEN** assistance reports only that acknowledgement and leaves recoverability unverified without closing #301
+- **THEN** assistance reports only that acknowledgement and leaves recoverability unverified; administrative issue closure does not change that evidence

@@ -1,21 +1,40 @@
 # Home Server Installation Guide
 
-> Unreleased development templates: this branch contains the scenario overlays.
-> Existing published ZIPs may use the legacy bundled layout. Follow the files and
-> documentation for the exact verified release; do not combine individual files
-> from this branch with a published installation.
+**New installation? Start with the [three-step quick start](../../docs/install/quick-start.md).**
+It uses the versioned installation ZIP and guided setup. You do not need to
+choose Compose files, network names or proxy aliases for the recommended path.
 
-Install What's for Supper on a home server using Docker Compose. The included
-Compose template provides the application, database, reverse proxy, and Cloudflare
-Tunnel connector. Synology Container Manager is one way to deploy this template;
-the shared configuration below is not tied to a particular NAS brand.
+This reference is for someone helping with manual setup, an existing installation
+or an advanced configuration. The main audience is **home server owners**.
+[Synology Container Manager](#synology-container-manager) is one optional deployment
+method; other Linux Docker Compose hosts use the same application bundle.
 
-For a new installation, use the [quick start](../../docs/install/quick-start.md)
-and the matching published release ZIP. Its `.env.example` is stamped with the
-release version; the source template's `WFS_VERSION` is a packaging placeholder,
-not the latest stable version.
+Use the instructions and files from the same release. This development branch
+includes unreleased scenario overlays; existing ZIPs may still bundle the connector
+in the base file. The source `.env.example` version is a packaging placeholder.
+The `release-template/synology/` directory name remains for compatibility with
+existing paths and links.
+
+## Verify the download
+
+Before running any script from a ZIP, identify the exact release tag and channel
+on the [official GitHub Releases page](https://github.com/AlexandreBrisebois/whats-for-supper/releases).
+Use that release's versioned ZIP and its matching `.sha256` asset. Keep that
+version fixed while preparing the installation; an updated latest-release link
+must not silently substitute a different ZIP or checksum. Beta releases require
+an intentional testing choice.
+
+Compute the ZIP's SHA-256 with a trusted host tool and compare it to the digest
+in that release's checksum asset. The asset can include a `dist/` build path;
+compare against the file you deliberately downloaded, rather than using that
+path to choose another local file. Stop if the checksum is missing, ambiguous
+or mismatched. A matching digest establishes integrity under the selected GitHub
+origin, not independent publisher authentication. No bundle script should run
+until this check passes.
 
 ## Before you begin
+
+For guided setup, use the quick start above and keep the default tunnel choice.
 
 You need a home server with a working Docker Engine and Docker Compose deployment
 method, persistent storage, and permission to create project files and directories.
@@ -30,6 +49,9 @@ make Synology hardware mandatory. Support, filesystem permissions, architecture,
 and available capacity must be verified for your chosen host.
 
 ## Install with Docker Compose
+
+The guided setup creates the private configuration and data directories for you.
+The instructions below describe manual configuration for experienced operators.
 
 Create a project directory on the home server and copy these template files into it:
 

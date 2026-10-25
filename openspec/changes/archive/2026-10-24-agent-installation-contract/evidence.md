@@ -12,6 +12,22 @@ On 2026-10-24, the user first requested a local planning-only continuation, then
 
 Issues [#327](https://github.com/AlexandreBrisebois/whats-for-supper/issues/327) and [#301](https://github.com/AlexandreBrisebois/whats-for-supper/issues/301) were refreshed through the connector: both open, zero comments. No issue update/closure is part of this work.
 
+## User-reported successful installation
+
+On 2026-10-24, the user reported that **0.1.21 was successfully deployed with an
+agent on Friday night, 2026-10-23**. Preserve this as reported deployment success
+for that release. The host, topology, exact helper revision and individual
+HTTPS/login/SSE/recovery checks were not supplied. This report does not certify
+those unspecified checks or qualify the later consolidated scenario templates.
+The local/live not-run entries below describe this review's checks, not an
+assertion that nobody has deployed the application.
+
+The subsequent documentation pass keeps the existing installer behavior and
+makes its default route explicit: home server first; Synology optional; bundled
+tunnel for a new installation; shared tunnels and migrations disclosed later.
+The guide separates token preparation from post-start hostname setup and keeps
+secret entry local. No setup/update code or deployment configuration is changed.
+
 ## Source facts versus proposed behavior
 
 Main/published baseline bundles cloudflared in `compose.yaml`; setup has no option parser and zero does not prove startup. Consolidated development source has bundled/shared overlays, independent connector packaging, persisted `COMPOSE_FILE`, required shared alias and overlay-aware updater validation. Neither these development files nor the proposed JSON inspection interface should be assumed present in an existing ZIP. Status support must be established from trusted matching release docs before invoking flags.
@@ -75,3 +91,35 @@ The committed-source push gate is a separate acceptance surface: its PWA check b
 The gate passed committed whitespace/links, Node, OpenSpec, harness, static contracts, generated client parity, API checks, production PWA checks, database and isolated Docker smoke. Production browser results: 303 passed, one grocery keyboard/delete test passed on retry, 17 skipped, zero final failures. Preserve that flake and the seven development-server failures above; these are distinct runs. PostgreSQL: 140 passed, zero skipped, record `.task/database-tests/runs/dceee5fafaef43c9bbfda4742db393c9/result.json`. Smoke verified its local checks and teardown of owned containers/networks/volumes; it does not establish public HTTPS, NAS, seed or backup/recovery qualification.
 
 This final evidence-only follow-up receives scoped documentation verification and its own committed-range documentation push gate. It makes no change to the installer/runtime inputs tested in `3014f66e`. No main merge or live deployment was performed; the status feature remains a proposal with all implementation tasks unchecked.
+
+## Sync and unfinished archive disposition — October 24, 2026
+
+The user explicitly requested syncing and archiving `agent-installation-contract`
+after closing #327 as exploration completed and #301 as not planned. All four
+planning artifacts exist, but the CLI reports **0/10 implementation tasks complete**.
+Keep every checkbox unchecked. The canonical `installation-assistance` spec records
+the accepted contract and explicitly distinguishes it from implemented/shipped
+behavior. Read-only JSON inspection and its acceptance fixtures remain unimplemented;
+archival establishes no new runtime or recovery qualification.
+
+The delta's historical instructions to keep #301 open were reconciled to the
+current user decision: administrative issue closure is not recovery evidence.
+No recovery requirements or safeguards are removed. Existing beginner-documentation
+edits, prior failed/blocked checks and the user-reported 0.1.21 deployment are retained.
+This lifecycle operation neither implements the proposal nor commits/pushes it.
+
+## Publication follow-up after PR #334
+
+The user merged PR #334 into main at `007e9dff752ca32de05315a19b3392a9c3868edd`
+and the original consolidation branch was deleted. The beginner-guide pass and
+sync/archive edits were still local in the separate worktree, explaining why they
+were not visible in the main checkout or on GitHub. They are being published on
+`feature/installation-follow-up`, based on that merged main. The main checkout was
+fast-forwarded to the user-merged commit; this does not create another main merge.
+
+Earlier references to unmerged source, active issue states and local-only guide
+edits describe their recorded checkpoints. The current source includes the
+scenario templates; release 0.1.21 remains the user-reported successful deployment.
+The agent JSON status feature remains unimplemented with all 10 tasks unchecked.
+Only documentation and OpenSpec lifecycle files change in this follow-up; earlier
+installer/runtime checks remain attached to their tested identities.

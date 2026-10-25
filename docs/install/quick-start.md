@@ -1,54 +1,79 @@
-# Install What's for Supper
+# Install What's for Supper on your home server
 
-> Unreleased development templates: this branch contains the scenario overlays.
-> Existing published ZIPs may use the legacy bundled layout. Follow the files and
-> documentation for the exact verified release; do not combine individual files
-> from this branch with a published installation.
+Download, answer a few questions, then open your family's recipe app.
+The recommended setup uses **Linux, Docker Compose and Cloudflare** to give your
+app a secure web address.
 
-[![Latest stable release](https://img.shields.io/github/v/release/AlexandreBrisebois/whats-for-supper?display_name=release&label=stable%20release)](https://github.com/AlexandreBrisebois/whats-for-supper/releases/latest)
+## Before you start
 
-Your family's recipes, on your home server. **Recommended:** Linux + Docker Compose + Cloudflare Tunnel for HTTPS.
+Have these ready:
 
-## 1. Download
+- A home server with **Docker Compose already installed**. Need help with that?
+  Ask the person who manages your server before continuing.
+  [Using Synology Container Manager? Read the platform notes.](https://github.com/AlexandreBrisebois/whats-for-supper/blob/main/release-template/synology/README.md#synology-container-manager)
+- A [Gemini API key](gemini-key.md) for the app's recipe features.
+- A Cloudflare account and a domain you manage there, such as `example.com`.
+  [Get your tunnel token first](cloudflare.md),
+  then return here. This connects your server to your secure web address.
 
-**Use the latest stable release:** [Download the installation ZIP](https://github.com/AlexandreBrisebois/whats-for-supper/releases/latest/download/whats-for-supper-install.zip) and extract it on your Linux home server. No Git required.
+Keep the key and token private. You will enter them on your server, not in chat.
 
-For a specific version, use that release's matching installation ZIP and checksum. Beta packages are for testing; use the stable release for your family installation.
+## 1. Download and unpack
 
-**Before you begin:** Have Docker Compose installed on your Linux server. You'll also need a [Gemini API key](gemini-key.md) and a Cloudflare account with a domain. The linked guides show you how.
+[Download the latest stable installation ZIP](https://github.com/AlexandreBrisebois/whats-for-supper/releases/latest/download/whats-for-supper-install.zip)
+and extract it into a permanent folder on your home server. No Git is needed.
+Keep the extracted folder: it will hold your app's settings and data. Ask your
+helper or assistant to check the ZIP against the checksum from that same release
+before running setup.
 
-## 2. Configure
+Use the instructions included in that ZIP. This development page previews an
+upcoming layout; older releases can have different files and prompts. Keep each
+release's files together. If the app is already installed, use the
+[update guide](updates.md) instead.
 
-From the extracted `whats-for-supper` directory, run:
+## 2. Run setup
+
+Open a terminal **on your home server**, open the extracted `whats-for-supper`
+folder, then run:
 
 ```sh
 bash setup.sh
 ```
 
-The helper asks you to choose a bundled tunnel for this deployment, or attach to
-an independent/shared tunnel. It prepares your private configuration, remembers
-the selected Compose overlay, and offers to start the app. It won't overwrite an
-existing setup. Shared mode asks for the Docker network and a unique proxy alias;
-it does not ask for a tunnel token. Prepare the independent connector first using
-the [Cloudflare guide](cloudflare.md).
+Follow the questions in order:
 
-For agent-assisted preparation and human handoffs, use the [agent installation guide](agent-install.md),
-which uses the same templates and verification steps.
+1. **Tunnel setup, if asked:** press **Enter** to use the recommended setup.
+2. **Gemini API key:** paste the key you prepared.
+3. **Cloudflare Tunnel token:** paste the token you prepared.
+4. **Administrator PIN:** choose at least six digits. Keep it somewhere safe.
+5. **Start What's for Supper now?:** press **Enter** to start.
 
-Your household timezone defaults to Toronto. [Using another timezone?](timezones.md)
+Your key, token and PIN stay hidden while you type or paste. Seeing no characters
+is normal. Setup creates the other required secrets for you and saves your
+settings locally. It leaves an existing setup unchanged.
 
-New to Cloudflare? Follow the [short Cloudflare walkthrough](cloudflare.md).
+If setup says Docker is missing, unavailable, or the configuration needs attention,
+use [troubleshooting](troubleshooting.md). Configuration saved does not mean the
+app has started.
 
-## 3. Open What's for Supper
+## 3. Open your app
 
-Follow the [Cloudflare walkthrough](cloudflare.md) to connect your secure hostname. Open that address in your browser to start adding recipes.
+[Finish connecting your web address](cloudflare.md), using its **After setup** section.
+Then open your **HTTPS address**, such as `https://supper.example.com`, in your browser.
 
-When asked for the family passphrase, use the generated `HEARTH_SECRET` value from your private `.env`. This is different from the administrator PIN you chose during setup. Share the passphrase only with your household; never post your `.env` or tokens.
+When asked for the **family passphrase**, use the `HEARTH_SECRET` value saved in
+`.env` in your installation folder. Open that file privately on your server, copy
+only the value after `HEARTH_SECRET=`, then close it. If the file is hidden, ask
+your helper to open it locally. The family passphrase is different from the administrator PIN. Share it only with your household.
 
-Need help? See [installation troubleshooting](troubleshooting.md) and the [full installation reference](https://github.com/AlexandreBrisebois/whats-for-supper/blob/main/release-template/synology/README.md).
+Check that you can sign in, save a recipe and add it to a meal plan. Open the app
+on another household device and check that you see the same recipe and plan.
+Keep your installation folder and its private `.env` file safe.
 
-**Already running What's for Supper?** [Update your installation](updates.md).
+## Only if you need it
 
-**Comfortable with Docker?** [Explore the advanced installation reference](https://github.com/AlexandreBrisebois/whats-for-supper/blob/main/release-template/synology/README.md).
-
-> Other access methods, such as Tailscale, are [future options](https://github.com/AlexandreBrisebois/whats-for-supper/issues/300). Cloudflare remains the recommended path.
+- [Something isn't working](troubleshooting.md).
+- [Let an assistant help](agent-install.md). Enter secrets yourself in a private local session.
+- [Use a different household timezone](timezones.md). The default is Toronto.
+- [Use an existing or shared tunnel](cloudflare.md) — advanced setup.
+- [Full installation reference](https://github.com/AlexandreBrisebois/whats-for-supper/blob/main/release-template/synology/README.md).
