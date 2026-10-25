@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="800" height="2700" viewBox="0 0 800 2700" role="img" aria-labelledby="title desc">
-<title id="title">Solar Earth: green, icons, roles, type and states</title><desc id="desc">Documentation reference, not implemented UI. Current source uses sage for preference, family participation, plans, shopping and cooking progress, selection and celebration. Existing Lucide icons and text glyphs carry meaning with labels. Proposed pairings preserve broad sage fields and ochre actions; they are not a rebrand or runtime changes. Source evidence is distinct from reported runtime risks and proposed treatments.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="2856" viewBox="0 0 800 2856" role="img" aria-labelledby="title desc">
+<title id="title">Solar Earth: green, icons, roles, type and states</title><desc id="desc">Documentation reference, not implemented UI. Current source uses sage for preference, family participation, plans, shopping and cooking progress, selection and celebration. Existing Lucide icons and text glyphs carry meaning with labels. Proposed pairings preserve broad sage fields and ochre actions; they are not a rebrand or runtime changes. Source evidence is distinct from reported runtime risks and proposed treatments. Includes side-by-side low-contrast specimens and proposed repairs, plus explicit Outfit and Inter role annotations.</desc>
 <!-- Icon outlines reused from Lucide 1.60.0. ISC License
 
 Copyright (c) 2026 Lucide Icons and Contributors
@@ -46,7 +46,7 @@ SOFTWARE.
 
  -->
 <style>text { font-family: Inter, "DejaVu Sans", sans-serif; } .heading { font-family: Outfit, Inter, "DejaVu Sans", sans-serif; }</style>
-<rect x="0" y="0" width="800" height="2700" rx="0" fill="#FDFCF0"/>
+<rect x="0" y="0" width="800" height="2856" rx="0" fill="#FDFCF0"/>
 <text x="32" y="40" font-size="14" fill="#4B5563" font-weight="700">WFS / VISUAL LANGUAGE / V1 · REFINED</text>
 <text x="32" y="84" font-size="30" fill="#1F2937" font-weight="700" class="heading">Green and icons belong here</text>
 <text x="32" y="116" font-size="15" fill="#4B5563" font-weight="400">01  Current vocabulary → role-specific contrast → review examples</text>
@@ -182,17 +182,42 @@ SOFTWARE.
 <text x="32" y="988" font-size="14" fill="#4B5563" font-weight="400">Also present: ♥ / ✕ / ✓ text glyphs; grocery aisle emoji + section names.</text>
 <text x="32" y="1011" font-size="14" fill="#4B5563" font-weight="400">UtensilsCrossed also means eating out. Sparkles can mean mystery or delight.</text>
 <text x="32" y="1034" font-size="14" fill="#4B5563" font-weight="400">No symbol alone proves saved, cooked or ordered. Keep the contextual label.</text>
-<text x="32" y="1094" font-size="19" fill="#1F2937" font-weight="700">CURRENT / REPORTED RISKS · not colour bans</text>
-<rect x="32" y="1114" width="736" height="154" rx="16" fill="#FFFFFF"/>
-<text x="52" y="1143" font-size="14" fill="#1F2937" font-weight="700">Tonight context</text>
-<text x="283" y="1143" font-size="14" fill="#4B5563" font-weight="400">10 px, charcoal 40% / white ≈ 2.35:1</text>
-<text x="52" y="1174" font-size="14" fill="#1F2937" font-weight="700">Active Home</text>
-<text x="283" y="1174" font-size="14" fill="#4B5563" font-weight="400">11 px, terracotta / cream = 3.88:1</text>
-<text x="52" y="1205" font-size="14" fill="#1F2937" font-weight="700">Cook / Discover</text>
-<text x="283" y="1205" font-size="14" fill="#4B5563" font-weight="400">White / ochre = 2.06:1 (text and icon risk)</text>
-<text x="52" y="1236" font-size="14" fill="#1F2937" font-weight="700">White / base sage</text>
-<text x="283" y="1236" font-size="14" fill="#4B5563" font-weight="400">3.06:1: large text only, not small labels</text>
-<text x="52" y="1257" font-size="12" fill="#4B5563" font-weight="400">Exact flat-pair math. Glass, glow, opacity and photography need composite checks.</text>
+<text x="32" y="1094" font-size="19" fill="#1F2937" font-weight="700">CONTRAST REPAIR · keep the hue, show the difference</text>
+<rect x="32" y="1114" width="736" height="310" rx="16" fill="#FFFFFF"/>
+<text x="52" y="1144" font-size="14" fill="#1F2937" font-weight="700">CURRENT / REPORTED PAIRING</text>
+<text x="432" y="1144" font-size="14" fill="#1F2937" font-weight="700">PROPOSED REPAIR</text>
+<text x="68" y="1181" font-size="10" fill="#1F2937" fill-opacity="0.4" font-weight="900">TONIGHT’S MENU</text>
+<rect x="432" y="1159" width="316" height="34" rx="8" fill="#FDFCF0"/>
+<text x="448" y="1181" font-size="16" fill="#4B5563" font-weight="700">Tonight · saved to the plan</text>
+<text x="52" y="1206" font-size="13" fill="#4B5563" font-weight="400">10 px · charcoal 40% / white · ≈ 2.35:1</text>
+<text x="432" y="1206" font-size="13" fill="#4B5563" font-weight="400">16 px · charcoal-600 / cream · 7.33:1</text>
+<rect x="52" y="1219" width="316" height="34" rx="8" fill="#FDFCF0"/>
+<text x="68" y="1241" font-size="11" fill="#CD5D45" font-weight="700">Home</text>
+<rect x="432" y="1219" width="316" height="34" rx="8" fill="#FDFCF0"/>
+<text x="448" y="1241" font-size="16" fill="#A44A37" font-weight="700">Home</text>
+<text x="52" y="1266" font-size="13" fill="#4B5563" font-weight="400">11 px · terracotta / cream · 3.88:1</text>
+<text x="432" y="1266" font-size="13" fill="#4B5563" font-weight="400">16 px · terracotta-600 / cream · 5.63:1</text>
+<rect x="52" y="1278" width="316" height="40" rx="12" fill="#E1AD01"/>
+<g transform="translate(68 1289) scale(0.75)" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="m16 2-2.3 2.3a3 3 0 0 0 0 4.2l1.8 1.8a3 3 0 0 0 4.2 0L22 8" />
+  <path d="M15 15 3.3 3.3a4.2 4.2 0 0 0 0 6l7.3 7.3c.7.7 2 .7 2.8 0L15 15Zm0 0 7 7" />
+  <path d="m2.1 21.8 6.4-6.3" />
+  <path d="m19 5-7 7" />
+</g>
+<text x="98" y="1303" font-size="10" fill="#FFFFFF" font-weight="900">COOK</text>
+<rect x="432" y="1278" width="316" height="40" rx="12" fill="#E1AD01" stroke="#664E01" stroke-width="2"/>
+<g transform="translate(448 1286) scale(1.0)" fill="none" stroke="#1F2937" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="m16 2-2.3 2.3a3 3 0 0 0 0 4.2l1.8 1.8a3 3 0 0 0 4.2 0L22 8" />
+  <path d="M15 15 3.3 3.3a4.2 4.2 0 0 0 0 6l7.3 7.3c.7.7 2 .7 2.8 0L15 15Zm0 0 7 7" />
+  <path d="m2.1 21.8 6.4-6.3" />
+  <path d="m19 5-7 7" />
+</g>
+<text x="484" y="1304" font-size="16" fill="#1F2937" font-weight="700">Cook</text>
+<text x="52" y="1342" font-size="13" fill="#4B5563" font-weight="400">Cook / Discover · white on ochre · 2.06:1</text>
+<text x="432" y="1342" font-size="13" fill="#4B5563" font-weight="400">Charcoal / ochre · 7.12:1; darker edge</text>
+<text x="52" y="1380" font-size="14" fill="#4B5563" font-weight="400">White / base sage: 3.06:1 for qualifying large text, not small labels.</text>
+<text x="52" y="1405" font-size="12" fill="#4B5563" font-weight="400">Flat-pair samples, not control-size targets. Test glass/glow/opacity composites.</text>
+<g transform="translate(0 156)">
 <text x="32" y="1310" font-size="19" fill="#1F2937" font-weight="700">PROPOSED PAIRS · preserve hue, clarify the role</text>
 <text x="32" y="1336" font-size="14" fill="#4B5563" font-weight="400">Options reuse existing tokens. Not a universal primary colour or token remap.</text>
 <rect x="32" y="1354" width="356" height="63" rx="12" fill="#FDFCF0" stroke="#D1D5DB" stroke-width="2"/>
@@ -230,14 +255,15 @@ SOFTWARE.
 <text x="32" y="1811" font-size="19" fill="#1F2937" font-weight="700">PROPOSED TYPE ROLES · keep Outfit + Inter</text>
 <rect x="32" y="1830" width="736" height="164" rx="16" fill="#FFFFFF"/>
 <text x="52" y="1869" font-size="28" fill="#1F2937" font-weight="700" class="heading">Tonight’s supper</text>
-<text x="410" y="1867" font-size="15" fill="#4B5563" font-weight="400">Heading · 28 / 34</text>
+<text x="410" y="1867" font-size="15" fill="#4B5563" font-weight="400">Outfit · heading · 28 / 34</text>
 <text x="52" y="1903" font-size="16" fill="#1F2937" font-weight="700">Tonight · saved to the plan</text>
-<text x="410" y="1903" font-size="15" fill="#4B5563" font-weight="400">Context · 16 / 24 semibold</text>
+<text x="410" y="1903" font-size="15" fill="#4B5563" font-weight="400">Inter · context · 16 / 24 semibold</text>
 <text x="52" y="1937" font-size="16" fill="#1F2937" font-weight="400">Choose what works tonight.</text>
-<text x="410" y="1937" font-size="15" fill="#4B5563" font-weight="400">Body · 16 / 24</text>
+<text x="410" y="1937" font-size="15" fill="#4B5563" font-weight="400">Inter · body · 16 / 24</text>
 <text x="52" y="1971" font-size="14" fill="#4B5563" font-weight="400">Recipe details</text>
-<text x="410" y="1971" font-size="15" fill="#4B5563" font-weight="400">Supporting · 14 / 21</text>
+<text x="410" y="1971" font-size="15" fill="#4B5563" font-weight="400">Inter · supporting · 14 / 21</text>
 <text x="32" y="2018" font-size="13" fill="#4B5563" font-weight="400">CSS px starting points, not WCAG minimum font sizes. Local fonts may fall back.</text>
+<text x="32" y="2040" font-size="13" fill="#4B5563" font-weight="400">Prefer sentence case; never hide essential state in tiny, faint capitals.</text>
 <text x="32" y="2065" font-size="19" fill="#1F2937" font-weight="700">PROPOSED STATES · words + shape + colour</text>
 <rect x="32" y="2085" width="228" height="48" rx="14" fill="#FDFCF0" stroke="#4B5563" stroke-width="2"/>
 <text x="48" y="2115" font-size="16" fill="#1F2937" font-weight="700">Order In</text>
@@ -298,4 +324,5 @@ SOFTWARE.
 <text x="52" y="2550" font-size="14" fill="#525B37" font-weight="400">These boards do not verify live focus, screen readers or touch behavior.</text>
 <text x="32" y="2620" font-size="14" fill="#4B5563" font-weight="400">Keep warm surfaces, distinctive green and earned delight; repair the hard-to-read role.</text>
 <text x="32" y="2645" font-size="14" fill="#4B5563" font-weight="400">Reference only. Sources, contrast thresholds, licensing and scope are in the guide.</text>
+</g>
 </svg>

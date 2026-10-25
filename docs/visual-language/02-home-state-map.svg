@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="800" height="2466" viewBox="0 0 800 2466" role="img" aria-labelledby="title desc">
-<title id="title">Home: state, icon, intent and consequence</title><desc id="desc">Five schematic Home states with explicit source versus proposal boundaries. Existing ochre Cook, sage non-cooking intent and full sage cooked celebration are preserved as roles; proposed foregrounds improve contrast. Existing action icons and Capture/Browse routes reinforce meaning. The separate suggested Home card remains conceptual only. No runtime changes.</desc>
+<title id="title">Home: state, icon, intent and consequence</title><desc id="desc">Five schematic Home states with explicit source versus proposal boundaries. Existing ochre Cook, sage non-cooking intent and full sage cooked celebration are preserved as roles; proposed foregrounds improve contrast. Existing action icons and Capture/Browse routes reinforce meaning. The separate suggested Home card remains conceptual only. Includes the Mystery-night exception and recovery ordering with save-uncertainty warnings. No runtime changes.</desc>
 <!-- Icon outlines reused from Lucide 1.60.0. ISC License
 
 Copyright (c) 2026 Lucide Icons and Contributors
@@ -104,11 +104,13 @@ SOFTWARE.
 </g>
 <text x="100" y="1030" font-size="16" fill="#1F2937" font-weight="700">Change Plan</text>
 <text x="432" y="884" font-size="15" fill="#4B5563" font-weight="400">Cook opens Cook’s Mode.</text>
-<text x="432" y="913" font-size="15" fill="#4B5563" font-weight="400">It does not itself mark the meal cooked.</text>
-<text x="432" y="942" font-size="15" fill="#4B5563" font-weight="400">These icons already pair with labels.</text>
-<text x="432" y="971" font-size="15" fill="#4B5563" font-weight="400">Current actions sit on the card reverse.</text>
-<text x="432" y="1000" font-size="15" fill="#4B5563" font-weight="400">Keep the ochre role; dark text and edge</text>
-<text x="432" y="1029" font-size="15" fill="#4B5563" font-weight="400">are proposed contrast corrections.</text>
+<text x="432" y="910" font-size="15" fill="#4B5563" font-weight="400">It does not mark the meal cooked.</text>
+<text x="432" y="936" font-size="15" fill="#4B5563" font-weight="400">Change Plan opens recovery.</text>
+<text x="432" y="962" font-size="15" fill="#4B5563" font-weight="400">Backup → original meal’s disposition</text>
+<text x="432" y="988" font-size="15" fill="#4B5563" font-weight="400">→ replacement save, in that order.</text>
+<text x="432" y="1014" font-size="15" fill="#4B5563" font-weight="400">Saving / unknown ≠ confirmed saved.</text>
+<text x="432" y="1040" font-size="15" fill="#4B5563" font-weight="400">Current icons + labels sit on the reverse.</text>
+<text x="432" y="1066" font-size="15" fill="#4B5563" font-weight="400">Ochre stays; dark text/edge proposed.</text>
 <text x="32" y="1154" font-size="21" fill="#1F2937" font-weight="700">4  Non-cooking</text>
 <text x="440" y="1147" font-size="14" fill="#4B5563" font-weight="700">EXISTING BEHAVIOR</text>
 <text x="440" y="1168" font-size="13" fill="#4B5563" font-weight="700">PROPOSED PRESENTATION</text>
@@ -123,12 +125,13 @@ SOFTWARE.
 </g>
 <text x="100" y="1292" font-size="16" fill="#525B37" font-weight="700">Edit supper plan</text>
 <text x="52" y="1355" font-size="14" fill="#4B5563" font-weight="400">State stays visible above the action.</text>
-<text x="432" y="1204" font-size="15" fill="#4B5563" font-weight="400">Home opens Planner to edit the day.</text>
-<text x="432" y="1233" font-size="15" fill="#4B5563" font-weight="400">Current card already has soft sage</text>
-<text x="432" y="1262" font-size="15" fill="#4B5563" font-weight="400">and the NonCookingIcon vocabulary.</text>
-<text x="432" y="1291" font-size="15" fill="#4B5563" font-weight="400">ShoppingBag = takeout plan, not order.</text>
-<text x="432" y="1320" font-size="15" fill="#4B5563" font-weight="400">Edit is currently whole-card intent;</text>
-<text x="432" y="1349" font-size="15" fill="#4B5563" font-weight="400">the separate button here is a proposal.</text>
+<text x="432" y="1204" font-size="15" fill="#4B5563" font-weight="400">Non-mystery card opens Planner to edit.</text>
+<text x="432" y="1230" font-size="15" fill="#4B5563" font-weight="400">Mystery night: supper choices on Home.</text>
+<text x="432" y="1256" font-size="15" fill="#4B5563" font-weight="400">Leave unplanned = blank day in Planner.</text>
+<text x="432" y="1282" font-size="15" fill="#4B5563" font-weight="400">Soft sage + NonCookingIcon are current.</text>
+<text x="432" y="1308" font-size="15" fill="#4B5563" font-weight="400">ShoppingBag = takeout plan, not order.</text>
+<text x="432" y="1334" font-size="15" fill="#4B5563" font-weight="400">Edit is currently whole-card intent;</text>
+<text x="432" y="1360" font-size="15" fill="#4B5563" font-weight="400">the separate button here is proposed.</text>
 <text x="32" y="1474" font-size="21" fill="#1F2937" font-weight="700">5  Cooked</text>
 <text x="440" y="1467" font-size="14" fill="#4B5563" font-weight="700">EXISTING BEHAVIOR</text>
 <text x="440" y="1488" font-size="13" fill="#4B5563" font-weight="700">PROPOSED PRESENTATION</text>
