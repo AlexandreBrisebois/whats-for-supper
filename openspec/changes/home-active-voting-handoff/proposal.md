@@ -4,7 +4,7 @@ Home's next-week-only voting invitation misses an open round for this week or a 
 
 ## Outcome and Scope
 
-A person returning to Home can join the active open vote or see its converged matches, even when its week differs from the selected Planner week. This draft settles a minimal review baseline; application remains subject to Alex's design approval.
+A person returning to Home can join the active open vote or see its converged matches, even when its week differs from the selected Planner week. Alex reviewed the design and explicitly authorized this bounded implementation on October 25, after approving the supporting copy and usable background navigation policy.
 
 ## What Changes
 
@@ -27,4 +27,4 @@ None.
 
 Expected implementation owners are HomeCommandCenter, VotingNudgeCard in HomeSections, Home locale copy and existing Home tests. Reuse discoveryStore, the app layout's useScheduleStream, Planner's active-tab setter and Discovery's absolute-week navigation pattern. Narrow additional scope is discoveryStore's completion outcome for an unusable current authoritative read, with focused store tests: mark unavailable instead of leaving initial loading indefinitely, preserving accepted data and ordering guards. Do not add a generic validator or change ignored malformed SSE behavior. No API, generated client, persistence, convergence algorithm or stream protocol change is planned.
 
-Specification and design review only. Alex must review the design and explicitly authorize application before implementation. Excludes Planner saved-versus-suggested redesign, Quick Find issue #338, generic state refactoring, deployment and live data changes.
+Implementation is now authorized for this reviewed change. Merge, deployment, release and live data mutations remain outside scope. Excludes Planner saved-versus-suggested redesign, Quick Find issue #338, generic state refactoring, deployment and live data changes.

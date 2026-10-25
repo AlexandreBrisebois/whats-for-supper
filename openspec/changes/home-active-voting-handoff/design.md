@@ -2,9 +2,9 @@
 
 ## Context and Existing Ownership
 
-This is a review draft, not approval to apply. See [proposal](proposal.md) and the [Home delta](specs/tonight-meal-decisions/spec.md).
+Alex explicitly authorized application on October 25 after the design review and supporting-copy/background-navigation approval. See [proposal](proposal.md) and the [Home delta](specs/tonight-meal-decisions/spec.md).
 
-Read-only baseline: local `work` at `86faaadd11e35bc52f529c5bbe5e9891d0b1771b`; GitHub main verified through the connector at `ba8dca21c83000d03ce03dbe51bd7542daa76b88`. The initial working tree was clean. Existing `prepared-demo-showcase-loop` and open voting-control-docking PR #329 are outside this change.
+Read-only baseline: local `work` at `86faaadd11e35bc52f529c5bbe5e9891d0b1771b`; GitHub main verified through the connector at `ba8dca21c83000d03ce03dbe51bd7542daa76b88`. The initial working tree was clean. Application verification uses `/tmp/wfs-home-current`, an isolated connector-materialized current-main snapshot, so current upstream Discovery/cooked-success code is preserved. Existing `prepared-demo-showcase-loop` and open voting-control-docking PR #329 are outside this change.
 
 Current-main evidence (immutable references):
 
@@ -22,7 +22,7 @@ Current-main evidence (immutable references):
 4. For status `unknown` or initial `loading` without usable accepted data, show compact "Checking voting…" with no round CTA. During an ordinary background recheck retain a usable last-confirmed card and enabled read-only navigation action, adding checking feedback. After failure, retain that usable action with "Voting status unavailable", explicit last-confirmed context and Retry; failure is not fresh confirmation. Without a valid retained identity/destination, withhold round navigation and offer Retry after failure. Accepted unowned state removes the invitation; an accepted replacement round updates it without preserving the prior action. No poller, TTL, extra stream or parallel freshness state machine is proposed.
 5. At activation, read the latest accepted usable open-round snapshot, including retained data during `loading` or `unavailable`; capture its round and absolute Monday once. Recheck usability so an accepted close/replacement cannot leave an old action active. For converged, set Planner tab and navigate to `/planner?weekOffset=0&referenceWeekStartDate=<captured Monday>`. Do not recompute a relative offset from the browser date. Discovery or Planner reconciles destination state; a server close racing after activation is not hidden by this handoff. Navigation grants no mutation rights and promises no atomic read across clients.
 
-Alex approved the supporting copy and usable background navigation policy in the follow-up review. This revision makes those decisions explicit; it does not authorize implementation. The narrow shared-store failure outcome below is a technical review note and planned scope, not hidden implementation permission. If the design changes, reconcile the delta and tasks first.
+Alex approved the supporting copy and usable background navigation policy in the follow-up review. Those decisions and the narrow shared-store failure outcome below are explicit reviewed scope. The later "build it" authorization permits their implementation; it does not permit unrelated changes. If the design changes, reconcile the delta and tasks first.
 
 ## First Observable Slice
 
@@ -46,10 +46,10 @@ Benefit: a household can resume the vote from Home and leave quickly for useful 
 
 Trade-offs: the persistent invitation occupies Home space, and usable last-confirmed navigation can reach a round that changed while disconnected. Checking/unavailable feedback and destination reconciliation make that limitation clear while preserving a smooth read-only handoff. Withhold only when no usable accepted destination remains or newer accepted state supersedes it. Avoid an extra modal or full-screen celebration on Home.
 
-Resolved copy decision: "Menu's In" can imply a finished, saved menu, so Alex approved "Your matches are ready to review and save." beneath it. Saving and voting closure remain explicit existing Planner actions. No automatic closure is implied or authorized. Remaining review item before application is the bounded shared-store invalid-HTTP completion outcome and tests described above; this planning revision does not authorize writing them.
+Resolved copy decision: "Menu's In" can imply a finished, saved menu, so Alex approved "Your matches are ready to review and save." beneath it. Saving and voting closure remain explicit existing Planner actions. No automatic closure is implied or authorized. The later application authorization includes the bounded shared-store invalid-HTTP completion outcome and focused tests described above; no consequential product choice remains unresolved.
 
 Baseline caution: the local older recipe-discovery spec still describes a celebration without a CTA. Current main's recipe-discovery spec has already been updated to the green success card and See your matches action, agreeing with current main's Discovery source. Use that current-main evidence; do not manufacture a discrepancy or alter Discovery in this Home change. Home's approved exact headline and supporting sentence are intentionally local to Home.
 
 ## Compatibility, Rollout and Reversal
 
-No contract, data migration, feature flag or transport change. Use existing `GET /api/discovery/session` response fields and `voting_session_updated` frames. Planned changes are Home presentation/navigation plus the narrowly described store read-completion outcome; reversal requires no data repair. Publication of this draft is review only; implementation, tests, merge, deployment and live mutations remain unperformed.
+No contract, data migration, feature flag or transport change. Use existing `GET /api/discovery/session` response fields and `voting_session_updated` frames. Planned changes are Home presentation/navigation plus the narrowly described store read-completion outcome; reversal requires no data repair. The draft PR now carries the authorized implementation and verification evidence. Merge, deployment and live mutations remain outside scope.
