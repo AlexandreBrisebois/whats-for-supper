@@ -23,7 +23,6 @@ import { DateOnly } from '@microsoft/kiota-abstractions';
 import { calendarDayIndex, type CalendarContext } from '@/lib/deployment-calendar';
 import { moveTomorrow, type PlannerSlot } from '@/lib/planner/slotAssignment';
 import { referenceRequest } from '@/lib/api/planner';
-import { formatTotalTime } from '@/lib/formatTime';
 import { SolarLoader } from '../ui/SolarLoader';
 import { useFamilyStore } from '@/store/familyStore';
 import { useTodayStore } from '@/store/todayStore';
@@ -725,7 +724,7 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
                 }
                 imageUrl={currentRecipe.image || undefined}
                 ingredients={currentRecipe.ingredients || []}
-                totalTime={formatTotalTime(currentRecipe.totalTime) ?? undefined}
+                totalTime={currentRecipe.totalTime || undefined}
                 onCookMode={handleCookMode}
                 onSkip={handleSkipTrigger}
               />
