@@ -10,7 +10,7 @@ First increment: **read-only status plus human handoffs**, selected by the user 
 
 The consolidated development branch is based on main `fd659bee3875fa672b2e9ca8dcbede98d657e81c`, carrying forward shared-tunnel source `cf1138e2a9571154fc5782d58697713e122abcdb` and the compatibility safeguards from documentation `41a84b855bea0871b040ede6352566e70897f923`. The user authorized consolidating and publishing that existing work, then retiring the two old branches. This does not implement this agent-status proposal or merge/deploy the installer. Main and existing published ZIPs retain their bundled layout; scenario overlays are unreleased development files. Guidance and status must follow the exact selected release's shipped files.
 
-[#301](https://github.com/AlexandreBrisebois/whats-for-supper/issues/301) continues to own fresh-host/Synology qualification, backup/schema safeguards, migration and interrupted-update recovery. This change neither closes #301 nor promises safe automatic recovery. No new installation executor, downloader, unattended update, agent integration, credential service, privileged setup or API/PWA behavior is proposed.
+[#301](https://github.com/AlexandreBrisebois/whats-for-supper/issues/301) records the separate fresh-host/Synology qualification, backup/schema safeguards, migration and interrupted-update recovery scope. It was administratively closed as not planned at the user's request; that closure does not verify recovery safety. This change promises no safe automatic recovery. No new installation executor, downloader, unattended update, agent integration, credential service, privileged setup or API/PWA behavior is proposed.
 
 ## What Changes
 

@@ -10,6 +10,25 @@ installations. Do not generate another app stack or copy live secrets into chat,
 logs, issues or source control. This guide does not authorize infrastructure writes;
 follow the user's scope and obtain deployment/route authorization when required.
 
+## Help with the recommended installation first
+
+Follow the [quick start](https://github.com/AlexandreBrisebois/whats-for-supper/blob/main/docs/install/quick-start.md) in source, or the root `README.md` in a
+release ZIP. For a fresh home server installation, keep the default bundled
+tunnel. If setup asks for a tunnel choice, the human presses Enter. Only open
+shared-tunnel and migration instructions when the user already has that setup
+or explicitly asks for it. Synology is an optional platform-specific path.
+
+Before running a bundle script, identify the exact official release and verify
+its ZIP against the matching checksum using trusted host tools. Follow the
+[download verification reference](https://github.com/AlexandreBrisebois/whats-for-supper/blob/main/release-template/synology/README.md).
+Missing or mismatched integrity evidence stops the installation handoff.
+
+Give one next action at a time, say where to perform it, and explain what success
+looks like. Hand local secret entry to the human, then resume with non-secret
+confirmation. Distinguish configuration saved, services started and the public
+HTTPS checks completed. A successful prior deployment is useful evidence for its
+specific version and host; it does not require restarting the installation.
+
 ## Discover before proposing changes
 
 Record the target Docker host, Compose/DSM capabilities, exact existing project

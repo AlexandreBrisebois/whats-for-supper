@@ -1,61 +1,119 @@
-# Cloudflare HTTPS setup
+# Connect your secure web address
 
-> Unreleased development templates: this branch contains the scenario overlays.
-> Existing published ZIPs may use the legacy bundled layout. Follow the files and
-> documentation for the exact verified release; do not combine individual files
-> from this branch with a published installation.
+These steps are for the recommended setup: one What's for Supper installation
+with its own Cloudflare tunnel. You need a Cloudflare account and a domain you
+manage there. You do not need to open ports on your router.
 
-Cloudflare Tunnel is the recommended remote-access path. You need a Cloudflare
-account and a domain using Cloudflare DNS. Connections are outbound; no router
-port forwarding or published Docker host port is required. Always use your public
-HTTPS hostname for browser access and login.
+Use the files and instructions from the same installation ZIP. This development
+branch also contains an upcoming shared-tunnel option; existing releases may not
+include it.
 
-Choose the setup that matches your deployment:
+## Before setup: get your tunnel token
 
-| Setup | Connector location | Cloudflare service URL |
-| --- | --- | --- |
-| One tunnel bundled with one deployment | App Compose project; supplied default | `http://127.0.0.1:80` |
-| One independent tunnel shared by deployments | Separate Compose project on the same Docker host | `http://wfs-prod-proxy:80` (unique alias per deployment) |
+1. Open the [Cloudflare dashboard](https://dash.cloudflare.com/), sign in and go
+   to **Networking → Tunnels**.
+2. Select **Create Tunnel** and give it a name, such as `whats-for-supper`.
+3. Select **Docker** in the connector instructions. Copy the tunnel token shown
+   after `--token` in the installation command. Copy only the token, not the
+   complete command. If you need the instructions again, open your tunnel and
+   select **Add a replica**.
+4. Keep the token private and return to the installation instructions. Paste it
+   when setup asks for **Cloudflare Tunnel token**. What's for Supper starts its
+   own connector; you do not need to run Cloudflare's separate Docker command.
 
-Both use remotely managed tunnels: public hostname routes are configured in the
-Cloudflare dashboard. A local ingress configuration file is not required.
+[Cloudflare's token instructions](https://developers.cloudflare.com/tunnel/reference/tunnel-tokens/)
+show where to find it. Never paste the token into chat, screenshots or an issue.
 
-## One tunnel bundled with one deployment
+## After setup: connect your web address
 
-Use `compose.yaml` with `compose.tunnel.yaml`. Select **1** in `setup.sh`, or
-set this in your private `.env` when configuring manually:
+1. After setup starts the app, return to **Networking → Tunnels** and open the
+   tunnel you created. Wait for its connector to show **Healthy**. If it stays
+   disconnected, use [troubleshooting](troubleshooting.md#the-tunnel-is-not-healthy).
+2. Open **Routes**, select **Add route**, then **Published application**.
+3. Choose your web address. For example, enter `supper` as the subdomain and
+   select your domain `example.com` to get `supper.example.com`.
+4. Choose **HTTP** as the service type and enter **`http://127.0.0.1:80`** as the
+   service URL. If the dashboard shows the type separately, enter `127.0.0.1:80`
+   in the address field. Leave the path empty, then save the route.
+5. Open your address with **HTTPS**, for example `https://supper.example.com`.
+   Sign in using the family passphrase described in your installation instructions.
 
-```dotenv
-COMPOSE_FILE=compose.yaml:compose.tunnel.yaml
-CLOUDFLARE_TUNNEL_TOKEN=YOUR_PRIVATE_TOKEN
-```
+Use the HTTPS address in your browser. The HTTP service address above is only
+Cloudflare's connection to the app inside Docker; it is not your sign-in address.
 
-The saved `COMPOSE_FILE` selection means future plain `docker compose` commands
-include the correct overlay. Do not set a conflicting shell `COMPOSE_FILE` or
-use only `-f compose.yaml`, which explicitly omits the overlay.
+If you can sign in, save a recipe and see your meal plan, you have completed the
+basic installation checks. The detailed checklist below is for an assistant or
+someone helping you verify the installation more thoroughly.
 
-1. Open the [Cloudflare dashboard](https://one.dash.cloudflare.com/). Under
-   **Networking → Tunnels**, create a named tunnel and choose **Docker**.
-2. Store its token as `CLOUDFLARE_TUNNEL_TOKEN` in this app's private `.env`, or
-   enter it at the local `setup.sh` prompt. Never share or commit it.
-3. If the helper did not start the app, run `docker compose up -d` from its
-   project directory. Wait for the connector to become **Healthy** in Cloudflare.
-4. In the tunnel's **Routes**, add a **Published application** with your hostname
-   (for example, `supper.example.com`), service type **HTTP**, service URL
-   **`http://127.0.0.1:80`**, and no path filter.
-5. Open `https://supper.example.com` and complete the verification below.
+## Verify either setup
 
-Here `cloudflared` uses `network_mode: service:traefik`: loopback reaches Traefik
-because they share a network namespace. This URL is specific to the bundled setup.
+<details>
+<summary>For your helper: detailed installation checks</summary>
 
-## One independent tunnel, or attach to an existing shared tunnel
+- **Tunnel and origin:** The intended connector is healthy. Public
+  `https://<hostname>/api/health` returns API JSON with healthy database/schema
+  checks, rather than HTML, a redirect to login, or a Cloudflare error. Complete
+  Cloudflare Access login first if enabled.
+- **Authentication:** An existing session works and a fresh/private browser can
+  log in using the family passphrase. Refresh a signed-in page; no redirect loop
+  or cookie error should occur. Never share passphrases, session cookies or HAR
+  exports containing credentials.
+- **Assets and data:** Check JavaScript/CSS, `/manifest.json`, recipe images,
+  existing recipes, files and meal plans. Verify each hostname reaches its own
+  deployment. Use a fresh browser session to avoid relying only on cached assets.
+- **API routing:** In the browser Network panel, authenticated `/api/schedule`
+  and recipe requests return the expected data from this deployment.
+- **Server-Sent Events:** While signed in with a selected family member, inspect
+  `/api/stream`. Expect `text/event-stream`, an initial `connected` event and
+  approximately 15-second `: ping` heartbeats. Change a test meal plan in another
+  browser and confirm prompt updates without refreshing, then undo the test
+  change. An unauthenticated curl request is not a valid SSE test. Keep the
+  stream open for several minutes and check reconnect behavior.
+- **Recreation:** During a planned restart/redeployment, confirm the Compose
+  network attachment and unique alias remain and rerun the public checks.
+
+Avoid broad caching rules for signed-in pages, private recipes, APIs and live
+updates. Preserve SSE headers and ensure Cloudflare rules do not cache or buffer
+`/api/stream`. A healthy connector alone does not validate login or SSE.
+
+</details>
+
+## Advanced installation details
+
+The sections below are for an existing/shared tunnel or a planned migration.
+A new installation following the recommended steps above does not need them.
+
+For additional protection, optionally use a
+[Cloudflare Access application](https://developers.cloudflare.com/cloudflare-one/applications/configure-apps/).
+The app's family passphrase remains required. For failures, see
+[installation troubleshooting](troubleshooting.md) and
+[Cloudflare's tunnel guide](https://developers.cloudflare.com/tunnel/get-started/).
+
+Keep the selected overlays across upgrades. `update.sh` compares the base, selected
+overlay and proxy configuration against the target release and stops for manual
+review if any differ. Legacy all-in-one installations must first follow the
+[template transition guide](updates.md#transition-to-the-scenario-templates).
+
+### One tunnel bundled with one deployment
+
+In a release that includes scenario overlays, setup's default saves
+`COMPOSE_FILE=compose.yaml:compose.tunnel.yaml` in the private `.env` file.
+Older releases include the connector directly in `compose.yaml`. Both layouts
+use the bundled connector's `http://127.0.0.1:80` origin. Do not add overlay
+settings to a release that does not ship them.
+
+The bundled connector uses `network_mode: service:traefik`, so its loopback
+address reaches Traefik. Keep the default selection for a new installation and
+avoid conflicting shell `COMPOSE_FILE` values or incomplete explicit `-f` lists.
+
+### One independent tunnel, or attach to an existing shared tunnel
 
 Use one connector project for production, beta, demo, or other deployments on the
 **same Docker host**. Only their entry-point proxies join `cloudflare-proxy`;
 each app's API, PWA, migration service and database retain their project networks.
 This bridge network does not span multiple NAS devices or Docker hosts.
 
-### 1. Prepare the independent connector once
+#### 1. Prepare the independent connector once
 
 If you already have a healthy independent connector on `cloudflare-proxy`, reuse
 it and skip to step 2. Do not create another tunnel or copy its token into apps.
@@ -92,7 +150,7 @@ from its folder. Check that Cloudflare reports the intended connector as
 `docker compose logs --tail=100 cloudflared` locally; redact sensitive details
 before sharing logs. Healthy tunnel status does not yet prove origin reachability.
 
-### 2. Select the shared overlay for each deployment
+#### 2. Select the shared overlay for each deployment
 
 For a new app, run `bash setup.sh` and choose **2**. It asks for the existing
 network name and a unique proxy alias, and does not request a tunnel token.
@@ -134,7 +192,7 @@ If your DSM version's import does not honor `.env`'s `COMPOSE_FILE`, use SSH wit
 explicit `-f` files or a reviewed merged project file; do not deploy the base alone.
 Keep the same selection on every subsequent redeployment.
 
-### 3. Route each hostname through the shared tunnel
+#### 3. Route each hostname through the shared tunnel
 
 In the independent tunnel's **Routes**, create a **Published application** for
 each deployment. Use its existing hostname, service type **HTTP**, the alias URL
@@ -151,7 +209,7 @@ Keep `traefik.yml` unchanged: `/api` and `/api/stream` reach the API, and other
 paths reach the PWA. Preserve `NEXT_PUBLIC_API_BASE_URL: ""` and
 `API_INTERNAL_URL: http://api:9001`. Do not put Docker aliases in browser settings.
 
-## Migrate existing deployments in stages
+### Migrate existing deployments in stages
 
 1. Save private copies of the current Compose/proxy files and `.env`. Record each
    project name, directory, mount sources, existing hostname route, origin
@@ -221,7 +279,7 @@ loopback origin and the independent connector's alias origin are not interchange
 Plan a brief coordinated cutover, or use a separate shared tunnel for staged
 migration; do not assume a successful request proves which connector served it.
 
-### Roll back a cutover
+#### Roll back a cutover
 
 Restore the saved old hostname route, origin settings and DNS tunnel target.
 If necessary, restore the app's old `cloudflared` service and its privately retained
@@ -234,42 +292,3 @@ restore the saved proxy network configuration and recreate the proxy and bundled
 connector together. This ingress-only migration does not require a database
 restore. Keep app data and volumes untouched. Do not delete old tunnels or private
 rollback credentials until the rollback window is over.
-
-## Verify either setup
-
-- **Tunnel and origin:** The intended connector is healthy. Public
-  `https://<hostname>/api/health` returns API JSON with healthy database/schema
-  checks, rather than HTML, a redirect to login, or a Cloudflare error. Complete
-  Cloudflare Access login first if enabled.
-- **Authentication:** An existing session works and a fresh/private browser can
-  log in using the family passphrase. Refresh a signed-in page; no redirect loop
-  or cookie error should occur. Never share passphrases, session cookies or HAR
-  exports containing credentials.
-- **Assets and data:** Check JavaScript/CSS, `/manifest.json`, recipe images,
-  existing recipes, files and meal plans. Verify each hostname reaches its own
-  deployment. Use a fresh browser session to avoid relying only on cached assets.
-- **API routing:** In the browser Network panel, authenticated `/api/schedule`
-  and recipe requests return the expected data from this deployment.
-- **Server-Sent Events:** While signed in with a selected family member, inspect
-  `/api/stream`. Expect `text/event-stream`, an initial `connected` event and
-  approximately 15-second `: ping` heartbeats. Change a test meal plan in another
-  browser and confirm prompt updates without refreshing, then undo the test
-  change. An unauthenticated curl request is not a valid SSE test. Keep the
-  stream open for several minutes and check reconnect behavior.
-- **Recreation:** During a planned restart/redeployment, confirm the Compose
-  network attachment and unique alias remain and rerun the public checks.
-
-Avoid broad caching rules for signed-in pages, private recipes, APIs and live
-updates. Preserve SSE headers and ensure Cloudflare rules do not cache or buffer
-`/api/stream`. A healthy connector alone does not validate login or SSE.
-
-For additional protection, optionally use a
-[Cloudflare Access application](https://developers.cloudflare.com/cloudflare-one/applications/configure-apps/).
-The app's family passphrase remains required. For failures, see
-[installation troubleshooting](troubleshooting.md) and
-[Cloudflare's tunnel guide](https://developers.cloudflare.com/tunnel/get-started/).
-
-Keep the selected overlays across upgrades. `update.sh` compares the base, selected
-overlay and proxy configuration against the target release and stops for manual
-review if any differ. Legacy all-in-one installations must first follow the
-[template transition guide](updates.md#transition-to-the-scenario-templates).
