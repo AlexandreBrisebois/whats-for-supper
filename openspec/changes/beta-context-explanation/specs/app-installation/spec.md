@@ -23,8 +23,13 @@ Beta context SHALL be offered only for a Beta installation with non-demo install
 - **THEN** stable-only has no mode explanation, Beta-only has Beta context, and both Demo cases retain Demo context without a second Beta introduction
 - **AND** Demo-on-Beta retains the existing assistive Beta-channel description
 
-#### Scenario: Runtime mode is unknown or conflicts
-- **WHEN** runtime demo status is pending, fails to resolve, or conflicts with installation demo identity
+#### Scenario: Runtime Demo overrides the Beta-only hint proposal
+- **WHEN** the release channel is Beta, installation demo identity is false, and runtime demo status resolves true
+- **THEN** one Demo context band and explanation are available, with Demo content and an informational note visibly and accessibly named Demo or Démo, described by Beta release channel or Canal bêta
+- **AND** no plain Beta identity note, Beta context band or Beta introduction remains; explicit dismissal affects only the Demo acknowledgement, without changing either underlying identity input or runtime policy
+
+#### Scenario: Runtime mode is unknown or installation Demo lacks runtime Demo
+- **WHEN** runtime demo status is pending or fails to resolve, or installation demo identity is true while runtime demo status is false
 - **THEN** no Beta explanation opens or records acknowledgement; existing identity hints and Demo behavior remain governed by their existing owners
 - **AND** ordinary work is not blocked by the absence of a Beta explanation
 
@@ -74,7 +79,7 @@ Missing or failing browser storage SHALL leave the app usable with a visit-memor
 #### Scenario: Explanation leaves without dismissal
 - **WHEN** routing, shell unmount or a mode change removes an open explanation before explicit dismissal
 - **THEN** no local dismissal is persisted and the current visit does not automatically reopen it
-- **AND** the destination and its focus are retained without focus restoration to a detached control
+- **AND** destination/editor focus is retained without restoring focus to the band, even when that band remains connected
 
 ### Requirement: Make Beta context accessible on primary devices
 The band and explanation SHALL be readable in EN/FR on iPhone, Pixel Phone and iPad in both orientations, respecting safe areas and large text. Controls SHALL have at least 44 CSS pixel touch targets and visible focus. White text SHALL contrast at least 4.5:1 on actual normal, hover and pressed backgrounds. Context SHALL preserve reachable app navigation and notification actions.
