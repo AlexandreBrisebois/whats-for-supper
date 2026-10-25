@@ -2,7 +2,7 @@
 
 ### Requirement: Offer Home voting and library handoffs
 
-Home SHALL offer the active open household voting round regardless of its target week or the selected Planner week. Collecting SHALL offer "Vote Now" to Discovery; converged SHALL show exactly "Menu's In" and "See your matches" to that round's meal plan. The invitation SHALL remain visible while open without dismissal. Copy SHALL NOT assume next week or claim a recipe count from scheduled days. Capture a Recipe and Browse Library links SHALL remain available.
+Home SHALL offer the active open household voting round regardless of target or selected Planner week. Collecting SHALL offer "Vote Now" to Discovery; converged SHALL show "Menu's In", "Your matches are ready to review and save." and "See your matches" to that round's meal plan, exactly in English with equivalent French intent. The invitation SHALL remain without dismissal while open. Copy SHALL NOT assume next week or claim recipe counts from days. Capture and Browse Library SHALL remain available.
 
 #### Scenario: This week open while next week is closed
 - **WHEN** Home receives a confirmed collecting round for this week and next week is not open
@@ -18,8 +18,13 @@ Home SHALL offer the active open household voting round regardless of its target
 
 #### Scenario: Open round converges
 - **WHEN** a collecting round becomes confirmed converged while Home is mounted
-- **THEN** Home replaces Vote Now with the exact headline "Menu's In" and button "See your matches"
+- **THEN** Home replaces Vote Now with the exact English headline "Menu's In", supporting copy "Your matches are ready to review and save." and button "See your matches"
 - **AND** voting remains open until an explicit existing close action
+
+#### Scenario: French matched-state copy
+- **WHEN** Home presents the converged invitation in French
+- **THEN** its localized headline, supporting sentence and action convey that matches are ready to review and save, without claiming saved meals or closed voting
+- **AND** this Home copy does not change Discovery copy
 
 #### Scenario: Closed or unowned round
 - **WHEN** confirmed household state has no active open round, including after closing voting
@@ -42,7 +47,7 @@ Home SHALL offer the active open household voting round regardless of its target
 
 ### Requirement: Present trustworthy Home voting status and recovery
 
-Home SHALL distinguish confirmed voting status from initial loading, rechecking and failed reads. It SHALL withhold unconfirmed voting actions, retain any last-known invitation with clear checking or unavailable feedback, and offer Retry after failure. Successful shared reconciliation SHALL restore the current action or remove a closed round. Older updates SHALL NOT restore superseded rounds or phases.
+Home SHALL distinguish confirmed status from checking and failed reads. It SHALL retain usable last-confirmed navigation during background rechecks and after failure, showing checking or unavailable/last-confirmed feedback and Retry after failure. Without a valid accepted round identity and destination it SHALL withhold the action. Accepted newer state SHALL replace or remove the action; rejected updates SHALL NOT confirm new state.
 
 #### Scenario: Initial hydration
 - **WHEN** Home has no confirmed voting snapshot and the initial status read is pending
@@ -50,9 +55,28 @@ Home SHALL distinguish confirmed voting status from initial loading, rechecking 
 - **AND** Tonight and other Home navigation remain usable
 
 #### Scenario: Read fails or status is stale
-- **WHEN** initial status fails, or a recheck of a previously known open round is pending or fails
-- **THEN** Home displays checking or unavailable feedback and withholds the voting action rather than offering its last-known state as current
-- **AND** failure offers Retry without dismissing the invitation or changing the plan
+- **WHEN** a background recheck is pending for a last-confirmed open round with usable identity and destination
+- **THEN** Home keeps its read-only navigation action usable with checking feedback without claiming the round was newly confirmed
+- **AND** activating the action leaves destination reconciliation to Discovery or Planner without a handoff mutation
+
+#### Scenario: Failed read with a usable last-confirmed round
+- **WHEN** a refresh fails while a usable last-confirmed open round is retained and no accepted newer state supersedes it
+- **THEN** Home retains its navigation action with unavailable status identifying it as last confirmed, and offers Retry
+- **AND** failure does not newly confirm that round, hide the invitation or mutate the plan
+
+#### Scenario: Failed read without a usable destination
+- **WHEN** initial status fails or no retained accepted round provides a valid identity and destination
+- **THEN** Home shows unavailable status with Retry and withholds round navigation instead of guessing its week
+
+#### Scenario: Unusable authoritative response
+- **WHEN** the current authoritative read completes with a projection rejected by the existing session validation owner and no newer accepted update has superseded that read
+- **THEN** its status becomes unavailable rather than remaining indefinitely loading, and Home offers Retry
+- **AND** any retained usable last-confirmed navigation follows the failed-read policy without adopting the rejected projection
+
+#### Scenario: Rejected live projection
+- **WHEN** existing validation rejects a malformed live projection
+- **THEN** it does not replace accepted round data or establish newly confirmed state
+- **AND** Home follows the retained accepted state; this rejection alone does not promise an unavailable transition or Retry, and existing reconnect/resume reconciliation remains available
 
 #### Scenario: Retry reconciles a closed round
 - **WHEN** Retry succeeds after an unavailable open-round snapshot and confirms no open round
@@ -85,5 +109,6 @@ Activating See your matches SHALL open the displayed confirmed round's absolute 
 - **AND** a close accepted after navigation leaves the captured week as the destination while existing Planner reconciliation presents its current state, without a handoff mutation
 
 #### Scenario: Missing navigation identity
-- **WHEN** a purported open-round status lacks a usable round identity or absolute target week
-- **THEN** Home withholds its action, indicates unavailable voting status and offers Retry instead of routing to the selected or next week
+- **WHEN** no retained accepted open-round snapshot provides a usable round identity and absolute target week
+- **THEN** Home withholds its action instead of routing to the selected or next week
+- **AND** a failed or rejected current authoritative read presents unavailable status and Retry; an ignored live frame alone does not manufacture a failure signal
