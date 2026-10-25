@@ -14,6 +14,7 @@ Discovery shows a centered green card with the exact English headline "Menu's in
 - Add explicit, week-anchored meal-plan navigation, including when Planner previously showed groceries.
 - Preserve immediate static rendering, polite status announcements and stability across late updates.
 - Translate the new copy in English and French without claiming assignments or locks.
+- Use a Discovery-only dark sage treatment for small subtitle/action text to achieve at least 4.5:1 contrast; preserve Home styling.
 
 ## Capabilities
 

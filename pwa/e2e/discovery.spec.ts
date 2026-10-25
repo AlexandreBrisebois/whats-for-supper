@@ -253,8 +253,84 @@ test.describe('Discovery Flow', () => {
         expect(geometry.dockClearance).toBeGreaterThan(0);
         expect(geometry.horizontalOverflow).toBeLessThanOrEqual(0);
         expect(geometry.animations).toBe(0);
+        const measureContrast = () =>
+          page.getByTestId('discovery-celebration-card').evaluate((card) => {
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d')!;
+            const rgba = (color: string) => {
+              context.clearRect(0, 0, 1, 1);
+              context.fillStyle = color;
+              context.fillRect(0, 0, 1, 1);
+              return [...context.getImageData(0, 0, 1, 1).data].map((value) => value / 255);
+            };
+            const over = (foreground: number[], background: number[]) =>
+              foreground
+                .slice(0, 3)
+                .map(
+                  (value, index) => value * foreground[3] + background[index] * (1 - foreground[3])
+                );
+            const luminance = (color: number[]) =>
+              color
+                .slice(0, 3)
+                .reduce(
+                  (sum, value, index) =>
+                    sum +
+                    (value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4) *
+                      [0.2126, 0.7152, 0.0722][index],
+                  0
+                );
+            const ratio = (first: number[], second: number[]) => {
+              const a = luminance(first);
+              const b = luminance(second);
+              return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+            };
+            const background = rgba(getComputedStyle(card).backgroundColor);
+            const subtitle = rgba(getComputedStyle(card.querySelector('p')!).color);
+            const button = card.querySelector('button')!;
+            const buttonStyle = getComputedStyle(button);
+            const buttonBackground = over(rgba(buttonStyle.backgroundColor), background);
+            const action = rgba(buttonStyle.color);
+            // White decorative glows can only increase contrast with the selected dark text.
+            // Check both base sage and the lightest possible backdrop to bound compositing.
+            return {
+              subtitle: ratio(over(subtitle, background), background),
+              subtitleOnWhite: ratio(over(subtitle, [1, 1, 1]), [1, 1, 1]),
+              action: ratio(over(action, [...buttonBackground, 1]), buttonBackground),
+              buttonAlpha: rgba(buttonStyle.backgroundColor)[3],
+              colors: {
+                background: getComputedStyle(card).backgroundColor,
+                subtitle: getComputedStyle(card.querySelector('p')!).color,
+                action: buttonStyle.color,
+                button: buttonStyle.backgroundColor,
+              },
+            };
+          });
+        await page.mouse.move(0, 0);
+        await expect.poll(async () => (await measureContrast()).buttonAlpha).toBeCloseTo(1, 2);
+        const contrast = await measureContrast();
+        console.log('Discovery rendered contrast', viewport.name, JSON.stringify(contrast));
+        expect(contrast.subtitle).toBeGreaterThanOrEqual(4.5);
+        expect(contrast.subtitleOnWhite).toBeGreaterThanOrEqual(4.5);
+        expect(contrast.action).toBeGreaterThanOrEqual(4.5);
+        await page.getByTestId('discovery-see-matches').hover();
+        await expect.poll(async () => (await measureContrast()).buttonAlpha).toBeCloseTo(0.9, 2);
+        const hoverContrast = await measureContrast();
+        console.log('Discovery hover contrast', viewport.name, JSON.stringify(hoverContrast));
+        expect(hoverContrast.action).toBeGreaterThanOrEqual(4.5);
+        await page.mouse.move(0, 0);
+        await expect
+          .poll(() =>
+            page
+              .getByTestId('discovery-celebration-card')
+              .evaluate((card) => card.getAnimations({ subtree: true }).length)
+          )
+          .toBe(0);
         const screenshot = testInfo.outputPath(`convergence-${viewport.name}.png`);
-        await page.screenshot({ path: screenshot, fullPage: true });
+        await page.screenshot({
+          path: screenshot,
+          fullPage: true,
+          style: 'nextjs-portal { display: none !important; }',
+        });
         await testInfo.attach(`convergence-${viewport.name}`, {
           path: screenshot,
           contentType: 'image/png',

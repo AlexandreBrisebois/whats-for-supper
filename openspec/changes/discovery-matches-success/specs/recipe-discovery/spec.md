@@ -31,6 +31,11 @@ Discovery SHALL replace its voting arena with a static green success card when a
 - **WHEN** the card renders on a 320px phone, phone portrait, tablet portrait or desktop
 - **THEN** it is centered in the usable area above the navigation dock without horizontal overflow, and the action remains reachable
 
+#### Scenario: Readable subtitle and action
+- **WHEN** Discovery presents the small subtitle and matches action on the green card
+- **THEN** their rendered foreground/background contrast is at least 4.5:1, including the translucent button hover background
+- **AND** Home's existing cooked-card presentation remains unchanged
+
 ## ADDED Requirements
 
 ### Requirement: Open the completed round's meal plan on request

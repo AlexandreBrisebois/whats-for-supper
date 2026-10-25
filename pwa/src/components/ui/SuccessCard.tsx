@@ -8,6 +8,7 @@ interface SuccessCardProps {
   actionLabel: string;
   onAction?: () => void;
   headingAs?: 'h1' | 'h3';
+  smallTextTone?: 'default' | 'dark';
   testId: string;
   titleTestId?: string;
   actionTestId: string;
@@ -19,6 +20,7 @@ export function SuccessCard({
   actionLabel,
   onAction,
   headingAs: Heading = 'h3',
+  smallTextTone = 'default',
   testId,
   titleTestId,
   actionTestId,
@@ -42,13 +44,17 @@ export function SuccessCard({
         >
           {title}
         </Heading>
-        <p className="text-white/70 text-xs font-black uppercase tracking-widest">{description}</p>
+        <p
+          className={`${smallTextTone === 'dark' ? 'text-sage-900' : 'text-white/70'} text-xs font-black uppercase tracking-widest`}
+        >
+          {description}
+        </p>
       </div>
 
       <button
         onClick={onAction}
         data-testid={actionTestId}
-        className="mt-2 px-8 h-12 rounded-2xl bg-white text-sage font-black text-[10px] uppercase tracking-widest transition-all active:scale-95 hover:bg-white/90"
+        className={`mt-2 px-8 h-12 rounded-2xl bg-white ${smallTextTone === 'dark' ? 'text-sage-900' : 'text-sage'} font-black text-[10px] uppercase tracking-widest transition-all active:scale-95 hover:bg-white/90`}
       >
         {actionLabel}
       </button>

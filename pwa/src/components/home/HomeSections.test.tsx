@@ -14,8 +14,11 @@ describe('CookedSuccessCard', () => {
       screen.getByRole('heading', { level: 3, name: 'Enjoy your meal!' })
     );
     expect(screen.getByText('Recipe marked as cooked')).toBeVisible();
+    expect(screen.getByText('Recipe marked as cooked')).toHaveClass('text-white/70');
     const button = screen.getByTestId('cooked-success-dismiss');
     expect(button).toHaveAccessibleName('Dismiss');
+    expect(button).toHaveClass('text-sage');
+    expect(button).not.toHaveClass('text-sage-900');
     fireEvent.click(button);
     expect(dismiss).toHaveBeenCalledOnce();
   });

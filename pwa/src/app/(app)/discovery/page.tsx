@@ -384,6 +384,7 @@ export default function DiscoveryPage() {
             testId="discovery-celebration-card"
             actionTestId="discovery-see-matches"
             headingAs="h1"
+            smallTextTone="dark"
             title={t('discovery.menuIsIn', "Menu's in!")}
             description={t('discovery.familyMatches', 'Your family found its matches.')}
             actionLabel={t('discovery.seeMatches', 'See your matches')}
