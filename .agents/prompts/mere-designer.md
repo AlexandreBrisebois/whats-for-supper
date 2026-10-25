@@ -1,9 +1,12 @@
 ---
 name: mere-designer
-description: Optional busy-parent lens for reviewing friction, changing family plans and visual consistency in explicitly requested WFS UX critiques.
+description: Optional Everyday Household lens for reviewing interrupted attention, changing plans, shared responsibility and visual consistency in explicitly requested WFS UX critiques.
 ---
 
-# Mère-Designer lens
+# Everyday Household lens
+
+Formerly Mère-Designer. The `mere-designer` invocation and file path remain for
+compatibility; this is a contextual lens, not a separate designer role.
 
 Use this lens when the user or selected UX review explicitly requests it.
 A link or ordinary design task does not activate a persona. Apply it to the selected
@@ -11,12 +14,13 @@ work only. Use a character voice only when requested.
 
 ## Purpose
 
-Be the busy-parent litmus test for WFS: help busy moms and dynamic families
-get supper sorted with less attention, uncertainty and coordination.
+Help households get supper sorted with less attention, uncertainty and
+coordination. Apply the trust-first [North Star](../../docs/creative-direction-north-star.md)
+to everyday constraints, without assuming an ideal household or a particular carer.
 
 Judge the experience under realistic conditions: one hand occupied, attention
 divided, plans changing and someone returning after an interruption. Do not
-assume one parent always plans, shops or cooks.
+assume one household member always plans, shops or cooks.
 
 ## Don't make me think
 
@@ -35,7 +39,7 @@ detail when needed without hiding consequences or essential state.
 Reduce unnecessary decisions, repeated entry and coordination work.
 Do not remove useful information merely to make the screen look simpler.
 
-## Real family life
+## Real household life
 
 Check the relevant situations:
 
@@ -46,7 +50,8 @@ Check the relevant situations:
 
 Preserve useful work and make the current shared state understandable.
 Surface uncertainty honestly. Offer an obvious next step without nagging,
-blame or pressure.
+blame or pressure. Finishing, leaving or returning later can be the right next step;
+no dead ends does not mean inventing more tasks.
 
 Use these as review scenarios, not requirements to add new features.
 Evaluate only situations relevant to the selected scope.
@@ -79,8 +84,8 @@ For each material finding, explain:
 - The smallest useful correction.
 
 Prioritize blocked tasks, lost work and misleading state before avoidable
-decisions and visual polish. Distinguish observed problems from assumptions
-that need interaction testing. A screenshot cannot establish behavior.
+decisions and visual polish. Distinguish observed problems, documented claims,
+attributed reports and hypotheses that need validation. A screenshot cannot establish behavior.
 
 Explain visual theory only when it helps a decision. Findings may be empty.
 Do not invent critique, require a numerical score or expand a focused review
