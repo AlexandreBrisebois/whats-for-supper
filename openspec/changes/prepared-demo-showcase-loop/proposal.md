@@ -9,6 +9,8 @@ Related: #245. This is research and proposed behavior only, not implementation o
 ## What Changes
 
 - Treat recurring workflow reset as the intended product loop, not a defect.
+- Make the prepared household usable on iPad, iPhone and Pixel Phone through ordinary browse, vote, explicit plan saving, groceries/extras and cooking. No mandatory tour or invented feature showcase.
+- Use deterministic synthetic fixture identities/content and verified local media; disclose shared, periodically reset demo state and offer a self-hosting next step without interrupting household tasks.
 - Separate operator baseline publication authority from shared visitor household access; visitors cannot overwrite the prepared baseline or enable AI preparation.
 - Capture a versioned, complete prepared household baseline with explicit restore/clear/preserve/rebuild policies and verified assets.
 - Restore plans, calendar, grocery state, preferences, categories and history as well as recipes and members; fence stale visitor work and refresh derived state without AI.
@@ -38,4 +40,6 @@ This branch changes only OpenSpec planning artifacts. It does not change applica
 
 ## Review boundaries
 
-The accompanying design records current-main evidence and all 19 database tables. Proposed requirements are review text, not a claim of implemented safety. Resolve the date policy, prepared votes/reports policy and safe-maintenance allowlist and operator-authority mechanism before writing dependent implementation tasks. In particular, the old spec explicitly disclaimed global zero AI and crash-consistent reset: this proposal intentionally strengthens that contract rather than claiming those guarantees already exist.
+The accompanying design refreshes evidence at main `ba8dca21c83000d03ce03dbe51bd7542daa76b88` and retains the existing 19-table inventory. No new tables or demo/provider implementation changes were found since the original research baseline; newer voting, shared grocery checks and trust-first guidance change acceptance, not the inventory count. Reset/quiescence and partial-failure policy, date mapping, fixture votes/reports/privacy, maintenance/manual recurrence, schema compatibility and operator authority remain review choices. Requirements are proposed, not approved or implemented guarantees.
+
+The first showcase slice is a small complete household crossing capture → visitor changes → workflow reset → ordinary reads, with provider-boundary tests forbidding AI egress. Missing-asset preflight and recoverable publication are prerequisites, not the demo experience itself. A narrow preflight or provider guard PR cannot establish the full zero-cost claim. This review excludes application implementation, spec application/sync/archive, Home handoff PR #339, voting docking PR #329, deployment redesign and live operations.
