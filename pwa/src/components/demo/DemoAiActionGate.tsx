@@ -4,22 +4,6 @@ import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { t } from '@/locales';
 import { useDemoMode } from './DemoModeProvider';
-import { DemoDialog } from './DemoDialog';
-
-export function DemoRestrictedDialog({ onClose }: { onClose: () => void }) {
-  return (
-    <DemoDialog
-      title={t('demoContext.aiTitle', 'AI processing')}
-      description={t(
-        'demoContext.preparedAvailable',
-        'Prepared recipes and originals are still available.'
-      )}
-      onClose={onClose}
-    >
-      <DemoAiActionGate>{null}</DemoAiActionGate>
-    </DemoDialog>
-  );
-}
 
 export function DemoAiActionGate({
   children,

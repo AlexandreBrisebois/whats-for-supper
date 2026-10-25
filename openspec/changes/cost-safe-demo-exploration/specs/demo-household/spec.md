@@ -56,6 +56,20 @@ Demo AI capture, contextual reimport, bulk import, failed-capture retry, origina
 - **WHEN** the browser has not established API demo status
 - **THEN** private AI upload entry waits with retry/return guidance rather than guessing that upload is permitted
 
+#### Scenario: Resolve a prepared report locally
+- **WHEN** a demo visitor reviews an existing issue while model availability is restricted or unknown
+- **THEN** local Mark as resolved remains available under its existing active-import rules and uses the existing DELETE operation; AI report submission is withheld and private-note editing is disabled
+- **AND** resolve failure remains visible and retryable without claiming success
+
+#### Scenario: Import a prepared shared text bundle
+- **WHEN** a visitor selects and reviews a valid shared .txt recipe bundle while model availability is restricted or unknown
+- **THEN** the existing model-free bundle import remains usable, preserving supplied prepared facts/media without a model workflow
+- **AND** AI photo/PDF/link/description controls remain unavailable; non-text file selection through this safe picker is rejected before parsing or staging AI capture
+
+#### Scenario: Availability resolves during a local import
+- **WHEN** a visitor opens the safe text picker or reviews a prepared bundle before availability resolves to ordinary non-demo mode
+- **THEN** that picker and local draft remain attached and usable without a camera interruption or discarded preview; ordinary AI capture becomes available after confirmed non-demo status
+
 ### Requirement: Offer a reopenable demo context explanation
 The demo SHALL provide a compact purple band with readable white text at the top of the ordinary app shell, respecting safe areas, that opens one short phone sheet or compact iPad dialog. It SHALL explain the sample shared household, other visitors' changes, temporary resettable state and avoiding personal information. Start exploring and an explicit close SHALL dismiss it. Existing identity hints SHALL retain their noninteractive meaning.
 

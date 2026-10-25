@@ -1,6 +1,7 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import MinimalCapture from './MinimalCapture';
+import CaptureWithPdf from './CaptureWithPdf';
 import { useFeatureFlagStore } from '@/store/featureFlagStore';
 import { usePdfCaptureStore } from '@/store/pdfCaptureStore';
 
@@ -8,6 +9,14 @@ const memberId = '11111111-1111-4111-8111-111111111111';
 let selectedMemberId: string | null = null;
 
 const mockPush = vi.fn();
+const demoMode = vi.hoisted(() => ({
+  mode: false as boolean | null,
+  loading: false,
+  error: false,
+  retry: vi.fn(),
+}));
+vi.mock('@/components/demo/DemoModeProvider', () => ({ useDemoMode: () => demoMode }));
+vi.mock('./PdfCapturePanel', () => ({ PdfCapturePanel: () => null }));
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: mockPush }),
@@ -86,6 +95,7 @@ vi.mock('@/store/libraryStore', () => ({
 }));
 
 const mockGetRecipes = vi.fn();
+const mockImportBundle = vi.hoisted(() => vi.fn());
 const mockDeleteRecipe = vi.fn();
 const mockById = vi.fn().mockReturnValue({
   delete: mockDeleteRecipe,
@@ -96,7 +106,7 @@ vi.mock('@/lib/api/api-client', () => ({
     api: {
       recipes: {
         describe: { post: vi.fn() },
-        importBundle: { post: vi.fn() },
+        importBundle: { post: mockImportBundle },
         get: (...args: any[]) => mockGetRecipes(...args),
         byId: (id: any) => mockById(id),
       },
@@ -123,8 +133,37 @@ vi.mock('@/components/recipes/RecipeDetailSheet', () => ({
 }));
 
 describe('MinimalCapture recipe import', () => {
+  it('keeps the local picker attached while unknown mode becomes non-demo', () => {
+    demoMode.mode = null;
+    const view = render(<CaptureWithPdf />);
+    const picker = screen.getByTestId('import-prepared-file-input');
+    demoMode.mode = false;
+    view.rerender(<CaptureWithPdf />);
+    expect(picker.isConnected).toBe(true);
+    expect(screen.getByTestId('import-recipe-file-input')).toBe(picker);
+  });
+  it('keeps reviewed text bundles available without AI photo, PDF, link or describe entry', async () => {
+    render(<MinimalCapture preparedOnly />);
+    const input = screen.getByTestId('import-prepared-file-input');
+    expect(input).toHaveAttribute('accept', '.txt,.recipe,.json,text/plain,application/json');
+    expect(screen.queryByTestId('capture-take-photo-btn')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('capture-gallery-input')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('capture-secondary-action-link')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('capture-secondary-action-describe')).not.toBeInTheDocument();
+    fireEvent.change(input, {
+      target: { files: [new File(['%PDF'], 'private.pdf', { type: 'application/pdf' })] },
+    });
+    expect(usePdfCaptureStore.getState().selection).toBeNull();
+    expect(screen.getByTestId('bundle-import-error')).toHaveTextContent(
+      'Choose a shared recipe text file'
+    );
+    expect(mockSubmitRecipe).not.toHaveBeenCalled();
+    expect(mockSubmitUrl).not.toHaveBeenCalled();
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
+    demoMode.mode = false;
     selectedMemberId = null;
     useFeatureFlagStore.setState({ memberId: null, flags: {}, loading: false, error: null });
     usePdfCaptureStore.getState().reset();
@@ -132,6 +171,9 @@ describe('MinimalCapture recipe import', () => {
     mockSubmitRecipe.mockResolvedValue('test-recipe-id');
     mockSubmitUrl.mockResolvedValue('test-recipe-id');
     mockGetRecipes.mockResolvedValue({ recipes: [] });
+    mockImportBundle.mockResolvedValue({
+      data: { id: memberId, name: 'Imported Shared Recipe', isReady: true },
+    });
     libraryStoreState.notifications = [];
     librarySubscribers.clear();
     window.URL.createObjectURL = vi.fn(() => 'blob:mock-url');
@@ -206,51 +248,67 @@ describe('MinimalCapture recipe import', () => {
     );
   });
 
-  it('enters bundle review state after selecting a valid .txt file', async () => {
-    render(<MinimalCapture />);
+  it.each([false, true])(
+    'reviews and imports a valid .txt bundle without AI (preparedOnly=%s)',
+    async (preparedOnly) => {
+      render(<MinimalCapture preparedOnly={preparedOnly} />);
 
-    const input = screen.getByTestId('import-recipe-file-input') as HTMLInputElement;
-    const file = new File(
-      [
-        JSON.stringify({
+      const input = screen.getByTestId(
+        preparedOnly ? 'import-prepared-file-input' : 'import-recipe-file-input'
+      ) as HTMLInputElement;
+      const file = new File(
+        [
+          JSON.stringify({
+            version: '1.0',
+            recipe: {
+              name: 'Imported Shared Recipe',
+              ingredients: ['1 onion'],
+              instructions: [
+                {
+                  name: 'Main Steps',
+                  itemListElement: [{ text: 'Simmer' }, { text: 'Serve' }],
+                },
+              ],
+              isSynthesized: true,
+            },
+            info: {
+              exportedAtUtc: '2026-05-14T16:00:00Z',
+              bundleSource: 'wfs-share',
+              appVersion: '0.1.0',
+            },
+            hero: null,
+            originals: [],
+          }),
+        ],
+        preparedOnly ? 'shared.recipe' : 'shared.txt',
+        { type: 'text/plain' }
+      );
+
+      fireEvent.change(input, { target: { files: [file] } });
+      expect(await screen.findByTestId('bundle-preview-card')).toBeVisible();
+
+      const sections = screen.getAllByTestId('bundle-preview-section-title');
+      expect(sections[0]).toHaveTextContent('Main Steps');
+
+      const steps = screen.getAllByTestId('bundle-preview-step-text');
+      expect(steps[0]).toHaveTextContent('Simmer');
+      expect(steps[1]).toHaveTextContent('Serve');
+
+      expect(screen.getByTestId('accept-bundle-btn')).toBeVisible();
+      expect(screen.getByTestId('reject-bundle-btn')).toBeVisible();
+      expect(mockImportBundle).not.toHaveBeenCalled();
+      fireEvent.click(screen.getByTestId('accept-bundle-btn'));
+      expect(await screen.findByTestId('bundle-import-success')).toBeVisible();
+      expect(mockImportBundle).toHaveBeenCalledWith(
+        expect.objectContaining({
           version: '1.0',
-          recipe: {
-            name: 'Imported Shared Recipe',
-            ingredients: ['1 onion'],
-            instructions: [
-              {
-                name: 'Main Steps',
-                itemListElement: [{ text: 'Simmer' }, { text: 'Serve' }],
-              },
-            ],
-            isSynthesized: true,
-          },
-          info: {
-            exportedAtUtc: '2026-05-14T16:00:00Z',
-            bundleSource: 'wfs-share',
-            appVersion: '0.1.0',
-          },
-          hero: null,
-          originals: [],
-        }),
-      ],
-      'shared.txt',
-      { type: 'text/plain' }
-    );
-
-    fireEvent.change(input, { target: { files: [file] } });
-    expect(await screen.findByTestId('bundle-preview-card')).toBeVisible();
-
-    const sections = screen.getAllByTestId('bundle-preview-section-title');
-    expect(sections[0]).toHaveTextContent('Main Steps');
-
-    const steps = screen.getAllByTestId('bundle-preview-step-text');
-    expect(steps[0]).toHaveTextContent('Simmer');
-    expect(steps[1]).toHaveTextContent('Serve');
-
-    expect(screen.getByTestId('accept-bundle-btn')).toBeVisible();
-    expect(screen.getByTestId('reject-bundle-btn')).toBeVisible();
-  });
+          recipe: expect.objectContaining({ name: 'Imported Shared Recipe' }),
+        })
+      );
+      expect(mockSubmitRecipe).not.toHaveBeenCalled();
+      expect(mockSubmitUrl).not.toHaveBeenCalled();
+    }
+  );
 
   it('renders optional notes in the bundle preview if present', async () => {
     render(<MinimalCapture />);

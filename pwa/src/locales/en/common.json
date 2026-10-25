@@ -167,6 +167,16 @@
     "profile": "Profile"
   },
   "home": {
+    "votingRound": "Family voting",
+    "menuIsIn": "Menu's In",
+    "familyVoting": "The family is voting",
+    "matchesReady": "Your matches are ready to review and save.",
+    "checkingVoting": "Checking voting…",
+    "votingUnavailableRetained": "Voting status unavailable. Showing the last confirmed round.",
+    "votingUnavailable": "Voting status unavailable.",
+    "seeMatches": "See your matches",
+    "voteNow": "Vote Now",
+    "retryVoting": "Retry",
     "tonight": "Tonight",
     "nothingPlanned": "Nothing Planned?",
     "quickFixes": "Quick Fixes",
@@ -518,6 +528,8 @@
     "checking": "Checking whether AI capture is available…",
     "browse": "Explore prepared recipes",
     "aiTitle": "AI processing",
-    "preparedAvailable": "Prepared recipes and originals are still available."
+    "preparedAvailable": "Prepared recipes and originals are still available.",
+    "importPrepared": "Import a shared recipe (.txt)",
+    "preparedFileType": "Choose a shared recipe text file (.txt)."
   }
 }

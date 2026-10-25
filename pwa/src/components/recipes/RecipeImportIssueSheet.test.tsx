@@ -4,6 +4,14 @@ import { RecipeImportIssueSheet } from './RecipeImportIssueSheet';
 import type { RecipeImportIssue } from '@/lib/api/recipes';
 import { RecipeImportIssueReasonObject } from '@/lib/api/generated/models/index';
 
+const demo = vi.hoisted(() => ({
+  mode: false as boolean | null,
+  loading: false,
+  error: false,
+  retry: vi.fn(),
+}));
+vi.mock('@/components/demo/DemoModeProvider', () => ({ useDemoMode: () => demo }));
+
 const existingIssue: RecipeImportIssue = {
   reasons: ['ingredients'],
   note: 'Amounts are missing',
@@ -15,7 +23,58 @@ describe('RecipeImportIssueSheet', () => {
   const onSave = vi.fn();
   const onResolve = vi.fn();
 
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    Object.assign(demo, { mode: false, loading: false, error: false });
+    HTMLDialogElement.prototype.showModal = function () {
+      this.setAttribute('open', '');
+    };
+    HTMLDialogElement.prototype.close = function () {
+      this.removeAttribute('open');
+    };
+  });
+
+  it.each([true, null])(
+    'preserves local resolution while AI submission is unavailable (%s)',
+    async (mode) => {
+      demo.mode = mode;
+      onResolve.mockResolvedValue(undefined);
+      render(
+        <RecipeImportIssueSheet
+          issue={existingIssue}
+          onClose={onClose}
+          onSave={onSave}
+          onResolve={onResolve}
+        />
+      );
+      expect(screen.getByTestId('import-issue-note')).toBeDisabled();
+      expect(screen.queryByText('Add a note to re-import this recipe.')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('import-issue-save')).not.toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'Mark as resolved' }));
+      await waitFor(() => expect(onResolve).toHaveBeenCalledOnce());
+      expect(onSave).not.toHaveBeenCalled();
+    }
+  );
+
+  it('keeps a failed local resolve visible and retryable in demo mode', async () => {
+    demo.mode = true;
+    onResolve.mockRejectedValue(new Error('synthetic failure'));
+    render(
+      <RecipeImportIssueSheet
+        issue={existingIssue}
+        onClose={onClose}
+        onSave={onSave}
+        onResolve={onResolve}
+      />
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Mark as resolved' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Could not mark as resolved. Try again.'
+    );
+    expect(screen.getByRole('button', { name: 'Mark as resolved' })).toBeEnabled();
+    expect(onClose).not.toHaveBeenCalled();
+    expect(onSave).not.toHaveBeenCalled();
+  });
 
   it('requires at least one labeled reason and keeps the note collapsed for a new report', () => {
     render(

@@ -167,6 +167,16 @@
     "profile": "Profil"
   },
   "home": {
+    "votingRound": "Vote en famille",
+    "menuIsIn": "Le menu est prêt",
+    "familyVoting": "La famille vote",
+    "matchesReady": "Vos choix communs sont prêts à être consultés et enregistrés.",
+    "checkingVoting": "Vérification du vote…",
+    "votingUnavailableRetained": "État du vote indisponible. Dernier tour confirmé affiché.",
+    "votingUnavailable": "État du vote indisponible.",
+    "seeMatches": "Voir vos choix communs",
+    "voteNow": "Voter maintenant",
+    "retryVoting": "Réessayer",
     "tonight": "Ce soir",
     "nothingPlanned": "Rien de prévu ?",
     "quickFixes": "Solutions Rapides",
@@ -518,6 +528,8 @@
     "checking": "Vérification de la disponibilité de la capture par IA…",
     "browse": "Explorer les recettes préparées",
     "aiTitle": "Traitement par IA",
-    "preparedAvailable": "Les recettes et les originaux préparés restent accessibles."
+    "preparedAvailable": "Les recettes et les originaux préparés restent accessibles.",
+    "importPrepared": "Importer une recette partagée (.txt)",
+    "preparedFileType": "Choisissez un fichier texte de recette partagée (.txt)."
   }
 }

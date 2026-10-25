@@ -9,7 +9,7 @@ import type {
 } from '@/lib/api/recipes';
 import { RecipeImportIssueReasonObject } from '@/lib/api/generated/models/index';
 import { useDemoMode } from '@/components/demo/DemoModeProvider';
-import { DemoRestrictedDialog } from '@/components/demo/DemoAiActionGate';
+import { DemoAiActionGate } from '@/components/demo/DemoAiActionGate';
 
 interface RecipeImportIssueSheetProps {
   issue: RecipeImportIssue | null;
@@ -34,12 +34,7 @@ function mergeReasons(
 }
 
 export function RecipeImportIssueSheet(props: RecipeImportIssueSheetProps) {
-  const { mode } = useDemoMode();
-  return mode === false ? (
-    <RecipeImportIssueEditor {...props} />
-  ) : (
-    <DemoRestrictedDialog onClose={props.onClose} />
-  );
+  return <RecipeImportIssueEditor {...props} />;
 }
 
 function RecipeImportIssueEditor({
@@ -54,6 +49,8 @@ function RecipeImportIssueEditor({
   onSave,
   onResolve,
 }: RecipeImportIssueSheetProps) {
+  const { mode } = useDemoMode();
+  const aiUnavailable = mode !== false;
   const reimportingDescriptionId = 'import-issue-reimporting-description';
   const [reasons, setReasons] = useState<RecipeImportIssueReason[]>(() =>
     mergeReasons(issue, contextualReason)
@@ -84,7 +81,7 @@ function RecipeImportIssueEditor({
   const noteEligible = contentSelected && canReportContentIssues;
 
   const toggleReason = (reason: RecipeImportIssueReason) => {
-    if (isReimporting) return;
+    if (isReimporting || aiUnavailable) return;
     if (reason !== RecipeImportIssueReasonObject.Duplicate && canReportContentIssues) {
       setNoteOpen(true);
     }
@@ -109,7 +106,7 @@ function RecipeImportIssueEditor({
     }
     if (event.key !== 'Tab' || !dialogRef.current) return;
     const focusable = dialogRef.current.querySelectorAll<HTMLElement>(
-      'button:not([tabindex="-1"]), input, textarea, [tabindex]:not([tabindex="-1"])'
+      'button:not([disabled]):not([tabindex="-1"]), a[href], input:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"]):not([disabled])'
     );
     const first = focusable[0];
     const last = focusable[focusable.length - 1];
@@ -123,7 +120,7 @@ function RecipeImportIssueEditor({
   };
 
   const save = async () => {
-    if (reasons.length === 0 || busy || isReimporting) return;
+    if (aiUnavailable || reasons.length === 0 || busy || isReimporting) return;
     setBusy(true);
     setError(null);
     try {
@@ -189,6 +186,11 @@ function RecipeImportIssueEditor({
           </button>
         </div>
 
+        {aiUnavailable && (
+          <div className="mt-4">
+            <DemoAiActionGate>{null}</DemoAiActionGate>
+          </div>
+        )}
         <fieldset className="mt-6 grid grid-cols-3 gap-2">
           <legend className="sr-only">Issue reasons</legend>
           {[
@@ -206,7 +208,7 @@ function RecipeImportIssueEditor({
                 data-testid={`import-issue-reason-${reason}`}
                 aria-pressed={selected}
                 aria-describedby={isReimporting ? reimportingDescriptionId : undefined}
-                disabled={disabled || isReimporting}
+                disabled={disabled || isReimporting || aiUnavailable}
                 onClick={() => toggleReason(reason)}
                 className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-full border px-4 py-2 text-sm font-bold transition-colors ${
                   selected
@@ -288,14 +290,14 @@ function RecipeImportIssueEditor({
           data-testid="import-issue-note-disclosure"
           aria-expanded={noteOpen}
           aria-describedby={isReimporting ? reimportingDescriptionId : undefined}
-          disabled={isReimporting}
+          disabled={isReimporting || aiUnavailable}
           onClick={() => setNoteOpen((open) => !open)}
           className="mt-4 flex min-h-11 items-center gap-2 text-sm font-bold text-charcoal/75 disabled:cursor-not-allowed disabled:opacity-45"
         >
           <ChevronDown size={16} className={noteOpen ? 'rotate-180' : ''} aria-hidden="true" />
           {noteEligible ? 'What should we check?' : 'Add a note'}
         </button>
-        {noteEligible && (
+        {noteEligible && !aiUnavailable && (
           <p className="mt-1 text-sm text-charcoal/60">Add a note to re-import this recipe.</p>
         )}
         {noteOpen && (
@@ -309,7 +311,7 @@ function RecipeImportIssueEditor({
               maxLength={500}
               value={note}
               aria-describedby={isReimporting ? reimportingDescriptionId : undefined}
-              disabled={isReimporting}
+              disabled={isReimporting || aiUnavailable}
               onChange={(event) => setNote(event.target.value)}
               className="mt-2 min-h-28 w-full resize-none rounded-2xl border border-charcoal/15 bg-white px-4 py-3 text-charcoal outline-none transition focus:border-terracotta/30 focus:ring-4 focus:ring-terracotta/10"
             />
@@ -328,16 +330,18 @@ function RecipeImportIssueEditor({
               : 'Choose Duplicate.'}
           </p>
         )}
-        <button
-          type="button"
-          data-testid="import-issue-save"
-          aria-describedby={isReimporting ? reimportingDescriptionId : undefined}
-          disabled={reasons.length === 0 || busy || isReimporting}
-          onClick={() => void save()}
-          className="mt-5 min-h-12 w-full rounded-2xl bg-terracotta px-4 font-bold text-white disabled:cursor-not-allowed disabled:opacity-45"
-        >
-          Save
-        </button>
+        {!aiUnavailable && (
+          <button
+            type="button"
+            data-testid="import-issue-save"
+            aria-describedby={isReimporting ? reimportingDescriptionId : undefined}
+            disabled={reasons.length === 0 || busy || isReimporting}
+            onClick={() => void save()}
+            className="mt-5 min-h-12 w-full rounded-2xl bg-terracotta px-4 font-bold text-white disabled:cursor-not-allowed disabled:opacity-45"
+          >
+            Save
+          </button>
+        )}
 
         {existing && (
           <div className="mt-4 border-t border-charcoal/10 pt-4 text-center">

@@ -1,5 +1,26 @@
-import { test, expect } from './fixtures';
-import { MOCK_IDS, setupCommonRoutes } from './mock-api';
+import { test, expect, type Page } from './fixtures';
+import { MOCK_IDS, setupCommonRoutes, builders } from './mock-api';
+
+function fixtureOrigins(baseURL?: string) {
+  const app = new URL(baseURL || 'http://127.0.0.1:3000').origin;
+  const api = new URL(
+    process.env.NEXT_PUBLIC_API_BASE_URL || (process.env.CI ? 'http://127.0.0.1:5001' : app)
+  ).origin;
+  if ([app, api].some((value) => !['127.0.0.1', 'localhost'].includes(new URL(value).hostname)))
+    throw new Error('Demo tests require explicitly configured loopback app/API origins.');
+  return { app, api };
+}
+
+async function restrictDemoTraffic(page: Page, baseURL?: string) {
+  const origins = fixtureOrigins(baseURL);
+  await page.route(/^https?:\/\//, (route) => {
+    const url = new URL(route.request().url());
+    return url.origin === origins.app ||
+      (url.origin === origins.api && url.pathname.startsWith('/api/'))
+      ? route.fallback()
+      : route.abort();
+  });
+}
 
 test.describe('Demo Mode', () => {
   test.beforeEach(async ({ page }) => {
@@ -64,11 +85,7 @@ test.describe('Demo context explanation', () => {
         body: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"><rect width="20" height="20" fill="#eee"/></svg>',
       })
     );
-    await page.route(/^https?:\/\//, (route) =>
-      new URL(route.request().url()).origin === new URL(origin).origin
-        ? route.fallback()
-        : route.abort()
-    );
+    await restrictDemoTraffic(page, baseURL);
   });
 
   for (const locale of ['en', 'fr'] as const) {
@@ -177,9 +194,11 @@ test.describe('Demo context explanation', () => {
   test('deep-link entry reaches its task and stays quiet after client navigation Home', async ({
     page,
   }) => {
-    await page.goto('/recipes?recipeId=' + MOCK_IDS.RECIPE_LASAGNA);
+    await page.goto('/recipes?open=' + MOCK_IDS.RECIPE_LASAGNA);
     await expect(page.getByTestId('demo-context-band')).toBeVisible();
-    await expect(page.getByRole('dialog')).not.toBeVisible();
+    await expect(page.getByTestId('recipe-detail-sheet')).toBeVisible();
+    await expect(page.getByRole('dialog', { name: 'Demo · What to know' })).not.toBeVisible();
+    await page.getByTestId('action-close-sheet').click();
     await page.getByTestId('nav-item-home').first().click();
     await expect(page).toHaveURL(/\/home$/);
     await expect(page.getByRole('dialog')).not.toBeVisible();
@@ -217,11 +236,7 @@ test.describe('Cost-safe demo exploration', () => {
       .context()
       .addCookies([{ name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: origin }]);
     await setupCommonRoutes(page, undefined, { demoMode: true });
-    await page.route(/^https?:\/\//, (route) =>
-      new URL(route.request().url()).origin === new URL(origin).origin
-        ? route.fallback()
-        : route.abort()
-    );
+    await restrictDemoTraffic(page, baseURL);
   });
 
   test('AI entry explains restriction before file selection or upload and offers prepared content', async ({
@@ -240,11 +255,192 @@ test.describe('Cost-safe demo exploration', () => {
     await expect(page.getByTestId('demo-ai-unavailable')).toContainText(
       'AI capture and generation are unavailable'
     );
-    await expect(page.locator('input[type=file]')).toHaveCount(0);
+    await expect(page.locator('input[type=file]')).toHaveCount(1);
+    await expect(page.getByTestId('import-prepared-file-input')).toHaveAttribute(
+      'accept',
+      '.txt,.recipe,.json,text/plain,application/json'
+    );
+    await expect(page.getByTestId('capture-gallery-input')).toHaveCount(0);
+    await expect(page.getByTestId('capture-pdf-input')).toHaveCount(0);
     await expect(page.getByRole('dialog')).not.toBeVisible();
     await page.getByRole('link', { name: 'Explore prepared recipes' }).click();
     await expect(page.getByTestId('recipe-search-input')).toBeVisible();
     expect(posts).toEqual([]);
+  });
+
+  test('permits only the configured mock API and blocks unmatched/provider/other origins', async ({
+    page,
+    baseURL,
+  }) => {
+    await page.goto('/recipes');
+    const { api } = fixtureOrigins(baseURL);
+    const outcomes = await page.evaluate(
+      async ({ api }) => {
+        const request = async (url: string) => {
+          try {
+            return (await fetch(url)).status;
+          } catch {
+            return 'blocked';
+          }
+        };
+        return {
+          health: await request(`${api}/api/health`),
+          unmatched: await request(`${api}/api/unregistered-demo-fixture`),
+          provider: await request('https://generativelanguage.googleapis.com/api/health'),
+          openai: await request('https://api.openai.com/api/health'),
+          production: await request('https://demo.example.invalid/api/health'),
+          otherLoopback: await request('http://127.0.0.1:65530/api/health'),
+        };
+      },
+      { api }
+    );
+    expect(outcomes).toEqual({
+      health: 200,
+      unmatched: 403,
+      provider: 'blocked',
+      openai: 'blocked',
+      production: 'blocked',
+      otherLoopback: 'blocked',
+    });
+  });
+
+  test('reviews and imports a prepared text bundle while genuine AI entry remains absent', async ({
+    page,
+  }, info) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    const posts: string[] = [];
+    page.on('request', (request) => {
+      if (request.method() === 'POST') posts.push(new URL(request.url()).pathname);
+    });
+    await page.goto('/capture');
+    await expect(page.getByTestId('import-prepared-file-input')).toHaveAttribute(
+      'accept',
+      '.txt,.recipe,.json,text/plain,application/json'
+    );
+    await page.screenshot({ path: info.outputPath('prepared-only-capture.png') });
+    await page.getByTestId('import-prepared-file-input').setInputFiles({
+      name: 'synthetic.txt',
+      mimeType: 'text/plain',
+      buffer: Buffer.from(
+        JSON.stringify({
+          version: '1.0',
+          recipe: {
+            name: 'Synthetic lentil soup',
+            ingredients: ['lentils'],
+            instructions: [{ name: 'Steps', itemListElement: [{ text: 'Simmer.' }] }],
+            isSynthesized: true,
+          },
+          info: {
+            exportedAtUtc: '2026-05-04T12:00:00Z',
+            bundleSource: 'wfs-share',
+            appVersion: 'test',
+          },
+          hero: null,
+          originals: [],
+        })
+      ),
+    });
+    await expect(page.getByTestId('bundle-preview-card')).toBeVisible();
+    expect(posts).toEqual([]);
+    await page.getByTestId('accept-bundle-btn').click();
+    await expect(page.getByTestId('bundle-import-success')).toBeVisible();
+    expect(posts).toEqual(['/api/recipes/import-bundle']);
+    await expect(page.getByTestId('capture-gallery-input')).toHaveCount(0);
+  });
+
+  test('resolves an existing issue locally without exposing AI submission', async ({
+    page,
+    baseURL,
+  }, info) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    const recipe = builders.recipe({
+      id: MOCK_IDS.RECIPE_LASAGNA,
+      importIssue: {
+        reasons: ['ingredients'],
+        note: 'Synthetic missing amount',
+        status: 'readyToReview',
+      },
+    });
+    await page.route(`**/api/recipes/${MOCK_IDS.RECIPE_LASAGNA}`, (route) =>
+      route.request().method() === 'GET'
+        ? route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({ recipe }),
+          })
+        : route.fallback()
+    );
+    await restrictDemoTraffic(page, baseURL);
+    const mutations: string[] = [];
+    page.on('request', (request) => {
+      const path = new URL(request.url()).pathname;
+      if (['POST', 'DELETE'].includes(request.method()) && !path.endsWith('/search'))
+        mutations.push(`${request.method()} ${path}`);
+    });
+    await page.goto(`/recipes?open=${MOCK_IDS.RECIPE_LASAGNA}`);
+    await expect(page.getByTestId('demo-context-band')).toBeVisible();
+    await expect(page.getByTestId('recipe-detail-sheet')).toBeVisible();
+    await page.getByTestId('action-gear-menu').click();
+    await page.getByTestId('action-report-import-issue').click();
+    await expect(page.getByTestId('import-issue-note')).toBeDisabled();
+    await expect(page.getByTestId('import-issue-save')).toHaveCount(0);
+    await page.screenshot({ path: info.outputPath('local-resolution.png') });
+    await page.getByTestId('import-issue-resolve').click();
+    await expect(page.getByRole('dialog', { name: 'Review issue' })).not.toBeVisible();
+    expect(mutations).toEqual([`DELETE /api/recipes/${MOCK_IDS.RECIPE_LASAGNA}/import-report`]);
+  });
+
+  test('preserves a local bundle draft while unknown mode resolves to non-demo', async ({
+    page,
+    baseURL,
+  }) => {
+    let release!: () => void;
+    const ready = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    await page.route('**/api/health', async (route) => {
+      await ready;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ status: 'Healthy', demoMode: false }),
+      });
+    });
+    await restrictDemoTraffic(page, baseURL);
+    try {
+      await page.goto('/capture');
+      await expect(page.getByTestId('demo-ai-unavailable')).toContainText('Checking');
+      await page.getByTestId('import-prepared-file-input').setInputFiles({
+        name: 'synthetic.txt',
+        mimeType: 'text/plain',
+        buffer: Buffer.from(
+          JSON.stringify({
+            version: '1.0',
+            recipe: {
+              name: 'Synthetic draft',
+              ingredients: ['lentils'],
+              instructions: [{ name: 'Steps', itemListElement: [{ text: 'Simmer.' }] }],
+              isSynthesized: true,
+            },
+            info: {
+              exportedAtUtc: '2026-05-04T12:00:00Z',
+              bundleSource: 'wfs-share',
+              appVersion: 'test',
+            },
+            hero: null,
+            originals: [],
+          })
+        ),
+      });
+      await expect(page.getByTestId('bundle-preview-card')).toBeVisible();
+      release();
+      await expect(page.getByTestId('demo-ai-unavailable')).not.toBeVisible();
+      await expect(page.getByTestId('bundle-preview-card')).toBeVisible();
+      await page.getByTestId('accept-bundle-btn').click();
+      await expect(page.getByTestId('bundle-import-success')).toBeVisible();
+    } finally {
+      release();
+    }
   });
 
   test('mock contract refuses every AI-only POST without changing prepared recipe reads', async ({
@@ -285,8 +481,9 @@ test.describe('Cost-safe demo exploration', () => {
     }
   });
 
-  test('ordinary non-demo capture remains available', async ({ page }) => {
+  test('ordinary non-demo capture remains available', async ({ page, baseURL }) => {
     await setupCommonRoutes(page);
+    await restrictDemoTraffic(page, baseURL);
     await page.goto('/capture');
     await expect(page.getByTestId('demo-ai-unavailable')).not.toBeVisible();
     await expect(page.locator('input[type=file]').first()).toBeAttached();

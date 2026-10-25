@@ -11,7 +11,12 @@ const mode = vi.hoisted(() => ({
 }));
 vi.mock('./DemoModeProvider', () => ({ useDemoMode: () => mode }));
 vi.mock('@/components/capture/MinimalCapture', () => ({
-  default: () => <input aria-label="Private photo" type="file" />,
+  default: ({ preparedOnly }: { preparedOnly?: boolean }) =>
+    preparedOnly ? (
+      <button>Import shared text bundle</button>
+    ) : (
+      <input aria-label="Private photo" type="file" />
+    ),
 }));
 vi.mock('@/components/capture/PdfCapturePanel', () => ({
   PdfCapturePanel: () => <input aria-label="Private PDF" type="file" />,
@@ -23,6 +28,7 @@ describe('honest AI entry', () => {
     render(<CaptureWithPdf />);
     expect(screen.queryByLabelText('Private photo')).not.toBeInTheDocument();
     expect(screen.queryByLabelText('Private PDF')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Import shared text bundle' })).toBeVisible();
     expect(screen.getByText(/AI capture and generation are unavailable/i)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /prepared recipes/i })).toHaveAttribute(
       'href',

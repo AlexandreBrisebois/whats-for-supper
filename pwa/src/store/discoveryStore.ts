@@ -100,13 +100,17 @@ export const useDiscoveryStore = create<DiscoveryState>((set, get) => ({
       !['unowned', 'collecting', 'converged'].includes(session.phase ?? '') ||
       (session.phase !== 'unowned' &&
         (!session.roundId ||
-          !session.weekStartDate ||
+          !absoluteMonday(session.weekStartDate) ||
           session.requiredSlots == null ||
           session.coveredSlots == null ||
           session.candidateCount == null ||
           !session.smartDefaults))
-    )
+    ) {
+      // A completed unusable HTTP read must not leave consumers loading forever.
+      // Live rejections remain ignored; the read caller guards superseded requests.
+      if (authoritative) set({ sessionStatus: 'unavailable' });
       return;
+    }
     const current = get().session;
     if (!authoritative && (!current || current.incarnationId !== session.incarnationId)) {
       sessionGeneration++;
