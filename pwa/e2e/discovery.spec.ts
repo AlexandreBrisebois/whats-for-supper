@@ -200,10 +200,7 @@ test.describe('Discovery Flow', () => {
       await otherPage.getByTestId('like-button').click();
       for (const memberPage of [page, otherPage]) {
         await expect(
-          memberPage.getByRole('heading', { name: 'We did it!', exact: true })
-        ).toBeVisible();
-        await expect(
-          memberPage.getByRole('heading', { name: "Menu's In!", exact: true })
+          memberPage.getByRole('heading', { name: "Menu's in!", exact: true })
         ).toBeVisible();
         await expect(memberPage.getByTestId('like-button')).not.toBeVisible();
         await expect(memberPage.getByTestId('discovery-card')).toHaveCount(0);
@@ -224,71 +221,129 @@ test.describe('Discovery Flow', () => {
         );
       }, session);
       await expect(celebration).toHaveAttribute('data-stable-check', 'same');
-      const artwork = celebration.locator('img');
-      await expect(artwork).toHaveAttribute('alt', '');
-      await expect(artwork).toHaveAttribute('src', /android-chrome-512x512\.png/);
-      await expect(artwork).toHaveJSProperty('complete', true);
-      await expect
-        .poll(() => artwork.evaluate((image: HTMLImageElement) => image.naturalWidth))
-        .toBeGreaterThan(0);
-      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
-        320
+      await expect(celebration).toHaveAttribute('role', 'status');
+      await expect(celebration).toHaveAttribute('aria-live', 'polite');
+      await expect(celebration.locator('img')).toHaveCount(0);
+      await expect(celebration.getByText('Your family found its matches.')).toBeVisible();
+      for (const viewport of [
+        { width: 320, height: 740, name: 'small-phone' },
+        { width: 390, height: 844, name: 'phone' },
+        { width: 768, height: 1024, name: 'tablet' },
+        { width: 1280, height: 900, name: 'desktop' },
+      ]) {
+        await page.setViewportSize(viewport);
+        const geometry = await page.getByTestId('discovery-celebration-card').evaluate((card) => {
+          const rect = card.getBoundingClientRect();
+          const main = document.querySelector('main')!;
+          const mainRect = main.getBoundingClientRect();
+          const style = getComputedStyle(main);
+          const top = mainRect.top + parseFloat(style.paddingTop);
+          const bottom = mainRect.bottom - parseFloat(style.paddingBottom);
+          const dock = document
+            .querySelector('[data-testid="nav-item-discovery"]')!
+            .getBoundingClientRect();
+          return {
+            centerError: Math.abs((rect.top + rect.bottom) / 2 - (top + bottom) / 2),
+            dockClearance: dock.top - rect.bottom,
+            horizontalOverflow: document.documentElement.scrollWidth - innerWidth,
+            animations: card.getAnimations({ subtree: true }).length,
+          };
+        });
+        expect(geometry.centerError).toBeLessThanOrEqual(2);
+        expect(geometry.dockClearance).toBeGreaterThan(0);
+        expect(geometry.horizontalOverflow).toBeLessThanOrEqual(0);
+        expect(geometry.animations).toBe(0);
+        const screenshot = testInfo.outputPath(`convergence-${viewport.name}.png`);
+        await page.screenshot({ path: screenshot, fullPage: true });
+        await testInfo.attach(`convergence-${viewport.name}`, {
+          path: screenshot,
+          contentType: 'image/png',
+        });
+      }
+      // A previous grocery-tab visit must not intercept the matches handoff.
+      await otherPage.setViewportSize({ width: 390, height: 844 });
+      await otherPage.goto('/planner');
+      await otherPage.getByTestId('grocery-tab').click();
+      await otherPage.getByTestId('nav-item-discovery').click();
+      await expect(otherPage.getByTestId('discovery-see-matches')).toBeVisible();
+      const mutations: string[] = [];
+      otherPage.on('request', (request) => {
+        if (new URL(request.url()).pathname.startsWith('/api/') && request.method() !== 'GET')
+          mutations.push(`${request.method()} ${new URL(request.url()).pathname}`);
+      });
+      const action = otherPage.getByTestId('discovery-see-matches');
+      await action.focus();
+      await expect(action).toBeFocused();
+      const anchoredRead = otherPage.waitForRequest((request) => {
+        const url = new URL(request.url());
+        return (
+          request.method() === 'GET' &&
+          url.pathname === '/api/schedule' &&
+          url.searchParams.get('weekOffset') === '0' &&
+          url.searchParams.get('referenceWeekStartDate') === weekStartDate
+        );
+      });
+      await otherPage.keyboard.press('Enter');
+      await anchoredRead;
+      await expect(otherPage).toHaveURL(
+        `/planner?weekOffset=0&referenceWeekStartDate=${encodeURIComponent(weekStartDate)}`
       );
-      const card = page.getByTestId('discovery-celebration-card');
-      const layout = await card.evaluate((element) => {
-        const heading = element.querySelector('h1')!.getBoundingClientRect();
-        const logo = element.querySelector('img')!.parentElement!.getBoundingClientRect();
-        const subheading = element.querySelector('h2')!.getBoundingClientRect();
-        return {
-          headingBeforeLogo: heading.bottom <= logo.top,
-          logoBeforeSubheading: logo.bottom <= subheading.top,
-          animations: element.getAnimations({ subtree: true }).length,
-        };
-      });
-      expect(layout).toEqual({
-        headingBeforeLogo: true,
-        logoBeforeSubheading: true,
-        animations: 0,
-      });
-      await page.screenshot({
-        path: testInfo.outputPath('convergence-mobile.png'),
-        fullPage: true,
-      });
-      await page.setViewportSize({ width: 1280, height: 900 });
-      await page.screenshot({
-        path: testInfo.outputPath('convergence-desktop.png'),
-        fullPage: true,
-      });
-      await otherPage.route(
-        (url) => url.pathname === '/_next/image' || url.pathname === '/android-chrome-512x512.png',
-        (route) => route.abort()
-      );
-      await otherPage.setViewportSize({ width: 320, height: 740 });
-      await otherPage.reload();
-      const unavailableArtwork = otherPage.getByTestId('discovery-converged').locator('img');
-      await expect(unavailableArtwork).toHaveJSProperty('complete', true);
-      await expect(unavailableArtwork).toHaveJSProperty('naturalWidth', 0);
-      await expect(
-        otherPage.getByRole('heading', { name: 'We did it!', exact: true })
-      ).toBeVisible();
-      await expect(
-        otherPage.getByRole('heading', { name: "Menu's In!", exact: true })
-      ).toBeVisible();
-      await expect(otherPage.getByTestId('discovery-converged').locator('button')).toHaveCount(0);
-      await expect(otherPage.getByTestId('nav-item-planner').first()).toBeVisible();
-      await otherPage.screenshot({
-        path: testInfo.outputPath('convergence-image-unavailable.png'),
-        fullPage: true,
-      });
-      const plannerNavigation = page.getByTestId('nav-item-planner').first();
-      await plannerNavigation.focus();
-      await expect(plannerNavigation).toBeFocused();
-      await page.keyboard.press('Enter');
-      await expect(page).toHaveURL(/\/planner/);
+      await expect(otherPage.getByTestId('day-card-0')).toBeVisible();
+      expect(mutations).toEqual([]);
+      await otherPage.getByTestId('nav-item-discovery').click();
+      await expect(otherPage.getByTestId('discovery-see-matches')).toBeVisible();
+      await otherPage.getByTestId('discovery-see-matches').focus();
+      await otherPage.keyboard.press('Space');
+      await expect(otherPage).toHaveURL(/\/planner\?weekOffset=0&referenceWeekStartDate=/);
       expect(submittedVotes).toBe(1);
     } finally {
       await otherContext.close();
     }
+  });
+
+  test.describe('French convergence', () => {
+    test.use({ appLocale: 'fr' });
+
+    test('keeps translated matches copy readable on a short 320px screen', async ({ page }) => {
+      await page.setViewportSize({ width: 320, height: 568 });
+      await page.route(
+        (url) => url.pathname === '/api/discovery/session',
+        (route) =>
+          route.fulfill({
+            json: {
+              data: {
+                incarnationId: MOCK_IDS.MEMBER_TEST,
+                revision: 1,
+                roundId: MOCK_IDS.VOTING_ROUND,
+                weekStartDate: '2026-05-11',
+                phase: 'converged',
+                requiredSlots: 3,
+                coveredSlots: 3,
+                candidateCount: 3,
+                smartDefaults: { weekStartDate: '2026-05-11', preSelectedRecipes: [] },
+              },
+            },
+          })
+      );
+      await page.goto('/discovery');
+      await expect(page.getByRole('heading', { name: 'Le menu est prêt !' })).toBeVisible();
+      await expect(page.getByText('Votre famille a trouvé ses recettes en commun.')).toBeVisible();
+      const action = page.getByTestId('discovery-see-matches');
+      await expect(action).toHaveAccessibleName('Découvrez vos recettes en commun');
+      // Enlarged text may require scrolling, but never horizontal overflow or a clipped action.
+      await page.addStyleTag({ content: 'html { font-size: 20px; }' });
+      await page.evaluate(() =>
+        window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' })
+      );
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+        320
+      );
+      const actionBox = await action.boundingBox();
+      const dock = await page.getByTestId('nav-item-discovery').boundingBox();
+      expect(actionBox!.y + actionBox!.height).toBeLessThan(dock!.y);
+      await action.click();
+      await expect(page).toHaveURL('/planner?weekOffset=0&referenceWeekStartDate=2026-05-11');
+    });
   });
 
   test('close, remove and reopen converge after one new match', async ({ page }) => {

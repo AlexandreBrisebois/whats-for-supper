@@ -3,8 +3,10 @@ import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MOCK_IDS } from '@/testing/mock-ids';
 import { useDiscoveryStore } from '@/store/discoveryStore';
+import { usePlannerStore } from '@/store/plannerStore';
 
 const mocks = vi.hoisted(() => ({
+  push: vi.fn(),
   getCategories: vi.fn(),
   getDiscoveryStack: vi.fn(),
   submitVote: vi.fn(),
@@ -17,7 +19,7 @@ vi.mock('@/lib/auth', () => ({
 }));
 
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: vi.fn() }),
+  useRouter: () => ({ push: mocks.push }),
 }));
 
 vi.mock('framer-motion', () => ({
@@ -96,6 +98,8 @@ const ORDERED_RECIPES = [
 
 describe('DiscoveryPage card order', () => {
   beforeEach(() => {
+    mocks.push.mockReset();
+    usePlannerStore.setState({ activeTab: 'grocery' });
     mocks.getCategories.mockReset();
     mocks.getDiscoveryStack.mockReset();
     mocks.submitVote.mockReset();
@@ -241,7 +245,7 @@ describe('DiscoveryPage card order', () => {
     expect(screen.queryByTestId('planner-nudge-dialog')).not.toBeInTheDocument();
   });
 
-  it('keeps the app logo celebration with exact copy and no actions after late updates or image failure', async () => {
+  it('shows a stable polite success card and opens the completed week meal plan only on click', async () => {
     const snapshot = {
       incarnationId: MOCK_IDS.MEMBER_TEST,
       revision: 1,
@@ -255,32 +259,36 @@ describe('DiscoveryPage card order', () => {
     };
     mocks.getVotingSession.mockResolvedValue(snapshot);
     render(<DiscoveryPage />);
-    await screen.findByRole('heading', { name: 'We did it!' });
-    expect(screen.getByRole('heading', { name: "Menu's In!" })).toBeVisible();
+    await screen.findByRole('heading', { name: "Menu's in!", level: 1 });
+    expect(screen.getByText('Your family found its matches.')).toBeVisible();
     const celebration = screen.getByTestId('discovery-converged');
-    const logo = celebration.querySelector('img')!;
-    expect(logo).toHaveAttribute('alt', '');
-    expect(logo).toHaveAttribute('width', '256');
-    expect(logo).toHaveAttribute('height', '256');
-    expect(logo.getAttribute('src')).toContain('android-chrome-512x512.png');
-    expect(
-      screen.getByRole('heading', { name: 'We did it!' }).compareDocumentPosition(logo) &
-        Node.DOCUMENT_POSITION_FOLLOWING
-    ).toBeTruthy();
-    expect(celebration.querySelector('button')).toBeNull();
+    expect(celebration).toHaveAttribute('role', 'status');
+    expect(celebration).toHaveAttribute('aria-live', 'polite');
+    expect(celebration.querySelector('img')).toBeNull();
     expect(screen.queryByTestId('like-button')).not.toBeInTheDocument();
     expect(screen.queryByTestId('discovery-nudge-family')).not.toBeInTheDocument();
-    fireEvent.error(logo);
-    expect(screen.getByRole('heading', { name: "Menu's In!" })).toBeVisible();
+    expect(mocks.push).not.toHaveBeenCalled();
+    expect(usePlannerStore.getState().activeTab).toBe('grocery');
+    const action = screen.getByRole('button', { name: 'See your matches' });
     await act(async () =>
-      useDiscoveryStore
-        .getState()
-        .applySession(
-          { ...useDiscoveryStore.getState().session!, revision: 2, candidateCount: 4 },
-          true
-        )
+      useDiscoveryStore.getState().applySession(
+        {
+          ...useDiscoveryStore.getState().session!,
+          revision: 2,
+          candidateCount: 4,
+        },
+        true
+      )
     );
     expect(screen.getByTestId('discovery-converged')).toBe(celebration);
+    expect(screen.getByRole('button', { name: 'See your matches' })).toBe(action);
+    expect(mocks.push).not.toHaveBeenCalled();
+    fireEvent.click(action);
+    expect(mocks.push).toHaveBeenCalledExactlyOnceWith(
+      '/planner?weekOffset=0&referenceWeekStartDate=2026-05-04'
+    );
+    expect(usePlannerStore.getState().activeTab).toBe('planner');
+    expect(useDiscoveryStore.getState().session?.phase).toBe('converged');
     expect(mocks.submitVote).not.toHaveBeenCalled();
   });
 

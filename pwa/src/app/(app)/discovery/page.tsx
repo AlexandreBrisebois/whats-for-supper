@@ -1,6 +1,7 @@
 'use client';
 
-import Image from 'next/image';
+import { SuccessCard } from '@/components/ui/SuccessCard';
+import { usePlannerStore } from '@/store/plannerStore';
 import { FamilyNudgeDialog } from '@/components/discovery/FamilyNudgeDialog';
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -23,7 +24,8 @@ export default function DiscoveryPage() {
   const [showNudgeDialog, setShowNudgeDialog] = useState(false);
   const closeNudgeDialog = useCallback(() => setShowNudgeDialog(false), []);
   const ownsRound = useDiscoveryStore((s) => s.session?.phase === 'collecting');
-  const converged = useDiscoveryStore((s) => s.session?.phase === 'converged');
+  const session = useDiscoveryStore((s) => s.session);
+  const converged = session?.phase === 'converged';
   const refreshSession = useDiscoveryStore((s) => s.refreshSession);
   const fillTheGapVersion = useDiscoveryStore((s) => s.fillTheGapVersion);
   const { selectedFamilyMemberId, _hasHydrated } = useFamily();
@@ -375,32 +377,25 @@ export default function DiscoveryPage() {
         role="status"
         aria-live="polite"
         data-testid="discovery-converged"
-        className="flex min-h-[calc(100dvh-6rem)] items-center justify-center px-6 py-8"
+        className="flex flex-1 items-center justify-center px-6 py-8"
       >
-        <div
-          data-testid="discovery-celebration-card"
-          className="glass-sage flex w-full max-w-sm flex-col items-center rounded-[2rem] px-5 py-8 text-center text-charcoal sm:px-8 sm:py-10"
-        >
-          <h1 className="font-heading text-4xl font-bold tracking-tight text-sage-800 sm:text-5xl">
-            {t('discovery.weDidIt', 'We did it!')}
-          </h1>
-          <div
-            aria-hidden="true"
-            className="relative my-1 h-56 w-56 max-w-full overflow-hidden sm:h-64 sm:w-64"
-            style={{ maskImage: 'radial-gradient(circle, black 60%, transparent 75%)' }}
-          >
-            <Image
-              src="/android-chrome-512x512.png"
-              alt=""
-              width={256}
-              height={256}
-              sizes="(min-width: 640px) 384px, 336px"
-              className="h-full w-full scale-150 object-cover"
-            />
-          </div>
-          <h2 className="font-heading text-2xl font-bold text-sage-800 sm:text-3xl">
-            {t('discovery.menuIsIn', "Menu's In!")}
-          </h2>
+        <div className="w-full max-w-sm">
+          <SuccessCard
+            testId="discovery-celebration-card"
+            actionTestId="discovery-see-matches"
+            headingAs="h1"
+            title={t('discovery.menuIsIn', "Menu's in!")}
+            description={t('discovery.familyMatches', 'Your family found its matches.')}
+            actionLabel={t('discovery.seeMatches', 'See your matches')}
+            onAction={() => {
+              const params = new URLSearchParams({
+                weekOffset: '0',
+                referenceWeekStartDate: session.weekStartDate!.toString(),
+              });
+              usePlannerStore.getState().setActiveTab('planner');
+              router.push(`/planner?${params.toString()}`);
+            }}
+          />
         </div>
       </div>
     );
