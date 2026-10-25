@@ -2,7 +2,7 @@
 
 ## Identity and preservation
 
-On 2026-10-24, the user first requested a local planning-only continuation, then explicitly authorized one consolidated copy containing the implementation, corrected documentation and proposal, pushed before deleting both old GitHub branches. No merge, deployment or status-feature implementation is authorized by that consolidation.
+On 2026-10-24, the user first requested a local planning-only continuation, then explicitly authorized one consolidated copy containing the implementation, corrected documentation and proposal, pushed before deleting both old GitHub branches. No merge into main, live deployment or status-feature implementation is authorized by that consolidation.
 
 - Main locally and through the GitHub connector: `fd659bee3875fa672b2e9ca8dcbede98d657e81c`. Its only change after proposal base `ccca940acc6dbf59e20e0fa58591a70ec2bc1540` is the approved CONTRIBUTING simplification. Original checkout is clean and untouched by this work.
 - Source branch `installation/shared-cloudflare-tunnel`: `cf1138e2a9571154fc5782d58697713e122abcdb`; original implementation `66292ee289e1bab4393be3ab94b7c64026898234`. The correction removes only a trailing blank line.
@@ -67,3 +67,11 @@ Stable-state full verification `.task/agent-finish/runs/7d38766056364df191545450
 - Passed: final content identity in the stable run. The results above apply before this later evidence-only update; final scoped documentation verification covers that update separately.
 
 The committed-source push gate is a separate acceptance surface: its PWA check builds production output and runs browser suites against that output, unlike the development-server run above. Its result must be reported separately; a production pass cannot erase the development failures or certify a live installation.
+
+### Committed-source gate
+
+`task check:push -- --base fd659bee3875fa672b2e9ca8dcbede98d657e81c` **passed** for consolidation commit `3014f66ef5582551a917e171ef81c0594964c479`, tree `f48fedecf8a496331c6213734cc48c7eecba3946`. Log: `/tmp/wfs-install-consolidated-push-check.log`. Its three parents preserve main and both original installation branch tips.
+
+The gate passed committed whitespace/links, Node, OpenSpec, harness, static contracts, generated client parity, API checks, production PWA checks, database and isolated Docker smoke. Production browser results: 303 passed, one grocery keyboard/delete test passed on retry, 17 skipped, zero final failures. Preserve that flake and the seven development-server failures above; these are distinct runs. PostgreSQL: 140 passed, zero skipped, record `.task/database-tests/runs/dceee5fafaef43c9bbfda4742db393c9/result.json`. Smoke verified its local checks and teardown of owned containers/networks/volumes; it does not establish public HTTPS, NAS, seed or backup/recovery qualification.
+
+This final evidence-only follow-up receives scoped documentation verification and its own committed-range documentation push gate. It makes no change to the installer/runtime inputs tested in `3014f66e`. No main merge or live deployment was performed; the status feature remains a proposal with all implementation tasks unchecked.
