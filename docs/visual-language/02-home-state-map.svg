@@ -1,14 +1,60 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="800" height="2040" viewBox="0 0 800 2040" role="img" aria-labelledby="title desc">
-<title id="title">Home: state, intent and consequence</title><desc id="desc">Five schematic Home reference states: unplanned, conceptual suggestion, saved planned meal, non-cooking intent and cooked. Layout and visual treatment are proposed, behavior is source-verified except the explicitly conceptual suggestion. Includes current labels and action consequences, not a functioning prototype.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="2466" viewBox="0 0 800 2466" role="img" aria-labelledby="title desc">
+<title id="title">Home: state, icon, intent and consequence</title><desc id="desc">Five schematic Home states with explicit source versus proposal boundaries. Existing ochre Cook, sage non-cooking intent and full sage cooked celebration are preserved as roles; proposed foregrounds improve contrast. Existing action icons and Capture/Browse routes reinforce meaning. The separate suggested Home card remains conceptual only. No runtime changes.</desc>
+<!-- Icon outlines reused from Lucide 1.60.0. ISC License
+
+Copyright (c) 2026 Lucide Icons and Contributors
+
+Permission to use, copy, modify, and/or distribute this software for any
+purpose with or without fee is hereby granted, provided that the above
+copyright notice and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
+—-
+
+The following Lucide icons are derived from the Feather project:
+
+airplay, alert-circle, alert-octagon, alert-triangle, aperture, arrow-down-circle, arrow-down-left, arrow-down-right, arrow-down, arrow-left-circle, arrow-left, arrow-right-circle, arrow-right, arrow-up-circle, arrow-up-left, arrow-up-right, arrow-up, at-sign, calendar, cast, check, chevron-down, chevron-left, chevron-right, chevron-up, chevrons-down, chevrons-left, chevrons-right, chevrons-up, circle, clipboard, clock, code, columns, command, compass, corner-down-left, corner-down-right, corner-left-down, corner-left-up, corner-right-down, corner-right-up, corner-up-left, corner-up-right, crosshair, database, divide-circle, divide-square, dollar-sign, download, external-link, feather, frown, hash, headphones, help-circle, info, italic, key, layout, life-buoy, link-2, link, loader, lock, log-in, log-out, maximize, meh, minimize, minimize-2, minus-circle, minus-square, minus, monitor, moon, more-horizontal, more-vertical, move, music, navigation-2, navigation, octagon, pause-circle, percent, plus-circle, plus-square, plus, power, radio, rss, search, server, share, shopping-bag, sidebar, smartphone, smile, square, table-2, tablet, target, terminal, trash-2, trash, triangle, tv, type, upload, x-circle, x-octagon, x-square, x, zoom-in, zoom-out
+
+The MIT License (MIT) (for the icons listed above)
+
+Copyright (c) 2013-present Cole Bemis
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+ -->
 <style>text { font-family: Inter, "DejaVu Sans", sans-serif; } .heading { font-family: Outfit, Inter, "DejaVu Sans", sans-serif; }</style>
-<rect x="0" y="0" width="800" height="2040" rx="0" fill="#FDFCF0"/>
-<text x="32" y="40" font-size="14" fill="#4B5563" font-weight="700">WFS / VISUAL LANGUAGE / V1</text>
+<rect x="0" y="0" width="800" height="2466" rx="0" fill="#FDFCF0"/>
+<text x="32" y="40" font-size="14" fill="#4B5563" font-weight="700">WFS / VISUAL LANGUAGE / V1 · REFINED</text>
 <text x="32" y="84" font-size="30" fill="#1F2937" font-weight="700" class="heading">What is true about tonight?</text>
-<text x="32" y="116" font-size="16" fill="#4B5563" font-weight="400">02  Home state map · not five interchangeable cards</text>
-<text x="32" y="140" font-size="16" fill="#4B5563" font-weight="400">Proposed visual hierarchy; current behavior is named beside each sketch.</text>
+<text x="32" y="116" font-size="15" fill="#4B5563" font-weight="400">02  Home state map · state first, action second, consequence alongside</text>
+<text x="32" y="140" font-size="15" fill="#4B5563" font-weight="400">Existing icons; ochre Cook and sage state roles retained. Presentation proposed.</text>
 <text x="32" y="194" font-size="21" fill="#1F2937" font-weight="700">1  Unplanned</text>
-<text x="440" y="194" font-size="14" fill="#4B5563" font-weight="700">CURRENT BEHAVIOR</text>
-<rect x="32" y="214" width="370" height="244" rx="24" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="2"/>
+<text x="440" y="187" font-size="14" fill="#4B5563" font-weight="700">EXISTING BEHAVIOR</text>
+<text x="440" y="208" font-size="13" fill="#4B5563" font-weight="700">PROPOSED PRESENTATION</text>
+<rect x="32" y="214" width="370" height="244" rx="24" fill="#FFFFFF"/>
 <text x="52" y="249" font-size="19" fill="#1F2937" font-weight="700">Nothing planned yet</text>
 <text x="52" y="279" font-size="15" fill="#4B5563" font-weight="400">No recipe assigned to tonight.</text>
 <rect x="52" y="302" width="330" height="48" rx="14" fill="#FDFCF0" stroke="#4B5563" stroke-width="2"/>
@@ -20,7 +66,7 @@
 <text x="432" y="302" font-size="15" fill="#4B5563" font-weight="400">Order In records non-cooking intent;</text>
 <text x="432" y="331" font-size="15" fill="#4B5563" font-weight="400">it does not leave the day blank.</text>
 <text x="432" y="360" font-size="15" fill="#4B5563" font-weight="400">A ready GOTO adds Make This Tonight.</text>
-<text x="432" y="389" font-size="15" fill="#4B5563" font-weight="400">Capture and Browse remain available.</text>
+<text x="432" y="389" font-size="15" fill="#4B5563" font-weight="400">No new icon added to these actions.</text>
 <text x="32" y="514" font-size="21" fill="#1F2937" font-weight="700">2  Suggested</text>
 <text x="440" y="514" font-size="14" fill="#7B3829" font-weight="700">CONCEPTUAL PROPOSAL</text>
 <rect x="32" y="534" width="370" height="244" rx="24" fill="#FFFFFF" stroke="#A44A37" stroke-width="2" stroke-dasharray="6 4"/>
@@ -36,54 +82,103 @@
 <text x="432" y="680" font-size="15" fill="#4B5563" font-weight="400">feedback before calling it planned.</text>
 <text x="432" y="709" font-size="15" fill="#4B5563" font-weight="400">Copy and behavior require approval.</text>
 <text x="32" y="834" font-size="21" fill="#1F2937" font-weight="700">3  Saved / planned</text>
-<text x="440" y="834" font-size="14" fill="#4B5563" font-weight="700">CURRENT BEHAVIOR</text>
-<rect x="32" y="854" width="370" height="244" rx="24" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="2"/>
+<text x="440" y="827" font-size="14" fill="#4B5563" font-weight="700">EXISTING BEHAVIOR</text>
+<text x="440" y="848" font-size="13" fill="#4B5563" font-weight="700">PROPOSED PRESENTATION</text>
+<rect x="32" y="854" width="370" height="244" rx="24" fill="#FFFFFF"/>
 <text x="52" y="889" font-size="19" fill="#1F2937" font-weight="700">Tonight’s Menu</text>
 <text x="52" y="919" font-size="15" fill="#4B5563" font-weight="400">Example recipe · assigned tonight</text>
-<rect x="52" y="942" width="330" height="48" rx="14" fill="#A44A37"/>
-<text x="68" y="972" font-size="16" fill="#FFFFFF" font-weight="700">Cook</text>
+<rect x="52" y="942" width="330" height="48" rx="14" fill="#E1AD01" stroke="#664E01" stroke-width="2"/>
+<g transform="translate(66 954) scale(1.0)" fill="none" stroke="#1F2937" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="m16 2-2.3 2.3a3 3 0 0 0 0 4.2l1.8 1.8a3 3 0 0 0 4.2 0L22 8" />
+  <path d="M15 15 3.3 3.3a4.2 4.2 0 0 0 0 6l7.3 7.3c.7.7 2 .7 2.8 0L15 15Zm0 0 7 7" />
+  <path d="m2.1 21.8 6.4-6.3" />
+  <path d="m19 5-7 7" />
+</g>
+<text x="100" y="972" font-size="16" fill="#1F2937" font-weight="700">Cook</text>
 <rect x="52" y="1000" width="330" height="48" rx="14" fill="#FDFCF0" stroke="#4B5563" stroke-width="2"/>
-<text x="68" y="1030" font-size="16" fill="#1F2937" font-weight="700">Change Plan</text>
+<g transform="translate(66 1012) scale(1.0)" fill="none" stroke="#1F2937" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="m16 3 4 4-4 4" />
+  <path d="M20 7H4" />
+  <path d="m8 21-4-4 4-4" />
+  <path d="M4 17h16" />
+</g>
+<text x="100" y="1030" font-size="16" fill="#1F2937" font-weight="700">Change Plan</text>
 <text x="432" y="884" font-size="15" fill="#4B5563" font-weight="400">Cook opens Cook’s Mode.</text>
 <text x="432" y="913" font-size="15" fill="#4B5563" font-weight="400">It does not itself mark the meal cooked.</text>
-<text x="432" y="942" font-size="15" fill="#4B5563" font-weight="400">Change Plan opens recovery.</text>
-<text x="432" y="971" font-size="15" fill="#4B5563" font-weight="400">Choose a backup, then resolve the</text>
-<text x="432" y="1000" font-size="15" fill="#4B5563" font-weight="400">original meal before replacement.</text>
-<text x="432" y="1029" font-size="15" fill="#4B5563" font-weight="400">Saving or unknown ≠ confirmed saved.</text>
+<text x="432" y="942" font-size="15" fill="#4B5563" font-weight="400">These icons already pair with labels.</text>
+<text x="432" y="971" font-size="15" fill="#4B5563" font-weight="400">Current actions sit on the card reverse.</text>
+<text x="432" y="1000" font-size="15" fill="#4B5563" font-weight="400">Keep the ochre role; dark text and edge</text>
+<text x="432" y="1029" font-size="15" fill="#4B5563" font-weight="400">are proposed contrast corrections.</text>
 <text x="32" y="1154" font-size="21" fill="#1F2937" font-weight="700">4  Non-cooking</text>
-<text x="440" y="1154" font-size="14" fill="#4B5563" font-weight="700">CURRENT BEHAVIOR</text>
-<rect x="32" y="1174" width="370" height="244" rx="24" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="2"/>
+<text x="440" y="1147" font-size="14" fill="#4B5563" font-weight="700">EXISTING BEHAVIOR</text>
+<text x="440" y="1168" font-size="13" fill="#4B5563" font-weight="700">PROPOSED PRESENTATION</text>
+<rect x="32" y="1174" width="370" height="244" rx="24" fill="#F1F3EB"/>
 <text x="52" y="1209" font-size="19" fill="#1F2937" font-weight="700">Tonight · Order In</text>
 <text x="52" y="1239" font-size="15" fill="#4B5563" font-weight="400">An intentional supper plan</text>
-<rect x="52" y="1262" width="330" height="48" rx="14" fill="#FDFCF0" stroke="#4B5563" stroke-width="2"/>
-<text x="68" y="1292" font-size="16" fill="#1F2937" font-weight="700">Edit supper plan</text>
+<rect x="52" y="1262" width="330" height="48" rx="14" fill="#F1F3EB" stroke="#525B37" stroke-width="2"/>
+<g transform="translate(66 1274) scale(1.0)" fill="none" stroke="#525B37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M16 10a4 4 0 0 1-8 0" />
+  <path d="M3.103 6.034h17.794" />
+  <path d="M3.4 5.467a2 2 0 0 0-.4 1.2V20a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6.667a2 2 0 0 0-.4-1.2l-2-2.667A2 2 0 0 0 17 2H7a2 2 0 0 0-1.6.8z" />
+</g>
+<text x="100" y="1292" font-size="16" fill="#525B37" font-weight="700">Edit supper plan</text>
 <text x="52" y="1355" font-size="14" fill="#4B5563" font-weight="400">State stays visible above the action.</text>
 <text x="432" y="1204" font-size="15" fill="#4B5563" font-weight="400">Home opens Planner to edit the day.</text>
-<text x="432" y="1233" font-size="15" fill="#4B5563" font-weight="400">Order In is a plan, not an empty slot.</text>
-<text x="432" y="1262" font-size="15" fill="#4B5563" font-weight="400">Planner’s Leave this day unplanned</text>
-<text x="432" y="1291" font-size="15" fill="#4B5563" font-weight="400">is the distinct blank-day action.</text>
-<text x="432" y="1320" font-size="15" fill="#4B5563" font-weight="400">Mystery night is a special branch:</text>
-<text x="432" y="1349" font-size="15" fill="#4B5563" font-weight="400">Home still offers supper choices.</text>
+<text x="432" y="1233" font-size="15" fill="#4B5563" font-weight="400">Current card already has soft sage</text>
+<text x="432" y="1262" font-size="15" fill="#4B5563" font-weight="400">and the NonCookingIcon vocabulary.</text>
+<text x="432" y="1291" font-size="15" fill="#4B5563" font-weight="400">ShoppingBag = takeout plan, not order.</text>
+<text x="432" y="1320" font-size="15" fill="#4B5563" font-weight="400">Edit is currently whole-card intent;</text>
+<text x="432" y="1349" font-size="15" fill="#4B5563" font-weight="400">the separate button here is a proposal.</text>
 <text x="32" y="1474" font-size="21" fill="#1F2937" font-weight="700">5  Cooked</text>
-<text x="440" y="1474" font-size="14" fill="#4B5563" font-weight="700">CURRENT BEHAVIOR</text>
-<rect x="32" y="1494" width="370" height="244" rx="24" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="2"/>
-<text x="52" y="1529" font-size="19" fill="#1F2937" font-weight="700">Enjoy your meal!</text>
-<text x="52" y="1559" font-size="15" fill="#4B5563" font-weight="400">Recipe marked as cooked</text>
-<rect x="52" y="1582" width="330" height="48" rx="14" fill="#FDFCF0" stroke="#4B5563" stroke-width="2"/>
-<text x="68" y="1612" font-size="16" fill="#1F2937" font-weight="700">Dismiss</text>
-<text x="52" y="1675" font-size="14" fill="#4B5563" font-weight="400">State stays visible above the action.</text>
-<text x="432" y="1524" font-size="15" fill="#4B5563" font-weight="400">Confirmed cooked state earns relief.</text>
-<text x="432" y="1553" font-size="15" fill="#4B5563" font-weight="400">Dismiss makes the success card</text>
-<text x="432" y="1582" font-size="15" fill="#4B5563" font-weight="400">compact; it does not undo cooking.</text>
-<text x="432" y="1611" font-size="15" fill="#4B5563" font-weight="400">The compact Cooked tonight! badge</text>
-<text x="432" y="1640" font-size="15" fill="#4B5563" font-weight="400">opens Cook’s Mode.</text>
-<text x="432" y="1669" font-size="15" fill="#4B5563" font-weight="400">No new task is required to finish.</text>
-<rect x="32" y="1780" width="736" height="206" rx="16" fill="#F1F3EB"/>
-<text x="52" y="1814" font-size="20" fill="#525B37" font-weight="700">The decision trail must stay legible</text>
-<text x="52" y="1847" font-size="15" fill="#525B37" font-weight="400">Unplanned → choose → saving → confirmed planned → Cook’s Mode → cooked</text>
-<text x="52" y="1874" font-size="15" fill="#525B37" font-weight="400">Planned → Change Plan → backup → original disposition → replacement save</text>
-<text x="52" y="1901" font-size="15" fill="#525B37" font-weight="400">Order In → non-cooking intent     |     Leave unplanned → blank day (Planner)</text>
-<text x="52" y="1928" font-size="15" fill="#525B37" font-weight="400">Failure or unknown outcome: preserve the choice, name the stage, offer the</text>
-<text x="52" y="1955" font-size="15" fill="#525B37" font-weight="400">appropriate retry/check. Do not imply completed work was rolled back.</text>
-<text x="32" y="2017" font-size="13" fill="#4B5563" font-weight="400">Sketches simplify layout, omit imagery/navigation and are not screenshots. See guide for source detail.</text>
+<text x="440" y="1467" font-size="14" fill="#4B5563" font-weight="700">EXISTING BEHAVIOR</text>
+<text x="440" y="1488" font-size="13" fill="#4B5563" font-weight="700">PROPOSED PRESENTATION</text>
+<rect x="32" y="1494" width="370" height="244" rx="24" fill="#8A9A5B"/>
+<g transform="translate(52 1509) scale(1.0833333333333333)" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M20 6 9 17l-5-5" />
+</g>
+<text x="88" y="1529" font-size="24" fill="#FFFFFF" font-weight="700" class="heading">Enjoy your meal!</text>
+<text x="52" y="1559" font-size="15" fill="#1B1E12" font-weight="400">Recipe marked as cooked</text>
+<rect x="52" y="1582" width="330" height="48" rx="14" fill="#FFFFFF"/>
+<text x="68" y="1612" font-size="16" fill="#1B1E12" font-weight="700">Dismiss</text>
+<text x="52" y="1675" font-size="14" fill="#1B1E12" font-weight="400">Confirmed cooked; no extra task needed.</text>
+<text x="432" y="1524" font-size="15" fill="#4B5563" font-weight="400">Current SuccessCard is fully sage</text>
+<text x="432" y="1553" font-size="15" fill="#4B5563" font-weight="400">with a Check and a large white title.</text>
+<text x="432" y="1582" font-size="15" fill="#4B5563" font-weight="400">This sketch keeps the green field;</text>
+<text x="432" y="1611" font-size="15" fill="#4B5563" font-weight="400">small dark copy is a proposed repair.</text>
+<text x="432" y="1640" font-size="15" fill="#4B5563" font-weight="400">Dismiss compacts; it does not undo.</text>
+<text x="432" y="1669" font-size="15" fill="#4B5563" font-weight="400">Compact badge reopens Cook’s Mode.</text>
+<rect x="32" y="1780" width="736" height="168" rx="16" fill="#FFFFFF"/>
+<text x="52" y="1812" font-size="17" fill="#1F2937" font-weight="700">PRESERVE THE CLEAR ROUTES</text>
+<g transform="translate(52 1832) scale(1.1666666666666667)" fill="none" stroke="#7B3829" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M13.997 4a2 2 0 0 1 1.76 1.05l.486.9A2 2 0 0 0 18.003 7H20a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1.997a2 2 0 0 0 1.759-1.048l.489-.904A2 2 0 0 1 10.004 4z" />
+  <circle cx="12" cy="13" r="3" />
+</g>
+<text x="96" y="1854" font-size="17" fill="#1F2937" font-weight="700">Capture a Recipe</text>
+<g transform="translate(410 1832) scale(1.1666666666666667)" fill="none" stroke="#664E01" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M12 5v16" />
+  <path d="M20.001 19A2 2 0 0022 17V5a2 2 0 00-1.999-2L16 3.002A5 5 0 0012 5a5 5 0 00-4-2H4a2 2 0 00-2 2v12a2 2 0 001.999 2H8a5 5 0 014 2 5 5 0 014-2z" />
+</g>
+<text x="454" y="1854" font-size="17" fill="#1F2937" font-weight="700">Browse your library</text>
+<text x="52" y="1892" font-size="14" fill="#4B5563" font-weight="400">Existing icons + visible labels support recognition. Current copy stays familiar.</text>
+<text x="52" y="1916" font-size="14" fill="#4B5563" font-weight="400">The designer found these routes clear; Home’s status and action hierarchy need work.</text>
+<rect x="32" y="1974" width="736" height="180" rx="16" fill="#FFFFFF"/>
+<g transform="translate(52 1994) scale(1.1666666666666667)" fill="none" stroke="#1F2937" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="m9 12 2 2 4-4" />
+  <path d="M5 7c0-1.1.9-2 2-2h10a2 2 0 0 1 2 2v12H5V7Z" />
+  <path d="M22 19H2" />
+</g>
+<text x="96" y="2015" font-size="17" fill="#1F2937" font-weight="700">ALONGSIDE TONIGHT · family voting</text>
+<text x="52" y="2044" font-size="14" fill="#4B5563" font-weight="400">Current source: a separate ochre invitation, not another tonight state.</text>
+<text x="52" y="2072" font-size="14" fill="#4B5563" font-weight="400">Collecting: Vote Now → Discover     |     Converged: See your matches → Planner</text>
+<text x="52" y="2096" font-size="14" fill="#4B5563" font-weight="400">Home title: “Menu’s In” = matches ready to review and save, not a saved week.</text>
+<text x="52" y="2120" font-size="14" fill="#4B5563" font-weight="400">Checking / unavailable + Retry remain explicit; do not silently hide uncertainty.</text>
+<rect x="32" y="2180" width="736" height="206" rx="16" fill="#F1F3EB"/>
+<text x="52" y="2214" font-size="20" fill="#525B37" font-weight="700">The decision trail must stay legible</text>
+<text x="52" y="2247" font-size="15" fill="#525B37" font-weight="400">Unplanned → choose → saving → confirmed planned → Cook’s Mode → cooked</text>
+<text x="52" y="2274" font-size="15" fill="#525B37" font-weight="400">Planned → Change Plan → backup → original disposition → replacement save</text>
+<text x="52" y="2301" font-size="15" fill="#525B37" font-weight="400">Order In → non-cooking intent     |     Leave unplanned → blank day (Planner)</text>
+<text x="52" y="2328" font-size="15" fill="#525B37" font-weight="400">Failure or unknown outcome: preserve the choice, name the stage, offer the</text>
+<text x="52" y="2355" font-size="15" fill="#525B37" font-weight="400">appropriate retry/check. Do not imply completed work was rolled back.</text>
+<text x="32" y="2417" font-size="13" fill="#4B5563" font-weight="400">Sketches simplify geometry. Quick Find’s indigo and Change Plan’s terracotta</text>
+<text x="32" y="2439" font-size="13" fill="#4B5563" font-weight="400">are not retired by neutral examples. This is review artwork, not an approved palette change.</text>
 </svg>

@@ -1,92 +1,301 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1760" viewBox="0 0 800 1760" role="img" aria-labelledby="title desc">
-<title id="title">Solar Earth: roles, type and states</title><desc id="desc">Design reference, not implemented UI. Current values and contrast risks above proposed accessible combinations and component state examples. All ratios describe the exact opaque pair shown, not whole-app conformance.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="2700" viewBox="0 0 800 2700" role="img" aria-labelledby="title desc">
+<title id="title">Solar Earth: green, icons, roles, type and states</title><desc id="desc">Documentation reference, not implemented UI. Current source uses sage for preference, family participation, plans, shopping and cooking progress, selection and celebration. Existing Lucide icons and text glyphs carry meaning with labels. Proposed pairings preserve broad sage fields and ochre actions; they are not a rebrand or runtime changes. Source evidence is distinct from reported runtime risks and proposed treatments.</desc>
+<!-- Icon outlines reused from Lucide 1.60.0. ISC License
+
+Copyright (c) 2026 Lucide Icons and Contributors
+
+Permission to use, copy, modify, and/or distribute this software for any
+purpose with or without fee is hereby granted, provided that the above
+copyright notice and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
+—-
+
+The following Lucide icons are derived from the Feather project:
+
+airplay, alert-circle, alert-octagon, alert-triangle, aperture, arrow-down-circle, arrow-down-left, arrow-down-right, arrow-down, arrow-left-circle, arrow-left, arrow-right-circle, arrow-right, arrow-up-circle, arrow-up-left, arrow-up-right, arrow-up, at-sign, calendar, cast, check, chevron-down, chevron-left, chevron-right, chevron-up, chevrons-down, chevrons-left, chevrons-right, chevrons-up, circle, clipboard, clock, code, columns, command, compass, corner-down-left, corner-down-right, corner-left-down, corner-left-up, corner-right-down, corner-right-up, corner-up-left, corner-up-right, crosshair, database, divide-circle, divide-square, dollar-sign, download, external-link, feather, frown, hash, headphones, help-circle, info, italic, key, layout, life-buoy, link-2, link, loader, lock, log-in, log-out, maximize, meh, minimize, minimize-2, minus-circle, minus-square, minus, monitor, moon, more-horizontal, more-vertical, move, music, navigation-2, navigation, octagon, pause-circle, percent, plus-circle, plus-square, plus, power, radio, rss, search, server, share, shopping-bag, sidebar, smartphone, smile, square, table-2, tablet, target, terminal, trash-2, trash, triangle, tv, type, upload, x-circle, x-octagon, x-square, x, zoom-in, zoom-out
+
+The MIT License (MIT) (for the icons listed above)
+
+Copyright (c) 2013-present Cole Bemis
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+ -->
 <style>text { font-family: Inter, "DejaVu Sans", sans-serif; } .heading { font-family: Outfit, Inter, "DejaVu Sans", sans-serif; }</style>
-<rect x="0" y="0" width="800" height="1760" rx="0" fill="#FDFCF0"/>
-<text x="32" y="40" font-size="14" fill="#4B5563" font-weight="700">WFS / VISUAL LANGUAGE / V1</text>
-<text x="32" y="84" font-size="30" fill="#1F2937" font-weight="700" class="heading">Warmth with a clear next step</text>
-<text x="32" y="116" font-size="16" fill="#4B5563" font-weight="400">01  Roles, typography and states</text>
-<text x="32" y="140" font-size="16" fill="#4B5563" font-weight="400">Source snapshot: 25 Oct 2026 · Proposed treatments are not shipped UI.</text>
-<rect x="32" y="166" width="736" height="225" rx="16" fill="#FFFFFF"/>
-<text x="52" y="197" font-size="17" fill="#1F2937" font-weight="700">CURRENT VERIFIED VALUES · contrast risks</text>
-<text x="52" y="232" font-size="10" fill="rgba(31,41,55,0.4)" font-weight="900">TONIGHT’S MENU</text>
-<text x="300" y="224" font-size="15" fill="#4B5563" font-weight="400">10 px, charcoal at 40% on white</text>
-<text x="300" y="248" font-size="15" fill="#4B5563" font-weight="400">≈ 2.35:1 · too faint for normal text</text>
-<text x="52" y="278" font-size="11" fill="#CD5D45" font-weight="700">Home</text>
-<text x="300" y="270" font-size="15" fill="#4B5563" font-weight="400">Terracotta on cream: 3.88:1</text>
-<text x="300" y="294" font-size="15" fill="#4B5563" font-weight="400">11 px active label needs 4.5:1</text>
-<rect x="52" y="309" width="190" height="48" rx="14" fill="#E1AD01"/>
-<text x="68" y="339" font-size="16" fill="#FFFFFF" font-weight="700">Cook</text>
-<text x="300" y="330" font-size="15" fill="#4B5563" font-weight="400">White on ochre: 2.06:1</text>
-<text x="300" y="354" font-size="15" fill="#4B5563" font-weight="400">Enabled action, not a disabled state.</text>
-<text x="32" y="431" font-size="19" fill="#1F2937" font-weight="700">PROPOSED PAIRINGS · existing tokens, new role use</text>
-<text x="32" y="459" font-size="15" fill="#4B5563" font-weight="400">Every pair below clears 4.5:1 for normal text. No palette replacement.</text>
-<rect x="32" y="478" width="736" height="56" rx="12" fill="#FDFCF0" stroke="#D1D5DB" stroke-width="2"/>
-<text x="48" y="501" font-size="16" fill="#1F2937" font-weight="700">Body / canvas</text>
-<text x="48" y="522" font-size="13" fill="#1F2937" font-weight="400">charcoal #1F2937 / #FDFCF0</text>
-<text x="674" y="512" font-size="16" fill="#1F2937" font-weight="700">14.23:1</text>
-<rect x="32" y="544" width="736" height="56" rx="12" fill="#FDFCF0" stroke="#D1D5DB" stroke-width="2"/>
-<text x="48" y="567" font-size="16" fill="#4B5563" font-weight="700">Secondary / canvas</text>
-<text x="48" y="588" font-size="13" fill="#4B5563" font-weight="400">charcoal-600 #4B5563 / #FDFCF0</text>
-<text x="674" y="578" font-size="16" fill="#4B5563" font-weight="700">7.33:1</text>
-<rect x="32" y="610" width="736" height="56" rx="12" fill="#A44A37"/>
-<text x="48" y="633" font-size="16" fill="#FFFFFF" font-weight="700">Primary label / fill</text>
-<text x="48" y="654" font-size="13" fill="#FFFFFF" font-weight="400">white #FFFFFF / #A44A37</text>
-<text x="674" y="644" font-size="16" fill="#FFFFFF" font-weight="700">5.81:1</text>
-<rect x="32" y="676" width="736" height="56" rx="12" fill="#7B3829"/>
-<text x="48" y="699" font-size="16" fill="#FFFFFF" font-weight="700">Pressed label / fill</text>
-<text x="48" y="720" font-size="13" fill="#FFFFFF" font-weight="400">white #FFFFFF / #7B3829</text>
-<text x="674" y="710" font-size="16" fill="#FFFFFF" font-weight="700">8.61:1</text>
-<rect x="32" y="742" width="736" height="56" rx="12" fill="#E1AD01"/>
-<text x="48" y="765" font-size="16" fill="#1F2937" font-weight="700">Accent label / fill</text>
-<text x="48" y="786" font-size="13" fill="#1F2937" font-weight="400">charcoal #1F2937 / #E1AD01</text>
-<text x="674" y="776" font-size="16" fill="#1F2937" font-weight="700">7.12:1</text>
-<rect x="32" y="808" width="736" height="56" rx="12" fill="#F1F3EB"/>
-<text x="48" y="831" font-size="16" fill="#525B37" font-weight="700">Success / soft surface</text>
-<text x="48" y="852" font-size="13" fill="#525B37" font-weight="400">sage700 #525B37 / #F1F3EB</text>
-<text x="674" y="842" font-size="16" fill="#525B37" font-weight="700">6.45:1</text>
-<rect x="32" y="874" width="736" height="56" rx="12" fill="#F9ECE9"/>
-<text x="48" y="897" font-size="16" fill="#7B3829" font-weight="700">Error / soft surface</text>
-<text x="48" y="918" font-size="13" fill="#7B3829" font-weight="400">terra700 #7B3829 / #F9ECE9</text>
-<text x="674" y="908" font-size="16" fill="#7B3829" font-weight="700">7.46:1</text>
-<text x="32" y="981" font-size="19" fill="#1F2937" font-weight="700">PROPOSED TYPE ROLES · keep Outfit + Inter</text>
-<text x="32" y="1007" font-size="14" fill="#4B5563" font-weight="400">Diagram fonts fall back locally; sizes are intended CSS px, not a new scale.</text>
-<rect x="32" y="1024" width="736" height="182" rx="16" fill="#FFFFFF"/>
-<text x="52" y="1063" font-size="28" fill="#1F2937" font-weight="700" class="heading">Tonight’s supper</text>
-<text x="408" y="1061" font-size="15" fill="#4B5563" font-weight="400">Outfit · heading · 28 / 34</text>
-<text x="52" y="1097" font-size="16" fill="#1F2937" font-weight="700">Tonight · saved to the plan</text>
-<text x="408" y="1097" font-size="15" fill="#4B5563" font-weight="400">Inter · context · 16 / 24</text>
-<text x="52" y="1131" font-size="16" fill="#1F2937" font-weight="400">Choose what works tonight.</text>
-<text x="408" y="1131" font-size="15" fill="#4B5563" font-weight="400">Inter · body · 16 / 24</text>
-<text x="52" y="1164" font-size="14" fill="#4B5563" font-weight="400">Recipe details</text>
-<text x="408" y="1164" font-size="15" fill="#4B5563" font-weight="400">Inter · supporting · 14 / 21</text>
-<text x="52" y="1189" font-size="14" fill="#4B5563" font-weight="400">Sentence case; never hide essential state in tiny, faint capitals.</text>
-<text x="32" y="1246" font-size="19" fill="#1F2937" font-weight="700">PROPOSED STATES · meaning beyond colour</text>
-<rect x="32" y="1270" width="228" height="48" rx="14" fill="#FDFCF0" stroke="#4B5563" stroke-width="2"/>
-<text x="48" y="1300" font-size="16" fill="#1F2937" font-weight="700">Order In</text>
-<text x="32" y="1340" font-size="15" fill="#1F2937" font-weight="700">Enabled secondary</text>
-<rect x="286" y="1270" width="228" height="48" rx="14" fill="#7B3829"/>
-<text x="302" y="1300" font-size="16" fill="#FFFFFF" font-weight="700">Cook</text>
-<text x="286" y="1340" font-size="15" fill="#1F2937" font-weight="700">Pressed · darker fill</text>
-<rect x="538" y="1266" width="234" height="56" rx="18" fill="#FDFCF0" stroke="#7B3829" stroke-width="2"/>
-<rect x="542" y="1270" width="226" height="48" rx="14" fill="#A44A37"/>
-<text x="558" y="1300" font-size="16" fill="#FFFFFF" font-weight="700">Cook</text>
-<text x="542" y="1340" font-size="15" fill="#1F2937" font-weight="700">Focus · visible outline</text>
-<rect x="32" y="1370" width="228" height="48" rx="14" fill="#A44A37"/>
-<text x="48" y="1400" font-size="16" fill="#FFFFFF" font-weight="700">Saving…</text>
-<text x="32" y="1440" font-size="15" fill="#1F2937" font-weight="700">Busy · stable label/space</text>
-<rect x="286" y="1370" width="228" height="48" rx="14" fill="#D1D5DB"/>
-<text x="302" y="1400" font-size="16" fill="#4B5563" font-weight="700">Not available</text>
-<text x="286" y="1440" font-size="15" fill="#1F2937" font-weight="700">Disabled · explain why</text>
-<rect x="542" y="1370" width="226" height="48" rx="14" fill="#F1F3EB" stroke="#525B37" stroke-width="2"/>
-<text x="558" y="1400" font-size="16" fill="#525B37" font-weight="700">✓  Selected</text>
-<text x="542" y="1440" font-size="15" fill="#1F2937" font-weight="700">Selected · mark + label</text>
-<rect x="32" y="1468" width="736" height="84" rx="16" fill="#F9ECE9"/>
-<text x="52" y="1500" font-size="17" fill="#7B3829" font-weight="700">Not saved. Your choice is still here.</text>
-<text x="52" y="1530" font-size="15" fill="#7B3829" font-weight="400">Retry save  →   (example feedback; retry only the failed stage)</text>
-<text x="32" y="1586" font-size="15" fill="#4B5563" font-weight="400">DO: make enabled Order In visibly actionable; keep a clear label and edge.</text>
-<text x="32" y="1613" font-size="15" fill="#4B5563" font-weight="400">DO: pair status with words or symbols; reserve success for confirmed outcomes.</text>
-<text x="32" y="1640" font-size="15" fill="#4B5563" font-weight="400">DON’T: treat ochre as a universal danger colour, or dim enabled actions.</text>
-<text x="32" y="1667" font-size="15" fill="#4B5563" font-weight="400">CHECK: actual glass/photo composites, pressed states and meaningful boundaries.</text>
-<text x="32" y="1710" font-size="14" fill="#4B5563" font-weight="400">Normal text ≥ 4.5:1 · large text ≥ 3:1 · meaningful non-text ≥ 3:1 where applicable.</text>
-<text x="32" y="1733" font-size="14" fill="#4B5563" font-weight="400">Reference illustrations only. See guide for thresholds, exceptions and source owners.</text>
+<rect x="0" y="0" width="800" height="2700" rx="0" fill="#FDFCF0"/>
+<text x="32" y="40" font-size="14" fill="#4B5563" font-weight="700">WFS / VISUAL LANGUAGE / V1 · REFINED</text>
+<text x="32" y="84" font-size="30" fill="#1F2937" font-weight="700" class="heading">Green and icons belong here</text>
+<text x="32" y="116" font-size="15" fill="#4B5563" font-weight="400">01  Current vocabulary → role-specific contrast → review examples</text>
+<text x="32" y="140" font-size="15" fill="#4B5563" font-weight="400">Source: 4682643 · 25 Oct 2026. Schematics, not screenshots or usage counts.</text>
+<text x="32" y="180" font-size="19" fill="#1F2937" font-weight="700">CURRENT SOURCE · sage is more than success</text>
+<rect x="32" y="202" width="356" height="100" rx="16" fill="#F1F3EB"/>
+<text x="48" y="240" font-size="27" fill="#525B37" font-weight="700" class="heading">♥</text>
+<text x="88" y="236" font-size="18" fill="#525B37" font-weight="700">Discovery</text>
+<text x="48" y="265" font-size="14" fill="#525B37" font-weight="400">Like / LOVE = preference</text>
+<text x="48" y="287" font-size="13" fill="#525B37" font-weight="400">Sage overlay + vote cue</text>
+<rect x="412" y="202" width="356" height="100" rx="16" fill="#F1F3EB"/>
+<g transform="translate(428 217) scale(1.1666666666666667)" fill="none" stroke="#525B37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+  <path d="M16 3.128a4 4 0 0 1 0 7.744" />
+  <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+  <circle cx="9" cy="7" r="4" />
+</g>
+<text x="468" y="236" font-size="18" fill="#525B37" font-weight="700">Planner</text>
+<text x="428" y="265" font-size="14" fill="#525B37" font-weight="400">Ask the Family / Nudge family</text>
+<text x="428" y="287" font-size="13" fill="#525B37" font-weight="400">Sage action fills + plan badges</text>
+<rect x="32" y="315" width="356" height="100" rx="16" fill="#8A9A5B"/>
+<g transform="translate(48 330) scale(1.1666666666666667)" fill="none" stroke="#1B1E12" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M20 6 9 17l-5-5" />
+</g>
+<text x="88" y="349" font-size="18" fill="#1B1E12" font-weight="700">Matches / celebration</text>
+<text x="48" y="378" font-size="14" fill="#1B1E12" font-weight="400">Shared SuccessCard uses bg-sage</text>
+<text x="48" y="400" font-size="13" fill="#1B1E12" font-weight="400">A match is not a saved week</text>
+<rect x="412" y="315" width="356" height="100" rx="16" fill="#F1F3EB"/>
+<g transform="translate(428 330) scale(1.1666666666666667)" fill="none" stroke="#525B37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M16 10a4 4 0 0 1-8 0" />
+  <path d="M3.103 6.034h17.794" />
+  <path d="M3.4 5.467a2 2 0 0 0-.4 1.2V20a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6.667a2 2 0 0 0-.4-1.2l-2-2.667A2 2 0 0 0 17 2H7a2 2 0 0 0-1.6.8z" />
+</g>
+<text x="468" y="349" font-size="18" fill="#525B37" font-weight="700">Intentional plans</text>
+<text x="428" y="378" font-size="14" fill="#525B37" font-weight="400">Non-cooking Home + Planner</text>
+<text x="428" y="400" font-size="13" fill="#525B37" font-weight="400">Soft sage; not cooked success</text>
+<rect x="32" y="428" width="356" height="100" rx="16" fill="#F1F3EB"/>
+<g transform="translate(48 443) scale(1.1666666666666667)" fill="none" stroke="#525B37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <circle cx="12" cy="12" r="10" />
+  <path d="m16 9-5.5 5.5L8 12" />
+</g>
+<text x="88" y="462" font-size="18" fill="#525B37" font-weight="700">Groceries</text>
+<text x="48" y="491" font-size="14" fill="#525B37" font-weight="400">Checks, progress, selection, Save</text>
+<text x="48" y="513" font-size="13" fill="#525B37" font-weight="400">Sage supports ongoing work</text>
+<rect x="412" y="428" width="356" height="100" rx="16" fill="#F1F3EB"/>
+<g transform="translate(428 443) scale(1.1666666666666667)" fill="none" stroke="#525B37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z" />
+  <path d="M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12" />
+  <path d="M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17" />
+</g>
+<text x="468" y="462" font-size="18" fill="#525B37" font-weight="700">Cooking</text>
+<text x="428" y="491" font-size="14" fill="#525B37" font-weight="400">Selected view + gathered items</text>
+<text x="428" y="513" font-size="13" fill="#525B37" font-weight="400">Readiness is not meal completion</text>
+<text x="32" y="568" font-size="14" fill="#4B5563" font-weight="400">Existing base sage #8A9A5B stays visible, including substantial celebration fields.</text>
+<text x="32" y="590" font-size="14" fill="#4B5563" font-weight="400">Cards summarize source roles; their compact layout and text are explanatory.</text>
+<text x="32" y="634" font-size="19" fill="#1F2937" font-weight="700">CURRENT ICON VOCABULARY · keep recognition</text>
+<rect x="32" y="654" width="736" height="106" rx="16" fill="#FFFFFF"/>
+<g transform="translate(85 670) scale(1.1666666666666667)" fill="none" stroke="#4B5563" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8" />
+  <path d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+</g>
+<text x="60" y="724" font-size="14" fill="#1F2937" font-weight="700">Home</text>
+<g transform="translate(230 670) scale(1.1666666666666667)" fill="none" stroke="#4B5563" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="m21 21-4.34-4.34" />
+  <circle cx="11" cy="11" r="8" />
+</g>
+<text x="205" y="724" font-size="14" fill="#1F2937" font-weight="700">Search</text>
+<g transform="translate(375 670) scale(1.1666666666666667)" fill="none" stroke="#664E01" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <circle cx="12" cy="12" r="10" />
+  <path d="m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z" />
+</g>
+<text x="350" y="724" font-size="14" fill="#1F2937" font-weight="700">Discover</text>
+<g transform="translate(520 670) scale(1.1666666666666667)" fill="none" stroke="#4B5563" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M8 2v3" />
+  <path d="M16 2v3" />
+  <rect x="3" y="3" width="18" height="18" rx="2" />
+  <path d="M3 9h18" />
+</g>
+<text x="495" y="724" font-size="14" fill="#1F2937" font-weight="700">Planner</text>
+<g transform="translate(665 670) scale(1.1666666666666667)" fill="none" stroke="#4B5563" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M17.925 20.056a6 6 0 0 0-11.851.001" />
+  <circle cx="12" cy="11" r="4" />
+  <circle cx="12" cy="12" r="10" />
+</g>
+<text x="640" y="724" font-size="14" fill="#1F2937" font-weight="700">Profile</text>
+<text x="52" y="748" font-size="13" fill="#4B5563" font-weight="400">Source shapes + labels; legend colours are schematic. Discover uses ochre.</text>
+<rect x="32" y="776" width="232" height="86" rx="16" fill="#FFFFFF"/>
+<g transform="translate(46 789) scale(1.0)" fill="none" stroke="#4B5563" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M13.997 4a2 2 0 0 1 1.76 1.05l.486.9A2 2 0 0 0 18.003 7H20a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1.997a2 2 0 0 0 1.759-1.048l.489-.904A2 2 0 0 1 10.004 4z" />
+  <circle cx="12" cy="13" r="3" />
+</g>
+<text x="46" y="829" font-size="14" fill="#1F2937" font-weight="700">Capture a Recipe</text>
+<text x="46" y="850" font-size="12" fill="#4B5563" font-weight="400">capture / remember</text>
+<rect x="284" y="776" width="232" height="86" rx="16" fill="#FFFFFF"/>
+<g transform="translate(298 789) scale(1.0)" fill="none" stroke="#4B5563" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M12 5v16" />
+  <path d="M20.001 19A2 2 0 0022 17V5a2 2 0 00-1.999-2L16 3.002A5 5 0 0012 5a5 5 0 00-4-2H4a2 2 0 00-2 2v12a2 2 0 001.999 2H8a5 5 0 014 2 5 5 0 014-2z" />
+</g>
+<text x="298" y="829" font-size="14" fill="#1F2937" font-weight="700">Browse your library</text>
+<text x="298" y="850" font-size="12" fill="#4B5563" font-weight="400">recognize / retrieve</text>
+<rect x="536" y="776" width="232" height="86" rx="16" fill="#FFFFFF"/>
+<g transform="translate(550 789) scale(1.0)" fill="none" stroke="#4B5563" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="m16 2-2.3 2.3a3 3 0 0 0 0 4.2l1.8 1.8a3 3 0 0 0 4.2 0L22 8" />
+  <path d="M15 15 3.3 3.3a4.2 4.2 0 0 0 0 6l7.3 7.3c.7.7 2 .7 2.8 0L15 15Zm0 0 7 7" />
+  <path d="m2.1 21.8 6.4-6.3" />
+  <path d="m19 5-7 7" />
+</g>
+<text x="550" y="829" font-size="14" fill="#1F2937" font-weight="700">Cook</text>
+<text x="550" y="850" font-size="12" fill="#4B5563" font-weight="400">open Cook’s Mode</text>
+<rect x="32" y="876" width="232" height="86" rx="16" fill="#FFFFFF"/>
+<g transform="translate(46 889) scale(1.0)" fill="none" stroke="#4B5563" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="m16 3 4 4-4 4" />
+  <path d="M20 7H4" />
+  <path d="m8 21-4-4 4-4" />
+  <path d="M4 17h16" />
+</g>
+<text x="46" y="929" font-size="14" fill="#1F2937" font-weight="700">Change Plan</text>
+<text x="46" y="950" font-size="12" fill="#4B5563" font-weight="400">adapt / recover</text>
+<rect x="284" y="876" width="232" height="86" rx="16" fill="#FFFFFF"/>
+<g transform="translate(298 889) scale(1.0)" fill="none" stroke="#525B37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M16 10a4 4 0 0 1-8 0" />
+  <path d="M3.103 6.034h17.794" />
+  <path d="M3.4 5.467a2 2 0 0 0-.4 1.2V20a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6.667a2 2 0 0 0-.4-1.2l-2-2.667A2 2 0 0 0 17 2H7a2 2 0 0 0-1.6.8z" />
+</g>
+<text x="298" y="929" font-size="14" fill="#1F2937" font-weight="700">Order In plan</text>
+<text x="298" y="950" font-size="12" fill="#4B5563" font-weight="400">intent, not delivery</text>
+<rect x="536" y="876" width="232" height="86" rx="16" fill="#FFFFFF"/>
+<g transform="translate(550 889) scale(1.0)" fill="none" stroke="#525B37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M20 6 9 17l-5-5" />
+</g>
+<text x="550" y="929" font-size="14" fill="#1F2937" font-weight="700">Check + state label</text>
+<text x="550" y="950" font-size="12" fill="#4B5563" font-weight="400">context defines the state</text>
+<text x="32" y="988" font-size="14" fill="#4B5563" font-weight="400">Also present: ♥ / ✕ / ✓ text glyphs; grocery aisle emoji + section names.</text>
+<text x="32" y="1011" font-size="14" fill="#4B5563" font-weight="400">UtensilsCrossed also means eating out. Sparkles can mean mystery or delight.</text>
+<text x="32" y="1034" font-size="14" fill="#4B5563" font-weight="400">No symbol alone proves saved, cooked or ordered. Keep the contextual label.</text>
+<text x="32" y="1094" font-size="19" fill="#1F2937" font-weight="700">CURRENT / REPORTED RISKS · not colour bans</text>
+<rect x="32" y="1114" width="736" height="154" rx="16" fill="#FFFFFF"/>
+<text x="52" y="1143" font-size="14" fill="#1F2937" font-weight="700">Tonight context</text>
+<text x="283" y="1143" font-size="14" fill="#4B5563" font-weight="400">10 px, charcoal 40% / white ≈ 2.35:1</text>
+<text x="52" y="1174" font-size="14" fill="#1F2937" font-weight="700">Active Home</text>
+<text x="283" y="1174" font-size="14" fill="#4B5563" font-weight="400">11 px, terracotta / cream = 3.88:1</text>
+<text x="52" y="1205" font-size="14" fill="#1F2937" font-weight="700">Cook / Discover</text>
+<text x="283" y="1205" font-size="14" fill="#4B5563" font-weight="400">White / ochre = 2.06:1 (text and icon risk)</text>
+<text x="52" y="1236" font-size="14" fill="#1F2937" font-weight="700">White / base sage</text>
+<text x="283" y="1236" font-size="14" fill="#4B5563" font-weight="400">3.06:1: large text only, not small labels</text>
+<text x="52" y="1257" font-size="12" fill="#4B5563" font-weight="400">Exact flat-pair math. Glass, glow, opacity and photography need composite checks.</text>
+<text x="32" y="1310" font-size="19" fill="#1F2937" font-weight="700">PROPOSED PAIRS · preserve hue, clarify the role</text>
+<text x="32" y="1336" font-size="14" fill="#4B5563" font-weight="400">Options reuse existing tokens. Not a universal primary colour or token remap.</text>
+<rect x="32" y="1354" width="356" height="63" rx="12" fill="#FDFCF0" stroke="#D1D5DB" stroke-width="2"/>
+<text x="46" y="1378" font-size="14" fill="#1F2937" font-weight="700">Body / warm canvas</text>
+<text x="46" y="1401" font-size="12" fill="#1F2937" font-weight="400">#1F2937 / #FDFCF0  ·  14.23:1</text>
+<rect x="412" y="1354" width="356" height="63" rx="12" fill="#FDFCF0" stroke="#D1D5DB" stroke-width="2"/>
+<text x="426" y="1378" font-size="14" fill="#4B5563" font-weight="700">Supporting context</text>
+<text x="426" y="1401" font-size="12" fill="#4B5563" font-weight="400">#4B5563 / #FDFCF0  ·  7.33:1</text>
+<rect x="32" y="1427" width="356" height="63" rx="12" fill="#A44A37"/>
+<text x="46" y="1451" font-size="14" fill="#FFFFFF" font-weight="700">Terracotta action option</text>
+<text x="46" y="1474" font-size="12" fill="#FFFFFF" font-weight="400">#FFFFFF / #A44A37  ·  5.81:1</text>
+<rect x="412" y="1427" width="356" height="63" rx="12" fill="#7B3829"/>
+<text x="426" y="1451" font-size="14" fill="#FFFFFF" font-weight="700">Pressed terracotta option</text>
+<text x="426" y="1474" font-size="12" fill="#FFFFFF" font-weight="400">#FFFFFF / #7B3829  ·  8.61:1</text>
+<rect x="32" y="1500" width="356" height="63" rx="12" fill="#E1AD01"/>
+<text x="46" y="1524" font-size="14" fill="#1F2937" font-weight="700">Ochre action / emphasis</text>
+<text x="46" y="1547" font-size="12" fill="#1F2937" font-weight="400">#1F2937 / #E1AD01  ·  7.12:1</text>
+<rect x="412" y="1500" width="356" height="63" rx="12" fill="#8A9A5B"/>
+<text x="426" y="1524" font-size="14" fill="#1B1E12" font-weight="700">Sage field / small text</text>
+<text x="426" y="1547" font-size="12" fill="#1B1E12" font-weight="400">#1B1E12 / #8A9A5B  ·  5.52:1</text>
+<rect x="32" y="1573" width="356" height="63" rx="12" fill="#525B37"/>
+<text x="46" y="1597" font-size="14" fill="#FFFFFF" font-weight="700">Dark sage action option</text>
+<text x="46" y="1620" font-size="12" fill="#FFFFFF" font-weight="400">#FFFFFF / #525B37  ·  7.22:1</text>
+<rect x="412" y="1573" width="356" height="63" rx="12" fill="#F1F3EB"/>
+<text x="426" y="1597" font-size="14" fill="#525B37" font-weight="700">Soft sage state / icon</text>
+<text x="426" y="1620" font-size="12" fill="#525B37" font-weight="400">#525B37 / #F1F3EB  ·  6.45:1</text>
+<rect x="32" y="1646" width="356" height="63" rx="12" fill="#F9ECE9"/>
+<text x="46" y="1670" font-size="14" fill="#7B3829" font-weight="700">Error + explicit message</text>
+<text x="46" y="1693" font-size="12" fill="#7B3829" font-weight="400">#7B3829 / #F9ECE9  ·  7.46:1</text>
+<rect x="412" y="1646" width="356" height="63" rx="12" fill="#8A9A5B"/>
+<text x="426" y="1670" font-size="14" fill="#1F2937" font-weight="700">Sage field / body option</text>
+<text x="426" y="1693" font-size="12" fill="#1F2937" font-weight="400">#1F2937 / #8A9A5B  ·  4.79:1</text>
+<text x="32" y="1743" font-size="13" fill="#4B5563" font-weight="400">All proposed text pairs ≥ 4.5:1. Meaningful edges/icons need their own ≥ 3:1 check.</text>
+<text x="32" y="1767" font-size="13" fill="#4B5563" font-weight="400">Sage / cream = 2.97:1: deepen the necessary icon/edge, not every green surface.</text>
+<text x="32" y="1811" font-size="19" fill="#1F2937" font-weight="700">PROPOSED TYPE ROLES · keep Outfit + Inter</text>
+<rect x="32" y="1830" width="736" height="164" rx="16" fill="#FFFFFF"/>
+<text x="52" y="1869" font-size="28" fill="#1F2937" font-weight="700" class="heading">Tonight’s supper</text>
+<text x="410" y="1867" font-size="15" fill="#4B5563" font-weight="400">Heading · 28 / 34</text>
+<text x="52" y="1903" font-size="16" fill="#1F2937" font-weight="700">Tonight · saved to the plan</text>
+<text x="410" y="1903" font-size="15" fill="#4B5563" font-weight="400">Context · 16 / 24 semibold</text>
+<text x="52" y="1937" font-size="16" fill="#1F2937" font-weight="400">Choose what works tonight.</text>
+<text x="410" y="1937" font-size="15" fill="#4B5563" font-weight="400">Body · 16 / 24</text>
+<text x="52" y="1971" font-size="14" fill="#4B5563" font-weight="400">Recipe details</text>
+<text x="410" y="1971" font-size="15" fill="#4B5563" font-weight="400">Supporting · 14 / 21</text>
+<text x="32" y="2018" font-size="13" fill="#4B5563" font-weight="400">CSS px starting points, not WCAG minimum font sizes. Local fonts may fall back.</text>
+<text x="32" y="2065" font-size="19" fill="#1F2937" font-weight="700">PROPOSED STATES · words + shape + colour</text>
+<rect x="32" y="2085" width="228" height="48" rx="14" fill="#FDFCF0" stroke="#4B5563" stroke-width="2"/>
+<text x="48" y="2115" font-size="16" fill="#1F2937" font-weight="700">Order In</text>
+<text x="32" y="2155" font-size="14" fill="#1F2937" font-weight="700">Enabled secondary</text>
+<rect x="286" y="2085" width="228" height="48" rx="14" fill="#664E01"/>
+<g transform="translate(300 2097) scale(1.0)" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="m16 2-2.3 2.3a3 3 0 0 0 0 4.2l1.8 1.8a3 3 0 0 0 4.2 0L22 8" />
+  <path d="M15 15 3.3 3.3a4.2 4.2 0 0 0 0 6l7.3 7.3c.7.7 2 .7 2.8 0L15 15Zm0 0 7 7" />
+  <path d="m2.1 21.8 6.4-6.3" />
+  <path d="m19 5-7 7" />
+</g>
+<text x="334" y="2115" font-size="16" fill="#FFFFFF" font-weight="700">Cook</text>
+<text x="286" y="2155" font-size="14" fill="#1F2937" font-weight="700">Pressed · deeper ochre</text>
+<rect x="538" y="2081" width="234" height="56" rx="18" fill="#FDFCF0" stroke="#7B3829" stroke-width="2"/>
+<rect x="542" y="2085" width="226" height="48" rx="14" fill="#E1AD01" stroke="#664E01" stroke-width="2"/>
+<g transform="translate(556 2097) scale(1.0)" fill="none" stroke="#1F2937" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="m16 2-2.3 2.3a3 3 0 0 0 0 4.2l1.8 1.8a3 3 0 0 0 4.2 0L22 8" />
+  <path d="M15 15 3.3 3.3a4.2 4.2 0 0 0 0 6l7.3 7.3c.7.7 2 .7 2.8 0L15 15Zm0 0 7 7" />
+  <path d="m2.1 21.8 6.4-6.3" />
+  <path d="m19 5-7 7" />
+</g>
+<text x="590" y="2115" font-size="16" fill="#1F2937" font-weight="700">Cook</text>
+<text x="542" y="2155" font-size="14" fill="#1F2937" font-weight="700">Focus · separate outline</text>
+<rect x="32" y="2180" width="228" height="48" rx="14" fill="#525B37"/>
+<text x="48" y="2210" font-size="16" fill="#FFFFFF" font-weight="700">Saving…</text>
+<text x="32" y="2250" font-size="14" fill="#1F2937" font-weight="700">Busy · stable space</text>
+<rect x="286" y="2180" width="228" height="48" rx="14" fill="#D1D5DB"/>
+<text x="302" y="2210" font-size="16" fill="#4B5563" font-weight="700">Not available</text>
+<text x="286" y="2250" font-size="14" fill="#1F2937" font-weight="700">Disabled · explain why</text>
+<rect x="542" y="2180" width="226" height="48" rx="14" fill="#F1F3EB" stroke="#525B37" stroke-width="2"/>
+<g transform="translate(556 2192) scale(1.0)" fill="none" stroke="#525B37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M20 6 9 17l-5-5" />
+</g>
+<text x="590" y="2210" font-size="16" fill="#525B37" font-weight="700">Selected</text>
+<text x="542" y="2250" font-size="14" fill="#1F2937" font-weight="700">Selected ≠ completed</text>
+<rect x="32" y="2277" width="736" height="78" rx="16" fill="#F9ECE9"/>
+<text x="52" y="2308" font-size="17" fill="#7B3829" font-weight="700">Not saved. Your choice is still here.</text>
+<text x="52" y="2336" font-size="14" fill="#7B3829" font-weight="400">Retry save → retry only the failed stage, not already completed work.</text>
+<rect x="32" y="2380" width="736" height="200" rx="16" fill="#F1F3EB"/>
+<text x="52" y="2412" font-size="17" fill="#525B37" font-weight="700">ICON + LABEL + HIT AREA</text>
+<g transform="translate(52 2432) scale(1.0)" fill="none" stroke="#525B37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="m16 2-2.3 2.3a3 3 0 0 0 0 4.2l1.8 1.8a3 3 0 0 0 4.2 0L22 8" />
+  <path d="M15 15 3.3 3.3a4.2 4.2 0 0 0 0 6l7.3 7.3c.7.7 2 .7 2.8 0L15 15Zm0 0 7 7" />
+  <path d="m2.1 21.8 6.4-6.3" />
+  <path d="m19 5-7 7" />
+</g>
+<rect x="100" y="2424" width="48" height="48" rx="8" fill="none" stroke="#525B37" stroke-width="2" stroke-dasharray="4 3"/>
+<g transform="translate(112 2436) scale(1.0)" fill="none" stroke="#525B37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="m16 2-2.3 2.3a3 3 0 0 0 0 4.2l1.8 1.8a3 3 0 0 0 4.2 0L22 8" />
+  <path d="M15 15 3.3 3.3a4.2 4.2 0 0 0 0 6l7.3 7.3c.7.7 2 .7 2.8 0L15 15Zm0 0 7 7" />
+  <path d="m2.1 21.8 6.4-6.3" />
+  <path d="m19 5-7 7" />
+</g>
+<text x="168" y="2442" font-size="14" fill="#525B37" font-weight="400">24 px glyph ≠ 48 × 48 CSS px hit area.</text>
+<text x="168" y="2465" font-size="14" fill="#525B37" font-weight="400">Proposed generous target; keep labels and spacing.</text>
+<text x="52" y="2502" font-size="14" fill="#525B37" font-weight="400">Name icon-only controls by the action, not the drawing. Hide redundant icons</text>
+<text x="52" y="2526" font-size="14" fill="#525B37" font-weight="400">from assistive technology; expose checked / pressed / current state separately.</text>
+<text x="52" y="2550" font-size="14" fill="#525B37" font-weight="400">These boards do not verify live focus, screen readers or touch behavior.</text>
+<text x="32" y="2620" font-size="14" fill="#4B5563" font-weight="400">Keep warm surfaces, distinctive green and earned delight; repair the hard-to-read role.</text>
+<text x="32" y="2645" font-size="14" fill="#4B5563" font-weight="400">Reference only. Sources, contrast thresholds, licensing and scope are in the guide.</text>
 </svg>
