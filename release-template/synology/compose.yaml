@@ -1,3 +1,5 @@
+# Application services shared by both tunnel scenarios.
+# Select an overlay through COMPOSE_FILE in .env (see .env.example).
 services:
   traefik:
     image: traefik:v3.7
@@ -9,21 +11,6 @@ services:
       - ./traefik.yml:/etc/traefik/dynamic.yml:ro
     networks:
       - edge
-
-  cloudflared:
-    image: cloudflare/cloudflared:2026.9.1
-    restart: unless-stopped
-    command:
-      - tunnel
-      - --no-autoupdate
-      - run
-      - --token
-      - ${CLOUDFLARE_TUNNEL_TOKEN:?CLOUDFLARE_TUNNEL_TOKEN must be set}
-    depends_on:
-      traefik:
-        condition: service_started
-        required: true
-    network_mode: service:traefik
 
   pwa:
     image: brisebois/whats-for-supper-pwa:${WFS_VERSION}

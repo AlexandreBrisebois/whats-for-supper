@@ -1,5 +1,10 @@
 # Install What's for Supper
 
+> Unreleased development templates: this branch contains the scenario overlays.
+> Existing published ZIPs may use the legacy bundled layout. Follow the files and
+> documentation for the exact verified release; do not combine individual files
+> from this branch with a published installation.
+
 [![Latest stable release](https://img.shields.io/github/v/release/AlexandreBrisebois/whats-for-supper?display_name=release&label=stable%20release)](https://github.com/AlexandreBrisebois/whats-for-supper/releases/latest)
 
 Your family's recipes, on your home server. **Recommended:** Linux + Docker Compose + Cloudflare Tunnel for HTTPS.
@@ -20,7 +25,15 @@ From the extracted `whats-for-supper` directory, run:
 bash setup.sh
 ```
 
-The helper asks for your credentials, prepares your private configuration, and offers to start the app. It won't overwrite an existing setup.
+The helper asks you to choose a bundled tunnel for this deployment, or attach to
+an independent/shared tunnel. It prepares your private configuration, remembers
+the selected Compose overlay, and offers to start the app. It won't overwrite an
+existing setup. Shared mode asks for the Docker network and a unique proxy alias;
+it does not ask for a tunnel token. Prepare the independent connector first using
+the [Cloudflare guide](cloudflare.md).
+
+For agent-assisted preparation and human handoffs, use the [agent installation guide](agent-install.md),
+which uses the same templates and verification steps.
 
 Your household timezone defaults to Toronto. [Using another timezone?](timezones.md)
 

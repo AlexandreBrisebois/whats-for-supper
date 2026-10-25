@@ -1,0 +1,15 @@
+# Independent remotely managed connector; no application data or Docker socket.
+services:
+  cloudflared:
+    image: cloudflare/cloudflared:2026.9.1
+    restart: unless-stopped
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:?CLOUDFLARE_TUNNEL_TOKEN must be set}
+    command: [tunnel, --no-autoupdate, run]
+    networks:
+      - cloudflare-proxy
+
+networks:
+  cloudflare-proxy:
+    external: true
+    name: ${WFS_PROXY_NETWORK:-cloudflare-proxy}

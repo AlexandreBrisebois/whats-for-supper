@@ -22,9 +22,20 @@ version="$(sed -n 's/^WFS_VERSION=//p' "$root/.env.example")"
 [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-beta\.[1-9][0-9]*)?$ ]] || fail "Invalid release version."
 current="$(sed -n 's/^WFS_VERSION=//p' .env)"
 [[ -n "$current" && "$current" != "$version" ]] || fail "No version change requested."
-# This first updater supports image-tag-only changes. Never silently replace Compose or proxy config.
+# The updater supports image-tag-only changes. Never silently replace Compose or proxy config.
 cmp -s compose.yaml "$root/compose.yaml" || fail "Compose changed between versions. Read release notes and follow the manual migration guide."
 cmp -s traefik.yml "$root/traefik.yml" || fail "Traefik config changed. Manual review required."
+# Read only the generated, literal selection; never source a private dotenv file.
+selection="$(sed -n 's/^COMPOSE_FILE=//p' .env)"
+case "$selection" in
+  compose.yaml:compose.tunnel.yaml) overlay=compose.tunnel.yaml ;;
+  compose.yaml:compose.shared-tunnel.yaml) overlay=compose.shared-tunnel.yaml ;;
+  *) fail "Missing or custom COMPOSE_FILE selection. Follow the manual template transition guide." ;;
+esac
+[[ -z "${COMPOSE_FILE:-}" || "$COMPOSE_FILE" == "$selection" ]] || fail "Shell COMPOSE_FILE conflicts with .env."
+[[ -f "$overlay" && -f "$root/$overlay" ]] || fail "Selected overlay is missing. Manual review required."
+cmp -s "$overlay" "$root/$overlay" || fail "Selected Compose overlay changed. Manual review required."
+compose=(docker compose -f compose.yaml -f "$overlay")
 echo "Current: $current   Target: $version"
 echo "Backup evidence: $evidence"
 echo "IMPORTANT: this helper cannot verify backup consistency, schema compatibility, or rollback."
@@ -37,18 +48,18 @@ chmod 600 "$tmp/env.updated"
 # Verify the proposed environment without changing the installed one.
 cp "$tmp/env.updated" .env.update-check
 trap 'rm -rf "$tmp"; rm -f .env.update-check' EXIT
-docker compose --env-file .env.update-check config --quiet || fail "Compose validation failed."
+"${compose[@]}" --env-file .env.update-check config --quiet || fail "Compose validation failed."
 rm -f .env.update-check
 # Preserve a private copy of the original environment for manual recovery.
 backup=".env.before-$version"
 [[ ! -e "$backup" ]] || fail "Previous environment backup already exists: $backup"
 cp -p .env "$backup"
 cp "$tmp/env.updated" .env
-if ! docker compose pull; then
+if ! "${compose[@]}" pull; then
   cp "$backup" .env
   fail "Image pull failed; restored original .env. Running containers were not deliberately recreated."
 fi
-if ! docker compose up -d; then
+if ! "${compose[@]}" up -d; then
   echo "Deployment failed. Do not assume restoring an image tag will reverse database changes." >&2
   echo "Consult your tested backup and recovery procedure. Previous .env: $backup" >&2
   exit 1

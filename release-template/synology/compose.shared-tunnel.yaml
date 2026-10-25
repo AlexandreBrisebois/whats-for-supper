@@ -1,0 +1,13 @@
+# Attach only the entry-point proxy to an existing independent connector.
+services:
+  traefik:
+    networks:
+      edge: {}
+      cloudflare-proxy:
+        aliases:
+          - ${WFS_PROXY_ALIAS:?WFS_PROXY_ALIAS must be unique on the shared network}
+
+networks:
+  cloudflare-proxy:
+    external: true
+    name: ${WFS_PROXY_NETWORK:-cloudflare-proxy}
