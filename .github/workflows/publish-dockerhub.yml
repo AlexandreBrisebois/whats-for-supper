@@ -269,6 +269,7 @@ jobs:
         run: |
           set -euo pipefail
           bash scripts/release/build-install-zip.sh "$VERSION" "dist/whats-for-supper-install-${VERSION}.zip"
+          python3 -B -m unittest scripts.agent.tests.test_install_bundle -v
           unzip -t "dist/whats-for-supper-install-${VERSION}.zip"
           unzip -q "dist/whats-for-supper-install-${VERSION}.zip" -d /tmp/wfs-install-check
           cd /tmp/wfs-install-check/whats-for-supper

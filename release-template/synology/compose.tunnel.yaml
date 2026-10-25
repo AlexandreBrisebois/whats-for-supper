@@ -1,0 +1,16 @@
+# One remotely managed tunnel for this deployment.
+services:
+  cloudflared:
+    image: cloudflare/cloudflared:2026.9.1
+    restart: unless-stopped
+    command:
+      - tunnel
+      - --no-autoupdate
+      - run
+      - --token
+      - ${CLOUDFLARE_TUNNEL_TOKEN:?CLOUDFLARE_TUNNEL_TOKEN must be set}
+    depends_on:
+      traefik:
+        condition: service_started
+        required: true
+    network_mode: service:traefik

@@ -12,12 +12,32 @@ command -v openssl >/dev/null || { echo "OpenSSL is required to generate secrets
 [[ -t 0 ]] || { echo "Run this helper interactively in a terminal." >&2; exit 1; }
 
 echo "What's for Supper — family setup"
-echo "You'll need a Gemini API key and a Cloudflare Tunnel token."
+echo "Choose 1 for a bundled tunnel, or 2 to attach to an independent/shared tunnel."
+read -r -p "Tunnel setup [1/2, default 1]: " scenario
+scenario="${scenario:-1}"
+case "$scenario" in
+  1) overlay=compose.tunnel.yaml ;;
+  2) overlay=compose.shared-tunnel.yaml ;;
+  *) echo "Choose 1 or 2." >&2; exit 1 ;;
+esac
 read -r -s -p "Gemini API key: " gemini; echo
-read -r -s -p "Cloudflare Tunnel token: " tunnel; echo
+tunnel=""
+if [[ "$scenario" == 1 ]]; then
+  read -r -s -p "Cloudflare Tunnel token: " tunnel; echo
+  [[ -n "$tunnel" ]] || { echo "Tunnel token is required for bundled mode." >&2; exit 1; }
+fi
 read -r -s -p "Choose an administrator PIN (at least 6 digits): " pin; echo
-[[ -n "$gemini" && -n "$tunnel" ]] || { echo "Both credentials are required." >&2; exit 1; }
+[[ -n "$gemini" ]] || { echo "Gemini API key is required." >&2; exit 1; }
 [[ "$pin" =~ ^[0-9]{6,}$ ]] || { echo "PIN must have at least 6 digits." >&2; exit 1; }
+proxy_network=cloudflare-proxy
+proxy_alias=""
+if [[ "$scenario" == 2 ]]; then
+  read -r -p "Existing Docker network [cloudflare-proxy]: " proxy_network
+  proxy_network="${proxy_network:-cloudflare-proxy}"
+  read -r -p "Unique proxy alias (for example wfs-prod-proxy): " proxy_alias
+  [[ "$proxy_network" =~ ^[a-zA-Z0-9][a-zA-Z0-9_.-]*$ ]] || { echo "Invalid network name." >&2; exit 1; }
+  [[ "$proxy_alias" =~ ^[a-z0-9]([a-z0-9-]*[a-z0-9])?$ && ${#proxy_alias} -le 63 ]] || { echo "Use a DNS label for the alias (lowercase letters, digits, hyphens; max 63 characters)." >&2; exit 1; }
+fi
 for v in "$gemini" "$tunnel" "$pin"; do
   [[ "$v" != *$'\n'* && "$v" != *$'\r'* && "$v" != *'#'* && "$v" != *'$'* && "$v" != *' '* ]] || { echo "A value contains unsupported .env characters." >&2; exit 1; }
 done
@@ -26,7 +46,10 @@ password="$(openssl rand -hex 32)"
 secret="$(openssl rand -hex 32)"
 tmp="$(mktemp ./.env.tmp.XXXXXXXX)"
 trap 'rm -f "$tmp"' EXIT
-awk -v db="$password" -v hearth="$secret" -v gemini="$gemini" -v tunnel="$tunnel" -v pin="$pin" '
+awk -v db="$password" -v hearth="$secret" -v gemini="$gemini" -v tunnel="$tunnel" -v pin="$pin" -v overlay="$overlay" -v network="$proxy_network" -v alias="$proxy_alias" '
+  /^COMPOSE_FILE=/ {print "COMPOSE_FILE=compose.yaml:" overlay; next}
+  /^WFS_PROXY_NETWORK=/ {print "WFS_PROXY_NETWORK=" network; next}
+  /^WFS_PROXY_ALIAS=/ {print "WFS_PROXY_ALIAS=" alias; next}
   /^POSTGRES_PASSWORD=/ {print "POSTGRES_PASSWORD=" db; next}
   /^HEARTH_SECRET=/ {print "HEARTH_SECRET=" hearth; next}
   /^GEMINI_API_KEY=/ {print "GEMINI_API_KEY=" gemini; next}
@@ -37,7 +60,11 @@ awk -v db="$password" -v hearth="$secret" -v gemini="$gemini" -v tunnel="$tunnel
 if [[ -e .env ]]; then echo ".env appeared during setup; refusing to overwrite." >&2; exit 1; fi
 mv -n "$tmp" .env
 mkdir -p data/app data/postgres
-echo "Configuration saved securely."
+echo "Configuration saved securely. Future docker compose commands use the selected overlay from .env."
+if [[ "$scenario" == 2 ]]; then
+  echo "Verify the independent connector and external network exist before starting the app."
+  echo "Cloudflare origin: http://$proxy_alias:80"
+fi
 if ! command -v docker >/dev/null 2>&1; then
   echo "Docker is not installed. See the installation troubleshooting guide."
   exit 0
@@ -48,6 +75,10 @@ if ! docker compose version >/dev/null 2>&1; then
 fi
 if ! docker info >/dev/null 2>&1; then
   echo "Docker isn't accessible to your account. See the installation troubleshooting guide."
+  exit 0
+fi
+if [[ "$scenario" == 2 ]] && ! docker network inspect "$proxy_network" >/dev/null 2>&1; then
+  echo "External network is missing. Follow docs/install/cloudflare.md to prepare the connector."
   exit 0
 fi
 if ! docker compose config --quiet; then
