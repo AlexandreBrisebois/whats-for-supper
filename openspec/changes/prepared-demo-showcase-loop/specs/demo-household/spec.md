@@ -1,5 +1,7 @@
 # Demo household delta
 
+This is the proposed remaining capture/reset delta, not implementation approval. Date, fixture, authority, compatibility, maintenance, availability and recurrence choices remain subject to design.md decisions 1–7. The conditionally dependent #348 owns provider refusal, model-free exploration and the context explanation; design.md preserves the removed requirement/scenario mappings. Its unmerged implementation is not current-main behavior.
+
 ## MODIFIED Requirements
 
 ### Requirement: Accept demo snapshot capture as background work
@@ -187,21 +189,6 @@ Management diagnostics SHALL distinguish baseline absence, unsupported format, f
 - **WHEN** a reschedule task is newer than the completed reset task
 - **THEN** management diagnostics still distinguish the reset outcome from successor scheduling
 
-### Requirement: Keep the ordinary Search entry visible in demo presentation
-The Recipes page SHALL retain ordinary Search in visitor mode and serve typed search through model-free lexical retrieval with existing filters and recovery navigation. Similar SHALL use compatible prepared embeddings or lexical source facts without generating a query embedding. Visitor edits SHALL retain lexical availability without paid repair.
-
-#### Scenario: Search input available
-- **WHEN** a visitor searches prepared recipes
-- **THEN** the input remains visible and results require no outbound model request
-
-#### Scenario: Prepared embedding unavailable
-- **WHEN** prepared search embeddings are missing or incompatible
-- **THEN** lexical search and Similar fallback remain usable without provider retries
-
-#### Scenario: Visitor edits a recipe
-- **WHEN** a visitor changes searchable facts, rating, notes or discoverability
-- **THEN** derived lexical state is updated without embedding generation and stale embeddings are not presented as current
-
 ### Requirement: Reset aggregate history with demo state
 Capture SHALL include complete aggregate history consistent with baseline recipes and calendar policy. Successful reset SHALL replace history exactly once, regenerate operational round/history identities and invalidate stale close requests. Legacy incomplete demo snapshots SHALL require recapture, independently of ordinary backup merge compatibility.
 
@@ -226,50 +213,16 @@ Visitor mode SHALL apply whenever API demo mode is enabled. Baseline capture, re
 - **WHEN** a visitor calls management capture or selection using only demo household access
 - **THEN** the request is rejected before modifying the selected baseline or preparation policy
 
+#### Scenario: Alternate baseline dispatch
+- **WHEN** a visitor uses generic workflow trigger or task reset to launch or replay baseline capture
+- **THEN** operator authorization is enforced before that work can be accepted or modify the selected baseline; the management-route restriction cannot be bypassed
+
 #### Scenario: Authorized preparation
 - **WHEN** an operator explicitly prepares and captures a baseline outside visitor mode
 - **THEN** normal preparation can proceed under operator authority without exposing that authority to the visitor session
 
-### Requirement: Enforce visitor mode at every model boundary
-While visitor mode is active, the system SHALL send zero outbound AI/model requests from requests, workflows, retries, startup, maintenance or reset. This includes chat, streaming, query/document embeddings, extraction, synthesis, categorization and image generation, including direct provider clients. A feature override, force flag or available credential SHALL NOT bypass this policy.
-
-#### Scenario: Direct and background routes
-- **WHEN** visitors search, edit, upload, reimport, regenerate a hero, request suggestions or trigger permitted management actions
-- **THEN** neither synchronous nor subsequently queued/retried work sends a model request
-
-#### Scenario: Maintenance and reset
-- **WHEN** startup, dreaming, reconciliation, reset or successor scheduling runs in visitor mode
-- **THEN** no model request is sent, including for stale or missing embeddings and categories
-
-#### Scenario: Credentials exist
-- **WHEN** provider credentials and model-enabled feature flags are available in visitor mode
-- **THEN** the no-request policy still holds at each provider boundary
-
-#### Scenario: Preparation is separate
-- **WHEN** an operator explicitly prepares content outside visitor mode
-- **THEN** normal authorized AI behavior is available, but visitors cannot switch the serving installation into that preparation state
-
-### Requirement: Give honest model-free visitor outcomes
-Visitor interactions SHALL use prepared content or deterministic local behavior when available. Unsupported AI-dependent actions SHALL explain the demo limitation before work starts and SHALL NOT claim acquired, generated or repaired content exists. Ordinary non-demo behavior SHALL remain unchanged.
-
-#### Scenario: Hero regeneration
-- **WHEN** a visitor requests forced hero generation
-- **THEN** the existing prepared hero remains and the action reports that generation is unavailable in demo mode without a provider call
-
-#### Scenario: Capture cannot be fulfilled locally
-- **WHEN** a visitor submits content requiring AI extraction
-- **THEN** the interface offers a prepared demonstration or explicit unavailable outcome, not a false ready recipe or endless retry
-
-#### Scenario: Limitation before upload
-- **WHEN** a visitor opens photo, PDF, URL, description, reimport or image-generation entry that cannot run locally
-- **THEN** it explains the demo restriction before starting the operation and offers a prepared original/recipe or return action without accepting a private upload for simulated processing
-
-#### Scenario: Non-demo installation
-- **WHEN** demo mode is disabled in an ordinary authorized installation
-- **THEN** its existing AI actions and provider behavior remain available under their ordinary contracts
-
 ### Requirement: Rebuild derived state without restoring operational tokens
-Reset SHALL rebuild SQL views, lexical/filter/affinity state and client-visible generations deterministically from restored facts. It SHALL reuse only compatible prepared embeddings and SHALL invalidate process-local continuation caches and stale optimistic writes. Host configuration, credentials, backup archives and device preferences SHALL NOT be captured or reset as household facts.
+Reset SHALL rebuild SQL views and lexical/filter/affinity state from restored facts without model requests. It SHALL reuse only compatible prepared embeddings and invalidate stale continuations and optimistic writes through the accepted reset boundary. Host configuration, credentials, backup archives and device preferences SHALL NOT be captured or reset as household facts.
 
 #### Scenario: New table or state owner
 - **WHEN** the supported household schema introduces a state category not classified by the baseline format
@@ -287,11 +240,16 @@ Reset SHALL rebuild SQL views, lexical/filter/affinity state and client-visible 
 - **WHEN** a stored setting key or file belongs to host/operator configuration rather than declared household facts
 - **THEN** reset preserves it and never serializes its secrets into the public baseline; unclassified ownership prevents destructive publication
 
+#### Scenario: Reset-triggered local work
+- **WHEN** reset schedules permitted indexing, reconciliation or maintenance and a prior task attempts late publication
+- **THEN** the new household's derived state is built without model requests and obsolete work cannot overwrite it
+- **AND** accepted model-free imports, local report resolution and prepared content remain usable under their ordinary demo contracts, with visitor-only membership removed by reset
+
 ### Requirement: Apply one explicit calendar anchor to the prepared household
-The baseline SHALL record its application-calendar anchor and policy. Under the proposed relative-week policy, reset SHALL apply one whole-week offset to all declared calendar-facing dates and week keys, preserving weekday, ordering, lineage and relative historical windows. Audit timestamps SHALL retain their meaning; reset SHALL NOT change the application clock or UTC cron schedule.
+The baseline SHALL record its accepted calendar policy and anchor. Under the proposed relative-week option, reset SHALL use one whole-week offset for declared calendar-facing dates and week keys, preserving weekday, ordering and lineage. Audit, retention and notification timestamps SHALL follow their separately reviewed field policies. Reset SHALL NOT change the application clock or UTC cron schedule.
 
 #### Scenario: Reset in a later week
-- **WHEN** a baseline is reset several weeks after capture
+- **WHEN** a baseline using the proposed relative-week policy is reset several weeks after capture
 - **THEN** plans, calendar events, extra occurrences and aggregate history move coherently relative to the reset application's current week
 
 #### Scenario: Boundary and retry
@@ -299,8 +257,8 @@ The baseline SHALL record its application-calendar anchor and policy. Under the 
 - **THEN** one pinned anchor governs the complete publication; related records cannot land in different reset weeks
 
 #### Scenario: Rebased state eligibility
-- **WHEN** dated recipe rotation, cooked, deferred or deletion state participates in eligibility
-- **THEN** its declared calendar mapping is validated together with planner/history references, without shifting operational expiry or retry timestamps
+- **WHEN** LastCookedDate, CreatedAt/New eligibility, DeletedAt retention or other declared timestamp-sensitive facts affect the restored household
+- **THEN** their accepted field policies are validated with planner/history references without silently refreshing audit history, disabling retention or shifting operational expiry/retry timestamps
 
 ### Requirement: Provide a coherent synthetic demo household
 The public baseline SHALL use deterministic synthetic household identities and authored or approved nonprivate content with coherent recipe, plan, grocery, history and asset references. It SHALL retain ordinary voting, explicit plan saving, grocery extras and cooking semantics. It SHALL NOT present prepared votes, media or extracted content as a visitor's own processing result.
@@ -320,73 +278,14 @@ The public baseline SHALL use deterministic synthetic household identities and a
 - **AND** automated qualification fixtures and checks require no AI requests; authorized operator preparation remains separate
 
 ### Requirement: Explain shared demo state and recovery without a tour
-Visitors SHALL be able to use ordinary navigation without a mandatory tour. Localized demo guidance SHALL explain shared public state, periodic loss of visitor edits, AI limitations and a self-hosting next step. Reset recovery SHALL distinguish restored state from successful visitor saves and prevent stale local edits from being silently replayed.
-
-#### Scenario: Entry and independent exploration
-- **WHEN** a visitor enters on iPad, iPhone or Pixel Phone in English or French
-- **THEN** brief readable guidance identifies the shared resettable demo and discourages personal data entry, while exploration, existing member selection and leaving remain available
+Reset recovery SHALL reuse existing demo guidance and ordinary navigation without adding a mandatory tour or replaying a dismissed introduction. It SHALL distinguish restored state from successful visitor saves and prevent stale local edits from being replayed. A localized secondary self-hosting path SHALL explain the difference from operator-configured AI without a free-provider or guaranteed reset-schedule promise.
 
 #### Scenario: Interrupted visitor during reset
 - **WHEN** a visitor returns to a mounted task after reset or misses the reset event
-- **THEN** ordinary reconciliation refreshes its state, explains the reset accessibly and provides a usable continuation without claiming an obsolete save succeeded
+- **THEN** ordinary reconciliation refreshes its authoritative state, explains the reset accessibly in English/French and provides a usable continuation without claiming an obsolete save succeeded
+- **AND** valid device preferences and the demo explanation acknowledgement remain intact; the old local draft is not automatically replayed
 
 #### Scenario: Honest self-hosting choice
 - **WHEN** a visitor follows self-hosting guidance
 - **THEN** it distinguishes the restricted public demo from operator-configured AI capabilities without promising free provider use or that every capability was exercised in the demo
 
-### Requirement: Offer a reopenable demo context explanation
-The demo SHALL provide a compact purple band with readable white text at the top of the ordinary app shell, respecting safe areas, that opens one short phone sheet or compact iPad dialog. It SHALL explain the sample shared household, other visitors' changes, temporary resettable state and avoiding personal information. Start exploring and an explicit close SHALL dismiss it. Existing identity hints SHALL retain their noninteractive meaning.
-
-#### Scenario: Tap the context band
-- **WHEN** a visitor activates Demo · What to know or its French equivalent in the ordinary demo shell
-- **THEN** a named, readable dialog opens with the shared-state explanation, Start exploring and an explicit close, without navigation, household mutation or a mandatory tour
-- **AND** the band remains available after dismissal for voluntary reopening
-
-#### Scenario: Truthful restrictions
-- **WHEN** the explanation describes AI limitations or reset behaviour
-- **THEN** its claims match verified restrictions for the delivered demo and do not imply universal AI blocking, zero cost, processed visitor uploads, a guaranteed reset countdown or a schedule not established by evidence
-
-#### Scenario: Responsive accessible control and surface
-- **WHEN** the context band and explanation render in EN/FR on iPhone, Pixel Phone or iPad
-- **THEN** the band has at least a 44 CSS pixel touch height, visible focus and white-text contrast of at least 4.5:1 on each actual interaction background, with no text clipping or obscured navigation
-- **AND** the phone sheet or compact tablet dialog supports readable focus, accessible name/description, contained keyboard focus, Escape/explicit close, focus return, reduced motion and reachable actions under text expansion
-
-### Requirement: Introduce demo context only at a safe first visit
-An undismissed demo explanation SHALL automatically appear once at the first eligible normal ready Home entry before visitor interaction. It SHALL NOT interrupt active work, another dialog or a deep-link handoff. Deferred readiness SHALL NOT cause a mid-task popup. Automatic introduction SHALL preserve existing destinations and household/member setup.
-
-#### Scenario: First normal ready entry
-- **WHEN** an undismissed visitor reaches ordinary Home with household/member context and routing ready, no pending task or competing dialog, and interaction has not begun
-- **THEN** the explanation opens once before interaction and can be dismissed immediately without a tour or task prerequisites
-
-#### Scenario: Protected handoff
-- **WHEN** entry carries a recipe, capture/share/import or voting deep-link intent
-- **THEN** automatic introduction does not interrupt or replace that destination and is deferred to a later normal visit; voluntary reopening remains available
-
-#### Scenario: Readiness arrives after interaction
-- **WHEN** readiness resolves after a visitor has begun a task or while another dialog is active
-- **THEN** automatic introduction is withheld rather than queued to interrupt the task, and ordinary app behaviour continues
-
-### Requirement: Remember demo explanation dismissal outside shared state
-Start exploring and user-initiated close SHALL store a simple demo-specific browser acknowledgement outside household snapshot/reset state, without a tracking ID or server synchronization. Storage failure SHALL fall back to visit-local memory. Navigation, reset, member/locale switches and cosmetic copy changes SHALL NOT replay an acknowledged introduction. Manual reopening SHALL remain available.
-
-#### Scenario: Dismiss and reset
-- **WHEN** the visitor uses Start exploring or explicit close, then returns, switches members or the demo household resets
-- **THEN** that browser's acknowledgement prevents automatic reintroduction while the context band can still reopen the explanation
-
-#### Scenario: Browser storage unavailable
-- **WHEN** reading or writing persistent browser storage fails
-- **THEN** the explanation remains usable and a visit-local presentation/dismissal guard prevents repeated automatic openings during the same app visit
-- **AND** no durable cross-reload or cross-device memory is promised
-
-#### Scenario: Cosmetic change or another browser
-- **WHEN** wording, styling or locale changes after acknowledgement
-- **THEN** it does not automatically reopen the explanation; another browser/device or cleared storage has its own first-visit state
-
-#### Scenario: Mode-specific preference
-- **WHEN** the pattern is later reused for beta
-- **THEN** demo and beta use distinct acknowledgement keys and truthful mode-specific content; demo acknowledgement does not imply beta dismissal
-- **AND** demo on a beta channel uses the demo explanation without automatically stacking a second mode introduction
-
-#### Scenario: Automatic opening is not acknowledgement
-- **WHEN** the explanation was automatically presented but routing removes it before the visitor dismisses it
-- **THEN** the current visit does not repeatedly open it and no persisted dismissal is manufactured from that unmount
