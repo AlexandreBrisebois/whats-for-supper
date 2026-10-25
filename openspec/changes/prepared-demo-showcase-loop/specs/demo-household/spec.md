@@ -335,7 +335,7 @@ Visitors SHALL be able to use ordinary navigation without a mandatory tour. Loca
 - **THEN** it distinguishes the restricted public demo from operator-configured AI capabilities without promising free provider use or that every capability was exercised in the demo
 
 ### Requirement: Offer a reopenable demo context explanation
-The demo SHALL provide a compact purple band with readable white text that opens one short phone sheet or compact iPad dialog. It SHALL explain the sample shared household, other visitors' changes, temporary resettable state and avoiding personal information. Start exploring and an explicit close SHALL dismiss it. Existing identity hints SHALL retain their noninteractive meaning.
+The demo SHALL provide a compact purple band with readable white text at the top of the ordinary app shell, respecting safe areas, that opens one short phone sheet or compact iPad dialog. It SHALL explain the sample shared household, other visitors' changes, temporary resettable state and avoiding personal information. Start exploring and an explicit close SHALL dismiss it. Existing identity hints SHALL retain their noninteractive meaning.
 
 #### Scenario: Tap the context band
 - **WHEN** a visitor activates Demo · What to know or its French equivalent in the ordinary demo shell
