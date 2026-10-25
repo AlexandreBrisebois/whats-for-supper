@@ -46,6 +46,15 @@ class MockEventSource {
       )
     );
   }
+  emitChecks(groceryState: Record<string, boolean>, weekStartDate = '2025-01-06') {
+    act(() =>
+      this.listeners.get('grocery_updated')?.(
+        new MessageEvent('grocery_updated', {
+          data: JSON.stringify({ weekStartDate, groceryState }),
+        })
+      )
+    );
+  }
   close() {}
 }
 
@@ -72,6 +81,27 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('raw grocery snapshots through the stream and real stores', () => {
+  it('applies ordered complete maps including explicit false and empty clear', () => {
+    renderHook(() => useScheduleStream());
+    MockEventSource.instance.emitChecks({ Carrots: true });
+    MockEventSource.instance.emitChecks({ Carrots: true, Onions: true });
+    expect(usePlannerStore.getState().groceryState).toEqual({ Carrots: true, Onions: true });
+    MockEventSource.instance.emitChecks({ Carrots: false, Onions: true });
+    expect(usePlannerStore.getState().groceryState).toEqual({ Carrots: false, Onions: true });
+    MockEventSource.instance.emitChecks({});
+    expect(usePlannerStore.getState().groceryState).toEqual({});
+    MockEventSource.instance.emitChecks({ WrongWeek: true }, '2025-01-13');
+    expect(usePlannerStore.getState().groceryState).toEqual({});
+  });
+
+  it('documents same-week older snapshot acceptance and fresh reread recovery', () => {
+    renderHook(() => useScheduleStream());
+    MockEventSource.instance.emitChecks({ Carrots: true, Onions: true });
+    MockEventSource.instance.emit('week_updated', snapshot({}));
+    expect(usePlannerStore.getState().groceryState).toEqual({});
+    MockEventSource.instance.emit('connected', snapshot({ Carrots: true, Onions: true }));
+    expect(usePlannerStore.getState().groceryState).toEqual({ Carrots: true, Onions: true });
+  });
   it.each(['connected', 'week_updated'])(
     '%s reconciles checks and unchecked values with grocery items',
     (event) => {

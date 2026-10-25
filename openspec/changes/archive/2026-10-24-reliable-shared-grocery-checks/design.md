@@ -50,5 +50,14 @@ Keep immediate checkbox feedback and ordinary navigation; the request remains pe
 
 ## Evidence and Verification Limits
 
-This planning pass used GitHub Connector source/spec inspection only. No runtime reproduction, local OpenSpec CLI, task harness, database test or browser qualification was run. Draft CI can validate artifact syntax, not the proposed concurrency correction. All implementation tasks remain unchecked.
+This planning pass used GitHub Connector source/spec inspection only. No runtime reproduction, local OpenSpec CLI, task harness, database test or browser qualification was run. That initial planning pass established no runtime qualification. Current implementation progress and observed runtime evidence are recorded in tasks.md.
 
+
+## Implementation audit (2026-10-24, task 1.2)
+
+- Normal map assignment inventory: only `ScheduleService.UpdateGroceryStateAsync`, `ScheduleService.ToggleGroceryItemAsync` and `GroceryRecomputeService.RecomputeForWeekAsync` assign `WeeklyPlan.GroceryState`. Administrative restore is outside this boundary.
+- Selected owner: singleton `GroceryCheckCoordinator`, holding only a semaphore and scope factory. Item/full-map entrypoints acquire once and perform their read/save/publication in a new scope. Recompute's public week entrypoint acquires once, passes the fresh scoped database context to its internal already-owned computation. Recipe/ingredient loops call the public week entrypoint once per week; the internal operation never acquires recursively.
+- All inspected recompute callers commit before recompute: assignment/guarded assignment, move/plan-later, Tomorrow, removal and cooked-date recalculation, category PATCH and SyncRecipeProcessor. Existing VotingBoundary/transaction lifetimes end before these calls. No selected fresh-scope computation needs uncommitted caller state.
+- Original scopes can already track weekly plans (including newly ensured plans). No normal caller uses blanket Update/Modified for WeeklyPlan. After the coordinated operation, synchronize only existing tracked grocery fields and their original values from its saved result, preserving other pending fields and tracker entries. Subsequent schedule reads then see the recomputed fields; this is not a whole-tracker reload/clear. A later independent snapshot may still be stale.
+- Lock order: caller planner/voting transaction must finish before grocery gate. The grocery worker uses no voting lock and grocery publication does not refresh VotingSession. SseConnectionManager uses per-connection write semaphores; BroadcastAsync has no explicit timeout, so a slow publication can extend the grocery gate lifetime without a promised bound.
+- PostgreSQL reproduction: two independent request reads were held before either save, both returned 204, third-scope map lost Tomato=true. See task evidence for run identity.

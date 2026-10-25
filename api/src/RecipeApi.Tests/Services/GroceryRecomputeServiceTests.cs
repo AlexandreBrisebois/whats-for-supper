@@ -41,7 +41,7 @@ public class GroceryRecomputeServiceTests : IAsyncLifetime
         _db = _scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
         var logger = _scope.ServiceProvider.GetRequiredService<ILogger<GroceryRecomputeService>>();
         var aisleMapper = new AisleMapper();
-        _service = new GroceryRecomputeService(_db, aisleMapper, logger, new SystemClock(), new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()));
+        _service = new GroceryRecomputeService(_db, aisleMapper, logger, new SystemClock(), new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()), _scope.ServiceProvider.GetRequiredService<GroceryCheckCoordinator>());
     }
 
     public async Task DisposeAsync()
@@ -396,7 +396,7 @@ public class GroceryRecomputeServiceTests : IAsyncLifetime
     {
         var monday = new DateOnly(2025, 3, 3);
         var publisher = new Mock<IScheduleEventPublisher>();
-        var service = new GroceryRecomputeService(_db, new AisleMapper(), _scope.ServiceProvider.GetRequiredService<ILogger<GroceryRecomputeService>>(), new FixedClock(new DateTimeOffset(2025, 3, 4, 12, 0, 0, TimeSpan.Zero)), new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()), publisher.Object);
+        var service = new GroceryRecomputeService(_db, new AisleMapper(), _scope.ServiceProvider.GetRequiredService<ILogger<GroceryRecomputeService>>(), new FixedClock(new DateTimeOffset(2025, 3, 4, 12, 0, 0, TimeSpan.Zero)), new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()), _scope.ServiceProvider.GetRequiredService<GroceryCheckCoordinator>(), publisher.Object);
         var predecessorLines = new List<GroceryLineItemDto>
         {
             new("huile d'olive", "huile d'olive", "Pantry", 1, "ml", []),

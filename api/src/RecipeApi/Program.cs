@@ -156,6 +156,7 @@ try
     builder.Services.AddSingleton<VotingSession>();
     builder.Services.AddScoped<DiscoveryService>();
     builder.Services.AddScoped<ScheduleService>();
+    builder.Services.AddSingleton<GroceryCheckCoordinator>();
     builder.Services.AddScoped<GroceryRecomputeService>();
     builder.Services.AddScoped<IngredientCategoryService>();
     builder.Services.AddScoped<SettingsService>();

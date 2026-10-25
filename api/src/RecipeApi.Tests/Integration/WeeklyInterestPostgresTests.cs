@@ -61,7 +61,7 @@ public class WeeklyInterestPostgresTests(Xunit.Abstractions.ITestOutputHelper ou
 
     private RecipeDbContext Context() => new(new DbContextOptionsBuilder<RecipeDbContext>().UseNpgsql(connection).Options);
     private ScheduleService Schedule(RecipeDbContext context, IScheduleEventPublisher? publisher = null) =>
-        new(context, NullLogger<ScheduleService>.Instance, publisher ?? Mock.Of<IScheduleEventPublisher>(), null!, clock, calendar, RecipeApi.Tests.Infrastructure.TestHistoricalInterest.Create(context, clock, calendar));
+        new(context, NullLogger<ScheduleService>.Instance, publisher ?? Mock.Of<IScheduleEventPublisher>(), null!, clock, calendar, RecipeApi.Tests.Infrastructure.TestHistoricalInterest.Create(context, clock, calendar), TestGroceryCoordinator.Create(context));
     private DiscoveryService Voting(RecipeDbContext context) => new(context, Mock.Of<IScheduleEventPublisher>(), clock, calendar, RecipeApi.Tests.Infrastructure.TestHistoricalInterest.Create(context, clock, calendar));
 
     [DeploymentCalendarPostgresTests.CalendarLiveFact]
@@ -252,7 +252,7 @@ public class WeeklyInterestPostgresTests(Xunit.Abstractions.ITestOutputHelper ou
             for (var i = 0; i < rows.Length; i++)
                 db.CalendarEvents.Add(new CalendarEvent { RecipeId = rows[i].Id, Date = cutoff.AddDays(i - 1), Status = CalendarEventStatus.Planned });
             await db.SaveChangesAsync();
-            var schedule = new ScheduleService(db, NullLogger<ScheduleService>.Instance, Mock.Of<IScheduleEventPublisher>(), null!, calendarClock, localCalendar, RecipeApi.Tests.Infrastructure.TestHistoricalInterest.Create(db, calendarClock, localCalendar));
+            var schedule = new ScheduleService(db, NullLogger<ScheduleService>.Instance, Mock.Of<IScheduleEventPublisher>(), null!, calendarClock, localCalendar, RecipeApi.Tests.Infrastructure.TestHistoricalInterest.Create(db, calendarClock, localCalendar), RecipeApi.Tests.Infrastructure.TestGroceryCoordinator.Create(db));
             await schedule.FinalizeOverdueMealsAsync();
             for (var i = 0; i < rows.Length; i++)
             {

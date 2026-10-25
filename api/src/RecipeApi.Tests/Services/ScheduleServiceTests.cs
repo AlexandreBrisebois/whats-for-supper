@@ -27,7 +27,7 @@ public class ScheduleServiceTests : IAsyncLifetime
         var logger = _scope.ServiceProvider.GetRequiredService<ILogger<ScheduleService>>();
         _publisherMock = new Mock<IScheduleEventPublisher>();
         var groceryRecomputeService = _scope.ServiceProvider.GetRequiredService<GroceryRecomputeService>();
-        _service = new ScheduleService(_db, logger, _publisherMock.Object, groceryRecomputeService, _scope.ServiceProvider.GetRequiredService<IClock>(), new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()), RecipeApi.Tests.Infrastructure.TestHistoricalInterest.Create(_db, _scope.ServiceProvider.GetRequiredService<IClock>(), new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager())));
+        _service = new ScheduleService(_db, logger, _publisherMock.Object, groceryRecomputeService, _scope.ServiceProvider.GetRequiredService<IClock>(), new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()), RecipeApi.Tests.Infrastructure.TestHistoricalInterest.Create(_db, _scope.ServiceProvider.GetRequiredService<IClock>(), new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager())), _scope.ServiceProvider.GetRequiredService<GroceryCheckCoordinator>());
     }
 
     public async Task DisposeAsync()
@@ -715,7 +715,7 @@ public class ScheduleServiceTests : IAsyncLifetime
     {
         var logger = _scope.ServiceProvider.GetRequiredService<ILogger<ScheduleService>>();
         var groceryRecomputeService = _scope.ServiceProvider.GetRequiredService<GroceryRecomputeService>();
-        return new ScheduleService(_db, logger, _publisherMock.Object, groceryRecomputeService, clock, new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()), RecipeApi.Tests.Infrastructure.TestHistoricalInterest.Create(_db, clock, new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager())));
+        return new ScheduleService(_db, logger, _publisherMock.Object, groceryRecomputeService, clock, new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()), RecipeApi.Tests.Infrastructure.TestHistoricalInterest.Create(_db, clock, new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager())), _scope.ServiceProvider.GetRequiredService<GroceryCheckCoordinator>());
     }
 
     private sealed class FixedClock(DateTimeOffset now) : IClock

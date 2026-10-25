@@ -287,6 +287,7 @@ export async function setupCommonRoutes(
     version: number;
     removed?: boolean;
   };
+  const groceryChecks = new Map<string, Record<string, boolean>>();
   const groceryExtras = new Map<string, MockExtra>();
   const extraSubmissions = new Map<string, { id: string; name: string; week: string }>();
   const extraHistory: string[] = [];
@@ -308,6 +309,7 @@ export async function setupCommonRoutes(
       ...scheduleCalendar,
       referenceWeekStartDate: reference,
     });
+    schedule.groceryState = { ...(groceryChecks.get(schedule.weekStartDate) ?? {}) };
     schedule.status = weekStatuses.get(schedule.weekStartDate) ?? 0;
     schedule.locked = schedule.status === 2;
     schedule.votingRoundId =
@@ -1645,17 +1647,59 @@ export async function setupCommonRoutes(
     await route.fulfill({ json: { data: readSmartDefaults(offset, reference) } });
   });
 
-  // PATCH /api/schedule/{weekOffset}/grocery/item
+  // Recipe-derived checks share processing/publication order within this mock host.
+  let groceryWrites = Promise.resolve();
+  const processGroceryWrite = (operation: () => Promise<void>) => {
+    const next = groceryWrites.then(operation);
+    groceryWrites = next.catch(() => {});
+    return next;
+  };
+  const groceryWeek = (route: Route) =>
+    addDays(
+      scheduleCalendar.currentWeekStartDate,
+      Number(new URL(route.request().url()).pathname.split('/')[3]) * 7
+    );
+  const emitGroceryChecks = async (route: Route, checks: Record<string, boolean>) => {
+    await page.evaluate(
+      ({ weekOffset, weekStartDate, groceryState }) => {
+        const source = (window as any).__sseSource as EventSource | undefined;
+        source?.dispatchEvent(
+          new MessageEvent('grocery_updated', {
+            data: JSON.stringify({
+              type: 'grocery_updated',
+              weekOffset,
+              weekStartDate,
+              groceryState,
+            }),
+          })
+        );
+      },
+      {
+        weekOffset: Number(new URL(route.request().url()).pathname.split('/')[3]),
+        weekStartDate: groceryWeek(route),
+        groceryState: checks,
+      }
+    );
+  };
   await page.route('**/api/schedule/*/grocery/item', async (route) => {
-    await route.fulfill({ status: 204 });
+    if (route.request().method() !== 'PATCH') return route.fallback();
+    await processGroceryWrite(async () => {
+      const body = route.request().postDataJSON() as { ingredientName: string; checked: boolean };
+      const week = groceryWeek(route);
+      const checks = { ...(groceryChecks.get(week) ?? {}), [body.ingredientName]: body.checked };
+      groceryChecks.set(week, checks);
+      await route.fulfill({ status: 204 });
+      await emitGroceryChecks(route, checks);
+    });
   });
 
-  // PATCH /api/schedule/{weekOffset}/grocery
   await page.route('**/api/schedule/*/grocery', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ data: {} }),
+    if (route.request().method() !== 'PATCH') return route.fallback();
+    await processGroceryWrite(async () => {
+      const checks = { ...(route.request().postDataJSON() as Record<string, boolean>) };
+      groceryChecks.set(groceryWeek(route), checks);
+      await route.fulfill({ status: 200, json: { data: checks } });
+      await emitGroceryChecks(route, checks);
     });
   });
 

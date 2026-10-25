@@ -21,6 +21,7 @@ public class GroceryRecomputeService(
     ILogger<GroceryRecomputeService> logger,
     IClock clock,
     DeploymentCalendar calendar,
+    GroceryCheckCoordinator groceryChecks,
     IScheduleEventPublisher? publisher = null)
 {
     private sealed record IntermediateItem(
@@ -57,9 +58,22 @@ public class GroceryRecomputeService(
     /// Recomputes <c>grocery_items</c> for the week starting on <paramref name="monday"/>.
     /// Creates the <c>weekly_plans</c> row if it does not yet exist.
     /// </summary>
-    public async Task RecomputeForWeekAsync(DateOnly monday, CancellationToken ct, DeploymentCalendarContext? context = null)
+    public Task RecomputeForWeekAsync(DateOnly monday, CancellationToken ct, DeploymentCalendarContext? context = null)
     {
         context ??= calendar.Capture(clock.UtcNow);
+        return groceryChecks.ProcessAsync(async fresh =>
+        {
+            var (plan, groceryState, changedState) = await RecomputeOwnedAsync(fresh, monday, ct);
+            GroceryCheckCoordinator.SynchronizeTrackedPlan(db, monday, plan.GroceryState, plan.GroceryItems);
+            if (changedState && publisher != null)
+                await publisher.PublishGroceryUpdatedAsync(GetWeekOffset(monday, context), groceryState, monday);
+            return true;
+        }, ct);
+    }
+
+    private async Task<(WeeklyPlan Plan, Dictionary<string, bool> Checks, bool Changed)> RecomputeOwnedAsync(
+        RecipeDbContext db, DateOnly monday, CancellationToken ct)
+    {
         var sunday = monday.AddDays(6);
 
         // 1. Load all CalendarEvents for the week, including Recipe.RawMetadata.
@@ -261,12 +275,10 @@ public class GroceryRecomputeService(
             plan.GroceryState = JsonSerializer.Serialize(groceryState);
         await db.SaveChangesAsync(ct);
 
-        if (changedState && publisher != null)
-            await publisher.PublishGroceryUpdatedAsync(GetWeekOffset(monday, context), groceryState, monday);
-
         logger.LogInformation(
             "Recomputed grocery_items for week starting {Monday}: {Count} line items",
             monday, grouped.Count);
+        return (plan, groceryState, changedState);
     }
 
     /// <summary>

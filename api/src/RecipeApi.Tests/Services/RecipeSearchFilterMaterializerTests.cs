@@ -101,8 +101,8 @@ public class RecipeSearchFilterMaterializerTests : IDisposable
             Id = Guid.NewGuid(), RecipeId = recipe.Id, Date = DateOnly.FromDateTime(_clock.UtcNow.Date).AddDays(-1), Status = CalendarEventStatus.Planned
         });
         await _db.SaveChangesAsync();
-        var grocery = new GroceryRecomputeService(_db, new AisleMapper(), NullLogger<GroceryRecomputeService>.Instance, new SystemClock(), new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()));
-        var schedule = new ScheduleService(_db, NullLogger<ScheduleService>.Instance, new Mock<IScheduleEventPublisher>().Object, grocery, _clock, new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()), RecipeApi.Tests.Infrastructure.TestHistoricalInterest.Create(_db, _clock, new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager())));
+        var grocery = new GroceryRecomputeService(_db, new AisleMapper(), NullLogger<GroceryRecomputeService>.Instance, new SystemClock(), new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()), RecipeApi.Tests.Infrastructure.TestGroceryCoordinator.Create(_db));
+        var schedule = new ScheduleService(_db, NullLogger<ScheduleService>.Instance, new Mock<IScheduleEventPublisher>().Object, grocery, _clock, new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()), RecipeApi.Tests.Infrastructure.TestHistoricalInterest.Create(_db, _clock, new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager())), RecipeApi.Tests.Infrastructure.TestGroceryCoordinator.Create(_db));
         var backfill = new RecipeSearchFilterBackfillService(schedule, new RecipeSearchFilterMaterializer(_db, _clock));
 
         await backfill.InitializeAsync(CancellationToken.None);

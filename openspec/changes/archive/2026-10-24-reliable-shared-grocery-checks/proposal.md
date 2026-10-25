@@ -8,7 +8,7 @@ Two household members checking different groceries should not erase each other's
 
 On the user's confirmed single-instance deployment, overlapping recipe-derived item checks survive a fresh persisted read. Conflicting values for one key follow server processing order, not click time or FIFO arrival order. Existing full-map replacement and recomputation must participate because they write the same map, without changing their business semantics.
 
-The user selected simultaneous grocery checks and explicitly excluded the separate overnight maintenance scenario. This is specification-only exploration: no implementation, merge, archive or application-contract edit is authorized here.
+The user selected simultaneous grocery checks and explicitly excluded the separate overnight maintenance scenario. The original exploration was specification-only. The subsequent explicit apply request authorizes the planned implementation and application-contract reconciliation; merge and archive remain separate actions.
 
 Excluded: planner/overnight-maintenance coordination, distributed queues or locks, grocery-extra versioning changes, canonical ingredient IDs, multilingual aliases, generic locking infrastructure, administrative restore/reset redesign, arbitrary throughput promises, and a new client revision/incarnation protocol. Durable saving and ordered publication attempts do not guarantee universal HTTP/SSE response freshness.
 

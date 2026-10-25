@@ -53,7 +53,7 @@ export function deserializeIntoItemPatchRequestBody(
  */
 export interface Item_EscapedRequestBuilder extends BaseRequestBuilder<Item_EscapedRequestBuilder> {
   /**
-   * Merges a single item into the server-side grocery state atomically. Safe for concurrent use by multiple family members — each tap is an independent operation that cannot overwrite another member's simultaneous toggles.
+   * On one application instance, stores the supplied intended check value while retaining other current persisted entries. Item updates, full-map replacements and recomputation transitions share one server processing order, which does not imply click or arrival order. Returns 204 after persistence and the grocery publication attempt. Publication attempts follow this processing order; independent snapshots may still arrive late. A fresh read after outstanding operations settle recovers committed state.
    * @param body The request body
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @throws {RecoveryBusyError} error when the service returns a 503 status code
@@ -63,7 +63,7 @@ export interface Item_EscapedRequestBuilder extends BaseRequestBuilder<Item_Esca
     requestConfiguration?: RequestConfiguration<object> | undefined
   ): Promise<void>;
   /**
-   * Merges a single item into the server-side grocery state atomically. Safe for concurrent use by multiple family members — each tap is an independent operation that cannot overwrite another member's simultaneous toggles.
+   * On one application instance, stores the supplied intended check value while retaining other current persisted entries. Item updates, full-map replacements and recomputation transitions share one server processing order, which does not imply click or arrival order. Returns 204 after persistence and the grocery publication attempt. Publication attempts follow this processing order; independent snapshots may still arrive late. A fresh read after outstanding operations settle recovers committed state.
    * @param body The request body
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {RequestInformation}

@@ -48,6 +48,7 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
     private readonly IChatClient? _chatClient;
     private readonly IClock? _clock;
     private readonly Action<WebApplication>? _configureApplication;
+    private readonly Action<IServiceCollection>? _configureServices;
     private readonly Dictionary<string, string?> _configurationOverrides = [];
 
     private ISearchTelemetry? _telemetry;
@@ -56,12 +57,14 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
         Dictionary<string, string?>? configurationOverrides = null,
         IChatClient? chatClient = null,
         IClock? clock = null,
-        Action<WebApplication>? configureApplication = null)
+        Action<WebApplication>? configureApplication = null,
+        Action<IServiceCollection>? configureServices = null)
     {
         _enableAuth = enableAuth;
         _chatClient = chatClient;
         _clock = clock;
         _configureApplication = configureApplication;
+        _configureServices = configureServices;
         if (configurationOverrides is not null)
         {
             _configurationOverrides = configurationOverrides;
@@ -106,9 +109,10 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
     public static async Task<TestWebApplicationFactory> CreateWithAuthAsync(
         IClock? clock = null,
         Dictionary<string, string?>? configurationOverrides = null,
-        Action<WebApplication>? configureApplication = null)
+        Action<WebApplication>? configureApplication = null,
+        Action<IServiceCollection>? configureServices = null)
     {
-        var factory = new TestWebApplicationFactory(enableAuth: true, configurationOverrides, clock: clock, configureApplication: configureApplication);
+        var factory = new TestWebApplicationFactory(enableAuth: true, configurationOverrides, clock: clock, configureApplication: configureApplication, configureServices: configureServices);
         await factory.StartAsync();
         return factory;
     }
@@ -176,6 +180,7 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
         builder.Services.AddSingleton<AisleMapper>();
         builder.Services.AddSingleton<SseConnectionManager>();
         builder.Services.AddScoped<IScheduleEventPublisher, SseEventPublisher>();
+        builder.Services.AddSingleton<GroceryCheckCoordinator>();
         builder.Services.AddScoped<GroceryRecomputeService>();
         builder.Services.AddScoped<GroceryExtraService>();
         builder.Services.AddScoped<GroceryExtraRolloverService>();
@@ -321,6 +326,7 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
         }
         else builder.WebHost.UseTestServer();
 
+        _configureServices?.Invoke(builder.Services);
         _app = builder.Build();
         _ = _app.Services.GetRequiredService<DeploymentCalendar>();
 
@@ -332,14 +338,18 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
 
             // Seed with the same supplied clock as application creation owners.
             var seededAt = scope.ServiceProvider.GetRequiredService<IClock>().UtcNow;
-            var member = new RecipeApi.Models.FamilyMember
+            var member = await db.FamilyMembers.FirstOrDefaultAsync(m => m.Name == "CI Test User");
+            if (member is null)
             {
-                Name = "CI Test User",
-                CreatedAt = seededAt,
-                UpdatedAt = seededAt
-            };
-            db.FamilyMembers.Add(member);
-            await db.SaveChangesAsync();
+                member = new RecipeApi.Models.FamilyMember
+                {
+                    Name = "CI Test User",
+                    CreatedAt = seededAt,
+                    UpdatedAt = seededAt
+                };
+                db.FamilyMembers.Add(member);
+                await db.SaveChangesAsync();
+            }
             DefaultFamilyMemberId = member.Id;
         }
 

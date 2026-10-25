@@ -24,8 +24,8 @@ public class NonCookingScheduleTests : IDisposable
     {
         var publisher = new Mock<IScheduleEventPublisher>();
         var clock = new FixedClock(new DateTimeOffset(2026, 10, 12, 12, 0, 0, TimeSpan.Zero));
-        var grocery = new GroceryRecomputeService(_db, new AisleMapper(), NullLogger<GroceryRecomputeService>.Instance, clock, new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()), publisher.Object);
-        _service = new ScheduleService(_db, NullLogger<ScheduleService>.Instance, publisher.Object, grocery, clock, new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()), RecipeApi.Tests.Infrastructure.TestHistoricalInterest.Create(_db, clock, new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager())));
+        var grocery = new GroceryRecomputeService(_db, new AisleMapper(), NullLogger<GroceryRecomputeService>.Instance, clock, new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()), RecipeApi.Tests.Infrastructure.TestGroceryCoordinator.Create(_db), publisher.Object);
+        _service = new ScheduleService(_db, NullLogger<ScheduleService>.Instance, publisher.Object, grocery, clock, new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()), RecipeApi.Tests.Infrastructure.TestHistoricalInterest.Create(_db, clock, new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager())), RecipeApi.Tests.Infrastructure.TestGroceryCoordinator.Create(_db));
     }
 
     private static ValidationDto Plan(string kind, string? label = null, int status = 3) =>

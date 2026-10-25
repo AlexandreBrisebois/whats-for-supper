@@ -9,7 +9,7 @@ using static RecipeApi.Dto.SmartDefaultsDto;
 
 namespace RecipeApi.Services;
 
-public partial class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService> logger, IScheduleEventPublisher publisher, GroceryRecomputeService groceryRecomputeService, IClock clock, DeploymentCalendar calendar, HistoricalInterestService historicalInterest, GroceryExtraService? groceryExtras = null, GroceryExtraRolloverService? groceryExtraRollover = null)
+public partial class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService> logger, IScheduleEventPublisher publisher, GroceryRecomputeService groceryRecomputeService, IClock clock, DeploymentCalendar calendar, HistoricalInterestService historicalInterest, GroceryCheckCoordinator groceryChecks, GroceryExtraService? groceryExtras = null, GroceryExtraRolloverService? groceryExtraRollover = null)
 {
     private readonly RecipeDbContext _dbContext = dbContext;
     private readonly ILogger<ScheduleService> _logger = logger;
@@ -891,43 +891,44 @@ public partial class ScheduleService(RecipeDbContext dbContext, ILogger<Schedule
             ? new NonCookingPlanDto(entry.NonCookingKind ?? "order_in", entry.NonCookingLabel)
             : null;
 
-    public async Task<Dictionary<string, bool>> UpdateGroceryStateAsync(
+    public Task<Dictionary<string, bool>> UpdateGroceryStateAsync(
         int weekOffset,
         Dictionary<string, bool> groceryState,
-        string? excludeConnectionId = null)
-    {
-        var (monday, _) = GetWeekBounds(weekOffset);
-        var weekPlan = await _dbContext.WeeklyPlans.FirstOrDefaultAsync(wp => wp.WeekStartDate == monday)
-            ?? throw new KeyNotFoundException($"Weekly plan for week starting {monday} not found.");
-
-        weekPlan.GroceryState = System.Text.Json.JsonSerializer.Serialize(groceryState);
-        await _dbContext.SaveChangesAsync();
-        await _publisher.PublishGroceryUpdatedAsync(weekOffset, groceryState, monday, excludeConnectionId);
-        return groceryState;
-    }
+        string? excludeConnectionId = null,
+        CancellationToken ct = default) =>
+        WriteGroceryStateAsync(weekOffset, _ => new Dictionary<string, bool>(groceryState), excludeConnectionId, ct);
 
     public async Task ToggleGroceryItemAsync(
         int weekOffset,
         string ingredientName,
         bool checked_,
-        string? excludeConnectionId = null)
+        string? excludeConnectionId = null,
+        CancellationToken ct = default)
+    {
+        await WriteGroceryStateAsync(weekOffset, current =>
+        {
+            current[ingredientName] = checked_;
+            return current;
+        }, excludeConnectionId, ct);
+    }
+
+    private Task<Dictionary<string, bool>> WriteGroceryStateAsync(int weekOffset,
+        Func<Dictionary<string, bool>, Dictionary<string, bool>> update,
+        string? excludeConnectionId, CancellationToken ct)
     {
         var (monday, _) = GetWeekBounds(weekOffset);
-        var weekPlan = await _dbContext.WeeklyPlans.FirstOrDefaultAsync(wp => wp.WeekStartDate == monday)
-            ?? throw new KeyNotFoundException($"Weekly plan for week starting {monday} not found.");
-
-        // Deserialize current state, merge the single item, re-serialize.
-        // This is the atomic server-side merge that prevents concurrent toggles
-        // from overwriting each other (last-write-wins on the full map).
-        var current = string.IsNullOrEmpty(weekPlan.GroceryState)
-            ? new Dictionary<string, bool>()
-            : System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, bool>>(weekPlan.GroceryState)
-              ?? new Dictionary<string, bool>();
-
-        current[ingredientName] = checked_;
-        weekPlan.GroceryState = System.Text.Json.JsonSerializer.Serialize(current);
-        await _dbContext.SaveChangesAsync();
-        await _publisher.PublishGroceryUpdatedAsync(weekOffset, current, monday, excludeConnectionId);
+        return groceryChecks.ProcessAsync(async db =>
+        {
+            var plan = await db.WeeklyPlans.FirstOrDefaultAsync(p => p.WeekStartDate == monday, ct)
+                ?? throw new KeyNotFoundException($"Weekly plan for week starting {monday} not found.");
+            var current = JsonSerializer.Deserialize<Dictionary<string, bool>>(plan.GroceryState ?? "{}") ?? [];
+            var result = update(current);
+            plan.GroceryState = JsonSerializer.Serialize(result);
+            await db.SaveChangesAsync(ct);
+            GroceryCheckCoordinator.SynchronizeTrackedPlan(_dbContext, monday, plan.GroceryState, plan.GroceryItems);
+            await _publisher.PublishGroceryUpdatedAsync(weekOffset, result, monday, excludeConnectionId);
+            return result;
+        }, ct);
     }
 
     /// <summary>

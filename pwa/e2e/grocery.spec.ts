@@ -23,6 +23,103 @@ test.beforeEach(async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
 });
 
+test('common check mocks retain distinct intentions, false, replacement and clear on reread', async ({
+  page,
+}) => {
+  await page.route('**/api/schedule/*/grocery/item', (route) => route.fulfill({ status: 405 }));
+  await setupCommonRoutes(page);
+  await page.goto('/welcome');
+  await page.evaluate(() => {
+    const source = new EventTarget();
+    (window as any).__sseSource = source;
+    (window as any).__checkMaps = [];
+    source.addEventListener('grocery_updated', (event) =>
+      (window as any).__checkMaps.push(JSON.parse((event as MessageEvent).data).groceryState)
+    );
+  });
+  const observed = await page.evaluate(async () => {
+    const item = (ingredientName: string, checked: boolean) =>
+      fetch('/api/schedule/0/grocery/item', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ingredientName, checked }),
+      });
+    const read = async () =>
+      (await (await fetch('/api/schedule?weekOffset=0')).json()).data.groceryState;
+    const statuses = await Promise.all([item('Tomato', true), item('Lettuce', true)]).then(
+      (results) => results.map((r) => r.status)
+    );
+    const both = await read();
+    await item('Tomato', false);
+    const explicitFalse = await read();
+    const replacement = await fetch('/api/schedule/0/grocery', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ Tomato: false }),
+    });
+    const replacementBody = await replacement.json();
+    const replaced = await read();
+    await fetch('/api/schedule/0/grocery', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{}',
+    });
+    return {
+      statuses,
+      both,
+      explicitFalse,
+      replacementBody,
+      replaced,
+      cleared: await read(),
+      unsupported: (await fetch('/api/schedule/0/grocery/item')).status,
+    };
+  });
+  expect(observed).toEqual({
+    statuses: [204, 204],
+    both: { Tomato: true, Lettuce: true },
+    explicitFalse: { Tomato: false, Lettuce: true },
+    replacementBody: { data: { Tomato: false } },
+    replaced: { Tomato: false },
+    cleared: {},
+    unsupported: 405,
+  });
+  await expect.poll(() => page.evaluate(() => (window as any).__checkMaps.length)).toBe(5);
+  expect(await page.evaluate(() => (window as any).__checkMaps.at(-1))).toEqual({});
+});
+
+test('a held item save leaves another row usable and failure reverts only that item', async ({
+  page,
+}) => {
+  await setupGroceryPage(page);
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let started!: () => void;
+  const pending = new Promise<void>((resolve) => {
+    started = resolve;
+  });
+  await page.route('**/api/schedule/*/grocery/item', async (route) => {
+    if (route.request().method() !== 'PATCH') return route.fallback();
+    if (route.request().postDataJSON().ingredientName === 'Pasta') {
+      started();
+      await held;
+      await route.fulfill({ status: 500, json: { message: 'Save failed' } });
+    } else await route.fulfill({ status: 204 });
+  });
+  const pasta = page.getByTestId('grocery-item-checkbox').filter({ hasText: 'Pasta' });
+  const beef = page.getByTestId('grocery-item-checkbox').filter({ hasText: 'Beef' });
+  await pasta.click();
+  await pending;
+  await expect(pasta).toHaveAttribute('aria-checked', 'true');
+  await beef.click();
+  await expect(beef).toHaveAttribute('aria-checked', 'true');
+  release();
+  await expect(pasta).toHaveAttribute('aria-checked', 'false');
+  await expect(pasta.getByTestId('grocery-item-error')).toBeVisible();
+  await expect(beef).toHaveAttribute('aria-checked', 'true');
+});
+
 async function setupGroceryPage(
   page: import('@playwright/test').Page,
   options: { empty?: boolean; milk?: boolean } = {}

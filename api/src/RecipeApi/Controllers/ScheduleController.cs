@@ -148,7 +148,7 @@ public class ScheduleController(ScheduleService scheduleService) : ControllerBas
         int weekOffset,
         [FromBody] ToggleGroceryItemDto dto)
     {
-        await _scheduleService.ToggleGroceryItemAsync(weekOffset, dto.IngredientName, dto.Checked, GetConnectionId());
+        await _scheduleService.ToggleGroceryItemAsync(weekOffset, dto.IngredientName, dto.Checked, GetConnectionId(), HttpContext.RequestAborted);
         return NoContent();
     }
 
@@ -157,7 +157,7 @@ public class ScheduleController(ScheduleService scheduleService) : ControllerBas
         int weekOffset,
         [FromBody] Dictionary<string, bool> groceryState)
     {
-        var result = await _scheduleService.UpdateGroceryStateAsync(weekOffset, groceryState, GetConnectionId());
+        var result = await _scheduleService.UpdateGroceryStateAsync(weekOffset, groceryState, GetConnectionId(), HttpContext.RequestAborted);
         return Ok(new { data = result });
     }
 
