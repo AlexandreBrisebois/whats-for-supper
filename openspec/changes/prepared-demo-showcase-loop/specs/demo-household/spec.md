@@ -286,4 +286,3 @@ Reset recovery SHALL reuse existing demo guidance and ordinary navigation withou
 #### Scenario: Honest self-hosting choice
 - **WHEN** a visitor follows self-hosting guidance
 - **THEN** it distinguishes the restricted public demo from operator-configured AI capabilities without promising free provider use or that every capability was exercised in the demo
-
