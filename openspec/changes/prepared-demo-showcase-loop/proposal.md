@@ -11,6 +11,7 @@ Related: #245. This is research and proposed behavior only, not implementation o
 - Treat recurring workflow reset as the intended product loop, not a defect.
 - Make the prepared household usable on iPad, iPhone and Pixel Phone through ordinary browse, vote, explicit plan saving, groceries/extras and cooking. No mandatory tour or invented feature showcase.
 - Use deterministic synthetic fixture identities/content and verified local media; disclose shared, periodically reset demo state and offer a self-hosting next step without interrupting household tasks.
+- Add a compact purple context band with white text, "Demo · What to know", opening a short phone sheet or compact iPad dialog. Introduce it once at a safe first normal visit; remember dismissal locally outside shared reset state, keep manual reopening available, and use only verified claims about AI restrictions and temporary shared data. Beta reuse is separate work.
 - Separate operator baseline publication authority from shared visitor household access; visitors cannot overwrite the prepared baseline or enable AI preparation.
 - Capture a versioned, complete prepared household baseline with explicit restore/clear/preserve/rebuild policies and verified assets.
 - Restore plans, calendar, grocery state, preferences, categories and history as well as recipes and members; fence stale visitor work and refresh derived state without AI.

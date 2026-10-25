@@ -333,3 +333,60 @@ Visitors SHALL be able to use ordinary navigation without a mandatory tour. Loca
 #### Scenario: Honest self-hosting choice
 - **WHEN** a visitor follows self-hosting guidance
 - **THEN** it distinguishes the restricted public demo from operator-configured AI capabilities without promising free provider use or that every capability was exercised in the demo
+
+### Requirement: Offer a reopenable demo context explanation
+The demo SHALL provide a compact purple band with readable white text that opens one short phone sheet or compact iPad dialog. It SHALL explain the sample shared household, other visitors' changes, temporary resettable state and avoiding personal information. Start exploring and an explicit close SHALL dismiss it. Existing identity hints SHALL retain their noninteractive meaning.
+
+#### Scenario: Tap the context band
+- **WHEN** a visitor activates Demo · What to know or its French equivalent in the ordinary demo shell
+- **THEN** a named, readable dialog opens with the shared-state explanation, Start exploring and an explicit close, without navigation, household mutation or a mandatory tour
+- **AND** the band remains available after dismissal for voluntary reopening
+
+#### Scenario: Truthful restrictions
+- **WHEN** the explanation describes AI limitations or reset behaviour
+- **THEN** its claims match verified restrictions for the delivered demo and do not imply universal AI blocking, zero cost, processed visitor uploads, a guaranteed reset countdown or a schedule not established by evidence
+
+#### Scenario: Responsive accessible control and surface
+- **WHEN** the context band and explanation render in EN/FR on iPhone, Pixel Phone or iPad
+- **THEN** the band has at least a 44 CSS pixel touch height, visible focus and white-text contrast of at least 4.5:1 on each actual interaction background, with no text clipping or obscured navigation
+- **AND** the phone sheet or compact tablet dialog supports readable focus, accessible name/description, contained keyboard focus, Escape/explicit close, focus return, reduced motion and reachable actions under text expansion
+
+### Requirement: Introduce demo context only at a safe first visit
+An undismissed demo explanation SHALL automatically appear once at the first eligible normal ready Home entry before visitor interaction. It SHALL NOT interrupt active work, another dialog or a deep-link handoff. Deferred readiness SHALL NOT cause a mid-task popup. Automatic introduction SHALL preserve existing destinations and household/member setup.
+
+#### Scenario: First normal ready entry
+- **WHEN** an undismissed visitor reaches ordinary Home with household/member context and routing ready, no pending task or competing dialog, and interaction has not begun
+- **THEN** the explanation opens once before interaction and can be dismissed immediately without a tour or task prerequisites
+
+#### Scenario: Protected handoff
+- **WHEN** entry carries a recipe, capture/share/import or voting deep-link intent
+- **THEN** automatic introduction does not interrupt or replace that destination and is deferred to a later normal visit; voluntary reopening remains available
+
+#### Scenario: Readiness arrives after interaction
+- **WHEN** readiness resolves after a visitor has begun a task or while another dialog is active
+- **THEN** automatic introduction is withheld rather than queued to interrupt the task, and ordinary app behaviour continues
+
+### Requirement: Remember demo explanation dismissal outside shared state
+Start exploring and user-initiated close SHALL store a simple demo-specific browser acknowledgement outside household snapshot/reset state, without a tracking ID or server synchronization. Storage failure SHALL fall back to visit-local memory. Navigation, reset, member/locale switches and cosmetic copy changes SHALL NOT replay an acknowledged introduction. Manual reopening SHALL remain available.
+
+#### Scenario: Dismiss and reset
+- **WHEN** the visitor uses Start exploring or explicit close, then returns, switches members or the demo household resets
+- **THEN** that browser's acknowledgement prevents automatic reintroduction while the context band can still reopen the explanation
+
+#### Scenario: Browser storage unavailable
+- **WHEN** reading or writing persistent browser storage fails
+- **THEN** the explanation remains usable and a visit-local presentation/dismissal guard prevents repeated automatic openings during the same app visit
+- **AND** no durable cross-reload or cross-device memory is promised
+
+#### Scenario: Cosmetic change or another browser
+- **WHEN** wording, styling or locale changes after acknowledgement
+- **THEN** it does not automatically reopen the explanation; another browser/device or cleared storage has its own first-visit state
+
+#### Scenario: Mode-specific preference
+- **WHEN** the pattern is later reused for beta
+- **THEN** demo and beta use distinct acknowledgement keys and truthful mode-specific content; demo acknowledgement does not imply beta dismissal
+- **AND** demo on a beta channel uses the demo explanation without automatically stacking a second mode introduction
+
+#### Scenario: Automatic opening is not acknowledgement
+- **WHEN** the explanation was automatically presented but routing removes it before the visitor dismisses it
+- **THEN** the current visit does not repeatedly open it and no persisted dismissal is manufactured from that unmount
