@@ -1,5 +1,23 @@
 import { test, expect, type Page } from './fixtures';
+import type { Locator } from '@playwright/test';
 import { MOCK_IDS, setupCommonRoutes, builders } from './mock-api';
+
+async function textContrast(surface: Locator) {
+  return surface.evaluate((node) => {
+    const rgb = (value: string) => (value.match(/[\d.]+/g) || []).slice(0, 3).map(Number);
+    const luminance = (channels: number[]) =>
+      channels
+        .map((value) => {
+          const c = value / 255;
+          return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+        })
+        .reduce((sum, value, index) => sum + value * [0.2126, 0.7152, 0.0722][index], 0);
+    const style = getComputedStyle(node);
+    const a = luminance(rgb(style.color)),
+      b = luminance(rgb(style.backgroundColor));
+    return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+  });
+}
 
 function fixtureOrigins(baseURL?: string) {
   const app = new URL(baseURL || 'http://127.0.0.1:3000').origin;
@@ -107,7 +125,13 @@ test.describe('Demo context explanation', () => {
           const start = locale === 'fr' ? 'Commencer l’exploration' : 'Start exploring';
           const dialog = page.getByRole('dialog', { name: label });
           await expect(dialog).toBeVisible();
-          await expect(dialog.getByRole('heading', { name: label })).toBeFocused();
+          const band = page.getByTestId('demo-context-band');
+          expect((await band.boundingBox())!.height).toBe(32);
+          await expect(band).toHaveCSS('padding-top', '0px');
+          await expect(band).toHaveCSS('padding-bottom', '0px');
+          const heading = dialog.getByRole('heading', { name: label });
+          await expect(heading).toBeFocused();
+          await expect(heading).toHaveCSS('outline-style', 'none');
           const box = await dialog.boundingBox();
           expect(box).not.toBeNull();
           expect(box!.width).toBeLessThanOrEqual(width);
@@ -119,43 +143,65 @@ test.describe('Demo context explanation', () => {
           for (const button of await dialog.getByRole('button').all()) {
             expect((await button.boundingBox())!.height).toBeGreaterThanOrEqual(44);
           }
+          expect((await dialog.getByRole('link').boundingBox())!.height).toBeGreaterThanOrEqual(44);
           await page.keyboard.press('Tab');
           await page.keyboard.press('Shift+Tab');
           expect(await dialog.evaluate((node) => node.contains(document.activeElement))).toBe(true);
+          const cta = dialog.getByRole('button', { name: start, exact: true });
+          await expect(cta).toHaveCSS('background-color', 'rgb(82, 91, 55)');
+          expect(await textContrast(cta)).toBeGreaterThanOrEqual(4.5);
+          await cta.hover();
+          await expect(cta).toHaveCSS(
+            'background-color',
+            (await page.evaluate(() => matchMedia('(hover: hover)').matches))
+              ? 'rgb(55, 61, 37)'
+              : 'rgb(82, 91, 55)'
+          );
+          expect(await textContrast(cta)).toBeGreaterThanOrEqual(4.5);
+          await cta.focus();
+          await expect(cta).toHaveCSS('outline-color', 'rgb(31, 41, 55)');
+          expect(
+            await cta.evaluate((node) => parseFloat(getComputedStyle(node).outlineWidth))
+          ).toBeGreaterThanOrEqual(2);
+          await page.keyboard.down('Space');
+          await expect(cta).toHaveCSS('background-color', 'rgb(27, 30, 18)');
+          expect(await textContrast(cta)).toBeGreaterThanOrEqual(4.5);
+          await page.keyboard.press('Escape');
+          await page.keyboard.up('Space');
+          await page.getByTestId('demo-context-band').click();
           await page.screenshot({ path: info.outputPath('context.png') });
           await dialog.getByRole('button', { name: start, exact: true }).click();
-          const band = page.getByTestId('demo-context-band');
           await expect(band).toBeFocused();
-          expect((await band.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+          await expect(band).toHaveCSS('outline-color', 'rgb(31, 41, 55)');
+          expect(
+            await band.evaluate((node) => parseFloat(getComputedStyle(node).outlineWidth))
+          ).toBeGreaterThanOrEqual(2);
+          expect((await band.boundingBox())!.height).toBeGreaterThanOrEqual(32);
           expect((await page.getByTestId('demo-context').boundingBox())!.y).toBeGreaterThanOrEqual(
             0
           );
           expect(await page.evaluate((key) => localStorage.getItem(key), ACK)).toBe('true');
-          const measureContrast = () =>
-            band.evaluate((node) => {
-              const rgb = (value: string) => (value.match(/[\d.]+/g) || []).slice(0, 3).map(Number);
-              const luminance = (channels: number[]) =>
-                channels
-                  .map((value) => {
-                    const c = value / 255;
-                    return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
-                  })
-                  .reduce((sum, value, index) => sum + value * [0.2126, 0.7152, 0.0722][index], 0);
-              const style = getComputedStyle(node);
-              const background =
-                style.backgroundColor === 'rgba(0, 0, 0, 0)'
-                  ? getComputedStyle(node.parentElement!).backgroundColor
-                  : style.backgroundColor;
-              const a = luminance(rgb(style.color)),
-                b = luminance(rgb(background));
-              return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
-            });
-          expect(await measureContrast()).toBeGreaterThanOrEqual(4.5);
+          const strip = page.getByTestId('demo-context-strip');
+          expect((await strip.boundingBox())!.height).toBe(32);
+          await expect(strip).toHaveCSS('font-size', '13px');
+          await expect(strip).toHaveCSS('line-height', '18px');
+          await expect(strip).toHaveCSS('font-weight', '500');
+          await expect(strip).toHaveCSS('background-color', 'rgb(227, 231, 215)');
+          await expect(strip.locator('svg')).toHaveAttribute('width', '16');
+          expect((await band.boundingBox())!.width).toBe(width);
+          expect(await textContrast(strip)).toBeGreaterThanOrEqual(4.5);
           await band.hover();
-          expect(await measureContrast()).toBeGreaterThanOrEqual(4.5);
+          await expect(strip).toHaveCSS(
+            'background-color',
+            (await page.evaluate(() => matchMedia('(hover: hover)').matches))
+              ? 'rgb(199, 207, 176)'
+              : 'rgb(227, 231, 215)'
+          );
+          expect(await textContrast(strip)).toBeGreaterThanOrEqual(4.5);
           await band.focus();
           await page.keyboard.down('Space');
-          expect(await measureContrast()).toBeGreaterThanOrEqual(4.5);
+          await expect(strip).toHaveCSS('background-color', 'rgb(171, 183, 137)');
+          expect(await textContrast(strip)).toBeGreaterThanOrEqual(4.5);
           await page.keyboard.up('Space');
           await page.keyboard.press('Escape');
           await page.reload();
@@ -167,10 +213,35 @@ test.describe('Demo context explanation', () => {
           await expect(dialog).not.toBeVisible();
           await expect(band).toBeFocused();
           await page.screenshot({ path: info.outputPath('band.png') });
+          await page.touchscreen.tap(8, 80);
+          await expect(band).not.toBeFocused();
+          await expect(band).toHaveCSS('outline-style', 'none');
+          await page.screenshot({ path: info.outputPath('touch-band.png') });
+          await band.tap();
+          await expect(dialog).toBeVisible();
+          await expect(heading).toHaveCSS('outline-style', 'none');
+          await page.screenshot({ path: info.outputPath('touch-context.png') });
         });
       }
     });
   }
+
+  test('pointer hover uses contrasting sage surfaces', async ({ page }) => {
+    await page.goto('/home');
+    const dialog = page.getByRole('dialog', { name: 'Demo · What to know' });
+    const cta = dialog.getByRole('button', { name: 'Start exploring', exact: true });
+    await expect(cta).toBeVisible();
+    expect(await page.evaluate(() => matchMedia('(hover: hover)').matches)).toBe(true);
+    await cta.hover();
+    await expect(cta).toHaveCSS('background-color', 'rgb(55, 61, 37)');
+    expect(await textContrast(cta)).toBeGreaterThanOrEqual(4.5);
+    await cta.click();
+    const band = page.getByTestId('demo-context-band');
+    const strip = page.getByTestId('demo-context-strip');
+    await band.hover();
+    await expect(strip).toHaveCSS('background-color', 'rgb(199, 207, 176)');
+    expect(await textContrast(strip)).toBeGreaterThanOrEqual(4.5);
+  });
 
   test('expanded French text remains readable with reachable actions on a short phone', async ({
     page,
@@ -189,6 +260,15 @@ test.describe('Demo context explanation', () => {
     await expect(start).toBeInViewport();
     await start.click();
     await expect(dialog).not.toBeVisible();
+    const band = page.getByTestId('demo-context-band');
+    const strip = page.getByTestId('demo-context-strip');
+    await strip.locator('span').evaluate((node) => {
+      node.textContent = 'Démo · À savoir — explication du foyer de démonstration partagé';
+    });
+    expect(await band.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
+    expect((await strip.boundingBox())!.height).toBeGreaterThan(32);
+    expect((await band.boundingBox())!.height).toBeGreaterThanOrEqual(32);
+    await page.screenshot({ path: test.info().outputPath('expanded-band.png') });
   });
 
   test('deep-link entry reaches its task and stays quiet after client navigation Home', async ({

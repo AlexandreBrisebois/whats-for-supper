@@ -11,12 +11,14 @@ export function DemoDialog({
   children,
   onClose,
   returnFocus,
+  showTitleFocusOutline = true,
 }: {
   title: string;
   description: string;
   children: ReactNode;
   onClose: () => void;
   returnFocus?: RefObject<HTMLElement | null>;
+  showTitleFocusOutline?: boolean;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
@@ -69,7 +71,11 @@ export function DemoDialog({
           ref={heading}
           id={titleId}
           tabIndex={-1}
-          className="font-heading text-2xl font-bold leading-tight focus-visible:rounded-lg focus-visible:outline-2 focus-visible:outline-offset-4"
+          className={`font-heading text-2xl font-bold leading-tight ${
+            showTitleFocusOutline
+              ? 'focus-visible:rounded-lg focus-visible:outline-2 focus-visible:outline-offset-4'
+              : 'focus:outline-none'
+          }`}
         >
           {title}
         </h2>

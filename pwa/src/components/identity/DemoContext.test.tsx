@@ -76,6 +76,33 @@ describe('demo context', () => {
     expect(screen.getByTestId('demo-context-band')).toHaveFocus();
   });
 
+  it.each([
+    [
+      'en',
+      [
+        'This demo of Whats for Supper is shared with other visitors. They may change it while you explore.',
+        'Your changes are temporary and will be reset. Please avoid personal information.',
+        'AI capture and generation are unavailable in this demo. Explore the prepared recipes and originals instead.',
+        'AI features require your own subscription.',
+      ],
+    ],
+    [
+      'fr',
+      [
+        'Cette démo de Whats for Supper est partagée avec les autres visiteurs. Ils peuvent la modifier pendant votre visite.',
+        'Vos changements sont temporaires et seront réinitialisés. Veuillez éviter d’ajouter des renseignements personnels.',
+        'La capture et la génération par IA ne sont pas offertes dans cette démo. Explorez plutôt les recettes et les originaux préparés.',
+        'Les fonctions d’IA nécessitent votre propre abonnement.',
+      ],
+    ],
+  ])('shows exactly the approved four disclaimer paragraphs in %s', async (locale, paragraphs) => {
+    localStorage.setItem('locale', locale);
+    render(<DemoContext />);
+    for (const copy of paragraphs)
+      expect(await screen.findByText(copy, { exact: true })).toBeVisible();
+    expect(screen.queryByText(/self-hosted household|foyer autohébergé/i)).not.toBeInTheDocument();
+  });
+
   it('explicit close and Escape acknowledge without navigation or household state', async () => {
     render(<DemoContext />);
     const dialog = await screen.findByRole('dialog');
