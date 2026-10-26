@@ -6,19 +6,21 @@
 
 ## Outcome and Scope
 
-**Draft for Alex's review; specification preparation only.** The behavior below is proposed, not approved or implemented. This PR must not close #345. No runtime code, credentials, dependency pins, deployment or production testing changes are included.
+**Draft for Alex's review; specification preparation only.** The approved copy and requested visual/login/feedback direction are recorded below; remaining policy/form details are proposed, and no Beta behavior is implemented. This PR must not close #345. No runtime code, credentials, dependency pins, deployment or production testing changes are included.
 
-Publish this specification independently from main; later implementation depends on the actual reusable Demo work in [PR #348](https://github.com/AlexandreBrisebois/whats-for-supper/pull/348). That PR remains unmerged at `fdde5fe3a6721582e2ec00dda5429936d9f17c82`. Main is `4414c7379000b11d0f4411b4213ee71b98eb651c`; it contains Home #339 and duration #346 with archived specs, but not DemoContext. Recheck both heads before applying any approved plan.
+Main `0a8b7850a26578551beb723713fcf8b3e920a863`, including merged Demo refinement [PR #354](https://github.com/AlexandreBrisebois/whats-for-supper/pull/354), is now merged into this branch at `cfa297e1eac15eeeaff3d9492821bce484a0a2e8`. The prerequisite is available: reuse its shared explanation presentation, manual Welcome wrapper, Home eligibility and corrected dismissal-only focus restoration. This PR's difference from main remains the five Beta planning files, not a new Demo implementation or stack. Recheck current source and specification ownership before any approved apply phase.
 
-The review asks Alex to approve the exact copy, initial query-free Home eligibility, and retaining Demo-first combined-mode precedence. These are explicit proposals. Dependent implementation task generation/application waits for that approval; [design](design.md) records alternatives and acceptance.
+Alex approved the warmer English disclaimer on 2026-10-26; this revision records it exactly with matching French. Initial query-free Home eligibility and retaining Demo-first combined-mode precedence remain review decisions. Including Welcome also exposes a policy choice: its existing Demo presenter uses server installation identity without runtime health, whereas the app-shell Beta proposal requires confirmed non-demo runtime. The scoped Welcome exception in [design](design.md) remains a proposal for explicit review. The existing title, reopen hint and dismissal actions are retained. Alex also selected GitHub Issues feedback instead of Demo's installation link and requested a streamlined feedback template. Exact link/helper labels, form fields and direct-template destination remain design proposals below; the template does not exist yet. Dependent implementation task generation/application waits for the remaining policy decisions and separate implementation approval; [design](design.md) records alternatives and acceptance.
 
 ## What Changes
 
-- Beta-only gets the same compact purple/white top band and reopenable phone sheet / iPad dialog as Demo, with pre-release copy in EN/FR.
+- Beta-only gets the same compact pale sage band, charcoal text and shared phone sheet / wider dialog as the latest Demo, with Beta-specific pre-release copy in EN/FR. Match the 32px minimum band, 13px/18px label and 16px help icon; modal controls remain at least 44px.
+- Include Welcome (login): one manually opened band above the form, no automatic login popup or duplicate tiny Beta note. Share Beta acknowledgement with Home, not login interaction history. Explicit dismissal suppresses a later Home introduction; departure without dismissal does not.
 - A first normal ready Home visit can introduce the explanation before interaction. Deep links and active work suppress automatic introduction for that app visit, with no delayed interruption.
 - Explicit dismissal uses a separate browser-local Beta acknowledgement; failures use visit memory. Cosmetic edits, member changes and household resets do not replay it.
+- Add a voluntary GitHub feedback link in the Beta explanation, not Demo's installation link. Plan a minimal feedback template and link directly to it only after it exists and is verified. Open only on explicit activation, without automatic issue submission or app data in the URL; Demo retains its installation link.
 - Proposed overlap policy retains Demo-first presentation and the existing accessible Beta-channel hint, without stacked introductions or cross-mode acknowledgement.
-- Authentication, member selection, household data, AI policy, capture, cooking, planning, voting, resets, icons/manifests and release identity stay with their existing owners.
+- Authentication, member selection, household data, AI policy, capture, cooking, planning, voting, resets, icons/manifests and release identity stay with their existing owners. Beta alone never prefills a passphrase or shows the Demo-prefill helper. Preserve the untranslated `Whats for Supper?` Welcome heading in EN/FR.
 
 ## Capabilities
 
@@ -32,4 +34,4 @@ None.
 
 ## Impact
 
-This change adds only planning artifacts. A later approved implementation would reuse the existing identity provider, DemoContext visit/eligibility pattern, DemoDialog, shared Layout and locale files; see immutable source links in [design](design.md). No API, OpenAPI, generated client, database or server acknowledgement change is proposed. The spec PR is based on main so its diff contains only Beta documents; stacking it on #348 would unnecessarily include application code and complicate review.
+This change updates only the existing Beta planning artifacts. A later approved implementation would reuse the installation identity accessor, DemoExplanation presentation seam, WelcomeDemoContext manual lifecycle, DemoContext Home policy, DemoDialog, shared Layout and locale owners; see immutable source links in [design](design.md). No API, OpenAPI, generated client, database or server acknowledgement change is proposed. Reconcile the Demo refinement's Beta-only Welcome fallback with the accepted Beta requirement before implementation; do not copy Demo body claims, prefill policy or Home observers into login.
