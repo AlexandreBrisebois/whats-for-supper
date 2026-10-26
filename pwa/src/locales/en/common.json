@@ -420,8 +420,8 @@
   },
   "demoContext": {
     "label": "Demo · What to know",
-    "shared": "This sample household is shared with other visitors. They may change it while you explore.",
-    "temporary": "Your changes are temporary and may be reset. Please avoid personal information.",
+    "shared": "This demo of Whats for Supper is shared with other visitors. They may change it while you explore.",
+    "temporary": "Your changes are temporary and will be reset. Please avoid personal information.",
     "start": "Start exploring",
     "aiUnavailable": "AI capture and generation are unavailable in this demo. Explore the prepared recipes and originals instead.",
     "statusFailed": "We could not check whether AI capture is available. Retry or explore the prepared recipes.",

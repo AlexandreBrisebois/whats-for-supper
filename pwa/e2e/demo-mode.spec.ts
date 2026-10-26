@@ -125,7 +125,13 @@ test.describe('Demo context explanation', () => {
           const start = locale === 'fr' ? 'Commencer l’exploration' : 'Start exploring';
           const dialog = page.getByRole('dialog', { name: label });
           await expect(dialog).toBeVisible();
-          await expect(dialog.getByRole('heading', { name: label })).toBeFocused();
+          const band = page.getByTestId('demo-context-band');
+          expect((await band.boundingBox())!.height).toBe(32);
+          await expect(band).toHaveCSS('padding-top', '0px');
+          await expect(band).toHaveCSS('padding-bottom', '0px');
+          const heading = dialog.getByRole('heading', { name: label });
+          await expect(heading).toBeFocused();
+          await expect(heading).toHaveCSS('outline-style', 'none');
           const box = await dialog.boundingBox();
           expect(box).not.toBeNull();
           expect(box!.width).toBeLessThanOrEqual(width);
@@ -137,6 +143,7 @@ test.describe('Demo context explanation', () => {
           for (const button of await dialog.getByRole('button').all()) {
             expect((await button.boundingBox())!.height).toBeGreaterThanOrEqual(44);
           }
+          expect((await dialog.getByRole('link').boundingBox())!.height).toBeGreaterThanOrEqual(44);
           await page.keyboard.press('Tab');
           await page.keyboard.press('Shift+Tab');
           expect(await dialog.evaluate((node) => node.contains(document.activeElement))).toBe(true);
@@ -164,19 +171,18 @@ test.describe('Demo context explanation', () => {
           await page.getByTestId('demo-context-band').click();
           await page.screenshot({ path: info.outputPath('context.png') });
           await dialog.getByRole('button', { name: start, exact: true }).click();
-          const band = page.getByTestId('demo-context-band');
           await expect(band).toBeFocused();
           await expect(band).toHaveCSS('outline-color', 'rgb(31, 41, 55)');
           expect(
             await band.evaluate((node) => parseFloat(getComputedStyle(node).outlineWidth))
           ).toBeGreaterThanOrEqual(2);
-          expect((await band.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+          expect((await band.boundingBox())!.height).toBeGreaterThanOrEqual(32);
           expect((await page.getByTestId('demo-context').boundingBox())!.y).toBeGreaterThanOrEqual(
             0
           );
           expect(await page.evaluate((key) => localStorage.getItem(key), ACK)).toBe('true');
           const strip = page.getByTestId('demo-context-strip');
-          expect((await strip.boundingBox())!.height).toBe(28);
+          expect((await strip.boundingBox())!.height).toBe(32);
           await expect(strip).toHaveCSS('font-size', '13px');
           await expect(strip).toHaveCSS('line-height', '18px');
           await expect(strip).toHaveCSS('font-weight', '500');
@@ -207,6 +213,14 @@ test.describe('Demo context explanation', () => {
           await expect(dialog).not.toBeVisible();
           await expect(band).toBeFocused();
           await page.screenshot({ path: info.outputPath('band.png') });
+          await page.touchscreen.tap(8, 80);
+          await expect(band).not.toBeFocused();
+          await expect(band).toHaveCSS('outline-style', 'none');
+          await page.screenshot({ path: info.outputPath('touch-band.png') });
+          await band.tap();
+          await expect(dialog).toBeVisible();
+          await expect(heading).toHaveCSS('outline-style', 'none');
+          await page.screenshot({ path: info.outputPath('touch-context.png') });
         });
       }
     });
@@ -252,8 +266,8 @@ test.describe('Demo context explanation', () => {
       node.textContent = 'Démo · À savoir — explication du foyer de démonstration partagé';
     });
     expect(await band.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
-    expect((await strip.boundingBox())!.height).toBeGreaterThan(28);
-    expect((await band.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    expect((await strip.boundingBox())!.height).toBeGreaterThan(32);
+    expect((await band.boundingBox())!.height).toBeGreaterThanOrEqual(32);
     await page.screenshot({ path: test.info().outputPath('expanded-band.png') });
   });
 

@@ -112,11 +112,11 @@ function DemoContextState({ mode }: { mode: boolean | null }) {
           useDemoContextVisit.setState({ presented: true });
           useDemoContextVisit.setState({ openPath: pathname, openOwner: dialogOwner });
         }}
-        className="group flex min-h-11 w-full items-center bg-cream py-2 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-charcoal"
+        className="group flex min-h-8 w-full items-center bg-sage-100 p-0 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-charcoal"
       >
         <span
           data-testid="demo-context-strip"
-          className="flex min-h-7 w-full items-center justify-center gap-2 bg-sage-100 px-4 py-1 text-[0.8125rem] leading-[1.125rem] font-medium group-hover:bg-sage-200 group-active:bg-sage-300"
+          className="flex min-h-8 w-full items-center justify-center gap-2 bg-sage-100 px-4 py-1 text-[0.8125rem] leading-[1.125rem] font-medium group-hover:bg-sage-200 group-active:bg-sage-300"
         >
           <CircleHelp size={16} className="shrink-0" aria-hidden="true" />
           <span className="min-w-0 break-words">
@@ -129,15 +129,16 @@ function DemoContextState({ mode }: { mode: boolean | null }) {
           title={t('demoContext.label', 'Demo · What to know')}
           description={t(
             'demoContext.shared',
-            'This sample household is shared with other visitors. They may change it while you explore.'
+            'This demo of Whats for Supper is shared with other visitors. They may change it while you explore.'
           )}
           onClose={dismiss}
           returnFocus={band}
+          showTitleFocusOutline={false}
         >
           <p className="text-sm leading-relaxed">
             {t(
               'demoContext.temporary',
-              'Your changes are temporary and may be reset. Please avoid personal information.'
+              'Your changes are temporary and will be reset. Please avoid personal information.'
             )}
           </p>
           <p className="text-sm leading-relaxed">
@@ -147,10 +148,7 @@ function DemoContextState({ mode }: { mode: boolean | null }) {
             )}
           </p>
           <p className="text-sm leading-relaxed">
-            {t(
-              'demoHosting.body',
-              'A self-hosted household keeps your own plans. AI features require your own subscription.'
-            )}
+            {t('demoHosting.body', 'AI features require your own subscription.')}
           </p>
           <a
             href="https://github.com/AlexandreBrisebois/whats-for-supper/blob/main/docs/install/quick-start.md"

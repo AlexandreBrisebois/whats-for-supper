@@ -1,21 +1,29 @@
 # Tasks
 
-## 1. Quiet demo presentation and approved copy
+## 1. Approved compact band and disclaimer revision
 
-**Outcome and scenarios:** Offer a reopenable demo context explanation: quiet visual weight, matching exploration action, approved subscription explanation, responsive accessible control and preserved existing scenarios.
-**Owners and boundaries:** DemoContext presentation and EN/FR demo-reset locale copy; existing DemoDialog, visit store and reset boundary remain behavior owners. No API changes.
-**Dependencies and prerequisites:** Reviewed proposal/design/delta and explicit user approval; current main d34af7b. Isolated loopback browser with synthetic builders and setupCommonRoutes from e2e/mock-api.ts; no live API or AI.
-**Acceptance boundary:** Real rendered CSS/DOM, focus and local state with schema-compliant browser API fixtures; no backend changes requiring live database acceptance.
+**Outcome and scenarios:** Offer a reopenable demo context explanation: approved 32px band exception without decorative padding, static title without outline, exact four-paragraph EN disclaimer and aligned French, matching CTA and preserved lifecycle/reset behavior.
+**Owners and boundaries:** DemoContext presentation, demo-only EN/FR locale keys and a default-preserving title-style option in DemoDialog. No other dialog styles, global focus, API, provider/account or data changes.
+**Acceptance boundary:** Synthetic isolated loopback app, existing schema-compliant builders and route fixtures; actual DOM/CSS, target geometry, contrast, focus and reset behavior. No production, live household or real AI.
 
-- [x] 1.1 Add EN/FR exact-copy unit acceptance and browser geometry/inner-surface contrast checks before implementation; observe intended failure with `task test:unit -- src/components/identity/DemoContext.test.tsx`.
-- [x] 1.2 Implement the approved local presentation/copy and pass `task test:unit -- src/components/identity/DemoContext.test.tsx src/components/demo/DemoResetBoundary.test.tsx`.
-- [x] 1.3 Run `task test:e2e -- demo-mode.spec.ts demo-reset.spec.ts` against isolated loopback with synthetic fixtures. Verify EN/FR phone/iPad, 320px text growth, normal/hover/pressed inner-strip and CTA contrast, 44px targets, first visit, close/reopen and reset behavior. Inspect actual Home/modal screenshots.
+- [x] 1.1 Update exact-copy and browser geometry/title-focus acceptance first; observe intended red with `task test:unit -- src/components/identity/DemoContext.test.tsx` and the selected phone browser cases.
+- [x] 1.2 Implement the approved revision and pass selected DemoContext/DemoResetBoundary component tests, preserving dialog semantics and interactive focus.
+- [x] 1.3 Pass `task test:e2e -- demo-mode.spec.ts demo-reset.spec.ts` for EN/FR phone/iPad and 320px text growth; inspect ordinary touch Home/modal screenshots separately from keyboard-focus captures. Verify band is genuinely 32px minimum with no decorative cream padding, modal controls remain 44px, actual states exceed 4.5:1 and lifecycle/reset behavior remains intact.
 
 ## 2. Final Integration and Verification
 
-- [x] 2.1 Run Task preparation on the complete changed path set, review scope, and run `task verify` on those paths. Record actual pass/fail/blocked statuses and evidence identity before publishing a draft PR; no merge or deployment.
+- [ ] 2.1 Run Task preparation and final verification on the complete revised path set, review the actual diff, publish the revision in draft PR353 via connector and follow final exact-head CI. Deliver inspected ordinary-state screenshot artifacts through the PR discussion; no merge/deployment.
 
-## Evidence
+## Current revision evidence
+
+- Green: revised focused component/reset tests passed all 16 cases. Revised demo-mode/demo-reset browser acceptance passed all 29 tests (37.0s), including exact 32px geometry, zero outer vertical padding, no title outline with initial focus retained, contrasting control focus, modal controls/link at least 44px and separate ordinary touch-state screenshots. Phone/tablet EN/FR and 320px expanded text screenshots were inspected.
+
+- Red: revised exact-copy unit cases failed in EN/FR (two failures, 13 existing passes). Selected iPhone browser cases failed with expected 32px vs observed 44px before implementation.
+
+User explicitly approved the 44px-to-32px band tradeoff and separately requested removal of only the static title outline and the exact four-paragraph disclaimer. Planning artifacts were reconciled before code; no material unknown remains. Earlier evidence below applies to the superseded 44px/padded design and prior copy, not this revision.
+
+## Prior revision evidence
+
 
 - Source base: verified main d34af7b154911659cb68f68ce2ccd0a709c70b7d (tree a48b2315e9cecc1e7c6a5222e84831f692c7b060). The local source tree matched that exact tree before edits; no unrelated work was present. Reference screenshots were materialized consumer-locally and inspected.
 - Red: `task test:unit -- src/components/identity/DemoContext.test.tsx` failed on the two new EN/FR exact-copy expectations; 13 existing cases passed. Green: the selected DemoContext and DemoResetBoundary command passed 16 tests.

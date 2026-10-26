@@ -79,16 +79,28 @@ describe('demo context', () => {
   it.each([
     [
       'en',
-      'A self-hosted household keeps your own plans. AI features require your own subscription.',
+      [
+        'This demo of Whats for Supper is shared with other visitors. They may change it while you explore.',
+        'Your changes are temporary and will be reset. Please avoid personal information.',
+        'AI capture and generation are unavailable in this demo. Explore the prepared recipes and originals instead.',
+        'AI features require your own subscription.',
+      ],
     ],
     [
       'fr',
-      'Un foyer autohébergé conserve vos propres menus. Les fonctions d’IA nécessitent votre propre abonnement.',
+      [
+        'Cette démo de Whats for Supper est partagée avec les autres visiteurs. Ils peuvent la modifier pendant votre visite.',
+        'Vos changements sont temporaires et seront réinitialisés. Veuillez éviter d’ajouter des renseignements personnels.',
+        'La capture et la génération par IA ne sont pas offertes dans cette démo. Explorez plutôt les recettes et les originaux préparés.',
+        'Les fonctions d’IA nécessitent votre propre abonnement.',
+      ],
     ],
-  ])('shows the approved subscription explanation in %s', async (locale, copy) => {
+  ])('shows exactly the approved four disclaimer paragraphs in %s', async (locale, paragraphs) => {
     localStorage.setItem('locale', locale);
     render(<DemoContext />);
-    expect(await screen.findByText(copy, { exact: true })).toBeVisible();
+    for (const copy of paragraphs)
+      expect(await screen.findByText(copy, { exact: true })).toBeVisible();
+    expect(screen.queryByText(/self-hosted household|foyer autohébergé/i)).not.toBeInTheDocument();
   });
 
   it('explicit close and Escape acknowledge without navigation or household state', async () => {
