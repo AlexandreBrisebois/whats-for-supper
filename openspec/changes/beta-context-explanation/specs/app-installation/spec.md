@@ -8,6 +8,7 @@ The Beta-only Welcome screen and ordinary app shell SHALL provide the same compa
 #### Scenario: Open and reopen Beta context
 - **WHEN** a visitor activates the Beta context band on Beta-only Welcome or an ordinary Beta-only app route
 - **THEN** one named explanation opens with Start exploring and explicit Close actions
+- **AND** both the band label and modal title use Beta · Better with your ideas in English and Bêta · Meilleure grâce à vos idées in French, on Welcome and in the app shell
 - **AND** either action closes it without navigation or household mutation, and the band can reopen it
 
 #### Scenario: Truthful pre-release copy
