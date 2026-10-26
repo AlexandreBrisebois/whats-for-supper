@@ -224,10 +224,9 @@ test('QuickFind shows tonight’s recipe before assignment responds and retains 
     }
   );
   await page.route('**/api/stream', async (route) => {
-    await route.fulfill({
-      contentType: 'text/event-stream',
-      body: `event: connected\ndata: ${JSON.stringify({ type: 'connected', schedule: readSchedule() })}\n\n`,
-    });
+    // HTTP 204 stops EventSource reconnects; a finite SSE body would replay an
+    // empty snapshot while the assignment is deliberately held below.
+    await route.fulfill({ status: 204 });
   });
   await page.route('**/api/schedule/fill-the-gap**', async (route) => {
     if (route.request().method() !== 'GET') return route.fallback();
@@ -243,7 +242,7 @@ test('QuickFind shows tonight’s recipe before assignment responds and retains 
     if (route.request().method() !== 'POST') return route.fallback();
     await assignmentGate;
     assignmentReleased = true;
-    // Publish the same committed state to schedule reads and later SSE connections.
+    // Publish the same committed state to schedule reads and subsequent document loads.
     committed = true;
     await route.fulfill({ json: { data: { message: 'Recipe assigned', displacedRecipe: null } } });
   });
