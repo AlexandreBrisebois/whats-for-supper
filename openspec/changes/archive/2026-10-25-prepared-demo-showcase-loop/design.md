@@ -74,4 +74,4 @@ Use deterministic synthetic facts, disposable PostgreSQL/Linux/files and failing
 
 Unit tests establish transport arrival-order behavior, SSR identity and UI draft removal. Stateful browser tests cover full interaction and reset/re-entry with English/French, focus and touch targets on iPhone, Pixel Phone and iPad portrait/landscape emulations. Dependency tests retain model-free import/resolution and context behavior. These are local checks, not physical-device, deployed-host or power-cut qualification. Exact passing/failing records belong in tasks.md and the final harness record.
 
-Operator instructions are in [prepared-demo.md](../../../docs/operations/prepared-demo.md). Final preparation/verification includes all task-owned paths and generated closure while excluding concurrent locale catalog edits.
+Operator instructions are in [prepared-demo.md](../../../../docs/operations/prepared-demo.md). Final preparation/verification includes all task-owned paths and generated closure while excluding concurrent locale catalog edits.

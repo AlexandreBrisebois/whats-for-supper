@@ -3,7 +3,7 @@
 ## MODIFIED Requirements
 
 ### Requirement: Accept demo snapshot capture as background work
-An authenticated POST /api/management/demo-capture with demo mode disabled SHALL trigger demo-capture with empty parameters and return 202 containing message Demo capture task enqueued. and taskId identifying the accepted workflow instance. Capture SHALL be rejected while demo mode is enabled, including generic workflow trigger/task reset and execution of previously accepted capture work. Acceptance SHALL follow background-processing requirement `Persist initial workflow and task identities before returning` and SHALL NOT certify completion.
+An authenticated POST /api/management/demo-capture with demo mode disabled SHALL trigger demo-capture with empty parameters and return 202 containing message Demo capture task enqueued. and taskId identifying the accepted workflow instance. Acceptance SHALL follow background-processing requirement `Persist initial workflow and task identities before returning` and SHALL NOT certify completion.
 
 #### Scenario: Capture accepted
 - **WHEN** demo mode is disabled and authenticated workflow acceptance succeeds for demo-capture
@@ -13,8 +13,12 @@ An authenticated POST /api/management/demo-capture with demo mode disabled SHALL
 - **WHEN** an authorized operator requests demo-capture with DEMO_MODE disabled and workflow acceptance succeeds
 - **THEN** the management action still accepts capture; automatic demo activation is not an action-level prerequisite
 
+#### Scenario: Capture rejected in demo mode
+- **WHEN** demo mode is enabled and capture is requested through management, a generic workflow trigger or task reset, or previously accepted capture work reaches execution
+- **THEN** capture SHALL be rejected at that boundary
+
 ### Requirement: Capture the core demo data set
-A successful demo capture SHALL publish a complete versioned prepared household baseline with explicit membership, including empty collections, for every baseline-owned state category. It SHALL include members, active and soft-deleted recipes, prepared search, settings, member overrides, categories. The baseline SHALL explicitly declare clearing calendar events, meal plans and their grocery state, grocery extras, votes, import reports and aggregate voting history rather than replaying that captured activity. Recipe LastCookedDate SHALL be cleared during reset. Operational identities SHALL NOT be replayable.
+A successful demo capture SHALL publish a complete versioned prepared household baseline with explicit membership, including empty collections, for every baseline-owned state category. Operational identities SHALL NOT be replayable.
 
 #### Scenario: Core snapshot
 - **WHEN** an operator captures the prepared household
@@ -27,6 +31,12 @@ A successful demo capture SHALL publish a complete versioned prepared household 
 #### Scenario: Retired recipe fields
 - **WHEN** recipe snapshot serialization encounters retired fields isHealthyChoice, dietaryProfile, fopFlags, fopClassification, healthProfile, healthEvent or balanceSummary
 - **THEN** those fields are omitted from serialized recipe objects
+
+#### Scenario: Prepared facts and reset dispositions
+- **WHEN** a successful capture publishes the baseline
+- **THEN** it SHALL include members, active and soft-deleted recipes, prepared search, settings, member overrides and categories
+- **AND** it SHALL explicitly declare clearing calendar events, meal plans and their grocery state, grocery extras, votes, import reports and aggregate voting history rather than replaying that captured activity
+- **AND** recipe LastCookedDate SHALL be cleared during reset
 
 ### Requirement: Copy recipe-root files into the snapshot
 Successful capture SHALL publish a verified inventory of baseline-owned original images, source PDFs, hero images and required recipe/search artifacts with the database baseline. Publication SHALL replace the selected baseline only after validation succeeds; failure SHALL retain the prior complete baseline. The manifest SHALL identify format, capture time, membership, asset integrity and calendar anchor.
@@ -94,7 +104,7 @@ Successful reset SHALL replace baseline-owned database facts and assets as one r
 - **THEN** it cannot recreate cleared grocery items, checks or extra lineage or mutate the new generation
 
 ### Requirement: Clear transient activity when restoring core state
-Reset SHALL clear votes, import reports, prior weekly planning records and their grocery items/checks, calendar events and all grocery-extra occurrences/lineage so visitors start with an empty planner, calendar and groceries and a fresh voting round. One new empty current-week voting record SHALL own that round; it SHALL contain no assigned meals, grocery items, checks or old notification timestamp. It SHALL clear aggregate history and recipe LastCookedDate, regenerate round/close and optimistic-concurrency identities, and invalidate stale maintenance commands, uploads and continuations.
+Reset SHALL clear votes, import reports, prior weekly planning records and their grocery items/checks, calendar events and all grocery-extra occurrences/lineage so visitors start with an empty planner, calendar and groceries and a fresh voting round.
 
 #### Scenario: Activity cleared
 - **WHEN** votes, reports and queued visitor work accumulated since capture
@@ -107,6 +117,11 @@ Reset SHALL clear votes, import reports, prior weekly planning records and their
 #### Scenario: Repeat reset
 - **WHEN** the same baseline is reset twice at the same calendar anchor
 - **THEN** authoritative facts are equivalent without duplicated history, extras or counts; operational identities are fresh each time
+
+#### Scenario: Fresh round and stale authority
+- **WHEN** reset publishes the restored household
+- **THEN** one new empty current-week voting record SHALL own the fresh round and SHALL contain no assigned meals, grocery items, checks or old notification timestamp
+- **AND** reset SHALL clear aggregate history and recipe LastCookedDate, regenerate round/close and optimistic-concurrency identities, and invalidate stale maintenance commands, uploads and continuations
 
 ### Requirement: Retain active workflow instances during activity clearing
 Reset SHALL preserve its own orchestration and only explicitly approved model-free maintenance work. Other pre-reset pending or processing visitor work SHALL be quiesced or invalidated before publication and unable to publish afterward. It SHALL NOT replay captured workflow instances, tasks, leases or provider work.
