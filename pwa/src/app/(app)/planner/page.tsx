@@ -581,7 +581,7 @@ export default function PlannerPage() {
             </motion.div>
           ) : (
             <motion.div
-              key={`planner-${currentWeekOffset}`}
+              key="planner"
               initial={{ opacity: 0, x: currentWeekOffset > prevOffset ? 50 : -50 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: currentWeekOffset > prevOffset ? -50 : 50 }}

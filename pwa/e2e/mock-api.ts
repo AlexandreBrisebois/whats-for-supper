@@ -449,7 +449,8 @@ export async function setupCommonRoutes(
     } catch (error) {
       // Navigation may drop a post-commit notification; the next session GET
       // still observes the saved state and revision, as on the real stream.
-      const message = error instanceof Error ? error.message.split('\n', 1)[0] : '';
+      const message =
+        error instanceof Error ? error.message.split('\n', 1)[0].replace(/\.$/, '') : '';
       if (
         message !==
           'page.evaluate: Execution context was destroyed, most likely because of a navigation' &&

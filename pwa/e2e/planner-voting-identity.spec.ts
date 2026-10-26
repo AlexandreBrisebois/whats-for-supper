@@ -85,6 +85,8 @@ for (const demoMode of [false, true]) {
       await page.getByTestId('prev-week').focus();
       await page.keyboard.press('Enter');
       await expect(page.getByTestId('ask-family-cta')).toBeVisible();
+      // The previous week must not leave a second, actionable planner behind.
+      await expect(page.getByTestId('planner-action-row')).toHaveCount(1);
       await expect(page.getByTestId('close-voting-btn')).toHaveCount(0);
       await expect(page.getByTestId('day-card-0')).not.toContainText('Mock Recipe');
       const rejected = page.waitForResponse(
