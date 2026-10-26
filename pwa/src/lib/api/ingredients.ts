@@ -1,3 +1,4 @@
+import { demoFetch } from './demo-session';
 import { requestAdapter } from './api-client';
 import { useFamilyStore } from '@/store/familyStore';
 import type { GrocerySection } from '@/lib/grocery/aisleMapper';
@@ -8,7 +9,7 @@ export async function reclassifyIngredient(
 ): Promise<void> {
   const familyMemberId = useFamilyStore.getState().selectedFamilyMemberId;
 
-  const response = await fetch(
+  const response = await demoFetch(
     `${requestAdapter.baseUrl}/api/ingredients/${encodeURIComponent(normalizedKey)}/category`,
     {
       method: 'PATCH',

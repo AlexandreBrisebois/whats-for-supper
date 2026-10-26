@@ -380,7 +380,8 @@ try
         {
             policy.WithOrigins(allowedOrigins)
                   .AllowAnyHeader()
-                  .AllowAnyMethod();
+                  .AllowAnyMethod()
+                  .WithExposedHeaders(DemoGenerationProtocol.Header);
 
             if (allowedOrigins.Any() && !allowedOrigins.Contains("*"))
             {

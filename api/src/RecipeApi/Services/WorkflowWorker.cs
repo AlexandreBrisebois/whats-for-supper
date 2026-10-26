@@ -235,7 +235,9 @@ public class WorkflowWorker(
                 using var taskScope = scopeFactory.CreateScope();
                 var services = taskScope.ServiceProvider;
                 var db = services.GetRequiredService<RecipeDbContext>();
-                await using var recoveryLease = services.GetService<RecoveryBoundary>() is { } recovery
+                // Capture/reset own Snapshot/Publish leases; a held Write lease cannot be upgraded.
+                await using var recoveryLease = task.ProcessorName is not ("CaptureDemoState" or "RestoreDemoState")
+                    && services.GetService<RecoveryBoundary>() is { } recovery
                     ? await recovery.EnterAsync(RecoveryAccess.Write, ct) : null;
                 await ProcessTaskAsync(task, db, ct);
             }
@@ -440,6 +442,9 @@ public class WorkflowWorker(
         {
             using var scope = scopeFactory.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+            var boundary = scope.ServiceProvider.GetService<RecoveryBoundary>();
+            await using var lease = boundary?.CoordinatesWrites == true
+                ? await boundary.EnterAsync(RecoveryAccess.Write, ct) : null;
 
             var staleThreshold = clock.UtcNow.AddMinutes(-StaleTimeoutMinutes);
 

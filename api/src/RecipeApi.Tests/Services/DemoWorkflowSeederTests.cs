@@ -55,9 +55,11 @@ public class DemoWorkflowSeederTests : IDisposable
         {
             Id = Guid.NewGuid(),
             WorkflowId = "demo-restore",
+            Parameters = "{\"automaticDemoReset\":\"true\"}",
             Status = WorkflowStatus.Pending,
             CreatedAt = _clock.UtcNow,
-            UpdatedAt = _clock.UtcNow
+            UpdatedAt = _clock.UtcNow,
+            Tasks = [new WorkflowTask { TaskId = Guid.NewGuid(), TaskName = "restore", ProcessorName = "RestoreDemoState", Status = TaskStatus.Pending, ScheduledAt = _clock.UtcNow.AddDays(1) }]
         });
         await _db.SaveChangesAsync();
         await SaveDemoRestoreWorkflowAsync();

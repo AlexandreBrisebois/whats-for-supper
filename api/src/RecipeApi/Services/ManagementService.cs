@@ -19,7 +19,7 @@ public record MaintenanceCommandReportItem(Guid CommandId, string CommandType, s
 
 public record DreamingReportResult(string Path, int FailedWorkflows, int StuckWorkflows);
 
-public record DemoStateResult(string Message, int FamilyMembers, int Recipes, int SearchDocuments);
+public record DemoStateResult(string Message, int FamilyMembers, int Recipes, int SearchDocuments, Guid? BaselineId = null, Guid? Generation = null, IReadOnlyDictionary<string, int>? StateCounts = null);
 
 public sealed record GroceryExtraBackup(int Version, IReadOnlyList<GroceryExtraOccurrence> Occurrences);
 
@@ -30,6 +30,8 @@ public partial class ManagementService(
     DataRootResolver dataRoot,
     IClock clock,
     ILogger<ManagementService> logger,
+    DemoModeOptions demoMode,
+    RecoverySnapshotService recovery,
     IScheduleEventPublisher? publisher = null)
 {
     private static readonly HashSet<string> RetiredRecipeBackupFields = new(StringComparer.OrdinalIgnoreCase)
@@ -51,7 +53,6 @@ public partial class ManagementService(
         ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles
     };
 
-    private string DemoRoot => Path.Combine(DataRoot, "demo");
     private string ActiveRecipesRoot => recipesRoot.Root;
     private string RecipeImportReportsBackupPath => Path.Combine(DataRoot, "recipe-import-reports.json");
     private string GroceryExtrasBackupPath => Path.Combine(DataRoot, "grocery-extras.json");
@@ -271,114 +272,42 @@ public partial class ManagementService(
 
     public async Task<DemoStateResult> CaptureDemoStateAsync(CancellationToken ct = default)
     {
-        Directory.CreateDirectory(DemoRoot);
-        await using var transaction = await VotingBoundary.BeginAsync(db, ct);
-        var round = await VotingBoundary.StateAsync(db, ct);
-        if (db.Database.IsRelational()) await db.Database.ExecuteSqlRawAsync("LOCK TABLE recipes IN SHARE MODE", ct);
-
-        var familyMembers = await db.FamilyMembers.AsNoTracking().ToListAsync(ct);
-        var recipes = await db.Recipes.IgnoreQueryFilters().AsNoTracking().ToListAsync(ct);
-        var searchDocuments = await db.RecipeSearchDocuments.AsNoTracking().ToListAsync(ct);
-
-        await WriteJsonAsync(Path.Combine(DemoRoot, "family-members.json"), familyMembers, ct);
-        await File.WriteAllTextAsync(Path.Combine(DemoRoot, "recipes.json"), SerializeRecipeBackups(recipes), ct);
-        await WriteJsonAsync(Path.Combine(DemoRoot, "recipe-search-documents.json"), searchDocuments, ct);
-        var history = await db.WeeklyHouseholdInterests.AsNoTracking().ToListAsync(ct);
-        await WriteJsonAsync(Path.Combine(DemoRoot, "weekly-household-interest.json"), new InterestSnapshot(1, round.HistoryGeneration, history), ct);
-        // Capture ownership as context, never export a replayable operational token.
-        await WriteJsonAsync(Path.Combine(DemoRoot, "voting-round.json"), new { version = 1, round.WeekStartDate, capturedAt = clock.UtcNow }, ct);
-
-        var demoRecipesRoot = Path.Combine(DemoRoot, "recipes");
-        ReplaceDirectory(ActiveRecipesRoot, demoRecipesRoot);
-
-        var manifest = new
-        {
-            capturedAt = clock.UtcNow,
-            schemaVersion = 1,
-            familyMembers = familyMembers.Count,
-            recipes = recipes.Count,
-            searchDocuments = searchDocuments.Count,
-            recipeFiles = Directory.Exists(demoRecipesRoot)
-                ? Directory.EnumerateFiles(demoRecipesRoot, "*", SearchOption.AllDirectories).Count()
-                : 0
-        };
-        await WriteJsonAsync(Path.Combine(DemoRoot, "manifest.json"), manifest, ct);
-        await db.SaveChangesAsync(ct);
-        if (transaction is not null) await transaction.CommitAsync(ct);
-
-        logger.LogInformation(
-            "Captured demo state to {DemoRoot}: members={Members}, recipes={Recipes}, searchDocuments={SearchDocuments}",
-            DemoRoot,
-            familyMembers.Count,
-            recipes.Count,
-            searchDocuments.Count);
-
-        return new DemoStateResult("Demo state captured.", familyMembers.Count, recipes.Count, searchDocuments.Count);
+        demoMode.EnsureManagementAvailable();
+        var result = await recovery.CaptureDemoAsync(ct);
+        return await DemoResultAsync(result, ct);
     }
 
-    public async Task<DemoStateResult> RestoreDemoStateAsync(CancellationToken ct = default)
+    public async Task<DemoStateResult> RestoreDemoStateAsync(CancellationToken ct = default, Guid? workflowInstanceId = null)
     {
-        EnsureDemoSnapshotExists();
-
-        var familyMembers = await ReadJsonAsync<List<FamilyMember>>(Path.Combine(DemoRoot, "family-members.json"), ct) ?? [];
-        FillMissingMemberTimestamps(familyMembers);
-        var recipes = await ReadJsonAsync<List<Recipe>>(Path.Combine(DemoRoot, "recipes.json"), ct) ?? [];
-        var restoredAt = clock.UtcNow;
-        foreach (var recipe in recipes)
+        if (demoMode.Enabled)
         {
-            if (recipe.CreatedAt == default) recipe.CreatedAt = restoredAt;
-            if (recipe.UpdatedAt == default) recipe.UpdatedAt = restoredAt;
+            var instance = workflowInstanceId.HasValue
+                ? await db.WorkflowInstances.AsNoTracking().SingleOrDefaultAsync(i => i.Id == workflowInstanceId.Value, ct) : null;
+            if (instance?.WorkflowId != "demo-restore" || !DemoWorkflowSeeder.IsAutomatic(instance.Parameters))
+                throw new InvalidOperationException(DemoModeOptions.ManagementUnavailableMessage);
         }
-        var searchDocuments = await ReadJsonAsync<List<RecipeSearchDocument>>(Path.Combine(DemoRoot, "recipe-search-documents.json"), ct) ?? [];
-        var history = (await ReadInterestAsync(Path.Combine(DemoRoot, "weekly-household-interest.json"), true, ct))!;
-        if (history.Rows.Any(row => !recipes.Any(recipe => recipe.Id == row.RecipeId)))
-            throw new InvalidDataException("Demo aggregate history references a recipe outside its core snapshot.");
-
-        await using var transaction = await VotingBoundary.BeginAsync(db, ct);
-        try
+        var result = await recovery.RestoreDemoAsync(workflowInstanceId, ct);
+        db.ChangeTracker.Clear();
+        if (publisher is not null)
         {
-            db.WeeklyHouseholdInterests.RemoveRange(db.WeeklyHouseholdInterests);
-            db.RecipeImportReports.RemoveRange(db.RecipeImportReports);
-            db.RecipeVotes.RemoveRange(db.RecipeVotes);
-            db.WeeklyPlans.RemoveRange(db.WeeklyPlans);
-            db.CalendarEvents.RemoveRange(db.CalendarEvents);
-            db.RecipeSearchDocuments.RemoveRange(db.RecipeSearchDocuments);
-            db.Recipes.RemoveRange(db.Recipes.IgnoreQueryFilters());
-            db.FamilyMembers.RemoveRange(db.FamilyMembers);
-
-            var staleWorkflows = await db.WorkflowInstances
-                .Include(i => i.Tasks)
-                .Where(i => i.Status != WorkflowStatus.Pending && i.Status != WorkflowStatus.Processing)
-                .ToListAsync(ct);
-            db.WorkflowInstances.RemoveRange(staleWorkflows);
-
-            await db.SaveChangesAsync(ct);
-
-            db.FamilyMembers.AddRange(familyMembers);
-            db.Recipes.AddRange(recipes);
-            db.RecipeSearchDocuments.AddRange(searchDocuments);
-            await db.SaveChangesAsync(ct);
-            await ReplaceInterestAsync(history, ct);
-
-            ReplaceDirectory(Path.Combine(DemoRoot, "recipes"), ActiveRecipesRoot);
-            if (transaction is not null) await transaction.CommitAsync(ct);
+            if (result.OperationId is { } generation) await publisher.PublishDemoResetAsync(generation);
+            await publisher.PublishAllSuggestionsInvalidatedAsync();
         }
-        catch
+        return await DemoResultAsync(result, ct);
+    }
+
+    private async Task<DemoStateResult> DemoResultAsync(RecoveryResult result, CancellationToken ct)
+    {
+        if (result.StateCounts is { } published)
+            return new(result.Message, published["family_members"], published["recipes"], published["recipe_search_documents"], result.SnapshotId, result.OperationId, published);
+        var counts = new Dictionary<string, int>();
+        var source = Path.Combine(recovery.DemoBaselineRoot, result.SnapshotId!.Value.ToString("N"));
+        foreach (var table in RecoverySnapshotService.DemoTables)
         {
-            if (transaction is not null) await transaction.RollbackAsync(ct);
-            throw;
+            using var document = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine(source, "tables", table + ".json"), ct));
+            counts[table] = document.RootElement.GetArrayLength();
         }
-
-        if (publisher is not null) await publisher.PublishAllSuggestionsInvalidatedAsync();
-
-        logger.LogInformation(
-            "Restored demo state from {DemoRoot}: members={Members}, recipes={Recipes}, searchDocuments={SearchDocuments}",
-            DemoRoot,
-            familyMembers.Count,
-            recipes.Count,
-            searchDocuments.Count);
-
-        return new DemoStateResult("Demo state restored.", familyMembers.Count, recipes.Count, searchDocuments.Count);
+        return new(result.Message, counts["family_members"], counts["recipes"], counts["recipe_search_documents"], result.SnapshotId, result.OperationId, counts);
     }
 
     public async Task<WorkflowPruneResult> PruneWorkflowsAsync(int retentionDays, CancellationToken ct = default)
@@ -786,28 +715,6 @@ public partial class ManagementService(
         public string? Reason { get; set; }
     }
 
-    private void EnsureDemoSnapshotExists()
-    {
-        var requiredFiles = new[]
-        {
-            "manifest.json",
-            "family-members.json",
-            "recipes.json",
-            "recipe-search-documents.json"
-        };
-
-        var missing = requiredFiles
-            .Select(file => Path.Combine(DemoRoot, file))
-            .Where(path => !File.Exists(path))
-            .ToList();
-
-        if (missing.Count > 0)
-        {
-            throw new InvalidOperationException(
-                $"Demo snapshot is missing or incomplete at {DemoRoot}. Missing: {string.Join(", ", missing.Select(Path.GetFileName))}");
-        }
-    }
-
     private static async Task WriteJsonAsync<T>(string path, T value, CancellationToken ct)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
@@ -872,31 +779,9 @@ public partial class ManagementService(
         return JsonSerializer.Deserialize<T>(json, JsonDefaults.CamelCase);
     }
 
-    private static void ReplaceDirectory(string source, string destination)
-    {
-        if (Directory.Exists(destination))
-        {
-            Directory.Delete(destination, recursive: true);
-        }
-
-        Directory.CreateDirectory(destination);
-
-        if (!Directory.Exists(source))
-        {
-            return;
-        }
-
-        foreach (var sourceFile in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories))
-        {
-            var relativePath = Path.GetRelativePath(source, sourceFile);
-            var destinationFile = Path.Combine(destination, relativePath);
-            Directory.CreateDirectory(Path.GetDirectoryName(destinationFile)!);
-            File.Copy(sourceFile, destinationFile, overwrite: true);
-        }
-    }
-
     public async Task<SeedResult> RestoreAsync(CancellationToken ct = default)
     {
+        demoMode.EnsureManagementAvailable();
         var result = new SeedResult();
         GroceryExtraBackup? groceryExtraBackup = null;
         try
@@ -1600,6 +1485,7 @@ public partial class ManagementService(
 
     public async Task<SeedResult> DisasterRecoveryAsync()
     {
+        demoMode.EnsureManagementAvailable();
         var result = new SeedResult();
 
         var membersPath = Path.Combine(DataRoot, "family-members.json");

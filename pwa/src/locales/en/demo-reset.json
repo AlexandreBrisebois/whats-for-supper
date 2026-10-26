@@ -1,0 +1,11 @@
+{
+  "demoReset": {
+    "title": "The shared demo has reset",
+    "body": "The prepared household is back. Your previous edits have been cleared. Continue to load the current demo; your language and device preferences are kept.",
+    "continue": "Continue with the reset demo"
+  },
+  "demoHosting": {
+    "link": "Set up your own household",
+    "body": "A self-hosted household keeps your own plans. AI features require your own provider setup and may have costs."
+  }
+}

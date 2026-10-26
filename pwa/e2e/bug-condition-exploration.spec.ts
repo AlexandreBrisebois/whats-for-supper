@@ -365,7 +365,7 @@ test.describe('Bug Condition C — GOTO Auto-Navigation', () => {
   test('GOTO success screen stays visible after photo capture', async ({ page }) => {
     await page.goto('/capture?intent=goto&mode=photo');
 
-    const fileInput = page.locator('input[type="file"]').first();
+    const fileInput = page.locator('input[type="file"][capture="environment"]');
     await fileInput.setInputFiles(FIXTURE_IMAGE);
 
     await expect(page.getByRole('heading', { name: /photos \(1\)/i })).toBeVisible({

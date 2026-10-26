@@ -1,3 +1,4 @@
+import { demoFetch } from './demo-session';
 import { apiClient, requestAdapter } from './api-client';
 import { useFamilyStore } from '@/store/familyStore';
 
@@ -10,7 +11,7 @@ export function useSchedule() {
     ): Promise<void> {
       const familyMemberId = useFamilyStore.getState().selectedFamilyMemberId;
 
-      const response = await fetch(
+      const response = await demoFetch(
         `${requestAdapter.baseUrl}/api/schedule/${weekOffset}/grocery/item`,
         {
           method: 'PATCH',
@@ -33,14 +34,17 @@ export function useSchedule() {
     ): Promise<Record<string, boolean>> {
       const familyMemberId = useFamilyStore.getState().selectedFamilyMemberId;
 
-      const response = await fetch(`${requestAdapter.baseUrl}/api/schedule/${weekOffset}/grocery`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Family-Member-Id': familyMemberId || '',
-        },
-        body: JSON.stringify(groceryState),
-      });
+      const response = await demoFetch(
+        `${requestAdapter.baseUrl}/api/schedule/${weekOffset}/grocery`,
+        {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Family-Member-Id': familyMemberId || '',
+          },
+          body: JSON.stringify(groceryState),
+        }
+      );
 
       if (!response.ok) {
         throw new Error(`Failed to update grocery state: ${response.statusText}`);

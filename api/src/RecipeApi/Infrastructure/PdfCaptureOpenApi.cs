@@ -51,6 +51,12 @@ public static class PdfCaptureOpenApi
             }, "data")),
             ["400"] = JsonResponse("Missing/extra file, missing or invalid member, malformed multipart or invalid metadata", error),
             ["401"] = new OpenApiResponse { Description = "Household authentication required (existing authentication response)" },
+            ["403"] = JsonResponse("AI processing unavailable in demo mode before reading the upload", Object(new Dictionary<string, IOpenApiSchema>
+            {
+                ["status"] = new OpenApiSchema { Type = JsonSchemaType.Integer },
+                ["code"] = new OpenApiSchema { Type = JsonSchemaType.String },
+                ["message"] = new OpenApiSchema { Type = JsonSchemaType.String }
+            }, "status", "code", "message")),
             ["413"] = JsonResponse("File exceeds 20,971,520 bytes; no pending recipe or workflow created", error),
             ["415"] = JsonResponse("Unsupported transport type: requires .pdf extension and application/pdf MIME type", error)
         };

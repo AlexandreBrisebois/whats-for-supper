@@ -1,4 +1,5 @@
 'use client';
+import { DemoAiActionGate } from '@/components/demo/DemoAiActionGate';
 import { CalendarUnavailableError } from '@/lib/deployment-calendar';
 
 import { useEffect, useState, useRef } from 'react';
@@ -692,7 +693,7 @@ export function RecipeDetailSheet({
                 </button>
               )}
               {isEditing && (
-                <>
+                <DemoAiActionGate className="absolute inset-x-4 bottom-4">
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -723,7 +724,7 @@ export function RecipeDetailSheet({
                   >
                     <Camera size={24} />
                   </button>
-                </>
+                </DemoAiActionGate>
               )}
             </div>
 

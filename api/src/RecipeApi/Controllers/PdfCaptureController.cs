@@ -14,6 +14,7 @@ namespace RecipeApi.Controllers;
 public sealed class PdfCaptureController(RecipeDbContext db, PdfCaptureService capture) : ControllerBase
 {
     [HttpPost("capture-pdf")]
+    [DemoAiAction]
     [SkipWrapping]
     [ManualPdfForm]
     [RequestFormLimits(MultipartBodyLengthLimit = 20 * 1024 * 1024)]

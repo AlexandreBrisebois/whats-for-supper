@@ -19,6 +19,7 @@ const suites = {
   ],
   household: [
     'auth-flow', 'bug-condition-exploration', 'capture-flow', 'demo-mode',
+    'demo-management-access', 'demo-reset',
     'identity-persistence', 'install-identity', 'member-creation', 'onboarding',
     'online-recovery', 'pdf-capture', 'profile', 'recipe-import-reporting',
     'settings', 'url-capture-recovery', 'utility-flows',

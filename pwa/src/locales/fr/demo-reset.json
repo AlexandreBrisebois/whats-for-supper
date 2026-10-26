@@ -1,0 +1,11 @@
+{
+  "demoReset": {
+    "title": "La démo partagée a été réinitialisée",
+    "body": "Le foyer préparé est de retour. Vos modifications précédentes ont été effacées. Continuez pour charger la démo actuelle; votre langue et les préférences de votre appareil sont conservées.",
+    "continue": "Continuer avec la démo réinitialisée"
+  },
+  "demoHosting": {
+    "link": "Configurer votre propre foyer",
+    "body": "Un foyer autohébergé conserve vos propres menus. Les fonctions d’IA nécessitent la configuration de votre fournisseur et peuvent entraîner des frais."
+  }
+}

@@ -13,6 +13,7 @@ public sealed class RecoveryController(RecoverySnapshotService recovery) : Contr
     public Task<IActionResult> Capture(CancellationToken ct) => Execute(() => recovery.CaptureAsync(ct));
 
     [HttpPost("restore/{snapshotId:guid}")]
+    [DemoManagementAction]
     public Task<IActionResult> Restore(Guid snapshotId, CancellationToken ct) => Execute(() => recovery.RestoreExactAsync(snapshotId, ct));
 
     [HttpPost("resume")]

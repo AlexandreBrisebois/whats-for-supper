@@ -392,12 +392,12 @@ public class WeeklyInterestPostgresTests(Xunit.Abstractions.ITestOutputHelper ou
     }
 
     [PostgresFact]
-    public async Task HistoryAndHumanIntent_RoundTripThroughBackupAndDemoReset()
+    public async Task BackupRestoresHistory_DemoResetClearsHistoryAndPreservesHumanIntent()
     {
         var row = await db.Recipes.SingleAsync();
         row.RotationHumanOff = true;
         row.RotationSource = "Human";
-        row.ImageCount = 1;
+        row.ImageCount = 0;
         var deleted = new Recipe { Name = "Deleted history dependency", IsReady = false, DeletedAt = clock.UtcNow };
         db.Recipes.Add(deleted);
         db.WeeklyHouseholdInterests.Add(new WeeklyHouseholdInterest { RecipeId = deleted.Id, WeekStartDate = new(2026, 10, 5), PositiveCount = 1, CapturedAt = clock.UtcNow, CloseId = Guid.NewGuid() });
@@ -418,11 +418,12 @@ public class WeeklyInterestPostgresTests(Xunit.Abstractions.ITestOutputHelper ou
                 .SetProperty(x => x.RotationSource, "Unknown")
                 .SetProperty(x => x.IsDiscoverable, true));
         }
-        async Task AssertSnapshot()
+        async Task AssertSnapshot(bool includesHistory)
         {
             db.ChangeTracker.Clear();
-            Assert.Equal(2, await db.WeeklyHouseholdInterests.CountAsync());
-            Assert.Equal(2, (await db.WeeklyHouseholdInterests.SingleAsync(x => x.RecipeId == recipe)).PositiveCount);
+            Assert.Equal(includesHistory ? 2 : 0, await db.WeeklyHouseholdInterests.CountAsync());
+            if (includesHistory)
+                Assert.Equal(2, (await db.WeeklyHouseholdInterests.SingleAsync(x => x.RecipeId == recipe)).PositiveCount);
             Assert.True((await db.Recipes.SingleAsync(x => x.Id == recipe)).RotationHumanOff);
             Assert.Equal("Human", (await db.Recipes.SingleAsync(x => x.Id == recipe)).RotationSource);
             var tombstone = await db.Recipes.IgnoreQueryFilters().SingleAsync(x => x.Id == deleted.Id);
@@ -433,11 +434,11 @@ public class WeeklyInterestPostgresTests(Xunit.Abstractions.ITestOutputHelper ou
         await MutateSnapshot();
         await Manage(m => m.RestoreAsync());
         await Manage(m => m.RestoreAsync());
-        await AssertSnapshot();
+        await AssertSnapshot(includesHistory: true);
         await Manage(m => m.CaptureDemoStateAsync());
         await MutateSnapshot();
         await Manage(m => m.RestoreDemoStateAsync());
-        await AssertSnapshot();
+        await AssertSnapshot(includesHistory: false);
         Assert.Empty(await db.RecipeVotes.ToListAsync());
         Assert.True((await db.VotingRoundStates.SingleAsync()).RequiresRoundIdentity);
     }

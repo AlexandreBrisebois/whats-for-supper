@@ -12,12 +12,15 @@ namespace RecipeApi.Services.Agents;
 public class RecipeHeroAgent(
     RecipesRootResolver recipesRoot,
     IConfiguration configuration,
-    ILogger<RecipeHeroAgent> logger) : IWorkflowProcessor
+    ILogger<RecipeHeroAgent> logger,
+    IHttpClientFactory? httpClientFactory = null) : IWorkflowProcessor
 {
+    private readonly DemoModeOptions _demoMode = new(configuration);
     public string ProcessorName => "GenerateHero";
 
     public async Task<object?> ExecuteAsync(WorkflowTask task, CancellationToken ct)
     {
+        _demoMode.EnsureAiAvailable();
         if (string.IsNullOrEmpty(task.Payload))
         {
             throw new ArgumentException("Task payload is empty.");
@@ -63,6 +66,7 @@ public class RecipeHeroAgent(
 
     public async Task CreateHeroImageAsync(Guid recipeId, bool force = false, CancellationToken ct = default)
     {
+        _demoMode.EnsureAiAvailable();
         var modelId = GetModelId();
         var recipeDir = Path.Combine(RecipesRoot, recipeId.ToString());
         var infoPath = Path.Combine(recipeDir, "recipe.info");
@@ -120,7 +124,17 @@ public class RecipeHeroAgent(
         {
             Timeout = 600000 // 10 minutes
         };
-        var client = new Client(apiKey: apiKey, httpOptions: httpOptions);
+        using var client = new Client(apiKey: apiKey, httpOptions: httpOptions,
+            clientOptions: httpClientFactory is null ? null : new ClientOptions
+            {
+                HttpClientFactory = () =>
+                {
+                    var httpClient = httpClientFactory.CreateClient("recipe-hero");
+                    // Preserve the SDK's explicit per-attempt timeout above.
+                    httpClient.Timeout = System.Threading.Timeout.InfiniteTimeSpan;
+                    return httpClient;
+                }
+            });
         var content = new Content { Role = "user", Parts = new List<Part>() };
 
         string taskPrompt;

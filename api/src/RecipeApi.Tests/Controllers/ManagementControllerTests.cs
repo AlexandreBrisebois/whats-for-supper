@@ -6,6 +6,8 @@ using RecipeApi.Services;
 using RecipeApi.Tests.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
+using Moq;
+using RecipeApi.Models;
 
 namespace RecipeApi.Tests.Controllers;
 
@@ -75,10 +77,7 @@ public class ManagementControllerTests : IAsyncLifetime
             .OfType<string>()
             .ToArray();
 
-        Assert.Contains("manifest.json", missing);
-        Assert.Contains("family-members.json", missing);
-        Assert.Contains("recipes.json", missing);
-        Assert.Contains("recipe-search-documents.json", missing);
+        Assert.Contains("current", missing);
     }
 
     [Fact]
@@ -91,8 +90,9 @@ public class ManagementControllerTests : IAsyncLifetime
         });
         using var client = factory.CreateClient();
 
-        var enqueue = await client.PostAsync("/api/management/demo-restore", content: null);
-        Assert.Equal(HttpStatusCode.Accepted, enqueue.StatusCode);
+        // Persist server-owned work; demo visitors cannot manually trigger a reset.
+        using (var scope = factory.Services.CreateScope())
+            await scope.ServiceProvider.GetRequiredService<IWorkflowOrchestrator>().TriggerAsync("demo-restore", []);
 
         var response = await client.GetAsync("/api/management/status");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -104,7 +104,7 @@ public class ManagementControllerTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task GetStatus_Reports_SeederHealthy_WhenCronValid_EvenIfSnapshotMissing()
+    public async Task GetStatus_DoesNotCertifyRecurrenceFromValidCronAlone()
     {
         await using var factory = await TestWebApplicationFactory.CreateAsync(new Dictionary<string, string?>
         {
@@ -113,8 +113,9 @@ public class ManagementControllerTests : IAsyncLifetime
         });
         using var client = factory.CreateClient();
 
-        var enqueue = await client.PostAsync("/api/management/demo-restore", content: null);
-        Assert.Equal(HttpStatusCode.Accepted, enqueue.StatusCode);
+        // Persist server-owned work; demo visitors cannot manually trigger a reset.
+        using (var scope = factory.Services.CreateScope())
+            await scope.ServiceProvider.GetRequiredService<IWorkflowOrchestrator>().TriggerAsync("demo-restore", []);
 
         var response = await client.GetAsync("/api/management/status");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -122,7 +123,31 @@ public class ManagementControllerTests : IAsyncLifetime
         var json = await response.Content.ReadAsStringAsync();
         using var doc = JsonDocument.Parse(json);
         Assert.False(doc.RootElement.GetProperty("demoSnapshotReady").GetBoolean());
-        Assert.True(doc.RootElement.GetProperty("demoRestoreSeederHealthy").GetBoolean());
-        Assert.True(doc.RootElement.GetProperty("demoRestoreSeederErrorCode").ValueKind == JsonValueKind.Null);
+        Assert.False(doc.RootElement.GetProperty("demoRestoreSeederHealthy").GetBoolean());
+        Assert.True(doc.RootElement.GetProperty("demoRestoreCronValid").GetBoolean());
+        Assert.Equal("NO_CONFIRMED_SUCCESSOR", doc.RootElement.GetProperty("demoRestoreSeederErrorCode").GetString());
+        Assert.Equal("RECAPTURE_REQUIRED", doc.RootElement.GetProperty("demoSnapshotErrorCode").GetString());
+        Assert.Equal(JsonValueKind.Null, doc.RootElement.GetProperty("demoNextRestoreAt").ValueKind);
+    }    [Fact]
+    public async Task Backfill_search_does_not_return_acceptance_before_persisted_dispatch()
+    {
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var accepted = new TaskCompletionSource<WorkflowInstance>(TaskCreationOptions.RunContinuationsAsynchronously);
+        _factory.WorkflowOrchestratorMock.Setup(o => o.TriggerAsync("search-reconciliation", It.IsAny<Dictionary<string, string>>(), null))
+            .Callback(() => { entered.TrySetResult(); }).Returns(accepted.Task);
+        var request = _client.PostAsync("/api/management/backfill-search", null);
+        try
+        {
+            await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            await Task.WhenAny(request, Task.Delay(500));
+            Assert.False(request.IsCompleted);
+        }
+        finally
+        {
+            accepted.TrySetResult(new WorkflowInstance { Id = Guid.NewGuid(), WorkflowId = "search-reconciliation" });
+            await request;
+        }
+        Assert.Equal(HttpStatusCode.Accepted, (await request).StatusCode);
     }
+
 }

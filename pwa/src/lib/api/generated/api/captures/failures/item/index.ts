@@ -4,9 +4,11 @@
 // @ts-ignore
 import {
   createCaptureFailureClearResponseFromDiscriminatorValue,
+  createDemoResetRequiredErrorFromDiscriminatorValue,
   createRecoveryBusyErrorFromDiscriminatorValue,
   serializeCaptureFailureClearResponse,
   type CaptureFailureClearResponse,
+  type DemoResetRequiredError,
   type RecoveryBusyError,
 } from '../../../../models/index';
 // @ts-ignore
@@ -152,6 +154,7 @@ export interface FailuresItemRequestBuilder extends BaseRequestBuilder<FailuresI
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {Promise<FailuresDeleteResponse>}
    * @throws {Failures409Error} error when the service returns a 409 status code
+   * @throws {DemoResetRequiredError} error when the service returns a 412 status code
    * @throws {Failures422Error} error when the service returns a 422 status code
    * @throws {RecoveryBusyError} error when the service returns a 503 status code
    */
@@ -251,6 +254,7 @@ export const FailuresItemRequestBuilderRequestsMetadata: RequestsMetadata = {
     responseBodyContentType: 'application/json',
     errorMappings: {
       409: createFailures409ErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
+      412: createDemoResetRequiredErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
       422: createFailures422ErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
       503: createRecoveryBusyErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
     },
