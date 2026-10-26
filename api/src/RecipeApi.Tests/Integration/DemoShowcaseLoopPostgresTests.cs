@@ -625,6 +625,80 @@ public class DemoShowcaseLoopPostgresTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.PreconditionFailed, (await client.PostAsJsonAsync($"/api/discovery/{recipes[0].Id}/vote", new { vote = 1 })).StatusCode);
     }
 
+    [PostgresFact]
+    public async Task Old_baseline_resets_to_the_current_deployment_week_across_Monday_and_later_weeks()
+    {
+        var clock = new MutableClock();
+        await using var captureHost = await TestWebApplicationFactory.CreateWithAuthAsync(clock, new()
+        {
+            ["Tests:PostgresConnectionString"] = connection,
+            ["Tests:LocalRecipeStore"] = "true",
+            ["Calendar:TimeZone"] = "America/Toronto"
+        }, configureServices: RegisterManagement);
+        using var preparation = captureHost.Services.CreateScope();
+        var preparedDb = preparation.ServiceProvider.GetRequiredService<RecipeDbContext>();
+        preparedDb.Recipes.Add(new Recipe { Name = "Synthetic rollover soup", IsReady = true, IsDiscoverable = true, Category = "Supper", AddedBy = captureHost.DefaultFamilyMemberId });
+        await preparedDb.SaveChangesAsync();
+        await preparation.ServiceProvider.GetRequiredService<ManagementService>().CaptureDemoStateAsync();
+        var baseline = SelectedBaseline(preparation);
+
+        await using var visitor = await TestWebApplicationFactory.CreateWithAuthAsync(clock, new()
+        {
+            ["Tests:PostgresConnectionString"] = connection,
+            ["Tests:LocalRecipeStore"] = "true",
+            ["Calendar:TimeZone"] = "America/Toronto",
+            ["DEMO_MODE"] = "true",
+            ["DataRoot"] = preparation.ServiceProvider.GetRequiredService<DataRootResolver>().Root,
+            ["RecipesRoot"] = preparation.ServiceProvider.GetRequiredService<RecipesRootResolver>().BaseRoot,
+            ["WorkflowsRoot"] = preparation.ServiceProvider.GetRequiredService<WorkflowRootResolver>().Root
+        }, configureServices: RegisterManagement);
+        using var client = visitor.CreateAuthenticatedClient();
+        Guid? previousRound = null;
+        foreach (var (instant, monday) in new[]
+        {
+            ("2026-10-26T03:59:00Z", "2026-10-19"),
+            ("2026-10-26T04:00:00Z", "2026-10-26"),
+            ("2026-11-02T12:00:00Z", "2026-11-02")
+        })
+        {
+            clock.UtcNow = DateTimeOffset.Parse(instant);
+            using var scope = visitor.Services.CreateScope();
+            var facts = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+            // Model claimed automatic work, preserving the visitor-mode reset fence.
+            var reset = new WorkflowInstance
+            {
+                Id = Guid.NewGuid(), WorkflowId = "demo-restore", Status = WorkflowStatus.Processing,
+                Parameters = JsonSerializer.Serialize(new Dictionary<string, string> { [DemoWorkflowSeeder.AutomaticParameter] = "true" }),
+                CreatedAt = clock.UtcNow, UpdatedAt = clock.UtcNow
+            };
+            reset.Tasks.Add(new WorkflowTask
+            {
+                TaskId = Guid.NewGuid(), InstanceId = reset.Id, TaskName = "restore",
+                ProcessorName = "RestoreDemoState", Status = RecipeApi.Models.TaskStatus.Processing,
+                CreatedAt = clock.UtcNow, UpdatedAt = clock.UtcNow
+            });
+            facts.WorkflowInstances.Add(reset);
+            await facts.SaveChangesAsync();
+            await scope.ServiceProvider.GetRequiredService<ManagementService>().RestoreDemoStateAsync(workflowInstanceId: reset.Id);
+            facts.ChangeTracker.Clear();
+            var plan = await facts.WeeklyPlans.SingleAsync();
+            var round = await facts.VotingRoundStates.SingleAsync();
+            Assert.Equal(DateOnly.Parse(monday), plan.WeekStartDate);
+            Assert.Equal(plan.WeekStartDate, round.WeekStartDate);
+            Assert.Equal(WeeklyPlanStatus.VotingOpen, plan.Status);
+            Assert.Equal(round.RoundId, plan.VotingRoundId);
+            Assert.NotEqual(previousRound, plan.VotingRoundId);
+            previousRound = plan.VotingRoundId;
+            Assert.Empty(await facts.CalendarEvents.ToListAsync());
+            using var schedule = JsonDocument.Parse(await client.GetStringAsync("/api/schedule?weekOffset=0"));
+            using var session = JsonDocument.Parse(await client.GetStringAsync("/api/discovery/session"));
+            Assert.Equal(monday, schedule.RootElement.GetProperty("data").GetProperty("weekStartDate").GetString());
+            Assert.Equal(monday, session.RootElement.GetProperty("data").GetProperty("weekStartDate").GetString());
+            Assert.Equal(round.RoundId, session.RootElement.GetProperty("data").GetProperty("roundId").GetGuid());
+            Assert.Equal(baseline, SelectedBaseline(scope));
+        }
+    }
+
     private static void RegisterManagement(IServiceCollection services)
     {
         services.AddScoped<DemoWorkflowSeeder>();
