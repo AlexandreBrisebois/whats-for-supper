@@ -22,7 +22,8 @@ The Beta explanation SHALL link to verified repository GitHub feedback, not Demo
 #### Scenario: Voluntary feedback destination
 - **WHEN** a visitor activates the Beta feedback link from Welcome or the app shell
 - **THEN** the destination opens the approved feedback template in the AlexandreBrisebois/whats-for-supper GitHub repository in a new browsing context using the existing external-link safety convention
-- **AND** the template and exact destination are verified before use; if unavailable, the link uses https://github.com/AlexandreBrisebois/whats-for-supper/issues without claiming a template is available
+- **AND** the form must be merged into the repository's default branch (`main`) and the exact destination verified before selecting the direct-template link for release; a feature-branch or PR file alone is insufficient
+- **AND** until that prerequisite is established, the link uses https://github.com/AlexandreBrisebois/whats-for-supper/issues without claiming a template is available or adding a runtime availability probe
 - **AND** no issue is created or submitted by the app and no passphrase, household, member, recipe or other app data is attached to the destination
 
 #### Scenario: Feedback remains optional and accessible
