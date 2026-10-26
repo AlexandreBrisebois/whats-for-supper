@@ -8,7 +8,11 @@ const IDENTITY_COOKIE = 'x-family-member-id';
  * for use in Server Components. It automatically routes to the internal
  * Docker API URL and forwards the identity cookie.
  */
-export async function serverFetch<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+export async function serverFetch<T>(
+  endpoint: string,
+  options: RequestInit = {},
+  onGeneration?: (generation: string | null) => void
+): Promise<T> {
   // Use the internal URL to talk to the API container directly
   const url = `${API_INTERNAL_URL}${endpoint}`;
 
@@ -42,6 +46,7 @@ export async function serverFetch<T>(endpoint: string, options: RequestInit = {}
     throw new Error(errorData.message || `API Error: ${response.status}`);
   }
 
+  onGeneration?.(response.headers?.get('X-Demo-Generation') ?? null);
   const body = await response.json();
   // Standardized wrapping: If the response has a top-level 'data' property,
   // we assume it's the wrapped result.

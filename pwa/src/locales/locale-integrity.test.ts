@@ -2,6 +2,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
+import enDemoReset from './en/demo-reset.json';
+import frDemoReset from './fr/demo-reset.json';
 import enCommon from './en/common.json';
 import enHints from './en/hints.json';
 import enJourneys from './en/journeys.json';
@@ -73,8 +75,8 @@ function usedTranslationKeys(): string[] {
 }
 
 describe('locale integrity', () => {
-  const en = flatten(mergeTranslations(enCommon, enHints, enJourneys));
-  const fr = flatten(mergeTranslations(frCommon, frHints, frJourneys));
+  const en = flatten(mergeTranslations(enCommon, enHints, enJourneys, enDemoReset));
+  const fr = flatten(mergeTranslations(frCommon, frHints, frJourneys, frDemoReset));
 
   it('keeps English and French catalogs in structural parity', () => {
     expect(Object.keys(fr).sort()).toEqual(Object.keys(en).sort());

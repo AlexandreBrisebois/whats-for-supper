@@ -5,6 +5,12 @@ namespace RecipeApi.Services;
 
 public class DemoModeOptions
 {
+    public const string ManagementUnavailableMessage = "Baseline capture and manual household restores are unavailable in Demo Mode. Demo resets run on the automatic schedule.";
+    public void EnsureManagementAvailable()
+    {
+        if (Enabled) throw new InvalidOperationException(ManagementUnavailableMessage);
+    }
+
     public bool Enabled { get; }
     public string? RawValue { get; }
     public bool IsRawValueValid { get; }

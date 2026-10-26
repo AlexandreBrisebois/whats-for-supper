@@ -63,6 +63,10 @@ describe('demo context', () => {
     expect(await screen.findByRole('dialog')).toHaveAccessibleName('Demo · What to know');
     expect(screen.getByText(/shared with other visitors/i)).toBeInTheDocument();
     expect(screen.getByText(/personal information/i)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Set up your own household' })).toHaveAttribute(
+      'href',
+      'https://github.com/AlexandreBrisebois/whats-for-supper/blob/main/docs/install/quick-start.md'
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Start exploring' }));
     expect(localStorage.getItem(DEMO_CONTEXT_ACK_KEY)).toBe('true');
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();

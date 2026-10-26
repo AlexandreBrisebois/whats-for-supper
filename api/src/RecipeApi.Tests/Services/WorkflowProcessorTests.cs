@@ -88,6 +88,32 @@ public class WorkflowProcessorTests : IDisposable
         Assert.Equal(child.ScheduledAt, childTask.ScheduledAt);
     }
 
+    [Fact]
+    public async Task Manual_demo_restore_does_not_start_recurrence_when_demo_is_disabled()
+    {
+        await SaveWorkflowAsync("demo-restore");
+        var processor = CreateProcessor(new() { ["DEMO_MODE"] = "false" });
+        await processor.ExecuteAsync(new WorkflowTask
+        {
+            InstanceId = Guid.NewGuid(), Payload = """{"workflowId":"demo-restore","schedule":{"cron":"0 3 * * *"}}"""
+        }, CancellationToken.None);
+        Assert.Empty(_db.WorkflowInstances);
+    }
+
+    [Fact]
+    public async Task Retried_demo_successor_acceptance_keeps_one_future_occurrence()
+    {
+        await SaveWorkflowAsync("demo-restore");
+        var processor = CreateProcessor(new() { ["DEMO_MODE"] = "true" });
+        var task = new WorkflowTask
+        {
+            InstanceId = Guid.NewGuid(), Payload = """{"workflowId":"demo-restore","schedule":{"cron":"0 3 * * *"}}"""
+        };
+        await processor.ExecuteAsync(task, CancellationToken.None);
+        await processor.ExecuteAsync(task, CancellationToken.None);
+        Assert.Single(_db.WorkflowInstances);
+    }
+
     private WorkflowProcessor CreateProcessor(
         Dictionary<string, string?>? configurationValues = null,
         DateTimeOffset? now = null)
@@ -101,7 +127,8 @@ public class WorkflowProcessorTests : IDisposable
             _orchestrator,
             new CronScheduleCalculator(configuration),
             clock,
-            NullLogger<WorkflowProcessor>.Instance);
+            NullLogger<WorkflowProcessor>.Instance,
+            new DemoWorkflowSeeder(_db, _orchestrator, new DemoModeOptions(configuration), new CronScheduleCalculator(configuration), clock, NullLogger<DemoWorkflowSeeder>.Instance));
     }
 
     private async Task SaveWorkflowAsync(string workflowId)
@@ -111,7 +138,7 @@ public class WorkflowProcessorTests : IDisposable
             parameters: []
             tasks:
               - name: child
-                processor: Noop
+                processor: {(workflowId == "demo-restore" ? "RestoreDemoState" : "Noop")}
             """;
         await _storage.SaveAsync("workflows", $"{workflowId}.yaml", yaml);
     }

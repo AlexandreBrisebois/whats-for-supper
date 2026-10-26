@@ -1,37 +1,56 @@
 # Tasks
 
-This is a research/specification-only proposal. No implementation is authorized by these tasks. The date policy, votes/reports policy, maintenance allowlist and legacy recapture choice in design.md require review before dependent implementation tasks are generated. Proposed requirement language is not approval.
+Implement PR #340 on `feature/prepared-demo-showcase-loop`, based on the demo safeguards branch at `fdde5fe3`. The implementation request supersedes the original planning-only restriction. Preserve unrelated locale catalog edits. No merge, push, archive, deployment, live household operations or provider calls are selected.
 
-## 1. Resolve consequential behavior choices
+## 1. Decisions and contract
 
-**Outcome and scenarios:** Accept or amend the proposed fresh-round, calendar-anchor, safe-maintenance and legacy-baseline requirements.
-**Owners and boundaries:** Existing demo-household capability and application-time, recovery, search and workflow owners.
-**Dependencies and prerequisites:** Review proposal.md, the complete inventory in design.md and specs/demo-household/spec.md against issue #245.
-**Acceptance boundary:** Written review decisions and reconciled planning artifacts; no runtime changes.
+- [x] 1.1 Reconcile the accepted fresh-start policy: restore prepared facts/assets and audit dates; clear calendar, saved meals, groceries/extras, votes/reports and voting/cooking history. Create one new empty current-week voting owner with fresh identities; no activity rebasing, threshold change or automatic meal assignment.
+- [x] 1.2 Capture/replacement requires private non-demo mode. Public resets are scheduled only; protect management, generic dispatch/retry and queued execution. Legacy/incomplete snapshots require recapture. Non-demo manual restore is one-shot; terminal automatic failure remains visible while future recurrence is reconciled.
+- [x] 1.3 Use bounded write/worker coordination and existing recoverable file/database publication. Invalidate old household jobs and maintenance commands; preserve current reset orchestration and only reviewed never-claimed future Dreaming maintenance. Preserve independent recovery configuration and ordinary backup semantics.
+- [x] 1.4 Contract first: management 403, readiness/reset/successor diagnostics, X-Demo-Generation, allowed-mutation 412, versioned media and connected/demo_reset SSE. Regenerate Kiota and synchronize method-sensitive/stateful mocks. Preserve #348 provider refusal, local import/resolution, Search/Similar and context acknowledgement.
 
-- [ ] 1.1 Record the accepted date/clock policy and field-level rebasing versus audit-time classification, including soft-delete retention; reconcile all date scenarios and inventory rows.
-- [ ] 1.2 Record whether prepared votes and import reports are included or cleared, and define round/report normalization; reconcile the fresh-round scenarios without replayable identities.
-- [ ] 1.3 Record the safe-maintenance allowlist and stale-work fencing owner, including dreaming, search reconciliation and maintenance commands; demonstrate that each allowed path is model-free by source review.
-- [ ] 1.4 Accept or amend legacy recapture policy and baseline authority separation and the concrete operator-authority mechanism; reconcile format, management diagnostics and compatibility scenarios.
+## 2. Baseline and publication
 
-## 2. Prepare the accepted implementation plan
+- [x] 2.1 Test-first management access including parameterized sibling dispatch and non-demo controls (`task test:api -- --filter FullyQualifiedName~DemoManagementAccessTests`). Protect acceptance and execution without adding a role system.
+- [x] 2.2 Capture a version-2 complete inventory with explicit empty collections, declared settings/references and hashed media. Stage and validate before atomic baseline selection; preserve the prior baseline on failure. Use configured workflow/recipe/data roots.
+- [x] 2.3 Reuse recovery publication/journal/restart reconciliation; drain first capture and reset writes, workers and reaper. Recheck claimed reset eligibility inside publication. Reject missing/corrupt/legacy inputs before mutation and reconcile pre/post-commit interruptions.
+- [x] 2.4 Pass final real PostgreSQL fresh-round, recipe/PDF/hero/preferences/override/category, activity/history clearing, repeated reset, stale request/media, maintenance fencing and ordinary recovery regressions: `task test:database -- --filter 'FullyQualifiedName~DemoShowcaseLoopPostgresTests|FullyQualifiedName~OnlineRecoveryPostgresTests|FullyQualifiedName~GroceryExtraRecoveryPostgresTests'`.
 
-**Outcome and scenarios:** A bounded implementable plan only after group 1 decisions are resolved.
-**Owners and boundaries:** Existing management workflow, demo/recovery, search/provider boundaries and PWA consumers; no general framework.
-**Dependencies and prerequisites:** All consequential decisions in group 1 accepted; current source rechecked if main moved.
-**Acceptance boundary:** Reviewed tasks with named checks, not implementation or runtime qualification.
+## 3. Recurrence and diagnostics
 
-- [ ] 2.1 Expand the first real API/workflow/PostgreSQL/file-generation slice from design.md into red/green/refactor tasks with exact test filters and expected restored plan/extra/asset outcomes.
-- [ ] 2.2 Add dependency-ordered slices for the full state inventory, stale-work/client generation invalidation, every provider zero-egress path and failure-safe recurrence; name real database, failure-injection, fake-clock and browser acceptance per slice.
-- [ ] 2.3 Identify exact affected OpenAPI routes/status shapes, generated Kiota client consumers and method-sensitive pwa/e2e/mock-api.ts handlers/builders/state transitions; require contract-first synchronization and task gen:client:check in each affected slice.
-- [ ] 2.4 Include non-demo, ordinary merge/exact recovery, authorization and artwork preservation checks, and operator preparation/capture/activation documentation in their owning slices.
+- [x] 3.1 Test-first one-shot private restore, deduplicated automatic successors, failure/restart reconciliation and actual scheduled worker execution with provider traps. Keep UTC cron and existing scheduler ownership.
+- [x] 3.2 Report baseline readiness/identity/errors, publication recovery, last reset outcome and confirmed future occurrence separately. Return counts from the published transaction, including rebuilt search. Demo coordination alone does not enable independently configured recovery status.
+- [x] 3.3 Document private synthetic preparation, Linux publication, legacy recapture, activation and interrupted reset recovery in `docs/operations/prepared-demo.md`. Add a secondary localized self-hosting link to existing demo guidance without replaying the introduction.
 
-## 3. Planning verification
+## 4. Clients and playable qualification
 
-- [ ] 3.1 Reconcile full modified requirement blocks with canonical demo-household ownership; verify complete table/non-database inventory, no contradictory new policy, and clearly labelled unapproved choices.
-- [ ] 3.2 Run task spec:check -- prepared-demo-showcase-loop --type change and task verify with the complete reviewed planning-file set in a supported repository environment; record actual result and record_path. Local CLI/harness are not run in this connector-only drafting session.
-- [ ] 3.3 Review the final planning-only diff and strict CI at its exact head. Record pass/fail/blocked/not-run separately; no runtime, provider, database or browser acceptance is claimed for this PR.
+- [x] 4.1 Test-first generation transport: pin reads, send generation on mutations, reject 412 and late responses without replay, probe after successful writes for missed reset. Integrate both generated SDK and raw fetch. Carry server-rendered identity into the browser and key recipe media URLs.
+- [x] 4.2 Remove obsolete mounted drafts on reset/SSE/reconnect/read change; invalidate pending PDF ownership and provide focused accessible EN/FR continuation. Full-document continuation reloads authoritative stores while preserving valid device preferences and acknowledgement.
+- [x] 4.3 Exercise reset/re-entry in EN/FR on iPhone, Pixel Phone and iPad portrait/landscape emulations, including focus, touch size, cleared search drafts and preserved acknowledgement. Inspect rendered output. Physical devices are not qualified by emulation.
+- [x] 4.4 Pass deterministic synthetic household browse/vote/convergence/explicit-save/grocery/cook/reset qualification across real API/PostgreSQL and the stateful browser loop; rerun #348 model-free import/local-resolution/provider regressions. Fixtures contain no private content or provider credentials.
 
-## Current evidence
+## 5. Completion
 
-Research used GitHub Connector reads pinned to main e76332c9e35c3d8584cbed6476ea9c43b4d40ea7, repository policy/schema/templates, canonical specs and current source. Connector authoring follows the existing WFS artifact shape; OpenSpec discovery/generation commands and local Taskfile verification were not executed. The established repository root/configuration was inspected directly; no new root/store was initialized. Strict CI results belong in the PR at the tested commit. Application red/green, live database, browser, deployment and model qualification are not applicable to this planning-only publication and remain required future implementation evidence.
+- [x] 5.1 Reconcile final artifacts, task evidence and actual diff ownership. Run scoped `task prepare -- <complete-owned-paths>` including contract-generated closure, then `task gen:client:check` and applicable final `task verify -- <complete-owned-paths>`. Report exact record paths and failures/blocks separately; do not treat focused checks as completion.
+
+## Evidence and checkpoint
+
+Earlier access-slice red: eight behavioral failures/four controls, then two indirect-dispatch failures; focused green 26 tests and one management-denial browser case. Earlier database checkpoints: 47 passed at `.task/database-tests/runs/df69856c2e3f40bd867c17d514dc4f57/result.json`; 14 at `3b2b108b96484b1dade057b787d6b09e`. These identities precede subsequent changes.
+
+Current-session red/green evidence:
+
+- Prior recorded maintenance/obsolete-reset red `8cc220656fa14ab8b5d095362cfa8296`: two failures/one control. Publication fixes passed; reaper race reproduced in `a4f47bea1a9f4525aca10270902188b8` (56 passed/one failed). After write-lease correction, `a983371c895f4b359c360ad119d0a761` passed 57 PostgreSQL tests, zero skipped.
+- Transport test initially failed five behaviors/one control; six passed after implementation. Reset boundary initially retained an old editor; passed after implementation. SSR identity test initially failed to expose the response generation; four server-fetch tests passed after implementation. Combined transport/boundary/image checks: 18 passed.
+- Diagnostics red `c98444f4073346f68010a02d2bd553da`: rebuilt search reported zero instead of one. Independent recovery status native red reported available instead of disabled. Focused API group passed 80 after fixes; final database run remains required.
+- Synthetic round red `45756ae9100f433e87adc818c0c93784`: discovery was unowned despite fresh round state (21 passed/one failed). New empty voting-owner record fixes that gap without assigning meals. Follow-up `fc4f89c2736d41b68b463ba34df4f2ee`: 57 passed; fixture used a nonexistent GET grocery route (405), corrected to the ordinary schedule read. Not a passing loop claim.
+- Parameterized sibling-dispatch red accepted forbidden capture; traversal now keys both definition and parameters. Focused access green is recorded before final verification.
+- Browser reset and dependency suite: 28 passed. Earlier French fixture failures were caused by an English member preference; corrected fixture validates actual French UI. Existing API-mutation assertions counted Next development stack-frame POSTs after deliberate SSE disconnects; evidence traced them to the dev client, and assertions now count API requests only. Production behavior was not weakened.
+- Full PWA units passed 1,019 tests before the final self-hosting addition; final verification must cover later edits. Earlier catalog-inventory and required-diagnostics assertion failures were reconciled with the new owned catalog and approved contract.
+
+The original remote planning validation belongs to PR head `62d3c27e46f2b7a799dc6f2c5278986dcdd2cf59`, not this implementation. No deployed, physical-device, power-cut or production qualification is inferred from local results.
+
+Final focused acceptance: `.task/database-tests/runs/c4460e6086454aada6462f2f82e7837d/result.json` passed 58 PostgreSQL tests with zero skipped, including the complete synthetic ordinary API loop and independent recovery regressions. `DemoManagementAccessTests` passed 26 tests after the sibling-dispatch regression. All 1,019 PWA units passed after the self-hosting addition. All 36 OpenSpec items passed strict validation. The complete stateful browser journey passed after fixing its viewport/navigation fixture: the Next development overlay intercepted a Home click, so navigation uses keyboard activation. Earlier 28-case demo/reset suite passed; final gate covers the added journey and prepared output.
+
+First full gate `.task/agent-finish/runs/53fa941ba637477e9c38c63314434943.json` retained stable identity but failed three checks: an obsolete legacy-demo clock test, a getter-only DTO parsing mismatch, and an older history fixture that assumed activity preservation and declared missing media. Updated the clock test to retain ordinary-backup compatibility, added explicit JSON names without changing the error wire shape, and reconciled the history fixture with complete capture and activity clearing. Focused follow-up: 17 clock tests passed; static schema drift passed; real PostgreSQL history regression passed at `.task/database-tests/runs/c20fb6fd118448208e86c70484487113/result.json`. The failed gate also passed 1,019 frontend unit tests, 352 browser tests (18 skipped), all 36 strict OpenSpec items, generated-client freshness and live endpoint parity; those partial results do not make the failed gate successful.
+
+Final prepared-source verification passed at `.task/agent-finish/runs/1df41d1451df4b5c882f769444d48052.json` for 110 task paths, with six unrelated locale edits excluded and stable full content/runtime identity. Passed: all 36 strict OpenSpec items, lint/format/types, 1,019 frontend unit tests, 352 browser tests (18 skipped), 1,249 native API tests (153 opt-in/platform skips), generated-client freshness, static route/schema/mock contracts and live endpoint parity. Separate Linux/PostgreSQL verification passed 177 tests with zero skipped at `.task/database-tests/runs/77aa1a38c18746f1aad5c45715a67b15/result.json`. Live parity used a disposable local API and synthetic PostgreSQL database with isolated data roots and an unreachable provider endpoint; no household data or provider calls were used. Later changes only record completion in this file and HANDOVER.md and receive documentation-only verification; they do not alter the tested implementation. Physical-device, deployed-host and power-cut qualification were not run. No commit, push, merge, archive or deployment performed.

@@ -3,6 +3,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using RecipeApi.Infrastructure;
 using RecipeApi.Services;
+using RecipeApi.Data;
 
 namespace RecipeApi.Controllers;
 
@@ -17,7 +18,7 @@ namespace RecipeApi.Controllers;
 [ApiController]
 [Route("api/stream")]
 [SkipWrapping]
-public class StreamController(SseConnectionManager manager, ScheduleService scheduleService, RecoveryBoundary? recovery = null) : ControllerBase
+public class StreamController(SseConnectionManager manager, ScheduleService scheduleService, RecipeDbContext db, DemoModeOptions demoMode, RecoveryBoundary? recovery = null) : ControllerBase
 {
     private readonly SseConnectionManager _manager = manager;
     private readonly ScheduleService _scheduleService = scheduleService;
@@ -45,10 +46,14 @@ public class StreamController(SseConnectionManager manager, ScheduleService sche
         {
             // Send connected event with current schedule snapshot for weekOffset=0.
             RecipeApi.Dto.ScheduleDays schedule;
+            Guid? demoGeneration;
             await using (var lease = recovery is null ? null : await recovery.EnterAsync(RecoveryAccess.Read, cancellationToken))
+            {
                 schedule = await _scheduleService.GetScheduleAsync(0);
+                demoGeneration = demoMode.Enabled ? await DemoGenerationProtocol.CurrentAsync(db, cancellationToken) : null;
+            }
             var connectedPayload = JsonSerializer.Serialize(
-                new { type = "connected", schedule, connectionId },
+                new { type = "connected", schedule, connectionId, demoGeneration },
                 new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
             var connectedMessage = $"event: connected\ndata: {connectedPayload}\n\n";
             await Response.WriteAsync(connectedMessage, cancellationToken);

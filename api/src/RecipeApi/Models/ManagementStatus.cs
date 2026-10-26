@@ -12,4 +12,11 @@ public class ManagementStatus
     public List<string> DemoSnapshotMissing { get; set; } = [];
     public bool DemoRestoreSeederHealthy { get; set; }
     public string? DemoRestoreSeederErrorCode { get; set; }
+    public bool DemoRestoreCronValid { get; set; }
+    public string? DemoSnapshotErrorCode { get; set; }
+    public Guid? DemoBaselineId { get; set; }
+    public string DemoRecoveryState { get; set; } = "available";
+    public DateTimeOffset? DemoNextRestoreAt { get; set; }
+    public Guid? DemoLastResetTaskId { get; set; }
+    public string? DemoLastResetStatus { get; set; }
 }

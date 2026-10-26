@@ -131,3 +131,14 @@ describe('serverFetch — URL construction', () => {
     expect(capturedUrl()).toBe(`${TEST_API_INTERNAL_URL}/backend/api/schedule`);
   });
 });
+
+it('reports the generation belonging to server-rendered data', async () => {
+  const observe = vi.fn();
+  global.fetch = vi
+    .fn()
+    .mockResolvedValue(
+      new Response(JSON.stringify({ data: [] }), { headers: { 'X-Demo-Generation': 'prepared' } })
+    );
+  expect(await serverFetch('/api/family', {}, observe)).toEqual([]);
+  expect(observe).toHaveBeenCalledWith('prepared');
+});

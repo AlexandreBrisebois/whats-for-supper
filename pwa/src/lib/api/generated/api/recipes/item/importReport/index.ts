@@ -4,12 +4,14 @@
 // @ts-ignore
 import {
   createDemoAiUnavailableErrorFromDiscriminatorValue,
+  createDemoResetRequiredErrorFromDiscriminatorValue,
   createRecipeDetailResponseFromDiscriminatorValue,
   createRecipeImportReportSubmissionResponseDtoFromDiscriminatorValue,
   createRecoveryBusyErrorFromDiscriminatorValue,
   serializeRecipeImportIssueRequest,
   serializeRecipeImportReportSubmissionResponseDto,
   type DemoAiUnavailableError,
+  type DemoResetRequiredError,
   type RecipeDetailResponse,
   type RecipeImportIssueRequest,
   type RecipeImportReportSubmissionResponseDto,
@@ -181,6 +183,7 @@ export interface ImportReportRequestBuilder extends BaseRequestBuilder<ImportRep
    * @returns {Promise<RecipeDetailResponse>}
    * @throws {RecipeDetailResponse400Error} error when the service returns a 400 status code
    * @throws {RecipeDetailResponse404Error} error when the service returns a 404 status code
+   * @throws {DemoResetRequiredError} error when the service returns a 412 status code
    * @throws {RecoveryBusyError} error when the service returns a 503 status code
    */
   delete(
@@ -384,6 +387,7 @@ export const ImportReportRequestBuilderRequestsMetadata: RequestsMetadata = {
     errorMappings: {
       400: createRecipeDetailResponse400ErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
       404: createRecipeDetailResponse404ErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
+      412: createDemoResetRequiredErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
       503: createRecoveryBusyErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
     },
     adapterMethodName: 'send',

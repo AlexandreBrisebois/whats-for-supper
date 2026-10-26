@@ -139,6 +139,20 @@ function DemoContextState({ mode }: { mode: boolean | null }) {
               'AI capture and generation are unavailable in this demo. Explore the prepared recipes and originals instead.'
             )}
           </p>
+          <p className="text-sm leading-relaxed">
+            {t(
+              'demoHosting.body',
+              'A self-hosted household keeps your own plans. AI features require your own provider setup and may have costs.'
+            )}
+          </p>
+          <a
+            href="https://github.com/AlexandreBrisebois/whats-for-supper/blob/main/docs/install/quick-start.md"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex min-h-11 items-center underline underline-offset-4"
+          >
+            {t('demoHosting.link', 'Set up your own household')}
+          </a>
           <button
             type="button"
             onClick={dismiss}

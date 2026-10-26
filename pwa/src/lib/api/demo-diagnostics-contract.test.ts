@@ -40,7 +40,7 @@ describe('demo diagnostics contract', () => {
     const block = match![1];
 
     expect(block).toContain(
-      'required: [workflowId, workflowType, status, createdAt, updatedAt, demoSnapshotReady, demoSnapshotMissing, demoRestoreSeederHealthy, demoRestoreSeederErrorCode]'
+      'required: [workflowId, workflowType, status, createdAt, updatedAt, demoSnapshotReady, demoSnapshotMissing, demoRestoreSeederHealthy, demoRestoreSeederErrorCode, demoRestoreCronValid, demoSnapshotErrorCode, demoBaselineId, demoRecoveryState, demoNextRestoreAt, demoLastResetTaskId, demoLastResetStatus]'
     );
     expect(block).toContain('demoSnapshotReady:');
     expect(block).toContain('type: boolean');

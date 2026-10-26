@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RecipeApi.Data;
@@ -12,7 +13,8 @@ namespace RecipeApi.Controllers;
 public class WorkflowController(
     IClock clock,
     IWorkflowOrchestrator orchestrator,
-    RecipeDbContext db) : ControllerBase
+    RecipeDbContext db,
+    DemoModeOptions demoMode) : ControllerBase
 {
     /// <summary>
     /// POST /api/workflows/{workflowId}/trigger — trigger a workflow execution.
@@ -21,10 +23,13 @@ public class WorkflowController(
     /// <param name="request">The trigger request with parameters.</param>
     /// <returns>202 Accepted with the newly created instance ID.</returns>
     [HttpPost("{workflowId}/trigger")]
+    [ProducesResponseType(typeof(DemoManagementUnavailableError), StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> Trigger(string workflowId, [FromBody] WorkflowTriggerRequestDto request)
     {
         try
         {
+            if (demoMode.Enabled && await ReferencesDemoManagementAsync(workflowId, request.Parameters, []))
+                return StatusCode(StatusCodes.Status403Forbidden, new DemoManagementUnavailableError());
             var instance = await orchestrator.TriggerAsync(workflowId, request.Parameters);
             return Accepted(new WorkflowTriggerResponseDto { InstanceId = instance.Id });
         }
@@ -96,6 +101,7 @@ public class WorkflowController(
     /// <param name="taskId">The task ID to reset.</param>
     /// <returns>200 OK on success.</returns>
     [HttpPost("tasks/{taskId:guid}/reset")]
+    [ProducesResponseType(typeof(DemoManagementUnavailableError), StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> ResetTask(Guid taskId)
     {
         var task = await db.WorkflowTasks.FirstOrDefaultAsync(t => t.TaskId == taskId);
@@ -104,13 +110,17 @@ public class WorkflowController(
             return NotFound(new { message = "Task not found." });
         }
 
+        var instance = task.Instance ?? await db.WorkflowInstances.FirstOrDefaultAsync(i => i.Id == task.InstanceId);
+        if (demoMode.Enabled && (IsDemoManagementWorkflow(instance?.WorkflowId) || IsDemoManagementProcessor(task.ProcessorName)
+            || await DispatchesDemoManagementAsync(task.ProcessorName, task.Payload, [], [])))
+            return StatusCode(StatusCodes.Status403Forbidden, new DemoManagementUnavailableError());
+
         task.Status = Models.TaskStatus.Pending;
         task.RetryCount = 0;
         task.ScheduledAt = clock.UtcNow;
         task.ErrorMessage = null;
         task.StackTrace = null;
 
-        var instance = task.Instance ?? await db.WorkflowInstances.FirstOrDefaultAsync(i => i.Id == task.InstanceId);
         if (instance != null && instance.Status == WorkflowStatus.Paused)
         {
             instance.Status = WorkflowStatus.Processing;
@@ -119,5 +129,36 @@ public class WorkflowController(
         await db.SaveChangesAsync();
 
         return Ok(new { message = "Task reset successfully." });
+    }
+
+    private static bool IsDemoManagementWorkflow(string? id) => id is "demo-capture" or "demo-restore" or "db-restore" or "db-disaster-recovery";
+    private static bool IsDemoManagementProcessor(string? processor) => processor is "CaptureDemoState" or "RestoreDemoState" or "RestoreDatabase" or "DisasterRecovery";
+
+    private async Task<bool> ReferencesDemoManagementAsync(string id, Dictionary<string, string> parameters, HashSet<string> visited)
+    {
+        if (IsDemoManagementWorkflow(id)) return true;
+        var dispatch = id + ":" + JsonSerializer.Serialize(parameters.OrderBy(p => p.Key, StringComparer.Ordinal));
+        if (!visited.Add(dispatch)) return false;
+        var definition = await orchestrator.GetDefinitionAsync(id);
+        if (definition is null) return false;
+        foreach (var task in definition.Tasks)
+            if (IsDemoManagementProcessor(task.Processor)
+                || await DispatchesDemoManagementAsync(task.Processor, System.Text.Json.JsonSerializer.Serialize(task.Payload), parameters, visited))
+                return true;
+        return false;
+    }
+
+    private async Task<bool> DispatchesDemoManagementAsync(string processor, string? payload, Dictionary<string, string> parameters, HashSet<string> visited)
+    {
+        if (processor != "StartWorkflow") return false;
+        using var document = System.Text.Json.JsonDocument.Parse(payload ?? "{}");
+        if (!document.RootElement.TryGetProperty("workflowId", out var workflow)) return true;
+        var id = System.Text.RegularExpressions.Regex.Replace(workflow.GetString() ?? "", @"\{\{(.*?)\}\}",
+            match => parameters.GetValueOrDefault(match.Groups[1].Value.Trim(), match.Value));
+        // Unresolved dynamic dispatch cannot grant a visitor management authority.
+        if (string.IsNullOrWhiteSpace(id) || id.Contains("{{", StringComparison.Ordinal)) return true;
+        var childParameters = document.RootElement.TryGetProperty("parameters", out var values)
+            ? values.Deserialize<Dictionary<string, string>>() ?? [] : new Dictionary<string, string>();
+        return await ReferencesDemoManagementAsync(id, childParameters, visited);
     }
 }

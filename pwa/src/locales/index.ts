@@ -1,5 +1,8 @@
 import { Locale, DEFAULT_LOCALE } from '@/lib/i18n';
 
+import enDemoReset from './en/demo-reset.json';
+import frDemoReset from './fr/demo-reset.json';
+
 import enCommon from './en/common.json';
 import enHints from './en/hints.json';
 import enJourneys from './en/journeys.json';
@@ -37,8 +40,8 @@ function mergeTranslations(...tables: Array<Record<string, unknown>>): Record<st
 
 // Eagerly merged translation tables — small enough for Phase 0
 const translations: Record<Locale, Record<string, unknown>> = {
-  en: mergeTranslations(enCommon, enHints, enJourneys),
-  fr: mergeTranslations(frCommon, frHints, frJourneys),
+  en: mergeTranslations(enCommon, enHints, enJourneys, enDemoReset),
+  fr: mergeTranslations(frCommon, frHints, frJourneys, frDemoReset),
 };
 
 export function getLocale(): Locale {

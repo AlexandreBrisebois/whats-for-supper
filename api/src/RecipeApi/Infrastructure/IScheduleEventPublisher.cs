@@ -11,6 +11,7 @@ public interface IScheduleEventPublisher
     Task PublishSmartDefaultsUpdatedAsync(int weekOffset, SmartDefaultsDto defaults, string? excludeConnectionId = null);
     Task PublishFillTheGapInvalidatedAsync(int weekOffset, DateOnly weekStartDate, string? excludeConnectionId = null);
     Task PublishAllSuggestionsInvalidatedAsync();
+    Task PublishDemoResetAsync(Guid generation) => Task.CompletedTask;
     Task PublishRecipeReadyAsync(Guid recipeId, string name, string? imageUrl, string? excludeConnectionId = null);
 
     /// <summary>

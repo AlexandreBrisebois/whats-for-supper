@@ -1,7 +1,14 @@
 openapi: 3.1.0
 info:
   title: What's For Supper API
-  description: API for the What's For Supper PWA, including recipe discovery, planning, and management.
+  description: >-
+    API for the What's For Supper PWA, including recipe discovery, planning, and management.
+    In demo mode, healthy /api/health and coordinated household responses carry X-Demo-Generation.
+    Clients pin it when their view loads; allowed household writes require that header and reject
+    missing/stale generations with 412 before mutation. Refresh without replaying an old draft.
+    This protocol does not alter non-demo behavior; management/recovery status and deterministic
+    publication resume remain reachable during recovery. AI-only and manual restore refusals
+    retain their 403 behavior. Generation-keyed recipe asset URLs avoid reusing cached visitor bytes.
   version: 0.1.0
 servers:
   - url: /
@@ -13,6 +20,23 @@ security:
   - HearthToken: []
 
 components:
+  headers:
+    DemoGeneration:
+      description: In demo mode, identifies the committed household generation for this response. Health and ordinary reads let clients pin it before editing. Not a credential; absent outside demo mode or while status is unavailable.
+      schema: { type: string, format: uuid }
+  parameters:
+    DemoGeneration:
+      name: X-Demo-Generation
+      in: header
+      required: false
+      description: Required for allowed household mutations in demo mode; send the generation observed when the current view loaded. A missing/stale value returns 412 without applying the request. Ignored outside demo mode. Refresh on 412; never automatically replay an old draft.
+      schema: { type: string, format: uuid }
+    DemoMediaGeneration:
+      name: demoGeneration
+      in: query
+      required: false
+      description: Optional demo generation for a cache-distinct recipe asset URL; stale generations return 412 rather than caching different bytes under an obsolete key.
+      schema: { type: string, format: uuid }
   responses:
     DemoAiUnavailable:
       description: AI processing is unavailable in demo mode; rejected before request-body processing or model work.
@@ -39,6 +63,25 @@ components:
       bearerFormat: HMAC
 
   schemas:
+    DemoResetRequiredError:
+      type: object
+      additionalProperties: false
+      required: [status, code, message, generation]
+      properties:
+        status: { type: integer, enum: [412] }
+        code: { type: string, enum: [DEMO_RESET_REQUIRED] }
+        message: { type: string }
+        generation: { type: string, format: uuid }
+
+    DemoManagementUnavailableError:
+      type: object
+      additionalProperties: false
+      required: [status, code, message]
+      properties:
+        status: { type: integer, enum: [403] }
+        code: { type: string, enum: [DEMO_MANAGEMENT_UNAVAILABLE] }
+        message: { type: string }
+
     DemoAiUnavailableError:
       type: object
       additionalProperties: false
@@ -833,6 +876,7 @@ components:
         propertyName: type
         mapping:
           connected: '#/components/schemas/ConnectedEvent'
+          demo_reset: '#/components/schemas/DemoResetEvent'
           slot_updated: '#/components/schemas/SlotUpdatedEvent'
           week_updated: '#/components/schemas/WeekUpdatedEvent'
           vote_updated: '#/components/schemas/VoteUpdatedEvent'
@@ -854,6 +898,15 @@ components:
           required: [schedule]
           properties:
             schedule: { $ref: '#/components/schemas/ScheduleDays' }
+            demoGeneration: { type: [string, 'null'], format: uuid }
+
+    DemoResetEvent:
+      allOf:
+        - $ref: '#/components/schemas/ScheduleStreamEvent'
+        - type: object
+          required: [generation]
+          properties:
+            generation: { type: string, format: uuid }
 
     GroceryExtrasUpdatedEvent:
       allOf:
@@ -1006,7 +1059,7 @@ components:
     # --- Management ---
     ManagementTaskStatusResponse:
       type: object
-      required: [workflowId, workflowType, status, createdAt, updatedAt, demoSnapshotReady, demoSnapshotMissing, demoRestoreSeederHealthy, demoRestoreSeederErrorCode]
+      required: [workflowId, workflowType, status, createdAt, updatedAt, demoSnapshotReady, demoSnapshotMissing, demoRestoreSeederHealthy, demoRestoreSeederErrorCode, demoRestoreCronValid, demoSnapshotErrorCode, demoBaselineId, demoRecoveryState, demoNextRestoreAt, demoLastResetTaskId, demoLastResetStatus]
       properties:
         workflowId: { type: string, format: uuid }
         workflowType: { type: string }
@@ -1023,6 +1076,13 @@ components:
           type: boolean
         demoRestoreSeederErrorCode:
           type: [string, 'null']
+        demoRestoreCronValid: { type: boolean }
+        demoSnapshotErrorCode: { type: [string, 'null'] }
+        demoBaselineId: { type: [string, 'null'], format: uuid }
+        demoRecoveryState: { type: string, enum: [available, reconciliation-required] }
+        demoNextRestoreAt: { type: [string, 'null'], format: date-time }
+        demoLastResetTaskId: { type: [string, 'null'], format: uuid }
+        demoLastResetStatus: { type: [string, 'null'], enum: [Pending, Processing, Completed, Failed, Waiting, null] }
 
     ManagementTaskAcceptedResponse:
       type: object
@@ -1320,11 +1380,17 @@ paths:
       operationId: createGroceryExtra
       summary: Add a distinct extra to the deployment current grocery week
       parameters:
+        - $ref: '#/components/parameters/DemoGeneration'
         - { name: X-SSE-Connection-ID, in: header, required: false, schema: { type: string }, description: Excludes the initiating SSE connection from post-commit publication. }
       requestBody:
         required: true
         content: { application/json: { schema: { $ref: '#/components/schemas/CreateGroceryExtraRequest' } } }
       responses:
+        '412':
+          description: Demo generation is absent or stale; refresh authoritative state without replaying the old write
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DemoResetRequiredError' }
         '201':
           description: A distinct extra occurrence was created.
           content: { application/json: { schema: { $ref: '#/components/schemas/GroceryExtraDto' } } }
@@ -1361,6 +1427,8 @@ paths:
       - { name: occurrenceId, in: path, required: true, schema: { type: string, format: uuid } }
       - { name: X-SSE-Connection-ID, in: header, required: false, schema: { type: string }, description: Excludes the initiating SSE connection from post-commit publication. }
     patch:
+      parameters:
+        - $ref: '#/components/parameters/DemoGeneration'
       operationId: updateGroceryExtra
       summary: Apply one versioned mutation to the current grocery-extra occurrence
       requestBody:
@@ -1373,6 +1441,11 @@ paths:
               check: { value: { weekStartDate: '2026-10-19', expectedVersion: 1, checked: true } }
               recategorize: { value: { weekStartDate: '2026-10-19', expectedVersion: 1, grocerySection: Pantry } }
       responses:
+        '412':
+          description: Demo generation is absent or stale; refresh authoritative state without replaying the old write
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DemoResetRequiredError' }
         '200':
           description: Updated authoritative occurrence.
           content: { application/json: { schema: { $ref: '#/components/schemas/GroceryExtraDto' } } }
@@ -1385,9 +1458,15 @@ paths:
       operationId: deleteGroceryExtra
       summary: Tombstone the current grocery-extra occurrence at an expected version
       parameters:
+        - $ref: '#/components/parameters/DemoGeneration'
         - { name: weekStartDate, in: query, required: true, schema: { type: string, format: date } }
         - { name: expectedVersion, in: query, required: true, schema: { type: integer, minimum: 1 } }
       responses:
+        '412':
+          description: Demo generation is absent or stale; refresh authoritative state without replaying the old write
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DemoResetRequiredError' }
         '204': { description: Occurrence tombstoned; historical occurrences remain unchanged. }
         '400': { description: Invalid absolute week or version. }
         '404': { description: Authoritative absence is known. }
@@ -1402,7 +1481,9 @@ paths:
         Establishes a persistent SSE connection. Sends a `connected` event with the current
         schedule snapshot (weekOffset=0) immediately on connect, then pushes events for all
         schedule mutations. Heartbeat comments (`: ping`) are sent every 15 seconds to prevent
-        proxy timeouts.
+        proxy timeouts. In demo mode, connected carries demoGeneration and demo_reset carries
+        the newly committed generation. Clients discard stale drafts and rehydrate after a generation
+        change, preserving device preferences and the demo explanation acknowledgement.
 
         **Auth note**: `EventSource` cannot send custom request headers. Authentication uses
         the `x-family-member-id` cookie (set during onboarding) and the `h_access` HMAC cookie
@@ -1453,6 +1534,9 @@ paths:
       security: []
       responses:
         '200':
+          headers:
+            X-Demo-Generation:
+              $ref: '#/components/headers/DemoGeneration'
           description: OK
           content:
             application/json:
@@ -1467,6 +1551,7 @@ paths:
         After persisting the change, recomputes all affected weekly grocery lists.
       operationId: reclassifyIngredientCategory
       parameters:
+        - $ref: '#/components/parameters/DemoGeneration'
         - name: normalizedKey
           in: path
           required: true
@@ -1479,6 +1564,11 @@ paths:
             schema:
               $ref: '#/components/schemas/ReclassifyIngredientRequest'
       responses:
+        '412':
+          description: Demo generation is absent or stale; refresh authoritative state without replaying the old write
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DemoResetRequiredError' }
         '503':
           description: Online recovery coordination is busy; retry after Retry-After seconds
           content:
@@ -1578,6 +1668,7 @@ paths:
       summary: Submit a vote for a discovery recipe
       security: [{ FamilyMemberId: [] }]
       parameters:
+        - $ref: '#/components/parameters/DemoGeneration'
         - name: id
           in: path
           required: true
@@ -1588,6 +1679,11 @@ paths:
           application/json:
             schema: { $ref: '#/components/schemas/VoteDto' }
       responses:
+        '412':
+          description: Demo generation is absent or stale; refresh authoritative state without replaying the old write
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DemoResetRequiredError' }
         '503':
           description: Online recovery coordination is busy; retry after Retry-After seconds
           content:
@@ -1670,6 +1766,8 @@ paths:
                         updatedAt: '2024-01-01T00:00:00Z'
 
     post:
+      parameters:
+        - $ref: '#/components/parameters/DemoGeneration'
       summary: Create a family member
       description: Persists a new named family member. The submitted name is trimmed and compared case-insensitively against existing members; duplicate names are rejected with 409 Conflict while preserving trimmed display casing on creation.
       requestBody:
@@ -1682,6 +1780,11 @@ paths:
               properties:
                 name: { type: string }
       responses:
+        '412':
+          description: Demo generation is absent or stale; refresh authoritative state without replaying the old write
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DemoResetRequiredError' }
         '503':
           description: Online recovery coordination is busy; retry after Retry-After seconds
           content:
@@ -1797,6 +1900,8 @@ paths:
         required: true
         schema: { type: string, format: uuid }
     put:
+      parameters:
+        - $ref: '#/components/parameters/DemoGeneration'
       summary: Update a family member
       security: [{ FamilyMemberId: [] }]
       requestBody:
@@ -1809,6 +1914,11 @@ paths:
               properties:
                 name: { type: string }
       responses:
+        '412':
+          description: Demo generation is absent or stale; refresh authoritative state without replaying the old write
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DemoResetRequiredError' }
         '503':
           description: Online recovery coordination is busy; retry after Retry-After seconds
           content:
@@ -1848,9 +1958,16 @@ paths:
                   createdAt: '2024-01-01T00:00:00Z'
                   updatedAt: '2024-01-01T00:00:00Z'
     delete:
+      parameters:
+        - $ref: '#/components/parameters/DemoGeneration'
       summary: Delete a family member
       security: [{ FamilyMemberId: [] }]
       responses:
+        '412':
+          description: Demo generation is absent or stale; refresh authoritative state without replaying the old write
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DemoResetRequiredError' }
         '503':
           description: Online recovery coordination is busy; retry after Retry-After seconds
           content:
@@ -1866,6 +1983,8 @@ paths:
         required: true
         schema: { type: string, format: uuid }
     put:
+      parameters:
+        - $ref: '#/components/parameters/DemoGeneration'
       summary: Update family member preferences
       security: [{ FamilyMemberId: [] }]
       requestBody:
@@ -1887,6 +2006,11 @@ paths:
               minProperties: 1
               description: Only supplied properties are updated; omitted preferences retain their persisted values.
       responses:
+        '412':
+          description: Demo generation is absent or stale; refresh authoritative state without replaying the old write
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DemoResetRequiredError' }
         '503':
           description: Online recovery coordination is busy; retry after Retry-After seconds
           content:
@@ -2162,6 +2286,8 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/RecipeDetailResponse' }
     patch:
+      parameters:
+        - $ref: '#/components/parameters/DemoGeneration'
       summary: Update a recipe
       security: [{ FamilyMemberId: [] }]
       requestBody:
@@ -2170,6 +2296,11 @@ paths:
           application/json:
             schema: { $ref: '#/components/schemas/UpdateRecipeDto' }
       responses:
+        '412':
+          description: Demo generation is absent or stale; refresh authoritative state without replaying the old write
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DemoResetRequiredError' }
         '503':
           description: Online recovery coordination is busy; retry after Retry-After seconds
           content:
@@ -2184,9 +2315,16 @@ paths:
                 properties:
                   data: { type: object }
     delete:
+      parameters:
+        - $ref: '#/components/parameters/DemoGeneration'
       summary: Soft-delete a recipe (returns updated recipe with deletedAt set)
       security: [{ FamilyMemberId: [] }]
       responses:
+        '412':
+          description: Demo generation is absent or stale; refresh authoritative state without replaying the old write
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DemoResetRequiredError' }
         '503':
           description: Online recovery coordination is busy; retry after Retry-After seconds
           content:
@@ -2305,10 +2443,17 @@ paths:
               example:
                 message: 'Import issues can only be reported for recipes that can be re-imported.'
     delete:
+      parameters:
+        - $ref: '#/components/parameters/DemoGeneration'
       summary: Mark the active recipe import issue as resolved
       operationId: deleteRecipeImportReport
       security: [{ FamilyMemberId: [] }]
       responses:
+        '412':
+          description: Demo generation is absent or stale; refresh authoritative state without replaying the old write
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DemoResetRequiredError' }
         '503':
           description: Online recovery coordination is busy; retry after Retry-After seconds
           content:
@@ -2415,6 +2560,8 @@ paths:
 
   /api/recipes/import-bundle:
     post:
+      parameters:
+        - $ref: '#/components/parameters/DemoGeneration'
       summary: Import a reviewed portable recipe bundle
       operationId: importRecipeShareBundle
       security: [{ FamilyMemberId: [] }]
@@ -2424,6 +2571,11 @@ paths:
           application/json:
             schema: { $ref: '#/components/schemas/RecipeShareBundleDto' }
       responses:
+        '412':
+          description: Demo generation is absent or stale; refresh authoritative state without replaying the old write
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DemoResetRequiredError' }
         '503':
           description: Online recovery coordination is busy; retry after Retry-After seconds
           content:
@@ -2474,9 +2626,16 @@ paths:
         required: true
         schema: { type: string, format: uuid }
     post:
+      parameters:
+        - $ref: '#/components/parameters/DemoGeneration'
       summary: Restore a soft-deleted recipe
       security: [{ FamilyMemberId: [] }]
       responses:
+        '412':
+          description: Demo generation is absent or stale; refresh authoritative state without replaying the old write
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DemoResetRequiredError' }
         '503':
           description: Online recovery coordination is busy; retry after Retry-After seconds
           content:
@@ -2498,11 +2657,17 @@ paths:
       summary: Hard-delete (purge) a soft-deleted recipe from the Recycle Bin
       security: [{ FamilyMemberId: [] }]
       parameters:
+        - $ref: '#/components/parameters/DemoGeneration'
         - name: X-Elevated-Pin
           in: header
           required: true
           schema: { type: string }
       responses:
+        '412':
+          description: Demo generation is absent or stale; refresh authoritative state without replaying the old write
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DemoResetRequiredError' }
         '200':
           description: Purged successfully
           content:
@@ -2550,16 +2715,26 @@ paths:
         required: true
         schema: { type: integer }
     get:
+      parameters:
+        - $ref: '#/components/parameters/DemoMediaGeneration'
       summary: Get original recipe image by index
       operationId: getRecipeOriginalImage
       tags: [Recipes]
       responses:
+        '412':
+          description: Demo generation is absent or stale; refresh authoritative state without replaying the old write
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DemoResetRequiredError' }
         '503':
           description: Online recovery coordination is busy; retry after Retry-After seconds
           content:
             application/json:
               schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '200':
+          headers:
+            X-Demo-Generation:
+              $ref: '#/components/headers/DemoGeneration'
           description: Raw image binary
           content:
             image/*:
@@ -2576,14 +2751,24 @@ paths:
         required: true
         schema: { type: string, format: uuid }
     get:
+      parameters:
+        - $ref: '#/components/parameters/DemoMediaGeneration'
       summary: Get recipe hero image
       responses:
+        '412':
+          description: Demo generation is absent or stale; refresh authoritative state without replaying the old write
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DemoResetRequiredError' }
         '503':
           description: Online recovery coordination is busy; retry after Retry-After seconds
           content:
             application/json:
               schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '200':
+          headers:
+            X-Demo-Generation:
+              $ref: '#/components/headers/DemoGeneration'
           description: Image binary data
           content:
             image/jpeg:
@@ -2843,6 +3028,7 @@ paths:
       summary: Open voting for a week
       description: Preserves early votes. Only one week can own the live round. Opening the same active week is idempotent; reopening a closed week creates a new identity returned by schedule reads.
       parameters:
+        - $ref: '#/components/parameters/DemoGeneration'
         - name: weekOffset
           in: query
           schema: { type: integer, default: 0 }
@@ -2852,6 +3038,11 @@ paths:
           schema: { type: string, format: date }
           description: Optional yyyy-MM-dd Monday anchoring all relative offsets and defer's next-week base. Omission captures the deployment current Monday (UTC by default). Literal source dates remain unchanged. Invalid or non-Monday references return 400 before work.
       responses:
+        '412':
+          description: Demo generation is absent or stale; refresh authoritative state without replaying the old write
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DemoResetRequiredError' }
         '503':
           description: Online recovery coordination is busy; retry after Retry-After seconds
           content:
@@ -2878,11 +3069,17 @@ paths:
       summary: Remove a recipe from a scheduled day
       description: Removing a Cooked calendar entry recalculates its recipe last-cooked value from remaining Cooked calendar dates, or null when none remain, before grocery and publication follow-ups. Ordinary Planned removal does not change last-cooked values.
       parameters:
+        - $ref: '#/components/parameters/DemoGeneration'
         - name: date
           in: path
           required: true
           schema: { type: string, format: date }
       responses:
+        '412':
+          description: Demo generation is absent or stale; refresh authoritative state without replaying the old write
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DemoResetRequiredError' }
         '503':
           description: Online recovery coordination is busy; retry after Retry-After seconds
           content:
@@ -2896,6 +3093,7 @@ paths:
       summary: Lock schedule for a week
       description: Preserves all Cooked and Skipped outcomes while locking ordinary assignments. Does not recreate removed assignments or change legacy recipe-backed Skipped representation. Does not change last-cooked values. Atomically captures positive aggregate family history and clears working votes once. Retry the same votingRoundId after a lost response. Completed retries preserve later early votes. Tokenless legacy closes are accepted only for a first close or unambiguous already-closed outcome; reopened rounds require an identity and otherwise return 409.
       parameters:
+        - $ref: '#/components/parameters/DemoGeneration'
         - name: votingRoundId
           in: query
           required: false
@@ -2910,6 +3108,11 @@ paths:
           schema: { type: string, format: date }
           description: Optional yyyy-MM-dd Monday anchoring all relative offsets and defer's next-week base. Omission captures the deployment current Monday (UTC by default). Literal source dates remain unchanged. Invalid or non-Monday references return 400 before work.
       responses:
+        '412':
+          description: Demo generation is absent or stale; refresh authoritative state without replaying the old write
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DemoResetRequiredError' }
         '503':
           description: Online recovery coordination is busy; retry after Retry-After seconds
           content:
@@ -2948,6 +3151,7 @@ paths:
         A 200 tomorrow response confirms moved=true; refreshComplete=false means calendar changes
         committed but some affected-week grocery/publication follow-ups failed. Do not repeat movement.
       parameters:
+        - $ref: '#/components/parameters/DemoGeneration'
         - name: referenceWeekStartDate
           in: query
           required: false
@@ -2959,6 +3163,11 @@ paths:
           application/json:
             schema: { $ref: '#/components/schemas/MoveScheduleDto' }
       responses:
+        '412':
+          description: Demo generation is absent or stale; refresh authoritative state without replaying the old write
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DemoResetRequiredError' }
         '503':
           description: Online recovery coordination is busy; retry after Retry-After seconds
           content:
@@ -2987,6 +3196,7 @@ paths:
         weeks. Feedback reports the actual destination and claims next week is full only when
         placement spills beyond the requested destination week. Invalid inputs reject before mutation.
       parameters:
+        - $ref: '#/components/parameters/DemoGeneration'
         - name: targetWeekOffset
           in: query
           required: false
@@ -3003,6 +3213,11 @@ paths:
           application/json:
             schema: { $ref: '#/components/schemas/DeferScheduleDto' }
       responses:
+        '412':
+          description: Demo generation is absent or stale; refresh authoritative state without replaying the old write
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DemoResetRequiredError' }
         '503':
           description: Online recovery coordination is busy; retry after Retry-After seconds
           content:
@@ -3038,6 +3253,7 @@ paths:
         on Sunday (dayIndex 6), the displaced recipe is automatically carried forward to Monday
         of the following week (weekOffset+1, dayIndex 0) rather than being silently dropped.
       parameters:
+        - $ref: '#/components/parameters/DemoGeneration'
         - name: referenceWeekStartDate
           in: query
           required: false
@@ -3049,6 +3265,11 @@ paths:
           application/json:
             schema: { $ref: '#/components/schemas/AssignScheduleDto' }
       responses:
+        '412':
+          description: Demo generation is absent or stale; refresh authoritative state without replaying the old write
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DemoResetRequiredError' }
         '503':
           description: Online recovery coordination is busy; retry after Retry-After seconds
           content:
@@ -3144,6 +3365,8 @@ paths:
         required: true
         schema: { type: string, format: date }
     post:
+      parameters:
+        - $ref: '#/components/parameters/DemoGeneration'
       summary: Validate a scheduled day (Cooked/Skipped)
       description: 'The path date remains literal. Today cooking and Order In callers select it from authoritative deployment calendar context at action start; browser timezone does not select the date. With status 2 and recipeId, records the viewed recipe cooking history at the captured UTC operation instant even if it is not scheduled. The scheduled meal is marked cooked only when its recipe ID matches. Existing stored civil dates and midnight-UTC history anchors are not migrated.'
       requestBody:
@@ -3152,6 +3375,11 @@ paths:
           application/json:
             schema: { $ref: '#/components/schemas/ValidationDto' }
       responses:
+        '412':
+          description: Demo generation is absent or stale; refresh authoritative state without replaying the old write
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DemoResetRequiredError' }
         '503':
           description: Online recovery coordination is busy; retry after Retry-After seconds
           content:
@@ -3253,6 +3481,7 @@ paths:
         attempts follow this processing order; independent snapshots may still arrive late.
         A fresh read after outstanding operations settle recovers committed state.
       parameters:
+        - $ref: '#/components/parameters/DemoGeneration'
         - name: weekOffset
           in: path
           required: true
@@ -3272,6 +3501,11 @@ paths:
                   type: boolean
                   example: true
       responses:
+        '412':
+          description: Demo generation is absent or stale; refresh authoritative state without replaying the old write
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DemoResetRequiredError' }
         '503':
           description: Online recovery coordination is busy; retry after Retry-After seconds
           content:
@@ -3291,6 +3525,7 @@ paths:
         Returns 200 after persistence and the ordered grocery publication attempt. Notification
         failure does not roll back a committed map; a fresh read recovers committed state.
       parameters:
+        - $ref: '#/components/parameters/DemoGeneration'
         - name: weekOffset
           in: path
           required: true
@@ -3307,6 +3542,11 @@ paths:
                 'Chicken Breast': true
                 'Olive Oil': false
       responses:
+        '412':
+          description: Demo generation is absent or stale; refresh authoritative state without replaying the old write
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DemoResetRequiredError' }
         '503':
           description: Online recovery coordination is busy; retry after Retry-After seconds
           content:
@@ -3358,6 +3598,11 @@ paths:
           required: true
           schema: { type: string, format: uuid }
       responses:
+        '403':
+          description: Manual household restore is unavailable in demo mode; automatic demo resets remain server-owned
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DemoManagementUnavailableError' }
         '200':
           description: Operation completed or current status
           content:
@@ -3431,8 +3676,15 @@ paths:
 
   /api/management/backup:
     post:
+      parameters:
+        - $ref: '#/components/parameters/DemoGeneration'
       summary: Trigger an asynchronous backup
       responses:
+        '412':
+          description: Demo generation is absent or stale; refresh authoritative state without replaying the old write
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DemoResetRequiredError' }
         '503':
           description: Online recovery coordination is busy; retry after Retry-After seconds
           content:
@@ -3448,6 +3700,11 @@ paths:
     post:
       summary: Trigger an asynchronous restore (seed)
       responses:
+        '403':
+          description: Manual household restore is unavailable in demo mode; automatic demo resets remain server-owned
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DemoManagementUnavailableError' }
         '503':
           description: Online recovery coordination is busy; retry after Retry-After seconds
           content:
@@ -3463,6 +3720,11 @@ paths:
     post:
       summary: Trigger an asynchronous disaster recovery
       responses:
+        '403':
+          description: Manual household restore is unavailable in demo mode; automatic demo resets remain server-owned
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DemoManagementUnavailableError' }
         '503':
           description: Online recovery coordination is busy; retry after Retry-After seconds
           content:
@@ -3476,8 +3738,26 @@ paths:
 
   /api/management/backfill-search:
     post:
+      parameters:
+        - $ref: '#/components/parameters/DemoGeneration'
       summary: Trigger a search index backfill
+      description: Persist search-reconciliation acceptance before returning 202 so dispatch remains inside the request's reset boundary.
       responses:
+        '500':
+          description: Workflow acceptance failed; no successful acceptance is claimed
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, message]
+                properties:
+                  status: { type: integer, enum: [500] }
+                  message: { type: string }
+        '412':
+          description: Demo generation is absent or stale; refresh authoritative state without replaying the old write
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DemoResetRequiredError' }
         '503':
           description: Online recovery coordination is busy; retry after Retry-After seconds
           content:
@@ -3494,6 +3774,11 @@ paths:
     post:
       summary: Capture the current core state as the Demo Mode master snapshot
       responses:
+        '403':
+          description: Demo mode prohibits baseline capture and visitor-triggered demo reset or retry; automatic resets remain server-owned
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DemoManagementUnavailableError' }
         '503':
           description: Online recovery coordination is busy; retry after Retry-After seconds
           content:
@@ -3512,6 +3797,11 @@ paths:
     post:
       summary: Restore the Demo Mode master snapshot
       responses:
+        '403':
+          description: Demo mode prohibits baseline capture and visitor-triggered demo reset or retry; automatic resets remain server-owned
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DemoManagementUnavailableError' }
         '503':
           description: Online recovery coordination is busy; retry after Retry-After seconds
           content:
@@ -3702,6 +3992,7 @@ paths:
     post:
       summary: Trigger a workflow execution
       parameters:
+        - $ref: '#/components/parameters/DemoGeneration'
         - name: workflowId
           in: path
           required: true
@@ -3715,6 +4006,16 @@ paths:
               parameters:
                 recipeUrl: 'https://www.recipetineats.com/beef-and-broccoli-stir-fry/'
       responses:
+        '412':
+          description: Demo generation is absent or stale; refresh authoritative state without replaying the old write
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DemoResetRequiredError' }
+        '403':
+          description: Demo mode prohibits baseline capture and visitor-triggered demo reset or retry; automatic resets remain server-owned
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DemoManagementUnavailableError' }
         '503':
           description: Online recovery coordination is busy; retry after Retry-After seconds
           content:
@@ -3851,11 +4152,22 @@ paths:
     post:
       summary: Reset a failed task to Pending status
       parameters:
+        - $ref: '#/components/parameters/DemoGeneration'
         - name: taskId
           in: path
           required: true
           schema: { type: string, format: uuid }
       responses:
+        '412':
+          description: Demo generation is absent or stale; refresh authoritative state without replaying the old write
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DemoResetRequiredError' }
+        '403':
+          description: Demo mode prohibits baseline capture and visitor-triggered demo reset or retry; automatic resets remain server-owned
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DemoManagementUnavailableError' }
         '503':
           description: Online recovery coordination is busy; retry after Retry-After seconds
           content:
@@ -3904,6 +4216,8 @@ paths:
         '404':
           description: Setting not found
     post:
+      parameters:
+        - $ref: '#/components/parameters/DemoGeneration'
       summary: Upsert a setting by key
       security: [{ FamilyMemberId: [] }]
       requestBody:
@@ -3912,6 +4226,11 @@ paths:
           application/json:
             schema: { $ref: '#/components/schemas/SettingsDto' }
       responses:
+        '412':
+          description: Demo generation is absent or stale; refresh authoritative state without replaying the old write
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DemoResetRequiredError' }
         '503':
           description: Online recovery coordination is busy; retry after Retry-After seconds
           content:
@@ -3957,6 +4276,8 @@ paths:
         required: true
         schema: { type: string }
     patch:
+      parameters:
+        - $ref: '#/components/parameters/DemoGeneration'
       summary: Update the authenticated member's opt-in choice
       security: [{ FamilyMemberId: [] }]
       requestBody:
@@ -3965,6 +4286,11 @@ paths:
           application/json:
             schema: { $ref: '#/components/schemas/UpdateFeatureFlagRequest' }
       responses:
+        '412':
+          description: Demo generation is absent or stale; refresh authoritative state without replaying the old write
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DemoResetRequiredError' }
         '503':
           description: Online recovery coordination is busy; retry after Retry-After seconds
           content:
@@ -4005,6 +4331,8 @@ paths:
         '404':
           description: No GOTO list configured yet
     put:
+      parameters:
+        - $ref: '#/components/parameters/DemoGeneration'
       summary: Replace the family GOTO recipe list
       security: [{ FamilyMemberId: [] }]
       requestBody:
@@ -4013,6 +4341,11 @@ paths:
           application/json:
             schema: { $ref: '#/components/schemas/GoToListDto' }
       responses:
+        '412':
+          description: Demo generation is absent or stale; refresh authoritative state without replaying the old write
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DemoResetRequiredError' }
         '503':
           description: Online recovery coordination is busy; retry after Retry-After seconds
           content:
@@ -4104,11 +4437,17 @@ paths:
     delete:
       summary: Clear a failed capture and queue Dreaming cleanup
       parameters:
+        - $ref: '#/components/parameters/DemoGeneration'
         - name: id
           in: path
           required: true
           schema: { type: string, format: uuid }
       responses:
+        '412':
+          description: Demo generation is absent or stale; refresh authoritative state without replaying the old write
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DemoResetRequiredError' }
         '503':
           description: Online recovery coordination is busy; retry after Retry-After seconds
           content:

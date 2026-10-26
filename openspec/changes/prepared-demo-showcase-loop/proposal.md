@@ -1,22 +1,23 @@
-# Prepared demo showcase loop
+# Prepared demo baseline capture and reset
 
 ## Why
 
-The demo should let an operator prepare a convincing household, capture it, let visitors experiment, and periodically return to that baseline without visitor-driven AI spend. Since the original demo, planner, grocery-extra, preference, history, search and recovery state have grown beyond the snapshot's coverage.
+The demo should let an operator prepare a coherent sample household, capture it, let visitors experiment, and return to that baseline. The existing capture/restore workflows already implement the loop, but do not yet cover the newer household facts or safely publish database facts and recipe assets together.
 
-Related: #245. This is research and proposed behavior only, not implementation or deployment authorization.
+PR [#348](https://github.com/AlexandreBrisebois/whats-for-supper/pull/348), change `cost-safe-demo-exploration`, separately owns model-boundary protection, honest AI-unavailable actions, model-free Search/indexing and the context band. This change is the **remaining capture/reset delta**, not a second implementation of those features. Related issue [#245](https://github.com/AlexandreBrisebois/whats-for-supper/issues/245) remains open.
 
 ## What Changes
 
-- Treat recurring workflow reset as the intended product loop, not a defect.
-- Separate operator baseline publication authority from shared visitor household access; visitors cannot overwrite the prepared baseline or enable AI preparation.
-- Capture a versioned, complete prepared household baseline with explicit restore/clear/preserve/rebuild policies and verified assets.
-- Restore plans, calendar, grocery state, preferences, categories and history as well as recipes and members; fence stale visitor work and refresh derived state without AI.
-- Enforce zero outbound model requests throughout visitor mode, including direct image clients, embeddings, edits, maintenance and retries. Operator preparation may use AI only before visitor mode under explicit operator control.
-- Reuse existing exact-recovery coordination, preflight and publication primitives where suitable, without importing their incompatible search-repair behavior.
-- **BREAKING:** require a new complete demo snapshot format for the upgraded reset path; legacy core snapshots require recapture and must never be silently interpreted as a rich empty baseline.
-- **BREAKING:** visitor AI-dependent actions return an honest demo alternative/unavailable outcome rather than attempt a provider request; active pre-reset work no longer survives to mutate the next visitor generation.
-- Propose coherent application-calendar-week date re-anchoring, a fresh voting round and cleared import reports for review. These are not approved decisions.
+- Preserve existing `demo-capture` / `demo-restore`, persisted background acceptance, intentional recurrence and fresh round authority. Extend their existing owners rather than create a scheduler or generic snapshot framework.
+- Capture a complete versioned baseline with explicit restore/clear/preserve/rebuild dispositions: members, recipes, search, household settings, approved member overrides, categories, with explicit clearing of calendar events, meal plans, groceries/extras, votes, import reports, aggregate voting history and recipe cooking history.
+- Validate required relationships and assets before destructive work; stage capture without overwriting the last complete baseline; make restore publication recoverable across database/file failure.
+- Coordinate household writes and old work during reset, reject stale writes/continuations and refresh mounted clients without replaying visitor edits. Preserve operator configuration, unrelated backups and device preferences.
+- Prepare a small synthetic household that supports ordinary browse, vote, confirmed matches, explicit plan saving, groceries/extras and cooking. Keep local model-free imports and report resolution usable, with temporary visitor changes subject to the selected reset policy.
+- Reuse existing recovery validation/publication mechanisms and the accepted #348 model-free search path where appropriate; keep independent exact/merge recovery contracts unchanged.
+- Make baseline readiness, completed reset and confirmed future occurrence distinguishable in existing management diagnostics.
+- **BREAKING:** upgraded rich reset requires a complete format; legacy core snapshots require recapture rather than silently treating omitted collections as empty.
+- **BREAKING:** capture/selection requires operator authority unavailable to shared visitor credentials, and old work cannot mutate the restored household.
+- Apply the accepted fresh-round, private-capture, bounded recovery and recurrence policies documented in design.md.
 
 ## Capabilities
 
@@ -26,16 +27,18 @@ None.
 
 ### Modified Capabilities
 
-- `demo-household`: complete prepared-state capture/reset, safe recurrence and visitor no-AI contract. Existing demo-specific rules qualify the shared search/indexing and workflow owners only in visitor mode; ordinary installations and exact/merge recovery retain their existing contracts.
+- `demo-household`: complete prepared-baseline capture/reset, recoverable publication, reset-specific coordination and diagnostics. Model isolation, local exploration and the context explanation remain owned by #348; the dependency and scenario mapping are in design.md.
 
-- `data-backup-and-recovery`: qualify the existing demo missing-history cross-reference; ordinary merge and independent exact-recovery behavior are unchanged.
+- `data-backup-and-recovery`: retain the existing, unchanged delta's demo missing-history cross-reference; ordinary merge and independent exact recovery semantics remain unchanged.
 
-## Impact
+Application-time, background-processing and search/indexing remain existing integration/preservation boundaries. The pre-existing data-backup-and-recovery delta and change metadata are preserved.
 
-Likely implementation owners: `ManagementService`, `RecoveryBoundary`, `RecoverySnapshotService`, demo workflow processors/seeding, provider composition, search/indexing, dreaming/maintenance, management diagnostics, and affected PWA consumers. No new general snapshot framework is proposed.
+## Dependency and Implementation Boundaries
 
-This branch changes only OpenSpec planning artifacts. It does not change application code, SQL, OpenAPI, generated clients, credentials, live configuration, workflow schedules or deployed state. Existing bounded documentation verification exceptions remain unchanged.
+The user selected implementation on top of the existing demo safeguards branch. The accepted policy and explicit data/workflow dispositions are in design.md; tasks.md records tests and incomplete acceptance. This supersedes the original four-file planning-only restriction. It does not authorize live operations, sync/archive, merge or deployment.
 
-## Review boundaries
+Local base `fdde5fe3` carries the corrected #348 safeguards. Preserve its model-free import/local-resolution/Search/Similar and browser acknowledgement behavior. Home #339 and duration #346 are reused without redesign. Original remote planning validation at `62d3c27e46f2b7a799dc6f2c5278986dcdd2cf59` does not validate these implementation edits.
 
-The accompanying design records current-main evidence and all 19 database tables. Proposed requirements are review text, not a claim of implemented safety. Resolve the date policy, prepared votes/reports policy and safe-maintenance allowlist and operator-authority mechanism before writing dependent implementation tasks. In particular, the old spec explicitly disclaimed global zero AI and crash-consistent reset: this proposal intentionally strengthens that contract rather than claiming those guarantees already exist.
+## Delivery and acceptance
+
+Use existing management/workflow/recovery owners for complete staged capture and recoverable reset. Prove a playable synthetic household through real API/PostgreSQL ownership, then stale client recovery and the browser loop. Keep ordinary independent exact/merge recovery intact. Qualify only with synthetic data, disposable files/databases and no model calls. Record scoped preparation, generated-client checks and final verification independently of deployment and physical-device qualification.

@@ -15,18 +15,10 @@ public class ManagementController(
     IClock clock,
     IWorkflowOrchestrator orchestrator,
     RecipeDbContext db,
-    IServiceScopeFactory scopeFactory,
     DemoModeOptions demoModeOptions,
-    DataRootResolver dataRootResolver,
+    RecoverySnapshotService recovery,
     CronScheduleCalculator scheduleCalculator) : ControllerBase
 {
-    private static readonly string[] RequiredDemoSnapshotFiles =
-    [
-        "manifest.json",
-        "family-members.json",
-        "recipes.json",
-        "recipe-search-documents.json"
-    ];
     /// <summary>
     /// POST /api/management/backup — trigger an asynchronous export.
     /// </summary>
@@ -41,6 +33,7 @@ public class ManagementController(
     /// POST /api/management/seed — trigger an asynchronous restore.
     /// </summary>
     [HttpPost("seed")]
+    [DemoManagementAction]
     public async Task<IActionResult> Restore()
     {
         var instance = await orchestrator.TriggerAsync("db-restore", []);
@@ -51,6 +44,7 @@ public class ManagementController(
     /// POST /api/management/disaster-recovery — trigger an asynchronous disaster recovery.
     /// </summary>
     [HttpPost("disaster-recovery")]
+    [DemoManagementAction]
     public async Task<IActionResult> DisasterRecovery()
     {
         var instance = await orchestrator.TriggerAsync("db-disaster-recovery", []);
@@ -61,6 +55,7 @@ public class ManagementController(
     /// POST /api/management/demo-capture — capture the Demo Mode master snapshot.
     /// </summary>
     [HttpPost("demo-capture")]
+    [DemoManagementAction]
     public async Task<IActionResult> DemoCapture()
     {
         var instance = await orchestrator.TriggerAsync("demo-capture", []);
@@ -71,6 +66,7 @@ public class ManagementController(
     /// POST /api/management/demo-restore — restore the Demo Mode master snapshot.
     /// </summary>
     [HttpPost("demo-restore")]
+    [DemoManagementAction]
     public async Task<IActionResult> DemoRestore()
     {
         var instance = await orchestrator.TriggerAsync("demo-restore", []);
@@ -81,29 +77,12 @@ public class ManagementController(
     /// POST /api/management/backfill-search — trigger a search index backfill.
     /// </summary>
     [HttpPost("backfill-search")]
-    public IActionResult BackfillSearch()
+    public async Task<IActionResult> BackfillSearch()
     {
-        // Run in background to prevent HTTP timeouts for large libraries (1000s of recipes)
-        _ = Task.Run(async () =>
-        {
-            using var scope = scopeFactory.CreateScope();
-            var orchestrator = scope.ServiceProvider.GetRequiredService<IWorkflowOrchestrator>();
-
-            try
-            {
-                // Initial backfill uses the same resumable path as dreaming repair.
-                await orchestrator.TriggerAsync("search-reconciliation", []);
-            }
-            catch (Exception ex)
-            {
-                var logger = scope.ServiceProvider.GetService<ILogger<ManagementController>>();
-                logger?.LogError(ex, "Background search index backfill failed.");
-            }
-        });
-
+        // Persist acceptance while the request still owns its mutation lease.
+        await orchestrator.TriggerAsync("search-reconciliation", []);
         return Accepted(new { message = "Search index backfill triggered in the background." });
     }
-
 
     /// <summary>
     /// GET /api/management/status — get the status of the most recent management workflow.
@@ -128,8 +107,18 @@ public class ManagementController(
             .OrderByDescending(t => t.UpdatedAt)
             .Select(t => JsonSerializer.Deserialize<object>(t.Result!, JsonDefaults.CamelCase))
             .FirstOrDefault();
-        var missingFiles = GetMissingDemoSnapshotFiles();
+        var baseline = await recovery.InspectDemoAsync(HttpContext.RequestAborted);
         var cronIsValid = IsCronValid();
+        var now = clock.UtcNow;
+        var nextRestore = await db.WorkflowTasks.AsNoTracking()
+            .Where(t => t.ProcessorName == "RestoreDemoState" && t.Status == Models.TaskStatus.Pending
+                && t.ScheduledAt > now && t.Instance.WorkflowId == "demo-restore"
+                && (t.Instance.Status == WorkflowStatus.Pending || t.Instance.Status == WorkflowStatus.Processing))
+            .OrderBy(t => t.ScheduledAt).Select(t => t.ScheduledAt).FirstOrDefaultAsync();
+        var lastReset = await db.WorkflowTasks.AsNoTracking().Where(t => t.ProcessorName == "RestoreDemoState"
+                && (t.Status == Models.TaskStatus.Completed || t.Status == Models.TaskStatus.Processing
+                    || t.Status == Models.TaskStatus.Failed || t.RetryCount > 0))
+            .OrderByDescending(t => t.UpdatedAt).FirstOrDefaultAsync();
 
         var status = new ManagementStatus
         {
@@ -139,21 +128,20 @@ public class ManagementController(
             CreatedAt = lastInstance.CreatedAt,
             UpdatedAt = lastInstance.UpdatedAt,
             Result = lastTaskResult,
-            DemoSnapshotReady = missingFiles.Count == 0,
-            DemoSnapshotMissing = missingFiles,
-            DemoRestoreSeederHealthy = cronIsValid,
-            DemoRestoreSeederErrorCode = !cronIsValid ? "INVALID_CRON" : null
+            DemoSnapshotReady = baseline.Ready,
+            DemoSnapshotMissing = baseline.Missing.ToList(),
+            DemoBaselineId = baseline.BaselineId,
+            DemoSnapshotErrorCode = baseline.ErrorCode,
+            DemoRecoveryState = baseline.RecoveryState,
+            DemoRestoreCronValid = cronIsValid,
+            DemoNextRestoreAt = nextRestore,
+            DemoLastResetTaskId = lastReset?.TaskId,
+            DemoLastResetStatus = lastReset?.Status.ToString(),
+            DemoRestoreSeederHealthy = demoModeOptions.Enabled && cronIsValid && nextRestore.HasValue,
+            DemoRestoreSeederErrorCode = !cronIsValid ? "INVALID_CRON" : !demoModeOptions.Enabled ? "DEMO_DISABLED" : !nextRestore.HasValue ? "NO_CONFIRMED_SUCCESSOR" : null
         };
 
         return Ok(status);
-    }
-
-    private List<string> GetMissingDemoSnapshotFiles()
-    {
-        var demoRoot = Path.Combine(dataRootResolver.Root, "demo");
-        return RequiredDemoSnapshotFiles
-            .Where(file => !System.IO.File.Exists(Path.Combine(demoRoot, file)))
-            .ToList();
     }
 
     private bool IsCronValid()

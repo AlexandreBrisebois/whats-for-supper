@@ -310,7 +310,8 @@ test.describe('Cost-safe demo exploration', () => {
     await page.setViewportSize({ width: 390, height: 844 });
     const posts: string[] = [];
     page.on('request', (request) => {
-      if (request.method() === 'POST') posts.push(new URL(request.url()).pathname);
+      if (request.method() === 'POST' && new URL(request.url()).pathname.startsWith('/api/'))
+        posts.push(new URL(request.url()).pathname);
     });
     await page.goto('/capture');
     await expect(page.getByTestId('import-prepared-file-input')).toHaveAttribute(
@@ -374,7 +375,11 @@ test.describe('Cost-safe demo exploration', () => {
     const mutations: string[] = [];
     page.on('request', (request) => {
       const path = new URL(request.url()).pathname;
-      if (['POST', 'DELETE'].includes(request.method()) && !path.endsWith('/search'))
+      if (
+        path.startsWith('/api/') &&
+        ['POST', 'DELETE'].includes(request.method()) &&
+        !path.endsWith('/search')
+      )
         mutations.push(`${request.method()} ${path}`);
     });
     await page.goto(`/recipes?open=${MOCK_IDS.RECIPE_LASAGNA}`);

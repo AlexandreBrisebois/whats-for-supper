@@ -19,6 +19,7 @@ import { ToastContainer } from '@/components/ui';
 import { LanguageSwitchProposal } from '@/components/common/LanguageSwitchProposal';
 import { usePdfCaptureStore } from '@/store/pdfCaptureStore';
 import { FeatureFlagProvider } from '@/components/featureFlags/FeatureFlagProvider';
+import { DemoResetBoundary } from '@/components/demo/DemoResetBoundary';
 import { DemoModeProvider } from '@/components/demo/DemoModeProvider';
 
 export default function AppRouteLayout({ children }: { children: React.ReactNode }) {
@@ -89,32 +90,34 @@ export default function AppRouteLayout({ children }: { children: React.ReactNode
     pathname === '/profile/settings';
 
   return (
-    <FeatureFlagProvider>
-      <DemoModeProvider>
-        {/* Pre-seed weekStore for weekOffset=0 on app load (BS-2 fix) */}
-        <WeekStoreInitializer />
-        {/* Notification layer — fixed at the top, stackable flex column */}
-        <div
-          data-testid="notification-zone"
-          style={{ top: `calc(1rem + env(safe-area-inset-top) + ${visualViewportOffset}px)` }}
-          className="fixed left-4 right-4 top-[calc(1rem+env(safe-area-inset-top))] z-[200] flex flex-col items-center gap-2 pointer-events-none"
-        >
-          <LanguageSwitchProposal />
-          <RecipeFailureBanner />
-          <LibraryToast />
-          <ToastContainer />
-        </div>
-        <Layout
-          {...headerProps}
-          hideNavigation={isCapture || isBrowseAllStack}
-          hideHeader={hideHeader || isBrowseAllStack}
-          isFluid={isHome || isDiscovery || isPlanner || isCapture || isBrowseAllStack}
-          className={usesStackBackground ? 'solar-earth-bg' : ''}
-          showBackgroundBlobs={isHome || isDiscovery}
-        >
-          {children}
-        </Layout>
-      </DemoModeProvider>
-    </FeatureFlagProvider>
+    <DemoResetBoundary>
+      <FeatureFlagProvider>
+        <DemoModeProvider>
+          {/* Pre-seed weekStore for weekOffset=0 on app load (BS-2 fix) */}
+          <WeekStoreInitializer />
+          {/* Notification layer — fixed at the top, stackable flex column */}
+          <div
+            data-testid="notification-zone"
+            style={{ top: `calc(1rem + env(safe-area-inset-top) + ${visualViewportOffset}px)` }}
+            className="fixed left-4 right-4 top-[calc(1rem+env(safe-area-inset-top))] z-[200] flex flex-col items-center gap-2 pointer-events-none"
+          >
+            <LanguageSwitchProposal />
+            <RecipeFailureBanner />
+            <LibraryToast />
+            <ToastContainer />
+          </div>
+          <Layout
+            {...headerProps}
+            hideNavigation={isCapture || isBrowseAllStack}
+            hideHeader={hideHeader || isBrowseAllStack}
+            isFluid={isHome || isDiscovery || isPlanner || isCapture || isBrowseAllStack}
+            className={usesStackBackground ? 'solar-earth-bg' : ''}
+            showBackgroundBlobs={isHome || isDiscovery}
+          >
+            {children}
+          </Layout>
+        </DemoModeProvider>
+      </FeatureFlagProvider>
+    </DemoResetBoundary>
   );
 }
