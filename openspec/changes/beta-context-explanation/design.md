@@ -67,20 +67,20 @@ Reversal of a later presentation change can restore the prior hint without clear
 
 ## User Experience
 
-English disclaimer approved by Alex on 2026-10-26 ("Use the proposed copy"), with natural matching French. Alex also approved the EN/FR title pair below ("Use those") for both the top band and shared modal title on Welcome and in the app shell. The reopen hint and dismissal actions are unchanged. The selected feedback channel is GitHub Issues with a requested streamlined template; the two new link/helper labels are proposed for review, not part of the previously approved disclaimer:
+English disclaimer approved by Alex on 2026-10-26 ("Use the proposed copy"), followed by explicit selection of the build-in-public closing below, with natural matching French. Alex also approved the EN/FR title pair below ("Use those") for both the top band and shared modal title on Welcome and in the app shell. The reopen hint and dismissal actions are unchanged. The selected feedback channel is GitHub Issues with a requested streamlined template; the two new link/helper labels are proposed for review, not part of the previously approved disclaimer:
 
 | Element | English | Français |
 | --- | --- | --- |
 | Band and modal title | Beta · Better with your ideas | Bêta · Meilleure grâce à vos idées |
 | Opening paragraph | Welcome to the beta of Whats for Supper? Try choosing meals together, planning your week, and making supper one less thing to think about. | Bienvenue dans la version bêta de Whats for Supper? Essayez de choisir vos repas ensemble, de planifier votre semaine et de faire du souper une chose de moins à gérer. |
-| Expectations paragraph | We’re still working on this version. Some things may change, and you might run into a bug along the way. Your feedback helps us make it better. | Nous travaillons encore sur cette version. Certaines choses peuvent changer et vous pourriez rencontrer un bogue en cours de route. Vos commentaires nous aident à l’améliorer. |
+| Expectations paragraph | We’re still working on this version. Some things may change, and you might run into a bug along the way. We’re building this in public, together. Your ideas and feedback help shape what comes next. | Nous travaillons encore sur cette version. Certaines choses peuvent changer et vous pourriez rencontrer un bogue en cours de route. Nous développons cette application en public, ensemble. Vos idées et vos commentaires aident à façonner la suite. |
 | Reopen hint | You can reopen this explanation from the Beta band at any time. | Vous pouvez rouvrir cette explication à tout moment à partir du bandeau Bêta. |
 | Feedback link (proposed label) | Share feedback on GitHub | Donner votre avis sur GitHub |
 | Feedback helper (proposed copy) | A GitHub account is required | Un compte GitHub est requis |
 | Primary dismissal | Start exploring | Commencer à explorer |
 | Close accessible name | Close | Fermer |
 
-Build-in-public wording that celebrates community input is under discussion, not yet approved. Keep the approved disclaimer above until Alex selects the replacement; this context grants no permission to republish or promote individual feedback elsewhere.
+Alex selected the build-in-public closing and rejected a separate public/privacy-warning paragraph in the disclaimer. Keep the GitHub-account helper above; the feedback form itself retains its brief no-personal-information/passphrases reminder. Alex accepts the Issues-index fallback without an additional in-app warning; that choice is not evidence that every visitor understands public GitHub posting from the link alone. This wording grants no permission to republish or promote individual feedback elsewhere.
 
 Use existing locale ownership, not hard-coded language detection. Match current Demo tokens: `sage-100` band, `sage-200` hover, `sage-300` pressed, charcoal text and visible charcoal keyboard focus. Keep the full-width band at 32px minimum with 13px/18px medium label and 16px help icon, no decorative cream padding above/below, and necessary top safe-area inset. This is the same compact-band exception as Demo, not a reduction of modal targets. Reuse the dark `sage-700` primary action with white text, `sage-800` hover and `sage-900` pressed; modal controls and the separate feedback link retain at least 44px targets. Require at least 4.5:1 text contrast in every actual interaction state.
 

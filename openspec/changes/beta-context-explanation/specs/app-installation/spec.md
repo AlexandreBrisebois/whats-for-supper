@@ -15,6 +15,7 @@ The Beta-only Welcome screen and ordinary app shell SHALL provide the same compa
 - **WHEN** the Beta-only explanation is displayed
 - **THEN** it uses the reviewed EN/FR pre-release copy in the design, without claiming a sample/shared visitor household, scheduled resets, disabled AI, reliability, privacy or data-loss guarantees
 - **AND** Beta presentation does not grant access or change feature availability
+- **AND** the approved build-in-public closing is followed by the GitHub feedback link without an additional public/privacy-warning paragraph in the disclaimer; the account-required helper remains, and the feedback form retains its privacy reminder
 
 ### Requirement: Invite voluntary Beta feedback through GitHub
 The Beta explanation SHALL link to verified repository GitHub feedback, not Demo's installation link, with an account-required notice. Use the approved template when available, otherwise the Issues index. Only explicit activation SHALL open it, without automatic submission, prefilled data or tracking parameters; a static template selector is allowed. The link SHALL NOT acknowledge context or change app route, input or household state. Demo SHALL retain its installation link.
