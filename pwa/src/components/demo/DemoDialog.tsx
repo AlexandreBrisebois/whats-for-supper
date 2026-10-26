@@ -12,16 +12,23 @@ export function DemoDialog({
   onClose,
   returnFocus,
   showTitleFocusOutline = true,
+  dismissLabel,
 }: {
   title: string;
   description: string;
   children: ReactNode;
+  dismissLabel?: string;
   onClose: () => void;
   returnFocus?: RefObject<HTMLElement | null>;
   showTitleFocusOutline?: boolean;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
+  const dismissed = useRef(false);
+  const dismiss = () => {
+    dismissed.current = true;
+    onClose();
+  };
   const titleId = useId();
   const descriptionId = useId();
 
@@ -32,7 +39,7 @@ export function DemoDialog({
     heading.current?.focus();
     return () => {
       node?.close();
-      if (focusTarget?.isConnected) focusTarget.focus();
+      if (dismissed.current && focusTarget?.isConnected) focusTarget.focus();
     };
   }, [returnFocus]);
 
@@ -62,7 +69,7 @@ export function DemoDialog({
       }}
       onCancel={(event) => {
         event.preventDefault();
-        onClose();
+        dismiss();
       }}
       className="fixed inset-x-0 bottom-0 top-auto m-0 max-h-[calc(100dvh-2rem)] w-full max-w-none overflow-y-auto rounded-t-[2rem] border border-charcoal/15 bg-cream p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] text-charcoal shadow-2xl backdrop:bg-charcoal/45 sm:inset-0 sm:m-auto sm:max-w-md sm:rounded-[2rem]"
     >
@@ -81,7 +88,7 @@ export function DemoDialog({
         </h2>
         <button
           type="button"
-          onClick={onClose}
+          onClick={dismiss}
           aria-label={t('common.close', 'Close')}
           className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-charcoal/5 focus-visible:outline-2 focus-visible:outline-offset-2"
         >
@@ -91,7 +98,18 @@ export function DemoDialog({
       <p id={descriptionId} className="text-sm leading-relaxed">
         {description}
       </p>
-      <div className="mt-4 space-y-4">{children}</div>
+      <div className="mt-4 space-y-4">
+        {children}
+        {dismissLabel && (
+          <button
+            type="button"
+            onClick={dismiss}
+            className="min-h-11 w-full rounded-xl bg-sage-700 px-4 py-3 font-semibold text-white hover:bg-sage-800 active:bg-sage-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-charcoal"
+          >
+            {dismissLabel}
+          </button>
+        )}
+      </div>
     </dialog>
   );
 }

@@ -112,14 +112,14 @@ test('welcome identity renders with every backend request unavailable in light a
     await page.emulateMedia({ colorScheme });
     await page.goto('/welcome');
     await expect(page).toHaveTitle(name);
-    await expect(page.getByTestId('welcome-title')).toHaveText("What's For Supper?");
+    await expect(page.getByTestId('welcome-title')).toHaveText('Whats for Supper?');
     await expect(page.getByTestId('passphrase-input')).toBeVisible();
-    const hint = page.getByTestId('identity-hint');
+    const hint = page.getByTestId(demo ? 'demo-context-band' : 'identity-hint');
     if (variant === 'production') {
       await expect(hint).toHaveCount(0);
     } else {
       await expect(hint).toBeVisible();
-      await expect(hint).toHaveAccessibleName(demo ? 'Demo' : 'Beta');
+      await expect(hint).toHaveAccessibleName(demo ? 'Demo · What to know' : 'Beta');
       await expect(hint).toHaveAccessibleDescription(
         variant === 'beta-demo' ? 'Beta release channel' : ''
       );
@@ -168,15 +168,33 @@ for (const locale of ['en', 'fr'] as const) {
         await page.goto(route);
         await expect(page).toHaveURL(new RegExp(`${route}$`));
         if (route === '/welcome') {
-          await expect(page.getByTestId('welcome-title')).toHaveText(
-            locale === 'fr' ? "Qu'est-ce qu'on mange ?" : "What's For Supper?"
-          );
+          await expect(page.getByTestId('welcome-title')).toHaveText('Whats for Supper?');
           await expect(page.getByTestId('passphrase-input')).toHaveValue('');
           await expect(page.getByTestId('welcome-enter-btn')).toBeDisabled();
         } else if (route === '/planner') {
           await expect(page.getByTestId('planner-tab')).toBeVisible();
         } else {
           await expect(page.getByTestId('capture-cancel-btn')).toBeVisible();
+        }
+        if (route === '/welcome' && demo) {
+          const band = page.getByTestId('demo-context-band');
+          await expect(band).toHaveCount(1);
+          await expect(band).toHaveAccessibleName(
+            locale === 'fr' ? 'Démo · À savoir' : 'Demo · What to know'
+          );
+          await expect(band).toHaveAccessibleDescription(
+            channelArtifact.channel === 'beta'
+              ? locale === 'fr'
+                ? 'Canal bêta'
+                : 'Beta release channel'
+              : ''
+          );
+          await expect(page.getByTestId('identity-hint')).toHaveCount(0);
+          const bandBox = (await band.boundingBox())!;
+          const inputBox = (await page.getByTestId('passphrase-input').boundingBox())!;
+          expect(bandBox.height).toBeGreaterThanOrEqual(32);
+          expect(inputBox.y).toBeGreaterThanOrEqual(bandBox.y + bandBox.height);
+          continue;
         }
         const hint = page.getByTestId('identity-hint');
         if (!demo && channelArtifact.channel === 'stable') {

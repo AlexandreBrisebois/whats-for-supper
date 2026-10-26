@@ -14,7 +14,7 @@ export default function LandingPage() {
     <main className="flex min-h-dvh flex-col items-center justify-center gap-8 px-6 py-12">
       <div className="text-center">
         <h1 className="text-4xl font-bold text-indigo">
-          {t('landing.title', "What's for Supper?")}
+          {t('landing.title', 'Whats for Supper?')}
         </h1>
         <p className="mt-3 text-lg text-charcoal-400">
           {t('landing.subtitle', 'Capture recipes, plan your week, discover what to cook next.')}

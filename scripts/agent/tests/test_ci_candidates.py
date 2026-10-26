@@ -8,6 +8,25 @@ ROOT = Path(__file__).resolve().parents[3]
 
 
 class PipelineTests(unittest.TestCase):
+    def test_public_demo_welcome_is_household_only_and_keeps_private_artifacts(self):
+        jobs = yaml.safe_load((ROOT / '.github/workflows/validate.yml').read_text())['jobs']
+        job = jobs['pwa-e2e']
+        steps = job['steps']
+        matches = [step for step in steps if step.get('name') == 'Public Demo Welcome regression']
+        self.assertEqual(len(matches), 1, 'The core public Demo journey needs a durable CI invocation')
+        public = matches[0]
+        self.assertEqual(public['if'], "matrix.suite == 'household'")
+        self.assertEqual(public['env'], {'WFS_WELCOME_DEMO': 'true', 'WFS_WELCOME_SECRET': 'Swipe-Match-Cook'})
+        self.assertEqual(public['working-directory'], 'pwa')
+        self.assertEqual(public['run'], 'npm run test:e2e -- --config=e2e/welcome-demo.playwright.config.ts --output=test-results/welcome-demo')
+        private = next(step for step in steps if step.get('name') == 'Run capability suite')
+        self.assertEqual(private['run'], 'npm run test:e2e')
+        self.assertLess(steps.index(private), steps.index(public))
+        self.assertEqual(job['env']['HEARTH_SECRET'], 'Paris-Montreal')
+        self.assertNotIn('WFS_WELCOME_DEMO', job['env'])
+        self.assertNotIn('WFS_WELCOME_SECRET', job['env'])
+        self.assertEqual(sum('actions/download-artifact@' in step.get('uses', '') for step in steps), 1)
+
     def test_e2e_has_four_suites_and_one_build(self):
         jobs = yaml.safe_load((ROOT / '.github/workflows/validate.yml').read_text())['jobs']
         self.assertIn('pwa-build', jobs)

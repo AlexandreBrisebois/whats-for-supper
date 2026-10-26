@@ -34,7 +34,7 @@
     "tryAgain": "Réessayer"
   },
   "landing": {
-    "title": "Qu'est-ce qu'on mange ?",
+    "title": "Whats for Supper?",
     "subtitle": "Capturez des recettes, planifiez la semaine et découvrez quoi cuisiner.",
     "getStarted": "Commencer"
   },
@@ -106,7 +106,8 @@
     "editNameFor": "Modifier le nom de {{name}}"
   },
   "auth": {
-    "welcomeTitle": "Qu'est-ce qu'on mange ?",
+    "welcomeTitle": "Whats for Supper?",
+    "demoPrefilled": "Le mot de passe de la démo est déjà rempli pour vous. Appuyez sur Entrer pour explorer.",
     "welcomeSubtitle": "Entrez le mot de passe de votre famille pour continuer",
     "passphrasePlaceholder": "Mot de passe de la famille",
     "errorIncorrectPassphrase": "Mot de passe incorrect. Demandez à un membre de votre famille.",

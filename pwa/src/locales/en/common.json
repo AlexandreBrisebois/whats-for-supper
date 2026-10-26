@@ -34,7 +34,7 @@
     "tryAgain": "Try again"
   },
   "landing": {
-    "title": "What's for Supper?",
+    "title": "Whats for Supper?",
     "subtitle": "Capture recipes, plan your week, discover what to cook next.",
     "getStarted": "Get Started"
   },
@@ -106,7 +106,8 @@
     "editNameFor": "Edit name for {{name}}"
   },
   "auth": {
-    "welcomeTitle": "What's For Supper?",
+    "welcomeTitle": "Whats for Supper?",
+    "demoPrefilled": "The demo passphrase is filled in for you. Tap Enter to explore.",
     "welcomeSubtitle": "Enter your family's passphrase to continue",
     "passphrasePlaceholder": "Family passphrase",
     "errorIncorrectPassphrase": "Incorrect passphrase. Ask a family member for the right one.",
