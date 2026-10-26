@@ -129,7 +129,7 @@ function DemoContextState({ mode }: { mode: boolean | null }) {
           title={t('demoContext.label', 'Demo · What to know')}
           description={t(
             'demoContext.shared',
-            'This demo of Whats for Supper is shared with other visitors. They may change it while you explore.'
+            'Welcome to What’s for Supper! You’re sharing this demo with other visitors, just like a family sharing the app. You’ll see their changes as you explore, and they’ll see yours.'
           )}
           onClose={dismiss}
           returnFocus={band}
@@ -138,17 +138,20 @@ function DemoContextState({ mode }: { mode: boolean | null }) {
           <p className="text-sm leading-relaxed">
             {t(
               'demoContext.temporary',
-              'Your changes are temporary and will be reset. Please avoid personal information.'
+              'Try things out! Your changes are temporary and will be reset. Please don’t add personal information.'
             )}
           </p>
           <p className="text-sm leading-relaxed">
             {t(
               'demoContext.aiUnavailable',
-              'AI capture and generation are unavailable in this demo. Explore the prepared recipes and originals instead.'
+              'AI capture and generation are turned off in this demo. Explore the recipes we’ve prepared for you instead.'
             )}
           </p>
           <p className="text-sm leading-relaxed">
-            {t('demoHosting.body', 'AI features require your own subscription.')}
+            {t(
+              'demoHosting.body',
+              'When you set up your own What’s for Supper, AI features require your own subscription.'
+            )}
           </p>
           <a
             href="https://github.com/AlexandreBrisebois/whats-for-supper/blob/main/docs/install/quick-start.md"

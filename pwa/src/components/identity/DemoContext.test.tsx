@@ -61,7 +61,7 @@ describe('demo context', () => {
   it('introduces one short explanation on ready ordinary Home and remembers Start exploring', async () => {
     render(<DemoContext />);
     expect(await screen.findByRole('dialog')).toHaveAccessibleName('Demo · What to know');
-    expect(screen.getByText(/shared with other visitors/i)).toBeInTheDocument();
+    expect(screen.getByText(/sharing this demo with other visitors/i)).toBeInTheDocument();
     expect(screen.getByText(/personal information/i)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Set up your own household' })).toHaveAttribute(
       'href',
@@ -80,19 +80,19 @@ describe('demo context', () => {
     [
       'en',
       [
-        'This demo of Whats for Supper is shared with other visitors. They may change it while you explore.',
-        'Your changes are temporary and will be reset. Please avoid personal information.',
-        'AI capture and generation are unavailable in this demo. Explore the prepared recipes and originals instead.',
-        'AI features require your own subscription.',
+        'Welcome to What’s for Supper! You’re sharing this demo with other visitors, just like a family sharing the app. You’ll see their changes as you explore, and they’ll see yours.',
+        'Try things out! Your changes are temporary and will be reset. Please don’t add personal information.',
+        'AI capture and generation are turned off in this demo. Explore the recipes we’ve prepared for you instead.',
+        'When you set up your own What’s for Supper, AI features require your own subscription.',
       ],
     ],
     [
       'fr',
       [
-        'Cette démo de Whats for Supper est partagée avec les autres visiteurs. Ils peuvent la modifier pendant votre visite.',
-        'Vos changements sont temporaires et seront réinitialisés. Veuillez éviter d’ajouter des renseignements personnels.',
-        'La capture et la génération par IA ne sont pas offertes dans cette démo. Explorez plutôt les recettes et les originaux préparés.',
-        'Les fonctions d’IA nécessitent votre propre abonnement.',
+        'Bienvenue dans What’s for Supper! Vous partagez cette démo avec d’autres visiteurs, comme une famille qui utilise l’application ensemble. Vous verrez leurs changements au fil de votre exploration, et ils verront les vôtres.',
+        'Amusez-vous à essayer! Vos changements sont temporaires et seront réinitialisés. Veuillez ne pas ajouter de renseignements personnels.',
+        'La capture et la génération par IA sont désactivées dans cette démo. Explorez plutôt les recettes que nous avons préparées pour vous.',
+        'Lorsque vous installez votre propre What’s for Supper, les fonctionnalités d’IA nécessitent votre propre abonnement.',
       ],
     ],
   ])('shows exactly the approved four disclaimer paragraphs in %s', async (locale, paragraphs) => {

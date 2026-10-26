@@ -29,7 +29,7 @@ describe('honest AI entry', () => {
     expect(screen.queryByLabelText('Private photo')).not.toBeInTheDocument();
     expect(screen.queryByLabelText('Private PDF')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Import shared text bundle' })).toBeVisible();
-    expect(screen.getByText(/AI capture and generation are unavailable/i)).toBeInTheDocument();
+    expect(screen.getByText(/AI capture and generation are turned off/i)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /prepared recipes/i })).toHaveAttribute(
       'href',
       '/recipes'

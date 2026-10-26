@@ -13,7 +13,7 @@ Use the explicitly approved 32px minimum full-width sage target, without decorat
 - Replace purple/white demo band requirements with pale sage/charcoal, retaining 4.5:1 contrast in normal, hover and pressed states.
 - Use 13px/18px medium text and a 16px help icon; permit wrapping and text growth.
 - Give Start exploring a dark sage surface, white text, darker interaction states and contrasting focus.
-- Use the user’s exact four-paragraph English disclaimer, including “Whats for Supper” and definite future reset, with natural aligned French. Remove the old self-hosted-household sentence; preserve the separate setup link and Start exploring.
+- Use the user’s exact four-paragraph English disclaimer, including “What’s for Supper” and definite future reset, with the exact approved French. Remove the old self-hosted-household sentence; preserve the separate setup link and Start exploring.
 - Suppress only the disclaimer’s static title outline while preserving initial focus semantics and visible keyboard focus on interactive controls.
 
 ## Capabilities

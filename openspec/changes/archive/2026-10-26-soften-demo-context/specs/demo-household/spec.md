@@ -33,11 +33,16 @@ The demo SHALL provide a compact pale sage strip with readable dark charcoal tex
 #### Scenario: Approved demo explanation
 - **WHEN** the explanation renders in English
 - **THEN** its four body paragraphs say exactly:
-  - This demo of Whats for Supper is shared with other visitors. They may change it while you explore.
-  - Your changes are temporary and will be reset. Please avoid personal information.
-  - AI capture and generation are unavailable in this demo. Explore the prepared recipes and originals instead.
-  - AI features require your own subscription.
-- **AND** the old self-hosted-household sentence is absent, the separate Set up your own household link and Start exploring action remain, and French naturally conveys the same meaning including definite future reset (seront réinitialisées)
+  - Welcome to What’s for Supper! You’re sharing this demo with other visitors, just like a family sharing the app. You’ll see their changes as you explore, and they’ll see yours.
+  - Try things out! Your changes are temporary and will be reset. Please don’t add personal information.
+  - AI capture and generation are turned off in this demo. Explore the recipes we’ve prepared for you instead.
+  - When you set up your own What’s for Supper, AI features require your own subscription.
+- **AND** in French its four body paragraphs say exactly:
+  - Bienvenue dans What’s for Supper! Vous partagez cette démo avec d’autres visiteurs, comme une famille qui utilise l’application ensemble. Vous verrez leurs changements au fil de votre exploration, et ils verront les vôtres.
+  - Amusez-vous à essayer! Vos changements sont temporaires et seront réinitialisés. Veuillez ne pas ajouter de renseignements personnels.
+  - La capture et la génération par IA sont désactivées dans cette démo. Explorez plutôt les recettes que nous avons préparées pour vous.
+  - Lorsque vous installez votre propre What’s for Supper, les fonctionnalités d’IA nécessitent votre propre abonnement.
+- **AND** the separate Set up your own household link and Start exploring action remain
 - **AND** non-demo strings and provider, account or authentication behavior are unchanged
 
 #### Scenario: Static title without a focus outline

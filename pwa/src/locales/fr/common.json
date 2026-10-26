@@ -420,10 +420,10 @@
   },
   "demoContext": {
     "label": "Démo · À savoir",
-    "shared": "Cette démo de Whats for Supper est partagée avec les autres visiteurs. Ils peuvent la modifier pendant votre visite.",
-    "temporary": "Vos changements sont temporaires et seront réinitialisés. Veuillez éviter d’ajouter des renseignements personnels.",
+    "shared": "Bienvenue dans What’s for Supper! Vous partagez cette démo avec d’autres visiteurs, comme une famille qui utilise l’application ensemble. Vous verrez leurs changements au fil de votre exploration, et ils verront les vôtres.",
+    "temporary": "Amusez-vous à essayer! Vos changements sont temporaires et seront réinitialisés. Veuillez ne pas ajouter de renseignements personnels.",
     "start": "Commencer l’exploration",
-    "aiUnavailable": "La capture et la génération par IA ne sont pas offertes dans cette démo. Explorez plutôt les recettes et les originaux préparés.",
+    "aiUnavailable": "La capture et la génération par IA sont désactivées dans cette démo. Explorez plutôt les recettes que nous avons préparées pour vous.",
     "statusFailed": "Impossible de vérifier si la capture par IA est offerte. Réessayez ou explorez les recettes préparées.",
     "checking": "Vérification de la disponibilité de la capture par IA…",
     "browse": "Explorer les recettes préparées",

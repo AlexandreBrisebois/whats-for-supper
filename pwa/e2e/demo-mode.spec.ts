@@ -333,7 +333,7 @@ test.describe('Cost-safe demo exploration', () => {
     });
     await page.goto('/capture?mode=describe');
     await expect(page.getByTestId('demo-ai-unavailable')).toContainText(
-      'AI capture and generation are unavailable'
+      'AI capture and generation are turned off'
     );
     await expect(page.locator('input[type=file]')).toHaveCount(1);
     await expect(page.getByTestId('import-prepared-file-input')).toHaveAttribute(

@@ -14,6 +14,13 @@
 
 - [ ] 2.1 Run Task preparation and final verification on the complete revised path set, review the actual diff, publish the revision in draft PR353 via connector and follow final exact-head CI. Deliver inspected ordinary-state screenshot artifacts through the PR discussion; no merge/deployment.
 
+## Local copy revision and archival checkpoint (2026-10-26)
+
+- Synced the approved four-paragraph English and French disclaimer and existing sage presentation requirements into the main demo-household spec. Archived at the user's explicit request with task 2.1 still unchecked; no PR publication or CI follow-up was performed for this local revision.
+- Focused acceptance passed: 19 component tests and all 29 demo-mode/demo-reset browser tests. English/French phone and iPad portrait/landscape screenshots were inspected; expanded-text scrolling and action access passed.
+- Application verification record `.task/agent-finish/runs/520ca8e5fc85450f9c9a4df6f063653f.json` applies to the pre-sync application revision: 1,021 unit tests, 1,249 API tests, documentation, OpenSpec, lint, formatting, types and static contracts passed. Aggregate verification failed on one grocery persistence timeout (352 browser tests passed, 18 skipped); that single case passed on isolated rerun. Database-dependent API cases: 153 skipped. This is not an aggregate pass or live database qualification.
+- Spec-sync documentation verification passed: `.task/agent-finish/runs/a35fd8238b5d4dcdb0dd820a533c1ca6.json`. Post-archive validation is reported separately; archival does not establish implementation acceptance. All changes remain local and uncommitted.
+
 ## Current revision evidence
 
 - Green: revised focused component/reset tests passed all 16 cases. Revised demo-mode/demo-reset browser acceptance passed all 29 tests (37.0s), including exact 32px geometry, zero outer vertical padding, no title outline with initial focus retained, contrasting control focus, modal controls/link at least 44px and separate ordinary touch-state screenshots. Phone/tablet EN/FR and 320px expanded text screenshots were inspected.

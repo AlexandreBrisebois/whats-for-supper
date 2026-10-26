@@ -24,7 +24,7 @@ export function DemoAiActionGate({
         {mode === true
           ? t(
               'demoContext.aiUnavailable',
-              'AI capture and generation are unavailable in this demo. Explore the prepared recipes and originals instead.'
+              'AI capture and generation are turned off in this demo. Explore the recipes we’ve prepared for you instead.'
             )
           : error
             ? t(
