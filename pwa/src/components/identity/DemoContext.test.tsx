@@ -76,6 +76,21 @@ describe('demo context', () => {
     expect(screen.getByTestId('demo-context-band')).toHaveFocus();
   });
 
+  it.each([
+    [
+      'en',
+      'A self-hosted household keeps your own plans. AI features require your own subscription.',
+    ],
+    [
+      'fr',
+      'Un foyer autohébergé conserve vos propres menus. Les fonctions d’IA nécessitent votre propre abonnement.',
+    ],
+  ])('shows the approved subscription explanation in %s', async (locale, copy) => {
+    localStorage.setItem('locale', locale);
+    render(<DemoContext />);
+    expect(await screen.findByText(copy, { exact: true })).toBeVisible();
+  });
+
   it('explicit close and Escape acknowledge without navigation or household state', async () => {
     render(<DemoContext />);
     const dialog = await screen.findByRole('dialog');

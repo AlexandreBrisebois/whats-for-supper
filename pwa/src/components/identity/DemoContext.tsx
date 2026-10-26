@@ -99,7 +99,7 @@ function DemoContextState({ mode }: { mode: boolean | null }) {
   if (mode !== true) return null;
   return (
     <div
-      className="relative z-40 bg-[#6b21a8] pt-[env(safe-area-inset-top)] text-white"
+      className="relative z-40 bg-cream pt-[env(safe-area-inset-top)] text-charcoal"
       data-testid="demo-context"
     >
       <button
@@ -112,10 +112,17 @@ function DemoContextState({ mode }: { mode: boolean | null }) {
           useDemoContextVisit.setState({ presented: true });
           useDemoContextVisit.setState({ openPath: pathname, openOwner: dialogOwner });
         }}
-        className="flex min-h-11 w-full items-center justify-center gap-2 px-4 py-2 text-sm font-semibold hover:bg-[#581c87] active:bg-[#581c87] focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-white"
+        className="group flex min-h-11 w-full items-center bg-cream py-2 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-charcoal"
       >
-        <CircleHelp size={18} aria-hidden="true" />
-        {t('demoContext.label', 'Demo · What to know')}
+        <span
+          data-testid="demo-context-strip"
+          className="flex min-h-7 w-full items-center justify-center gap-2 bg-sage-100 px-4 py-1 text-[0.8125rem] leading-[1.125rem] font-medium group-hover:bg-sage-200 group-active:bg-sage-300"
+        >
+          <CircleHelp size={16} className="shrink-0" aria-hidden="true" />
+          <span className="min-w-0 break-words">
+            {t('demoContext.label', 'Demo · What to know')}
+          </span>
+        </span>
       </button>
       {open && (
         <DemoDialog
@@ -142,7 +149,7 @@ function DemoContextState({ mode }: { mode: boolean | null }) {
           <p className="text-sm leading-relaxed">
             {t(
               'demoHosting.body',
-              'A self-hosted household keeps your own plans. AI features require your own provider setup and may have costs.'
+              'A self-hosted household keeps your own plans. AI features require your own subscription.'
             )}
           </p>
           <a
@@ -156,7 +163,7 @@ function DemoContextState({ mode }: { mode: boolean | null }) {
           <button
             type="button"
             onClick={dismiss}
-            className="min-h-11 w-full rounded-xl bg-[#6b21a8] px-4 py-3 font-semibold text-white hover:bg-[#581c87] active:bg-[#581c87] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6b21a8]"
+            className="min-h-11 w-full rounded-xl bg-sage-700 px-4 py-3 font-semibold text-white hover:bg-sage-800 active:bg-sage-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-charcoal"
           >
             {t('demoContext.start', 'Start exploring')}
           </button>
