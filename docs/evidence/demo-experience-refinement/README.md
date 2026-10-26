@@ -30,3 +30,10 @@ Physical iPhone/iPad Safari + VoiceOver, physical Pixel Chrome + TalkBack and an
 Final aggregate Task/CI evidence and immutable source refs are recorded in the PR description after the final reviewed files are frozen; earlier check results do not claim final aggregate acceptance. One earlier database-verifier attempt rejected its own content identity because source was still being edited; that attempt is failed evidence, not a passing database qualification. The final gate must rerun it on frozen inputs.
 
 The lint follow-up moved the existing primary dismissal button into DemoDialog itself, preserving its rendered markup and explicit-dismissal focus behavior. The optimized public Demo suite was rebuilt and passed again afterward; the captures above were refreshed from that build.
+
+
+## Durable CI coverage
+
+The household CI job now runs the existing dedicated public Welcome config after the ordinary private capability suite, using the shared optimized artifact. Only that step receives `WFS_WELCOME_DEMO=true` and the deliberately public `WFS_WELCOME_SECRET=Swipe-Match-Cook`. Its nested output directory preserves the ordinary suite's results/blob; both sets of files are retained by the existing household artifact upload. A public regression fails that household job and therefore the existing E2E gate. No additional CI build, backend/service or dependency was added.
+
+The public invocation was qualified locally with CI's baked `http://127.0.0.1:5001` API URL, household selection and existing feature flags: **14 passed, one intentional private-canary negative-control skip**, and the ordinary output-preservation marker plus existing blob checksum remained unchanged. The existing private suite still covers disclosure/manual entry. The pipeline test observed the missing-step red and then passed with the scoped integration. These are additional CI-integration checks; the inspected images above retain their recorded original build identity and unchanged application bytes.
