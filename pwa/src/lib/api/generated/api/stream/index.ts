@@ -21,7 +21,7 @@ import {
  */
 export interface StreamRequestBuilder extends BaseRequestBuilder<StreamRequestBuilder> {
   /**
-   * Establishes a persistent SSE connection. Sends a `connected` event with the current schedule snapshot (weekOffset=0) immediately on connect, then pushes events for all schedule mutations. Heartbeat comments (`: ping`) are sent every 15 seconds to prevent proxy timeouts.**Auth note**: `EventSource` cannot send custom request headers. Authentication uses the `x-family-member-id` cookie (set during onboarding) and the `h_access` HMAC cookie (validated by HearthAuthenticationHandler). Returns 400 if the `x-family-member-id` cookie is absent.
+   * Establishes a persistent SSE connection. Sends a `connected` event with the current schedule snapshot (weekOffset=0) immediately on connect, then pushes events for all schedule mutations. Heartbeat comments (`: ping`) are sent every 15 seconds to prevent proxy timeouts. In demo mode, connected carries demoGeneration and demo_reset carries the newly committed generation. Clients discard stale drafts and rehydrate after a generation change, preserving device preferences and the demo explanation acknowledgement.**Auth note**: `EventSource` cannot send custom request headers. Authentication uses the `x-family-member-id` cookie (set during onboarding) and the `h_access` HMAC cookie (validated by HearthAuthenticationHandler). Returns 400 if the `x-family-member-id` cookie is absent.
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {Promise<ArrayBuffer>}
    * @throws {RecoveryBusyError} error when the service returns a 503 status code
@@ -30,7 +30,7 @@ export interface StreamRequestBuilder extends BaseRequestBuilder<StreamRequestBu
     requestConfiguration?: RequestConfiguration<object> | undefined
   ): Promise<ArrayBuffer | undefined>;
   /**
-   * Establishes a persistent SSE connection. Sends a `connected` event with the current schedule snapshot (weekOffset=0) immediately on connect, then pushes events for all schedule mutations. Heartbeat comments (`: ping`) are sent every 15 seconds to prevent proxy timeouts.**Auth note**: `EventSource` cannot send custom request headers. Authentication uses the `x-family-member-id` cookie (set during onboarding) and the `h_access` HMAC cookie (validated by HearthAuthenticationHandler). Returns 400 if the `x-family-member-id` cookie is absent.
+   * Establishes a persistent SSE connection. Sends a `connected` event with the current schedule snapshot (weekOffset=0) immediately on connect, then pushes events for all schedule mutations. Heartbeat comments (`: ping`) are sent every 15 seconds to prevent proxy timeouts. In demo mode, connected carries demoGeneration and demo_reset carries the newly committed generation. Clients discard stale drafts and rehydrate after a generation change, preserving device preferences and the demo explanation acknowledgement.**Auth note**: `EventSource` cannot send custom request headers. Authentication uses the `x-family-member-id` cookie (set during onboarding) and the `h_access` HMAC cookie (validated by HearthAuthenticationHandler). Returns 400 if the `x-family-member-id` cookie is absent.
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {RequestInformation}
    */

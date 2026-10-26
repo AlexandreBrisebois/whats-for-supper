@@ -12,7 +12,8 @@ public class SearchIndexWorkflow(
     IEmbeddingProvider? embeddingProvider = null,
     ILogger<SearchIndexWorkflow>? logger = null,
     ISearchTelemetry? telemetry = null,
-    IRecipeSearchDocumentBuilder? documentBuilder = null) : IWorkflowProcessor
+    IRecipeSearchDocumentBuilder? documentBuilder = null,
+    DemoModeOptions? demoMode = null) : IWorkflowProcessor
 {
     public string ProcessorName => "IndexRecipeSearch";
 
@@ -90,6 +91,20 @@ public class SearchIndexWorkflow(
         doc.SourceFingerprint = currentFingerprint;
         doc.IndexStatus = "ready";
         doc.LastIndexedAt = clock.UtcNow;
+        if (demoMode?.Enabled == true)
+        {
+            // Existing vectors remain useful only for the exact prepared facts.
+            // Similar independently checks model/version/dimension compatibility.
+            var currentVector = doc.EmbeddingJson is not null && doc.EmbeddingFingerprint == currentFingerprint;
+            if (!currentVector)
+            {
+                doc.Embedding = null;
+                doc.EmbeddingFingerprint = null;
+            }
+            doc.EmbeddingStatus = currentVector ? "ready" : "pending";
+            await db.SaveChangesAsync(ct);
+            return;
+        }
         doc.EmbeddingStatus = "indexing";
         await db.SaveChangesAsync(ct);
 
@@ -169,9 +184,10 @@ public class SearchIndexWorkflow(
     /// </summary>
     public async Task BackfillAsync(IWorkflowOrchestrator orchestrator, CancellationToken ct = default)
     {
+        var demo = demoMode?.Enabled == true;
         var pendingIds = await db.RecipeSearchDocuments
             .AsNoTracking()
-            .Where(d => d.IndexStatus != "ready" || d.EmbeddingStatus == "failed" || d.EmbeddingStatus == "pending")
+            .Where(d => d.IndexStatus != "ready" || (!demo && (d.EmbeddingStatus == "failed" || d.EmbeddingStatus == "pending")))
             .Select(d => new { d.RecipeId, d.SourceFingerprint })
             .ToListAsync(ct);
 

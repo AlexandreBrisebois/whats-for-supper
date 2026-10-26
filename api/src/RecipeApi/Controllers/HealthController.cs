@@ -42,6 +42,11 @@ public class HealthController(
         {
             await db.FamilyMembers.AnyAsync();
             await db.Recipes.AnyAsync();
+            if (demoMode.Enabled)
+            {
+                Response.Headers[DemoGenerationProtocol.Header] = (await DemoGenerationProtocol.CurrentAsync(db, HttpContext.RequestAborted)).ToString();
+                Response.Headers.CacheControl = "no-store";
+            }
             checks["schema"] = new { status = "healthy" };
         }
         catch (Exception ex)

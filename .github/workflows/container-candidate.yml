@@ -113,4 +113,7 @@ jobs:
           retention-days: 7
       - name: Fallback teardown after runner cancellation
         if: always()
-        run: python3 -B scripts/agent/docker_smoke.py --down
+        run: |
+          if [ -f "$WFS_SMOKE_IMAGES" ]; then
+            python3 -B scripts/agent/docker_smoke.py --down
+          fi

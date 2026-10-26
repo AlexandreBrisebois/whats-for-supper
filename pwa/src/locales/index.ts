@@ -1,5 +1,8 @@
 import { Locale, DEFAULT_LOCALE } from '@/lib/i18n';
 
+import enDemoReset from './en/demo-reset.json';
+import frDemoReset from './fr/demo-reset.json';
+
 import enCommon from './en/common.json';
 import enHints from './en/hints.json';
 import enJourneys from './en/journeys.json';
@@ -37,16 +40,20 @@ function mergeTranslations(...tables: Array<Record<string, unknown>>): Record<st
 
 // Eagerly merged translation tables — small enough for Phase 0
 const translations: Record<Locale, Record<string, unknown>> = {
-  en: mergeTranslations(enCommon, enHints, enJourneys),
-  fr: mergeTranslations(frCommon, frHints, frJourneys),
+  en: mergeTranslations(enCommon, enHints, enJourneys, enDemoReset),
+  fr: mergeTranslations(frCommon, frHints, frJourneys, frDemoReset),
 };
 
 export function getLocale(): Locale {
   if (typeof window === 'undefined') return DEFAULT_LOCALE;
 
   // 1. Check for manual override (user's explicit choice in this browser)
-  const stored = localStorage.getItem(LOCALE_KEY) as Locale | null;
-  if (stored === 'en' || stored === 'fr') return stored;
+  try {
+    const stored = localStorage.getItem(LOCALE_KEY) as Locale | null;
+    if (stored === 'en' || stored === 'fr') return stored;
+  } catch {
+    /* Browser storage denial must not make the app unreadable. */
+  }
 
   // 2. Fallback to environment default
   return DEFAULT_LOCALE;
@@ -54,7 +61,11 @@ export function getLocale(): Locale {
 
 export function setLocale(locale: Locale): void {
   if (typeof window === 'undefined') return;
-  localStorage.setItem(LOCALE_KEY, locale);
+  try {
+    localStorage.setItem(LOCALE_KEY, locale);
+  } catch {
+    /* The current visit can still use its selected locale. */
+  }
 }
 
 function getNestedValue(obj: Record<string, unknown>, keys: string[]): unknown {

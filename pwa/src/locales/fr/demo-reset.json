@@ -1,0 +1,11 @@
+{
+  "demoReset": {
+    "title": "La démo partagée a été réinitialisée",
+    "body": "Le foyer préparé est de retour. Vos modifications précédentes ont été effacées. Continuez pour charger la démo actuelle; votre langue et les préférences de votre appareil sont conservées.",
+    "continue": "Continuer avec la démo réinitialisée"
+  },
+  "demoHosting": {
+    "link": "Configurer votre propre foyer",
+    "body": "Lorsque vous installez votre propre What’s for Supper, les fonctionnalités d’IA nécessitent votre propre abonnement."
+  }
+}

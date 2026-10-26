@@ -11,13 +11,16 @@ public class WorkflowProcessor(
     IWorkflowOrchestrator orchestrator,
     CronScheduleCalculator scheduleCalculator,
     IClock clock,
-    ILogger<WorkflowProcessor> logger) : IWorkflowProcessor
+    ILogger<WorkflowProcessor> logger,
+    DemoWorkflowSeeder demoSeeder) : IWorkflowProcessor
 {
     public string ProcessorName => "StartWorkflow";
 
     public async Task<object?> ExecuteAsync(WorkflowTask task, CancellationToken ct)
     {
         var payload = ParsePayload(task.Payload);
+        if (payload.WorkflowId == "demo-restore")
+            return await demoSeeder.EnsureNextAsync(task.InstanceId, ct);
         var scheduledAt = ResolveScheduledAt(payload.Schedule?.Cron);
         var instance = await orchestrator.TriggerAsync(payload.WorkflowId, payload.Parameters ?? [], scheduledAt);
 

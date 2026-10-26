@@ -9,6 +9,7 @@ namespace RecipeApi.Services;
 /// </summary>
 public class GeminiEmbeddingProvider(IConfiguration configuration, IHttpClientFactory httpClientFactory) : IEmbeddingProvider
 {
+    private readonly DemoModeOptions _demoMode = new(configuration);
     private readonly string _apiKey = configuration["GEMINI_API_KEY"] ?? "none";
     private readonly string _endpoint = configuration["GEMINI_ENDPOINT"] ?? "https://generativelanguage.googleapis.com/v1beta/openai/";
     private readonly string _modelId = configuration["EMBEDDING_MODEL_ID"] ?? "gemini-embedding-2";
@@ -16,6 +17,7 @@ public class GeminiEmbeddingProvider(IConfiguration configuration, IHttpClientFa
 
     public async Task<float[]> GenerateAsync(string text, CancellationToken ct = default)
     {
+        _demoMode.EnsureAiAvailable();
         if (string.IsNullOrWhiteSpace(text)) return [];
 
         using var client = httpClientFactory.CreateClient();

@@ -253,8 +253,25 @@ export async function mockFeatureFlags(
 export async function setupCommonRoutes(
   page: Page,
   calendarContext?: CalendarContext,
-  recoveryOptions: { busy?: boolean } = {}
+  recoveryOptions: {
+    busy?: boolean;
+    demoMode?: boolean;
+    demoManagementTaskIds?: string[];
+    demoGeneration?: () => string;
+  } = {}
 ) {
+  const generation = () =>
+    recoveryOptions.demoMode
+      ? (recoveryOptions.demoGeneration?.() ?? '00000000-0000-0000-0000-000000000000')
+      : undefined;
+  const fulfill = (route: Route, options: Parameters<Route['fulfill']>[0]) =>
+    route.fulfill({
+      ...options,
+      headers: {
+        ...options?.headers,
+        ...(generation() ? { 'X-Demo-Generation': generation()! } : {}),
+      },
+    });
   const scheduleEntries = new Map<
     string,
     { recipe: ScheduleRecipeDto | null; status: number; nonCooking?: any }
@@ -432,7 +449,8 @@ export async function setupCommonRoutes(
     } catch (error) {
       // Navigation may drop a post-commit notification; the next session GET
       // still observes the saved state and revision, as on the real stream.
-      const message = error instanceof Error ? error.message.split('\n', 1)[0] : '';
+      const message =
+        error instanceof Error ? error.message.split('\n', 1)[0].replace(/\.$/, '') : '';
       if (
         message !==
           'page.evaluate: Execution context was destroyed, most likely because of a navigation' &&
@@ -490,7 +508,7 @@ export async function setupCommonRoutes(
   // GET /api/family
   await page.route('**/api/family', async (route) => {
     if (route.request().method() === 'GET') {
-      await route.fulfill({
+      await fulfill(route, {
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
@@ -505,7 +523,7 @@ export async function setupCommonRoutes(
         (m) => (m.name ?? '').trim().toLowerCase() === normalized
       );
       if (duplicate) {
-        await route.fulfill({
+        await fulfill(route, {
           status: 409,
           contentType: 'application/json',
           body: JSON.stringify({
@@ -525,7 +543,7 @@ export async function setupCommonRoutes(
         preferredLanguage: null,
       });
       familyMembers.push(member);
-      await route.fulfill({
+      await fulfill(route, {
         status: 201,
         contentType: 'application/json',
         body: JSON.stringify({ data: member }),
@@ -542,7 +560,7 @@ export async function setupCommonRoutes(
     const memberId = cookie?.value || MOCK_IDS.MEMBER_ALEX;
     const member = familyMembers.find((candidate) => candidate.id === memberId);
 
-    await route.fulfill({
+    await fulfill(route, {
       status: 200,
       contentType: 'application/json',
       headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' },
@@ -561,7 +579,7 @@ export async function setupCommonRoutes(
       const id = new URL(route.request().url()).pathname.split('/').at(-2);
       const current = familyMembers.find((member) => member.id === id);
       if (!current) {
-        await route.fulfill({ status: 404 });
+        await fulfill(route, { status: 404 });
         return;
       }
       const updated = {
@@ -574,7 +592,7 @@ export async function setupCommonRoutes(
         updatedAt: new Date(),
       };
       Object.assign(current, updated);
-      await route.fulfill({
+      await fulfill(route, {
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
@@ -589,15 +607,15 @@ export async function setupCommonRoutes(
   // PUT /api/family/{id} and DELETE /api/family/{id}
   await page.route('**/api/family/*', async (route) => {
     if (route.request().method() === 'PUT') {
-      await route.fulfill({
+      await fulfill(route, {
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({ data: builders.familyMember() }),
       });
     } else if (route.request().method() === 'DELETE') {
-      await route.fulfill({ status: 204 });
+      await fulfill(route, { status: 204 });
     } else if (route.request().method() === 'GET') {
-      await route.fulfill({
+      await fulfill(route, {
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({ data: builders.familyMember() }),
@@ -609,7 +627,7 @@ export async function setupCommonRoutes(
 
   // GET /api/discovery/categories
   await page.route('**/api/discovery/categories', async (route) => {
-    await route.fulfill({
+    await fulfill(route, {
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({ data: ['Italian', 'Asian', 'Mexican'] }),
@@ -618,7 +636,7 @@ export async function setupCommonRoutes(
 
   // GET /api/discovery
   await page.route('**/api/discovery', async (route) => {
-    await route.fulfill({
+    await fulfill(route, {
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({ data: [] }),
@@ -627,7 +645,7 @@ export async function setupCommonRoutes(
 
   await page.route('**/api/discovery/session', async (route) => {
     if (route.request().method() !== 'GET') return route.fallback();
-    await route.fulfill({ json: { data: readSession() } });
+    await fulfill(route, { json: { data: readSession() } });
   });
 
   // POST /api/discovery/{id}/vote
@@ -636,7 +654,7 @@ export async function setupCommonRoutes(
     const recipeId = new URL(route.request().url()).pathname.split('/')[3];
     const member = route.request().headers()['x-family-member-id'] ?? MOCK_IDS.MEMBER_ALEX;
     liveVotes.set(`${recipeId}:${member}`, { recipeId, vote: route.request().postDataJSON().vote });
-    await route.fulfill({
+    await fulfill(route, {
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({ data: { message: 'Vote recorded' } }),
@@ -652,13 +670,13 @@ export async function setupCommonRoutes(
         const url = new URL(route.request().url());
         const reference = readReference(url);
         if (!reference)
-          return route.fulfill({
+          return fulfill(route, {
             status: 400,
             json: { message: 'referenceWeekStartDate must be a yyyy-MM-dd Monday.' },
           });
         const weekOffset = Number(url.searchParams.get('weekOffset') ?? 0);
         const schedule = makeSchedule(weekOffset, reference);
-        await route.fulfill({ json: { data: schedule } });
+        await fulfill(route, { json: { data: schedule } });
       } else {
         await route.continue();
       }
@@ -668,7 +686,7 @@ export async function setupCommonRoutes(
   // POST /api/schedule/day/{date} (Assign/Validate recipe)
   await page.route('**/api/schedule/day/*', async (route) => {
     if (route.request().method() === 'POST') {
-      await route.fulfill({
+      await fulfill(route, {
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({ data: { message: 'Day updated' } }),
@@ -680,7 +698,7 @@ export async function setupCommonRoutes(
 
   // GET /api/recipes/library-summary — registered AFTER the wildcard so LIFO gives it priority
   await page.route('**/api/recipes/library-summary', async (route) => {
-    await route.fulfill({
+    await fulfill(route, {
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({
@@ -695,7 +713,7 @@ export async function setupCommonRoutes(
 
   // GET /api/recipes?order=explore (Browse All Stack paged loading) — registered AFTER the wildcard so LIFO gives it priority
   await page.route('**/api/recipes?**order=explore**', async (route) => {
-    await route.fulfill({
+    await fulfill(route, {
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({
@@ -708,7 +726,7 @@ export async function setupCommonRoutes(
 
   // GET /api/recipes/recommendations
   await page.route('**/api/recipes/recommendations', async (route) => {
-    await route.fulfill({
+    await fulfill(route, {
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({ data: { topPick: null, results: [] } }),
@@ -718,7 +736,7 @@ export async function setupCommonRoutes(
   // POST /api/recipes/search
   await page.route('**/api/recipes/search', async (route) => {
     const searchMode = mockSearchMode(route.request().postDataJSON());
-    await route.fulfill({
+    await fulfill(route, {
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({
@@ -735,7 +753,7 @@ export async function setupCommonRoutes(
 
   // GET /api/recipes/search/filters — materialized metadata fallback
   await page.route('**/api/recipes/search/filters', async (route) => {
-    await route.fulfill({
+    await fulfill(route, {
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({
@@ -758,7 +776,7 @@ export async function setupCommonRoutes(
   await page.route('**/api/recipes/describe', async (route) => {
     if (route.request().method() === 'POST') {
       const body = route.request().postDataJSON() as { name?: string; description?: string };
-      await route.fulfill({
+      await fulfill(route, {
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
@@ -775,7 +793,7 @@ export async function setupCommonRoutes(
 
   // GET /api/recipes/import-status
   await page.route('**/api/recipes/import-status', async (route) => {
-    await route.fulfill({
+    await fulfill(route, {
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({ importedCount: 0, queueCount: 0, failedCount: 0 }),
@@ -784,7 +802,7 @@ export async function setupCommonRoutes(
 
   // POST /api/recipes/imports/bulk
   await page.route('**/api/recipes/imports/bulk', async (route) => {
-    await route.fulfill({
+    await fulfill(route, {
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({ queuedCount: 0, instanceIds: [] }),
@@ -799,7 +817,7 @@ export async function setupCommonRoutes(
           .request()
           .url()
           .match(/\/recipes\/([0-9a-f-]+)\/status/)?.[1] ?? MOCK_IDS.RECIPE_GOTO_STUB;
-      await route.fulfill({
+      await fulfill(route, {
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
@@ -816,13 +834,13 @@ export async function setupCommonRoutes(
 
   // GET /api/recipes/{id}/hero
   await page.route('**/api/recipes/*/hero', async (route) => {
-    await route.fulfill({ status: 200, contentType: 'image/jpeg', body: Buffer.from([]) });
+    await fulfill(route, { status: 200, contentType: 'image/jpeg', body: Buffer.from([]) });
   });
 
   // POST /api/recipes/{id}/import
   await page.route('**/api/recipes/*/import', async (route) => {
     if (route.request().method() === 'POST') {
-      await route.fulfill({
+      await fulfill(route, {
         status: 202,
         contentType: 'application/json',
         body: JSON.stringify({ status: 'queued' }),
@@ -835,7 +853,7 @@ export async function setupCommonRoutes(
   // POST /api/recipes/{id}/originals
   await page.route('**/api/recipes/*/originals', async (route) => {
     if (route.request().method() === 'POST') {
-      await route.fulfill({
+      await fulfill(route, {
         status: 201,
         contentType: 'application/json',
         body: JSON.stringify({ id: MOCK_IDS.PHOTO_NEW }),
@@ -848,7 +866,7 @@ export async function setupCommonRoutes(
   // POST /api/recipes/{id}/hero/regenerate
   await page.route('**/api/recipes/*/hero/regenerate', async (route) => {
     if (route.request().method() === 'POST') {
-      await route.fulfill({
+      await fulfill(route, {
         status: 202,
         contentType: 'application/json',
         body: JSON.stringify({ status: 'queued' }),
@@ -866,7 +884,7 @@ export async function setupCommonRoutes(
           .request()
           .url()
           .match(/\/recipes\/([0-9a-f-]+)\/share/)?.[1] ?? MOCK_IDS.RECIPE_LASAGNA;
-      await route.fulfill({
+      await fulfill(route, {
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
@@ -885,7 +903,7 @@ export async function setupCommonRoutes(
 
   // GET /api/recipes/{recipeId}/original/{photoIndex}
   await page.route('**/api/recipes/*/original/*', async (route) => {
-    await route.fulfill({ status: 200, contentType: 'image/jpeg', body: Buffer.from([]) });
+    await fulfill(route, { status: 200, contentType: 'image/jpeg', body: Buffer.from([]) });
   });
 
   // GET /api/recipes (List) — registered BEFORE **/api/recipes/* to take priority
@@ -897,7 +915,7 @@ export async function setupCommonRoutes(
       const requestedPage = Number(url.searchParams.get('page') ?? '1');
 
       if (route.request().method() === 'POST') {
-        await route.fulfill({
+        await fulfill(route, {
           status: 201,
           contentType: 'application/json',
           body: JSON.stringify({ recipe: builders.recipe(), updatedAt: new Date().toISOString() }),
@@ -909,7 +927,7 @@ export async function setupCommonRoutes(
           ((requestedPage > 1 && !suppliedGeneration) ||
             (suppliedGeneration && suppliedGeneration !== `mock-history-${historyGeneration}`))
         )
-          return route.fulfill({
+          return fulfill(route, {
             status: 409,
             json: {
               code: 'history_generation_expired',
@@ -917,7 +935,7 @@ export async function setupCommonRoutes(
             },
           });
         const isDiscoverableOnly = url.searchParams.get('discoverableOnly') === 'true';
-        await route.fulfill({
+        await fulfill(route, {
           status: 200,
           contentType: 'application/json',
           body: JSON.stringify({
@@ -944,7 +962,7 @@ export async function setupCommonRoutes(
   await page.route(
     (url) => url.pathname.endsWith('/api/recipes/library-summary'),
     async (route) => {
-      await route.fulfill({
+      await fulfill(route, {
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
@@ -966,7 +984,7 @@ export async function setupCommonRoutes(
           .request()
           .url()
           .match(/\/recipes\/([0-9a-f-]+)$/)?.[1] ?? MOCK_IDS.RECIPE_LASAGNA;
-      await route.fulfill({
+      await fulfill(route, {
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
@@ -981,12 +999,12 @@ export async function setupCommonRoutes(
         changes.mealTypes?.length &&
         !changes.mealTypes.includes('Supper')
       )
-        return route.fulfill({
+        return fulfill(route, {
           status: 400,
           json: { message: 'Choose Supper in meal types before turning on Ask the Family.' },
         });
       recipeUpdates.set(id, { ...recipeUpdates.get(id), ...changes });
-      await route.fulfill({
+      await fulfill(route, {
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
@@ -1000,11 +1018,16 @@ export async function setupCommonRoutes(
           .request()
           .url()
           .match(/\/recipes\/([0-9a-f-]+)$/)?.[1] ?? MOCK_IDS.RECIPE_LASAGNA;
-      await route.fulfill({
+      await fulfill(route, {
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
-          recipe: builders.recipe({ id, importIssue: activeImportIssue, ...recipeUpdates.get(id) }),
+          recipe: builders.recipe({
+            id,
+            createdAt: new Date(FIXED_E2E_TIMESTAMP),
+            importIssue: activeImportIssue,
+            ...recipeUpdates.get(id),
+          }),
           updatedAt: FIXED_E2E_TIMESTAMP,
         }),
       });
@@ -1047,7 +1070,7 @@ export async function setupCommonRoutes(
       return;
     }
 
-    await route.fulfill({
+    await fulfill(route, {
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({
@@ -1077,7 +1100,7 @@ export async function setupCommonRoutes(
       };
     }
 
-    await route.fulfill({
+    await fulfill(route, {
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({
@@ -1097,7 +1120,7 @@ export async function setupCommonRoutes(
   await page.route('**/api/recipes/import-bundle', async (route) => {
     if (route.request().method() === 'POST') {
       const body = route.request().postDataJSON() as RecipeShareBundleDto;
-      await route.fulfill({
+      await fulfill(route, {
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
@@ -1123,7 +1146,7 @@ export async function setupCommonRoutes(
 
   // GET /api/recipes/trash — registered AFTER the wildcard so LIFO gives it priority
   await page.route('**/api/recipes/trash', async (route) => {
-    await route.fulfill({
+    await fulfill(route, {
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({ data: { items: [] } }),
@@ -1132,7 +1155,7 @@ export async function setupCommonRoutes(
 
   // POST /api/recipes/*/restore — registered AFTER the wildcard so LIFO gives it priority
   await page.route('**/api/recipes/*/restore', async (route) => {
-    await route.fulfill({
+    await fulfill(route, {
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({ data: builders.recipe() }),
@@ -1141,7 +1164,7 @@ export async function setupCommonRoutes(
 
   // DELETE /api/recipes/*/purge
   await page.route('**/api/recipes/*/purge', async (route) => {
-    await route.fulfill({
+    await fulfill(route, {
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({ data: { purged: true } }),
@@ -1153,7 +1176,7 @@ export async function setupCommonRoutes(
   // POST /api/recipes/capture-url — registered AFTER the wildcard so LIFO gives it priority
   await page.route('**/api/recipes/capture-url', async (route) => {
     if (route.request().method() === 'POST') {
-      await route.fulfill({
+      await fulfill(route, {
         status: 202,
         contentType: 'application/json',
         body: JSON.stringify({ data: { id: MOCK_IDS.RECIPE_LASAGNA } }),
@@ -1168,7 +1191,7 @@ export async function setupCommonRoutes(
     if (route.request().method() !== 'POST') return route.fallback();
     const reference = readReference(new URL(route.request().url()));
     if (!reference)
-      return route.fulfill({
+      return fulfill(route, {
         status: 400,
         json: { message: 'referenceWeekStartDate must be a yyyy-MM-dd Monday.' },
       });
@@ -1178,18 +1201,18 @@ export async function setupCommonRoutes(
       referenceWeekStartDate: reference,
     });
     const day = schedule.days[body.dayIndex];
-    if (!day) return route.fulfill({ status: 400, json: { message: 'Invalid dayIndex.' } });
+    if (!day) return fulfill(route, { status: 400, json: { message: 'Invalid dayIndex.' } });
     const existing = scheduleEntries.get(day.date);
     if (
       body.requireEmpty &&
       !new URL(route.request().url()).searchParams.has('referenceWeekStartDate')
     )
-      return route.fulfill({
+      return fulfill(route, {
         status: 400,
         json: { message: 'An explicit reference Monday is required.' },
       });
     if (body.requireEmpty && existing)
-      return route.fulfill({ status: 409, json: { message: 'That supper slot changed.' } });
+      return fulfill(route, { status: 409, json: { message: 'That supper slot changed.' } });
     let displacedRecipe = null;
     if (body.dayIndex === 6 && existing?.recipe) {
       const nextWeek = builders.scheduleDays(body.weekOffset + 1, {
@@ -1208,7 +1231,7 @@ export async function setupCommonRoutes(
       recipe: builders.scheduleRecipe({ id: body.recipeId }),
       status: 0,
     });
-    await route.fulfill({ json: { data: { message: 'Recipe assigned', displacedRecipe } } });
+    await fulfill(route, { json: { data: { message: 'Recipe assigned', displacedRecipe } } });
     for (const slot of schedule.days) {
       const entry = scheduleEntries.get(slot.date);
       if (entry) Object.assign(slot, entry);
@@ -1229,7 +1252,7 @@ export async function setupCommonRoutes(
     const url = new URL(route.request().url());
     const reference = readReference(url);
     if (!reference)
-      return route.fulfill({
+      return fulfill(route, {
         status: 400,
         json: { message: 'Invalid referenceWeekStartDate.' },
       });
@@ -1249,11 +1272,11 @@ export async function setupCommonRoutes(
           ((requestedRound && requestedRound !== activeRoundId) ||
             (!requestedRound && requiresIdentity.has(week)))))
     )
-      return route.fulfill({
+      return fulfill(route, {
         status: 409,
         json: { message: 'Voting changed. Refresh the planner.' },
       });
-    if (replay) return route.fulfill({ json: { data: { message: 'Schedule locked' } } });
+    if (replay) return fulfill(route, { json: { data: { message: 'Schedule locked' } } });
     if (status === 1) {
       if (weekStatuses.get(week) === 2) requiresIdentity.add(week);
       activeRoundWeek = week;
@@ -1289,7 +1312,7 @@ export async function setupCommonRoutes(
         const entry = scheduleEntries.get(day.date);
         if (entry?.recipe && entry.status === 0) entry.status = 1;
       }
-    await route.fulfill({
+    await fulfill(route, {
       json: { data: { message: status === 2 ? 'Schedule locked' : 'Voting opened' } },
     });
     await emitSchedule(offset, reference);
@@ -1301,7 +1324,7 @@ export async function setupCommonRoutes(
     if (route.request().method() !== 'POST') return route.fallback();
     const reference = readReference(new URL(route.request().url()));
     if (!reference)
-      return route.fulfill({ status: 400, json: { message: 'Invalid referenceWeekStartDate.' } });
+      return fulfill(route, { status: 400, json: { message: 'Invalid referenceWeekStartDate.' } });
     const body = route.request().postDataJSON();
     if (body.intent === 'tomorrow') {
       const sourceDate = addDays(reference, body.weekOffset * 7 + body.fromIndex);
@@ -1319,7 +1342,7 @@ export async function setupCommonRoutes(
         destination !== addDays(sourceDate, 1) ||
         (body.sourceDisposition != null && body.sourceDisposition !== 'order_in')
       )
-        return route.fulfill({
+        return fulfill(route, {
           status: 400,
           json: { message: 'Choose a valid source and its next day.' },
         });
@@ -1337,7 +1360,7 @@ export async function setupCommonRoutes(
           (entry) => entry.status === 2 || entry.status === 4
         )
       )
-        return route.fulfill({
+        return fulfill(route, {
           status: 409,
           json: { message: 'A completed meal or changed plan blocks this move.' },
         });
@@ -1374,7 +1397,7 @@ export async function setupCommonRoutes(
           )
         ),
       ].sort((a, b) => a - b);
-      await route.fulfill({
+      await fulfill(route, {
         json: {
           data: builders.tomorrowMoveResult(
             sourceDate,
@@ -1403,7 +1426,7 @@ export async function setupCommonRoutes(
       return;
     }
     if (body.sourceDisposition != null)
-      return route.fulfill({
+      return fulfill(route, {
         status: 400,
         json: { message: 'Source disposition requires Tomorrow.' },
       });
@@ -1454,7 +1477,7 @@ export async function setupCommonRoutes(
           scheduleEntries.set(destination, { recipe: source.recipe, status: 0 });
         } else scheduleEntries.set(destination, source);
         if (targetOffset !== body.weekOffset) {
-          await route.fulfill({
+          await fulfill(route, {
             json: {
               data: {
                 message: 'Recipe moved',
@@ -1472,7 +1495,7 @@ export async function setupCommonRoutes(
         }
       }
     }
-    await route.fulfill({ json: { data: { message: 'Recipe moved' } } });
+    await fulfill(route, { json: { data: { message: 'Recipe moved' } } });
     await emitSchedule(body.weekOffset, reference);
   });
 
@@ -1481,7 +1504,7 @@ export async function setupCommonRoutes(
     const url = new URL(route.request().url());
     const reference = readReference(url);
     if (!reference)
-      return route.fulfill({ status: 400, json: { message: 'Invalid referenceWeekStartDate.' } });
+      return fulfill(route, { status: 400, json: { message: 'Invalid referenceWeekStartDate.' } });
     const rawOffset = url.searchParams.get('targetWeekOffset');
     const targetOffset = rawOffset === null ? 1 : Number(rawOffset);
     const destinationTime = Date.parse(`${reference}T00:00:00Z`) + targetOffset * 7 * 86400000;
@@ -1494,14 +1517,14 @@ export async function setupCommonRoutes(
       destinationTime < Date.parse('0001-01-01T00:00:00Z') ||
       destinationTime > Date.parse('9999-12-31T00:00:00Z')
     )
-      return route.fulfill({ status: 400, json: { message: 'Invalid targetWeekOffset.' } });
+      return fulfill(route, { status: 400, json: { message: 'Invalid targetWeekOffset.' } });
     const start = toDateStr(new Date(destinationTime));
     const body = route.request().postDataJSON();
     const source = scheduleEntries.get(body.sourceDate);
     if (!source || !source.recipe || source.recipe.id !== body.recipeId)
-      return route.fulfill({ status: 404, json: { message: 'Scheduled recipe not found.' } });
+      return fulfill(route, { status: 404, json: { message: 'Scheduled recipe not found.' } });
     if (source.status === 4)
-      return route.fulfill({
+      return fulfill(route, {
         status: 409,
         json: { message: 'Meals awaiting consensus cannot be deferred.' },
       });
@@ -1513,7 +1536,7 @@ export async function setupCommonRoutes(
     const destinationOffset = Math.floor(
       (Date.parse(destination) - Date.parse(reference)) / (7 * 86400000)
     );
-    await route.fulfill({
+    await fulfill(route, {
       json: {
         data: {
           scheduledDate: destination,
@@ -1532,7 +1555,7 @@ export async function setupCommonRoutes(
   await page.route('**/api/schedule/fill-the-gap**', async (route) => {
     if (route.request().method() !== 'GET') return route.fallback();
     if (!readReference(new URL(route.request().url())))
-      return route.fulfill({ status: 400, json: { message: 'Invalid referenceWeekStartDate.' } });
+      return fulfill(route, { status: 400, json: { message: 'Invalid referenceWeekStartDate.' } });
     const url = new URL(route.request().url());
     const schedule = makeSchedule(
       Number(url.searchParams.get('weekOffset') ?? 0),
@@ -1559,7 +1582,7 @@ export async function setupCommonRoutes(
     ]
       .filter((id) => !assigned.has(id))
       .slice(0, 5);
-    await route.fulfill({
+    await fulfill(route, {
       json: {
         data: ids.map((id) => ({
           id,
@@ -1575,7 +1598,7 @@ export async function setupCommonRoutes(
     if (route.request().method() !== 'DELETE') return route.fallback();
     const date = new URL(route.request().url()).pathname.split('/')[4];
     const removed = scheduleEntries.delete(date);
-    await route.fulfill({ status: 204 });
+    await fulfill(route, { status: 204 });
     if (removed)
       await emitSchedule(
         Math.floor(
@@ -1593,14 +1616,14 @@ export async function setupCommonRoutes(
       const body = route.request().postDataJSON();
       const previous = scheduleEntries.get(date);
       if (body.nonCooking && previous && (previous.recipe || previous.status !== 3))
-        return route.fulfill({ status: 409, json: { status: 409, message: 'Day occupied' } });
+        return fulfill(route, { status: 409, json: { status: 409, message: 'Day occupied' } });
       const viewedId = body.recipeId ?? previous?.recipe?.id;
       if (body.status === 2) {
         const knownRecipe = Object.entries(MOCK_IDS).some(
           ([key, id]) => key.startsWith('RECIPE_') && id === viewedId
         );
         if (!knownRecipe)
-          return route.fulfill({ status: 404, json: { message: 'Recipe not found' } });
+          return fulfill(route, { status: 404, json: { message: 'Recipe not found' } });
       }
       const mealMarkedCooked = body.status === 2 && previous?.recipe?.id === viewedId;
       if (body.status !== 2 || mealMarkedCooked) {
@@ -1614,7 +1637,7 @@ export async function setupCommonRoutes(
         };
         scheduleEntries.set(date, entry);
       }
-      await route.fulfill({
+      await fulfill(route, {
         json: { data: { message: 'Cooking status updated', mealMarkedCooked } },
       });
       const entry = scheduleEntries.get(date);
@@ -1642,9 +1665,9 @@ export async function setupCommonRoutes(
     const url = new URL(route.request().url());
     const reference = readReference(url);
     if (!reference)
-      return route.fulfill({ status: 400, json: { message: 'Invalid referenceWeekStartDate.' } });
+      return fulfill(route, { status: 400, json: { message: 'Invalid referenceWeekStartDate.' } });
     const offset = Number(url.pathname.split('/')[3]);
-    await route.fulfill({ json: { data: readSmartDefaults(offset, reference) } });
+    await fulfill(route, { json: { data: readSmartDefaults(offset, reference) } });
   });
 
   // Recipe-derived checks share processing/publication order within this mock host.
@@ -1688,7 +1711,7 @@ export async function setupCommonRoutes(
       const week = groceryWeek(route);
       const checks = { ...(groceryChecks.get(week) ?? {}), [body.ingredientName]: body.checked };
       groceryChecks.set(week, checks);
-      await route.fulfill({ status: 204 });
+      await fulfill(route, { status: 204 });
       await emitGroceryChecks(route, checks);
     });
   });
@@ -1698,7 +1721,7 @@ export async function setupCommonRoutes(
     await processGroceryWrite(async () => {
       const checks = { ...(route.request().postDataJSON() as Record<string, boolean>) };
       groceryChecks.set(groceryWeek(route), checks);
-      await route.fulfill({ status: 200, json: { data: checks } });
+      await fulfill(route, { status: 200, json: { data: checks } });
       await emitGroceryChecks(route, checks);
     });
   });
@@ -1712,7 +1735,7 @@ export async function setupCommonRoutes(
       const query =
         new URL(route.request().url()).searchParams.get('query')?.trim().toLowerCase() ?? '';
       if (query.length < 2)
-        return route.fulfill({ status: 400, json: { message: 'Enter two characters.' } });
+        return fulfill(route, { status: 400, json: { message: 'Enter two characters.' } });
       const outstanding = new Set(
         [...groceryExtras.values()]
           .filter((x) => !x.removed && !x.checked)
@@ -1743,7 +1766,7 @@ export async function setupCommonRoutes(
             Number(!a.toLowerCase().startsWith(query)) - Number(!b.toLowerCase().startsWith(query))
         )
         .slice(0, 3);
-      await route.fulfill({ status: 200, json: { names } });
+      await fulfill(route, { status: 200, json: { names } });
     }
   );
   await page.route('**/api/grocery-extras/*', async (route) => {
@@ -1754,8 +1777,8 @@ export async function setupCommonRoutes(
     const id = decodeURIComponent(requestUrl.pathname.split('/').at(-1) ?? '');
     const current = groceryExtras.get(id);
     if (current?.removed)
-      return route.fulfill({ status: 409, json: { message: 'Already removed.', absent: true } });
-    if (!current) return route.fulfill({ status: 404, json: { message: 'Not found.' } });
+      return fulfill(route, { status: 409, json: { message: 'Already removed.', absent: true } });
+    if (!current) return fulfill(route, { status: 404, json: { message: 'Not found.' } });
     if (request.method() === 'PATCH') {
       const body = request.postDataJSON() as Record<string, unknown>;
       const fields = ['name', 'checked', 'grocerySection'].filter(
@@ -1781,7 +1804,7 @@ export async function setupCommonRoutes(
             'Grocery',
           ].includes(String(body.grocerySection)))
       )
-        return route.fulfill({
+        return fulfill(route, {
           status: 400,
           json: { message: 'Supply one valid current-week change.' },
         });
@@ -1790,7 +1813,7 @@ export async function setupCommonRoutes(
         current.occurrenceWeekStartDate !== scheduleCalendar.currentWeekStartDate ||
         body.expectedVersion !== current.version
       )
-        return route.fulfill({
+        return fulfill(route, {
           status: 409,
           json: { message: 'Changed elsewhere.', absent: false, current },
         });
@@ -1804,13 +1827,13 @@ export async function setupCommonRoutes(
       if (typeof body.grocerySection === 'string') updated.grocerySection = body.grocerySection;
       groceryExtras.set(id, updated);
       await emitExtras();
-      return route.fulfill({ status: 200, json: updated });
+      return fulfill(route, { status: 200, json: updated });
     }
     if (request.method() === 'DELETE') {
       const url = new URL(request.url());
       const expected = Number(url.searchParams.get('expectedVersion'));
       if (!Number.isInteger(expected) || expected < 1)
-        return route.fulfill({
+        return fulfill(route, {
           status: 400,
           json: { message: 'expectedVersion must be positive.' },
         });
@@ -1818,15 +1841,15 @@ export async function setupCommonRoutes(
         url.searchParams.get('weekStartDate') !== current.occurrenceWeekStartDate ||
         current.occurrenceWeekStartDate !== scheduleCalendar.currentWeekStartDate
       )
-        return route.fulfill({
+        return fulfill(route, {
           status: 409,
           json: { message: 'Current occurrence required.', absent: false, current },
         });
       if (expected !== current.version)
-        return route.fulfill({ status: 409, json: { message: 'Changed elsewhere.', current } });
+        return fulfill(route, { status: 409, json: { message: 'Changed elsewhere.', current } });
       groceryExtras.set(id, { ...current, removed: true, version: current.version + 1 });
       await emitExtras();
-      return route.fulfill({ status: 204 });
+      return fulfill(route, { status: 204 });
     }
     return route.fallback();
   });
@@ -1844,14 +1867,14 @@ export async function setupCommonRoutes(
       !body.clientId ||
       body.weekStartDate !== scheduleCalendar.currentWeekStartDate
     )
-      return route.fulfill({
+      return fulfill(route, {
         status: 400,
         json: { message: 'Current week and name are required.' },
       });
     const replay = body.clientId && extraSubmissions.get(body.clientId);
     if (replay) {
       if (replay.name !== name || replay.week !== body.weekStartDate)
-        return route.fulfill({
+        return fulfill(route, {
           status: 409,
           json: {
             message: 'Client identity belongs to another submission.',
@@ -1859,11 +1882,11 @@ export async function setupCommonRoutes(
           },
         });
       if (groceryExtras.get(replay.id)?.removed)
-        return route.fulfill({
+        return fulfill(route, {
           status: 409,
           json: { message: 'The extra was removed.', absent: true, current: null },
         });
-      return route.fulfill({ status: 200, json: groceryExtras.get(replay.id) });
+      return fulfill(route, { status: 200, json: groceryExtras.get(replay.id) });
     }
     const id = body.clientId ?? crypto.randomUUID();
     const extra: MockExtra = {
@@ -1882,7 +1905,7 @@ export async function setupCommonRoutes(
     if (body.clientId) extraSubmissions.set(body.clientId, { id, name, week: body.weekStartDate });
     extraHistory.unshift(name);
     await emitExtras();
-    await route.fulfill({ status: 201, json: extra });
+    await fulfill(route, { status: 201, json: extra });
   });
 
   // Exact recovery is separate from the legacy merge mocks. Persist supported mock
@@ -1929,6 +1952,8 @@ export async function setupCommonRoutes(
     });
   });
   await page.route('**/api/management/recovery/restore/*', async (route) => {
+    if (route.request().method() !== 'POST') return route.fallback();
+    if (recoveryOptions.demoMode) return refuseDemoManagement(route);
     if (route.request().method() !== 'POST') return route.fallback();
     if (recoveryOptions.busy) return recoveryBusy(route);
     const id = new URL(route.request().url()).pathname.split('/').pop()!;
@@ -1994,7 +2019,7 @@ export async function setupCommonRoutes(
         new URL(route.request().url()).pathname.startsWith('/api/management/recovery/')
       )
         return route.fallback();
-      return route.fulfill({
+      return fulfill(route, {
         status: 503,
         headers: { 'Retry-After': '5' },
         contentType: 'application/json',
@@ -2008,7 +2033,7 @@ export async function setupCommonRoutes(
 
   // POST /api/management/backup
   await page.route('**/api/management/backup', async (route) => {
-    await route.fulfill({
+    await fulfill(route, {
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({ taskId: MOCK_IDS.RECIPE_LASAGNA }),
@@ -2017,7 +2042,9 @@ export async function setupCommonRoutes(
 
   // POST /api/management/disaster-recovery
   await page.route('**/api/management/disaster-recovery', async (route) => {
-    await route.fulfill({
+    if (route.request().method() !== 'POST') return route.fallback();
+    if (recoveryOptions.demoMode) return refuseDemoManagement(route);
+    await fulfill(route, {
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({ taskId: MOCK_IDS.RECIPE_LASAGNA }),
@@ -2026,7 +2053,7 @@ export async function setupCommonRoutes(
 
   // POST /api/management/backfill-search
   await page.route('**/api/management/backfill-search', async (route) => {
-    await route.fulfill({
+    await fulfill(route, {
       status: 202,
       contentType: 'application/json',
       body: JSON.stringify({ message: 'Search index backfill triggered in the background.' }),
@@ -2035,7 +2062,9 @@ export async function setupCommonRoutes(
 
   // POST /api/management/seed
   await page.route('**/api/management/seed', async (route) => {
-    await route.fulfill({
+    if (route.request().method() !== 'POST') return route.fallback();
+    if (recoveryOptions.demoMode) return refuseDemoManagement(route);
+    await fulfill(route, {
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({ taskId: MOCK_IDS.RECIPE_LASAGNA }),
@@ -2044,7 +2073,9 @@ export async function setupCommonRoutes(
 
   // POST /api/management/demo-capture
   await page.route('**/api/management/demo-capture', async (route) => {
-    await route.fulfill({
+    if (route.request().method() !== 'POST') return route.fallback();
+    if (recoveryOptions.demoMode) return refuseDemoManagement(route);
+    await fulfill(route, {
       status: 202,
       contentType: 'application/json',
       body: JSON.stringify({
@@ -2056,7 +2087,9 @@ export async function setupCommonRoutes(
 
   // POST /api/management/demo-restore
   await page.route('**/api/management/demo-restore', async (route) => {
-    await route.fulfill({
+    if (route.request().method() !== 'POST') return route.fallback();
+    if (recoveryOptions.demoMode) return refuseDemoManagement(route);
+    await fulfill(route, {
       status: 202,
       contentType: 'application/json',
       body: JSON.stringify({
@@ -2068,7 +2101,7 @@ export async function setupCommonRoutes(
 
   // GET /api/management/status
   await page.route('**/api/management/status', async (route) => {
-    await route.fulfill({
+    await fulfill(route, {
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({
@@ -2079,15 +2112,22 @@ export async function setupCommonRoutes(
         updatedAt: FIXED_E2E_TIMESTAMP,
         demoSnapshotReady: true,
         demoSnapshotMissing: [],
-        demoRestoreSeederHealthy: true,
-        demoRestoreSeederErrorCode: null,
+        demoRestoreSeederHealthy: recoveryOptions.demoMode ?? false,
+        demoRestoreSeederErrorCode: recoveryOptions.demoMode ? null : 'DEMO_DISABLED',
+        demoRestoreCronValid: true,
+        demoSnapshotErrorCode: null,
+        demoBaselineId: MOCK_IDS.RECIPE_LASAGNA,
+        demoRecoveryState: 'available',
+        demoNextRestoreAt: recoveryOptions.demoMode ? FIXED_E2E_TIMESTAMP : null,
+        demoLastResetTaskId: MOCK_IDS.RECIPE_LASAGNA,
+        demoLastResetStatus: 'Completed',
       }),
     });
   });
 
   // GET /api/workflows/instances/{instanceId}
   await page.route('**/api/workflows/instances/*', async (route) => {
-    await route.fulfill({
+    await fulfill(route, {
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({
@@ -2103,7 +2143,7 @@ export async function setupCommonRoutes(
 
   // GET /api/workflows/tasks/{taskId}/diagnostics
   await page.route('**/api/workflows/tasks/*/diagnostics', async (route) => {
-    await route.fulfill({
+    await fulfill(route, {
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({
@@ -2126,7 +2166,11 @@ export async function setupCommonRoutes(
 
   // POST /api/workflows/tasks/{taskId}/reset
   await page.route('**/api/workflows/tasks/*/reset', async (route) => {
-    await route.fulfill({
+    if (route.request().method() !== 'POST') return route.fallback();
+    const taskId = new URL(route.request().url()).pathname.split('/').at(-2)!;
+    if (recoveryOptions.demoMode && recoveryOptions.demoManagementTaskIds?.includes(taskId))
+      return refuseDemoManagement(route);
+    await fulfill(route, {
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({ data: { success: true } }),
@@ -2135,7 +2179,7 @@ export async function setupCommonRoutes(
 
   // GET /api/workflows/active
   await page.route('**/api/workflows/active', async (route) => {
-    await route.fulfill({
+    await fulfill(route, {
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({ data: [] }),
@@ -2144,7 +2188,14 @@ export async function setupCommonRoutes(
 
   // POST /api/workflows/{workflowId}/trigger
   await page.route('**/api/workflows/*/trigger', async (route) => {
-    await route.fulfill({
+    if (route.request().method() !== 'POST') return route.fallback();
+    const workflow = new URL(route.request().url()).pathname.split('/').at(-2);
+    if (
+      recoveryOptions.demoMode &&
+      ['demo-capture', 'demo-restore', 'db-restore', 'db-disaster-recovery'].includes(workflow!)
+    )
+      return refuseDemoManagement(route);
+    await fulfill(route, {
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({ instanceId: MOCK_IDS.RECIPE_LASAGNA }),
@@ -2153,15 +2204,15 @@ export async function setupCommonRoutes(
 
   // GET /api/health
   await page.route('**/api/health', async (route) => {
-    await route.fulfill({
+    await fulfill(route, {
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({
         status: 'Healthy',
         timestamp: FIXED_E2E_TIMESTAMP,
         checks: {},
-        demoMode: false,
-        demoModeRawValue: 'false',
+        demoMode: recoveryOptions.demoMode ?? false,
+        demoModeRawValue: recoveryOptions.demoMode ? 'true' : 'false',
         demoRestoreCronValid: true,
       }),
     });
@@ -2177,7 +2228,7 @@ export async function setupCommonRoutes(
   // not on connection state). Do NOT assert on the EventSource being "open" — it will
   // always be in a reconnecting state after fulfill() closes the response.
   await page.route(/\/(?:backend\/)?api\/stream/, async (route) => {
-    await route.fulfill({
+    await fulfill(route, {
       status: 200,
       contentType: 'text/event-stream',
       headers: {
@@ -2186,9 +2237,11 @@ export async function setupCommonRoutes(
         'X-Accel-Buffering': 'no',
       },
       body: buildSseBody([
-        buildConnectedEvent(
-          makeSchedule(0, scheduleCalendar.referenceWeekStartDate) as unknown as ScheduleDays
-        ),
+        buildSseFrame('connected', {
+          type: 'connected',
+          schedule: makeSchedule(0, scheduleCalendar.referenceWeekStartDate),
+          demoGeneration: generation(),
+        }),
       ]),
     });
   });
@@ -2196,7 +2249,7 @@ export async function setupCommonRoutes(
   // PATCH /api/ingredients/{normalizedKey}/category
   await page.route('**/api/ingredients/*/category', async (route) => {
     if (route.request().method() === 'PATCH') {
-      await route.fulfill({ status: 204 });
+      await fulfill(route, { status: 204 });
     } else {
       await route.continue();
     }
@@ -2207,7 +2260,7 @@ export async function setupCommonRoutes(
   let gotoItems: any[] = [];
   await page.route('**/api/goto', async (route) => {
     if (route.request().method() === 'GET') {
-      await route.fulfill({
+      await fulfill(route, {
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({ data: { items: gotoItems } }),
@@ -2215,7 +2268,7 @@ export async function setupCommonRoutes(
     } else if (route.request().method() === 'PUT') {
       const body = route.request().postDataJSON();
       gotoItems = body.items || [];
-      await route.fulfill({
+      await fulfill(route, {
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({ data: body }),
@@ -2229,13 +2282,13 @@ export async function setupCommonRoutes(
   await page.route('**/api/goto/active', async (route) => {
     const readyItem = gotoItems.find((i) => i.status === 'ready');
     if (readyItem) {
-      await route.fulfill({
+      await fulfill(route, {
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({ data: readyItem }),
       });
     } else {
-      await route.fulfill({
+      await fulfill(route, {
         status: 404,
         contentType: 'application/json',
         body: JSON.stringify({ error: 'Not found' }),
@@ -2252,13 +2305,13 @@ export async function setupCommonRoutes(
     const key = new URL(route.request().url()).pathname.split('/').pop()!;
     if (route.request().method() === 'GET') {
       if (settingsStore[key] == null) {
-        await route.fulfill({
+        await fulfill(route, {
           status: 200,
           contentType: 'application/json',
           body: JSON.stringify({ data: { key, value: null } }),
         });
       } else {
-        await route.fulfill({
+        await fulfill(route, {
           status: 200,
           contentType: 'application/json',
           body: JSON.stringify({ data: { key, value: settingsStore[key] } }),
@@ -2267,7 +2320,7 @@ export async function setupCommonRoutes(
     } else {
       const body = route.request().postDataJSON();
       settingsStore[key] = body.value;
-      await route.fulfill({
+      await fulfill(route, {
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({ data: { key, value: body.value } }),
@@ -2281,7 +2334,7 @@ export async function setupCommonRoutes(
       await route.fallback();
       return;
     }
-    await route.fulfill({
+    await fulfill(route, {
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({ data: { items: [] } }),
@@ -2290,7 +2343,7 @@ export async function setupCommonRoutes(
 
   // POST /api/captures/failures/*/retry (Task 18)
   await page.route('**/api/captures/failures/*/retry', async (route) => {
-    await route.fulfill({
+    await fulfill(route, {
       status: 202,
       contentType: 'application/json',
       body: JSON.stringify({ data: { queued: true } }),
@@ -2303,7 +2356,7 @@ export async function setupCommonRoutes(
       await route.fallback();
       return;
     }
-    await route.fulfill({
+    await fulfill(route, {
       status: 202,
       contentType: 'application/json',
       body: JSON.stringify({
@@ -2314,6 +2367,62 @@ export async function setupCommonRoutes(
       }),
     });
   });
+
+  // Register last so demo POST refusal precedes ordinary stateful mutations.
+  if (recoveryOptions.demoMode) {
+    for (const pattern of [
+      '**/api/recipes',
+      '**/api/recipes/capture-pdf',
+      '**/api/recipes/capture-url',
+      '**/api/recipes/describe',
+      '**/api/recipes/*/originals',
+      '**/api/recipes/*/hero/regenerate',
+      '**/api/recipes/imports/bulk',
+      '**/api/recipes/*/import-report',
+      '**/api/captures/failures/*/retry',
+    ]) {
+      await page.route(pattern, async (route) => {
+        if (route.request().method() !== 'POST') return route.fallback();
+        return fulfill(route, {
+          status: 403,
+          json: {
+            status: 403,
+            code: 'DEMO_AI_UNAVAILABLE',
+            message:
+              'AI capture and generation are unavailable in Demo Mode. Explore the prepared recipes instead.',
+          },
+        });
+      });
+    }
+  }
+  if (recoveryOptions.demoMode) {
+    await page.route('**/api/**', async (route) => {
+      const request = route.request();
+      const path = new URL(request.url()).pathname;
+      const mutation =
+        !['GET', 'HEAD', 'OPTIONS'].includes(request.method()) && path !== '/api/recipes/search';
+      const guardedElsewhere =
+        path.startsWith('/api/management/') ||
+        path.startsWith('/api/workflows/') ||
+        (request.method() === 'POST' &&
+          (path === '/api/recipes' ||
+            /\/(capture-pdf|capture-url|describe|originals|regenerate|import-report|retry)$/.test(
+              path
+            ) ||
+            path === '/api/recipes/imports/bulk'));
+      if (mutation && !guardedElsewhere && request.headers()['x-demo-generation'] !== generation())
+        return fulfill(route, {
+          status: 412,
+          json: {
+            status: 412,
+            code: 'DEMO_RESET_REQUIRED',
+            message: 'The demo has reset. Refresh before continuing.',
+            generation: generation(),
+          },
+        });
+      return route.fallback();
+    });
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -2805,4 +2914,16 @@ export async function mockNonCookingSchedule(
     await route.fallback();
   });
   return schedule;
+}
+
+async function refuseDemoManagement(route: import('@playwright/test').Route) {
+  return route.fulfill({
+    status: 403,
+    json: {
+      status: 403,
+      code: 'DEMO_MANAGEMENT_UNAVAILABLE',
+      message:
+        'Baseline capture and manual household restores are unavailable in Demo Mode. Demo resets run on the automatic schedule.',
+    },
+  });
 }

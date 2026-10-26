@@ -24,7 +24,19 @@ describe('LanguageSwitchProposal', () => {
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
     vi.useRealTimers();
+  });
+
+  it('stays quiet when browser storage is unavailable', () => {
+    vi.spyOn(localStorage, 'getItem').mockImplementation(() => {
+      throw new DOMException('Denied');
+    });
+    expect(() => render(<LanguageSwitchProposal />)).not.toThrow();
+    act(() => {
+      vi.advanceTimersByTime(2500);
+    });
+    expect(screen.queryByTestId('language-proposal')).not.toBeInTheDocument();
   });
 
   it('renders a proposal when browser language differs from current locale', async () => {

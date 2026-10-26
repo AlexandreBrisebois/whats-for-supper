@@ -4,8 +4,10 @@
 // @ts-ignore
 import {
   createBulkImportTriggerResponseDtoFromDiscriminatorValue,
+  createDemoAiUnavailableErrorFromDiscriminatorValue,
   createRecoveryBusyErrorFromDiscriminatorValue,
   type BulkImportTriggerResponseDto,
+  type DemoAiUnavailableError,
   type RecoveryBusyError,
 } from '../../../../models/index';
 // @ts-ignore
@@ -26,6 +28,7 @@ export interface BulkRequestBuilder extends BaseRequestBuilder<BulkRequestBuilde
    * Bulk-trigger recipe-import for all unimported recipes
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {Promise<BulkImportTriggerResponseDto>}
+   * @throws {DemoAiUnavailableError} error when the service returns a 403 status code
    * @throws {RecoveryBusyError} error when the service returns a 503 status code
    */
   post(
@@ -52,6 +55,7 @@ export const BulkRequestBuilderRequestsMetadata: RequestsMetadata = {
     uriTemplate: BulkRequestBuilderUriTemplate,
     responseBodyContentType: 'application/json',
     errorMappings: {
+      403: createDemoAiUnavailableErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
       503: createRecoveryBusyErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
     },
     adapterMethodName: 'send',

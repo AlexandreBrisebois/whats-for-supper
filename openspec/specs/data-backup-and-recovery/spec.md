@@ -468,7 +468,7 @@ The system SHALL provide explicit exact snapshot and restore operations distinct
 #### Scenario: Legacy omission is not exact emptiness
 - **WHEN** exact restore receives an unsupported version or missing required artifact including history
 - **THEN** preflight rejects it without changing live state
-- **AND** ordinary merge missing-history preservation and demo missing-history clearing remain unchanged
+- **AND** ordinary merge missing-history preservation remains unchanged; demo baseline compatibility and missing-history behavior follow the demo-household capability
 
 ### Requirement: Export complete grocery-extra history
 

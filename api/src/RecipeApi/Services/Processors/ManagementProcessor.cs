@@ -22,7 +22,7 @@ public class ManagementProcessor(
             "RestoreDatabase" => await managementService.RestoreAsync(ct),
             "DisasterRecovery" => await managementService.DisasterRecoveryAsync(),
             "CaptureDemoState" => await managementService.CaptureDemoStateAsync(ct),
-            "RestoreDemoState" => await managementService.RestoreDemoStateAsync(ct),
+            "RestoreDemoState" => await managementService.RestoreDemoStateAsync(ct, task.InstanceId),
             "PruneWorkflows" => await managementService.PruneWorkflowsAsync(GetRetentionDays(task.Payload), ct),
             "ProcessMaintenanceCommands" => await managementService.ProcessMaintenanceCommandsAsync(ct),
             "PruneMaintenanceCommands" => await managementService.PruneMaintenanceCommandsAsync(

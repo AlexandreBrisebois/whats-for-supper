@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using RecipeApi.Dto;
+using RecipeApi.Infrastructure;
 using RecipeApi.Services;
 
 namespace RecipeApi.Controllers;
@@ -18,6 +19,7 @@ public class CapturesController(CaptureFailureService captureFailureService) : C
 
     /// <summary>POST /api/captures/failures/{id}/retry — retry a failed capture.</summary>
     [HttpPost("failures/{id:guid}/retry")]
+    [DemoAiAction]
     public async Task<IActionResult> Retry(Guid id, CancellationToken ct)
     {
         var result = await captureFailureService.RetryAsync(id, ct);

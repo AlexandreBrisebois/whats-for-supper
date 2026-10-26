@@ -1,3 +1,4 @@
+import { DemoGenerationInitializer } from '@/components/demo/DemoGenerationInitializer';
 import { StoreInitializer } from '@/components/common/StoreInitializer';
 import { TodayStoreInitializer } from '@/components/TodayStoreInitializer';
 import { serverFetch } from '@/lib/api/server-client';
@@ -19,10 +20,15 @@ export default async function HomePage() {
   let familyMembers: FamilyMember[] | null = null;
   let schedule: ScheduleDays | null = null;
 
+  const generations: string[] = [];
+  const observe = (generation: string | null) => {
+    if (generation) generations.push(generation);
+  };
+
   try {
     const [familyResult, scheduleResult] = await Promise.all([
-      serverFetch<FamilyMember[]>('/api/family'),
-      serverFetch<ScheduleDays>('/api/schedule?weekOffset=0'),
+      serverFetch<FamilyMember[]>('/api/family', {}, observe),
+      serverFetch<ScheduleDays>('/api/schedule?weekOffset=0', {}, observe),
     ]);
     familyMembers = familyResult;
     schedule = scheduleResult;
@@ -42,6 +48,7 @@ export default async function HomePage() {
 
   return (
     <>
+      <DemoGenerationInitializer generations={generations} />
       {familyMembers && <StoreInitializer familyMembers={familyMembers} />}
       <TodayStoreInitializer
         todaysRecipe={todaysRecipe}

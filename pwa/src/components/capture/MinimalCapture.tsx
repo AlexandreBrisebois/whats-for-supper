@@ -38,6 +38,8 @@ import type {
 const PHOTO_UPLOAD_OVERLAY_DELAY_MS = 800;
 
 interface MinimalCaptureProps {
+  /** Restrict this surface to the existing local prepared-bundle operation. */
+  preparedOnly?: boolean;
   /** When 'goto', wires the post-save saveSetting call */
   intent?: string;
   /** When 'describe', skips the camera box and opens the describe form directly */
@@ -57,6 +59,7 @@ function extractUrl(text: string | null): string | null {
 }
 
 export default function MinimalCapture({
+  preparedOnly = false,
   intent,
   mode,
   initialUrl,
@@ -89,6 +92,7 @@ export default function MinimalCapture({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const recipeFileInputRef = useRef<HTMLInputElement>(null);
+  const bundlePickerRequested = useRef(false);
   const saveAreaRef = useRef<HTMLDivElement>(null);
   const photoSubmitLockRef = useRef(false);
   const photoUploadOverlayTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -364,16 +368,17 @@ export default function MinimalCapture({
   };
 
   const handleRecipeFileImport = () => {
+    bundlePickerRequested.current = true;
+    setShowDescribe(false);
+    setShowUrlReview(false);
     recipeFileInputRef.current?.click();
   };
 
   // Auto-trigger camera if mode is 'photo' (e.g. from Family GOTO)
   useEffect(() => {
-    if (mode === 'photo') {
-      handleCapture();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    if (mode === 'photo' && !preparedOnly && !bundlePickerRequested.current)
+      fileInputRef.current?.click();
+  }, [mode, preparedOnly]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
@@ -386,6 +391,19 @@ export default function MinimalCapture({
     event.target.value = '';
 
     if (!file) return;
+    const textBundle =
+      /\.(txt|recipe|json)$/i.test(file.name) ||
+      ['text/plain', 'application/json'].includes(file.type);
+    const aiFile =
+      file.type.startsWith('image/') ||
+      file.type === 'application/pdf' ||
+      /\.(pdf|jpe?g|png|webp|gif|heic|avif|bmp)$/i.test(file.name);
+    if (preparedOnly && (!textBundle || aiFile)) {
+      setBundleImportError(
+        t('demoContext.preparedFileType', 'Choose a shared recipe text file (.txt).')
+      );
+      return;
+    }
     if (file.name.toLowerCase().endsWith('.pdf') || file.type === 'application/pdf') {
       if (!memberId || isGoto) {
         setBundleImportError(t('capture.pdf.type', 'Choose a PDF file.'));
@@ -985,10 +1003,60 @@ export default function MinimalCapture({
     );
   }
 
+  const recipeFileImport = (
+    <>
+      <button
+        type="button"
+        data-testid="capture-secondary-action-import"
+        onClick={handleRecipeFileImport}
+        className="flex items-center justify-center gap-2 rounded-2xl border border-charcoal/10 px-4 py-4 text-sm font-bold uppercase tracking-widest text-charcoal/70 transition-colors hover:bg-charcoal/5"
+      >
+        <ArrowLeft size={16} className="rotate-180" />
+        <span data-testid="import-recipe-file-btn">
+          {preparedOnly
+            ? t('demoContext.importPrepared', 'Import a shared recipe (.txt)')
+            : 'Import recipe file'}
+        </span>
+      </button>
+      <input
+        ref={recipeFileInputRef}
+        data-testid={preparedOnly ? 'import-prepared-file-input' : 'import-recipe-file-input'}
+        type="file"
+        accept={
+          preparedOnly
+            ? '.txt,.recipe,.json,text/plain,application/json'
+            : isGoto
+              ? '.txt,text/plain'
+              : '.txt,text/plain,.pdf,application/pdf'
+        }
+        aria-label={
+          preparedOnly
+            ? t('demoContext.importPrepared', 'Import a shared recipe (.txt)')
+            : 'Import recipe file'
+        }
+        title={
+          preparedOnly
+            ? t('demoContext.importPrepared', 'Import a shared recipe (.txt)')
+            : 'Import recipe file'
+        }
+        className="hidden"
+        onChange={handleRecipeBundleFileChange}
+      />
+      {bundleImportError && (
+        <p
+          data-testid="bundle-import-error"
+          className="rounded-2xl border border-pink/20 bg-pink/5 px-4 py-3 text-sm font-medium text-pink"
+        >
+          {bundleImportError}
+        </p>
+      )}
+    </>
+  );
+
   return (
     <div className="flex flex-col gap-6">
       {/* ── URL Capturing Overlay ─────────────────────────────────────────────── */}
-      {isUrlCapturing && (
+      {!preparedOnly && isUrlCapturing && (
         <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-6 bg-cream/90 backdrop-blur-md animate-in fade-in duration-300">
           <div className="relative">
             <div className="absolute inset-0 animate-ping rounded-full bg-terracotta/20" />
@@ -1004,7 +1072,7 @@ export default function MinimalCapture({
         </div>
       )}
 
-      {showPhotoUploadOverlay && (
+      {!preparedOnly && showPhotoUploadOverlay && (
         <div
           data-testid="capture-photo-upload-overlay"
           className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-6 bg-cream/90 backdrop-blur-md animate-in fade-in duration-300"
@@ -1028,124 +1096,101 @@ export default function MinimalCapture({
       )}
 
       {/* ── Camera / Gallery — hidden when describe or url review is active ───────────── */}
-      {!showDescribe && !showUrlReview && !parsedBundle && (
+      {(preparedOnly || (!showDescribe && !showUrlReview)) && !parsedBundle && (
         <div className="flex flex-col gap-10">
           {/* Capture Area */}
-          <div
-            data-testid="capture-area"
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-            className={`flex flex-col items-center gap-6 rounded-[3rem] p-12 text-center transition-all duration-300 border-2 border-dashed ${
-              isDragging
-                ? 'bg-terracotta/10 border-terracotta scale-[1.02] shadow-xl shadow-terracotta/5'
-                : 'bg-terracotta/[0.03] border-terracotta/10 hover:bg-terracotta/[0.05]'
-            }`}
-          >
-            <button
-              type="button"
-              data-testid="capture-take-photo-btn"
-              onClick={handleCapture}
-              aria-label="Take a photo"
-              className="flex h-28 w-28 items-center justify-center rounded-full bg-terracotta text-white shadow-xl shadow-terracotta/30 ring-4 ring-white active:scale-95 transition-transform"
+          {!preparedOnly && (
+            <div
+              data-testid="capture-area"
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              className={`flex flex-col items-center gap-6 rounded-[3rem] p-12 text-center transition-all duration-300 border-2 border-dashed ${
+                isDragging
+                  ? 'bg-terracotta/10 border-terracotta scale-[1.02] shadow-xl shadow-terracotta/5'
+                  : 'bg-terracotta/[0.03] border-terracotta/10 hover:bg-terracotta/[0.05]'
+              }`}
             >
-              <Camera size={40} strokeWidth={2} />
-            </button>
+              <button
+                type="button"
+                data-testid="capture-take-photo-btn"
+                onClick={handleCapture}
+                aria-label="Take a photo"
+                className="flex h-28 w-28 items-center justify-center rounded-full bg-terracotta text-white shadow-xl shadow-terracotta/30 ring-4 ring-white active:scale-95 transition-transform"
+              >
+                <Camera size={40} strokeWidth={2} />
+              </button>
 
-            <button
-              type="button"
-              data-testid="capture-pick-gallery-btn"
-              onClick={handleGallery}
-              className="flex items-center justify-center gap-2 text-sm font-bold uppercase tracking-widest text-terracotta/60 transition-colors hover:text-terracotta"
-            >
-              <ImageIcon size={16} />
-              {t('capture.pickFromGallery', 'Pick from Gallery')}
-            </button>
+              <button
+                type="button"
+                data-testid="capture-pick-gallery-btn"
+                onClick={handleGallery}
+                className="flex items-center justify-center gap-2 text-sm font-bold uppercase tracking-widest text-terracotta/60 transition-colors hover:text-terracotta"
+              >
+                <ImageIcon size={16} />
+                {t('capture.pickFromGallery', 'Pick from Gallery')}
+              </button>
 
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              capture="environment"
-              className="hidden"
-              aria-label={t('capture.takePhoto', 'Take a photo')}
-              title={t('capture.takePhoto', 'Take a photo')}
-              onChange={handleFileChange}
-            />
-            <input
-              ref={galleryInputRef}
-              data-testid="capture-gallery-input"
-              type="file"
-              accept="image/*"
-              multiple
-              className="hidden"
-              aria-label={t('capture.choosePhotos', 'Choose photos from your library')}
-              title={t('capture.choosePhotos', 'Choose photos from your library')}
-              onChange={handleFileChange}
-            />
-          </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                aria-label={t('capture.takePhoto', 'Take a photo')}
+                title={t('capture.takePhoto', 'Take a photo')}
+                onChange={handleFileChange}
+              />
+              <input
+                ref={galleryInputRef}
+                data-testid="capture-gallery-input"
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                aria-label={t('capture.choosePhotos', 'Choose photos from your library')}
+                title={t('capture.choosePhotos', 'Choose photos from your library')}
+                onChange={handleFileChange}
+              />
+            </div>
+          )}
 
           <div className="flex flex-col gap-3 rounded-[2rem] border border-charcoal/8 bg-white/70 p-5 shadow-sm">
-            <button
-              type="button"
-              data-testid="capture-secondary-action-link"
-              onClick={() => {
-                setShowUrlReview(true);
-                setUrlInput('');
-                setBundleImportError(null);
-              }}
-              className="flex items-center justify-center gap-2 rounded-2xl border border-charcoal/10 px-4 py-4 text-sm font-bold uppercase tracking-widest text-charcoal/70 transition-colors hover:bg-charcoal/5"
-            >
-              <Globe size={16} />
-              Paste recipe link
-            </button>
+            {!preparedOnly && (
+              <>
+                <button
+                  type="button"
+                  data-testid="capture-secondary-action-link"
+                  onClick={() => {
+                    setShowUrlReview(true);
+                    setUrlInput('');
+                    setBundleImportError(null);
+                  }}
+                  className="flex items-center justify-center gap-2 rounded-2xl border border-charcoal/10 px-4 py-4 text-sm font-bold uppercase tracking-widest text-charcoal/70 transition-colors hover:bg-charcoal/5"
+                >
+                  <Globe size={16} />
+                  Paste recipe link
+                </button>
 
-            <button
-              type="button"
-              data-testid="capture-secondary-action-describe"
-              onClick={() => {
-                setShowDescribe(true);
-                setBundleImportError(null);
-              }}
-              className="flex items-center justify-center gap-2 rounded-2xl border border-charcoal/10 px-4 py-4 text-sm font-bold uppercase tracking-widest text-charcoal/70 transition-colors hover:bg-charcoal/5"
-            >
-              <PenLine size={16} />
-              Describe a recipe
-            </button>
-
-            <button
-              type="button"
-              data-testid="capture-secondary-action-import"
-              onClick={handleRecipeFileImport}
-              className="flex items-center justify-center gap-2 rounded-2xl border border-charcoal/10 px-4 py-4 text-sm font-bold uppercase tracking-widest text-charcoal/70 transition-colors hover:bg-charcoal/5"
-            >
-              <ArrowLeft size={16} className="rotate-180" />
-              <span data-testid="import-recipe-file-btn">Import recipe file</span>
-            </button>
-
-            <input
-              ref={recipeFileInputRef}
-              data-testid="import-recipe-file-input"
-              type="file"
-              accept={isGoto ? '.txt,text/plain' : '.txt,text/plain,.pdf,application/pdf'}
-              aria-label="Import recipe file"
-              title="Import recipe file"
-              className="hidden"
-              onChange={handleRecipeBundleFileChange}
-            />
-
-            {bundleImportError && (
-              <p
-                data-testid="bundle-import-error"
-                className="rounded-2xl border border-pink/20 bg-pink/5 px-4 py-3 text-sm font-medium text-pink"
-              >
-                {bundleImportError}
-              </p>
+                <button
+                  type="button"
+                  data-testid="capture-secondary-action-describe"
+                  onClick={() => {
+                    setShowDescribe(true);
+                    setBundleImportError(null);
+                  }}
+                  className="flex items-center justify-center gap-2 rounded-2xl border border-charcoal/10 px-4 py-4 text-sm font-bold uppercase tracking-widest text-charcoal/70 transition-colors hover:bg-charcoal/5"
+                >
+                  <PenLine size={16} />
+                  Describe a recipe
+                </button>
+              </>
             )}
+            {recipeFileImport}
           </div>
 
           {/* Preview Area */}
-          {images.length > 0 && (
+          {!preparedOnly && images.length > 0 && (
             <div className="flex flex-col gap-6 animate-in slide-in-from-bottom-4 duration-500">
               <div className="flex items-center justify-between px-2">
                 <h3
@@ -1284,7 +1329,7 @@ export default function MinimalCapture({
       )}
 
       {/* ── URL Review Form ─────────────────────────────────────────────────── */}
-      {showUrlReview && !onSuccess && (
+      {!preparedOnly && showUrlReview && !onSuccess && (
         <div className="flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
           <div className="flex flex-col gap-4">
             <button
@@ -1413,7 +1458,7 @@ export default function MinimalCapture({
       )}
 
       {/* ── Describe form ────────────────────────────────────────────────────── */}
-      {showDescribe && (
+      {!preparedOnly && showDescribe && (
         <div className="flex flex-col gap-6 animate-in fade-in duration-300">
           <div className="flex flex-col gap-2">
             <h2 className="font-heading text-2xl font-black text-charcoal tracking-tight">

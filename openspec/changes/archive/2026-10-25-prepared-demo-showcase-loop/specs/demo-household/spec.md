@@ -3,18 +3,22 @@
 ## MODIFIED Requirements
 
 ### Requirement: Accept demo snapshot capture as background work
-An operator-authorized POST /api/management/demo-capture SHALL trigger demo-capture with empty parameters and return 202 containing message Demo capture task enqueued. and taskId identifying the accepted workflow instance. Shared visitor household access alone SHALL NOT authorize capture. Acceptance SHALL follow background-processing requirement `Persist initial workflow and task identities before returning` and SHALL NOT certify completion.
+An authenticated POST /api/management/demo-capture with demo mode disabled SHALL trigger demo-capture with empty parameters and return 202 containing message Demo capture task enqueued. and taskId identifying the accepted workflow instance. Acceptance SHALL follow background-processing requirement `Persist initial workflow and task identities before returning` and SHALL NOT certify completion.
 
 #### Scenario: Capture accepted
-- **WHEN** operator authorization and workflow acceptance succeed for demo-capture
+- **WHEN** demo mode is disabled and authenticated workflow acceptance succeeds for demo-capture
 - **THEN** 202 contains the enqueue message and accepted instance identity as taskId
 
 #### Scenario: Capture outside automatic mode
 - **WHEN** an authorized operator requests demo-capture with DEMO_MODE disabled and workflow acceptance succeeds
 - **THEN** the management action still accepts capture; automatic demo activation is not an action-level prerequisite
 
+#### Scenario: Capture rejected in demo mode
+- **WHEN** demo mode is enabled and capture is requested through management, a generic workflow trigger or task reset, or previously accepted capture work reaches execution
+- **THEN** capture SHALL be rejected at that boundary
+
 ### Requirement: Capture the core demo data set
-A successful demo capture SHALL publish a complete versioned prepared household baseline with explicit membership, including empty collections, for every baseline-owned state category. It SHALL include members, active and soft-deleted recipes, prepared search, plans with grocery state, calendar events, grocery-extra history, settings, member overrides, categories and aggregate history. Operational identities SHALL NOT be replayable.
+A successful demo capture SHALL publish a complete versioned prepared household baseline with explicit membership, including empty collections, for every baseline-owned state category. Operational identities SHALL NOT be replayable.
 
 #### Scenario: Core snapshot
 - **WHEN** an operator captures the prepared household
@@ -27,6 +31,12 @@ A successful demo capture SHALL publish a complete versioned prepared household 
 #### Scenario: Retired recipe fields
 - **WHEN** recipe snapshot serialization encounters retired fields isHealthyChoice, dietaryProfile, fopFlags, fopClassification, healthProfile, healthEvent or balanceSummary
 - **THEN** those fields are omitted from serialized recipe objects
+
+#### Scenario: Prepared facts and reset dispositions
+- **WHEN** a successful capture publishes the baseline
+- **THEN** it SHALL include members, active and soft-deleted recipes, prepared search, settings, member overrides and categories
+- **AND** it SHALL explicitly declare clearing calendar events, meal plans and their grocery state, grocery extras, votes, import reports and aggregate voting history rather than replaying that captured activity
+- **AND** recipe LastCookedDate SHALL be cleared during reset
 
 ### Requirement: Copy recipe-root files into the snapshot
 Successful capture SHALL publish a verified inventory of baseline-owned original images, source PDFs, hero images and required recipe/search artifacts with the database baseline. Publication SHALL replace the selected baseline only after validation succeeds; failure SHALL retain the prior complete baseline. The manifest SHALL identify format, capture time, membership, asset integrity and calendar anchor.
@@ -58,6 +68,10 @@ Demo reset SHALL validate supported format, explicit required membership, relati
 - **WHEN** a required collection or asset directory is absent, even if the old four core files exist
 - **THEN** execution fails preflight before deleting database rows or active recipe files
 
+#### Scenario: Explicitly empty asset set
+- **WHEN** the format declares no required recipe assets and an existing empty asset directory matches its verified inventory
+- **THEN** preflight accepts that explicit emptiness; an absent directory is not treated as proof of an empty snapshot
+
 #### Scenario: Malformed core JSON
 - **WHEN** a required artifact cannot be deserialized or validated
 - **THEN** execution fails before destructive replacement
@@ -71,18 +85,26 @@ Successful reset SHALL replace baseline-owned database facts and assets as one r
 
 #### Scenario: Restore captured records
 - **WHEN** validated baseline publication completes
-- **THEN** captured members, recipe facts, planner, calendar, groceries, preferences and history replace visitor changes under the declared reset policy
+- **THEN** captured members, recipe facts, preferences replace visitor changes, while calendar events, meal plans, groceries/extras, voting/cooking history, votes and reports are cleared
 
 #### Scenario: Database replacement fails
 - **WHEN** database replacement fails before commit
 - **THEN** the prior complete live generation remains or is recovered before household writes resume, and reset reports failure
 
+#### Scenario: Quiescence times out
+- **WHEN** in-flight mutations or workers cannot drain or be fenced within the bounded reset interval
+- **THEN** reset fails before publication, preserves the prior complete generation and offers retry guidance
+
 #### Scenario: Concurrent visitor write
 - **WHEN** a visitor mutation races the reset boundary
 - **THEN** it either completes in the old generation and is reset or is rejected for refresh; it cannot silently leak into the restored generation
 
+#### Scenario: Grocery write or recomputation finishes late
+- **WHEN** a pre-reset grocery check, bulk check, recomputation or extra mutation completes after publication
+- **THEN** it cannot recreate cleared grocery items, checks or extra lineage or mutate the new generation
+
 ### Requirement: Clear transient activity when restoring core state
-Reset SHALL clear visitor votes and import reports under the proposed fresh-round policy while restoring prepared plans, grocery items/checks, calendar events and grocery-extra lineage. It SHALL replace aggregate history rather than accumulate it, regenerate round/close and optimistic-concurrency identities, and invalidate stale maintenance commands, uploads and continuations.
+Reset SHALL clear votes, import reports, prior weekly planning records and their grocery items/checks, calendar events and all grocery-extra occurrences/lineage so visitors start with an empty planner, calendar and groceries and a fresh voting round.
 
 #### Scenario: Activity cleared
 - **WHEN** votes, reports and queued visitor work accumulated since capture
@@ -90,11 +112,16 @@ Reset SHALL clear visitor votes and import reports under the proposed fresh-roun
 
 #### Scenario: Grocery state cleared with plans
 - **WHEN** visitors changed plan groceries or extra occurrences
-- **THEN** reset replaces them with captured plan grocery state and complete extra history, including explicit emptiness, checked state and tombstones
+- **THEN** reset clears all meal plans, grocery items/checks and extra occurrences, including lineage and tombstones, rather than restoring prepared grocery state
 
 #### Scenario: Repeat reset
 - **WHEN** the same baseline is reset twice at the same calendar anchor
 - **THEN** authoritative facts are equivalent without duplicated history, extras or counts; operational identities are fresh each time
+
+#### Scenario: Fresh round and stale authority
+- **WHEN** reset publishes the restored household
+- **THEN** one new empty current-week voting record SHALL own the fresh round and SHALL contain no assigned meals, grocery items, checks or old notification timestamp
+- **AND** reset SHALL clear aggregate history and recipe LastCookedDate, regenerate round/close and optimistic-concurrency identities, and invalidate stale maintenance commands, uploads and continuations
 
 ### Requirement: Retain active workflow instances during activity clearing
 Reset SHALL preserve its own orchestration and only explicitly approved model-free maintenance work. Other pre-reset pending or processing visitor work SHALL be quiesced or invalidated before publication and unable to publish afterward. It SHALL NOT replay captured workflow instances, tasks, leases or provider work.
@@ -175,23 +202,8 @@ Management diagnostics SHALL distinguish baseline absence, unsupported format, f
 - **WHEN** a reschedule task is newer than the completed reset task
 - **THEN** management diagnostics still distinguish the reset outcome from successor scheduling
 
-### Requirement: Keep the ordinary Search entry visible in demo presentation
-The Recipes page SHALL retain ordinary Search in visitor mode and serve typed search through model-free lexical retrieval with existing filters and recovery navigation. Similar SHALL use compatible prepared embeddings or lexical source facts without generating a query embedding. Visitor edits SHALL retain lexical availability without paid repair.
-
-#### Scenario: Search input available
-- **WHEN** a visitor searches prepared recipes
-- **THEN** the input remains visible and results require no outbound model request
-
-#### Scenario: Prepared embedding unavailable
-- **WHEN** prepared search embeddings are missing or incompatible
-- **THEN** lexical search and Similar fallback remain usable without provider retries
-
-#### Scenario: Visitor edits a recipe
-- **WHEN** a visitor changes searchable facts, rating, notes or discoverability
-- **THEN** derived lexical state is updated without embedding generation and stale embeddings are not presented as current
-
 ### Requirement: Reset aggregate history with demo state
-Capture SHALL include complete aggregate history consistent with baseline recipes and calendar policy. Successful reset SHALL replace history exactly once, regenerate operational round/history identities and invalidate stale close requests. Legacy incomplete demo snapshots SHALL require recapture, independently of ordinary backup merge compatibility.
+The baseline SHALL explicitly declare clearing aggregate voting history and recipe cooking history. Successful reset SHALL clear that history, regenerate operational round/history identities for a fresh current-week round and invalidate stale close requests. Legacy incomplete demo snapshots SHALL require recapture, independently of ordinary backup merge compatibility.
 
 #### Scenario: Legacy demo reset
 - **WHEN** upgraded reset receives a core snapshot without required history
@@ -199,7 +211,7 @@ Capture SHALL include complete aggregate history consistent with baseline recipe
 
 #### Scenario: Captured demo history
 - **WHEN** reset applies a valid complete baseline containing history
-- **THEN** history is restored once under the shared calendar mapping without retaining visitor rows
+- **THEN** aggregate history is empty and recipe LastCookedDate is null, with fresh round/history identities and no retained visitor rows
 
 #### Scenario: Stale browser after reset
 - **WHEN** a pre-reset browser retries a close
@@ -208,52 +220,22 @@ Capture SHALL include complete aggregate history consistent with baseline recipe
 ## ADDED Requirements
 
 ### Requirement: Separate operator baseline authority from visitor experiments
-Visitor mode SHALL apply whenever API demo mode is enabled. Baseline capture, replacement and selection SHALL require operator authority unavailable to visitors; shared visitor household access alone SHALL NOT grant it. Visitor requests SHALL NOT disable demo mode or enable AI preparation. Existing demo identity and ordinary household access SHALL remain available.
+Visitor mode SHALL apply whenever API demo mode is enabled. Baseline capture, replacement and selection SHALL be rejected whenever demo mode is enabled, at acceptance, alternate dispatch/retry and execution boundaries. Preparation/capture SHALL use authenticated private household access with demo mode disabled. Visitor requests SHALL NOT disable demo mode or enable AI preparation. Existing demo identity and ordinary household access SHALL remain available.
 
 #### Scenario: Visitor tries to replace the baseline
 - **WHEN** a visitor calls management capture or selection using only demo household access
 - **THEN** the request is rejected before modifying the selected baseline or preparation policy
 
+#### Scenario: Alternate baseline dispatch
+- **WHEN** a visitor uses generic workflow trigger or task reset to launch or replay baseline capture
+- **THEN** the demo-mode capture prohibition is enforced before that work can be accepted or modify the selected baseline; the management-route restriction cannot be bypassed
+
 #### Scenario: Authorized preparation
 - **WHEN** an operator explicitly prepares and captures a baseline outside visitor mode
 - **THEN** normal preparation can proceed under operator authority without exposing that authority to the visitor session
 
-### Requirement: Enforce visitor mode at every model boundary
-While visitor mode is active, the system SHALL send zero outbound AI/model requests from requests, workflows, retries, startup, maintenance or reset. This includes chat, streaming, query/document embeddings, extraction, synthesis, categorization and image generation, including direct provider clients. A feature override, force flag or available credential SHALL NOT bypass this policy.
-
-#### Scenario: Direct and background routes
-- **WHEN** visitors search, edit, upload, reimport, regenerate a hero, request suggestions or trigger permitted management actions
-- **THEN** neither synchronous nor subsequently queued/retried work sends a model request
-
-#### Scenario: Maintenance and reset
-- **WHEN** startup, dreaming, reconciliation, reset or successor scheduling runs in visitor mode
-- **THEN** no model request is sent, including for stale or missing embeddings and categories
-
-#### Scenario: Credentials exist
-- **WHEN** provider credentials and model-enabled feature flags are available in visitor mode
-- **THEN** the no-request policy still holds at each provider boundary
-
-#### Scenario: Preparation is separate
-- **WHEN** an operator explicitly prepares content outside visitor mode
-- **THEN** normal authorized AI behavior is available, but visitors cannot switch the serving installation into that preparation state
-
-### Requirement: Give honest model-free visitor outcomes
-Visitor interactions SHALL use prepared content or deterministic local behavior when available. Unsupported AI-dependent actions SHALL explain the demo limitation before work starts and SHALL NOT claim acquired, generated or repaired content exists. Ordinary non-demo behavior SHALL remain unchanged.
-
-#### Scenario: Hero regeneration
-- **WHEN** a visitor requests forced hero generation
-- **THEN** the existing prepared hero remains and the action reports that generation is unavailable in demo mode without a provider call
-
-#### Scenario: Capture cannot be fulfilled locally
-- **WHEN** a visitor submits content requiring AI extraction
-- **THEN** the interface offers a prepared demonstration or explicit unavailable outcome, not a false ready recipe or endless retry
-
-#### Scenario: Non-demo installation
-- **WHEN** demo mode is disabled in an ordinary authorized installation
-- **THEN** its existing AI actions and provider behavior remain available under their ordinary contracts
-
 ### Requirement: Rebuild derived state without restoring operational tokens
-Reset SHALL rebuild SQL views, lexical/filter/affinity state and client-visible generations deterministically from restored facts. It SHALL reuse only compatible prepared embeddings and SHALL invalidate process-local continuation caches and stale optimistic writes. Host configuration, credentials, backup archives and device preferences SHALL NOT be captured or reset as household facts.
+Reset SHALL rebuild SQL views and lexical/filter/affinity state from restored facts without model requests. It SHALL reuse only compatible prepared embeddings and invalidate stale continuations and optimistic writes through the accepted reset boundary. Host configuration, credentials, backup archives and device preferences SHALL NOT be captured or reset as household facts.
 
 #### Scenario: New table or state owner
 - **WHEN** the supported household schema introduces a state category not classified by the baseline format
@@ -267,17 +249,55 @@ Reset SHALL rebuild SQL views, lexical/filter/affinity state and client-visible 
 - **WHEN** household reset completes
 - **THEN** deployment secrets, clock configuration, unrelated backups and valid device preferences remain outside baseline replacement
 
+#### Scenario: Operator-owned setting or artifact
+- **WHEN** a stored setting key or file belongs to host/operator configuration rather than declared household facts
+- **THEN** reset preserves it and never serializes its secrets into the public baseline; unclassified ownership prevents destructive publication
+
+#### Scenario: Reset-triggered local work
+- **WHEN** reset schedules permitted indexing, reconciliation or maintenance and a prior task attempts late publication
+- **THEN** the new household's derived state is built without model requests and obsolete work cannot overwrite it
+- **AND** accepted model-free imports, local report resolution and prepared content remain usable under their ordinary demo contracts, with visitor-only membership removed by reset
+
 ### Requirement: Apply one explicit calendar anchor to the prepared household
-The baseline SHALL record its application-calendar anchor and policy. Under the proposed relative-week policy, reset SHALL apply one whole-week offset to all declared calendar-facing dates and week keys, preserving weekday, ordering, lineage and relative historical windows. Audit timestamps SHALL retain their meaning; reset SHALL NOT change the application clock or UTC cron schedule.
+The baseline SHALL declare clearing all calendar events, plans/groceries/extras and voting/cooking history rather than rebasing activity. Reset SHALL pin one current deployment-calendar anchor for its fresh round and regenerate round/history authority. Recipe/member audit timestamps SHALL retain their captured meaning and ordinary soft-delete retention SHALL remain applicable. Old notification timestamps SHALL NOT be replayed. Reset SHALL NOT change the application clock or UTC cron schedule.
 
 #### Scenario: Reset in a later week
 - **WHEN** a baseline is reset several weeks after capture
-- **THEN** plans, calendar events, extra occurrences and aggregate history move coherently relative to the reset application's current week
+- **THEN** calendar events, meal plans and grocery extras remain empty; aggregate voting history is empty and recipe LastCookedDate is null
 
 #### Scenario: Boundary and retry
 - **WHEN** reset crosses a week boundary or is retried after interruption
 - **THEN** one pinned anchor governs the complete publication; related records cannot land in different reset weeks
 
 #### Scenario: Rebased state eligibility
-- **WHEN** dated recipe rotation, cooked, deferred or deletion state participates in eligibility
-- **THEN** its declared calendar mapping is validated together with planner/history references, without shifting operational expiry or retry timestamps
+- **WHEN** LastCookedDate, CreatedAt/New eligibility, DeletedAt retention or other declared timestamp-sensitive facts affect the restored household
+- **THEN** LastCookedDate is cleared and audit timestamps retain their captured meaning without disabling retention or shifting operational expiry/retry timestamps
+
+### Requirement: Provide a coherent synthetic demo household
+The public baseline SHALL use deterministic synthetic household identities and authored or approved nonprivate content with coherent recipe, plan, grocery, history and asset references. It SHALL retain ordinary voting, explicit plan saving, grocery extras and cooking semantics. It SHALL NOT present prepared votes, media or extracted content as a visitor's own processing result.
+
+#### Scenario: Playable fresh round
+- **WHEN** the prepared household is restored under the accepted fresh-vote policy
+- **THEN** exactly one open round has fresh identity, an empty planner/calendar/groceries, available dates and enough eligible recipes for ordinary household voting to converge
+- **AND** visitors explicitly create saved meals and non-cooking days; pending matches do not populate the empty planner automatically
+
+#### Scenario: Matches are not a saved menu
+- **WHEN** a visitor reaches convergence and opens See your matches
+- **THEN** existing round-week navigation shows matches awaiting explicit saving and closing; the celebration and navigation themselves do not assign meals or close voting
+
+#### Scenario: Fixture provenance and relationships
+- **WHEN** a baseline is selected for public use
+- **THEN** its member names, recipe text, original PDF/images and hero media contain no real household private data or credentials and all declared relationship/asset references validate
+- **AND** automated qualification fixtures and checks require no AI requests; authorized operator preparation remains separate
+
+### Requirement: Explain shared demo state and recovery without a tour
+Reset recovery SHALL reuse existing demo guidance and ordinary navigation without adding a mandatory tour or replaying a dismissed introduction. It SHALL distinguish restored state from successful visitor saves and prevent stale local edits from being replayed. A localized secondary self-hosting path SHALL explain the difference from operator-configured AI without a free-provider or guaranteed reset-schedule promise.
+
+#### Scenario: Interrupted visitor during reset
+- **WHEN** a visitor returns to a mounted task after reset or misses the reset event
+- **THEN** ordinary reconciliation refreshes its authoritative state, explains the reset accessibly in English/French and provides a usable continuation without claiming an obsolete save succeeded
+- **AND** valid device preferences and the demo explanation acknowledgement remain intact; the old local draft is not automatically replayed
+
+#### Scenario: Honest self-hosting choice
+- **WHEN** a visitor follows self-hosting guidance
+- **THEN** it distinguishes the restricted public demo from operator-configured AI capabilities without promising free provider use or that every capability was exercised in the demo

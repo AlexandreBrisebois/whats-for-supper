@@ -10,14 +10,15 @@ using RecipeApi.Models;
 namespace RecipeApi.Services;
 
 public sealed record RecoveryError(string State, string Message, Guid? SnapshotId = null);
-public sealed record RecoveryResult(string State, string Message, Guid? SnapshotId = null);
+public sealed record RecoveryResult(string State, string Message, Guid? SnapshotId = null, [property: System.Text.Json.Serialization.JsonIgnore] Guid? OperationId = null, [property: System.Text.Json.Serialization.JsonIgnore] IReadOnlyDictionary<string, int>? StateCounts = null);
 public sealed record RecoveryFile(string Path, long Length, string Sha256);
 public sealed record RecoveryManifest(int Version, Guid Id, DateTimeOffset CapturedAt, string Schema, string[] Tables, RecoveryFile[] Files);
 
 /// <summary>Versioned independent recovery artifacts. All paths are server-owned.</summary>
 public partial class RecoverySnapshotService(RecipeDbContext db, RecipesRootResolver recipes,
-    DataRootResolver data, IConfiguration configuration, IClock clock, RecoveryBoundary boundary, IRecoveryCheckpoint? checkpoint = null)
+    DataRootResolver data, IConfiguration configuration, IClock clock, RecoveryBoundary boundary, IRecoveryCheckpoint? checkpoint = null, DemoModeOptions? demoMode = null)
 {
+    private readonly DemoModeOptions _demoPolicy = demoMode ?? new DemoModeOptions(configuration);
     internal static readonly string[] Tables = ["family_members", "recipes", "feature_flag_overrides", "recipe_import_reports", "weekly_plans", "calendar_events", "family_settings", "ingredient_categories", "weekly_household_interest", "grocery_extra_occurrences"];
     private static readonly JsonSerializerOptions Json = JsonDefaults.CamelCase;
     private static readonly string[] ImageExtensions = [".jpg", ".jpeg", ".png", ".webp"];
@@ -60,9 +61,9 @@ public partial class RecoverySnapshotService(RecipeDbContext db, RecipesRootReso
         if (json is not null) command.Parameters.AddWithValue("json", NpgsqlDbType.Jsonb, json);
         return Convert.ToString(await command.ExecuteScalarAsync(ct), System.Globalization.CultureInfo.InvariantCulture) ?? "";
     }
-    internal static async Task<string> SchemaAsync(NpgsqlConnection connection, CancellationToken ct)
+    internal static async Task<string> SchemaAsync(NpgsqlConnection connection, CancellationToken ct, string[]? tableNames = null)
     {
-        var names = string.Join(',', Tables.Select(t => "'" + t + "'"));
+        var names = string.Join(',', (tableNames ?? Tables).Select(t => "'" + t + "'"));
         var columns = await ScalarAsync(connection,
             "SELECT coalesce(jsonb_agg(jsonb_build_array(table_name,column_name,data_type,udt_name,is_nullable,column_default) ORDER BY table_name,ordinal_position)::text,'[]') FROM information_schema.columns WHERE table_schema='public' AND table_name IN (" + names + ")", ct);
         var constraints = await ScalarAsync(connection,
@@ -72,7 +73,12 @@ public partial class RecoverySnapshotService(RecipeDbContext db, RecipesRootReso
 
     public async Task<RecoveryResult> CaptureAsync(CancellationToken ct)
     {
-        var root = BackupRoot;
+        return await CaptureToAsync(BackupRoot, false, ct);
+    }
+
+    private async Task<RecoveryResult> CaptureToAsync(string root, bool demo, CancellationToken ct)
+    {
+        var tables = demo ? DemoTables : Tables;
         await using var lease = await boundary.EnterAsync(RecoveryAccess.Snapshot, ct);
         using var duration = CancellationTokenSource.CreateLinkedTokenSource(ct);
         duration.CancelAfter(TimeSpan.FromSeconds(Math.Clamp(configuration.GetValue("Recovery:MaxFreezeSeconds", 30), 1, 3600)));
@@ -86,12 +92,15 @@ public partial class RecoverySnapshotService(RecipeDbContext db, RecipesRootReso
         {
             await using var connection = await OpenAsync(ct);
             await using var transaction = await connection.BeginTransactionAsync(ct);
-            await ScalarAsync(connection, "LOCK TABLE " + string.Join(',', Tables) + " IN SHARE MODE", ct);
+            await ScalarAsync(connection, "LOCK TABLE " + string.Join(',', tables) + " IN SHARE MODE", ct);
             Directory.CreateDirectory(Path.Combine(stage, "tables"));
             if (checkpoint is not null) await checkpoint.ReachedAsync("capture-locked", ct);
-            foreach (var table in Tables)
+            if (demo) await ValidateDemoInventoryAsync(connection, ct);
+            Directory.CreateDirectory(Path.Combine(stage, "recipes"));
+            foreach (var table in tables)
             {
                 var rows = await ScalarAsync(connection, $"SELECT coalesce(jsonb_agg(to_jsonb(t) ORDER BY to_jsonb(t)::text),'[]')::text FROM {table} t", ct);
+                if (demo) rows = NormalizeDemoRows(table, rows);
                 await File.WriteAllTextAsync(Path.Combine(stage, "tables", table + ".json"), rows, ct);
             }
             var household = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine(stage, "tables", "recipes.json"), ct));
@@ -99,14 +108,15 @@ public partial class RecoverySnapshotService(RecipeDbContext db, RecipesRootReso
             {
                 foreach (var row in household.RootElement.EnumerateArray()) await CopyRecipeAsync(row, stage, ct);
             }
-            var history = await db.WeeklyHouseholdInterests.AsNoTracking().OrderBy(r => r.WeekStartDate).ThenBy(r => r.RecipeId).ToListAsync(ct);
+            var history = demo ? new List<WeeklyHouseholdInterest>() : await db.WeeklyHouseholdInterests.AsNoTracking().OrderBy(r => r.WeekStartDate).ThenBy(r => r.RecipeId).ToListAsync(ct);
             var state = await db.VotingRoundStates.AsNoTracking().SingleOrDefaultAsync(ct);
             await WriteAsync(Path.Combine(stage, "weekly-household-interest.json"), new { version = 1, generation = state?.HistoryGeneration ?? Guid.NewGuid(), rows = history }, ct);
+            if (demo) await WriteAsync(Path.Combine(stage, "dispositions.json"), DemoDispositions, ct);
             var files = new List<RecoveryFile>();
             foreach (var path in SafeFiles(stage).Order())
                 files.Add(await InventoryAsync(stage, path, ct));
-            var schema = await SchemaAsync(connection, ct);
-            await WriteAsync(Path.Combine(stage, "manifest.json"), new RecoveryManifest(1, id, clock.UtcNow, schema, Tables, files.ToArray()), ct);
+            var schema = await SchemaAsync(connection, ct, demo ? DemoDispositions.Keys.Order().ToArray() : null);
+            await WriteAsync(Path.Combine(stage, "manifest.json"), new RecoveryManifest(demo ? 2 : 1, id, clock.UtcNow, schema, tables, files.ToArray()), ct);
             await transaction.CommitAsync(ct);
             if (checkpoint is not null) await checkpoint.ReachedAsync("export-staged", ct);
             ct.ThrowIfCancellationRequested();
