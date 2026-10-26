@@ -112,7 +112,7 @@ test('welcome identity renders with every backend request unavailable in light a
     await page.emulateMedia({ colorScheme });
     await page.goto('/welcome');
     await expect(page).toHaveTitle(name);
-    await expect(page.getByTestId('welcome-title')).toHaveText("What's For Supper?");
+    await expect(page.getByTestId('welcome-title')).toHaveText('Whats for Supper?');
     await expect(page.getByTestId('passphrase-input')).toBeVisible();
     const hint = page.getByTestId(demo ? 'demo-context-band' : 'identity-hint');
     if (variant === 'production') {
@@ -168,9 +168,7 @@ for (const locale of ['en', 'fr'] as const) {
         await page.goto(route);
         await expect(page).toHaveURL(new RegExp(`${route}$`));
         if (route === '/welcome') {
-          await expect(page.getByTestId('welcome-title')).toHaveText(
-            locale === 'fr' ? "Qu'est-ce qu'on mange ?" : "What's For Supper?"
-          );
+          await expect(page.getByTestId('welcome-title')).toHaveText('Whats for Supper?');
           await expect(page.getByTestId('passphrase-input')).toHaveValue('');
           await expect(page.getByTestId('welcome-enter-btn')).toBeDisabled();
         } else if (route === '/planner') {

@@ -191,3 +191,12 @@ Welcome SHALL show the localized demo-prefill helper only when the server guard 
 #### Scenario: Locale and failed attempt preserve provenance
 - **WHEN** locale changes or submission fails while an actual prefill remains unedited
 - **THEN** the helper retains its prefill meaning in the selected language without refilling, resubmitting or hiding failure feedback
+
+### Requirement: Preserve the app name across locales
+
+The landing and Welcome branding headings SHALL display the exact literal `Whats for Supper?` in English and French, including the question mark. This applies only to `landing.title`, `auth.welcomeTitle` and their component fallbacks; ordinary localized meal questions and surrounding copy SHALL retain their existing meaning.
+
+#### Scenario: English or French entry heading
+- **WHEN** the visitor opens the landing page or Welcome in English or French
+- **THEN** its branding heading is exactly Whats for Supper?
+- **AND** localized helper text and explicit household entry behavior remain unchanged

@@ -20,6 +20,7 @@ vi.mock('@/lib/auth', () => ({
   setHearthCookie: mocks.cookie,
 }));
 import WelcomePage from './page';
+import LandingPage from '../../page';
 import { InstallIdentityProvider } from '@/components/identity/IdentityHint';
 import { LocaleProvider, useLocale } from '@/components/common/LocaleProvider';
 import { useDemoContextVisit } from '@/store/demoContextStore';
@@ -59,6 +60,22 @@ beforeEach(() => {
   };
 });
 afterEach(() => vi.unstubAllEnvs());
+
+describe('entry branding', () => {
+  it.each(['en', 'fr'])('keeps the exact app name on landing and Welcome in %s', async (locale) => {
+    localStorage.setItem('locale', locale);
+    const landing = render(<LandingPage />);
+    expect(screen.getByRole('heading', { level: 1, name: 'Whats for Supper?' })).toBeVisible();
+    landing.unmount();
+    await welcome();
+    expect(screen.getByRole('heading', { level: 1, name: 'Whats for Supper?' })).toBeVisible();
+    expect(screen.getByTestId('welcome-helper')).toHaveTextContent(
+      locale === 'en'
+        ? 'The demo passphrase is filled in for you. Tap Enter to explore.'
+        : 'Le mot de passe de la démo est déjà rempli pour vous. Appuyez sur Entrer pour explorer.'
+    );
+  });
+});
 
 describe('Welcome public prefill', () => {
   it('uses server identity despite browser non-demo health, with no automatic authentication', async () => {

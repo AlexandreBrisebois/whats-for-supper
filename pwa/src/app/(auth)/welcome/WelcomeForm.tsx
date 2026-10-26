@@ -58,7 +58,7 @@ export function WelcomeForm({ initialPassphrase }: { initialPassphrase: string |
         {!demo && <IdentityHint className="right-4 top-[calc(env(safe-area-inset-top)+1rem)]" />}
         <div className="text-center animate-in fade-in slide-in-from-bottom-4 duration-700">
           <h1 className="text-4xl font-bold text-indigo tracking-tight" data-testid="welcome-title">
-            {t('auth.welcomeTitle', "What's For Supper?")}
+            {t('auth.welcomeTitle', 'Whats for Supper?')}
           </h1>
           <p
             id="welcome-helper"

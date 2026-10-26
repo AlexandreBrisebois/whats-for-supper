@@ -117,7 +117,12 @@ for (const locale of ['en', 'fr'] as const) {
       test.skip(!prefill, 'Public Demo visual/lifecycle matrix has its own server configuration');
       await page.setViewportSize({ width, height });
       await page.addInitScript((language) => localStorage.setItem('locale', language), locale);
+      await page.goto('/');
+      await expect(
+        page.getByRole('heading', { level: 1, name: 'Whats for Supper?', exact: true })
+      ).toBeVisible();
       await page.goto('/welcome');
+      await expect(page.getByTestId('welcome-title')).toHaveText('Whats for Supper?');
       await expect(page.getByTestId('passphrase-input')).toHaveValue('Swipe-Match-Cook');
       const helper =
         locale === 'en'
