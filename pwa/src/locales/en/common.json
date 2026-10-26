@@ -107,6 +107,7 @@
   },
   "auth": {
     "welcomeTitle": "What's For Supper?",
+    "demoPrefilled": "The demo passphrase is filled in for you. Tap Enter to explore.",
     "welcomeSubtitle": "Enter your family's passphrase to continue",
     "passphrasePlaceholder": "Family passphrase",
     "errorIncorrectPassphrase": "Incorrect passphrase. Ask a family member for the right one.",

@@ -8,7 +8,7 @@ Demo visitors can see the server-selected Demo identity while Welcome still asks
 
 Refine Welcome so eligible public demos arrive with the public passphrase filled in, an honest next-action helper, and the existing compact sage explanation control. Entry remains explicit, editable and subject to ordinary household authentication. Private installations and demos using custom or missing secrets retain manual entry.
 
-This PR contains planning artifacts only. Alex approved the three directions, but the delegated stage requires written specification and design review before product implementation. Stop after publishing this draft; implementation tasks require the subsequent approval. No deployment, merge, release image, credential change, production test, spec sync or archive is included.
+The written specification and design were reviewed first. Alex approved their application in this same draft PR on 2026-10-26 at 18:04 UTC; implementation and isolated verification now proceed within those three directions. No deployment, merge, release image, credential change, production test, spec sync or archive is included.
 
 ## What Changes
 

@@ -21,7 +21,7 @@ Current competing work: #348 is merged; #340 remains draft and concerns broader 
 
 ## Decisions and Tradeoffs
 
-The three product directions are approved. The following concrete design is proposed for the required pre-implementation review.
+The three product directions and this concrete design were reviewed and approved for application in PR #354 on 2026-10-26 at 18:04 UTC.
 
 1. **Guard at server rendering, not health.** Split Welcome into a request-time server page and the existing interactive client form. The server page uses the canonical `resolveAppIdentity()` authority also used by the root page identity; explicitly remain request-dynamic using the installed Next guidance. Compute a Welcome-only initial value from `identity.demo && process.env.HEARTH_SECRET === PUBLIC_DEMO_PASSPHRASE`. Return the named public constant on success, otherwise `null`. Keep the configuration read and equality decision in a server-only owner; do not serialize the environment value, a configuration object, token or signing material. The public constant's declaration may be shared safely; it is deliberately public, not a secret placeholder. Avoid adding a fetch endpoint, unauthenticated credential action, client environment variable or root-provider credential payload.
 2. **Exact equality is deliberately conservative.** The designated constant is `Swipe-Match-Cook`, matching current source. Missing/custom/case-changed/padded secrets withhold prefill. Authentication still trims normally. Normalizing the configured secret would admit extra configurations; exact matching gives a smaller disclosure rule and the ordinary editable fallback. The architecture supports this guard without credentials, roles, health-contract changes or deployment changes. No deviation from the approved security boundary is required.
@@ -76,7 +76,7 @@ Keep the approved 32 CSS pixel minimum band, 13px/18px medium label, 16px help i
 
 ## Review Findings and Verification Plan
 
-The guard is architecturally feasible. Required design adjustments are the request-time server/client split, reuse of presentation separately from automatic-visit policy, provenance-aware helper, and dismissal-only focus restoration. These are bounded ways to deliver the approved directions; they remain for Alex's design approval before code. No new screenshot-driven redesign is needed.
+The guard is architecturally feasible. Required design adjustments are the request-time server/client split, reuse of presentation separately from automatic-visit policy, provenance-aware helper, and dismissal-only focus restoration. These are bounded ways to deliver the approved directions; they were accepted before applying code. No new screenshot-driven redesign is needed.
 
 | Test boundary | Concrete acceptance after approval |
 | --- | --- |

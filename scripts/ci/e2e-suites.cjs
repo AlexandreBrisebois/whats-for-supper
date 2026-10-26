@@ -18,7 +18,7 @@ const suites = {
     'sharing-fidelity',
   ],
   household: [
-    'auth-flow', 'bug-condition-exploration', 'capture-flow', 'demo-mode',
+    'auth-flow', 'welcome-demo', 'bug-condition-exploration', 'capture-flow', 'demo-mode',
     'demo-management-access', 'demo-reset',
     'identity-persistence', 'install-identity', 'member-creation', 'onboarding',
     'online-recovery', 'pdf-capture', 'profile', 'recipe-import-reporting',
