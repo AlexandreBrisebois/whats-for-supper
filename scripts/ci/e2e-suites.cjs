@@ -9,7 +9,7 @@ const suites = {
   ],
   planning: [
     'deployment-calendar', 'grocery', 'plan-later', 'planner', 'planner-full-cycle',
-    'planner-non-cooking-days', 'planner-smart-defaults-week-offset',
+    'planner-non-cooking-days', 'planner-smart-defaults-week-offset', 'planner-voting-identity',
   ],
   recipes: [
     'browse-all-stack', 'browse-stack', 'discovery', 'recipe-hero-actions',
