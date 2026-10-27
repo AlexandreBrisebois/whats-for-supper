@@ -200,6 +200,7 @@
     "removeRecipeAction": "Retirer la recette",
     "closeVoting": "Fermer le vote",
     "swapMeals": "Échanger les repas",
+    "refreshError": "Impossible d’actualiser votre planning. Actualisez pour vérifier vos dernières modifications.",
     "moveHere": "Déplacer ici",
     "moveSource": "Déplacement depuis ce jour",
     "holdToMove": "Maintenir pour déplacer",

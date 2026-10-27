@@ -18,7 +18,7 @@ During a supported recipe-card drag, Planner SHALL exchange source and destinati
 
 #### Scenario: Movement rejects
 - **WHEN** the committed drag request rejects
-- **THEN** Planner attempts restoration of the captured pre-drag schedule without establishing server rollback
+- **THEN** Planner attempts restoration of the captured pre-drag schedule only if no newer edit or active drag owns the displayed schedule, without establishing server rollback
 - **AND** date labels remain outside the moving surface throughout preview and restoration
 
 #### Scenario: Destination contains another recipe
@@ -89,3 +89,52 @@ An active drag cancelled by Escape, pointer cancellation, leaving Planner or cha
 #### Scenario: Native scrolling before activation
 - **WHEN** touch scrolling begins before the existing hold-to-move activation completes
 - **THEN** the page scrolls without moving a meal or submitting a movement request
+### Requirement: Keep destination feedback visible without layout movement
+
+During a drag over a changed valid destination, Planner SHALL tint and outline the fixed destination date and show a decorative arrow in the existing gap without changing layout. The overlay SHALL retain the full recipe title and localized swap/move cue. Invalid or unchanged destinations SHALL clear these cues. The app shell SHALL own bottom navigation clearance without a second full-screen minimum or bottom reservation inside Planner.
+
+#### Scenario: Long title covers the destination card
+- **WHEN** a full recipe title wraps across several lines during dragging
+- **THEN** the destination date and arrow remain visible outside the overlay without shifting rows
+- **AND** swap/move text remains inside the overlay
+
+### Requirement: Settle local moves without requiring a self SSE echo
+
+Planner SHALL settle the captured movement sequence when its HTTP request completes, including rejection. Pending moves SHALL continue to guard snapshots. Successful moves SHALL reconcile a fresh schedule for the captured week; a later selected week SHALL NOT be overwritten. Later non-cooking saves and clears SHALL update the meal plan without navigation or refresh even when no self SSE echo arrives.
+
+#### Scenario: Other plans after movement without an echo
+- **WHEN** a movement completes without a self SSE echo and Other plans is saved or cleared
+- **THEN** the dated content immediately reflects the successful save or clear without leaving Planner
+
+### Requirement: Apply remote schedule events independently of move acknowledgement
+
+Planner SHALL acknowledge local movement requests through their captured HTTP completions. An incoming schedule event SHALL NOT acknowledge local requests solely because it contains a move sequence. Remote schedules SHALL follow the same selected-week and pending-movement guards with or without sequence metadata.
+
+#### Scenario: Another device moves a meal
+- **WHEN** a selected-week schedule event contains another device's move sequence
+- **THEN** Planner applies or defers the schedule under its ordinary guards
+- **AND** the event does not settle this client's pending movements
+
+### Requirement: Reconcile concurrent moves without stale replacement
+
+After outstanding movements settle, Planner SHALL reconcile a fresh schedule for their captured week. A superseded read SHALL NOT overwrite newer movement, editing or authoritative-event state. Rejection recovery SHALL preserve newer independent edits and active drag previews. Failed refresh SHALL report that the plan could not be refreshed without claiming server confirmation or retrying movement.
+
+#### Scenario: Movement reads finish out of order
+- **WHEN** concurrent movements settle and their schedule reads finish in a different order
+- **THEN** an older response cannot replace a newer result
+
+#### Scenario: Earlier movement rejects after a later independent movement
+- **WHEN** an earlier movement rejects after a later independent movement succeeds
+- **THEN** Planner preserves the later movement through failure recovery and authoritative reconciliation
+
+#### Scenario: Refresh fails during failure recovery
+- **WHEN** movement recovery cannot obtain an authoritative schedule
+- **THEN** Planner preserves newer local edits and reports that refresh failed
+
+### Requirement: Accept an authoritative empty week
+
+A valid selected-week authoritative schedule without saved recipes SHALL clear previously displayed saved recipes, including the last saved meal. Existing round-owned pending suggestions SHALL retain their separate supported reconciliation behavior.
+
+#### Scenario: Final saved meal is removed elsewhere
+- **WHEN** a schedule read or live snapshot confirms that the final saved meal was removed
+- **THEN** its date displays the empty planning action without navigation or reload

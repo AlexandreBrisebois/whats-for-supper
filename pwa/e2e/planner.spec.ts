@@ -753,9 +753,9 @@ test.describe('Supper Planner', () => {
     await expect(page.getByTestId('day-card-0')).toContainText('Repeated Lasagna');
     await expect(page.getByTestId('day-card-1')).toContainText('Tuesday Tacos');
     await expect(page.getByTestId('day-card-2')).toContainText('Monday Lasagna');
-    await expect(page.getByTestId('day-card-0').getByTestId('planner-drop-feedback')).toHaveText(
-      'Swap meals'
-    );
+    await expect(
+      page.getByTestId('planner-drag-preview').getByTestId('planner-drop-feedback')
+    ).toHaveText('Swap meals');
     expect(moves).toHaveLength(0);
     await page.mouse.up();
     await expect.poll(() => moves.length).toBe(1);
@@ -870,10 +870,77 @@ test.describe('Supper Planner', () => {
     expect(moves).toHaveLength(1);
   });
 
-  test('fixed date defers live snapshots during drag and releases after move confirmation', async ({
+  test('fixed date destination stays visible beside a wrapped overlay without added layout space', async ({
+    page,
+  }) => {
+    const schedule = dragWeek();
+    schedule.days![0].recipe!.name =
+      'Monday Lasagna with roasted vegetables and a very long family recipe name';
+    await openDragWeek(page, schedule);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect(page.getByTestId('reorder-group').locator('..')).toHaveCSS('transform', 'none');
+    await expect(page.getByTestId('reorder-group').locator('xpath=ancestor::main[1]')).toHaveCSS(
+      'padding-left',
+      '16px'
+    );
+    const sourceDate = page.getByTestId('day-card-0').getByTestId('planner-date');
+    const dateBox = (await sourceDate.boundingBox())!;
+    const drag = await heldMouse(page);
+    const row = await drag.over(1);
+    const date = row.getByTestId('planner-date');
+    await expect(date).toHaveAttribute('data-drop-target', 'true');
+    await expect(date.getByTestId('planner-drop-arrow')).toBeVisible();
+    expect((await date.boundingBox())!.width).toBe(dateBox.width);
+    expect((await date.boundingBox())!.x).toBeCloseTo(dateBox.x, 0);
+    await expect(
+      page.getByTestId('planner-drag-preview').getByTestId('planner-drop-feedback')
+    ).toHaveText('Swap meals');
+    await expect(row.getByTestId('planner-drop-feedback')).toHaveCount(0);
+    await page.mouse.move(1, 1);
+    await expect(page.getByTestId('planner-drop-arrow')).toHaveCount(0);
+    await expect(page.getByTestId('planner-drop-feedback')).toHaveCount(0);
+    await page.keyboard.press('Escape');
+    const root = page
+      .getByTestId('reorder-group')
+      .locator('xpath=ancestor::div[contains(@class,"solar-earth-bg")][1]');
+    await expect(root).toHaveCSS('padding-bottom', '0px');
+    await expect(root).toHaveCSS('min-height', 'auto');
+  });
+
+  test('fixed date Other plans saves and clears after a completed drag without an echo', async ({
     page,
   }) => {
     const { schedule, moves } = await openDragWeek(page);
+    const drag = await heldMouse(page);
+    await drag.over(1);
+    await page.mouse.up();
+    await expect.poll(() => moves.length).toBe(1);
+    const day = page.getByTestId('day-card-3');
+    await day.getByTestId('plan-meal-button').click();
+    await page.getByTestId('pivot-no-cooking').click();
+    await page.getByTestId('non-cooking-other-plans').click();
+    await page.getByTestId('non-cooking-custom-label').fill('Supper at Grandma’s');
+    await page.getByTestId('non-cooking-save').click();
+    await expect(page.getByTestId('non-cooking-sheet')).toHaveCount(0);
+    expect(schedule.days![3].nonCooking?.customLabel).toBe('Supper at Grandma’s');
+    await expect(day.getByTestId('non-cooking-indicator')).toHaveText('Supper at Grandma’s');
+    await day.getByTestId('ordered-in-indicator').click();
+    await page.getByTestId('pivot-no-cooking').click();
+    await page.getByTestId('non-cooking-clear').click();
+    await expect(day.getByTestId('plan-meal-button')).toBeVisible();
+    expect(schedule.days![3].nonCooking).toBeNull();
+  });
+
+  test('fixed date defers live snapshots during drag and an in-flight move', async ({ page }) => {
+    const { schedule, moves } = await openDragWeek(page);
+    let release!: () => void;
+    const heldResponse = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    await page.route('**/api/schedule/move?**', async (route) => {
+      await heldResponse;
+      await route.fallback();
+    });
     const drag = await heldMouse(page);
     await drag.over(1);
     const live = structuredClone(schedule);
@@ -883,12 +950,13 @@ test.describe('Supper Planner', () => {
     await page.mouse.up();
     await expect.poll(() => moves.length).toBe(1);
     await expect(page.getByTestId('day-card-1')).toContainText('Monday Lasagna');
-    // A post-commit snapshot is still deferred until the move's own echo confirms it.
+    // While HTTP is pending, protect the optimistic move from older snapshots.
     const confirmed = structuredClone(schedule);
     confirmed.days![3].recipe = live.days![3].recipe;
     await liveWeek(page, confirmed);
     await expect(page.getByTestId('day-card-3')).not.toContainText('Family update');
-    await liveWeek(page, confirmed, 1);
+    schedule.days![3].recipe = live.days![3].recipe;
+    release();
     await expect(page.getByTestId('day-card-3')).toContainText('Family update');
     await expect(page.getByTestId('day-card-0')).toContainText('Tuesday Tacos');
     await expect(page.getByTestId('day-card-1')).toContainText('Monday Lasagna');
@@ -988,7 +1056,7 @@ test.describe('Supper Planner', () => {
         const drag = await heldMouse(page);
         await drag.over(1);
         await expect(
-          page.getByTestId('day-card-1').getByTestId('planner-drop-feedback')
+          page.getByTestId('planner-drag-preview').getByTestId('planner-drop-feedback')
         ).toHaveText(locale === 'fr' ? 'Échanger les repas' : 'Swap meals');
         await expect(page.getByTestId('planner-drag-preview').getByRole('button')).toHaveCount(0);
         await page.screenshot({ path: `/tmp/wfs-fixed-date-layout-${locale}-${width}.png` });

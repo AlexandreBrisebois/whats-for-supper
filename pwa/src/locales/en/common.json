@@ -200,6 +200,7 @@
     "removeRecipeAction": "Remove recipe",
     "closeVoting": "Close Voting",
     "swapMeals": "Swap meals",
+    "refreshError": "Could not refresh your plan. Please refresh to check your latest changes.",
     "moveHere": "Move here",
     "moveSource": "Moving from this day",
     "holdToMove": "Hold to move",

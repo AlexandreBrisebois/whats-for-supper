@@ -399,3 +399,29 @@ it('drag onto a custom skipped day moves the message with its status and restore
   await Promise.resolve();
   expect(useWeekStore.getState().schedule).toEqual(original);
 });
+
+describe('post-move authoritative read ownership', () => {
+  it.each(['week', 'move'])('ignores a read superseded by a later %s', async (change) => {
+    let resolve!: (value: any) => void;
+    vi.mocked(plannerApi.getSchedule)
+      .mockReset()
+      .mockImplementationOnce(
+        () =>
+          new Promise((done) => {
+            resolve = done;
+          })
+      );
+    const apply = vi.spyOn(useWeekStore.getState(), 'applySnapshot');
+    useWeekStore.getState().commitMove(0, 1, useWeekStore.getState().schedule);
+    await vi.waitFor(() => expect(resolve).toBeTypeOf('function'));
+    if (change === 'week') useWeekStore.setState({ weekOffset: 1, weekStartDate: '2026-05-11' });
+    else {
+      const { usePlannerStore } = await import('./plannerStore');
+      usePlannerStore.getState().nextMoveSeq();
+    }
+    resolve({ days: [], weekOffset: 0, weekStartDate: '2026-05-04' });
+    await Promise.resolve();
+    expect(apply).not.toHaveBeenCalled();
+    apply.mockRestore();
+  });
+});

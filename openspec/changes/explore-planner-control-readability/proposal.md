@@ -2,21 +2,24 @@
 
 ## Why
 
-Human designer feedback reports faint drag handles, Plan supper and This week. Source inspection confirms charcoal at 20%, 45% and 30% respectively, plus pale hover treatments. Enabled actions can look unavailable, while useful week context becomes hard to read. Actual rendered contrast has not been measured in this planning pass.
+People need to find today's supper, recognize the next action and return to real life. Reported faint controls and missing date orientation make this harder; fixing them together must leave the phone screen calm rather than add competing signals.
 
 ## Outcome and Scope
 
-Explore two bounded Solar Earth treatments for these three elements, using the existing visual-language reference and tokens. Deliver matched comparisons, actual-background contrast evidence and a recommendation before treating a candidate as settled visual guidance. This is a local presentation exploration; existing actions, gesture timing, keyboard behavior, dates and week navigation retain their meanings.
+One focused Planner readability and date-orientation improvement, following the proposed Solar Earth language and North Star: glance, act, leave. This change absorbs the unimplemented `experiment-planner-day-emphasis` package. Review one matched baseline/proposed treatment rather than implement two colour candidates.
 
-Keep This week's uppercase and letter spacing as the initial design, checking French wrapping and readability rather than banning uppercase. Keep Plan supper in sentence case and the handle as the established Lucide grip. This week is informational context, not a new control.
+Current source has fixed date labels outside movable meals and a charcoal/70 grip, not the charcoal/20 grip described by the earlier plan. Week context remains tiny uppercase charcoal/30; Plan supper remains hard-coded charcoal/45. These are source findings, not measured rendered failures. Badge removal, directional return-to-this-week navigation and fixed-date movement are existing behavior to preserve.
 
 ## What Changes
 
-- Compare a neutral charcoal-led treatment with a warm action treatment using terracotta and dark sage.
-- Strengthen default and applicable hover/pressed/focus/grabbed treatments; touch users must not depend on hover to recognize an action.
-- Require 4.5:1 normal-text contrast and 3:1 meaningful grip/control-cue contrast on actual composite backgrounds.
-- Use the existing `planner.planSupper` locale key for the currently hard-coded label so EN/FR comparisons exercise the actual action.
-- Preserve existing functionality and compare the candidate with the quieter-past-date proposal where available.
+- Make week context sentence case and readable, with the date range remaining more prominent.
+- Localize Plan supper with its existing EN/FR key; use readable terracotta text and Plus while keeping the light empty-day treatment.
+- Give the grip a readable neutral default and sage interaction feedback, preserving keyboard focus and hold-to-move.
+- Include fixed weekday/month labels in the readability scope without widening the date column or reducing meal space.
+- Mark authoritative today with a small outlined fixed date marker and one localized Today label above its row, outside draggable content. Let the label use available row width and wrap; other rows gain no label line.
+- Quiet past decorative surfaces/shadows without fading essential content, changing meal status or making available controls look disabled. Future rows retain normal treatment.
+- Reuse reliable server-owned calendar context; missing, invalid or expired context gives neutral temporal treatment while content stays usable.
+- Require actual-background contrast evidence, phone-first EN/FR review and preservation of existing planning/movement behavior. Judge the combined result for calmness as well as readability.
 
 ## Capabilities
 
@@ -26,14 +29,14 @@ None.
 
 ### Modified Capabilities
 
-- `meal-planning`: readable empty-day planning action and week-context label.
-- `meal-rescheduling`: recognizable enabled drag handle across its applicable visual states.
+- `meal-planning`: readable week context, empty-day actions and fixed date labels; compact Today identification and quiet past dates based on reliable calendar context.
+- `meal-rescheduling`: recognizable grip and preserved movement feedback alongside fixed date emphasis.
 
 ## Impact
 
-- `pwa/src/app/(app)/planner/page.tsx` and `pwa/src/components/planner/PlannerDragHandle.tsx`, plus focused page/handle/browser checks and review evidence.
-- Reuse current locale values, tokens, surfaces and Lucide icon; no intended new keys, palette, typography system, icon system, dependency or API/client/persistence changes.
-- Independent of badge removal and directional return-arrow changes. Coordinate with fixed-date dragging and day-emphasis experiments at shared file boundaries; this exploration neither implements nor blocks those plans.
-- Do not expand into all Planner text, global button variants, gesture bug fixes, new touch-target standards or grocery continuity. Report adjacent issues separately.
+- Planner page/date-row presentation and `PlannerDragHandle`, existing locale files, focused unit/browser tests and comparison evidence.
+- Reuse `todayStore`, deployment-calendar validation/freshness helpers and existing resume refresh. No new calendar policy, API/schema, generated client, persistence, dependency, runtime variant switch or analytics platform.
+- Remove the absorbed planning package after carrying its calendar, state-separation and review requirements here. This is consolidation, not an implementation or archival claim.
+- Preserve current voting/recipe/non-cooking actions, return navigation, fixed-date movement and reconciliation. No whole-Planner redesign, new badges/legends, global typography/button rollout, gesture repair or grocery continuity work.
 
-No unresolved product choice blocks building the comparison: the two visual candidates are the experiment, not competing behavior policies. Source-inspected risks remain distinct from measured rendered results and attributed human feedback.
+The treatment is agreed for a local implementation and review, not proven usable or automatically promoted to canonical visual guidance. If the Today label creates clutter, record that finding and revise the treatment through review rather than silently dropping the explicit date cue.

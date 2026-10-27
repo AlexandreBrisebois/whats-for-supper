@@ -97,21 +97,19 @@ export const moveRecipe = async (
   fromIndex: number,
   referenceWeekStartDate?: string
 ) => {
-  // Increment the move sequence counter before the request so HearthAuthProvider
-  // stamps the new value on X-Move-Seq. The server echoes it back in week_updated,
-  // letting applySnapshot identify and skip its own echo.
-  usePlannerStore.getState().nextMoveSeq();
-  const result = await apiClient.api.schedule.move.post(
-    {
-      weekOffset,
-      recipeId,
-      toIndex,
-      fromIndex,
-    },
-    referenceRequest(referenceWeekStartDate)
-  );
-  void useDiscoveryStore.getState().refreshSession();
-  return result;
+  // This client is excluded from its own SSE broadcast. Settle the captured
+  // request on HTTP completion, including rejection, so later writes can sync.
+  const seq = usePlannerStore.getState().nextMoveSeq();
+  try {
+    const result = await apiClient.api.schedule.move.post(
+      { weekOffset, recipeId, toIndex, fromIndex },
+      referenceRequest(referenceWeekStartDate)
+    );
+    void useDiscoveryStore.getState().refreshSession();
+    return result;
+  } finally {
+    usePlannerStore.getState().confirmMoveSeq(seq);
+  }
 };
 
 export const getFillTheGap = async (weekOffset = 0, referenceWeekStartDate?: string) => {

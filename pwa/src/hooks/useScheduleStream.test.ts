@@ -355,7 +355,7 @@ describe('week_updated event', () => {
     expect(mockApplySnapshot).toHaveBeenCalledWith(schedule, undefined);
   });
 
-  it('calls applySnapshot with echoSeq when server echoes our own move', () => {
+  it('passes optional remote sequence metadata to applySnapshot', () => {
     const { source } = setupHook();
 
     const schedule = { days: [], status: 0 };

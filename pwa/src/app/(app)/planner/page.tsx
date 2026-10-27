@@ -387,7 +387,7 @@ export default function PlannerPage() {
   const canOpenVoting = !weekIsPast && (status === 0 || status === 2);
 
   return (
-    <div className="flex flex-col min-h-screen pb-20 solar-earth-bg">
+    <div className="flex flex-col solar-earth-bg">
       {/* Animated Blobs */}
       <div className="blob blob-terracotta -top-20 -left-20 animate-[pulse_8s_infinite]" />
       <div className="blob blob-sage top-1/2 -right-40 animate-[pulse_10s_infinite] [animation-delay:1s]" />
@@ -629,12 +629,6 @@ export default function PlannerPage() {
                     startDrag={startDrag}
                     isDragSource={dragPreview?.from === index}
                     isDropTarget={dragPreview?.target === index && dragPreview.from !== index}
-                    dropOccupied={
-                      !!(
-                        dragPreview?.snapshot[index].recipe ||
-                        dragPreview?.snapshot[index].nonCooking
-                      )
-                    }
                     isWide={isWide}
                   />
                 ))}
@@ -648,6 +642,17 @@ export default function PlannerPage() {
                     style={{ left: dragPreview.x, top: dragPreview.y, width: dragPreview.width }}
                   >
                     {dragPreview.snapshot[dragPreview.from].recipe?.name}
+                    {dragPreview.target !== null && dragPreview.target !== dragPreview.from && (
+                      <span
+                        data-testid="planner-drop-feedback"
+                        className="block mt-2 text-xs font-bold text-sage-700"
+                      >
+                        {dragPreview.snapshot[dragPreview.target].recipe ||
+                        dragPreview.snapshot[dragPreview.target].nonCooking
+                          ? t('planner.swapMeals', 'Swap meals')
+                          : t('planner.moveHere', 'Move here')}
+                      </span>
+                    )}
                   </div>,
                   document.body
                 )}
@@ -857,7 +862,6 @@ const PlannerDayCard = memo(function PlannerDayCard({
   startDrag,
   isDragSource,
   isDropTarget,
-  dropOccupied,
   isWide,
 }: {
   day: UILocalScheduleDay;
@@ -868,7 +872,6 @@ const PlannerDayCard = memo(function PlannerDayCard({
   startDrag: (from: number, event: PointerEvent) => void;
   isDragSource: boolean;
   isDropTarget: boolean;
-  dropOccupied: boolean;
   isWide: boolean;
 }) {
   const startRecipeDrag = React.useCallback(
@@ -906,8 +909,21 @@ const PlannerDayCard = memo(function PlannerDayCard({
     >
       <div
         data-testid="planner-date"
-        className="flex flex-col items-center justify-center w-10 shrink-0"
+        data-drop-target={isDropTarget}
+        className={cn(
+          'relative flex flex-col items-center justify-center w-10 shrink-0 rounded-xl',
+          isDropTarget && 'bg-sage/20 outline outline-2 outline-sage-700'
+        )}
       >
+        {isDropTarget && (
+          <ChevronRight
+            data-testid="planner-drop-arrow"
+            aria-hidden="true"
+            size={8}
+            strokeWidth={3}
+            className="absolute -right-2 top-1/2 -translate-y-1/2 text-sage-700"
+          />
+        )}
         <span className="text-[10px] font-bold uppercase tracking-wider text-charcoal/40 leading-none mb-1">
           {day.day}
         </span>
@@ -935,16 +951,6 @@ const PlannerDayCard = memo(function PlannerDayCard({
         )}
         data-testid="planner-meal"
       >
-        {isDropTarget && (
-          <span
-            data-testid="planner-drop-feedback"
-            className="absolute -top-2.5 right-2 z-20 rounded-full bg-cream px-2 text-xs font-bold text-charcoal"
-          >
-            {dropOccupied
-              ? t('planner.swapMeals', 'Swap meals')
-              : t('planner.moveHere', 'Move here')}
-          </span>
-        )}
         {isDragSource && (
           <span className="absolute -top-2.5 left-2 z-20 rounded-full bg-cream px-2 text-xs font-bold text-charcoal">
             {t('planner.moveSource', 'Moving from this day')}
