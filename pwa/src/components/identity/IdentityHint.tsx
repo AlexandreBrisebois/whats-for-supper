@@ -3,6 +3,7 @@
 import { createContext, useContext, useId, type ReactNode } from 'react';
 import { useLocale } from '@/components/common/LocaleProvider';
 import { t } from '@/locales';
+import { useDemoMode } from '@/components/demo/DemoModeProvider';
 import type { AppIdentity } from '@/lib/server/app-identity';
 
 type InstallIdentity = Pick<AppIdentity, 'demo' | 'channel'>;
@@ -21,11 +22,20 @@ export function InstallIdentityProvider({
 export const useInstallIdentity = () => useContext(IdentityContext);
 
 /** Informational only: identity never grants access or changes demo behavior. */
-export function IdentityHint({ className = '' }: { className?: string }) {
-  const { demo, channel } = useContext(IdentityContext);
+export function IdentityHint({
+  className = '',
+  appShell = false,
+}: {
+  className?: string;
+  appShell?: boolean;
+}) {
+  const identity = useContext(IdentityContext);
+  const { mode } = useDemoMode();
+  const { channel } = identity;
+  const demo = identity.demo || (appShell && mode === true);
   const { locale } = useLocale();
   const descriptionId = useId();
-  if (!demo && channel === 'stable') return null;
+  if (!demo && (channel === 'stable' || (appShell && mode === false))) return null;
 
   const label = demo
     ? t('installIdentity.demo', 'Demo', locale)

@@ -6,10 +6,12 @@ const mocks = vi.hoisted(() => ({
   replace: vi.fn(),
   authenticate: vi.fn(),
   cookie: vi.fn(),
+  path: '/welcome',
 }));
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ replace: mocks.replace }),
-  usePathname: () => '/welcome',
+  usePathname: () => mocks.path,
+  useSearchParams: () => new URLSearchParams(),
 }));
 vi.mock('next/server', () => ({ connection: vi.fn().mockResolvedValue(undefined) }));
 vi.mock('@/lib/api/api-client', () => ({
@@ -24,6 +26,8 @@ import LandingPage from '../../page';
 import { InstallIdentityProvider } from '@/components/identity/IdentityHint';
 import { LocaleProvider, useLocale } from '@/components/common/LocaleProvider';
 import { useDemoContextVisit } from '@/store/demoContextStore';
+import { DemoContext } from '@/components/identity/DemoContext';
+import { useFamilyStore } from '@/store/familyStore';
 
 async function welcome(demo = true, channel: 'stable' | 'beta' = 'stable') {
   vi.stubEnv('DEMO_MODE', String(demo));
@@ -39,11 +43,15 @@ beforeEach(() => {
   vi.restoreAllMocks();
   vi.clearAllMocks();
   localStorage.clear();
+  mocks.path = '/welcome';
   vi.stubEnv('HEARTH_SECRET', 'Swipe-Match-Cook');
   mocks.healthGet.mockResolvedValue({ demoMode: false });
   mocks.authenticate.mockResolvedValue({ success: false });
   mocks.cookie.mockResolvedValue(undefined);
   useDemoContextVisit.setState({
+    betaAcknowledged: false,
+    betaStorageRead: false,
+    openMode: null,
     acknowledged: false,
     storageRead: false,
     eligibleEntry: null,
@@ -182,6 +190,86 @@ describe('Welcome public prefill', () => {
 });
 
 describe('manual Welcome explanation', () => {
+  it.each(['Start exploring', 'Close', 'Escape'])(
+    'shares Beta Welcome %s acknowledgement with Home when storage fails',
+    async (action) => {
+      const view = await welcome(false, 'beta');
+      fireEvent.click(screen.getByTestId('beta-context-band'));
+      vi.spyOn(localStorage, 'setItem').mockImplementation(() => {
+        throw new Error('denied');
+      });
+      if (action === 'Escape')
+        fireEvent(screen.getByRole('dialog'), new Event('cancel', { cancelable: true }));
+      else fireEvent.click(screen.getByRole('button', { name: action }));
+      expect(useDemoContextVisit.getState()).toMatchObject({
+        betaAcknowledged: true,
+        acknowledged: false,
+        eligibleEntry: null,
+        presented: false,
+        interacted: false,
+      });
+      view.unmount();
+      mocks.path = '/home';
+      useFamilyStore.setState({
+        hasLoaded: true,
+        isLoading: false,
+        selectedFamilyMemberId: 'synthetic-beta-member',
+      });
+      render(
+        <InstallIdentityProvider identity={{ demo: false, channel: 'beta' }}>
+          <DemoContext />
+        </InstallIdentityProvider>
+      );
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      fireEvent.click(screen.getByTestId('beta-context-band'));
+      expect(screen.getByRole('dialog')).toHaveAccessibleName('Beta · Better with your ideas');
+    }
+  );
+  it.each(['en', 'fr'] as const)(
+    'offers manual Beta context without losing login input in %s',
+    async (locale) => {
+      localStorage.setItem('locale', locale);
+      await welcome(false, 'beta');
+      const input = screen.getByTestId('passphrase-input');
+      expect(input).toHaveValue('');
+      fireEvent.change(input, { target: { value: 'my family edit' } });
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('identity-hint')).not.toBeInTheDocument();
+      const band = screen.getByTestId('beta-context-band');
+      fireEvent.click(band);
+      expect(screen.getByRole('dialog')).toHaveAccessibleName(
+        locale === 'en' ? 'Beta · Better with your ideas' : 'Bêta · Meilleure grâce à vos idées'
+      );
+      const link = screen.getByRole('link', {
+        name: locale === 'en' ? 'Share feedback on GitHub' : 'Donner votre avis sur GitHub',
+      });
+      expect(link).toHaveAttribute(
+        'href',
+        'https://github.com/AlexandreBrisebois/whats-for-supper/issues'
+      );
+      expect(link).toHaveAttribute('target', '_blank');
+      expect(
+        screen.queryByText(/Set up your own household|Installez votre propre/)
+      ).not.toBeInTheDocument();
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: locale === 'en' ? 'Start exploring' : 'Commencer à explorer',
+        })
+      );
+      expect(input).toHaveValue('my family edit');
+      expect(band).toHaveFocus();
+      expect(localStorage.getItem('wfs:mode-info:beta:dismissed')).toBe('true');
+      expect(localStorage.getItem('wfs:mode-info:demo:dismissed')).toBeNull();
+      expect(useDemoContextVisit.getState()).toMatchObject({
+        eligibleEntry: null,
+        presented: false,
+        interacted: false,
+      });
+      expect(mocks.healthGet).not.toHaveBeenCalled();
+      expect(mocks.authenticate).not.toHaveBeenCalled();
+    }
+  );
+
   it('does not consume Home eligibility through login interactions or manual open without dismissal', async () => {
     const view = await welcome();
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
@@ -238,6 +326,44 @@ function ChangeLanguage() {
   const { setCurrentLocale } = useLocale();
   return <button onClick={() => setCurrentLocale('fr')}>Change language</button>;
 }
+
+it('keeps Beta in the selected in-memory French locale when storage writes fail', async () => {
+  vi.stubEnv('DEMO_MODE', 'false');
+  vi.spyOn(localStorage, 'setItem').mockImplementation(() => {
+    throw new Error('denied');
+  });
+  render(
+    <LocaleProvider>
+      <ChangeLanguage />
+      <InstallIdentityProvider identity={{ demo: false, channel: 'beta' }}>
+        {await WelcomePage()}
+      </InstallIdentityProvider>
+    </LocaleProvider>
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Change language' }));
+  expect(screen.getByTestId('beta-context-band')).toHaveTextContent(
+    'Bêta · Meilleure grâce à vos idées'
+  );
+  fireEvent.click(screen.getByTestId('beta-context-band'));
+  expect(screen.getByRole('dialog')).toHaveAccessibleName('Bêta · Meilleure grâce à vos idées');
+  expect(screen.getByRole('button', { name: 'Fermer' })).toBeVisible();
+  expect(screen.getByRole('button', { name: 'Commencer à explorer' })).toBeVisible();
+  expect(
+    screen.getByText(
+      'Bienvenue dans la version bêta de Whats for Supper? Essayez de choisir vos repas ensemble, de planifier votre semaine et de faire du souper une chose de moins à gérer.'
+    )
+  ).toBeVisible();
+  expect(
+    screen.getByText(
+      'Nous travaillons encore sur cette version. Certaines choses peuvent changer et vous pourriez rencontrer un bogue en cours de route. Nous développons cette application en public, ensemble. Vos idées et vos commentaires aident à façonner la suite.'
+    )
+  ).toBeVisible();
+  expect(
+    screen.getByText(
+      'Vous pouvez rouvrir cette explication à tout moment à partir du bandeau Bêta.'
+    )
+  ).toBeVisible();
+});
 
 it('translates helper without overwriting edited input or reviving prefill provenance', async () => {
   vi.stubEnv('DEMO_MODE', 'true');

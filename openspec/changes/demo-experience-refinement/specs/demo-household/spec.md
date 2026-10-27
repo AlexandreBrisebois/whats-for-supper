@@ -53,10 +53,6 @@ With PWA DEMO_MODE enabled, the application SHALL identify Demo (Démo in French
 - **THEN** it displays one Demo explanation band and no duplicate tiny Demo note
 - **AND** activating it opens the explanation without submitting the form
 
-#### Scenario: Beta without Demo
-- **WHEN** Welcome renders with PWA Demo disabled and baked beta channel
-- **THEN** the existing noninteractive Beta identity note remains, without a Demo band or introduction
-
 ### Requirement: Offer a reopenable demo context explanation
 The demo SHALL provide a compact pale sage strip with readable dark charcoal text at the top of Welcome and the ordinary app shell, respecting safe areas, that opens one short phone sheet or compact iPad dialog. It SHALL explain the sample shared household, other visitors' changes, temporary changes that will be reset and avoiding personal information. Start exploring and an explicit close SHALL dismiss it. Identity hints outside Welcome SHALL retain their noninteractive meaning.
 

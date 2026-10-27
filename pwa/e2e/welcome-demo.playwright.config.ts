@@ -6,6 +6,7 @@ import base from '../playwright.config';
 process.env.WFS_WELCOME_DEMO ??= 'true';
 process.env.WFS_WELCOME_SECRET ??= 'Swipe-Match-Cook';
 const port = 3019;
+const codeOnlyBetaCi = Boolean(process.env.CI && process.env.WFS_WELCOME_CHANNEL === 'beta');
 export default defineConfig({
   ...base,
   testDir: '.',
@@ -13,10 +14,15 @@ export default defineConfig({
   workers: 1,
   retries: 0,
   reporter: [['list'], ['json', { outputFile: 'test-results/welcome-demo.json' }]],
-  use: { ...base.use, baseURL: `http://127.0.0.1:${port}` },
+  use: {
+    ...base.use,
+    baseURL: `http://127.0.0.1:${port}`,
+    ...(codeOnlyBetaCi ? { screenshot: 'off' as const, trace: 'off' as const } : {}),
+  },
   webServer: {
     cwd: path.resolve(__dirname, '..'),
-    command: `npx next ${process.env.CI ? 'start' : 'dev'} --port ${port} --hostname 127.0.0.1`,
+    // Beta's baked-channel matrix owns a dev fixture; ordinary CI still reuses its single build.
+    command: `npx next ${process.env.CI && process.env.WFS_WELCOME_DEV !== 'true' ? 'start' : 'dev'} --port ${port} --hostname 127.0.0.1`,
     url: `http://127.0.0.1:${port}/welcome`,
     reuseExistingServer: false,
     stdout: 'pipe',

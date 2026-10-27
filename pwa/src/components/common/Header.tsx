@@ -50,7 +50,7 @@ export function Header({
 
         {/* Center: Dynamic Greeting or Page Title */}
         <div className="relative flex-1 text-center">
-          <IdentityHint className="right-0 -top-1.5" />
+          <IdentityHint appShell className="right-0 -top-1.5" />
           {showLogo && (title === 'Discovery' || !title) ? (
             <Link href={ROUTES.HOME} className="inline-flex items-center gap-2 group">
               <span className="font-heading text-lg font-bold tracking-tight text-charcoal md:text-xl">
