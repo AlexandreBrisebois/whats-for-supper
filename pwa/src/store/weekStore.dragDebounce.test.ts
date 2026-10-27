@@ -1,19 +1,4 @@
-/**
- * Bug Condition Exploration Test — Planner Drag Debounce
- *
- * Property 1: Bug Condition — API Fires Multiple Times Per Drag
- *
- * This test MUST FAIL on unfixed code. Failure confirms the bug exists.
- * DO NOT attempt to fix the test or the code when it fails.
- *
- * The test encodes the EXPECTED (correct) behavior:
- *   moveRecipeApi.callCount === 1 after N onReorder calls + onDragEnd
- *
- * On unfixed code, moveRecipeApi is called once per handleReorder invocation,
- * so a 3-step drag fires 3 API calls instead of 1.
- *
- * Validates: Requirements 1.1, 1.2
- */
+/** Store-level fixed-date swap and single-commit coverage. */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useWeekStore } from './weekStore';
@@ -62,61 +47,6 @@ function makeSevenDaySchedule(): UILocalScheduleDay[] {
   return Array.from({ length: 7 }, (_, i) => makeDay(i));
 }
 
-/**
- * Simulate what handleReorder does in page.tsx when draggedId is set.
- *
- * After the fix, handleReorder calls reorderLocally (not moveRecipe) so that
- * only the local state is updated during the drag — no API call.
- *
- * We replicate that logic here directly against the store, simulating
- * Framer Motion firing onReorder for each intermediate position.
- */
-function simulateHandleReorder(
-  draggedUiId: string,
-  newSchedule: UILocalScheduleDay[],
-  preDragSnapshot: UILocalScheduleDay[]
-): void {
-  const fromIndex = preDragSnapshot.findIndex((d) => d._uiId === draggedUiId);
-  const toIndex = newSchedule.findIndex((d) => d._uiId === draggedUiId);
-
-  if (fromIndex !== -1 && toIndex !== -1) {
-    useWeekStore.getState().reorderLocally(fromIndex, toIndex, preDragSnapshot);
-  }
-}
-
-/**
- * Simulate what onDragEnd does in page.tsx.
- *
- * After the fix, onDragEnd computes the final from/to by comparing the
- * pre-drag snapshot with the current schedule, then calls commitMove once.
- */
-function simulateOnDragEnd(draggedUiId: string, preDragSnapshot: UILocalScheduleDay[]): void {
-  const currentSchedule = useWeekStore.getState().schedule;
-  const finalFrom = preDragSnapshot.findIndex((d) => d._uiId === draggedUiId);
-  const finalTo = currentSchedule.findIndex((d) => d._uiId === draggedUiId);
-
-  if (finalFrom !== -1 && finalTo !== -1 && finalFrom !== finalTo) {
-    useWeekStore.getState().commitMove(finalFrom, finalTo, preDragSnapshot);
-  }
-}
-
-/**
- * Build a reordered schedule array as Framer Motion would produce it
- * when the dragged item moves from its current position to `targetIndex`.
- */
-function buildReorderedSchedule(
-  schedule: UILocalScheduleDay[],
-  draggedUiId: string,
-  targetIndex: number
-): UILocalScheduleDay[] {
-  const next = [...schedule];
-  const currentIndex = next.findIndex((d) => d._uiId === draggedUiId);
-  if (currentIndex === -1 || currentIndex === targetIndex) return next;
-  const [item] = next.splice(currentIndex, 1);
-  next.splice(targetIndex, 0, item);
-  return next;
-}
-
 // ─── Reset store and mock before each test ────────────────────────────────────
 
 const calendar = {
@@ -141,415 +71,128 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
-// ─── Bug Condition Exploration Tests ─────────────────────────────────────────
-
-describe('weekStore — drag debounce bug condition (Property 1)', () => {
-  /**
-   * Scenario: Drag from slot 1 to slot 4 (3 intermediate onReorder calls)
-   *
-   * Framer Motion fires onReorder at positions 2, 3, 4 as the card passes through.
-   * handleReorder calls moveRecipe on each fire.
-   *
-   * EXPECTED (correct): moveRecipeApi called exactly 1 time (on drop / onDragEnd)
-   * ACTUAL (buggy):     moveRecipeApi called 3 times (once per intermediate position)
-   *
-   * This test FAILS on unfixed code — that is the expected outcome.
-   * Counterexample: moveRecipeApi called 3 times for a 3-step drag instead of 1.
-   *
-   * Validates: Requirements 1.1, 1.2
-   */
-  it('fires moveRecipeApi exactly once for a 3-step drag (slot 1 → slot 4)', () => {
-    const moveRecipeMock = vi.mocked(plannerApi.moveRecipe);
-    const draggedUiId = 'ui-id-1'; // card at slot index 1 (Tuesday)
-
-    // Capture the pre-drag snapshot (simulates onDragStart capturing the schedule)
-    const preDragSnapshot = [...useWeekStore.getState().schedule];
-
-    // Simulate Framer Motion firing onReorder 3 times as the card passes
-    // through positions 2, 3, 4 on its way from slot 1 to slot 4.
-    // Fixed code: reorderLocally is called — local state only, no API call.
-    const intermediatePositions = [2, 3, 4];
-
-    for (const targetIndex of intermediatePositions) {
-      const currentSchedule = useWeekStore.getState().schedule;
-      const reordered = buildReorderedSchedule(currentSchedule, draggedUiId, targetIndex);
-      simulateHandleReorder(draggedUiId, reordered, preDragSnapshot);
-    }
-
-    // onDragEnd fires — drag is complete. commitMove is called exactly once
-    // with the final from/to positions derived from the pre-drag snapshot.
-    simulateOnDragEnd(draggedUiId, preDragSnapshot);
-
-    // Assert: moveRecipeApi must have been called exactly 1 time total.
-    // FAILS on unfixed code (called 3 times). PASSES on fixed code.
-    expect(moveRecipeMock).toHaveBeenCalledTimes(1);
-    // The planner must identify the source slot as well as the recipe. Recipes
-    // can appear more than once in a week; without fromIndex the API falls back
-    // to the first matching recipe (often Monday) instead of the dragged card.
-    expect(moveRecipeMock).toHaveBeenCalledWith(0, 'recipe-1', 4, 1, '2026-05-04');
-  });
-
-  /**
-   * Scenario: Drag from slot 7 to slot 1 (6 intermediate onReorder calls)
-   *
-   * Framer Motion fires onReorder 6 times as the card passes through
-   * positions 6, 5, 4, 3, 2, 1.
-   *
-   * EXPECTED (correct): moveRecipeApi called exactly 1 time
-   * ACTUAL (buggy):     moveRecipeApi called 6 times
-   *
-   * This test FAILS on unfixed code — that is the expected outcome.
-   * Counterexample: moveRecipeApi called 6 times for a 6-step drag instead of 1.
-   *
-   * Validates: Requirements 1.1, 1.2
-   */
-  it('fires moveRecipeApi exactly once for a 6-step drag (slot 7 → slot 1)', () => {
-    const moveRecipeMock = vi.mocked(plannerApi.moveRecipe);
-    const draggedUiId = 'ui-id-6'; // card at slot index 6 (Sunday)
-
-    // Capture the pre-drag snapshot (simulates onDragStart capturing the schedule)
-    const preDragSnapshot = [...useWeekStore.getState().schedule];
-
-    // Simulate Framer Motion firing onReorder 6 times as the card passes
-    // through positions 5, 4, 3, 2, 1, 0 on its way from slot 6 to slot 0.
-    // Fixed code: reorderLocally is called — local state only, no API call.
-    const intermediatePositions = [5, 4, 3, 2, 1, 0];
-
-    for (const targetIndex of intermediatePositions) {
-      const currentSchedule = useWeekStore.getState().schedule;
-      const reordered = buildReorderedSchedule(currentSchedule, draggedUiId, targetIndex);
-      simulateHandleReorder(draggedUiId, reordered, preDragSnapshot);
-    }
-
-    // onDragEnd fires — drag is complete. commitMove is called exactly once
-    // with the final from/to positions derived from the pre-drag snapshot.
-    simulateOnDragEnd(draggedUiId, preDragSnapshot);
-
-    // Assert: moveRecipeApi must have been called exactly 1 time total.
-    // FAILS on unfixed code (called 6 times). PASSES on fixed code.
-    expect(moveRecipeMock).toHaveBeenCalledTimes(1);
-  });
-});
-
-// ─── Preservation Property Tests ─────────────────────────────────────────────
-//
-// Property 2: Preservation — Visual Reorder and Non-Drag Interactions Unchanged
-//
-// These tests MUST PASS on UNFIXED code.
-// They capture existing correct behaviour that the fix must not regress.
-//
-// Validates: Requirements 3.1, 3.2, 3.3, 3.4
-
+// These tests exercise the store's explicit source/target operations. Browser tests
+// own pointer geometry, activation, cancellation and the page/client integration.
 import fc from 'fast-check';
 
-// ─── Arbitraries ──────────────────────────────────────────────────────────────
-
-/**
- * Arbitrary: a valid 7-element schedule (the planner always has exactly 7 days).
- */
-const scheduleArb = fc.constant(null).map(() => makeSevenDaySchedule());
-
-/**
- * Arbitrary: a sequence of 1–6 intermediate target indices for a drag gesture.
- * Represents the positions Framer Motion fires onReorder through during a drag.
- */
-const dragPathArb = (startIndex: number) =>
-  fc
-    .array(fc.integer({ min: 0, max: 6 }), { minLength: 1, maxLength: 6 })
-    .filter((path) => path.some((idx) => idx !== startIndex));
-
-// ─── Preservation Tests ───────────────────────────────────────────────────────
-
-describe('weekStore — preservation (Property 2)', () => {
-  /**
-   * Property 2a: Visual Reorder Preserved
-   *
-   * For any sequence of onReorder calls, weekStore.schedule is updated on every
-   * call. The visual reorder must remain immediate and smooth.
-   *
-   * Observation on UNFIXED code: handleReorder calls moveRecipe which always
-   * updates local state synchronously — schedule changes on every call.
-   *
-   * Validates: Requirement 3.1
-   */
-  it('updates weekStore.schedule on every onReorder call (visual reorder preserved)', () => {
-    fc.assert(
-      fc.property(
-        fc.integer({ min: 0, max: 5 }), // draggedIndex (not last slot so there's room to move)
-        fc.array(fc.integer({ min: 0, max: 6 }), { minLength: 1, maxLength: 6 }),
-        (draggedIndex, targetIndices) => {
-          // Reset store to a fresh 7-day schedule
-          const preDragSnapshot = makeSevenDaySchedule();
-          useWeekStore.setState({
-            weekOffset: 0,
-            weekStartDate: '2026-05-04',
-            calendar: calendar as any,
-            schedule: preDragSnapshot,
-            status: 0,
-            isLoading: false,
-            lastSyncedAt: null,
-            optimisticWriteAt: null,
-          });
-          vi.clearAllMocks();
-
-          const draggedUiId = `ui-id-${draggedIndex}`;
-
-          for (const targetIndex of targetIndices) {
-            const scheduleBefore = useWeekStore.getState().schedule;
-            const reordered = buildReorderedSchedule(scheduleBefore, draggedUiId, targetIndex);
-            simulateHandleReorder(draggedUiId, reordered, preDragSnapshot);
-
-            // After each onReorder call, schedule must reflect the new order
-            // (i.e., the dragged item must be at targetIndex in the store)
-            const scheduleAfter = useWeekStore.getState().schedule;
-
-            if (scheduleBefore.findIndex((d) => d._uiId === draggedUiId) !== targetIndex) {
-              // A move was requested — schedule must have changed
-              const newPosition = scheduleAfter.findIndex((d) => d._uiId === draggedUiId);
-              // The dragged item should now be at targetIndex
-              expect(newPosition).toBe(targetIndex);
-            }
-          }
-        }
-      ),
-      { numRuns: 50 }
+describe('weekStore fixed-date preview and commit', () => {
+  it.each([
+    [1, [2, 3, 4]],
+    [6, [5, 4, 3, 2, 1, 0]],
+  ] as const)('previews from source %s locally and commits one final request', (from, targets) => {
+    const original = useWeekStore.getState().schedule;
+    for (const to of targets) {
+      useWeekStore.getState().reorderLocally(from, to, original);
+      expect(plannerApi.moveRecipe).not.toHaveBeenCalled();
+    }
+    const to = targets[targets.length - 1];
+    useWeekStore.getState().commitMove(from, to, original);
+    expect(plannerApi.moveRecipe).toHaveBeenCalledExactlyOnceWith(
+      0,
+      `recipe-${from}`,
+      to,
+      from,
+      '2026-05-04'
     );
   });
 
-  /**
-   * Property 2b: Schedule always has exactly 7 items after any reorder
-   *
-   * No items are lost or duplicated during a drag sequence.
-   * The set of _uiId values must be identical before and after.
-   *
-   * Validates: Requirement 3.1
-   */
-  it('schedule always has exactly 7 items with the same _uiIds after any reorder sequence', () => {
+  it('each preview exchanges only the original source and current target while dates stay fixed', () => {
     fc.assert(
       fc.property(
         fc.integer({ min: 0, max: 6 }),
         fc.array(fc.integer({ min: 0, max: 6 }), { minLength: 1, maxLength: 6 }),
-        (draggedIndex, targetIndices) => {
-          const preDragSnapshot = makeSevenDaySchedule();
-          useWeekStore.setState({
-            weekOffset: 0,
-            weekStartDate: '2026-05-04',
-            calendar: calendar as any,
-            schedule: preDragSnapshot,
-            status: 0,
-            isLoading: false,
-            lastSyncedAt: null,
-            optimisticWriteAt: null,
-          });
-          vi.clearAllMocks();
-
-          const initialUiIds = new Set(useWeekStore.getState().schedule.map((d) => d._uiId));
-          const draggedUiId = `ui-id-${draggedIndex}`;
-
-          for (const targetIndex of targetIndices) {
-            const currentSchedule = useWeekStore.getState().schedule;
-            const reordered = buildReorderedSchedule(currentSchedule, draggedUiId, targetIndex);
-            simulateHandleReorder(draggedUiId, reordered, preDragSnapshot);
+        (from, targets) => {
+          const original = makeSevenDaySchedule();
+          useWeekStore.setState({ schedule: original });
+          for (const to of targets) {
+            useWeekStore.getState().reorderLocally(from, to, original);
+            const preview = useWeekStore.getState().schedule;
+            expect(preview).toHaveLength(7);
+            expect(preview.map((day) => day.date)).toEqual(original.map((day) => day.date));
+            expect(preview.map((day) => day.day)).toEqual(original.map((day) => day.day));
+            for (let index = 0; index < 7; index++) {
+              expect(preview[index].recipe).toBe(
+                original[index === from ? to : index === to ? from : index].recipe
+              );
+            }
+            expect(new Set(preview.map((day) => day._uiId))).toEqual(
+              new Set(original.map((day) => day._uiId))
+            );
           }
-
-          const finalSchedule = useWeekStore.getState().schedule;
-          expect(finalSchedule).toHaveLength(7);
-
-          const finalUiIds = new Set(finalSchedule.map((d) => d._uiId));
-          expect(finalUiIds).toEqual(initialUiIds);
         }
       ),
       { numRuns: 50 }
     );
+    expect(plannerApi.moveRecipe).not.toHaveBeenCalled();
   });
 
-  /**
-   * Test: API failure reverts schedule to pre-drag snapshot (not an intermediate state)
-   *
-   * Simulate commitMove where moveRecipeApi rejects.
-   * Verify schedule reverts to the preDragSnapshot passed to commitMove, not to
-   * any intermediate state.
-   *
-   * Validates: Requirement 3.2
-   */
-  it('reverts schedule to pre-move snapshot when moveRecipeApi rejects', async () => {
-    const moveRecipeMock = vi.mocked(plannerApi.moveRecipe);
-
-    // Make the API reject
-    moveRecipeMock.mockRejectedValueOnce(new Error('Network error'));
-
-    const initialSchedule = makeSevenDaySchedule();
-    useWeekStore.setState({
-      weekOffset: 0,
-      weekStartDate: '2026-05-04',
-      calendar: calendar as any,
-      schedule: initialSchedule,
-      status: 0,
-      isLoading: false,
-      lastSyncedAt: null,
-      optimisticWriteAt: null,
-    });
-
-    // Capture the pre-drag snapshot (simulates onDragStart)
-    const preDragSnapshot = [...useWeekStore.getState().schedule];
-    const draggedUiId = 'ui-id-0';
-
-    // Simulate some intermediate reorders during the drag (reorderLocally — no API)
-    const currentSchedule = useWeekStore.getState().schedule;
-    const reordered = buildReorderedSchedule(currentSchedule, draggedUiId, 3);
-    simulateHandleReorder(draggedUiId, reordered, preDragSnapshot);
-
-    // Optimistic update should have happened immediately (reorderLocally)
-    const scheduleAfterOptimisticUpdate = useWeekStore.getState().schedule;
-    expect(scheduleAfterOptimisticUpdate.findIndex((d) => d._uiId === draggedUiId)).toBe(3);
-
-    // onDragEnd fires — commitMove is called with the pre-drag snapshot.
-    // The API rejects, so commitMove reverts to preDragSnapshot.
-    useWeekStore.getState().commitMove(0, 3, preDragSnapshot);
-
-    // Wait for the rejected promise to propagate and trigger the revert
-    await vi.waitFor(() => {
-      const scheduleAfterRevert = useWeekStore.getState().schedule;
-      // After revert, the dragged item should be back at its original position (0)
-      expect(scheduleAfterRevert.findIndex((d) => d._uiId === draggedUiId)).toBe(0);
-    });
-
-    // The reverted schedule must match the pre-drag snapshot exactly
-    const revertedSchedule = useWeekStore.getState().schedule;
-    expect(revertedSchedule.map((d) => d._uiId)).toEqual(preDragSnapshot.map((d) => d._uiId));
+  it('restores the captured original snapshot on rejection', async () => {
+    vi.mocked(plannerApi.moveRecipe).mockRejectedValueOnce(new Error('Network error'));
+    const original = useWeekStore.getState().schedule;
+    useWeekStore.getState().reorderLocally(0, 3, original);
+    expect(useWeekStore.getState().schedule[3].recipe).toBe(original[0].recipe);
+    useWeekStore.getState().commitMove(0, 3, original);
+    await vi.waitFor(() => expect(useWeekStore.getState().schedule).toEqual(original));
+    expect(plannerApi.moveRecipe).toHaveBeenCalledTimes(1);
   });
 
-  /**
-   * Test: onDragEnd with finalFrom === finalTo fires 0 API calls
-   *
-   * When the user drags a card and releases it at its original position
-   * (no net movement), moveRecipeApi must NOT be called.
-   *
-   * This tests the existing fromIndex !== toIndex guard in handleReorder.
-   *
-   * Validates: Requirement 2.3 / 3.4
-   */
-  it('fires 0 API calls when drag ends at the original position (no net movement)', () => {
-    const moveRecipeMock = vi.mocked(plannerApi.moveRecipe);
-
-    useWeekStore.setState({
-      weekOffset: 0,
-      weekStartDate: '2026-05-04',
-      calendar: calendar as any,
-      schedule: makeSevenDaySchedule(),
-      status: 0,
-      isLoading: false,
-      lastSyncedAt: null,
-      optimisticWriteAt: null,
-    });
-    vi.clearAllMocks();
-
-    const draggedUiId = 'ui-id-2'; // card at slot 2
-    const preDragSnapshot = [...useWeekStore.getState().schedule];
-
-    // Simulate the card moving to slot 4 and then back to slot 2
-    // (user dragged down and then back up before releasing)
-    const schedule = useWeekStore.getState().schedule;
-
-    // Move to slot 4
-    const reorderedTo4 = buildReorderedSchedule(schedule, draggedUiId, 4);
-    simulateHandleReorder(draggedUiId, reorderedTo4, preDragSnapshot);
-
-    // Move back to slot 2 (original position)
-    const scheduleAt4 = useWeekStore.getState().schedule;
-    const reorderedBackTo2 = buildReorderedSchedule(scheduleAt4, draggedUiId, 2);
-    simulateHandleReorder(draggedUiId, reorderedBackTo2, preDragSnapshot);
-
-    // onDragEnd fires — the card is back at its original position.
-    // On unfixed code, the guard `fromIndex !== toIndex` in handleReorder
-    // prevents the API call when the card is at the same position.
-    // The net result: the card is at slot 2, same as before the drag.
-    const finalPosition = useWeekStore
-      .getState()
-      .schedule.findIndex((d) => d._uiId === draggedUiId);
-    expect(finalPosition).toBe(2);
-
-    // The API was called for the intermediate moves (unfixed code behaviour),
-    // but the final state is correct. On fixed code, the API call count will be 0.
-    // This test verifies the FINAL POSITION is correct regardless of API call count.
-    // The no-API-call assertion is enforced by the bug condition test (Task 1).
-    //
-    // What we assert here: the schedule correctly reflects no net movement.
-    expect(finalPosition).toBe(2);
+  it('returns to the original arrangement without a request', () => {
+    const original = useWeekStore.getState().schedule;
+    useWeekStore.getState().reorderLocally(2, 4, original);
+    useWeekStore.getState().reorderLocally(2, 2, original);
+    useWeekStore.getState().commitMove(2, 2, original);
+    expect(useWeekStore.getState().schedule).toEqual(original);
+    expect(plannerApi.moveRecipe).not.toHaveBeenCalled();
   });
 
-  it('swaps the dragged slot with the destination slot instead of shifting the intermediate stack', () => {
-    useWeekStore.setState({
-      weekOffset: 0,
-      weekStartDate: '2026-05-04',
-      calendar: calendar as any,
-      schedule: makeSevenDaySchedule(),
-      status: 0,
-      isLoading: false,
-      lastSyncedAt: null,
-      optimisticWriteAt: null,
-    });
-
-    const draggedUiId = 'ui-id-1';
-    const preDragSnapshot = [...useWeekStore.getState().schedule];
-
-    for (const targetIndex of [2, 3, 4]) {
-      const currentSchedule = useWeekStore.getState().schedule;
-      const reordered = buildReorderedSchedule(currentSchedule, draggedUiId, targetIndex);
-      simulateHandleReorder(draggedUiId, reordered, preDragSnapshot);
-    }
-
-    expect(useWeekStore.getState().schedule.map((d) => d._uiId)).toEqual([
-      'ui-id-0',
-      'ui-id-4',
-      'ui-id-2',
-      'ui-id-3',
-      'ui-id-1',
-      'ui-id-5',
-      'ui-id-6',
-    ]);
+  it('does not send a request for an unchanged drop with no preview', () => {
+    const original = useWeekStore.getState().schedule;
+    useWeekStore.getState().commitMove(0, 0, original);
+    expect(plannerApi.moveRecipe).not.toHaveBeenCalled();
   });
 
-  /**
-   * Test: onDragEnd with no onReorder calls fires 0 API calls
-   *
-   * When the user picks up a card and immediately releases it without moving
-   * (onReorder never fires), moveRecipeApi must NOT be called.
-   *
-   * Validates: Requirement 2.3
-   */
-  it('fires 0 API calls when onDragEnd fires without any onReorder calls', () => {
-    const moveRecipeMock = vi.mocked(plannerApi.moveRecipe);
-
-    useWeekStore.setState({
-      weekOffset: 0,
-      weekStartDate: '2026-05-04',
-      calendar: calendar as any,
-      schedule: makeSevenDaySchedule(),
-      status: 0,
-      isLoading: false,
-      lastSyncedAt: null,
-      optimisticWriteAt: null,
+  it('swaps non-cooking kind/label and pending/voting metadata with the meal content', () => {
+    const original = makeSevenDaySchedule();
+    original[0] = { ...original[0], _isPending: true, _voteCount: 3, _unanimousVote: true };
+    original[1] = {
+      ...original[1],
+      recipe: undefined,
+      status: 3,
+      nonCooking: { kind: 'custom', customLabel: 'Grandma' },
+    };
+    useWeekStore.setState({ schedule: original });
+    useWeekStore.getState().reorderLocally(0, 1, original);
+    const preview = useWeekStore.getState().schedule;
+    expect(preview[0]).toMatchObject({
+      status: 3,
+      nonCooking: { kind: 'custom', customLabel: 'Grandma' },
+      date: original[0].date,
     });
-    vi.clearAllMocks();
-
-    // Simulate onDragStart (sets draggedId) — no onReorder calls
-    // Simulate onDragEnd (clears draggedId) — no movement
-    // On unfixed code: handleReorder is never called, so moveRecipe is never called.
-    // moveRecipeApi call count must be 0.
-
-    expect(moveRecipeMock).toHaveBeenCalledTimes(0);
+    expect(preview[1]).toMatchObject({
+      _isPending: true,
+      _voteCount: 3,
+      _unanimousVote: true,
+      date: original[1].date,
+    });
+    expect(plannerApi.moveRecipe).not.toHaveBeenCalled();
   });
 
-  /**
-   * Property 2c: Non-drag interactions are completely unaffected
-   *
-   * assignRecipe, removeRecipe, openVoting, lockWeek must behave identically
-   * regardless of any drag state. These actions must not be affected by the
-   * drag debounce fix.
-   *
-   * Validates: Requirement 3.3
-   */
+  it('commits the explicit source when recipe IDs repeat', () => {
+    const original = useWeekStore.getState().schedule;
+    original[2].recipe = original[0].recipe;
+    useWeekStore.getState().reorderLocally(2, 5, original);
+    useWeekStore.getState().commitMove(2, 5, original);
+    expect(plannerApi.moveRecipe).toHaveBeenCalledExactlyOnceWith(
+      0,
+      'recipe-0',
+      5,
+      2,
+      '2026-05-04'
+    );
+  });
+});
+
+describe('weekStore non-drag preservation', () => {
   it('assignRecipe updates schedule immediately and calls assignRecipeToDay API', async () => {
     const assignMock = vi.mocked(plannerApi.assignRecipeToDay);
     assignMock.mockResolvedValueOnce(undefined as any);
@@ -755,4 +398,30 @@ it('drag onto a custom skipped day moves the message with its status and restore
   useWeekStore.getState().commitMove(0, 1, original);
   await Promise.resolve();
   expect(useWeekStore.getState().schedule).toEqual(original);
+});
+
+describe('post-move authoritative read ownership', () => {
+  it.each(['week', 'move'])('ignores a read superseded by a later %s', async (change) => {
+    let resolve!: (value: any) => void;
+    vi.mocked(plannerApi.getSchedule)
+      .mockReset()
+      .mockImplementationOnce(
+        () =>
+          new Promise((done) => {
+            resolve = done;
+          })
+      );
+    const apply = vi.spyOn(useWeekStore.getState(), 'applySnapshot');
+    useWeekStore.getState().commitMove(0, 1, useWeekStore.getState().schedule);
+    await vi.waitFor(() => expect(resolve).toBeTypeOf('function'));
+    if (change === 'week') useWeekStore.setState({ weekOffset: 1, weekStartDate: '2026-05-11' });
+    else {
+      const { usePlannerStore } = await import('./plannerStore');
+      usePlannerStore.getState().nextMoveSeq();
+    }
+    resolve({ days: [], weekOffset: 0, weekStartDate: '2026-05-04' });
+    await Promise.resolve();
+    expect(apply).not.toHaveBeenCalled();
+    apply.mockRestore();
+  });
 });

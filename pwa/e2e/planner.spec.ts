@@ -1,4 +1,5 @@
 import { test, expect } from './fixtures';
+import type { ScheduleDays } from '../src/lib/api/generated/models';
 import {
   MOCK_IDS,
   builders,
@@ -6,13 +7,160 @@ import {
   toDateStr,
   setupCommonRoutes,
   mockFeatureFlags,
+  mockNonCookingSchedule,
 } from './mock-api';
+
+function dragWeek() {
+  const schedule = builders.scheduleDays() as unknown as ScheduleDays;
+  schedule.days = schedule.days!.map((day, index) => ({
+    ...day,
+    status: 0,
+    nonCooking: null,
+    recipe:
+      index < 3
+        ? builders.scheduleRecipe({
+            id: index === 1 ? MOCK_IDS.RECIPE_TACOS : MOCK_IDS.RECIPE_LASAGNA,
+            name: ['Monday Lasagna', 'Tuesday Tacos', 'Repeated Lasagna'][index],
+          })
+        : null,
+  }));
+  return schedule;
+}
+
+async function openDragWeek(page: import('@playwright/test').Page, schedule = dragWeek()) {
+  await page.clock.setSystemTime(new Date('2026-05-04T12:00:00Z'));
+  await page.setViewportSize({ width: 900, height: 1100 });
+  await mockNonCookingSchedule(page, schedule);
+  const moves: Array<{ fromIndex: number; toIndex: number; recipeId: string }> = [];
+  page.on('request', (request) => {
+    if (new URL(request.url()).pathname === '/api/schedule/move')
+      moves.push(request.postDataJSON());
+  });
+  await page.reload();
+  await expect(page.getByTestId('day-card-0')).toContainText('Monday Lasagna');
+  await expect(page.getByTestId('reorder-group').locator('..')).toHaveCSS('transform', 'none');
+  return { schedule, moves };
+}
+
+async function heldMouse(page: import('@playwright/test').Page, index = 0) {
+  const handle = page.getByTestId(`day-card-${index}`).getByTestId('planner-drag-handle');
+  await handle.scrollIntoViewIfNeeded();
+  const box = (await handle.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await expect(handle).toHaveAttribute('data-grabbed', 'true');
+  return {
+    handle,
+    over: async (to: number) => {
+      const row = page.getByTestId(`day-card-${to}`);
+      const target = (await row.boundingBox())!;
+      await page.mouse.move(target.x + target.width / 2, target.y + target.height / 2, {
+        steps: 15,
+      });
+      return row;
+    },
+  };
+}
+
+async function liveWeek(
+  page: import('@playwright/test').Page,
+  schedule: unknown,
+  echoSeq?: number
+) {
+  await page.evaluate(
+    ({ schedule, echoSeq }) => {
+      (window as any).__sseSource.dispatchEvent(
+        new MessageEvent('week_updated', {
+          data: JSON.stringify({ schedule, ...(echoSeq === undefined ? {} : { echoSeq }) }),
+        })
+      );
+    },
+    { schedule, echoSeq }
+  );
+}
 
 // Compute current week's Monday at noon UTC — avoids timezone rollback
 
 async function collapseDevelopmentBadge(page: import('@playwright/test').Page) {
   const devBadge = page.getByRole('button', { name: 'Collapse issues badge' });
   if (await devBadge.isVisible()) await devBadge.click();
+}
+
+// Sample the real raster with only the measured foreground made transparent.
+// This retains glass blur, underlying blobs, active fills and adjacent surfaces.
+async function renderedContrast(locator: import('@playwright/test').Locator) {
+  await locator.evaluate((el) =>
+    el.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'instant' })
+  );
+  const page = locator.page();
+  const original = await locator.evaluate((element) => {
+    const node = element as HTMLElement;
+    const color = getComputedStyle(node).color;
+    const style = node.getAttribute('style');
+    let opacity = 1;
+    for (let ancestor: Element | null = node; ancestor; ancestor = ancestor.parentElement)
+      opacity *= Number(getComputedStyle(ancestor).opacity);
+    node.style.setProperty('transition', 'none', 'important');
+    node.style.setProperty('color', 'transparent', 'important');
+    return { color, style, opacity };
+  });
+  const box = (await locator.boundingBox())!;
+  const raster = (await page.screenshot()).toString('base64');
+  await locator.evaluate((element, style) => {
+    if (style === null) element.removeAttribute('style');
+    else element.setAttribute('style', style);
+  }, original.style);
+  return page.evaluate(
+    async ({ raster, box, color, opacity }) => {
+      const image = new Image();
+      image.src = `data:image/png;base64,${raster}`;
+      await image.decode();
+      const canvas = document.createElement('canvas');
+      canvas.width = image.width;
+      canvas.height = image.height;
+      const context = canvas.getContext('2d')!;
+      context.drawImage(image, 0, 0);
+      const luminance = (rgb: number[]) =>
+        rgb
+          .map((v) => {
+            v /= 255;
+            return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+          })
+          .reduce((sum, v, i) => sum + v * [0.2126, 0.7152, 0.0722][i], 0);
+      const sample = document.createElement('canvas').getContext('2d')!;
+      sample.fillStyle = color;
+      sample.fillRect(0, 0, 1, 1);
+      const foreground = [...sample.getImageData(0, 0, 1, 1).data];
+      foreground[3] *= opacity;
+      let ratio = Infinity;
+      let background: number[] = [];
+      for (
+        let y = Math.ceil(box.y + 1);
+        y < Math.min(canvas.height, box.y + box.height - 1);
+        y += 2
+      ) {
+        for (
+          let x = Math.ceil(box.x + 1);
+          x < Math.min(canvas.width, box.x + box.width - 1);
+          x += 2
+        ) {
+          const bg = [...context.getImageData(x, y, 1, 1).data].slice(0, 3);
+          const fg = foreground
+            .slice(0, 3)
+            .map((v, i) => (v * foreground[3]) / 255 + bg[i] * (1 - foreground[3] / 255));
+          const a = luminance(fg),
+            b = luminance(bg);
+          const current = (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+          if (current < ratio) {
+            ratio = current;
+            background = bg;
+          }
+        }
+      }
+      return { ratio, foreground, background, color };
+    },
+    { raster, box, color: original.color, opacity: original.opacity }
+  );
 }
 
 test.describe('Supper Planner', () => {
@@ -219,6 +367,500 @@ test.describe('Supper Planner', () => {
     await expect(page.getByTestId('day-card-0')).toBeVisible({ timeout: 10_000 });
   });
 
+  test.describe('Planner readability', () => {
+    for (const locale of ['en', 'fr'] as const) {
+      for (const viewport of [
+        { width: 390, height: 844 },
+        { width: 768, height: 1024 },
+        { width: 1024, height: 768 },
+        { width: 320, height: 900 },
+      ]) {
+        test(`${locale} ${viewport.width}px readable controls and context`, async ({
+          page,
+        }, testInfo) => {
+          await page.setViewportSize(viewport);
+          await page.addInitScript((value) => localStorage.setItem('locale', value), locale);
+          await page.reload();
+          await expect(page.getByTestId('day-card-0')).toBeVisible();
+          await expect(page.getByTestId('reorder-group').locator('..')).toHaveCSS('opacity', '1');
+          await expect(page.getByTestId('reorder-group').locator('..')).toHaveCSS(
+            'transform',
+            'none'
+          );
+          await collapseDevelopmentBadge(page);
+          if (viewport.width === 320)
+            await page.evaluate(() => {
+              const labels = [
+                ...document.querySelectorAll<HTMLElement>(
+                  'main span, main p, main h2, header span, header h2'
+                ),
+              ].filter((el) =>
+                [...el.childNodes].some(
+                  (node) => node.nodeType === Node.TEXT_NODE && node.textContent?.trim()
+                )
+              );
+              const sizes = labels.map((el) => parseFloat(getComputedStyle(el).fontSize));
+              labels.forEach((el, i) => {
+                el.style.fontSize = `${sizes[i] * 2}px`;
+                el.style.lineHeight = '1.4';
+              });
+            });
+          await page.screenshot({ path: testInfo.outputPath('view.png'), fullPage: true });
+          await testInfo.attach('view', {
+            path: testInfo.outputPath('view.png'),
+            contentType: 'image/png',
+          });
+          const button = page.getByTestId('plan-meal-button').first();
+          const handle = page.getByTestId('planner-drag-handle').first();
+          const measurements: Record<string, unknown> = {};
+          const measure = async (
+            name: string,
+            locator: import('@playwright/test').Locator,
+            target: number
+          ) => {
+            const result = await renderedContrast(locator);
+            measurements[name] = result;
+            expect.soft(result.ratio, name).toBeGreaterThanOrEqual(target);
+          };
+          await measure('week context', page.getByTestId('week-range'), 4.5);
+          await expect.soft(page.getByTestId('week-range')).toHaveCSS('text-transform', 'none');
+          const date = page.getByTestId('planner-date').first();
+          await measure('weekday', date.locator('span').first(), 4.5);
+          await measure('month', date.locator('span').last(), 4.5);
+          for (const state of ['default', 'hover', 'pressed', 'focus'] as const) {
+            if (state === 'hover') await button.hover();
+            if (state === 'pressed') {
+              await button.hover();
+              await page.mouse.down();
+            }
+            if (state === 'focus') {
+              await page.mouse.up();
+              await button.focus();
+            }
+            await page.waitForTimeout(250);
+            await measure(`plan text ${state}`, button.locator('span'), 4.5);
+            await measure(`Plus ${state}`, button.locator('svg'), 3);
+            if (state === 'pressed') await page.mouse.move(0, 0);
+          }
+          for (const state of ['default', 'hover', 'focus', 'grabbed'] as const) {
+            if (state === 'default') {
+              await page.mouse.move(0, 0);
+              await button.blur();
+            }
+            if (state === 'hover') await handle.hover();
+            if (state === 'focus') await handle.focus();
+            if (state === 'grabbed') {
+              await handle.hover();
+              await page.mouse.down();
+              await expect(handle).toHaveAttribute('data-grabbed', 'true');
+              await page.mouse.move(5, 120);
+            }
+            await page.waitForTimeout(250);
+            await measure(`grip ${state}`, handle.locator('svg'), 3);
+          }
+          await page.keyboard.press('Escape');
+          await page.mouse.up();
+          console.log('RENDERED_CONTRAST', locale, viewport.width, JSON.stringify(measurements));
+          await testInfo.attach('contrasts', {
+            body: JSON.stringify(measurements, null, 2),
+            contentType: 'application/json',
+          });
+          await expect
+            .soft(button)
+            .toHaveAccessibleName(locale === 'fr' ? 'Planifier le souper' : 'Plan supper');
+          expect.soft(await date.evaluate((el) => el.getBoundingClientRect().width)).toBe(40);
+          expect
+            .soft(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
+            .toBe(true);
+          await button.click();
+          await expect(page.getByTestId('pivot-sheet')).toBeVisible();
+        });
+      }
+    }
+  });
+
+  test.describe('Planner day emphasis', () => {
+    async function openEmphasis(
+      page: import('@playwright/test').Page,
+      todayIndex: number,
+      offset = 0
+    ) {
+      const today = `2026-05-${String(4 + todayIndex).padStart(2, '0')}`;
+      const calendar = builders.deploymentCalendar({
+        today,
+        capturedAtUtc: `${today}T12:00:00Z`,
+        nextDayAtUtc: `2026-05-${String(5 + todayIndex).padStart(2, '0')}T00:00:00Z`,
+      });
+      const schedule = builders.scheduleDays(offset, calendar) as unknown as ScheduleDays;
+      schedule.days = schedule.days!.map((day, index) => ({
+        ...day,
+        recipe:
+          index < 2 || index === 6
+            ? builders.scheduleRecipe({
+                id: index === 1 ? MOCK_IDS.RECIPE_TACOS : MOCK_IDS.RECIPE_LASAGNA,
+                name:
+                  index === 0
+                    ? 'Monday Lasagna with roasted vegetables and fresh garden herbs'
+                    : index === 1
+                      ? 'Tuesday Tacos'
+                      : 'Sunday supper',
+              })
+            : null,
+        status: index === 6 ? 2 : index === 3 ? 3 : 0,
+        nonCooking: index === 3 ? { kind: 'order_in', customLabel: 'Try Luigi’s' } : null,
+      }));
+      await mockNonCookingSchedule(page, schedule);
+      await page.reload();
+      await expect(page.getByTestId('day-card-0')).toContainText('Monday Lasagna');
+      await expect(page.getByTestId('reorder-group').locator('..')).toHaveCSS('opacity', '1');
+      await expect(page.getByTestId('reorder-group').locator('..')).toHaveCSS('transform', 'none');
+      await collapseDevelopmentBadge(page);
+      return schedule;
+    }
+
+    for (const locale of ['en', 'fr'] as const) {
+      for (const todayIndex of [0, 2, 6]) {
+        for (const viewport of [
+          { width: 390, height: 844 },
+          { width: 768, height: 1024 },
+          { width: 1024, height: 768 },
+          { width: 320, height: 900 },
+        ]) {
+          test(`${locale} day ${todayIndex} ${viewport.width}px combined view`, async ({
+            page,
+          }, testInfo) => {
+            await page.setViewportSize(viewport);
+            await page.addInitScript((value) => localStorage.setItem('locale', value), locale);
+            await openEmphasis(page, todayIndex);
+            if (viewport.width === 320)
+              await page.evaluate(() => {
+                const labels = [
+                  ...document.querySelectorAll<HTMLElement>(
+                    'main span, main p, main h2, main h4, header span, header h2'
+                  ),
+                ].filter((el) =>
+                  [...el.childNodes].some(
+                    (node) => node.nodeType === Node.TEXT_NODE && node.textContent?.trim()
+                  )
+                );
+                const sizes = labels.map((el) => parseFloat(getComputedStyle(el).fontSize));
+                labels.forEach((el, i) => {
+                  el.style.fontSize = `${sizes[i] * 2}px`;
+                  el.style.lineHeight = '1.4';
+                });
+              });
+            await page.screenshot({ path: testInfo.outputPath('combined.png'), fullPage: true });
+            await testInfo.attach('combined', {
+              path: testInfo.outputPath('combined.png'),
+              contentType: 'image/png',
+            });
+            const row = page.getByTestId(`day-card-${todayIndex}`);
+            await row.evaluate((el) => el.scrollIntoView({ block: 'center', behavior: 'instant' }));
+            await page.screenshot({ path: testInfo.outputPath('today-viewport.png') });
+            await testInfo.attach('today viewport', {
+              path: testInfo.outputPath('today-viewport.png'),
+              contentType: 'image/png',
+            });
+            const marker = row.getByTestId('planner-date');
+            await expect.soft(marker).toHaveAttribute('aria-current', 'date');
+            const label = page.getByTestId('planner-today-label');
+            await expect.soft(label).toHaveCount(1);
+            if (await label.count()) {
+              await expect(label).toHaveText(locale === 'fr' ? 'Aujourd’hui' : 'Today');
+              expect(
+                await row
+                  .getByTestId('planner-meal')
+                  .evaluate(
+                    (el) => el.querySelector('[data-testid="planner-today-label"]') === null
+                  )
+              ).toBe(true);
+              const separator = page.getByTestId('planner-today-separator');
+              await expect(separator).toHaveAttribute('aria-hidden', 'true');
+              expect((await separator.boundingBox())!.width).toBeGreaterThanOrEqual(16);
+              const contrast = await renderedContrast(label);
+              console.log(
+                'TEMPORAL_CONTRAST',
+                locale,
+                todayIndex,
+                viewport.width,
+                'Today text',
+                JSON.stringify(contrast)
+              );
+              expect.soft(contrast.ratio).toBeGreaterThanOrEqual(4.5);
+              // The date marker stays neutral; the label and divider provide the Today cue.
+              const dateMarker = marker.getByTestId('planner-date-marker');
+              await expect(dateMarker).toHaveCSS('box-shadow', 'none');
+              await expect(dateMarker).toHaveCSS('outline-style', 'none');
+              await expect(dateMarker).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+              const markerContrast = await renderedContrast(
+                marker.getByTestId('planner-date-marker').locator('span').first()
+              );
+              expect.soft(markerContrast.ratio, 'Today date text').toBeGreaterThanOrEqual(4.5);
+              for (const extra of await dateMarker.locator('span').all()) {
+                const result = await renderedContrast(extra);
+                expect.soft(result.ratio, 'neutral fixed date text').toBeGreaterThanOrEqual(4.5);
+              }
+              console.log(
+                'TEMPORAL_CONTRAST',
+                locale,
+                todayIndex,
+                viewport.width,
+                'Today date text',
+                JSON.stringify(markerContrast)
+              );
+            }
+            if (todayIndex > 0) {
+              for (const [name, target, ratio] of [
+                ['past recipe', page.getByTestId('day-card-0').getByTestId('recipe-name'), 4.5],
+                ['past status', page.getByTestId('day-card-0').getByTestId('vote-count'), 4.5],
+                [
+                  'past change',
+                  page.getByTestId('day-card-0').getByTestId('change-recipe-button').locator('svg'),
+                  3,
+                ],
+                [
+                  'past grip',
+                  page.getByTestId('day-card-0').getByTestId('planner-drag-handle').locator('svg'),
+                  3,
+                ],
+                ...(todayIndex === 6
+                  ? [
+                      [
+                        'past empty',
+                        page
+                          .getByTestId('day-card-2')
+                          .getByTestId('plan-meal-button')
+                          .locator('span'),
+                        4.5,
+                      ],
+                      [
+                        'past non-cooking',
+                        page.getByTestId('day-card-3').getByTestId('non-cooking-indicator'),
+                        4.5,
+                      ],
+                    ]
+                  : []),
+              ] as Array<[string, import('@playwright/test').Locator, number]>) {
+                const contrast = await renderedContrast(target);
+                console.log(
+                  'TEMPORAL_CONTRAST',
+                  locale,
+                  todayIndex,
+                  viewport.width,
+                  name,
+                  JSON.stringify(contrast)
+                );
+                expect.soft(contrast.ratio, name).toBeGreaterThanOrEqual(ratio);
+              }
+              if (todayIndex === 6) {
+                const nonCooking = page
+                  .getByTestId('day-card-3')
+                  .getByTestId('ordered-in-indicator');
+                await nonCooking.hover();
+                await page.waitForTimeout(250);
+                const contrast = await renderedContrast(
+                  nonCooking.getByTestId('non-cooking-indicator')
+                );
+                console.log(
+                  'TEMPORAL_CONTRAST',
+                  locale,
+                  todayIndex,
+                  viewport.width,
+                  'past non-cooking hover',
+                  JSON.stringify(contrast)
+                );
+                expect.soft(contrast.ratio, 'past non-cooking hover').toBeGreaterThanOrEqual(4.5);
+                await page.mouse.move(0, 0);
+              }
+              await expect
+                .soft(page.getByTestId('day-card-0'))
+                .toHaveAttribute('data-temporal', 'past');
+              await expect(page.getByTestId('day-card-0')).toHaveCSS('opacity', '1');
+            }
+            for (const dateLabel of await marker.locator('span').all())
+              expect
+                .soft(await dateLabel.evaluate((el) => el.scrollWidth <= el.clientWidth))
+                .toBe(true);
+            expect.soft(await marker.evaluate((el) => el.getBoundingClientRect().width)).toBe(40);
+            expect
+              .soft(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
+              .toBe(true);
+            await expect(page.getByTestId('planned-count-badge')).toHaveCount(0);
+          });
+        }
+      }
+    }
+
+    for (const offset of [-1, 1]) {
+      test(`no Today in offset ${offset}`, async ({ page }, testInfo) => {
+        await openEmphasis(page, 2, offset);
+        await expect(page.locator('[aria-current="date"]')).toHaveCount(0);
+        await expect(page.getByTestId('planner-today-label')).toHaveCount(0);
+        await page.screenshot({ path: testInfo.outputPath('other-week.png'), fullPage: true });
+      });
+    }
+
+    for (const content of ['empty', 'recipe', 'pending', 'non-cooking', 'cooked'] as const) {
+      test(`Today with ${content} content and deployment timezone disagreement`, async ({
+        page,
+      }) => {
+        await page.clock.setSystemTime(new Date('2026-05-07T03:30:00Z'));
+        const schedule = await openEmphasis(page, 2);
+        const day = schedule.days![2];
+        day.recipe =
+          content === 'recipe' || content === 'cooked'
+            ? builders.scheduleRecipe({ name: 'Today supper' })
+            : null;
+        day.status = content === 'cooked' ? 2 : content === 'non-cooking' ? 3 : 0;
+        day.nonCooking = content === 'non-cooking' ? { kind: 'order_in' } : null;
+        if (content === 'pending') {
+          schedule.status = 1;
+          schedule.votingRoundId = MOCK_IDS.VOTING_ROUND;
+          await page.route('**/api/discovery/session', (route) =>
+            route.fulfill({
+              json: {
+                data: {
+                  incarnationId: MOCK_IDS.MEMBER_TEST,
+                  revision: 1,
+                  roundId: MOCK_IDS.VOTING_ROUND,
+                  weekStartDate: '2026-05-04',
+                  phase: 'collecting',
+                  requiredSlots: 4,
+                  coveredSlots: 1,
+                  candidateCount: 1,
+                  smartDefaults: {
+                    weekOffset: 0,
+                    weekStartDate: '2026-05-04',
+                    familySize: 3,
+                    consensusThreshold: 2,
+                    consensusRecipesCount: 1,
+                    openSlots: [],
+                    preSelectedRecipes: [
+                      {
+                        dayIndex: 2,
+                        recipeId: MOCK_IDS.RECIPE_TACOS,
+                        name: 'Pending supper',
+                        voteCount: 2,
+                        unanimousVote: false,
+                      },
+                    ],
+                  },
+                },
+              },
+            })
+          );
+        }
+        if (content === 'pending')
+          await page.route('**/api/schedule/smart-defaults**', (route) =>
+            route.fulfill({
+              json: {
+                data: {
+                  weekOffset: 0,
+                  weekStartDate: '2026-05-04',
+                  familySize: 3,
+                  consensusThreshold: 2,
+                  consensusRecipesCount: 0,
+                  openSlots: [],
+                  preSelectedRecipes: [
+                    {
+                      dayIndex: 2,
+                      recipeId: MOCK_IDS.RECIPE_TACOS,
+                      name: 'Pending supper',
+                      voteCount: 2,
+                      unanimousVote: false,
+                    },
+                  ],
+                },
+              },
+            })
+          );
+        await page.reload();
+        const row = page.getByTestId('day-card-2');
+        await expect(row.getByTestId('planner-date')).toHaveAttribute('aria-current', 'date');
+        await expect(row.getByTestId('planner-today-label')).toHaveText('Today');
+        if (content === 'pending') await expect(row).toContainText('Pending supper');
+      });
+    }
+
+    for (const index of [0, 2]) {
+      test(`success feedback stays distinct on temporal row ${index}`, async ({ page }) => {
+        await openEmphasis(page, 2);
+        await page.goto(`/planner?success=1&dayIndex=${index}`);
+        await expect(page.getByTestId(`day-card-${index}`).getByTestId('planner-meal')).toHaveClass(
+          /ring-4/
+        );
+        await expect(page.getByTestId('day-card-2').getByTestId('planner-date')).toHaveAttribute(
+          'aria-current',
+          'date'
+        );
+        await expect(page.getByTestId('planner-today-label')).toHaveCount(1);
+        await expect(page.getByTestId('day-card-0')).toHaveAttribute('data-temporal', 'past');
+      });
+    }
+
+    test('fixed Today and independent focus/source/destination/cancel feedback', async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width: 390, height: 844 });
+      const schedule = await openEmphasis(page, 2);
+      const writes: string[] = [];
+      page.on('request', (request) => {
+        if (
+          request.method() !== 'GET' &&
+          new URL(request.url()).pathname.startsWith('/api/schedule')
+        )
+          writes.push(request.url());
+      });
+      const handle = page.getByTestId('day-card-0').getByTestId('planner-drag-handle');
+      await page.keyboard.press('Tab');
+      await handle.focus();
+      await expect(handle).toBeFocused();
+      await expect(handle).toHaveCSS('outline-style', 'solid');
+      const drag = await heldMouse(page);
+      const destination = await drag.over(2);
+      await expect(destination.getByTestId('planner-date')).toHaveAttribute('aria-current', 'date');
+      await expect(destination.getByTestId('planner-drop-arrow')).toBeVisible();
+      const contrast = await renderedContrast(
+        destination.getByTestId('planner-date-marker').locator('span').first()
+      );
+      console.log(
+        'TEMPORAL_CONTRAST',
+        'en',
+        2,
+        390,
+        'Today drop date text',
+        JSON.stringify(contrast)
+      );
+      expect(contrast.ratio).toBeGreaterThanOrEqual(4.5);
+      await expect(page.getByTestId('day-card-0')).toHaveAttribute('data-drag-source', 'true');
+      await expect(page.getByTestId('planner-drag-preview')).toBeVisible();
+      await page.keyboard.press('Escape');
+      await page.mouse.up();
+      expect(writes).toHaveLength(0);
+      await expect(destination.getByTestId('planner-date')).toHaveAttribute('aria-current', 'date');
+      await handle.focus();
+      await page.keyboard.press('ArrowDown');
+      await expect(page.getByTestId('day-card-1').getByTestId('planner-drag-handle')).toBeFocused();
+      await expect(page.getByTestId('day-card-2').getByTestId('planner-date')).toHaveAttribute(
+        'aria-current',
+        'date'
+      );
+      expect(schedule.days![0].recipe!.name).toBe('Tuesday Tacos');
+      await page.keyboard.press('ArrowDown');
+      await expect(page.getByTestId('day-card-2').getByTestId('planner-drag-handle')).toBeFocused();
+      await expect(page.getByTestId('day-card-2')).toContainText('Monday Lasagna');
+      await expect(page.getByTestId('day-card-2').getByTestId('planner-today-label')).toHaveText(
+        'Today'
+      );
+      await page.keyboard.press('ArrowUp');
+      await expect(page.getByTestId('day-card-1').getByTestId('planner-drag-handle')).toBeFocused();
+      await expect(page.getByTestId('day-card-2').getByTestId('planner-date')).toHaveAttribute(
+        'aria-current',
+        'date'
+      );
+    });
+  });
+
   test('should display the planner navigation and segmented control', async ({ page }) => {
     // Tab switcher only visible on mobile/narrow viewports
     const isMobile = await page.evaluate(() => window.innerWidth < 1024);
@@ -275,6 +917,10 @@ test.describe('Supper Planner', () => {
           await calendarRead;
           await page.getByTestId('nav-item-planner').click();
           await expect(page.getByTestId('day-card-0')).toBeVisible();
+          await expect(page.getByTestId('reorder-group').locator('..')).toHaveCSS(
+            'transform',
+            'none'
+          );
           await expect(page.getByTestId(/^day-card-/)).toHaveCount(7);
           await expect(page.getByTestId('planned-count-badge')).toHaveCount(0);
           const row = page.getByTestId('planner-action-row');
@@ -437,7 +1083,9 @@ test.describe('Supper Planner', () => {
     await expect(page).toHaveURL(/\/planner\?success=1&dayIndex=2/);
 
     // 6. Verify success feedback (ring) on the card
-    await expect(targetCard).toHaveClass(/ring-sage/, { timeout: 10_000 });
+    await expect(targetCard.getByTestId('planner-meal')).toHaveClass(/ring-sage/, {
+      timeout: 10_000,
+    });
   });
 
   test('should trigger Cook Mode from a recipe card and navigate steps', async ({ page }) => {
@@ -544,23 +1192,12 @@ test.describe('Supper Planner', () => {
     page,
     context,
   }) => {
+    const { moves } = await openDragWeek(page);
     await page.setViewportSize({ width: 390, height: 600 });
     const handle = page.getByTestId('day-card-0').getByTestId('planner-drag-handle');
     await expect(handle).toHaveAttribute(
       'aria-label',
       'Hold to move. Use the Up and Down arrow keys to move one day.'
-    );
-    const moves: unknown[] = [];
-    await page.route(
-      (url) => url.pathname === '/api/schedule/move',
-      async (route) => {
-        moves.push(route.request().postDataJSON());
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({ data: { message: 'ok' } }),
-        });
-      }
     );
     const client = await context.newCDPSession(page);
     await client.send('Emulation.setTouchEmulationEnabled', { enabled: true });
@@ -599,36 +1236,518 @@ test.describe('Supper Planner', () => {
     for (let offset = 10; offset <= 100; offset += 10) await touch('touchMove', heldY + offset);
     await touch('touchEnd', heldY + 100);
     await expect.poll(() => moves.length).toBe(1);
+    expect(moves[0]).toMatchObject({ fromIndex: 0, toIndex: 1, recipeId: MOCK_IDS.RECIPE_LASAGNA });
+    await expect(page.getByTestId('day-card-0')).toContainText('Tuesday Tacos');
+    await expect(page.getByTestId('day-card-1')).toContainText('Monday Lasagna');
+    await page.reload();
+    await expect(page.getByTestId('day-card-0')).toContainText('Tuesday Tacos');
+    await expect(page.getByTestId('day-card-1')).toContainText('Monday Lasagna');
+    expect(moves).toHaveLength(1);
     await client.detach();
   });
 
-  test('always-on hold-to-move offers an accessible keyboard move', async ({ page }) => {
-    const moves: Array<{ fromIndex?: number; toIndex?: number }> = [];
+  test('fixed date empty destination keeps labels still and commits once', async ({ page }) => {
+    await page.clock.setSystemTime(new Date('2026-05-04T12:00:00Z'));
+    await page.setViewportSize({ width: 900, height: 1100 });
+    const schedule = builders.scheduleDays() as unknown as ScheduleDays;
+    schedule.days = schedule.days!.map((day, index) => ({
+      ...day,
+      status: 0,
+      nonCooking: null,
+      recipe:
+        index === 0
+          ? builders.scheduleRecipe({ id: MOCK_IDS.RECIPE_LASAGNA, name: 'Monday Lasagna' })
+          : null,
+    }));
+    await mockNonCookingSchedule(page, schedule);
+    const moves: unknown[] = [];
+    page.on('request', (request) => {
+      if (new URL(request.url()).pathname === '/api/schedule/move')
+        moves.push(request.postDataJSON());
+    });
+    await page.reload();
+    const source = page.getByTestId('day-card-0');
+    const target = page.getByTestId('day-card-1');
+    const date = source.getByTestId('planner-date');
+    await expect(date).toBeVisible();
+    await expect(page.getByTestId('reorder-group').locator('..')).toHaveCSS('transform', 'none');
+    const dateBox = (await date.boundingBox())!;
+    await page
+      .getByTestId('reorder-group')
+      .locator('..')
+      .evaluate((node: HTMLElement) => {
+        node.style.willChange = 'transform';
+      });
+    const handle = source.getByTestId('planner-drag-handle');
+    const from = (await handle.boundingBox())!;
+    const to = (await target.boundingBox())!;
+    const meal = (await source.getByTestId('planner-meal').boundingBox())!;
+    await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+    await page.mouse.down();
+    await expect(handle).toHaveAttribute('data-grabbed', 'true');
+    await expect(page.getByTestId('planner-drag-preview')).toContainText('Monday Lasagna');
+    await expect(page.getByTestId('planner-drag-preview').getByTestId('planner-date')).toHaveCount(
+      0
+    );
+    await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 20 });
+    await expect(source).toHaveAttribute('data-drag-source', 'true');
+    await expect(target).toHaveAttribute('data-drop-target', 'true');
+    expect((await date.boundingBox())!.y).toBeCloseTo(dateBox.y, 0);
+    const lifted = (await page.getByTestId('planner-drag-preview').boundingBox())!;
+    expect(lifted.x).toBeCloseTo(meal.x, 0);
+    expect(lifted.y).toBeCloseTo(meal.y + to.y + to.height / 2 - from.y - from.height / 2, 0);
+    expect(moves).toHaveLength(0);
+    await page.mouse.up();
+    await expect.poll(() => moves.length).toBe(1);
+    expect(moves[0]).toMatchObject({
+      weekOffset: 0,
+      recipeId: MOCK_IDS.RECIPE_LASAGNA,
+      fromIndex: 0,
+      toIndex: 1,
+    });
+    await expect(source.getByTestId('plan-meal-button')).toBeVisible();
+    await expect(target).toContainText('Monday Lasagna');
+    await page.reload();
+    await expect(source.getByTestId('plan-meal-button')).toBeVisible();
+    await expect(target).toContainText('Monday Lasagna');
+    expect(moves).toHaveLength(1);
+  });
+
+  test('fixed date previews original arrangement across candidates and repeated recipe IDs', async ({
+    page,
+  }) => {
+    const { moves } = await openDragWeek(page);
+    const drag = await heldMouse(page, 2);
+    await drag.over(1);
+    await expect(page.getByTestId('day-card-1')).toContainText('Repeated Lasagna');
+    await drag.over(0);
+    await expect(page.getByTestId('day-card-0')).toContainText('Repeated Lasagna');
+    await expect(page.getByTestId('day-card-1')).toContainText('Tuesday Tacos');
+    await expect(page.getByTestId('day-card-2')).toContainText('Monday Lasagna');
+    await expect(
+      page.getByTestId('planner-drag-preview').getByTestId('planner-drop-feedback')
+    ).toHaveText('Swap meals');
+    expect(moves).toHaveLength(0);
+    await page.mouse.up();
+    await expect.poll(() => moves.length).toBe(1);
+    expect(moves[0]).toMatchObject({ fromIndex: 2, toIndex: 0, recipeId: MOCK_IDS.RECIPE_LASAGNA });
+    await page.reload();
+    await expect(page.getByTestId('day-card-0')).toContainText('Repeated Lasagna');
+    await expect(page.getByTestId('day-card-1')).toContainText('Tuesday Tacos');
+    await expect(page.getByTestId('day-card-2')).toContainText('Monday Lasagna');
+    expect(moves).toHaveLength(1);
+  });
+
+  test('drag feedback switches between Move here and Swap meals using original destination contents', async ({
+    page,
+  }) => {
+    const schedule = dragWeek();
+    Object.assign(schedule.days![2], {
+      recipe: null,
+      status: 3,
+      nonCooking: { kind: 'custom', customLabel: 'Supper with Grandma' },
+    });
+    const { moves } = await openDragWeek(page, schedule);
+    const drag = await heldMouse(page);
+    const feedback = page.getByTestId('planner-drag-preview').getByTestId('planner-drop-feedback');
+    await drag.over(3);
+    await expect(feedback).toHaveText('Move here');
+    await drag.over(1);
+    await expect(feedback).toHaveText('Swap meals');
+    await drag.over(2);
+    await expect(feedback).toHaveText('Swap meals');
+    await drag.over(3);
+    await expect(feedback).toHaveText('Move here');
+    await page.mouse.up();
+    await expect.poll(() => moves.length).toBe(1);
+    await expect(page.getByTestId('day-card-0').getByTestId('plan-meal-button')).toBeVisible();
+    await expect(page.getByTestId('day-card-3')).toContainText('Monday Lasagna');
+    await expect(page.getByTestId('day-card-1')).toContainText('Tuesday Tacos');
+    await expect(page.getByTestId('day-card-2')).toContainText('Supper with Grandma');
+  });
+
+  test('fixed date swaps a recipe with a saved non-cooking plan and retains metadata', async ({
+    page,
+  }) => {
+    const schedule = dragWeek();
+    Object.assign(schedule.days![1], {
+      recipe: null,
+      status: 3,
+      nonCooking: { kind: 'custom', customLabel: 'Supper with Grandma' },
+    });
+    const { moves } = await openDragWeek(page, schedule);
+    const drag = await heldMouse(page);
+    await drag.over(1);
+    await expect(page.getByTestId('day-card-0')).toContainText('Supper with Grandma');
+    await expect(page.getByTestId('day-card-1')).toContainText('Monday Lasagna');
+    expect(moves).toHaveLength(0);
+    await page.mouse.up();
+    await expect.poll(() => moves.length).toBe(1);
+    await page.reload();
+    await expect(page.getByTestId('day-card-0')).toContainText('Supper with Grandma');
+    await expect(page.getByTestId('day-card-1')).toContainText('Monday Lasagna');
+    expect(schedule.days![0].nonCooking).toEqual({
+      kind: 'custom',
+      customLabel: 'Supper with Grandma',
+    });
+    expect(schedule.days![0].status).toBe(3);
+    expect(schedule.days![2].recipe?.name).toBe('Repeated Lasagna');
+  });
+
+  for (const ending of ['source', 'Escape', 'pointercancel', 'outside', 'blur'] as const) {
+    test(`fixed date cancels without a request on ${ending}`, async ({ page }) => {
+      const { moves } = await openDragWeek(page);
+      const drag = await heldMouse(page);
+      await drag.over(1);
+      if (ending === 'source') await drag.over(0);
+      if (ending === 'Escape') await page.keyboard.press('Escape');
+      if (ending === 'pointercancel')
+        await page.evaluate(() =>
+          window.dispatchEvent(new PointerEvent('pointercancel', { pointerId: 1 }))
+        );
+      if (ending === 'outside') await page.mouse.move(1, 1);
+      if (ending === 'blur') await page.evaluate(() => window.dispatchEvent(new Event('blur')));
+      if (ending === 'Escape')
+        await expect(
+          page.getByTestId('day-card-0').getByTestId('planner-drag-handle')
+        ).toHaveAttribute('data-grabbed', 'false');
+      await page.mouse.up();
+      await expect(page.getByTestId('planner-drag-preview')).toHaveCount(0);
+      await expect(page.getByTestId('day-card-0')).toContainText('Monday Lasagna');
+      await expect(page.getByTestId('day-card-1')).toContainText('Tuesday Tacos');
+      expect(moves).toHaveLength(0);
+    });
+  }
+
+  test('fixed date week navigation retires the old gesture', async ({ page }) => {
+    const { moves } = await openDragWeek(page);
+    const next = builders.scheduleDays(1);
+    next.days![0].recipe = builders.scheduleRecipe({ name: 'Next week supper' });
+    await page.route(
+      (url) => url.pathname === '/api/schedule' && url.searchParams.get('weekOffset') === '1',
+      (route) => route.fulfill({ json: { data: next } })
+    );
+    const drag = await heldMouse(page);
+    await drag.over(1);
+    await page.getByTestId('next-week').evaluate((button: HTMLButtonElement) => button.click());
+    await expect(page.getByTestId('planner-drag-preview')).toHaveCount(0);
+    await page.mouse.up();
+    await expect(page.getByTestId('day-card-0')).toHaveAttribute('data-date', next.days![0].date!);
+    await expect(page.getByTestId('day-card-0')).toContainText('Next week supper');
+    expect(moves).toHaveLength(0);
+  });
+
+  test('fixed date leaving Planner cancels the uncommitted gesture', async ({ page }) => {
+    const { moves } = await openDragWeek(page);
+    const drag = await heldMouse(page);
+    await drag.over(1);
+    await page.getByTestId('nav-item-recipes').evaluate((link: HTMLAnchorElement) => link.click());
+    await expect(page).toHaveURL(/\/recipes/);
+    await expect(page.getByTestId('planner-drag-preview')).toHaveCount(0);
+    await page.mouse.up();
+    expect(moves).toHaveLength(0);
+    await page.getByTestId('nav-item-planner').click();
+    await expect(page.getByTestId('day-card-0')).toContainText('Monday Lasagna');
+    await expect(page.getByTestId('day-card-1')).toContainText('Tuesday Tacos');
+    expect(moves).toHaveLength(0);
+  });
+
+  test('fixed date rejection restores original dated content', async ({ page }) => {
+    const { moves } = await openDragWeek(page);
     await page.route(
       (url) => url.pathname === '/api/schedule/move',
-      async (route) => {
-        moves.push(route.request().postDataJSON());
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({ data: { message: 'ok' } }),
-        });
-      }
+      (route) => route.fulfill({ status: 409, json: { message: 'Conflict' } })
     );
-    const handle = page.getByTestId('day-card-0').getByTestId('planner-drag-handle');
-    await expect(handle).toHaveAttribute('aria-keyshortcuts', 'ArrowUp ArrowDown');
-
-    await handle.focus();
-    await page.keyboard.press('ArrowDown');
-
+    const drag = await heldMouse(page);
+    await drag.over(1);
+    await page.mouse.up();
     await expect.poll(() => moves.length).toBe(1);
-    expect(moves[0]).toMatchObject({ fromIndex: 0, toIndex: 1 });
+    await expect(page.getByTestId('day-card-0')).toContainText('Monday Lasagna');
+    await expect(page.getByTestId('day-card-1')).toContainText('Tuesday Tacos');
+    await page.reload();
+    await expect(page.getByTestId('day-card-0')).toContainText('Monday Lasagna');
+    expect(moves).toHaveLength(1);
   });
 
-  test('should allow dragging cards to reorder', async ({ page }) => {
-    const reorderGroup = page.getByTestId('reorder-group');
-    await expect(reorderGroup).toBeVisible();
+  test('fixed date destination stays visible beside a wrapped overlay without added layout space', async ({
+    page,
+  }) => {
+    const schedule = dragWeek();
+    schedule.days![0].recipe!.name =
+      'Monday Lasagna with roasted vegetables and a very long family recipe name';
+    await openDragWeek(page, schedule);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect(page.getByTestId('reorder-group').locator('..')).toHaveCSS('transform', 'none');
+    await expect(page.getByTestId('reorder-group').locator('xpath=ancestor::main[1]')).toHaveCSS(
+      'padding-left',
+      '16px'
+    );
+    const root = page
+      .getByTestId('reorder-group')
+      .locator('xpath=ancestor::div[contains(@class,"solar-earth-bg")][1]');
+    const initialBottomPadding = await root.evaluate(
+      (node) => getComputedStyle(node).paddingBottom
+    );
+    const sourceDate = page.getByTestId('day-card-0').getByTestId('planner-date');
+    const dateBox = (await sourceDate.boundingBox())!;
+    const drag = await heldMouse(page);
+    const row = await drag.over(1);
+    const date = row.getByTestId('planner-date');
+    await expect(date).toHaveAttribute('data-drop-target', 'true');
+    await expect(date.getByTestId('planner-drop-arrow')).toBeVisible();
+    expect((await date.boundingBox())!.width).toBe(dateBox.width);
+    expect((await date.boundingBox())!.x).toBeCloseTo(dateBox.x, 0);
+    await expect(
+      page.getByTestId('planner-drag-preview').getByTestId('planner-drop-feedback')
+    ).toHaveText('Swap meals');
+    await expect(row.getByTestId('planner-drop-feedback')).toHaveCount(0);
+    await page.mouse.move(1, 1);
+    await expect(page.getByTestId('planner-drop-arrow')).toHaveCount(0);
+    await expect(page.getByTestId('planner-drop-feedback')).toHaveCount(0);
+    await page.keyboard.press('Escape');
+    await expect(root).toHaveCSS('padding-bottom', initialBottomPadding);
+    await expect(root).toHaveCSS('min-height', 'auto');
   });
+
+  test('fixed date Other plans saves and clears after a completed drag without an echo', async ({
+    page,
+  }) => {
+    const { schedule, moves } = await openDragWeek(page);
+    const drag = await heldMouse(page);
+    await drag.over(1);
+    await page.mouse.up();
+    await expect.poll(() => moves.length).toBe(1);
+    const day = page.getByTestId('day-card-3');
+    await day.getByTestId('plan-meal-button').click();
+    await page.getByTestId('pivot-no-cooking').click();
+    await page.getByTestId('non-cooking-other-plans').click();
+    await page.getByTestId('non-cooking-custom-label').fill('Supper at Grandma’s');
+    await page.getByTestId('non-cooking-save').click();
+    await expect(page.getByTestId('non-cooking-sheet')).toHaveCount(0);
+    expect(schedule.days![3].nonCooking?.customLabel).toBe('Supper at Grandma’s');
+    await expect(day.getByTestId('non-cooking-indicator')).toHaveText('Supper at Grandma’s');
+    await day.getByTestId('ordered-in-indicator').click();
+    await page.getByTestId('pivot-no-cooking').click();
+    await page.getByTestId('non-cooking-clear').click();
+    await expect(day.getByTestId('plan-meal-button')).toBeVisible();
+    expect(schedule.days![3].nonCooking).toBeNull();
+  });
+
+  test('fixed date defers live snapshots during drag and an in-flight move', async ({ page }) => {
+    const { schedule, moves } = await openDragWeek(page);
+    let release!: () => void;
+    const heldResponse = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    await page.route('**/api/schedule/move?**', async (route) => {
+      await heldResponse;
+      await route.fallback();
+    });
+    const drag = await heldMouse(page);
+    await drag.over(1);
+    const live = structuredClone(schedule);
+    live.days![3].recipe = builders.scheduleRecipe({ name: 'Family update' });
+    await liveWeek(page, live);
+    await expect(page.getByTestId('day-card-3')).not.toContainText('Family update');
+    await page.mouse.up();
+    await expect.poll(() => moves.length).toBe(1);
+    await expect(page.getByTestId('day-card-1')).toContainText('Monday Lasagna');
+    // While HTTP is pending, protect the optimistic move from older snapshots.
+    const confirmed = structuredClone(schedule);
+    confirmed.days![3].recipe = live.days![3].recipe;
+    await liveWeek(page, confirmed);
+    await expect(page.getByTestId('day-card-3')).not.toContainText('Family update');
+    schedule.days![3].recipe = live.days![3].recipe;
+    release();
+    await expect(page.getByTestId('day-card-3')).toContainText('Family update');
+    await expect(page.getByTestId('day-card-0')).toContainText('Tuesday Tacos');
+    await expect(page.getByTestId('day-card-1')).toContainText('Monday Lasagna');
+    expect(moves).toHaveLength(1);
+  });
+
+  test('fixed date keyboard follows moved handle and respects both week boundaries', async ({
+    page,
+  }) => {
+    const schedule = dragWeek();
+    schedule.days![6].recipe = builders.scheduleRecipe({
+      id: MOCK_IDS.RECIPE_CARBONARA,
+      name: 'Sunday supper',
+    });
+    const { moves } = await openDragWeek(page, schedule);
+    const first = page.getByTestId('day-card-0').getByTestId('planner-drag-handle');
+    await expect(first).toHaveAttribute('aria-keyshortcuts', 'ArrowUp ArrowDown');
+    await first.focus();
+    await page.keyboard.press('ArrowUp');
+    expect(moves).toHaveLength(0);
+    await page.keyboard.press('ArrowDown');
+    await expect.poll(() => moves.length).toBe(1);
+    await expect(page.getByTestId('day-card-1').getByTestId('planner-drag-handle')).toBeFocused();
+    expect(moves[0]).toMatchObject({ fromIndex: 0, toIndex: 1 });
+    await expect(page.getByTestId('day-card-0')).toContainText('Tuesday Tacos');
+    await expect(page.getByTestId('day-card-1')).toContainText('Monday Lasagna');
+    const last = page.getByTestId('day-card-6').getByTestId('planner-drag-handle');
+    await last.focus();
+    await page.keyboard.press('ArrowDown');
+    expect(moves).toHaveLength(1);
+    await expect(last).toBeFocused();
+    await page.reload();
+    await expect(page.getByTestId('day-card-1')).toContainText('Monday Lasagna');
+  });
+
+  test('fixed date handle keeps a 44px target with wrapped text', async ({ page }) => {
+    const schedule = dragWeek();
+    schedule.days![0].recipe!.name =
+      'Monday Lasagna with roasted vegetables and a very long family recipe name';
+    await openDragWeek(page, schedule);
+    await page.setViewportSize({ width: 320, height: 740 });
+    const handle = page.getByTestId('day-card-0').getByTestId('planner-drag-handle');
+    const box = (await handle.boundingBox())!;
+    expect(box.width).toBeGreaterThanOrEqual(44);
+    expect(box.height).toBeGreaterThanOrEqual(44);
+    const row = page.getByTestId('day-card-0');
+    const date = (await row.getByTestId('planner-date').boundingBox())!;
+    const content = (await row.getByTestId('planner-meal').boundingBox())!;
+    expect(date.x + date.width).toBeLessThan(content.x);
+    expect(Math.abs(date.y + date.height / 2 - content.y - content.height / 2)).toBeLessThan(1);
+    expect(await row.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
+  });
+
+  for (const locale of ['en', 'fr'] as const) {
+    for (const [width, height] of [
+      [320, 740],
+      [390, 844],
+      [768, 1024],
+      [1024, 768],
+    ]) {
+      test(`fixed date layout ${locale} ${width}x${height}`, async ({ page }) => {
+        await page.addInitScript((locale) => localStorage.setItem('locale', locale), locale);
+        const schedule = dragWeek();
+        schedule.days![0].recipe!.name =
+          locale === 'fr'
+            ? 'Monday Lasagna — Lasagnes aux légumes rôtis pour toute la famille'
+            : 'Monday Lasagna with roasted vegetables for the whole family';
+        await openDragWeek(page, schedule);
+        await page.setViewportSize({ width, height });
+        await page.emulateMedia({ reducedMotion: 'reduce' });
+        if (width === 320)
+          await page.evaluate(() => {
+            document.documentElement.style.fontSize = '125%';
+          });
+        const row = page.getByTestId('day-card-0');
+        await expect(row).toBeVisible();
+        await expect(page.getByTestId('reorder-group').locator('..')).toHaveCSS(
+          'transform',
+          'none'
+        );
+        // Sample both rectangles in one layout frame after responsive changes.
+        const { date, content } = await row.evaluate((node) => ({
+          date: node
+            .querySelector('[data-testid="planner-date"]')!
+            .getBoundingClientRect()
+            .toJSON(),
+          content: node
+            .querySelector('[data-testid="planner-meal"]')!
+            .getBoundingClientRect()
+            .toJSON(),
+        }));
+        expect(date.x + date.width).toBeLessThan(content.x);
+        expect(Math.abs(date.y + date.height / 2 - content.y - content.height / 2)).toBeLessThan(1);
+        expect(await row.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
+        await expect(row.getByTestId('edit-recipe-button')).toBeVisible();
+        await expect(row.getByTestId('change-recipe-button')).toBeVisible();
+        const drag = await heldMouse(page);
+        await drag.over(1);
+        await expect(
+          page.getByTestId('planner-drag-preview').getByTestId('planner-drop-feedback')
+        ).toHaveText(locale === 'fr' ? 'Échanger les repas' : 'Swap meals');
+        await expect(page.getByTestId('planner-drag-preview').getByRole('button')).toHaveCount(0);
+        await page.screenshot({ path: `/tmp/wfs-fixed-date-layout-${locale}-${width}.png` });
+        await page.keyboard.press('Escape');
+        await page.mouse.up();
+        await expect(row).toContainText('Monday Lasagna');
+      });
+    }
+  }
+
+  for (const input of ['mouse', 'touch', 'touch-empty'] as const) {
+    test(`${input === 'touch-empty' ? 'fixed date' : 'baseline'} dated held ${input} movement`, async ({
+      page,
+      context,
+    }) => {
+      await page.setViewportSize({ width: 900, height: 1100 });
+      const schedule = builders.scheduleDays() as unknown as ScheduleDays;
+      schedule.days = schedule.days!.map((day, index) => ({
+        ...day,
+        status: 0,
+        nonCooking: null,
+        recipe:
+          index === 0 || (index === 1 && input !== 'touch-empty')
+            ? builders.scheduleRecipe({
+                id: index === 0 ? MOCK_IDS.RECIPE_LASAGNA : MOCK_IDS.RECIPE_TACOS,
+                name: index === 0 ? 'Monday Lasagna' : 'Tuesday Tacos',
+              })
+            : null,
+      }));
+      await mockNonCookingSchedule(page, schedule);
+      const moves: unknown[] = [];
+      page.on('request', (request) => {
+        if (new URL(request.url()).pathname === '/api/schedule/move')
+          moves.push(request.postDataJSON());
+      });
+      await page.reload();
+      const source = page.getByTestId('day-card-0');
+      const target = page.getByTestId('day-card-1');
+      const handle = source.getByTestId('planner-drag-handle');
+      await expect(source).toContainText('Monday Lasagna');
+      await handle.scrollIntoViewIfNeeded();
+      const from = (await handle.boundingBox())!;
+      const to = (await target.boundingBox())!;
+      const x = from.x + from.width / 2;
+      const y = from.y + from.height / 2;
+      const endY = to.y + to.height / 2;
+      const client = input !== 'mouse' ? await context.newCDPSession(page) : null;
+      if (client) await client.send('Emulation.setTouchEmulationEnabled', { enabled: true });
+      const touch = async (type: 'touchStart' | 'touchMove' | 'touchEnd', atY: number) => {
+        await client!.send('Input.dispatchTouchEvent', {
+          type,
+          touchPoints: type === 'touchEnd' ? [] : [{ x, y: atY }],
+        });
+      };
+      if (client) await touch('touchStart', y);
+      else {
+        await page.mouse.move(x, y);
+        await page.mouse.down();
+      }
+      await expect(handle).toHaveAttribute('data-grabbed', 'true');
+      for (let step = 1; step <= 20; step++) {
+        const atY = y + ((endY - y) * step) / 20;
+        if (client) await touch('touchMove', atY);
+        else await page.mouse.move(x, atY);
+      }
+      expect(moves).toHaveLength(0);
+      if (client) await touch('touchEnd', endY);
+      else await page.mouse.up();
+      await expect.poll(() => moves.length).toBe(1);
+      expect(moves[0]).toMatchObject({
+        weekOffset: 0,
+        recipeId: MOCK_IDS.RECIPE_LASAGNA,
+        fromIndex: 0,
+        toIndex: 1,
+      });
+      await expect(source).toHaveAttribute('data-date', schedule.days![0].date!);
+      if (input === 'touch-empty')
+        await expect(source.getByTestId('plan-meal-button')).toBeVisible();
+      else await expect(source).toContainText('Tuesday Tacos');
+      await expect(target).toContainText('Monday Lasagna');
+      await page.reload();
+      if (input === 'touch-empty')
+        await expect(source.getByTestId('plan-meal-button')).toBeVisible();
+      else await expect(source).toContainText('Tuesday Tacos');
+      await expect(target).toContainText('Monday Lasagna');
+      expect(moves).toHaveLength(1);
+      await client?.detach();
+    });
+  }
 
   test('should assign pending smart default slots and lock when closing voting', async ({
     page,

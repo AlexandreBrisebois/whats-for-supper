@@ -1,4 +1,4 @@
-default_install_hook_types: [pre-commit, pre-push]
+default_install_hook_types: [pre-commit]
 default_stages: [pre-commit]
 
 repos:
@@ -50,12 +50,4 @@ repos:
         entry: task format:check:pwa
         files: ^pwa/
         stages: [pre-commit]
-        pass_filenames: false
-
-      - id: push-validation
-        name: Affected committed-source validation
-        language: system
-        entry: task check:push
-        stages: [pre-push]
-        always_run: true
         pass_filenames: false

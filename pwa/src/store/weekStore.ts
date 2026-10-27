@@ -17,6 +17,8 @@ import {
   getSmartDefaults,
 } from '@/lib/api/planner';
 import { usePlannerStore } from '@/store/plannerStore';
+import { useUiStore } from '@/store/uiStore';
+import { t } from '@/locales';
 import { useDiscoveryStore } from '@/store/discoveryStore';
 import type {
   GroceryLineItemDto,
@@ -81,8 +83,8 @@ export interface WeekState {
    */
   reorderLocally: (from: number, to: number, baseSchedule?: UILocalScheduleDay[]) => void;
   /**
-   * Calls reorderLocally then fires moveRecipeApi exactly once. On API failure,
-   * reverts to preDragSnapshot (not the current intermediate schedule).
+   * Commits the preview exactly once. On failure, restore only an owned preview;
+   * preserve newer edits and reconcile after all outstanding moves settle.
    * Call this from onDragEnd — once per drag gesture.
    */
   commitMove: (from: number, to: number, preDragSnapshot: UILocalScheduleDay[]) => void;
@@ -249,6 +251,101 @@ function removeRecipeFromGroceryItems(
 
 export const useWeekStore = create<WeekState>((set, get) => {
   let loadingFrame = 0;
+  let outstandingMoves = 0;
+  let pendingSlotWrites = 0;
+  let moveReadGeneration = 0;
+  let moveReadInFlight = false;
+  let movementContext: {
+    weekOffset: number;
+    weekStartDate: string | null;
+    referenceWeekStartDate?: string;
+  } | null = null;
+  let stopWatchingMovement: (() => void) | undefined;
+  const retireMovementRead = () => {
+    movementContext = null;
+    moveReadInFlight = false;
+    stopWatchingMovement?.();
+    stopWatchingMovement = undefined;
+  };
+  const reconcileSettledMoves = () => {
+    if (!movementContext || outstandingMoves || pendingSlotWrites || moveReadInFlight) return;
+    const context = movementContext;
+    const state = get();
+    if (
+      state.weekOffset !== context.weekOffset ||
+      state.weekStartDate !== context.weekStartDate ||
+      usePlannerStore.getState().currentWeekOffset !== context.weekOffset
+    ) {
+      retireMovementRead();
+      return;
+    }
+    const planner = usePlannerStore.getState();
+    if (planner.pendingMoveSeqs.length || planner.isDragActive) return;
+    const generation = ++moveReadGeneration;
+    const schedule = state.schedule;
+    const moveSeq = planner.localMoveSeq;
+    moveReadInFlight = true;
+    // Queued snapshots may predate the settled requests. This read replaces them,
+    // including when a later preview cancels and releases its ordinary SSE freeze.
+    planner.setDeferredWeekSnapshot(null);
+    const ownsRead = () => {
+      const current = get();
+      const currentPlanner = usePlannerStore.getState();
+      return (
+        movementContext === context &&
+        moveReadGeneration === generation &&
+        current.schedule === schedule &&
+        current.weekOffset === context.weekOffset &&
+        current.weekStartDate === context.weekStartDate &&
+        current.calendar?.referenceWeekStartDate === context.referenceWeekStartDate &&
+        currentPlanner.currentWeekOffset === context.weekOffset &&
+        currentPlanner.localMoveSeq === moveSeq &&
+        !currentPlanner.pendingMoveSeqs.length &&
+        !currentPlanner.isDragActive
+      );
+    };
+    const refreshFailed = () => {
+      if (ownsRead())
+        useUiStore.getState().addToast({
+          type: 'error',
+          message: t(
+            'planner.refreshError',
+            'Could not refresh your plan. Please refresh to check your latest changes.'
+          ),
+        });
+    };
+    void getSchedule(context.weekOffset, context.referenceWeekStartDate)
+      .then((fresh) => {
+        if (movementContext !== context || moveReadGeneration !== generation) return;
+        const canApply = ownsRead();
+        if (!fresh) refreshFailed();
+        retireMovementRead();
+        if (fresh && canApply) get().applySnapshot(fresh);
+      })
+      .catch(() => {
+        if (movementContext === context && moveReadGeneration === generation) {
+          refreshFailed();
+          retireMovementRead();
+        }
+      });
+  };
+  const finishMovement = () => {
+    outstandingMoves--;
+    // Rejection can be ambiguous at the transport boundary. Read after the whole
+    // batch settles, without issuing another movement request.
+    reconcileSettledMoves();
+  };
+  // Store-owned assignment/removal can begin after a move preview. Wait for
+  // their HTTP completion before reading a schedule that could predate them.
+  const beginSlotWrite = () => {
+    pendingSlotWrites++;
+    ++moveReadGeneration;
+    moveReadInFlight = false;
+  };
+  const finishSlotWrite = () => {
+    pendingSlotWrites--;
+    reconcileSettledMoves();
+  };
   const applyOwnedSession = () => {
     const session = useDiscoveryStore.getState().session;
     if (
@@ -382,6 +479,7 @@ export const useWeekStore = create<WeekState>((set, get) => {
       )
         .toISOString()
         .slice(0, 10);
+      beginSlotWrite();
       const prev = get().schedule;
       const next = prev.map((d, i) =>
         i === dayIndex
@@ -423,11 +521,14 @@ export const useWeekStore = create<WeekState>((set, get) => {
       } catch {
         if (get().weekStartDate === weekStartDate) set({ schedule: prev });
         throw new Error('Failed to assign recipe');
+      } finally {
+        finishSlotWrite();
       }
     },
 
     // ── removeRecipe ──────────────────────────────────────────────────────────
     removeRecipe(dayIndex, date) {
+      beginSlotWrite();
       const prev = get().schedule;
       const prevGroceryItems = get().groceryItems;
       const recipeId = prev[dayIndex]?.recipe?.id;
@@ -450,9 +551,9 @@ export const useWeekStore = create<WeekState>((set, get) => {
         optimisticWriteAt: calendarTime.elapsed(),
         optimisticWeekStartDate: get().weekStartDate,
       });
-      removeRecipeFromDay(date).catch(() =>
-        set({ schedule: prev, groceryItems: prevGroceryItems })
-      );
+      removeRecipeFromDay(date)
+        .catch(() => set({ schedule: prev, groceryItems: prevGroceryItems }))
+        .finally(finishSlotWrite);
     },
 
     // ── reorderLocally ────────────────────────────────────────────────────────
@@ -505,14 +606,44 @@ export const useWeekStore = create<WeekState>((set, get) => {
       const recipeToMove = preDragSnapshot[from].recipe;
       if (!recipeToMove?.id) return;
 
+      const { weekOffset, weekStartDate, calendar, schedule: ownedPreview } = get();
+      outstandingMoves++;
+      ++moveReadGeneration;
+      moveReadInFlight = false;
+      // The latest committed week owns the eventual read even if an older week's
+      // HTTP request is the last to finish after navigation.
+      movementContext = {
+        weekOffset,
+        weekStartDate,
+        referenceWeekStartDate: calendar?.referenceWeekStartDate,
+      };
+      stopWatchingMovement ??= usePlannerStore.subscribe((planner, previous) => {
+        if (planner.isDragActive && !previous.isDragActive) {
+          ++moveReadGeneration;
+          moveReadInFlight = false;
+        }
+        if (
+          planner.isDragActive !== previous.isDragActive ||
+          planner.pendingMoveSeqs !== previous.pendingMoveSeqs
+        )
+          reconcileSettledMoves();
+      });
       // Identify the source slot too: the same recipe may be scheduled more than once.
-      moveRecipeApi(
-        get().weekOffset,
-        recipeToMove.id,
-        to,
-        from,
-        get().calendar?.referenceWeekStartDate
-      ).catch(() => set({ schedule: preDragSnapshot, optimisticWriteAt: null }));
+      moveRecipeApi(weekOffset, recipeToMove.id, to, from, calendar?.referenceWeekStartDate).then(
+        () => finishMovement(),
+        () => {
+          const current = get();
+          if (
+            current.weekOffset === weekOffset &&
+            current.weekStartDate === weekStartDate &&
+            current.schedule === ownedPreview &&
+            usePlannerStore.getState().currentWeekOffset === weekOffset &&
+            !usePlannerStore.getState().isDragActive
+          )
+            set({ schedule: preDragSnapshot, optimisticWriteAt: null });
+          finishMovement();
+        }
+      );
     },
 
     // ── moveRecipe ────────────────────────────────────────────────────────────
@@ -860,28 +991,11 @@ export const useWeekStore = create<WeekState>((set, get) => {
     },
 
     // ── applySnapshot ─────────────────────────────────────────────────────────
-    applySnapshot(schedule: ScheduleDays, echoSeq?: number) {
+    applySnapshot(schedule: ScheduleDays, _echoSeq?: number) {
       const plannerStore = usePlannerStore.getState();
 
-      // If the server echoed back a move sequence number, this event is our own
-      // response — confirm it and skip the schedule update (our optimistic state
-      // is already correct). Still fall through for non-move SSE events (no echoSeq).
-      if (echoSeq !== undefined) {
-        plannerStore.confirmMoveSeq(echoSeq);
-        const refreshedPlannerStore = usePlannerStore.getState();
-        const deferredSnapshot = refreshedPlannerStore.deferredWeekSnapshot;
-        if (
-          deferredSnapshot &&
-          !refreshedPlannerStore.isDragActive &&
-          refreshedPlannerStore.localMoveSeq === refreshedPlannerStore.confirmedMoveSeq
-        ) {
-          refreshedPlannerStore.setDeferredWeekSnapshot(null);
-          get().applySnapshot(deferredSnapshot);
-        }
-        if (!absoluteMonday(schedule.weekStartDate)) void get().sync();
-        return;
-      }
-
+      // Sequence metadata belongs to the originating request, potentially on another
+      // device. Only the local HTTP completion can acknowledge our pending moves.
       const monday = absoluteMonday(schedule.weekStartDate);
       if (!monday) {
         void get().sync();
@@ -925,8 +1039,6 @@ export const useWeekStore = create<WeekState>((set, get) => {
       // Preserve smart-defaults metadata for pending slots that the snapshot does not
       // have a server-assigned recipe for. Without this, a reconnect strips all
       // _isPending/_voteCount/_unanimousVote fields, causing visible flicker on the planner.
-      const snapshotIsEmpty = mergedDays.every((d) => !d.recipe);
-
       const preserved = mergedDays.map((day) => {
         if (day.recipe || day.status === 3) return day; // persisted recipe or non-cooking plan
         const prevDay = prev.find((p) => p.date === day.date);
@@ -942,9 +1054,6 @@ export const useWeekStore = create<WeekState>((set, get) => {
             _voteCount: prevDay._voteCount,
             _unanimousVote: prevDay._unanimousVote,
           };
-        }
-        if (snapshotIsEmpty && prevDay?.recipe && !prevDay._isPending) {
-          return { ...day, recipe: prevDay.recipe, status: prevDay.status ?? day.status };
         }
         return day;
       });

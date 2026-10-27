@@ -1,5 +1,13 @@
 # Active resume checkpoints
 
+## Fixed-date Planner drag (2026-10-27)
+
+Task/spec: [fix-planner-fixed-date-drag](openspec/changes/archive/2026-10-27-fix-planner-fixed-date-drag/tasks.md); branch `fix-planner-fixed-date-drag`; **18/18 tasks complete and archived**. User explicitly authorized apply/archive after selecting all four review fixes. All changes remain local and uncommitted.
+Authorized scope and source: Fixed-date movement and feedback, HTTP-owned acknowledgement, foreign SSE handling, ordered reconciliation, authoritative empty schedules, ownership-aware rejection recovery and EN/FR refresh feedback. Follow-up Home changes correct test fixtures only; no Home product behavior, backend policy, API shape, dependency or generated-client changes.
+Current checkpoint: Main `meal-rescheduling` spec synchronized (two modified and eight added requirements), preserving authored Purpose, unrelated requirements and scenarios. Change package moved intact to `openspec/changes/archive/2026-10-27-fix-planner-fixed-date-drag/`. Existing application/test work is preserved; no commit, push or deployment.
+Verification evidence and content identity: Application/source gate `.task/agent-finish/runs/7d0c183ff79f4027ae1b8c399293617c.json`, identity `d0c3f303814ed49573cf3482bedec0c0bb36e8b7f15f608f42ddd8b098fffdf5`, passed 1,187 unit tests, browser impact 418 passed / 47 skipped, API 1,249 passed / 154 skipped, lint/types/format/specs/static contracts and input stability. Final task-record documentation passed separately in `.task/agent-finish/runs/9613b8a0240c43e1abb301435511f813.json`. Earlier failed records remain failed historical evidence. This archive changes documentation only; final archive verification is reported separately.
+Blocker or next action: None for this change. Physical iOS/Android and live SSE/persistence qualification remain not-run. Archival does not add runtime qualification; preserve unrelated active changes and historical handoff sections.
+
 ## Grocery extras sync and archive (2026-10-24)
 
 Task/spec: `add-everyday-grocery-extras`; user-authorized sync/archive after implementation review. Worktree/branch: `codex/six-ux-recovery-priorities`; main fast-forwarded to `fc8f13a543a73a28bb3f46841e944c544a91dc0b`.

@@ -54,6 +54,13 @@ describe('planner hold to move', () => {
     act(() => vi.advanceTimersByTime(500));
     expect(start).not.toHaveBeenCalled();
   });
+  it('clears the grabbed cue on Escape during an active hold', () => {
+    render(<PlannerDragHandle start={start} />);
+    down();
+    act(() => vi.advanceTimersByTime(250));
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.getByTestId('planner-drag-handle')).toHaveAttribute('data-grabbed', 'false');
+  });
   it('cancels a scroll gesture without preventing native scrolling', () => {
     render(<PlannerDragHandle start={start} />);
     down();

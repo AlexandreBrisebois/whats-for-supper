@@ -2,42 +2,67 @@
 
 ## Context and Existing Ownership
 
-See [proposal](proposal.md) for scope. The two capability deltas define required readability, while this design defines two visual candidates for comparison rather than a palette-wide rule.
+See [proposal](proposal.md) for the combined scope and consolidation of the unimplemented day-emphasis experiment. The capability deltas own observable requirements. No implementation or rendered usability success is claimed by this revision.
 
-Source: `PlannerDragHandle.tsx` uses a 20%-charcoal grip that becomes base sage on hover, with sage/20 grabbed fill. The Planner page uses 45%-charcoal Plan supper text and 30%-charcoal week context; the Plus and dashed outline also use translucent terracotta. Plan supper is hard-coded even though `planner.planSupper` exists in both locales. The relevant `.glass` and `.glass-nav` surfaces are translucent and sit above animated colored backgrounds.
+Current `planner/page.tsx` owns the week header and `PlannerDayCard`. Dates occupy a fixed `w-10` column outside `planner-meal`; the source outline/label, destination date tint/outline/arrow and overlay move/swap cues already exist. `PlannerDragHandle.tsx` has charcoal/70 grip text, sage-700 hover and sage/20 grabbed fill with a sage-700 ring. Its hold, touch-scroll and keyboard mechanics remain owners of activation, not targets for redesign. The old charcoal/20 grip diagnosis is stale.
 
-`docs/visual-language-reference.md` board 1 proposes readable existing pairs, preserves the breadth of sage/icon roles and distinguishes source evidence from proposals. Its opaque charcoal-600/cream, terracotta-600 and sage-700 examples are starting points, not measurements of these actual Planner composites. `globals.css` owns implemented values. No global token or shared button-system change is needed.
+Week context is 10px, uppercase, widely tracked charcoal/30. Plan supper remains hard-coded charcoal/45, with translucent terracotta Plus/dashed edge. Weekday/month labels are charcoal/40. Actual foreground/background composites have not been measured. Existing `.glass`/`.glass-nav` and token values in `globals.css` remain implementation authorities.
+
+`todayStore` owns validated calendar context, `calendarAnchor`, `calendarVersion`, `calendarIsFresh`, invalidation and deduplicated `ensureCalendar`. `deployment-calendar.ts` owns civil-date validation and monotonic anchor freshness. The existing schedule-stream resume path refreshes shared context. These mechanisms support orientation without a second calendar policy.
+
+The proposed visual language and North Star favor clear hierarchy, sentence case, readable existing color pairs and returning to life with fewer loose ends. This revision adopts those principles locally, not their entire proposed type scale or a global control redesign.
 
 ## Decisions and Tradeoffs
 
-Compare these candidates in the same real Planner rows/header, against baseline:
+### One quiet treatment
 
-| Element | A: charcoal-led | B: warm action |
-|---|---|---|
-| Week-context label | Opaque charcoal-600; retain Outfit, uppercase and tracking | Same as A, so the contextual label remains visually quieter than actions |
-| Plan supper label | Opaque charcoal; terracotta-600 Plus and meaningful edge | Opaque terracotta-600 label, Plus and meaningful edge |
-| Recipe drag grip | Opaque charcoal-600 at rest; dark sage-700 for applicable hover/grabbed feedback | Dark sage-700 at rest and during applicable hover/grabbed feedback |
+Replace the charcoal-led/warm-action A/B implementation sequence with one baseline/proposed comparison. Keep one local treatment and revise only demonstrated problems. No runtime variants, flags, settings, analytics, new fonts or dependencies.
 
-Both retain the existing card geometry, label hierarchy, Lucide grip and touch area. Plan supper stays an action within an empty-day row, not a new filled primary button. Candidate A puts recognition primarily in neutral text; B tests whether a stronger warm action cue and broader sage handle role help availability without confusing participation or success.
+| Element | Selected starting treatment |
+|---|---|
+| Week context | Outfit, sentence case, approximately 14px/20px semibold, normal tracking, opaque charcoal-600; date range remains more prominent |
+| Plan supper | Existing localized sentence-case label; opaque terracotta-600 text and Plus, darker terracotta feedback; retain the light open action and existing sizes/targets |
+| Grip | Opaque charcoal-600 default; sage-700 hover/grabbed; independent visible keyboard focus |
+| Fixed weekday/month | Opaque charcoal-600, existing date-column width and hierarchy; adjust local spacing/wrapping only if needed for legibility |
+| Today | One readable terracotta-600 Today label above its row, followed by a faint decorative rule; fixed date marker remains neutral, with no added fill or contour |
+| Past | Reduce shadow/glow and use a flatter existing cream surface; preserve essential foregrounds and actions |
 
-Start with existing sizes and uppercase week styling. Do not apply the board's entire proposed type scale or force all labels into sentence case. If uppercase tracking clips French text or larger text, make the smallest local wrap/spacing adjustment and record it in the comparison; a general typography redesign is outside scope.
+Terracotta already carries actions; the Today label and fixed date placement must make its temporal meaning explicit. Sage keeps its broad existing roles and movement feedback. Neither hue alone communicates state. Today adds no separate badge, full-row border, animation or larger meal card.
 
-Remove opacity-based foregrounds for the selected elements, including interaction-state overrides. Use darker existing variants for hover/pressed cues, not a return to translucent terracotta or base sage. Focus retains a visible independent indicator; check the actual background and do not let the new default border impersonate focus. Preserve the existing grabbed fill only if the meaningful grip/cue still passes on its composite.
+### Phone space belongs to supper
 
-The two candidates can be captured sequentially in one local implementation; no production variant toggle, feature flag, settings control, dependency or Storybook requirement. Keep the selected deliverable reversible. Record the candidate present in the final patch and the alternate comparison before discarding temporary styling. If human review is unavailable, deliver a clearly provisional recommendation rather than claim preference or usability success.
+Keep the existing date column width and meal-content width. Place Today / Aujourd’hui in a compact text line above today's row, outside the drag surface, using available row width rather than putting it beside the date or inside its narrow column. User refinement (27 October 2026): add a thin, faint rule after Today / Aujourd’hui so the label reads as a date divider. The rule is decorative (`aria-hidden`), uses remaining width, may wrap with the label when necessary and conveys no state independently. It adds no extra band or meal/date-column width. Only today's row gets the line; do not reserve blank label bands on all seven rows. Give the text room to wrap at narrow widths and enlarged text. Keep the fixed date marker geometry unchanged, and keep the label attached to the dated slot while recipes move.
+
+Final calmness refinement (27 October 2026): after the user found the added date colour too strong and asked whether the divider does the job, retain only the Today label and faint rule as visual emphasis. Keep date text dark and the fixed marker neutral, without fill or contour. `aria-current` remains on the fixed date. This supersedes both contour and pale-fill trials recorded in evidence. Measure essential date text on its actual background and keep sage destination outline/arrow and keyboard focus independently visible.
+
+This adds a single line for explicit recognition, rather than widening every row. Its cost is some vertical height on today's row. Review that cost on a phone. If it feels cluttered, return a specific revision recommendation; do not silently remove the agreed explicit label or declare the treatment successful. Layout after accepted calendar refresh may change that one line's location; active drag target/source feedback must itself remain layout-stable under existing rules.
+
+### Readability with distinct states
+
+Remove opacity-based essential foregrounds for the affected elements and interaction overrides. Normal affected text needs 4.5:1, meaningful grips, Plus icons and essential control edges need 3:1 on actual adjacent backgrounds. Decorative dashed borders need no independent threshold unless needed to identify the action. Preserve glass where readable; if measurements show a local failure, use an existing stable surface only behind the affected element. No global glass removal.
+
+Focus, drag targeting, grabbed state and success feedback stay independent. Today is identified by the label and divider only; drag targeting retains its existing date tint/outline/arrow and meal outline. Check their combined state explicitly so today is not mistaken for the drop target. No new temporal cues on future rows; past does not mean cooked or disabled.
 
 ## First Observable Slice
 
-Open a week with one empty planning slot and an eligible recipe handle. Render week context, Plan supper and grip through actual page/components and existing locale modules. Capture baseline, A and B with matched content/viewport/locale, measure text and non-text contrast in each applicable state, open the planning sheet and exercise keyboard/held movement to confirm preserved behavior. HTTP mocks remain at the existing schedule/movement boundary; no API change is introduced.
+Render a real Planner week containing an empty slot and eligible recipe using actual components and EN/FR locale modules. Improve week/date context, planning action and grip, then measure affected composites and open the planning sheet/use the keyboard handle. Existing HTTP schedule/movement mocks remain at the API boundary. This first slice changes no API or store movement semantics.
 
-## User Experience and Validation
+Next add compact Today and quiet past treatment for a Wednesday schedule, using reliable shared calendar data: an uncooked Monday stays uncooked and usable, Wednesday has one label and neutral fixed date, and future dates stay normal. A recipe swap leaves all date-relative cues with their slots.
 
-For default, hover, pressed, focus and grabbed states where applicable, inspect the actual composited foreground/background at its least favorable rendered position, including active background color changes. Use browser-computed styles plus composite calculations or controlled pixel evidence; record the method, viewport, state, background and ratio. A flat-swatch ratio alone cannot qualify glass/blur. If existing surfaces cannot provide reliable contrast with the proposed foreground, use a bounded stable existing surface behind that control and explain the evidence; do not redesign all cards or remove glass globally.
+## State, Concurrency and Recovery
 
-Normal text, including small bold uppercase week context, needs 4.5:1. The meaningful grip, Plus and any edge needed to identify the action need 3:1; decorative dividers need not be promoted into essential boundaries. Compare unrounded ratios to thresholds. These focused checks establish neither whole-app conformance nor physical-device usability.
+Subscribe reactively to shared calendar/anchor/version; classify validated displayed civil dates against fresh `calendar.today`, not recipe identity, status, offset or browser midnight. Reuse `calendarIsFresh`/`calendarAnchorIsFresh`. On entry use fresh shared data or deduplicated `ensureCalendar`; do not fetch per row.
 
-Check English/French, phone/iPad, 320 CSS px reflow, text enlargement and pointer-free default state. Render Plan supper with `t('planner.planSupper', 'Plan supper')`; reuse current translations without rewriting copy. Preserve accessible names, focus, hit areas and test IDs.
+Reuse shell resume invalidation. A single Planner expiry effect may observe remaining monotonic anchor lifetime, neutralize temporal cues at expiry and request shared refresh. Retire effects on unmount/context replacement. Do not introduce polling, a second clock/store or stale `weekStore.calendar` fallback after shared invalidation. On refresh failure retain readable usable content with neutral temporal appearance; add no orientation-only blocking error or retry workflow.
 
-Review in context: can a person recognize Plan supper as available before interaction, find the handle and read week context without mistaking it for a button? Does the treatment preserve recipe-title/primary-action hierarchy and Solar Earth warmth? Compare past-date surfaces from the separate experiment if available, because quieter past decoration must not fade enabled actions. Do not require implementation of that separate experiment just to complete this one.
+Recompute from actual displayed dates when reliable context changes, including Sunday-to-Monday, timezone disagreement and retained old-week content during loading. Orientation submits no meal mutation or automatic navigation. Existing shared refresh side effects remain with their owner; broad lifecycle repairs are outside scope. Calendar-read doubles must use the existing approved operation/envelope discovered from `loadCalendarSnapshot`, not a new endpoint.
 
-Deliver comparison evidence with measured results, attributed review feedback when available and an A/B/revise recommendation. No unreadable candidate can be recommended on aesthetic preference alone. If both qualify, prefer the option that best preserves hierarchy and recognizable action roles; report any unresolved human preference. Reconcile the chosen candidate into this change's notes. Canonical visual-language adoption, publication and broad rollout are separate work.
+## User Experience
+
+The review question is: can a person glance at the phone, find today and supper, recognize the next action and leave? Do not add legends, repeated explanatory text, aggregate badges or additional steps. Past rows lose decoration, not usability. Keep existing voting/return controls and no-count-badge behavior intact.
+
+Capture matched baseline/proposed Monday, Wednesday and Sunday views, including uncooked/cooked, empty, pending and non-cooking content, long names, previous/next week, English/French, phone and iPad portrait/landscape. Check 320 CSS px reflow and 200% text enlargement without shrinking controls. Preserve existing hit areas, accessible names/test IDs and focus; use `t('planner.planSupper', 'Plan supper')`, reuse `planner.today` if present or add Today / Aujourd’hui, and put `aria-current="date"` on today's fixed date element.
+
+Measure actual default/hover/pressed/focus/grabbed composites where applicable, including glass/header and sage grabbed/target fills at unfavorable background positions. Record method, state, viewport, locale, foreground/background and unrounded pass/fail comparison. Swatch calculations or class snapshots alone cannot qualify glass. These checks do not establish whole-app conformance or physical-device usability.
+
+Deliver baseline/proposed evidence with a retain/revise recommendation. Ask a reviewer to locate today, identify supper/next action, explain an uncooked past row and use its existing action. Record whether the extra Today line competes with content or makes scanning harder, distinguishing attributed observations from designer judgment. Without human feedback leave usability pending, even if automated checks pass. Canonical visual-language publication, spec sync/archive and implementation authorization are separate from this planning update.

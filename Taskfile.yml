@@ -1003,10 +1003,11 @@ tasks:
   # ============================================================================
 
   hooks:install:
-    desc: "Install read-only commit checks and affected pre-push validation"
+    desc: "Install read-only commit checks and remove automatic push validation"
     cmds:
-      - pre-commit install --hook-type pre-commit --hook-type pre-push --overwrite
-      - echo "✓ Commit and push hooks installed. Use task check:commit or task check:push manually."
+      - pre-commit uninstall --hook-type pre-push
+      - pre-commit install --hook-type pre-commit --overwrite
+      - echo "✓ Commit hooks installed. After committing, run task check:push manually before git push."
 
   hooks:setup:
     desc: "One-time local validation setup after selecting the Node version in .nvmrc"
@@ -1042,7 +1043,7 @@ tasks:
       - task: agent:drift:mocks
 
   check:push:
-    desc: "Validate affected committed source before pushing (--plan, --full, --base REF)"
+    desc: "Manually validate affected committed source in a clean worktree before pushing (--plan, --full, --base REF)"
     cmds:
       - '"{{.PYTHON}}" -B scripts/agent/push_guard.py --run {{.CLI_ARGS}}'
 

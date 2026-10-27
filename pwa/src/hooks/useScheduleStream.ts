@@ -151,8 +151,8 @@ export function useScheduleStream() {
 
     // ── week_updated ───────────────────────────────────────────────────────
     // The whole week changed (lock, voting open, move).
-    // echoSeq is present when the server is reflecting our own move back — pass
-    // it to applySnapshot so it can confirm the sequence and skip the update.
+    // Optional sequence metadata may belong to another connection. The store
+    // applies ordinary snapshot guards; HTTP completion acknowledges local moves.
     source.addEventListener('week_updated', (e: MessageEvent) => {
       console.log('[SSE] Received "week_updated" event');
       const { schedule, echoSeq } = JSON.parse(e.data);

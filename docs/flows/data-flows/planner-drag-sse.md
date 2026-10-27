@@ -81,27 +81,30 @@ Flaws:
 
 ```ts
 localMoveSeq: number      // incremented before every moveRecipe API call
-confirmedMoveSeq: number  // updated when the server echoes the seq back
+confirmedMoveSeq: number  // contiguous sequence settled by local HTTP completion
 ```
 
 **Flow:**
 
 1. User drags. `commitMove` calls `moveRecipe`.
-2. `moveRecipe` calls `plannerStore.nextMoveSeq()` → increments `localMoveSeq` to, say, `5`.
-3. `HearthAuthProvider.authenticateRequest` sees `localMoveSeq (5) > confirmedMoveSeq (4)` → injects `X-Move-Seq: 5` on the request.
-4. Server processes the move, broadcasts `week_updated` with `echoSeq: 5` in the payload.
-5. `applySnapshot(schedule, echoSeq: 5)`:
-   - `echoSeq` present → this is our own echo → call `confirmMoveSeq(5)` → skip schedule update.
-6. Another family member's move arrives → `week_updated` with no `echoSeq`:
-  - `localMoveSeq (5) === confirmedMoveSeq (5)` and no active drag → apply normally.
-  - if a drag is active or a local move is still unconfirmed → defer the snapshot and keep the current local order stable.
+2. `moveRecipe` captures `plannerStore.nextMoveSeq()` for this request.
+3. `HearthAuthProvider` sends `X-Move-Seq` while moves are pending.
+4. The server excludes the originating SSE connection and broadcasts the schedule
+   with optional `echoSeq` to other connections. That number does not identify a
+   receiving client's requests.
+5. `moveRecipe` settles its captured sequence in the HTTP `finally` handler,
+   including rejection. Another pending request remains guarded.
+6. `applySnapshot` treats incoming schedules identically with or without `echoSeq`:
+   reject another week; defer during an active drag or pending local movement;
+   otherwise apply normally. An event never acknowledges local movement.
+7. After outstanding movements settle, the latest committed selected-week context
+   owns one fresh read. The read captures its generation, week and schedule identity;
+   later movement, editing or an accepted authoritative event retires its result.
+   A new active preview postpones reconciliation until it ends; stale snapshots
+   queued before settlement are replaced by this fresh read.
 
-If two rapid moves happen before the first SSE echo returns:
-- `localMoveSeq` = 6, `confirmedMoveSeq` = 4 → both SSE echoes are skipped.
-- A third-party `week_updated` (no `echoSeq`) is queued while moves are unconfirmed.
-- When the confirming echo arrives and `localMoveSeq === confirmedMoveSeq`, the latest deferred snapshot is applied.
-
-**Key property:** optimistic wins are held until the server confirms, not until an arbitrary clock expires.
+**Key property:** optimistic movement is guarded until its HTTP request settles,
+without relying on a clock or an origin inference from incoming metadata.
 
 ### Active drag freeze and deferred reconciliation
 
@@ -110,8 +113,8 @@ While a card is actively being dragged, `plannerStore.isDragActive` blocks `appl
 Instead of dropping those remote `week_updated` events on the floor, the client stores the latest one in `plannerStore.deferredWeekSnapshot`.
 
 - If the drag ends without producing a pending move, the deferred snapshot is applied immediately.
-- If the drag ends with a move still awaiting confirmation, the deferred snapshot remains queued until the echoed `echoSeq` confirms the local move.
-- Once the local move is confirmed, the queued remote snapshot is replayed exactly once.
+- If the drag ends with a move still awaiting confirmation, the snapshot remains guarded until local HTTP completion and authoritative reconciliation.
+- Safe drag cancellation can replay the queued snapshot when no movement reconciliation is outstanding. If a new preview interrupts a movement read, cancellation resumes a fresh read instead of replaying a snapshot that predates settlement.
 
 This gives the planner the local stability of a "freeze during drag" policy without permanently hiding cross-device updates.
 
@@ -136,7 +139,7 @@ The `week_updated` SSE payload must include `echoSeq` when the event was trigger
 1. Drag index 3 → index 0. Card must land at the top. API `toIndex` must be `0`.
 2. Drag index 3 → index 6. Card must land at the bottom. API `toIndex` must be `6`.
 3. Drag index 0, pass over index 3, release at index 5. Card lands at 5 (was landing at 4 before this fix).
-4. Two rapid moves before SSE echo returns. Final order matches the second move, not a server clobber.
+4. Two rapid moves before HTTP completion. Final order matches the second move, not a server clobber.
 5. A remote `week_updated` arriving during an active drag does not replace the visible order until the drag ends and local move confirmation is settled.
 
 ---
@@ -146,7 +149,7 @@ The `week_updated` SSE payload must include `echoSeq` when the event was trigger
 | File | Change |
 |---|---|
 | `pwa/src/app/(app)/planner/page.tsx` | `handleReorder` calls `reorderLocally`; `onDragEnd` reads store; drag start/end set the active-drag boundary and flush deferred remote snapshots when safe |
-| `pwa/src/store/weekStore.ts` | `applySnapshot` signature adds `echoSeq?`; seq-based guard replaces wall-clock for move echoes; remote snapshots are deferred during active drag or pending move confirmation |
+| `pwa/src/store/weekStore.ts` | `applySnapshot` signature adds `echoSeq?`; HTTP-settled sequence guard replaces wall-clock; remote snapshots are deferred during active drag or pending move confirmation |
 | `pwa/src/store/plannerStore.ts` | Added `localMoveSeq`, `confirmedMoveSeq`, `nextMoveSeq()`, `confirmMoveSeq()`, `isDragActive`, and `deferredWeekSnapshot` |
 | `api/src/RecipeApi/Controllers/ScheduleController.cs` | Parses `X-Move-Seq` and threads it into move processing |
 | `api/src/RecipeApi/Services/ScheduleService.cs` | Publishes `week_updated` with `echoSeq` for move-driven updates |

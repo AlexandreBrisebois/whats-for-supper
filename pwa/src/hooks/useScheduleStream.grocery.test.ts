@@ -37,11 +37,11 @@ class MockEventSource {
   addEventListener(name: string, handler: (event: MessageEvent) => void) {
     this.listeners.set(name, handler);
   }
-  emit(name: string, schedule: ReturnType<typeof snapshot>) {
+  emit(name: string, schedule: ReturnType<typeof snapshot>, echoSeq?: number) {
     act(() =>
       this.listeners.get(name)?.(
         new MessageEvent(name, {
-          data: JSON.stringify({ schedule }),
+          data: JSON.stringify({ schedule, echoSeq }),
         })
       )
     );
@@ -72,6 +72,7 @@ beforeEach(() => {
   });
   usePlannerStore.setState({
     groceryState: { Old: true },
+    pendingMoveSeqs: [],
     localMoveSeq: 0,
     confirmedMoveSeq: 0,
     isDragActive: false,
@@ -145,4 +146,42 @@ describe('raw grocery snapshots through the stream and real stores', () => {
       expect(usePlannerStore.getState().groceryState).toEqual({ Carrots: true });
     }
   );
+});
+
+describe('foreign move sequences through the stream and real stores', () => {
+  it('applies a sequenced remote schedule without changing HTTP acknowledgement', () => {
+    renderHook(() => useScheduleStream());
+    MockEventSource.instance.emit('week_updated', snapshot({ Carrots: true }), 42);
+    expect(useWeekStore.getState().groceryItems).toEqual(groceryItems);
+    expect(usePlannerStore.getState().groceryState).toEqual({ Carrots: true });
+    expect(usePlannerStore.getState().confirmedMoveSeq).toBe(0);
+  });
+
+  it.each([1, 42])(
+    'defers remote sequence %s without settling a pending local request',
+    (echoSeq) => {
+      const seq = usePlannerStore.getState().nextMoveSeq();
+      renderHook(() => useScheduleStream());
+      MockEventSource.instance.emit('week_updated', snapshot({ Carrots: true }), echoSeq);
+      expect(usePlannerStore.getState().pendingMoveSeqs).toEqual([seq]);
+      expect(usePlannerStore.getState().confirmedMoveSeq).toBe(0);
+      expect(useWeekStore.getState().groceryItems).toEqual([]);
+      expect(usePlannerStore.getState().deferredWeekSnapshot?.groceryState).toEqual({
+        Carrots: true,
+      });
+    }
+  );
+
+  it('retains the selected-week and active-drag guards for sequenced remote events', () => {
+    renderHook(() => useScheduleStream());
+    MockEventSource.instance.emit('week_updated', snapshot({ WrongWeek: true }, '2025-01-13'), 42);
+    expect(usePlannerStore.getState().deferredWeekSnapshot).toBeNull();
+    usePlannerStore.setState({ isDragActive: true });
+    MockEventSource.instance.emit('week_updated', snapshot({ Carrots: true }), 42);
+    expect(useWeekStore.getState().groceryItems).toEqual([]);
+    expect(usePlannerStore.getState().deferredWeekSnapshot?.groceryState).toEqual({
+      Carrots: true,
+    });
+    expect(usePlannerStore.getState().confirmedMoveSeq).toBe(0);
+  });
 });

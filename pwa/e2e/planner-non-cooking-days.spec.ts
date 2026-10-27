@@ -162,6 +162,7 @@ for (const [kind, label, customLabel] of [
   ['custom', 'Emma’s birthday supper', 'Emma’s birthday supper'],
 ] as const) {
   test(`drag onto ${kind} swaps the skipped plan and survives reload`, async ({ page }) => {
+    await page.clock.setSystemTime(new Date('2026-05-04T12:00:00Z'));
     await setupCommonRoutes(page);
     const state = emptyWeek();
     state.days![0].recipe = builders.scheduleRecipe({ name: 'Pasta' });
@@ -172,17 +173,19 @@ for (const [kind, label, customLabel] of [
     const source = page.getByTestId('day-card-0');
     const target = page.getByTestId('day-card-1');
     const handle = source.getByTestId('planner-drag-handle');
-    await handle.scrollIntoViewIfNeeded();
+    await expect(page.getByTestId('reorder-group').locator('..')).toHaveCSS('transform', 'none');
+    await handle.hover();
     const from = await handle.boundingBox();
-    const to = await target.boundingBox();
-    if (!from || !to) throw new Error('Missing planner drag surfaces');
+    if (!from) throw new Error('Missing planner drag handle');
     const move = page.waitForRequest(
       (request) =>
         request.method() === 'POST' && new URL(request.url()).pathname === '/api/schedule/move'
     );
     await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
     await page.mouse.down();
-    await page.waitForTimeout(275);
+    await expect(handle).toHaveAttribute('data-grabbed', 'true');
+    const to = await target.boundingBox();
+    if (!to) throw new Error('Missing planner drop target');
     await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 20 });
     await page.mouse.up();
     expect((await move).postDataJSON()).toMatchObject({ fromIndex: 0, toIndex: 1 });

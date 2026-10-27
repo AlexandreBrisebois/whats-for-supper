@@ -1,3 +1,4 @@
+import { DateOnly } from '@microsoft/kiota-abstractions';
 import { calendarTime } from '@/lib/deployment-calendar';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useWeekStore } from './weekStore';
@@ -90,6 +91,7 @@ beforeEach(() => {
   });
   usePlannerStore.setState({
     groceryState: {},
+    pendingMoveSeqs: [],
     localMoveSeq: 0,
     confirmedMoveSeq: 0,
     isDragActive: false,
@@ -480,6 +482,70 @@ describe('weekStore — applySnapshot', () => {
     expect(state.lastSyncedAt).not.toBeNull();
   });
 
+  it('clears the last saved recipe from an authoritative empty week', () => {
+    const recipe = builders.scheduleRecipe({ id: MOCK_IDS.RECIPE_LASAGNA, name: 'Last supper' });
+    useWeekStore.setState({ schedule: [makeDay({ recipe, status: 1 })] });
+
+    useWeekStore.getState().applySnapshot(makeScheduleDays([{}]));
+
+    expect(useWeekStore.getState().schedule[0].recipe).toBeUndefined();
+    expect(useWeekStore.getState().schedule[0].status).not.toBe(1);
+  });
+
+  it.each(['same', 'changed', 'closed'] as const)(
+    'clears saved recipes while reconciling smart defaults for a %s round',
+    (roundState) => {
+      const round = '00000000-0000-4000-8000-000000000002';
+      const empty = makeScheduleDays([{}, { date: '2025-01-07' }, { date: '2025-01-08' }]);
+      empty.status = 1;
+      empty.votingRoundId = round;
+      empty.days[2].status = 3;
+      empty.days[2].nonCooking = { kind: 'custom', customLabel: 'Family dinner out' };
+      useWeekStore.getState().applySnapshot(empty);
+      useWeekStore.getState().applySlotUpdate({
+        date: '2025-01-06',
+        recipe: builders.scheduleRecipe(),
+        status: 0,
+      });
+      useWeekStore.getState().applySmartDefaultsUpdate({
+        weekStartDate: DateOnly.parse('2025-01-06'),
+        preSelectedRecipes: [
+          {
+            dayIndex: 1,
+            recipeId: MOCK_IDS.RECIPE_TACOS,
+            name: 'Pending tacos',
+            voteCount: 2,
+            unanimousVote: true,
+          },
+        ],
+      });
+      expect(useWeekStore.getState().schedule[1]._isPending).toBe(true);
+      const incoming = structuredClone(empty);
+      if (roundState === 'changed') incoming.votingRoundId = '00000000-0000-4000-8000-000000000003';
+      if (roundState === 'closed') incoming.status = 2;
+
+      useWeekStore.getState().applySnapshot(incoming);
+
+      const days = useWeekStore.getState().schedule;
+      expect(days[0].recipe).toBeUndefined();
+      if (roundState === 'same') {
+        expect(days[1]).toMatchObject({
+          recipe: { id: MOCK_IDS.RECIPE_TACOS },
+          _isPending: true,
+          _voteCount: 2,
+          _unanimousVote: true,
+        });
+      } else {
+        expect(days[1].recipe).toBeUndefined();
+        expect(days[1]._isPending).not.toBe(true);
+      }
+      expect(days[2]).toMatchObject({
+        status: 3,
+        nonCooking: { kind: 'custom', customLabel: 'Family dinner out' },
+      });
+    }
+  );
+
   it('preserves _isPending metadata when snapshot has no recipe for that date', () => {
     const pendingRecipe = {
       id: 'pending-1',
@@ -579,43 +645,30 @@ describe('weekStore — applySnapshot', () => {
     expect(useWeekStore.getState().status).toBe(1);
   });
 
-  it('skips update and confirms seq when echoSeq matches own move', () => {
+  it('defers a remote sequence matching a local request without acknowledging it', () => {
     const initialSchedule = [makeDay({ date: '2025-01-06', _uiId: 'old' })];
     useWeekStore.setState({ schedule: initialSchedule });
-    usePlannerStore.setState({ localMoveSeq: 7, confirmedMoveSeq: 6 });
+    const seq = usePlannerStore.getState().nextMoveSeq();
+    const snapshot = makeScheduleDays([{ date: '2025-01-06', recipe: { id: 'remote' } as any }]);
 
-    const snapshot = makeScheduleDays([{ date: '2025-01-06', recipe: { id: 'new' } as any }]);
-    useWeekStore.getState().applySnapshot(snapshot, 7);
+    useWeekStore.getState().applySnapshot(snapshot, seq);
 
-    // Schedule unchanged — this was our own echo
     expect(useWeekStore.getState().schedule).toBe(initialSchedule);
-    // Sequence confirmed
-    expect(usePlannerStore.getState().confirmedMoveSeq).toBe(7);
+    expect(usePlannerStore.getState().confirmedMoveSeq).toBe(0);
+    expect(usePlannerStore.getState().pendingMoveSeqs).toEqual([seq]);
+    expect(usePlannerStore.getState().deferredWeekSnapshot).toBe(snapshot);
   });
 
-  it('flushes a deferred remote snapshot after confirming the local move echo', () => {
-    const initialSchedule = [makeDay({ date: '2025-01-06', _uiId: 'old' })];
-    useWeekStore.setState({ schedule: initialSchedule });
+  it('applies a foreign-sequence snapshot normally once HTTP has settled the request', () => {
+    const seq = usePlannerStore.getState().nextMoveSeq();
+    usePlannerStore.getState().confirmMoveSeq(seq);
+    const snapshot = makeScheduleDays([{ date: '2025-01-06', recipe: { id: 'remote' } as any }]);
 
-    const deferredSnapshot = makeScheduleDays([
-      { date: '2025-01-06', recipe: { id: 'queued-remote' } as any },
-    ]);
+    useWeekStore.getState().applySnapshot(snapshot, 42);
 
-    usePlannerStore.setState({
-      localMoveSeq: 8,
-      confirmedMoveSeq: 7,
-      deferredWeekSnapshot: deferredSnapshot,
-      isDragActive: false,
-    });
-
-    const ownEchoSnapshot = makeScheduleDays([
-      { date: '2025-01-06', recipe: { id: 'local' } as any },
-    ]);
-    useWeekStore.getState().applySnapshot(ownEchoSnapshot, 8);
-
-    expect(usePlannerStore.getState().confirmedMoveSeq).toBe(8);
-    expect(usePlannerStore.getState().deferredWeekSnapshot).toBeNull();
-    expect(useWeekStore.getState().schedule[0].recipe?.id).toBe('queued-remote');
+    expect(usePlannerStore.getState().confirmedMoveSeq).toBe(seq);
+    expect(usePlannerStore.getState().pendingMoveSeqs).toEqual([]);
+    expect(useWeekStore.getState().schedule[0].recipe?.id).toBe('remote');
   });
 
   it('applySnapshot sets groceryState atomically — same tick as schedule', () => {
@@ -1399,7 +1452,7 @@ it('does not apply an earlier round session defaults when the same week reopens'
       coveredSlots: 1,
       candidateCount: 1,
       smartDefaults: {
-        weekStartDate: '2025-01-06',
+        weekStartDate: DateOnly.parse('2025-01-06'),
         preSelectedRecipes: [{ dayIndex: 0, recipeId: 'old' }],
       },
     } as any,

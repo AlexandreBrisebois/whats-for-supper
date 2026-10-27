@@ -60,6 +60,9 @@ export function PlannerDragHandle({
     const end = (event: PointerEvent) => {
       if (pending && event.pointerId === pending.pointerId) reset();
     };
+    const key = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') reset();
+    };
     const contextMenu = (event: Event) => event.preventDefault();
     handle.addEventListener('pointerdown', down);
     handle.addEventListener('touchmove', touchMove, { passive: false });
@@ -69,6 +72,7 @@ export function PlannerDragHandle({
     window.addEventListener('pointerup', end);
     window.addEventListener('pointercancel', end);
     window.addEventListener('blur', reset);
+    window.addEventListener('keydown', key);
     return () => {
       reset();
       handle.removeEventListener('pointerdown', down);
@@ -79,6 +83,7 @@ export function PlannerDragHandle({
       window.removeEventListener('pointerup', end);
       window.removeEventListener('pointercancel', end);
       window.removeEventListener('blur', reset);
+      window.removeEventListener('keydown', key);
     };
   }, [start]);
 
@@ -93,9 +98,9 @@ export function PlannerDragHandle({
       data-testid="planner-drag-handle"
       data-grabbed={grabbed}
       className={cn(
-        'h-full min-h-[44px] flex items-center px-2.5 cursor-grab active:cursor-grabbing select-none group/handle rounded-r-2xl',
-        'touch-auto',
-        grabbed && 'bg-sage/20 ring-2 ring-sage'
+        'h-full min-h-[44px] min-w-[44px] justify-center flex items-center px-2.5 cursor-grab active:cursor-grabbing select-none group/handle rounded-2xl',
+        'touch-auto focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-charcoal-600',
+        grabbed && 'bg-sage/20 ring-2 ring-sage-700'
       )}
       style={{ WebkitTouchCallout: 'none' }}
       role="button"
@@ -110,7 +115,10 @@ export function PlannerDragHandle({
       }}
     >
       <GripVertical
-        className="text-charcoal/20 group-hover/handle:text-sage transition-colors"
+        className={cn(
+          'text-charcoal-600 group-hover/handle:text-sage-700 transition-colors',
+          grabbed && 'text-sage-700'
+        )}
         size={20}
       />
     </div>

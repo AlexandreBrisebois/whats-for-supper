@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => {
   const push = vi.fn();
@@ -25,8 +25,13 @@ const mocks = vi.hoisted(() => {
   let weekState: any;
   let plannerState: any;
   let searchParams = '';
+  let locale: 'en' | 'fr' = 'en';
 
   return {
+    getLocale: () => locale,
+    setLocale: (value: 'en' | 'fr') => {
+      locale = value;
+    },
     push,
     replace,
     setWeekOffset,
@@ -77,22 +82,18 @@ vi.mock('framer-motion', () => ({
     ),
   },
   AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-  Reorder: {
-    Group: ({ children, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-      <div {...props}>{children}</div>
-    ),
-    Item: ({ children, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-      <div {...props}>{children}</div>
-    ),
-  },
-  useDragControls: () => ({}),
 }));
 
-vi.mock('@/locales', () => ({
-  t: (_key: string, fallback: string) => fallback,
-  tWithVars: (_key: string, fallback: string) => fallback,
-  getLocale: () => 'en',
-}));
+vi.mock('@/locales', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/locales')>();
+  return {
+    ...actual,
+    t: (key: string, fallback: string) => actual.t(key, fallback, mocks.getLocale()),
+    tWithVars: (key: string, fallback: string, vars: Record<string, string | number>) =>
+      actual.tWithVars(key, fallback, vars, mocks.getLocale()),
+    getLocale: mocks.getLocale,
+  };
+});
 
 vi.mock('@/lib/utils', () => ({
   cn: (...classes: Array<string | false | null | undefined>) => classes.filter(Boolean).join(' '),
@@ -124,16 +125,6 @@ vi.mock('@/store/weekStore', () => ({
 
 vi.mock('@/store/discoveryStore', () => ({
   useDiscoveryStore: () => ({ setHasPendingCards: mocks.setHasPendingCards }),
-}));
-
-vi.mock('@/store/todayStore', () => ({
-  useTodayStore: {
-    getState: () => ({
-      calendar: { today: '2026-05-10' },
-      assignRecipe: vi.fn(),
-      applyServerUpdate: vi.fn(),
-    }),
-  },
 }));
 
 vi.mock('@/store/uiStore', () => ({
@@ -287,6 +278,45 @@ vi.mock('@/components/home/SkipRecoveryDialog', () => ({
 }));
 
 import PlannerPage from './page';
+import { useTodayStore } from '@/store/todayStore';
+import { calendarTime, type CalendarContext } from '@/lib/deployment-calendar';
+import { builders } from '@/testing/builders';
+
+const ensureCalendar = vi.fn();
+function setCalendar(today = '2026-05-13', lifetime = 60_000) {
+  const monday = new Date(`${today}T00:00:00Z`);
+  monday.setUTCDate(monday.getUTCDate() - ((monday.getUTCDay() + 6) % 7));
+  const next = new Date(`${today}T00:00:00Z`);
+  next.setUTCDate(next.getUTCDate() + 1);
+  const calendar = builders.deploymentCalendar({
+    today,
+    capturedAtUtc: `${today}T12:00:00Z`,
+    nextDayAtUtc: next.toISOString(),
+    currentWeekStartDate: monday.toISOString().slice(0, 10),
+    referenceWeekStartDate: '2026-05-11',
+  });
+  useTodayStore.setState({
+    calendar,
+    calendarAnchor: { receivedAtElapsed: calendarTime.elapsed(), expiresAfterMs: lifetime },
+    calendarVersion: useTodayStore.getState().calendarVersion + 1,
+  });
+  return calendar;
+}
+beforeEach(() => {
+  mocks.setLocale('en');
+  ensureCalendar.mockReset().mockRejectedValue(new Error('Calendar unavailable'));
+  useTodayStore.setState({
+    calendar: { today: '2026-05-10' } as CalendarContext,
+    calendarAnchor: null,
+    ensureCalendar,
+    assignRecipe: vi.fn(),
+    applyServerUpdate: vi.fn(),
+  });
+});
+afterEach(() => {
+  vi.useRealTimers();
+  vi.restoreAllMocks();
+});
 
 const mockClipboardWriteText = vi.fn().mockResolvedValue(undefined);
 const mockShare = vi.fn().mockResolvedValue(undefined);
@@ -362,6 +392,7 @@ describe('PlannerPage voting action row', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.setSearchParams('');
+    mocks.setLocale('en');
     mocks.getVotingLink.mockResolvedValue('http://example.com/discovery');
     mocks.assignRecipe.mockResolvedValue(undefined);
     mocks.resolveOccupiedSlot.mockResolvedValue(undefined);
@@ -396,6 +427,31 @@ describe('PlannerPage voting action row', () => {
       configurable: true,
       value: mockShare,
     });
+  });
+
+  it.each([
+    ['en', '2026-05-10', 'May 4 — 10', 'Mon', 'May'],
+    ['fr', '2026-05-10', '4 — 10 mai', 'lun.', 'mai'],
+    ['en', '2026-06-07', 'Jun 1 — 7', 'Mon', 'Jun'],
+    ['fr', '2026-05-03', '27 avr. — 3 mai', 'lun.', 'avr.'],
+  ] as const)('localizes planner dates in %s for %s', (locale, sunday, range, weekday, month) => {
+    mocks.setLocale(locale);
+    renderPlanner(0, sunday);
+    expect(screen.getByRole('heading', { name: range })).toBeInTheDocument();
+    const date = within(screen.getByTestId('day-card-0')).getByTestId('planner-date');
+    expect(within(date).getByText(weekday)).toBeInTheDocument();
+    expect(within(date).getByText(month)).toBeInTheDocument();
+  });
+
+  it.each(['en', 'fr'] as const)('uses localized readable planner labels in %s', (locale) => {
+    mocks.setLocale(locale);
+    renderPlanner(0);
+    expect(screen.getByTestId('week-range')).toHaveTextContent(
+      locale === 'fr' ? 'Cette semaine' : 'This week'
+    );
+    for (const action of screen.getAllByTestId('plan-meal-button')) {
+      expect(action).toHaveAccessibleName(locale === 'fr' ? 'Planifier le souper' : 'Plan supper');
+    }
   });
 
   it.each([-3, -1, 1, 3])('points the return control toward this week from offset %s', (offset) => {
@@ -439,6 +495,24 @@ describe('PlannerPage voting action row', () => {
     expect(screen.getByTestId('ask-family-cta')).toBeInTheDocument();
     expect(screen.queryByTestId('planned-count-badge')).not.toBeInTheDocument();
     expect(screen.queryByTestId('nudge-family-cta')).not.toBeInTheDocument();
+  });
+
+  it('keeps fixed dates outside recipe surfaces and gives empty/non-cooking slots no handle', () => {
+    const view = renderPlanner(0);
+    const state = mocks.getWeekState();
+    state.schedule[2] = { ...state.schedule[2], status: 3, nonCooking: { kind: 'order_in' } };
+    view.rerender(<PlannerPage />);
+    const row = screen.getByTestId('day-card-0');
+    const date = within(row).getByTestId('planner-date');
+    const content = within(row).getByTestId('planner-meal');
+    expect(content).not.toContainElement(date);
+    expect(within(content).getByTestId('planner-drag-handle')).toBeVisible();
+    expect(
+      within(screen.getByTestId('day-card-1')).queryByTestId('planner-drag-handle')
+    ).toBeNull();
+    expect(
+      within(screen.getByTestId('day-card-2')).queryByTestId('planner-drag-handle')
+    ).toBeNull();
   });
 
   it('renders seven empty days without a weekly progress indicator', () => {
@@ -1146,5 +1220,186 @@ describe('Planner Plan later completion', () => {
       expect.anything()
     );
     expect(mocks.weekInit).toHaveBeenCalled();
+  });
+});
+
+describe('Planner day emphasis', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.setSearchParams('');
+  });
+
+  it.each(['empty', 'recipe', 'pending', 'non-cooking', 'cooked'])(
+    'identifies the fixed Today date with %s content',
+    (content) => {
+      setCalendar();
+      const view = renderPlanner(0);
+      const schedule = mocks.getWeekState().schedule;
+      schedule[2] = {
+        ...schedule[2],
+        recipe:
+          content === 'recipe' || content === 'pending' || content === 'cooked'
+            ? { id: '11111111-1111-1111-1111-111111111111', name: 'Wednesday supper' }
+            : null,
+        _isPending: content === 'pending',
+        status: content === 'cooked' ? 2 : content === 'non-cooking' ? 3 : 0,
+        nonCooking: content === 'non-cooking' ? { kind: 'order_in' } : null,
+      };
+      view.rerender(<PlannerPage />);
+      const row = screen.getByTestId('day-card-2');
+      expect(within(row).getByTestId('planner-date')).toHaveAttribute('aria-current', 'date');
+      const today = within(row).getByText('Today');
+      expect(within(row).getByTestId('planner-meal')).not.toContainElement(today);
+      expect(screen.getAllByText('Today')).toHaveLength(1);
+      expect(screen.getByTestId('planner-today-separator')).toHaveAttribute('aria-hidden', 'true');
+      expect(ensureCalendar).not.toHaveBeenCalled();
+      expect(mocks.assignRecipe).not.toHaveBeenCalled();
+    }
+  );
+
+  it('localizes Today and leaves past uncooked actions usable', () => {
+    mocks.setLocale('fr');
+    setCalendar();
+    renderPlanner(0);
+    expect(screen.getByText('Aujourd’hui')).toBeVisible();
+    const monday = screen.getByTestId('day-card-0');
+    expect(monday).toHaveAttribute('data-temporal', 'past');
+    expect(monday).toHaveTextContent('Pasta Carbonara');
+    expect(within(monday).getByTestId('planner-drag-handle')).toBeEnabled();
+    const tuesday = screen.getByTestId('day-card-1');
+    fireEvent.click(within(tuesday).getByTestId('plan-meal-button'));
+    expect(screen.getByTestId('mock-planning-pivot-sheet')).toBeVisible();
+    expect(mocks.assignRecipe).not.toHaveBeenCalled();
+  });
+
+  it.each(['absent', 'invalid', 'expired'])(
+    'keeps %s context neutral without a guessed date',
+    (kind) => {
+      setCalendar();
+      if (kind === 'absent') useTodayStore.setState({ calendar: null, calendarAnchor: null });
+      if (kind === 'invalid')
+        useTodayStore.setState({
+          calendar: { ...useTodayStore.getState().calendar!, today: '2026-02-30' },
+        });
+      if (kind === 'expired')
+        useTodayStore.setState({
+          calendarAnchor: {
+            receivedAtElapsed: calendarTime.elapsed() - 2000,
+            expiresAfterMs: 1000,
+          },
+        });
+      renderPlanner(0);
+      expect(screen.queryByText('Today')).toBeNull();
+      expect(document.querySelector('[aria-current="date"]')).toBeNull();
+      for (const row of screen.getAllByTestId(/^day-card-/))
+        expect(row).toHaveAttribute('data-temporal', 'neutral');
+      expect(screen.getByText('Pasta Carbonara')).toBeVisible();
+    }
+  );
+
+  it('uses authoritative dates, including retained content while another week loads', () => {
+    setCalendar();
+    vi.spyOn(calendarTime, 'instant').mockReturnValue(Date.parse('2026-05-14T12:00:00Z'));
+    const view = renderPlanner(0);
+    mocks.setPlannerState({ ...mocks.getPlannerState(), currentWeekOffset: 1 });
+    mocks.setWeekState({ ...mocks.getWeekState(), isLoading: true });
+    view.rerender(<PlannerPage />);
+    expect(within(screen.getByTestId('day-card-2')).getByText('Today')).toBeVisible();
+    mocks.setWeekState({
+      ...mocks.getWeekState(),
+      schedule: makeSchedule('2026-05-24'),
+      isLoading: false,
+    });
+    view.rerender(<PlannerPage />);
+    expect(screen.queryByText('Today')).toBeNull();
+  });
+
+  it('keeps Today with its date through a recipe swap', () => {
+    setCalendar();
+    const view = renderPlanner(0);
+    const state = mocks.getWeekState();
+    [state.schedule[0].recipe, state.schedule[2].recipe] = [
+      state.schedule[2].recipe,
+      state.schedule[0].recipe,
+    ];
+    mocks.setWeekState({ ...state, schedule: [...state.schedule] });
+    view.rerender(<PlannerPage />);
+    expect(within(screen.getByTestId('day-card-2')).getByText('Today')).toBeVisible();
+    expect(screen.getByTestId('day-card-2')).toHaveTextContent('Pasta Carbonara');
+    expect(screen.getByTestId('day-card-0')).toHaveAttribute('data-temporal', 'past');
+  });
+
+  it('expires to neutral after a failed refresh, requesting once for the page', async () => {
+    vi.useFakeTimers();
+    let elapsed = 0;
+    vi.spyOn(calendarTime, 'elapsed').mockImplementation(() => elapsed);
+    setCalendar('2026-05-13', 1000);
+    renderPlanner(0);
+    expect(screen.getByText('Today')).toBeVisible();
+    elapsed = 1001;
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1001);
+    });
+    expect(screen.queryByText('Today')).toBeNull();
+    expect(ensureCalendar).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10_000);
+    });
+    expect(ensureCalendar).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('Pasta Carbonara')).toBeVisible();
+  });
+
+  it('accepts a Sunday-to-Monday refresh without changing retained meal state', async () => {
+    vi.useFakeTimers();
+    let elapsed = 0;
+    vi.spyOn(calendarTime, 'elapsed').mockImplementation(() => elapsed);
+    setCalendar('2026-05-17', 1000);
+    ensureCalendar.mockImplementation(async () => setCalendar('2026-05-18'));
+    const view = renderPlanner(0);
+    expect(within(screen.getByTestId('day-card-6')).getByText('Today')).toBeVisible();
+    elapsed = 1001;
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1001);
+    });
+    expect(screen.queryByText('Today')).toBeNull();
+    expect(mocks.getWeekState().schedule[0].status).toBe(0);
+    mocks.setWeekState({ ...mocks.getWeekState(), schedule: makeSchedule('2026-05-24') });
+    view.rerender(<PlannerPage />);
+    expect(within(screen.getByTestId('day-card-0')).getByText('Today')).toBeVisible();
+    expect(ensureCalendar).toHaveBeenCalledTimes(1);
+  });
+
+  it('retires an older expiry timer when context changes and on unmount', async () => {
+    vi.useFakeTimers();
+    let elapsed = 0;
+    vi.spyOn(calendarTime, 'elapsed').mockImplementation(() => elapsed);
+    setCalendar('2026-05-13', 1000);
+    const view = renderPlanner(0);
+    elapsed = 500;
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(500);
+      setCalendar('2026-05-14', 2000);
+    });
+    elapsed = 1100;
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(600);
+    });
+    expect(within(screen.getByTestId('day-card-3')).getByText('Today')).toBeVisible();
+    expect(ensureCalendar).not.toHaveBeenCalled();
+    view.unmount();
+    elapsed = 3000;
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000);
+    });
+    expect(ensureCalendar).not.toHaveBeenCalled();
+  });
+
+  it('requests missing context once without a per-row burst or mutation', async () => {
+    useTodayStore.setState({ calendar: null, calendarAnchor: null });
+    renderPlanner(0);
+    await act(async () => {});
+    expect(ensureCalendar).toHaveBeenCalledTimes(1);
+    expect(mocks.assignRecipe).not.toHaveBeenCalled();
+    expect(mocks.commitMove).not.toHaveBeenCalled();
   });
 });

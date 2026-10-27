@@ -11,14 +11,14 @@ interface PlannerState {
   sseConnectionId: string | null;
   /**
    * Monotonic counter incremented on every move API call.
-   * Sent as X-Move-Seq request header so the server can echo it back in the
-   * week_updated SSE payload, allowing applySnapshot to identify and skip its
-   * own echoes without relying on a wall-clock window.
+   * Sent as X-Move-Seq request metadata. Incoming sequences may belong to
+   * another connection and cannot acknowledge local requests.
    */
   localMoveSeq: number;
+  pendingMoveSeqs: number[];
   /**
-   * The highest move sequence number confirmed by the server via an echoed
-   * week_updated event. When localMoveSeq > confirmedMoveSeq there is at least
+   * The contiguous move sequence settled by captured HTTP completion.
+   * When localMoveSeq > confirmedMoveSeq there is at least
    * one unconfirmed move in flight and applySnapshot must not clobber the store.
    */
   confirmedMoveSeq: number;
@@ -33,7 +33,7 @@ interface PlannerState {
   setSseConnectionId: (id: string | null) => void;
   /** Increment localMoveSeq and return the new value to stamp on the request. */
   nextMoveSeq: () => number;
-  /** Mark the given seq as confirmed (called when the server echoes it back). */
+  /** Settle one captured request without releasing other in-flight moves. */
   confirmMoveSeq: (seq: number) => void;
   setCookProgress: (recipeId: string, stepIndex: number) => void;
   resetCookProgress: (recipeId: string) => void;
@@ -50,6 +50,7 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
   deferredWeekSnapshot: null,
   sseConnectionId: null,
   localMoveSeq: 0,
+  pendingMoveSeqs: [],
   confirmedMoveSeq: 0,
   cookProgress: {},
   groceryState: {},
@@ -62,12 +63,26 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
   setDeferredWeekSnapshot: (snapshot) => set({ deferredWeekSnapshot: snapshot }),
   setSseConnectionId: (id) => set({ sseConnectionId: id }),
   nextMoveSeq: () => {
-    const next = get().localMoveSeq + 1;
-    set({ localMoveSeq: next });
+    const state = get();
+    const next = state.localMoveSeq + 1;
+    set({ localMoveSeq: next, pendingMoveSeqs: [...state.pendingMoveSeqs, next] });
     return next;
   },
   confirmMoveSeq: (seq) =>
-    set((state) => ({ confirmedMoveSeq: Math.max(state.confirmedMoveSeq, seq) })),
+    set((state) => {
+      const pending = state.pendingMoveSeqs.filter((value) => value !== seq);
+      // HTTP responses may finish out of order. Do not unblock snapshots until
+      // every earlier request has settled, even if a newer response arrived first.
+      const confirmed = pending.length
+        ? Math.min(...pending) - 1
+        : state.pendingMoveSeqs.length
+          ? state.localMoveSeq
+          : seq;
+      return {
+        pendingMoveSeqs: pending,
+        confirmedMoveSeq: Math.max(state.confirmedMoveSeq, confirmed),
+      };
+    }),
   setCookProgress: (recipeId, stepIndex) =>
     set((state) => {
       if (state.cookProgress[recipeId] === stepIndex) return state;
