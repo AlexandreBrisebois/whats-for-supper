@@ -1,5 +1,13 @@
 # Active resume checkpoints
 
+## Fixed-date Planner drag (2026-10-27)
+
+Task/spec: `openspec/changes/fix-planner-fixed-date-drag`; branch `fix-planner-fixed-date-drag`; **10/10 tasks complete**. User authorized apply, then the blocking Home test investigation. Clean baseline; all changes remain local and uncommitted.
+Authorized scope and source: Fixed dates beside movable recipe content, explicit swap targets, hold/scroll/keyboard preservation, cancellation, snapshot reconciliation and EN/FR responsive acceptance. Existing API/store policy retained. The authorized Home follow-up changes only its acceptance test: native click logging proved the attempted Cook click hit the rotating wrapper near 113° and flipped it back. Waiting for the settled back face and asserting the overlay opens corrected the test; all temporary probes were removed. No Home production changes, commit, push, deployment, sync or archive.
+Current checkpoint: Implementation, selected acceptance and the full repository gate pass. Empty/non-cooking resting slots have no recipe handle; original source identity, repeated IDs, original-arrangement swaps, cancellation, rejection, navigation, deferred snapshots and keyboard focus are covered. Original reported movement failure was unreproduced in baseline mouse/touch checks; fixed-date presentation and gestures are verified.
+Verification evidence and content identity: `.task/agent-finish/runs/66f4965c4ae244e7a7538eb892295f3c.json`, stable identity `b557f89bb9fc552c41f43191449d9b88b8660919f7942788cbbc21126fbc3957`, reviewed complete 14-path scope with no exclusions/unexpected writes. Passed docs/spec/lint/format/types, 1,147 unit tests, browser impact 408 passed/47 skipped/zero failed, API 1,249 passed/154 skipped/zero failed, static contracts and full identity stability. Red/green, prior failed gates, Home hit-test evidence, repeated checks and measured viewport/contrast scope are in tasks.md/design.md. This completion evidence/handoff is later documentation, verified separately; no application/test/locale source changed after the successful gate.
+Blocker or next action: None for the selected implementation. Ready for user review. Physical iOS/Android not-run; live endpoint/database/model qualification not-applicable. Preserve unrelated historical handoff sections and separate badge/arrow work. Sync/archive remain separate lifecycle work.
+
 ## Grocery extras sync and archive (2026-10-24)
 
 Task/spec: `add-everyday-grocery-extras`; user-authorized sync/archive after implementation review. Worktree/branch: `codex/six-ux-recovery-priorities`; main fast-forwarded to `fc8f13a543a73a28bb3f46841e944c544a91dc0b`.

@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useEffect, useState, useMemo, useRef, memo } from 'react';
-import { motion, AnimatePresence, Reorder, useDragControls } from 'framer-motion';
+import { createPortal } from 'react-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   ChevronLeft,
   ChevronRight,
@@ -53,6 +54,7 @@ import { SkipRecoveryDialog } from '@/components/home/SkipRecoveryDialog';
 import { type AssignmentRecipe, resolveOccupiedSlot } from '@/lib/planner/slotAssignment';
 import { FamilyNudgeDialog } from '@/components/discovery/FamilyNudgeDialog';
 import { PlannerDragHandle } from '@/components/planner/PlannerDragHandle';
+import { usePlannerDrag } from '@/components/planner/usePlannerDrag';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 
 export default function PlannerPage() {
@@ -101,23 +103,11 @@ export default function PlannerPage() {
   const openedPlanDate = useRef<string | null>(null);
   const successParam = searchParams.get('success');
   const [prevOffset, setPrevOffset] = useState(currentWeekOffset);
-  const preDragSnapshotRef = useRef<UILocalScheduleDay[] | null>(null);
-  const draggedUiIdRef = useRef<string | null>(null);
+  const { preview: dragPreview, start: startDrag } = usePlannerDrag(currentWeekOffset, activeTab);
   const recoverySubmissionRef = useRef(false);
   const recoveryRecipeResolvedRef = useRef(false);
-  const [hasAnimatedIn, setHasAnimatedIn] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const isWide = useMediaQuery('(min-width: 1024px)');
-
-  useEffect(() => {
-    if (!isLoading) {
-      const timer = setTimeout(() => setHasAnimatedIn(true), 1000);
-      return () => clearTimeout(timer);
-    } else {
-      const timer = setTimeout(() => setHasAnimatedIn(false), 0);
-      return () => clearTimeout(timer);
-    }
-  }, [isLoading]);
 
   useEffect(() => {
     setHasPendingCards(isVotingOpen);
@@ -389,23 +379,6 @@ export default function PlannerPage() {
     }
   };
 
-  // Framer Motion calls onReorder on every pointer move during drag (fires on each midpoint
-  // crossing). We apply each intermediate reorder directly to the store so that onDragEnd can
-  // read getState().schedule for the authoritative final position — including the terminal slot
-  // where no further midpoint crossing occurs and onReorder would otherwise stop firing.
-  const handleReorder = (newSchedule: UILocalScheduleDay[]) => {
-    const draggedUiId = draggedUiIdRef.current;
-    if (!draggedUiId) return;
-
-    const dragBaseSchedule = preDragSnapshotRef.current ?? useWeekStore.getState().schedule;
-    const from = dragBaseSchedule.findIndex((d) => d._uiId === draggedUiId);
-    const to = newSchedule.findIndex((d) => d._uiId === draggedUiId);
-
-    if (from !== -1 && to !== -1) {
-      useWeekStore.getState().reorderLocally(from, to, dragBaseSchedule);
-    }
-  };
-
   const isFinalized = isLocked;
   const weekIsPast = useMemo(() => {
     if (schedule.length < 7) return false;
@@ -639,16 +612,10 @@ export default function PlannerPage() {
                 </div>
               )}
 
-              <Reorder.Group
-                axis="y"
-                values={schedule}
-                onReorder={handleReorder}
-                className="w-full space-y-3.5"
-                data-testid="reorder-group"
-              >
+              <div className="w-full space-y-3.5" data-testid="reorder-group">
                 {schedule.map((day, index) => (
                   <PlannerDayCard
-                    key={day._uiId}
+                    key={day.date ?? index}
                     day={day}
                     index={index}
                     successDay={successDay}
@@ -659,13 +626,31 @@ export default function PlannerPage() {
                     onViewRecipe={(recipeId) => {
                       setOpenDetailRecipeId(recipeId);
                     }}
-                    preDragSnapshotRef={preDragSnapshotRef}
-                    draggedUiIdRef={draggedUiIdRef}
-                    hasAnimatedIn={hasAnimatedIn}
+                    startDrag={startDrag}
+                    isDragSource={dragPreview?.from === index}
+                    isDropTarget={dragPreview?.target === index && dragPreview.from !== index}
+                    dropOccupied={
+                      !!(
+                        dragPreview?.snapshot[index].recipe ||
+                        dragPreview?.snapshot[index].nonCooking
+                      )
+                    }
                     isWide={isWide}
                   />
                 ))}
-              </Reorder.Group>
+              </div>
+              {dragPreview &&
+                createPortal(
+                  <div
+                    data-testid="planner-drag-preview"
+                    aria-hidden="true"
+                    className="fixed z-[999] pointer-events-none rounded-2xl border-2 border-sage-700 bg-white p-4 shadow-xl text-charcoal font-bold"
+                    style={{ left: dragPreview.x, top: dragPreview.y, width: dragPreview.width }}
+                  >
+                    {dragPreview.snapshot[dragPreview.from].recipe?.name}
+                  </div>,
+                  document.body
+                )}
             </motion.div>
           )}
         </AnimatePresence>
@@ -869,9 +854,10 @@ const PlannerDayCard = memo(function PlannerDayCard({
   successDay,
   onPivot,
   onViewRecipe,
-  preDragSnapshotRef,
-  draggedUiIdRef,
-  hasAnimatedIn,
+  startDrag,
+  isDragSource,
+  isDropTarget,
+  dropOccupied,
   isWide,
 }: {
   day: UILocalScheduleDay;
@@ -879,270 +865,246 @@ const PlannerDayCard = memo(function PlannerDayCard({
   successDay: number | null;
   onPivot: () => void;
   onViewRecipe: (recipeId: string) => void;
-  preDragSnapshotRef: React.RefObject<UILocalScheduleDay[] | null>;
-  draggedUiIdRef: React.RefObject<string | null>;
-  hasAnimatedIn: boolean;
+  startDrag: (from: number, event: PointerEvent) => void;
+  isDragSource: boolean;
+  isDropTarget: boolean;
+  dropOccupied: boolean;
   isWide: boolean;
 }) {
-  const dragControls = useDragControls();
-  const startDrag = React.useCallback(
-    (event: PointerEvent) => dragControls.start(event),
-    [dragControls]
+  const startRecipeDrag = React.useCallback(
+    (event: PointerEvent) => startDrag(index, event),
+    [startDrag, index]
   );
   const moveBySlot = React.useCallback(
     (direction: -1 | 1) => {
+      if (usePlannerStore.getState().isDragActive) return;
       const snapshot = useWeekStore.getState().schedule;
       const from = snapshot.findIndex((item) => item._uiId === day._uiId);
       const to = from + direction;
       if (from < 0 || to < 0 || to >= snapshot.length || !snapshot[from].recipe?.id) return;
       useWeekStore.getState().reorderLocally(from, to, snapshot);
       useWeekStore.getState().commitMove(from, to, snapshot);
+      requestAnimationFrame(() => {
+        document
+          .querySelector<HTMLElement>(
+            `[data-testid="day-card-${to}"] [data-testid="planner-drag-handle"]`
+          )
+          ?.focus();
+      });
     },
     [day._uiId]
   );
 
   return (
-    <Reorder.Item
-      value={day}
-      dragListener={false}
-      dragControls={dragControls}
-      onDragStart={() => {
-        usePlannerStore.getState().setDeferredWeekSnapshot(null);
-        usePlannerStore.getState().setIsDragActive(true);
-        preDragSnapshotRef.current = useWeekStore.getState().schedule;
-        draggedUiIdRef.current = day._uiId;
-      }}
-      onDragEnd={() => {
-        const snapshot = preDragSnapshotRef.current;
-        // Read the store directly: handleReorder calls reorderLocally on every midpoint
-        // crossing (including terminal positions), so the store reflects the true final order.
-        const finalOrder = useWeekStore.getState().schedule;
-        const finalFrom = snapshot ? snapshot.findIndex((d) => d._uiId === day._uiId) : -1;
-        const finalTo = finalOrder.findIndex((d) => d._uiId === day._uiId);
-        if (finalFrom !== -1 && finalTo !== -1 && finalFrom !== finalTo && snapshot !== null) {
-          useWeekStore.getState().commitMove(finalFrom, finalTo, snapshot);
-        }
-        const plannerStore = usePlannerStore.getState();
-        plannerStore.setIsDragActive(false);
-        const refreshedPlannerStore = usePlannerStore.getState();
-        if (
-          refreshedPlannerStore.deferredWeekSnapshot &&
-          refreshedPlannerStore.localMoveSeq === refreshedPlannerStore.confirmedMoveSeq
-        ) {
-          const deferredSnapshot = refreshedPlannerStore.deferredWeekSnapshot;
-          refreshedPlannerStore.setDeferredWeekSnapshot(null);
-          useWeekStore.getState().applySnapshot(deferredSnapshot);
-        }
-        draggedUiIdRef.current = null;
-        preDragSnapshotRef.current = null;
-      }}
-      initial={{ opacity: 0, y: 20 }}
-      animate={{
-        opacity: 1,
-        y: 0,
-      }}
-      transition={{
-        delay: hasAnimatedIn ? 0 : index * 0.05,
-        type: 'spring',
-        damping: 15,
-        stiffness: 100,
-      }}
-      whileDrag={{
-        scale: 1.02,
-        opacity: 1,
-        backgroundColor: '#ffffff',
-        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-        borderColor: '#8a9a5b',
-        borderWidth: '2px',
-        borderStyle: 'solid',
-        zIndex: 999,
-        cursor: 'grabbing',
-      }}
-      className={cn(
-        'w-full rounded-2xl overflow-hidden glass shadow-sm relative group transition-colors duration-500',
-        successDay === index
-          ? 'ring-4 ring-sage ring-offset-4 ring-offset-transparent'
-          : 'border border-white/20'
-      )}
+    <div
+      className="flex items-stretch gap-2 w-full"
       data-testid={`day-card-${index}`}
       data-date={day.date}
+      data-drag-source={isDragSource}
+      data-drop-target={isDropTarget}
       id={`day-card-${index}`}
     >
-      <motion.div
-        whileTap={{ scale: 0.98 }}
-        className={cn(
-          'flex items-stretch px-4 relative z-10',
-          isWide ? 'py-2 min-h-[64px]' : 'py-2.5 min-h-[72px]'
-        )}
+      <div
+        data-testid="planner-date"
+        className="flex flex-col items-center justify-center w-10 shrink-0"
       >
-        <div className="flex flex-col items-center justify-center w-12 mr-4 shrink-0">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-charcoal/40 leading-none mb-1">
-            {day.day}
+        <span className="text-[10px] font-bold uppercase tracking-wider text-charcoal/40 leading-none mb-1">
+          {day.day}
+        </span>
+        <span className="text-lg font-heading font-extrabold text-charcoal leading-none">
+          {(() => {
+            if (!day.date) return '';
+            const d = new Date(day.date);
+            return d.getUTCDate();
+          })()}
+        </span>
+        <span className="text-[10px] font-bold uppercase tracking-tighter text-charcoal/40 leading-none mt-1">
+          {(() => {
+            if (!day.date) return '';
+            const d = new Date(day.date);
+            return d.toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' });
+          })()}
+        </span>
+      </div>
+      <div
+        className={cn(
+          'flex-1 min-w-0 rounded-2xl glass shadow-sm relative group border',
+          isDragSource ? 'outline outline-1 outline-dashed outline-charcoal/70' : 'border-white/20',
+          isDropTarget && 'outline outline-2 outline-sage-700',
+          successDay === index && 'ring-4 ring-sage ring-offset-4'
+        )}
+        data-testid="planner-meal"
+      >
+        {isDropTarget && (
+          <span
+            data-testid="planner-drop-feedback"
+            className="absolute -top-2.5 right-2 z-20 rounded-full bg-cream px-2 text-xs font-bold text-charcoal"
+          >
+            {dropOccupied
+              ? t('planner.swapMeals', 'Swap meals')
+              : t('planner.moveHere', 'Move here')}
           </span>
-          <span className="text-lg font-heading font-extrabold text-charcoal leading-none">
-            {(() => {
-              if (!day.date) return '';
-              const d = new Date(day.date);
-              return d.getUTCDate();
-            })()}
+        )}
+        {isDragSource && (
+          <span className="absolute -top-2.5 left-2 z-20 rounded-full bg-cream px-2 text-xs font-bold text-charcoal">
+            {t('planner.moveSource', 'Moving from this day')}
           </span>
-          <span className="text-[10px] font-bold uppercase tracking-tighter text-charcoal/40 leading-none mt-1">
-            {(() => {
-              if (!day.date) return '';
-              const d = new Date(day.date);
-              return d.toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' });
-            })()}
-          </span>
-        </div>
-
-        <div className="flex-1 min-w-0">
-          {day.status === 3 ? (
-            <button
-              onClick={onPivot}
-              data-testid="ordered-in-indicator"
-              className="flex items-center gap-3 w-full text-left hover:opacity-80 transition-opacity"
-            >
-              <div className="h-10 w-10 rounded-xl bg-sage/10 text-sage-700 flex items-center justify-center flex-shrink-0">
-                <NonCookingIcon kind={day.nonCooking?.kind} />
-              </div>
-              <div className="min-w-0 flex flex-col gap-0.5">
-                <span
-                  data-testid="non-cooking-indicator"
-                  title={nonCookingLabel(day.nonCooking)}
-                  className="line-clamp-2 text-sm font-bold text-charcoal/60"
-                >
-                  {nonCookingLabel(day.nonCooking)}
-                </span>
-                {day.nonCooking?.kind === 'mystery' ? (
-                  <span className="text-[10px] text-charcoal/30 font-medium">
-                    {t('planner.mysteryNightHint', 'We’ll figure out supper that day.')}
-                  </span>
-                ) : nonCookingNote(day.nonCooking) ? (
-                  <span
-                    data-testid="non-cooking-note"
-                    title={nonCookingNote(day.nonCooking) ?? undefined}
-                    className="line-clamp-2 break-words text-xs text-charcoal/70 font-medium"
-                  >
-                    {nonCookingNote(day.nonCooking)}
-                  </span>
-                ) : null}
-              </div>
-            </button>
-          ) : day.recipe?.id ? (
-            <div className="flex items-stretch">
-              {day.recipe.image && (
-                <div
-                  className={cn(
-                    'relative rounded-xl overflow-hidden mr-2.5 bg-charcoal/5 flex-shrink-0 self-center',
-                    isWide ? 'h-10 w-10' : 'h-12 w-12'
-                  )}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={getImageUrl(day.recipe.image)}
-                    alt={day.recipe.name || 'Recipe'}
-                    className="absolute inset-0 h-full w-full object-cover"
-                    onError={(e) => {
-                      e.currentTarget.style.display = 'none';
-                    }}
-                  />
-                </div>
-              )}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (day.recipe?.id) {
-                    onViewRecipe(day.recipe.id);
-                  }
-                }}
-                className="flex flex-1 min-w-0 items-center text-left rounded-2xl px-1 py-0.5 active:bg-ochre/5 transition-colors"
-                data-testid="edit-recipe-button"
-              >
-                <div className="flex w-full flex-col justify-center gap-0.5">
-                  <h4
-                    className={cn(
-                      'font-bold text-charcoal line-clamp-2',
-                      isWide ? 'text-sm leading-tight' : 'text-base leading-tight'
-                    )}
-                    data-testid="recipe-name"
-                  >
-                    {day.recipe.name}
-                  </h4>
-                  {(() => {
-                    const count = day._voteCount ?? day.recipe?.voteCount ?? null;
-                    const isUnanimous = day._unanimousVote;
-                    const hasVotes = count != null && count > 0;
-                    return (
-                      <span
-                        data-testid="vote-count"
-                        className={cn(
-                          'text-[10px] font-bold px-1.5 py-0.5 rounded-full whitespace-nowrap inline-block w-fit mt-0.5',
-                          hasVotes ? 'visible' : 'visible',
-                          hasVotes
-                            ? isUnanimous
-                              ? 'bg-sage/20 text-sage'
-                              : 'bg-ochre/20 text-ochre'
-                            : 'bg-charcoal/8 text-charcoal/55'
-                        )}
-                      >
-                        {hasVotes ? `${count} voted` : 'Chosen'}
-                      </span>
-                    );
-                  })()}
-                </div>
-              </button>
-              <div className="ml-2 pl-2 border-l border-charcoal/8 flex items-center gap-1 self-stretch">
-                {day.recipe?.id && !day._isPending && (
-                  <motion.button
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    whileTap={{ scale: 0.9 }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onPivot();
-                    }}
-                    className="h-9 w-9 rounded-xl bg-ochre/8 flex items-center justify-center text-ochre active:scale-90 transition-transform"
-                    data-testid="change-recipe-button"
-                    title={t('planner.choosePathTitle', 'Change this recipe')}
-                    aria-label={t('planner.choosePathTitle', 'Change this recipe')}
-                  >
-                    <RefreshCw size={18} />
-                  </motion.button>
-                )}
-                <PlannerDragHandle start={startDrag} moveBySlot={moveBySlot} />
-              </div>
-            </div>
-          ) : (
-            <div className="flex items-stretch w-full">
+        )}
+        <motion.div
+          whileTap={{ scale: 0.98 }}
+          className={cn(
+            'flex items-stretch px-4 relative z-10 max-[360px]:flex-col max-[360px]:gap-2',
+            isWide ? 'py-2 min-h-[64px]' : 'py-2.5 min-h-[72px]'
+          )}
+        >
+          <div className="flex-1 min-w-0">
+            {day.status === 3 ? (
               <button
                 onClick={onPivot}
-                data-testid="plan-meal-button"
-                className="flex items-center flex-1 min-h-[44px] text-left group rounded-2xl px-1 py-0.5 active:bg-terracotta/10 transition-colors"
+                data-testid="ordered-in-indicator"
+                className="flex items-center gap-3 w-full text-left hover:opacity-80 transition-opacity"
               >
-                <div className="h-10 w-10 rounded-xl border border-dashed border-terracotta/30 flex items-center justify-center mr-3 group-hover:bg-terracotta/10 group-hover:border-terracotta/50 transition-colors">
-                  <Plus
-                    className="text-terracotta/50 group-hover:text-terracotta transition-colors"
-                    size={18}
-                  />
+                <div className="h-10 w-10 rounded-xl bg-sage/10 text-sage-700 flex items-center justify-center flex-shrink-0">
+                  <NonCookingIcon kind={day.nonCooking?.kind} />
                 </div>
-                <div className="flex flex-col justify-center">
+                <div className="min-w-0 flex flex-col gap-0.5">
                   <span
-                    className={cn(
-                      'font-bold text-charcoal/45 group-hover:text-terracotta/70 transition-colors',
-                      isWide ? 'text-xs' : 'text-sm'
-                    )}
+                    data-testid="non-cooking-indicator"
+                    title={nonCookingLabel(day.nonCooking)}
+                    className="line-clamp-2 text-sm font-bold text-charcoal/60"
                   >
-                    Plan supper
+                    {nonCookingLabel(day.nonCooking)}
                   </span>
+                  {day.nonCooking?.kind === 'mystery' ? (
+                    <span className="text-[10px] text-charcoal/30 font-medium">
+                      {t('planner.mysteryNightHint', 'We’ll figure out supper that day.')}
+                    </span>
+                  ) : nonCookingNote(day.nonCooking) ? (
+                    <span
+                      data-testid="non-cooking-note"
+                      title={nonCookingNote(day.nonCooking) ?? undefined}
+                      className="line-clamp-2 break-words text-xs text-charcoal/70 font-medium"
+                    >
+                      {nonCookingNote(day.nonCooking)}
+                    </span>
+                  ) : null}
                 </div>
               </button>
-              <div className="ml-2 pl-2 border-l border-charcoal/8 flex items-center gap-1 self-stretch">
-                <PlannerDragHandle start={startDrag} moveBySlot={moveBySlot} />
+            ) : day.recipe?.id ? (
+              <div className="flex items-stretch">
+                {day.recipe.image && (
+                  <div
+                    className={cn(
+                      'relative rounded-xl overflow-hidden mr-2.5 bg-charcoal/5 flex-shrink-0 self-center',
+                      isWide ? 'h-10 w-10' : 'h-12 w-12'
+                    )}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={getImageUrl(day.recipe.image)}
+                      alt={day.recipe.name || 'Recipe'}
+                      className="absolute inset-0 h-full w-full object-cover"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                      }}
+                    />
+                  </div>
+                )}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (day.recipe?.id) {
+                      onViewRecipe(day.recipe.id);
+                    }
+                  }}
+                  className="flex flex-1 min-w-0 items-center text-left rounded-2xl px-1 py-0.5 active:bg-ochre/5 transition-colors"
+                  data-testid="edit-recipe-button"
+                >
+                  <div className="flex w-full flex-col justify-center gap-0.5">
+                    <h4
+                      className={cn(
+                        'font-bold text-charcoal line-clamp-2',
+                        isWide ? 'text-sm leading-tight' : 'text-base leading-tight'
+                      )}
+                      data-testid="recipe-name"
+                    >
+                      {day.recipe.name}
+                    </h4>
+                    {(() => {
+                      const count = day._voteCount ?? day.recipe?.voteCount ?? null;
+                      const isUnanimous = day._unanimousVote;
+                      const hasVotes = count != null && count > 0;
+                      return (
+                        <span
+                          data-testid="vote-count"
+                          className={cn(
+                            'text-[10px] font-bold px-1.5 py-0.5 rounded-full whitespace-nowrap inline-block w-fit mt-0.5',
+                            hasVotes ? 'visible' : 'visible',
+                            hasVotes
+                              ? isUnanimous
+                                ? 'bg-sage/20 text-sage'
+                                : 'bg-ochre/20 text-ochre'
+                              : 'bg-charcoal/8 text-charcoal/55'
+                          )}
+                        >
+                          {hasVotes ? `${count} voted` : 'Chosen'}
+                        </span>
+                      );
+                    })()}
+                  </div>
+                </button>
               </div>
+            ) : (
+              <div className="flex items-stretch w-full">
+                <button
+                  onClick={onPivot}
+                  data-testid="plan-meal-button"
+                  className="flex items-center flex-1 min-h-[44px] text-left group rounded-2xl px-1 py-0.5 active:bg-terracotta/10 transition-colors"
+                >
+                  <div className="h-10 w-10 rounded-xl border border-dashed border-terracotta/30 flex items-center justify-center mr-3 group-hover:bg-terracotta/10 group-hover:border-terracotta/50 transition-colors">
+                    <Plus
+                      className="text-terracotta/50 group-hover:text-terracotta transition-colors"
+                      size={18}
+                    />
+                  </div>
+                  <div className="flex flex-col justify-center">
+                    <span
+                      className={cn(
+                        'font-bold text-charcoal/45 group-hover:text-terracotta/70 transition-colors',
+                        isWide ? 'text-xs' : 'text-sm'
+                      )}
+                    >
+                      Plan supper
+                    </span>
+                  </div>
+                </button>
+              </div>
+            )}
+          </div>
+          {((day.status !== 3 && day.recipe?.id) || isDragSource) && (
+            <div className="ml-2 pl-2 border-l border-charcoal/8 flex items-center gap-1 self-stretch max-[360px]:self-end max-[360px]:border-l-0">
+              {day.recipe?.id && !day._isPending && (
+                <motion.button
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onPivot();
+                  }}
+                  className="h-9 w-9 rounded-xl bg-ochre/8 flex items-center justify-center text-ochre active:scale-90 transition-transform"
+                  data-testid="change-recipe-button"
+                  title={t('planner.choosePathTitle', 'Change this recipe')}
+                  aria-label={t('planner.choosePathTitle', 'Change this recipe')}
+                >
+                  <RefreshCw size={18} />
+                </motion.button>
+              )}
+              <PlannerDragHandle start={startRecipeDrag} moveBySlot={moveBySlot} />
             </div>
           )}
-        </div>
-      </motion.div>
-    </Reorder.Item>
+        </motion.div>
+      </div>
+    </div>
   );
 });

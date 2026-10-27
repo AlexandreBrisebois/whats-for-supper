@@ -77,15 +77,6 @@ vi.mock('framer-motion', () => ({
     ),
   },
   AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-  Reorder: {
-    Group: ({ children, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-      <div {...props}>{children}</div>
-    ),
-    Item: ({ children, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-      <div {...props}>{children}</div>
-    ),
-  },
-  useDragControls: () => ({}),
 }));
 
 vi.mock('@/locales', () => ({
@@ -439,6 +430,24 @@ describe('PlannerPage voting action row', () => {
     expect(screen.getByTestId('ask-family-cta')).toBeInTheDocument();
     expect(screen.queryByTestId('planned-count-badge')).not.toBeInTheDocument();
     expect(screen.queryByTestId('nudge-family-cta')).not.toBeInTheDocument();
+  });
+
+  it('keeps fixed dates outside recipe surfaces and gives empty/non-cooking slots no handle', () => {
+    const view = renderPlanner(0);
+    const state = mocks.getWeekState();
+    state.schedule[2] = { ...state.schedule[2], status: 3, nonCooking: { kind: 'order_in' } };
+    view.rerender(<PlannerPage />);
+    const row = screen.getByTestId('day-card-0');
+    const date = within(row).getByTestId('planner-date');
+    const content = within(row).getByTestId('planner-meal');
+    expect(content).not.toContainElement(date);
+    expect(within(content).getByTestId('planner-drag-handle')).toBeVisible();
+    expect(
+      within(screen.getByTestId('day-card-1')).queryByTestId('planner-drag-handle')
+    ).toBeNull();
+    expect(
+      within(screen.getByTestId('day-card-2')).queryByTestId('planner-drag-handle')
+    ).toBeNull();
   });
 
   it('renders seven empty days without a weekly progress indicator', () => {

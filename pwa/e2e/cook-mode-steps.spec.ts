@@ -278,8 +278,22 @@ test.describe('Cook Mode — HowToSection[] steps display', () => {
         });
       });
       await page.goto('/home');
-      await page.getByTestId('tonight-menu-card').click();
+      const tonight = page.getByTestId('tonight-menu-card');
+      await tonight.click();
+      // During the 3D flip Chromium can route the attempted Cook click to the
+      // rotating wrapper, which flips back. Wait for the actual back-face pose.
+      await expect
+        .poll(() =>
+          tonight.evaluate((card) => {
+            const matrix = new DOMMatrixReadOnly(
+              getComputedStyle(card.firstElementChild!).transform
+            );
+            return [matrix.m11, matrix.m13, matrix.m31, matrix.m33];
+          })
+        )
+        .toEqual([-1, 0, 0, -1]);
       await page.getByTestId('cook-mode-btn').click();
+      await expect(page.getByTestId('cooks-mode-overlay')).toBeVisible();
       await collapseDevelopmentBadge(page);
       const ingredient = page.getByTestId('ingredient-toggle').first();
       await ingredient.click();
