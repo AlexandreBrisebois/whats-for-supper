@@ -429,6 +429,20 @@ describe('PlannerPage voting action row', () => {
     });
   });
 
+  it.each([
+    ['en', '2026-05-10', 'May 4 — 10', 'Mon', 'May'],
+    ['fr', '2026-05-10', '4 — 10 mai', 'lun.', 'mai'],
+    ['en', '2026-06-07', 'Jun 1 — 7', 'Mon', 'Jun'],
+    ['fr', '2026-05-03', '27 avr. — 3 mai', 'lun.', 'avr.'],
+  ] as const)('localizes planner dates in %s for %s', (locale, sunday, range, weekday, month) => {
+    mocks.setLocale(locale);
+    renderPlanner(0, sunday);
+    expect(screen.getByRole('heading', { name: range })).toBeInTheDocument();
+    const date = within(screen.getByTestId('day-card-0')).getByTestId('planner-date');
+    expect(within(date).getByText(weekday)).toBeInTheDocument();
+    expect(within(date).getByText(month)).toBeInTheDocument();
+  });
+
   it.each(['en', 'fr'] as const)('uses localized readable planner labels in %s', (locale) => {
     mocks.setLocale(locale);
     renderPlanner(0);

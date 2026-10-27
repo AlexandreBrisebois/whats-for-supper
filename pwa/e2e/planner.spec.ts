@@ -1454,6 +1454,12 @@ test.describe('Supper Planner', () => {
       'padding-left',
       '16px'
     );
+    const root = page
+      .getByTestId('reorder-group')
+      .locator('xpath=ancestor::div[contains(@class,"solar-earth-bg")][1]');
+    const initialBottomPadding = await root.evaluate(
+      (node) => getComputedStyle(node).paddingBottom
+    );
     const sourceDate = page.getByTestId('day-card-0').getByTestId('planner-date');
     const dateBox = (await sourceDate.boundingBox())!;
     const drag = await heldMouse(page);
@@ -1471,10 +1477,7 @@ test.describe('Supper Planner', () => {
     await expect(page.getByTestId('planner-drop-arrow')).toHaveCount(0);
     await expect(page.getByTestId('planner-drop-feedback')).toHaveCount(0);
     await page.keyboard.press('Escape');
-    const root = page
-      .getByTestId('reorder-group')
-      .locator('xpath=ancestor::div[contains(@class,"solar-earth-bg")][1]');
-    await expect(root).toHaveCSS('padding-bottom', '0px');
+    await expect(root).toHaveCSS('padding-bottom', initialBottomPadding);
     await expect(root).toHaveCSS('min-height', 'auto');
   });
 

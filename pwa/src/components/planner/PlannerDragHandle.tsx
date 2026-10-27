@@ -98,7 +98,7 @@ export function PlannerDragHandle({
       data-testid="planner-drag-handle"
       data-grabbed={grabbed}
       className={cn(
-        'h-full min-h-[44px] min-w-[44px] justify-center flex items-center px-2.5 cursor-grab active:cursor-grabbing select-none group/handle rounded-r-2xl',
+        'h-full min-h-[44px] min-w-[44px] justify-center flex items-center px-2.5 cursor-grab active:cursor-grabbing select-none group/handle rounded-2xl',
         'touch-auto focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-charcoal-600',
         grabbed && 'bg-sage/20 ring-2 ring-sage-700'
       )}

@@ -39,7 +39,7 @@ import { nonCookingLabel, nonCookingNote } from '@/lib/planner/nonCooking';
 import type { NonCookingPlanDto } from '@/lib/api/generated/models';
 import { PlanningPivotSheet } from '@/components/planner/PlanningPivotSheet';
 import { cn } from '@/lib/utils';
-import { t, tWithVars } from '@/locales';
+import { getLocale, t, tWithVars } from '@/locales';
 import { QuickFindModal } from '@/components/planner/QuickFindModal';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { SolarLoader } from '@/components/ui/SolarLoader';
@@ -423,7 +423,7 @@ export default function PlannerPage() {
   const canOpenVoting = !weekIsPast && (status === 0 || status === 2);
 
   return (
-    <div className="flex flex-col solar-earth-bg">
+    <div className="flex flex-col solar-earth-bg pb-6">
       {/* Animated Blobs */}
       <div className="blob blob-terracotta -top-20 -left-20 animate-[pulse_8s_infinite]" />
       <div className="blob blob-sage top-1/2 -right-40 animate-[pulse_10s_infinite] [animation-delay:1s]" />
@@ -499,25 +499,21 @@ export default function PlannerPage() {
                   ? (() => {
                       const start = new Date(schedule[0].date ?? '');
                       const end = new Date(schedule[6].date ?? '');
-                      const monthNames = [
-                        'Jan',
-                        'Feb',
-                        'Mar',
-                        'Apr',
-                        'May',
-                        'Jun',
-                        'Jul',
-                        'Aug',
-                        'Sep',
-                        'Oct',
-                        'Nov',
-                        'Dec',
-                      ];
-                      const startMonth = monthNames[start.getUTCMonth()];
-                      const endMonth = monthNames[end.getUTCMonth()];
+                      const isFrench = getLocale() === 'fr';
+                      const monthFormat = new Intl.DateTimeFormat(isFrench ? 'fr-CA' : 'en-CA', {
+                        month: 'short',
+                        timeZone: 'UTC',
+                      });
+                      const startMonth = monthFormat.format(start);
+                      const endMonth = monthFormat.format(end);
                       const startDate = start.getUTCDate();
                       const endDate = end.getUTCDate();
 
+                      if (isFrench) {
+                        return startMonth === endMonth
+                          ? `${startDate} — ${endDate} ${endMonth}`
+                          : `${startDate} ${startMonth} — ${endDate} ${endMonth}`;
+                      }
                       if (startMonth === endMonth) {
                         return `${startMonth} ${startDate} — ${endDate}`;
                       }
@@ -993,7 +989,12 @@ const PlannerDayCard = memo(function PlannerDayCard({
             className="w-full flex flex-col items-center justify-center rounded-xl py-2"
           >
             <span className="max-w-full break-all text-center text-[10px] font-bold tracking-normal text-charcoal-600 leading-none mb-1">
-              {day.day}
+              {day.date
+                ? new Intl.DateTimeFormat(getLocale() === 'fr' ? 'fr-CA' : 'en-CA', {
+                    weekday: 'short',
+                    timeZone: 'UTC',
+                  }).format(new Date(day.date))
+                : day.day}
             </span>
             <span className="max-w-full break-all text-center text-lg font-heading font-extrabold text-charcoal leading-none">
               {(() => {
@@ -1006,7 +1007,10 @@ const PlannerDayCard = memo(function PlannerDayCard({
               {(() => {
                 if (!day.date) return '';
                 const d = new Date(day.date);
-                return d.toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' });
+                return d.toLocaleDateString(getLocale() === 'fr' ? 'fr-CA' : 'en-CA', {
+                  month: 'short',
+                  timeZone: 'UTC',
+                });
               })()}
             </span>
           </div>
