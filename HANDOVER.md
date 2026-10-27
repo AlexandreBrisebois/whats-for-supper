@@ -1,14 +1,5 @@
 # Active resume checkpoints
 
-## Prepared demo showcase — PR #340 (2026-10-25, IMPLEMENTED)
-
-Task/spec: implement [PR #340](https://github.com/AlexandreBrisebois/whats-for-supper/pull/340); [tasks](openspec/changes/archive/2026-10-25-prepared-demo-showcase-loop/tasks.md), [operator guidance](docs/operations/prepared-demo.md).
-Worktree/branch: `/Users/alex/Code/whats-for-supper`, `feature/prepared-demo-showcase-loop`, base `fdde5fe3` from the demo safeguards branch. All implementation remains uncommitted. No push/merge/archive/deploy/live household operations/provider calls.
-Result: complete version-2 prepared capture/reset, fresh empty playable voting owner, scheduled public reset/private capture and one-shot manual restore, recoverable publication, stale worker/client rejection, diagnostics and EN/FR recovery. SDK/raw fetch/SSR/media/SSE share generation fencing; reset removes old drafts and continuation reloads current state while retaining device preferences. Generic dispatch checks parameterized siblings independently. Ordinary backup retains history while demo reset clears visitor activity.
-Verification: `.task/agent-finish/runs/1df41d1451df4b5c882f769444d48052.json` passed all applicable checks with stable identity for 110 task paths: 36 strict OpenSpec items, lint/format/types, 1,019 frontend units, 352 browser tests (18 skipped), 1,249 native API tests (153 skipped), generated-client freshness, static contracts and live endpoint parity. Linux/PostgreSQL passed 177 tests/zero skipped at `.task/database-tests/runs/77aa1a38c18746f1aad5c45715a67b15/result.json`. Focused synthetic API/browser loops and red/green evidence are in tasks.md. Completion-record edits are later documentation only and are verified separately.
-Ownership: six unrelated `pwa/src/locales/{en,fr}/{common,hints,journeys}.json` files remain byte-for-byte preserved; task-owned copy uses new demo-reset.json catalogs. Other HANDOVER sections are unchanged. Private baseline: `/var/folders/7x/450tvgfj1lg2gx9p89txzx0w0000gn/T/wfs-pr340-baseline-a9ncdx9a`; explicit owned paths: `/tmp/wfs-pr340-owned-paths.json`. No subagents used.
-Limits/next action: ready for branch/diff review. Physical-device, deployed-host and power-cut qualification were not run. No automatic staging, commit, push or archival. Disposable qualification services are removed after the final gate.
-
 ## Grocery extras sync and archive (2026-10-24)
 
 Task/spec: `add-everyday-grocery-extras`; user-authorized sync/archive after implementation review. Worktree/branch: `codex/six-ux-recovery-priorities`; main fast-forwarded to `fc8f13a543a73a28bb3f46841e944c544a91dc0b`.
