@@ -601,7 +601,7 @@ export default function PlannerPage() {
                   data-testid="planner-action-row"
                   className={cn(
                     'flex items-center justify-between gap-2',
-                    isWide ? 'mb-2 pt-2.5' : 'mb-3'
+                    isWide ? 'mb-4 pt-2.5' : 'mb-5'
                   )}
                 >
                   {/* Left Slot: Secondary Actions */}
