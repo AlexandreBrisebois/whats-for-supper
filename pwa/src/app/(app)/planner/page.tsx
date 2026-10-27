@@ -685,8 +685,8 @@ export default function PlannerPage() {
                         data-testid="planner-drop-feedback"
                         className="block mt-2 text-xs font-bold text-sage-700"
                       >
-                        {dragPreview.snapshot[dragPreview.target].recipe ||
-                        dragPreview.snapshot[dragPreview.target].nonCooking
+                        {dragPreview.snapshot[dragPreview.target].recipe?.id ||
+                        dragPreview.snapshot[dragPreview.target].status === 3
                           ? t('planner.swapMeals', 'Swap meals')
                           : t('planner.moveHere', 'Move here')}
                       </span>

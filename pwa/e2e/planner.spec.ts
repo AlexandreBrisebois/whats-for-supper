@@ -1338,6 +1338,34 @@ test.describe('Supper Planner', () => {
     expect(moves).toHaveLength(1);
   });
 
+  test('drag feedback switches between Move here and Swap meals using original destination contents', async ({
+    page,
+  }) => {
+    const schedule = dragWeek();
+    Object.assign(schedule.days![2], {
+      recipe: null,
+      status: 3,
+      nonCooking: { kind: 'custom', customLabel: 'Supper with Grandma' },
+    });
+    const { moves } = await openDragWeek(page, schedule);
+    const drag = await heldMouse(page);
+    const feedback = page.getByTestId('planner-drag-preview').getByTestId('planner-drop-feedback');
+    await drag.over(3);
+    await expect(feedback).toHaveText('Move here');
+    await drag.over(1);
+    await expect(feedback).toHaveText('Swap meals');
+    await drag.over(2);
+    await expect(feedback).toHaveText('Swap meals');
+    await drag.over(3);
+    await expect(feedback).toHaveText('Move here');
+    await page.mouse.up();
+    await expect.poll(() => moves.length).toBe(1);
+    await expect(page.getByTestId('day-card-0').getByTestId('plan-meal-button')).toBeVisible();
+    await expect(page.getByTestId('day-card-3')).toContainText('Monday Lasagna');
+    await expect(page.getByTestId('day-card-1')).toContainText('Tuesday Tacos');
+    await expect(page.getByTestId('day-card-2')).toContainText('Supper with Grandma');
+  });
+
   test('fixed date swaps a recipe with a saved non-cooking plan and retains metadata', async ({
     page,
   }) => {
