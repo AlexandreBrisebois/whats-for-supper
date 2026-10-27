@@ -120,38 +120,52 @@ const generateUiId = (): string =>
 const reconcileExtras = (
   existing: GroceryExtraDto[],
   incoming: GroceryExtraDto[],
-  pending: Set<string>
+  pending: Set<string>,
+  selectedWeek: string | null,
+  currentWeek: string | null
 ) => {
-  const eligibleIncoming = incoming.filter((item) => !item.id || !pending.has(item.id));
+  // Checked incoming rows still carry a version that can lose to a newer unchecked row.
+  const eligibleIncoming = eligibleExtras(incoming, selectedWeek, currentWeek, true).filter(
+    (item) => !item.id || !pending.has(item.id)
+  );
   const byId = new Map(eligibleIncoming.filter((item) => item.id).map((item) => [item.id!, item]));
-  const preserved = existing.filter((item) => {
+  const preserved = eligibleExtras(existing, selectedWeek, currentWeek).filter((item) => {
     if (!item.id) return true;
     if (pending.has(item.id)) return true;
     const next = byId.get(item.id);
     return next !== undefined && (item.version ?? 0) > (next.version ?? 0);
   });
   const ids = new Set(preserved.map((item) => item.id));
-  return [...preserved, ...eligibleIncoming.filter((item) => !ids.has(item.id))];
+  return eligibleExtras(
+    [...preserved, ...eligibleIncoming.filter((item) => !ids.has(item.id))],
+    selectedWeek,
+    currentWeek
+  );
 };
 
 const extraIsEligibleForView = (
   extra: GroceryExtraDto,
   selectedWeek: string | null,
-  currentWeek: string | null
+  currentWeek: string | null,
+  includeChecked = false
 ) => {
   const selected = absoluteMonday(selectedWeek);
   const current = absoluteMonday(currentWeek);
   const occurrence = absoluteMonday(String(extra.occurrenceWeekStartDate ?? ''));
   if (!selected || !current || !occurrence) return false;
   if (occurrence === selected && selected <= current) return true;
-  return selected > current && occurrence === current && !extra.checked;
+  return selected > current && occurrence === current && (includeChecked || !extra.checked);
 };
 
 const eligibleExtras = (
   extras: GroceryExtraDto[],
   selectedWeek: string | null,
-  currentWeek: string | null
-) => extras.filter((extra) => extraIsEligibleForView(extra, selectedWeek, currentWeek));
+  currentWeek: string | null,
+  includeChecked = false
+) =>
+  extras.filter((extra) =>
+    extraIsEligibleForView(extra, selectedWeek, currentWeek, includeChecked)
+  );
 
 /**
  * Merges schedule data with optional smart defaults into UILocalScheduleDay[].
@@ -340,13 +354,11 @@ export const useWeekStore = create<WeekState>((set, get) => {
           schedule: mergedDays,
           groceryItems: scheduleData.groceryItems ?? [],
           groceryExtras: reconcileExtras(
-            eligibleExtras(get().groceryExtras, weekStartDate, calendar.currentWeekStartDate),
-            eligibleExtras(
-              scheduleData.groceryExtras ?? [],
-              weekStartDate,
-              calendar.currentWeekStartDate
-            ),
-            get().pendingGroceryExtraIds
+            get().groceryExtras,
+            scheduleData.groceryExtras ?? [],
+            get().pendingGroceryExtraIds,
+            weekStartDate,
+            calendar.currentWeekStartDate
           ),
           status,
           lastSyncedAt: calendarTime.instant(),
@@ -399,17 +411,11 @@ export const useWeekStore = create<WeekState>((set, get) => {
         set({
           groceryItems: data.groceryItems ?? [],
           groceryExtras: reconcileExtras(
-            eligibleExtras(
-              get().groceryExtras,
-              weekStartDate,
-              get().calendar?.currentWeekStartDate ?? null
-            ),
-            eligibleExtras(
-              data.groceryExtras ?? [],
-              weekStartDate,
-              get().calendar?.currentWeekStartDate ?? null
-            ),
-            get().pendingGroceryExtraIds
+            get().groceryExtras,
+            data.groceryExtras ?? [],
+            get().pendingGroceryExtraIds,
+            weekStartDate,
+            get().calendar?.currentWeekStartDate ?? null
           ),
           status: (data.status ?? 0) as 0 | 1 | 2,
           lastSyncedAt: calendarTime.instant(),
@@ -721,9 +727,11 @@ export const useWeekStore = create<WeekState>((set, get) => {
           votingRoundId: data.votingRoundId ?? null,
           groceryItems: data.groceryItems ?? [],
           groceryExtras: reconcileExtras(
-            eligibleExtras(get().groceryExtras, monday, context.currentWeekStartDate),
-            eligibleExtras(data.groceryExtras ?? [], monday, context.currentWeekStartDate),
-            get().pendingGroceryExtraIds
+            get().groceryExtras,
+            data.groceryExtras ?? [],
+            get().pendingGroceryExtraIds,
+            monday,
+            context.currentWeekStartDate
           ),
         });
 
@@ -840,30 +848,15 @@ export const useWeekStore = create<WeekState>((set, get) => {
         void state.sync();
         return;
       }
-      const incoming = new Map(
-        extras
-          .filter(
-            (extra) =>
-              !state.pendingGroceryExtraIds.has(extra.id!) &&
-              (selected === occurrenceWeek || !extra.checked)
-          )
-          .map((extra) => [extra.id!, extra])
-      );
-      set((latest) => {
-        const retained = latest.groceryExtras.filter((existing) => {
-          if (!existing.id) return true;
-          if (latest.pendingGroceryExtraIds.has(existing.id)) return true;
-          const replacement = incoming.get(existing.id);
-          return replacement ? (existing.version ?? 0) > (replacement.version ?? 0) : false;
-        });
-        const retainedIds = new Set(retained.map((item) => item.id));
-        return {
-          groceryExtras: [
-            ...retained,
-            ...[...incoming.values()].filter((item) => !retainedIds.has(item.id)),
-          ],
-        };
-      });
+      set((latest) => ({
+        groceryExtras: reconcileExtras(
+          latest.groceryExtras,
+          extras,
+          latest.pendingGroceryExtraIds,
+          selected,
+          current
+        ),
+      }));
     },
 
     // ── applySnapshot ─────────────────────────────────────────────────────────
@@ -959,18 +952,13 @@ export const useWeekStore = create<WeekState>((set, get) => {
       const incomingGroceryState = (schedule.groceryState?.additionalData ??
         schedule.groceryState) as Record<string, boolean> | undefined;
 
-      const incomingExtras = eligibleExtras(
-        schedule.groceryExtras ?? [],
-        monday,
-        get().calendar?.currentWeekStartDate ?? null
-      );
-      const loadedExtras = eligibleExtras(
+      const reconciledExtras = reconcileExtras(
         get().groceryExtras,
+        schedule.groceryExtras ?? [],
+        get().pendingGroceryExtraIds,
         monday,
         get().calendar?.currentWeekStartDate ?? null
       );
-      const pendingIds = get().pendingGroceryExtraIds;
-      const reconciledExtras = reconcileExtras(loadedExtras, incomingExtras, pendingIds);
 
       set({
         schedule: preserved,

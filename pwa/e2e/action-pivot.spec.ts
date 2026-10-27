@@ -2,11 +2,20 @@ import { test, expect } from './fixtures';
 import { MOCK_IDS, builders, setupCommonRoutes } from './mock-api';
 
 test.describe('Recipe Action Pivot', () => {
-  test.beforeEach(async ({ page, baseURL }) => {
+  test.beforeEach(async ({ page, baseURL }, testInfo) => {
     page.on('console', (msg) => {
       console.log(`[BROWSER] ${msg.type()}: ${msg.text()}`);
     });
-    await setupCommonRoutes(page);
+    const calendar = testInfo.title.includes('skips past')
+      ? builders.deploymentCalendar({
+          today: '2026-05-13',
+          capturedAtUtc: '2026-05-13T12:00:00Z',
+          currentWeekStartDate: '2026-05-11',
+          referenceWeekStartDate: '2026-05-11',
+          nextDayAtUtc: '2026-05-14T00:00:00Z',
+        })
+      : undefined;
+    await setupCommonRoutes(page, calendar);
 
     const baseUrl = baseURL || 'http://127.0.0.1:3000';
 
@@ -72,7 +81,7 @@ test.describe('Recipe Action Pivot', () => {
     });
   });
 
-  test('Discovery flow: shows "Cook This" and then the pivot', async ({ page }) => {
+  test('Search flow: shows "Cook This" and then the pivot', async ({ page }) => {
     await page.goto('/recipes');
     await page.getByTestId('recipe-search-input').fill('lasagna');
     await page.getByTestId('recipe-search-input').press('Enter');
@@ -93,7 +102,7 @@ test.describe('Recipe Action Pivot', () => {
     await expect(cookBtn).not.toBeVisible();
   });
 
-  test('Discovery flow: "Cook it tonight" navigates home', async ({ page }) => {
+  test('Search flow: "Cook it tonight" navigates home', async ({ page }) => {
     await page.goto('/recipes');
     await page.getByTestId('recipe-search-input').fill('lasagna');
     await page.getByTestId('recipe-search-input').press('Enter');
@@ -104,9 +113,7 @@ test.describe('Recipe Action Pivot', () => {
     await expect(page).toHaveURL(/\/home/);
   });
 
-  test('Discovery flow: "Cook Tonight" reveals recovery when today is occupied', async ({
-    page,
-  }) => {
+  test('Search flow: "Cook Tonight" reveals recovery when today is occupied', async ({ page }) => {
     await page.clock.setFixedTime(new Date('2026-05-13T12:00:00Z'));
     const todayIndex = 2;
 
@@ -176,78 +183,95 @@ test.describe('Recipe Action Pivot', () => {
     await expect(page).toHaveURL(/dayIndex=1/);
   });
 
-  test('Quick Find in Planner: propagates context to Search Library', async ({ page }) => {
-    // Mock fill-the-gap suggestions
+  test('Quick Replace in Planner: Search retains the selected date through assignment', async ({
+    page,
+  }) => {
+    // Five observed animated transitions plus Search and replacement reconciliation.
+    test.setTimeout(60_000);
+    const suggestions = [
+      MOCK_IDS.RECIPE_LIST_01,
+      MOCK_IDS.RECIPE_LIST_02,
+      MOCK_IDS.RECIPE_LIST_03,
+      MOCK_IDS.RECIPE_LIST_04,
+      MOCK_IDS.RECIPE_LIST_05,
+    ].map((id, index) => builders.scheduleRecipe({ id, name: `Suggestion ${index + 1}` }));
     await page.route('**/api/schedule/fill-the-gap**', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          data: Array.from({ length: 5 }, (_, i) => ({
-            id: `recipe-${i}`,
-            name: `Recipe ${i}`,
-            image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c',
-          })),
-        }),
-      });
+      expect(new URL(route.request().url()).searchParams.get('referenceWeekStartDate')).toBe(
+        '2026-05-04'
+      );
+      await route.fulfill({ json: { data: suggestions } });
     });
 
-    await page.goto('/planner');
-    await page.getByTestId('day-card-1').click();
+    // Seed an occupied Tuesday in the following week through the stateful mock.
+    await page.goto('/onboarding');
+    await page.evaluate(async (recipeId) => {
+      const response = await fetch('/api/schedule/assign?referenceWeekStartDate=2026-05-04', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ weekOffset: 1, dayIndex: 1, recipeId }),
+      });
+      if (!response.ok) throw new Error('Could not seed replacement slot');
+    }, MOCK_IDS.RECIPE_CHICKEN);
+    await page.goto('/planner?weekOffset=1&referenceWeekStartDate=2026-05-04');
+    await expect(page.getByTestId('day-card-1')).toContainText('Chicken');
+    await page.getByTestId('day-card-1').getByTestId('change-recipe-button').click();
+    await expect(page.getByTestId('pivot-sheet').getByRole('time')).toHaveAttribute(
+      'datetime',
+      '2026-05-12'
+    );
     await page.getByTestId('pivot-quick-find').click();
 
-    // Verify modal is open
-    await expect(page.getByTestId('quick-find-modal')).toBeVisible();
-
-    // Go to the nudge card after all five suggestions.
-    for (let i = 0; i < 5; i++) {
+    const modal = page.getByTestId('quick-find-modal');
+    await expect(modal).toBeVisible();
+    // Observe each completed card transition; the footer remains visible during exits.
+    for (const recipe of suggestions) {
+      await expect(modal.getByRole('heading', { name: recipe.name!, exact: true })).toBeVisible();
       await page.getByTestId('quick-find-next').click();
-      await expect(page.getByTestId('quick-find-next')).toBeVisible();
     }
-
     const searchLibraryLink = page.getByTestId('quick-find-search-library');
-    await expect(searchLibraryLink).toBeVisible();
-    await expect(searchLibraryLink).toHaveAttribute('href', /\/recipes\?addToDay=1&weekOffset=0/);
-
+    await expect(searchLibraryLink).toHaveAttribute(
+      'href',
+      '/recipes?addToDay=1&weekOffset=1&referenceWeekStartDate=2026-05-04'
+    );
+    await expect(page.getByTestId('quick-find-select')).toBeDisabled();
     await searchLibraryLink.click();
-    await expect(page).toHaveURL(/\/recipes\?addToDay=1&weekOffset=0/);
+    await expect(page).toHaveURL(
+      /\/recipes\?addToDay=1&weekOffset=1&referenceWeekStartDate=2026-05-04/
+    );
     await expect(page.getByTestId('planning-mode-banner')).toBeVisible();
     await expect(page.getByTestId('planning-mode-banner')).toContainText(/Planning for Tuesday/i);
+    await page.getByTestId('recipe-search-input').fill('lasagna');
+    await page.getByTestId('recipe-search-input').press('Enter');
+    await page.getByTestId('recipe-card-top-pick').click();
+    await expect(page.getByTestId('action-add-to-day')).toHaveText(/Plan for Tuesday/);
+    await page.getByTestId('action-add-to-day').click();
+    await expect(page.getByTestId('recovery-dialog-title')).toBeVisible();
+    const assignment = page.waitForRequest(
+      (request) =>
+        request.method() === 'POST' && new URL(request.url()).pathname === '/api/schedule/assign'
+    );
+    await page.getByTestId('recovery-action-drop').click();
+    const request = await assignment;
+    expect(request.postDataJSON()).toMatchObject({
+      weekOffset: 1,
+      dayIndex: 1,
+      recipeId: MOCK_IDS.RECIPE_LASAGNA,
+    });
+    expect(new URL(request.url()).searchParams.get('referenceWeekStartDate')).toBe('2026-05-04');
+    await expect(page).toHaveURL(
+      /\/planner\?success=1&dayIndex=1&weekOffset=1&referenceWeekStartDate=2026-05-04/
+    );
+    await expect(page.getByTestId('day-card-1')).toContainText(
+      builders.scheduleRecipe({ id: MOCK_IDS.RECIPE_LASAGNA }).name!
+    );
   });
 
-  test('Discovery flow: "Plan for Later" skips past and current day', async ({ page }) => {
+  test('Search flow: "Plan for Later" skips past and current day', async ({ page }) => {
     // Set fixed time to Wednesday May 13, 2026
     const wednesday = new Date('2026-05-13T12:00:00Z');
     await page.clock.setFixedTime(wednesday);
 
-    // Mock schedule: all days empty
-    await page.route(
-      (url) => url.pathname === '/api/schedule' && url.searchParams.get('weekOffset') === '0',
-      async (route) => {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({
-            data: {
-              weekOffset: 0,
-              weekStartDate: '2026-05-11',
-              calendar: builders.deploymentCalendar({
-                today: '2026-05-13',
-                capturedAtUtc: '2026-05-13T12:00:00Z',
-                currentWeekStartDate: '2026-05-11',
-                referenceWeekStartDate: '2026-05-11',
-                nextDayAtUtc: '2026-05-14T00:00:00Z',
-              }),
-              days: Array.from({ length: 7 }, (_, i) => ({
-                date: `2026-05-${11 + i}`, // Mon 11 to Sun 17
-                recipe: null,
-              })),
-            },
-          }),
-        });
-      }
-    );
-
+    // Search owns Plan for Later; Discovery remains a voting-only journey.
     await page.goto('/recipes');
     await page.getByTestId('recipe-search-input').fill('lasagna');
     await page.getByTestId('recipe-search-input').press('Enter');
@@ -255,7 +279,18 @@ test.describe('Recipe Action Pivot', () => {
     await page.getByTestId('recipe-card-top-pick').click();
     await page.getByTestId('action-cook-this').click();
 
+    const assignment = page.waitForRequest(
+      (request) =>
+        request.method() === 'POST' && new URL(request.url()).pathname === '/api/schedule/assign'
+    );
     await page.getByTestId('action-plan-later').click();
+    const request = await assignment;
+    expect(request.postDataJSON()).toMatchObject({
+      weekOffset: 0,
+      dayIndex: 3,
+      recipeId: MOCK_IDS.RECIPE_LASAGNA,
+    });
+    expect(new URL(request.url()).searchParams.get('referenceWeekStartDate')).toBe('2026-05-11');
 
     // Today is Wed (index 2), Tomorrow is Thu (index 3).
     // It should skip index 0 (Mon), 1 (Tue), 2 (Wed).

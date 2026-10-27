@@ -1,14 +1,16 @@
+import { demoMediaUrl } from './api/demo-session';
+
 export function getImageUrl(path: string | null | undefined): string {
   if (!path) return '';
-  if (path.startsWith('http')) return path;
+  if (path.startsWith('http')) return demoMediaUrl(path);
 
   const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
   if (baseUrl && path.startsWith('/api')) {
     const cleanBaseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
-    return `${cleanBaseUrl}${path}`;
+    return demoMediaUrl(`${cleanBaseUrl}${path}`);
   }
 
-  return path;
+  return demoMediaUrl(path);
 }
 
 export function getTodayString(): string {

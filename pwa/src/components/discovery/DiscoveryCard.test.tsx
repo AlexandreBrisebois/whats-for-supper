@@ -64,3 +64,16 @@ describe('DiscoveryCard — neutral visual parity', () => {
     expect(screen.queryByTestId('discovery-card-interest-ring')).not.toBeInTheDocument();
   });
 });
+
+// Raw-duration consumers retain the same units as Home.
+describe('raw recipe total duration', () => {
+  it.each([
+    ['PT6H', '6H'],
+    ['PT1H30M', '1H 30 MINS'],
+    ['PT45M', '45 MINS'],
+    ['PT360M', '6H'],
+  ])('renders %s without losing units', (totalTime, expected) => {
+    render(<DiscoveryCard {...BASE_PROPS} totalTime={totalTime} />);
+    expect(screen.getByText(`READY IN ${expected}`)).toBeInTheDocument();
+  });
+});

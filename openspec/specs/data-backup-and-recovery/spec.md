@@ -36,6 +36,8 @@ Preserved references to the former combined owners resolve through these current
 - [Represent persisted recipe attribution and readiness](../recipe-library/spec.md#requirement-represent-persisted-recipe-attribution-and-readiness)
 - [Authenticate protected API requests independently](../household-identity/spec.md#requirement-authenticate-protected-api-requests-independently)
 
+Shared management-status selection and result projection are owned by [Project the latest selected management result](#requirement-project-the-latest-selected-management-result). Demo-specific snapshot, cron, reset and recurrence diagnostics remain owned by [demo-household](../demo-household/spec.md#requirement-report-snapshot-file-and-cron-diagnostics-with-management-status).
+
 ## Requirements
 
 ### Requirement: Accept ordinary management requests through household access
@@ -64,7 +66,7 @@ Management acceptance SHALL use the background-processing persisted lifecycle an
 
 ### Requirement: Project the latest selected management result
 
-When the latest selected management instance is an ordinary management workflow, GET /api/management/status SHALL return its instance identity as workflowId, workflowType, status, createdAt and updatedAt, with the most recently updated completed task result that is non-null, or a null result.
+GET /api/management/status SHALL select the newest created instance among db-backup, db-restore, db-disaster-recovery, demo-capture and demo-restore. When found, it SHALL return its instance identity as workflowId, workflowType, persisted status, createdAt and updatedAt, with the most recently updated completed task result that is non-null, or a null result.
 
 #### Scenario: Completed result
 - **WHEN** the selected ordinary instance has multiple completed tasks with non-null results
@@ -73,6 +75,14 @@ When the latest selected management instance is an ordinary management workflow,
 #### Scenario: No completed result
 - **WHEN** the selected ordinary instance has no completed task with a non-null result
 - **THEN** the response result is null
+
+#### Scenario: Latest management selection
+- **WHEN** several selected management workflows exist and status is read successfully
+- **THEN** the newest by createdAt is returned even if it differs from the caller's earlier taskId
+
+#### Scenario: Completed task result
+- **WHEN** the selected instance has completed tasks with stored results
+- **THEN** result is taken from the newest updated such task, which can be reschedule rather than restore
 
 ### Requirement: Append missing member identities to the member export
 
@@ -468,7 +478,7 @@ The system SHALL provide explicit exact snapshot and restore operations distinct
 #### Scenario: Legacy omission is not exact emptiness
 - **WHEN** exact restore receives an unsupported version or missing required artifact including history
 - **THEN** preflight rejects it without changing live state
-- **AND** ordinary merge missing-history preservation and demo missing-history clearing remain unchanged
+- **AND** ordinary merge missing-history preservation remains unchanged; demo baseline compatibility and missing-history behavior follow the demo-household capability
 
 ### Requirement: Export complete grocery-extra history
 

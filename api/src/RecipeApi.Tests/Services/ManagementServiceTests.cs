@@ -39,28 +39,6 @@ public class ManagementServiceTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task WeeklyInterest_DemoRestoresHistoryAndInvalidatesOldRound()
-    {
-        var recipe = new Recipe { Name = "Demo interest" };
-        _db.Recipes.Add(recipe);
-        var row = new WeeklyHouseholdInterest { RecipeId = recipe.Id, WeekStartDate = new(2026, 10, 5), PositiveCount = 3 };
-        _db.WeeklyHouseholdInterests.Add(row);
-        var state = new VotingRoundState();
-        _db.VotingRoundStates.Add(state);
-        await _db.SaveChangesAsync();
-        var oldRound = state.RoundId;
-        await _service.CaptureDemoStateAsync();
-        row.PositiveCount = 8;
-        await _db.SaveChangesAsync();
-        await _service.RestoreDemoStateAsync();
-        Assert.Equal(3, (await _db.WeeklyHouseholdInterests.SingleAsync()).PositiveCount);
-        Assert.NotEqual(oldRound, (await _db.VotingRoundStates.SingleAsync()).RoundId);
-        File.Delete(Path.Combine(DemoRoot, "weekly-household-interest.json"));
-        await _service.RestoreDemoStateAsync();
-        Assert.Empty(_db.WeeklyHouseholdInterests);
-    }
-
-    [Fact]
     public async Task Retained_pending_pdf_restores_metadata_without_becoming_ready()
     {
         var id = Guid.NewGuid();
@@ -81,6 +59,17 @@ public class ManagementServiceTests : IAsyncLifetime
         Assert.Equal(1, source!.ReadByte());
     }
 
+    [Fact]
+    public async Task Demo_coordination_does_not_enable_independent_recovery_status()
+    {
+        var root = _scope.ServiceProvider.GetRequiredService<RecipesRootResolver>().BaseRoot;
+        Directory.CreateDirectory(root);
+        await File.WriteAllTextAsync(Path.Combine(root, ".demo-coordination"), "2");
+        Assert.True(_scope.ServiceProvider.GetRequiredService<RecoveryBoundary>().Enabled);
+        var status = await _scope.ServiceProvider.GetRequiredService<RecoverySnapshotService>().StatusAsync(CancellationToken.None);
+        Assert.Equal("disabled", status.State);
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private string DataRoot => _scope.ServiceProvider
@@ -90,7 +79,6 @@ public class ManagementServiceTests : IAsyncLifetime
     private string ImportReportsPath => Path.Combine(DataRoot, "recipe-import-reports.json");
     private string GroceryExtrasPath => Path.Combine(DataRoot, "grocery-extras.json");
     private string ReportsRoot => Path.Combine(DataRoot, "reports");
-    private string DemoRoot => Path.Combine(DataRoot, "demo");
 
     // ── Backup step 5 ─────────────────────────────────────────────────────────
 
@@ -407,124 +395,7 @@ public class ManagementServiceTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task CaptureDemoStateAsync_Writes_Core_Snapshot_And_Excludes_Dynamic_State()
-    {
-        var member = new FamilyMember { Name = "Demo Cook" };
-        var recipe = new Recipe
-        {
-            Id = Guid.NewGuid(),
-            Name = "Snapshot Soup",
-            AddedBy = member.Id,
-            Description = "A stable demo recipe",
-            CreatedAt = DateTimeOffset.UtcNow.AddDays(-1),
-            UpdatedAt = DateTimeOffset.UtcNow
-        };
-
-        _db.FamilyMembers.Add(member);
-        _db.Recipes.Add(recipe);
-        _db.RecipeSearchDocuments.Add(new RecipeSearchDocument
-        {
-            RecipeId = recipe.Id,
-            DocumentText = "snapshot soup",
-            SearchMetadata = "{}",
-            EmbeddingJson = "[0.1,0.2]",
-            EmbeddingModel = "test",
-            IndexStatus = "ready",
-            LastIndexedAt = DateTimeOffset.UtcNow
-        });
-        _db.RecipeVotes.Add(new RecipeVote
-        {
-            RecipeId = recipe.Id,
-            FamilyMemberId = member.Id,
-            Vote = VoteType.Like
-        });
-        _db.WeeklyPlans.Add(new WeeklyPlan { WeekStartDate = DateOnly.FromDateTime(DateTime.UtcNow) });
-        _db.CalendarEvents.Add(new CalendarEvent
-        {
-            Id = Guid.NewGuid(),
-            RecipeId = recipe.Id,
-            Date = DateOnly.FromDateTime(DateTime.UtcNow),
-            Status = CalendarEventStatus.Planned
-        });
-        await _db.SaveChangesAsync();
-
-        await _service.CaptureDemoStateAsync(CancellationToken.None);
-
-        Assert.True(File.Exists(Path.Combine(DemoRoot, "manifest.json")));
-        Assert.True(File.Exists(Path.Combine(DemoRoot, "family-members.json")));
-        Assert.True(File.Exists(Path.Combine(DemoRoot, "recipes.json")));
-        Assert.True(File.Exists(Path.Combine(DemoRoot, "recipe-search-documents.json")));
-        Assert.False(File.Exists(Path.Combine(DemoRoot, "recipe-votes.json")));
-        Assert.False(File.Exists(Path.Combine(DemoRoot, "weekly-plans.json")));
-        Assert.False(File.Exists(Path.Combine(DemoRoot, "calendar-events.json")));
-    }
-
-    [Fact]
-    public async Task RestoreDemoStateAsync_Restores_Core_State_And_Clears_Dynamic_State()
-    {
-        var member = new FamilyMember { Name = "Demo Cook" };
-        var recipe = new Recipe
-        {
-            Id = Guid.NewGuid(),
-            Name = "Snapshot Soup",
-            AddedBy = member.Id,
-            CreatedAt = DateTimeOffset.UtcNow.AddDays(-1),
-            UpdatedAt = DateTimeOffset.UtcNow
-        };
-        _db.FamilyMembers.Add(member);
-        _db.Recipes.Add(recipe);
-        _db.RecipeSearchDocuments.Add(new RecipeSearchDocument
-        {
-            RecipeId = recipe.Id,
-            DocumentText = "snapshot soup",
-            SearchMetadata = "{}",
-            EmbeddingJson = "[0.1,0.2]",
-            EmbeddingModel = "test",
-            IndexStatus = "ready"
-        });
-        _db.RecipeImportReports.Add(new RecipeImportReport
-        {
-            RecipeId = recipe.Id,
-            Reasons = ["ingredients"],
-            Status = RecipeImportReportStatus.Reported
-        });
-        await _db.SaveChangesAsync();
-        await _service.CaptureDemoStateAsync(CancellationToken.None);
-
-        var intruder = new FamilyMember { Name = "Temporary Visitor" };
-        _db.FamilyMembers.Add(intruder);
-        recipe.Name = "Mutated Soup";
-        _db.RecipeSearchDocuments.RemoveRange(_db.RecipeSearchDocuments);
-        _db.RecipeVotes.Add(new RecipeVote
-        {
-            RecipeId = recipe.Id,
-            FamilyMemberId = member.Id,
-            Vote = VoteType.Dislike
-        });
-        _db.WeeklyPlans.Add(new WeeklyPlan { WeekStartDate = DateOnly.FromDateTime(DateTime.UtcNow) });
-        _db.CalendarEvents.Add(new CalendarEvent
-        {
-            Id = Guid.NewGuid(),
-            RecipeId = recipe.Id,
-            Date = DateOnly.FromDateTime(DateTime.UtcNow),
-            Status = CalendarEventStatus.Planned
-        });
-        await _db.SaveChangesAsync();
-
-        await _service.RestoreDemoStateAsync(CancellationToken.None);
-
-        Assert.Contains(_db.FamilyMembers, m => m.Id == member.Id && m.Name == "Demo Cook");
-        Assert.DoesNotContain(_db.FamilyMembers, m => m.Id == intruder.Id);
-        Assert.Contains(_db.Recipes, r => r.Id == recipe.Id && r.Name == "Snapshot Soup");
-        Assert.Contains(_db.RecipeSearchDocuments, d => d.RecipeId == recipe.Id && d.IndexStatus == "ready");
-        Assert.Empty(_db.RecipeVotes);
-        Assert.Empty(_db.WeeklyPlans);
-        Assert.Empty(_db.CalendarEvents);
-        Assert.Empty(_db.RecipeImportReports);
-    }
-
-    [Fact]
-    public async Task RestoreDemoStateAsync_When_Snapshot_Missing_Does_Not_Clear_Active_Data()
+    public async Task RestoreDemoStateAsync_UnsupportedStorage_Does_Not_Clear_Active_Data()
     {
         var member = new FamilyMember { Name = "Keep Me" };
         _db.FamilyMembers.Add(member);
@@ -1041,22 +912,7 @@ public class ManagementServiceTests : IAsyncLifetime
         Assert.DoesNotContain("isHealthyChoice", recipeJson, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("dietaryProfile", recipeJson, StringComparison.OrdinalIgnoreCase);
 
-        var demoRecipeId = Guid.NewGuid();
-        _db.Recipes.Add(new Recipe
-        {
-            Id = demoRecipeId,
-            Name = "Demo Lentil Stew",
-            AddedBy = _factory.DefaultFamilyMemberId,
-            Ingredients = "[\"lentils\"]",
-            CreatedAt = DateTimeOffset.UtcNow,
-            UpdatedAt = DateTimeOffset.UtcNow
-        });
-        await _db.SaveChangesAsync();
 
-        await _service.CaptureDemoStateAsync(CancellationToken.None);
-
-        var demoJson = await File.ReadAllTextAsync(Path.Combine(DemoRoot, "recipes.json"));
-        Assert.DoesNotContain("dietaryProfile", demoJson, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

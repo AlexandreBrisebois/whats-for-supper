@@ -1,0 +1,42 @@
+{
+  "algorithm": "sha256",
+  "excludes": [
+    "evidence/artifact-manifest.json"
+  ],
+  "files": {
+    "ARCHITECTURE_AUDIT.md": "ae70347f12399fc90ca5175044b005332d7ab470b04bbe0eb904f9d114849277",
+    "AUDIT_TRACKER.md": "16815f97d4d0d0f4aec69ef682ccd10273fc7acfd39ab56092aae8bc646f9887",
+    "BENCHMARK.md": "791b913beb842b747d6817937888b0d263caff6026fd1ca3bc50b11c77711633",
+    "DESIGN.md": "2f4c7d5cbcf7f87d594da591dc7ddb3a3a92ff960c0361ddcaa56e3d462be09f",
+    "INVENTORY_TOOL.md": "ad4df41ef9a6aa3eb44deb505a633854c92c02bf9258d2762ce7e98731ec3f25",
+    "OVERLAP_FINDINGS.md": "11bcc98b3cf1443a94caefc7ef6211b907e29c58cb83787b5d63ee23ef9eb087",
+    "PLAN.md": "336e5a999ec2edfd7ea59e9beb71a6c7ce1128350160c7236ac90c5da070f0f1",
+    "REPRODUCE.md": "d54edecff2f4be61465d6fb85f82b236fd6c06b8de633757168acdd92573e5b6",
+    "evidence/benchmark-payloads.json": "5f2d77d2ac0935b539232803ce952d520bd8c3b37d8faa2e071864d12b8aa951",
+    "evidence/benchmark-reproducibility.json": "40b53d6c452c5950b926c67737b0a7cd02a5b46b0f47ea9315848d351eca416a",
+    "evidence/benchmark-results.json": "ce9b6d7755c67797d9d589647678394e5c723a890ab9830db9e66335456dabdb",
+    "evidence/benchmark-verification.json": "e61776e2f3925e6dbf973d450c5ca490a82fd35487da37ae3b90d94d265298e1",
+    "evidence/canonical-links.json": "cba4c0e601fd413b9c900b02b45093b1a75e70e739865ef7273f6916cf7c2d83",
+    "evidence/command-observations.json": "da135cb93979d81301bef31b79c4f66c1fcd5aaf247e1f5691b9928256909a9f",
+    "evidence/existing-overview-comparison.json": "78e20a2983e641aefd4715dbb3e94d75d061ea5b7fc7b2b53e8f262044067aa3",
+    "evidence/experiment-sources.json": "02eb3aabf5a0abea43fc589c683654007ec0ed4a6931b93ca0f2145c9da3c2ac",
+    "evidence/final-revision-reconciliation.json": "c792b02946c2e2970a729e15be437cc7d55af94c2b324a2a1034c680fbd8a372",
+    "evidence/generation-pipeline.json": "fe90602b911f83246ed18ac89d7ad3acba378e9a550567cd28d4061da1a78843",
+    "evidence/inventory-tool-acceptance.json": "9705efbda56a7e2b1588ff05f9615a9edbc7842c16156d6bc111fcd6b0b173f4",
+    "evidence/inventory-validation.json": "c7db22180c8827fb6c8acbdb4e76b3b693052f579587daa82377adb7e73e1f12",
+    "evidence/inventory.json": "6fc8740357dcd1b4b9c6ec0b0037ec8ea258f994c6d998d246dd7203e5476b30",
+    "evidence/lead-final-reproduction.json": "3334c8a87220dcea396a861f68e8dd4c41cb9b0d668506c7e689faf2305731f1",
+    "evidence/lead-inventory-review.json": "eed2b2adfd94faea3c623106c551d1c159b3051b54a966082c8e889a3eeb1eb7",
+    "evidence/lead-overlap-review.json": "2c812963bd86d65df28ef28527836ccc605f5ff04799e9b0c96d8976da583dfd",
+    "evidence/lead-reproduction-review.json": "0282a011c9cccbe48edf7dc2d6505fe20e62f9916a47a26c28bbc8c72d1ce8ab",
+    "evidence/overlap-candidates.json": "a919d01988b026a826c5ff2299dfe0ee854a9aa12e1535629c96fa50f3fa67d9",
+    "evidence/overlap-remaining-review.json": "57f249a5798313e16fcfaa4769e4a6caa4d54361b85c5d824455dffa5d341010",
+    "evidence/overlap-reviewed.json": "440acb797a5293a4b8f296dba5e95e1b5abcfeac986526d00480ec02d75d0dad",
+    "evidence/overlap-summary.json": "d8c47157e42f0f3b31741b63dbf7800885621e8257650c7f138c1b6ddbff3d8f",
+    "evidence/preflight.json": "3f4121dd86097f198d087df24d31ab0e197c3078043b044737ce2c2e60b28850",
+    "evidence/requirements.json": "42ad64433c7ac971214fce81bcc8dca409557681da01b28509875e7952656688",
+    "evidence/scope-verification.json": "de77f80189807cd9eaff305b2f9724c1c5090203af0d6e5ca7d669f4db937940",
+    "evidence/size-analysis.json": "f7bf8ddfcb99fec971d55add7f6620ccb421fbf4b06fbcfcdcedb1810d81ec00",
+    "evidence/tracked-baseline-sha256.json": "6bc4adcd6d0c377f91222e3d4963a7be84e82628448b6a36f7c9196928602dba"
+  }
+}

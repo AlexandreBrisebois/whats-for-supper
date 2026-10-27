@@ -1,5 +1,6 @@
 'use client';
 
+import { demoSession } from '@/lib/api/demo-session';
 import { useEffect } from 'react';
 import { useTodayStore } from '@/store/todayStore';
 import { useWeekStore } from '@/store/weekStore';
@@ -102,6 +103,10 @@ export function useScheduleStream() {
     window.addEventListener('pageshow', onResume);
     document.addEventListener('visibilitychange', onVisibility);
 
+    source.addEventListener('demo_reset', (e: MessageEvent) => {
+      demoSession.observe(JSON.parse(e.data).generation);
+    });
+
     // ── connected ──────────────────────────────────────────────────────────
     // Server sends the current week-0 schedule snapshot on every connect or
     // reconnect. We capture the connectionId for echo suppression (BS-11).
@@ -109,7 +114,9 @@ export function useScheduleStream() {
     // UI jitter during network flickers.
     source.addEventListener('connected', (e: MessageEvent) => {
       console.log('[SSE] Received "connected" event');
-      const { schedule, connectionId } = JSON.parse(e.data);
+      const { schedule, connectionId, demoGeneration } = JSON.parse(e.data);
+      demoSession.observe(demoGeneration);
+      if (demoSession.resetRequired) return;
       if (connectionId) {
         usePlannerStore.getState().setSseConnectionId(connectionId);
       }

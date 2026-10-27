@@ -1,0 +1,39 @@
+{
+  "checks": [
+    {
+      "id": "small-ui",
+      "reference_requirements": 4,
+      "reference_scenarios": 16,
+      "whole_blocks_preserved": true,
+      "hashes_match_at_both_verification_reads": true,
+      "requirement_missing_count": 0,
+      "scenario_missing_count": 0,
+      "initial_missing_requirement_count": 3,
+      "initial_missing_scenario_count": 14
+    },
+    {
+      "id": "planner-cross-capability",
+      "reference_requirements": 33,
+      "reference_scenarios": 100,
+      "whole_blocks_preserved": true,
+      "hashes_match_at_both_verification_reads": true,
+      "requirement_missing_count": 0,
+      "scenario_missing_count": 0,
+      "initial_missing_requirement_count": 31,
+      "initial_missing_scenario_count": 95
+    },
+    {
+      "id": "background-lifecycle",
+      "reference_requirements": 11,
+      "reference_scenarios": 36,
+      "whole_blocks_preserved": true,
+      "hashes_match_at_both_verification_reads": true,
+      "requirement_missing_count": 0,
+      "scenario_missing_count": 0,
+      "initial_missing_requirement_count": 10,
+      "initial_missing_scenario_count": 33
+    }
+  ],
+  "status_after": "?? docs/audits/\n",
+  "head": "a3232949b1fd627771ebe9ee68a975170f1798ad"
+}

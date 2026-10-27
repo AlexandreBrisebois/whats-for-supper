@@ -13,7 +13,8 @@ public class CategorizeRecipeProcessor(
     RecipeDbContext db,
     IChatClient chatClient,
     ILogger<CategorizeRecipeProcessor> logger,
-    VegetarianClassificationPolicy? vegetarianPolicy = null) : IWorkflowProcessor
+    VegetarianClassificationPolicy? vegetarianPolicy = null,
+    DemoModeOptions? demoMode = null) : IWorkflowProcessor
 {
     public string ProcessorName => "CategorizeRecipe";
 
@@ -40,6 +41,8 @@ public class CategorizeRecipeProcessor(
 
     public async Task<object?> ExecuteAsync(WorkflowTask task, CancellationToken ct)
     {
+        // Demo refusal must not fall through to heuristic replacement facts.
+        demoMode?.EnsureAiAvailable();
         if (string.IsNullOrEmpty(task.Payload))
             throw new ArgumentException("Task payload is empty.");
 

@@ -1,3 +1,4 @@
+import { demoFetch } from './demo-session';
 import { apiClient, requestAdapter } from './api-client';
 import { useFamilyStore } from '@/store/familyStore';
 import { usePlannerStore } from '@/store/plannerStore';
@@ -267,7 +268,7 @@ export async function createRecipe(formData: FormData): Promise<{ id: string }> 
   // Use native fetch for multipart FormData to avoid Kiota serialization issues
   const familyMemberId = useFamilyStore.getState().selectedFamilyMemberId;
 
-  const response = await fetch(`${requestAdapter.baseUrl}/api/recipes`, {
+  const response = await demoFetch(`${requestAdapter.baseUrl}/api/recipes`, {
     method: 'POST',
     body: formData,
     headers: {
@@ -308,7 +309,7 @@ export async function uploadRecipeOriginal(id: string, file: File): Promise<{ id
   const formData = new FormData();
   formData.append('file', file);
 
-  const response = await fetch(`${requestAdapter.baseUrl}/api/recipes/${id}/originals`, {
+  const response = await demoFetch(`${requestAdapter.baseUrl}/api/recipes/${id}/originals`, {
     method: 'POST',
     body: formData,
     headers: {
@@ -624,7 +625,7 @@ export async function searchRecipes(
   const familyMemberId =
     useFamilyStore.getState().selectedFamilyMemberId || getFamilyMemberIdCookie();
   const { sseConnectionId, localMoveSeq, confirmedMoveSeq } = usePlannerStore.getState();
-  const response = await fetch(`${requestAdapter.baseUrl}/api/recipes/search`, {
+  const response = await demoFetch(`${requestAdapter.baseUrl}/api/recipes/search`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -688,7 +689,7 @@ export async function restoreRecipe(id: string): Promise<void> {
 
 export async function purgeRecipe(id: string, elevatedPin: string): Promise<void> {
   // Use native fetch to ensure we can catch non-2xx status codes reliably in tests
-  const response = await fetch(`${requestAdapter.baseUrl}/api/recipes/${id}/purge`, {
+  const response = await demoFetch(`${requestAdapter.baseUrl}/api/recipes/${id}/purge`, {
     method: 'DELETE',
     headers: {
       'X-Elevated-Pin': elevatedPin,
@@ -728,7 +729,7 @@ export async function getRecommendations(): Promise<RecommendationsResponse> {
  * Returns the image as a blob URL for use in <img> tags.
  */
 export async function getRecipeImage(recipeId: string, index: number): Promise<string> {
-  const response = await fetch(
+  const response = await demoFetch(
     `${requestAdapter.baseUrl}/api/recipes/${recipeId}/original/${index}`
   );
   const blob = await response.blob();
@@ -744,7 +745,7 @@ export async function createPdfRecipe(
 ): Promise<string> {
   const { pdfCaptureForm } = await import('@/lib/pdfCapture');
   const { t } = await import('@/locales');
-  const response = await fetch(`${requestAdapter.baseUrl}/api/recipes/capture-pdf`, {
+  const response = await demoFetch(`${requestAdapter.baseUrl}/api/recipes/capture-pdf`, {
     method: 'POST',
     credentials: 'same-origin',
     body: pdfCaptureForm(file, rating, notes),

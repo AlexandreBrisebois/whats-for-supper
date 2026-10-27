@@ -9,13 +9,18 @@ public enum RecoveryAccess { Read, Write, Snapshot, Publish }
 public sealed class RecoveryBusyException(string message) : Exception(message);
 
 /// <summary>Cross-process leases. Order is always publication, then writes; never upgrade a held lease.</summary>
-public sealed class RecoveryBoundary(RecipeDbContext db, IConfiguration configuration, RecipesRootResolver recipes)
+public sealed class RecoveryBoundary(RecipeDbContext db, IConfiguration configuration, RecipesRootResolver recipes, DemoModeOptions? demoMode = null)
 {
-    public bool Enabled => !string.IsNullOrWhiteSpace(configuration["Recovery:BackupRoot"])
+    private readonly DemoModeOptions _demoPolicy = demoMode ?? new DemoModeOptions(configuration);
+    public bool Enabled => (_demoPolicy.Enabled && db.Database.IsNpgsql())
+        || File.Exists(Path.Combine(recipes.BaseRoot, ".demo-coordination"))
+        || !string.IsNullOrWhiteSpace(configuration["Recovery:BackupRoot"])
         || File.Exists(Path.Combine(recipes.BaseRoot, ".recovery-journal.json"));
+    // Writes participate before the first snapshot so activation can drain in-flight work.
+    public bool CoordinatesWrites => db.Database.IsNpgsql() || Enabled;
     public async Task<IAsyncDisposable> EnterAsync(RecoveryAccess access, CancellationToken ct)
     {
-        if (!Enabled) return new EmptyLease();
+        if (!Enabled && !(access == RecoveryAccess.Write && db.Database.IsNpgsql())) return new EmptyLease();
         if (!db.Database.IsNpgsql()) throw new RecoveryBusyException("Online recovery coordination requires PostgreSQL.");
         var connection = new NpgsqlConnection(db.Database.GetConnectionString());
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);

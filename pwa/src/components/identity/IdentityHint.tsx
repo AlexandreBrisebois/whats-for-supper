@@ -18,6 +18,8 @@ export function InstallIdentityProvider({
   return <IdentityContext.Provider value={identity}>{children}</IdentityContext.Provider>;
 }
 
+export const useInstallIdentity = () => useContext(IdentityContext);
+
 /** Informational only: identity never grants access or changes demo behavior. */
 export function IdentityHint({ className = '' }: { className?: string }) {
   const { demo, channel } = useContext(IdentityContext);

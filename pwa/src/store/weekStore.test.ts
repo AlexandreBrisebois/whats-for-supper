@@ -8,6 +8,7 @@ vi.mock('@/lib/api/discovery', () => ({
   getVotingSession: vi.fn().mockRejectedValue(new Error('unavailable')),
 }));
 import { builders } from '@/testing/builders';
+import { MOCK_IDS } from '@/testing/mock-ids';
 
 vi.mock('@/lib/api/planner', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/api/planner')>();
@@ -97,6 +98,113 @@ beforeEach(() => {
 });
 
 describe('weekStore — grocery extra identity and version', () => {
+  const receiveExtras = async (
+    entry: 'event' | 'init' | 'assignment' | 'sync' | 'snapshot',
+    extras: ReturnType<typeof builders.groceryExtra>[],
+    offset: number
+  ) => {
+    const schedule = {
+      ...makeScheduleDays(),
+      weekOffset: offset,
+      weekStartDate: useWeekStore.getState().weekStartDate!,
+      groceryExtras: extras,
+    };
+    vi.mocked(getSchedule).mockResolvedValue(schedule);
+    const store = useWeekStore.getState();
+    if (entry === 'event') store.applyGroceryExtrasUpdate(calendar.currentWeekStartDate, extras);
+    else if (entry === 'init') await store.init(offset);
+    else if (entry === 'assignment')
+      await store.assignRecipe(0, {
+        id: MOCK_IDS.RECIPE_LASAGNA,
+        name: 'Supper',
+        image: '/hero.jpg',
+      });
+    else if (entry === 'sync') await store.sync();
+    else store.applySnapshot(schedule);
+  };
+
+  const entries = ['event', 'init', 'assignment', 'sync', 'snapshot'] as const;
+  describe.each(entries)('%s version precedence before projection', (entry) => {
+    const setup = (offset: number, pending = false) => {
+      const extra = builders.groceryExtra({
+        occurrenceWeekStartDate: calendar.currentWeekStartDate as any,
+        checked: false,
+        version: 5,
+      });
+      const selected = new Date(
+        Date.parse(`${calendar.currentWeekStartDate}T00:00:00Z`) + offset * 7 * 86400000
+      )
+        .toISOString()
+        .slice(0, 10);
+      useWeekStore.setState({
+        weekOffset: offset,
+        weekStartDate: selected,
+        groceryExtras: [extra],
+        pendingGroceryExtraIds: new Set(pending ? [extra.id!] : []),
+      });
+      return extra;
+    };
+
+    it.each([1, 2, 8])(
+      'retains a newer unchecked occurrence %i weeks ahead after an older checked update',
+      async (offset) => {
+        const extra = setup(offset);
+        await receiveExtras(entry, [{ ...extra, checked: true, version: 4 }], offset);
+        expect(useWeekStore.getState().groceryExtras).toEqual([extra]);
+        expect(useWeekStore.getState().weekOffset).toBe(offset);
+      }
+    );
+
+    it.each([5, 6])('removes a future projection when checked version %i wins', async (version) => {
+      const extra = setup(2);
+      await receiveExtras(entry, [{ ...extra, checked: true, version }], 2);
+      expect(useWeekStore.getState().groceryExtras).toEqual([]);
+    });
+
+    it('retains pending state through a newer checked update and authoritative omission', async () => {
+      const extra = setup(2, true);
+      await receiveExtras(entry, [{ ...extra, checked: true, version: 6 }], 2);
+      expect(useWeekStore.getState().groceryExtras).toEqual([extra]);
+      await receiveExtras(entry, [], 2);
+      expect(useWeekStore.getState().groceryExtras).toEqual([extra]);
+    });
+
+    it('does not resurrect a pending deletion', async () => {
+      const extra = setup(2, true);
+      useWeekStore.setState({ groceryExtras: [] });
+      await receiveExtras(entry, [extra], 2);
+      expect(useWeekStore.getState().groceryExtras).toEqual([]);
+    });
+
+    it('removes a nonpending occurrence omitted from the authoritative collection', async () => {
+      setup(2);
+      await receiveExtras(entry, [], 2);
+      expect(useWeekStore.getState().groceryExtras).toEqual([]);
+    });
+
+    it('keeps checked state visible in the current week', async () => {
+      const extra = setup(0);
+      const checked = { ...extra, checked: true, version: 6 };
+      await receiveExtras(entry, [checked], 0);
+      expect(useWeekStore.getState().groceryExtras).toEqual([checked]);
+    });
+
+    if (entry === 'init' || entry === 'sync' || entry === 'snapshot') {
+      it('retains checked read-only history from a past-week schedule', async () => {
+        const extra = setup(-1);
+        const historical = {
+          ...extra,
+          occurrenceWeekStartDate: '2024-12-30' as any,
+          checked: true,
+          readOnly: true,
+        };
+        useWeekStore.setState({ groceryExtras: [historical] });
+        await receiveExtras(entry, [historical], -1);
+        expect(useWeekStore.getState().groceryExtras).toEqual([historical]);
+      });
+    }
+  });
+
   it('reconciles current extras into the next-week view without overwriting newer or pending rows', () => {
     const current = '2026-10-19';
     const older = builders.groceryExtra({

@@ -7,7 +7,5 @@ dist
 *.md
 .eslintignore
 .prettierrc.json
-e2e
 playwright-report
 test-results
-playwright.config.ts

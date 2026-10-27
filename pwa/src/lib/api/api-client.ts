@@ -2,8 +2,9 @@ import {
   type AuthenticationProvider,
   type RequestInformation,
 } from '@microsoft/kiota-abstractions';
-import { FetchRequestAdapter } from '@microsoft/kiota-http-fetchlibrary';
+import { FetchRequestAdapter, HttpClient } from '@microsoft/kiota-http-fetchlibrary';
 
+import { demoFetch } from './demo-session';
 import { createApiClient, type ApiClient } from './generated/apiClient';
 import { useFamilyStore } from '@/store/familyStore';
 import { usePlannerStore } from '@/store/plannerStore';
@@ -45,7 +46,12 @@ class HearthAuthProvider implements AuthenticationProvider {
 const authProvider = new HearthAuthProvider();
 
 // Create the request adapter using the custom auth provider
-export const requestAdapter = new FetchRequestAdapter(authProvider);
+export const requestAdapter = new FetchRequestAdapter(
+  authProvider,
+  undefined,
+  undefined,
+  new HttpClient(demoFetch)
+);
 
 // Set the base URL from the environment variable, defaulting to "" (relative, same-origin via Traefik)
 // Note: API routes already include the /api prefix (e.g. /api/schedule), so the base URL should not add it again.

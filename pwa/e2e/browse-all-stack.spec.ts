@@ -85,7 +85,10 @@ async function swipeRight(page: Page): Promise<void> {
   await expect(page.getByTestId('stack-card-front')).toHaveCount(1);
   const card = page.getByTestId('stack-card-front').first();
   await card.waitFor({ state: 'visible' });
-  // Poll until the bounding box is stable (entrance spring animation settled)
+  // Raw mouse gestures need the same stable geometry and pointer readiness as a click.
+  await card.click({ trial: true });
+  const originalCard = await card.elementHandle();
+  if (!originalCard) throw new Error('stack-card-front disappeared before swipe');
   const box = await card.boundingBox();
   if (!box) throw new Error('stack-card-front has no bounding box');
 
@@ -96,6 +99,17 @@ async function swipeRight(page: Page): Promise<void> {
   await page.mouse.down();
   await page.mouse.move(startX + 200, startY, { steps: 10 });
   await page.mouse.up();
+
+  // The next recipe may already be visible behind this one. Wait for the actual
+  // front-node handoff (or retained-page remount), not visibility of a back card.
+  await expect
+    .poll(() =>
+      originalCard.evaluate(
+        (node) => node.isConnected && node.getAttribute('data-testid') === 'stack-card-front'
+      )
+    )
+    .toBe(false);
+  await originalCard.dispose();
 
   // Wait for the card to be ready for the next interaction (framer-motion settled)
   await card.waitFor({ state: 'visible' });
@@ -110,7 +124,10 @@ async function swipeLeft(page: Page): Promise<void> {
   await expect(page.getByTestId('stack-card-front')).toHaveCount(1);
   const card = page.getByTestId('stack-card-front').first();
   await card.waitFor({ state: 'visible' });
-  // Poll until the bounding box is stable (entrance spring animation settled)
+  // Raw mouse gestures need the same stable geometry and pointer readiness as a click.
+  await card.click({ trial: true });
+  const originalCard = await card.elementHandle();
+  if (!originalCard) throw new Error('stack-card-front disappeared before swipe');
   const box = await card.boundingBox();
   if (!box) throw new Error('stack-card-front has no bounding box');
 
@@ -121,6 +138,17 @@ async function swipeLeft(page: Page): Promise<void> {
   await page.mouse.down();
   await page.mouse.move(startX - 200, startY, { steps: 10 });
   await page.mouse.up();
+
+  // The next recipe may already be visible behind this one. Wait for the actual
+  // front-node handoff (or retained-page remount), not visibility of a back card.
+  await expect
+    .poll(() =>
+      originalCard.evaluate(
+        (node) => node.isConnected && node.getAttribute('data-testid') === 'stack-card-front'
+      )
+    )
+    .toBe(false);
+  await originalCard.dispose();
 
   // Wait for transition to settle: exactly one front card visible
   await expect(page.getByTestId('stack-card-front')).toHaveCount(1);

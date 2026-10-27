@@ -9,7 +9,7 @@ const suites = {
   ],
   planning: [
     'deployment-calendar', 'grocery', 'plan-later', 'planner', 'planner-full-cycle',
-    'planner-non-cooking-days', 'planner-smart-defaults-week-offset',
+    'planner-non-cooking-days', 'planner-smart-defaults-week-offset', 'planner-voting-identity',
   ],
   recipes: [
     'browse-all-stack', 'browse-stack', 'discovery', 'recipe-hero-actions',
@@ -18,7 +18,8 @@ const suites = {
     'sharing-fidelity',
   ],
   household: [
-    'auth-flow', 'bug-condition-exploration', 'capture-flow', 'demo-mode',
+    'auth-flow', 'welcome-demo', 'bug-condition-exploration', 'capture-flow', 'demo-mode',
+    'demo-management-access', 'demo-reset',
     'identity-persistence', 'install-identity', 'member-creation', 'onboarding',
     'online-recovery', 'pdf-capture', 'profile', 'recipe-import-reporting',
     'settings', 'url-capture-recovery', 'utility-flows',

@@ -172,15 +172,46 @@ After Tonight selection, a recipe-detail read SHALL request description, ingredi
 
 ### Requirement: Offer Home voting and library handoffs
 
-Home SHALL read next-week schedule status on mount. A returned VotingOpen week with days SHALL offer a voting nudge counting recipe-bearing days; Vote SHALL navigate to Discovery and Dismiss SHALL hide the nudge in the mounted view. Read failure SHALL show no nudge through that read. Home SHALL also offer Capture a Recipe and Browse Library links.
+Home SHALL offer the active open household voting round regardless of target or Planner week. Collecting SHALL offer "Vote Now" to Discovery; converged SHALL show "Menu's In", "Your matches are ready to review and save." and "See your matches" to that round's meal plan, exactly in English with equivalent French intent. The invitation SHALL remain without dismissal while open. Copy SHALL NOT assume next week or claim recipe counts from days. Capture and Browse Library SHALL remain available.
+
+#### Scenario: This week open while next week is closed
+- **WHEN** Home receives a confirmed collecting round for this week and next week is not open
+- **THEN** Home offers Vote Now leading to Discovery for the active round without requiring a reload
 
 #### Scenario: Next week open for voting
-- **WHEN** the next-week read returns VotingOpen with days
-- **THEN** the nudge displays its recipe-bearing-day count and offers Discovery navigation
+- **WHEN** the confirmed collecting round targets next week
+- **THEN** Home offers Vote Now without requiring recipe-bearing scheduled days or claiming their count represents voting candidates
+
+#### Scenario: Later week differs from Planner selection
+- **WHEN** the confirmed open round targets a later week while Planner has another week selected
+- **THEN** Home presents that active round's collecting or converged action independently of Planner selection
+
+#### Scenario: Open round converges
+- **WHEN** a collecting round becomes confirmed converged while Home is mounted
+- **THEN** Home replaces Vote Now with the exact English headline "Menu's In", supporting copy "Your matches are ready to review and save." and button "See your matches"
+- **AND** voting remains open until an explicit existing close action
+
+#### Scenario: French matched-state copy
+- **WHEN** Home presents the converged invitation in French
+- **THEN** its localized headline, supporting sentence and action convey that matches are ready to review and save, without claiming saved meals or closed voting
+- **AND** this Home copy does not change Discovery copy
+
+#### Scenario: Closed or unowned round
+- **WHEN** confirmed household state has no active open round, including after closing voting
+- **THEN** Home removes the voting invitation while retaining Capture a Recipe and Browse Library links
+
+#### Scenario: Invitation cannot be dismissed
+- **WHEN** an open round remains active through Home interaction, leaving Home or returning to Home
+- **THEN** its invitation remains available without a dismiss control or suppression inherited from another round
 
 #### Scenario: Read fails or nudge dismissed
-- **WHEN** the next-week read rejects or the person dismisses a shown nudge
-- **THEN** that nudge is absent without changing the plan
+- **WHEN** a voting-status read fails or a person seeks the former nudge dismissal while voting is open
+- **THEN** failure follows Present trustworthy Home voting status and recovery, and the open-round invitation has no dismiss control
+- **AND** neither circumstance changes the plan or closes voting
+
+#### Scenario: Live open and reopen
+- **WHEN** voting opens or a closed week is reopened as a new round while Home is mounted
+- **THEN** Home presents the new round's authoritative phase without retaining the prior round's completion state
 
 ### Requirement: Choose a random ready GOTO for Home
 
@@ -501,3 +532,87 @@ A recovery choice SHALL NOT be presented as a confirmed saved meal until assignm
 #### Scenario: Failed check can be retried
 - **WHEN** the outcome is unknown after a failed read
 - **THEN** accessible feedback offers Retry check without describing the replacement as saved or offering another disposition
+
+### Requirement: Preserve supplied Tonight total duration
+
+The planned Tonight recipe card SHALL display a supplied ISO 8601 total duration with hours and minutes preserved, using the existing localized Ready In wrapper. This total duration SHALL NOT be interpreted as preparation-only time. Existing missing-time behavior and other recipe surfaces SHALL remain unchanged.
+
+#### Scenario: Hour and minute durations
+- **WHEN** a planned named recipe supplies PT6H, PT1H30M, PT45M or PT360M as total duration
+- **THEN** Home displays respectively 6H, 1H 30 MINS, 45 MINS or 6H within its existing Ready In wrapper
+
+#### Scenario: English and French wrappers
+- **WHEN** that recipe is shown with English or French selected
+- **THEN** Home uses respectively READY IN or PRÊT EN without changing the duration's units
+
+#### Scenario: No supplied duration
+- **WHEN** the planned recipe's duration is missing or empty
+- **THEN** Home retains its existing missing-duration presentation
+
+### Requirement: Present trustworthy Home voting status and recovery
+
+Home SHALL distinguish confirmed status from checking and failed reads. It SHALL retain usable last-confirmed navigation during background rechecks and after failure, showing checking or unavailable/last-confirmed feedback and Retry after failure. Without a valid accepted round identity and destination it SHALL withhold the action. Accepted newer state SHALL replace or remove the action; rejected updates SHALL NOT confirm new state.
+
+#### Scenario: Initial hydration
+- **WHEN** Home has no confirmed voting snapshot and the initial status read is pending
+- **THEN** it shows a compact checking status without Vote Now, See your matches or a claim that voting is closed
+- **AND** Tonight and other Home navigation remain usable
+
+#### Scenario: Read fails or status is stale
+- **WHEN** a background recheck is pending for a last-confirmed open round with usable identity and destination
+- **THEN** Home keeps its read-only navigation action usable with checking feedback without claiming the round was newly confirmed
+- **AND** activating the action leaves destination reconciliation to Discovery or Planner without a handoff mutation
+
+#### Scenario: Failed read with a usable last-confirmed round
+- **WHEN** a refresh fails while a usable last-confirmed open round is retained and no accepted newer state supersedes it
+- **THEN** Home retains its navigation action with unavailable status identifying it as last confirmed, and offers Retry
+- **AND** failure does not newly confirm that round, hide the invitation or mutate the plan
+
+#### Scenario: Failed read without a usable destination
+- **WHEN** initial status fails or no retained accepted round provides a valid identity and destination
+- **THEN** Home shows unavailable status with Retry and withholds round navigation instead of guessing its week
+
+#### Scenario: Unusable authoritative response
+- **WHEN** the current authoritative read completes with a projection rejected by the existing session validation owner and no newer accepted update has superseded that read
+- **THEN** its status becomes unavailable rather than remaining indefinitely loading, and Home offers Retry
+- **AND** any retained usable last-confirmed navigation follows the failed-read policy without adopting the rejected projection
+
+#### Scenario: Rejected live projection
+- **WHEN** existing validation rejects a malformed live projection
+- **THEN** it does not replace accepted round data or establish newly confirmed state
+- **AND** Home follows the retained accepted state; this rejection alone does not promise an unavailable transition or Retry, and existing reconnect/resume reconciliation remains available
+
+#### Scenario: Retry reconciles a closed round
+- **WHEN** Retry succeeds after an unavailable open-round snapshot and confirms no open round
+- **THEN** Home removes the invitation and unavailable feedback
+
+#### Scenario: Reconnect or mobile resume
+- **WHEN** the existing household live connection reconnects, or the app resumes through visible or pageshow events after a missed open, close or convergence update
+- **THEN** Home follows the reconciled current round and phase without requiring reload
+
+#### Scenario: Delayed or different-host update
+- **WHEN** an older update arrives after a newer round state, or an update from an unconfirmed server incarnation arrives
+- **THEN** Home does not regress to the older state or treat the different host's update as confirmed before authoritative reconciliation
+
+### Requirement: Navigate Home matches to the absolute round week without mutation
+
+Activating See your matches SHALL open the displayed confirmed round's absolute target week in Planner's meal-plan tab. Navigation SHALL preserve suggestions as suggestions awaiting explicit saving and voting closure; it SHALL NOT assign meals or close voting. A missing usable round identity or week SHALL withhold the action and provide status recovery rather than navigate to a guessed week.
+
+#### Scenario: Previously selected grocery tab and different week
+- **WHEN** a person activates See your matches while Planner previously showed groceries for another week
+- **THEN** Planner opens the converged round's meal-plan tab and absolute week with existing suggestions and saved meals retaining their distinct states
+- **AND** the handoff submits no assignment or voting-close mutation
+
+#### Scenario: Date rolls over before activation
+- **WHEN** the deployment week changes between showing the converged invitation and activating See your matches
+- **THEN** navigation still opens the displayed round's absolute week rather than interpreting its old relative offset against the new date
+
+#### Scenario: Round closes or changes around activation
+- **WHEN** an authoritative close or replacement round is accepted before activation
+- **THEN** Home removes or updates the action to match the accepted round
+- **AND** a close accepted after navigation leaves the captured week as the destination while existing Planner reconciliation presents its current state, without a handoff mutation
+
+#### Scenario: Missing navigation identity
+- **WHEN** no retained accepted open-round snapshot provides a usable round identity and absolute target week
+- **THEN** Home withholds its action instead of routing to the selected or next week
+- **AND** a failed or rejected current authoritative read presents unavailable status and Retry; an ignored live frame alone does not manufacture a failure signal

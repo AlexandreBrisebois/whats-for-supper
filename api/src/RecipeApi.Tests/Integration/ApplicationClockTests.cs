@@ -138,10 +138,8 @@ public class ApplicationClockTests
         Assert.Equal(clock.UtcNow, (await db.WeeklyPlans.SingleAsync(x => x.Id == plan)).CreatedAt);
     }
 
-    [Theory]
-    [InlineData("demo")]
-    [InlineData("backup-merge")]
-    public async Task LegacySnapshotMissingTimestamps_UseSuppliedInstant(string operation)
+    [Fact]
+    public async Task LegacyBackupMissingTimestamps_UseSuppliedInstant()
     {
         var clock = FixedClock();
         await using var app = await TestWebApplicationFactory.CreateAsync(clock);
@@ -152,30 +150,16 @@ public class ApplicationClockTests
         var root = services.GetRequiredService<DataRootResolver>().Root;
         var memberId = Guid.NewGuid();
         var members = JsonSerializer.Serialize(new[] { new { id = memberId, name = "Legacy clock member" } });
-        if (operation == "demo")
-        {
-            await management.CaptureDemoStateAsync();
-            await File.WriteAllTextAsync(Path.Combine(root, "demo", "family-members.json"), members);
-            var recipeId = Guid.NewGuid();
-            await File.WriteAllTextAsync(Path.Combine(root, "demo", "recipes.json"),
-                JsonSerializer.Serialize(new[] { new { id = recipeId, name = "Legacy clock supper" } }));
-            await management.RestoreDemoStateAsync();
-            Assert.Equal(clock.UtcNow, (await db.FamilyMembers.SingleAsync(x => x.Id == memberId)).CreatedAt);
-            var recipe = await db.Recipes.SingleAsync(x => x.Id == recipeId);
-            Assert.Equal(clock.UtcNow, recipe.CreatedAt);
-            Assert.Equal(clock.UtcNow, recipe.UpdatedAt);
-        }
-        else
-        {
-            await File.WriteAllTextAsync(Path.Combine(root, "family-members.json"), members);
-            // Import legacy omissions before the authoritative export replaces file membership.
-            await management.RestoreAsync();
-            await management.BackupAsync();
-            using var output = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine(root, "family-members.json")));
-            var member = output.RootElement.EnumerateArray().Single(x => x.GetProperty("id").GetGuid() == memberId);
-            Assert.Equal(clock.UtcNow, member.GetProperty("createdAt").GetDateTimeOffset());
-            Assert.Equal(clock.UtcNow, member.GetProperty("updatedAt").GetDateTimeOffset());
-        }
+        // Prepared demo snapshots require complete version-2 inventories; legacy rejection
+        // is covered by DemoShowcaseLoopPostgresTests. Ordinary backup merge retains
+        // its historical missing-timestamp compatibility.
+        await File.WriteAllTextAsync(Path.Combine(root, "family-members.json"), members);
+        await management.RestoreAsync();
+        await management.BackupAsync();
+        using var output = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine(root, "family-members.json")));
+        var member = output.RootElement.EnumerateArray().Single(x => x.GetProperty("id").GetGuid() == memberId);
+        Assert.Equal(clock.UtcNow, member.GetProperty("createdAt").GetDateTimeOffset());
+        Assert.Equal(clock.UtcNow, member.GetProperty("updatedAt").GetDateTimeOffset());
     }
 
     [Fact]

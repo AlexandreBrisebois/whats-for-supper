@@ -16,13 +16,12 @@ export function LanguageSwitchProposal() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    // Only propose if the user hasn't explicitly chosen a language in this browser
-    const explicitChoice = localStorage.getItem('locale');
-    if (explicitChoice) return;
-
-    // Only propose if they haven't dismissed this proposal before
-    const isDismissed = localStorage.getItem(PROPOSAL_STORAGE_KEY);
-    if (isDismissed) return;
+    try {
+      // Stay quiet if this browser cannot remember the optional proposal.
+      if (localStorage.getItem('locale') || localStorage.getItem(PROPOSAL_STORAGE_KEY)) return;
+    } catch {
+      return;
+    }
 
     // Detect browser language
     const lang = navigator.language.split('-')[0] as Locale;
@@ -41,13 +40,21 @@ export function LanguageSwitchProposal() {
   const handleSwitch = () => {
     if (browserLocale) {
       setCurrentLocale(browserLocale);
-      localStorage.setItem(PROPOSAL_STORAGE_KEY, 'true');
+      try {
+        localStorage.setItem(PROPOSAL_STORAGE_KEY, 'true');
+      } catch {
+        /* Current visit still dismisses it. */
+      }
       setIsVisible(false);
     }
   };
 
   const handleDismiss = () => {
-    localStorage.setItem(PROPOSAL_STORAGE_KEY, 'true');
+    try {
+      localStorage.setItem(PROPOSAL_STORAGE_KEY, 'true');
+    } catch {
+      /* Current visit still dismisses it. */
+    }
     setIsVisible(false);
   };
 

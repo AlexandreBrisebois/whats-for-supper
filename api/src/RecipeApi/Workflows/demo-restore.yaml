@@ -1,5 +1,6 @@
 name: demo-restore
-parameters: []
+parameters:
+  - automaticDemoReset?
 tasks:
   - name: restore
     processor: RestoreDemoState

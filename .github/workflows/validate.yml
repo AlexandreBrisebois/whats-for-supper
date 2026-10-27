@@ -328,6 +328,13 @@ jobs:
       - name: Run capability suite
         run: npm run test:e2e
         working-directory: pwa
+      - name: Public Demo Welcome regression
+        if: matrix.suite == 'household'
+        run: npm run test:e2e -- --config=e2e/welcome-demo.playwright.config.ts --output=test-results/welcome-demo
+        working-directory: pwa
+        env:
+          WFS_WELCOME_DEMO: 'true'
+          WFS_WELCOME_SECRET: Swipe-Match-Cook
       - uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
         with:

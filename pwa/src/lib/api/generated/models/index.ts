@@ -253,6 +253,39 @@ export function createDeferScheduleResultDtoFromDiscriminatorValue(
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {DemoAiUnavailableError}
+ */
+// @ts-ignore
+export function createDemoAiUnavailableErrorFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoDemoAiUnavailableError;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {DemoManagementUnavailableError}
+ */
+// @ts-ignore
+export function createDemoManagementUnavailableErrorFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoDemoManagementUnavailableError;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {DemoResetRequiredError}
+ */
+// @ts-ignore
+export function createDemoResetRequiredErrorFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoDemoResetRequiredError;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {DeploymentCalendarContext}
  */
 // @ts-ignore
@@ -1190,6 +1223,58 @@ export interface DeferScheduleResultDto extends AdditionalDataHolder, Parsable {
    */
   scheduledWeekOffset?: number | null;
 }
+export interface DemoAiUnavailableError extends ApiError, Parsable {
+  /**
+   * The code property
+   */
+  code?: DemoAiUnavailableError_code | null;
+  /**
+   * The message property
+   */
+  messageEscaped?: string | null;
+  /**
+   * The status property
+   */
+  status?: number | null;
+}
+export type DemoAiUnavailableError_code =
+  (typeof DemoAiUnavailableError_codeObject)[keyof typeof DemoAiUnavailableError_codeObject];
+export interface DemoManagementUnavailableError extends ApiError, Parsable {
+  /**
+   * The code property
+   */
+  code?: DemoManagementUnavailableError_code | null;
+  /**
+   * The message property
+   */
+  messageEscaped?: string | null;
+  /**
+   * The status property
+   */
+  status?: number | null;
+}
+export type DemoManagementUnavailableError_code =
+  (typeof DemoManagementUnavailableError_codeObject)[keyof typeof DemoManagementUnavailableError_codeObject];
+export interface DemoResetRequiredError extends ApiError, Parsable {
+  /**
+   * The code property
+   */
+  code?: DemoResetRequiredError_code | null;
+  /**
+   * The generation property
+   */
+  generation?: Guid | null;
+  /**
+   * The message property
+   */
+  messageEscaped?: string | null;
+  /**
+   * The status property
+   */
+  status?: number | null;
+}
+export type DemoResetRequiredError_code =
+  (typeof DemoResetRequiredError_codeObject)[keyof typeof DemoResetRequiredError_codeObject];
 /**
  * Authoritative supper calendar captured once at operation entry. Calendar:TimeZone selects the deployment IANA timezone; absence defaults to UTC. Browser and host OS timezones do not select meal dates. Stored civil dates and UTC timestamps are unchanged.
  */
@@ -1457,6 +1542,78 @@ export function deserializeIntoDeferScheduleResultDto(
     },
     scheduledWeekOffset: (n) => {
       deferScheduleResultDto.scheduledWeekOffset = n.getNumberValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param DemoAiUnavailableError The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoDemoAiUnavailableError(
+  demoAiUnavailableError: Partial<DemoAiUnavailableError> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    code: (n) => {
+      demoAiUnavailableError.code = n.getEnumValue<DemoAiUnavailableError_code>(
+        DemoAiUnavailableError_codeObject
+      );
+    },
+    message: (n) => {
+      demoAiUnavailableError.messageEscaped = n.getStringValue();
+    },
+    status: (n) => {
+      demoAiUnavailableError.status = n.getNumberValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param DemoManagementUnavailableError The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoDemoManagementUnavailableError(
+  demoManagementUnavailableError: Partial<DemoManagementUnavailableError> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    code: (n) => {
+      demoManagementUnavailableError.code = n.getEnumValue<DemoManagementUnavailableError_code>(
+        DemoManagementUnavailableError_codeObject
+      );
+    },
+    message: (n) => {
+      demoManagementUnavailableError.messageEscaped = n.getStringValue();
+    },
+    status: (n) => {
+      demoManagementUnavailableError.status = n.getNumberValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param DemoResetRequiredError The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoDemoResetRequiredError(
+  demoResetRequiredError: Partial<DemoResetRequiredError> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    code: (n) => {
+      demoResetRequiredError.code = n.getEnumValue<DemoResetRequiredError_code>(
+        DemoResetRequiredError_codeObject
+      );
+    },
+    generation: (n) => {
+      demoResetRequiredError.generation = n.getGuidValue();
+    },
+    message: (n) => {
+      demoResetRequiredError.messageEscaped = n.getStringValue();
+    },
+    status: (n) => {
+      demoResetRequiredError.status = n.getNumberValue();
     },
   };
 }
@@ -1923,11 +2080,38 @@ export function deserializeIntoManagementTaskStatusResponse(
     createdAt: (n) => {
       managementTaskStatusResponse.createdAt = n.getDateValue();
     },
+    demoBaselineId: (n) => {
+      managementTaskStatusResponse.demoBaselineId = n.getGuidValue();
+    },
+    demoLastResetStatus: (n) => {
+      managementTaskStatusResponse.demoLastResetStatus =
+        n.getEnumValue<ManagementTaskStatusResponse_demoLastResetStatus>(
+          ManagementTaskStatusResponse_demoLastResetStatusObject
+        );
+    },
+    demoLastResetTaskId: (n) => {
+      managementTaskStatusResponse.demoLastResetTaskId = n.getGuidValue();
+    },
+    demoNextRestoreAt: (n) => {
+      managementTaskStatusResponse.demoNextRestoreAt = n.getDateValue();
+    },
+    demoRecoveryState: (n) => {
+      managementTaskStatusResponse.demoRecoveryState =
+        n.getEnumValue<ManagementTaskStatusResponse_demoRecoveryState>(
+          ManagementTaskStatusResponse_demoRecoveryStateObject
+        );
+    },
+    demoRestoreCronValid: (n) => {
+      managementTaskStatusResponse.demoRestoreCronValid = n.getBooleanValue();
+    },
     demoRestoreSeederErrorCode: (n) => {
       managementTaskStatusResponse.demoRestoreSeederErrorCode = n.getStringValue();
     },
     demoRestoreSeederHealthy: (n) => {
       managementTaskStatusResponse.demoRestoreSeederHealthy = n.getBooleanValue();
+    },
+    demoSnapshotErrorCode: (n) => {
+      managementTaskStatusResponse.demoSnapshotErrorCode = n.getStringValue();
     },
     demoSnapshotMissing: (n) => {
       managementTaskStatusResponse.demoSnapshotMissing =
@@ -3967,6 +4151,30 @@ export interface ManagementTaskStatusResponse extends AdditionalDataHolder, Pars
    */
   createdAt?: Date | null;
   /**
+   * The demoBaselineId property
+   */
+  demoBaselineId?: Guid | null;
+  /**
+   * The demoLastResetStatus property
+   */
+  demoLastResetStatus?: ManagementTaskStatusResponse_demoLastResetStatus | null;
+  /**
+   * The demoLastResetTaskId property
+   */
+  demoLastResetTaskId?: Guid | null;
+  /**
+   * The demoNextRestoreAt property
+   */
+  demoNextRestoreAt?: Date | null;
+  /**
+   * The demoRecoveryState property
+   */
+  demoRecoveryState?: ManagementTaskStatusResponse_demoRecoveryState | null;
+  /**
+   * The demoRestoreCronValid property
+   */
+  demoRestoreCronValid?: boolean | null;
+  /**
    * The demoRestoreSeederErrorCode property
    */
   demoRestoreSeederErrorCode?: string | null;
@@ -3974,6 +4182,10 @@ export interface ManagementTaskStatusResponse extends AdditionalDataHolder, Pars
    * The demoRestoreSeederHealthy property
    */
   demoRestoreSeederHealthy?: boolean | null;
+  /**
+   * The demoSnapshotErrorCode property
+   */
+  demoSnapshotErrorCode?: string | null;
   /**
    * The demoSnapshotMissing property
    */
@@ -4003,6 +4215,10 @@ export interface ManagementTaskStatusResponse extends AdditionalDataHolder, Pars
    */
   workflowType?: string | null;
 }
+export type ManagementTaskStatusResponse_demoLastResetStatus =
+  (typeof ManagementTaskStatusResponse_demoLastResetStatusObject)[keyof typeof ManagementTaskStatusResponse_demoLastResetStatusObject];
+export type ManagementTaskStatusResponse_demoRecoveryState =
+  (typeof ManagementTaskStatusResponse_demoRecoveryStateObject)[keyof typeof ManagementTaskStatusResponse_demoRecoveryStateObject];
 export interface ManagementTaskStatusResponse_result extends AdditionalDataHolder, Parsable {}
 export type ManagementTaskStatusResponse_status =
   (typeof ManagementTaskStatusResponse_statusObject)[keyof typeof ManagementTaskStatusResponse_statusObject];
@@ -5126,6 +5342,67 @@ export function serializeDeferScheduleResultDto(
 }
 /**
  * Serializes information the current object
+ * @param DemoAiUnavailableError The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeDemoAiUnavailableError(
+  writer: SerializationWriter,
+  demoAiUnavailableError: Partial<DemoAiUnavailableError> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!demoAiUnavailableError || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeEnumValue<DemoAiUnavailableError_code>('code', demoAiUnavailableError.code);
+  writer.writeStringValue('message', demoAiUnavailableError.messageEscaped);
+  writer.writeNumberValue('status', demoAiUnavailableError.status);
+}
+/**
+ * Serializes information the current object
+ * @param DemoManagementUnavailableError The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeDemoManagementUnavailableError(
+  writer: SerializationWriter,
+  demoManagementUnavailableError: Partial<DemoManagementUnavailableError> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!demoManagementUnavailableError || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeEnumValue<DemoManagementUnavailableError_code>(
+    'code',
+    demoManagementUnavailableError.code
+  );
+  writer.writeStringValue('message', demoManagementUnavailableError.messageEscaped);
+  writer.writeNumberValue('status', demoManagementUnavailableError.status);
+}
+/**
+ * Serializes information the current object
+ * @param DemoResetRequiredError The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeDemoResetRequiredError(
+  writer: SerializationWriter,
+  demoResetRequiredError: Partial<DemoResetRequiredError> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!demoResetRequiredError || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeEnumValue<DemoResetRequiredError_code>('code', demoResetRequiredError.code);
+  writer.writeGuidValue('generation', demoResetRequiredError.generation);
+  writer.writeStringValue('message', demoResetRequiredError.messageEscaped);
+  writer.writeNumberValue('status', demoResetRequiredError.status);
+}
+/**
+ * Serializes information the current object
  * @param DeploymentCalendarContext The instance to serialize from.
  * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
  * @param writer Serialization writer to use to serialize this model
@@ -5549,6 +5826,21 @@ export function serializeManagementTaskStatusResponse(
     return;
   }
   writer.writeDateValue('createdAt', managementTaskStatusResponse.createdAt);
+  writer.writeGuidValue('demoBaselineId', managementTaskStatusResponse.demoBaselineId);
+  writer.writeEnumValue<ManagementTaskStatusResponse_demoLastResetStatus>(
+    'demoLastResetStatus',
+    managementTaskStatusResponse.demoLastResetStatus
+  );
+  writer.writeGuidValue('demoLastResetTaskId', managementTaskStatusResponse.demoLastResetTaskId);
+  writer.writeDateValue('demoNextRestoreAt', managementTaskStatusResponse.demoNextRestoreAt);
+  writer.writeEnumValue<ManagementTaskStatusResponse_demoRecoveryState>(
+    'demoRecoveryState',
+    managementTaskStatusResponse.demoRecoveryState
+  );
+  writer.writeBooleanValue(
+    'demoRestoreCronValid',
+    managementTaskStatusResponse.demoRestoreCronValid
+  );
   writer.writeStringValue(
     'demoRestoreSeederErrorCode',
     managementTaskStatusResponse.demoRestoreSeederErrorCode
@@ -5556,6 +5848,10 @@ export function serializeManagementTaskStatusResponse(
   writer.writeBooleanValue(
     'demoRestoreSeederHealthy',
     managementTaskStatusResponse.demoRestoreSeederHealthy
+  );
+  writer.writeStringValue(
+    'demoSnapshotErrorCode',
+    managementTaskStatusResponse.demoSnapshotErrorCode
   );
   writer.writeCollectionOfPrimitiveValues<string>(
     'demoSnapshotMissing',
@@ -7527,6 +7823,15 @@ export const CaptureFailureDto_sourceTypeObject = {
 export const CaptureFailureDto_statusObject = {
   Failed: 'failed',
 } as const;
+export const DemoAiUnavailableError_codeObject = {
+  DEMO_AI_UNAVAILABLE: 'DEMO_AI_UNAVAILABLE',
+} as const;
+export const DemoManagementUnavailableError_codeObject = {
+  DEMO_MANAGEMENT_UNAVAILABLE: 'DEMO_MANAGEMENT_UNAVAILABLE',
+} as const;
+export const DemoResetRequiredError_codeObject = {
+  DEMO_RESET_REQUIRED: 'DEMO_RESET_REQUIRED',
+} as const;
 export const FeatureFlagModeObject = {
   Off: 'off',
   OptIn: 'opt-in',
@@ -7564,6 +7869,19 @@ export const ImportedRecipeDto_mealTypesObject = {
   Dessert: 'Dessert',
   Appetizer: 'Appetizer',
   Beverage: 'Beverage',
+} as const;
+export const ManagementTaskStatusResponse_demoLastResetStatusObject = {
+  Pending: 'Pending',
+  Processing: 'Processing',
+  Completed: 'Completed',
+  Failed: 'Failed',
+  Waiting: 'Waiting',
+  OpenapiJsonNullSentinelValue2BF936000FE44250987AE5DDB203E464:
+    'openapi-json-null-sentinel-value-2BF93600-0FE4-4250-987A-E5DDB203E464',
+} as const;
+export const ManagementTaskStatusResponse_demoRecoveryStateObject = {
+  Available: 'available',
+  ReconciliationRequired: 'reconciliation-required',
 } as const;
 export const ManagementTaskStatusResponse_statusObject = {
   Pending: 'Pending',
