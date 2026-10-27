@@ -39,3 +39,11 @@ None.
 - No intended API, persistence, generated-client, dependency or cross-week behavior changes. Existing tokens and Lucide icons remain in use. Any new user-facing drag copy must have equivalent EN/FR values.
 
 Independent of the existing badge-removal and return-arrow plans. Preserve those artifacts and reconcile shared Planner-file changes. Past/today styling, broader contrast repairs and grocery-view continuity are separate increments.
+
+## Approved follow-up (2026-10-27)
+
+Alex approved correcting the stale Planner after Other plans saves, removing duplicate bottom clearance, and keeping destination feedback visible beside long drag titles without shifting layout. Extend the reuse boundary to the move API wrapper/store acknowledgement path; no server/API shape changes. Keep dates fixed, highlight the existing destination date with a tinted surface and outline plus an arrow in the existing gap, and put localized move/swap text inside the overlay. The app shell owns bottom navigation clearance.
+
+## Approved Planner review fixes (2026-10-27)
+
+Alex selected all four reproduced review findings for implementation, using separate sub-agents. Correct foreign SSE move acknowledgement, out-of-order post-move reads, authoritative empty-week reconciliation and rollback of newer independent edits. The foreign-echo, empty-week and broad-rollback defects predate this branch; the read-order defect belongs to the uncommitted follow-up. Keep fixes within existing client event/store ownership, preserving server policy and API shapes. No commit, deployment, spec sync or archive is authorized.

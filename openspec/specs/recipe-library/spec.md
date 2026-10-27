@@ -623,8 +623,9 @@ Classification status SHALL count undeleted recipes as total, classified, unknow
 A failed page fetch SHALL retain the current card and expose retry. Responses from a departed filter, presentation or page lifecycle SHALL NOT replace the current collection. Closing detail SHALL preserve the current card and global position.
 
 #### Scenario: Traverse a multipage deck
-- **WHEN** a stable 126- or 180-recipe library is traversed forward and backward through wrap
+- **WHEN** a stable multipage library with a full or partial last page (40 or 46 recipes at 20 per page) is traversed forward and backward through wrap
 - **THEN** every recipe appears once per complete cycle with its correct ordinal and first/last identities
+- **AND** swiping backward from recipe 1 loads the actual last page and selects the final recipe (40 or 46), and swiping forward from that recipe returns to recipe 1
 
 #### Scenario: Failed adjacent page or wrap
 - **WHEN** a needed page request fails

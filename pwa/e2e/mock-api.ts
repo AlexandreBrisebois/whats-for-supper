@@ -2621,8 +2621,13 @@ export async function mockSseWithSmartDefaultsUpdated(
  *
  * @param page     - Playwright Page instance
  * @param recipeId - The recipe ID that has finished synthesis
+ * @param readSchedule - Reads current saved state for each connection, including reconnects
  */
-export async function mockSseWithRecipeReady(page: Page, recipeId: string): Promise<void> {
+export async function mockSseWithRecipeReady(
+  page: Page,
+  recipeId: string,
+  readSchedule: () => ScheduleDays = buildDefaultConnectedSchedule
+): Promise<void> {
   await page.route(/\/(?:backend\/)?api\/stream/, async (route) => {
     await route.fulfill({
       status: 200,
@@ -2633,7 +2638,7 @@ export async function mockSseWithRecipeReady(page: Page, recipeId: string): Prom
         'X-Accel-Buffering': 'no',
       },
       body: buildSseBody([
-        buildConnectedEvent(),
+        buildConnectedEvent(readSchedule()),
         buildSseFrame('recipe_ready', { type: 'recipe_ready', recipeId }),
       ]),
     });

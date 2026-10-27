@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useEffect, useState, useMemo, useRef, memo } from 'react';
-import { motion, AnimatePresence, Reorder, useDragControls } from 'framer-motion';
+import { createPortal } from 'react-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   ChevronLeft,
   ChevronRight,
@@ -38,7 +39,7 @@ import { nonCookingLabel, nonCookingNote } from '@/lib/planner/nonCooking';
 import type { NonCookingPlanDto } from '@/lib/api/generated/models';
 import { PlanningPivotSheet } from '@/components/planner/PlanningPivotSheet';
 import { cn } from '@/lib/utils';
-import { t, tWithVars } from '@/locales';
+import { getLocale, t, tWithVars } from '@/locales';
 import { QuickFindModal } from '@/components/planner/QuickFindModal';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { SolarLoader } from '@/components/ui/SolarLoader';
@@ -53,7 +54,14 @@ import { SkipRecoveryDialog } from '@/components/home/SkipRecoveryDialog';
 import { type AssignmentRecipe, resolveOccupiedSlot } from '@/lib/planner/slotAssignment';
 import { FamilyNudgeDialog } from '@/components/discovery/FamilyNudgeDialog';
 import { PlannerDragHandle } from '@/components/planner/PlannerDragHandle';
+import { usePlannerDrag } from '@/components/planner/usePlannerDrag';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
+import {
+  calendarAnchorIsFresh,
+  calendarTime,
+  civilDate,
+  readCalendar,
+} from '@/lib/deployment-calendar';
 
 export default function PlannerPage() {
   const router = useRouter();
@@ -64,6 +72,36 @@ export default function PlannerPage() {
   const status = useWeekStore((s) => s.status);
   const groceryItems = useWeekStore((s) => s.groceryItems);
   const groceryExtras = useWeekStore((s) => s.groceryExtras);
+  const calendar = useTodayStore((s) => s.calendar);
+  const calendarAnchor = useTodayStore((s) => s.calendarAnchor);
+  const calendarVersion = useTodayStore((s) => s.calendarVersion);
+  const ensureCalendar = useTodayStore((s) => s.ensureCalendar);
+  const [, expireCalendar] = useState(0);
+  const authoritativeToday = calendarAnchorIsFresh(calendarAnchor)
+    ? (readCalendar(calendar)?.today ?? null)
+    : null;
+
+  useEffect(() => {
+    const refresh = () => {
+      void ensureCalendar().catch(() => {});
+    };
+    if (!calendar || !calendarAnchor || !calendarAnchorIsFresh(calendarAnchor)) {
+      refresh();
+      return;
+    }
+    // One timer for the shared monotonic anchor. Replacements retire the old timer;
+    // a failed refresh leaves retained meals usable with neutral date presentation.
+    const remaining =
+      calendarAnchor.expiresAfterMs - (calendarTime.elapsed() - calendarAnchor.receivedAtElapsed);
+    const timer = window.setTimeout(
+      () => {
+        expireCalendar((revision) => revision + 1);
+        refresh();
+      },
+      Math.max(0, Math.ceil(remaining))
+    );
+    return () => window.clearTimeout(timer);
+  }, [calendar, calendarAnchor, calendarVersion, ensureCalendar]);
   const isVotingOpen = status === 1;
   const isLocked = status === 2;
   const [nonCookingTarget, setNonCookingTarget] = useState<{
@@ -101,23 +139,11 @@ export default function PlannerPage() {
   const openedPlanDate = useRef<string | null>(null);
   const successParam = searchParams.get('success');
   const [prevOffset, setPrevOffset] = useState(currentWeekOffset);
-  const preDragSnapshotRef = useRef<UILocalScheduleDay[] | null>(null);
-  const draggedUiIdRef = useRef<string | null>(null);
+  const { preview: dragPreview, start: startDrag } = usePlannerDrag(currentWeekOffset, activeTab);
   const recoverySubmissionRef = useRef(false);
   const recoveryRecipeResolvedRef = useRef(false);
-  const [hasAnimatedIn, setHasAnimatedIn] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const isWide = useMediaQuery('(min-width: 1024px)');
-
-  useEffect(() => {
-    if (!isLoading) {
-      const timer = setTimeout(() => setHasAnimatedIn(true), 1000);
-      return () => clearTimeout(timer);
-    } else {
-      const timer = setTimeout(() => setHasAnimatedIn(false), 0);
-      return () => clearTimeout(timer);
-    }
-  }, [isLoading]);
 
   useEffect(() => {
     setHasPendingCards(isVotingOpen);
@@ -389,23 +415,6 @@ export default function PlannerPage() {
     }
   };
 
-  // Framer Motion calls onReorder on every pointer move during drag (fires on each midpoint
-  // crossing). We apply each intermediate reorder directly to the store so that onDragEnd can
-  // read getState().schedule for the authoritative final position — including the terminal slot
-  // where no further midpoint crossing occurs and onReorder would otherwise stop firing.
-  const handleReorder = (newSchedule: UILocalScheduleDay[]) => {
-    const draggedUiId = draggedUiIdRef.current;
-    if (!draggedUiId) return;
-
-    const dragBaseSchedule = preDragSnapshotRef.current ?? useWeekStore.getState().schedule;
-    const from = dragBaseSchedule.findIndex((d) => d._uiId === draggedUiId);
-    const to = newSchedule.findIndex((d) => d._uiId === draggedUiId);
-
-    if (from !== -1 && to !== -1) {
-      useWeekStore.getState().reorderLocally(from, to, dragBaseSchedule);
-    }
-  };
-
   const isFinalized = isLocked;
   const weekIsPast = useMemo(() => {
     if (schedule.length < 7) return false;
@@ -414,7 +423,7 @@ export default function PlannerPage() {
   const canOpenVoting = !weekIsPast && (status === 0 || status === 2);
 
   return (
-    <div className="flex flex-col min-h-screen pb-20 solar-earth-bg">
+    <div className="flex flex-col solar-earth-bg pb-6">
       {/* Animated Blobs */}
       <div className="blob blob-terracotta -top-20 -left-20 animate-[pulse_8s_infinite]" />
       <div className="blob blob-sage top-1/2 -right-40 animate-[pulse_10s_infinite] [animation-delay:1s]" />
@@ -468,7 +477,7 @@ export default function PlannerPage() {
 
             <div className="min-w-0 flex-1 text-center">
               <span
-                className="font-heading text-[10px] font-black uppercase tracking-[0.2em] text-charcoal/30 text-center flex-1"
+                className="font-heading text-sm leading-5 font-semibold tracking-normal text-charcoal-600 text-center flex-1"
                 data-testid="week-range"
               >
                 {currentWeekOffset === 0
@@ -490,25 +499,21 @@ export default function PlannerPage() {
                   ? (() => {
                       const start = new Date(schedule[0].date ?? '');
                       const end = new Date(schedule[6].date ?? '');
-                      const monthNames = [
-                        'Jan',
-                        'Feb',
-                        'Mar',
-                        'Apr',
-                        'May',
-                        'Jun',
-                        'Jul',
-                        'Aug',
-                        'Sep',
-                        'Oct',
-                        'Nov',
-                        'Dec',
-                      ];
-                      const startMonth = monthNames[start.getUTCMonth()];
-                      const endMonth = monthNames[end.getUTCMonth()];
+                      const isFrench = getLocale() === 'fr';
+                      const monthFormat = new Intl.DateTimeFormat(isFrench ? 'fr-CA' : 'en-CA', {
+                        month: 'short',
+                        timeZone: 'UTC',
+                      });
+                      const startMonth = monthFormat.format(start);
+                      const endMonth = monthFormat.format(end);
                       const startDate = start.getUTCDate();
                       const endDate = end.getUTCDate();
 
+                      if (isFrench) {
+                        return startMonth === endMonth
+                          ? `${startDate} — ${endDate} ${endMonth}`
+                          : `${startDate} ${startMonth} — ${endDate} ${endMonth}`;
+                      }
                       if (startMonth === endMonth) {
                         return `${startMonth} ${startDate} — ${endDate}`;
                       }
@@ -596,7 +601,7 @@ export default function PlannerPage() {
                   data-testid="planner-action-row"
                   className={cn(
                     'flex items-center justify-between gap-2',
-                    isWide ? 'mb-2 pt-2.5' : 'mb-3'
+                    isWide ? 'mb-4 pt-2.5' : 'mb-5'
                   )}
                 >
                   {/* Left Slot: Secondary Actions */}
@@ -639,16 +644,10 @@ export default function PlannerPage() {
                 </div>
               )}
 
-              <Reorder.Group
-                axis="y"
-                values={schedule}
-                onReorder={handleReorder}
-                className="w-full space-y-3.5"
-                data-testid="reorder-group"
-              >
+              <div className="w-full space-y-3.5" data-testid="reorder-group">
                 {schedule.map((day, index) => (
                   <PlannerDayCard
-                    key={day._uiId}
+                    key={day.date ?? index}
                     day={day}
                     index={index}
                     successDay={successDay}
@@ -659,13 +658,42 @@ export default function PlannerPage() {
                     onViewRecipe={(recipeId) => {
                       setOpenDetailRecipeId(recipeId);
                     }}
-                    preDragSnapshotRef={preDragSnapshotRef}
-                    draggedUiIdRef={draggedUiIdRef}
-                    hasAnimatedIn={hasAnimatedIn}
+                    startDrag={startDrag}
+                    isDragSource={dragPreview?.from === index}
+                    isDropTarget={dragPreview?.target === index && dragPreview.from !== index}
                     isWide={isWide}
+                    isToday={civilDate(day.date) !== null && day.date === authoritativeToday}
+                    isPast={
+                      !!authoritativeToday &&
+                      civilDate(day.date) !== null &&
+                      day.date! < authoritativeToday
+                    }
                   />
                 ))}
-              </Reorder.Group>
+              </div>
+              {dragPreview &&
+                createPortal(
+                  <div
+                    data-testid="planner-drag-preview"
+                    aria-hidden="true"
+                    className="fixed z-[999] pointer-events-none rounded-2xl border-2 border-sage-700 bg-white p-4 shadow-xl text-charcoal font-bold"
+                    style={{ left: dragPreview.x, top: dragPreview.y, width: dragPreview.width }}
+                  >
+                    {dragPreview.snapshot[dragPreview.from].recipe?.name}
+                    {dragPreview.target !== null && dragPreview.target !== dragPreview.from && (
+                      <span
+                        data-testid="planner-drop-feedback"
+                        className="block mt-2 text-xs font-bold text-sage-700"
+                      >
+                        {dragPreview.snapshot[dragPreview.target].recipe?.id ||
+                        dragPreview.snapshot[dragPreview.target].status === 3
+                          ? t('planner.swapMeals', 'Swap meals')
+                          : t('planner.moveHere', 'Move here')}
+                      </span>
+                    )}
+                  </div>,
+                  document.body
+                )}
             </motion.div>
           )}
         </AnimatePresence>
@@ -869,229 +897,290 @@ const PlannerDayCard = memo(function PlannerDayCard({
   successDay,
   onPivot,
   onViewRecipe,
-  preDragSnapshotRef,
-  draggedUiIdRef,
-  hasAnimatedIn,
+  startDrag,
+  isDragSource,
+  isDropTarget,
   isWide,
+  isToday,
+  isPast,
 }: {
   day: UILocalScheduleDay;
   index: number;
   successDay: number | null;
   onPivot: () => void;
   onViewRecipe: (recipeId: string) => void;
-  preDragSnapshotRef: React.RefObject<UILocalScheduleDay[] | null>;
-  draggedUiIdRef: React.RefObject<string | null>;
-  hasAnimatedIn: boolean;
+  startDrag: (from: number, event: PointerEvent) => void;
+  isDragSource: boolean;
+  isDropTarget: boolean;
   isWide: boolean;
+  isToday: boolean;
+  isPast: boolean;
 }) {
-  const dragControls = useDragControls();
-  const startDrag = React.useCallback(
-    (event: PointerEvent) => dragControls.start(event),
-    [dragControls]
+  const startRecipeDrag = React.useCallback(
+    (event: PointerEvent) => startDrag(index, event),
+    [startDrag, index]
   );
   const moveBySlot = React.useCallback(
     (direction: -1 | 1) => {
+      if (usePlannerStore.getState().isDragActive) return;
       const snapshot = useWeekStore.getState().schedule;
       const from = snapshot.findIndex((item) => item._uiId === day._uiId);
       const to = from + direction;
       if (from < 0 || to < 0 || to >= snapshot.length || !snapshot[from].recipe?.id) return;
       useWeekStore.getState().reorderLocally(from, to, snapshot);
       useWeekStore.getState().commitMove(from, to, snapshot);
+      requestAnimationFrame(() => {
+        document
+          .querySelector<HTMLElement>(
+            `[data-testid="day-card-${to}"] [data-testid="planner-drag-handle"]`
+          )
+          ?.focus();
+      });
     },
     [day._uiId]
   );
 
   return (
-    <Reorder.Item
-      value={day}
-      dragListener={false}
-      dragControls={dragControls}
-      onDragStart={() => {
-        usePlannerStore.getState().setDeferredWeekSnapshot(null);
-        usePlannerStore.getState().setIsDragActive(true);
-        preDragSnapshotRef.current = useWeekStore.getState().schedule;
-        draggedUiIdRef.current = day._uiId;
-      }}
-      onDragEnd={() => {
-        const snapshot = preDragSnapshotRef.current;
-        // Read the store directly: handleReorder calls reorderLocally on every midpoint
-        // crossing (including terminal positions), so the store reflects the true final order.
-        const finalOrder = useWeekStore.getState().schedule;
-        const finalFrom = snapshot ? snapshot.findIndex((d) => d._uiId === day._uiId) : -1;
-        const finalTo = finalOrder.findIndex((d) => d._uiId === day._uiId);
-        if (finalFrom !== -1 && finalTo !== -1 && finalFrom !== finalTo && snapshot !== null) {
-          useWeekStore.getState().commitMove(finalFrom, finalTo, snapshot);
-        }
-        const plannerStore = usePlannerStore.getState();
-        plannerStore.setIsDragActive(false);
-        const refreshedPlannerStore = usePlannerStore.getState();
-        if (
-          refreshedPlannerStore.deferredWeekSnapshot &&
-          refreshedPlannerStore.localMoveSeq === refreshedPlannerStore.confirmedMoveSeq
-        ) {
-          const deferredSnapshot = refreshedPlannerStore.deferredWeekSnapshot;
-          refreshedPlannerStore.setDeferredWeekSnapshot(null);
-          useWeekStore.getState().applySnapshot(deferredSnapshot);
-        }
-        draggedUiIdRef.current = null;
-        preDragSnapshotRef.current = null;
-      }}
-      initial={{ opacity: 0, y: 20 }}
-      animate={{
-        opacity: 1,
-        y: 0,
-      }}
-      transition={{
-        delay: hasAnimatedIn ? 0 : index * 0.05,
-        type: 'spring',
-        damping: 15,
-        stiffness: 100,
-      }}
-      whileDrag={{
-        scale: 1.02,
-        opacity: 1,
-        backgroundColor: '#ffffff',
-        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-        borderColor: '#8a9a5b',
-        borderWidth: '2px',
-        borderStyle: 'solid',
-        zIndex: 999,
-        cursor: 'grabbing',
-      }}
-      className={cn(
-        'w-full rounded-2xl overflow-hidden glass shadow-sm relative group transition-colors duration-500',
-        successDay === index
-          ? 'ring-4 ring-sage ring-offset-4 ring-offset-transparent'
-          : 'border border-white/20'
-      )}
+    <div
+      className="w-full"
+      data-temporal={isToday ? 'today' : isPast ? 'past' : 'neutral'}
       data-testid={`day-card-${index}`}
       data-date={day.date}
+      data-drag-source={isDragSource}
+      data-drop-target={isDropTarget}
       id={`day-card-${index}`}
     >
-      <motion.div
-        whileTap={{ scale: 0.98 }}
-        className={cn(
-          'flex items-stretch px-4 relative z-10',
-          isWide ? 'py-2 min-h-[64px]' : 'py-2.5 min-h-[72px]'
-        )}
-      >
-        <div className="flex flex-col items-center justify-center w-12 mr-4 shrink-0">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-charcoal/40 leading-none mb-1">
-            {day.day}
-          </span>
-          <span className="text-lg font-heading font-extrabold text-charcoal leading-none">
-            {(() => {
-              if (!day.date) return '';
-              const d = new Date(day.date);
-              return d.getUTCDate();
-            })()}
-          </span>
-          <span className="text-[10px] font-bold uppercase tracking-tighter text-charcoal/40 leading-none mt-1">
-            {(() => {
-              if (!day.date) return '';
-              const d = new Date(day.date);
-              return d.toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' });
-            })()}
-          </span>
+      {isToday && (
+        <div className="mb-1 flex flex-wrap items-center gap-2">
+          <p
+            data-testid="planner-today-label"
+            className="min-w-0 max-w-full text-sm leading-5 font-semibold text-terracotta-600 break-words"
+          >
+            {t('planner.today', 'Today')}
+          </p>
+          <span
+            data-testid="planner-today-separator"
+            aria-hidden="true"
+            className="h-px min-w-4 flex-1 bg-terracotta/15"
+          />
         </div>
-
-        <div className="flex-1 min-w-0">
-          {day.status === 3 ? (
-            <button
-              onClick={onPivot}
-              data-testid="ordered-in-indicator"
-              className="flex items-center gap-3 w-full text-left hover:opacity-80 transition-opacity"
-            >
-              <div className="h-10 w-10 rounded-xl bg-sage/10 text-sage-700 flex items-center justify-center flex-shrink-0">
-                <NonCookingIcon kind={day.nonCooking?.kind} />
-              </div>
-              <div className="min-w-0 flex flex-col gap-0.5">
-                <span
-                  data-testid="non-cooking-indicator"
-                  title={nonCookingLabel(day.nonCooking)}
-                  className="line-clamp-2 text-sm font-bold text-charcoal/60"
-                >
-                  {nonCookingLabel(day.nonCooking)}
-                </span>
-                {day.nonCooking?.kind === 'mystery' ? (
-                  <span className="text-[10px] text-charcoal/30 font-medium">
-                    {t('planner.mysteryNightHint', 'We’ll figure out supper that day.')}
-                  </span>
-                ) : nonCookingNote(day.nonCooking) ? (
-                  <span
-                    data-testid="non-cooking-note"
-                    title={nonCookingNote(day.nonCooking) ?? undefined}
-                    className="line-clamp-2 break-words text-xs text-charcoal/70 font-medium"
-                  >
-                    {nonCookingNote(day.nonCooking)}
-                  </span>
-                ) : null}
-              </div>
-            </button>
-          ) : day.recipe?.id ? (
-            <div className="flex items-stretch">
-              {day.recipe.image && (
-                <div
+      )}
+      <div className="flex items-stretch gap-2 w-full">
+        <div
+          data-testid="planner-date"
+          aria-current={isToday ? 'date' : undefined}
+          data-drop-target={isDropTarget}
+          className={cn(
+            'relative flex flex-col items-center justify-center w-10 shrink-0 rounded-xl',
+            isDropTarget && 'bg-sage/20 outline outline-2 outline-sage-700'
+          )}
+        >
+          {isDropTarget && (
+            <ChevronRight
+              data-testid="planner-drop-arrow"
+              aria-hidden="true"
+              size={8}
+              strokeWidth={3}
+              className="absolute -right-2 top-1/2 -translate-y-1/2 text-sage-700"
+            />
+          )}
+          <div
+            data-testid="planner-date-marker"
+            className="w-full flex flex-col items-center justify-center rounded-xl py-2"
+          >
+            <span className="max-w-full break-all text-center text-[10px] font-bold tracking-normal text-charcoal-600 leading-none mb-1">
+              {day.date
+                ? new Intl.DateTimeFormat(getLocale() === 'fr' ? 'fr-CA' : 'en-CA', {
+                    weekday: 'short',
+                    timeZone: 'UTC',
+                  }).format(new Date(day.date))
+                : day.day}
+            </span>
+            <span className="max-w-full break-all text-center text-lg font-heading font-extrabold text-charcoal leading-none">
+              {(() => {
+                if (!day.date) return '';
+                const d = new Date(day.date);
+                return d.getUTCDate();
+              })()}
+            </span>
+            <span className="max-w-full break-all text-center text-[10px] font-bold tracking-normal text-charcoal-600 leading-none mt-1">
+              {(() => {
+                if (!day.date) return '';
+                const d = new Date(day.date);
+                return d.toLocaleDateString(getLocale() === 'fr' ? 'fr-CA' : 'en-CA', {
+                  month: 'short',
+                  timeZone: 'UTC',
+                });
+              })()}
+            </span>
+          </div>
+        </div>
+        <div
+          className={cn(
+            'flex-1 min-w-0 rounded-2xl relative group border',
+            isPast ? 'bg-cream shadow-none' : 'glass shadow-sm',
+            isDragSource
+              ? 'outline outline-1 outline-dashed outline-charcoal/70'
+              : 'border-white/20',
+            isDropTarget && 'outline outline-2 outline-sage-700',
+            successDay === index && 'ring-4 ring-sage ring-offset-4'
+          )}
+          data-testid="planner-meal"
+        >
+          {isDragSource && (
+            <span className="absolute -top-2.5 left-2 z-20 rounded-full bg-cream px-2 text-xs font-bold text-charcoal">
+              {t('planner.moveSource', 'Moving from this day')}
+            </span>
+          )}
+          <motion.div
+            whileTap={{ scale: 0.98 }}
+            className={cn(
+              'flex items-stretch px-4 relative z-10 max-[360px]:flex-col max-[360px]:gap-2',
+              isWide ? 'py-2 min-h-[64px]' : 'py-2.5 min-h-[72px]'
+            )}
+          >
+            <div className="flex-1 min-w-0">
+              {day.status === 3 ? (
+                <button
+                  onClick={onPivot}
+                  data-testid="ordered-in-indicator"
                   className={cn(
-                    'relative rounded-xl overflow-hidden mr-2.5 bg-charcoal/5 flex-shrink-0 self-center',
-                    isWide ? 'h-10 w-10' : 'h-12 w-12'
+                    'flex items-center gap-3 w-full text-left',
+                    isPast
+                      ? 'hover:bg-sage/10 transition-colors'
+                      : 'hover:opacity-80 transition-opacity'
                   )}
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={getImageUrl(day.recipe.image)}
-                    alt={day.recipe.name || 'Recipe'}
-                    className="absolute inset-0 h-full w-full object-cover"
-                    onError={(e) => {
-                      e.currentTarget.style.display = 'none';
-                    }}
-                  />
-                </div>
-              )}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (day.recipe?.id) {
-                    onViewRecipe(day.recipe.id);
-                  }
-                }}
-                className="flex flex-1 min-w-0 items-center text-left rounded-2xl px-1 py-0.5 active:bg-ochre/5 transition-colors"
-                data-testid="edit-recipe-button"
-              >
-                <div className="flex w-full flex-col justify-center gap-0.5">
-                  <h4
-                    className={cn(
-                      'font-bold text-charcoal line-clamp-2',
-                      isWide ? 'text-sm leading-tight' : 'text-base leading-tight'
-                    )}
-                    data-testid="recipe-name"
-                  >
-                    {day.recipe.name}
-                  </h4>
-                  {(() => {
-                    const count = day._voteCount ?? day.recipe?.voteCount ?? null;
-                    const isUnanimous = day._unanimousVote;
-                    const hasVotes = count != null && count > 0;
-                    return (
+                  <div className="h-10 w-10 rounded-xl bg-sage/10 text-sage-700 flex items-center justify-center flex-shrink-0">
+                    <NonCookingIcon kind={day.nonCooking?.kind} />
+                  </div>
+                  <div className="min-w-0 flex flex-col gap-0.5">
+                    <span
+                      data-testid="non-cooking-indicator"
+                      title={nonCookingLabel(day.nonCooking)}
+                      className={cn(
+                        'line-clamp-2 text-sm font-bold',
+                        isPast ? 'text-charcoal-600' : 'text-charcoal/60'
+                      )}
+                    >
+                      {nonCookingLabel(day.nonCooking)}
+                    </span>
+                    {day.nonCooking?.kind === 'mystery' ? (
                       <span
-                        data-testid="vote-count"
                         className={cn(
-                          'text-[10px] font-bold px-1.5 py-0.5 rounded-full whitespace-nowrap inline-block w-fit mt-0.5',
-                          hasVotes ? 'visible' : 'visible',
-                          hasVotes
-                            ? isUnanimous
-                              ? 'bg-sage/20 text-sage'
-                              : 'bg-ochre/20 text-ochre'
-                            : 'bg-charcoal/8 text-charcoal/55'
+                          'text-[10px] font-medium',
+                          isPast ? 'text-charcoal-600' : 'text-charcoal/30'
                         )}
                       >
-                        {hasVotes ? `${count} voted` : 'Chosen'}
+                        {t('planner.mysteryNightHint', 'We’ll figure out supper that day.')}
                       </span>
-                    );
-                  })()}
+                    ) : nonCookingNote(day.nonCooking) ? (
+                      <span
+                        data-testid="non-cooking-note"
+                        title={nonCookingNote(day.nonCooking) ?? undefined}
+                        className="line-clamp-2 break-words text-xs text-charcoal/70 font-medium"
+                      >
+                        {nonCookingNote(day.nonCooking)}
+                      </span>
+                    ) : null}
+                  </div>
+                </button>
+              ) : day.recipe?.id ? (
+                <div className="flex items-stretch">
+                  {day.recipe.image && (
+                    <div
+                      className={cn(
+                        'relative rounded-xl overflow-hidden mr-2.5 bg-charcoal/5 flex-shrink-0 self-center',
+                        isWide ? 'h-10 w-10' : 'h-12 w-12'
+                      )}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={getImageUrl(day.recipe.image)}
+                        alt={day.recipe.name || 'Recipe'}
+                        className="absolute inset-0 h-full w-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                        }}
+                      />
+                    </div>
+                  )}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (day.recipe?.id) {
+                        onViewRecipe(day.recipe.id);
+                      }
+                    }}
+                    className="flex flex-1 min-w-0 items-center text-left rounded-2xl px-1 py-0.5 active:bg-ochre/5 transition-colors"
+                    data-testid="edit-recipe-button"
+                  >
+                    <div className="flex w-full flex-col justify-center gap-0.5">
+                      <h4
+                        className={cn(
+                          'font-bold text-charcoal line-clamp-2',
+                          isWide ? 'text-sm leading-tight' : 'text-base leading-tight'
+                        )}
+                        data-testid="recipe-name"
+                      >
+                        {day.recipe.name}
+                      </h4>
+                      {(() => {
+                        const count = day._voteCount ?? day.recipe?.voteCount ?? null;
+                        const isUnanimous = day._unanimousVote;
+                        const hasVotes = count != null && count > 0;
+                        return (
+                          <span
+                            data-testid="vote-count"
+                            className={cn(
+                              'text-[10px] font-bold px-1.5 py-0.5 rounded-full whitespace-nowrap inline-block w-fit mt-0.5',
+                              hasVotes ? 'visible' : 'visible',
+                              hasVotes
+                                ? isUnanimous
+                                  ? cn('bg-sage/20', isPast ? 'text-sage-700' : 'text-sage')
+                                  : cn('bg-ochre/20', isPast ? 'text-ochre-700' : 'text-ochre')
+                                : cn(
+                                    'bg-charcoal/8',
+                                    isPast ? 'text-charcoal-600' : 'text-charcoal/55'
+                                  )
+                            )}
+                          >
+                            {hasVotes ? `${count} voted` : 'Chosen'}
+                          </span>
+                        );
+                      })()}
+                    </div>
+                  </button>
                 </div>
-              </button>
-              <div className="ml-2 pl-2 border-l border-charcoal/8 flex items-center gap-1 self-stretch">
+              ) : (
+                <div className="flex items-stretch w-full">
+                  <button
+                    onClick={onPivot}
+                    data-testid="plan-meal-button"
+                    className="flex items-center flex-1 min-h-[44px] text-left group rounded-2xl px-1 py-0.5 active:bg-terracotta/10 transition-colors"
+                  >
+                    <div className="h-10 w-10 rounded-xl border border-dashed border-terracotta/30 flex items-center justify-center mr-3 group-hover:bg-terracotta/10 group-hover:border-terracotta/50 transition-colors">
+                      <Plus
+                        className="text-terracotta-600 group-hover:text-terracotta-700 transition-colors"
+                        size={18}
+                      />
+                    </div>
+                    <div className="flex flex-col justify-center">
+                      <span
+                        className={cn(
+                          'font-bold text-terracotta-600 group-hover:text-terracotta-700 transition-colors',
+                          isWide ? 'text-xs' : 'text-sm'
+                        )}
+                      >
+                        {t('planner.planSupper', 'Plan supper')}
+                      </span>
+                    </div>
+                  </button>
+                </div>
+              )}
+            </div>
+            {((day.status !== 3 && day.recipe?.id) || isDragSource) && (
+              <div className="ml-2 pl-2 border-l border-charcoal/8 flex items-center gap-1 self-stretch max-[360px]:self-end max-[360px]:border-l-0">
                 {day.recipe?.id && !day._isPending && (
                   <motion.button
                     initial={{ opacity: 0, scale: 0.8 }}
@@ -1101,7 +1190,10 @@ const PlannerDayCard = memo(function PlannerDayCard({
                       e.stopPropagation();
                       onPivot();
                     }}
-                    className="h-9 w-9 rounded-xl bg-ochre/8 flex items-center justify-center text-ochre active:scale-90 transition-transform"
+                    className={cn(
+                      'h-9 w-9 rounded-xl bg-ochre/8 flex items-center justify-center active:scale-90 transition-transform',
+                      isPast ? 'text-ochre-700' : 'text-ochre'
+                    )}
                     data-testid="change-recipe-button"
                     title={t('planner.choosePathTitle', 'Change this recipe')}
                     aria-label={t('planner.choosePathTitle', 'Change this recipe')}
@@ -1109,40 +1201,12 @@ const PlannerDayCard = memo(function PlannerDayCard({
                     <RefreshCw size={18} />
                   </motion.button>
                 )}
-                <PlannerDragHandle start={startDrag} moveBySlot={moveBySlot} />
+                <PlannerDragHandle start={startRecipeDrag} moveBySlot={moveBySlot} />
               </div>
-            </div>
-          ) : (
-            <div className="flex items-stretch w-full">
-              <button
-                onClick={onPivot}
-                data-testid="plan-meal-button"
-                className="flex items-center flex-1 min-h-[44px] text-left group rounded-2xl px-1 py-0.5 active:bg-terracotta/10 transition-colors"
-              >
-                <div className="h-10 w-10 rounded-xl border border-dashed border-terracotta/30 flex items-center justify-center mr-3 group-hover:bg-terracotta/10 group-hover:border-terracotta/50 transition-colors">
-                  <Plus
-                    className="text-terracotta/50 group-hover:text-terracotta transition-colors"
-                    size={18}
-                  />
-                </div>
-                <div className="flex flex-col justify-center">
-                  <span
-                    className={cn(
-                      'font-bold text-charcoal/45 group-hover:text-terracotta/70 transition-colors',
-                      isWide ? 'text-xs' : 'text-sm'
-                    )}
-                  >
-                    Plan supper
-                  </span>
-                </div>
-              </button>
-              <div className="ml-2 pl-2 border-l border-charcoal/8 flex items-center gap-1 self-stretch">
-                <PlannerDragHandle start={startDrag} moveBySlot={moveBySlot} />
-              </div>
-            </div>
-          )}
+            )}
+          </motion.div>
         </div>
-      </motion.div>
-    </Reorder.Item>
+      </div>
+    </div>
   );
 });

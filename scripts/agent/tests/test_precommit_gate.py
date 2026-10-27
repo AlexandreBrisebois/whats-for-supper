@@ -19,15 +19,32 @@ class PrecommitGateTests(unittest.TestCase):
         self.tasks = yaml.safe_load((ROOT / 'Taskfile.yml').read_text())['tasks']
 
     def test_commit_stage_is_read_only_and_has_no_production_builds(self):
-        self.assertEqual(self.config['default_install_hook_types'], ['pre-commit', 'pre-push'])
+        self.assertEqual(self.config['default_install_hook_types'], ['pre-commit'])
         for hook in self.hooks.values():
             if 'pre-commit' in hook['stages']:
                 self.assertEqual(hook['language'], 'system')
                 for forbidden in ['--write', 'git add', 'gen:client:sync', 'check:push', 'npm run build', 'test:e2e']:
                     self.assertNotIn(forbidden, hook['entry'])
         self.assertEqual(self.hooks['kiota-client-check']['entry'], 'task gen:client:check')
-        self.assertEqual(self.hooks['push-validation']['stages'], ['pre-push'])
-        self.assertTrue(self.hooks['push-validation']['always_run'])
+        self.assertTrue(all(hook['stages'] == ['pre-commit'] for hook in self.hooks.values()))
+
+    def test_hook_install_removes_existing_push_hook_and_keeps_commit_hook(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            subprocess.run(['git', 'init', '-q', tmp], check=True)
+            shutil.copy(ROOT / '.pre-commit-config.yaml', root)
+            subprocess.run(['pre-commit', 'install', '--hook-type', 'pre-push'],
+                           cwd=root, check=True, capture_output=True)
+            push_hook = root / '.git/hooks/pre-push'
+            self.assertTrue(push_hook.exists())
+            (root / 'Taskfile.yml').write_text(yaml.safe_dump({'version': '3', 'tasks': {
+                'hooks:install': self.tasks['hooks:install']}}))
+            for _ in range(2):
+                result = subprocess.run(['task', 'hooks:install'], cwd=root,
+                                        capture_output=True, text=True, timeout=15)
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertFalse(push_hook.exists())
+                self.assertTrue((root / '.git/hooks/pre-commit').exists())
 
     def test_spec_and_harness_changes_select_quick_hooks(self):
         for path in ['openspec/config.yaml', 'openspec/changes/new/tasks.md', 'openspec/specs/example/spec.md']:

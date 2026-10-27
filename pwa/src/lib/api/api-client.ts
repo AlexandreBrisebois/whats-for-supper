@@ -30,9 +30,8 @@ class HearthAuthProvider implements AuthenticationProvider {
       request.headers.add('X-SSE-Connection-ID', sseConnectionId);
     }
 
-    // 3. Inject the pending move sequence number so the server can echo it back
-    // in the week_updated SSE payload. applySnapshot uses this to identify its
-    // own echoes instead of relying on a wall-clock window.
+    // 3. Preserve move sequence metadata on the wire. Receiving connections cannot
+    // use that number to acknowledge their own requests; HTTP completion owns that.
     const { localMoveSeq, confirmedMoveSeq } = usePlannerStore.getState();
     if (localMoveSeq > confirmedMoveSeq) {
       request.headers.add('X-Move-Seq', String(localMoveSeq));

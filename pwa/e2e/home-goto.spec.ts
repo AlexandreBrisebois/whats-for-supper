@@ -1,4 +1,5 @@
 import { test, expect } from './fixtures';
+import type { ScheduleDays } from '../src/lib/api/generated/models';
 import {
   MOCK_IDS,
   builders,
@@ -548,6 +549,8 @@ test.describe('Home Command Center — todayStore (Group C)', () => {
     const monday = currentMonday();
     const today = toDateStr(monday);
     let assignDone = false;
+    const savedSchedule = builders.scheduleDays();
+    let assignBody: unknown;
 
     // Mock active GOTO
     await page.route(
@@ -568,58 +571,18 @@ test.describe('Home Command Center — todayStore (Group C)', () => {
     );
 
     // Mock SSE to emit recipe_ready — drives the ready transition (no polling)
-    await mockSseWithRecipeReady(page, MOCK_IDS.RECIPE_LASAGNA);
+    await mockSseWithRecipeReady(
+      page,
+      MOCK_IDS.RECIPE_LASAGNA,
+      () => savedSchedule as unknown as ScheduleDays
+    );
 
     // Stateful schedule mock: before assign → empty; after assign → today's slot has the recipe
     await page.route(
       (url) => url.pathname.includes('/api/schedule'),
       async (route) => {
         if (route.request().url().includes('weekOffset=0') && route.request().method() === 'GET') {
-          if (!assignDone) {
-            await route.fulfill({
-              status: 200,
-              contentType: 'application/json',
-              body: JSON.stringify({
-                data: {
-                  weekOffset: 0,
-                  calendar: builders.deploymentCalendar() as any,
-                  weekStartDate: '2026-05-04' as any,
-                  locked: false,
-                  status: 0,
-                  days: [],
-                },
-              }),
-            });
-          } else {
-            const days = Array.from({ length: 7 }, (_, i) => {
-              const d = new Date(monday);
-              d.setUTCDate(monday.getUTCDate() + i);
-              const dateStr = toDateStr(d);
-              return {
-                day: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i],
-                date: dateStr,
-                recipe:
-                  dateStr === today
-                    ? { id: MOCK_IDS.RECIPE_LASAGNA, name: 'Family GOTO', image: '' }
-                    : null,
-                status: 0,
-              };
-            });
-            await route.fulfill({
-              status: 200,
-              contentType: 'application/json',
-              body: JSON.stringify({
-                data: {
-                  weekOffset: 0,
-                  calendar: builders.deploymentCalendar() as any,
-                  weekStartDate: '2026-05-04' as any,
-                  locked: false,
-                  status: 0,
-                  days,
-                },
-              }),
-            });
-          }
+          await route.fulfill({ json: { data: savedSchedule } });
         } else if (route.request().url().includes('smart-defaults')) {
           await route.fulfill({
             status: 200,
@@ -647,6 +610,12 @@ test.describe('Home Command Center — todayStore (Group C)', () => {
     await page.route(
       (url) => url.pathname.includes('/api/schedule/assign'),
       async (route) => {
+        assignBody = route.request().postDataJSON();
+        savedSchedule.days.find((day) => day.date === today)!.recipe = builders.scheduleRecipe({
+          id: MOCK_IDS.RECIPE_LASAGNA,
+          name: 'Family GOTO',
+          image: '',
+        });
         assignDone = true;
         await route.fulfill({
           status: 200,
@@ -666,6 +635,11 @@ test.describe('Home Command Center — todayStore (Group C)', () => {
 
     // 3. Wait for assign to complete
     await expect.poll(() => assignDone).toBe(true);
+    expect(assignBody).toMatchObject({
+      weekOffset: 0,
+      dayIndex: 0,
+      recipeId: MOCK_IDS.RECIPE_LASAGNA,
+    });
 
     // 4. Navigate to /planner
     await page.goto('/planner');
@@ -678,5 +652,9 @@ test.describe('Home Command Center — todayStore (Group C)', () => {
     await expect(todayCard.getByTestId('recipe-name')).toContainText('Family GOTO', {
       timeout: 5000,
     });
+
+    // A new connection must describe the same saved state as schedule GET.
+    await page.reload();
+    await expect(todayCard.getByTestId('recipe-name')).toContainText('Family GOTO');
   });
 });
