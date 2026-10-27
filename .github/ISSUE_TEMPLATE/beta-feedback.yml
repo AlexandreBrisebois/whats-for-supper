@@ -1,0 +1,40 @@
+name: Beta feedback / Commentaires bêta
+description: Share an experience or idea / Partagez une expérience ou une idée
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping shape What's for Supper! GitHub issues are public and require a GitHub account. Please do not include passphrases, personal information or sensitive screenshots.
+
+        Merci de contribuer à l'évolution de What's for Supper! Les tickets GitHub sont publics et nécessitent un compte GitHub. N'incluez pas de mots de passe, de renseignements personnels ou de captures d'écran sensibles.
+
+        For a security vulnerability, follow [Reporting security issues](https://github.com/AlexandreBrisebois/whats-for-supper/blob/main/CONTRIBUTING.md#reporting-security-issues) instead of posting it publicly.
+        Pour une vulnérabilité de sécurité, suivez ces consignes de signalement plutôt que de la publier ici.
+  - type: textarea
+    id: task
+    attributes:
+      label: What were you trying to do? / Qu'essayiez-vous de faire?
+      description: A task or idea in your own words / Une tâche ou une idée dans vos mots
+    validations:
+      required: true
+  - type: textarea
+    id: happened
+    attributes:
+      label: What happened? / Que s'est-il passé?
+      description: Optional / Facultatif
+    validations:
+      required: false
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: Suggestion or screenshot / Suggestion ou capture d'écran
+      description: Optional; attach a screenshot only if useful and safe to share / Facultatif; joignez une capture seulement si elle est utile et peut être partagée sans risque
+    validations:
+      required: false
+  - type: input
+    id: device-version
+    attributes:
+      label: Device or app version / Appareil ou version de l'application
+      description: Optional; whatever you know / Facultatif; ce que vous connaissez
+    validations:
+      required: false

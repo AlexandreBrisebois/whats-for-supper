@@ -4,13 +4,11 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { authenticateWithPassphrase, setHearthCookie } from '@/lib/auth';
 import { WelcomeDemoContext } from '@/components/identity/WelcomeDemoContext';
-import { IdentityHint, useInstallIdentity } from '@/components/identity/IdentityHint';
 import { t } from '@/locales';
 import { useLocale } from '@/components/common/LocaleProvider';
 
 export function WelcomeForm({ initialPassphrase }: { initialPassphrase: string | null }) {
   const { locale } = useLocale();
-  const { demo } = useInstallIdentity();
   const router = useRouter();
   const [passphrase, setPassphrase] = useState(initialPassphrase ?? '');
   const [error, setError] = useState('');
@@ -55,7 +53,6 @@ export function WelcomeForm({ initialPassphrase }: { initialPassphrase: string |
     <div className="relative flex min-h-dvh flex-col bg-cream">
       <WelcomeDemoContext />
       <main className="relative flex flex-1 flex-col items-center justify-center gap-8 px-6 py-12 bg-cream">
-        {!demo && <IdentityHint className="right-4 top-[calc(env(safe-area-inset-top)+1rem)]" />}
         <div className="text-center animate-in fade-in slide-in-from-bottom-4 duration-700">
           <h1 className="text-4xl font-bold text-indigo tracking-tight" data-testid="welcome-title">
             {t('auth.welcomeTitle', 'Whats for Supper?')}

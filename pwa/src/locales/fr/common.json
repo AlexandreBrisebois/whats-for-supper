@@ -1,4 +1,13 @@
 {
+  "betaContext": {
+    "start": "Commencer à explorer",
+    "label": "Bêta · Meilleure grâce à vos idées",
+    "welcome": "Bienvenue dans la version bêta de Whats for Supper? Essayez de choisir vos repas ensemble, de planifier votre semaine et de faire du souper une chose de moins à gérer.",
+    "expectations": "Nous travaillons encore sur cette version. Certaines choses peuvent changer et vous pourriez rencontrer un bogue en cours de route. Nous développons cette application en public, ensemble. Vos idées et vos commentaires aident à façonner la suite.",
+    "reopen": "Vous pouvez rouvrir cette explication à tout moment à partir du bandeau Bêta.",
+    "feedback": "Donner votre avis sur GitHub",
+    "account": "Un compte GitHub est requis"
+  },
   "installIdentity": {
     "demo": "Démo",
     "beta": "Bêta",

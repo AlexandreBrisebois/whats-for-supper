@@ -4,22 +4,30 @@ import { useEffect, useState } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useDemoMode } from '@/components/demo/DemoModeProvider';
 import { DemoExplanation } from './DemoExplanation';
+import { useInstallIdentity } from './IdentityHint';
 import { useFamilyStore } from '@/store/familyStore';
 import { useUiStore } from '@/store/uiStore';
 import { useCaptureStore } from '@/store/captureStore';
 import { usePdfCaptureStore } from '@/store/pdfCaptureStore';
 import {
-  acknowledgeDemoContext,
-  readDemoContextAcknowledgement,
+  acknowledgeContext,
+  readContextAcknowledgement,
   useDemoContextVisit,
 } from '@/store/demoContextStore';
 
 export function DemoContext() {
   const { mode } = useDemoMode();
-  return mode === false ? null : <DemoContextState mode={mode} />;
+  return <DemoContextState mode={mode} />;
 }
 
 function DemoContextState({ mode }: { mode: boolean | null }) {
+  const identity = useInstallIdentity();
+  const contextMode =
+    mode === true
+      ? 'demo'
+      : mode === false && !identity.demo && identity.channel === 'beta'
+        ? 'beta'
+        : null;
   const pathname = usePathname();
   const params = useSearchParams();
   const member = useFamilyStore((s) => s.selectedFamilyMemberId);
@@ -29,14 +37,28 @@ function DemoContextState({ mode }: { mode: boolean | null }) {
   const pdf = usePdfCaptureStore((s) => Boolean(s.selection));
   const visit = useDemoContextVisit();
   const [dialogOwner] = useState(() => ({}));
-  const open = visit.openPath === pathname && visit.openOwner === dialogOwner;
+  const open =
+    visit.openPath === pathname &&
+    visit.openOwner === dialogOwner &&
+    visit.openMode === contextMode;
+  const acknowledged = contextMode === 'beta' ? visit.betaAcknowledged : visit.acknowledged;
+  const storageRead = contextMode === 'beta' ? visit.betaStorageRead : visit.storageRead;
 
   useEffect(() => {
     const state = useDemoContextVisit.getState();
     if (state.eligibleEntry === null)
       useDemoContextVisit.setState({ eligibleEntry: pathname === '/home' && params.size === 0 });
-    readDemoContextAcknowledgement();
-  }, [pathname, params]);
+    const resolved = mode === null ? null : (contextMode ?? 'none');
+    if (resolved && state.resolvedMode !== resolved) {
+      useDemoContextVisit.setState({
+        resolvedMode: resolved,
+        ...(state.resolvedMode !== null
+          ? { interacted: true, openPath: null, openMode: null }
+          : {}),
+      });
+    }
+    if (contextMode) readContextAcknowledgement(contextMode);
+  }, [pathname, params, contextMode, mode]);
 
   useEffect(() => {
     const interact = () => useDemoContextVisit.setState({ interacted: true });
@@ -56,15 +78,15 @@ function DemoContextState({ mode }: { mode: boolean | null }) {
       return;
     }
     if (
-      mode !== true ||
+      !contextMode ||
       pathname !== '/home' ||
       !member ||
       !familyReady ||
-      !visit.storageRead ||
+      !storageRead ||
       !visit.eligibleEntry ||
-      visit.acknowledged ||
+      acknowledged ||
       visit.presented ||
-      visit.interacted
+      useDemoContextVisit.getState().interacted
     )
       return;
     if (document.querySelector('dialog[open], [role="dialog"], [aria-modal="true"]')) {
@@ -72,26 +94,48 @@ function DemoContextState({ mode }: { mode: boolean | null }) {
       useDemoContextVisit.setState({ interacted: true });
       return;
     }
-    useDemoContextVisit.setState({ presented: true, openPath: pathname, openOwner: dialogOwner });
-  }, [mode, pathname, member, familyReady, busy, pending, pdf, visit, dialogOwner]);
+    useDemoContextVisit.setState({
+      presented: true,
+      openPath: pathname,
+      openOwner: dialogOwner,
+      openMode: contextMode,
+    });
+  }, [
+    contextMode,
+    pathname,
+    member,
+    familyReady,
+    busy,
+    pending,
+    pdf,
+    visit,
+    dialogOwner,
+    acknowledged,
+    storageRead,
+  ]);
 
   useEffect(() => {
-    if (useDemoContextVisit.getState().openPath !== pathname)
-      useDemoContextVisit.setState({ openPath: null });
-  }, [pathname]);
+    const state = useDemoContextVisit.getState();
+    if (state.openPath !== pathname || state.openMode !== contextMode)
+      useDemoContextVisit.setState({ openPath: null, openMode: null });
+  }, [pathname, contextMode]);
 
-  if (mode !== true) return null;
+  if (!contextMode) return null;
   return (
     <DemoExplanation
+      key={contextMode}
+      mode={contextMode}
+      beta={contextMode === 'demo' && identity.channel === 'beta'}
       open={open}
       onOpen={() => {
         useDemoContextVisit.setState({
           presented: true,
           openPath: pathname,
           openOwner: dialogOwner,
+          openMode: contextMode,
         });
       }}
-      onDismiss={acknowledgeDemoContext}
+      onDismiss={() => acknowledgeContext(contextMode)}
     />
   );
 }

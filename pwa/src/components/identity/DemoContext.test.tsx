@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { StrictMode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DemoContext } from './DemoContext';
+import { InstallIdentityProvider } from './IdentityHint';
 import { DEMO_CONTEXT_ACK_KEY, useDemoContextVisit } from '@/store/demoContextStore';
 
 const state = vi.hoisted(() => ({
@@ -31,6 +32,11 @@ vi.mock('@/store/pdfCaptureStore', () => ({
 }));
 
 describe('demo context', () => {
+  const beta = () => (
+    <InstallIdentityProvider identity={{ demo: false, channel: 'beta' }}>
+      <DemoContext />
+    </InstallIdentityProvider>
+  );
   beforeEach(() => {
     vi.restoreAllMocks();
     localStorage.clear();
@@ -42,6 +48,10 @@ describe('demo context', () => {
     state.capture.pendingRecipes = [];
     state.pdf.selection = null;
     useDemoContextVisit.setState({
+      resolvedMode: null,
+      betaAcknowledged: false,
+      betaStorageRead: false,
+      openMode: null,
       presented: false,
       interacted: false,
       acknowledged: false,
@@ -74,6 +84,132 @@ describe('demo context', () => {
     expect(await screen.findByRole('dialog')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Close' }));
     expect(screen.getByTestId('demo-context-band')).toHaveFocus();
+  });
+
+  it('introduces Beta on ready non-demo Home with its own acknowledgement and approved copy', async () => {
+    state.mode.mode = false;
+    render(
+      <InstallIdentityProvider identity={{ demo: false, channel: 'beta' }}>
+        <DemoContext />
+      </InstallIdentityProvider>
+    );
+    expect(await screen.findByRole('dialog')).toHaveAccessibleName('Beta · Better with your ideas');
+    expect(
+      screen.getByText(
+        'We’re still working on this version. Some things may change, and you might run into a bug along the way. We’re building this in public, together. Your ideas and feedback help shape what comes next.'
+      )
+    ).toBeVisible();
+    expect(
+      screen.queryByText(/sharing this demo|AI capture and generation|personal information/i)
+    ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Start exploring' }));
+    expect(localStorage.getItem('wfs:mode-info:beta:dismissed')).toBe('true');
+    expect(localStorage.getItem(DEMO_CONTEXT_ACK_KEY)).toBeNull();
+    fireEvent.click(screen.getByTestId('beta-context-band'));
+    expect(screen.getByRole('dialog')).toBeVisible();
+  });
+
+  it.each(['query', 'deep-link', 'capture', 'pdf', 'modal', 'interaction'] as const)(
+    'keeps Beta introduction suppressed after %s',
+    (guard) => {
+      state.mode.mode = false;
+      state.family.hasLoaded = false;
+      if (guard === 'query') state.route.query = 'vote=round';
+      if (guard === 'deep-link') state.route.path = '/recipes';
+      if (guard === 'capture') state.capture.pendingRecipes = [{}];
+      if (guard === 'pdf') state.pdf.selection = {};
+      const modal = guard === 'modal' ? document.createElement('dialog') : null;
+      modal?.setAttribute('open', '');
+      if (modal) document.body.append(modal);
+      const view = render(beta());
+      if (guard === 'interaction') fireEvent.pointerDown(document.body);
+      state.family.hasLoaded = true;
+      view.rerender(beta());
+      if (modal) modal.remove();
+      Object.assign(state.route, { path: '/home', query: '' });
+      state.capture.pendingRecipes = [];
+      state.pdf.selection = null;
+      view.rerender(beta());
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      fireEvent.click(screen.getByTestId('beta-context-band'));
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+    }
+  );
+
+  it('does not infer Beta from unknown runtime or installation Demo disagreement', () => {
+    state.mode.mode = null;
+    const view = render(beta());
+    expect(screen.queryByTestId('beta-context-band')).not.toBeInTheDocument();
+    fireEvent.keyDown(document.body, { key: 'Tab' });
+    state.mode.mode = false;
+    view.rerender(beta());
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    view.rerender(
+      <InstallIdentityProvider identity={{ demo: true, channel: 'beta' }}>
+        <DemoContext />
+      </InstallIdentityProvider>
+    );
+    expect(screen.queryByTestId('beta-context-band')).not.toBeInTheDocument();
+  });
+
+  it('can introduce Beta when initial unknown mode first resolves before interaction', () => {
+    state.mode.mode = null;
+    const view = render(beta());
+    expect(screen.queryByTestId('beta-context-band')).not.toBeInTheDocument();
+    state.mode.mode = false;
+    view.rerender(beta());
+    expect(screen.getByRole('dialog')).toHaveAccessibleName('Beta · Better with your ideas');
+  });
+
+  it.each(['read', 'write', 'both'] as const)(
+    'keeps Beta usable when storage %s throws',
+    (failure) => {
+      state.mode.mode = false;
+      if (failure !== 'write')
+        vi.spyOn(localStorage, 'getItem').mockImplementation(() => {
+          throw new Error('denied');
+        });
+      if (failure !== 'read')
+        vi.spyOn(localStorage, 'setItem').mockImplementation(() => {
+          throw new Error('denied');
+        });
+      const view = render(beta());
+      fireEvent.click(screen.getByRole('button', { name: 'Start exploring' }));
+      view.unmount();
+      render(beta());
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      expect(useDemoContextVisit.getState().betaAcknowledged).toBe(true);
+      expect(useDemoContextVisit.getState().acknowledged).toBe(false);
+    }
+  );
+
+  it('keeps acknowledgement separate and never introduces a second mode in the same shell visit', () => {
+    localStorage.setItem(DEMO_CONTEXT_ACK_KEY, 'true');
+    state.mode.mode = false;
+    const view = render(beta());
+    expect(screen.getByRole('dialog')).toHaveAccessibleName('Beta · Better with your ideas');
+    state.mode.mode = true;
+    view.rerender(beta());
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByTestId('demo-context-band')).toHaveAccessibleDescription(
+      'Beta release channel'
+    );
+    expect(localStorage.getItem('wfs:mode-info:beta:dismissed')).toBeNull();
+    fireEvent.click(screen.getByTestId('demo-context-band'));
+    expect(screen.getByRole('dialog')).toHaveAccessibleName('Demo · What to know');
+  });
+
+  it('does not introduce Beta after switching from an already acknowledged Demo in the same visit', () => {
+    localStorage.setItem(DEMO_CONTEXT_ACK_KEY, 'true');
+    useDemoContextVisit.setState({ betaStorageRead: true });
+    state.mode.mode = true;
+    const view = render(beta());
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    state.mode.mode = false;
+    view.rerender(beta());
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('beta-context-band'));
+    expect(screen.getByRole('dialog')).toHaveAccessibleName('Beta · Better with your ideas');
   });
 
   it.each([
