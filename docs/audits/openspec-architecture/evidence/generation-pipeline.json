@@ -1,0 +1,39 @@
+{
+  "scope": "One observed inventory+index/benchmark construction pipeline, includes subprocess startup, parsing, canonical hash validation and artifact serialization; excludes candidate review, model context, filesystem syscall tracing and package installation. Not a production acceptance/performance guarantee.",
+  "steps": [
+    {
+      "argv": [
+        "python3",
+        "-B",
+        "/tmp/wfs-openspec-audit.Gst1Xs/inventory/extract_inventory.py",
+        "--root",
+        "/Users/alex/Code/whats-for-supper",
+        "--output",
+        "/tmp/wfs-openspec-audit.Gst1Xs/pipeline-measurement/inventory"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.11472604199661873
+    },
+    {
+      "argv": [
+        "python3",
+        "-B",
+        "/tmp/wfs-openspec-audit.Gst1Xs/benchmark/measure.py",
+        "--repo",
+        "/Users/alex/Code/whats-for-supper",
+        "--inventory",
+        "/tmp/wfs-openspec-audit.Gst1Xs/pipeline-measurement/inventory",
+        "--output",
+        "/tmp/wfs-openspec-audit.Gst1Xs/pipeline-measurement/benchmark"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.05776083399541676
+    }
+  ],
+  "elapsed_seconds": 0.172519417013973,
+  "canonical_reads_defined_protocol": 68,
+  "canonical_utf8_bytes_defined_protocol": 1747136,
+  "metadata_reads": 2,
+  "metadata_utf8_bytes": 3141982,
+  "allocation": "one source-identical generation pipeline shared across three workloads; all reads local, no model generation"
+}

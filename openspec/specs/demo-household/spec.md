@@ -4,8 +4,9 @@
 
 Describe the existing resettable showcase, its access presentation, snapshot effects, scheduling and bounded AI suppression so operators and household visitors can distinguish supported behavior from unqualified guarantees.
 
-Shared rule owners: [household identity](../household-identity/spec.md) and
-[background processing](../background-processing/spec.md). Named requirements
+Shared rule owners: [household identity](../household-identity/spec.md),
+[background processing](../background-processing/spec.md) and
+[management status](../data-backup-and-recovery/spec.md#requirement-project-the-latest-selected-management-result). Named requirements
 below refer to those owners without changing their shared policy.
 
 ## Evidence and qualifications (non-normative)
@@ -34,6 +35,10 @@ References in preserved requirements to a combined capability now resolve to the
 
 - [List existing household members for selection](../member-context/spec.md#requirement-list-existing-household-members-for-selection)
 - [Resolve the current member through the API](../member-context/spec.md#requirement-resolve-the-current-member-through-the-api)
+
+<a id="requirement-read-latest-management-workflow-diagnostics"></a>
+
+The former requirement Read latest management workflow diagnostics and its Latest management selection and Completed task result scenarios now resolve to [Project the latest selected management result](../data-backup-and-recovery/spec.md#requirement-project-the-latest-selected-management-result). Demo-specific management diagnostics remain owned here.
 
 ## Requirements
 
@@ -369,18 +374,6 @@ Demo capture and reset SHALL remain background workflows with persisted task ide
 #### Scenario: Startup seed meaning
 - **WHEN** automatic demo seeding accepts a workflow
 - **THEN** it schedules restoring an existing prepared baseline rather than generating sample content or invoking AI
-
-### Requirement: Read latest management workflow diagnostics
-
-GET /api/management/status SHALL select the newest created instance among db-backup, db-restore, db-disaster-recovery, demo-capture and demo-restore. When found, it SHALL return its identity, workflow type, persisted status and timestamps, plus the newest updated completed-task result with a nonnull stored result, if present.
-
-#### Scenario: Latest management selection
-- **WHEN** several selected management workflows exist and status is read successfully
-- **THEN** the newest by createdAt is returned even if it differs from the caller's earlier taskId
-
-#### Scenario: Completed task result
-- **WHEN** the selected instance has completed tasks with stored results
-- **THEN** result is taken from the newest updated such task, which can be reschedule rather than restore
 
 ### Requirement: Report snapshot-file and cron diagnostics with management status
 Management diagnostics SHALL distinguish baseline absence, unsupported format, failed integrity/preflight, publication recovery, last reset outcome and confirmed next occurrence. A valid cron or enqueue result SHALL NOT alone certify baseline readiness, recurring health or successful reset. Status SHALL remain available during recovery.

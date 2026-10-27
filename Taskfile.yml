@@ -1102,6 +1102,11 @@ tasks:
     cmds:
       - rg -n -i --glob '*.md' -- {{.CLI_ARGS}} openspec/specs openspec/changes
 
+  spec:audit:
+    desc: "Read-only canonical inventory (use -- --format json or --capability <exact-id>)"
+    cmds:
+      - '"{{.PYTHON}}" -B scripts/agent/openspec_audit.py {{.CLI_ARGS}}'
+
   docs:dev-loop:
     desc: "Open local development loop documentation"
     cmds:
