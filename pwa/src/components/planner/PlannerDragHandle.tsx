@@ -98,9 +98,8 @@ export function PlannerDragHandle({
       data-testid="planner-drag-handle"
       data-grabbed={grabbed}
       className={cn(
-        'h-full min-h-[44px] min-w-[44px] justify-center flex items-center px-2.5 cursor-grab active:cursor-grabbing select-none group/handle rounded-2xl',
-        'touch-auto focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-charcoal-600',
-        grabbed && 'bg-sage/20 ring-2 ring-sage-700'
+        'h-full min-h-[44px] min-w-[44px] justify-center flex items-center px-1 cursor-grab active:cursor-grabbing select-none group/handle rounded-2xl',
+        'touch-auto focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-charcoal-600'
       )}
       style={{ WebkitTouchCallout: 'none' }}
       role="button"
@@ -114,13 +113,21 @@ export function PlannerDragHandle({
         moveBySlot?.(event.key === 'ArrowUp' ? -1 : 1);
       }}
     >
-      <GripVertical
+      <span
         className={cn(
-          'text-charcoal-600 group-hover/handle:text-sage-700 transition-colors',
-          grabbed && 'text-sage-700'
+          'pointer-events-none flex h-9 w-9 shrink-0 items-center justify-center rounded-xl',
+          grabbed && 'bg-sage/20 ring-2 ring-sage-700'
         )}
-        size={20}
-      />
+        aria-hidden="true"
+      >
+        <GripVertical
+          className={cn(
+            'text-charcoal-600 group-hover/handle:text-sage-700 transition-colors',
+            grabbed && 'text-sage-700'
+          )}
+          size={20}
+        />
+      </span>
     </div>
   );
 }

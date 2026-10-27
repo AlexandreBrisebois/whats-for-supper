@@ -1180,7 +1180,7 @@ const PlannerDayCard = memo(function PlannerDayCard({
               )}
             </div>
             {((day.status !== 3 && day.recipe?.id) || isDragSource) && (
-              <div className="ml-2 pl-2 border-l border-charcoal/8 flex items-center gap-1 self-stretch max-[360px]:self-end max-[360px]:border-l-0">
+              <div className="ml-2 pl-2 border-l border-charcoal/8 flex items-center gap-2 self-stretch max-[360px]:self-end max-[360px]:border-l-0">
                 {day.recipe?.id && !day._isPending && (
                   <motion.button
                     initial={{ opacity: 0, scale: 0.8 }}
