@@ -234,10 +234,86 @@ test.describe('Supper Planner', () => {
     await expect(
       page.getByTestId('planner-action-row').getByTestId('ask-family-cta')
     ).toBeVisible();
-    await expect(
-      page.getByTestId('planner-action-row').getByTestId('planned-count-badge')
-    ).toBeVisible();
+    await expect(page.getByTestId('planned-count-badge')).toHaveCount(0);
   });
+
+  for (const width of [390, 1280]) {
+    for (const locale of ['en', 'fr'] as const) {
+      for (const [status, past] of [
+        [0, false],
+        [1, false],
+        [2, false],
+        [0, true],
+        [2, true],
+      ] as const) {
+        test(`keeps count-free actions reachable at ${width}px in ${locale}, status ${status}, past ${past}`, async ({
+          page,
+        }, testInfo) => {
+          // Let animation time advance while retaining the fixture's calendar date.
+          await page.clock.setSystemTime(new Date('2026-05-04T12:00:00Z'));
+          await page.setViewportSize({ width, height: 900 });
+          await page.addInitScript((value) => localStorage.setItem('locale', value), locale);
+          const schedule = {
+            ...builders.scheduleDays(past ? -1 : 0),
+            status,
+            locked: status === 2,
+          };
+          await page.route(/\/api\/schedule(?:\?|$)/, (route) =>
+            route.fulfill({ json: { data: schedule } })
+          );
+          await page.route(/\/(?:backend\/)?api\/stream/, (route) =>
+            route.fulfill({
+              contentType: 'text/event-stream',
+              body: `event: connected\ndata: ${JSON.stringify({ type: 'connected', schedule })}\n\n`,
+            })
+          );
+          // Initialize the existing calendar owner before checking past-week availability.
+          const calendarRead = page.waitForResponse(
+            (response) => /\/api\/schedule\?/.test(response.url()) && response.status() === 200
+          );
+          await page.goto('/recipes?addToDay=0&weekOffset=0');
+          await calendarRead;
+          await page.getByTestId('nav-item-planner').click();
+          await expect(page.getByTestId('day-card-0')).toBeVisible();
+          await expect(page.getByTestId(/^day-card-/)).toHaveCount(7);
+          await expect(page.getByTestId('planned-count-badge')).toHaveCount(0);
+          const row = page.getByTestId('planner-action-row');
+          if (past) {
+            await expect(row).toHaveCount(0);
+          } else {
+            await expect(row).toBeVisible();
+            const actions =
+              status === 1
+                ? [
+                    ['nudge-family-cta', locale === 'fr' ? 'Relancer la famille' : 'Nudge family'],
+                    ['close-voting-btn', locale === 'fr' ? 'Fermer le vote' : 'Close Voting'],
+                  ]
+                : [
+                    [
+                      'ask-family-cta',
+                      locale === 'fr' ? 'Demander à la famille' : 'Ask the Family',
+                    ],
+                  ];
+            for (const [id, label] of actions) {
+              const button = row.getByTestId(id);
+              await expect(button).toHaveAccessibleName(label);
+              await button.click({ trial: true });
+              const bounds = await button.boundingBox();
+              expect(bounds!.x).toBeGreaterThanOrEqual(0);
+              expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width);
+              expect(await button.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
+            }
+            expect(await row.locator(':scope > div').count()).toBe(2);
+          }
+          await expect(page.getByTestId('reorder-group').locator('..')).toHaveCSS('opacity', '1');
+          await expect(page.getByTestId('day-card-6')).toHaveCSS('opacity', '1');
+          await page.screenshot({
+            path: testInfo.outputPath(`${locale}-${width}-${status}-${past}.png`),
+          });
+        });
+      }
+    }
+  }
 
   test('should display 7 daily cards', async ({ page }) => {
     const cards = page.getByTestId(/^day-card-/);
