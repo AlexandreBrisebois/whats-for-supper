@@ -47,7 +47,7 @@ export function Layout({
       </Suspense>
       {showBackgroundBlobs && <BackgroundBlobs />}
       {hideHeader && (
-        <IdentityHint className="right-1 top-[calc(env(safe-area-inset-top)+1px)] z-30" />
+        <IdentityHint appShell className="right-1 top-[calc(env(safe-area-inset-top)+1px)] z-30" />
       )}
       {/* Header */}
       {!hideHeader && <Header title={title} leftAction={leftAction} rightAction={rightAction} />}

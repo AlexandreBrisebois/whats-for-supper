@@ -1,0 +1,326 @@
+# Solar Earth visual language · v1
+
+**Review reference, not an implementation specification.** This guide makes design
+intent visible without changing the app, its palette, components or behavior.
+Read it on demand for visual decisions; it is not a new startup requirement.
+
+Refined source snapshot: [`4682643`](https://github.com/AlexandreBrisebois/whats-for-supper/tree/4682643cd6086b66008fc77ede4570329e29b5ae),
+25 October 2026. **Current** means verified in source unless explicitly described
+as observed or reported. **Proposed** means a reviewable visual/copy choice, not
+shipped UI or permission to implement it. The boards are schematic, not screenshots.
+
+**No move away from green is agreed or proposed here.** The first boards
+underrepresented both sage and icons by concentrating on Home contrast examples.
+This correction makes their existing roles visible; it is not a new palette,
+icon system or redesign. The source audit below is broader than the earlier
+reported Demo inspection, but is not a new runtime observation or a usage census.
+
+## Start with the pictures
+
+[Open board 1 at full size](visual-language/01-roles-type-states.svg).
+
+![Solar Earth green and icon vocabulary: sage supports preference, participation, plans, shopping and cooking progress, selection and celebration. Existing icons and labels are separated from proposed contrast, type, control-state and touch-target examples.](visual-language/01-roles-type-states.svg)
+
+*Board 1: keep the warm cream, terracotta, ochre and sage identity; change the role
+or existing shade when a foreground/background pairing cannot carry its meaning.
+The font specimens use Outfit/Inter when available and system fallbacks otherwise;
+they are not font-fidelity proofs. Current-role cards summarize source rather than
+reproduce screens; their placement and explanatory copy are not implemented UI.*
+
+[Open board 2 at full size](visual-language/02-home-state-map.svg).
+
+![Home state map: unplanned offers recipe selection or Order In; a suggestion is explicitly conceptual and unsaved; a planned meal offers Cook and Change Plan; non-cooking intent opens Planner; cooked offers Dismiss without undoing completion. Each sketch explains action consequences.](visual-language/02-home-state-map.svg)
+
+*Board 2: proposed hierarchy over source-verified state meanings, with a deliberately
+separate conceptual suggestion. Cards omit imagery/navigation and simplify current
+placement: Cook and Change Plan currently sit on the recipe card's reverse;
+Edit supper plan is currently the accessible intent of the whole non-cooking card,
+not a separate visible button. Neutral Quick Find / Change Plan examples do not
+retire their current indigo / terracotta roles. Ochre Cook, soft-sage non-cooking intent and the
+full-sage cooked card retain existing hue roles; their darker foregrounds are
+proposals. Sample recipe/context text is illustrative copy.*
+
+## Seven principles for consistent decisions
+
+1. **Lead with the truth about the task.** Make tonight's state, the next action and
+   its consequence visible before decoration. A candidate, a saved meal and a
+   cooked meal are different facts. Success should let the household leave.
+2. **Assign colour a job without narrowing the identity.** Cream is the warm
+   canvas; charcoal carries reading. Terracotta, ochre and sage all appear in
+   actionable UI. Sage also carries preference, participation, plans, selection,
+   progress and celebration. The identity reference's shorthand is not an
+   exhaustive inventory. Pair state with words/icons, not colour alone; preserve
+   contextual roles instead of forcing every action to terracotta or green to success.
+3. **Choose readable pairs, not attractive swatches.** Measure actual text and
+   control states on their composite backgrounds. Reuse darker existing variants
+   before inventing colours. Pale surfaces can stay; faint essential text cannot.
+4. **Use type to explain hierarchy.** Preserve Outfit headings and Inter body/data.
+   Prefer sentence case and clear context over tiny, tracked all-caps labels.
+   Visual size is not semantic heading level; the document outline still matters.
+5. **Make controls look as available as they are.** Enabled secondary actions are
+   not disabled actions. Distinguish pressed, selected, busy, unavailable and error
+   with the relevant label, shape/edge and feedback; keep controls stable while busy.
+6. **Design for hands and changing space.** Prioritize iPhone, Pixel and iPad touch
+   use, text growth and safe areas before incidental desktop polish. Content should
+   wrap and remain reachable rather than shrink to fit a fixed card.
+7. **Say what happens, in both languages.** Use familiar action verbs, preserve
+   meaningful choices, explain partial completion, and avoid promises the product
+   cannot substantiate. English and French need equivalent meaning, not equal length.
+
+These are WFS recommendations informed by the official references below, not an
+import of another brand's visual style or a claim of accessibility certification.
+They support the [North Star](creative-direction-north-star.md) and
+[designer judgment](agent-designer-identity.md), which retain their existing roles.
+
+## Colour and type: how to use board 1
+
+### The current green language, from source
+
+The audited journeys use the **sage** family (`#8A9A5B` and its variants), not a
+new emerald/green palette. Soft fills, solid fields, outlines and icons play
+different jobs. These are source-verified examples, not claims that every current
+foreground or composite passes contrast.
+
+| Journey | Evidenced green role | Source owner |
+|---|---|---|
+| Discovery | Sage Like/LOVE communicates positive preference; sage meal-type badges classify. A vote is not an assigned meal. | [Discovery page](../pwa/src/app/(app)/discovery/page.tsx), [DiscoveryCard](../pwa/src/components/discovery/DiscoveryCard.tsx) |
+| Matches / celebration | The shared `SuccessCard` has a substantial `bg-sage` field and Check medallion. Discovery's “Menu's in!” / “See your matches” uses dark small-text tone. A match does not prove the week is saved. | [SuccessCard](../pwa/src/components/ui/SuccessCard.tsx), [Discovery page](../pwa/src/app/(app)/discovery/page.tsx) |
+| Planning | Sage-filled **Ask the Family** and **Nudge family** are participation actions; planned count, unanimous-vote badges and non-cooking tiles also use sage. | [Planner page](../pwa/src/app/(app)/planner/page.tsx) |
+| Home | Non-cooking intent uses `bg-sage/10` and sage-700 icons; the cooked state uses full sage, then a soft-sage compact badge. An intentional takeout plan is not cooking success. | [HomeCommandCenter](../pwa/src/components/home/HomeCommandCenter.tsx), [HomeSections](../pwa/src/components/home/HomeSections.tsx) |
+| Groceries | Sage marks checked items, aisle progress, selected sections, input focus and Save. Check marks, counts and checked state carry meaning beyond hue. | [GroceryList](../pwa/src/components/planner/GroceryList.tsx) |
+| Cooking | Sage marks selected view, the visible VEGGIE badge and gathered-ingredient progress. Gathering ingredients is not completing the recipe. | [CooksMode](../pwa/src/components/planner/CooksMode.tsx) |
+
+**Keep the breadth, repair specific pairs.** On flat base sage, white is **3.06:1**:
+enough for qualifying large text, not small text. Sage-900 on the same green is
+**5.52:1**, and charcoal is **4.79:1**. Discovery already demonstrates the useful
+distinction: retain the broad green celebration while choosing dark small copy.
+Home's default SuccessCard still uses white/70 small copy and sage text on its
+white button; this is a different pairing, not evidence that Discovery's treatment
+is universal. Glows, transparency and imagery need composite measurement.
+
+Sage on cream is **2.97:1**, below 3:1 even before considering small text. Where
+the icon or boundary is needed to identify a control/state, a darker existing
+sage variant can repair that role without removing green surfaces. Likewise,
+ochre can keep its action/emphasis role with readable text and a sufficient edge.
+Neither “all green is success” nor “all pale colour must go” follows from contrast.
+
+### Pair options, not palette replacement
+
+All proposed values already exist in [globals.css](../pwa/src/app/globals.css).
+These are **role recommendations**, not new runtime tokens or blanket replacements.
+
+| Proposed role | Foreground / background | Ratio |
+|---|---|---:|
+| Body on warm canvas | charcoal `#1F2937` / cream `#FDFCF0` | 14.23:1 |
+| Supporting context | charcoal-600 `#4B5563` / cream | 7.33:1 |
+| Terracotta action option | white / terracotta-600 `#A44A37` | 5.81:1 |
+| Pressed terracotta option | white / terracotta-700 `#7B3829` | 8.61:1 |
+| Ochre emphasis label | charcoal / ochre `#E1AD01` | 7.12:1 |
+| Small text on substantial sage field | sage-900 `#1B1E12` / sage `#8A9A5B` | 5.52:1 |
+| Body on substantial sage field | charcoal / sage | 4.79:1 |
+| Dark sage action option | white / sage-700 `#525B37` | 7.22:1 |
+| Soft sage state or icon | sage-700 / sage-50 `#F1F3EB` | 6.45:1 |
+| Error with explicit message | terracotta-700 / terracotta-50 `#F9ECE9` | 7.46:1 |
+
+Ratios use WCAG sRGB relative luminance, `(Llighter + .05)/(Ldarker + .05)`,
+rounded to two decimals **after** comparison. The opaque pairs above clear 4.5:1.
+Normal text needs **4.5:1**; large text needs **3:1** (at least 18 pt regular or
+14 pt bold, approximately 24 / 18.67 CSS px). A 10 or 11 px bold label is not large.
+Meaningful control boundaries, state indicators and graphical objects need **3:1**
+against adjacent colours where WCAG 1.4.11 applies; not every decorative card border
+does. Text contrast does not prove non-text contrast or overall conformance.
+
+For example, terracotta-600 against cream is 5.63:1, but ochre against cream is only
+2.00:1. If an ochre control needs its boundary to identify it, give it an appropriate
+contrasting edge; charcoal text alone does not fix that edge. The board's proposed
+secondary control uses charcoal-600 for text and edge. The separated terracotta-700
+focus outline is a visual recommendation, not evidence of implemented keyboard support.
+
+**Current risks, not a ban on brand colours:** the supplied Demo 0.1.25 inspection
+reported Tonight context at 10 px/900, charcoal 40% on white (2.35:1); active Home at
+11 px, terracotta on cream (3.88:1); and enabled Cook at 10 px, white on ochre
+(2.06:1). Source classes corroborate those roles. The independent opaque calculations
+reproduce the latter two ratios; compositing charcoal at 40% over white also yields
+approximately 2.35:1. These are below the normal-text threshold. The reported 30 px
+charcoal recipe title on white is 14.68:1: preserve that strength. A different
+viewport, overlay or glass background requires a new measurement.
+
+**Proposed type starting points:** heading 28/34, context 16/24 semibold, body 16/24,
+supporting text 14/21 (size/line height in CSS px). These are review examples, not
+minimum WCAG font sizes or a replacement scale. Current `globals.css` owns body
+line height 1.5 and heading line height 1.2; components also override these. Verify
+long recipe names, larger text and French wrapping before adopting a role.
+
+**States to review where applicable:** default, hover on pointer devices, pressed,
+focus, selected, busy, disabled, success and error. Inactive controls have contrast
+exceptions in WCAG, but should still be understandable with a reason. Do not use
+the disabled exception for an enabled Order In control. For busy/error states,
+retain the action's place and describe the actual stage; do not manufacture success.
+
+## Icons are part of the language, not decoration added later
+
+The app primarily uses **Lucide**, alongside actual text glyphs and grocery aisle
+emoji. Preserve that vocabulary. Board outlines reuse Lucide 1.60.0 geometry
+([upstream icons](https://github.com/lucide-icons/lucide/tree/1.60.0/icons),
+[licence](https://github.com/lucide-icons/lucide/blob/1.60.0/LICENSE), retained in
+each SVG); no package or app icon is changed. The board is a selective legend,
+not a replacement asset catalogue or pixel-exact screenshot.
+
+| Existing vocabulary | Meaning depends on the label and context | Source owner |
+|---|---|---|
+| Home, Search, Compass, Calendar, UserCircle | Home, Search, Discover, Planner, Profile. Navigation already pairs icons with labels and `aria-current`; Discover's prominent treatment is ochre. | [Navigation](../pwa/src/components/common/Navigation.tsx) |
+| Camera, BookOpen | **Capture a Recipe**, **Browse your library**: recognized routes worth preserving. | [HomeSections](../pwa/src/components/home/HomeSections.tsx) |
+| UtensilsCrossed, ArrowRightLeft | **Cook** opens Cook's Mode; **Change Plan** opens recovery. Both currently appear on the card reverse. | [TonightMenuCard](../pwa/src/components/home/TonightMenuCard.tsx) |
+| ShoppingBag, UtensilsCrossed, Sparkles, CalendarDays | Takeout, eating out, mystery, custom non-cooking intent. The same UtensilsCrossed shape has a different job beside **Cook**. | [NonCookingIcon](../pwa/src/components/planner/NonCookingIcon.tsx) |
+| ♥ / ✕ glyphs; Heart / X icons; ✓ glyph | Like/dislike buttons, LOVE/PASS overlays, and “Just planned” feedback are distinct contexts, not one interchangeable success mark. | [Discovery page](../pwa/src/app/(app)/discovery/page.tsx), [DiscoveryCard](../pwa/src/components/discovery/DiscoveryCard.tsx) |
+| Users, Share2 | Ask the Family and Nudge family: participation, not confirmation. | [Planner page](../pwa/src/app/(app)/planner/page.tsx) |
+| CheckCircle2 / Circle, Check; aisle emoji + names | Item checked, progress or Save; aisle recognition. Keep the count/name/checked state, not just a green symbol. | [GroceryList](../pwa/src/components/planner/GroceryList.tsx) |
+| File, Layers3; CheckCircle2 / Check | All steps / Step by step selection; gathered ingredients. The selected-view controls already expose `aria-pressed`. | [CooksMode](../pwa/src/components/planner/CooksMode.tsx) |
+
+**Review expectations, not a claim that all controls already comply:**
+
+- Keep a visible label for ambiguous or consequential actions. An icon is a
+  recognition cue, not a substitute for the action's consequence. Clock does not
+  promise a duration filter; ShoppingBag does not mean a delivery order was placed.
+- Give icon-only controls an accessible action name; keep a visible label in its
+  accessible name. Hide purely redundant icons from assistive technology rather
+  than announcing “icon” beside an already named action. Expose checked, pressed
+  and current states semantically, not through colour alone.
+- Separate glyph size from hit area: a 20–24 px icon can sit inside a generous
+  48 × 48 CSS px target. Keep spacing and room for EN/FR labels; do not shrink
+  the target to the drawing. These are proposed review targets, not audited sizes.
+- Check meaningful icon/state contrast independently from text contrast, including
+  overlays. Decorative symbols need not be treated as essential controls. Shape,
+  label and state must still explain the UI without hue or motion.
+
+These expectations follow W3C guidance on
+[non-text alternatives](https://www.w3.org/WAI/WCAG22/Understanding/non-text-content.html),
+[label in name](https://www.w3.org/WAI/WCAG22/Understanding/label-in-name.html) and
+[non-text contrast](https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast.html).
+
+## Home: preserve meanings while discussing visual hierarchy
+
+Source-verified behavior is owned by the Home components and Today store below;
+[tonight-meal-decisions](../openspec/specs/tonight-meal-decisions/spec.md) owns its
+approved requirements. Board 2 is a discussion aid, not a new state machine.
+The five large sketches cover **tonight**, not every Home surface. The separate
+family-voting invitation updated by #339 remains alongside tonight: **Vote Now**
+opens Discover while collecting; **Menu's In** / **See your matches** opens the
+active round's Planner week when converged. Its ochre presentation and Vote icon
+are distinct from the full-sage Discovery celebration. Checking, unavailable and
+Retry states remain explicit; matches are ready to review and save, not already
+saved. This refreshed evidence is pinned to [HomeSections at 4682643](https://github.com/AlexandreBrisebois/whats-for-supper/blob/4682643cd6086b66008fc77ede4570329e29b5ae/pwa/src/components/home/HomeSections.tsx)
+and [HomeCommandCenter at 4682643](https://github.com/AlexandreBrisebois/whats-for-supper/blob/4682643cd6086b66008fc77ede4570329e29b5ae/pwa/src/components/home/HomeCommandCenter.tsx).
+
+- **Unplanned:** no assigned recipe. A ready GOTO offers **Make This Tonight**;
+  preparing/checking/no-GOTO variants are distinct. **Quick Find** opens recipe
+  selection, not a cooking-duration filter ([issue #338](https://github.com/AlexandreBrisebois/whats-for-supper/issues/338)).
+  Existing labels such as **Find Something Quick** do not establish a quick-cook guarantee.
+- **Suggested:** the dedicated suggested Home card is **conceptual only**. Current
+  GOTO availability and pending replacement choices must not be confused with a
+  confirmed assigned meal. The proposed **Choose for tonight** label is not current copy.
+- **Saved / planned:** **Cook** opens Cook's Mode; it does not mark cooked on entry.
+  **Change Plan** opens recovery. The current localized backup choice is **Find
+  Something Quick** (the source fallback says **Pick Something Else**); then the
+  original meal's disposition is resolved before a retained replacement is saved.
+  Partial failure distinguishes completed disposition from an unsaved or unknown
+  replacement. **Retry save** and **Retry check** are not interchangeable.
+- **Non-cooking:** **Order In** records a non-cooking intention, not a blank night
+  and not a food-delivery order. With no recipe the current handler updates locally
+  while status validation runs in the background; local appearance is not proof of
+  persistence. With a planned recipe, recovery asks what happens to the original.
+  The non-cooking Home card opens Planner; **Leave this day unplanned** is Planner's
+  separate blank-day action. Mystery night still offers supper choices on Home.
+- **Cooked:** the success card offers **Dismiss**; dismissing compacts it without
+  undoing cooking. The compact badge can reopen Cook's Mode. Do not imply all
+  planning or household work is complete.
+
+Anonymous designer feedback reported that Capture and Browse were clear, but Home
+context was confusing, Order In looked disabled and yellow/light-grey treatments
+were hard to read. This guides the examples; it is not a representative user study.
+Preserve **Capture a Recipe** and **Browse your library** as recognizable routes,
+not new required steps. Do not claim ingredient inventory from a saved plan: existing
+recovery copy saying “We have the ingredients” is not evidence of stock knowledge.
+
+## Mobile application and bilingual review
+
+These are **proposed review targets**, not completed app checks:
+
+- Use a generous **48 × 48 CSS px** touch-target starting point for primary and
+  secondary actions, with separation and room for wrapped labels. WCAG 2.5.8's
+  24 × 24 CSS px floor has exceptions; Apple recommends 44 × 44 **pt**, Android
+  48 × 48 **dp**. The units and guidance are not interchangeable.
+- At narrow widths, prefer one clear reading column. Check 320 CSS px reflow,
+  200% text enlargement, long content and iPad portrait/landscape rather than
+  scaling a desktop composition down. Current root viewport settings restrict
+  user zoom; this reference does not claim the app already supports those checks.
+- Reuse current safe-area utilities and navigation inset handling. Keep essential
+  sheet actions above the keyboard/home indicator, and let content scroll without
+  clipping the title, error or recovery action. Keep close/cancel intent explicit;
+  recovery dismissal must respect pending and partially completed work.
+- Glass, rounded cards and food imagery remain Solar Earth strengths. Place essential
+  text on a stable readable surface; test the worst composite, not only a flat swatch.
+  Reuse established motion; avoid motion as the only status signal.
+- Keyboard implementation work is deferred in this touch-first review, not removed
+  from the chosen WCAG target. Contrast is not deferred. Static boards verify neither
+  focus order nor keyboard/screen-reader interaction.
+
+| Content example | English | French | Status |
+|---|---|---|---|
+| Cook action | Cook | Cuisiner | Current locale values |
+| Change intention | Change Plan | Changer le plan | Current locale values |
+| Non-cooking action | Order In | Commander | Current; clarify it records a plan, not an order |
+| Blank day | Leave this day unplanned | Laisser cette journée sans plan | Current Planner copy |
+| Unsaved suggestion | Suggestion — not saved | Suggestion — non enregistrée | Proposed; language review required |
+| Clearer recipe search | Choose another recipe | Choisir une autre recette | Proposed alternative, not a duration claim |
+
+Allow French expansion and preserve the complete action instead of truncating it.
+Locale files own implemented strings; several Home strings remain hard-coded.
+This guide does not assert bilingual completeness or change any copy.
+
+## Ownership and keeping the reference useful
+
+| Canonical owner | What it owns |
+|---|---|
+| [globals.css](../pwa/src/app/globals.css), cross-check [tailwind.config.ts](../pwa/tailwind.config.ts) | Implemented colours, utility surfaces, safe areas and theme configuration |
+| [Root layout](../pwa/src/app/layout.tsx) | Outfit/Inter loading and viewport setup |
+| [Button primitive](../pwa/src/components/ui/button.tsx), [common re-export](../pwa/src/components/common/Button.tsx) | Existing shared button variants; not all Home controls use them |
+| [Navigation](../pwa/src/components/common/Navigation.tsx) | Navigation appearance, active state and bottom inset |
+| [HomeCommandCenter](../pwa/src/components/home/HomeCommandCenter.tsx), [todayStore](../pwa/src/store/todayStore.ts) | Current Home branches and action orchestration / Today state |
+| [TonightMenuCard](../pwa/src/components/home/TonightMenuCard.tsx), [TonightPivotCard](../pwa/src/components/home/TonightPivotCard.tsx), [HomeSections](../pwa/src/components/home/HomeSections.tsx) | Recipe/reverse card, unplanned/GOTO choices, Capture/Browse/success |
+| [SkipRecoveryDialog](../pwa/src/components/home/SkipRecoveryDialog.tsx) | Recovery presentation and stage-specific feedback |
+| [English](../pwa/src/locales/en/common.json), [French](../pwa/src/locales/fr/common.json) | Localized strings, not proof every component uses them |
+
+Maintain this guide with the affected designer/component owner when an accepted
+visual decision changes its examples. Record the date, source and **Current** or
+**Proposed** status; document intentional exceptions with their reason rather than
+silently copying an old board. Runtime owners and approved specifications win if
+this snapshot drifts. No new governance, framework, Storybook dependency, global
+palette change or mandatory reading cascade is introduced.
+
+Before an implementation decision, review the relevant board, state meaning,
+actual pair/state measurements, small-screen/text-growth behavior and EN/FR copy.
+Then seek the applicable implementation approval. This PR changes documentation
+and static reference assets only; it is not acceptance evidence for a live redesign.
+
+## Official grounding
+
+Reviewed 25 October 2026. Use the practices, not another system's brand assets.
+
+- GC Design System: [colour roles and accessible use](https://design-system.canada.ca/en/styles/colour/),
+  [typographic hierarchy](https://design-system.canada.ca/en/styles/typography/),
+  [buttons](https://design-system.canada.ca/en/components/button/) and
+  [button content/design guidance](https://design-system.canada.ca/en/components/button/design/).
+- Canada: [build accessibility in from the start](https://www.canada.ca/en/government/system/digital-government/government-canada-digital-standards/build-accessibility-start.html).
+- W3C WCAG 2.2: [text contrast](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html),
+  [non-text contrast](https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast.html),
+  [not colour alone](https://www.w3.org/WAI/WCAG22/Understanding/use-of-color.html),
+  [target size](https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum.html),
+  [reflow](https://www.w3.org/WAI/WCAG22/Understanding/reflow.html) and
+  [resize text](https://www.w3.org/WAI/WCAG22/Understanding/resize-text.html).
+- Apple: [touch and legibility tips](https://developer.apple.com/design/tips/) and
+  [layout and safe areas](https://developer.apple.com/design/human-interface-guidelines/layout).
+  Android: [accessible touch targets](https://developer.android.com/develop/ui/compose/accessibility/api-defaults).
+
+WCAG 2.2 AA is the project's chosen web target. These partial contrast calculations
+and static illustrations establish neither whole-app conformance nor legal compliance.

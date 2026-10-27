@@ -6,8 +6,21 @@ import { Header } from '@/components/common/Header';
 import { Layout } from '@/components/common/Layout';
 
 vi.mock('@/components/common/Navigation', () => ({ Navigation: () => null }));
+const runtime = vi.hoisted(() => ({ mode: false as boolean | null }));
+vi.mock('@/components/demo/DemoModeProvider', () => ({ useDemoMode: () => runtime }));
 
 describe('install identity hint', () => {
+  it('uses Demo presentation for runtime Demo on a non-demo Beta installation', () => {
+    runtime.mode = true;
+    render(
+      <InstallIdentityProvider identity={{ demo: false, channel: 'beta' }}>
+        <IdentityHint appShell />
+      </InstallIdentityProvider>
+    );
+    expect(screen.getByRole('note')).toHaveAccessibleName('Demo');
+    expect(screen.getByRole('note')).toHaveAccessibleDescription('Beta release channel');
+    runtime.mode = false;
+  });
   it.each(['en', 'fr'] as const)(
     'covers every identity in %s without interactive elements',
     (locale) => {

@@ -406,7 +406,6 @@ export default function PlannerPage() {
     }
   };
 
-  const plannedCount = schedule.filter((d) => d.recipe && d.recipe.id).length;
   const isFinalized = isLocked;
   const weekIsPast = useMemo(() => {
     if (schedule.length < 7) return false;
@@ -526,8 +525,13 @@ export default function PlannerPage() {
                   aria-label={t('planner.backToThisWeek', 'Back to this week')}
                   title={t('planner.backToThisWeek', 'Back to this week')}
                 >
-                  <ChevronLeft size={12} strokeWidth={3} aria-hidden="true" />
+                  {currentWeekOffset > 0 && (
+                    <ChevronLeft size={12} strokeWidth={3} aria-hidden="true" />
+                  )}
                   {t('planner.backToThisWeek', 'Back to this week')}
+                  {currentWeekOffset < 0 && (
+                    <ChevronRight size={12} strokeWidth={3} aria-hidden="true" />
+                  )}
                 </button>
               )}
             </div>
@@ -587,65 +591,53 @@ export default function PlannerPage() {
               exit={{ opacity: 0, x: currentWeekOffset > prevOffset ? -50 : 50 }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
             >
-              <div
-                data-testid="planner-action-row"
-                className={cn(
-                  'grid grid-cols-[1fr_auto_1fr] items-center gap-2',
-                  isWide ? 'mb-2 pt-2.5' : 'mb-3'
-                )}
-              >
-                {/* Left Slot: Secondary Actions */}
-                <div className="flex justify-start">
-                  {isVotingOpen && (
-                    <button
-                      onClick={handleNudgeFamily}
-                      data-testid="nudge-family-cta"
-                      className="flex h-9 items-center gap-1.5 rounded-full bg-sage px-3 text-[9px] font-black uppercase tracking-[0.18em] text-white shadow-lg shadow-sage/15 transition-all active:scale-95"
-                    >
-                      <Share2 size={10} />
-                      {t('planner.nudgeFamily', 'Nudge family')}
-                    </button>
-                  )}
-                </div>
-
-                {/* Center Slot: Status Anchor */}
+              {(isVotingOpen || canOpenVoting) && (
                 <div
-                  data-testid="planned-count-badge"
-                  className="flex h-9 items-center space-x-1 rounded-full border border-sage/10 bg-white/75 px-3 text-[9px] font-black uppercase tracking-[0.18em] text-sage shadow-sm shadow-sage/5"
+                  data-testid="planner-action-row"
+                  className={cn(
+                    'flex items-center justify-between gap-2',
+                    isWide ? 'mb-2 pt-2.5' : 'mb-3'
+                  )}
                 >
-                  <span className="relative mr-1 flex h-1.5 w-1.5">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-sage opacity-75"></span>
-                    <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-sage"></span>
-                  </span>
-                  {tWithVars('planner.plannedCount', `${plannedCount}/7`, {
-                    current: plannedCount,
-                  })}
-                </div>
+                  {/* Left Slot: Secondary Actions */}
+                  <div className="flex justify-start">
+                    {isVotingOpen && (
+                      <button
+                        onClick={handleNudgeFamily}
+                        data-testid="nudge-family-cta"
+                        className="flex h-9 items-center gap-1.5 rounded-full bg-sage px-3 text-[9px] font-black uppercase tracking-[0.18em] text-white shadow-lg shadow-sage/15 transition-all active:scale-95"
+                      >
+                        <Share2 size={10} />
+                        {t('planner.nudgeFamily', 'Nudge family')}
+                      </button>
+                    )}
+                  </div>
 
-                {/* Right Slot: Primary Actions */}
-                <div className="flex justify-end">
-                  {canOpenVoting && (
-                    <button
-                      onClick={handleAskFamily}
-                      data-testid="ask-family-cta"
-                      className="flex h-9 items-center rounded-full bg-sage px-4 text-[9px] font-black uppercase tracking-[0.18em] text-white shadow-lg shadow-sage/15 transition-all active:scale-95"
-                    >
-                      <Users size={12} className="mr-2" />
-                      {t('planner.askFamily', 'Ask the Family')}
-                    </button>
-                  )}
-                  {isVotingOpen && (
-                    <button
-                      onClick={handleCloseVoting}
-                      data-testid="close-voting-btn"
-                      className="flex h-9 items-center gap-1.5 rounded-full border border-terracotta/10 bg-white/80 px-3 text-[9px] font-black uppercase tracking-[0.18em] text-terracotta transition-all hover:bg-terracotta hover:text-white active:scale-95"
-                    >
-                      <Ban size={10} />
-                      {t('planner.closeVoting', 'Close Voting')}
-                    </button>
-                  )}
+                  {/* Right Slot: Primary Actions */}
+                  <div className="flex justify-end">
+                    {canOpenVoting && (
+                      <button
+                        onClick={handleAskFamily}
+                        data-testid="ask-family-cta"
+                        className="flex h-9 items-center rounded-full bg-sage px-4 text-[9px] font-black uppercase tracking-[0.18em] text-white shadow-lg shadow-sage/15 transition-all active:scale-95"
+                      >
+                        <Users size={12} className="mr-2" />
+                        {t('planner.askFamily', 'Ask the Family')}
+                      </button>
+                    )}
+                    {isVotingOpen && (
+                      <button
+                        onClick={handleCloseVoting}
+                        data-testid="close-voting-btn"
+                        className="flex h-9 items-center gap-1.5 rounded-full border border-terracotta/10 bg-white/80 px-3 text-[9px] font-black uppercase tracking-[0.18em] text-terracotta transition-all hover:bg-terracotta hover:text-white active:scale-95"
+                      >
+                        <Ban size={10} />
+                        {t('planner.closeVoting', 'Close Voting')}
+                      </button>
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
 
               <Reorder.Group
                 axis="y"

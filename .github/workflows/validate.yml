@@ -335,6 +335,23 @@ jobs:
         env:
           WFS_WELCOME_DEMO: 'true'
           WFS_WELCOME_SECRET: Swipe-Match-Cook
+      - name: Beta Welcome and Home regression
+        if: matrix.suite == 'household'
+        working-directory: pwa
+        env:
+          WFS_WELCOME_CHANNEL: beta
+          WFS_WELCOME_DEV: 'true'
+          WFS_WELCOME_DEMO: 'false'
+          WFS_WELCOME_SECRET: Synthetic-Beta-Family
+          HEARTH_SECRET: Synthetic-Beta-Family
+          NEXT_PUBLIC_ENVIRONMENT: test
+        run: |
+          beta_channel_source=src/lib/server/release-channel.json
+          beta_channel_backup="$RUNNER_TEMP/beta-release-channel.json"
+          cp "$beta_channel_source" "$beta_channel_backup"
+          trap 'cp "$beta_channel_backup" "$beta_channel_source"' EXIT
+          printf '{ "channel": "beta" }\n' > "$beta_channel_source"
+          npm run test:e2e -- --config=e2e/welcome-demo.playwright.config.ts --grep 'Beta context' --output=test-results/beta-context
       - uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
         with:

@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useRef, type ReactNode, type RefObject } from 'react';
 import { X } from 'lucide-react';
-import { t } from '@/locales';
+import { t, type Locale } from '@/locales';
 
 /** A small native modal using the app's existing sheet/dialog surfaces. */
 export function DemoDialog({
@@ -13,11 +13,13 @@ export function DemoDialog({
   returnFocus,
   showTitleFocusOutline = true,
   dismissLabel,
+  locale,
 }: {
   title: string;
   description: string;
   children: ReactNode;
   dismissLabel?: string;
+  locale?: Locale;
   onClose: () => void;
   returnFocus?: RefObject<HTMLElement | null>;
   showTitleFocusOutline?: boolean;
@@ -89,7 +91,7 @@ export function DemoDialog({
         <button
           type="button"
           onClick={dismiss}
-          aria-label={t('common.close', 'Close')}
+          aria-label={t('common.close', 'Close', locale)}
           className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-charcoal/5 focus-visible:outline-2 focus-visible:outline-offset-2"
         >
           <X size={20} aria-hidden="true" />

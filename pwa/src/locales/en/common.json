@@ -1,4 +1,13 @@
 {
+  "betaContext": {
+    "start": "Start exploring",
+    "label": "Beta · Better with your ideas",
+    "welcome": "Welcome to the beta of Whats for Supper? Try choosing meals together, planning your week, and making supper one less thing to think about.",
+    "expectations": "We’re still working on this version. Some things may change, and you might run into a bug along the way. We’re building this in public, together. Your ideas and feedback help shape what comes next.",
+    "reopen": "You can reopen this explanation from the Beta band at any time.",
+    "feedback": "Share feedback on GitHub",
+    "account": "A GitHub account is required"
+  },
   "installIdentity": {
     "demo": "Demo",
     "beta": "Beta",
@@ -178,7 +187,6 @@
     "backToThisWeek": "Back to this week",
     "nextWeek": "Next week",
     "weekX": "Week {{count}}",
-    "plannedCount": "{{current}}/7",
     "askFamily": "Ask the Family",
     "nudgeFamily": "Nudge family",
     "curatingWeek": "Curating your week...",

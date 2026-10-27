@@ -398,11 +398,60 @@ describe('PlannerPage voting action row', () => {
     });
   });
 
+  it.each([-3, -1, 1, 3])('points the return control toward this week from offset %s', (offset) => {
+    mocks.setSearchParams(`weekOffset=${offset}&view=family`);
+    renderPlanner(0, '2026-05-17', offset);
+    const button = screen.getByTestId('planner-this-week-pill');
+    expect(button).toHaveAccessibleName('Back to this week');
+    expect(button).toHaveAttribute('title', 'Back to this week');
+    const arrow = button.querySelector('svg')!;
+    expect(arrow).toHaveClass(offset < 0 ? 'lucide-chevron-right' : 'lucide-chevron-left');
+    expect(arrow).toHaveAttribute('aria-hidden', 'true');
+    expect(offset < 0 ? button.lastChild : button.firstChild).toBe(arrow);
+    expect(button.textContent).toBe('Back to this week');
+    fireEvent.click(button);
+    expect(mocks.replace).toHaveBeenCalledWith('/planner?view=family');
+  });
+
+  it('follows the selected offset while retaining loaded dates, and hides at zero', () => {
+    mocks.setSearchParams('weekOffset=1');
+    const view = renderPlanner(0, '2026-05-17', 1);
+    const retainedSchedule = mocks.getWeekState().schedule;
+    expect(screen.getByTestId('planner-this-week-pill').firstChild).toHaveClass(
+      'lucide-chevron-left'
+    );
+    mocks.setSearchParams('weekOffset=-2');
+    mocks.setPlannerState({ ...mocks.getPlannerState(), currentWeekOffset: -2 });
+    view.rerender(<PlannerPage />);
+    expect(mocks.getWeekState().schedule).toBe(retainedSchedule);
+    expect(screen.getByTestId('planner-this-week-pill').lastChild).toHaveClass(
+      'lucide-chevron-right'
+    );
+    mocks.setSearchParams('');
+    mocks.setPlannerState({ ...mocks.getPlannerState(), currentWeekOffset: 0 });
+    view.rerender(<PlannerPage />);
+    expect(screen.queryByTestId('planner-this-week-pill')).not.toBeInTheDocument();
+  });
+
   it('shows Ask the Family for a draft non-past week', () => {
     renderPlanner(0);
 
     expect(screen.getByTestId('ask-family-cta')).toBeInTheDocument();
+    expect(screen.queryByTestId('planned-count-badge')).not.toBeInTheDocument();
     expect(screen.queryByTestId('nudge-family-cta')).not.toBeInTheDocument();
+  });
+
+  it('renders seven empty days without a weekly progress indicator', () => {
+    const view = renderPlanner(0);
+    const state = mocks.getWeekState();
+    mocks.setWeekState({
+      ...state,
+      schedule: state.schedule.map((day: any) => ({ ...day, recipe: undefined })),
+    });
+    view.rerender(<PlannerPage />);
+    expect(screen.getAllByTestId('plan-meal-button')).toHaveLength(7);
+    expect(screen.queryByTestId('planned-count-badge')).not.toBeInTheDocument();
+    expect(screen.getByTestId('ask-family-cta')).toBeInTheDocument();
   });
 
   it('does not offer the empty-day conversion on a legacy recipe-backed skipped day', () => {
@@ -454,6 +503,7 @@ describe('PlannerPage voting action row', () => {
               : 'lucide-shopping-bag';
       expect(indicator.querySelector(`.${iconClass}`)).not.toBeNull();
       expect(indicator).not.toHaveTextContent('🥡');
+      expect(screen.queryByTestId('planned-count-badge')).not.toBeInTheDocument();
       if (kind === 'mystery') {
         expect(indicator).toHaveTextContent('We’ll figure out supper that day.');
         expect(indicator).not.toHaveTextContent('No cook tonight');
@@ -567,6 +617,7 @@ describe('PlannerPage voting action row', () => {
     renderPlanner(2);
 
     expect(screen.getByTestId('ask-family-cta')).toBeInTheDocument();
+    expect(screen.queryByTestId('planned-count-badge')).not.toBeInTheDocument();
   });
 
   it('shows live voting controls for a voting-open week', () => {
@@ -576,7 +627,7 @@ describe('PlannerPage voting action row', () => {
     expect(screen.queryByTestId('voting-status-badge')).not.toBeInTheDocument();
     expect(screen.getByTestId('close-voting-btn')).toBeInTheDocument();
     expect(screen.getByTestId('nudge-family-cta')).toBeInTheDocument();
-    expect(screen.getByTestId('planned-count-badge')).toBeInTheDocument();
+    expect(screen.queryByTestId('planned-count-badge')).not.toBeInTheDocument();
 
     const actionRow = screen.getByTestId('planner-action-row');
     expect(within(actionRow).getAllByRole('button')[0]).toBe(
@@ -587,10 +638,12 @@ describe('PlannerPage voting action row', () => {
   it('hides Ask the Family for past draft and locked weeks', () => {
     const { unmount } = renderPlanner(0, '2026-05-03');
     expect(screen.queryByTestId('ask-family-cta')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('planner-action-row')).not.toBeInTheDocument();
 
     unmount();
     renderPlanner(2, '2026-05-03');
     expect(screen.queryByTestId('ask-family-cta')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('planner-action-row')).not.toBeInTheDocument();
   });
 
   it('copies and shares the generated nudge link', async () => {
@@ -717,6 +770,8 @@ describe('PlannerPage voting action row', () => {
     render(<PlannerPage />);
 
     const card = screen.getByTestId('day-card-0');
+    expect(card).toHaveTextContent('Pasta Carbonara');
+    expect(screen.queryByTestId('planned-count-badge')).not.toBeInTheDocument();
     expect(within(card).queryByTestId('change-recipe-button')).not.toBeInTheDocument();
     expect(within(card).getByTestId('edit-recipe-button')).toBeInTheDocument();
   });

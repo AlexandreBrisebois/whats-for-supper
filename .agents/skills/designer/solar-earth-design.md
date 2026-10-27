@@ -13,3 +13,7 @@ Motion should explain an interaction or state change. Reuse existing transitions
 and respect reduced-motion preferences; do not add animation, a font, a library or
 list staggering just to satisfy an aesthetic checklist. A spring with stiffness
 300 and damping 30 is an optional starting example, not a universal constraint.
+
+For visual examples and mobile review guidance, see the
+[visual language reference](../../../docs/visual-language-reference.md) when relevant.
+Its schematic boards are proposals, not implemented surface or motion rules.

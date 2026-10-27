@@ -1,0 +1,47 @@
+# Tasks
+
+## 1. Move one recipe into an empty fixed date slot
+
+**Outcome and scenarios:** First slice of “Present fixed dates beside movable meal content” and “Preview a drag as a swap of dated Planner content”: Monday recipe → empty Tuesday, with fixed labels, source placeholder, destination feedback and one final request.
+
+**Owners and boundaries:** Planner page / small local drag-session owner → existing week store → existing API wrapper and generated client. `pwa/e2e/mock-api.ts` owns the external HTTP substitute for `GET /api/schedule` and `POST /api/schedule/move`. The latter retains `{weekOffset, recipeId, fromIndex, toIndex}`, calendar-reference query and move-sequence header behavior, returning the existing enveloped completion response. No backend contract change is planned.
+
+**Dependencies and prerequisites:** Installed Task, Node dependencies and Playwright browsers; isolated mocked browser environment. Reconcile existing uncommitted planning and shared-file work before edits. Swapping occupied dates is settled; no further product decision blocks this slice.
+
+**Acceptance boundary:** Use the actual page/store/client with stateful HTTP mocks. Assert request body and both immediate and re-read dated content; constant success stubs alone do not establish movement. Browser touch emulation and actual-device evidence remain distinct.
+
+- [ ] 1.1 Before production edits, run the current baseline with `task test:e2e -- e2e/planner.spec.ts --grep 'hold-to-move|dragging cards'`. Exercise actual held mouse/touch movement with dated-content assertions, recording activation, original/final date, request count/body, immediate contents and re-read contents. Record the human failure as reproduced, unreproduced or blocked, with the specific failure layer. A visibility-only pass cannot resolve the report; a tooling failure is not a reproduced application defect. Keep diagnosis within the gesture/session scope described in design.md.
+- [ ] 1.2 Add a focused fixed-date empty-destination regression in `pwa/e2e/planner.spec.ts`: assert date labels stay outside and do not travel with the lifted recipe, source remains identifiable, Tuesday is targeted, no request occurs during preview, and release submits exactly Monday→Tuesday. Add page unit assertions for date/content separation and absence of recipe handles on empty/non-cooking slots. Run `task test:unit -- 'src/app/(app)/planner/page.test.tsx'` and `task test:e2e -- e2e/planner.spec.ts --grep 'fixed date'`; record the intended red results before implementation.
+- [ ] 1.3 Implement fixed date-keyed rows, separate movable recipe surfaces and explicit target tracking with the installed motion/pointer facilities. Retain the hold behavior and existing store commit/reconciliation path; remove whole-row reorder as the target source. Run the same focused commands to green. Assert one request, fixed date order, correct immediate contents and unchanged result after re-reading the stateful mocked schedule. Refactor only the Planner-local owner needed by this slice; update source comments/tests that assume row reordering.
+
+## 2. Swap occupied dates and finish or cancel the gesture safely
+
+**Outcome and scenarios:** Occupied recipe and non-cooking destinations; candidate changes over multiple dates; return to source; cancellation/outside drop; week navigation; request rejection. Preserve deferred-snapshot handling during and after movement.
+
+**Owners and boundaries:** Same page/session/store path as slice 1. Reuse store data-operation coverage in `pwa/src/store/weekStore.dragDebounce.test.ts`; adapt stale page-algorithm simulations without treating duplicated logic as gesture evidence. `pwa/e2e/mock-api.ts` supplies existing swap state and schedule/live-event fixtures. Live server/database guarantees are outside this unchanged-contract UI slice.
+
+**Dependencies and prerequisites:** Slice 1 green. Include repeated recipe IDs on different dates, different row heights and a destination several dates away in fixtures. Preserve all date slots and intermediate meal contents.
+
+**Acceptance boundary:** Actual gesture through page/store/client, request capture and mock-backed read after completion. Rejection/cancellation/deferred-update cases exercise actual UI state; do not replace store mutations with no-op spies in the browser scenarios.
+
+- [ ] 2.1 Add tests before production changes for A↔B swap; recipe↔recipe-free non-cooking swap with kind/label retained; multi-date preview from the original arrangement; repeated recipe IDs with explicit source index; and no request on return to source, Escape, pointer cancellation or outside drop. Add week-navigation and request-rejection cases plus a deferred snapshot arriving during drag. Run `task test:e2e -- e2e/planner.spec.ts --grep 'fixed date'` and the affected unit test(s), recording intended failures for newly missing behavior and preservation passes separately.
+- [ ] 2.2 Implement session termination, cancellation cleanup and swap feedback using the captured original source/target and week identity. Preserve pending markers, original snapshot rollback and the existing move-sequence/deferred-snapshot guards; losing focus also cancels the session. Run `task test:unit -- src/store/weekStore.dragDebounce.test.ts 'src/app/(app)/planner/page.test.tsx'` and `task test:e2e -- e2e/planner.spec.ts --grep 'fixed date'`. Verify no intermediate requests, no accumulated swaps, one request for a valid drop, none for cancellation, and no old-week overwrite on navigation. Retain a focused regression for any baseline defect actually reproduced.
+- [ ] 2.3 Exercise stateful mocked schedule reads after recipe/recipe and recipe/non-cooking swaps, and a deferred live snapshot after completion. Verify both dates, unaffected dates, metadata and request count. If existing mocks disagree with the approved same-week contract, demonstrate and correct only that mismatch with focused assertions in this slice; do not alter the production API to match a mock. Record failing/blocked evidence distinctly from successful presentation checks.
+
+## 3. Preserve keyboard, touch and responsive use
+
+**Outcome and scenarios:** “Offer keyboard movement through the Planner handle,” native scrolling before activation, long content/narrow layout and adjacent meal actions. Use the same fixed slots and swap path for all inputs.
+
+**Owners and boundaries:** Planner page, handle/session, EN/FR locale files only if new copy is needed; page/handle unit tests and existing Planner browser acceptance. No new input mode, package or global visual system.
+
+**Dependencies and prerequisites:** Prior slices green. Keep existing hold duration/jitter behavior and accessible instructions; do not use this work to change pending eligibility, voting or non-cooking policy.
+
+**Acceptance boundary:** Keyboard and touch interactions in the browser; focused unit tests for activation/cancellation lifetime. Rendered layout/contrast review is separate from gesture and server evidence.
+
+- [ ] 3.1 Add or update keyboard-focus continuity and week-boundary assertions, touch scroll-before-hold and actual held-touch move assertions, and date/content geometry checks with wrapped text. Run `task test:unit -- src/components/planner/PlannerDragHandle.test.tsx 'src/app/(app)/planner/page.test.tsx'` and the affected `task test:e2e -- e2e/planner.spec.ts` cases before production changes; record meaningful red/green or preservation evidence as applicable. Keep keyboard focus on the moved recipe's handle without making a decorative drag duplicate operable.
+- [ ] 3.2 Complete the affected input/visual details and any EN/FR drag labels. Run `task test:unit -- src/components/planner/PlannerDragHandle.test.tsx 'src/app/(app)/planner/page.test.tsx'` and `task test:e2e -- e2e/planner.spec.ts e2e/planner-non-cooking-days.spec.ts e2e/planner-voting-identity.spec.ts`. Verify keyboard source/target and one request, no boundary request, touch scrolling before hold, and real content movement after hold. Record green evidence and retained detail/pivot/voting behavior.
+- [ ] 3.3 Inspect EN/FR phone and iPad portrait/landscape layouts, plus 320 CSS px reflow, larger text and reduced motion. Check long names, row/date alignment, source/destination cues, affected handle contrast, touch targets and reachable actions. Document actual viewport/locale/device scope and measured contrast for changed cues. Record physical iOS/Android drag checks separately when available; if unavailable, explicitly mark them not-run and do not claim device qualification. Reconcile accepted visual details and any evidenced limitation into this change's design/task notes.
+
+## 4. Final Integration and Verification
+
+- [ ] 4.1 Reconcile all scenario and baseline-diagnosis evidence, inspect the complete task-owned diff and preserve the separate badge/arrow work. Run `task prepare -- <complete reviewed changed-path set>` then `task verify -- <complete reviewed changed-path set>`, including all changed/new/deleted application, test, locale, mock and planning files. Record actual passed/failed/blocked/not-run/not-applicable checks and the returned `record_path`. API schema migration and live database/model qualification are not applicable unless scope changes; browser mocks prove neither persistence nor physical-device behavior. Do not mark required application acceptance complete while blocked or missing. Sync/archive remain separate lifecycle work.

@@ -12,3 +12,8 @@ Outfit supplies headings and Inter supplies body/data text in the current layout
 
 Keep primary actions reachable on the selected viewport and preserve touch targets.
 Use progressive disclosure when it reduces reading without hiding necessary state.
+
+For reviewable examples of roles, type and states, load the
+[visual language reference](../../../docs/visual-language-reference.md) on demand.
+It separates current source evidence from proposed treatments; it does not change
+runtime tokens or authorize implementation.

@@ -88,7 +88,7 @@ The planner SHALL interpret an absent weekOffset query as zero and a present val
 
 ### Requirement: Navigate relative weeks and return to this week
 
-The planner SHALL offer Previous week and Next week controls that request the selected offset minus or plus one through URL replacement. It SHALL offer Back to this week for nonzero offsets. URL replacement SHALL preserve other query parameters, omit weekOffset for zero and include it otherwise.
+The planner SHALL offer Previous week and Next week controls that request the selected offset minus or plus one through URL replacement. It SHALL offer Back to this week for nonzero offsets. For negative offsets its right-pointing arrow SHALL follow the label; for positive offsets its left-pointing arrow SHALL precede the label. URL replacement SHALL preserve other query parameters, omit weekOffset for zero and include it otherwise.
 
 #### Scenario: Navigate forward or backward
 - **WHEN** a person activates Next week or Previous week
@@ -97,6 +97,24 @@ The planner SHALL offer Previous week and Next week controls that request the se
 #### Scenario: Return to zero
 - **WHEN** a person activates Back to this week from a nonzero offset
 - **THEN** the planner requests its URL without weekOffset while preserving other query parameters
+
+#### Scenario: Return from a past week
+- **WHEN** the selected week offset is negative
+- **THEN** Back to this week displays a right-pointing arrow after its localized label
+- **AND** the arrow is decorative and does not change the control's accessible name
+
+#### Scenario: Return from a future week
+- **WHEN** the selected week offset is positive
+- **THEN** Back to this week displays a left-pointing arrow before its localized label
+- **AND** the arrow is decorative and does not change the control's accessible name
+
+#### Scenario: Already viewing this week
+- **WHEN** the selected week offset is zero
+- **THEN** Back to this week is absent
+
+#### Scenario: Selection changes while displayed dates are retained
+- **WHEN** the selected offset changes while days from the previous selection remain displayed during a read
+- **THEN** the return control's direction, placement and visibility reflect the selected offset
 
 ### Requirement: Read the household schedule through the protected GET operation
 
@@ -244,19 +262,31 @@ The planner SHALL label offset zero This week, offset one Next week and other of
 
 ### Requirement: Render day content and planned count from displayed state
 
-The planner SHALL render displayed days in their supplied order. Status-three days SHALL use non-cooking presentation before recipe presentation. Other days with recipe IDs SHALL display recipe names; ordinary days without them SHALL offer Plan supper. The planned count SHALL count displayed recipes with IDs, including pending suggestions.
+The planner SHALL render displayed days in their supplied order. Status-three days SHALL use non-cooking presentation before recipe presentation. Other days with recipe IDs SHALL display recipe names; ordinary days without them SHALL offer Plan supper. The planner SHALL NOT display a weekly recipe-count badge or a replacement aggregate progress indicator.
 
 #### Scenario: Empty persisted week
 - **WHEN** a successful read returns seven ordinary empty dates and no suggestions apply
 - **THEN** the planner renders seven Plan supper day cards
+- **AND** it displays no weekly recipe-count badge or replacement aggregate progress indicator
 
 #### Scenario: Recipe and non-cooking presentation
 - **WHEN** a day has status three or an ordinary day has a recipe ID
 - **THEN** status three selects non-cooking presentation; an ordinary recipe displays its name
+- **AND** it displays no weekly recipe-count badge or replacement aggregate progress indicator
 
 #### Scenario: Pending recipe contributes to count
 - **WHEN** a displayed suggestion has a recipe ID and pending marker
-- **THEN** it contributes to the displayed planned count without proving a persisted assignment
+- **THEN** the suggestion remains pending without proving a persisted assignment
+- **AND** it displays no weekly recipe-count badge or replacement aggregate progress indicator
+
+#### Scenario: Planner status or viewport changes
+- **WHEN** the planner displays a Draft, VotingOpen or Locked week at a narrow or wide viewport
+- **THEN** no weekly recipe-count badge or replacement aggregate progress indicator is displayed
+- **AND** the existing week-status rules still determine the available voting actions
+
+#### Scenario: Actions remain after badge removal
+- **WHEN** the planner displays available voting actions
+- **THEN** the actions remain reachable without a layout slot reserved for the removed badge
 
 ### Requirement: Display read week status without implying a transition
 
