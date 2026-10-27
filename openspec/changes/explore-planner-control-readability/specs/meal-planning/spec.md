@@ -32,19 +32,23 @@ Week context SHALL use sentence case without forced uppercase or wide letter spa
 
 ### Requirement: Identify today's Planner date compactly
 
-With reliable authoritative deployment-calendar context, Planner SHALL outline the fixed date marker equal to today and display one localized Today label above that row, outside draggable content. The label SHALL have room to wrap without widening the date column or narrowing meal content. Other rows SHALL gain no temporal label line. Future dates SHALL retain normal treatment.
+With reliable deployment-calendar context, Planner SHALL identify today with one localized Today label and faint decorative separator above its row, outside draggable content. The fixed date marker SHALL remain neutral without added fill or contour. Label wrapping SHALL NOT widen the date column or narrow meal content. Other rows SHALL have no temporal label line; future dates SHALL retain normal treatment.
 
 #### Scenario: Today has any meal state
 - **WHEN** today's displayed date contains an empty slot, recipe, pending suggestion, non-cooking plan or cooked meal
-- **THEN** that date has the outlined marker and Today label without changing its meal state or introducing a completion signal
+- **THEN** that date has the neutral fixed date marker and Today label without changing its meal state or introducing a completion signal
+
+#### Scenario: Today has a decorative divider
+- **WHEN** the Today label is displayed
+- **THEN** its faint separator is hidden from assistive technology and adds no extra label band; the separator is decorative, while the label and aria-current identify today
 
 #### Scenario: Another week is displayed
 - **WHEN** none of the displayed dates equals authoritative today
-- **THEN** no displayed row has a Today label or today's outline
+- **THEN** no displayed row has a Today label or date-specific decoration
 
 #### Scenario: Recipe changes date
 - **WHEN** a recipe moves between today's slot and another date
-- **THEN** the Today label and outline stay with today's fixed date rather than following the recipe
+- **THEN** the Today label and fixed dates stay with today's fixed date rather than following the recipe
 
 #### Scenario: French Today label on a phone
 - **WHEN** Aujourd’hui is displayed at a narrow viewport or with enlarged text

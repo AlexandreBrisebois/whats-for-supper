@@ -56,6 +56,12 @@ import { FamilyNudgeDialog } from '@/components/discovery/FamilyNudgeDialog';
 import { PlannerDragHandle } from '@/components/planner/PlannerDragHandle';
 import { usePlannerDrag } from '@/components/planner/usePlannerDrag';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
+import {
+  calendarAnchorIsFresh,
+  calendarTime,
+  civilDate,
+  readCalendar,
+} from '@/lib/deployment-calendar';
 
 export default function PlannerPage() {
   const router = useRouter();
@@ -66,6 +72,36 @@ export default function PlannerPage() {
   const status = useWeekStore((s) => s.status);
   const groceryItems = useWeekStore((s) => s.groceryItems);
   const groceryExtras = useWeekStore((s) => s.groceryExtras);
+  const calendar = useTodayStore((s) => s.calendar);
+  const calendarAnchor = useTodayStore((s) => s.calendarAnchor);
+  const calendarVersion = useTodayStore((s) => s.calendarVersion);
+  const ensureCalendar = useTodayStore((s) => s.ensureCalendar);
+  const [, expireCalendar] = useState(0);
+  const authoritativeToday = calendarAnchorIsFresh(calendarAnchor)
+    ? (readCalendar(calendar)?.today ?? null)
+    : null;
+
+  useEffect(() => {
+    const refresh = () => {
+      void ensureCalendar().catch(() => {});
+    };
+    if (!calendar || !calendarAnchor || !calendarAnchorIsFresh(calendarAnchor)) {
+      refresh();
+      return;
+    }
+    // One timer for the shared monotonic anchor. Replacements retire the old timer;
+    // a failed refresh leaves retained meals usable with neutral date presentation.
+    const remaining =
+      calendarAnchor.expiresAfterMs - (calendarTime.elapsed() - calendarAnchor.receivedAtElapsed);
+    const timer = window.setTimeout(
+      () => {
+        expireCalendar((revision) => revision + 1);
+        refresh();
+      },
+      Math.max(0, Math.ceil(remaining))
+    );
+    return () => window.clearTimeout(timer);
+  }, [calendar, calendarAnchor, calendarVersion, ensureCalendar]);
   const isVotingOpen = status === 1;
   const isLocked = status === 2;
   const [nonCookingTarget, setNonCookingTarget] = useState<{
@@ -441,7 +477,7 @@ export default function PlannerPage() {
 
             <div className="min-w-0 flex-1 text-center">
               <span
-                className="font-heading text-[10px] font-black uppercase tracking-[0.2em] text-charcoal/30 text-center flex-1"
+                className="font-heading text-sm leading-5 font-semibold tracking-normal text-charcoal-600 text-center flex-1"
                 data-testid="week-range"
               >
                 {currentWeekOffset === 0
@@ -630,6 +666,12 @@ export default function PlannerPage() {
                     isDragSource={dragPreview?.from === index}
                     isDropTarget={dragPreview?.target === index && dragPreview.from !== index}
                     isWide={isWide}
+                    isToday={civilDate(day.date) !== null && day.date === authoritativeToday}
+                    isPast={
+                      !!authoritativeToday &&
+                      civilDate(day.date) !== null &&
+                      day.date! < authoritativeToday
+                    }
                   />
                 ))}
               </div>
@@ -863,6 +905,8 @@ const PlannerDayCard = memo(function PlannerDayCard({
   isDragSource,
   isDropTarget,
   isWide,
+  isToday,
+  isPast,
 }: {
   day: UILocalScheduleDay;
   index: number;
@@ -873,6 +917,8 @@ const PlannerDayCard = memo(function PlannerDayCard({
   isDragSource: boolean;
   isDropTarget: boolean;
   isWide: boolean;
+  isToday: boolean;
+  isPast: boolean;
 }) {
   const startRecipeDrag = React.useCallback(
     (event: PointerEvent) => startDrag(index, event),
@@ -900,216 +946,262 @@ const PlannerDayCard = memo(function PlannerDayCard({
 
   return (
     <div
-      className="flex items-stretch gap-2 w-full"
+      className="w-full"
+      data-temporal={isToday ? 'today' : isPast ? 'past' : 'neutral'}
       data-testid={`day-card-${index}`}
       data-date={day.date}
       data-drag-source={isDragSource}
       data-drop-target={isDropTarget}
       id={`day-card-${index}`}
     >
-      <div
-        data-testid="planner-date"
-        data-drop-target={isDropTarget}
-        className={cn(
-          'relative flex flex-col items-center justify-center w-10 shrink-0 rounded-xl',
-          isDropTarget && 'bg-sage/20 outline outline-2 outline-sage-700'
-        )}
-      >
-        {isDropTarget && (
-          <ChevronRight
-            data-testid="planner-drop-arrow"
+      {isToday && (
+        <div className="mb-1 flex flex-wrap items-center gap-2">
+          <p
+            data-testid="planner-today-label"
+            className="min-w-0 max-w-full text-sm leading-5 font-semibold text-terracotta-600 break-words"
+          >
+            {t('planner.today', 'Today')}
+          </p>
+          <span
+            data-testid="planner-today-separator"
             aria-hidden="true"
-            size={8}
-            strokeWidth={3}
-            className="absolute -right-2 top-1/2 -translate-y-1/2 text-sage-700"
+            className="h-px min-w-4 flex-1 bg-terracotta/15"
           />
-        )}
-        <span className="text-[10px] font-bold uppercase tracking-wider text-charcoal/40 leading-none mb-1">
-          {day.day}
-        </span>
-        <span className="text-lg font-heading font-extrabold text-charcoal leading-none">
-          {(() => {
-            if (!day.date) return '';
-            const d = new Date(day.date);
-            return d.getUTCDate();
-          })()}
-        </span>
-        <span className="text-[10px] font-bold uppercase tracking-tighter text-charcoal/40 leading-none mt-1">
-          {(() => {
-            if (!day.date) return '';
-            const d = new Date(day.date);
-            return d.toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' });
-          })()}
-        </span>
-      </div>
-      <div
-        className={cn(
-          'flex-1 min-w-0 rounded-2xl glass shadow-sm relative group border',
-          isDragSource ? 'outline outline-1 outline-dashed outline-charcoal/70' : 'border-white/20',
-          isDropTarget && 'outline outline-2 outline-sage-700',
-          successDay === index && 'ring-4 ring-sage ring-offset-4'
-        )}
-        data-testid="planner-meal"
-      >
-        {isDragSource && (
-          <span className="absolute -top-2.5 left-2 z-20 rounded-full bg-cream px-2 text-xs font-bold text-charcoal">
-            {t('planner.moveSource', 'Moving from this day')}
-          </span>
-        )}
-        <motion.div
-          whileTap={{ scale: 0.98 }}
+        </div>
+      )}
+      <div className="flex items-stretch gap-2 w-full">
+        <div
+          data-testid="planner-date"
+          aria-current={isToday ? 'date' : undefined}
+          data-drop-target={isDropTarget}
           className={cn(
-            'flex items-stretch px-4 relative z-10 max-[360px]:flex-col max-[360px]:gap-2',
-            isWide ? 'py-2 min-h-[64px]' : 'py-2.5 min-h-[72px]'
+            'relative flex flex-col items-center justify-center w-10 shrink-0 rounded-xl',
+            isDropTarget && 'bg-sage/20 outline outline-2 outline-sage-700'
           )}
         >
-          <div className="flex-1 min-w-0">
-            {day.status === 3 ? (
-              <button
-                onClick={onPivot}
-                data-testid="ordered-in-indicator"
-                className="flex items-center gap-3 w-full text-left hover:opacity-80 transition-opacity"
-              >
-                <div className="h-10 w-10 rounded-xl bg-sage/10 text-sage-700 flex items-center justify-center flex-shrink-0">
-                  <NonCookingIcon kind={day.nonCooking?.kind} />
-                </div>
-                <div className="min-w-0 flex flex-col gap-0.5">
-                  <span
-                    data-testid="non-cooking-indicator"
-                    title={nonCookingLabel(day.nonCooking)}
-                    className="line-clamp-2 text-sm font-bold text-charcoal/60"
-                  >
-                    {nonCookingLabel(day.nonCooking)}
-                  </span>
-                  {day.nonCooking?.kind === 'mystery' ? (
-                    <span className="text-[10px] text-charcoal/30 font-medium">
-                      {t('planner.mysteryNightHint', 'We’ll figure out supper that day.')}
-                    </span>
-                  ) : nonCookingNote(day.nonCooking) ? (
-                    <span
-                      data-testid="non-cooking-note"
-                      title={nonCookingNote(day.nonCooking) ?? undefined}
-                      className="line-clamp-2 break-words text-xs text-charcoal/70 font-medium"
-                    >
-                      {nonCookingNote(day.nonCooking)}
-                    </span>
-                  ) : null}
-                </div>
-              </button>
-            ) : day.recipe?.id ? (
-              <div className="flex items-stretch">
-                {day.recipe.image && (
-                  <div
-                    className={cn(
-                      'relative rounded-xl overflow-hidden mr-2.5 bg-charcoal/5 flex-shrink-0 self-center',
-                      isWide ? 'h-10 w-10' : 'h-12 w-12'
-                    )}
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={getImageUrl(day.recipe.image)}
-                      alt={day.recipe.name || 'Recipe'}
-                      className="absolute inset-0 h-full w-full object-cover"
-                      onError={(e) => {
-                        e.currentTarget.style.display = 'none';
-                      }}
-                    />
-                  </div>
-                )}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (day.recipe?.id) {
-                      onViewRecipe(day.recipe.id);
-                    }
-                  }}
-                  className="flex flex-1 min-w-0 items-center text-left rounded-2xl px-1 py-0.5 active:bg-ochre/5 transition-colors"
-                  data-testid="edit-recipe-button"
-                >
-                  <div className="flex w-full flex-col justify-center gap-0.5">
-                    <h4
-                      className={cn(
-                        'font-bold text-charcoal line-clamp-2',
-                        isWide ? 'text-sm leading-tight' : 'text-base leading-tight'
-                      )}
-                      data-testid="recipe-name"
-                    >
-                      {day.recipe.name}
-                    </h4>
-                    {(() => {
-                      const count = day._voteCount ?? day.recipe?.voteCount ?? null;
-                      const isUnanimous = day._unanimousVote;
-                      const hasVotes = count != null && count > 0;
-                      return (
-                        <span
-                          data-testid="vote-count"
-                          className={cn(
-                            'text-[10px] font-bold px-1.5 py-0.5 rounded-full whitespace-nowrap inline-block w-fit mt-0.5',
-                            hasVotes ? 'visible' : 'visible',
-                            hasVotes
-                              ? isUnanimous
-                                ? 'bg-sage/20 text-sage'
-                                : 'bg-ochre/20 text-ochre'
-                              : 'bg-charcoal/8 text-charcoal/55'
-                          )}
-                        >
-                          {hasVotes ? `${count} voted` : 'Chosen'}
-                        </span>
-                      );
-                    })()}
-                  </div>
-                </button>
-              </div>
-            ) : (
-              <div className="flex items-stretch w-full">
+          {isDropTarget && (
+            <ChevronRight
+              data-testid="planner-drop-arrow"
+              aria-hidden="true"
+              size={8}
+              strokeWidth={3}
+              className="absolute -right-2 top-1/2 -translate-y-1/2 text-sage-700"
+            />
+          )}
+          <div
+            data-testid="planner-date-marker"
+            className="w-full flex flex-col items-center justify-center rounded-xl py-2"
+          >
+            <span className="max-w-full break-all text-center text-[10px] font-bold tracking-normal text-charcoal-600 leading-none mb-1">
+              {day.day}
+            </span>
+            <span className="max-w-full break-all text-center text-lg font-heading font-extrabold text-charcoal leading-none">
+              {(() => {
+                if (!day.date) return '';
+                const d = new Date(day.date);
+                return d.getUTCDate();
+              })()}
+            </span>
+            <span className="max-w-full break-all text-center text-[10px] font-bold tracking-normal text-charcoal-600 leading-none mt-1">
+              {(() => {
+                if (!day.date) return '';
+                const d = new Date(day.date);
+                return d.toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' });
+              })()}
+            </span>
+          </div>
+        </div>
+        <div
+          className={cn(
+            'flex-1 min-w-0 rounded-2xl relative group border',
+            isPast ? 'bg-cream shadow-none' : 'glass shadow-sm',
+            isDragSource
+              ? 'outline outline-1 outline-dashed outline-charcoal/70'
+              : 'border-white/20',
+            isDropTarget && 'outline outline-2 outline-sage-700',
+            successDay === index && 'ring-4 ring-sage ring-offset-4'
+          )}
+          data-testid="planner-meal"
+        >
+          {isDragSource && (
+            <span className="absolute -top-2.5 left-2 z-20 rounded-full bg-cream px-2 text-xs font-bold text-charcoal">
+              {t('planner.moveSource', 'Moving from this day')}
+            </span>
+          )}
+          <motion.div
+            whileTap={{ scale: 0.98 }}
+            className={cn(
+              'flex items-stretch px-4 relative z-10 max-[360px]:flex-col max-[360px]:gap-2',
+              isWide ? 'py-2 min-h-[64px]' : 'py-2.5 min-h-[72px]'
+            )}
+          >
+            <div className="flex-1 min-w-0">
+              {day.status === 3 ? (
                 <button
                   onClick={onPivot}
-                  data-testid="plan-meal-button"
-                  className="flex items-center flex-1 min-h-[44px] text-left group rounded-2xl px-1 py-0.5 active:bg-terracotta/10 transition-colors"
+                  data-testid="ordered-in-indicator"
+                  className={cn(
+                    'flex items-center gap-3 w-full text-left',
+                    isPast
+                      ? 'hover:bg-sage/10 transition-colors'
+                      : 'hover:opacity-80 transition-opacity'
+                  )}
                 >
-                  <div className="h-10 w-10 rounded-xl border border-dashed border-terracotta/30 flex items-center justify-center mr-3 group-hover:bg-terracotta/10 group-hover:border-terracotta/50 transition-colors">
-                    <Plus
-                      className="text-terracotta/50 group-hover:text-terracotta transition-colors"
-                      size={18}
-                    />
+                  <div className="h-10 w-10 rounded-xl bg-sage/10 text-sage-700 flex items-center justify-center flex-shrink-0">
+                    <NonCookingIcon kind={day.nonCooking?.kind} />
                   </div>
-                  <div className="flex flex-col justify-center">
+                  <div className="min-w-0 flex flex-col gap-0.5">
                     <span
+                      data-testid="non-cooking-indicator"
+                      title={nonCookingLabel(day.nonCooking)}
                       className={cn(
-                        'font-bold text-charcoal/45 group-hover:text-terracotta/70 transition-colors',
-                        isWide ? 'text-xs' : 'text-sm'
+                        'line-clamp-2 text-sm font-bold',
+                        isPast ? 'text-charcoal-600' : 'text-charcoal/60'
                       )}
                     >
-                      Plan supper
+                      {nonCookingLabel(day.nonCooking)}
                     </span>
+                    {day.nonCooking?.kind === 'mystery' ? (
+                      <span
+                        className={cn(
+                          'text-[10px] font-medium',
+                          isPast ? 'text-charcoal-600' : 'text-charcoal/30'
+                        )}
+                      >
+                        {t('planner.mysteryNightHint', 'We’ll figure out supper that day.')}
+                      </span>
+                    ) : nonCookingNote(day.nonCooking) ? (
+                      <span
+                        data-testid="non-cooking-note"
+                        title={nonCookingNote(day.nonCooking) ?? undefined}
+                        className="line-clamp-2 break-words text-xs text-charcoal/70 font-medium"
+                      >
+                        {nonCookingNote(day.nonCooking)}
+                      </span>
+                    ) : null}
                   </div>
                 </button>
+              ) : day.recipe?.id ? (
+                <div className="flex items-stretch">
+                  {day.recipe.image && (
+                    <div
+                      className={cn(
+                        'relative rounded-xl overflow-hidden mr-2.5 bg-charcoal/5 flex-shrink-0 self-center',
+                        isWide ? 'h-10 w-10' : 'h-12 w-12'
+                      )}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={getImageUrl(day.recipe.image)}
+                        alt={day.recipe.name || 'Recipe'}
+                        className="absolute inset-0 h-full w-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                        }}
+                      />
+                    </div>
+                  )}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (day.recipe?.id) {
+                        onViewRecipe(day.recipe.id);
+                      }
+                    }}
+                    className="flex flex-1 min-w-0 items-center text-left rounded-2xl px-1 py-0.5 active:bg-ochre/5 transition-colors"
+                    data-testid="edit-recipe-button"
+                  >
+                    <div className="flex w-full flex-col justify-center gap-0.5">
+                      <h4
+                        className={cn(
+                          'font-bold text-charcoal line-clamp-2',
+                          isWide ? 'text-sm leading-tight' : 'text-base leading-tight'
+                        )}
+                        data-testid="recipe-name"
+                      >
+                        {day.recipe.name}
+                      </h4>
+                      {(() => {
+                        const count = day._voteCount ?? day.recipe?.voteCount ?? null;
+                        const isUnanimous = day._unanimousVote;
+                        const hasVotes = count != null && count > 0;
+                        return (
+                          <span
+                            data-testid="vote-count"
+                            className={cn(
+                              'text-[10px] font-bold px-1.5 py-0.5 rounded-full whitespace-nowrap inline-block w-fit mt-0.5',
+                              hasVotes ? 'visible' : 'visible',
+                              hasVotes
+                                ? isUnanimous
+                                  ? cn('bg-sage/20', isPast ? 'text-sage-700' : 'text-sage')
+                                  : cn('bg-ochre/20', isPast ? 'text-ochre-700' : 'text-ochre')
+                                : cn(
+                                    'bg-charcoal/8',
+                                    isPast ? 'text-charcoal-600' : 'text-charcoal/55'
+                                  )
+                            )}
+                          >
+                            {hasVotes ? `${count} voted` : 'Chosen'}
+                          </span>
+                        );
+                      })()}
+                    </div>
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-stretch w-full">
+                  <button
+                    onClick={onPivot}
+                    data-testid="plan-meal-button"
+                    className="flex items-center flex-1 min-h-[44px] text-left group rounded-2xl px-1 py-0.5 active:bg-terracotta/10 transition-colors"
+                  >
+                    <div className="h-10 w-10 rounded-xl border border-dashed border-terracotta/30 flex items-center justify-center mr-3 group-hover:bg-terracotta/10 group-hover:border-terracotta/50 transition-colors">
+                      <Plus
+                        className="text-terracotta-600 group-hover:text-terracotta-700 transition-colors"
+                        size={18}
+                      />
+                    </div>
+                    <div className="flex flex-col justify-center">
+                      <span
+                        className={cn(
+                          'font-bold text-terracotta-600 group-hover:text-terracotta-700 transition-colors',
+                          isWide ? 'text-xs' : 'text-sm'
+                        )}
+                      >
+                        {t('planner.planSupper', 'Plan supper')}
+                      </span>
+                    </div>
+                  </button>
+                </div>
+              )}
+            </div>
+            {((day.status !== 3 && day.recipe?.id) || isDragSource) && (
+              <div className="ml-2 pl-2 border-l border-charcoal/8 flex items-center gap-1 self-stretch max-[360px]:self-end max-[360px]:border-l-0">
+                {day.recipe?.id && !day._isPending && (
+                  <motion.button
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onPivot();
+                    }}
+                    className={cn(
+                      'h-9 w-9 rounded-xl bg-ochre/8 flex items-center justify-center active:scale-90 transition-transform',
+                      isPast ? 'text-ochre-700' : 'text-ochre'
+                    )}
+                    data-testid="change-recipe-button"
+                    title={t('planner.choosePathTitle', 'Change this recipe')}
+                    aria-label={t('planner.choosePathTitle', 'Change this recipe')}
+                  >
+                    <RefreshCw size={18} />
+                  </motion.button>
+                )}
+                <PlannerDragHandle start={startRecipeDrag} moveBySlot={moveBySlot} />
               </div>
             )}
-          </div>
-          {((day.status !== 3 && day.recipe?.id) || isDragSource) && (
-            <div className="ml-2 pl-2 border-l border-charcoal/8 flex items-center gap-1 self-stretch max-[360px]:self-end max-[360px]:border-l-0">
-              {day.recipe?.id && !day._isPending && (
-                <motion.button
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  whileTap={{ scale: 0.9 }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onPivot();
-                  }}
-                  className="h-9 w-9 rounded-xl bg-ochre/8 flex items-center justify-center text-ochre active:scale-90 transition-transform"
-                  data-testid="change-recipe-button"
-                  title={t('planner.choosePathTitle', 'Change this recipe')}
-                  aria-label={t('planner.choosePathTitle', 'Change this recipe')}
-                >
-                  <RefreshCw size={18} />
-                </motion.button>
-              )}
-              <PlannerDragHandle start={startRecipeDrag} moveBySlot={moveBySlot} />
-            </div>
-          )}
-        </motion.div>
+          </motion.div>
+        </div>
       </div>
     </div>
   );

@@ -99,7 +99,7 @@ export function PlannerDragHandle({
       data-grabbed={grabbed}
       className={cn(
         'h-full min-h-[44px] min-w-[44px] justify-center flex items-center px-2.5 cursor-grab active:cursor-grabbing select-none group/handle rounded-r-2xl',
-        'touch-auto',
+        'touch-auto focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-charcoal-600',
         grabbed && 'bg-sage/20 ring-2 ring-sage-700'
       )}
       style={{ WebkitTouchCallout: 'none' }}
@@ -115,7 +115,10 @@ export function PlannerDragHandle({
       }}
     >
       <GripVertical
-        className="text-charcoal/70 group-hover/handle:text-sage-700 transition-colors"
+        className={cn(
+          'text-charcoal-600 group-hover/handle:text-sage-700 transition-colors',
+          grabbed && 'text-sage-700'
+        )}
         size={20}
       />
     </div>

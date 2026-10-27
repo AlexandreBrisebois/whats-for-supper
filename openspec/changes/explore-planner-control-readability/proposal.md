@@ -16,7 +16,7 @@ Current source has fixed date labels outside movable meals and a charcoal/70 gri
 - Localize Plan supper with its existing EN/FR key; use readable terracotta text and Plus while keeping the light empty-day treatment.
 - Give the grip a readable neutral default and sage interaction feedback, preserving keyboard focus and hold-to-move.
 - Include fixed weekday/month labels in the readability scope without widening the date column or reducing meal space.
-- Mark authoritative today with a small outlined fixed date marker and one localized Today label above its row, outside draggable content. Let the label use available row width and wrap; other rows gain no label line.
+- Identify authoritative today with one localized Today label and faint decorative divider above its row, outside draggable content; keep the fixed date marker neutral. Let the label use available row width and wrap; other rows gain no label line.
 - Quiet past decorative surfaces/shadows without fading essential content, changing meal status or making available controls look disabled. Future rows retain normal treatment.
 - Reuse reliable server-owned calendar context; missing, invalid or expired context gives neutral temporal treatment while content stays usable.
 - Require actual-background contrast evidence, phone-first EN/FR review and preservation of existing planning/movement behavior. Judge the combined result for calmness as well as readability.

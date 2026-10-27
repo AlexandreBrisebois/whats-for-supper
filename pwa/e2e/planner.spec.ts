@@ -86,6 +86,83 @@ async function collapseDevelopmentBadge(page: import('@playwright/test').Page) {
   if (await devBadge.isVisible()) await devBadge.click();
 }
 
+// Sample the real raster with only the measured foreground made transparent.
+// This retains glass blur, underlying blobs, active fills and adjacent surfaces.
+async function renderedContrast(locator: import('@playwright/test').Locator) {
+  await locator.evaluate((el) =>
+    el.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'instant' })
+  );
+  const page = locator.page();
+  const original = await locator.evaluate((element) => {
+    const node = element as HTMLElement;
+    const color = getComputedStyle(node).color;
+    const style = node.getAttribute('style');
+    let opacity = 1;
+    for (let ancestor: Element | null = node; ancestor; ancestor = ancestor.parentElement)
+      opacity *= Number(getComputedStyle(ancestor).opacity);
+    node.style.setProperty('transition', 'none', 'important');
+    node.style.setProperty('color', 'transparent', 'important');
+    return { color, style, opacity };
+  });
+  const box = (await locator.boundingBox())!;
+  const raster = (await page.screenshot()).toString('base64');
+  await locator.evaluate((element, style) => {
+    if (style === null) element.removeAttribute('style');
+    else element.setAttribute('style', style);
+  }, original.style);
+  return page.evaluate(
+    async ({ raster, box, color, opacity }) => {
+      const image = new Image();
+      image.src = `data:image/png;base64,${raster}`;
+      await image.decode();
+      const canvas = document.createElement('canvas');
+      canvas.width = image.width;
+      canvas.height = image.height;
+      const context = canvas.getContext('2d')!;
+      context.drawImage(image, 0, 0);
+      const luminance = (rgb: number[]) =>
+        rgb
+          .map((v) => {
+            v /= 255;
+            return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+          })
+          .reduce((sum, v, i) => sum + v * [0.2126, 0.7152, 0.0722][i], 0);
+      const sample = document.createElement('canvas').getContext('2d')!;
+      sample.fillStyle = color;
+      sample.fillRect(0, 0, 1, 1);
+      const foreground = [...sample.getImageData(0, 0, 1, 1).data];
+      foreground[3] *= opacity;
+      let ratio = Infinity;
+      let background: number[] = [];
+      for (
+        let y = Math.ceil(box.y + 1);
+        y < Math.min(canvas.height, box.y + box.height - 1);
+        y += 2
+      ) {
+        for (
+          let x = Math.ceil(box.x + 1);
+          x < Math.min(canvas.width, box.x + box.width - 1);
+          x += 2
+        ) {
+          const bg = [...context.getImageData(x, y, 1, 1).data].slice(0, 3);
+          const fg = foreground
+            .slice(0, 3)
+            .map((v, i) => (v * foreground[3]) / 255 + bg[i] * (1 - foreground[3] / 255));
+          const a = luminance(fg),
+            b = luminance(bg);
+          const current = (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+          if (current < ratio) {
+            ratio = current;
+            background = bg;
+          }
+        }
+      }
+      return { ratio, foreground, background, color };
+    },
+    { raster, box, color: original.color, opacity: original.opacity }
+  );
+}
+
 test.describe('Supper Planner', () => {
   test.beforeEach(async ({ page, baseURL }) => {
     await setupCommonRoutes(page);
@@ -288,6 +365,500 @@ test.describe('Supper Planner', () => {
 
     await page.goto('/planner');
     await expect(page.getByTestId('day-card-0')).toBeVisible({ timeout: 10_000 });
+  });
+
+  test.describe('Planner readability', () => {
+    for (const locale of ['en', 'fr'] as const) {
+      for (const viewport of [
+        { width: 390, height: 844 },
+        { width: 768, height: 1024 },
+        { width: 1024, height: 768 },
+        { width: 320, height: 900 },
+      ]) {
+        test(`${locale} ${viewport.width}px readable controls and context`, async ({
+          page,
+        }, testInfo) => {
+          await page.setViewportSize(viewport);
+          await page.addInitScript((value) => localStorage.setItem('locale', value), locale);
+          await page.reload();
+          await expect(page.getByTestId('day-card-0')).toBeVisible();
+          await expect(page.getByTestId('reorder-group').locator('..')).toHaveCSS('opacity', '1');
+          await expect(page.getByTestId('reorder-group').locator('..')).toHaveCSS(
+            'transform',
+            'none'
+          );
+          await collapseDevelopmentBadge(page);
+          if (viewport.width === 320)
+            await page.evaluate(() => {
+              const labels = [
+                ...document.querySelectorAll<HTMLElement>(
+                  'main span, main p, main h2, header span, header h2'
+                ),
+              ].filter((el) =>
+                [...el.childNodes].some(
+                  (node) => node.nodeType === Node.TEXT_NODE && node.textContent?.trim()
+                )
+              );
+              const sizes = labels.map((el) => parseFloat(getComputedStyle(el).fontSize));
+              labels.forEach((el, i) => {
+                el.style.fontSize = `${sizes[i] * 2}px`;
+                el.style.lineHeight = '1.4';
+              });
+            });
+          await page.screenshot({ path: testInfo.outputPath('view.png'), fullPage: true });
+          await testInfo.attach('view', {
+            path: testInfo.outputPath('view.png'),
+            contentType: 'image/png',
+          });
+          const button = page.getByTestId('plan-meal-button').first();
+          const handle = page.getByTestId('planner-drag-handle').first();
+          const measurements: Record<string, unknown> = {};
+          const measure = async (
+            name: string,
+            locator: import('@playwright/test').Locator,
+            target: number
+          ) => {
+            const result = await renderedContrast(locator);
+            measurements[name] = result;
+            expect.soft(result.ratio, name).toBeGreaterThanOrEqual(target);
+          };
+          await measure('week context', page.getByTestId('week-range'), 4.5);
+          await expect.soft(page.getByTestId('week-range')).toHaveCSS('text-transform', 'none');
+          const date = page.getByTestId('planner-date').first();
+          await measure('weekday', date.locator('span').first(), 4.5);
+          await measure('month', date.locator('span').last(), 4.5);
+          for (const state of ['default', 'hover', 'pressed', 'focus'] as const) {
+            if (state === 'hover') await button.hover();
+            if (state === 'pressed') {
+              await button.hover();
+              await page.mouse.down();
+            }
+            if (state === 'focus') {
+              await page.mouse.up();
+              await button.focus();
+            }
+            await page.waitForTimeout(250);
+            await measure(`plan text ${state}`, button.locator('span'), 4.5);
+            await measure(`Plus ${state}`, button.locator('svg'), 3);
+            if (state === 'pressed') await page.mouse.move(0, 0);
+          }
+          for (const state of ['default', 'hover', 'focus', 'grabbed'] as const) {
+            if (state === 'default') {
+              await page.mouse.move(0, 0);
+              await button.blur();
+            }
+            if (state === 'hover') await handle.hover();
+            if (state === 'focus') await handle.focus();
+            if (state === 'grabbed') {
+              await handle.hover();
+              await page.mouse.down();
+              await expect(handle).toHaveAttribute('data-grabbed', 'true');
+              await page.mouse.move(5, 120);
+            }
+            await page.waitForTimeout(250);
+            await measure(`grip ${state}`, handle.locator('svg'), 3);
+          }
+          await page.keyboard.press('Escape');
+          await page.mouse.up();
+          console.log('RENDERED_CONTRAST', locale, viewport.width, JSON.stringify(measurements));
+          await testInfo.attach('contrasts', {
+            body: JSON.stringify(measurements, null, 2),
+            contentType: 'application/json',
+          });
+          await expect
+            .soft(button)
+            .toHaveAccessibleName(locale === 'fr' ? 'Planifier le souper' : 'Plan supper');
+          expect.soft(await date.evaluate((el) => el.getBoundingClientRect().width)).toBe(40);
+          expect
+            .soft(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
+            .toBe(true);
+          await button.click();
+          await expect(page.getByTestId('pivot-sheet')).toBeVisible();
+        });
+      }
+    }
+  });
+
+  test.describe('Planner day emphasis', () => {
+    async function openEmphasis(
+      page: import('@playwright/test').Page,
+      todayIndex: number,
+      offset = 0
+    ) {
+      const today = `2026-05-${String(4 + todayIndex).padStart(2, '0')}`;
+      const calendar = builders.deploymentCalendar({
+        today,
+        capturedAtUtc: `${today}T12:00:00Z`,
+        nextDayAtUtc: `2026-05-${String(5 + todayIndex).padStart(2, '0')}T00:00:00Z`,
+      });
+      const schedule = builders.scheduleDays(offset, calendar) as unknown as ScheduleDays;
+      schedule.days = schedule.days!.map((day, index) => ({
+        ...day,
+        recipe:
+          index < 2 || index === 6
+            ? builders.scheduleRecipe({
+                id: index === 1 ? MOCK_IDS.RECIPE_TACOS : MOCK_IDS.RECIPE_LASAGNA,
+                name:
+                  index === 0
+                    ? 'Monday Lasagna with roasted vegetables and fresh garden herbs'
+                    : index === 1
+                      ? 'Tuesday Tacos'
+                      : 'Sunday supper',
+              })
+            : null,
+        status: index === 6 ? 2 : index === 3 ? 3 : 0,
+        nonCooking: index === 3 ? { kind: 'order_in', customLabel: 'Try Luigi’s' } : null,
+      }));
+      await mockNonCookingSchedule(page, schedule);
+      await page.reload();
+      await expect(page.getByTestId('day-card-0')).toContainText('Monday Lasagna');
+      await expect(page.getByTestId('reorder-group').locator('..')).toHaveCSS('opacity', '1');
+      await expect(page.getByTestId('reorder-group').locator('..')).toHaveCSS('transform', 'none');
+      await collapseDevelopmentBadge(page);
+      return schedule;
+    }
+
+    for (const locale of ['en', 'fr'] as const) {
+      for (const todayIndex of [0, 2, 6]) {
+        for (const viewport of [
+          { width: 390, height: 844 },
+          { width: 768, height: 1024 },
+          { width: 1024, height: 768 },
+          { width: 320, height: 900 },
+        ]) {
+          test(`${locale} day ${todayIndex} ${viewport.width}px combined view`, async ({
+            page,
+          }, testInfo) => {
+            await page.setViewportSize(viewport);
+            await page.addInitScript((value) => localStorage.setItem('locale', value), locale);
+            await openEmphasis(page, todayIndex);
+            if (viewport.width === 320)
+              await page.evaluate(() => {
+                const labels = [
+                  ...document.querySelectorAll<HTMLElement>(
+                    'main span, main p, main h2, main h4, header span, header h2'
+                  ),
+                ].filter((el) =>
+                  [...el.childNodes].some(
+                    (node) => node.nodeType === Node.TEXT_NODE && node.textContent?.trim()
+                  )
+                );
+                const sizes = labels.map((el) => parseFloat(getComputedStyle(el).fontSize));
+                labels.forEach((el, i) => {
+                  el.style.fontSize = `${sizes[i] * 2}px`;
+                  el.style.lineHeight = '1.4';
+                });
+              });
+            await page.screenshot({ path: testInfo.outputPath('combined.png'), fullPage: true });
+            await testInfo.attach('combined', {
+              path: testInfo.outputPath('combined.png'),
+              contentType: 'image/png',
+            });
+            const row = page.getByTestId(`day-card-${todayIndex}`);
+            await row.evaluate((el) => el.scrollIntoView({ block: 'center', behavior: 'instant' }));
+            await page.screenshot({ path: testInfo.outputPath('today-viewport.png') });
+            await testInfo.attach('today viewport', {
+              path: testInfo.outputPath('today-viewport.png'),
+              contentType: 'image/png',
+            });
+            const marker = row.getByTestId('planner-date');
+            await expect.soft(marker).toHaveAttribute('aria-current', 'date');
+            const label = page.getByTestId('planner-today-label');
+            await expect.soft(label).toHaveCount(1);
+            if (await label.count()) {
+              await expect(label).toHaveText(locale === 'fr' ? 'Aujourd’hui' : 'Today');
+              expect(
+                await row
+                  .getByTestId('planner-meal')
+                  .evaluate(
+                    (el) => el.querySelector('[data-testid="planner-today-label"]') === null
+                  )
+              ).toBe(true);
+              const separator = page.getByTestId('planner-today-separator');
+              await expect(separator).toHaveAttribute('aria-hidden', 'true');
+              expect((await separator.boundingBox())!.width).toBeGreaterThanOrEqual(16);
+              const contrast = await renderedContrast(label);
+              console.log(
+                'TEMPORAL_CONTRAST',
+                locale,
+                todayIndex,
+                viewport.width,
+                'Today text',
+                JSON.stringify(contrast)
+              );
+              expect.soft(contrast.ratio).toBeGreaterThanOrEqual(4.5);
+              // The date marker stays neutral; the label and divider provide the Today cue.
+              const dateMarker = marker.getByTestId('planner-date-marker');
+              await expect(dateMarker).toHaveCSS('box-shadow', 'none');
+              await expect(dateMarker).toHaveCSS('outline-style', 'none');
+              await expect(dateMarker).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+              const markerContrast = await renderedContrast(
+                marker.getByTestId('planner-date-marker').locator('span').first()
+              );
+              expect.soft(markerContrast.ratio, 'Today date text').toBeGreaterThanOrEqual(4.5);
+              for (const extra of await dateMarker.locator('span').all()) {
+                const result = await renderedContrast(extra);
+                expect.soft(result.ratio, 'neutral fixed date text').toBeGreaterThanOrEqual(4.5);
+              }
+              console.log(
+                'TEMPORAL_CONTRAST',
+                locale,
+                todayIndex,
+                viewport.width,
+                'Today date text',
+                JSON.stringify(markerContrast)
+              );
+            }
+            if (todayIndex > 0) {
+              for (const [name, target, ratio] of [
+                ['past recipe', page.getByTestId('day-card-0').getByTestId('recipe-name'), 4.5],
+                ['past status', page.getByTestId('day-card-0').getByTestId('vote-count'), 4.5],
+                [
+                  'past change',
+                  page.getByTestId('day-card-0').getByTestId('change-recipe-button').locator('svg'),
+                  3,
+                ],
+                [
+                  'past grip',
+                  page.getByTestId('day-card-0').getByTestId('planner-drag-handle').locator('svg'),
+                  3,
+                ],
+                ...(todayIndex === 6
+                  ? [
+                      [
+                        'past empty',
+                        page
+                          .getByTestId('day-card-2')
+                          .getByTestId('plan-meal-button')
+                          .locator('span'),
+                        4.5,
+                      ],
+                      [
+                        'past non-cooking',
+                        page.getByTestId('day-card-3').getByTestId('non-cooking-indicator'),
+                        4.5,
+                      ],
+                    ]
+                  : []),
+              ] as Array<[string, import('@playwright/test').Locator, number]>) {
+                const contrast = await renderedContrast(target);
+                console.log(
+                  'TEMPORAL_CONTRAST',
+                  locale,
+                  todayIndex,
+                  viewport.width,
+                  name,
+                  JSON.stringify(contrast)
+                );
+                expect.soft(contrast.ratio, name).toBeGreaterThanOrEqual(ratio);
+              }
+              if (todayIndex === 6) {
+                const nonCooking = page
+                  .getByTestId('day-card-3')
+                  .getByTestId('ordered-in-indicator');
+                await nonCooking.hover();
+                await page.waitForTimeout(250);
+                const contrast = await renderedContrast(
+                  nonCooking.getByTestId('non-cooking-indicator')
+                );
+                console.log(
+                  'TEMPORAL_CONTRAST',
+                  locale,
+                  todayIndex,
+                  viewport.width,
+                  'past non-cooking hover',
+                  JSON.stringify(contrast)
+                );
+                expect.soft(contrast.ratio, 'past non-cooking hover').toBeGreaterThanOrEqual(4.5);
+                await page.mouse.move(0, 0);
+              }
+              await expect
+                .soft(page.getByTestId('day-card-0'))
+                .toHaveAttribute('data-temporal', 'past');
+              await expect(page.getByTestId('day-card-0')).toHaveCSS('opacity', '1');
+            }
+            for (const dateLabel of await marker.locator('span').all())
+              expect
+                .soft(await dateLabel.evaluate((el) => el.scrollWidth <= el.clientWidth))
+                .toBe(true);
+            expect.soft(await marker.evaluate((el) => el.getBoundingClientRect().width)).toBe(40);
+            expect
+              .soft(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
+              .toBe(true);
+            await expect(page.getByTestId('planned-count-badge')).toHaveCount(0);
+          });
+        }
+      }
+    }
+
+    for (const offset of [-1, 1]) {
+      test(`no Today in offset ${offset}`, async ({ page }, testInfo) => {
+        await openEmphasis(page, 2, offset);
+        await expect(page.locator('[aria-current="date"]')).toHaveCount(0);
+        await expect(page.getByTestId('planner-today-label')).toHaveCount(0);
+        await page.screenshot({ path: testInfo.outputPath('other-week.png'), fullPage: true });
+      });
+    }
+
+    for (const content of ['empty', 'recipe', 'pending', 'non-cooking', 'cooked'] as const) {
+      test(`Today with ${content} content and deployment timezone disagreement`, async ({
+        page,
+      }) => {
+        await page.clock.setSystemTime(new Date('2026-05-07T03:30:00Z'));
+        const schedule = await openEmphasis(page, 2);
+        const day = schedule.days![2];
+        day.recipe =
+          content === 'recipe' || content === 'cooked'
+            ? builders.scheduleRecipe({ name: 'Today supper' })
+            : null;
+        day.status = content === 'cooked' ? 2 : content === 'non-cooking' ? 3 : 0;
+        day.nonCooking = content === 'non-cooking' ? { kind: 'order_in' } : null;
+        if (content === 'pending') {
+          schedule.status = 1;
+          schedule.votingRoundId = MOCK_IDS.VOTING_ROUND;
+          await page.route('**/api/discovery/session', (route) =>
+            route.fulfill({
+              json: {
+                data: {
+                  incarnationId: MOCK_IDS.MEMBER_TEST,
+                  revision: 1,
+                  roundId: MOCK_IDS.VOTING_ROUND,
+                  weekStartDate: '2026-05-04',
+                  phase: 'collecting',
+                  requiredSlots: 4,
+                  coveredSlots: 1,
+                  candidateCount: 1,
+                  smartDefaults: {
+                    weekOffset: 0,
+                    weekStartDate: '2026-05-04',
+                    familySize: 3,
+                    consensusThreshold: 2,
+                    consensusRecipesCount: 1,
+                    openSlots: [],
+                    preSelectedRecipes: [
+                      {
+                        dayIndex: 2,
+                        recipeId: MOCK_IDS.RECIPE_TACOS,
+                        name: 'Pending supper',
+                        voteCount: 2,
+                        unanimousVote: false,
+                      },
+                    ],
+                  },
+                },
+              },
+            })
+          );
+        }
+        if (content === 'pending')
+          await page.route('**/api/schedule/smart-defaults**', (route) =>
+            route.fulfill({
+              json: {
+                data: {
+                  weekOffset: 0,
+                  weekStartDate: '2026-05-04',
+                  familySize: 3,
+                  consensusThreshold: 2,
+                  consensusRecipesCount: 0,
+                  openSlots: [],
+                  preSelectedRecipes: [
+                    {
+                      dayIndex: 2,
+                      recipeId: MOCK_IDS.RECIPE_TACOS,
+                      name: 'Pending supper',
+                      voteCount: 2,
+                      unanimousVote: false,
+                    },
+                  ],
+                },
+              },
+            })
+          );
+        await page.reload();
+        const row = page.getByTestId('day-card-2');
+        await expect(row.getByTestId('planner-date')).toHaveAttribute('aria-current', 'date');
+        await expect(row.getByTestId('planner-today-label')).toHaveText('Today');
+        if (content === 'pending') await expect(row).toContainText('Pending supper');
+      });
+    }
+
+    for (const index of [0, 2]) {
+      test(`success feedback stays distinct on temporal row ${index}`, async ({ page }) => {
+        await openEmphasis(page, 2);
+        await page.goto(`/planner?success=1&dayIndex=${index}`);
+        await expect(page.getByTestId(`day-card-${index}`).getByTestId('planner-meal')).toHaveClass(
+          /ring-4/
+        );
+        await expect(page.getByTestId('day-card-2').getByTestId('planner-date')).toHaveAttribute(
+          'aria-current',
+          'date'
+        );
+        await expect(page.getByTestId('planner-today-label')).toHaveCount(1);
+        await expect(page.getByTestId('day-card-0')).toHaveAttribute('data-temporal', 'past');
+      });
+    }
+
+    test('fixed Today and independent focus/source/destination/cancel feedback', async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width: 390, height: 844 });
+      const schedule = await openEmphasis(page, 2);
+      const writes: string[] = [];
+      page.on('request', (request) => {
+        if (
+          request.method() !== 'GET' &&
+          new URL(request.url()).pathname.startsWith('/api/schedule')
+        )
+          writes.push(request.url());
+      });
+      const handle = page.getByTestId('day-card-0').getByTestId('planner-drag-handle');
+      await page.keyboard.press('Tab');
+      await handle.focus();
+      await expect(handle).toBeFocused();
+      await expect(handle).toHaveCSS('outline-style', 'solid');
+      const drag = await heldMouse(page);
+      const destination = await drag.over(2);
+      await expect(destination.getByTestId('planner-date')).toHaveAttribute('aria-current', 'date');
+      await expect(destination.getByTestId('planner-drop-arrow')).toBeVisible();
+      const contrast = await renderedContrast(
+        destination.getByTestId('planner-date-marker').locator('span').first()
+      );
+      console.log(
+        'TEMPORAL_CONTRAST',
+        'en',
+        2,
+        390,
+        'Today drop date text',
+        JSON.stringify(contrast)
+      );
+      expect(contrast.ratio).toBeGreaterThanOrEqual(4.5);
+      await expect(page.getByTestId('day-card-0')).toHaveAttribute('data-drag-source', 'true');
+      await expect(page.getByTestId('planner-drag-preview')).toBeVisible();
+      await page.keyboard.press('Escape');
+      await page.mouse.up();
+      expect(writes).toHaveLength(0);
+      await expect(destination.getByTestId('planner-date')).toHaveAttribute('aria-current', 'date');
+      await handle.focus();
+      await page.keyboard.press('ArrowDown');
+      await expect(page.getByTestId('day-card-1').getByTestId('planner-drag-handle')).toBeFocused();
+      await expect(page.getByTestId('day-card-2').getByTestId('planner-date')).toHaveAttribute(
+        'aria-current',
+        'date'
+      );
+      expect(schedule.days![0].recipe!.name).toBe('Tuesday Tacos');
+      await page.keyboard.press('ArrowDown');
+      await expect(page.getByTestId('day-card-2').getByTestId('planner-drag-handle')).toBeFocused();
+      await expect(page.getByTestId('day-card-2')).toContainText('Monday Lasagna');
+      await expect(page.getByTestId('day-card-2').getByTestId('planner-today-label')).toHaveText(
+        'Today'
+      );
+      await page.keyboard.press('ArrowUp');
+      await expect(page.getByTestId('day-card-1').getByTestId('planner-drag-handle')).toBeFocused();
+      await expect(page.getByTestId('day-card-2').getByTestId('planner-date')).toHaveAttribute(
+        'aria-current',
+        'date'
+      );
+    });
   });
 
   test('should display the planner navigation and segmented control', async ({ page }) => {

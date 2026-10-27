@@ -24,28 +24,30 @@ Replace the charcoal-led/warm-action A/B implementation sequence with one baseli
 | Plan supper | Existing localized sentence-case label; opaque terracotta-600 text and Plus, darker terracotta feedback; retain the light open action and existing sizes/targets |
 | Grip | Opaque charcoal-600 default; sage-700 hover/grabbed; independent visible keyboard focus |
 | Fixed weekday/month | Opaque charcoal-600, existing date-column width and hierarchy; adjust local spacing/wrapping only if needed for legibility |
-| Today | 2 CSS px terracotta-600 outline around the fixed date marker; one readable terracotta-600 Today label above that row |
+| Today | One readable terracotta-600 Today label above its row, followed by a faint decorative rule; fixed date marker remains neutral, with no added fill or contour |
 | Past | Reduce shadow/glow and use a flatter existing cream surface; preserve essential foregrounds and actions |
 
-Terracotta already carries actions; the Today label and fixed date placement must make its temporal meaning explicit. Sage keeps its broad existing roles and movement feedback. Neither hue alone communicates state. Today gets no filled badge, full-row border, animation or larger meal card.
+Terracotta already carries actions; the Today label and fixed date placement must make its temporal meaning explicit. Sage keeps its broad existing roles and movement feedback. Neither hue alone communicates state. Today adds no separate badge, full-row border, animation or larger meal card.
 
 ### Phone space belongs to supper
 
-Keep the existing date column width and meal-content width. Place Today / Aujourd’hui in a compact text line above today's row, outside the drag surface, using available row width rather than putting it beside the date or inside its narrow column. Only today's row gets the line; do not reserve blank label bands on all seven rows. Give the text room to wrap at narrow widths and enlarged text. Keep the marker outline from changing date-column geometry, and keep the label attached to the dated slot while recipes move.
+Keep the existing date column width and meal-content width. Place Today / Aujourd’hui in a compact text line above today's row, outside the drag surface, using available row width rather than putting it beside the date or inside its narrow column. User refinement (27 October 2026): add a thin, faint rule after Today / Aujourd’hui so the label reads as a date divider. The rule is decorative (`aria-hidden`), uses remaining width, may wrap with the label when necessary and conveys no state independently. It adds no extra band or meal/date-column width. Only today's row gets the line; do not reserve blank label bands on all seven rows. Give the text room to wrap at narrow widths and enlarged text. Keep the fixed date marker geometry unchanged, and keep the label attached to the dated slot while recipes move.
+
+Final calmness refinement (27 October 2026): after the user found the added date colour too strong and asked whether the divider does the job, retain only the Today label and faint rule as visual emphasis. Keep date text dark and the fixed marker neutral, without fill or contour. `aria-current` remains on the fixed date. This supersedes both contour and pale-fill trials recorded in evidence. Measure essential date text on its actual background and keep sage destination outline/arrow and keyboard focus independently visible.
 
 This adds a single line for explicit recognition, rather than widening every row. Its cost is some vertical height on today's row. Review that cost on a phone. If it feels cluttered, return a specific revision recommendation; do not silently remove the agreed explicit label or declare the treatment successful. Layout after accepted calendar refresh may change that one line's location; active drag target/source feedback must itself remain layout-stable under existing rules.
 
 ### Readability with distinct states
 
-Remove opacity-based essential foregrounds for the affected elements and interaction overrides. Normal affected text needs 4.5:1, meaningful grip/Plus/control edges and the Today outline need 3:1 on actual adjacent backgrounds. Decorative dashed borders need no independent threshold unless needed to identify the action. Preserve glass where readable; if measurements show a local failure, use an existing stable surface only behind the affected element. No global glass removal.
+Remove opacity-based essential foregrounds for the affected elements and interaction overrides. Normal affected text needs 4.5:1, meaningful grips, Plus icons and essential control edges need 3:1 on actual adjacent backgrounds. Decorative dashed borders need no independent threshold unless needed to identify the action. Preserve glass where readable; if measurements show a local failure, use an existing stable surface only behind the affected element. No global glass removal.
 
-Focus, drag targeting, grabbed state and success feedback stay independent. Today outlines only the fixed marker; drag targeting retains its existing date tint/outline/arrow and meal outline. Check their combined state explicitly so today is not mistaken for the drop target. No new temporal cues on future rows; past does not mean cooked or disabled.
+Focus, drag targeting, grabbed state and success feedback stay independent. Today is identified by the label and divider only; drag targeting retains its existing date tint/outline/arrow and meal outline. Check their combined state explicitly so today is not mistaken for the drop target. No new temporal cues on future rows; past does not mean cooked or disabled.
 
 ## First Observable Slice
 
 Render a real Planner week containing an empty slot and eligible recipe using actual components and EN/FR locale modules. Improve week/date context, planning action and grip, then measure affected composites and open the planning sheet/use the keyboard handle. Existing HTTP schedule/movement mocks remain at the API boundary. This first slice changes no API or store movement semantics.
 
-Next add compact Today and quiet past treatment for a Wednesday schedule, using reliable shared calendar data: an uncooked Monday stays uncooked and usable, Wednesday has one label/outlined date, and future dates stay normal. A recipe swap leaves all date-relative cues with their slots.
+Next add compact Today and quiet past treatment for a Wednesday schedule, using reliable shared calendar data: an uncooked Monday stays uncooked and usable, Wednesday has one label and neutral fixed date, and future dates stay normal. A recipe swap leaves all date-relative cues with their slots.
 
 ## State, Concurrency and Recovery
 
