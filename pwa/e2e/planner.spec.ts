@@ -321,6 +321,8 @@ test.describe('Supper Planner', () => {
   });
 
   test('should flip weeks when clicking chevrons', async ({ page }) => {
+    await page.goto('/planner?view=family');
+    await expect(page.getByTestId('planner-this-week-pill')).toHaveCount(0);
     const initialDateRange = await page.getByTestId('week-range').textContent();
     await page.getByTestId('next-week').click();
 
@@ -337,7 +339,66 @@ test.describe('Supper Planner', () => {
     await page.getByTestId('planner-this-week-pill').click();
 
     await expect(page.getByTestId('week-range')).toContainText('This week', { timeout: 10_000 });
+    await expect(page).toHaveURL(/\/planner\?view=family$/);
+    await expect(page.getByTestId('planner-this-week-pill')).toHaveCount(0);
+    await page.getByTestId('prev-week').click();
+    await expect(page.getByTestId('week-range')).not.toHaveText(initialDateRange || '');
+    await expect(page.getByTestId('planner-this-week-pill').locator('svg')).toHaveClass(
+      /lucide-chevron-right/
+    );
+    await page.getByTestId('planner-this-week-pill').click();
+    await expect(page.getByTestId('week-range')).toHaveText(initialDateRange || '');
+    await expect(page).toHaveURL(/\/planner\?view=family$/);
+    await expect(page.getByTestId('planner-this-week-pill')).toHaveCount(0);
   });
+
+  for (const width of [390, 1280]) {
+    for (const locale of ['en', 'fr'] as const) {
+      test(`return direction and full label at ${width}px in ${locale}`, async ({
+        page,
+      }, testInfo) => {
+        await page.setViewportSize({ width, height: 900 });
+        await page.addInitScript((value) => localStorage.setItem('locale', value), locale);
+        const label = locale === 'fr' ? 'Retour à cette semaine' : 'Back to this week';
+        for (const offset of [-2, 2]) {
+          await page.goto(`/planner?weekOffset=${offset}&view=family`);
+          const pill = page.getByTestId('planner-this-week-pill');
+          await expect(pill).toBeVisible();
+          await expect(pill).toHaveAccessibleName(label);
+          await expect(pill).toHaveText(label);
+          const arrow = pill.locator('svg');
+          await expect(arrow).toHaveAttribute('aria-hidden', 'true');
+          await expect(arrow).toHaveClass(
+            offset < 0 ? /lucide-chevron-right/ : /lucide-chevron-left/
+          );
+          const layout = await pill.evaluate((button, past) => {
+            const arrow = button.querySelector('svg')!;
+            const text = Array.from(button.childNodes).find(
+              (node) => node.nodeType === Node.TEXT_NODE && node.textContent?.trim()
+            )!;
+            const range = document.createRange();
+            range.selectNode(text);
+            const label = range.getBoundingClientRect();
+            const icon = arrow.getBoundingClientRect();
+            const bounds = button.getBoundingClientRect();
+            return {
+              correctSide: past ? label.right <= icon.left : icon.right <= label.left,
+              fits:
+                button.scrollWidth <= button.clientWidth &&
+                label.left >= bounds.left &&
+                label.right <= bounds.right,
+              inViewport: bounds.left >= 0 && bounds.right <= window.innerWidth,
+            };
+          }, offset < 0);
+          expect(layout).toEqual({ correctSide: true, fits: true, inViewport: true });
+          await page.screenshot({ path: testInfo.outputPath(`return-${offset}.png`) });
+          await pill.click();
+          await expect(page).toHaveURL(/\/planner\?view=family$/);
+          await expect(pill).toHaveCount(0);
+        }
+      });
+    }
+  }
 
   test('should open the planning pivot sheet when clicking "+" on an unplanned day', async ({
     page,

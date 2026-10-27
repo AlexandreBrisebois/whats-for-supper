@@ -525,8 +525,13 @@ export default function PlannerPage() {
                   aria-label={t('planner.backToThisWeek', 'Back to this week')}
                   title={t('planner.backToThisWeek', 'Back to this week')}
                 >
-                  <ChevronLeft size={12} strokeWidth={3} aria-hidden="true" />
+                  {currentWeekOffset > 0 && (
+                    <ChevronLeft size={12} strokeWidth={3} aria-hidden="true" />
+                  )}
                   {t('planner.backToThisWeek', 'Back to this week')}
+                  {currentWeekOffset < 0 && (
+                    <ChevronRight size={12} strokeWidth={3} aria-hidden="true" />
+                  )}
                 </button>
               )}
             </div>

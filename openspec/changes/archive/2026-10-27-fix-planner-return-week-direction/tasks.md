@@ -1,0 +1,27 @@
+# Tasks
+
+## 1. Make return direction reflect the selected week
+
+**Outcome and scenarios:** Implement the delta for `meal-planning` → “Navigate relative weeks and return to this week.” Cover negative/positive offsets, zero, return navigation with preserved query parameters, and selected-offset changes while old dates remain displayed.
+
+**Owners and boundaries:** `pwa/src/app/(app)/planner/page.tsx`, its unit tests and `pwa/e2e/planner.spec.ts`. Reuse existing Lucide chevrons and `planner.backToThisWeek`; keep `aria-hidden="true"` on the arrow. Branch on `currentWeekOffset`, the same selection used by the control's visibility and destination, rather than deriving time direction from loaded dates. Retain the existing control styles, handler, title and accessible name.
+
+**Dependencies and prerequisites:** Repository tooling and installed test/browser dependencies. No dependency on the badge-removal plan; preserve its files and reconcile shared-file edits during implementation. A design document is deliberately omitted because this conditional rendering change has no architectural, migration or unresolved technical complexity.
+
+**Acceptance boundary:** First observable slice: open `/planner?weekOffset=-1`, see the right chevron after the label, activate it and return to offset zero. Unit tests exercise the actual page with its existing navigation/store doubles. Playwright exercises the page, routing and rendered layout with the existing `pwa/e2e/mock-api.ts` schedule fixtures at `GET /api/schedule`; no handler or contract changes are needed. Browser evidence is presentation/navigation evidence, not live service qualification.
+
+- [x] 1.1 Add focused cases in `pwa/src/app/(app)/planner/page.test.tsx` for negative offsets (including an offset earlier than -1), positive offsets (including later than +1), zero, and an offset change with retained dates. Assert chevron direction and order relative to the localized label, a stable accessible name and absence at zero. Preserve or add return-navigation assertions for removing `weekOffset` while retaining unrelated query parameters. Run `task test:unit -- 'src/app/(app)/planner/page.test.tsx'` before production edits; record the intended failure for the past-week arrow.
+- [x] 1.2 Conditionally render the left chevron before the label for positive offsets and the right chevron after the label for negative offsets, using the existing imports and handler. Run `task test:unit -- 'src/app/(app)/planner/page.test.tsx'` and record green evidence for the scenario matrix. Do not change locale values, week selection, data loading or adjacent Planner controls.
+- [x] 1.3 Extend the existing week-navigation acceptance in `pwa/e2e/planner.spec.ts` to cover returning from both past and future weeks, current-week absence and preserved query parameters. Run `task test:e2e -- e2e/planner.spec.ts`. Inspect narrow and wide rendered layouts in English and French: arrow on the correct side, full label visible, no clipping, and unchanged accessible name. Record the actual viewport/locale evidence and outcomes. Keep existing navigation and date-content assertions.
+
+## 2. Final Integration and Verification
+
+- [x] 2.1 Review the complete task-owned diff, preserving the separate badge-removal work. Run `task prepare -- <complete reviewed changed-path set>` then `task verify -- <complete reviewed changed-path set>`, including this change's artifacts and all changed implementation/test paths. Reconcile scenario acceptance with actual passed/failed/blocked/not-run/not-applicable results and cite the returned `record_path`. API/database/model checks are not applicable to this presentation change. Leave tasks incomplete while required evidence is missing; specification sync and archival are separate lifecycle work.
+
+## Evidence
+
+- Red: focused planner unit command failed as intended: 3 failed / 39 passed; negative offsets retained the left arrow and the retained-date transition placed no right arrow after the label.
+- Green: `task test:unit -- 'src/app/(app)/planner/page.test.tsx'`: 42 passed; offsets -3/-1/+1/+3, retained dates, zero absence, accessible name and query preservation covered.
+- Browser: `task test:e2e -- e2e/planner.spec.ts`: 40 passed. Layout matrix: 390x900 and 1280x900, English/French, offsets -2/+2; geometry checks passed for direction, label fit and viewport containment, accessible names unchanged. Screenshots inspected for all four viewport/locale combinations; full labels visible without clipping. Artifacts: `pwa/test-results/planner-Supper-Planner-ret-*/return-*.png`.
+- Scope review: only return-control rendering, focused unit/browser acceptance and this task record changed. Existing count-free Planner behavior and badge-removal coverage preserved. Locale values, navigation handler, store/data loading and API contracts unchanged. API/database/model qualification: not applicable. Sync/archive: not run (separate lifecycle).
+- Final integration: preparation passed on all four reviewed changed paths; formatter changes only in the selected tests. Full selected-path `task verify` passed: documentation/spec checks, lint, formatting, typecheck, 1145 unit tests, 70 impacted browser tests, 1249 API tests (154 skipped), static contract/client checks and content identity. Record: `.task/agent-finish/runs/3c93d66941a04beca2620dc0cb5bae52.json`. No failed or blocked required checks. This completion/evidence update is later documentation content, verified separately; the application results describe the recorded tested identity.

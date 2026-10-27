@@ -398,6 +398,41 @@ describe('PlannerPage voting action row', () => {
     });
   });
 
+  it.each([-3, -1, 1, 3])('points the return control toward this week from offset %s', (offset) => {
+    mocks.setSearchParams(`weekOffset=${offset}&view=family`);
+    renderPlanner(0, '2026-05-17', offset);
+    const button = screen.getByTestId('planner-this-week-pill');
+    expect(button).toHaveAccessibleName('Back to this week');
+    expect(button).toHaveAttribute('title', 'Back to this week');
+    const arrow = button.querySelector('svg')!;
+    expect(arrow).toHaveClass(offset < 0 ? 'lucide-chevron-right' : 'lucide-chevron-left');
+    expect(arrow).toHaveAttribute('aria-hidden', 'true');
+    expect(offset < 0 ? button.lastChild : button.firstChild).toBe(arrow);
+    expect(button.textContent).toBe('Back to this week');
+    fireEvent.click(button);
+    expect(mocks.replace).toHaveBeenCalledWith('/planner?view=family');
+  });
+
+  it('follows the selected offset while retaining loaded dates, and hides at zero', () => {
+    mocks.setSearchParams('weekOffset=1');
+    const view = renderPlanner(0, '2026-05-17', 1);
+    const retainedSchedule = mocks.getWeekState().schedule;
+    expect(screen.getByTestId('planner-this-week-pill').firstChild).toHaveClass(
+      'lucide-chevron-left'
+    );
+    mocks.setSearchParams('weekOffset=-2');
+    mocks.setPlannerState({ ...mocks.getPlannerState(), currentWeekOffset: -2 });
+    view.rerender(<PlannerPage />);
+    expect(mocks.getWeekState().schedule).toBe(retainedSchedule);
+    expect(screen.getByTestId('planner-this-week-pill').lastChild).toHaveClass(
+      'lucide-chevron-right'
+    );
+    mocks.setSearchParams('');
+    mocks.setPlannerState({ ...mocks.getPlannerState(), currentWeekOffset: 0 });
+    view.rerender(<PlannerPage />);
+    expect(screen.queryByTestId('planner-this-week-pill')).not.toBeInTheDocument();
+  });
+
   it('shows Ask the Family for a draft non-past week', () => {
     renderPlanner(0);
 
