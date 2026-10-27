@@ -76,19 +76,37 @@ GET /api/health SHALL expose demoMode, demoModeRawValue and demoRestoreCronValid
 
 ### Requirement: Prefill Welcome without bypassing household access
 
-After a successful health response with demoMode true, Welcome SHALL fill an empty passphrase with Swipe-Match-Cook and preserve a nonempty current value. Submission SHALL continue through household-identity requirements `Enter the household with its shared passphrase` and `Give passphrase submission feedback and allow retry`.
+Welcome SHALL initialize its editable passphrase to the public constant Swipe-Match-Cook only when server-resolved PWA Demo identity is enabled and the configured household secret exactly equals that constant. Otherwise it SHALL start empty. Browser health SHALL NOT decide prefill. Submission SHALL retain household-identity passphrase, feedback, token and cookie requirements, with no automatic authentication.
 
 #### Scenario: Empty welcome passphrase
-- **WHEN** Welcome receives demoMode true while its passphrase is empty and the page is still active
-- **THEN** the passphrase field becomes Swipe-Match-Cook without submitting or authenticating
+- **WHEN** a fresh Welcome form is rendered with PWA Demo enabled and its configured secret exactly equal to Swipe-Match-Cook
+- **THEN** the initial passphrase is Swipe-Match-Cook without submitting, generating a token, writing an access cookie or navigating
 
 #### Scenario: User already typed
-- **WHEN** Welcome receives demoMode true with a nonempty current passphrase
-- **THEN** the current passphrase is retained
+- **WHEN** the visitor edits the initialized input, including replacing it, clearing it or entering whitespace
+- **THEN** rerenders, locale changes and delayed health responses preserve that input for the mounted form
+- **AND** clearing it does not trigger another prefill and Enter remains disabled for blank input
 
 #### Scenario: Health unavailable
-- **WHEN** the convenience health request fails
-- **THEN** Welcome remains available for ordinary passphrase entry and submission
+- **WHEN** browser health fails, stalls, returns non-demo or reports unhealthy storage
+- **THEN** the server guard alone determines initial prefill and ordinary editable submission remains available
+
+#### Scenario: Demo custom or missing secret
+- **WHEN** PWA Demo is enabled but the configured secret is absent, empty, whitespace-only, custom, differently cased or padded around the public constant
+- **THEN** Welcome starts empty with ordinary helper wording and no configured secret is disclosed
+
+#### Scenario: Non-demo installation
+- **WHEN** PWA Demo is disabled, absent or invalid, even if the secret equals the public constant or browser health reports demo
+- **THEN** Welcome starts empty and preserves ordinary non-demo entry behavior
+
+#### Scenario: Private values never reach unauthenticated rendering
+- **WHEN** Welcome renders with an arbitrary synthetic private configured secret
+- **THEN** that secret is absent from HTML, RSC payloads, serialized props, client bundles and unauthenticated presentation responses
+- **AND** the only allowed prefill value is the designated public constant; configuration equality grants no access or second role
+
+#### Scenario: Explicit entry and failed retry
+- **WHEN** the visitor explicitly submits the current nonblank input
+- **THEN** the existing authentication result controls entry, cookie writing precedes onboarding, and rejection or exception retains editable input and allows the existing retry flow
 
 ### Requirement: Reject demo member creation
 
@@ -100,15 +118,20 @@ For an authorized valid POST /api/family while demo mode is enabled, the API SHA
 
 ### Requirement: Present demo identity independently of authentication
 
-With PWA DEMO_MODE enabled, the application SHALL display the informational Demo identity hint (Démo in French). When the baked release channel is beta, the hint SHALL retain an accessible beta-channel description. The hint SHALL be noninteractive and SHALL NOT grant household access.
+With PWA DEMO_MODE enabled, the application SHALL identify Demo (Démo in French) independently of access. Welcome SHALL use its interactive explanation band instead of the tiny Demo note, retaining an accessible baked-beta channel description. Existing identity hints elsewhere SHALL remain noninteractive notes. Neither presentation SHALL grant household access.
 
 #### Scenario: Demo hint
-- **WHEN** a demo identity is rendered in English or French
-- **THEN** the hint has role note and the localized accessible name without an interactive control
+- **WHEN** a demo identity hint renders outside Welcome in English or French
+- **THEN** it retains role note and the localized accessible name without an interactive control
 
 #### Scenario: Beta demo identity
-- **WHEN** demo identity is rendered for the baked beta channel
-- **THEN** Demo or Démo is the label and the beta-channel description is accessible
+- **WHEN** demo identity renders for the baked beta channel
+- **THEN** its Demo or Démo presentation retains the accessible Beta release channel or Canal bêta description
+
+#### Scenario: Welcome identity control
+- **WHEN** Welcome renders with server-resolved PWA Demo identity in either channel
+- **THEN** it displays one Demo explanation band and no duplicate tiny Demo note
+- **AND** activating it opens the explanation without submitting the form
 
 ### Requirement: Select demo installation artwork
 
@@ -492,7 +515,7 @@ Demo AI capture, contextual reimport, bulk import, failed-capture retry, origina
 - **THEN** that picker and local draft remain attached and usable without a camera interruption or discarded preview; ordinary AI capture becomes available after confirmed non-demo status
 
 ### Requirement: Offer a reopenable demo context explanation
-The demo SHALL provide a compact pale sage strip with readable dark charcoal text at the top of the ordinary app shell, respecting safe areas, that opens one short phone sheet or compact iPad dialog. It SHALL explain the sample shared household, other visitors' changes, temporary changes that will be reset and avoiding personal information. Start exploring and an explicit close SHALL dismiss it. Existing identity hints SHALL retain their noninteractive meaning.
+The demo SHALL provide a compact pale sage strip with readable dark charcoal text at the top of Welcome and the ordinary app shell, respecting safe areas, that opens one short phone sheet or compact iPad dialog. It SHALL explain the sample shared household, other visitors' changes, temporary changes that will be reset and avoiding personal information. Start exploring and an explicit close SHALL dismiss it. Identity hints outside Welcome SHALL retain their noninteractive meaning.
 
 #### Scenario: Tap the context band
 - **WHEN** a visitor activates Demo · What to know or its French equivalent in the ordinary demo shell
@@ -539,6 +562,16 @@ The demo SHALL provide a compact pale sage strip with readable dark charcoal tex
 - **THEN** the static title has no visible outline while dialog naming, focus containment, Escape/close and return focus remain correct
 - **AND** keyboard focus indicators on the band, close button, setup link and Start exploring remain visible; unrelated dialog title styling is unchanged
 
+#### Scenario: Manual Welcome explanation
+- **WHEN** a Demo visitor opens Welcome without activating its band
+- **THEN** the explanation does not open automatically
+- **AND** activating the band opens the same localized explanation, setup link and dismissal controls as Home, with at most one band and one open explanation on Welcome
+
+#### Scenario: Explicit dismissal and departure focus
+- **WHEN** the visitor dismisses through Start exploring, Close or Escape
+- **THEN** the dialog closes and focus returns to its still-connected triggering band
+- **AND** route or mode departure closes it without manufacturing acknowledgement or moving focus from the destination task to a background band
+
 ### Requirement: Introduce demo context only at a safe first visit
 An undismissed demo explanation SHALL automatically appear once at the first eligible normal ready Home entry before visitor interaction. It SHALL NOT interrupt active work, another dialog or a deep-link handoff. Deferred readiness SHALL NOT cause a mid-task popup. Automatic introduction SHALL preserve existing destinations and household/member setup.
 
@@ -553,6 +586,15 @@ An undismissed demo explanation SHALL automatically appear once at the first eli
 #### Scenario: Readiness arrives after interaction
 - **WHEN** readiness resolves after a visitor has begun a task or while another dialog is active
 - **THEN** automatic introduction is withheld rather than queued to interrupt the task, and ordinary app behaviour continues
+
+#### Scenario: Welcome does not consume Home eligibility
+- **WHEN** an unacknowledged visitor types, clears, submits or navigates through Welcome and onboarding without explicitly dismissing the Demo explanation
+- **THEN** those pre-shell interactions do not consume eligibility or count as app-shell interaction
+- **AND** first query-free ready Home entry may introduce once under the existing readiness, work, modal and interaction guards
+
+#### Scenario: Welcome explanation leaves without dismissal
+- **WHEN** the visitor manually opens the Welcome explanation and navigation removes it without explicit dismissal
+- **THEN** no acknowledgement or Home presentation is manufactured and later eligible Home entry remains possible
 
 ### Requirement: Remember demo explanation dismissal outside shared state
 Start exploring and user-initiated close SHALL store a simple demo-specific browser acknowledgement outside household snapshot/reset state, without a tracking ID or server synchronization. Storage failure SHALL fall back to visit-local memory. Navigation, reset, member/locale switches and cosmetic copy changes SHALL NOT replay an acknowledged introduction. Manual reopening SHALL remain available.
@@ -578,6 +620,11 @@ Start exploring and user-initiated close SHALL store a simple demo-specific brow
 #### Scenario: Automatic opening is not acknowledgement
 - **WHEN** the explanation was automatically presented but routing removes it before the visitor dismisses it
 - **THEN** the current visit does not repeatedly open it and no persisted dismissal is manufactured from that unmount
+
+#### Scenario: One acknowledgement from Welcome to Home
+- **WHEN** the visitor uses Start exploring, Close or Escape on Welcome's explanation and then reaches Home
+- **THEN** the same Demo acknowledgement suppresses Home automatic introduction while allowing manual reopening
+- **AND** storage failure still shares visit-local acknowledgement across this route transition; no Beta acknowledgement is written
 
 ### Requirement: Separate operator baseline authority from visitor experiments
 Visitor mode SHALL apply whenever API demo mode is enabled. Baseline capture, replacement and selection SHALL be rejected whenever demo mode is enabled, at acceptance, alternate dispatch/retry and execution boundaries. Preparation/capture SHALL use authenticated private household access with demo mode disabled. Visitor requests SHALL NOT disable demo mode or enable AI preparation. Existing demo identity and ordinary household access SHALL remain available.
@@ -661,3 +708,33 @@ Reset recovery SHALL reuse existing demo guidance and ordinary navigation withou
 #### Scenario: Honest self-hosting choice
 - **WHEN** a visitor follows self-hosting guidance
 - **THEN** it distinguishes the restricted public demo from operator-configured AI capabilities without promising free provider use or that every capability was exercised in the demo
+
+### Requirement: Describe actual Welcome prefill truthfully
+
+Welcome SHALL show the localized demo-prefill helper only when the server guard actually initialized the current form with the public constant and the visitor has not edited it. After any edit it SHALL use the existing ordinary helper for that mounted form. Withheld prefill SHALL never show the demo-prefill claim. Changing locale SHALL translate the helper without changing input or prefill provenance.
+
+#### Scenario: Untouched public prefill
+- **WHEN** Welcome has actually initialized the public prefill and it remains untouched
+- **THEN** English helper text is exactly The demo passphrase is filled in for you. Tap Enter to explore.
+- **AND** French helper text is exactly Le mot de passe de la démo est déjà rempli pour vous. Appuyez sur Entrer pour explorer.
+
+#### Scenario: Cleared edited or manually retyped input
+- **WHEN** the visitor makes any edit, including clearing the prefill or manually typing the public constant again
+- **THEN** the existing ordinary localized family-passphrase helper replaces the prefill claim for the rest of the mounted form
+
+#### Scenario: Withheld prefill
+- **WHEN** the server guard withholds prefill in a private or custom-secret demo installation
+- **THEN** Welcome retains its existing ordinary localized helper even if the visitor manually types the public constant
+
+#### Scenario: Locale and failed attempt preserve provenance
+- **WHEN** locale changes or submission fails while an actual prefill remains unedited
+- **THEN** the helper retains its prefill meaning in the selected language without refilling, resubmitting or hiding failure feedback
+
+### Requirement: Preserve the app name across locales
+
+The landing and Welcome branding headings SHALL display the exact literal `Whats for Supper?` in English and French, including the question mark. This applies only to `landing.title`, `auth.welcomeTitle` and their component fallbacks; ordinary localized meal questions and surrounding copy SHALL retain their existing meaning.
+
+#### Scenario: English or French entry heading
+- **WHEN** the visitor opens the landing page or Welcome in English or French
+- **THEN** its branding heading is exactly Whats for Supper?
+- **AND** localized helper text and explicit household entry behavior remain unchanged

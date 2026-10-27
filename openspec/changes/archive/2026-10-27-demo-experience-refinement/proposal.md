@@ -26,7 +26,7 @@ None.
 
 ### Modified Capabilities
 
-- `demo-household`: guarded health-independent Welcome prefill, truthful helper, a manual login entry to the existing explanation, and Welcome-to-Home lifecycle preservation. Ordinary access requirements remain owned by [household-identity](../../specs/household-identity/spec.md).
+- `demo-household`: guarded health-independent Welcome prefill, truthful helper, a manual login entry to the existing explanation, and Welcome-to-Home lifecycle preservation. Ordinary access requirements remain owned by [household-identity](../../../specs/household-identity/spec.md).
 
 ## Impact
 

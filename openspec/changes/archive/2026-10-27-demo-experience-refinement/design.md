@@ -15,7 +15,7 @@ Source review is pinned to main `e680fb7966978da3fbde25453a241c7e69e2b2a1`; the 
 | `pwa/src/components/demo/DemoDialog.tsx` | Native modal, naming, focus containment, Escape, phone sheet and wider compact dialog. Cleanup always returns focus to a connected trigger, including departure; this needs a bounded dismissal-versus-departure adjustment. |
 | `release-template/synology/.env.example` | Empty required `HEARTH_SECRET`, default `DEMO_MODE=false`. Release packaging does not guarantee the public constant. No deployment setting is changed here. |
 
-The normative delta belongs to [demo-household](../../specs/demo-household/spec.md); [household-identity](../../specs/household-identity/spec.md) remains authoritative for access and retries. The delta changes the old health-dependent prefill and login-only hint exception; it preserves every existing explanation, accessibility and dismissal scenario.
+The normative delta belongs to [demo-household](../../../specs/demo-household/spec.md); [household-identity](../../../specs/household-identity/spec.md) remains authoritative for access and retries. The delta changes the old health-dependent prefill and login-only hint exception; it preserves every existing explanation, accessibility and dismissal scenario.
 
 Current competing work: #348 is merged; #340 remains draft and concerns broader reset/capture behavior. #351 at `2bf9e01ff844ed502a75d92ea8eb2a48abd77983` is an unapproved Beta proposal touching presenter, acknowledgement and focus seams. Its old purple/44px prose differs from main's later sage/32px specification and must not be copied into this design. Do not apply its Beta/mismatch proposals implicitly. Reconcile the eventual implementation with whichever changes actually land first.
 
