@@ -1,4 +1,4 @@
-import { test, expect, type BrowserContext } from '@playwright/test';
+import { test, expect, type BrowserContext, type Page } from '@playwright/test';
 import { generateSecretToken } from './auth-utils';
 
 test.skip(
@@ -85,13 +85,214 @@ test('two household shoppers observe extra mutations and reconnect recovers a mi
     await firstRow.getByRole('button', { name: 'Change section for Ground coffee' }).click();
     await firstRow.getByRole('button', { name: 'Pantry', exact: true }).click();
     await expect(second.getByTestId('aisle-section-Pantry')).toContainText('Ground coffee');
-    await stream(false);
+    const schedule = async (offset: number) => {
+      const response = await request.get(
+        `${api}/api/schedule?weekOffset=${offset}&referenceWeekStartDate=2026-10-19`,
+        { headers }
+      );
+      expect(response.status()).toBe(200);
+      return (await response.json()).data;
+    };
+    const checkedFour = (await schedule(0)).groceryExtras[0];
+    expect(checkedFour).toMatchObject({ checked: true, version: 4 });
+    await firstRow.getByTestId('grocery-extra-checkbox').click();
+    await expect(secondRow.getByTestId('grocery-extra-checkbox')).toHaveAttribute(
+      'aria-checked',
+      'false'
+    );
+    const uncheckedFive = (await schedule(0)).groceryExtras[0];
+    expect(uncheckedFive).toMatchObject({ checked: false, version: 5 });
+    await second.goto('/planner?weekOffset=1&referenceWeekStartDate=2026-10-19');
+    await second.getByTestId('grocery-tab').click();
+    await expect(secondRow).toContainText('Ground coffee');
+    await expect(second.getByTestId('grocery-extra-composer')).toHaveCount(0);
+
+    // Observe the native EventSource after the production hook's listener; never invoke stores.
+    for (const page of [first, second]) {
+      await page.waitForFunction(
+        () => (window as any).__sseSource?.readyState === EventSource.OPEN
+      );
+      await page.evaluate(() => {
+        (window as any).__qualificationEvents = [];
+        for (const name of ['grocery_extras_updated', 'week_updated', 'connected'])
+          (window as any).__sseSource.addEventListener(name, (event: MessageEvent) => {
+            (window as any).__qualificationEvents.push({ name, data: JSON.parse(event.data) });
+          });
+      });
+    }
+    const replay = async (page: Page, eventType: string, payload: unknown) => {
+      const before = await page.evaluate(() => (window as any).__qualificationEvents.length);
+      expect(
+        (
+          await request.post(`${api}/_test/ux/replay`, {
+            headers,
+            data: { eventType, payload },
+          })
+        ).status()
+      ).toBe(200);
+      await page.waitForFunction(
+        (count) => (window as any).__qualificationEvents.length > count,
+        before
+      );
+    };
+    const eventPayload = (extra: unknown) => ({
+      weekStartDate: '2026-10-19',
+      groceryExtras: [extra],
+    });
+    const future = await schedule(1);
+    expect(future.weekStartDate).toBe('2026-10-26');
+    const staleFuture = { ...future, groceryExtras: [checkedFour] };
+    await replay(second, 'grocery_extras_updated', eventPayload(checkedFour));
+    await expect(secondRow.getByTestId('grocery-extra-checkbox')).toHaveAttribute(
+      'aria-checked',
+      'false'
+    );
+    await replay(second, 'week_updated', { schedule: staleFuture });
+    await expect(secondRow.getByTestId('grocery-extra-checkbox')).toHaveAttribute(
+      'aria-checked',
+      'false'
+    );
+
+    // A real selected-week HTTP read reaches the browser with only the occurrence representation
+    // substituted. The server normally omits checked future projections; this is an injected
+    // boundary condition, not a claim that PostgreSQL produced this mixed snapshot.
+    let readDelivered = false;
+    await second.route('**/api/schedule?**', async (route) => {
+      const response = await route.fetch();
+      const body = await response.json();
+      if (new URL(route.request().url()).searchParams.get('weekOffset') === '1') {
+        body.data.groceryExtras = [checkedFour];
+      }
+      await route.fulfill({ response, json: body });
+      readDelivered = true;
+    });
+    const readResponse = second.waitForResponse(
+      (response) =>
+        response.url().includes('/api/schedule?') &&
+        new URL(response.url()).searchParams.get('weekOffset') === '1'
+    );
+    await second.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pageshow')));
+    await readResponse;
+    await expect.poll(() => readDelivered).toBe(true);
+    await second.unrouteAll({ behavior: 'wait' });
+    await second.evaluate(
+      () =>
+        new Promise<void>((resolve) =>
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+        )
+    );
+    await expect(secondRow.getByTestId('grocery-extra-checkbox')).toHaveAttribute(
+      'aria-checked',
+      'false'
+    );
+
+    // Equal-version checked winners exercise both reconciliation boundaries.
+    const equalChecked = { ...uncheckedFive, checked: true };
+    await replay(second, 'grocery_extras_updated', eventPayload(equalChecked));
+    await expect(secondRow).toHaveCount(0);
+    await replay(second, 'grocery_extras_updated', eventPayload(uncheckedFive));
+    await expect(secondRow).toHaveCount(1);
+    await replay(second, 'week_updated', {
+      schedule: { ...future, groceryExtras: [equalChecked] },
+    });
+    await expect(secondRow).toHaveCount(0);
+    await replay(second, 'grocery_extras_updated', eventPayload(uncheckedFive));
+    await expect(secondRow).toHaveCount(1);
+
+    // Hold a future-view check before the real mutation boundary; both event and snapshot
+    // collections must preserve its optimistic absence until the version-six commit.
+    let releaseCheck!: () => void;
+    const checkGate = new Promise<void>((resolve) => {
+      releaseCheck = resolve;
+    });
+    let checkArrived = false;
+    await second.route('**/api/grocery-extras/*', async (route) => {
+      if (route.request().method() === 'PATCH') {
+        checkArrived = true;
+        await checkGate;
+      }
+      await route.continue();
+    });
+    await secondRow.getByTestId('grocery-extra-checkbox').click();
+    await expect.poll(() => checkArrived).toBe(true);
+    await expect(secondRow).toHaveCount(0);
+    await replay(second, 'grocery_extras_updated', eventPayload(uncheckedFive));
+    await expect(secondRow).toHaveCount(0);
+    await replay(second, 'week_updated', { schedule: future });
+    await expect(secondRow).toHaveCount(0);
+    const checkResponse = second.waitForResponse(
+      (response) =>
+        response.request().method() === 'PATCH' && response.url().includes('/api/grocery-extras/')
+    );
+    releaseCheck();
+    expect((await checkResponse).status()).toBe(200);
+    await second.unrouteAll({ behavior: 'wait' });
+    await expect(secondRow).toHaveCount(0);
+    await expect(firstRow.getByTestId('grocery-extra-checkbox')).toHaveAttribute(
+      'aria-checked',
+      'true'
+    );
+    expect((await schedule(0)).groceryExtras[0]).toMatchObject({ checked: true, version: 6 });
+    expect((await schedule(1)).groceryExtras).toEqual([]);
+    await firstRow.getByTestId('grocery-extra-checkbox').click();
+    await expect(secondRow).toHaveCount(1);
+
+    // Hold deletion before the real API boundary. Stale event/snapshot receipt cannot resurrect it.
+    let releaseDelete!: () => void;
+    const deletionGate = new Promise<void>((resolve) => {
+      releaseDelete = resolve;
+    });
+    let deleteArrived = false;
+    await first.route('**/api/grocery-extras/*', async (route) => {
+      if (route.request().method() === 'DELETE') {
+        deleteArrived = true;
+        await deletionGate;
+      }
+      await route.continue();
+    });
     await firstRow.getByRole('button', { name: 'Edit Ground coffee' }).click();
     await firstRow.getByRole('button', { name: 'Delete', exact: true }).click();
+    await expect.poll(() => deleteArrived).toBe(true);
+    await expect(firstRow).toHaveCount(0);
+    await replay(first, 'grocery_extras_updated', eventPayload(uncheckedFive));
+    await expect(firstRow).toHaveCount(0);
+    await replay(first, 'week_updated', {
+      schedule: { ...(await schedule(0)), groceryExtras: [uncheckedFive] },
+    });
+    await expect(firstRow).toHaveCount(0);
+    await stream(false);
+    const deletionResponse = first.waitForResponse(
+      (response) =>
+        response.request().method() === 'DELETE' && response.url().includes('/api/grocery-extras/')
+    );
+    releaseDelete();
+    expect((await deletionResponse).status()).toBe(204);
     await expect(firstRow).toHaveCount(0);
     await expect(secondRow).toHaveCount(1);
+    const recoveredRead = second.waitForResponse(
+      (response) =>
+        response.url().includes('/api/schedule?') &&
+        new URL(response.url()).searchParams.get('weekOffset') === '1'
+    );
     await stream(true);
+    expect((await recoveredRead).status()).toBe(200);
     await expect(secondRow).toHaveCount(0, { timeout: 15_000 });
+    await expect(second).toHaveURL(/weekOffset=1/);
+    await expect(second.getByTestId('grocery-extra-composer')).toHaveCount(0);
+    expect((await schedule(1)).groceryExtras).toEqual([]);
+    // Also observe deletion through the live stream with both shoppers on the current week.
+    await second.goto('/planner?weekOffset=0&referenceWeekStartDate=2026-10-19');
+    await second.getByTestId('grocery-tab').click();
+    await expect(second.getByTestId('grocery-extra-composer')).toBeVisible();
+    await input.fill('Disposable extra');
+    await first.getByRole('button', { name: 'Add', exact: true }).tap();
+    await expect(secondRow).toContainText('Disposable extra');
+    await firstRow.getByRole('button', { name: 'Edit Disposable extra' }).click();
+    await firstRow.getByRole('button', { name: 'Delete', exact: true }).click();
+    await expect(secondRow).toHaveCount(0);
+    console.log(
+      'QUALIFIED: current-week two-client add/check/rename/category/delete; stale event/snapshot/HTTP; equal/newer checked; pending check/delete; future-week reconnect authoritative read'
+    );
   } finally {
     for (const context of contexts) await context.close();
   }

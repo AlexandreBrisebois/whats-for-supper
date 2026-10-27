@@ -1,0 +1,10 @@
+{
+  "candidate_pairs": 51,
+  "reviewed_generated": 51,
+  "targeted_pairs": 4,
+  "total_reviewed": 55,
+  "unreviewed": 0,
+  "all_pair_sides_source_hash_verified": true,
+  "deterministic_candidates_match_lead_rerun": true,
+  "semantic_review": "Lead read all reported pair bodies/scenarios and rationales; no exhaustive claim beyond generated and targeted pairs."
+}

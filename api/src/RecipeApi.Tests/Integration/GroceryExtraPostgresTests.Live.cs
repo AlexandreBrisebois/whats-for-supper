@@ -44,6 +44,15 @@ public sealed partial class GroceryExtraPostgresTests
                 if (!online) foreach (var context in streams.Values) context.Abort();
                 return Results.Ok();
             }).ExcludeFromDescription().RequireAuthorization();
+            // Replay a captured representation through the real transport, without changing persistence.
+            // Only this isolated fixture exposes the authenticated ordering control.
+            application.MapPost("/_test/ux/replay", async (JsonElement body, SseConnectionManager manager) =>
+            {
+                var eventType = body.GetProperty("eventType").GetString();
+                if (eventType is not ("grocery_extras_updated" or "week_updated")) return Results.BadRequest();
+                await manager.BroadcastAsync(eventType, body.GetProperty("payload").Clone());
+                return Results.Ok();
+            }).ExcludeFromDescription().RequireAuthorization();
             // The deployment gateway serves PWA navigation and terminates API/SSE here.
             application.MapFallback("{**path}", async context =>
             {
@@ -114,7 +123,10 @@ public sealed partial class GroceryExtraPostgresTests
                 output.WriteLine(await stderr);
                 Assert.Equal(0, browser.ExitCode);
                 db.ChangeTracker.Clear();
-                var saved = await db.GroceryExtraOccurrences.SingleAsync();
+                var occurrences = await db.GroceryExtraOccurrences.ToListAsync();
+                Assert.Equal(2, occurrences.Count);
+                Assert.All(occurrences, occurrence => Assert.NotNull(occurrence.RemovedAt));
+                var saved = Assert.Single(occurrences, occurrence => occurrence.Name == "Ground coffee");
                 Assert.Equal("Ground coffee", saved.Name);
                 Assert.Equal("Pantry", saved.GrocerySection);
                 Assert.NotNull(saved.RemovedAt);

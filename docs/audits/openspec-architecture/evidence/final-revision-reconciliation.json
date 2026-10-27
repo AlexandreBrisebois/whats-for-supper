@@ -1,0 +1,16 @@
+{
+  "audit_source_head": "a3232949b1fd627771ebe9ee68a975170f1798ad",
+  "final_checkout_head": "e680fb7966978da3fbde25453a241c7e69e2b2a1",
+  "observed_event": "HEAD advanced during finalization outside audit commands; no commit or checkout performed by audit",
+  "committed_changed_paths": [
+    ".github/workflows/container-candidate.yml",
+    "pwa/.dockerignore"
+  ],
+  "canonical_files_hashes_unchanged": 34,
+  "other_preexisting_tracked_files_unchanged": 2357,
+  "audit_owned_git_changes": [
+    "docs/audits/openspec-architecture/"
+  ],
+  "status": "?? docs/audits/\n",
+  "qualification": "Original no-change preservation checkpoint remains historically true; final mismatch was reconciled to unrelated committed changes, preserved intact. Benchmarks/inventory remain source snapshot evidence. Strict REPRODUCE protocol requires recorded HEAD; current canonical bytes are content-identical."
+}

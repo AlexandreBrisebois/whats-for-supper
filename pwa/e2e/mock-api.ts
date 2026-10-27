@@ -2673,40 +2673,46 @@ export async function mockSseWithVoteUpdated(
 }
 
 /**
- * Mocks the SSE stream to emit a `grocery_updated` event after the initial
- * `connected` snapshot. Use this to simulate a family member toggling a
- * grocery item — triggers `plannerStore.setGroceryState` on all connected
- * clients for the given week.
- *
- * @param page         - Playwright Page instance
- * @param weekOffset   - The week offset the grocery state belongs to
- * @param groceryState - Map of ingredient name → checked boolean
+ * Hold a native SSE response until the caller has observed the loaded checklist.
+ * The schedule GET owns initial state in this fixture; an unrelated empty
+ * connected snapshot would overwrite its rows. Deliver one grocery frame only,
+ * then answer reconnects with 204 so the finite response cannot replay state.
  */
 export async function mockSseWithGroceryUpdated(
   page: Page,
   weekOffset: number,
   groceryState: Record<string, boolean>
-): Promise<void> {
+): Promise<{ triggerGroceryUpdated: () => Promise<void> }> {
+  let requested!: (route: Route) => void;
+  const streamRequested = new Promise<Route>((resolve) => {
+    requested = resolve;
+  });
+  let claimed = false;
   await page.route(/\/(?:backend\/)?api\/stream/, async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'text/event-stream',
-      headers: {
-        'Cache-Control': 'no-cache',
-        Connection: 'keep-alive',
-        'X-Accel-Buffering': 'no',
-      },
-      body: buildSseBody([
-        buildConnectedEvent(),
-        buildSseFrame('grocery_updated', {
+    if (claimed) return route.fulfill({ status: 204 });
+    claimed = true;
+    requested(route);
+  });
+  return {
+    triggerGroceryUpdated: async () => {
+      const route = await streamRequested;
+      await route.fulfill({
+        status: 200,
+        contentType: 'text/event-stream',
+        headers: {
+          'Cache-Control': 'no-cache',
+          Connection: 'keep-alive',
+          'X-Accel-Buffering': 'no',
+        },
+        body: buildSseFrame('grocery_updated', {
           type: 'grocery_updated',
           weekOffset,
           weekStartDate: builders.scheduleDays(weekOffset).weekStartDate,
           groceryState,
         }),
-      ]),
-    });
-  });
+      });
+    },
+  };
 }
 
 export async function mockSseWithGroceryExtrasUpdated(

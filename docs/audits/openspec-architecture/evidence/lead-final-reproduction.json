@@ -1,0 +1,19 @@
+{
+  "status": "passed",
+  "protocol": "Exact REPRODUCE.md code executed after portable temp-path fix",
+  "head": "a3232949b1fd627771ebe9ee68a975170f1798ad",
+  "temp_directory": "/private/var/folders/7x/450tvgfj1lg2gx9p89txzx0w0000gn/T/wfs-openspec-audit-reproduce.wpvkp0jz",
+  "checks": [
+    "All source file hashes",
+    "Byte-identical inventory and requirement JSON",
+    "Byte-identical all 51 candidates with replayed review annotations",
+    "Byte-identical 55 reviewed pairs",
+    "Summary and 171 local-link records",
+    "Benchmark payloads and non-timing results"
+  ],
+  "initial_failure": "Temporary path confinement assertion initially compared resolved /private/var to unresolved /var alias. Resolved temp root explicitly and reran successfully; no source mutation.",
+  "temporary_reproduction_directories": [
+    "/private/var/folders/7x/450tvgfj1lg2gx9p89txzx0w0000gn/T/wfs-openspec-audit-reproduce.5a67zvox",
+    "/private/var/folders/7x/450tvgfj1lg2gx9p89txzx0w0000gn/T/wfs-openspec-audit-reproduce.wpvkp0jz"
+  ]
+}

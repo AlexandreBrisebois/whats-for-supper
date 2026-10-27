@@ -324,6 +324,36 @@ async function setupGroceryPage(
 }
 
 test.describe('Grocery List — everyday extras', () => {
+  test('source viewport policy survives hydration and composer refocus', async ({ page }) => {
+    const documentResponse = page.waitForResponse(
+      (response) =>
+        response.request().isNavigationRequest() && new URL(response.url()).pathname === '/planner'
+    );
+    await setupGroceryPage(page);
+    const html = await (await documentResponse).text();
+    const viewportTags = html.match(/<meta\b[^>]*name="viewport"[^>]*>/g);
+    expect(viewportTags).toHaveLength(1);
+    expect(viewportTags![0]).toContain('interactive-widget=resizes-content');
+
+    // Reaching the grocery tab exercises hydrated React controls. Desktop focus
+    // cycles check metadata ownership, not physical Android keyboard geometry.
+    const viewport = page.locator('meta[name="viewport"]');
+    await expect(viewport).toHaveCount(1);
+    const content = await viewport.getAttribute('content');
+    expect(content).toContain('interactive-widget=resizes-content');
+    const input = page.getByTestId('grocery-extra-composer').getByRole('combobox');
+    await input.fill('Viewport fixture');
+    await expect(input).toBeFocused();
+    await input.blur();
+    await input.focus();
+    await expect(input).toBeFocused();
+    await expect(viewport).toHaveCount(1);
+    await expect(viewport).toHaveAttribute('content', content!);
+    await page.reload();
+    await expect(viewport).toHaveCount(1);
+    await expect(viewport).toHaveAttribute('content', content!);
+  });
+
   test('adds a distinct extra from the bottom composer and preserves it after reload', async ({
     page,
   }) => {
@@ -616,28 +646,86 @@ test.describe('Grocery List — everyday extras', () => {
   test('shows outstanding extras in every future week and read-only snapshots in the past', async ({
     page,
   }) => {
-    await setupGroceryPage(page);
+    const { groceryExtras } = await setupGroceryPage(page);
+    const checklist = page.getByTestId('grocery-checklist');
+    const closeButton = checklist.getByRole('button', { name: 'Close grocery list' });
+    const expectShoppingReady = async () => {
+      // During entrance the transformed wrapper contains the fixed checklist.
+      // Visible rows alone do not mean it has reached its viewport overlay.
+      await expect
+        .poll(() =>
+          checklist.evaluate((element) => {
+            const rect = element.getBoundingClientRect();
+            return (
+              rect.x === 0 &&
+              rect.y === 0 &&
+              rect.width === window.innerWidth &&
+              rect.height === window.innerHeight
+            );
+          })
+        )
+        .toBe(true);
+      // A full-size overlay can still be below the sticky header while its
+      // opacity/stacking transition finishes. Observe the actual pointer target.
+      await expect
+        .poll(() =>
+          closeButton.evaluate((button) => {
+            const rect = button.getBoundingClientRect();
+            return button.contains(
+              document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2)
+            );
+          })
+        )
+        .toBe(true);
+    };
+    const closeShopping = async () => {
+      await expectShoppingReady();
+      await closeButton.click();
+      // Exit keeps the old rows mounted; do not reopen against that old view.
+      await expect(checklist).toHaveCount(0);
+    };
     const composer = page.getByTestId('grocery-extra-composer');
     await composer.getByRole('combobox').fill('Coffee');
     await composer.getByRole('button', { name: 'Add' }).click();
     await expect(page.getByTestId('grocery-extra-row')).toContainText('Coffee');
+    groceryExtras.push({
+      ...builders.groceryExtra({ name: 'Tea', normalizedKey: 'tea', checked: true }),
+    });
 
-    await page.getByRole('button', { name: 'Close grocery list' }).click();
+    await closeShopping();
     await page.getByTestId('next-week').click();
     await expect(page).toHaveURL(/weekOffset=1/);
+    await expect(page.getByRole('heading', { name: 'May 11 — 17', exact: true })).toBeVisible();
     await page.getByTestId('grocery-tab').click();
+    await expectShoppingReady();
     await expect(page.getByTestId('grocery-extra-composer')).toHaveCount(0);
+    await expect(page.getByTestId('grocery-extra-row')).toHaveCount(1);
+    await expect(page.getByTestId('grocery-extra-row').filter({ hasText: 'Tea' })).toHaveCount(0);
     await expect(page.getByTestId('grocery-extra-row')).toContainText('Coffee');
     await expect(page.getByRole('button', { name: 'Edit Coffee' })).toBeVisible();
 
-    await page.getByRole('button', { name: 'Close grocery list' }).click();
+    await closeShopping();
     await page.getByTestId('next-week').click();
     await expect(page).toHaveURL(/weekOffset=2/);
+    await expect(page.getByRole('heading', { name: 'May 18 — 24', exact: true })).toBeVisible();
     await page.getByTestId('grocery-tab').click();
+    await expectShoppingReady();
+    await expect(page.getByTestId('grocery-extra-row')).toContainText('Coffee');
+    await expect(page.getByTestId('grocery-extra-composer')).toHaveCount(0);
+    await expect(page.getByTestId('grocery-extra-row')).toHaveCount(1);
+    await expect(page.getByTestId('grocery-extra-row').filter({ hasText: 'Tea' })).toHaveCount(0);
+
+    await closeShopping();
+    await expect(page).toHaveURL(/weekOffset=2/);
+    await expect(page.getByRole('heading', { name: 'May 18 — 24', exact: true })).toBeVisible();
+    await page.getByTestId('grocery-tab').click();
+    await expectShoppingReady();
+    await expect(page).toHaveURL(/weekOffset=2/);
+    await expect(page.getByTestId('grocery-extra-row')).toHaveCount(1);
     await expect(page.getByTestId('grocery-extra-row')).toContainText('Coffee');
     await expect(page.getByTestId('grocery-extra-composer')).toHaveCount(0);
 
-    await page.getByRole('button', { name: 'Close grocery list' }).click();
+    await closeShopping();
     await page.getByTestId('prev-week').click();
     await expect(page).toHaveURL(/weekOffset=1/);
     await expect(page.getByRole('heading', { name: 'May 11 — 17', exact: true })).toBeVisible();
@@ -648,10 +736,13 @@ test.describe('Grocery List — everyday extras', () => {
     await expect(page).toHaveURL(/weekOffset=-1/);
     await expect(page.getByRole('heading', { name: 'Apr 27 — May 3', exact: true })).toBeVisible();
     await page.getByTestId('grocery-tab').click();
+    await expectShoppingReady();
     const historical = page.getByTestId('grocery-extra-row');
     await expect(historical).toContainText('Toilet paper');
     await expect(historical).toContainText('Bought');
     await expect(historical.getByRole('button')).toHaveCount(0);
+    await expect(historical.getByRole('checkbox')).toHaveCount(0);
+    await expect(composer).toHaveCount(0);
   });
 
   test('checks, renames, recategorizes, and deletes only the selected occurrence', async ({
@@ -790,9 +881,7 @@ test.describe('Grocery List — PATCH failure behaviour', () => {
 });
 
 test.describe('Grocery List — SSE sync', () => {
-  // Quarantine flaky SSE behavior in the main E2E suite until the stream
-  // synchronization path is hardened and deterministic.
-  test.skip('grocery_updated SSE → checklist updates without navigation', async ({ page }) => {
+  test('grocery_updated SSE → checklist updates without navigation', async ({ page }) => {
     const baseUrl = process.env.BASE_URL || 'http://127.0.0.1:3000';
 
     await page
@@ -810,15 +899,16 @@ test.describe('Grocery List — SSE sync', () => {
 
     // Mock SSE to emit grocery_updated with Pasta checked — registered AFTER
     // setupCommonRoutes so LIFO gives this handler priority over the default stream route.
-    await mockSseWithGroceryUpdated(page, 0, {
+    const { triggerGroceryUpdated } = await mockSseWithGroceryUpdated(page, 1, {
       Pasta: true,
-      Beef: false,
+      Beef: true,
       'Tomato Sauce': false,
       Cheese: false,
     });
 
     // Override schedule to return a week with one recipe that has known ingredients
     const monday = currentMonday();
+    monday.setUTCDate(monday.getUTCDate() + 7);
     const GROCERY_INGREDIENTS_SSE = ['Pasta', 'Beef', 'Tomato Sauce', 'Cheese'];
     const GROCERY_SECTION_MAP_SSE: Record<string, string> = {
       Pasta: 'Pantry',
@@ -847,15 +937,19 @@ test.describe('Grocery List — SSE sync', () => {
     await page.route(
       (url) => url.pathname === '/api/schedule',
       async (route) => {
-        if (route.request().method() === 'GET') {
+        if (
+          route.request().method() === 'GET' &&
+          new URL(route.request().url()).searchParams.get('weekOffset') === '1'
+        ) {
           await route.fulfill({
             status: 200,
             contentType: 'application/json',
             body: JSON.stringify({
               data: {
-                weekOffset: 0,
+                weekOffset: 1,
                 calendar: builders.deploymentCalendar() as any,
-                weekStartDate: '2026-05-04' as any,
+                weekStartDate: '2026-05-11' as any,
+                groceryState: { Pasta: false, Beef: true, 'Tomato Sauce': false, Cheese: false },
                 locked: false,
                 status: 0,
                 days,
@@ -867,41 +961,44 @@ test.describe('Grocery List — SSE sync', () => {
             }),
           });
         } else {
-          await route.continue();
+          await route.fallback();
         }
       }
     );
 
-    await page.goto('/planner');
+    await page.goto('/planner?weekOffset=1');
     await expect(page.getByTestId('day-card-0')).toBeVisible({ timeout: 10_000 });
 
     // Switch to the grocery tab
     await page.getByTestId('grocery-tab').click();
     await expect(page.getByTestId('grocery-checklist')).toBeVisible({ timeout: 10_000 });
 
-    // After the grocery_updated SSE event, the Pasta item should be checked
-    // without any navigation — the SSE push updates the store directly.
-    // Assert semantic state instead of the styling class so this remains a behavior test.
     const pastaItem = page.getByTestId('grocery-item-checkbox').filter({ hasText: 'Pasta' });
-    await expect(pastaItem).toBeVisible({ timeout: 10_000 });
-    await expect(pastaItem).toHaveAttribute('aria-checked', 'true', { timeout: 10_000 });
-
-    // Assert that Pasta is now checked (true) and Beef is still unchecked (false)
-    // Use poll to give SSE processing time to hydrate the store
-    await expect
-      .poll(
-        async () => {
-          const pastaItem = page.getByRole('checkbox', { name: 'Pasta' });
-          return await pastaItem.getAttribute('aria-checked');
-        },
-        { timeout: 10_000 }
-      )
-      .toBe('true');
-
-    await expect(page.getByRole('checkbox', { name: 'Beef' })).toHaveAttribute(
-      'aria-checked',
-      'false'
-    );
+    const beefItem = page.getByTestId('grocery-item-checkbox').filter({ hasText: 'Beef' });
+    const cheeseItem = page.getByTestId('grocery-item-checkbox').filter({ hasText: 'Cheese' });
+    await expect(pastaItem).toBeVisible();
+    await expect(pastaItem).toHaveAttribute('aria-checked', 'false');
+    await expect(beefItem).toHaveAttribute('aria-checked', 'true');
+    await expect(cheeseItem).toHaveAttribute('aria-checked', 'false');
+    await expect(page.getByRole('heading', { name: 'May 11 — 17', exact: true })).toBeVisible();
+    const selectedUrl = page.url();
+    const navigations: string[] = [];
+    page.on('framenavigated', (frame) => {
+      if (frame === page.mainFrame()) navigations.push(frame.url());
+    });
+    const received = page.waitForEvent('console', {
+      predicate: (message) => message.text() === '[SSE] Received "grocery_updated" event',
+    });
+    await triggerGroceryUpdated();
+    await received;
+    await expect(pastaItem).toBeVisible();
+    await expect(pastaItem).toHaveAttribute('aria-checked', 'true');
+    await expect(beefItem).toHaveAttribute('aria-checked', 'true');
+    await expect(cheeseItem).toHaveAttribute('aria-checked', 'false');
+    await expect(page.getByTestId('grocery-item-checkbox')).toHaveCount(4);
+    await expect(page).toHaveURL(selectedUrl);
+    await expect(page.getByRole('heading', { name: 'May 11 — 17', exact: true })).toBeVisible();
+    expect(navigations).toEqual([]);
   });
 
   test('week_updated SSE → grocery checkboxes do not flash (jitter regression test)', async ({

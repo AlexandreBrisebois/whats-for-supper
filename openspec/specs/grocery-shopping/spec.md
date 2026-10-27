@@ -550,6 +550,10 @@ The current-week grocery view SHALL keep a compact name composer at the bottom o
 - **WHEN** the current week has neither recipe-derived rows nor extras
 - **THEN** the empty grocery surface still offers the bottom extra composer without requiring planning first
 
+#### Scenario: Phone keyboard is dismissed and reopened
+- **WHEN** a member focuses the current-week bottom composer, dismisses the on-screen keyboard, and focuses the composer again
+- **THEN** the input and Add action remain fully visible and reachable above the keyboard on each opening
+
 #### Scenario: Add several items
 - **WHEN** a member successfully adds an extra from the composer
 - **THEN** the new row appears, the entered name clears, and another name can be entered without reopening a form
@@ -821,6 +825,11 @@ An extra mutation response or household update SHALL affect a loaded row only wh
 #### Scenario: Uncertain mutation outcome
 - **WHEN** a mutation response is lost after the server may have committed it
 - **THEN** the client rereads authoritative week state before offering a retry that could repeat the action
+
+#### Scenario: Older checked schedule state reaches a future-week view
+- **WHEN** a future-week grocery view holds an unchecked occurrence at version five and an eligible schedule response or snapshot supplies that same occurrence checked at version four
+- **THEN** the newer unchecked occurrence remains visible and actionable
+- **AND** an accepted equal-or-newer checked occurrence removes it from that future-week projection
 
 ### Requirement: Keep extra controls accessible and interruption-safe
 

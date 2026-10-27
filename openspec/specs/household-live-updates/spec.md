@@ -633,6 +633,11 @@ Extra reconciliation SHALL compare stable occurrence identity and version. An in
 - **WHEN** an event supplies a higher version for a nonpending occurrence
 - **THEN** the loaded row adopts the newer authoritative snapshot
 
+#### Scenario: Older checked event reaches a future-week view
+- **WHEN** a future-week grocery view holds an unchecked occurrence at version five and an eligible extra event supplies that occurrence checked at version four
+- **THEN** version five remains visible instead of being removed by the older checked projection
+- **AND** pending local mutations remain guarded and accepted equal-or-newer checked state can remove a nonpending projected occurrence
+
 ### Requirement: Recover extras through schedule snapshots and reconnects
 
 Eligible schedule snapshots SHALL include the authoritative extra occurrences for that shopping view and reconcile them under the same occurrence-week identity, version, and pending-mutation guards as an extra event. Live delivery SHALL remain a freshness hint rather than a durable replay guarantee.
