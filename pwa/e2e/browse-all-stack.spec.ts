@@ -850,7 +850,9 @@ async function expectFrontRecipe(page: Page, id: string) {
     .toEqual([id]);
 }
 
-for (const count of [126, 180]) {
+// Cover full and partial last pages with 20 recipes per page. The first backward
+// swipe must load the real last page and select its final recipe.
+for (const count of [40, 46]) {
   test(`complete ${count} recipe cycles retain identities and ordinals`, async ({ page }) => {
     test.setTimeout(600_000);
     const recipes = LARGE_LIBRARY_RECIPES.slice(0, count);
