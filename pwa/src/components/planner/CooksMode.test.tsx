@@ -18,6 +18,7 @@ vi.mock('framer-motion', () => ({
     ),
   },
   AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  useAnimation: () => ({ start: vi.fn() }),
 }));
 
 const routerMocks = vi.hoisted(() => ({ push: vi.fn() }));
@@ -98,6 +99,223 @@ describe('CooksMode', () => {
     usePlannerStore.setState({ cookProgress: {} });
     setCookingView('step-by-step');
     useFamilyStore.setState({ updateMemberPreferences: originalUpdateMemberPreferences });
+  });
+
+  it('consults original photos without losing an unsaved draft, bookmark, scroll or ingredient checks', async () => {
+    const id = 'recipe-original';
+    setCookingView('all-steps');
+    getRecipeMock.mockResolvedValue({
+      id,
+      name: 'Pasta',
+      sourceType: 'photos',
+      imageCount: 3,
+      finishedDishIndex: 1,
+      ingredients: ['Pasta'],
+      recipeInstructions: ['Boil water.', 'Cook pasta.'],
+    });
+    const onClose = vi.fn();
+    render(<CooksMode recipe={{ id, name: 'Pasta', image: '/pasta.jpg' }} onClose={onClose} />);
+    fireEvent.click((await screen.findAllByTestId('ingredient-toggle'))[0]);
+    fireEvent.click(screen.getByTestId('cooks-mode-step-next'));
+    act(() => usePlannerStore.getState().setCookProgress(id, 2));
+    const surface = screen.getByTestId('cooks-mode-instructions');
+    surface.scrollTop = 137;
+    fireEvent.click(screen.getByTestId('single-page-edit-step-2'));
+    const editor = screen.getByRole('textbox');
+    fireEvent.change(editor, { target: { value: 'My unsaved correction' } });
+    const original = screen.getByTestId('cooks-mode-original');
+    original.focus();
+    fireEvent.click(original);
+    const dialog = screen.getByRole('dialog', { name: 'View Original' });
+    expect(within(dialog).getByRole('img')).toHaveAttribute('src', `/api/recipes/${id}/original/1`);
+    expect(screen.getByTestId('cooks-mode-overlay')).toHaveAttribute('inert');
+    fireEvent.keyDown(dialog, { key: 'Escape' });
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(original).toHaveFocus();
+    expect(editor).toHaveValue('My unsaved correction');
+    expect(surface.scrollTop).toBe(137);
+    expect(usePlannerStore.getState().cookProgress[id]).toBe(2);
+    expect(onClose).not.toHaveBeenCalled();
+    expect(updateRecipeMock).not.toHaveBeenCalled();
+    expect(cookingMocks.markCooked).not.toHaveBeenCalled();
+    expect(getRecipeMock).toHaveBeenCalledOnce();
+    fireEvent.click(original);
+    expect(within(screen.getByRole('dialog')).getByRole('img')).toHaveAttribute(
+      'src',
+      `/api/recipes/${id}/original/1`
+    );
+    fireEvent.click(screen.getByTestId('action-close-viewer'));
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Ingredients' }));
+    expect(screen.getAllByTestId('ingredient-toggle')[0]).toHaveAttribute('aria-checked', 'true');
+  });
+
+  it('keeps the recipe photo and direct controls separate from reading position', async () => {
+    getRecipeMock.mockResolvedValue({
+      id: 'recipe-1',
+      sourceType: 'photos',
+      imageCount: 1,
+      finishedDishIndex: -1,
+      recipeInstructions: ['Cook pasta.'],
+    });
+    render(
+      <CooksMode
+        recipe={{ id: 'recipe-1', name: 'Pasta', image: '/pasta.jpg' }}
+        onClose={vi.fn()}
+      />
+    );
+    await screen.findByTestId('cooks-mode-original');
+    const hero = screen.getByTestId('cooks-mode-hero');
+    expect(within(hero).getByRole('img', { name: 'Pasta' })).toHaveAttribute('src', '/pasta.jpg');
+    expect(within(hero).getByTestId('cooking-view-toggle')).toBeInTheDocument();
+    expect(within(hero).queryByTestId('cooks-mode-step-indicator')).toBeNull();
+    expect(
+      within(screen.getByTestId('cooking-reading-context')).getByTestId('cooks-mode-step-indicator')
+    ).toHaveTextContent('Check & Prep');
+    expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '0');
+  });
+
+  it.each([
+    ['photos', null, 0],
+    ['synthesized', null, 0],
+    ['url', null, 0],
+  ])('hides Original without a destination (%s)', async (sourceType, sourceUrl, imageCount) => {
+    getRecipeMock.mockResolvedValue({
+      id: 'recipe-1',
+      sourceType,
+      sourceUrl,
+      imageCount,
+      recipeInstructions: ['Cook.'],
+    });
+    render(<CooksMode recipe={{ id: 'recipe-1', name: 'Pasta', image: '' }} onClose={vi.fn()} />);
+    await screen.findByRole('heading', { name: 'Check & Prep' });
+    expect(screen.queryByTestId('cooks-mode-original')).toBeNull();
+  });
+
+  it('opens the website externally and uses images when its URL is absent', async () => {
+    const open = vi.spyOn(window, 'open').mockReturnValue(null);
+    getRecipeMock.mockResolvedValue({
+      id: 'recipe-1',
+      sourceType: 'url',
+      sourceUrl: 'https://example.test/soup',
+      imageCount: 0,
+      recipeInstructions: [],
+    });
+    const { rerender } = render(
+      <CooksMode recipe={{ id: 'recipe-1', name: 'Soup', image: '' }} onClose={vi.fn()} />
+    );
+    fireEvent.click(await screen.findByTestId('cooks-mode-original'));
+    expect(open).toHaveBeenCalledWith('https://example.test/soup', '_blank', 'noopener,noreferrer');
+    expect(screen.queryByRole('dialog')).toBeNull();
+    getRecipeMock.mockResolvedValue({
+      id: 'recipe-2',
+      sourceType: 'url',
+      sourceUrl: null,
+      imageCount: 2,
+      finishedDishIndex: -1,
+      recipeInstructions: [],
+    });
+    rerender(<CooksMode recipe={{ id: 'recipe-2', name: 'Soup', image: '' }} onClose={vi.fn()} />);
+    fireEvent.click(await screen.findByTestId('cooks-mode-original'));
+    expect(within(screen.getByRole('dialog')).getByRole('img')).toHaveAttribute(
+      'src',
+      '/api/recipes/recipe-2/original/0'
+    );
+    expect(open).toHaveBeenCalledOnce();
+    open.mockRestore();
+  });
+
+  it('blocks Original while an instruction save is pending, then retains failed-draft recovery', async () => {
+    let reject!: (error: Error) => void;
+    updateRecipeMock.mockReturnValue(
+      new Promise((_resolve, fail) => {
+        reject = fail;
+      })
+    );
+    setCookingView('all-steps');
+    getRecipeMock.mockResolvedValue({
+      id: 'recipe-1',
+      sourceType: 'photos',
+      imageCount: 1,
+      finishedDishIndex: -1,
+      recipeInstructions: ['Cook.'],
+    });
+    render(<CooksMode recipe={{ id: 'recipe-1', name: 'Pasta', image: '' }} onClose={vi.fn()} />);
+    await screen.findByTestId('cooks-mode-original');
+    fireEvent.click(screen.getByTestId('cooks-mode-step-next'));
+    fireEvent.click(screen.getByTestId('single-page-edit-step-1'));
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'My draft' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect(screen.getByTestId('cooks-mode-original')).toBeDisabled();
+    await act(async () => reject(new Error('offline')));
+    expect(screen.getByTestId('cooks-mode-original')).toBeEnabled();
+    expect(screen.getByRole('textbox')).toHaveValue('My draft');
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('blocks Original during preference writes and pending cooking completion without replaying it', async () => {
+    let save!: (value: unknown) => void;
+    let failCompletion!: (error: Error) => void;
+    useFamilyStore.setState({
+      updateMemberPreferences: vi.fn().mockReturnValue(
+        new Promise((resolve) => {
+          save = resolve;
+        })
+      ),
+    });
+    cookingMocks.markCooked.mockReturnValue(
+      new Promise((_resolve, reject) => {
+        failCompletion = reject;
+      })
+    );
+    getRecipeMock.mockResolvedValue({
+      id: 'recipe-1',
+      sourceType: 'photos',
+      imageCount: 1,
+      finishedDishIndex: -1,
+      recipeInstructions: [],
+    });
+    render(<CooksMode recipe={{ id: 'recipe-1', name: 'Pasta', image: '' }} onClose={vi.fn()} />);
+    const original = await screen.findByTestId('cooks-mode-original');
+    fireEvent.click(screen.getByRole('button', { name: 'All steps' }));
+    expect(original).toBeDisabled();
+    fireEvent.click(original);
+    await act(async () => save({ ...member, cookingViewMode: 'all-steps' }));
+    expect(original).toBeEnabled();
+    expect(screen.queryByRole('dialog')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Mark recipe as cooked' }));
+    expect(original).toBeDisabled();
+    await act(async () => failCompletion(new Error('offline')));
+    expect(original).toBeEnabled();
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('blocks Original during a cooking quality-report write and restores it afterwards', async () => {
+    const recipe = {
+      id: 'recipe-1',
+      name: 'Pasta',
+      canReimport: true,
+      sourceType: 'photos',
+      imageCount: 1,
+      finishedDishIndex: -1,
+      ingredients: ['Pasta'],
+      recipeInstructions: ['Cook.'],
+    };
+    let finish!: (value: unknown) => void;
+    getRecipeMock.mockResolvedValue(recipe);
+    saveRecipeImportIssueMock.mockReturnValue(
+      new Promise((resolve) => {
+        finish = resolve;
+      })
+    );
+    render(<CooksMode recipe={{ id: 'recipe-1', name: 'Pasta', image: '' }} onClose={vi.fn()} />);
+    const original = await screen.findByTestId('cooks-mode-original');
+    fireEvent.click(screen.getByTestId('cooks-mode-report-ingredients'));
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Save' }));
+    expect(original).toBeDisabled();
+    await act(async () => finish({ recipe, reimportStarted: false }));
+    expect(original).toBeEnabled();
+    expect(screen.queryByRole('dialog')).toBeNull();
   });
 
   it('shows a failed read honestly and retries real steps', async () => {
@@ -249,7 +467,9 @@ describe('CooksMode', () => {
     expect(allStepsButton.querySelector('.lucide-file')).toBeInTheDocument();
     fireEvent.click(screen.getByTestId('cooks-mode-step-next'));
     expect(screen.getByTestId('all-steps-recipe-list')).toHaveTextContent('Cook pasta');
-    expect(screen.getByTestId('cooks-mode-hero')).toHaveClass('h-48');
+    expect(
+      within(screen.getByTestId('cooks-mode-hero')).getByTestId('cooking-view-toggle')
+    ).toBeInTheDocument();
   });
 
   it('keeps a session view and offers retry when preference persistence fails', async () => {
@@ -575,7 +795,7 @@ describe('CooksMode', () => {
     expect(reportAction).toHaveTextContent('');
     expect(topActions).toContainElement(reportAction);
     expect(topActions).toContainElement(screen.getByRole('button', { name: "Close cook's mode" }));
-    expect(reportAction.closest('[data-testid="cooks-mode-hero"]')).toBeNull();
+    expect(screen.getByTestId('cooks-mode-hero')).toContainElement(reportAction);
     expect(reportAction.closest('[data-testid="cooks-mode-controls"]')).toBeNull();
     expect(screen.queryByTestId('cooks-mode-report-duplicate')).toBeNull();
     fireEvent.click(reportAction);
@@ -645,8 +865,8 @@ describe('CooksMode', () => {
     expect(reportAction).toHaveTextContent('');
     expect(editAction).toHaveTextContent('');
     expect(screen.getByTestId('cooks-mode-top-actions')).toContainElement(reportAction);
-    expect(reportAction.closest('[data-testid="cooks-mode-hero"]')).toBeNull();
-    expect(editAction.closest('[data-testid="cooks-mode-hero"]')).toBeInTheDocument();
+    expect(screen.getByTestId('cooks-mode-hero')).toContainElement(reportAction);
+    expect(screen.getByTestId('cooking-reading-context')).toContainElement(editAction);
     expect(reportAction.closest('[data-testid="cooks-mode-controls"]')).toBeNull();
     fireEvent.click(reportAction);
 
@@ -754,7 +974,7 @@ describe('CooksMode', () => {
     expect(instructionArea).toBeInTheDocument();
   });
 
-  it('renders a large editorial hero image and opens detail sheet from its accessible action', async () => {
+  it('retains the dish photo and opens detail from its accessible action', async () => {
     getRecipeMock.mockResolvedValue({
       id: 'recipe-1',
       name: 'Pasta Night',
@@ -771,9 +991,8 @@ describe('CooksMode', () => {
     const heroImage = await screen.findByAltText('Pasta Night');
     const heroContainer = screen.getByTestId('cooks-mode-hero');
 
-    // Requirement: Larger, editorial hero image (not h-14 w-14)
-    expect(heroContainer).not.toHaveClass('h-14');
-    expect(heroContainer).toHaveClass('h-48'); // Assuming h-48 or similar for "large"
+    expect(heroContainer).toContainElement(heroImage);
+    expect(screen.getByTestId('cooks-mode-photo')).toContainElement(heroImage);
 
     const openDetails = screen.getByRole('button', { name: 'Open recipe details' });
     expect(openDetails).toBeInTheDocument();

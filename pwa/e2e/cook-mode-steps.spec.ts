@@ -22,6 +22,7 @@ import {
   mockSseWithConnectedSchedule,
 } from './mock-api';
 import { REALISTIC_RECIPES } from '../src/testing/realistic-recipes';
+import path from 'node:path';
 
 /**
  * Build a 7-day schedule response with RECIPE_SPAGHETTI on Monday (the fixed test date).
@@ -137,6 +138,291 @@ test.describe('Cook Mode — HowToSection[] steps display', () => {
     });
   });
 
+  async function openOriginalCooking(
+    page: import('@playwright/test').Page,
+    overrides: Record<string, unknown> = {},
+    photo = 'cookbook-light.jpg'
+  ) {
+    await page.route('**/api/recipes/*', async (route) => {
+      if (route.request().method() !== 'GET') return route.fallback();
+      await route.fulfill({
+        json: {
+          recipe: {
+            ...REALISTIC_RECIPES[MOCK_IDS.RECIPE_SPAGHETTI],
+            sourceType: 'photos',
+            sourceUrl: null,
+            imageCount: 3,
+            finishedDishIndex: 1,
+            recipeInstructions: Array.from({ length: 6 }, (_, index) => ({
+              '@type': 'HowToStep',
+              name: `Step ${index + 1}`,
+              text: 'Stir gently and keep an eye on the pan. '.repeat(12),
+            })),
+            ...overrides,
+          },
+        },
+      });
+    });
+    await page.route('**/api/recipes/*/original/*', (route) =>
+      route.fulfill({ path: path.resolve('e2e/fixtures', photo), contentType: 'image/jpeg' })
+    );
+    await page.route('**/api/recipes/*/hero', (route) =>
+      route.fulfill({ path: path.resolve('e2e/fixtures', photo), contentType: 'image/jpeg' })
+    );
+    await page.goto('/home');
+    await page.getByTestId('cook-mode-btn').click();
+    if (overrides.imageCount === 0 && !overrides.sourceUrl) {
+      await expect(page.getByTestId('cooks-mode-original')).toHaveCount(0);
+    } else {
+      await expect(page.getByTestId('cooks-mode-original')).toBeVisible();
+    }
+    await collapseDevelopmentBadge(page);
+    await expect(page.getByTestId('cooks-mode-overlay')).toHaveCSS('opacity', '1');
+    await page.addStyleTag({ content: 'nextjs-portal { display: none !important; }' });
+  }
+
+  test('Original photo contains focus and returns the exact cooking draft and reading offset', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await openOriginalCooking(page);
+    await page.getByTestId('ingredient-toggle').first().click();
+    await page.getByTestId('cooks-mode-step-next').click();
+    const surface = page.getByTestId('cooks-mode-instructions');
+    await surface.evaluate((element) => {
+      element.scrollTop = 300;
+      element.dispatchEvent(new Event('scroll'));
+    });
+    await page.getByTestId('single-page-edit-step-2').click();
+    await page.getByRole('textbox').fill('Unsaved cooking correction');
+    const before = await surface.evaluate((element) => element.scrollTop);
+    const bookmark = await page.getByTestId('cooks-mode-step-indicator').textContent();
+    const original = page.getByTestId('cooks-mode-original');
+    await original.click();
+    const viewer = page.getByRole('dialog');
+    await expect(viewer).toBeVisible();
+    await expect(page.getByTestId('cooks-mode-overlay')).toHaveAttribute('inert', '');
+    await expect(viewer.getByRole('img')).toHaveAttribute('src', /original\/1$/);
+    await expect(page.getByTestId('action-close-viewer')).toBeFocused();
+    await page.keyboard.press('Shift+Tab');
+    await expect(viewer.locator('button:visible').last()).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(page.getByTestId('action-close-viewer')).toBeFocused();
+    await page.keyboard.press('Escape');
+    await expect(viewer).toHaveCount(0);
+    await expect(original).toBeFocused();
+    await expect(page.getByRole('textbox')).toHaveValue('Unsaved cooking correction');
+    await expect.poll(() => surface.evaluate((element) => element.scrollTop)).toBe(before);
+    await expect(page.getByTestId('cooks-mode-step-indicator')).toHaveText(bookmark!);
+    for (let repeat = 0; repeat < 2; repeat++) {
+      await original.click();
+      await expect(page.getByRole('dialog').getByRole('img')).toHaveAttribute(
+        'src',
+        /original\/1$/
+      );
+      await page.getByTestId('action-close-viewer').click();
+    }
+    await expect(page.getByRole('textbox')).toHaveValue('Unsaved cooking correction');
+  });
+
+  test('Original availability hides an unusable URL destination', async ({ page }) => {
+    await openOriginalCooking(page, { sourceType: 'url', sourceUrl: null, imageCount: 0 });
+    await expect(page.getByTestId('cooks-mode-original')).toHaveCount(0);
+    await expect(page.getByTestId('cooks-mode-step-next')).toBeEnabled();
+  });
+
+  test('Original photo retained PDF pages and failed images remain closable', async ({ page }) => {
+    // Imported PDF pages are already rasterized originals, using the same photos source metadata.
+    await openOriginalCooking(page, { sourceType: 'photos', finishedDishIndex: -1 });
+    await page.route('**/api/recipes/*/original/*', (route) =>
+      route.fulfill({ status: 404, body: 'Unavailable page image' })
+    );
+    await page.getByTestId('cooks-mode-original').click();
+    const image = page.getByRole('dialog').getByRole('img');
+    await expect(image).toHaveAttribute('src', /original\/0$/);
+    await expect
+      .poll(() => image.evaluate((element) => (element as HTMLImageElement).complete))
+      .toBe(true);
+    expect(await image.evaluate((element) => (element as HTMLImageElement).naturalWidth)).toBe(0);
+    await page.getByTestId('action-close-viewer').click();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await expect(page.getByTestId('cooks-mode-original')).toBeFocused();
+  });
+
+  test('Original URL opens the source while keeping cooking mounted', async ({ page }) => {
+    await page
+      .context()
+      .route('https://example.test/cooking-source', (route) =>
+        route.fulfill({ contentType: 'text/html', body: '<title>Recipe source</title>' })
+      );
+    await openOriginalCooking(page, {
+      sourceType: 'url',
+      sourceUrl: 'https://example.test/cooking-source',
+      imageCount: 0,
+    });
+    const popupPromise = page.context().waitForEvent('page');
+    await page.getByTestId('cooks-mode-original').click();
+    const popup = await popupPromise;
+    await expect(popup).toHaveURL('https://example.test/cooking-source');
+    await popup.close();
+    await expect(page.getByTestId('cooks-mode-overlay')).toBeVisible();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+  });
+
+  for (const appLocale of ['en', 'fr'] as const) {
+    test.describe(`Original responsive ${appLocale}`, () => {
+      test.use({ appLocale });
+      for (const width of [390, 820]) {
+        test(`200% text ${width}`, async ({ page }, testInfo) => {
+          await page.setViewportSize({ width, height: 844 });
+          await openOriginalCooking(page);
+          await page.getByTestId('cooks-mode-step-next').click();
+          await page.getByTestId('cooks-mode-overlay').evaluate((root) => {
+            const elements = Array.from(root.querySelectorAll<HTMLElement>('*'));
+            const sizes = elements.map((element) => {
+              const style = getComputedStyle(element);
+              return [parseFloat(style.fontSize), parseFloat(style.lineHeight)];
+            });
+            elements.forEach((element, index) => {
+              element.style.fontSize = `${sizes[index][0] * 2}px`;
+              if (Number.isFinite(sizes[index][1]))
+                element.style.lineHeight = `${sizes[index][1] * 2}px`;
+            });
+          });
+          const original = page.getByTestId('cooks-mode-original');
+          await expect(original).toBeInViewport();
+          expect(
+            await page.evaluate(() => document.documentElement.scrollWidth)
+          ).toBeLessThanOrEqual(width);
+          expect(
+            (await page.getByTestId('cooks-mode-instructions').boundingBox())!.height
+          ).toBeGreaterThan(44);
+          for (const button of await page
+            .getByTestId('cooks-mode-controls')
+            .getByRole('button')
+            .all()) {
+            const box = (await button.boundingBox())!;
+            expect(box.x + box.width).toBeLessThanOrEqual(width);
+            expect(
+              await button.evaluate((element) => element.scrollWidth <= element.clientWidth)
+            ).toBe(true);
+          }
+          await original.focus();
+          await page.keyboard.press('Tab');
+          await page.keyboard.press('Shift+Tab');
+          await expect(original).toBeFocused();
+          const contrast = await original.evaluate((element) => {
+            const style = getComputedStyle(element);
+            const rgb = (value: string) =>
+              value
+                .match(/[\d.]+/g)!
+                .slice(0, 3)
+                .map(Number);
+            const luminance = (color: number[]) =>
+              color
+                .map((channel) => {
+                  const v = channel / 255;
+                  return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+                })
+                .reduce((sum, v, i) => sum + v * [0.2126, 0.7152, 0.0722][i], 0);
+            const foreground = luminance(rgb(style.color));
+            const background = luminance(rgb(style.backgroundColor));
+            return {
+              color: style.color,
+              background: style.backgroundColor,
+              ratio:
+                (Math.max(foreground, background) + 0.05) /
+                (Math.min(foreground, background) + 0.05),
+              shadow: style.boxShadow,
+            };
+          });
+          expect(contrast.ratio).toBeGreaterThanOrEqual(4.5);
+          expect(contrast.shadow).not.toBe('none');
+          await testInfo.attach('Original enabled contrast and focus', {
+            body: JSON.stringify(contrast),
+            contentType: 'application/json',
+          });
+          await page.screenshot({ path: testInfo.outputPath('cooking-text-200.png') });
+        });
+      }
+      for (const viewport of [
+        { width: 320, height: 700 },
+        { width: 375, height: 812 },
+        { width: 390, height: 844 },
+        { width: 640, height: 375 },
+        { width: 768, height: 1024 },
+        { width: 820, height: 1180 },
+        { width: 1024, height: 768 },
+        { width: 1180, height: 820 },
+        { width: 780, height: 820 },
+      ]) {
+        test(`${viewport.width}x${viewport.height}`, async ({ page }, testInfo) => {
+          await page.setViewportSize(viewport);
+          await openOriginalCooking(
+            page,
+            {},
+            appLocale === 'fr' ? 'cookbook-dark.jpg' : 'cookbook-light.jpg'
+          );
+          await page.getByTestId('cooks-mode-step-next').click();
+          const hero = page.getByTestId('cooks-mode-hero');
+          const original = page.getByTestId('cooks-mode-original');
+          const surface = page.getByTestId('cooks-mode-instructions');
+          const image = hero.getByRole('img');
+          await expect
+            .poll(() => image.evaluate((element) => (element as HTMLImageElement).naturalWidth))
+            .toBeGreaterThan(0);
+          for (const control of [
+            original,
+            page.getByTestId('cooking-view-all-steps'),
+            page.getByTestId('cooking-view-step-by-step'),
+          ]) {
+            const box = (await control.boundingBox())!;
+            expect(box.width).toBeGreaterThanOrEqual(44);
+            expect(box.height).toBeGreaterThanOrEqual(44);
+            expect(box.x).toBeGreaterThanOrEqual(0);
+            expect(box.x + box.width).toBeLessThanOrEqual(viewport.width);
+          }
+          await page.screenshot({ path: testInfo.outputPath('cooking-ordinary.png') });
+          const title = page.getByTestId('cooks-mode-recipe-name');
+          const titleBox = (await title.boundingBox())!;
+          await title.evaluate((element) => {
+            element.style.color = 'transparent';
+            element.style.filter = 'none';
+          });
+          await page.screenshot({
+            path: testInfo.outputPath('title-underlay.png'),
+            clip: titleBox,
+          });
+          await title.evaluate((element) => {
+            element.style.color = '';
+            element.style.filter = '';
+          });
+          const heroBefore = await hero.boundingBox();
+          const imageBefore = await image.boundingBox();
+          await surface.evaluate((element) => {
+            element.scrollTop = 300;
+            element.dispatchEvent(new Event('scroll'));
+          });
+          await expect
+            .poll(() => surface.evaluate((element) => element.scrollTop))
+            .toBeGreaterThan(0);
+          expect(await hero.boundingBox()).toEqual(heroBefore);
+          expect(await image.boundingBox()).toEqual(imageBefore);
+          expect(
+            await page.evaluate(() => document.documentElement.scrollWidth)
+          ).toBeLessThanOrEqual(viewport.width);
+          expect((await surface.boundingBox())!.height).toBeGreaterThan(44);
+          if (viewport.width >= 768) {
+            expect(heroBefore!.width).toBeCloseTo(viewport.width * 0.4, 0);
+            const controls = (await page.getByTestId('cooks-mode-header-controls').boundingBox())!;
+            expect(controls.y).toBeGreaterThan(viewport.height / 2);
+          }
+          await page.screenshot({ path: testInfo.outputPath('cooking.png') });
+        });
+      }
+    });
+  }
+
   test('changes and remembers the selected member cooking view without a preview flag', async ({
     page,
   }) => {
@@ -155,11 +441,9 @@ test.describe('Cook Mode — HowToSection[] steps display', () => {
     expect(bounds!.height).toBeGreaterThanOrEqual(44);
     expect(bounds!.y).toBeGreaterThan(heroBounds!.y + heroBounds!.height / 2);
     expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(heroBounds!.y + heroBounds!.height);
-    const stepIndicatorBounds = await page
-      .getByTestId('cooks-mode-step-indicator')
-      .locator('..')
-      .boundingBox();
-    expect(bounds!.x).toBeLessThan(stepIndicatorBounds!.x);
+    await expect(
+      page.getByTestId('cooking-reading-context').getByTestId('cooks-mode-step-indicator')
+    ).toBeVisible();
     await page.getByTestId('cooks-mode-step-next').click();
     await expect(page.getByTestId('all-steps-recipe-list')).toBeVisible();
     const allStepsHeroHeight = (await page.getByTestId('cooks-mode-hero').boundingBox())!.height;

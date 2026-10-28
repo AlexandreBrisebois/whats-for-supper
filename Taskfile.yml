@@ -12,7 +12,7 @@ shopt: [globstar]
 
 vars:
   PYTHON: '{{.ROOT_DIR}}/.venv/bin/python'
-  OPENSPEC_VERSION: '1.14.3'
+  OPENSPEC_VERSION: '1.15.0'
   API_PORT: '5050'
   PWA_PORT: '3000'
   DB_PORT: '5432'

@@ -261,7 +261,7 @@ test.describe('Settings — FamilyGOTOSettings card', () => {
 
     // 2. Switch to French and wait for the UI to update optimistically
     await page.getByTestId('locale-btn-fr').click();
-    await expect(page.getByTestId('locale-btn-fr')).toHaveClass(/(?:^| )bg-terracotta(?:$| )/, {
+    await expect(page.getByTestId('locale-btn-fr')).toHaveAttribute('aria-pressed', 'true', {
       timeout: 5000,
     });
 
@@ -269,14 +269,16 @@ test.describe('Settings — FamilyGOTOSettings card', () => {
     await page.goto('/home');
     await page.goto('/profile');
 
-    // French button must still be active (bg-terracotta as a standalone class)
+    // French remains the resolved selection after navigation.
     const frenchBtn = page.getByTestId('locale-btn-fr');
     await expect(frenchBtn).toBeVisible({ timeout: 10000 });
-    await expect(frenchBtn).toHaveClass(/(?:^| )bg-terracotta(?:$| )/);
+    await expect(frenchBtn).toHaveAttribute('aria-pressed', 'true');
+    await expect(frenchBtn.locator('[data-language-check]')).toBeVisible();
 
-    // English button must be inactive (only has hover:bg-white/70, not standalone bg-terracotta)
+    // English remains enabled and is not the resolved selection.
     const englishBtn = page.getByTestId('locale-btn-en');
-    await expect(englishBtn).not.toHaveClass(/(?:^| )bg-terracotta(?:$| )/);
+    await expect(englishBtn).toHaveAttribute('aria-pressed', 'false');
+    await expect(englishBtn).toBeEnabled();
 
     // Restore English so other tests are not affected
     await englishBtn.click();
