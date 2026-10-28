@@ -1,106 +1,52 @@
-# Testing and Mocking Strategy
+# Backend test seams and replacements
 
-## 1. Good vs Bad Tests
+Load this reference when choosing a test seam or replacing a dependency. Use
+isolated tests for pure behavior and real internal seams for integration acceptance.
+Assert observable results and required side effects, including persisted rows,
+constraints and ordering where the requirement includes them. Avoid private-method
+tests and incidental call-count assertions that only mirror implementation.
 
-### Good Tests
-**Integration-style**: Test through real interfaces, not mocks of internal parts.
+## Select the fixture that exercises the requirement
 
-```csharp
-// GOOD: Tests observable behavior
-[Fact]
-public async Task UserCanCheckoutWithValidCart() {
-  var cart = CreateCart();
-  cart.Add(product);
-  var result = await checkout(cart, paymentMethod);
-  Assert.Equal("confirmed", result.Status);
-}
-```
+Inspect `api/src/RecipeApi.Tests/Infrastructure/TestWebApplicationFactory.cs` and
+the selected tests before attributing coverage to the factory's name:
 
-Characteristics:
-- Tests behavior users/callers care about
-- Uses public API only
-- Survives internal refactors
-- Describes WHAT, not HOW
-- Related assertions may verify one observable behavior, including persisted state
+| Boundary | Current fixture behavior and implication |
+|---|---|
+| Authentication | `CreateAsync` disables auth; use `CreateWithAuthAsync` for auth assertions. `AuthEnforcementTests.cs` covers missing/wrong credentials, valid access and anonymous health. |
+| Persistence | Defaults to EF InMemory and ignores its transaction warning. A PostgreSQL override and dedicated PostgreSQL fixtures exercise relational paths; InMemory cannot establish PostgreSQL constraints, transactions, raw SQL or LINQ translation. |
+| Orchestration | Replacement triggers persist workflow/task state needed by subsequent reads. Their acceptance does not establish real worker execution, retries or background delivery. |
+| Application startup | The factory constructs its own registrations/pipeline rather than running production `Program.cs` unchanged. TestServer acceptance does not establish production wiring, deployment or live browser behavior. |
 
-### Bad Tests
-**Implementation-detail tests**: Coupled to internal structure.
+For provider behavior, use the affected PostgreSQL regression fixture and the
+[shared database runner guidance](../../core/execution-harness.md#effects-blockers-and-supporting-commands).
+Raw `test:api` feedback can skip environment-gated PostgreSQL tests; inspect actual
+executed/skipped results. `SchemaIntegrityTests.cs` provides static/model evidence,
+not migration execution. SQL and migration evidence selection belongs to
+[database](../database/SKILL.md).
 
-```csharp
-// BAD: Tests implementation details
-[Fact]
-public async Task CheckoutCallsPaymentServiceProcess() {
-  var mockPayment = new Mock<IPaymentService>();
-  await checkout(cart, mockPayment.Object);
-  mockPayment.Verify(x => x.Process(cart.Total), Times.Once);
-}
-```
+Existing tests under `api/src/RecipeApi.Tests/Integration/` illustrate useful seams:
+`GroceryCheckConcurrencyPostgresTests.cs` reads the committed result in a fresh
+scope; `RecipeLexicalSearchPostgresTests.cs` separates provider fallback from caller
+cancellation; `OnlineRecoveryPostgresTests.cs` checks preflight and repeat restore.
+Choose the assertions relevant to the approved behavior, preserving each fixture's
+scope and qualifications. Source inspection alone does not qualify these scenarios.
 
-Red flags:
-- Mocking internal collaborators
-- Testing private methods
-- Asserting incidental call counts/order (required side-effect counts and ordering can be contractual)
-- Test breaks when refactoring without behavior change
-- Test name describes HOW not WHAT
-- Prefer public behavior; direct database assertions are appropriate for persistence and constraint requirements
+## Replace dependencies deliberately
 
-```csharp
-// Appropriate when the requirement specifically includes persistence
-[Fact]
-public async Task CreateUserSavesToDatabase() {
-  await CreateUser("Alice");
-  var row = await db.Query("SELECT * FROM users WHERE name = 'Alice'");
-  Assert.NotNull(row);
-}
+Use deterministic doubles at external API, clock/randomness and filesystem
+boundaries when needed. Preserve the state transitions callers observe: a workflow
+fake returning success without required WorkflowInstance/WorkflowTask persistence
+is insufficient. A stubbed embedding response cannot establish model quality or
+vector-index recall. Preserve real orchestration when that execution is the subject.
 
-// GOOD: Verifies through interface
-[Fact]
-public async Task CreateUserMakesUserRetrievable() {
-  var user = await CreateUser("Alice");
-  var retrieved = await GetUser(user.Id);
-  Assert.Equal("Alice", retrieved.Name);
-}
-```
+Prefer typed operations at external boundaries where they clarify the contract;
+do not create a wrapper solely for a mock. Stateful mocks may need conditional
+dispatch, retries and failures when those behaviors are contractual. Generated
+client and HTTP mock synchronization remain with [OpenAPI](../openapi-expert/SKILL.md)
+and shared contract/testing rules.
 
-## 2. When to Mock
-Mock at **system boundaries** only:
-- External APIs (payment, email, etc.)
-- Databases (sometimes - prefer test DB/in-memory)
-- Time/randomness
-- File system (sometimes)
-
-Avoid mocking internal collaborators merely to mirror implementation. When an integration
-factory replaces orchestration or another boundary, preserve required domain side effects.
-For example, a workflow-trigger fake must persist the WorkflowInstance and WorkflowTask
-state that subsequent reads assert; an empty success object is insufficient. Inspect
-`api/src/RecipeApi.Tests/Infrastructure/TestWebApplicationFactory.cs` and the selected tests. In-memory
-providers cannot prove PostgreSQL constraints or relational update behavior.
-
-## 3. Designing for Mockability
-At system boundaries, design interfaces that are easy to mock:
-
-**1. Use dependency injection**
-Pass external dependencies in rather than creating them internally.
-
-**2. Prefer SDK-style interfaces over generic fetchers**
-Create specific functions for each external operation instead of one generic function with conditional logic:
-
-```csharp
-// GOOD: Each function is independently mockable
-public interface IApi {
-  Task<User> GetUser(string id);
-  Task<List<Order>> GetOrders(string userId);
-  Task CreateOrder(OrderData data);
-}
-
-// BAD: Mocking requires conditional logic inside the mock setup
-public interface IApi {
-  Task<HttpResponseMessage> Fetch(string endpoint, HttpMethod method);
-}
-```
-
-The SDK approach means:
-- Each operation has a typed contract
-- Stateful mocks retain method dispatch, persistence, retry and status transitions; conditional behavior is necessary when callers observe it
-- Easier to see which endpoints a test exercises
-- Type safety per endpoint
+Microsoft's [EF testing guidance](https://learn.microsoft.com/en-us/ef/core/testing/choosing-a-testing-strategy)
+discourages EF InMemory as a database substitute. Retain existing tests for their
+actual narrower assertions; add provider evidence where required without turning
+the selected change into a wholesale fixture rewrite.

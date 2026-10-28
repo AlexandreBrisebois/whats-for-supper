@@ -1,74 +1,35 @@
-# Architecture Guidelines (C# & .NET)
+# Backend interfaces and execution boundaries
 
-## 1. Deep Modules
-From "A Philosophy of Software Design":
+Load this reference for a selected interface, async-flow or lifetime decision.
+Preserve the current controller/service/data boundaries and registration conventions;
+an abstraction should remove caller knowledge or coordination needed by the change.
+Prefer pure calculations where useful, retaining observable persistence and workflow
+effects. Refactor after Green only within the selected behavior; method length or
+similar-looking code alone does not justify a new layer or adjacent cleanup.
 
-**Deep module** = useful behavior behind a small interface. Judge the knowledge
-and coordination it removes from callers, rather than implementation line count.
+## Async work and ownership
 
-```
-┌─────────────────────┐
-│   Small Interface   │  ← Few methods, simple params
-├─────────────────────┤
-│                     │
-│                     │
-│  Deep Implementation│  ← Complex logic hidden
-│                     │
-│                     │
-└─────────────────────┘
-```
+Follow the affected request or worker's cancellation token through I/O and awaited
+work. Distinguish caller cancellation from a provider timeout or retryable failure
+using the selected contract and regression assertions; do not turn every cancellation
+into a fallback or retry. `RecipeLexicalSearchPostgresTests.cs` already distinguishes
+semantic timeout fallback from propagated caller cancellation.
 
-**Shallow module** = large interface + little implementation (avoid)
+Inspect DI ownership in `api/src/RecipeApi/Program.cs` and the affected service.
+Do not capture a scoped DbContext in a singleton or share one context across
+concurrent operations; await its operations and dispose owned scopes/resources.
+`GroceryCheckCoordinator.cs` creates a fresh async scope per processed operation;
+`WorkflowWorker.cs` creates separate execution scopes for parallel work. These
+examples do not establish distributed serialization or exactly-once execution.
+The selected requirements and tests own those guarantees.
 
-```
-┌─────────────────────────────────┐
-│       Large Interface           │  ← Many methods, complex params
-├─────────────────────────────────┤
-│  Thin Implementation            │  ← Just passes through
-└─────────────────────────────────┘
-```
+Reuse the registered HttpClient factory/clients and inspect handler lifetime and
+response disposal when changing outbound I/O. Do not add a client pool, context
+pool or retry policy merely because an example uses one. PostgreSQL transaction,
+isolation and locking details remain in [database](../database/SKILL.md).
 
-When designing interfaces, ask:
-- Can I reduce the number of methods?
-- Can I simplify the parameters?
-- Can I hide more complexity inside?
-
-## 2. Interface Design for Testability
-Good interfaces make testing natural:
-
-1. **Accept dependencies, don't create them**
-   ```csharp
-   // Testable
-   public void ProcessOrder(Order order, IPaymentGateway gateway) {}
-
-   // Hard to test
-   public void ProcessOrder(Order order) {
-     var gateway = new StripeGateway();
-   }
-   ```
-
-2. **Prefer pure calculations where appropriate**
-   Persistence and workflow operations intentionally have side effects; retain and test their observable results.
-   ```csharp
-   // Testable
-   public Discount CalculateDiscount(Cart cart) {}
-
-   // Hard to test
-   public void ApplyDiscount(Cart cart) {
-     cart.Total -= discount;
-   }
-   ```
-
-3. **Small surface area**
-   - Test obligations follow observable behavior, not the number of methods
-   - Fewer params = simpler test setup
-
-## 3. Refactor Candidates
-Within the selected scope after Green, consider these only when needed for the change. Do not turn observations into adjacent cleanup:
-
-- **Duplication** → Extract only when callers share responsibility and reason to change
-- **Long methods** → Break into private helpers (keep tests on public interface)
-- **Shallow modules** → Combine or deepen
-- **Feature envy** → Move logic to where data lives
-- **Primitive obsession** → Introduce value objects
-- **Existing code** required by the selected behavior; report unrelated issues separately
+For the discovered versions, consult official
+[EF context lifetime and concurrency guidance](https://learn.microsoft.com/en-us/ef/core/dbcontext-configuration/)
+and [HttpClient lifetime guidance](https://learn.microsoft.com/en-us/dotnet/fundamentals/networking/http/httpclient-guidelines).
+Use them to resolve the selected decision, without replacing approved WFS behavior
+with generic framework defaults.

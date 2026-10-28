@@ -1,5 +1,6 @@
+import { expectTonightLayout, recordTonightControlStates } from './helpers/tonight-card-layout';
 import { test, expect } from './fixtures';
-import type { ScheduleDays } from '../src/lib/api/generated/models';
+import type { NonCookingPlanDto, ScheduleDays } from '../src/lib/api/generated/models';
 import {
   MOCK_IDS,
   builders,
@@ -7,6 +8,7 @@ import {
   currentMonday,
   toDateStr,
   mockSseWithRecipeReady,
+  mockSseWithConnectedSchedule,
 } from './mock-api';
 
 test.describe('Home Command Center — GOTO & Pivot Flow', () => {
@@ -35,6 +37,151 @@ test.describe('Home Command Center — GOTO & Pivot Flow', () => {
       );
     }, MOCK_IDS.MEMBER_ALEX);
   });
+
+  for (const appLocale of ['en', 'fr'] as const) {
+    test.describe(`Tonight card layout / Tonight pivot choices (${appLocale})`, () => {
+      test.use({ appLocale });
+      for (const state of ['ready', 'empty', 'read-error', 'mystery'] as const) {
+        test(`${state} pivot reflow and reachability`, async ({ page }, testInfo) => {
+          const name =
+            appLocale === 'fr'
+              ? 'Gratin familial de légumes rôtis avec pommes de terre et sauce crémeuse aux fines herbes'
+              : 'Family roasted vegetable supper with potatoes and a creamy garden herb sauce';
+          await page.route(
+            (url) => url.pathname.includes('/api/goto/active'),
+            async (route) => {
+              await route.fulfill(
+                state === 'ready'
+                  ? {
+                      json: {
+                        data: {
+                          recipeId: MOCK_IDS.RECIPE_LASAGNA,
+                          description: name,
+                          status: 'ready',
+                        },
+                      },
+                    }
+                  : { status: state === 'read-error' ? 500 : 404, json: { error: 'Unavailable' } }
+              );
+            }
+          );
+          await page.route(
+            (url) => url.pathname.endsWith(`/api/recipes/${MOCK_IDS.RECIPE_LASAGNA}`),
+            async (route) => {
+              await route.fulfill({
+                json: {
+                  recipe: builders.recipe({ id: MOCK_IDS.RECIPE_LASAGNA, name, imageUrl: '' }),
+                  updatedAt: new Date().toISOString(),
+                },
+              });
+            }
+          );
+          if (state === 'mystery') {
+            const schedule = builders.scheduleDays();
+            const day = schedule.days.find((day) => day.date === toDateStr(currentMonday()))!;
+            day.status = 3;
+            Object.assign(day, {
+              nonCooking: { kind: 'mystery', customLabel: null } satisfies NonCookingPlanDto,
+            });
+            await mockSseWithConnectedSchedule(page, schedule as unknown as ScheduleDays);
+            await page.route(
+              (url) => url.pathname.endsWith('/api/schedule'),
+              async (route) => {
+                if (route.request().method() === 'GET')
+                  await route.fulfill({ json: { data: schedule } });
+                else await route.fallback();
+              }
+            );
+          }
+          const mutations: string[] = [];
+          page.on('request', (request) => {
+            if (/\/api\/schedule/.test(request.url()) && request.method() !== 'GET')
+              mutations.push(request.method());
+          });
+          await page.goto('/home');
+          const card = page.getByTestId('tonight-pivot-card');
+          await expect(card).toBeVisible();
+          const context =
+            state === 'mystery'
+              ? appLocale === 'fr'
+                ? 'Souper mystère'
+                : 'Mystery night'
+              : appLocale === 'fr'
+                ? 'Rien de prévu pour ce soir'
+                : 'Nothing planned for tonight';
+          await expect(card).toContainText(context);
+          await expect(page.getByTestId('discover-btn')).toHaveAccessibleName(
+            appLocale === 'fr' ? 'Recherche rapide' : 'Quick Find'
+          );
+          await expect(page.getByTestId('order-in-btn')).toHaveAccessibleName(
+            appLocale === 'fr' ? 'Commander' : 'Order In'
+          );
+          if (state === 'ready') {
+            await expect(page.getByTestId('confirm-goto-btn')).toHaveAccessibleName(
+              appLocale === 'fr' ? 'Préparer ce repas ce soir' : 'Make this tonight'
+            );
+            await expect(card).toContainText(
+              appLocale === 'fr' ? 'Le GOTO de votre famille' : "Your family's GOTO"
+            );
+          }
+          const order =
+            state === 'ready'
+              ? ['confirm-goto-btn', 'discover-btn', 'order-in-btn']
+              : ['discover-btn', 'order-in-btn', 'add-goto-btn'];
+          await expect(card.locator('button, a')).toHaveCount(order.length);
+          for (let index = 0; index < order.length; index++) {
+            await expect(card.locator('button, a').nth(index)).toHaveAttribute(
+              'data-testid',
+              order[index]
+            );
+          }
+          await card.locator('button, a').first().focus();
+          for (const id of order) {
+            await expect(page.getByTestId(id)).toBeFocused();
+            await page.keyboard.press('Tab');
+          }
+          expect(mutations).toEqual([]);
+          await page.evaluate(() => document.fonts.ready);
+          const sizes = [
+            [320, 844],
+            [390, 844],
+            [412, 915],
+            [820, 1180],
+            [1180, 820],
+          ];
+          for (const [width, height] of sizes) {
+            await page.setViewportSize({ width, height });
+            for (const growth of [1, 2]) {
+              // Change text only in this fixture; preserve app zoom policy and image geometry.
+              await card.evaluate((node, scale) => {
+                node.querySelectorAll<HTMLElement>('*').forEach((el) => {
+                  const initial = el.dataset.layoutFont ?? getComputedStyle(el).fontSize;
+                  el.dataset.layoutFont = initial;
+                  el.style.fontSize = `${parseFloat(initial) * scale}px`;
+                });
+              }, growth);
+              await expectTonightLayout(page, card, testInfo, `card-${width}-${growth}`);
+              if (width === 320 && growth === 1)
+                await recordTonightControlStates(page, card, testInfo);
+            }
+          }
+          await page.getByTestId('discover-btn').focus();
+          await page.keyboard.press('Enter');
+          await expect(page.getByTestId('quick-find-modal')).toBeVisible();
+          await page.getByTestId('quick-find-close').click();
+          await expect(page.getByTestId('quick-find-modal')).not.toBeVisible();
+          await expect(card).toContainText(context);
+          expect(mutations).toEqual([]);
+          if (state === 'empty' || state === 'read-error') {
+            await page.getByTestId('add-goto-btn').focus();
+            await page.keyboard.press('Enter');
+            await expect(page).toHaveURL(/\/profile/);
+            expect(mutations).toEqual([]);
+          }
+        });
+      }
+    });
+  }
 
   test('Shows Pivot Card when no recipe is planned', async ({ page }) => {
     // 1. Mock empty schedule
@@ -131,16 +278,16 @@ test.describe('Home Command Center — GOTO & Pivot Flow', () => {
 
     const confirmBtn = page.getByTestId('confirm-goto-btn');
     await expect(confirmBtn).toBeEnabled();
-    await expect(confirmBtn).toHaveText('Make This Tonight');
+    await expect(confirmBtn).toHaveText('Make this tonight');
     await confirmBtn.click();
 
     await expect.poll(() => assignCalled).toBe(true);
     await expect(page.getByTestId('tonight-menu-card')).toBeVisible({ timeout: 3000 });
     await expect(page.getByTestId('tonight-pivot-card')).not.toBeVisible();
 
-    // Verify Hydration: flip the card and check for the description
+    // Verify hydration through explicit ingredient disclosure
     // The eager fetch should have completed by now (or will shortly)
-    await page.getByTestId('tonight-menu-card').click();
+    await page.getByTestId('tonight-ingredients-toggle').click();
     await expect(page.getByText('E2E Hydrated Description')).toBeVisible({ timeout: 5000 });
     await expect(page.getByText('Pasta')).toBeVisible();
     expect(recipeFetched).toBe(true);
@@ -361,8 +508,8 @@ test.describe('Home Command Center — todayStore (Group C)', () => {
     }, MOCK_IDS.MEMBER_ALEX);
   });
 
-  // C7: "Make This Tonight" tap shows TonightMenuCard immediately (no network wait)
-  test('"Make This Tonight" shows TonightMenuCard immediately without waiting for network', async ({
+  // C7: "Make this tonight" tap shows TonightMenuCard immediately (no network wait)
+  test('"Make this tonight" shows TonightMenuCard immediately without waiting for network', async ({
     page,
   }) => {
     // Mock active GOTO
@@ -386,18 +533,20 @@ test.describe('Home Command Center — todayStore (Group C)', () => {
     // Mock SSE to emit recipe_ready — drives the ready transition (no polling)
     await mockSseWithRecipeReady(page, MOCK_IDS.RECIPE_LASAGNA);
 
-    // Mock assign to be slow (500ms) — menu card must appear before it resolves
-    // Use a raw Promise delay instead of page.waitForTimeout() to avoid "Test ended"
-    // errors when the route callback outlives the test's assertion phase.
+    let releaseAssignment!: () => void;
+    const assignmentReply = new Promise<void>((resolve) => {
+      releaseAssignment = resolve;
+    });
+    let assignmentStarted = false;
+    let assignmentReplied = false;
     await page.route(
       (url) => url.pathname.includes('/api/schedule/assign'),
       async (route) => {
-        await new Promise((resolve) => setTimeout(resolve, 500));
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({ success: true }),
-        });
+        expect(route.request().method()).toBe('POST');
+        assignmentStarted = true;
+        await assignmentReply;
+        await route.fulfill({ json: { success: true } });
+        assignmentReplied = true;
       }
     );
 
@@ -407,17 +556,22 @@ test.describe('Home Command Center — todayStore (Group C)', () => {
     await expect(confirmBtn).toBeEnabled({ timeout: 10000 });
     await confirmBtn.click();
 
-    // TonightMenuCard must appear immediately (optimistic) — well before the 500ms assign resolves
+    // The planned card must appear while the assignment reply is still held unresolved.
     await expect(page.getByTestId('tonight-menu-card')).toBeVisible({ timeout: 300 });
     await expect(page.getByTestId('tonight-pivot-card')).not.toBeVisible();
+
+    await expect.poll(() => assignmentStarted).toBe(true);
+    expect(assignmentReplied).toBe(false);
+    releaseAssignment();
+    await expect.poll(() => assignmentReplied).toBe(true);
 
     // Clean up any in-flight routes to avoid "Test ended" errors
     await page.unrouteAll({ behavior: 'ignoreErrors' });
   });
 
-  // C7: Page reload after "Make This Tonight" still shows TonightMenuCard
+  // C7: Page reload after "Make this tonight" still shows TonightMenuCard
   // TODO: home-loader does not clear after reload; revisit when SSE push model replaces polling sync
-  test.skip('Page reload after "Make This Tonight" still shows TonightMenuCard', async ({
+  test.skip('Page reload after "Make this tonight" still shows TonightMenuCard', async ({
     page,
   }) => {
     const monday = currentMonday();
@@ -543,7 +697,7 @@ test.describe('Home Command Center — todayStore (Group C)', () => {
     await expect(page.getByTestId('tonight-pivot-card')).not.toBeVisible();
   });
 
-  test('"Make This Tonight" → navigating to planner shows recipe in today\'s slot', async ({
+  test('"Make this tonight" → navigating to planner shows recipe in today\'s slot', async ({
     page,
   }) => {
     const monday = currentMonday();

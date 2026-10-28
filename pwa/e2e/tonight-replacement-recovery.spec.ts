@@ -47,8 +47,7 @@ for (const action of ['tomorrow', 'next-week', 'drop'] as const) {
       });
     }, MOCK_IDS.RECIPE_CHICKEN);
     await page.goto('/home');
-    await page.getByTestId('tonight-menu-card').click();
-    await page.getByTestId('skip-tonight-btn').dispatchEvent('click');
+    await page.getByTestId('skip-tonight-btn').click();
     await page.getByTestId('recovery-action-pick-else').click();
     await page.getByTestId('quick-find-select').click();
     let assignments = 0,
@@ -135,8 +134,7 @@ test('unknown save offers Retry check, then only an explicit save; leaving retai
     });
   }, MOCK_IDS.RECIPE_CHICKEN);
   await page.goto('/home');
-  await page.getByTestId('tonight-menu-card').click();
-  await page.getByTestId('skip-tonight-btn').dispatchEvent('click');
+  await page.getByTestId('skip-tonight-btn').click();
   await page.getByTestId('recovery-action-pick-else').click();
   await page.getByTestId('quick-find-select').click();
   let assignments = 0,

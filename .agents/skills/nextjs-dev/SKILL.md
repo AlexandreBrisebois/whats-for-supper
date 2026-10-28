@@ -17,12 +17,34 @@ and its wrapper under `pwa/src/lib/api/`. The generated SDK lives under
 `pwa/src/lib/api/generated/`. Load the [OpenAPI procedure](../openapi-expert/SKILL.md)
 when changing the contract, client or mocks. UI-only work needs no invented API work.
 
-Use Vitest for isolated logic and component behavior; retain Playwright coverage for
-navigation, browser/network integration and user-visible flows. Select the smallest
-meaningful failing test for the slice rather than requiring both suites for every
+Use Vitest for isolated logic and synchronous Server/Client Component behavior;
+async Server Components need E2E coverage (see the installed Next.js `testing/vitest`
+guide). Retain Playwright for navigation, browser/network integration and
+user-visible flows. Select the smallest meaningful failing test for the slice rather than requiring both suites for every
 edit. Focused commands are `task test:unit -- <test-file>` and
 `task test:e2e -- <spec-file>`; paths are relative to `pwa/`.
 Use test IDs for interactions and semantic assertions for accessibility.
+
+## Next.js decisions: consult only the affected topic
+
+Follow [the PWA's version-matched docs rule](../../../pwa/AGENTS.md) before
+version-specific changes; resolve docs from `pwa/node_modules/next/dist/docs/` and
+check installed packages plus `pwa/next.config.js`. Reuse already loaded guidance.
+In the App Router guides, look up only what the selected seam needs:
+
+- Request APIs/routing: `upgrading/version-16` and the affected API reference;
+  await async `cookies`, `headers`, `params` and `searchParams` where applicable.
+- Server/client or identity boundaries: `data-security`; keep server-only modules
+  and secrets out of client imports/props. Authorize each Route Handler/Server
+  Action against the current identity; a hidden UI control is not authorization.
+- Personalized reads/mutations: inspect cache keys, freshness and invalidation.
+  Choose caching docs from the actual `cacheComponents` setting; Next.js 16 alone
+  does not enable Cache Components. Preserve household/member isolation.
+- Streaming/deployment/environment changes: `self-hosting`; check proxy buffering,
+  disconnect handling and build-time `NEXT_PUBLIC_*` versus server runtime values.
+
+Reviewed 2026-10-28 against installed Next.js 16.4.2; recheck installed docs/config
+when versions change. This is routing guidance, not a requirement to read all topics.
 
 ## Component and state decisions
 

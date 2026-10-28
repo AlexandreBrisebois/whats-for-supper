@@ -49,12 +49,19 @@ vi.mock('@/components/home/TonightPivotCard', () => ({
     onOrderIn,
     onDiscover,
     onConfirmGoto,
+    nonCookingLabel,
+    nonCookingKind,
   }: {
+    nonCookingLabel?: string;
+    nonCookingKind?: string;
     onOrderIn: () => void;
     onDiscover: () => void;
     onConfirmGoto: () => void;
   }) => (
     <div data-testid="tonight-pivot-card">
+      <p data-testid="pivot-context">
+        {nonCookingLabel} {nonCookingKind}
+      </p>
       <button data-testid="order-in-btn" onClick={onOrderIn}>
         Order In
       </button>
@@ -441,6 +448,7 @@ describe('HomeCommandCenter', () => {
     expect(screen.getByTestId('tonight-pivot-card')).toBeInTheDocument();
     expect(screen.queryByTestId('today-non-cooking-plan')).not.toBeInTheDocument();
     expect(mocks.nonCooking).toEqual({ kind: 'mystery', customLabel: null });
+    expect(screen.getByTestId('pivot-context')).toHaveTextContent('Mystery night mystery');
     fireEvent.click(screen.getByTestId('discover-btn'));
     expect(await screen.findByTestId('quick-find-select')).toBeInTheDocument();
     expect(mocks.markOrderedIn).not.toHaveBeenCalled();

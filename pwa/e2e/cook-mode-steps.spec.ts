@@ -142,7 +142,6 @@ test.describe('Cook Mode — HowToSection[] steps display', () => {
   }) => {
     await page.setViewportSize({ width: 320, height: 700 });
     await page.goto('/home');
-    await page.getByTestId('tonight-menu-card').click();
     await page.getByTestId('cook-mode-btn').click();
     await collapseDevelopmentBadge(page);
 
@@ -278,20 +277,6 @@ test.describe('Cook Mode — HowToSection[] steps display', () => {
         });
       });
       await page.goto('/home');
-      const tonight = page.getByTestId('tonight-menu-card');
-      await tonight.click();
-      // During the 3D flip Chromium can route the attempted Cook click to the
-      // rotating wrapper, which flips back. Wait for the actual back-face pose.
-      await expect
-        .poll(() =>
-          tonight.evaluate((card) => {
-            const matrix = new DOMMatrixReadOnly(
-              getComputedStyle(card.firstElementChild!).transform
-            );
-            return [matrix.m11, matrix.m13, matrix.m31, matrix.m33];
-          })
-        )
-        .toEqual([-1, 0, 0, -1]);
       await page.getByTestId('cook-mode-btn').click();
       await expect(page.getByTestId('cooks-mode-overlay')).toBeVisible();
       await collapseDevelopmentBadge(page);
@@ -399,11 +384,7 @@ test.describe('Cook Mode — HowToSection[] steps display', () => {
     await expect(page.getByTestId('home-loader')).not.toBeVisible({ timeout: 10_000 });
     await expect(page.getByTestId('tonight-menu-card')).toBeVisible({ timeout: 10_000 });
 
-    await page.getByTestId('tonight-menu-card').click();
-    await page.evaluate(() => {
-      const btn = document.querySelector('[data-testid="cook-mode-btn"]') as HTMLElement;
-      btn?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
-    });
+    await page.getByTestId('cook-mode-btn').click();
     await expect(page.getByTestId('cooks-mode-step-next')).toBeVisible({ timeout: 15_000 });
 
     // Step through all steps until Cooked appears

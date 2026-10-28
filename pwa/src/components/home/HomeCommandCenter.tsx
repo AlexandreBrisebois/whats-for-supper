@@ -643,6 +643,8 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
               gotoRecipeId={gotoRecipeId}
               gotoImageUrl={gotoImageUrl}
               gotoStatus={gotoStatus}
+              nonCookingLabel={isMysteryNight ? nonCookingLabel(nonCooking) : null}
+              nonCookingKind={isMysteryNight ? nonCooking?.kind : null}
               onConfirmGoto={() => {
                 if (gotoRecipeId) {
                   assignRecipe({

@@ -28,7 +28,11 @@ clarify only consequential unknowns, without a mandatory interview or file-count
 
 Use testid-first interactions; retain semantic accessibility assertions for role,
 name, state and labeling. Assert optimistic and reconciled store behavior separately.
-Preserve shared schema-compliant builders and network boundary mocks.
+Preserve shared schema-compliant builders and network boundary mocks. Browser route
+mocks cannot intercept Server Component fetches; for Home SSR investigations, load
+[mocking strategy](mocking-strategy.md) and its conditional Home reference. For
+async Server Components use E2E; Vitest covers synchronous components and isolated
+logic (consult the installed Next.js `testing/vitest` guide).
 
 `task agent:audit AREA=<keyword>` optionally discovers PWA unit/E2E and API coverage,
 logic/mock-heavy candidates and selector heuristics. Confirm findings against the
