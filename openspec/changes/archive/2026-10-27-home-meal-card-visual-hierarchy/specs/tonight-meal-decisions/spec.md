@@ -95,3 +95,45 @@ The pivot SHALL distinguish an ordinary unplanned night, an unassigned ready fam
 - **WHEN** either card is displayed in English or French
 - **THEN** added or changed labels and feedback use the selected locale with equivalent state/action meaning and room to wrap
 - **AND** duration retains its existing localized wrapper, units and missing-time behavior
+
+### Requirement: Present Tonight as a refined family cookbook
+
+At ordinary text size, Tonight cards with recipe imagery SHALL give the food photograph and recipe title visual priority over their controls. The composition SHALL use generous state-appropriate imagery, warm surfaces, considered spacing and depth. Longer text and enlarged text SHALL remain readable in content-driven flow rather than being clipped to preserve proportions.
+
+#### Scenario: Planned recipe or ready family GOTO with a photograph
+- **WHEN** a planned recipe or ready family GOTO has usable imagery at ordinary mobile text size
+- **THEN** a generous photograph and prominent recipe title lead the card, with quieter context and duration where available
+- **AND** the composition preserves the respective supplied meal/pivot reference’s photographic presence, deep rounding, soft elevation and title emphasis while retaining the current visible actions and explicit details
+
+#### Scenario: Related meal and pivot compositions
+- **WHEN** the meal card and ready-GOTO pivot are shown at ordinary mobile text size
+- **THEN** they share a refined rounded frame and photo/title hierarchy while the meal card uses a near-square image and the pivot permits the wider crop shown in its reference
+- **AND** pivot alternatives are grouped side by side when complete labels and touch targets fit, with stacking when wrapping or text growth requires it
+
+#### Scenario: Empty or unavailable imagery
+- **WHEN** the pivot has no ready recipe, or a recipe image is absent or fails to load
+- **THEN** warm spacing, readable state and a deliberate modest icon treatment maintain a composed card without a large generic placeholder dominating the task
+- **AND** no fabricated image, unavailable recipe or false readiness/saved claim fills the space
+
+#### Scenario: Larger text or long content
+- **WHEN** EN/FR copy, recipe titles or text enlarged to 200 percent need more room
+- **THEN** the card grows and controls wrap/reflow without shrinking labels, truncating essential content or forcing the ordinary-size image proportions onto the enlarged layout
+
+### Requirement: Use refined Home action treatments
+
+Each Tonight card SHALL have one visually dominant primary action, using light text on rich terracotta. Dark text on yellow SHALL NOT be used for its action surfaces. Secondary actions SHALL have less visual weight; ingredient disclosure SHALL use a text-style affordance. Readable contrast, visible focus, semantics and 48 by 48 CSS px targets SHALL remain intact without enclosing every action in a prominent border.
+
+#### Scenario: Planned-meal controls
+- **WHEN** the planned card is shown
+- **THEN** Cook is the dominant terracotta action, Change plan is a quieter secondary action, and View ingredients is a text-style disclosure with an indicator and generous hit area
+- **AND** all remain directly discoverable and operable without a whole-card flip or a stack of three equally prominent boxed controls
+
+#### Scenario: Pivot controls
+- **WHEN** the pivot is shown with or without a ready GOTO
+- **THEN** Make this tonight for a ready GOTO, otherwise Quick Find, receives the primary terracotta treatment
+- **AND** Order In and other available alternatives remain visibly enabled but visually subordinate, with Profile setup retaining its lower task priority
+
+#### Scenario: Interactive states and accent color
+- **WHEN** Home card controls are hovered, pressed, focused or shown with ochre accents
+- **THEN** their labels and meaningful indicators retain the existing contrast requirements and keyboard focus remains visible
+- **AND** ochre contributes restrained warmth without becoming a yellow action field with dark text

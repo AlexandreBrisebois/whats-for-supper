@@ -1,9 +1,16 @@
 'use client';
 
-import { Utensils, UtensilsCrossed, ArrowRightLeft, Sparkles, ChevronDown } from 'lucide-react';
+import {
+  Utensils,
+  UtensilsCrossed,
+  ArrowRightLeft,
+  Sparkles,
+  ChevronDown,
+  Clock,
+} from 'lucide-react';
 import { useId, useState } from 'react';
 import { cn } from '@/lib/utils';
-import { getImageUrl } from '@/lib/imageUtils';
+import { TonightRecipeImage } from './TonightRecipeImage';
 import { t, tWithVars } from '@/locales';
 import { formatRecipeTime } from '@/lib/duration';
 
@@ -19,7 +26,10 @@ interface TonightCardBaseProps extends React.HTMLAttributes<HTMLDivElement> {
 export function TonightCardBase({ children, className, ...rest }: TonightCardBaseProps) {
   return (
     <div
-      className={cn('rounded-[3rem] bg-white shadow-lg border-2 border-white/20', className)}
+      className={cn(
+        'rounded-[3rem] bg-white shadow-[0_24px_60px_-24px] shadow-charcoal/20 border border-white',
+        className
+      )}
       {...rest}
     >
       {children}
@@ -62,11 +72,12 @@ export function TonightMenuCard({
     <div className="w-full min-w-0 [overflow-wrap:anywhere]" data-testid="tonight-menu-card">
       <TonightCardBase className="flex flex-col p-6">
         <div className="flex flex-wrap justify-between items-center gap-3 mb-5 px-1">
-          <h2 className="font-heading text-base font-semibold text-charcoal">
+          <h2 className="font-heading text-base font-medium text-charcoal-600">
             {t('home.tonightsMenu', "Tonight's menu")}
           </h2>
           {totalTime && (
-            <span className="text-sm font-semibold text-charcoal bg-ochre/10 px-3 py-1 rounded-full uppercase tracking-widest">
+            <span className="inline-flex max-w-full items-center gap-2 text-sm font-semibold text-terracotta-700 bg-terracotta-50 px-3 py-2 rounded-full uppercase tracking-wide">
+              <Clock size={14} aria-hidden="true" className="shrink-0" />
               {tWithVars('common.readyIn', 'READY IN {{time}}', {
                 time: formatRecipeTime(totalTime),
               })}
@@ -74,24 +85,16 @@ export function TonightMenuCard({
           )}
         </div>
 
-        <div className="relative aspect-[4/3] max-h-64 w-full shrink-0 rounded-[2.5rem] overflow-hidden mb-6">
-          {imageUrl ? (
-            /* eslint-disable-next-line @next/next/no-img-element */
-            <img
-              src={getImageUrl(imageUrl)}
-              alt={recipeName}
-              className="absolute inset-0 h-full w-full object-cover"
-            />
-          ) : (
-            <div className="w-full h-full bg-charcoal/5 flex items-center justify-center">
-              <Utensils size={48} className="text-charcoal-600" />
-            </div>
-          )}
-          <div className="absolute inset-0 bg-gradient-to-t from-charcoal/60 via-transparent to-transparent opacity-60" />
-        </div>
+        <TonightRecipeImage
+          key={`${recipeId}:${imageUrl}`}
+          imageUrl={imageUrl}
+          alt={recipeName}
+          className="aspect-square"
+          fallback={<Utensils size={28} />}
+        />
 
         <div className="flex flex-col gap-2 px-1">
-          <h3 className="font-heading text-3xl font-black text-charcoal leading-snug tracking-tight">
+          <h3 className="font-heading text-[2rem] font-black text-charcoal leading-tight tracking-tight">
             {recipeName || (
               <span className="text-charcoal-600 italic text-xl">
                 {t('home.preparingRecipe', 'Preparing recipe…')}
@@ -99,22 +102,24 @@ export function TonightMenuCard({
             )}
           </h3>
         </div>
-        <div className="mt-6 grid grid-cols-1 gap-3">
+        <div className="mt-6 flex flex-wrap gap-2">
           <button
             onClick={() => onCookMode?.(recipeId)}
-            className="flex items-center justify-center gap-2 min-h-14 px-4 py-3 rounded-[1.5rem] border border-ochre-800 bg-ochre text-charcoal transition-all focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-charcoal active:scale-95 hover:brightness-95"
+            className="flex min-w-[min(100%,6.5em)] max-w-full flex-[1_1_6em] items-center justify-center gap-1.5 min-h-14 px-2 py-3 rounded-[1.5rem] bg-terracotta-600 text-cream-100 hover:bg-terracotta-700 active:bg-terracotta-800 transition-colors focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-charcoal"
             data-testid="cook-mode-btn"
           >
-            <UtensilsCrossed size={18} className="shrink-0" />
-            <span className="text-base font-semibold leading-normal">{t('home.cook', 'Cook')}</span>
+            <UtensilsCrossed size={16} aria-hidden="true" className="shrink-0" />
+            <span className="text-base font-semibold leading-normal [overflow-wrap:normal]">
+              {t('home.cook', 'Cook')}
+            </span>
           </button>
           <button
             onClick={() => onSkip?.(recipeId)}
-            className="flex items-center justify-center gap-2 min-h-14 px-4 py-3 rounded-[1.5rem] border border-charcoal text-charcoal transition-all focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-charcoal active:scale-95 hover:brightness-95"
+            className="flex min-w-[min(100%,7.5em)] max-w-full flex-[1.4_1_7.5em] items-center justify-center gap-1.5 min-h-14 px-2 py-3 rounded-[1.5rem] border border-terracotta-200 bg-white text-terracotta-700 hover:bg-terracotta-50 active:bg-terracotta-100 transition-colors focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-charcoal"
             data-testid="skip-tonight-btn"
           >
-            <ArrowRightLeft size={18} className="shrink-0" />
-            <span className="text-base font-semibold leading-normal">
+            <ArrowRightLeft size={16} aria-hidden="true" className="shrink-0" />
+            <span className="min-w-0 text-base font-semibold leading-normal [overflow-wrap:normal]">
               {t('home.changePlan', 'Change plan')}
             </span>
           </button>
@@ -125,12 +130,16 @@ export function TonightMenuCard({
           aria-expanded={expanded}
           aria-controls={detailsId}
           onClick={() => setDisclosure({ recipeId, expanded: !expanded })}
-          className="mt-3 flex min-h-14 items-center justify-center gap-2 rounded-[1.5rem] border border-charcoal px-4 py-3 text-base font-semibold leading-normal text-charcoal hover:bg-charcoal/5 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-charcoal"
+          className="mt-3 flex min-h-12 min-w-12 items-center justify-start gap-2 self-start rounded-xl px-2 py-3 text-base font-medium leading-normal text-terracotta-700 hover:bg-terracotta-50 active:bg-terracotta-100 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-charcoal"
         >
           {expanded
             ? t('home.hideIngredients', 'Hide ingredients')
             : t('home.viewIngredients', 'View ingredients')}
-          <ChevronDown size={18} aria-hidden="true" className="shrink-0" />
+          <ChevronDown
+            size={18}
+            aria-hidden="true"
+            className={expanded ? 'shrink-0 rotate-180' : 'shrink-0'}
+          />
         </button>
         <div id={detailsId} hidden={!expanded}>
           {expanded && (

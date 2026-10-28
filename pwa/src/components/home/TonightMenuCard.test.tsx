@@ -81,3 +81,32 @@ describe('Tonight planned actions and disclosure', () => {
     expect(screen.getByText('Aucun ingrédient listé')).toBeVisible();
   });
 });
+
+describe('Tonight planned image availability', () => {
+  it('removes a failed image, retains actions and retries only for a new source or identity', () => {
+    const props = { ...recipe, imageUrl: '/first.jpg' };
+    const { rerender } = render(<TonightMenuCard {...props} />);
+    fireEvent.error(screen.getByRole('img', { name: recipe.recipeName }));
+    expect(screen.queryByRole('img')).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: recipe.recipeName })).toBeVisible();
+    expect(screen.getByTestId('cook-mode-btn')).toBeVisible();
+    rerender(<TonightMenuCard {...props} description="Hydrated" />);
+    expect(screen.queryByRole('img')).not.toBeInTheDocument();
+    rerender(<TonightMenuCard {...props} imageUrl="/second.jpg" />);
+    expect(screen.getByRole('img')).toHaveAttribute('src', '/second.jpg');
+    fireEvent.error(screen.getByRole('img'));
+    rerender(<TonightMenuCard {...props} recipeId="two" imageUrl="/second.jpg" />);
+    expect(screen.getByRole('img')).toHaveAttribute('src', '/second.jpg');
+  });
+});
+
+it('handles a cached failure that completed before the image handler attached', () => {
+  const complete = vi.spyOn(HTMLImageElement.prototype, 'complete', 'get').mockReturnValue(true);
+  try {
+    render(<TonightMenuCard {...recipe} imageUrl="/already-failed.jpg" />);
+    expect(screen.queryByRole('img')).not.toBeInTheDocument();
+    expect(screen.getByTestId('cook-mode-btn')).toBeVisible();
+  } finally {
+    complete.mockRestore();
+  }
+});

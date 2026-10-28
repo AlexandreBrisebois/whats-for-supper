@@ -331,6 +331,10 @@ for (const refreshFails of [false, true]) {
       },
       { id: MOCK_IDS.MEMBER_ALEX, french: refreshFails }
     );
+    // This case owns HTTP settlement/recovery ordering. A finite SSE response
+    // reconnects and replays server state while the authoritative read is held.
+    // Remote/reconnect behavior is exercised separately above.
+    await page.route(/\/(?:backend\/)?api\/stream/, (route) => route.fulfill({ status: 204 }));
     await page.goto('/planner');
     await expect(page.getByTestId('day-card-0')).toContainText('First supper');
     const moves: import('@playwright/test').Route[] = [];
@@ -350,6 +354,9 @@ for (const refreshFails of [false, true]) {
     const move = async (from: number) => {
       await page.getByTestId(`day-card-${from}`).getByTestId('planner-drag-handle').focus();
       await page.keyboard.press('ArrowDown');
+      await expect(
+        page.getByTestId(`day-card-${from + 1}`).getByTestId('planner-drag-handle')
+      ).toBeFocused();
     };
     await move(0);
     await expect.poll(() => moves.length).toBe(1);

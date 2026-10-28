@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="800" height="2466" viewBox="0 0 800 2466" role="img" aria-labelledby="title desc">
-<title id="title">Home: state, icon, intent and consequence</title><desc id="desc">Five schematic Home states with explicit source versus proposal boundaries. Existing ochre Cook, sage non-cooking intent and full sage cooked celebration are preserved as roles; proposed foregrounds improve contrast. Existing action icons and Capture/Browse routes reinforce meaning. The separate suggested Home card remains conceptual only. Includes the Mystery-night exception and recovery ordering with save-uncertainty warnings. No runtime changes.</desc>
+<title id="title">Home: state, icon, intent and consequence</title><desc id="desc">Five schematic Home states with explicit source versus proposal boundaries. Proposed Home primary actions use terracotta with light text, replacing the rejected dark-on-yellow Cook example. Sage non-cooking intent and cooked celebration keep their roles. State schematics omit photographs and do not establish cookbook composition. Existing action icons and Capture/Browse routes reinforce meaning. The separate suggested Home card remains conceptual only. Includes the Mystery-night exception and recovery ordering with save-uncertainty warnings. No runtime changes.</desc>
 <!-- Icon outlines reused from Lucide 1.60.0. ISC License
 
 Copyright (c) 2026 Lucide Icons and Contributors
@@ -47,18 +47,18 @@ SOFTWARE.
  -->
 <style>text { font-family: Inter, "DejaVu Sans", sans-serif; } .heading { font-family: Outfit, Inter, "DejaVu Sans", sans-serif; }</style>
 <rect x="0" y="0" width="800" height="2466" rx="0" fill="#FDFCF0"/>
-<text x="32" y="40" font-size="14" fill="#4B5563" font-weight="700">WFS / VISUAL LANGUAGE / V1 · REFINED</text>
+<text x="32" y="40" font-size="14" fill="#4B5563" font-weight="700">WFS / VISUAL LANGUAGE / V2 · COOKBOOK DIRECTION</text>
 <text x="32" y="84" font-size="30" fill="#1F2937" font-weight="700" class="heading">What is true about tonight?</text>
 <text x="32" y="116" font-size="15" fill="#4B5563" font-weight="400">02  Home state map · state first, action second, consequence alongside</text>
-<text x="32" y="140" font-size="15" fill="#4B5563" font-weight="400">Existing icons; ochre Cook and sage state roles retained. Presentation proposed.</text>
+<text x="32" y="140" font-size="15" fill="#4B5563" font-weight="400">Home: terracotta actions, ochre accents; sage roles retained. Proposed, not shipped.</text>
 <text x="32" y="194" font-size="21" fill="#1F2937" font-weight="700">1  Unplanned</text>
 <text x="440" y="187" font-size="14" fill="#4B5563" font-weight="700">EXISTING BEHAVIOR</text>
 <text x="440" y="208" font-size="13" fill="#4B5563" font-weight="700">PROPOSED PRESENTATION</text>
 <rect x="32" y="214" width="370" height="244" rx="24" fill="#FFFFFF"/>
 <text x="52" y="249" font-size="19" fill="#1F2937" font-weight="700">Nothing planned yet</text>
 <text x="52" y="279" font-size="15" fill="#4B5563" font-weight="400">No recipe assigned to tonight.</text>
-<rect x="52" y="302" width="330" height="48" rx="14" fill="#FDFCF0" stroke="#4B5563" stroke-width="2"/>
-<text x="68" y="332" font-size="16" fill="#1F2937" font-weight="700">Quick Find</text>
+<rect x="52" y="302" width="330" height="48" rx="14" fill="#A44A37"/>
+<text x="68" y="332" font-size="16" fill="#FFFFFF" font-weight="700">Quick Find</text>
 <rect x="52" y="360" width="330" height="48" rx="14" fill="#FDFCF0" stroke="#4B5563" stroke-width="2"/>
 <text x="68" y="390" font-size="16" fill="#1F2937" font-weight="700">Order In</text>
 <text x="432" y="244" font-size="15" fill="#4B5563" font-weight="400">Quick Find opens recipe selection.</text>
@@ -66,7 +66,7 @@ SOFTWARE.
 <text x="432" y="302" font-size="15" fill="#4B5563" font-weight="400">Order In records non-cooking intent;</text>
 <text x="432" y="331" font-size="15" fill="#4B5563" font-weight="400">it does not leave the day blank.</text>
 <text x="432" y="360" font-size="15" fill="#4B5563" font-weight="400">A ready GOTO adds Make This Tonight.</text>
-<text x="432" y="389" font-size="15" fill="#4B5563" font-weight="400">No new icon added to these actions.</text>
+<text x="432" y="389" font-size="15" fill="#4B5563" font-weight="400">ShoppingBag labels the takeout plan.</text>
 <text x="32" y="514" font-size="21" fill="#1F2937" font-weight="700">2  Suggested</text>
 <text x="440" y="514" font-size="14" fill="#7B3829" font-weight="700">CONCEPTUAL PROPOSAL</text>
 <rect x="32" y="534" width="370" height="244" rx="24" fill="#FFFFFF" stroke="#A44A37" stroke-width="2" stroke-dasharray="6 4"/>
@@ -87,15 +87,15 @@ SOFTWARE.
 <rect x="32" y="854" width="370" height="244" rx="24" fill="#FFFFFF"/>
 <text x="52" y="889" font-size="19" fill="#1F2937" font-weight="700">Tonight’s Menu</text>
 <text x="52" y="919" font-size="15" fill="#4B5563" font-weight="400">Example recipe · assigned tonight</text>
-<rect x="52" y="942" width="330" height="48" rx="14" fill="#E1AD01" stroke="#664E01" stroke-width="2"/>
-<g transform="translate(66 954) scale(1.0)" fill="none" stroke="#1F2937" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<rect x="52" y="942" width="330" height="48" rx="14" fill="#A44A37"/>
+<g transform="translate(66 954) scale(1.0)" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <path d="m16 2-2.3 2.3a3 3 0 0 0 0 4.2l1.8 1.8a3 3 0 0 0 4.2 0L22 8" />
   <path d="M15 15 3.3 3.3a4.2 4.2 0 0 0 0 6l7.3 7.3c.7.7 2 .7 2.8 0L15 15Zm0 0 7 7" />
   <path d="m2.1 21.8 6.4-6.3" />
   <path d="m19 5-7 7" />
 </g>
-<text x="100" y="972" font-size="16" fill="#1F2937" font-weight="700">Cook</text>
-<rect x="52" y="1000" width="330" height="48" rx="14" fill="#FDFCF0" stroke="#4B5563" stroke-width="2"/>
+<text x="100" y="972" font-size="16" fill="#FFFFFF" font-weight="700">Cook</text>
+<rect x="52" y="1000" width="330" height="48" rx="14" fill="#FDFCF0" stroke="#A44A37" stroke-width="1"/>
 <g transform="translate(66 1012) scale(1.0)" fill="none" stroke="#1F2937" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <path d="m16 3 4 4-4 4" />
   <path d="M20 7H4" />
@@ -109,8 +109,8 @@ SOFTWARE.
 <text x="432" y="962" font-size="15" fill="#4B5563" font-weight="400">Backup → original meal’s disposition</text>
 <text x="432" y="988" font-size="15" fill="#4B5563" font-weight="400">→ replacement save, in that order.</text>
 <text x="432" y="1014" font-size="15" fill="#4B5563" font-weight="400">Saving / unknown ≠ confirmed saved.</text>
-<text x="432" y="1040" font-size="15" fill="#4B5563" font-weight="400">Current icons + labels sit on the reverse.</text>
-<text x="432" y="1066" font-size="15" fill="#4B5563" font-weight="400">Ochre stays; dark text/edge proposed.</text>
+<text x="432" y="1040" font-size="15" fill="#4B5563" font-weight="400">Current actions precede inline ingredients.</text>
+<text x="432" y="1066" font-size="15" fill="#4B5563" font-weight="400">Proposed: light text on rich terracotta.</text>
 <text x="32" y="1154" font-size="21" fill="#1F2937" font-weight="700">4  Non-cooking</text>
 <text x="440" y="1147" font-size="14" fill="#4B5563" font-weight="700">EXISTING BEHAVIOR</text>
 <text x="440" y="1168" font-size="13" fill="#4B5563" font-weight="700">PROPOSED PRESENTATION</text>
@@ -182,6 +182,6 @@ SOFTWARE.
 <text x="52" y="2301" font-size="15" fill="#525B37" font-weight="400">Order In → non-cooking intent     |     Leave unplanned → blank day (Planner)</text>
 <text x="52" y="2328" font-size="15" fill="#525B37" font-weight="400">Failure or unknown outcome: preserve the choice, name the stage, offer the</text>
 <text x="52" y="2355" font-size="15" fill="#525B37" font-weight="400">appropriate retry/check. Do not imply completed work was rolled back.</text>
-<text x="32" y="2417" font-size="13" fill="#4B5563" font-weight="400">Sketches simplify geometry. Quick Find’s indigo and Change Plan’s terracotta</text>
-<text x="32" y="2439" font-size="13" fill="#4B5563" font-weight="400">are not retired by neutral examples. This is review artwork, not an approved palette change.</text>
+<text x="32" y="2417" font-size="13" fill="#4B5563" font-weight="400">State sketches omit food imagery; cookbook composition needs photo-led review.</text>
+<text x="32" y="2439" font-size="13" fill="#4B5563" font-weight="400">Home action proposals do not change other journeys, tokens or runtime behavior.</text>
 </svg>

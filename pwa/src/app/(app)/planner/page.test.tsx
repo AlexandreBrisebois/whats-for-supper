@@ -932,6 +932,46 @@ describe('Planner keyboard movement', () => {
     expect(mocks.commitMove).toHaveBeenCalledWith(0, 1, snapshot);
   });
 
+  it('does not let delayed move focus override a newer focus choice', () => {
+    let finishFrame!: FrameRequestCallback;
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+      finishFrame = callback;
+      return 1;
+    });
+    const rendered = renderPlanner(0);
+    const source = within(screen.getByTestId('day-card-0')).getByTestId('planner-drag-handle');
+    source.focus();
+    fireEvent.keyDown(source, { key: 'ArrowDown' });
+    // The destination becomes occupied after the optimistic render.
+    const state = mocks.getWeekState();
+    mocks.setWeekState({ ...state, schedule: makeAssignedSchedule('2026-05-17', 1) });
+    rendered.rerender(<PlannerPage />);
+    const view = screen.getByTestId('next-week');
+    view.focus();
+    act(() => finishFrame(16));
+    expect(view).toHaveFocus();
+  });
+
+  it('follows the moved recipe when its source handle disappears and focus is otherwise unclaimed', () => {
+    let finishFrame!: FrameRequestCallback;
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+      finishFrame = callback;
+      return 1;
+    });
+    const view = renderPlanner(0);
+    const source = within(screen.getByTestId('day-card-0')).getByTestId('planner-drag-handle');
+    source.focus();
+    fireEvent.keyDown(source, { key: 'ArrowDown' });
+    const state = mocks.getWeekState();
+    mocks.setWeekState({ ...state, schedule: makeAssignedSchedule('2026-05-17', 1) });
+    view.rerender(<PlannerPage />);
+    expect(source).not.toBeInTheDocument();
+    act(() => finishFrame(16));
+    expect(
+      within(screen.getByTestId('day-card-1')).getByTestId('planner-drag-handle')
+    ).toHaveFocus();
+  });
+
   it('does not submit a keyboard move beyond the week boundary', () => {
     renderPlanner(0);
     const handle = within(screen.getByTestId('day-card-0')).getByTestId('planner-drag-handle');

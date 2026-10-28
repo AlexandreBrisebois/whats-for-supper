@@ -179,6 +179,108 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
   });
 
   for (const appLocale of ['en', 'fr'] as const) {
+    test.describe(`Cookbook planned (${appLocale})`, () => {
+      test.use({ appLocale });
+      for (const photo of ['light', 'dark', 'failed'] as const) {
+        test(`${photo} photograph and image recovery`, async ({ page }, testInfo) => {
+          test.setTimeout(90_000);
+          await page.setViewportSize({ width: 390, height: 844 });
+          const name =
+            appLocale === 'fr' ? 'Saumon et légumes du jardin' : 'Salmon with garden vegetables';
+          const source = `/api/recipes/${MOCK_IDS.RECIPE_LASAGNA}/hero`;
+          await page.route(
+            (url) => url.pathname.endsWith('/hero'),
+            async (route) => {
+              if (photo === 'failed' && !route.request().url().includes('renewed'))
+                await route.fulfill({ status: 404, body: '' });
+              else
+                await route.fulfill({
+                  path: `e2e/fixtures/cookbook-${photo === 'dark' ? 'dark' : 'light'}.jpg`,
+                  contentType: 'image/jpeg',
+                });
+            }
+          );
+          const schedule = builders.scheduleDays();
+          const recipe = builders.scheduleRecipe({
+            id: MOCK_IDS.RECIPE_LASAGNA,
+            name,
+            image: source,
+            totalTime: 'PT25M',
+            ingredients: ['Salmon', 'Green beans'],
+          });
+          schedule.days.find((day) => day.date === toDateStr(currentMonday()))!.recipe = recipe;
+          await mockSseWithConnectedSchedule(page, schedule as unknown as ScheduleDays);
+          await page.route(
+            (url) => url.pathname.endsWith('/api/schedule'),
+            async (route) => {
+              if (route.request().method() === 'GET')
+                await route.fulfill({ json: { data: schedule } });
+              else await route.fallback();
+            }
+          );
+          await page.goto('/home');
+          const card = page.getByTestId('tonight-menu-card');
+          await expect(card.getByRole('heading', { name })).toBeVisible();
+          if (photo === 'failed') {
+            await expect(card.locator('img')).toHaveCount(0);
+            await expect(page.getByTestId('cook-mode-btn')).toBeVisible();
+            await page.screenshot({
+              path: testInfo.outputPath('failed-image.png'),
+              fullPage: true,
+            });
+            await page.evaluate(
+              (slot) => {
+                (window as any).__sseSource.dispatchEvent(
+                  new MessageEvent('slot_updated', { data: JSON.stringify(slot) })
+                );
+              },
+              {
+                date: toDateStr(currentMonday()),
+                recipe: builders.scheduleRecipe({
+                  id: MOCK_IDS.RECIPE_TACOS,
+                  name: 'Fresh supper',
+                  image: `/api/recipes/${MOCK_IDS.RECIPE_TACOS}/hero?renewed`,
+                }),
+                status: 0,
+              }
+            );
+            await expect(card.locator('img')).toBeVisible();
+          } else {
+            await expect
+              .poll(() => card.locator('img').evaluate((img: HTMLImageElement) => img.naturalWidth))
+              .toBeGreaterThan(100);
+            for (const [width, height] of [
+              [320, 844],
+              [390, 844],
+              [412, 915],
+              [820, 1180],
+              [1180, 820],
+            ]) {
+              await page.setViewportSize({ width, height });
+              for (const growth of [1, 2]) {
+                await card.evaluate(
+                  (node, scale) =>
+                    node.querySelectorAll<HTMLElement>('*').forEach((el) => {
+                      el.dataset.layoutFont ??= getComputedStyle(el).fontSize;
+                      el.style.fontSize = `${parseFloat(el.dataset.layoutFont) * scale}px`;
+                    }),
+                  growth
+                );
+                await expectTonightLayout(
+                  page,
+                  card,
+                  testInfo,
+                  `photo-${photo}-${width}-${growth}`
+                );
+              }
+            }
+          }
+        });
+      }
+    });
+  }
+
+  for (const appLocale of ['en', 'fr'] as const) {
     test.describe(`duration units (${appLocale})`, () => {
       test.use({ appLocale });
       for (const [device, viewport] of [

@@ -39,6 +39,95 @@ test.describe('Home Command Center — GOTO & Pivot Flow', () => {
   });
 
   for (const appLocale of ['en', 'fr'] as const) {
+    test.describe(`Cookbook pivot (${appLocale})`, () => {
+      test.use({ appLocale });
+      for (const photo of ['light', 'dark', 'failed'] as const) {
+        test(`${photo} photograph and image recovery`, async ({ page }, testInfo) => {
+          test.setTimeout(90_000);
+          await page.setViewportSize({ width: 390, height: 844 });
+          const name =
+            appLocale === 'fr' ? 'Saumon et légumes du jardin' : 'Salmon with garden vegetables';
+          let recipeId: string = MOCK_IDS.RECIPE_LASAGNA;
+          await page.route(
+            (url) => url.pathname.includes('/api/goto/active'),
+            async (route) => {
+              await route.fulfill({
+                json: { data: { recipeId, description: name, status: 'ready' } },
+              });
+            }
+          );
+          await page.route(
+            (url) => url.pathname.endsWith('/hero'),
+            async (route) => {
+              if (photo === 'failed' && route.request().url().includes(MOCK_IDS.RECIPE_LASAGNA))
+                await route.fulfill({ status: 404, body: '' });
+              else
+                await route.fulfill({
+                  path: `e2e/fixtures/cookbook-${photo === 'dark' ? 'dark' : 'light'}.jpg`,
+                  contentType: 'image/jpeg',
+                });
+            }
+          );
+          await page.goto('/home');
+          const card = page.getByTestId('tonight-pivot-card');
+          await expect(card.getByRole('heading', { name })).toBeVisible();
+          if (photo === 'failed') {
+            await expect(card.locator('img')).toHaveCount(0);
+            await expect(page.getByTestId('confirm-goto-btn')).toBeVisible();
+            await page.screenshot({
+              path: testInfo.outputPath('failed-image.png'),
+              fullPage: true,
+            });
+            recipeId = MOCK_IDS.RECIPE_TACOS;
+            // A real reload with a new eligible GOTO identity must attempt its fresh image.
+            await page.reload();
+            await expect(card.locator('img')).toBeVisible();
+            await expect
+              .poll(() => card.locator('img').evaluate((img: HTMLImageElement) => img.naturalWidth))
+              .toBeGreaterThan(100);
+          } else {
+            await expect
+              .poll(() => card.locator('img').evaluate((img: HTMLImageElement) => img.naturalWidth))
+              .toBeGreaterThan(100);
+            for (const [width, height] of [
+              [320, 844],
+              [390, 844],
+              [412, 915],
+              [820, 1180],
+              [1180, 820],
+            ]) {
+              await page.setViewportSize({ width, height });
+              for (const growth of [1, 2]) {
+                await card.evaluate(
+                  (node, scale) =>
+                    node.querySelectorAll<HTMLElement>('*').forEach((el) => {
+                      el.dataset.layoutFont ??= getComputedStyle(el).fontSize;
+                      el.style.fontSize = `${parseFloat(el.dataset.layoutFont) * scale}px`;
+                    }),
+                  growth
+                );
+                if (growth === 1 && width >= 390 && width <= 412) {
+                  const quick = await page.getByTestId('discover-btn').boundingBox();
+                  const order = await page.getByTestId('order-in-btn').boundingBox();
+                  expect(Math.abs(quick!.y - order!.y)).toBeLessThan(1);
+                  expect(quick!.height).toBeLessThan(70);
+                  expect(order!.height).toBeLessThan(70);
+                }
+                await expectTonightLayout(
+                  page,
+                  card,
+                  testInfo,
+                  `photo-${photo}-${width}-${growth}`
+                );
+              }
+            }
+          }
+        });
+      }
+    });
+  }
+
+  for (const appLocale of ['en', 'fr'] as const) {
     test.describe(`Tonight card layout / Tonight pivot choices (${appLocale})`, () => {
       test.use({ appLocale });
       for (const state of ['ready', 'empty', 'read-error', 'mystery'] as const) {
@@ -111,7 +200,7 @@ test.describe('Home Command Center — GOTO & Pivot Flow', () => {
                 : 'Nothing planned for tonight';
           await expect(card).toContainText(context);
           await expect(page.getByTestId('discover-btn')).toHaveAccessibleName(
-            appLocale === 'fr' ? 'Recherche rapide' : 'Quick Find'
+            appLocale === 'fr' ? 'Recherche' : 'Quick Find'
           );
           await expect(page.getByTestId('order-in-btn')).toHaveAccessibleName(
             appLocale === 'fr' ? 'Commander' : 'Order In'

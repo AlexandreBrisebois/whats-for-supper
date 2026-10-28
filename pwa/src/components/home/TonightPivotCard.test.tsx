@@ -210,7 +210,7 @@ it.each([
   );
   expect(screen.getByTestId('pivot-card-header')).toHaveTextContent('Rien de prévu pour ce soir');
   expect(screen.getByText(feedback)).toBeVisible();
-  expect(screen.getByTestId('discover-btn')).toHaveAccessibleName('Recherche rapide');
+  expect(screen.getByTestId('discover-btn')).toHaveAccessibleName('Recherche');
   expect(screen.getByTestId('order-in-btn')).toHaveAccessibleName('Commander');
   if (status === 'ready')
     expect(screen.getByTestId('confirm-goto-btn')).toHaveAccessibleName(
@@ -234,4 +234,28 @@ it('retains saved Mystery context and ready choices without calling the day unpl
   expect(screen.getByText("Your family's GOTO")).toBeVisible();
   fireEvent.click(screen.getByTestId('confirm-goto-btn'));
   expect(baseProps.onConfirmGoto).toHaveBeenCalledTimes(1);
+});
+
+describe('Tonight pivot image availability', () => {
+  it('keeps choices after failure and resets only for a changed source or recipe', () => {
+    const props = {
+      ...baseProps,
+      gotoRecipeId: 'one',
+      gotoDescription: 'Garden supper',
+      gotoStatus: 'ready',
+      gotoImageUrl: '/first.jpg',
+    };
+    const { rerender } = render(<TonightPivotCard {...props} />);
+    fireEvent.error(screen.getByRole('img'));
+    expect(screen.queryByRole('img')).not.toBeInTheDocument();
+    expect(screen.getByTestId('confirm-goto-btn')).toBeVisible();
+    expect(baseProps.onConfirmGoto).not.toHaveBeenCalled();
+    rerender(<TonightPivotCard {...props} gotoDescription="Hydrated supper" />);
+    expect(screen.queryByRole('img')).not.toBeInTheDocument();
+    rerender(<TonightPivotCard {...props} gotoImageUrl="/second.jpg" />);
+    expect(screen.getByRole('img')).toHaveAttribute('src', '/second.jpg');
+    fireEvent.error(screen.getByRole('img'));
+    rerender(<TonightPivotCard {...props} gotoRecipeId="two" gotoImageUrl="/second.jpg" />);
+    expect(screen.getByRole('img')).toHaveAttribute('src', '/second.jpg');
+  });
 });

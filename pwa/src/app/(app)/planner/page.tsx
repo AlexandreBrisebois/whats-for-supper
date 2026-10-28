@@ -916,6 +916,13 @@ const PlannerDayCard = memo(function PlannerDayCard({
   isToday: boolean;
   isPast: boolean;
 }) {
+  const focusFrame = useRef<number | null>(null);
+  useEffect(
+    () => () => {
+      if (focusFrame.current !== null) cancelAnimationFrame(focusFrame.current);
+    },
+    []
+  );
   const startRecipeDrag = React.useCallback(
     (event: PointerEvent) => startDrag(index, event),
     [startDrag, index]
@@ -927,9 +934,19 @@ const PlannerDayCard = memo(function PlannerDayCard({
       const from = snapshot.findIndex((item) => item._uiId === day._uiId);
       const to = from + direction;
       if (from < 0 || to < 0 || to >= snapshot.length || !snapshot[from].recipe?.id) return;
+      const focusOwner = document.activeElement;
       useWeekStore.getState().reorderLocally(from, to, snapshot);
       useWeekStore.getState().commitMove(from, to, snapshot);
-      requestAnimationFrame(() => {
+      if (focusFrame.current !== null) cancelAnimationFrame(focusFrame.current);
+      focusFrame.current = requestAnimationFrame(() => {
+        focusFrame.current = null;
+        // A removed source handle leaves focus on body. Otherwise a newer focus
+        // choice belongs to the user and must not be overridden by this move.
+        if (
+          document.activeElement !== focusOwner &&
+          (focusOwner?.isConnected || document.activeElement !== document.body)
+        )
+          return;
         document
           .querySelector<HTMLElement>(
             `[data-testid="day-card-${to}"] [data-testid="planner-drag-handle"]`
