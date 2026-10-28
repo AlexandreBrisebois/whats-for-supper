@@ -32,7 +32,7 @@ export function LanguageSelection() {
           className={[
             'flex-1 rounded-2xl py-4 text-sm font-black transition-all active:scale-[0.98]',
             locale === 'en'
-              ? 'bg-terracotta text-white shadow-card'
+              ? 'bg-terracotta hover:bg-terracotta-600 active:bg-terracotta-700 text-white shadow-card'
               : 'bg-white/50 text-charcoal/60 hover:bg-white/70 border border-white/80 shadow-sm',
           ].join(' ')}
         >
@@ -44,7 +44,7 @@ export function LanguageSelection() {
           className={[
             'flex-1 rounded-2xl py-4 text-sm font-black transition-all active:scale-[0.98]',
             locale === 'fr'
-              ? 'bg-terracotta text-white shadow-card'
+              ? 'bg-terracotta hover:bg-terracotta-600 active:bg-terracotta-700 text-white shadow-card'
               : 'bg-white/50 text-charcoal/60 hover:bg-white/70 border border-white/80 shadow-sm',
           ].join(' ')}
         >

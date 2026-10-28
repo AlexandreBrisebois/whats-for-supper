@@ -127,7 +127,7 @@ function Chip({
       className={cn(
         'min-h-11 rounded-full border px-4 py-2 text-sm font-bold transition-colors',
         selected
-          ? 'border-terracotta bg-terracotta text-white'
+          ? 'border-terracotta bg-terracotta hover:bg-terracotta-600 active:bg-terracotta-700 text-white'
           : 'border-charcoal/10 bg-white text-charcoal'
       )}
     >
@@ -396,7 +396,7 @@ export function RecipeFiltersSheet({
               type="button"
               data-testid="mobile-filter-apply"
               onClick={() => onApply({ filters: draftFilters, preferences: draftPreferences })}
-              className="min-h-11 rounded-full bg-terracotta text-sm font-bold text-white"
+              className="min-h-11 rounded-full bg-terracotta hover:bg-terracotta-600 active:bg-terracotta-700 text-sm font-bold text-white"
             >
               {t('recipes.applyFilters', 'Apply filters')}
             </button>

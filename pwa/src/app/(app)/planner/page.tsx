@@ -526,7 +526,7 @@ export default function PlannerPage() {
                   type="button"
                   data-testid="planner-this-week-pill"
                   onClick={() => navigateToWeekOffset(0)}
-                  className="mx-auto mt-2 inline-flex h-8 items-center justify-center gap-1.5 rounded-full border border-terracotta/15 bg-white/75 px-3 text-[9px] font-black uppercase tracking-[0.18em] text-terracotta shadow-sm shadow-terracotta/5 transition-all hover:bg-terracotta/5 active:scale-95"
+                  className="mx-auto mt-2 inline-flex h-8 items-center justify-center gap-1.5 rounded-full border border-terracotta/15 bg-white/75 px-3 text-[9px] font-black uppercase tracking-[0.18em] text-terracotta-600 shadow-sm shadow-terracotta/5 transition-all hover:bg-terracotta/5 active:scale-95"
                   aria-label={t('planner.backToThisWeek', 'Back to this week')}
                   title={t('planner.backToThisWeek', 'Back to this week')}
                 >
@@ -634,7 +634,7 @@ export default function PlannerPage() {
                       <button
                         onClick={handleCloseVoting}
                         data-testid="close-voting-btn"
-                        className="flex h-9 items-center gap-1.5 rounded-full border border-terracotta/10 bg-white/80 px-3 text-[9px] font-black uppercase tracking-[0.18em] text-terracotta transition-all hover:bg-terracotta hover:text-white active:scale-95"
+                        className="flex h-9 items-center gap-1.5 rounded-full border border-terracotta/10 bg-white/80 px-3 text-[9px] font-black uppercase tracking-[0.18em] text-terracotta transition-all hover:bg-terracotta-600 active:bg-terracotta-700 hover:text-white active:text-white active:scale-95"
                       >
                         <Ban size={10} />
                         {t('planner.closeVoting', 'Close Voting')}

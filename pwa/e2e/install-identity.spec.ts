@@ -28,7 +28,7 @@ test('public install metadata agrees in initial HTML and retains access policy',
     display: 'standalone',
     name,
     short_name: name,
-    theme_color: '#CD5D45',
+    theme_color: '#B85542',
   });
   expect(manifest.icons.every((icon: { src: string }) => icon.src.startsWith(prefix + '/'))).toBe(
     true

@@ -554,7 +554,7 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
               event.stopPropagation();
               setReportContext(isPrepStep ? 'ingredients' : 'steps');
             }}
-            className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/40 bg-white/80 text-terracotta/70 shadow-md backdrop-blur-md transition hover:bg-white active:scale-90"
+            className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/40 bg-white/80 text-terracotta-600 shadow-md backdrop-blur-md transition hover:bg-white active:scale-90"
           >
             <Flag size={20} aria-hidden="true" />
           </button>
@@ -589,7 +589,8 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
             <motion.div
               key={i}
               animate={{
-                backgroundColor: i < currentStep ? 'rgba(205, 93, 69, 1)' : 'rgba(0, 0, 0, 0.05)',
+                backgroundColor:
+                  i < currentStep ? 'var(--color-terracotta)' : 'rgba(0, 0, 0, 0.05)',
               }}
               className="flex-1"
             />
@@ -804,7 +805,7 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
                                         type="button"
                                         disabled={editPending}
                                         onClick={() => void handleSaveEdit()}
-                                        className="min-h-11 rounded-full bg-terracotta px-6 font-bold text-white disabled:opacity-50"
+                                        className="min-h-11 rounded-full bg-terracotta hover:bg-terracotta-600 active:bg-terracotta-700 px-6 font-bold text-white disabled:opacity-50"
                                       >
                                         {editPending ? 'Saving…' : 'Save'}
                                       </button>
@@ -872,7 +873,7 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
                         type="button"
                         data-testid="cooks-mode-save-edit"
                         onClick={handleSaveEdit}
-                        className="inline-flex h-14 items-center justify-center gap-3 rounded-full bg-terracotta px-10 text-base font-black text-white shadow-xl shadow-terracotta/20 transition hover:bg-terracotta/90 active:scale-95"
+                        className="inline-flex h-14 items-center justify-center gap-3 rounded-full bg-terracotta active:bg-terracotta-700 px-10 text-base font-black text-white shadow-xl shadow-terracotta/20 transition hover:bg-terracotta-600 active:scale-95"
                       >
                         <Check size={20} strokeWidth={3} />
                         <span>{t('common.save', 'Save')}</span>
@@ -951,7 +952,7 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
             aria-label={
               isCompletionAction ? t('cook.markCooked', 'Mark recipe as cooked') : undefined
             }
-            className={`${singlePageEnabled ? 'h-12 rounded-xl text-lg font-bold shadow-sm' : 'h-16 md:h-20 rounded-[1.5rem] md:rounded-[2rem] text-xl md:text-2xl font-black shadow-xl shadow-terracotta/20'} bg-terracotta text-white flex items-center justify-center space-x-2 active:scale-95 transition-all`}
+            className={`${singlePageEnabled ? 'h-12 rounded-xl text-lg font-bold shadow-sm' : 'h-16 md:h-20 rounded-[1.5rem] md:rounded-[2rem] text-xl md:text-2xl font-black shadow-xl shadow-terracotta/20'} bg-terracotta hover:bg-terracotta-600 active:bg-terracotta-700 text-white flex items-center justify-center space-x-2 active:scale-95 transition-all`}
           >
             <span>
               {isCompletionAction

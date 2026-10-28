@@ -128,7 +128,7 @@ export function TonightPivotCard({
             <button
               onClick={onConfirmGoto}
               data-testid="confirm-goto-btn"
-              className="flex items-center justify-center gap-2 min-h-14 px-4 py-3 rounded-[1.5rem] bg-terracotta-600 text-cream-100 hover:bg-terracotta-700 active:bg-terracotta-800 transition-colors focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-charcoal text-base font-semibold leading-normal"
+              className="flex items-center justify-center gap-2 min-h-14 px-4 py-3 rounded-[1.5rem] bg-terracotta text-cream-100 hover:bg-terracotta-600 active:bg-terracotta-700 transition-colors focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-charcoal text-base font-semibold leading-normal"
             >
               <UtensilsCrossed size={18} aria-hidden="true" className="shrink-0" />
               {t('home.makeThisTonight', 'Make this tonight')}
@@ -141,7 +141,7 @@ export function TonightPivotCard({
               className={
                 gotoReady
                   ? 'flex min-w-[min(100%,8em)] flex-[1.4_1_8em] items-center justify-center gap-1 min-h-14 px-1.5 py-3 rounded-[1.5rem] border border-terracotta-200 text-terracotta-700 hover:bg-terracotta-50 active:bg-terracotta-100 transition-colors focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-charcoal text-base font-semibold leading-normal'
-                  : 'flex items-center justify-center gap-2 min-h-14 px-4 py-3 rounded-[1.5rem] bg-terracotta-600 text-cream-100 hover:bg-terracotta-700 active:bg-terracotta-800 transition-colors focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-charcoal text-base font-semibold leading-normal'
+                  : 'flex items-center justify-center gap-2 min-h-14 px-4 py-3 rounded-[1.5rem] bg-terracotta text-cream-100 hover:bg-terracotta-600 active:bg-terracotta-700 transition-colors focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-charcoal text-base font-semibold leading-normal'
               }
             >
               <Search size={16} aria-hidden="true" className="shrink-0" />

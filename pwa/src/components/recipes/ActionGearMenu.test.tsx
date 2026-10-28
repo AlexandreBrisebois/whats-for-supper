@@ -22,7 +22,7 @@ describe('ActionGearMenu', () => {
     expect(screen.queryByTestId('action-reimport-recipe')).toBeNull();
     const reportAction = screen.getByRole('button', { name: 'Report issue' });
     expect(reportAction).toBeVisible();
-    expect(reportAction.querySelector('svg')).toHaveClass('text-terracotta/70');
+    expect(reportAction.querySelector('svg')).toHaveClass('text-terracotta-600');
   });
 
   it('keeps reporting visible without a direct re-import entry point', () => {

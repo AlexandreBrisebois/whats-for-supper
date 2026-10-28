@@ -124,15 +124,17 @@ Neither “all green is success” nor “all pale colour must go” follows fro
 
 ### Pair options, not palette replacement
 
-All values below already exist in [globals.css](../pwa/src/app/globals.css).
+All values below exist in [globals.css](../pwa/src/app/globals.css). The shared terracotta accent and primary default are now `#B85542`; hover uses `#A44A37`, and pressed uses `#7B3829`. Pale blush surfaces retain their existing tokens. Use the stronger terracotta-600 or terracotta-700 foreground on tinted surfaces; translucent text needs a separate actual-background contrast check.
 These are **measured options**, not a menu of equally suitable aesthetic choices or blanket replacements. For Home primary actions use the terracotta/light-text direction above. The ochre/charcoal pair is retained as contrast reference only; it is not a recommended Home action treatment.
 
 | Proposed role | Foreground / background | Ratio |
 |---|---|---:|
 | Body on warm canvas | charcoal `#1F2937` / cream `#FDFCF0` | 14.23:1 |
 | Supporting context | charcoal-600 `#4B5563` / cream | 7.33:1 |
-| Terracotta action option | white / terracotta-600 `#A44A37` | 5.81:1 |
-| Pressed terracotta option | white / terracotta-700 `#7B3829` | 8.61:1 |
+| Shared terracotta primary | cream / terracotta `#B85542` | 4.61:1 |
+| Shared terracotta primary | white / terracotta `#B85542` | 4.75:1 |
+| Hover terracotta | white / terracotta-600 `#A44A37` | 5.81:1 |
+| Pressed terracotta | white / terracotta-700 `#7B3829` | 8.61:1 |
 | Contrast reference only; not Home action guidance | charcoal / ochre `#E1AD01` | 7.12:1 |
 | Small text on substantial sage field | sage-900 `#1B1E12` / sage `#8A9A5B` | 5.52:1 |
 | Body on substantial sage field | charcoal / sage | 4.79:1 |

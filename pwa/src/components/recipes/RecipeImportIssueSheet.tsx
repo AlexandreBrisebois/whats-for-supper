@@ -212,7 +212,7 @@ function RecipeImportIssueEditor({
                 onClick={() => toggleReason(reason)}
                 className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-full border px-4 py-2 text-sm font-bold transition-colors ${
                   selected
-                    ? 'border-terracotta-600 bg-terracotta-600 text-white'
+                    ? 'border-terracotta-600 bg-terracotta hover:bg-terracotta-600 active:bg-terracotta-700 text-white'
                     : 'border-charcoal/10 bg-white text-charcoal disabled:cursor-not-allowed disabled:opacity-45'
                 }`}
               >
@@ -337,7 +337,7 @@ function RecipeImportIssueEditor({
             aria-describedby={isReimporting ? reimportingDescriptionId : undefined}
             disabled={reasons.length === 0 || busy || isReimporting}
             onClick={() => void save()}
-            className="mt-5 min-h-12 w-full rounded-2xl bg-terracotta px-4 font-bold text-white disabled:cursor-not-allowed disabled:opacity-45"
+            className="mt-5 min-h-12 w-full rounded-2xl bg-terracotta hover:bg-terracotta-600 active:bg-terracotta-700 px-4 font-bold text-white disabled:cursor-not-allowed disabled:opacity-45"
           >
             Save
           </button>

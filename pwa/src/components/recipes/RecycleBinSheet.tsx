@@ -134,7 +134,7 @@ export function RecycleBinSheet({ onClose }: RecycleBinSheetProps) {
                 type="button"
                 data-testid="trash-retry"
                 onClick={() => setReadAttempt((attempt) => attempt + 1)}
-                className="mt-4 rounded-full bg-terracotta px-5 py-3 font-bold text-white"
+                className="mt-4 rounded-full bg-terracotta hover:bg-terracotta-600 active:bg-terracotta-700 px-5 py-3 font-bold text-white"
               >
                 {t('common.retry', 'Retry')}
               </button>
@@ -175,7 +175,7 @@ export function RecycleBinSheet({ onClose }: RecycleBinSheetProps) {
                         data-testid={`action-restore-${item.id}`}
                         onClick={() => void handleRestore(item.id)}
                         disabled={restoringIds.has(item.id)}
-                        className="inline-flex items-center gap-1.5 rounded-full bg-terracotta px-3 py-1.5 text-xs font-bold text-white shadow-sm disabled:opacity-50"
+                        className="inline-flex items-center gap-1.5 rounded-full bg-terracotta hover:bg-terracotta-600 active:bg-terracotta-700 px-3 py-1.5 text-xs font-bold text-white shadow-sm disabled:opacity-50"
                       >
                         <RotateCcw size={12} />
                         {t('recipes.restore', 'Restore')}

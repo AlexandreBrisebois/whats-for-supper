@@ -157,7 +157,7 @@ export const PlanningPivotSheet: React.FC<PlanningPivotSheetProps> = ({
                 data-testid="pivot-search-library"
                 className="flex items-center gap-4 p-5 rounded-[2rem] border-2 border-charcoal/5 hover:border-terracotta/30 hover:bg-terracotta/5 transition-all text-left group"
               >
-                <div className="h-14 w-14 rounded-2xl bg-terracotta/10 text-terracotta flex items-center justify-center group-hover:scale-110 transition-transform">
+                <div className="h-14 w-14 rounded-2xl bg-terracotta/10 text-terracotta-600 flex items-center justify-center group-hover:scale-110 transition-transform">
                   <Search size={24} />
                 </div>
                 <div className="flex-1">

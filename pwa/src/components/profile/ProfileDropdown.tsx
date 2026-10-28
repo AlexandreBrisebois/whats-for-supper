@@ -50,11 +50,11 @@ export function ProfileDropdown({ onSelect }: ProfileDropdownProps) {
         }
       >
         <div className="flex items-center gap-4">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-terracotta/10 text-terracotta">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-terracotta/10 text-terracotta-600">
             <UserCircle className="h-7 w-7" />
           </div>
           <div className="text-left">
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-terracotta/60">
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-terracotta-600">
               {t('profile.activeMember', 'Active Member')}
             </p>
             <p
@@ -66,7 +66,7 @@ export function ProfileDropdown({ onSelect }: ProfileDropdownProps) {
           </div>
         </div>
         <ChevronDown
-          className={`h-5 w-5 text-terracotta/40 transition-transform duration-500 ${isOpen ? 'rotate-180' : ''}`}
+          className={`h-5 w-5 text-terracotta-600 transition-transform duration-500 ${isOpen ? 'rotate-180' : ''}`}
         />
       </button>
 
@@ -84,7 +84,7 @@ export function ProfileDropdown({ onSelect }: ProfileDropdownProps) {
                   data-testid={`profile-dropdown-option-${member.id}`}
                   className={`flex w-full items-center justify-between px-5 py-4 rounded-2xl text-left transition-all duration-200 ${
                     String(member.id).toLowerCase() === String(selectedMember?.id).toLowerCase()
-                      ? 'bg-terracotta/10 text-terracotta'
+                      ? 'bg-terracotta/10 text-terracotta-600'
                       : 'text-charcoal hover:bg-cream'
                   }`}
                 >

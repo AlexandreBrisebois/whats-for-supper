@@ -549,7 +549,7 @@ export function RecipeDetailSheet({
       >
         <div className="flex flex-wrap items-center gap-x-2 gap-y-2 px-6 pt-6">
           <div className="flex min-w-0 items-center gap-2">
-            <p className="text-[10px] font-black uppercase tracking-[0.24em] text-terracotta/70">
+            <p className="text-[10px] font-black uppercase tracking-[0.24em] text-terracotta-600">
               {t('recipes.detailTitle', 'Recipe detail')}
             </p>
             {recipe?.importIssue && (
@@ -651,7 +651,7 @@ export function RecipeDetailSheet({
               type="button"
               data-testid="recipe-detail-retry"
               onClick={() => setReadAttempt((attempt) => attempt + 1)}
-              className="mt-4 rounded-full bg-terracotta px-5 py-3 font-bold text-white"
+              className="mt-4 rounded-full bg-terracotta hover:bg-terracotta-600 active:bg-terracotta-700 px-5 py-3 font-bold text-white"
             >
               {t('common.retry', 'Retry')}
             </button>
@@ -841,7 +841,7 @@ export function RecipeDetailSheet({
                     disabled={isSavingAction}
                     aria-label={t('recipes.viewSteps', 'View steps')}
                     title={t('recipes.viewSteps', 'View steps')}
-                    className="inline-flex h-8 items-center gap-1.5 rounded-full bg-white px-3 text-[10px] font-black uppercase tracking-wider text-terracotta shadow-sm transition hover:bg-terracotta/5 active:scale-95 disabled:opacity-50"
+                    className="inline-flex h-8 items-center gap-1.5 rounded-full bg-white px-3 text-[10px] font-black uppercase tracking-wider text-terracotta-600 shadow-sm transition hover:bg-terracotta/5 active:scale-95 disabled:opacity-50"
                   >
                     <UtensilsCrossed size={12} />
                     <span>{t('recipes.steps', 'STEPS')}</span>
@@ -1014,7 +1014,7 @@ export function RecipeDetailSheet({
             </div>
 
             {editError && (
-              <p className="mb-4 rounded-2xl bg-terracotta/10 px-4 py-3 text-sm font-bold text-terracotta">
+              <p className="mb-4 rounded-2xl bg-terracotta/10 px-4 py-3 text-sm font-bold text-terracotta-600">
                 {editError}
               </p>
             )}
@@ -1031,7 +1031,7 @@ export function RecipeDetailSheet({
                   disabled={
                     isSavingRecipe || draftName.trim().length === 0 || draftMealTypes.length === 0
                   }
-                  className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-terracotta px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-terracotta/90 disabled:opacity-60"
+                  className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-terracotta active:bg-terracotta-700 px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-terracotta-600 disabled:opacity-60"
                 >
                   <Save size={16} />
                   {isSavingRecipe
@@ -1066,7 +1066,7 @@ export function RecipeDetailSheet({
                       plannerDayLabel ? void handleUseRecipe() : setShowActionPivot(true)
                     }
                     disabled={isSavingAction}
-                    className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-terracotta px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-terracotta/90 disabled:opacity-60"
+                    className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-terracotta active:bg-terracotta-700 px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-terracotta-600 disabled:opacity-60"
                   >
                     {!plannerDayLabel && <UtensilsCrossed size={18} />}
                     <span>{primaryActionLabel}</span>
@@ -1078,7 +1078,7 @@ export function RecipeDetailSheet({
                       data-testid="action-cook-tonight"
                       onClick={() => void handleUseRecipe()}
                       disabled={isSavingAction}
-                      className="flex-1 inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-terracotta px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-terracotta/90 disabled:opacity-60"
+                      className="flex-1 inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-terracotta active:bg-terracotta-700 px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-terracotta-600 disabled:opacity-60"
                     >
                       <UtensilsCrossed size={18} />
                       <span>Cook Tonight</span>

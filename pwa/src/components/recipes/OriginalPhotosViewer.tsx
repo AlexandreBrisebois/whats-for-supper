@@ -193,7 +193,7 @@ export function OriginalPhotosViewer({
         <button
           type="button"
           onClick={toggleZoom}
-          className={`absolute bottom-10 right-6 flex h-14 items-center justify-center rounded-full bg-terracotta text-white shadow-2xl transition-all hover:scale-105 active:scale-95 ${
+          className={`absolute bottom-10 right-6 flex h-14 items-center justify-center rounded-full bg-terracotta hover:bg-terracotta-600 active:bg-terracotta-700 text-white shadow-2xl transition-all hover:scale-105 active:scale-95 ${
             scale > 1 ? 'px-6 gap-2' : 'w-14'
           }`}
         >
@@ -246,7 +246,9 @@ export function OriginalPhotosViewer({
                 setCurrentIndex(idx);
               }}
               className={`h-1.5 rounded-full transition-all duration-300 ${
-                idx === currentIndex ? 'w-8 bg-terracotta' : 'w-2 bg-white/20'
+                idx === currentIndex
+                  ? 'w-8 bg-terracotta hover:bg-terracotta-600 active:bg-terracotta-700'
+                  : 'w-2 bg-white/20'
               }`}
             />
           ))}

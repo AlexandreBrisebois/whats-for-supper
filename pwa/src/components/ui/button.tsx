@@ -5,9 +5,9 @@ export type ButtonSize = 'sm' | 'md' | 'lg';
 
 const VARIANT_CLASSES: Record<ButtonVariant, string> = {
   primary:
-    'bg-terracotta text-white hover:bg-terracotta/90 active:scale-[0.98] transition-all shadow-sm',
-  secondary: 'bg-cream text-terracotta border border-terracotta/20 hover:bg-terracotta/5',
-  ghost: 'text-terracotta hover:bg-terracotta/5',
+    'bg-terracotta text-white hover:bg-terracotta-600 active:bg-terracotta-700 active:scale-[0.98] transition-all shadow-sm',
+  secondary: 'bg-cream text-terracotta-600 border border-terracotta/20 hover:bg-terracotta/5',
+  ghost: 'text-terracotta-600 hover:bg-terracotta/5',
   danger: 'bg-ochre text-white hover:bg-ochre/90 active:scale-[0.98] transition-all shadow-sm',
 };
 

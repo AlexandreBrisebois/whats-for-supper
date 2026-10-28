@@ -524,7 +524,7 @@ export default function DiscoveryPage() {
           onClick={() => recipes.length > 0 && handleSwipeLeft(recipes[0].id)}
           data-testid="dislike-button"
           aria-label="Dislike recipe"
-          className="flex h-20 w-20 items-center justify-center rounded-full bg-white text-terracotta shadow-[0_10px_25px_rgba(205,93,69,0.15)] border border-terracotta/5 active:scale-90 transition-transform disabled:opacity-20"
+          className="flex h-20 w-20 items-center justify-center rounded-full bg-white text-terracotta shadow-[0_10px_25px_color-mix(in_srgb,var(--color-terracotta)_15%,transparent)] border border-terracotta/5 active:scale-90 transition-transform disabled:opacity-20"
         >
           <div className="text-2xl">✕</div>
         </button>

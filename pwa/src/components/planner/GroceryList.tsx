@@ -644,7 +644,7 @@ export function GroceryList({
                 {onClose && (
                   <Button
                     onClick={onClose}
-                    className="bg-terracotta text-white rounded-3xl h-16 px-10 font-bold shadow-xl shadow-terracotta/20 active:scale-95 transition-all"
+                    className="bg-terracotta hover:bg-terracotta-600 active:bg-terracotta-700 text-white rounded-3xl h-16 px-10 font-bold shadow-xl shadow-terracotta/20 active:scale-95 transition-all"
                   >
                     {t('grocery.startPlanning', 'Start Planning')}
                   </Button>
@@ -1048,7 +1048,7 @@ export function GroceryList({
               type="submit"
               disabled={!extraName.trim() || addState === 'pending'}
               onPointerDown={(event) => event.preventDefault()}
-              className="h-12 w-12 shrink-0 rounded-2xl bg-terracotta text-white disabled:opacity-50 focus:ring-2 focus:ring-charcoal"
+              className="h-12 w-12 shrink-0 rounded-2xl bg-terracotta hover:bg-terracotta-600 active:bg-terracotta-700 text-white disabled:opacity-50 focus:ring-2 focus:ring-charcoal"
               aria-label={
                 addState === 'pending'
                   ? t('grocery.addingExtra', 'Adding…')

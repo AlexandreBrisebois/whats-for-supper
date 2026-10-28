@@ -94,7 +94,7 @@ export function Navigation({ className = '' }: NavigationProps) {
             data-testid={`nav-item-${item.href.replace('/', '') || 'home'}`}
             className={[
               'flex flex-1 flex-col items-center justify-center gap-1 py-1 text-[11px] font-bold transition-all z-40 uppercase tracking-tighter',
-              active ? 'text-terracotta' : 'text-charcoal-400 hover:text-terracotta/70',
+              active ? 'text-terracotta' : 'text-charcoal-400 hover:text-terracotta-600',
             ].join(' ')}
             aria-current={active ? 'page' : undefined}
           >

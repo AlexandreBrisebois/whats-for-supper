@@ -83,7 +83,7 @@ export function ImageReview({
                 }}
                 className={`absolute -right-1 -bottom-1 flex h-8 w-8 items-center justify-center rounded-full transition-all active:scale-90 shadow-md border border-white ${
                   isHero
-                    ? 'bg-terracotta text-white scale-110'
+                    ? 'bg-terracotta hover:bg-terracotta-600 active:bg-terracotta-700 text-white scale-110'
                     : 'bg-white/90 text-charcoal/20 hover:bg-white hover:text-terracotta backdrop-blur-md'
                 }`}
               >

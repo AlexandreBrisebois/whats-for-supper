@@ -185,7 +185,7 @@ export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
                   opacity: passOpacity,
                   scale: passScale,
                 }}
-                className="flex flex-col items-center gap-2 rounded-full bg-terracotta/30 p-8 text-white backdrop-blur-md shadow-2xl"
+                className="flex flex-col items-center gap-2 rounded-full bg-terracotta p-8 text-white backdrop-blur-md shadow-2xl"
               >
                 <X size={48} />
                 <span className="text-xl font-black tracking-widest">

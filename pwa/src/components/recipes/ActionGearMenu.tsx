@@ -65,7 +65,7 @@ export function ActionGearMenu({
                   onClick={handleEdit}
                   className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-bold text-charcoal transition hover:bg-charcoal/5"
                 >
-                  <Pencil size={16} className="text-terracotta/70" />
+                  <Pencil size={16} className="text-terracotta-600" />
                   {t('common.edit', 'Edit')}
                 </button>
               )}
@@ -78,7 +78,7 @@ export function ActionGearMenu({
                 }}
                 className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-bold text-charcoal transition hover:bg-charcoal/5"
               >
-                <Flag size={16} className="text-terracotta/70" />
+                <Flag size={16} className="text-terracotta-600" />
                 {hasImportIssue ? 'Review issue' : 'Report issue'}
               </button>
               <button
@@ -87,7 +87,7 @@ export function ActionGearMenu({
                 onClick={handleMoveToBin}
                 className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-bold text-charcoal transition hover:bg-charcoal/5"
               >
-                <Trash2 size={16} className="text-terracotta/70" />
+                <Trash2 size={16} className="text-terracotta-600" />
                 {t('recipes.moveToBin', 'Move to Bin')}
               </button>
             </div>

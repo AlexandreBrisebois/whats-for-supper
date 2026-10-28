@@ -106,7 +106,7 @@ export function TonightMenuCard({
         <div className="mt-4 flex flex-wrap gap-2">
           <button
             onClick={() => onCookMode?.(recipeId)}
-            className="flex min-w-[min(100%,6.5em)] max-w-full flex-[1_1_6em] items-center justify-center gap-1.5 min-h-14 px-2 py-3 rounded-[1.5rem] bg-terracotta-600 text-cream-100 hover:bg-terracotta-700 active:bg-terracotta-800 transition-colors focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-charcoal"
+            className="flex min-w-[min(100%,6.5em)] max-w-full flex-[1_1_6em] items-center justify-center gap-1.5 min-h-14 px-2 py-3 rounded-[1.5rem] bg-terracotta text-cream-100 hover:bg-terracotta-600 active:bg-terracotta-700 transition-colors focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-charcoal"
             data-testid="cook-mode-btn"
           >
             <UtensilsCrossed size={16} aria-hidden="true" className="shrink-0" />
