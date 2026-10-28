@@ -571,7 +571,7 @@ describe('CooksMode', () => {
 
     const reportAction = screen.getByRole('button', { name: 'Report issue with ingredients' });
     const topActions = screen.getByTestId('cooks-mode-top-actions');
-    expect(reportAction).toHaveClass('h-12', 'w-12', 'text-terracotta/70');
+    expect(reportAction).toHaveClass('h-12', 'w-12', 'text-terracotta-600');
     expect(reportAction).toHaveTextContent('');
     expect(topActions).toContainElement(reportAction);
     expect(topActions).toContainElement(screen.getByRole('button', { name: "Close cook's mode" }));
@@ -640,7 +640,7 @@ describe('CooksMode', () => {
 
     const reportAction = screen.getByRole('button', { name: 'Report issue with steps' });
     const editAction = screen.getByRole('button', { name: 'Edit step' });
-    expect(reportAction).toHaveClass('h-12', 'w-12', 'text-terracotta/70');
+    expect(reportAction).toHaveClass('h-12', 'w-12', 'text-terracotta-600');
     expect(editAction).toHaveClass('h-12', 'w-12');
     expect(reportAction).toHaveTextContent('');
     expect(editAction).toHaveTextContent('');
