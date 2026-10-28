@@ -328,51 +328,61 @@ for (const locale of ['en', 'fr'] as const) {
     test('reduced-motion loading and loaded controls have no animation or staging', async ({
       page,
     }) => {
-      await page.emulateMedia({ reducedMotion: 'reduce' });
-      await page.setViewportSize({ width: 390, height: 844 });
-      let release!: () => void;
-      const ready = new Promise<void>((resolve) => {
-        release = resolve;
-      });
-      await page.route('**/api/family', async (route) => {
-        await ready;
-        await route.fallback();
-      });
-      await page.goto('/profile');
-      await expect(page.getByRole('status')).toContainText(
-        locale === 'en' ? 'Loading family members' : 'Chargement des membres'
-      );
-      const loadingBox = await page.getByRole('status').boundingBox();
-      await expect(page.getByTestId('settings-btn')).toBeVisible();
-      await expect(page.getByTestId('locale-btn-en')).toBeEnabled();
-      const motion = await page
-        .getByTestId('profile-page')
-        .evaluate(
-          (el) => [el, ...el.querySelectorAll('*')].flatMap((node) => node.getAnimations()).length
+      test.setTimeout(60000);
+      const fixture = await startUnselectedProfileFixture();
+      try {
+        await page.emulateMedia({ reducedMotion: 'reduce' });
+        await page.setViewportSize({ width: 390, height: 844 });
+        let release!: () => void;
+        const ready = new Promise<void>((resolve) => {
+          release = resolve;
+        });
+        await page.route('**/api/family', async (route) => {
+          await ready;
+          await route.fallback();
+        });
+        // The production identity guard waits for family loading before mounting Profile.
+        // Exercise this state through the existing isolated real-page fixture.
+        await page.goto(fixture.url);
+        await expect(page.getByRole('status')).toContainText(
+          locale === 'en' ? 'Loading family members' : 'Chargement des membres'
         );
-      expect(motion).toBe(0);
-      await page.screenshot({
-        path: `../.task/profile-visual/after-${locale}-loading.png`,
-        fullPage: true,
-      });
-      release();
-      const trigger = page.getByTestId('profile-dropdown-toggle');
-      await expect(trigger).toBeVisible();
-      expect((await trigger.boundingBox())!.height).toBeGreaterThanOrEqual(loadingBox!.height);
-      await trigger.click();
-      expect(
-        await trigger
-          .locator('svg')
-          .last()
-          .evaluate((el) => getComputedStyle(el).transitionProperty)
-      ).toBe('none');
-      expect(
-        await page
+        const loadingBox = await page.getByRole('status').boundingBox();
+        await expect(page.getByTestId('settings-btn')).toBeVisible();
+        await expect(page.getByTestId('locale-btn-en')).toBeEnabled();
+        const motion = await page
           .getByTestId('profile-page')
           .evaluate(
             (el) => [el, ...el.querySelectorAll('*')].flatMap((node) => node.getAnimations()).length
-          )
-      ).toBe(0);
+          );
+        expect(motion).toBe(0);
+        await page.screenshot({
+          path: `../.task/profile-visual/after-${locale}-loading.png`,
+          fullPage: true,
+        });
+        release();
+        const trigger = page.getByTestId('profile-dropdown-toggle');
+        await expect(trigger).toBeVisible();
+        expect((await trigger.boundingBox())!.height).toBeGreaterThanOrEqual(loadingBox!.height);
+        await trigger.click();
+        expect(
+          await trigger
+            .locator('svg')
+            .last()
+            .evaluate((el) => getComputedStyle(el).transitionProperty)
+        ).toBe('none');
+        expect(
+          await page
+            .getByTestId('profile-page')
+            .evaluate(
+              (el) =>
+                [el, ...el.querySelectorAll('*')].flatMap((node) => node.getAnimations()).length
+            )
+        ).toBe(0);
+      } finally {
+        await page.goto('about:blank');
+        await fixture.stop();
+      }
     });
   });
 }

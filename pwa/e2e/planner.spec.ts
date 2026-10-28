@@ -1699,6 +1699,8 @@ test.describe('Supper Planner', () => {
       const target = page.getByTestId('day-card-1');
       const handle = source.getByTestId('planner-drag-handle');
       await expect(source).toContainText('Monday Lasagna');
+      // Raw pointer coordinates must be measured after the entrance spring settles.
+      await expect(page.getByTestId('reorder-group').locator('..')).toHaveCSS('transform', 'none');
       await handle.scrollIntoViewIfNeeded();
       const from = (await handle.boundingBox())!;
       const to = (await target.boundingBox())!;
@@ -1724,6 +1726,7 @@ test.describe('Supper Planner', () => {
         if (client) await touch('touchMove', atY);
         else await page.mouse.move(x, atY);
       }
+      await expect(target).toHaveAttribute('data-drop-target', 'true');
       expect(moves).toHaveLength(0);
       if (client) await touch('touchEnd', endY);
       else await page.mouse.up();

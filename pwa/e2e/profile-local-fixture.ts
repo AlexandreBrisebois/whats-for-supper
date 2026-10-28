@@ -10,6 +10,7 @@ export async function startUnselectedProfileFixture() {
   await cp(path.join(pwa, 'e2e/fixtures/profile-local/app'), path.join(root, 'app'), {
     recursive: true,
   });
+  await cp(path.join(pwa, 'postcss.config.js'), path.join(root, 'postcss.config.js'));
   await symlink(path.join(pwa, 'node_modules'), path.join(root, 'node_modules'));
   await writeFile(path.join(root, 'package.json'), JSON.stringify({ private: true }));
   await writeFile(

@@ -1,3 +1,4 @@
+import '@/app/globals.css';
 import { LocaleProvider } from '@/components/common/LocaleProvider';
 
 // Isolated browser fixture: retain real locale/store/page seams without the
