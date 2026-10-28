@@ -1162,7 +1162,13 @@ const PlannerDayCard = memo(function PlannerDayCard({
                                   )
                             )}
                           >
-                            {hasVotes ? `${count} voted` : 'Chosen'}
+                            {hasVotes
+                              ? tWithVars(
+                                  count === 1 ? 'planner.votedOne' : 'planner.votedOther',
+                                  '{{count}} voted',
+                                  { count }
+                                )
+                              : t('planner.chosen', 'Chosen')}
                           </span>
                         );
                       })()}

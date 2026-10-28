@@ -1,3 +1,4 @@
+import { writeFile } from 'node:fs/promises';
 import { expectTonightLayout, recordTonightControlStates } from './helpers/tonight-card-layout';
 import { test, expect, type Page } from './fixtures';
 import type { NonCookingPlanDto, ScheduleDays } from '../src/lib/api/generated/models';
@@ -10,6 +11,109 @@ import {
   mockSseWithSlotUpdate,
   mockSseWithConnectedSchedule,
 } from './mock-api';
+
+/** Use the existing browser schedule/SSE seams, leaving Home SSR reconciliation intact. */
+async function prepareAdaptiveTonight(page: Page, name: string, image = 'loaded') {
+  const source = `/api/recipes/${MOCK_IDS.RECIPE_LASAGNA}/hero`;
+  await page.route(
+    (url) => url.pathname.endsWith('/hero'),
+    (route) =>
+      image === 'failed'
+        ? route.fulfill({ status: 404, body: '' })
+        : route.fulfill({ path: 'e2e/fixtures/cookbook-light.jpg', contentType: 'image/jpeg' })
+  );
+  const schedule = builders.scheduleDays();
+  schedule.days.find((day) => day.date === toDateStr(currentMonday()))!.recipe =
+    builders.scheduleRecipe({
+      id: MOCK_IDS.RECIPE_LASAGNA,
+      name,
+      image: image === 'missing' ? '' : source,
+      totalTime: 'PT25M',
+      ingredients: ['Salmon', 'Green beans'],
+    });
+  await mockSseWithConnectedSchedule(page, schedule as unknown as ScheduleDays);
+  await page.route(
+    (url) => url.pathname.endsWith('/api/schedule'),
+    async (route) => {
+      if (route.request().method() === 'GET') await route.fulfill({ json: { data: schedule } });
+      else await route.fallback();
+    }
+  );
+  // Closed/unowned session is the ordinary settled fixture, without intervening notices.
+  await page.route('**/api/discovery/session', (route) =>
+    route.request().method() === 'GET'
+      ? route.fulfill({
+          json: {
+            data: {
+              incarnationId: MOCK_IDS.MEMBER_TEST,
+              revision: 1,
+              roundId: null,
+              weekStartDate: null,
+              phase: 'unowned',
+              requiredSlots: null,
+              coveredSlots: null,
+              candidateCount: null,
+              smartDefaults: null,
+            },
+          },
+        })
+      : route.fallback()
+  );
+  await page.goto('/home');
+  const card = page.getByTestId('tonight-menu-card');
+  await expect(card.getByRole('heading', { name, exact: true })).toBeVisible();
+  await expect(page.getByTestId('voting-nudge-card')).toHaveCount(0);
+  await expect(page.getByTestId('home-voting-status')).toHaveCount(0);
+  await page.evaluate(() => document.fonts.ready);
+  if (image === 'loaded')
+    await expect
+      .poll(() =>
+        card.locator('img').evaluate((el: HTMLImageElement) => el.complete && el.naturalWidth > 0)
+      )
+      .toBe(true);
+  else await expect(card.locator('img')).toHaveCount(0);
+}
+
+async function measureAdaptiveTonight(page: Page) {
+  return page.getByTestId('tonight-menu-card').evaluate((card) => {
+    const rect = (el: Element) => {
+      const r = el.getBoundingClientRect();
+      return {
+        top: r.top,
+        bottom: r.bottom,
+        left: r.left,
+        right: r.right,
+        width: r.width,
+        height: r.height,
+      };
+    };
+    const image = card.querySelector('img')!;
+    const title = card.querySelector('h3')!;
+    const shell = card.firstElementChild!;
+    const css = getComputedStyle(shell);
+    return {
+      scrollY,
+      photo: rect(image),
+      card: rect(card),
+      nav: rect(document.querySelector('nav')!),
+      innerWidth: shell.clientWidth - parseFloat(css.paddingLeft) - parseFloat(css.paddingRight),
+      titleLines: Math.round(
+        title.getBoundingClientRect().height / parseFloat(getComputedStyle(title).lineHeight)
+      ),
+      labels: ['quick-capture-trigger', 'home-browse-all-trigger'].map((id) => {
+        const tile = document.querySelector(`[data-testid="${id}"]`)!;
+        const label = tile.querySelector('span')!;
+        const r = label.getBoundingClientRect();
+        const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+        return {
+          ...rect(label),
+          text: label.textContent,
+          hit: hit === label || label.contains(hit),
+        };
+      }),
+    };
+  });
+}
 
 test.describe('Home Command Center — Planned Recipe Flow', () => {
   test.beforeEach(async ({ page }) => {
@@ -177,6 +281,143 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
     await expect(page.getByTestId('cooks-mode-recipe-name')).toHaveText(recipe.name!);
     expect(mutations).toEqual([]);
   });
+
+  for (const appLocale of ['en', 'fr'] as const) {
+    test.describe(`adaptive planned Tonight (${appLocale})`, () => {
+      test.use({ appLocale });
+      test('long text, disclosure and viewport changes preserve photo and reachability', async ({
+        page,
+      }, testInfo) => {
+        test.setTimeout(90_000);
+        const name =
+          appLocale === 'fr'
+            ? 'Saumon rôti avec une généreuse portion de légumes du jardin et pommes de terre aux herbes pour toute la famille'
+            : 'Roast salmon with a generous helping of garden vegetables and herb potatoes for the whole family';
+        await prepareAdaptiveTonight(page, name);
+        const card = page.getByTestId('tonight-menu-card');
+        for (const [width, height] of [
+          [390, 844],
+          [412, 800],
+          [320, 640],
+          [820, 1180],
+          [1180, 820],
+        ]) {
+          await page.setViewportSize({ width, height });
+          for (const growth of [1, 2]) {
+            const scaleText = () =>
+              card.evaluate((node, scale) => {
+                node.querySelectorAll<HTMLElement>('*').forEach((el) => {
+                  el.dataset.layoutFont ??= getComputedStyle(el).fontSize;
+                  el.style.fontSize = `${parseFloat(el.dataset.layoutFont) * scale}px`;
+                });
+              }, growth);
+            await scaleText();
+            for (const expanded of [false, true]) {
+              if (expanded) {
+                await page.getByTestId('tonight-ingredients-toggle').click();
+                await scaleText();
+                await expect(card.getByText('Green beans', { exact: true })).toBeVisible();
+              }
+              const geometry = await measureAdaptiveTonight(page);
+              expect(geometry.photo.height).toBeGreaterThanOrEqual(160);
+              expect(geometry.photo.width).toBeGreaterThan(geometry.photo.height);
+              expect(geometry.card.width).toBeLessThanOrEqual(432);
+              await expect(card.getByRole('heading', { name, exact: true })).toBeVisible();
+              const label = `${width}-${height}-${growth}-${expanded}`;
+              await testInfo.attach(`${label}-geometry`, {
+                body: JSON.stringify(geometry),
+                contentType: 'application/json',
+              });
+              await expectTonightLayout(page, card, testInfo, label);
+              for (const id of ['quick-capture-trigger', 'home-browse-all-trigger']) {
+                const tile = page.getByTestId(id);
+                await tile.evaluate((el) => el.scrollIntoView({ block: 'center' }));
+                const visible = await tile.evaluate((el) => {
+                  const r = el.getBoundingClientRect();
+                  const nav = document.querySelector('nav')!.getBoundingClientRect();
+                  const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+                  return r.top >= 0 && r.bottom <= nav.top && (hit === el || el.contains(hit));
+                });
+                expect(visible).toBe(true);
+              }
+            }
+            await page.getByTestId('tonight-ingredients-toggle').click();
+            await expect(page.getByTestId('tonight-ingredients-toggle')).toHaveAttribute(
+              'aria-expanded',
+              'false'
+            );
+          }
+        }
+        // Same content and width: reducing viewport height makes the photo shallower, then floors it.
+        await page.setViewportSize({ width: 412, height: 915 });
+        const tall = await measureAdaptiveTonight(page);
+        await page.setViewportSize({ width: 412, height: 640 });
+        const short = await measureAdaptiveTonight(page);
+        expect(short.photo.height).toBe(160);
+        expect(short.photo.height).toBeLessThan(tall.photo.height);
+      });
+      for (const image of ['missing', 'failed']) {
+        test(`${image} photo retains modest fallback`, async ({ page }, testInfo) => {
+          await page.setViewportSize({ width: 320, height: 640 });
+          await prepareAdaptiveTonight(
+            page,
+            appLocale === 'fr' ? 'Saumon rôti' : 'Roast salmon',
+            image
+          );
+          const card = page.getByTestId('tonight-menu-card');
+          const fallback = card
+            .locator('[aria-hidden="true"]')
+            .filter({ has: page.locator('svg') })
+            .first();
+          expect((await fallback.boundingBox())!.height).toBeLessThan(160);
+          await expectTonightLayout(page, card, testInfo, `${image}-fallback`);
+        });
+      }
+      for (const lines of [1, 2]) {
+        test(`initial ${lines}-line title reveals both handoffs`, async ({ page }, testInfo) => {
+          await page.setViewportSize({ width: 412, height: 915 });
+          await page.emulateMedia({ reducedMotion: 'reduce' });
+          const name =
+            lines === 1
+              ? appLocale === 'fr'
+                ? 'Saumon rôti'
+                : 'Roast salmon'
+              : appLocale === 'fr'
+                ? 'Saumon et légumes du jardin'
+                : 'Salmon with garden vegetables';
+          await prepareAdaptiveTonight(page, name);
+          const card = page.getByTestId('tonight-menu-card');
+          const geometry = await measureAdaptiveTonight(page);
+          await writeFile(
+            testInfo.outputPath('initial-geometry.json'),
+            JSON.stringify(geometry, null, 2)
+          );
+          await testInfo.attach('initial-geometry', {
+            body: JSON.stringify(geometry, null, 2),
+            contentType: 'application/json',
+          });
+          await page.screenshot({
+            path: testInfo.outputPath('initial-viewport.png'),
+            animations: 'disabled',
+          });
+          expect(geometry.scrollY).toBe(0);
+          expect(geometry.photo.height).toBeGreaterThanOrEqual(160);
+          expect(geometry.photo.width).toBeGreaterThan(geometry.photo.height);
+          expect(geometry.photo.width).toBeCloseTo(geometry.innerWidth, 0);
+          expect(geometry.titleLines).toBe(lines);
+          expect(geometry.card.top).toBeGreaterThanOrEqual(0);
+          expect(geometry.card.bottom).toBeLessThanOrEqual(geometry.nav.top);
+          for (const label of geometry.labels) {
+            expect(label.top).toBeGreaterThanOrEqual(0);
+            expect(label.bottom).toBeLessThanOrEqual(geometry.nav.top);
+            expect(label.hit).toBe(true);
+          }
+          // Reachability checks scroll; initial geometry must precede them.
+          await expectTonightLayout(page, card, testInfo, 'initial-controls');
+        });
+      }
+    });
+  }
 
   for (const appLocale of ['en', 'fr'] as const) {
     test.describe(`Cookbook planned (${appLocale})`, () => {

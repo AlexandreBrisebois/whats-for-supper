@@ -429,6 +429,37 @@ describe('PlannerPage voting action row', () => {
     });
   });
 
+  for (const locale of ['en', 'fr'] as const) {
+    it.each([
+      [1, '1 voted', '1 vote'],
+      [2, '2 voted', '2 votes'],
+      [12, '12 voted', '12 votes'],
+      [0, 'Chosen', 'Choisie'],
+      [undefined, 'Chosen', 'Choisie'],
+    ] as const)(`localizes assigned and pending counts in ${locale}: %s`, (count, en, fr) => {
+      mocks.setLocale(locale);
+      const view = renderPlanner(0);
+      const state = mocks.getWeekState();
+      state.schedule[0].recipe.voteCount = count;
+      state.schedule[1] = {
+        ...state.schedule[1],
+        recipe: { ...state.schedule[0].recipe, voteCount: 12 },
+        _isPending: true,
+        _voteCount: count,
+      };
+      // Missing metadata falls back to the recipe count; missing both uses chosen.
+      if (count === undefined) state.schedule[1].recipe.voteCount = undefined;
+      mocks.setWeekState({ ...state });
+      view.rerender(<PlannerPage />);
+      for (const index of [0, 1]) {
+        const row = within(screen.getByTestId(`day-card-${index}`));
+        expect(row.getByTestId('vote-count').textContent).toBe(locale === 'fr' ? fr : en);
+        expect(row.queryByTestId('change-recipe-button') !== null).toBe(index === 0);
+      }
+      expect(mocks.assignRecipe).not.toHaveBeenCalled();
+    });
+  }
+
   it.each([
     ['en', '2026-05-10', 'May 4 — 10', 'Mon', 'May'],
     ['fr', '2026-05-10', '4 — 10 mai', 'lun.', 'mai'],

@@ -2030,3 +2030,164 @@ test.describe('Quick Replace relative next week', () => {
     });
   }
 });
+
+for (const locale of ['fr', 'en'] as const) {
+  test.describe(`Planner state labels ${locale}`, () => {
+    test.use({ appLocale: locale });
+    for (const count of [1, 2, 12]) {
+      test(`localizes saved and pending recipe badges with ${count} votes at 200% text`, async ({
+        page,
+        baseURL,
+      }) => {
+        await setupCommonRoutes(page);
+        await page
+          .context()
+          .addCookies([{ name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: baseURL! }]);
+        await page.addInitScript(
+          (id) =>
+            localStorage.setItem(
+              'family-storage',
+              JSON.stringify({ state: { selectedFamilyMemberId: id }, version: 0 })
+            ),
+          MOCK_IDS.MEMBER_ALEX
+        );
+        const schedule = builders.scheduleDays() as unknown as ScheduleDays;
+        schedule.days = schedule.days!.map((day, index) => ({
+          ...day,
+          status: index === 4 ? 3 : 0,
+          nonCooking: index === 4 ? { kind: 'order_in' } : null,
+          recipe:
+            index === 0
+              ? builders.scheduleRecipe({ voteCount: 0 })
+              : index === 2
+                ? builders.scheduleRecipe({ id: MOCK_IDS.RECIPE_CARBONARA, voteCount: count })
+                : index === 3
+                  ? builders.scheduleRecipe({ voteCount: undefined })
+                  : null,
+        }));
+        schedule.status = 1;
+        schedule.votingRoundId = MOCK_IDS.VOTING_ROUND;
+        const defaults = {
+          weekOffset: 0,
+          weekStartDate: schedule.weekStartDate,
+          familySize: 3,
+          consensusThreshold: 2,
+          preSelectedRecipes: [
+            {
+              recipeId: MOCK_IDS.RECIPE_TACOS,
+              name: 'Street Tacos',
+              voteCount: count,
+              familySize: 3,
+              unanimousVote: false,
+              dayIndex: 1,
+              isLocked: false,
+            },
+          ],
+          openSlots: [],
+          consensusRecipesCount: 1,
+        };
+        await mockNonCookingSchedule(page, schedule);
+        await page.route('**/api/discovery/session', (route) =>
+          route.fulfill({
+            json: {
+              data: {
+                incarnationId: MOCK_IDS.MEMBER_TEST,
+                revision: 1,
+                roundId: MOCK_IDS.VOTING_ROUND,
+                weekStartDate: schedule.weekStartDate,
+                phase: 'collecting',
+                requiredSlots: 3,
+                coveredSlots: 1,
+                candidateCount: 1,
+                smartDefaults: defaults,
+              },
+            },
+          })
+        );
+        await page.route('**/api/schedule/*/smart-defaults**', async (route) => {
+          if (route.request().method() !== 'GET') return route.fallback();
+          await route.fulfill({ json: { data: defaults } });
+        });
+        const assignments: string[] = [];
+        page.on('request', (request) => {
+          if (
+            new URL(request.url()).pathname === '/api/schedule/assign' &&
+            request.method() === 'POST'
+          )
+            assignments.push(request.url());
+        });
+        await page.setViewportSize({ width: 320, height: 900 });
+        await page.goto('/planner');
+        const chosen = locale === 'fr' ? 'Choisie' : 'Chosen';
+        const votes =
+          locale === 'en' ? `${count} voted` : `${count} ${count === 1 ? 'vote' : 'votes'}`;
+        for (const [index, label] of [
+          [0, chosen],
+          [1, votes],
+          [2, votes],
+          [3, chosen],
+        ] as const) {
+          await expect(page.getByTestId(`day-card-${index}`).getByTestId('vote-count')).toHaveText(
+            label
+          );
+        }
+        await page.evaluate(() => {
+          const sizes = Array.from(document.querySelectorAll<HTMLElement>('body *')).map(
+            (node) => ({ node, size: parseFloat(getComputedStyle(node).fontSize) })
+          );
+          for (const { node, size } of sizes) node.style.fontSize = `${size * 2}px`;
+        });
+        for (const index of [0, 1, 2, 3]) {
+          const row = page.getByTestId(`day-card-${index}`);
+          const badge = row.getByTestId('vote-count');
+          await badge.scrollIntoViewIfNeeded();
+          await expect(badge).toBeVisible();
+          expect(await badge.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
+          const bounds = await badge.boundingBox();
+          expect(bounds!.x).toBeGreaterThanOrEqual(0);
+          expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(320);
+          for (const target of [
+            row.getByTestId('recipe-name'),
+            row.getByTestId('planner-drag-handle'),
+            ...(index === 1 ? [] : [row.getByTestId('change-recipe-button')]),
+          ]) {
+            await target.scrollIntoViewIfNeeded();
+            await expect(target).toBeVisible();
+            const a = (await badge.boundingBox())!;
+            const z = (await target.boundingBox())!;
+            expect(
+              a.x >= z.x + z.width ||
+                z.x >= a.x + a.width ||
+                a.y >= z.y + z.height ||
+                z.y >= a.y + a.height
+            ).toBe(true);
+            if ((await target.getAttribute('data-testid')) !== 'recipe-name')
+              await target.click({ trial: true });
+          }
+        }
+        await expect(
+          page.getByTestId('day-card-1').getByTestId('change-recipe-button')
+        ).toHaveCount(0);
+        await expect(page.getByTestId('day-card-4').getByTestId('vote-count')).toHaveCount(0);
+        await expect(
+          page.getByTestId('day-card-4').getByTestId('non-cooking-indicator')
+        ).toBeVisible();
+        await expect(page.getByTestId('day-card-5').getByTestId('plan-meal-button')).toBeVisible();
+        const reread = await page.evaluate(
+          async () =>
+            (
+              await (
+                await fetch('/api/schedule?weekOffset=0&referenceWeekStartDate=2026-05-04')
+              ).json()
+            ).data
+        );
+        expect(reread.days[1].recipe).toBeNull();
+        expect(reread.days[0].recipe.id).toBe(MOCK_IDS.RECIPE_LASAGNA);
+        expect(reread.days[2].recipe.id).toBe(MOCK_IDS.RECIPE_CARBONARA);
+        expect(assignments).toEqual([]);
+        await page.getByTestId('day-card-2').getByTestId('change-recipe-button').click();
+        await expect(page.getByTestId('pivot-quick-find')).toBeVisible();
+      });
+    }
+  });
+}

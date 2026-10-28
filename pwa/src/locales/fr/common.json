@@ -190,6 +190,9 @@
     "unplanCompletely": "Retirer du planning"
   },
   "planner": {
+    "chosen": "Choisie",
+    "votedOne": "{{count}} vote",
+    "votedOther": "{{count}} votes",
     "planner": "Planning",
     "groceryList": "Liste de courses",
     "thisWeek": "Cette semaine",

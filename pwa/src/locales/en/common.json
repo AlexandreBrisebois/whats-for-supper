@@ -190,6 +190,9 @@
     "unplanCompletely": "Remove it from the plan"
   },
   "planner": {
+    "chosen": "Chosen",
+    "votedOne": "{{count}} voted",
+    "votedOther": "{{count}} voted",
     "planner": "Planner",
     "groceryList": "Grocery list",
     "thisWeek": "This week",

@@ -70,8 +70,8 @@ export function TonightMenuCard({
 
   return (
     <div className="w-full min-w-0 [overflow-wrap:anywhere]" data-testid="tonight-menu-card">
-      <TonightCardBase className="flex flex-col p-6">
-        <div className="flex flex-wrap justify-between items-center gap-3 mb-5 px-1">
+      <TonightCardBase className="flex flex-col p-6 [container-type:inline-size]">
+        <div className="flex flex-wrap justify-between items-center gap-2 mb-3 px-1">
           <h2 className="font-heading text-base font-medium text-charcoal-600">
             {t('home.tonightsMenu', "Tonight's menu")}
           </h2>
@@ -85,11 +85,12 @@ export function TonightMenuCard({
           )}
         </div>
 
+        {/* Keep food visible under text growth; page flow absorbs further space pressure. */}
         <TonightRecipeImage
           key={`${recipeId}:${imageUrl}`}
           imageUrl={imageUrl}
           alt={recipeName}
-          className="aspect-square"
+          className="h-[clamp(160px,min(calc(40svh-140px),75cqw),240px)] mb-4"
           fallback={<Utensils size={28} />}
         />
 
@@ -102,7 +103,7 @@ export function TonightMenuCard({
             )}
           </h3>
         </div>
-        <div className="mt-6 flex flex-wrap gap-2">
+        <div className="mt-4 flex flex-wrap gap-2">
           <button
             onClick={() => onCookMode?.(recipeId)}
             className="flex min-w-[min(100%,6.5em)] max-w-full flex-[1_1_6em] items-center justify-center gap-1.5 min-h-14 px-2 py-3 rounded-[1.5rem] bg-terracotta-600 text-cream-100 hover:bg-terracotta-700 active:bg-terracotta-800 transition-colors focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-charcoal"
@@ -130,7 +131,7 @@ export function TonightMenuCard({
           aria-expanded={expanded}
           aria-controls={detailsId}
           onClick={() => setDisclosure({ recipeId, expanded: !expanded })}
-          className="mt-3 flex min-h-12 min-w-12 items-center justify-start gap-2 self-start rounded-xl px-2 py-3 text-base font-medium leading-normal text-terracotta-700 hover:bg-terracotta-50 active:bg-terracotta-100 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-charcoal"
+          className="mt-1 flex min-h-12 min-w-12 items-center justify-start gap-2 self-start rounded-xl px-2 py-3 text-base font-medium leading-normal text-terracotta-700 hover:bg-terracotta-50 active:bg-terracotta-100 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-charcoal"
         >
           {expanded
             ? t('home.hideIngredients', 'Hide ingredients')
