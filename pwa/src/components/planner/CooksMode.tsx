@@ -553,7 +553,7 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
                 if (originalUrl) window.open(originalUrl, '_blank', 'noopener,noreferrer');
                 else setShowOriginals(true);
               }}
-              className="relative z-20 inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-terracotta-100 bg-terracotta-50 px-3 py-2 text-sm font-semibold text-terracotta-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta disabled:cursor-wait disabled:opacity-60"
+              className="relative z-20 inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-charcoal/10 bg-white px-3 py-2 text-sm font-semibold text-charcoal-600 hover:bg-cream active:bg-charcoal-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-charcoal-500 disabled:cursor-wait disabled:opacity-60"
             >
               {originalUrl ? (
                 <ExternalLink size={18} aria-hidden="true" />
