@@ -13,7 +13,7 @@ const suites = {
     'planner-smart-defaults-week-offset', 'planner-voting-identity',
   ],
   recipes: [
-    'browse-all-stack', 'browse-stack', 'discovery', 'recipe-hero-actions',
+    'browse-all-stack', 'browse-stack', 'discovery', 'goto-layout', 'recipe-hero-actions',
     'recipe-notes-recovery', 'recipe-original-viewer', 'recipe-recovery',
     'recipe-share', 'recipes', 'search-hardening', 'search-invalidation-recovery',
     'sharing-fidelity',
@@ -23,7 +23,7 @@ const suites = {
     'demo-management-access', 'demo-reset',
     'identity-persistence', 'install-identity', 'member-creation', 'onboarding',
     'online-recovery', 'pdf-capture', 'profile', 'recipe-import-reporting',
-    'settings', 'url-capture-recovery', 'utility-flows',
+    'settings', 'telemetry-opening', 'url-capture-recovery', 'utility-flows',
   ],
 };
 
