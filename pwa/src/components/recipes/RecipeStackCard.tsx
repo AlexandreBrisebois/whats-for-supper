@@ -168,7 +168,7 @@ export const RecipeStackCard: React.FC<RecipeStackCardProps> = ({
         x,
         rotate,
         transformOrigin: 'bottom center',
-        touchAction: 'none',
+        touchAction: 'pan-y',
         zIndex: 10 - stackIndex,
         willChange: 'transform',
       }}

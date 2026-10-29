@@ -184,7 +184,11 @@ test.describe('Home Command Center — GOTO & Pivot Flow', () => {
           }
           const mutations: string[] = [];
           page.on('request', (request) => {
-            if (/\/api\/schedule/.test(request.url()) && request.method() !== 'GET')
+            if (
+              new URL(request.url()).pathname.startsWith('/api/') &&
+              !['GET', 'HEAD'].includes(request.method()) &&
+              !request.url().endsWith('/api/recipes/search')
+            )
               mutations.push(request.method());
           });
           await page.goto('/home');
@@ -213,10 +217,14 @@ test.describe('Home Command Center — GOTO & Pivot Flow', () => {
               appLocale === 'fr' ? 'Le GOTO de votre famille' : "Your family's GOTO"
             );
           }
+          if (state === 'empty' || state === 'read-error')
+            await expect(page.getByTestId('goto-setup-helper')).toBeVisible({ timeout: 15_000 });
           const order =
             state === 'ready'
               ? ['confirm-goto-btn', 'discover-btn', 'order-in-btn']
-              : ['discover-btn', 'order-in-btn', 'add-goto-btn'];
+              : state === 'mystery'
+                ? ['discover-btn', 'order-in-btn']
+                : ['discover-btn', 'order-in-btn', 'add-goto-btn'];
           await expect(card.locator('button, a')).toHaveCount(order.length);
           for (let index = 0; index < order.length; index++) {
             await expect(card.locator('button, a').nth(index)).toHaveAttribute(
@@ -264,7 +272,7 @@ test.describe('Home Command Center — GOTO & Pivot Flow', () => {
           if (state === 'empty' || state === 'read-error') {
             await page.getByTestId('add-goto-btn').focus();
             await page.keyboard.press('Enter');
-            await expect(page).toHaveURL(/\/profile/);
+            await expect(page).toHaveURL(/\/browse-all-stack$/);
             expect(mutations).toEqual([]);
           }
         });

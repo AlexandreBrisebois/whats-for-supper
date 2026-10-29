@@ -639,6 +639,7 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
           )}
           {showSupperChoices && (
             <TonightPivotCard
+              hasCheckedActive={hasCheckedActive}
               gotoDescription={gotoDescription}
               gotoRecipeId={gotoRecipeId}
               gotoImageUrl={gotoImageUrl}

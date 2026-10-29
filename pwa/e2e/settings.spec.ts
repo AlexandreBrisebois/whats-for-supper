@@ -6,7 +6,7 @@ import { MOCK_IDS, setupCommonRoutes, builders, mockFeatureFlags } from './mock-
 // covered by FailedCapturesSection.test.tsx. No E2E seam needed here.
 // ────────────────────────────────────────────────────────────────────────────
 
-test.describe('Settings — FamilyGOTOSettings card', () => {
+test.describe('Settings — family and app preferences', () => {
   test.beforeEach(async ({ page }) => {
     const baseUrl = process.env.BASE_URL || 'http://127.0.0.1:3000';
     const origins = [
@@ -351,4 +351,33 @@ test.describe('Settings — FamilyGOTOSettings card', () => {
     await page.getByTestId('invite-dialog-close').click();
     await expect(page.getByTestId('invite-dialog')).not.toBeVisible();
   });
+});
+
+test('GOTO management and star rendered review', async ({ page, baseURL }) => {
+  await setupCommonRoutes(page);
+  await page
+    .context()
+    .addCookies([{ name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: baseURL! }]);
+  await page.addInitScript(
+    (id) =>
+      localStorage.setItem(
+        'family-storage',
+        JSON.stringify({ state: { selectedFamilyMemberId: id }, version: 0 })
+      ),
+    MOCK_IDS.MEMBER_ALEX
+  );
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/profile/settings');
+  await expect(page.getByRole('button', { name: 'Manage GOTOs', exact: true })).not.toBeVisible();
+  await page.goto('/browse-all-stack');
+  await page.getByTestId('browse-filters-entry').click();
+  await page.getByTestId('goto-management-toggle').click();
+  await expect(page.getByTestId('add-goto-btn')).toBeVisible();
+  await page.screenshot({ path: '../.task/goto-review/after/management.png', fullPage: true });
+  await page.goto(`/recipes?open=${MOCK_IDS.RECIPE_LASAGNA}`);
+  await expect(page.getByTestId('action-set-goto')).toBeVisible();
+  await page.screenshot({ path: '../.task/goto-review/after/star-unselected.png', fullPage: true });
+  await page.getByTestId('action-set-goto').click();
+  await expect(page.getByTestId('action-current-goto')).toHaveAttribute('aria-pressed', 'true');
+  await page.screenshot({ path: '../.task/goto-review/after/star-selected.png', fullPage: true });
 });

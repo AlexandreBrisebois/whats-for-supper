@@ -1,6 +1,6 @@
 'use client';
 
-import { ShoppingBag, Utensils, UtensilsCrossed, Search, Plus } from 'lucide-react';
+import { ShoppingBag, Utensils, UtensilsCrossed, Search } from 'lucide-react';
 import { NonCookingIcon } from '../planner/NonCookingIcon';
 import type { NonCookingPlanDto } from '@/lib/api/generated/models';
 import { TonightCardBase } from './TonightMenuCard';
@@ -15,6 +15,7 @@ interface TonightPivotCardProps {
   gotoImageUrl?: string | null;
   /** "ready" once synthesis is complete; "pending" while in progress; null/undefined = no GOTO set */
   gotoStatus?: string | null;
+  hasCheckedActive?: boolean;
   onConfirmGoto: () => void;
   onDiscover: () => void;
   onOrderIn: () => void;
@@ -27,6 +28,7 @@ export function TonightPivotCard({
   gotoRecipeId,
   gotoImageUrl,
   gotoStatus,
+  hasCheckedActive = false,
   onConfirmGoto,
   onDiscover,
   onOrderIn,
@@ -36,6 +38,7 @@ export function TonightPivotCard({
   // A GOTO is only actionable when it exists AND is ready.
   // Saved Mystery context does not change the existing GOTO eligibility rules.
   const hasGoto = gotoRecipeId != null;
+  const showGotoHelper = hasCheckedActive && !hasGoto && !nonCookingLabel;
   const showGoto = !nonCookingLabel || nonCookingKind === 'mystery';
   const gotoReady = showGoto && hasGoto && gotoStatus === 'ready';
   const gotoPending = showGoto && hasGoto && gotoStatus === 'pending';
@@ -164,15 +167,22 @@ export function TonightPivotCard({
               </span>
             </button>
           </div>
-          {!hasGoto && (
-            <Link
-              href={ROUTES.PROFILE}
-              data-testid="add-goto-btn"
-              className="mt-2 flex items-center justify-start gap-2 min-h-12 px-2 py-3 rounded-xl text-terracotta-700 hover:bg-terracotta-50 active:bg-terracotta-100 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-charcoal text-base font-medium leading-normal"
-            >
-              <Plus size={16} aria-hidden="true" className="shrink-0" />
-              {t('home.addFamilyGoto', "Add your family's GOTO recipe")}
-            </Link>
+          {showGotoHelper && (
+            <div data-testid="goto-setup-helper" className="mt-2 space-y-1">
+              <p className="text-base font-normal leading-relaxed text-charcoal-600">
+                {t(
+                  'home.gotoHelper',
+                  'Tap the GOTO star on favourite recipes so we can suggest one here.'
+                )}
+              </p>
+              <Link
+                href={ROUTES.BROWSE_ALL_STACK}
+                data-testid="add-goto-btn"
+                className="flex min-h-12 items-center px-2 py-3 rounded-xl text-terracotta-700 hover:bg-terracotta-50 active:bg-terracotta-100 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-charcoal text-base font-medium leading-normal"
+              >
+                {t('home.chooseGotoRecipes', 'Choose GOTO recipes')}
+              </Link>
+            </div>
           )}
         </div>
       </TonightCardBase>

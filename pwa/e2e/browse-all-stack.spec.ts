@@ -164,6 +164,7 @@ async function setupBrowseAllStack(
     recipes?: RecipeDto[];
     total?: number;
     browseViewMode?: 'stack' | 'list';
+    gotoIds?: string[];
   }
 ) {
   const recipes = options?.recipes ?? THREE_RECIPES;
@@ -252,14 +253,23 @@ async function setupBrowseAllStack(
     const pageNumber = Number(url.searchParams.get('page') ?? '1');
     const limit = Number(url.searchParams.get('limit') ?? '20');
     const start = (pageNumber - 1) * limit;
-    const pageRecipes = recipes.slice(start, start + limit);
+    const eligible = recipes.filter(
+      (recipe) =>
+        (url.searchParams.get('gotoOnly') !== 'true' ||
+          (options?.gotoIds ?? []).includes(recipe.id!)) &&
+        (url.searchParams.get('discoverableOnly') !== 'true' || recipe.isDiscoverable)
+    );
+    const filtered =
+      url.searchParams.get('gotoOnly') === 'true' ||
+      url.searchParams.get('discoverableOnly') === 'true';
+    const pageRecipes = eligible.slice(start, start + limit);
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({
         updatedAt: FIXED_NOW,
         recipes: pageRecipes,
-        pagination: { page: pageNumber, limit, total },
+        pagination: { page: pageNumber, limit, total: filtered ? eligible.length : total },
       }),
     });
   });
@@ -933,4 +943,185 @@ test('a delayed All wrap cannot replace the new Discovery collection', async ({ 
   await expect(page.getByTestId('stack-depth-indicator')).toHaveText('1 / 1');
   await swipeLeft(page);
   await expectFrontRecipe(page, RECIPE_1.id as string);
+});
+
+test.describe('Browse GOTO filtering', () => {
+  test('discards a draft, applies membership, intersects Discovery and clears', async ({
+    page,
+  }) => {
+    await setupBrowseAllStack(page, { gotoIds: [RECIPE_2.id!, RECIPE_3.id!] });
+    await page.goto('/browse-all-stack');
+    await expect(page.getByTestId('stack-depth-indicator')).toHaveText('1 / 3');
+    await page.getByTestId('browse-filters-entry').click();
+    await page.getByTestId('browse-filter-goto').click();
+    await page.getByTestId('browse-filters-close').click();
+    await expect(page.getByTestId('stack-depth-indicator')).toHaveText('1 / 3');
+    await page.getByTestId('browse-filters-entry').click();
+    await expect(page.getByTestId('browse-filter-goto')).toHaveAttribute('aria-pressed', 'false');
+    await page.getByTestId('browse-filter-goto').click();
+    await page.getByTestId('browse-filters-apply').click();
+    await expect(page.getByTestId('stack-depth-indicator')).toHaveText('1 / 2');
+    await expect(page.getByTestId('stack-card-front')).toHaveAttribute(
+      'data-recipe-id',
+      RECIPE_2.id!
+    );
+    await page.getByTestId('stack-toggle-discoverable').click();
+    await expect(page.getByTestId('stack-depth-indicator')).toHaveText('1 / 1');
+    await expect(page.getByTestId('stack-card-front')).toHaveAttribute(
+      'data-recipe-id',
+      RECIPE_3.id!
+    );
+    await page.getByTestId('browse-filters-entry').click();
+    await page.getByTestId('browse-filters-clear').click();
+    await page.getByTestId('browse-filters-apply').click();
+    await expect(page.getByTestId('stack-depth-indicator')).toHaveText('1 / 2');
+  });
+
+  test('empty membership offers clearing without claiming an empty library', async ({ page }) => {
+    await setupBrowseAllStack(page, { gotoIds: [] });
+    await page.goto('/browse-all-stack');
+    await page.getByTestId('browse-filters-entry').click();
+    await page.getByTestId('browse-filter-goto').click();
+    await page.getByTestId('browse-filters-apply').click();
+    await expect(page.getByTestId('browse-goto-empty')).toBeVisible();
+    await page.getByTestId('browse-goto-clear').click();
+    await expect(page.getByTestId('stack-card-front')).toBeVisible();
+  });
+
+  for (const viewport of [
+    { width: 320, height: 568 },
+    { width: 390, height: 667 },
+    { width: 667, height: 375 },
+  ]) {
+    for (const mode of ['stack', 'list'] as const) {
+      test(`controls remain reachable at ${viewport.width}x${viewport.height} ${mode}`, async ({
+        page,
+      }) => {
+        await page.setViewportSize(viewport);
+        await setupBrowseAllStack(page, { browseViewMode: mode });
+        await page.goto('/browse-all-stack');
+        await page.getByTestId('browse-filters-entry').click();
+        await page.getByTestId('browse-filter-goto').click();
+        await page.getByTestId('browse-filters-apply').scrollIntoViewIfNeeded();
+        await page.getByTestId('browse-filters-close').click();
+        const content = page
+          .getByTestId(mode === 'stack' ? 'stack-card-front' : 'browse-list-recipe-card')
+          .first();
+        await content.scrollIntoViewIfNeeded();
+        await expect(content).toBeInViewport();
+        if (mode === 'stack') {
+          await content
+            .getByRole('heading', { name: 'Lasagna', exact: true })
+            .scrollIntoViewIfNeeded();
+          await expect(
+            content.getByRole('heading', { name: 'Lasagna', exact: true })
+          ).toBeInViewport({ ratio: 1 });
+          await content.getByText(/ready in/i).scrollIntoViewIfNeeded();
+          await expect(content.getByText(/ready in/i)).toBeInViewport({ ratio: 1 });
+          await page.getByTestId('stack-action-bar').scrollIntoViewIfNeeded();
+          await expect(page.getByTestId('stack-action-bar')).toBeInViewport();
+        }
+        expect(
+          await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)
+        ).toBe(true);
+        await page.getByTestId('browse-all-exit').click();
+        await expect(page.getByTestId('browse-all-stack-container')).not.toBeVisible();
+      });
+    }
+  }
+});
+
+test('GOTO stack wraps, retries its failed filtered page and ignores a departed response', async ({
+  page,
+}) => {
+  const recipes = LARGE_LIBRARY_RECIPES.slice(0, 25);
+  const gotoIds = recipes.map((recipe) => recipe.id!);
+  await setupBrowseAllStack(page, { recipes, gotoIds });
+  let failPage = true;
+  let release: (() => void) | undefined;
+  let delayPage = false;
+  const requests: URL[] = [];
+  await page.route('**/api/recipes?**order=explore**', async (route) => {
+    const url = new URL(route.request().url());
+    requests.push(url);
+    if (url.searchParams.get('gotoOnly') === 'true' && url.searchParams.get('page') === '2') {
+      if (failPage) {
+        failPage = false;
+        return route.fulfill({ status: 400, json: { message: 'Unavailable' } });
+      }
+      if (delayPage)
+        await new Promise<void>((resolve) => {
+          release = resolve;
+        });
+    }
+    await route.fallback();
+  });
+  await page.goto('/browse-all-stack');
+  await page.getByTestId('browse-filters-entry').click();
+  await page.getByTestId('browse-filter-goto').click();
+  const firstFilteredPage = page.waitForResponse(
+    (response) => response.url().includes('gotoOnly=true') && response.url().includes('page=1')
+  );
+  await page.getByTestId('browse-filters-apply').click();
+  await firstFilteredPage;
+  await expect(page.getByTestId('browse-all-loader')).not.toBeVisible();
+  await expectFrontRecipe(page, recipes[0].id!);
+  await swipeRight(page); // previous from page one's first card wraps to page two
+  await expect(page.getByTestId('stack-page-retry')).toBeVisible();
+  await expectFrontRecipe(page, recipes[0].id!);
+  await page.getByTestId('stack-page-retry').click();
+  await expectFrontRecipe(page, recipes[24].id!);
+  await swipeLeft(page);
+  await expectFrontRecipe(page, recipes[0].id!);
+  // Start a new filtered collection to clear cached last-page data.
+  await page.getByTestId('stack-toggle-discoverable').click();
+  await expectFrontRecipe(page, recipes[0].id!);
+  delayPage = true;
+  // Unlike the normal swipe helper, don't await a handoff while the response is held.
+  const card = page.getByTestId('stack-card-front');
+  const box = await card.boundingBox();
+  if (!box) throw new Error('Missing card');
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width / 2 + 200, box.y + box.height / 2, { steps: 10 });
+  await page.mouse.up();
+  await expect.poll(() => Boolean(release)).toBe(true);
+  await page.getByTestId('browse-filters-entry').click();
+  await page.getByTestId('browse-filters-clear').click();
+  await page.getByTestId('browse-filters-apply').click();
+  await expectFrontRecipe(page, recipes[0].id!);
+  release!();
+  await expectFrontRecipe(page, recipes[0].id!);
+  expect(
+    requests
+      .filter((url) => url.searchParams.get('gotoOnly') === 'true')
+      .every((url) => url.searchParams.get('limit') === '20')
+  ).toBe(true);
+});
+
+test('GOTO list appends filtered pages and retains selection on presentation change', async ({
+  page,
+}) => {
+  const recipes = LIST_RECIPES;
+  await setupBrowseAllStack(page, {
+    recipes,
+    gotoIds: recipes.map((recipe) => recipe.id!),
+    browseViewMode: 'list',
+  });
+  await page.goto('/browse-all-stack');
+  await page.getByTestId('browse-filters-entry').click();
+  await page.getByTestId('browse-filter-goto').click();
+  await page.getByTestId('browse-filters-apply').click();
+  await expect(page.getByTestId('browse-filters-entry')).toContainText('(1)');
+  await page.getByTestId('browse-list-scroll-container').evaluate((node) => {
+    node.scrollTop = node.scrollHeight;
+    node.dispatchEvent(new Event('scroll'));
+  });
+  await expect(page.getByTestId('browse-list-recipe-card')).toHaveCount(13);
+  const request = page.waitForRequest(
+    (req) => req.url().includes('gotoOnly=true') && req.url().includes('limit=20')
+  );
+  await page.getByTestId('browse-view-stack').click();
+  await request;
+  await expect(page.getByTestId('stack-depth-indicator')).toHaveText('1 / 13');
 });

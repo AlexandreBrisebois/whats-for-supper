@@ -323,6 +323,10 @@ export interface RecipesRequestBuilderGetQueryParameters {
    */
   discoverableOnly?: boolean;
   /**
+   * When true, restrict ready, nondeleted recipes to configured household GOTO membership before counting, ordering and pagination. Combines with all other filters; an empty configured list yields no matches. False or absent adds no restriction.
+   */
+  gotoOnly?: boolean;
+  /**
    * Generation returned by the first Explore page. A changed history window/configuration or round returns 409; restart from page one. Omit only for page one. Later Explore pages require this token; older clients must restart or update.
    */
   historyGeneration?: string;
@@ -426,7 +430,7 @@ export function serializeRecipesPostResponse_data(
  * Uri template for the request builder.
  */
 export const RecipesRequestBuilderUriTemplate =
-  '{+baseurl}/api/recipes{?discoverableOnly*,historyGeneration*,id*,limit*,name*,order*,page*,url*}';
+  '{+baseurl}/api/recipes{?discoverableOnly*,gotoOnly*,historyGeneration*,id*,limit*,name*,order*,page*,url*}';
 export const GetOrderQueryParameterTypeObject = {
   Explore: 'explore',
 } as const;

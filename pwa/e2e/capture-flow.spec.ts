@@ -570,6 +570,24 @@ test.describe('Capture — GOTO intent', () => {
       /your goto is being prepared/i
     );
     await expect(page).toHaveURL(/\/capture/);
+    const writes: string[] = [];
+    page.on('request', (request) => {
+      if (
+        new URL(request.url()).pathname.startsWith('/api/') &&
+        !['GET', 'HEAD'].includes(request.method())
+      )
+        writes.push(request.method());
+    });
+    await page.getByTestId('capture-success-cta').click();
+    await expect(page).toHaveURL(/\/browse-all-stack\?gotoOnly=true&manageGoto=true$/);
+    await expect(page.getByTestId('goto-management-toggle')).toHaveAttribute(
+      'aria-expanded',
+      'true'
+    );
+    await expect(page.getByTestId('goto-pending-description')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.getByTestId('browse-filters-entry')).toBeVisible();
+    expect(writes).toEqual([]);
   });
 
   // F8 — Capture path sets GOTO pending
@@ -603,10 +621,10 @@ test.describe('Capture — GOTO intent', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Phase 13 — F5: Pending GOTO shows synthesizing state in settings
+// Phase 13 — F5: Pending GOTO remains manageable in Browse Filters
 // ---------------------------------------------------------------------------
 
-test.describe('Settings — GOTO pending state', () => {
+test.describe('Browse Filters — GOTO pending state', () => {
   test('Pending GOTO shows spinner in FamilyGOTOSettings', async ({ page }) => {
     const baseUrl = process.env.BASE_URL || 'http://127.0.0.1:3000';
 
@@ -663,7 +681,7 @@ test.describe('Settings — GOTO pending state', () => {
       });
     });
 
-    await page.goto('/profile/settings');
+    await page.goto('/browse-all-stack?gotoOnly=true&manageGoto=true');
 
     // Spinner and pending description should be visible
     await expect(page.getByTestId('goto-pending-spinner')).toBeVisible({ timeout: 10_000 });

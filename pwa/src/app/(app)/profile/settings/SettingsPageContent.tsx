@@ -3,7 +3,6 @@
 import { useRouter } from 'next/navigation';
 import { ChevronLeft } from 'lucide-react';
 import { FamilyManagement } from '@/components/profile/FamilyManagement';
-import { FamilyGOTOSettings } from '@/components/profile/FamilyGOTOSettings';
 import { FailedCapturesSection } from '@/components/profile/FailedCapturesSection';
 import { t } from '@/locales';
 import { ROUTES } from '@/lib/constants/routes';
@@ -21,7 +20,7 @@ export function SettingsPageContent({ buildVersion }: SettingsPageContentProps) 
   return (
     <div
       data-testid="settings-content"
-      className="flex min-w-0 flex-col gap-10 py-8 animate-in fade-in slide-in-from-bottom-8 duration-1000 ease-out"
+      className="flex w-[min(calc(100vw-2rem),24rem)] min-w-0 flex-col gap-10 py-8 animate-in fade-in slide-in-from-bottom-8 duration-1000 ease-out"
     >
       {/* Decorative background element */}
       <div className="fixed inset-0 -z-10 bg-[radial-gradient(circle_at_50%_-20%,#FDFCF0_0%,#FFFFFF_100%)]" />
@@ -47,8 +46,6 @@ export function SettingsPageContent({ buildVersion }: SettingsPageContentProps) 
 
       <div className="flex min-w-0 flex-col gap-8">
         <FamilyManagement />
-
-        <FamilyGOTOSettings />
 
         <FailedCapturesSection />
 

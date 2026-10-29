@@ -14,6 +14,7 @@
  * getByText, getByRole, getByLabel, CSS class selectors, and XPath are FORBIDDEN.
  */
 
+import { recordGotoContrast } from './helpers/goto-review';
 import { test, expect } from './fixtures';
 import { MOCK_IDS, builders, setupCommonRoutes } from './mock-api';
 
@@ -624,3 +625,640 @@ test.describe('Scenario 10 — retry idempotency (409 ALREADY_RETRYING)', () => 
     expect(retryCallCount).toBe(1);
   });
 });
+
+test('GOTO chooser uses configured membership and an empty list never falls back', async ({
+  page,
+  baseURL,
+}) => {
+  await setupCommonRoutes(page);
+  await page
+    .context()
+    .addCookies([{ name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: baseURL! }]);
+  await page.addInitScript(
+    (id) =>
+      localStorage.setItem(
+        'family-storage',
+        JSON.stringify({ state: { selectedFamilyMemberId: id }, version: 0 })
+      ),
+    MOCK_IDS.MEMBER_ALEX
+  );
+  await page.goto('/recipes');
+  await expect(page.getByTestId('recipe-loader')).not.toBeVisible();
+  await page.evaluate(async (recipeId) => {
+    const response = await fetch('/api/goto', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ items: [{ recipeId, description: 'Family GOTO', status: 'ready' }] }),
+    });
+    if (!response.ok) throw new Error('Failed fixture membership save');
+  }, MOCK_IDS.RECIPE_LASAGNA);
+  await page.getByTestId('mobile-filters-button').click();
+  await page.getByTestId('mobile-filter-goto').click();
+  await page.getByTestId('mobile-filter-apply').click();
+  await expect(page.getByTestId('mobile-filters-button')).toHaveAccessibleName('Filters, 1 active');
+  await expect(page.getByTestId('recipe-card-top-pick')).toBeVisible();
+  await expect(page.getByTestId(`recipe-card-${MOCK_IDS.RECIPE_CARBONARA}`)).not.toBeVisible();
+  await page.evaluate(async () =>
+    fetch('/api/goto', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ items: [] }),
+    })
+  );
+  await page.getByTestId('mobile-filters-button').click();
+  await page.getByTestId('mobile-filter-apply').click();
+  await expect(page.getByTestId('filter-no-results')).toBeVisible();
+  await expect(page.getByTestId('recipe-card-top-pick')).not.toBeVisible();
+});
+
+test('GOTO mock continuations retain context and recheck saved membership', async ({
+  page,
+  baseURL,
+}) => {
+  await setupCommonRoutes(page);
+  await page
+    .context()
+    .addCookies([{ name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: baseURL! }]);
+  await page.goto('/recipes');
+  const observation = await page.evaluate(
+    async (ids) => {
+      const save = (members: string[]) =>
+        fetch('/api/goto', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            items: members.map((recipeId) => ({ recipeId, status: 'ready' })),
+          }),
+        });
+      const search = (body: unknown) =>
+        fetch('/api/recipes/search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+      await save(ids);
+      const first = (await (await search({ filters: { gotoOnly: true }, limit: 1 })).json()).data;
+      const cursor = first.nextCursor;
+      if (!cursor) throw new Error('Missing fixture cursor');
+      const served = [
+        first.topPick.id,
+        ...first.results.map((recipe: { id: string }) => recipe.id),
+      ];
+      const remaining = ids.filter((id) => !served.includes(id));
+      await save(served);
+      const next = (
+        await (
+          await search({ filters: { gotoOnly: true }, limit: 1, continuationToken: cursor })
+        ).json()
+      ).data;
+      const mismatch = await search({
+        filters: { gotoOnly: false },
+        limit: 1,
+        continuationToken: cursor,
+      });
+      return { next, mismatch: mismatch.status, remaining };
+    },
+    [MOCK_IDS.RECIPE_LASAGNA, MOCK_IDS.RECIPE_CARBONARA, MOCK_IDS.RECIPE_CHICKEN]
+  );
+  expect(observation.remaining).toHaveLength(1);
+  expect(observation.next.results).toEqual([]);
+  expect(observation.next.topPick).toBeNull();
+  expect(observation.mismatch).toBe(409);
+});
+
+for (const surface of ['browse', 'search'] as const) {
+  test(`${surface} management separates confirmed saves, failed reads and cancelled filter drafts`, async ({
+    page,
+    baseURL,
+  }) => {
+    await setupCommonRoutes(page);
+    await page
+      .context()
+      .addCookies([{ name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: baseURL! }]);
+    await page.addInitScript(
+      (id) =>
+        localStorage.setItem(
+          'family-storage',
+          JSON.stringify({ state: { selectedFamilyMemberId: id }, version: 0 })
+        ),
+      MOCK_IDS.MEMBER_ALEX
+    );
+    const entry = surface === 'browse' ? 'browse-filters-entry' : 'mobile-filters-button';
+    const filter = surface === 'browse' ? 'browse-filter-goto' : 'mobile-filter-goto';
+    const apply = surface === 'browse' ? 'browse-filters-apply' : 'mobile-filter-apply';
+    await page.goto(surface === 'browse' ? '/browse-all-stack' : '/recipes');
+    await page.evaluate(
+      async (ids) => {
+        await fetch('/api/goto', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            items: [
+              { recipeId: ids.ready, description: 'Family Lasagna', status: 'ready' },
+              { recipeId: ids.pending, description: 'Pending family soup', status: 'pending' },
+            ],
+          }),
+        });
+      },
+      { ready: MOCK_IDS.RECIPE_LASAGNA, pending: MOCK_IDS.RECIPE_GOTO_STUB }
+    );
+    let failList = true;
+    await page.route('**/api/goto', async (route) => {
+      if (route.request().method() === 'GET' && failList) {
+        failList = false;
+        return route.fulfill({ status: 400, json: { message: 'List unavailable' } });
+      }
+      await route.fallback();
+    });
+    await page.getByTestId(entry).click();
+    await expect(page.getByTestId('goto-management-toggle')).toHaveAttribute(
+      'aria-expanded',
+      'false'
+    );
+    await page.getByTestId('goto-management-toggle').click();
+    await expect(page.getByRole('dialog').getByRole('alert')).toContainText('Could not load GOTOs');
+    await page.getByRole('button', { name: 'Retry', exact: true }).click();
+    await expect(page.getByTestId('goto-pending-description')).toHaveText('Pending family soup');
+    await page.getByTestId(filter).click();
+    await page.getByTestId(apply).click();
+    await expect(
+      page.getByTestId(surface === 'browse' ? 'stack-card-front' : 'recipe-card-top-pick')
+    ).toBeVisible();
+    let putCalls = 0;
+    let failSave = true;
+    let failRefresh = false;
+    await page.route('**/api/goto', async (route) => {
+      if (route.request().method() === 'PUT') {
+        putCalls++;
+        if (failSave) {
+          failSave = false;
+          return route.fulfill({ status: 400, json: { message: 'Save rejected' } });
+        }
+      }
+      await route.fallback();
+    });
+    await page.route(
+      (url) => url.pathname === '/api/recipes' || url.pathname === '/api/recipes/search',
+      async (route) => {
+        if (failRefresh) {
+          failRefresh = false;
+          return route.fulfill({ status: 400, json: { message: 'Read rejected after save' } });
+        }
+        await route.fallback();
+      }
+    );
+    await page.getByTestId(entry).click();
+    await page.getByTestId('goto-management-toggle').click();
+    await page.getByRole('button', { name: 'Remove Family Lasagna', exact: true }).click();
+    await expect(page.getByRole('dialog').getByRole('alert')).toContainText(
+      'Could not remove GOTO'
+    );
+    await expect(page.getByTestId('goto-recipe-name')).toHaveText('Family Lasagna');
+    failRefresh = true;
+    await page.getByRole('button', { name: 'Remove Family Lasagna', exact: true }).click();
+    await expect(page.getByTestId('goto-recipe-name')).not.toBeVisible();
+    // A draft filter change cannot undo the confirmed membership save.
+    await page.getByTestId(surface === 'browse' ? filter : `${filter}-active`).click();
+    await page.keyboard.press('Escape');
+    await expect(page.getByTestId(entry)).toContainText('1');
+    await page.getByRole('button', { name: 'Retry', exact: true }).click();
+    await expect(
+      page.getByTestId(surface === 'browse' ? 'browse-goto-empty' : 'filter-no-results')
+    ).toBeVisible();
+    expect(putCalls).toBe(2);
+    await page.getByTestId(entry).click();
+    await page.getByTestId('goto-management-toggle').click();
+    await expect(page.getByTestId('goto-pending-description')).toHaveText('Pending family soup');
+    await page.getByTestId('add-goto-btn').click();
+    await expect(page.getByTestId(apply)).not.toBeVisible();
+    await expect(page.getByTestId('goto-search-library')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.getByTestId(entry)).toBeFocused();
+    expect(putCalls).toBe(2);
+  });
+}
+
+for (const appLocale of ['en', 'fr'] as const) {
+  test.describe(`GOTO rendered review ${appLocale}`, () => {
+    test.use({ appLocale });
+    for (const surface of ['browse', 'search'] as const) {
+      test(`${surface} Filters remain readable and reachable through text growth and acquisition`, async ({
+        page,
+        baseURL,
+      }) => {
+        test.setTimeout(120_000);
+        await setupCommonRoutes(page);
+        await page
+          .context()
+          .addCookies([{ name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: baseURL! }]);
+        await page.addInitScript(
+          (id) =>
+            localStorage.setItem(
+              'family-storage',
+              JSON.stringify({ state: { selectedFamilyMemberId: id }, version: 0 })
+            ),
+          MOCK_IDS.MEMBER_ALEX
+        );
+        await page.emulateMedia({ reducedMotion: 'reduce' });
+        await page.goto(surface === 'browse' ? '/browse-all-stack' : '/recipes');
+        // Keep framework development badges out of product captures; application feedback remains visible.
+        await page.addStyleTag({ content: 'nextjs-portal { display: none !important; }' });
+        await page.evaluate(
+          async (ids) =>
+            fetch('/api/goto', {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                items: [
+                  {
+                    recipeId: ids.ready,
+                    description:
+                      'Recette familiale aux légumes du jardin et aux fines herbes pour toute la famille',
+                    status: 'ready',
+                  },
+                  {
+                    recipeId: ids.pending,
+                    description:
+                      'Une très longue recette familiale en préparation qui reste accessible dans la liste',
+                    status: 'pending',
+                  },
+                ],
+              }),
+            }),
+          { ready: MOCK_IDS.RECIPE_LASAGNA, pending: MOCK_IDS.RECIPE_GOTO_STUB }
+        );
+        const entry = surface === 'browse' ? 'browse-filters-entry' : 'mobile-filters-button';
+        const chip = surface === 'browse' ? 'browse-filter-goto' : 'mobile-filter-goto';
+        const apply = surface === 'browse' ? 'browse-filters-apply' : 'mobile-filter-apply';
+        await page.getByTestId(entry).click();
+        await page.getByTestId(chip).click();
+        await page.getByTestId(apply).click();
+        await expect(page.getByTestId(entry)).toHaveAccessibleName(
+          surface === 'browse'
+            ? appLocale === 'fr'
+              ? 'Filtres (1)'
+              : 'Filters (1)'
+            : appLocale === 'fr'
+              ? 'Filtres actifs : 1'
+              : 'Filters, 1 active'
+        );
+        for (const [width, height] of [
+          [320, 568],
+          [390, 667],
+          [412, 915],
+          [667, 375],
+          [820, 1180],
+          [1180, 820],
+        ]) {
+          await page.setViewportSize({ width, height });
+          await page.screenshot({
+            path: `../.task/goto-review/after/${appLocale}-${surface}-${width}x${height}-collection.png`,
+            fullPage: true,
+            animations: 'disabled',
+          });
+          for (const scale of [1, 2]) {
+            await page.getByTestId(entry).focus();
+            await page.keyboard.press('Enter');
+            const dialog = page.getByRole('dialog');
+            await expect(
+              page.getByTestId(surface === 'browse' ? chip : `${chip}-active`)
+            ).toHaveAttribute('aria-pressed', 'true');
+            await page.getByTestId('goto-management-toggle').click();
+            await expect(page.getByTestId('goto-pending-description')).toBeVisible();
+            await dialog.evaluate((root, factor) => {
+              const nodes = Array.from(root.querySelectorAll<HTMLElement>('*')).filter(
+                (node) => node instanceof HTMLElement
+              );
+              const sizes = nodes.map((node) => ({
+                node,
+                font: parseFloat(getComputedStyle(node).fontSize),
+                line: parseFloat(getComputedStyle(node).lineHeight),
+              }));
+              for (const { node, font, line } of sizes) {
+                node.style.fontSize = `${font * factor}px`;
+                if (Number.isFinite(line)) node.style.lineHeight = `${line * factor}px`;
+              }
+            }, scale);
+            await dialog.evaluate((node) => {
+              node.scrollTop = 0;
+              node.querySelectorAll<HTMLElement>('*').forEach((child) => {
+                if (child.scrollHeight > child.clientHeight) child.scrollTop = 0;
+              });
+            });
+            await expect(
+              dialog.getByRole('button', {
+                name: appLocale === 'fr' ? 'Fermer' : 'Close',
+                exact: true,
+              })
+            ).toBeInViewport({ ratio: 1 });
+            await dialog.screenshot({
+              path: `../.task/goto-review/after/${appLocale}-${surface}-${width}x${height}-${scale}x-filters-top.png`,
+              animations: 'disabled',
+            });
+            await page.getByTestId('goto-pending-description').scrollIntoViewIfNeeded();
+            await dialog.screenshot({
+              path: `../.task/goto-review/after/${appLocale}-${surface}-${width}x${height}-${scale}x-management.png`,
+              animations: 'disabled',
+            });
+            // Center explicitly: nearest scrolling rounds fractional offsets and can leave a 0.2 px edge outside the viewport.
+            await page
+              .getByTestId(apply)
+              .evaluate((node) => node.scrollIntoView({ block: 'center' }));
+            await expect(page.getByTestId(apply)).toBeInViewport({ ratio: 1 });
+            expect(
+              await page.getByTestId(apply).evaluate((button) => {
+                const bounds = button.getBoundingClientRect();
+                const text = document.createRange();
+                text.selectNodeContents(button);
+                return Array.from(text.getClientRects()).every(
+                  (rect) => rect.left >= bounds.left + 12 && rect.right <= bounds.right - 12
+                );
+              })
+            ).toBe(true);
+
+            expect(await dialog.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(
+              true
+            );
+            expect(
+              await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)
+            ).toBe(true);
+            await dialog.screenshot({
+              path: `../.task/goto-review/after/${appLocale}-${surface}-${width}x${height}-${scale}x-filters.png`,
+              animations: 'disabled',
+            });
+            await page.getByTestId('add-goto-btn').scrollIntoViewIfNeeded();
+            await page.getByTestId('add-goto-btn').click();
+            await expect(page.getByTestId('goto-search-library')).toBeVisible();
+            await page.getByRole('dialog').evaluate((root, factor) => {
+              const sizes = Array.from(root.querySelectorAll<HTMLElement>('*'))
+                .filter((node) => node instanceof HTMLElement)
+                .map((node) => ({
+                  node,
+                  font: parseFloat(getComputedStyle(node).fontSize),
+                  line: parseFloat(getComputedStyle(node).lineHeight),
+                }));
+              for (const { node, font, line } of sizes) {
+                node.style.fontSize = `${font * factor}px`;
+                if (Number.isFinite(line)) node.style.lineHeight = `${line * factor}px`;
+              }
+            }, scale);
+            await page.getByTestId('goto-photo').scrollIntoViewIfNeeded();
+            await expect(page.getByTestId('goto-photo')).toBeInViewport({ ratio: 1 });
+            await page.getByTestId('goto-acquisition-close').scrollIntoViewIfNeeded();
+            await expect(page.getByTestId('goto-acquisition-close')).toBeInViewport({ ratio: 1 });
+            await page.keyboard.press('Escape');
+            await expect(page.getByTestId(entry)).toBeFocused();
+            await page.getByTestId(entry).click();
+            // Backdrop and Escape both discard drafts and restore the entry.
+            if (scale === 1) await page.mouse.click(2, 2);
+            else await page.keyboard.press('Escape');
+            await expect(page.getByTestId(entry)).toBeFocused();
+          }
+        }
+      });
+    }
+  });
+}
+
+test('changed GOTO controls retain rendered text, indicator and focus contrast', async ({
+  page,
+  baseURL,
+}) => {
+  await setupCommonRoutes(page);
+  await page
+    .context()
+    .addCookies([{ name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: baseURL! }]);
+  await page.addInitScript(
+    (id) =>
+      localStorage.setItem(
+        'family-storage',
+        JSON.stringify({ state: { selectedFamilyMemberId: id }, version: 0 })
+      ),
+    MOCK_IDS.MEMBER_ALEX
+  );
+  await page.setViewportSize({ width: 390, height: 667 });
+  await page.goto(`/recipes?open=${MOCK_IDS.RECIPE_LASAGNA}`);
+  let star = page.getByTestId('action-set-goto');
+  await expect(star).toHaveText('GOTO');
+  await star.focus();
+  await page.keyboard.press('Tab');
+  await page.keyboard.press('Shift+Tab');
+  await expect(star).toBeFocused();
+  await recordGotoContrast(star, '../.task/goto-review/contrast/star-unselected-focus.json', true);
+  await star.hover();
+  await recordGotoContrast(star, '../.task/goto-review/contrast/star-unselected-hover.json');
+  let release!: () => void;
+  let holdSave = true;
+  await page.route('**/api/goto', async (route) => {
+    if (route.request().method() === 'PUT' && holdSave) {
+      holdSave = false;
+      await new Promise<void>((resolve) => {
+        release = resolve;
+      });
+    }
+    await route.fallback();
+  });
+  await star.click();
+  await expect(star).toBeDisabled();
+  await recordGotoContrast(star, '../.task/goto-review/contrast/star-pending.json');
+  await star.screenshot({
+    path: '../.task/goto-review/after/star-pending.png',
+    animations: 'disabled',
+  });
+  release();
+  star = page.getByTestId('action-current-goto');
+  await expect(star).toHaveAttribute('aria-pressed', 'true');
+  await expect(star.locator('svg')).toHaveAttribute('fill', 'currentColor');
+  await star.hover();
+  await recordGotoContrast(star, '../.task/goto-review/contrast/star-selected-hover.json');
+  await page.mouse.down();
+  await recordGotoContrast(star, '../.task/goto-review/contrast/star-selected-pressed.json');
+  await page.mouse.move(0, 0);
+  await page.mouse.up();
+  await page.getByTestId('action-close-sheet').click();
+  await page.evaluate(async () =>
+    fetch('/api/goto', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ items: [] }),
+    })
+  );
+  await page.goto('/home');
+  const helper = page.getByTestId('goto-setup-helper');
+  await expect(helper).toBeVisible();
+  await recordGotoContrast(helper.locator('p'), '../.task/goto-review/contrast/home-helper.json');
+  const link = page.getByTestId('add-goto-btn');
+  await link.focus();
+  await page.keyboard.press('Tab');
+  await page.keyboard.press('Shift+Tab');
+  await recordGotoContrast(link, '../.task/goto-review/contrast/home-link-focus.json', true);
+  expect((await link.boundingBox())!.height).toBeGreaterThanOrEqual(48);
+  await page.goto('/browse-all-stack');
+  await page.getByTestId('browse-filters-entry').click();
+  const filter = page.getByTestId('browse-filter-goto');
+  await filter.focus();
+  await page.keyboard.press('Tab');
+  await page.keyboard.press('Shift+Tab');
+  await recordGotoContrast(
+    filter,
+    '../.task/goto-review/contrast/filter-unselected-focus.json',
+    true
+  );
+  await filter.click();
+  await filter.focus();
+  await page.keyboard.press('Tab');
+  await page.keyboard.press('Shift+Tab');
+  await recordGotoContrast(
+    filter,
+    '../.task/goto-review/contrast/filter-selected-focus.json',
+    true
+  );
+});
+
+for (const appLocale of ['en', 'fr'] as const) {
+  test.describe(`GOTO star reflow ${appLocale}`, () => {
+    test.use({ appLocale });
+    test('both labelled states remain reachable with enlarged text', async ({ page, baseURL }) => {
+      test.setTimeout(90_000);
+      await setupCommonRoutes(page);
+      await page
+        .context()
+        .addCookies([{ name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: baseURL! }]);
+      await page.addInitScript(
+        (id) =>
+          localStorage.setItem(
+            'family-storage',
+            JSON.stringify({ state: { selectedFamilyMemberId: id }, version: 0 })
+          ),
+        MOCK_IDS.MEMBER_ALEX
+      );
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      await page.route(`**/api/recipes/${MOCK_IDS.RECIPE_LASAGNA}`, async (route) => {
+        if (route.request().method() !== 'GET') return route.fallback();
+        await route.fulfill({
+          json: {
+            recipe: builders.recipe({
+              id: MOCK_IDS.RECIPE_LASAGNA,
+              name:
+                appLocale === 'fr'
+                  ? 'Un très long plat familial aux légumes rôtis et aux fines herbes du jardin'
+                  : 'A long family supper with roasted vegetables and fresh garden herbs',
+            }),
+            updatedAt: '2026-05-04T12:00:00Z',
+          },
+        });
+      });
+
+      await page.goto('/recipes');
+      for (const [width, height] of [
+        [320, 568],
+        [390, 667],
+        [412, 915],
+        [667, 375],
+        [820, 1180],
+        [1180, 820],
+      ]) {
+        await page.setViewportSize({ width, height });
+        for (const scale of [1, 2]) {
+          await page.evaluate(async () =>
+            fetch('/api/goto', {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ items: [] }),
+            })
+          );
+          await page.goto(`/recipes?open=${MOCK_IDS.RECIPE_LASAGNA}`);
+          await page.addStyleTag({ content: 'nextjs-portal { display: none !important; }' });
+          const sheet = page.getByTestId('recipe-detail-sheet');
+          await expect(page.getByTestId('action-set-goto')).toBeVisible();
+          await sheet.evaluate((root, factor) => {
+            const sizes = Array.from(root.querySelectorAll<HTMLElement>('*'))
+              .filter((node) => node instanceof HTMLElement)
+              .map((node) => ({
+                node,
+                font: parseFloat(getComputedStyle(node).fontSize),
+                line: parseFloat(getComputedStyle(node).lineHeight),
+              }));
+            for (const { node, font, line } of sizes) {
+              node.style.fontSize = `${font * factor}px`;
+              if (Number.isFinite(line)) node.style.lineHeight = `${line * factor}px`;
+            }
+          }, scale);
+          const unselected = page.getByTestId('action-set-goto');
+          await expect(unselected).toHaveText('GOTO');
+          await expect(unselected).toHaveAttribute('aria-pressed', 'false');
+          await expect(unselected).toBeInViewport({ ratio: 1 });
+          expect(await sheet.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
+          await sheet.screenshot({
+            path: `../.task/goto-review/after/star-${appLocale}-${width}x${height}-${scale}x-unselected.png`,
+            animations: 'disabled',
+          });
+          await unselected.click();
+          const selected = page.getByTestId('action-current-goto');
+          await expect(selected).toHaveText('GOTO');
+          await expect(selected).toHaveAttribute('aria-pressed', 'true');
+          await expect(selected).toBeInViewport({ ratio: 1 });
+          expect(await sheet.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
+          await expect(page.getByTestId('action-close-sheet')).toBeInViewport({ ratio: 1 });
+          await sheet.screenshot({
+            path: `../.task/goto-review/after/star-${appLocale}-${width}x${height}-${scale}x-selected.png`,
+            animations: 'disabled',
+          });
+          await page.getByTestId('action-close-sheet').click();
+        }
+      }
+    });
+  });
+}
+
+for (const surface of ['browse', 'search'] as const) {
+  for (const choice of [
+    { testId: 'goto-search-library', path: '/recipes', mode: null },
+    { testId: 'goto-describe', path: '/capture', mode: 'describe' },
+    { testId: 'goto-photo', path: '/capture', mode: 'photo' },
+  ]) {
+    test(`${surface} acquisition destination ${choice.testId} opens without creating or assigning`, async ({
+      page,
+      baseURL,
+    }) => {
+      await setupCommonRoutes(page);
+      await page
+        .context()
+        .addCookies([{ name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: baseURL! }]);
+      await page.addInitScript(
+        (id) =>
+          localStorage.setItem(
+            'family-storage',
+            JSON.stringify({ state: { selectedFamilyMemberId: id }, version: 0 })
+          ),
+        MOCK_IDS.MEMBER_ALEX
+      );
+      const writes: string[] = [];
+      page.on('request', (request) => {
+        const path = new URL(request.url()).pathname;
+        if (
+          path.startsWith('/api/') &&
+          !['GET', 'HEAD'].includes(request.method()) &&
+          path !== '/api/recipes/search'
+        )
+          writes.push(`${request.method()} ${path}`);
+      });
+      await page.goto(surface === 'browse' ? '/browse-all-stack' : '/recipes');
+      await page
+        .getByTestId(surface === 'browse' ? 'browse-filters-entry' : 'mobile-filters-button')
+        .click();
+      await page.getByTestId('goto-management-toggle').click();
+      await page.getByTestId('add-goto-btn').click();
+      await page.getByTestId(choice.testId).click();
+      await expect(page).toHaveURL(
+        (url) =>
+          url.pathname === choice.path &&
+          (!choice.mode ||
+            (url.searchParams.get('intent') === 'goto' &&
+              url.searchParams.get('mode') === choice.mode))
+      );
+      await expect(page.getByTestId('quick-find-modal')).not.toBeVisible();
+      expect(writes).toEqual([]);
+    });
+  }
+}

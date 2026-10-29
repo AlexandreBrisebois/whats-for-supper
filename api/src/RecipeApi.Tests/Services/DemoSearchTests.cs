@@ -138,7 +138,7 @@ public class DemoSearchTests
     {
         public int Calls { get; private set; }
         public override Task<IReadOnlyList<RecipeSemanticCandidate>> SearchAsync(float[] queryEmbedding, RecipeSearchFiltersDto filters,
-            RecipeSemanticSearchOptions options, Guid? excludedRecipeId, CancellationToken ct = default)
+            RecipeSemanticSearchOptions options, Guid? excludedRecipeId, CancellationToken ct = default, Guid[]? gotoRecipeIds = null)
         {
             Calls++;
             return Task.FromResult<IReadOnlyList<RecipeSemanticCandidate>>(target is Guid id ? [new() { RecipeId = id, Score = 0.9 }] : []);

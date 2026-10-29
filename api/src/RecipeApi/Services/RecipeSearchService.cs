@@ -22,7 +22,8 @@ public partial class RecipeSearchService(
     RecipeSearchRolloutOptions? rolloutOptions = null,
     RecipeSearchContinuationStore? continuationStore = null,
     RecipeSearchFilterOptions? filterOptions = null,
-    DemoModeOptions? demoMode = null)
+    DemoModeOptions? demoMode = null,
+    GoToService? goToService = null)
 {
     private const int DefaultLimit = 12;
     private const int MaxLimit = 50;
@@ -47,6 +48,9 @@ public partial class RecipeSearchService(
         var semanticQuery = CreateSemanticQuery(query, concepts);
         var limit = Math.Clamp(dto.Limit ?? DefaultLimit, 1, MaxLimit);
         var appliedFilters = dto.Filters ?? new RecipeSearchFiltersDto();
+        var gotoRecipeIds = appliedFilters.GotoOnly == true
+            ? await (goToService ?? new GoToService(_clock, db, Microsoft.Extensions.Logging.Abstractions.NullLogger<GoToService>.Instance)).GetConfiguredRecipeIdsAsync()
+            : null;
         var canonicalFilters = RecipeSearchPredicate.Canonicalize(appliedFilters);
         var hasEffectiveFilters = canonicalFilters.HasAny;
         var searchMode = ClassifySearchMode(dto.SimilarToRecipeId, query, concepts, hasEffectiveFilters);
@@ -69,7 +73,7 @@ public partial class RecipeSearchService(
                 recipe.DeletedAt == null &&
                 recipe.IsReady);
 
-        recipesQuery = RecipeSearchPredicate.Apply(recipesQuery, appliedFilters, db, _clock.UtcNow);
+        recipesQuery = RecipeSearchPredicate.Apply(recipesQuery, appliedFilters, db, _clock.UtcNow, gotoRecipeIds);
 
         if (!string.IsNullOrWhiteSpace(dto.ContinuationToken))
             return await ContinueAsync(dto.ContinuationToken, continuationFingerprint, recipesQuery, limit, ct);
@@ -87,7 +91,7 @@ public partial class RecipeSearchService(
         if (dto.SimilarToRecipeId is not null)
         {
             // Similar Mode: retrieve based on target recipe embedding
-            candidates = await SimilarSearchAsync(dto.SimilarToRecipeId.Value, recipesQuery, appliedFilters, ct);
+            candidates = await SimilarSearchAsync(dto.SimilarToRecipeId.Value, recipesQuery, appliedFilters, ct, gotoRecipeIds);
             resultPath = "similar";
         }
         else
@@ -98,7 +102,7 @@ public partial class RecipeSearchService(
             if (!conceptOnly)
             {
                 var lexicalStopwatch = System.Diagnostics.Stopwatch.StartNew();
-                lexicalCandidates = await GetLexicalCandidatesAsync(recipesQuery, query, appliedFilters, ct);
+                lexicalCandidates = await GetLexicalCandidatesAsync(recipesQuery, query, appliedFilters, ct, gotoRecipeIds: gotoRecipeIds);
                 lexicalStopwatch.Stop();
                 lexicalDurationMs = lexicalStopwatch.ElapsedMilliseconds;
             }
@@ -112,7 +116,7 @@ public partial class RecipeSearchService(
                     using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
                     cts.CancelAfter(TimeSpan.FromMilliseconds(2000));
 
-                    var vectorCandidates = await VectorSearchAsync(semanticQuery, recipesQuery, appliedFilters, cts.Token);
+                    var vectorCandidates = await VectorSearchAsync(semanticQuery, recipesQuery, appliedFilters, cts.Token, gotoRecipeIds);
                     candidates = conceptOnly ? vectorCandidates : MergeCandidates(lexicalCandidates, vectorCandidates);
                     resultPath = conceptOnly ? "semantic-only" : "hybrid";
                 }
@@ -123,7 +127,7 @@ public partial class RecipeSearchService(
                 catch (OperationCanceledException)
                 {
                     candidates = conceptOnly
-                        ? await GetLexicalCandidatesAsync(recipesQuery, semanticQuery, appliedFilters, ct)
+                        ? await GetLexicalCandidatesAsync(recipesQuery, semanticQuery, appliedFilters, ct, gotoRecipeIds: gotoRecipeIds)
                         : lexicalCandidates;
                     resultPath = "fallback-lexical";
                     failureClass = "semantic_budget_exhausted";
@@ -137,7 +141,7 @@ public partial class RecipeSearchService(
                 catch (Exception)
                 {
                     candidates = conceptOnly
-                        ? await GetLexicalCandidatesAsync(recipesQuery, semanticQuery, appliedFilters, ct)
+                        ? await GetLexicalCandidatesAsync(recipesQuery, semanticQuery, appliedFilters, ct, gotoRecipeIds: gotoRecipeIds)
                         : lexicalCandidates;
                     resultPath = "fallback-lexical";
                     failureClass = "semantic_provider_or_vector_error";
@@ -157,7 +161,7 @@ public partial class RecipeSearchService(
             else
             {
                 candidates = conceptOnly
-                    ? await GetLexicalCandidatesAsync(recipesQuery, semanticQuery, appliedFilters, ct)
+                    ? await GetLexicalCandidatesAsync(recipesQuery, semanticQuery, appliedFilters, ct, gotoRecipeIds: gotoRecipeIds)
                     : lexicalCandidates;
                 resultPath = conceptOnly ? "fallback-lexical" : resultPath;
             }
@@ -608,12 +612,13 @@ public partial class RecipeSearchService(
         string query,
         IQueryable<Recipe> recipesQuery,
         RecipeSearchFiltersDto filters,
-        CancellationToken ct)
+        CancellationToken ct,
+        Guid[]? gotoRecipeIds)
     {
         if (embeddingProvider is null || semanticRepository is null) return [];
 
         var queryVector = await embeddingProvider.GenerateAsync(query, ct);
-        var vectorCandidates = await semanticRepository.SearchAsync(queryVector, filters, SemanticOptions, null, ct);
+        var vectorCandidates = await semanticRepository.SearchAsync(queryVector, filters, SemanticOptions, null, ct, gotoRecipeIds);
         var ids = vectorCandidates.Select(candidate => candidate.RecipeId).ToArray();
         var recipes = ids.Length == 0
             ? new Dictionary<Guid, Recipe>()
@@ -633,7 +638,8 @@ public partial class RecipeSearchService(
         Guid similarToId,
         IQueryable<Recipe> recipesQuery,
         RecipeSearchFiltersDto appliedFilters,
-        CancellationToken ct)
+        CancellationToken ct,
+        Guid[]? gotoRecipeIds)
     {
         var source = await db.Recipes.AsNoTracking()
             .Where(recipe => recipe.Id == similarToId && recipe.DeletedAt == null && recipe.IsReady)
@@ -660,7 +666,7 @@ public partial class RecipeSearchService(
             && sourceEmbedding is { Length: var dimensions } && dimensions == SemanticOptions.EmbeddingDimensions;
 
         if (!hasCompatibleSourceEmbedding || semanticRepository is null)
-            return await SimilarLexicalFallbackAsync(source.Recipe, recipesQuery, appliedFilters, ct);
+            return await SimilarLexicalFallbackAsync(source.Recipe, recipesQuery, appliedFilters, ct, gotoRecipeIds);
 
         try
         {
@@ -672,7 +678,8 @@ public partial class RecipeSearchService(
                 appliedFilters,
                 SemanticOptions,
                 similarToId,
-                semanticBudget.Token);
+                semanticBudget.Token,
+                gotoRecipeIds);
             var ids = semanticCandidates.Select(candidate => candidate.RecipeId).ToArray();
             var recipes = ids.Length == 0
                 ? new Dictionary<Guid, Recipe>()
@@ -690,7 +697,7 @@ public partial class RecipeSearchService(
         }
         catch (Exception)
         {
-            return await SimilarLexicalFallbackAsync(source.Recipe, recipesQuery, appliedFilters, ct);
+            return await SimilarLexicalFallbackAsync(source.Recipe, recipesQuery, appliedFilters, ct, gotoRecipeIds);
         }
     }
 
@@ -698,13 +705,14 @@ public partial class RecipeSearchService(
         Recipe source,
         IQueryable<Recipe> recipesQuery,
         RecipeSearchFiltersDto appliedFilters,
-        CancellationToken ct)
+        CancellationToken ct,
+        Guid[]? gotoRecipeIds)
     {
         var query = BuildSimilarLexicalQuery(source);
         if (string.IsNullOrWhiteSpace(query)) return [];
 
         var lexicalCandidates = await GetLexicalCandidatesAsync(
-            recipesQuery.Where(recipe => recipe.Id != source.Id), query, appliedFilters, ct, source.Id);
+            recipesQuery.Where(recipe => recipe.Id != source.Id), query, appliedFilters, ct, source.Id, gotoRecipeIds);
         var sourceInput = ToSimilarityInput(source);
         var scorer = new RecipeSimilarityScorer();
         return lexicalCandidates
@@ -769,7 +777,8 @@ public partial class RecipeSearchService(
         string query,
         RecipeSearchFiltersDto? filters,
         CancellationToken ct,
-        Guid? excludedRecipeId = null)
+        Guid? excludedRecipeId = null,
+        Guid[]? gotoRecipeIds = null)
     {
         if (lexicalRepository is null)
         {
@@ -784,7 +793,7 @@ public partial class RecipeSearchService(
         }
 
         var repository = lexicalRepository;
-        var databaseCandidates = await repository.SearchAsync(query, filters ?? new RecipeSearchFiltersDto(), LexicalCandidateLimit, excludedRecipeId, ct);
+        var databaseCandidates = await repository.SearchAsync(query, filters ?? new RecipeSearchFiltersDto(), LexicalCandidateLimit, excludedRecipeId, ct, gotoRecipeIds);
         var candidateIds = databaseCandidates.Select(candidate => candidate.RecipeId).ToArray();
         var recipesById = candidateIds.Length == 0
             ? new Dictionary<Guid, Recipe>()

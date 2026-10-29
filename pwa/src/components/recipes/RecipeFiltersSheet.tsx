@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { ChevronDown, X } from 'lucide-react';
 import type {
   RecipeSearchFilterDiscoveryDto,
@@ -8,10 +8,13 @@ import type {
   RecipeSearchMainDefinitionDto,
   RecipeSearchPreferencesDto,
 } from '@/lib/api/generated/models/index';
+import { useDialogFocus } from '@/hooks/useDialogFocus';
+import { FamilyGOTOSettings } from '@/components/profile/FamilyGOTOSettings';
 import { cn } from '@/lib/utils';
 import { t } from '@/locales';
 
 type RecipeBooleanFilterKey =
+  | 'gotoOnly'
   | 'newRecipes'
   | 'neverCooked'
   | 'familyFavorite'
@@ -21,6 +24,7 @@ type RecipeBooleanFilterKey =
   | 'readyToReviewOnly';
 
 export const RECIPE_FILTER_OPTIONS = [
+  { key: 'gotoOnly', labelKey: 'recipes.filterGoto', fallback: 'GOTO', testId: 'filter-goto' },
   {
     key: 'newRecipes',
     labelKey: 'recipes.filterNew',
@@ -75,6 +79,7 @@ const DEFAULT_MAIN: RecipeSearchMainDefinitionDto[] = [
 ];
 const DEFAULT_MEAL_TYPES = ['Supper', 'Lunch', 'Breakfast', 'Dessert'];
 const PRIMARY_EXISTING_FILTERS: RecipeBooleanFilterKey[] = [
+  'gotoOnly',
   'quickOnly',
   'familyFavorite',
   'neverCooked',
@@ -97,6 +102,7 @@ interface RecipeFiltersSheetProps {
   filterMetadata: RecipeSearchFilterDiscoveryDto | null;
   onApply: (draft: RecipeFilterDraft) => void;
   onClose: () => void;
+  onAddGoto?: () => void;
 }
 
 function mainLabel(main: RecipeSearchMainDefinitionDto) {
@@ -174,7 +180,9 @@ export function RecipeFiltersSheet({
   filterMetadata,
   onApply,
   onClose,
+  onAddGoto,
 }: RecipeFiltersSheetProps) {
+  const { panelRef, onKeyDown } = useDialogFocus(onClose);
   const [draftFilters, setDraftFilters] = useState<RecipeSearchFiltersDto>({ ...activeFilters });
   const [draftPreferences, setDraftPreferences] = useState<RecipeSearchPreferencesDto>({
     ...activePreferences,
@@ -182,7 +190,6 @@ export function RecipeFiltersSheet({
   const [existingExpanded, setExistingExpanded] = useState(false);
   const [mainExpanded, setMainExpanded] = useState(false);
   const [cuisineExpanded, setCuisineExpanded] = useState(false);
-  const closeButtonRef = useRef<HTMLButtonElement>(null);
   const main = filterMetadata?.main?.length ? filterMetadata.main : DEFAULT_MAIN;
   const mealTypes = filterMetadata?.mealTypes?.length
     ? filterMetadata.mealTypes
@@ -252,25 +259,25 @@ export function RecipeFiltersSheet({
     <div
       className="fixed inset-0 z-[140] flex items-end bg-charcoal/40 md:items-center md:p-6"
       onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose();
+        if (event.target === event.currentTarget) {
+          event.preventDefault();
+          onClose();
+        }
       }}
     >
       <section
+        ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="recipe-filters-title"
-        onKeyDown={(event) => {
-          if (event.key === 'Escape') onClose();
-        }}
-        className="flex max-h-[90dvh] w-full flex-col rounded-t-[2rem] bg-cream px-5 pt-5 shadow-2xl md:max-w-2xl md:rounded-[2rem]"
+        onKeyDown={onKeyDown}
+        className="[&_button:focus-visible]:outline-2 [&_button:focus-visible]:outline-offset-2 [&_button:focus-visible]:outline-charcoal flex max-h-[90dvh] w-full flex-col rounded-t-[2rem] bg-cream px-5 pt-5 shadow-2xl md:max-w-2xl md:rounded-[2rem]"
       >
         <div className="mb-3 flex shrink-0 items-center justify-between">
           <h2 id="recipe-filters-title" className="font-heading text-xl font-black text-charcoal">
             {t('recipes.filterRecipes', 'Filter recipes')}
           </h2>
           <button
-            ref={closeButtonRef}
-            autoFocus
             type="button"
             aria-label={t('common.close', 'Close')}
             onClick={onClose}
@@ -379,16 +386,17 @@ export function RecipeFiltersSheet({
               <div id="more-cuisine-filters" hidden={!cuisineExpanded} />
             </section>
           )}
+          <FamilyGOTOSettings onAdd={onAddGoto} />
         </div>
-        <div className="shrink-0 border-t border-charcoal/10 bg-cream py-4">
-          <div className="grid grid-cols-2 gap-3">
+        <div className="shrink-0 border-t border-charcoal/10 bg-cream pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,8em),1fr))] gap-3">
             <button
               type="button"
               onClick={() => {
                 setDraftFilters({});
                 setDraftPreferences({});
               }}
-              className="min-h-11 rounded-full border border-charcoal/15 bg-white text-sm font-bold text-charcoal"
+              className="min-h-11 rounded-full px-4 py-2 border border-charcoal/15 bg-white text-sm font-bold text-charcoal"
             >
               {t('recipes.clearFilters', 'Clear filters')}
             </button>
@@ -396,7 +404,7 @@ export function RecipeFiltersSheet({
               type="button"
               data-testid="mobile-filter-apply"
               onClick={() => onApply({ filters: draftFilters, preferences: draftPreferences })}
-              className="min-h-11 rounded-full bg-terracotta hover:bg-terracotta-600 active:bg-terracotta-700 text-sm font-bold text-white"
+              className="min-h-11 rounded-full px-4 py-2 bg-terracotta hover:bg-terracotta-600 active:bg-terracotta-700 text-sm font-bold text-white"
             >
               {t('recipes.applyFilters', 'Apply filters')}
             </button>

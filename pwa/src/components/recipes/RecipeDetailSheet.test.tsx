@@ -15,6 +15,8 @@ const mockSaveRecipeImportIssue = vi.fn();
 const mockResolveRecipeImportIssue = vi.fn();
 const mockAddToast = vi.fn();
 const mockRemoveToast = vi.fn();
+const mockSaveGoTo = vi.fn();
+let mockGotoItems: any[] = [];
 
 vi.mock('@/lib/api/recipes', () => ({
   getRecipe: (...args: unknown[]) => mockGetRecipe(...args),
@@ -46,9 +48,9 @@ vi.mock('@/store/uiStore', () => ({
 vi.mock('@/store/familyStore', () => ({
   useFamilyStore: (selector: (state: any) => unknown) =>
     selector({
-      familySettings: { family_goto: { items: [] } },
+      familySettings: { family_goto: { items: mockGotoItems } },
       loadGoTo: vi.fn().mockResolvedValue(undefined),
-      saveGoTo: vi.fn().mockResolvedValue(undefined),
+      saveGoTo: mockSaveGoTo,
     }),
 }));
 
@@ -59,6 +61,10 @@ vi.mock('@/lib/imageUtils', () => ({
 describe('RecipeDetailSheet', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGotoItems = [];
+    mockSaveGoTo.mockImplementation(async (dto) => {
+      mockGotoItems = dto.items;
+    });
     mockAddToast.mockReturnValue('recipe-share-preparation');
     mockGetRecipe.mockResolvedValue({
       id: '550e8400-e29b-41d4-a716-446655440111',
@@ -97,6 +103,49 @@ describe('RecipeDetailSheet', () => {
       originals: [],
     });
     mockDownloadRecipeBundleFile.mockResolvedValue(undefined);
+  });
+
+  it('labels both star states and preserves pressed, pending and save feedback', async () => {
+    render(
+      <RecipeDetailSheet
+        recipeId="550e8400-e29b-41d4-a716-446655440111"
+        plannerDayLabel={null}
+        onClose={vi.fn()}
+        onUseForDay={vi.fn()}
+        onFindSimilar={vi.fn()}
+      />
+    );
+    const add = await screen.findByTestId('action-set-goto');
+    expect(add).toHaveTextContent('GOTO');
+    expect(add).toHaveAccessibleName('Set as GOTO');
+    expect(add).toHaveAttribute('aria-pressed', 'false');
+    let finish!: () => void;
+    mockSaveGoTo.mockImplementationOnce(
+      (dto) =>
+        new Promise<void>((resolve) => {
+          finish = () => {
+            mockGotoItems = dto.items;
+            resolve();
+          };
+        })
+    );
+    fireEvent.click(add);
+    expect(add).toBeDisabled();
+    await act(async () => finish());
+    const selected = await screen.findByTestId('action-current-goto');
+    expect(selected).toHaveTextContent('GOTO');
+    expect(selected).toHaveAccessibleName('Remove from GOTO');
+    expect(selected).toHaveAttribute('aria-pressed', 'true');
+    expect(mockAddToast).toHaveBeenCalledWith(
+      expect.objectContaining({ message: 'Added to GOTO list' })
+    );
+    mockSaveGoTo.mockRejectedValueOnce(new Error('offline'));
+    fireEvent.click(selected);
+    await waitFor(() => expect(selected).not.toBeDisabled());
+    expect(selected).toHaveAttribute('aria-pressed', 'true');
+    expect(mockAddToast).toHaveBeenCalledWith(
+      expect.objectContaining({ message: 'Could not update GOTO' })
+    );
   });
 
   it('recovers a failed first read through Retry while Close remains available', async () => {

@@ -7,14 +7,15 @@ using System.Text.RegularExpressions;
 namespace RecipeApi.Services;
 
 /// <summary>Bounded PostgreSQL lexical candidate query over published canonical documents.</summary>
-public sealed class RecipeLexicalSearchRepository(RecipeDbContext db, IClock clock)
+public sealed class RecipeLexicalSearchRepository(RecipeDbContext db, IClock clock, GoToService? goToService = null)
 {
     public async Task<IReadOnlyList<RecipeLexicalCandidate>> SearchAsync(
         string query,
         RecipeSearchFiltersDto filters,
         int candidateLimit,
         Guid? excludedRecipeId = null,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        Guid[]? gotoRecipeIds = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(query);
         var trimmedQuery = query.Trim();
@@ -36,7 +37,9 @@ public sealed class RecipeLexicalSearchRepository(RecipeDbContext db, IClock clo
         // recall while individual meaningful terms admit documents where the words are
         // separated or reordered; word_similarity still ranks the original request.
         var matchPredicate = $"({string.Join(" OR ", matchPredicates)})";
-        var hardFilters = RecipeSearchPredicate.BuildSql(filters, parameters, clock.UtcNow);
+        if (filters.GotoOnly == true && gotoRecipeIds is null)
+            gotoRecipeIds = await (goToService ?? new GoToService(clock, db, Microsoft.Extensions.Logging.Abstractions.NullLogger<GoToService>.Instance)).GetConfiguredRecipeIdsAsync();
+        var hardFilters = RecipeSearchPredicate.BuildSql(filters, parameters, clock.UtcNow, gotoRecipeIds);
 
         var sql = $"""
             SELECT d.recipe_id AS "RecipeId", word_similarity(@query, d.document_text) AS "Score"

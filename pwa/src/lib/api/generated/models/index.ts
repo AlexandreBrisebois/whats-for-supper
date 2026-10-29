@@ -2734,6 +2734,9 @@ export function deserializeIntoRecipeSearchFiltersDto(
     familyFavorite: (n) => {
       recipeSearchFiltersDto.familyFavorite = n.getBooleanValue();
     },
+    gotoOnly: (n) => {
+      recipeSearchFiltersDto.gotoOnly = n.getBooleanValue();
+    },
     includedIngredients: (n) => {
       recipeSearchFiltersDto.includedIngredients =
         n.getCollectionOfPrimitiveValues<string>('string');
@@ -4678,6 +4681,10 @@ export interface RecipeSearchFiltersDto extends AdditionalDataHolder, Parsable {
    */
   familyFavorite?: boolean | null;
   /**
+   * True restricts all retrieval paths to current configured household GOTO membership before candidate limits and pagination. False or absent is inactive. Included in continuation compatibility; ranked continuations recheck membership without adding new candidates.
+   */
+  gotoOnly?: boolean | null;
+  /**
    * The includedIngredients property
    */
   includedIngredients?: string[] | null;
@@ -6410,6 +6417,7 @@ export function serializeRecipeSearchFiltersDto(
     recipeSearchFiltersDto.excludedIngredients
   );
   writer.writeBooleanValue('familyFavorite', recipeSearchFiltersDto.familyFavorite);
+  writer.writeBooleanValue('gotoOnly', recipeSearchFiltersDto.gotoOnly);
   writer.writeCollectionOfPrimitiveValues<string>(
     'includedIngredients',
     recipeSearchFiltersDto.includedIngredients

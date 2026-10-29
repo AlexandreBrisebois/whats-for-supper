@@ -47,6 +47,73 @@ public partial class RecipeLexicalSearchPostgresTests : IAsyncLifetime
         }
     }
 
+    [PostgresTheory]
+    [InlineData("lexical")]
+    [InlineData("vector")]
+    [InlineData("focus")]
+    [InlineData("similar")]
+    public async Task GotoMembership_AppliesBeforeLexicalAndSemanticCandidateLimits(string path)
+    {
+        var vector = UnitVector(0);
+        var source = await SeedReadyDocumentAsync("Chicken soup", "[\"chicken\"]", embedding: vector);
+        var configured = await SeedReadyDocumentAsync("Chicken soup with herbs", "[\"chicken\"]", embedding: vector);
+        var pending = await SeedReadyDocumentAsync("Chicken pending", "[]", ready: false, embedding: vector);
+        var deleted = await SeedReadyDocumentAsync("Chicken deleted", "[]", deleted: true, embedding: vector);
+        var gotos = new GoToService(new SystemClock(), _db, NullLogger<GoToService>.Instance);
+        await gotos.SaveGoToListAsync(new GoToListDto { Items = [new() { RecipeId = configured.Id }, new() { RecipeId = pending.Id }, new() { RecipeId = deleted.Id }, new() { RecipeId = Guid.NewGuid() }] });
+        var filters = new RecipeSearchFiltersDto { GotoOnly = true };
+        if (path == "focus" || path == "similar")
+        {
+            var response = await (path == "similar" ? CreateSimilarService(candidateLimit: 1) : CreateService(new FixedEmbeddingProvider(vector), candidateLimit: 1))
+                .SearchAsync(new RecipeSearchRequestDto
+                {
+                    SimilarToRecipeId = path == "similar" ? source.Id : null,
+                    Preferences = path == "focus" ? new RecipeSearchPreferencesDto { Concepts = ["chicken"] } : null,
+                    Filters = filters
+                });
+            Assert.Equal(new[] { configured.Id }, ResultIds(response));
+        }
+        else
+        {
+            var ids = path == "lexical"
+                ? (await new RecipeLexicalSearchRepository(_db, new SystemClock()).SearchAsync("chicken", filters, 1)).Select(candidate => candidate.RecipeId)
+                : (await new RecipeSemanticSearchRepository(_db, new SystemClock()).SearchAsync(vector, filters, SearchOptions(1).Semantic, null)).Select(candidate => candidate.RecipeId);
+            Assert.Equal(new[] { configured.Id }, ids);
+        }
+        await gotos.SaveGoToListAsync(new GoToListDto());
+        Assert.Empty(await new RecipeLexicalSearchRepository(_db, new SystemClock()).SearchAsync("chicken", filters, 1));
+        Assert.Empty(await new RecipeSemanticSearchRepository(_db, new SystemClock()).SearchAsync(vector, filters, SearchOptions(1).Semantic, null));
+    }
+
+    [PostgresFact]
+    public async Task BrowseGoto_PersistedMembershipFiltersBeforePagingAndIntersectsDiscovery()
+    {
+        var member = await SeedReadyDocumentAsync("Configured unrated", "[]");
+        member.CreatedAt = DateTimeOffset.UtcNow.AddDays(-5);
+        var hidden = await SeedReadyDocumentAsync("Configured hidden", "[]");
+        hidden.IsDiscoverable = false;
+        var pending = await SeedReadyDocumentAsync("Pending", "[]", ready: false);
+        var deleted = await SeedReadyDocumentAsync("Deleted", "[]", deleted: true);
+        for (var i = 0; i < 24; i++) await SeedReadyDocumentAsync($"Ordinary {i}", "[]");
+        await _db.SaveChangesAsync();
+        await using var factory = await TestWebApplicationFactory.CreateAsync(new Dictionary<string, string?>
+        { ["Tests:PostgresConnectionString"] = _connection.ConnectionString });
+        using var client = factory.CreateClient();
+        using var saved = await client.PutAsync("/api/goto", System.Net.Http.Json.JsonContent.Create(new GoToListDto { Items =
+        [ new() { RecipeId = member.Id }, new() { RecipeId = hidden.Id }, new() { RecipeId = pending.Id },
+          new() { RecipeId = deleted.Id }, new() { RecipeId = Guid.NewGuid() } ] }));
+        saved.EnsureSuccessStatusCode();
+        foreach (var discovery in new[] { false, true })
+        {
+            using var response = await client.GetAsync($"/api/recipes?gotoOnly=true&discoverableOnly={discovery}&limit=1");
+            response.EnsureSuccessStatusCode();
+            using var json = System.Text.Json.JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            Assert.Equal(discovery ? 1 : 2, json.RootElement.GetProperty("pagination").GetProperty("total").GetInt32());
+            var id = json.RootElement.GetProperty("recipes")[0].GetProperty("id").GetGuid();
+            Assert.Contains(id, new[] { member.Id, hidden.Id });
+        }
+    }
+
     [PostgresFact]
     public async Task ClockSearch_LexicalAndSemanticUseSuppliedNewRecipeCutoff()
     {

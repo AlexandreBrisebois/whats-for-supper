@@ -54,6 +54,7 @@
     "joiningFamily": "Joining your family..."
   },
   "capture": {
+    "backToGotos": "Back to GOTOs",
     "saveRecipe": "Save Recipe",
     "choosePhotos": "Choose Photos",
     "redirecting": "Redirecting home in {{seconds}}s...",
@@ -135,6 +136,9 @@
     "profile": "Profile"
   },
   "home": {
+    "gotoHelper": "Tap the GOTO star on favourite recipes so we can suggest one here.",
+    "chooseGotoRecipes": "Choose GOTO recipes",
+
     "votingRound": "Family voting",
     "menuIsIn": "Menu's In",
     "familyVoting": "The family is voting",
@@ -332,6 +336,10 @@
     "results": "Results",
     "topPick": "Top Pick",
     "filters": "Filters",
+    "gotoNoMatches": "No matching GOTO recipes. Pending recipes are still available in management.",
+    "filterGoto": "GOTO",
+    "removeGoto": "Remove from GOTO",
+    "filtersActiveCount": "Filters, {{count}} active",
     "filterRecipes": "Filter recipes",
     "filterShortcuts": "Shortcuts",
     "filterMeal": "Meal",
@@ -430,6 +438,13 @@
     "flags": {}
   },
   "familyGoto": {
+    "manage": "Manage GOTOs",
+    "saveExplanation": "List changes save immediately after confirmation. Filter changes take effect on Apply.",
+    "loading": "Loading GOTOs…",
+    "loadFailed": "Could not load GOTOs.",
+    "removeFailed": "Could not remove GOTO. Try removing it again.",
+    "ready": "A GOTO recipe is ready.",
+    "preparing": "Being prepared…",
     "title": "Family GOTO",
     "description": "Your fallback meals when nothing is planned. They cycle on the home screen so you can confirm them in one tap.",
     "empty": "No GOTO set yet.",
@@ -438,9 +453,9 @@
     "close": "Close",
     "search": "Search the Library",
     "searchDescription": "Find the recipe, then tap the star to make it your GOTO.",
-    "describe": "Describe it",
+    "describe": "Describe a Dish",
     "describeDescription": "AI synthesizes a full recipe from your description",
-    "capture": "Capture it",
+    "capture": "Take a Photo",
     "captureDescription": "Photo of a recipe card, box, or handwritten note"
   },
   "demoContext": {

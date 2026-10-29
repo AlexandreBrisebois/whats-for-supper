@@ -6,9 +6,11 @@ import { useTodayStore } from '@/store/todayStore';
 import { calendarDayIndex } from '@/lib/deployment-calendar';
 
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { AnimatePresence } from 'framer-motion';
 import { X, Search, Loader2, Compass, Recycle, Layers3, Grid3X3 } from 'lucide-react';
+import { GotoAcquisitionSheet } from '@/components/recipes/GotoAcquisitionSheet';
+import { BrowseFiltersSheet } from '@/components/recipes/BrowseFiltersSheet';
 import { RecipeStackCard } from '@/components/recipes/RecipeStackCard';
 import { StackActionBar } from '@/components/recipes/StackActionBar';
 import { EndCard } from '@/components/recipes/EndCard';
@@ -32,7 +34,7 @@ import { GetOrderQueryParameterTypeObject } from '@/lib/api/generated/api/recipe
 import type { RecipeDto } from '@/lib/api/generated/models/index';
 import { BackgroundBlobs } from '@/components/ui/BackgroundBlobs';
 import { getImageUrl } from '@/lib/imageUtils';
-import { tWithVars } from '@/locales';
+import { t, tWithVars } from '@/locales';
 import { formatRecipeTime } from '@/lib/duration';
 
 type BrowseViewMode = 'stack' | 'list';
@@ -55,9 +57,20 @@ const isHistoryExpired = (error: unknown) => {
 // ---------------------------------------------------------------------------
 
 export default function BrowseAllStackPage() {
+  return (
+    <React.Suspense fallback={null}>
+      <BrowseAllStackContent />
+    </React.Suspense>
+  );
+}
+
+function BrowseAllStackContent() {
+  const searchParams = useSearchParams();
+  const manageGotoOnEntry = searchParams.get('manageGoto') === 'true';
   const router = useRouter();
   const { familyMembers, selectedFamilyMemberId, loadFamilyMembers, updateMemberPreferences } =
     useFamilyStore();
+  const gotoMembershipVersion = useFamilyStore((state) => state.gotoMembershipVersion);
   const selectedMember = familyMembers.find((member) => member.id === selectedFamilyMemberId);
   const savedBrowseViewMode: BrowseViewMode =
     selectedMember?.browseViewMode === 'list' ? 'list' : 'stack';
@@ -78,6 +91,11 @@ export default function BrowseAllStackPage() {
   } = useBrowseStackStore();
 
   // Local UI state
+  const [gotoOnly, setGotoOnly] = useState(() => searchParams.get('gotoOnly') === 'true');
+  const [filtersOpen, setFiltersOpen] = useState(manageGotoOnEntry);
+  const [acquisitionOpen, setAcquisitionOpen] = useState(false);
+  const filtersEntryRef = useRef<HTMLButtonElement>(null);
+  const appliedGotoVersion = gotoOnly ? gotoMembershipVersion : 0;
   const [isDiscoverableOnly, setIsDiscoverableOnly] = useState(false);
   const [browseViewModeOverride, setBrowseViewModeOverride] = useState<{
     memberId: string | null;
@@ -163,6 +181,7 @@ export default function BrowseAllStackPage() {
             page: page,
             limit: pageSize,
             discoverableOnly: discoverable,
+            gotoOnly: gotoOnly || undefined,
             historyGeneration: append && !restart ? historyGenerationRef.current : undefined,
           },
         });
@@ -186,7 +205,7 @@ export default function BrowseAllStackPage() {
         }
 
         const effectiveTotal =
-          discoverable && paginationTotal >= 0
+          (discoverable || gotoOnly) && paginationTotal >= 0
             ? paginationTotal
             : (summaryTotalForRequest ?? allLibraryTotalRef.current ?? paginationTotal);
         setTotalCount(effectiveTotal);
@@ -213,7 +232,7 @@ export default function BrowseAllStackPage() {
         }
       }
     },
-    [appendRecipes, browseViewMode, setRecipes, setCurrentIndex, setTotalCount]
+    [appendRecipes, browseViewMode, gotoOnly, setRecipes, setCurrentIndex, setTotalCount]
   );
 
   const getStackPage = useCallback(
@@ -230,6 +249,7 @@ export default function BrowseAllStackPage() {
             page,
             limit: STACK_PAGE_SIZE,
             discoverableOnly: isDiscoverableOnly,
+            gotoOnly: gotoOnly || undefined,
             historyGeneration: historyGenerationRef.current,
           },
         })
@@ -249,7 +269,7 @@ export default function BrowseAllStackPage() {
       pageRequestsRef.current.set(page, request);
       return request;
     },
-    [isDiscoverableOnly]
+    [isDiscoverableOnly, gotoOnly]
   );
 
   const navigatePage = useCallback(
@@ -319,7 +339,7 @@ export default function BrowseAllStackPage() {
     return () => {
       generationRef.current = generation + 1;
     };
-  }, [isDiscoverableOnly, browseViewMode, fetchLibraryData]);
+  }, [isDiscoverableOnly, browseViewMode, fetchLibraryData, appliedGotoVersion]);
 
   useEffect(() => () => reset(), [reset]);
 
@@ -629,7 +649,8 @@ export default function BrowseAllStackPage() {
   const globalIndex = (stackPage - 1) * STACK_PAGE_SIZE + currentIndex;
   const displayTotal = totalCount;
 
-  const isEmpty = !isInitialLoading && !loadError && recipes.length === 0 && !isDiscoverableOnly;
+  const isEmpty =
+    !isInitialLoading && !loadError && recipes.length === 0 && !isDiscoverableOnly && !gotoOnly;
 
   // ---------------------------------------------------------------------------
   // Render
@@ -707,10 +728,48 @@ export default function BrowseAllStackPage() {
         </button>
       </div>
 
+      <div className="relative z-10 flex shrink-0 justify-end px-6 pb-1">
+        <button
+          type="button"
+          ref={filtersEntryRef}
+          data-testid="browse-filters-entry"
+          aria-haspopup="dialog"
+          aria-expanded={filtersOpen}
+          onClick={() => setFiltersOpen(true)}
+          className="min-h-11 rounded-full border border-charcoal/10 bg-white px-4 text-sm font-bold text-charcoal"
+        >
+          {t('recipes.filters', 'Filters')} {gotoOnly ? '(1)' : ''}
+        </button>
+      </div>
+      {filtersOpen && (
+        <BrowseFiltersSheet
+          manageGoto={manageGotoOnEntry}
+          onAddGoto={() => {
+            setFiltersOpen(false);
+            setAcquisitionOpen(true);
+          }}
+          gotoOnly={gotoOnly}
+          onClose={() => setFiltersOpen(false)}
+          onApply={(selected) => {
+            setGotoOnly(selected);
+            setFiltersOpen(false);
+          }}
+        />
+      )}
+
+      {acquisitionOpen && (
+        <GotoAcquisitionSheet
+          returnFocus={filtersEntryRef}
+          onClose={() => setAcquisitionOpen(false)}
+        />
+      )}
+
       {isTrashOpen && <RecycleBinSheet onClose={() => setIsTrashOpen(false)} />}
 
       {/* Main content area */}
-      <div className="relative z-10 flex flex-1 flex-col items-center justify-start pt-4 px-6 pb-2 min-h-0">
+      <div
+        className={`relative z-10 flex flex-1 flex-col items-center justify-start pt-4 px-6 pb-2 min-h-0 ${browseViewMode === 'stack' ? 'overflow-y-auto overflow-x-hidden' : ''}`}
+      >
         {isInitialLoading && (
           <div className="flex flex-col items-center gap-4">
             <Loader2
@@ -745,6 +804,35 @@ export default function BrowseAllStackPage() {
               className="mt-2 min-h-12 rounded-full bg-ochre px-6 font-bold text-white"
             >
               Restart from first page
+            </button>
+          </div>
+        )}
+
+        {!isInitialLoading && !loadError && gotoOnly && recipes.length === 0 && (
+          <div
+            data-testid="browse-goto-empty"
+            className="flex flex-col items-center gap-3 px-4 text-center text-charcoal"
+          >
+            <p>
+              {t(
+                'recipes.gotoNoMatches',
+                'No matching GOTO recipes. Pending recipes are still available in management.'
+              )}
+            </p>
+            <button
+              type="button"
+              data-testid="browse-goto-clear"
+              onClick={() => setGotoOnly(false)}
+              className="min-h-11 px-4 font-bold text-terracotta-700 underline"
+            >
+              {t('recipes.clearFilters', 'Clear filters')}
+            </button>
+            <button
+              type="button"
+              onClick={() => setFiltersOpen(true)}
+              className="min-h-11 px-4 font-bold text-charcoal"
+            >
+              {t('recipes.filters', 'Filters')}
             </button>
           </div>
         )}
@@ -806,7 +894,7 @@ export default function BrowseAllStackPage() {
         )}
 
         {!isInitialLoading && !loadError && browseViewMode === 'stack' && recipes.length > 0 && (
-          <div className="w-full max-w-sm md:max-w-xl flex-1 flex flex-col min-h-0 max-h-[82vh] md:max-h-[880px] lg:max-h-[780px] transition-all duration-500 ease-in-out">
+          <div className="w-full max-w-sm md:max-w-xl flex-1 flex flex-col min-h-[740px] md:min-h-[860px] max-h-[82vh] md:max-h-[880px] lg:max-h-[780px] transition-all duration-500 ease-in-out">
             <div className="relative flex-1 min-h-0">
               <AnimatePresence mode="popLayout">
                 {visibleRecipes.map((recipe, i) => (

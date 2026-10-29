@@ -51,7 +51,9 @@ vi.mock('@/components/home/TonightPivotCard', () => ({
     onConfirmGoto,
     nonCookingLabel,
     nonCookingKind,
+    hasCheckedActive,
   }: {
+    hasCheckedActive?: boolean;
     nonCookingLabel?: string;
     nonCookingKind?: string;
     onOrderIn: () => void;
@@ -59,6 +61,7 @@ vi.mock('@/components/home/TonightPivotCard', () => ({
     onConfirmGoto: () => void;
   }) => (
     <div data-testid="tonight-pivot-card">
+      <p data-testid="active-read-state">{hasCheckedActive ? 'settled' : 'pending'}</p>
       <p data-testid="pivot-context">
         {nonCookingLabel} {nonCookingKind}
       </p>
@@ -309,6 +312,21 @@ describe('HomeCommandCenter', () => {
     mocks.readSchedule.mockReset().mockImplementation(async () => ({
       days: [{ date: mocks.todayString, status: 0, recipe: { id: 'replacement-recipe' } }],
     }));
+  });
+
+  it('passes completion of the initial active read to the empty pivot without another request', async () => {
+    let finish!: (value: null) => void;
+    mocks.loadActiveGoTo.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        })
+    );
+    render(<HomeCommandCenter todaysRecipe={null} />);
+    expect(screen.getByTestId('active-read-state')).toHaveTextContent('pending');
+    await act(async () => finish(null));
+    expect(screen.getByTestId('active-read-state')).toHaveTextContent('settled');
+    expect(mocks.loadActiveGoTo).toHaveBeenCalledOnce();
   });
 
   it.each(['2026-05-04', '2026-05-11', '2026-06-01'])(

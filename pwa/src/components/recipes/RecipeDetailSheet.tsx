@@ -556,29 +556,29 @@ export function RecipeDetailSheet({
               <RecipeImportIssueBadge status={recipe.importIssue.status} variant="compact" />
             )}
           </div>
-          <div className="ml-auto flex shrink-0 items-center gap-2">
+          <div className="ml-auto flex min-w-0 max-w-full flex-wrap items-center justify-end gap-2">
             {!isLoading && recipe && !isEditing && (
               <button
                 type="button"
                 data-testid={isCurrentGoto ? 'action-current-goto' : 'action-set-goto'}
                 aria-label={
                   isCurrentGoto
-                    ? t('recipes.currentGoto', 'Current GOTO recipe')
+                    ? t('recipes.removeGoto', 'Remove from GOTO')
                     : t('recipes.setGoto', 'Set as GOTO')
                 }
                 title={
                   isCurrentGoto
-                    ? t('recipes.currentGoto', 'Current GOTO recipe')
+                    ? t('recipes.removeGoto', 'Remove from GOTO')
                     : t('recipes.setGoto', 'Set as GOTO')
                 }
                 aria-pressed={isCurrentGoto}
                 onClick={() => void handleSetGoto()}
                 disabled={isSavingGoto}
                 className={[
-                  'inline-flex h-10 items-center justify-center gap-1.5 rounded-full px-3 text-xs font-black uppercase tracking-wider shadow-sm transition disabled:cursor-default',
+                  'inline-flex min-h-11 items-center justify-center gap-1.5 rounded-full px-3 text-sm font-bold shadow-sm transition focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-charcoal disabled:cursor-default',
                   isCurrentGoto
-                    ? 'bg-ochre text-white'
-                    : 'bg-white text-ochre hover:bg-ochre/10 disabled:opacity-60',
+                    ? 'bg-ochre-100 text-ochre-800 hover:bg-ochre-200'
+                    : 'bg-ochre-50 text-ochre-800 hover:bg-ochre-100',
                 ].join(' ')}
               >
                 <Star
@@ -586,7 +586,7 @@ export function RecipeDetailSheet({
                   fill={isCurrentGoto ? 'currentColor' : 'none'}
                   strokeWidth={isCurrentGoto ? 2.8 : 2.4}
                 />
-                {isCurrentGoto && <span>GOTO</span>}
+                <span>GOTO</span>
               </button>
             )}
             {!isLoading &&

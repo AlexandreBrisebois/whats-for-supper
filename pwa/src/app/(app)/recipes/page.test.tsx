@@ -25,6 +25,7 @@ const mocks = vi.hoisted(() => {
   let familySettings: Record<string, unknown> = {};
 
   return {
+    gotoMembershipVersion: 0,
     searchRecipes,
     getRecipe,
     updateRecipe,
@@ -76,7 +77,11 @@ vi.mock('framer-motion', () => ({
 
 vi.mock('@/locales', () => ({
   t: (_key: string, fallback: string) => fallback,
-  tWithVars: (_key: string, fallback: string) => fallback,
+  tWithVars: (_key: string, fallback: string, vars: Record<string, unknown> = {}) =>
+    Object.entries(vars).reduce(
+      (text, [key, value]) => text.replaceAll(`{{${key}}}`, String(value)),
+      fallback
+    ),
 }));
 
 vi.mock('@/lib/utils', () => ({
@@ -102,6 +107,7 @@ vi.mock('@/store/familyStore', () => ({
       loadGoTo: mocks.loadGoTo,
       saveGoTo: mocks.saveGoTo,
       loadActiveGoTo: mocks.loadActiveGoTo,
+      gotoMembershipVersion: mocks.gotoMembershipVersion,
       selectedFamilyMemberId: 'member-1',
     };
     return selector ? selector(state) : state;
@@ -210,6 +216,7 @@ describe('RecipesPage', () => {
     mocks.updateRecipe.mockResolvedValue(undefined);
     mocks.deleteRecipe.mockResolvedValue(undefined);
     mocks.loadSetting.mockResolvedValue(null);
+    mocks.gotoMembershipVersion = 0;
     mocks.loadGoTo.mockResolvedValue({ items: [] });
     mocks.saveGoTo.mockResolvedValue(undefined);
     mocks.loadActiveGoTo.mockResolvedValue(null);
@@ -786,9 +793,14 @@ describe('RecipesPage', () => {
     expect(await screen.findByText('Fresh after schedule change')).toBeInTheDocument();
   });
 
-  it.each(['browse', 'typed', 'similar'])(
-    'retains filters, Focus concepts and planning context in %s refresh',
-    async (mode) => {
+  it.each(
+    ['browse', 'typed', 'similar'].flatMap((mode) =>
+      ['promotion', 'goto'].map((trigger) => [mode, trigger])
+    )
+  )(
+    'retains filters, Focus concepts and planning context in %s %s refresh',
+    async (mode, trigger) => {
+      let view: ReturnType<typeof render>;
       mocks.setSearchParams(
         `addToDay=2&weekOffset=1${mode === 'similar' ? '&similarTo=recipe-123' : ''}`
       );
@@ -797,7 +809,7 @@ describe('RecipesPage', () => {
       );
 
       await act(async () => {
-        render(<RecipesPage />);
+        view = render(<RecipesPage />);
       });
       await waitFor(() => expect(mocks.searchRecipes).toHaveBeenCalledTimes(1));
 
@@ -809,6 +821,7 @@ describe('RecipesPage', () => {
       }
       fireEvent.click(screen.getByTestId('mobile-filters-button'));
       const dialog = screen.getByRole('dialog', { name: 'Filter recipes' });
+      if (trigger === 'goto') fireEvent.click(within(dialog).getByRole('button', { name: 'GOTO' }));
       fireEvent.click(within(dialog).getByRole('button', { name: 'Supper' }));
       fireEvent.click(within(dialog).getByRole('button', { name: 'Beef' }));
       fireEvent.click(within(dialog).getByRole('button', { name: 'Apply filters' }));
@@ -820,15 +833,20 @@ describe('RecipesPage', () => {
             similarToRecipeId: mode === 'similar' ? 'recipe-123' : undefined,
             weekOffset: 1,
             dayIndex: 2,
-            filters: { mealTypes: ['Supper'] },
+            filters: { mealTypes: ['Supper'], ...(trigger === 'goto' ? { gotoOnly: true } : {}) },
             preferences: { concepts: ['beef'] },
           })
         );
       });
 
+      const calls = mocks.searchRecipes.mock.calls.length;
       await act(async () => {
-        useSearchPromotionStore.getState().invalidate();
+        if (trigger === 'goto') {
+          mocks.gotoMembershipVersion++;
+          view!.rerender(<RecipesPage />);
+        } else useSearchPromotionStore.getState().invalidate();
       });
+      await waitFor(() => expect(mocks.searchRecipes.mock.calls.length).toBeGreaterThan(calls));
 
       await waitFor(() => {
         expect(mocks.searchRecipes).toHaveBeenLastCalledWith(
@@ -837,7 +855,7 @@ describe('RecipesPage', () => {
             similarToRecipeId: mode === 'similar' ? 'recipe-123' : undefined,
             weekOffset: 1,
             dayIndex: 2,
-            filters: { mealTypes: ['Supper'] },
+            filters: { mealTypes: ['Supper'], ...(trigger === 'goto' ? { gotoOnly: true } : {}) },
             preferences: { concepts: ['beef'] },
           })
         );
@@ -1282,6 +1300,97 @@ describe('RecipesPage', () => {
       ).toBeInTheDocument();
     });
 
+    it('refreshes applied GOTO with current query after confirmation', async () => {
+      const view = render(<RecipesPage />);
+      await screen.findByTestId('mobile-filters-button');
+      fireEvent.change(screen.getByTestId('recipe-search-input'), { target: { value: 'chicken' } });
+      fireEvent.click(screen.getByTestId('mobile-filters-button'));
+      fireEvent.click(screen.getByRole('button', { name: 'GOTO' }));
+      fireEvent.click(screen.getByTestId('mobile-filter-apply'));
+      await waitFor(() =>
+        expect(mocks.searchRecipes).toHaveBeenLastCalledWith(
+          expect.objectContaining({ query: 'chicken', filters: { gotoOnly: true } })
+        )
+      );
+      const before = mocks.searchRecipes.mock.calls.length;
+      mocks.gotoMembershipVersion++;
+      view.rerender(<RecipesPage />);
+      await waitFor(() => expect(mocks.searchRecipes.mock.calls.length).toBeGreaterThan(before));
+      expect(mocks.searchRecipes).toHaveBeenLastCalledWith(
+        expect.objectContaining({ query: 'chicken', filters: { gotoOnly: true } })
+      );
+    });
+
+    it('suppresses a stale GOTO continuation and retries failed replacement reads without saving again', async () => {
+      let intersect!: IntersectionObserverCallback;
+      const original = globalThis.IntersectionObserver;
+      globalThis.IntersectionObserver = class {
+        constructor(callback: IntersectionObserverCallback) {
+          intersect = callback;
+        }
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+        takeRecords() {
+          return [];
+        }
+        root = null;
+        rootMargin = '';
+        scrollMargin = '';
+        thresholds = [0];
+      } as unknown as typeof IntersectionObserver;
+      try {
+        const view = render(<RecipesPage />);
+        await screen.findByTestId('recipe-card-top-pick');
+        mocks.searchRecipes.mockResolvedValueOnce(
+          makeSearchResponse({ nextCursor: 'old-goto', resultPath: 'browse' })
+        );
+        fireEvent.click(screen.getByTestId('mobile-filters-button'));
+        fireEvent.click(screen.getByRole('button', { name: 'GOTO' }));
+        fireEvent.click(screen.getByTestId('mobile-filter-apply'));
+        await screen.findByTestId('search-results-scroll-sentinel');
+        let finish!: (value: unknown) => void;
+        mocks.searchRecipes.mockImplementationOnce(
+          () =>
+            new Promise((resolve) => {
+              finish = resolve;
+            })
+        );
+        await act(async () =>
+          intersect(
+            [{ isIntersecting: true } as IntersectionObserverEntry],
+            {} as IntersectionObserver
+          )
+        );
+        await waitFor(() =>
+          expect(mocks.searchRecipes).toHaveBeenLastCalledWith(
+            expect.objectContaining({ continuationToken: 'old-goto' })
+          )
+        );
+        mocks.searchRecipes.mockRejectedValueOnce(new Error('read failed after saved removal'));
+        mocks.gotoMembershipVersion++;
+        view.rerender(<RecipesPage />);
+        expect(await screen.findByTestId('search-request-retry')).toBeVisible();
+        await act(async () =>
+          finish(
+            makeSearchResponse({
+              topPick: null,
+              results: [{ ...makeSearchResult(99), name: 'Removed stale recipe' }],
+            })
+          )
+        );
+        expect(screen.queryByText('Removed stale recipe')).not.toBeInTheDocument();
+        mocks.searchRecipes.mockResolvedValueOnce(
+          makeSearchResponse({ topPick: null, results: [] })
+        );
+        fireEvent.click(screen.getByTestId('search-request-retry'));
+        expect(await screen.findByTestId('filter-no-results')).toBeVisible();
+        expect(mocks.saveGoTo).not.toHaveBeenCalled();
+      } finally {
+        globalThis.IntersectionObserver = original;
+      }
+    });
+
     it('uses one mobile Filters button with draft apply, dismiss, clear, and active count', async () => {
       await act(async () => {
         render(<RecipesPage />);
@@ -1294,7 +1403,7 @@ describe('RecipesPage', () => {
 
       fireEvent.click(filtersButton);
       const dialog = screen.getByRole('dialog', { name: 'Filter recipes' });
-      for (const label of ['Quick', 'Family Favorite', 'Never Tried', 'Supper', 'Beef']) {
+      for (const label of ['Quick', 'Family Favorite', 'Never Tried', 'GOTO', 'Supper', 'Beef']) {
         expect(within(dialog).getByRole('button', { name: label })).toBeInTheDocument();
       }
       expect(within(dialog).queryByRole('button', { name: 'Reported' })).not.toBeInTheDocument();
@@ -1309,6 +1418,7 @@ describe('RecipesPage', () => {
       fireEvent.click(filtersButton);
       const applyDialog = screen.getByRole('dialog', { name: 'Filter recipes' });
       fireEvent.click(within(applyDialog).getByRole('button', { name: 'More filters' }));
+      fireEvent.click(within(applyDialog).getByRole('button', { name: 'GOTO' }));
       fireEvent.click(within(applyDialog).getByRole('button', { name: 'Reported' }));
       fireEvent.click(within(applyDialog).getByRole('button', { name: 'Ready to review' }));
       fireEvent.click(within(applyDialog).getByRole('button', { name: 'Apply filters' }));
@@ -1316,11 +1426,11 @@ describe('RecipesPage', () => {
       await waitFor(() => {
         expect(mocks.searchRecipes).toHaveBeenLastCalledWith(
           expect.objectContaining({
-            filters: { reportedOnly: true, readyToReviewOnly: true },
+            filters: { gotoOnly: true, reportedOnly: true, readyToReviewOnly: true },
           })
         );
       });
-      expect(filtersButton).toHaveTextContent('2');
+      expect(filtersButton).toHaveTextContent('3');
 
       fireEvent.click(filtersButton);
       const clearDialog = screen.getByRole('dialog', { name: 'Filter recipes' });

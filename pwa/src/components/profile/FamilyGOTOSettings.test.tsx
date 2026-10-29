@@ -1,123 +1,113 @@
-import { fireEvent, render, screen } from '@testing-library/react';
-import type React from 'react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
+import { MOCK_IDS } from '@/testing/mock-ids';
 
 const mocks = vi.hoisted(() => ({
-  loadSetting: vi.fn(),
-  push: vi.fn(),
-  gotoItems: [] as { description: string; recipeId: string; status: string }[],
+  loadGoTo: vi.fn(),
+  saveGoTo: vi.fn(),
+  onAdd: vi.fn(),
+  items: [] as { recipeId: string; description: string; status: 'ready' | 'pending' }[],
+  ready: new Set<string>(),
 }));
-
-vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: mocks.push }),
-}));
-
-vi.mock('framer-motion', () => ({
-  AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-  motion: {
-    div: ({ children, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-      <div {...props}>{children}</div>
-    ),
-  },
-}));
-
 vi.mock('@/store/familyStore', () => ({
-  useFamilyStore: (selector?: (state: any) => any) => {
-    const state = {
-      loadSetting: (...args: unknown[]) => mocks.loadSetting(...args),
-      loadGoTo: vi.fn().mockResolvedValue({ items: mocks.gotoItems }),
-      saveGoTo: vi.fn().mockResolvedValue(undefined),
-      familySettings: mocks.gotoItems.length > 0 ? { family_goto: { items: mocks.gotoItems } } : {},
-    };
-    return selector ? selector(state) : state;
-  },
+  useFamilyStore: (selector: (state: any) => unknown) =>
+    selector({
+      familySettings: { family_goto: { items: mocks.items } },
+      loadGoTo: mocks.loadGoTo,
+      saveGoTo: mocks.saveGoTo,
+    }),
 }));
-
 vi.mock('@/store/gotoStore', () => ({
-  useGotoStore: (selector?: (state: any) => any) => {
-    const state = { readyRecipeIds: new Set<string>() };
-    return selector ? selector(state) : state;
-  },
+  useGotoStore: (selector: (state: any) => unknown) => selector({ readyRecipeIds: mocks.ready }),
 }));
-
-vi.mock('@/lib/api/api-client', () => ({
-  apiClient: {
-    api: {
-      recipes: {
-        byId: () => ({
-          status: {
-            get: vi.fn(),
-          },
-        }),
-      },
-    },
-  },
-}));
-
 import { FamilyGOTOSettings } from './FamilyGOTOSettings';
-
-describe('FamilyGOTOSettings', () => {
-  afterEach(() => localStorage.removeItem('locale'));
+const ready = {
+  recipeId: MOCK_IDS.RECIPE_LASAGNA,
+  description: 'Family Lasagna',
+  status: 'ready' as const,
+};
+const pending = {
+  recipeId: MOCK_IDS.RECIPE_GOTO_STUB,
+  description: 'Preparing soup',
+  status: 'pending' as const,
+};
+function openManagement() {
+  render(<FamilyGOTOSettings onAdd={mocks.onAdd} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Manage GOTOs' }));
+}
+describe('Family GOTO management in Filters', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.loadSetting.mockResolvedValue(null);
-    mocks.gotoItems = [];
+    mocks.items = [ready, pending];
+    mocks.ready = new Set();
+    mocks.loadGoTo.mockImplementation(async () => ({ items: mocks.items }));
+    mocks.saveGoTo.mockImplementation(async (dto) => {
+      mocks.items = dto.items;
+    });
   });
-
-  it('points library selection to search instead of Quick Find', () => {
-    render(<FamilyGOTOSettings />);
-
-    fireEvent.click(screen.getByText(/Add a GOTO/i));
-
-    expect(screen.getByTestId('goto-search-library')).toBeInTheDocument();
-    expect(screen.getByText('Search the Library')).toBeInTheDocument();
-    expect(
-      screen.getByText('Find the recipe, then tap the star to make it your GOTO.')
-    ).toBeInTheDocument();
-
-    fireEvent.click(screen.getByTestId('goto-search-library'));
-
-    expect(mocks.push).toHaveBeenCalledWith('/recipes');
-    expect(screen.queryByTestId('quick-find-modal')).not.toBeInTheDocument();
-  });
-
-  it('translates the card and all add-meal options into French', () => {
+  afterEach(() => localStorage.removeItem('locale'));
+  it('localizes management and pending feedback in French', async () => {
     localStorage.setItem('locale', 'fr');
-    render(<FamilyGOTOSettings />);
-    expect(screen.getByRole('heading', { name: 'Repas de secours' })).toBeInTheDocument();
-    expect(screen.getByText('Aucun repas de secours pour le moment.')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Ajouter un repas' }));
-    expect(
-      screen.getByRole('button', { name: /Chercher dans la bibliothèque/ })
-    ).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Décrire un plat/ })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Prendre une photo/ })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Fermer' }));
+    render(<FamilyGOTOSettings onAdd={mocks.onAdd} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Gérer les GOTOs' }));
+    expect(await screen.findByText('En préparation…')).toBeVisible();
+    expect(screen.getByText(/Les modifications de la liste sont enregistrées/)).toBeVisible();
+  });
+
+  it('starts collapsed and exposes complete ready/pending rows independently of result filtering', async () => {
+    render(<FamilyGOTOSettings onAdd={mocks.onAdd} />);
+    expect(screen.getByRole('button', { name: 'Manage GOTOs' })).toHaveAttribute(
+      'aria-expanded',
+      'false'
+    );
+    expect(screen.queryByText(ready.description)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Manage GOTOs' }));
+    expect(await screen.findByText(ready.description)).toBeVisible();
+    expect(screen.getByTestId('goto-pending-description')).toHaveTextContent(pending.description);
+    expect(screen.getByText(/list changes save immediately/i)).toBeVisible();
+  });
+  it('hands acquisition to its mounted page coordinator', async () => {
+    openManagement();
+    fireEvent.click(await screen.findByTestId('add-goto-btn'));
+    expect(mocks.onAdd).toHaveBeenCalledOnce();
     expect(screen.queryByTestId('goto-search-library')).not.toBeInTheDocument();
   });
-
-  // Migrated from settings.spec.ts: GOTO ready/pending rendering
-  it('shows goto-recipe-name and hides goto-pending-spinner when GOTO status is ready', () => {
-    mocks.gotoItems = [
-      { description: 'Slow-cooked Lasagna', recipeId: 'recipe-lasagna', status: 'ready' },
-    ];
-    render(<FamilyGOTOSettings />);
-
-    expect(screen.getByTestId('goto-recipe-name')).toBeInTheDocument();
-    expect(screen.getByTestId('goto-recipe-name')).toHaveTextContent('Slow-cooked Lasagna');
-    expect(screen.queryByTestId('goto-pending-spinner')).not.toBeInTheDocument();
-  });
-
-  it('shows goto-pending-spinner and goto-pending-description when GOTO status is pending', () => {
-    mocks.gotoItems = [
-      { description: "Grandma's Chicken Soup", recipeId: 'recipe-soup', status: 'pending' },
-    ];
-    render(<FamilyGOTOSettings />);
-
-    expect(screen.getByTestId('goto-pending-spinner')).toBeInTheDocument();
-    expect(screen.getByTestId('goto-pending-description')).toHaveTextContent(
-      "Grandma's Chicken Soup"
+  it('removes membership after confirmation and keeps pending disablement until completion', async () => {
+    let finish!: () => void;
+    mocks.saveGoTo.mockImplementationOnce(
+      (dto) =>
+        new Promise<void>((resolve) => {
+          finish = () => {
+            mocks.items = dto.items;
+            resolve();
+          };
+        })
     );
-    expect(screen.queryByTestId('goto-recipe-name')).not.toBeInTheDocument();
+    openManagement();
+    const remove = await screen.findByRole('button', { name: 'Remove Family Lasagna' });
+    fireEvent.click(remove);
+    expect(remove).toBeDisabled();
+    await act(async () => finish());
+    await waitFor(() => expect(screen.queryByText(ready.description)).not.toBeInTheDocument());
+    expect(screen.getByText(pending.description)).toBeVisible();
+    expect(mocks.saveGoTo).toHaveBeenCalledWith({ items: [pending] });
+  });
+  it('retains the confirmed list and exposes removal retry feedback on rejected saving', async () => {
+    mocks.saveGoTo.mockRejectedValueOnce(new Error('save failed'));
+    openManagement();
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove Family Lasagna' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(/could not remove/i);
+    expect(screen.getByText(ready.description)).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Family Lasagna' }));
+    await waitFor(() => expect(screen.queryByText(ready.description)).not.toBeInTheDocument());
+  });
+  it('distinguishes failed reading from empty membership and retries reading', async () => {
+    mocks.loadGoTo.mockResolvedValueOnce(null);
+    openManagement();
+    expect(await screen.findByRole('alert')).toHaveTextContent(/could not load/i);
+    expect(screen.queryByText('No GOTO set yet.')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    expect(await screen.findByText(ready.description)).toBeVisible();
+    expect(mocks.loadGoTo).toHaveBeenCalledTimes(2);
   });
 });

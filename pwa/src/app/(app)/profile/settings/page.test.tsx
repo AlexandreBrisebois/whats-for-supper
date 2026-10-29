@@ -63,7 +63,7 @@ describe('SettingsPage', () => {
     render(<SettingsPageContent />);
 
     expect(screen.getByTestId('family-management-stub')).toBeDefined();
-    expect(screen.getByTestId('family-goto-stub')).toBeDefined();
+    expect(screen.queryByTestId('family-goto-stub')).not.toBeInTheDocument();
     expect(screen.getByTestId('failed-captures-stub')).toBeDefined();
   });
 

@@ -26,7 +26,7 @@
  *             is null at module-load time (cookie injected too late), so
  *             IdentityValidator redirects to /onboarding.
  *
- * [Bug C] "GOTO success screen stays visible until user clicks Back to Settings"
+ * [Bug C] "GOTO success screen stays visible until user clicks Back to GOTOs"
  *   Expected: getByText(/your goto is being prepared/i) to be visible
  *   Actual:   Timed out — MinimalCapture's useEffect fires immediately when
  *             onSuccess=true && isGoto=true, calling router.push(ROUTES.PROFILE_SETTINGS)
@@ -219,7 +219,7 @@ test.describe('Bug Condition B — Cookie Timing', () => {
 // onSuccess = true && isGoto = true. This navigates away before the test assertion
 // getByText(/your goto is being prepared/i) can find the element.
 //
-// EXPECTED (correct) behavior: success screen stays visible until user clicks "Back to Settings".
+// EXPECTED (correct) behavior: success screen stays visible until user clicks "Back to GOTOs".
 // ACTUAL (buggy) behavior: useEffect navigates away immediately, element is unmounted.
 //
 // NOTE: This test uses GLOB matchers for per-test handlers (not predicates) so that Bug A
@@ -309,7 +309,7 @@ test.describe('Bug Condition C — GOTO Auto-Navigation', () => {
    * Validates: Bug Condition C
    *
    * After a successful describe-it GOTO capture (onSuccess=true, isGoto=true),
-   * the success screen should stay visible until the user clicks "Back to Settings".
+   * the success screen should stay visible until the user clicks "Back to GOTOs".
    *
    * Bug A is neutralized by using glob matchers for per-test handlers.
    * Bug B is neutralized by using addInitScript to seed localStorage.
@@ -321,9 +321,9 @@ test.describe('Bug Condition C — GOTO Auto-Navigation', () => {
    *   - The success screen is unmounted before getByText can find the element
    *
    * PASSES after Fix C: useEffect only fires for isGoto=false; GOTO success screen
-   * stays visible until the user clicks "Back to Settings".
+   * stays visible until the user clicks "Back to GOTOs".
    */
-  test('GOTO success screen stays visible until user clicks Back to Settings', async ({ page }) => {
+  test('GOTO success screen stays visible until user clicks Back to GOTOs', async ({ page }) => {
     await page.goto('/capture?intent=goto');
 
     // Open the describe form
@@ -349,8 +349,8 @@ test.describe('Bug Condition C — GOTO Auto-Navigation', () => {
     //   unmounting the success screen before this assertion can find the element
     await expect(page.getByText(/your goto is being prepared/i)).toBeVisible({ timeout: 10_000 });
 
-    // Also assert the "Back to Settings" button is present (user must click explicitly)
-    await expect(page.getByRole('button', { name: /back to settings/i })).toBeVisible();
+    // Also assert the "Back to GOTOs" button is present (user must click explicitly)
+    await expect(page.getByRole('button', { name: /back to gotos/i })).toBeVisible();
 
     // Assert we have NOT been auto-navigated away
     await expect(page).not.toHaveURL(/\/profile\/settings/);

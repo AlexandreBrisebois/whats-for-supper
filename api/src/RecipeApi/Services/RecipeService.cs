@@ -13,6 +13,7 @@ public class RecipeService(
     IClock clock,
     HistoricalInterestService historicalInterest,
     RecipeDbContext db,
+    GoToService goToService,
     IValidationService validation,
     ImageService images,
     IRecipeStore recipeStore,
@@ -120,7 +121,8 @@ public class RecipeService(
         Guid? id = null,
         string? name = null,
         string? url = null,
-        string? historyGeneration = null)
+        string? historyGeneration = null,
+        bool? gotoOnly = null)
     {
         page = Math.Max(1, page);
         limit = Math.Clamp(limit, 1, 100);
@@ -145,6 +147,12 @@ public class RecipeService(
         if (discoverableOnly == true)
         {
             query = query.Where(r => r.IsDiscoverable);
+        }
+
+        if (gotoOnly == true)
+        {
+            var recipeIds = await goToService.GetConfiguredRecipeIdsAsync();
+            query = query.Where(recipe => recipeIds.Contains(recipe.Id));
         }
 
         var total = await query.CountAsync();

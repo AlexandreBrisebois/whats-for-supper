@@ -46,6 +46,30 @@ function renderSheet(
 describe('RecipeFiltersSheet', () => {
   afterEach(() => setLocale('en'));
 
+  it('offers shared management collapsed without confusing it with GOTO selection', () => {
+    renderSheet({ gotoOnly: true });
+    expect(screen.getByRole('button', { name: 'Manage GOTOs' })).toHaveAttribute(
+      'aria-expanded',
+      'false'
+    );
+    expect(screen.getByRole('button', { name: 'GOTO' })).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('keeps GOTO a selected draft until Apply and clears it with other filters', () => {
+    const { onApply } = renderSheet({ gotoOnly: true });
+    const goto = screen.getByRole('button', { name: 'GOTO' });
+    expect(goto).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(goto);
+    expect(onApply).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Apply filters' }));
+    expect(onApply).toHaveBeenLastCalledWith(
+      expect.objectContaining({ filters: expect.objectContaining({ gotoOnly: null }) })
+    );
+    fireEvent.click(screen.getByRole('button', { name: /clear filters/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Apply filters' }));
+    expect(onApply).toHaveBeenLastCalledWith(expect.objectContaining({ filters: {} }));
+  });
+
   it('uses the required compact section order and hides management filters by default', () => {
     renderSheet();
 

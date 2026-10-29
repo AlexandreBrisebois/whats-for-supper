@@ -184,6 +184,6 @@ public partial class RecipeLexicalSearchPostgresTests
             RecipeSearchFiltersDto filters,
             RecipeSemanticSearchOptions options,
             Guid? excludedRecipeId,
-            CancellationToken ct = default) => throw new InvalidOperationException("semantic retrieval unavailable");
+            CancellationToken ct = default, Guid[]? gotoRecipeIds = null) => throw new InvalidOperationException("semantic retrieval unavailable");
     }
 }

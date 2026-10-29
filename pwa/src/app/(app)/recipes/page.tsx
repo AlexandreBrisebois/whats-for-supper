@@ -1,5 +1,7 @@
 'use client';
 
+import { useFamilyStore } from '@/store/familyStore';
+import { GotoAcquisitionSheet } from '@/components/recipes/GotoAcquisitionSheet';
 import { useUiStore } from '@/store/uiStore';
 
 import { useTodayStore } from '@/store/todayStore';
@@ -81,6 +83,10 @@ const SEARCH_DEBOUNCE_MS = 500;
 
 export default function RecipesPage() {
   const router = useRouter();
+  const gotoMembershipVersion = useFamilyStore((state) => state.gotoMembershipVersion);
+  const handledGotoVersionRef = useRef(gotoMembershipVersion);
+  const filtersEntryRef = useRef<HTMLButtonElement>(null);
+  const [acquisitionOpen, setAcquisitionOpen] = useState(false);
   const searchParams = useSearchParams();
 
   const [query, setQuery] = useState('');
@@ -261,6 +267,30 @@ export default function RecipesPage() {
       isActive = false;
     };
   }, [parsedDayIndex, parsedWeekOffset]);
+
+  useEffect(() => {
+    if (gotoMembershipVersion === handledGotoVersionRef.current) return;
+    if (!activeFilters.gotoOnly) {
+      handledGotoVersionRef.current = gotoMembershipVersion;
+      return;
+    }
+    // Invalidate the old continuation immediately; read retry never repeats the save.
+    requestGenerationRef.current++;
+    continuationGenerationRef.current = null;
+    const timer = window.setTimeout(() => {
+      handledGotoVersionRef.current = gotoMembershipVersion;
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      void runSearch(query, similarToRecipeId, activeFilters, INITIAL_LIMIT, activePreferences);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [
+    gotoMembershipVersion,
+    activeFilters,
+    activePreferences,
+    query,
+    similarToRecipeId,
+    runSearch,
+  ]);
 
   useEffect(() => {
     if (searchPromotionVersion === handledPromotionVersionRef.current) return;
@@ -693,8 +723,11 @@ export default function RecipesPage() {
       <div className="px-1">
         <button
           type="button"
+          ref={filtersEntryRef}
           data-testid="mobile-filters-button"
-          aria-label={`Filters, ${activeFilterCount} active`}
+          aria-label={tWithVars('recipes.filtersActiveCount', 'Filters, {{count}} active', {
+            count: activeFilterCount,
+          })}
           onClick={() => {
             setIsFiltersOpen(true);
             if (filterMetadataRequestedRef.current) return;
@@ -948,8 +981,19 @@ export default function RecipesPage() {
         {similarToRecipeId}
       </div>
 
+      {acquisitionOpen && (
+        <GotoAcquisitionSheet
+          returnFocus={filtersEntryRef}
+          onClose={() => setAcquisitionOpen(false)}
+        />
+      )}
+
       {isFiltersOpen && (
         <RecipeFiltersSheet
+          onAddGoto={() => {
+            setIsFiltersOpen(false);
+            setAcquisitionOpen(true);
+          }}
           activeFilters={activeFilters}
           activePreferences={activePreferences}
           filterMetadata={filterMetadata}

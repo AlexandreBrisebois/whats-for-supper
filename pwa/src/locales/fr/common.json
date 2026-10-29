@@ -54,6 +54,7 @@
     "joiningFamily": "Connexion à votre famille..."
   },
   "capture": {
+    "backToGotos": "Retour aux GOTOs",
     "saveRecipe": "Sauvegarder la recette",
     "choosePhotos": "Choisir des photos",
     "redirecting": "Redirection vers l'accueil dans {{seconds}}s...",
@@ -135,6 +136,9 @@
     "profile": "Profil"
   },
   "home": {
+    "gotoHelper": "Touchez l’étoile GOTO de vos recettes favorites pour que nous puissions vous en suggérer une ici.",
+    "chooseGotoRecipes": "Choisir des recettes GOTO",
+
     "votingRound": "Vote en famille",
     "menuIsIn": "Le menu est prêt",
     "familyVoting": "La famille vote",
@@ -332,6 +336,10 @@
     "results": "Résultats",
     "topPick": "Le Top",
     "filters": "Filtres",
+    "gotoNoMatches": "Aucune recette GOTO correspondante. Les recettes en préparation restent accessibles dans la gestion des GOTOs.",
+    "filterGoto": "GOTO",
+    "removeGoto": "Retirer des GOTOs",
+    "filtersActiveCount": "Filtres actifs : {{count}}",
     "filterRecipes": "Filtrer les recettes",
     "filterShortcuts": "Raccourcis",
     "filterMeal": "Repas",
@@ -430,6 +438,13 @@
     "flags": {}
   },
   "familyGoto": {
+    "manage": "Gérer les GOTOs",
+    "saveExplanation": "Les modifications de la liste sont enregistrées dès leur confirmation. Les filtres prennent effet avec Appliquer.",
+    "loading": "Chargement des GOTOs…",
+    "loadFailed": "Impossible de charger les GOTOs.",
+    "removeFailed": "Impossible de retirer le GOTO. Réessayez de le retirer.",
+    "ready": "Une recette GOTO est prête.",
+    "preparing": "En préparation…",
     "title": "Repas de secours",
     "description": "Vos repas de secours quand rien n’est prévu. Ils s’affichent à tour de rôle sur l’accueil : confirmez votre choix d’un seul geste.",
     "empty": "Aucun repas de secours pour le moment.",

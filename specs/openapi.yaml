@@ -337,6 +337,9 @@ components:
         quickOnly: { type: [boolean, 'null'] }
         vegetarianOnly: { type: [boolean, 'null'], description: Restricts results to recipes classified as vegetarian. }
         notCookedInLongTime: { type: [boolean, 'null'] }
+        gotoOnly:
+          type: [boolean, 'null']
+          description: True restricts all retrieval paths to current configured household GOTO membership before candidate limits and pagination. False or absent is inactive. Included in continuation compatibility; ranked continuations recheck membership without adding new candidates.
         discoverableOnly: { type: [boolean, 'null'] }
         reportedOnly: { type: [boolean, 'null'] }
         readyToReviewOnly: { type: [boolean, 'null'] }
@@ -2089,6 +2092,11 @@ paths:
             lastCookedDate ASC NULLS FIRST, then recent unselected household interest, creation time and stable identity.
             When absent, default ordering (newest-created first) is applied.
             Returns HTTP 400 for unrecognised values.
+        - name: gotoOnly
+          in: query
+          required: false
+          schema: { type: boolean, default: false }
+          description: When true, restrict ready, nondeleted recipes to configured household GOTO membership before counting, ordering and pagination. Combines with all other filters; an empty configured list yields no matches. False or absent adds no restriction.
         - name: discoverableOnly
           in: query
           schema:

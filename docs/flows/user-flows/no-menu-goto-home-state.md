@@ -111,7 +111,7 @@ When `gotoRecipeId` is null/falsy:
 
 - Header: **"What's for Supper?"**
 - Image area: centered `<Utensils>` icon only — no `<a>` tag, no gradient overlay
-- Footer: full-width ochre pill button (`h-12 rounded-[1.5rem]`, white text) linking to `/profile/settings` with label **"Add your family's GOTO recipe"**
+- Footer: after the initial active read settles, the ordinary empty pivot shows a short GOTO-star explanation and a quiet **Choose GOTO recipes** text link to unfiltered `/browse-all-stack`, below Quick Find and Order In. It retains a 48 px target and makes no empty-list or readiness claim. Represented checking/pending and saved Mystery do not show this helper.
 
 ---
 

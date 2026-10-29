@@ -43,6 +43,7 @@ beforeEach(() => {
 import { TonightPivotCard } from './TonightPivotCard';
 
 const baseProps = {
+  hasCheckedActive: true,
   onConfirmGoto: vi.fn(),
   onDiscover: vi.fn(),
   onOrderIn: vi.fn(),
@@ -63,7 +64,7 @@ describe('TonightPivotCard — empty state (no GOTO configured)', () => {
     );
   });
 
-  it('renders add-goto-btn linking to /profile', () => {
+  it('offers unfiltered Browse recipe selection after the initial read settles', () => {
     render(
       <TonightPivotCard
         {...baseProps}
@@ -74,7 +75,7 @@ describe('TonightPivotCard — empty state (no GOTO configured)', () => {
     );
     const btn = screen.getByTestId('add-goto-btn');
     expect(btn).toBeInTheDocument();
-    expect(btn).toHaveAttribute('href', '/profile');
+    expect(btn).toHaveAttribute('href', '/browse-all-stack');
   });
 
   it('does not render confirm-goto-btn', () => {
@@ -259,3 +260,40 @@ describe('Tonight pivot image availability', () => {
     expect(screen.getByRole('img')).toHaveAttribute('src', '/second.jpg');
   });
 });
+
+it.each([
+  ['ordinary empty', null, null, null, true, true],
+  ['initial read pending', null, null, null, false, false],
+  ['ready', 'recipe-1', 'ready', null, true, false],
+  ['pending', 'recipe-1', 'pending', null, true, false],
+  ['checking', 'recipe-1', null, null, true, false],
+  ['saved Mystery', null, null, 'Mystery night', true, false],
+] as const)(
+  'limits education to settled ordinary empty: %s',
+  (_name, id, status, label, settled, visible) => {
+    render(
+      <TonightPivotCard
+        {...baseProps}
+        gotoRecipeId={id}
+        gotoStatus={status}
+        gotoDescription={id ? 'Family supper' : null}
+        nonCookingLabel={label}
+        nonCookingKind={label ? 'mystery' : null}
+        hasCheckedActive={settled}
+      />
+    );
+    if (visible) {
+      expect(screen.getByTestId('goto-setup-helper')).toHaveTextContent(
+        'Tap the GOTO star on favourite recipes so we can suggest one here.'
+      );
+      expect(screen.getByRole('link', { name: 'Choose GOTO recipes' })).toHaveAttribute(
+        'href',
+        '/browse-all-stack'
+      );
+      expect(screen.getByTestId('goto-setup-helper')).not.toHaveTextContent(/no GOTOs|empty list/i);
+    } else {
+      expect(screen.queryByTestId('goto-setup-helper')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('add-goto-btn')).not.toBeInTheDocument();
+    }
+  }
+);

@@ -38,7 +38,7 @@ The primary action (making the planned meal) should dominate. The two escape hat
 A grey box with a centred icon is a placeholder, not a design. It communicates "nothing here" rather than "something is possible here." The current implementation uses a `<Utensils>` icon at `text-charcoal/10` opacity — nearly invisible. The empty state is the most important state for a new user; it is the first thing they see.
 
 **How (Parental Utility)**
-The empty state should be an invitation, not a void. Replace the grey box with a warm, illustrated prompt — a soft terracotta gradient background with a short, human line like *"Your family's go-to meal lives here"* and a visible CTA to set one. The existing `<a href="/profile/settings">` link is already there; it just needs to be styled as a proper call-to-action card rather than an invisible anchor inside a grey box.
+The empty state should be an invitation, not a void. Replace the grey box with a warm, illustrated prompt — a soft terracotta gradient background with a short, human line like *"Your family's go-to meal lives here"* and a visible CTA to set one. Current setup navigation is the ordinary-empty **Choose GOTO recipes** text link to `/browse-all-stack`, below Quick Find and Order In. The earlier callout-card proposal in this brief is superseded for GOTO education; preserve the existing cookbook shell and modest icon.
 
 **Proposed treatment:** Terracotta/10 gradient background, centred icon at full opacity (`text-terracotta`), label text at `text-sm` (not `text-[11px]`), and a visible underline or arrow on the link.
 

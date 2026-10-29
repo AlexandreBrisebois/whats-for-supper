@@ -62,3 +62,41 @@ test.describe('Recipe Stack Browse', () => {
     await expect(page.getByTestId('stack-card-front').first()).toBeVisible();
   });
 });
+
+test('Browse filter dismissal restores focus and submits no mutations', async ({
+  page,
+  baseURL,
+}) => {
+  await setupCommonRoutes(page);
+  await page
+    .context()
+    .addCookies([{ name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: baseURL! }]);
+  await page.addInitScript(
+    (id) =>
+      localStorage.setItem(
+        'family-storage',
+        JSON.stringify({ state: { selectedFamilyMemberId: id }, version: 0 })
+      ),
+    MOCK_IDS.MEMBER_ALEX
+  );
+  const mutations: string[] = [];
+  page.on('request', (request) => {
+    if (
+      new URL(request.url()).pathname.startsWith('/api/') &&
+      request.method() !== 'GET' &&
+      request.method() !== 'HEAD'
+    )
+      mutations.push(request.url());
+  });
+  await page.goto('/browse-all-stack');
+  await expect(page.getByTestId('stack-card-front')).toBeVisible();
+  await page.getByTestId('browse-filters-entry').click();
+  await page.getByTestId('browse-filter-goto').click();
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('browse-filters-entry')).toBeFocused();
+  await expect(page.getByTestId('browse-filters-entry')).not.toContainText('(1)');
+  await page.getByTestId('browse-filters-entry').click();
+  await expect(page.getByTestId('browse-filter-goto')).toHaveAttribute('aria-pressed', 'false');
+  await page.getByTestId('browse-filters-close').click();
+  expect(mutations).toEqual([]);
+});
