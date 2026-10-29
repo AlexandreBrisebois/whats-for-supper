@@ -18,26 +18,41 @@ test.describe('Profile Page', () => {
     await setupCommonRoutes(page);
   });
 
-  test('"Table\'s Set!" title is visible on the profile page', async ({ page }) => {
-    await page.goto('/profile');
-    await expect(page.getByRole('heading', { name: /table.*set/i })).toBeVisible({
-      timeout: 10000,
+  for (const locale of ['en', 'fr'] as const) {
+    test.describe(locale, () => {
+      test.use({ appLocale: locale });
+      test(`loaded composition retains exact title and controls in ${locale}`, async ({ page }) => {
+        await page.route('**/api/family', (route) =>
+          route.fulfill({
+            json: {
+              data: [
+                builders.familyMember({
+                  id: MOCK_IDS.MEMBER_ALEX,
+                  name: 'Alex',
+                  preferredLanguage: locale,
+                }),
+              ],
+            },
+          })
+        );
+        await page.goto('/profile');
+        await expect(page.getByTestId('selected-member-name')).toHaveText('Alex');
+        await expect(page.getByRole('heading', { level: 1 })).toHaveText(
+          locale === 'en' ? "Table's Set!" : 'À table !'
+        );
+        await expect(
+          page.getByText(
+            /Pick a family member to get started\.|Choisissez un membre de la famille pour commencer\./
+          )
+        ).toHaveCount(0);
+        await expect(page.getByTestId('continue-as-btn')).toHaveCount(0);
+        await expect(page.getByTestId('settings-btn')).toBeVisible();
+        await expect(page.getByTestId('locale-btn-en')).toBeEnabled();
+        await expect(page.getByTestId('locale-btn-fr')).toBeEnabled();
+        await expect(page).toHaveURL(/\/profile$/);
+      });
     });
-  });
-
-  test('Escape hatch "Continue as" button is visible when a member is already selected', async ({
-    page,
-  }) => {
-    await page.goto('/profile');
-    await expect(page.getByTestId('continue-as-btn')).toBeVisible();
-    await expect(page.getByTestId('continue-as-btn')).toContainText(/alex/i);
-  });
-
-  test('Tapping "Continue as" navigates to /home', async ({ page }) => {
-    await page.goto('/profile');
-    await page.getByTestId('continue-as-btn').click();
-    await expect(page).toHaveURL(/\/home/);
-  });
+  }
 });
 
 // These exercise the real page/store and mocked HTTP boundary, not live cookie handoff.
@@ -115,7 +130,7 @@ test.describe('Profile language integration', () => {
       },
     ]);
     await page.goto('/profile');
-    await expect(page.getByTestId('continue-as-btn')).toBeVisible();
+    await expect(page.getByTestId('selected-member-name')).toHaveText('Alex');
     const save = page.waitForResponse(
       (r) =>
         r.url().endsWith(`/api/family/${MOCK_IDS.MEMBER_ALEX}/preferences`) &&
@@ -144,6 +159,10 @@ test.describe('Profile language integration', () => {
       await page.goto(fixture.url);
       await expect(page.getByTestId('selected-member-name')).toHaveText('Choisir un membre');
       await expect(page.getByTestId('continue-as-btn')).toHaveCount(0);
+      await expect(
+        page.getByText('Choisissez un membre de la famille pour commencer.')
+      ).toHaveCount(0);
+      await expect(page.getByRole('heading', { level: 1 })).toHaveText('À table !');
       await page.getByTestId('locale-btn-en').click();
       await expect(page.getByTestId('locale-btn-en')).toHaveAttribute('aria-pressed', 'true');
       expect(await page.evaluate(() => localStorage.getItem('locale'))).toBe('en');
@@ -152,6 +171,12 @@ test.describe('Profile language integration', () => {
         /Select member|Choisir un membre/
       );
       await expect(page.getByTestId('continue-as-btn')).toHaveCount(0);
+      // Exact titles are checked on initial render; retain the existing local-only preference behavior.
+      await expect(
+        page.getByText(
+          /Pick a family member to get started\.|Choisissez un membre de la famille pour commencer\./
+        )
+      ).toHaveCount(0);
       await expect(page).toHaveURL(`${fixture.url}/`);
     } finally {
       await page.goto('about:blank');
@@ -172,7 +197,7 @@ test.describe('Profile language integration', () => {
       route.fulfill({ status: 500, json: { status: 500, message: 'Test rejection' } })
     );
     await page.goto('/profile');
-    await expect(page.getByTestId('continue-as-btn')).toBeVisible();
+    await expect(page.getByTestId('selected-member-name')).toHaveText('Alex');
     const rejected = page.waitForResponse(
       (r) => r.url().includes('/preferences') && r.status() === 500
     );
@@ -236,7 +261,6 @@ for (const locale of ['en', 'fr'] as const) {
         for (const id of [
           'settings-btn',
           'profile-dropdown-toggle',
-          'continue-as-btn',
           'locale-btn-en',
           'locale-btn-fr',
         ]) {
@@ -256,7 +280,6 @@ for (const locale of ['en', 'fr'] as const) {
         for (const id of [
           'settings-btn',
           'profile-dropdown-toggle',
-          'continue-as-btn',
           'locale-btn-en',
           'locale-btn-fr',
         ]) {
@@ -347,6 +370,15 @@ for (const locale of ['en', 'fr'] as const) {
         await expect(page.getByRole('status')).toContainText(
           locale === 'en' ? 'Loading family members' : 'Chargement des membres'
         );
+        await expect(page.getByRole('heading', { level: 1 })).toHaveText(
+          locale === 'en' ? "Table's Set!" : 'À table !'
+        );
+        await expect(page.getByTestId('continue-as-btn')).toHaveCount(0);
+        await expect(
+          page.getByText(
+            /Pick a family member to get started\.|Choisissez un membre de la famille pour commencer\./
+          )
+        ).toHaveCount(0);
         const loadingBox = await page.getByRole('status').boundingBox();
         await expect(page.getByTestId('settings-btn')).toBeVisible();
         await expect(page.getByTestId('locale-btn-en')).toBeEnabled();

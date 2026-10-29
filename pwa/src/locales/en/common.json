@@ -85,7 +85,6 @@
   },
   "profile": {
     "title": "Table's Set!",
-    "subtitle": "Pick a family member to get started.",
     "activeMember": "Active member",
     "language": "Language",
     "english": "English",
@@ -98,8 +97,7 @@
     "openMemberMenu": "Open member menu",
     "selectMember": "Select member",
     "settings": "Settings",
-    "settingsSubtitle": "Family & app preferences",
-    "continueAs": "Continue as {{name}}"
+    "settingsSubtitle": "Family & app preferences"
   },
   "family": {
     "addPrompt": "Don't see your name? Add it",

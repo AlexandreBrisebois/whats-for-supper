@@ -23,6 +23,15 @@ import {
 } from './mock-api';
 import { REALISTIC_RECIPES } from '../src/testing/realistic-recipes';
 import path from 'node:path';
+import sharp from 'sharp';
+
+const luminance = (rgb: number[]) =>
+  rgb
+    .map((c) => {
+      const v = c / 255;
+      return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+    })
+    .reduce((sum, v, i) => sum + v * [0.2126, 0.7152, 0.0722][i], 0);
 
 /**
  * Build a 7-day schedule response with RECIPE_SPAGHETTI on Monday (the fixed test date).
@@ -143,25 +152,27 @@ test.describe('Cook Mode — HowToSection[] steps display', () => {
     overrides: Record<string, unknown> = {},
     photo = 'cookbook-light.jpg'
   ) {
+    const recipe = {
+      ...REALISTIC_RECIPES[MOCK_IDS.RECIPE_SPAGHETTI],
+      sourceType: 'photos',
+      sourceUrl: null,
+      imageCount: 3,
+      finishedDishIndex: 1,
+      recipeInstructions: Array.from({ length: 6 }, (_, index) => ({
+        '@type': 'HowToStep',
+        name: `Step ${index + 1}`,
+        text: 'Stir gently and keep an eye on the pan. '.repeat(12),
+      })),
+      ...overrides,
+    };
     await page.route('**/api/recipes/*', async (route) => {
-      if (route.request().method() !== 'GET') return route.fallback();
-      await route.fulfill({
-        json: {
-          recipe: {
-            ...REALISTIC_RECIPES[MOCK_IDS.RECIPE_SPAGHETTI],
-            sourceType: 'photos',
-            sourceUrl: null,
-            imageCount: 3,
-            finishedDishIndex: 1,
-            recipeInstructions: Array.from({ length: 6 }, (_, index) => ({
-              '@type': 'HowToStep',
-              name: `Step ${index + 1}`,
-              text: 'Stir gently and keep an eye on the pan. '.repeat(12),
-            })),
-            ...overrides,
-          },
-        },
-      });
+      if (route.request().method() === 'GET') return route.fulfill({ json: { recipe } });
+      if (route.request().method() === 'PATCH') {
+        const updates = route.request().postDataJSON();
+        Object.assign(recipe, updates);
+        return route.fulfill({ json: { data: {} } });
+      }
+      return route.fallback();
     });
     await page.route('**/api/recipes/*/original/*', (route) =>
       route.fulfill({ path: path.resolve('e2e/fixtures', photo), contentType: 'image/jpeg' })
@@ -169,6 +180,21 @@ test.describe('Cook Mode — HowToSection[] steps display', () => {
     await page.route('**/api/recipes/*/hero', (route) =>
       route.fulfill({ path: path.resolve('e2e/fixtures', photo), contentType: 'image/jpeg' })
     );
+    await page.route('https://images.unsplash.com/**', (route) =>
+      route.fulfill({ path: path.resolve('e2e/fixtures', photo), contentType: 'image/jpeg' })
+    );
+    if (overrides.name || overrides.image === '') {
+      const schedule = buildSpaghettiSchedule().data;
+      schedule.days[0].recipe = builders.scheduleRecipe({
+        id: MOCK_IDS.RECIPE_SPAGHETTI,
+        name: String(overrides.name || 'Spaghetti with Toasted Garlic Bread'),
+        ...(overrides.image === '' ? { image: '' } : {}),
+      });
+      await mockSseWithConnectedSchedule(page, schedule);
+      await page.route('**/api/schedule?**', (route) =>
+        route.fulfill({ json: { data: schedule } })
+      );
+    }
     await page.goto('/home');
     await page.getByTestId('cook-mode-btn').click();
     if (overrides.imageCount === 0 && !overrides.sourceUrl) {
@@ -180,6 +206,199 @@ test.describe('Cook Mode — HowToSection[] steps display', () => {
     await expect(page.getByTestId('cooks-mode-overlay')).toHaveCSS('opacity', '1');
     await page.addStyleTag({ content: 'nextjs-portal { display: none !important; }' });
   }
+
+  for (const viewport of [
+    { width: 390, height: 844 },
+    { width: 430, height: 932 },
+  ]) {
+    test(`phone visual gains ${viewport.width}`, async ({ page }, testInfo) => {
+      await page.setViewportSize(viewport);
+      await openOriginalCooking(page);
+      await page.getByTestId('cooks-mode-step-next').click();
+      const photo = (await page.getByTestId('cooks-mode-photo').boundingBox())!;
+      const instructions = (await page.getByTestId('cooks-mode-instructions').boundingBox())!;
+      console.log('PHONE_GAIN', viewport.width, photo.height, instructions.height);
+      expect(photo.height).toBeGreaterThan(136);
+      expect(instructions.height).toBeGreaterThan(viewport.width === 390 ? 522 : 610);
+      await page.screenshot({ path: testInfo.outputPath('phone-gains.png') });
+    });
+  }
+
+  for (const scale of [1, 2]) {
+    for (const photo of ['cookbook-light.jpg', 'cookbook-dark.jpg', 'fallback']) {
+      test(`phone title composite and progress contrast ${photo} text ${scale}`, async ({
+        page,
+      }, testInfo) => {
+        await page.setViewportSize({ width: 320, height: 700 });
+        await openOriginalCooking(
+          page,
+          {
+            name: 'Slow roasted vegetables with golden potatoes and fragrant garden herbs',
+            ...(photo === 'fallback' ? { image: '' } : {}),
+          },
+          photo === 'fallback' ? 'cookbook-light.jpg' : photo
+        );
+        await page.getByTestId('cooks-mode-step-next').click();
+        const title = page.getByTestId('cooks-mode-recipe-name');
+        if (scale === 2)
+          await title.evaluate((el) => {
+            const style = getComputedStyle(el);
+            el.style.fontSize = `${parseFloat(style.fontSize) * 2}px`;
+            el.style.lineHeight = `${parseFloat(style.lineHeight) * 2}px`;
+          });
+        await expect(title).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+        await title.evaluate((el) => {
+          el.style.color = 'transparent';
+          el.style.filter = 'none';
+          el.style.textShadow = 'none';
+        });
+        const underlay = await page.screenshot({ clip: (await title.boundingBox())! });
+        const { data, info } = await sharp(underlay)
+          .removeAlpha()
+          .raw()
+          .toBuffer({ resolveWithObject: true });
+        const lineHeight = await title.evaluate((el) =>
+          parseFloat(getComputedStyle(el).lineHeight)
+        );
+        const ratios: number[] = [];
+        for (let y = 0; y < info.height; y++) {
+          const line = Math.floor(y / lineHeight);
+          for (let x = 0; x < info.width; x++) {
+            const i = (y * info.width + x) * info.channels;
+            const ratio = 1.05 / (luminance([data[i], data[i + 1], data[i + 2]]) + 0.05);
+            ratios[line] = Math.min(ratios[line] ?? Infinity, ratio);
+          }
+        }
+        await title.evaluate((el) => {
+          el.style.color = '';
+          el.style.filter = '';
+          el.style.textShadow = '';
+        });
+        await testInfo.attach('title-contrast-per-line', {
+          body: JSON.stringify(ratios),
+          contentType: 'application/json',
+        });
+        console.log('TITLE_CONTRAST', photo, scale, ratios);
+        expect(Math.min(...ratios)).toBeGreaterThanOrEqual(4.5);
+        const bar = page.getByRole('progressbar');
+        await expect(bar.locator(':scope > div').first()).toHaveCSS(
+          'background-color',
+          'rgb(184, 85, 66)'
+        );
+        const { data: pixels, info: barInfo } = await sharp(await bar.screenshot())
+          .removeAlpha()
+          .raw()
+          .toBuffer({ resolveWithObject: true });
+        const at = (x: number) => {
+          const i = (Math.floor(barInfo.height / 2) * barInfo.width + x) * barInfo.channels;
+          return luminance([pixels[i], pixels[i + 1], pixels[i + 2]]);
+        };
+        const a = at(10),
+          b = at(barInfo.width - 10);
+        const ratio = (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+        console.log('PROGRESS_CONTRAST', ratio);
+        expect(ratio).toBeGreaterThanOrEqual(3);
+        await page.screenshot({ path: testInfo.outputPath('title-and-progress.png') });
+      });
+    }
+  }
+
+  for (const viewport of [
+    { width: 390, height: 844 },
+    { width: 430, height: 932 },
+  ]) {
+    test(`phone header baseline and reading semantics ${viewport.width}`, async ({
+      page,
+    }, testInfo) => {
+      await page.setViewportSize(viewport);
+      await openOriginalCooking(page);
+      await page.getByTestId('cooks-mode-step-next').click();
+      const geometry = {
+        photo: await page.getByTestId('cooks-mode-photo').boundingBox(),
+        instructions: await page.getByTestId('cooks-mode-instructions').boundingBox(),
+        footer: await page.getByTestId('cooks-mode-controls').boundingBox(),
+      };
+      console.log('PHONE_GEOMETRY', viewport.width, JSON.stringify(geometry));
+      await testInfo.attach('matched-geometry', {
+        body: JSON.stringify(geometry),
+        contentType: 'application/json',
+      });
+      await page.screenshot({ path: testInfo.outputPath('matched-phone.png') });
+      await expect(page.getByTestId('cooking-reading-context')).toBeHidden();
+      await expect(page.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '1');
+      await expect(page.getByRole('progressbar')).toHaveAttribute('aria-valuemax', '6');
+      await page.getByTestId('cooking-view-step-by-step').click();
+      const edit = page.getByTestId('cooks-mode-edit-step');
+      await expect(
+        page
+          .getByTestId('cooks-mode-header-controls')
+          .getByRole('button', { name: 'Edit step', exact: true })
+      ).toBeVisible();
+      await edit.click();
+      await expect(page.getByTestId('recipe-detail-sheet')).toHaveCount(0);
+      await expect(edit).toHaveCount(0);
+      await page.getByRole('textbox').fill('Saved focused instruction');
+      const patch = page.waitForRequest(
+        (request) =>
+          request.method() === 'PATCH' &&
+          request.url().endsWith(`/api/recipes/${MOCK_IDS.RECIPE_SPAGHETTI}`)
+      );
+      await page.getByTestId('cooks-mode-save-edit').click();
+      const body = (await patch).postDataJSON();
+      expect(Object.keys(body)).toEqual(['recipeInstructions']);
+      expect(body.recipeInstructions[0].text).toBe('Saved focused instruction');
+      expect(body.recipeInstructions).toHaveLength(6);
+      await expect(page.getByTestId('cooks-mode-step-text')).toContainText(
+        'Saved focused instruction'
+      );
+      await page.getByTestId('close-cooks-mode').click();
+      await page.getByTestId('cook-mode-btn').click();
+      await expect(page.getByTestId('cooks-mode-step-text')).toContainText(
+        'Saved focused instruction'
+      );
+    });
+  }
+
+  test('relocated focused Edit retains a failed draft, permits cancel and saves a retry', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await openOriginalCooking(page);
+    await page.getByTestId('cooking-view-step-by-step').click();
+    await page.getByTestId('cooks-mode-step-next').click();
+    let failNextPatch = true;
+    await page.route(`**/api/recipes/${MOCK_IDS.RECIPE_SPAGHETTI}`, async (route) => {
+      if (route.request().method() === 'PATCH' && failNextPatch) {
+        failNextPatch = false;
+        return route.fulfill({ status: 500, json: { error: 'Could not save instruction' } });
+      }
+      return route.fallback();
+    });
+    const edit = page.getByTestId('cooks-mode-edit-step');
+    await edit.click();
+    await page.getByRole('textbox').fill('Retained failed draft');
+    const failure = page.waitForResponse(
+      (response) => response.request().method() === 'PATCH' && response.status() === 500
+    );
+    await page.getByTestId('cooks-mode-save-edit').click();
+    await failure;
+    await expect(page.getByRole('textbox')).toHaveValue('Retained failed draft');
+    await expect(edit).toHaveCount(0);
+    await expect(page.getByTestId('cooks-mode-original')).toBeEnabled();
+    await expect(page.getByTestId('cooking-view-all-steps')).toBeDisabled();
+    await expect(page.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '1');
+    await page.getByTestId('cooks-mode-cancel-edit').click();
+    await expect(page.getByTestId('cooks-mode-step-text')).not.toContainText(
+      'Retained failed draft'
+    );
+    await edit.click();
+    await page.getByRole('textbox').fill('Saved retry instruction');
+    await page.getByTestId('cooks-mode-save-edit').click();
+    await expect(page.getByTestId('cooks-mode-step-text')).toContainText('Saved retry instruction');
+    await page.getByTestId('close-cooks-mode').click();
+    await page.getByTestId('cook-mode-btn').click();
+    await expect(page.getByTestId('cooks-mode-step-text')).toContainText('Saved retry instruction');
+  });
 
   test('Original photo contains focus and returns the exact cooking draft and reading offset', async ({
     page,
@@ -196,7 +415,7 @@ test.describe('Cook Mode — HowToSection[] steps display', () => {
     await page.getByTestId('single-page-edit-step-2').click();
     await page.getByRole('textbox').fill('Unsaved cooking correction');
     const before = await surface.evaluate((element) => element.scrollTop);
-    const bookmark = await page.getByTestId('cooks-mode-step-indicator').textContent();
+    const bookmark = await page.getByRole('progressbar').getAttribute('aria-valuenow');
     const original = page.getByTestId('cooks-mode-original');
     await original.click();
     const viewer = page.getByRole('dialog');
@@ -213,7 +432,7 @@ test.describe('Cook Mode — HowToSection[] steps display', () => {
     await expect(original).toBeFocused();
     await expect(page.getByRole('textbox')).toHaveValue('Unsaved cooking correction');
     await expect.poll(() => surface.evaluate((element) => element.scrollTop)).toBe(before);
-    await expect(page.getByTestId('cooks-mode-step-indicator')).toHaveText(bookmark!);
+    await expect(page.getByRole('progressbar')).toHaveAttribute('aria-valuenow', bookmark!);
     for (let repeat = 0; repeat < 2; repeat++) {
       await original.click();
       await expect(page.getByRole('dialog').getByRole('img')).toHaveAttribute(
@@ -272,10 +491,15 @@ test.describe('Cook Mode — HowToSection[] steps display', () => {
   for (const appLocale of ['en', 'fr'] as const) {
     test.describe(`Original responsive ${appLocale}`, () => {
       test.use({ appLocale });
-      for (const width of [390, 820]) {
+      for (const width of [320, 390, 430, 820]) {
         test(`200% text ${width}`, async ({ page }, testInfo) => {
           await page.setViewportSize({ width, height: 844 });
-          await openOriginalCooking(page);
+          await openOriginalCooking(page, {
+            name:
+              appLocale === 'fr'
+                ? 'Légumes rôtis et pommes de terre aux fines herbes du jardin'
+                : 'Roasted vegetables and golden potatoes with fresh garden herbs',
+          });
           await page.getByTestId('cooks-mode-step-next').click();
           await page.getByTestId('cooks-mode-overlay').evaluate((root) => {
             const elements = Array.from(root.querySelectorAll<HTMLElement>('*'));
@@ -343,12 +567,36 @@ test.describe('Cook Mode — HowToSection[] steps display', () => {
             contentType: 'application/json',
           });
           await page.screenshot({ path: testInfo.outputPath('cooking-text-200.png') });
+          for (const state of ['preparation', 'focused', 'all-steps']) {
+            if (state === 'preparation') await page.getByTestId('cooks-mode-step-prev').click();
+            if (state === 'focused') {
+              await page.getByTestId('cooks-mode-step-next').click();
+              await page.getByTestId('cooking-view-step-by-step').click();
+            }
+            if (state === 'all-steps') await page.getByTestId('cooking-view-all-steps').click();
+            await expect(original).toBeInViewport();
+            await expect(page.getByTestId('cooks-mode-step-next')).toBeInViewport();
+            expect(
+              (await page.getByTestId('cooks-mode-instructions').boundingBox())!.height
+            ).toBeGreaterThan(44);
+            expect(
+              await page
+                .getByTestId('cooks-mode-recipe-name')
+                .evaluate((el) => el.scrollWidth <= el.clientWidth)
+            ).toBe(true);
+            expect(
+              await page.evaluate(() => document.documentElement.scrollWidth)
+            ).toBeLessThanOrEqual(width);
+            await page.screenshot({ path: testInfo.outputPath(`text-200-${state}.png`) });
+          }
         });
       }
       for (const viewport of [
         { width: 320, height: 700 },
         { width: 375, height: 812 },
         { width: 390, height: 844 },
+        { width: 430, height: 932 },
+        { width: 600, height: 900 },
         { width: 640, height: 375 },
         { width: 768, height: 1024 },
         { width: 820, height: 1180 },
@@ -360,10 +608,53 @@ test.describe('Cook Mode — HowToSection[] steps display', () => {
           await page.setViewportSize(viewport);
           await openOriginalCooking(
             page,
-            {},
+            {
+              name:
+                appLocale === 'fr'
+                  ? 'Légumes rôtis et pommes de terre aux fines herbes du jardin'
+                  : 'Roasted vegetables and golden potatoes with fresh garden herbs',
+            },
             appLocale === 'fr' ? 'cookbook-dark.jpg' : 'cookbook-light.jpg'
           );
+          const checkReflow = async (state: string) => {
+            const title = (await page.getByTestId('cooks-mode-recipe-name').boundingBox())!;
+            const actions = (await page.getByTestId('cooks-mode-top-actions').boundingBox())!;
+            expect(title.y).toBeGreaterThanOrEqual(actions.y + actions.height);
+            expect(
+              await page
+                .getByTestId('cooks-mode-recipe-name')
+                .evaluate(
+                  (el) => el.scrollHeight <= el.clientHeight && el.scrollWidth <= el.clientWidth
+                )
+            ).toBe(true);
+            for (const button of await page
+              .getByTestId('cooks-mode-overlay')
+              .getByRole('button')
+              .all()) {
+              if (!(await button.isVisible())) continue;
+              const box = (await button.boundingBox())!;
+              expect(box.width).toBeGreaterThanOrEqual(44);
+              expect(box.height).toBeGreaterThanOrEqual(44);
+            }
+            await expect(page.getByTestId('cooks-mode-step-next')).toBeInViewport();
+            expect(
+              (await page.getByTestId('cooks-mode-instructions').boundingBox())!.height
+            ).toBeGreaterThan(44);
+            await page.screenshot({ path: testInfo.outputPath(`${state}.png`) });
+          };
+          await checkReflow('preparation');
           await page.getByTestId('cooks-mode-step-next').click();
+          await checkReflow('all-steps');
+          await page.getByTestId('cooking-view-step-by-step').click();
+          await checkReflow('focused');
+          const edit = page.getByTestId('cooks-mode-edit-step');
+          await expect(edit).toBeVisible();
+          await edit.focus();
+          await page.keyboard.press('Tab');
+          await page.keyboard.press('Shift+Tab');
+          await expect(edit).toBeFocused();
+          expect(await edit.evaluate((el) => getComputedStyle(el).boxShadow)).not.toBe('none');
+          await page.getByTestId('cooking-view-all-steps').click();
           const hero = page.getByTestId('cooks-mode-hero');
           const original = page.getByTestId('cooks-mode-original');
           const surface = page.getByTestId('cooks-mode-instructions');
@@ -441,9 +732,8 @@ test.describe('Cook Mode — HowToSection[] steps display', () => {
     expect(bounds!.height).toBeGreaterThanOrEqual(44);
     expect(bounds!.y).toBeGreaterThan(heroBounds!.y + heroBounds!.height / 2);
     expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(heroBounds!.y + heroBounds!.height);
-    await expect(
-      page.getByTestId('cooking-reading-context').getByTestId('cooks-mode-step-indicator')
-    ).toBeVisible();
+    await expect(page.getByTestId('cooking-reading-context')).toBeHidden();
+    await expect(page.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '0');
     await page.getByTestId('cooks-mode-step-next').click();
     await expect(page.getByTestId('all-steps-recipe-list')).toBeVisible();
     const allStepsHeroHeight = (await page.getByTestId('cooks-mode-hero').boundingBox())!.height;
@@ -598,19 +888,19 @@ test.describe('Cook Mode — HowToSection[] steps display', () => {
         surface.scrollTop +=
           row.getBoundingClientRect().top - surface.getBoundingClientRect().top - 16;
       });
-      await expect(page.getByTestId('cooks-mode-step-indicator')).toHaveText('3 / 6');
+      await expect(page.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '3');
       await expect(page.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '3');
       const readingOffset = await scroll.evaluate((surface) => surface.scrollTop);
       await page.getByTestId('cooks-mode-step-prev').click();
       await expect(ingredient).toHaveAttribute('aria-checked', 'true');
       await expect(page.getByTestId('cooks-mode-step-next')).toHaveText('Resume steps');
       await page.getByTestId('cooks-mode-step-next').click();
-      await expect(page.getByTestId('cooks-mode-step-indicator')).toHaveText('3 / 6');
+      await expect(page.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '3');
       await expect.poll(() => scroll.evaluate((surface) => surface.scrollTop)).toBe(readingOffset);
       await page.getByTestId('close-cooks-mode').click();
       await page.getByTestId('cook-mode-btn').click();
       await collapseDevelopmentBadge(page);
-      await expect(page.getByTestId('cooks-mode-step-indicator')).toHaveText('3 / 6');
+      await expect(page.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '3');
       await expect
         .poll(() =>
           scroll.evaluate((surface) => {

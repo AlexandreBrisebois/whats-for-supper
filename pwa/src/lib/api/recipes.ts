@@ -1,3 +1,5 @@
+import { createUntypedNodeFromDiscriminatorValue } from '@microsoft/kiota-abstractions';
+import { JsonParseNode } from '@microsoft/kiota-serialization-json';
 import { demoFetch } from './demo-session';
 import { apiClient, requestAdapter } from './api-client';
 import { useFamilyStore } from '@/store/familyStore';
@@ -593,7 +595,12 @@ export async function updateRecipe(
     name: updates.name,
     description: updates.description,
     ingredients: updates.ingredients,
-    recipeInstructions: updates.recipeInstructions as any,
+    recipeInstructions:
+      updates.recipeInstructions === undefined
+        ? undefined
+        : new JsonParseNode(updates.recipeInstructions).getObjectValue(
+            createUntypedNodeFromDiscriminatorValue
+          ),
     notes: updates.notes,
     rating: updates.rating,
     isDiscoverable: updates.isDiscoverable,

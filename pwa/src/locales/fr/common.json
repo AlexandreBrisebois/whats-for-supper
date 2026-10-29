@@ -85,7 +85,6 @@
   },
   "profile": {
     "title": "À table !",
-    "subtitle": "Choisissez un membre de la famille pour commencer.",
     "activeMember": "Membre actif",
     "language": "Langue",
     "english": "Anglais",
@@ -98,8 +97,7 @@
     "openMemberMenu": "Ouvrir le menu des membres",
     "selectMember": "Choisir un membre",
     "settings": "Paramètres",
-    "settingsSubtitle": "Préférences famille et application",
-    "continueAs": "Continuer en tant que {{name}}"
+    "settingsSubtitle": "Préférences famille et application"
   },
   "family": {
     "addPrompt": "Vous ne voyez pas votre nom ? Ajoutez-le",

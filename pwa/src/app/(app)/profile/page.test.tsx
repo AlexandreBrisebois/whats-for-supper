@@ -33,20 +33,23 @@ describe('ProfilePage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     state.selectedMember = { id: 'member-123', name: 'Test User' };
+    state.hasLoaded = true;
   });
-  it('renders both controls and the selected name in Continue-as', () => {
-    render(<ProfilePage />);
-    expect(screen.getByTestId('profile-dropdown-stub')).toBeInTheDocument();
-    expect(screen.getByTestId('language-selection-stub')).toBeInTheDocument();
-    expect(screen.getByTestId('continue-as-btn')).toHaveTextContent('Continue as Test User');
-  });
-  it('Continue-as only requests Home', () => {
-    render(<ProfilePage />);
-    fireEvent.click(screen.getByTestId('continue-as-btn'));
-    expect(state.push).toHaveBeenCalledExactlyOnceWith('/home');
-    expect(state.selectFamilyMember).not.toHaveBeenCalled();
-    expect(state.completeOnboarding).not.toHaveBeenCalled();
-  });
+  for (const variant of ['loaded', 'loading', 'unmatched'] as const) {
+    it(`retains title and controls without redundant instructions when ${variant}`, () => {
+      state.hasLoaded = variant !== 'loading';
+      if (variant !== 'loaded') state.selectedMember = null;
+      render(<ProfilePage />);
+      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/^Table's Set!$/);
+      expect(screen.queryByText('Pick a family member to get started.')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('continue-as-btn')).not.toBeInTheDocument();
+      expect(screen.getByTestId('profile-dropdown-stub')).toBeInTheDocument();
+      expect(screen.getByTestId('language-selection-stub')).toBeInTheDocument();
+      expect(screen.getByTestId('settings-btn')).toBeInTheDocument();
+      expect(state.push).not.toHaveBeenCalled();
+      if (variant === 'loading') expect(state.loadFamily).toHaveBeenCalledOnce();
+    });
+  }
   it('Settings requests its route', () => {
     render(<ProfilePage />);
     fireEvent.click(screen.getByTestId('settings-btn'));

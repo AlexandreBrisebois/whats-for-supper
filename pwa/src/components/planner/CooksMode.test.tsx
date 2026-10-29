@@ -21,6 +21,9 @@ vi.mock('framer-motion', () => ({
   useAnimation: () => ({ start: vi.fn() }),
 }));
 
+const layoutMocks = vi.hoisted(() => ({ stacked: true }));
+vi.mock('@/hooks/useMediaQuery', () => ({ useMediaQuery: () => layoutMocks.stacked }));
+
 const routerMocks = vi.hoisted(() => ({ push: vi.fn() }));
 const cookingMocks = vi.hoisted(() => ({ markCooked: vi.fn() }));
 
@@ -90,6 +93,7 @@ const originalUpdateMemberPreferences = useFamilyStore.getState().updateMemberPr
 
 describe('CooksMode', () => {
   beforeEach(() => {
+    layoutMocks.stacked = true;
     getRecipeMock.mockReset();
     updateRecipeMock.mockReset();
     saveRecipeImportIssueMock.mockReset();
@@ -866,7 +870,7 @@ describe('CooksMode', () => {
     expect(editAction).toHaveTextContent('');
     expect(screen.getByTestId('cooks-mode-top-actions')).toContainElement(reportAction);
     expect(screen.getByTestId('cooks-mode-hero')).toContainElement(reportAction);
-    expect(screen.getByTestId('cooking-reading-context')).toContainElement(editAction);
+    expect(screen.getByTestId('cooks-mode-header-controls')).toContainElement(editAction);
     expect(reportAction.closest('[data-testid="cooks-mode-controls"]')).toBeNull();
     fireEvent.click(reportAction);
 
@@ -999,6 +1003,39 @@ describe('CooksMode', () => {
     fireEvent.click(openDetails);
     expect(screen.getByTestId('recipe-detail-sheet')).toBeInTheDocument();
   });
+
+  it.each([true, false])(
+    'keeps one focused editor at the responsive action owner (stacked: %s)',
+    async (stacked) => {
+      layoutMocks.stacked = stacked;
+      getRecipeMock.mockResolvedValue({
+        id: 'recipe-1',
+        name: 'Pasta',
+        recipeInstructions: ['First instruction', 'Second instruction'],
+      });
+      render(
+        <CooksMode
+          recipe={{ id: 'recipe-1', name: 'Pasta', image: '/pasta.jpg' }}
+          onClose={vi.fn()}
+        />
+      );
+      await screen.findByTestId('cooks-mode-step-next');
+      expect(screen.queryByRole('button', { name: 'Edit step' })).toBeNull();
+      fireEvent.click(screen.getByTestId('cooks-mode-step-next'));
+      const edit = screen.getByRole('button', { name: 'Edit step' });
+      expect(
+        screen.getByTestId(stacked ? 'cooks-mode-header-controls' : 'cooking-reading-context')
+      ).toContainElement(edit);
+      fireEvent.click(edit);
+      expect(screen.getByRole('textbox')).toHaveValue('First instruction');
+      expect(screen.queryByRole('button', { name: 'Edit step' })).toBeNull();
+      expect(screen.queryByTestId('recipe-detail-sheet')).toBeNull();
+      fireEvent.click(screen.getByTestId('cooks-mode-cancel-edit'));
+      fireEvent.click(screen.getByTestId('cooking-view-all-steps'));
+      expect(screen.queryByRole('button', { name: 'Edit step' })).toBeNull();
+      expect(screen.getByRole('button', { name: 'Edit step 1' })).toBeInTheDocument();
+    }
+  );
 
   it('allows editing a step and saves on explicit Save button click', async () => {
     getRecipeMock.mockResolvedValue({

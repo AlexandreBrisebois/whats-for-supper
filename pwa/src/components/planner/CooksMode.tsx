@@ -36,6 +36,7 @@ import { t, tWithVars } from '@/locales';
 import { parseRecipeSteps, type CookingStep } from '@/lib/cooking/stepParser';
 import { formatCookingInstruction } from '@/lib/cooking/instructionPresentation';
 import { getImageUrl } from '@/lib/imageUtils';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { usePlannerStore } from '@/store/plannerStore';
 import { useTodayStore } from '@/store/todayStore';
 import { useFamilyStore } from '@/store/familyStore';
@@ -65,6 +66,7 @@ function updateInstructionValue(value: unknown, instruction: string): unknown {
 
 export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksModeProps) {
   const router = useRouter();
+  const stackedLayout = useMediaQuery('(max-width: 767px)');
   const [recipeDetails, setRecipeDetails] = useState<Recipe | null>(null);
   const [parsedSteps, setParsedSteps] = useState<CookingStep[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -395,6 +397,23 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
     }
   };
 
+  const currentStepData = steps[activeRecipeStepIndex];
+  const focusedEdit = hasInstructions && !isEditing && !isPrepStep && !singlePageEnabled && (
+    <button
+      type="button"
+      data-testid="cooks-mode-edit-step"
+      aria-label="Edit step"
+      onClick={() => {
+        setIsEditing(true);
+        setEditingStepIndex(activeRecipeStepIndex);
+        setEditingValue(currentStepData.editableInstruction ?? currentStepData.instruction);
+      }}
+      className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-terracotta-700 focus-visible:ring-2 focus-visible:ring-terracotta"
+    >
+      <Pencil size={20} aria-hidden="true" />
+    </button>
+  );
+
   if (isLoading) {
     return (
       <div
@@ -406,7 +425,6 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
     );
   }
 
-  const currentStepData = steps[activeRecipeStepIndex];
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -436,7 +454,7 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
       {/* The photo and controls remain outside the instruction scroller. */}
       <div
         data-testid="cooks-mode-hero"
-        className="relative grid w-full shrink-0 grid-cols-1 grid-rows-[minmax(8.5rem,auto)_auto] border-b border-charcoal/5 md:flex md:h-full md:w-[40%] md:flex-col md:border-b-0 md:border-r"
+        className="relative grid w-full shrink-0 grid-cols-1 grid-rows-[minmax(9.75rem,auto)_auto] border-b border-charcoal/5 md:flex md:h-full md:w-[40%] md:flex-col md:border-b-0 md:border-r"
       >
         <div
           data-testid="cooks-mode-photo"
@@ -460,22 +478,22 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
               <UtensilsCrossed size={48} className="text-charcoal/10" />
             </div>
           )}
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-charcoal/95 via-charcoal/35 to-transparent" />
+          <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-charcoal/95 via-charcoal/80 via-[calc(100%_-_4rem)] to-charcoal/20 md:via-50% md:via-charcoal/35 md:to-transparent" />
         </div>
-        <div className="pointer-events-none relative z-20 col-start-1 row-start-1 self-end px-4 pb-3 pt-16 md:mt-auto md:self-auto md:px-8 md:pb-0 md:pt-20">
+        <div className="pointer-events-none relative z-20 col-start-1 row-start-1 self-end px-4 pb-3 pt-16 md:mt-auto md:min-h-0 md:overflow-y-auto md:self-auto md:px-8 md:pb-0 md:pt-20">
           <p className="mb-2 hidden text-xs font-semibold text-white/90 md:block">
             {t('cook.cooksMode', "Cook's mode")}
           </p>
           <h2
             data-testid="cooks-mode-recipe-name"
-            className="font-heading rounded-sm bg-charcoal/65 px-1 text-xl font-bold leading-tight text-white drop-shadow-md md:text-3xl"
+            className="font-heading break-words text-xl font-bold leading-tight text-white md:rounded-sm md:bg-charcoal/65 md:px-1 md:text-3xl md:drop-shadow-md"
           >
             {initialRecipe.name || t('cook.untitledRecipe', 'Untitled Recipe')}
           </h2>
         </div>
         <div
           data-testid="cooks-mode-header-controls"
-          className="relative z-20 flex min-h-14 flex-wrap items-center gap-2 bg-cream px-4 py-1 md:mx-8 md:mb-6 md:mt-3 md:bg-transparent md:p-0"
+          className="relative z-20 flex min-h-14 flex-wrap items-center gap-2 bg-cream px-4 py-1 md:mx-8 md:mb-6 md:mt-3 md:shrink-0 md:bg-transparent md:p-0"
         >
           <div
             role="group"
@@ -520,6 +538,7 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
             })}
           </div>
 
+          {stackedLayout && focusedEdit}
           {hasOriginal && (
             <button
               type="button"
@@ -583,7 +602,7 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <div
           data-testid="cooking-reading-context"
-          className="flex min-h-11 shrink-0 items-center justify-between gap-3 px-4 py-1 text-sm font-medium text-charcoal/80 md:px-8"
+          className="hidden min-h-11 shrink-0 items-center justify-between gap-3 px-4 py-1 text-sm font-medium text-charcoal/80 md:flex md:px-8"
         >
           <span data-testid="cooks-mode-step-indicator">
             {!hasInstructions
@@ -595,21 +614,7 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
           {!isPrepStep && initialRecipe.isVegetarian && (
             <span className="text-xs font-semibold text-sage-800">VEGGIE</span>
           )}
-          {!isEditing && !isPrepStep && !singlePageEnabled && (
-            <button
-              type="button"
-              data-testid="cooks-mode-edit-step"
-              aria-label="Edit step"
-              onClick={() => {
-                setIsEditing(true);
-                setEditingStepIndex(activeRecipeStepIndex);
-                setEditingValue(currentStepData.editableInstruction ?? currentStepData.instruction);
-              }}
-              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-terracotta-700 focus-visible:ring-2 focus-visible:ring-terracotta"
-            >
-              <Pencil size={20} aria-hidden="true" />
-            </button>
-          )}
+          {!stackedLayout && focusedEdit}
         </div>
         {/* Progress Bar */}
         <div
@@ -624,8 +629,7 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
             <motion.div
               key={i}
               animate={{
-                backgroundColor:
-                  i < currentStep ? 'var(--color-terracotta)' : 'rgba(0, 0, 0, 0.05)',
+                backgroundColor: i < currentStep ? 'var(--color-terracotta)' : 'var(--color-cream)',
               }}
               className="flex-1"
             />

@@ -64,11 +64,47 @@ vi.mock('./api-client', () => ({
 
 import {
   createRecipe,
+  updateRecipe,
   searchRecipes,
   parseRecipeBundleFile,
   createRecipeBundleFile,
 } from './recipes';
 import { builders } from '@/testing/builders';
+
+import { JsonSerializationWriter } from '@microsoft/kiota-serialization-json';
+import { serializeUpdateRecipeDto } from './generated/models';
+
+describe('updateRecipe instruction serialization', () => {
+  it.each([
+    { instructions: ['Plain instruction', 'Second instruction'] },
+    {
+      instructions: [
+        {
+          '@type': 'HowToSection',
+          name: 'Sauce',
+          itemListElement: [
+            { '@type': 'HowToStep', text: 'Stir gently', position: 1, enabled: true, image: null },
+          ],
+        },
+      ],
+    },
+    { instructions: [] },
+  ])(
+    'preserves instruction JSON through the generated serializer: $instructions',
+    async ({ instructions }) => {
+      recipesApiMocks.byIdPatch.mockClear();
+      await updateRecipe('recipe-1', { recipeInstructions: instructions });
+      const writer = new JsonSerializationWriter();
+      writer.writeObjectValue(
+        undefined,
+        recipesApiMocks.byIdPatch.mock.calls[0][0],
+        serializeUpdateRecipeDto
+      );
+      const wire = JSON.parse(new TextDecoder().decode(writer.getSerializedContent()));
+      expect(wire).toEqual({ recipeInstructions: instructions });
+    }
+  );
+});
 
 describe('createRecipe', () => {
   beforeEach(() => {
