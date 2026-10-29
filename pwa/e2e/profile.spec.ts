@@ -18,6 +18,18 @@ test.describe('Profile Page', () => {
     await setupCommonRoutes(page);
   });
 
+  for (const width of [320, 390, 412]) {
+    test(`uses the available phone width at ${width}px`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 844 });
+      await page.goto('/profile');
+      await expect(page.getByTestId('selected-member-name')).toHaveText('Alex');
+      const chooser = await page.getByTestId('profile-dropdown-toggle').boundingBox();
+      expect(chooser!.width).toBeGreaterThanOrEqual(width - 32);
+      expect(chooser!.x).toBeGreaterThanOrEqual(8);
+      expect(chooser!.x + chooser!.width).toBeLessThanOrEqual(width - 8);
+    });
+  }
+
   for (const locale of ['en', 'fr'] as const) {
     test.describe(locale, () => {
       test.use({ appLocale: locale });

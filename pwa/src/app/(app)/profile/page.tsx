@@ -31,7 +31,7 @@ export default function ProfilePage() {
   return (
     <div
       data-testid="profile-page"
-      className="mx-auto flex w-full max-w-md flex-col gap-8 px-[8px] pt-4 pb-12 sm:px-[16px]"
+      className="mx-auto flex w-full max-w-md flex-col gap-8 px-[16px] pt-12 pb-12"
     >
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1 basis-48">
