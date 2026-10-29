@@ -38,7 +38,7 @@ export function BrowseFiltersSheet({
         className="[&>*]:shrink-0 [&_button:focus-visible]:outline-2 [&_button:focus-visible]:outline-offset-2 [&_button:focus-visible]:outline-charcoal flex max-h-[90dvh] w-full max-w-2xl flex-col overflow-y-auto rounded-t-[2rem] bg-cream p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl md:rounded-[2rem]"
         onKeyDown={onKeyDown}
       >
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 id="browse-filters-title" className="font-heading text-xl font-black text-charcoal">
             {t('recipes.filterRecipes', 'Filter recipes')}
           </h2>
@@ -46,7 +46,7 @@ export function BrowseFiltersSheet({
             data-testid="browse-filters-close"
             type="button"
             onClick={onClose}
-            className="min-h-11 px-3 text-charcoal"
+            className="ml-auto min-h-11 min-w-11 shrink-0 px-3 text-charcoal"
           >
             {t('common.close', 'Close')}
           </button>

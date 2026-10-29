@@ -951,6 +951,23 @@ for (const appLocale of ['en', 'fr'] as const) {
                 exact: true,
               })
             ).toBeInViewport({ ratio: 1 });
+            if (surface === 'browse') {
+              const close = page.getByTestId('browse-filters-close');
+              const target = await close.boundingBox();
+              expect(target!.width).toBeGreaterThanOrEqual(44);
+              expect(target!.height).toBeGreaterThanOrEqual(44);
+              // Text growth may move Close to a new row; keep both controls within the header.
+              expect(
+                await close.evaluate((button) => {
+                  const header = button.parentElement!;
+                  const bounds = header.getBoundingClientRect();
+                  return Array.from(header.children).every((child) => {
+                    const rect = child.getBoundingClientRect();
+                    return rect.left >= bounds.left && rect.right <= bounds.right;
+                  });
+                })
+              ).toBe(true);
+            }
             await dialog.screenshot({
               path: `../.task/goto-review/after/${appLocale}-${surface}-${width}x${height}-${scale}x-filters-top.png`,
               animations: 'disabled',
