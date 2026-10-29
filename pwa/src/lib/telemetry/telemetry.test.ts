@@ -1,9 +1,19 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { telemetryEnabled, sendBrowserCheck, sendServerCheck } from './server';
+import { reportBrowserAppOpened } from './actions';
+import { observeOpening } from './opening';
+import {
+  telemetryEnabled,
+  sendBrowserCheck,
+  sendServerCheck,
+  sendBrowserAppOpened,
+} from './server';
 
+let epoch = Date.now();
 const fetchMock = vi.fn().mockResolvedValue({ ok: true });
 
 beforeEach(() => {
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime((epoch += 60_001));
   vi.stubGlobal('fetch', fetchMock);
   vi.stubEnv('WFS_TELEMETRY_ENABLED', 'true');
   vi.stubEnv('SENTRAME_OTLP_BASE', 'https://sentrame.example');
@@ -11,6 +21,7 @@ beforeEach(() => {
   vi.stubEnv('SENTRAME_SERVER_TOKEN', 'server-test');
 });
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllEnvs();
   vi.unstubAllGlobals();
   vi.clearAllMocks();
@@ -90,3 +101,70 @@ describe('anonymous telemetry boundary', () => {
     expect(fetchMock.mock.calls.length).toBeLessThanOrEqual(120);
   });
 });
+
+it.each([
+  ['WFS_TELEMETRY_ENABLED', 'false'],
+  ['WFS_TELEMETRY_ENABLED', 'TRUE'],
+  ['SENTRAME_OTLP_BASE', ''],
+  ['SENTRAME_OTLP_BASE', 'https://example.com/#private'],
+  ['SENTRAME_OTLP_BASE', 'https://example.com/path'],
+  ['SENTRAME_BROWSER_TOKEN', ''],
+  ['SENTRAME_SERVER_TOKEN', ''],
+  ['SENTRAME_BROWSER_TOKEN', 'server-test'],
+  ['SENTRAME_BROWSER_TOKEN', 'browser\ttest'],
+  ['SENTRAME_SERVER_TOKEN', 'server\u0001test'],
+  ['SENTRAME_BROWSER_TOKEN', 'browser\u0100test'],
+])('invalid runtime %s fails closed with zero intake', async (key, value) => {
+  vi.stubEnv(key, value);
+  expect(telemetryEnabled()).toBe(false);
+  await sendBrowserAppOpened('search');
+  await sendServerCheck();
+  expect(fetchMock).not.toHaveBeenCalled();
+});
+
+it('rechecks opt-out on each opening rather than caching enabled configuration', async () => {
+  expect(telemetryEnabled()).toBe(true);
+  vi.stubEnv('WFS_TELEMETRY_ENABLED', 'false');
+  await sendBrowserAppOpened('search');
+  expect(fetchMock).not.toHaveBeenCalled();
+});
+
+it('shares the exact 120/min browser budget across openings and checks, independently of server', async () => {
+  for (let i = 0; i < 120; i++) await sendBrowserAppOpened('search');
+  expect(fetchMock).toHaveBeenCalledTimes(120);
+  await sendBrowserAppOpened('home');
+  await sendBrowserCheck();
+  expect(fetchMock).toHaveBeenCalledTimes(120);
+  const owner = document.implementation.createHTMLDocument();
+  Object.defineProperty(owner, 'visibilityState', { value: 'visible' });
+  const submit = vi.fn(reportBrowserAppOpened);
+  observeOpening(owner, true, '/recipes', submit);
+  await Promise.resolve();
+  observeOpening(owner, true, '/home', submit);
+  observeOpening(owner, true, '/recipes', submit);
+  expect(submit).toHaveBeenCalledTimes(1);
+  expect(fetchMock).toHaveBeenCalledTimes(120);
+  await sendServerCheck();
+  expect(fetchMock).toHaveBeenCalledTimes(121);
+  expect(fetchMock.mock.calls[120][1].headers.Authorization).toBe('Bearer server-test');
+  vi.setSystemTime(Date.now() + 60_001);
+  await sendBrowserAppOpened('capture');
+  expect(fetchMock).toHaveBeenCalledTimes(122);
+});
+
+it.each([' 1.4.2-beta.1 ', '', '   ', undefined])(
+  'uses deployment version %s on both producer resources, with an honest missing-version fallback',
+  async (version) => {
+    vi.stubEnv('WFS_VERSION', version);
+    await sendBrowserCheck();
+    await sendServerCheck();
+    for (const [index, producer] of ['browser', 'server'].entries()) {
+      const wire = JSON.parse(fetchMock.mock.calls[index][1].body);
+      expect(wire.resourceLogs[0].resource.attributes).toEqual([
+        { key: 'service.name', value: { stringValue: `wfs-pwa-${producer}` } },
+        { key: 'service.version', value: { stringValue: version?.trim() || 'unknown' } },
+      ]);
+      expect(wire.resourceLogs[0].scopeLogs[0].logRecords[0].attributes).toBeUndefined();
+    }
+  }
+);

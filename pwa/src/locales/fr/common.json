@@ -54,7 +54,7 @@
     "joiningFamily": "Connexion à votre famille..."
   },
   "capture": {
-    "backToGotos": "Retour aux GOTOs",
+    "done": "Terminé",
     "saveRecipe": "Sauvegarder la recette",
     "choosePhotos": "Choisir des photos",
     "redirecting": "Redirection vers l'accueil dans {{seconds}}s...",
@@ -136,7 +136,9 @@
     "profile": "Profil"
   },
   "home": {
-    "gotoHelper": "Touchez l’étoile GOTO de vos recettes favorites pour que nous puissions vous en suggérer une ici.",
+    "gotoHelper": "Touchez l’{{star}} sur vos recettes préférées pour que nous puissions vous en proposer une ici.",
+    "star": "étoile",
+    "search": "Rechercher",
     "chooseGotoRecipes": "Choisir des recettes GOTO",
 
     "votingRound": "Vote en famille",
@@ -336,7 +338,8 @@
     "results": "Résultats",
     "topPick": "Le Top",
     "filters": "Filtres",
-    "gotoNoMatches": "Aucune recette GOTO correspondante. Les recettes en préparation restent accessibles dans la gestion des GOTOs.",
+    "gotoNoMatches": "Aucune recette incontournable correspondante. Effacez ce filtre pour trouver des recettes et ajouter des étoiles.",
+    "gotoOnly": "Recettes incontournables seulement",
     "filterGoto": "GOTO",
     "removeGoto": "Retirer des GOTOs",
     "filtersActiveCount": "Filtres actifs : {{count}}",

@@ -9,7 +9,6 @@ import type {
   RecipeSearchPreferencesDto,
 } from '@/lib/api/generated/models/index';
 import { useDialogFocus } from '@/hooks/useDialogFocus';
-import { FamilyGOTOSettings } from '@/components/profile/FamilyGOTOSettings';
 import { cn } from '@/lib/utils';
 import { t } from '@/locales';
 
@@ -102,7 +101,6 @@ interface RecipeFiltersSheetProps {
   filterMetadata: RecipeSearchFilterDiscoveryDto | null;
   onApply: (draft: RecipeFilterDraft) => void;
   onClose: () => void;
-  onAddGoto?: () => void;
 }
 
 function mainLabel(main: RecipeSearchMainDefinitionDto) {
@@ -180,7 +178,6 @@ export function RecipeFiltersSheet({
   filterMetadata,
   onApply,
   onClose,
-  onAddGoto,
 }: RecipeFiltersSheetProps) {
   const { panelRef, onKeyDown } = useDialogFocus(onClose);
   const [draftFilters, setDraftFilters] = useState<RecipeSearchFiltersDto>({ ...activeFilters });
@@ -386,7 +383,6 @@ export function RecipeFiltersSheet({
               <div id="more-cuisine-filters" hidden={!cuisineExpanded} />
             </section>
           )}
-          <FamilyGOTOSettings onAdd={onAddGoto} />
         </div>
         <div className="shrink-0 border-t border-charcoal/10 bg-cream pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
           <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,8em),1fr))] gap-3">

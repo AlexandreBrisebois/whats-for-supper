@@ -370,10 +370,8 @@ test('GOTO management and star rendered review', async ({ page, baseURL }) => {
   await page.goto('/profile/settings');
   await expect(page.getByRole('button', { name: 'Manage GOTOs', exact: true })).not.toBeVisible();
   await page.goto('/browse-all-stack');
-  await page.getByTestId('browse-filters-entry').click();
-  await page.getByTestId('goto-management-toggle').click();
-  await expect(page.getByTestId('add-goto-btn')).toBeVisible();
-  await page.screenshot({ path: '../.task/goto-review/after/management.png', fullPage: true });
+  await expect(page.getByTestId('browse-filter-goto')).toBeVisible();
+  await expect(page.getByTestId('goto-management-toggle')).toHaveCount(0);
   await page.goto(`/recipes?open=${MOCK_IDS.RECIPE_LASAGNA}`);
   await expect(page.getByTestId('action-set-goto')).toBeVisible();
   await page.screenshot({ path: '../.task/goto-review/after/star-unselected.png', fullPage: true });

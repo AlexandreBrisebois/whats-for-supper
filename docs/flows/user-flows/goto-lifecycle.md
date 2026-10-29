@@ -1,40 +1,29 @@
 # Flow: GOTO Recipe Lifecycle
 
-GOTOs are the household's configured fallback recipes. Membership is distinct from rating, Discovery eligibility and recipe readiness. `GoToService` owns the persisted list and ready active choice; filtering does not assign a meal.
+Go-Tos are the household’s configured fallback recipes. Membership is distinct from rating, Discovery eligibility and readiness. `GoToService` owns the persisted list and ready active choice; filtering does not assign a meal.
 
-## Choose and manage
+## Membership and filters
 
-Home's ordinary empty supper-choice pivot shows a brief star explanation and **Choose GOTO recipes** after its initial active-GOTO read settles. The link opens unfiltered `/browse-all-stack`, where recipe detail offers a labelled GOTO star. It does not assert that the configured list is empty or that a recipe is ready.
+Users add or remove membership through recipe-detail stars. The star and Go-To label remain visible in both states; selected membership has pressed semantics. Saving disables the control and reports success or failure. Removing membership keeps the recipe.
 
-Browse and Search expose GOTO inside **Filters**, with **Manage GOTOs** initially collapsed. Management shows the full saved collection, including pending entries, independently of the result filters. Profile Settings no longer hosts this collection.
+Browse offers an immediate Star filter directly after its single All/Discovery toggle in the same toolbar. It intersects Discovery and retains cards/list and collection navigation. Search keeps Go-To within Filters, with ordinary draft, Apply, Clear and dismissal behavior. Separate Go-To management, pending-management rows and Add a Go-To acquisition are retired; Settings does not host them.
 
-- Filter changes are drafts until Apply. Close, Escape or backdrop dismissal discards an unapplied draft.
-- Confirmed list changes save immediately through `PUT /api/goto`; dismissing Filters does not undo them.
-- A failed list read shows Retry without claiming an empty collection. A failed removal keeps the confirmed item and permits another removal attempt.
-- Confirmed local membership changes refresh an applied-GOTO collection from its first page, retaining the current Browse mode or Search context. If that read fails, Retry reads again without repeating the save.
+Confirmed local membership changes refresh an applied-Go-To collection from page one while retaining Browse mode or Search context. If retrieval fails after a successful save, Retry reads again without repeating the save. Rejected saves retain confirmed membership.
 
-## Add a recipe
+Browse recovers height by removing the extra Filters row first. Preserve current preferred stack/card size and image area on the normal phone; adapt only when less space is available. The 390×844 CSS px comparison reference is provisional, not a claim about the user’s phone.
 
-**Add a GOTO** closes Filters and opens acquisition choices in a separate sheet. Dismissing it creates no recipe and restores focus to Filters.
+## Capture compatibility
 
-| Choice | Destination |
-|---|---|
-| Search the Library | `/recipes`; inspect a recipe and use its GOTO star |
-| Describe a Dish | `/capture?intent=goto&mode=describe` |
-| Take a Photo | `/capture?intent=goto&mode=photo` |
+Ordinary recipe capture remains available. Fresh legacy `/capture?intent=goto&mode=describe|photo` entries use ordinary capture in that mode without automatic starring. An already submitted legacy capture can finish its accepted pending registration and ready transition. Its localized Done action explicitly returns to Home without replaying acquisition/list saves, clearing saved membership or interrupting background work and ready notifications.
 
-Recipe detail displays a star and GOTO label in both states, with pressed state when configured. Saving disables the control until the request settles and reports success or failure. Removing membership retains the recipe.
+Legacy `/browse-all-stack?gotoOnly=true&manageGoto=true` honors the filter and ignores the retired management flag. It opens no management sheet. An empty collection offers clearing; pending records are not deleted or presented as ready recipes.
 
-## Capture and readiness
+## Tonight
 
-GOTO capture creates/registers a pending entry through the existing capture and list-save operations. Its success screen remains available until explicit **Back to GOTOs**, which opens `/browse-all-stack?gotoOnly=true&manageGoto=true`: GOTO filtering is applied, Filters opens and management expands. Registration does not establish synthesis completion or readiness.
+Home’s unplanned pivot uses the existing planner day-specific Search flow with authoritative today selected, week zero and its reference week. Selection, cancellation, planner success return and occupied-slot recovery keep their existing meanings. Opening Search does not assign a meal. Saved Mystery retains its existing Quick Find alternative; planned and other non-cooking states retain their own controls.
 
-Pending entries remain manageable even when the ready-only filtered result is empty. Existing recipe-ready notifications prompt management to reread the collection; this navigation change adds no readiness or cross-device invalidation guarantee.
+The settled ordinary empty pivot uses a larger local fork-and-knife illustration, primary Search, secondary Order In and a short helper containing the recipe Star icon. No Choose GOTO recipes link appears. Order In records a non-cooking plan and places no food order. Ready Go-To suggestions retain their photo and Make this tonight; checking/pending feedback remains truthful. Shared recipe-image fallbacks are not enlarged.
 
-## Tonight and filtering
+## Server semantics
 
-Home retains its ready active-GOTO policy. Make this tonight performs the existing Tonight assignment; Quick Find and Order In remain immediate alternatives. Planned, ready, represented checking/pending and saved Mystery presentations retain their existing content without the introductory helper.
-
-GET `/api/recipes?gotoOnly=true` intersects configured membership with existing library eligibility before counting and paging. Search's `filters.gotoOnly` applies before lexical/vector candidate limits and intersects text, Focus, Similar and other filters. Empty membership yields no ordinary fallback. Ranked continuation retains its frozen sequence while rechecking current membership; new members require a fresh search.
-
-The authoritative acceptance scenarios are in the OpenSpec `recipe-library`, `recipe-search` and `tonight-meal-decisions` capabilities and the active `move-goto-management-to-recipe-filters` change until synchronization.
+GET `/api/recipes?gotoOnly=true` intersects configured membership with existing eligibility before count/paging. Search’s `filters.gotoOnly` applies before retrieval limits and intersects text, Focus, Similar and other filters. Empty membership yields no ordinary fallback. Ranked continuation keeps its frozen sequence while rechecking membership; newly added recipes require a fresh search. This UI revision changes no backend contract or stored data.

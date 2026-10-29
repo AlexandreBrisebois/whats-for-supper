@@ -84,6 +84,12 @@ An opening SHALL be an INFO OTLP log named `pwa.app.opened`, service `wfs-pwa-br
 - **AND** known route matches are exact, with `/recipes` classified as `search`
 - **AND** shared rendered error and not-found fallbacks use `error` and `not.found` when observed before any other eligible screen
 
+#### Scenario: Application release version
+- **WHEN** WFS exports an opening or an existing synthetic producer check
+- **THEN** its OTel resource includes `service.version` from the server-owned `WFS_VERSION` deployment metadata, trimmed, or literal `unknown` when absent or blank
+- **AND** the value identifies the deployed application release/build and remains constant for that deployment
+- **AND** browser input cannot choose the version; it is not an individual log attribute, identity or receiver/SDK version
+
 #### Scenario: No anonymous correlation
 - **WHEN** WFS serializes or stores opening observation state
 - **THEN** it generates no telemetry session, tab, event, action, device or household identifier

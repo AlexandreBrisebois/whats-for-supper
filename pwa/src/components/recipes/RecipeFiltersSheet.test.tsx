@@ -48,10 +48,7 @@ describe('RecipeFiltersSheet', () => {
 
   it('offers shared management collapsed without confusing it with GOTO selection', () => {
     renderSheet({ gotoOnly: true });
-    expect(screen.getByRole('button', { name: 'Manage GOTOs' })).toHaveAttribute(
-      'aria-expanded',
-      'false'
-    );
+    expect(screen.queryByRole('button', { name: 'Manage GOTOs' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'GOTO' })).toHaveAttribute('aria-pressed', 'true');
   });
 

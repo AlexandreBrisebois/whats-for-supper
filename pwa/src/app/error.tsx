@@ -2,6 +2,8 @@
 
 import { useEffect } from 'react';
 
+import { OpeningFallback } from '@/components/telemetry/OpeningFallback';
+
 import { t } from '@/locales';
 
 interface ErrorProps {
@@ -16,6 +18,7 @@ export default function Error({ error, reset }: ErrorProps) {
 
   return (
     <main className="flex min-h-dvh flex-col items-center justify-center gap-6 px-6 py-12 text-center">
+      <OpeningFallback screen="error" />
       <h2 className="text-2xl font-bold text-charcoal">
         {t('errors.genericTitle', 'Something went wrong')}
       </h2>

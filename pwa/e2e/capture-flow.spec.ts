@@ -533,90 +533,44 @@ test.describe('Capture — GOTO intent', () => {
   });
 
   // F4 — Describe it creates a pending GOTO
-  test('Describe it creates a pending GOTO setting', async ({ page }) => {
-    await page.goto('/capture?intent=goto');
-
-    // Switch to Describe form via the Describe_Link button
-    await page.getByTestId('capture-secondary-action-describe').click();
-
-    // Fill in the name
+  test('fresh legacy Go-To capture uses ordinary description capture without membership writes', async ({
+    page,
+  }) => {
+    const writes: string[] = [];
+    page.on('request', (req) => {
+      if (new URL(req.url()).pathname === '/api/goto' && req.method() === 'PUT')
+        writes.push(req.url());
+    });
+    await page.goto('/capture?intent=goto&mode=describe');
     await page.getByPlaceholder(/our family spaghetti/i).fill('Our family spaghetti');
-
-    // Track the two API calls
-    const describeRequest = page.waitForRequest(
+    const described = page.waitForRequest(
       (req) => req.url().includes('/api/recipes/describe') && req.method() === 'POST'
     );
-    const settingsRequest = page.waitForRequest(
-      (req) => req.url().includes('/api/goto') && req.method() === 'PUT'
-    );
-
     await page.getByTestId('capture-synthesize-btn').click();
-
-    const [descReq, settReq] = await Promise.all([describeRequest, settingsRequest]);
-
-    // POST /api/recipes/describe was called
-    const descBody = descReq.postDataJSON();
-    expect(descBody.name).toBe('Our family spaghetti');
-
-    // PUT /api/goto was called without status (now domain-driven)
-    const settBody = settReq.postDataJSON();
-    expect(settBody?.items).toBeDefined();
-    expect(settBody.items[0].recipeId).toBe(MOCK_IDS.RECIPE_GOTO_STUB);
-    expect(settBody.items[0].status).toBe('pending');
-
-    // Success screen stays visible — no auto-navigation for isGoto=true
-    await expect(page.getByTestId('capture-success-screen')).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByTestId('capture-success-heading')).toHaveText(
-      /your goto is being prepared/i
-    );
-    await expect(page).toHaveURL(/\/capture/);
-    const writes: string[] = [];
-    page.on('request', (request) => {
-      if (
-        new URL(request.url()).pathname.startsWith('/api/') &&
-        !['GET', 'HEAD'].includes(request.method())
-      )
-        writes.push(request.method());
-    });
-    await page.getByTestId('capture-success-cta').click();
-    await expect(page).toHaveURL(/\/browse-all-stack\?gotoOnly=true&manageGoto=true$/);
-    await expect(page.getByTestId('goto-management-toggle')).toHaveAttribute(
-      'aria-expanded',
-      'true'
-    );
-    await expect(page.getByTestId('goto-pending-description')).toBeVisible();
-    await page.keyboard.press('Escape');
-    await expect(page.getByTestId('browse-filters-entry')).toBeVisible();
+    expect((await described).postDataJSON().name).toBe('Our family spaghetti');
+    await expect(page.getByTestId('capture-success-screen')).toBeVisible();
     expect(writes).toEqual([]);
+    await expect(page.getByTestId('capture-success-cta')).toHaveCount(0);
   });
 
   // F8 — Capture path sets GOTO pending
-  test('Photo capture with intent=goto sets GOTO pending', async ({ page }) => {
+  test('legacy photo capture retains ordinary capture without automatic Go-To registration', async ({
+    page,
+  }) => {
+    const writes: string[] = [];
+    page.on('request', (req) => {
+      if (new URL(req.url()).pathname === '/api/goto' && req.method() === 'PUT')
+        writes.push(req.url());
+    });
     await page.goto('/capture?intent=goto&mode=photo');
-
-    const fileInput = page.getByTestId('capture-gallery-input');
-    await fileInput.setInputFiles(path.join(__dirname, 'fixtures', 'test-meal.jpg'));
-
-    await expect(page.getByTestId('capture-photos-count')).toBeVisible({ timeout: 10_000 });
-
-    const settingsRequest = page.waitForRequest(
-      (req) => req.url().includes('/api/goto') && req.method() === 'PUT'
-    );
-
+    await page
+      .getByTestId('capture-gallery-input')
+      .setInputFiles(path.join(__dirname, 'fixtures', 'test-meal.jpg'));
+    await expect(page.getByTestId('capture-photos-count')).toBeVisible();
     await page.getByTestId('capture-save-btn').click();
-
-    const settReq = await settingsRequest;
-    const settBody = settReq.postDataJSON();
-    expect(settBody?.items).toBeDefined();
-    expect(settBody.items[0].recipeId).toBe(MOCK_IDS.RECIPE_LASAGNA);
-    expect(settBody.items[0].status).toBe('pending');
-
-    // Success screen stays visible — no auto-navigation for isGoto=true
-    await expect(page.getByTestId('capture-success-screen')).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByTestId('capture-success-heading')).toHaveText(
-      /your goto is being prepared/i
-    );
-    await expect(page).toHaveURL(/\/capture/);
+    await expect(page.getByTestId('capture-success-screen')).toBeVisible();
+    expect(writes).toEqual([]);
+    await expect(page.getByTestId('capture-success-cta')).toHaveCount(0);
   });
 });
 
@@ -683,11 +637,11 @@ test.describe('Browse Filters — GOTO pending state', () => {
 
     await page.goto('/browse-all-stack?gotoOnly=true&manageGoto=true');
 
-    // Spinner and pending description should be visible
-    await expect(page.getByTestId('goto-pending-spinner')).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByTestId('goto-pending-description')).toContainText(
-      'Our family spaghetti'
-    );
+    await expect(page.getByTestId('browse-filter-goto')).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.getByTestId('goto-management-toggle')).toHaveCount(0);
+    await expect(page.getByTestId('goto-pending-description')).toHaveCount(0);
+    await page.getByTestId('browse-filter-goto').click();
+    await expect(page.getByTestId('stack-card-front')).toBeVisible();
   });
 });
 

@@ -8,9 +8,7 @@ import { calendarDayIndex } from '@/lib/deployment-calendar';
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { AnimatePresence } from 'framer-motion';
-import { X, Search, Loader2, Compass, Recycle, Layers3, Grid3X3 } from 'lucide-react';
-import { GotoAcquisitionSheet } from '@/components/recipes/GotoAcquisitionSheet';
-import { BrowseFiltersSheet } from '@/components/recipes/BrowseFiltersSheet';
+import { X, Search, Loader2, Compass, Recycle, Layers3, Grid3X3, Star } from 'lucide-react';
 import { RecipeStackCard } from '@/components/recipes/RecipeStackCard';
 import { StackActionBar } from '@/components/recipes/StackActionBar';
 import { EndCard } from '@/components/recipes/EndCard';
@@ -66,7 +64,6 @@ export default function BrowseAllStackPage() {
 
 function BrowseAllStackContent() {
   const searchParams = useSearchParams();
-  const manageGotoOnEntry = searchParams.get('manageGoto') === 'true';
   const router = useRouter();
   const { familyMembers, selectedFamilyMemberId, loadFamilyMembers, updateMemberPreferences } =
     useFamilyStore();
@@ -92,9 +89,6 @@ function BrowseAllStackContent() {
 
   // Local UI state
   const [gotoOnly, setGotoOnly] = useState(() => searchParams.get('gotoOnly') === 'true');
-  const [filtersOpen, setFiltersOpen] = useState(manageGotoOnEntry);
-  const [acquisitionOpen, setAcquisitionOpen] = useState(false);
-  const filtersEntryRef = useRef<HTMLButtonElement>(null);
   const appliedGotoVersion = gotoOnly ? gotoMembershipVersion : 0;
   const [isDiscoverableOnly, setIsDiscoverableOnly] = useState(false);
   const [browseViewModeOverride, setBrowseViewModeOverride] = useState<{
@@ -658,37 +652,48 @@ function BrowseAllStackContent() {
   return (
     <div
       data-testid="browse-all-stack-container"
-      className="fixed inset-0 z-50 flex flex-col bg-cream overflow-hidden"
+      className="fixed inset-0 z-50 flex flex-col bg-cream overflow-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
     >
       <BackgroundBlobs />
 
       {/* Top bar: Clustered actions (right) */}
-      <div className="relative z-10 flex items-center justify-end px-6 pt-safe-top pt-2 pb-1 shrink-0 gap-1.5">
+      <div className="relative z-10 flex flex-wrap items-center justify-end px-2 sm:px-6 pt-2 pb-1 shrink-0 gap-1">
         <button
           onClick={handleGlobalToggleDiscoverable}
           data-testid="stack-toggle-discoverable"
-          className={`flex h-11 items-center gap-2 rounded-full px-3 transition-all duration-300 border ${
+          className={`flex h-12 min-w-12 shrink-0 items-center gap-1 rounded-full px-2 transition-all duration-300 border ${
             isDiscoverableOnly
               ? 'bg-ochre/15 text-ochre-800 border-ochre/25 shadow-sm shadow-ochre/10'
               : 'bg-white/80 text-charcoal/70 border-charcoal/8 hover:bg-white active:scale-95'
-          } backdrop-blur-sm focus:outline-none`}
+          } backdrop-blur-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-charcoal`}
           aria-label={
             isDiscoverableOnly ? 'Showing recipes marked Discovery' : 'Showing all recipes'
           }
         >
           <Compass className={`h-4 w-4 ${isDiscoverableOnly ? 'text-ochre fill-ochre/20' : ''}`} />
-          <span className="text-xs font-black tracking-wide uppercase">
+          <span className="hidden min-[390px]:inline text-xs font-black tracking-wide uppercase">
             {isDiscoverableOnly ? 'Discovery' : 'All'}
           </span>
         </button>
 
-        <div className="flex h-11 rounded-full bg-white/80 border border-charcoal/8 p-1 shadow-sm backdrop-blur-sm">
+        <button
+          type="button"
+          data-testid="browse-filter-goto"
+          aria-label={t('recipes.gotoOnly', 'Go-To recipes only')}
+          aria-pressed={gotoOnly}
+          onClick={() => setGotoOnly((current) => !current)}
+          className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full border focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-charcoal active:scale-95 motion-reduce:transform-none ${gotoOnly ? 'bg-ochre/15 text-ochre-800 border-ochre/25' : 'bg-white/80 text-charcoal-700 border-charcoal/8'}`}
+        >
+          <Star size={20} fill={gotoOnly ? 'currentColor' : 'none'} aria-hidden="true" />
+        </button>
+
+        <div className="flex h-12 shrink-0 rounded-full bg-white/80 border border-charcoal/8 p-0 shadow-sm backdrop-blur-sm">
           <button
             type="button"
             data-testid="browse-view-stack"
             aria-label="Show recipe cards"
             onClick={() => handleViewModeChange('stack')}
-            className={`flex items-center gap-1.5 rounded-full px-3 text-xs font-black uppercase transition-all ${
+            className={`flex items-center justify-center min-w-12 gap-1 rounded-full px-1 text-xs font-black uppercase transition-all ${
               browseViewMode === 'stack' ? 'bg-sage/20 text-sage-900' : 'text-charcoal/55'
             }`}
           >
@@ -699,7 +704,7 @@ function BrowseAllStackContent() {
             data-testid="browse-view-list"
             aria-label="Show recipe list"
             onClick={() => handleViewModeChange('list')}
-            className={`flex items-center gap-1.5 rounded-full px-3 text-xs font-black uppercase transition-all ${
+            className={`flex items-center justify-center min-w-12 gap-1 rounded-full px-1 text-xs font-black uppercase transition-all ${
               browseViewMode === 'list' ? 'bg-sage/20 text-sage-900' : 'text-charcoal/55'
             }`}
           >
@@ -712,7 +717,7 @@ function BrowseAllStackContent() {
           data-testid="recycle-bin-entry"
           aria-label="Recycle bin"
           onClick={() => setIsTrashOpen(true)}
-          className="flex h-11 w-11 items-center justify-center rounded-full bg-white/80 text-charcoal/70 shadow-sm border border-charcoal/8 backdrop-blur-sm hover:bg-white active:scale-95 transition-all focus:outline-none"
+          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white/80 text-charcoal/70 shadow-sm border border-charcoal/8 backdrop-blur-sm hover:bg-white active:scale-95 transition-all focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-charcoal"
         >
           <Recycle size={20} />
         </button>
@@ -722,47 +727,11 @@ function BrowseAllStackContent() {
           data-testid="browse-all-exit"
           aria-label="Close browse overlay"
           onClick={handleExit}
-          className="flex h-11 w-11 items-center justify-center rounded-full bg-white/80 text-charcoal/70 shadow-sm border border-charcoal/8 backdrop-blur-sm hover:bg-white active:scale-95 transition-all focus:outline-none"
+          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white/80 text-charcoal/70 shadow-sm border border-charcoal/8 backdrop-blur-sm hover:bg-white active:scale-95 transition-all focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-charcoal"
         >
           <X size={20} />
         </button>
       </div>
-
-      <div className="relative z-10 flex shrink-0 justify-end px-6 pb-1">
-        <button
-          type="button"
-          ref={filtersEntryRef}
-          data-testid="browse-filters-entry"
-          aria-haspopup="dialog"
-          aria-expanded={filtersOpen}
-          onClick={() => setFiltersOpen(true)}
-          className="min-h-11 rounded-full border border-charcoal/10 bg-white px-4 text-sm font-bold text-charcoal"
-        >
-          {t('recipes.filters', 'Filters')} {gotoOnly ? '(1)' : ''}
-        </button>
-      </div>
-      {filtersOpen && (
-        <BrowseFiltersSheet
-          manageGoto={manageGotoOnEntry}
-          onAddGoto={() => {
-            setFiltersOpen(false);
-            setAcquisitionOpen(true);
-          }}
-          gotoOnly={gotoOnly}
-          onClose={() => setFiltersOpen(false)}
-          onApply={(selected) => {
-            setGotoOnly(selected);
-            setFiltersOpen(false);
-          }}
-        />
-      )}
-
-      {acquisitionOpen && (
-        <GotoAcquisitionSheet
-          returnFocus={filtersEntryRef}
-          onClose={() => setAcquisitionOpen(false)}
-        />
-      )}
 
       {isTrashOpen && <RecycleBinSheet onClose={() => setIsTrashOpen(false)} />}
 
@@ -816,23 +785,16 @@ function BrowseAllStackContent() {
             <p>
               {t(
                 'recipes.gotoNoMatches',
-                'No matching GOTO recipes. Pending recipes are still available in management.'
+                'No matching Go-To recipes. Clear this filter to find recipes and add stars.'
               )}
             </p>
             <button
               type="button"
               data-testid="browse-goto-clear"
               onClick={() => setGotoOnly(false)}
-              className="min-h-11 px-4 font-bold text-terracotta-700 underline"
+              className="min-h-12 px-4 font-bold text-terracotta-700 underline"
             >
               {t('recipes.clearFilters', 'Clear filters')}
-            </button>
-            <button
-              type="button"
-              onClick={() => setFiltersOpen(true)}
-              className="min-h-11 px-4 font-bold text-charcoal"
-            >
-              {t('recipes.filters', 'Filters')}
             </button>
           </div>
         )}
@@ -856,7 +818,7 @@ function BrowseAllStackContent() {
                   key={recipe.id}
                   data-testid="browse-list-recipe-card"
                   onClick={() => handleCardTap(recipe.id!)}
-                  className="group flex flex-col justify-start items-stretch overflow-hidden rounded-lg bg-white/85 text-left shadow-sm border border-charcoal/8 backdrop-blur-sm transition hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-ochre focus:ring-offset-2"
+                  className="group flex flex-col justify-start items-stretch overflow-hidden rounded-lg bg-white/85 text-left shadow-sm border border-charcoal/8 backdrop-blur-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-charcoal focus:ring-2 focus:ring-ochre focus:ring-offset-2"
                 >
                   <div className="relative aspect-[4/3] bg-sage/10 overflow-hidden">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -894,7 +856,10 @@ function BrowseAllStackContent() {
         )}
 
         {!isInitialLoading && !loadError && browseViewMode === 'stack' && recipes.length > 0 && (
-          <div className="w-full max-w-sm md:max-w-xl flex-1 flex flex-col min-h-[740px] md:min-h-[860px] max-h-[82vh] md:max-h-[880px] lg:max-h-[780px] transition-all duration-500 ease-in-out">
+          <div
+            data-testid="browse-stack-layout"
+            className="w-full max-w-sm md:max-w-xl flex-none h-[min(740px,calc(100dvh-88px-env(safe-area-inset-top)-env(safe-area-inset-bottom)))] md:h-[min(860px,calc(100dvh-88px-env(safe-area-inset-top)-env(safe-area-inset-bottom)))] flex flex-col motion-safe:transition-all motion-safe:duration-500 ease-in-out"
+          >
             <div className="relative flex-1 min-h-0">
               <AnimatePresence mode="popLayout">
                 {visibleRecipes.map((recipe, i) => (

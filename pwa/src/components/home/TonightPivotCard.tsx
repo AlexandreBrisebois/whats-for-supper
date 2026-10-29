@@ -1,13 +1,11 @@
 'use client';
 
-import { ShoppingBag, Utensils, UtensilsCrossed, Search } from 'lucide-react';
+import { ShoppingBag, Utensils, UtensilsCrossed, Search, Star } from 'lucide-react';
 import { NonCookingIcon } from '../planner/NonCookingIcon';
 import type { NonCookingPlanDto } from '@/lib/api/generated/models';
 import { TonightCardBase } from './TonightMenuCard';
 import { TonightRecipeImage } from './TonightRecipeImage';
-import Link from 'next/link';
 import { t } from '@/locales';
-import { ROUTES } from '@/lib/constants/routes';
 
 interface TonightPivotCardProps {
   gotoDescription: string | null;
@@ -68,19 +66,29 @@ export function TonightPivotCard({
         </div>
 
         <div data-testid="pivot-card-image-area">
-          <TonightRecipeImage
-            key={`${gotoRecipeId}:${imageUrl}`}
-            imageUrl={imageUrl}
-            alt={gotoDescription ?? t('cook.untitledRecipe', 'Untitled recipe')}
-            className="aspect-[5/4]"
-            fallback={
-              nonCookingLabel ? (
-                <NonCookingIcon kind={nonCookingKind} size={28} className="text-sage-700" />
-              ) : (
-                <Utensils size={28} />
-              )
-            }
-          />
+          {showGotoHelper ? (
+            <div
+              data-testid="empty-pivot-illustration"
+              className="flex h-28 sm:h-40 items-center justify-center rounded-[1.5rem] bg-cream text-sage-700"
+              aria-hidden="true"
+            >
+              <Utensils size={104} strokeWidth={1.25} />
+            </div>
+          ) : (
+            <TonightRecipeImage
+              key={`${gotoRecipeId}:${imageUrl}`}
+              imageUrl={imageUrl}
+              alt={gotoDescription ?? t('cook.untitledRecipe', 'Untitled recipe')}
+              className="aspect-[5/4]"
+              fallback={
+                nonCookingLabel ? (
+                  <NonCookingIcon kind={nonCookingKind} size={28} className="text-sage-700" />
+                ) : (
+                  <Utensils size={28} />
+                )
+              }
+            />
+          )}
         </div>
 
         {/* Body */}
@@ -149,7 +157,7 @@ export function TonightPivotCard({
             >
               <Search size={16} aria-hidden="true" className="shrink-0" />
               <span className="min-w-0 [overflow-wrap:normal]">
-                {t('home.quickFind', 'Quick Find')}
+                {nonCookingLabel ? t('home.quickFind', 'Quick Find') : t('home.search', 'Search')}
               </span>
             </button>
             <button
@@ -172,16 +180,23 @@ export function TonightPivotCard({
               <p className="text-base font-normal leading-relaxed text-charcoal-600">
                 {t(
                   'home.gotoHelper',
-                  'Tap the GOTO star on favourite recipes so we can suggest one here.'
-                )}
+                  'Tap the {{star}} on favourite recipes so we can suggest one here.'
+                )
+                  .split('{{star}}')
+                  .map((part, index) => (
+                    <span key={index}>
+                      {index > 0 && (
+                        <Star
+                          className="inline-block align-text-bottom"
+                          size={18}
+                          role="img"
+                          aria-label={t('home.star', 'star')}
+                        />
+                      )}
+                      {part}
+                    </span>
+                  ))}
               </p>
-              <Link
-                href={ROUTES.BROWSE_ALL_STACK}
-                data-testid="add-goto-btn"
-                className="flex min-h-12 items-center px-2 py-3 rounded-xl text-terracotta-700 hover:bg-terracotta-50 active:bg-terracotta-100 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-charcoal text-base font-medium leading-normal"
-              >
-                {t('home.chooseGotoRecipes', 'Choose GOTO recipes')}
-              </Link>
             </div>
           )}
         </div>

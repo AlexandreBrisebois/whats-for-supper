@@ -54,7 +54,7 @@
     "joiningFamily": "Joining your family..."
   },
   "capture": {
-    "backToGotos": "Back to GOTOs",
+    "done": "Done",
     "saveRecipe": "Save Recipe",
     "choosePhotos": "Choose Photos",
     "redirecting": "Redirecting home in {{seconds}}s...",
@@ -136,7 +136,9 @@
     "profile": "Profile"
   },
   "home": {
-    "gotoHelper": "Tap the GOTO star on favourite recipes so we can suggest one here.",
+    "gotoHelper": "Tap the {{star}} on favourite recipes so we can suggest one here.",
+    "star": "star",
+    "search": "Search",
     "chooseGotoRecipes": "Choose GOTO recipes",
 
     "votingRound": "Family voting",
@@ -336,7 +338,8 @@
     "results": "Results",
     "topPick": "Top Pick",
     "filters": "Filters",
-    "gotoNoMatches": "No matching GOTO recipes. Pending recipes are still available in management.",
+    "gotoNoMatches": "No matching Go-To recipes. Clear this filter to find recipes and add stars.",
+    "gotoOnly": "Go-To recipes only",
     "filterGoto": "GOTO",
     "removeGoto": "Remove from GOTO",
     "filtersActiveCount": "Filters, {{count}} active",

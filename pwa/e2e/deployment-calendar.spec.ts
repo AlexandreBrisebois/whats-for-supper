@@ -47,16 +47,25 @@ test('Tonight uses Toronto Sunday in a Tokyo browser and pins assignment', async
       });
     }
   );
-  await page.route(
-    (url) => url.pathname === '/api/schedule/fill-the-gap',
-    async (route) => {
-      await route.fulfill({
-        json: {
-          data: [builders.scheduleRecipe({ id: MOCK_IDS.RECIPE_CHICKEN, name: 'Sunday Chicken' })],
+  await page.route('**/api/recipes/search', async (route) => {
+    if (route.request().method() !== 'POST') return route.fallback();
+    expect(route.request().postDataJSON()).toMatchObject({ dayIndex: 6, weekOffset: 0 });
+    await route.fulfill({
+      json: {
+        data: {
+          topPick: {
+            ...builders.recipe({ id: MOCK_IDS.RECIPE_CHICKEN, name: 'Sunday Chicken' }),
+            reasons: [],
+          },
+          results: [],
+          appliedFilters: {},
+          searchMode: 'discovery',
+          nextCursor: null,
+          resultPath: 'browse',
         },
-      });
-    }
-  );
+      },
+    });
+  });
   await page.route(
     (url) => url.pathname === '/api/schedule/assign',
     async (route) => {
@@ -85,12 +94,15 @@ test('Tonight uses Toronto Sunday in a Tokyo browser and pins assignment', async
   await page.goto('/home');
   await expect(page.getByTestId('tonight-pivot-card')).toBeVisible();
   await page.getByTestId('discover-btn').click();
-  await expect(page.getByText('Sunday Chicken').first()).toBeVisible();
+  await expect(page).toHaveURL(
+    /\/recipes\?addToDay=6&weekOffset=0&referenceWeekStartDate=2026-10-05/
+  );
+  await page.getByTestId('recipe-card-top-pick').click();
   const assignment = page.waitForRequest(
     (request) =>
       request.method() === 'POST' && new URL(request.url()).pathname === '/api/schedule/assign'
   );
-  await page.getByTestId('quick-find-select').click();
+  await page.getByTestId('action-add-to-day').click();
   const request = await assignment;
   expect(request.postDataJSON()).toMatchObject({
     weekOffset: 0,
@@ -98,7 +110,9 @@ test('Tonight uses Toronto Sunday in a Tokyo browser and pins assignment', async
     recipeId: MOCK_IDS.RECIPE_CHICKEN,
   });
   expect(new URL(request.url()).searchParams.get('referenceWeekStartDate')).toBe('2026-10-05');
-  await expect(page.getByTestId('tonight-menu-card')).toBeVisible();
+  await expect(page).toHaveURL(
+    /\/planner\?success=1&dayIndex=6&weekOffset=0&referenceWeekStartDate=2026-10-05/
+  );
 });
 
 test('shared schedule handlers retain dated assignments and reject invalid references', async ({

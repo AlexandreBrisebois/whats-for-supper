@@ -24,27 +24,30 @@ GET `/api/recipes` SHALL accept optional boolean `gotoOnly`. True SHALL restrict
 
 ### Requirement: Offer compact GOTO filtering on Browse
 
-Browse SHALL offer Filters below its existing All/Discovery and presentation controls without a separate permanent GOTO toolbar button. Its chooser SHALL offer GOTO selection and access to the shared GOTO management disclosure. Apply SHALL commit the draft; Close, Escape or backdrop SHALL discard unsubmitted filter changes. GOTO selection SHALL survive All/Discovery and stack/list changes while Browse remains mounted.
+Browse SHALL offer an immediate Go-To Star toggle immediately right of its existing single All/Discovery toggle in the same toolbar. Activation SHALL toggle the applied membership filter without Apply. Browse SHALL NOT show the extra Filters row, filter flyout or Go-To management. Selection SHALL survive All/Discovery and stack/list changes while mounted.
 
-#### Scenario: Apply GOTO
-- **WHEN** a person selects GOTO in Browse Filters and applies
-- **THEN** GOTO becomes active, the chooser closes and the selected presentation requests page one with gotoOnly true
-
-#### Scenario: Dismiss draft
-- **WHEN** a person changes GOTO selection and dismisses without applying
-- **THEN** the applied filter and loaded collection remain unchanged by that draft
+#### Scenario: Toggle GOTO
+- **WHEN** a person activates the unpressed Star filter
+- **THEN** it becomes pressed and the current presentation requests page one with gotoOnly true without opening a sheet
+- **AND** no recipe membership or meal assignment changes
 
 #### Scenario: Change mode or presentation
-- **WHEN** a person switches All/Discovery or stack/list with GOTO applied
-- **THEN** the new collection retains GOTO filtering and its first-page request carries both current selections
+- **WHEN** a person switches All/Discovery or stack/list with GOTO active
+- **THEN** the first-page request retains GOTO and the current mode/presentation semantics
+- **AND** All/Discovery remains one mode toggle, not tabs or an All/Discovery/GOTO mode selector
 
 #### Scenario: Clear GOTO
-- **WHEN** a person clears and applies GOTO filtering
-- **THEN** Browse reloads page one using its current All/Discovery and presentation settings without a GOTO restriction
+- **WHEN** a person activates the pressed Star or clears the GOTO empty-state filter
+- **THEN** Browse reloads page one without GOTO, retaining the other selections
+
+#### Scenario: Accessible filter state
+- **WHEN** the toolbar is displayed in English or French
+- **THEN** Star has a localized membership-filter name, aria-pressed, keyboard activation, visible focus and selected meaning beyond colour
+- **AND** it remains distinct from a recipe’s membership star
 
 ### Requirement: Keep GOTO Browse navigation within its filtered collection
 
-With GOTO applied, Browse SHALL use returned filtered pagination totals in both All and Discovery. Every page, wrap, prefetch and retry SHALL carry the applied filter. Changing GOTO selection SHALL reset page/index and invalidate departed collection responses. A zero filtered result SHALL offer filter clearing and GOTO management without claiming the entire household library is empty.
+With GOTO applied, Browse SHALL use returned filtered pagination totals in both All and Discovery. Every page, wrap, prefetch and retry SHALL carry the applied filter. Changing GOTO selection SHALL reset page/index and invalidate departed collection responses. A zero filtered result SHALL offer filter clearing and guidance to star recipes without claiming the entire household library is empty.
 
 #### Scenario: All with GOTO
 - **WHEN** library summary reports 45 recipes and the GOTO-filtered page reports 3
@@ -56,7 +59,7 @@ With GOTO applied, Browse SHALL use returned filtered pagination totals in both 
 
 #### Scenario: Empty filtered collection
 - **WHEN** a current GOTO-filtered request succeeds with no eligible items
-- **THEN** Browse shows GOTO-specific no-match guidance with Clear filters and management access
+- **THEN** Browse shows GOTO-specific no-match guidance with Clear Go-To and guidance to star recipes without reopening management
 
 #### Scenario: Additional pages and recovery
 - **WHEN** a GOTO-filtered list appends or a stack loads an adjacent, wrapped or retried page
@@ -66,7 +69,7 @@ With GOTO applied, Browse SHALL use returned filtered pagination totals in both 
 
 A confirmed local GOTO membership change SHALL reload a mounted applied-GOTO Browse from page one, retaining its All/Discovery and presentation settings. A rejected save SHALL retain confirmed membership and current results. A failed reload after a successful save SHALL offer read retry without reporting the save as rejected or repeating it.
 
-#### Scenario: Remove from detail or management
+#### Scenario: Remove from recipe detail
 - **WHEN** removing an eligible recipe from GOTO saves successfully while Browse has GOTO applied
 - **THEN** the refreshed collection excludes it and uses the new filtered total
 
@@ -80,11 +83,29 @@ A confirmed local GOTO membership change SHALL reload a mounted applied-GOTO Bro
 
 ### Requirement: Preserve Browse usability on short viewports
 
-Adding the Filters row SHALL retain readable recipe content, reachable card actions, dismissal and stack/list navigation on short phone viewports. Controls SHALL NOT be clipped or text shrunk to force the added row into the fullscreen layout. Filters and management SHALL remain scrollable and dismissible under text growth and safe areas.
+Browse SHALL recover space by removing the extra Filters row first and preserve current preferred stack/card dimensions on the normal phone viewport. Size reduction SHALL apply only when genuinely less viewport space is available, not globally lower preferred dimensions. Controls SHALL keep 48 by 48 CSS px targets, readable labels and visible focus; content SHALL reflow/scroll without horizontal overflow or traps, respecting safe areas and reduced motion.
 
-#### Scenario: Short portrait and landscape phones
-- **WHEN** Browse displays its Filters row at 320x568, 390x667 or 667x375 CSS px in either presentation
-- **THEN** recipe content, card actions and Close remain reachable without horizontal overflow, and navigation remains operable
+#### Scenario: Preserve normal-phone baseline size
+- **WHEN** Browse is compared before and after the toolbar change at the same normal-phone reference viewport, content, locale, text scale and safe-area conditions
+- **THEN** preferred stack/card width and height remain unchanged within 1 CSS px rounding and the image area is not reduced solely for the toolbar change
+- **AND** the removed Filters row recovers space; moving the stack upward does not count as shrinking it
+
+#### Scenario: Adaptive fallback does not lower preferred size
+- **WHEN** Browse adapts to a genuinely smaller available viewport and is then shown at the normal-phone reference viewport
+- **THEN** the smaller-screen constraints do not reduce the reference viewport’s preferred stack/card size
+
+#### Scenario: Initial short portrait view
+- **WHEN** stack Browse opens at 320x568 or 390x667 CSS px at ordinary text size
+- **THEN** the initial viewport shows the toolbar, a recognizable recipe image, title, recipe-opening/selection action and stack navigation without scrolling first
+- **AND** the extra Filters row does not occupy height
+
+#### Scenario: Short landscape and enlarged content
+- **WHEN** either presentation uses 667x375 CSS px or 200% text, including French and long recipe names
+- **THEN** toolbar dismissal and navigation stay available and essential body actions remain reachable by intentional content scrolling without clipping, horizontal overflow or reduced touch targets
+
+#### Scenario: List and tablet
+- **WHEN** Browse uses list presentation or iPad portrait/landscape
+- **THEN** useful recipe content starts in the viewport and navigation, paging, filter state and Close remain operable
 
 ## MODIFIED Requirements
 

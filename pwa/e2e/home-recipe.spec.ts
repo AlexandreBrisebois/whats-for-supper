@@ -1411,7 +1411,7 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
     await expect(page.getByTestId('tonight-pivot-card')).not.toBeVisible();
   });
 
-  test('Quick Find from pivot card shows TonightMenuCard immediately and calls assign API', async ({
+  test('ready Go-To confirmation shows TonightMenuCard immediately and calls assign API', async ({
     page,
   }) => {
     // Override fill-the-gap to return one recipe
@@ -1467,17 +1467,17 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
       }
     );
 
+    await page.route('**/api/goto/active', (route) =>
+      route.fulfill({
+        json: {
+          data: { recipeId: MOCK_IDS.RECIPE_LASAGNA, description: 'Test Lasagna', status: 'ready' },
+        },
+      })
+    );
     await page.goto('/home');
     await expect(page.getByTestId('tonight-pivot-card')).toBeVisible({ timeout: 5000 });
 
-    // Click Quick Find (discover-btn)
-    await page.getByTestId('discover-btn').click();
-
-    // Wait for quick-find-modal
-    await expect(page.getByTestId('quick-find-modal')).toBeVisible({ timeout: 3000 });
-
-    // Click the first recipe (quick-find-select)
-    await page.getByTestId('quick-find-select').first().click();
+    await page.getByTestId('confirm-goto-btn').click();
 
     // TonightMenuCard must appear immediately (optimistic — within 300ms)
     await expect(page.getByTestId('tonight-menu-card')).toBeVisible({ timeout: 300 });

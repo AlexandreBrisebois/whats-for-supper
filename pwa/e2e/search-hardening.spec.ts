@@ -726,317 +726,6 @@ test('GOTO mock continuations retain context and recheck saved membership', asyn
   expect(observation.mismatch).toBe(409);
 });
 
-for (const surface of ['browse', 'search'] as const) {
-  test(`${surface} management separates confirmed saves, failed reads and cancelled filter drafts`, async ({
-    page,
-    baseURL,
-  }) => {
-    await setupCommonRoutes(page);
-    await page
-      .context()
-      .addCookies([{ name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: baseURL! }]);
-    await page.addInitScript(
-      (id) =>
-        localStorage.setItem(
-          'family-storage',
-          JSON.stringify({ state: { selectedFamilyMemberId: id }, version: 0 })
-        ),
-      MOCK_IDS.MEMBER_ALEX
-    );
-    const entry = surface === 'browse' ? 'browse-filters-entry' : 'mobile-filters-button';
-    const filter = surface === 'browse' ? 'browse-filter-goto' : 'mobile-filter-goto';
-    const apply = surface === 'browse' ? 'browse-filters-apply' : 'mobile-filter-apply';
-    await page.goto(surface === 'browse' ? '/browse-all-stack' : '/recipes');
-    await page.evaluate(
-      async (ids) => {
-        await fetch('/api/goto', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            items: [
-              { recipeId: ids.ready, description: 'Family Lasagna', status: 'ready' },
-              { recipeId: ids.pending, description: 'Pending family soup', status: 'pending' },
-            ],
-          }),
-        });
-      },
-      { ready: MOCK_IDS.RECIPE_LASAGNA, pending: MOCK_IDS.RECIPE_GOTO_STUB }
-    );
-    let failList = true;
-    await page.route('**/api/goto', async (route) => {
-      if (route.request().method() === 'GET' && failList) {
-        failList = false;
-        return route.fulfill({ status: 400, json: { message: 'List unavailable' } });
-      }
-      await route.fallback();
-    });
-    await page.getByTestId(entry).click();
-    await expect(page.getByTestId('goto-management-toggle')).toHaveAttribute(
-      'aria-expanded',
-      'false'
-    );
-    await page.getByTestId('goto-management-toggle').click();
-    await expect(page.getByRole('dialog').getByRole('alert')).toContainText('Could not load GOTOs');
-    await page.getByRole('button', { name: 'Retry', exact: true }).click();
-    await expect(page.getByTestId('goto-pending-description')).toHaveText('Pending family soup');
-    await page.getByTestId(filter).click();
-    await page.getByTestId(apply).click();
-    await expect(
-      page.getByTestId(surface === 'browse' ? 'stack-card-front' : 'recipe-card-top-pick')
-    ).toBeVisible();
-    let putCalls = 0;
-    let failSave = true;
-    let failRefresh = false;
-    await page.route('**/api/goto', async (route) => {
-      if (route.request().method() === 'PUT') {
-        putCalls++;
-        if (failSave) {
-          failSave = false;
-          return route.fulfill({ status: 400, json: { message: 'Save rejected' } });
-        }
-      }
-      await route.fallback();
-    });
-    await page.route(
-      (url) => url.pathname === '/api/recipes' || url.pathname === '/api/recipes/search',
-      async (route) => {
-        if (failRefresh) {
-          failRefresh = false;
-          return route.fulfill({ status: 400, json: { message: 'Read rejected after save' } });
-        }
-        await route.fallback();
-      }
-    );
-    await page.getByTestId(entry).click();
-    await page.getByTestId('goto-management-toggle').click();
-    await page.getByRole('button', { name: 'Remove Family Lasagna', exact: true }).click();
-    await expect(page.getByRole('dialog').getByRole('alert')).toContainText(
-      'Could not remove GOTO'
-    );
-    await expect(page.getByTestId('goto-recipe-name')).toHaveText('Family Lasagna');
-    failRefresh = true;
-    await page.getByRole('button', { name: 'Remove Family Lasagna', exact: true }).click();
-    await expect(page.getByTestId('goto-recipe-name')).not.toBeVisible();
-    // A draft filter change cannot undo the confirmed membership save.
-    await page.getByTestId(surface === 'browse' ? filter : `${filter}-active`).click();
-    await page.keyboard.press('Escape');
-    await expect(page.getByTestId(entry)).toContainText('1');
-    await page.getByRole('button', { name: 'Retry', exact: true }).click();
-    await expect(
-      page.getByTestId(surface === 'browse' ? 'browse-goto-empty' : 'filter-no-results')
-    ).toBeVisible();
-    expect(putCalls).toBe(2);
-    await page.getByTestId(entry).click();
-    await page.getByTestId('goto-management-toggle').click();
-    await expect(page.getByTestId('goto-pending-description')).toHaveText('Pending family soup');
-    await page.getByTestId('add-goto-btn').click();
-    await expect(page.getByTestId(apply)).not.toBeVisible();
-    await expect(page.getByTestId('goto-search-library')).toBeVisible();
-    await page.keyboard.press('Escape');
-    await expect(page.getByTestId(entry)).toBeFocused();
-    expect(putCalls).toBe(2);
-  });
-}
-
-for (const appLocale of ['en', 'fr'] as const) {
-  test.describe(`GOTO rendered review ${appLocale}`, () => {
-    test.use({ appLocale });
-    for (const surface of ['browse', 'search'] as const) {
-      test(`${surface} Filters remain readable and reachable through text growth and acquisition`, async ({
-        page,
-        baseURL,
-      }) => {
-        test.setTimeout(120_000);
-        await setupCommonRoutes(page);
-        await page
-          .context()
-          .addCookies([{ name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: baseURL! }]);
-        await page.addInitScript(
-          (id) =>
-            localStorage.setItem(
-              'family-storage',
-              JSON.stringify({ state: { selectedFamilyMemberId: id }, version: 0 })
-            ),
-          MOCK_IDS.MEMBER_ALEX
-        );
-        await page.emulateMedia({ reducedMotion: 'reduce' });
-        await page.goto(surface === 'browse' ? '/browse-all-stack' : '/recipes');
-        // Keep framework development badges out of product captures; application feedback remains visible.
-        await page.addStyleTag({ content: 'nextjs-portal { display: none !important; }' });
-        await page.evaluate(
-          async (ids) =>
-            fetch('/api/goto', {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                items: [
-                  {
-                    recipeId: ids.ready,
-                    description:
-                      'Recette familiale aux légumes du jardin et aux fines herbes pour toute la famille',
-                    status: 'ready',
-                  },
-                  {
-                    recipeId: ids.pending,
-                    description:
-                      'Une très longue recette familiale en préparation qui reste accessible dans la liste',
-                    status: 'pending',
-                  },
-                ],
-              }),
-            }),
-          { ready: MOCK_IDS.RECIPE_LASAGNA, pending: MOCK_IDS.RECIPE_GOTO_STUB }
-        );
-        const entry = surface === 'browse' ? 'browse-filters-entry' : 'mobile-filters-button';
-        const chip = surface === 'browse' ? 'browse-filter-goto' : 'mobile-filter-goto';
-        const apply = surface === 'browse' ? 'browse-filters-apply' : 'mobile-filter-apply';
-        await page.getByTestId(entry).click();
-        await page.getByTestId(chip).click();
-        await page.getByTestId(apply).click();
-        await expect(page.getByTestId(entry)).toHaveAccessibleName(
-          surface === 'browse'
-            ? appLocale === 'fr'
-              ? 'Filtres (1)'
-              : 'Filters (1)'
-            : appLocale === 'fr'
-              ? 'Filtres actifs : 1'
-              : 'Filters, 1 active'
-        );
-        for (const [width, height] of [
-          [320, 568],
-          [390, 667],
-          [412, 915],
-          [667, 375],
-          [820, 1180],
-          [1180, 820],
-        ]) {
-          await page.setViewportSize({ width, height });
-          await page.screenshot({
-            path: `../.task/goto-review/after/${appLocale}-${surface}-${width}x${height}-collection.png`,
-            fullPage: true,
-            animations: 'disabled',
-          });
-          for (const scale of [1, 2]) {
-            await page.getByTestId(entry).focus();
-            await page.keyboard.press('Enter');
-            const dialog = page.getByRole('dialog');
-            await expect(
-              page.getByTestId(surface === 'browse' ? chip : `${chip}-active`)
-            ).toHaveAttribute('aria-pressed', 'true');
-            await page.getByTestId('goto-management-toggle').click();
-            await expect(page.getByTestId('goto-pending-description')).toBeVisible();
-            await dialog.evaluate((root, factor) => {
-              const nodes = Array.from(root.querySelectorAll<HTMLElement>('*')).filter(
-                (node) => node instanceof HTMLElement
-              );
-              const sizes = nodes.map((node) => ({
-                node,
-                font: parseFloat(getComputedStyle(node).fontSize),
-                line: parseFloat(getComputedStyle(node).lineHeight),
-              }));
-              for (const { node, font, line } of sizes) {
-                node.style.fontSize = `${font * factor}px`;
-                if (Number.isFinite(line)) node.style.lineHeight = `${line * factor}px`;
-              }
-            }, scale);
-            await dialog.evaluate((node) => {
-              node.scrollTop = 0;
-              node.querySelectorAll<HTMLElement>('*').forEach((child) => {
-                if (child.scrollHeight > child.clientHeight) child.scrollTop = 0;
-              });
-            });
-            await expect(
-              dialog.getByRole('button', {
-                name: appLocale === 'fr' ? 'Fermer' : 'Close',
-                exact: true,
-              })
-            ).toBeInViewport({ ratio: 1 });
-            if (surface === 'browse') {
-              const close = page.getByTestId('browse-filters-close');
-              const target = await close.boundingBox();
-              expect(target!.width).toBeGreaterThanOrEqual(44);
-              expect(target!.height).toBeGreaterThanOrEqual(44);
-              // Text growth may move Close to a new row; keep both controls within the header.
-              expect(
-                await close.evaluate((button) => {
-                  const header = button.parentElement!;
-                  const bounds = header.getBoundingClientRect();
-                  return Array.from(header.children).every((child) => {
-                    const rect = child.getBoundingClientRect();
-                    return rect.left >= bounds.left && rect.right <= bounds.right;
-                  });
-                })
-              ).toBe(true);
-            }
-            await dialog.screenshot({
-              path: `../.task/goto-review/after/${appLocale}-${surface}-${width}x${height}-${scale}x-filters-top.png`,
-              animations: 'disabled',
-            });
-            await page.getByTestId('goto-pending-description').scrollIntoViewIfNeeded();
-            await dialog.screenshot({
-              path: `../.task/goto-review/after/${appLocale}-${surface}-${width}x${height}-${scale}x-management.png`,
-              animations: 'disabled',
-            });
-            // Center explicitly: nearest scrolling rounds fractional offsets and can leave a 0.2 px edge outside the viewport.
-            await page
-              .getByTestId(apply)
-              .evaluate((node) => node.scrollIntoView({ block: 'center' }));
-            await expect(page.getByTestId(apply)).toBeInViewport({ ratio: 1 });
-            expect(
-              await page.getByTestId(apply).evaluate((button) => {
-                const bounds = button.getBoundingClientRect();
-                const text = document.createRange();
-                text.selectNodeContents(button);
-                return Array.from(text.getClientRects()).every(
-                  (rect) => rect.left >= bounds.left + 12 && rect.right <= bounds.right - 12
-                );
-              })
-            ).toBe(true);
-
-            expect(await dialog.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(
-              true
-            );
-            expect(
-              await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)
-            ).toBe(true);
-            await dialog.screenshot({
-              path: `../.task/goto-review/after/${appLocale}-${surface}-${width}x${height}-${scale}x-filters.png`,
-              animations: 'disabled',
-            });
-            await page.getByTestId('add-goto-btn').scrollIntoViewIfNeeded();
-            await page.getByTestId('add-goto-btn').click();
-            await expect(page.getByTestId('goto-search-library')).toBeVisible();
-            await page.getByRole('dialog').evaluate((root, factor) => {
-              const sizes = Array.from(root.querySelectorAll<HTMLElement>('*'))
-                .filter((node) => node instanceof HTMLElement)
-                .map((node) => ({
-                  node,
-                  font: parseFloat(getComputedStyle(node).fontSize),
-                  line: parseFloat(getComputedStyle(node).lineHeight),
-                }));
-              for (const { node, font, line } of sizes) {
-                node.style.fontSize = `${font * factor}px`;
-                if (Number.isFinite(line)) node.style.lineHeight = `${line * factor}px`;
-              }
-            }, scale);
-            await page.getByTestId('goto-photo').scrollIntoViewIfNeeded();
-            await expect(page.getByTestId('goto-photo')).toBeInViewport({ ratio: 1 });
-            await page.getByTestId('goto-acquisition-close').scrollIntoViewIfNeeded();
-            await expect(page.getByTestId('goto-acquisition-close')).toBeInViewport({ ratio: 1 });
-            await page.keyboard.press('Escape');
-            await expect(page.getByTestId(entry)).toBeFocused();
-            await page.getByTestId(entry).click();
-            // Backdrop and Escape both discard drafts and restore the entry.
-            if (scale === 1) await page.mouse.click(2, 2);
-            else await page.keyboard.press('Escape');
-            await expect(page.getByTestId(entry)).toBeFocused();
-          }
-        }
-      });
-    }
-  });
-}
-
 test('changed GOTO controls retain rendered text, indicator and focus contrast', async ({
   page,
   baseURL,
@@ -1104,14 +793,8 @@ test('changed GOTO controls retain rendered text, indicator and focus contrast',
   const helper = page.getByTestId('goto-setup-helper');
   await expect(helper).toBeVisible();
   await recordGotoContrast(helper.locator('p'), '../.task/goto-review/contrast/home-helper.json');
-  const link = page.getByTestId('add-goto-btn');
-  await link.focus();
-  await page.keyboard.press('Tab');
-  await page.keyboard.press('Shift+Tab');
-  await recordGotoContrast(link, '../.task/goto-review/contrast/home-link-focus.json', true);
-  expect((await link.boundingBox())!.height).toBeGreaterThanOrEqual(48);
+  await expect(page.getByTestId('add-goto-btn')).toHaveCount(0);
   await page.goto('/browse-all-stack');
-  await page.getByTestId('browse-filters-entry').click();
   const filter = page.getByTestId('browse-filter-goto');
   await filter.focus();
   await page.keyboard.press('Tab');
@@ -1229,53 +912,29 @@ for (const appLocale of ['en', 'fr'] as const) {
 }
 
 for (const surface of ['browse', 'search'] as const) {
-  for (const choice of [
-    { testId: 'goto-search-library', path: '/recipes', mode: null },
-    { testId: 'goto-describe', path: '/capture', mode: 'describe' },
-    { testId: 'goto-photo', path: '/capture', mode: 'photo' },
-  ]) {
-    test(`${surface} acquisition destination ${choice.testId} opens without creating or assigning`, async ({
-      page,
-      baseURL,
-    }) => {
-      await setupCommonRoutes(page);
-      await page
-        .context()
-        .addCookies([{ name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: baseURL! }]);
-      await page.addInitScript(
-        (id) =>
-          localStorage.setItem(
-            'family-storage',
-            JSON.stringify({ state: { selectedFamilyMemberId: id }, version: 0 })
-          ),
-        MOCK_IDS.MEMBER_ALEX
-      );
-      const writes: string[] = [];
-      page.on('request', (request) => {
-        const path = new URL(request.url()).pathname;
-        if (
-          path.startsWith('/api/') &&
-          !['GET', 'HEAD'].includes(request.method()) &&
-          path !== '/api/recipes/search'
-        )
-          writes.push(`${request.method()} ${path}`);
-      });
-      await page.goto(surface === 'browse' ? '/browse-all-stack' : '/recipes');
-      await page
-        .getByTestId(surface === 'browse' ? 'browse-filters-entry' : 'mobile-filters-button')
-        .click();
-      await page.getByTestId('goto-management-toggle').click();
-      await page.getByTestId('add-goto-btn').click();
-      await page.getByTestId(choice.testId).click();
-      await expect(page).toHaveURL(
-        (url) =>
-          url.pathname === choice.path &&
-          (!choice.mode ||
-            (url.searchParams.get('intent') === 'goto' &&
-              url.searchParams.get('mode') === choice.mode))
-      );
-      await expect(page.getByTestId('quick-find-modal')).not.toBeVisible();
-      expect(writes).toEqual([]);
-    });
-  }
+  test(`${surface} has membership filtering without separate management`, async ({ page }) => {
+    await setupCommonRoutes(page);
+    await page
+      .context()
+      .addCookies([
+        { name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: 'http://127.0.0.1:3000' },
+      ]);
+    await page.addInitScript(
+      (id) =>
+        localStorage.setItem(
+          'family-storage',
+          JSON.stringify({ state: { selectedFamilyMemberId: id }, version: 0 })
+        ),
+      MOCK_IDS.MEMBER_ALEX
+    );
+    await page.goto(
+      surface === 'browse' ? '/browse-all-stack?gotoOnly=true&manageGoto=true' : '/recipes'
+    );
+    if (surface === 'search') await page.getByTestId('mobile-filters-button').click();
+    await expect(
+      page.getByTestId(surface === 'browse' ? 'browse-filter-goto' : 'mobile-filter-goto')
+    ).toBeVisible();
+    await expect(page.getByTestId('goto-management-toggle')).toHaveCount(0);
+    await expect(page.getByTestId('add-goto-btn')).toHaveCount(0);
+  });
 }

@@ -771,7 +771,7 @@ export default function MinimalCapture({
           : "We're building your recipe. Hang tight \u2014 it'll be ready shortly.";
 
     // GOTO uses a different destination after success
-    const gotoDest = ROUTES.GOTO_MANAGEMENT;
+    const gotoDest = ROUTES.HOME;
 
     return (
       <div
@@ -797,7 +797,7 @@ export default function MinimalCapture({
             onClick={() => router.push(gotoDest as any)}
             className="rounded-2xl px-8"
           >
-            {t('capture.backToGotos', 'Back to GOTOs')}
+            {t('capture.done', 'Done')}
           </Button>
         ) : (
           <div className="flex flex-col gap-3 w-full max-w-xs">

@@ -345,12 +345,11 @@ for (const refreshFails of [false, true]) {
         moves.push(route);
       }
     );
-    await page.route(
-      (url) => url.pathname === '/api/schedule' && url.searchParams.has('referenceWeekStartDate'),
-      (route) => {
-        reads.push(route);
-      }
-    );
+    const refreshRead = (url: URL) =>
+      url.pathname === '/api/schedule' && url.searchParams.has('referenceWeekStartDate');
+    await page.route(refreshRead, (route) => {
+      reads.push(route);
+    });
     const move = async (from: number) => {
       await page.getByTestId(`day-card-${from}`).getByTestId('planner-drag-handle').focus();
       await page.keyboard.press('ArrowDown');
@@ -401,12 +400,19 @@ for (const refreshFails of [false, true]) {
       await expect(page.getByTestId('day-card-1')).toContainText('Second supper');
       await expect(page.getByTestId('day-card-3')).toContainText('Third supper');
       await expect(page.getByTestId('toast')).toHaveCount(0);
-      await page.unroute(
-        (url) => url.pathname === '/api/schedule' && url.searchParams.has('referenceWeekStartDate')
-      );
+      await page.unroute(refreshRead);
       await page.reload();
       await expect(page.getByTestId('day-card-3')).toContainText('Third supper');
       await expect(page.getByTestId('day-card-0')).toContainText('First supper');
+      // A resumed reloaded document reads the persisted plan outside the held
+      // movement-refresh window. Its request must use the ordinary fixture.
+      const resumedRead = page.waitForResponse(
+        (response) =>
+          new URL(response.url()).pathname === '/api/schedule' &&
+          new URL(response.url()).searchParams.has('referenceWeekStartDate')
+      );
+      await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pageshow')));
+      await resumedRead;
     }
     expect(moves).toHaveLength(2);
     expect(reads).toHaveLength(1);

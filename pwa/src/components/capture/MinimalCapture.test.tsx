@@ -298,19 +298,19 @@ describe('MinimalCapture — preservation unit tests', () => {
   /**
    * Validates: Requirement 2.5
    *
-   * The "Back to GOTOs" button must be present on the GOTO success screen.
+   * The "Done" button must be present on the GOTO success screen.
    * On unfixed code the component navigates away immediately, but the button
    * is part of the success screen JSX rendered in the same commit.
    *
    * MUST PASS on unfixed code (structural assertion).
    */
-  it('keeps GOTO capture waiting until explicit Back to GOTOs', async () => {
+  it('keeps GOTO capture waiting until explicit Done', async () => {
     await renderAndTriggerSuccess('goto');
     expect(screen.getByTestId('capture-success-screen')).toBeVisible();
     expect(mockPush).not.toHaveBeenCalled();
-    const button = screen.getByRole('button', { name: 'Back to GOTOs' });
+    const button = screen.getByRole('button', { name: 'Done' });
     fireEvent.click(button);
-    expect(mockPush).toHaveBeenCalledWith('/browse-all-stack?gotoOnly=true&manageGoto=true');
+    expect(mockPush).toHaveBeenCalledWith('/home');
   });
 
   /**
@@ -382,7 +382,7 @@ describe('MinimalCapture — property-based preservation tests', () => {
           // Structural invariant: when isGoto=false, destination is always /home
           // This mirrors the useEffect logic:
           //   if (onSuccess) { dest = isGoto ? ROUTES.PROFILE_SETTINGS : ROUTES.HOME; push(dest) }
-          const dest = isGoto ? '/browse-all-stack?gotoOnly=true&manageGoto=true' : '/home';
+          const dest = isGoto ? '/home' : '/home';
           expect(dest).toBe('/home');
 
           // The invariant holds for all recipe names — name does not affect routing
@@ -420,13 +420,13 @@ describe('MinimalCapture — property-based preservation tests', () => {
           const heading = isGoto ? 'Your GOTO is being prepared' : 'Captured!';
           expect(heading).toBe('Your GOTO is being prepared');
 
-          // Structural invariant: when isGoto=true, button label is "Back to GOTOs"
-          const btnLabel = isGoto ? 'Back to GOTOs' : 'Back to Home';
-          expect(btnLabel).toBe('Back to GOTOs');
+          // Structural invariant: when isGoto=true, button label is "Done"
+          const btnLabel = isGoto ? 'Done' : 'Back to Home';
+          expect(btnLabel).toBe('Done');
 
-          // Structural invariant: when isGoto=true, destination is Browse GOTO management
-          const dest = isGoto ? '/browse-all-stack?gotoOnly=true&manageGoto=true' : '/home';
-          expect(dest).toBe('/browse-all-stack?gotoOnly=true&manageGoto=true');
+          // Structural invariant: when isGoto=true, destination is Home
+          const dest = isGoto ? '/home' : '/home';
+          expect(dest).toBe('/home');
 
           // Post-fix invariant: auto-navigation must NOT occur for isGoto=true
           // (encoded as a structural assertion — runtime behavior verified in unit test)

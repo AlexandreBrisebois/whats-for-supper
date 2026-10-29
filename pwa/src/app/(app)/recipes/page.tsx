@@ -1,7 +1,6 @@
 'use client';
 
 import { useFamilyStore } from '@/store/familyStore';
-import { GotoAcquisitionSheet } from '@/components/recipes/GotoAcquisitionSheet';
 import { useUiStore } from '@/store/uiStore';
 
 import { useTodayStore } from '@/store/todayStore';
@@ -86,7 +85,6 @@ export default function RecipesPage() {
   const gotoMembershipVersion = useFamilyStore((state) => state.gotoMembershipVersion);
   const handledGotoVersionRef = useRef(gotoMembershipVersion);
   const filtersEntryRef = useRef<HTMLButtonElement>(null);
-  const [acquisitionOpen, setAcquisitionOpen] = useState(false);
   const searchParams = useSearchParams();
 
   const [query, setQuery] = useState('');
@@ -981,19 +979,8 @@ export default function RecipesPage() {
         {similarToRecipeId}
       </div>
 
-      {acquisitionOpen && (
-        <GotoAcquisitionSheet
-          returnFocus={filtersEntryRef}
-          onClose={() => setAcquisitionOpen(false)}
-        />
-      )}
-
       {isFiltersOpen && (
         <RecipeFiltersSheet
-          onAddGoto={() => {
-            setIsFiltersOpen(false);
-            setAcquisitionOpen(true);
-          }}
           activeFilters={activeFilters}
           activePreferences={activePreferences}
           filterMetadata={filterMetadata}

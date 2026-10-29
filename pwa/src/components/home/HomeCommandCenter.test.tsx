@@ -23,6 +23,7 @@ const mocks = vi.hoisted(() => ({
   todayStatus: 0 as 0 | 2 | 3,
   nonCooking: null as { kind: string; customLabel: string | null } | null,
   todayString: '2026-05-07',
+  calendarFailure: false,
 }));
 
 vi.mock('next/navigation', () => ({
@@ -179,6 +180,7 @@ vi.mock('@/store/todayStore', () => ({
   useTodayStore: Object.assign(
     () => ({
       calendar: fixtureCalendar(),
+      calendarError: mocks.calendarFailure ? 'Calendar unavailable' : null,
       currentRecipe: mocks.currentRecipe,
       status: mocks.todayStatus,
       nonCooking: mocks.nonCooking,
@@ -193,7 +195,10 @@ vi.mock('@/store/todayStore', () => ({
       getState: () => ({
         calendar: fixtureCalendar(),
         calendarIsFresh: () => true,
-        ensureCalendar: async () => fixtureCalendar(),
+        ensureCalendar: async () => {
+          if (mocks.calendarFailure) throw new Error('Calendar unavailable');
+          return fixtureCalendar();
+        },
         currentRecipe: mocks.currentRecipe,
         applyServerUpdate: mocks.applyServerUpdate,
       }),
@@ -470,6 +475,37 @@ describe('HomeCommandCenter', () => {
     fireEvent.click(screen.getByTestId('discover-btn'));
     expect(await screen.findByTestId('quick-find-select')).toBeInTheDocument();
     expect(mocks.markOrderedIn).not.toHaveBeenCalled();
+  });
+
+  it('retries unavailable authoritative calendar before navigating to today Search', async () => {
+    mocks.calendarFailure = true;
+    render(<HomeCommandCenter todaysRecipe={null} todayStatus={0} />);
+    fireEvent.click(screen.getByTestId('discover-btn'));
+    await screen.findByRole('button', { name: 'Try again' });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(mocks.push).not.toHaveBeenCalled();
+    mocks.calendarFailure = false;
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    await waitFor(() =>
+      expect(mocks.push).toHaveBeenCalledWith(
+        '/recipes?addToDay=3&weekOffset=0&referenceWeekStartDate=2026-05-04'
+      )
+    );
+    expect(mocks.assignRecipe).not.toHaveBeenCalled();
+  });
+
+  it('opens the existing planner Search for authoritative today without assignment', async () => {
+    render(<HomeCommandCenter todaysRecipe={null} todayStatus={0} />);
+    fireEvent.click(screen.getByTestId('discover-btn'));
+    await waitFor(() =>
+      expect(mocks.push).toHaveBeenCalledWith(
+        '/recipes?addToDay=3&weekOffset=0&referenceWeekStartDate=2026-05-04'
+      )
+    );
+    expect(screen.queryByTestId('quick-find-select')).not.toBeInTheDocument();
+    expect(mocks.assignRecipe).not.toHaveBeenCalled();
   });
 
   it('keeps the existing empty-day fallback and planned-meal controls', async () => {

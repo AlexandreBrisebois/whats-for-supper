@@ -145,19 +145,22 @@ test.describe('Bug Condition A — Glob/Predicate LIFO Bypass', () => {
     await page.getByPlaceholder(/our family spaghetti/i).fill('Our family spaghetti');
 
     // Track the GOTO PUT to confirm it was called
-    const settingsRequest = page.waitForRequest(
-      (req) => req.url().includes('/api/goto') && req.method() === 'PUT'
-    );
+    const membershipWrites: string[] = [];
+    page.on('request', (req) => {
+      if (new URL(req.url()).pathname === '/api/goto' && req.method() === 'PUT')
+        membershipWrites.push(req.url());
+    });
 
     await page.getByRole('button', { name: /synthesize recipe/i }).click();
 
     // Wait for the GOTO PUT to complete
-    await settingsRequest;
+    await expect(page.getByTestId('capture-success-screen')).toBeVisible();
 
     // EXPECTED (correct): per-test handler stored the value, success screen is visible
     // ACTUAL (buggy): glob handler intercepted, per-test handler never fired,
     //   success screen may not render or useEffect navigates away immediately
-    await expect(page.getByText(/your goto is being prepared/i)).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByTestId('capture-success-screen')).toBeVisible({ timeout: 10_000 });
+    expect(membershipWrites).toEqual([]);
   });
 });
 
@@ -323,7 +326,7 @@ test.describe('Bug Condition C — GOTO Auto-Navigation', () => {
    * PASSES after Fix C: useEffect only fires for isGoto=false; GOTO success screen
    * stays visible until the user clicks "Back to GOTOs".
    */
-  test('GOTO success screen stays visible until user clicks Back to GOTOs', async ({ page }) => {
+  test('legacy description capture uses the ordinary queued state', async ({ page }) => {
     await page.goto('/capture?intent=goto');
 
     // Open the describe form
@@ -336,21 +339,24 @@ test.describe('Bug Condition C — GOTO Auto-Navigation', () => {
     const describeRequest = page.waitForRequest(
       (req) => req.url().includes('/api/recipes/describe') && req.method() === 'POST'
     );
-    const settingsRequest = page.waitForRequest(
-      (req) => req.url().includes('/api/goto') && req.method() === 'PUT'
-    );
+    const membershipWrites: string[] = [];
+    page.on('request', (req) => {
+      if (new URL(req.url()).pathname === '/api/goto' && req.method() === 'PUT')
+        membershipWrites.push(req.url());
+    });
 
     await page.getByRole('button', { name: /synthesize recipe/i }).click();
 
-    await Promise.all([describeRequest, settingsRequest]);
+    await describeRequest;
 
     // EXPECTED (correct): success screen is visible — useEffect does NOT auto-navigate for isGoto=true
     // ACTUAL (buggy): useEffect calls router.push(ROUTES.PROFILE_SETTINGS) immediately,
     //   unmounting the success screen before this assertion can find the element
-    await expect(page.getByText(/your goto is being prepared/i)).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByTestId('capture-success-screen')).toBeVisible({ timeout: 10_000 });
+    expect(membershipWrites).toEqual([]);
 
     // Also assert the "Back to GOTOs" button is present (user must click explicitly)
-    await expect(page.getByRole('button', { name: /back to gotos/i })).toBeVisible();
+    await expect(page.getByTestId('capture-success-cta')).toHaveCount(0);
 
     // Assert we have NOT been auto-navigated away
     await expect(page).not.toHaveURL(/\/profile\/settings/);
@@ -362,7 +368,7 @@ test.describe('Bug Condition C — GOTO Auto-Navigation', () => {
    * Same as above but using the photo capture path (not describe-it).
    * Ensures Bug C affects both capture paths.
    */
-  test('GOTO success screen stays visible after photo capture', async ({ page }) => {
+  test('legacy photo capture uses the ordinary queued state', async ({ page }) => {
     await page.goto('/capture?intent=goto&mode=photo');
 
     const fileInput = page.locator('input[type="file"][capture="environment"]');
@@ -372,17 +378,20 @@ test.describe('Bug Condition C — GOTO Auto-Navigation', () => {
       timeout: 10_000,
     });
 
-    const settingsRequest = page.waitForRequest(
-      (req) => req.url().includes('/api/goto') && req.method() === 'PUT'
-    );
+    const membershipWrites: string[] = [];
+    page.on('request', (req) => {
+      if (new URL(req.url()).pathname === '/api/goto' && req.method() === 'PUT')
+        membershipWrites.push(req.url());
+    });
 
     await page.getByRole('button', { name: /save recipe/i }).click();
 
-    await settingsRequest;
+    await expect(page.getByTestId('capture-success-screen')).toBeVisible();
 
     // EXPECTED (correct): success screen is visible
     // ACTUAL (buggy): useEffect navigates away immediately
-    await expect(page.getByText(/your goto is being prepared/i)).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByTestId('capture-success-screen')).toBeVisible({ timeout: 10_000 });
+    expect(membershipWrites).toEqual([]);
 
     // Assert we have NOT been auto-navigated away
     await expect(page).not.toHaveURL(/\/profile\/settings/);

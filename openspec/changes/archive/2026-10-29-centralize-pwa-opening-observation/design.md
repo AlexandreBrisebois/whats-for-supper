@@ -52,6 +52,21 @@ Keep the existing bounded standard OTLP/HTTP JSON exporter for this slice: `POST
 
 `timeUnixNano` remains the server's observation/export time, not the precise browser opening time. Sentrame receipt time is a separate clock. No browser timestamp is accepted merely to imply more exact chronology; no dwell, presence, attention, native duration or adjacency estimate is inferred.
 
+### Application release metadata
+
+As requested after F1-3 completion, include standard OTel `service.version` on
+both browser and server log resources, alongside their distinct `service.name`.
+Read the existing server-owned `WFS_VERSION` deployment metadata (trimmed), with
+literal `unknown` when absent or blank. Use the actual immutable app release or
+build SHA, never a per-request/process identifier, browser input or receiver/SDK
+version. The Synology release template already forwards `WFS_VERSION`; repository
+Compose must forward it too, using its required release `TAG` in production when
+no explicit `WFS_VERSION` is supplied. This resource metadata adds no record
+attribute and changes neither producer authority nor document lifetime. No SDK,
+provider, trace collection or additional telemetry feature is needed. The local
+Sentrame developer guide's "Send your app version" section requires resource
+placement; actual durable receiver projection remains separately unqualified.
+
 ### Strict forwarding without promoted authority
 
 Add a dedicated `reportBrowserAppOpened({ screen })` Server Action. Its input is one plain object with exactly one own field, `screen`, whose value must be a member of the closed enum; reject arrays, null, unknown fields/values and oversized/malformed shapes. Do not return receipt confirmation or echo rejected values. Fix name, body, attributes, destination, timestamp and browser credential on the server. No client-selected producer, event name or destination is accepted. Retain Next.js same-origin protections; this remains untrusted browser evidence and is not a public OTLP relay.

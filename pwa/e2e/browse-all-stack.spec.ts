@@ -839,7 +839,9 @@ test.describe('Browse All Stack — Recycle Bin', () => {
 
     // Expected order: Discovery (leftmost), View, Recycle, Close (rightmost)
     // We expect Discovery.x < View.x < Recycle.x < Close.x
-    expect(discoveryBox.x).toBeLessThan(viewBox.x);
+    const starBox = await page.getByTestId('browse-filter-goto').boundingBox();
+    expect(discoveryBox.x).toBeLessThan(starBox!.x);
+    expect(starBox!.x).toBeLessThan(viewBox.x);
     expect(viewBox.x).toBeLessThan(recycleBox.x);
     expect(recycleBox.x).toBeLessThan(closeBox.x);
   });
@@ -946,20 +948,12 @@ test('a delayed All wrap cannot replace the new Discovery collection', async ({ 
 });
 
 test.describe('Browse GOTO filtering', () => {
-  test('discards a draft, applies membership, intersects Discovery and clears', async ({
-    page,
-  }) => {
+  test('immediately filters membership, intersects Discovery and clears', async ({ page }) => {
     await setupBrowseAllStack(page, { gotoIds: [RECIPE_2.id!, RECIPE_3.id!] });
     await page.goto('/browse-all-stack');
     await expect(page.getByTestId('stack-depth-indicator')).toHaveText('1 / 3');
-    await page.getByTestId('browse-filters-entry').click();
-    await page.getByTestId('browse-filter-goto').click();
-    await page.getByTestId('browse-filters-close').click();
-    await expect(page.getByTestId('stack-depth-indicator')).toHaveText('1 / 3');
-    await page.getByTestId('browse-filters-entry').click();
     await expect(page.getByTestId('browse-filter-goto')).toHaveAttribute('aria-pressed', 'false');
     await page.getByTestId('browse-filter-goto').click();
-    await page.getByTestId('browse-filters-apply').click();
     await expect(page.getByTestId('stack-depth-indicator')).toHaveText('1 / 2');
     await expect(page.getByTestId('stack-card-front')).toHaveAttribute(
       'data-recipe-id',
@@ -971,18 +965,14 @@ test.describe('Browse GOTO filtering', () => {
       'data-recipe-id',
       RECIPE_3.id!
     );
-    await page.getByTestId('browse-filters-entry').click();
-    await page.getByTestId('browse-filters-clear').click();
-    await page.getByTestId('browse-filters-apply').click();
+    await page.getByTestId('browse-filter-goto').click();
     await expect(page.getByTestId('stack-depth-indicator')).toHaveText('1 / 2');
   });
 
   test('empty membership offers clearing without claiming an empty library', async ({ page }) => {
     await setupBrowseAllStack(page, { gotoIds: [] });
     await page.goto('/browse-all-stack');
-    await page.getByTestId('browse-filters-entry').click();
     await page.getByTestId('browse-filter-goto').click();
-    await page.getByTestId('browse-filters-apply').click();
     await expect(page.getByTestId('browse-goto-empty')).toBeVisible();
     await page.getByTestId('browse-goto-clear').click();
     await expect(page.getByTestId('stack-card-front')).toBeVisible();
@@ -1000,10 +990,7 @@ test.describe('Browse GOTO filtering', () => {
         await page.setViewportSize(viewport);
         await setupBrowseAllStack(page, { browseViewMode: mode });
         await page.goto('/browse-all-stack');
-        await page.getByTestId('browse-filters-entry').click();
-        await page.getByTestId('browse-filter-goto').click();
-        await page.getByTestId('browse-filters-apply').scrollIntoViewIfNeeded();
-        await page.getByTestId('browse-filters-close').click();
+        await expect(page.getByTestId('browse-filter-goto')).toBeVisible();
         const content = page
           .getByTestId(mode === 'stack' ? 'stack-card-front' : 'browse-list-recipe-card')
           .first();
@@ -1057,12 +1044,10 @@ test('GOTO stack wraps, retries its failed filtered page and ignores a departed 
     await route.fallback();
   });
   await page.goto('/browse-all-stack');
-  await page.getByTestId('browse-filters-entry').click();
   await page.getByTestId('browse-filter-goto').click();
   const firstFilteredPage = page.waitForResponse(
     (response) => response.url().includes('gotoOnly=true') && response.url().includes('page=1')
   );
-  await page.getByTestId('browse-filters-apply').click();
   await firstFilteredPage;
   await expect(page.getByTestId('browse-all-loader')).not.toBeVisible();
   await expectFrontRecipe(page, recipes[0].id!);
@@ -1086,9 +1071,7 @@ test('GOTO stack wraps, retries its failed filtered page and ignores a departed 
   await page.mouse.move(box.x + box.width / 2 + 200, box.y + box.height / 2, { steps: 10 });
   await page.mouse.up();
   await expect.poll(() => Boolean(release)).toBe(true);
-  await page.getByTestId('browse-filters-entry').click();
-  await page.getByTestId('browse-filters-clear').click();
-  await page.getByTestId('browse-filters-apply').click();
+  await page.getByTestId('browse-filter-goto').click();
   await expectFrontRecipe(page, recipes[0].id!);
   release!();
   await expectFrontRecipe(page, recipes[0].id!);
@@ -1109,10 +1092,8 @@ test('GOTO list appends filtered pages and retains selection on presentation cha
     browseViewMode: 'list',
   });
   await page.goto('/browse-all-stack');
-  await page.getByTestId('browse-filters-entry').click();
   await page.getByTestId('browse-filter-goto').click();
-  await page.getByTestId('browse-filters-apply').click();
-  await expect(page.getByTestId('browse-filters-entry')).toContainText('(1)');
+  await expect(page.getByTestId('browse-filter-goto')).toHaveAttribute('aria-pressed', 'true');
   await page.getByTestId('browse-list-scroll-container').evaluate((node) => {
     node.scrollTop = node.scrollHeight;
     node.dispatchEvent(new Event('scroll'));

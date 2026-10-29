@@ -424,7 +424,7 @@ describe('BrowseAllStack — initial card display', () => {
     });
 
     expect(await screen.findByLabelText('Recipe reported')).toBeInTheDocument();
-    expect(screen.getByTestId('browse-filters-entry')).toBeInTheDocument();
+    expect(screen.getByTestId('browse-filter-goto')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Ready to review' })).not.toBeInTheDocument();
   });
 });
@@ -1168,10 +1168,7 @@ describe('Browse GOTO filter drafts', () => {
     );
     render(<BrowseAllStackPage />);
     await screen.findByTestId('stack-card-front');
-    fireEvent.click(screen.getByTestId('browse-filters-entry'));
-    fireEvent.click(screen.getByRole('button', { name: 'GOTO' }));
-    expect(mocks.recipesGet).toHaveBeenCalledTimes(1);
-    fireEvent.click(screen.getByTestId('browse-filters-apply'));
+    fireEvent.click(screen.getByTestId('browse-filter-goto'));
     await waitFor(() =>
       expect(mocks.recipesGet).toHaveBeenLastCalledWith(
         expect.objectContaining({
@@ -1187,19 +1184,13 @@ describe('Browse GOTO filter drafts', () => {
 });
 
 describe('Browse immediate GOTO management saves', () => {
-  it('keeps acquisition visible after Filters unmount and restores its entry on dismissal', async () => {
+  it('exposes immediate membership filtering without management', async () => {
     render(<BrowseAllStackPage />);
     await screen.findByTestId('stack-card-front');
-    fireEvent.click(screen.getByTestId('browse-filters-entry'));
-    const management = screen.getByRole('button', { name: 'Manage GOTOs' });
-    expect(management).toHaveAttribute('aria-expanded', 'false');
-    fireEvent.click(management);
-    fireEvent.click(await screen.findByTestId('add-goto-btn'));
-    expect(screen.queryByTestId('browse-filters-apply')).not.toBeInTheDocument();
-    expect(screen.getByTestId('goto-search-library')).toBeVisible();
-    fireEvent.click(screen.getByTestId('goto-acquisition-close'));
-    expect(screen.getByTestId('browse-filters-entry')).toHaveFocus();
-    expect(mocks.gotoPut).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('browse-filters-entry')).not.toBeInTheDocument();
+    expect(screen.queryByText('Manage GOTOs')).not.toBeInTheDocument();
+    expect(screen.getByTestId('browse-filter-goto')).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByTestId('browse-filter-goto')).toHaveAccessibleName('Go-To recipes only');
   });
 
   it('refreshes only after confirmed membership saving, retries failed reading without PUT, and preserves a cancelled draft', async () => {
@@ -1220,11 +1211,7 @@ describe('Browse immediate GOTO management saves', () => {
     });
     render(<BrowseAllStackPage />);
     await screen.findByTestId('stack-card-front');
-    fireEvent.click(screen.getByTestId('browse-filters-entry'));
-    fireEvent.click(screen.getByRole('button', { name: 'Manage GOTOs' }));
-    await screen.findByRole('button', { name: 'Remove Recipe A' });
-    fireEvent.click(screen.getByRole('button', { name: 'GOTO' }));
-    fireEvent.click(screen.getByTestId('browse-filters-apply'));
+    fireEvent.click(screen.getByTestId('browse-filter-goto'));
     await waitFor(() =>
       expect(mocks.recipesGet).toHaveBeenLastCalledWith(
         expect.objectContaining({ queryParameters: expect.objectContaining({ gotoOnly: true }) })
@@ -1246,10 +1233,7 @@ describe('Browse immediate GOTO management saves', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
     expect(await screen.findByTestId('browse-goto-empty')).toBeVisible();
     expect(mocks.gotoPut).toHaveBeenCalledTimes(2);
-    fireEvent.click(screen.getByTestId('browse-filters-entry'));
-    fireEvent.click(screen.getByRole('button', { name: 'GOTO' }));
-    fireEvent.click(screen.getByTestId('browse-filters-close'));
-    expect(screen.getByTestId('browse-filters-entry')).toHaveTextContent('(1)');
+    expect(screen.getByTestId('browse-filter-goto')).toHaveAttribute('aria-pressed', 'true');
     expect((useFamilyStore.getState().familySettings.family_goto as any).items).toEqual([]);
   });
 });
@@ -1263,11 +1247,10 @@ it('opens the GOTO capture-return collection with pending management visible wit
   });
   mocks.recipesGet.mockResolvedValue(makePageResponse([], 0, 1));
   render(<BrowseAllStackPage />);
-  expect(await screen.findByText('Pending family supper')).toBeVisible();
-  expect(screen.getByRole('button', { name: 'Manage GOTOs' })).toHaveAttribute(
-    'aria-expanded',
-    'true'
-  );
+  expect(await screen.findByTestId('browse-goto-empty')).toBeVisible();
+  expect(screen.queryByText('Manage GOTOs')).not.toBeInTheDocument();
+  expect(screen.queryByText('Pending family supper')).not.toBeInTheDocument();
+  expect(screen.getByTestId('browse-filter-goto')).toHaveAttribute('aria-pressed', 'true');
   expect(mocks.recipesGet).toHaveBeenCalledWith(
     expect.objectContaining({ queryParameters: expect.objectContaining({ gotoOnly: true }) })
   );

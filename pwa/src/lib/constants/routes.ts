@@ -11,7 +11,6 @@ export const ROUTES = {
   PROFILE: '/profile',
   PROFILE_SETTINGS: '/profile/settings',
   BROWSE_ALL_STACK: '/browse-all-stack',
-  GOTO_MANAGEMENT: '/browse-all-stack?gotoOnly=true&manageGoto=true',
 } as const;
 
 export type AppRoute = (typeof ROUTES)[keyof typeof ROUTES];

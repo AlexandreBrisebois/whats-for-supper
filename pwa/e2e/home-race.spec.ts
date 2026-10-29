@@ -184,7 +184,7 @@ test.describe('Home Command Center — Optimistic UI Race Fix', () => {
   });
 });
 
-test('QuickFind shows tonight’s recipe before assignment responds and retains it after reload', async ({
+test('ready Go-To shows tonight’s recipe before assignment responds and retains it after reload', async ({
   page,
 }) => {
   const calendar = builders.deploymentCalendar();
@@ -210,6 +210,11 @@ test('QuickFind shows tonight’s recipe before assignment responds and retains 
 
   // Keep this assignment fixture independent of GOTO and unrelated live events.
   await setupCommonRoutes(page, calendar);
+  await page.route('**/api/goto/active', (route) =>
+    route.fulfill({
+      json: { data: { recipeId: recipe.id, description: recipe.name, status: 'ready' } },
+    })
+  );
   let committed = false;
   const readSchedule = () => {
     const schedule = builders.scheduleDays(0, calendar);
@@ -250,15 +255,11 @@ test('QuickFind shows tonight’s recipe before assignment responds and retains 
   try {
     await page.goto('/home');
     await expect(page.getByTestId('tonight-pivot-card')).toBeVisible();
-    await page.getByTestId('discover-btn').click();
-    const modal = page.getByTestId('quick-find-modal');
-    await expect(modal.getByText(recipe.name!, { exact: true })).toBeVisible();
-
     const assignmentRequest = page.waitForRequest(
       (request) =>
         new URL(request.url()).pathname === '/api/schedule/assign' && request.method() === 'POST'
     );
-    await page.getByTestId('quick-find-select').click();
+    await page.getByTestId('confirm-goto-btn').click();
     const request = await assignmentRequest;
     expect(request.postDataJSON()).toMatchObject({
       recipeId: recipe.id,
@@ -270,7 +271,7 @@ test('QuickFind shows tonight’s recipe before assignment responds and retains 
     );
 
     const menu = page.getByTestId('tonight-menu-card');
-    await expect(modal).not.toBeVisible();
+    await expect(page.getByTestId('quick-find-modal')).not.toBeVisible();
     await expect(menu).toBeVisible();
     await expect(
       menu.getByRole('heading', { name: recipe.name!, exact: true }).first()

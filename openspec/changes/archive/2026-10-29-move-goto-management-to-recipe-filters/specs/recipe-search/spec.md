@@ -4,7 +4,7 @@
 
 ### Requirement: Expose GOTO within Search Filters
 
-Search Filters SHALL offer GOTO as an initially visible boolean selection and offer the shared GOTO management disclosure without a separate permanent toolbar entry. Existing draft, Apply, Clear, dismissal and active-count semantics SHALL include GOTO. A fresh ordinary mount SHALL initialize it inactive.
+Search Filters SHALL offer GOTO as an initially visible boolean selection without Go-To management, pending-management rows or Add a Go-To acquisition actions. Existing draft, Apply, Clear, dismissal and active-count semantics SHALL include GOTO. A fresh ordinary mount SHALL initialize it inactive.
 
 #### Scenario: Apply with existing context
 - **WHEN** a person applies GOTO alongside a text query, other filters or planning context
@@ -89,3 +89,24 @@ The chooser SHALL offer Quick, Family Favorite, Never Tried and GOTO initially, 
 
 - **WHEN** configured Focus choices exceed six or unpromoted cuisines exist
 - **THEN** disclosure controls expose additional choices and selected additional choices remain visible when collapsed
+
+### Requirement: Enter Search with optional planning and detail context
+
+The household Search navigation SHALL open `/recipes`. The Search page SHALL initialize its text to empty and request an initial batch of 12 alternatives, forwarding supplied `addToDay` as dayIndex, weekOffset and similarTo context. An `open` recipe identity SHALL select detail independently of the initial search. Home’s unplanned Search entry SHALL use this existing planning flow for today, preserving its reference week and navigation.
+
+#### Scenario: Ordinary entry
+- **WHEN** the person opens Search without mode parameters
+- **THEN** an empty-query initial request is made and the standard search input is shown
+
+#### Scenario: Planning entry
+- **WHEN** Search opens with addToDay and weekOffset
+- **THEN** the request carries that target and a planning banner offers Cancel back to `/planner`
+
+#### Scenario: Detail link
+- **WHEN** Search opens with an open recipe identity
+- **THEN** that identity opens in detail while the page can load its initial results
+
+#### Scenario: Home selects today
+- **WHEN** an unplanned Home pivot opens Search with today’s authoritative day index, week zero and reference week
+- **THEN** the same planning banner, filters, selection and cancellation behavior apply as when the planner opens Search for that day
+- **AND** successful selection follows the existing planner success return and occupied-slot recovery, without a new Home/Today mode

@@ -204,7 +204,13 @@ test.describe('Home Command Center — GOTO & Pivot Flow', () => {
                 : 'Nothing planned for tonight';
           await expect(card).toContainText(context);
           await expect(page.getByTestId('discover-btn')).toHaveAccessibleName(
-            appLocale === 'fr' ? 'Recherche' : 'Quick Find'
+            state === 'mystery'
+              ? appLocale === 'fr'
+                ? 'Recherche'
+                : 'Quick Find'
+              : appLocale === 'fr'
+                ? 'Rechercher'
+                : 'Search'
           );
           await expect(page.getByTestId('order-in-btn')).toHaveAccessibleName(
             appLocale === 'fr' ? 'Commander' : 'Order In'
@@ -224,7 +230,7 @@ test.describe('Home Command Center — GOTO & Pivot Flow', () => {
               ? ['confirm-goto-btn', 'discover-btn', 'order-in-btn']
               : state === 'mystery'
                 ? ['discover-btn', 'order-in-btn']
-                : ['discover-btn', 'order-in-btn', 'add-goto-btn'];
+                : ['discover-btn', 'order-in-btn'];
           await expect(card.locator('button, a')).toHaveCount(order.length);
           for (let index = 0; index < order.length; index++) {
             await expect(card.locator('button, a').nth(index)).toHaveAttribute(
@@ -264,17 +270,17 @@ test.describe('Home Command Center — GOTO & Pivot Flow', () => {
           }
           await page.getByTestId('discover-btn').focus();
           await page.keyboard.press('Enter');
-          await expect(page.getByTestId('quick-find-modal')).toBeVisible();
-          await page.getByTestId('quick-find-close').click();
-          await expect(page.getByTestId('quick-find-modal')).not.toBeVisible();
-          await expect(card).toContainText(context);
-          expect(mutations).toEqual([]);
-          if (state === 'empty' || state === 'read-error') {
-            await page.getByTestId('add-goto-btn').focus();
-            await page.keyboard.press('Enter');
-            await expect(page).toHaveURL(/\/browse-all-stack$/);
-            expect(mutations).toEqual([]);
+          if (state === 'mystery') {
+            await expect(page.getByTestId('quick-find-modal')).toBeVisible();
+            await page.getByTestId('quick-find-close').click();
+            await expect(card).toContainText(context);
+          } else {
+            await expect(page).toHaveURL(
+              /\/recipes\?addToDay=0&weekOffset=0&referenceWeekStartDate=2026-05-04/
+            );
+            await expect(page.getByTestId('quick-find-modal')).toHaveCount(0);
           }
+          expect(mutations).toEqual([]);
         });
       }
     });

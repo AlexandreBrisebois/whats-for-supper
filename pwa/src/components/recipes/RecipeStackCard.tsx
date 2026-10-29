@@ -172,6 +172,17 @@ export const RecipeStackCard: React.FC<RecipeStackCardProps> = ({
         zIndex: 10 - stackIndex,
         willChange: 'transform',
       }}
+      role={isFront ? 'button' : undefined}
+      tabIndex={isFront ? 0 : -1}
+      aria-label={
+        isFront ? `${t('cook.openRecipeDetails', 'Open recipe details')}: ${name}` : undefined
+      }
+      onKeyDown={(event) => {
+        if (isFront && (event.key === 'Enter' || event.key === ' ')) {
+          event.preventDefault();
+          onTap();
+        }
+      }}
       drag={isFront ? 'x' : false}
       dragConstraints={{ left: 0, right: 0 }}
       dragElastic={0.45}
@@ -191,7 +202,7 @@ export const RecipeStackCard: React.FC<RecipeStackCardProps> = ({
         data-testid={`stack-card-${id}`}
         className="h-full w-full overflow-hidden rounded-[2.5rem] bg-white shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),_0_20px_40px_-1px_rgba(0,0,0,0.05)] border-t border-white/20 flex flex-col"
       >
-        <div className="relative aspect-[16/10] md:aspect-[16/9] w-full overflow-hidden">
+        <div className="relative aspect-[16/10] md:aspect-[16/9] w-full overflow-hidden shrink-0 [@media(max-height:740px)]:max-h-[40%]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={getImageUrl(imageUrl)}
@@ -241,7 +252,7 @@ export const RecipeStackCard: React.FC<RecipeStackCardProps> = ({
           <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
         </div>
 
-        <div className="flex-1 p-8 md:p-10 flex flex-col min-h-0">
+        <div className="flex-1 p-8 md:p-10 flex flex-col min-h-0 overflow-y-auto [@media(max-height:700px)]:p-4">
           <h2 className="text-2xl md:text-3xl font-bold tracking-tight font-heading mb-3 md:mb-4 leading-tight shrink-0">
             {name}
           </h2>

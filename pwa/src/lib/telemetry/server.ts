@@ -1,10 +1,14 @@
 import 'server-only';
+import type { OpeningScreen } from './opening';
 
 function configuration() {
   if (process.env.WFS_TELEMETRY_ENABLED !== 'true') return null;
   const browser = process.env.SENTRAME_BROWSER_TOKEN?.trim();
   const server = process.env.SENTRAME_SERVER_TOKEN?.trim();
-  if (!browser || !server || browser === server || /[\r\n]/.test(browser + server)) return null;
+  // Producer credentials must be nonempty visible ASCII header values. Reject
+  // control/whitespace and Unicode before exposing an enabled boolean.
+  if (!browser || !server || browser === server || !/^[\x21-\x7e]+$/.test(browser + server))
+    return null;
   try {
     const url = new URL(process.env.SENTRAME_OTLP_BASE ?? '');
     const local = ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname);
@@ -33,7 +37,7 @@ const budgets = {
   server: { start: 0, count: 0, active: 0 },
 };
 
-async function exportCheck(producer: 'browser' | 'server') {
+async function exportLog(producer: 'browser' | 'server', screen?: OpeningScreen) {
   const config = configuration();
   if (!config) return;
   const budget = budgets[producer];
@@ -56,7 +60,13 @@ async function exportCheck(producer: 'browser' | 'server') {
         resourceLogs: [
           {
             resource: {
-              attributes: [{ key: 'service.name', value: { stringValue: `wfs-pwa-${producer}` } }],
+              attributes: [
+                { key: 'service.name', value: { stringValue: `wfs-pwa-${producer}` } },
+                {
+                  key: 'service.version',
+                  value: { stringValue: process.env.WFS_VERSION?.trim() || 'unknown' },
+                },
+              ],
             },
             scopeLogs: [
               {
@@ -64,9 +74,16 @@ async function exportCheck(producer: 'browser' | 'server') {
                 logRecords: [
                   {
                     timeUnixNano: `${BigInt(now) * 1_000_000n}`,
-                    eventName: 'pwa.telemetry.check',
+                    eventName: screen ? 'pwa.app.opened' : 'pwa.telemetry.check',
                     severityNumber: 9,
-                    body: { stringValue: 'Synthetic telemetry integration check' },
+                    body: {
+                      stringValue: screen
+                        ? 'WFS opening observed'
+                        : 'Synthetic telemetry integration check',
+                    },
+                    ...(screen
+                      ? { attributes: [{ key: 'stage.name', value: { stringValue: screen } }] }
+                      : {}),
                   },
                 ],
               },
@@ -84,10 +101,14 @@ async function exportCheck(producer: 'browser' | 'server') {
   }
 }
 
-// No application events are wired yet. Expand the event contract with the strategy.
+// Fixed entry points share transport while preserving producer authority.
 export async function sendBrowserCheck(): Promise<void> {
-  await exportCheck('browser');
+  await exportLog('browser');
 }
 export async function sendServerCheck(): Promise<void> {
-  await exportCheck('server');
+  await exportLog('server');
+}
+
+export async function sendBrowserAppOpened(screen: OpeningScreen): Promise<void> {
+  await exportLog('browser', screen);
 }

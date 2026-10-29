@@ -20,7 +20,7 @@ Centralize page observation and safe screen classification. Record a shared moda
 
 - Add a shared, entry-gate-aware opening observer rather than instrumentation in each page or navigation handler.
 - Classify screens through a closed registry; new unclassified pages are automatically observed as `other` until explicitly assigned a safe name.
-- Emit at most one best-effort opening attempt per document, with only a retained `stage.name` attribute and fixed envelope.
+- Emit at most one best-effort opening attempt per document, with only a retained `stage.name` record attribute and a fixed resource envelope including the deployment-owned app `service.version`.
 - Extend the synthetic-check-only browser forwarding boundary with one strict opening operation, preserving runtime opt-in and browser/server producer separation.
 - Specify a reusable modal convention with explicit static screen identity for future adoption, without collecting modal activity in this increment.
 - Document acceptance and qualification limits, including real Sentrame receipt and installed-phone lifecycle checks.
@@ -44,6 +44,6 @@ None. Existing household access, member context, installation, share transport, 
 - Proposed observation owners: shared root composition in `pwa/src/app/layout.tsx`, gate readiness in `pwa/src/components/identity/IdentityValidator.tsx`, and a small client coordinator/classifier under `pwa/src/lib/telemetry` with a shared observer component.
 - Modal design reference: `pwa/src/components/common/Modal.tsx`; current Quick Find, recipe sheets, family-nudge and Demo dialogs are independently implemented and will not be migrated here.
 - Keep deployment configuration in the existing private Compose env files. No new credentials, public environment credentials, dependency, public API operation, generated client, database schema, or Sentrame receiver modification is proposed.
-- Existing [household identity](../../specs/household-identity/spec.md), [member context](../../specs/member-context/spec.md) and [app installation](../../specs/app-installation/spec.md) own entry behavior. This change observes it rather than redefining it.
+- Existing [household identity](../../../specs/household-identity/spec.md), [member context](../../../specs/member-context/spec.md) and [app installation](../../../specs/app-installation/spec.md) own entry behavior. This change observes it rather than redefining it.
 
 No consequential product decision remains open for this increment. Real receiver projection, proxy/tunnel delivery and physical-device lifecycle behavior require qualification; source review does not establish them.

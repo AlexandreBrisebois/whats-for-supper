@@ -73,9 +73,8 @@ describe('TonightPivotCard — empty state (no GOTO configured)', () => {
         gotoStatus={null}
       />
     );
-    const btn = screen.getByTestId('add-goto-btn');
-    expect(btn).toBeInTheDocument();
-    expect(btn).toHaveAttribute('href', '/browse-all-stack');
+    expect(screen.queryByTestId('add-goto-btn')).not.toBeInTheDocument();
+    expect(screen.getByTestId('discover-btn')).toHaveAccessibleName('Search');
   });
 
   it('does not render confirm-goto-btn', () => {
@@ -166,7 +165,7 @@ it.each([
   ['ready', 'recipe-1', ['confirm-goto-btn', 'discover-btn', 'order-in-btn']],
   ['pending', 'recipe-1', ['discover-btn', 'order-in-btn']],
   [null, 'recipe-1', ['discover-btn', 'order-in-btn']],
-  [null, null, ['discover-btn', 'order-in-btn', 'add-goto-btn']],
+  [null, null, ['discover-btn', 'order-in-btn']],
 ])('orders immediate choices before setup for %s / %s', (status, id, order) => {
   render(
     <TonightPivotCard
@@ -211,7 +210,7 @@ it.each([
   );
   expect(screen.getByTestId('pivot-card-header')).toHaveTextContent('Rien de prévu pour ce soir');
   expect(screen.getByText(feedback)).toBeVisible();
-  expect(screen.getByTestId('discover-btn')).toHaveAccessibleName('Recherche');
+  expect(screen.getByTestId('discover-btn')).toHaveAccessibleName('Rechercher');
   expect(screen.getByTestId('order-in-btn')).toHaveAccessibleName('Commander');
   if (status === 'ready')
     expect(screen.getByTestId('confirm-goto-btn')).toHaveAccessibleName(
@@ -284,12 +283,10 @@ it.each([
     );
     if (visible) {
       expect(screen.getByTestId('goto-setup-helper')).toHaveTextContent(
-        'Tap the GOTO star on favourite recipes so we can suggest one here.'
+        'Tap the on favourite recipes so we can suggest one here.'
       );
-      expect(screen.getByRole('link', { name: 'Choose GOTO recipes' })).toHaveAttribute(
-        'href',
-        '/browse-all-stack'
-      );
+      expect(screen.queryByRole('link', { name: 'Choose GOTO recipes' })).not.toBeInTheDocument();
+      expect(screen.getByRole('img', { name: 'star' })).toBeVisible();
       expect(screen.getByTestId('goto-setup-helper')).not.toHaveTextContent(/no GOTOs|empty list/i);
     } else {
       expect(screen.queryByTestId('goto-setup-helper')).not.toBeInTheDocument();
