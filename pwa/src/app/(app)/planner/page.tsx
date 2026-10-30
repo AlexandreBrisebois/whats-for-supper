@@ -18,6 +18,7 @@ import {
   BookOpen,
   RefreshCw,
 } from 'lucide-react';
+import { registerPlannerPresentation } from '@/lib/telemetry/opening';
 import { usePlannerStore } from '@/store/plannerStore';
 import { useWeekStore } from '@/store/weekStore';
 import type { UILocalScheduleDay } from '@/store/weekStore';
@@ -144,6 +145,14 @@ export default function PlannerPage() {
   const recoveryRecipeResolvedRef = useRef(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const isWide = useMediaQuery('(min-width: 1024px)');
+  const primaryPresentation =
+    !isWide && activeTab === 'grocery' && !(isLoading && schedule.length === 0)
+      ? 'planner.grocery'
+      : 'planner';
+  useEffect(
+    () => registerPlannerPresentation(document, primaryPresentation, isWide),
+    [primaryPresentation, isWide]
+  );
 
   useEffect(() => {
     setHasPendingCards(isVotingOpen);

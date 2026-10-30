@@ -41,7 +41,7 @@ Change `tasks.md` checkboxes are the task authority. This table is a navigation/
 | F1-D | Same change, 4.3 | F1-4 plus selected disposable deployed/physical fixture; separate route/device cells | archived unchecked; not-run |
 | F1-V | Same change, 5.1 | Reconcile the opening change's required evidence; do not mark unrun phone work complete | archived unchecked; not-run |
 | F2-1 | [Navigation](../../openspec/changes/observe-pwa-navigation/tasks.md), 1.1–1.4 | Implemented F1 gates/transport plus baseline-gate reconciliation and disposable receiver; correlated App opened -> Home -> Search -> Home with durable receipt and separate synthetic-goal derivation | F2-1 complete; local capture/receiver qualification and stable final gate passed |
-| F2-2 | Same change, 2.1–2.3 | F2-1; correct phone/wide Planner and Grocery presentation | planned |
+| F2-2 | Same change, 2.1–2.3 | F2-1; correct phone/wide Planner and Grocery presentation | complete; local capture/receiver acceptance and stable scoped final verification passed |
 | F2-3 | Same change, 3.1–3.3 | F2-2; Quick Find surface pilot, route/overlay coverage debt | planned |
 | F2-4 | Same change, 4.1–4.2 | F2-3; four-name/surface durable receipt and prospective derivation reconciliation | planned |
 | F3-1 | [Unexpected errors](../../openspec/changes/observe-unexpected-pwa-errors/tasks.md), 1.1–1.3 | F1 local receipt and F2-1; minimized script/rejection reports and storm caps | planned |
@@ -354,3 +354,39 @@ harness checks: not-applicable. Task 1.4 is now complete (F2-1 4/4, change 4/12)
 The earlier failed mutation record is preserved as historical evidence. A separate
 documentation check covers these completion bytes; application and receiver evidence
 remain tied to their recorded identities. F2-2 and later groups remain unimplemented.
+
+
+## F2-2 implementation checkpoint — 2026-10-29
+
+Selected tasks: navigation 2.1–2.3 only, starting clean at WFS
+`3eb308a1ea58fedbec16eca75e5229b88b5afd2d`. F2-1 prerequisite record:
+`.task/agent-finish/runs/48fdfcc05c60422bbe2247ac1d0e92a9.json`.
+Planner declares the rendered primary and wide companion to the existing shared
+coordinator, preserving week/tab/loading/interaction behavior. Phone Grocery is
+primary `planner.grocery`; wide remains primary `planner` plus companion
+`planner.grocery`. Static labels only; no shopping/business event or click inference.
+
+Test-first red reproduced missing primary/companion evidence in unit/component
+and real-action browser capture. Focused green passed 85 tests; expanded seven-file
+opening/navigation regression passed 233/233. Required Planner/Grocery/navigation Chromium acceptance passed **134/134**.
+Actual browser → Action → Node → fresh disposable Sentrame retains 16 records;
+protected reads independently confirm shared opening-to-companion context/sequence
+and exact timestamps. Prospective synthetic Search-goal derivation and exact replay
+before/after restart pass separately. Source/config/wire/binary hashes and artifacts:
+`.task/telemetry-navigation/f2-2/identity.json`. After user-confirmed writer pause, scoped preparation and final verification passed
+for all 11 reviewed paths (zero excluded). Application record:
+`.task/agent-finish/runs/c5e3c887907e482d808caa95213cf7de.json`, identity
+`36a4963e169fa07e37a740b50d8bcceae47763d599d85fb3755058733915e221`.
+Docs/OpenSpec, lint/format/types, unit 1,431, E2E 600 (47 skipped), API 1,259
+(156 skipped), static contract/client checks and content stability passed. Prepared
+source also passed the real-action/disposable-receiver tracer again; artifacts are
+in `.task/telemetry-navigation/f2-2/final/`. This result update is later documentation
+content, separately checked, and does not change verified application bytes.
+**F2-2 tasks 2.1–2.3 complete; change 7/12. Stop before F2-3.** See the [task evidence](../../openspec/changes/observe-pwa-navigation/tasks.md#f2-2-execution-evidence--2026-10-29)
+and [integration notes](../sentrame.md#f2-2-plannergrocery-composition--2026-10-29).
+
+Physical installed-device and deployed-route qualification: **not-run**. Phone
+viewport and simulated document visibility coverage do not qualify OS unlock or
+installed-device lifecycle. Quick Find, general overlay adoption, Grocery mutations
+and business events remain outside this slice. No commit/deploy, collection
+activation, production receiver/storage change, spec sync or archive.

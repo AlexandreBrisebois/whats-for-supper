@@ -1,5 +1,7 @@
 import { afterEach, expect, it, vi } from 'vitest';
-import { observeOpening } from './opening';
+import { parseBrowserObservation } from './navigation';
+import { observation } from '@/test/telemetry';
+import { registerPlannerPresentation, observeOpening } from './opening';
 
 function owner() {
   const doc = document.implementation.createHTMLDocument();
@@ -99,4 +101,112 @@ it('keeps correlation entirely in memory without reading or writing browser stor
   expect(read).not.toHaveBeenCalled();
   expect(write).not.toHaveBeenCalled();
   expect(submit).toHaveBeenCalledTimes(3);
+});
+
+it('reconciles Planner primary and companion cycles in the document stream', () => {
+  const { doc, visibility } = owner();
+  const submit = vi.fn().mockResolvedValue(undefined);
+  observeOpening(doc, true, '/planner', submit);
+  expect(submit).not.toHaveBeenCalled(); // Composition must be declared, not guessed.
+  let release = registerPlannerPresentation(doc, 'planner.grocery', false);
+  observeOpening(doc, true, '/planner', submit);
+  release();
+  release = registerPlannerPresentation(doc, 'planner', true);
+  observeOpening(doc, true, '/planner', submit);
+  observeOpening(doc, true, '/planner', submit);
+  release(); // Effect replay with the same composition adds nothing.
+  release = registerPlannerPresentation(doc, 'planner', true);
+  observeOpening(doc, true, '/planner', submit);
+  visibility(false);
+  release();
+  release = registerPlannerPresentation(doc, 'planner.grocery', false);
+  observeOpening(doc, true, '/planner', submit);
+  release();
+  release = registerPlannerPresentation(doc, 'planner', true);
+  observeOpening(doc, true, '/planner', submit);
+  visibility(true);
+  observeOpening(doc, true, '/planner', submit); // unchanged resume
+  release();
+  release = registerPlannerPresentation(doc, 'planner.grocery', false);
+  observeOpening(doc, true, '/planner', submit);
+  release();
+  registerPlannerPresentation(doc, 'planner', true);
+  observeOpening(doc, true, '/planner', submit);
+  observeOpening(doc, true, '/home', submit); // actual route departure closes companion
+  const stream = submit.mock.calls.map(([event]) => event);
+  expect(stream.map((e) => [e.eventName, e.screen])).toEqual([
+    ['pwa.app.opened', 'planner'],
+    ['pwa.screen.presented', 'planner.grocery'],
+    ['pwa.screen.presented', 'planner'],
+    ['pwa.surface.opened', 'planner.grocery'],
+    ['pwa.surface.closed', 'planner.grocery'],
+    ['pwa.screen.presented', 'planner.grocery'],
+    ['pwa.screen.presented', 'planner'],
+    ['pwa.surface.opened', 'planner.grocery'],
+    ['pwa.surface.closed', 'planner.grocery'],
+    ['pwa.screen.presented', 'home'],
+  ]);
+  expect(stream.map((e) => e.sequence)).toEqual(stream.map((_, i) => i + 1));
+  expect(new Set(stream.map((e) => e.sessionId)).size).toBe(1);
+  expect(new Set(stream.map((e) => e.tabId)).size).toBe(1);
+  expect(new Set(stream.map((e) => e.eventId)).size).toBe(stream.length);
+});
+
+it('waits for visible composition and reconciles only the final hidden change', () => {
+  const { doc, visibility } = owner();
+  const submit = vi.fn().mockResolvedValue(undefined);
+  const release = registerPlannerPresentation(doc, 'planner', true);
+  observeOpening(doc, true, '/planner', submit);
+  visibility(false);
+  release();
+  registerPlannerPresentation(doc, 'planner.grocery', false);
+  observeOpening(doc, true, '/planner', submit);
+  expect(submit).toHaveBeenCalledTimes(3);
+  visibility(true);
+  observeOpening(doc, true, '/planner', submit);
+  observeOpening(doc, true, '/planner', submit);
+  expect(submit.mock.calls.slice(3).map(([e]) => [e.eventName, e.screen])).toEqual([
+    ['pwa.surface.closed', 'planner.grocery'],
+    ['pwa.screen.presented', 'planner.grocery'],
+  ]);
+});
+
+it('admits only the adopted surface and primary identities at the real forwarding boundary', () => {
+  for (const eventName of ['pwa.surface.opened', 'pwa.surface.closed'] as const) {
+    expect(
+      parseBrowserObservation(observation('planner.grocery', eventName), Date.now())
+    ).not.toBeNull();
+    expect(parseBrowserObservation(observation('home', eventName), Date.now())).toBeNull();
+    expect(
+      parseBrowserObservation(
+        { ...observation('planner.grocery', eventName), week: 'private' },
+        Date.now()
+      )
+    ).toBeNull();
+  }
+  expect(
+    parseBrowserObservation(observation('planner.grocery', 'pwa.screen.presented'), Date.now())
+  ).not.toBeNull();
+  expect(
+    parseBrowserObservation(observation('planner.grocery', 'pwa.app.opened'), Date.now())
+  ).toBeNull();
+});
+
+it('orders an initial wide companion after opening and screen, with one shared admission budget', () => {
+  const { doc } = owner();
+  const submit = vi.fn().mockResolvedValue(undefined);
+  vi.spyOn(Date, 'now').mockReturnValue(1_800_000_000_000);
+  let release = registerPlannerPresentation(doc, 'planner', true);
+  observeOpening(doc, true, '/planner', submit);
+  expect(submit.mock.calls.map(([e]) => [e.eventName, e.screen])).toEqual([
+    ['pwa.app.opened', 'planner'],
+    ['pwa.screen.presented', 'planner'],
+    ['pwa.surface.opened', 'planner.grocery'],
+  ]);
+  for (let i = 0; i < 65; i++) {
+    release();
+    release = registerPlannerPresentation(doc, i % 2 ? 'planner' : 'planner.grocery', !!(i % 2));
+    observeOpening(doc, true, '/planner', submit);
+  }
+  expect(submit).toHaveBeenCalledTimes(61); // opening plus 60 screens/surfaces total
 });

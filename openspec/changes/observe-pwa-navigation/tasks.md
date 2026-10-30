@@ -21,9 +21,9 @@ F2-1 implementation and local qualification are recorded below; later groups rem
 **Dependencies and prerequisites:** F2-1 green; existing Planner layout and week state must be preserved.
 **Acceptance boundary:** Phone tab changes and wide embedded Grocery produce the expected primary/surface evidence without duplicate Grocery instances or claimed shopping outcomes.
 
-- [ ] 2.1 Test-first: add phone, wide, resize, data-loading and hidden/resume cases; run `task test:unit -- src/app/'(app)'/planner/page.test.tsx src/lib/telemetry/navigation.test.ts` and `task test:e2e -- telemetry-navigation.spec.ts --project=chromium`, recording red for missing composition evidence.
-- [ ] 2.2 Implement only the shared Planner/Grocery presentation declaration and minimal surface lifecycle needed for the companion pane. Rerun 2.1 green; assert static labels only, no week dates/content, no tab-click inference and preserved week/tab behavior.
-- [ ] 2.3 Run `task test:e2e -- planner.spec.ts grocery.spec.ts telemetry-navigation.spec.ts --project=chromium`; extend the F2-1 real-action/disposable-receiver fixture for primary/companion transitions, shared opening-to-surface scope/sequence and protected retained reads. Update integration docs/tracker and record actual phone-layout versus physical-device evidence separately. Review scope and run scoped `task verify`; stop before grocery mutations and general overlay migration.
+- [x] 2.1 Test-first: add phone, wide, resize, data-loading and hidden/resume cases; run `task test:unit -- src/app/'(app)'/planner/page.test.tsx src/lib/telemetry/navigation.test.ts` and `task test:e2e -- telemetry-navigation.spec.ts --project=chromium`, recording red for missing composition evidence.
+- [x] 2.2 Implement only the shared Planner/Grocery presentation declaration and minimal surface lifecycle needed for the companion pane. Rerun 2.1 green; assert static labels only, no week dates/content, no tab-click inference and preserved week/tab behavior.
+- [x] 2.3 Run `task test:e2e -- planner.spec.ts grocery.spec.ts telemetry-navigation.spec.ts --project=chromium`; extend the F2-1 real-action/disposable-receiver fixture for primary/companion transitions, shared opening-to-surface scope/sequence and protected retained reads. Update integration docs/tracker and record actual phone-layout versus physical-device evidence separately. Review scope and run scoped `task verify`; stop before grocery mutations and general overlay migration.
 
 ## 3. F2-3 — One shared surface pilot and coverage debt
 
@@ -143,3 +143,79 @@ Quick Find, business instrumentation, receiver source/configuration deployment,
 SDK migration, enablement, commit or archival was added. Later completion-document
 bytes receive a separate documentation-only verification; that record does not
 replace the application record above. F2-2 and later groups remain pending.
+
+
+## F2-2 execution evidence — 2026-10-29
+
+Authorized scope: tasks 2.1–2.3 only. Starting WFS HEAD
+`3eb308a1ea58fedbec16eca75e5229b88b5afd2d`; worktree clean at entry.
+F2-1 prerequisite: passing application record
+`.task/agent-finish/runs/48fdfcc05c60422bbe2247ac1d0e92a9.json`.
+
+- RED: `task test:unit -- 'src/app/(app)/planner/page.test.tsx'
+  src/lib/telemetry/navigation.test.ts` produced 4 failures / 81 passes. Intended
+  missing-behavior failures: Grocery still observed as `planner`, undeclared
+  composition prematurely emitted Planner, and the adopted surface envelope was
+  rejected. The missing registration function failure alone is not behavioral red.
+  `task test:e2e -- telemetry-navigation.spec.ts --project=chromium` rendered the
+  phone Grocery checklist but retained 5 records rather than 6 after the tab change.
+- GREEN: the focused two-file command passed 85 tests. Expanded regression run
+  adding opening, observer, action, serializer and transport suites passed 233/233
+  across seven files. Coverage includes initial/retained loading, no click-only
+  inference, one Grocery instance, phone/wide resize with preserved tab/week,
+  initial opening/screen/companion ordering, effect replay, hidden intermediate
+  compositions, changed versus unchanged resume, strict static identity admission
+  and the shared 60 screen/surface budget. No week/content enters the envelope.
+- Fixture correction: the first green browser attempt was interrupted after trying
+  to click the obscured Planner tab underneath full-screen phone Grocery. The
+  fixture now uses the existing accessible Close grocery list control. This was
+  a fixture interaction error, not a production behavior failure or passed check.
+- Required acceptance: `WFS_NAV_SENTRAME_BINARY=/tmp/wfs-navigation-sentrame task
+  test:e2e -- planner.spec.ts grocery.spec.ts telemetry-navigation.spec.ts
+  --project=chromium` passed **134/134**. Real browser → Action → Node JSON/no
+  compression → actual disposable Sentrame; business API boundary only is mocked.
+  Phone viewport 390×844, wide 1280×900 and simulated hidden/resume pass. These
+  do not qualify a physical installed device or OS unlock/background behavior.
+- Protected raw receipt independently verifies all **16** records, browser/log
+  authority, service/version, classification, UUID context and both exact clocks.
+  The first document's opening/screens/companion share sequence **1–12**, one
+  session/tab and 12 distinct events. Reload and concurrent tab remain independent.
+  Unauthenticated snapshot fails. Prospective disjoint primary mappings plus
+  companion supporting activities preserve the synthetic reaching-Search goal;
+  closure is not a goal. The path is App opened → Home → Search (completed), then
+  Home → Planner → Grocery → Planner → Grocery → Planner → Home in a later journey.
+  Exact wire replay preserves raw evidence and journey contributions before and
+  after actual receiver process restart/storage reopen/new owner login.
+- Receiver source: clean `a506dacbdc0f776238f2b3ebc769e42d2b4b9378`, binary SHA-256
+  `5f6372edc6dde428a8d6b41fa15e2386e34cb04f480f1d53992c21e62eaa7d39`;
+  fresh disposable schema 3 / `structural-v2` / `journey-native-v3` storage.
+  `.task/telemetry-navigation/f2-2/` retains exact wire, protected-read qualification,
+  command logs and `identity.json` (source/binary/config/wire hashes). Wire file SHA-256
+  `3c28840d0d06a442f02df07c9632fc0f2d4a4fabef397f484ddacefda5d27bce`;
+  definition SHA-256 `e9d4ca74f0fe51aad5b32093548e9a556a2a4740cafa06e0724c5903c6004268`.
+  Payload review: only static labels and the approved five attributes; private
+  query sentinel, credentials, week/date/content and business identifiers absent.
+- Scope review: eight PWA paths own composition, observer/coordinator admission and
+  their unit/real-action/receiver tests; three documentation paths own actual
+  integration/tracker/task evidence. No API/client/schema, business rule, Grocery
+  mutation, Quick Find/common overlay, receiver source or production change.
+  No unrelated worktree edits existed at entry or appeared during the review.
+- Stable-tree coordination: user confirmed other writers are paused. Scoped
+  preparation passed for all **11** reviewed paths (eight PWA and three docs),
+  with no excluded paths. Final application verification passed all applicable
+  checks: documentation, OpenSpec (38 items), lint, formatting, types, unit
+  (**1,431**), impact E2E (**600 passed / 47 skipped**), API (**1,259 passed /
+  156 skipped**) and static contract/client review. Content stability passed.
+  Record: `.task/agent-finish/runs/c5e3c887907e482d808caa95213cf7de.json`, identity
+  `36a4963e169fa07e37a740b50d8bcceae47763d599d85fb3755058733915e221`.
+  Final verification reran the real-action/disposable-receiver tracer successfully
+  on prepared source. `.task/telemetry-navigation/f2-2/final/` preserves that
+  run's wire/receiver artifacts and prepared source hashes. No production logic
+  changed after verification; this checkbox/result update is later documentation
+  content, checked separately without attaching the old digest to new documents.
+  Physical installed-device and
+  deployed-route qualification: **not-run**. Database/live API behavior: **not-applicable**
+  to this UI observation slice. No commit/deploy, enablement, sync or archive.
+
+F2-2 tasks **2.1–2.3 complete**; change progress **7/12**. Stop here.
+F2-3, F2-4 and all successor business instrumentation remain unselected/pending.

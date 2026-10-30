@@ -272,10 +272,62 @@ test('correlated Home Search Home through real browser action and Node exporter'
     });
     await page.waitForTimeout(300);
     expect(received).toHaveLength(4);
+    // F2-2: actual rendered composition, including resize and hidden reconciliation.
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.getByTestId('nav-item-planner').click();
+    await expect(page.getByTestId('grocery-tab')).toBeVisible();
+    await expect.poll(() => received.length).toBe(5);
+    await page.getByTestId('grocery-tab').click();
+    await expect.poll(() => received.length).toBe(6);
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await expect(page.getByTestId('grocery-tab')).toBeHidden();
+    await expect.poll(() => received.length).toBe(8);
+    await page.evaluate(() => {
+      Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'hidden' });
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect(page.getByTestId('grocery-tab')).toBeVisible();
+    await page.waitForTimeout(200);
+    expect(received).toHaveLength(8);
+    await page.evaluate(() => {
+      Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' });
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+    await expect.poll(() => received.length).toBe(10);
+    await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+    await page.waitForTimeout(200);
+    expect(received).toHaveLength(10);
+    await page
+      .getByTestId('grocery-checklist')
+      .getByRole('button', { name: 'Close grocery list' })
+      .click();
+    await expect.poll(() => received.length).toBe(11);
+    await page.getByTestId('nav-item-home').click();
+    await expect.poll(() => received.length).toBe(12);
+    const composition = records().sort(
+      (a, b) => attributes(a)['source.sequence'] - attributes(b)['source.sequence']
+    );
+    expect(composition.slice(4).map((r) => [r.eventName, attributes(r)['stage.name']])).toEqual([
+      ['pwa.screen.presented', 'planner'],
+      ['pwa.screen.presented', 'planner.grocery'],
+      ['pwa.screen.presented', 'planner'],
+      ['pwa.surface.opened', 'planner.grocery'],
+      ['pwa.surface.closed', 'planner.grocery'],
+      ['pwa.screen.presented', 'planner.grocery'],
+      ['pwa.screen.presented', 'planner'],
+      ['pwa.screen.presented', 'home'],
+    ]);
+    expect(composition.map((r) => attributes(r)['source.sequence'])).toEqual(
+      Array.from({ length: 12 }, (_, i) => i + 1)
+    );
+    expect(new Set(composition.map((r) => attributes(r)['session.id'])).size).toBe(1);
+    expect(new Set(composition.map((r) => attributes(r)['tab.id'])).size).toBe(1);
+    expect(new Set(composition.map((r) => attributes(r)['event.id'])).size).toBe(12);
     await drainBodies();
     await page.reload();
-    await expect.poll(() => received.length).toBe(6);
-    const reloaded = attributes(records()[4]);
+    await expect.poll(() => received.length).toBe(14);
+    const reloaded = attributes(records()[12]);
     expect(reloaded['session.id']).not.toBe(attributes(first[0])['session.id']);
     expect(reloaded['tab.id']).not.toBe(attributes(first[0])['tab.id']);
     const second = await initialContext.newPage();
@@ -284,8 +336,8 @@ test('correlated Home Search Home through real browser action and Node exporter'
     );
     await setupCommonRoutes(second);
     await second.goto(`${url}/home`);
-    await expect.poll(() => received.length).toBe(8);
-    expect(attributes(records()[6])['session.id']).not.toBe(reloaded['session.id']);
+    await expect.poll(() => received.length).toBe(16);
+    expect(attributes(records()[14])['session.id']).not.toBe(reloaded['session.id']);
     await second.close();
     // Invoke the actual compiled Action with complete malformed envelopes. No exporter
     // or Action is mocked, and the valid records above establish the positive path.
@@ -330,7 +382,7 @@ test('correlated Home Search Home through real browser action and Node exporter'
     }, actionId);
     expect(statuses).toEqual(Array(11).fill(200));
     await page.waitForTimeout(250);
-    expect(received).toHaveLength(8);
+    expect(received).toHaveLength(16);
     for (const item of received) {
       expect(item.path).toBe('/v1/logs');
       expect(item.type).toBe('application/json');

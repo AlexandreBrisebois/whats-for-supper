@@ -124,6 +124,24 @@ export async function disposableTelemetryReceiver(binary: string, info: TestInfo
         { ...mapping, event: 'pwa.app.opened', step: 'App opened', key: '', value: '' },
         home,
         search,
+        { ...home, step: 'Planner', value: 'planner' },
+        { ...home, step: 'Grocery', value: 'planner.grocery' },
+        {
+          ...mapping,
+          event: 'pwa.surface.opened',
+          kind: 'activity',
+          step: 'Grocery companion opened',
+          key: 'stage.name',
+          value: 'planner.grocery',
+        },
+        {
+          ...mapping,
+          event: 'pwa.surface.closed',
+          kind: 'activity',
+          step: 'Grocery companion closed',
+          key: 'stage.name',
+          value: 'planner.grocery',
+        },
       ],
     });
     expect((await fetch(origin + base + '/snapshot')).status).toBe(401);
@@ -164,7 +182,33 @@ export async function disposableTelemetryReceiver(binary: string, info: TestInfo
         const scope = firstRecord.attributes.find((a: { key: string }) => a.key === 'session.id')
           .value.stringValue;
         const journeys = before.model.journeys.filter((j) => j.scope === scope);
-        expect(journeys.map((j) => j.path)).toEqual([['App opened', 'Home', 'Search'], ['Home']]);
+        expect(journeys.map((j) => j.path)).toEqual([
+          ['App opened', 'Home', 'Search'],
+          ['Home', 'Planner', 'Grocery', 'Planner', 'Grocery', 'Planner', 'Home'],
+        ]);
+        // Raw protected receipt is checked independently of configured graph steps.
+        const retainedStream = before.evidence
+          .filter((e) => e.scope === scope)
+          .sort((a, b) => a.sequence - b.sequence);
+        expect(retainedStream.map((e) => e.sequence)).toEqual(
+          Array.from({ length: 12 }, (_, i) => i + 1)
+        );
+        expect(new Set(retainedStream.map((e) => e.tab)).size).toBe(1);
+        expect(new Set(retainedStream.map((e) => e.record)).size).toBe(12);
+        expect(retainedStream.map((e) => [e.name, e.attrs['stage.name']])).toEqual([
+          ['pwa.app.opened', 'home'],
+          ['pwa.screen.presented', 'home'],
+          ['pwa.screen.presented', 'search'],
+          ['pwa.screen.presented', 'home'],
+          ['pwa.screen.presented', 'planner'],
+          ['pwa.screen.presented', 'planner.grocery'],
+          ['pwa.screen.presented', 'planner'],
+          ['pwa.surface.opened', 'planner.grocery'],
+          ['pwa.surface.closed', 'planner.grocery'],
+          ['pwa.screen.presented', 'planner.grocery'],
+          ['pwa.screen.presented', 'planner'],
+          ['pwa.screen.presented', 'home'],
+        ]);
         expect(journeys[0].status).toBe('completed');
         const replay = async () => {
           for (const wire of wires) {

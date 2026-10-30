@@ -1,4 +1,4 @@
-import type { BrowserObservation } from './navigation';
+import type { BrowserObservation, PresentationScreen } from './navigation';
 
 // Static application vocabulary only. Never derive telemetry labels from content.
 const screens = {
@@ -42,6 +42,32 @@ export function registerOpeningFallback(
   };
 }
 
+// Composition belongs to the rendered Planner owner, not tab clicks or URL queries.
+// The shared observer still owns gates, visibility, scope and all emissions.
+export const presentationChanged = 'wfs:telemetry-presentation';
+const plannerPresentations = new WeakMap<
+  Document,
+  {
+    primary: 'planner' | 'planner.grocery';
+    companion: boolean;
+  }
+>();
+
+export function registerPlannerPresentation(
+  owner: Document,
+  primary: 'planner' | 'planner.grocery',
+  companion: boolean
+): () => void {
+  const declaration = { primary, companion };
+  plannerPresentations.set(owner, declaration);
+  owner.dispatchEvent(new Event(presentationChanged));
+  return () => {
+    if (plannerPresentations.get(owner) === declaration) plannerPresentations.delete(owner);
+    // No cleanup emission: effect replay/unmount is not an observed closure.
+    // The next eligible route/composition reconciles the actual visible state.
+  };
+}
+
 // Document identity is only an in-memory object key, never an exported identifier.
 // A WeakMap survives component remounts without retaining a departed document.
 interface ObservationState {
@@ -49,13 +75,14 @@ interface ObservationState {
   sessionId?: string;
   tabId?: string;
   sequence: number;
-  screen?: OpeningScreen;
+  screen?: PresentationScreen;
+  companion?: boolean;
   windowStart: number;
   count: number;
 }
 const openings = new WeakMap<Document, ObservationState>();
 
-// Opening and subsequent screens have one document owner, ordering and admission window.
+// Opening, screens and the companion share one document owner, sequence and admission window.
 export function observeOpening(
   owner: Document,
   enabled: boolean,
@@ -77,21 +104,28 @@ export function observeOpening(
     return;
   try {
     const fallback = fallbacks.get(owner);
-    const screen =
+    const entryScreen =
       fallback?.pathname === readyPathname ? fallback.screen : classifyScreen(readyPathname);
-    if (state.screen === screen) return;
+    const planner = entryScreen === 'planner' ? plannerPresentations.get(owner) : undefined;
+    if (entryScreen === 'planner' && !planner) return;
+    const screen = planner?.primary ?? entryScreen;
+    const companion = planner?.companion ?? false;
+    if (state.screen === screen && !!state.companion === companion) return;
     const initial = !state.sessionId;
     if (initial) {
       state.sessionId = crypto.randomUUID();
       state.tabId = crypto.randomUUID();
     }
     // Claim presentation before calling asynchronous code; delivery never rearms it.
+    const screenChanged = state.screen !== screen;
+    const companionChanged = !!state.companion !== companion;
     state.screen = screen;
+    state.companion = companion;
     const timestamp = Date.now();
-    const emit = (eventName: BrowserObservation['eventName']) => {
+    const emit = (eventName: BrowserObservation['eventName'], identity: PresentationScreen) => {
       const event: BrowserObservation = {
         eventName,
-        screen,
+        screen: identity,
         sessionId: state.sessionId!,
         tabId: state.tabId!,
         eventId: crypto.randomUUID(),
@@ -112,8 +146,10 @@ export function observeOpening(
         /* Submission cannot interrupt presentation. */
       }
     };
-    if (initial) emit('pwa.app.opened');
-    emit('pwa.screen.presented');
+    if (initial) emit('pwa.app.opened', entryScreen);
+    if (companionChanged && !companion) emit('pwa.surface.closed', 'planner.grocery');
+    if (screenChanged) emit('pwa.screen.presented', screen);
+    if (companionChanged && companion) emit('pwa.surface.opened', 'planner.grocery');
   } catch {
     // Missing browser randomness or unexpected inspection cannot interrupt the app.
     state.disabled = true;

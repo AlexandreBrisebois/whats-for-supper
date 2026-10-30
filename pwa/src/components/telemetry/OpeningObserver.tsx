@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { reportBrowserObservation } from '@/lib/telemetry/actions';
-import { observeOpening } from '@/lib/telemetry/opening';
+import { observeOpening, presentationChanged } from '@/lib/telemetry/opening';
 
 export function OpeningObserver({
   enabled,
@@ -23,7 +23,11 @@ export function OpeningObserver({
       );
     observe();
     document.addEventListener('visibilitychange', observe);
-    return () => document.removeEventListener('visibilitychange', observe);
+    document.addEventListener(presentationChanged, observe);
+    return () => {
+      document.removeEventListener('visibilitychange', observe);
+      document.removeEventListener(presentationChanged, observe);
+    };
   }, [enabled, pathname, readyPathname]);
   return null;
 }

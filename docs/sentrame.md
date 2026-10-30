@@ -299,7 +299,8 @@ lifecycle work and does not qualify durable receiver receipt or a deployment.
 
 ## Planned navigation mapping recipe
 
-Status: F2-1 route/opening stream implemented; surfaces/composition remain planned.
+Status: F2-1 route/opening stream and F2-2 Planner/Grocery composition implemented.
+Quick Find and general overlay adoption remain pending.
 Collection stays off by default; no deployed receiver or production goal was changed. The active
 [navigation change](../openspec/changes/observe-pwa-navigation/proposal.md) makes
 opening, primary screens and adopted surfaces one anonymous document stream.
@@ -336,7 +337,8 @@ Configure exact selectors in Sentrame. All production rows below select
 | `pwa.screen.presented` | **Home**, **step** | `stage.name` equals `home` | Home shell presented |
 | `pwa.screen.presented` | **Search**, **step** | `stage.name` equals `search` | Search shell presented |
 | `pwa.screen.presented` | Other reviewed screen names, **step** | Disjoint approved `stage.name` values | Presentation, not business success |
-| `pwa.surface.opened` | Reviewed surface presentation, **step**, or supporting **activity** | Reviewed static surface value, e.g. `quick.find` | Choose whether the presentation belongs on the path |
+| `pwa.screen.presented` | **Planner** / **Grocery**, **step** | `stage.name` equals `planner` / `planner.grocery` (disjoint) | Primary rendered shell |
+| `pwa.surface.opened` | Reviewed surface presentation, **step**, or supporting **activity** | `stage.name=planner.grocery` for the adopted companion; `quick.find` remains planned | Choose whether the presentation belongs on the path |
 | `pwa.surface.closed` | Reviewed supporting closure, **activity** | Same reviewed surface vocabulary | Lifecycle observation; not automatic exit/cancellation/completion |
 | `pwa.telemetry.check` | Transport diagnostic; leave outside production journey mappings/goals | Not applicable | Receipt check only |
 
@@ -475,3 +477,65 @@ Live endpoint/database/harness checks were not-applicable. Task 1.4 and the sele
 F2-1 group are complete; later groups and deployed/device qualification remain
 pending. Completion-document edits are verified separately from this application
 record. The earlier mutation record remains historical, without a success claim.
+
+
+## F2-2 Planner/Grocery composition — 2026-10-29
+
+Planner declares its rendered primary shell and companion state to the existing
+shared document coordinator. Phone Grocery becomes primary `planner.grocery`
+when its checklist replaces the plan. An initial empty loading shell remains
+`planner` until Grocery is actually rendered; retained content follows its rendered
+branch. Wide layout keeps primary `planner` with a `planner.grocery` companion,
+including the existing wide Grocery pane while plan data loads. Resize preserves
+the selected phone tab and week. No click handler emits telemetry.
+
+The companion emits `pwa.surface.opened` once on observed presentation and
+`pwa.surface.closed` on an observed removal or eligible route departure. Effect
+cleanup is not closure. Hidden changes reconcile only the current composition on
+visibility; unchanged resume emits nothing. Opening remains route-classified
+`planner` even if the initial phone primary is Grocery. Opening, screens and the
+companion share document scope/tab, distinct events and one increasing sequence,
+and screens/surfaces share the same 60-attempt document budget. Labels contain no
+week, dates, Grocery items, recipes, action cause or shopping outcome.
+
+Unit/component evidence: the specified two-file red run reproduced the missing
+composition (4 failed / 81 passed); focused green passed 85 tests. Expanded
+opening/observer/action/transport regression coverage passed 233 tests in seven
+files. Required `planner.spec.ts grocery.spec.ts telemetry-navigation.spec.ts`
+Chromium acceptance passed **134/134**, including the actual browser → Action → Node
+JSON/no-compression → disposable Sentrame path. Protected reads independently retain
+all **16** records with exact browser/forwarding timestamps, service/version and
+static labels. The original document spans sequence **1–12** from opening through
+primary/companion transitions; reload and another tab retain independent scopes.
+Unauthenticated reads fail. Exact-byte replay adds neither raw evidence nor journey
+contributions before or after receiver process restart/storage reopen/new owner login.
+
+Mappings were activated before emission: App opened unconditional step; Home,
+Search, Planner and Grocery disjoint screen steps; companion opening/closure as
+supporting activities. The synthetic reaching-Search goal still completes App opened
+→ Home → Search; a later journey contains Home → Planner → Grocery → Planner →
+Grocery → Planner → Home. Neither companion closure nor opening is a completion goal.
+
+Tested receiver: clean `a506dacbdc0f776238f2b3ebc769e42d2b4b9378`, schema 3 /
+`structural-v2` / `journey-native-v3`, fresh disposable storage. WFS starts at
+`3eb308a1ea58fedbec16eca75e5229b88b5afd2d` plus this slice. Exact captured wire,
+protected-read/restart results, config/source/binary hashes and command logs are in
+`.task/telemetry-navigation/f2-2/`. Wire SHA-256:
+`3c28840d0d06a442f02df07c9632fc0f2d4a4fabef397f484ddacefda5d27bce`;
+definition SHA-256:
+`e9d4ca74f0fe51aad5b32093548e9a556a2a4740cafa06e0724c5903c6004268`.
+Private sentinel, credentials, business IDs and week/content are absent from wire.
+After user-confirmed writer pause, scoped preparation and final verification
+passed for all 11 reviewed paths, with no excluded paths. Application record:
+`.task/agent-finish/runs/c5e3c887907e482d808caa95213cf7de.json`, tested identity
+`36a4963e169fa07e37a740b50d8bcceae47763d599d85fb3755058733915e221`.
+Checks passed: docs/OpenSpec, lint/format/types, 1,431 unit tests, 600 E2E tests
+(47 skipped), 1,259 API tests (156 skipped), static contracts and content stability.
+The real-action/disposable-receiver fixture passed again on prepared source;
+its artifacts are under `.task/telemetry-navigation/f2-2/final/`. These result notes
+are later documentation content; application bytes remain the tested bytes.
+F2-2 tasks 2.1–2.3 are complete; Quick Find and later groups remain pending.
+Browser phone viewport and simulated hidden/resume evidence are distinct from
+physical installed-device unlock/background behavior, which remains **not-run**.
+Deployed-route qualification remains **not-run**. No deployed collection or
+receiver configuration has been changed.

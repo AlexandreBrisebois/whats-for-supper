@@ -1,9 +1,11 @@
 import { isOpeningScreen, type OpeningScreen } from './opening';
 
-// Closed browser vocabulary. Surface identities are added only with their adopted owner.
+// Closed browser vocabulary. Only the adopted Grocery companion is admitted here.
+export type PresentationScreen = OpeningScreen | 'planner.grocery';
 export interface BrowserObservation {
-  eventName: 'pwa.app.opened' | 'pwa.screen.presented';
-  screen: OpeningScreen;
+  eventName:
+    'pwa.app.opened' | 'pwa.screen.presented' | 'pwa.surface.opened' | 'pwa.surface.closed';
+  screen: PresentationScreen;
   sessionId: string;
   tabId: string;
   eventId: string;
@@ -36,9 +38,20 @@ export function parseBrowserObservation(
       if (!field || !Object.hasOwn(field, 'value')) return null;
       values[key] = field.value;
     }
-    if (values.eventName !== 'pwa.app.opened' && values.eventName !== 'pwa.screen.presented')
-      return null;
-    if (!isOpeningScreen(values.screen)) return null;
+    switch (values.eventName) {
+      case 'pwa.app.opened':
+        if (!isOpeningScreen(values.screen)) return null;
+        break;
+      case 'pwa.screen.presented':
+        if (!isOpeningScreen(values.screen) && values.screen !== 'planner.grocery') return null;
+        break;
+      case 'pwa.surface.opened':
+      case 'pwa.surface.closed':
+        if (values.screen !== 'planner.grocery') return null;
+        break;
+      default:
+        return null;
+    }
     for (const key of ['sessionId', 'tabId', 'eventId'])
       if (typeof values[key] !== 'string' || !uuid.test(values[key])) return null;
     for (const key of ['sequence', 'timestamp'])
