@@ -1,12 +1,13 @@
 'use server';
 
+import { after } from 'next/server';
 import { sendBrowserCheck, sendBrowserAppOpened } from './server';
 import { isOpeningScreen } from './opening';
 
 // Next.js checks Server Action origins. Accept no client-controlled payload or URL.
 // Intentionally unwired: a future browser integration can call this for qualification.
 export async function reportBrowserTelemetryCheck(): Promise<void> {
-  await sendBrowserCheck();
+  after(() => sendBrowserCheck());
 }
 
 // Untrusted browser observation: no event, producer or destination selection.
@@ -28,5 +29,6 @@ export async function reportBrowserAppOpened(input: unknown): Promise<void> {
     return;
   }
   if (!isOpeningScreen(screen)) return;
-  await sendBrowserAppOpened(screen);
+  // Keep receiver latency out of the response and the client Server Action queue.
+  after(() => sendBrowserAppOpened(screen));
 }

@@ -5,7 +5,14 @@ import { sendServerCheck } from './server';
 import { reportBrowserAppOpened, reportBrowserTelemetryCheck } from './actions';
 import { observeOpening } from './opening';
 
-afterEach(() => vi.unstubAllEnvs());
+const { deferred } = vi.hoisted(() => ({ deferred: [] as Promise<void>[] }));
+vi.mock('next/server', () => ({
+  after: (callback: () => Promise<void>) => deferred.push(callback()),
+}));
+afterEach(async () => {
+  await Promise.all(deferred.splice(0));
+  vi.unstubAllEnvs();
+});
 
 it('delivers standard JSON logs through both producer entry points and stops after opt-out', async () => {
   const received: { authorization: string | undefined; path: string | undefined; body: string }[] =
@@ -26,6 +33,7 @@ it('delivers standard JSON logs through both producer entry points and stops aft
     vi.stubEnv('SENTRAME_SERVER_TOKEN', 'synthetic-server');
     await sendServerCheck();
     await reportBrowserTelemetryCheck();
+    await Promise.all(deferred);
     expect(received).toHaveLength(2);
     expect(received.map((item) => item.authorization)).toEqual([
       'Bearer synthetic-server',
@@ -49,6 +57,7 @@ it('delivers standard JSON logs through both producer entry points and stops aft
     vi.stubEnv('WFS_TELEMETRY_ENABLED', 'false');
     await sendServerCheck();
     await reportBrowserTelemetryCheck();
+    await Promise.all(deferred);
     expect(received).toHaveLength(2);
   } finally {
     receiver.closeAllConnections();
@@ -96,6 +105,7 @@ it.each(['reject', 'redirect', 'timeout'] as const)(
       observeOpening(owner, true, '/recipes', submit);
       expect(submit).toHaveBeenCalledTimes(1);
       await expect(completion).resolves.toBeUndefined();
+      await Promise.all(deferred);
       if (mode === 'timeout') {
         expect(performance.now() - started).toBeGreaterThanOrEqual(1800);
         expect(performance.now() - started).toBeLessThan(4000);
@@ -148,10 +158,12 @@ it('real concurrent opening saturation leaves server capacity and releases brows
     expect(received.filter((token) => token === 'Bearer synthetic-server')).toHaveLength(1);
     for (const response of pending) response.writeHead(429).end();
     await Promise.all(openings);
+    await Promise.all(deferred);
     const next = actions.reportBrowserAppOpened({ screen: 'home' });
     await vi.waitFor(() => expect(pending).toHaveLength(5));
     pending[4].end('{}');
     await next;
+    await Promise.all(deferred);
     vi.stubEnv('WFS_TELEMETRY_ENABLED', 'false');
     await actions.reportBrowserAppOpened({ screen: 'capture' });
     expect(received).toHaveLength(6);

@@ -136,7 +136,10 @@ Configuration is checked on each export. Each producer retains independent
 limits of 120 records/minute and four concurrent requests per Node process.
 Exports time out after two seconds and reject redirects. Failure consumes the
 opening attempt; there is no retry, durable queue, unload flush or delivery
-acknowledgement to the UI. Rendering and navigation do not await the receiver.
+acknowledgement to the UI. The Server Actions schedule export with Next.js `after()`, so their complete
+responses finish before receiver I/O. Rendering, navigation and subsequent client
+Server Actions do not wait for the receiver. The two-second timeout bounds only
+the deferred export.
 Rejected shapes and disabled/invalid configuration produce no export. Receiver
 rejection (including 429/503), redirects, timeout and exhausted budgets drop the
 attempt permanently for that document, even after navigation or resume. A failed

@@ -616,6 +616,29 @@ test('fresh Search -> real action -> Node capture; navigation suppresses, reload
       await expect.poll(() => received.length).toBe(validCount + 1);
       await expect.poll(() => inspection.actionResponses.length).toBe(inputs.length + 2);
       await inspection.drainBodies();
+      // The complete action response must finish while the receiver is stalled.
+      // Awaiting response.text() catches exports that delay the streamed response tail.
+      receiverMode = 'timeout';
+      const elapsed = await candidate.evaluate(async (id) => {
+        const start = performance.now();
+        const response = await fetch(location.href, {
+          method: 'POST',
+          headers: {
+            'Next-Action': id,
+            'Content-Type': 'text/plain;charset=UTF-8',
+            Accept: 'text/x-component',
+          },
+          body: JSON.stringify([{ screen: 'search' }]),
+        });
+        await response.text();
+        if (!response.ok) throw new Error('Opening action failed');
+        return performance.now() - start;
+      }, actionId);
+      expect(elapsed).toBeLessThan(1500);
+      await expect.poll(() => received.length).toBe(validCount + 2);
+      await expect.poll(() => inspection.actionResponses.length).toBe(inputs.length + 3);
+      await inspection.drainBodies();
+      receiverMode = 'accept';
       for (const privateValue of [
         endpoint,
         'opening-fixture-browser',

@@ -1,3 +1,5 @@
+// Transport assertions run deferred work inline; action scheduling is tested separately.
+vi.mock('next/server', () => ({ after: (callback: () => Promise<void>) => callback() }));
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { reportBrowserAppOpened } from './actions';
 import { observeOpening } from './opening';
