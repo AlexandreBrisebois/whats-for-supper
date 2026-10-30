@@ -1,8 +1,8 @@
 'use server';
 
 import { after } from 'next/server';
-import { sendBrowserCheck, sendBrowserAppOpened } from './server';
-import { isOpeningScreen } from './opening';
+import { sendBrowserCheck, sendBrowserObservation } from './server';
+import { parseBrowserObservation } from './navigation';
 
 // Next.js checks Server Action origins. Accept no client-controlled payload or URL.
 // Intentionally unwired: a future browser integration can call this for qualification.
@@ -10,25 +10,12 @@ export async function reportBrowserTelemetryCheck(): Promise<void> {
   after(() => sendBrowserCheck());
 }
 
-// Untrusted browser observation: no event, producer or destination selection.
-// Public entry (Welcome/invite) needs no household identity. Runtime opt-in and
-// the browser budget authorize this fixed operation, never business access.
-export async function reportBrowserAppOpened(input: unknown): Promise<void> {
-  let screen: unknown;
-  try {
-    if (!input || typeof input !== 'object' || Array.isArray(input)) return;
-    const prototype = Object.getPrototypeOf(input);
-    if (prototype !== Object.prototype && prototype !== null) return;
-    if (Reflect.ownKeys(input).length !== 1) return;
-    // Inspect a data field without invoking a getter on malformed input.
-    const field = Object.getOwnPropertyDescriptor(input, 'screen');
-    if (!field || !Object.hasOwn(field, 'value')) return;
-    screen = field.value;
-  } catch {
-    // Invalid object inspection must be as inert as an invalid classification.
-    return;
-  }
-  if (!isOpeningScreen(screen)) return;
-  // Keep receiver latency out of the response and the client Server Action queue.
-  after(() => sendBrowserAppOpened(screen));
+// Public entry needs no household identity. Next checks same-origin Action calls;
+// runtime opt-in, closed vocabulary and the browser budget bound collection.
+export async function reportBrowserObservation(input: unknown): Promise<void> {
+  const observedAt = Date.now();
+  const observation = parseBrowserObservation(input, observedAt);
+  if (!observation) return;
+  // Capture the forwarding clock now, before deferred export, and retain browser authority.
+  after(() => sendBrowserObservation(observation, observedAt));
 }

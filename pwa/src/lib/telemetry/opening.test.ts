@@ -1,7 +1,9 @@
+import type { BrowserObservation } from './navigation';
+import { observation, envelopeAttributes } from '@/test/telemetry';
 // Transport assertions run deferred work inline; action scheduling is tested separately.
 vi.mock('next/server', () => ({ after: (callback: () => Promise<void>) => callback() }));
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { reportBrowserAppOpened } from './actions';
+import { reportBrowserObservation } from './actions';
 import { classifyScreen, observeOpening } from './opening';
 
 const fetchMock = vi.fn().mockResolvedValue({ ok: true });
@@ -25,7 +27,7 @@ it('forwards the approved Search opening as a fixed browser log', async () => {
   vi.stubEnv('SENTRAME_OTLP_BASE', 'https://sentrame.example');
   vi.stubEnv('SENTRAME_BROWSER_TOKEN', 'browser-test');
   vi.stubEnv('SENTRAME_SERVER_TOKEN', 'server-test');
-  await reportBrowserAppOpened({ screen: 'search' });
+  await reportBrowserObservation(observation('search'));
   const [url, options] = fetchMock.mock.calls[0];
   expect(url).toBe('https://sentrame.example/v1/logs');
   expect(options.headers).toEqual({
@@ -47,10 +49,11 @@ it('forwards the approved Search opening as a fixed browser log', async () => {
             logRecords: [
               {
                 timeUnixNano: expect.stringMatching(/^\d{19}$/),
+                observedTimeUnixNano: expect.stringMatching(/^\d{19}$/),
                 eventName: 'pwa.app.opened',
                 severityNumber: 9,
                 body: { stringValue: 'WFS opening observed' },
-                attributes: [{ key: 'stage.name', value: { stringValue: 'search' } }],
+                attributes: envelopeAttributes('search'),
               },
             ],
           },
@@ -72,11 +75,19 @@ it('claims once per document before submission, while a fresh document can claim
   observeOpening(first, true, '/recipes', submit);
   observeOpening(first, true, '/home', submit);
   observeOpening(first, true, '/recipes', submit);
-  expect(submit.mock.calls).toEqual([[{ screen: 'search' }]]);
+  expect(
+    submit.mock.calls
+      .filter(([e]) => e.eventName === 'pwa.app.opened')
+      .map(([e]) => [{ screen: e.screen }])
+  ).toEqual([[{ screen: 'search' }]]);
   const second = document.implementation.createHTMLDocument();
   Object.defineProperty(second, 'visibilityState', { value: 'visible' });
   observeOpening(second, true, '/recipes', submit);
-  expect(submit.mock.calls).toEqual([[{ screen: 'search' }], [{ screen: 'search' }]]);
+  expect(
+    submit.mock.calls
+      .filter(([e]) => e.eventName === 'pwa.app.opened')
+      .map(([e]) => [{ screen: e.screen }])
+  ).toEqual([[{ screen: 'search' }], [{ screen: 'search' }]]);
 });
 
 it.each([
@@ -101,7 +112,11 @@ it('keeps a hidden or unready document waiting without manufacturing a root open
   observeOpening(owner, true, '/', submit);
   expect(submit).not.toHaveBeenCalled();
   observeOpening(owner, true, '/welcome', submit);
-  expect(submit.mock.calls).toEqual([[{ screen: 'welcome' }]]);
+  expect(
+    submit.mock.calls
+      .filter(([e]) => e.eventName === 'pwa.app.opened')
+      .map(([e]) => [{ screen: e.screen }])
+  ).toEqual([[{ screen: 'welcome' }]]);
 });
 
 it.each([
@@ -132,7 +147,7 @@ it.each([
   { screen: 'search', [Symbol('extra')]: true },
   Object.assign(Object.create({ inherited: true }), { screen: 'search' }),
 ])('rejects malformed or extended input %# without export', async (input) => {
-  await expect(reportBrowserAppOpened(input)).resolves.toBeUndefined();
+  await expect(reportBrowserObservation(input)).resolves.toBeUndefined();
   expect(fetchMock).not.toHaveBeenCalled();
 });
 
@@ -141,7 +156,7 @@ it('rejects accessor input without invoking browser-controlled code', async () =
     throw new Error('private accessor');
   });
   const input = Object.defineProperty({}, 'screen', { enumerable: true, get: read });
-  await expect(reportBrowserAppOpened(input)).resolves.toBeUndefined();
+  await expect(reportBrowserObservation(input)).resolves.toBeUndefined();
   expect(read).not.toHaveBeenCalled();
   expect(fetchMock).not.toHaveBeenCalled();
 });
@@ -149,7 +164,7 @@ it('rejects accessor input without invoking browser-controlled code', async () =
 it('contains malformed object inspection failures', async () => {
   const { proxy, revoke } = Proxy.revocable({}, {});
   revoke();
-  await expect(reportBrowserAppOpened(proxy)).resolves.toBeUndefined();
+  await expect(reportBrowserObservation(proxy)).resolves.toBeUndefined();
   expect(fetchMock).not.toHaveBeenCalled();
 });
 
@@ -169,14 +184,14 @@ it.each([
   'error',
   'not.found',
   'other',
-])('accepts only fixed browser authority for approved %s', async (screen) => {
-  await reportBrowserAppOpened({ screen });
+] as const)('accepts only fixed browser authority for approved %s', async (screen) => {
+  await reportBrowserObservation(observation(screen));
   expect(fetchMock).toHaveBeenCalledTimes(1);
   const options = fetchMock.mock.calls[0][1];
   expect(options.headers.Authorization).toBe('Bearer browser-test');
   const record = JSON.parse(options.body).resourceLogs[0].scopeLogs[0].logRecords[0];
   expect(record.eventName).toBe('pwa.app.opened');
-  expect(record.attributes).toEqual([{ key: 'stage.name', value: { stringValue: screen } }]);
+  expect(record.attributes).toEqual(envelopeAttributes(screen));
 });
 
 it.each(['reject', 'throw', 'hang'])(
@@ -187,7 +202,7 @@ it.each(['reject', 'throw', 'hang'])(
     Object.defineProperty(owner, 'visibilityState', {
       get: () => (visible ? 'visible' : 'hidden'),
     });
-    const submit = vi.fn((): Promise<void> => {
+    const submit = vi.fn<(input: BrowserObservation) => Promise<void>>(() => {
       if (failure === 'throw') throw new Error('private failure');
       if (failure === 'reject') return Promise.reject(new Error('private failure'));
       return new Promise(() => {});
@@ -200,7 +215,11 @@ it.each(['reject', 'throw', 'hang'])(
     visible = true;
     observeOpening(owner, true, '/home', submit);
     observeOpening(owner, true, '/recipes', submit);
-    expect(submit.mock.calls).toEqual([[{ screen: 'search' }]]);
+    expect(
+      submit.mock.calls
+        .filter(([e]) => e.eventName === 'pwa.app.opened')
+        .map(([e]) => [{ screen: e.screen }])
+    ).toEqual([[{ screen: 'search' }]]);
     vi.restoreAllMocks();
   }
 );
@@ -212,4 +231,22 @@ it('initial opt-out consumes the opportunity even if later enabled', () => {
   observeOpening(owner, false, null, submit);
   observeOpening(owner, true, '/recipes', submit);
   expect(submit).not.toHaveBeenCalled();
+});
+
+it('serializes the browser clock and separately captured forwarding clock exactly', async () => {
+  const now = Date.now();
+  const clock = vi.spyOn(Date, 'now').mockReturnValue(now);
+  const input = {
+    ...observation('home', 'pwa.screen.presented'),
+    timestamp: now - 1234,
+    sequence: 7,
+  };
+  await reportBrowserObservation(input);
+  const record = JSON.parse(fetchMock.mock.calls[0][1].body).resourceLogs[0].scopeLogs[0]
+    .logRecords[0];
+  expect(record.timeUnixNano).toBe(`${BigInt(input.timestamp) * 1_000_000n}`);
+  expect(record.observedTimeUnixNano).toBe(`${BigInt(now) * 1_000_000n}`);
+  expect(record.body).toEqual({ stringValue: 'WFS presentation observed' });
+  expect(record.attributes.at(-1)).toEqual({ key: 'source.sequence', value: { intValue: '7' } });
+  clock.mockRestore();
 });

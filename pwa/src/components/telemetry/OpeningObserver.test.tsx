@@ -28,7 +28,7 @@ vi.mock('next/navigation', () => ({
   usePathname: () => route.pathname,
   useRouter: () => ({ replace }),
 }));
-vi.mock('@/lib/telemetry/actions', () => ({ reportBrowserAppOpened: submit }));
+vi.mock('@/lib/telemetry/actions', () => ({ reportBrowserObservation: submit }));
 let Observer: ComponentType<{ enabled: boolean; readyPathname: string | null }>;
 let ErrorFallback: ComponentType<{ error: Error; reset: () => void }>;
 let NotFound: ComponentType;
@@ -66,7 +66,11 @@ it('requires current gate readiness, ignoring a stale ready pathname and redirec
   expect(submit).not.toHaveBeenCalled();
   route.pathname = '/onboarding';
   view.rerender(<Observer enabled readyPathname="/onboarding" />);
-  expect(submit.mock.calls).toEqual([[{ screen: 'onboarding' }]]);
+  expect(
+    submit.mock.calls
+      .filter(([e]) => e.eventName === 'pwa.app.opened')
+      .map(([e]) => [{ screen: e.screen }])
+  ).toEqual([[{ screen: 'onboarding' }]]);
 });
 
 it('uses the current visible route, never the departed hidden candidate', () => {
@@ -76,7 +80,11 @@ it('uses the current visible route, never the departed hidden candidate', () => 
   view.rerender(<Observer enabled readyPathname="/capture" />);
   expect(submit).not.toHaveBeenCalled();
   visibility(true);
-  expect(submit.mock.calls).toEqual([[{ screen: 'capture' }]]);
+  expect(
+    submit.mock.calls
+      .filter(([e]) => e.eventName === 'pwa.app.opened')
+      .map(([e]) => [{ screen: e.screen }])
+  ).toEqual([[{ screen: 'capture' }]]);
 });
 
 it('claims once across effect replay, remount and same-document history restoration', () => {
@@ -93,7 +101,11 @@ it('claims once across effect replay, remount and same-document history restorat
   restored.rerender(<Observer enabled readyPathname="/recipes" />);
   visibility(false);
   visibility(true);
-  expect(submit.mock.calls).toEqual([[{ screen: 'search' }]]);
+  expect(
+    submit.mock.calls
+      .filter(([e]) => e.eventName === 'pwa.app.opened')
+      .map(([e]) => [{ screen: e.screen }])
+  ).toEqual([[{ screen: 'search' }]]);
 });
 
 it('manufactures no opening when a hidden or gated candidate is cancelled', () => {
@@ -128,7 +140,11 @@ it('automatically covers an unregistered page without page telemetry calls', () 
     </>
   );
   expect(screen.getByText('New page')).toBeVisible();
-  expect(submit.mock.calls).toEqual([[{ screen: 'other' }]]);
+  expect(
+    submit.mock.calls
+      .filter(([e]) => e.eventName === 'pwa.app.opened')
+      .map(([e]) => [{ screen: e.screen }])
+  ).toEqual([[{ screen: 'other' }]]);
 });
 
 it('keeps Home classification beneath a context dialog', () => {
@@ -139,7 +155,11 @@ it('keeps Home classification beneath a context dialog', () => {
       <div role="dialog">Introduction</div>
     </>
   );
-  expect(submit.mock.calls).toEqual([[{ screen: 'home' }]]);
+  expect(
+    submit.mock.calls
+      .filter(([e]) => e.eventName === 'pwa.app.opened')
+      .map(([e]) => [{ screen: e.screen }])
+  ).toEqual([[{ screen: 'home' }]]);
 });
 
 it.each(['error', 'not.found'] as const)(
@@ -156,7 +176,11 @@ it.each(['error', 'not.found'] as const)(
         )}
       </>
     );
-    expect(submit.mock.calls).toEqual([[{ screen: kind }]]);
+    expect(
+      submit.mock.calls
+        .filter(([e]) => e.eventName === 'pwa.app.opened')
+        .map(([e]) => [{ screen: e.screen }])
+    ).toEqual([[{ screen: kind }]]);
   }
 );
 
@@ -171,7 +195,11 @@ it('cleans a cancelled hidden fallback before the next eligible screen', () => {
   route.pathname = '/home';
   view.rerender(<Observer enabled readyPathname="/home" />);
   visibility(true);
-  expect(submit.mock.calls).toEqual([[{ screen: 'home' }]]);
+  expect(
+    submit.mock.calls
+      .filter(([e]) => e.eventName === 'pwa.app.opened')
+      .map(([e]) => [{ screen: e.screen }])
+  ).toEqual([[{ screen: 'home' }]]);
 });
 
 it('invalidates hidden readiness when identity changes on the same pathname', async () => {
@@ -196,7 +224,13 @@ it('invalidates hidden readiness when identity changes on the same pathname', as
       <main>Choose member</main>
     </Gate>
   );
-  await waitFor(() => expect(submit.mock.calls).toEqual([[{ screen: 'onboarding' }]]));
+  await waitFor(() =>
+    expect(
+      submit.mock.calls
+        .filter(([e]) => e.eventName === 'pwa.app.opened')
+        .map(([e]) => [{ screen: e.screen }])
+    ).toEqual([[{ screen: 'onboarding' }]])
+  );
 });
 
 it('prevents a departed async identity check from tagging the next route ready', async () => {
@@ -225,7 +259,11 @@ it('prevents a departed async identity check from tagging the next route ready',
     complete();
   });
   visibility(true);
-  expect(submit.mock.calls).toEqual([[{ screen: 'welcome' }]]);
+  expect(
+    submit.mock.calls
+      .filter(([e]) => e.eventName === 'pwa.app.opened')
+      .map(([e]) => [{ screen: e.screen }])
+  ).toEqual([[{ screen: 'welcome' }]]);
 });
 
 it('uses a hidden fallback only while it is still the committed screen', () => {
@@ -238,7 +276,11 @@ it('uses a hidden fallback only while it is still the committed screen', () => {
   );
   expect(submit).not.toHaveBeenCalled();
   visibility(true);
-  expect(submit.mock.calls).toEqual([[{ screen: 'not.found' }]]);
+  expect(
+    submit.mock.calls
+      .filter(([e]) => e.eventName === 'pwa.app.opened')
+      .map(([e]) => [{ screen: e.screen }])
+  ).toEqual([[{ screen: 'not.found' }]]);
 });
 
 it('does not replace a claimed opening when a fallback appears later', () => {
@@ -251,5 +293,24 @@ it('does not replace a claimed opening when a fallback appears later', () => {
   );
   visibility(false);
   visibility(true);
-  expect(submit.mock.calls).toEqual([[{ screen: 'search' }]]);
+  expect(
+    submit.mock.calls
+      .filter(([e]) => e.eventName === 'pwa.app.opened')
+      .map(([e]) => [{ screen: e.screen }])
+  ).toEqual([[{ screen: 'search' }]]);
+});
+
+it('deduplicates both opening and screens across effect replay and remount', () => {
+  const first = render(
+    <StrictMode>
+      <Observer enabled readyPathname="/recipes" />
+    </StrictMode>
+  );
+  first.unmount();
+  const second = render(<Observer enabled readyPathname="/recipes" />);
+  second.rerender(<Observer enabled readyPathname="/recipes" />);
+  expect(submit.mock.calls.map(([e]) => [e.eventName, e.screen, e.sequence])).toEqual([
+    ['pwa.app.opened', 'search', 1],
+    ['pwa.screen.presented', 'search', 2],
+  ]);
 });

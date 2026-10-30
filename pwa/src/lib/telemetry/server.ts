@@ -1,5 +1,5 @@
 import 'server-only';
-import type { OpeningScreen } from './opening';
+import type { BrowserObservation } from './navigation';
 
 function configuration() {
   if (process.env.WFS_TELEMETRY_ENABLED !== 'true') return null;
@@ -37,7 +37,11 @@ const budgets = {
   server: { start: 0, count: 0, active: 0 },
 };
 
-async function exportLog(producer: 'browser' | 'server', screen?: OpeningScreen) {
+async function exportLog(
+  producer: 'browser' | 'server',
+  observation?: BrowserObservation,
+  observedAt?: number
+) {
   const config = configuration();
   if (!config) return;
   const budget = budgets[producer];
@@ -73,16 +77,32 @@ async function exportLog(producer: 'browser' | 'server', screen?: OpeningScreen)
                 scope: { name: 'wfs.anonymous' },
                 logRecords: [
                   {
-                    timeUnixNano: `${BigInt(now) * 1_000_000n}`,
-                    eventName: screen ? 'pwa.app.opened' : 'pwa.telemetry.check',
+                    timeUnixNano: `${BigInt(observation?.timestamp ?? now) * 1_000_000n}`,
+                    ...(observation
+                      ? { observedTimeUnixNano: `${BigInt(observedAt!) * 1_000_000n}` }
+                      : {}),
+                    eventName: observation?.eventName ?? 'pwa.telemetry.check',
                     severityNumber: 9,
                     body: {
-                      stringValue: screen
-                        ? 'WFS opening observed'
+                      stringValue: observation
+                        ? observation.eventName === 'pwa.app.opened'
+                          ? 'WFS opening observed'
+                          : 'WFS presentation observed'
                         : 'Synthetic telemetry integration check',
                     },
-                    ...(screen
-                      ? { attributes: [{ key: 'stage.name', value: { stringValue: screen } }] }
+                    ...(observation
+                      ? {
+                          attributes: [
+                            { key: 'stage.name', value: { stringValue: observation.screen } },
+                            { key: 'session.id', value: { stringValue: observation.sessionId } },
+                            { key: 'tab.id', value: { stringValue: observation.tabId } },
+                            { key: 'event.id', value: { stringValue: observation.eventId } },
+                            {
+                              key: 'source.sequence',
+                              value: { intValue: String(observation.sequence) },
+                            },
+                          ],
+                        }
                       : {}),
                   },
                 ],
@@ -109,6 +129,9 @@ export async function sendServerCheck(): Promise<void> {
   await exportLog('server');
 }
 
-export async function sendBrowserAppOpened(screen: OpeningScreen): Promise<void> {
-  await exportLog('browser', screen);
+export async function sendBrowserObservation(
+  observation: BrowserObservation,
+  observedAt = Date.now()
+): Promise<void> {
+  await exportLog('browser', observation, observedAt);
 }

@@ -1,6 +1,6 @@
 # Telemetry journey inventory
 
-This is a **source-backed planning seed**, not an executed app walkthrough, approved event catalogue or implementation checklist. Use [inventory sessions I1–I5](../../openspec/changes/inventory-telemetry-journeys/tasks.md) to trace one group and the [tracker](README.md) for status. Baseline coverage below is planned F1/F2/F3 coverage; it is not present in today's application.
+This is a **source-backed planning seed**, not an executed app walkthrough, approved event catalogue or implementation checklist. Use [inventory sessions I1–I5](../../openspec/changes/inventory-telemetry-journeys/tasks.md) to trace one group and the [tracker](README.md) for status. Baseline coverage below distinguishes implemented F1 opening from planned F2/F3 coverage; revised correlated opening/navigation is not implemented. See the [navigation revision boundary](#navigation-revision-boundary).
 
 ## Coverage card to complete per selected journey
 
@@ -79,3 +79,36 @@ The current receiver has one goal selector per active definition. A common Disco
 ## Session records
 
 None executed yet. Append one compact coverage card/checkpoint per selected session, linking task evidence and actual verification. Keep the seed table as navigation and update its evidence state only after the recorded work.
+
+## Navigation revision boundary
+
+2026-10-29 planning reconciliation only, not an I-session walkthrough or newly
+approved business event catalogue. F2's revised opening, screens and adopted surfaces
+share anonymous document-local correlation and ordering; they prove presentation,
+not saved work. Follow the [mapping recipe](../sentrame.md#planned-navigation-mapping-recipe)
+and [F2-1 prerequisites/evidence cells](README.md#navigation-revision-source-record).
+No row above is promoted to traced/runtime-qualified by this revision.
+
+| Future question | Smallest missing semantic evidence | Owning boundary / limit |
+| --- | --- | --- |
+| Was a vote saved? | Trusted post-commit vote outcome, distinct from request and result presentation | `DiscoveryService.SubmitVoteAsync`, before later publication; J03 needs its full source trace before instrumentation |
+| Was a meal assigned? | Actual committed assignment outcome, including failed/lost-response recovery semantics | `ScheduleService` assignment persistence owner; J05, not Quick Find selection or Planner presentation |
+| Was shopping completed? | An agreed shopping-completion fact and reporting owner | J08 has no persisted shopping-trip-completed command; GroceryCheckCoordinator/item checks prove check state only |
+| Was cooking completed? | Trusted durable planned-meal cooking outcome, separately defined from viewed-recipe completion | `ScheduleService.ValidateDayAsync` save/commit for the planned-meal case; CooksMode screen/steps alone are insufficient |
+
+These are deferred minimum semantic gaps and source entry points. Do not emit
+candidate business names, propagate context into the API or infer server authority
+within F2. Cross-service continuity and cross-document/background lifetime are
+separate decisions, without product/person/household identifiers.
+
+For open-ended path inspection, current Sentrame's mandatory goal on nonempty
+activation is a receiver constraint. Hand goal-free navigation activation and
+inspection to the Sentrame agent; do not choose App opened as goal. F2 qualifies
+prospective derivation separately with a meaningful synthetic reaching-Search
+presentation goal in a disposable receiver only. Activate before emission;
+existing captured definitions are not retrospectively rewritten. Surface closure
+is never automatically exit/cancellation/business completion. Paired page/surface
+duration needs reviewed boundaries plus `stage.occurrence.id`; F2 measures no dwell
+or attention. Missing records/sequence gaps remain incomplete evidence, and later
+mapped events after goal/30-minute inactivity may start another capture within the
+same WFS document scope without another opening.

@@ -1,5 +1,6 @@
+import { observation } from '@/test/telemetry';
 import { afterEach, expect, it, vi } from 'vitest';
-import { reportBrowserAppOpened, reportBrowserTelemetryCheck } from './actions';
+import { reportBrowserObservation, reportBrowserTelemetryCheck } from './actions';
 
 const { callbacks, opening, check } = vi.hoisted(() => ({
   callbacks: [] as Array<() => Promise<void>>,
@@ -9,7 +10,7 @@ const { callbacks, opening, check } = vi.hoisted(() => ({
 vi.mock('next/server', () => ({
   after: (callback: () => Promise<void>) => callbacks.push(callback),
 }));
-vi.mock('./server', () => ({ sendBrowserAppOpened: opening, sendBrowserCheck: check }));
+vi.mock('./server', () => ({ sendBrowserObservation: opening, sendBrowserCheck: check }));
 afterEach(() => {
   callbacks.length = 0;
   vi.resetAllMocks();
@@ -26,7 +27,7 @@ it.each(['opening', 'check'])(
     check.mockReturnValue(stalled);
     const action =
       kind === 'opening'
-        ? reportBrowserAppOpened({ screen: 'search' })
+        ? reportBrowserObservation(observation('search'))
         : reportBrowserTelemetryCheck();
     const result = await Promise.race([action, Promise.resolve('pending')]);
     expect(result).toBeUndefined();
@@ -34,7 +35,11 @@ it.each(['opening', 'check'])(
     expect(check).not.toHaveBeenCalled();
     expect(callbacks).toHaveLength(1);
     const exportWork = callbacks[0]();
-    if (kind === 'opening') expect(opening).toHaveBeenCalledWith('search');
+    if (kind === 'opening')
+      expect(opening).toHaveBeenCalledWith(
+        expect.objectContaining({ ...observation('search'), timestamp: expect.any(Number) }),
+        expect.any(Number)
+      );
     else expect(check).toHaveBeenCalledOnce();
     release();
     await exportWork;
@@ -42,7 +47,78 @@ it.each(['opening', 'check'])(
 );
 
 it('does not schedule rejected browser input', async () => {
-  await reportBrowserAppOpened({ screen: 'search', destination: 'private' });
+  await reportBrowserObservation({ screen: 'search', destination: 'private' });
   expect(callbacks).toHaveLength(0);
   expect(opening).not.toHaveBeenCalled();
+});
+
+it('captures forwarding observation before deferred export', async () => {
+  const now = Date.now();
+  const clock = vi.spyOn(Date, 'now').mockReturnValue(now);
+  const input = observation();
+  await reportBrowserObservation(input);
+  clock.mockReturnValue(now + 90_000);
+  expect(callbacks).toHaveLength(1);
+  await callbacks[0]();
+  expect(opening).toHaveBeenCalledWith(input, now);
+  clock.mockRestore();
+});
+
+it.each([-86_400_001, 300_001, NaN, Infinity, 0.5])(
+  'rejects invalid browser time %s',
+  async (offset) => {
+    const now = Date.now();
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(now);
+    const timestamp = Number.isInteger(offset) ? now + offset : offset;
+    await reportBrowserObservation({ ...observation(), timestamp });
+    expect(callbacks).toHaveLength(0);
+    clock.mockRestore();
+  }
+);
+it.each([-86_400_000, 300_000])('accepts exact clock boundary %s', async (offset) => {
+  const now = Date.now();
+  const clock = vi.spyOn(Date, 'now').mockReturnValue(now);
+  await reportBrowserObservation({ ...observation(), timestamp: now + offset });
+  expect(callbacks).toHaveLength(1);
+  clock.mockRestore();
+});
+it.each([
+  { eventName: 'business.saved' },
+  { screen: '/private' },
+  { sessionId: 'person' },
+  { tabId: null },
+  { eventId: [] },
+  { sequence: 0 },
+  { sequence: 1.5 },
+  { sequence: Number.MAX_SAFE_INTEGER + 1 },
+  { url: 'private-sentinel' },
+  { attributes: {} },
+  { producer: 'server' },
+  { timestamp: 0 },
+])('rejects closed-envelope violation %#', async (extra) => {
+  await reportBrowserObservation({ ...observation(), ...extra });
+  expect(callbacks).toHaveLength(0);
+});
+
+it.each(['eventName', 'screen', 'sessionId', 'tabId', 'eventId', 'sequence', 'timestamp'])(
+  'rejects accessors on otherwise complete %s without invoking them',
+  async (key) => {
+    const getter = vi.fn(() => 'private-sentinel');
+    const input = Object.defineProperty(observation(), key, { enumerable: true, get: getter });
+    await reportBrowserObservation(input);
+    expect(getter).not.toHaveBeenCalled();
+    expect(callbacks).toHaveLength(0);
+  }
+);
+it.each([
+  (input: object) => Object.assign(Object.create({ private: 'sentinel' }), input),
+  (input: object) => ({ ...input, [Symbol('private')]: true }),
+  () => [],
+])('rejects non-data object shapes %#', async (shape) => {
+  await reportBrowserObservation(shape(observation()));
+  expect(callbacks).toHaveLength(0);
+});
+it('accepts the same closed envelope for subsequent screen evidence', async () => {
+  await reportBrowserObservation(observation('home', 'pwa.screen.presented'));
+  expect(callbacks).toHaveLength(1);
 });

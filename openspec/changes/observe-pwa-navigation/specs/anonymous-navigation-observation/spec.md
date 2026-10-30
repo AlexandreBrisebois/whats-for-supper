@@ -26,7 +26,19 @@ When enabled, WFS SHALL attempt `pwa.screen.presented` when a visible document p
 
 ### Requirement: Keep document correlation anonymous and bounded
 
-Navigation records SHALL use random in-memory `session.id` and `tab.id` shared only within the document scope. Each attempted observation SHALL have a fresh `event.id` and increasing `source.sequence`. The context SHALL NOT use browser storage, credentials, product IDs or cross-document joins.
+Opening, screens and adopted surfaces SHALL share random in-memory `session.id` and separate random `tab.id`, generated once after collection is enabled. One shared coordinator SHALL allocate a distinct random `event.id` and positive increasing `source.sequence` per observation before admission/delivery. The context SHALL NOT use browser storage, credentials, product IDs or cross-document joins.
+
+#### Scenario: Opening and initial navigation order
+- **WHEN** a fresh enabled visible document presents Home, then Search, then Home
+- **THEN** it allocates `pwa.app.opened(home)` first, `pwa.screen.presented(home)` second, then Search and Home presentations
+- **AND** all four records share session/tab, have distinct event IDs and sequence 1, 2, 3, 4
+- **AND** initial adopted surfaces follow the initial screen in that stream
+- **AND** opening records entry and the screen records presentation, without counting two visits or promising delivery order
+
+#### Scenario: Disabled document
+- **WHEN** collection is initially disabled or configuration is invalid
+- **THEN** no correlation scope or observation is generated for later replay
+- **AND** navigation or resume does not rearm collection in that document
 
 #### Scenario: New document or concurrent tab
 - **WHEN** a reload or another tab creates a document
@@ -94,7 +106,7 @@ Navigation observations SHALL be INFO standard OTLP/HTTP JSON named logs using t
 
 ### Requirement: Bound delivery without disrupting the application
 
-Collection SHALL retain runtime server opt-in and fail closed. Navigation SHALL have no durable queue, transport retry, sampling, presence heartbeat or delivery-dependent UI. It SHALL obey the existing two-second timeout, four active requests and 120 records/minute per producer per Node process, plus 60 navigation attempts/minute per document.
+Collection SHALL retain runtime server opt-in and fail closed. Navigation SHALL have no durable queue, transport retry, sampling, presence heartbeat or delivery-dependent UI. It SHALL obey the existing two-second timeout, four active requests and 120 records/minute per producer per Node process, plus 60 screen/surface attempts/minute per document; opening remains at most one attempt and shares the browser producer budget.
 
 #### Scenario: Storm or receiver outage
 - **WHEN** navigation exceeds admission limits or delivery fails
@@ -107,13 +119,53 @@ Collection SHALL retain runtime server opt-in and fail closed. Navigation SHALL 
 
 ### Requirement: Preserve opening and qualification boundaries
 
-The existing `pwa.app.opened` payload and one-attempt-per-document rule SHALL remain unchanged. Navigation qualification SHALL distinguish captured wire data, actual durable receiver reads, deployed routes and installed-device behavior. Received records SHALL NOT automatically imply mappings, goals, dwell or a complete journey graph.
+The revised opening contract SHALL participate in the shared stream while retaining its eligibility and one-attempt rule. Qualification SHALL distinguish wire capture, durable receiver receipt, configured derivation, deployed routes and physical-device behavior. Received records SHALL NOT automatically imply mappings, goals, dwell or a complete graph.
 
 #### Scenario: Baseline receipt without a goal
 - **WHEN** named navigation records arrive before a real journey goal is configured
 - **THEN** service, name, browser authority, classification and correlation can be qualified through protected reads
 - **AND** no goal is fabricated merely to produce a graph
 
-#### Scenario: Opening remains independent
-- **WHEN** a fresh document emits its initial screen record and its opening attempt
-- **THEN** they remain different observations and the opening still has only its original `stage.name` attribute
+#### Scenario: Opening preservation under failure
+- **WHEN** callbacks rerun, a component remounts, delivery fails or a browser clock is invalid
+- **THEN** no second opening or unchanged screen presentation is manufactured
+- **AND** each attempted observation retains its sequence allocation, so lost records can leave gaps
+- **AND** rendering, authentication, navigation and recovery remain unaffected
+
+### Requirement: Configure path meaning prospectively
+
+Guidance SHALL define explicit browser/log/service/name mappings for opening, screens and reviewed surfaces. Conditions SHALL be optional filters; screen labels SHALL use disjoint `stage.name` conditions. Hints SHALL NOT create correlation or activate mappings. Production opening SHALL NOT be used as a completion goal merely to enable activation.
+
+#### Scenario: Opening mapping
+- **WHEN** mapping `pwa.app.opened` for browser, log and `wfs-pwa-browser`
+- **THEN** Stage is `App opened`, Kind is step, timing is unavailable and no condition is required
+- **AND** the first mapped occurrence starts a journey; stage start is a duration boundary rather than a generic journey-start switch
+- **AND** `pwa.telemetry.check` remains a transport diagnostic outside the production path
+
+#### Scenario: Surface meaning
+- **WHEN** an adopted surface opens or closes
+- **THEN** its mapping has reviewed presentation or supporting meaning
+- **AND** closure is not automatically journey exit, cancellation or business completion
+
+#### Scenario: Prospective synthetic derivation
+- **WHEN** qualifying App opened, Home and Search in a disposable receiver
+- **THEN** mappings and an explicit synthetic reaching-Search presentation goal are activated before fresh browser records are emitted
+- **AND** protected reads show opening first, one scope/tab and the intended configured path
+- **AND** exact captured-wire replay creates no duplicate records or journey contributions, including after receiver restart/reopen
+- **AND** captured definitions are not assumed to change retrospectively
+
+### Requirement: Keep interpretation and outcome limits explicit
+
+Documentation SHALL distinguish document scope from receiver goal/30-minute inactivity segmentation. Navigation SHALL supply neither business commitment, page dwell nor attention. Cross-document and cross-service continuity SHALL remain separate decisions. No heartbeat, fake closure, persistent correlation, generic relay or SDK migration SHALL fill evidence gaps.
+
+#### Scenario: Later occurrence after receiver closure
+- **WHEN** a goal or 30 minutes without mapped activity closes a receiver journey
+- **THEN** a later mapped occurrence can start another journey in the same document scope
+- **AND** it does not create another WFS opening or prove failure, abandonment or a complete path
+
+#### Scenario: Duration or persisted outcome is requested
+- **WHEN** interpreting presentation records as duration or business completion
+- **THEN** missing records or sequence gaps remain incomplete evidence
+- **AND** paired surface/page duration additionally requires reviewed start/end meanings and shared `stage.occurrence.id`
+- **AND** trusted vote, assignment or cooking persistence evidence belongs at its actual server owner
+- **AND** shopping completion requires an agreed semantic boundary rather than an all-checked inference

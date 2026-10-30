@@ -2,32 +2,35 @@
 
 ## Why
 
-WFS currently has no automatic telemetry error collection. Unexpected browser and Next server errors need safe central reporting; handled business failures require their own later journey owners.
+Unexpected browser and Next server errors currently have no central WFS reporting. An error must be discoverable in Sentrame even without journey configuration. Where existing anonymous browser context permits, it should also explain what was presented before and after the failure in the path that began with app opening.
 
 ## Outcome and Scope
 
-Report one bounded observation per unexpected browser or Next server error occurrence, with no raw messages/stacks and optional current document context. Preserve standalone usefulness when presentation/correlation is unavailable. Do not alter application error handling or claim that all failures are captured.
+Attempt one minimized observation per identified unexpected failure occurrence, within bounded admission and best-effort delivery. An error proves that a boundary observed a failure; it does not prove that a journey failed, ended or subsequently recovered. Browser errors reuse the enabled document stream already owned by correlated opening/navigation. Next server errors remain useful standalone diagnostics because no approved browser request-context propagation exists.
 
-This change excludes .NET logging reconfiguration, feature-specific handled failures, exhausted business retries, automatic fetch/console capture, diagnostic free text, technical trace export and business recovery events. Those require selected journey changes. Application code and collection remain unchanged during this planning work.
+This revision changes planning artifacts only. Implementation, collection enablement, deployments, commits, Sentrame changes and existing receiver storage changes are outside this session. Handled business failures, actual persisted outcomes/recovery, .NET logging, generic request/console capture, raw diagnostics, technical traces and cross-document continuity remain separate work.
 
 ## What Changes
 
-- Initialize safe browser error/rejection reporting in `instrumentation-client.ts` and integrate the existing route error boundary plus a root error boundary.
-- Use `instrumentation.ts` / `onRequestError` for Next-captured server failures with server producer authority.
-- Define reporting ownership, bounded overlap suppression, safe categories and separate error quotas.
-- Preserve runtime opt-in, token secrecy, nonrecursive pipeline failure handling and ordinary UI recovery.
-- Verify actual isolated WFS error receipt through protected Sentrame reads without borrowing another SDK sample's qualification.
+- Report initialized script/rejection and boundary render failures as `pwa.browser.error`, with observation-time snapshots of existing document context and last presented static screen when available.
+- Share opening/navigation session, tab and sequence allocation; keep standalone errors when that context is unavailable, without creating a visit for an error.
+- Report Next-captured failures as `pwa.server.error` with separate server authority and no inferred browser context.
+- Specify exact safe fields, occurrence versus record identity, same-episode overlap suppression, distinct failed retries and bounded delivery.
+- Qualify standalone diagnostic discovery independently of mappings/goals, then supported journey association without an artificial error graph step. Identify receiver display/search gaps separately.
+- Require real browser/handler/Action/Node export and disposable Sentrame protected reads/reopen in the first useful slice; keep capture, retention, derivation, deployed routes and devices separate.
 
 ## Capabilities
 
 ### New Capabilities
 
-- `anonymous-error-observation`: Own minimized central unexpected browser and Next server error observations.
+- `anonymous-error-observation`: minimized unexpected browser and Next server error evidence, optional existing correlation, identity and honest diagnostic interpretation.
 
 ### Modified Capabilities
 
-None. Existing error/retry behavior and business outcome contracts remain unchanged.
+None. This capability consumes the active F2 correlated-opening/navigation contract; it does not replace opening eligibility, invent presentation or alter business outcomes.
 
 ## Impact
 
-Reuses the [opening transport](../archive/2026-10-29-centralize-pwa-opening-observation/design.md) and optional context from [navigation observation](../observe-pwa-navigation/design.md). Likely owners: PWA instrumentation entrypoints, `app/error.tsx`, a new `app/global-error.tsx`, telemetry adapters/tests and `docs/sentrame.md`. Inventory the existing .NET Serilog/OTel pipeline for later work; do not forward it into Sentrame or create another provider here. No business API/client/schema changes or receiver modifications. Sessions and dependencies are tracked in the [program tracker](../../../docs/telemetry/README.md).
+Dependencies are the implemented [opening foundation](../archive/2026-10-29-centralize-pwa-opening-observation/design.md), the current [navigation design](../observe-pwa-navigation/design.md), its explicit [opening delta](../observe-pwa-navigation/specs/anonymous-pwa-telemetry/spec.md) and [F2-1 tasks/evidence](../observe-pwa-navigation/tasks.md). The main [opening spec](../../specs/anonymous-pwa-telemetry/spec.md) still describes the historical stage-only envelope; use the active delta for this dependency. F2-1 has local implementation/receipt evidence but its final task is unchecked at this inspection; do not assume full prerequisite acceptance.
+
+Likely implementation owners are `pwa/src/lib/telemetry/opening.ts` (existing document WeakMap), instrumentation entrypoints, route/root boundaries, closed Server Actions, `server.ts` (actual transport owner), tests and later `docs/sentrame.md`/tracker updates. There is no `transport.ts`; `transport.test.ts` tests `server.ts`. No business OpenAPI/client/schema change, new provider/exporter, SDK migration or Sentrame edit is planned. The [design](design.md) records field ownership, receiver gaps, source identity and integration recipe; the [tasks](tasks.md) define the smallest F3-1 and its actual prerequisites.

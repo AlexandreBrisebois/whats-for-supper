@@ -34,13 +34,14 @@ test('fresh Search -> real action -> Node capture; navigation suppresses, reload
     }
     let body = '';
     for await (const chunk of request) body += chunk;
-    received.push({
-      path: request.url,
-      type: request.headers['content-type'],
-      encoding: request.headers['content-encoding'],
-      authorization: request.headers.authorization,
-      body,
-    });
+    if (JSON.parse(body).resourceLogs[0].scopeLogs[0].logRecords[0].eventName === 'pwa.app.opened')
+      received.push({
+        path: request.url,
+        type: request.headers['content-type'],
+        encoding: request.headers['content-encoding'],
+        authorization: request.headers.authorization,
+        body,
+      });
     if (receiverMode === 'timeout') return;
     if (receiverMode === 'redirect') {
       response.writeHead(307, { Location: '/forbidden' }).end();
@@ -190,9 +191,11 @@ test('fresh Search -> real action -> Node capture; navigation suppresses, reload
       const bodyReadErrors: string[] = [];
       page.on('response', (response) => {
         const request = response.request();
+        const presentation = request.postData()?.includes('pwa.screen.presented') ?? false;
         const isAction = Boolean(request.headers()['next-action']);
         if (isAction && !actionId) actionId = request.headers()['next-action'];
-        if (isAction) actionDiagnostics.push(`response ${response.status()} action=true`);
+        if (isAction && !presentation)
+          actionDiagnostics.push(`response ${response.status()} action=true`);
         const isScript = request.resourceType() === 'script' && response.url().startsWith(url);
         if (!isAction && !isScript) return;
         // Await body completion explicitly and drain reads before each navigation.
@@ -202,8 +205,10 @@ test('fresh Search -> real action -> Node capture; navigation suppresses, reload
             .finished()
             .then(() => response.text())
             .then((body) => {
-              if (isAction) actionResponses.push(body);
-              if (request.headers()['next-action'] === actionId) openingResponses.push(body);
+              if (isAction && !presentation) actionResponses.push(body);
+              if (isAction && presentation) clientScripts.push(body);
+              if (request.headers()['next-action'] === actionId && !presentation)
+                openingResponses.push(body);
               if (isScript) clientScripts.push(body);
             })
             .catch((error: Error) => {
@@ -300,10 +305,18 @@ test('fresh Search -> real action -> Node capture; navigation suppresses, reload
                 logRecords: [
                   {
                     timeUnixNano: expect.stringMatching(/^\d{19}$/),
+                    observedTimeUnixNano: expect.stringMatching(/^\d{19}$/),
                     eventName: 'pwa.app.opened',
                     severityNumber: 9,
                     body: { stringValue: 'WFS opening observed' },
-                    attributes: [{ key: 'stage.name', value: { stringValue: 'search' } }],
+                    attributes: [
+                      { key: 'stage.name', value: { stringValue: 'search' } },
+                      ...['session.id', 'tab.id', 'event.id'].map((key) => ({
+                        key,
+                        value: { stringValue: expect.stringMatching(/^[0-9a-f-]{36}$/) },
+                      })),
+                      { key: 'source.sequence', value: { intValue: '1' } },
+                    ],
                   },
                 ],
               },
@@ -430,11 +443,17 @@ test('fresh Search -> real action -> Node capture; navigation suppresses, reload
         const record = payload.resourceLogs[0].scopeLogs[0].logRecords[0];
         expect(record.attributes, entry.target).toEqual([
           { key: 'stage.name', value: { stringValue: entry.screen } },
+          ...['session.id', 'tab.id', 'event.id'].map((key) => ({
+            key,
+            value: { stringValue: expect.stringMatching(/^[0-9a-f-]{36}$/) },
+          })),
+          { key: 'source.sequence', value: { intValue: '1' } },
         ]);
         expect(Object.keys(record).sort()).toEqual([
           'attributes',
           'body',
           'eventName',
+          'observedTimeUnixNano',
           'severityNumber',
           'timeUnixNano',
         ]);
@@ -499,7 +518,17 @@ test('fresh Search -> real action -> Node capture; navigation suppresses, reload
                 'Content-Type': 'text/plain;charset=UTF-8',
                 Accept: 'text/x-component',
               },
-              body: JSON.stringify([{ screen: 'search' }]),
+              body: JSON.stringify([
+                {
+                  eventName: 'pwa.app.opened',
+                  screen: 'search',
+                  sessionId: crypto.randomUUID(),
+                  tabId: crypto.randomUUID(),
+                  eventId: crypto.randomUUID(),
+                  sequence: 1,
+                  timestamp: Date.now(),
+                },
+              ]),
             });
           }, actionId);
         }
@@ -533,6 +562,11 @@ test('fresh Search -> real action -> Node capture; navigation suppresses, reload
           const wire = JSON.parse(received[before].body);
           expect(wire.resourceLogs[0].scopeLogs[0].logRecords[0].attributes).toEqual([
             { key: 'stage.name', value: { stringValue: 'welcome' } },
+            ...['session.id', 'tab.id', 'event.id'].map((key) => ({
+              key,
+              value: { stringValue: expect.stringMatching(/^[0-9a-f-]{36}$/) },
+            })),
+            { key: 'source.sequence', value: { intValue: '1' } },
           ]);
           expect(received[before].authorization).toBe('Bearer opening-fixture-browser');
         }
@@ -610,7 +644,17 @@ test('fresh Search -> real action -> Node capture; navigation suppresses, reload
             'Content-Type': 'text/plain;charset=UTF-8',
             Accept: 'text/x-component',
           },
-          body: JSON.stringify([{ screen: 'search' }]),
+          body: JSON.stringify([
+            {
+              eventName: 'pwa.app.opened',
+              screen: 'search',
+              sessionId: crypto.randomUUID(),
+              tabId: crypto.randomUUID(),
+              eventId: crypto.randomUUID(),
+              sequence: 1,
+              timestamp: Date.now(),
+            },
+          ]),
         });
       }, actionId);
       await expect.poll(() => received.length).toBe(validCount + 1);
@@ -628,7 +672,17 @@ test('fresh Search -> real action -> Node capture; navigation suppresses, reload
             'Content-Type': 'text/plain;charset=UTF-8',
             Accept: 'text/x-component',
           },
-          body: JSON.stringify([{ screen: 'search' }]),
+          body: JSON.stringify([
+            {
+              eventName: 'pwa.app.opened',
+              screen: 'search',
+              sessionId: crypto.randomUUID(),
+              tabId: crypto.randomUUID(),
+              eventId: crypto.randomUUID(),
+              sequence: 1,
+              timestamp: Date.now(),
+            },
+          ]),
         });
         await response.text();
         if (!response.ok) throw new Error('Opening action failed');

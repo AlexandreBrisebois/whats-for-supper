@@ -1,8 +1,9 @@
+import { observation } from '@/test/telemetry';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { afterEach, expect, it, vi } from 'vitest';
 import { sendServerCheck } from './server';
-import { reportBrowserAppOpened, reportBrowserTelemetryCheck } from './actions';
+import { reportBrowserObservation, reportBrowserTelemetryCheck } from './actions';
 import { observeOpening } from './opening';
 
 const { deferred } = vi.hoisted(() => ({ deferred: [] as Promise<void>[] }));
@@ -100,10 +101,10 @@ it.each(['reject', 'redirect', 'timeout'] as const)(
         get: () => (visible ? 'visible' : 'hidden'),
       });
       let completion: Promise<void> | undefined;
-      const submit = vi.fn((input) => (completion = reportBrowserAppOpened(input)));
+      const submit = vi.fn((input) => (completion = reportBrowserObservation(input)));
       const started = performance.now();
       observeOpening(owner, true, '/recipes', submit);
-      expect(submit).toHaveBeenCalledTimes(1);
+      expect(submit.mock.calls.filter(([e]) => e.eventName === 'pwa.app.opened')).toHaveLength(1);
       await expect(completion).resolves.toBeUndefined();
       await Promise.all(deferred);
       if (mode === 'timeout') {
@@ -111,13 +112,13 @@ it.each(['reject', 'redirect', 'timeout'] as const)(
         expect(performance.now() - started).toBeLessThan(4000);
       }
       visible = false;
-      observeOpening(owner, true, '/home', submit);
+      observeOpening(owner, true, '/recipes', submit);
       visible = true;
-      observeOpening(owner, true, '/home', submit);
+      observeOpening(owner, true, '/recipes', submit);
       observeOpening(owner, true, '/recipes', submit);
       await new Promise((resolve) => setTimeout(resolve, 100));
-      expect(submit).toHaveBeenCalledTimes(1);
-      expect(received).toHaveLength(1);
+      expect(submit.mock.calls.filter(([e]) => e.eventName === 'pwa.app.opened')).toHaveLength(1);
+      expect(received).toHaveLength(2);
       expect(redirected).toBe(0);
     } finally {
       receiver.closeAllConnections();
@@ -150,7 +151,7 @@ it('real concurrent opening saturation leaves server capacity and releases brows
     vi.stubEnv('SENTRAME_BROWSER_TOKEN', 'synthetic-browser');
     vi.stubEnv('SENTRAME_SERVER_TOKEN', 'synthetic-server');
     const openings = Array.from({ length: 8 }, () =>
-      actions.reportBrowserAppOpened({ screen: 'search' })
+      actions.reportBrowserObservation(observation('search'))
     );
     await vi.waitFor(() => expect(pending).toHaveLength(4));
     await server.sendServerCheck();
@@ -159,13 +160,13 @@ it('real concurrent opening saturation leaves server capacity and releases brows
     for (const response of pending) response.writeHead(429).end();
     await Promise.all(openings);
     await Promise.all(deferred);
-    const next = actions.reportBrowserAppOpened({ screen: 'home' });
+    const next = actions.reportBrowserObservation(observation('home'));
     await vi.waitFor(() => expect(pending).toHaveLength(5));
     pending[4].end('{}');
     await next;
     await Promise.all(deferred);
     vi.stubEnv('WFS_TELEMETRY_ENABLED', 'false');
-    await actions.reportBrowserAppOpened({ screen: 'capture' });
+    await actions.reportBrowserObservation(observation('capture'));
     expect(received).toHaveLength(6);
   } finally {
     receiver.closeAllConnections();

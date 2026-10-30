@@ -1,13 +1,14 @@
+import { observation } from '@/test/telemetry';
 // Transport assertions run deferred work inline; action scheduling is tested separately.
 vi.mock('next/server', () => ({ after: (callback: () => Promise<void>) => callback() }));
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { reportBrowserAppOpened } from './actions';
+import { reportBrowserObservation } from './actions';
 import { observeOpening } from './opening';
 import {
   telemetryEnabled,
   sendBrowserCheck,
   sendServerCheck,
-  sendBrowserAppOpened,
+  sendBrowserObservation,
 } from './server';
 
 let epoch = Date.now();
@@ -119,7 +120,7 @@ it.each([
 ])('invalid runtime %s fails closed with zero intake', async (key, value) => {
   vi.stubEnv(key, value);
   expect(telemetryEnabled()).toBe(false);
-  await sendBrowserAppOpened('search');
+  await sendBrowserObservation(observation('search'));
   await sendServerCheck();
   expect(fetchMock).not.toHaveBeenCalled();
 });
@@ -127,30 +128,30 @@ it.each([
 it('rechecks opt-out on each opening rather than caching enabled configuration', async () => {
   expect(telemetryEnabled()).toBe(true);
   vi.stubEnv('WFS_TELEMETRY_ENABLED', 'false');
-  await sendBrowserAppOpened('search');
+  await sendBrowserObservation(observation('search'));
   expect(fetchMock).not.toHaveBeenCalled();
 });
 
 it('shares the exact 120/min browser budget across openings and checks, independently of server', async () => {
-  for (let i = 0; i < 120; i++) await sendBrowserAppOpened('search');
+  for (let i = 0; i < 120; i++) await sendBrowserObservation(observation('search'));
   expect(fetchMock).toHaveBeenCalledTimes(120);
-  await sendBrowserAppOpened('home');
+  await sendBrowserObservation(observation('home'));
   await sendBrowserCheck();
   expect(fetchMock).toHaveBeenCalledTimes(120);
   const owner = document.implementation.createHTMLDocument();
   Object.defineProperty(owner, 'visibilityState', { value: 'visible' });
-  const submit = vi.fn(reportBrowserAppOpened);
+  const submit = vi.fn(reportBrowserObservation);
   observeOpening(owner, true, '/recipes', submit);
   await Promise.resolve();
   observeOpening(owner, true, '/home', submit);
   observeOpening(owner, true, '/recipes', submit);
-  expect(submit).toHaveBeenCalledTimes(1);
+  expect(submit).toHaveBeenCalledTimes(4);
   expect(fetchMock).toHaveBeenCalledTimes(120);
   await sendServerCheck();
   expect(fetchMock).toHaveBeenCalledTimes(121);
   expect(fetchMock.mock.calls[120][1].headers.Authorization).toBe('Bearer server-test');
   vi.setSystemTime(Date.now() + 60_001);
-  await sendBrowserAppOpened('capture');
+  await sendBrowserObservation(observation('capture'));
   expect(fetchMock).toHaveBeenCalledTimes(122);
 });
 

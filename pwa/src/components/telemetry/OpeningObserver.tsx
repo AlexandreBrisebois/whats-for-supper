@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { usePathname } from 'next/navigation';
-import { reportBrowserAppOpened } from '@/lib/telemetry/actions';
+import { reportBrowserObservation } from '@/lib/telemetry/actions';
 import { observeOpening } from '@/lib/telemetry/opening';
 
 export function OpeningObserver({
@@ -19,7 +19,7 @@ export function OpeningObserver({
         document,
         enabled,
         readyPathname === pathname ? pathname : null,
-        reportBrowserAppOpened
+        reportBrowserObservation
       );
     observe();
     document.addEventListener('visibilitychange', observe);

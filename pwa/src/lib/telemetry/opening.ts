@@ -1,3 +1,5 @@
+import type { BrowserObservation } from './navigation';
+
 // Static application vocabulary only. Never derive telemetry labels from content.
 const screens = {
   '/welcome': 'welcome',
@@ -42,25 +44,78 @@ export function registerOpeningFallback(
 
 // Document identity is only an in-memory object key, never an exported identifier.
 // A WeakMap survives component remounts without retaining a departed document.
-const openings = new WeakMap<Document, 'waiting' | 'claimed' | 'disabled'>();
+interface ObservationState {
+  disabled: boolean;
+  sessionId?: string;
+  tabId?: string;
+  sequence: number;
+  screen?: OpeningScreen;
+  windowStart: number;
+  count: number;
+}
+const openings = new WeakMap<Document, ObservationState>();
 
+// Opening and subsequent screens have one document owner, ordering and admission window.
 export function observeOpening(
   owner: Document,
   enabled: boolean,
   readyPathname: string | null,
-  submit: (input: { screen: OpeningScreen }) => Promise<void>
+  submit: (input: BrowserObservation) => Promise<void>
 ): void {
-  if (!openings.has(owner)) openings.set(owner, enabled ? 'waiting' : 'disabled');
-  if (openings.get(owner) !== 'waiting') return;
-  if (!readyPathname || readyPathname === '/' || owner.visibilityState !== 'visible') return;
-  openings.set(owner, 'claimed');
-  // Claim before asynchronous work; failure never rearms the document.
+  let state = openings.get(owner);
+  if (!state) {
+    state = { disabled: !enabled, sequence: 0, windowStart: 0, count: 0 };
+    openings.set(owner, state);
+  }
+  if (
+    state.disabled ||
+    !enabled ||
+    !readyPathname ||
+    readyPathname === '/' ||
+    owner.visibilityState !== 'visible'
+  )
+    return;
   try {
     const fallback = fallbacks.get(owner);
     const screen =
       fallback?.pathname === readyPathname ? fallback.screen : classifyScreen(readyPathname);
-    void submit({ screen }).catch(() => {});
+    if (state.screen === screen) return;
+    const initial = !state.sessionId;
+    if (initial) {
+      state.sessionId = crypto.randomUUID();
+      state.tabId = crypto.randomUUID();
+    }
+    // Claim presentation before calling asynchronous code; delivery never rearms it.
+    state.screen = screen;
+    const timestamp = Date.now();
+    const emit = (eventName: BrowserObservation['eventName']) => {
+      const event: BrowserObservation = {
+        eventName,
+        screen,
+        sessionId: state.sessionId!,
+        tabId: state.tabId!,
+        eventId: crypto.randomUUID(),
+        sequence: ++state.sequence,
+        timestamp,
+      };
+      if (eventName !== 'pwa.app.opened') {
+        if (timestamp - state.windowStart >= 60_000) {
+          state.windowStart = timestamp;
+          state.count = 0;
+        }
+        if (state.count >= 60) return;
+        state.count++;
+      }
+      try {
+        void submit(event).catch(() => {});
+      } catch {
+        /* Submission cannot interrupt presentation. */
+      }
+    };
+    if (initial) emit('pwa.app.opened');
+    emit('pwa.screen.presented');
   } catch {
-    /* Telemetry must not interrupt entry, even if submission throws synchronously. */
+    // Missing browser randomness or unexpected inspection cannot interrupt the app.
+    state.disabled = true;
   }
 }
