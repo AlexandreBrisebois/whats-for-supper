@@ -1,7 +1,8 @@
+import { isSurfaceIdentity, type SurfaceIdentity } from './surfaces';
 import { isOpeningScreen, type OpeningScreen } from './opening';
 
-// Closed browser vocabulary. Only the adopted Grocery companion is admitted here.
-export type PresentationScreen = OpeningScreen | 'planner.grocery';
+// Closed browser vocabulary; primary screens and adopted surfaces stay distinct.
+export type PresentationScreen = OpeningScreen | SurfaceIdentity;
 export interface BrowserObservation {
   eventName:
     'pwa.app.opened' | 'pwa.screen.presented' | 'pwa.surface.opened' | 'pwa.surface.closed';
@@ -47,7 +48,7 @@ export function parseBrowserObservation(
         break;
       case 'pwa.surface.opened':
       case 'pwa.surface.closed':
-        if (values.screen !== 'planner.grocery') return null;
+        if (!isSurfaceIdentity(values.screen)) return null;
         break;
       default:
         return null;

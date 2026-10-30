@@ -32,9 +32,9 @@ F2-1 implementation and local qualification are recorded below; later groups rem
 **Dependencies and prerequisites:** F2-2 green. Use existing Quick Find interaction tests and preserve focus/gestures/selection/drafts.
 **Acceptance boundary:** One production surface emits bounded presentation cycles through real forwarding; new route or bespoke dialog coverage debt is visible without raw exports or claims of exhaustive static discovery.
 
-- [ ] 3.1 Test-first: add open/close/reopen, effect replay, hidden state, unmount/navigation and identity-injection cases. Run `task test:unit -- src/lib/telemetry/surfaces.test.ts src/lib/telemetry/coverage.test.ts src/components/planner/QuickFindModal.test.tsx` and the real-action `telemetry-navigation.spec.ts` tracer, recording intended behavioral red.
-- [ ] 3.2 Adopt the shared declaration in Quick Find, implement route inventory/known-overlay exceptions and rerun 3.1 green. Assert one static declaration per adopted surface, runtime `other` for unknown routes and no translated labels/DOM scraping. Document every existing bespoke exception in the coverage fixture with its source owner; do not migrate those features.
-- [ ] 3.3 Rerun `task test:e2e -- planner.spec.ts utility-flows.spec.ts telemetry-navigation.spec.ts --project=chromium`; extend the F2-1 real-action/disposable-receiver fixture for Quick Find open/close/reopen and shared whole-stream sequence, verifying protected retained reads without automatic closure goals. Update `docs/sentrame.md`, inventory baseline columns and tracker with limits and owned exceptions. Review scope and run scoped `task verify`; stop before semantic selection/cancellation/outcome events.
+- [x] 3.1 Test-first: add open/close/reopen, effect replay, hidden state, unmount/navigation and identity-injection cases. Run `task test:unit -- src/lib/telemetry/surfaces.test.ts src/lib/telemetry/coverage.test.ts src/components/planner/QuickFindModal.test.tsx` and the real-action `telemetry-navigation.spec.ts` tracer, recording intended behavioral red.
+- [x] 3.2 Adopt the shared declaration in Quick Find, implement route inventory/known-overlay exceptions and rerun 3.1 green. Assert one static declaration per adopted surface, runtime `other` for unknown routes and no translated labels/DOM scraping. Document every existing bespoke exception in the coverage fixture with its source owner; do not migrate those features.
+- [x] 3.3 Rerun `task test:e2e -- planner.spec.ts utility-flows.spec.ts telemetry-navigation.spec.ts --project=chromium`; extend the F2-1 real-action/disposable-receiver fixture for Quick Find open/close/reopen and shared whole-stream sequence, verifying protected retained reads without automatic closure goals. Update `docs/sentrame.md`, inventory baseline columns and tracker with limits and owned exceptions. Review scope and run scoped `task verify`; stop before semantic selection/cancellation/outcome events.
 
 ## 4. F2-4 — Receiver qualification and integration reconciliation
 
@@ -219,3 +219,35 @@ F2-1 prerequisite: passing application record
 
 F2-2 tasks **2.1–2.3 complete**; change progress **7/12**. Stop here.
 F2-3, F2-4 and all successor business instrumentation remain unselected/pending.
+
+
+## F2-3 execution evidence — 2026-10-29
+
+Authorized tasks 3.1–3.3 only; clean worktree at entry. F2-2 prerequisite confirmed by passing 134-case acceptance log, final record `c5e3c887907e482d808caa95213cf7de` and all eight matching prepared source hashes.
+
+- RED: specified three-file unit command: **7 failed / 16 passed** after a no-op helper scaffold made lifecycle tests executable. Quick Find rendered without a surface event; cycle/replay/hidden/navigation and closed-envelope assertions failed for missing behavior. Initial missing-module compilation is not behavioral red. Real-action tracer: Quick Find visibly rendered, **11 records instead of 12**. An earlier wrong locator targeted a recipe-change button in an empty plan; interrupted and corrected to Plan supper, not counted as red. Logs: `.task/telemetry-navigation/f2-3/`.
+
+- GREEN: specified unit command **23/23**; seven existing telemetry/Planner regression files **233/233**. Real browser → Action → Node JSON/no compression → actual disposable Sentrame tracer passed. Initial document retains sequence **1–16**, including two Quick Find open/close cycles; **20** total records including independent reload/tab. Protected raw reads verify static labels, shared scope/tab, distinct events and both clocks independently from configured derivation. Supporting Quick Find mappings are not goals; synthetic Search remains the only goal. Exact captured-wire replay and actual receiver restart/reopen preserve evidence and journey contributions. Named exception inventory includes native DemoDialog as well as bespoke fixed/dialog/sheet candidates; no migration.
+
+- Required acceptance: `WFS_NAV_SENTRAME_BINARY=/tmp/wfs-navigation-sentrame task test:e2e -- planner.spec.ts utility-flows.spec.ts telemetry-navigation.spec.ts --project=chromium` **117/117 passed**. Browser phone/wide and simulated visibility are qualified; physical installed-device/OS behavior and deployed routes remain **not-run**. API contract/client/schema/live database behavior: **not-applicable** to this observation slice. Source/receiver/config/wire identities and artifacts are retained in `.task/telemetry-navigation/f2-3/identity.json`, `navigation-wire.json` and `receiver-qualification.json`. Scoped preparation/final verification pending.
+
+- Scope review: 14 reviewed paths (10 PWA, four documentation); no unrelated edits at entry or review. Quick Find changes only an import and one declaration; shared lifecycle/closed admission, tests and owned coverage debt complete the scope. No business API/schema/client/package/receiver-source/production changes. Scoped preparation passed and only formatted selected PWA paths. No unexpected writes. Final verification is running on the prepared stable tree; task 3.3 remains pending until it passes.
+
+- Stable-tree final verification: **passed** all applicable checks for 14 paths,
+  with no exclusions or input mutation. Record
+  `.task/agent-finish/runs/45a225a3dc2d4070add55b2381549fd0.json`, identity
+  `1de50f1c27376224422bafe56f7b8c3bb1d05ab45244828d9ec94dec337caab4`.
+  Passed documentation, OpenSpec (38 items), lint, formatting, types, **1,440 unit
+  tests**, Chromium **600 passed / 47 skipped / zero failed**, API **1,259 passed /
+  156 skipped / zero failed**, static contract/client review and content stability.
+  Failed/blocked/not-run applicable automated checks: none. Harness tests, live
+  endpoint parity and real database behavior: not-applicable to this slice.
+  Prepared-source real-action/Sentrame tracer passed again; its exact wire,
+  receiver qualification and matching source hashes are in
+  `.task/telemetry-navigation/f2-3/final/`. Only later documentation/checklist bytes
+  change after this application gate; they receive separate documentation verification.
+
+F2-3 tasks **3.1–3.3 complete**; change **10/12**. Stop before F2-4 and all
+semantic selection/cancellation/outcome events. Deployed/physical-device cells
+remain not-run. No commit/deploy, production collection enablement, receiver
+source change, sync or archive. No unrelated worktree edits existed or were altered.

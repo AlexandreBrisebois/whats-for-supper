@@ -1,5 +1,6 @@
 'use client';
 
+import { useSurfacePresentation } from '@/components/telemetry/useSurfacePresentation';
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Sparkles, Utensils } from 'lucide-react';
@@ -28,6 +29,7 @@ export function QuickFindModal({
   dayIndex = null,
   referenceWeekStartDate,
 }: QuickFindModalProps) {
+  useSurfacePresentation('quick.find', true);
   const [isFlipped, setIsFlipped] = useState(false);
   const [recipes, setRecipes] = useState<any[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);

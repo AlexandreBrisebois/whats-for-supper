@@ -1,8 +1,7 @@
 # Anonymous PWA telemetry
 
 F2-1 implements correlated opening and route presentation through the existing
-browser-authority transport. Planner/Grocery composition and shared surfaces remain
-planned. Historical F1 evidence below describes its earlier stage-only bytes; see
+browser-authority transport. Planner/Grocery composition and the Quick Find shared-surface pilot are implemented. Historical F1 evidence below describes its earlier stage-only bytes; see
 the [navigation mapping recipe](#planned-navigation-mapping-recipe) and the
 [active opening delta](../openspec/changes/observe-pwa-navigation/specs/anonymous-pwa-telemetry/spec.md).
 
@@ -300,7 +299,7 @@ lifecycle work and does not qualify durable receiver receipt or a deployment.
 ## Planned navigation mapping recipe
 
 Status: F2-1 route/opening stream and F2-2 Planner/Grocery composition implemented.
-Quick Find and general overlay adoption remain pending.
+F2-3 adds the Quick Find pilot; other overlays remain named coverage exceptions.
 Collection stays off by default; no deployed receiver or production goal was changed. The active
 [navigation change](../openspec/changes/observe-pwa-navigation/proposal.md) makes
 opening, primary screens and adopted surfaces one anonymous document stream.
@@ -338,7 +337,7 @@ Configure exact selectors in Sentrame. All production rows below select
 | `pwa.screen.presented` | **Search**, **step** | `stage.name` equals `search` | Search shell presented |
 | `pwa.screen.presented` | Other reviewed screen names, **step** | Disjoint approved `stage.name` values | Presentation, not business success |
 | `pwa.screen.presented` | **Planner** / **Grocery**, **step** | `stage.name` equals `planner` / `planner.grocery` (disjoint) | Primary rendered shell |
-| `pwa.surface.opened` | Reviewed surface presentation, **step**, or supporting **activity** | `stage.name=planner.grocery` for the adopted companion; `quick.find` remains planned | Choose whether the presentation belongs on the path |
+| `pwa.surface.opened` | Reviewed surface presentation, **step**, or supporting **activity** | `stage.name=planner.grocery` for the adopted companion; `quick.find` for the adopted Quick Find pilot | Choose whether the presentation belongs on the path |
 | `pwa.surface.closed` | Reviewed supporting closure, **activity** | Same reviewed surface vocabulary | Lifecycle observation; not automatic exit/cancellation/completion |
 | `pwa.telemetry.check` | Transport diagnostic; leave outside production journey mappings/goals | Not applicable | Receipt check only |
 
@@ -539,3 +538,60 @@ Browser phone viewport and simulated hidden/resume evidence are distinct from
 physical installed-device unlock/background behavior, which remains **not-run**.
 Deployed-route qualification remains **not-run**. No deployed collection or
 receiver configuration has been changed.
+
+
+## F2-3 Quick Find presentation — 2026-10-29
+
+QuickFindModal declares `useSurfacePresentation('quick.find', true)` once. The
+shared document coordinator observes open/close/reopen cycles with the same scope,
+sequence and admission budget as opening/screens/companion. Rerenders and React
+effect replay add nothing. Cleanup reconciliation waits one microtask for replay;
+visible unmount or eligible route departure can observe a closure. Hidden changes
+are not replayed; visibility resume reconciles only the current declaration.
+Root observer teardown/document termination supplies no closing flush or retry.
+Closure supplies neither cancellation, selection, completion nor duration.
+Focus, gestures, drafts and selection remain owned by the existing UI handlers.
+
+The [coverage fixture](../pwa/src/lib/telemetry/coverage.test.ts) maintains exact
+page classifications, one static declaration per adopted owner and 17 named
+bespoke source-owner exceptions. These features were not migrated. Literal-source
+search cannot prove exhaustive dynamic-overlay coverage; see the [inventory baseline
+and limits](telemetry/journey-inventory.md#f2-3-baseline-coverage-limits).
+Unknown routes export `other`, never raw paths.
+
+Focused unit acceptance passes 23 tests; existing telemetry/Planner regressions
+pass 233. The real browser → Action → Node JSON/no-compression → disposable local
+Sentrame tracer passes: first document sequence 1–16, 20 total retained records
+including reload/concurrent tab, distinct event IDs and shared session/tab within
+each document. Protected reads validate both clocks, browser authority and
+service/version independently from configured journey derivation. Prospective
+Quick Find open/close mappings are supporting activities; the only fixture goal
+remains reaching Search. Closures do not complete the later journey. Exact captured
+wire replay is idempotent before/after actual receiver restart/storage reopen.
+
+Required Planner/utility/navigation acceptance passed **117/117** with the actual
+disposable receiver enabled. Scoped preparation and final verification passed on a stable tree. No deployed route or physical installed-device
+qualification is claimed; collection remains off by default. F2-4, business
+instrumentation and production receiver configuration remain outside this slice.
+
+Fixture identity: receiver clean HEAD `a506dacbdc0f776238f2b3ebc769e42d2b4b9378`, binary SHA-256
+`5f6372edc6dde428a8d6b41fa15e2386e34cb04f480f1d53992c21e62eaa7d39`; fresh disposable
+schema 3 / `structural-v2` / `journey-native-v3` storage. Wire file SHA-256
+`f92f49662d683500c2299d6d50d37da23f8bf24669b23251d44387b0493c8504`; definition SHA-256
+`b3cadaf3feb0a5a7febf574614353ce84586e44cee3d36adf63639119fdf5b48`. Exact wire, protected
+read/restart evidence and source hashes: `.task/telemetry-navigation/f2-3/`.
+Payload review retains only approved static labels/five attributes; private query
+sentinel, credentials, recipe/selection/week/date/content and business IDs are absent.
+
+
+F2-3 completion: tasks 3.1–3.3 accepted; change 10/12. Scoped preparation passed
+for 14 paths with no excluded edits. Passing application record:
+`.task/agent-finish/runs/45a225a3dc2d4070add55b2381549fd0.json`, identity
+`1de50f1c27376224422bafe56f7b8c3bb1d05ab45244828d9ec94dec337caab4`.
+All applicable checks and content stability passed: OpenSpec 38 items, lint,
+formatting, types, 1,440 unit tests, Chromium 600 passed/47 skipped, API 1,259
+passed/156 skipped and static contract/client checks. No applicable automated
+failure/blocker remains. Prepared-source tracer wire/receiver artifacts and matching
+source hashes are retained in `.task/telemetry-navigation/f2-3/final/`.
+Final evidence/checklist updates are later documentation bytes, checked separately.
+F2-4 remains pending. No production enablement, deployment, commit or sync/archive.

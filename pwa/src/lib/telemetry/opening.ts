@@ -1,3 +1,5 @@
+import { presentedSurfaces, presentationChanged, type SurfaceIdentity } from './surfaces';
+export { presentationChanged } from './surfaces';
 import type { BrowserObservation, PresentationScreen } from './navigation';
 
 // Static application vocabulary only. Never derive telemetry labels from content.
@@ -44,7 +46,6 @@ export function registerOpeningFallback(
 
 // Composition belongs to the rendered Planner owner, not tab clicks or URL queries.
 // The shared observer still owns gates, visibility, scope and all emissions.
-export const presentationChanged = 'wfs:telemetry-presentation';
 const plannerPresentations = new WeakMap<
   Document,
   {
@@ -76,7 +77,7 @@ interface ObservationState {
   tabId?: string;
   sequence: number;
   screen?: PresentationScreen;
-  companion?: boolean;
+  surfaces?: Set<SurfaceIdentity>;
   windowStart: number;
   count: number;
 }
@@ -110,7 +111,15 @@ export function observeOpening(
     if (entryScreen === 'planner' && !planner) return;
     const screen = planner?.primary ?? entryScreen;
     const companion = planner?.companion ?? false;
-    if (state.screen === screen && !!state.companion === companion) return;
+    const surfaces = presentedSurfaces(owner, readyPathname);
+    if (companion) surfaces.add('planner.grocery');
+    const previousSurfaces = state.surfaces ?? new Set<SurfaceIdentity>();
+    if (
+      state.screen === screen &&
+      surfaces.size === previousSurfaces.size &&
+      [...surfaces].every((s) => previousSurfaces.has(s))
+    )
+      return;
     const initial = !state.sessionId;
     if (initial) {
       state.sessionId = crypto.randomUUID();
@@ -118,9 +127,8 @@ export function observeOpening(
     }
     // Claim presentation before calling asynchronous code; delivery never rearms it.
     const screenChanged = state.screen !== screen;
-    const companionChanged = !!state.companion !== companion;
     state.screen = screen;
-    state.companion = companion;
+    state.surfaces = surfaces;
     const timestamp = Date.now();
     const emit = (eventName: BrowserObservation['eventName'], identity: PresentationScreen) => {
       const event: BrowserObservation = {
@@ -147,9 +155,11 @@ export function observeOpening(
       }
     };
     if (initial) emit('pwa.app.opened', entryScreen);
-    if (companionChanged && !companion) emit('pwa.surface.closed', 'planner.grocery');
+    for (const identity of previousSurfaces)
+      if (!surfaces.has(identity)) emit('pwa.surface.closed', identity);
     if (screenChanged) emit('pwa.screen.presented', screen);
-    if (companionChanged && companion) emit('pwa.surface.opened', 'planner.grocery');
+    for (const identity of surfaces)
+      if (!previousSurfaces.has(identity)) emit('pwa.surface.opened', identity);
   } catch {
     // Missing browser randomness or unexpected inspection cannot interrupt the app.
     state.disabled = true;

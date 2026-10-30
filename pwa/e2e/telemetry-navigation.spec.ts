@@ -303,8 +303,26 @@ test('correlated Home Search Home through real browser action and Node exporter'
       .getByRole('button', { name: 'Close grocery list' })
       .click();
     await expect.poll(() => received.length).toBe(11);
-    await page.getByTestId('nav-item-home').click();
+    // F2-3: visible open/close/reopen cycles, without semantic outcome events.
+    const openQuickFind = async () => {
+      await page.getByTestId('plan-meal-button').first().click();
+      await page.getByTestId('pivot-quick-find').click();
+      await expect(page.getByTestId('quick-find-modal')).toBeVisible();
+    };
+    await openQuickFind();
     await expect.poll(() => received.length).toBe(12);
+    await page.getByTestId('quick-find-close').click();
+    await expect(page.getByTestId('quick-find-modal')).toBeHidden();
+    await expect.poll(() => received.length).toBe(13);
+    await openQuickFind();
+    await expect.poll(() => received.length).toBe(14);
+    await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+    await page.waitForTimeout(200);
+    expect(received).toHaveLength(14);
+    await page.getByTestId('quick-find-close').click();
+    await expect.poll(() => received.length).toBe(15);
+    await page.getByTestId('nav-item-home').click();
+    await expect.poll(() => received.length).toBe(16);
     const composition = records().sort(
       (a, b) => attributes(a)['source.sequence'] - attributes(b)['source.sequence']
     );
@@ -316,18 +334,22 @@ test('correlated Home Search Home through real browser action and Node exporter'
       ['pwa.surface.closed', 'planner.grocery'],
       ['pwa.screen.presented', 'planner.grocery'],
       ['pwa.screen.presented', 'planner'],
+      ['pwa.surface.opened', 'quick.find'],
+      ['pwa.surface.closed', 'quick.find'],
+      ['pwa.surface.opened', 'quick.find'],
+      ['pwa.surface.closed', 'quick.find'],
       ['pwa.screen.presented', 'home'],
     ]);
     expect(composition.map((r) => attributes(r)['source.sequence'])).toEqual(
-      Array.from({ length: 12 }, (_, i) => i + 1)
+      Array.from({ length: 16 }, (_, i) => i + 1)
     );
     expect(new Set(composition.map((r) => attributes(r)['session.id'])).size).toBe(1);
     expect(new Set(composition.map((r) => attributes(r)['tab.id'])).size).toBe(1);
-    expect(new Set(composition.map((r) => attributes(r)['event.id'])).size).toBe(12);
+    expect(new Set(composition.map((r) => attributes(r)['event.id'])).size).toBe(16);
     await drainBodies();
     await page.reload();
-    await expect.poll(() => received.length).toBe(14);
-    const reloaded = attributes(records()[12]);
+    await expect.poll(() => received.length).toBe(18);
+    const reloaded = attributes(records()[16]);
     expect(reloaded['session.id']).not.toBe(attributes(first[0])['session.id']);
     expect(reloaded['tab.id']).not.toBe(attributes(first[0])['tab.id']);
     const second = await initialContext.newPage();
@@ -336,8 +358,8 @@ test('correlated Home Search Home through real browser action and Node exporter'
     );
     await setupCommonRoutes(second);
     await second.goto(`${url}/home`);
-    await expect.poll(() => received.length).toBe(16);
-    expect(attributes(records()[14])['session.id']).not.toBe(reloaded['session.id']);
+    await expect.poll(() => received.length).toBe(20);
+    expect(attributes(records()[18])['session.id']).not.toBe(reloaded['session.id']);
     await second.close();
     // Invoke the actual compiled Action with complete malformed envelopes. No exporter
     // or Action is mocked, and the valid records above establish the positive path.
@@ -382,7 +404,7 @@ test('correlated Home Search Home through real browser action and Node exporter'
     }, actionId);
     expect(statuses).toEqual(Array(11).fill(200));
     await page.waitForTimeout(250);
-    expect(received).toHaveLength(16);
+    expect(received).toHaveLength(20);
     for (const item of received) {
       expect(item.path).toBe('/v1/logs');
       expect(item.type).toBe('application/json');

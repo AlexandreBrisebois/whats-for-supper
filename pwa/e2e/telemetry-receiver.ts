@@ -142,6 +142,14 @@ export async function disposableTelemetryReceiver(binary: string, info: TestInfo
           key: 'stage.name',
           value: 'planner.grocery',
         },
+        ...(['opened', 'closed'] as const).map((state) => ({
+          ...mapping,
+          event: `pwa.surface.${state}`,
+          kind: 'activity',
+          step: `Quick Find ${state}`,
+          key: 'stage.name',
+          value: 'quick.find',
+        })),
       ],
     });
     expect((await fetch(origin + base + '/snapshot')).status).toBe(401);
@@ -191,10 +199,10 @@ export async function disposableTelemetryReceiver(binary: string, info: TestInfo
           .filter((e) => e.scope === scope)
           .sort((a, b) => a.sequence - b.sequence);
         expect(retainedStream.map((e) => e.sequence)).toEqual(
-          Array.from({ length: 12 }, (_, i) => i + 1)
+          Array.from({ length: 16 }, (_, i) => i + 1)
         );
         expect(new Set(retainedStream.map((e) => e.tab)).size).toBe(1);
-        expect(new Set(retainedStream.map((e) => e.record)).size).toBe(12);
+        expect(new Set(retainedStream.map((e) => e.record)).size).toBe(16);
         expect(retainedStream.map((e) => [e.name, e.attrs['stage.name']])).toEqual([
           ['pwa.app.opened', 'home'],
           ['pwa.screen.presented', 'home'],
@@ -207,9 +215,14 @@ export async function disposableTelemetryReceiver(binary: string, info: TestInfo
           ['pwa.surface.closed', 'planner.grocery'],
           ['pwa.screen.presented', 'planner.grocery'],
           ['pwa.screen.presented', 'planner'],
+          ['pwa.surface.opened', 'quick.find'],
+          ['pwa.surface.closed', 'quick.find'],
+          ['pwa.surface.opened', 'quick.find'],
+          ['pwa.surface.closed', 'quick.find'],
           ['pwa.screen.presented', 'home'],
         ]);
         expect(journeys[0].status).toBe('completed');
+        expect(journeys[1].status).not.toBe('completed'); // surface closure is never a goal
         const replay = async () => {
           for (const wire of wires) {
             const result = await fetch(origin + '/v1/logs', {

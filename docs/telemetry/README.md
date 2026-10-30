@@ -42,7 +42,7 @@ Change `tasks.md` checkboxes are the task authority. This table is a navigation/
 | F1-V | Same change, 5.1 | Reconcile the opening change's required evidence; do not mark unrun phone work complete | archived unchecked; not-run |
 | F2-1 | [Navigation](../../openspec/changes/observe-pwa-navigation/tasks.md), 1.1–1.4 | Implemented F1 gates/transport plus baseline-gate reconciliation and disposable receiver; correlated App opened -> Home -> Search -> Home with durable receipt and separate synthetic-goal derivation | F2-1 complete; local capture/receiver qualification and stable final gate passed |
 | F2-2 | Same change, 2.1–2.3 | F2-1; correct phone/wide Planner and Grocery presentation | complete; local capture/receiver acceptance and stable scoped final verification passed |
-| F2-3 | Same change, 3.1–3.3 | F2-2; Quick Find surface pilot, route/overlay coverage debt | planned |
+| F2-3 | Same change, 3.1–3.3 | F2-2; Quick Find surface pilot, route/overlay coverage debt | complete; 117-case acceptance, disposable receiver and stable final verification passed |
 | F2-4 | Same change, 4.1–4.2 | F2-3; four-name/surface durable receipt and prospective derivation reconciliation | planned |
 | F3-1 | [Unexpected errors](../../openspec/changes/observe-unexpected-pwa-errors/tasks.md), 1.1–1.3 | F1 local receipt and F2-1; minimized script/rejection reports and storm caps | planned |
 | F3-2 | Same change, 2.1–2.3 | F3-1; render/root/server hooks, source ownership and standalone errors | planned |
@@ -120,9 +120,9 @@ For each session append a compact dated record here or link its task evidence: s
 | Qualification cell | Current status | Required evidence |
 | --- | --- | --- |
 | Source/document review | inspected | Named files/versions and source-supported limits; no execution claim |
-| Unit/component/mock checks | passed for F1-1 focused 21 tests, F1-2 focused 27 tests and F1-3 focused 92 tests | Exact red/green commands for the selected implementation |
+| Unit/component/mock checks | passed F2-3 focused 23 and telemetry/Planner regressions 233; historical F1 evidence below | Exact red/green commands for the selected implementation |
 | Browser -> real action -> Node capture receiver | passed for Search/navigation/reload plus F1-2 entry matrix/all 15 combined preservation checks and F1-3 real-action configuration/failure/adversarial matrix | Actual captured minimized payload; mocks only at external boundaries |
-| WFS -> actual local Sentrame | not-run | Exact exporter/encoding, durable protected reads and storage reopen |
+| WFS -> actual local Sentrame | passed F2-1/F2-2 and F2-3 Quick Find tracer; disposable receipt, protected reads, replay/restart and separate synthetic-goal derivation | Exact exporter/encoding, durable protected reads and storage reopen |
 | Business API / real persistence | not-run | Selected journey's contract/client/mock and actual commit/recovery tests |
 | Isolated deployed container/proxy/tunnel | not-run | Exact tested route/config/build and protected receipt |
 | Physical installed phone / native sharing | not-run | Device/browser/install identity and fresh/resume/unlock/share evidence |
@@ -390,3 +390,42 @@ viewport and simulated document visibility coverage do not qualify OS unlock or
 installed-device lifecycle. Quick Find, general overlay adoption, Grocery mutations
 and business events remain outside this slice. No commit/deploy, collection
 activation, production receiver/storage change, spec sync or archive.
+
+
+## F2-3 implementation checkpoint — 2026-10-29
+
+Selected tasks 3.1–3.3 only. Clean starting tree at WFS
+`6e23c47617b6637437a4d155b9b44486eabc49f3`. F2-2 acceptance (134/134), final
+verification record and prepared source hashes were checked before edits.
+Quick Find adds one static shared declaration; one document coordinator still owns
+all emissions. No focus/gesture/draft/selection handlers were changed. Named
+coverage exceptions and their source owners live in
+[`coverage.test.ts`](../../pwa/src/lib/telemetry/coverage.test.ts); baseline columns
+and static search limits are in the [inventory](journey-inventory.md#f2-3-baseline-coverage-limits).
+
+RED: unit 7 failed/16 passed; real-action browser rendered Quick Find with 11
+rather than 12 records. GREEN: 23 focused tests and 233 existing telemetry/Planner
+regressions. The actual disposable receiver tracer passed with whole-stream
+sequence 1–16 and 20 retained records overall. Protected reads, source/forwarding
+clocks, service/version, UUID context, exact replay and actual receiver restart
+passed independently from configured derivation. Quick Find mappings are supporting
+activities; closure is never cancellation/completion or a fixture goal.
+
+Required Planner/utility/navigation acceptance: **117/117 passed** with the actual
+disposable receiver enabled. Scoped preparation and final verification passed on a stable tree. Deployed routes/physical installed device: not-run.
+API contract/client/schema/live database changes: not-applicable. No receiver
+source/production configuration change, collection enablement, business events,
+commit, deployment, sync/archive or F2-4 implementation.
+
+
+F2-3 completion: tasks 3.1–3.3 accepted; change 10/12. Scoped preparation passed
+for 14 paths with no excluded edits. Passing application record:
+`.task/agent-finish/runs/45a225a3dc2d4070add55b2381549fd0.json`, identity
+`1de50f1c27376224422bafe56f7b8c3bb1d05ab45244828d9ec94dec337caab4`.
+All applicable checks and content stability passed: OpenSpec 38 items, lint,
+formatting, types, 1,440 unit tests, Chromium 600 passed/47 skipped, API 1,259
+passed/156 skipped and static contract/client checks. No applicable automated
+failure/blocker remains. Prepared-source tracer wire/receiver artifacts and matching
+source hashes are retained in `.task/telemetry-navigation/f2-3/final/`.
+Final evidence/checklist updates are later documentation bytes, checked separately.
+F2-4 remains pending. No production enablement, deployment, commit or sync/archive.
