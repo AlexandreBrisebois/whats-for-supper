@@ -1,6 +1,6 @@
 # Tasks
 
-F2-1 implementation and local qualification are recorded below; later groups remain pending. Select one numbered group/session from the [tracker](../../../docs/telemetry/README.md), not this whole change by default. Read [design](design.md) and the [scenarios](specs/anonymous-navigation-observation/spec.md).
+F2-1–F2-3 implementation and acceptance are recorded below; F2-4 reconciles the integrated local baseline. Select one numbered group/session from the [tracker](../../../docs/telemetry/README.md), not this whole change by default. Read [design](design.md) and the [scenarios](specs/anonymous-navigation-observation/spec.md).
 
 ## 1. F2-1 — Correlated route presentation through real forwarding
 
@@ -40,8 +40,8 @@ F2-1 implementation and local qualification are recorded below; later groups rem
 
 **Owners and prerequisites:** Completed F2-1 through F2-3; disposable current local Sentrame build, fresh compatible SQLite, private test credentials. Never reset a retained deployment database.
 
-- [ ] 4.1 Exercise actual WFS browser -> action -> Node JSON/no compression -> local Sentrame -> durable protected reads/reopen. Verify opening plus all three navigation names, shared context/sequence across surfaces, source, service/version, static labels and both timestamp projections; record exact WFS/receiver/version/config identities and payload review without secrets. Keep raw durable receipt independent from configured derivation. Activate reviewed mappings before fresh qualification records, recheck the meaningful disposable reaching-Search goal from F2-1 without turning any surface closure into completion, and verify exact replay/restart. Never use App opened as goal, invent a production completion event or assume historical captured definitions changed. Update docs/tracker with the actual direct-receiver status; leave deployed/phone cells not-run unless separately selected.
-- [ ] 4.2 Reconcile scenario acceptance, privacy/volume and revised opening-contract acceptance and preserved opening lifecycle/failure behavior. Run applicable `task prepare -- <complete reviewed paths>`, review the full diff, then `task verify -- <complete reviewed paths>` once. Record returned `record_path` and passed/failed/blocked/not-run/not-applicable evidence; check no custom business event, SDK migration or receiver change slipped in.
+- [x] 4.1 Exercise actual WFS browser -> action -> Node JSON/no compression -> local Sentrame -> durable protected reads/reopen. Verify opening plus all three navigation names, shared context/sequence across surfaces, source, service/version, static labels and both timestamp projections; record exact WFS/receiver/version/config identities and payload review without secrets. Keep raw durable receipt independent from configured derivation. Activate reviewed mappings before fresh qualification records, recheck the meaningful disposable reaching-Search goal from F2-1 without turning any surface closure into completion, and verify exact replay/restart. Never use App opened as goal, invent a production completion event or assume historical captured definitions changed. Update docs/tracker with the actual direct-receiver status; leave deployed/phone cells not-run unless separately selected.
+- [x] 4.2 Reconcile scenario acceptance, privacy/volume and revised opening-contract acceptance and preserved opening lifecycle/failure behavior. Run applicable `task prepare -- <complete reviewed paths>`, review the full diff, then `task verify -- <complete reviewed paths>` once. Record returned `record_path` and passed/failed/blocked/not-run/not-applicable evidence; check no custom business event, SDK migration or receiver change slipped in.
 
 ## Planning revision checkpoint — 2026-10-29
 
@@ -251,3 +251,70 @@ F2-3 tasks **3.1–3.3 complete**; change **10/12**. Stop before F2-4 and all
 semantic selection/cancellation/outcome events. Deployed/physical-device cells
 remain not-run. No commit/deploy, production collection enablement, receiver
 source change, sync or archive. No unrelated worktree edits existed or were altered.
+
+
+## F2-4 execution evidence — 2026-10-29
+
+Authorized tasks 4.1–4.2 only; clean starting WFS
+`632cc437d44f0b29027081f336ba6d71e9d60daa`. No unrelated edits existed at entry.
+Before qualification, directly inspected F2-1/F2-2/F2-3 passing acceptance and
+final application records `48fdfcc05c60422bbe2247ac1d0e92a9`,
+`c5e3c887907e482d808caa95213cf7de`, `45a225a3dc2d4070add55b2381549fd0`.
+All required checks/content passed; all ten F2-3 prepared-source hashes match.
+Audit: `.task/telemetry-navigation/f2-4/prerequisite-audit.json`.
+
+- Task 4.1 **passed**: actual browser → real Server Action → Node JSON/no compression
+  → fresh disposable local Sentrame. Protected raw receipt retains 20 records,
+  all four names, first-document sequence 1–16/shared session/tab/distinct events,
+  browser authority, service/version/static labels and exact source/forwarding times.
+  Configured derivation is asserted independently: nine reviewed mappings active
+  before fresh records; only synthetic reaching Search completes. Opening/closures
+  are not goals; later journey remains incomplete. Exact captured-byte replay adds
+  neither evidence nor journey contributions before/after process restart/reopen.
+- Acceptance **passed**: 256 tests in ten focused unit/component/HTTP files;
+  `WFS_NAV_SENTRAME_BINARY=/tmp/wfs-navigation-sentrame BASE_URL=http://127.0.0.1:1
+  PLAYWRIGHT_HTML_OPEN=never task test:e2e -- telemetry-navigation.spec.ts
+  telemetry-opening.spec.ts --project=chromium` **2/2**. Opening gates/one attempt,
+  hidden/resume/effect replay, invalid/disabled configuration, closed inputs,
+  rejection/redirect/timeout, 60/document and 120/producer/process minute limits,
+  four active exports, independent server capacity and no retry remain accepted.
+- Privacy review **passed**: closed five-attribute payload/fixed envelope, no private
+  sentinels/content/business IDs/credentials; complete inspected client responses
+  omit endpoint/producer credentials. No storage correlation or SDK/receiver changes.
+  Red/green cycle **not-applicable**: qualification/documentation only.
+- Exact WFS/receiver/binary/config/wire/runtime identities and source hashes:
+  `.task/telemetry-navigation/f2-4/identity.json`; protected reads and replay/restart
+  result: `receiver-qualification.json`; original bodies: `navigation-wire.json`.
+  Clean receiver `a506dacbdc0f776238f2b3ebc769e42d2b4b9378`; fresh disposable
+  schema 3 / structural-v2 / journey-native-v3 only, removed after actual reopen.
+  No retained deployment storage was changed. See [integration scenario reconciliation
+  and hashes](../../../docs/sentrame.md#f2-4-integrated-local-qualification--2026-10-29).
+- Task 4.2: scenario/privacy/volume/opening acceptance reconciled; full selected diff
+  review, scoped preparation and final documentation verification passed.
+  Reviewed all three paths: integration docs own receipt/derivation/scenario/identity
+  evidence, tracker owns current status, tasks own acceptance/checklists. Preparation
+  selected documentation only and made no writes; staged/new/deleted/excluded paths
+  are empty. No production/test logic needs alteration. Application
+  tests above are explicit qualification, separate from documentation verification.
+- Failed/blocked selected acceptance checks: **none**. Deployed-route, physical
+  installed-device/native handoff: **not-run**. API/client/schema/live database,
+  SDK migration/receiver source work: **not-applicable**. Goal-free production
+  definition activation remains separate receiver work; no production goal invented.
+  No business events, commit, deployment, production enablement, sync or archive.
+
+
+Task 4.2 **passed**: one scoped `task verify` on the stable reviewed three-path tree.
+`record_path`: `.task/agent-finish/runs/0254f1b321aa4e2e84fabe1096fefdeb.json`;
+tested identity `1994b658ec5089dfa900397dd0033acb024126520c6906a682963bd5413139cd`.
+Passed: changed-document links/whitespace, strict selected OpenSpec validation and
+content stability. Failed/blocked/not-run applicable checks: **none**. Application,
+harness, live endpoint and database checks are **not-applicable** to this documentation
+patch; the separately executed 256-test and two-browser-fixture qualification above
+owns runtime acceptance. No excluded paths. Qualification source hashes still match;
+receiver source remains clean. This result/checklist update is later documentation
+content, checked separately; the record digest is not attributed to these later bytes.
+
+F2-4 tasks **4.1–4.2 complete**; change **12/12**, implemented/locally qualified,
+not synced or archived. Deployed/physical-device/native-handoff cells remain **not-run**.
+Stop after F2-4. No business event, SDK/receiver change, commit, deployment or
+collection enablement outside the authorized disposable fixture.

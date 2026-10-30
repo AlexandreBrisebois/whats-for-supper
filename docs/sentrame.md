@@ -298,8 +298,8 @@ lifecycle work and does not qualify durable receiver receipt or a deployment.
 
 ## Planned navigation mapping recipe
 
-Status: F2-1 route/opening stream and F2-2 Planner/Grocery composition implemented.
-F2-3 adds the Quick Find pilot; other overlays remain named coverage exceptions.
+Status: F2-1–F2-3 are implemented and accepted. F2-4 requalifies the integrated
+local receiver path below; other overlays remain named coverage exceptions.
 Collection stays off by default; no deployed receiver or production goal was changed. The active
 [navigation change](../openspec/changes/observe-pwa-navigation/proposal.md) makes
 opening, primary screens and adopted surfaces one anonymous document stream.
@@ -368,7 +368,7 @@ change does not edit receiver code, deployed configuration or existing storage.
 
 ### Disposable qualification and interpretation limits
 
-F2-1 must separately establish actual browser -> Server Action -> Node exporter ->
+The owned fixture separately establishes actual browser -> Server Action -> Node exporter ->
 disposable Sentrame receipt, durable protected reads and actual restart/reopen.
 For configured derivation only, activate App opened/Home/Search mappings with the
 exact Search selector as a **synthetic reaching-Search presentation goal** before
@@ -595,3 +595,115 @@ failure/blocker remains. Prepared-source tracer wire/receiver artifacts and matc
 source hashes are retained in `.task/telemetry-navigation/f2-3/final/`.
 Final evidence/checklist updates are later documentation bytes, checked separately.
 F2-4 remains pending. No production enablement, deployment, commit or sync/archive.
+
+
+## F2-4 integrated local qualification — 2026-10-29
+
+Selected tasks 4.1–4.2 only, starting clean at WFS
+`632cc437d44f0b29027081f336ba6d71e9d60daa`. Before execution, the F2-1/F2-2/F2-3
+acceptance evidence and passing application records `48fdfcc05c60422bbe2247ac1d0e92a9`,
+`c5e3c887907e482d808caa95213cf7de` and `45a225a3dc2d4070add55b2381549fd0` were
+checked directly. Retained wire/read artifacts agree; all ten F2-3 prepared-source
+hashes still match. Historical failed gates remain historical.
+
+| Evidence cell | Actual status |
+| --- | --- |
+| Unit/component/real HTTP boundary | Passed, 256 tests in ten files; no production change or new TDD cycle |
+| Actual browser → real Server Action → Node JSON/no compression | Passed; integrated navigation tracer and opening gate/failure matrix, 2/2 Chromium fixtures |
+| Durable receiver receipt, independent of derivation | Passed, 20 protected records; unauthenticated reads return 401; exact source/forwarding timestamp strings and all approved context retained |
+| Prospective configured derivation | Passed separately; nine reviewed mappings activated before fresh browser records; only reaching Search completes the synthetic goal |
+| Exact-wire replay / receiver restart and storage reopen | Passed; evidence and journey contributions unchanged on replay before and after actual process restart and fresh owner login |
+| Final repository verification | Passed; scoped documentation/OpenSpec/content stability, no excluded paths |
+| Deployed routing / physical installed device / native handoff | Not-run; browser phone/wide viewports and simulated visibility are local evidence only |
+| API/schema/client/SDK migration, receiver source change | Not-applicable; none required or performed |
+
+Receipt: the original document has sequence **1–16**, one session/tab, 16 distinct
+events, opening first and all four names (`pwa.app.opened`, `pwa.screen.presented`,
+`pwa.surface.opened`, `pwa.surface.closed`). Reload and another tab supply independent
+scopes and four further records. Protected reads retain browser/log authority,
+`wfs-pwa-browser`, version `1.4.2-test.opening`, static labels and exact browser and
+forwarding nanosecond strings. Source timestamps are not export-time substitutes;
+the deferred-clock unit test separately verifies forwarding time captured before
+`after()`. The transport uses `/v1/logs`, JSON and no compression; a fixture capture
+hop forwards the original bytes to actual Sentrame. Business APIs alone are mocked.
+
+Derivation: unconditional App opened is a step, Home/Search/Planner/Grocery are
+disjoint screen steps, and Grocery companion/Quick Find open/close are supporting
+activities, all exact browser/log/service selectors with timing unavailable.
+App opened → Home → Search completes the disposable presentation goal. Later
+Home → Planner → Grocery → Planner → Grocery → Planner → Home remains incomplete,
+despite three surface closures. No opening or closure is a goal. The captured
+version-2 definition is compared prospectively; no historical definition was changed.
+The receiver still requires a mapped goal for nonempty definitions; production
+open-ended activation remains separate receiver work, not a selected-scope blocker.
+
+### Scenario reconciliation
+
+| Scenario group | Acceptance and limits |
+| --- | --- |
+| Access redirect, approved entry vocabulary, contextual overlay, fallback | Passed opening browser matrix plus OpeningObserver/opening tests; presented Welcome is not requested Search; unknown runtime routes stay `other` |
+| Navigate/backtrack, opening/initial order, reload/concurrent tab | Passed real-action tracer and protected receiver reads; no cross-document continuity |
+| Hidden navigation, warm resume, effect replay/remount | Passed coordinator/observer/surface tests and tracer visibility/resize cases; no OS/device qualification |
+| Phone tab / wide companion / loading composition | Passed Planner component tests and integrated browser transitions; static labels only, no click or shopping inference |
+| Quick Find open/close/reopen, document disappearance | Passed surface/component tests and integrated tracer; teardown makes no closing flush or retry |
+| Private routes, bespoke surfaces | Passed coverage fixture and closed-envelope tests; 17 named source-owner exceptions remain; static search cannot find every dynamic overlay |
+| Arbitrary forwarding, browser authority, clock boundaries | Passed closed Action/unit tests, malformed real Action submissions and protected reads; forwarding never acquires server business authority |
+| Disabled/stale-enabled documents, opening one-attempt, receiver outage | Passed browser matrix, runtime opt-out and no-scope tests; rejection/redirect/timeout leaves login/member selection/navigation usable and does not rearm opening |
+| Storm/admission/failure isolation | Passed 60 screen/surface attempts per document/minute, shared 120 browser records/minute per Node process, four active exports and two-second timeout tests; independent server budget; no retry/storage/heartbeat |
+| Ordinary correlated logs, application release metadata | Passed exact payload/HTTP tests and durable reads; no trace/span ID needed; version is server-owned, trimmed or `unknown` |
+| Opening mapping, surface meaning, synthetic prospective path, later occurrence | Passed configured derivation separately from raw receipt and exact replay/restart; Search is a synthetic presentation goal only |
+| Historical uncorrelated logs, alternate owner labels/preview, goal-free activation, duration/outcome requests | Documentation boundaries retained; not requalified as new runtime cells. Historical records/definitions are untouched; no duration, attention, people totals, abandonment or persisted outcome is claimed |
+
+Privacy review passed: only the five approved record attributes, fixed body/name,
+INFO 9, resource service/version and `wfs.anonymous` scope. No raw URL/query,
+referrer, private sentinel, credential, business ID, week/date, recipe/content,
+selection/dismissal cause or error detail is admitted. Complete inspected browser
+HTML/scripts/Action responses omit receiver endpoint and producer credentials.
+No telemetry cookie/local/session storage is introduced. The baseline volume model
+remains `1 opening + R screens + 2M surface cycles`; idle time adds zero. This is
+a bounded model, not measured household traffic or a receiver capacity claim.
+
+### Exact qualification identities
+
+Receiver: clean source `a506dacbdc0f776238f2b3ebc769e42d2b4b9378`, module
+`sentrame v0.1.0-rc.5`, Go `1.27.3`, darwin/arm64; embedded VCS metadata says
+`vcs.modified=false`. Binary SHA-256:
+`5f6372edc6dde428a8d6b41fa15e2386e34cb04f480f1d53992c21e62eaa7d39`.
+Fresh disposable schema **3**, projection **structural-v2**, computation
+**journey-native-v3** storage was created, reopened by the actual restarted process,
+then removed by the fixture. No retained database was opened/reset/migrated.
+WFS runtime: Node **26.12.0**, Next **16.4.2**, React **19.3.1**; fixture-only version
+above, collection enabled only in owned disposable processes.
+
+Artifacts in `.task/telemetry-navigation/f2-4/`: `identity.json` (source/config/runtime
+identities, no credentials), `prerequisite-audit.json`, `navigation-wire.json`
+(exact body strings), `receiver-qualification.json` (protected before/after reads,
+activated definition and each body hash), `payload-review.json`, `unit.log` and
+`acceptance.log`.
+
+- Wire file SHA-256: `ea753c62dc3974233fabeb55fb3340400dd5228f94633faa2e2518dc5ec4cf4b`.
+- Protected qualification SHA-256: `c7c8c3ee05943918c0b90986a34d191213a93ffa7ae89c1287e1306ba0ea6cfe`.
+- Canonical sorted-key definition SHA-256: `b3cadaf3feb0a5a7febf574614353ce84586e44cee3d36adf63639119fdf5b48`.
+
+Reproduction: `WFS_NAV_SENTRAME_BINARY=/tmp/wfs-navigation-sentrame
+BASE_URL=http://127.0.0.1:1 PLAYWRIGHT_HTML_OPEN=never task test:e2e --
+telemetry-navigation.spec.ts telemetry-opening.spec.ts --project=chromium`.
+Both fixtures build and start their own optimized WFS; the unused BASE_URL suppresses
+an unnecessary shared dev server. The integrated tracer uses actual Sentrame;
+the opening outage matrix uses its owned HTTP boundary. Full focused unit command
+and exact results are in `unit.log`. No production code, package, receiver source,
+business event, deployed setting or existing storage changed. No commit, deployment,
+collection enablement outside the disposable fixture, sync or archive.
+
+
+F2-4 completion: tasks 4.1–4.2 accepted, change 12/12. Scoped preparation made no
+writes; complete diff review passed for the three documentation paths. Final
+`record_path`: `.task/agent-finish/runs/0254f1b321aa4e2e84fabe1096fefdeb.json`,
+identity `1994b658ec5089dfa900397dd0033acb024126520c6906a682963bd5413139cd`.
+Passed documentation, strict selected OpenSpec and stable content. Failed/blocked/
+not-run applicable automated checks: none. Application/harness/live API/database
+checks are not-applicable to this documentation patch; fresh runtime acceptance is
+recorded separately above. Qualification source hashes remain unchanged. These final
+result/checklist notes are later documentation bytes, separately checked without
+attributing the earlier record digest to them. Deployed/physical-device cells remain
+not-run; no sync/archive, commit, deployment or production enablement.

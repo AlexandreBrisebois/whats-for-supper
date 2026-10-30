@@ -4,14 +4,14 @@ Planning baseline: 2026-10-29. Related [issue #326](https://github.com/Alexandre
 
 ## Current checkpoint
 
-Navigation revision, 2026-10-29: [observe-pwa-navigation](../../openspec/changes/observe-pwa-navigation/proposal.md)
-now explicitly revises the opening contract through an active delta. Opening,
-screens and adopted surfaces will share document-local session/tab, event identity
-and sequence with browser/forwarding observation clocks. This is planning only;
-all F2 tasks and revised runtime qualification remain unchecked. Main opening specs
-and archived evidence retain their existing contract until a separately selected
-sync. See the [mapping recipe](../sentrame.md#planned-navigation-mapping-recipe) and
-[current source record](#navigation-revision-source-record).
+Navigation, 2026-10-29: [observe-pwa-navigation](../../openspec/changes/observe-pwa-navigation/proposal.md)
+F2-1–F2-3 acceptance and final gates were verified before F2-4. The integrated
+four-name local browser/Action/Node/Sentrame path, protected durable reads,
+prospective synthetic reaching-Search goal and exact replay/restart pass again.
+F2-4 tasks 4.1–4.2 are accepted; scoped final documentation verification passed.
+See [integrated evidence and scenario acceptance](../sentrame.md#f2-4-integrated-local-qualification--2026-10-29).
+Collection remains default-off; deployed/physical-device cells remain not-run.
+Main specs and historical captured definitions are unchanged; no sync/archive.
 
 
 The opening change was synced and archived on 2026-10-29 at the user's request,
@@ -43,7 +43,7 @@ Change `tasks.md` checkboxes are the task authority. This table is a navigation/
 | F2-1 | [Navigation](../../openspec/changes/observe-pwa-navigation/tasks.md), 1.1–1.4 | Implemented F1 gates/transport plus baseline-gate reconciliation and disposable receiver; correlated App opened -> Home -> Search -> Home with durable receipt and separate synthetic-goal derivation | F2-1 complete; local capture/receiver qualification and stable final gate passed |
 | F2-2 | Same change, 2.1–2.3 | F2-1; correct phone/wide Planner and Grocery presentation | complete; local capture/receiver acceptance and stable scoped final verification passed |
 | F2-3 | Same change, 3.1–3.3 | F2-2; Quick Find surface pilot, route/overlay coverage debt | complete; 117-case acceptance, disposable receiver and stable final verification passed |
-| F2-4 | Same change, 4.1–4.2 | F2-3; four-name/surface durable receipt and prospective derivation reconciliation | planned |
+| F2-4 | Same change, 4.1–4.2 | F2-3; four-name/surface durable receipt and prospective derivation reconciliation | complete; integrated qualification and stable final documentation verification passed |
 | F3-1 | [Unexpected errors](../../openspec/changes/observe-unexpected-pwa-errors/tasks.md), 1.1–1.3 | F1 local receipt and F2-1; minimized script/rejection reports and storm caps | planned |
 | F3-2 | Same change, 2.1–2.3 | F3-1; render/root/server hooks, source ownership and standalone errors | planned |
 | F3-3 | Same change, 3.1–3.2 | F3-2; real protected receiver diagnostics and integration reconciliation | planned |
@@ -276,7 +276,7 @@ not assigned without session/tab. Empty journey graph was not failed ingestion;
 standalone logs without trace IDs do not appear in Traces. This report does not
 qualify the planned revised envelope or change historical F1 task status.
 
-| Revised evidence cell | Current status |
+| Planning-time revised evidence cell (historical; see F2-4 above for current results) | Status at planning |
 | --- | --- |
 | Source/artifact reconciliation | Source inspected; documentation verification recorded separately in handoff |
 | Unit/component behavioral red/green | Not-run; implementation not authorized in this session |
@@ -429,3 +429,37 @@ failure/blocker remains. Prepared-source tracer wire/receiver artifacts and matc
 source hashes are retained in `.task/telemetry-navigation/f2-3/final/`.
 Final evidence/checklist updates are later documentation bytes, checked separately.
 F2-4 remains pending. No production enablement, deployment, commit or sync/archive.
+
+
+## F2-4 integrated qualification checkpoint — 2026-10-29
+
+Only tasks 4.1–4.2 selected; clean starting WFS
+`632cc437d44f0b29027081f336ba6d71e9d60daa`. Prerequisite audit inspected all three
+passing application records and retained acceptance/receiver artifacts; F2-3's ten
+prepared-source hashes match current bytes. Fresh qualification passed **256/256**
+focused tests and **2/2** owned browser fixtures. Actual receiver retains **20**
+records, initial document sequence **1–16**, all four names, browser authority,
+service/version and exact source/forwarding times. Raw receipt is asserted separately
+from configured derivation; only synthetic reaching Search completes. Supporting
+surface closure leaves the later journey incomplete. Exact-byte replay adds no raw
+records or journey contributions before/after actual process restart/storage reopen.
+
+Clean receiver `a506dacbdc0f776238f2b3ebc769e42d2b4b9378`, fresh schema 3 /
+structural-v2 / journey-native-v3 only; original Node JSON bytes, no compression.
+Source/config/binary/wire identities, protected reads and privacy review are retained
+in `.task/telemetry-navigation/f2-4/`; exact hashes and scenario reconciliation are
+in [integration docs](../sentrame.md#f2-4-integrated-local-qualification--2026-10-29).
+Only integration docs, this tracker and selected task evidence change. Scoped
+preparation, complete diff review and final verification passed for task 4.2. Deployed route/physical installed
+device/native handoff: **not-run**. API/schema/client/SDK/receiver source changes:
+**not-applicable**. No business event, commit, deployment, production enablement,
+receiver-storage migration, sync or archive. Stop after F2-4.
+
+
+F2-4 final `record_path`: `.task/agent-finish/runs/0254f1b321aa4e2e84fabe1096fefdeb.json`;
+identity `1994b658ec5089dfa900397dd0033acb024126520c6906a682963bd5413139cd`. Passed selected
+documentation/OpenSpec/content stability; no failed, blocked or not-run applicable
+checks. Application/harness/live endpoint/database gates are not-applicable to the
+three-path documentation patch; fresh scoped runtime qualification is separate.
+Later completion notes/checklists receive their own documentation checks. Tasks
+4.1–4.2 complete; stop here. No sync/archive or deployment/enablement.
