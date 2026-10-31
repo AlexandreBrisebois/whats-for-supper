@@ -20,11 +20,11 @@ If a recipe is set for tonight, you'll see it front and centre with a **Cook's M
 
 Finishing Cook's Mode records the recipe you cooked. It completes tonight's planned meal only when that same recipe is scheduled for tonight; cooking a different recipe leaves the planned meal unchanged.
 
-If tonight's plan changes, tap **Skip**, choose **Order In** or another backup, then decide what to do with the planned recipe: move it to tomorrow, save it for next week, or drop it. **Save for Next Week** finds the first open day starting next Monday. If next week is full, the app saves it on the next available later date and tells you where it went. You stay on the page you were using.
+If tonight's plan changes, tap **Skip**, choose **Take Out** or another backup, then decide what to do with the planned recipe: move it to tomorrow, save it for next week, or drop it. **Save for Next Week** finds the first open day starting next Monday. If next week is full, the app saves it on the next available later date and tells you where it went. You stay on the page you were using.
 
 Overnight, the app marks missed planned meals from earlier days as cooked so recipe rotation stays useful. Recipe-free supper plans, meals already cooked, and future plans are left alone.
 
-If tonight is set to **Order In**, **Eating out**, or a custom plan, Home shows the saved plan and any note. Tap the card to edit it. **Mystery night** keeps the usual choices for finding tonight's supper available without clearing the saved plan just because you opened Home.
+If tonight is set to **Take Out**, **Eating out**, or a custom plan, Home shows the saved plan and any note. Choose **Edit supper plan** to change it. **Mystery night** without a ready suggestion explains availability and keeps the usual choices for finding tonight's supper available without clearing the saved plan just because you opened Home. Choosing **Take Out** explicitly replaces a saved Mystery night after the save succeeds.
 
 If nothing is planned yet, you'll see a few fast choices. If your family has **GOTO recipes** saved, the app randomly picks one to show as your featured fallback. Tap **Make This Tonight** to put it on the menu in one step. Refreshing may show another recipe from your GOTO list. You can also use **Quick Find** for a short stack of up to five suggestions. **Skip** moves to the next suggestion; after the stack, you can search your library or start over.
 
@@ -48,7 +48,7 @@ If you have a new idea that isn't in your library yet, use **Describe it** or **
 
 The planner shows the whole week at a glance. Each day shows what's planned — or a gentle nudge to fill the gap.
 
-Tap a day to assign or replace a recipe. For an empty day, choose **Other plans**, then **Order In**, **Eating out**, **Mystery night**, or **We made plans**. Order In and Eating out allow an optional note, such as the restaurant name. We made plans requires a message describing supper; messages can be up to 80 characters. Mystery night means “We’ll figure out supper that day” and needs no message. Tap **Save** to share the plan with the household.
+Tap a day to assign or replace a recipe. For an empty day, choose **Other plans**, then **Take Out**, **Eating out**, **Mystery night**, or **We made plans**. Take Out and Eating out allow an optional note, such as the restaurant name. We made plans requires a message describing supper; messages can be up to 80 characters. Mystery night means “We’ll figure out supper that day” and needs no message. Tap **Save** to share the plan with the household.
 
 Tap a saved supper plan to edit it, clear the day, or choose a recipe instead. These plans reserve their days through family voting and finalizing the week, and add no grocery ingredients. Clearing one makes the day available again.
 

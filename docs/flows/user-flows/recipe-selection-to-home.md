@@ -124,7 +124,7 @@ This replaces the old `router.refresh()` + `pendingConfirmRef` pattern. There is
 | "Make This Tonight" → menu card immediately | `home-goto.spec.ts` |
 | Page reload after "Make This Tonight" → menu card still shown | `home-goto.spec.ts` |
 | Planner assignment for today → home reflects without navigation | `home-recipe.spec.ts` |
-| Page reload after "Order In" → pivot card not shown | `home-recipe.spec.ts` |
+| Page reload after "Take Out" → pivot card not shown | `home-recipe.spec.ts` |
 | Optimistic recipe survives background sync within 10-second window | `home-race.spec.ts` |
 
 ---

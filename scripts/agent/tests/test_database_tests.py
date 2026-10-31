@@ -138,39 +138,6 @@ class DatabaseTests(unittest.TestCase):
         test = next(c for c in self.calls if c[0] == 'dotnet')
         self.assertIn('(FullyQualifiedName~DeferRecipe)', test[test.index('--filter') + 1])
 
-    def test_default_and_ordinary_focus_exclude_live_receiver_qualification(self):
-        for focus in (None, 'FullyQualifiedName~RecipeIssueTelemetry',
-                      'FullyQualifiedName~NotRecipeIssueTelemetryPostgresTests',
-                      'FullyQualifiedName!~RecipeIssueTelemetryPostgresTests'):
-            with self.subTest(focus=focus):
-                self.assertEqual(self.run_gate(filter_expression=focus)[0], 'passed')
-                test = next(c for c in reversed(self.calls) if c[0] == 'dotnet')
-                self.assertIn('FullyQualifiedName!~LiveReceiver_', test[test.index('--filter') + 1])
-
-    def test_explicit_receiver_class_or_marker_focus_includes_live_receiver(self):
-        self.test_names = ['RecipeApi.Tests.Integration.RecipeIssueTelemetryPostgresTests.LiveReceiver_ActualExporter']
-        for focus in ('FullyQualifiedName~RecipeIssueTelemetryPostgresTests',
-                      'FullyQualifiedName=RecipeApi.Tests.Integration.RecipeIssueTelemetryPostgresTests.LiveReceiver_ActualExporter',
-                      'FullyQualifiedName~LiveReceiver_'):
-            with self.subTest(focus=focus):
-                status, record = self.run_gate(filter_expression=focus)
-                self.assertEqual(status, 'passed')
-                test = next(c for c in reversed(self.calls) if c[0] == 'dotnet')
-                self.assertNotIn('FullyQualifiedName!~LiveReceiver_', test[test.index('--filter') + 1])
-                self.assertEqual(record['passed'], 1)
-
-    def test_explicit_receiver_qualification_cannot_pass_without_live_results(self):
-        status, record = self.run_gate(filter_expression='FullyQualifiedName~RecipeIssueTelemetryPostgresTests')
-        self.assertEqual(status, 'blocked')
-        self.assertIn('LiveReceiver_', record['detail'])
-
-    def test_missing_receiver_configuration_skip_blocks_explicit_qualification(self):
-        self.outcomes = ['NotExecuted']
-        self.test_names = ['RecipeApi.Tests.Integration.RecipeIssueTelemetryPostgresTests.LiveReceiver_ActualExporter']
-        status, record = self.run_gate(filter_expression='FullyQualifiedName~RecipeIssueTelemetryPostgresTests')
-        self.assertEqual(status, 'blocked')
-        self.assertEqual(record['skipped'], 1)
-
     def test_source_mutation_never_becomes_passed_evidence(self):
         status, record = self.run_gate(identity_values=['before', 'after'])
         self.assertEqual(status, 'failed')

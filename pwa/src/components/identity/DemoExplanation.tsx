@@ -59,7 +59,6 @@ export function DemoExplanation({
       )}
       {open && (
         <DemoDialog
-          surfaceIdentity="demo.introduction"
           locale={isBeta ? locale : undefined}
           title={label}
           description={

@@ -1,12 +1,9 @@
 'use client';
 
-import { useState, useMemo, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence, useAnimation } from 'framer-motion';
 import { X, ChevronLeft, ChevronRight, Maximize2, Minimize2 } from 'lucide-react';
-import {
-  useLoadedPresentation,
-  useSurfacePresentation,
-} from '@/components/telemetry/useSurfacePresentation';
+
 import { t } from '@/locales';
 
 interface OriginalPhotosViewerProps {
@@ -39,21 +36,6 @@ export function OriginalPhotosViewer({
   const [selection, setSelection] = useState({ index: 0, generation: 0 });
   const currentIndex = selection.index;
   const currentPhotoIndex = imageIndices[currentIndex];
-  const imageEntry = useMemo(() => ({}), [recipeId, currentPhotoIndex, selection.generation]);
-  const currentImageEntry = useRef<object | null>(null);
-  useLayoutEffect(() => {
-    currentImageEntry.current = imageEntry;
-    return () => {
-      currentImageEntry.current = null;
-    };
-  }, [imageEntry]);
-  const [loadedImage, setLoadedImage] = useState<object | null>(null);
-  useSurfacePresentation('original.photos', true);
-  useLoadedPresentation(
-    'pwa.original.presented',
-    imageEntry,
-    currentPhotoIndex !== undefined && loadedImage === imageEntry
-  );
   const selectImage = useCallback((index: number) => {
     setSelection((previous) =>
       previous.index === index ? previous : { index, generation: previous.generation + 1 }
@@ -268,12 +250,6 @@ export function OriginalPhotosViewer({
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={imageUrl}
-                onLoad={() => {
-                  if (currentImageEntry.current === imageEntry) setLoadedImage(imageEntry);
-                }}
-                onError={() => {
-                  if (currentImageEntry.current === imageEntry) setLoadedImage(null);
-                }}
                 alt={`Recipe photo ${currentIndex + 1}`}
                 className="max-h-full max-w-full object-contain select-none pointer-events-none"
                 draggable={false}

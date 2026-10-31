@@ -1,7 +1,5 @@
 'use client';
 
-import { useSurfacePresentation } from '@/components/telemetry/useSurfacePresentation';
-
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, Search, Trash2, ChevronRight, X, RefreshCw, CalendarCheck } from 'lucide-react';
@@ -34,7 +32,6 @@ export const PlanningPivotSheet: React.FC<PlanningPivotSheetProps> = ({
   onNoCooking,
   isNonCooking = false,
 }) => {
-  useSurfacePresentation('planning.pivot', isOpen);
   const removeAction = hasRecipe && (
     <button
       onClick={onRemoveRecipe}
@@ -191,7 +188,7 @@ export const PlanningPivotSheet: React.FC<PlanningPivotSheetProps> = ({
                         : t('planner.noCooking', 'Other plans')}
                     </h4>
                     <p className="text-xs text-charcoal/70 font-medium">
-                      {t('planner.otherPlansSubtitle', 'Order in, eat out, or add your own')}
+                      {t('planner.otherPlansSubtitle', 'Take out, eat out, or add your own')}
                     </p>
                   </div>
                   <ChevronRight

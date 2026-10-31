@@ -13,8 +13,9 @@ probe output, or incident notes.
 | `WFS_ENABLE_SEMANTIC_RETRIEVAL` | `true` | Independently serve semantic fusion; set `false` to retain lexical serving. |
 | `WFS_SEARCH_CONFIGURATION_VERSION` | `hybrid-search-v1` | Low-cardinality configuration version attached to telemetry. |
 
-`OpenTelemetry:Endpoint` enables metric export for the `RecipeApi.Search` meter.
-The dashboard and alert definitions are in `ops/observability/`.
+The independent `RecipeApi.Search` .NET meter instruments and structured search logs remain.
+WFS no longer registers an OpenTelemetry subscriber or exports these metrics.
+Use ordinary search logs for current local diagnosis; no dashboard or alert deployment is supplied here.
 
 ## Supported operation and rollback
 

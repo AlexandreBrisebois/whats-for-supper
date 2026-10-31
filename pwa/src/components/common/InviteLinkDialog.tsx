@@ -1,7 +1,5 @@
 'use client';
 
-import { useSurfacePresentation } from '@/components/telemetry/useSurfacePresentation';
-
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Copy, Share2, X } from 'lucide-react';
@@ -15,7 +13,6 @@ interface InviteLinkDialogProps {
 }
 
 export function InviteLinkDialog({ memberId, memberName, onClose }: InviteLinkDialogProps) {
-  useSurfacePresentation('invite.share', true);
   const [link, setLink] = useState('');
   const [copied, setCopied] = useState(false);
 

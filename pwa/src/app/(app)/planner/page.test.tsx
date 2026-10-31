@@ -1,4 +1,3 @@
-import { observeOpening } from '@/lib/telemetry/opening';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -646,7 +645,7 @@ describe('PlannerPage voting action row', () => {
       view.rerender(<PlannerPage />);
       const day = within(screen.getByTestId('day-card-1'));
       expect(day.getByTestId('non-cooking-indicator')).toHaveTextContent(
-        kind === 'order_in' ? 'Order In' : 'Eating out'
+        kind === 'order_in' ? 'Take Out' : 'Eating out'
       );
       expect(day.getByTestId('non-cooking-note')).toHaveTextContent('Try Luigi’s');
       expect(day.getByTestId('ordered-in-indicator')).not.toHaveTextContent('No cook tonight');
@@ -1488,57 +1487,46 @@ describe('Planner day emphasis', () => {
 });
 
 describe('Planner presentation composition', () => {
-  it('observes rendered primary and companion, preserving tab/week through loading and resize', () => {
-    const submit = vi.fn().mockResolvedValue(undefined);
+  it('preserves the grocery tab and week through loading and resize', () => {
     const doc = document; // Production declaration and coordinator use the same document.
     vi.spyOn(doc, 'visibilityState', 'get').mockReturnValue('visible');
     const view = renderPlanner(0, '2026-05-17', 1);
-    observeOpening(doc, true, '/planner', submit);
-    expect(submit.mock.calls.at(-1)?.[0].screen).toBe('planner');
+
     fireEvent.click(screen.getByTestId('grocery-tab'));
     expect(mocks.setActiveTab).toHaveBeenCalledWith('grocery');
-    observeOpening(doc, true, '/planner', submit);
-    expect(submit).toHaveBeenCalledTimes(2); // click alone is not presentation
+
+    // click alone is not presentation
     mocks.setPlannerState({ ...mocks.getPlannerState(), activeTab: 'grocery' });
     mocks.setWeekState({ ...mocks.getWeekState(), isLoading: true, schedule: [] });
     view.rerender(<PlannerPage />);
-    observeOpening(doc, true, '/planner', submit);
+
     expect(screen.queryByTestId('mock-grocery')).toBeNull();
-    expect(submit).toHaveBeenCalledTimes(2); // still the loading shell
+    // still the loading shell
     mocks.setWide(true);
     view.rerender(<PlannerPage />);
-    observeOpening(doc, true, '/planner', submit);
+
     expect(screen.getAllByTestId('mock-grocery')).toHaveLength(1);
     expect(screen.getByTestId('mock-grocery')).toHaveAttribute('data-embedded', 'true');
-    expect(submit.mock.calls.at(-1)?.[0].eventName).toBe('pwa.surface.opened');
+
     mocks.setWide(false);
     view.rerender(<PlannerPage />);
-    observeOpening(doc, true, '/planner', submit);
-    expect(submit.mock.calls.at(-1)?.[0].eventName).toBe('pwa.surface.closed');
+
     mocks.setWeekState({ ...mocks.getWeekState(), isLoading: false });
     view.rerender(<PlannerPage />);
-    observeOpening(doc, true, '/planner', submit);
+
     expect(screen.getAllByTestId('mock-grocery')).toHaveLength(1);
-    expect(submit.mock.calls.at(-1)?.[0].screen).toBe('planner.grocery');
+
     mocks.setWide(true);
     view.rerender(<PlannerPage />);
-    observeOpening(doc, true, '/planner', submit);
+
     expect(screen.getAllByTestId('mock-grocery')).toHaveLength(1);
     expect(screen.getByTestId('mock-grocery')).toHaveAttribute('data-embedded', 'true');
-    expect(submit.mock.calls.slice(-2).map(([e]) => [e.eventName, e.screen])).toEqual([
-      ['pwa.screen.presented', 'planner'],
-      ['pwa.surface.opened', 'planner.grocery'],
-    ]);
+
     mocks.setWide(false);
     view.rerender(<PlannerPage />);
-    observeOpening(doc, true, '/planner', submit);
+
     expect(screen.getByTestId('mock-grocery')).toHaveAttribute('data-embedded', 'false');
     expect(screen.getByTestId('mock-grocery')).toHaveAttribute('data-week', '1');
     expect(mocks.getPlannerState().activeTab).toBe('grocery');
-    expect(submit.mock.calls.slice(-2).map(([e]) => [e.eventName, e.screen])).toEqual([
-      ['pwa.surface.closed', 'planner.grocery'],
-      ['pwa.screen.presented', 'planner.grocery'],
-    ]);
-    expect(JSON.stringify(submit.mock.calls)).not.toMatch(/2026-|Carbonara|weekOffset/);
   });
 });

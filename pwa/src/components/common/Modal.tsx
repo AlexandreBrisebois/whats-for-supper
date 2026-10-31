@@ -1,21 +1,16 @@
 'use client';
 
-import { useSurfacePresentation } from '@/components/telemetry/useSurfacePresentation';
-import type { SurfaceIdentity } from '@/lib/telemetry/surfaces';
-
 import { useEffect, useRef, type ReactNode, type KeyboardEvent } from 'react';
 import { X } from 'lucide-react';
 
 interface ModalProps {
   isOpen: boolean;
-  surfaceIdentity?: SurfaceIdentity;
   onClose: () => void;
   title?: string;
   children: ReactNode;
 }
 
-export function Modal({ isOpen, onClose, title, children, surfaceIdentity }: ModalProps) {
-  useSurfacePresentation(surfaceIdentity, isOpen);
+export function Modal({ isOpen, onClose, title, children }: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeBtnRef = useRef<HTMLButtonElement>(null);
 

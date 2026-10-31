@@ -8,6 +8,7 @@ import { TonightRecipeImage } from './TonightRecipeImage';
 import { t } from '@/locales';
 
 interface TonightPivotCardProps {
+  actionPending?: boolean;
   gotoDescription: string | null;
   gotoRecipeId: string | null;
   gotoImageUrl?: string | null;
@@ -22,6 +23,7 @@ interface TonightPivotCardProps {
 }
 
 export function TonightPivotCard({
+  actionPending = false,
   gotoDescription,
   gotoRecipeId,
   gotoImageUrl,
@@ -41,16 +43,21 @@ export function TonightPivotCard({
   const gotoReady = showGoto && hasGoto && gotoStatus === 'ready';
   const gotoPending = showGoto && hasGoto && gotoStatus === 'pending';
   const isFetching = showGoto && hasGoto && gotoStatus === null;
+  const mysteryWithoutProposal = nonCookingKind === 'mystery' && !!nonCookingLabel && !gotoReady;
+  const mysteryProposal = nonCookingKind === 'mystery' && !!nonCookingLabel && gotoReady;
 
   // If we have an explicit image URL, use it.
   // Otherwise, if the recipe is ready, use the standard hero endpoint.
   const imageUrl =
-    !nonCookingLabel && gotoReady ? gotoImageUrl || `/api/recipes/${gotoRecipeId}/hero` : null;
+    (!nonCookingLabel || mysteryProposal) && gotoReady
+      ? gotoImageUrl || `/api/recipes/${gotoRecipeId}/hero`
+      : null;
 
   return (
     <div
       className="relative w-full min-w-0 [overflow-wrap:anywhere]"
       data-testid="tonight-pivot-card"
+      aria-busy={actionPending}
     >
       <TonightCardBase className="flex flex-col p-6">
         {/* Header */}
@@ -59,9 +66,11 @@ export function TonightPivotCard({
             data-testid="pivot-card-header"
             className="font-heading text-base font-medium text-charcoal-600"
           >
-            {nonCookingLabel
-              ? t('home.tonight', 'Tonight')
-              : t('home.nothingPlannedTonight', 'Nothing planned for tonight')}
+            {mysteryProposal
+              ? nonCookingLabel
+              : nonCookingLabel
+                ? t('home.tonight', 'Tonight')
+                : t('home.nothingPlannedTonight', 'Nothing planned for tonight')}
           </h2>
         </div>
 
@@ -73,6 +82,14 @@ export function TonightPivotCard({
               aria-hidden="true"
             >
               <Utensils size={104} strokeWidth={1.25} />
+            </div>
+          ) : mysteryWithoutProposal ? (
+            <div
+              data-testid="mystery-plan-illustration"
+              className="mb-6 flex h-28 items-center justify-center rounded-[1.5rem] bg-cream text-sage-700 sm:h-40"
+              aria-hidden="true"
+            >
+              <NonCookingIcon kind="mystery" size={104} strokeWidth={1.25} />
             </div>
           ) : (
             <TonightRecipeImage
@@ -93,7 +110,7 @@ export function TonightPivotCard({
 
         {/* Body */}
         <div className="flex flex-col gap-2 px-1 mb-5">
-          {nonCookingLabel && nonCookingKind === 'mystery' ? (
+          {mysteryProposal ? null : nonCookingLabel && nonCookingKind === 'mystery' ? (
             <h3
               data-testid="today-non-cooking-label"
               className="font-heading text-3xl font-black leading-snug text-charcoal"
@@ -113,6 +130,16 @@ export function TonightPivotCard({
               </p>
             </details>
           ) : null}
+          {mysteryWithoutProposal && !hasGoto && (
+            <p
+              data-testid="mystery-availability"
+              className="text-base leading-relaxed text-charcoal-600"
+            >
+              {hasCheckedActive
+                ? t('home.noGotoSuggestion', 'No GOTO suggestion available right now.')
+                : t('home.checkingGoto', 'Checking your GOTO…')}
+            </p>
+          )}
           {gotoReady ? (
             <div>
               <p className="text-sm font-medium leading-normal text-charcoal-600">
@@ -137,6 +164,7 @@ export function TonightPivotCard({
         <div className="flex flex-col gap-2 mt-auto">
           {gotoReady && (
             <button
+              disabled={actionPending}
               onClick={onConfirmGoto}
               data-testid="confirm-goto-btn"
               className="flex items-center justify-center gap-2 min-h-14 px-4 py-3 rounded-[1.5rem] bg-terracotta text-cream-100 hover:bg-terracotta-600 active:bg-terracotta-700 transition-colors focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-charcoal text-base font-semibold leading-normal"
@@ -147,6 +175,7 @@ export function TonightPivotCard({
           )}
           <div className={gotoReady ? 'flex flex-wrap gap-2' : 'flex flex-col gap-2'}>
             <button
+              disabled={actionPending}
               onClick={onDiscover}
               data-testid="discover-btn"
               className={
@@ -161,6 +190,7 @@ export function TonightPivotCard({
               </span>
             </button>
             <button
+              disabled={actionPending}
               onClick={onOrderIn}
               data-testid="order-in-btn"
               className={
@@ -171,7 +201,7 @@ export function TonightPivotCard({
             >
               <ShoppingBag size={16} aria-hidden="true" className="shrink-0" />
               <span className="min-w-0 [overflow-wrap:normal]">
-                {t('home.orderingIn', 'Order In')}
+                {t('home.orderingIn', 'Take Out')}
               </span>
             </button>
           </div>

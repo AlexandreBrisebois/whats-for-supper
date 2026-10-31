@@ -2608,7 +2608,7 @@ export async function mockSseWithWeekUpdate(
 
 /**
  * Mocks the SSE stream to emit a `slot_updated` event representing an
- * "Order In" action (recipe: null, status: 3) for the given date.
+ * "Take Out" action (recipe: null, status: 3) for the given date.
  *
  * @param page - Playwright Page instance
  * @param date - The date string (YYYY-MM-DD) of the ordered-in slot

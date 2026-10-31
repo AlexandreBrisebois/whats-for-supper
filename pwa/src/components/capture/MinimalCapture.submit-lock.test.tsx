@@ -75,8 +75,6 @@ vi.mock('@/lib/api/api-client', () => ({
 }));
 
 import MinimalCapture from './MinimalCapture';
-import { observeOpening, presentationChanged } from '@/lib/telemetry/opening';
-import type { BrowserObservation } from '@/lib/telemetry/navigation';
 
 describe('MinimalCapture photo submit locking', () => {
   beforeEach(() => {
@@ -162,11 +160,7 @@ describe('MinimalCapture photo submit locking', () => {
   });
   it('declares upload only after the delayed overlay is visible and closes it on a failed attempt', async () => {
     vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
-    const submit = vi.fn<(event: BrowserObservation) => Promise<void>>().mockResolvedValue();
-    const observe = () => observeOpening(document, true, '/capture', submit);
-    observe();
-    submit.mockClear();
-    document.addEventListener(presentationChanged, observe);
+
     let resolve: ((id: null) => void) | undefined;
     submitRecipeMock.mockImplementation(
       () =>
@@ -176,35 +170,27 @@ describe('MinimalCapture photo submit locking', () => {
     );
     const view = render(<MinimalCapture />);
     try {
-      expect(submit).not.toHaveBeenCalled();
       await act(async () => {
         screen.getByTestId('capture-save-btn').click();
       });
       expect(screen.getByRole('button', { name: /uploading photos/i })).toBeDisabled();
-      expect(submit).not.toHaveBeenCalled();
+
       await act(async () => {
         vi.advanceTimersByTime(799);
       });
-      expect(submit).not.toHaveBeenCalled();
+
       await act(async () => {
         vi.advanceTimersByTime(1);
       });
       expect(screen.getByTestId('capture-photo-upload-overlay')).toBeVisible();
-      expect(submit.mock.calls.map(([event]) => [event.eventName, event.screen])).toEqual([
-        ['pwa.surface.opened', 'capture.upload'],
-      ]);
+
       await act(async () => {
         resolve?.(null);
       });
       expect(screen.queryByTestId('capture-photo-upload-overlay')).not.toBeInTheDocument();
-      expect(submit.mock.calls.map(([event]) => [event.eventName, event.screen])).toEqual([
-        ['pwa.surface.opened', 'capture.upload'],
-        ['pwa.surface.closed', 'capture.upload'],
-      ]);
     } finally {
       view.unmount();
       await act(async () => {});
-      document.removeEventListener(presentationChanged, observe);
     }
   });
 });

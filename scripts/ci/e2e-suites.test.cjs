@@ -2,20 +2,12 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { suites, live, selectSuite, validateInventory, inventory } = require('./e2e-suites.cjs');
 
-test('error observation belongs to household alongside opening and navigation', () => {
+test('retirement coverage belongs to household without removed producer qualifications', () => {
+  assert.ok(suites.household.includes('telemetry-retirement'));
   for (const name of ['telemetry-opening', 'telemetry-navigation', 'telemetry-errors']) {
-    assert.ok(suites.household.includes(name), `${name} must have household capability ownership`);
+    assert.ok(Object.values(suites).every(files => !files.includes(name)));
   }
-});
-
-test('native telemetry has explicit live ownership outside mocked capability suites', () => {
-  assert.ok(live.includes('telemetry-native-live'));
-  assert.ok(Object.values(suites).every(files => !files.includes('telemetry-native-live')));
-});
-
-test('issue result qualification has live ownership outside mocked capability suites', () => {
-  assert.ok(live.includes('telemetry-issue-results-live'));
-  assert.ok(Object.values(suites).every(files => !files.includes('telemetry-issue-results-live')));
+  assert.ok(live.every(name => !name.startsWith('telemetry-')));
 });
 
 test('every current spec belongs to exactly one suite or explicit live qualification', () => {

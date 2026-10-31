@@ -1,7 +1,5 @@
 'use client';
 
-import { useSurfacePresentation } from '@/components/telemetry/useSurfacePresentation';
-
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
 import type { NonCookingPlanDto } from '@/lib/api/generated/models';
 import { t } from '@/locales';
@@ -18,14 +16,13 @@ interface Props {
 }
 
 export function NonCookingDaySheet({ date, plan, onSave, onClear, onClose }: Props) {
-  useSurfacePresentation('planning.non_cooking', true);
   const [kind, setKind] = useState(plan?.kind ?? 'mystery');
   const [message, setMessage] = useState(plan?.customLabel ?? '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const submitting = useRef(false);
   const panel = useRef<HTMLDivElement>(null);
-  const input = useRef<HTMLInputElement>(null);
+  const input = useRef<HTMLTextAreaElement>(null);
   const close = useRef<HTMLButtonElement>(null);
   const titleId = useId();
   const inputId = useId();
@@ -49,7 +46,7 @@ export function NonCookingDaySheet({ date, plan, onSave, onClear, onClose }: Pro
     if (event.key === 'Escape' && !busy) onClose();
     if (event.key !== 'Tab') return;
     const controls = panel.current?.querySelectorAll<HTMLElement>(
-      'button:not(:disabled), input:not(:disabled)'
+      'button:not(:disabled), textarea:not(:disabled)'
     );
     if (!controls?.length) return;
     const first = controls[0],
@@ -153,7 +150,7 @@ export function NonCookingDaySheet({ date, plan, onSave, onClear, onClose }: Pro
           {(
             [
               ['mystery', t('planner.mysteryNight', 'Mystery night'), 'non-cooking-mystery'],
-              ['order_in', t('home.orderingIn', 'Order In'), 'non-cooking-order-in'],
+              ['order_in', t('home.orderingIn', 'Take Out'), 'non-cooking-order-in'],
               ['eating_out', t('planner.eatingOut', 'Eating out'), 'non-cooking-eating-out'],
               ['custom', t('planner.otherPlans', 'We made plans'), 'non-cooking-other-plans'],
             ] as const
@@ -184,7 +181,8 @@ export function NonCookingDaySheet({ date, plan, onSave, onClear, onClose }: Pro
             <label htmlFor={inputId} className="block text-sm font-bold text-charcoal">
               {t('planner.nonCookingMessage', 'Tell the family the plan')}
             </label>
-            <input
+            <textarea
+              rows={2}
               ref={input}
               id={inputId}
               value={message}

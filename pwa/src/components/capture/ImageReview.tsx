@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { Star, X, ZoomIn } from 'lucide-react';
-import { useSurfacePresentation } from '@/components/telemetry/useSurfacePresentation';
 
 interface ImageReviewProps {
   images: File[];
@@ -20,10 +19,6 @@ export function ImageReview({
   const [objectUrls, setObjectUrls] = useState<string[]>([]);
   const [fullscreenIndex, setFullscreenIndex] = useState<number | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  useSurfacePresentation(
-    'capture.image_review',
-    fullscreenIndex !== null && !!objectUrls[fullscreenIndex]
-  );
 
   // Create object URLs whenever the images array changes
   useEffect(() => {

@@ -4,10 +4,12 @@ import type { NonCookingPlanDto } from '@/lib/api/generated/models';
 export function NonCookingIcon({
   kind,
   size = 24,
+  strokeWidth = 2,
   className,
 }: {
   kind?: NonCookingPlanDto['kind'] | null;
   size?: number;
+  strokeWidth?: number;
   className?: string;
 }) {
   const Icon =
@@ -18,5 +20,5 @@ export function NonCookingIcon({
         : kind === 'eating_out'
           ? UtensilsCrossed
           : ShoppingBag;
-  return <Icon size={size} strokeWidth={2} className={className} aria-hidden="true" />;
+  return <Icon size={size} strokeWidth={strokeWidth} className={className} aria-hidden="true" />;
 }

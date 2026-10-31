@@ -5,7 +5,7 @@ export function nonCookingLabel(plan?: NonCookingPlanDto | null): string {
   if (plan?.kind === 'custom') return plan.customLabel ?? '';
   if (plan?.kind === 'mystery') return t('planner.mysteryNight', 'Mystery night');
   if (plan?.kind === 'eating_out') return t('planner.eatingOut', 'Eating out');
-  return t('home.orderingIn', 'Order In');
+  return t('home.orderingIn', 'Take Out');
 }
 
 export function nonCookingNote(plan?: NonCookingPlanDto | null): string | null {

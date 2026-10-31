@@ -22,7 +22,7 @@ Legacy `/browse-all-stack?gotoOnly=true&manageGoto=true` honors the filter and i
 
 Home’s unplanned pivot uses the existing planner day-specific Search flow with authoritative today selected, week zero and its reference week. Selection, cancellation, planner success return and occupied-slot recovery keep their existing meanings. Opening Search does not assign a meal. Saved Mystery retains its existing Quick Find alternative; planned and other non-cooking states retain their own controls.
 
-The settled ordinary empty pivot uses a larger local fork-and-knife illustration, primary Search, secondary Order In and a short helper containing the recipe Star icon. No Choose GOTO recipes link appears. Order In records a non-cooking plan and places no food order. Ready Go-To suggestions retain their photo and Make this tonight; checking/pending feedback remains truthful. Shared recipe-image fallbacks are not enlarged.
+The settled ordinary empty pivot uses a larger local fork-and-knife illustration, primary Search, secondary Take Out and a short helper containing the recipe Star icon. No Choose GOTO recipes link appears. Take Out records a non-cooking plan and places no food order. Ready Go-To suggestions retain their photo and Make this tonight; checking/pending feedback remains truthful. Shared recipe-image fallbacks are not enlarged.
 
 ## Server semantics
 

@@ -10,7 +10,6 @@ import './globals.css';
 import { LocaleProvider } from '@/components/common/LocaleProvider';
 import { InstallIdentityProvider } from '@/components/identity/IdentityHint';
 import { IdentityValidator } from '@/components/identity/IdentityValidator';
-import { telemetryEnabled } from '@/lib/telemetry/server';
 
 const outfit = Outfit({
   subsets: ['latin'],
@@ -134,7 +133,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         </Suspense>
         <LocaleProvider>
           <InstallIdentityProvider identity={{ demo: identity.demo, channel: identity.channel }}>
-            <IdentityValidator telemetryEnabled={telemetryEnabled()}>{children}</IdentityValidator>
+            <IdentityValidator>{children}</IdentityValidator>
           </InstallIdentityProvider>
         </LocaleProvider>
       </body>

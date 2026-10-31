@@ -1,8 +1,6 @@
 'use client';
 import { CalendarUnavailableError } from '@/lib/deployment-calendar';
-import { useSurfacePresentation } from '@/components/telemetry/useSurfacePresentation';
-import { observeOriginalRequest } from '@/lib/telemetry/opening';
-import { reportBrowserObservation } from '@/lib/telemetry/actions';
+
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -82,7 +80,7 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
   const [completionError, setCompletionError] = useState<string | null>(null);
   const completionInFlight = useRef(false);
   const [showDetailId, setShowDetailId] = useState<string | null>(null);
-  useSurfacePresentation('cooking.reader', true);
+
   const [showOriginals, setShowOriginals] = useState(false);
   const originalActionRef = useRef<HTMLButtonElement>(null);
   const [reportPending, setReportPending] = useState(false);
@@ -556,8 +554,7 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
                 if (originalPending) return;
                 if (originalUrl) {
                   if (recipeDetails?.id === initialRecipe.id)
-                    observeOriginalRequest(document, reportBrowserObservation);
-                  window.open(originalUrl, '_blank', 'noopener,noreferrer');
+                    window.open(originalUrl, '_blank', 'noopener,noreferrer');
                 } else setShowOriginals(true);
               }}
               className="relative z-20 inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-charcoal/10 bg-white px-3 py-2 text-sm font-semibold text-charcoal-600 hover:bg-cream active:bg-charcoal-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-charcoal-500 disabled:cursor-wait disabled:opacity-60"

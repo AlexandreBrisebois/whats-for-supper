@@ -1,7 +1,5 @@
 'use client';
 
-import { useSurfacePresentation } from '@/components/telemetry/useSurfacePresentation';
-
 import React, { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -55,7 +53,6 @@ export function SkipRecoveryDialog({
   onBack,
   onAction,
 }: SkipRecoveryDialogProps) {
-  useSurfacePresentation('planning.recovery', isOpen);
   const feedbackRef = useRef<HTMLParagraphElement>(null);
   useEffect(() => {
     if (replacement && !pending && !confirmAbandon) feedbackRef.current?.focus();
@@ -248,10 +245,10 @@ export function SkipRecoveryDialog({
                       </div>
                       <div className="flex flex-1 flex-col items-start text-left">
                         <span className="font-heading text-xl font-black text-charcoal tracking-tight">
-                          {t('home.orderingIn', 'Order In')}
+                          {t('home.orderingIn', 'Take Out')}
                         </span>
                         <span className="text-[10px] font-black uppercase tracking-widest text-charcoal/30">
-                          {t('home.takeoutOrDelivery', 'Takeout or Delivery')}
+                          {t('home.takeoutOrDelivery', 'Takeout or delivery')}
                         </span>
                       </div>
                     </button>

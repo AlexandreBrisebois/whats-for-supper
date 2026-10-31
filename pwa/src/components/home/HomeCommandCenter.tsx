@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Check, ChevronRight } from 'lucide-react';
+import { Check } from 'lucide-react';
 import { NonCookingIcon } from '../planner/NonCookingIcon';
 import {
   QuickCaptureTrigger,
@@ -9,7 +9,7 @@ import {
   VotingNudgeCard,
   BrowseLibraryTrigger,
 } from './HomeSections';
-import { TonightMenuCard } from './TonightMenuCard';
+import { TonightMenuCard, TonightCardBase } from './TonightMenuCard';
 import { TonightPivotCard } from './TonightPivotCard';
 import { SkipRecoveryDialog, type ReplacementFeedback } from './SkipRecoveryDialog';
 import { QuickFindModal } from '../planner/QuickFindModal';
@@ -17,7 +17,7 @@ import { CooksMode } from '../planner/CooksMode';
 import { AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { apiClient } from '@/lib/api/api-client';
-import { getSchedule, normalizeScheduleRecipe } from '@/lib/api/planner';
+import { getSchedule, normalizeScheduleRecipe, saveNonCookingDay } from '@/lib/api/planner';
 import { RetryHandlerOptions } from '@microsoft/kiota-http-fetchlibrary';
 import { DateOnly } from '@microsoft/kiota-abstractions';
 import { absoluteMonday, calendarDayIndex, type CalendarContext } from '@/lib/deployment-calendar';
@@ -62,6 +62,9 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
   const [recoveryFlow, setRecoveryFlow] = useState<RecoveryFlowState>({
     kind: 'closed',
   });
+  const takeOutSubmission = useRef(false);
+  const [takeOutPending, setTakeOutPending] = useState(false);
+  const [takeOutError, setTakeOutError] = useState(false);
   const [cookedDismissed, setCookedDismissed] = useState(false);
   const session = useDiscoveryStore((state) => state.session);
   const sessionStatus = useDiscoveryStore((state) => state.sessionStatus);
@@ -99,6 +102,10 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
   const sessionDone = status === 2 || status === 3;
   const isMysteryNight = isSkipped && nonCooking?.kind === 'mystery';
   const showSupperChoices = !currentRecipe && !isCooked && (!sessionDone || isMysteryNight);
+
+  useEffect(() => {
+    setTakeOutError(false);
+  }, [calendar?.today, currentRecipe, nonCooking?.kind]);
 
   // ── Family / GOTO settings ────────────────────────────────────────────────
   const { loadActiveGoTo } = useFamilyStore();
@@ -590,12 +597,68 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
     }
   };
 
+  const replaceMysteryWithTakeOut = async () => {
+    if (takeOutSubmission.current) return;
+    const source = useTodayStore.getState();
+    const sourceDate = source.calendar?.today;
+    if (source.currentRecipe || source.status !== 3 || source.nonCooking?.kind !== 'mystery')
+      return;
+    const sameSource = () => {
+      const current = useTodayStore.getState();
+      return (
+        current.calendar?.today === sourceDate &&
+        !current.currentRecipe &&
+        current.status === 3 &&
+        current.nonCooking?.kind === 'mystery'
+      );
+    };
+    takeOutSubmission.current = true;
+    setTakeOutPending(true);
+    setTakeOutError(false);
+    try {
+      const context = await source.ensureCalendar();
+      if (context.today !== sourceDate || !sameSource()) return;
+      const plan = { kind: 'order_in' as const, customLabel: null };
+      await saveNonCookingDay(context.today, plan);
+      // The captured date is committed. Do not replace a newer local plan or recipe.
+      if (!sameSource()) return;
+      const update = { date: context.today, recipe: null, status: 3, nonCooking: plan };
+      useTodayStore.getState().applyServerUpdate(update);
+      useWeekStore.getState().applySlotUpdate(update);
+    } catch {
+      if (sameSource()) {
+        // A save may have committed before a later publication failure. Reread
+        // rather than claiming rollback or falling back to status-only validation.
+        await sync();
+        if (sameSource()) setTakeOutError(true);
+      }
+    } finally {
+      takeOutSubmission.current = false;
+      setTakeOutPending(false);
+    }
+  };
+
   const showRecovery = recoveryFlow.kind === 'step1' || recoveryFlow.kind === 'step2';
   const showQuickFind = recoveryFlow.kind === 'quick_find';
   const recoveryStep = recoveryFlow.kind === 'step2' ? 2 : 1;
 
   return (
     <div className="flex flex-col gap-5 pt-3 pb-12 max-w-[27rem] mx-auto w-full px-4 sm:gap-8 sm:px-0 sm:pt-4 sm:max-w-sm">
+      {takeOutError && (
+        <div
+          role="alert"
+          data-testid="take-out-save-error"
+          className="rounded-2xl bg-cream p-4 text-base text-charcoal"
+        >
+          <p>{t('planner.nonCookingSaveError', 'Could not save this plan. Try again.')}</p>
+          <button
+            onClick={() => void replaceMysteryWithTakeOut()}
+            className="mt-2 min-h-12 px-3 font-semibold text-terracotta-700 focus-visible:outline-2 focus-visible:outline-charcoal"
+          >
+            {t('errors.tryAgain', 'Try again')}
+          </button>
+        </div>
+      )}
       {calendarError && (
         <div role="alert" className="rounded-2xl bg-terracotta/10 p-4 text-sm text-charcoal">
           <p>{calendarError}</p>
@@ -616,45 +679,52 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
       ) : (
         <>
           {isSkipped && !isMysteryNight && !currentRecipe && (
-            <button
+            <TonightCardBase
               data-testid="today-non-cooking-plan"
-              aria-label={`${t('home.tonight', 'Tonight')} ${[nonCookingLabel(nonCooking), nonCookingNote(nonCooking)].filter(Boolean).join(' ')} ${t('planner.editSupperPlan', 'Edit supper plan')}`}
-              onClick={() =>
-                router.push(
-                  `${ROUTES.PLANNER}?weekOffset=0&referenceWeekStartDate=${calendar?.referenceWeekStartDate ?? ''}&planDate=${calendar?.today ?? ''}`
-                )
-              }
-              className="flex w-full items-center gap-4 rounded-[2rem] border border-sage/20 bg-sage/10 p-5 text-left transition-colors hover:bg-sage/15 focus-visible:outline-2 focus-visible:outline-sage-700"
+              className="flex min-w-0 flex-col gap-5 p-6 [overflow-wrap:anywhere]"
             >
-              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-sage/15 text-sage-700">
-                <NonCookingIcon kind={nonCooking?.kind} />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block mb-1 text-xs font-bold text-charcoal/70">
-                  {t('home.tonight', 'Tonight')}
-                </span>
-                <span
+              <h2 className="px-1 font-heading text-base font-medium text-charcoal-600">
+                {t('home.tonight', 'Tonight')}
+              </h2>
+              <div
+                data-testid="saved-plan-illustration"
+                className="flex h-28 items-center justify-center rounded-[1.5rem] bg-cream text-sage-700 sm:h-40"
+                aria-hidden="true"
+              >
+                <NonCookingIcon kind={nonCooking?.kind} size={104} strokeWidth={1.25} />
+              </div>
+              <div className="space-y-2 px-1">
+                <h3
                   data-testid="today-non-cooking-label"
-                  className="line-clamp-2 break-words font-heading text-lg font-bold text-charcoal"
+                  className="whitespace-pre-wrap break-words font-heading text-3xl font-black leading-snug text-charcoal"
                 >
                   {nonCookingLabel(nonCooking)}
-                </span>
+                </h3>
                 {nonCookingNote(nonCooking) && (
-                  <span
+                  <p
                     data-testid="today-non-cooking-note"
-                    title={nonCookingNote(nonCooking) ?? undefined}
-                    className="block line-clamp-2 break-words text-sm text-charcoal/70"
+                    className="whitespace-pre-wrap break-words text-base leading-relaxed text-charcoal-600"
                   >
                     {nonCookingNote(nonCooking)}
-                  </span>
+                  </p>
                 )}
-                <span className="sr-only">{t('planner.editSupperPlan', 'Edit supper plan')}</span>
-              </span>
-              <ChevronRight size={20} aria-hidden="true" className="shrink-0 text-charcoal/60" />
-            </button>
+              </div>
+              <button
+                aria-label={`${t('home.tonight', 'Tonight')} ${[nonCookingLabel(nonCooking), nonCookingNote(nonCooking)].filter(Boolean).join(' ')} ${t('planner.editSupperPlan', 'Edit supper plan')}`}
+                onClick={() =>
+                  router.push(
+                    `${ROUTES.PLANNER}?weekOffset=0&referenceWeekStartDate=${calendar?.referenceWeekStartDate ?? ''}&planDate=${calendar?.today ?? ''}`
+                  )
+                }
+                className="flex min-h-14 items-center justify-center rounded-[1.5rem] border border-terracotta-200 px-4 py-3 text-base font-semibold text-terracotta-700 transition-colors hover:bg-terracotta-50 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-charcoal"
+              >
+                {t('planner.editSupperPlan', 'Edit supper plan')}
+              </button>
+            </TonightCardBase>
           )}
           {showSupperChoices && (
             <TonightPivotCard
+              actionPending={takeOutPending}
               hasCheckedActive={hasCheckedActive}
               gotoDescription={gotoDescription}
               gotoRecipeId={gotoRecipeId}
@@ -681,6 +751,10 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
                 void openTodaySearch();
               }}
               onOrderIn={async () => {
+                if (isMysteryNight) {
+                  await replaceMysteryWithTakeOut();
+                  return;
+                }
                 if (!currentRecipe) {
                   // B5: No recipe — write status:3 unconditionally via store
                   try {

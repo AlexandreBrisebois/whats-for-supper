@@ -1,13 +1,3 @@
-const issueObservation = vi.hoisted(() => ({ observe: vi.fn() }));
-vi.mock('@/lib/telemetry/issue-results', () => ({
-  observeIssueResult: (...args: unknown[]) => issueObservation.observe(...args),
-}));
-const presentationAction = vi.hoisted(() => ({ submit: vi.fn().mockResolvedValue(undefined) }));
-vi.mock('@/lib/telemetry/actions', () => ({
-  reportBrowserObservation: (input: unknown) => presentationAction.submit(input),
-}));
-import { observeOpening, presentationChanged } from '@/lib/telemetry/opening';
-import type { BrowserObservation } from '@/lib/telemetry/navigation';
 import { StrictMode } from 'react';
 vi.mock('next/navigation', () => ({
   usePathname: () => '/recipes',
@@ -890,21 +880,6 @@ describe('recipe notes acknowledgement', () => {
 });
 
 describe('loaded detail presentation', () => {
-  function stream() {
-    vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
-    const submit = vi.fn<(event: BrowserObservation) => Promise<void>>().mockResolvedValue();
-    const observe = () => observeOpening(document, true, '/recipes', submit);
-    observe();
-    submit.mockClear();
-    presentationAction.submit.mockImplementation(submit);
-    document.addEventListener(presentationChanged, observe);
-    return {
-      submit,
-      stop: () => document.removeEventListener(presentationChanged, observe),
-      details: () =>
-        submit.mock.calls.filter(([e]) => e.eventName === 'pwa.recipe_detail.presented'),
-    };
-  }
   const props = {
     recipeId: '550e8400-e29b-41d4-a716-446655440111',
     plannerDayLabel: null,
@@ -930,20 +905,16 @@ describe('loaded detail presentation', () => {
         finish = resolve;
       })
     );
-    const f = stream();
+
     const view = render(
       <StrictMode>
         <RecipeDetailSheet {...props} />
       </StrictMode>
     );
     try {
-      expect(f.submit.mock.calls.map(([e]) => [e.eventName, e.screen])).toEqual([
-        ['pwa.surface.opened', 'recipe.detail'],
-      ]);
-      expect(f.details()).toHaveLength(0);
       await act(async () => finish(recipe));
       expect(screen.getByTestId('recipe-detail-name')).toHaveTextContent(recipe.name);
-      expect(f.details()).toHaveLength(1);
+
       view.rerender(
         <StrictMode>
           <RecipeDetailSheet {...props} />
@@ -952,15 +923,11 @@ describe('loaded detail presentation', () => {
       // A field update remains within the same loaded entry.
       fireEvent.click(screen.getByTestId('action-gear-menu'));
       fireEvent.click(screen.getByTestId('action-edit-recipe'));
-      expect(f.details()).toHaveLength(1);
-      expect(f.details()[0][0].screen).toBe('search');
-      expect(JSON.stringify(f.submit.mock.calls)).not.toContain(recipe.id);
     } finally {
       view.unmount();
-      f.stop();
     }
   });
-  it('drops failed and obsolete reads then counts the first successful current retry once', async () => {
+  it('ignores obsolete reads and renders the current successful retry and replacement', async () => {
     let finish!: (value: unknown) => void;
     mockGetRecipe.mockReturnValueOnce(
       new Promise((resolve) => {
@@ -969,51 +936,39 @@ describe('loaded detail presentation', () => {
     );
     mockGetRecipe.mockRejectedValueOnce(new Error('offline'));
     mockGetRecipe.mockResolvedValue(recipe);
-    const f = stream();
+
     const view = render(<RecipeDetailSheet {...props} recipeId="obsolete" />);
     try {
       view.rerender(<RecipeDetailSheet {...props} />);
       await screen.findByTestId('recipe-detail-retry');
       await act(async () => finish({ ...recipe, id: 'obsolete' }));
-      expect(f.details()).toHaveLength(0);
+
       fireEvent.click(screen.getByTestId('recipe-detail-retry'));
-      await screen.findByTestId('recipe-detail-name');
-      expect(f.details()).toHaveLength(1);
+      expect(await screen.findByTestId('recipe-detail-name')).toHaveTextContent(recipe.name);
       mockGetRecipe.mockResolvedValue({ ...recipe, id: 'replacement' });
       view.rerender(<RecipeDetailSheet {...props} recipeId="replacement" />);
       await screen.findByTestId('recipe-detail-name');
-      expect(f.details()).toHaveLength(2);
     } finally {
       view.unmount();
-      f.stop();
     }
   });
-  it('observes external activation only as a request even when the popup is blocked', async () => {
+  it('requests the original URL with safe window options even when the popup is blocked', async () => {
     mockGetRecipe.mockResolvedValue(recipe);
     const open = vi.spyOn(window, 'open').mockReturnValue(null);
-    const f = stream();
+
     const view = render(<RecipeDetailSheet {...props} />);
     try {
       fireEvent.click(await screen.findByTestId('action-view-original'));
       expect(open).toHaveBeenCalledWith(recipe.sourceUrl, '_blank', 'noopener,noreferrer');
-      expect(
-        f.submit.mock.calls
-          .filter(([e]) => e.eventName === 'pwa.original.requested')
-          .map(([e]) => e)
-      ).toEqual([expect.objectContaining({ screen: 'search', reason: 'external' })]);
-      expect(
-        f.submit.mock.calls.filter(([e]) => e.eventName === 'pwa.original.presented')
-      ).toHaveLength(0);
-      expect(JSON.stringify(f.submit.mock.calls)).not.toContain(recipe.sourceUrl);
     } finally {
       view.unmount();
-      f.stop();
+
       open.mockRestore();
     }
   });
 });
 
-describe('current issue Save observation owner', () => {
+describe('issue Save response handling', () => {
   const id = '550e8400-e29b-41d4-a716-446655440111';
   const props = {
     recipeId: id,
@@ -1060,17 +1015,8 @@ describe('current issue Save observation owner', () => {
     )
       fireEvent.click(screen.getByTestId('import-issue-reason-ingredients'));
   }
-  function pending() {
-    let resolve!: (value: unknown) => void;
-    mockSaveRecipeImportIssue.mockReturnValueOnce(
-      new Promise((r) => {
-        resolve = r;
-      })
-    );
-    return (value: unknown) => act(async () => resolve(value));
-  }
   it.each(['saved_manual', 'processing_acknowledged', 'saved_launch_failed', 'unconfirmed'])(
-    'observes %s once while preserving business handling',
+    'preserves business handling for a %s response',
     async (reason) => {
       mockSaveRecipeImportIssue.mockResolvedValue({
         recipe: saved,
@@ -1081,10 +1027,9 @@ describe('current issue Save observation owner', () => {
       });
       const view = await open();
       fireEvent.click(screen.getByTestId('import-issue-save'));
-      await waitFor(() => expect(issueObservation.observe).toHaveBeenCalledTimes(1));
-      expect(issueObservation.observe).toHaveBeenCalledWith(document, reason, expect.any(Function));
+      await waitFor(() => expect(mockSaveRecipeImportIssue).toHaveBeenCalledTimes(1));
       view.rerender(<RecipeDetailSheet {...props} />);
-      expect(issueObservation.observe).toHaveBeenCalledTimes(1);
+
       if (reason === 'saved_launch_failed') {
         expect(await screen.findByRole('alert')).toHaveTextContent('We saved your report');
         expect(screen.getByTestId('import-issue-reason-ingredients')).toHaveAttribute(
@@ -1098,7 +1043,7 @@ describe('current issue Save observation owner', () => {
       view.unmount();
     }
   );
-  it('reports rejection once, retains draft and allows a later explicit recovery', async () => {
+  it('retains draft after rejection and allows a later explicit recovery', async () => {
     mockSaveRecipeImportIssue.mockRejectedValueOnce(new Error('private response lost'));
     mockSaveRecipeImportIssue.mockResolvedValue({
       recipe: saved,
@@ -1114,66 +1059,20 @@ describe('current issue Save observation owner', () => {
     fireEvent.click(screen.getByTestId('import-issue-save'));
     expect(await screen.findByRole('alert')).toHaveTextContent('Could not save changes');
     expect(screen.getByTestId('import-issue-note')).toHaveValue('private retained draft');
-    expect(issueObservation.observe).toHaveBeenCalledTimes(1);
-    expect(issueObservation.observe.mock.calls[0][1]).toBe('unconfirmed');
+
     fireEvent.click(screen.getByTestId('import-issue-save'));
-    await waitFor(() => expect(issueObservation.observe).toHaveBeenCalledTimes(2));
-    expect(issueObservation.observe.mock.calls[1][1]).toBe('saved_manual');
+    await waitFor(() => expect(mockSaveRecipeImportIssue).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(screen.queryByTestId('import-issue-save')).not.toBeInTheDocument());
     view.unmount();
   });
-  it.each(['hidden', 'closed detail', 'dismissed issue', 'replacement', 'unmount', 'superseded'])(
-    'suppresses %s settlement permanently',
-    async (kind) => {
-      const finish = pending();
-      const view = await open();
-      fireEvent.click(screen.getByTestId('import-issue-save'));
-      if (kind === 'hidden') {
-        vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden');
-        document.dispatchEvent(new Event('visibilitychange'));
-        // Returning before settlement must not revive a departed generation.
-        vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
-        document.dispatchEvent(new Event('visibilitychange'));
-      }
-      if (kind === 'closed detail') fireEvent.click(screen.getByTestId('action-close-sheet'));
-      if (kind === 'dismissed issue' || kind === 'superseded')
-        fireEvent.click(screen.getByRole('button', { name: 'Close report issue' }));
-      if (kind === 'superseded') {
-        await reopen();
-        mockSaveRecipeImportIssue.mockResolvedValue({
-          recipe: saved,
-          issueResult: 'saved_manual',
-          reimportStarted: false,
-          importId: null,
-          reimportLaunchFailed: false,
-        });
-        fireEvent.click(screen.getByTestId('import-issue-save'));
-        await waitFor(() => expect(issueObservation.observe).toHaveBeenCalledTimes(1));
-        issueObservation.observe.mockClear();
-      }
-      if (kind === 'replacement') {
-        mockGetRecipe.mockResolvedValue({ ...recipe, id: 'replacement' });
-        view.rerender(<RecipeDetailSheet {...props} recipeId="replacement" />);
-        await screen.findByTestId('recipe-detail-name');
-      }
-      if (kind === 'unmount') view.unmount();
-      await finish({
-        recipe: saved,
-        issueResult: 'saved_manual',
-        reimportStarted: false,
-        importId: null,
-        reimportLaunchFailed: false,
-      });
-      expect(issueObservation.observe).not.toHaveBeenCalled();
-      if (kind !== 'unmount') view.unmount();
-    }
-  );
-  it('does not manufacture a result on cancellation or resolution', async () => {
+
+  it('preserves explicit issue resolution', async () => {
     mockGetRecipe.mockResolvedValue(saved);
     mockResolveRecipeImportIssue.mockResolvedValue(recipe);
     const view = await open();
     fireEvent.click(screen.getByTestId('import-issue-resolve'));
     await waitFor(() => expect(mockResolveRecipeImportIssue).toHaveBeenCalledTimes(1));
-    expect(issueObservation.observe).not.toHaveBeenCalled();
+
     view.unmount();
   });
 });

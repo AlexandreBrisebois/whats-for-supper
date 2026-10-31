@@ -1,9 +1,3 @@
-import {
-  observeOpening,
-  presentationChanged,
-  registerPlannerPresentation,
-} from '@/lib/telemetry/opening';
-import type { BrowserObservation } from '@/lib/telemetry/navigation';
 vi.mock('next/navigation', () => ({ usePathname: () => '/planner' }));
 import { describe, it, expect, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
@@ -62,7 +56,7 @@ describe('NonCookingDaySheet', () => {
     try {
       render(<NonCookingDaySheet date="2026-10-12" onSave={vi.fn()} onClose={vi.fn()} />);
       expect(screen.getByRole('dialog')).toHaveAccessibleName('Quel est le plan? lundi 12 octobre');
-      expect(screen.getByRole('button', { name: 'Commander' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'À emporter' })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Souper mystère' })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'On a des plans' })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Enregistrer' })).toBeInTheDocument();
@@ -176,29 +170,8 @@ describe('NonCookingDaySheet', () => {
 });
 
 // Run the real declaration/coordinator path rather than mocking the observation hook.
-function startPresentationStream() {
-  const visibility = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
-  const releasePlanner = registerPlannerPresentation(document, 'planner', false);
-  const submit = vi.fn<(event: BrowserObservation) => Promise<void>>().mockResolvedValue();
-  const observe = () => observeOpening(document, true, '/planner', submit);
-  observe();
-  submit.mockClear();
-  document.addEventListener(presentationChanged, observe);
-  return {
-    observe,
-    visibility,
-    events: () => submit.mock.calls.map(([event]) => [event.eventName, event.screen]),
-    raw: () => submit.mock.calls.map(([event]) => event),
-    stop: () => {
-      document.removeEventListener(presentationChanged, observe);
-      releasePlanner();
-      visibility.mockRestore();
-    },
-  };
-}
 
-it('observes the non-cooking sheet through draft edits, failed save and cancel/reopen', async () => {
-  const stream = startPresentationStream();
+it('retains non-cooking draft edits, failed save and cancel/reopen', async () => {
   const props = {
     date: '2026-10-12',
     onSave: vi.fn().mockRejectedValue(new Error('offline')),
@@ -213,20 +186,31 @@ it('observes the non-cooking sheet through draft edits, failed save and cancel/r
     await act(async () => fireEvent.click(screen.getByTestId('non-cooking-save')));
     expect(screen.getByTestId('non-cooking-custom-label')).toHaveValue('PRIVATE_PLAN_NOTE');
     expect(screen.getByRole('alert')).toHaveTextContent('Could not save');
-    expect(stream.events()).toEqual([['pwa.surface.opened', 'planning.non_cooking']]);
+
     fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
     expect(props.onClose).toHaveBeenCalledOnce();
     view.unmount();
     await Promise.resolve();
     view = render(<NonCookingDaySheet {...props} />);
-    expect(stream.events()).toEqual([
-      ['pwa.surface.opened', 'planning.non_cooking'],
-      ['pwa.surface.closed', 'planning.non_cooking'],
-      ['pwa.surface.opened', 'planning.non_cooking'],
-    ]);
-    expect(JSON.stringify(stream.raw())).not.toMatch(/PRIVATE_PLAN_NOTE|2026-10|custom/);
   } finally {
     view.unmount();
-    stream.stop();
   }
+});
+
+it('preserves saved multiline custom content when editing and saving', async () => {
+  const onSave = vi.fn().mockResolvedValue(undefined);
+  const message = 'Supper at Grandma’s\nBring dessert';
+  render(
+    <NonCookingDaySheet
+      date="2026-10-12"
+      plan={{ kind: 'custom', customLabel: message }}
+      onSave={onSave}
+      onClose={vi.fn()}
+    />
+  );
+  expect(screen.getByRole('textbox')).toHaveValue(message);
+  fireEvent.click(screen.getByTestId('non-cooking-save'));
+  await waitFor(() =>
+    expect(onSave).toHaveBeenCalledWith({ kind: 'custom', customLabel: message })
+  );
 });

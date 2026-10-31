@@ -1,5 +1,4 @@
 using System.Collections.Concurrent;
-using System.Transactions;
 using Microsoft.EntityFrameworkCore;
 using RecipeApi.Data;
 using RecipeApi.Dto;
@@ -10,8 +9,7 @@ namespace RecipeApi.Services;
 public class RecipeImportReportService(
     IClock clock,
     RecipeDbContext db,
-    IWorkflowOrchestrator? orchestrator = null,
-    IRecipeIssueTelemetry? telemetry = null)
+    IWorkflowOrchestrator? orchestrator = null)
 {
     private const int MaxErrorLength = 2000;
     // This is intentionally in-process only; adding concurrent API replicas needs a new durability design.
@@ -93,13 +91,7 @@ public class RecipeImportReportService(
             if (report is not null)
             {
                 db.RecipeImportReports.Remove(report);
-                var observeRemoval = CanObserveSave();
                 await db.SaveChangesAsync();
-                if (observeRemoval && CanObserveSave())
-                {
-                    try { telemetry!.Resolved(); }
-                    catch (Exception) { /* Observation cannot change confirmed removal or its response. */ }
-                }
             }
 
             return ToDetailResponse(recipe, null);
@@ -311,29 +303,7 @@ public class RecipeImportReportService(
             }
         }
 
-        var observeSave = CanObserveSave();
         await db.SaveChangesAsync();
-        if (observeSave && CanObserveSave())
-        {
-            try { telemetry!.Saved(); }
-            catch (Exception) { /* Observation cannot change confirmed persistence or its follow-up. */ }
-        }
-    }
-
-    private bool CanObserveSave()
-    {
-        try
-        {
-            return telemetry is not null
-                && Transaction.Current is null
-                && db.Database.CurrentTransaction is null
-                && (!db.Database.IsRelational() || db.Database.GetEnlistedTransaction() is null);
-        }
-        catch (Exception)
-        {
-            // Unknown transaction ownership cannot establish a durable save fact.
-            return false;
-        }
     }
 
     private static bool IsActive(WorkflowStatus status) =>

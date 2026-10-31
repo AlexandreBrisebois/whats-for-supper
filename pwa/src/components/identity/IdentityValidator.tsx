@@ -6,11 +6,9 @@ import { useFamily } from '@/hooks/useFamily';
 import { useFamilyStore } from '@/store/familyStore';
 import { ROUTES } from '@/lib/constants/routes';
 import { getFamilyMemberIdCookie } from '@/lib/identity/cookie';
-import { OpeningObserver } from '@/components/telemetry/OpeningObserver';
 
 interface IdentityValidatorProps {
   children: React.ReactNode;
-  telemetryEnabled?: boolean;
 }
 
 /**
@@ -19,47 +17,14 @@ interface IdentityValidatorProps {
  * public redirects (e.g. landing page logic).
  * It also checks if the selected member actually exists in the database.
  */
-export function IdentityValidator({ children, telemetryEnabled = false }: IdentityValidatorProps) {
+export function IdentityValidator({ children }: IdentityValidatorProps) {
   const router = useRouter();
   const pathname = usePathname();
   const { familyMembers, selectedFamilyMemberId, _hasHydrated, hasLoaded, isLoading, loadFamily } =
     useFamily();
   const [isReady, setIsReady] = useState(false);
 
-  // A readiness result belongs to both a route and the identity inputs checked.
-  const [observationReady, setObservationReady] = useState<{
-    pathname: string;
-    memberId: typeof selectedFamilyMemberId;
-    hydrated: boolean;
-    loaded: boolean;
-    memberCount: number | undefined;
-  } | null>(null);
-  const observationIsCurrent =
-    observationReady !== null &&
-    observationReady.pathname === pathname &&
-    observationReady.memberId === selectedFamilyMemberId &&
-    observationReady.hydrated === _hasHydrated &&
-    observationReady.loaded === hasLoaded &&
-    observationReady.memberCount === familyMembers?.length;
-
-  // Invalidate a departed route or changed identity check before a child can
-  // observe it. Access/render readiness continues to follow the existing gate.
-  if (observationReady !== null && !observationIsCurrent) {
-    setObservationReady(null);
-  }
-
   useEffect(() => {
-    let current = true;
-    const allowObservation = () => {
-      if (current)
-        setObservationReady({
-          pathname,
-          memberId: selectedFamilyMemberId,
-          hydrated: _hasHydrated,
-          loaded: hasLoaded,
-          memberCount: familyMembers?.length,
-        });
-    };
     async function verifyIdentity() {
       try {
         if (!_hasHydrated) {
@@ -85,7 +50,6 @@ export function IdentityValidator({ children, telemetryEnabled = false }: Identi
         // 2. Onboarding & Public pages: Always allow (Ready).
         if (isOnboarding || isPublic) {
           setIsReady(true);
-          allowObservation();
           return;
         }
 
@@ -141,7 +105,6 @@ export function IdentityValidator({ children, telemetryEnabled = false }: Identi
         }
 
         setIsReady(true);
-        allowObservation();
       } catch (error) {
         console.error('[IdentityValidator] Error during verification:', error);
         router.replace(ROUTES.ONBOARDING);
@@ -149,9 +112,6 @@ export function IdentityValidator({ children, telemetryEnabled = false }: Identi
     }
 
     void verifyIdentity();
-    return () => {
-      current = false;
-    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname, selectedFamilyMemberId, _hasHydrated, hasLoaded, familyMembers?.length]);
 
@@ -159,13 +119,5 @@ export function IdentityValidator({ children, telemetryEnabled = false }: Identi
     return null; // Prevent flicker while checking identity or performing client-side redirects
   }
 
-  return (
-    <>
-      <OpeningObserver
-        enabled={telemetryEnabled}
-        readyPathname={observationIsCurrent ? pathname : null}
-      />
-      {children}
-    </>
-  );
+  return <>{children}</>;
 }

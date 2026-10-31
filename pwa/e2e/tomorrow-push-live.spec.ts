@@ -119,7 +119,7 @@ test('real Home conserves a four-week chain and two clients receive all week sna
   expect(ids.filter((id) => id === '660e8400-e29b-41d4-a716-446655440011')).toHaveLength(2);
   await page.goto('/home');
   await page.reload();
-  await expect(page.getByTestId('today-non-cooking-label')).toHaveText('Order In');
+  await expect(page.getByTestId('today-non-cooking-label')).toHaveText('Take Out');
   // Drop a reply after a second real commit. Repeated activation must only reread, never move again.
   const beforeCount = (
     await (await request.get(`${api}/_test/tomorrow/requests`, { headers })).json()
