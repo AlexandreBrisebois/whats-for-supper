@@ -317,7 +317,7 @@ test('real cooking retains the viewed recipe through failed refresh and retry', 
   ]);
 });
 
-test('real empty Order In persists its explicit deployment date', async ({
+test('real empty Take Out persists its explicit deployment date', async ({
   page,
   request,
   baseURL,
@@ -334,7 +334,7 @@ test('real empty Order In persists its explicit deployment date', async ({
   expect(new URL(response.url()).pathname).toBe('/api/schedule/day/2026-10-11/validate');
   expect(response.request().postDataJSON()).toEqual({ status: 3 });
   await page.reload();
-  await expect(page.getByTestId('today-non-cooking-label')).toHaveText('Order In');
+  await expect(page.getByTestId('today-non-cooking-label')).toHaveText('Take Out');
   const schedule = (
     await (
       await request.get(`${process.env.CALENDAR_API_URL}/api/schedule?weekOffset=0`, {

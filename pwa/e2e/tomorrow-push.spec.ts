@@ -11,7 +11,7 @@ const calendar = builders.deploymentCalendar({
   nextDayAtUtc: '2026-10-12T04:00:00Z',
 });
 
-test('Home Order In plus Tomorrow commits a full following week without prior validation', async ({
+test('Home Take Out plus Tomorrow commits a full following week without prior validation', async ({
   page,
   baseURL,
 }) => {

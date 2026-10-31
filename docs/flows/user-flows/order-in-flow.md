@@ -1,11 +1,11 @@
-# Order-In Flow
+# Take Out Flow
 
 **What's for Supper — PWA**
-Documents the two paths a user can take to log an "Order In" night, plus how that state persists across a page reload via SSR.
+Documents the two paths a user can take to log an "Take Out" night, plus how that state persists across a page reload via SSR.
 
 ---
 
-## Scenario A — Order In from TonightMenuCard (recipe is planned)
+## Scenario A — Take Out from TonightMenuCard (recipe is planned)
 
 The user has a recipe scheduled for tonight. They open the ingredient flip-side of the card and tap **Skip**.
 
@@ -24,7 +24,7 @@ sequenceDiagram
 
     Note over SRD: Step 1 — "What's the backup plan?"
 
-    User->>SRD: Taps "Ordering In" (pizza button)
+    User->>SRD: Taps "Take Out" (pizza button)
     SRD->>HCC: onAction('order_in')
     SRD->>SRD: setStep(2)
 
@@ -53,13 +53,13 @@ sequenceDiagram
     Note over HCC: On page reload — see Scenario C
 ```
 
-> **Note on `status: 3`:** The validate call with `status: 3` (Skipped) is made for the "Order In" branch regardless of which recipe-rescue option the user picks. The recipe-rescue action (tomorrow / next_week / drop) runs first. For **Next Week**, the server starts on the following Monday and chooses the first date without a calendar entry; when that week is full, it continues into later weeks and returns the final destination message.
+> **Note on `status: 3`:** The validate call with `status: 3` (Skipped) is made for the "Take Out" branch regardless of which recipe-rescue option the user picks. The recipe-rescue action (tomorrow / next_week / drop) runs first. For **Next Week**, the server starts on the following Monday and chooses the first date without a calendar entry; when that week is full, it continues into later weeks and returns the final destination message.
 
 ---
 
-## Scenario B — Order In from TonightPivotCard (no recipe planned)
+## Scenario B — Take Out from TonightPivotCard (no recipe planned)
 
-The user has no recipe scheduled tonight. The pivot card is already showing. They tap **Order In** directly.
+The user has no recipe scheduled tonight. The pivot card is already showing. They tap **Take Out** directly.
 
 ```mermaid
 sequenceDiagram
@@ -70,7 +70,7 @@ sequenceDiagram
 
     Note over HCC: currentRecipe === null<br/>TonightPivotCard is rendered
 
-    User->>TPC: Taps "Order In"
+    User->>TPC: Taps "Take Out"
     TPC->>HCC: onOrderIn() → handleRecoveryAction('order_in')
 
     Note over HCC: currentRecipe === null<br/>No SkipRecoveryDialog opened.<br/>No recipe to rescue.

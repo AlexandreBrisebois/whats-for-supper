@@ -187,7 +187,7 @@ it.each([
   fireEvent.click(screen.getByTestId('order-in-btn'));
   expect(baseProps.onDiscover).toHaveBeenCalledTimes(1);
   expect(baseProps.onOrderIn).toHaveBeenCalledTimes(1);
-  expect(screen.getByTestId('order-in-btn')).toHaveAccessibleName('Order In');
+  expect(screen.getByTestId('order-in-btn')).toHaveAccessibleName('Take Out');
   expect(screen.getByTestId('order-in-btn').querySelector('svg')).toHaveAttribute(
     'aria-hidden',
     'true'
@@ -211,7 +211,7 @@ it.each([
   expect(screen.getByTestId('pivot-card-header')).toHaveTextContent('Rien de prévu pour ce soir');
   expect(screen.getByText(feedback)).toBeVisible();
   expect(screen.getByTestId('discover-btn')).toHaveAccessibleName('Rechercher');
-  expect(screen.getByTestId('order-in-btn')).toHaveAccessibleName('Commander');
+  expect(screen.getByTestId('order-in-btn')).toHaveAccessibleName('À emporter');
   if (status === 'ready')
     expect(screen.getByTestId('confirm-goto-btn')).toHaveAccessibleName(
       'Préparer ce repas ce soir'
@@ -229,7 +229,7 @@ it('retains saved Mystery context and ready choices without calling the day unpl
       nonCookingKind="mystery"
     />
   );
-  expect(screen.getByTestId('today-non-cooking-label')).toHaveTextContent('Mystery night');
+  expect(screen.getByTestId('pivot-card-header')).toHaveTextContent('Mystery night');
   expect(screen.queryByText('Nothing planned for tonight')).not.toBeInTheDocument();
   expect(screen.getByText("Your family's GOTO")).toBeVisible();
   fireEvent.click(screen.getByTestId('confirm-goto-btn'));
@@ -237,6 +237,49 @@ it('retains saved Mystery context and ready choices without calling the day unpl
 });
 
 describe('Tonight pivot image availability', () => {
+  it.each(['en', 'fr'] as const)(
+    'uses the normal proposal beneath the Mystery header in %s',
+    (locale) => {
+      setLocale(locale);
+      const label = locale === 'fr' ? 'Souper mystère' : 'Mystery night';
+      const props = {
+        ...baseProps,
+        gotoRecipeId: 'one',
+        gotoDescription: 'Garden supper',
+        gotoStatus: 'ready',
+        nonCookingLabel: label,
+        nonCookingKind: 'mystery' as const,
+      };
+      const { rerender } = render(<TonightPivotCard {...props} />);
+      const header = screen.getByTestId('pivot-card-header');
+      const image = screen.getByRole('img', { name: 'Garden supper' });
+      expect(header).toHaveTextContent(label);
+      expect(screen.getAllByText(label)).toHaveLength(1);
+      expect(header.compareDocumentPosition(image) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(image).toHaveAttribute('src', '/api/recipes/one/hero');
+      expect(image.parentElement).toHaveClass('aspect-[5/4]');
+      expect(screen.queryByTestId('today-non-cooking-label')).not.toBeInTheDocument();
+      expect(baseProps.onConfirmGoto).not.toHaveBeenCalled();
+      fireEvent.click(screen.getByTestId('discover-btn'));
+      fireEvent.click(screen.getByTestId('order-in-btn'));
+      expect(baseProps.onDiscover).toHaveBeenCalledTimes(1);
+      expect(baseProps.onOrderIn).toHaveBeenCalledTimes(1);
+      expect(baseProps.onConfirmGoto).not.toHaveBeenCalled();
+      rerender(<TonightPivotCard {...props} gotoImageUrl="/explicit.jpg" />);
+      expect(screen.getByRole('img')).toHaveAttribute('src', '/explicit.jpg');
+      fireEvent.error(screen.getByRole('img'));
+      expect(screen.queryByRole('img')).not.toBeInTheDocument();
+      expect(header).toHaveTextContent(label);
+      expect(screen.getByTestId('confirm-goto-btn')).toBeVisible();
+      fireEvent.click(screen.getByTestId('confirm-goto-btn'));
+      expect(baseProps.onConfirmGoto).toHaveBeenCalledTimes(1);
+      rerender(<TonightPivotCard {...props} gotoStatus="pending" />);
+      expect(screen.queryByTestId('confirm-goto-btn')).not.toBeInTheDocument();
+      expect(screen.queryByRole('img')).not.toBeInTheDocument();
+      expect(screen.getByTestId('today-non-cooking-label')).toHaveTextContent(label);
+    }
+  );
+
   it('keeps choices after failure and resets only for a changed source or recipe', () => {
     const props = {
       ...baseProps,
@@ -294,3 +337,36 @@ it.each([
     }
   }
 );
+
+describe('Mystery without a proposal', () => {
+  it.each(['en', 'fr'] as const)(
+    'explains checking and unavailable states in %s without claiming an empty list',
+    (locale) => {
+      setLocale(locale);
+      const props = {
+        ...baseProps,
+        gotoDescription: null,
+        gotoRecipeId: null,
+        gotoStatus: null,
+        nonCookingKind: 'mystery' as const,
+        nonCookingLabel: locale === 'fr' ? 'Souper mystère' : 'Mystery night',
+      };
+      const { rerender } = render(<TonightPivotCard {...props} hasCheckedActive={false} />);
+      expect(screen.getByTestId('mystery-plan-illustration').querySelector('svg')).toHaveAttribute(
+        'width',
+        '104'
+      );
+      expect(screen.getByTestId('mystery-availability')).toHaveTextContent(
+        locale === 'fr' ? 'Vérification de votre GOTO' : 'Checking your GOTO'
+      );
+      rerender(<TonightPivotCard {...props} hasCheckedActive />);
+      expect(screen.getByTestId('mystery-availability')).toHaveTextContent(
+        locale === 'fr'
+          ? 'Aucune suggestion GOTO disponible pour le moment.'
+          : 'No GOTO suggestion available right now.'
+      );
+      expect(screen.queryByTestId('confirm-goto-btn')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('goto-setup-helper')).not.toBeInTheDocument();
+    }
+  );
+});

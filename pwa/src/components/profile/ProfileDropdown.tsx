@@ -1,7 +1,5 @@
 'use client';
 
-import { useSurfacePresentation } from '@/components/telemetry/useSurfacePresentation';
-
 import { useState, useRef, useEffect, useId } from 'react';
 import { ChevronDown, Check, UserCircle } from 'lucide-react';
 import { useFamily } from '@/hooks/useFamily';
@@ -14,7 +12,7 @@ interface ProfileDropdownProps {
 export function ProfileDropdown({ onSelect }: ProfileDropdownProps) {
   const { familyMembers, selectedMember, isLoading } = useFamily();
   const [isOpen, setIsOpen] = useState(false);
-  useSurfacePresentation('profile.members', isOpen && !isLoading);
+
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const triggerRef = useRef<HTMLButtonElement>(null);

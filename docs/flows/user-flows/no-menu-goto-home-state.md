@@ -1,3 +1,5 @@
+> Current copy: the public non-cooking choice is **Take Out** / **À emporter**; internal `order_in` identifiers remain compatible. Older behavior narratives below are historical context. Saved recipe-free non-Mystery plans now use the full Tonight card and explicit Edit supper plan handoff.
+
 # Flow: No Planned Meal + GOTO Configured → Home State
 
 > ✅ **Updated for `home-command-center-hardening`.**

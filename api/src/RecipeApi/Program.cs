@@ -11,15 +11,10 @@ using RecipeApi.Services.Ai;
 using RecipeApi.Services.Agents;
 using RecipeApi.Services.Processors;
 using RecipeApi.Workflow;
-using RecipeApi.Telemetry;
 using OpenAI;
 using Microsoft.Extensions.AI;
 using System.ClientModel;
 using System.ClientModel.Primitives;
-using OpenTelemetry.Logs;
-using OpenTelemetry.Metrics;
-using OpenTelemetry.Resources;
-using OpenTelemetry.Trace;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc.Authorization;
 
@@ -37,45 +32,11 @@ Log.Logger = new LoggerConfiguration()
 try
 {
     var builder = WebApplication.CreateBuilder(args);
-    var openTelemetryEndpoint = builder.Configuration["OpenTelemetry:Endpoint"];
-
-    WfsTelemetryConfiguration.ValidateOperationalDestinations(builder.Configuration);
-
     // ── Serilog ──────────────────────────────────────────────────────────────
     builder.Host.UseSerilog((ctx, services, config) =>
         config.ReadFrom.Configuration(ctx.Configuration)
               .ReadFrom.Services(services)
-              .Enrich.FromLogContext()
-              .WriteTo.OpenTelemetry(options =>
-              {
-                  WfsTelemetry.ConfigureOperationalExporter(options);
-                  options.Endpoint = openTelemetryEndpoint ?? "http://localhost:4317";
-                  options.ResourceAttributes = new Dictionary<string, object>
-                  {
-                      ["service.name"] = "RecipeApi"
-                  };
-              }));
-
-    // ── OpenTelemetry ────────────────────────────────────────────────────────
-    builder.Services.AddOpenTelemetry()
-        .ConfigureResource(resource => resource.AddService("RecipeApi"))
-        .WithLogging(logging =>
-        {
-            logging.AddConsoleExporter();
-        })
-        .WithMetrics(metrics =>
-        {
-            metrics.AddAspNetCoreInstrumentation()
-                   .AddHttpClientInstrumentation()
-                   .AddMeter(SearchTelemetryMetrics.MeterName);
-            if (!string.IsNullOrWhiteSpace(openTelemetryEndpoint))
-            {
-                metrics.AddOtlpExporter(options => options.Endpoint = new Uri(openTelemetryEndpoint));
-            }
-            // metrics.AddConsoleExporter(); // Too noisy for production stdout
-        });
-
-    builder.Services.AddWfsTelemetry(builder.Configuration);
+              .Enrich.FromLogContext());
 
     // ── Controllers / JSON ───────────────────────────────────────────────────
     builder.Services.AddControllers(options =>

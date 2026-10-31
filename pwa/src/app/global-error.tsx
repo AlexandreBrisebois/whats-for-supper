@@ -1,12 +1,10 @@
 'use client';
 
-import { useBoundaryError } from '@/components/telemetry/useBoundaryError';
 import { getLocale, t } from '@/locales';
 
 // This replaces the root document; it must carry its own styling and cannot
 // depend on root providers, router context, downloaded fonts or global CSS.
 export default function GlobalError({ error, reset }: { error: unknown; reset: () => void }) {
-  const retire = useBoundaryError(error);
   return (
     <html lang={getLocale()}>
       <head>
@@ -19,7 +17,6 @@ export default function GlobalError({ error, reset }: { error: unknown; reset: (
           <p>{t('errors.genericDescription', 'An unexpected error occurred. Please try again.')}</p>
           <button
             onClick={() => {
-              retire();
               reset();
             }}
           >

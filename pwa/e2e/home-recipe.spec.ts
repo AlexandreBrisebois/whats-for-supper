@@ -182,7 +182,7 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
     await page.goto('/home');
     await expect(page.getByTestId('today-non-cooking-note')).toHaveText('Try Luigi’s');
     await expect(page.getByTestId('tonight-pivot-card')).not.toBeVisible();
-    await page.getByTestId('today-non-cooking-plan').click();
+    await page.getByTestId('today-non-cooking-plan').getByRole('button').click();
     await expect(page).toHaveURL(/\/planner/);
     expect(mutations).toEqual([]);
   });
@@ -775,8 +775,8 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
     await expect(page.getByRole('heading', { name: 'SSE Lasagna' }).first()).toBeVisible();
   });
 
-  // B5: "Order In" with no recipe writes status:3 to backend and hides pivot card
-  test('Tonight pivot choices: Order In with no recipe writes status:3 and hides pivot card', async ({
+  // B5: "Take Out" with no recipe writes status:3 to backend and hides pivot card
+  test('Tonight pivot choices: Take Out with no recipe writes status:3 and hides pivot card', async ({
     page,
   }) => {
     // Empty schedule — no recipe for today
@@ -815,7 +815,7 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
     // Pivot card is visible with no recipe
     await expect(page.getByTestId('tonight-pivot-card')).toBeVisible();
 
-    // Tap "Order In"
+    // Tap "Take Out"
     await page.getByTestId('order-in-btn').click();
 
     // Backend write must have fired with status: 3
@@ -825,8 +825,8 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
     await expect(page.getByTestId('tonight-pivot-card')).not.toBeVisible({ timeout: 3000 });
   });
 
-  // B6: "Order In" with a recipe opens SkipRecoveryDialog before any state change
-  test('"Order In" with recipe opens SkipRecoveryDialog before committing', async ({ page }) => {
+  // B6: "Take Out" with a recipe opens SkipRecoveryDialog before any state change
+  test('"Take Out" with recipe opens SkipRecoveryDialog before committing', async ({ page }) => {
     // Schedule with a planned recipe for today
     const monday = currentMonday();
     const today = toDateStr(monday);
@@ -1008,7 +1008,7 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
     await expect(page.getByTestId('recovery-dialog-title')).not.toBeVisible();
   });
 
-  test('"Order In → Move to Tomorrow" sends recipeId and closes dialog', async ({ page }) => {
+  test('"Take Out → Move to Tomorrow" sends recipeId and closes dialog', async ({ page }) => {
     const monday = currentMonday();
     const today = toDateStr(monday);
     const lasagnaRecipe = builders.scheduleRecipe({
@@ -1067,7 +1067,7 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
 
     await expect(page.getByTestId('recovery-dialog-title')).toBeVisible();
 
-    // Click "Order In" → step 2
+    // Click "Take Out" → step 2
     await page.getByTestId('recovery-action-order-in').click();
     await expect(page.getByText("What about tonight's recipe?")).toBeVisible();
 
@@ -1082,7 +1082,7 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
     await expect(page.getByTestId('recovery-dialog-title')).not.toBeVisible();
   });
 
-  test('"Order In → Drop Tonight" marks tonight ordered in and navigates to planner', async ({
+  test('"Take Out → Drop Tonight" marks tonight ordered in and navigates to planner', async ({
     page,
   }) => {
     const monday = currentMonday();
@@ -1192,7 +1192,7 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
 
     await expect(page.getByTestId('recovery-dialog-title')).toBeVisible();
 
-    // Click "Order In" → step 2
+    // Click "Take Out" → step 2
     await page.getByTestId('recovery-action-order-in').click();
     await expect(page.getByText("What about tonight's recipe?")).toBeVisible();
 
@@ -1311,12 +1311,12 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
     expect(assignCalled).toBe(false);
   });
 
-  // B5 + reload: page reload after "Order In" (no recipe) does not show pivot card
-  test('Page reload after "Order In" (no recipe) does not show pivot card', async ({ page }) => {
+  // B5 + reload: page reload after "Take Out" (no recipe) does not show pivot card
+  test('Page reload after "Take Out" (no recipe) does not show pivot card', async ({ page }) => {
     const monday = currentMonday();
     const today = toDateStr(monday);
 
-    // Track whether "Order In" has been tapped so we can switch the schedule response
+    // Track whether "Take Out" has been tapped so we can switch the schedule response
     let orderInDone = false;
 
     await page.route(
@@ -1325,7 +1325,7 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
         const reqUrl = new URL(route.request().url());
         if (reqUrl.searchParams.get('weekOffset') === '0' && route.request().method() === 'GET') {
           if (!orderInDone) {
-            // Before "Order In": empty schedule
+            // Before "Take Out": empty schedule
             await route.fulfill({
               status: 200,
               contentType: 'application/json',
@@ -1334,7 +1334,7 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
               }),
             });
           } else {
-            // After "Order In": return status:3 for today (simulates server state after write)
+            // After "Take Out": return status:3 for today (simulates server state after write)
             const days = Array.from({ length: 7 }, (_, i) => {
               const d = new Date(monday);
               d.setUTCDate(monday.getUTCDate() + i);
@@ -1371,7 +1371,7 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
     await expect(page.getByTestId('home-loader')).not.toBeVisible({ timeout: 5000 });
     await expect(page.getByTestId('tonight-pivot-card')).toBeVisible();
 
-    // Tap "Order In" with no recipe
+    // Tap "Take Out" with no recipe
     await page.getByTestId('order-in-btn').click();
     await expect(page.getByTestId('tonight-pivot-card')).not.toBeVisible({ timeout: 3000 });
 
@@ -1622,9 +1622,9 @@ test.describe('Home Command Center — Planner → todayStore propagation (Group
     }, MOCK_IDS.MEMBER_ALEX);
   });
 
-  // C7: Page reload after "Order In" does not show pivot card (already covered in B5 reload test above)
+  // C7: Page reload after "Take Out" does not show pivot card (already covered in B5 reload test above)
   // This test confirms the same behaviour holds after the todayStore refactor.
-  test('Page reload after "Order In" (no recipe) does not show pivot card — post-todayStore refactor', async ({
+  test('Page reload after "Take Out" (no recipe) does not show pivot card — post-todayStore refactor', async ({
     page,
   }) => {
     const monday = currentMonday();

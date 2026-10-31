@@ -1,9 +1,3 @@
-const presentationAction = vi.hoisted(() => ({ submit: vi.fn().mockResolvedValue(undefined) }));
-vi.mock('@/lib/telemetry/actions', () => ({
-  reportBrowserObservation: (input: unknown) => presentationAction.submit(input),
-}));
-import { observeOpening, presentationChanged } from '@/lib/telemetry/opening';
-import type { BrowserObservation } from '@/lib/telemetry/navigation';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 
@@ -1184,14 +1178,9 @@ describe('CooksMode', () => {
   });
 });
 
-it('declares the cooking reader through loading and observes only an external request', async () => {
+it('requests the external original after the cooking reader loads', async () => {
   vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
-  const submit = vi.fn<(event: BrowserObservation) => Promise<void>>().mockResolvedValue();
-  const observe = () => observeOpening(document, true, '/recipes', submit);
-  observe();
-  submit.mockClear();
-  presentationAction.submit.mockImplementation(submit);
-  document.addEventListener(presentationChanged, observe);
+
   let finish!: (value: unknown) => void;
   getRecipeMock.mockReturnValueOnce(
     new Promise((resolve) => {
@@ -1203,9 +1192,6 @@ it('declares the cooking reader through loading and observes only an external re
     <CooksMode recipe={{ id: 'external', name: 'Private', image: '' }} onClose={vi.fn()} />
   );
   try {
-    expect(submit.mock.calls.map(([e]) => [e.eventName, e.screen])).toEqual([
-      ['pwa.surface.opened', 'cooking.reader'],
-    ]);
     await act(async () =>
       finish({
         id: 'external',
@@ -1217,15 +1203,9 @@ it('declares the cooking reader through loading and observes only an external re
     );
     fireEvent.click(screen.getByTestId('cooks-mode-original'));
     expect(open).toHaveBeenCalledOnce();
-    expect(
-      submit.mock.calls.filter(([e]) => e.eventName === 'pwa.original.requested').map(([e]) => e)
-    ).toEqual([expect.objectContaining({ screen: 'search', reason: 'external' })]);
-    expect(
-      submit.mock.calls.filter(([e]) => e.eventName === 'pwa.original.presented')
-    ).toHaveLength(0);
   } finally {
     view.unmount();
-    document.removeEventListener(presentationChanged, observe);
+
     open.mockRestore();
   }
 });

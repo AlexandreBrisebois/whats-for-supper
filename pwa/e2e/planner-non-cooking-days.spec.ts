@@ -9,6 +9,83 @@ import {
 } from './mock-api';
 import type { ScheduleDays } from '../src/lib/api/generated/models';
 
+for (const appLocale of ['en', 'fr'] as const) {
+  test.describe(`Saved Tonight cards ${appLocale}`, () => {
+    test.use({ appLocale });
+    for (const [width, height] of [
+      [320, 568],
+      [390, 844],
+      [412, 915],
+      [820, 1180],
+      [1180, 820],
+    ]) {
+      test(`full plan content and edit handoff at ${width}x${height}`, async ({
+        page,
+      }, testInfo) => {
+        await page.setViewportSize({ width, height });
+        await page.emulateMedia({ reducedMotion: 'reduce' });
+        await setupCommonRoutes(page);
+        const state = emptyWeek();
+        state.days![0].status = 3;
+        await mockNonCookingSchedule(page, state);
+        const mutations: string[] = [];
+        page.on('request', (request) => {
+          if (
+            ['POST', 'DELETE'].includes(request.method()) &&
+            /api\/schedule\//.test(request.url())
+          )
+            mutations.push(request.url());
+        });
+        for (const kind of ['order_in', 'eating_out', 'custom'] as const) {
+          const label =
+            kind === 'custom'
+              ? 'Souper en famille\n' + 'A'.repeat(63)
+              : 'Chez Luigi — réservation à 18 h\n' + 'B'.repeat(48);
+          state.days![0].nonCooking = { kind, customLabel: label };
+          await page.goto('/home');
+          const card = page.getByTestId('today-non-cooking-plan');
+          await expect(card).toBeVisible();
+          await expect(card.locator('svg')).toHaveAttribute('width', '104');
+          await expect(
+            page.getByTestId(
+              kind === 'custom' ? 'today-non-cooking-label' : 'today-non-cooking-note'
+            )
+          ).toHaveText(label);
+          const edit = card.getByRole('button');
+          await expect(edit).toContainText(
+            appLocale === 'fr' ? 'Modifier le souper' : 'Edit supper plan'
+          );
+          await edit.focus();
+          await expect(edit).toBeFocused();
+          const box = await edit.boundingBox();
+          expect(box!.height).toBeGreaterThanOrEqual(48);
+          expect(box!.width).toBeGreaterThanOrEqual(48);
+          expect((await card.boundingBox())!.width).toBeLessThanOrEqual(432);
+          if (width === 320) {
+            await page.addStyleTag({ content: 'html { font-size: 200% !important; }' });
+            await edit.scrollIntoViewIfNeeded();
+          }
+          expect(
+            await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)
+          ).toBe(true);
+          if (kind === 'custom')
+            await page.screenshot({
+              path: testInfo.outputPath(`saved-${appLocale}-${width}.png`),
+              fullPage: true,
+            });
+        }
+        await page.getByTestId('today-non-cooking-plan').getByRole('button').click();
+        await expect(page.getByTestId('pivot-sheet')).toBeVisible();
+        expect(mutations).toEqual([]);
+        await page.getByTestId('pivot-no-cooking').click();
+        await expect(page.getByTestId('non-cooking-custom-label')).toHaveValue(
+          state.days![0].nonCooking!.customLabel!
+        );
+      });
+    }
+  });
+}
+
 test.beforeEach(async ({ page, baseURL }) => {
   await page.context().addCookies([
     {
@@ -45,8 +122,64 @@ function emptyWeek(): ScheduleDays {
   };
 }
 
+for (const appLocale of ['en', 'fr'] as const) {
+  test.describe(`Mystery to Take Out ${appLocale}`, () => {
+    test.use({ appLocale });
+    test('replaces persisted Mystery explicitly, recovers from failure and survives reload', async ({
+      page,
+    }) => {
+      await setupCommonRoutes(page);
+      const state = emptyWeek();
+      state.days![0].status = 3;
+      state.days![0].nonCooking = { kind: 'mystery', customLabel: null };
+      await mockNonCookingSchedule(page, state);
+      let writes = 0;
+      let release!: () => void;
+      const gate = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      await page.route('**/api/schedule/day/*/validate', async (route) => {
+        writes++;
+        expect(route.request().postDataJSON()).toEqual({
+          status: 3,
+          nonCooking: { kind: 'order_in', customLabel: null },
+        });
+        if (writes === 1)
+          return route.fulfill({
+            status: 400,
+            json: { status: 400, message: 'Synthetic save failure' },
+          });
+        await gate;
+        return route.fallback();
+      });
+      await page.goto('/home');
+      const mystery = appLocale === 'fr' ? 'Souper mystère' : 'Mystery night';
+      const takeOut = appLocale === 'fr' ? 'À emporter' : 'Take Out';
+      await expect(page.getByTestId('today-non-cooking-label')).toHaveText(mystery);
+      await page.getByTestId('order-in-btn').click();
+      await expect(page.getByTestId('take-out-save-error')).toBeVisible();
+      expect(state.days![0].nonCooking).toEqual({ kind: 'mystery', customLabel: null });
+      await page
+        .getByTestId('take-out-save-error')
+        .getByRole('button', { name: appLocale === 'fr' ? 'Réessayer' : 'Try again' })
+        .click();
+      await expect(page.getByTestId('order-in-btn')).toBeDisabled();
+      await expect(page.getByTestId('discover-btn')).toBeDisabled();
+      await expect(page.getByTestId('today-non-cooking-label')).toHaveText(mystery);
+      expect(writes).toBe(2);
+      release();
+      await expect(page.getByTestId('today-non-cooking-plan')).toBeVisible();
+      await expect(page.getByTestId('today-non-cooking-label')).toHaveText(takeOut);
+      expect(state.days![0].nonCooking).toEqual({ kind: 'order_in', customLabel: null });
+      await page.reload();
+      await expect(page.getByTestId('today-non-cooking-label')).toHaveText(takeOut);
+      expect(writes).toBe(2);
+    });
+  });
+}
+
 for (const [choice, label, message] of [
-  ['non-cooking-order-in', 'Order In', null],
+  ['non-cooking-order-in', 'Take Out', null],
   ['non-cooking-eating-out', 'Eating out', null],
   ['non-cooking-mystery', 'Mystery night', null],
   ['non-cooking-other-plans', 'Supper at Grandma’s', 'Supper at Grandma’s'],
@@ -90,7 +223,7 @@ for (const [choice, label, message] of [
 }
 
 for (const [choice, kind, heading] of [
-  ['non-cooking-order-in', 'order_in', 'Order In'],
+  ['non-cooking-order-in', 'order_in', 'Take Out'],
   ['non-cooking-eating-out', 'eating_out', 'Eating out'],
 ] as const) {
   test(`${heading} note saves, reloads, edits and clears`, async ({ page }) => {
@@ -116,7 +249,7 @@ for (const [choice, kind, heading] of [
     await expect(page.getByTestId('today-non-cooking-note')).toHaveText('Luigi’s');
     await page.reload();
     await expect(page.getByTestId('today-non-cooking-note')).toHaveText('Luigi’s');
-    await page.getByTestId('today-non-cooking-plan').click();
+    await page.getByTestId('today-non-cooking-plan').getByRole('button').click();
     await page.getByTestId('pivot-no-cooking').click();
     await expect(page.getByTestId('non-cooking-custom-label')).toHaveValue('Luigi’s');
     await page.getByTestId('non-cooking-custom-label').fill('Try the new café');
@@ -157,7 +290,7 @@ test('close and failed save retain the empty day and editable message', async ({
 });
 
 for (const [kind, label, customLabel] of [
-  ['order_in', 'Order In', null],
+  ['order_in', 'Take Out', null],
   ['eating_out', 'Eating out', null],
   ['custom', 'Emma’s birthday supper', 'Emma’s birthday supper'],
 ] as const) {
@@ -216,7 +349,7 @@ test('Home reconciles and reloads a custom message saved in planner', async ({ p
   await expect(page.getByTestId('today-non-cooking-label')).toHaveText('Supper at Grandma’s');
   await page.reload();
   await expect(page.getByTestId('today-non-cooking-label')).toHaveText('Supper at Grandma’s');
-  await page.getByTestId('today-non-cooking-plan').click();
+  await page.getByTestId('today-non-cooking-plan').getByRole('button').click();
   await expect(page.getByTestId('pivot-sheet')).toContainText('Change supper plans');
   await expect(page.getByTestId('non-cooking-sheet')).toBeHidden();
   await page.getByTestId('pivot-no-cooking').click();
@@ -340,7 +473,7 @@ test.describe('Home local calendar day', () => {
   }
 });
 
-test('Home Order In opens the change menu with recipe and removal paths', async ({ page }) => {
+test('Home Take Out opens the change menu with recipe and removal paths', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await setupCommonRoutes(page);
   const state = emptyWeek();
@@ -348,7 +481,7 @@ test('Home Order In opens the change menu with recipe and removal paths', async 
   state.days![0].nonCooking = { kind: 'order_in', customLabel: null };
   await mockNonCookingSchedule(page, state);
   await page.goto('/home');
-  await page.getByTestId('today-non-cooking-plan').click();
+  await page.getByTestId('today-non-cooking-plan').getByRole('button').click();
   await expect(page.getByTestId('pivot-sheet')).toContainText('Change supper plans');
   await expect(page.getByTestId('non-cooking-sheet')).toBeHidden();
   await expect(page.getByTestId('pivot-quick-find')).toBeVisible();
@@ -356,7 +489,7 @@ test('Home Order In opens the change menu with recipe and removal paths', async 
   await page.getByTestId('pivot-search-library').click();
   await expect(page).toHaveURL(/\/recipes\?addToDay=0&weekOffset=0/);
   await page.goto('/home');
-  await page.getByTestId('today-non-cooking-plan').click();
+  await page.getByTestId('today-non-cooking-plan').getByRole('button').click();
   await page.getByTestId('pivot-remove-recipe').click();
   await expect(page.getByTestId('day-card-0').getByTestId('plan-meal-button')).toBeVisible();
   expect(state.days![0].nonCooking).toBeNull();
@@ -372,7 +505,7 @@ for (const removalPath of ['menu', 'editor'] as const) {
     state.days![0].nonCooking = { kind: 'order_in', customLabel: null };
     await mockNonCookingSchedule(page, state);
     await page.goto('/home');
-    await page.getByTestId('today-non-cooking-plan').click();
+    await page.getByTestId('today-non-cooking-plan').getByRole('button').click();
     await expect(page.getByTestId('pivot-sheet')).toBeVisible();
     const removed = page.waitForResponse(
       (response) => response.request().method() === 'DELETE' && response.url().endsWith('/remove')

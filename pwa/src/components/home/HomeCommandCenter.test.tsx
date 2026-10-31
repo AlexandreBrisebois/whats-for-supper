@@ -24,6 +24,7 @@ const mocks = vi.hoisted(() => ({
   nonCooking: null as { kind: string; customLabel: string | null } | null,
   todayString: '2026-05-07',
   calendarFailure: false,
+  calendarWait: null as Promise<void> | null,
 }));
 
 vi.mock('next/navigation', () => ({
@@ -53,8 +54,10 @@ vi.mock('@/components/home/TonightPivotCard', () => ({
     nonCookingLabel,
     nonCookingKind,
     hasCheckedActive,
+    actionPending,
   }: {
     hasCheckedActive?: boolean;
+    actionPending?: boolean;
     nonCookingLabel?: string;
     nonCookingKind?: string;
     onOrderIn: () => void;
@@ -66,8 +69,8 @@ vi.mock('@/components/home/TonightPivotCard', () => ({
       <p data-testid="pivot-context">
         {nonCookingLabel} {nonCookingKind}
       </p>
-      <button data-testid="order-in-btn" onClick={onOrderIn}>
-        Order In
+      <button data-testid="order-in-btn" disabled={actionPending} onClick={onOrderIn}>
+        Take Out
       </button>
       <button data-testid="discover-btn" onClick={onDiscover}>
         Quick Find
@@ -115,7 +118,7 @@ vi.mock('@/components/home/SkipRecoveryDialog', () => ({
       {step === 1 ? (
         <>
           <button data-testid="recovery-action-order-in" onClick={() => onAction('order_in')}>
-            Order In
+            Take Out
           </button>
           <button data-testid="recovery-action-pick-else" onClick={() => onAction('pick_else')}>
             Pick Else
@@ -196,10 +199,13 @@ vi.mock('@/store/todayStore', () => ({
         calendar: fixtureCalendar(),
         calendarIsFresh: () => true,
         ensureCalendar: async () => {
+          await mocks.calendarWait;
           if (mocks.calendarFailure) throw new Error('Calendar unavailable');
           return fixtureCalendar();
         },
         currentRecipe: mocks.currentRecipe,
+        status: mocks.todayStatus,
+        nonCooking: mocks.nonCooking,
         applyServerUpdate: mocks.applyServerUpdate,
       }),
     }
@@ -312,6 +318,7 @@ describe('HomeCommandCenter', () => {
     mocks.todayStatus = 0;
     mocks.nonCooking = null;
     mocks.todayString = '2026-05-07';
+    mocks.calendarWait = null;
     mocks.loadActiveGoTo.mockResolvedValue(null);
     mocks.saveRecoveryRecipe.mockReset().mockResolvedValue(undefined);
     mocks.readSchedule.mockReset().mockImplementation(async () => ({
@@ -423,16 +430,16 @@ describe('HomeCommandCenter', () => {
     mocks.nonCooking = { kind, customLabel: 'Try Luigi’s' };
     render(<HomeCommandCenter todaysRecipe={null} todayStatus={3} />);
     expect(await screen.findByTestId('today-non-cooking-label')).toHaveTextContent(
-      kind === 'order_in' ? 'Order In' : 'Eating out'
+      kind === 'order_in' ? 'Take Out' : 'Eating out'
     );
     expect(screen.getByTestId('today-non-cooking-note')).toHaveTextContent('Try Luigi’s');
-    expect(screen.getByTestId('today-non-cooking-plan')).toHaveAccessibleName(
-      `Tonight ${kind === 'order_in' ? 'Order In' : 'Eating out'} Try Luigi’s Edit supper plan`
+    expect(screen.getByRole('button', { name: /Edit supper plan/ })).toHaveAccessibleName(
+      `Tonight ${kind === 'order_in' ? 'Take Out' : 'Eating out'} Try Luigi’s Edit supper plan`
     );
   });
 
   it.each([
-    ['order_in', null, 'Order In'],
+    ['order_in', null, 'Take Out'],
     ['eating_out', null, 'Eating out'],
     ['custom', 'Supper at Grandma’s', 'Supper at Grandma’s'],
     ['custom', 'Emma’s birthday supper', 'Emma’s birthday supper'],
@@ -464,6 +471,22 @@ describe('HomeCommandCenter', () => {
     }
   );
 
+  it('gives a long custom plan the cookbook shell, generous icon and full content', async () => {
+    mocks.todayStatus = 3;
+    const title = 'Family supper\n' + 'A'.repeat(66);
+    mocks.nonCooking = { kind: 'custom', customLabel: title };
+    render(<HomeCommandCenter todaysRecipe={null} todayStatus={3} />);
+    const card = await screen.findByTestId('today-non-cooking-plan');
+    expect(card).toHaveClass('rounded-[3rem]', 'bg-white');
+    expect(card.querySelector('.lucide-calendar-days')).toHaveAttribute('width', '104');
+    expect(screen.getByTestId('today-non-cooking-label')).not.toHaveClass('line-clamp-2');
+    expect(screen.getByTestId('today-non-cooking-label').textContent).toBe(title);
+    expect(screen.getByRole('button', { name: /Edit supper plan/ })).toHaveTextContent(
+      'Edit supper plan'
+    );
+    expect(mocks.validatePost).not.toHaveBeenCalled();
+  });
+
   it('offers empty-night recipe choices for Mystery night without clearing its saved plan', async () => {
     mocks.todayStatus = 3;
     mocks.nonCooking = { kind: 'mystery', customLabel: null };
@@ -476,6 +499,110 @@ describe('HomeCommandCenter', () => {
     expect(await screen.findByTestId('quick-find-select')).toBeInTheDocument();
     expect(mocks.markOrderedIn).not.toHaveBeenCalled();
   });
+
+  it('persists an explicit Take Out replacement once and waits before updating Mystery', async () => {
+    mocks.todayStatus = 3;
+    mocks.nonCooking = { kind: 'mystery', customLabel: null };
+    let finish!: () => void;
+    mocks.validatePost.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          finish = resolve;
+        })
+    );
+    render(<HomeCommandCenter todaysRecipe={null} todayStatus={3} />);
+    fireEvent.click(screen.getByTestId('order-in-btn'));
+    await waitFor(() =>
+      expect(mocks.validatePost).toHaveBeenCalledWith({
+        status: 3,
+        nonCooking: { kind: 'order_in', customLabel: null },
+      })
+    );
+    expect(screen.getByTestId('order-in-btn')).toBeDisabled();
+    fireEvent.click(screen.getByTestId('order-in-btn'));
+    expect(mocks.validatePost).toHaveBeenCalledOnce();
+    expect(mocks.applyServerUpdate).not.toHaveBeenCalled();
+    await act(async () => finish());
+    expect(mocks.applyServerUpdate).toHaveBeenCalledWith({
+      date: '2026-05-07',
+      recipe: null,
+      status: 3,
+      nonCooking: { kind: 'order_in', customLabel: null },
+    });
+    expect(mocks.applySlotUpdate).toHaveBeenCalledWith({
+      date: '2026-05-07',
+      recipe: null,
+      status: 3,
+      nonCooking: { kind: 'order_in', customLabel: null },
+    });
+    expect(mocks.markOrderedIn).not.toHaveBeenCalled();
+  });
+
+  it('retains Mystery and offers retry when explicit Take Out save fails', async () => {
+    mocks.todayStatus = 3;
+    mocks.nonCooking = { kind: 'mystery', customLabel: null };
+    mocks.validatePost.mockRejectedValueOnce(new Error('Offline'));
+    render(<HomeCommandCenter todaysRecipe={null} todayStatus={3} />);
+    fireEvent.click(screen.getByTestId('order-in-btn'));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Could not save this plan. Try again.'
+    );
+    expect(mocks.applyServerUpdate).not.toHaveBeenCalled();
+    expect(mocks.markOrderedIn).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    await waitFor(() => expect(mocks.applyServerUpdate).toHaveBeenCalled());
+  });
+
+  it('dismisses obsolete save feedback when another plan replaces Mystery', async () => {
+    mocks.todayStatus = 3;
+    mocks.nonCooking = { kind: 'mystery', customLabel: null };
+    mocks.validatePost.mockRejectedValueOnce(new Error('Offline'));
+    const view = render(<HomeCommandCenter todaysRecipe={null} todayStatus={3} />);
+    fireEvent.click(screen.getByTestId('order-in-btn'));
+    await screen.findByRole('alert');
+    mocks.nonCooking = { kind: 'custom', customLabel: 'New plan' };
+    view.rerender(<HomeCommandCenter todaysRecipe={null} todayStatus={3} />);
+    expect(screen.queryByTestId('take-out-save-error')).not.toBeInTheDocument();
+  });
+
+  it('does not submit after the source plan changes while resolving the calendar', async () => {
+    mocks.todayStatus = 3;
+    mocks.nonCooking = { kind: 'mystery', customLabel: null };
+    let finish!: () => void;
+    mocks.calendarWait = new Promise<void>((resolve) => {
+      finish = resolve;
+    });
+    render(<HomeCommandCenter todaysRecipe={null} todayStatus={3} />);
+    fireEvent.click(screen.getByTestId('order-in-btn'));
+    mocks.nonCooking = { kind: 'custom', customLabel: 'New plan' };
+    await act(async () => finish());
+    expect(mocks.validatePost).not.toHaveBeenCalled();
+    expect(mocks.applyServerUpdate).not.toHaveBeenCalled();
+  });
+
+  it.each(['recipe', 'date', 'plan'])(
+    'does not apply a late Take Out completion over a changed %s',
+    async (change) => {
+      mocks.todayStatus = 3;
+      mocks.nonCooking = { kind: 'mystery', customLabel: null };
+      let finish!: () => void;
+      mocks.validatePost.mockImplementationOnce(
+        () =>
+          new Promise<void>((resolve) => {
+            finish = resolve;
+          })
+      );
+      render(<HomeCommandCenter todaysRecipe={null} todayStatus={3} />);
+      fireEvent.click(screen.getByTestId('order-in-btn'));
+      await waitFor(() => expect(mocks.validatePost).toHaveBeenCalledOnce());
+      if (change === 'recipe') mocks.currentRecipe = { id: 'new-recipe' };
+      if (change === 'date') mocks.todayString = '2026-05-08';
+      if (change === 'plan') mocks.nonCooking = { kind: 'custom', customLabel: 'New plan' };
+      await act(async () => finish());
+      expect(mocks.applyServerUpdate).not.toHaveBeenCalled();
+      expect(mocks.applySlotUpdate).not.toHaveBeenCalled();
+    }
+  );
 
   it('retries unavailable authoritative calendar before navigating to today Search', async () => {
     mocks.calendarFailure = true;
@@ -764,7 +891,7 @@ describe('atomic Tomorrow disposition', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
-  it('does not validate Order In before a rejected Tomorrow and retains recovery', async () => {
+  it('does not validate Take Out before a rejected Tomorrow and retains recovery', async () => {
     mocks.currentRecipe = { id: 'recipe-1', name: 'Pasta', image: '/img/pasta' };
     mocks.movePost.mockRejectedValueOnce({
       responseStatusCode: 409,
@@ -823,6 +950,7 @@ describe('Home acknowledged replacement recovery', () => {
     mocks.todayStatus = 0;
     mocks.nonCooking = null;
     mocks.todayString = '2026-05-07';
+    mocks.calendarWait = null;
     mocks.saveRecoveryRecipe.mockReset().mockResolvedValue(undefined);
     mocks.readSchedule.mockReset().mockImplementation(async () => ({
       days: [{ date: '2026-05-07', recipe: { id: 'replacement-recipe' }, status: 0 }],

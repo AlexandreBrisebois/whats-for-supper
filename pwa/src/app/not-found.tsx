@@ -2,14 +2,11 @@
 
 import Link from 'next/link';
 
-import { OpeningFallback } from '@/components/telemetry/OpeningFallback';
-
 import { t } from '@/locales';
 
 export default function NotFound() {
   return (
     <main className="flex min-h-dvh flex-col items-center justify-center gap-6 px-6 py-12 text-center">
-      <OpeningFallback screen="not.found" />
       <h2 className="text-2xl font-bold text-charcoal">
         {t('errors.notFoundTitle', 'Page not found')}
       </h2>

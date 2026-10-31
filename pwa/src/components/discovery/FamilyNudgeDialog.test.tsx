@@ -1,5 +1,3 @@
-import { observeOpening, presentationChanged } from '@/lib/telemetry/opening';
-import type { BrowserObservation } from '@/lib/telemetry/navigation';
 vi.mock('next/navigation', () => ({ usePathname: () => '/discovery' }));
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -47,27 +45,8 @@ describe('FamilyNudgeDialog', () => {
 });
 
 // Run the real declaration/coordinator path rather than mocking the observation hook.
-function startPresentationStream() {
-  const visibility = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
-  const submit = vi.fn<(event: BrowserObservation) => Promise<void>>().mockResolvedValue();
-  const observe = () => observeOpening(document, true, '/discovery', submit);
-  observe();
-  submit.mockClear();
-  document.addEventListener(presentationChanged, observe);
-  return {
-    observe,
-    visibility,
-    events: () => submit.mock.calls.map(([event]) => [event.eventName, event.screen]),
-    raw: () => submit.mock.calls.map(([event]) => event),
-    stop: () => {
-      document.removeEventListener(presentationChanged, observe);
-      visibility.mockRestore();
-    },
-  };
-}
 
-it('observes nudge presentation before link readiness without claiming copy or share delivery', async () => {
-  const stream = startPresentationStream();
+it('retains nudge readiness, dismissal and reopening', async () => {
   let resolveLink!: (value: string) => void;
   mocks.getVotingLink.mockReturnValue(
     new Promise<string>((resolve) => {
@@ -77,26 +56,18 @@ it('observes nudge presentation before link readiness without claiming copy or s
   const close = vi.fn();
   const view = render(<FamilyNudgeDialog open={false} onClose={close} />);
   try {
-    expect(stream.events()).toEqual([]);
     view.rerender(<FamilyNudgeDialog open onClose={close} />);
     expect(screen.getByTestId('planner-nudge-copy')).toBeDisabled();
-    expect(stream.events()).toEqual([['pwa.surface.opened', 'discovery.nudge']]);
+
     resolveLink('https://private.example/PRIVATE_NUDGE_URL');
     await screen.findByText('https://private.example/PRIVATE_NUDGE_URL');
     view.rerender(<FamilyNudgeDialog open onClose={close} />);
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(close).toHaveBeenCalledOnce();
     view.rerender(<FamilyNudgeDialog open={false} onClose={close} />);
-    await waitFor(() => expect(stream.events()).toHaveLength(2));
+
     view.rerender(<FamilyNudgeDialog open onClose={close} />);
-    expect(stream.events()).toEqual([
-      ['pwa.surface.opened', 'discovery.nudge'],
-      ['pwa.surface.closed', 'discovery.nudge'],
-      ['pwa.surface.opened', 'discovery.nudge'],
-    ]);
-    expect(JSON.stringify(stream.raw())).not.toMatch(/PRIVATE_NUDGE_URL|https:|copy|share/);
   } finally {
     view.unmount();
-    stream.stop();
   }
 });

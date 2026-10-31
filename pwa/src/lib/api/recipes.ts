@@ -5,7 +5,7 @@ import { apiClient, requestAdapter } from './api-client';
 import { useFamilyStore } from '@/store/familyStore';
 import { usePlannerStore } from '@/store/plannerStore';
 import { getFamilyMemberIdCookie } from '@/lib/identity/cookie';
-import type { IssueResultReason } from '@/lib/telemetry/issue-results';
+
 import { ImportReportRequestBuilderRequestsMetadata } from './generated/api/recipes/item/importReport';
 import { createRecipeImportReportSubmissionResponseDtoFromDiscriminatorValue } from './generated/models';
 import { RecipeShareInfoDto_bundleSourceObject } from './generated/models/index';
@@ -240,6 +240,10 @@ export async function getRecipe(id: string): Promise<Recipe> {
   return mapToRecipe(result.recipe);
 }
 
+// Local classification of raw Save response validity before generated decoding.
+export type IssueResultReason =
+  'saved_manual' | 'processing_acknowledged' | 'saved_launch_failed' | 'unconfirmed';
+
 export interface RecipeImportReportSubmission {
   recipe: Recipe;
   reimportStarted: boolean;
@@ -248,8 +252,8 @@ export interface RecipeImportReportSubmission {
   issueResult: IssueResultReason;
 }
 
-// Local observation only: inspect generated values before product defaults erase
-// absent/invalid flags. None of the inspected detail or identities is exported.
+// Inspect raw values before product defaults erase absent or invalid flags.
+// Classification remains local and does not alter the generated product decoder.
 function classifyIssueSubmission(value: unknown, submittedId: string): IssueResultReason {
   const record = (input: unknown): input is Record<string, unknown> =>
     !!input && typeof input === 'object' && !Array.isArray(input);

@@ -28,7 +28,9 @@ reproduce screens; their placement and explanatory copy are not implemented UI.*
 
 [Open board 2 at full size](visual-language/02-home-state-map.svg).
 
-![Home state map: unplanned offers recipe selection or Order In; a suggestion is explicitly conceptual and unsaved; a planned meal offers Cook and Change Plan; non-cooking intent opens Planner; cooked offers Dismiss without undoing completion. Each sketch explains action consequences.](visual-language/02-home-state-map.svg)
+> The original schematic boards retain their design-checkpoint wording. Current application copy uses **Take Out** / **À emporter**; this label records a plan and includes delivery.
+
+![Home state map: unplanned offers recipe selection or Take Out; a suggestion is explicitly conceptual and unsaved; a planned meal offers Cook and Change Plan; non-cooking intent opens Planner; cooked offers Dismiss without undoing completion. Each sketch explains action consequences.](visual-language/02-home-state-map.svg)
 
 *Board 2: a schematic of state/action consequences, with conceptual suggestions clearly separate. It omits food imagery and cannot establish cookbook refinement. Cook, ready-GOTO confirmation and primary Quick Find now use terracotta/light text locally. Planned actions currently precede inline ingredients. Sage non-cooking/cooked roles and other Home sections remain unchanged; their board treatments are separate proposals.*
 
@@ -46,7 +48,7 @@ This is a contemporary family cookbook within Solar Earth: keep Outfit/Inter and
 | Recipe title | Main typographic anchor, confident weight and comfortable wrapping | Full EN/FR title and stable readable background |
 | Context/duration | Quiet context; restrained blush terracotta duration pill as in the supplied reference, or small Clock cue when reflow needs it; no yellow badge | Existing localized Ready In wrapper, supplied units and missing-time behavior |
 | Cook / Make this tonight / primary Quick Find | Rich terracotta with light text; deeper terracotta for pressed state | One dominant action per card, clear label, contrast and focus |
-| Change plan / Order In | Quieter tonal or restrained-edge secondary treatment | Visibly enabled actions and generous hit areas |
+| Change plan / Take Out | Quieter tonal or restrained-edge secondary treatment | Visibly enabled actions and generous hit areas |
 | Ingredients disclosure | Text-style label and chevron with transparent touch padding | Explicit expanded state, keyboard focus, 48 px target and local identity reset |
 | Empty/failed image | Modest icon and warm intentional spacing rather than a dominant gray image slab | Honest state, recipe identity, choices and no invented image/readiness |
 
@@ -180,7 +182,7 @@ hydration retains disclosure. Actions remain ahead of details in normal flow,
 without a flip or motion dependency.
 
 Session 3 implements the pivot hierarchy: a ready family GOTO leads with Make this
-tonight; otherwise the filled indigo Quick Find leads. Outlined Order In pairs its
+tonight; otherwise the filled indigo Quick Find leads. Outlined Take Out pairs its
 label with a decorative ShoppingBag, and outlined Profile setup follows the immediate
 choices when no active GOTO exists. Ordinary nights say Nothing planned for tonight;
 a ready recipe is Your family's GOTO, without implying an assignment. Saved Mystery
@@ -207,7 +209,7 @@ long recipe names, larger text and French wrapping before adopting a role.
 **States to review where applicable:** default, hover on pointer devices, pressed,
 focus, selected, busy, disabled, success and error. Inactive controls have contrast
 exceptions in WCAG, but should still be understandable with a reason. Do not use
-the disabled exception for an enabled Order In control. For busy/error states,
+the disabled exception for an enabled Take Out control. For busy/error states,
 retain the action's place and describe the actual stage; do not manufacture success.
 
 ## Icons are part of the language, not decoration added later
@@ -266,7 +268,7 @@ saved. This refreshed evidence is pinned to [HomeSections at 4682643](https://gi
 and [HomeCommandCenter at 4682643](https://github.com/AlexandreBrisebois/whats-for-supper/blob/4682643cd6086b66008fc77ede4570329e29b5ae/pwa/src/components/home/HomeCommandCenter.tsx).
 
 - **Unplanned:** no assigned recipe. A ready family GOTO leads with **Make this tonight**;
-  otherwise **Quick Find** leads, followed by outlined **Order In** and then Profile
+  otherwise **Quick Find** leads, followed by outlined **Take Out** and then Profile
   setup when no GOTO exists. Preparing/checking variants have localized feedback
   without confirmation; saved Mystery retains its context. **Quick Find** opens recipe
   selection, not a cooking-duration filter ([issue #338](https://github.com/AlexandreBrisebois/whats-for-supper/issues/338)).
@@ -280,7 +282,7 @@ and [HomeCommandCenter at 4682643](https://github.com/AlexandreBrisebois/whats-f
   original meal's disposition is resolved before a retained replacement is saved.
   Partial failure distinguishes completed disposition from an unsaved or unknown
   replacement. **Retry save** and **Retry check** are not interchangeable.
-- **Non-cooking:** **Order In** records a non-cooking intention, not a blank night
+- **Non-cooking:** **Take Out** records a non-cooking intention, not a blank night
   and not a food-delivery order. With no recipe the current handler updates locally
   while status validation runs in the background; local appearance is not proof of
   persistence. With a planned recipe, recovery asks what happens to the original.
@@ -324,7 +326,7 @@ These are **proposed review targets**, not completed app checks:
 |---|---|---|---|
 | Cook action | Cook | Cuisiner | Current locale values |
 | Change intention | Change Plan | Changer le plan | Current locale values |
-| Non-cooking action | Order In | Commander | Current; clarify it records a plan, not an order |
+| Non-cooking action | Take Out | À emporter | Current; clarify it records a plan, not an order |
 | Blank day | Leave this day unplanned | Laisser cette journée sans plan | Current Planner copy |
 | Unsaved suggestion | Suggestion — not saved | Suggestion — non enregistrée | Proposed; language review required |
 | Clearer recipe search | Choose another recipe | Choisir une autre recette | Proposed alternative, not a duration claim |

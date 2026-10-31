@@ -1,9 +1,3 @@
-import {
-  observeOpening,
-  presentationChanged,
-  registerPlannerPresentation,
-} from '@/lib/telemetry/opening';
-import type { BrowserObservation } from '@/lib/telemetry/navigation';
 vi.mock('next/navigation', () => ({ usePathname: () => '/planner' }));
 import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
@@ -226,29 +220,8 @@ describe('PlanningPivotSheet', () => {
 });
 
 // Run the real declaration/coordinator path rather than mocking the observation hook.
-function startPresentationStream() {
-  const visibility = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
-  const releasePlanner = registerPlannerPresentation(document, 'planner', false);
-  const submit = vi.fn<(event: BrowserObservation) => Promise<void>>().mockResolvedValue();
-  const observe = () => observeOpening(document, true, '/planner', submit);
-  observe();
-  submit.mockClear();
-  document.addEventListener(presentationChanged, observe);
-  return {
-    observe,
-    visibility,
-    events: () => submit.mock.calls.map(([event]) => [event.eventName, event.screen]),
-    raw: () => submit.mock.calls.map(([event]) => event),
-    stop: () => {
-      document.removeEventListener(presentationChanged, observe);
-      releasePlanner();
-      visibility.mockRestore();
-    },
-  };
-}
 
-it('observes pivot open, dismissal and reopen without collecting its date or option', async () => {
-  const stream = startPresentationStream();
+it('retains pivot open, dismissal and reopening', async () => {
   const props = {
     isOpen: false,
     onClose: vi.fn(),
@@ -260,48 +233,16 @@ it('observes pivot open, dismissal and reopen without collecting its date or opt
   };
   const view = render(<PlanningPivotSheet {...props} />);
   try {
-    expect(stream.events()).toEqual([]);
     view.rerender(<PlanningPivotSheet {...props} isOpen />);
     fireEvent.click(screen.getByTestId('pivot-quick-find'));
     view.rerender(<PlanningPivotSheet {...props} isOpen dayIndex={3} date="2026-10-14" />);
-    expect(stream.events()).toEqual([['pwa.surface.opened', 'planning.pivot']]);
+
     fireEvent.click(screen.getByTestId('pivot-sheet-backdrop'));
     expect(props.onClose).toHaveBeenCalledOnce();
     view.rerender(<PlanningPivotSheet {...props} />);
     await Promise.resolve();
     view.rerender(<PlanningPivotSheet {...props} isOpen />);
-    expect(stream.events()).toEqual([
-      ['pwa.surface.opened', 'planning.pivot'],
-      ['pwa.surface.closed', 'planning.pivot'],
-      ['pwa.surface.opened', 'planning.pivot'],
-    ]);
-    expect(JSON.stringify(stream.raw())).not.toMatch(/2026-10|Quick|dayIndex/);
   } finally {
     view.unmount();
-    stream.stop();
-  }
-});
-
-it('does not introduce a hidden pivot that closes before the document can report', async () => {
-  const stream = startPresentationStream();
-  stream.visibility.mockReturnValue('hidden');
-  const props = {
-    isOpen: true,
-    onClose: vi.fn(),
-    dayIndex: 0,
-    hasRecipe: false,
-    onQuickFind: vi.fn(),
-    onSearchLibrary: vi.fn(),
-  };
-  const view = render(<PlanningPivotSheet {...props} />);
-  try {
-    view.rerender(<PlanningPivotSheet {...props} isOpen={false} />);
-    await Promise.resolve();
-    stream.visibility.mockReturnValue('visible');
-    stream.observe();
-    expect(stream.events()).toEqual([]);
-  } finally {
-    view.unmount();
-    stream.stop();
   }
 });
