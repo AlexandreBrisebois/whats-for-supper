@@ -1,17 +1,11 @@
 'use client';
 
 import React from 'react';
-import {
-  motion,
-  useMotionValue,
-  useTransform,
-  useAnimation,
-  PanInfo,
-  useMotionValueEvent,
-} from 'framer-motion';
+import { motion, useTransform, useIsPresent, PanInfo, useMotionValueEvent } from 'framer-motion';
 import { t, tWithVars } from '@/locales';
 import { getImageUrl } from '@/lib/imageUtils';
 import { formatRecipeTime } from '@/lib/duration';
+import { isCardSurface, useHorizontalCardMotion } from '@/hooks/useHorizontalCardMotion';
 import { RecipeImportIssueBadge } from './RecipeImportIssueBadge';
 import type { RecipeImportIssueStatus } from '@/lib/api/recipes';
 
@@ -54,8 +48,7 @@ export const RecipeStackCard: React.FC<RecipeStackCardProps> = ({
   onSwipeLeft,
   onTap,
 }) => {
-  const x = useMotionValue(0);
-  const rotate = useTransform(x, [-200, 200], [-15, 15]);
+  const { x, controls, startDrag, dragProps, motionStyle } = useHorizontalCardMotion(isFront);
 
   // Haptic feedback at 60px drag distance
   const [hasVibrated, setHasVibrated] = React.useState(false);
@@ -76,8 +69,6 @@ export const RecipeStackCard: React.FC<RecipeStackCardProps> = ({
 
   const nextScale = useTransform(x, [0, 100], [0.5, 1.5]);
   const backScale = useTransform(x, [0, -100], [0.5, 1.5]);
-
-  const controls = useAnimation();
 
   // Stack depth effects
   const scale = 1 - stackIndex * 0.05;
@@ -108,6 +99,21 @@ export const RecipeStackCard: React.FC<RecipeStackCardProps> = ({
 
   // Track whether a drag occurred so we can distinguish tap from swipe
   const didDrag = React.useRef(false);
+  const cardRef = React.useRef<HTMLDivElement>(null);
+  const isPresent = useIsPresent();
+  const lifecycle = React.useRef(0);
+  const departing = React.useRef(false);
+
+  React.useLayoutEffect(() => {
+    const version = ++lifecycle.current;
+    departing.current = false;
+    didDrag.current = false;
+    return () => {
+      lifecycle.current = version + 1;
+      departing.current = false;
+      controls.stop();
+    };
+  }, [id, isFront, isPresent, controls]);
 
   const handleDragStart = () => {
     didDrag.current = false;
@@ -119,75 +125,97 @@ export const RecipeStackCard: React.FC<RecipeStackCardProps> = ({
     }
   };
 
-  const handleDragEnd = (_: unknown, info: PanInfo) => {
-    if (!isFront) return;
-
-    // Keep swipe intent detection tolerant on touch devices where drag constraints
-    // + elasticity can reduce the final reported offset at release.
-    const threshold = 35;
-    const velocityThreshold = 280;
-
-    if (info.offset.x > threshold || info.velocity.x > velocityThreshold) {
-      controls
-        .start({
-          x: 500,
-          rotate: 20,
-          opacity: 0,
-          transition: { duration: 0.24, ease: 'easeOut' },
-        })
-        .then(onSwipeRight);
-    } else if (info.offset.x < -threshold || info.velocity.x < -velocityThreshold) {
-      controls
-        .start({
-          x: -500,
-          rotate: -20,
-          opacity: 0,
-          transition: { duration: 0.24, ease: 'easeOut' },
-        })
-        .then(onSwipeLeft);
-    } else {
-      // Did not complete swipe — spring back
-      controls.start({
-        x: 0,
-        rotate: 0,
-        transition: { type: 'spring', stiffness: 150, damping: 22 },
-      });
-    }
+  const returnToOrigin = () => {
+    controls.start({
+      x: 0,
+      rotate: 0,
+      transition: { type: 'spring', stiffness: 150, damping: 22 },
+    });
   };
 
-  const handleTap = () => {
-    if (!isFront) return;
+  const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+    if (!isFront || !isPresent || departing.current) return;
+    if (event?.type === 'pointercancel') {
+      didDrag.current = true;
+      returnToOrigin();
+      return;
+    }
+
+    // Release intent is Browse-owned; it is independent of movement elasticity.
+    const threshold = 35;
+    const velocityThreshold = 280;
+    const direction =
+      info.offset.x > threshold || info.velocity.x > velocityThreshold
+        ? 1
+        : info.offset.x < -threshold || info.velocity.x < -velocityThreshold
+          ? -1
+          : 0;
+    if (!direction) {
+      returnToOrigin();
+      return;
+    }
+
+    departing.current = true;
+    const version = lifecycle.current;
+    controls
+      .start({
+        x: direction * 500,
+        rotate: direction * 20,
+        opacity: 0,
+        transition: { duration: 0.24, ease: 'easeOut' },
+      })
+      .then(() => {
+        if (version !== lifecycle.current) return;
+        if (direction > 0) onSwipeRight();
+        else onSwipeLeft();
+      });
+  };
+
+  const handleTap = (event?: MouseEvent | TouchEvent | PointerEvent) => {
+    if (!isFront || !isPresent || departing.current) return;
+    // Explicit keyboard handling below owns Enter/Space, not Motion's synthetic tap.
+    if (
+      event &&
+      (!isCardSurface(event.target, cardRef.current) ||
+        ('pointerType' in event && event.pointerType === ''))
+    )
+      return;
     if (didDrag.current) return;
     onTap();
   };
 
   return (
     <motion.div
+      ref={cardRef}
       layout
-      style={{
-        x,
-        rotate,
-        transformOrigin: 'bottom center',
-        touchAction: 'pan-y',
-        zIndex: 10 - stackIndex,
-        willChange: 'transform',
-      }}
+      style={{ ...motionStyle, zIndex: 10 - stackIndex }}
       role={isFront ? 'button' : undefined}
       tabIndex={isFront ? 0 : -1}
       aria-label={
         isFront ? `${t('cook.openRecipeDetails', 'Open recipe details')}: ${name}` : undefined
       }
       onKeyDown={(event) => {
-        if (isFront && (event.key === 'Enter' || event.key === ' ')) {
+        if (
+          isFront &&
+          isPresent &&
+          !departing.current &&
+          event.target === event.currentTarget &&
+          !event.repeat &&
+          (event.key === 'Enter' || event.key === ' ')
+        ) {
           event.preventDefault();
           onTap();
         }
       }}
-      drag={isFront ? 'x' : false}
-      dragConstraints={{ left: 0, right: 0 }}
-      dragElastic={0.45}
-      dragMomentum={false}
+      {...dragProps}
       animate={controls}
+      onPointerDown={(event) => {
+        if (!isPresent || departing.current) return;
+        if (startDrag(event)) didDrag.current = false;
+      }}
+      onPointerCancel={(event) => {
+        if (event.isPrimary !== false) didDrag.current = true;
+      }}
       onDragStart={handleDragStart}
       onDrag={handleDrag}
       onDragEnd={handleDragEnd}
@@ -252,7 +280,7 @@ export const RecipeStackCard: React.FC<RecipeStackCardProps> = ({
           <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
         </div>
 
-        <div className="flex-1 p-8 md:p-10 flex flex-col min-h-0 overflow-y-auto [@media(max-height:700px)]:p-4">
+        <div className="flex-1 p-8 md:p-10 flex flex-col min-h-0 overflow-y-auto touch-pan-y [@media(max-height:700px)]:p-4">
           <h2 className="text-2xl md:text-3xl font-bold tracking-tight font-heading mb-3 md:mb-4 leading-tight shrink-0">
             {name}
           </h2>

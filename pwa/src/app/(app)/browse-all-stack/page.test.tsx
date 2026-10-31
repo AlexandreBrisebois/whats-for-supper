@@ -26,6 +26,7 @@ const mocks = vi.hoisted(() => {
   const back = vi.fn();
 
   return {
+    animationControls: { start: vi.fn().mockResolvedValue(undefined), stop: vi.fn() },
     searchParams: new URLSearchParams(),
     librarySummaryGet,
     recipesGet,
@@ -107,7 +108,9 @@ vi.mock('framer-motion', () => ({
   },
   useMotionValue: () => ({ get: () => 0, set: vi.fn() }),
   useTransform: () => ({ get: () => 0 }),
-  useAnimation: () => ({ start: vi.fn().mockResolvedValue(undefined) }),
+  useAnimation: () => mocks.animationControls,
+  useDragControls: () => ({ start: vi.fn() }),
+  useIsPresent: () => true,
   useMotionValueEvent: vi.fn(),
   AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));

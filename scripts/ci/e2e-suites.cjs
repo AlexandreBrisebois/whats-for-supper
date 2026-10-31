@@ -13,7 +13,7 @@ const suites = {
     'planner-smart-defaults-week-offset', 'planner-voting-identity',
   ],
   recipes: [
-    'browse-all-stack', 'browse-stack', 'discovery', 'goto-layout', 'recipe-hero-actions',
+    'browse-all-stack', 'browse-stack', 'stack-gestures', 'discovery', 'goto-layout', 'recipe-hero-actions',
     'recipe-notes-recovery', 'recipe-original-viewer', 'recipe-recovery',
     'recipe-share', 'recipes', 'search-hardening', 'search-invalidation-recovery',
     'sharing-fidelity',

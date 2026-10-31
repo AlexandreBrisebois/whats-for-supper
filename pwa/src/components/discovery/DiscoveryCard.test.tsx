@@ -1,17 +1,27 @@
-import { describe, it, expect, vi } from 'vitest';
+import { beforeEach, describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import React from 'react';
 
+let onDragEnd: ((event: unknown, info: unknown) => void) | undefined;
+
 vi.mock('framer-motion', () => ({
   motion: {
-    div: ({ children, animate: _animate, transition: _transition, ...props }: any) => (
-      <div {...props}>{children}</div>
-    ),
+    div: ({
+      children,
+      onDragEnd: dragEnd,
+      animate: _animate,
+      transition: _transition,
+      ...props
+    }: any) => {
+      if (dragEnd) onDragEnd = dragEnd;
+      return <div {...props}>{children}</div>;
+    },
   },
   useMotionValue: () => ({ get: () => 0, set: vi.fn() }),
   useTransform: () => ({ get: () => 0 }),
   useAnimation: () => ({ start: vi.fn().mockResolvedValue(undefined) }),
   useMotionValueEvent: vi.fn(),
+  useDragControls: () => ({ start: vi.fn() }),
 }));
 
 vi.mock('next/image', () => ({
@@ -75,5 +85,24 @@ describe('raw recipe total duration', () => {
   ])('renders %s without losing units', (totalTime, expected) => {
     render(<DiscoveryCard {...BASE_PROPS} totalTime={totalTime} />);
     expect(screen.getByText(`READY IN ${expected}`)).toBeInTheDocument();
+  });
+});
+
+beforeEach(() => vi.clearAllMocks());
+describe('Discovery — preserved voting release boundaries', () => {
+  it.each([
+    [80, 0, null],
+    [0, 500, null],
+    [80.01, 0, 'right'],
+    [0, 500.01, 'right'],
+    [-80, 0, null],
+    [0, -500, null],
+    [-80.01, 0, 'left'],
+    [0, -500.01, 'left'],
+  ])('retains displacement %s / velocity %s policy', async (offset, velocity, direction) => {
+    render(<DiscoveryCard {...BASE_PROPS} />);
+    await onDragEnd!(null, { offset: { x: offset, y: 0 }, velocity: { x: velocity, y: 0 } });
+    expect(BASE_PROPS.onSwipeRight).toHaveBeenCalledTimes(direction === 'right' ? 1 : 0);
+    expect(BASE_PROPS.onSwipeLeft).toHaveBeenCalledTimes(direction === 'left' ? 1 : 0);
   });
 });
