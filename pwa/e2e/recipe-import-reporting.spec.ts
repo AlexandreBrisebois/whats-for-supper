@@ -18,6 +18,8 @@ interface RecipeHarnessState {
   importStatusReads: number;
   lastReportBody: Record<string, unknown> | null;
   failNextLaunch: boolean;
+  rejectNextSave: boolean;
+  reportRequests: number;
   acceptedLaunches: number;
 }
 
@@ -73,6 +75,8 @@ async function installRecipeHarness(
       ingredients: ['Pasta', 'Tomatoes'],
       sourceType: RecipeDto_sourceTypeObject.Url,
       canReimport: true,
+      imageCount: 0,
+      finishedDishIndex: -1,
       isReady: true,
       importIssue: null,
       ...overrides,
@@ -81,6 +85,8 @@ async function installRecipeHarness(
     importStatusReads: 0,
     lastReportBody: null,
     failNextLaunch: false,
+    rejectNextSave: false,
+    reportRequests: 0,
     acceptedLaunches: 0,
   };
 
@@ -112,6 +118,16 @@ async function installRecipeHarness(
           note?: string | null;
         };
         state.lastReportBody = body;
+        state.reportRequests += 1;
+        if (state.rejectNextSave) {
+          state.rejectNextSave = false;
+          await route.fulfill({
+            status: 400,
+            contentType: 'application/json',
+            body: JSON.stringify({ status: 400, message: 'Synthetic rejection.' }),
+          });
+          return;
+        }
         const note = body.note?.trim() || null;
         const contentOnly =
           (body.reasons?.length ?? 0) > 0 &&
@@ -131,6 +147,8 @@ async function installRecipeHarness(
             reasons: body.reasons,
             note,
             isReimporting: reimportStarted,
+            reimportFailureMessage: null,
+            reimportFailureImportId: null,
             status: RecipeImportIssueStatusObject.Reported,
           },
         };
@@ -138,9 +156,10 @@ async function installRecipeHarness(
           status: 200,
           contentType: 'application/json',
           body: JSON.stringify({
+            updatedAt: new Date().toISOString(),
             recipe: state.recipe,
             reimportStarted,
-            ...(reimportStarted ? { importId: MOCK_IDS.PHOTO_NEW } : {}),
+            importId: reimportStarted ? MOCK_IDS.PHOTO_NEW : null,
             reimportLaunchFailed,
           }),
         });
@@ -249,6 +268,31 @@ test.describe('Recipe import issue reporting', () => {
     await expect.poll(() => state.acceptedLaunches).toBe(1);
     await expect.poll(() => state.importStatusReads).toBeGreaterThan(0);
     await expect(page.getByTestId('recipe-import-issue-status-readyToReview')).toBeVisible();
+  });
+
+  test('retains a rejected draft and saves only on a later explicit retry', async ({ page }) => {
+    const state = await installRecipeHarness(page);
+    state.rejectNextSave = true;
+    await openRecipeDetail(page);
+    await page.getByTestId('action-gear-menu').click();
+    await page.getByTestId('action-report-import-issue').click();
+    await page.getByTestId('import-issue-reason-duplicate').click();
+    await page.getByTestId('import-issue-note-disclosure').click();
+    await page.getByTestId('import-issue-note').fill('Keep this exact draft.');
+    await page.getByTestId('import-issue-save').click();
+    await expect(page.getByRole('dialog', { name: 'Report issue' }).getByRole('alert')).toHaveText(
+      'Could not save changes. Try again.'
+    );
+    await expect(page.getByTestId('import-issue-note')).toHaveValue('Keep this exact draft.');
+    await expect(page.getByTestId('import-issue-save')).toBeEnabled();
+    expect(state.reportRequests).toBe(1);
+    expect(state.recipe.importIssue).toBeNull();
+    expect(state.importStatusReads).toBe(0);
+    await page.getByTestId('import-issue-save').click();
+    await expect(page.getByRole('dialog', { name: 'Report issue' })).toHaveCount(0);
+    expect(state.reportRequests).toBe(2);
+    expect(state.recipe.importIssue?.note).toBe('Keep this exact draft.');
+    expect(state.importStatusReads).toBe(0);
   });
 
   test('starts eligible content feedback, polls its returned ID, and keeps the durable outcome', async ({
@@ -522,6 +566,9 @@ test.describe('Recipe import issue reporting', () => {
       name: 'Synthesized Vegetable Bowl',
       sourceType: RecipeDto_sourceTypeObject.Synthesized,
       canReimport: false,
+      imageCount: 0,
+      finishedDishIndex: -1,
+      isReady: true,
     });
     let lastFilters: Record<string, boolean> = {};
 
@@ -555,6 +602,9 @@ test.describe('Recipe import issue reporting', () => {
           importIssue: {
             reasons: body.reasons,
             note: body.note ?? null,
+            isReimporting: false,
+            reimportFailureMessage: null,
+            reimportFailureImportId: null,
             status: RecipeImportIssueStatusObject.Reported,
           },
         };
@@ -564,7 +614,13 @@ test.describe('Recipe import issue reporting', () => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ recipe: synthesized }),
+        body: JSON.stringify({
+          updatedAt: new Date().toISOString(),
+          recipe: synthesized,
+          ...(route.request().method() === 'POST'
+            ? { reimportStarted: false, importId: null, reimportLaunchFailed: false }
+            : {}),
+        }),
       });
     });
 

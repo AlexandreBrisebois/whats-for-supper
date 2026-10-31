@@ -574,6 +574,22 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
     }
   };
 
+  const openTodaySearch = async () => {
+    try {
+      const context = await useTodayStore.getState().ensureCalendar();
+      const params = new URLSearchParams({
+        addToDay: String(calendarDayIndex(context)),
+        weekOffset: '0',
+        referenceWeekStartDate: context.referenceWeekStartDate,
+      });
+      setRetryStart(null);
+      router.push(`/recipes?${params}`);
+    } catch {
+      // The existing calendar notice retries the same navigation intent.
+      setRetryStart(() => () => void openTodaySearch());
+    }
+  };
+
   const showRecovery = recoveryFlow.kind === 'step1' || recoveryFlow.kind === 'step2';
   const showQuickFind = recoveryFlow.kind === 'quick_find';
   const recoveryStep = recoveryFlow.kind === 'step2' ? 2 : 1;
@@ -639,10 +655,13 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
           )}
           {showSupperChoices && (
             <TonightPivotCard
+              hasCheckedActive={hasCheckedActive}
               gotoDescription={gotoDescription}
               gotoRecipeId={gotoRecipeId}
               gotoImageUrl={gotoImageUrl}
               gotoStatus={gotoStatus}
+              nonCookingLabel={isMysteryNight ? nonCookingLabel(nonCooking) : null}
+              nonCookingKind={isMysteryNight ? nonCooking?.kind : null}
               onConfirmGoto={() => {
                 if (gotoRecipeId) {
                   assignRecipe({
@@ -655,7 +674,11 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
                 }
               }}
               onDiscover={() => {
-                void startAction('quick_find');
+                if (isMysteryNight) {
+                  void startAction('quick_find');
+                  return;
+                }
+                void openTodaySearch();
               }}
               onOrderIn={async () => {
                 if (!currentRecipe) {

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { Star, X, ZoomIn } from 'lucide-react';
+import { useSurfacePresentation } from '@/components/telemetry/useSurfacePresentation';
 
 interface ImageReviewProps {
   images: File[];
@@ -19,6 +20,10 @@ export function ImageReview({
   const [objectUrls, setObjectUrls] = useState<string[]>([]);
   const [fullscreenIndex, setFullscreenIndex] = useState<number | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  useSurfacePresentation(
+    'capture.image_review',
+    fullscreenIndex !== null && !!objectUrls[fullscreenIndex]
+  );
 
   // Create object URLs whenever the images array changes
   useEffect(() => {
@@ -66,6 +71,7 @@ export function ImageReview({
                 {/* Overlay on hover */}
                 <button
                   type="button"
+                  data-testid="capture-image-preview-open-btn"
                   onClick={() => setFullscreenIndex(index)}
                   className="absolute inset-0 flex items-center justify-center bg-charcoal/20 opacity-0 backdrop-blur-[2px] transition-opacity group-hover:opacity-100"
                 >
@@ -83,7 +89,7 @@ export function ImageReview({
                 }}
                 className={`absolute -right-1 -bottom-1 flex h-8 w-8 items-center justify-center rounded-full transition-all active:scale-90 shadow-md border border-white ${
                   isHero
-                    ? 'bg-terracotta text-white scale-110'
+                    ? 'bg-terracotta hover:bg-terracotta-600 active:bg-terracotta-700 text-white scale-110'
                     : 'bg-white/90 text-charcoal/20 hover:bg-white hover:text-terracotta backdrop-blur-md'
                 }`}
               >
@@ -113,6 +119,7 @@ export function ImageReview({
       {/* Fullscreen lightbox */}
       {fullscreenIndex !== null && objectUrls[fullscreenIndex] && (
         <div
+          data-testid="capture-image-preview"
           className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-charcoal/95 backdrop-blur-sm p-4 animate-in fade-in duration-300"
           onClick={() => setFullscreenIndex(null)}
         >

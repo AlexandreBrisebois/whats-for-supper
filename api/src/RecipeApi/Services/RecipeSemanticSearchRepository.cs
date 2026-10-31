@@ -6,14 +6,15 @@ using RecipeApi.Dto;
 namespace RecipeApi.Services;
 
 /// <summary>Bounded PostgreSQL nearest-vector retrieval over current canonical documents.</summary>
-public class RecipeSemanticSearchRepository(RecipeDbContext db, IClock clock)
+public class RecipeSemanticSearchRepository(RecipeDbContext db, IClock clock, GoToService? goToService = null)
 {
     public virtual async Task<IReadOnlyList<RecipeSemanticCandidate>> SearchAsync(
         float[] queryEmbedding,
         RecipeSearchFiltersDto filters,
         RecipeSemanticSearchOptions options,
         Guid? excludedRecipeId,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        Guid[]? gotoRecipeIds = null)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(options.CandidateLimit);
         if (queryEmbedding.Length != options.EmbeddingDimensions)
@@ -28,7 +29,9 @@ public class RecipeSemanticSearchRepository(RecipeDbContext db, IClock clock)
             new("candidateLimit", options.CandidateLimit),
             new("excludedRecipeId", (object?)excludedRecipeId ?? DBNull.Value)
         };
-        var hardFilters = RecipeSearchPredicate.BuildSql(filters, parameters, clock.UtcNow);
+        if (filters.GotoOnly == true && gotoRecipeIds is null)
+            gotoRecipeIds = await (goToService ?? new GoToService(clock, db, Microsoft.Extensions.Logging.Abstractions.NullLogger<GoToService>.Instance)).GetConfiguredRecipeIdsAsync();
+        var hardFilters = RecipeSearchPredicate.BuildSql(filters, parameters, clock.UtcNow, gotoRecipeIds);
 
         var sql = $"""
             SELECT d.recipe_id AS "RecipeId",

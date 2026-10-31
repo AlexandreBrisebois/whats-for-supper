@@ -1,9 +1,12 @@
 'use client';
 
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence, useAnimation } from 'framer-motion';
 import { X, ChevronLeft, ChevronRight, Maximize2, Minimize2 } from 'lucide-react';
-import { getImageUrl } from '@/lib/imageUtils';
+import {
+  useLoadedPresentation,
+  useSurfacePresentation,
+} from '@/components/telemetry/useSurfacePresentation';
 import { t } from '@/locales';
 
 interface OriginalPhotosViewerProps {
@@ -11,6 +14,8 @@ interface OriginalPhotosViewerProps {
   imageCount: number;
   finishedDishIndex: number;
   onClose: () => void;
+  /** Cooking owns a modal above its inert, still-mounted reading surface. */
+  modal?: boolean;
 }
 
 export function OriginalPhotosViewer({
@@ -18,6 +23,7 @@ export function OriginalPhotosViewer({
   imageCount,
   finishedDishIndex,
   onClose,
+  modal = false,
 }: OriginalPhotosViewerProps) {
   // Logic to order images: finishedDishIndex first, then others.
   const imageIndices = useMemo(() => {
@@ -30,10 +36,42 @@ export function OriginalPhotosViewer({
     return [heroIndex, ...indices.filter((i) => i !== heroIndex)];
   }, [imageCount, finishedDishIndex]);
 
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [selection, setSelection] = useState({ index: 0, generation: 0 });
+  const currentIndex = selection.index;
+  const currentPhotoIndex = imageIndices[currentIndex];
+  const imageEntry = useMemo(() => ({}), [recipeId, currentPhotoIndex, selection.generation]);
+  const currentImageEntry = useRef<object | null>(null);
+  useLayoutEffect(() => {
+    currentImageEntry.current = imageEntry;
+    return () => {
+      currentImageEntry.current = null;
+    };
+  }, [imageEntry]);
+  const [loadedImage, setLoadedImage] = useState<object | null>(null);
+  useSurfacePresentation('original.photos', true);
+  useLoadedPresentation(
+    'pwa.original.presented',
+    imageEntry,
+    currentPhotoIndex !== undefined && loadedImage === imageEntry
+  );
+  const selectImage = useCallback((index: number) => {
+    setSelection((previous) =>
+      previous.index === index ? previous : { index, generation: previous.generation + 1 }
+    );
+  }, []);
   const [scale, setScale] = useState(1);
   const [direction, setDirection] = useState(0);
   const controls = useAnimation();
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!modal) return;
+    const previous = document.activeElement as HTMLElement | null;
+    closeRef.current?.focus({ preventScroll: true });
+    return () => {
+      if (previous?.isConnected) previous.focus({ preventScroll: true });
+    };
+  }, [modal]);
 
   useEffect(() => {
     if (scale === 1) {
@@ -54,13 +92,19 @@ export function OriginalPhotosViewer({
   const handleNext = useCallback(() => {
     if (scale > 1) setScale(1);
     setDirection(1);
-    setCurrentIndex((prev) => (prev + 1) % imageIndices.length);
+    setSelection((previous) => {
+      const index = (previous.index + 1) % imageIndices.length;
+      return index === previous.index ? previous : { index, generation: previous.generation + 1 };
+    });
   }, [scale, imageIndices.length]);
 
   const handlePrev = useCallback(() => {
     if (scale > 1) setScale(1);
     setDirection(-1);
-    setCurrentIndex((prev) => (prev - 1 + imageIndices.length) % imageIndices.length);
+    setSelection((previous) => {
+      const index = (previous.index - 1 + imageIndices.length) % imageIndices.length;
+      return index === previous.index ? previous : { index, generation: previous.generation + 1 };
+    });
   }, [scale, imageIndices.length]);
 
   const toggleZoom = useCallback(() => {
@@ -93,6 +137,7 @@ export function OriginalPhotosViewer({
 
   // Keyboard navigation
   useEffect(() => {
+    if (modal) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
       if (e.key === 'ArrowRight') handleNext();
@@ -100,14 +145,54 @@ export function OriginalPhotosViewer({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onClose, handleNext, handlePrev]);
+  }, [onClose, handleNext, handlePrev, modal]);
 
-  const currentPhotoIndex = imageIndices[currentIndex];
   // The API endpoint is /api/recipes/{recipeId}/original/{photoIndex}
   const imageUrl = `/api/recipes/${recipeId}/original/${currentPhotoIndex}`;
 
   return (
-    <div className="fixed inset-0 z-[100] flex flex-col bg-charcoal/95 backdrop-blur-xl">
+    <div
+      ref={dialogRef}
+      role={modal ? 'dialog' : undefined}
+      aria-modal={modal || undefined}
+      aria-label={modal ? t('recipes.viewOriginal', 'View Original') : undefined}
+      onKeyDown={
+        modal
+          ? (event) => {
+              event.stopPropagation();
+              if (event.key === 'Escape') {
+                event.preventDefault();
+                onClose();
+              }
+              if (event.key === 'ArrowRight') {
+                event.preventDefault();
+                handleNext();
+              }
+              if (event.key === 'ArrowLeft') {
+                event.preventDefault();
+                handlePrev();
+              }
+              if (event.key !== 'Tab') return;
+              const all = Array.from(
+                dialogRef.current?.querySelectorAll<HTMLButtonElement>('button:not(:disabled)') ??
+                  []
+              );
+              const visible = all.filter((button) => button.getClientRects().length > 0);
+              const buttons = visible.length ? visible : all;
+              const first = buttons[0];
+              const last = buttons[buttons.length - 1];
+              if (event.shiftKey && document.activeElement === first) {
+                event.preventDefault();
+                last?.focus();
+              } else if (!event.shiftKey && document.activeElement === last) {
+                event.preventDefault();
+                first?.focus();
+              }
+            }
+          : undefined
+      }
+      className={`fixed inset-0 ${modal ? 'z-[150]' : 'z-[100]'} flex flex-col bg-charcoal/95 backdrop-blur-xl`}
+    >
       {/* Header */}
       <div className="flex h-20 items-center justify-between px-6">
         <div className="flex flex-col">
@@ -119,7 +204,9 @@ export function OriginalPhotosViewer({
           </span>
         </div>
         <button
+          ref={closeRef}
           type="button"
+          aria-label={t('common.close', 'Close')}
           onClick={onClose}
           data-testid="action-close-viewer"
           className="flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20 active:scale-95"
@@ -136,7 +223,7 @@ export function OriginalPhotosViewer({
       >
         <AnimatePresence initial={false} custom={direction}>
           <motion.div
-            key={currentIndex}
+            key={`${recipeId}:${currentPhotoIndex}:${selection.generation}`}
             custom={direction}
             variants={{
               enter: (dir: number) => ({
@@ -181,6 +268,12 @@ export function OriginalPhotosViewer({
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={imageUrl}
+                onLoad={() => {
+                  if (currentImageEntry.current === imageEntry) setLoadedImage(imageEntry);
+                }}
+                onError={() => {
+                  if (currentImageEntry.current === imageEntry) setLoadedImage(null);
+                }}
                 alt={`Recipe photo ${currentIndex + 1}`}
                 className="max-h-full max-w-full object-contain select-none pointer-events-none"
                 draggable={false}
@@ -193,7 +286,12 @@ export function OriginalPhotosViewer({
         <button
           type="button"
           onClick={toggleZoom}
-          className={`absolute bottom-10 right-6 flex h-14 items-center justify-center rounded-full bg-terracotta text-white shadow-2xl transition-all hover:scale-105 active:scale-95 ${
+          aria-label={
+            scale > 1
+              ? t('recipes.fitToScreen', 'Fit to Screen')
+              : `${t('recipes.viewOriginal', 'View Original')} ×2.5`
+          }
+          className={`absolute bottom-10 right-6 flex h-14 items-center justify-center rounded-full bg-terracotta hover:bg-terracotta-600 active:bg-terracotta-700 text-white shadow-2xl transition-all hover:scale-105 active:scale-95 ${
             scale > 1 ? 'px-6 gap-2' : 'w-14'
           }`}
         >
@@ -214,6 +312,7 @@ export function OriginalPhotosViewer({
           <button
             type="button"
             onClick={handlePrev}
+            aria-label={t('cook.back', 'Back')}
             className="absolute left-6 top-1/2 -translate-y-1/2 flex h-14 w-14 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur-md transition hover:bg-white/20"
           >
             <ChevronLeft size={32} />
@@ -221,6 +320,7 @@ export function OriginalPhotosViewer({
           <button
             type="button"
             onClick={handleNext}
+            aria-label={t('cook.next', 'Next')}
             className="absolute right-6 top-1/2 -translate-y-1/2 flex h-14 w-14 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur-md transition hover:bg-white/20"
           >
             <ChevronRight size={32} />
@@ -233,27 +333,44 @@ export function OriginalPhotosViewer({
         <button
           type="button"
           onClick={handlePrev}
+          aria-label={t('cook.back', 'Back')}
           className="flex h-14 flex-1 items-center justify-center rounded-2xl bg-white/5 text-white/60 active:bg-white/10 sm:hidden"
         >
           <ChevronLeft size={24} />
         </button>
-        <div className="flex gap-2">
+        <div className={modal ? 'flex min-w-0 gap-2 overflow-x-auto' : 'flex gap-2'}>
           {imageIndices.map((_, idx) => (
             <button
               key={idx}
+              aria-label={`${t('recipes.viewOriginal', 'View Original')} ${idx + 1} / ${imageCount}`}
+              aria-current={modal && idx === currentIndex ? 'true' : undefined}
               onClick={() => {
                 setDirection(idx > currentIndex ? 1 : -1);
-                setCurrentIndex(idx);
+                selectImage(idx);
               }}
-              className={`h-1.5 rounded-full transition-all duration-300 ${
-                idx === currentIndex ? 'w-8 bg-terracotta' : 'w-2 bg-white/20'
-              }`}
-            />
+              className={
+                modal
+                  ? 'flex h-11 min-w-11 shrink-0 items-center justify-center rounded-full focus-visible:ring-2 focus-visible:ring-white'
+                  : `h-1.5 rounded-full transition-all duration-300 ${
+                      idx === currentIndex
+                        ? 'w-8 bg-terracotta hover:bg-terracotta-600 active:bg-terracotta-700'
+                        : 'w-2 bg-white/20'
+                    }`
+              }
+            >
+              {modal && (
+                <span
+                  aria-hidden="true"
+                  className={`h-1.5 rounded-full ${idx === currentIndex ? 'w-8 bg-terracotta' : 'w-2 bg-white/40'}`}
+                />
+              )}
+            </button>
           ))}
         </div>
         <button
           type="button"
           onClick={handleNext}
+          aria-label={t('cook.next', 'Next')}
           className="flex h-14 flex-1 items-center justify-center rounded-2xl bg-white/5 text-white/60 active:bg-white/10 sm:hidden"
         >
           <ChevronRight size={24} />

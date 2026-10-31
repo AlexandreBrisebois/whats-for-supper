@@ -1,7 +1,9 @@
+import { observeOpening } from '@/lib/telemetry/opening';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => {
+  let wide = false;
   const push = vi.fn();
   const replace = vi.fn();
   const setWeekOffset = vi.fn();
@@ -28,6 +30,10 @@ const mocks = vi.hoisted(() => {
   let locale: 'en' | 'fr' = 'en';
 
   return {
+    getWide: () => wide,
+    setWide: (value: boolean) => {
+      wide = value;
+    },
     getLocale: () => locale,
     setLocale: (value: 'en' | 'fr') => {
       locale = value;
@@ -67,7 +73,10 @@ const mocks = vi.hoisted(() => {
   };
 });
 
+vi.mock('@/hooks/useMediaQuery', () => ({ useMediaQuery: () => mocks.getWide() }));
+
 vi.mock('next/navigation', () => ({
+  usePathname: () => '/planner',
   useRouter: () => ({ push: mocks.push, replace: mocks.replace }),
   useSearchParams: () => new URLSearchParams(mocks.getSearchParams()),
 }));
@@ -254,7 +263,9 @@ vi.mock('@/components/recipes/RecipeDetailSheet', () => ({
 }));
 
 vi.mock('@/components/planner/GroceryList', () => ({
-  GroceryList: () => null,
+  GroceryList: ({ weekOffset, isEmbedded }: { weekOffset: number; isEmbedded?: boolean }) => (
+    <div data-testid="mock-grocery" data-week={weekOffset} data-embedded={!!isEmbedded} />
+  ),
 }));
 
 vi.mock('@/components/home/SkipRecoveryDialog', () => ({
@@ -303,6 +314,7 @@ function setCalendar(today = '2026-05-13', lifetime = 60_000) {
   return calendar;
 }
 beforeEach(() => {
+  mocks.setWide(false);
   mocks.setLocale('en');
   ensureCalendar.mockReset().mockRejectedValue(new Error('Calendar unavailable'));
   useTodayStore.setState({
@@ -428,6 +440,37 @@ describe('PlannerPage voting action row', () => {
       value: mockShare,
     });
   });
+
+  for (const locale of ['en', 'fr'] as const) {
+    it.each([
+      [1, '1 voted', '1 vote'],
+      [2, '2 voted', '2 votes'],
+      [12, '12 voted', '12 votes'],
+      [0, 'Chosen', 'Choisie'],
+      [undefined, 'Chosen', 'Choisie'],
+    ] as const)(`localizes assigned and pending counts in ${locale}: %s`, (count, en, fr) => {
+      mocks.setLocale(locale);
+      const view = renderPlanner(0);
+      const state = mocks.getWeekState();
+      state.schedule[0].recipe.voteCount = count;
+      state.schedule[1] = {
+        ...state.schedule[1],
+        recipe: { ...state.schedule[0].recipe, voteCount: 12 },
+        _isPending: true,
+        _voteCount: count,
+      };
+      // Missing metadata falls back to the recipe count; missing both uses chosen.
+      if (count === undefined) state.schedule[1].recipe.voteCount = undefined;
+      mocks.setWeekState({ ...state });
+      view.rerender(<PlannerPage />);
+      for (const index of [0, 1]) {
+        const row = within(screen.getByTestId(`day-card-${index}`));
+        expect(row.getByTestId('vote-count').textContent).toBe(locale === 'fr' ? fr : en);
+        expect(row.queryByTestId('change-recipe-button') !== null).toBe(index === 0);
+      }
+      expect(mocks.assignRecipe).not.toHaveBeenCalled();
+    });
+  }
 
   it.each([
     ['en', '2026-05-10', 'May 4 — 10', 'Mon', 'May'],
@@ -932,6 +975,46 @@ describe('Planner keyboard movement', () => {
     expect(mocks.commitMove).toHaveBeenCalledWith(0, 1, snapshot);
   });
 
+  it('does not let delayed move focus override a newer focus choice', () => {
+    let finishFrame!: FrameRequestCallback;
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+      finishFrame = callback;
+      return 1;
+    });
+    const rendered = renderPlanner(0);
+    const source = within(screen.getByTestId('day-card-0')).getByTestId('planner-drag-handle');
+    source.focus();
+    fireEvent.keyDown(source, { key: 'ArrowDown' });
+    // The destination becomes occupied after the optimistic render.
+    const state = mocks.getWeekState();
+    mocks.setWeekState({ ...state, schedule: makeAssignedSchedule('2026-05-17', 1) });
+    rendered.rerender(<PlannerPage />);
+    const view = screen.getByTestId('next-week');
+    view.focus();
+    act(() => finishFrame(16));
+    expect(view).toHaveFocus();
+  });
+
+  it('follows the moved recipe when its source handle disappears and focus is otherwise unclaimed', () => {
+    let finishFrame!: FrameRequestCallback;
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+      finishFrame = callback;
+      return 1;
+    });
+    const view = renderPlanner(0);
+    const source = within(screen.getByTestId('day-card-0')).getByTestId('planner-drag-handle');
+    source.focus();
+    fireEvent.keyDown(source, { key: 'ArrowDown' });
+    const state = mocks.getWeekState();
+    mocks.setWeekState({ ...state, schedule: makeAssignedSchedule('2026-05-17', 1) });
+    view.rerender(<PlannerPage />);
+    expect(source).not.toBeInTheDocument();
+    act(() => finishFrame(16));
+    expect(
+      within(screen.getByTestId('day-card-1')).getByTestId('planner-drag-handle')
+    ).toHaveFocus();
+  });
+
   it('does not submit a keyboard move beyond the week boundary', () => {
     renderPlanner(0);
     const handle = within(screen.getByTestId('day-card-0')).getByTestId('planner-drag-handle');
@@ -1401,5 +1484,61 @@ describe('Planner day emphasis', () => {
     expect(ensureCalendar).toHaveBeenCalledTimes(1);
     expect(mocks.assignRecipe).not.toHaveBeenCalled();
     expect(mocks.commitMove).not.toHaveBeenCalled();
+  });
+});
+
+describe('Planner presentation composition', () => {
+  it('observes rendered primary and companion, preserving tab/week through loading and resize', () => {
+    const submit = vi.fn().mockResolvedValue(undefined);
+    const doc = document; // Production declaration and coordinator use the same document.
+    vi.spyOn(doc, 'visibilityState', 'get').mockReturnValue('visible');
+    const view = renderPlanner(0, '2026-05-17', 1);
+    observeOpening(doc, true, '/planner', submit);
+    expect(submit.mock.calls.at(-1)?.[0].screen).toBe('planner');
+    fireEvent.click(screen.getByTestId('grocery-tab'));
+    expect(mocks.setActiveTab).toHaveBeenCalledWith('grocery');
+    observeOpening(doc, true, '/planner', submit);
+    expect(submit).toHaveBeenCalledTimes(2); // click alone is not presentation
+    mocks.setPlannerState({ ...mocks.getPlannerState(), activeTab: 'grocery' });
+    mocks.setWeekState({ ...mocks.getWeekState(), isLoading: true, schedule: [] });
+    view.rerender(<PlannerPage />);
+    observeOpening(doc, true, '/planner', submit);
+    expect(screen.queryByTestId('mock-grocery')).toBeNull();
+    expect(submit).toHaveBeenCalledTimes(2); // still the loading shell
+    mocks.setWide(true);
+    view.rerender(<PlannerPage />);
+    observeOpening(doc, true, '/planner', submit);
+    expect(screen.getAllByTestId('mock-grocery')).toHaveLength(1);
+    expect(screen.getByTestId('mock-grocery')).toHaveAttribute('data-embedded', 'true');
+    expect(submit.mock.calls.at(-1)?.[0].eventName).toBe('pwa.surface.opened');
+    mocks.setWide(false);
+    view.rerender(<PlannerPage />);
+    observeOpening(doc, true, '/planner', submit);
+    expect(submit.mock.calls.at(-1)?.[0].eventName).toBe('pwa.surface.closed');
+    mocks.setWeekState({ ...mocks.getWeekState(), isLoading: false });
+    view.rerender(<PlannerPage />);
+    observeOpening(doc, true, '/planner', submit);
+    expect(screen.getAllByTestId('mock-grocery')).toHaveLength(1);
+    expect(submit.mock.calls.at(-1)?.[0].screen).toBe('planner.grocery');
+    mocks.setWide(true);
+    view.rerender(<PlannerPage />);
+    observeOpening(doc, true, '/planner', submit);
+    expect(screen.getAllByTestId('mock-grocery')).toHaveLength(1);
+    expect(screen.getByTestId('mock-grocery')).toHaveAttribute('data-embedded', 'true');
+    expect(submit.mock.calls.slice(-2).map(([e]) => [e.eventName, e.screen])).toEqual([
+      ['pwa.screen.presented', 'planner'],
+      ['pwa.surface.opened', 'planner.grocery'],
+    ]);
+    mocks.setWide(false);
+    view.rerender(<PlannerPage />);
+    observeOpening(doc, true, '/planner', submit);
+    expect(screen.getByTestId('mock-grocery')).toHaveAttribute('data-embedded', 'false');
+    expect(screen.getByTestId('mock-grocery')).toHaveAttribute('data-week', '1');
+    expect(mocks.getPlannerState().activeTab).toBe('grocery');
+    expect(submit.mock.calls.slice(-2).map(([e]) => [e.eventName, e.screen])).toEqual([
+      ['pwa.surface.closed', 'planner.grocery'],
+      ['pwa.screen.presented', 'planner.grocery'],
+    ]);
+    expect(JSON.stringify(submit.mock.calls)).not.toMatch(/2026-|Carbonara|weekOffset/);
   });
 });

@@ -1,8 +1,13 @@
+import { createUntypedNodeFromDiscriminatorValue } from '@microsoft/kiota-abstractions';
+import { JsonParseNode } from '@microsoft/kiota-serialization-json';
 import { demoFetch } from './demo-session';
 import { apiClient, requestAdapter } from './api-client';
 import { useFamilyStore } from '@/store/familyStore';
 import { usePlannerStore } from '@/store/plannerStore';
 import { getFamilyMemberIdCookie } from '@/lib/identity/cookie';
+import type { IssueResultReason } from '@/lib/telemetry/issue-results';
+import { ImportReportRequestBuilderRequestsMetadata } from './generated/api/recipes/item/importReport';
+import { createRecipeImportReportSubmissionResponseDtoFromDiscriminatorValue } from './generated/models';
 import { RecipeShareInfoDto_bundleSourceObject } from './generated/models/index';
 import type {
   ImportedRecipeDto,
@@ -240,21 +245,134 @@ export interface RecipeImportReportSubmission {
   reimportStarted: boolean;
   importId: string | null;
   reimportLaunchFailed: boolean;
+  issueResult: IssueResultReason;
+}
+
+// Local observation only: inspect generated values before product defaults erase
+// absent/invalid flags. None of the inspected detail or identities is exported.
+function classifyIssueSubmission(value: unknown, submittedId: string): IssueResultReason {
+  const record = (input: unknown): input is Record<string, unknown> =>
+    !!input && typeof input === 'object' && !Array.isArray(input);
+  if (!record(value) || !record(value.recipe)) return 'unconfirmed';
+  const result = value;
+  const detail = value.recipe;
+  const issue = detail.importIssue;
+  const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const validDate = (input: unknown) => {
+    if (typeof input !== 'string') return false;
+    // Date.parse accepts non-date-time strings and normalizes impossible days.
+    // Validate the raw contract clock before the generated decoder can do either.
+    const parts =
+      /^(\d{4})-(\d{2})-(\d{2})[tT](\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(?:[zZ]|[+-](\d{2}):(\d{2}))$/.exec(
+        input
+      );
+    if (!parts) return false;
+    const [, year, month, day, hour, minute, second, offsetHour, offsetMinute] = parts;
+    const y = Number(year),
+      m = Number(month),
+      d = Number(day);
+    const leap = y % 4 === 0 && (y % 100 !== 0 || y % 400 === 0);
+    const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+    return (
+      m >= 1 &&
+      m <= 12 &&
+      d >= 1 &&
+      d <= days[m - 1] &&
+      Number(hour) < 24 &&
+      Number(minute) < 60 &&
+      Number(second) < 60 &&
+      (offsetHour === undefined || (Number(offsetHour) < 24 && Number(offsetMinute) < 60)) &&
+      Number.isFinite(Date.parse(input))
+    );
+  };
+  const nullableString = (input: unknown) => input === null || typeof input === 'string';
+  if (
+    typeof result.reimportStarted !== 'boolean' ||
+    typeof result.reimportLaunchFailed !== 'boolean' ||
+    !Object.hasOwn(result, 'importId') ||
+    !validDate(result.updatedAt) ||
+    typeof detail.id !== 'string' ||
+    !uuid.test(detail.id) ||
+    detail.id.toLowerCase() !== submittedId.toLowerCase() ||
+    !validDate(detail.createdAt) ||
+    !nullableString(detail.name) ||
+    !nullableString(detail.imageUrl) ||
+    typeof detail.sourceType !== 'string' ||
+    !['url', 'photos', 'synthesized'].includes(detail.sourceType) ||
+    typeof detail.canReimport !== 'boolean' ||
+    typeof detail.isReady !== 'boolean' ||
+    typeof detail.imageCount !== 'number' ||
+    !Number.isInteger(detail.imageCount) ||
+    detail.imageCount < 0 ||
+    typeof detail.finishedDishIndex !== 'number' ||
+    !Number.isInteger(detail.finishedDishIndex) ||
+    detail.finishedDishIndex < -1 ||
+    !record(issue) ||
+    typeof issue.status !== 'string' ||
+    !['reported', 'readyToReview'].includes(issue.status) ||
+    !Array.isArray(issue.reasons) ||
+    issue.reasons.length === 0 ||
+    !issue.reasons.every(
+      (reason) =>
+        typeof reason === 'string' && ['ingredients', 'steps', 'duplicate'].includes(reason)
+    ) ||
+    new Set(issue.reasons).size !== issue.reasons.length ||
+    !nullableString(issue.note) ||
+    (typeof issue.note === 'string' && issue.note.length > 500) ||
+    !nullableString(issue.reimportFailureMessage) ||
+    !(
+      issue.reimportFailureImportId === null ||
+      (typeof issue.reimportFailureImportId === 'string' &&
+        uuid.test(issue.reimportFailureImportId))
+    ) ||
+    typeof issue.isReimporting !== 'boolean'
+  )
+    return 'unconfirmed';
+  if (result.reimportStarted) {
+    return !result.reimportLaunchFailed &&
+      typeof result.importId === 'string' &&
+      uuid.test(result.importId) &&
+      issue.isReimporting
+      ? 'processing_acknowledged'
+      : 'unconfirmed';
+  }
+  if (result.importId !== null || issue.isReimporting) return 'unconfirmed';
+  return result.reimportLaunchFailed ? 'saved_launch_failed' : 'saved_manual';
 }
 
 export async function saveRecipeImportIssue(
   id: string,
   draft: RecipeImportIssueDraft
 ): Promise<RecipeImportReportSubmission> {
-  const result: RecipeImportReportSubmissionResponseDto | undefined = await apiClient.api.recipes
+  const request = apiClient.api.recipes
     .byId(id as any)
-    .importReport.post(draft);
+    .importReport.toPostRequestInformation(draft);
+  let issueResult: IssueResultReason = 'unconfirmed';
+  // Use the generated request, response decoder and exact error mappings. This
+  // per-call parse hook inspects raw typed nodes before lossy generated decoding;
+  // it retains only a closed classification and never alters product decoding.
+  const result = await requestAdapter.send<RecipeImportReportSubmissionResponseDto>(
+    request,
+    (node) => {
+      try {
+        issueResult = classifyIssueSubmission(
+          unwrapUntypedNode(node?.getObjectValue(createUntypedNodeFromDiscriminatorValue)),
+          id
+        );
+      } catch {
+        issueResult = 'unconfirmed';
+      }
+      return createRecipeImportReportSubmissionResponseDtoFromDiscriminatorValue(node);
+    },
+    ImportReportRequestBuilderRequestsMetadata.post!.errorMappings
+  );
   if (!result?.recipe) throw new Error('Recipe not found');
   return {
     recipe: mapToRecipe(result.recipe),
     reimportStarted: result.reimportStarted === true,
     importId: result.importId ? String(result.importId) : null,
     reimportLaunchFailed: result.reimportLaunchFailed === true,
+    issueResult,
   };
 }
 
@@ -593,7 +711,12 @@ export async function updateRecipe(
     name: updates.name,
     description: updates.description,
     ingredients: updates.ingredients,
-    recipeInstructions: updates.recipeInstructions as any,
+    recipeInstructions:
+      updates.recipeInstructions === undefined
+        ? undefined
+        : new JsonParseNode(updates.recipeInstructions).getObjectValue(
+            createUntypedNodeFromDiscriminatorValue
+          ),
     notes: updates.notes,
     rating: updates.rating,
     isDiscoverable: updates.isDiscoverable,

@@ -14,7 +14,7 @@ export function QuickCaptureTrigger() {
       className="group relative flex items-center justify-between w-full bg-white text-charcoal p-4 sm:p-6 rounded-[2.5rem] border-2 border-charcoal/5 transition-all active:scale-[0.98] hover:border-terracotta/20"
     >
       <div className="flex items-center gap-3 sm:gap-5">
-        <div className="flex h-11 w-11 sm:h-14 sm:w-14 items-center justify-center rounded-full bg-terracotta/10 text-terracotta transition-colors group-hover:bg-terracotta group-hover:text-white">
+        <div className="flex h-11 w-11 sm:h-14 sm:w-14 items-center justify-center rounded-full bg-terracotta/10 text-terracotta-600 transition-colors group-hover:bg-terracotta group-hover:text-white">
           <Camera size={32} strokeWidth={2} />
         </div>
         <div className="flex flex-col">

@@ -136,14 +136,6 @@ Choosing a loaded member in the Profile menu SHALL close the menu, request that 
 - **THEN** selection of that member is requested again, the menu closes, onboarding is marked complete and Home navigation is requested
 - **AND** the active member remains that member without creating another member
 
-### Requirement: Continue from Profile with the loaded selected member
-
-When Profile has a loaded selected member, it SHALL offer a Continue-as control displaying that member's name. Activating it SHALL request Home navigation without requesting member selection, writing identity cookies or changing onboarding completion. Subsequent page access and identity checks SHALL follow existing requirements.
-
-#### Scenario: Continue as the selected member
-- **WHEN** Profile has a loaded selected member and a person activates Continue-as
-- **THEN** Home navigation is requested for the existing context without requesting a new selection, writing identity cookies or changing onboarding completion
-
 ### Requirement: Attribute initial URL and photo captures to the bound member
 
 For authorized ordinary-household URL or photo capture with an existing bound member, when initial persistence succeeds, the API SHALL record that member's ID as `addedBy` in both the recipe row and initial recipe metadata. This attribution SHALL identify the submitting member without establishing a personal account or exclusive ownership of the shared recipe. Capture acceptance, dispatch and readiness SHALL follow recipe-capture requirements.
@@ -223,3 +215,95 @@ For API actions using shared member-context binding, a parseable GUID in `X-Fami
 #### Scenario: Neither transport supplies a GUID
 - **WHEN** neither member header nor member cookie contains a parseable GUID
 - **THEN** binding supplies no member identity and the action applies its own missing-context response
+
+### Requirement: Present Profile as a coherent Solar Earth household surface
+
+Profile SHALL use a warm cream canvas, rounded light surfaces and soft depth consistent with the shared app shell. Its existing localised title and member name SHALL lead the hierarchy, with supporting sentence-case labels at least 14 CSS px at default text size. Settings SHALL remain a recognisable secondary action. Existing member selection consequences SHALL remain governed by member-context requirements.
+
+#### Scenario: Returning member opens Profile
+- **WHEN** Profile displays a loaded selected member
+- **THEN** the page presents its localised title, active member name, member chooser, language preference and Settings in a clear reading order
+- **AND** the page uses cream and light rounded surfaces with soft elevation rather than an additional fixed white-ended background gradient
+- **AND** labels use readable sentence case rather than tiny tracked uppercase text
+
+#### Scenario: Profile has no loaded selected member
+- **WHEN** Profile renders without a loaded member matching the selected ID
+- **THEN** the chooser displays its localised selection prompt without inventing an active name
+- **AND** Settings remains reachable
+
+### Requirement: Expose Profile member-menu state and keyboard operation
+
+The Profile member chooser SHALL expose whether its choices are expanded and associate the trigger with the choices. Named choices SHALL be keyboard reachable, expose the current member semantically and show a non-colour current-member cue. Escape from within the open chooser SHALL dismiss it and return focus to its trigger without changing identity, onboarding completion or route.
+
+#### Scenario: Inspect and operate the open chooser
+- **WHEN** a keyboard user opens the Profile member chooser
+- **THEN** expanded state and associated named choices are available to assistive technology
+- **AND** the user can reach and activate a choice using the keyboard
+- **AND** any current member has a visible check cue and an accessible current-member indication using case-insensitive ID matching
+
+#### Scenario: Leave the chooser with Escape
+- **WHEN** the chooser is open and Escape is pressed with focus inside it
+- **THEN** the choices close and focus returns to the trigger
+- **AND** member selection, identity cookies, onboarding completion and route are unchanged by dismissal
+
+### Requirement: Keep Profile controls readable and reachable as space changes
+
+Profile SHALL preserve complete member names and action labels without horizontal page overflow at 320 CSS px width and at 200 percent text enlargement. Its open member choices SHALL remain scrollable when they exceed available space. Interactive targets SHALL be at least 48 by 48 CSS px, have visible keyboard focus and remain reachable above or through scrolling past the fixed navigation area.
+
+#### Scenario: Long names and French expansion
+- **WHEN** Profile shows a long member name and French labels at narrow width or enlarged text
+- **THEN** text wraps without covering Settings, clipping choices or shrinking labels to fit
+- **AND** member selection and both language controls remain reachable
+
+#### Scenario: Household choices exceed the viewport
+- **WHEN** the open member choices exceed the available viewport height
+- **THEN** every choice can be reached by scrolling and keyboard navigation
+- **AND** the focused choice is not hidden behind fixed navigation
+
+### Requirement: Maintain readable Profile foreground and control states
+
+Profile SHALL provide text contrast of at least 4.5:1 for ordinary text and 3:1 for qualifying large text on actual rendered backgrounds. Essential control boundaries, state cues and focus indicators SHALL have at least 3:1 contrast against adjacent colours. Enabled secondary actions SHALL remain visibly available and selected state SHALL not depend on colour alone.
+
+#### Scenario: Review normal and interactive states
+- **WHEN** Profile is displayed in its normal, open-menu, focused, hovered or pressed state
+- **THEN** text and essential control cues meet the stated contrast on the composite background
+- **AND** Settings remains recognisable as an enabled action
+
+### Requirement: Make Profile ready without staged entrance motion
+
+Profile SHALL present its essential controls without delayed entrance staging. With reduced motion requested, Profile and its member chooser SHALL omit entrance translation, zoom, chevron rotation animation and pulsing loading effects while retaining visible loading and expanded-state information. Loading SHALL retain a stable chooser footprint and an accessible localised loading description.
+
+#### Scenario: Loading members with reduced motion
+- **WHEN** Profile is loading family members and reduced motion is requested
+- **THEN** it displays a stable non-pulsing placeholder with localised loading information
+- **AND** Settings and available language controls remain usable
+
+#### Scenario: Open loaded Profile with reduced motion
+- **WHEN** Profile has loaded members and reduced motion is requested
+- **THEN** its controls are visible without an entrance delay and the chooser opens without translation or zoom
+- **AND** expanded state remains understandable without animation
+
+### Requirement: Keep Profile title without redundant member instructions
+
+Profile SHALL retain the exact title `Table's Set!` in English and `À table !` in French. Profile SHALL NOT render the instructional subtitle or a separate Continue-as action, including during loading or when there is no matching selected member. The member chooser SHALL remain the member-selection control, governed by the existing menu, selection and dismissal requirements.
+
+#### Scenario: Loaded Profile in either supported locale
+- **WHEN** Profile displays a loaded selected member in English or French
+- **THEN** its heading is exactly `Table's Set!` or `À table !`, respectively
+- **AND** neither the instructional subtitle nor a separate Continue-as action is rendered
+- **AND** the selected member remains displayed in the chooser and Settings and language controls remain available
+
+#### Scenario: Profile members are loading
+- **WHEN** Profile is loading family members
+- **THEN** its localised title and existing loading placeholder are displayed without the instructional subtitle or a Continue-as action
+- **AND** Settings and available language controls remain usable
+
+#### Scenario: Profile has no matching selected member
+- **WHEN** Profile renders without a loaded member matching the selected ID
+- **THEN** its localised title and chooser selection prompt are displayed without the instructional subtitle or a Continue-as action
+- **AND** Settings and language controls remain available
+
+#### Scenario: Continue through the current member choice
+- **WHEN** a person opens the loaded Profile chooser and activates the current member
+- **THEN** the existing current-member selection behavior closes the menu, requests selection again, marks onboarding complete and requests Home
+- **AND** removing the separate Continue-as action does not introduce automatic navigation when Profile loads or the chooser is dismissed

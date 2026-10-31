@@ -1,5 +1,7 @@
 'use client';
 
+import { useSurfacePresentation } from '@/components/telemetry/useSurfacePresentation';
+
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
 import type { NonCookingPlanDto } from '@/lib/api/generated/models';
 import { t } from '@/locales';
@@ -16,6 +18,7 @@ interface Props {
 }
 
 export function NonCookingDaySheet({ date, plan, onSave, onClear, onClose }: Props) {
+  useSurfacePresentation('planning.non_cooking', true);
   const [kind, setKind] = useState(plan?.kind ?? 'mystery');
   const [message, setMessage] = useState(plan?.customLabel ?? '');
   const [busy, setBusy] = useState(false);
@@ -207,7 +210,7 @@ export function NonCookingDaySheet({ date, plan, onSave, onClear, onClose }: Pro
             disabled={busy}
             onClick={() => submit()}
             data-testid="non-cooking-save"
-            className="w-full min-h-12 rounded-2xl bg-terracotta-600 px-4 py-3 font-bold text-white hover:bg-terracotta-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-terracotta disabled:opacity-50"
+            className="w-full min-h-12 rounded-2xl bg-terracotta active:bg-terracotta-700 px-4 py-3 font-bold text-white hover:bg-terracotta-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-terracotta disabled:opacity-50"
           >
             {busy ? t('planner.savingPlan', 'Saving…') : t('common.save', 'Save')}
           </button>

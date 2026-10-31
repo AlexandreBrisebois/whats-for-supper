@@ -6,7 +6,7 @@
   "start_url": "/",
   "display": "standalone",
   "background_color": "#FDFCF0",
-  "theme_color": "#CD5D45",
+  "theme_color": "#B85542",
   "orientation": "portrait",
   "categories": ["lifestyle", "utilities"],
   "icons": [
@@ -50,7 +50,7 @@
       "name": "Quick Find",
       "short_name": "Find",
       "description": "Quickly find something to cook",
-      "url": "/discovery",
+      "url": "/recipes",
       "icons": [
         {
           "src": "/android-chrome-192x192.png",

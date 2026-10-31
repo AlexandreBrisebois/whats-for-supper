@@ -27,6 +27,7 @@ interface FamilyState {
   _hasHydrated: boolean;
   hasLoaded: boolean;
   familySettings: Record<string, unknown>;
+  gotoMembershipVersion: number;
 
   setFamilyMembers: (members: FamilyMember[]) => void;
   selectFamilyMember: (id: string | null) => Promise<void>;
@@ -62,6 +63,7 @@ export const useFamilyStore = create<FamilyState>((set, get) => ({
   _hasHydrated: typeof window !== 'undefined',
   hasLoaded: false,
   familySettings: {},
+  gotoMembershipVersion: 0,
 
   setFamilyMembers: (members) => set({ familyMembers: members }),
 
@@ -234,8 +236,11 @@ export const useFamilyStore = create<FamilyState>((set, get) => ({
   },
 
   loadGoTo: async () => {
+    const version = get().gotoMembershipVersion;
     try {
       const response = await apiClient.api.goto.get();
+      if (version !== get().gotoMembershipVersion)
+        return (get().familySettings.family_goto as GoToListDto) ?? { items: [] };
       const value = response?.data ?? { items: [] };
       set((state) => ({
         familySettings: { ...state.familySettings, family_goto: value },
@@ -251,6 +256,7 @@ export const useFamilyStore = create<FamilyState>((set, get) => ({
     await apiClient.api.goto.put(dto);
     set((state) => ({
       familySettings: { ...state.familySettings, family_goto: dto },
+      gotoMembershipVersion: state.gotoMembershipVersion + 1,
     }));
   },
 

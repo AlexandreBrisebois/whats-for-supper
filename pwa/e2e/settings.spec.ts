@@ -6,7 +6,7 @@ import { MOCK_IDS, setupCommonRoutes, builders, mockFeatureFlags } from './mock-
 // covered by FailedCapturesSection.test.tsx. No E2E seam needed here.
 // ────────────────────────────────────────────────────────────────────────────
 
-test.describe('Settings — FamilyGOTOSettings card', () => {
+test.describe('Settings — family and app preferences', () => {
   test.beforeEach(async ({ page }) => {
     const baseUrl = process.env.BASE_URL || 'http://127.0.0.1:3000';
     const origins = [
@@ -261,7 +261,7 @@ test.describe('Settings — FamilyGOTOSettings card', () => {
 
     // 2. Switch to French and wait for the UI to update optimistically
     await page.getByTestId('locale-btn-fr').click();
-    await expect(page.getByTestId('locale-btn-fr')).toHaveClass(/(?:^| )bg-terracotta(?:$| )/, {
+    await expect(page.getByTestId('locale-btn-fr')).toHaveAttribute('aria-pressed', 'true', {
       timeout: 5000,
     });
 
@@ -269,14 +269,16 @@ test.describe('Settings — FamilyGOTOSettings card', () => {
     await page.goto('/home');
     await page.goto('/profile');
 
-    // French button must still be active (bg-terracotta as a standalone class)
+    // French remains the resolved selection after navigation.
     const frenchBtn = page.getByTestId('locale-btn-fr');
     await expect(frenchBtn).toBeVisible({ timeout: 10000 });
-    await expect(frenchBtn).toHaveClass(/(?:^| )bg-terracotta(?:$| )/);
+    await expect(frenchBtn).toHaveAttribute('aria-pressed', 'true');
+    await expect(frenchBtn.locator('[data-language-check]')).toBeVisible();
 
-    // English button must be inactive (only has hover:bg-white/70, not standalone bg-terracotta)
+    // English remains enabled and is not the resolved selection.
     const englishBtn = page.getByTestId('locale-btn-en');
-    await expect(englishBtn).not.toHaveClass(/(?:^| )bg-terracotta(?:$| )/);
+    await expect(englishBtn).toHaveAttribute('aria-pressed', 'false');
+    await expect(englishBtn).toBeEnabled();
 
     // Restore English so other tests are not affected
     await englishBtn.click();
@@ -349,4 +351,31 @@ test.describe('Settings — FamilyGOTOSettings card', () => {
     await page.getByTestId('invite-dialog-close').click();
     await expect(page.getByTestId('invite-dialog')).not.toBeVisible();
   });
+});
+
+test('GOTO management and star rendered review', async ({ page, baseURL }) => {
+  await setupCommonRoutes(page);
+  await page
+    .context()
+    .addCookies([{ name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: baseURL! }]);
+  await page.addInitScript(
+    (id) =>
+      localStorage.setItem(
+        'family-storage',
+        JSON.stringify({ state: { selectedFamilyMemberId: id }, version: 0 })
+      ),
+    MOCK_IDS.MEMBER_ALEX
+  );
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/profile/settings');
+  await expect(page.getByRole('button', { name: 'Manage GOTOs', exact: true })).not.toBeVisible();
+  await page.goto('/browse-all-stack');
+  await expect(page.getByTestId('browse-filter-goto')).toBeVisible();
+  await expect(page.getByTestId('goto-management-toggle')).toHaveCount(0);
+  await page.goto(`/recipes?open=${MOCK_IDS.RECIPE_LASAGNA}`);
+  await expect(page.getByTestId('action-set-goto')).toBeVisible();
+  await page.screenshot({ path: '../.task/goto-review/after/star-unselected.png', fullPage: true });
+  await page.getByTestId('action-set-goto').click();
+  await expect(page.getByTestId('action-current-goto')).toHaveAttribute('aria-pressed', 'true');
+  await page.screenshot({ path: '../.task/goto-review/after/star-selected.png', fullPage: true });
 });

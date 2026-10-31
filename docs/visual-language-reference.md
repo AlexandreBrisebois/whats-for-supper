@@ -1,13 +1,12 @@
-# Solar Earth visual language · v1
+# Solar Earth visual language · v2
 
 **Review reference, not an implementation specification.** This guide makes design
 intent visible without changing the app, its palette, components or behavior.
 Read it on demand for visual decisions; it is not a new startup requirement.
 
-Refined source snapshot: [`4682643`](https://github.com/AlexandreBrisebois/whats-for-supper/tree/4682643cd6086b66008fc77ede4570329e29b5ae),
-25 October 2026. **Current** means verified in source unless explicitly described
-as observed or reported. **Proposed** means a reviewable visual/copy choice, not
-shipped UI or permission to implement it. The boards are schematic, not screenshots.
+**Creative revision: 27 October 2026.** Alex reports that the implemented Home cards lost their refinement and cookbook feel; dark text on yellow is explicitly rejected for that Home direction. The planned-card and pivot cookbook treatments are implemented locally in Sessions 5–6 and reconciled in Session 7. The pre-refinement Home source snapshot was `e4d5be7e`; the original composition reference is its parent `a4d360558d35c2f79e9cca08a9d31638d8d25569`. Other journey examples retain their individually pinned source snapshots, not a new whole-app runtime audit.
+
+**Current** means source-verified unless explicitly reported/observed. **Proposed** means review guidance, not shipped UI or permission to implement. The boards show selected roles/states; they are not cookbook compositions or screenshots. A mathematically readable pair establishes readability only, not aesthetic fit.
 
 **No move away from green is agreed or proposed here.** The first boards
 underrepresented both sage and icons by concentrating on Home contrast examples.
@@ -31,14 +30,33 @@ reproduce screens; their placement and explanatory copy are not implemented UI.*
 
 ![Home state map: unplanned offers recipe selection or Order In; a suggestion is explicitly conceptual and unsaved; a planned meal offers Cook and Change Plan; non-cooking intent opens Planner; cooked offers Dismiss without undoing completion. Each sketch explains action consequences.](visual-language/02-home-state-map.svg)
 
-*Board 2: proposed hierarchy over source-verified state meanings, with a deliberately
-separate conceptual suggestion. Cards omit imagery/navigation and simplify current
-placement: Cook and Change Plan currently sit on the recipe card's reverse;
-Edit supper plan is currently the accessible intent of the whole non-cooking card,
-not a separate visible button. Neutral Quick Find / Change Plan examples do not
-retire their current indigo / terracotta roles. Ochre Cook, soft-sage non-cooking intent and the
-full-sage cooked card retain existing hue roles; their darker foregrounds are
-proposals. Sample recipe/context text is illustrative copy.*
+*Board 2: a schematic of state/action consequences, with conceptual suggestions clearly separate. It omits food imagery and cannot establish cookbook refinement. Cook, ready-GOTO confirmation and primary Quick Find now use terracotta/light text locally. Planned actions currently precede inline ingredients. Sage non-cooking/cooked roles and other Home sections remain unchanged; their board treatments are separate proposals.*
+
+## Refined family cookbook: the Home direction
+
+Food and the household's recipes should carry anticipation and belonging. At ordinary mobile text size, let generous near-square/portrait photography and a confident Outfit recipe title lead. Use cream/warm white surfaces, considered whitespace, coherent rounding and soft layered depth. Give supporting context a quiet readable rhythm. Do not flatten every surface or make each control equally prominent in pursuit of consistency.
+
+The user-supplied [Screenshot_20261026-212933.png](visual-language/references/Screenshot_20261026-212933.png) is the composition anchor: a portrait-shaped white card on cream, dominant nearly square photograph, deeply rounded image/card corners, substantial soft elevation, bold recipe title and a subtle blush duration pill. Preserve these qualities without reproducing faint tiny labels or hiding the new actions. The photograph need not be forced into a portrait crop simply because the overall card is portrait. The pivot reference [Screenshot_20261026-212918.png](visual-language/references/Screenshot_20261026-212918.png) shares the rounded frame, shadow and bold title but uses a wider image, then one primary and a compact row of two secondary actions. Let meal and pivot keep those distinct proportions within the same visual family. The pivot’s yellow primary and faint Order In are historical evidence, not treatments reinstated by using the screenshot. Navigation/Capture/voting shown in the references are outside this Home-card correction.
+
+This is a contemporary family cookbook within Solar Earth: keep Outfit/Inter and existing tokens/icons. It does not call for a new serif font, fake paper texture, rustic ornament, decorative badges or a new theme.
+
+| Home element | Local treatment (Sessions 5–6) | Preserve |
+|---|---|---|
+| Food image | Generous near-square meal photo and wider pivot crop, following their respective references; text/actions grow independently | Subject visibility, responsive reflow and navigation reachability |
+| Recipe title | Main typographic anchor, confident weight and comfortable wrapping | Full EN/FR title and stable readable background |
+| Context/duration | Quiet context; restrained blush terracotta duration pill as in the supplied reference, or small Clock cue when reflow needs it; no yellow badge | Existing localized Ready In wrapper, supplied units and missing-time behavior |
+| Cook / Make this tonight / primary Quick Find | Rich terracotta with light text; deeper terracotta for pressed state | One dominant action per card, clear label, contrast and focus |
+| Change plan / Order In | Quieter tonal or restrained-edge secondary treatment | Visibly enabled actions and generous hit areas |
+| Ingredients disclosure | Text-style label and chevron with transparent touch padding | Explicit expanded state, keyboard focus, 48 px target and local identity reset |
+| Empty/failed image | Modest icon and warm intentional spacing rather than a dominant gray image slab | Honest state, recipe identity, choices and no invented image/readiness |
+
+Ochre provides restrained accent warmth on these cards; dark text on a yellow action field is not this direction. This does not retire ochre from Discovery, voting or navigation. Sage retains its broad existing roles. A palette can preserve identity without using every hue as a filled action on every surface.
+
+A large touch target need not have a large visible border. Readable contrast does not require making all text the same weight or framing every action. On the planned card keep one primary, a quieter secondary and a text-style disclosure. On the ready pivot keep one primary above a compact row of secondary choices when they fit, as in its reference. Stack when wrapping needs it, rather than making a rigid equal-weight button column the default composition.
+
+**Sessions 5–7 observations:** matched light/dark photo renders restore the planned card’s near-square image, soft elevation, prominent title, blush duration and quiet outlined Change plan. Ingredient disclosure is text-style. The pivot retains a wider 5:4 photograph, one primary and compact icon-bearing secondary choices; French Home uses “Recherche”. Empty/failed images use a modest warm icon. EN/FR matrix and keyboard findings are recorded separately from automated results in the change tasks. This is an agent assessment, not blanket user approval. Local photo-filled comparison artifact: `.task/home-card-session7/final-photo-review.png`. The change tasks retain exact checks, failed earlier identities and qualification limits.
+
+**Visual acceptance:** use the two supplied screenshots as the respective original composition anchors and compare current/corrected cards with the same real food photograph, recipe content, locale and viewport. Add an original-source reconstruction where available, clearly distinguishing it from the supplied capture. Assess photography, type hierarchy, material/depth, action emphasis and adaptive layout separately. Include light/dark food photos and ordinary text before missing-image/long-title stress cases. A missing-image fixture, contrast report or passing browser suite cannot establish cookbook refinement. Record qualitative findings honestly; do not infer user approval from those checks. The [change design](../openspec/changes/archive/2026-10-27-home-meal-card-visual-hierarchy/design.md) provides the rubric and [tasks](../openspec/changes/archive/2026-10-27-home-meal-card-visual-hierarchy/tasks.md) preserve historical evidence and cookbook-session findings.
 
 ## Seven principles for consistent decisions
 
@@ -51,7 +69,7 @@ proposals. Sample recipe/context text is illustrative copy.*
    progress and celebration. The identity reference's shorthand is not an
    exhaustive inventory. Pair state with words/icons, not colour alone; preserve
    contextual roles instead of forcing every action to terracotta or green to success.
-3. **Choose readable pairs, not attractive swatches.** Measure actual text and
+3. **Choose pairs that fit and remain readable.** Use the creative direction to choose a fitting treatment, then measure actual text and
    control states on their composite backgrounds. Reuse darker existing variants
    before inventing colours. Pale surfaces can stay; faint essential text cannot.
 4. **Use type to explain hierarchy.** Preserve Outfit headings and Inter body/data.
@@ -106,16 +124,18 @@ Neither “all green is success” nor “all pale colour must go” follows fro
 
 ### Pair options, not palette replacement
 
-All proposed values already exist in [globals.css](../pwa/src/app/globals.css).
-These are **role recommendations**, not new runtime tokens or blanket replacements.
+All values below exist in [globals.css](../pwa/src/app/globals.css). The shared terracotta accent and primary default are now `#B85542`; hover uses `#A44A37`, and pressed uses `#7B3829`. Pale blush surfaces retain their existing tokens. Use the stronger terracotta-600 or terracotta-700 foreground on tinted surfaces; translucent text needs a separate actual-background contrast check.
+These are **measured options**, not a menu of equally suitable aesthetic choices or blanket replacements. For Home primary actions use the terracotta/light-text direction above. The ochre/charcoal pair is retained as contrast reference only; it is not a recommended Home action treatment.
 
 | Proposed role | Foreground / background | Ratio |
 |---|---|---:|
 | Body on warm canvas | charcoal `#1F2937` / cream `#FDFCF0` | 14.23:1 |
 | Supporting context | charcoal-600 `#4B5563` / cream | 7.33:1 |
-| Terracotta action option | white / terracotta-600 `#A44A37` | 5.81:1 |
-| Pressed terracotta option | white / terracotta-700 `#7B3829` | 8.61:1 |
-| Ochre emphasis label | charcoal / ochre `#E1AD01` | 7.12:1 |
+| Shared terracotta primary | cream / terracotta `#B85542` | 4.61:1 |
+| Shared terracotta primary | white / terracotta `#B85542` | 4.75:1 |
+| Hover terracotta | white / terracotta-600 `#A44A37` | 5.81:1 |
+| Pressed terracotta | white / terracotta-700 `#7B3829` | 8.61:1 |
+| Contrast reference only; not Home action guidance | charcoal / ochre `#E1AD01` | 7.12:1 |
 | Small text on substantial sage field | sage-900 `#1B1E12` / sage `#8A9A5B` | 5.52:1 |
 | Body on substantial sage field | charcoal / sage | 4.79:1 |
 | Dark sage action option | white / sage-700 `#525B37` | 7.22:1 |
@@ -132,20 +152,53 @@ does. Text contrast does not prove non-text contrast or overall conformance.
 
 For example, terracotta-600 against cream is 5.63:1, but ochre against cream is only
 2.00:1. If an ochre control needs its boundary to identify it, give it an appropriate
-contrasting edge; charcoal text alone does not fix that edge. The board's proposed
-secondary control uses charcoal-600 for text and edge. The separated terracotta-700
+contrasting edge; charcoal text alone does not fix that edge. The board's generic
+secondary-control specimen demonstrates contrast, not a requirement to outline every Home action. A text-style control can be identified by its label and indicator without a dark enclosing border. The separated terracotta-700
 focus outline is a visual recommendation, not evidence of implemented keyboard support.
 
-**Current risks, not a ban on brand colours:** the supplied Demo 0.1.25 inspection
+**Historical inspection, not a ban on brand colours:** the supplied Demo 0.1.25 inspection
 reported Tonight context at 10 px/900, charcoal 40% on white (2.35:1); active Home at
 11 px, terracotta on cream (3.88:1); and enabled Cook at 10 px, white on ochre
-(2.06:1). Source classes corroborate those roles. The independent opaque calculations
+(2.06:1). Those Tonight context/Cook roles predate Session 1 below; Home navigation
+is outside that change. The independent opaque calculations
 reproduce the latter two ratios; compositing charcoal at 40% over white also yields
 approximately 2.35:1. These are below the normal-text threshold. The reported 30 px
 charcoal recipe title on white is 14.68:1: preserve that strength. A different
 viewport, overlay or glass background requires a new measurement.
 
-**Proposed type starting points:** heading 28/34, context 16/24 semibold, body 16/24,
+**Current implementation, not the revised aesthetic target (Sessions 1–4):** the planned and pivot cards now
+use content-driven height, a bounded 4:3 image region (maximum 16 rem high), one
+restrained outer shadow, wrapping titles and vertically stacked actions. Context is
+16/24 semibold, supporting text is 14 px, and actions are 16 px semibold with
+at least 56 px unpressed height. The localized Ready In wrapper and duration units
+retain their uppercase formatting. Titles remain Outfit; body/actions remain Inter. These functional/contrast choices were implemented, but the shallow image, yellow primary and repeated framed controls are now being refined under the cookbook direction; earlier acceptance does not establish that new aesthetic outcome.
+Session 2 exposes Cook then Change plan on the initial planned card. A semantic
+View ingredients / Hide ingredients button reveals description and ingredients
+inline on white; empty ingredients have localized feedback. Non-control content
+does not toggle details. A new recipe identity collapses details; same-recipe
+hydration retains disclosure. Actions remain ahead of details in normal flow,
+without a flip or motion dependency.
+
+Session 3 implements the pivot hierarchy: a ready family GOTO leads with Make this
+tonight; otherwise the filled indigo Quick Find leads. Outlined Order In pairs its
+label with a decorative ShoppingBag, and outlined Profile setup follows the immediate
+choices when no active GOTO exists. Ordinary nights say Nothing planned for tonight;
+a ready recipe is Your family's GOTO, without implying an assignment. Saved Mystery
+uses its existing localized context instead of calling the night unplanned. Checking
+and preparing feedback is localized and offers no confirmation. These prop states
+do not change the active endpoint's ready-only eligibility or assignment optimism.
+
+Rendered EN/FR acceptance covers 320×844, 390×844, 412×915, 820×1180 and 1180×820,
+with fixture text enlarged to 200%, long/empty details and absent imagery. Retained
+screenshots and measurements are local artifacts under `.task/home-card-session1/`,
+`.task/home-card-session2/` and `.task/home-card-session3/`;
+[Session evidence and final reconciliation](../openspec/changes/archive/2026-10-27-home-meal-card-visual-hierarchy/tasks.md)
+records actual contrast, target and navigation measurements plus command results. Checking/preparing prop fixtures qualify their
+component presentation separately from the active-GOTO endpoint. Browser emulation
+and these local measurements do not establish physical-device or screen-reader
+qualification, or conformance of other Home surfaces. The boards remain schematic.
+
+**Type starting points, subordinate to composition:** heading 28/34, context 16/24 semibold, body 16/24,
 supporting text 14/21 (size/line height in CSS px). These are review examples, not
 minimum WCAG font sizes or a replacement scale. Current `globals.css` owns body
 line height 1.5 and heading line height 1.2; components also override these. Verify
@@ -170,7 +223,7 @@ not a replacement asset catalogue or pixel-exact screenshot.
 |---|---|---|
 | Home, Search, Compass, Calendar, UserCircle | Home, Search, Discover, Planner, Profile. Navigation already pairs icons with labels and `aria-current`; Discover's prominent treatment is ochre. | [Navigation](../pwa/src/components/common/Navigation.tsx) |
 | Camera, BookOpen | **Capture a Recipe**, **Browse your library**: recognized routes worth preserving. | [HomeSections](../pwa/src/components/home/HomeSections.tsx) |
-| UtensilsCrossed, ArrowRightLeft | **Cook** opens Cook's Mode; **Change Plan** opens recovery. Both currently appear on the card reverse. | [TonightMenuCard](../pwa/src/components/home/TonightMenuCard.tsx) |
+| UtensilsCrossed, ArrowRightLeft | **Cook** opens Cook's Mode; **Change Plan** opens recovery. Both appear on the initial planned card, ahead of ingredient disclosure. | [TonightMenuCard](../pwa/src/components/home/TonightMenuCard.tsx) |
 | ShoppingBag, UtensilsCrossed, Sparkles, CalendarDays | Takeout, eating out, mystery, custom non-cooking intent. The same UtensilsCrossed shape has a different job beside **Cook**. | [NonCookingIcon](../pwa/src/components/planner/NonCookingIcon.tsx) |
 | ♥ / ✕ glyphs; Heart / X icons; ✓ glyph | Like/dislike buttons, LOVE/PASS overlays, and “Just planned” feedback are distinct contexts, not one interchangeable success mark. | [Discovery page](https://github.com/AlexandreBrisebois/whats-for-supper/blob/fd4cd9bc5f5a91057dac0b4a6624354fea765072/pwa/src/app/%28app%29/discovery/page.tsx), [DiscoveryCard](../pwa/src/components/discovery/DiscoveryCard.tsx) |
 | Users, Share2 | Ask the Family and Nudge family: participation, not confirmation. | [Planner page](https://github.com/AlexandreBrisebois/whats-for-supper/blob/fd4cd9bc5f5a91057dac0b4a6624354fea765072/pwa/src/app/%28app%29/planner/page.tsx) |
@@ -212,8 +265,10 @@ Retry states remain explicit; matches are ready to review and save, not already
 saved. This refreshed evidence is pinned to [HomeSections at 4682643](https://github.com/AlexandreBrisebois/whats-for-supper/blob/4682643cd6086b66008fc77ede4570329e29b5ae/pwa/src/components/home/HomeSections.tsx)
 and [HomeCommandCenter at 4682643](https://github.com/AlexandreBrisebois/whats-for-supper/blob/4682643cd6086b66008fc77ede4570329e29b5ae/pwa/src/components/home/HomeCommandCenter.tsx).
 
-- **Unplanned:** no assigned recipe. A ready GOTO offers **Make This Tonight**;
-  preparing/checking/no-GOTO variants are distinct. **Quick Find** opens recipe
+- **Unplanned:** no assigned recipe. A ready family GOTO leads with **Make this tonight**;
+  otherwise **Quick Find** leads, followed by outlined **Order In** and then Profile
+  setup when no GOTO exists. Preparing/checking variants have localized feedback
+  without confirmation; saved Mystery retains its context. **Quick Find** opens recipe
   selection, not a cooking-duration filter ([issue #338](https://github.com/AlexandreBrisebois/whats-for-supper/issues/338)).
   Existing labels such as **Find Something Quick** do not establish a quick-cook guarantee.
 - **Suggested:** the dedicated suggested Home card is **conceptual only**. Current
@@ -287,7 +342,7 @@ This guide does not assert bilingual completeness or change any copy.
 | [Button primitive](../pwa/src/components/ui/button.tsx), [common re-export](../pwa/src/components/common/Button.tsx) | Existing shared button variants; not all Home controls use them |
 | [Navigation](../pwa/src/components/common/Navigation.tsx) | Navigation appearance, active state and bottom inset |
 | [HomeCommandCenter](../pwa/src/components/home/HomeCommandCenter.tsx), [todayStore](../pwa/src/store/todayStore.ts) | Current Home branches and action orchestration / Today state |
-| [TonightMenuCard](../pwa/src/components/home/TonightMenuCard.tsx), [TonightPivotCard](../pwa/src/components/home/TonightPivotCard.tsx), [HomeSections](../pwa/src/components/home/HomeSections.tsx) | Recipe/reverse card, unplanned/GOTO choices, Capture/Browse/success |
+| [TonightMenuCard](../pwa/src/components/home/TonightMenuCard.tsx), [TonightPivotCard](../pwa/src/components/home/TonightPivotCard.tsx), [HomeSections](../pwa/src/components/home/HomeSections.tsx) | Recipe/inline details card, unplanned/GOTO choices, Capture/Browse/success |
 | [SkipRecoveryDialog](../pwa/src/components/home/SkipRecoveryDialog.tsx) | Recovery presentation and stage-specific feedback |
 | [English](../pwa/src/locales/en/common.json), [French](../pwa/src/locales/fr/common.json) | Localized strings, not proof every component uses them |
 

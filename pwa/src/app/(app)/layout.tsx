@@ -110,7 +110,14 @@ export default function AppRouteLayout({ children }: { children: React.ReactNode
             {...headerProps}
             hideNavigation={isCapture || isBrowseAllStack}
             hideHeader={hideHeader || isBrowseAllStack}
-            isFluid={isHome || isDiscovery || isPlanner || isCapture || isBrowseAllStack}
+            isFluid={
+              isHome ||
+              isDiscovery ||
+              isPlanner ||
+              isCapture ||
+              isBrowseAllStack ||
+              pathname === ROUTES.PROFILE
+            }
             className={usesStackBackground ? 'solar-earth-bg' : ''}
             showBackgroundBlobs={isHome || isDiscovery}
           >

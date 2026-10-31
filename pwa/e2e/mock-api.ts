@@ -49,6 +49,7 @@ const ACTIVE_SEARCH_BOOLEAN_FILTERS = [
   'reportedOnly',
   'readyToReviewOnly',
   'discoverableOnly',
+  'gotoOnly',
 ] as const;
 
 function mockSearchMode(requestBody: unknown): 'discovery' | 'explicit' | 'similar' {
@@ -260,6 +261,17 @@ export async function setupCommonRoutes(
     demoGeneration?: () => string;
   } = {}
 ) {
+  let gotoItems: any[] = [];
+  const browseRecipes = [
+    builders.recipe({ id: MOCK_IDS.RECIPE_LASAGNA, isReady: true, isDiscoverable: true }),
+    builders.recipe({ id: MOCK_IDS.RECIPE_CARBONARA, isReady: true, isDiscoverable: false }),
+    builders.recipe({ id: MOCK_IDS.RECIPE_CHICKEN, isReady: true, isDiscoverable: true }),
+  ];
+  const searchContinuations = new Map<
+    string,
+    { fingerprint: string; ids: string[]; filters: any; searchMode: string }
+  >();
+  let searchSequence = 0;
   const generation = () =>
     recoveryOptions.demoMode
       ? (recoveryOptions.demoGeneration?.() ?? '00000000-0000-0000-0000-000000000000')
@@ -711,19 +723,6 @@ export async function setupCommonRoutes(
     });
   });
 
-  // GET /api/recipes?order=explore (Browse All Stack paged loading) — registered AFTER the wildcard so LIFO gives it priority
-  await page.route('**/api/recipes?**order=explore**', async (route) => {
-    await fulfill(route, {
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        updatedAt: new Date().toISOString(),
-        recipes: [builders.recipe(), builders.recipe(), builders.recipe()],
-        pagination: { page: 1, limit: 20, total: 3 },
-      }),
-    });
-  });
-
   // GET /api/recipes/recommendations
   await page.route('**/api/recipes/recommendations', async (route) => {
     await fulfill(route, {
@@ -735,19 +734,79 @@ export async function setupCommonRoutes(
 
   // POST /api/recipes/search
   await page.route('**/api/recipes/search', async (route) => {
-    const searchMode = mockSearchMode(route.request().postDataJSON());
+    if (route.request().method() !== 'POST') return route.fallback();
+    const request = route.request().postDataJSON();
+    const searchMode = mockSearchMode(request);
+    const filters = request.filters ?? {};
+    const canonicalFilters = Object.fromEntries(
+      Object.entries(filters)
+        .filter(([, value]) => value === true || (Array.isArray(value) && value.length > 0))
+        .sort(([left], [right]) => left.localeCompare(right))
+    );
+    const fingerprint = JSON.stringify({
+      query: request.query?.trim() ?? '',
+      concepts: (request.preferences?.concepts ?? [])
+        .map((value: string) => value.trim())
+        .filter(Boolean)
+        .sort(),
+      filters: canonicalFilters,
+      similarToRecipeId: request.similarToRecipeId ?? null,
+      weekOffset: request.weekOffset ?? null,
+      dayIndex: request.dayIndex ?? null,
+      searchMode,
+    });
+    const previous = request.continuationToken
+      ? searchContinuations.get(request.continuationToken)
+      : null;
+    if (request.continuationToken && (!previous || previous.fingerprint !== fingerprint))
+      return fulfill(route, {
+        status: 409,
+        json: { message: 'Search changed. Restart from the first page.' },
+      });
+    const membership = new Set(gotoItems.map((item) => item.recipeId));
+    const matches =
+      filters.gotoOnly === true
+        ? browseRecipes.filter(
+            (recipe) =>
+              membership.has(recipe.id) &&
+              recipe.isReady &&
+              !recipe.deletedAt &&
+              (filters.discoverableOnly !== true || recipe.isDiscoverable) &&
+              (filters.familyFavorite !== true ||
+                ((recipe.rating ?? 0) >= 2 && (recipe.isDiscoverable || recipe.notes))) &&
+              (!request.query?.trim() ||
+                recipe.name?.toLowerCase().includes(request.query.trim().toLowerCase())) &&
+              recipe.id !== request.similarToRecipeId
+          )
+        : [];
+    const byId = new Map(matches.map((recipe) => [recipe.id!, recipe]));
+    const ordered = previous
+      ? previous.ids.filter((id) => byId.has(id))
+      : matches.map((recipe) => recipe.id!);
+    const topId = previous ? undefined : ordered.shift();
+    const limit = Math.max(1, Math.min(50, request.limit ?? 12));
+    const pageIds = ordered.slice(0, limit);
+    const remaining = ordered.slice(limit);
+    const nextCursor = remaining.length ? `mock-search-${++searchSequence}` : null;
+    if (nextCursor)
+      searchContinuations.set(nextCursor, { fingerprint, ids: remaining, filters, searchMode });
+    const result = (id: string) => ({ ...byId.get(id)!, isPromotionEligible: false, reasons: [] });
     await fulfill(route, {
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
+      json: {
         data: {
-          topPick: null,
-          results: [],
-          appliedFilters: {},
+          topPick: topId ? result(topId) : null,
+          results: pageIds.map(result),
+          appliedFilters: filters,
           searchMode,
-          resultPath: searchMode === 'discovery' ? 'browse' : 'lexical-only',
+          nextCursor,
+          resultPath:
+            searchMode === 'similar'
+              ? 'similar'
+              : searchMode === 'discovery' || !request.query?.trim()
+                ? 'browse'
+                : 'lexical-only',
         },
-      }),
+      },
     });
   });
 
@@ -920,7 +979,7 @@ export async function setupCommonRoutes(
           contentType: 'application/json',
           body: JSON.stringify({ recipe: builders.recipe(), updatedAt: new Date().toISOString() }),
         });
-      } else {
+      } else if (route.request().method() === 'GET') {
         const suppliedGeneration = url.searchParams.get('historyGeneration');
         if (
           order === 'explore' &&
@@ -935,6 +994,35 @@ export async function setupCommonRoutes(
             },
           });
         const isDiscoverableOnly = url.searchParams.get('discoverableOnly') === 'true';
+        if (url.searchParams.get('gotoOnly') === 'true') {
+          const membership = new Set(gotoItems.map((item) => item.recipeId));
+          const eligible = browseRecipes
+            .map((recipe) => ({ ...recipe, ...recipeUpdates.get(recipe.id!) }))
+            .filter(
+              (recipe) =>
+                membership.has(recipe.id) &&
+                recipe.isReady &&
+                !recipe.deletedAt &&
+                (!isDiscoverableOnly || recipe.isDiscoverable) &&
+                (!url.searchParams.get('id') || recipe.id === url.searchParams.get('id')) &&
+                (!url.searchParams.get('name') ||
+                  recipe.name?.toLowerCase() ===
+                    url.searchParams.get('name')!.trim().toLowerCase()) &&
+                (!url.searchParams.get('url') ||
+                  recipe.sourceUrl?.toLowerCase() ===
+                    url.searchParams.get('url')!.trim().toLowerCase())
+            );
+          const limit = Math.max(1, Math.min(100, Number(url.searchParams.get('limit') ?? 20)));
+          return fulfill(route, {
+            json: {
+              updatedAt: FIXED_E2E_TIMESTAMP,
+              historyGeneration:
+                order === 'explore' ? `mock-history-${historyGeneration}` : undefined,
+              recipes: eligible.slice((requestedPage - 1) * limit, requestedPage * limit),
+              pagination: { page: requestedPage, limit, total: eligible.length },
+            },
+          });
+        }
         await fulfill(route, {
           status: 200,
           contentType: 'application/json',
@@ -954,7 +1042,7 @@ export async function setupCommonRoutes(
               order === 'explore' ? `mock-history-${historyGeneration}` : undefined,
           }),
         });
-      }
+      } else await route.fallback();
     }
   );
 
@@ -978,6 +1066,8 @@ export async function setupCommonRoutes(
 
   // GET /api/recipes/{id}, PATCH /api/recipes/{id}, DELETE /api/recipes/{id}
   await page.route('**/api/recipes/*', async (route) => {
+    if (!/^\/api\/recipes\/[0-9a-f-]{36}$/.test(new URL(route.request().url()).pathname))
+      return route.fallback();
     if (route.request().method() === 'DELETE') {
       const id =
         route
@@ -2257,7 +2347,7 @@ export async function setupCommonRoutes(
 
   // GET /api/goto and PUT /api/goto
   // Per-test in-memory store for GOTO items
-  let gotoItems: any[] = [];
+
   await page.route('**/api/goto', async (route) => {
     if (route.request().method() === 'GET') {
       await fulfill(route, {

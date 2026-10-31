@@ -26,11 +26,17 @@ internal static class RecipeSearchPredicate
             filters.NotCookedInLongTime == true,
             filters.ReportedOnly == true,
             filters.ReadyToReviewOnly == true,
-            filters.DiscoverableOnly == true);
+            filters.DiscoverableOnly == true,
+            filters.GotoOnly == true);
     }
 
-    public static IQueryable<Recipe> Apply(IQueryable<Recipe> query, RecipeSearchFiltersDto filters, RecipeDbContext db, DateTimeOffset now)
+    public static IQueryable<Recipe> Apply(IQueryable<Recipe> query, RecipeSearchFiltersDto filters, RecipeDbContext db, DateTimeOffset now, Guid[]? gotoRecipeIds = null)
     {
+        if (filters.GotoOnly == true)
+        {
+            var membership = gotoRecipeIds ?? [];
+            query = query.Where(recipe => membership.Contains(recipe.Id));
+        }
         var cuisines = NormalizeValues(filters.Cuisines);
         if (cuisines.Length > 0)
             query = query.Where(recipe => recipe.CuisineType != null && cuisines.Contains(recipe.CuisineType.ToLower()));
@@ -59,9 +65,14 @@ internal static class RecipeSearchPredicate
         return query;
     }
 
-    public static string BuildSql(RecipeSearchFiltersDto filters, List<NpgsqlParameter> parameters, DateTimeOffset now)
+    public static string BuildSql(RecipeSearchFiltersDto filters, List<NpgsqlParameter> parameters, DateTimeOffset now, Guid[]? gotoRecipeIds = null)
     {
         var predicates = new List<string>();
+        if (filters.GotoOnly == true)
+        {
+            parameters.Add(new NpgsqlParameter("gotoRecipeIds", NpgsqlTypes.NpgsqlDbType.Array | NpgsqlTypes.NpgsqlDbType.Uuid) { Value = gotoRecipeIds ?? [] });
+            predicates.Add("r.id = ANY(@gotoRecipeIds)");
+        }
         var cuisines = NormalizeValues(filters.Cuisines);
         if (cuisines.Length > 0)
         {
@@ -112,7 +123,8 @@ internal static class RecipeSearchPredicate
         bool NotCookedInLongTime,
         bool ReportedOnly,
         bool ReadyToReviewOnly,
-        bool DiscoverableOnly)
+        bool DiscoverableOnly,
+        bool GotoOnly)
     {
         public bool HasAny => Cuisines.Length > 0
             || MealTypes.Length > 0
@@ -124,6 +136,7 @@ internal static class RecipeSearchPredicate
             || NotCookedInLongTime
             || ReportedOnly
             || ReadyToReviewOnly
-            || DiscoverableOnly;
+            || DiscoverableOnly
+            || GotoOnly;
     }
 }

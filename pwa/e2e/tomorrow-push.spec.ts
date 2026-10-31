@@ -82,6 +82,10 @@ test('Home Order In plus Tomorrow commits a full following week without prior va
   expect(weeks[0].days[6]).toMatchObject({ status: 3, recipe: null });
   expect(weeks[1].days[0].recipe.id).toBe(MOCK_IDS.RECIPE_CHICKEN);
   expect(weeks[3].days[0].recipe.id).toBe(MOCK_IDS.RECIPE_LASAGNA);
+  // The move response precedes its mock SSE callbacks. Drain those callbacks
+  // before the page closes, keeping any teardown-time API reads isolated.
+  await page.context().route('**/api/**', (route) => route.abort());
+  await page.unrouteAll({ behavior: 'wait' });
 });
 
 for (const entry of ['Home', 'Planner', 'Search', 'Browse'] as const) {

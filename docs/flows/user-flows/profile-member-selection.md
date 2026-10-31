@@ -1,175 +1,88 @@
 # Flow: "Table's Set!" — Profile Member Selection
 
-**Reviewed by:** The Mère-Designer
-
----
-
 ## Purpose
 
-The profile page is the entry point for family member identity. It answers the question "Who's using the app right now?" and gates the rest of the experience. Every family member has their own view — their votes, their GOTO recipe, their home screen.
+Profile displays the current household member and lets a person choose the current
+member again or switch to another member. Its reading order is the title and
+Settings, the member chooser, then language controls. The titles remain exactly
+`Table's Set!` in English and `À table !` in French. There is no instructional
+subtitle or separate Continue-as action, including while loading or when the
+selected ID does not match a loaded member.
 
-This flow documents:
-- First-time use (no member selected yet)
-- Returning use (member already selected)
-- The "Continue as [name]" escape hatch that prevents a dead-end
+## Member chooser states
 
----
+| State | Presentation and available actions |
+|---|---|
+| Loaded selected member | The chooser displays the member's complete name and a localised active-member label. Opening it exposes the household choices and marks the current member with a check and accessible current-member state. |
+| Family loading | A stable placeholder provides a localised loading description. Settings and available language controls remain usable. |
+| No matching selected member | The chooser displays `Select member` or `Choisir un membre`, without inventing an active name. Settings and language controls remain available. |
+| Open chooser | Choices scroll when necessary. Keyboard users can reach each choice; Escape closes the chooser and returns focus to its trigger. |
 
-## State Machine
+Opening Profile does not navigate automatically. Toggling the chooser closed,
+clicking outside it or pressing Escape dismisses choices without requesting member
+selection, completing onboarding or navigating.
 
-```mermaid
-stateDiagram-v2
-    [*] --> NoMemberSelected : App first opened (no cookie)
-    [*] --> MemberSelected : Returning user (cookie set)
-
-    NoMemberSelected --> MemberSelected : User taps a family member card
-    MemberSelected --> MemberSelected : User taps a different member card
-    MemberSelected --> Home : User taps "Continue as [name]"
-    MemberSelected --> Home : User taps a member card (auto-navigates)
-
-    NoMemberSelected : No x-family-member-id cookie\nProfile page shown, no escape hatch\nMust select a member to proceed
-    MemberSelected : x-family-member-id cookie set\n"Continue as [name]" button visible\nCan change or continue
-    Home : /home — member identity confirmed
-```
-
----
-
-## First-Time Use (No Member Selected)
-
-The user opens the app for the first time. No `x-family-member-id` cookie exists. The profile page is the only available screen.
+## Selection and Home
 
 ```mermaid
 sequenceDiagram
-    autonumber
-
-    actor User
-    participant Profile as Profile Page (/profile)
-    participant API as GET /api/family
-    participant Cookie as x-family-member-id cookie
-    participant Home as /home
-
-    rect rgb(230, 240, 255)
-        note over Profile,API: First-time load — no cookie
-        User->>Profile: Opens app → /profile
-        Profile->>API: GET /api/family
-        API-->>Profile: [{ id, name, avatarUrl }, ...]
-        Profile->>User: Shows member cards\nTitle: "Table's Set!"\nSubtitle: "Pick a family member to get started."\nNo "Continue as" button (no member selected yet)
-    end
-
-    rect rgb(230, 255, 230)
-        note over User,Cookie: Member selection
-        User->>Profile: Taps a member card (e.g. "Alex")
-        Profile->>Cookie: Set x-family-member-id = {memberId}
-        Profile->>Home: router.push(ROUTES.HOME)
-        Home->>User: Home screen loads with Alex's context
-    end
+    actor Person
+    participant Profile as Profile page
+    participant Chooser as Member chooser
+    participant Store as Family store
+    participant Onboarding as Onboarding store
+    participant Router as Router
+    Person->>Chooser: Open choices
+    Chooser-->>Person: Show current and other members
+    Person->>Chooser: Activate current or different member
+    Chooser->>Profile: onSelect(memberId)
+    Profile->>Store: selectFamilyMember(memberId)
+    Profile->>Onboarding: completeOnboarding()
+    Profile->>Router: push(/home)
+    Chooser->>Chooser: Close choices
 ```
 
-**Key constraint:** When no member is selected, there is no escape hatch. The user must pick a member. The "Continue as [name]" button is not rendered.
+Both current-member and different-member choices invoke the same page callback.
+Choosing the current member requests selection again, marks onboarding complete
+and requests Home. It is not a navigation-only shortcut. The chooser closes after
+invoking the callback. Settings requests `/profile/settings`.
 
----
+The page does not await the asynchronous selection request before requesting Home.
+These calls describe the implementation; they do not guarantee cookie handoff,
+request ordering at the server, durable identity or successful Home initialization.
+Mocked browser acceptance verifies the selection request and Home navigation, not
+live cookie durability, PostgreSQL persistence or SSE reconnection. Those require
+separate integration qualification.
 
-## Returning Use (Member Already Selected)
+## Language preference
 
-The user has previously selected a member. The cookie is set. They navigate to `/profile` to switch members or confirm their identity.
+Both language buttons retain their selected-state cues. With a selected member,
+changing language uses the existing preference request. Without a selected member,
+the language choice remains browser-local and makes no preference update. A
+rejected preference save retains the existing reconciliation behavior and makes
+no saved claim. Removing the subtitle and separate action does not change this
+policy.
 
-```mermaid
-sequenceDiagram
-    autonumber
+## Layout and accessibility acceptance
 
-    actor User
-    participant Profile as Profile Page (/profile)
-    participant API as GET /api/family
-    participant Cookie as x-family-member-id cookie
-    participant Home as /home
+The existing cream canvas, rounded surfaces and control styling remain. Complete
+member names wrap at narrow widths and enlarged text. Settings, the chooser and
+both language controls retain their touch targets and keyboard reachability above
+or through scrolling past fixed navigation. Overflowing choices remain scrollable.
+Reduced motion retains loading and expanded-state information without entrance
+staging or chooser animation.
 
-    rect rgb(230, 240, 255)
-        note over Profile,API: Returning load — cookie exists (e.g. memberId = Alex)
-        User->>Profile: Navigates to /profile
-        Profile->>API: GET /api/family
-        API-->>Profile: [{ id, name, avatarUrl }, ...]
-        Profile->>User: Shows member cards\nTitle: "Table's Set!"\nSubtitle: "Pick a family member to get started."\nAlex's card highlighted (selectedFamilyMemberId matches)\nFooter: "Continue as Alex" button (ghost/outline, terracotta, full-width)
-    end
+## Test evidence boundaries
 
-    alt User wants to continue as Alex
-        rect rgb(230, 255, 230)
-            User->>Profile: Taps "Continue as Alex"
-            Profile->>Home: router.push(ROUTES.HOME)
-            note over Cookie: Cookie unchanged — still Alex
-        end
-    else User wants to switch to Jordan
-        rect rgb(255, 245, 210)
-            User->>Profile: Taps Jordan's card
-            Profile->>Cookie: Set x-family-member-id = {jordanId}
-            Profile->>Home: router.push(ROUTES.HOME)
-            Home->>User: Home screen loads with Jordan's context
-        end
-    end
-```
-
----
-
-## "Continue as [name]" Escape Hatch
-
-The escape hatch solves the dead-end problem: a returning user who navigates to `/profile` by accident (e.g. tapped the wrong nav item) should not be forced to re-select their member. They can tap "Continue as Alex" and return to home without any state change.
-
-**Render condition:**
-```typescript
-// Only shown when a member is already selected
-{selectedFamilyMemberId && (
-  <Button variant="ghost" onClick={() => router.push(ROUTES.HOME)}>
-    Continue as {currentMemberName}
-  </Button>
-)}
-```
-
-**Placement:** Footer, below the `ProfileDropdown` / member card grid. Full-width. Ghost/outline style, terracotta colour.
-
-**Behaviour:** Calls `router.push(ROUTES.HOME)` without modifying the cookie or any store state.
-
----
-
-## Page Copy
-
-| Element | Copy |
+| Scenario | Owner |
 |---|---|
-| Page title | "Table's Set!" |
-| Subtitle | "Pick a family member to get started." |
-| Escape hatch button | "Continue as [name]" |
-| Hint text colour | `text-charcoal/60` (minimum for WCAG AA on cream background) |
+| Exact EN/FR loaded titles, no subtitle or separate action, retained controls | `pwa/e2e/profile.spec.ts` |
+| Loading and unmatched-member composition | Adjacent Profile page unit test and isolated real-page browser fixture in `profile.spec.ts` |
+| Current/different-member selection and Home request; dismissal without selection/navigation | `profile.spec.ts`, Profile page and dropdown unit tests |
+| Language success, rejection and local-only choice | `profile.spec.ts` and language-selection unit tests |
+| Narrow/tablet viewports, long names, 200% text, keyboard and reduced motion | `profile.spec.ts` |
 
-**Mère-Designer ruling on title:** "Family Profile" was corporate jargon. "Who's Eating?" was the original direct question, but has been refined to **"Table's Set!"** (and **"À table !"** in French) to improve warmth and avoid unintended linguistic connotations in certain dialects. It maintains the "Gather 'round" sanctuary feel.
-
----
-
-## Navigation to Home
-
-After member selection (or "Continue as"), the user lands on `/home`. The home page reads `x-family-member-id` from the cookie to:
-- Fetch today's schedule for this member's family
-- Load the GOTO recipe setting for this member
-- Show the correct voting nudge (if voting is open)
-
-The SSE connection (`useScheduleStream`) is established at layout level and uses the same cookie for auth. No re-connection is needed after member switch — the layout remounts on navigation, which closes and reopens the `EventSource`.
-
----
-
-## Edge Cases
-
-| Scenario | Behaviour |
-|---|---|
-| Family has only one member | Single card shown, no "Continue as" button on first use. On return, "Continue as [name]" shown. |
-| Cookie set but member deleted from family | API returns 404 on member fetch. Profile page shows all remaining members. No "Continue as" button (selected ID no longer valid). |
-| User navigates directly to `/home` without a cookie | `HearthAuthenticationHandler` returns 401. Next.js middleware redirects to `/profile`. |
-| Two members use the same device | Each tap of a member card sets the cookie. The last person to tap is the active member. No session isolation — this is a single-family app. |
-
----
-
-## E2E Test Coverage
-
-| Scenario | Test file |
-|---|---|
-| Profile page shows "Table's Set!" title | `profile.spec.ts` |
-| No member selected → no "Continue as" button | `profile.spec.ts` |
-| Member selected → "Continue as [name]" button visible | `profile.spec.ts` |
-| Tapping "Continue as [name]" navigates to /home | `profile.spec.ts` |
-| Tapping a different member card navigates to /home | `profile.spec.ts` |
+The unselected/loading browser fixture deliberately mounts the real page outside
+the production identity guard. It qualifies the rendered state and client seams,
+not first-use production routing. Screenshots support browser layout inspection;
+they do not establish physical-device behavior or live identity guarantees.

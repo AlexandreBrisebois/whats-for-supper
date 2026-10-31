@@ -1,5 +1,6 @@
+import { expectTonightLayout, recordTonightControlStates } from './helpers/tonight-card-layout';
 import { test, expect } from './fixtures';
-import type { ScheduleDays } from '../src/lib/api/generated/models';
+import type { NonCookingPlanDto, ScheduleDays } from '../src/lib/api/generated/models';
 import {
   MOCK_IDS,
   builders,
@@ -7,6 +8,7 @@ import {
   currentMonday,
   toDateStr,
   mockSseWithRecipeReady,
+  mockSseWithConnectedSchedule,
 } from './mock-api';
 
 test.describe('Home Command Center — GOTO & Pivot Flow', () => {
@@ -35,6 +37,361 @@ test.describe('Home Command Center — GOTO & Pivot Flow', () => {
       );
     }, MOCK_IDS.MEMBER_ALEX);
   });
+
+  for (const appLocale of ['en', 'fr'] as const) {
+    test.describe(`Tonight photo parity (${appLocale})`, () => {
+      test.use({ appLocale });
+      for (const [width, height] of [
+        [390, 844],
+        [412, 915],
+        [320, 640],
+        [820, 1180],
+        [1180, 820],
+      ]) {
+        test(`Make this tonight preserves the loaded photo at ${width}x${height}`, async ({
+          page,
+        }, testInfo) => {
+          await page.setViewportSize({ width, height });
+          await page.emulateMedia({ reducedMotion: 'reduce' });
+          const name = appLocale === 'fr' ? 'Saumon rôti' : 'Roast salmon';
+          const source = `/api/recipes/${MOCK_IDS.RECIPE_LASAGNA}/hero`;
+          await page.route('**/api/goto/active', (route) =>
+            route.fulfill({
+              json: {
+                data: {
+                  recipeId: MOCK_IDS.RECIPE_LASAGNA,
+                  description: name,
+                  status: 'ready',
+                  imageUrl: source,
+                },
+              },
+            })
+          );
+          await page.route('**/hero', (route) =>
+            route.fulfill({ path: 'e2e/fixtures/cookbook-light.jpg', contentType: 'image/jpeg' })
+          );
+          const schedule = builders.scheduleDays();
+          const today = schedule.days.find((day) => day.date === toDateStr(currentMonday()))!;
+          today.recipe = null;
+          today.status = 0;
+          await mockSseWithConnectedSchedule(page, schedule as unknown as ScheduleDays);
+          await page.route(
+            (url) => url.pathname.endsWith('/api/schedule'),
+            (route) =>
+              route.request().method() === 'GET'
+                ? route.fulfill({ json: { data: schedule } })
+                : route.fallback()
+          );
+          const assignments: unknown[] = [];
+          await page.route('**/api/schedule/assign**', async (route) => {
+            if (route.request().method() !== 'POST') return route.fallback();
+            assignments.push(route.request().postDataJSON());
+            today.recipe = builders.scheduleRecipe({
+              id: MOCK_IDS.RECIPE_LASAGNA,
+              name,
+              image: source,
+            });
+            await route.fulfill({ json: { data: { message: 'Recipe assigned' } } });
+          });
+          await page.route(
+            (url) => url.pathname.endsWith(`/api/recipes/${MOCK_IDS.RECIPE_LASAGNA}`),
+            (route) =>
+              route.fulfill({
+                json: {
+                  recipe: builders.recipe({ id: MOCK_IDS.RECIPE_LASAGNA, name, imageUrl: source }),
+                },
+              })
+          );
+          await page.goto('/home');
+          await page.evaluate(() => document.fonts.ready);
+          const pivot = page.getByTestId('tonight-pivot-card');
+          const photo = pivot.getByRole('img', { name });
+          await expect
+            .poll(() => photo.evaluate((img: HTMLImageElement) => img.naturalWidth))
+            .toBeGreaterThan(0);
+          const before = (await photo.boundingBox())!;
+          expect(before.height).toBeCloseTo(before.width * 0.8, 0);
+          await page.screenshot({ path: testInfo.outputPath('pivot.png'), fullPage: true });
+          expect(assignments).toEqual([]);
+          await page.getByTestId('confirm-goto-btn').click();
+          const planned = page.getByTestId('tonight-menu-card');
+          const plannedPhoto = planned.getByRole('img', { name });
+          await expect
+            .poll(() => plannedPhoto.evaluate((img: HTMLImageElement) => img.naturalWidth))
+            .toBeGreaterThan(0);
+          await expect(pivot).toHaveCount(0);
+          await expect.poll(() => assignments.length).toBe(1);
+          expect(assignments[0]).toMatchObject({ recipeId: MOCK_IDS.RECIPE_LASAGNA });
+          const after = (await plannedPhoto.boundingBox())!;
+          await testInfo.attach('photo-geometry', {
+            body: JSON.stringify({ viewport: { width, height }, before, after }),
+            contentType: 'application/json',
+          });
+          await page.screenshot({ path: testInfo.outputPath('planned.png'), fullPage: true });
+          expect(after.width).toBeCloseTo(before.width, 0);
+          expect(after.height).toBeCloseTo(before.height, 0);
+          expect(after.height).toBeCloseTo(after.width * 0.8, 0);
+          const crop = await plannedPhoto.evaluate((img) => ({
+            fit: getComputedStyle(img).objectFit,
+            overflow: getComputedStyle(img.parentElement!).overflow,
+            radius: parseFloat(getComputedStyle(img.parentElement!).borderTopLeftRadius),
+          }));
+          expect(crop.fit).toBe('cover');
+          expect(crop.overflow).toBe('hidden');
+          expect(crop.radius).toBeGreaterThan(0);
+          await expectTonightLayout(page, planned, testInfo, 'planned-after-confirm');
+        });
+      }
+    });
+  }
+
+  for (const appLocale of ['en', 'fr'] as const) {
+    test.describe(`Cookbook pivot (${appLocale})`, () => {
+      test.use({ appLocale });
+      for (const photo of ['light', 'dark', 'failed'] as const) {
+        test(`${photo} photograph and image recovery`, async ({ page }, testInfo) => {
+          test.setTimeout(90_000);
+          await page.setViewportSize({ width: 390, height: 844 });
+          const name =
+            appLocale === 'fr' ? 'Saumon et légumes du jardin' : 'Salmon with garden vegetables';
+          let recipeId: string = MOCK_IDS.RECIPE_LASAGNA;
+          await page.route(
+            (url) => url.pathname.includes('/api/goto/active'),
+            async (route) => {
+              await route.fulfill({
+                json: { data: { recipeId, description: name, status: 'ready' } },
+              });
+            }
+          );
+          await page.route(
+            (url) => url.pathname.endsWith('/hero'),
+            async (route) => {
+              if (photo === 'failed' && route.request().url().includes(MOCK_IDS.RECIPE_LASAGNA))
+                await route.fulfill({ status: 404, body: '' });
+              else
+                await route.fulfill({
+                  path: `e2e/fixtures/cookbook-${photo === 'dark' ? 'dark' : 'light'}.jpg`,
+                  contentType: 'image/jpeg',
+                });
+            }
+          );
+          await page.goto('/home');
+          const card = page.getByTestId('tonight-pivot-card');
+          await expect(card.getByRole('heading', { name })).toBeVisible();
+          if (photo === 'failed') {
+            await expect(card.locator('img')).toHaveCount(0);
+            await expect(page.getByTestId('confirm-goto-btn')).toBeVisible();
+            await page.screenshot({
+              path: testInfo.outputPath('failed-image.png'),
+              fullPage: true,
+            });
+            recipeId = MOCK_IDS.RECIPE_TACOS;
+            // A real reload with a new eligible GOTO identity must attempt its fresh image.
+            await page.reload();
+            await expect(card.locator('img')).toBeVisible();
+            await expect
+              .poll(() => card.locator('img').evaluate((img: HTMLImageElement) => img.naturalWidth))
+              .toBeGreaterThan(100);
+          } else {
+            await expect
+              .poll(() => card.locator('img').evaluate((img: HTMLImageElement) => img.naturalWidth))
+              .toBeGreaterThan(100);
+            for (const [width, height] of [
+              [320, 844],
+              [390, 844],
+              [412, 915],
+              [820, 1180],
+              [1180, 820],
+            ]) {
+              await page.setViewportSize({ width, height });
+              for (const growth of [1, 2]) {
+                await card.evaluate(
+                  (node, scale) =>
+                    node.querySelectorAll<HTMLElement>('*').forEach((el) => {
+                      el.dataset.layoutFont ??= getComputedStyle(el).fontSize;
+                      el.style.fontSize = `${parseFloat(el.dataset.layoutFont) * scale}px`;
+                    }),
+                  growth
+                );
+                if (growth === 1 && width >= 390 && width <= 412) {
+                  const quick = await page.getByTestId('discover-btn').boundingBox();
+                  const order = await page.getByTestId('order-in-btn').boundingBox();
+                  expect(Math.abs(quick!.y - order!.y)).toBeLessThan(1);
+                  expect(quick!.height).toBeLessThan(70);
+                  expect(order!.height).toBeLessThan(70);
+                }
+                await expectTonightLayout(
+                  page,
+                  card,
+                  testInfo,
+                  `photo-${photo}-${width}-${growth}`
+                );
+              }
+            }
+          }
+        });
+      }
+    });
+  }
+
+  for (const appLocale of ['en', 'fr'] as const) {
+    test.describe(`Tonight card layout / Tonight pivot choices (${appLocale})`, () => {
+      test.use({ appLocale });
+      for (const state of ['ready', 'empty', 'read-error', 'mystery'] as const) {
+        test(`${state} pivot reflow and reachability`, async ({ page }, testInfo) => {
+          const name =
+            appLocale === 'fr'
+              ? 'Gratin familial de légumes rôtis avec pommes de terre et sauce crémeuse aux fines herbes'
+              : 'Family roasted vegetable supper with potatoes and a creamy garden herb sauce';
+          await page.route(
+            (url) => url.pathname.includes('/api/goto/active'),
+            async (route) => {
+              await route.fulfill(
+                state === 'ready'
+                  ? {
+                      json: {
+                        data: {
+                          recipeId: MOCK_IDS.RECIPE_LASAGNA,
+                          description: name,
+                          status: 'ready',
+                        },
+                      },
+                    }
+                  : { status: state === 'read-error' ? 500 : 404, json: { error: 'Unavailable' } }
+              );
+            }
+          );
+          await page.route(
+            (url) => url.pathname.endsWith(`/api/recipes/${MOCK_IDS.RECIPE_LASAGNA}`),
+            async (route) => {
+              await route.fulfill({
+                json: {
+                  recipe: builders.recipe({ id: MOCK_IDS.RECIPE_LASAGNA, name, imageUrl: '' }),
+                  updatedAt: new Date().toISOString(),
+                },
+              });
+            }
+          );
+          if (state === 'mystery') {
+            const schedule = builders.scheduleDays();
+            const day = schedule.days.find((day) => day.date === toDateStr(currentMonday()))!;
+            day.status = 3;
+            Object.assign(day, {
+              nonCooking: { kind: 'mystery', customLabel: null } satisfies NonCookingPlanDto,
+            });
+            await mockSseWithConnectedSchedule(page, schedule as unknown as ScheduleDays);
+            await page.route(
+              (url) => url.pathname.endsWith('/api/schedule'),
+              async (route) => {
+                if (route.request().method() === 'GET')
+                  await route.fulfill({ json: { data: schedule } });
+                else await route.fallback();
+              }
+            );
+          }
+          const mutations: string[] = [];
+          page.on('request', (request) => {
+            if (
+              new URL(request.url()).pathname.startsWith('/api/') &&
+              !['GET', 'HEAD'].includes(request.method()) &&
+              !request.url().endsWith('/api/recipes/search')
+            )
+              mutations.push(request.method());
+          });
+          await page.goto('/home');
+          const card = page.getByTestId('tonight-pivot-card');
+          await expect(card).toBeVisible();
+          const context =
+            state === 'mystery'
+              ? appLocale === 'fr'
+                ? 'Souper mystère'
+                : 'Mystery night'
+              : appLocale === 'fr'
+                ? 'Rien de prévu pour ce soir'
+                : 'Nothing planned for tonight';
+          await expect(card).toContainText(context);
+          await expect(page.getByTestId('discover-btn')).toHaveAccessibleName(
+            state === 'mystery'
+              ? appLocale === 'fr'
+                ? 'Recherche'
+                : 'Quick Find'
+              : appLocale === 'fr'
+                ? 'Rechercher'
+                : 'Search'
+          );
+          await expect(page.getByTestId('order-in-btn')).toHaveAccessibleName(
+            appLocale === 'fr' ? 'Commander' : 'Order In'
+          );
+          if (state === 'ready') {
+            await expect(page.getByTestId('confirm-goto-btn')).toHaveAccessibleName(
+              appLocale === 'fr' ? 'Préparer ce repas ce soir' : 'Make this tonight'
+            );
+            await expect(card).toContainText(
+              appLocale === 'fr' ? 'Le GOTO de votre famille' : "Your family's GOTO"
+            );
+          }
+          if (state === 'empty' || state === 'read-error')
+            await expect(page.getByTestId('goto-setup-helper')).toBeVisible({ timeout: 15_000 });
+          const order =
+            state === 'ready'
+              ? ['confirm-goto-btn', 'discover-btn', 'order-in-btn']
+              : state === 'mystery'
+                ? ['discover-btn', 'order-in-btn']
+                : ['discover-btn', 'order-in-btn'];
+          await expect(card.locator('button, a')).toHaveCount(order.length);
+          for (let index = 0; index < order.length; index++) {
+            await expect(card.locator('button, a').nth(index)).toHaveAttribute(
+              'data-testid',
+              order[index]
+            );
+          }
+          await card.locator('button, a').first().focus();
+          for (const id of order) {
+            await expect(page.getByTestId(id)).toBeFocused();
+            await page.keyboard.press('Tab');
+          }
+          expect(mutations).toEqual([]);
+          await page.evaluate(() => document.fonts.ready);
+          const sizes = [
+            [320, 844],
+            [390, 844],
+            [412, 915],
+            [820, 1180],
+            [1180, 820],
+          ];
+          for (const [width, height] of sizes) {
+            await page.setViewportSize({ width, height });
+            for (const growth of [1, 2]) {
+              // Change text only in this fixture; preserve app zoom policy and image geometry.
+              await card.evaluate((node, scale) => {
+                node.querySelectorAll<HTMLElement>('*').forEach((el) => {
+                  const initial = el.dataset.layoutFont ?? getComputedStyle(el).fontSize;
+                  el.dataset.layoutFont = initial;
+                  el.style.fontSize = `${parseFloat(initial) * scale}px`;
+                });
+              }, growth);
+              await expectTonightLayout(page, card, testInfo, `card-${width}-${growth}`);
+              if (width === 320 && growth === 1)
+                await recordTonightControlStates(page, card, testInfo);
+            }
+          }
+          await page.getByTestId('discover-btn').focus();
+          await page.keyboard.press('Enter');
+          if (state === 'mystery') {
+            await expect(page.getByTestId('quick-find-modal')).toBeVisible();
+            await page.getByTestId('quick-find-close').click();
+            await expect(card).toContainText(context);
+          } else {
+            await expect(page).toHaveURL(
+              /\/recipes\?addToDay=0&weekOffset=0&referenceWeekStartDate=2026-05-04/
+            );
+            await expect(page.getByTestId('quick-find-modal')).toHaveCount(0);
+          }
+          expect(mutations).toEqual([]);
+        });
+      }
+    });
+  }
 
   test('Shows Pivot Card when no recipe is planned', async ({ page }) => {
     // 1. Mock empty schedule
@@ -131,16 +488,16 @@ test.describe('Home Command Center — GOTO & Pivot Flow', () => {
 
     const confirmBtn = page.getByTestId('confirm-goto-btn');
     await expect(confirmBtn).toBeEnabled();
-    await expect(confirmBtn).toHaveText('Make This Tonight');
+    await expect(confirmBtn).toHaveText('Make this tonight');
     await confirmBtn.click();
 
     await expect.poll(() => assignCalled).toBe(true);
     await expect(page.getByTestId('tonight-menu-card')).toBeVisible({ timeout: 3000 });
     await expect(page.getByTestId('tonight-pivot-card')).not.toBeVisible();
 
-    // Verify Hydration: flip the card and check for the description
+    // Verify hydration through explicit ingredient disclosure
     // The eager fetch should have completed by now (or will shortly)
-    await page.getByTestId('tonight-menu-card').click();
+    await page.getByTestId('tonight-ingredients-toggle').click();
     await expect(page.getByText('E2E Hydrated Description')).toBeVisible({ timeout: 5000 });
     await expect(page.getByText('Pasta')).toBeVisible();
     expect(recipeFetched).toBe(true);
@@ -361,8 +718,8 @@ test.describe('Home Command Center — todayStore (Group C)', () => {
     }, MOCK_IDS.MEMBER_ALEX);
   });
 
-  // C7: "Make This Tonight" tap shows TonightMenuCard immediately (no network wait)
-  test('"Make This Tonight" shows TonightMenuCard immediately without waiting for network', async ({
+  // C7: "Make this tonight" tap shows TonightMenuCard immediately (no network wait)
+  test('"Make this tonight" shows TonightMenuCard immediately without waiting for network', async ({
     page,
   }) => {
     // Mock active GOTO
@@ -386,18 +743,20 @@ test.describe('Home Command Center — todayStore (Group C)', () => {
     // Mock SSE to emit recipe_ready — drives the ready transition (no polling)
     await mockSseWithRecipeReady(page, MOCK_IDS.RECIPE_LASAGNA);
 
-    // Mock assign to be slow (500ms) — menu card must appear before it resolves
-    // Use a raw Promise delay instead of page.waitForTimeout() to avoid "Test ended"
-    // errors when the route callback outlives the test's assertion phase.
+    let releaseAssignment!: () => void;
+    const assignmentReply = new Promise<void>((resolve) => {
+      releaseAssignment = resolve;
+    });
+    let assignmentStarted = false;
+    let assignmentReplied = false;
     await page.route(
       (url) => url.pathname.includes('/api/schedule/assign'),
       async (route) => {
-        await new Promise((resolve) => setTimeout(resolve, 500));
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({ success: true }),
-        });
+        expect(route.request().method()).toBe('POST');
+        assignmentStarted = true;
+        await assignmentReply;
+        await route.fulfill({ json: { success: true } });
+        assignmentReplied = true;
       }
     );
 
@@ -407,17 +766,22 @@ test.describe('Home Command Center — todayStore (Group C)', () => {
     await expect(confirmBtn).toBeEnabled({ timeout: 10000 });
     await confirmBtn.click();
 
-    // TonightMenuCard must appear immediately (optimistic) — well before the 500ms assign resolves
+    // The planned card must appear while the assignment reply is still held unresolved.
     await expect(page.getByTestId('tonight-menu-card')).toBeVisible({ timeout: 300 });
     await expect(page.getByTestId('tonight-pivot-card')).not.toBeVisible();
+
+    await expect.poll(() => assignmentStarted).toBe(true);
+    expect(assignmentReplied).toBe(false);
+    releaseAssignment();
+    await expect.poll(() => assignmentReplied).toBe(true);
 
     // Clean up any in-flight routes to avoid "Test ended" errors
     await page.unrouteAll({ behavior: 'ignoreErrors' });
   });
 
-  // C7: Page reload after "Make This Tonight" still shows TonightMenuCard
+  // C7: Page reload after "Make this tonight" still shows TonightMenuCard
   // TODO: home-loader does not clear after reload; revisit when SSE push model replaces polling sync
-  test.skip('Page reload after "Make This Tonight" still shows TonightMenuCard', async ({
+  test.skip('Page reload after "Make this tonight" still shows TonightMenuCard', async ({
     page,
   }) => {
     const monday = currentMonday();
@@ -543,7 +907,7 @@ test.describe('Home Command Center — todayStore (Group C)', () => {
     await expect(page.getByTestId('tonight-pivot-card')).not.toBeVisible();
   });
 
-  test('"Make This Tonight" → navigating to planner shows recipe in today\'s slot', async ({
+  test('"Make this tonight" → navigating to planner shows recipe in today\'s slot', async ({
     page,
   }) => {
     const monday = currentMonday();

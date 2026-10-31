@@ -1,5 +1,7 @@
 'use client';
 
+import { useSurfacePresentation } from '@/components/telemetry/useSurfacePresentation';
+
 import React, { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -53,6 +55,7 @@ export function SkipRecoveryDialog({
   onBack,
   onAction,
 }: SkipRecoveryDialogProps) {
+  useSurfacePresentation('planning.recovery', isOpen);
   const feedbackRef = useRef<HTMLParagraphElement>(null);
   useEffect(() => {
     if (replacement && !pending && !confirmAbandon) feedbackRef.current?.focus();
@@ -132,7 +135,7 @@ export function SkipRecoveryDialog({
                     'flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl',
                     replacement.phase === 'refresh' && !confirmAbandon
                       ? 'bg-sage/15 text-charcoal'
-                      : 'bg-terracotta/10 text-terracotta'
+                      : 'bg-terracotta/10 text-terracotta-600'
                   )}
                 >
                   <FeedbackIcon
@@ -240,7 +243,7 @@ export function SkipRecoveryDialog({
                       data-testid="recovery-action-order-in"
                       className="flex w-full items-center gap-4 p-5 rounded-[2rem] border-2 border-charcoal/5 hover:border-terracotta/30 hover:bg-terracotta/5 transition-all text-left group"
                     >
-                      <div className="h-14 w-14 rounded-2xl bg-terracotta/10 text-terracotta flex items-center justify-center group-hover:scale-110 transition-transform">
+                      <div className="h-14 w-14 rounded-2xl bg-terracotta/10 text-terracotta-600 flex items-center justify-center group-hover:scale-110 transition-transform">
                         <NonCookingIcon kind="order_in" size={28} />
                       </div>
                       <div className="flex flex-1 flex-col items-start text-left">
@@ -303,7 +306,7 @@ export function SkipRecoveryDialog({
                       className="flex w-full items-center justify-between p-5 rounded-[2rem] border-2 border-charcoal/5 hover:border-terracotta/30 hover:bg-terracotta/5 transition-all text-left group"
                     >
                       <div className="flex items-center gap-4">
-                        <div className="h-12 w-12 rounded-2xl bg-terracotta/10 text-terracotta flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <div className="h-12 w-12 rounded-2xl bg-terracotta/10 text-terracotta-600 flex items-center justify-center group-hover:scale-110 transition-transform">
                           <ArrowRight size={24} />
                         </div>
                         <div className="flex flex-col items-start text-left">
@@ -315,7 +318,7 @@ export function SkipRecoveryDialog({
                           </span>
                         </div>
                       </div>
-                      <div className="h-8 w-8 rounded-full bg-charcoal/5 flex items-center justify-center text-charcoal/20 group-hover:bg-terracotta/10 group-hover:text-terracotta transition-colors">
+                      <div className="h-8 w-8 rounded-full bg-charcoal/5 flex items-center justify-center text-charcoal/20 group-hover:bg-terracotta/10 group-hover:text-terracotta-600 transition-colors">
                         <Calendar size={16} />
                       </div>
                     </button>

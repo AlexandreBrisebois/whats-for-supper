@@ -102,7 +102,7 @@ export function FailedCapturesSection() {
               {retryingIds.has(failure.id) ? (
                 <span
                   data-testid={`action-retry-${failure.id}-retrying`}
-                  className="text-xs font-black uppercase tracking-widest text-terracotta/60"
+                  className="text-xs font-black uppercase tracking-widest text-terracotta-600"
                 >
                   {t('settings.retrying', 'Retrying…')}
                 </span>
@@ -110,7 +110,7 @@ export function FailedCapturesSection() {
                 <button
                   data-testid={`action-retry-${failure.id}`}
                   onClick={() => handleRetry(failure.id)}
-                  className="h-10 rounded-xl bg-terracotta px-5 text-[10px] font-black uppercase tracking-[0.1em] text-white transition-all active:scale-95 hover:bg-terracotta/90 shadow-sm"
+                  className="h-10 rounded-xl bg-terracotta active:bg-terracotta-700 px-5 text-[10px] font-black uppercase tracking-[0.1em] text-white transition-all active:scale-95 hover:bg-terracotta-600 shadow-sm"
                 >
                   {t('settings.retry', 'Retry')}
                 </button>
@@ -120,7 +120,7 @@ export function FailedCapturesSection() {
                 data-testid={`action-clear-${failure.id}`}
                 onClick={() => handleClear(failure.id)}
                 disabled={clearingIds.has(failure.id)}
-                className="flex h-10 w-10 items-center justify-center rounded-xl border border-terracotta/20 text-terracotta/40 transition-all hover:bg-terracotta/5 hover:text-terracotta disabled:opacity-50 active:scale-90"
+                className="flex h-10 w-10 items-center justify-center rounded-xl border border-terracotta/20 text-terracotta-600 transition-all hover:bg-terracotta/5 hover:text-terracotta-600 disabled:opacity-50 active:scale-90"
                 aria-label={t('settings.clearFailedCapture', 'Clear failed capture')}
               >
                 <Trash2 size={16} />

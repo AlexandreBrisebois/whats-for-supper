@@ -1,5 +1,6 @@
 'use client';
 
+import { useFamilyStore } from '@/store/familyStore';
 import { useUiStore } from '@/store/uiStore';
 
 import { useTodayStore } from '@/store/todayStore';
@@ -81,6 +82,9 @@ const SEARCH_DEBOUNCE_MS = 500;
 
 export default function RecipesPage() {
   const router = useRouter();
+  const gotoMembershipVersion = useFamilyStore((state) => state.gotoMembershipVersion);
+  const handledGotoVersionRef = useRef(gotoMembershipVersion);
+  const filtersEntryRef = useRef<HTMLButtonElement>(null);
   const searchParams = useSearchParams();
 
   const [query, setQuery] = useState('');
@@ -261,6 +265,30 @@ export default function RecipesPage() {
       isActive = false;
     };
   }, [parsedDayIndex, parsedWeekOffset]);
+
+  useEffect(() => {
+    if (gotoMembershipVersion === handledGotoVersionRef.current) return;
+    if (!activeFilters.gotoOnly) {
+      handledGotoVersionRef.current = gotoMembershipVersion;
+      return;
+    }
+    // Invalidate the old continuation immediately; read retry never repeats the save.
+    requestGenerationRef.current++;
+    continuationGenerationRef.current = null;
+    const timer = window.setTimeout(() => {
+      handledGotoVersionRef.current = gotoMembershipVersion;
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      void runSearch(query, similarToRecipeId, activeFilters, INITIAL_LIMIT, activePreferences);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [
+    gotoMembershipVersion,
+    activeFilters,
+    activePreferences,
+    query,
+    similarToRecipeId,
+    runSearch,
+  ]);
 
   useEffect(() => {
     if (searchPromotionVersion === handledPromotionVersionRef.current) return;
@@ -640,7 +668,7 @@ export default function RecipesPage() {
           className="bg-terracotta/10 border border-terracotta/20 rounded-2xl p-4 flex items-center justify-between"
         >
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-terracotta/60 mb-1">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-terracotta-600 mb-1">
               {t('recipes.planningMode', 'Planning Mode')}
             </p>
             <p className="text-sm font-bold text-charcoal">
@@ -693,8 +721,11 @@ export default function RecipesPage() {
       <div className="px-1">
         <button
           type="button"
+          ref={filtersEntryRef}
           data-testid="mobile-filters-button"
-          aria-label={`Filters, ${activeFilterCount} active`}
+          aria-label={tWithVars('recipes.filtersActiveCount', 'Filters, {{count}} active', {
+            count: activeFilterCount,
+          })}
           onClick={() => {
             setIsFiltersOpen(true);
             if (filterMetadataRequestedRef.current) return;
@@ -714,7 +745,7 @@ export default function RecipesPage() {
         >
           <SlidersHorizontal size={16} aria-hidden="true" />
           {t('recipes.filters', 'Filters')}
-          <span className="flex h-6 min-w-6 items-center justify-center rounded-full bg-terracotta/10 px-1.5 text-xs text-terracotta">
+          <span className="flex h-6 min-w-6 items-center justify-center rounded-full bg-terracotta/10 px-1.5 text-xs text-terracotta-600">
             {activeFilterCount}
           </span>
         </button>
@@ -745,7 +776,7 @@ export default function RecipesPage() {
                   activePreferences
                 )
               }
-              className="mt-4 rounded-full bg-terracotta px-4 py-2 text-sm font-bold text-white"
+              className="mt-4 rounded-full bg-terracotta hover:bg-terracotta-600 active:bg-terracotta-700 px-4 py-2 text-sm font-bold text-white"
             >
               Retry
             </button>
@@ -767,7 +798,7 @@ export default function RecipesPage() {
               <button
                 type="button"
                 onClick={() => handleApplyFilters({ filters: {}, preferences: {} })}
-                className="inline-flex rounded-full bg-terracotta px-4 py-2 text-sm font-bold text-white shadow-sm"
+                className="inline-flex rounded-full bg-terracotta hover:bg-terracotta-600 active:bg-terracotta-700 px-4 py-2 text-sm font-bold text-white shadow-sm"
               >
                 {t('recipes.clearFilters', 'Clear Filters')}
               </button>

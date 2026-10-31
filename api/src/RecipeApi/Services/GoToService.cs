@@ -30,6 +30,9 @@ public class GoToService(IClock clock, RecipeDbContext db, ILogger<GoToService> 
         }
     }
 
+    public async Task<Guid[]> GetConfiguredRecipeIdsAsync()
+        => (await GetGoToListAsync()).Items.Select(item => item.RecipeId).Distinct().ToArray();
+
     public async Task<GoToListDto> SaveGoToListAsync(GoToListDto dto)
     {
         var options = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };

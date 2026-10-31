@@ -19,6 +19,7 @@ vi.mock('@/lib/auth', () => ({
 }));
 
 vi.mock('next/navigation', () => ({
+  usePathname: () => '/discovery',
   useRouter: () => ({ push: mocks.push }),
 }));
 

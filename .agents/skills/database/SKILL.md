@@ -1,6 +1,6 @@
 ---
 name: database
-description: Change or review WFS PostgreSQL schema, compatibility SQL, EF mappings and migration behavior. Use when persistence schema or mapping work is in scope.
+description: Change or review WFS PostgreSQL schema, migrations, EF mappings, queries, indexes and persistence concurrency. Use when PostgreSQL storage or provider behavior is in scope.
 ---
 
 # Database and schema evolution
@@ -18,6 +18,39 @@ Do not copy an API schema into storage or guess vector dimensions from examples.
 EF mappings and tests, including backup/restore dependencies when applicable.
 Use the repository's fluent EF configuration and existing mapping conventions.
 
+## Select evidence and versions
+
+Start with the affected requirement under `openspec/specs/`, then its regression
+assertions and current SQL/service code. Search and indexing have separate owners;
+backup/recovery distinguishes merge restore from exact replacement. Preserve their
+qualifications rather than inferring guarantees from test names or code comments.
+
+Resolve PostgreSQL/pgvector from the selected Compose files, migration tooling from
+`api/database/Dockerfile`, and EF/Npgsql/Pgvector.NET from the affected `.csproj`,
+`api/Directory.Build.props` and `packages.lock.json` files. Image tags and locks
+declare inputs; they do not establish installed extensions or running versions.
+Use matching [PostgreSQL manuals](https://www.postgresql.org/docs/),
+[Npgsql provider documentation](https://www.npgsql.org/efcore/) and
+[pgvector release documentation](https://github.com/pgvector/pgvector#readme).
+Check the selected package/release metadata before adopting a current-doc example.
+
+Load only the evidence relevant to the selected persistence decision:
+
+| Decision | Existing evidence to inspect |
+|---|---|
+| Schema transitions and constraints | `SchemaIntegrityTests.cs` (static/model assertions) and `NonCookingPostgresTests.cs`, `RecipeImportReportPostgresTests.cs` (database assertions) |
+| Search SQL, filtering, vectors or plans | `recipe-search` and `search-indexing` specs; `RecipeLexicalSearchPostgresTests.cs` and `RecipeSearchFilterMaterializerPostgresTests.cs` |
+| Concurrent grocery writes | `grocery-shopping` spec; `GroceryCheckConcurrencyPostgresTests*.cs`; `GroceryCheckCoordinator.cs` for the single-instance processing boundary |
+| Backup/restore dependencies | `data-backup-and-recovery` spec; `OnlineRecoveryPostgresTests.cs` and the affected merge/sidecar tests |
+
+Tests above live under `api/src/RecipeApi.Tests/Integration/`; service owners live
+under `api/src/RecipeApi/Services/`. For query work, inspect parameter binding,
+provider translation and index/operator compatibility in the actual execution path.
+The existing search repositories use bound `NpgsqlParameter` values. Do not infer
+plan use or recall from an index declaration. PostgreSQL-specific transactions,
+isolation and lock effects belong here; .NET scope/cancellation/disposal belong to
+[dotnet-dev](../dotnet-dev/SKILL.md).
+
 ## Preview and application
 
 Run from the repository root after verifying the target database, Compose inputs
@@ -33,6 +66,14 @@ and authorized effects. Inspect generated SQL before applying it.
 
 Review compatibility SQL separately; schema-only preview cannot establish safety
 of the full migration. Declarative tooling can still produce destructive changes.
+Inspect `migrate.sh` end to end: extension and concurrent-index presteps run before
+the compatibility transaction, followed by psqldef. The full sequence is not atomic.
+For affected populated tables, review lock scope/duration, partial completion and
+retry behavior. Preserve concurrent-index work outside transaction blocks and its
+invalid-index recovery; consult the selected PostgreSQL major's `CREATE INDEX`
+and explicit-locking documentation. Plan experiments belong in authorized isolated
+fixtures; `EXPLAIN ANALYZE` executes the query and is not a read-only preview.
+
 Schema application must never silently reset data. Reset, DROP, truncate, volume
 removal, reseeding or restore require explicit authorization covering the data and
 environment; routine schema authorization does not imply them. Never substitute
@@ -43,4 +84,7 @@ authorized work. Do not overwrite approved DDL to match incidental live drift.
 Verify clean-install and existing-data paths when applicable. Assert persisted
 rows and constraints as well as API behavior. In-memory tests and static SQL/EF
 comparison do not establish live PostgreSQL parity. Record unavailable DB checks
-as blocked. Use the shared execution harness for applicable completion checks.
+as blocked. Select PostgreSQL feedback through the shared
+[database runner guidance](../../core/execution-harness.md#effects-blockers-and-supporting-commands),
+including `task test:database`; its prerequisites, effects and completion checks
+remain owned there. Reading a fixture or a static assertion is not a passing run.

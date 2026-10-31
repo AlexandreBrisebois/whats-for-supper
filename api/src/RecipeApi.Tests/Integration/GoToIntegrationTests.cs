@@ -31,6 +31,60 @@ public class GoToIntegrationTests : IAsyncLifetime
         await _factory.DisposeAsync();
     }
 
+    [Theory]
+    [InlineData(false, 2)]
+    [InlineData(true, 1)]
+    public async Task List_GotoOnly_UsesConfiguredEligibleMembershipBeforePagination(bool discovery, int expectedTotal)
+    {
+        var now = DateTimeOffset.UtcNow;
+        var ordinary = Enumerable.Range(0, 24).Select(i => new Recipe
+        {
+            Id = Guid.NewGuid(), Name = $"Ordinary {i}", IsReady = true,
+            IsDiscoverable = true, Rating = (RecipeRating)3, CreatedAt = now.AddMinutes(i), UpdatedAt = now
+        }).ToList();
+        var configured = new Recipe { Id = Guid.NewGuid(), Name = "Configured unrated", IsReady = true,
+            IsDiscoverable = true, Rating = 0, CreatedAt = now.AddDays(-2), UpdatedAt = now };
+        var privateRecipe = new Recipe { Id = Guid.NewGuid(), Name = "Configured private", IsReady = true,
+            IsDiscoverable = false, CreatedAt = now.AddDays(-1), UpdatedAt = now };
+        var pending = new Recipe { Id = Guid.NewGuid(), Name = "Pending", IsReady = false,
+            CreatedAt = now, UpdatedAt = now };
+        var deleted = new Recipe { Id = Guid.NewGuid(), Name = "Deleted", IsReady = true,
+            DeletedAt = now, CreatedAt = now, UpdatedAt = now };
+        _db.Recipes.AddRange(ordinary.Concat([configured, privateRecipe, pending, deleted]));
+        await _db.SaveChangesAsync();
+        await _service.SaveGoToListAsync(new GoToListDto { Items =
+        [
+            new() { RecipeId = configured.Id }, new() { RecipeId = configured.Id },
+            new() { RecipeId = privateRecipe.Id }, new() { RecipeId = pending.Id },
+            new() { RecipeId = deleted.Id }, new() { RecipeId = Guid.NewGuid() }
+        ] });
+
+        using var client = _factory.CreateClient();
+        using var response = await client.GetAsync($"/api/recipes?gotoOnly=true&discoverableOnly={discovery}&limit=1");
+        response.EnsureSuccessStatusCode();
+        using var body = System.Text.Json.JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal(expectedTotal, body.RootElement.GetProperty("pagination").GetProperty("total").GetInt32());
+        var first = body.RootElement.GetProperty("recipes").EnumerateArray().Single().GetProperty("id").GetGuid();
+        Assert.Contains(first, new[] { configured.Id, privateRecipe.Id });
+        using var inactive = await client.GetAsync("/api/recipes?gotoOnly=false&limit=100");
+        using var inactiveBody = System.Text.Json.JsonDocument.Parse(await inactive.Content.ReadAsStringAsync());
+        Assert.Equal(26, inactiveBody.RootElement.GetProperty("pagination").GetProperty("total").GetInt32());
+    }
+
+    [Fact]
+    public async Task List_GotoOnly_EmptyConfigurationDoesNotFallBack()
+    {
+        _db.Recipes.Add(new Recipe { Id = Guid.NewGuid(), Name = "Ordinary", IsReady = true,
+            CreatedAt = DateTimeOffset.UtcNow, UpdatedAt = DateTimeOffset.UtcNow });
+        await _db.SaveChangesAsync();
+        using var client = _factory.CreateClient();
+        using var response = await client.GetAsync("/api/recipes?gotoOnly=true");
+        response.EnsureSuccessStatusCode();
+        using var body = System.Text.Json.JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Empty(body.RootElement.GetProperty("recipes").EnumerateArray());
+        Assert.Equal(0, body.RootElement.GetProperty("pagination").GetProperty("total").GetInt32());
+    }
+
     [Fact]
     public async Task GetGoToListAsync_NoData_ReturnsEmpty()
     {

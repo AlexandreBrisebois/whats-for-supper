@@ -18,14 +18,20 @@ const mocks = vi.hoisted(() => {
 
   const librarySummaryGet = vi.fn();
   const recipesGet = vi.fn();
+  const gotoGet = vi.fn();
+  const gotoPut = vi.fn();
   const familyPreferencesPut = vi.fn();
   const updateRecipe = vi.fn();
   const push = vi.fn();
   const back = vi.fn();
 
   return {
+    animationControls: { start: vi.fn().mockResolvedValue(undefined), stop: vi.fn() },
+    searchParams: new URLSearchParams(),
     librarySummaryGet,
     recipesGet,
+    gotoGet,
+    gotoPut,
     familyPreferencesPut,
     updateRecipe,
     push,
@@ -51,6 +57,7 @@ const mocks = vi.hoisted(() => {
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: mocks.push, back: mocks.back }),
+  useSearchParams: () => mocks.searchParams,
 }));
 
 vi.mock('next/image', () => ({
@@ -101,7 +108,9 @@ vi.mock('framer-motion', () => ({
   },
   useMotionValue: () => ({ get: () => 0, set: vi.fn() }),
   useTransform: () => ({ get: () => 0 }),
-  useAnimation: () => ({ start: vi.fn().mockResolvedValue(undefined) }),
+  useAnimation: () => mocks.animationControls,
+  useDragControls: () => ({ start: vi.fn() }),
+  useIsPresent: () => true,
   useMotionValueEvent: vi.fn(),
   AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
@@ -111,6 +120,10 @@ vi.mock('framer-motion', () => ({
 vi.mock('@/lib/api/api-client', () => ({
   apiClient: {
     api: {
+      goto: {
+        get: (...args: unknown[]) => mocks.gotoGet(...args),
+        put: (...args: unknown[]) => mocks.gotoPut(...args),
+      },
       recipes: {
         librarySummary: {
           get: (...args: unknown[]) => mocks.librarySummaryGet(...args),
@@ -243,8 +256,12 @@ function makeDragInfo(offsetX: number, velocityX = 0) {
 // ---------------------------------------------------------------------------
 
 beforeEach(() => {
+  mocks.searchParams = new URLSearchParams();
   mocks.librarySummaryGet.mockReset();
   mocks.recipesGet.mockReset();
+  mocks.gotoGet.mockReset().mockResolvedValue({ data: { items: [] } });
+  mocks.gotoPut.mockReset().mockResolvedValue({});
+  useFamilyStore.setState({ familySettings: {}, gotoMembershipVersion: 0 });
   mocks.familyPreferencesPut.mockReset();
   mocks.updateRecipe.mockReset();
   mocks.push.mockReset();
@@ -410,7 +427,7 @@ describe('BrowseAllStack — initial card display', () => {
     });
 
     expect(await screen.findByLabelText('Recipe reported')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /^Filters/ })).not.toBeInTheDocument();
+    expect(screen.getByTestId('browse-filter-goto')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Ready to review' })).not.toBeInTheDocument();
   });
 });
@@ -1142,4 +1159,103 @@ describe('stack page recovery', () => {
     expect(screen.getByTestId('stack-card-front')).toHaveAttribute('data-recipe-id', ids[3]);
     expect(screen.getByTestId('stack-depth-indicator')).toHaveTextContent('1 / 1');
   });
+});
+
+describe('Browse GOTO filter drafts', () => {
+  it('applies configured membership and uses the filtered All total', async () => {
+    mocks.librarySummaryGet.mockResolvedValue(makeSummaryResponse(45));
+    mocks.recipesGet.mockImplementation(async (request: any) =>
+      request?.queryParameters?.gotoOnly
+        ? makePageResponse([RECIPE_IDS[2]], 1, 1)
+        : makePageResponse(RECIPE_IDS, 45, 1)
+    );
+    render(<BrowseAllStackPage />);
+    await screen.findByTestId('stack-card-front');
+    fireEvent.click(screen.getByTestId('browse-filter-goto'));
+    await waitFor(() =>
+      expect(mocks.recipesGet).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          queryParameters: expect.objectContaining({ gotoOnly: true, page: 1 }),
+        })
+      )
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId('stack-depth-indicator')).toHaveTextContent('1 / 1')
+    );
+    expect(screen.getByTestId('stack-card-front')).toHaveAttribute('data-recipe-id', RECIPE_IDS[2]);
+  });
+});
+
+describe('Browse immediate GOTO management saves', () => {
+  it('exposes immediate membership filtering without management', async () => {
+    render(<BrowseAllStackPage />);
+    await screen.findByTestId('stack-card-front');
+    expect(screen.queryByTestId('browse-filters-entry')).not.toBeInTheDocument();
+    expect(screen.queryByText('Manage GOTOs')).not.toBeInTheDocument();
+    expect(screen.getByTestId('browse-filter-goto')).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByTestId('browse-filter-goto')).toHaveAccessibleName('Go-To recipes only');
+  });
+
+  it('refreshes only after confirmed membership saving, retries failed reading without PUT, and preserves a cancelled draft', async () => {
+    mocks.gotoGet.mockResolvedValue({
+      data: { items: [{ recipeId: RECIPE_IDS[0], description: 'Recipe A', status: 'ready' }] },
+    });
+    let failRefresh = true;
+    mocks.recipesGet.mockImplementation(async (request: any) => {
+      const items = (useFamilyStore.getState().familySettings.family_goto as any)?.items;
+      if (request.queryParameters.gotoOnly && items?.length === 0) {
+        if (failRefresh) {
+          failRefresh = false;
+          throw new Error('read failed after save');
+        }
+        return makePageResponse([], 0, 1);
+      }
+      return makePageResponse([RECIPE_IDS[0]], 1, 1);
+    });
+    render(<BrowseAllStackPage />);
+    await screen.findByTestId('stack-card-front');
+    fireEvent.click(screen.getByTestId('browse-filter-goto'));
+    await waitFor(() =>
+      expect(mocks.recipesGet).toHaveBeenLastCalledWith(
+        expect.objectContaining({ queryParameters: expect.objectContaining({ gotoOnly: true }) })
+      )
+    );
+    // Rejected save leaves results and version untouched.
+    const calls = mocks.recipesGet.mock.calls.length;
+    mocks.gotoPut.mockRejectedValueOnce(new Error('save rejected'));
+    await act(async () => {
+      await expect(useFamilyStore.getState().saveGoTo({ items: [] })).rejects.toThrow(
+        'save rejected'
+      );
+    });
+    expect(mocks.recipesGet).toHaveBeenCalledTimes(calls);
+    await act(async () => {
+      await useFamilyStore.getState().saveGoTo({ items: [] });
+    });
+    expect(await screen.findByRole('button', { name: 'Retry' })).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    expect(await screen.findByTestId('browse-goto-empty')).toBeVisible();
+    expect(mocks.gotoPut).toHaveBeenCalledTimes(2);
+    expect(screen.getByTestId('browse-filter-goto')).toHaveAttribute('aria-pressed', 'true');
+    expect((useFamilyStore.getState().familySettings.family_goto as any).items).toEqual([]);
+  });
+});
+
+it('opens the GOTO capture-return collection with pending management visible without saving', async () => {
+  mocks.searchParams = new URLSearchParams('gotoOnly=true&manageGoto=true');
+  mocks.gotoGet.mockResolvedValue({
+    data: {
+      items: [{ recipeId: RECIPE_IDS[0], description: 'Pending family supper', status: 'pending' }],
+    },
+  });
+  mocks.recipesGet.mockResolvedValue(makePageResponse([], 0, 1));
+  render(<BrowseAllStackPage />);
+  expect(await screen.findByTestId('browse-goto-empty')).toBeVisible();
+  expect(screen.queryByText('Manage GOTOs')).not.toBeInTheDocument();
+  expect(screen.queryByText('Pending family supper')).not.toBeInTheDocument();
+  expect(screen.getByTestId('browse-filter-goto')).toHaveAttribute('aria-pressed', 'true');
+  expect(mocks.recipesGet).toHaveBeenCalledWith(
+    expect.objectContaining({ queryParameters: expect.objectContaining({ gotoOnly: true }) })
+  );
+  expect(mocks.gotoPut).not.toHaveBeenCalled();
 });

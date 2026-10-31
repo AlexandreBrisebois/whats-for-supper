@@ -1,3 +1,7 @@
+import { observeOpening, presentationChanged } from '@/lib/telemetry/opening';
+import type { BrowserObservation } from '@/lib/telemetry/navigation';
+
+vi.mock('next/navigation', () => ({ usePathname: () => '/recipes' }));
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type {
@@ -45,6 +49,27 @@ function renderSheet(
 
 describe('RecipeFiltersSheet', () => {
   afterEach(() => setLocale('en'));
+
+  it('offers shared management collapsed without confusing it with GOTO selection', () => {
+    renderSheet({ gotoOnly: true });
+    expect(screen.queryByRole('button', { name: 'Manage GOTOs' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'GOTO' })).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('keeps GOTO a selected draft until Apply and clears it with other filters', () => {
+    const { onApply } = renderSheet({ gotoOnly: true });
+    const goto = screen.getByRole('button', { name: 'GOTO' });
+    expect(goto).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(goto);
+    expect(onApply).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Apply filters' }));
+    expect(onApply).toHaveBeenLastCalledWith(
+      expect.objectContaining({ filters: expect.objectContaining({ gotoOnly: null }) })
+    );
+    fireEvent.click(screen.getByRole('button', { name: /clear filters/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Apply filters' }));
+    expect(onApply).toHaveBeenLastCalledWith(expect.objectContaining({ filters: {} }));
+  });
 
   it('uses the required compact section order and hides management filters by default', () => {
     renderSheet();
@@ -159,4 +184,55 @@ describe('RecipeFiltersSheet', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Close' }));
     expect(onClose).toHaveBeenCalledOnce();
   });
+});
+
+// Exercise the semantic consumer through the actual document coordinator/hook.
+function startPresentationStream() {
+  vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
+  const submit = vi.fn<(event: BrowserObservation) => Promise<void>>().mockResolvedValue();
+  const observe = () => observeOpening(document, true, '/recipes', submit);
+  observe();
+  submit.mockClear();
+  document.addEventListener(presentationChanged, observe);
+  return {
+    events: () => submit.mock.calls.map(([event]) => [event.eventName, event.screen]),
+    raw: () => submit.mock.calls.map(([event]) => event),
+    stop: () => document.removeEventListener(presentationChanged, observe),
+  };
+}
+
+it('observes filter presentation through draft edits and cancel/reopen without applying', async () => {
+  const stream = startPresentationStream();
+  const onApply = vi.fn();
+  const onClose = vi.fn();
+  const props = {
+    activeFilters: {},
+    activePreferences: {},
+    filterMetadata: metadata(),
+    onApply,
+    onClose,
+  };
+  let view = render(<RecipeFiltersSheet {...props} />);
+  try {
+    expect(stream.events()).toEqual([['pwa.surface.opened', 'recipe.filters']]);
+    fireEvent.click(screen.getByRole('button', { name: 'Quick' }));
+    view.rerender(<RecipeFiltersSheet {...props} />);
+    expect(stream.events()).toHaveLength(1);
+    expect(screen.getByRole('button', { name: 'Quick' })).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    expect(onClose).toHaveBeenCalledOnce();
+    expect(onApply).not.toHaveBeenCalled();
+    view.unmount();
+    await Promise.resolve();
+    view = render(<RecipeFiltersSheet {...props} />);
+    expect(stream.events()).toEqual([
+      ['pwa.surface.opened', 'recipe.filters'],
+      ['pwa.surface.closed', 'recipe.filters'],
+      ['pwa.surface.opened', 'recipe.filters'],
+    ]);
+    expect(JSON.stringify(stream.raw())).not.toContain('Quick');
+  } finally {
+    view.unmount();
+    stream.stop();
+  }
 });

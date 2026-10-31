@@ -10,6 +10,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, act, fireEvent, waitFor, screen } from '@testing-library/react';
 import React from 'react';
 
+vi.mock('next/navigation', () => ({ usePathname: () => '/home' }));
+
 // ── Store mock ────────────────────────────────────────────────────────────────
 
 let mockFillTheGapVersion = 0;
@@ -373,4 +375,39 @@ describe('QuickFindModal — fillTheGapVersion wiring (BS-7)', () => {
 
     await waitFor(() => expect(mockGetFillTheGap).toHaveBeenCalledTimes(2));
   });
+});
+
+it('declares one static Quick Find presentation across replay, rerender and visible unmount', async () => {
+  const { observeOpening, presentationChanged } = await import('@/lib/telemetry/opening');
+  const submit = vi.fn().mockResolvedValue(undefined);
+  vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
+  const observe = () => observeOpening(document, true, '/home', submit);
+  document.addEventListener(presentationChanged, observe);
+  observe();
+  const props = { onClose: vi.fn(), onSelect: vi.fn() };
+  const view = render(
+    <React.StrictMode>
+      <QuickFindModal {...props} />
+    </React.StrictMode>
+  );
+  await screen.findByTestId('quick-find-modal');
+  view.rerender(
+    <React.StrictMode>
+      <QuickFindModal {...props} weekOffset={1} />
+    </React.StrictMode>
+  );
+  expect(submit.mock.calls.map(([e]) => [e.eventName, e.screen])).toEqual([
+    ['pwa.app.opened', 'home'],
+    ['pwa.screen.presented', 'home'],
+    ['pwa.surface.opened', 'quick.find'],
+  ]);
+  view.unmount();
+  await act(async () => {
+    await Promise.resolve();
+  });
+  expect(submit.mock.calls.at(-1)?.[0]).toMatchObject({
+    eventName: 'pwa.surface.closed',
+    screen: 'quick.find',
+  });
+  document.removeEventListener(presentationChanged, observe);
 });

@@ -1,8 +1,15 @@
 'use client';
+import {
+  useLoadedPresentation,
+  useSurfacePresentation,
+} from '@/components/telemetry/useSurfacePresentation';
+import { observeOriginalRequest } from '@/lib/telemetry/opening';
+import { reportBrowserObservation } from '@/lib/telemetry/actions';
+import { observeIssueResult } from '@/lib/telemetry/issue-results';
 import { DemoAiActionGate } from '@/components/demo/DemoAiActionGate';
 import { CalendarUnavailableError } from '@/lib/deployment-calendar';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useLayoutEffect, useState, useRef, useMemo } from 'react';
 import {
   useRecipeNotesStore,
   initializeRecipeNotes,
@@ -136,6 +143,44 @@ export function RecipeDetailSheet({
   const [shareError, setShareError] = useState<string | null>(null);
   const [showCooksMode, setShowCooksMode] = useState(false);
   const [showImportIssueSheet, setShowImportIssueSheet] = useState(false);
+  const issueGeneration = useRef(0);
+  const issueMounted = useRef(false);
+  useLayoutEffect(() => {
+    issueMounted.current = true;
+    const invalidate = () => {
+      issueGeneration.current++;
+    };
+    const visibility = () => {
+      if (document.visibilityState !== 'visible') invalidate();
+    };
+    document.addEventListener('visibilitychange', visibility);
+    window.addEventListener('pagehide', invalidate);
+    return () => {
+      issueMounted.current = false;
+      invalidate();
+      document.removeEventListener('visibilitychange', visibility);
+      window.removeEventListener('pagehide', invalidate);
+    };
+  }, [recipeId]);
+  const closeDetail = () => {
+    issueGeneration.current++;
+    onClose();
+  };
+  const closeImportIssue = () => {
+    issueGeneration.current++;
+    setShowImportIssueSheet(false);
+  };
+  const detailEntry = useMemo(() => ({}), [recipeId]);
+  useSurfacePresentation('recipe.detail', true);
+  useSurfacePresentation(
+    'recipe.plan',
+    !!recipe && !isLoading && !loadError && !isEditing && showActionPivot
+  );
+  useLoadedPresentation(
+    'pwa.recipe_detail.presented',
+    detailEntry,
+    !!recipe && !isLoading && !loadError
+  );
   const fileInputRef = useRef<HTMLInputElement>(null);
   const addToast = useUiStore((state) => state.addToast);
   const removeToast = useUiStore((state) => state.removeToast);
@@ -381,7 +426,27 @@ export function RecipeDetailSheet({
 
   const handleSaveImportIssue = async (draft: RecipeImportIssueDraft) => {
     if (!recipe) return;
-    const submission = await saveRecipeImportIssue(recipe.id, draft);
+    const generation = ++issueGeneration.current;
+    let observed = false;
+    const observe = (reason: Parameters<typeof observeIssueResult>[1]) => {
+      if (observed) return;
+      observed = true;
+      if (
+        issueMounted.current &&
+        issueGeneration.current === generation &&
+        document.visibilityState === 'visible'
+      ) {
+        observeIssueResult(document, reason, reportBrowserObservation);
+      }
+    };
+    let submission;
+    try {
+      submission = await saveRecipeImportIssue(recipe.id, draft);
+    } catch (error) {
+      observe('unconfirmed');
+      throw error;
+    }
+    observe(submission.issueResult ?? 'unconfirmed');
     setRecipe(submission.recipe);
     if (submission.reimportLaunchFailed) {
       throw new Error('Re-import launch failed');
@@ -406,6 +471,7 @@ export function RecipeDetailSheet({
 
   const handleResolveImportIssue = async () => {
     if (!recipe) return;
+    issueGeneration.current++;
     const updated = await resolveRecipeImportIssue(recipe.id);
     setRecipe(updated);
     setShowImportIssueSheet(false);
@@ -539,7 +605,7 @@ export function RecipeDetailSheet({
         type="button"
         aria-label={t('common.close', 'Close')}
         title={t('common.close', 'Close')}
-        onClick={onClose}
+        onClick={closeDetail}
         className="absolute inset-0 bg-charcoal/45 backdrop-blur-sm"
       />
 
@@ -549,36 +615,36 @@ export function RecipeDetailSheet({
       >
         <div className="flex flex-wrap items-center gap-x-2 gap-y-2 px-6 pt-6">
           <div className="flex min-w-0 items-center gap-2">
-            <p className="text-[10px] font-black uppercase tracking-[0.24em] text-terracotta/70">
+            <p className="text-[10px] font-black uppercase tracking-[0.24em] text-terracotta-600">
               {t('recipes.detailTitle', 'Recipe detail')}
             </p>
             {recipe?.importIssue && (
               <RecipeImportIssueBadge status={recipe.importIssue.status} variant="compact" />
             )}
           </div>
-          <div className="ml-auto flex shrink-0 items-center gap-2">
+          <div className="ml-auto flex min-w-0 max-w-full flex-wrap items-center justify-end gap-2">
             {!isLoading && recipe && !isEditing && (
               <button
                 type="button"
                 data-testid={isCurrentGoto ? 'action-current-goto' : 'action-set-goto'}
                 aria-label={
                   isCurrentGoto
-                    ? t('recipes.currentGoto', 'Current GOTO recipe')
+                    ? t('recipes.removeGoto', 'Remove from GOTO')
                     : t('recipes.setGoto', 'Set as GOTO')
                 }
                 title={
                   isCurrentGoto
-                    ? t('recipes.currentGoto', 'Current GOTO recipe')
+                    ? t('recipes.removeGoto', 'Remove from GOTO')
                     : t('recipes.setGoto', 'Set as GOTO')
                 }
                 aria-pressed={isCurrentGoto}
                 onClick={() => void handleSetGoto()}
                 disabled={isSavingGoto}
                 className={[
-                  'inline-flex h-10 items-center justify-center gap-1.5 rounded-full px-3 text-xs font-black uppercase tracking-wider shadow-sm transition disabled:cursor-default',
+                  'inline-flex min-h-11 items-center justify-center gap-1.5 rounded-full px-3 text-sm font-bold shadow-sm transition focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-charcoal disabled:cursor-default',
                   isCurrentGoto
-                    ? 'bg-ochre text-white'
-                    : 'bg-white text-ochre hover:bg-ochre/10 disabled:opacity-60',
+                    ? 'bg-ochre-100 text-ochre-800 hover:bg-ochre-200'
+                    : 'bg-ochre-50 text-ochre-800 hover:bg-ochre-100',
                 ].join(' ')}
               >
                 <Star
@@ -586,7 +652,7 @@ export function RecipeDetailSheet({
                   fill={isCurrentGoto ? 'currentColor' : 'none'}
                   strokeWidth={isCurrentGoto ? 2.8 : 2.4}
                 />
-                {isCurrentGoto && <span>GOTO</span>}
+                <span>GOTO</span>
               </button>
             )}
             {!isLoading &&
@@ -623,7 +689,7 @@ export function RecipeDetailSheet({
               data-testid="action-close-sheet"
               aria-label={t('common.close', 'Close')}
               title={t('common.close', 'Close')}
-              onClick={onClose}
+              onClick={closeDetail}
               className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-charcoal/5 text-charcoal/70 transition hover:bg-charcoal/10"
             >
               <X size={18} />
@@ -651,7 +717,7 @@ export function RecipeDetailSheet({
               type="button"
               data-testid="recipe-detail-retry"
               onClick={() => setReadAttempt((attempt) => attempt + 1)}
-              className="mt-4 rounded-full bg-terracotta px-5 py-3 font-bold text-white"
+              className="mt-4 rounded-full bg-terracotta hover:bg-terracotta-600 active:bg-terracotta-700 px-5 py-3 font-bold text-white"
             >
               {t('common.retry', 'Retry')}
             </button>
@@ -675,6 +741,7 @@ export function RecipeDetailSheet({
                   data-testid="action-view-original"
                   onClick={() => {
                     if (recipe.sourceType === 'url' && recipe.sourceUrl) {
+                      observeOriginalRequest(document, reportBrowserObservation);
                       window.open(recipe.sourceUrl, '_blank', 'noopener,noreferrer');
                     } else {
                       setShowOriginals(true);
@@ -841,7 +908,7 @@ export function RecipeDetailSheet({
                     disabled={isSavingAction}
                     aria-label={t('recipes.viewSteps', 'View steps')}
                     title={t('recipes.viewSteps', 'View steps')}
-                    className="inline-flex h-8 items-center gap-1.5 rounded-full bg-white px-3 text-[10px] font-black uppercase tracking-wider text-terracotta shadow-sm transition hover:bg-terracotta/5 active:scale-95 disabled:opacity-50"
+                    className="inline-flex h-8 items-center gap-1.5 rounded-full bg-white px-3 text-[10px] font-black uppercase tracking-wider text-terracotta-600 shadow-sm transition hover:bg-terracotta/5 active:scale-95 disabled:opacity-50"
                   >
                     <UtensilsCrossed size={12} />
                     <span>{t('recipes.steps', 'STEPS')}</span>
@@ -1014,7 +1081,7 @@ export function RecipeDetailSheet({
             </div>
 
             {editError && (
-              <p className="mb-4 rounded-2xl bg-terracotta/10 px-4 py-3 text-sm font-bold text-terracotta">
+              <p className="mb-4 rounded-2xl bg-terracotta/10 px-4 py-3 text-sm font-bold text-terracotta-600">
                 {editError}
               </p>
             )}
@@ -1031,7 +1098,7 @@ export function RecipeDetailSheet({
                   disabled={
                     isSavingRecipe || draftName.trim().length === 0 || draftMealTypes.length === 0
                   }
-                  className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-terracotta px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-terracotta/90 disabled:opacity-60"
+                  className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-terracotta active:bg-terracotta-700 px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-terracotta-600 disabled:opacity-60"
                 >
                   <Save size={16} />
                   {isSavingRecipe
@@ -1066,7 +1133,7 @@ export function RecipeDetailSheet({
                       plannerDayLabel ? void handleUseRecipe() : setShowActionPivot(true)
                     }
                     disabled={isSavingAction}
-                    className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-terracotta px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-terracotta/90 disabled:opacity-60"
+                    className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-terracotta active:bg-terracotta-700 px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-terracotta-600 disabled:opacity-60"
                   >
                     {!plannerDayLabel && <UtensilsCrossed size={18} />}
                     <span>{primaryActionLabel}</span>
@@ -1078,7 +1145,7 @@ export function RecipeDetailSheet({
                       data-testid="action-cook-tonight"
                       onClick={() => void handleUseRecipe()}
                       disabled={isSavingAction}
-                      className="flex-1 inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-terracotta px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-terracotta/90 disabled:opacity-60"
+                      className="flex-1 inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-terracotta active:bg-terracotta-700 px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-terracotta-600 disabled:opacity-60"
                     >
                       <UtensilsCrossed size={18} />
                       <span>Cook Tonight</span>
@@ -1144,7 +1211,7 @@ export function RecipeDetailSheet({
           isReimporting={recipe.importIssue?.isReimporting}
           reimportFailureMessage={recipe.importIssue?.reimportFailureMessage}
           reimportFailureImportId={recipe.importIssue?.reimportFailureImportId}
-          onClose={() => setShowImportIssueSheet(false)}
+          onClose={closeImportIssue}
           onSave={handleSaveImportIssue}
           onResolve={handleResolveImportIssue}
         />

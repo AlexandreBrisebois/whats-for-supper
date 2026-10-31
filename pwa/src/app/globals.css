@@ -1,7 +1,7 @@
 @import 'tailwindcss';
 
 @theme {
-  --color-terracotta: #cd5d45;
+  --color-terracotta: #b85542;
   --color-ochre: #e1ad01;
   --color-sage: #8a9a5b;
   --color-cream: #fdfcf0;
@@ -12,7 +12,7 @@
   --color-terracotta-200: #e6b3a9;
   --color-terracotta-300: #d98d7e;
   --color-terracotta-400: #cd6753;
-  --color-terracotta-500: #cd5d45;
+  --color-terracotta-500: #b85542;
   --color-terracotta-600: #a44a37;
   --color-terracotta-700: #7b3829;
   --color-terracotta-800: #52251b;

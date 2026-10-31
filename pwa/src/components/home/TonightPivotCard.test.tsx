@@ -1,11 +1,11 @@
 /**
  * Unit tests for TonightPivotCard — rendering logic.
  * Migrated from home-goto.spec.ts (empty-state header, GOTO-ready button
- * label, add-goto-btn visibility, and ghost/outline button styles).
+ * label and add-goto-btn visibility).
  * Pure prop-driven render assertions — no browser or API mocking needed.
  */
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { beforeEach, describe, it, expect, vi } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
 
 vi.mock('@/lib/imageUtils', () => ({
   getImageUrl: (src: string) => src ?? '',
@@ -33,16 +33,24 @@ vi.mock('@/components/home/TonightMenuCard', () => ({
   ),
 }));
 
+import { setLocale } from '@/locales';
+
+beforeEach(() => {
+  setLocale('en');
+  vi.clearAllMocks();
+});
+
 import { TonightPivotCard } from './TonightPivotCard';
 
 const baseProps = {
+  hasCheckedActive: true,
   onConfirmGoto: vi.fn(),
   onDiscover: vi.fn(),
   onOrderIn: vi.fn(),
 };
 
 describe('TonightPivotCard — empty state (no GOTO configured)', () => {
-  it('shows "What\'s for Supper?" as the header text', () => {
+  it('identifies the ordinary empty night', () => {
     render(
       <TonightPivotCard
         {...baseProps}
@@ -51,10 +59,12 @@ describe('TonightPivotCard — empty state (no GOTO configured)', () => {
         gotoStatus={null}
       />
     );
-    expect(screen.getByTestId('pivot-card-header')).toHaveTextContent("What's for Supper?");
+    expect(screen.getByTestId('pivot-card-header')).toHaveTextContent(
+      'Nothing planned for tonight'
+    );
   });
 
-  it('renders add-goto-btn linking to /profile', () => {
+  it('offers unfiltered Browse recipe selection after the initial read settles', () => {
     render(
       <TonightPivotCard
         {...baseProps}
@@ -63,9 +73,8 @@ describe('TonightPivotCard — empty state (no GOTO configured)', () => {
         gotoStatus={null}
       />
     );
-    const btn = screen.getByTestId('add-goto-btn');
-    expect(btn).toBeInTheDocument();
-    expect(btn).toHaveAttribute('href', '/profile');
+    expect(screen.queryByTestId('add-goto-btn')).not.toBeInTheDocument();
+    expect(screen.getByTestId('discover-btn')).toHaveAccessibleName('Search');
   });
 
   it('does not render confirm-goto-btn', () => {
@@ -82,7 +91,7 @@ describe('TonightPivotCard — empty state (no GOTO configured)', () => {
 });
 
 describe('TonightPivotCard — GOTO ready state', () => {
-  it('shows "Make This Tonight" as the primary button label', () => {
+  it('shows "Make this tonight" as the primary button label', () => {
     render(
       <TonightPivotCard
         {...baseProps}
@@ -91,27 +100,7 @@ describe('TonightPivotCard — GOTO ready state', () => {
         gotoStatus="ready"
       />
     );
-    expect(screen.getByTestId('confirm-goto-btn')).toHaveTextContent('Make This Tonight');
-  });
-
-  it('secondary buttons use ghost (transparent border) style, not filled background', () => {
-    render(
-      <TonightPivotCard
-        {...baseProps}
-        gotoDescription="Family Lasagna"
-        gotoRecipeId="recipe-1"
-        gotoStatus="ready"
-      />
-    );
-    const discoverBtn = screen.getByTestId('discover-btn');
-    const orderInBtn = screen.getByTestId('order-in-btn');
-
-    // Ready state: ghost style — transparent background, not filled
-    expect(discoverBtn.className).toContain('bg-transparent');
-    // Non-ready (filled) class must not appear as a standalone class token
-    expect(discoverBtn.className.split(' ')).not.toContain('bg-indigo/10');
-    expect(orderInBtn.className).toContain('bg-transparent');
-    expect(orderInBtn.className.split(' ')).not.toContain('bg-charcoal/10');
+    expect(screen.getByTestId('confirm-goto-btn')).toHaveTextContent('Make this tonight');
   });
 
   it('does not render add-goto-btn when a GOTO is configured', () => {
@@ -171,3 +160,137 @@ it('does not show a GOTO recipe image on a non-cooking day', () => {
   );
   expect(screen.queryByRole('img')).not.toBeInTheDocument();
 });
+
+it.each([
+  ['ready', 'recipe-1', ['confirm-goto-btn', 'discover-btn', 'order-in-btn']],
+  ['pending', 'recipe-1', ['discover-btn', 'order-in-btn']],
+  [null, 'recipe-1', ['discover-btn', 'order-in-btn']],
+  [null, null, ['discover-btn', 'order-in-btn']],
+])('orders immediate choices before setup for %s / %s', (status, id, order) => {
+  render(
+    <TonightPivotCard
+      {...baseProps}
+      gotoRecipeId={id}
+      gotoStatus={status}
+      gotoDescription="Family Lasagna"
+    />
+  );
+  const card = screen.getByTestId('tonight-pivot-card');
+  expect(
+    Array.from(card.querySelectorAll('button, a')).map((el) => el.getAttribute('data-testid'))
+  ).toEqual(order);
+  expect(screen.getByText('Nothing planned for tonight')).toBeVisible();
+  if (status === 'ready') expect(screen.getByText("Your family's GOTO")).toBeVisible();
+  else expect(screen.queryByTestId('confirm-goto-btn')).not.toBeInTheDocument();
+  expect(baseProps.onConfirmGoto).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByTestId('discover-btn'));
+  fireEvent.click(screen.getByTestId('order-in-btn'));
+  expect(baseProps.onDiscover).toHaveBeenCalledTimes(1);
+  expect(baseProps.onOrderIn).toHaveBeenCalledTimes(1);
+  expect(screen.getByTestId('order-in-btn')).toHaveAccessibleName('Order In');
+  expect(screen.getByTestId('order-in-btn').querySelector('svg')).toHaveAttribute(
+    'aria-hidden',
+    'true'
+  );
+});
+
+it.each([
+  ['ready', 'Le GOTO de votre famille'],
+  ['pending', 'Votre GOTO est en préparation…'],
+  [null, 'Vérification de votre GOTO…'],
+])('localizes French %s context and actions', (status, feedback) => {
+  setLocale('fr');
+  render(
+    <TonightPivotCard
+      {...baseProps}
+      gotoRecipeId="recipe-1"
+      gotoStatus={status}
+      gotoDescription="Lasagne"
+    />
+  );
+  expect(screen.getByTestId('pivot-card-header')).toHaveTextContent('Rien de prévu pour ce soir');
+  expect(screen.getByText(feedback)).toBeVisible();
+  expect(screen.getByTestId('discover-btn')).toHaveAccessibleName('Rechercher');
+  expect(screen.getByTestId('order-in-btn')).toHaveAccessibleName('Commander');
+  if (status === 'ready')
+    expect(screen.getByTestId('confirm-goto-btn')).toHaveAccessibleName(
+      'Préparer ce repas ce soir'
+    );
+});
+
+it('retains saved Mystery context and ready choices without calling the day unplanned', () => {
+  render(
+    <TonightPivotCard
+      {...baseProps}
+      gotoRecipeId="recipe-1"
+      gotoStatus="ready"
+      gotoDescription="Family Lasagna"
+      nonCookingLabel="Mystery night"
+      nonCookingKind="mystery"
+    />
+  );
+  expect(screen.getByTestId('today-non-cooking-label')).toHaveTextContent('Mystery night');
+  expect(screen.queryByText('Nothing planned for tonight')).not.toBeInTheDocument();
+  expect(screen.getByText("Your family's GOTO")).toBeVisible();
+  fireEvent.click(screen.getByTestId('confirm-goto-btn'));
+  expect(baseProps.onConfirmGoto).toHaveBeenCalledTimes(1);
+});
+
+describe('Tonight pivot image availability', () => {
+  it('keeps choices after failure and resets only for a changed source or recipe', () => {
+    const props = {
+      ...baseProps,
+      gotoRecipeId: 'one',
+      gotoDescription: 'Garden supper',
+      gotoStatus: 'ready',
+      gotoImageUrl: '/first.jpg',
+    };
+    const { rerender } = render(<TonightPivotCard {...props} />);
+    fireEvent.error(screen.getByRole('img'));
+    expect(screen.queryByRole('img')).not.toBeInTheDocument();
+    expect(screen.getByTestId('confirm-goto-btn')).toBeVisible();
+    expect(baseProps.onConfirmGoto).not.toHaveBeenCalled();
+    rerender(<TonightPivotCard {...props} gotoDescription="Hydrated supper" />);
+    expect(screen.queryByRole('img')).not.toBeInTheDocument();
+    rerender(<TonightPivotCard {...props} gotoImageUrl="/second.jpg" />);
+    expect(screen.getByRole('img')).toHaveAttribute('src', '/second.jpg');
+    fireEvent.error(screen.getByRole('img'));
+    rerender(<TonightPivotCard {...props} gotoRecipeId="two" gotoImageUrl="/second.jpg" />);
+    expect(screen.getByRole('img')).toHaveAttribute('src', '/second.jpg');
+  });
+});
+
+it.each([
+  ['ordinary empty', null, null, null, true, true],
+  ['initial read pending', null, null, null, false, false],
+  ['ready', 'recipe-1', 'ready', null, true, false],
+  ['pending', 'recipe-1', 'pending', null, true, false],
+  ['checking', 'recipe-1', null, null, true, false],
+  ['saved Mystery', null, null, 'Mystery night', true, false],
+] as const)(
+  'limits education to settled ordinary empty: %s',
+  (_name, id, status, label, settled, visible) => {
+    render(
+      <TonightPivotCard
+        {...baseProps}
+        gotoRecipeId={id}
+        gotoStatus={status}
+        gotoDescription={id ? 'Family supper' : null}
+        nonCookingLabel={label}
+        nonCookingKind={label ? 'mystery' : null}
+        hasCheckedActive={settled}
+      />
+    );
+    if (visible) {
+      expect(screen.getByTestId('goto-setup-helper')).toHaveTextContent(
+        'Tap the on favourite recipes so we can suggest one here.'
+      );
+      expect(screen.queryByRole('link', { name: 'Choose GOTO recipes' })).not.toBeInTheDocument();
+      expect(screen.getByRole('img', { name: 'star' })).toBeVisible();
+      expect(screen.getByTestId('goto-setup-helper')).not.toHaveTextContent(/no GOTOs|empty list/i);
+    } else {
+      expect(screen.queryByTestId('goto-setup-helper')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('add-goto-btn')).not.toBeInTheDocument();
+    }
+  }
+);

@@ -1,21 +1,27 @@
-# Diagnosing Next.js Hydration Errors
+# Hydration mismatch and interaction readiness
 
-Hydration and state synchronization are possible causes; inspect the failing trace and network evidence.
+Separate a React hydration mismatch (server HTML differs from the initial client
+render) from an interaction that runs before application handlers/state are ready.
+Inspect the console/trace and affected render or state path before choosing a fix.
 
-## What is a Hydration Error?
-A hydration error occurs when the initial HTML rendered by the Next.js server does not match the React virtual DOM rendered on the client on the first pass.
+## Mismatched output
 
-## The "Race Condition" Anti-Pattern
-Playwright is extremely fast. If your test clicks a button immediately upon page load, Playwright might click the plain HTML button *before* React has fully hydrated the page and attached the `onClick` event listener. 
-*   **Result:** The click does nothing, the test times out waiting for the next screen, and the run fails.
+Make server and initial-client output deterministic first. Compare locale/timezone,
+invalid HTML nesting, initial data and persisted state. `Date.now()` and random
+values are nondeterministic even though they are available on the server; `window`
+and `localStorage` require a browser. A Client Component can still be prerendered.
 
-## How to Diagnose & Fix
-1.  **Check for Visibility/Interactivity First:** Visibility is necessary but does not prove React handlers are attached. Use an application readiness signal where required.
-    ```typescript
-    // Visibility check; add the application readiness condition when needed
-    const button = page.getByTestId('submit-btn');
-    await expect(button).toBeVisible();
-    await button.click();
-    ```
-2.  **Wait for Hydration Markers:** If the app has global state or complex hydration, wait for a specific piece of data to appear on screen before interacting.
-3.  **Investigate Server vs. Client Output:** If there's a literal React Hydration Mismatch error in the console logs, ensure that components using browser-only APIs (`window`, `localStorage`, `Date.now()`) are wrapped in `useEffect` or dynamically imported with `ssr: false`.
+Use an effect only when post-hydration browser synchronization is intended, with a
+stable initial render. Disable prerendering only for a justified browser-only
+component: `next/dynamic` with `ssr: false` must be declared in a Client Component,
+not a Server Component. Neither is a blanket cure for mismatched data or markup.
+Consult the installed Next.js lazy-loading guide for the affected boundary.
+
+## Interaction readiness
+
+A visible/enabled button does not establish that React handlers are attached or
+that the required store is initialized. Use the relevant tested application
+readiness condition before the action where needed, then assert its observable
+result. An SSR-visible label alone may precede readiness. Avoid sleeps, arbitrary
+hydration markers and blanket `act` wrappers; diagnose the actual unfinished work.
+Use the async-test guidance in [nextjs-dev](../nextjs-dev/SKILL.md) when relevant.

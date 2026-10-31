@@ -1,17 +1,11 @@
 'use client';
 
 import React, { useEffect } from 'react';
-import {
-  motion,
-  useMotionValue,
-  useTransform,
-  useAnimation,
-  PanInfo,
-  useMotionValueEvent,
-} from 'framer-motion';
+import { motion, useTransform, PanInfo, useMotionValueEvent } from 'framer-motion';
 import { t, tWithVars } from '@/locales';
 import { getImageUrl } from '@/lib/imageUtils';
 import { formatRecipeTime } from '@/lib/duration';
+import { useHorizontalCardMotion } from '@/hooks/useHorizontalCardMotion';
 import { Heart, X } from 'lucide-react';
 
 interface DiscoveryCardProps {
@@ -44,8 +38,7 @@ export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
   mealTypes,
   hasFamilyInterest: _hasFamilyInterest,
 }) => {
-  const x = useMotionValue(0);
-  const rotate = useTransform(x, [-200, 200], [-15, 15]);
+  const { x, controls, startDrag, dragProps, motionStyle } = useHorizontalCardMotion(isFront);
 
   // Haptics
   const [hasVibrated, setHasVibrated] = React.useState(false);
@@ -66,8 +59,6 @@ export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
 
   const likeScale = useTransform(x, [0, 100], [0.5, 1.5]);
   const passScale = useTransform(x, [0, -100], [0.5, 1.5]);
-
-  const controls = useAnimation();
 
   // Calculate stack depth effects
   const scale = 1 - stackIndex * 0.05;
@@ -135,18 +126,9 @@ export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
 
   return (
     <motion.div
-      style={{
-        x,
-        rotate,
-        transformOrigin: 'bottom center',
-        touchAction: 'none',
-        zIndex: 10 - stackIndex,
-        willChange: 'transform',
-      }}
-      drag={isFront ? 'x' : false}
-      dragConstraints={{ left: 0, right: 0 }}
-      dragElastic={1}
-      dragMomentum={false}
+      style={{ ...motionStyle, zIndex: 10 - stackIndex }}
+      {...dragProps}
+      onPointerDown={startDrag}
       animate={controls}
       onDragEnd={handleDragEnd}
       className="absolute inset-x-0 top-0 bottom-12 cursor-grab active:cursor-grabbing"
@@ -185,7 +167,7 @@ export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
                   opacity: passOpacity,
                   scale: passScale,
                 }}
-                className="flex flex-col items-center gap-2 rounded-full bg-terracotta/30 p-8 text-white backdrop-blur-md shadow-2xl"
+                className="flex flex-col items-center gap-2 rounded-full bg-terracotta p-8 text-white backdrop-blur-md shadow-2xl"
               >
                 <X size={48} />
                 <span className="text-xl font-black tracking-widest">

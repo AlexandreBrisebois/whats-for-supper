@@ -1,5 +1,7 @@
+import { writeFile } from 'node:fs/promises';
+import { expectTonightLayout, recordTonightControlStates } from './helpers/tonight-card-layout';
 import { test, expect, type Page } from './fixtures';
-import type { ScheduleDays } from '../src/lib/api/generated/models';
+import type { NonCookingPlanDto, ScheduleDays } from '../src/lib/api/generated/models';
 import {
   MOCK_IDS,
   builders,
@@ -9,6 +11,124 @@ import {
   mockSseWithSlotUpdate,
   mockSseWithConnectedSchedule,
 } from './mock-api';
+
+/** Use the existing browser schedule/SSE seams, leaving Home SSR reconciliation intact. */
+async function prepareAdaptiveTonight(page: Page, name: string, image = 'loaded') {
+  const source = `/api/recipes/${MOCK_IDS.RECIPE_LASAGNA}/hero`;
+  await page.route(
+    (url) => url.pathname.endsWith('/hero'),
+    (route) =>
+      image === 'failed'
+        ? route.fulfill({ status: 404, body: '' })
+        : route.fulfill({ path: 'e2e/fixtures/cookbook-light.jpg', contentType: 'image/jpeg' })
+  );
+  const schedule = builders.scheduleDays();
+  schedule.days.find((day) => day.date === toDateStr(currentMonday()))!.recipe =
+    builders.scheduleRecipe({
+      id: MOCK_IDS.RECIPE_LASAGNA,
+      name,
+      image: image === 'missing' ? '' : source,
+      totalTime: 'PT25M',
+      ingredients: ['Salmon', 'Green beans'],
+    });
+  await mockSseWithConnectedSchedule(page, schedule as unknown as ScheduleDays);
+  await page.route(
+    (url) => url.pathname.endsWith('/api/schedule'),
+    async (route) => {
+      if (route.request().method() === 'GET') await route.fulfill({ json: { data: schedule } });
+      else await route.fallback();
+    }
+  );
+  // Closed/unowned session is the ordinary settled fixture, without intervening notices.
+  await page.route('**/api/discovery/session', (route) =>
+    route.request().method() === 'GET'
+      ? route.fulfill({
+          json: {
+            data: {
+              incarnationId: MOCK_IDS.MEMBER_TEST,
+              revision: 1,
+              roundId: null,
+              weekStartDate: null,
+              phase: 'unowned',
+              requiredSlots: null,
+              coveredSlots: null,
+              candidateCount: null,
+              smartDefaults: null,
+            },
+          },
+        })
+      : route.fallback()
+  );
+  await page.goto('/home');
+  const card = page.getByTestId('tonight-menu-card');
+  await expect(card.getByRole('heading', { name, exact: true })).toBeVisible();
+  await expect(page.getByTestId('voting-nudge-card')).toHaveCount(0);
+  await expect(page.getByTestId('home-voting-status')).toHaveCount(0);
+  await page.evaluate(() => document.fonts.ready);
+  if (image === 'loaded')
+    await expect
+      .poll(() =>
+        card.locator('img').evaluate((el: HTMLImageElement) => el.complete && el.naturalWidth > 0)
+      )
+      .toBe(true);
+  else await expect(card.locator('img')).toHaveCount(0);
+}
+
+async function measureAdaptiveTonight(page: Page) {
+  return page.getByTestId('tonight-menu-card').evaluate((card) => {
+    const rect = (el: Element) => {
+      const r = el.getBoundingClientRect();
+      return {
+        top: r.top,
+        bottom: r.bottom,
+        left: r.left,
+        right: r.right,
+        width: r.width,
+        height: r.height,
+      };
+    };
+    const image = card.querySelector('img')!;
+    const title = card.querySelector('h3')!;
+    const shell = card.firstElementChild!;
+    const css = getComputedStyle(shell);
+    return {
+      scrollY,
+      photo: rect(image),
+      card: rect(card),
+      nav: rect(document.querySelector('nav')!),
+      innerWidth: shell.clientWidth - parseFloat(css.paddingLeft) - parseFloat(css.paddingRight),
+      titleLines: Math.round(
+        title.getBoundingClientRect().height / parseFloat(getComputedStyle(title).lineHeight)
+      ),
+      labels: ['quick-capture-trigger', 'home-browse-all-trigger'].map((id) => {
+        const tile = document.querySelector(`[data-testid="${id}"]`)!;
+        const label = tile.querySelector('span')!;
+        const r = label.getBoundingClientRect();
+        const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+        return {
+          ...rect(label),
+          text: label.textContent,
+          hit: hit === label || label.contains(hit),
+        };
+      }),
+    };
+  });
+}
+
+async function expectHomeHandoffsReachable(page: Page) {
+  for (const id of ['quick-capture-trigger', 'home-browse-all-trigger']) {
+    const tile = page.getByTestId(id);
+    await tile.evaluate((el) => el.scrollIntoView({ block: 'center' }));
+    const visible = await tile.evaluate((el) => {
+      const r = el.getBoundingClientRect();
+      const nav = document.querySelector('nav')!.getBoundingClientRect();
+      const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+      return r.top >= 0 && r.bottom <= nav.top && (hit === el || el.contains(hit));
+    });
+    expect(visible).toBe(true);
+    await expect(tile).toHaveAccessibleName(/\S/);
+  }
+}
 
 test.describe('Home Command Center — Planned Recipe Flow', () => {
   test.beforeEach(async ({ page }) => {
@@ -36,6 +156,371 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
       );
     }, MOCK_IDS.MEMBER_ALEX);
   });
+
+  test('Tonight pivot choices: saved non-Mystery context hands off to Planner without mutation', async ({
+    page,
+  }) => {
+    const schedule = builders.scheduleDays();
+    const day = schedule.days.find((day) => day.date === toDateStr(currentMonday()))!;
+    day.status = 3;
+    Object.assign(day, {
+      nonCooking: { kind: 'eating_out', customLabel: 'Try Luigi’s' } satisfies NonCookingPlanDto,
+    });
+    await mockSseWithConnectedSchedule(page, schedule as unknown as ScheduleDays);
+    await page.route(
+      (url) => url.pathname.endsWith('/api/schedule'),
+      async (route) => {
+        if (route.request().method() === 'GET') await route.fulfill({ json: { data: schedule } });
+        else await route.fallback();
+      }
+    );
+    const mutations: string[] = [];
+    page.on('request', (request) => {
+      if (/\/api\/schedule/.test(request.url()) && request.method() !== 'GET')
+        mutations.push(request.method());
+    });
+    await page.goto('/home');
+    await expect(page.getByTestId('today-non-cooking-note')).toHaveText('Try Luigi’s');
+    await expect(page.getByTestId('tonight-pivot-card')).not.toBeVisible();
+    await page.getByTestId('today-non-cooking-plan').click();
+    await expect(page).toHaveURL(/\/planner/);
+    expect(mutations).toEqual([]);
+  });
+
+  test('Tonight direct actions: initial actions and keyboard disclosure do not mutate the plan', async ({
+    page,
+  }, testInfo) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    const schedule = builders.scheduleDays();
+    const recipe = builders.scheduleRecipe({
+      id: MOCK_IDS.RECIPE_LASAGNA,
+      name: 'Direct garden supper',
+      description: 'Garden vegetables',
+      ingredients: ['Carrot'],
+      image: '',
+    });
+    schedule.days.find((day) => day.date === toDateStr(currentMonday()))!.recipe = recipe;
+    await mockSseWithConnectedSchedule(page, schedule as unknown as ScheduleDays);
+    await page.route(
+      (url) => url.pathname.endsWith('/api/schedule') && url.searchParams.get('weekOffset') === '0',
+      async (route) => {
+        if (route.request().method() === 'GET') await route.fulfill({ json: { data: schedule } });
+        else await route.fallback();
+      }
+    );
+    await page.route(
+      (url) => url.pathname.endsWith(`/api/recipes/${MOCK_IDS.RECIPE_LASAGNA}`),
+      async (route) => {
+        await route.fulfill({
+          json: {
+            recipe: builders.recipe({
+              id: MOCK_IDS.RECIPE_LASAGNA,
+              name: recipe.name!,
+              description: 'Garden vegetables',
+              ingredients: ['Carrot'],
+            }),
+            updatedAt: new Date().toISOString(),
+          },
+        });
+      }
+    );
+    const mutations: string[] = [];
+    page.on('request', (request) => {
+      if (/\/api\/schedule/.test(request.url()) && request.method() !== 'GET')
+        mutations.push(request.method() + ' ' + request.url());
+    });
+    await page.goto('/home');
+    const card = page.getByTestId('tonight-menu-card');
+    await expect(card.getByRole('heading', { name: recipe.name! })).toBeVisible();
+    await expect(page.getByTestId('cook-mode-btn')).toBeVisible();
+    await expect(page.getByTestId('skip-tonight-btn')).toBeVisible();
+    await card.getByRole('heading', { name: recipe.name! }).click();
+    const toggle = page.getByTestId('tonight-ingredients-toggle');
+    await expect(toggle).toHaveAccessibleName('View ingredients');
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    await page.getByTestId('cook-mode-btn').focus();
+    await page.keyboard.press('Tab');
+    await expect(page.getByTestId('skip-tonight-btn')).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(toggle).toBeFocused();
+    expect(
+      await toggle.evaluate((el) => parseFloat(getComputedStyle(el).outlineWidth))
+    ).toBeGreaterThanOrEqual(2);
+    await page.keyboard.press('Enter');
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    await expect(card.getByText('Carrot', { exact: true })).toBeVisible();
+    await testInfo.attach('expanded-keyboard-reduced-motion', {
+      body: await page.screenshot({ fullPage: true }),
+      contentType: 'image/png',
+    });
+    await page.keyboard.press('Space');
+    await expect(toggle).toBeFocused();
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    await expect(card.getByText('Carrot', { exact: true })).toHaveCount(0);
+    await page.keyboard.press('Tab');
+    await expect(toggle).not.toBeFocused();
+    expect(await card.locator(':focus').count()).toBe(0);
+    await toggle.click();
+    const replacement = builders.scheduleRecipe({
+      id: MOCK_IDS.RECIPE_TACOS,
+      name: 'Replacement supper',
+      ingredients: ['Peas'],
+    });
+    await page.evaluate(
+      (slot) => {
+        (window as any).__sseSource.dispatchEvent(
+          new MessageEvent('slot_updated', { data: JSON.stringify(slot) })
+        );
+      },
+      { date: toDateStr(currentMonday()), recipe: replacement, status: 0 }
+    );
+    await expect(card.getByRole('heading', { name: 'Replacement supper' })).toBeVisible();
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    await expect(card.getByText('Carrot', { exact: true })).toHaveCount(0);
+    await page.evaluate(
+      (slot) => {
+        (window as any).__sseSource.dispatchEvent(
+          new MessageEvent('slot_updated', { data: JSON.stringify(slot) })
+        );
+      },
+      { date: toDateStr(currentMonday()), recipe, status: 0 }
+    );
+    await expect(card.getByRole('heading', { name: recipe.name! })).toBeVisible();
+    await page.getByTestId('skip-tonight-btn').click();
+    await expect(page.getByTestId('recovery-action-order-in')).toBeVisible();
+    expect(mutations).toEqual([]);
+    await page.getByTestId('recovery-close').click();
+    await expect(card.getByRole('heading', { name: recipe.name! })).toBeVisible();
+    await page.getByTestId('cook-mode-btn').click();
+    await expect(page.getByTestId('cooks-mode-step-next')).toBeVisible();
+    await expect(page.getByTestId('cooks-mode-recipe-name')).toHaveText(recipe.name!);
+    expect(mutations).toEqual([]);
+  });
+
+  for (const appLocale of ['en', 'fr'] as const) {
+    test.describe(`adaptive planned Tonight (${appLocale})`, () => {
+      test.use({ appLocale });
+      test('long text, disclosure and viewport changes preserve photo and reachability', async ({
+        page,
+      }, testInfo) => {
+        test.setTimeout(90_000);
+        const name =
+          appLocale === 'fr'
+            ? 'Saumon rôti avec une généreuse portion de légumes du jardin et pommes de terre aux herbes pour toute la famille'
+            : 'Roast salmon with a generous helping of garden vegetables and herb potatoes for the whole family';
+        await prepareAdaptiveTonight(page, name);
+        const card = page.getByTestId('tonight-menu-card');
+        for (const [width, height] of [
+          [390, 844],
+          [412, 800],
+          [320, 640],
+          [820, 1180],
+          [1180, 820],
+        ]) {
+          await page.setViewportSize({ width, height });
+          for (const growth of [1, 2]) {
+            const scaleText = () =>
+              card.evaluate((node, scale) => {
+                node.querySelectorAll<HTMLElement>('*').forEach((el) => {
+                  el.dataset.layoutFont ??= getComputedStyle(el).fontSize;
+                  el.style.fontSize = `${parseFloat(el.dataset.layoutFont) * scale}px`;
+                });
+              }, growth);
+            await scaleText();
+            for (const expanded of [false, true]) {
+              if (expanded) {
+                await page.getByTestId('tonight-ingredients-toggle').click();
+                await scaleText();
+                await expect(card.getByText('Green beans', { exact: true })).toBeVisible();
+              }
+              const geometry = await measureAdaptiveTonight(page);
+              expect(geometry.photo.height).toBeCloseTo(geometry.photo.width * 0.8, 0);
+              expect(geometry.card.width).toBeLessThanOrEqual(432);
+              await expect(card.getByRole('heading', { name, exact: true })).toBeVisible();
+              const label = `${width}-${height}-${growth}-${expanded}`;
+              await testInfo.attach(`${label}-geometry`, {
+                body: JSON.stringify(geometry),
+                contentType: 'application/json',
+              });
+              await expectTonightLayout(page, card, testInfo, label);
+              await expectHomeHandoffsReachable(page);
+            }
+            await page.getByTestId('tonight-ingredients-toggle').click();
+            await expect(page.getByTestId('tonight-ingredients-toggle')).toHaveAttribute(
+              'aria-expanded',
+              'false'
+            );
+          }
+        }
+        // At the same width, shorter viewports preserve the photo and use page scrolling.
+        await page.setViewportSize({ width: 412, height: 915 });
+        const tall = await measureAdaptiveTonight(page);
+        await page.setViewportSize({ width: 412, height: 640 });
+        const short = await measureAdaptiveTonight(page);
+        expect(short.photo.width).toBeCloseTo(tall.photo.width, 0);
+        expect(short.photo.height).toBeCloseTo(tall.photo.height, 0);
+        expect(short.photo.height).toBeCloseTo(short.photo.width * 0.8, 0);
+      });
+      for (const image of ['missing', 'failed']) {
+        test(`${image} photo retains modest fallback`, async ({ page }, testInfo) => {
+          await page.setViewportSize({ width: 320, height: 640 });
+          await prepareAdaptiveTonight(
+            page,
+            appLocale === 'fr' ? 'Saumon rôti' : 'Roast salmon',
+            image
+          );
+          const card = page.getByTestId('tonight-menu-card');
+          const fallback = card
+            .locator('[aria-hidden="true"]')
+            .filter({ has: page.locator('svg') })
+            .first();
+          expect((await fallback.boundingBox())!.height).toBeLessThan(160);
+          await expectTonightLayout(page, card, testInfo, `${image}-fallback`);
+        });
+      }
+      for (const lines of [1, 2]) {
+        test(`initial ${lines}-line title keeps both handoffs reachable`, async ({
+          page,
+        }, testInfo) => {
+          await page.setViewportSize({ width: 412, height: 915 });
+          await page.emulateMedia({ reducedMotion: 'reduce' });
+          const name =
+            lines === 1
+              ? appLocale === 'fr'
+                ? 'Saumon rôti'
+                : 'Roast salmon'
+              : appLocale === 'fr'
+                ? 'Saumon et légumes du jardin'
+                : 'Salmon with garden vegetables';
+          await prepareAdaptiveTonight(page, name);
+          const card = page.getByTestId('tonight-menu-card');
+          const geometry = await measureAdaptiveTonight(page);
+          await writeFile(
+            testInfo.outputPath('initial-geometry.json'),
+            JSON.stringify(geometry, null, 2)
+          );
+          await testInfo.attach('initial-geometry', {
+            body: JSON.stringify(geometry, null, 2),
+            contentType: 'application/json',
+          });
+          await page.screenshot({
+            path: testInfo.outputPath('initial-viewport.png'),
+            animations: 'disabled',
+          });
+          expect(geometry.scrollY).toBe(0);
+          expect(geometry.photo.height).toBeCloseTo(geometry.photo.width * 0.8, 0);
+          expect(geometry.photo.width).toBeCloseTo(geometry.innerWidth, 0);
+          expect(geometry.titleLines).toBe(lines);
+          expect(geometry.card.top).toBeGreaterThanOrEqual(0);
+          // Reachability checks scroll; initial geometry must precede them.
+          await expectTonightLayout(page, card, testInfo, 'initial-controls');
+          await expectHomeHandoffsReachable(page);
+        });
+      }
+    });
+  }
+
+  for (const appLocale of ['en', 'fr'] as const) {
+    test.describe(`Cookbook planned (${appLocale})`, () => {
+      test.use({ appLocale });
+      for (const photo of ['light', 'dark', 'failed'] as const) {
+        test(`${photo} photograph and image recovery`, async ({ page }, testInfo) => {
+          test.setTimeout(90_000);
+          await page.setViewportSize({ width: 390, height: 844 });
+          const name =
+            appLocale === 'fr' ? 'Saumon et légumes du jardin' : 'Salmon with garden vegetables';
+          const source = `/api/recipes/${MOCK_IDS.RECIPE_LASAGNA}/hero`;
+          await page.route(
+            (url) => url.pathname.endsWith('/hero'),
+            async (route) => {
+              if (photo === 'failed' && !route.request().url().includes('renewed'))
+                await route.fulfill({ status: 404, body: '' });
+              else
+                await route.fulfill({
+                  path: `e2e/fixtures/cookbook-${photo === 'dark' ? 'dark' : 'light'}.jpg`,
+                  contentType: 'image/jpeg',
+                });
+            }
+          );
+          const schedule = builders.scheduleDays();
+          const recipe = builders.scheduleRecipe({
+            id: MOCK_IDS.RECIPE_LASAGNA,
+            name,
+            image: source,
+            totalTime: 'PT25M',
+            ingredients: ['Salmon', 'Green beans'],
+          });
+          schedule.days.find((day) => day.date === toDateStr(currentMonday()))!.recipe = recipe;
+          await mockSseWithConnectedSchedule(page, schedule as unknown as ScheduleDays);
+          await page.route(
+            (url) => url.pathname.endsWith('/api/schedule'),
+            async (route) => {
+              if (route.request().method() === 'GET')
+                await route.fulfill({ json: { data: schedule } });
+              else await route.fallback();
+            }
+          );
+          await page.goto('/home');
+          const card = page.getByTestId('tonight-menu-card');
+          await expect(card.getByRole('heading', { name })).toBeVisible();
+          if (photo === 'failed') {
+            await expect(card.locator('img')).toHaveCount(0);
+            await expect(page.getByTestId('cook-mode-btn')).toBeVisible();
+            await page.screenshot({
+              path: testInfo.outputPath('failed-image.png'),
+              fullPage: true,
+            });
+            await page.evaluate(
+              (slot) => {
+                (window as any).__sseSource.dispatchEvent(
+                  new MessageEvent('slot_updated', { data: JSON.stringify(slot) })
+                );
+              },
+              {
+                date: toDateStr(currentMonday()),
+                recipe: builders.scheduleRecipe({
+                  id: MOCK_IDS.RECIPE_TACOS,
+                  name: 'Fresh supper',
+                  image: `/api/recipes/${MOCK_IDS.RECIPE_TACOS}/hero?renewed`,
+                }),
+                status: 0,
+              }
+            );
+            await expect(card.locator('img')).toBeVisible();
+          } else {
+            await expect
+              .poll(() => card.locator('img').evaluate((img: HTMLImageElement) => img.naturalWidth))
+              .toBeGreaterThan(100);
+            for (const [width, height] of [
+              [320, 844],
+              [390, 844],
+              [412, 915],
+              [820, 1180],
+              [1180, 820],
+            ]) {
+              await page.setViewportSize({ width, height });
+              for (const growth of [1, 2]) {
+                await card.evaluate(
+                  (node, scale) =>
+                    node.querySelectorAll<HTMLElement>('*').forEach((el) => {
+                      el.dataset.layoutFont ??= getComputedStyle(el).fontSize;
+                      el.style.fontSize = `${parseFloat(el.dataset.layoutFont) * scale}px`;
+                    }),
+                  growth
+                );
+                await expectTonightLayout(
+                  page,
+                  card,
+                  testInfo,
+                  `photo-${photo}-${width}-${growth}`
+                );
+              }
+            }
+          }
+        });
+      }
+    });
+  }
 
   for (const appLocale of ['en', 'fr'] as const) {
     test.describe(`duration units (${appLocale})`, () => {
@@ -73,6 +558,100 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
             body: await page.screenshot({ animations: 'disabled' }),
             contentType: 'image/png',
           });
+        });
+      }
+    });
+  }
+
+  for (const appLocale of ['en', 'fr'] as const) {
+    test.describe(`Tonight card layout (${appLocale})`, () => {
+      test.use({ appLocale });
+      for (const details of ['long', 'empty'] as const) {
+        test(`planned ${details} front and details reflow and reachability`, async ({
+          page,
+        }, testInfo) => {
+          test.setTimeout(90_000);
+          const name =
+            appLocale === 'fr'
+              ? 'Gratin familial de légumes rôtis avec pommes de terre et sauce crémeuse aux fines herbes'
+              : 'Family roasted vegetable supper with potatoes and a creamy garden herb sauce';
+          await page.route(
+            (url) => url.pathname.endsWith(`/api/recipes/${MOCK_IDS.RECIPE_LASAGNA}`),
+            async (route) => {
+              await route.fulfill({
+                json: {
+                  recipe: builders.recipe({
+                    id: MOCK_IDS.RECIPE_LASAGNA,
+                    name,
+                    imageUrl: '',
+                    description: details === 'long' ? name.repeat(3) : '',
+                    ingredients: details === 'long' ? [name, name] : [],
+                  }),
+                  updatedAt: new Date().toISOString(),
+                },
+              });
+            }
+          );
+          const schedule = builders.scheduleDays();
+          schedule.days.find((day) => day.date === toDateStr(currentMonday()))!.recipe =
+            builders.scheduleRecipe({
+              id: MOCK_IDS.RECIPE_LASAGNA,
+              name,
+              image: '',
+              totalTime: 'PT6H',
+              description: details === 'long' ? name.repeat(3) : '',
+              ingredients: details === 'long' ? [name, name] : [],
+            });
+          await mockSseWithConnectedSchedule(page, schedule as unknown as ScheduleDays);
+          await page.route(
+            (url) =>
+              url.pathname.endsWith('/api/schedule') && url.searchParams.get('weekOffset') === '0',
+            async (route) => {
+              if (route.request().method() === 'GET')
+                await route.fulfill({ json: { data: schedule } });
+              else await route.fallback();
+            }
+          );
+          await page.goto('/home');
+          const card = page.getByTestId('tonight-menu-card');
+          await expect(card).toBeVisible();
+          await page.evaluate(() => document.fonts.ready);
+          const sizes = [
+            [320, 844],
+            [390, 844],
+            [412, 915],
+            [820, 1180],
+            [1180, 820],
+          ];
+          for (const [width, height] of sizes) {
+            await page.setViewportSize({ width, height });
+            for (const growth of [1, 2]) {
+              // Change text only in this fixture; preserve app zoom policy and image geometry.
+              await card.evaluate((node, scale) => {
+                node.querySelectorAll<HTMLElement>('*').forEach((el) => {
+                  const initial = el.dataset.layoutFont ?? getComputedStyle(el).fontSize;
+                  el.dataset.layoutFont = initial;
+                  el.style.fontSize = `${parseFloat(initial) * scale}px`;
+                });
+              }, growth);
+              for (const face of ['front', 'details']) {
+                if (face === 'details') {
+                  await page.getByTestId('tonight-ingredients-toggle').click();
+                  await card.evaluate((node, scale) => {
+                    node.querySelectorAll<HTMLElement>('*').forEach((el) => {
+                      const initial = el.dataset.layoutFont ?? getComputedStyle(el).fontSize;
+                      el.dataset.layoutFont = initial;
+                      el.style.fontSize = `${parseFloat(initial) * scale}px`;
+                    });
+                  }, growth);
+                }
+                await expectTonightLayout(page, card, testInfo, `card-${width}-${growth}-${face}`);
+                if (width === 320 && growth === 1 && face === 'details')
+                  await recordTonightControlStates(page, card, testInfo);
+              }
+              await page.getByTestId('tonight-ingredients-toggle').click(); // Collapse before the next case.
+            }
+          }
         });
       }
     });
@@ -197,7 +776,9 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
   });
 
   // B5: "Order In" with no recipe writes status:3 to backend and hides pivot card
-  test('"Order In" with no recipe writes status:3 and hides pivot card', async ({ page }) => {
+  test('Tonight pivot choices: Order In with no recipe writes status:3 and hides pivot card', async ({
+    page,
+  }) => {
     // Empty schedule — no recipe for today
     await page.route(
       (url) => url.pathname.includes('/api/schedule'),
@@ -238,7 +819,7 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
     await page.getByTestId('order-in-btn').click();
 
     // Backend write must have fired with status: 3
-    await expect.poll(() => validateBody).toMatchObject({ status: 3 });
+    await expect.poll(() => validateBody).toEqual({ status: 3 });
 
     // Pivot card must disappear for the session
     await expect(page.getByTestId('tonight-pivot-card')).not.toBeVisible({ timeout: 3000 });
@@ -305,15 +886,8 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
     await expect(page.getByTestId('home-loader')).not.toBeVisible({ timeout: 5000 });
     await expect(page.getByTestId('tonight-menu-card')).toBeVisible();
 
-    // Flip the card to reveal the back face (skip button is on the back)
-    await page.getByTestId('tonight-menu-card').click();
-
-    // Wait for flip animation to complete (back face becomes visible), then click skip.
-    // dispatchEvent bypasses coordinate hit-testing — the CSS rotate-y-180 transform
-    // means the element's DOM bounding box doesn't match its visual position, causing
-    // force:true clicks to miss. dispatchEvent fires directly on the element.
     await expect(page.getByTestId('skip-tonight-btn')).toBeVisible();
-    await page.getByTestId('skip-tonight-btn').dispatchEvent('click');
+    await page.getByTestId('skip-tonight-btn').click();
 
     // Recovery dialog must open
     await expect(page.getByTestId('recovery-dialog-title')).toBeVisible();
@@ -404,10 +978,8 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
     await expect(page.getByTestId('home-loader')).not.toBeVisible();
     await expect(page.getByTestId('tonight-menu-card')).toBeVisible();
 
-    // Flip the card and click skip
-    await page.getByTestId('tonight-menu-card').click();
     await expect(page.getByTestId('skip-tonight-btn')).toBeVisible();
-    await page.getByTestId('skip-tonight-btn').dispatchEvent('click');
+    await page.getByTestId('skip-tonight-btn').click();
 
     // Click "Pick Something Else"
     await page.getByTestId('recovery-action-pick-else').click();
@@ -490,10 +1062,8 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
     await expect(page.getByTestId('home-loader')).not.toBeVisible();
     await expect(page.getByTestId('tonight-menu-card')).toBeVisible();
 
-    // Flip the card and click skip
-    await page.getByTestId('tonight-menu-card').click();
     await expect(page.getByTestId('skip-tonight-btn')).toBeVisible();
-    await page.getByTestId('skip-tonight-btn').dispatchEvent('click');
+    await page.getByTestId('skip-tonight-btn').click();
 
     await expect(page.getByTestId('recovery-dialog-title')).toBeVisible();
 
@@ -617,10 +1187,8 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
     await expect(page.getByTestId('home-loader')).not.toBeVisible();
     await expect(page.getByTestId('tonight-menu-card')).toBeVisible();
 
-    // Flip the card and click skip
-    await page.getByTestId('tonight-menu-card').click();
     await expect(page.getByTestId('skip-tonight-btn')).toBeVisible();
-    await page.getByTestId('skip-tonight-btn').dispatchEvent('click');
+    await page.getByTestId('skip-tonight-btn').click();
 
     await expect(page.getByTestId('recovery-dialog-title')).toBeVisible();
 
@@ -725,9 +1293,8 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
     await expect(page.getByTestId('tonight-menu-card')).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Test Lasagna' }).first()).toBeVisible();
 
-    await page.getByTestId('tonight-menu-card').click();
     await expect(page.getByTestId('skip-tonight-btn')).toBeVisible();
-    await page.getByTestId('skip-tonight-btn').dispatchEvent('click');
+    await page.getByTestId('skip-tonight-btn').click();
 
     await page.getByTestId('recovery-action-pick-else').click();
 
@@ -845,7 +1412,7 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
     await expect(page.getByTestId('tonight-pivot-card')).not.toBeVisible();
   });
 
-  test('Quick Find from pivot card shows TonightMenuCard immediately and calls assign API', async ({
+  test('ready Go-To confirmation shows TonightMenuCard immediately and calls assign API', async ({
     page,
   }) => {
     // Override fill-the-gap to return one recipe
@@ -901,17 +1468,17 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
       }
     );
 
+    await page.route('**/api/goto/active', (route) =>
+      route.fulfill({
+        json: {
+          data: { recipeId: MOCK_IDS.RECIPE_LASAGNA, description: 'Test Lasagna', status: 'ready' },
+        },
+      })
+    );
     await page.goto('/home');
     await expect(page.getByTestId('tonight-pivot-card')).toBeVisible({ timeout: 5000 });
 
-    // Click Quick Find (discover-btn)
-    await page.getByTestId('discover-btn').click();
-
-    // Wait for quick-find-modal
-    await expect(page.getByTestId('quick-find-modal')).toBeVisible({ timeout: 3000 });
-
-    // Click the first recipe (quick-find-select)
-    await page.getByTestId('quick-find-select').first().click();
+    await page.getByTestId('confirm-goto-btn').click();
 
     // TonightMenuCard must appear immediately (optimistic — within 300ms)
     await expect(page.getByTestId('tonight-menu-card')).toBeVisible({ timeout: 300 });
@@ -919,8 +1486,8 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
     // Assign API must have been called
     await expect.poll(() => assignCalled).toBe(true);
 
-    // Verify Hydration: flip the card and check for the description
-    await page.getByTestId('tonight-menu-card').click();
+    // Verify hydration through explicit inline disclosure
+    await page.getByTestId('tonight-ingredients-toggle').click();
     await expect(page.getByText('Quick Hydrated Description')).toBeVisible({ timeout: 5000 });
     expect(recipeFetched).toBe(true);
   });
@@ -993,12 +1560,7 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
 
     await page.goto('/home');
     await expect(page.getByTestId('tonight-menu-card')).toBeVisible({ timeout: 10_000 });
-    // Flip card to reveal back face; use dispatchEvent to bypass pointer-events-none.
-    await page.getByTestId('tonight-menu-card').click();
-    await page.evaluate(() => {
-      const btn = document.querySelector('[data-testid="cook-mode-btn"]') as HTMLElement;
-      btn?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
-    });
+    await page.getByTestId('cook-mode-btn').click();
 
     // Step through Cook's Mode
     const nextBtn = page.getByTestId('cooks-mode-step-next');

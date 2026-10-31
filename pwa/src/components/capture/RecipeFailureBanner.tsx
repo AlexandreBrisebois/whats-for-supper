@@ -81,7 +81,7 @@ export function RecipeFailureBanner() {
               >
                 <div className="flex items-start gap-3 p-3">
                   <div className="mt-0.5 flex-shrink-0">
-                    <div className="h-8 w-8 rounded-full bg-terracotta/15 flex items-center justify-center text-terracotta/70">
+                    <div className="h-8 w-8 rounded-full bg-terracotta/15 flex items-center justify-center text-terracotta-600">
                       <AlertCircle size={16} />
                     </div>
                   </div>
@@ -90,7 +90,7 @@ export function RecipeFailureBanner() {
                     <p className="text-sm text-charcoal leading-snug">
                       Recipe couldn&apos;t be saved —{' '}
                       <span className="font-bold">{recipeName}</span>.{' '}
-                      <span className="text-terracotta/80 font-medium">Tap to try again.</span>
+                      <span className="text-terracotta-600 font-medium">Tap to try again.</span>
                     </p>
                     <div className="mt-2 flex items-center gap-2">
                       <button
@@ -98,7 +98,7 @@ export function RecipeFailureBanner() {
                         onClick={handleRetry}
                         disabled={!retryId || isRetrying}
                         data-testid={`recipe-failure-retry-${notification.recipeId}`}
-                        className="inline-flex items-center gap-1 rounded-xl bg-terracotta px-3 py-1.5 text-xs font-bold text-white transition-all active:scale-95 disabled:opacity-50"
+                        className="inline-flex items-center gap-1 rounded-xl bg-terracotta hover:bg-terracotta-600 active:bg-terracotta-700 px-3 py-1.5 text-xs font-bold text-white transition-all active:scale-95 disabled:opacity-50"
                       >
                         <RotateCcw size={13} />
                         {isRetrying ? 'Retrying...' : 'Retry'}

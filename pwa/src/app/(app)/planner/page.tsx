@@ -18,6 +18,7 @@ import {
   BookOpen,
   RefreshCw,
 } from 'lucide-react';
+import { registerPlannerPresentation } from '@/lib/telemetry/opening';
 import { usePlannerStore } from '@/store/plannerStore';
 import { useWeekStore } from '@/store/weekStore';
 import type { UILocalScheduleDay } from '@/store/weekStore';
@@ -144,6 +145,14 @@ export default function PlannerPage() {
   const recoveryRecipeResolvedRef = useRef(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const isWide = useMediaQuery('(min-width: 1024px)');
+  const primaryPresentation =
+    !isWide && activeTab === 'grocery' && !(isLoading && schedule.length === 0)
+      ? 'planner.grocery'
+      : 'planner';
+  useEffect(
+    () => registerPlannerPresentation(document, primaryPresentation, isWide),
+    [primaryPresentation, isWide]
+  );
 
   useEffect(() => {
     setHasPendingCards(isVotingOpen);
@@ -526,7 +535,7 @@ export default function PlannerPage() {
                   type="button"
                   data-testid="planner-this-week-pill"
                   onClick={() => navigateToWeekOffset(0)}
-                  className="mx-auto mt-2 inline-flex h-8 items-center justify-center gap-1.5 rounded-full border border-terracotta/15 bg-white/75 px-3 text-[9px] font-black uppercase tracking-[0.18em] text-terracotta shadow-sm shadow-terracotta/5 transition-all hover:bg-terracotta/5 active:scale-95"
+                  className="mx-auto mt-2 inline-flex h-8 items-center justify-center gap-1.5 rounded-full border border-terracotta/15 bg-white/75 px-3 text-[9px] font-black uppercase tracking-[0.18em] text-terracotta-600 shadow-sm shadow-terracotta/5 transition-all hover:bg-terracotta/5 active:scale-95"
                   aria-label={t('planner.backToThisWeek', 'Back to this week')}
                   title={t('planner.backToThisWeek', 'Back to this week')}
                 >
@@ -634,7 +643,7 @@ export default function PlannerPage() {
                       <button
                         onClick={handleCloseVoting}
                         data-testid="close-voting-btn"
-                        className="flex h-9 items-center gap-1.5 rounded-full border border-terracotta/10 bg-white/80 px-3 text-[9px] font-black uppercase tracking-[0.18em] text-terracotta transition-all hover:bg-terracotta hover:text-white active:scale-95"
+                        className="flex h-9 items-center gap-1.5 rounded-full border border-terracotta/10 bg-white/80 px-3 text-[9px] font-black uppercase tracking-[0.18em] text-terracotta transition-all hover:bg-terracotta-600 active:bg-terracotta-700 hover:text-white active:text-white active:scale-95"
                       >
                         <Ban size={10} />
                         {t('planner.closeVoting', 'Close Voting')}
@@ -916,6 +925,13 @@ const PlannerDayCard = memo(function PlannerDayCard({
   isToday: boolean;
   isPast: boolean;
 }) {
+  const focusFrame = useRef<number | null>(null);
+  useEffect(
+    () => () => {
+      if (focusFrame.current !== null) cancelAnimationFrame(focusFrame.current);
+    },
+    []
+  );
   const startRecipeDrag = React.useCallback(
     (event: PointerEvent) => startDrag(index, event),
     [startDrag, index]
@@ -927,9 +943,19 @@ const PlannerDayCard = memo(function PlannerDayCard({
       const from = snapshot.findIndex((item) => item._uiId === day._uiId);
       const to = from + direction;
       if (from < 0 || to < 0 || to >= snapshot.length || !snapshot[from].recipe?.id) return;
+      const focusOwner = document.activeElement;
       useWeekStore.getState().reorderLocally(from, to, snapshot);
       useWeekStore.getState().commitMove(from, to, snapshot);
-      requestAnimationFrame(() => {
+      if (focusFrame.current !== null) cancelAnimationFrame(focusFrame.current);
+      focusFrame.current = requestAnimationFrame(() => {
+        focusFrame.current = null;
+        // A removed source handle leaves focus on body. Otherwise a newer focus
+        // choice belongs to the user and must not be overridden by this move.
+        if (
+          document.activeElement !== focusOwner &&
+          (focusOwner?.isConnected || document.activeElement !== document.body)
+        )
+          return;
         document
           .querySelector<HTMLElement>(
             `[data-testid="day-card-${to}"] [data-testid="planner-drag-handle"]`
@@ -1145,7 +1171,13 @@ const PlannerDayCard = memo(function PlannerDayCard({
                                   )
                             )}
                           >
-                            {hasVotes ? `${count} voted` : 'Chosen'}
+                            {hasVotes
+                              ? tWithVars(
+                                  count === 1 ? 'planner.votedOne' : 'planner.votedOther',
+                                  '{{count}} voted',
+                                  { count }
+                                )
+                              : t('planner.chosen', 'Chosen')}
                           </span>
                         );
                       })()}

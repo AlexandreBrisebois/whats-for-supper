@@ -556,6 +556,8 @@ test.describe('Grocery List — everyday extras', () => {
       'aria-checked',
       'false'
     );
+    // aria-checked is optimistic; wait for the first save before the next activation.
+    await expect(first.getByRole('checkbox')).toBeEnabled();
     await first.getByRole('checkbox').press('Enter');
     await expect(first.getByRole('checkbox')).toHaveAttribute('aria-checked', 'false');
     await first.getByRole('button', { name: 'Edit Milk' }).click();

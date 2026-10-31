@@ -31,6 +31,8 @@ public sealed class StrictRecipeSearchModeTests : IAsyncLifetime
     }
 
     [Theory]
+    [InlineData("""{"filters":{"gotoOnly":false}}""")]
+    [InlineData("""{"filters":{"gotoOnly":null}}""")]
     [InlineData("""{}""")]
     [InlineData("""{"query":" ","filters":null}""")]
     [InlineData("""{"query":"","filters":{}}""")]
@@ -64,12 +66,59 @@ public sealed class StrictRecipeSearchModeTests : IAsyncLifetime
     [InlineData("""{"notCookedInLongTime":true}""")]
     [InlineData("""{"reportedOnly":true}""")]
     [InlineData("""{"readyToReviewOnly":true}""")]
+    [InlineData("""{"gotoOnly":true}""")]
     [InlineData("""{"discoverableOnly":true}""")]
     public async Task SupportedEffectiveFiltersSelectExplicit(string filters)
     {
         using var response = await SearchJsonAsync($$"""{"filters":{{filters}}}""");
 
         Assert.Equal("explicit", response.RootElement.GetProperty("searchMode").GetString());
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task GotoMembership_IntersectsTypedAndFilterOnlyResults(bool typed)
+    {
+        var configured = Recipe(Guid.NewGuid(), "Chicken configured", TestNow.AddDays(-2));
+        var loved = Recipe(Guid.NewGuid(), "Chicken loved", TestNow, RecipeRating.Love);
+        await SeedRecipesAsync(configured, loved);
+        using var save = await _client.PutAsJsonAsync("/api/goto", new { items = new[] { new { recipeId = configured.Id } } });
+        save.EnsureSuccessStatusCode();
+        using var response = await SearchAsync(new { query = typed ? "chicken" : "", filters = new { gotoOnly = true }, limit = 10 });
+        Assert.Equal("explicit", response.RootElement.GetProperty("searchMode").GetString());
+        Assert.Equal(new[] { configured.Id }, OrderedIds(response.RootElement));
+        using var intersection = await SearchAsync(new { filters = new { gotoOnly = true, familyFavorite = true } });
+        Assert.Empty(OrderedIds(intersection.RootElement));
+    }
+
+    [Fact]
+    public async Task GotoMembership_EmptyDoesNotFallBack_AndChangedFilterRejectsCursor()
+    {
+        await SeedRecipesAsync(Enumerable.Range(0, 6).Select(i => Recipe(Guid.NewGuid(), $"Recipe {i}", TestNow.AddDays(-i))).ToArray());
+        using var first = await SearchAsync(new { filters = new { newRecipes = true }, limit = 1 });
+        using var mismatch = await _client.PostAsJsonAsync("/api/recipes/search", new { filters = new { newRecipes = true, gotoOnly = true }, continuationToken = RequiredCursor(first.RootElement), limit = 1 });
+        Assert.Equal(HttpStatusCode.Conflict, mismatch.StatusCode);
+        using var empty = await SearchAsync(new { filters = new { gotoOnly = true } });
+        Assert.Empty(OrderedIds(empty.RootElement));
+    }
+
+    [Fact]
+    public async Task GotoRankedContinuation_RechecksRemovalAndDoesNotInsertNewMembers()
+    {
+        var recipes = Enumerable.Range(0, 6).Select(i => Recipe(Guid.NewGuid(), $"Chicken {i}", TestNow.AddDays(-i))).ToArray();
+        await SeedRecipesAsync(recipes);
+        using var save = await _client.PutAsJsonAsync("/api/goto", new { items = recipes.Take(5).Select(recipe => new { recipeId = recipe.Id }).ToArray() });
+        save.EnsureSuccessStatusCode();
+        using var first = await SearchAsync(new { filters = new { gotoOnly = true }, limit = 1 });
+        var served = OrderedIds(first.RootElement);
+        var remaining = recipes.Take(5).Select(recipe => recipe.Id).Except(served).ToArray();
+        Assert.NotEmpty(remaining);
+        using var changed = await _client.PutAsJsonAsync("/api/goto", new { items = recipes.Where(recipe => recipe.Id != remaining[0]).Select(recipe => new { recipeId = recipe.Id }).ToArray() });
+        changed.EnsureSuccessStatusCode();
+        using var next = await SearchAsync(new { filters = new { gotoOnly = true }, limit = 10, continuationToken = RequiredCursor(first.RootElement) });
+        Assert.Equal(remaining.Skip(1), OrderedIds(next.RootElement));
+        Assert.DoesNotContain(recipes[5].Id, OrderedIds(next.RootElement));
     }
 
     [Fact]

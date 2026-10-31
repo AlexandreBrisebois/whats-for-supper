@@ -1,5 +1,7 @@
 'use client';
 
+import { useSurfacePresentation } from '@/components/telemetry/useSurfacePresentation';
+
 import React, { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Copy, Share2, X } from 'lucide-react';
@@ -7,6 +9,7 @@ import { getVotingLink } from '@/lib/auth';
 import { t } from '@/locales';
 
 export function FamilyNudgeDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  useSurfacePresentation('discovery.nudge', open);
   return <AnimatePresence>{open && <FamilyNudgeContent onClose={onClose} />}</AnimatePresence>;
 }
 

@@ -46,6 +46,9 @@ public class RecipeSearchFiltersDto
     [JsonPropertyName("readyToReviewOnly")]
     public bool? ReadyToReviewOnly { get; set; }
 
+    [JsonPropertyName("gotoOnly")]
+    public bool? GotoOnly { get; set; }
+
     [JsonPropertyName("discoverableOnly")]
     public bool? DiscoverableOnly { get; set; }
 }

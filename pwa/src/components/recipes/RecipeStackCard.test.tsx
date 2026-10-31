@@ -4,16 +4,22 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 
 // ---------------------------------------------------------------------------
 // Mocks — must be declared before component import
 // ---------------------------------------------------------------------------
 
+const motionMocks = vi.hoisted(() => ({
+  start: vi.fn(),
+  stop: vi.fn(),
+  isPresent: true,
+}));
+
 // Capture drag handlers so tests can invoke them directly
 let capturedOnDragEnd: ((event: unknown, info: unknown) => void) | undefined;
-let capturedOnTap: (() => void) | undefined;
+let capturedOnTap: ((event?: Partial<PointerEvent>) => void) | undefined;
 let capturedOnDrag: ((event: unknown, info: unknown) => void) | undefined;
 let capturedOnDragStart: (() => void) | undefined;
 
@@ -46,8 +52,10 @@ vi.mock('framer-motion', () => ({
   },
   useMotionValue: () => ({ get: () => 0, set: vi.fn() }),
   useTransform: () => ({ get: () => 0 }),
-  useAnimation: () => ({ start: vi.fn().mockResolvedValue(undefined) }),
+  useAnimation: () => ({ start: motionMocks.start, stop: motionMocks.stop }),
+  useIsPresent: () => motionMocks.isPresent,
   useMotionValueEvent: vi.fn(),
+  useDragControls: () => ({ start: vi.fn() }),
   AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
@@ -89,6 +97,8 @@ beforeEach(() => {
   capturedOnDrag = undefined;
   capturedOnDragStart = undefined;
   vi.clearAllMocks();
+  motionMocks.start.mockResolvedValue(undefined);
+  motionMocks.isPresent = true;
 });
 
 // ---------------------------------------------------------------------------
@@ -304,5 +314,115 @@ describe('raw recipe total duration', () => {
   ])('renders %s without losing units', (totalTime, expected) => {
     render(<RecipeStackCard {...defaultProps} totalTime={totalTime} />);
     expect(screen.getByText(`READY IN ${expected}`)).toBeInTheDocument();
+  });
+});
+
+describe('RecipeStackCard — gesture session recovery', () => {
+  it('opens detail on the first fresh tap after an incomplete drag', async () => {
+    const onTap = vi.fn();
+    render(<RecipeStackCard {...defaultProps} onTap={onTap} />);
+    capturedOnDragStart!();
+    capturedOnDrag!(null, makeDragInfo(12));
+    await capturedOnDragEnd!(null, makeDragInfo(12));
+    capturedOnTap!();
+    expect(onTap).not.toHaveBeenCalled();
+
+    fireEvent.pointerDown(screen.getByTestId('stack-card-front'), {
+      pointerId: 1,
+      isPrimary: true,
+    });
+    capturedOnTap!();
+    expect(onTap).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('RecipeStackCard — interactive descendants', () => {
+  it('does not open detail for a descendant button tap', () => {
+    const onTap = vi.fn();
+    render(<RecipeStackCard {...defaultProps} onTap={onTap} />);
+    const button = document.createElement('button');
+    screen.getByTestId('stack-card-front').append(button);
+    capturedOnTap!({ target: button, pointerType: 'mouse' });
+    expect(onTap).not.toHaveBeenCalled();
+  });
+});
+
+describe('RecipeStackCard — interruption and departure ownership', () => {
+  it.each([12, 45, -45])('does not navigate on pointercancel after %s px', async (distance) => {
+    render(<RecipeStackCard {...defaultProps} />);
+    capturedOnDragStart!();
+    capturedOnDrag!(null, makeDragInfo(distance));
+    await capturedOnDragEnd!({ type: 'pointercancel' }, makeDragInfo(distance));
+    expect(defaultProps.onSwipeLeft).not.toHaveBeenCalled();
+    expect(defaultProps.onSwipeRight).not.toHaveBeenCalled();
+    capturedOnTap!();
+    expect(defaultProps.onTap).not.toHaveBeenCalled();
+    fireEvent.pointerDown(screen.getByTestId('stack-card-front'), { isPrimary: true });
+    capturedOnTap!();
+    expect(defaultProps.onTap).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(['unmount', 'demote', 'replace', 'exit'] as const)(
+    'ignores a departure completion after %s',
+    async (departure) => {
+      const view = render(<RecipeStackCard {...defaultProps} />);
+      let complete!: () => void;
+      motionMocks.start.mockImplementationOnce(
+        () =>
+          new Promise<void>((resolve) => {
+            complete = resolve;
+          })
+      );
+      capturedOnDragEnd!(null, makeDragInfo(60));
+      if (departure === 'unmount') view.unmount();
+      else {
+        if (departure === 'exit') motionMocks.isPresent = false;
+        view.rerender(
+          <RecipeStackCard
+            {...defaultProps}
+            id={departure === 'replace' ? 'other' : defaultProps.id}
+            isFront={departure !== 'demote'}
+          />
+        );
+      }
+      await act(async () => complete());
+      expect(defaultProps.onSwipeRight).not.toHaveBeenCalled();
+    }
+  );
+
+  it('requests one navigation while departure is pending', async () => {
+    render(<RecipeStackCard {...defaultProps} />);
+    let complete!: () => void;
+    motionMocks.start.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          complete = resolve;
+        })
+    );
+    capturedOnDragEnd!(null, makeDragInfo(60));
+    capturedOnDragEnd!(null, makeDragInfo(60));
+    await act(async () => complete());
+    expect(defaultProps.onSwipeRight).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('RecipeStackCard — exact release boundaries', () => {
+  it.each([
+    [35, 0, null],
+    [0, 280, null],
+    [35.01, 0, 'right'],
+    [0, 280.01, 'right'],
+    [-35, 0, null],
+    [0, -280, null],
+    [-35.01, 0, 'left'],
+    [0, -280.01, 'left'],
+  ])('retains displacement %s / velocity %s policy', async (offset, velocity, direction) => {
+    render(<RecipeStackCard {...defaultProps} />);
+    await capturedOnDragEnd!(
+      { type: 'pointerup' },
+      makeDragInfo(offset as number, velocity as number)
+    );
+    expect(defaultProps.onSwipeRight).toHaveBeenCalledTimes(direction === 'right' ? 1 : 0);
+    expect(defaultProps.onSwipeLeft).toHaveBeenCalledTimes(direction === 'left' ? 1 : 0);
   });
 });

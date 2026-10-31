@@ -28,13 +28,13 @@ test('public install metadata agrees in initial HTML and retains access policy',
     display: 'standalone',
     name,
     short_name: name,
-    theme_color: '#CD5D45',
+    theme_color: '#B85542',
   });
   expect(manifest.icons.every((icon: { src: string }) => icon.src.startsWith(prefix + '/'))).toBe(
     true
   );
   expect(manifest.shortcuts.map((shortcut: { url: string }) => shortcut.url)).toEqual([
-    '/discovery',
+    '/recipes',
     '/capture',
   ]);
   expect(manifest.share_target.method).toBe('POST');
@@ -101,6 +101,32 @@ test('public install metadata agrees in initial HTML and retains access policy',
   const protectedResponse = await request.get('/planner', { maxRedirects: 0 });
   expect(protectedResponse.status()).toBe(307);
   expect(protectedResponse.headers().location).toContain('/welcome');
+});
+
+test('advertised Find and Capture destinations retain household and member gates', async ({
+  request,
+}) => {
+  const manifest = await (await request.get('/manifest.json')).json();
+  const destinations = manifest.shortcuts.map((shortcut: { url: string }) => shortcut.url);
+  expect(destinations).toEqual(['/recipes', '/capture']);
+  for (const destination of destinations) {
+    const locked = await request.get(destination, { maxRedirects: 0 });
+    expect(locked.status()).toBe(307);
+    expect(new URL(locked.headers().location, locked.url()).pathname).toBe('/welcome');
+    const noMember = await request.get(destination, {
+      maxRedirects: 0,
+      headers: { Cookie: `h_access=${await generateSecretToken('Paris-Montreal')}` },
+    });
+    expect(noMember.status()).toBe(307);
+    expect(new URL(noMember.headers().location, noMember.url()).pathname).toBe('/onboarding');
+    const member = await request.get(destination, {
+      maxRedirects: 0,
+      headers: {
+        Cookie: `h_access=${await generateSecretToken('Paris-Montreal')}; x-family-member-id=${MOCK_IDS.MEMBER_ALEX}`,
+      },
+    });
+    expect(member.status()).toBe(200);
+  }
 });
 
 test('welcome identity renders with every backend request unavailable in light and dark', async ({

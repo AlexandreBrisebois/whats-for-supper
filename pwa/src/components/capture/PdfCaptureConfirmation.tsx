@@ -73,7 +73,7 @@ export function PdfCaptureConfirmation({
               aria-pressed={rating === option.value}
               disabled={saving}
               onClick={() => setRating(option.value)}
-              className={`flex-1 rounded-2xl border-2 p-4 text-xs font-bold ${rating === option.value ? 'border-terracotta bg-terracotta/5 text-terracotta' : 'border-charcoal/5 bg-white text-charcoal/60'}`}
+              className={`flex-1 rounded-2xl border-2 p-4 text-xs font-bold ${rating === option.value ? 'border-terracotta bg-terracotta/5 text-terracotta-600' : 'border-charcoal/5 bg-white text-charcoal/60'}`}
             >
               <span aria-hidden className="mb-2 block text-2xl">
                 {option.icon}

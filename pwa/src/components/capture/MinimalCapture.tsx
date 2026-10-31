@@ -24,6 +24,7 @@ import { apiClient } from '@/lib/api/api-client';
 import { importRecipeShareBundle, parseRecipeBundleFile } from '@/lib/api/recipes';
 import { Button } from '@/components/ui/button';
 import { RecipeDetailSheet } from '@/components/recipes/RecipeDetailSheet';
+import { useSurfacePresentation } from '@/components/telemetry/useSurfacePresentation';
 import { ROUTES } from '@/lib/constants/routes';
 import { normalizeGotos } from '@/lib/gotoUtils';
 import { t, tWithVars } from '@/locales';
@@ -149,6 +150,32 @@ export default function MinimalCapture({
   const isGoto = intent === 'goto';
   const memberId = useFamilyStore((state) => state.selectedFamilyMemberId);
   const pdfSelection = usePdfCaptureStore((state) => state.selection);
+  // CaptureWithPdf retains this component under a hidden wrapper during PDF
+  // review. Its mounted drafts/status panels are not presented in that branch.
+  const capturePresented = preparedOnly || !pdfSelection;
+  // These declarations follow the rendered branches below. Status panels are
+  // presentation evidence only, including when a notification caused the render.
+  useSurfacePresentation(
+    'capture.bundle_review',
+    capturePresented && !!parsedBundle && !bundleImportSucceeded && !onSuccess
+  );
+  useSurfacePresentation(
+    'capture.upload',
+    capturePresented &&
+      !bundleImportSucceeded &&
+      !onSuccess &&
+      !parsedBundle &&
+      !preparedOnly &&
+      (isUrlCapturing || showPhotoUploadOverlay)
+  );
+  useSurfacePresentation(
+    'capture.queued',
+    capturePresented && !bundleImportSucceeded && onSuccess && !readyRecipeName
+  );
+  useSurfacePresentation(
+    'capture.ready',
+    capturePresented && (bundleImportSucceeded || (onSuccess && !!readyRecipeName))
+  );
   useEffect(() => {
     if (pdfSelection) resetCapture?.();
   }, [pdfSelection, resetCapture]);
@@ -771,7 +798,7 @@ export default function MinimalCapture({
           : "We're building your recipe. Hang tight \u2014 it'll be ready shortly.";
 
     // GOTO uses a different destination after success
-    const gotoDest = ROUTES.PROFILE_SETTINGS;
+    const gotoDest = ROUTES.HOME;
 
     return (
       <div
@@ -797,7 +824,7 @@ export default function MinimalCapture({
             onClick={() => router.push(gotoDest as any)}
             className="rounded-2xl px-8"
           >
-            Back to Settings
+            {t('capture.done', 'Done')}
           </Button>
         ) : (
           <div className="flex flex-col gap-3 w-full max-w-xs">
@@ -1116,7 +1143,7 @@ export default function MinimalCapture({
                 data-testid="capture-take-photo-btn"
                 onClick={handleCapture}
                 aria-label="Take a photo"
-                className="flex h-28 w-28 items-center justify-center rounded-full bg-terracotta text-white shadow-xl shadow-terracotta/30 ring-4 ring-white active:scale-95 transition-transform"
+                className="flex h-28 w-28 items-center justify-center rounded-full bg-terracotta hover:bg-terracotta-600 active:bg-terracotta-700 text-white shadow-xl shadow-terracotta/30 ring-4 ring-white active:scale-95 transition-transform"
               >
                 <Camera size={40} strokeWidth={2} />
               </button>
@@ -1125,7 +1152,7 @@ export default function MinimalCapture({
                 type="button"
                 data-testid="capture-pick-gallery-btn"
                 onClick={handleGallery}
-                className="flex items-center justify-center gap-2 text-sm font-bold uppercase tracking-widest text-terracotta/60 transition-colors hover:text-terracotta"
+                className="flex items-center justify-center gap-2 text-sm font-bold uppercase tracking-widest text-terracotta-600 transition-colors hover:text-terracotta"
               >
                 <ImageIcon size={16} />
                 {t('capture.pickFromGallery', 'Pick from Gallery')}
@@ -1203,7 +1230,7 @@ export default function MinimalCapture({
                 </h3>
                 <button
                   onClick={() => images.forEach((_, i) => removeImage(0))}
-                  className="text-[10px] font-bold uppercase tracking-widest text-terracotta/40"
+                  className="text-[10px] font-bold uppercase tracking-widest text-terracotta-600"
                 >
                   {t('capture.clearAll', 'Clear All')}
                 </button>
@@ -1244,7 +1271,7 @@ export default function MinimalCapture({
                       />
                     </div>
                     {idx === selectedDishPhotoIndex && (
-                      <div className="absolute bottom-0 left-0 right-0 bg-terracotta/90 py-1 text-center">
+                      <div className="absolute bottom-0 left-0 right-0 bg-terracotta py-1 text-center">
                         <span className="text-[9px] font-bold uppercase tracking-wider text-white">
                           {t('capture.mainDish', 'Main Dish')}
                         </span>
@@ -1270,7 +1297,7 @@ export default function MinimalCapture({
                         key={opt.value}
                         data-testid={`capture-rating-${opt.value}`}
                         onClick={() => setRating(opt.value as any)}
-                        className={`flex-1 flex flex-col items-center justify-center gap-2 rounded-2xl p-4 border-2 transition-all ${rating === opt.value ? 'border-terracotta bg-terracotta/5 text-terracotta scale-100 shadow-sm' : 'border-charcoal/5 bg-white text-charcoal/50 hover:bg-charcoal/5 scale-[0.98]'}`}
+                        className={`flex-1 flex flex-col items-center justify-center gap-2 rounded-2xl p-4 border-2 transition-all ${rating === opt.value ? 'border-terracotta bg-terracotta/5 text-terracotta-600 scale-100 shadow-sm' : 'border-charcoal/5 bg-white text-charcoal/50 hover:bg-charcoal/5 scale-[0.98]'}`}
                       >
                         <span className="text-2xl leading-none">{opt.icon}</span>
                         <span className="text-[10px] font-bold uppercase tracking-wider">
@@ -1346,7 +1373,7 @@ export default function MinimalCapture({
               <ArrowLeft size={14} />
               Back
             </button>
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-terracotta/10 text-terracotta">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-terracotta/10 text-terracotta-600">
               <Globe size={24} />
             </div>
             <div className="flex flex-col gap-2">
@@ -1408,7 +1435,7 @@ export default function MinimalCapture({
                       key={opt.value}
                       data-testid={`capture-rating-${opt.value}`}
                       onClick={() => setRating(opt.value as any)}
-                      className={`flex-1 flex flex-col items-center justify-center gap-2 rounded-2xl p-4 border-2 transition-all ${rating === opt.value ? 'border-terracotta bg-terracotta/5 text-terracotta scale-100 shadow-sm' : 'border-charcoal/5 bg-white text-charcoal/50 hover:bg-charcoal/5 scale-[0.98]'}`}
+                      className={`flex-1 flex flex-col items-center justify-center gap-2 rounded-2xl p-4 border-2 transition-all ${rating === opt.value ? 'border-terracotta bg-terracotta/5 text-terracotta-600 scale-100 shadow-sm' : 'border-charcoal/5 bg-white text-charcoal/50 hover:bg-charcoal/5 scale-[0.98]'}`}
                     >
                       <span className="text-2xl leading-none">{opt.icon}</span>
                       <span className="text-[10px] font-bold uppercase tracking-wider">

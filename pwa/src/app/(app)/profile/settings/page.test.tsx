@@ -31,11 +31,6 @@ vi.mock('@/components/profile/FamilyManagement', () => ({
   FamilyManagement: () => <div data-testid="family-management-stub" />,
 }));
 
-// @/components/profile/FamilyGOTOSettings — avoid deep dependency tree
-vi.mock('@/components/profile/FamilyGOTOSettings', () => ({
-  FamilyGOTOSettings: () => <div data-testid="family-goto-stub" />,
-}));
-
 // @/components/profile/FailedCapturesSection — avoid deep dependency tree
 vi.mock('@/components/profile/FailedCapturesSection', () => ({
   FailedCapturesSection: () => <div data-testid="failed-captures-stub" />,
@@ -63,7 +58,7 @@ describe('SettingsPage', () => {
     render(<SettingsPageContent />);
 
     expect(screen.getByTestId('family-management-stub')).toBeDefined();
-    expect(screen.getByTestId('family-goto-stub')).toBeDefined();
+    expect(screen.queryByTestId('family-goto-stub')).not.toBeInTheDocument();
     expect(screen.getByTestId('failed-captures-stub')).toBeDefined();
   });
 

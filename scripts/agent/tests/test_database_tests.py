@@ -21,6 +21,7 @@ class DatabaseTests(unittest.TestCase):
         self.root = Path(self.tmp.name)
         self.calls = []
         self.outcomes = ['Passed']
+        self.test_names = None
         self.test_exit = 0
         self.bootstrap_failure = False
         self.test_timeout = False
@@ -55,9 +56,11 @@ class DatabaseTests(unittest.TestCase):
         else:
             results = Path(args[args.index('--results-directory') + 1])
         results.mkdir(parents=True, exist_ok=True)
+        names = self.test_names or [f'RecipeApi.Tests.Integration.SamplePostgresTests.Case{i}'
+                                    for i in range(len(self.outcomes))]
         (results / 'database.trx').write_text('<TestRun xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010"><Results>' + ''.join(
-            f'<UnitTestResult testName="RecipeApi.Tests.Integration.SamplePostgresTests.Case{i}" outcome="{outcome}" />'
-            for i, outcome in enumerate(self.outcomes)) + '</Results></TestRun>')
+            f'<UnitTestResult testName="{name}" outcome="{outcome}" />'
+            for name, outcome in zip(names, self.outcomes)) + '</Results></TestRun>')
         Path(log).write_text('test output\n')
         return self.test_exit
 
@@ -134,6 +137,39 @@ class DatabaseTests(unittest.TestCase):
         self.assertEqual(self.run_gate(filter_expression='FullyQualifiedName~DeferRecipe')[0], 'passed')
         test = next(c for c in self.calls if c[0] == 'dotnet')
         self.assertIn('(FullyQualifiedName~DeferRecipe)', test[test.index('--filter') + 1])
+
+    def test_default_and_ordinary_focus_exclude_live_receiver_qualification(self):
+        for focus in (None, 'FullyQualifiedName~RecipeIssueTelemetry',
+                      'FullyQualifiedName~NotRecipeIssueTelemetryPostgresTests',
+                      'FullyQualifiedName!~RecipeIssueTelemetryPostgresTests'):
+            with self.subTest(focus=focus):
+                self.assertEqual(self.run_gate(filter_expression=focus)[0], 'passed')
+                test = next(c for c in reversed(self.calls) if c[0] == 'dotnet')
+                self.assertIn('FullyQualifiedName!~LiveReceiver_', test[test.index('--filter') + 1])
+
+    def test_explicit_receiver_class_or_marker_focus_includes_live_receiver(self):
+        self.test_names = ['RecipeApi.Tests.Integration.RecipeIssueTelemetryPostgresTests.LiveReceiver_ActualExporter']
+        for focus in ('FullyQualifiedName~RecipeIssueTelemetryPostgresTests',
+                      'FullyQualifiedName=RecipeApi.Tests.Integration.RecipeIssueTelemetryPostgresTests.LiveReceiver_ActualExporter',
+                      'FullyQualifiedName~LiveReceiver_'):
+            with self.subTest(focus=focus):
+                status, record = self.run_gate(filter_expression=focus)
+                self.assertEqual(status, 'passed')
+                test = next(c for c in reversed(self.calls) if c[0] == 'dotnet')
+                self.assertNotIn('FullyQualifiedName!~LiveReceiver_', test[test.index('--filter') + 1])
+                self.assertEqual(record['passed'], 1)
+
+    def test_explicit_receiver_qualification_cannot_pass_without_live_results(self):
+        status, record = self.run_gate(filter_expression='FullyQualifiedName~RecipeIssueTelemetryPostgresTests')
+        self.assertEqual(status, 'blocked')
+        self.assertIn('LiveReceiver_', record['detail'])
+
+    def test_missing_receiver_configuration_skip_blocks_explicit_qualification(self):
+        self.outcomes = ['NotExecuted']
+        self.test_names = ['RecipeApi.Tests.Integration.RecipeIssueTelemetryPostgresTests.LiveReceiver_ActualExporter']
+        status, record = self.run_gate(filter_expression='FullyQualifiedName~RecipeIssueTelemetryPostgresTests')
+        self.assertEqual(status, 'blocked')
+        self.assertEqual(record['skipped'], 1)
 
     def test_source_mutation_never_becomes_passed_evidence(self):
         status, record = self.run_gate(identity_values=['before', 'after'])

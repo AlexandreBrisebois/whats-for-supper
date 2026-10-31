@@ -1,6 +1,8 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import MinimalCapture from './MinimalCapture';
+import { observeOpening, presentationChanged } from '@/lib/telemetry/opening';
+import type { BrowserObservation } from '@/lib/telemetry/navigation';
 import CaptureWithPdf from './CaptureWithPdf';
 import { useFeatureFlagStore } from '@/store/featureFlagStore';
 import { usePdfCaptureStore } from '@/store/pdfCaptureStore';
@@ -19,6 +21,7 @@ vi.mock('@/components/demo/DemoModeProvider', () => ({ useDemoMode: () => demoMo
 vi.mock('./PdfCapturePanel', () => ({ PdfCapturePanel: () => null }));
 
 vi.mock('next/navigation', () => ({
+  usePathname: () => '/capture',
   useRouter: () => ({ push: mockPush }),
   useSearchParams: () => ({ get: () => null }),
 }));
@@ -131,6 +134,51 @@ vi.mock('@/components/recipes/RecipeDetailSheet', () => ({
     </div>
   ),
 }));
+
+function startPresentationStream() {
+  vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
+  const submit = vi.fn<(event: BrowserObservation) => Promise<void>>().mockResolvedValue();
+  const observe = () => observeOpening(document, true, '/capture', submit);
+  observe();
+  submit.mockClear();
+  document.addEventListener(presentationChanged, observe);
+  return {
+    events: () => submit.mock.calls.map(([event]) => [event.eventName, event.screen]),
+    raw: () => submit.mock.calls.map(([event]) => event),
+    observe,
+    stop: () => document.removeEventListener(presentationChanged, observe),
+  };
+}
+
+function privateBundleFile() {
+  return new File(
+    [
+      JSON.stringify({
+        version: '1.0',
+        recipe: {
+          name: 'private-recipe-sentinel',
+          ingredients: ['private-ingredient-sentinel'],
+          instructions: [
+            {
+              name: 'private-section-sentinel',
+              itemListElement: [{ text: 'private-step-sentinel' }],
+            },
+          ],
+          isSynthesized: false,
+        },
+        info: {
+          exportedAtUtc: '2026-05-14T16:00:00Z',
+          bundleSource: 'wfs-share',
+          appVersion: '0.1.0',
+        },
+        hero: null,
+        originals: [],
+      }),
+    ],
+    'private-file-sentinel.txt',
+    { type: 'text/plain' }
+  );
+}
 
 describe('MinimalCapture recipe import', () => {
   it('keeps the local picker attached while unknown mode becomes non-demo', () => {
@@ -612,5 +660,151 @@ describe('MinimalCapture recipe import', () => {
       expect(mockAddToast).toHaveBeenCalledWith('Duplicate recipe discarded.');
       expect(mockPush).toHaveBeenCalledWith('/');
     });
+  });
+  it('observes bundle review/reject/reopen and the actual ready panel without picker or import-result facts', async () => {
+    const stream = startPresentationStream();
+    const view = render(<MinimalCapture preparedOnly />);
+    try {
+      const picker = screen.getByTestId('import-prepared-file-input');
+      expect(picker).toHaveClass('hidden');
+      expect(stream.events()).toEqual([]);
+      fireEvent.change(picker, { target: { files: [privateBundleFile()] } });
+      expect(await screen.findByTestId('bundle-preview-card')).toBeVisible();
+      expect(stream.events()).toEqual([['pwa.surface.opened', 'capture.bundle_review']]);
+      fireEvent.click(screen.getByTestId('reject-bundle-btn'));
+      await act(async () => {});
+      expect(stream.events().at(-1)).toEqual(['pwa.surface.closed', 'capture.bundle_review']);
+      expect(mockImportBundle).not.toHaveBeenCalled();
+      fireEvent.change(screen.getByTestId('import-prepared-file-input'), {
+        target: { files: [privateBundleFile()] },
+      });
+      expect(await screen.findByTestId('bundle-preview-card')).toBeVisible();
+      expect(stream.events().at(-1)).toEqual(['pwa.surface.opened', 'capture.bundle_review']);
+      mockImportBundle.mockRejectedValueOnce(new Error('private-error-sentinel'));
+      fireEvent.click(screen.getByTestId('accept-bundle-btn'));
+      expect(await screen.findByTestId('bundle-import-error')).toBeVisible();
+      expect(stream.events()).toHaveLength(3);
+      fireEvent.click(screen.getByTestId('accept-bundle-btn'));
+      expect(await screen.findByTestId('bundle-import-success')).toBeVisible();
+      expect(stream.events()).toEqual([
+        ['pwa.surface.opened', 'capture.bundle_review'],
+        ['pwa.surface.closed', 'capture.bundle_review'],
+        ['pwa.surface.opened', 'capture.bundle_review'],
+        ['pwa.surface.closed', 'capture.bundle_review'],
+        ['pwa.surface.opened', 'capture.ready'],
+      ]);
+      expect(JSON.stringify(stream.raw())).not.toContain('sentinel');
+      expect(stream.raw().every((event) => event.eventName.startsWith('pwa.surface.'))).toBe(true);
+    } finally {
+      view.unmount();
+      await act(async () => {});
+      stream.stop();
+    }
+  });
+
+  it('observes actual URL overlay, retry, queued and ready panels without implying a captured recipe', async () => {
+    const stream = startPresentationStream();
+    let reject: ((error: Error) => void) | undefined;
+    let resolve: ((id: string) => void) | undefined;
+    mockSubmitUrl.mockImplementationOnce(
+      () =>
+        new Promise((_resolve, failure) => {
+          reject = failure;
+        })
+    );
+    const view = render(
+      <MinimalCapture initialUrl="https://private-url-sentinel.invalid/recipe" />
+    );
+    try {
+      expect(stream.events()).toEqual([]);
+      fireEvent.click(screen.getByTestId('capture-url-save-btn'));
+      expect(screen.getByText('Capturing link...')).toBeVisible();
+      expect(stream.events()).toEqual([['pwa.surface.opened', 'capture.upload']]);
+      await act(async () => {
+        reject?.(new Error('private-error-sentinel'));
+      });
+      expect(screen.getByTestId('capture-url-error')).toBeVisible();
+      expect(stream.events().at(-1)).toEqual(['pwa.surface.closed', 'capture.upload']);
+      mockSubmitUrl.mockImplementationOnce(
+        () =>
+          new Promise((success) => {
+            resolve = success;
+          })
+      );
+      fireEvent.click(screen.getByTestId('capture-url-save-btn'));
+      expect(stream.events().at(-1)).toEqual(['pwa.surface.opened', 'capture.upload']);
+      await act(async () => {
+        resolve?.(memberId);
+      });
+      expect(screen.getByTestId('capture-success-heading')).toHaveTextContent('Recipe queued');
+      expect(stream.events().slice(-2)).toEqual([
+        ['pwa.surface.closed', 'capture.upload'],
+        ['pwa.surface.opened', 'capture.queued'],
+      ]);
+      await act(async () => {
+        libraryStoreState.notifications = [
+          { recipeId: 'other-private-id', name: 'private-unrelated-sentinel', type: 'ready' },
+        ];
+        librarySubscribers.forEach((callback) => callback(libraryStoreState));
+      });
+      expect(stream.events()).toHaveLength(5);
+      vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden');
+      await act(async () => {
+        libraryStoreState.notifications = [
+          { recipeId: memberId, name: 'private-ready-sentinel', type: 'ready' },
+        ];
+        librarySubscribers.forEach((callback) => callback(libraryStoreState));
+      });
+      expect(screen.getByTestId('capture-success-heading')).toHaveTextContent(
+        'private-ready-sentinel is ready!'
+      );
+      expect(stream.events()).toHaveLength(5);
+      vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
+      stream.observe();
+      expect(stream.events().slice(-2)).toEqual([
+        ['pwa.surface.closed', 'capture.queued'],
+        ['pwa.surface.opened', 'capture.ready'],
+      ]);
+      expect(JSON.stringify(stream.raw())).not.toContain('sentinel');
+      expect(stream.raw().every((event) => event.eventName.startsWith('pwa.surface.'))).toBe(true);
+    } finally {
+      view.unmount();
+      await act(async () => {});
+      stream.stop();
+    }
+  });
+
+  it('closes a pre-mounted review while PDF selection hides capture and reopens only on reveal', async () => {
+    const stream = startPresentationStream();
+    const view = render(<CaptureWithPdf />);
+    try {
+      fireEvent.change(screen.getByTestId('import-recipe-file-input'), {
+        target: { files: [privateBundleFile()] },
+      });
+      expect(await screen.findByTestId('bundle-preview-card')).toBeVisible();
+      expect(stream.events()).toEqual([['pwa.surface.opened', 'capture.bundle_review']]);
+      await act(async () => {
+        usePdfCaptureStore
+          .getState()
+          .select(
+            new File(['%PDF'], 'private-hidden-file-sentinel.pdf', { type: 'application/pdf' }),
+            memberId
+          );
+      });
+      expect(screen.getByTestId('bundle-preview-card')).not.toBeVisible();
+      expect(stream.events().at(-1)).toEqual(['pwa.surface.closed', 'capture.bundle_review']);
+      view.rerender(<CaptureWithPdf />);
+      expect(stream.events()).toHaveLength(2);
+      await act(async () => {
+        usePdfCaptureStore.getState().reset();
+      });
+      expect(screen.getByTestId('bundle-preview-card')).toBeVisible();
+      expect(stream.events().at(-1)).toEqual(['pwa.surface.opened', 'capture.bundle_review']);
+      expect(JSON.stringify(stream.raw())).not.toContain('sentinel');
+    } finally {
+      view.unmount();
+      await act(async () => {});
+      stream.stop();
+    }
   });
 });

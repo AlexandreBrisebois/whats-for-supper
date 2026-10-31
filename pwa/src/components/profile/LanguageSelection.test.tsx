@@ -14,6 +14,7 @@ vi.mock('@/locales', () => ({
 // @/components/common/LocaleProvider — control locale state
 const mockSetCurrentLocale = vi.fn();
 let currentLocale = 'en';
+let selectedId: string | null = 'member-123';
 
 vi.mock('@/components/common/LocaleProvider', () => ({
   useLocale: () => ({
@@ -30,7 +31,7 @@ const mockUpdateMemberPreferences = vi.fn();
 vi.mock('@/store/familyStore', () => ({
   useFamilyStore: (selector?: (state: any) => any) => {
     const state = {
-      selectedFamilyMemberId: 'member-123',
+      selectedFamilyMemberId: selectedId,
       updateMemberPreferences: mockUpdateMemberPreferences,
       loadGoTo: vi.fn().mockResolvedValue({ items: [] }),
       saveGoTo: vi.fn().mockResolvedValue(undefined),
@@ -47,34 +48,31 @@ describe('LanguageSelection', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     currentLocale = 'en';
+    selectedId = 'member-123';
   });
 
-  it('English button has bg-terracotta and text-white when locale is en', () => {
-    currentLocale = 'en';
-    render(<LanguageSelection />);
+  for (const locale of ['en', 'fr']) {
+    it(`names the group and exposes one checked, pressed choice for ${locale}`, () => {
+      currentLocale = locale;
+      render(<LanguageSelection />);
+      expect(screen.getByRole('group', { name: 'Language' })).toBeInTheDocument();
+      const selected = screen.getByTestId(`locale-btn-${locale}`);
+      const other = screen.getByTestId(`locale-btn-${locale === 'en' ? 'fr' : 'en'}`);
+      expect(selected).toHaveAttribute('aria-pressed', 'true');
+      expect(other).toHaveAttribute('aria-pressed', 'false');
+      expect(selected.querySelector('[data-language-check]')).not.toBeNull();
+      expect(other.querySelector('[data-language-check]')).toBeNull();
+      expect(other).toBeEnabled();
+    });
+  }
 
-    const englishBtn = screen.getByText('English');
-    const frenchBtn = screen.getByText('French');
-
-    expect(englishBtn.className.split(' ')).toContain('bg-terracotta');
-    expect(englishBtn.className).toContain('text-white');
-
-    expect(frenchBtn.className.split(' ')).not.toContain('bg-terracotta');
-    expect(frenchBtn.className).not.toContain('text-white');
-  });
-
-  it('French button has bg-terracotta and text-white when locale is fr', () => {
+  it('without a selected member changes only the browser-local choice', () => {
+    selectedId = null;
     currentLocale = 'fr';
     render(<LanguageSelection />);
-
-    const frenchBtn = screen.getByText('French');
-    const englishBtn = screen.getByText('English');
-
-    expect(frenchBtn.className.split(' ')).toContain('bg-terracotta');
-    expect(frenchBtn.className).toContain('text-white');
-
-    expect(englishBtn.className.split(' ')).not.toContain('bg-terracotta');
-    expect(englishBtn.className).not.toContain('text-white');
+    fireEvent.click(screen.getByTestId('locale-btn-en'));
+    expect(mockSetCurrentLocale).toHaveBeenCalledExactlyOnceWith('en');
+    expect(mockUpdateMemberPreferences).not.toHaveBeenCalled();
   });
 
   it('calls setCurrentLocale and updateMemberPreferences when French button is clicked', () => {

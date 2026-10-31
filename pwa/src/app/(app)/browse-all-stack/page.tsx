@@ -6,9 +6,9 @@ import { useTodayStore } from '@/store/todayStore';
 import { calendarDayIndex } from '@/lib/deployment-calendar';
 
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { AnimatePresence } from 'framer-motion';
-import { X, Search, Loader2, Compass, Recycle, Layers3, Grid3X3 } from 'lucide-react';
+import { X, Search, Loader2, Compass, Recycle, Layers3, Grid3X3, Star } from 'lucide-react';
 import { RecipeStackCard } from '@/components/recipes/RecipeStackCard';
 import { StackActionBar } from '@/components/recipes/StackActionBar';
 import { EndCard } from '@/components/recipes/EndCard';
@@ -32,7 +32,7 @@ import { GetOrderQueryParameterTypeObject } from '@/lib/api/generated/api/recipe
 import type { RecipeDto } from '@/lib/api/generated/models/index';
 import { BackgroundBlobs } from '@/components/ui/BackgroundBlobs';
 import { getImageUrl } from '@/lib/imageUtils';
-import { tWithVars } from '@/locales';
+import { t, tWithVars } from '@/locales';
 import { formatRecipeTime } from '@/lib/duration';
 
 type BrowseViewMode = 'stack' | 'list';
@@ -55,9 +55,19 @@ const isHistoryExpired = (error: unknown) => {
 // ---------------------------------------------------------------------------
 
 export default function BrowseAllStackPage() {
+  return (
+    <React.Suspense fallback={null}>
+      <BrowseAllStackContent />
+    </React.Suspense>
+  );
+}
+
+function BrowseAllStackContent() {
+  const searchParams = useSearchParams();
   const router = useRouter();
   const { familyMembers, selectedFamilyMemberId, loadFamilyMembers, updateMemberPreferences } =
     useFamilyStore();
+  const gotoMembershipVersion = useFamilyStore((state) => state.gotoMembershipVersion);
   const selectedMember = familyMembers.find((member) => member.id === selectedFamilyMemberId);
   const savedBrowseViewMode: BrowseViewMode =
     selectedMember?.browseViewMode === 'list' ? 'list' : 'stack';
@@ -78,6 +88,8 @@ export default function BrowseAllStackPage() {
   } = useBrowseStackStore();
 
   // Local UI state
+  const [gotoOnly, setGotoOnly] = useState(() => searchParams.get('gotoOnly') === 'true');
+  const appliedGotoVersion = gotoOnly ? gotoMembershipVersion : 0;
   const [isDiscoverableOnly, setIsDiscoverableOnly] = useState(false);
   const [browseViewModeOverride, setBrowseViewModeOverride] = useState<{
     memberId: string | null;
@@ -163,6 +175,7 @@ export default function BrowseAllStackPage() {
             page: page,
             limit: pageSize,
             discoverableOnly: discoverable,
+            gotoOnly: gotoOnly || undefined,
             historyGeneration: append && !restart ? historyGenerationRef.current : undefined,
           },
         });
@@ -186,7 +199,7 @@ export default function BrowseAllStackPage() {
         }
 
         const effectiveTotal =
-          discoverable && paginationTotal >= 0
+          (discoverable || gotoOnly) && paginationTotal >= 0
             ? paginationTotal
             : (summaryTotalForRequest ?? allLibraryTotalRef.current ?? paginationTotal);
         setTotalCount(effectiveTotal);
@@ -213,7 +226,7 @@ export default function BrowseAllStackPage() {
         }
       }
     },
-    [appendRecipes, browseViewMode, setRecipes, setCurrentIndex, setTotalCount]
+    [appendRecipes, browseViewMode, gotoOnly, setRecipes, setCurrentIndex, setTotalCount]
   );
 
   const getStackPage = useCallback(
@@ -230,6 +243,7 @@ export default function BrowseAllStackPage() {
             page,
             limit: STACK_PAGE_SIZE,
             discoverableOnly: isDiscoverableOnly,
+            gotoOnly: gotoOnly || undefined,
             historyGeneration: historyGenerationRef.current,
           },
         })
@@ -249,7 +263,7 @@ export default function BrowseAllStackPage() {
       pageRequestsRef.current.set(page, request);
       return request;
     },
-    [isDiscoverableOnly]
+    [isDiscoverableOnly, gotoOnly]
   );
 
   const navigatePage = useCallback(
@@ -319,7 +333,7 @@ export default function BrowseAllStackPage() {
     return () => {
       generationRef.current = generation + 1;
     };
-  }, [isDiscoverableOnly, browseViewMode, fetchLibraryData]);
+  }, [isDiscoverableOnly, browseViewMode, fetchLibraryData, appliedGotoVersion]);
 
   useEffect(() => () => reset(), [reset]);
 
@@ -629,7 +643,8 @@ export default function BrowseAllStackPage() {
   const globalIndex = (stackPage - 1) * STACK_PAGE_SIZE + currentIndex;
   const displayTotal = totalCount;
 
-  const isEmpty = !isInitialLoading && !loadError && recipes.length === 0 && !isDiscoverableOnly;
+  const isEmpty =
+    !isInitialLoading && !loadError && recipes.length === 0 && !isDiscoverableOnly && !gotoOnly;
 
   // ---------------------------------------------------------------------------
   // Render
@@ -637,37 +652,48 @@ export default function BrowseAllStackPage() {
   return (
     <div
       data-testid="browse-all-stack-container"
-      className="fixed inset-0 z-50 flex flex-col bg-cream overflow-hidden"
+      className="fixed inset-0 z-50 flex flex-col bg-cream overflow-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
     >
       <BackgroundBlobs />
 
       {/* Top bar: Clustered actions (right) */}
-      <div className="relative z-10 flex items-center justify-end px-6 pt-safe-top pt-2 pb-1 shrink-0 gap-1.5">
+      <div className="relative z-10 flex flex-wrap items-center justify-end px-2 sm:px-6 pt-2 pb-1 shrink-0 gap-1">
         <button
           onClick={handleGlobalToggleDiscoverable}
           data-testid="stack-toggle-discoverable"
-          className={`flex h-11 items-center gap-2 rounded-full px-3 transition-all duration-300 border ${
+          className={`flex h-12 min-w-12 shrink-0 items-center gap-1 rounded-full px-2 transition-all duration-300 border ${
             isDiscoverableOnly
               ? 'bg-ochre/15 text-ochre-800 border-ochre/25 shadow-sm shadow-ochre/10'
               : 'bg-white/80 text-charcoal/70 border-charcoal/8 hover:bg-white active:scale-95'
-          } backdrop-blur-sm focus:outline-none`}
+          } backdrop-blur-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-charcoal`}
           aria-label={
             isDiscoverableOnly ? 'Showing recipes marked Discovery' : 'Showing all recipes'
           }
         >
           <Compass className={`h-4 w-4 ${isDiscoverableOnly ? 'text-ochre fill-ochre/20' : ''}`} />
-          <span className="text-xs font-black tracking-wide uppercase">
+          <span className="hidden min-[390px]:inline text-xs font-black tracking-wide uppercase">
             {isDiscoverableOnly ? 'Discovery' : 'All'}
           </span>
         </button>
 
-        <div className="flex h-11 rounded-full bg-white/80 border border-charcoal/8 p-1 shadow-sm backdrop-blur-sm">
+        <button
+          type="button"
+          data-testid="browse-filter-goto"
+          aria-label={t('recipes.gotoOnly', 'Go-To recipes only')}
+          aria-pressed={gotoOnly}
+          onClick={() => setGotoOnly((current) => !current)}
+          className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full border focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-charcoal active:scale-95 motion-reduce:transform-none ${gotoOnly ? 'bg-ochre/15 text-ochre-800 border-ochre/25' : 'bg-white/80 text-charcoal-700 border-charcoal/8'}`}
+        >
+          <Star size={20} fill={gotoOnly ? 'currentColor' : 'none'} aria-hidden="true" />
+        </button>
+
+        <div className="flex h-12 shrink-0 rounded-full bg-white/80 border border-charcoal/8 p-0 shadow-sm backdrop-blur-sm">
           <button
             type="button"
             data-testid="browse-view-stack"
             aria-label="Show recipe cards"
             onClick={() => handleViewModeChange('stack')}
-            className={`flex items-center gap-1.5 rounded-full px-3 text-xs font-black uppercase transition-all ${
+            className={`flex items-center justify-center min-w-12 gap-1 rounded-full px-1 text-xs font-black uppercase transition-all ${
               browseViewMode === 'stack' ? 'bg-sage/20 text-sage-900' : 'text-charcoal/55'
             }`}
           >
@@ -678,7 +704,7 @@ export default function BrowseAllStackPage() {
             data-testid="browse-view-list"
             aria-label="Show recipe list"
             onClick={() => handleViewModeChange('list')}
-            className={`flex items-center gap-1.5 rounded-full px-3 text-xs font-black uppercase transition-all ${
+            className={`flex items-center justify-center min-w-12 gap-1 rounded-full px-1 text-xs font-black uppercase transition-all ${
               browseViewMode === 'list' ? 'bg-sage/20 text-sage-900' : 'text-charcoal/55'
             }`}
           >
@@ -691,7 +717,7 @@ export default function BrowseAllStackPage() {
           data-testid="recycle-bin-entry"
           aria-label="Recycle bin"
           onClick={() => setIsTrashOpen(true)}
-          className="flex h-11 w-11 items-center justify-center rounded-full bg-white/80 text-charcoal/70 shadow-sm border border-charcoal/8 backdrop-blur-sm hover:bg-white active:scale-95 transition-all focus:outline-none"
+          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white/80 text-charcoal/70 shadow-sm border border-charcoal/8 backdrop-blur-sm hover:bg-white active:scale-95 transition-all focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-charcoal"
         >
           <Recycle size={20} />
         </button>
@@ -701,7 +727,7 @@ export default function BrowseAllStackPage() {
           data-testid="browse-all-exit"
           aria-label="Close browse overlay"
           onClick={handleExit}
-          className="flex h-11 w-11 items-center justify-center rounded-full bg-white/80 text-charcoal/70 shadow-sm border border-charcoal/8 backdrop-blur-sm hover:bg-white active:scale-95 transition-all focus:outline-none"
+          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white/80 text-charcoal/70 shadow-sm border border-charcoal/8 backdrop-blur-sm hover:bg-white active:scale-95 transition-all focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-charcoal"
         >
           <X size={20} />
         </button>
@@ -710,7 +736,9 @@ export default function BrowseAllStackPage() {
       {isTrashOpen && <RecycleBinSheet onClose={() => setIsTrashOpen(false)} />}
 
       {/* Main content area */}
-      <div className="relative z-10 flex flex-1 flex-col items-center justify-start pt-4 px-6 pb-2 min-h-0">
+      <div
+        className={`relative z-10 flex flex-1 flex-col items-center justify-start pt-4 px-6 pb-2 min-h-0 ${browseViewMode === 'stack' ? 'overflow-y-auto overflow-x-hidden' : ''}`}
+      >
         {isInitialLoading && (
           <div className="flex flex-col items-center gap-4">
             <Loader2
@@ -749,6 +777,28 @@ export default function BrowseAllStackPage() {
           </div>
         )}
 
+        {!isInitialLoading && !loadError && gotoOnly && recipes.length === 0 && (
+          <div
+            data-testid="browse-goto-empty"
+            className="flex flex-col items-center gap-3 px-4 text-center text-charcoal"
+          >
+            <p>
+              {t(
+                'recipes.gotoNoMatches',
+                'No matching Go-To recipes. Clear this filter to find recipes and add stars.'
+              )}
+            </p>
+            <button
+              type="button"
+              data-testid="browse-goto-clear"
+              onClick={() => setGotoOnly(false)}
+              className="min-h-12 px-4 font-bold text-terracotta-700 underline"
+            >
+              {t('recipes.clearFilters', 'Clear filters')}
+            </button>
+          </div>
+        )}
+
         {isEmpty && <EndCard isEmpty={true} onSwipeRight={() => {}} onSwipeLeft={() => {}} />}
 
         {!isInitialLoading && !loadError && browseViewMode === 'list' && recipes.length > 0 && (
@@ -768,7 +818,7 @@ export default function BrowseAllStackPage() {
                   key={recipe.id}
                   data-testid="browse-list-recipe-card"
                   onClick={() => handleCardTap(recipe.id!)}
-                  className="group flex flex-col justify-start items-stretch overflow-hidden rounded-lg bg-white/85 text-left shadow-sm border border-charcoal/8 backdrop-blur-sm transition hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-ochre focus:ring-offset-2"
+                  className="group flex flex-col justify-start items-stretch overflow-hidden rounded-lg bg-white/85 text-left shadow-sm border border-charcoal/8 backdrop-blur-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-charcoal focus:ring-2 focus:ring-ochre focus:ring-offset-2"
                 >
                   <div className="relative aspect-[4/3] bg-sage/10 overflow-hidden">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -806,7 +856,10 @@ export default function BrowseAllStackPage() {
         )}
 
         {!isInitialLoading && !loadError && browseViewMode === 'stack' && recipes.length > 0 && (
-          <div className="w-full max-w-sm md:max-w-xl flex-1 flex flex-col min-h-0 max-h-[82vh] md:max-h-[880px] lg:max-h-[780px] transition-all duration-500 ease-in-out">
+          <div
+            data-testid="browse-stack-layout"
+            className="w-full max-w-sm md:max-w-xl flex-none h-[min(740px,calc(100dvh-88px-env(safe-area-inset-top)-env(safe-area-inset-bottom)))] md:h-[min(860px,calc(100dvh-88px-env(safe-area-inset-top)-env(safe-area-inset-bottom)))] flex flex-col motion-safe:transition-all motion-safe:duration-500 ease-in-out"
+          >
             <div className="relative flex-1 min-h-0">
               <AnimatePresence mode="popLayout">
                 {visibleRecipes.map((recipe, i) => (

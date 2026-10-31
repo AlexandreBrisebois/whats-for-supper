@@ -1,11 +1,13 @@
 'use client';
 
-import { Languages } from 'lucide-react';
+import { useId } from 'react';
+import { Check, Languages } from 'lucide-react';
 import { useLocale } from '@/components/common/LocaleProvider';
 import { useFamilyStore } from '@/store/familyStore';
 import { t } from '@/locales';
 
 export function LanguageSelection() {
+  const headingId = useId();
   const { locale, setCurrentLocale } = useLocale();
   const { selectedFamilyMemberId, updateMemberPreferences } = useFamilyStore();
 
@@ -17,40 +19,39 @@ export function LanguageSelection() {
   };
 
   return (
-    <div className="w-full rounded-[2.5rem] bg-white/40 backdrop-blur-xl border border-white/60 p-8 shadow-glass">
-      <div className="flex items-center gap-3 mb-8">
-        <Languages className="h-4 w-4 text-terracotta" />
-        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-terracotta">
+    <section
+      role="group"
+      aria-labelledby={headingId}
+      className="w-full rounded-3xl bg-white/50 border border-white/80 p-[20px] shadow-[0_6px_24px_-10px_rgba(31,41,55,0.12)]"
+    >
+      <div className="mb-4 flex items-center gap-3">
+        <Languages aria-hidden="true" className="h-5 w-5 text-terracotta-700" />
+        <h2 id={headingId} className="text-base font-semibold text-charcoal">
           {t('profile.language', 'Language')}
-        </h3>
+        </h2>
       </div>
-
-      <div className="flex gap-3">
-        <button
-          data-testid="locale-btn-en"
-          onClick={() => handleLanguageChange('en')}
-          className={[
-            'flex-1 rounded-2xl py-4 text-sm font-black transition-all active:scale-[0.98]',
-            locale === 'en'
-              ? 'bg-terracotta text-white shadow-card'
-              : 'bg-white/50 text-charcoal/60 hover:bg-white/70 border border-white/80 shadow-sm',
-          ].join(' ')}
-        >
-          {t('profile.english', 'English')}
-        </button>
-        <button
-          data-testid="locale-btn-fr"
-          onClick={() => handleLanguageChange('fr')}
-          className={[
-            'flex-1 rounded-2xl py-4 text-sm font-black transition-all active:scale-[0.98]',
-            locale === 'fr'
-              ? 'bg-terracotta text-white shadow-card'
-              : 'bg-white/50 text-charcoal/60 hover:bg-white/70 border border-white/80 shadow-sm',
-          ].join(' ')}
-        >
-          {t('profile.french', 'French')}
-        </button>
+      <div className="flex flex-wrap gap-3">
+        {(['en', 'fr'] as const).map((choice) => (
+          <button
+            key={choice}
+            type="button"
+            data-testid={`locale-btn-${choice}`}
+            aria-pressed={locale === choice}
+            onClick={() => handleLanguageChange(choice)}
+            className={[
+              'flex min-h-12 min-w-12 flex-1 basis-[8rem] items-center justify-center gap-2 rounded-2xl px-3 py-3 text-base font-semibold scroll-mb-[calc(8rem+env(safe-area-inset-bottom))] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-terracotta-700',
+              locale === choice
+                ? 'bg-terracotta-50 text-terracotta-700 hover:bg-terracotta-100 active:bg-terracotta-100'
+                : 'bg-white/80 text-charcoal hover:bg-cream active:bg-terracotta-50',
+            ].join(' ')}
+          >
+            {locale === choice && (
+              <Check data-language-check aria-hidden="true" className="h-5 w-5 shrink-0" />
+            )}
+            {choice === 'en' ? t('profile.english', 'English') : t('profile.french', 'French')}
+          </button>
+        ))}
       </div>
-    </div>
+    </section>
   );
 }

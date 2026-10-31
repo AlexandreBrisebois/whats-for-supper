@@ -14,6 +14,7 @@
  * getByText, getByRole, getByLabel, CSS class selectors, and XPath are FORBIDDEN.
  */
 
+import { recordGotoContrast } from './helpers/goto-review';
 import { test, expect } from './fixtures';
 import { MOCK_IDS, builders, setupCommonRoutes } from './mock-api';
 
@@ -624,3 +625,316 @@ test.describe('Scenario 10 — retry idempotency (409 ALREADY_RETRYING)', () => 
     expect(retryCallCount).toBe(1);
   });
 });
+
+test('GOTO chooser uses configured membership and an empty list never falls back', async ({
+  page,
+  baseURL,
+}) => {
+  await setupCommonRoutes(page);
+  await page
+    .context()
+    .addCookies([{ name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: baseURL! }]);
+  await page.addInitScript(
+    (id) =>
+      localStorage.setItem(
+        'family-storage',
+        JSON.stringify({ state: { selectedFamilyMemberId: id }, version: 0 })
+      ),
+    MOCK_IDS.MEMBER_ALEX
+  );
+  await page.goto('/recipes');
+  await expect(page.getByTestId('recipe-loader')).not.toBeVisible();
+  await page.evaluate(async (recipeId) => {
+    const response = await fetch('/api/goto', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ items: [{ recipeId, description: 'Family GOTO', status: 'ready' }] }),
+    });
+    if (!response.ok) throw new Error('Failed fixture membership save');
+  }, MOCK_IDS.RECIPE_LASAGNA);
+  await page.getByTestId('mobile-filters-button').click();
+  await page.getByTestId('mobile-filter-goto').click();
+  await page.getByTestId('mobile-filter-apply').click();
+  await expect(page.getByTestId('mobile-filters-button')).toHaveAccessibleName('Filters, 1 active');
+  await expect(page.getByTestId('recipe-card-top-pick')).toBeVisible();
+  await expect(page.getByTestId(`recipe-card-${MOCK_IDS.RECIPE_CARBONARA}`)).not.toBeVisible();
+  await page.evaluate(async () =>
+    fetch('/api/goto', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ items: [] }),
+    })
+  );
+  await page.getByTestId('mobile-filters-button').click();
+  await page.getByTestId('mobile-filter-apply').click();
+  await expect(page.getByTestId('filter-no-results')).toBeVisible();
+  await expect(page.getByTestId('recipe-card-top-pick')).not.toBeVisible();
+});
+
+test('GOTO mock continuations retain context and recheck saved membership', async ({
+  page,
+  baseURL,
+}) => {
+  await setupCommonRoutes(page);
+  await page
+    .context()
+    .addCookies([{ name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: baseURL! }]);
+  await page.goto('/recipes');
+  const observation = await page.evaluate(
+    async (ids) => {
+      const save = (members: string[]) =>
+        fetch('/api/goto', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            items: members.map((recipeId) => ({ recipeId, status: 'ready' })),
+          }),
+        });
+      const search = (body: unknown) =>
+        fetch('/api/recipes/search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+      await save(ids);
+      const first = (await (await search({ filters: { gotoOnly: true }, limit: 1 })).json()).data;
+      const cursor = first.nextCursor;
+      if (!cursor) throw new Error('Missing fixture cursor');
+      const served = [
+        first.topPick.id,
+        ...first.results.map((recipe: { id: string }) => recipe.id),
+      ];
+      const remaining = ids.filter((id) => !served.includes(id));
+      await save(served);
+      const next = (
+        await (
+          await search({ filters: { gotoOnly: true }, limit: 1, continuationToken: cursor })
+        ).json()
+      ).data;
+      const mismatch = await search({
+        filters: { gotoOnly: false },
+        limit: 1,
+        continuationToken: cursor,
+      });
+      return { next, mismatch: mismatch.status, remaining };
+    },
+    [MOCK_IDS.RECIPE_LASAGNA, MOCK_IDS.RECIPE_CARBONARA, MOCK_IDS.RECIPE_CHICKEN]
+  );
+  expect(observation.remaining).toHaveLength(1);
+  expect(observation.next.results).toEqual([]);
+  expect(observation.next.topPick).toBeNull();
+  expect(observation.mismatch).toBe(409);
+});
+
+test('changed GOTO controls retain rendered text, indicator and focus contrast', async ({
+  page,
+  baseURL,
+}) => {
+  await setupCommonRoutes(page);
+  await page
+    .context()
+    .addCookies([{ name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: baseURL! }]);
+  await page.addInitScript(
+    (id) =>
+      localStorage.setItem(
+        'family-storage',
+        JSON.stringify({ state: { selectedFamilyMemberId: id }, version: 0 })
+      ),
+    MOCK_IDS.MEMBER_ALEX
+  );
+  await page.setViewportSize({ width: 390, height: 667 });
+  await page.goto(`/recipes?open=${MOCK_IDS.RECIPE_LASAGNA}`);
+  let star = page.getByTestId('action-set-goto');
+  await expect(star).toHaveText('GOTO');
+  await star.focus();
+  await page.keyboard.press('Tab');
+  await page.keyboard.press('Shift+Tab');
+  await expect(star).toBeFocused();
+  await recordGotoContrast(star, '../.task/goto-review/contrast/star-unselected-focus.json', true);
+  await star.hover();
+  await recordGotoContrast(star, '../.task/goto-review/contrast/star-unselected-hover.json');
+  let release!: () => void;
+  let holdSave = true;
+  await page.route('**/api/goto', async (route) => {
+    if (route.request().method() === 'PUT' && holdSave) {
+      holdSave = false;
+      await new Promise<void>((resolve) => {
+        release = resolve;
+      });
+    }
+    await route.fallback();
+  });
+  await star.click();
+  await expect(star).toBeDisabled();
+  await recordGotoContrast(star, '../.task/goto-review/contrast/star-pending.json');
+  await star.screenshot({
+    path: '../.task/goto-review/after/star-pending.png',
+    animations: 'disabled',
+  });
+  release();
+  star = page.getByTestId('action-current-goto');
+  await expect(star).toHaveAttribute('aria-pressed', 'true');
+  await expect(star.locator('svg')).toHaveAttribute('fill', 'currentColor');
+  await star.hover();
+  await recordGotoContrast(star, '../.task/goto-review/contrast/star-selected-hover.json');
+  await page.mouse.down();
+  await recordGotoContrast(star, '../.task/goto-review/contrast/star-selected-pressed.json');
+  await page.mouse.move(0, 0);
+  await page.mouse.up();
+  await page.getByTestId('action-close-sheet').click();
+  await page.evaluate(async () =>
+    fetch('/api/goto', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ items: [] }),
+    })
+  );
+  await page.goto('/home');
+  const helper = page.getByTestId('goto-setup-helper');
+  await expect(helper).toBeVisible();
+  await recordGotoContrast(helper.locator('p'), '../.task/goto-review/contrast/home-helper.json');
+  await expect(page.getByTestId('add-goto-btn')).toHaveCount(0);
+  await page.goto('/browse-all-stack');
+  const filter = page.getByTestId('browse-filter-goto');
+  await filter.focus();
+  await page.keyboard.press('Tab');
+  await page.keyboard.press('Shift+Tab');
+  await recordGotoContrast(
+    filter,
+    '../.task/goto-review/contrast/filter-unselected-focus.json',
+    true
+  );
+  await filter.click();
+  await filter.focus();
+  await page.keyboard.press('Tab');
+  await page.keyboard.press('Shift+Tab');
+  await recordGotoContrast(
+    filter,
+    '../.task/goto-review/contrast/filter-selected-focus.json',
+    true
+  );
+});
+
+for (const appLocale of ['en', 'fr'] as const) {
+  test.describe(`GOTO star reflow ${appLocale}`, () => {
+    test.use({ appLocale });
+    test('both labelled states remain reachable with enlarged text', async ({ page, baseURL }) => {
+      test.setTimeout(90_000);
+      await setupCommonRoutes(page);
+      await page
+        .context()
+        .addCookies([{ name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: baseURL! }]);
+      await page.addInitScript(
+        (id) =>
+          localStorage.setItem(
+            'family-storage',
+            JSON.stringify({ state: { selectedFamilyMemberId: id }, version: 0 })
+          ),
+        MOCK_IDS.MEMBER_ALEX
+      );
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      await page.route(`**/api/recipes/${MOCK_IDS.RECIPE_LASAGNA}`, async (route) => {
+        if (route.request().method() !== 'GET') return route.fallback();
+        await route.fulfill({
+          json: {
+            recipe: builders.recipe({
+              id: MOCK_IDS.RECIPE_LASAGNA,
+              name:
+                appLocale === 'fr'
+                  ? 'Un très long plat familial aux légumes rôtis et aux fines herbes du jardin'
+                  : 'A long family supper with roasted vegetables and fresh garden herbs',
+            }),
+            updatedAt: '2026-05-04T12:00:00Z',
+          },
+        });
+      });
+
+      await page.goto('/recipes');
+      for (const [width, height] of [
+        [320, 568],
+        [390, 667],
+        [412, 915],
+        [667, 375],
+        [820, 1180],
+        [1180, 820],
+      ]) {
+        await page.setViewportSize({ width, height });
+        for (const scale of [1, 2]) {
+          await page.evaluate(async () =>
+            fetch('/api/goto', {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ items: [] }),
+            })
+          );
+          await page.goto(`/recipes?open=${MOCK_IDS.RECIPE_LASAGNA}`);
+          await page.addStyleTag({ content: 'nextjs-portal { display: none !important; }' });
+          const sheet = page.getByTestId('recipe-detail-sheet');
+          await expect(page.getByTestId('action-set-goto')).toBeVisible();
+          await sheet.evaluate((root, factor) => {
+            const sizes = Array.from(root.querySelectorAll<HTMLElement>('*'))
+              .filter((node) => node instanceof HTMLElement)
+              .map((node) => ({
+                node,
+                font: parseFloat(getComputedStyle(node).fontSize),
+                line: parseFloat(getComputedStyle(node).lineHeight),
+              }));
+            for (const { node, font, line } of sizes) {
+              node.style.fontSize = `${font * factor}px`;
+              if (Number.isFinite(line)) node.style.lineHeight = `${line * factor}px`;
+            }
+          }, scale);
+          const unselected = page.getByTestId('action-set-goto');
+          await expect(unselected).toHaveText('GOTO');
+          await expect(unselected).toHaveAttribute('aria-pressed', 'false');
+          await expect(unselected).toBeInViewport({ ratio: 1 });
+          expect(await sheet.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
+          await sheet.screenshot({
+            path: `../.task/goto-review/after/star-${appLocale}-${width}x${height}-${scale}x-unselected.png`,
+            animations: 'disabled',
+          });
+          await unselected.click();
+          const selected = page.getByTestId('action-current-goto');
+          await expect(selected).toHaveText('GOTO');
+          await expect(selected).toHaveAttribute('aria-pressed', 'true');
+          await expect(selected).toBeInViewport({ ratio: 1 });
+          expect(await sheet.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
+          await expect(page.getByTestId('action-close-sheet')).toBeInViewport({ ratio: 1 });
+          await sheet.screenshot({
+            path: `../.task/goto-review/after/star-${appLocale}-${width}x${height}-${scale}x-selected.png`,
+            animations: 'disabled',
+          });
+          await page.getByTestId('action-close-sheet').click();
+        }
+      }
+    });
+  });
+}
+
+for (const surface of ['browse', 'search'] as const) {
+  test(`${surface} has membership filtering without separate management`, async ({ page }) => {
+    await setupCommonRoutes(page);
+    await page
+      .context()
+      .addCookies([
+        { name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: 'http://127.0.0.1:3000' },
+      ]);
+    await page.addInitScript(
+      (id) =>
+        localStorage.setItem(
+          'family-storage',
+          JSON.stringify({ state: { selectedFamilyMemberId: id }, version: 0 })
+        ),
+      MOCK_IDS.MEMBER_ALEX
+    );
+    await page.goto(
+      surface === 'browse' ? '/browse-all-stack?gotoOnly=true&manageGoto=true' : '/recipes'
+    );
+    if (surface === 'search') await page.getByTestId('mobile-filters-button').click();
+    await expect(
+      page.getByTestId(surface === 'browse' ? 'browse-filter-goto' : 'mobile-filter-goto')
+    ).toBeVisible();
+    await expect(page.getByTestId('goto-management-toggle')).toHaveCount(0);
+    await expect(page.getByTestId('add-goto-btn')).toHaveCount(0);
+  });
+}

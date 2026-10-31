@@ -51,13 +51,21 @@ test('real Home assigns deployment Sunday and persists the correct groceries on 
   await page.goto('/home');
   await expect(page.getByTestId('tonight-pivot-card')).toBeVisible();
   await page.getByTestId('discover-btn').click();
-  await expect(page.getByText('Sunday Chicken').first()).toBeVisible();
+  await expect(page).toHaveURL(
+    /\/recipes\?addToDay=6&weekOffset=0&referenceWeekStartDate=2026-10-05/
+  );
+  await page.getByTestId('recipe-search-input').fill('Sunday Chicken');
+  await page.getByTestId('recipe-search-input').press('Enter');
+  await page
+    .getByTestId(/^recipe-card-/)
+    .first()
+    .click();
   const assigned = page.waitForResponse(
     (response) =>
       response.request().method() === 'POST' &&
       new URL(response.url()).pathname === '/api/schedule/assign'
   );
-  await page.getByTestId('quick-find-select').click();
+  await page.getByTestId('action-add-to-day').click();
   const response = await assigned;
   expect(response.status()).toBe(200);
   expect(response.request().postDataJSON()).toMatchObject({

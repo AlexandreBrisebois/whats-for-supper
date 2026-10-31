@@ -14,11 +14,11 @@ test.describe('PDF import', () => {
       .addCookies([{ name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: origin }]);
     await setupCommonRoutes(page);
   });
-  test('picker includes PDF for ordinary capture and GOTO excludes it', async ({ page }) => {
+  test('ordinary and legacy Go-To entry both retain the normal PDF picker', async ({ page }) => {
     await page.goto('/capture');
     await expect(page.getByTestId('import-recipe-file-input')).toHaveAttribute('accept', /pdf/);
     await page.goto('/capture?intent=goto');
-    await expect(page.getByTestId('import-recipe-file-input')).not.toHaveAttribute('accept', /pdf/);
+    await expect(page.getByTestId('import-recipe-file-input')).toHaveAttribute('accept', /pdf/);
   });
   test('feature snapshot failure and stale disabled state cannot block PDF confirmation', async ({
     page,
