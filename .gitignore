@@ -98,3 +98,9 @@ docker/docker-compose.nas.yml
 # Python bytecode caches
 __pycache__/
 *.py[cod]
+
+# Version-pinned official OTLP test schemas use protocol-owned logs/ directories.
+!pwa/src/test/otlp-proto/opentelemetry/proto/logs/
+!pwa/src/test/otlp-proto/opentelemetry/proto/logs/**
+!pwa/src/test/otlp-proto/opentelemetry/proto/collector/logs/
+!pwa/src/test/otlp-proto/opentelemetry/proto/collector/logs/**

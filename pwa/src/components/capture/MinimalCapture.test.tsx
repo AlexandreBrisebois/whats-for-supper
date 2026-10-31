@@ -34,6 +34,7 @@ import * as fc from 'fast-check';
 // Mock next/navigation — MinimalCapture calls useRouter() and useSearchParams()
 const mockPush = vi.fn();
 vi.mock('next/navigation', () => ({
+  usePathname: () => '/capture',
   useRouter: () => ({ push: mockPush }),
   useSearchParams: () => ({ get: () => null }),
 }));

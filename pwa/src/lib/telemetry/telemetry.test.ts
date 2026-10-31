@@ -1,143 +1,155 @@
 import { observation } from '@/test/telemetry';
-// Transport assertions run deferred work inline; action scheduling is tested separately.
-vi.mock('next/server', () => ({ after: (callback: () => Promise<void>) => callback() }));
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { reportBrowserObservation } from './actions';
 import { observeOpening } from './opening';
+import { reportBrowserObservation } from './actions';
 import {
   telemetryEnabled,
   sendBrowserCheck,
+  sendBrowserError,
   sendServerCheck,
+  sendServerError,
   sendBrowserObservation,
+  shutdownTelemetry,
 } from './server';
+import type { LogRecord } from '@opentelemetry/api';
 
+const { emit, flush, shutdown, factory } = vi.hoisted(() => {
+  const emit = vi.fn<(producer: string, record: LogRecord) => void>();
+  const flush = vi.fn().mockResolvedValue(undefined);
+  const shutdown = vi.fn().mockResolvedValue(undefined);
+  const factory = vi.fn((_config: unknown, _current: unknown) => ({ emit, flush, shutdown }));
+  return { emit, flush, shutdown, factory };
+});
+vi.mock('./sdk', () => ({ createLogDelivery: factory }));
+// Adapter tests isolate SDK delivery; native capture is covered by native.test.ts.
+vi.mock('./native', () => ({
+  createNativeDelivery: () => ({ register() {}, flush: async () => {}, shutdown: async () => {} }),
+}));
+vi.mock('next/server', () => ({ after: (callback: () => Promise<void>) => callback() }));
 let epoch = Date.now();
-const fetchMock = vi.fn().mockResolvedValue({ ok: true });
-
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ['Date'] });
-  vi.setSystemTime((epoch += 60_001));
-  vi.stubGlobal('fetch', fetchMock);
+  vi.setSystemTime((epoch += 60001));
   vi.stubEnv('WFS_TELEMETRY_ENABLED', 'true');
   vi.stubEnv('SENTRAME_OTLP_BASE', 'https://sentrame.example');
   vi.stubEnv('SENTRAME_BROWSER_TOKEN', 'browser-test');
   vi.stubEnv('SENTRAME_SERVER_TOKEN', 'server-test');
 });
-afterEach(() => {
+afterEach(async () => {
+  await shutdownTelemetry();
   vi.useRealTimers();
   vi.unstubAllEnvs();
-  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
   vi.clearAllMocks();
 });
-
-describe('anonymous telemetry boundary', () => {
-  it.each(['', 'false', '1', 'yes', 'TRUE'])(
-    'does not export without explicit true (%s)',
-    async (flag) => {
-      vi.stubEnv('WFS_TELEMETRY_ENABLED', flag);
-      expect(telemetryEnabled()).toBe(false);
-      await sendBrowserCheck();
-      await sendServerCheck();
-      expect(fetchMock).not.toHaveBeenCalled();
-    }
-  );
+describe('runtime opt-in before SDK admission', () => {
+  it.each(['', 'false', '1', 'yes', 'TRUE'])('fails closed for flag %s', async (flag) => {
+    vi.stubEnv('WFS_TELEMETRY_ENABLED', flag);
+    expect(telemetryEnabled()).toBe(false);
+    await sendBrowserCheck();
+    await sendServerCheck();
+    expect(factory).not.toHaveBeenCalled();
+    expect(emit).not.toHaveBeenCalled();
+  });
   it.each([
     'https://user:secret@example.com',
     'https://example.com/private',
     'https://example.com?token=x',
+    'https://example.com/#private',
     'ftp://example.com',
     'http://example.com',
     'not a URL',
-  ])('fails closed for endpoint %s', (base) => {
+    '',
+  ])('rejects destination %s', async (base) => {
     vi.stubEnv('SENTRAME_OTLP_BASE', base);
     expect(telemetryEnabled()).toBe(false);
+    await sendBrowserObservation(observation());
+    expect(emit).not.toHaveBeenCalled();
   });
-  it('requires distinct nonempty credentials', () => {
-    vi.stubEnv('SENTRAME_BROWSER_TOKEN', 'server-test');
+  it.each([
+    ['SENTRAME_BROWSER_TOKEN', ''],
+    ['SENTRAME_SERVER_TOKEN', ''],
+    ['SENTRAME_BROWSER_TOKEN', 'server-test'],
+    ['SENTRAME_BROWSER_TOKEN', 'browser\ttest'],
+    ['SENTRAME_SERVER_TOKEN', 'server\u0001test'],
+    ['SENTRAME_BROWSER_TOKEN', 'browser\u0100test'],
+  ])('rejects invalid credential %#', async (key, value) => {
+    vi.stubEnv(key, value);
     expect(telemetryEnabled()).toBe(false);
-    vi.stubEnv('SENTRAME_BROWSER_TOKEN', '');
-    expect(telemetryEnabled()).toBe(false);
-  });
-  it('emits only a synthetic browser check with browser authority', async () => {
-    expect(telemetryEnabled()).toBe(true);
     await sendBrowserCheck();
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    const [url, options] = fetchMock.mock.calls[0];
-    expect(url).toBe('https://sentrame.example/v1/logs');
-    expect(options.headers.Authorization).toBe('Bearer browser-test');
-    const wire = JSON.parse(options.body);
-    const record = wire.resourceLogs[0].scopeLogs[0].logRecords[0];
-    expect(record.eventName).toBe('pwa.telemetry.check');
-    expect(record.attributes).toBeUndefined();
-    expect(options.body).not.toMatch(/private|secret|email|url/);
-    expect(options.redirect).toBe('error');
-  });
-  it('uses server authority without application data', async () => {
     await sendServerCheck();
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    const options = fetchMock.mock.calls[0][1];
-    expect(options.headers.Authorization).toBe('Bearer server-test');
-    expect(options.body).toContain('pwa.telemetry.check');
-    expect(options.body).not.toContain('session.id');
+    expect(emit).not.toHaveBeenCalled();
   });
-  it('drops receiver failures without affecting the caller', async () => {
-    fetchMock.mockRejectedValueOnce(new Error('private upstream failure'));
-    await expect(sendServerCheck()).resolves.toBeUndefined();
+  it('rechecks opt-out without buffering for later enablement', async () => {
+    vi.stubEnv('WFS_TELEMETRY_ENABLED', 'false');
+    await sendBrowserObservation(observation());
+    expect(factory).not.toHaveBeenCalled();
+    vi.stubEnv('WFS_TELEMETRY_ENABLED', 'true');
+    await sendBrowserCheck();
+    expect(emit).toHaveBeenCalledOnce();
+    vi.stubEnv('WFS_TELEMETRY_ENABLED', 'false');
+    await sendServerCheck();
+    expect(emit).toHaveBeenCalledOnce();
   });
-  it('bounds concurrent export and preserves independent server capacity', async () => {
-    let release!: () => void;
-    const pending = new Promise<void>((resolve) => {
-      release = resolve;
+  it.each([
+    'OTEL_EXPORTER_OTLP_HEADERS',
+    'OTEL_EXPORTER_OTLP_LOGS_HEADERS',
+    'OTEL_EXPORTER_OTLP_TRACES_HEADERS',
+  ])(
+    'refuses ambient header enrichment from %s instead of merging it into selected export',
+    async (key) => {
+      vi.stubEnv(key, 'x-private=private-sentinel');
+      expect(telemetryEnabled()).toBe(false);
+      await sendBrowserCheck();
+      await sendServerCheck();
+      expect(factory).not.toHaveBeenCalled();
+    }
+  );
+});
+it.each([' 1.4.2-beta.1 ', '', '   ', undefined])(
+  'uses server version %s and independent producer authority',
+  async (version) => {
+    vi.stubEnv('WFS_VERSION', version);
+    await sendBrowserCheck();
+    await sendServerCheck();
+    expect(factory).toHaveBeenCalledOnce();
+    expect(factory.mock.calls[0][0]).toMatchObject({
+      base: 'https://sentrame.example',
+      browser: 'browser-test',
+      server: 'server-test',
+      version: version?.trim() || 'unknown',
     });
-    fetchMock.mockImplementation(() => pending);
-    const browserChecks = Array.from({ length: 6 }, () => sendBrowserCheck());
-    expect(fetchMock).toHaveBeenCalledTimes(4);
-    const serverCheck = sendServerCheck();
-    expect(fetchMock).toHaveBeenCalledTimes(5);
-    release();
-    await Promise.all([...browserChecks, serverCheck]);
-    fetchMock.mockResolvedValue({ ok: true });
+    expect(emit.mock.calls.map(([producer]) => producer)).toEqual(['browser', 'server']);
+    for (const [, record] of emit.mock.calls) {
+      expect(record.eventName).toBe('pwa.telemetry.check');
+      expect(record.attributes).toEqual({});
+      expect(record.severityNumber).toBe(9);
+    }
+  }
+);
+it('preserves the opening clock, fixed vocabulary and exact document context', async () => {
+  const input = { ...observation('search'), timestamp: Date.now() - 1000 };
+  const observed = Date.now();
+  await sendBrowserObservation(input, observed);
+  expect(emit).toHaveBeenCalledWith('browser', {
+    eventName: input.eventName,
+    timestamp: input.timestamp,
+    observedTimestamp: observed,
+    severityNumber: 9,
+    attributes: {
+      'stage.name': 'search',
+      'event.id': input.eventId,
+      'session.id': input.sessionId,
+      'tab.id': input.tabId,
+      'source.sequence': input.sequence,
+    },
   });
-  it('bounds repeated export attempts per minute', async () => {
-    for (let i = 0; i < 130; i++) await sendBrowserCheck();
-    expect(fetchMock.mock.calls.length).toBeGreaterThan(0);
-    expect(fetchMock.mock.calls.length).toBeLessThanOrEqual(120);
-  });
+  expect(flush).not.toHaveBeenCalled();
 });
-
-it.each([
-  ['WFS_TELEMETRY_ENABLED', 'false'],
-  ['WFS_TELEMETRY_ENABLED', 'TRUE'],
-  ['SENTRAME_OTLP_BASE', ''],
-  ['SENTRAME_OTLP_BASE', 'https://example.com/#private'],
-  ['SENTRAME_OTLP_BASE', 'https://example.com/path'],
-  ['SENTRAME_BROWSER_TOKEN', ''],
-  ['SENTRAME_SERVER_TOKEN', ''],
-  ['SENTRAME_BROWSER_TOKEN', 'server-test'],
-  ['SENTRAME_BROWSER_TOKEN', 'browser\ttest'],
-  ['SENTRAME_SERVER_TOKEN', 'server\u0001test'],
-  ['SENTRAME_BROWSER_TOKEN', 'browser\u0100test'],
-])('invalid runtime %s fails closed with zero intake', async (key, value) => {
-  vi.stubEnv(key, value);
-  expect(telemetryEnabled()).toBe(false);
-  await sendBrowserObservation(observation('search'));
-  await sendServerCheck();
-  expect(fetchMock).not.toHaveBeenCalled();
-});
-
-it('rechecks opt-out on each opening rather than caching enabled configuration', async () => {
-  expect(telemetryEnabled()).toBe(true);
-  vi.stubEnv('WFS_TELEMETRY_ENABLED', 'false');
-  await sendBrowserObservation(observation('search'));
-  expect(fetchMock).not.toHaveBeenCalled();
-});
-
-it('shares the exact 120/min browser budget across openings and checks, independently of server', async () => {
-  for (let i = 0; i < 120; i++) await sendBrowserObservation(observation('search'));
-  expect(fetchMock).toHaveBeenCalledTimes(120);
-  await sendBrowserObservation(observation('home'));
+it('forwards browser attempts to the SDK admission owner without rearming document observations', async () => {
+  for (let i = 0; i < 100; i++) await sendBrowserObservation(observation());
   await sendBrowserCheck();
-  expect(fetchMock).toHaveBeenCalledTimes(120);
+  expect(emit).toHaveBeenCalledTimes(101);
   const owner = document.implementation.createHTMLDocument();
   Object.defineProperty(owner, 'visibilityState', { value: 'visible' });
   const submit = vi.fn(reportBrowserObservation);
@@ -145,29 +157,55 @@ it('shares the exact 120/min browser budget across openings and checks, independ
   await Promise.resolve();
   observeOpening(owner, true, '/home', submit);
   observeOpening(owner, true, '/recipes', submit);
+  await Promise.resolve();
   expect(submit).toHaveBeenCalledTimes(4);
-  expect(fetchMock).toHaveBeenCalledTimes(120);
+  expect(emit).toHaveBeenCalledTimes(105);
   await sendServerCheck();
-  expect(fetchMock).toHaveBeenCalledTimes(121);
-  expect(fetchMock.mock.calls[120][1].headers.Authorization).toBe('Bearer server-test');
-  vi.setSystemTime(Date.now() + 60_001);
+  expect(emit.mock.calls[105][0]).toBe('server');
+  vi.setSystemTime(Date.now() + 60001);
   await sendBrowserObservation(observation('capture'));
-  expect(fetchMock).toHaveBeenCalledTimes(122);
+  expect(emit).toHaveBeenCalledTimes(107);
 });
-
-it.each([' 1.4.2-beta.1 ', '', '   ', undefined])(
-  'uses deployment version %s on both producer resources, with an honest missing-version fallback',
-  async (version) => {
-    vi.stubEnv('WFS_VERSION', version);
-    await sendBrowserCheck();
-    await sendServerCheck();
-    for (const [index, producer] of ['browser', 'server'].entries()) {
-      const wire = JSON.parse(fetchMock.mock.calls[index][1].body);
-      expect(wire.resourceLogs[0].resource.attributes).toEqual([
-        { key: 'service.name', value: { stringValue: `wfs-pwa-${producer}` } },
-        { key: 'service.version', value: { stringValue: version?.trim() || 'unknown' } },
-      ]);
-      expect(wire.resourceLogs[0].scopeLogs[0].logRecords[0].attributes).toBeUndefined();
-    }
-  }
-);
+it('forwards independent producer/error categories and occurrence snapshots to SDK admission', async () => {
+  const input = {
+    reason: 'browser.rejection' as const,
+    eventId: crypto.randomUUID(),
+    occurrenceId: crypto.randomUUID(),
+    timestamp: Date.now() - 1000,
+  };
+  const observed = Date.now();
+  for (let i = 0; i < 25; i++) await sendBrowserError(input, observed);
+  expect(emit).toHaveBeenCalledTimes(25);
+  expect(emit.mock.calls[0]).toEqual([
+    'browser',
+    {
+      timestamp: input.timestamp,
+      observedTimestamp: observed,
+      eventName: 'pwa.browser.error',
+      severityNumber: 17,
+      attributes: {
+        reason: input.reason,
+        'event.id': input.eventId,
+        'exception.occurrence.id': input.occurrenceId,
+      },
+    },
+  ]);
+  for (let i = 0; i < 105; i++) await sendBrowserCheck();
+  expect(emit).toHaveBeenCalledTimes(130);
+  for (let i = 0; i < 105; i++) await sendServerCheck();
+  expect(emit).toHaveBeenCalledTimes(235);
+  for (let i = 0; i < 25; i++) await sendServerError('route');
+  expect(emit).toHaveBeenCalledTimes(260);
+  vi.setSystemTime(Date.now() + 60001);
+  await sendBrowserError(input, observed);
+  expect(emit).toHaveBeenCalledTimes(261);
+});
+it('contains SDK admission and hook-flush failures without a telemetry observation', async () => {
+  emit.mockImplementationOnce(() => {
+    throw Error('private-sdk');
+  });
+  await expect(sendServerCheck()).resolves.toBeUndefined();
+  flush.mockRejectedValueOnce(Error('private-flush'));
+  await expect(sendServerError('render')).resolves.toBeUndefined();
+  expect(emit).toHaveBeenCalledTimes(2);
+});

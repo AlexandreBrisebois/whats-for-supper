@@ -1,5 +1,7 @@
 'use client';
 
+import { useSurfacePresentation } from '@/components/telemetry/useSurfacePresentation';
+
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
 import type { NonCookingPlanDto } from '@/lib/api/generated/models';
 import { t } from '@/locales';
@@ -16,6 +18,7 @@ interface Props {
 }
 
 export function NonCookingDaySheet({ date, plan, onSave, onClear, onClose }: Props) {
+  useSurfacePresentation('planning.non_cooking', true);
   const [kind, setKind] = useState(plan?.kind ?? 'mystery');
   const [message, setMessage] = useState(plan?.customLabel ?? '');
   const [busy, setBusy] = useState(false);

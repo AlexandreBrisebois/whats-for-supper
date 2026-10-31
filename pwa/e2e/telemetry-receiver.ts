@@ -1,3 +1,4 @@
+import type { CapturedLog } from './telemetry-wire';
 import { expect, type TestInfo } from '@playwright/test';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
@@ -7,7 +8,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { AddressInfo } from 'node:net';
 
-type Snapshot = {
+export type TelemetrySnapshot = {
   evidence: Array<{
     name: string;
     source: string;
@@ -31,7 +32,15 @@ type Snapshot = {
 
 // Opt-in actual receiver fixture. The binary is built by the caller from the selected
 // local Sentrame tree. Only this fixture's fresh directory, process and app are mutated.
-export async function disposableTelemetryReceiver(binary: string, info: TestInfo) {
+export async function disposableTelemetryReceiver(
+  binary: string,
+  info: TestInfo,
+  options?: {
+    version?: string;
+    definition?: Record<string, unknown>;
+    assertSnapshot?: (snapshot: TelemetrySnapshot, wires: CapturedLog[]) => void | Promise<void>;
+  }
+) {
   const root = await mkdtemp(path.join(tmpdir(), 'wfs-navigation-receiver-'));
   const portOwner = createServer();
   await new Promise<void>((resolve) => portOwner.listen(0, '127.0.0.1', resolve));
@@ -59,7 +68,11 @@ export async function disposableTelemetryReceiver(binary: string, info: TestInfo
       },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
-    expect(response.status, `receiver ${route}`).toBe(200);
+    const definitionFailure =
+      response.status !== 200 && (route.endsWith('/definitions') || route === '/api/apps')
+        ? (await response.clone().text()).slice(0, 512)
+        : '';
+    expect(response.status, `receiver ${route} ${definitionFailure}`).toBe(200);
     if (route === '/api/login') cookie = response.headers.get('set-cookie')!.split(';')[0];
     return response.json();
   };
@@ -117,51 +130,62 @@ export async function disposableTelemetryReceiver(binary: string, info: TestInfo
       key: 'stage.name',
       value: 'search',
     };
-    const definition = await request(base + '/definitions', {
-      goal: 'pwa.screen.presented',
-      goalSelector: search,
-      mappings: [
-        { ...mapping, event: 'pwa.app.opened', step: 'App opened', key: '', value: '' },
-        home,
-        search,
-        { ...home, step: 'Planner', value: 'planner' },
-        { ...home, step: 'Grocery', value: 'planner.grocery' },
-        {
-          ...mapping,
-          event: 'pwa.surface.opened',
-          kind: 'activity',
-          step: 'Grocery companion opened',
-          key: 'stage.name',
-          value: 'planner.grocery',
-        },
-        {
-          ...mapping,
-          event: 'pwa.surface.closed',
-          kind: 'activity',
-          step: 'Grocery companion closed',
-          key: 'stage.name',
-          value: 'planner.grocery',
-        },
-        ...(['opened', 'closed'] as const).map((state) => ({
-          ...mapping,
-          event: `pwa.surface.${state}`,
-          kind: 'activity',
-          step: `Quick Find ${state}`,
-          key: 'stage.name',
-          value: 'quick.find',
-        })),
-      ],
-    });
+    const definition = await request(
+      base + '/definitions',
+      options?.definition ?? {
+        goal: 'pwa.screen.presented',
+        goalSelector: search,
+        mappings: [
+          { ...mapping, event: 'pwa.app.opened', step: 'App opened', key: '', value: '' },
+          home,
+          search,
+          { ...home, step: 'Planner', value: 'planner' },
+          { ...home, step: 'Grocery', value: 'planner.grocery' },
+          {
+            ...mapping,
+            event: 'pwa.surface.opened',
+            kind: 'activity',
+            step: 'Grocery companion opened',
+            key: 'stage.name',
+            value: 'planner.grocery',
+          },
+          {
+            ...mapping,
+            event: 'pwa.surface.closed',
+            kind: 'activity',
+            step: 'Grocery companion closed',
+            key: 'stage.name',
+            value: 'planner.grocery',
+          },
+          ...(['opened', 'closed'] as const).map((state) => ({
+            ...mapping,
+            event: `pwa.surface.${state}`,
+            kind: 'activity',
+            step: `Quick Find ${state}`,
+            key: 'stage.name',
+            value: 'quick.find',
+          })),
+          ...(['opened', 'closed'] as const).map((state) => ({
+            ...mapping,
+            event: `pwa.surface.${state}`,
+            kind: 'activity',
+            step: `Planning pivot ${state}`,
+            key: 'stage.name',
+            value: 'planning.pivot',
+          })),
+        ],
+      }
+    );
     expect((await fetch(origin + base + '/snapshot')).status).toBe(401);
-    const snapshot = async (): Promise<Snapshot> => request(base + '/snapshot');
+    const snapshot = async (): Promise<TelemetrySnapshot> => request(base + '/snapshot');
     return {
       origin,
       tokens,
-      async qualify(wires: string[]) {
+      async qualify(wires: CapturedLog[]) {
         await expect.poll(async () => (await snapshot()).evidence.length).toBe(wires.length);
         const before = await snapshot();
         for (const wire of wires) {
-          const resource = JSON.parse(wire).resourceLogs[0];
+          const resource = JSON.parse(wire.body).resourceLogs[0];
           const record = resource.scopeLogs[0].logRecords[0];
           const attr = Object.fromEntries(
             record.attributes.map(
@@ -177,61 +201,72 @@ export async function disposableTelemetryReceiver(binary: string, info: TestInfo
             source: 'browser',
             signal: 'logs',
             service: 'wfs-pwa-browser',
-            version: '1.4.2-test.opening',
+            version: options?.version ?? '1.4.2-test.opening',
             scope: attr['session.id'],
             tab: attr['tab.id'],
             sequence: Number(attr['source.sequence']),
             time: record.timeUnixNano,
             observed: record.observedTimeUnixNano,
-            attrs: { 'stage.name': attr['stage.name'] },
+            attrs: {
+              'stage.name': attr['stage.name'],
+              ...(attr.reason ? { reason: attr.reason } : {}),
+            },
           });
         }
-        const firstRecord = JSON.parse(wires[0]).resourceLogs[0].scopeLogs[0].logRecords[0];
-        const scope = firstRecord.attributes.find((a: { key: string }) => a.key === 'session.id')
-          .value.stringValue;
-        const journeys = before.model.journeys.filter((j) => j.scope === scope);
-        expect(journeys.map((j) => j.path)).toEqual([
-          ['App opened', 'Home', 'Search'],
-          ['Home', 'Planner', 'Grocery', 'Planner', 'Grocery', 'Planner', 'Home'],
-        ]);
-        // Raw protected receipt is checked independently of configured graph steps.
-        const retainedStream = before.evidence
-          .filter((e) => e.scope === scope)
-          .sort((a, b) => a.sequence - b.sequence);
-        expect(retainedStream.map((e) => e.sequence)).toEqual(
-          Array.from({ length: 16 }, (_, i) => i + 1)
-        );
-        expect(new Set(retainedStream.map((e) => e.tab)).size).toBe(1);
-        expect(new Set(retainedStream.map((e) => e.record)).size).toBe(16);
-        expect(retainedStream.map((e) => [e.name, e.attrs['stage.name']])).toEqual([
-          ['pwa.app.opened', 'home'],
-          ['pwa.screen.presented', 'home'],
-          ['pwa.screen.presented', 'search'],
-          ['pwa.screen.presented', 'home'],
-          ['pwa.screen.presented', 'planner'],
-          ['pwa.screen.presented', 'planner.grocery'],
-          ['pwa.screen.presented', 'planner'],
-          ['pwa.surface.opened', 'planner.grocery'],
-          ['pwa.surface.closed', 'planner.grocery'],
-          ['pwa.screen.presented', 'planner.grocery'],
-          ['pwa.screen.presented', 'planner'],
-          ['pwa.surface.opened', 'quick.find'],
-          ['pwa.surface.closed', 'quick.find'],
-          ['pwa.surface.opened', 'quick.find'],
-          ['pwa.surface.closed', 'quick.find'],
-          ['pwa.screen.presented', 'home'],
-        ]);
-        expect(journeys[0].status).toBe('completed');
-        expect(journeys[1].status).not.toBe('completed'); // surface closure is never a goal
+        if (options?.assertSnapshot) {
+          await options.assertSnapshot(before, wires);
+        } else {
+          const firstRecord = JSON.parse(wires[0].body).resourceLogs[0].scopeLogs[0].logRecords[0];
+          const scope = firstRecord.attributes.find((a: { key: string }) => a.key === 'session.id')
+            .value.stringValue;
+          const journeys = before.model.journeys.filter((j) => j.scope === scope);
+          expect(journeys.map((j) => j.path)).toEqual([
+            ['App opened', 'Home', 'Search'],
+            ['Home', 'Planner', 'Grocery', 'Planner', 'Grocery', 'Planner', 'Home'],
+          ]);
+          // Raw protected receipt is checked independently of configured graph steps.
+          const retainedStream = before.evidence
+            .filter((e) => e.scope === scope)
+            .sort((a, b) => a.sequence - b.sequence);
+          expect(retainedStream.map((e) => e.sequence)).toEqual(
+            Array.from({ length: 20 }, (_, i) => i + 1)
+          );
+          expect(new Set(retainedStream.map((e) => e.tab)).size).toBe(1);
+          expect(new Set(retainedStream.map((e) => e.record)).size).toBe(20);
+          expect(retainedStream.map((e) => [e.name, e.attrs['stage.name']])).toEqual([
+            ['pwa.app.opened', 'home'],
+            ['pwa.screen.presented', 'home'],
+            ['pwa.screen.presented', 'search'],
+            ['pwa.screen.presented', 'home'],
+            ['pwa.screen.presented', 'planner'],
+            ['pwa.screen.presented', 'planner.grocery'],
+            ['pwa.screen.presented', 'planner'],
+            ['pwa.surface.opened', 'planner.grocery'],
+            ['pwa.surface.closed', 'planner.grocery'],
+            ['pwa.screen.presented', 'planner.grocery'],
+            ['pwa.screen.presented', 'planner'],
+            ['pwa.surface.opened', 'planning.pivot'],
+            ['pwa.surface.closed', 'planning.pivot'],
+            ['pwa.surface.opened', 'quick.find'],
+            ['pwa.surface.closed', 'quick.find'],
+            ['pwa.surface.opened', 'planning.pivot'],
+            ['pwa.surface.closed', 'planning.pivot'],
+            ['pwa.surface.opened', 'quick.find'],
+            ['pwa.surface.closed', 'quick.find'],
+            ['pwa.screen.presented', 'home'],
+          ]);
+          expect(journeys[0].status).toBe('completed');
+          expect(journeys[1].status).not.toBe('completed'); // surface closure is never a goal
+        }
         const replay = async () => {
           for (const wire of wires) {
             const result = await fetch(origin + '/v1/logs', {
               method: 'POST',
               headers: {
-                'Content-Type': 'application/json',
+                'Content-Type': 'application/x-protobuf',
                 Authorization: `Bearer ${tokens.browser}`,
               },
-              body: wire,
+              body: new Uint8Array(wire.wire),
             });
             expect(result.status).toBe(200);
             await result.text();
@@ -256,7 +291,7 @@ export async function disposableTelemetryReceiver(binary: string, info: TestInfo
               definition,
               before,
               after: await snapshot(),
-              exactWireSha256: wires.map((w) => createHash('sha256').update(w).digest('hex')),
+              exactWireSha256: wires.map((w) => createHash('sha256').update(w.wire).digest('hex')),
             },
             null,
             2

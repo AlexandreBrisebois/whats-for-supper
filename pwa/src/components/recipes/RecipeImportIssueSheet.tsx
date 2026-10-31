@@ -1,5 +1,7 @@
 'use client';
 
+import { useSurfacePresentation } from '@/components/telemetry/useSurfacePresentation';
+
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { Check, ChevronDown, X } from 'lucide-react';
 import type {
@@ -34,6 +36,7 @@ function mergeReasons(
 }
 
 export function RecipeImportIssueSheet(props: RecipeImportIssueSheetProps) {
+  useSurfacePresentation('recipe.issue', true);
   return <RecipeImportIssueEditor {...props} />;
 }
 

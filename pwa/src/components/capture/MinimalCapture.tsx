@@ -24,6 +24,7 @@ import { apiClient } from '@/lib/api/api-client';
 import { importRecipeShareBundle, parseRecipeBundleFile } from '@/lib/api/recipes';
 import { Button } from '@/components/ui/button';
 import { RecipeDetailSheet } from '@/components/recipes/RecipeDetailSheet';
+import { useSurfacePresentation } from '@/components/telemetry/useSurfacePresentation';
 import { ROUTES } from '@/lib/constants/routes';
 import { normalizeGotos } from '@/lib/gotoUtils';
 import { t, tWithVars } from '@/locales';
@@ -149,6 +150,32 @@ export default function MinimalCapture({
   const isGoto = intent === 'goto';
   const memberId = useFamilyStore((state) => state.selectedFamilyMemberId);
   const pdfSelection = usePdfCaptureStore((state) => state.selection);
+  // CaptureWithPdf retains this component under a hidden wrapper during PDF
+  // review. Its mounted drafts/status panels are not presented in that branch.
+  const capturePresented = preparedOnly || !pdfSelection;
+  // These declarations follow the rendered branches below. Status panels are
+  // presentation evidence only, including when a notification caused the render.
+  useSurfacePresentation(
+    'capture.bundle_review',
+    capturePresented && !!parsedBundle && !bundleImportSucceeded && !onSuccess
+  );
+  useSurfacePresentation(
+    'capture.upload',
+    capturePresented &&
+      !bundleImportSucceeded &&
+      !onSuccess &&
+      !parsedBundle &&
+      !preparedOnly &&
+      (isUrlCapturing || showPhotoUploadOverlay)
+  );
+  useSurfacePresentation(
+    'capture.queued',
+    capturePresented && !bundleImportSucceeded && onSuccess && !readyRecipeName
+  );
+  useSurfacePresentation(
+    'capture.ready',
+    capturePresented && (bundleImportSucceeded || (onSuccess && !!readyRecipeName))
+  );
   useEffect(() => {
     if (pdfSelection) resetCapture?.();
   }, [pdfSelection, resetCapture]);

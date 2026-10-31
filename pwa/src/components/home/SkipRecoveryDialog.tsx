@@ -1,5 +1,7 @@
 'use client';
 
+import { useSurfacePresentation } from '@/components/telemetry/useSurfacePresentation';
+
 import React, { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -53,6 +55,7 @@ export function SkipRecoveryDialog({
   onBack,
   onAction,
 }: SkipRecoveryDialogProps) {
+  useSurfacePresentation('planning.recovery', isOpen);
   const feedbackRef = useRef<HTMLParagraphElement>(null);
   useEffect(() => {
     if (replacement && !pending && !confirmAbandon) feedbackRef.current?.focus();

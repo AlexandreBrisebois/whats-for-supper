@@ -76,6 +76,7 @@ const mocks = vi.hoisted(() => {
 vi.mock('@/hooks/useMediaQuery', () => ({ useMediaQuery: () => mocks.getWide() }));
 
 vi.mock('next/navigation', () => ({
+  usePathname: () => '/planner',
   useRouter: () => ({ push: mocks.push, replace: mocks.replace }),
   useSearchParams: () => new URLSearchParams(mocks.getSearchParams()),
 }));

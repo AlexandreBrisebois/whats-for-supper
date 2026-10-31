@@ -1,18 +1,32 @@
 import { observation } from '@/test/telemetry';
 import { afterEach, expect, it, vi } from 'vitest';
-import { reportBrowserObservation, reportBrowserTelemetryCheck } from './actions';
+import {
+  reportBrowserError,
+  reportBrowserObservation,
+  reportBrowserTelemetryCheck,
+} from './actions';
 
-const { callbacks, opening, check } = vi.hoisted(() => ({
+const { callbacks, opening, check, error, scheduling } = vi.hoisted(() => ({
+  scheduling: { fail: false },
   callbacks: [] as Array<() => Promise<void>>,
   opening: vi.fn<() => Promise<void>>(),
   check: vi.fn<() => Promise<void>>(),
+  error: vi.fn<() => Promise<void>>(),
 }));
 vi.mock('next/server', () => ({
-  after: (callback: () => Promise<void>) => callbacks.push(callback),
+  after: (callback: () => Promise<void>) => {
+    if (scheduling.fail) throw new Error('private-scheduler');
+    callbacks.push(callback);
+  },
 }));
-vi.mock('./server', () => ({ sendBrowserObservation: opening, sendBrowserCheck: check }));
+vi.mock('./server', () => ({
+  sendBrowserObservation: opening,
+  sendBrowserCheck: check,
+  sendBrowserError: error,
+}));
 afterEach(() => {
   callbacks.length = 0;
+  scheduling.fail = false;
   vi.resetAllMocks();
 });
 
@@ -122,3 +136,73 @@ it('accepts the same closed envelope for subsequent screen evidence', async () =
   await reportBrowserObservation(observation('home', 'pwa.screen.presented'));
   expect(callbacks).toHaveLength(1);
 });
+
+it('snapshots error acceptance before deferred forwarding and contains scheduler/export failures', async () => {
+  const now = Date.now();
+  const clock = vi.spyOn(Date, 'now').mockReturnValue(now);
+  const input = {
+    reason: 'browser.script',
+    timestamp: now,
+    eventId: crypto.randomUUID(),
+    occurrenceId: crypto.randomUUID(),
+  };
+  await reportBrowserError(input);
+  expect(error).not.toHaveBeenCalled();
+  clock.mockReturnValue(now + 90000);
+  await callbacks[0]();
+  expect(error).toHaveBeenCalledWith(input, now);
+  error.mockRejectedValueOnce(new Error('private'));
+  await expect(callbacks[0]()).resolves.toBeUndefined();
+  await reportBrowserError({ ...input, message: 'private' });
+  expect(callbacks).toHaveLength(1);
+  clock.mockRestore();
+});
+
+it('contains error scheduling failure without exposing rejected input or starting export', async () => {
+  scheduling.fail = true;
+  await expect(
+    reportBrowserError({
+      reason: 'browser.script',
+      eventId: crypto.randomUUID(),
+      occurrenceId: crypto.randomUUID(),
+      timestamp: Date.now(),
+    })
+  ).resolves.toBeUndefined();
+  expect(callbacks).toHaveLength(0);
+  expect(error).not.toHaveBeenCalled();
+});
+it('keeps boundary forwarding deferred and rejects boundary-supplied server authority', async () => {
+  const input = {
+    reason: 'browser.render',
+    timestamp: Date.now(),
+    eventId: crypto.randomUUID(),
+    occurrenceId: crypto.randomUUID(),
+  };
+  await reportBrowserError(input);
+  expect(error).not.toHaveBeenCalled();
+  expect(callbacks).toHaveLength(1);
+  await callbacks[0]();
+  expect(error).toHaveBeenCalledWith(input, expect.any(Number));
+  await reportBrowserError({ ...input, reason: 'server.render' });
+  await reportBrowserError({ ...input, digest: 'private-digest' });
+  expect(callbacks).toHaveLength(1);
+});
+
+it.each(['saved_manual', 'processing_acknowledged', 'saved_launch_failed', 'unconfirmed'])(
+  'defers exact issue result %s while preserving its accepted clocks and browser context',
+  async (reason) => {
+    const now = Date.now();
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(now);
+    const input = { ...observation('search'), eventName: 'pwa.recipe_issue.save_result', reason };
+    await reportBrowserObservation(input);
+    expect(opening).not.toHaveBeenCalled();
+    expect(callbacks).toHaveLength(1);
+    clock.mockReturnValue(now + 90000);
+    await callbacks[0]();
+    expect(opening).toHaveBeenCalledWith(input, now);
+    await reportBrowserObservation({ ...input, importId: 'private' });
+    await reportBrowserObservation({ ...input, reason: 'completed' });
+    expect(callbacks).toHaveLength(1);
+    clock.mockRestore();
+  }
+);

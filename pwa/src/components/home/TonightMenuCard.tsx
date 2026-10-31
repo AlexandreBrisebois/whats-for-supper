@@ -90,7 +90,7 @@ export function TonightMenuCard({
           key={`${recipeId}:${imageUrl}`}
           imageUrl={imageUrl}
           alt={recipeName}
-          className="h-[clamp(160px,min(calc(40svh-140px),75cqw),240px)] mb-4"
+          className="aspect-[5/4] mb-4"
           fallback={<Utensils size={28} />}
         />
 

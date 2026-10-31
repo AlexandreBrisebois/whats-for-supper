@@ -1,3 +1,10 @@
+import {
+  observeOpening,
+  presentationChanged,
+  registerPlannerPresentation,
+} from '@/lib/telemetry/opening';
+import type { BrowserObservation } from '@/lib/telemetry/navigation';
+vi.mock('next/navigation', () => ({ usePathname: () => '/planner' }));
 import { describe, it, expect, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { NonCookingDaySheet } from './NonCookingDaySheet';
@@ -166,4 +173,60 @@ describe('NonCookingDaySheet', () => {
       '  Emma’s birthday supper  '
     );
   });
+});
+
+// Run the real declaration/coordinator path rather than mocking the observation hook.
+function startPresentationStream() {
+  const visibility = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
+  const releasePlanner = registerPlannerPresentation(document, 'planner', false);
+  const submit = vi.fn<(event: BrowserObservation) => Promise<void>>().mockResolvedValue();
+  const observe = () => observeOpening(document, true, '/planner', submit);
+  observe();
+  submit.mockClear();
+  document.addEventListener(presentationChanged, observe);
+  return {
+    observe,
+    visibility,
+    events: () => submit.mock.calls.map(([event]) => [event.eventName, event.screen]),
+    raw: () => submit.mock.calls.map(([event]) => event),
+    stop: () => {
+      document.removeEventListener(presentationChanged, observe);
+      releasePlanner();
+      visibility.mockRestore();
+    },
+  };
+}
+
+it('observes the non-cooking sheet through draft edits, failed save and cancel/reopen', async () => {
+  const stream = startPresentationStream();
+  const props = {
+    date: '2026-10-12',
+    onSave: vi.fn().mockRejectedValue(new Error('offline')),
+    onClose: vi.fn(),
+  };
+  let view = render(<NonCookingDaySheet {...props} />);
+  try {
+    fireEvent.click(screen.getByTestId('non-cooking-other-plans'));
+    fireEvent.change(screen.getByTestId('non-cooking-custom-label'), {
+      target: { value: 'PRIVATE_PLAN_NOTE' },
+    });
+    await act(async () => fireEvent.click(screen.getByTestId('non-cooking-save')));
+    expect(screen.getByTestId('non-cooking-custom-label')).toHaveValue('PRIVATE_PLAN_NOTE');
+    expect(screen.getByRole('alert')).toHaveTextContent('Could not save');
+    expect(stream.events()).toEqual([['pwa.surface.opened', 'planning.non_cooking']]);
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
+    expect(props.onClose).toHaveBeenCalledOnce();
+    view.unmount();
+    await Promise.resolve();
+    view = render(<NonCookingDaySheet {...props} />);
+    expect(stream.events()).toEqual([
+      ['pwa.surface.opened', 'planning.non_cooking'],
+      ['pwa.surface.closed', 'planning.non_cooking'],
+      ['pwa.surface.opened', 'planning.non_cooking'],
+    ]);
+    expect(JSON.stringify(stream.raw())).not.toMatch(/PRIVATE_PLAN_NOTE|2026-10|custom/);
+  } finally {
+    view.unmount();
+    stream.stop();
+  }
 });

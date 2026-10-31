@@ -23,12 +23,16 @@ vi.mock('@/store/familyStore', () => ({
   },
 }));
 vi.mock('@/lib/identity/cookie', () => ({ getFamilyMemberIdCookie: () => null }));
+const errorSubmit = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
 const submit = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
 vi.mock('next/navigation', () => ({
   usePathname: () => route.pathname,
   useRouter: () => ({ replace }),
 }));
-vi.mock('@/lib/telemetry/actions', () => ({ reportBrowserObservation: submit }));
+vi.mock('@/lib/telemetry/actions', () => ({
+  reportBrowserObservation: submit,
+  reportBrowserError: errorSubmit,
+}));
 let Observer: ComponentType<{ enabled: boolean; readyPathname: string | null }>;
 let ErrorFallback: ComponentType<{ error: Error; reset: () => void }>;
 let NotFound: ComponentType;
@@ -37,6 +41,7 @@ let visible = true;
 beforeEach(async () => {
   vi.resetModules();
   submit.mockClear();
+  errorSubmit.mockClear();
   replace.mockClear();
   family.selectedFamilyMemberId = 'fixture-member';
   family.hasLoaded = true;
@@ -313,4 +318,21 @@ it('deduplicates both opening and screens across effect replay and remount', () 
     ['pwa.app.opened', 'search', 1],
     ['pwa.screen.presented', 'search', 2],
   ]);
+});
+
+it('native reporting keeps context across observer replacement without a second opening', () => {
+  const view = render(<Observer enabled readyPathname="/recipes" />);
+  window.dispatchEvent(new ErrorEvent('error', { error: new Error('private') }));
+  const first = errorSubmit.mock.calls[0][0];
+  view.unmount();
+  const next = render(<Observer enabled readyPathname="/recipes" />);
+  window.dispatchEvent(new ErrorEvent('error', { error: new Error('private') }));
+  expect(errorSubmit.mock.calls[1][0]).toMatchObject({
+    sessionId: first.sessionId,
+    tabId: first.tabId,
+    sequence: first.sequence + 1,
+    screen: 'search',
+  });
+  expect(submit.mock.calls.filter(([e]) => e.eventName === 'pwa.app.opened')).toHaveLength(1);
+  next.unmount();
 });

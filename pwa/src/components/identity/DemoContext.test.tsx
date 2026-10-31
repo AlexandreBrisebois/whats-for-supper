@@ -1,9 +1,10 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { StrictMode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DemoContext } from './DemoContext';
 import { InstallIdentityProvider } from './IdentityHint';
 import { DEMO_CONTEXT_ACK_KEY, useDemoContextVisit } from '@/store/demoContextStore';
+import { presentedSurfaces } from '@/lib/telemetry/surfaces';
 
 const state = vi.hoisted(() => ({
   mode: { mode: true as boolean | null, loading: false, error: false, retry: vi.fn() },
@@ -360,6 +361,35 @@ describe('demo context', () => {
       </StrictMode>
     );
     expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  it('observes only native introduction presentation across dismissal, mode copy and explicit reopen', async () => {
+    const current = () => [...presentedSurfaces(document, state.route.path)];
+    state.family.hasLoaded = false;
+    const view = render(<DemoContext />);
+    expect(current()).not.toContain('demo.introduction');
+    state.family.hasLoaded = true;
+    view.rerender(<DemoContext />);
+    expect(screen.getByRole('dialog')).toHaveAttribute('open');
+    expect(current()).toContain('demo.introduction');
+    expect(current()).not.toContain('demo.dialog');
+    fireEvent(screen.getByRole('dialog'), new Event('cancel', { cancelable: true }));
+    await act(async () => {});
+    expect(current()).not.toContain('demo.introduction');
+    fireEvent.click(screen.getByTestId('demo-context-band'));
+    expect(current()).toContain('demo.introduction');
+    expect(current()).not.toContain('synthetic-member');
+    state.mode.mode = false;
+    view.rerender(beta());
+    await act(async () => {});
+    expect(current()).not.toContain('demo.introduction');
+    fireEvent.click(screen.getByTestId('beta-context-band'));
+    expect(screen.getByRole('dialog')).toHaveAccessibleName('Beta · Better with your ideas');
+    expect(current()).toContain('demo.introduction');
+    expect(current()).not.toContain('demo.dialog');
+    view.unmount();
+    await act(async () => {});
+    expect(current()).not.toContain('demo.introduction');
   });
 
   it('does not present a demo explanation in ordinary non-demo mode', () => {

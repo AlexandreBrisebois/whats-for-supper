@@ -210,3 +210,57 @@ it('orders an initial wide companion after opening and screen, with one shared a
   }
   expect(submit).toHaveBeenCalledTimes(61); // opening plus 60 screens/surfaces total
 });
+
+it('admits only the exact additional loaded-detail/original vocabulary on a primary stage', () => {
+  const base = observation('search');
+  const detail = { ...base, eventName: 'pwa.recipe_detail.presented' };
+  const image = { ...base, eventName: 'pwa.original.presented', reason: 'image' };
+  const request = { ...base, eventName: 'pwa.original.requested', reason: 'external' };
+  for (const input of [detail, image, request]) {
+    expect(parseBrowserObservation(input, Date.now())).toEqual(input);
+    expect(parseBrowserObservation({ ...input, recipeId: 'private' }, Date.now())).toBeNull();
+    expect(parseBrowserObservation({ ...input, screen: 'recipe.detail' }, Date.now())).toBeNull();
+  }
+  for (const input of [
+    { ...detail, reason: 'image' },
+    { ...image, reason: 'external' },
+    { ...request, reason: 'image' },
+    { ...request, reason: 'private' },
+    { ...base, eventName: 'pwa.original.presented' },
+    { ...base, reason: 'external' },
+  ])
+    expect(parseBrowserObservation(input, Date.now())).toBeNull();
+});
+
+it('accepts only four exact issue results with a current primary stage', () => {
+  const base = { ...observation('search'), eventName: 'pwa.recipe_issue.save_result' };
+  for (const reason of [
+    'saved_manual',
+    'processing_acknowledged',
+    'saved_launch_failed',
+    'unconfirmed',
+  ]) {
+    const input = { ...base, reason };
+    expect(parseBrowserObservation(input, Date.now())).toEqual(input);
+    for (const extra of [
+      { recipeId: 'private' },
+      { producer: 'server' },
+      { importId: 'private' },
+      { screen: 'recipe.detail' },
+    ])
+      expect(parseBrowserObservation({ ...input, ...extra }, Date.now())).toBeNull();
+  }
+  for (const reason of [undefined, 'image', 'ready', 'private', null, true, [], {}])
+    expect(parseBrowserObservation({ ...base, reason }, Date.now())).toBeNull();
+  const getter = vi.fn(() => 'saved_manual');
+  expect(
+    parseBrowserObservation(
+      Object.defineProperty({ ...base, reason: '' }, 'reason', { get: getter }),
+      Date.now()
+    )
+  ).toBeNull();
+  expect(getter).not.toHaveBeenCalled();
+  expect(
+    parseBrowserObservation({ ...base, reason: 'saved_manual', note: 'x'.repeat(2048) }, Date.now())
+  ).toBeNull();
+});

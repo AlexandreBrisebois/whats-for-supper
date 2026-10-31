@@ -1,3 +1,4 @@
+import { captureLogs, captureOnce } from './telemetry-wire';
 import { disposableTelemetryReceiver } from './telemetry-receiver';
 import { test, expect, type Page } from '@playwright/test';
 import { spawn } from 'node:child_process';
@@ -19,6 +20,8 @@ test('correlated Home Search Home through real browser action and Node exporter'
   const durable = process.env.WFS_NAV_SENTRAME_BINARY
     ? await disposableTelemetryReceiver(process.env.WFS_NAV_SENTRAME_BINARY, testInfo)
     : undefined;
+  let loseFirstAcknowledgement = Boolean(durable);
+  const rawBatches: Buffer[] = [];
   const browserToken = durable?.tokens.browser ?? 'opening-fixture-browser';
   const serverToken = durable?.tokens.server ?? 'opening-fixture-server';
   const initialContext = await browser.newContext({ serviceWorkers: 'block' });
@@ -29,27 +32,47 @@ test('correlated Home Search Home through real browser action and Node exporter'
     encoding: string | undefined;
     authorization: string | undefined;
     body: string;
+    wire: Buffer;
   }[] = [];
   const receiver = createServer(async (request, response) => {
-    let body = '';
-    for await (const chunk of request) body += chunk;
-    received.push({
-      path: request.url,
-      type: request.headers['content-type'],
-      encoding: request.headers['content-encoding'],
-      authorization: request.headers.authorization,
-      body,
-    });
+    if (request.url !== '/v1/logs') {
+      // Never decode or forward native trace batches as browser-authority logs.
+      for await (const chunk of request) {
+        void chunk;
+      }
+      response.writeHead(404).end();
+      return;
+    }
+    const chunks: Buffer[] = [];
+    for await (const chunk of request) chunks.push(chunk);
+    const wire = Buffer.concat(chunks);
+    rawBatches.push(wire);
+    for (const point of captureLogs(wire))
+      captureOnce(received, {
+        path: request.url,
+        type: request.headers['content-type'],
+        encoding: request.headers['content-encoding'],
+        authorization: request.headers.authorization,
+        ...point,
+      });
     if (durable) {
       const actual = await fetch(durable.origin + '/v1/logs', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${browserToken}` },
-        body,
+        headers: {
+          'Content-Type': 'application/x-protobuf',
+          Authorization: `Bearer ${browserToken}`,
+        },
+        body: new Uint8Array(wire),
       });
-      response
-        .writeHead(actual.status, { 'Content-Type': 'application/json' })
-        .end(await actual.text());
-    } else response.writeHead(200, { 'Content-Type': 'application/json' }).end('{}');
+      const reply = Buffer.from(await actual.arrayBuffer());
+      // The real receiver committed this exact batch, but the SDK loses its ACK.
+      if (loseFirstAcknowledgement) {
+        loseFirstAcknowledgement = false;
+        response.destroy();
+        return;
+      }
+      response.writeHead(actual.status, { 'Content-Type': 'application/x-protobuf' }).end(reply);
+    } else response.writeHead(200, { 'Content-Type': 'application/x-protobuf' }).end();
   });
   await new Promise<void>((resolve) => receiver.listen(0, '127.0.0.1', resolve));
   const endpoint = `http://127.0.0.1:${(receiver.address() as AddressInfo).port}`;
@@ -303,26 +326,27 @@ test('correlated Home Search Home through real browser action and Node exporter'
       .getByRole('button', { name: 'Close grocery list' })
       .click();
     await expect.poll(() => received.length).toBe(11);
-    // F2-3: visible open/close/reopen cycles, without semantic outcome events.
+    // F2-3 + M5: each Quick Find cycle includes the actual planning pivot presentation.
+    // Both surfaces remain presentation only, without a selected-action outcome.
     const openQuickFind = async () => {
       await page.getByTestId('plan-meal-button').first().click();
       await page.getByTestId('pivot-quick-find').click();
       await expect(page.getByTestId('quick-find-modal')).toBeVisible();
     };
     await openQuickFind();
-    await expect.poll(() => received.length).toBe(12);
+    await expect.poll(() => received.length).toBe(14);
     await page.getByTestId('quick-find-close').click();
     await expect(page.getByTestId('quick-find-modal')).toBeHidden();
-    await expect.poll(() => received.length).toBe(13);
+    await expect.poll(() => received.length).toBe(15);
     await openQuickFind();
-    await expect.poll(() => received.length).toBe(14);
+    await expect.poll(() => received.length).toBe(18);
     await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
     await page.waitForTimeout(200);
-    expect(received).toHaveLength(14);
+    expect(received).toHaveLength(18);
     await page.getByTestId('quick-find-close').click();
-    await expect.poll(() => received.length).toBe(15);
+    await expect.poll(() => received.length).toBe(19);
     await page.getByTestId('nav-item-home').click();
-    await expect.poll(() => received.length).toBe(16);
+    await expect.poll(() => received.length).toBe(20);
     const composition = records().sort(
       (a, b) => attributes(a)['source.sequence'] - attributes(b)['source.sequence']
     );
@@ -334,22 +358,26 @@ test('correlated Home Search Home through real browser action and Node exporter'
       ['pwa.surface.closed', 'planner.grocery'],
       ['pwa.screen.presented', 'planner.grocery'],
       ['pwa.screen.presented', 'planner'],
+      ['pwa.surface.opened', 'planning.pivot'],
+      ['pwa.surface.closed', 'planning.pivot'],
       ['pwa.surface.opened', 'quick.find'],
       ['pwa.surface.closed', 'quick.find'],
+      ['pwa.surface.opened', 'planning.pivot'],
+      ['pwa.surface.closed', 'planning.pivot'],
       ['pwa.surface.opened', 'quick.find'],
       ['pwa.surface.closed', 'quick.find'],
       ['pwa.screen.presented', 'home'],
     ]);
     expect(composition.map((r) => attributes(r)['source.sequence'])).toEqual(
-      Array.from({ length: 16 }, (_, i) => i + 1)
+      Array.from({ length: 20 }, (_, i) => i + 1)
     );
     expect(new Set(composition.map((r) => attributes(r)['session.id'])).size).toBe(1);
     expect(new Set(composition.map((r) => attributes(r)['tab.id'])).size).toBe(1);
-    expect(new Set(composition.map((r) => attributes(r)['event.id'])).size).toBe(16);
+    expect(new Set(composition.map((r) => attributes(r)['event.id'])).size).toBe(20);
     await drainBodies();
     await page.reload();
-    await expect.poll(() => received.length).toBe(18);
-    const reloaded = attributes(records()[16]);
+    await expect.poll(() => received.length).toBe(22);
+    const reloaded = attributes(records()[20]);
     expect(reloaded['session.id']).not.toBe(attributes(first[0])['session.id']);
     expect(reloaded['tab.id']).not.toBe(attributes(first[0])['tab.id']);
     const second = await initialContext.newPage();
@@ -358,8 +386,8 @@ test('correlated Home Search Home through real browser action and Node exporter'
     );
     await setupCommonRoutes(second);
     await second.goto(`${url}/home`);
-    await expect.poll(() => received.length).toBe(20);
-    expect(attributes(records()[18])['session.id']).not.toBe(reloaded['session.id']);
+    await expect.poll(() => received.length).toBe(24);
+    expect(attributes(records()[22])['session.id']).not.toBe(reloaded['session.id']);
     await second.close();
     // Invoke the actual compiled Action with complete malformed envelopes. No exporter
     // or Action is mocked, and the valid records above establish the positive path.
@@ -404,10 +432,10 @@ test('correlated Home Search Home through real browser action and Node exporter'
     }, actionId);
     expect(statuses).toEqual(Array(11).fill(200));
     await page.waitForTimeout(250);
-    expect(received).toHaveLength(20);
+    expect(received).toHaveLength(24);
     for (const item of received) {
       expect(item.path).toBe('/v1/logs');
-      expect(item.type).toBe('application/json');
+      expect(item.type).toBe('application/x-protobuf');
       expect(item.encoding).toBeUndefined();
       expect(item.authorization).toBe(`Bearer ${browserToken}`);
       const record = JSON.parse(item.body).resourceLogs[0].scopeLogs[0].logRecords[0];
@@ -430,10 +458,17 @@ test('correlated Home Search Home through real browser action and Node exporter'
     const content = [await page.content(), ...actionResponses, ...clientScripts].join('\n');
     for (const secret of [endpoint, browserToken, serverToken])
       expect(content).not.toContain(secret);
-    if (durable) await durable.qualify(received.map((item) => item.body));
+    if (durable) {
+      expect(rawBatches.filter((batch) => batch.equals(rawBatches[0]))).toHaveLength(2);
+      await durable.qualify(received);
+    }
+    await writeFile(
+      testInfo.outputPath('exact-navigation-protobuf-batches.json'),
+      JSON.stringify(rawBatches.map((batch) => batch.toString('base64')))
+    );
     const payloadPath = testInfo.outputPath('navigation-wire.json');
     await writeFile(payloadPath, JSON.stringify(received.map(({ body }) => body)));
-    await testInfo.attach('exact-navigation-wire', {
+    await testInfo.attach('decoded-navigation-point-projections', {
       path: payloadPath,
       contentType: 'application/json',
     });

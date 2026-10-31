@@ -11,6 +11,7 @@ using RecipeApi.Services.Ai;
 using RecipeApi.Services.Agents;
 using RecipeApi.Services.Processors;
 using RecipeApi.Workflow;
+using RecipeApi.Telemetry;
 using OpenAI;
 using Microsoft.Extensions.AI;
 using System.ClientModel;
@@ -38,6 +39,8 @@ try
     var builder = WebApplication.CreateBuilder(args);
     var openTelemetryEndpoint = builder.Configuration["OpenTelemetry:Endpoint"];
 
+    WfsTelemetryConfiguration.ValidateOperationalDestinations(builder.Configuration);
+
     // ── Serilog ──────────────────────────────────────────────────────────────
     builder.Host.UseSerilog((ctx, services, config) =>
         config.ReadFrom.Configuration(ctx.Configuration)
@@ -45,6 +48,7 @@ try
               .Enrich.FromLogContext()
               .WriteTo.OpenTelemetry(options =>
               {
+                  WfsTelemetry.ConfigureOperationalExporter(options);
                   options.Endpoint = openTelemetryEndpoint ?? "http://localhost:4317";
                   options.ResourceAttributes = new Dictionary<string, object>
                   {
@@ -59,12 +63,6 @@ try
         {
             logging.AddConsoleExporter();
         })
-        .WithTracing(tracing =>
-        {
-            tracing.AddAspNetCoreInstrumentation()
-                   .AddHttpClientInstrumentation();
-            // tracing.AddConsoleExporter(); // Too noisy for production stdout
-        })
         .WithMetrics(metrics =>
         {
             metrics.AddAspNetCoreInstrumentation()
@@ -76,6 +74,8 @@ try
             }
             // metrics.AddConsoleExporter(); // Too noisy for production stdout
         });
+
+    builder.Services.AddWfsTelemetry(builder.Configuration);
 
     // ── Controllers / JSON ───────────────────────────────────────────────────
     builder.Services.AddControllers(options =>

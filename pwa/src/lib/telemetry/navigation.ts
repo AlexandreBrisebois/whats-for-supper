@@ -1,9 +1,10 @@
 import { isSurfaceIdentity, type SurfaceIdentity } from './surfaces';
 import { isOpeningScreen, type OpeningScreen } from './opening';
+import { isIssueResultReason, type IssueResultReason } from './issue-results';
 
 // Closed browser vocabulary; primary screens and adopted surfaces stay distinct.
 export type PresentationScreen = OpeningScreen | SurfaceIdentity;
-export interface BrowserObservation {
+export interface NavigationObservation {
   eventName:
     'pwa.app.opened' | 'pwa.screen.presented' | 'pwa.surface.opened' | 'pwa.surface.closed';
   screen: PresentationScreen;
@@ -13,6 +14,25 @@ export interface BrowserObservation {
   sequence: number;
   timestamp: number;
 }
+export type PrimaryScreen = OpeningScreen | 'planner.grocery';
+export function isPrimaryScreen(value: unknown): value is PrimaryScreen {
+  return isOpeningScreen(value) || value === 'planner.grocery';
+}
+type PresentationContext = Omit<NavigationObservation, 'eventName' | 'screen'> & {
+  screen: PrimaryScreen;
+};
+export type ContentObservation = PresentationContext &
+  (
+    | { eventName: 'pwa.recipe_detail.presented'; reason?: never }
+    | { eventName: 'pwa.original.presented'; reason: 'image' }
+    | { eventName: 'pwa.original.requested'; reason: 'external' }
+  );
+export type IssueResultObservation = PresentationContext & {
+  eventName: 'pwa.recipe_issue.save_result';
+  reason: IssueResultReason;
+};
+export type BrowserObservation =
+  NavigationObservation | ContentObservation | IssueResultObservation;
 const fields = [
   'eventName',
   'screen',
@@ -32,9 +52,13 @@ export function parseBrowserObservation(
     if (!input || typeof input !== 'object' || Array.isArray(input)) return null;
     const prototype = Object.getPrototypeOf(input);
     if (prototype !== Object.prototype && prototype !== null) return null;
-    if (Reflect.ownKeys(input).length !== fields.length) return null;
+    const name = Object.getOwnPropertyDescriptor(input, 'eventName')?.value;
+    const original = name === 'pwa.original.presented' || name === 'pwa.original.requested';
+    const expectedFields =
+      original || name === 'pwa.recipe_issue.save_result' ? [...fields, 'reason'] : fields;
+    if (Reflect.ownKeys(input).length !== expectedFields.length) return null;
     const values: Record<string, unknown> = {};
-    for (const key of fields) {
+    for (const key of expectedFields) {
       const field = Object.getOwnPropertyDescriptor(input, key);
       if (!field || !Object.hasOwn(field, 'value')) return null;
       values[key] = field.value;
@@ -49,6 +73,20 @@ export function parseBrowserObservation(
       case 'pwa.surface.opened':
       case 'pwa.surface.closed':
         if (!isSurfaceIdentity(values.screen)) return null;
+        break;
+      case 'pwa.recipe_issue.save_result':
+        if (!isPrimaryScreen(values.screen) || !isIssueResultReason(values.reason)) return null;
+        break;
+      case 'pwa.recipe_detail.presented':
+        if (!isPrimaryScreen(values.screen)) return null;
+        break;
+      case 'pwa.original.presented':
+      case 'pwa.original.requested':
+        if (
+          !isPrimaryScreen(values.screen) ||
+          values.reason !== (values.eventName === 'pwa.original.presented' ? 'image' : 'external')
+        )
+          return null;
         break;
       default:
         return null;

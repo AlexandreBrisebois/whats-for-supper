@@ -2,9 +2,164 @@
 
 Planning baseline: 2026-10-29. Related [issue #326](https://github.com/AlexandreBrisebois/whats-for-supper/issues/326). Start with shared instrumentation, validate the [journey inventory](journey-inventory.md), then add one journey's missing semantic evidence at a time. Use the [reusable session prompt](../../.agents/prompts/telemetry-session.md).
 
+## Standard SDK M5 accepted — 2026-10-31
+
+Tasks5.1–5.3 are accepted (16/20). Thirteen fixed planning/recovery/nudge/invite/member/native-demo/capture identities reuse the existing instance-safe observer. Native successful-open/queued-close, PDF-hidden panels, nested instances, interrupted/repeated/stale flows and private sentinels are covered. Fresh35path gate `.task/agent-finish/runs/31c7c3d9b9044b2eba1bebde6c064da2.json` passes1564units,613browser/47documented skips,1301API/167opt-in skips and all applicable static/spec/content checks. Actual protected qualification retains204records/80SDKbatches/five scopes with exact replay/reopen and320matching production inputs;61required mocked business-browser cases and8CI checks pass separately. The first gate’s stale pre-M5navigation count was corrected to the exact pivot-inclusive stream; its failure remains retained. See [M5 exact mapping and qualification limits](../sentrame.md#m5-remaining-presentation-integration--2026-10-31). Owned resources are cleaned. No M6/M7, production enablement, Sentrame writes or sync/archive at16/20; five later completion docs are verified separately.
+
+## Standard SDK M4 accepted — 2026-10-31
+
+Tasks4.1–4.4 are accepted (13/20), with all applicable checks passing in final34path gate `.task/agent-finish/runs/58e61af61e2248fb811c97bc1f4a2c3e.json` (1529unit,613browser/47skips,1301API/167opt-in skips); actual exporter/protected-receiver qualification passes1/1 with154 retained records and exact replay/reopen. M4 adopts recipe detail/plan/actions/filters/issue/bin/PIN, original viewer and cooking reader through shared static instance-safe declarations. It separately observes committed loaded detail, successfully loaded current local images and external-original launch requests with the existing browser authority/document stream; no recipe/image identity, URL or content. Detail20/document and original20combined/document caps are shared. Independent review's image lifetime and deferred-cleanup admission defects were reproduced then fixed. Required68business-browser scenarios pass; current source coverage removes only selected M4 exceptions, keeping structural and M5/platform decisions explicit. See [M4 integration and mapping limits](../sentrame.md#m4-presentation-integration--2026-10-31). No M5–M7, production enablement or Sentrame writes; sync/archive waits for all20tasks and acceptance.
+
+## Standard SDK M3 — 2026-10-31
+
+One private-config API trace provider and isolated typed saved-fact logger are implemented; tasks 3.1–3.3 are accepted (9/20) after the fresh combined69-path gate passed every check. Stable actual qualification covering 18 cases PostgreSQL/receiver qualification passed with zero skips. Actual host Kestrel/PostgreSQL→owned Sentrame protected retention/replay/reopen and pinned Linux production-Program wire smoke passed their distinct runtime boundaries. The user-approved .NET diagnostic-body read can outlive two seconds and successful ForceFlush; queue/concurrency/privacy and memory-only retry remain bounded. API settings require process recreation; Node B and Next shutdown A remain separate. See [current API setup and limits](../sentrame.md#m3-api-integration--2026-10-31). No production collection, Sentrame writes or M4 work. Earlier checkpoints below retain historical meanings.
+
 ## Current checkpoint
 
-Navigation, 2026-10-29: [observe-pwa-navigation](../../openspec/changes/observe-pwa-navigation/proposal.md)
+I-V, 2026-10-30: [investigation reconciliation](journey-inventory.md#i-v--investigation-reconciliation--2026-10-30)
+completes selected tasks 5.1–5.2 then 6.1 sequentially: I1–I5 **2/2 each**, I-V **1/1**,
+overall **11/11 investigation tasks**. No UI/runtime qualification implied. Prior
+WFS manifest inputs match (50/46/51/87), I5 checks 86 inputs/five receiver guides/
+16 method-builder pairs/14 named tests located, not executed. Historical source
+identities/checkpoints and receiver-guide drift remain intact. All unavailable UI
+cells remain not-run; browser host blocked. Mock, real API/PostgreSQL/filesystem/
+provider, browser/Action/Node and .NET exporter/receiver, deployed sharing/proxy/tunnel,
+and physical-device evidence remain independently not-run. I3 all-checked emitter
+remains unapproved; I4's five distinctions and I5 async lifetime/restart/privacy,
+partial-success and handoff/removal gaps remain unresolved. Strict change validation
+and scoped docs verification are separate from runtime/task acceptance; final invocation
+record_path is reported directly in the handoff after reviewing all three owners.
+One overall successor recommendation: `observe-recipe-issue-save-results`, foreground
+browser response only; no proposal created. I4's `observe-search-result-presentation`
+remains a historical uncreated alternative. Stop after investigation; no instrumentation,
+product/contracts/auth/cookies/preferences/cooking UI, collection, receiver, commit,
+deploy, sync or archive changes.
+
+I5, 2026-10-30: [capture/repair/sharing/library source trace](journey-inventory.md#i5--capture-repair-sharing-and-library-maintenance--2026-10-30)
+covers J13–J16. Tasks 5.1–5.2 complete, I5 2/2 at 10/11; 5.2 uses explicit unavailable
+walkthrough cells, with browser access blocked and every runtime plane not-run.
+I4 final record `.task/agent-finish/runs/9025c791e0ac45dcb88f18eb6f400769.json`
+was reconciled as passed scoped documentation/OpenSpec/content verification at 8/11.
+Current trace distinguishes saved intake/readiness, retry acceptance/recovery,
+saved issue/attempt/review/resolution, prepared export/handoff, database-ready import/
+asset completion and requested/bin/purge/residue removal. Cross-document/restart
+correlation conflicts remain unresolved; no durable telemetry identity proposed.
+Source consistency passed: 86 WFS hashes, five receiver guides, 16 contract/builder
+pairs and 14 named tests located, not executed. One I5 recommendation is
+`observe-recipe-issue-save-results`; no artifact created. I-V/6.1 follows only after
+I5 acceptance and scoped verification; [task evidence](../../openspec/changes/archive/2026-10-30-inventory-telemetry-journeys/tasks.md#i5-investigation-evidence--2026-10-30)
+owns that transition. No runtime qualification or collection enablement implied.
+
+
+I4, 2026-10-30: [entry/search/GOTO/cooking source trace](journey-inventory.md#i4--entry-finding-recipes-goto-and-cooking--2026-10-30)
+covers J01/J10–J12, tasks 4.1–4.2 complete through source investigation and explicit
+unavailable walkthrough cells: I4 **2/2**, overall **8/11**. I3 final scoped record
+`.task/agent-finish/runs/f0668cc9326f4e769c2a5368ae715add.json` was reconciled as
+passed documentation/OpenSpec/content verification; I3 UI/runtime remains not-run,
+its all-checked emitter unapproved, and its receiver-guide drift record preserved.
+I4 separates access acceptance/context/destination, Search/Browse results/detail/
+selection, GOTO membership/featured choice/tonight save, viewed-recipe cooking versus
+matched planned-meal cooking and automatic overdue finalization. It records missing
+verified-context/result owners, optimistic background assignment, fallible post-save
+follow-ups, cancellation/unknown/retry boundaries, Original return and warm-resume/
+long-pause limits. FamilyGOTOSettings seed references are retired; recipe stars own
+membership. No private query/content/URL/business identity is proposed for collection.
+Source consistency passed for 87 WFS hashes, five receiver guides, three other
+receiver inputs, 14 method/generated-builder pairs and 23 test symbols located,
+not executed. Browser access is blocked; explicit not-run synthetic walkthrough
+steps/reasons satisfy the task fallback. Mock, real API/PostgreSQL, browser/Action/
+Node exporter-to-receiver, .NET export, deployed and physical-device evidence remain
+not-run separately. One bounded successor, `observe-search-result-presentation`, is
+recommended without creating it. Exact acceptance and scoped documentation verification
+belong to the [I4 task evidence](../../openspec/changes/archive/2026-10-30-inventory-telemetry-journeys/tasks.md#i4-investigation-evidence--2026-10-30)
+and final invocation `record_path` in the handoff. Next inventory session: I5 tasks
+5.1–5.2 only if separately selected; I-V/6.1 remains unchecked. No product/contract,
+collection, receiver, commit, deployment, sync or archive changes.
+
+I3, 2026-10-30: [grocery checks/extras source trace](journey-inventory.md#i3--grocery-checks-and-extras--2026-10-30)
+covers J08–J09, tasks 3.1–3.2 complete through source investigation and explicit
+unavailable-walkthrough cells: I3 **2/2**, overall **6/11**. I2 final record
+`.task/agent-finish/runs/529ceafac9a1411f959f2aaab069fd27.json` was reconciled:
+documentation, selected OpenSpec and content stability passed; UI/runtime remains
+not-run. I3 separates optimistic recipe checks, persisted maps/occurrences,
+publication attempts and reconciled presentation; source findings include missing
+recipe pending guards and `sync()` not replacing the recipe check map. There is
+no saved shopping-trip completion operation. A precise current-week all-checked
+predicate is proposed with pending/empty/extras/list-change/remote-update guards;
+its emitter remains unapproved pending the recorded semantic decisions.
+Source consistency passed for 51 WFS hashes, five receiver guides, seven approved
+method/generated-builder pairs and 37 named tests located, not executed. A later
+receiver USER-GUIDE hash drift was reviewed and recorded separately before the
+source check passed again. Browser
+access is blocked and no isolated synthetic grocery UI was identified; explicit
+not-run phone/wide/success/failure/recovery cells satisfy the investigation fallback.
+Unit/mock, real API/PostgreSQL, exporter/receiver, deployed and physical-device
+qualification remain not-run independently. One bounded successor is recommended,
+`observe-grocery-extra-add-results`, without creating it. Exact acceptance and scoped
+documentation verification belong to the [I3 task record](../../openspec/changes/archive/2026-10-30-inventory-telemetry-journeys/tasks.md#i3-investigation-evidence--2026-10-30)
+and final invocation `record_path` in the handoff. Next inventory session: I4 tasks
+4.1–4.2, only if separately selected. No instrumentation, behavior/contract change,
+collection, receiver edit, commit, deployment, sync, archive or I4–I5/I-V advancement.
+
+I2, 2026-10-30: [assignment/non-cooking/movement source trace](journey-inventory.md#i2--assignment-non-cooking-and-movement--2026-10-30)
+covers J05–J07, tasks 2.1–2.2 only. I1 final scoped record
+`.task/agent-finish/runs/da058edf416342a0b0f0c3b7f64d414c.json` was reconciled as
+passed documentation/OpenSpec/content verification, without UI/runtime qualification.
+The I2 cards trace previews, optimistic state, actual persistence, post-commit
+follow-up failure, cancellation and caller-specific partial-success recovery.
+Source checks matched 46 WFS file hashes, five local receiver guide hashes, six
+method/generated-builder pairs and 23 named tests; no tests were executed.
+Browser access is unavailable and no disposable synthetic business UI was identified;
+explicit not-run walkthrough cells use the tasks' allowed fallback. Real API/DB,
+exporter/receiver, deployed and physical-device evidence remain not-run independently.
+One bounded successor is recommended, `observe-tomorrow-results`; no proposal or
+emitter was created. Exact acceptance and final scoped verification belong to the
+[I2 task record](../../openspec/changes/archive/2026-10-30-inventory-telemetry-journeys/tasks.md#i2-investigation-evidence--2026-10-30)
+and invocation record reported in the handoff. Next inventory session: I3 tasks
+3.1–3.2, subsequently selected in the I3 checkpoint above. At I2, I3–I5 and I-V remained unselected. No collection,
+product behavior/contracts, receiver, commit, deployment, sync or archive changed.
+
+I1, 2026-10-30: [planning/voting source trace](journey-inventory.md#i1--planning-and-multi-vote-discovery--2026-10-30)
+covers J02–J04 and inventory tasks 1.1–1.2. Exact UI/store/generated client/contract/
+service/commit/publication owners and inspected tests are recorded. No tests or
+walkthroughs were executed: browser access is blocked and no disposable synthetic
+journey fixture was selected. Explicit unavailable cells satisfy the investigation's
+fallback, without qualifying UI behavior. Current receiver source supports goal-free
+navigation; the older planning assumption is superseded. One next proposal is
+recommended, `observe-discovery-results`, with occurrence/freshness/pending-write
+decisions still open. No successor was created or instrumented. Source findings,
+identities and scoped documentation check evidence belong to the
+[I1 task record](../../openspec/changes/archive/2026-10-30-inventory-telemetry-journeys/tasks.md#i1-investigation-evidence--2026-10-30).
+At the I1 checkpoint, I2–I5 and I-V were unselected; I2 is reconciled above.
+
+F3-2, 2026-10-30: [render/root and standalone Next Node errors](../sentrame.md#f3-2-renderroot-and-next-node-errors--2026-10-30)
+passes 33 focused unit cases and the required errors/navigation/auth Chromium run
+(6/6). F3-1 acceptance and passed final record `360c410a63c7439eb185b3a1a3378eda`
+were independently checked, with its complete source manifest matching before edits.
+Protected reads/replay/restart/reopen retain 22 boundary/server errors. A separate
+synthetic path keeps render errors supporting and active until Search. The real
+Node hook awaits its bounded exporter; a stalled receiver delayed its Route Handler
+response 2,004 ms. Separate credentials, absent server correlation, privacy, caps,
+recursion, root replacement and localized keyboard reset/navigation are qualified
+locally. Exact identities and limits are in the integration evidence and
+`.task/telemetry-errors/f3-2/`. Final scoped preparation/verification uses the
+complete reviewed path set and reports its actual invocation `record_path` in the
+handoff. Existing F3-1 edits and the unrelated CI-suite edit are preserved.
+F3-3 remains unselected; Edge/serverless/abrupt-exit, deployed routes and physical
+devices remain unqualified. Collection stays default-off; no receiver source,
+propagation, .NET instrumentation, raw diagnostics, business recovery, deployment,
+commit, sync or archive changes are included.
+
+F3-1, 2026-10-29: [native browser errors](../sentrame.md#f3-1-native-browser-errors--2026-10-29)
+passed 180 focused tests and combined errors/opening/navigation Chromium acceptance
+(3/3), including actual disposable protected reads, UI, exact replay and restart.
+Standalone diagnostics require no mappings/goal; unmapped Home errors support a
+prospectively configured App opened → Home → Search path. Only the synthetic
+Search goal completes it. Final scoped repository verification is reported by its
+invocation record in the session handoff. This historical checkpoint selected no F3-2/F3-3;
+collection remains default-off and deployed/device cells are not-run.
+
+Navigation, 2026-10-29: [observe-pwa-navigation](../../openspec/changes/archive/2026-10-30-observe-pwa-navigation/proposal.md)
 F2-1–F2-3 acceptance and final gates were verified before F2-4. The integrated
 four-name local browser/Action/Node/Sentrame path, protected durable reads,
 prospective synthetic reaching-Search goal and exact replay/restart pass again.
@@ -40,19 +195,19 @@ Change `tasks.md` checkboxes are the task authority. This table is a navigation/
 | F1-4 | Same change, 4.1–4.2 | F1-3; actual local durable receiver reads and prospective screen mapping | archived unchecked; not-run |
 | F1-D | Same change, 4.3 | F1-4 plus selected disposable deployed/physical fixture; separate route/device cells | archived unchecked; not-run |
 | F1-V | Same change, 5.1 | Reconcile the opening change's required evidence; do not mark unrun phone work complete | archived unchecked; not-run |
-| F2-1 | [Navigation](../../openspec/changes/observe-pwa-navigation/tasks.md), 1.1–1.4 | Implemented F1 gates/transport plus baseline-gate reconciliation and disposable receiver; correlated App opened -> Home -> Search -> Home with durable receipt and separate synthetic-goal derivation | F2-1 complete; local capture/receiver qualification and stable final gate passed |
+| F2-1 | [Navigation](../../openspec/changes/archive/2026-10-30-observe-pwa-navigation/tasks.md), 1.1–1.4 | Implemented F1 gates/transport plus baseline-gate reconciliation and disposable receiver; correlated App opened -> Home -> Search -> Home with durable receipt and separate synthetic-goal derivation | F2-1 complete; local capture/receiver qualification and stable final gate passed |
 | F2-2 | Same change, 2.1–2.3 | F2-1; correct phone/wide Planner and Grocery presentation | complete; local capture/receiver acceptance and stable scoped final verification passed |
 | F2-3 | Same change, 3.1–3.3 | F2-2; Quick Find surface pilot, route/overlay coverage debt | complete; 117-case acceptance, disposable receiver and stable final verification passed |
 | F2-4 | Same change, 4.1–4.2 | F2-3; four-name/surface durable receipt and prospective derivation reconciliation | complete; integrated qualification and stable final documentation verification passed |
-| F3-1 | [Unexpected errors](../../openspec/changes/observe-unexpected-pwa-errors/tasks.md), 1.1–1.3 | F1 local receipt and F2-1; minimized script/rejection reports and storm caps | planned |
-| F3-2 | Same change, 2.1–2.3 | F3-1; render/root/server hooks, source ownership and standalone errors | planned |
-| F3-3 | Same change, 3.1–3.2 | F3-2; real protected receiver diagnostics and integration reconciliation | planned |
-| I1 | [Inventory](../../openspec/changes/inventory-telemetry-journeys/tasks.md), 1.1–1.2 | No foundation dependency; trace planning/voting J02–J04 | planned |
-| I2 | Same change, 2.1–2.2 | Trace assignment/no-cook/movement J05–J07 | planned |
-| I3 | Same change, 3.1–3.2 | Trace groceries/extras J08–J09; resolve completion evidence | planned |
-| I4 | Same change, 4.1–4.2 | Trace entry, finding recipes, GOTO and cooking J01/J10–J12 | planned |
-| I5 | Same change, 5.1–5.2 | Trace capture/repair/sharing/library J13–J16 | planned |
-| I-V | Same change, 6.1 | Reconcile selected investigation evidence; no runtime instrumentation | planned |
+| F3-1 | [Unexpected errors](../../openspec/changes/archive/2026-10-30-observe-unexpected-pwa-errors/tasks.md), 1.1–1.3 | F1 local receipt and F2-1; minimized script/rejection reports and storm caps | local acceptance passed; finalized for scoped verification |
+| F3-2 | Same change, 2.1–2.3 | F3-1; render/root/server hooks, source ownership and standalone errors | local acceptance passed; finalized for scoped verification |
+| F3-3 | Same change, 3.1–3.2 | F3-2; real protected receiver diagnostics and integration reconciliation | local acceptance passed; final scoped verification recorded separately |
+| I1 | [Inventory](../../openspec/changes/archive/2026-10-30-inventory-telemetry-journeys/tasks.md), 1.1–1.2 | No foundation dependency; trace planning/voting J02–J04 | source traced; unavailable UI cells recorded; docs verification in task evidence |
+| I2 | Same change, 2.1–2.2 | Trace assignment/no-cook/movement J05–J07 | source traced; explicit unavailable walkthrough cells; scoped documentation verification reported in I2 handoff |
+| I3 | Same change, 3.1–3.2 | Trace groceries/extras J08–J09; resolve completion evidence | source traced; unavailable walkthrough cells recorded; all-checked emitter unapproved; scoped docs verification in handoff |
+| I4 | Same change, 4.1–4.2 | Trace entry, finding recipes, GOTO and cooking J01/J10–J12 | source traced; explicit unavailable walkthrough cells; scoped documentation verification in I4 handoff |
+| I5 | Same change, 5.1–5.2 | Trace capture/repair/sharing/library J13–J16 | source traced; unavailable walkthrough cells; I5 scoped docs passed, final reconciliation in handoff |
+| I-V | Same change, 6.1 | Reconcile selected investigation evidence; no runtime instrumentation | reconciled I1–I5; 11/11 investigation tasks; runtime qualification open; final scoped record in handoff |
 
 Every implementation session owns its tests, integration docs, scenario evidence and scoped final verification. The last group reconciles integration; it does not postpone earlier groups' tests. If a group exceeds the available session, stop at its actual checkpoint with unchecked work rather than widening scope or claiming completion.
 
@@ -107,7 +262,7 @@ successor changes. Stop with one recommended next proposal boundary.
 
 Recheck source/configuration identity before each implementation or qualification. Use current local receiver implementation/docs, not an older GitHub guide or published image. No Sentrame files or storage were modified for this plan.
 
-Sentrame supports named-log discovery, explicit mappings, scoped ordered paths, graph aggregation, rare paths, endings and diagnostics. The current definition requires one operational goal; goal closure and 30-minute mapped inactivity are separate from a WFS document lifetime. Inactive means unknown outcome. A long cooking visit can span receiver captures without becoming another WFS opening. Do not send heartbeats to conceal this distinction.
+Sentrame supports named-log discovery, explicit mappings, scoped ordered paths, graph aggregation, rare paths, endings and diagnostics. I1's 2026-10-30 source review confirms that a completion goal is optional in the current local receiver, superseding the planning assumption that it was mandatory. When selected, goal closure and 30-minute mapped inactivity are separate from a WFS document lifetime. Inactive means unknown outcome. A long cooking visit can span receiver captures without becoming another WFS opening. Do not send heartbeats to conceal this distinction.
 
 A future common Discovery result event can support one goal with distinct reasons, but personal exhaustion must not be mislabeled as family success. Other experiences may require receiver work for independent outcome views; inventory the gap before assuming it exists. Sentrame's recovery highlight is diagnostic evidence plus captured completion, not proof of same-operation repair. Graph edges can combine paths nobody followed end to end. Rare/incomplete paths, missing detail, retention and opt-in bias constrain claims. Public aggregate privacy/release remains outside these changes.
 
@@ -382,7 +537,7 @@ Docs/OpenSpec, lint/format/types, unit 1,431, E2E 600 (47 skipped), API 1,259
 source also passed the real-action/disposable-receiver tracer again; artifacts are
 in `.task/telemetry-navigation/f2-2/final/`. This result update is later documentation
 content, separately checked, and does not change verified application bytes.
-**F2-2 tasks 2.1–2.3 complete; change 7/12. Stop before F2-3.** See the [task evidence](../../openspec/changes/observe-pwa-navigation/tasks.md#f2-2-execution-evidence--2026-10-29)
+**F2-2 tasks 2.1–2.3 complete; change 7/12. Stop before F2-3.** See the [task evidence](../../openspec/changes/archive/2026-10-30-observe-pwa-navigation/tasks.md#f2-2-execution-evidence--2026-10-29)
 and [integration notes](../sentrame.md#f2-2-plannergrocery-composition--2026-10-29).
 
 Physical installed-device and deployed-route qualification: **not-run**. Phone
@@ -463,3 +618,101 @@ checks. Application/harness/live endpoint/database gates are not-applicable to t
 three-path documentation patch; fresh scoped runtime qualification is separate.
 Later completion notes/checklists receive their own documentation checks. Tasks
 4.1–4.2 complete; stop here. No sync/archive or deployment/enablement.
+
+
+## F3-1 implementation checkpoint — 2026-10-29
+
+Authorized scope: `observe-unexpected-pwa-errors` 1.1–1.3 only. The stale error-plan
+prerequisite note is reconciled against stable passed F2-1 record
+`48fdfcc05c60422bbe2247ac1d0e92a9`; no other group is inferred complete.
+Existing document state owns enabled gating, context, sequence and ten lifetime
+error attempts. Native registration is synchronous; the existing observer supplies
+the Action callback because the installed Next instrumentation bundle rejects a
+direct Action import. The strict Action retains original browser/context and
+acceptance clocks before deferred export. Errors use the fixed minimized ERROR
+envelope and process partition; no root/render/server hook or business event is added.
+
+[Integration evidence](../sentrame.md#f3-1-independent-qualification-cells-and-identities)
+records exact command, WFS/receiver/assets/build/config/definition/wire identities,
+independent capture/durable/derivation/UI cells, privacy review and test-first red/green.
+Source owners are opening/errors, native entrypoint, existing observer, Action and
+Node exporter; only their tests/fixtures and selected evidence documents change.
+The initial worktree was clean; no unrelated changes were adopted or reverted.
+The complete selected path set is prepared/reviewed before final `task verify`;
+its actual invocation record, not this checkpoint, owns repository check results.
+F3-2/F3-3, deployed/device, propagation and business outcomes remain unqualified.
+No receiver source or existing storage, deployment, enablement, commit, sync or
+archive changes are made.
+
+
+F3-2 final gate's first stable record `c07dfed9459049cfa62e6087e390d394`
+failed four broad E2E cases (597 passed/47 skipped); all four pass unchanged in
+the focused rerun. Other applicable checks passed. Integration/task evidence
+retains this attempt; the subsequent stable scoped gate owns the final result.
+
+
+## F3-3 integrated qualification checkpoint — 2026-10-30
+
+Tasks 3.1–3.2: [integrated receiver evidence](../sentrame.md#f3-3-integrated-disposable-qualification--2026-10-30) records prerequisite identities, actual fresh-emission qualification, independent cells, receiver usability limits and exact artifact hashes. Scoped final verification is recorded by its own invocation. Deployed routes and physical devices remain not-run; no collection, deployment, propagation or business event was enabled.
+
+
+## Standard SDK migration — M1, 2026-10-30
+
+[adopt-standard-otel-instrumentation](../../openspec/changes/archive/2026-10-31-adopt-standard-otel-instrumentation/tasks.md) is applying: **2/20 tasks** (1.1–1.2); 1.3 remains unchecked because its full gate is non-green. Shared global/typed pre-batch admission is fixed and qualified. Timeout option B means two-second caller/processor waits and socket inactivity; active streams/retry may last longer. Separately, the user selected **shutdown option A**: keep Next standalone and accept best-effort normal SIGTERM/SIGINT delivery, with possible pending queued-tail loss and no guaranteed host flush. Four occupied standard exporter/Agent slots and bounded queues remain mandatory; no custom host, cancellation, transport fork, persistent queue or Collector is added.
+
+The 82 focused SDK/Action/hook tests, prior typecheck/generated-client parity, opening/navigation/error receiver qualification and current-image joint seven-log retention/replay/reopen/corrected visible Search-goal proof passed. The conservative stable-content gate passed 1,479 unit tests, 1,259 API tests (156 existing skips), all 183 disposable PostgreSQL tests and static/client checks; it retains the unchanged main opening-spec length warning and one broad Planner mock/reload race (isolated rerun passed). Live endpoint parity passed separately through the corrected owned bridge. The copied-Next signal probe remains evidence of permitted queued-tail loss, with standalone equivalence source-traced; it is not a successful flush test. Exact record paths and tested identities are in the [integration checkpoint](../sentrame.md#standard-sdk-migration--m1-checkpoint-2026-10-30) and `.task/otel-apply/HANDOFF.md`.
+
+The user authorized bounded M2 native Next tracing after this contract reconciliation despite retained unrelated gate failures. That stage requires fresh actual native exporter/receiver evidence; the old seven-log proof does not supply it. M3–M6 remain outside the current stage. This adds no production enablement, business facts, new device claim or retroactive pass.
+
+## Native Next technical coverage — M2 checkpoint
+
+The bounded M2 pipeline observes native Node request/render/server-fetch operations as fixed `next.request`, `next.render`, `next.fetch` spans. GET/HEAD roots use standard 10% local sampling; non-GET/HEAD/unknown roots, observation Actions and remote-parent traces are excluded. Propagation is no-op. Only method/numeric status, native timing and request-local technical identity/parentage survive before the queue. Dynamic route/URL, content, events/links/exception detail, tracestate and detected resources do not. No native span certifies browser presentation, persistence or a business outcome.
+
+The trace queue/one-slot exporter are independent from semantic logs. Queue overflow, busy exporter rejection, outages, sampling and standalone shutdown can lose traces; framework roots may be separate and unsupported intermediary operations stay missing. Neither a received native trace count nor its absence is an exact request/failure total. No browser/session, cross-service or background-work joining is added. The actual-SDK 104-test/type/lint checkpoint is recorded in [integration evidence](../sentrame.md); protected native retention/replay/reopen and final changed-content gate are pending at this checkpoint. Existing seven-log journey acceptance remains distinct.
+
+
+Canonical native retention/replay/reopen now passes for15spans/eight traces/four original batches through the actual standalone SDK and current owned receiver. Exact HTTP classifications and native timing/kind/status/parentage survive, without browser or business joining; the original seven-log journey proof remains unchanged. See the latest [integration evidence](../sentrame.md). Older log-only fixture receivers now reject the separate trace path before decoding/log redirect assertions; their three focused qualifications pass. Final repository gate rerun is pending; the first gate and unchanged main-spec warning remain explicit failures, not relabeled passes.
+
+
+Final-gate topology: shared receiver18986 canonical proof is closed and preserved. The rerun uses a separate WFS-owned tmpfs receiver18985 from the same already-built image, private ephemeral credential file `/tmp/wfs-m2-final-receiver-20261030/credentials.json`, and no shared receiver intake/rebuild/restart. Synthetic project `wfs-otel-m2-final-20261030` is removed after verification; no persistent credentials/data volume. This replaces the earlier plan to send another gate fixture to18986 after ownership transferred.
+
+
+## Final bounded M2 verification / ownership — 2026-10-30
+
+Final conservative43path gate record `.task/agent-finish/runs/d57ef477a8fa4b4aad3d0390dcb8686b.json` completed with stable identity `ce106a70b466d773fce8f4652b8e80dfc54c7d3bed50fd2a05717379fab4ec37`. Passed: documentation, agent checks, lint/API formatting, PWA format/types,115unitfiles/1,501tests, all602browsercases/47documented skips (including native and three corrected log fixtures), API1,259passed/156existing skips, five static/client checks, live endpoint parity and all183real disposable PostgreSQL tests/zero skipped. PostgreSQL record `.task/database-tests/runs/e26e6951d7cf4091a3258c71ad0f286b/result.json`. The sole failure is global strict `spec:check`: unchanged main `anonymous-pwa-telemetry` requirement length warning. Selected change validates strictly; original outside-scope bytes, including that main spec, are preserved. The prior Planner race did not reproduce in this rerun; prior failed runs remain historical failures.
+
+Progress remains **4/20**:1.1–1.2 and2.1–2.2 complete;1.3/2.3 remain unchecked because the full gate is not green. Bounded M2 functionality and actual native retention/replay/reopen are qualified; no M3–M6 work or production/deployed/device qualification is claimed. Later completion-document bytes receive separate documentation verification; application source remains identical to the final gate.
+
+Cleanup confirmed in `.task/otel-apply/m2-cleanup.json`: WFSsupervisor3545/Next3902/bridge3822 stopped/reaped; ports18985/18987/18988 released. New18985tmpfsreceiver container/network/project and its private credential root removed; both owned M2 copied app roots removed. All native/log fixture resources closed. Inherited synthetic internal API/DB preserved running, no host ports/provider access. SharedSentrame18986/18999 and shared3000/5001 untouched. Sentrame successor owns its receiver; current15canonicalspan/eight-trace/four-batch proof plus originalseven-log derivation remain retained. No staging/commit/push/branch change/sync/archive/production collection.
+
+One notification proposing another shared18986intake was auto-review denied after receiver ownership transferred, citing the successor's no-shared-intake instruction. No such further intake occurred. Final gate used a separate owned18985receiver; that safe alternative completed and is cleaned. No permission request is pending. Durable next action/scope/ownership: `.task/otel-apply/HANDOFF.md`.
+
+
+### M3 API persistence checkpoint — 2026-10-30
+
+Inherited M1/M2 acceptance is **6/20** after the fresh 48-file gate `.task/agent-finish/runs/6bc9f6e1d3d048edb07b1d04bfa479ed.json` passed with stable identity `df7f6539da8e97ddaf00588b61bf25cb78bce2e28c4c86f8e80b1a3f610030b5`. It passed 1,501 unit tests, 602 browser cases, 1,265 API tests, all 193 real PostgreSQL tests with zero skips, strict specs and the remaining selected checks. The main-spec warning is resolved; earlier failed/interrupted records remain historical.
+
+M3 is partial. The optional saved-report observer is implemented and independently qualified by 57 focused service/report/lifecycle tests and 17 real PostgreSQL cases. Confirmed ordinary saves are observed before later reads/launch; rejection, uncertain acknowledgement and outer transactions produce no fact, and observer failures cannot change business handling. It remains unregistered. No API trace/log export, Program/Compose configuration or production collection is enabled. `Resolved()` remains reserved for M6.
+
+Installed .NET OTel 1.20.0 can use one host-managed standard tracer provider with private SDK configuration to enforce memory-only retry without changing operational logging/metrics. This composition is within approved M3. A fresh stock-exporter rerun confirms identical-byte 503 retry, same-origin 307 refusal and no disk queue despite ambient disk settings. It remains a configuration probe, not WFS API qualification.
+
+A separate .NET diagnostic-body limit is unresolved. The pinned Linux .NET 11 RC2/OTel 1.20.0 probe kept a terminal chunked 400 response body read active for 3,209ms with no body bytes when exporter Error diagnostics were enabled by another listener. Two-second exporter/client settings, private diagnostics-none settings and the minimum 1KiB response limit did not stop it; ForceFlush returned true while the read was active. With diagnostics off, the peer closed before the control's 3.2s release point (not a measured <=2s result). The probe released the body and awaited the failure event. Source/evidence: `.task/otel-apply/m3b-sdk-body/`, `m3b-sdk-body-linux.txt`; host RC3 matched. This is stock SDK evidence, not API/export/retention evidence.
+
+The standard spec names Node socket inactivity; shared design and M3 require separate .NET qualification, and Node B/A cannot authorize a .NET relaxation. Pending decision: explicitly allow the .NET diagnostic read to outlive bounded caller waits without an inactivity bound, or require a supported SDK change. No global diagnostic mutation/custom transport/fork or memory-only retry relaxation is permitted. API export stays unregistered; all M3 tasks remain unchecked. Complete M3 before M4.
+
+Durable error-fixture setup requires matching reviewed `WFS_NAV_SENTRAME_BINARY` and `WFS_ERROR_SENTRAME_ASSETS`, with `WFS_ERROR_DURABLE=1`. Omitting assets stops the fixture before observation; corrected focused qualification passed 1/1 before the complete gate. The user-requested setup lessons were sent to Sentrame's documentation owner. See [the selected change](../../openspec/changes/archive/2026-10-31-adopt-standard-otel-instrumentation/tasks.md) for exact test records and remaining acceptance. `.task/otel-apply/HANDOFF.md` records cleanup and ownership; shared 18986 and parent-owned 19010 were untouched.
+
+
+## Issue response and report removal pilot — M6
+
+The selected standard instrumentation change now observes four fixed current-browser Save results and independent confirmed API report removal. `saved_manual` includes unchanged terminal feedback; `processing_acknowledged` includes reused work; `saved_launch_failed` acknowledges saved feedback despite launch failure; `unconfirmed` says the observed response cannot establish a recognized state, including rejected/lost/malformed responses. None establishes reimport success or unique content/person totals. Ten attempts share the existing document owner; stale, hidden, dismissed or superseded results are dropped permanently. Raw validity is preserved before generated deserialization and wrapper defaults. Existing retained-draft, polling, retry and resolution handling remains.
+
+`wfs.recipe_issue.resolved` describes explicit confirmed removal of an existing inactive report, independently of the browser result and existing Saved fact. No-op, active rejection, cascade, failed/uncertain persistence or outer transactions produce no removal fact. There is no shared business key or timestamp join between producers. Exact fixed INFO bodies, authority, bounded official SDK delivery, replay/reopen and privacy meanings are documented in the [M6 integration evidence](../sentrame.md#m6-issue-response-and-explicit-resolution--2026-10-31). Current browser acceptance passes 277 protected records/31 results/four scopes; independent real API/PostgreSQL/receiver acceptance passes 29 cases. Tasks 6.1–6.2 are accepted at 18/20; 6.3 awaits final verification. These local qualifications do not add async completion, deployed or physical-device claims, production collection or overall archival.
+
+
+M6 final acceptance: **19/20; tasks6.1–6.3 complete; M7 only remains.** Fresh27path full gate `.task/agent-finish/runs/1f577bf4af4348ce97f1f2cf533d1dd9.json`, identity `e8b097e189c7e1cf2351ff9a00169860029cbb32ee32a9ef6d34f903b9a16ada`, passes1,618units,615browser/47documented skips,1,306API/178opt-in skips,204Linux PostgreSQL/zero skips,223harness Python/one opt-in skip,9Node CI checks,39strict specs,lint/format/types/five contracts/live endpoint parity/content. Current post-review actual browser/SDK/receiver acceptance is `m6-live-current-summary.json`:277records/31results/30batches/four scopes,all319production inputs/current fixture matching,exact evidence+journey replay/reopen,private sentinels absent (sorted evidence/journey projection SHA256 `f381ea05e37c7725bb45f47db5183ecfdca5adf3f74a630e381e90e5f9c0ffe3`). The full gate independently repeats that fixture successfully. Real API/PostgreSQL/provider/receiver acceptance remains29zero-skip cases at `.task/database-tests/runs/3a394d86847f4e689b090ba37af2a2d5/result.json` with8protected records/6batches; API source unchanged. Browser and server evidence remain independent. First failed gate and all earlier red/setup failures stay preserved; the stable fresh gate owns the final application result. Later completion documents are checked separately. M7 owns all20reconciliation,then authorized spec sync/archive and final commit-message delivery; no commit/push or premature M6 archival. Exact resource cleanup and ownership release are recorded in the handoff.
+
+
+## M7 final standard instrumentation — 2026-10-31
+
+The selected standard instrumentation change completes local31requirement/87scenario reconciliation and20/20tracked tasks. Fresh132path gate `.task/agent-finish/runs/e4281f186f884a29bdc48a982d2987b2.json` passes1,624units,615browser/47skips,1,306API/178opt-in skips and204Linux PostgreSQL/zero skips. Source coverage has24static identities (22new); actual presentation, current Save responses and trusted persistence remain distinct. Raw timestamp validity and four strict canonical length warnings are corrected; no other inventory business emitters, inferred goals, cross-producer joins or deployed/device acceptance were added. The final M7 section in the integration guide and `.task/otel-apply/HANDOFF.md` own detailed qualification, canonical sync/archive/post-lifecycle evidence, limits and cleanup.

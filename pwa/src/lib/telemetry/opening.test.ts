@@ -1,65 +1,56 @@
 import type { BrowserObservation } from './navigation';
 import { observation, envelopeAttributes } from '@/test/telemetry';
+import { shutdownTelemetry } from './server';
+import type { LogRecord } from '@opentelemetry/api';
 // Transport assertions run deferred work inline; action scheduling is tested separately.
 vi.mock('next/server', () => ({ after: (callback: () => Promise<void>) => callback() }));
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { reportBrowserObservation } from './actions';
 import { classifyScreen, observeOpening } from './opening';
 
-const fetchMock = vi.fn().mockResolvedValue({ ok: true });
+const { emitMock } = vi.hoisted(() => ({
+  emitMock: vi.fn<(producer: string, record: LogRecord) => void>(),
+}));
+vi.mock('./sdk', () => ({
+  createLogDelivery: () => ({ emit: emitMock, flush: async () => {}, shutdown: async () => {} }),
+}));
+// Opening adapter tests isolate delivery; native capture has independent coverage.
+vi.mock('./native', () => ({
+  createNativeDelivery: () => ({ register() {}, flush: async () => {}, shutdown: async () => {} }),
+}));
+const expectedAttributes = (screen: Parameters<typeof envelopeAttributes>[0]) =>
+  Object.fromEntries(
+    envelopeAttributes(screen).map(({ key, value }) => [
+      key,
+      'intValue' in value ? Number(value.intValue) : value.stringValue,
+    ])
+  );
 beforeEach(() => {
-  vi.stubGlobal('fetch', fetchMock);
   vi.stubEnv('WFS_VERSION', '1.4.2-beta.1');
   vi.stubEnv('WFS_TELEMETRY_ENABLED', 'true');
   vi.stubEnv('SENTRAME_OTLP_BASE', 'https://sentrame.example');
   vi.stubEnv('SENTRAME_BROWSER_TOKEN', 'browser-test');
   vi.stubEnv('SENTRAME_SERVER_TOKEN', 'server-test');
 });
-afterEach(() => {
+afterEach(async () => {
+  await shutdownTelemetry();
   vi.unstubAllEnvs();
   vi.unstubAllGlobals();
   vi.clearAllMocks();
 });
 
 it('forwards the approved Search opening as a fixed browser log', async () => {
-  vi.stubGlobal('fetch', fetchMock);
   vi.stubEnv('WFS_TELEMETRY_ENABLED', 'true');
   vi.stubEnv('SENTRAME_OTLP_BASE', 'https://sentrame.example');
   vi.stubEnv('SENTRAME_BROWSER_TOKEN', 'browser-test');
   vi.stubEnv('SENTRAME_SERVER_TOKEN', 'server-test');
   await reportBrowserObservation(observation('search'));
-  const [url, options] = fetchMock.mock.calls[0];
-  expect(url).toBe('https://sentrame.example/v1/logs');
-  expect(options.headers).toEqual({
-    'Content-Type': 'application/json',
-    Authorization: 'Bearer browser-test',
-  });
-  expect(JSON.parse(options.body)).toEqual({
-    resourceLogs: [
-      {
-        resource: {
-          attributes: [
-            { key: 'service.name', value: { stringValue: 'wfs-pwa-browser' } },
-            { key: 'service.version', value: { stringValue: '1.4.2-beta.1' } },
-          ],
-        },
-        scopeLogs: [
-          {
-            scope: { name: 'wfs.anonymous' },
-            logRecords: [
-              {
-                timeUnixNano: expect.stringMatching(/^\d{19}$/),
-                observedTimeUnixNano: expect.stringMatching(/^\d{19}$/),
-                eventName: 'pwa.app.opened',
-                severityNumber: 9,
-                body: { stringValue: 'WFS opening observed' },
-                attributes: envelopeAttributes('search'),
-              },
-            ],
-          },
-        ],
-      },
-    ],
+  expect(emitMock).toHaveBeenCalledWith('browser', {
+    timestamp: expect.any(Number),
+    observedTimestamp: expect.any(Number),
+    eventName: 'pwa.app.opened',
+    severityNumber: 9,
+    attributes: expectedAttributes('search'),
   });
 });
 
@@ -148,7 +139,7 @@ it.each([
   Object.assign(Object.create({ inherited: true }), { screen: 'search' }),
 ])('rejects malformed or extended input %# without export', async (input) => {
   await expect(reportBrowserObservation(input)).resolves.toBeUndefined();
-  expect(fetchMock).not.toHaveBeenCalled();
+  expect(emitMock).not.toHaveBeenCalled();
 });
 
 it('rejects accessor input without invoking browser-controlled code', async () => {
@@ -158,14 +149,14 @@ it('rejects accessor input without invoking browser-controlled code', async () =
   const input = Object.defineProperty({}, 'screen', { enumerable: true, get: read });
   await expect(reportBrowserObservation(input)).resolves.toBeUndefined();
   expect(read).not.toHaveBeenCalled();
-  expect(fetchMock).not.toHaveBeenCalled();
+  expect(emitMock).not.toHaveBeenCalled();
 });
 
 it('contains malformed object inspection failures', async () => {
   const { proxy, revoke } = Proxy.revocable({}, {});
   revoke();
   await expect(reportBrowserObservation(proxy)).resolves.toBeUndefined();
-  expect(fetchMock).not.toHaveBeenCalled();
+  expect(emitMock).not.toHaveBeenCalled();
 });
 
 it.each([
@@ -186,12 +177,11 @@ it.each([
   'other',
 ] as const)('accepts only fixed browser authority for approved %s', async (screen) => {
   await reportBrowserObservation(observation(screen));
-  expect(fetchMock).toHaveBeenCalledTimes(1);
-  const options = fetchMock.mock.calls[0][1];
-  expect(options.headers.Authorization).toBe('Bearer browser-test');
-  const record = JSON.parse(options.body).resourceLogs[0].scopeLogs[0].logRecords[0];
+  expect(emitMock).toHaveBeenCalledTimes(1);
+  const [producer, record] = emitMock.mock.calls[0];
+  expect(producer).toBe('browser');
   expect(record.eventName).toBe('pwa.app.opened');
-  expect(record.attributes).toEqual(envelopeAttributes(screen));
+  expect(record.attributes).toEqual(expectedAttributes(screen));
 });
 
 it.each(['reject', 'throw', 'hang'])(
@@ -242,11 +232,10 @@ it('serializes the browser clock and separately captured forwarding clock exactl
     sequence: 7,
   };
   await reportBrowserObservation(input);
-  const record = JSON.parse(fetchMock.mock.calls[0][1].body).resourceLogs[0].scopeLogs[0]
-    .logRecords[0];
-  expect(record.timeUnixNano).toBe(`${BigInt(input.timestamp) * 1_000_000n}`);
-  expect(record.observedTimeUnixNano).toBe(`${BigInt(now) * 1_000_000n}`);
-  expect(record.body).toEqual({ stringValue: 'WFS presentation observed' });
-  expect(record.attributes.at(-1)).toEqual({ key: 'source.sequence', value: { intValue: '7' } });
+  const record = emitMock.mock.calls[0][1];
+  expect(record.timestamp).toBe(input.timestamp);
+  expect(record.observedTimestamp).toBe(now);
+  expect(record.eventName).toBe('pwa.screen.presented');
+  expect(record.attributes?.['source.sequence']).toBe(7);
   clock.mockRestore();
 });

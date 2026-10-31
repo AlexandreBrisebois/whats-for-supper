@@ -1,5 +1,7 @@
 'use client';
 
+import { useSurfacePresentation } from '@/components/telemetry/useSurfacePresentation';
+
 import { useEffect, useState } from 'react';
 import { X, RotateCcw, Trash2 } from 'lucide-react';
 import { getTrashItems, restoreRecipe, purgeRecipe, type TrashItem } from '@/lib/api/recipes';
@@ -24,6 +26,8 @@ export function RecycleBinSheet({ onClose }: RecycleBinSheetProps) {
   const [restoreErrors, setRestoreErrors] = useState<Set<string>>(new Set());
   const [restoringIds, setRestoringIds] = useState<Set<string>>(new Set());
   const [pinDialog, setPinDialog] = useState<PinDialogState | null>(null);
+  useSurfacePresentation('recipe.bin', true);
+  useSurfacePresentation('recipe.purge', pinDialog !== null);
 
   useEffect(() => {
     let isActive = true;

@@ -1,5 +1,7 @@
 'use client';
 
+import { useSurfacePresentation } from '@/components/telemetry/useSurfacePresentation';
+
 import { useState } from 'react';
 import { ChevronDown, X } from 'lucide-react';
 import type {
@@ -179,6 +181,7 @@ export function RecipeFiltersSheet({
   onApply,
   onClose,
 }: RecipeFiltersSheetProps) {
+  useSurfacePresentation('recipe.filters', true);
   const { panelRef, onKeyDown } = useDialogFocus(onClose);
   const [draftFilters, setDraftFilters] = useState<RecipeSearchFiltersDto>({ ...activeFilters });
   const [draftPreferences, setDraftPreferences] = useState<RecipeSearchPreferencesDto>({

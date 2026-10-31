@@ -1,5 +1,7 @@
 'use client';
 
+import { useSurfacePresentation } from '@/components/telemetry/useSurfacePresentation';
+
 import { useState, useRef, useEffect } from 'react';
 import { Settings, Trash2, Pencil, Flag } from 'lucide-react';
 import { t } from '@/locales';
@@ -18,6 +20,7 @@ export function ActionGearMenu({
   onReportImportIssue,
 }: ActionGearMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
+  useSurfacePresentation('recipe.actions', isOpen);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Close dropdown when clicking outside

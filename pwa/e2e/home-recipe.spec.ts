@@ -115,6 +115,21 @@ async function measureAdaptiveTonight(page: Page) {
   });
 }
 
+async function expectHomeHandoffsReachable(page: Page) {
+  for (const id of ['quick-capture-trigger', 'home-browse-all-trigger']) {
+    const tile = page.getByTestId(id);
+    await tile.evaluate((el) => el.scrollIntoView({ block: 'center' }));
+    const visible = await tile.evaluate((el) => {
+      const r = el.getBoundingClientRect();
+      const nav = document.querySelector('nav')!.getBoundingClientRect();
+      const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+      return r.top >= 0 && r.bottom <= nav.top && (hit === el || el.contains(hit));
+    });
+    expect(visible).toBe(true);
+    await expect(tile).toHaveAccessibleName(/\S/);
+  }
+}
+
 test.describe('Home Command Center — Planned Recipe Flow', () => {
   test.beforeEach(async ({ page }) => {
     const baseUrl = process.env.BASE_URL || 'http://127.0.0.1:3000';
@@ -319,8 +334,7 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
                 await expect(card.getByText('Green beans', { exact: true })).toBeVisible();
               }
               const geometry = await measureAdaptiveTonight(page);
-              expect(geometry.photo.height).toBeGreaterThanOrEqual(160);
-              expect(geometry.photo.width).toBeGreaterThan(geometry.photo.height);
+              expect(geometry.photo.height).toBeCloseTo(geometry.photo.width * 0.8, 0);
               expect(geometry.card.width).toBeLessThanOrEqual(432);
               await expect(card.getByRole('heading', { name, exact: true })).toBeVisible();
               const label = `${width}-${height}-${growth}-${expanded}`;
@@ -329,17 +343,7 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
                 contentType: 'application/json',
               });
               await expectTonightLayout(page, card, testInfo, label);
-              for (const id of ['quick-capture-trigger', 'home-browse-all-trigger']) {
-                const tile = page.getByTestId(id);
-                await tile.evaluate((el) => el.scrollIntoView({ block: 'center' }));
-                const visible = await tile.evaluate((el) => {
-                  const r = el.getBoundingClientRect();
-                  const nav = document.querySelector('nav')!.getBoundingClientRect();
-                  const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
-                  return r.top >= 0 && r.bottom <= nav.top && (hit === el || el.contains(hit));
-                });
-                expect(visible).toBe(true);
-              }
+              await expectHomeHandoffsReachable(page);
             }
             await page.getByTestId('tonight-ingredients-toggle').click();
             await expect(page.getByTestId('tonight-ingredients-toggle')).toHaveAttribute(
@@ -348,13 +352,14 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
             );
           }
         }
-        // Same content and width: reducing viewport height makes the photo shallower, then floors it.
+        // At the same width, shorter viewports preserve the photo and use page scrolling.
         await page.setViewportSize({ width: 412, height: 915 });
         const tall = await measureAdaptiveTonight(page);
         await page.setViewportSize({ width: 412, height: 640 });
         const short = await measureAdaptiveTonight(page);
-        expect(short.photo.height).toBe(160);
-        expect(short.photo.height).toBeLessThan(tall.photo.height);
+        expect(short.photo.width).toBeCloseTo(tall.photo.width, 0);
+        expect(short.photo.height).toBeCloseTo(tall.photo.height, 0);
+        expect(short.photo.height).toBeCloseTo(short.photo.width * 0.8, 0);
       });
       for (const image of ['missing', 'failed']) {
         test(`${image} photo retains modest fallback`, async ({ page }, testInfo) => {
@@ -374,7 +379,9 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
         });
       }
       for (const lines of [1, 2]) {
-        test(`initial ${lines}-line title reveals both handoffs`, async ({ page }, testInfo) => {
+        test(`initial ${lines}-line title keeps both handoffs reachable`, async ({
+          page,
+        }, testInfo) => {
           await page.setViewportSize({ width: 412, height: 915 });
           await page.emulateMedia({ reducedMotion: 'reduce' });
           const name =
@@ -401,19 +408,13 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
             animations: 'disabled',
           });
           expect(geometry.scrollY).toBe(0);
-          expect(geometry.photo.height).toBeGreaterThanOrEqual(160);
-          expect(geometry.photo.width).toBeGreaterThan(geometry.photo.height);
+          expect(geometry.photo.height).toBeCloseTo(geometry.photo.width * 0.8, 0);
           expect(geometry.photo.width).toBeCloseTo(geometry.innerWidth, 0);
           expect(geometry.titleLines).toBe(lines);
           expect(geometry.card.top).toBeGreaterThanOrEqual(0);
-          expect(geometry.card.bottom).toBeLessThanOrEqual(geometry.nav.top);
-          for (const label of geometry.labels) {
-            expect(label.top).toBeGreaterThanOrEqual(0);
-            expect(label.bottom).toBeLessThanOrEqual(geometry.nav.top);
-            expect(label.hit).toBe(true);
-          }
           // Reachability checks scroll; initial geometry must precede them.
           await expectTonightLayout(page, card, testInfo, 'initial-controls');
+          await expectHomeHandoffsReachable(page);
         });
       }
     });

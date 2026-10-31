@@ -1,3 +1,5 @@
+import { observeOpening, presentationChanged } from '@/lib/telemetry/opening';
+import type { BrowserObservation } from '@/lib/telemetry/navigation';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { RecycleBinSheet } from './RecycleBinSheet';
@@ -8,6 +10,7 @@ const api = vi.hoisted(() => ({
   purgeRecipe: vi.fn(),
 }));
 vi.mock('@/lib/api/recipes', () => api);
+vi.mock('next/navigation', () => ({ usePathname: () => '/recipes' }));
 vi.mock('@/locales', () => ({ t: (_key: string, fallback: string) => fallback }));
 const item = {
   id: '550e8400-e29b-41d4-a716-446655440111',
@@ -45,4 +48,73 @@ describe('Recycle Bin recovery', () => {
     );
     expect(api.restoreRecipe).toHaveBeenCalledTimes(2);
   });
+});
+
+// Exercise the semantic consumer through the actual document coordinator/hook.
+function startPresentationStream() {
+  vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
+  const submit = vi.fn<(event: BrowserObservation) => Promise<void>>().mockResolvedValue();
+  const observe = () => observeOpening(document, true, '/recipes', submit);
+  observe();
+  submit.mockClear();
+  document.addEventListener(presentationChanged, observe);
+  return {
+    events: () => submit.mock.calls.map(([event]) => [event.eventName, event.screen]),
+    raw: () => submit.mock.calls.map(([event]) => event),
+    stop: () => document.removeEventListener(presentationChanged, observe),
+  };
+}
+
+it('observes the bin shell across read failure/retry and nested PIN pending/failure/cancel/reopen', async () => {
+  vi.resetAllMocks();
+  const stream = startPresentationStream();
+  api.getTrashItems.mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce([item]);
+  let rejectPurge!: (error: Error) => void;
+  api.purgeRecipe.mockImplementation(
+    () =>
+      new Promise<void>((_resolve, reject) => {
+        rejectPurge = reject;
+      })
+  );
+  const onClose = vi.fn();
+  const view = render(<RecycleBinSheet onClose={onClose} />);
+  try {
+    expect(stream.events()).toEqual([['pwa.surface.opened', 'recipe.bin']]);
+    expect(await screen.findByRole('alert')).toHaveTextContent('Could not load the Recycle Bin.');
+    fireEvent.click(screen.getByTestId('trash-retry'));
+    fireEvent.click(await screen.findByTestId(`action-purge-${item.id}`));
+    fireEvent.change(screen.getByTestId('elevated-pin-input'), {
+      target: { value: 'pin-private-sentinel' },
+    });
+    fireEvent.submit(screen.getByTestId('elevated-pin-dialog'));
+    expect(screen.getByRole('button', { name: 'Deleting…' })).toBeDisabled();
+    expect(stream.events()).toEqual([
+      ['pwa.surface.opened', 'recipe.bin'],
+      ['pwa.surface.opened', 'recipe.purge'],
+    ]);
+    rejectPurge(new Error('synthetic rejection'));
+    expect(await screen.findByTestId('elevated-pin-error')).toBeVisible();
+    expect(screen.getByTestId('elevated-pin-input')).toHaveValue('pin-private-sentinel');
+    expect(stream.events()).toHaveLength(2);
+    fireEvent.click(screen.getByTestId('elevated-pin-cancel'));
+    await Promise.resolve();
+    fireEvent.click(screen.getByTestId(`action-purge-${item.id}`));
+    expect(screen.getByTestId('elevated-pin-input')).toHaveValue('');
+    view.unmount();
+    await Promise.resolve();
+    expect(stream.events()).toEqual([
+      ['pwa.surface.opened', 'recipe.bin'],
+      ['pwa.surface.opened', 'recipe.purge'],
+      ['pwa.surface.closed', 'recipe.purge'],
+      ['pwa.surface.opened', 'recipe.purge'],
+      ['pwa.surface.closed', 'recipe.bin'],
+      ['pwa.surface.closed', 'recipe.purge'],
+    ]);
+    expect(api.purgeRecipe).toHaveBeenCalledOnce();
+    expect(onClose).not.toHaveBeenCalled();
+    expect(JSON.stringify(stream.raw())).not.toMatch(/pin-private-sentinel|Pasta|550e8400/);
+  } finally {
+    view.unmount();
+    stream.stop();
+  }
 });

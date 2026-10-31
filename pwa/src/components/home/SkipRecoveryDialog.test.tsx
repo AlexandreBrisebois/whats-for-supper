@@ -1,3 +1,6 @@
+import { observeOpening, presentationChanged } from '@/lib/telemetry/opening';
+import type { BrowserObservation } from '@/lib/telemetry/navigation';
+vi.mock('next/navigation', () => ({ usePathname: () => '/home' }));
 import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 
@@ -111,4 +114,82 @@ it('disables dismissal while saving and explicitly confirms partial abandonment'
   expect(cancel).toHaveBeenCalledOnce();
   fireEvent.click(screen.getByTestId('recovery-abandon'));
   expect(abandon).toHaveBeenCalledOnce();
+});
+
+// Run the real declaration/coordinator path rather than mocking the observation hook.
+function startPresentationStream() {
+  const visibility = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
+  const submit = vi.fn<(event: BrowserObservation) => Promise<void>>().mockResolvedValue();
+  const observe = () => observeOpening(document, true, '/home', submit);
+  observe();
+  submit.mockClear();
+  document.addEventListener(presentationChanged, observe);
+  return {
+    observe,
+    visibility,
+    events: () => submit.mock.calls.map(([event]) => [event.eventName, event.screen]),
+    raw: () => submit.mock.calls.map(([event]) => event),
+    stop: () => {
+      document.removeEventListener(presentationChanged, observe);
+      visibility.mockRestore();
+    },
+  };
+}
+
+it('keeps one recovery identity across pending, step and feedback changes until dismissal', async () => {
+  const stream = startPresentationStream();
+  const props = {
+    isOpen: false,
+    step: 1 as const,
+    onClose: vi.fn(),
+    onBack: vi.fn(),
+    onAction: vi.fn(),
+  };
+  const view = render(<SkipRecoveryDialog {...props} />);
+  try {
+    expect(stream.events()).toEqual([]);
+    view.rerender(<SkipRecoveryDialog {...props} isOpen />);
+    view.rerender(
+      <SkipRecoveryDialog
+        {...props}
+        isOpen
+        step={2}
+        pending
+        replacement={{
+          phase: 'saving',
+          message: 'PRIVATE_RECOVERY_MESSAGE',
+          recipeName: 'PRIVATE_RECOVERY_RECIPE',
+        }}
+      />
+    );
+    fireEvent.click(screen.getByTestId('recovery-close'));
+    expect(props.onClose).not.toHaveBeenCalled();
+    view.rerender(
+      <SkipRecoveryDialog
+        {...props}
+        isOpen
+        step={2}
+        replacement={{
+          phase: 'retry',
+          message: 'PRIVATE_RECOVERY_MESSAGE',
+          recipeName: 'PRIVATE_RECOVERY_RECIPE',
+        }}
+      />
+    );
+    expect(stream.events()).toEqual([['pwa.surface.opened', 'planning.recovery']]);
+    fireEvent.click(screen.getByTestId('recovery-close'));
+    expect(props.onClose).toHaveBeenCalledOnce();
+    view.rerender(<SkipRecoveryDialog {...props} />);
+    await Promise.resolve();
+    view.rerender(<SkipRecoveryDialog {...props} isOpen />);
+    expect(stream.events()).toEqual([
+      ['pwa.surface.opened', 'planning.recovery'],
+      ['pwa.surface.closed', 'planning.recovery'],
+      ['pwa.surface.opened', 'planning.recovery'],
+    ]);
+    expect(JSON.stringify(stream.raw())).not.toMatch(/PRIVATE_RECOVERY|saving|retry/);
+  } finally {
+    view.unmount();
+    stream.stop();
+  }
 });

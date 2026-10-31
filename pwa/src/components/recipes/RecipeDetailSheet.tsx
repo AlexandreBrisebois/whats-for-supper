@@ -1,8 +1,15 @@
 'use client';
+import {
+  useLoadedPresentation,
+  useSurfacePresentation,
+} from '@/components/telemetry/useSurfacePresentation';
+import { observeOriginalRequest } from '@/lib/telemetry/opening';
+import { reportBrowserObservation } from '@/lib/telemetry/actions';
+import { observeIssueResult } from '@/lib/telemetry/issue-results';
 import { DemoAiActionGate } from '@/components/demo/DemoAiActionGate';
 import { CalendarUnavailableError } from '@/lib/deployment-calendar';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useLayoutEffect, useState, useRef, useMemo } from 'react';
 import {
   useRecipeNotesStore,
   initializeRecipeNotes,
@@ -136,6 +143,44 @@ export function RecipeDetailSheet({
   const [shareError, setShareError] = useState<string | null>(null);
   const [showCooksMode, setShowCooksMode] = useState(false);
   const [showImportIssueSheet, setShowImportIssueSheet] = useState(false);
+  const issueGeneration = useRef(0);
+  const issueMounted = useRef(false);
+  useLayoutEffect(() => {
+    issueMounted.current = true;
+    const invalidate = () => {
+      issueGeneration.current++;
+    };
+    const visibility = () => {
+      if (document.visibilityState !== 'visible') invalidate();
+    };
+    document.addEventListener('visibilitychange', visibility);
+    window.addEventListener('pagehide', invalidate);
+    return () => {
+      issueMounted.current = false;
+      invalidate();
+      document.removeEventListener('visibilitychange', visibility);
+      window.removeEventListener('pagehide', invalidate);
+    };
+  }, [recipeId]);
+  const closeDetail = () => {
+    issueGeneration.current++;
+    onClose();
+  };
+  const closeImportIssue = () => {
+    issueGeneration.current++;
+    setShowImportIssueSheet(false);
+  };
+  const detailEntry = useMemo(() => ({}), [recipeId]);
+  useSurfacePresentation('recipe.detail', true);
+  useSurfacePresentation(
+    'recipe.plan',
+    !!recipe && !isLoading && !loadError && !isEditing && showActionPivot
+  );
+  useLoadedPresentation(
+    'pwa.recipe_detail.presented',
+    detailEntry,
+    !!recipe && !isLoading && !loadError
+  );
   const fileInputRef = useRef<HTMLInputElement>(null);
   const addToast = useUiStore((state) => state.addToast);
   const removeToast = useUiStore((state) => state.removeToast);
@@ -381,7 +426,27 @@ export function RecipeDetailSheet({
 
   const handleSaveImportIssue = async (draft: RecipeImportIssueDraft) => {
     if (!recipe) return;
-    const submission = await saveRecipeImportIssue(recipe.id, draft);
+    const generation = ++issueGeneration.current;
+    let observed = false;
+    const observe = (reason: Parameters<typeof observeIssueResult>[1]) => {
+      if (observed) return;
+      observed = true;
+      if (
+        issueMounted.current &&
+        issueGeneration.current === generation &&
+        document.visibilityState === 'visible'
+      ) {
+        observeIssueResult(document, reason, reportBrowserObservation);
+      }
+    };
+    let submission;
+    try {
+      submission = await saveRecipeImportIssue(recipe.id, draft);
+    } catch (error) {
+      observe('unconfirmed');
+      throw error;
+    }
+    observe(submission.issueResult ?? 'unconfirmed');
     setRecipe(submission.recipe);
     if (submission.reimportLaunchFailed) {
       throw new Error('Re-import launch failed');
@@ -406,6 +471,7 @@ export function RecipeDetailSheet({
 
   const handleResolveImportIssue = async () => {
     if (!recipe) return;
+    issueGeneration.current++;
     const updated = await resolveRecipeImportIssue(recipe.id);
     setRecipe(updated);
     setShowImportIssueSheet(false);
@@ -539,7 +605,7 @@ export function RecipeDetailSheet({
         type="button"
         aria-label={t('common.close', 'Close')}
         title={t('common.close', 'Close')}
-        onClick={onClose}
+        onClick={closeDetail}
         className="absolute inset-0 bg-charcoal/45 backdrop-blur-sm"
       />
 
@@ -623,7 +689,7 @@ export function RecipeDetailSheet({
               data-testid="action-close-sheet"
               aria-label={t('common.close', 'Close')}
               title={t('common.close', 'Close')}
-              onClick={onClose}
+              onClick={closeDetail}
               className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-charcoal/5 text-charcoal/70 transition hover:bg-charcoal/10"
             >
               <X size={18} />
@@ -675,6 +741,7 @@ export function RecipeDetailSheet({
                   data-testid="action-view-original"
                   onClick={() => {
                     if (recipe.sourceType === 'url' && recipe.sourceUrl) {
+                      observeOriginalRequest(document, reportBrowserObservation);
                       window.open(recipe.sourceUrl, '_blank', 'noopener,noreferrer');
                     } else {
                       setShowOriginals(true);
@@ -1144,7 +1211,7 @@ export function RecipeDetailSheet({
           isReimporting={recipe.importIssue?.isReimporting}
           reimportFailureMessage={recipe.importIssue?.reimportFailureMessage}
           reimportFailureImportId={recipe.importIssue?.reimportFailureImportId}
-          onClose={() => setShowImportIssueSheet(false)}
+          onClose={closeImportIssue}
           onSave={handleSaveImportIssue}
           onResolve={handleResolveImportIssue}
         />

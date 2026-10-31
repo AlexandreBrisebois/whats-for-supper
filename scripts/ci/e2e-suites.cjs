@@ -23,7 +23,7 @@ const suites = {
     'demo-management-access', 'demo-reset',
     'identity-persistence', 'install-identity', 'member-creation', 'onboarding',
     'online-recovery', 'pdf-capture', 'profile', 'recipe-import-reporting',
-    'settings', 'telemetry-opening', 'url-capture-recovery', 'utility-flows',
+    'settings', 'telemetry-errors', 'telemetry-navigation', 'telemetry-opening', 'url-capture-recovery', 'utility-flows',
   ],
 };
 

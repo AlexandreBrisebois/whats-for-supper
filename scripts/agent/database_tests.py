@@ -23,12 +23,23 @@ import yaml
 import test_ops
 
 ROOT = Path(__file__).resolve().parents[2]
-# The live API/PWA browser fixture remains a separate, explicitly enabled qualification.
+# Live browser and receiver fixtures remain separate, explicitly enabled qualifications.
 POSTGRES_FILTER = 'FullyQualifiedName~PostgresTests&FullyQualifiedName!~LiveBrowser_'
+LIVE_RECEIVER_EXCLUSION = 'FullyQualifiedName!~LiveReceiver_'
 
 
 class Unavailable(Exception):
     pass
+
+
+def requires_live_receiver(filter_expression):
+    # Opt in only through a positive, deliberately narrow VSTest name clause.
+    # A broad "RecipeIssueTelemetry" filter must not accidentally start a receiver.
+    clauses = re.findall(r'(?:^|[(&|])\s*FullyQualifiedName\s*[=~]\s*([^&|()]+)',
+                         filter_expression or '')
+    return any(re.search(r'(?:^|\.)RecipeIssueTelemetryPostgresTests(?:\.|$)', clause.strip())
+               or re.search(r'(?:^|\.)LiveReceiver_', clause.strip())
+               for clause in clauses)
 
 
 def command(args, *, env=None, timeout=30):
@@ -208,7 +219,11 @@ def run_database_tests(filter_expression=None):
             raise Unavailable('Repository .NET SDK is required for database acceptance.')
         before = test_ops.build_impact_digest(ROOT, test_ops.get_changed_files(), [])
         record['tested_identity'] = before
+        live_receiver = requires_live_receiver(filter_expression)
+        record['live_receiver_required'] = live_receiver
         selection = POSTGRES_FILTER
+        if not live_receiver:
+            selection += '&' + LIVE_RECEIVER_EXCLUSION
         if filter_expression:
             selection = f'({selection})&({filter_expression})'
         args = ['dotnet', 'test', 'api/src/RecipeApi.Tests/RecipeApi.Tests.csproj',
@@ -232,6 +247,8 @@ def run_database_tests(filter_expression=None):
                 record.update(status='failed', detail=f'dotnet test exited {code}; inspect test.log/TRX.')
             elif record['skipped']:
                 raise Unavailable('Selected PostgreSQL tests were skipped; database coverage is unverified.')
+            elif live_receiver and not any('.LiveReceiver_' in test['name'] for test in tests):
+                raise Unavailable('Required LiveReceiver_ qualification produced no results; receiver coverage is unverified.')
             elif record['passed'] != len(tests):
                 record.update(status='failed', detail='Non-passing PostgreSQL test outcomes in TRX.')
             else:

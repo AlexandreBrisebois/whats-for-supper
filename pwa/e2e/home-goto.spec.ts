@@ -39,6 +39,113 @@ test.describe('Home Command Center — GOTO & Pivot Flow', () => {
   });
 
   for (const appLocale of ['en', 'fr'] as const) {
+    test.describe(`Tonight photo parity (${appLocale})`, () => {
+      test.use({ appLocale });
+      for (const [width, height] of [
+        [390, 844],
+        [412, 915],
+        [320, 640],
+        [820, 1180],
+        [1180, 820],
+      ]) {
+        test(`Make this tonight preserves the loaded photo at ${width}x${height}`, async ({
+          page,
+        }, testInfo) => {
+          await page.setViewportSize({ width, height });
+          await page.emulateMedia({ reducedMotion: 'reduce' });
+          const name = appLocale === 'fr' ? 'Saumon rôti' : 'Roast salmon';
+          const source = `/api/recipes/${MOCK_IDS.RECIPE_LASAGNA}/hero`;
+          await page.route('**/api/goto/active', (route) =>
+            route.fulfill({
+              json: {
+                data: {
+                  recipeId: MOCK_IDS.RECIPE_LASAGNA,
+                  description: name,
+                  status: 'ready',
+                  imageUrl: source,
+                },
+              },
+            })
+          );
+          await page.route('**/hero', (route) =>
+            route.fulfill({ path: 'e2e/fixtures/cookbook-light.jpg', contentType: 'image/jpeg' })
+          );
+          const schedule = builders.scheduleDays();
+          const today = schedule.days.find((day) => day.date === toDateStr(currentMonday()))!;
+          today.recipe = null;
+          today.status = 0;
+          await mockSseWithConnectedSchedule(page, schedule as unknown as ScheduleDays);
+          await page.route(
+            (url) => url.pathname.endsWith('/api/schedule'),
+            (route) =>
+              route.request().method() === 'GET'
+                ? route.fulfill({ json: { data: schedule } })
+                : route.fallback()
+          );
+          const assignments: unknown[] = [];
+          await page.route('**/api/schedule/assign**', async (route) => {
+            if (route.request().method() !== 'POST') return route.fallback();
+            assignments.push(route.request().postDataJSON());
+            today.recipe = builders.scheduleRecipe({
+              id: MOCK_IDS.RECIPE_LASAGNA,
+              name,
+              image: source,
+            });
+            await route.fulfill({ json: { data: { message: 'Recipe assigned' } } });
+          });
+          await page.route(
+            (url) => url.pathname.endsWith(`/api/recipes/${MOCK_IDS.RECIPE_LASAGNA}`),
+            (route) =>
+              route.fulfill({
+                json: {
+                  recipe: builders.recipe({ id: MOCK_IDS.RECIPE_LASAGNA, name, imageUrl: source }),
+                },
+              })
+          );
+          await page.goto('/home');
+          await page.evaluate(() => document.fonts.ready);
+          const pivot = page.getByTestId('tonight-pivot-card');
+          const photo = pivot.getByRole('img', { name });
+          await expect
+            .poll(() => photo.evaluate((img: HTMLImageElement) => img.naturalWidth))
+            .toBeGreaterThan(0);
+          const before = (await photo.boundingBox())!;
+          expect(before.height).toBeCloseTo(before.width * 0.8, 0);
+          await page.screenshot({ path: testInfo.outputPath('pivot.png'), fullPage: true });
+          expect(assignments).toEqual([]);
+          await page.getByTestId('confirm-goto-btn').click();
+          const planned = page.getByTestId('tonight-menu-card');
+          const plannedPhoto = planned.getByRole('img', { name });
+          await expect
+            .poll(() => plannedPhoto.evaluate((img: HTMLImageElement) => img.naturalWidth))
+            .toBeGreaterThan(0);
+          await expect(pivot).toHaveCount(0);
+          await expect.poll(() => assignments.length).toBe(1);
+          expect(assignments[0]).toMatchObject({ recipeId: MOCK_IDS.RECIPE_LASAGNA });
+          const after = (await plannedPhoto.boundingBox())!;
+          await testInfo.attach('photo-geometry', {
+            body: JSON.stringify({ viewport: { width, height }, before, after }),
+            contentType: 'application/json',
+          });
+          await page.screenshot({ path: testInfo.outputPath('planned.png'), fullPage: true });
+          expect(after.width).toBeCloseTo(before.width, 0);
+          expect(after.height).toBeCloseTo(before.height, 0);
+          expect(after.height).toBeCloseTo(after.width * 0.8, 0);
+          const crop = await plannedPhoto.evaluate((img) => ({
+            fit: getComputedStyle(img).objectFit,
+            overflow: getComputedStyle(img.parentElement!).overflow,
+            radius: parseFloat(getComputedStyle(img.parentElement!).borderTopLeftRadius),
+          }));
+          expect(crop.fit).toBe('cover');
+          expect(crop.overflow).toBe('hidden');
+          expect(crop.radius).toBeGreaterThan(0);
+          await expectTonightLayout(page, planned, testInfo, 'planned-after-confirm');
+        });
+      }
+    });
+  }
+
+  for (const appLocale of ['en', 'fr'] as const) {
     test.describe(`Cookbook pivot (${appLocale})`, () => {
       test.use({ appLocale });
       for (const photo of ['light', 'dark', 'failed'] as const) {

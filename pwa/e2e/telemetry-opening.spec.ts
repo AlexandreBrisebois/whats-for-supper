@@ -1,3 +1,4 @@
+import { captureLogs, captureOnce } from './telemetry-wire';
 import { test, expect, type Page } from '@playwright/test';
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:http';
@@ -25,31 +26,48 @@ test('fresh Search -> real action -> Node capture; navigation suppresses, reload
     encoding: string | undefined;
     authorization: string | undefined;
     body: string;
+    wire: Buffer;
   }[] = [];
   const receiver = createServer(async (request, response) => {
+    if (request.url === '/v1/traces') {
+      // Native traces have separate live qualification, outside this log oracle.
+      for await (const chunk of request) {
+        void chunk;
+      }
+      response.writeHead(404).end();
+      return;
+    }
     if (request.url !== '/v1/logs') {
       redirects++;
       response.end();
       return;
     }
-    let body = '';
-    for await (const chunk of request) body += chunk;
-    if (JSON.parse(body).resourceLogs[0].scopeLogs[0].logRecords[0].eventName === 'pwa.app.opened')
-      received.push({
-        path: request.url,
-        type: request.headers['content-type'],
-        encoding: request.headers['content-encoding'],
-        authorization: request.headers.authorization,
-        body,
-      });
+    const chunks: Buffer[] = [];
+    for await (const chunk of request) chunks.push(chunk);
+    const wire = Buffer.concat(chunks);
+    for (const point of captureLogs(wire)) {
+      if (
+        JSON.parse(point.body).resourceLogs[0].scopeLogs[0].logRecords[0].eventName ===
+        'pwa.app.opened'
+      )
+        captureOnce(received, {
+          path: request.url,
+          type: request.headers['content-type'],
+          encoding: request.headers['content-encoding'],
+          authorization: request.headers.authorization,
+          ...point,
+        });
+    }
     if (receiverMode === 'timeout') return;
     if (receiverMode === 'redirect') {
       response.writeHead(307, { Location: '/forbidden' }).end();
       return;
     }
     response
-      .writeHead(receiverMode === 'reject' ? 503 : 200, { 'Content-Type': 'application/json' })
-      .end('{}');
+      .writeHead(receiverMode === 'reject' ? 503 : 200, {
+        'Content-Type': 'application/x-protobuf',
+      })
+      .end();
   });
   await new Promise<void>((resolve) => receiver.listen(0, '127.0.0.1', resolve));
   const endpoint = `http://127.0.0.1:${(receiver.address() as AddressInfo).port}`;
@@ -287,13 +305,14 @@ test('fresh Search -> real action -> Node capture; navigation suppresses, reload
     await drainBodies();
     for (const item of received) {
       expect(item.path).toBe('/v1/logs');
-      expect(item.type).toBe('application/json');
+      expect(item.type).toBe('application/x-protobuf');
       expect(item.encoding).toBeUndefined();
       expect(item.authorization).toBe('Bearer opening-fixture-browser');
       expect(JSON.parse(item.body)).toEqual({
         resourceLogs: [
           {
             resource: {
+              droppedAttributesCount: 0,
               attributes: [
                 { key: 'service.name', value: { stringValue: 'wfs-pwa-browser' } },
                 { key: 'service.version', value: { stringValue: '1.4.2-test.opening' } },
@@ -308,6 +327,7 @@ test('fresh Search -> real action -> Node capture; navigation suppresses, reload
                     observedTimeUnixNano: expect.stringMatching(/^\d{19}$/),
                     eventName: 'pwa.app.opened',
                     severityNumber: 9,
+                    droppedAttributesCount: 0,
                     body: { stringValue: 'WFS opening observed' },
                     attributes: [
                       { key: 'stage.name', value: { stringValue: 'search' } },
@@ -452,6 +472,7 @@ test('fresh Search -> real action -> Node capture; navigation suppresses, reload
         expect(Object.keys(record).sort()).toEqual([
           'attributes',
           'body',
+          'droppedAttributesCount',
           'eventName',
           'observedTimeUnixNano',
           'severityNumber',

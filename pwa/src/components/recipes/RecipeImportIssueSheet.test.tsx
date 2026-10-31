@@ -1,3 +1,7 @@
+import { observeOpening, presentationChanged } from '@/lib/telemetry/opening';
+import type { BrowserObservation } from '@/lib/telemetry/navigation';
+
+vi.mock('next/navigation', () => ({ usePathname: () => '/recipes' }));
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { RecipeImportIssueSheet } from './RecipeImportIssueSheet';
@@ -274,4 +278,64 @@ describe('RecipeImportIssueSheet', () => {
     fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
     expect(onClose).toHaveBeenCalledOnce();
   });
+});
+
+// Exercise the semantic consumer through the actual document coordinator/hook.
+function startPresentationStream() {
+  vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
+  const submit = vi.fn<(event: BrowserObservation) => Promise<void>>().mockResolvedValue();
+  const observe = () => observeOpening(document, true, '/recipes', submit);
+  observe();
+  submit.mockClear();
+  document.addEventListener(presentationChanged, observe);
+  return {
+    events: () => submit.mock.calls.map(([event]) => [event.eventName, event.screen]),
+    raw: () => submit.mock.calls.map(([event]) => event),
+    stop: () => document.removeEventListener(presentationChanged, observe),
+  };
+}
+
+it('keeps one issue presentation across pending and failed Save while retaining the draft', async () => {
+  const stream = startPresentationStream();
+  Object.assign(demo, { mode: false, loading: false, error: false });
+  let rejectSave!: (error: Error) => void;
+  const onSave = vi.fn(
+    () =>
+      new Promise<void>((_resolve, reject) => {
+        rejectSave = reject;
+      })
+  );
+  const onClose = vi.fn();
+  const props = { issue: existingIssue, onClose, onSave, onResolve: vi.fn() };
+  const view = render(<RecipeImportIssueSheet {...props} />);
+  try {
+    expect(stream.events()).toEqual([['pwa.surface.opened', 'recipe.issue']]);
+    fireEvent.change(screen.getByLabelText('What should we check?'), {
+      target: { value: 'private-note-sentinel' },
+    });
+    fireEvent.click(screen.getByTestId('import-issue-save'));
+    expect(screen.getByTestId('import-issue-save')).toBeDisabled();
+    view.rerender(<RecipeImportIssueSheet {...props} />);
+    expect(stream.events()).toHaveLength(1);
+    rejectSave(new Error('synthetic rejection'));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Could not save changes. Try again.'
+    );
+    expect(screen.getByLabelText('What should we check?')).toHaveValue('private-note-sentinel');
+    expect(screen.getByTestId('import-issue-save')).toBeEnabled();
+    expect(onClose).not.toHaveBeenCalled();
+    expect(stream.events()).toHaveLength(1);
+    fireEvent.click(screen.getByRole('button', { name: 'Close review issue' }));
+    expect(onClose).toHaveBeenCalledOnce();
+    view.unmount();
+    await Promise.resolve();
+    expect(stream.events()).toEqual([
+      ['pwa.surface.opened', 'recipe.issue'],
+      ['pwa.surface.closed', 'recipe.issue'],
+    ]);
+    expect(JSON.stringify(stream.raw())).not.toContain('private-note-sentinel');
+  } finally {
+    view.unmount();
+    stream.stop();
+  }
 });

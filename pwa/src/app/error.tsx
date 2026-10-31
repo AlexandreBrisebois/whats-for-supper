@@ -5,13 +5,15 @@ import { useEffect } from 'react';
 import { OpeningFallback } from '@/components/telemetry/OpeningFallback';
 
 import { t } from '@/locales';
+import { useBoundaryError } from '@/components/telemetry/useBoundaryError';
 
 interface ErrorProps {
-  error: Error & { digest?: string };
+  error: unknown;
   reset: () => void;
 }
 
 export default function Error({ error, reset }: ErrorProps) {
+  const retire = useBoundaryError(error);
   useEffect(() => {
     console.error(error);
   }, [error]);
@@ -26,7 +28,10 @@ export default function Error({ error, reset }: ErrorProps) {
         {t('errors.genericDescription', 'An unexpected error occurred. Please try again.')}
       </p>
       <button
-        onClick={reset}
+        onClick={() => {
+          retire();
+          reset();
+        }}
         className="rounded-xl bg-indigo px-6 py-3 font-semibold text-lavender transition-opacity hover:opacity-90"
       >
         {t('errors.tryAgain', 'Try again')}

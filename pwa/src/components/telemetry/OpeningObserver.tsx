@@ -2,7 +2,8 @@
 
 import { useEffect } from 'react';
 import { usePathname } from 'next/navigation';
-import { reportBrowserObservation } from '@/lib/telemetry/actions';
+import { reportBrowserError, reportBrowserObservation } from '@/lib/telemetry/actions';
+import { registerNativeErrors } from '@/lib/telemetry/errors';
 import { observeOpening, presentationChanged } from '@/lib/telemetry/opening';
 
 export function OpeningObserver({
@@ -21,10 +22,12 @@ export function OpeningObserver({
         readyPathname === pathname ? pathname : null,
         reportBrowserObservation
       );
+    const releaseErrors = registerNativeErrors(window, reportBrowserError);
     observe();
     document.addEventListener('visibilitychange', observe);
     document.addEventListener(presentationChanged, observe);
     return () => {
+      releaseErrors();
       document.removeEventListener('visibilitychange', observe);
       document.removeEventListener(presentationChanged, observe);
     };

@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useId, useRef, type ReactNode, type RefObject } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { X } from 'lucide-react';
 import { t, type Locale } from '@/locales';
+import { useSurfacePresentation } from '@/components/telemetry/useSurfacePresentation';
 
 /** A small native modal using the app's existing sheet/dialog surfaces. */
 export function DemoDialog({
@@ -14,17 +15,21 @@ export function DemoDialog({
   showTitleFocusOutline = true,
   dismissLabel,
   locale,
+  surfaceIdentity = 'demo.dialog',
 }: {
   title: string;
   description: string;
   children: ReactNode;
   dismissLabel?: string;
   locale?: Locale;
+  surfaceIdentity?: 'demo.dialog' | 'demo.introduction';
   onClose: () => void;
   returnFocus?: RefObject<HTMLElement | null>;
   showTitleFocusOutline?: boolean;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
+  const [presented, setPresented] = useState(false);
+  useSurfacePresentation(surfaceIdentity, presented);
   const heading = useRef<HTMLHeadingElement>(null);
   const dismissed = useRef(false);
   const dismiss = () => {
@@ -38,6 +43,7 @@ export function DemoDialog({
     const node = dialog.current;
     const focusTarget = returnFocus?.current;
     node?.showModal();
+    setPresented(node?.open ?? false);
     heading.current?.focus();
     return () => {
       node?.close();
@@ -48,6 +54,7 @@ export function DemoDialog({
   return (
     <dialog
       ref={dialog}
+      onClose={() => setPresented(dialog.current?.open ?? false)}
       aria-labelledby={titleId}
       aria-describedby={descriptionId}
       onKeyDown={(event) => {

@@ -1,11 +1,11 @@
 import { expect } from 'vitest';
 
 // Synthetic envelope used only by telemetry boundary tests.
-import type { BrowserObservation } from '@/lib/telemetry/navigation';
+import type { BrowserObservation, NavigationObservation } from '@/lib/telemetry/navigation';
 export function observation(
   screen: BrowserObservation['screen'] = 'search',
-  eventName: BrowserObservation['eventName'] = 'pwa.app.opened'
-): BrowserObservation {
+  eventName: NavigationObservation['eventName'] = 'pwa.app.opened'
+): NavigationObservation {
   return {
     eventName,
     screen,
