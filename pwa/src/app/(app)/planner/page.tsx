@@ -16,7 +16,7 @@ import {
   Sparkles,
   UtensilsCrossed,
   BookOpen,
-  RefreshCw,
+  ArrowRightLeft,
 } from 'lucide-react';
 
 import { usePlannerStore } from '@/store/plannerStore';
@@ -1222,7 +1222,7 @@ const PlannerDayCard = memo(function PlannerDayCard({
                     title={t('planner.choosePathTitle', 'Change this recipe')}
                     aria-label={t('planner.choosePathTitle', 'Change this recipe')}
                   >
-                    <RefreshCw size={18} />
+                    <ArrowRightLeft size={18} />
                   </motion.button>
                 )}
                 <PlannerDragHandle start={startRecipeDrag} moveBySlot={moveBySlot} />
