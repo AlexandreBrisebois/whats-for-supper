@@ -256,15 +256,16 @@ test.describe('Home Command Center — GOTO & Pivot Flow', () => {
           await expect(pivot.getByTestId('confirm-goto-btn')).toHaveAccessibleName(
             appLocale === 'fr' ? 'Préparer ce repas ce soir' : 'Make this tonight'
           );
-          await expect(pivot.getByTestId('discover-btn')).toHaveAccessibleName(
-            appLocale === 'fr' ? 'Recherche' : 'Quick Find'
-          );
+          await expect(pivot.getByTestId('discover-btn')).toHaveAccessibleName('Suggestions');
           await expect(pivot.getByTestId('order-in-btn')).toHaveAccessibleName(
             appLocale === 'fr' ? 'À emporter' : 'Take Out'
           );
           await expectTonightLayout(page, pivot, testInfo, 'mystery-proposal');
           await page.getByTestId('discover-btn').click();
           await expect(page.getByTestId('quick-find-modal')).toBeVisible();
+          await expect(
+            page.getByTestId('quick-find-modal').getByText('Suggestions', { exact: true })
+          ).toBeVisible();
           await page.getByTestId('quick-find-close').click();
           await expect(header).toHaveText(label);
           expect(today.status).toBe(3);
@@ -507,13 +508,7 @@ test.describe('Home Command Center — GOTO & Pivot Flow', () => {
                 : 'Nothing planned for tonight';
           await expect(card).toContainText(context);
           await expect(page.getByTestId('discover-btn')).toHaveAccessibleName(
-            state === 'mystery'
-              ? appLocale === 'fr'
-                ? 'Recherche'
-                : 'Quick Find'
-              : appLocale === 'fr'
-                ? 'Rechercher'
-                : 'Search'
+            state === 'mystery' ? 'Suggestions' : appLocale === 'fr' ? 'Rechercher' : 'Search'
           );
           await expect(page.getByTestId('order-in-btn')).toHaveAccessibleName(
             appLocale === 'fr' ? 'À emporter' : 'Take Out'

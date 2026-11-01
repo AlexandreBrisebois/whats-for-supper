@@ -185,8 +185,8 @@ export function TonightPivotCard({
               }
             >
               <Search size={16} aria-hidden="true" className="shrink-0" />
-              <span className="min-w-0 [overflow-wrap:normal]">
-                {nonCookingLabel ? t('home.quickFind', 'Quick Find') : t('home.search', 'Search')}
+              <span className="min-w-0 [overflow-wrap:anywhere]">
+                {nonCookingLabel ? t('home.quickFind', 'Suggestions') : t('home.search', 'Search')}
               </span>
             </button>
             <button

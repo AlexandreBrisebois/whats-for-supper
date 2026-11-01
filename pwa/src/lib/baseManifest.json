@@ -47,9 +47,9 @@
   ],
   "shortcuts": [
     {
-      "name": "Quick Find",
-      "short_name": "Find",
-      "description": "Quickly find something to cook",
+      "name": "Search",
+      "short_name": "Search",
+      "description": "Search your recipe library",
       "url": "/recipes",
       "icons": [
         {

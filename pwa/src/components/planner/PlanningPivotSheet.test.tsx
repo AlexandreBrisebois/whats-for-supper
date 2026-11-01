@@ -1,38 +1,9 @@
 vi.mock('next/navigation', () => ({ usePathname: () => '/planner' }));
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 
-const localeMock = vi.hoisted(() => {
-  let language: 'en' | 'fr' = 'en';
-  const dictionary: Record<string, { en: string; fr: string }> = {
-    'planner.choosePathTitle': {
-      en: 'Change this recipe',
-      fr: 'Changer cette recette',
-    },
-    'planner.choosePathSubtitle': {
-      en: 'Choose how to replace or remove this recipe',
-      fr: 'Choisissez comment remplacer ou retirer cette recette',
-    },
-    'planner.quickFindAction': { en: 'Quick replace', fr: 'Remplacement rapide' },
-    'planner.searchLibraryAction': { en: 'Search library', fr: 'Chercher dans la bibliothèque' },
-    'planner.removeRecipeAction': { en: 'Remove recipe', fr: 'Retirer la recette' },
-    'home.saveForNextWeek': {
-      en: 'Save for Next Week',
-      fr: 'Garder pour la semaine prochaine',
-    },
-    'home.moveFirstSlot': {
-      en: 'Moves to the first open slot',
-      fr: 'Déplace au premier créneau libre',
-    },
-  };
-
-  return {
-    setLanguage: (next: 'en' | 'fr') => {
-      language = next;
-    },
-    translate: (key: string, fallback: string) => dictionary[key]?.[language] ?? fallback,
-  };
-});
+import { setLocale } from '@/locales';
+beforeEach(() => setLocale('en'));
 
 vi.mock('framer-motion', () => ({
   motion: {
@@ -41,11 +12,6 @@ vi.mock('framer-motion', () => ({
     ),
   },
   AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-}));
-
-vi.mock('@/locales', () => ({
-  t: (key: string, fallback: string) => localeMock.translate(key, fallback),
-  getLocale: () => 'en',
 }));
 
 import { PlanningPivotSheet } from './PlanningPivotSheet';
@@ -79,7 +45,7 @@ describe('PlanningPivotSheet', () => {
     { hasRecipe: true, isNonCooking: false },
     { hasRecipe: true, isNonCooking: true },
   ])('orders the final actions for slot state %j', ({ hasRecipe, isNonCooking }) => {
-    localeMock.setLanguage('en');
+    setLocale('en');
     render(
       <PlanningPivotSheet
         isOpen
@@ -105,7 +71,7 @@ describe('PlanningPivotSheet', () => {
   });
 
   it.each([false, true])('uses supper context for an empty or marked day (%s)', (isNonCooking) => {
-    localeMock.setLanguage('en');
+    setLocale('en');
     render(
       <PlanningPivotSheet
         isOpen
@@ -135,28 +101,46 @@ describe('PlanningPivotSheet', () => {
     );
   });
   it('renders explicit recipe-change copy in English', () => {
-    localeMock.setLanguage('en');
+    setLocale('en');
     renderSheet();
 
     expect(screen.getByText('Change this recipe')).toBeInTheDocument();
     expect(screen.getByText('Choose how to replace or remove this recipe')).toBeInTheDocument();
-    expect(screen.getByText('Quick replace')).toBeInTheDocument();
+    expect(screen.getByText('Suggestions')).toBeInTheDocument();
     expect(screen.getByText('Search library')).toBeInTheDocument();
     expect(screen.getByText('Remove recipe')).toBeInTheDocument();
   });
 
   it('renders explicit recipe-change copy in French', () => {
-    localeMock.setLanguage('fr');
+    setLocale('fr');
     renderSheet();
 
     expect(screen.getByText('Changer cette recette')).toBeInTheDocument();
     expect(
       screen.getByText('Choisissez comment remplacer ou retirer cette recette')
     ).toBeInTheDocument();
-    expect(screen.getByText('Remplacement rapide')).toBeInTheDocument();
+    expect(screen.getByText('Suggestions')).toBeInTheDocument();
     expect(screen.getByText('Chercher dans la bibliothèque')).toBeInTheDocument();
     expect(screen.getByText('Retirer la recette')).toBeInTheDocument();
     expect(screen.queryByText(/repas/i)).not.toBeInTheDocument();
+  });
+
+  it.each(['en', 'fr'] as const)('uses real %s copy for empty and occupied days', (locale) => {
+    setLocale(locale);
+    const { props } = renderSheet({ hasRecipe: false });
+    expect(
+      screen.getByText(
+        locale === 'fr'
+          ? 'Parcourez jusqu’à 5 suggestions de recettes'
+          : 'Browse up to 5 recipe suggestions'
+      )
+    ).toBeVisible();
+    expect(screen.getByText('Suggestions')).toBeVisible();
+    expect(screen.getByTestId('pivot-search-library')).toHaveTextContent(
+      locale === 'fr' ? 'Chercher dans la bibliothèque' : 'Search library'
+    );
+    fireEvent.click(screen.getByTestId('pivot-quick-find'));
+    expect(props.onQuickFind).toHaveBeenCalledOnce();
   });
 
   it('renders an explicit close button', () => {
@@ -199,7 +183,7 @@ describe('PlanningPivotSheet', () => {
   });
 
   it('renders plan-later option when hasRecipe is true', () => {
-    localeMock.setLanguage('en');
+    setLocale('en');
     const onPlanLater = vi.fn();
     renderSheet({ hasRecipe: true, onPlanLater });
 

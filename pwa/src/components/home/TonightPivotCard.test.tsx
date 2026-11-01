@@ -370,3 +370,20 @@ describe('Mystery without a proposal', () => {
     }
   );
 });
+
+it.each(['en', 'fr'] as const)('labels saved Mystery suggestions in %s', (locale) => {
+  setLocale(locale);
+  render(
+    <TonightPivotCard
+      {...baseProps}
+      gotoDescription={null}
+      gotoRecipeId={null}
+      nonCookingKind="mystery"
+      nonCookingLabel="Mystery"
+      hasCheckedActive
+    />
+  );
+  expect(screen.getByTestId('discover-btn')).toHaveAccessibleName('Suggestions');
+  fireEvent.click(screen.getByTestId('discover-btn'));
+  expect(baseProps.onDiscover).toHaveBeenCalledOnce();
+});

@@ -133,7 +133,9 @@ export function QuickFindModal({
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center space-x-2 text-ochre">
               <Sparkles size={20} className="text-ochre animate-pulse" />
-              <span className="text-[10px] font-black uppercase tracking-[0.3em]">Quick find</span>
+              <span className="text-[10px] font-black uppercase tracking-[0.3em]">
+                {t('planner.quickFindAction', 'Suggestions')}
+              </span>
             </div>
             <button
               data-testid="quick-find-close"

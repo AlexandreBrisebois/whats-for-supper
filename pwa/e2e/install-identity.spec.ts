@@ -37,6 +37,12 @@ test('public install metadata agrees in initial HTML and retains access policy',
     '/recipes',
     '/capture',
   ]);
+  expect(manifest.shortcuts[0]).toMatchObject({
+    name: 'Search',
+    short_name: 'Search',
+    description: 'Search your recipe library',
+    url: '/recipes',
+  });
   expect(manifest.share_target.method).toBe('POST');
   expect(manifest.share_target.action).toBe('/share-target');
   const expectedShareTarget = {

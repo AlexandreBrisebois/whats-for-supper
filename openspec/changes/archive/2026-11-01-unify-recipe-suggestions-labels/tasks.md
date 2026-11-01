@@ -1,0 +1,45 @@
+# Tasks
+
+## 1. Consistent bilingual suggestion entry and heading
+
+**Outcome and scenarios:** All scenarios under meal-assignment’s Name the in-app recipe suggestion flow consistently and Describe the suggestion limit truthfully in both languages.
+
+**Owners and boundaries:** Existing Planner/Home entry components, shared modal and English/French common locale resources. Preserve existing locale keys where available, callback wiring, test IDs, ranking and recovery. No API or persistence changes.
+
+**Acceptance boundary:** Actual locale resources and rendered components; existing browser scenarios exercise entry, target retention, dismissal and recovery through `pwa/e2e/mock-api.ts`. Mocked browser checks do not establish new backend guarantees.
+
+- [x] 1.1 Update existing copy assertions in `PlanningPivotSheet.test.tsx`, `QuickFindModal.test.tsx` and `TonightPivotCard.test.tsx` for the exact bilingual entry/heading/supporting text and unchanged Search distinction. Avoid assertions supported only by hand-written translation mocks. Run `task test:unit -- src/components/planner/PlanningPivotSheet.test.tsx src/components/planner/QuickFindModal.test.tsx src/components/home/TonightPivotCard.test.tsx` before production edits and record the intended old-copy failures.
+- [x] 1.2 Apply the exact spec copy in both common locale files and the three entry/modal components, using existing keys for labels and a localized supporting-text key. Run the same focused unit command to green; retain existing zero/one/multiple-result, selection and dismissal checks without changing suggestion/recovery behavior. The user-approved minimal Home label wrapping adjustment is permitted after the enlarged-text reflow failure.
+- [x] 1.3 Update affected copy expectations in `pwa/e2e/home-goto.spec.ts` and `pwa/e2e/planner.spec.ts` and the current terminology explanations in `docs/user-guide.md`. Run `task test:e2e -- home-goto.spec.ts planner.spec.ts`; confirm saved Mystery entry/dismissal, ordinary Home Search, empty-day target and occupied-day recovery remain intact. Inspect the changed entry/supporting text and modal heading in English/French at a narrow mobile viewport and record whether wrapping/clipping is acceptable. No API mock contract change is expected.
+
+## 2. Installed shortcut copy matches Search
+
+**Outcome and scenarios:** app-installation’s Advertise direct household shortcuts, including exact Search name/short name/description, unchanged `/recipes` route, Capture and access handling.
+
+**Owners and boundaries:** `baseManifest.json`, existing manifest composition in `pdfManifest` and the `/manifest.json` route; existing manifest and installation tests. Static English shortcut copy is retained; locale negotiation and OS launcher refresh behavior are outside scope.
+
+**Acceptance boundary:** The base and composed manifest response plus existing browser shortcut-destination coverage. No shortcut/navigation implementation change is needed.
+
+- [x] 2.1 Extend existing `pwa/src/lib/pdfManifest.test.ts` and `pwa/src/lib/server/app-identity.test.ts` with explicit expected Search name, short name, description and destination instead of only comparing the response to the same base object. Run `task test:unit -- src/lib/pdfManifest.test.ts src/lib/server/app-identity.test.ts` before production edits and record the intended old-copy failures.
+- [x] 2.2 Change only the recipe shortcut’s name to `Search`, short name to `Search` and description to `Search your recipe library` in `pwa/src/lib/baseManifest.json`. Run the same focused unit command to green; confirm `/recipes`, `/capture`, icon metadata and identity-specific prefixes are preserved. Reconcile the user-guide terminology explanation if it mentions the shortcut; no extra installation documentation is needed otherwise.
+- [x] 2.3 Run `task test:e2e -- install-identity.spec.ts` against its existing isolated test setup. Verify served manifest copy and unchanged recipe-search/Capture entry and household/member gates. Record the result separately from any physical-device evidence; an existing OS launcher refreshing its cached label is not a completion claim.
+
+## 3. Final integration and verification
+
+- [x] 3.1 Reconcile scenario acceptance and preserve unrelated changes; run `openspec validate unify-recipe-suggestions-labels --strict`. Review the complete task-owned changed-path set, run `task prepare -- <complete reviewed paths>` followed by `task verify -- <same complete reviewed paths>`, and record passed/failed/blocked/not-run/not-applicable checks and the final `record_path`. Mark tasks complete only with their required acceptance evidence; do not sync, archive, commit or deploy as part of this change application.
+
+## Evidence
+
+- 1.1: Focused component command before production edits: 8 intended old-copy failures, 57 passed (real locale resources); `/tmp/wfs-labels-unit-red.log`.
+- 1.2: Same focused component command green: 65/65 passed, including existing count, selection, refresh and dismissal checks; `/tmp/wfs-labels-unit-green.log`.
+- 2.1: Focused manifest tests before production edits: 5 expected shortcut-copy failures, 19 passed; `/tmp/wfs-labels-manifest-red.log`.
+- 2.2: Focused manifest tests green: 24/24 passed; explicit base/composed Search and Capture checks retain icons, destinations and variant prefixes. `/tmp/wfs-labels-manifest-green.log`. Guide has no shortcut explanation requiring an additional edit.
+- 1.3 first browser run: 154 passed, 1 skipped, 4 failed. Two Home failures exposed real Suggestions overflow at enlarged text; user approved minimal wrapping adjustment. Two new Planner checks incorrectly expected dayIndex on a week-only fetch; corrected to inspect the modal Search destination. `/tmp/wfs-labels-e2e.log`.
+- 2.3: `task test:e2e -- install-identity.spec.ts --output=/tmp/wfs-labels-install-results --reporter=line`: 5/5 passed with isolated browser contexts and existing access-gate mocks. Served manifest copy, assets, Search/Capture destinations, household/member gates passed. Physical-device/OS cached-label refresh not run and not claimed.
+- 1.3 green: `task test:e2e -- home-goto.spec.ts planner.spec.ts`: 158 passed, 1 pre-existing skipped reload scenario (`home-goto.spec.ts`), no failures. `/tmp/wfs-labels-e2e-green.log`. Settled-animation screenshots rerun: `task test:e2e -- planner.spec.ts --grep "shows Suggestions copy" --output=/tmp/wfs-labels-visual-results --reporter=line`: 2 passed. Inspected real English/French entry/supporting copy and deck heading at 320×740: readable wrapping, no clipping of changed text; screenshots in `/tmp/wfs-labels-visual-results/`. Empty/occupied day and week retained on modal Search link; occupied dismissal preserved recipe. Existing Home Mystery dismissal, ordinary targeted Search and replacement-recovery scenarios passed. No API/mock contract change.
+- Scope review: only selected copy, localized resources, existing test assertions, focused browser copy/layout coverage, guide terminology and user-approved emergency wrapping changed. Existing callbacks, test IDs, ranking, API, destinations, icons and recovery remain unchanged. Unrelated telemetry draft and concurrent recipe-library/meal-planning archival/spec edits preserved and excluded.
+- Not applicable: API contract/client/database changes and new backend qualification. Not run: physical-device installation or cached OS launcher refresh.
+- 3.1 first final gate: preparation and strict OpenSpec validation passed. `task verify -- <21 reviewed paths>` passed documentation, spec:check (37 items), lint, format, typecheck and all unit tests, then failed content stability because workspace inputs mutated. Impact/API/contracts not run in this attempt; no final success claim. Record: `.task/agent-finish/runs/2931ff6e11404db898724327f34a63b0.json`. Preserve concurrent archival work and rerun complete selection on stable inputs.
+- 3.1 stable final gate: complete 21-path preparation passed; `task verify -- <same paths>` passed documentation, spec:check, lint, format, typecheck, unit (1411 passed), impact E2E (654 passed, 47 skipped), API (1268 passed, 173 skipped) and static contracts. Content identity remained stable. Record: `.task/agent-finish/runs/55c984a89dee4c88a2df3e1cfbbce10c.json`. Skips are not passed/device/database evidence. All required copy and preservation scenarios passed separately above.
+- Lifecycle follow-up: user explicitly authorized syncing the specs, then archiving this change and committing with a message after implementation completion. This supersedes the original application-only stopping boundary. Final task/evidence and lifecycle documentation updates postdate the implementation verification digest and are checked separately; implementation results retain their original identity.
+- Lifecycle: synced both delta specs into existing main capability owners; `openspec validate --specs` passed 35/35 and exact requirement-block comparison confirmed both deltas present, with existing title/Purpose and unmentioned requirements preserved. Archived after 7/7 tasks complete on 2026-11-01.

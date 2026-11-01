@@ -2037,6 +2037,89 @@ test.describe('Quick Replace relative next week', () => {
 for (const locale of ['fr', 'en'] as const) {
   test.describe(`Planner state labels ${locale}`, () => {
     test.use({ appLocale: locale });
+    test('shows Suggestions copy at narrow mobile width and retains the selected day', async ({
+      page,
+      baseURL,
+    }, testInfo) => {
+      await page.setViewportSize({ width: 320, height: 740 });
+      await setupCommonRoutes(page);
+      await page
+        .context()
+        .addCookies([{ name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: baseURL! }]);
+      await page.addInitScript(
+        (id) =>
+          localStorage.setItem(
+            'family-storage',
+            JSON.stringify({ state: { selectedFamilyMemberId: id }, version: 0 })
+          ),
+        MOCK_IDS.MEMBER_ALEX
+      );
+      const schedule = builders.scheduleDays() as unknown as ScheduleDays;
+      schedule.days = schedule.days!.map((day, index) => ({
+        ...day,
+        status: 0,
+        nonCooking: null,
+        recipe: index === 0 ? builders.scheduleRecipe({ id: MOCK_IDS.RECIPE_LASAGNA }) : null,
+      }));
+      await mockNonCookingSchedule(page, schedule);
+      await page.goto('/planner');
+      for (const dayIndex of [1, 0]) {
+        const card = page.getByTestId(`day-card-${dayIndex}`);
+        await card
+          .getByTestId(dayIndex === 0 ? 'change-recipe-button' : 'plan-meal-button')
+          .click();
+        const entry = page.getByTestId('pivot-quick-find');
+        await expect(entry.getByText('Suggestions', { exact: true })).toBeVisible();
+        const supporting = entry.locator('p');
+        await expect(supporting).toHaveText(
+          locale === 'fr'
+            ? 'Parcourez jusqu’à 5 suggestions de recettes'
+            : 'Browse up to 5 recipe suggestions'
+        );
+        await expect(page.getByTestId('pivot-search-library')).toContainText(
+          locale === 'fr' ? 'Chercher dans la bibliothèque' : 'Search library'
+        );
+        await expect(page.getByTestId('pivot-sheet')).toHaveCSS('opacity', '1');
+        await expect(page.getByTestId('pivot-sheet')).toHaveCSS('transform', 'none');
+        await entry.scrollIntoViewIfNeeded();
+        await expect(supporting).toBeVisible();
+        expect(
+          await supporting.evaluate(
+            (el) => el.scrollWidth <= el.clientWidth && el.scrollHeight <= el.clientHeight
+          )
+        ).toBe(true);
+        await page.screenshot({
+          path: testInfo.outputPath(`suggestions-entry-${locale}-${dayIndex}.png`),
+        });
+        const request = page.waitForRequest((req) =>
+          new URL(req.url()).pathname.includes('fill-the-gap')
+        );
+        await entry.click();
+        const url = new URL((await request).url());
+        expect(url.searchParams.get('weekOffset')).toBe('0');
+        await expect(
+          page.getByTestId('quick-find-modal').getByTestId('quick-find-search-library')
+        ).toHaveAttribute('href', new RegExp(`addToDay=${dayIndex}&weekOffset=0`));
+        const heading = page
+          .getByTestId('quick-find-modal')
+          .getByText('Suggestions', { exact: true });
+        await expect(heading).toBeVisible();
+        await expect(page.getByTestId('quick-find-modal')).toHaveCSS('opacity', '1');
+        await expect(page.getByTestId('quick-find-modal')).toHaveCSS('transform', 'none');
+        expect(
+          await heading.evaluate((el) => {
+            const box = el.getBoundingClientRect();
+            return box.left >= 0 && box.right <= innerWidth;
+          })
+        ).toBe(true);
+        await page.screenshot({
+          path: testInfo.outputPath(`suggestions-modal-${locale}-${dayIndex}.png`),
+        });
+        await page.getByTestId('quick-find-close').click();
+        await expect(page.getByTestId('quick-find-modal')).not.toBeVisible();
+        if (dayIndex === 0) await expect(card).toContainText(schedule.days![0].recipe!.name!);
+      }
+    });
     for (const count of [1, 2, 12]) {
       test(`localizes saved and pending recipe badges with ${count} votes at 200% text`, async ({
         page,

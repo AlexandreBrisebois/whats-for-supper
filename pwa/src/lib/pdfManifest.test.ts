@@ -4,6 +4,22 @@ describe('always-on PDF share manifest', () => {
   it('advertises compatible multipart sharing without deployment configuration', () => {
     const manifest = pdfManifest();
     expect(manifest.id).toBe('/');
+    expect(manifest.shortcuts).toEqual([
+      {
+        name: 'Search',
+        short_name: 'Search',
+        description: 'Search your recipe library',
+        url: '/recipes',
+        icons: [{ src: '/android-chrome-192x192.png', sizes: '192x192' }],
+      },
+      {
+        name: 'Capture Meal',
+        short_name: 'Capture',
+        description: 'Capture a new meal idea',
+        url: '/capture',
+        icons: [{ src: '/android-chrome-192x192.png', sizes: '192x192' }],
+      },
+    ]);
     expect(manifest.share_target.method).toBe('POST');
     expect(manifest.share_target.action).toBe('/share-target');
     expect(manifest.share_target).toMatchObject({

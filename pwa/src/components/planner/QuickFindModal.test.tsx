@@ -9,6 +9,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, act, fireEvent, waitFor, screen } from '@testing-library/react';
 import React from 'react';
+import { setLocale } from '@/locales';
 
 vi.mock('next/navigation', () => ({ usePathname: () => '/home' }));
 
@@ -119,6 +120,7 @@ function deferred<T>() {
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 beforeEach(() => {
+  setLocale('en');
   mockFillTheGapVersion = 0;
   mockFillTheGapVersions = {};
   mockGetFillTheGap.mockClear();
@@ -398,3 +400,15 @@ it('retains Quick Find through replay, week changes and unmount', async () => {
     await Promise.resolve();
   });
 });
+
+it.each(['en', 'fr'] as const)(
+  'renders the real %s Suggestions heading and dismisses',
+  async (locale) => {
+    setLocale(locale);
+    const { onClose, onSelect } = renderModal();
+    expect(await screen.findByText('Suggestions')).toBeVisible();
+    fireEvent.click(screen.getByTestId('quick-find-close'));
+    expect(onClose).toHaveBeenCalledOnce();
+    expect(onSelect).not.toHaveBeenCalled();
+  }
+);

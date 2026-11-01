@@ -26,7 +26,7 @@ Overnight, the app marks missed planned meals from earlier days as cooked so rec
 
 If tonight is set to **Take Out**, **Eating out**, or a custom plan, Home shows the saved plan and any note. Choose **Edit supper plan** to change it. **Mystery night** without a ready suggestion explains availability and keeps the usual choices for finding tonight's supper available without clearing the saved plan just because you opened Home. Choosing **Take Out** explicitly replaces a saved Mystery night after the save succeeds.
 
-If nothing is planned yet, you'll see a few fast choices. If your family has **GOTO recipes** saved, the app randomly picks one to show as your featured fallback. Tap **Make This Tonight** to put it on the menu in one step. Refreshing may show another recipe from your GOTO list. You can also use **Quick Find** for a short stack of up to five suggestions. **Skip** moves to the next suggestion; after the stack, you can search your library or start over.
+If nothing is planned yet, you'll see a few fast choices. If your family has **GOTO recipes** saved, the app randomly picks one to show as your featured fallback. Tap **Make This Tonight** to put it on the menu in one step. Refreshing may show another recipe from your GOTO list. Use **Search** to browse your recipe library. On a saved Mystery night, **Suggestions** opens a short stack of up to five recipe suggestions. **Skip** moves to the next suggestion; after the stack, you can search your library or start over.
 
 This screen saves you from opening the fridge, staring blankly, and ordering pizza for the third time this week.
 
@@ -80,7 +80,7 @@ When enough family members like the same recipe, it rises to the top of the plan
 
 You can vote before voting is opened; opening keeps those votes. Closing saves positive family totals for that week, then clears the working votes for the next round. Individual votes and passes are not kept in history. When you revote a week, only recipes voted on again change their saved totals.
 
-**Quick Find** and **Quick Replace** show current family likes first, then liked recipes left unselected during the previous four complete weeks, then other suggestions—up to five different recipes. Old unselected likes can also break ties in Discovery and unfiltered library suggestions, but do not change typed, filtered or similar-search ordering. **Search Library** remains available when suggestions are empty and can still find recipes outside Discovery.
+**Suggestions** in the planner and on saved Mystery nights shows current family likes first, then liked recipes left unselected during the previous four complete weeks, then other suggestions—up to five different recipes. Old unselected likes can also break ties in Discovery and unfiltered library suggestions, but do not change typed, filtered or similar-search ordering. **Search Library** remains available when suggestions are empty and can still find recipes outside Discovery.
 
 A recipe already planned for the current calendar week leaves Discovery immediately. Dreaming periodically pauses recently cooked recipes and returns eligible ones after they age out. The default cutoff is four complete calendar weeks before the current Monday, including that cutoff date; return waits for a successful Dreaming run.
 

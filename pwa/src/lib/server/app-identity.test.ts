@@ -80,6 +80,17 @@ describe('runtime install identity', () => {
       const { generateMetadata } = await import('@/app/layout');
       const manifest = await GET().json();
       const metadata = await generateMetadata();
+      expect(manifest.shortcuts[0]).toMatchObject({
+        name: 'Search',
+        short_name: 'Search',
+        description: 'Search your recipe library',
+        url: '/recipes',
+      });
+      expect(manifest.shortcuts[1]).toMatchObject({
+        name: 'Capture Meal',
+        short_name: 'Capture',
+        url: '/capture',
+      });
       expect(manifest.name).toBe(name);
       expect(manifest.short_name).toBe(name);
       expect(metadata.title).toBe(name);

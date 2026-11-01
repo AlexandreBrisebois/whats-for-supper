@@ -145,10 +145,10 @@ export const PlanningPivotSheet: React.FC<PlanningPivotSheetProps> = ({
                 </div>
                 <div className="flex-1">
                   <h4 className="font-heading text-xl font-black text-charcoal tracking-tight">
-                    {t('planner.quickFindAction', 'Quick replace')}
+                    {t('planner.quickFindAction', 'Suggestions')}
                   </h4>
                   <p className="text-[11px] text-charcoal/40 font-medium">
-                    Swipe through 5 tailored picks
+                    {t('planner.quickFindDescription', 'Browse up to 5 recipe suggestions')}
                   </p>
                 </div>
                 <ChevronRight size={18} className="text-charcoal/20" />
