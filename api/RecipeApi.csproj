@@ -40,7 +40,7 @@
     <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
     <PackageReference Include="Serilog.Enrichers.Environment" Version="3.0.1" />
     <PackageReference Include="System.ClientModel" Version="1.16.0" />
-    <PackageReference Include="Google.GenAI" Version="1.26.1" />
+    <PackageReference Include="Google.GenAI" Version="1.28.0" />
     <PackageReference Include="YamlDotNet" Version="18.1.0" />
   </ItemGroup>
 
