@@ -1580,7 +1580,7 @@ function RecipesContent() {
       {/* Main content area */}
       <div
         data-testid="browse-results-region"
-        className={`relative z-10 flex flex-1 flex-col items-center justify-start pt-4 px-3 sm:px-6 pb-2 min-h-[16rem] ${browseViewMode === 'stack' ? 'overflow-y-auto overflow-x-hidden touch-pan-y' : ''}`}
+        className={`relative z-10 flex flex-1 flex-col items-center justify-start pt-4 px-3 sm:px-6 ${browseViewMode === 'stack' ? 'pb-2 min-h-[16rem] overflow-y-auto overflow-x-hidden touch-pan-y' : 'pb-[8px] min-h-0'}`}
       >
         {(searchActive
           ? searchLoading && !searchData

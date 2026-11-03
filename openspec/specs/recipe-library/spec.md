@@ -1008,6 +1008,19 @@ When controls fit above the dock, Recipes SHALL let the current list or stack us
 - **WHEN** Search controls hide and reopen while a Search result is loaded or a request is pending
 - **THEN** the result region resizes without clearing criteria, results, pagination, list/stack position, presentation or the pending work
 
+#### Scenario: Settled enlarged-text list viewport
+- **WHEN** a loaded Explore or Search list is displayed at 393x852 CSS pixels with 200% root text in English or French, its controls fit above the dock, and layout has settled after reflow
+- **THEN** the list's scrollable viewport ends between zero and 8 CSS pixels above the actual dock top
+- **AND** list sizing does not extend its scrollable viewport below the dock or clip its usable bottom behind the canvas edge
+- **AND** text enlargement alone does not clear the collection, criteria, pagination or current request state
+
+#### Scenario: Reach the last list recipe after reflow and append
+- **WHEN** a nonempty list has more loaded rows than fit above the dock, including an appended page, with controls fitting above the dock at ordinary or 200% text
+- **THEN** list scrolling can bring the final recipe's name and activation target clear of the dock without an additional canvas scroll to uncover the list's bottom
+- **AND** when that final row fits in the available result height, the complete row and its focused activation target can be shown above the dock
+- **AND** a row taller than the available height remains readable and operable by intentional scrolling without requiring the whole row to fit at once
+- **AND** keyboard activation opens the final recipe's existing detail sheet, and dismissal returns to that recipe under the existing focus and position contracts
+
 ### Requirement: Keep recipe detail actions clear of the sheet edge
 
 When detail content is scrolled to its end, the final action SHALL have ordinary trailing space inside the sheet. At 16 px root text size, the normal read action's bottom-to-panel-edge gap SHALL be approximately 32 CSS px: 8 CSS px inside the button section plus the scroller's original 24 CSS px. The increment SHALL belong to the action section, without another dock or safe-area spacer.
