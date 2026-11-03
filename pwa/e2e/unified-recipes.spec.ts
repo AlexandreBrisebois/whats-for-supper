@@ -1,5 +1,5 @@
 import { swipeCurrentStackCard } from './helpers/stack-swipe';
-import { test, expect } from './fixtures';
+import { test, expect, type Page } from './fixtures';
 import { MOCK_IDS, builders, setupCommonRoutes } from './mock-api';
 
 async function prepareNavigationMember(page: import('@playwright/test').Page) {
@@ -23,6 +23,163 @@ async function prepareNavigationMember(page: import('@playwright/test').Page) {
     MOCK_IDS.MEMBER_ALEX
   );
   await setupCommonRoutes(page);
+}
+
+// A single passing frame can precede the dock's finite CSS transitions and the
+// ResizeObserver update. Observe stable layout after those animations finish.
+async function settledListGeometry(page: Page) {
+  const samples = await page.evaluate(async () => {
+    await document.fonts.ready;
+    const root = document.querySelector<HTMLElement>('[data-testid="browse-all-stack-container"]')!;
+    const list = document.querySelector<HTMLElement>(
+      '[data-testid="browse-list-scroll-container"]'
+    )!;
+    const dock = document.querySelector<HTMLElement>('[data-testid="app-bottom-navigation"]')!;
+    const frames = [];
+    let previous = '';
+    let stable = 0;
+    const start = performance.now();
+    while (performance.now() - start < 5000) {
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+      const listBox = list.getBoundingClientRect();
+      const dockBox = dock.getBoundingClientRect();
+      const rootBox = root.getBoundingClientRect();
+      const geometry = {
+        gap: dockBox.top - listBox.bottom,
+        overlap: listBox.bottom > dockBox.top,
+        listTop: listBox.top,
+        listBottom: listBox.bottom,
+        listHeight: listBox.height,
+        dockTop: dockBox.top,
+        rootBottom: rootBox.bottom,
+        rootScrollTop: root.scrollTop,
+      };
+      const active = [
+        ...root.getAnimations({ subtree: true }),
+        ...dock.getAnimations({ subtree: true }),
+      ].some(
+        (animation) =>
+          animation.playState !== 'finished' &&
+          animation.playState !== 'idle' &&
+          Number.isFinite(animation.effect?.getComputedTiming().endTime)
+      );
+      const signature = JSON.stringify(geometry);
+      const canvasMeasured = Math.abs(rootBox.bottom - dockBox.top) <= 1;
+      stable = !active && canvasMeasured && signature === previous ? stable + 1 : 0;
+      frames.push({ time: performance.now() - start, active, ...geometry });
+      previous = signature;
+      if (stable >= 4) return { settled: true, geometry, frames };
+    }
+    return { settled: false, geometry: frames.at(-1)!, frames };
+  });
+  await test.info().attach('list-layout-frames', {
+    body: JSON.stringify(samples),
+    contentType: 'application/json',
+  });
+  expect(samples.settled, 'dock transitions and observer layout settle').toBe(true);
+  return samples.geometry;
+}
+
+async function setupViewportRecipes(page: Page) {
+  const recipes = Array.from({ length: 24 }, (_, index) => {
+    const id = `a0000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`;
+    return builders.recipe({
+      id,
+      name: `Meal ${index + 1}`,
+      totalTime: 'PT30M',
+      isDiscoverable: true,
+      imageUrl: `/api/recipes/${id}/hero`,
+    });
+  });
+  const pages: number[] = [];
+  await page.route('**/api/recipes/library-summary', (route) =>
+    route.fulfill({
+      json: {
+        data: {
+          total: recipes.length,
+          neverCooked: recipes.length,
+          ratings: { love: 0, like: 0, dislike: 0, unrated: recipes.length },
+        },
+      },
+    })
+  );
+  await page.route('**/api/recipes?**', (route) => {
+    const url = new URL(route.request().url());
+    const pageNumber = Number(url.searchParams.get('page'));
+    const limit = Number(url.searchParams.get('limit'));
+    if (limit === 12) pages.push(pageNumber);
+    return route.fulfill({
+      json: {
+        updatedAt: '2026-05-04T12:00:00Z',
+        recipes: recipes.slice((pageNumber - 1) * limit, pageNumber * limit),
+        pagination: { page: pageNumber, limit, total: recipes.length },
+      },
+    });
+  });
+  await page.route('**/api/recipes/*', (route) => {
+    const recipe = recipes.find((item) =>
+      new URL(route.request().url()).pathname.endsWith(`/${item.id}`)
+    );
+    return recipe && route.request().method() === 'GET'
+      ? route.fulfill({ json: { recipe, updatedAt: '2026-05-04T12:00:00Z' } })
+      : route.fallback();
+  });
+  await page.route('**/api/recipes/*/hero', (route) =>
+    route.fulfill({
+      contentType: 'image/svg+xml',
+      body: '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300"><rect width="400" height="300" fill="#bcc9a8"/></svg>',
+    })
+  );
+  return { recipes, pages };
+}
+
+async function expectLastRecipeReachable(page: Page, name: string, fittingRow = true) {
+  const list = page.getByTestId('browse-list-scroll-container');
+  await list.evaluate((el) => {
+    const rows = el.querySelectorAll('[data-testid="browse-list-recipe-card"]');
+    el.scrollTop +=
+      rows[rows.length - 1].getBoundingClientRect().bottom - el.getBoundingClientRect().bottom + 4;
+  });
+  const last = page.getByTestId('browse-list-recipe-card').last();
+  const geometry = await settledListGeometry(page);
+  const row = (await last.boundingBox())!;
+  if (fittingRow) {
+    expect(row.height).toBeLessThan(geometry.listHeight);
+    expect(row.y).toBeGreaterThanOrEqual(geometry.listTop);
+    expect(row.y + row.height).toBeLessThanOrEqual(geometry.dockTop);
+  } else {
+    expect(row.height, 'exercise a row taller than its scrollport').toBeGreaterThan(
+      geometry.listHeight
+    );
+  }
+  expect(geometry.gap).toBeGreaterThanOrEqual(0);
+  expect(geometry.gap).toBeLessThanOrEqual(8);
+  expect(geometry.rootScrollTop).toBe(0);
+  await last.focus();
+  for (const key of ['Enter', 'Space']) {
+    if (!fittingRow) {
+      await list.evaluate((el) => {
+        const rows = el.querySelectorAll('[data-testid="browse-list-recipe-card"]');
+        const title = rows[rows.length - 1].querySelector('p')!;
+        el.scrollTop +=
+          title.getBoundingClientRect().bottom - el.getBoundingClientRect().bottom + 4;
+      });
+      const title = (await last.locator('p').first().boundingBox())!;
+      expect(title.y).toBeGreaterThanOrEqual(geometry.listTop);
+      expect(title.y + title.height).toBeLessThanOrEqual(geometry.dockTop);
+      const target = (await last.boundingBox())!;
+      expect(
+        Math.min(target.y + target.height, geometry.listBottom) -
+          Math.max(target.y, geometry.listTop)
+      ).toBeGreaterThanOrEqual(48);
+    }
+    await expect(last).toBeFocused();
+    await page.keyboard.press(key);
+    await expect(page.getByTestId('recipe-detail-sheet')).toContainText(name);
+    await page.getByTestId('action-close-sheet').click();
+    await expect(last).toBeFocused();
+  }
+  expect((await settledListGeometry(page)).rootScrollTop).toBe(0);
 }
 
 test.describe('constrained French stack placement', () => {
@@ -196,16 +353,133 @@ test('visible result viewport follows the dock at enlarged text', async ({ page 
   await page.evaluate(() => {
     document.documentElement.style.fontSize = '32px';
   });
-  const geometry = await page.evaluate(() => {
-    const list = document
-      .querySelector('[data-testid="browse-list-scroll-container"]')!
-      .getBoundingClientRect();
-    const dock = document.querySelector('nav')!.getBoundingClientRect();
-    return { gap: dock.top - list.bottom, overlap: list.bottom > dock.top };
-  });
+  const geometry = await settledListGeometry(page);
   expect(geometry.overlap).toBe(false);
   expect(geometry.gap).toBeGreaterThanOrEqual(0);
   expect(geometry.gap).toBeLessThanOrEqual(8);
+});
+
+test('last recipe remains reachable after enlarged-text list append', async ({
+  page,
+}, testInfo) => {
+  await page.setViewportSize({ width: 393, height: 852 });
+  await prepareNavigationMember(page);
+  const { recipes, pages } = await setupViewportRecipes(page);
+  await page.goto('/recipes');
+  await page.getByTestId('browse-view-list').click();
+  const list = page.getByTestId('browse-list-scroll-container');
+  await expect(list).toBeVisible();
+  await page.evaluate(() => {
+    document.documentElement.style.fontSize = '32px';
+  });
+  const initial = await settledListGeometry(page);
+  expect.soft(initial.overlap).toBe(false);
+  await list.evaluate((el) => {
+    el.scrollTop = el.scrollHeight;
+  });
+  await expect(page.getByTestId('browse-list-recipe-card')).toHaveCount(24);
+  expect(pages).toContain(2);
+  await expectLastRecipeReachable(page, recipes[23].name!);
+  await page.screenshot({ path: testInfo.outputPath('last-list-recipe.png') });
+});
+
+test.describe('French list viewport with reduced motion', () => {
+  test.use({ appLocale: 'fr' });
+  test('last recipe remains reachable through text reflow and a pending Search continuation', async ({
+    page,
+  }, testInfo) => {
+    test.setTimeout(60_000);
+    await page.setViewportSize({ width: 393, height: 852 });
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await prepareNavigationMember(page);
+    const { recipes } = await setupViewportRecipes(page);
+    const requests: (string | null)[] = [];
+    let release!: () => void;
+    let notifyStarted!: () => void;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const started = new Promise<void>((resolve) => {
+      notifyStarted = resolve;
+    });
+    await page.route('**/api/recipes/search', async (route) => {
+      if (route.request().method() !== 'POST') return route.fallback();
+      const request = route.request().postDataJSON();
+      requests.push(request.continuationToken ?? null);
+      if (request.continuationToken) {
+        notifyStarted();
+        await held;
+      }
+      const items = request.continuationToken ? recipes.slice(12) : recipes.slice(0, 12);
+      await route.fulfill({
+        json: {
+          data: {
+            topPick: null,
+            results: items.map((recipe) => ({
+              ...recipe,
+              isPromotionEligible: false,
+              reasons: [],
+            })),
+            nextCursor: request.continuationToken ? null : 'viewport-next',
+            appliedFilters: request.filters ?? {},
+            searchMode: 'explicit',
+            resultPath: 'lexical-only',
+          },
+        },
+      });
+    });
+    await page.goto('/recipes');
+    await page.getByTestId('browse-view-list').click();
+    await page.getByTestId('recipes-search-disclosure').click();
+    const firstSearch = page.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname.endsWith('/api/recipes/search') &&
+        response.request().method() === 'POST' &&
+        !response.request().postDataJSON().continuationToken
+    );
+    await page.getByTestId('recipe-search-input').fill('Meal');
+    await firstSearch;
+    await expect(page.getByTestId('browse-list-recipe-card')).toHaveCount(12);
+    await page.getByTestId('recipes-search-disclosure').click();
+    const list = page.getByTestId('browse-list-scroll-container');
+    await list.evaluate((el) => {
+      el.scrollTop = el.scrollHeight;
+    });
+    await started;
+    await page.evaluate(() => {
+      document.documentElement.style.fontSize = '32px';
+    });
+    const pending = await settledListGeometry(page);
+    expect(pending.gap).toBeGreaterThanOrEqual(0);
+    expect(pending.gap).toBeLessThanOrEqual(8);
+    await expect(page.getByTestId('browse-list-recipe-card')).toHaveCount(12);
+    release();
+    await expect(page.getByTestId('browse-list-recipe-card')).toHaveCount(24);
+    await expectLastRecipeReachable(page, recipes[23].name!, false);
+    const last = page.getByTestId('browse-list-recipe-card').last();
+    const beforeImageFailure = (await last.boundingBox())!.height;
+    await page.route('**/missing-list-hero.svg', (route) => route.abort());
+    await last.locator('img').evaluate((el: HTMLImageElement) => {
+      el.src = '/missing-list-hero.svg';
+    });
+    await expect
+      .poll(() =>
+        last.locator('img').evaluate((el: HTMLImageElement) => el.complete && el.naturalWidth === 0)
+      )
+      .toBe(true);
+    expect((await last.boundingBox())!.height).toBe(beforeImageFailure);
+    await page.screenshot({ path: testInfo.outputPath('search-last-list-recipe.png') });
+    await page.evaluate(() => {
+      document.documentElement.style.fontSize = '16px';
+    });
+    const restored = await settledListGeometry(page);
+    expect(restored.gap).toBeGreaterThanOrEqual(0);
+    expect(restored.gap).toBeLessThanOrEqual(8);
+    await expect(page.getByTestId('browse-list-recipe-card')).toHaveCount(24);
+    await page.getByTestId('recipes-search-disclosure').click();
+    await expect(page.getByTestId('recipe-search-input')).toHaveValue('Meal');
+    expect(requests).toEqual([null, 'viewport-next']);
+  });
 });
 
 test('visible result viewport keeps short enlarged Search scrollable', async ({ page }) => {
@@ -238,6 +512,29 @@ test('visible result viewport keeps short enlarged Search scrollable', async ({ 
   expect(scroll.top).toBeGreaterThan(0);
   await page.getByTestId('browse-list-recipe-card').first().scrollIntoViewIfNeeded();
   await expect(page.getByTestId('browse-list-recipe-card').first()).toBeVisible();
+  const visibleListHeight = await page
+    .getByTestId('browse-list-scroll-container')
+    .evaluate((el) => {
+      const list = el.getBoundingClientRect();
+      const root = el
+        .closest('[data-testid="browse-all-stack-container"]')!
+        .getBoundingClientRect();
+      const dock = document
+        .querySelector('[data-testid="app-bottom-navigation"]')!
+        .getBoundingClientRect();
+      return Math.min(list.bottom, root.bottom, dock.top) - Math.max(list.top, root.top);
+    });
+  expect(
+    visibleListHeight,
+    'a tall recipe retains a usable scroll/activation strip'
+  ).toBeGreaterThanOrEqual(48);
+  const first = page.getByTestId('browse-list-recipe-card').first();
+  expect((await first.boundingBox())!.height).toBeGreaterThan(visibleListHeight);
+  await first.focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByTestId('recipe-detail-sheet')).toBeVisible();
+  await page.getByTestId('action-close-sheet').click();
+  await expect(first).toBeFocused();
   await page.getByTestId('recipe-search-input').focus();
   await expect(page.getByTestId('recipe-search-input')).toBeFocused();
   await page.getByTestId('recipes-search-disclosure').click();

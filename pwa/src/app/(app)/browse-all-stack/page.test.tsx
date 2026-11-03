@@ -77,7 +77,8 @@ vi.mock('next/image', () => ({
 //   - the front card (data-front="true")
 //   - the End Card (data-testid="browse-all-end-card")
 // This allows tests to simulate swipes on both recipe cards and the End Card.
-vi.mock('framer-motion', () => ({
+vi.mock('framer-motion', async (importOriginal) => ({
+  useComposedRefs: (await importOriginal<typeof import('framer-motion')>()).useComposedRefs,
   motion: {
     div: ({
       children,
@@ -85,6 +86,7 @@ vi.mock('framer-motion', () => ({
       onTap,
       // Strip framer-motion-specific props
       layout: _layout,
+      initial: _initial,
       dragConstraints: _dragConstraints,
       dragElastic: _dragElastic,
       dragMomentum: _dragMomentum,

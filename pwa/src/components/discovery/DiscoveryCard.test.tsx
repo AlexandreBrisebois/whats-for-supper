@@ -49,11 +49,23 @@ const BASE_PROPS = {
 };
 
 describe('DiscoveryCard — neutral visual parity', () => {
-  it('renders cuisine and meal-type badges cluster above description', () => {
+  it('places one passive time badge inside the hero without classification pills or footer', () => {
     render(<DiscoveryCard {...BASE_PROPS} />);
-    expect(screen.getByTestId('discovery-card-cuisine-badge')).toBeInTheDocument();
-    expect(screen.getByTestId('discovery-card-meal-type-supper')).toBeInTheDocument();
-    expect(screen.getByTestId('discovery-card-meal-type-lunch')).toBeInTheDocument();
+    const badge = screen.getByTestId('discovery-time-badge');
+    expect(screen.getByTestId('discovery-card-image')).toContainElement(badge);
+    expect(badge).toHaveTextContent('READY IN 30 MINS');
+    expect(badge.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
+    expect(badge).not.toHaveAttribute('tabindex');
+    expect(screen.getByRole('img', { name: BASE_PROPS.name })).toBeInTheDocument();
+    expect(screen.queryByTestId('discovery-card-cuisine-badge')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('discovery-card-meal-type-supper')).not.toBeInTheDocument();
+    expect(screen.getAllByText(/READY IN/)).toHaveLength(1);
+  });
+
+  it.each(['', 'PT0M', 'unknown'])('omits unusable time %s', (totalTime) => {
+    render(<DiscoveryCard {...BASE_PROPS} totalTime={totalTime} />);
+    expect(screen.queryByText(/READY IN/)).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: BASE_PROPS.name })).toBeInTheDocument();
   });
 
   it('does not require vote-specific highlight ring when hasFamilyInterest is true', () => {

@@ -889,3 +889,215 @@ test.describe('Discovery Flow', () => {
     await expect(page.getByTestId('discovery-card-interest-ring')).toHaveCount(0);
   });
 });
+
+for (const locale of ['en', 'fr'] as const) {
+  test.describe(`Discovery image metadata ${locale}`, () => {
+    test.use({ appLocale: locale });
+    test.beforeEach(async ({ page }) => {
+      await page
+        .context()
+        .addCookies([
+          { name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: 'http://127.0.0.1:3000' },
+        ]);
+      await page.addInitScript(
+        (id) =>
+          localStorage.setItem(
+            'family-storage',
+            JSON.stringify({ state: { selectedFamilyMemberId: id }, version: 0 })
+          ),
+        MOCK_IDS.MEMBER_ALEX
+      );
+      await setupCommonRoutes(page);
+      await page.route(
+        (url) => url.pathname === '/api/discovery',
+        (route) =>
+          route.fulfill({
+            json: {
+              data: [
+                builders.recipe({
+                  id: MOCK_IDS.RECIPE_LASAGNA,
+                  name: 'Roasted vegetables with rice and fresh garden herbs',
+                  totalTime: 'PT1H30M',
+                  cuisineType: 'Italian',
+                  mealTypes: ['Supper'],
+                }),
+                builders.recipe({
+                  id: MOCK_IDS.RECIPE_CHICKEN,
+                  name: 'Second recipe',
+                  totalTime: '',
+                }),
+                builders.recipe({
+                  id: MOCK_IDS.RECIPE_GNOCCHI,
+                  name: 'Third recipe',
+                  totalTime: 'PT45M',
+                }),
+                builders.recipe({
+                  id: MOCK_IDS.RECIPE_CARBONARA,
+                  name: 'Fourth recipe',
+                  totalTime: 'PT30M',
+                }),
+              ],
+            },
+          })
+      );
+      // Deterministic loaded image: no external photography or production data.
+      await page.route('**/api/recipes/*/hero', (route) =>
+        route.fulfill({
+          contentType: 'image/svg+xml',
+          body: '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600"><rect width="800" height="600" fill="#e9b46a"/><circle cx="400" cy="300" r="180" fill="#608447"/></svg>',
+        })
+      );
+    });
+
+    test('badge-origin drags preserve votes and feedback with zoomed layout', async ({
+      page,
+    }, testInfo) => {
+      await page.setViewportSize({ width: 320, height: 568 });
+      await page.goto('/discovery');
+      for (const [id, direction, value] of [
+        [MOCK_IDS.RECIPE_LASAGNA, 1, 1],
+        [MOCK_IDS.RECIPE_CHICKEN, -1, 2],
+      ] as const) {
+        const front = page.locator('[data-testid="discovery-card"][data-front="true"]');
+        await expect(front).toHaveAttribute('data-recipe-id', id);
+        // First drag begins on the badge; the second has no time and starts on the hero.
+        const start =
+          direction === 1
+            ? front.getByTestId('discovery-time-badge')
+            : front.getByTestId('discovery-card-image');
+        await start.scrollIntoViewIfNeeded();
+        const box = await start.boundingBox();
+        const x = box!.x + box!.width / 2,
+          y = box!.y + box!.height / 2;
+        await page.mouse.move(x, y);
+        await page.mouse.down();
+        await page.mouse.move(x + direction * 100, y, { steps: 10 });
+        await expect(
+          front.getByText(
+            locale === 'fr'
+              ? direction === 1
+                ? "J'adore"
+                : 'Passer'
+              : direction === 1
+                ? 'LOVE'
+                : 'PASS',
+            { exact: true }
+          )
+        ).toBeVisible();
+        if (direction === 1) {
+          const badgeBox = await front.getByTestId('discovery-time-badge').boundingBox();
+          const feedbackBox = await front
+            .getByText(locale === 'en' ? 'LOVE' : "J'adore", { exact: true })
+            .boundingBox();
+          const overlap =
+            badgeBox!.x < feedbackBox!.x + feedbackBox!.width &&
+            badgeBox!.x + badgeBox!.width > feedbackBox!.x &&
+            badgeBox!.y < feedbackBox!.y + feedbackBox!.height &&
+            badgeBox!.y + badgeBox!.height > feedbackBox!.y;
+          if (overlap) {
+            const badgeZ = await front
+              .getByTestId('discovery-time-badge')
+              .evaluate((el) => Number(getComputedStyle(el).zIndex));
+            const feedbackZ = await front
+              .getByText(locale === 'en' ? 'LOVE' : "J'adore", { exact: true })
+              .evaluate((el) => Number(getComputedStyle(el.parentElement!.parentElement!).zIndex));
+            expect(feedbackZ, 'swipe feedback must paint above the time badge').toBeGreaterThan(
+              badgeZ
+            );
+          }
+        }
+        await page.screenshot({ path: testInfo.outputPath(`drag-${direction}.png`) });
+        const request = page.waitForRequest(
+          (r) => r.method() === 'POST' && r.url().endsWith(`/${id}/vote`)
+        );
+        await page.mouse.up();
+        expect((await request).postDataJSON().vote).toBe(value);
+      }
+      await page.evaluate(() => {
+        document.documentElement.style.zoom = '2';
+      });
+      const like = page.getByRole('button', { name: 'Like recipe', exact: true });
+      await like.scrollIntoViewIfNeeded();
+      await expect(like).toBeInViewport();
+      await expect(
+        page.locator('[data-front="true"]').getByTestId('discovery-time-badge')
+      ).toBeVisible();
+    });
+
+    for (const [width, height] of [
+      [320, 568],
+      [390, 844],
+      [768, 1024],
+      [1440, 900],
+    ]) {
+      test(`readable passive badge at ${width}px`, async ({ page }, testInfo) => {
+        await page.setViewportSize({ width, height });
+        await page.emulateMedia({ reducedMotion: 'reduce' });
+        await page.goto('/discovery');
+        const front = page.locator('[data-testid="discovery-card"][data-front="true"]');
+        const badge = front.getByTestId('discovery-time-badge');
+        await expect(badge).toHaveText(
+          new RegExp(`${locale === 'en' ? 'READY IN' : 'PRÊT EN'} 1H 30 MINS`)
+        );
+        await expect(front.getByTestId('discovery-card-cuisine-badge')).toHaveCount(0);
+        await expect(front.locator('[data-testid^="discovery-card-meal-type"]')).toHaveCount(0);
+        const img = front.getByRole('img');
+        await expect
+          .poll(() => img.evaluate((el: HTMLImageElement) => el.complete && el.naturalWidth > 0))
+          .toBe(true);
+        const bounds = await badge.boundingBox();
+        const hero = await front.getByTestId('discovery-card-image').boundingBox();
+        expect(bounds!.x).toBeGreaterThanOrEqual(hero!.x);
+        expect(bounds!.y).toBeGreaterThanOrEqual(hero!.y);
+        expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(hero!.x + hero!.width);
+        expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(hero!.y + hero!.height);
+        await expect(badge).not.toHaveAttribute('tabindex');
+        if (width === 320) {
+          await page.mouse.move(bounds!.x + 20, bounds!.y + 10);
+          await page.mouse.wheel(0, 150);
+          await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(0);
+          await page.evaluate(() => scrollTo(0, 0));
+        }
+
+        const contrast = await badge.evaluate((el) => {
+          const style = getComputedStyle(el);
+          const luminance = (value: string) => {
+            const c = value
+              .match(/[\d.]+/g)!
+              .slice(0, 3)
+              .map(Number)
+              .map((v) => v / 255)
+              .map((v) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+            return c[0] * 0.2126 + c[1] * 0.7152 + c[2] * 0.0722;
+          };
+          const a = luminance(style.color),
+            b = luminance(style.backgroundColor);
+          return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+        });
+        expect(contrast).toBeGreaterThanOrEqual(4.5);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+          true
+        );
+        await page.screenshot({ path: testInfo.outputPath('loaded-hero.png'), fullPage: true });
+        const vote = page.getByRole('button', { name: 'Like recipe', exact: true });
+        await vote.scrollIntoViewIfNeeded();
+        await vote.focus();
+        await expect(vote).toBeFocused();
+        const request = page.waitForRequest(
+          (r) => r.method() === 'POST' && r.url().endsWith(`/${MOCK_IDS.RECIPE_LASAGNA}/vote`)
+        );
+        await page.keyboard.press('Enter');
+        expect((await request).postDataJSON().vote).toBe(1);
+        await expect(front).toHaveAttribute('data-recipe-id', MOCK_IDS.RECIPE_CHICKEN);
+        await expect(front.getByTestId('discovery-time-badge')).toHaveCount(0);
+        await page.getByRole('button', { name: 'Dislike recipe', exact: true }).click();
+        await expect(front).toHaveAttribute('data-recipe-id', MOCK_IDS.RECIPE_GNOCCHI);
+        // Missing photography still leaves readable text and usable voting.
+        await front.getByRole('img').evaluate((el: HTMLImageElement) => {
+          el.src = '/missing-fixture-image.png';
+        });
+        await expect(front.getByTestId('discovery-time-badge')).toBeVisible();
+      });
+    }
+  });
+}

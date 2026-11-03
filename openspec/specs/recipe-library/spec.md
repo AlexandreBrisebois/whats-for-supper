@@ -379,6 +379,21 @@ Browse SHALL render up to four loaded stack cards from the current index, with o
 - **THEN** its name remains visibly identifiable on the backing card using existing card styling
 - **AND** the failed image does not alter stack bounds or introduce a new fallback request
 
+#### Scenario: Insert a new rear record after advancing
+- **WHEN** advancing a six-record stack adds a previously unmounted record behind the visible cards
+- **THEN** its first painted frame already has the size, offset and opacity of its assigned depth
+- **AND** its shell and shadow never flash as a full-size opaque card before settling
+
+#### Scenario: Departed and promoted cards overlap in time
+- **WHEN** a departing card remains rendered while its successor becomes the current front
+- **THEN** the departed card does not add its height to the stack's front-matched backing bounds
+- **AND** equal-height fronts do not produce a transient enlargement of the backing shells or shadows
+
+#### Scenario: Full-title height changes during repeated advances
+- **WHEN** successive front records alternate between one-line and multi-line names
+- **THEN** each complete front name remains readable and the stack may adapt to its needed height
+- **AND** backing bounds follow that front-height transition without a separate oversize pulse or protrusion caused by the departed card
+
 ### Requirement: Navigate loaded stack cards with directional swipes
 
 On the front card, a right drag exceeding 35 pixels or rightward velocity exceeding 280 pixels/second SHALL request previous navigation after departure animation; corresponding negative thresholds SHALL request next navigation. Below both thresholds SHALL return the card without navigation. Back cards SHALL ignore navigation and tap callbacks.
@@ -992,6 +1007,19 @@ When controls fit above the dock, Recipes SHALL let the current list or stack us
 #### Scenario: Hide and restore Search controls
 - **WHEN** Search controls hide and reopen while a Search result is loaded or a request is pending
 - **THEN** the result region resizes without clearing criteria, results, pagination, list/stack position, presentation or the pending work
+
+#### Scenario: Settled enlarged-text list viewport
+- **WHEN** a loaded Explore or Search list is displayed at 393x852 CSS pixels with 200% root text in English or French, its controls fit above the dock, and layout has settled after reflow
+- **THEN** the list's scrollable viewport ends between zero and 8 CSS pixels above the actual dock top
+- **AND** list sizing does not extend its scrollable viewport below the dock or clip its usable bottom behind the canvas edge
+- **AND** text enlargement alone does not clear the collection, criteria, pagination or current request state
+
+#### Scenario: Reach the last list recipe after reflow and append
+- **WHEN** a nonempty list has more loaded rows than fit above the dock, including an appended page, with controls fitting above the dock at ordinary or 200% text
+- **THEN** list scrolling can bring the final recipe's name and activation target clear of the dock without an additional canvas scroll to uncover the list's bottom
+- **AND** when that final row fits in the available result height, the complete row and its focused activation target can be shown above the dock
+- **AND** a row taller than the available height remains readable and operable by intentional scrolling without requiring the whole row to fit at once
+- **AND** keyboard activation opens the final recipe's existing detail sheet, and dismissal returns to that recipe under the existing focus and position contracts
 
 ### Requirement: Keep recipe detail actions clear of the sheet edge
 
