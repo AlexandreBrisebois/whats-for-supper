@@ -113,7 +113,7 @@ When `gotoRecipeId` is null/falsy:
 
 - Header: **"What's for Supper?"**
 - Image area: centered `<Utensils>` icon only — no `<a>` tag, no gradient overlay
-- Footer: after the initial active read settles, the ordinary empty pivot shows a short GOTO-star explanation and a quiet **Choose GOTO recipes** text link to unfiltered `/browse-all-stack`, below Quick Find and Order In. It retains a 48 px target and makes no empty-list or readiness claim. Represented checking/pending and saved Mystery do not show this helper.
+- Footer: after the initial active read settles, the ordinary empty pivot keeps its short Go-To explanation and the existing Search handoff through the planner context. The separate Browse tile and legacy Go-To management link are retired. Represented checking/pending and saved Mystery retain their own handoffs.
 
 ---
 

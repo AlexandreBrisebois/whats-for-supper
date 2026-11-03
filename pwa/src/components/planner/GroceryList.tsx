@@ -435,7 +435,12 @@ export function GroceryList({
     const editable = extra.readOnly !== true;
     const editing = editingExtra === id;
     return (
-      <div key={`extra-${id}`} className="relative py-2" data-testid="grocery-extra-row">
+      <div
+        key={`extra-${id}`}
+        className="relative py-2"
+        data-testid="grocery-extra-row"
+        data-extra-id={id}
+      >
         {editing ? (
           <div className="flex items-center gap-2">
             <label className="sr-only" htmlFor={`extra-name-${id}`}>
@@ -665,13 +670,19 @@ export function GroceryList({
                     item,
                     renderKey: `${item.normalizedKey ?? ''}\u0000${item.unitText ?? ''}\u0000${sourceIndex}`,
                   }));
-                  const displayedItems = [
-                    ...itemsWithRenderKeys.filter(
-                      ({ item }) => !groceryState[item.displayName ?? '']
-                    ),
-                    ...itemsWithRenderKeys.filter(
-                      ({ item }) => groceryState[item.displayName ?? '']
-                    ),
+                  const displayedRows = [
+                    ...aisleExtras
+                      .filter((extra) => !extra.checked)
+                      .map((extra) => ({ kind: 'extra' as const, extra })),
+                    ...itemsWithRenderKeys
+                      .filter(({ item }) => !groceryState[item.displayName ?? ''])
+                      .map((entry) => ({ kind: 'recipe' as const, ...entry })),
+                    ...aisleExtras
+                      .filter((extra) => extra.checked)
+                      .map((extra) => ({ kind: 'extra' as const, extra })),
+                    ...itemsWithRenderKeys
+                      .filter(({ item }) => groceryState[item.displayName ?? ''])
+                      .map((entry) => ({ kind: 'recipe' as const, ...entry })),
                   ];
 
                   const checkedCount =
@@ -762,8 +773,9 @@ export function GroceryList({
                         hidden={isCollapsed}
                         aria-hidden={isCollapsed}
                       >
-                        {aisleExtras.map(renderExtraRow)}
-                        {displayedItems.map(({ item, renderKey }) => {
+                        {displayedRows.map((row) => {
+                          if (row.kind === 'extra') return renderExtraRow(row.extra);
+                          const { item, renderKey } = row;
                           const key = item.displayName ?? '';
                           const quantityHint = formatQuantityHint(item.quantity, item.unitText);
                           const isChecked = groceryState[key] ?? false;

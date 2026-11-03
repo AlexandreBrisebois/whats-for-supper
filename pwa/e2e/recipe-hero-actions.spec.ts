@@ -70,16 +70,102 @@ test.describe('Recipe Hero Actions', () => {
   });
 
   async function openRecipeDetail(page: Page) {
-    await page.goto('/recipes');
+    await page.goto('/recipes?focus=search');
+    await page.getByTestId('recipe-search-input').fill('Hero Test Recipe');
+    await page.getByTestId('recipe-search-input').press('Enter');
 
     // Wait for and click the recipe card
-    const recipeCard = page.getByTestId(`recipe-card-${MOCK_IDS.RECIPE_LASAGNA}`);
+    const recipeCard = page.getByTestId('stack-card-front');
     await expect(recipeCard).toBeVisible();
+    await expect(recipeCard).toHaveAttribute('data-recipe-id', MOCK_IDS.RECIPE_LASAGNA);
     await recipeCard.click();
 
     // Wait for the detail sheet to appear
     await expect(page.getByTestId('recipe-detail-name')).toContainText('Hero Test Recipe');
   }
+
+  for (const viewport of [
+    { width: 390, height: 844 },
+    { width: 820, height: 1180 },
+  ]) {
+    test(`detail action section owns its 8px inset at ${viewport.width}x${viewport.height}`, async ({
+      page,
+    }, testInfo) => {
+      await page.setViewportSize(viewport);
+      await openRecipeDetail(page);
+      const finalAction = page.getByTestId('action-toggle-discovery');
+      await finalAction.scrollIntoViewIfNeeded();
+      const gap = await finalAction.evaluate((button) => {
+        const scroller = button.closest('.overflow-y-auto') as HTMLElement;
+        scroller.scrollTop = scroller.scrollHeight;
+        return {
+          total: scroller.getBoundingClientRect().bottom - button.getBoundingClientRect().bottom,
+          scrollerPadding: parseFloat(getComputedStyle(scroller).paddingBottom),
+          actionPadding: parseFloat(getComputedStyle(button.parentElement!).paddingBottom),
+        };
+      });
+      expect(gap.total).toBeGreaterThanOrEqual(31);
+      expect(gap.total).toBeLessThanOrEqual(34);
+      expect(gap.scrollerPadding).toBe(24);
+      expect(gap.actionPadding).toBe(8);
+      await expect(finalAction).toBeVisible();
+      await page.screenshot({ path: testInfo.outputPath(`detail-actions-${viewport.width}.png`) });
+    });
+  }
+
+  test('detail edit actions stay reachable at the end of the scroller', async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 568 });
+    await openRecipeDetail(page);
+    await page.getByTestId('action-gear-menu').click();
+    await page.getByTestId('action-edit-recipe').click();
+    const cancel = page.getByTestId('recipe-cancel-edits');
+    await cancel.scrollIntoViewIfNeeded();
+    await cancel.focus();
+    const geometry = await cancel.evaluate((button) => {
+      const scroller = button.closest('.overflow-y-auto') as HTMLElement;
+      scroller.scrollTop = scroller.scrollHeight;
+      const panel = document.querySelector('[data-testid="recipe-detail-sheet"]')!;
+      return {
+        gap: scroller.getBoundingClientRect().bottom - button.getBoundingClientRect().bottom,
+        scrollerPadding: parseFloat(getComputedStyle(scroller).paddingBottom),
+        actionPadding: parseFloat(getComputedStyle(button.parentElement!).paddingBottom),
+        withinPanel:
+          button.getBoundingClientRect().bottom + 4 <= panel.getBoundingClientRect().bottom,
+      };
+    });
+    expect(geometry.gap).toBeGreaterThanOrEqual(31);
+    expect(geometry.scrollerPadding).toBe(24);
+    expect(geometry.actionPadding).toBe(24);
+    expect(geometry.withinPanel).toBe(true);
+    await expect(cancel).toBeFocused();
+  });
+
+  test.describe('French enlarged detail footer', () => {
+    test.use({ appLocale: 'fr' });
+    test('keeps the final action and focus reachable on a short phone', async ({ page }) => {
+      await page.setViewportSize({ width: 320, height: 568 });
+      await openRecipeDetail(page);
+      await page.evaluate(() => {
+        document.documentElement.style.fontSize = '32px';
+      });
+      const finalAction = page.getByTestId('action-toggle-discovery');
+      await finalAction.scrollIntoViewIfNeeded();
+      await finalAction.focus();
+      const geometry = await finalAction.evaluate((button) => {
+        const scroller = button.closest('.overflow-y-auto') as HTMLElement;
+        scroller.scrollTop = scroller.scrollHeight;
+        const panel = document.querySelector('[data-testid="recipe-detail-sheet"]')!;
+        return {
+          gap: scroller.getBoundingClientRect().bottom - button.getBoundingClientRect().bottom,
+          withinPanel:
+            button.getBoundingClientRect().bottom + 4 <= panel.getBoundingClientRect().bottom,
+        };
+      });
+      expect(geometry.gap).toBeGreaterThanOrEqual(31);
+      expect(geometry.withinPanel).toBe(true);
+      await expect(finalAction).toBeFocused();
+    });
+  });
 
   test('hero actions are visible only in edit mode', async ({ page }) => {
     await openRecipeDetail(page);

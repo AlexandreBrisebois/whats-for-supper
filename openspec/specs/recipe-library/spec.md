@@ -31,15 +31,15 @@ Preserved references to the former combined owners resolve through these current
 
 ### Requirement: Open the household library and offer list presentation
 
-Home SHALL offer “Browse your library” linking to `/browse-all-stack`. The library overlay SHALL offer a “Show recipe list” control that selects its list presentation. Access and member context SHALL follow the existing household-identity requirements.
+The bottom Recipes navigation SHALL open `/recipes`. The unified library SHALL offer stack and list presentation and SHALL keep bottom app navigation visible. Home SHALL NOT offer a separate Browse button. Access and member context SHALL follow the existing household-identity requirements.
 
 #### Scenario: Open from Home
-- **WHEN** a person with the existing household access and member context activates Home's Browse Library control
-- **THEN** the application opens the library overlay at `/browse-all-stack`
+- **WHEN** a person on Home with the existing household access and member context activates the bottom Recipes navigation control
+- **THEN** the application opens `/recipes` in Explore with collapsed search, no Search criteria and All scope, using the saved member presentation preference
 
 #### Scenario: Select list presentation
-- **WHEN** a person in card presentation activates “Show recipe list” and the preceding summary request succeeds
-- **THEN** the overlay selects list presentation and requests its first page
+- **WHEN** a person in Explore stack presentation activates “Show recipe list” and the preceding summary request succeeds
+- **THEN** Recipes selects list presentation and requests its first page
 
 ### Requirement: Return only eligible household library recipes
 
@@ -80,7 +80,7 @@ Successful authorized GET `/api/recipes` with `order=explore` SHALL order eligib
 
 ### Requirement: Request list pages for the selected library filter
 
-In list presentation the library SHALL request GET `/api/recipes` with `order=explore`, limit 12 and the current All/Discovery filter. All SHALL send `discoverableOnly=false` and Discovery SHALL send true. After successful summary retrieval, entry into list presentation or changing All/Discovery SHALL request page 1.
+In the Explore collection, in list presentation the library SHALL request GET `/api/recipes` with `order=explore`, limit 12 and the current All/Discovery filter. All SHALL send `discoverableOnly=false` and Discovery SHALL send true. After successful summary retrieval, entry into list presentation or changing All/Discovery SHALL request page 1.
 
 #### Scenario: Load the All list
 - **WHEN** list presentation loads with the initial All filter and its preceding summary request succeeds
@@ -312,7 +312,7 @@ On a relevant successful first-page load, Browse SHALL replace loaded recipes wi
 
 ### Requirement: Offer and load library stack presentation
 
-The library SHALL use stack presentation when the selected member has no saved list preference or current override. Selecting Show recipe stack SHALL select stack presentation. After the shared summary succeeds, stack first-page loads SHALL request explore order, limit 20 and the active All/Discovery filter.
+In the Explore collection, the library SHALL use stack presentation when the selected member has no saved list preference or current override. Selecting Show recipe stack SHALL select stack presentation. After the shared summary succeeds, stack first-page loads SHALL request explore order, limit 20 and the active All/Discovery filter.
 
 #### Scenario: Load the default stack
 - **WHEN** a member without a saved list preference enters the library and summary retrieval succeeds
@@ -324,15 +324,60 @@ The library SHALL use stack presentation when the selected member has no saved l
 
 ### Requirement: Present the current stack card and visual depth
 
-With nonempty successfully loaded stack results, Browse SHALL render up to four consecutive loaded cards beginning at the current index, with the first designated front. Cards SHALL display returned name, description, hero reference and formatted time; deeper cards SHALL have reduced scale, opacity and vertical offset.
+Browse SHALL render up to four loaded stack cards from the current index, with one front card. The face SHALL show its hero and complete name, plus localized Ready In over the image only for usable returned total time. It SHALL omit description and other secondary metadata. The immediate next backing card SHALL show its loaded image and a bounded name preview beneath the front during drag. Deeper cards SHALL remain quiet depth peeks. Backing content SHALL NOT increase front-matched bounds.
 
 #### Scenario: Render a window of loaded cards
 - **WHEN** stack results are available at a valid current index with no stack loader replacing cards
 - **THEN** up to four loaded records beginning at that index are rendered with one front card
 
 #### Scenario: Read stack card content
-- **WHEN** a returned card is displayed
-- **THEN** its name, description, hero reference and formatted time are presented
+- **WHEN** a returned card has a hero reference, a long name, a description and total time `PT1H30M`
+- **THEN** its face shows the hero and complete wrapping name, with a badge over the image reading localized Ready In with `1H 30 MINS`
+- **AND** the description and other secondary recipe metadata are absent from the face
+
+#### Scenario: No usable total time
+- **WHEN** a returned card has absent, empty, zero or unformattable total time
+- **THEN** no Ready In badge or estimated duration appears on its face
+- **AND** its image and name remain available for detail opening and stack navigation
+
+#### Scenario: Preserve stack context and external actions
+- **WHEN** a stack face is simplified in Explore or Search, including a planner-targeted entry
+- **THEN** position, available navigation, recipe detail opening and external per-recipe actions remain available under their existing requirements
+- **AND** the presentation change does not reset the collection, search criteria or planner target
+
+#### Scenario: Keep the original stack interactions
+- **WHEN** a person taps or presses Enter or Space on the focused front card
+- **THEN** the existing detail sheet opens for that card identity without advancing the collection
+- **AND** dismissing detail returns focus to the front card when it remains mounted
+- **WHEN** a person drags the front card horizontally
+- **THEN** Explore or Search navigates under its existing wrap, cursor and boundary rules
+- **AND** release or click after the drag does not also open detail
+- **AND** the simplified face adds no visible Previous / View recipe / Next row
+
+#### Scenario: Backing records have longer names
+- **WHEN** one or more backing records have names that wrap to more lines than the front card
+- **THEN** their hidden content does not increase their visible height below the front card
+- **AND** backing-card bottom edges remain small, consistent depth peeks rather than protruding toward the position or Discovery controls
+
+#### Scenario: Short or enlarged viewport
+- **WHEN** the stack is shown at 320x568 or 390x667 CSS pixels, in 667x375 landscape, or at 200 percent text in English or French
+- **THEN** the front image and complete wrapping name remain reachable without clipping or dock overlap
+- **AND** backing depth remains aligned while constrained height uses intentional vertical scrolling
+
+#### Scenario: Reveal the next loaded recipe mid-swipe
+- **WHEN** a person drags the front card sideways while a next loaded recipe is underneath
+- **THEN** the next recipe's image and name are visibly rendered within the backing card during movement
+- **AND** the backing card remains noninteractive and outside keyboard focus until promoted
+
+#### Scenario: Long title and repeated navigation
+- **WHEN** a long-name backing recipe is revealed and the person swipes through multiple loaded cards in succession
+- **THEN** its preview stays inside front-matched bounds without protruding into position or Discovery controls
+- **AND** promotion shows its full name and each swipe advances once without opening detail
+
+#### Scenario: Missing backing image
+- **WHEN** the next loaded recipe's hero image is unavailable
+- **THEN** its name remains visibly identifiable on the backing card using existing card styling
+- **AND** the failed image does not alter stack bounds or introduce a new fallback request
 
 ### Requirement: Navigate loaded stack cards with directional swipes
 
@@ -368,7 +413,7 @@ Tapping the front card without a tracked drag in that pointer session SHALL open
 
 ### Requirement: Wrap stack navigation within available results
 
-For a stable collection, navigation SHALL fetch missing adjacent pages and reach every eligible recipe in both directions. Next at the collection end SHALL wrap to its first card. Previous at its first card SHALL select the last card, requesting the calculated final page with limit 20 and the active filter when necessary. Pending page retrieval SHALL retain the current position.
+In the Explore collection, for a stable collection, navigation SHALL fetch missing adjacent pages and reach every eligible recipe in both directions. Next at the collection end SHALL wrap to its first card. Previous at its first card SHALL select the last card, requesting the calculated final page with limit 20 and the active filter when necessary. Pending page retrieval SHALL retain the current position.
 
 #### Scenario: Loop forward after the last loaded card
 - **WHEN** next is requested at the final collection card with no pending prefetch for more pages
@@ -404,7 +449,7 @@ In stack mode, five or fewer remaining cards on the current page SHALL trigger t
 
 ### Requirement: Display the loaded stack position against selected total
 
-The action bar SHALL display current global collection ordinal and the selected collection total in position / total form. The ordinal SHALL include preceding pages, including after backward wrap. Offset pagination SHALL NOT promise a stable snapshot during concurrent server mutations.
+In the Explore collection, the action bar SHALL display current global collection ordinal and the selected collection total in position / total form. The ordinal SHALL include preceding pages, including after backward wrap. Offset pagination SHALL NOT promise a stable snapshot during concurrent server mutations.
 
 #### Scenario: Display stack depth
 - **WHEN** the current global index is 2 and selected total is 24
@@ -425,18 +470,6 @@ The action bar SHALL initialize from the current recipe discoverability, default
 #### Scenario: Recover from rejected stack toggle
 - **WHEN** the PATCH rejects while the same recipe remains current
 - **THEN** pending feedback clears and the control displays its record-backed flag again
-
-### Requirement: Leave the Browse overlay through its navigation controls
-
-Close SHALL request browser back navigation. Search SHALL request `/recipes?focus=search`. Unmounting Browse SHALL reset its stack store.
-
-#### Scenario: Close or search from Browse
-- **WHEN** a person activates Close or Search in the library overlay
-- **THEN** Close requests back navigation or Search requests the focused Search route respectively
-
-#### Scenario: Reset departed Browse state
-- **WHEN** the Browse page unmounts
-- **THEN** loaded recipes, index, total and pagination return to the initial stack-store state
 
 ### Requirement: Show directional stack cues and request supported haptics
 
@@ -700,7 +733,7 @@ GET `/api/recipes` SHALL accept optional boolean `gotoOnly`. True SHALL restrict
 
 ### Requirement: Offer compact GOTO filtering on Browse
 
-Browse SHALL offer an immediate Go-To Star toggle immediately right of its existing single All/Discovery toggle in the same toolbar. Activation SHALL toggle the applied membership filter without Apply. Browse SHALL NOT show the extra Filters row, filter flyout or Go-To management. Selection SHALL survive All/Discovery and stack/list changes while mounted.
+Recipes SHALL offer an immediate Go-To Star toggle beside All/Discovery. It SHALL change the applied membership filter without Apply. Collapsed Search SHALL have no Filters row; expanded Search SHALL expose Filters below the toolbar without Go-To management. Toolbar and chooser SHALL share applied Go-To state while drafts wait for Apply. Selection SHALL survive scope and presentation changes while mounted.
 
 #### Scenario: Toggle GOTO
 - **WHEN** a person activates the unpressed Star filter
@@ -759,12 +792,12 @@ A confirmed local GOTO membership change SHALL reload a mounted applied-GOTO Bro
 
 ### Requirement: Preserve Browse usability on short viewports
 
-Browse SHALL recover space by removing the extra Filters row first and preserve current preferred stack/card dimensions on the normal phone viewport. Size reduction SHALL apply only when genuinely less viewport space is available, not globally lower preferred dimensions. Controls SHALL keep 48 by 48 CSS px targets, readable labels and visible focus; content SHALL reflow/scroll without horizontal overflow or traps, respecting safe areas and reduced motion.
+Collapsed Search SHALL omit its controls row. Recipes SHALL preserve preferred stack/card dimensions when space permits, accounting for expanded controls and bottom navigation. Size reduction SHALL apply only when usable viewport space shrinks. Controls SHALL retain 48 by 48 CSS px targets, readable labels and visible focus. Content SHALL reflow or scroll without horizontal overflow or traps, respecting safe areas and reduced motion.
 
 #### Scenario: Preserve normal-phone baseline size
-- **WHEN** Browse is compared before and after the toolbar change at the same normal-phone reference viewport, content, locale, text scale and safe-area conditions
+- **WHEN** Browse is compared with search collapsed before and after unification where the same card space is available at the same normal-phone reference viewport, content, locale, text scale and safe-area conditions
 - **THEN** preferred stack/card width and height remain unchanged within 1 CSS px rounding and the image area is not reduced solely for the toolbar change
-- **AND** the removed Filters row recovers space; moving the stack upward does not count as shrinking it
+- **AND** there is no permanently visible Filters row; moving the stack upward does not count as shrinking it
 
 #### Scenario: Adaptive fallback does not lower preferred size
 - **WHEN** Browse adapts to a genuinely smaller available viewport and is then shown at the normal-phone reference viewport
@@ -772,16 +805,16 @@ Browse SHALL recover space by removing the extra Filters row first and preserve 
 
 #### Scenario: Initial short portrait view
 - **WHEN** stack Browse opens at 320x568 or 390x667 CSS px at ordinary text size
-- **THEN** the initial viewport shows the toolbar, a recognizable recipe image, title, recipe-opening/selection action and stack navigation without scrolling first
+- **THEN** the collapsed layout shows the toolbar, a recognizable recipe image, title, recipe-opening/selection action, stack navigation and bottom app navigation; intentional vertical scrolling is available when content cannot fit
 - **AND** the extra Filters row does not occupy height
 
 #### Scenario: Short landscape and enlarged content
 - **WHEN** either presentation uses 667x375 CSS px or 200% text, including French and long recipe names
-- **THEN** toolbar dismissal and navigation stay available and essential body actions remain reachable by intentional content scrolling without clipping, horizontal overflow or reduced touch targets
+- **THEN** toolbar controls and app navigation stay available and essential body actions remain reachable by intentional content scrolling without clipping, horizontal overflow or reduced touch targets
 
 #### Scenario: List and tablet
 - **WHEN** Browse uses list presentation or iPad portrait/landscape
-- **THEN** useful recipe content starts in the viewport and navigation, paging, filter state and Close remain operable
+- **THEN** useful recipe content starts in the viewport and app navigation, paging, filter state and Search disclosure remain operable without a Browse Close button
 
 ### Requirement: Track front-card horizontal movement directly
 
@@ -808,3 +841,200 @@ A cancelled front-card gesture SHALL return the card without navigation or detai
 #### Scenario: Leave during departure animation
 - **WHEN** a swipe departure animation is pending and the person changes filter or presentation, closes Browse or replaces the front-card lifecycle
 - **THEN** the old completion does not navigate or open detail in the new lifecycle
+
+### Requirement: Keep the Recipes toolbar available in both presentations
+
+Recipes SHALL order its toolbar controls Search, All/Discovery, Go-To, Stack/List, then Recycle bin, in visual and keyboard reading order. The same toolbar SHALL remain available in Explore and Search, with controls expanded or collapsed. Search SHALL reveal its input and Filters directly below the toolbar and focus the input.
+
+#### Scenario: Search is the first toolbar control
+- **WHEN** either stack or list presentation opens or changes collection mode
+- **THEN** Search precedes All/Discovery, Go-To, Stack/List and Recycle bin
+- **AND** the toolbar and bottom app navigation remain available while requests are pending
+
+#### Scenario: Activate the disclosure
+- **WHEN** a person activates Search with controls collapsed
+- **THEN** the input and Filters appear directly below the toolbar and the input receives focus
+- **AND** opening alone does not change the collection, ordering, position or request generation
+
+### Requirement: Select Explore for library scope without Search criteria
+
+Without effective Search criteria, Recipes SHALL use GET `/api/recipes` with `order=explore`. Discovery and Go-To SHALL constrain library scope individually or together without activating Search. The existing eligibility, Explore ordering, filtered totals, page sizes, history-generation, wrap, prefetch and retry contracts SHALL apply to that scoped collection.
+
+#### Scenario: Scope-only browsing
+- **WHEN** text is blank, Similar is absent and no effective non-scope Search filter or Focus is applied, with Discovery and/or Go-To selected
+- **THEN** Recipes requests scoped Explore pages rather than POST search
+- **AND** never-cooked first, oldest cooked date next, H descending, creation descending and identity ties are preserved
+
+#### Scenario: Complete multi-page traversal
+- **WHEN** a stable Explore library containing 40 or 46 eligible recipes is traversed at 20 per stack page
+- **THEN** every recipe is reachable in both directions, including first-to-last backward wrap and last-to-first forward wrap, with correct global ordinals
+- **AND** list presentation uses 12 per page and reaches the complete scoped collection
+
+### Requirement: Switch presentation without replacing active Search results
+
+Changing stack/list SHALL use the existing member-preference contract in either collection. It SHALL reset position while retaining Search criteria, scope, planning context, loaded Search matches and continuation state. Explore SHALL retain its existing presentation-specific first-page loading behavior. Selecting the current view SHALL NOT save a new preference.
+
+#### Scenario: Change view during Search
+- **WHEN** a person switches stack to list or list to stack with loaded or pending Search results
+- **THEN** the view changes and its position resets to the beginning, while criteria and loaded results/cursor are retained
+- **AND** no replacement Search is submitted solely for the view change and a pending current Search may complete into the new view
+
+#### Scenario: Return after saving a view
+- **WHEN** a saved list or stack preference is loaded on a fresh ordinary Recipes entry
+- **THEN** Explore starts in that presentation with empty Search criteria and default All scope
+
+### Requirement: Enter and leave Recipes through app navigation
+
+Recipes SHALL be a normal app destination without the former Browse overlay Close action. Normal page departure SHALL discard its session, invalidate departed responses and reset Browse traversal state. A normal return SHALL start fresh in Explore with collapsed controls, no Search criteria and All scope, retaining only existing saved member presentation preferences.
+
+#### Scenario: Leave while work is pending
+- **WHEN** a person leaves Recipes during a debounce, initial request, page request or continuation
+- **THEN** departed completions cannot alter another screen or a later Recipes session
+- **AND** returning normally begins a new Explore session instead of restoring the old query or cursor
+
+#### Scenario: Dismiss detail without departure
+- **WHEN** a detail sheet is dismissed while Recipes remains mounted
+- **THEN** the collection, card ordinal or list scroll position and presentation remain without a dismissal-triggered collection request
+
+### Requirement: Preserve recipe actions within the unified collection
+
+Both collections and presentations SHALL retain existing detail, editing, membership-star, discoverability, issue-indicator, recycle-bin and assignment/recovery contracts. A confirmed deletion SHALL dismiss detail and refresh the current collection through its own data source. Failed mutation and failed subsequent read SHALL remain distinct, with read retry never repeating a confirmed mutation.
+
+#### Scenario: Delete from Explore or Search
+- **WHEN** a detail deletion succeeds in either collection
+- **THEN** Explore reloads its scoped first page or Search restarts with its current criteria and planning context
+- **AND** exclusion follows the successful read; rejected deletion retains detail and current cards under the recycle-bin contract
+
+#### Scenario: Retain shared controls
+- **WHEN** a person opens detail or the Recycle bin from a stack or list in either collection
+- **THEN** existing editing, stars, discoverability, issue reporting/review, bin recovery and planning actions remain available under their owning contracts
+- **AND** dismissing an unchanged sheet returns to the same collection position and connected trigger focus
+
+### Requirement: Redirect legacy Browse entry with supplied context
+
+`/browse-all-stack` SHALL redirect to `/recipes` while preserving supported `gotoOnly`, `discoverableOnly`, `focus=search`, `similarTo`, `open`, `addToDay`, `weekOffset` and `referenceWeekStartDate` context. Retired `manageGoto` SHALL NOT reopen management. Scope-only entry SHALL use Explore; Search, Similar, detail and planner entry SHALL follow their existing contextual meanings.
+
+#### Scenario: Legacy scope entry
+- **WHEN** `/browse-all-stack?gotoOnly=true&manageGoto=true` opens
+- **THEN** Recipes opens scoped Explore with the Go-To toggle pressed and no management surface
+
+#### Scenario: Legacy contextual entry
+- **WHEN** a supported legacy link supplies focused Search, Similar, detail identity or planner context alongside scope
+- **THEN** the redirect retains those supported values and Recipes honors them without assigning a meal on entry
+
+### Requirement: Fill the Recipes canvas while bounding its content
+
+The Recipes canvas SHALL fill the app shell's available width above the bottom navigation. On a 390–393 CSS px phone, the grid/content SHALL use one 16–20 CSS px side gutter, without compounded page and content padding. The toolbar SHALL use its available width before wrapping. iPad content SHALL retain responsive gutters and bounded cards. Safe-area and short-viewport reachability SHALL remain in Explore and Search.
+
+#### Scenario: Phone Browse or Search
+- **WHEN** Recipes opens in stack or list presentation at 390–393 CSS px wide, with or without expanded Search controls
+- **THEN** its outer surface reaches both viewport edges above the full-width dock, and the grid/content begins 16–20 CSS px from each side rather than behind compounded insets
+- **AND** no horizontal overflow or bottom-navigation overlap hides the current collection or its recovery actions
+
+#### Scenario: Toolbar uses available width
+- **WHEN** the toolbar shows Search, All/Discovery, Go-To, Stack/List and Recycle bin at ordinary phone text size
+- **THEN** it uses the available Recipes width before wrapping, without reducing any target below 48×48 CSS px
+- **AND** at 200% text or when localized labels cannot fit, it wraps in visual and keyboard order without clipping controls
+
+#### Scenario: iPad portrait and landscape
+- **WHEN** Recipes opens on an iPad in portrait or landscape with a loaded or empty collection
+- **THEN** its outer surface fills the shell, the compact grid starts within 24–32 CSS px of each side at 820 or 1180 CSS px, and the stack remains centered within a readable bound
+- **AND** content remains readable, reachable and free of accidental narrow-page side strips
+
+### Requirement: Identify Recipes as a library destination in the dock
+
+The bottom Recipes navigation SHALL show a recipe-book icon with the existing localized Recipes label. Its destination and current-page indication SHALL remain `/recipes`; the magnifier SHALL remain the distinct Search control in the Recipes toolbar.
+
+#### Scenario: Enter Recipes from another app page
+- **WHEN** a person activates Recipes in the bottom navigation from Home, Planner or Profile
+- **THEN** the book-labeled destination opens `/recipes` and identifies itself as the current page
+- **AND** the Search control remains the first control in the Recipes toolbar
+
+#### Scenario: Navigate with keyboard or large text
+- **WHEN** a person reaches the Recipes dock entry by keyboard or at enlarged text size
+- **THEN** its localized label, visible focus and usable target remain available without truncating or displacing the other destinations
+
+### Requirement: Keep the Recipes Search action at a stable left anchor
+
+The first Recipes toolbar action, Search, SHALL remain at the same left content gutter while the other controls change label, state or row. The toolbar SHALL preserve Search, All/Discovery, Go-To, Stack/List and Recycle bin in visual and keyboard order, with at least 48×48 CSS px targets and no horizontal overflow.
+
+#### Scenario: Scope label changes on a phone or tablet
+- **WHEN** a person toggles All to Discovery or back at a fixed viewport, locale and text size
+- **THEN** the Search action retains the same left edge within 1 CSS px, while the remaining toolbar actions may use or wrap in the available width
+
+#### Scenario: Search and presentation change
+- **WHEN** Search controls expand or hide, Search becomes active or inactive, or the person switches stack and list
+- **THEN** the Search action stays at that left anchor and remains the first keyboard toolbar action without covering another control
+
+#### Scenario: Narrow or enlarged toolbar
+- **WHEN** French labels, a 320 CSS px phone, landscape or 200% text make the toolbar wrap
+- **THEN** Search remains at the consistent left gutter on the first toolbar row, and all actions retain their order, visible focus, target size and reachability
+
+### Requirement: Use the visible region above the Recipes dock for results
+
+When controls fit above the dock, Recipes SHALL let the current list or stack use the visible space to within 8 CSS px of the actual dock top, accounting for browser viewport, keyboard, safe area and text changes. When controls cannot fit, they and the results SHALL remain reachable by intentional vertical scrolling without overlap or horizontal overflow. Collection position and request state SHALL survive disclosure changes under their existing contracts.
+
+#### Scenario: Ordinary list and stack space
+- **WHEN** a nonempty Explore or Search collection is shown in list or stack and the controls fit at phone or iPad size
+- **THEN** the result viewport extends to within 8 CSS px above the bottom navigation rather than stopping at a fixed empty band
+- **AND** the last result can be brought fully clear of the dock by scrolling or paging
+
+#### Scenario: Browser chrome or keyboard changes visible height
+- **WHEN** the browser's visual viewport grows or shrinks, including keyboard open and close
+- **THEN** the current collection reflows to the visible region without obscuring the focused field, a result action or the bottom navigation
+- **AND** its loaded results, pagination and position are retained
+
+#### Scenario: Safe area and large text on a short screen
+- **WHEN** safe-area insets, French text, 200% text or a short landscape/portrait viewport reduce available height
+- **THEN** toolbar, context, recovery actions and recipes remain reachable by intentional scrolling with visible focus and usable targets
+- **AND** content does not overlap the dock or require a complete first card to fit before scrolling when that is physically impossible
+
+#### Scenario: Hide and restore Search controls
+- **WHEN** Search controls hide and reopen while a Search result is loaded or a request is pending
+- **THEN** the result region resizes without clearing criteria, results, pagination, list/stack position, presentation or the pending work
+
+### Requirement: Keep recipe detail actions clear of the sheet edge
+
+When detail content is scrolled to its end, the final action SHALL have ordinary trailing space inside the sheet. At 16 px root text size, the normal read action's bottom-to-panel-edge gap SHALL be approximately 32 CSS px: 8 CSS px inside the button section plus the scroller's original 24 CSS px. The increment SHALL belong to the action section, without another dock or safe-area spacer.
+
+#### Scenario: Read actions on phone and tablet
+- **WHEN** a person scrolls the detail sheet to its end on a normal phone or tablet
+- **THEN** the final action remains fully visible with approximately 32 CSS px of trailing space at normal text size
+- **AND** the action section owns 8 CSS px of that space while the inner scroller retains 24 CSS px
+- **AND** the sheet retains its existing placement, action order and button targets
+
+#### Scenario: Edit actions and constrained content
+- **WHEN** edit actions are last, or the detail sheet is shown on a short phone or with French/200% text
+- **THEN** the final control and its focus ring remain reachable by scrolling without clipping or dock overlap
+- **AND** the edit action section owns the same 8 CSS px increment while its existing margin remains unchanged
+- **AND** the sheet does not add a duplicate safe-area spacer or change any action behavior
+
+#### Scenario: Distinguish action section from scroll content
+- **WHEN** the Read actions are visible at the end of the scrollable recipe detail
+- **THEN** the added bottom space is inside the action section rather than a larger generic scroller padding
+- **AND** the overall final control-to-panel edge gap stays at the established spacing step
+
+### Requirement: Center the recipe stack above its bottom family action
+
+In stack presentation, Recipes SHALL center the current card stack above the counter and Ask the Family panel when the content fits. The counter and panel SHALL form a bottom group above the dock without changing their dimensions or behavior. When content does not fit, card, counter and panel SHALL remain reachable by scrolling in that order. Reflow SHALL retain the active collection, position and pending work.
+
+#### Scenario: Ordinary phone with free height
+- **WHEN** a loaded stack is shown at 390×844 CSS pixels with collapsed Search controls and no planning row
+- **THEN** the current card stack is centered in the space between the result top and counter
+- **AND** the counter remains immediately above Ask the Family and the panel rests at the result bottom above the dock
+- **AND** the card dimensions and backing peeks remain unchanged
+
+#### Scenario: Tall tablet or expanded controls
+- **WHEN** a loaded stack is shown on a tablet, or Search controls expand or hide while the content still fits
+- **THEN** the card and bottom group redistribute within the available result height without changing card size or panel design
+- **AND** Search criteria, result order, cursor and current position remain unchanged
+
+#### Scenario: Constrained viewport or enlarged text
+- **WHEN** short portrait, landscape, browser chrome, keyboard, safe area, French or 200 percent text leaves too little height for the stack and bottom group
+- **THEN** the card, counter and complete Ask the Family panel remain reachable in that order by vertical scrolling
+- **AND** they do not cover each other or the dock, shrink targets or cause horizontal overflow
+
+#### Scenario: Planner context and recovery
+- **WHEN** a planner-targeted stack or a stack with retry/loading feedback needs extra vertical room
+- **THEN** the context and recovery controls remain reachable without an overlay from Ask the Family
+- **AND** opening details, swiping and voting retain their existing behavior

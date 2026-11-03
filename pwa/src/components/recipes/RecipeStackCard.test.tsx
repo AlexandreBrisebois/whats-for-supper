@@ -6,6 +6,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
+import { setLocale } from '@/locales';
 
 // ---------------------------------------------------------------------------
 // Mocks — must be declared before component import
@@ -106,6 +107,31 @@ beforeEach(() => {
 // ---------------------------------------------------------------------------
 
 describe('RecipeStackCard — rendering', () => {
+  it.each(['en', 'fr'] as const)('keeps only image, full name and photo time in %s', (locale) => {
+    setLocale(locale);
+    const name = 'A very long supper name that needs to wrap across several lines';
+    render(
+      <RecipeStackCard
+        {...defaultProps}
+        name={name}
+        description="This description belongs only in recipe detail"
+        totalTime="PT1H30M"
+      />
+    );
+    const card = screen.getByTestId('stack-card-recipe-123');
+    expect(card).toHaveTextContent(name);
+    expect(card).not.toHaveTextContent('This description belongs only in recipe detail');
+    const badge = screen.getByTestId('stack-time-badge');
+    expect(badge).toHaveTextContent(locale === 'fr' ? 'PRÊT EN 1H 30 MINS' : 'READY IN 1H 30 MINS');
+    expect(badge.querySelector('svg')).not.toBeNull();
+    expect(screen.getByTestId('stack-card-image').contains(badge)).toBe(true);
+  });
+
+  it.each(['', 'PT0M', 'not-a-duration'])('omits an unusable time badge for %s', (totalTime) => {
+    setLocale('en');
+    render(<RecipeStackCard {...defaultProps} totalTime={totalTime} />);
+    expect(screen.queryByTestId('stack-time-badge')).toBeNull();
+  });
   it('renders the recipe name', () => {
     render(<RecipeStackCard {...defaultProps} />);
     expect(screen.getByText('Spaghetti Bolognese')).toBeTruthy();
@@ -120,6 +146,8 @@ describe('RecipeStackCard — rendering', () => {
   it('renders card root with data-testid="stack-card-{id}" when isFront is false', () => {
     render(<RecipeStackCard {...defaultProps} isFront={false} />);
     expect(screen.getByTestId('stack-card-recipe-123')).toBeTruthy();
+    expect(screen.getByText('Spaghetti Bolognese').closest('[aria-hidden="true"]')).not.toBeNull();
+    expect(screen.getByTestId('stack-time-badge').closest('[aria-hidden="true"]')).not.toBeNull();
   });
 
   it('renders data-testid="stack-card-front" when isFront is true', () => {
@@ -190,6 +218,26 @@ describe('RecipeStackCard — swipe indicators', () => {
 });
 
 describe('RecipeStackCard — swipe callbacks', () => {
+  it('returns a blocked Search boundary swipe to origin without navigating or opening detail', async () => {
+    const onSwipeLeft = vi.fn();
+    const onTap = vi.fn();
+    render(
+      <RecipeStackCard
+        {...defaultProps}
+        canSwipeLeft={false}
+        onSwipeLeft={onSwipeLeft}
+        onTap={onTap}
+      />
+    );
+    capturedOnDragStart!();
+    capturedOnDrag!(null, makeDragInfo(-100));
+    await capturedOnDragEnd!(null, makeDragInfo(-100));
+    capturedOnTap!();
+    expect(onSwipeLeft).not.toHaveBeenCalled();
+    expect(onTap).not.toHaveBeenCalled();
+    expect(motionMocks.start).toHaveBeenCalledWith(expect.objectContaining({ x: 0 }));
+  });
+
   it('calls onSwipeRight when dragged right beyond 35px threshold', async () => {
     const onSwipeRight = vi.fn();
     render(<RecipeStackCard {...defaultProps} onSwipeRight={onSwipeRight} />);

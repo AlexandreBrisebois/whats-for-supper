@@ -157,6 +157,22 @@ test.describe('Scenario 4 — soft-delete → restore → hard-delete lifecycle'
   }) => {
     let deleteCalled = false;
     let restoreCalled = false;
+    let searchReads = 0;
+    await page.route('**/api/recipes/search', async (route) => {
+      searchReads++;
+      await route.fulfill({
+        json: {
+          data: {
+            topPick: deleteCalled ? null : MOCK_SEARCH_TOP_PICK,
+            results: [],
+            appliedFilters: {},
+            searchMode: 'explicit',
+            resultPath: 'lexical-only',
+            nextCursor: null,
+          },
+        },
+      });
+    });
 
     // Track soft-delete call
     await page.unroute('**/api/recipes/*');
@@ -220,23 +236,23 @@ test.describe('Scenario 4 — soft-delete → restore → hard-delete lifecycle'
     });
 
     // 1. Navigate and search
-    await page.goto('/recipes');
+    await page.goto('/recipes?focus=search');
     await expect(page.getByTestId('recipe-loader')).not.toBeVisible({ timeout: 15_000 });
     await page.getByTestId('recipe-search-input').fill('chicken');
     await page.getByTestId('recipe-search-input').press('Enter');
 
     // 2. Open detail sheet and move to bin
-    await expect(page.getByTestId('recipe-card-top-pick')).toBeVisible();
-    await page.getByTestId('recipe-card-top-pick').click();
+    await expect(page.getByTestId('stack-card-front')).toBeVisible();
+    await page.getByTestId('stack-card-front').click();
     await expect(page.getByTestId('recipe-detail-sheet')).toBeVisible();
     await page.getByTestId('action-gear-menu').click();
     await page.getByTestId('action-move-to-bin').click();
 
     // 3. Sheet closed and recipe gone from results
     await expect(page.getByTestId('recipe-detail-sheet')).not.toBeVisible();
-    await expect(
-      page.locator(`[data-testid="recipe-card-${MOCK_IDS.RECIPE_LASAGNA}"]`)
-    ).not.toBeVisible();
+    await expect(page.getByTestId('search-empty-state')).toBeVisible();
+    await expect(page.getByTestId('stack-card-front')).toHaveCount(0);
+    expect(searchReads).toBe(2);
     expect(deleteCalled).toBe(true);
 
     // 4. Open recycle bin from Browse Library — deleted item is there
@@ -419,7 +435,7 @@ test.describe('Scenario 7 — over-constrained filters: deactivate restores resu
       });
     });
 
-    await page.goto('/recipes');
+    await page.goto('/recipes?focus=search');
     await expect(page.getByTestId('recipe-loader')).not.toBeVisible({ timeout: 15_000 });
 
     // Apply never-tried and quick together from the full filter chooser.
@@ -429,8 +445,8 @@ test.describe('Scenario 7 — over-constrained filters: deactivate restores resu
     await page.getByTestId('mobile-filter-apply').click();
 
     // Empty state visible (both filters constrain results to empty)
-    await expect(page.getByTestId('filter-no-results')).toBeVisible();
-    await expect(page.getByTestId('recipe-card-top-pick')).not.toBeVisible();
+    await expect(page.getByTestId('search-empty-state')).toBeVisible();
+    await expect(page.getByTestId('stack-card-front')).not.toBeVisible();
 
     // Remove each applied filter through the same chooser.
     await page.getByTestId('mobile-filters-button').click();
@@ -442,8 +458,8 @@ test.describe('Scenario 7 — over-constrained filters: deactivate restores resu
     await page.getByTestId('mobile-filter-apply').click();
 
     // Results return
-    await expect(page.getByTestId('recipe-card-top-pick')).toBeVisible();
-    await expect(page.getByTestId('filter-no-results')).not.toBeVisible();
+    await expect(page.getByTestId('stack-card-front')).toBeVisible();
+    await expect(page.getByTestId('search-empty-state')).not.toBeVisible();
   });
 });
 
@@ -479,13 +495,13 @@ test.describe('Scenario 8 — vector timeout fallback', () => {
       });
     });
 
-    await page.goto('/recipes');
+    await page.goto('/recipes?focus=search');
     await expect(page.getByTestId('recipe-loader')).not.toBeVisible({ timeout: 15_000 });
 
     await page.getByTestId('recipe-search-input').fill('chicken');
     await page.getByTestId('recipe-search-input').press('Enter');
 
-    await expect(page.getByTestId('recipe-card-top-pick')).toBeVisible();
+    await expect(page.getByTestId('stack-card-front')).toBeVisible();
     expect(capturedResultPath).toBe('fallback-lexical');
   });
 });
@@ -642,7 +658,7 @@ test('GOTO chooser uses configured membership and an empty list never falls back
       ),
     MOCK_IDS.MEMBER_ALEX
   );
-  await page.goto('/recipes');
+  await page.goto('/recipes?focus=search');
   await expect(page.getByTestId('recipe-loader')).not.toBeVisible();
   await page.evaluate(async (recipeId) => {
     const response = await fetch('/api/goto', {
@@ -655,9 +671,9 @@ test('GOTO chooser uses configured membership and an empty list never falls back
   await page.getByTestId('mobile-filters-button').click();
   await page.getByTestId('mobile-filter-goto').click();
   await page.getByTestId('mobile-filter-apply').click();
-  await expect(page.getByTestId('mobile-filters-button')).toHaveAccessibleName('Filters, 1 active');
-  await expect(page.getByTestId('recipe-card-top-pick')).toBeVisible();
-  await expect(page.getByTestId(`recipe-card-${MOCK_IDS.RECIPE_CARBONARA}`)).not.toBeVisible();
+  await expect(page.getByTestId('browse-filter-goto')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByTestId('stack-card-front')).toBeVisible();
+  await expect(page.getByTestId('stack-card-front')).not.toContainText('Carbonara');
   await page.evaluate(async () =>
     fetch('/api/goto', {
       method: 'PUT',
@@ -667,8 +683,8 @@ test('GOTO chooser uses configured membership and an empty list never falls back
   );
   await page.getByTestId('mobile-filters-button').click();
   await page.getByTestId('mobile-filter-apply').click();
-  await expect(page.getByTestId('filter-no-results')).toBeVisible();
-  await expect(page.getByTestId('recipe-card-top-pick')).not.toBeVisible();
+  await expect(page.getByTestId('browse-goto-empty')).toBeVisible();
+  await expect(page.getByTestId('stack-card-front')).not.toBeVisible();
 });
 
 test('GOTO mock continuations retain context and recheck saved membership', async ({
@@ -679,7 +695,7 @@ test('GOTO mock continuations retain context and recheck saved membership', asyn
   await page
     .context()
     .addCookies([{ name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: baseURL! }]);
-  await page.goto('/recipes');
+  await page.goto('/recipes?focus=search');
   const observation = await page.evaluate(
     async (ids) => {
       const save = (members: string[]) =>
@@ -849,7 +865,7 @@ for (const appLocale of ['en', 'fr'] as const) {
         });
       });
 
-      await page.goto('/recipes');
+      await page.goto('/recipes?focus=search');
       for (const [width, height] of [
         [320, 568],
         [390, 667],
@@ -928,7 +944,9 @@ for (const surface of ['browse', 'search'] as const) {
       MOCK_IDS.MEMBER_ALEX
     );
     await page.goto(
-      surface === 'browse' ? '/browse-all-stack?gotoOnly=true&manageGoto=true' : '/recipes'
+      surface === 'browse'
+        ? '/browse-all-stack?gotoOnly=true&manageGoto=true'
+        : '/recipes?focus=search'
     );
     if (surface === 'search') await page.getByTestId('mobile-filters-button').click();
     await expect(

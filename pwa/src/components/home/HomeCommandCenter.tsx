@@ -3,12 +3,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Check } from 'lucide-react';
 import { NonCookingIcon } from '../planner/NonCookingIcon';
-import {
-  QuickCaptureTrigger,
-  CookedSuccessCard,
-  VotingNudgeCard,
-  BrowseLibraryTrigger,
-} from './HomeSections';
+import { QuickCaptureTrigger, CookedSuccessCard, VotingNudgeCard } from './HomeSections';
 import { TonightMenuCard, TonightCardBase } from './TonightMenuCard';
 import { TonightPivotCard } from './TonightPivotCard';
 import { SkipRecoveryDialog, type ReplacementFeedback } from './SkipRecoveryDialog';
@@ -59,6 +54,7 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
   const [actionContext, setActionContext] = useState<CalendarContext | null>(null);
   const actionRecipe = useRef<any>(null);
   const [retryStart, setRetryStart] = useState<(() => void) | null>(null);
+  const [searchError, setSearchError] = useState<string | null>(null);
   const [recoveryFlow, setRecoveryFlow] = useState<RecoveryFlowState>({
     kind: 'closed',
   });
@@ -167,6 +163,7 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
       setActionContext(context);
       actionRecipe.current = useTodayStore.getState().currentRecipe;
       setRetryStart(null);
+      setSearchError(null);
       setRecoveryFlow(kind === 'step1' ? { kind } : { kind, intent: null });
     } catch {
       setRetryStart(() => () => {
@@ -380,9 +377,62 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
     void sync();
   };
 
+  const openPlannedSearch = useCallback(async () => {
+    if (recoverySubmissionRef.current || !actionContext || !actionRecipe.current?.id) return;
+    recoverySubmissionRef.current = true;
+    setRecoveryPending(true);
+    setSearchError(null);
+    try {
+      const fresh = await useTodayStore.getState().ensureCalendar();
+      const displayed = useTodayStore.getState().currentRecipe;
+      if (
+        fresh.today !== actionContext.today ||
+        fresh.referenceWeekStartDate !== actionContext.referenceWeekStartDate ||
+        displayed?.id !== actionRecipe.current.id ||
+        currentRecipe?.id !== actionRecipe.current.id
+      ) {
+        setRecoveryFlow({ kind: 'closed' });
+        setActionContext(null);
+        setRetryStart(null);
+        try {
+          await sync();
+        } catch {
+          /* The stale target is still closed; the next Home read can retry. */
+        }
+        useUiStore.getState().addToast({
+          type: 'error',
+          message: t(
+            'home.planChangedRetry',
+            'Tonight’s plan changed. Choose again from the current card.'
+          ),
+        });
+        return;
+      }
+      const params = new URLSearchParams({
+        focus: 'search',
+        addToDay: String(calendarDayIndex(actionContext)),
+        weekOffset: '0',
+        referenceWeekStartDate: actionContext.referenceWeekStartDate,
+      });
+      setRetryStart(null);
+      setRecoveryFlow({ kind: 'closed' });
+      router.push(`/recipes?${params}`);
+    } catch {
+      setSearchError(t('home.searchCalendarRetry', 'Could not confirm today’s plan. Try again.'));
+      setRetryStart(() => () => void openPlannedSearch());
+    } finally {
+      recoverySubmissionRef.current = false;
+      setRecoveryPending(false);
+    }
+  }, [actionContext, currentRecipe, router, sync]);
+
   const handleRecoveryAction = useCallback(
     async (action: string) => {
       if (recoverySubmissionRef.current) return;
+      if (action === 'search' && recoveryFlow.kind === 'step1') {
+        await openPlannedSearch();
+        return;
+      }
       if (
         recoveryFlow.kind === 'step2' &&
         recoveryFlow.intent === 'pick_else' &&
@@ -556,7 +606,15 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
         setRecoveryPending(false);
       }
     },
-    [markOrderedIn, sync, recoveryFlow, router, actionContext, continueReplacement]
+    [
+      markOrderedIn,
+      sync,
+      recoveryFlow,
+      router,
+      actionContext,
+      continueReplacement,
+      openPlannedSearch,
+    ]
   );
 
   const handleQuickFindSelect = async (recipe: any) => {
@@ -585,6 +643,7 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
     try {
       const context = await useTodayStore.getState().ensureCalendar();
       const params = new URLSearchParams({
+        focus: 'search',
         addToDay: String(calendarDayIndex(context)),
         weekOffset: '0',
         referenceWeekStartDate: context.referenceWeekStartDate,
@@ -672,6 +731,7 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
           </button>
         </div>
       )}
+      <QuickCaptureTrigger />
       {isLoading ? (
         <div className="flex flex-col items-center justify-center py-20" data-testid="home-loader">
           <SolarLoader label={t('home.aligningDay', 'Aligning your day...')} />
@@ -846,9 +906,6 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
         />
       )}
 
-      <QuickCaptureTrigger />
-      <BrowseLibraryTrigger testId="home-browse-all-trigger" />
-
       <AnimatePresence>
         {showCooksMode && cookingRecipe && cookingRecipe.id && (
           <CooksMode
@@ -870,6 +927,8 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
           isOpen={showRecovery}
           step={recoveryStep}
           replacement={replacementFeedback}
+          searchError={searchError}
+          onRetrySearch={() => void openPlannedSearch()}
           onRetryReplacement={() => void continueReplacement()}
           confirmAbandon={confirmAbandon}
           onCancelAbandon={() => setConfirmAbandon(false)}

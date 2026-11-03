@@ -5,6 +5,8 @@ import { useSearchPromotionStore } from '@/store/searchPromotionStore';
 
 const mocks = vi.hoisted(() => {
   const searchRecipes = vi.fn();
+  const librarySummaryGet = vi.fn();
+  const recipesGet = vi.fn();
   const getRecipe = vi.fn();
   const updateRecipe = vi.fn();
   const deleteRecipe = vi.fn();
@@ -21,12 +23,15 @@ const mocks = vi.hoisted(() => {
   const loadGoTo = vi.fn();
   const saveGoTo = vi.fn();
   const loadActiveGoTo = vi.fn();
+  const updateMemberPreferences = vi.fn();
   let searchParams = new URLSearchParams('');
   let familySettings: Record<string, unknown> = {};
 
   return {
     gotoMembershipVersion: 0,
     searchRecipes,
+    librarySummaryGet,
+    recipesGet,
     getRecipe,
     updateRecipe,
     deleteRecipe,
@@ -43,6 +48,7 @@ const mocks = vi.hoisted(() => {
     loadGoTo,
     saveGoTo,
     loadActiveGoTo,
+    updateMemberPreferences,
     setSearchParams: (value: string) => {
       searchParams = new URLSearchParams(value);
     },
@@ -74,9 +80,47 @@ vi.mock('framer-motion', () => ({
     ),
   },
   AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  useMotionValue: () => ({ get: () => 0, set: vi.fn() }),
+  useTransform: () => ({ get: () => 0 }),
+  useAnimation: () => ({ start: vi.fn().mockResolvedValue(undefined), stop: vi.fn() }),
+  useDragControls: () => ({ start: vi.fn() }),
+  useIsPresent: () => true,
+  useMotionValueEvent: vi.fn(),
+}));
+
+// Controller tests invoke the card's own callbacks without adding production
+// navigation buttons. RecipeStackCard's gesture/tap semantics have separate tests.
+vi.mock('@/components/recipes/RecipeStackCard', () => ({
+  RecipeStackCard: ({
+    id,
+    name,
+    isFront,
+    onSwipeLeft,
+    onSwipeRight,
+    onTap,
+  }: {
+    id: string;
+    name: string;
+    isFront: boolean;
+    onSwipeLeft: () => void;
+    onSwipeRight: () => void;
+    onTap: () => void;
+  }) => (
+    <div data-testid={isFront ? 'stack-card-front' : 'stack-card-back'} data-recipe-id={id}>
+      {name}
+      {isFront && (
+        <>
+          <button type="button" data-testid="unit-stack-previous" onClick={onSwipeRight} />
+          <button type="button" data-testid="unit-stack-next" onClick={onSwipeLeft} />
+          <button type="button" data-testid="unit-stack-detail" onClick={onTap} />
+        </>
+      )}
+    </div>
+  ),
 }));
 
 vi.mock('@/locales', () => ({
+  getLocale: () => 'en',
   t: (_key: string, fallback: string) => fallback,
   tWithVars: (_key: string, fallback: string, vars: Record<string, unknown> = {}) =>
     Object.entries(vars).reduce(
@@ -110,6 +154,9 @@ vi.mock('@/store/familyStore', () => ({
       loadActiveGoTo: mocks.loadActiveGoTo,
       gotoMembershipVersion: mocks.gotoMembershipVersion,
       selectedFamilyMemberId: 'member-1',
+      familyMembers: [{ id: 'member-1', name: 'Alex', browseViewMode: 'stack' }],
+      loadFamilyMembers: vi.fn().mockResolvedValue(undefined),
+      updateMemberPreferences: mocks.updateMemberPreferences,
     };
     return selector ? selector(state) : state;
   },
@@ -122,6 +169,8 @@ vi.mock('@/lib/api/api-client', () => ({
         get: (...args: unknown[]) => mocks.healthGet(...args),
       },
       recipes: {
+        librarySummary: { get: (...args: unknown[]) => mocks.librarySummaryGet(...args) },
+        get: (...args: unknown[]) => mocks.recipesGet(...args),
         search: {
           filters: { get: (...args: unknown[]) => mocks.filterDiscoveryGet(...args) },
         },
@@ -140,7 +189,7 @@ if (typeof window !== 'undefined') {
   window.URL.createObjectURL = vi.fn(() => 'mock-url');
 }
 
-import RecipesPage from './page';
+import UnifiedRecipesPage from './page';
 
 function makeSearchResponse(overrides: Record<string, unknown> = {}) {
   return {
@@ -210,9 +259,14 @@ describe('RecipesPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.searchRecipes.mockReset();
-    mocks.setSearchParams('');
+    mocks.setSearchParams('focus=search');
     mocks.setFamilySettings({});
     mocks.searchRecipes.mockResolvedValue(makeSearchResponse());
+    mocks.librarySummaryGet.mockResolvedValue({ data: { total: 1 } });
+    mocks.recipesGet.mockResolvedValue({
+      recipes: [{ id: '11111111-1111-1111-1111-111111111111', name: 'Chicken Soup' }],
+      pagination: { page: 1, limit: 20, total: 1 },
+    });
     mocks.getRecipe.mockResolvedValue(makeRecipeDetail());
     mocks.updateRecipe.mockResolvedValue(undefined);
     mocks.deleteRecipe.mockResolvedValue(undefined);
@@ -221,6 +275,7 @@ describe('RecipesPage', () => {
     mocks.loadGoTo.mockResolvedValue({ items: [] });
     mocks.saveGoTo.mockResolvedValue(undefined);
     mocks.loadActiveGoTo.mockResolvedValue(null);
+    mocks.updateMemberPreferences.mockResolvedValue(undefined);
     mocks.saveGoTo.mockImplementation(async (value: any) => {
       mocks.setFamilySettings({ ...mocks.getFamilySettings(), family_goto: value });
     });
@@ -270,1301 +325,871 @@ describe('RecipesPage', () => {
     vi.unstubAllEnvs();
   });
 
-  it('renders the standard search input after load', async () => {
+  it('opens ordinary Recipes in collapsed Explore after its library summary', async () => {
+    mocks.setSearchParams('');
     await act(async () => {
-      render(<RecipesPage />);
+      render(<UnifiedRecipesPage />);
     });
 
-    expect(screen.getByTestId('recipe-search-input')).toBeInTheDocument();
+    await waitFor(() => expect(mocks.recipesGet).toHaveBeenCalledTimes(1));
+    expect(mocks.librarySummaryGet).toHaveBeenCalledTimes(1);
+    expect(mocks.librarySummaryGet.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.recipesGet.mock.invocationCallOrder[0]
+    );
+    expect(mocks.searchRecipes).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('recipe-search-input')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /search/i })).toHaveAttribute(
+      'aria-expanded',
+      'false'
+    );
+    const toolbar = [
+      'recipes-search-disclosure',
+      'stack-toggle-discoverable',
+      'browse-filter-goto',
+      'browse-view-stack',
+      'browse-view-list',
+      'recycle-bin-entry',
+    ].map((id) => screen.getByTestId(id));
+    expect(toolbar.map((element) => element.compareDocumentPosition(toolbar[0]))).toEqual([
+      0, 2, 2, 2, 2, 2,
+    ]);
+    expect(screen.queryByTestId('browse-all-exit')).not.toBeInTheDocument();
   });
 
-  it('fires recipe search on mount and again when Enter is pressed with the current query', async () => {
-    await act(async () => {
-      render(<RecipesPage />);
-    });
-
-    await waitFor(() => {
-      expect(mocks.searchRecipes).toHaveBeenCalledWith({
-        query: '',
-        limit: 12,
-        weekOffset: undefined,
-        dayIndex: undefined,
-        similarToRecipeId: undefined,
-      });
-    });
-
-    fireEvent.change(screen.getByTestId('recipe-search-input'), {
-      target: { value: 'chicken' },
-    });
-    fireEvent.keyDown(screen.getByTestId('recipe-search-input'), {
-      key: 'Enter',
-      code: 'Enter',
-      charCode: 13,
-    });
-
-    await waitFor(() => {
-      expect(mocks.searchRecipes).toHaveBeenLastCalledWith({
-        query: 'chicken',
-        limit: 12,
-        weekOffset: undefined,
-        dayIndex: undefined,
-        similarToRecipeId: undefined,
-        filters: undefined,
-      });
-    });
+  it('keeps detail on the front card without an added action row in Explore', async () => {
+    mocks.setSearchParams('');
+    await act(async () => render(<UnifiedRecipesPage />));
+    await screen.findByTestId('stack-card-front');
+    expect(screen.queryByTestId('stack-navigation-actions')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('unit-stack-detail'));
+    expect(await screen.findByTestId('recipe-detail-sheet')).toBeInTheDocument();
+    expect(mocks.getRecipe).toHaveBeenCalledWith('11111111-1111-1111-1111-111111111111');
   });
 
-  it('waits until typing has settled before searching', async () => {
-    await act(async () => {
-      render(<RecipesPage />);
-    });
+  it('opens a recognizable Search field and counts only applied scope and filters', async () => {
+    mocks.setSearchParams('');
+    await act(async () => render(<UnifiedRecipesPage />));
+    fireEvent.click(screen.getByTestId('recipes-search-disclosure'));
+    const input = screen.getByTestId('recipe-search-input');
+    expect(input).toHaveAttribute('placeholder', 'Something spicy for 4...');
+    expect(input.parentElement?.querySelector('.lucide-search')).toBeInTheDocument();
+    expect(screen.getByTestId('mobile-filters-button')).toHaveAccessibleName('Filters');
 
-    await waitFor(() => expect(mocks.searchRecipes).toHaveBeenCalledTimes(1));
+    fireEvent.click(screen.getByTestId('stack-toggle-discoverable'));
+    fireEvent.click(screen.getByTestId('browse-filter-goto'));
+    expect(screen.getByTestId('mobile-filters-button')).toHaveAccessibleName('Filters, 2 active');
+    fireEvent.click(screen.getByTestId('mobile-filters-button'));
+    fireEvent.click(screen.getByTestId('mobile-filter-quick'));
+    expect(screen.getByTestId('mobile-filters-button')).toHaveAccessibleName('Filters, 2 active');
+    fireEvent.click(screen.getByTestId('mobile-filter-apply'));
+    expect(screen.getByTestId('mobile-filters-button')).toHaveAccessibleName('Filters, 3 active');
+  });
+
+  it('shows a modest Results heading only for a populated Search list', async () => {
+    mocks.setSearchParams('');
+    await act(async () => render(<UnifiedRecipesPage />));
+    fireEvent.click(screen.getByTestId('browse-view-list'));
+    expect(screen.queryByRole('heading', { name: 'Results' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('recipes-search-disclosure'));
+    fireEvent.change(screen.getByTestId('recipe-search-input'), { target: { value: 'chicken' } });
+    fireEvent.keyDown(screen.getByTestId('recipe-search-input'), { key: 'Enter' });
+    await waitFor(() => expect(screen.getAllByTestId('browse-list-recipe-card')).toHaveLength(2));
+    expect(screen.getByRole('heading', { name: 'Results' })).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('browse-view-stack'));
+    expect(screen.queryByRole('heading', { name: 'Results' })).not.toBeInTheDocument();
+  });
+
+  it('searches from Explore and shows ordered results in stack and list without another POST', async () => {
+    mocks.setSearchParams('');
+    await act(async () => {
+      render(<UnifiedRecipesPage />);
+    });
+    await waitFor(() => expect(mocks.recipesGet).toHaveBeenCalledTimes(1));
+    fireEvent.click(screen.getByTestId('recipes-search-disclosure'));
+    await waitFor(() => expect(screen.getByTestId('recipe-search-input')).toHaveFocus());
     vi.useFakeTimers();
     try {
-      fireEvent.change(screen.getByTestId('recipe-search-input'), { target: { value: 'chi' } });
-      await act(async () => {
-        await vi.advanceTimersByTimeAsync(499);
-      });
-      expect(mocks.searchRecipes).toHaveBeenCalledTimes(1);
-
       fireEvent.change(screen.getByTestId('recipe-search-input'), { target: { value: 'chicken' } });
       await act(async () => {
         await vi.advanceTimersByTimeAsync(500);
       });
-
-      expect(mocks.searchRecipes).toHaveBeenLastCalledWith(
+      expect(mocks.searchRecipes).toHaveBeenCalledWith(
         expect.objectContaining({ query: 'chicken' })
       );
-      expect(mocks.searchRecipes).toHaveBeenCalledTimes(2);
+      expect(screen.getByTestId('stack-card-front')).toHaveTextContent('Chicken Soup');
+      const postCount = mocks.searchRecipes.mock.calls.length;
+      fireEvent.click(screen.getByTestId('browse-view-list'));
+      expect(screen.getAllByTestId('browse-list-recipe-card')).toHaveLength(2);
+      expect(screen.getAllByTestId('browse-list-recipe-card')[0]).toHaveTextContent('Chicken Soup');
+      expect(mocks.searchRecipes).toHaveBeenCalledTimes(postCount);
     } finally {
       vi.useRealTimers();
     }
   });
 
-  it('renders the top pick card and alternate cards from the search response', async () => {
+  it('keeps toolbar scope and Filters drafts separate in Explore', async () => {
+    mocks.setSearchParams('');
     await act(async () => {
-      render(<RecipesPage />);
+      render(<UnifiedRecipesPage />);
     });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('recipe-card-top-pick')).toBeInTheDocument();
-    });
-
-    expect(screen.getByTestId('recipe-card-top-pick')).toHaveTextContent('Chicken Soup');
-    expect(
-      screen.getByTestId('recipe-card-22222222-2222-2222-2222-222222222222')
-    ).toBeInTheDocument();
-  });
-
-  it('top-pick-feeling-lucky button promotes a different result without changing query', async () => {
-    await act(async () => {
-      render(<RecipesPage />);
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('recipe-card-top-pick')).toBeInTheDocument();
-    });
-
-    const callsBefore = mocks.searchRecipes.mock.calls.length;
-    fireEvent.click(screen.getByTestId('top-pick-feeling-lucky'));
-
-    expect(screen.getByTestId('recipe-card-top-pick')).toHaveTextContent('Chicken Pasta');
-    expect(mocks.searchRecipes.mock.calls.length).toBe(callsBefore);
-    expect(screen.getByTestId('recipe-search-input')).toHaveValue('');
-  });
-
-  it('top-pick-feeling-lucky ignores ineligible and import-issue results', async () => {
-    mocks.searchRecipes.mockResolvedValue(
-      makeSearchResponse({
-        results: [
-          {
-            ...makeSearchResult(2),
-            name: 'Reported Chicken',
-            importIssueStatus: 'reported',
-          },
-          {
-            ...makeSearchResult(4),
-            name: 'Ineligible Chicken',
-            isPromotionEligible: false,
-          },
-          {
-            ...makeSearchResult(3),
-            name: 'Eligible Chicken',
-            importIssueStatus: null,
-          },
-        ],
-      })
+    await waitFor(() => expect(mocks.recipesGet).toHaveBeenCalledTimes(1));
+    fireEvent.click(screen.getByTestId('browse-filter-goto'));
+    await waitFor(() => expect(mocks.recipesGet).toHaveBeenCalledTimes(2));
+    fireEvent.click(screen.getByTestId('recipes-search-disclosure'));
+    fireEvent.click(screen.getByTestId('mobile-filters-button'));
+    expect(screen.getByRole('button', { name: 'GOTO' })).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(screen.getByRole('button', { name: 'Discovery' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    expect(screen.getByTestId('stack-toggle-discoverable')).toHaveAttribute(
+      'aria-label',
+      'Showing all recipes'
     );
-    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0);
-
-    await act(async () => {
-      render(<RecipesPage />);
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('recipe-card-top-pick')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByTestId('top-pick-feeling-lucky'));
-
-    expect(screen.getByTestId('recipe-card-top-pick')).toHaveTextContent('Eligible Chicken');
-    expect(screen.getByText('Reported Chicken')).toBeInTheDocument();
-    randomSpy.mockRestore();
+    expect(screen.getByTestId('browse-filter-goto')).toHaveAttribute('aria-pressed', 'true');
+    expect(mocks.searchRecipes).not.toHaveBeenCalled();
   });
 
-  it('leaves the current result set intact and makes Surprise Me unavailable without an eligible alternate', async () => {
-    mocks.searchRecipes.mockResolvedValue(
-      makeSearchResponse({
-        results: [
-          {
-            ...makeSearchResult(2),
-            name: 'Ineligible Chicken',
-            isPromotionEligible: false,
-          },
-          {
-            ...makeSearchResult(3),
-            name: 'Reported Chicken',
-            importIssueStatus: 'readyToReview',
-          },
-        ],
-      })
-    );
-
-    await act(async () => {
-      render(<RecipesPage />);
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('recipe-card-top-pick')).toHaveTextContent('Chicken Soup');
-    });
-
-    const callsBefore = mocks.searchRecipes.mock.calls.length;
-    const surpriseMe = screen.getByTestId('top-pick-feeling-lucky');
-    expect(surpriseMe).toBeDisabled();
-    expect(surpriseMe).toHaveAccessibleDescription('No eligible alternate pick is available');
-
-    fireEvent.click(surpriseMe);
-
-    expect(screen.getByTestId('recipe-card-top-pick')).toHaveTextContent('Chicken Soup');
-    expect(mocks.searchRecipes).toHaveBeenCalledTimes(callsBefore);
-  });
-
-  it('loads more search results from an infinite-scroll sentinel instead of a manual button', async () => {
-    const observerCallbacks: IntersectionObserverCallback[] = [];
-    const observerOptions: IntersectionObserverInit[] = [];
-    const observe = vi.fn();
-    const disconnect = vi.fn();
-    const originalIntersectionObserver = globalThis.IntersectionObserver;
-
-    class MockIntersectionObserver implements IntersectionObserver {
-      readonly root = null;
-      rootMargin = '';
-      readonly scrollMargin = '0px 0px 0px 0px';
-      readonly thresholds = [0];
-
-      constructor(callback: IntersectionObserverCallback, options?: IntersectionObserverInit) {
-        observerCallbacks.push(callback);
-        observerOptions.push(options ?? {});
-        this.rootMargin = options?.rootMargin ?? '';
-      }
-
-      observe = observe;
-      unobserve = vi.fn();
-      disconnect = disconnect;
-      takeRecords = vi.fn(() => []);
-    }
-
-    globalThis.IntersectionObserver = MockIntersectionObserver;
-    mocks.searchRecipes.mockResolvedValueOnce(
-      makeSearchResponse({
-        results: Array.from({ length: 6 }, (_, index) => makeSearchResult(index + 2)),
-        resultPath: 'browse',
-        nextCursor: 'cursor-page-two',
-      })
-    );
+  it('uses a Search cursor only at the loaded stack boundary and does not wrap', async () => {
+    mocks.setSearchParams('');
+    mocks.searchRecipes.mockResolvedValueOnce(makeSearchResponse({ nextCursor: 'cursor-2' }));
     mocks.searchRecipes.mockResolvedValueOnce(
       makeSearchResponse({
         topPick: null,
-        results: Array.from({ length: 7 }, (_, index) => makeSearchResult(index + 8)),
+        results: [{ ...makeSearchResult(3), name: 'Third match' }],
+        nextCursor: null,
       })
     );
-
-    try {
-      await act(async () => {
-        render(<RecipesPage />);
-      });
-
-      await waitFor(() => {
-        expect(screen.getByTestId('search-results-scroll-sentinel')).toBeInTheDocument();
-      });
-
-      expect(screen.queryByTestId('show-more-results')).not.toBeInTheDocument();
-      expect(observe).toHaveBeenCalledWith(screen.getByTestId('search-results-scroll-sentinel'));
-      expect(observerOptions).toContainEqual({ rootMargin: '400px 0px' });
-
-      await act(async () => {
-        observerCallbacks[0]?.(
-          [{ isIntersecting: true } as IntersectionObserverEntry],
-          {} as IntersectionObserver
-        );
-      });
-
-      await waitFor(() => {
-        expect(mocks.searchRecipes).toHaveBeenLastCalledWith({
-          query: '',
-          limit: 24,
-          continuationToken: 'cursor-page-two',
-          weekOffset: undefined,
-          dayIndex: undefined,
-          similarToRecipeId: undefined,
-          filters: undefined,
-        });
-      });
-    } finally {
-      globalThis.IntersectionObserver = originalIntersectionObserver;
-    }
-  });
-
-  it('keeps one browse continuation in flight when the observer fires repeatedly', async () => {
-    const observerCallbacks: IntersectionObserverCallback[] = [];
-    const originalIntersectionObserver = globalThis.IntersectionObserver;
-    let resolveContinuation: ((value: ReturnType<typeof makeSearchResponse>) => void) | undefined;
-
-    class MockIntersectionObserver implements IntersectionObserver {
-      readonly root = null;
-      readonly rootMargin = '400px 0px';
-      readonly scrollMargin = '0px 0px 0px 0px';
-      readonly thresholds = [0];
-
-      constructor(callback: IntersectionObserverCallback) {
-        observerCallbacks.push(callback);
-      }
-
-      observe = vi.fn();
-      unobserve = vi.fn();
-      disconnect = vi.fn();
-      takeRecords = vi.fn(() => []);
-    }
-
-    globalThis.IntersectionObserver = MockIntersectionObserver;
-    mocks.searchRecipes.mockResolvedValueOnce(
-      makeSearchResponse({ resultPath: 'browse', nextCursor: 'cursor-page-two' })
-    );
-    mocks.searchRecipes.mockImplementationOnce(
-      () =>
-        new Promise((resolve) => {
-          resolveContinuation = resolve;
-        })
-    );
-
-    try {
-      await act(async () => {
-        render(<RecipesPage />);
-      });
-      await waitFor(() => expect(observerCallbacks).not.toHaveLength(0));
-
-      await act(async () => {
-        const entry = [{ isIntersecting: true } as IntersectionObserverEntry];
-        observerCallbacks[0]?.(entry, {} as IntersectionObserver);
-        observerCallbacks[0]?.(entry, {} as IntersectionObserver);
-      });
-
-      expect(mocks.searchRecipes).toHaveBeenCalledTimes(2);
-
-      await act(async () => {
-        resolveContinuation?.(
-          makeSearchResponse({ topPick: null, resultPath: 'browse', results: [] })
-        );
-      });
-    } finally {
-      globalThis.IntersectionObserver = originalIntersectionObserver;
-    }
-  });
-
-  it('does not let an obsolete initial browse response replace a newer search', async () => {
-    vi.useFakeTimers();
-    let resolveInitial: ((value: ReturnType<typeof makeSearchResponse>) => void) | undefined;
-    mocks.searchRecipes.mockImplementationOnce(
-      () =>
-        new Promise((resolve) => {
-          resolveInitial = resolve;
-        })
-    );
-    mocks.searchRecipes.mockResolvedValueOnce(
-      makeSearchResponse({
-        topPick: null,
-        results: [{ ...makeSearchResult(9), name: 'New search result' }],
-      })
-    );
-
-    try {
-      render(<RecipesPage />);
-      fireEvent.change(screen.getByTestId('recipe-search-input'), {
-        target: { value: 'new query' },
-      });
-      await act(async () => {
-        await vi.advanceTimersByTimeAsync(500);
-        await Promise.resolve();
-      });
-      expect(screen.getByText('New search result')).toBeInTheDocument();
-
-      await act(async () => {
-        resolveInitial?.(
-          makeSearchResponse({
-            topPick: null,
-            results: [{ ...makeSearchResult(8), name: 'Old browse result' }],
-          })
-        );
-      });
-
-      expect(screen.getByText('New search result')).toBeInTheDocument();
-      expect(screen.queryByText('Old browse result')).not.toBeInTheDocument();
-    } finally {
-      vi.useRealTimers();
-    }
-  });
-
-  it.each(['typed', 'similar'])(
-    'refreshes %s results after invalidation without losing context',
-    async (mode) => {
-      mocks.setSearchParams(
-        `addToDay=2&weekOffset=1${mode === 'similar' ? '&similarTo=recipe-123' : ''}`
-      );
-      mocks.searchRecipes.mockResolvedValue(makeSearchResponse({ resultPath: 'lexical-only' }));
-      await act(async () => {
-        render(<RecipesPage />);
-      });
-      if (mode === 'typed') {
-        fireEvent.change(screen.getByTestId('recipe-search-input'), {
-          target: { value: 'chicken' },
-        });
-        fireEvent.keyDown(screen.getByTestId('recipe-search-input'), { key: 'Enter' });
-      }
-      await waitFor(() => expect(screen.queryByTestId('recipe-loader')).not.toBeInTheDocument());
-      const before = mocks.searchRecipes.mock.calls.length;
-      mocks.searchRecipes.mockResolvedValueOnce(
-        makeSearchResponse({
-          topPick: null,
-          results: [{ ...makeSearchResult(31), name: 'Fresh ranked recipe' }],
-        })
-      );
-      await act(async () => {
-        useSearchPromotionStore.getState().invalidate();
-      });
-      expect(await screen.findByText('Fresh ranked recipe')).toBeInTheDocument();
-      expect(mocks.searchRecipes).toHaveBeenCalledTimes(before + 1);
-      expect(mocks.searchRecipes).toHaveBeenLastCalledWith(
-        expect.objectContaining({
-          query: mode === 'typed' ? 'chicken' : '',
-          weekOffset: 1,
-          dayIndex: 2,
-          similarToRecipeId: mode === 'similar' ? 'recipe-123' : undefined,
-        })
-      );
-      expect(screen.getByTestId('recipe-search-input')).toHaveValue(
-        mode === 'typed' ? 'chicken' : ''
-      );
-    }
-  );
-
-  it.each(['success', 'failure'])(
-    'refreshes a pending initial request and ignores obsolete %s',
-    async (outcome) => {
-      let resolveOld!: (value: ReturnType<typeof makeSearchResponse>) => void;
-      let rejectOld!: (error: Error) => void;
-      mocks.searchRecipes.mockImplementationOnce(
-        () =>
-          new Promise((resolve, reject) => {
-            resolveOld = resolve;
-            rejectOld = reject;
-          })
-      );
-      mocks.searchRecipes.mockResolvedValueOnce(
-        makeSearchResponse({
-          topPick: null,
-          results: [{ ...makeSearchResult(31), name: 'Current generation' }],
-        })
-      );
-      await act(async () => {
-        render(<RecipesPage />);
-      });
-      await act(async () => {
-        useSearchPromotionStore.getState().invalidate();
-      });
-      expect(await screen.findByText('Current generation')).toBeInTheDocument();
-      await act(async () => {
-        if (outcome === 'success') resolveOld(makeSearchResponse());
-        else rejectOld(new Error('Obsolete failure'));
-      });
-      expect(screen.getByText('Current generation')).toBeInTheDocument();
-      expect(screen.queryByTestId('search-request-error')).not.toBeInTheDocument();
-      expect(mocks.searchRecipes).toHaveBeenCalledTimes(2);
-    }
-  );
-
-  it('handles repeated invalidations without replaying them when typing later', async () => {
-    mocks.searchRecipes.mockResolvedValue(makeSearchResponse({ resultPath: 'lexical-only' }));
     await act(async () => {
-      render(<RecipesPage />);
+      render(<UnifiedRecipesPage />);
     });
-    await act(async () => {
-      useSearchPromotionStore.getState().invalidate();
-    });
-    await waitFor(() => expect(mocks.searchRecipes).toHaveBeenCalledTimes(2));
-    await act(async () => {
-      useSearchPromotionStore.getState().invalidate();
-    });
-    await waitFor(() => expect(mocks.searchRecipes).toHaveBeenCalledTimes(3));
-    await waitFor(() => expect(screen.queryByTestId('recipe-loader')).not.toBeInTheDocument());
-    vi.useFakeTimers();
-    try {
-      fireEvent.change(screen.getByTestId('recipe-search-input'), {
-        target: { value: 'new query' },
-      });
-      await act(async () => {
-        await vi.advanceTimersByTimeAsync(499);
-      });
-      expect(mocks.searchRecipes).toHaveBeenCalledTimes(3);
-      await act(async () => {
-        await vi.advanceTimersByTimeAsync(1);
-      });
-      expect(mocks.searchRecipes).toHaveBeenCalledTimes(4);
-      expect(mocks.searchRecipes).toHaveBeenLastCalledWith(
-        expect.objectContaining({ query: 'new query' })
-      );
-    } finally {
-      vi.useRealTimers();
-    }
-  });
-
-  it('shows refresh failure and retries retained typed input instead of claiming no matches', async () => {
-    mocks.searchRecipes.mockResolvedValue(makeSearchResponse({ resultPath: 'lexical-only' }));
-    await act(async () => {
-      render(<RecipesPage />);
-    });
+    fireEvent.click(screen.getByTestId('recipes-search-disclosure'));
     fireEvent.change(screen.getByTestId('recipe-search-input'), { target: { value: 'chicken' } });
     fireEvent.keyDown(screen.getByTestId('recipe-search-input'), { key: 'Enter' });
-    await waitFor(() => expect(screen.queryByTestId('recipe-loader')).not.toBeInTheDocument());
-    mocks.searchRecipes.mockRejectedValueOnce(new Error('Network unavailable'));
+    await waitFor(() =>
+      expect(screen.getByTestId('stack-card-front')).toHaveTextContent('Chicken Soup')
+    );
+    fireEvent.click(screen.getByTestId('unit-stack-previous'));
+    expect(screen.getByTestId('stack-card-front')).toHaveTextContent('Chicken Soup');
+    expect(screen.getByTestId('stack-depth-indicator')).toHaveTextContent('more available');
+    fireEvent.click(screen.getByTestId('unit-stack-next'));
+    expect(screen.getByTestId('stack-card-front')).toHaveTextContent('Chicken Pasta');
+    fireEvent.click(screen.getByTestId('unit-stack-next'));
+    await waitFor(() =>
+      expect(screen.getByTestId('stack-card-front')).toHaveTextContent('Third match')
+    );
+    expect(mocks.searchRecipes).toHaveBeenCalledTimes(2);
+    expect(screen.getByTestId('stack-depth-indicator')).toHaveTextContent('3 / 3');
+    fireEvent.click(screen.getByTestId('unit-stack-next'));
+    expect(screen.getByTestId('stack-card-front')).toHaveTextContent('Third match');
+    fireEvent.click(screen.getByTestId('unit-stack-previous'));
+    expect(screen.getByTestId('stack-card-front')).toHaveTextContent('Chicken Pasta');
+    expect(mocks.searchRecipes).toHaveBeenCalledTimes(2);
+  });
+
+  it('deduplicates continuation overlaps and permits one pending cursor request', async () => {
+    let completeCursor: ((response: ReturnType<typeof makeSearchResponse>) => void) | undefined;
+    mocks.setSearchParams('');
+    mocks.searchRecipes.mockResolvedValueOnce(makeSearchResponse({ nextCursor: 'cursor-2' }));
+    mocks.searchRecipes.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          completeCursor = resolve;
+        })
+    );
     await act(async () => {
-      useSearchPromotionStore.getState().invalidate();
+      render(<UnifiedRecipesPage />);
     });
-    expect(await screen.findByTestId('search-request-error')).toBeInTheDocument();
-    expect(screen.queryByTestId('search-empty-state')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('recipes-search-disclosure'));
+    fireEvent.change(screen.getByTestId('recipe-search-input'), { target: { value: 'chicken' } });
+    fireEvent.keyDown(screen.getByTestId('recipe-search-input'), { key: 'Enter' });
+    await waitFor(() =>
+      expect(screen.getByTestId('stack-card-front')).toHaveTextContent('Chicken Soup')
+    );
+    fireEvent.click(screen.getByTestId('unit-stack-next'));
+    fireEvent.click(screen.getByTestId('unit-stack-next'));
+    fireEvent.click(screen.getByTestId('unit-stack-next'));
+    expect(mocks.searchRecipes).toHaveBeenCalledTimes(2);
+    expect(mocks.searchRecipes).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        query: 'chicken',
+        continuationToken: 'cursor-2',
+        limit: 12,
+      })
+    );
+    expect(screen.getByTestId('stack-card-front')).toHaveTextContent('Chicken Pasta');
+    await act(async () =>
+      completeCursor?.(
+        makeSearchResponse({
+          topPick: null,
+          results: [
+            makeSearchResponse().results[0],
+            { ...makeSearchResult(3), name: 'Third match' },
+          ],
+          nextCursor: null,
+        })
+      )
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId('stack-card-front')).toHaveTextContent('Third match')
+    );
+    expect(screen.getByTestId('stack-depth-indicator')).toHaveTextContent('3 / 3');
+    fireEvent.click(screen.getByTestId('unit-stack-previous'));
+    expect(screen.getByTestId('stack-card-front')).toHaveTextContent('Chicken Pasta');
+    expect(mocks.searchRecipes).toHaveBeenCalledTimes(2);
+  });
+
+  it('lets a replacement Search continue while the departed cursor request is still pending', async () => {
+    let finishOld!: (response: ReturnType<typeof makeSearchResponse>) => void;
+    mocks.setSearchParams('');
+    mocks.searchRecipes.mockResolvedValueOnce(makeSearchResponse({ nextCursor: 'old-cursor' }));
+    mocks.searchRecipes.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finishOld = resolve;
+        })
+    );
     mocks.searchRecipes.mockResolvedValueOnce(
       makeSearchResponse({
         topPick: null,
-        results: [{ ...makeSearchResult(31), name: 'Recovered search' }],
+        results: [
+          { ...makeSearchResult(3), name: 'Pasta one' },
+          { ...makeSearchResult(4), name: 'Pasta two' },
+        ],
+        nextCursor: 'new-cursor',
       })
     );
-    fireEvent.click(screen.getByTestId('search-request-retry'));
-    expect(await screen.findByText('Recovered search')).toBeInTheDocument();
+    mocks.searchRecipes.mockResolvedValueOnce(
+      makeSearchResponse({ topPick: null, results: [], nextCursor: null })
+    );
+    await act(async () => {
+      render(<UnifiedRecipesPage />);
+    });
+    fireEvent.click(screen.getByTestId('recipes-search-disclosure'));
+    const input = screen.getByTestId('recipe-search-input');
+    fireEvent.change(input, { target: { value: 'chicken' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    await waitFor(() =>
+      expect(screen.getByTestId('stack-card-front')).toHaveTextContent('Chicken Soup')
+    );
+    fireEvent.click(screen.getByTestId('unit-stack-next'));
+    fireEvent.click(screen.getByTestId('unit-stack-next'));
+    expect(mocks.searchRecipes).toHaveBeenCalledTimes(2);
+    fireEvent.change(input, { target: { value: 'pasta' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    await waitFor(() =>
+      expect(screen.getByTestId('stack-card-front')).toHaveTextContent('Pasta one')
+    );
+    fireEvent.click(screen.getByTestId('unit-stack-next'));
+    fireEvent.click(screen.getByTestId('unit-stack-next'));
+    await waitFor(() => expect(mocks.searchRecipes).toHaveBeenCalledTimes(4));
+    expect(mocks.searchRecipes).toHaveBeenLastCalledWith(
+      expect.objectContaining({ query: 'pasta', continuationToken: 'new-cursor' })
+    );
+    await act(async () =>
+      finishOld(
+        makeSearchResponse({
+          topPick: null,
+          results: [{ ...makeSearchResult(5), name: 'Obsolete' }],
+          nextCursor: null,
+        })
+      )
+    );
+    expect(screen.queryByText('Obsolete')).not.toBeInTheDocument();
+  });
+
+  it('ends a Search stack cleanly when a cursor page contains no new matches', async () => {
+    mocks.setSearchParams('');
+    mocks.searchRecipes.mockResolvedValueOnce(makeSearchResponse({ nextCursor: 'cursor-2' }));
+    mocks.searchRecipes.mockResolvedValueOnce(
+      makeSearchResponse({
+        topPick: null,
+        results: [makeSearchResponse().results[0]],
+        nextCursor: null,
+      })
+    );
+    await act(async () => {
+      render(<UnifiedRecipesPage />);
+    });
+    fireEvent.click(screen.getByTestId('recipes-search-disclosure'));
+    fireEvent.change(screen.getByTestId('recipe-search-input'), { target: { value: 'chicken' } });
+    fireEvent.keyDown(screen.getByTestId('recipe-search-input'), { key: 'Enter' });
+    await waitFor(() =>
+      expect(screen.getByTestId('stack-card-front')).toHaveTextContent('Chicken Soup')
+    );
+    fireEvent.click(screen.getByTestId('unit-stack-next'));
+    fireEvent.click(screen.getByTestId('unit-stack-next'));
+    fireEvent.click(screen.getByTestId('unit-stack-next'));
+    expect(screen.getByTestId('stack-card-front')).toHaveTextContent('Chicken Pasta');
+    await waitFor(() =>
+      expect(screen.getByTestId('stack-depth-indicator')).toHaveTextContent('2 / 2')
+    );
+    expect(mocks.searchRecipes).toHaveBeenCalledTimes(2);
+  });
+
+  it('offers restart for an expired Search cursor while retaining loaded cards', async () => {
+    mocks.setSearchParams('');
+    mocks.searchRecipes.mockResolvedValueOnce(makeSearchResponse({ nextCursor: 'cursor-2' }));
+    mocks.searchRecipes.mockRejectedValueOnce({ responseStatusCode: 409 });
+    mocks.searchRecipes.mockResolvedValueOnce(
+      makeSearchResponse({
+        topPick: null,
+        results: [{ ...makeSearchResult(4), name: 'Restarted match' }],
+        nextCursor: null,
+      })
+    );
+    await act(async () => {
+      render(<UnifiedRecipesPage />);
+    });
+    fireEvent.click(screen.getByTestId('recipes-search-disclosure'));
+    fireEvent.change(screen.getByTestId('recipe-search-input'), { target: { value: 'chicken' } });
+    fireEvent.keyDown(screen.getByTestId('recipe-search-input'), { key: 'Enter' });
+    await waitFor(() =>
+      expect(screen.getByTestId('stack-card-front')).toHaveTextContent('Chicken Soup')
+    );
+    fireEvent.click(screen.getByTestId('unit-stack-next'));
+    fireEvent.click(screen.getByTestId('unit-stack-next'));
+    await waitFor(() => expect(screen.getByTestId('search-restart-expired')).toBeInTheDocument());
+    expect(screen.getByTestId('stack-card-front')).toHaveTextContent('Chicken Pasta');
+    expect(screen.queryByTestId('search-load-more-retry')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('search-restart-expired'));
+    await waitFor(() =>
+      expect(screen.getByTestId('stack-card-front')).toHaveTextContent('Restarted match')
+    );
+    expect(mocks.searchRecipes).toHaveBeenCalledTimes(3);
     expect(mocks.searchRecipes).toHaveBeenLastCalledWith(
       expect.objectContaining({ query: 'chicken' })
     );
+    expect(mocks.searchRecipes.mock.lastCall?.[0]).not.toHaveProperty('continuationToken');
   });
 
-  it('restarts an open browse generation when Search promotion eligibility is invalidated', async () => {
-    mocks.searchRecipes.mockResolvedValueOnce(
-      makeSearchResponse({ resultPath: 'browse', nextCursor: 'stale-cursor' })
-    );
+  it('retries a failed continuation with the same cursor and retains its loaded position', async () => {
+    mocks.setSearchParams('');
+    mocks.searchRecipes.mockResolvedValueOnce(makeSearchResponse({ nextCursor: 'cursor-2' }));
+    mocks.searchRecipes.mockRejectedValueOnce({ responseStatusCode: 503 });
     mocks.searchRecipes.mockResolvedValueOnce(
       makeSearchResponse({
-        resultPath: 'browse',
         topPick: null,
-        results: [{ ...makeSearchResult(31), name: 'Fresh after schedule change' }],
+        results: [{ ...makeSearchResult(3), name: 'Third match' }],
+        nextCursor: null,
       })
     );
-
     await act(async () => {
-      render(<RecipesPage />);
+      render(<UnifiedRecipesPage />);
     });
+    fireEvent.click(screen.getByTestId('recipes-search-disclosure'));
+    fireEvent.change(screen.getByTestId('recipe-search-input'), { target: { value: 'chicken' } });
+    fireEvent.keyDown(screen.getByTestId('recipe-search-input'), { key: 'Enter' });
+    await waitFor(() =>
+      expect(screen.getByTestId('stack-card-front')).toHaveTextContent('Chicken Soup')
+    );
+    fireEvent.click(screen.getByTestId('unit-stack-next'));
+    fireEvent.click(screen.getByTestId('unit-stack-next'));
+    await waitFor(() => expect(screen.getByTestId('search-load-more-retry')).toBeInTheDocument());
+    expect(screen.getByTestId('stack-card-front')).toHaveTextContent('Chicken Pasta');
+    fireEvent.click(screen.getByTestId('search-load-more-retry'));
+    await waitFor(() =>
+      expect(screen.getByTestId('stack-card-front')).toHaveTextContent('Third match')
+    );
+    expect(mocks.searchRecipes).toHaveBeenCalledTimes(3);
+    expect(mocks.searchRecipes.mock.calls[1][0]).toEqual(mocks.searchRecipes.mock.calls[2][0]);
+  });
+
+  it('returns to scoped Explore when the last text criterion is cleared', async () => {
+    mocks.setSearchParams('');
+    await act(async () => {
+      render(<UnifiedRecipesPage />);
+    });
+    await waitFor(() => expect(mocks.recipesGet).toHaveBeenCalledTimes(1));
+    fireEvent.click(screen.getByTestId('browse-filter-goto'));
+    await waitFor(() => expect(mocks.recipesGet).toHaveBeenCalledTimes(2));
+    fireEvent.click(screen.getByTestId('recipes-search-disclosure'));
+    const input = screen.getByTestId('recipe-search-input');
+    fireEvent.change(input, { target: { value: 'chicken' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
     await waitFor(() => expect(mocks.searchRecipes).toHaveBeenCalledTimes(1));
-
-    await act(async () => {
-      useSearchPromotionStore.getState().invalidate();
-    });
-
-    await waitFor(() => {
-      expect(mocks.searchRecipes).toHaveBeenLastCalledWith(
-        expect.objectContaining({ query: '', limit: 12 })
-      );
-    });
-    expect(await screen.findByText('Fresh after schedule change')).toBeInTheDocument();
-  });
-
-  it.each(
-    ['browse', 'typed', 'similar'].flatMap((mode) =>
-      ['promotion', 'goto'].map((trigger) => [mode, trigger])
-    )
-  )(
-    'retains filters, Focus concepts and planning context in %s %s refresh',
-    async (mode, trigger) => {
-      let view: ReturnType<typeof render>;
-      mocks.setSearchParams(
-        `addToDay=2&weekOffset=1${mode === 'similar' ? '&similarTo=recipe-123' : ''}`
-      );
-      mocks.searchRecipes.mockResolvedValue(
-        makeSearchResponse({ resultPath: mode === 'browse' ? 'browse' : 'lexical-only' })
-      );
-
-      await act(async () => {
-        view = render(<RecipesPage />);
-      });
-      await waitFor(() => expect(mocks.searchRecipes).toHaveBeenCalledTimes(1));
-
-      if (mode === 'typed') {
-        fireEvent.change(screen.getByTestId('recipe-search-input'), {
-          target: { value: 'chicken' },
-        });
-        fireEvent.keyDown(screen.getByTestId('recipe-search-input'), { key: 'Enter' });
-      }
-      fireEvent.click(screen.getByTestId('mobile-filters-button'));
-      const dialog = screen.getByRole('dialog', { name: 'Filter recipes' });
-      if (trigger === 'goto') fireEvent.click(within(dialog).getByRole('button', { name: 'GOTO' }));
-      fireEvent.click(within(dialog).getByRole('button', { name: 'Supper' }));
-      fireEvent.click(within(dialog).getByRole('button', { name: 'Beef' }));
-      fireEvent.click(within(dialog).getByRole('button', { name: 'Apply filters' }));
-
-      await waitFor(() => {
-        expect(mocks.searchRecipes).toHaveBeenLastCalledWith(
-          expect.objectContaining({
-            query: mode === 'typed' ? 'chicken' : '',
-            similarToRecipeId: mode === 'similar' ? 'recipe-123' : undefined,
-            weekOffset: 1,
-            dayIndex: 2,
-            filters: { mealTypes: ['Supper'], ...(trigger === 'goto' ? { gotoOnly: true } : {}) },
-            preferences: { concepts: ['beef'] },
-          })
-        );
-      });
-
-      const calls = mocks.searchRecipes.mock.calls.length;
-      await act(async () => {
-        if (trigger === 'goto') {
-          mocks.gotoMembershipVersion++;
-          view!.rerender(<RecipesPage />);
-        } else useSearchPromotionStore.getState().invalidate();
-      });
-      await waitFor(() => expect(mocks.searchRecipes.mock.calls.length).toBeGreaterThan(calls));
-
-      await waitFor(() => {
-        expect(mocks.searchRecipes).toHaveBeenLastCalledWith(
-          expect.objectContaining({
-            query: mode === 'typed' ? 'chicken' : '',
-            similarToRecipeId: mode === 'similar' ? 'recipe-123' : undefined,
-            weekOffset: 1,
-            dayIndex: 2,
-            filters: { mealTypes: ['Supper'], ...(trigger === 'goto' ? { gotoOnly: true } : {}) },
-            preferences: { concepts: ['beef'] },
-          })
-        );
-      });
-    }
-  );
-
-  it('renders the empty state when search returns no top pick and no results', async () => {
-    mocks.searchRecipes.mockResolvedValue(
-      makeSearchResponse({
-        topPick: null,
-        results: [],
+    fireEvent.change(input, { target: { value: '' } });
+    await waitFor(() => expect(mocks.recipesGet).toHaveBeenCalledTimes(3));
+    expect(mocks.recipesGet).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        queryParameters: expect.objectContaining({ gotoOnly: true }),
       })
     );
-
-    await act(async () => {
-      render(<RecipesPage />);
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('search-empty-state')).toBeInTheDocument();
-    });
+    expect(screen.getByTestId('stack-card-front')).toHaveTextContent('Chicken Soup');
   });
 
-  it('shows planner mode banner when planner context is present', async () => {
-    mocks.setSearchParams('addToDay=2&weekOffset=0');
-
+  it('opens focus=search over Explore without an empty POST', async () => {
+    mocks.setSearchParams('focus=search');
     await act(async () => {
-      render(<RecipesPage />);
+      render(<UnifiedRecipesPage />);
     });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('planning-mode-banner')).toBeInTheDocument();
-    });
-  });
-
-  it('opens the detail sheet from a result card and closes it without re-running search or clearing results', async () => {
-    await act(async () => {
-      render(<RecipesPage />);
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('recipe-card-top-pick')).toBeInTheDocument();
-    });
-
-    expect(mocks.searchRecipes).toHaveBeenCalledTimes(1);
-
-    fireEvent.click(screen.getByTestId('recipe-card-top-pick'));
-
-    await waitFor(() => {
-      expect(screen.getByTestId('recipe-detail-sheet')).toBeInTheDocument();
-    });
-
-    expect(screen.getByTestId('recipe-detail-name')).toHaveTextContent('Chicken Soup');
-    expect(screen.getByTestId('recipe-notes-input')).toHaveValue('Family favorite.');
-    expect(screen.getByRole('button', { name: 'Like' })).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByTestId('action-set-goto')).toBeInTheDocument();
-    expect(screen.getByTestId('action-cook-this')).toBeInTheDocument();
-    expect(screen.getByTestId('action-find-similar')).toBeInTheDocument();
-    expect(screen.getByTestId('action-toggle-discovery')).toBeInTheDocument();
-
-    // Actions now in gear menu
-    expect(screen.getByTestId('action-gear-menu')).toBeInTheDocument();
-    fireEvent.click(screen.getByTestId('action-gear-menu'));
-    expect(screen.getByTestId('action-move-to-bin')).toBeInTheDocument();
-
-    fireEvent.click(screen.getByTestId('action-close-sheet'));
-
-    await waitFor(() => {
-      expect(screen.queryByTestId('recipe-detail-sheet')).not.toBeInTheDocument();
-    });
-
-    expect(mocks.searchRecipes).toHaveBeenCalledTimes(1);
-    expect(screen.getByTestId('recipe-card-top-pick')).toBeInTheDocument();
-    expect(screen.getByTestId('recipe-search-input')).toHaveValue('');
-  });
-
-  it.each(['browse', 'lexical-only'] as const)(
-    'refreshes %s results after moving a recipe to the bin without navigating',
-    async (resultPath) => {
-      const response = makeSearchResponse({
-        resultPath,
-        ...(resultPath === 'browse' ? { topPick: null } : {}),
-      });
-      const removedRecipe = response.topPick ?? response.results[0];
-      const cardTestId = response.topPick
-        ? 'recipe-card-top-pick'
-        : `recipe-card-${removedRecipe.id}`;
-      mocks.getRecipe.mockResolvedValue(
-        makeRecipeDetail({ id: removedRecipe.id, name: removedRecipe.name })
-      );
-      mocks.searchRecipes.mockResolvedValueOnce(response);
-      let resolveRefresh!: (value: ReturnType<typeof makeSearchResponse>) => void;
-      mocks.searchRecipes.mockImplementationOnce(
-        () =>
-          new Promise((resolve) => {
-            resolveRefresh = resolve;
-          })
-      );
-      mocks.setSearchParams('addToDay=2&weekOffset=1');
-
-      render(<RecipesPage />);
-      fireEvent.click(await screen.findByTestId(cardTestId));
-      fireEvent.click(await screen.findByTestId('action-gear-menu'));
-      fireEvent.click(screen.getByTestId('action-move-to-bin'));
-
-      await waitFor(() => {
-        expect(mocks.deleteRecipe).toHaveBeenCalledWith(removedRecipe.id);
-        expect(screen.queryByTestId('recipe-detail-sheet')).not.toBeInTheDocument();
-        expect(screen.queryByTestId(cardTestId)).not.toBeInTheDocument();
-        expect(mocks.searchRecipes).toHaveBeenCalledTimes(2);
-      });
-      expect(mocks.searchRecipes).toHaveBeenLastCalledWith(
-        expect.objectContaining({
-          query: '',
-          weekOffset: 1,
-          dayIndex: 2,
-        })
-      );
-
-      await act(async () => {
-        resolveRefresh(
-          makeSearchResponse({
-            ...response,
-            topPick: null,
-            results: response.results.filter((recipe) => recipe.id !== removedRecipe.id),
-          })
-        );
-      });
-      expect(screen.queryByTestId(cardTestId)).not.toBeInTheDocument();
-      if (resultPath === 'browse') {
-        expect(screen.getByTestId('search-empty-state')).toBeInTheDocument();
-      } else {
-        expect(screen.getByTestId(`recipe-card-${response.results[0].id}`)).toBeInTheDocument();
-      }
-      expect(mocks.push).not.toHaveBeenCalled();
-    }
-  );
-
-  it('keeps the recipe available and the detail sheet open when moving to the bin fails', async () => {
-    const errorLog = vi.spyOn(console, 'error').mockImplementation(() => {});
-    mocks.deleteRecipe.mockRejectedValueOnce(new Error('Recipe is assigned to the planner'));
-    try {
-      render(<RecipesPage />);
-      fireEvent.click(await screen.findByTestId('recipe-card-top-pick'));
-      fireEvent.click(await screen.findByTestId('action-gear-menu'));
-      fireEvent.click(screen.getByTestId('action-move-to-bin'));
-      await waitFor(() => expect(errorLog).toHaveBeenCalled());
-      expect(screen.getByTestId('recipe-detail-sheet')).toBeInTheDocument();
-      expect(screen.getByTestId('recipe-card-top-pick')).toBeInTheDocument();
-      expect(mocks.searchRecipes).toHaveBeenCalledTimes(1);
-    } finally {
-      errorLog.mockRestore();
-    }
-  });
-
-  it('marks a recipe as the family GOTO from the detail sheet star pill', async () => {
-    await act(async () => {
-      render(<RecipesPage />);
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('recipe-card-top-pick')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByTestId('recipe-card-top-pick'));
-
-    await waitFor(() => {
-      expect(screen.getByTestId('action-set-goto')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByTestId('action-set-goto'));
-    await waitFor(() => {
-      expect(mocks.saveGoTo).toHaveBeenCalledWith({
-        items: [
-          {
-            recipeId: '11111111-1111-1111-1111-111111111111',
-            description: 'Chicken Soup',
-            imageUrl: 'https://example.com/chicken-soup.jpg',
-            status: 'ready',
-          },
-        ],
-      });
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('action-current-goto')).toHaveTextContent('GOTO');
-    });
-    expect(screen.queryByTestId('action-set-goto')).not.toBeInTheDocument();
-  });
-
-  it('shows the current GOTO pill without re-saving when the detail recipe is already GOTO', async () => {
-    mocks.setFamilySettings({
-      family_goto: {
-        items: [
-          {
-            recipeId: '11111111-1111-1111-1111-111111111111',
-            description: 'Chicken Soup',
-            imageUrl: 'https://example.com/chicken-soup.jpg',
-            status: 'ready',
-          },
-        ],
-      },
-    });
-
-    await act(async () => {
-      render(<RecipesPage />);
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('recipe-card-top-pick')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByTestId('recipe-card-top-pick'));
-
-    await waitFor(() => {
-      expect(screen.getByTestId('action-current-goto')).toHaveTextContent('GOTO');
-    });
-
-    fireEvent.click(screen.getByTestId('action-current-goto'));
-    await waitFor(() => {
-      expect(mocks.saveGoTo).toHaveBeenCalledWith({
-        items: [],
-      });
-    });
-  });
-
-  it('edits notes and rating from the detail sheet using PATCH calls', async () => {
-    await act(async () => {
-      render(<RecipesPage />);
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('recipe-card-top-pick')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByTestId('recipe-card-top-pick'));
-
-    await waitFor(() => {
-      expect(screen.getByTestId('recipe-detail-sheet')).toBeInTheDocument();
-    });
-
-    fireEvent.change(screen.getByTestId('recipe-notes-input'), {
-      target: { value: 'kids loved it' },
-    });
-
-    await waitFor(() => {
-      expect(mocks.updateRecipe).toHaveBeenCalledWith(
-        '11111111-1111-1111-1111-111111111111',
-        expect.objectContaining({ notes: 'kids loved it' })
-      );
-    });
-
-    fireEvent.click(screen.getByRole('button', { name: 'Love' }));
-
-    await waitFor(() => {
-      expect(mocks.updateRecipe).toHaveBeenCalledWith(
-        '11111111-1111-1111-1111-111111111111',
-        expect.objectContaining({ rating: 3 })
-      );
-    });
-
-    expect(screen.getByTestId('recipe-detail-sheet')).toBeInTheDocument();
-  });
-
-  it('edits recipe card fields in edit mode and saves them with one PATCH call', async () => {
-    await act(async () => {
-      render(<RecipesPage />);
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('recipe-card-top-pick')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByTestId('recipe-card-top-pick'));
-
-    await waitFor(() => {
-      expect(screen.getByTestId('recipe-detail-sheet')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByTestId('action-gear-menu'));
-    fireEvent.click(screen.getByTestId('action-edit-recipe'));
-    fireEvent.change(screen.getByTestId('recipe-edit-name-input'), {
-      target: { value: 'Chicken Soup Deluxe' },
-    });
-    fireEvent.change(screen.getByTestId('recipe-edit-description-input'), {
-      target: { value: 'A warmer soup for the weeknight table.' },
-    });
-    fireEvent.change(screen.getByTestId('recipe-edit-ingredient-1'), {
-      target: { value: 'Rich chicken broth' },
-    });
-    fireEvent.click(screen.getByTestId('recipe-add-ingredient'));
-    fireEvent.change(screen.getByTestId('recipe-edit-ingredient-3'), {
-      target: { value: 'Parsley' },
-    });
-
-    fireEvent.click(screen.getByTestId('recipe-save-edits'));
-
-    await waitFor(() => {
-      expect(mocks.updateRecipe).toHaveBeenCalledWith(
-        '11111111-1111-1111-1111-111111111111',
-        expect.objectContaining({
-          name: 'Chicken Soup Deluxe',
-          description: 'A warmer soup for the weeknight table.',
-          ingredients: ['Chicken', 'Rich chicken broth', 'Carrots', 'Parsley'],
-          mealTypes: ['Supper'],
-        })
-      );
-    });
-
-    expect(screen.getByTestId('recipe-detail-name')).toHaveTextContent('Chicken Soup Deluxe');
-    expect(screen.getByText('Rich chicken broth')).toBeInTheDocument();
-  });
-
-  it('cancels recipe card edits without patching editable fields', async () => {
-    await act(async () => {
-      render(<RecipesPage />);
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('recipe-card-top-pick')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByTestId('recipe-card-top-pick'));
-
-    await waitFor(() => {
-      expect(screen.getByTestId('recipe-detail-sheet')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByTestId('action-gear-menu'));
-    fireEvent.click(screen.getByTestId('action-edit-recipe'));
-    fireEvent.change(screen.getByTestId('recipe-edit-name-input'), {
-      target: { value: 'Unsaved Soup' },
-    });
-    fireEvent.click(screen.getByTestId('recipe-cancel-edits'));
-
-    expect(mocks.updateRecipe).not.toHaveBeenCalled();
-    expect(screen.getByTestId('recipe-detail-name')).toHaveTextContent('Chicken Soup');
-  });
-
-  it('renders the planner CTA in planner mode and assigns the recipe back to the planner', async () => {
-    mocks.setSearchParams('addToDay=2&weekOffset=0');
-
-    await act(async () => {
-      render(<RecipesPage />);
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('recipe-card-top-pick')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByTestId('recipe-card-top-pick'));
-
-    await waitFor(() => {
-      expect(screen.getByTestId('action-add-to-day')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByTestId('action-add-to-day'));
-
-    await waitFor(() => {
-      expect(mocks.assignRecipeToDay).toHaveBeenCalledWith(
-        0,
-        2,
-        {
-          id: '11111111-1111-1111-1111-111111111111',
-          name: 'Chicken Soup',
-          image: 'https://example.com/chicken-soup.jpg',
-        },
-        '2026-05-04'
-      );
-    });
-
-    expect(mocks.push).toHaveBeenCalledWith(
-      '/planner?success=1&dayIndex=2&weekOffset=0&referenceWeekStartDate=2026-05-04'
+    await waitFor(() => expect(mocks.recipesGet).toHaveBeenCalledTimes(1));
+    expect(mocks.searchRecipes).not.toHaveBeenCalled();
+    expect(screen.getByTestId('recipes-search-disclosure')).toHaveAttribute(
+      'aria-expanded',
+      'true'
     );
+    await waitFor(() => expect(screen.getByTestId('recipe-search-input')).toHaveFocus());
   });
 
-  describe('Filter controls', () => {
-    it('uses the full filter chooser instead of desktop-only shortcut pills', async () => {
-      await act(async () => {
-        render(<RecipesPage />);
-      });
-
-      await waitFor(() => {
-        expect(screen.getByTestId('mobile-filters-button')).toBeInTheDocument();
-      });
-
-      expect(screen.queryByTestId('desktop-recipe-filters')).not.toBeInTheDocument();
-    });
-
-    it('applies a shortcut from the full filter chooser', async () => {
-      await act(async () => {
-        render(<RecipesPage />);
-      });
-
-      await waitFor(() => {
-        expect(screen.getByTestId('mobile-filters-button')).toBeInTheDocument();
-      });
-
-      fireEvent.click(screen.getByTestId('mobile-filters-button'));
-      const dialog = screen.getByRole('dialog', { name: 'Filter recipes' });
-      fireEvent.click(within(dialog).getByRole('button', { name: 'Never Tried' }));
-      fireEvent.click(within(dialog).getByRole('button', { name: 'Apply filters' }));
-
-      await waitFor(() => {
-        expect(mocks.searchRecipes).toHaveBeenLastCalledWith(
-          expect.objectContaining({ filters: expect.objectContaining({ neverCooked: true }) })
-        );
-      });
-    });
-  });
-
-  describe('responsive import-review filters and card status', () => {
-    it('shows Reported and Ready to review badges only on matching result cards', async () => {
-      mocks.searchRecipes.mockResolvedValue(
-        makeSearchResponse({
-          topPick: null,
-          results: [
-            { ...makeSearchResult(2), name: 'No Issue', importIssueStatus: null },
-            { ...makeSearchResult(3), name: 'Needs Fixing', importIssueStatus: 'reported' },
-            {
-              ...makeSearchResult(4),
-              name: 'Check This One',
-              importIssueStatus: 'readyToReview',
-            },
-          ],
-        })
-      );
-
-      await act(async () => {
-        render(<RecipesPage />);
-      });
-
-      const noIssueCard = await screen.findByTestId(`recipe-card-${makeSearchResult(2).id}`);
-      const reportedCard = screen.getByTestId(`recipe-card-${makeSearchResult(3).id}`);
-      const readyCard = screen.getByTestId(`recipe-card-${makeSearchResult(4).id}`);
-
-      expect(within(noIssueCard).queryByLabelText(/Import issue status:/)).not.toBeInTheDocument();
-      expect(within(reportedCard).getByLabelText('Recipe reported')).toBeInTheDocument();
-      expect(
-        within(readyCard).getByLabelText('Recipe updated — ready to review')
-      ).toBeInTheDocument();
-    });
-
-    it('refreshes applied GOTO with current query after confirmation', async () => {
-      const view = render(<RecipesPage />);
-      await screen.findByTestId('mobile-filters-button');
-      fireEvent.change(screen.getByTestId('recipe-search-input'), { target: { value: 'chicken' } });
-      fireEvent.click(screen.getByTestId('mobile-filters-button'));
-      fireEvent.click(screen.getByRole('button', { name: 'GOTO' }));
-      fireEvent.click(screen.getByTestId('mobile-filter-apply'));
-      await waitFor(() =>
-        expect(mocks.searchRecipes).toHaveBeenLastCalledWith(
-          expect.objectContaining({ query: 'chicken', filters: { gotoOnly: true } })
-        )
-      );
-      const before = mocks.searchRecipes.mock.calls.length;
-      mocks.gotoMembershipVersion++;
-      view.rerender(<RecipesPage />);
-      await waitFor(() => expect(mocks.searchRecipes.mock.calls.length).toBeGreaterThan(before));
-      expect(mocks.searchRecipes).toHaveBeenLastCalledWith(
-        expect.objectContaining({ query: 'chicken', filters: { gotoOnly: true } })
-      );
-    });
-
-    it('suppresses a stale GOTO continuation and retries failed replacement reads without saving again', async () => {
-      let intersect!: IntersectionObserverCallback;
-      const original = globalThis.IntersectionObserver;
-      globalThis.IntersectionObserver = class {
-        constructor(callback: IntersectionObserverCallback) {
-          intersect = callback;
-        }
-        observe() {}
-        unobserve() {}
-        disconnect() {}
-        takeRecords() {
-          return [];
-        }
-        root = null;
-        rootMargin = '';
-        scrollMargin = '';
-        thresholds = [0];
-      } as unknown as typeof IntersectionObserver;
-      try {
-        const view = render(<RecipesPage />);
-        await screen.findByTestId('recipe-card-top-pick');
-        mocks.searchRecipes.mockResolvedValueOnce(
-          makeSearchResponse({ nextCursor: 'old-goto', resultPath: 'browse' })
-        );
-        fireEvent.click(screen.getByTestId('mobile-filters-button'));
-        fireEvent.click(screen.getByRole('button', { name: 'GOTO' }));
-        fireEvent.click(screen.getByTestId('mobile-filter-apply'));
-        await screen.findByTestId('search-results-scroll-sentinel');
-        let finish!: (value: unknown) => void;
-        mocks.searchRecipes.mockImplementationOnce(
-          () =>
-            new Promise((resolve) => {
-              finish = resolve;
-            })
-        );
-        await act(async () =>
-          intersect(
-            [{ isIntersecting: true } as IntersectionObserverEntry],
-            {} as IntersectionObserver
-          )
-        );
-        await waitFor(() =>
-          expect(mocks.searchRecipes).toHaveBeenLastCalledWith(
-            expect.objectContaining({ continuationToken: 'old-goto' })
-          )
-        );
-        mocks.searchRecipes.mockRejectedValueOnce(new Error('read failed after saved removal'));
-        mocks.gotoMembershipVersion++;
-        view.rerender(<RecipesPage />);
-        expect(await screen.findByTestId('search-request-retry')).toBeVisible();
-        await act(async () =>
-          finish(
-            makeSearchResponse({
-              topPick: null,
-              results: [{ ...makeSearchResult(99), name: 'Removed stale recipe' }],
-            })
-          )
-        );
-        expect(screen.queryByText('Removed stale recipe')).not.toBeInTheDocument();
-        mocks.searchRecipes.mockResolvedValueOnce(
-          makeSearchResponse({ topPick: null, results: [] })
-        );
-        fireEvent.click(screen.getByTestId('search-request-retry'));
-        expect(await screen.findByTestId('filter-no-results')).toBeVisible();
-        expect(mocks.saveGoTo).not.toHaveBeenCalled();
-      } finally {
-        globalThis.IntersectionObserver = original;
-      }
-    });
-
-    it('uses one mobile Filters button with draft apply, dismiss, clear, and active count', async () => {
-      await act(async () => {
-        render(<RecipesPage />);
-      });
-
-      const filtersButton = await screen.findByTestId('mobile-filters-button');
-      expect(screen.getAllByRole('button', { name: /^Filters/ })).toHaveLength(1);
-      expect(filtersButton).toHaveTextContent('Filters');
-      expect(filtersButton).toHaveTextContent('0');
-
-      fireEvent.click(filtersButton);
-      const dialog = screen.getByRole('dialog', { name: 'Filter recipes' });
-      for (const label of ['Quick', 'Family Favorite', 'Never Tried', 'GOTO', 'Supper', 'Beef']) {
-        expect(within(dialog).getByRole('button', { name: label })).toBeInTheDocument();
-      }
-      expect(within(dialog).queryByRole('button', { name: 'Reported' })).not.toBeInTheDocument();
-      fireEvent.click(within(dialog).getByRole('button', { name: 'More filters' }));
-
-      const callsBeforeCancel = mocks.searchRecipes.mock.calls.length;
-      fireEvent.click(within(dialog).getByRole('button', { name: 'Reported' }));
-      fireEvent.click(within(dialog).getByRole('button', { name: 'Close' }));
-      expect(mocks.searchRecipes).toHaveBeenCalledTimes(callsBeforeCancel);
-      expect(filtersButton).toHaveTextContent('0');
-
-      fireEvent.click(filtersButton);
-      const applyDialog = screen.getByRole('dialog', { name: 'Filter recipes' });
-      fireEvent.click(within(applyDialog).getByRole('button', { name: 'More filters' }));
-      fireEvent.click(within(applyDialog).getByRole('button', { name: 'GOTO' }));
-      fireEvent.click(within(applyDialog).getByRole('button', { name: 'Reported' }));
-      fireEvent.click(within(applyDialog).getByRole('button', { name: 'Ready to review' }));
-      fireEvent.click(within(applyDialog).getByRole('button', { name: 'Apply filters' }));
-
-      await waitFor(() => {
-        expect(mocks.searchRecipes).toHaveBeenLastCalledWith(
-          expect.objectContaining({
-            filters: { gotoOnly: true, reportedOnly: true, readyToReviewOnly: true },
-          })
-        );
-      });
-      expect(filtersButton).toHaveTextContent('3');
-
-      fireEvent.click(filtersButton);
-      const clearDialog = screen.getByRole('dialog', { name: 'Filter recipes' });
-      fireEvent.click(within(clearDialog).getByRole('button', { name: 'Clear filters' }));
-      fireEvent.click(within(clearDialog).getByRole('button', { name: 'Apply filters' }));
-
-      await waitFor(() => {
-        expect(mocks.searchRecipes).toHaveBeenLastCalledWith(
-          expect.objectContaining({ filters: undefined })
-        );
-      });
-      expect(filtersButton).toHaveTextContent('0');
-    });
-
-    it('omits Top Pick while a review filter is active and renders matches as regular results', async () => {
-      mocks.searchRecipes.mockResolvedValue(
-        makeSearchResponse({
-          topPick: {
-            ...makeSearchResult(1),
-            name: 'Should Not Be Promoted',
-            importIssueStatus: 'reported',
-          },
-          results: [
-            { ...makeSearchResult(2), name: 'Reported Result', importIssueStatus: 'reported' },
-          ],
-        })
-      );
-
-      await act(async () => {
-        render(<RecipesPage />);
-      });
-
-      fireEvent.click(await screen.findByTestId('mobile-filters-button'));
-      const dialog = screen.getByRole('dialog', { name: 'Filter recipes' });
-      fireEvent.click(within(dialog).getByRole('button', { name: 'More filters' }));
-      fireEvent.click(within(dialog).getByRole('button', { name: 'Reported' }));
-      fireEvent.click(within(dialog).getByRole('button', { name: 'Apply filters' }));
-
-      await waitFor(() => {
-        expect(screen.queryByTestId('recipe-card-top-pick')).not.toBeInTheDocument();
-      });
-      expect(screen.getByText('Reported Result')).toBeInTheDocument();
-    });
-  });
-
-  it('toggling discovery from the detail sheet calls PATCH with isDiscoverable and keeps the sheet open', async () => {
+  it('uses explicit Similar context in the unified Search and can remove it', async () => {
+    mocks.setSearchParams('similarTo=11111111-1111-1111-1111-111111111111');
     await act(async () => {
-      render(<RecipesPage />);
+      render(<UnifiedRecipesPage />);
     });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('recipe-card-top-pick')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByTestId('recipe-card-top-pick'));
-
-    await waitFor(() => {
-      expect(screen.getByTestId('action-toggle-discovery')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByTestId('action-toggle-discovery'));
-
-    await waitFor(() => {
-      expect(mocks.updateRecipe).toHaveBeenCalledWith(
-        '11111111-1111-1111-1111-111111111111',
-        expect.objectContaining({ isDiscoverable: expect.any(Boolean) })
-      );
-    });
-
-    expect(screen.getByTestId('recipe-detail-sheet')).toBeInTheDocument();
-  });
-
-  it('runs a similar search from the detail sheet with an empty query and the current recipe id', async () => {
-    await act(async () => {
-      render(<RecipesPage />);
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('recipe-card-top-pick')).toBeInTheDocument();
-    });
-
-    fireEvent.change(screen.getByTestId('recipe-search-input'), {
-      target: { value: 'chicken' },
-    });
-
-    fireEvent.click(screen.getByTestId('recipe-card-top-pick'));
-
-    await waitFor(() => {
-      expect(screen.getByTestId('action-find-similar')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByTestId('action-find-similar'));
-
-    await waitFor(() => {
-      expect(mocks.searchRecipes).toHaveBeenLastCalledWith({
-        query: '',
-        limit: 12,
-        weekOffset: undefined,
-        dayIndex: undefined,
-        similarToRecipeId: '11111111-1111-1111-1111-111111111111',
-      });
-    });
-
-    expect(screen.getByTestId('recipe-search-input')).toHaveValue('');
-    expect(screen.queryByTestId('recipe-detail-sheet')).not.toBeInTheDocument();
-  });
-
-  it('blurs the search input when Enter is pressed', async () => {
-    await act(async () => {
-      render(<RecipesPage />);
-    });
-    const input = screen.getByTestId('recipe-search-input') as HTMLInputElement;
-    input.focus();
-    expect(input).toHaveFocus();
-
-    fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
-
-    expect(input).not.toHaveFocus();
-  });
-
-  it('fires recipe search on mount with similarToRecipeId if provided in search params', async () => {
-    mocks.setSearchParams('similarTo=recipe-123');
-
-    await act(async () => {
-      render(<RecipesPage />);
-    });
-
-    await waitFor(() => {
+    await waitFor(() =>
       expect(mocks.searchRecipes).toHaveBeenCalledWith(
         expect.objectContaining({
-          similarToRecipeId: 'recipe-123',
+          similarToRecipeId: '11111111-1111-1111-1111-111111111111',
         })
-      );
+      )
+    );
+    expect(screen.getByTestId('recipe-search-input')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('search-similar-chip-remove'));
+    await waitFor(() => expect(mocks.recipesGet).toHaveBeenCalled());
+    expect(screen.queryByTestId('search-similar-chip-remove')).not.toBeInTheDocument();
+  });
+
+  it('retains Similar when clearing only filter selections', async () => {
+    mocks.setSearchParams('similarTo=11111111-1111-1111-1111-111111111111');
+    await act(async () => {
+      render(<UnifiedRecipesPage />);
     });
+    await waitFor(() => expect(mocks.searchRecipes).toHaveBeenCalledTimes(1));
+    fireEvent.click(screen.getByTestId('mobile-filters-button'));
+    fireEvent.click(screen.getByRole('button', { name: 'Clear filters' }));
+    fireEvent.click(screen.getByTestId('mobile-filter-apply'));
+    await waitFor(() => expect(mocks.searchRecipes).toHaveBeenCalledTimes(2));
+    expect(screen.getByTestId('search-similar-chip-remove')).toBeInTheDocument();
+    expect(screen.getByTestId('stack-card-front')).toHaveTextContent('Chicken Soup');
+  });
+
+  it.each(['debounce', 'Enter'] as const)(
+    'typing over Similar removes its source for %s submission',
+    async (submit) => {
+      mocks.setSearchParams('similarTo=11111111-1111-1111-1111-111111111111');
+      await act(async () => {
+        render(<UnifiedRecipesPage />);
+      });
+      await waitFor(() => expect(mocks.searchRecipes).toHaveBeenCalledTimes(1));
+      vi.useFakeTimers();
+      try {
+        const input = screen.getByTestId('recipe-search-input');
+        fireEvent.change(input, { target: { value: 'pasta' } });
+        expect(screen.queryByTestId('search-similar-chip-remove')).not.toBeInTheDocument();
+        if (submit === 'Enter') fireEvent.keyDown(input, { key: 'Enter' });
+        else
+          await act(async () => {
+            await vi.advanceTimersByTimeAsync(500);
+          });
+        expect(mocks.searchRecipes).toHaveBeenCalledTimes(2);
+        expect(mocks.searchRecipes).toHaveBeenLastCalledWith(
+          expect.objectContaining({
+            query: 'pasta',
+            similarToRecipeId: undefined,
+          })
+        );
+      } finally {
+        vi.useRealTimers();
+      }
+    }
+  );
+
+  it('keeps a planner target visible outside the Search disclosure', async () => {
+    mocks.setSearchParams('addToDay=2&weekOffset=0&referenceWeekStartDate=2026-05-04');
+    await act(async () => {
+      render(<UnifiedRecipesPage />);
+    });
+    expect(screen.getByTestId('planning-mode-banner')).toHaveTextContent('Choosing for');
+    expect(
+      screen
+        .getByTestId('planning-mode-banner')
+        .compareDocumentPosition(screen.getByTestId('recipes-search-disclosure')) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+    fireEvent.click(screen.getByTestId('recipes-search-disclosure'));
+    expect(screen.queryByTestId('recipe-search-input')).not.toBeInTheDocument();
+    expect(screen.getByTestId('planning-mode-banner')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('planning-mode-cancel'));
+    expect(mocks.push).toHaveBeenCalledWith('/planner');
+  });
+
+  it('opens an explicit recipe detail over Explore without forcing Search', async () => {
+    mocks.setSearchParams('open=11111111-1111-1111-1111-111111111111');
+    await act(async () => {
+      render(<UnifiedRecipesPage />);
+    });
+    await waitFor(() => expect(mocks.recipesGet).toHaveBeenCalled());
+    expect(mocks.searchRecipes).not.toHaveBeenCalled();
+    expect(screen.getByTestId('recipe-detail-sheet')).toBeInTheDocument();
+    expect(screen.getByTestId('recipes-search-disclosure')).toHaveAttribute(
+      'aria-expanded',
+      'false'
+    );
+  });
+
+  it('hides and restores loaded Search without replacing its results or position', async () => {
+    mocks.setSearchParams('');
+    await act(async () => {
+      render(<UnifiedRecipesPage />);
+    });
+    fireEvent.click(screen.getByTestId('recipes-search-disclosure'));
+    fireEvent.change(screen.getByTestId('recipe-search-input'), { target: { value: 'chicken' } });
+    fireEvent.keyDown(screen.getByTestId('recipe-search-input'), { key: 'Enter' });
+    await waitFor(() =>
+      expect(screen.getByTestId('stack-card-front')).toHaveTextContent('Chicken Soup')
+    );
+    fireEvent.click(screen.getByTestId('unit-stack-next'));
+    expect(screen.getByTestId('stack-card-front')).toHaveTextContent('Chicken Pasta');
+    fireEvent.click(screen.getByTestId('recipes-search-disclosure'));
+    expect(screen.queryByTestId('recipe-search-input')).not.toBeInTheDocument();
+    expect(screen.getByTestId('recipes-search-disclosure')).toHaveAttribute(
+      'aria-expanded',
+      'false'
+    );
+    expect(screen.getByTestId('recipes-search-disclosure')).toHaveAccessibleName(/search active/i);
+    expect(screen.getByTestId('stack-card-front')).toHaveTextContent('Chicken Pasta');
+    fireEvent.click(screen.getByTestId('recipes-search-disclosure'));
+    expect(screen.getByTestId('recipe-search-input')).toHaveValue('chicken');
+    expect(screen.getByTestId('stack-card-front')).toHaveTextContent('Chicken Pasta');
+    expect(mocks.searchRecipes).toHaveBeenCalledTimes(1);
+  });
+
+  it('resets position when switching Search presentation without replacing the result set', async () => {
+    mocks.setSearchParams('');
+    await act(async () => {
+      render(<UnifiedRecipesPage />);
+    });
+    fireEvent.click(screen.getByTestId('recipes-search-disclosure'));
+    fireEvent.change(screen.getByTestId('recipe-search-input'), { target: { value: 'chicken' } });
+    fireEvent.keyDown(screen.getByTestId('recipe-search-input'), { key: 'Enter' });
+    await waitFor(() =>
+      expect(screen.getByTestId('stack-card-front')).toHaveTextContent('Chicken Soup')
+    );
+    fireEvent.click(screen.getByTestId('unit-stack-next'));
+    expect(screen.getByTestId('stack-card-front')).toHaveTextContent('Chicken Pasta');
+    fireEvent.click(screen.getByTestId('browse-view-list'));
+    expect(screen.getAllByTestId('browse-list-recipe-card')).toHaveLength(2);
+    fireEvent.click(screen.getByTestId('browse-view-stack'));
+    expect(screen.getByTestId('stack-card-front')).toHaveTextContent('Chicken Soup');
+    expect(mocks.searchRecipes).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the originally scheduled Search request when controls are hidden', async () => {
+    mocks.setSearchParams('');
+    await act(async () => {
+      render(<UnifiedRecipesPage />);
+    });
+    fireEvent.click(screen.getByTestId('recipes-search-disclosure'));
+    vi.useFakeTimers();
+    try {
+      fireEvent.change(screen.getByTestId('recipe-search-input'), { target: { value: 'chicken' } });
+      fireEvent.click(screen.getByTestId('recipes-search-disclosure'));
+      expect(mocks.searchRecipes).not.toHaveBeenCalled();
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(500);
+      });
+      expect(mocks.searchRecipes).toHaveBeenCalledTimes(1);
+      expect(screen.getByTestId('stack-card-front')).toHaveTextContent('Chicken Soup');
+      expect(screen.getByTestId('recipes-search-disclosure')).toHaveAttribute(
+        'aria-expanded',
+        'false'
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('keeps loaded cards visible while a hidden replacement Search is pending', async () => {
+    let finishReplacement: ((response: ReturnType<typeof makeSearchResponse>) => void) | undefined;
+    mocks.searchRecipes.mockResolvedValueOnce(makeSearchResponse());
+    mocks.searchRecipes.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finishReplacement = resolve;
+        })
+    );
+    mocks.setSearchParams('');
+    await act(async () => {
+      render(<UnifiedRecipesPage />);
+    });
+    fireEvent.click(screen.getByTestId('recipes-search-disclosure'));
+    const input = screen.getByTestId('recipe-search-input');
+    fireEvent.change(input, { target: { value: 'chicken' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    await waitFor(() =>
+      expect(screen.getByTestId('stack-card-front')).toHaveTextContent('Chicken Soup')
+    );
+    fireEvent.change(input, { target: { value: 'pasta' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    fireEvent.click(screen.getByTestId('recipes-search-disclosure'));
+    expect(screen.getByTestId('stack-card-front')).toHaveTextContent('Chicken Soup');
+    await act(async () =>
+      finishReplacement?.(
+        makeSearchResponse({
+          topPick: null,
+          results: [{ ...makeSearchResult(3), name: 'Pasta dinner' }],
+        })
+      )
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId('stack-card-front')).toHaveTextContent('Pasta dinner')
+    );
+    expect(screen.getByTestId('recipes-search-disclosure')).toHaveAttribute(
+      'aria-expanded',
+      'false'
+    );
+  });
+
+  it('clears Search explicitly while keeping the applied library scope', async () => {
+    mocks.setSearchParams('');
+    await act(async () => {
+      render(<UnifiedRecipesPage />);
+    });
+    fireEvent.click(screen.getByTestId('browse-filter-goto'));
+    fireEvent.click(screen.getByTestId('recipes-search-disclosure'));
+    fireEvent.change(screen.getByTestId('recipe-search-input'), { target: { value: 'chicken' } });
+    fireEvent.keyDown(screen.getByTestId('recipe-search-input'), { key: 'Enter' });
+    await waitFor(() => expect(mocks.searchRecipes).toHaveBeenCalledTimes(1));
+    fireEvent.click(screen.getByTestId('recipes-clear-search'));
+    expect(screen.getByTestId('recipe-search-input')).toHaveValue('');
+    expect(screen.getByTestId('browse-filter-goto')).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByTestId('recipes-search-disclosure')).toHaveAttribute(
+      'aria-expanded',
+      'true'
+    );
+    await waitFor(() =>
+      expect(mocks.recipesGet).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          queryParameters: expect.objectContaining({ gotoOnly: true }),
+        })
+      )
+    );
+  });
+
+  it('offers filter and Search recovery for a successful zero-match response while controls are hidden', async () => {
+    mocks.setSearchParams('');
+    mocks.searchRecipes.mockResolvedValueOnce(makeSearchResponse({ topPick: null, results: [] }));
+    await act(async () => {
+      render(<UnifiedRecipesPage />);
+    });
+    fireEvent.click(screen.getByTestId('recipes-search-disclosure'));
+    fireEvent.change(screen.getByTestId('recipe-search-input'), {
+      target: { value: 'unfindable' },
+    });
+    fireEvent.keyDown(screen.getByTestId('recipe-search-input'), { key: 'Enter' });
+    await waitFor(() => expect(screen.getByTestId('search-empty-state')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('recipes-search-disclosure'));
+    expect(screen.getByTestId('search-empty-state')).toBeInTheDocument();
+    expect(screen.getByTestId('search-empty-clear-filters')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('search-empty-clear-search'));
+    await waitFor(() =>
+      expect(screen.getByTestId('stack-card-front')).toHaveTextContent('Chicken Soup')
+    );
+    expect(screen.queryByTestId('search-empty-state')).not.toBeInTheDocument();
+  });
+
+  it('hides Search with Escape and returns focus to the disclosure', async () => {
+    mocks.setSearchParams('focus=search');
+    await act(async () => {
+      render(<UnifiedRecipesPage />);
+    });
+    const input = screen.getByTestId('recipe-search-input');
+    await waitFor(() => expect(input).toHaveFocus());
+    fireEvent.keyDown(input, { key: 'Escape' });
+    expect(screen.getByTestId('recipes-search-disclosure')).toHaveAttribute(
+      'aria-expanded',
+      'false'
+    );
+    expect(screen.getByTestId('recipes-search-disclosure')).toHaveFocus();
+  });
+
+  it('lets the current initial Search settle while its controls stay hidden', async () => {
+    let completeInitial: ((response: ReturnType<typeof makeSearchResponse>) => void) | undefined;
+    mocks.searchRecipes.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          completeInitial = resolve;
+        })
+    );
+    mocks.setSearchParams('');
+    await act(async () => {
+      render(<UnifiedRecipesPage />);
+    });
+    fireEvent.click(screen.getByTestId('recipes-search-disclosure'));
+    fireEvent.change(screen.getByTestId('recipe-search-input'), { target: { value: 'chicken' } });
+    fireEvent.keyDown(screen.getByTestId('recipe-search-input'), { key: 'Enter' });
+    fireEvent.click(screen.getByTestId('recipes-search-disclosure'));
+    expect(screen.getByTestId('browse-all-loader')).toBeInTheDocument();
+    await act(async () => completeInitial?.(makeSearchResponse()));
+    await waitFor(() =>
+      expect(screen.getByTestId('stack-card-front')).toHaveTextContent('Chicken Soup')
+    );
+    expect(mocks.searchRecipes).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('recipes-search-disclosure')).toHaveAttribute(
+      'aria-expanded',
+      'false'
+    );
+  });
+
+  it('keeps a hidden continuation in flight and appends its result without reopening controls', async () => {
+    let completeCursor: ((response: ReturnType<typeof makeSearchResponse>) => void) | undefined;
+    mocks.searchRecipes.mockResolvedValueOnce(makeSearchResponse({ nextCursor: 'cursor-2' }));
+    mocks.searchRecipes.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          completeCursor = resolve;
+        })
+    );
+    mocks.setSearchParams('');
+    await act(async () => {
+      render(<UnifiedRecipesPage />);
+    });
+    fireEvent.click(screen.getByTestId('recipes-search-disclosure'));
+    fireEvent.change(screen.getByTestId('recipe-search-input'), { target: { value: 'chicken' } });
+    fireEvent.keyDown(screen.getByTestId('recipe-search-input'), { key: 'Enter' });
+    await waitFor(() =>
+      expect(screen.getByTestId('stack-card-front')).toHaveTextContent('Chicken Soup')
+    );
+    fireEvent.click(screen.getByTestId('unit-stack-next'));
+    fireEvent.click(screen.getByTestId('unit-stack-next'));
+    fireEvent.click(screen.getByTestId('recipes-search-disclosure'));
+    expect(screen.getByTestId('stack-card-front')).toHaveTextContent('Chicken Pasta');
+    await act(async () =>
+      completeCursor?.(
+        makeSearchResponse({
+          topPick: null,
+          results: [{ ...makeSearchResult(3), name: 'Third match' }],
+          nextCursor: null,
+        })
+      )
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId('stack-card-front')).toHaveTextContent('Third match')
+    );
+    expect(screen.getByTestId('recipes-search-disclosure')).toHaveAttribute(
+      'aria-expanded',
+      'false'
+    );
+    expect(mocks.searchRecipes).toHaveBeenCalledTimes(2);
+  });
+
+  it('shows a hidden initial failure as a retryable error without another request', async () => {
+    let failInitial: ((error: Error) => void) | undefined;
+    mocks.searchRecipes.mockImplementationOnce(
+      () =>
+        new Promise((_resolve, reject) => {
+          failInitial = reject;
+        })
+    );
+    mocks.setSearchParams('');
+    await act(async () => {
+      render(<UnifiedRecipesPage />);
+    });
+    fireEvent.click(screen.getByTestId('recipes-search-disclosure'));
+    fireEvent.change(screen.getByTestId('recipe-search-input'), { target: { value: 'chicken' } });
+    fireEvent.keyDown(screen.getByTestId('recipe-search-input'), { key: 'Enter' });
+    fireEvent.click(screen.getByTestId('recipes-search-disclosure'));
+    await act(async () => failInitial?.(new Error('offline')));
+    await waitFor(() => expect(screen.getByTestId('search-request-error')).toBeInTheDocument());
+    expect(screen.queryByTestId('search-empty-state')).not.toBeInTheDocument();
+    expect(screen.getByTestId('recipes-search-disclosure')).toHaveAttribute(
+      'aria-expanded',
+      'false'
+    );
+    expect(mocks.searchRecipes).toHaveBeenCalledTimes(1);
+  });
+
+  it('discards Search on ordinary departure and ignores the departed response', async () => {
+    let completeOld: ((response: ReturnType<typeof makeSearchResponse>) => void) | undefined;
+    mocks.searchRecipes.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          completeOld = resolve;
+        })
+    );
+    mocks.setSearchParams('');
+    const first = render(<UnifiedRecipesPage />);
+    await waitFor(() => expect(mocks.recipesGet).toHaveBeenCalled());
+    fireEvent.click(screen.getByTestId('recipes-search-disclosure'));
+    fireEvent.change(screen.getByTestId('recipe-search-input'), { target: { value: 'chicken' } });
+    fireEvent.keyDown(screen.getByTestId('recipe-search-input'), { key: 'Enter' });
+    expect(mocks.searchRecipes).toHaveBeenCalledTimes(1);
+    first.unmount();
+    await act(async () => completeOld?.(makeSearchResponse()));
+    await act(async () => {
+      render(<UnifiedRecipesPage />);
+    });
+    await waitFor(() => expect(mocks.recipesGet).toHaveBeenCalledTimes(2));
+    expect(screen.getByTestId('recipes-search-disclosure')).toHaveAttribute(
+      'aria-expanded',
+      'false'
+    );
+    expect(screen.queryByTestId('recipe-search-input')).not.toBeInTheDocument();
+    expect(screen.getByTestId('stack-card-front')).toHaveTextContent('Chicken Soup');
+    expect(mocks.searchRecipes).toHaveBeenCalledTimes(1);
+  });
+
+  it('refreshes a hidden Search after promotion invalidation with its submitted request', async () => {
+    mocks.setSearchParams('');
+    mocks.searchRecipes.mockResolvedValueOnce(makeSearchResponse());
+    mocks.searchRecipes.mockResolvedValueOnce(
+      makeSearchResponse({
+        topPick: null,
+        results: [{ ...makeSearchResult(3), name: 'Fresh recipe' }],
+      })
+    );
+    await act(async () => {
+      render(<UnifiedRecipesPage />);
+    });
+    fireEvent.click(screen.getByTestId('recipes-search-disclosure'));
+    fireEvent.change(screen.getByTestId('recipe-search-input'), { target: { value: 'chicken' } });
+    fireEvent.keyDown(screen.getByTestId('recipe-search-input'), { key: 'Enter' });
+    await waitFor(() =>
+      expect(screen.getByTestId('stack-card-front')).toHaveTextContent('Chicken Soup')
+    );
+    fireEvent.click(screen.getByTestId('recipes-search-disclosure'));
+    await act(async () => useSearchPromotionStore.getState().invalidate());
+    await waitFor(() =>
+      expect(screen.getByTestId('stack-card-front')).toHaveTextContent('Fresh recipe')
+    );
+    expect(mocks.searchRecipes).toHaveBeenCalledTimes(2);
+    expect(mocks.searchRecipes).toHaveBeenLastCalledWith(
+      expect.objectContaining({ query: 'chicken' })
+    );
+    expect(screen.getByTestId('recipes-search-disclosure')).toHaveAttribute(
+      'aria-expanded',
+      'false'
+    );
+  });
+
+  it('refreshes active Explore after promotion invalidation without POST Search', async () => {
+    mocks.setSearchParams('');
+    await act(async () => {
+      render(<UnifiedRecipesPage />);
+    });
+    await waitFor(() => expect(mocks.recipesGet).toHaveBeenCalledTimes(1));
+    await act(async () => useSearchPromotionStore.getState().invalidate());
+    await waitFor(() => expect(mocks.recipesGet).toHaveBeenCalledTimes(2));
+    expect(mocks.searchRecipes).not.toHaveBeenCalled();
+    expect(screen.getByTestId('recipes-search-disclosure')).toHaveAttribute(
+      'aria-expanded',
+      'false'
+    );
+  });
+
+  it('keeps an Explore card and offers read retry after invalidation refresh fails', async () => {
+    mocks.setSearchParams('');
+    await act(async () => {
+      render(<UnifiedRecipesPage />);
+    });
+    await waitFor(() =>
+      expect(screen.getByTestId('stack-card-front')).toHaveTextContent('Chicken Soup')
+    );
+    mocks.recipesGet.mockRejectedValueOnce(new Error('offline'));
+    await act(async () => useSearchPromotionStore.getState().invalidate());
+    await waitFor(() => expect(screen.getByTestId('browse-request-error')).toBeInTheDocument());
+    expect(screen.getByTestId('stack-card-front')).toHaveTextContent('Chicken Soup');
+    fireEvent.click(screen.getByTestId('browse-request-retry'));
+    await waitFor(() => expect(mocks.recipesGet).toHaveBeenCalledTimes(3));
+    expect(screen.queryByTestId('browse-request-error')).not.toBeInTheDocument();
   });
 });

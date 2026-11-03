@@ -182,7 +182,7 @@ vi.mock('@/components/recipes/RecycleBinSheet', () => ({
 // ---------------------------------------------------------------------------
 // Import component AFTER mocks
 // ---------------------------------------------------------------------------
-import BrowseAllStackPage from './page';
+import BrowseAllStackPage from '../recipes/RecipesExperience';
 import { useBrowseStackStore } from '@/store/browseStackStore';
 import { useFamilyStore } from '@/store/familyStore';
 

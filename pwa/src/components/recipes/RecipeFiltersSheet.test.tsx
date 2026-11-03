@@ -53,6 +53,14 @@ describe('RecipeFiltersSheet', () => {
     expect(screen.getByRole('button', { name: 'GOTO' })).toHaveAttribute('aria-pressed', 'true');
   });
 
+  it('shows applied Discovery scope as a draft selection', () => {
+    renderSheet({ discoverableOnly: true });
+    expect(screen.getByRole('button', { name: 'Discovery' })).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+  });
+
   it('keeps GOTO a selected draft until Apply and clears it with other filters', () => {
     const { onApply } = renderSheet({ gotoOnly: true });
     const goto = screen.getByRole('button', { name: 'GOTO' });

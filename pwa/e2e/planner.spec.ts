@@ -1073,8 +1073,9 @@ test.describe('Supper Planner', () => {
     // 3. Verify Planning Mode banner
     await expect(page.getByTestId('planning-mode-banner')).toBeVisible();
 
-    // 4. Open the Top Pick detail sheet and confirm planner CTA
-    await page.getByTestId('recipe-card-top-pick').click();
+    // 4. Open the first ordinary Explore card and confirm the planner CTA.
+    // Contextual planner entry expands Search without forcing an empty POST.
+    await page.getByTestId('stack-card-front').click();
     await expect(page.getByTestId('action-add-to-day')).toBeVisible();
     await page.getByTestId('action-add-to-day').click();
 

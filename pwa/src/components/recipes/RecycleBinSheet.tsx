@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { X, RotateCcw, Trash2 } from 'lucide-react';
 import { getTrashItems, restoreRecipe, purgeRecipe, type TrashItem } from '@/lib/api/recipes';
 import { t } from '@/locales';
+import { useDialogFocus } from '@/hooks/useDialogFocus';
 
 interface RecycleBinSheetProps {
   onClose: () => void;
@@ -17,6 +18,7 @@ interface PinDialogState {
 }
 
 export function RecycleBinSheet({ onClose }: RecycleBinSheetProps) {
+  const { panelRef, onKeyDown } = useDialogFocus(onClose);
   const [items, setItems] = useState<TrashItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
@@ -105,6 +107,11 @@ export function RecycleBinSheet({ onClose }: RecycleBinSheetProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40" onClick={onClose}>
       <div
+        ref={panelRef as React.RefObject<HTMLDivElement>}
+        role="dialog"
+        aria-modal="true"
+        aria-label={t('recipes.recycleBin', 'Recycle Bin')}
+        onKeyDown={onKeyDown}
         className="w-full max-w-lg rounded-t-[2rem] bg-white p-6 shadow-2xl max-h-[80vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
@@ -116,7 +123,7 @@ export function RecycleBinSheet({ onClose }: RecycleBinSheetProps) {
             type="button"
             onClick={onClose}
             className="rounded-full p-2 hover:bg-charcoal/5 transition-colors"
-            aria-label="Close"
+            aria-label={t('common.close', 'Close')}
           >
             <X size={20} />
           </button>
@@ -205,6 +212,15 @@ export function RecycleBinSheet({ onClose }: RecycleBinSheetProps) {
         >
           <form
             data-testid="elevated-pin-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-label={t('recipes.confirmDelete', 'Permanently Delete Recipe')}
+            onKeyDown={(event) => {
+              if (event.key === 'Escape') {
+                event.stopPropagation();
+                closePinDialog();
+              }
+            }}
             onSubmit={(e) => void handlePinSubmit(e)}
             className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl mx-4 flex flex-col gap-4"
             onClick={(e) => e.stopPropagation()}

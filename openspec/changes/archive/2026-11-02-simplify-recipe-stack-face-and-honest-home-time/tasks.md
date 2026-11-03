@@ -1,0 +1,27 @@
+# Tasks
+
+## 1. Simplify the stack face while preserving navigation and detail
+
+**Outcome and scenarios:** `recipe-library` / Present the current stack card and visual depth: image/name/time face, original tap/swipe/keyboard interactions, backing-card alignment, short viewports and state preservation.
+**Owners and boundaries:** `RecipeStackCard`, the `RecipesExperience` stack container, adjacent issue-status presentation and focused tests. Remove the rejected added visible three-button row. `RecipesExperience` retains GET Explore and POST Search state, planner target and detail identity. Keep the detail sheet, formatter, API DTOs and generated client unchanged.
+**Dependencies and prerequisites:** Approved capability delta and existing method-specific GET `/api/recipes` and POST `/api/recipes/search` handlers in `pwa/e2e/mock-api.ts`; use valid existing builders. No mock contract change is expected.
+**Acceptance boundary:** Component tests check content and gesture ownership; Playwright runs through the real Recipes route and summary adapter with the existing mock API seam. Rendered checks establish image/badge contrast and geometry; source assertions alone do not.
+
+- [x] 1.1 Before correction edits, change focused component/controller and browser assertions to the corrected contract: no visible Previous / View recipe / Next row, tap and Enter/Space on the front card open the same detail, drag navigates without click-after-drag detail, Search cursor/boundaries and Explore wrap remain intact. Add multi-card geometry assertions with front and backing names of different lengths. Run focused tests red for the current added row/protruding depth and retain existing valid image/name/time/Home coverage.
+- [x] 1.2 Remove the rejected row and only its now-unused labels/tests. Keep any preexisting Search-specific controls and the original card handlers. Make the front card establish the stack window height, constrain and clip backing cards to that front geometry, and retain only small consistent peeks. Preserve issue status, position, Ask the Family, planner context and collection state. Run focused unit tests green and repeat after refactoring.
+- [ ] 1.3 Run browser acceptance through the real Recipes route for multi-card Explore and Search fixtures, stationary tap, keyboard detail and focus return, left/right drag and post-drag suppression, Search cursor/exhaustion/pending/failure, Explore wrap and no new visible row. Measure front/back bottom edges and title reachability at 393×852, 320×568, 390×667, 667×375, 820×1180, 1180×820 and 200% text in EN/FR, with safe-area emulation and reduced motion. Check no dock overlap or horizontal overflow. Preserve list behavior. Do not claim Alex's attached pixels were inspected unless transfer succeeds.
+
+## 2. Remove Home's invented missing duration
+
+**Outcome and scenarios:** `tonight-meal-decisions` / Preserve supplied Tonight total duration: Hour and minute durations, English and French wrappers, No supplied duration; Explain the Tonight choice without claiming a saved outcome: English and French meaning.
+**Owners and boundaries:** `HomeCommandCenter` value handoff and `TonightMenuCard` badge condition, with focused Home tests. Preserve card photography, name, Cook/Change plan actions, other Home state and all other `formatRecipeTime` consumers.
+**Dependencies and prerequisites:** Stack slice is stable; use the existing schedule fixture and planned-recipe Home state. No API or mock shape changes.
+**Acceptance boundary:** The existing `HomeDuration.test.tsx` exercises the real Home-to-card-to-formatter seam. Browser checks confirm the rendered planned card and actions with a mocked schedule response; no persistence change is inferred.
+
+- [x] 2.1 Update `pwa/src/components/home/HomeDuration.test.tsx` before production edits: preserve `PT6H`, `PT1H30M`, `PT45M`, `PT360M` and EN/FR assertions; replace the missing/null/empty `30 MINS` expectations with no badge and add zero/unformattable cases. Run `task test:unit -- src/components/home/HomeDuration.test.tsx` and record the intended red result for an invented or empty-value badge.
+- [x] 2.2 Remove the Home fallback and render the badge only for nonempty formatted total time. Rerun the focused Home unit command green, refactor only within scope and rerun; assert recipe image, title and existing actions remain for missing time and valid durations retain their exact units.
+- [x] 2.3 Extend and run `task test:e2e -- e2e/home-recipe.spec.ts e2e/home-goto.spec.ts` with a planned schedule recipe missing `totalTime`, one with `PT1H30M`, and EN/FR. Confirm no estimated/empty Ready In badge, unchanged Cook/Change plan and locale, and readable Home layout at 393×852, 320×640 and 200% text; record rendered evidence and preserve the ready-GOTO pivot's separate behavior.
+
+## 3. Final integration and verification
+
+- [ ] 3.1 Reconcile both capability scenarios and the corrected change-owned diff with new red/green/browser and rendered evidence. Run `task verify:plan -- <complete reviewed changed-path set>`, applicable `task prepare -- <same set>`, then `task verify -- <same set>` under `.agents/core/execution-harness.md`; record actual pass/fail/blocked/not-run results, content identity and `record_path`. The previous green gate predates Alex's correction and is historical evidence only. Do not claim implementation complete with missing required acceptance. No production deployment, commit, merge or archive is part of this change.

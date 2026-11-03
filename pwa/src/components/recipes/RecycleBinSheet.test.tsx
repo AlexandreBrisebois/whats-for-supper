@@ -46,6 +46,19 @@ describe('Recycle Bin recovery', () => {
     );
     expect(api.restoreRecipe).toHaveBeenCalledTimes(2);
   });
+  it('focuses the bin dialog and closes it with Escape while preserving nested PIN precedence', async () => {
+    api.getTrashItems.mockResolvedValue([item]);
+    const onClose = vi.fn();
+    render(<RecycleBinSheet onClose={onClose} />);
+    const close = screen.getByRole('button', { name: 'Close' });
+    await waitFor(() => expect(close).toHaveFocus());
+    fireEvent.click(await screen.findByTestId(`action-purge-${item.id}`));
+    fireEvent.keyDown(screen.getByTestId('elevated-pin-dialog'), { key: 'Escape' });
+    expect(screen.queryByTestId('elevated-pin-dialog')).not.toBeInTheDocument();
+    expect(onClose).not.toHaveBeenCalled();
+    fireEvent.keyDown(close, { key: 'Escape' });
+    expect(onClose).toHaveBeenCalledOnce();
+  });
 });
 
 it('retains Recycle Bin retry and nested PIN failure, cancellation and reopening', async () => {

@@ -99,6 +99,7 @@ export type RecommendationsResponse = {
 export type RecipeSearchResult = {
   id: string;
   name: string;
+  description: string;
   imageUrl: string;
   totalTime: string;
   rating: number;
@@ -185,6 +186,7 @@ function mapSearchResult(dto: RecipeSearchResultDto | null | undefined): RecipeS
 
   const id = readField<string>(dto, 'id') || '';
   const name = readField<string>(dto, 'name') || '';
+  const description = readField<string>(dto, 'description') || '';
   const imageUrl = readField<string>(dto, 'imageUrl') || '';
   const totalTime = readField<string>(dto, 'totalTime') || '';
   const rating = readField<number>(dto, 'rating') || 0;
@@ -207,6 +209,7 @@ function mapSearchResult(dto: RecipeSearchResultDto | null | undefined): RecipeS
   return {
     id,
     name,
+    description,
     imageUrl,
     totalTime,
     rating,

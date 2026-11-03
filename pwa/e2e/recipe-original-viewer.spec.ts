@@ -63,9 +63,12 @@ test.describe('Recipe Original Viewer', () => {
       });
     });
 
-    await page.goto('/recipes');
-    const recipeCard = page.getByTestId(`recipe-card-${recipeId}`);
+    await page.goto('/recipes?focus=search');
+    await page.getByTestId('recipe-search-input').fill('Original Test Recipe');
+    await page.getByTestId('recipe-search-input').press('Enter');
+    const recipeCard = page.getByTestId('stack-card-front');
     await expect(recipeCard).toBeVisible();
+    await expect(recipeCard).toHaveAttribute('data-recipe-id', recipeId);
     await recipeCard.click();
     await expect(page.getByTestId('recipe-detail-name')).toContainText('Original Test Recipe');
   }

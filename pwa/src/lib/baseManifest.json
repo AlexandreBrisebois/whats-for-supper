@@ -50,7 +50,7 @@
       "name": "Search",
       "short_name": "Search",
       "description": "Search your recipe library",
-      "url": "/recipes",
+      "url": "/recipes?focus=search",
       "icons": [
         {
           "src": "/android-chrome-192x192.png",

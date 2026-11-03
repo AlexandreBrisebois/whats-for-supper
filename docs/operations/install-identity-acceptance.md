@@ -56,7 +56,7 @@ one origin preserves manifest `id: /` and does not create a separate app.
 | Light/dark | Inspect launcher, installed splash/startup and welcome/main hint under both OS appearances. Record unwanted cropping or contrast problems. |
 | Refresh | After an authorized same-origin demo toggle/recreation, record fresh manifest/Apple metadata and the actual old installed icon behavior after reopening. No immediate OS refresh is promised. |
 | Reinstall | Remove/reinstall only the disposable acceptance installation and confirm current artwork/name and correct origin. Record whether reinstallation was needed. |
-| Existing behavior | Authentication remains required for main routes; launch retained shortcuts. Keep PDF gates and backend demo behavior unchanged. |
+| Existing behavior | Authentication remains required for main routes; launch retained shortcuts. Current Search shortcut metadata targets `/recipes?focus=search`; older installed metadata may still open bare `/recipes` in collapsed Explore until the OS refreshes it. Keep PDF gates and backend demo behavior unchanged. |
 
 Record iOS model, iOS version, Safari version and Add to Home Screen procedure;
 record Android model, OS version, browser/version and installation procedure.

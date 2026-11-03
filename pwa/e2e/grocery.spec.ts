@@ -324,6 +324,50 @@ async function setupGroceryPage(
 }
 
 test.describe('Grocery List — everyday extras', () => {
+  test('checked extras follow unchecked rows in their section after check, uncheck, and reload', async ({
+    page,
+  }) => {
+    const { groceryExtras } = await setupGroceryPage(page);
+    const checkedId = '11111111-1111-4111-8111-111111111111';
+    const toggledId = '22222222-2222-4222-8222-222222222222';
+    const extra = (id: string, name: string, checked: boolean) => ({
+      id,
+      lineageId: id,
+      name,
+      normalizedKey: name.toLowerCase(),
+      grocerySection: 'Pantry',
+      checked,
+      occurrenceWeekStartDate: '2026-05-04',
+      readOnly: false,
+      source: 'extra',
+      version: 1,
+    });
+    groceryExtras.push(extra(checkedId, 'Jam', true), extra(toggledId, 'Tea', false));
+    const pantryRows = page.locator('#aisle-items-pantry > div');
+    const names = () =>
+      pantryRows.evaluateAll((rows) =>
+        rows.map(
+          (row) =>
+            row.querySelector('[data-testid="grocery-extra-name"]')?.textContent ??
+            row.querySelector('[data-testid="grocery-item-label"]')?.textContent
+        )
+      );
+    const tea = page.locator(`[data-testid="grocery-extra-row"][data-extra-id="${toggledId}"]`);
+
+    await page.reload();
+    await page.getByTestId('grocery-tab').click();
+    await expect.poll(names).toEqual(['Tea', 'Pasta', 'Tomato Sauce', 'Jam']);
+    await tea.getByRole('checkbox').click();
+    await expect(tea.getByRole('checkbox')).toHaveAttribute('aria-checked', 'true');
+    await expect.poll(names).toEqual(['Pasta', 'Tomato Sauce', 'Jam', 'Tea']);
+    await expect(tea.getByRole('checkbox')).toBeEnabled();
+    await page.reload();
+    await page.getByTestId('grocery-tab').click();
+    await expect.poll(names).toEqual(['Pasta', 'Tomato Sauce', 'Jam', 'Tea']);
+    await tea.getByRole('checkbox').click();
+    await expect.poll(names).toEqual(['Tea', 'Pasta', 'Tomato Sauce', 'Jam']);
+  });
+
   test('source viewport policy survives hydration and composer refocus', async ({ page }) => {
     const documentResponse = page.waitForResponse(
       (response) =>
@@ -540,7 +584,7 @@ test.describe('Grocery List — everyday extras', () => {
   test('keyboard checks keep duplicate extras independent from recipe Milk and failed delete recovers', async ({
     page,
   }) => {
-    await setupGroceryPage(page, { milk: true });
+    const { groceryExtras } = await setupGroceryPage(page, { milk: true });
     for (let index = 0; index < 2; index++) {
       await page.getByRole('combobox').fill('Milk');
       await page.getByRole('button', { name: 'Add', exact: true }).click();
@@ -548,10 +592,13 @@ test.describe('Grocery List — everyday extras', () => {
     }
     const rows = page.getByTestId('grocery-extra-row');
     await expect(rows).toHaveCount(2);
-    const first = rows.first();
+    const firstId = groceryExtras[0].id as string;
+    const secondId = groceryExtras[1].id as string;
+    const first = page.locator(`[data-testid="grocery-extra-row"][data-extra-id="${firstId}"]`);
+    const second = page.locator(`[data-testid="grocery-extra-row"][data-extra-id="${secondId}"]`);
     await first.getByRole('checkbox').press('Space');
     await expect(first.getByRole('checkbox')).toHaveAttribute('aria-checked', 'true');
-    await expect(rows.nth(1).getByRole('checkbox')).toHaveAttribute('aria-checked', 'false');
+    await expect(second.getByRole('checkbox')).toHaveAttribute('aria-checked', 'false');
     await expect(page.getByTestId('grocery-item-checkbox')).toHaveAttribute(
       'aria-checked',
       'false'

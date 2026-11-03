@@ -1,62 +1,26 @@
-# User Flow: Recipe Stack Browse
+# User Flow: Recipe Library Browse
 
-The **Recipe Stack Browse** flow provides a tactile, exploratory experience for users to flip through their entire recipe library, rediscovered forgotten favourites, and manage discoverability for family voting.
-
-## Flow Diagram
+The Recipes destination at `/recipes` opens the household library in Explore order. It begins with Search controls collapsed, All scope, and the selected member's saved stack or list presentation. The bottom app navigation stays visible. Search is the first toolbar action, followed by All/Discovery, Go-To, stack/list, and Recycle bin.
 
 ```mermaid
 sequenceDiagram
-    participant User
-    participant Home as Home Dashboard
-    participant Browse as Browse Overlay
-    participant Detail as Recipe Detail Sheet
-    participant API as Backend API
-
-    User->>Home: Taps "Browse Library"
-    Home->>Browse: Mounts Overlay
-    Browse->>API: GET /api/recipes/library-summary
-    Browse->>API: GET /api/recipes?order=explore&page=1
-    API-->>Browse: Returns recipes & summary
-    Browse-->>User: Displays first card (e.g., "1 / 42")
-
-    User->>Browse: Swipes Right
-    Browse-->>User: Animates next card into focus
-
-    User->>Browse: Swipes Left
-    Browse-->>User: Returns to previous card
-
-    User->>Browse: Taps Card
-    Browse->>Detail: Opens Recipe Detail
-    User->>Detail: Reviews instructions/ingredients
-    User->>Detail: Closes Sheet
-    Detail-->>Browse: Returns to same card position
-
-    User->>Browse: Taps "Sparkles" Icon
-    Browse->>API: PATCH /api/recipes/{id} { isDiscoverable: true }
-    API-->>Browse: 200 OK
-    Browse-->>User: Updates toggle state optimistically
-
-    User->>Browse: Taps "Search" Icon (Top-Right)
-    Browse->>Home: Dismisses Overlay
-    Home->>Home: Navigates to /recipes (Search focused)
+    participant Member
+    participant Recipes
+    participant API
+    participant Detail
+    Member->>Recipes: Opens bottom Recipes destination
+    Recipes->>API: GET /api/recipes/library-summary
+    Recipes->>API: GET /api/recipes?order=explore&page=1
+    API-->>Recipes: Explore page and filtered total
+    Recipes-->>Member: Shows stack or compact list
+    Member->>Recipes: Changes scope or presentation
+    Recipes->>API: GET scoped Explore first page
+    Member->>Detail: Opens recipe
+    Detail-->>Recipes: Dismisses to the same collection position
 ```
 
-## Key Interactions
+Explore retains its complete pagination and history behavior. Stack pages contain 20 recipes; list pages contain 12. Both directions traverse full and partial pages. The stack wraps at the collection ends; list scrolling loads further pages. Pending or failed page retrieval retains the current card, and history expiry offers a restart. The selected member's presentation preference is saved through the existing preference API.
 
-### 1. Entry Points
-- **Home Dashboard**: Located below the Quick Capture trigger.
-- **Recipes Page**: Located near the top of the library view.
+All/Discovery and Go-To filter the library without changing its Explore order. The Go-To toolbar star filters membership; the star on a recipe detail changes membership. Discoverability controls remain separate from the bottom Discovery voting journey.
 
-### 2. Navigation
-- **Swiping**: Mirrored from the Discovery flow but supports **Back** navigation. Swiping right advances the stack; swiping left retreats.
-- **Explore Order**: The stack is sorted by `lastCookedDate ASC NULLS FIRST`. This ensures never-cooked recipes appear first, followed by those not cooked in the longest time.
-- **End Card**: Appears when the user reaches the end of their library. Swiping right on the End Card wraps back to the first recipe.
-
-### 3. Management
-- **Discoverability**: Users can toggle whether a recipe is "Discoverable" directly from the stack. This affects whether it appears in the family's shared Discovery feed for voting.
-- **Search Escape**: If a user finds a recipe they like but wants to find something *similar* or more specific, the magnifying glass icon transitions them directly into the Search experience with a single tap.
-
-## Mobile Considerations
-- **Immersive Overlay**: The browser UI (address bar, navigation) is minimized/hidden to focus on the cards.
-- **Haptic Feedback**: Subtle haptics provide feedback when dragging cards beyond the navigation threshold.
-- **Z-Index Layering**: The browse stack sits above the main application but below critical global notifications.
+Opening Search reveals its controls below the toolbar without changing the current collection by itself. The controls can be hidden while the Recipes session remains mounted. Leaving Recipes ends the transient session; a normal return starts fresh in Explore with the saved presentation.

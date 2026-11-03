@@ -26,11 +26,11 @@ The user should be able to answer "What should we eat?" in seconds, recover from
 
 ```mermaid
 flowchart TD
-    A[User opens /recipes] --> B[Search field + Filters chooser]
-    B --> C[Types a query; search runs after 500 ms or Enter]
+    A[User opens /recipes] --> B[Explore in saved stack or list view]
+    B --> C[Expands Search and types a query; POST runs after 500 ms or Enter]
     C --> D[Initial batch requests up to 12 alternatives]
-    D --> E[Optional Top Pick — hero card]
-    D --> F[Compact result grid; more results load on scroll]
+    D --> E[Optional API topPick as first ordinary result]
+    D --> F[Ordinary stack or compact list; cursor loads more at boundary]
     E --> G[Open recipe detail sheet]
     F --> G
     G --> H{Entry context}
@@ -45,9 +45,11 @@ flowchart TD
 
 ### Expected feel
 
-- A Top Pick is optional. Explicit and Similar searches show only their first-ranked candidate as Top Pick when eligible; they never promote a lower-ranked replacement.
+- The optional API `topPick` is the first ordinary result, followed by alternatives in rank order. No spotlight, promotional reasons, Surprise Me or random promotion appear.
 - Closing the detail sheet returns to **exactly the same search state** — no re-fetch, no blank page.
 - The main field should feel immediate and cheap.
+- Search is a disclosure within Recipes. Closing its controls leaves current criteria, results, cursor, selected card or list scroll position, presentation and pending work intact. A dot and accessible active-search description remain on the collapsed toolbar control. Escape from the input closes it and returns focus to the toolbar control.
+- Normal navigation away, full reload and browser back/forward after departure start a fresh collapsed Explore session. Only the existing member stack/list preference is saved. Tapping the already active Recipes tab and closing detail keep the current session.
 
 ---
 
@@ -55,7 +57,7 @@ flowchart TD
 
 ### 1. Standard search field
 
-- Search icon + `data-testid="recipe-search-input"` text field.
+- The first toolbar control expands the Search input and Filters chooser. Ordinary `/recipes` entry starts collapsed in Explore without a POST; explicit `focus=search`, Similar and planner entry expand it.
 - Search runs after 500 ms without another text change; `Enter` submits immediately.
 - No special lane name in the default UI.
 
@@ -80,9 +82,9 @@ sequenceDiagram
 
     User->>Planner: Tap "Search Library" from a day
     Planner->>Search: Navigate to /recipes?addToDay=X&weekOffset=Y
-    Search->>Search: Render planning-mode banner (data-testid="planning-mode-banner")
-    Search->>API: POST /api/recipes/search with weekOffset + dayIndex
-    API-->>Search: Optional Top Pick + ordered results
+    Search->>Search: Render compact Choosing for day row above toolbar (data-testid="planning-mode-banner")
+    Search->>API: GET Explore; POST search only after an effective criterion
+    API-->>Search: Ordered ordinary results
     User->>Search: Tap a result card
     Search->>Detail: Open recipe detail sheet (data-testid="recipe-detail-sheet")
     Detail-->>User: Show "Add it to {Day}" (data-testid="action-add-to-day")
@@ -97,11 +99,12 @@ sequenceDiagram
 - Filter-only Explicit results normally use newest creation date, then recipe name. **It's Been a While** instead orders cooked recipes by oldest cooking date before those ties.
 - **Find Similar** takes precedence when a source recipe is supplied and preserves its similarity order.
 - Opening Search from Planner retains the assignment target. Being already planned does not demote an otherwise eligible Explicit or Similar result.
-- In Explicit and Similar, Top Pick is the first-ranked result only when presentation-eligible. If that result has a saved issue report, or a review filter is active, all results stay in their original ordinary-result order without a Top Pick.
+- The compact, independent “Choosing for {day}” row sits above the Recipes toolbar. Search controls and Filters remain directly beneath the toolbar; the row keeps Cancel to Planner and a conditional calendar Retry without adding a day-change action.
+- The API may return a promotion-eligible `topPick` in Explicit or Similar mode. Recipes shows it once as the first ordinary result, then alternatives in returned order. Review-filtered or issue-reported results remain ordinary results; the UI does not promote another card locally.
 
 ### No-dead-end rules
 
-1. Planner context (`addToDay`, `weekOffset`) is read on mount and held in component state — it does not drive re-renders on URL change.
+1. Planner context (`addToDay`, `weekOffset`, `referenceWeekStartDate`) is retained through Search disclosure and view changes. A new explicit supported URL context while mounted transitions deliberately; stale results cannot replace the new context.
 2. The user can cancel back to the planner with `data-testid="planning-mode-cancel"` without losing the planner state.
 3. Opening and closing the detail sheet does not trigger a new search call.
 4. Planner-mode recipe details skip the discovery pivot and go straight to the assignment CTA.
@@ -116,8 +119,11 @@ This invariant applies regardless of entry surface:
 |---------------|-------------|---------------------|------------------------|
 | Planner day card → Quick Find → Select | Selected planner day | Assign selected recipe directly | Open recovery flow for that selected day |
 | Planner day card → Quick Find → Search Library → result → Add it to day | Selected planner day | Assign selected recipe directly | Open recovery flow for that selected day |
-| Home → Browse Library/Search → recipe → Cook this → Cook it tonight | Today's slot | Assign selected recipe to today | Open recovery flow for today |
-| Home → Tonight's Menu → Change Plan → Quick Find/Search Library → Select/Add | Today's slot | Assign selected recipe to today | Open recovery flow for today |
+| Home → Recipes Search → recipe → Cook this → Cook it tonight | Today's slot | Assign selected recipe to today | Open recovery flow for today |
+| Home → planned Tonight → Change plan → Suggestions → Select | Today's slot | Keep the selected replacement for Home's prior-meal disposition, then assign | Home resolves the prior meal before saving the selected recipe |
+| Home → planned Tonight → Change plan → Search → result → Add to day | Captured authoritative today's slot | Assign selected recipe after selection | Recipes opens occupied-slot recovery for today |
+
+The planned Tonight sheet offers Take Out, Suggestions (the existing limited five-card deck), and Search as separate choices. Search carries the captured day and reference Monday into unified Recipes without changing the plan on entry. If the day or displayed planned recipe changed while the sheet was open, Home asks the person to start again from the current card rather than targeting a different slot. The ordinary unplanned pivot's direct Search remains unchanged. Home's existing Capture a Recipe tile precedes either Tonight card or pivot in document and visual order, while notices stay ahead of it.
 
 The recovery flow owns the decision about what happens to the existing recipe: move it to tomorrow, move it to next week, or drop it. The new selected recipe is only assigned after the user resolves the existing slot.
 
@@ -164,7 +170,7 @@ sequenceDiagram
     participant Planner
     participant Home
 
-    User->>Search: Open recipe detail from Top Pick or results
+    User->>Search: Open recipe detail from an ordinary result
     Search->>Detail: Show "Cook this" (data-testid="action-cook-this")
     User->>Detail: Tap "Cook this"
     Detail-->>User: Reveal "Cook it tonight" and "Plan for later"
@@ -194,7 +200,7 @@ flowchart TD
     B --> C[Search reopens in similar mode — similarToRecipeId set in page state]
     C --> D[API applies active filters and excludes source before bounded retrieval]
     D --> E[Semantic candidates are structurally ranked; compact lexical fallback uses the same scorer]
-    E --> F[Optional rank-1 Top Pick + paged alternatives]
+    E --> F[Ordered ordinary results + cursor continuation]
     F --> G[Same detail sheet and actions as normal search]
     G --> H[User selects via planner CTA or discovery pivot]
 ```
@@ -246,7 +252,7 @@ Meal and Cuisine are hard filters: choices within a group are alternatives, whil
 
 Opening the chooser copies current selections into a draft. **Apply filters** commits the draft and searches; Close, Escape or the backdrop discards it. **Clear filters** clears draft filters and Focus choices without clearing search text, and takes effect on Apply.
 
-Results are paged rather than capped at five. Successful empty results offer **Clear Filters** and **Browse Library**. A failed initial search offers **Retry**; failed continuation retains loaded cards and offers **Load more**, while expired continuation offers **Restart search**.
+Results are paged rather than capped at five. Successful empty results offer **Clear Filters** and **Clear search and browse** within Recipes. Scope-only browsing uses GET Explore; effective text, Similar, Focus or other filters use POST Search. Hiding Search controls preserves its submitted context, results, cursor, position, pending debounce and requests. A failed initial search offers **Retry**; failed continuation retains loaded cards and offers **Load more**, while expired continuation offers **Restart search**.
 
 ---
 
@@ -334,7 +340,7 @@ The user does not need stack traces to recover.
 
 | Surface | Primary action | Secondary action | Escape hatch |
 |---------|---------------|-----------------|--------------|
-| Search page | Open Top Pick or result | Open Filters | Clear query |
+| Recipes | Open ordinary result | Expand Search or open Filters | Clear search and browse |
 | Recipe detail sheet | Add to planner day or Cook this pivot | Find similar, discovery toggle, move to bin | Close — same results |
 | Recycle Bin | Restore | Permanent delete (PIN required) | Back to library |
 | Failed Captures | Retry | View friendly reason | Leave item for later |
@@ -348,7 +354,7 @@ The user does not need stack traces to recover.
 Show:
 - A calm explanation.
 - One recovery suggestion: *No close matches yet. Try fewer ingredients or remove a filter.*
-- Recovery actions: **Clear Filters** and **Browse Library**.
+- Recovery actions: **Clear Filters** and **Clear search and browse**.
 
 ### Filter over-constrained (`data-testid="filter-no-results"`)
 

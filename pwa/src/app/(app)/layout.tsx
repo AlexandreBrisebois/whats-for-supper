@@ -36,14 +36,13 @@ export default function AppRouteLayout({ children }: { children: React.ReactNode
     (window as any).__captureStore = useCaptureStore;
   }, []);
 
-  // Determine if we should hide navigation (e.g., for Capture flow or Browse All Stack)
+  // Capture owns a separate modal shell.
   const isCapture = pathname.startsWith(ROUTES.CAPTURE);
-  const isBrowseAllStack = pathname.startsWith('/browse-all-stack');
 
   // Map pathnames to titles
   const getHeaderProps = (path: string) => {
     if (path === ROUTES.HOME) return { title: t('navigation.home', 'Home') };
-    if (path === '/recipes') return { title: t('navigation.search', 'Search') };
+    if (path === '/recipes') return { title: t('navigation.recipes', 'Recipes') };
     if (path === ROUTES.PLANNER) return { title: t('navigation.planner', 'Planner') };
     if (path === ROUTES.DISCOVERY) return { title: t('navigation.discover', 'Discovery') };
     if (path === ROUTES.PROFILE) return { title: t('navigation.profile', 'Profile') };
@@ -108,15 +107,15 @@ export default function AppRouteLayout({ children }: { children: React.ReactNode
           </div>
           <Layout
             {...headerProps}
-            hideNavigation={isCapture || isBrowseAllStack}
-            hideHeader={hideHeader || isBrowseAllStack}
+            hideNavigation={isCapture}
+            hideHeader={hideHeader}
             isFluid={
               isHome ||
               isDiscovery ||
               isPlanner ||
               isCapture ||
-              isBrowseAllStack ||
-              pathname === ROUTES.PROFILE
+              pathname === ROUTES.PROFILE ||
+              pathname === '/recipes'
             }
             className={usesStackBackground ? 'solar-earth-bg' : ''}
             showBackgroundBlobs={isHome || isDiscovery}

@@ -23,9 +23,8 @@ test.describe('Recipe Stack Browse', () => {
     await expect(page.getByTestId('tonight-pivot-card')).toBeVisible();
   });
 
-  test('can open the browse stack from home and navigate cards', async ({ page }) => {
-    // Open Browse All
-    await page.getByTestId('home-browse-all-trigger').click();
+  test('can open Recipes from home and navigate cards', async ({ page }) => {
+    await page.getByRole('navigation').getByRole('link', { name: 'Recipes' }).click();
 
     // Check overlay presence
     await expect(page.getByTestId('browse-all-stack-container')).toBeVisible();
@@ -44,13 +43,12 @@ test.describe('Recipe Stack Browse', () => {
     await page.getByTestId('action-close-sheet').click();
     await expect(page.getByTestId('recipe-detail-sheet')).not.toBeVisible();
 
-    // Back to home
-    await page.getByTestId('browse-all-exit').click();
+    await page.getByRole('navigation').getByRole('link', { name: 'Home' }).click();
     await expect(page.getByTestId('browse-all-stack-container')).not.toBeVisible();
   });
 
   test('can toggle discoverable filter', async ({ page }) => {
-    await page.getByTestId('home-browse-all-trigger').click();
+    await page.getByRole('navigation').getByRole('link', { name: 'Recipes' }).click();
 
     const toggle = page.getByTestId('stack-toggle-discoverable');
     await expect(toggle).toContainText('All');
@@ -88,7 +86,7 @@ test('Browse filter dismissal restores focus and submits no mutations', async ({
     )
       mutations.push(request.url());
   });
-  await page.goto('/browse-all-stack');
+  await page.goto('/recipes');
   await expect(page.getByTestId('stack-card-front')).toBeVisible();
   const star = page.getByTestId('browse-filter-goto');
   await star.focus();

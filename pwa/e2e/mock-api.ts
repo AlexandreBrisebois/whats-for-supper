@@ -764,21 +764,18 @@ export async function setupCommonRoutes(
         json: { message: 'Search changed. Restart from the first page.' },
       });
     const membership = new Set(gotoItems.map((item) => item.recipeId));
-    const matches =
-      filters.gotoOnly === true
-        ? browseRecipes.filter(
-            (recipe) =>
-              membership.has(recipe.id) &&
-              recipe.isReady &&
-              !recipe.deletedAt &&
-              (filters.discoverableOnly !== true || recipe.isDiscoverable) &&
-              (filters.familyFavorite !== true ||
-                ((recipe.rating ?? 0) >= 2 && (recipe.isDiscoverable || recipe.notes))) &&
-              (!request.query?.trim() ||
-                recipe.name?.toLowerCase().includes(request.query.trim().toLowerCase())) &&
-              recipe.id !== request.similarToRecipeId
-          )
-        : [];
+    const matches = browseRecipes.filter(
+      (recipe) =>
+        recipe.isReady &&
+        !recipe.deletedAt &&
+        (filters.gotoOnly !== true || membership.has(recipe.id)) &&
+        (filters.discoverableOnly !== true || recipe.isDiscoverable) &&
+        (filters.familyFavorite !== true ||
+          ((recipe.rating ?? 0) >= 2 && (recipe.isDiscoverable || recipe.notes))) &&
+        (!request.query?.trim() ||
+          recipe.name?.toLowerCase().includes(request.query.trim().toLowerCase())) &&
+        recipe.id !== request.similarToRecipeId
+    );
     const byId = new Map(matches.map((recipe) => [recipe.id!, recipe]));
     const ordered = previous
       ? previous.ids.filter((id) => byId.has(id))

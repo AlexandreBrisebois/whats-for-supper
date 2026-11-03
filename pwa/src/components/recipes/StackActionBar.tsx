@@ -11,6 +11,7 @@ interface StackActionBarProps {
   currentRecipe: RecipeDto;
   currentIndex: number;
   totalCount: number;
+  positionText?: string;
   onToggleIndividualCuration: (recipeId: string, newValue: boolean) => Promise<void>;
 }
 
@@ -18,6 +19,7 @@ export const StackActionBar: React.FC<StackActionBarProps> = ({
   currentRecipe,
   currentIndex,
   totalCount,
+  positionText,
   onToggleIndividualCuration,
 }) => {
   const recipeId = currentRecipe.id ?? '';
@@ -54,9 +56,13 @@ export const StackActionBar: React.FC<StackActionBarProps> = ({
       {/* Depth indicator — lives above the pill, separate from actions */}
       <div className="flex items-center gap-1.5" data-testid="stack-depth-indicator">
         <span className="text-[11px] font-bold tabular-nums text-charcoal/40">
-          <span className="text-ochre font-black">{currentIndex + 1}</span>
-          <span className="mx-1 text-charcoal/25"> / </span>
-          <span>{totalCount}</span>
+          {positionText ?? (
+            <>
+              <span className="text-ochre font-black">{currentIndex + 1}</span>
+              <span className="mx-1 text-charcoal/25"> / </span>
+              <span>{totalCount}</span>
+            </>
+          )}
         </span>
       </div>
 

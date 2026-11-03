@@ -53,7 +53,7 @@ async function openStack(page: Page, baseURL: string, title?: string) {
       })
     );
   }, MOCK_IDS.MEMBER_ALEX);
-  await page.goto('/browse-all-stack');
+  await page.goto('/recipes');
   await expect(page.getByTestId('stack-card-front')).toHaveCount(1);
   await page.getByTestId('stack-card-front').click({ trial: true });
 }
@@ -275,7 +275,7 @@ for (const viewport of [
     }
     await page.getByTestId('stack-action-bar').scrollIntoViewIfNeeded();
     await expect(page.getByTestId('stack-action-bar')).toBeInViewport();
-    await expect(page.getByTestId('browse-all-exit')).toBeInViewport();
+    await expect(page.getByTestId('nav-item-recipes')).toBeInViewport();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
       true
     );
@@ -285,7 +285,7 @@ for (const viewport of [
   });
 }
 
-for (const departure of ['filter', 'list', 'close'] as const) {
+for (const departure of ['filter', 'list', 'search'] as const) {
   test(`leaving by ${departure} during a swipe cannot activate old navigation`, async ({
     page,
     baseURL,
@@ -305,7 +305,7 @@ for (const departure of ['filter', 'list', 'close'] as const) {
         ? 'stack-toggle-discoverable'
         : departure === 'list'
           ? 'browse-view-list'
-          : 'browse-all-exit';
+          : 'recipes-search-disclosure';
     await page.getByTestId(target).click();
     // Sample after the old 240ms departure completion could have fired.
     await page.waitForTimeout(350);
@@ -317,18 +317,20 @@ for (const departure of ['filter', 'list', 'close'] as const) {
       await page.getByTestId('browse-view-stack').click();
       await expect(page.getByTestId('stack-depth-indicator')).toHaveText('1 / 3');
     }
-    if (departure === 'close')
-      await expect(page.getByTestId('browse-all-stack-container')).not.toBeVisible();
+    if (departure === 'search') {
+      await expect(page.getByTestId('recipe-search-input')).toBeVisible();
+      await expect(page.getByTestId('stack-depth-indicator')).toHaveText('1 / 3');
+    }
   });
 }
 
 for (const input of ['mouse', 'touch'] as const) {
   test.describe(`${input} card hit regions`, () => {
     test.use({ hasTouch: true, viewport: { width: 390, height: 844 } });
-    test('image, title and body all grab without a hold', async ({ page, baseURL }) => {
+    test('image and title both grab without a hold', async ({ page, baseURL }) => {
       await openStack(page, baseURL!);
       const card = page.getByTestId('stack-card-front');
-      for (const region of ['img', 'h2', 'p']) {
+      for (const region of ['img', 'h2']) {
         const target = card.locator(region).first();
         await target.scrollIntoViewIfNeeded();
         const box = await target.boundingBox();
@@ -378,16 +380,16 @@ for (const input of ['mouse', 'touch'] as const) {
 
 test.describe('short-phone scrolling remains available', () => {
   test.use({ hasTouch: true, viewport: { width: 320, height: 568 } });
-  test('vertical scrolling inside the card does not navigate or open detail', async ({
+  test('vertical scrolling past a long card title does not navigate or open detail', async ({
     page,
     baseURL,
   }) => {
     await openStack(page, baseURL!, 'A very long family recipe title '.repeat(16));
     const card = page.getByTestId('stack-card-front');
-    const body = card.locator('.overflow-y-auto');
+    const body = page.getByTestId('browse-results-region');
     await expect(body).toHaveCSS('touch-action', 'pan-y');
     expect(await body.evaluate((node) => node.scrollHeight > node.clientHeight)).toBe(true);
-    const box = await body.boundingBox();
+    const box = await card.locator('h2').boundingBox();
     if (!box) throw new Error('Missing card body');
     const x = box.x + box.width / 2;
     const y = Math.min(box.y + box.height - 20, 500);

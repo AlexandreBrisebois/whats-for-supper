@@ -41,7 +41,11 @@ vi.mock('@/lib/imageUtils', () => ({
 
 vi.mock('@/components/home/HomeSections', async (importOriginal) => ({
   ...(await importOriginal<typeof import('./HomeSections')>()),
-  QuickCaptureTrigger: () => null,
+  QuickCaptureTrigger: () => (
+    <a data-testid="quick-capture-trigger" href="/capture">
+      Capture a Recipe
+    </a>
+  ),
   CookedSuccessCard: () => null,
   BrowseLibraryTrigger: () => null,
 }));
@@ -98,18 +102,27 @@ vi.mock('@/components/home/SkipRecoveryDialog', () => ({
     onClose,
     replacement,
     onRetryReplacement,
+    searchError,
+    onRetrySearch,
   }: {
     step: 1 | 2;
     onAction: (action: any) => void;
     onClose: () => void;
     replacement?: any;
     onRetryReplacement?: () => void;
+    searchError?: string | null;
+    onRetrySearch?: () => void;
   }) => (
     <div>
       {replacement && <p>{replacement.message}</p>}
       {replacement && (
         <button data-testid="retry-replacement" onClick={onRetryReplacement}>
           Retry
+        </button>
+      )}
+      {searchError && (
+        <button data-testid="search-calendar-retry" onClick={onRetrySearch}>
+          Retry Search
         </button>
       )}
       <button data-testid="recovery-close" onClick={onClose}>
@@ -122,6 +135,9 @@ vi.mock('@/components/home/SkipRecoveryDialog', () => ({
           </button>
           <button data-testid="recovery-action-pick-else" onClick={() => onAction('pick_else')}>
             Pick Else
+          </button>
+          <button data-testid="recovery-action-search" onClick={() => onAction('search')}>
+            Search
           </button>
         </>
       ) : (
@@ -318,6 +334,7 @@ describe('HomeCommandCenter', () => {
     mocks.todayStatus = 0;
     mocks.nonCooking = null;
     mocks.todayString = '2026-05-07';
+    mocks.calendarFailure = false;
     mocks.calendarWait = null;
     mocks.loadActiveGoTo.mockResolvedValue(null);
     mocks.saveRecoveryRecipe.mockReset().mockResolvedValue(undefined);
@@ -340,6 +357,26 @@ describe('HomeCommandCenter', () => {
     expect(screen.getByTestId('active-read-state')).toHaveTextContent('settled');
     expect(mocks.loadActiveGoTo).toHaveBeenCalledOnce();
   });
+
+  it.each([
+    { state: 'planned', recipe: { id: 'planned-recipe', name: 'Pasta' }, target: 'skip-btn' },
+    { state: 'pivot', recipe: null, target: 'tonight-pivot-card' },
+  ])(
+    'places the single Capture link before the $state decision in DOM order',
+    ({ recipe, target }) => {
+      mocks.currentRecipe = recipe;
+      const view = render(<HomeCommandCenter todaysRecipe={recipe} todayStatus={0} />);
+      const capture = screen.getByTestId('quick-capture-trigger');
+      const decision = screen.getByTestId(target);
+      expect(capture).toHaveAttribute('href', '/capture');
+      expect(view.container.querySelectorAll('[data-testid="quick-capture-trigger"]')).toHaveLength(
+        1
+      );
+      expect(
+        capture.compareDocumentPosition(decision) & Node.DOCUMENT_POSITION_FOLLOWING
+      ).toBeTruthy();
+    }
+  );
 
   it.each(['2026-05-04', '2026-05-11', '2026-06-01'])(
     'offers the active collecting round for %s without dismissal',
@@ -617,7 +654,7 @@ describe('HomeCommandCenter', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
     await waitFor(() =>
       expect(mocks.push).toHaveBeenCalledWith(
-        '/recipes?addToDay=3&weekOffset=0&referenceWeekStartDate=2026-05-04'
+        '/recipes?focus=search&addToDay=3&weekOffset=0&referenceWeekStartDate=2026-05-04'
       )
     );
     expect(mocks.assignRecipe).not.toHaveBeenCalled();
@@ -628,7 +665,7 @@ describe('HomeCommandCenter', () => {
     fireEvent.click(screen.getByTestId('discover-btn'));
     await waitFor(() =>
       expect(mocks.push).toHaveBeenCalledWith(
-        '/recipes?addToDay=3&weekOffset=0&referenceWeekStartDate=2026-05-04'
+        '/recipes?focus=search&addToDay=3&weekOffset=0&referenceWeekStartDate=2026-05-04'
       )
     );
     expect(screen.queryByTestId('quick-find-select')).not.toBeInTheDocument();
@@ -828,6 +865,57 @@ describe('HomeCommandCenter', () => {
     expect(mocks.saveRecoveryRecipe).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'replacement-recipe' }),
       fixtureCalendar()
+    );
+  });
+
+  it('opens Search for the captured planned day without starting a Home replacement', async () => {
+    mocks.currentRecipe = { id: 'planned-recipe', name: 'Pasta' };
+    render(<HomeCommandCenter todaysRecipe={mocks.currentRecipe} todayStatus={0} />);
+    fireEvent.click(screen.getByTestId('skip-btn'));
+    await screen.findByTestId('recovery-action-search');
+    fireEvent.click(screen.getByTestId('recovery-action-search'));
+    await waitFor(() =>
+      expect(mocks.push).toHaveBeenCalledWith(
+        '/recipes?focus=search&addToDay=3&weekOffset=0&referenceWeekStartDate=2026-05-04'
+      )
+    );
+    expect(mocks.assignRecipe).not.toHaveBeenCalled();
+    expect(mocks.saveRecoveryRecipe).not.toHaveBeenCalled();
+    expect(mocks.movePost).not.toHaveBeenCalled();
+    expect(mocks.validatePost).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('quick-find-select')).not.toBeInTheDocument();
+  });
+
+  it('does not retarget Search if Today or the planned source changed while the sheet was open', async () => {
+    mocks.currentRecipe = { id: 'planned-recipe', name: 'Pasta' };
+    const view = render(<HomeCommandCenter todaysRecipe={mocks.currentRecipe} todayStatus={0} />);
+    fireEvent.click(screen.getByTestId('skip-btn'));
+    mocks.todayString = '2026-05-08';
+    mocks.currentRecipe = { id: 'new-recipe', name: 'Soup' };
+    view.rerender(<HomeCommandCenter todaysRecipe={mocks.currentRecipe} todayStatus={0} />);
+    fireEvent.click(screen.getByTestId('recovery-action-search'));
+    await waitFor(() =>
+      expect(screen.queryByTestId('recovery-action-search')).not.toBeInTheDocument()
+    );
+    expect(mocks.push).not.toHaveBeenCalled();
+    expect(mocks.sync).toHaveBeenCalled();
+  });
+
+  it('keeps the planned sheet available for a failed calendar read and retries Search', async () => {
+    mocks.currentRecipe = { id: 'planned-recipe', name: 'Pasta' };
+    render(<HomeCommandCenter todaysRecipe={mocks.currentRecipe} todayStatus={0} />);
+    fireEvent.click(screen.getByTestId('skip-btn'));
+    mocks.calendarFailure = true;
+    fireEvent.click(screen.getByTestId('recovery-action-search'));
+    expect(await screen.findByTestId('search-calendar-retry')).toBeInTheDocument();
+    expect(screen.getByTestId('recovery-action-search')).toBeInTheDocument();
+    expect(mocks.push).not.toHaveBeenCalled();
+    mocks.calendarFailure = false;
+    fireEvent.click(screen.getByTestId('search-calendar-retry'));
+    await waitFor(() =>
+      expect(mocks.push).toHaveBeenCalledWith(
+        '/recipes?focus=search&addToDay=3&weekOffset=0&referenceWeekStartDate=2026-05-04'
+      )
     );
   });
 

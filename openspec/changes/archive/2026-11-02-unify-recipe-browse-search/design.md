@@ -15,7 +15,7 @@ The [proposal](proposal.md) defines scope; the four deltas define observable beh
 | Shell and entry points | `Navigation.tsx` labels `/recipes` Search; `(app)/layout.tsx` hides navigation for legacy Browse. `HomeSections.tsx` supplies the Browse tile. Planner and Home already supply day/week/reference context. `baseManifest.json` feeds `pdfManifest.ts` and `manifest.json/route.ts`. |
 | Browser fixtures | `pwa/e2e/mock-api.ts` owns method-sensitive Explore, summary, Search, filter-vocabulary, membership and mutation handlers, with `MOCK_IDS` and builders. Existing recipes/browse/search-hardening/invalidation specs exercise their consumers. |
 
-Shared authorities remain [member-preferences](../../specs/member-preferences/spec.md), [meal-assignment](../../specs/meal-assignment/spec.md), [recipe-editing](../../specs/recipe-editing/spec.md), [recipe-quality](../../specs/recipe-quality/spec.md), [recipe-recycle-bin](../../specs/recipe-recycle-bin/spec.md) and [household-live-updates](../../specs/household-live-updates/spec.md). Their persistence, eligibility, mutation and recovery rules are reused. Unified collection refresh specializes the former route-specific Search callback at `/recipes`: successful deletion refreshes GET in Explore and POST in active Search, without changing deletion itself.
+Shared authorities remain [member-preferences](../../../specs/member-preferences/spec.md), [meal-assignment](../../../specs/meal-assignment/spec.md), [recipe-editing](../../../specs/recipe-editing/spec.md), [recipe-quality](../../../specs/recipe-quality/spec.md), [recipe-recycle-bin](../../../specs/recipe-recycle-bin/spec.md) and [household-live-updates](../../../specs/household-live-updates/spec.md). Their persistence, eligibility, mutation and recovery rules are reused. Unified collection refresh specializes the former route-specific Search callback at `/recipes`: successful deletion refreshes GET in Explore and POST in active Search, without changing deletion itself.
 
 Terminology: **Explore** is the GET library collection. **Search** is a client collection using POST for effective intent. **Discovery scope** is the library's discoverable-only predicate; it is different from the backend's existing `searchMode=discovery` policy and from the bottom Discovery voting destination. Scope-only client browsing never invokes POST's Discovery promotion path. Direct API callers retain that path and existing GOTO-only Explicit behavior.
 
@@ -129,7 +129,7 @@ The Search toggle can hide its region; an explicit hide action inside the region
 
 ### Designer review record
 
-Reviewed on 2026-11-02 by Codex applying the repository [designer skill](../../../.agents/skills/designer/SKILL.md), with its visual-identity/Solar Earth guidance. This is a source- and specification-based interaction review; it is not an independent human sign-off, rendered layout inspection or observed usability result.
+Reviewed on 2026-11-02 by Codex applying the repository [designer skill](../../../../.agents/skills/designer/SKILL.md), with its visual-identity/Solar Earth guidance. This is a source- and specification-based interaction review; it is not an independent human sign-off, rendered layout inspection or observed usability result.
 
 | Review area | Finding and design resolution | Remaining validation |
 | --- | --- | --- |
@@ -143,6 +143,10 @@ Reviewed on 2026-11-02 by Codex applying the repository [designer skill](../../.
 | Space/style/motion | Existing Solar Earth tokens and adaptive card dimensions preserve the cookbook treatment with safe-area app navigation. | EN/FR; 320×568, 390×667, 667×375, 360/390/430 widths, tablet portrait/landscape, 200% text, reduced motion and actual composite contrast |
 
 No unresolved product decision blocks these tasks. Responsive measurements and assistive/browser behavior remain required acceptance work on the implemented screen; this planning review does not claim them passed.
+
+### Implemented rendered review (2026-11-02)
+
+The unified `/recipes` screen was rendered and inspected in local Chromium with method-sensitive mock responses. Browser assertions covered English and French at 320×568, 360×780, 390×667, 430×932, 667×375, 820×1180 and 1180×820, plus 390 and 820 widths at 200% text, with reduced motion. Both stack and list remained reachable without horizontal overflow or app-navigation overlap; the short 320 and landscape screens scroll vertically. Search remained the first toolbar control; measured segmented view targets were raised to 48 px. Composite contrast checks of the actual rendered colors passed at least 4.5:1 for tested text, including 7.12:1 for charcoal on ochre. The local keyboard sequence exercised Tab, Shift+Tab, Enter, Space, Escape, disclosure focus, Filters/Recycle Bin/detail return focus, and direct-detail precedence. The browser suite also exercised successful empty, failure, pagination and recovery states. Screenshots and detailed command results are recorded in [implementation evidence](implementation-evidence.md). Native mobile virtual keyboards, physical safe-area devices and independent assistive-technology reading were not tested; safe-area and reachability checks used emulated viewports and computed browser geometry.
 
 ## Evidence and Limits
 

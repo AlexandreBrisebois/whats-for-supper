@@ -802,8 +802,14 @@ test.describe('Cook Mode — HowToSection[] steps display', () => {
         });
       });
 
-      await page.goto('/recipes');
-      await page.getByTestId(`recipe-card-${recipeId}`).click();
+      await page.goto('/recipes?focus=search');
+      await page.getByTestId('recipe-search-input').fill('Recipe being cooked');
+      await page.getByTestId('recipe-search-input').press('Enter');
+      await expect(page.getByTestId('stack-card-front')).toHaveAttribute(
+        'data-recipe-id',
+        recipeId
+      );
+      await page.getByTestId('stack-card-front').click();
       await page.getByTestId('time-cook-btn').click();
       await page.getByTestId('cooks-mode-step-next').click();
       await expect(page.getByTestId('cooks-mode-step-next')).toHaveAccessibleName(

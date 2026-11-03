@@ -50,7 +50,7 @@ for (const locale of ['en', 'fr'] as const) {
           localStorage.setItem('wfs:mode-info:demo:dismissed', 'true')
         );
         await page.setViewportSize({ width, height });
-        await page.goto('/recipes');
+        await page.goto('/recipes?focus=search');
         await expect(page.getByTestId('recipe-search-input')).toBeVisible();
         await page.getByTestId('recipe-search-input').fill('old visitor search');
         generation = MOCK_IDS.MEMBER_ALEX;

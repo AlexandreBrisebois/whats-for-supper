@@ -9,7 +9,7 @@ describe('always-on PDF share manifest', () => {
         name: 'Search',
         short_name: 'Search',
         description: 'Search your recipe library',
-        url: '/recipes',
+        url: '/recipes?focus=search',
         icons: [{ src: '/android-chrome-192x192.png', sizes: '192x192' }],
       },
       {
