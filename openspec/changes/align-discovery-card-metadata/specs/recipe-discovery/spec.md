@@ -59,4 +59,5 @@ The Discovery time badge SHALL use readable text on an opaque contrasting surfac
 
 - **WHEN** the person starts a horizontal voting drag over the time badge
 - **THEN** the existing card drag and vote rules apply without a separate badge action
-- **AND** the time badge does not obscure the LOVE/PASS feedback needed to identify the vote
+- **AND** LOVE/PASS swipe feedback appears above the time badge during the drag, including where their bounds overlap
+- **AND** the badge retains its lower-left position and passive interactions

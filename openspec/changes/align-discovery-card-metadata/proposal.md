@@ -11,6 +11,7 @@ Align Discovery's metadata presentation with Recipes stack cards: remove the cui
 ## What Changes
 
 - Display a single clock-and-Ready in badge at the hero's lower left, matching Recipes' existing badge treatment.
+- During a drag, paint LOVE/PASS feedback above the time badge while keeping badge position and interactions unchanged.
 - Omit the badge when the existing duration formatter produces no usable time.
 - Remove cuisine and meal-type pills and the old time footer/divider from Discovery cards; retain the recipe title.
 - Preserve named image alternatives, readable bilingual text, reachable vote controls and all existing voting semantics.

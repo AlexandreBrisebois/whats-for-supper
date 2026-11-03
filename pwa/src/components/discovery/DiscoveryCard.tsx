@@ -6,7 +6,7 @@ import { t, tWithVars } from '@/locales';
 import { getImageUrl } from '@/lib/imageUtils';
 import { formatRecipeTime } from '@/lib/duration';
 import { useHorizontalCardMotion } from '@/hooks/useHorizontalCardMotion';
-import { Heart, X } from 'lucide-react';
+import { Clock, Heart, X } from 'lucide-react';
 
 interface DiscoveryCardProps {
   id: string;
@@ -27,15 +27,12 @@ interface DiscoveryCardProps {
 export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
   id,
   name,
-  description,
   imageUrl,
   onSwipeRight,
   onSwipeLeft,
   isFront,
   stackIndex,
   totalTime,
-  cuisineType,
-  mealTypes,
   hasFamilyInterest: _hasFamilyInterest,
 }) => {
   const { x, controls, startDrag, dragProps, motionStyle } = useHorizontalCardMotion(isFront);
@@ -122,7 +119,7 @@ export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
     }
   };
 
-  const visibleMealTypes = (mealTypes ?? []).filter(Boolean);
+  const formattedTime = formatRecipeTime(totalTime);
 
   return (
     <motion.div
@@ -138,13 +135,25 @@ export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
       whileTap={isFront ? { scale: 0.98 } : {}}
     >
       <motion.div className="h-full w-full overflow-hidden rounded-[2.5rem] bg-white shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),_0_20px_40px_-1px_rgba(0,0,0,0.05)] border-t border-white/20 flex flex-col">
-        <div className="relative h-[62%] w-full overflow-hidden">
+        <div data-testid="discovery-card-image" className="relative h-[62%] w-full overflow-hidden">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={getImageUrl(imageUrl)}
             alt={name}
             className="absolute inset-0 h-full w-full object-cover select-none pointer-events-none"
           />
+
+          {formattedTime && (
+            <span
+              data-testid="discovery-time-badge"
+              className="pointer-events-none absolute bottom-4 left-4 z-10 inline-flex max-w-[calc(100%-2rem)] items-center gap-1.5 rounded-full border border-white bg-terracotta-50 px-3 py-2 text-xs font-bold uppercase tracking-wide text-terracotta-700 shadow-md"
+            >
+              <Clock size={14} aria-hidden="true" className="shrink-0" />
+              <span>
+                {tWithVars('common.readyIn', 'READY IN {{time}}', { time: formattedTime })}
+              </span>
+            </span>
+          )}
 
           {/* Central Ghost Indicators */}
           {isFront && (
@@ -185,34 +194,6 @@ export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
             <h2 className="text-2xl font-bold tracking-tight font-heading mb-4 leading-tight">
               {name}
             </h2>
-            {(cuisineType || visibleMealTypes.length > 0) && (
-              <div className="mb-4 flex flex-wrap items-center gap-2">
-                {cuisineType && (
-                  <span
-                    data-testid="discovery-card-cuisine-badge"
-                    className="inline-flex items-center gap-1 rounded-full bg-ochre/10 text-ochre px-3 py-1.5 shadow-sm text-[11px] font-black uppercase tracking-widest"
-                  >
-                    {cuisineType}
-                  </span>
-                )}
-                {visibleMealTypes.map((mealType) => (
-                  <span
-                    key={mealType}
-                    data-testid={`discovery-card-meal-type-${mealType.toLowerCase()}`}
-                    className="rounded-full bg-white border border-sage/30 text-sage/80 px-3 py-1 text-xs font-bold uppercase"
-                  >
-                    {mealType}
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
-          <div className="flex items-center gap-4 text-[10px] font-bold uppercase tracking-[0.15em] border-t border-charcoal/5 pt-6">
-            <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-ochre-50/80 text-ochre-700">
-              {tWithVars('common.readyIn', 'READY IN {{time}}', {
-                time: formatRecipeTime(totalTime),
-              })}
-            </span>
           </div>
         </div>
       </motion.div>
