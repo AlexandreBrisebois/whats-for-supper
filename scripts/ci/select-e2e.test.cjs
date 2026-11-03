@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const { selectSuites } = require('./select-e2e.cjs');
 const all = ['tonight', 'planning', 'recipes', 'household'];
 test('known test changes select their owning suites', () => {
+  assert.deepEqual(selectSuites(['pwa/e2e/unified-recipes.spec.ts']), ['recipes']);
   assert.deepEqual(selectSuites(['pwa/e2e/planner.spec.ts']), ['planning']);
   assert.deepEqual(selectSuites(['pwa/e2e/grocery.spec.ts', 'pwa/e2e/capture-flow.spec.ts']), ['planning', 'household']);
 });

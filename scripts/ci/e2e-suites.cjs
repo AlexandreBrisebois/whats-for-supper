@@ -16,7 +16,7 @@ const suites = {
     'browse-all-stack', 'browse-stack', 'stack-gestures', 'discovery', 'goto-layout', 'recipe-hero-actions',
     'recipe-notes-recovery', 'recipe-original-viewer', 'recipe-recovery',
     'recipe-share', 'recipes', 'search-hardening', 'search-invalidation-recovery',
-    'sharing-fidelity',
+    'sharing-fidelity', 'unified-recipes',
   ],
   household: [
     'auth-flow', 'welcome-demo', 'bug-condition-exploration', 'capture-flow', 'demo-mode',
