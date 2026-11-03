@@ -34,6 +34,7 @@ vi.mock('framer-motion', () => ({
       onDragStart,
       // Strip framer-motion-specific props that React DOM doesn't understand
       layout: _layout,
+      initial: _initial,
       dragConstraints: _dragConstraints,
       dragElastic: _dragElastic,
       dragMomentum: _dragMomentum,
@@ -51,6 +52,14 @@ vi.mock('framer-motion', () => ({
       return <div {...props}>{children}</div>;
     },
   },
+  useComposedRefs:
+    (...refs: React.Ref<HTMLDivElement>[]) =>
+    (node: HTMLDivElement | null) => {
+      for (const ref of refs) {
+        if (typeof ref === 'function') ref(node);
+        else if (ref) ref.current = node;
+      }
+    },
   useMotionValue: () => ({ get: () => 0, set: vi.fn() }),
   useTransform: () => ({ get: () => 0 }),
   useAnimation: () => ({ start: motionMocks.start, stop: motionMocks.stop }),
@@ -472,5 +481,19 @@ describe('RecipeStackCard — exact release boundaries', () => {
     );
     expect(defaultProps.onSwipeRight).toHaveBeenCalledTimes(direction === 'right' ? 1 : 0);
     expect(defaultProps.onSwipeLeft).toHaveBeenCalledTimes(direction === 'left' ? 1 : 0);
+  });
+});
+
+describe('presence DOM ref ownership', () => {
+  it('connects the external presence ref to the same root used for local hit testing', () => {
+    const ref = React.createRef<HTMLDivElement>();
+    const { unmount } = render(<RecipeStackCard {...defaultProps} ref={ref} />);
+    expect(ref.current).toBe(screen.getByTestId('stack-card-front'));
+    capturedOnTap!({ target: ref.current, pointerType: 'touch' });
+    expect(defaultProps.onTap).toHaveBeenCalledTimes(1);
+    fireEvent.keyDown(ref.current!, { key: 'Enter' });
+    expect(defaultProps.onTap).toHaveBeenCalledTimes(2);
+    unmount();
+    expect(ref.current).toBeNull();
   });
 });

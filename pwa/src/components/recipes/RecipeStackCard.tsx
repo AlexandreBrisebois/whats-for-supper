@@ -2,7 +2,14 @@
 
 import React from 'react';
 import { Clock } from 'lucide-react';
-import { motion, useTransform, useIsPresent, PanInfo, useMotionValueEvent } from 'framer-motion';
+import {
+  motion,
+  useTransform,
+  useIsPresent,
+  PanInfo,
+  useMotionValueEvent,
+  useComposedRefs,
+} from 'framer-motion';
 import { t, tWithVars } from '@/locales';
 import { getImageUrl } from '@/lib/imageUtils';
 import { formatRecipeTime } from '@/lib/duration';
@@ -17,6 +24,7 @@ import type { RecipeImportIssueStatus } from '@/lib/api/recipes';
 // ---------------------------------------------------------------------------
 
 interface RecipeStackCardProps {
+  ref?: React.Ref<HTMLDivElement>;
   id: string;
   name: string;
   description: string;
@@ -36,6 +44,7 @@ interface RecipeStackCardProps {
 }
 
 export const RecipeStackCard: React.FC<RecipeStackCardProps> = ({
+  ref: presenceRef,
   id,
   name,
   imageUrl,
@@ -101,6 +110,7 @@ export const RecipeStackCard: React.FC<RecipeStackCardProps> = ({
   // Track whether a drag occurred so we can distinguish tap from swipe
   const didDrag = React.useRef(false);
   const cardRef = React.useRef<HTMLDivElement>(null);
+  const composedRef = useComposedRefs(cardRef, presenceRef);
   const isPresent = useIsPresent();
   const lifecycle = React.useRef(0);
   const departing = React.useRef(false);
@@ -192,9 +202,19 @@ export const RecipeStackCard: React.FC<RecipeStackCardProps> = ({
 
   return (
     <motion.div
-      ref={cardRef}
+      ref={composedRef}
+      initial={{
+        scale: isFront ? 1 : Math.max(0.8, scale),
+        y: isFront ? 0 : yOffset,
+        opacity: isFront ? 1 : Math.max(0, opacity),
+      }}
       layout
-      style={{ ...motionStyle, zIndex: 10 - stackIndex }}
+      style={{
+        ...motionStyle,
+        // Match the backing layout's resting anchor before projection starts.
+        transformOrigin: isFront ? motionStyle.transformOrigin : 'center',
+        zIndex: 10 - stackIndex,
+      }}
       role={isFront ? 'button' : undefined}
       tabIndex={isFront ? 0 : -1}
       aria-label={

@@ -1,6 +1,7 @@
+import { writeFile } from 'node:fs/promises';
 import { swipeCurrentStackCard } from './helpers/stack-swipe';
 import { test, expect } from './fixtures';
-import type { Locator } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 import { expectDiscoveryGeometry } from './helpers/discovery-geometry';
 import { MOCK_IDS, builders, setupCommonRoutes } from './mock-api';
 
@@ -869,3 +870,353 @@ test.describe('Recipes Search Page', () => {
     });
   }
 });
+
+interface StackFrame {
+  time: number;
+  cards: {
+    id: string;
+    node: number;
+    front: boolean;
+    height: number;
+    parentHeight: number;
+    parentBottom: number;
+    origin: string;
+    paintedHeight: number;
+    bottom: number;
+    depth: number;
+    position: string;
+    scaleX: number;
+    scaleY: number;
+    offsetY: number;
+    opacity: number;
+  }[];
+}
+
+type SamplingWindow = Window & { stackFrameSamples?: StackFrame[]; sampleStack?: boolean };
+
+/** Record the real presence/layout boundary before release, including first rear paint. */
+async function startStackFrames(page: Page) {
+  await page.evaluate(() => {
+    const target = window as SamplingWindow;
+    const nodes = new WeakMap<Element, number>();
+    let nextNode = 0;
+    const start = performance.now();
+    target.stackFrameSamples = [];
+    target.sampleStack = true;
+    const sample = () => {
+      if (!target.sampleStack) return;
+      const cards = Array.from(
+        document.querySelectorAll<HTMLElement>('[data-recipe-id][data-testid^="stack-card-"]')
+      ).map((el) => {
+        if (!nodes.has(el)) nodes.set(el, ++nextNode);
+        const style = getComputedStyle(el);
+        const matrix = new DOMMatrixReadOnly(
+          style.transform === 'none' ? undefined : style.transform
+        );
+        return {
+          id: el.dataset.recipeId!,
+          node: nodes.get(el)!,
+          front: el.dataset.front === 'true',
+          height: el.offsetHeight,
+          parentHeight: el.parentElement!.offsetHeight,
+          parentBottom: el.parentElement!.getBoundingClientRect().bottom,
+          origin: style.transformOrigin,
+          paintedHeight: el.getBoundingClientRect().height,
+          bottom: el.getBoundingClientRect().bottom,
+          depth: 10 - Number(style.zIndex),
+          position: style.position,
+          scaleX: matrix.a,
+          scaleY: matrix.d,
+          offsetY: matrix.f,
+          opacity: Number(style.opacity),
+        };
+      });
+      target.stackFrameSamples!.push({ time: performance.now() - start, cards });
+      requestAnimationFrame(sample);
+    };
+    requestAnimationFrame(sample);
+  });
+}
+
+async function stopStackFrames(page: Page): Promise<StackFrame[]> {
+  return page.evaluate(() => {
+    const target = window as SamplingWindow;
+    target.sampleStack = false;
+    return target.stackFrameSamples ?? [];
+  });
+}
+
+// Six records force new rear mounts on the first two advances; three records cannot cover this.
+for (const scenario of [
+  {
+    name: 'equal phone',
+    varied: false,
+    width: 390,
+    height: 844,
+    locale: 'en',
+    reduced: false,
+    enlarged: false,
+  },
+  {
+    name: 'varied phone',
+    varied: true,
+    width: 390,
+    height: 844,
+    locale: 'en',
+    reduced: false,
+    enlarged: false,
+  },
+  {
+    name: 'short French phone',
+    varied: true,
+    width: 320,
+    height: 568,
+    locale: 'fr',
+    reduced: false,
+    enlarged: false,
+  },
+  {
+    name: 'French iPad reduced motion',
+    varied: true,
+    width: 768,
+    height: 1024,
+    locale: 'fr',
+    reduced: true,
+    enlarged: false,
+  },
+  {
+    name: 'landscape reduced motion',
+    varied: true,
+    width: 667,
+    height: 375,
+    locale: 'en',
+    reduced: true,
+    enlarged: false,
+  },
+  {
+    name: 'French enlarged text',
+    varied: true,
+    width: 390,
+    height: 844,
+    locale: 'fr',
+    reduced: false,
+    enlarged: true,
+  },
+] as const) {
+  test.describe(`stable stack depth ${scenario.name}`, () => {
+    test.use({ appLocale: scenario.locale });
+    const varied = scenario.varied;
+    test(`with ${varied ? 'varied' : 'equal'} full titles`, async ({ page }, testInfo) => {
+      // Four real advances plus entry/mid/settled captures need a larger capture budget.
+      test.setTimeout(90_000);
+      await page.setViewportSize({ width: scenario.width, height: scenario.height });
+      await page.emulateMedia({ reducedMotion: scenario.reduced ? 'reduce' : 'no-preference' });
+      const ids: string[] = [
+        MOCK_IDS.RECIPE_LASAGNA,
+        MOCK_IDS.RECIPE_CHICKEN,
+        MOCK_IDS.RECIPE_GNOCCHI,
+        MOCK_IDS.RECIPE_CARBONARA,
+        MOCK_IDS.RECIPE_STIR_FRY,
+        MOCK_IDS.RECIPE_TACOS,
+      ];
+      const names = ids.map((_, i) =>
+        varied && i % 2 === 1
+          ? scenario.locale === 'fr'
+            ? 'Légumes rôtis avec du riz parfumé et une généreuse portion de fines herbes fraîches du jardin'
+            : 'Roasted vegetables with fragrant basmati rice and a generous helping of fresh garden herbs'
+          : `Recipe ${i + 1}`
+      );
+      await page
+        .context()
+        .addCookies([
+          { name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: 'http://127.0.0.1:3000' },
+        ]);
+      await page.addInitScript(
+        (id) =>
+          localStorage.setItem(
+            'family-storage',
+            JSON.stringify({ state: { selectedFamilyMemberId: id }, version: 0 })
+          ),
+        MOCK_IDS.MEMBER_ALEX
+      );
+      await setupCommonRoutes(page);
+      await page.route('**/api/recipes/library-summary', (route) =>
+        route.fulfill({
+          json: {
+            data: {
+              total: 6,
+              neverCooked: 6,
+              ratings: { love: 0, like: 0, dislike: 0, unrated: 6 },
+            },
+          },
+        })
+      );
+      await page.route('**/api/recipes?**', (route) =>
+        route.fulfill({
+          json: {
+            recipes: ids.map((id, i) =>
+              builders.recipe({ id, name: names[i], totalTime: 'PT30M' })
+            ),
+            pagination: { page: 1, limit: 20, total: 6 },
+          },
+        })
+      );
+      await page.route('**/api/recipes/*/hero', (route) =>
+        route.fulfill({
+          contentType: 'image/svg+xml',
+          body: '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600"><rect width="800" height="600" fill="#e9b46a"/><circle cx="400" cy="300" r="180" fill="#608447"/></svg>',
+        })
+      );
+      const votes: string[] = [];
+      page.on('request', (request) => {
+        if (request.method() === 'POST' && request.url().endsWith('/vote'))
+          votes.push(request.url());
+      });
+      await page.goto('/recipes');
+      if (scenario.enlarged) await page.addStyleTag({ content: 'html { font-size: 32px; }' });
+      await expect(page.getByTestId('stack-card-front')).toHaveCount(1, { timeout: 15_000 });
+      await page.waitForTimeout(700);
+      await startStackFrames(page);
+      for (let advance = 0; advance < 4; advance++) {
+        const front = page.getByTestId('stack-card-front');
+        await expect(front).toHaveCount(1);
+        await expect(front.getByRole('heading')).toHaveText(names[advance]);
+        const existing = await page
+          .locator('[data-recipe-id][data-testid^="stack-card-"]')
+          .evaluateAll((els) => els.map((el) => el.getAttribute('data-recipe-id')));
+        await front.getByTestId('stack-card-image').scrollIntoViewIfNeeded();
+        const box = await front.boundingBox();
+        await page.mouse.move(box!.x + box!.width / 2, box!.y + 100);
+        await page.mouse.down();
+        await page.mouse.move(box!.x + box!.width / 2 - 160, box!.y + 100, { steps: 8 });
+        await page.mouse.up();
+        if (advance < 2)
+          await page.waitForFunction(
+            (old) =>
+              Array.from(
+                document.querySelectorAll('[data-recipe-id][data-testid^="stack-card-"]')
+              ).some((el) => !old.includes(el.getAttribute('data-recipe-id'))),
+            existing
+          );
+        else
+          await page.waitForFunction(
+            (id) =>
+              Array.from(document.querySelectorAll('[data-front="true"]')).some(
+                (el) => el.getAttribute('data-recipe-id') === id
+              ),
+            ids[advance + 1]
+          );
+        await page.screenshot({ path: testInfo.outputPath(`advance-${advance + 1}-entry.png`) });
+        await page.waitForTimeout(80);
+        await page.screenshot({ path: testInfo.outputPath(`advance-${advance + 1}-mid.png`) });
+        await page.waitForTimeout(650);
+        await page.screenshot({ path: testInfo.outputPath(`advance-${advance + 1}-settled.png`) });
+      }
+      await expect(page.getByTestId('stack-card-front').getByRole('heading')).toHaveText(names[4]);
+      expect(votes).toEqual([]);
+      for (const backing of await page.getByTestId('stack-card-back').all())
+        await expect(backing).toHaveAttribute('tabindex', '-1');
+      const frames = await stopStackFrames(page);
+      const framePath = testInfo.outputPath('animation-frames.json');
+      await writeFile(framePath, JSON.stringify(frames));
+      await testInfo.attach('animation-frames', {
+        path: framePath,
+        contentType: 'application/json',
+      });
+
+      for (const backing of frames.at(-1)!.cards.filter((c) => !c.front)) {
+        const restingGap = backing.depth * 15 - (backing.height * (backing.depth * 0.05)) / 2;
+        expect(
+          Math.abs(backing.bottom - backing.parentBottom - restingGap),
+          'resting visible depth is preserved'
+        ).toBeLessThanOrEqual(2);
+      }
+      const firstNodes = new Map<number, (typeof frames)[number]['cards'][number]>();
+      for (const frame of frames)
+        for (const card of frame.cards)
+          if (!firstNodes.has(card.node)) firstNodes.set(card.node, card);
+      const incoming = [...firstNodes.values()].filter(
+        (card) => !ids.slice(0, 4).includes(card.id)
+      );
+      expect(incoming).toHaveLength(2);
+      for (const card of incoming) {
+        expect
+          .soft(card.scaleX, `rear mount ${card.id} first scale`)
+          .toBeCloseTo(1 - card.depth * 0.05, 2);
+        expect
+          .soft(card.scaleY, `rear mount ${card.id} first y scale`)
+          .toBeCloseTo(1 - card.depth * 0.05, 2);
+        expect
+          .soft(card.opacity, `rear mount ${card.id} first opacity`)
+          .toBeCloseTo(1 - card.depth * 0.3, 2);
+        // Preserve the existing settled center-origin depth appearance from first paint.
+        const targetGap = card.depth * 15 - (card.height * (card.depth * 0.05)) / 2;
+        expect
+          .soft(
+            Math.abs(card.bottom - card.parentBottom - targetGap),
+            'incoming visible depth matches settled depth'
+          )
+          .toBeLessThanOrEqual(2);
+      }
+      const envelope = Math.max(
+        ...frames.flatMap((f) => f.cards.filter((c) => c.front).map((c) => c.height))
+      );
+      const frontHeights = frames.flatMap((f) =>
+        f.cards.filter((c) => c.front).map((c) => c.height)
+      );
+      const titleHeightChange = Math.max(...frontHeights) - Math.min(...frontHeights);
+      for (const card of incoming) {
+        const firstFrame = frames.find((f) => f.cards.some((c) => c.node === card.node))!;
+        const currentFront = firstFrame.cards.find(
+          (c) => c.front && c.position !== 'absolute' && c.opacity > 0.01
+        )!;
+        // Projection can compensate the whole stack and front promotion. Compare rendered
+        // depth, allowing legitimate full-title reflow, rather than treating matrix.f as y alone.
+        expect(
+          card.bottom - currentFront.bottom,
+          'incoming visual depth bounds'
+        ).toBeLessThanOrEqual(card.depth * 15 + titleHeightChange + 2);
+      }
+
+      expect(
+        Math.max(...frames.flatMap((f) => f.cards.map((c) => c.parentHeight))),
+        'parent must not combine two front heights'
+      ).toBeLessThanOrEqual(envelope + 2);
+      expect(
+        Math.max(
+          ...frames.flatMap((f) => f.cards.filter((c) => !c.front).map((c) => c.paintedHeight))
+        ),
+        'backing shells and their shadows must stay within the front-height envelope'
+      ).toBeLessThanOrEqual(envelope + 2);
+      expect(
+        Math.max(
+          ...frames.map((f) => f.cards.filter((c) => c.front && c.position !== 'absolute').length)
+        ),
+        'only one front contributes flow'
+      ).toBe(1);
+      const promoted = page.getByTestId('stack-card-front');
+      const settledHeight = await promoted.evaluate((el: HTMLElement) => el.offsetHeight);
+      await page.route('**/missing-stack-fixture.png', (route) => route.abort());
+      await promoted.getByRole('img').evaluate((el: HTMLImageElement) => {
+        el.src = '/missing-stack-fixture.png';
+      });
+      await expect
+        .poll(() =>
+          promoted
+            .getByRole('img')
+            .evaluate((el: HTMLImageElement) => el.complete && el.naturalWidth === 0)
+        )
+        .toBe(true);
+      expect(await promoted.evaluate((el: HTMLElement) => el.offsetHeight)).toBe(settledHeight);
+      await expect(promoted.getByRole('heading')).toHaveText(names[4]);
+      for (const key of ['Enter', 'Space']) {
+        await promoted.focus();
+        await page.keyboard.press(key);
+        await expect(page.getByTestId('recipe-detail-sheet')).toBeVisible();
+        await page.getByTestId('action-close-sheet').click();
+        await expect(promoted).toBeFocused();
+      }
+      expect(votes).toEqual([]);
+    });
+  });
+}
