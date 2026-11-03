@@ -34,14 +34,14 @@ test('public install metadata agrees in initial HTML and retains access policy',
     true
   );
   expect(manifest.shortcuts.map((shortcut: { url: string }) => shortcut.url)).toEqual([
-    '/recipes',
+    '/recipes?focus=search',
     '/capture',
   ]);
   expect(manifest.shortcuts[0]).toMatchObject({
     name: 'Search',
     short_name: 'Search',
     description: 'Search your recipe library',
-    url: '/recipes',
+    url: '/recipes?focus=search',
   });
   expect(manifest.share_target.method).toBe('POST');
   expect(manifest.share_target.action).toBe('/share-target');
@@ -114,7 +114,7 @@ test('advertised Find and Capture destinations retain household and member gates
 }) => {
   const manifest = await (await request.get('/manifest.json')).json();
   const destinations = manifest.shortcuts.map((shortcut: { url: string }) => shortcut.url);
-  expect(destinations).toEqual(['/recipes', '/capture']);
+  expect(destinations).toEqual(['/recipes?focus=search', '/capture']);
   for (const destination of destinations) {
     const locked = await request.get(destination, { maxRedirects: 0 });
     expect(locked.status()).toBe(307);

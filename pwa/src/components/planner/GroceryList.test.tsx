@@ -605,6 +605,118 @@ describe('GroceryList — everyday extras', () => {
 describe('GroceryList — checked item ordering', () => {
   const orderedNames = () =>
     screen.getAllByTestId('grocery-item-label').map((label) => label.textContent);
+  const makeExtra = (id: string, name: string, checked: boolean) => ({
+    id,
+    lineageId: id,
+    name,
+    normalizedKey: name.toLowerCase(),
+    grocerySection: 'Pantry' as const,
+    checked,
+    occurrenceWeekStartDate: '2025-01-06' as any,
+    readOnly: false,
+    source: 'extra',
+    version: 1,
+  });
+  const pantryRows = () =>
+    Array.from(document.querySelector('#aisle-items-pantry')!.children).map((row) => ({
+      name:
+        row.querySelector('[data-testid="grocery-extra-name"]')?.textContent ??
+        row.querySelector('[data-testid="grocery-item-label"]')?.textContent,
+      checked: row.querySelector('[role="checkbox"]')?.getAttribute('aria-checked'),
+    }));
+
+  it('orders mixed extra and recipe rows by check state without changing source order', () => {
+    mockGroceryState = { Rice: false, Beans: true };
+    render(
+      <GroceryList
+        weekOffset={0}
+        items={[makeItem('Beans', 'Pantry'), makeItem('Rice', 'Pantry')]}
+        extras={[
+          makeExtra('extra-a', 'Coffee', true),
+          makeExtra('extra-b', 'Coffee', false),
+          makeExtra('extra-c', 'Tea', false),
+          makeExtra('extra-d', 'Jam', true),
+        ]}
+      />
+    );
+
+    expect(pantryRows()).toEqual([
+      { name: 'Coffee', checked: 'false' },
+      { name: 'Tea', checked: 'false' },
+      { name: 'Rice', checked: 'false' },
+      { name: 'Coffee', checked: 'true' },
+      { name: 'Jam', checked: 'true' },
+      { name: 'Beans', checked: 'true' },
+    ]);
+    expect(within(screen.getByTestId('aisle-section-Pantry')).getByText('3/6 items')).toBeVisible();
+  });
+
+  it('moves one extra by identity on optimistic check, acknowledgement, and uncheck', async () => {
+    let acknowledge!: (extra: ReturnType<typeof makeExtra>) => void;
+    const pending = new Promise<ReturnType<typeof makeExtra>>((resolve) => {
+      acknowledge = resolve;
+    });
+    const coffee = makeExtra('extra-a', 'Coffee', false);
+    const tea = makeExtra('extra-b', 'Tea', false);
+    useWeekStore.setState({ groceryExtras: [coffee, tea] });
+    const View = () => (
+      <GroceryList
+        weekOffset={0}
+        items={[makeItem('Rice', 'Pantry')]}
+        extras={useWeekStore((state) => state.groceryExtras)}
+      />
+    );
+    mockUpdateExtra.mockReturnValueOnce(pending);
+    render(<View />);
+    const coffeeRow = () => document.querySelector('[data-extra-id="extra-a"]')!;
+
+    expect(pantryRows().map((row) => row.name)).toEqual(['Coffee', 'Tea', 'Rice']);
+    fireEvent.click(within(coffeeRow() as HTMLElement).getByRole('checkbox'));
+    expect(pantryRows().map((row) => row.name)).toEqual(['Tea', 'Rice', 'Coffee']);
+    expect(coffeeRow().querySelector('[role="checkbox"]')).toHaveAttribute('aria-checked', 'true');
+    await act(async () => acknowledge({ ...coffee, checked: true, version: 2 }));
+    expect(pantryRows().map((row) => row.name)).toEqual(['Tea', 'Rice', 'Coffee']);
+
+    mockUpdateExtra.mockResolvedValueOnce({ ...coffee, checked: false, version: 3 });
+    fireEvent.click(within(coffeeRow() as HTMLElement).getByRole('checkbox'));
+    expect(pantryRows().map((row) => row.name)).toEqual(['Coffee', 'Tea', 'Rice']);
+    await waitFor(() => expect(mockUpdateExtra).toHaveBeenCalledTimes(2));
+    expect(useWeekStore.getState().groceryExtras.map((extra) => extra.checked)).toEqual([
+      false,
+      false,
+    ]);
+
+    act(() =>
+      useWeekStore.setState({ groceryExtras: [{ ...coffee, checked: true, version: 4 }, tea] })
+    );
+    expect(pantryRows().map((row) => row.name)).toEqual(['Tea', 'Rice', 'Coffee']);
+  });
+
+  it('restores an extra to its source-relative position after a rejected check', async () => {
+    const coffee = makeExtra('extra-a', 'Coffee', false);
+    const tea = makeExtra('extra-b', 'Tea', false);
+    const sync = vi.fn().mockResolvedValue(undefined);
+    useWeekStore.setState({ groceryExtras: [coffee, tea], sync });
+    const View = () => (
+      <GroceryList
+        weekOffset={0}
+        items={[makeItem('Rice', 'Pantry')]}
+        extras={useWeekStore((state) => state.groceryExtras)}
+      />
+    );
+    mockUpdateExtra.mockRejectedValueOnce(new Error('save failed'));
+    render(<View />);
+
+    fireEvent.click(
+      within(document.querySelector('[data-extra-id="extra-a"]') as HTMLElement).getByRole(
+        'checkbox'
+      )
+    );
+    expect(pantryRows().map((row) => row.name)).toEqual(['Tea', 'Rice', 'Coffee']);
+    await waitFor(() => expect(sync).toHaveBeenCalledOnce());
+    expect(pantryRows().map((row) => row.name)).toEqual(['Coffee', 'Tea', 'Rice']);
+    expect(screen.getAllByTestId('grocery-extra-row')).toHaveLength(2);
+  });
 
   it('renders unchecked items before checked items while preserving order within each group', () => {
     mockGroceryState = { tomato: true, lettuce: false, carrot: true, cucumber: false };

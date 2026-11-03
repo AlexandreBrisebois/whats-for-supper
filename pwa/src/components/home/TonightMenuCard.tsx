@@ -55,7 +55,7 @@ export function TonightMenuCard({
   recipeName,
   description,
   imageUrl,
-  totalTime = '30-45 mins',
+  totalTime,
   ingredients = [],
   onCookMode,
   onSkip,
@@ -67,6 +67,7 @@ export function TonightMenuCard({
     setDisclosure({ recipeId, expanded: false });
   }
   const expanded = disclosure.recipeId === recipeId && disclosure.expanded;
+  const formattedTime = formatRecipeTime(totalTime);
 
   return (
     <div className="w-full min-w-0 [overflow-wrap:anywhere]" data-testid="tonight-menu-card">
@@ -75,11 +76,11 @@ export function TonightMenuCard({
           <h2 className="font-heading text-base font-medium text-charcoal-600">
             {t('home.tonightsMenu', "Tonight's menu")}
           </h2>
-          {totalTime && (
+          {formattedTime && (
             <span className="inline-flex max-w-full items-center gap-2 text-sm font-semibold text-terracotta-700 bg-terracotta-50 px-3 py-2 rounded-full uppercase tracking-wide">
               <Clock size={14} aria-hidden="true" className="shrink-0" />
               {tWithVars('common.readyIn', 'READY IN {{time}}', {
-                time: formatRecipeTime(totalTime),
+                time: formattedTime,
               })}
             </span>
           )}

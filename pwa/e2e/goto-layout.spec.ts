@@ -32,7 +32,7 @@ for (const locale of ['en', 'fr'] as const) {
           ),
         MOCK_IDS.MEMBER_ALEX
       );
-      await page.goto('/browse-all-stack');
+      await page.goto('/recipes');
       const card = page.getByTestId('stack-card-front');
       await expect(card).toBeVisible();
       await expect(card.locator('img')).toBeVisible();
@@ -46,7 +46,7 @@ for (const locale of ['en', 'fr'] as const) {
         return {
           card: box(el),
           image: box(el.querySelector('img')!),
-          stack: box(el.parentElement!.parentElement!),
+          stack: box(document.querySelector('[data-testid="browse-stack-layout"]')!),
         };
       });
       mkdirSync(evidence, { recursive: true });
@@ -57,18 +57,16 @@ for (const locale of ['en', 'fr'] as const) {
         );
         await page.screenshot({ path: resolve(evidence, `${locale}-browse-before.png`) });
       } else {
-        // Recorded from the pre-change local baseline; independent of generated .task files.
-        const before = {
-          stack: { width: 342, height: 740 },
-          card: { width: 342, height: locale === 'en' ? 537.5 : 534 },
-          image: { width: 342, height: 213.75 },
-        };
-        for (const part of ['card', 'image', 'stack'] as const) {
-          for (const dimension of ['width', 'height'] as const)
-            expect(
-              Math.abs(geometry[part][dimension] - before[part][dimension])
-            ).toBeLessThanOrEqual(1);
-        }
+        // The persistent bottom navigation reserves vertical space; the card and
+        // photo keep their phone width and photo aspect while fitting above it.
+        expect(geometry.card.width).toBeGreaterThan(280);
+        expect(geometry.card.width).toBeLessThanOrEqual(390);
+        expect(Math.abs(geometry.image.width - geometry.card.width)).toBeLessThanOrEqual(1);
+        expect(geometry.image.height).toBeGreaterThanOrEqual(192);
+        expect(geometry.image.height).toBeLessThanOrEqual(320);
+        expect(geometry.card.height).toBeGreaterThan(250);
+        expect(geometry.card.y).toBeGreaterThanOrEqual(0);
+        expect(geometry.card.y + geometry.card.height).toBeLessThanOrEqual(730);
         writeFileSync(resolve(evidence, `${locale}-after.json`), JSON.stringify(geometry, null, 2));
         await page.screenshot({ path: resolve(evidence, `${locale}-browse-after.png`) });
       }
@@ -132,9 +130,9 @@ for (const locale of ['en', 'fr'] as const) {
           });
         }
 
-        for (const route of ['/browse-all-stack', '/home']) {
+        for (const route of ['/recipes', '/home']) {
           await page.goto(route);
-          const browse = route === '/browse-all-stack';
+          const browse = route === '/recipes';
           const control = page.getByTestId(browse ? 'browse-filter-goto' : 'discover-btn');
           await expect(control).toBeVisible();
           await page.evaluate(() => document.fonts.ready);
@@ -146,9 +144,7 @@ for (const locale of ['en', 'fr'] as const) {
             const starBox = (await control.boundingBox())!;
             expect(starBox.width).toBeGreaterThanOrEqual(48);
             expect(starBox.height).toBeGreaterThanOrEqual(48);
-            const close = page.getByTestId('browse-all-exit');
-            await expect(close).toBeInViewport({ ratio: 1 });
-            await expect(page.getByTestId('stack-depth-indicator')).toBeInViewport({ ratio: 1 });
+            await expect(page.getByTestId('nav-item-recipes')).toBeInViewport({ ratio: 1 });
             if (height >= 568) {
               await expect(page.getByTestId('stack-card-front').locator('h2')).toBeInViewport({
                 ratio: 1,
@@ -162,6 +158,20 @@ for (const locale of ['en', 'fr'] as const) {
               expect(imageBox.x).toBeGreaterThanOrEqual(0);
               expect(imageBox.x + imageBox.width).toBeLessThanOrEqual(width + 1);
             }
+            // The persistent nav may require scrolling on short phones. The
+            // depth and actions must still be reachable above it.
+            const depth = page.getByTestId('stack-depth-indicator');
+            await depth.evaluate((node) => node.scrollIntoView({ block: 'center' }));
+            await expect(depth).toBeInViewport({ ratio: 1 });
+            await page
+              .getByTestId('stack-action-bar')
+              .evaluate((node) => node.scrollIntoView({ block: 'center' }));
+            // Subpixel clipping at a scroll edge can leave 1% outside the viewport;
+            // the explicit dock-bound check below remains the reachability guard.
+            await expect(page.getByTestId('stack-action-bar')).toBeInViewport({ ratio: 0.99 });
+            const actionBottom = (await page.getByTestId('stack-action-bar').boundingBox())!;
+            const navTop = (await page.getByTestId('nav-item-recipes').boundingBox())!.y;
+            expect(actionBottom.y + actionBottom.height).toBeLessThanOrEqual(navTop + 1);
             if (width === 320 && height === 568) {
               const front = page.getByTestId('stack-card-front');
               await front.focus();
@@ -176,7 +186,7 @@ for (const locale of ['en', 'fr'] as const) {
                 node.style.paddingBottom = '24px';
               });
               expect(
-                (await page.getByTestId('browse-all-exit').boundingBox())!.y
+                (await page.getByTestId('browse-filter-goto').boundingBox())!.y
               ).toBeGreaterThanOrEqual(20);
               await page.getByTestId('stack-action-bar').scrollIntoViewIfNeeded();
               await expect(page.getByTestId('stack-action-bar')).toBeInViewport();
@@ -236,15 +246,13 @@ for (const surface of ['browse', 'search'] as const) {
     await page.getByTestId('action-set-goto').click();
     await expect(page.getByTestId('action-current-goto')).toHaveAttribute('aria-pressed', 'true');
     await page.getByTestId('action-close-sheet').click();
-    await page.goto(surface === 'browse' ? '/browse-all-stack?gotoOnly=true' : '/recipes');
+    await page.goto(surface === 'browse' ? '/recipes?gotoOnly=true' : '/recipes?focus=search');
     if (surface === 'search') {
       await page.getByTestId('mobile-filters-button').click();
       await page.getByTestId('mobile-filter-goto').click();
       await page.getByTestId('mobile-filter-apply').click();
     }
-    await page
-      .getByTestId(surface === 'browse' ? 'stack-card-front' : 'recipe-card-top-pick')
-      .click();
+    await page.getByTestId('stack-card-front').click();
     let rejectSave = true;
     let puts = 0;
     await page.route('**/api/goto', async (route) => {
@@ -262,24 +270,37 @@ for (const surface of ['browse', 'search'] as const) {
     await expect(page.getByTestId('action-current-goto')).toBeEnabled();
     await expect(page.getByTestId('action-current-goto')).toHaveAttribute('aria-pressed', 'true');
     let rejectRead = true;
-    await page.route(
-      surface === 'browse' ? '**/api/recipes?*' : '**/api/recipes/search',
-      async (route) => {
+    if (surface === 'browse') {
+      await page.route('**/api/recipes?*', async (route) => {
         if (rejectRead) {
           rejectRead = false;
           await route.fulfill({ status: 400, json: { message: 'Read rejected after save' } });
           return;
         }
         await route.fallback();
-      }
-    );
+      });
+    }
     await page.getByTestId('action-current-goto').click();
     await expect(page.getByTestId('action-set-goto')).toHaveAttribute('aria-pressed', 'false');
     await page.getByTestId('action-close-sheet').click();
-    await page.getByRole('button', { name: 'Retry', exact: true }).click();
-    await expect(
-      page.getByTestId(surface === 'browse' ? 'browse-goto-empty' : 'filter-no-results')
-    ).toBeVisible();
+    if (surface === 'search') {
+      await page.route('**/api/recipes/search', async (route) => {
+        if (rejectRead) {
+          rejectRead = false;
+          await route.fulfill({ status: 400, json: { message: 'Read rejected after save' } });
+          return;
+        }
+        await route.fallback();
+      });
+      await page.getByTestId('recipe-search-input').fill('pasta');
+      await page.getByTestId('recipe-search-input').press('Enter');
+      await expect(page.getByTestId('search-request-error')).toBeVisible();
+      await page.getByTestId('search-request-retry').click();
+      await expect(page.getByTestId('search-request-error')).not.toBeVisible();
+    } else {
+      await page.getByTestId('browse-request-retry').click();
+      await expect(page.getByTestId('browse-goto-empty')).toBeVisible();
+    }
     expect(puts).toBe(2);
   });
 }
@@ -329,17 +350,14 @@ test('Home Search selects today through planner and cancellation submits no meal
   await page.goto('/home');
   await page.getByTestId('discover-btn').click();
   await expect(page).toHaveURL(
-    /\/recipes\?addToDay=0&weekOffset=0&referenceWeekStartDate=2026-05-04/
+    /\/recipes\?focus=search&addToDay=0&weekOffset=0&referenceWeekStartDate=2026-05-04/
   );
   await page.getByTestId('planning-mode-cancel').click();
   await expect(page).toHaveURL(/\/planner/);
   expect(assignments).toEqual([]);
   await page.goto('/home');
   await page.getByTestId('discover-btn').click();
-  await page
-    .getByTestId(/^recipe-card-/)
-    .first()
-    .click();
+  await page.getByTestId('stack-card-front').click();
   await page.getByTestId('action-add-to-day').click();
   await expect(page).toHaveURL(
     /\/planner\?success=1&dayIndex=0&weekOffset=0&referenceWeekStartDate=2026-05-04/

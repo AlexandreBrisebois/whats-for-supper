@@ -44,6 +44,7 @@ import {
   type Recipe,
 } from '@/lib/api/recipes';
 import { t, tWithVars } from '@/locales';
+import { useDialogFocus } from '@/hooks/useDialogFocus';
 import { formatRecipeTime } from '@/lib/duration';
 import { useUiStore } from '@/store/uiStore';
 import { useFamilyStore } from '@/store/familyStore';
@@ -138,6 +139,7 @@ export function RecipeDetailSheet({
   const [showCooksMode, setShowCooksMode] = useState(false);
   const [showImportIssueSheet, setShowImportIssueSheet] = useState(false);
   const closeDetail = onClose;
+  const { panelRef, onKeyDown } = useDialogFocus(closeDetail);
   const closeImportIssue = () => setShowImportIssueSheet(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const addToast = useUiStore((state) => state.addToast);
@@ -533,7 +535,9 @@ export function RecipeDetailSheet({
   };
 
   const primaryActionTestId = plannerDayLabel ? 'action-add-to-day' : 'action-cook-this';
-  const primaryActionLabel = plannerDayLabel ? `Plan for ${plannerDayLabel}` : 'Cook This';
+  const primaryActionLabel = plannerDayLabel
+    ? tWithVars('recipes.planForDay', 'Plan for {{day}}', { day: plannerDayLabel })
+    : t('recipes.cookThis', 'Cook This');
   const mealTypesForDisplay = (recipe?.mealTypes ?? []).filter(Boolean);
 
   return (
@@ -547,6 +551,11 @@ export function RecipeDetailSheet({
       />
 
       <div
+        ref={panelRef as React.RefObject<HTMLDivElement>}
+        role="dialog"
+        aria-modal="true"
+        aria-label={t('recipes.detailTitle', 'Recipe detail')}
+        onKeyDown={onKeyDown}
         data-testid="recipe-detail-sheet"
         className="relative z-10 flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-[2.5rem] border border-white/40 bg-[rgba(253,252,240,0.96)] shadow-[0_24px_80px_-24px_rgba(55,40,30,0.45)]"
       >
@@ -1023,7 +1032,7 @@ export function RecipeDetailSheet({
             )}
 
             {isEditing && (
-              <div className="-mx-6 mb-5 flex flex-col gap-3 border-t border-charcoal/8 bg-[rgba(253,252,240,0.96)] px-6 py-4 sm:flex-row sm:items-center">
+              <div className="-mx-6 mb-5 flex flex-col gap-3 border-t border-charcoal/8 bg-[rgba(253,252,240,0.96)] px-6 pt-4 pb-6 sm:flex-row sm:items-center">
                 <p className="w-full text-[10px] font-black uppercase tracking-[0.24em] text-charcoal/45 sm:hidden">
                   {t('recipes.saveEditingLabel', 'Save recipe edits')}
                 </p>
@@ -1055,7 +1064,7 @@ export function RecipeDetailSheet({
             )}
 
             {!isEditing && (
-              <div className="flex flex-col gap-4 border-t border-charcoal/8 pt-5">
+              <div className="flex flex-col gap-4 border-t border-charcoal/8 pt-5 pb-2">
                 {actionError && (
                   <p role="alert" className="text-sm text-terracotta">
                     {actionError}

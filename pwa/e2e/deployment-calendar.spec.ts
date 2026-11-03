@@ -95,9 +95,13 @@ test('Tonight uses Toronto Sunday in a Tokyo browser and pins assignment', async
   await expect(page.getByTestId('tonight-pivot-card')).toBeVisible();
   await page.getByTestId('discover-btn').click();
   await expect(page).toHaveURL(
-    /\/recipes\?addToDay=6&weekOffset=0&referenceWeekStartDate=2026-10-05/
+    /\/recipes\?focus=search&addToDay=6&weekOffset=0&referenceWeekStartDate=2026-10-05/
   );
-  await page.getByTestId('recipe-card-top-pick').click();
+  await expect(page.getByTestId('recipe-search-input')).toBeFocused();
+  await page.getByTestId('recipe-search-input').fill('chicken');
+  await page.getByTestId('recipe-search-input').press('Enter');
+  await expect(page.getByTestId('stack-card-front')).toContainText('Sunday Chicken');
+  await page.getByTestId('stack-card-front').click();
   const assignment = page.waitForRequest(
     (request) =>
       request.method() === 'POST' && new URL(request.url()).pathname === '/api/schedule/assign'
@@ -218,10 +222,10 @@ test('Sunday Plan for Later starts at deployment next Monday in Search', async (
       },
     });
   });
-  await page.goto('/recipes');
+  await page.goto('/recipes?focus=search');
   await page.getByTestId('recipe-search-input').fill('lasagna');
   await page.getByTestId('recipe-search-input').press('Enter');
-  await page.getByTestId('recipe-card-top-pick').click();
+  await page.getByTestId('stack-card-front').click();
   await page.getByTestId('action-cook-this').click();
   const assignment = page.waitForRequest(
     (request) =>

@@ -56,10 +56,7 @@ test('real Home assigns deployment Sunday and persists the correct groceries on 
   );
   await page.getByTestId('recipe-search-input').fill('Sunday Chicken');
   await page.getByTestId('recipe-search-input').press('Enter');
-  await page
-    .getByTestId(/^recipe-card-/)
-    .first()
-    .click();
+  await page.getByTestId('stack-card-front').click();
   const assigned = page.waitForResponse(
     (response) =>
       response.request().method() === 'POST' &&
@@ -198,7 +195,7 @@ test('real Planner Quick Find and Search keep their loaded October reference', a
   await expect(page).toHaveURL(/referenceWeekStartDate=2026-10-05/);
   await page.getByTestId('recipe-search-input').fill('Sunday Chicken');
   await page.getByTestId('recipe-search-input').press('Enter');
-  await page.getByTestId('recipe-card-top-pick').click();
+  await page.getByTestId('stack-card-front').click();
   const second = page.waitForResponse(
     (response) =>
       response.request().method() === 'POST' &&
@@ -218,10 +215,10 @@ for (const origin of ['search', 'browse'] as const) {
     }) => {
       await signIn(page, request, baseURL!);
       if (origin === 'search') {
-        await page.goto('/recipes');
+        await page.goto('/recipes?focus=search');
         await page.getByTestId('recipe-search-input').fill('Sunday Chicken');
         await page.getByTestId('recipe-search-input').press('Enter');
-        await page.getByTestId('recipe-card-top-pick').click();
+        await page.getByTestId('stack-card-front').click();
       } else {
         await page.goto('/browse-all-stack');
         await page.getByTestId('browse-view-list').click();

@@ -144,6 +144,25 @@ describe('searchRecipes', () => {
     vi.stubGlobal('fetch', fetchMock);
   });
 
+  it('retains optional descriptions returned directly or through Kiota additional data', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: {
+          topPick: { id: 'first', name: 'First', description: 'A family recipe' },
+          results: [
+            { additionalData: { id: 'second', name: 'Second', description: 'A quick meal' } },
+          ],
+          appliedFilters: {},
+        },
+      }),
+    });
+
+    const response = await searchRecipes({ query: 'meal', limit: 12 });
+    expect(response.topPick?.description).toBe('A family recipe');
+    expect(response.results[0]?.description).toBe('A quick meal');
+  });
+
   it('posts the query to the search endpoint and normalizes the response', async () => {
     fetchMock.mockResolvedValue({
       ok: true,

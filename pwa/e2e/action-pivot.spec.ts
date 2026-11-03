@@ -82,12 +82,12 @@ test.describe('Recipe Action Pivot', () => {
   });
 
   test('Search flow: shows "Cook This" and then the pivot', async ({ page }) => {
-    await page.goto('/recipes');
+    await page.goto('/recipes?focus=search');
     await page.getByTestId('recipe-search-input').fill('lasagna');
     await page.getByTestId('recipe-search-input').press('Enter');
-    await expect(page.getByTestId('recipe-loader')).not.toBeVisible();
+    await expect(page.getByTestId('browse-all-loader')).not.toBeVisible();
 
-    const topPick = page.getByTestId('recipe-card-top-pick');
+    const topPick = page.getByTestId('stack-card-front');
     await expect(topPick).toBeVisible();
     await topPick.click();
 
@@ -102,15 +102,17 @@ test.describe('Recipe Action Pivot', () => {
     await expect(cookBtn).not.toBeVisible();
   });
 
-  test('Search flow: "Cook it tonight" navigates home', async ({ page }) => {
-    await page.goto('/recipes');
+  test('Search flow: "Cook it tonight" returns to the planner with the assigned day', async ({
+    page,
+  }) => {
+    await page.goto('/recipes?focus=search');
     await page.getByTestId('recipe-search-input').fill('lasagna');
     await page.getByTestId('recipe-search-input').press('Enter');
-    await page.getByTestId('recipe-card-top-pick').click();
+    await page.getByTestId('stack-card-front').click();
     await page.getByTestId('action-cook-this').click();
 
     await page.getByTestId('action-cook-tonight').click();
-    await expect(page).toHaveURL(/\/home/);
+    await expect(page).toHaveURL(/\/planner\?success=1&dayIndex=0&weekOffset=0/);
   });
 
   test('Search flow: "Cook Tonight" reveals recovery when today is occupied', async ({ page }) => {
@@ -153,10 +155,10 @@ test.describe('Recipe Action Pivot', () => {
       }
     );
 
-    await page.goto('/recipes');
+    await page.goto('/recipes?focus=search');
     await page.getByTestId('recipe-search-input').fill('lasagna');
     await page.getByTestId('recipe-search-input').press('Enter');
-    await page.getByTestId('recipe-card-top-pick').click();
+    await page.getByTestId('stack-card-front').click();
     await page.getByTestId('action-cook-this').click();
     await page.getByTestId('action-cook-tonight').click();
 
@@ -171,7 +173,7 @@ test.describe('Recipe Action Pivot', () => {
     await page.getByTestId('recipe-search-input').fill('lasagna');
     await page.getByTestId('recipe-search-input').press('Enter');
 
-    await page.getByTestId('recipe-card-top-pick').click();
+    await page.getByTestId('stack-card-front').click();
 
     const addBtn = page.getByTestId('action-add-to-day');
     await expect(addBtn).toBeVisible();
@@ -231,18 +233,18 @@ test.describe('Recipe Action Pivot', () => {
     const searchLibraryLink = page.getByTestId('quick-find-search-library');
     await expect(searchLibraryLink).toHaveAttribute(
       'href',
-      '/recipes?addToDay=1&weekOffset=1&referenceWeekStartDate=2026-05-04'
+      '/recipes?focus=search&addToDay=1&weekOffset=1&referenceWeekStartDate=2026-05-04'
     );
     await expect(page.getByTestId('quick-find-select')).toBeDisabled();
     await searchLibraryLink.click();
     await expect(page).toHaveURL(
-      /\/recipes\?addToDay=1&weekOffset=1&referenceWeekStartDate=2026-05-04/
+      /\/recipes\?focus=search&addToDay=1&weekOffset=1&referenceWeekStartDate=2026-05-04/
     );
     await expect(page.getByTestId('planning-mode-banner')).toBeVisible();
-    await expect(page.getByTestId('planning-mode-banner')).toContainText(/Planning for Tuesday/i);
+    await expect(page.getByTestId('planning-mode-banner')).toContainText(/Choosing for Tuesday/i);
     await page.getByTestId('recipe-search-input').fill('lasagna');
     await page.getByTestId('recipe-search-input').press('Enter');
-    await page.getByTestId('recipe-card-top-pick').click();
+    await page.getByTestId('stack-card-front').click();
     await expect(page.getByTestId('action-add-to-day')).toHaveText(/Plan for Tuesday/);
     await page.getByTestId('action-add-to-day').click();
     await expect(page.getByTestId('recovery-dialog-title')).toBeVisible();
@@ -272,11 +274,11 @@ test.describe('Recipe Action Pivot', () => {
     await page.clock.setFixedTime(wednesday);
 
     // Search owns Plan for Later; Discovery remains a voting-only journey.
-    await page.goto('/recipes');
+    await page.goto('/recipes?focus=search');
     await page.getByTestId('recipe-search-input').fill('lasagna');
     await page.getByTestId('recipe-search-input').press('Enter');
-    await expect(page.getByTestId('recipe-loader')).not.toBeVisible();
-    await page.getByTestId('recipe-card-top-pick').click();
+    await expect(page.getByTestId('browse-all-loader')).not.toBeVisible();
+    await page.getByTestId('stack-card-front').click();
     await page.getByTestId('action-cook-this').click();
 
     const assignment = page.waitForRequest(

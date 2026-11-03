@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
 import { t } from '@/locales';
 
 type RecipeBooleanFilterKey =
+  | 'discoverableOnly'
   | 'gotoOnly'
   | 'newRecipes'
   | 'neverCooked'
@@ -23,6 +24,12 @@ type RecipeBooleanFilterKey =
   | 'readyToReviewOnly';
 
 export const RECIPE_FILTER_OPTIONS = [
+  {
+    key: 'discoverableOnly',
+    labelKey: 'recipes.filterDiscovery',
+    fallback: 'Discovery',
+    testId: 'filter-discovery',
+  },
   { key: 'gotoOnly', labelKey: 'recipes.filterGoto', fallback: 'GOTO', testId: 'filter-goto' },
   {
     key: 'newRecipes',
@@ -78,6 +85,7 @@ const DEFAULT_MAIN: RecipeSearchMainDefinitionDto[] = [
 ];
 const DEFAULT_MEAL_TYPES = ['Supper', 'Lunch', 'Breakfast', 'Dessert'];
 const PRIMARY_EXISTING_FILTERS: RecipeBooleanFilterKey[] = [
+  'discoverableOnly',
   'gotoOnly',
   'quickOnly',
   'familyFavorite',

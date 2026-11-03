@@ -223,7 +223,7 @@ not a replacement asset catalogue or pixel-exact screenshot.
 
 | Existing vocabulary | Meaning depends on the label and context | Source owner |
 |---|---|---|
-| Home, Search, Compass, Calendar, UserCircle | Home, Search, Discover, Planner, Profile. Navigation already pairs icons with labels and `aria-current`; Discover's prominent treatment is ochre. | [Navigation](../pwa/src/components/common/Navigation.tsx) |
+| Home, BookOpen, Compass, Calendar, UserCircle | Home, Recipes, Discover, Planner, Profile. Navigation pairs icons with labels and `aria-current`; Discover's prominent treatment is ochre. The Search magnifier belongs to the Recipes toolbar. | [Navigation](../pwa/src/components/common/Navigation.tsx) |
 | Camera, BookOpen | **Capture a Recipe**, **Browse your library**: recognized routes worth preserving. | [HomeSections](../pwa/src/components/home/HomeSections.tsx) |
 | UtensilsCrossed, ArrowRightLeft | **Cook** opens Cook's Mode; **Change Plan** opens recovery. Both appear on the initial planned card, ahead of ingredient disclosure. | [TonightMenuCard](../pwa/src/components/home/TonightMenuCard.tsx) |
 | ShoppingBag, UtensilsCrossed, Sparkles, CalendarDays | Takeout, eating out, mystery, custom non-cooking intent. The same UtensilsCrossed shape has a different job beside **Cook**. | [NonCookingIcon](../pwa/src/components/planner/NonCookingIcon.tsx) |

@@ -153,7 +153,7 @@ for (const entry of ['Home', 'Planner', 'Search', 'Browse'] as const) {
       await page.goto('/recipes?addToDay=6&weekOffset=0&referenceWeekStartDate=2026-10-05');
       await page.getByTestId('recipe-search-input').fill('lasagna');
       await page.getByTestId('recipe-search-input').press('Enter');
-      await page.getByTestId('recipe-card-top-pick').click();
+      await page.getByTestId('stack-card-front').click();
       await page.getByTestId('action-add-to-day').click();
     } else {
       await page.goto('/browse-all-stack');

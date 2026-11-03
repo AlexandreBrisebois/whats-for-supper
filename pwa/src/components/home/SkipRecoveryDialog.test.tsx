@@ -30,9 +30,13 @@ describe('SkipRecoveryDialog', () => {
     ).not.toBeNull();
     fireEvent.click(screen.getByTestId('recovery-action-order-in'));
     fireEvent.click(screen.getByTestId('recovery-action-pick-else'));
+    fireEvent.click(screen.getByTestId('recovery-action-search'));
 
     expect(onAction).toHaveBeenNthCalledWith(1, 'order_in');
     expect(onAction).toHaveBeenNthCalledWith(2, 'pick_else');
+    expect(onAction).toHaveBeenNthCalledWith(3, 'search');
+    expect(screen.getByTestId('recovery-action-pick-else')).toHaveAccessibleName(/Suggestions/);
+    expect(screen.getByTestId('recovery-action-search')).toHaveAccessibleName(/Search/);
   });
 
   it('fires the expected step 2 actions and supports backing out', () => {

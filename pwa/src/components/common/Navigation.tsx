@@ -3,7 +3,7 @@
 import React, { useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, UserCircle, Search, Calendar, Compass, LucideIcon } from 'lucide-react';
+import { Home, UserCircle, BookOpen, Calendar, Compass, LucideIcon } from 'lucide-react';
 import type { Route } from 'next';
 
 import { ROUTES } from '@/lib/constants/routes';
@@ -20,7 +20,7 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { href: ROUTES.HOME as Route, label: t('navigation.home', 'Home'), icon: Home },
-  { href: '/recipes' as Route, label: t('navigation.search', 'Search'), icon: Search },
+  { href: '/recipes' as Route, label: t('navigation.recipes', 'Recipes'), icon: BookOpen },
   {
     href: ROUTES.DISCOVERY as Route,
     label: t('navigation.discover', 'Discover'),
@@ -54,6 +54,7 @@ export function Navigation({ className = '' }: NavigationProps) {
 
   return (
     <nav
+      data-testid="app-bottom-navigation"
       className={[
         'fixed bottom-0 left-0 right-0 z-30 flex items-end justify-around pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-1 glass-nav',
         className,

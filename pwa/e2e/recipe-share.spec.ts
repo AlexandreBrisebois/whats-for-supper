@@ -70,11 +70,11 @@ test.describe('Recipe Share And Capture', () => {
       });
     });
 
-    await page.goto('/recipes');
-    await expect(page.getByTestId('recipe-loader')).not.toBeVisible({ timeout: 15_000 });
+    await page.goto('/recipes?focus=search');
+    await expect(page.getByTestId('browse-all-loader')).not.toBeVisible({ timeout: 15_000 });
     await page.getByTestId('recipe-search-input').fill('lasagna');
     await page.getByTestId('recipe-search-input').press('Enter');
-    await page.getByTestId('recipe-card-top-pick').click();
+    await page.getByTestId('stack-card-front').click();
 
     await expect(page.getByTestId('recipe-detail-sheet')).toBeVisible();
     await expect(page.getByTestId('recipe-share-btn')).toBeVisible();

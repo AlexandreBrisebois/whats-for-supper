@@ -56,9 +56,6 @@ describe.each(['en', 'fr'] as const)('Home total duration (%s)', (locale) => {
     ['PT1H30M', '1H 30 MINS'],
     ['PT45M', '45 MINS'],
     ['PT360M', '6H'],
-    [undefined, '30 MINS'],
-    [null, '30 MINS'],
-    ['', '30 MINS'],
   ])('preserves %s through the real card and formatter', async (totalTime, expected) => {
     setLocale(locale);
     fixture.recipe.totalTime = totalTime;
@@ -66,4 +63,17 @@ describe.each(['en', 'fr'] as const)('Home total duration (%s)', (locale) => {
     const card = await screen.findByTestId('tonight-menu-card');
     expect(card).toHaveTextContent(`${locale === 'fr' ? 'PRÊT EN' : 'READY IN'} ${expected}`);
   });
+
+  it.each([undefined, null, '', 'PT0M', 'not-a-duration'])(
+    'omits the time badge when total duration is %s',
+    async (totalTime) => {
+      setLocale(locale);
+      fixture.recipe.totalTime = totalTime;
+      render(<HomeCommandCenter todaysRecipe={null} />);
+      const card = await screen.findByTestId('tonight-menu-card');
+      expect(card).toHaveTextContent('Slow supper');
+      expect(card).not.toHaveTextContent(locale === 'fr' ? 'PRÊT EN' : 'READY IN');
+      expect(card.querySelector('[data-testid="cook-mode-btn"]')).not.toBeNull();
+    }
+  );
 });

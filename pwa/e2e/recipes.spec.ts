@@ -1,3 +1,4 @@
+import { swipeCurrentStackCard } from './helpers/stack-swipe';
 import { test, expect } from './fixtures';
 import type { Locator } from '@playwright/test';
 import { expectDiscoveryGeometry } from './helpers/discovery-geometry';
@@ -110,17 +111,17 @@ test.describe('Recipes Search Page', () => {
       });
     });
 
-    await page.route('**/api/recipes', async (route) => {
+    await page.route('**/api/recipes?**', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
-          data: [
+          recipes: [
             builders.recipe({ id: MOCK_IDS.RECIPE_LASAGNA, name: 'Homemade Lasagna' }),
             builders.recipe({ id: MOCK_IDS.RECIPE_STIR_FRY, name: 'Chicken Stir Fry' }),
             builders.recipe({ id: MOCK_IDS.RECIPE_TACOS, name: 'Beef Tacos' }),
           ],
-          total: 3,
+          pagination: { page: 1, limit: 20, total: 3 },
         }),
       });
     });
@@ -155,22 +156,15 @@ test.describe('Recipes Search Page', () => {
     page,
   }) => {
     let deleted = false;
-    await page.route('**/api/recipes/search', async (route) => {
+    await page.route('**/api/recipes?**', async (route) => {
+      const recipes = deleted
+        ? [builders.recipe({ id: MOCK_IDS.RECIPE_STIR_FRY, name: 'Chicken Stir Fry' })]
+        : [
+            builders.recipe({ id: MOCK_IDS.RECIPE_LASAGNA, name: 'Homemade Lasagna' }),
+            builders.recipe({ id: MOCK_IDS.RECIPE_STIR_FRY, name: 'Chicken Stir Fry' }),
+          ];
       await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          data: {
-            topPick: null,
-            results: deleted
-              ? [MOCK_SEARCH_RESULTS.secondary[0]]
-              : [MOCK_SEARCH_RESULTS.topPick, MOCK_SEARCH_RESULTS.secondary[0]],
-            appliedFilters: {},
-            searchMode: 'discovery',
-            resultPath: 'browse',
-            nextCursor: null,
-          },
-        }),
+        json: { recipes, pagination: { page: 1, limit: 20, total: recipes.length } },
       });
     });
     await page.route(`**/api/recipes/${MOCK_IDS.RECIPE_LASAGNA}`, async (route) => {
@@ -186,54 +180,56 @@ test.describe('Recipes Search Page', () => {
       });
     });
 
-    await page.goto('/recipes');
-    const recipeCard = page.getByTestId(`recipe-card-${MOCK_IDS.RECIPE_LASAGNA}`);
+    await page.goto('/recipes?focus=search');
+    const recipeCard = page.getByTestId('stack-card-front');
     await recipeCard.click();
     await page.getByTestId('action-gear-menu').click();
     await page.getByTestId('action-move-to-bin').click();
 
     await expect(page.getByTestId('recipe-detail-sheet')).not.toBeVisible();
-    await expect(page.getByTestId(`recipe-card-${MOCK_IDS.RECIPE_STIR_FRY}`)).toBeVisible();
-    await expect(recipeCard).toHaveCount(0);
+    await expect
+      .poll(() =>
+        recipeCard.evaluateAll((cards) => cards.map((card) => card.getAttribute('data-recipe-id')))
+      )
+      .toEqual([MOCK_IDS.RECIPE_STIR_FRY]);
+    await expect(recipeCard).toContainText('Chicken Stir Fry');
+    await expect(recipeCard).not.toContainText('Homemade Lasagna');
     expect(deleted).toBe(true);
-    await expect(page).toHaveURL(/\/recipes$/);
+    await expect(page).toHaveURL(/\/recipes\?focus=search$/);
   });
 
   test('searches on Enter and shows the top pick result', async ({ page }) => {
-    await page.goto('/recipes');
+    await page.goto('/recipes?focus=search');
 
-    await expect(page.getByTestId('recipe-loader')).not.toBeVisible({ timeout: 15_000 });
+    await expect(page.getByTestId('browse-all-loader')).not.toBeVisible({ timeout: 15_000 });
     await expect(page.getByTestId('recipe-search-input')).toBeVisible();
 
     await page.getByTestId('recipe-search-input').fill('chicken');
     await page.getByTestId('recipe-search-input').press('Enter');
 
-    await expect(page.getByTestId('recipe-card-top-pick')).toBeVisible();
-    await expect(page.getByTestId('recipe-card-top-pick')).toContainText(/Homemade Lasagna/i);
-    await expect(page.getByTestId('recipe-card-top-pick')).toContainText(/READY IN 45 MINS/i);
+    await expect(page.getByTestId('stack-card-front')).toBeVisible();
+    await expect(page.getByTestId('stack-card-front')).toContainText(/Homemade Lasagna/i);
+    await expect(page.getByTestId('stack-card-front')).toContainText(/READY IN 45 MINS/i);
 
-    await expect(page.getByTestId(`recipe-card-${MOCK_IDS.RECIPE_STIR_FRY}`)).toBeVisible();
-    await expect(page.getByTestId(`recipe-card-${MOCK_IDS.RECIPE_STIR_FRY}`)).toContainText(
-      /READY IN 20 MINS/i
-    );
+    await swipeCurrentStackCard(page, 'left');
+    await expect(page.getByTestId('stack-card-front')).toBeVisible();
+    await expect(page.getByTestId('stack-card-front')).toContainText(/READY IN 20 MINS/i);
   });
 
-  test('Surprise Me promotes a different server-eligible result from the current search', async ({
+  test('keeps the former Top Pick first without promotional controls or random reordering', async ({
     page,
   }) => {
-    await page.goto('/recipes');
+    await page.goto('/recipes?focus=search');
     await page.getByTestId('recipe-search-input').fill('chicken');
     await page.getByTestId('recipe-search-input').press('Enter');
 
-    const topPick = page.getByTestId('recipe-card-top-pick');
-    await expect(topPick).toContainText('Homemade Lasagna');
-    const surpriseMe = page.getByRole('button', { name: 'Surprise me — show a different pick' });
-    await expect(surpriseMe).toBeEnabled();
-
-    await surpriseMe.click();
-
-    await expect(topPick).not.toContainText('Homemade Lasagna');
-    await expect(page.getByTestId(`recipe-card-${MOCK_IDS.RECIPE_LASAGNA}`)).toBeVisible();
+    await expect(page.getByTestId('stack-card-front')).toContainText('Homemade Lasagna');
+    await expect(
+      page.getByRole('button', { name: 'Surprise me — show a different pick' })
+    ).toHaveCount(0);
+    await expect(page.getByText('Name matches your search')).toHaveCount(0);
+    await swipeCurrentStackCard(page, 'left');
+    await expect(page.getByTestId('stack-card-front').last()).toContainText('Chicken Stir Fry');
   });
 
   test('planning mode can be cancelled back to the planner', async ({ page }) => {
@@ -246,9 +242,11 @@ test.describe('Recipes Search Page', () => {
   });
 
   test('shows the empty state when search returns no matches', async ({ page }) => {
-    await page.goto('/recipes');
+    await page.goto('/recipes?focus=search');
 
-    await expect(page.getByTestId('recipe-loader')).not.toBeVisible({ timeout: 15_000 });
+    await expect(page.getByTestId('browse-all-loader')).not.toBeVisible({ timeout: 15_000 });
+    await page.getByTestId('recipe-search-input').fill('unfindable');
+    await page.getByTestId('recipe-search-input').press('Enter');
     await expect(page.getByTestId('search-empty-state')).toBeVisible();
   });
 
@@ -296,7 +294,7 @@ test.describe('Recipes Search Page', () => {
       });
     });
 
-    await page.goto('/recipes');
+    await page.goto('/recipes?focus=search');
     await page.getByTestId('mobile-filters-button').click();
     await expect(page.getByTestId('mobile-filter-quick')).toBeVisible();
     await expect(page.getByTestId('mobile-filter-reported')).not.toBeVisible();
@@ -322,13 +320,13 @@ test.describe('Recipes Search Page', () => {
   test('opens and closes the recipe detail sheet without losing the search results', async ({
     page,
   }) => {
-    await page.goto('/recipes');
+    await page.goto('/recipes?focus=search');
 
-    await expect(page.getByTestId('recipe-loader')).not.toBeVisible({ timeout: 15_000 });
+    await expect(page.getByTestId('browse-all-loader')).not.toBeVisible({ timeout: 15_000 });
     await page.getByTestId('recipe-search-input').fill('chicken');
     await page.getByTestId('recipe-search-input').press('Enter');
 
-    await page.getByTestId('recipe-card-top-pick').click();
+    await page.getByTestId('stack-card-front').click();
 
     await expect(page.getByTestId('recipe-detail-sheet')).toBeVisible();
     await expect(page.getByTestId('recipe-detail-name')).toContainText(/Homemade Lasagna/i);
@@ -341,7 +339,7 @@ test.describe('Recipes Search Page', () => {
     await page.getByTestId('action-close-sheet').click();
 
     await expect(page.getByTestId('recipe-detail-sheet')).not.toBeVisible();
-    await expect(page.getByTestId('recipe-card-top-pick')).toBeVisible();
+    await expect(page.getByTestId('stack-card-front')).toBeVisible();
   });
 
   test('edits notes from the detail sheet and keeps the sheet open', async ({ page }) => {
@@ -373,12 +371,12 @@ test.describe('Recipes Search Page', () => {
       await route.fallback();
     });
 
-    await page.goto('/recipes');
+    await page.goto('/recipes?focus=search');
 
-    await expect(page.getByTestId('recipe-loader')).not.toBeVisible({ timeout: 15_000 });
+    await expect(page.getByTestId('browse-all-loader')).not.toBeVisible({ timeout: 15_000 });
     await page.getByTestId('recipe-search-input').fill('chicken');
     await page.getByTestId('recipe-search-input').press('Enter');
-    await page.getByTestId('recipe-card-top-pick').click();
+    await page.getByTestId('stack-card-front').click();
 
     await expect(page.getByTestId('recipe-notes-input')).toBeVisible();
     await page.getByTestId('recipe-notes-input').fill('kids loved it');
@@ -416,12 +414,12 @@ test.describe('Recipes Search Page', () => {
       await route.fallback();
     });
 
-    await page.goto('/recipes');
+    await page.goto('/recipes?focus=search');
 
-    await expect(page.getByTestId('recipe-loader')).not.toBeVisible({ timeout: 15_000 });
+    await expect(page.getByTestId('browse-all-loader')).not.toBeVisible({ timeout: 15_000 });
     await page.getByTestId('recipe-search-input').fill('chicken');
     await page.getByTestId('recipe-search-input').press('Enter');
-    await page.getByTestId('recipe-card-top-pick').click();
+    await page.getByTestId('stack-card-front').click();
 
     await page.getByTestId('action-gear-menu').click();
     await page.getByTestId('action-edit-recipe').click();
@@ -462,10 +460,10 @@ test.describe('Recipes Search Page', () => {
 
     await page.goto('/recipes?addToDay=2&weekOffset=0');
 
-    await expect(page.getByTestId('recipe-loader')).not.toBeVisible({ timeout: 15_000 });
+    await expect(page.getByTestId('browse-all-loader')).not.toBeVisible({ timeout: 15_000 });
     await page.getByTestId('recipe-search-input').fill('chicken');
     await page.getByTestId('recipe-search-input').press('Enter');
-    await page.getByTestId('recipe-card-top-pick').click();
+    await page.getByTestId('stack-card-front').click();
 
     await expect(page.getByTestId('action-add-to-day')).toBeVisible();
     await page.getByTestId('action-add-to-day').click();
@@ -503,15 +501,15 @@ test.describe('Recipes Search Page', () => {
       });
     });
 
-    await page.goto('/recipes');
-    await expect(page.getByTestId('recipe-loader')).not.toBeVisible({ timeout: 15_000 });
+    await page.goto('/recipes?focus=search');
+    await expect(page.getByTestId('browse-all-loader')).not.toBeVisible({ timeout: 15_000 });
     await expect(page.getByTestId('mobile-filters-button')).toBeVisible();
     await page.getByTestId('mobile-filters-button').click();
     await page.getByTestId('mobile-filter-never-tried').click();
     await page.getByTestId('mobile-filter-apply').click();
     await expect.poll(() => (lastSearchBody as any)?.filters).toMatchObject({ neverCooked: true });
 
-    await expect(page.getByTestId('filter-no-results')).toBeVisible();
+    await expect(page.getByTestId('search-empty-state')).toBeVisible();
   });
 
   test('combining two chooser filters sends both filters in the request', async ({ page }) => {
@@ -535,8 +533,8 @@ test.describe('Recipes Search Page', () => {
       });
     });
 
-    await page.goto('/recipes');
-    await expect(page.getByTestId('recipe-loader')).not.toBeVisible({ timeout: 15_000 });
+    await page.goto('/recipes?focus=search');
+    await expect(page.getByTestId('browse-all-loader')).not.toBeVisible({ timeout: 15_000 });
 
     await page.getByTestId('mobile-filters-button').click();
     await page.getByTestId('mobile-filter-never-tried').click();
@@ -584,13 +582,13 @@ test.describe('Recipes Search Page', () => {
       });
     });
 
-    await page.goto('/recipes');
-    await expect(page.getByTestId('recipe-loader')).not.toBeVisible({ timeout: 15_000 });
+    await page.goto('/recipes?focus=search');
+    await expect(page.getByTestId('browse-all-loader')).not.toBeVisible({ timeout: 15_000 });
     await page.getByTestId('recipe-search-input').fill('chicken');
     await page.getByTestId('recipe-search-input').press('Enter');
 
-    await expect(page.getByTestId('recipe-card-top-pick')).toBeVisible();
-    await page.getByTestId('recipe-card-top-pick').click();
+    await expect(page.getByTestId('stack-card-front')).toBeVisible();
+    await page.getByTestId('stack-card-front').click();
 
     await expect(page.getByTestId('action-find-similar')).toBeVisible();
     await page.getByTestId('action-find-similar').click();
@@ -599,18 +597,20 @@ test.describe('Recipes Search Page', () => {
       .poll(() => lastSearchBody)
       .toMatchObject({ similarToRecipeId: MOCK_IDS.RECIPE_LASAGNA });
 
-    await expect(page.getByTestId('recipe-card-top-pick')).toBeVisible();
-    await expect(page.getByTestId('recipe-card-top-pick')).toContainText(/Chicken Stir Fry/i);
+    const similarFront = page.locator(
+      `[data-testid="stack-card-front"][data-recipe-id="${MOCK_IDS.RECIPE_STIR_FRY}"]`
+    );
+    await expect(similarFront).toBeVisible();
     await expect(
-      page.locator(`[data-testid="recipe-card-${MOCK_IDS.RECIPE_LASAGNA}"]`)
-    ).not.toBeVisible();
+      page.locator(`[data-testid="stack-card-front"][data-recipe-id="${MOCK_IDS.RECIPE_LASAGNA}"]`)
+    ).toHaveCount(0);
   });
 
   // ── Discovery toggle ───────────────────────────────────────────────────────
 
   for (const width of [360, 390, 430]) {
     for (const hasTopPick of [true, false]) {
-      test(`compact search cards at ${width}px with Top Pick ${hasTopPick}`, async ({
+      test(`compact ordinary search cards at ${width}px with API topPick ${hasTopPick}`, async ({
         page,
       }, testInfo) => {
         await page.setViewportSize({ width, height: 900 });
@@ -649,16 +649,34 @@ test.describe('Recipes Search Page', () => {
             },
           });
         });
-        await page.goto('/recipes');
-        await expect(page.getByTestId('recipe-loader')).not.toBeVisible({ timeout: 15_000 });
-        const cards = results.map((recipe) => page.getByTestId(`recipe-card-${recipe.id}`));
+        await page.route('**/api/family', (route) =>
+          route.fulfill({
+            json: {
+              data: [
+                builders.familyMember({
+                  id: MOCK_IDS.MEMBER_ALEX,
+                  name: 'Alex',
+                  browseViewMode: 'list',
+                }),
+              ],
+            },
+          })
+        );
+        await page.goto('/recipes?focus=search');
+        await expect(page.getByTestId('browse-all-loader')).not.toBeVisible({ timeout: 15_000 });
+        await page.getByTestId('recipe-search-input').fill('chicken');
+        await page.getByTestId('recipe-search-input').press('Enter');
+        const cards = results.map((recipe) =>
+          page.getByTestId('browse-list-recipe-card').filter({ hasText: recipe.name })
+        );
         await expect(cards[0]).toBeVisible();
-        await expect(page.getByTestId('recipe-card-top-pick')).toHaveCount(hasTopPick ? 1 : 0);
+        await expect(page.getByTestId('browse-list-recipe-card')).toHaveCount(hasTopPick ? 3 : 2);
         if (hasTopPick) {
-          await expect(page.getByTestId('recipe-card-top-pick')).toContainText(
-            'Name matches your search'
+          await expect(page.getByTestId('browse-list-recipe-card').first()).toContainText(
+            'Homemade Lasagna'
           );
-          await expect(page.getByTestId('top-pick-feeling-lucky')).toBeDisabled();
+          await expect(page.getByText('Name matches your search')).toHaveCount(0);
+          await expect(page.getByTestId('top-pick-feeling-lucky')).toHaveCount(0);
         }
         await expect(cards[0].getByTestId('recipe-import-issue-status-reported')).toBeVisible();
         await expect(
@@ -807,11 +825,11 @@ test.describe('Recipes Search Page', () => {
         }
         await route.fulfill({ json: { recipe } });
       });
-      await page.goto('/recipes');
-      await expect(page.getByTestId('recipe-loader')).not.toBeVisible({ timeout: 15_000 });
+      await page.goto('/recipes?focus=search');
+      await expect(page.getByTestId('browse-all-loader')).not.toBeVisible({ timeout: 15_000 });
       await page.getByTestId('recipe-search-input').fill('chicken');
       await page.getByTestId('recipe-search-input').press('Enter');
-      await page.getByTestId('recipe-card-top-pick').click();
+      await page.getByTestId('stack-card-front').click();
       const toggle = page.getByTestId('action-toggle-discovery');
       const url = page.url();
       for (const [index, pressed] of [true, false, true, false].entries()) {
@@ -843,10 +861,10 @@ test.describe('Recipes Search Page', () => {
       }
       // The route's state is used by subsequent GETs, not just the PATCH response.
       await page.reload();
-      await expect(page.getByTestId('recipe-loader')).not.toBeVisible({ timeout: 15_000 });
+      await expect(page.getByTestId('browse-all-loader')).not.toBeVisible({ timeout: 15_000 });
       await page.getByTestId('recipe-search-input').fill('chicken');
       await page.getByTestId('recipe-search-input').press('Enter');
-      await page.getByTestId('recipe-card-top-pick').click();
+      await page.getByTestId('stack-card-front').click();
       await expect(toggle).toHaveAttribute('aria-pressed', 'false');
     });
   }

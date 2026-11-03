@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { Clock } from 'lucide-react';
 import { motion, useTransform, useIsPresent, PanInfo, useMotionValueEvent } from 'framer-motion';
 import { t, tWithVars } from '@/locales';
 import { getImageUrl } from '@/lib/imageUtils';
@@ -27,6 +28,8 @@ interface RecipeStackCardProps {
   importIssueStatus?: RecipeImportIssueStatus | null;
   isFront: boolean;
   stackIndex: number;
+  canSwipeRight?: boolean;
+  canSwipeLeft?: boolean;
   onSwipeRight: () => void; // Navigate to previous card
   onSwipeLeft: () => void; // Navigate to next card
   onTap: () => void; // Open Recipe Detail Sheet
@@ -35,15 +38,13 @@ interface RecipeStackCardProps {
 export const RecipeStackCard: React.FC<RecipeStackCardProps> = ({
   id,
   name,
-  description,
   imageUrl,
   totalTime,
-  category,
-  cuisineType,
-  mealTypes,
   importIssueStatus,
   isFront,
   stackIndex,
+  canSwipeRight = true,
+  canSwipeLeft = true,
   onSwipeRight,
   onSwipeLeft,
   onTap,
@@ -103,6 +104,7 @@ export const RecipeStackCard: React.FC<RecipeStackCardProps> = ({
   const isPresent = useIsPresent();
   const lifecycle = React.useRef(0);
   const departing = React.useRef(false);
+  const formattedTime = formatRecipeTime(totalTime);
 
   React.useLayoutEffect(() => {
     const version = ++lifecycle.current;
@@ -151,6 +153,10 @@ export const RecipeStackCard: React.FC<RecipeStackCardProps> = ({
           ? -1
           : 0;
     if (!direction) {
+      returnToOrigin();
+      return;
+    }
+    if ((direction > 0 && !canSwipeRight) || (direction < 0 && !canSwipeLeft)) {
       returnToOrigin();
       return;
     }
@@ -220,7 +226,11 @@ export const RecipeStackCard: React.FC<RecipeStackCardProps> = ({
       onDrag={handleDrag}
       onDragEnd={handleDragEnd}
       onTap={handleTap}
-      className="absolute inset-x-0 top-0 bottom-12 cursor-grab active:cursor-grabbing"
+      className={
+        isFront
+          ? 'relative w-full cursor-grab active:cursor-grabbing pointer-events-none'
+          : 'absolute inset-0 cursor-grab active:cursor-grabbing pointer-events-none'
+      }
       data-testid={isFront ? 'stack-card-front' : 'stack-card-back'}
       data-recipe-id={id}
       {...(isFront ? { 'data-front': 'true' } : {})}
@@ -228,20 +238,28 @@ export const RecipeStackCard: React.FC<RecipeStackCardProps> = ({
     >
       <div
         data-testid={`stack-card-${id}`}
-        className="h-full w-full overflow-hidden rounded-[2.5rem] bg-white shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),_0_20px_40px_-1px_rgba(0,0,0,0.05)] border-t border-white/20 flex flex-col"
+        className={`h-full w-full overflow-hidden rounded-[2.5rem] bg-white shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),_0_20px_40px_-1px_rgba(0,0,0,0.05)] border-t border-white/20 flex flex-col ${isFront ? 'pointer-events-auto' : 'pointer-events-none'}`}
       >
-        <div className="relative aspect-[16/10] md:aspect-[16/9] w-full overflow-hidden shrink-0 [@media(max-height:740px)]:max-h-[40%]">
+        <div
+          data-testid="stack-card-image"
+          aria-hidden={!isFront}
+          className={`relative h-[clamp(192px,35vh,320px)] shrink-0 w-full overflow-hidden ${stackIndex > 1 ? 'invisible' : ''}`}
+        >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={getImageUrl(imageUrl)}
-            alt={name}
+            alt={isFront ? name : ''}
             className="absolute inset-0 h-full w-full object-cover select-none pointer-events-none"
           />
 
-          {importIssueStatus && (
-            <div className="absolute left-5 top-5 z-30">
-              <RecipeImportIssueBadge status={importIssueStatus} />
-            </div>
+          {formattedTime && (
+            <span
+              data-testid="stack-time-badge"
+              className="absolute bottom-4 left-4 z-30 inline-flex max-w-[calc(100%-2rem)] items-center gap-1.5 rounded-full border border-white bg-terracotta-50 px-3 py-2 text-xs font-bold uppercase tracking-wide text-terracotta-700 shadow-md"
+            >
+              <Clock size={14} aria-hidden="true" className="shrink-0" />
+              {tWithVars('common.readyIn', 'READY IN {{time}}', { time: formattedTime })}
+            </span>
           )}
 
           {/* Swipe direction indicators — Ghost style aligned with Discovery voting */}
@@ -276,31 +294,24 @@ export const RecipeStackCard: React.FC<RecipeStackCardProps> = ({
               </motion.div>
             </div>
           )}
-
-          <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
         </div>
 
-        <div className="flex-1 p-8 md:p-10 flex flex-col min-h-0 overflow-y-auto touch-pan-y [@media(max-height:700px)]:p-4">
-          <h2 className="text-2xl md:text-3xl font-bold tracking-tight font-heading mb-3 md:mb-4 leading-tight shrink-0">
+        <div
+          aria-hidden={!isFront}
+          className={`shrink-0 px-6 py-4 md:px-8 ${stackIndex > 1 ? 'invisible' : ''}`}
+        >
+          <h2
+            className={`text-2xl md:text-3xl font-bold tracking-tight font-heading leading-tight break-words ${isFront ? '' : 'line-clamp-1'}`}
+          >
             {name}
           </h2>
-
-          <div className="flex-1 relative overflow-hidden min-h-0 mb-4 md:mb-6">
-            <p className="text-charcoal/60 text-sm md:text-base leading-relaxed">{description}</p>
-            {description && (
-              <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-white via-white/80 to-transparent pointer-events-none" />
-            )}
-          </div>
-
-          <div className="flex items-center gap-4 text-[10px] font-bold uppercase tracking-[0.15em] border-t border-charcoal/5 pt-4 shrink-0">
-            <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-ochre-50/80 text-ochre-700">
-              {tWithVars('common.readyIn', 'READY IN {{time}}', {
-                time: formatRecipeTime(totalTime),
-              })}
-            </span>
-          </div>
         </div>
       </div>
+      {isFront && importIssueStatus && (
+        <div className="absolute -bottom-7 left-4">
+          <RecipeImportIssueBadge status={importIssueStatus} variant="compact" />
+        </div>
+      )}
     </motion.div>
   );
 };

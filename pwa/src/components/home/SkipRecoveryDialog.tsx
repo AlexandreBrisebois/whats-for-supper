@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   X,
   Utensils,
+  Search,
   RefreshCw,
   Calendar,
   ArrowRight,
@@ -34,9 +35,13 @@ interface SkipRecoveryDialogProps {
   onCancelAbandon?: () => void;
   onAbandon?: () => void;
   step: 1 | 2;
+  searchError?: string | null;
+  onRetrySearch?: () => void;
   onClose: () => void;
   onBack: () => void;
-  onAction: (action: 'order_in' | 'pick_else' | 'tomorrow' | 'next_week' | 'drop') => void;
+  onAction: (
+    action: 'order_in' | 'pick_else' | 'search' | 'tomorrow' | 'next_week' | 'drop'
+  ) => void;
 }
 
 export function SkipRecoveryDialog({
@@ -49,6 +54,8 @@ export function SkipRecoveryDialog({
   onCancelAbandon,
   onAbandon,
   step,
+  searchError,
+  onRetrySearch,
   onClose,
   onBack,
   onAction,
@@ -93,7 +100,7 @@ export function SkipRecoveryDialog({
         exit={{ y: '100%' }}
         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
         className={cn(
-          'relative w-full max-w-sm overflow-hidden shadow-[0_24px_60px_-16px_rgba(74,55,40,0.18)]',
+          'relative w-full max-w-sm max-h-[calc(100dvh-3rem-env(safe-area-inset-bottom))] overflow-y-auto shadow-[0_24px_60px_-16px_rgba(74,55,40,0.18)]',
           replacement
             ? 'rounded-[2rem] border border-charcoal/10 bg-cream p-6'
             : 'rounded-[3rem] border border-white/60 bg-[rgba(253,252,240,0.78)] p-8 backdrop-blur-xl'
@@ -243,11 +250,11 @@ export function SkipRecoveryDialog({
                       <div className="h-14 w-14 rounded-2xl bg-terracotta/10 text-terracotta-600 flex items-center justify-center group-hover:scale-110 transition-transform">
                         <NonCookingIcon kind="order_in" size={28} />
                       </div>
-                      <div className="flex flex-1 flex-col items-start text-left">
+                      <div className="flex min-w-0 flex-1 flex-col items-start text-left">
                         <span className="font-heading text-xl font-black text-charcoal tracking-tight">
                           {t('home.orderingIn', 'Take Out')}
                         </span>
-                        <span className="text-[10px] font-black uppercase tracking-widest text-charcoal/30">
+                        <span className="text-xs font-medium leading-snug text-charcoal/70">
                           {t('home.takeoutOrDelivery', 'Takeout or delivery')}
                         </span>
                       </div>
@@ -264,15 +271,48 @@ export function SkipRecoveryDialog({
                       <div className="h-14 w-14 rounded-2xl bg-sage/10 text-sage flex items-center justify-center group-hover:scale-110 transition-transform">
                         <Utensils size={28} />
                       </div>
-                      <div className="flex flex-1 flex-col items-start text-left">
+                      <div className="flex min-w-0 flex-1 flex-col items-start text-left">
                         <span className="font-heading text-xl font-black text-charcoal tracking-tight">
-                          {t('home.pickSomethingElse', 'Pick Something Else')}
+                          {t('home.pickSomethingElse', 'Suggestions')}
                         </span>
-                        <span className="text-[10px] font-black uppercase tracking-widest text-charcoal/30">
-                          {t('home.searchRecipes', 'Search the Library')}
+                        <span className="text-xs font-medium leading-snug text-charcoal/70">
+                          {t('home.searchRecipes', 'Browse up to 5 recipe suggestions')}
                         </span>
                       </div>
                     </button>
+                    <button
+                      disabled={pending}
+                      onClick={() => onAction('search')}
+                      data-testid="recovery-action-search"
+                      className="flex w-full items-center gap-4 rounded-[2rem] border-2 border-charcoal/5 p-5 text-left transition-all hover:border-terracotta/30 hover:bg-terracotta/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-charcoal"
+                    >
+                      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-terracotta/10 text-terracotta-600">
+                        <Search size={28} aria-hidden="true" />
+                      </div>
+                      <div className="flex min-w-0 flex-1 flex-col items-start text-left">
+                        <span className="font-heading text-xl font-black tracking-tight text-charcoal">
+                          {t('home.searchChoice', 'Search')}
+                        </span>
+                        <span className="text-xs font-medium leading-snug text-charcoal/70">
+                          {t('home.searchChoiceDescription', 'Find a recipe in your library')}
+                        </span>
+                      </div>
+                    </button>
+                    {searchError && (
+                      <div
+                        role="alert"
+                        className="rounded-2xl bg-terracotta/10 p-4 text-sm text-charcoal"
+                      >
+                        <p>{searchError}</p>
+                        <button
+                          type="button"
+                          onClick={onRetrySearch}
+                          className="mt-2 min-h-12 font-semibold text-terracotta-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-charcoal"
+                        >
+                          {t('errors.tryAgain', 'Try again')}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </motion.div>
               ) : (

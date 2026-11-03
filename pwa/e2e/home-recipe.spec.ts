@@ -100,7 +100,7 @@ async function measureAdaptiveTonight(page: Page) {
       titleLines: Math.round(
         title.getBoundingClientRect().height / parseFloat(getComputedStyle(title).lineHeight)
       ),
-      labels: ['quick-capture-trigger', 'home-browse-all-trigger'].map((id) => {
+      labels: ['quick-capture-trigger'].map((id) => {
         const tile = document.querySelector(`[data-testid="${id}"]`)!;
         const label = tile.querySelector('span')!;
         const r = label.getBoundingClientRect();
@@ -116,7 +116,7 @@ async function measureAdaptiveTonight(page: Page) {
 }
 
 async function expectHomeHandoffsReachable(page: Page) {
-  for (const id of ['quick-capture-trigger', 'home-browse-all-trigger']) {
+  for (const id of ['quick-capture-trigger']) {
     const tile = page.getByTestId(id);
     await tile.evaluate((el) => el.scrollIntoView({ block: 'center' }));
     const visible = await tile.evaluate((el) => {
@@ -156,6 +156,147 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
       );
     }, MOCK_IDS.MEMBER_ALEX);
   });
+
+  for (const appLocale of ['en', 'fr'] as const) {
+    test.describe(`planned Change plan choices (${appLocale})`, () => {
+      test.use({ appLocale });
+      test('Suggestions retains the deck and Search carries the planned day without mutation', async ({
+        page,
+      }) => {
+        const mutations: string[] = [];
+        page.on('request', (request) => {
+          if (request.method() !== 'GET' && /\/api\/schedule/.test(request.url()))
+            mutations.push(request.url());
+        });
+        await prepareAdaptiveTonight(page, 'Home supper');
+        await page.getByTestId('skip-tonight-btn').click();
+        const sheet = page.getByTestId('recovery-dialog-title');
+        await expect(sheet).toBeVisible();
+        await expect(page.getByTestId('recovery-action-order-in')).toBeVisible();
+        await expect(page.getByTestId('recovery-action-pick-else')).toContainText('Suggestions');
+        await expect(page.getByTestId('recovery-action-search')).toHaveAccessibleName(
+          appLocale === 'en' ? /Search/ : /Rechercher/
+        );
+        await page.getByTestId('recovery-action-pick-else').click();
+        await expect(page.getByTestId('quick-find-modal')).toBeVisible();
+        await page.getByTestId('quick-find-close').click();
+        await page.getByTestId('skip-tonight-btn').click();
+        await page.getByTestId('recovery-action-search').click();
+        await expect(page).toHaveURL(
+          /\/recipes\?focus=search&addToDay=0&weekOffset=0&referenceWeekStartDate=/
+        );
+        await expect(page.getByTestId('recipe-search-input')).toBeVisible();
+        expect(mutations).toEqual([]);
+      });
+    });
+  }
+
+  test('Capture is one focusable link before the planned Tonight card', async ({ page }) => {
+    await prepareAdaptiveTonight(page, 'Home supper');
+    const capture = page.getByTestId('quick-capture-trigger');
+    const card = page.getByTestId('tonight-menu-card');
+    await expect(capture).toHaveCount(1);
+    await expect(capture).toHaveAttribute('href', '/capture');
+    expect(
+      await capture.evaluate(
+        (el, other) =>
+          Boolean(
+            el.compareDocumentPosition(document.querySelector(other)!) &
+            Node.DOCUMENT_POSITION_FOLLOWING
+          ),
+        '[data-testid="tonight-menu-card"]'
+      )
+    ).toBe(true);
+    const captureBox = await capture.boundingBox();
+    const cardBox = await card.boundingBox();
+    expect(captureBox!.y + captureBox!.height).toBeLessThanOrEqual(cardBox!.y);
+  });
+
+  for (const appLocale of ['en', 'fr'] as const) {
+    test.describe(`Capture and recovery reflow (${appLocale})`, () => {
+      test.use({ appLocale });
+      test('keeps Capture first and all three choices reachable across phone and tablet sizes', async ({
+        page,
+      }, testInfo) => {
+        await prepareAdaptiveTonight(page, 'Home supper');
+        const capture = page.getByTestId('quick-capture-trigger');
+        for (const [width, height] of [
+          [393, 852],
+          [320, 640],
+          [667, 375],
+          [820, 1180],
+          [1180, 820],
+        ]) {
+          await page.setViewportSize({ width, height });
+          await page.evaluate(() => window.scrollTo(0, 0));
+          const geometry = await capture.evaluate((el) => {
+            const box = el.getBoundingClientRect();
+            const label = el.querySelector('span')!.getBoundingClientRect();
+            return {
+              top: box.top,
+              bottom: box.bottom,
+              left: box.left,
+              right: box.right,
+              labelRight: label.right,
+              viewportWidth: innerWidth,
+              viewportHeight: innerHeight,
+            };
+          });
+          await testInfo.attach(`capture-${appLocale}-${width}x${height}`, {
+            body: JSON.stringify(geometry),
+            contentType: 'application/json',
+          });
+          await writeFile(
+            `test-results/home-capture-${appLocale}-${width}x${height}.json`,
+            JSON.stringify(geometry)
+          );
+          expect(geometry.left).toBeGreaterThanOrEqual(0);
+          expect(geometry.right).toBeLessThanOrEqual(width);
+          expect(geometry.labelRight).toBeLessThanOrEqual(width);
+          if (width === 393) {
+            expect(geometry.bottom).toBeLessThanOrEqual(height);
+            await writeFile(
+              `test-results/home-capture-${appLocale}-393.png`,
+              await page.screenshot()
+            );
+          }
+          await capture.scrollIntoViewIfNeeded();
+          await expect(capture).toHaveAccessibleName(/\S/);
+          await page.getByTestId('skip-tonight-btn').click();
+          await expect(page.getByTestId('recovery-action-search')).toBeVisible();
+          await page.getByTestId('recovery-action-order-in').scrollIntoViewIfNeeded();
+          await expect(page.getByTestId('recovery-action-order-in')).toBeInViewport();
+          if (width === 393) {
+            await page.waitForTimeout(700); // Capture the settled spring, not its first visible frame.
+            await writeFile(
+              `test-results/home-choices-${appLocale}-393.png`,
+              await page.screenshot()
+            );
+          }
+          for (const id of [
+            'recovery-action-order-in',
+            'recovery-action-pick-else',
+            'recovery-action-search',
+          ]) {
+            const action = page.getByTestId(id);
+            await action.scrollIntoViewIfNeeded();
+            await expect(action).toBeVisible();
+            await expect(action).toHaveAccessibleName(/\S/);
+          }
+          await page.getByTestId('recovery-close').click();
+        }
+        await page.setViewportSize({ width: 320, height: 640 });
+        await page.evaluate(() => {
+          document.documentElement.style.fontSize = '200%';
+        });
+        await capture.scrollIntoViewIfNeeded();
+        await expect(capture).toBeVisible();
+        await page.getByTestId('skip-tonight-btn').click();
+        await page.getByTestId('recovery-action-search').scrollIntoViewIfNeeded();
+        await expect(page.getByTestId('recovery-action-search')).toBeVisible();
+      });
+    });
+  }
 
   test('Tonight pivot choices: saved non-Mystery context hands off to Planner without mutation', async ({
     page,
@@ -525,6 +666,26 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
   for (const appLocale of ['en', 'fr'] as const) {
     test.describe(`duration units (${appLocale})`, () => {
       test.use({ appLocale });
+      test('omits an unknown planned duration while keeping meal actions', async ({ page }) => {
+        await page.setViewportSize({ width: 393, height: 852 });
+        const recipe = builders.scheduleRecipe({
+          id: MOCK_IDS.RECIPE_LASAGNA,
+          name: 'Synthetic supper without time',
+          image: '',
+          totalTime: null,
+        });
+        await mockSseWithSlotUpdate(page, {
+          date: toDateStr(currentMonday()),
+          recipe,
+          status: 0,
+        });
+        await page.goto('/home');
+        const card = page.getByTestId('tonight-menu-card');
+        await expect(card).toContainText('Synthetic supper without time');
+        await expect(card).not.toContainText(appLocale === 'fr' ? 'PRÊT EN' : 'READY IN');
+        await expect(card.getByTestId('cook-mode-btn')).toBeVisible();
+        await expect(card.getByTestId('skip-tonight-btn')).toBeVisible();
+      });
       for (const [device, viewport] of [
         ['iPad', { width: 820, height: 1180 }],
         ['iPhone', { width: 390, height: 844 }],
@@ -1787,7 +1948,10 @@ test.describe('Home active voting handoff', () => {
       await expect(page.getByRole('button', { name: 'Vote Now', exact: true })).toBeVisible();
       await expect(page.getByTestId('voting-nudge-dismiss')).toHaveCount(0);
       await expect(page.getByTestId('quick-capture-trigger')).toBeVisible();
-      await expect(page.getByTestId('home-browse-all-trigger')).toBeVisible();
+      await expect(page.getByTestId('home-browse-all-trigger')).toHaveCount(0);
+      await expect(
+        page.getByRole('navigation').getByRole('link', { name: 'Recipes' })
+      ).toBeVisible();
       await page.getByRole('button', { name: 'Vote Now', exact: true }).click();
       await expect(page).toHaveURL(/\/discovery$/);
     });

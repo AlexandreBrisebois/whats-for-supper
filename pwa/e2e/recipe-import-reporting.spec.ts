@@ -1,3 +1,4 @@
+import { swipeCurrentStackCard } from './helpers/stack-swipe';
 import type { Page } from './fixtures';
 import { expect, test } from './fixtures';
 import { MOCK_IDS, builders, setupCommonRoutes } from './mock-api';
@@ -239,8 +240,9 @@ async function installRecipeHarness(
 
 async function openRecipeDetail(page: Page, recipeId = MOCK_IDS.RECIPE_LASAGNA) {
   await page.goto('/recipes');
-  await expect(page.getByTestId('recipe-loader')).not.toBeVisible({ timeout: 15_000 });
-  await page.getByTestId(`recipe-card-${recipeId}`).click();
+  await expect(page.getByTestId('browse-all-loader')).not.toBeVisible({ timeout: 15_000 });
+  await expect(page.getByTestId('stack-card-front')).toHaveAttribute('data-recipe-id', recipeId);
+  await page.getByTestId('stack-card-front').click();
   await expect(page.getByTestId('recipe-detail-sheet')).toBeVisible();
 }
 
@@ -363,8 +365,8 @@ test.describe('Recipe import issue reporting', () => {
     await expect(page.getByTestId('import-issue-resolve')).toBeDisabled();
 
     await page.reload();
-    await expect(page.getByTestId('recipe-loader')).not.toBeVisible({ timeout: 15_000 });
-    await page.getByTestId(`recipe-card-${MOCK_IDS.RECIPE_LASAGNA}`).click();
+    await expect(page.getByTestId('browse-all-loader')).not.toBeVisible({ timeout: 15_000 });
+    await page.getByTestId('stack-card-front').click();
     await page.getByTestId('action-gear-menu').click();
     await page.getByTestId('action-report-import-issue').click();
     await expect(page.getByTestId('import-issue-save')).toBeDisabled();
@@ -470,7 +472,9 @@ test.describe('Recipe import issue reporting', () => {
         contentType: 'application/json',
         body: JSON.stringify({
           data: {
-            topPick: searchResult(reported, RecipeImportIssueStatusObject.Reported),
+            topPick: readyOnly
+              ? null
+              : searchResult(reported, RecipeImportIssueStatusObject.Reported),
             results: readyOnly
               ? [searchResult(ready, RecipeImportIssueStatusObject.ReadyToReview)]
               : [
@@ -486,15 +490,24 @@ test.describe('Recipe import issue reporting', () => {
     });
 
     await page.goto('/recipes');
+    await page.getByTestId('recipes-search-disclosure').click();
     await page.getByTestId('mobile-filters-button').click();
     await page.getByTestId('mobile-more-filters').click();
     await page.getByTestId('mobile-filter-reported').click();
     await page.getByTestId('mobile-filter-apply').click();
 
-    await expect.poll(() => lastFilters).toEqual({ reportedOnly: true });
-    await expect(page.getByTestId('recipe-card-top-pick')).toHaveCount(0);
-    await expect(page.getByTestId(`recipe-card-${reported.id}`)).toBeVisible();
-    await expect(page.getByTestId(`recipe-card-${ready.id}`)).toBeVisible();
+    await expect.poll(() => lastFilters).toMatchObject({ reportedOnly: true });
+    await expect(page.getByTestId('top-pick-feeling-lucky')).toHaveCount(0);
+    await expect(page.getByTestId('stack-card-front')).toContainText('Reported Stir Fry');
+    await expect(
+      page.getByTestId('stack-card-front').getByTestId('recipe-import-issue-status-reported')
+    ).toBeVisible();
+    await swipeCurrentStackCard(page, 'left');
+    await expect(page.getByTestId('stack-card-front')).toHaveCount(1);
+    await expect(page.getByTestId('stack-card-front')).toContainText('Ready Tacos');
+    await expect(
+      page.getByTestId('stack-card-front').getByTestId('recipe-import-issue-status-readyToReview')
+    ).toBeVisible();
 
     await page.getByTestId('mobile-filters-button').click();
     await page.getByTestId('mobile-more-filters').click();
@@ -503,12 +516,21 @@ test.describe('Recipe import issue reporting', () => {
     await page.getByTestId('mobile-filter-apply').click();
 
     await expect.poll(() => lastFilters.readyToReviewOnly).toBe(true);
-    await expect(page.getByTestId(`recipe-card-${reported.id}`)).toHaveCount(0);
-    await expect(page.getByTestId(`recipe-card-${ready.id}`)).toBeVisible();
-    await expect(page.getByTestId('recipe-card-top-pick')).toHaveCount(0);
+    await expect
+      .poll(() =>
+        page
+          .getByTestId('stack-card-front')
+          .evaluateAll((cards) => cards.map((card) => card.getAttribute('data-recipe-id')))
+      )
+      .toEqual([ready.id]);
+    await expect(page.getByTestId('stack-card-front')).toContainText('Ready Tacos');
+    await expect(page.getByTestId('stack-card-front')).toHaveAttribute('data-recipe-id', ready.id!);
+    await expect(page.getByTestId('top-pick-feeling-lucky')).toHaveCount(0);
   });
 
-  test('Feeling Lucky never promotes a recipe with an active report', async ({ page }) => {
+  test('ranked results retain order and issue status without random promotion', async ({
+    page,
+  }) => {
     await authenticate(page);
     await setupCommonRoutes(page);
 
@@ -549,12 +571,20 @@ test.describe('Recipe import issue reporting', () => {
       });
     });
 
-    await page.goto('/recipes');
-    await page.getByTestId('top-pick-feeling-lucky').click();
-
-    await expect(page.getByTestId('recipe-card-top-pick')).toContainText('Eligible Chicken');
-    await expect(page.getByTestId('recipe-card-top-pick')).not.toContainText('Reported Stir Fry');
-    await expect(page.getByTestId('recipe-card-top-pick')).not.toContainText('Ready Tacos');
+    await page.goto('/recipes?focus=search');
+    await page.getByTestId('recipe-search-input').fill('supper');
+    await page.getByTestId('recipe-search-input').press('Enter');
+    await expect(page.getByTestId('stack-card-front')).toContainText('Current Pick');
+    await expect(page.getByTestId('top-pick-feeling-lucky')).toHaveCount(0);
+    await swipeCurrentStackCard(page, 'left');
+    await expect(page.getByTestId('stack-card-front')).toHaveCount(1);
+    await expect(page.getByTestId('stack-card-front')).toContainText('Reported Stir Fry');
+    await swipeCurrentStackCard(page, 'left');
+    await expect(page.getByTestId('stack-card-front')).toHaveCount(1);
+    await expect(page.getByTestId('stack-card-front')).toContainText('Ready Tacos');
+    await swipeCurrentStackCard(page, 'left');
+    await expect(page.getByTestId('stack-card-front')).toHaveCount(1);
+    await expect(page.getByTestId('stack-card-front')).toContainText('Eligible Chicken');
   });
 
   test('allows duplicate-only reporting for synthesized recipes', async ({ page }) => {
@@ -624,10 +654,15 @@ test.describe('Recipe import issue reporting', () => {
       });
     });
 
-    await page.goto('/recipes');
-    await expect(page.getByTestId(`recipe-card-${synthesized.id}`)).toBeVisible();
+    await page.goto('/recipes?focus=search');
+    await page.getByTestId('recipe-search-input').fill('vegetable');
+    await page.getByTestId('recipe-search-input').press('Enter');
+    await expect(page.getByTestId('stack-card-front')).toHaveAttribute(
+      'data-recipe-id',
+      synthesized.id!
+    );
 
-    await page.getByTestId(`recipe-card-${synthesized.id}`).click();
+    await page.getByTestId('stack-card-front').click();
     await page.getByTestId('action-gear-menu').click();
     await page.getByTestId('action-report-import-issue').click();
     await expect(page.getByTestId('import-issue-reason-ingredients')).toBeDisabled();

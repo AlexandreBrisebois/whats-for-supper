@@ -203,7 +203,10 @@ describe('QuickFindModal — initial fetch', () => {
 
     fireEvent.click(screen.getByTestId('quick-find-next'));
     expect(await screen.findByText("Didn't find a match?")).toBeInTheDocument();
-    expect(screen.getByTestId('quick-find-search-library')).toHaveAttribute('href', '/recipes');
+    expect(screen.getByTestId('quick-find-search-library')).toHaveAttribute(
+      'href',
+      '/recipes?focus=search'
+    );
     expect(screen.getByTestId('quick-find-next')).toHaveTextContent('Start Over');
 
     fireEvent.click(screen.getByTestId('quick-find-next'));

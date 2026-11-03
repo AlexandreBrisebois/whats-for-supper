@@ -79,9 +79,7 @@ test.describe('Demo Mode', () => {
     }, MOCK_IDS.MEMBER_ALEX);
 
     await page.goto('/recipes');
-
-    await expect(page.getByTestId('recipe-search-input')).toBeVisible();
-
+    await page.getByTestId('recipes-search-disclosure').click();
     await expect(page.getByTestId('recipe-search-input')).toBeVisible();
   });
 });
@@ -344,7 +342,7 @@ test.describe('Cost-safe demo exploration', () => {
     await expect(page.getByTestId('capture-pdf-input')).toHaveCount(0);
     await expect(page.getByRole('dialog')).not.toBeVisible();
     await page.getByRole('link', { name: 'Explore prepared recipes' }).click();
-    await expect(page.getByTestId('recipe-search-input')).toBeVisible();
+    await expect(page.getByTestId('stack-card-front')).toBeVisible();
     expect(posts).toEqual([]);
   });
 

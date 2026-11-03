@@ -574,7 +574,7 @@ test.describe('Home Command Center — GOTO & Pivot Flow', () => {
             await expect(card).toContainText(context);
           } else {
             await expect(page).toHaveURL(
-              /\/recipes\?addToDay=0&weekOffset=0&referenceWeekStartDate=2026-05-04/
+              /\/recipes\?focus=search&addToDay=0&weekOffset=0&referenceWeekStartDate=2026-05-04/
             );
             await expect(page.getByTestId('quick-find-modal')).toHaveCount(0);
           }

@@ -6,7 +6,7 @@ Go-Tos are the household’s configured fallback recipes. Membership is distinct
 
 Users add or remove membership through recipe-detail stars. The star and Go-To label remain visible in both states; selected membership has pressed semantics. Saving disables the control and reports success or failure. Removing membership keeps the recipe.
 
-Browse offers an immediate Star filter directly after its single All/Discovery toggle in the same toolbar. It intersects Discovery and retains cards/list and collection navigation. Search keeps Go-To within Filters, with ordinary draft, Apply, Clear and dismissal behavior. Separate Go-To management, pending-management rows and Add a Go-To acquisition are retired; Settings does not host them.
+Recipes offers an immediate Go-To star filter directly after its All/Discovery toggle in the same toolbar. It intersects Discovery and retains cards/list and collection navigation in Explore or Search. The Filters chooser reflects the applied Go-To scope, with ordinary draft, Apply, Clear and dismissal behavior. Separate Go-To management, pending-management rows and Add a Go-To acquisition are retired; Settings does not host them.
 
 Confirmed local membership changes refresh an applied-Go-To collection from page one while retaining Browse mode or Search context. If retrieval fails after a successful save, Retry reads again without repeating the save. Rejected saves retain confirmed membership.
 

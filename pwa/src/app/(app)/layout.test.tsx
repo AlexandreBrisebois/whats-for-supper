@@ -89,4 +89,17 @@ describe('AppRouteLayout', () => {
       isFluid: true,
     });
   });
+
+  it('gives Recipes the fluid shell used by the other primary destinations', () => {
+    mocks.pathname = '/recipes';
+    mocks.layoutProps = null;
+
+    render(
+      <AppRouteLayout>
+        <div>Recipes</div>
+      </AppRouteLayout>
+    );
+
+    expect(mocks.layoutProps).toMatchObject({ hideHeader: true, isFluid: true });
+  });
 });

@@ -84,7 +84,7 @@ describe('runtime install identity', () => {
         name: 'Search',
         short_name: 'Search',
         description: 'Search your recipe library',
-        url: '/recipes',
+        url: '/recipes?focus=search',
       });
       expect(manifest.shortcuts[1]).toMatchObject({
         name: 'Capture Meal',
