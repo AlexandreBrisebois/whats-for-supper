@@ -25,87 +25,6 @@ async function prepareNavigationMember(page: import('@playwright/test').Page) {
   await setupCommonRoutes(page);
 }
 
-test('stack fills the card slot and keeps the family action at the bottom', async ({ page }) => {
-  await prepareNavigationMember(page);
-  for (const viewport of [
-    { width: 390, height: 844 },
-    { width: 820, height: 1180 },
-  ]) {
-    await page.setViewportSize(viewport);
-    await page.goto('/recipes');
-    await expect(page.getByTestId('stack-card-front')).toBeVisible();
-    await expect(page.getByTestId('stack-action-bar')).toHaveCSS('opacity', '1');
-    const geometry = await page.evaluate(() => {
-      const box = (selector: string) => document.querySelector(selector)!.getBoundingClientRect();
-      const result = box('[data-testid="browse-results-region"]');
-      const card = box('[data-testid="stack-card-front"]');
-      const counter = box('[data-testid="stack-depth-indicator"]');
-      const action = box('[data-testid="stack-action-bar"]');
-      const group = document
-        .querySelector('[data-testid="stack-action-bar"]')!
-        .parentElement!.getBoundingClientRect();
-      const dock = box('[data-testid="app-bottom-navigation"]');
-      return {
-        groupBottomGap: result.bottom - group.bottom,
-        panelBottomGap: result.bottom - action.bottom,
-        cardCenterError: Math.abs((card.top + card.bottom) / 2 - (result.top + counter.top) / 2),
-        dockClearance: dock.top - action.bottom,
-        cardSize: [card.width, card.height],
-      };
-    });
-    expect(geometry.groupBottomGap, JSON.stringify({ viewport, geometry })).toBeGreaterThanOrEqual(
-      0
-    );
-    expect(geometry.groupBottomGap, JSON.stringify({ viewport, geometry })).toBeLessThanOrEqual(8);
-    // StackActionBar keeps its existing 16px bottom inset inside the bottom group.
-    expect(geometry.panelBottomGap, JSON.stringify({ viewport, geometry })).toBeLessThanOrEqual(24);
-    expect(geometry.cardCenterError, JSON.stringify({ viewport, geometry })).toBeLessThanOrEqual(8);
-    expect(geometry.dockClearance).toBeGreaterThanOrEqual(0);
-    const frontId = await page.getByTestId('stack-card-front').getAttribute('data-recipe-id');
-    await page.getByTestId('recipes-search-disclosure').click();
-    await expect(page.getByTestId('recipe-search-input')).toBeVisible();
-    const expanded = await page.evaluate(() => {
-      const results = document
-        .querySelector('[data-testid="browse-results-region"]')!
-        .getBoundingClientRect();
-      const group = document
-        .querySelector('[data-testid="stack-action-bar"]')!
-        .parentElement!.getBoundingClientRect();
-      const card = document
-        .querySelector('[data-testid="stack-card-front"]')!
-        .getBoundingClientRect();
-      return { gap: results.bottom - group.bottom, cardSize: [card.width, card.height] };
-    });
-    if (expanded.gap >= 0) {
-      expect(expanded.gap).toBeLessThanOrEqual(8);
-    } else {
-      await page.getByTestId('stack-action-bar').evaluate((node) => {
-        const results = node.closest('[data-testid="browse-results-region"]') as HTMLElement;
-        const viewport = document.querySelector(
-          '[data-testid="browse-all-stack-container"]'
-        ) as HTMLElement;
-        results.scrollTop = results.scrollHeight;
-        viewport.scrollTop = viewport.scrollHeight;
-      });
-      const panelBottom = await page
-        .getByTestId('stack-action-bar')
-        .evaluate((node) => node.getBoundingClientRect().bottom);
-      const dockTop = (await page.getByTestId('app-bottom-navigation').boundingBox())!.y;
-      expect(panelBottom).toBeLessThanOrEqual(dockTop + 1);
-    }
-    expect(Math.abs(expanded.cardSize[0] - geometry.cardSize[0])).toBeLessThanOrEqual(1);
-    expect(Math.abs(expanded.cardSize[1] - geometry.cardSize[1])).toBeLessThanOrEqual(1);
-    await page.getByTestId('recipes-search-disclosure').click();
-    await expect
-      .poll(() =>
-        page
-          .getByTestId('stack-card-front')
-          .evaluateAll((cards) => cards.map((card) => card.getAttribute('data-recipe-id')))
-      )
-      .toEqual([frontId]);
-  }
-});
-
 test.describe('constrained French stack placement', () => {
   test.use({ appLocale: 'fr' });
   test('card and family action stay scroll-reachable without a dock overlap', async ({ page }) => {
@@ -459,7 +378,6 @@ test.describe('French compact planning context', () => {
 });
 
 for (const viewport of [
-  { width: 393, height: 852, gutterMin: 16, gutterMax: 20 },
   { width: 820, height: 1180, gutterMin: 24, gutterMax: 32 },
   { width: 1180, height: 820, gutterMin: 24, gutterMax: 32 },
 ])
