@@ -84,7 +84,10 @@ public class RecipeDbContext(DbContextOptions<RecipeDbContext> options) : DbCont
             entity.Property(e => e.Rating)
                   .HasConversion<short>();
             entity.ToTable("recipes", t =>
-                t.HasCheckConstraint("CK_recipes_rating", "rating >= 0 AND rating <= 3"));
+            {
+                t.HasCheckConstraint("CK_recipes_rating", "rating >= 0 AND rating <= 3");
+                t.HasCheckConstraint("recipes_servings_check", "servings IS NULL OR servings > 0");
+            });
             entity.Property(e => e.ImageCount)
                   .HasDefaultValue(0);
             entity.Property(e => e.RawMetadata)

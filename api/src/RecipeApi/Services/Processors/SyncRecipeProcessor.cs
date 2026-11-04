@@ -59,6 +59,10 @@ public class SyncRecipeProcessor(
         // Update database record
         var exportedContent = RecipeExportContent.Read(root);
         recipe.RawMetadata = exportedContent is null ? recipeJsonContent : exportedContent.RawMetadata;
+        recipe.Servings = exportedContent is null ? RecipeServings.FromMetadata(recipe.RawMetadata) : exportedContent.Servings;
+        // Persist this basis even when it equals the loaded value: a concurrent
+        // backfill may have filled a previously-null count after our read.
+        db.Entry(recipe).Property(r => r.Servings).IsModified = true;
 
         // Try to get ingredients from multiple possible locations (Schema.org vs legacy)
         if (exportedContent is not null)
@@ -78,7 +82,7 @@ public class SyncRecipeProcessor(
             recipe.Ingredients = "[]";
         }
 
-        var recipeData = JsonSerializer.Deserialize<SchemaOrgRecipe>(recipeJsonContent, JsonDefaults.CaseInsensitive) ?? new();
+        var recipeData = RecipeExtractionParser.ParseAndNormalize(recipeJsonContent).Recipe ?? new();
 
         // Synchronize from recipe.json (AI metadata)
         if (!string.IsNullOrWhiteSpace(recipeData.Name))

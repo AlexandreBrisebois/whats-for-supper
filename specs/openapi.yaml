@@ -261,6 +261,10 @@ components:
         imageCount: { type: integer }
         finishedDishIndex: { type: integer, default: -1 }
         addedBy: { type: [string, 'null'], format: uuid }
+        servings:
+          type: [integer, 'null']
+          minimum: 1
+          description: Number of servings made by the stored ingredient quantities; null when unknown.
         ingredients:
           type: [array, 'null']
           items: { type: string }
@@ -668,6 +672,11 @@ components:
             - 'null'
           items: {}
           description: 'Parsed recipe instructions (string array or HowToStep objects)'
+        servings:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+          description: Number of servings made by the stored ingredients. Omission preserves the saved count, including unknown; supplied null is invalid. Does not change raw yield or ingredient quantities.
         notes: { type: [string, 'null'] }
         rating: { type: [integer, 'null'], minimum: 0, maximum: 3 }
         isDiscoverable:

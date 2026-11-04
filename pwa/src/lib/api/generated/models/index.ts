@@ -2449,6 +2449,9 @@ export function deserializeIntoRecipeDto(
         createUntypedNodeFromDiscriminatorValue
       );
     },
+    servings: (n) => {
+      recipeDto.servings = n.getNumberValue();
+    },
     sourceType: (n) => {
       recipeDto.sourceType = n.getEnumValue<RecipeDto_sourceType>(RecipeDto_sourceTypeObject);
     },
@@ -3555,6 +3558,9 @@ export function deserializeIntoUpdateRecipeDto(
         createUntypedNodeFromDiscriminatorValue
       );
     },
+    servings: (n) => {
+      updateRecipeDto.servings = n.getNumberValue();
+    },
   };
 }
 /**
@@ -4476,6 +4482,10 @@ export interface RecipeDto extends AdditionalDataHolder, Parsable {
    * Parsed recipe instructions (string array or HowToStep objects)
    */
   recipeInstructions?: UntypedNode | null;
+  /**
+   * Number of servings made by the stored ingredient quantities; null when unknown.
+   */
+  servings?: number | null;
   /**
    * The sourceType property
    */
@@ -6138,6 +6148,7 @@ export function serializeRecipeDto(
   writer.writeStringValue('notes', recipeDto.notes);
   writer.writeNumberValue('rating', recipeDto.rating);
   writer.writeObjectValue('recipeInstructions', recipeDto.recipeInstructions);
+  writer.writeNumberValue('servings', recipeDto.servings);
   writer.writeEnumValue<RecipeDto_sourceType>('sourceType', recipeDto.sourceType);
   writer.writeStringValue('sourceUrl', recipeDto.sourceUrl);
   writer.writeStringValue('totalTime', recipeDto.totalTime);
@@ -7174,6 +7185,7 @@ export function serializeUpdateRecipeDto(
   writer.writeStringValue('notes', updateRecipeDto.notes);
   writer.writeNumberValue('rating', updateRecipeDto.rating);
   writer.writeObjectValue('recipeInstructions', updateRecipeDto.recipeInstructions);
+  writer.writeNumberValue('servings', updateRecipeDto.servings);
   writer.writeAdditionalData(updateRecipeDto.additionalData);
 }
 /**
@@ -7590,6 +7602,10 @@ export interface UpdateRecipeDto extends AdditionalDataHolder, Parsable {
    * Parsed recipe instructions (string array or HowToStep objects)
    */
   recipeInstructions?: UntypedNode | null;
+  /**
+   * Number of servings made by the stored ingredients. Omission preserves the saved count, including unknown; supplied null is invalid. Does not change raw yield or ingredient quantities.
+   */
+  servings?: number | null;
 }
 export type UpdateRecipeDto_mealTypes =
   (typeof UpdateRecipeDto_mealTypesObject)[keyof typeof UpdateRecipeDto_mealTypesObject];

@@ -1,0 +1,8 @@
+name: recipe-servings-backfill
+parameters:
+  - cursor?
+tasks:
+  - name: project_batch
+    processor: BackfillRecipeServings
+    payload:
+      cursor: "{{ cursor }}"

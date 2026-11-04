@@ -11,7 +11,7 @@ http:
 
   routers:
     api-stream:
-      rule: "Host(`pwa.wfs.localhost`) && Path(`/api/stream`)"
+      rule: "(Host(`pwa.wfs.localhost`) || Host(`192.168.1.149`) || Host(`dv.srvrlss.dev`)) && Path(`/api/stream`)"
       entryPoints:
         - web
       service: api
@@ -20,13 +20,13 @@ http:
       priority: 100
 
     api:
-      rule: "Host(`pwa.wfs.localhost`) && PathPrefix(`/api`)"
+      rule: "(Host(`pwa.wfs.localhost`) || Host(`192.168.1.149`) || Host(`dv.srvrlss.dev`)) && PathPrefix(`/api`)"
       entryPoints:
         - web
       service: api
 
     pwa:
-      rule: "Host(`pwa.wfs.localhost`)"
+      rule: "(Host(`pwa.wfs.localhost`) || Host(`192.168.1.149`) || Host(`dv.srvrlss.dev`))"
       entryPoints:
         - web
       service: pwa

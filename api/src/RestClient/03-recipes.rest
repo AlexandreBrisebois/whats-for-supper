@@ -10,6 +10,8 @@ Accept: application/json
 X-Hearth-Secret: {{hearthSecret}}
 
 ### Get recipe detail
+# HTTP 200: { "recipe": { ..., "servings": 4 }, "updatedAt": "..." }.
+# servings is null when unknown and describes stored quantities; PATCH can correct it independently of raw yield.
 GET {{baseUrl}}/api/recipes/{{recipeId}}
 Accept: application/json
 X-Hearth-Secret: {{hearthSecret}}
@@ -61,6 +63,15 @@ X-Hearth-Secret: {{hearthSecret}}
 {
   "notes": "Reduce soy sauce by half next time.",
   "rating": 3
+}
+
+### Correct servings (omit to preserve; null, non-integers and values outside 1..2147483647 return 400)
+PATCH {{baseUrl}}/api/recipes/{{recipeId}}
+Content-Type: application/json
+X-Hearth-Secret: {{hearthSecret}}
+
+{
+  "servings": 3
 }
 
 ### Update only rating (omit notes to leave it unchanged)

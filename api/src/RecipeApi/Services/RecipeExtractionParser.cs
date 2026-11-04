@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.Json.Serialization.Metadata;
 using RecipeApi.Infrastructure;
 using RecipeApi.Models;
 
@@ -20,7 +21,13 @@ public static class RecipeExtractionParser
 
     private static JsonSerializerOptions CreateOptions()
     {
-        var options = new JsonSerializerOptions(JsonDefaults.CaseInsensitive);
+        var resolver = new DefaultJsonTypeInfoResolver();
+        resolver.Modifiers.Add(info =>
+        {
+            if (info.Type == typeof(SchemaOrgRecipe))
+                info.Properties.Single(p => p.Name == "recipeYield").CustomConverter = new OptionalYieldConverter();
+        });
+        var options = new JsonSerializerOptions(JsonDefaults.CaseInsensitive) { TypeInfoResolver = resolver };
         options.Converters.Add(new RecipeInstructionsConverter());
         return options;
     }
@@ -31,6 +38,17 @@ public static class RecipeExtractionParser
         recipe.RecipeInstructions?
             .SelectMany(section => section.ItemListElement ?? [])
             .Any(step => !string.IsNullOrWhiteSpace(step.Text)) == true;
+
+    private sealed class OptionalYieldConverter : JsonConverter<string>
+    {
+        public override string? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        {
+            if (reader.TokenType == JsonTokenType.String) return reader.GetString();
+            using var ignored = JsonDocument.ParseValue(ref reader);
+            return null;
+        }
+        public override void Write(Utf8JsonWriter writer, string value, JsonSerializerOptions options) => writer.WriteStringValue(value);
+    }
 
     private sealed class RecipeInstructionsConverter : JsonConverter<List<HowToSection>>
     {

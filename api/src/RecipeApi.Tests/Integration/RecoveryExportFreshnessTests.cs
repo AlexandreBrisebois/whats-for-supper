@@ -33,6 +33,32 @@ public class RecoveryExportFreshnessTests : IAsyncLifetime
         await _factory.DisposeAsync();
     }
 
+    [Theory]
+    [InlineData(4)]
+    [InlineData(3)]
+    [InlineData(null)]
+    public async Task ServingsExportRestoreSync_RetainsAuthoritativeCountAndRawYield(int? count)
+    {
+        var recipe = new Recipe { Name = "Radiatore", IsSynthesized = true, IsReady = true, Servings = count, Ingredients = "[\"510 g beef\",\"340 g pasta\"]", RawMetadata = "{\"recipeYield\":\"4 portions\"}" };
+        Db.Recipes.Add(recipe); await Db.SaveChangesAsync();
+        for (var attempt = 0; attempt < 2; attempt++) {
+            await Service.BackupAsync();
+            var json = JsonDocument.Parse((await Store.ReadRecipeJsonAsync(recipe.Id))!).RootElement;
+            Assert.True(json.TryGetProperty("servings", out var exported)); Assert.Equal(count, exported.ValueKind == JsonValueKind.Null ? (int?)null : exported.GetInt32());
+            var infoPath = Path.Combine(_scope.ServiceProvider.GetRequiredService<RecipesRootResolver>().Root, recipe.Id.ToString(), "recipe.info");
+            var info = JsonDocument.Parse(await File.ReadAllTextAsync(infoPath)).RootElement;
+            Assert.False(info.TryGetProperty("servings", out _)); Assert.False(info.TryGetProperty("recipeYield", out _));
+            recipe.Servings = 7; await Db.SaveChangesAsync();
+            await Service.RestoreAsync();
+            Assert.Equal(count, recipe.Servings);
+            await new SyncRecipeProcessor(_scope.ServiceProvider.GetRequiredService<IClock>(), Db,
+                new RecipeRepository(_scope.ServiceProvider.GetRequiredService<IStorageProvider>()), _scope.ServiceProvider.GetRequiredService<GroceryRecomputeService>(),
+                Microsoft.Extensions.Logging.Abstractions.NullLogger<SyncRecipeProcessor>.Instance)
+                .ExecuteAsync(new WorkflowTask { Payload = JsonSerializer.Serialize(new { recipeId = recipe.Id }) }, CancellationToken.None);
+            Assert.Equal(count, recipe.Servings); Assert.Contains("4 portions", recipe.RawMetadata); Assert.Equal(new[] { "510 g beef", "340 g pasta" }, RecipeService.DeserializeIngredients(recipe.Ingredients));
+        }
+    }
+
     [Fact]
     public async Task RepeatedExport_RefreshesMembersAndRemovesDeletedMembership()
     {

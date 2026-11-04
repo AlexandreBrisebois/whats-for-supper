@@ -91,6 +91,10 @@ public class Recipe
     [Column("ingredients", TypeName = "jsonb")]
     public string? Ingredients { get; set; }
 
+    /// <summary>Serving basis of the stored ingredient quantities; unknown when null.</summary>
+    [Column("servings")]
+    public int? Servings { get; set; }
+
     [Column("deleted_at")]
     public DateTimeOffset? DeletedAt { get; set; }
 

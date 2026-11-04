@@ -57,6 +57,42 @@ public class OnlineRecoveryPostgresTests : IAsyncLifetime
         if (Directory.Exists(backup)) Directory.Delete(backup, true);
     }
 
+    [PostgresTheory]
+    [InlineData(4)]
+    [InlineData(3)]
+    public async Task ExactServingsSnapshot_PreservesFourAndExplicitNullIndependentOfYield(int count)
+    {
+        using var scope = app.Services.CreateScope(); var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+        var known = new Recipe { Name = "Known", Servings = count, RawMetadata = "{\"recipeYield\":\"4 portions\"}" };
+        var unknown = new Recipe { Name = "Unknown", Servings = null, RawMetadata = "{\"recipeYield\":\"4 portions\"}" };
+        db.Recipes.AddRange(known, unknown); await db.SaveChangesAsync();
+        var service = scope.ServiceProvider.GetRequiredService<RecoverySnapshotService>(); var snapshot = await service.CaptureAsync(CancellationToken.None);
+        known.Servings = 2; unknown.Servings = 4; await db.SaveChangesAsync();
+        using var client = app.CreateAuthenticatedClient();
+        for (var attempt = 0; attempt < 2; attempt++) {
+            Assert.Equal(HttpStatusCode.OK, (await client.PostAsync($"/api/management/recovery/restore/{snapshot.SnapshotId}", null)).StatusCode);
+            db.ChangeTracker.Clear();
+            Assert.Equal(count, (await db.Recipes.SingleAsync(r => r.Id == known.Id)).Servings);
+            Assert.Null((await db.Recipes.SingleAsync(r => r.Id == unknown.Id)).Servings);
+        }
+    }
+
+    [PostgresFact]
+    public async Task PreColumnSnapshot_IsRejectedBeforePublishingLiveState()
+    {
+        using var scope = app.Services.CreateScope(); var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+        var recipe = new Recipe { Name = "Retained" }; db.Recipes.Add(recipe); await db.SaveChangesAsync();
+        await db.Database.ExecuteSqlRawAsync("DROP VIEW vw_discovery_recipes; ALTER TABLE recipes DROP COLUMN servings");
+        var snapshot = await scope.ServiceProvider.GetRequiredService<RecoverySnapshotService>().CaptureAsync(CancellationToken.None);
+        await db.Database.ExecuteSqlRawAsync("ALTER TABLE recipes ADD COLUMN servings integer CONSTRAINT recipes_servings_check CHECK (servings IS NULL OR servings > 0)");
+        await db.Database.ExecuteSqlRawAsync(RecipeServingsPostgresTests.DiscoveryViewDdl());
+        await db.Database.ExecuteSqlRawAsync("UPDATE recipes SET servings=4");
+        using var client = app.CreateAuthenticatedClient();
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsync($"/api/management/recovery/restore/{snapshot.SnapshotId}", null)).StatusCode);
+        db.ChangeTracker.Clear(); Assert.Equal(4, (await db.Recipes.SingleAsync()).Servings); Assert.Equal("Retained", (await db.Recipes.SingleAsync()).Name);
+        Assert.Null(scope.ServiceProvider.GetRequiredService<RecipesRootResolver>().Generation);
+    }
+
     [PostgresFact]
     public async Task OnlineCapture_PublishesIndependentFactsAndActualMedia()
     {

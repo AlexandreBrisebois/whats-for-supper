@@ -38,6 +38,46 @@ public class ManagementServiceTests : IAsyncLifetime
         await _factory.DisposeAsync();
     }
 
+    [Theory]
+    [InlineData("4", 4)]
+    [InlineData("3", 3)]
+    [InlineData("null", null)]
+    [InlineData("absent", 2)]
+    [InlineData("direct", 2)]
+    public async Task ServingsMergeRestore_DecodesCurrentAndLegacyContent(string count, int? expected)
+    {
+        var recipe = new Recipe { Name = "Retained", IsSynthesized = true, Servings = 7 }; _db.Recipes.Add(recipe); await _db.SaveChangesAsync();
+        await _recipeStore.WriteInfoAsync(new RecipeInfo { Id = recipe.Id, Name = "Retained", IsSynthesized = true });
+        var content = new Dictionary<string, object?> { ["backupContentVersion"] = 1, ["rawMetadata"] = "{\"recipeYield\":\"2 portions\"}", ["ingredients"] = "[\"340 g pasta\"]" };
+        if (count is not ("absent" or "direct")) content["servings"] = count == "null" ? null : int.Parse(count);
+        var json = count == "direct" ? "{\"recipeYield\":\"2 portions\",\"recipeIngredient\":[\"340 g pasta\"]}" : JsonSerializer.Serialize(content);
+        await _recipeStore.WriteRecipeJsonAsync(recipe.Id, json);
+        for (var attempt = 0; attempt < 2; attempt++) {
+            var result = await _service.RestoreAsync(); Assert.Equal(0, result.Errors);
+            _db.ChangeTracker.Clear(); var saved = await _db.Recipes.SingleAsync(r => r.Id == recipe.Id);
+            Assert.Equal(expected, saved.Servings); Assert.Contains("2 portions", saved.RawMetadata); Assert.Contains("340 g pasta", saved.Ingredients);
+        }
+    }
+
+    [Theory]
+    [InlineData("0")]
+    [InlineData("-1")]
+    [InlineData("1.5")]
+    [InlineData("2147483648")]
+    [InlineData("\"4\"")]
+    [InlineData("true")]
+    [InlineData("{}")]
+    [InlineData("[]")]
+    public async Task InvalidExportedServings_IsWholeRecordLoadError(string count)
+    {
+        var recipe = new Recipe { Name = "Retained", Servings = 7, Notes = "Keep" }; _db.Recipes.Add(recipe); await _db.SaveChangesAsync();
+        await _recipeStore.WriteInfoAsync(new RecipeInfo { Id = recipe.Id, Name = "Invalid" });
+        await _recipeStore.WriteRecipeJsonAsync(recipe.Id, $$"""{"backupContentVersion":1,"rawMetadata":null,"ingredients":null,"servings":{{count}}}""");
+        var result = await _service.RestoreAsync(); Assert.Equal(1, result.Errors);
+        _db.ChangeTracker.Clear(); var saved = await _db.Recipes.SingleAsync(r => r.Id == recipe.Id);
+        Assert.Equal("Retained", saved.Name); Assert.Equal(7, saved.Servings); Assert.Equal("Keep", saved.Notes);
+    }
+
     [Fact]
     public async Task Retained_pending_pdf_restores_metadata_without_becoming_ready()
     {

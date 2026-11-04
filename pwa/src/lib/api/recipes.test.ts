@@ -63,6 +63,7 @@ vi.mock('./api-client', () => ({
 }));
 
 import {
+  getRecipe,
   createRecipe,
   updateRecipe,
   searchRecipes,
@@ -104,6 +105,21 @@ describe('updateRecipe instruction serialization', () => {
       expect(wire).toEqual({ recipeInstructions: instructions });
     }
   );
+});
+
+describe('servings update serialization', () => {
+  it.each([3, 2, 2147483647, undefined])('serializes an optional count %s', async (servings) => {
+    recipesApiMocks.byIdPatch.mockClear();
+    await updateRecipe('recipe-1', servings === undefined ? { name: 'Keep' } : { servings });
+    const writer = new JsonSerializationWriter();
+    writer.writeObjectValue(
+      undefined,
+      recipesApiMocks.byIdPatch.mock.calls[0][0],
+      serializeUpdateRecipeDto
+    );
+    const wire = JSON.parse(new TextDecoder().decode(writer.getSerializedContent()));
+    expect(wire).toEqual(servings === undefined ? { name: 'Keep' } : { servings });
+  });
 });
 
 describe('createRecipe', () => {
@@ -573,5 +589,16 @@ describe('createRecipeBundleFile / privacy scrubbing', () => {
     const file = createRecipeBundleFile('Tarte Flambée', bundle);
     expect(file.name).toBe('tarte-flambee.txt');
     expect(file.type).toBe('text/plain');
+  });
+});
+
+describe('recipe servings detail mapping', () => {
+  it.each([4, 1, null, undefined])('retains the server ingredient basis %s', async (servings) => {
+    recipesApiMocks.byIdGet.mockResolvedValue({
+      recipe: { id: 'recipe-1', servings, ingredients: ['510 g beef', '340 g pasta'] },
+    });
+    const recipe = await getRecipe('recipe-1');
+    expect(recipe).toHaveProperty('servings', servings ?? null);
+    expect(recipe.ingredients).toEqual(['510 g beef', '340 g pasta']);
   });
 });

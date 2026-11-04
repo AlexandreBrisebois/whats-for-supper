@@ -94,6 +94,7 @@ export const builders = {
             description: 'A delicious mock recipe for testing.',
             imageUrl: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c',
             totalTime: 'PT30M',
+            servings: 4,
             category: 'Italian',
             rating: 0,
             isVegetarian: false,
@@ -117,7 +118,7 @@ export const builders = {
             isReady: true,
             createdAt: new Date(),
           };
-    return { ...base, ...overrides };
+    return { servings: null, ...base, ...overrides };
   },
 
   scheduleRecipe: (overrides: Partial<ScheduleRecipeDto> = {}): ScheduleRecipeDto => {

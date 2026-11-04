@@ -5,6 +5,26 @@ namespace RecipeApi.Tests.Services;
 
 public class RecipeExtractionParserTests
 {
+    [Theory]
+    [InlineData("2")]
+    [InlineData("[]")]
+    [InlineData("{}")]
+    [InlineData("true")]
+    [InlineData("null")]
+    public void OptionalYield_MalformedDoesNotWeakenRequiredContent(string yield)
+    {
+        var result = RecipeExtractionParser.ParseAndNormalize($$"""
+            {"name":"Radiatore","recipeYield":{{yield}},"recipeIngredient":["510 g beef","340 g pasta"],"recipeInstructions":["Cook the pasta."]}
+            """);
+        Assert.True(result.IsSemanticallyComplete);
+        Assert.Null(result.Recipe!.RecipeYield);
+        Assert.Equal(new[] { "510 g beef", "340 g pasta" }, result.Recipe.RecipeIngredient);
+        var missingIngredients = RecipeExtractionParser.ParseAndNormalize($$"""
+            {"name":"Radiatore","recipeYield":{{yield}},"recipeInstructions":["Cook the pasta."]}
+            """);
+        Assert.False(missingIngredients.IsSemanticallyComplete);
+    }
+
     [Fact]
     public void ParseAndNormalize_CanonicalSections_PreservesSectionAndStepText()
     {

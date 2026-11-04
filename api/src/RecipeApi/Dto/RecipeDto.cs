@@ -53,6 +53,9 @@ public class RecipeDto
     [JsonPropertyName("isDiscoverable")]
     public bool? IsDiscoverable { get; set; }
 
+    [JsonPropertyName("servings")]
+    public int? Servings { get; set; }
+
     [JsonPropertyName("ingredients")]
     public List<string>? Ingredients { get; set; }
 

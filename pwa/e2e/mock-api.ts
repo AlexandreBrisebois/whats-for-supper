@@ -1082,6 +1082,17 @@ export async function setupCommonRoutes(
       const id = new URL(route.request().url()).pathname.split('/')[3];
       const changes = route.request().postDataJSON() as Partial<RecipeDto>;
       if (
+        Object.hasOwn(changes, 'servings') &&
+        (typeof changes.servings !== 'number' ||
+          !Number.isInteger(changes.servings) ||
+          changes.servings < 1 ||
+          changes.servings > 2147483647)
+      )
+        return fulfill(route, {
+          status: 400,
+          json: { message: 'Servings must be a whole number from 1 to 2147483647.' },
+        });
+      if (
         changes.isDiscoverable === true &&
         changes.mealTypes?.length &&
         !changes.mealTypes.includes('Supper')
@@ -1099,7 +1110,7 @@ export async function setupCommonRoutes(
           updatedAt: new Date().toISOString(),
         }),
       });
-    } else {
+    } else if (route.request().method() === 'GET') {
       const id =
         route
           .request()
@@ -1118,7 +1129,7 @@ export async function setupCommonRoutes(
           updatedAt: FIXED_E2E_TIMESTAMP,
         }),
       });
-    }
+    } else await route.fallback();
   });
 
   // POST/DELETE /api/recipes/{id}/import-report — registered after the recipe wildcard for priority

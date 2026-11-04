@@ -5,8 +5,12 @@ EXTRACTION PROTOCOL (STRICT):
 1. LANGUAGE LOCK: Use the code "FR" or "EN". All text (name, ingredients, instructions) MUST remain in the card's original language. Zero translation.
 2. DATA SOVEREIGNTY: Only extract what is visible. Do not add ingredients or 'improve' the dish.
 3. TABLE EXTRACTION:
-   - Identify serving columns (e.g. 2P / 4P). Select the smallest column (left-most).
-   - recipeYield MUST match selected column (e.g. "2 portions").
+   - Select one coherent ingredient basis. For multiple serving columns (e.g. 2P / 4P), choose the smallest explicitly labelled serving count, regardless of left-to-right order. A 4 / 2 layout uses the column labelled 2, never a mixture.
+   - Countable utensil or person symbols used as column headings can explicitly label serving counts: a two-utensil heading means 2 servings; a three-utensil heading means 3. Do not infer servings from decorative photographs or plates.
+   - For alternatives with an explicit base/doubling note, use that base: “Portions: 2 ou 4” with “Double pour 4 portions” means the printed base is 2 portions. Keep its 2 chicken breasts and 225 g Brussels sprouts; do not double them.
+   - A single “Portions: 4” card stays 4 portions, retaining 510 g beef and 340 g pasta. Never reduce every recipe to two servings.
+   - recipeYield MUST describe the selected ingredient basis (e.g. "2 portions" or "4 portions"). Never add a separate numeric servings field.
+   - With visible unresolved alternatives and no identifiable base or labelled columns, retain the visible yield text (e.g. "2 or 4") without claiming a single count. Missing or unreadable evidence means recipeYield: null. Do not guess from ingredient mass, calories, time or household size.
    - Extract quantities verbatim. No math. No superscripts.
    - PANTRY ITEMS: Scan the entire image for food ingredients and pantry staples explicitly required by the recipe, including oil, salt, pepper, and water. Include them in recipeIngredient even when listed outside the main ingredient table or without quantities. Exclude cookware, utensils, appliances, serving containers, and cleaning supplies from ingredient arrays. Preserve equipment mentions in the cooking instructions.
 4. CONTENT FIDELITY: DO NOT summarize, paraphrase, or skip any text. Extract 100% of the instructions and ingredients in full detail. No compression allowed.
@@ -19,7 +23,7 @@ EXTRACTION PROTOCOL (STRICT):
 3. DATA MAPPING RULES (Schema.org):
    - languageCode: Set to "FR" or "EN" based on the card language.
    - name: High-level title of the recipe.
-   - recipeYield: Extract yield exactly as written on the card (e.g., "4 portions", "2 servings").
+   - recipeYield: Record the serving yield for the selected ingredient basis under TABLE EXTRACTION above. Retain a single explicit count; keep unresolved alternatives as text; use null when missing or unreadable. Missing yield alone does not make an otherwise complete recipe invalid.
    - recipeIngredient: Complete array of food ingredient strings. Format: "[Quantity] [Unit] [Ingredient Name]" when quantities and units are stated (e.g., "30 ml Soy Sauce"). Preserve the source language and preparation details; retain ingredients without stated quantities.
    - supply: Schema.org HowToSupply represents supplies consumed while following instructions; reusable equipment belongs to tool/HowToTool, not HowToSupply. For this application's recipe output, restrict supply to the food ingredients in recipeIngredient. Do not add a tool field to the existing output template.
      - Include exactly one HowToSupply entry per recipeIngredient entry, in the same order, with no extra or missing ingredients.

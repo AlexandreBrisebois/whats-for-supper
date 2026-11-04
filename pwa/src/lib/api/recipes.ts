@@ -37,6 +37,7 @@ export interface Recipe {
   notes?: string | null;
   isDiscoverable?: boolean;
   ingredients?: string[];
+  servings?: number | null;
   isVegetarian?: boolean;
   recipeInstructions?: unknown[];
   sourceType: 'url' | 'photos' | 'synthesized';
@@ -167,6 +168,7 @@ function mapToRecipe(dto: RecipeDto): Recipe {
     notes: dto.notes ?? null,
     isDiscoverable: dto.isDiscoverable ?? false,
     ingredients: dto.ingredients ?? [],
+    servings: dto.servings ?? null,
     isVegetarian: dto.isVegetarian ?? false,
     recipeInstructions,
     sourceType: (dto.sourceType as any) || 'synthesized',
@@ -703,6 +705,7 @@ async function readFileAsText(file: File): Promise<string> {
 export async function updateRecipe(
   id: string,
   updates: {
+    servings?: number;
     name?: string;
     description?: string;
     ingredients?: string[];
@@ -715,6 +718,7 @@ export async function updateRecipe(
   }
 ): Promise<void> {
   await apiClient.api.recipes.byId(id as any).patch({
+    servings: updates.servings,
     name: updates.name,
     description: updates.description,
     ingredients: updates.ingredients,

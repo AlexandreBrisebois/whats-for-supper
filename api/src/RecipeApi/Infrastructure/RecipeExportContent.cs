@@ -1,9 +1,10 @@
 using System.Text.Json;
+using RecipeApi.Services;
 
 namespace RecipeApi.Infrastructure;
 
 /// <summary>Compatibility boundary shared by readers of current recipe export envelopes.</summary>
-internal sealed record RecipeExportContent(string? RawMetadata, string? Ingredients)
+internal sealed record RecipeExportContent(string? RawMetadata, string? Ingredients, int? Servings)
 {
     public static RecipeExportContent? Read(JsonElement root)
     {
@@ -24,6 +25,15 @@ internal sealed record RecipeExportContent(string? RawMetadata, string? Ingredie
             if (parsed.RootElement.ValueKind != JsonValueKind.Array)
                 throw new InvalidDataException("Recipe export ingredients must contain a JSON array.");
         }
-        return new(rawText, ingredientText);
+        int? servings;
+        if (root.TryGetProperty("servings", out var exportedServings))
+        {
+            // Presence is authoritative, including an explicit unknown projection.
+            if (exportedServings.ValueKind == JsonValueKind.Null) servings = null;
+            else if (exportedServings.ValueKind == JsonValueKind.Number && exportedServings.TryGetInt32(out var count) && count > 0) servings = count;
+            else throw new InvalidDataException("Recipe export servings must be null or a positive integer.");
+        }
+        else servings = RecipeServings.FromMetadata(rawText);
+        return new(rawText, ingredientText, servings);
     }
 }

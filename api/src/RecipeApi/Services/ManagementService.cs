@@ -932,6 +932,8 @@ public partial class ManagementService(
                             : exportedContent.RawMetadata is null ? null
                             : RemoveRetiredRecipeFields(exportedContent.RawMetadata);
 
+                        recipe.Servings = exportedContent is null ? RecipeServings.FromMetadata(recipe.RawMetadata) : exportedContent.Servings;
+
                         if (exportedContent is not null) recipe.Ingredients = exportedContent.Ingredients;
                         else if (rootElement.TryGetProperty("recipeIngredient", out var ingProp) && ingProp.ValueKind == JsonValueKind.Array)
                             recipe.Ingredients = ingProp.GetRawText();
@@ -1025,6 +1027,7 @@ public partial class ManagementService(
                     existing.TotalTime = recipe.TotalTime;
                     existing.Ingredients = recipe.Ingredients;
                     existing.RawMetadata = recipe.RawMetadata;
+                    existing.Servings = recipe.Servings;
                     existing.ImageCount = recipe.ImageCount;
                     existing.IsSynthesized = recipe.IsSynthesized;
                     existing.Category = recipe.Category;

@@ -374,10 +374,13 @@ public class RecipeService(
     /// </summary>
     public async Task<RecipeDetailResponseDto> UpdateRecipe(Guid id, UpdateRecipeDto dto)
     {
+        if (dto.HasServings && (dto.Servings is null || dto.Servings <= 0))
+            throw new ArgumentException("Servings must be a whole number from 1 to 2147483647.");
         await using var rotationTransaction = await RecipeRotation.LockAsync(db, id);
         var recipe = await db.Recipes.FindAsync(id)
             ?? throw new KeyNotFoundException($"Recipe {id} not found.");
 
+        if (dto.HasServings) recipe.Servings = dto.Servings;
         var suitable = dto.MealTypes is null ? RecipeRotation.Suitable(recipe) :
             dto.MealTypes.Length == 0 || dto.MealTypes.Contains("Supper");
         if (dto.IsDiscoverable == true && !suitable)
@@ -775,6 +778,7 @@ public class RecipeService(
             ImageUrl = $"/api/recipes/{r.Id}/hero",
             Images = Enumerable.Range(0, r.ImageCount).ToList(),
             Ingredients = DeserializeIngredients(r.Ingredients),
+            Servings = r.Servings,
             RecipeInstructions = ExtractRecipeInstructions(r.RawMetadata),
             IsVegetarian = r.IsVegetarian ?? false,
             IsDiscoverable = r.IsDiscoverable,

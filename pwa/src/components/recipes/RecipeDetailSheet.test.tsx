@@ -38,7 +38,8 @@ vi.mock('@/lib/api/recipes', () => ({
 
 vi.mock('@/locales', () => ({
   t: (_key: string, value: string) => value,
-  tWithVars: (_key: string, value: string) => value,
+  tWithVars: (_key: string, value: string, vars: Record<string, unknown>) =>
+    value.replace(/{{(\w+)}}/g, (_, key) => String(vars[key])),
 }));
 
 vi.mock('@/store/uiStore', () => ({
@@ -108,6 +109,197 @@ describe('RecipeDetailSheet', () => {
       originals: [],
     });
     mockDownloadRecipeBundleFile.mockResolvedValue(undefined);
+  });
+
+  const editProps = {
+    recipeId: '550e8400-e29b-41d4-a716-446655440111',
+    plannerDayLabel: null,
+    onClose: vi.fn(),
+    onUseForDay: vi.fn(),
+    onFindSimilar: vi.fn(),
+  };
+  async function enterServingsEdit() {
+    fireEvent.click(await screen.findByTestId('action-gear-menu'));
+    fireEvent.click(await screen.findByTestId('action-edit-recipe'));
+    return screen.findByTestId('recipe-edit-servings-input');
+  }
+  it.each([
+    [4, '3', 3],
+    [null, '2', 2],
+    [null, '', undefined],
+  ])('saves the serving draft %s → %s', async (initial, draft, expected) => {
+    mockGetRecipe.mockResolvedValue({ ...(await mockGetRecipe()), servings: initial });
+    mockUpdateRecipe.mockResolvedValue(undefined);
+    render(<RecipeDetailSheet {...editProps} />);
+    const input = await enterServingsEdit();
+    expect(input).toHaveValue(initial == null ? '' : String(initial));
+    expect(input).toHaveAccessibleName('Servings');
+    fireEvent.change(input, { target: { value: draft } });
+    fireEvent.click(screen.getByTestId('recipe-save-edits'));
+    await waitFor(() =>
+      expect(mockUpdateRecipe).toHaveBeenCalledWith(
+        editProps.recipeId,
+        expect.objectContaining(expected === undefined ? {} : { servings: expected })
+      )
+    );
+    if (expected === undefined)
+      expect(mockUpdateRecipe.mock.calls.at(-1)?.[1]).not.toHaveProperty('servings');
+    await waitFor(() => expect(screen.queryByTestId('recipe-edit-servings-input')).toBeNull());
+    if (expected)
+      expect(screen.getByTestId('recipe-servings')).toHaveTextContent(`${expected} servings`);
+  });
+  it.each(['', '0', '-1', '1.5', '2147483648', 'abc', '1e2'])(
+    'rejects invalid known count %s with an associated error',
+    async (value) => {
+      mockGetRecipe.mockResolvedValue({ ...(await mockGetRecipe()), servings: 4 });
+      render(<RecipeDetailSheet {...editProps} />);
+      const input = await enterServingsEdit();
+      fireEvent.change(input, { target: { value } });
+      expect(input).toHaveAttribute('aria-invalid', 'true');
+      expect(input).toHaveAccessibleDescription('Enter a whole number from 1 to 2147483647.');
+      expect(screen.getByTestId('recipe-save-edits')).toBeDisabled();
+      expect(screen.getByTestId('recipe-servings')).toHaveTextContent('4 servings');
+    }
+  );
+  it('discards on Cancel and retains the draft after failure for retry', async () => {
+    mockGetRecipe.mockResolvedValue({ ...(await mockGetRecipe()), servings: 4 });
+    render(<RecipeDetailSheet {...editProps} />);
+    let input = await enterServingsEdit();
+    fireEvent.change(input, { target: { value: '3' } });
+    fireEvent.click(screen.getByTestId('recipe-cancel-edits'));
+    expect(mockUpdateRecipe).not.toHaveBeenCalled();
+    input = await enterServingsEdit();
+    expect(input).toHaveValue('4');
+    fireEvent.change(input, { target: { value: '3' } });
+    mockUpdateRecipe.mockRejectedValueOnce(new Error('offline'));
+    fireEvent.click(screen.getByTestId('recipe-save-edits'));
+    await screen.findByText('Could not save changes. Try again.');
+    expect(input).toHaveValue('3');
+    expect(screen.getByTestId('recipe-servings')).toHaveTextContent('4 servings');
+    mockUpdateRecipe.mockResolvedValueOnce(undefined);
+    fireEvent.click(screen.getByTestId('recipe-save-edits'));
+    await waitFor(() => expect(screen.queryByTestId('recipe-edit-servings-input')).toBeNull());
+    expect(screen.getByTestId('recipe-servings')).toHaveTextContent('3 servings');
+  });
+  it('resets a draft and validation when the recipe identity changes', async () => {
+    const known = { ...(await mockGetRecipe()), servings: 4 };
+    mockGetRecipe.mockResolvedValue(known);
+    const view = render(<RecipeDetailSheet {...editProps} />);
+    fireEvent.change(await enterServingsEdit(), { target: { value: '0' } });
+    const id = '550e8400-e29b-41d4-a716-446655440112';
+    mockGetRecipe.mockResolvedValue({ ...known, id, servings: null });
+    view.rerender(<RecipeDetailSheet {...editProps} recipeId={id} />);
+    await screen.findByTestId('action-gear-menu');
+    const input = await enterServingsEdit();
+    expect(input).toHaveValue('');
+    expect(input).toHaveAttribute('aria-invalid', 'false');
+  });
+
+  it('ignores a completed save from the previous recipe identity', async () => {
+    const known = { ...(await mockGetRecipe()), servings: 4 };
+    mockGetRecipe.mockResolvedValue(known);
+    let finish!: () => void;
+    mockUpdateRecipe.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          finish = resolve;
+        })
+    );
+    const view = render(<RecipeDetailSheet {...editProps} />);
+    fireEvent.change(await enterServingsEdit(), { target: { value: '3' } });
+    fireEvent.click(screen.getByTestId('recipe-save-edits'));
+    const id = '550e8400-e29b-41d4-a716-446655440112';
+    mockGetRecipe.mockResolvedValue({ ...known, id, servings: null });
+    view.rerender(<RecipeDetailSheet {...editProps} recipeId={id} />);
+    const input = await enterServingsEdit();
+    fireEvent.change(input, { target: { value: '2' } });
+    await act(async () => finish());
+    expect(input).toHaveValue('2');
+    expect(screen.queryByTestId('recipe-servings')).toBeNull();
+  });
+
+  it('ignores a save from an earlier visit when returning to the same recipe', async () => {
+    const known = { ...(await mockGetRecipe()), servings: 4 };
+    mockGetRecipe.mockResolvedValue(known);
+    let finish!: () => void;
+    mockUpdateRecipe.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          finish = resolve;
+        })
+    );
+    const view = render(<RecipeDetailSheet {...editProps} />);
+    fireEvent.change(await enterServingsEdit(), { target: { value: '3' } });
+    fireEvent.click(screen.getByTestId('recipe-save-edits'));
+    const otherId = '550e8400-e29b-41d4-a716-446655440112';
+    mockGetRecipe.mockResolvedValue({ ...known, id: otherId, servings: null });
+    view.rerender(<RecipeDetailSheet {...editProps} recipeId={otherId} />);
+    await screen.findByRole('heading', { name: 'Ingredients' });
+    mockGetRecipe.mockResolvedValue(known);
+    view.rerender(<RecipeDetailSheet {...editProps} />);
+    const input = await enterServingsEdit();
+    fireEvent.change(input, { target: { value: '2' } });
+    await act(async () => finish());
+    expect(input).toBeInTheDocument();
+    expect(input).toHaveValue('2');
+    expect(screen.getByTestId('recipe-servings')).toHaveTextContent('4 servings');
+  });
+
+  it.each([4, 1])(
+    'shows the read-only %s serving basis inside the Ingredients heading',
+    async (servings) => {
+      const recipe = await mockGetRecipe();
+      mockGetRecipe.mockResolvedValue({
+        ...recipe,
+        servings,
+        ingredients: ['510 g beef', '340 g pasta'],
+      });
+      render(
+        <RecipeDetailSheet
+          recipeId={recipe.id}
+          plannerDayLabel={null}
+          onClose={vi.fn()}
+          onUseForDay={vi.fn()}
+          onFindSimilar={vi.fn()}
+        />
+      );
+      const heading = await screen.findByRole('heading', {
+        name: `Ingredients ${servings} ${servings === 1 ? 'serving' : 'servings'}`,
+      });
+      expect(heading.querySelector('button, input, [tabindex]')).toBeNull();
+      expect(
+        screen.getAllByText(`${servings} ${servings === 1 ? 'serving' : 'servings'}`)
+      ).toHaveLength(1);
+      expect(screen.getByText('510 g beef')).toBeInTheDocument();
+      expect(screen.getByText('340 g pasta')).toBeInTheDocument();
+    }
+  );
+
+  it('clears the prior count while another identity loads and when its count is unknown', async () => {
+    const known = { ...(await mockGetRecipe()), servings: 4 };
+    mockGetRecipe.mockResolvedValueOnce(known);
+    const props = {
+      recipeId: known.id,
+      plannerDayLabel: null,
+      onClose: vi.fn(),
+      onUseForDay: vi.fn(),
+      onFindSimilar: vi.fn(),
+    };
+    const view = render(<RecipeDetailSheet {...props} />);
+    await screen.findByRole('heading', { name: 'Ingredients 4 servings' });
+    let finish!: (value: unknown) => void;
+    mockGetRecipe.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        })
+    );
+    const nextId = '550e8400-e29b-41d4-a716-446655440112';
+    view.rerender(<RecipeDetailSheet {...props} recipeId={nextId} />);
+    expect(screen.queryByTestId('recipe-servings')).not.toBeInTheDocument();
+    await act(async () => finish({ ...known, id: nextId, servings: null }));
+    await screen.findByRole('heading', { name: 'Ingredients' });
+    expect(screen.queryByTestId('recipe-servings')).not.toBeInTheDocument();
   });
 
   it('labels both star states and preserves pressed, pending and save feedback', async () => {

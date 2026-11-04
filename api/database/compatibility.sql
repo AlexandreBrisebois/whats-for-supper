@@ -4,6 +4,17 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 BEGIN;
 
+-- Add the nullable projection before application rollout; data backfill is explicit.
+DO $$
+BEGIN
+    IF to_regclass('public.recipes') IS NOT NULL THEN
+        ALTER TABLE recipes ADD COLUMN IF NOT EXISTS servings integer;
+        IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'recipes'::regclass AND conname = 'recipes_servings_check') THEN
+            ALTER TABLE recipes ADD CONSTRAINT recipes_servings_check CHECK (servings IS NULL OR servings > 0);
+        END IF;
+    END IF;
+END $$;
+
 CREATE TABLE IF NOT EXISTS grocery_extra_occurrences (
     id uuid PRIMARY KEY,
     lineage_id uuid NOT NULL,

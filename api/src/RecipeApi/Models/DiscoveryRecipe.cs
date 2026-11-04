@@ -28,6 +28,9 @@ public class DiscoveryRecipe
     [Column("ingredients", TypeName = "jsonb")]
     public string? Ingredients { get; set; }
 
+    [Column("servings")]
+    public int? Servings { get; set; }
+
     [Column("image_count")]
     public int ImageCount { get; set; }
 
@@ -63,6 +66,7 @@ public class DiscoveryRecipe
         IsVegetarian = IsVegetarian,
         LastCookedDate = LastCookedDate,
         CreatedAt = CreatedAt,
-        Ingredients = Ingredients
+        Ingredients = Ingredients,
+        Servings = Servings
     };
 }

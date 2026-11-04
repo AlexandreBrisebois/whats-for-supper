@@ -1,11 +1,12 @@
 using System.Text.Json.Serialization;
+using System.ComponentModel.DataAnnotations;
 
 namespace RecipeApi.Dto;
 
 /// <summary>
 /// Payload for PATCH /api/recipes/{id}.
-/// Both fields are optional; only non-null values are applied.
-/// Changes are persisted to both the database and the recipe.info file on disk.
+/// Fields are optional; supplied servings must be a positive integer.
+/// Servings is database-only; existing editable metadata also updates recipe.info.
 /// </summary>
 public class UpdateRecipeDto
 {
@@ -20,6 +21,19 @@ public class UpdateRecipeDto
 
     [JsonPropertyName("recipeInstructions")]
     public object? RecipeInstructions { get; set; }
+
+    private int? servings;
+    [JsonIgnore]
+    public bool HasServings { get; private set; }
+
+    [JsonNumberHandling(JsonNumberHandling.Strict)]
+    [Range(1, int.MaxValue)]
+    [JsonPropertyName("servings")]
+    public int? Servings
+    {
+        get => servings;
+        set { servings = value; HasServings = true; }
+    }
 
     [JsonPropertyName("notes")]
     public string? Notes { get; set; }

@@ -202,6 +202,7 @@ try
     builder.Services.AddScoped<IWorkflowProcessor, CategorizeRecipeProcessor>();
     builder.Services.AddScoped<IWorkflowProcessor, ClassifyRecipeVegetarianProcessor>();
     builder.Services.AddScoped<IWorkflowProcessor, BackfillVegetarianClassificationProcessor>();
+    builder.Services.AddScoped<IWorkflowProcessor, BackfillRecipeServingsProcessor>();
     builder.Services.AddScoped<IWorkflowProcessor, VegetarianClassificationStatusProcessor>();
     builder.Services.AddScoped<IWorkflowProcessor, RecipeReadyProcessor>();
     builder.Services.AddScoped<IWorkflowProcessor, FinalizeOverdueMealsProcessor>();

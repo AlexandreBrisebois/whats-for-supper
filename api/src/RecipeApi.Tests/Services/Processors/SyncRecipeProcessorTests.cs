@@ -36,6 +36,55 @@ public class SyncRecipeProcessorTests : IDisposable
         _db.Dispose();
     }
 
+    [Theory]
+    [InlineData("4", 4)]
+    [InlineData("3", 3)]
+    [InlineData("null", null)]
+    [InlineData("absent", 2)]
+    public async Task ExportedServingBasis_IsAuthoritativeIncludingExplicitNull(string count, int? expected)
+    {
+        var recipe = new Recipe { Id = _recipeId, Servings = 7 }; _db.Recipes.Add(recipe); await _db.SaveChangesAsync();
+        await _storage.SaveAsync("recipes", $"{_recipeId}/recipe.info", System.Text.Json.JsonSerializer.Serialize(new RecipeInfo { Id = _recipeId }, JsonDefaults.CamelCase));
+        var fields = count == "absent" ? "" : $",\"servings\":{count}";
+        var content = "{\"backupContentVersion\":1,\"rawMetadata\":\"{\\\"recipeYield\\\":\\\"2 portions\\\"}\",\"ingredients\":\"[\\\"340 g pasta\\\"]\"" + fields + "}";
+        await _storage.SaveAsync("recipes", $"{_recipeId}/recipe.json", content);
+        for (var attempt = 0; attempt < 2; attempt++) {
+            await _processor.ExecuteAsync(new WorkflowTask { Payload = $"{{\"recipeId\":\"{_recipeId}\"}}" }, CancellationToken.None);
+            Assert.Equal(expected, recipe.Servings); Assert.Contains("2 portions", recipe.RawMetadata); Assert.Contains("340 g pasta", recipe.Ingredients);
+        }
+    }
+
+    [Theory]
+    [InlineData("0")]
+    [InlineData("-1")]
+    [InlineData("1.5")]
+    [InlineData("2147483648")]
+    [InlineData("\"4\"")]
+    [InlineData("true")]
+    [InlineData("{}")]
+    [InlineData("[]")]
+    public async Task MalformedExportedServings_FailsWithoutSaving(string count)
+    {
+        var recipe = new Recipe { Id = _recipeId, Servings = 7, Ingredients = "[\"retained\"]" }; _db.Recipes.Add(recipe); await _db.SaveChangesAsync();
+        await _storage.SaveAsync("recipes", $"{_recipeId}/recipe.info", System.Text.Json.JsonSerializer.Serialize(new RecipeInfo { Id = _recipeId }, JsonDefaults.CamelCase));
+        await _storage.SaveAsync("recipes", $"{_recipeId}/recipe.json", $$"""{"backupContentVersion":1,"rawMetadata":null,"ingredients":null,"servings":{{count}}}""");
+        await Assert.ThrowsAsync<InvalidDataException>(() => _processor.ExecuteAsync(new WorkflowTask { Payload = $"{{\"recipeId\":\"{_recipeId}\"}}" }, CancellationToken.None));
+        _db.ChangeTracker.Clear(); var saved = await _db.Recipes.FindAsync(_recipeId); Assert.Equal(7, saved!.Servings); Assert.Contains("retained", saved.Ingredients);
+    }
+
+    [Fact]
+    public async Task ExportEnvelope_PreservesOuterNameAndTimeFallbackWhenInfoHasNoName()
+    {
+        var recipe = new Recipe { Id = _recipeId, Name = "Previous", TotalTime = "PT10M" };
+        _db.Recipes.Add(recipe); await _db.SaveChangesAsync();
+        await _storage.SaveAsync("recipes", $"{_recipeId}/recipe.info", System.Text.Json.JsonSerializer.Serialize(new RecipeInfo { Id = _recipeId }, JsonDefaults.CamelCase));
+        var raw = "{\"name\":\"Original extraction\",\"totalTime\":\"PT60M\",\"recipeYield\":\"4 portions\"}";
+        await _storage.SaveAsync("recipes", $"{_recipeId}/recipe.json", System.Text.Json.JsonSerializer.Serialize(new { backupContentVersion = 1, name = "Saved manual name", totalTime = "PT30M", rawMetadata = raw, ingredients = "[\"340 g pasta\"]", servings = (int?)4 }));
+        await _processor.ExecuteAsync(new WorkflowTask { Payload = $"{{\"recipeId\":\"{_recipeId}\"}}" }, CancellationToken.None);
+        Assert.Equal("Saved manual name", recipe.Name); Assert.Equal("PT30M", recipe.TotalTime);
+        Assert.Equal(4, recipe.Servings); Assert.Equal(raw, recipe.RawMetadata);
+    }
+
     [Fact]
     public async Task ExecuteAsync_MissingRecipeInfo_ThrowsFileNotFoundException()
     {
@@ -67,6 +116,23 @@ public class SyncRecipeProcessorTests : IDisposable
         // Act & Assert
         var ex = await Assert.ThrowsAsync<InvalidDataException>(() => _processor.ExecuteAsync(task, CancellationToken.None));
         Assert.Contains("Invalid ImageCount", ex.Message);
+    }
+
+    [Theory]
+    [InlineData("null")]
+    [InlineData("2")]
+    [InlineData("\"2 or 4 portions\"")]
+    public async Task ReplacementYield_ClearsOldCountAndKeepsReplacementQuantities(string yield)
+    {
+        var recipe = new Recipe { Id = _recipeId, Servings = 4 };
+        _db.Recipes.Add(recipe); await _db.SaveChangesAsync();
+        await _storage.SaveAsync("recipes", $"{_recipeId}/recipe.info", System.Text.Json.JsonSerializer.Serialize(new RecipeInfo { Id = _recipeId }, JsonDefaults.CamelCase));
+        await _storage.SaveAsync("recipes", $"{_recipeId}/recipe.json", $$"""{"recipeYield":{{yield}},"recipeIngredient":["225 g Brussels sprouts"]}""");
+        for (var attempt = 0; attempt < 2; attempt++) {
+            await _processor.ExecuteAsync(new WorkflowTask { Payload = $"{{\"recipeId\":\"{_recipeId}\"}}" }, CancellationToken.None);
+            Assert.Null(recipe.Servings);
+            Assert.Contains("225 g Brussels sprouts", recipe.Ingredients);
+        }
     }
 
     [Fact]
