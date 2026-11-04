@@ -921,23 +921,25 @@ export function RecipeDetailSheet({
                 </h3>
                 {isEditing && (
                   <div className="mb-3 min-w-0">
-                    <label
-                      htmlFor="recipe-edit-servings"
-                      className="mb-1 block text-sm font-bold text-charcoal"
-                    >
-                      {t('recipes.servingsLabel', 'Servings')}
-                    </label>
-                    <input
-                      id="recipe-edit-servings"
-                      data-testid="recipe-edit-servings-input"
-                      type="text"
-                      inputMode="numeric"
-                      value={draftServings}
-                      onChange={(event) => setDraftServings(event.target.value)}
-                      aria-invalid={servingsInvalid}
-                      aria-describedby={servingsInvalid ? 'recipe-servings-error' : undefined}
-                      className="min-h-11 w-full min-w-0 rounded-2xl border border-charcoal/10 bg-white/90 px-4 py-2 text-sm text-charcoal shadow-sm outline-none transition focus:border-terracotta/30"
-                    />
+                    <div className="flex items-center gap-3">
+                      <label
+                        htmlFor="recipe-edit-servings"
+                        className="shrink-0 text-sm font-bold text-charcoal"
+                      >
+                        {t('recipes.servingsLabel', 'Servings')}
+                      </label>
+                      <input
+                        id="recipe-edit-servings"
+                        data-testid="recipe-edit-servings-input"
+                        type="text"
+                        inputMode="numeric"
+                        value={draftServings}
+                        onChange={(event) => setDraftServings(event.target.value)}
+                        aria-invalid={servingsInvalid}
+                        aria-describedby={servingsInvalid ? 'recipe-servings-error' : undefined}
+                        className="min-h-11 min-w-0 flex-1 rounded-2xl border border-charcoal/10 bg-white/90 px-4 py-2 text-sm text-charcoal shadow-sm outline-none transition focus:border-terracotta/30"
+                      />
+                    </div>
                     {servingsInvalid && (
                       <p
                         id="recipe-servings-error"

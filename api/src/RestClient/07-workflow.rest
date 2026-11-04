@@ -4,6 +4,7 @@
 @vegetarianStatusWorkflowId = vegetarian-classification-status
 @vegetarianBackfillInstanceId = 5c235e0e-2239-4445-87d0-66bb21fe17d9
 @vegetarianStatusInstanceId = 8410300e-e4a9-4a8a-a6c0-3f9e6eadd2e3
+@servingsBackfillInstanceId = 00000000-0000-0000-0000-000000000000
 
 @recipeId = 7d4c50f3-a3b9-412d-8e8b-940809b9553e
 #@recipeId = 9b683c7b-9ba7-4fd6-ae8b-b95eee02b689
@@ -96,6 +97,26 @@ X-Hearth-Secret: {{hearthSecret}}
 {
   "parameters": {}
 }
+
+### 1ah. Start recipe servings backfill
+# Apply the servings schema migration first. Fills only missing counts from stored
+# yield metadata; preserves known counts and makes no AI calls.
+# Copy data.instanceId from the 202 response into @servingsBackfillInstanceId.
+POST {{baseUrl}}/api/workflows/recipe-servings-backfill/trigger
+Content-Type: application/json
+X-Hearth-Secret: {{hearthSecret}}
+
+{
+  "parameters": {}
+}
+
+### 1ai. Get servings backfill instance details
+# Task results: Examined, Updated, Unresolved, Changed, NextCursor.
+# Each batch examines at most 25 recipes and schedules successor batches. Check
+# "Get all active workflows" until no recipe-servings-backfill remains.
+GET {{baseUrl}}/api/workflows/instances/{{servingsBackfillInstanceId}}
+Accept: application/json
+X-Hearth-Secret: {{hearthSecret}}
 
 ### 1a. Trigger recipe-description-regeneration workflow execution
 # Regenerates the AI-powered description from the existing recipe.json and finished dish image.

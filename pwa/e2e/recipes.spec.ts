@@ -154,6 +154,89 @@ test.describe('Recipes Search Page', () => {
   });
 
   for (const locale of ['en', 'fr'] as const) {
+    for (const width of [320, 390, 1280]) {
+      for (const [id, initial] of [
+        [MOCK_IDS.RECIPE_LASAGNA, 4],
+        [MOCK_IDS.RECIPE_CARBONARA, null],
+      ] as const) {
+        test(`servings editor layout ${locale} ${width} ${initial}`, async ({ page }) => {
+          await page.setViewportSize({ width, height: 900 });
+          await setupCommonRoutes(page);
+          await page.addInitScript((language) => localStorage.setItem('locale', language), locale);
+          await page.goto(`/recipes?open=${id}`);
+          await page.getByTestId('action-gear-menu').click();
+          await page.getByTestId('action-edit-recipe').click();
+          const input = page.getByTestId('recipe-edit-servings-input');
+          const label = page.locator('label[for="recipe-edit-servings"]');
+          const error = page.locator('#recipe-servings-error');
+          const sheet = page.getByTestId('recipe-detail-sheet');
+          await expect(input).toHaveAccessibleName(locale === 'en' ? 'Servings' : 'Portions');
+          await expect(input).toHaveValue(initial == null ? '' : String(initial));
+          await input.focus();
+          await expect(input).toBeFocused();
+
+          const expectHorizontalField = async () => {
+            await expect(label).toBeVisible();
+            await expect(input).toBeVisible();
+            await expect(async () => {
+              const labelBox = (await label.boundingBox())!;
+              const inputBox = (await input.boundingBox())!;
+              const sheetBox = (await sheet.boundingBox())!;
+              expect(labelBox.x + labelBox.width).toBeLessThanOrEqual(inputBox.x);
+              expect(
+                Math.abs(labelBox.y + labelBox.height / 2 - inputBox.y - inputBox.height / 2)
+              ).toBeLessThanOrEqual(2);
+              expect(labelBox.x).toBeGreaterThanOrEqual(Math.max(0, sheetBox.x));
+              expect(inputBox.x + inputBox.width).toBeLessThanOrEqual(
+                Math.min(width, sheetBox.x + sheetBox.width)
+              );
+              expect(
+                await sheet.evaluate((element) => element.scrollWidth - element.clientWidth)
+              ).toBeLessThanOrEqual(1);
+            }).toPass({ timeout: 5000 });
+          };
+
+          await expectHorizontalField();
+          if (initial === 4 && width !== 390) {
+            await input
+              .locator('..')
+              .locator('..')
+              .screenshot({
+                path: `../.task/servings-label/${locale}-${width}-valid.png`,
+              });
+          }
+          await input.fill('0');
+          await expect(input).toHaveAttribute('aria-invalid', 'true');
+          await expect(input).toHaveAccessibleDescription(
+            locale === 'en'
+              ? 'Enter a whole number from 1 to 2147483647.'
+              : 'Saisissez un nombre entier de 1 à 2147483647.'
+          );
+          await expect(page.getByTestId('recipe-save-edits')).toBeDisabled();
+          await expect(error).toBeVisible();
+          await expectHorizontalField();
+          const inputBox = (await input.boundingBox())!;
+          expect((await error.boundingBox())!.y).toBeGreaterThanOrEqual(
+            inputBox.y + inputBox.height
+          );
+          if (initial === 4 && width !== 390) {
+            await input
+              .locator('..')
+              .locator('..')
+              .screenshot({
+                path: `../.task/servings-label/${locale}-${width}-invalid.png`,
+              });
+          }
+          await input.fill('4');
+          await expect(input).toHaveAttribute('aria-invalid', 'false');
+          await expect(error).toHaveCount(0);
+          await expectHorizontalField();
+        });
+      }
+    }
+  }
+
+  for (const locale of ['en', 'fr'] as const) {
     for (const [id, initial, next] of [
       [MOCK_IDS.RECIPE_LASAGNA, 4, 3],
       [MOCK_IDS.RECIPE_CARBONARA, null, 2],
