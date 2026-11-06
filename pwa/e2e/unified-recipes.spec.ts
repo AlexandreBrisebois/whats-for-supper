@@ -1,6 +1,7 @@
 import { swipeCurrentStackCard } from './helpers/stack-swipe';
+import type { ScheduleDays } from '../src/lib/api/generated/models';
 import { test, expect, type Page } from './fixtures';
-import { MOCK_IDS, builders, setupCommonRoutes } from './mock-api';
+import { MOCK_IDS, builders, setupCommonRoutes, mockNonCookingSchedule } from './mock-api';
 
 async function prepareNavigationMember(
   page: import('@playwright/test').Page,
@@ -1527,6 +1528,8 @@ test('Search keeps the next match visible beneath a swipe with controls hidden',
     .poll(() => back.locator('img').evaluate((image: HTMLImageElement) => image.naturalWidth))
     .toBeGreaterThan(0);
   const front = page.getByTestId('stack-card-front');
+  // Wait for the outgoing Explore card to finish its normal exit animation.
+  await expect(front).toHaveCount(1);
   const box = (await front.boundingBox())!;
   await page.mouse.move(box.x + box.width / 2, box.y + 140);
   await page.mouse.down();
@@ -2402,14 +2405,23 @@ test('dated chooser saves the alternate date, preserves Planner source and avoid
   await page.locator('#day-card-4').getByTestId('edit-recipe-button').click();
   await expect(page.getByTestId('recipe-planning-actions')).toContainText('May 15');
   await expect(page.getByTestId('action-cooks-mode')).toBeVisible();
-  await page.getByTestId('action-plan-another-day').click();
-  await expect(page).toHaveURL(/sourceDate=2026-05-15/);
+  await expect(page.getByTestId('action-plan-another-day')).toHaveCount(0);
+  await page.getByTestId('action-planned').click();
+  await expect(page.getByTestId('recipe-detail-sheet')).toHaveCount(0);
+  await expect(page).toHaveURL(
+    (url) =>
+      url.pathname === '/planner' &&
+      url.searchParams.get('dayIndex') === '4' &&
+      url.searchParams.get('weekOffset') === '1' &&
+      url.searchParams.get('referenceWeekStartDate') === '2026-05-04'
+  );
   await page.goto(
     `/recipes?addToDay=4&weekOffset=1&referenceWeekStartDate=2026-05-04&open=${MOCK_IDS.RECIPE_LASAGNA}`
   );
-  await expect(page.getByTestId('action-add-to-day')).toHaveText('View plan');
-  await expect(page.getByTestId('recipe-planning-actions')).toContainText('Already planned');
-  await page.getByTestId('action-add-to-day').click();
+  await expect(page.getByTestId('action-planned')).toHaveText('Planned for Friday, May 15');
+  await expect(page.getByTestId('recipe-planning-actions')).not.toContainText('Already planned');
+  await expect(page.getByTestId('action-change-day')).toHaveCount(0);
+  await page.getByTestId('action-planned').click();
   await expect(page).toHaveURL(/planner/);
   expect(saves).toBe(1);
 });
@@ -2448,4 +2460,59 @@ test('Sunday recommendation crosses to Monday and stays shown before saving', as
         .data
   );
   expect(snapshot.days[0].recipe.id).toBe(MOCK_IDS.RECIPE_LASAGNA);
+});
+
+test('Planner detail visible Similar starts results without reopening detail or changing the plan', async ({
+  page,
+}) => {
+  await prepareNavigationMember(page);
+  const schedule = builders.scheduleDays() as unknown as ScheduleDays;
+  schedule.days![0].recipe = builders.scheduleRecipe({
+    id: MOCK_IDS.RECIPE_LASAGNA,
+    name: 'Planned Lasagna',
+  });
+  await mockNonCookingSchedule(page, schedule);
+  const searchBodies: Array<{ similarToRecipeId?: string }> = [];
+  const mutations: string[] = [];
+  await page.route('**/api/recipes/search', async (route) => {
+    searchBodies.push(route.request().postDataJSON());
+    await route.fulfill({
+      json: {
+        data: {
+          topPick: null,
+          results: [builders.recipe({ id: MOCK_IDS.RECIPE_CHICKEN, name: 'Similar Chicken' })],
+          nextCursor: null,
+          appliedFilters: {},
+          searchMode: 'similar',
+          resultPath: 'lexical-only',
+        },
+      },
+    });
+  });
+  page.on('request', (r) => {
+    const pathname = new URL(r.url()).pathname;
+    if (
+      pathname.startsWith('/api/') &&
+      pathname !== '/api/recipes/search' &&
+      !['GET', 'HEAD'].includes(r.method())
+    )
+      mutations.push(r.method() + ' ' + pathname);
+  });
+  await page.goto('/planner?weekOffset=0&referenceWeekStartDate=2026-05-04');
+  await page.locator('#day-card-0').getByTestId('edit-recipe-button').click();
+  await expect(page.getByTestId('action-planned')).toBeEnabled();
+  await page.getByTestId('action-find-similar').click();
+  await expect(page).toHaveURL(
+    (url) =>
+      url.pathname === '/recipes' &&
+      url.searchParams.get('similarTo') === MOCK_IDS.RECIPE_LASAGNA &&
+      !url.searchParams.has('open')
+  );
+  await expect(page.getByTestId('recipe-detail-sheet')).toHaveCount(0);
+  await expect(page.getByTestId('search-similar-chip-remove')).toBeVisible();
+  await expect(page.getByTestId('stack-card-front')).toContainText('Similar Chicken');
+  expect(searchBodies).toContainEqual(
+    expect.objectContaining({ similarToRecipeId: MOCK_IDS.RECIPE_LASAGNA })
+  );
+  expect(mutations).toEqual([]);
 });

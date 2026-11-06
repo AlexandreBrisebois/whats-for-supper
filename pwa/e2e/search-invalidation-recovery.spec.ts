@@ -22,6 +22,21 @@ async function setup(page: Page) {
   );
 }
 
+async function expectCurrentCard(page: Page, label: string) {
+  // AnimatePresence temporarily retains the departing front card. Check identity,
+  // content and exit completion together instead of resolving a strict locator mid-exit.
+  await expect
+    .poll(() =>
+      page.getByTestId('stack-card-front').evaluateAll((cards) =>
+        cards.map((card) => ({
+          id: card.getAttribute('data-recipe-id'),
+          text: card.textContent ?? '',
+        }))
+      )
+    )
+    .toEqual([{ id: MOCK_IDS.RECIPE_LASAGNA, text: expect.stringContaining(label) }]);
+}
+
 function results(name: string, path = 'lexical-only', searchMode = 'explicit') {
   return {
     data: {
@@ -86,14 +101,13 @@ for (const mode of ['browse', 'typed', 'similar'] as const) {
       await page.getByTestId('recipe-search-input').fill('chicken');
       await page.getByTestId('recipe-search-input').press('Enter');
     }
-    const card = page.getByTestId('stack-card-front');
-    await expect(card).toContainText('Before update');
+    await expectCurrentCard(page, 'Before update');
     if (mode !== 'browse') await page.getByTestId('recipes-search-disclosure').click();
     const current = requests.at(-1)!;
     const before = requests.length;
     label = 'After update';
     await triggerWeekUpdated();
-    await expect(card).toContainText('After update');
+    await expectCurrentCard(page, 'After update');
     expect(requests.length).toBe(before + 1);
     expect(requests.at(-1)).toMatchObject(current);
     fail = true;
@@ -101,7 +115,7 @@ for (const mode of ['browse', 'typed', 'similar'] as const) {
     await expect(
       page.getByTestId(mode === 'browse' ? 'browse-request-error' : 'search-request-error')
     ).toBeVisible({ timeout: 20_000 });
-    await expect(card).toContainText('After update');
+    await expectCurrentCard(page, 'After update');
     await expect(page.getByTestId('search-empty-state')).toHaveCount(0);
     if (mode !== 'browse') {
       await expect(page.getByTestId('recipe-search-input')).toHaveCount(0);
@@ -115,7 +129,7 @@ for (const mode of ['browse', 'typed', 'similar'] as const) {
     await page
       .getByTestId(mode === 'browse' ? 'browse-request-retry' : 'search-request-retry')
       .click();
-    await expect(card).toContainText('After retry');
+    await expectCurrentCard(page, 'After retry');
     expect(requests.at(-1)).toMatchObject(current);
   });
 }
@@ -143,10 +157,9 @@ test('week_updated supersedes a pending Search first response', async ({ page })
   await expect(page.getByTestId('browse-all-loader')).toBeVisible();
   invalidated = true;
   await triggerWeekUpdated();
-  const card = page.getByTestId('stack-card-front');
-  await expect(card).toContainText('Current response');
+  await expectCurrentCard(page, 'Current response');
   release();
   await expect.poll(() => completedOld).toBe(1);
-  await expect(card).toContainText('Current response');
+  await expectCurrentCard(page, 'Current response');
   expect(count).toBe(2);
 });

@@ -240,8 +240,11 @@ test('recreated assigned occurrence exposes changed-plan feedback instead of sta
   await page.goto(
     `/planner?weekOffset=0&referenceWeekStartDate=2026-05-04&planDate=2026-05-06&detailRecipe=${MOCK_IDS.RECIPE_CARBONARA}&detailOccurrence=${original}`
   );
-  await expect(page.getByTestId('recipe-detail-sheet').getByRole('alert')).toContainText(
+  await expect(page.getByTestId('recipe-detail-reading').getByRole('alert')).toContainText(
     'Could not confirm ingredients'
+  );
+  await expect(page.getByTestId('recipe-planning-actions').getByRole('alert')).toContainText(
+    'Your plan changed'
   );
   await expect(page.getByTestId('recipe-ingredient-projection')).not.toContainText('400 g');
   await expect(page.getByTestId('recipe-servings')).toHaveCount(0);
@@ -316,7 +319,8 @@ test('pending Planner candidate reads the proposed date portions without a saved
   );
   await page.getByTestId('day-card-2').getByTestId('edit-recipe-button').click();
   await expect(page.getByTestId('recipe-ingredient-projection')).toContainText('400 g pasta');
-  await expect(page.getByTestId('recipe-portion-context')).toContainText('May 6');
+  await expect(page.getByTestId('recipe-portion-context')).toHaveCount(0);
+  await expect(page.getByTestId('recipe-servings')).toHaveText('4 servings');
   expect(schedule.days[2].recipe).toBeNull();
 });
 
@@ -330,13 +334,20 @@ test('saved Planner detail previews quantities without editing dated portions', 
   page.on('request', (request) => {
     if (!['GET', 'HEAD'].includes(request.method())) writes.push(request.url());
   });
-  for (const count of [2, 6, 4]) {
+  for (const count of [2, 6]) {
     await page.getByRole('button', { name: `Preview ${count} portions`, exact: true }).click();
     await expect(page.getByTestId('recipe-ingredient-preview')).toContainText(
       `${count * 100} g pasta`
     );
-    await expect(page.getByTestId('recipe-portion-context')).toContainText('4 portions');
+    await expect(page.getByTestId('recipe-portion-context')).toHaveCount(0);
+    await expect(page.getByTestId('recipe-servings')).toHaveText(`${count} servings`);
   }
+  await page.getByRole('button', { name: 'Preview 4 portions', exact: true }).click();
+  await expect(page.getByTestId('recipe-ingredient-preview')).toHaveCount(0);
+  await expect(page.getByTestId('recipe-original-yield')).toHaveCount(0);
+  await expect(page.getByTestId('recipe-ingredient-projection')).toContainText('400 g pasta');
+  await page.getByRole('button', { name: 'Preview 2 portions', exact: true }).click();
+  await expect(page.getByTestId('recipe-ingredient-preview')).toContainText('200 g pasta');
   await page.getByRole('button', { name: 'Planned quantities', exact: true }).click();
   await expect(page.getByTestId('recipe-ingredient-projection')).toContainText('400 g pasta');
   expect(writes).toEqual([]);
@@ -362,7 +373,11 @@ test('an already open dated detail follows recipe corrections and rejects a repl
     );
   expect(await patch({ servings: 1 })).toBe(200);
   await expect(page.getByTestId('recipe-ingredient-projection')).toContainText('800 g pasta');
+  await expect(page.getByTestId('recipe-original-yield')).toHaveCount(0);
+  await page.getByTestId('action-gear-menu').click();
+  await page.getByRole('button', { name: 'Original quantities', exact: true }).click();
   await expect(page.getByText('Original recipe: 1 serving', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Planned quantities', exact: true }).click();
   control.finishRefresh();
   expect(schedule.groceryItems.find((line: any) => line.normalizedKey === 'pasta').quantity).toBe(
     2000
@@ -372,7 +387,7 @@ test('an already open dated detail follows recipe corrections and rejects a repl
   await expect(page.getByTestId('recipe-ingredient-projection')).not.toContainText('800');
   await expect(
     page.getByText('Some amounts need review. Consult the original recipe.')
-  ).toBeVisible();
+  ).toHaveCount(0);
   await page.getByTestId('action-gear-menu').click();
   await page.getByTestId('action-edit-recipe').click();
   await expect(page.getByTestId('recipe-edit-servings-input')).toHaveValue('1');
@@ -450,13 +465,16 @@ for (const locale of ['en', 'fr'] as const)
           const badge = page.getByTestId('recipe-servings');
           await expect(badge).toBeVisible();
           await badge.evaluate((el) => el.scrollIntoView({ block: 'nearest' }));
-          const badgeBox = (await badge.boundingBox())!;
-          expect(badgeBox.x).toBeGreaterThanOrEqual(0);
-          expect(badgeBox.x + badgeBox.width).toBeLessThanOrEqual(width);
-          await expect(page.getByTestId('recipe-portion-context')).toBeVisible();
+          await expect
+            .poll(async () => {
+              const box = await badge.boundingBox();
+              return box != null && box.x >= 0 && box.x + box.width <= width;
+            })
+            .toBe(true);
+          await expect(page.getByTestId('recipe-portion-context')).toHaveCount(0);
           if (width === 320) {
             await page
-              .getByTestId('recipe-portion-context')
+              .getByTestId('recipe-servings')
               .evaluate((el) => el.scrollIntoView({ block: 'center' }));
             await page.screenshot({
               path: info.outputPath(`${state}-${width}-${scale}-detail-context.png`),
@@ -482,10 +500,8 @@ for (const locale of ['en', 'fr'] as const)
           await expect(page.getByTestId('action-close-sheet')).toBeInViewport();
           const contrast = {
             badge: await surfaceContrast(badge),
-            context: await surfaceContrast(page.getByTestId('recipe-portion-context')),
           };
           expect(contrast.badge.ratio).toBeGreaterThanOrEqual(4.5);
-          expect(contrast.context.ratio).toBeGreaterThanOrEqual(4.5);
           metrics.push({ locale, state, scale, ...measure, contrast });
         }
         await page.evaluate(() => {

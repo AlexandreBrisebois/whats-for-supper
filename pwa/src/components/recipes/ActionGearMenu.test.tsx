@@ -72,3 +72,46 @@ it('preserves action flyout dismissal, reopening and action choice', async () =>
     view.unmount();
   }
 });
+
+it('offers progressive original inspection and returns focus after Escape', () => {
+  const inspect = vi.fn();
+  render(
+    <ActionGearMenu
+      hasImportIssue={false}
+      onMoveToBin={vi.fn()}
+      onReportImportIssue={vi.fn()}
+      onOriginalQuantities={inspect}
+    />
+  );
+  const trigger = screen.getByTestId('action-gear-menu');
+  fireEvent.click(trigger);
+  const original = screen.getByRole('button', { name: 'View original ingredients' });
+  expect(original).toBeVisible();
+  fireEvent.keyDown(original, { key: 'Escape' });
+  expect(
+    screen.queryByRole('button', { name: 'View original ingredients' })
+  ).not.toBeInTheDocument();
+  expect(trigger).toHaveFocus();
+  fireEvent.click(trigger);
+  fireEvent.click(screen.getByRole('button', { name: 'View original ingredients' }));
+  expect(inspect).toHaveBeenCalledOnce();
+});
+
+it('offers reset recovery with keyboard focus returning to its trigger', () => {
+  const reset = vi.fn();
+  render(
+    <ActionGearMenu
+      hasImportIssue={false}
+      onMoveToBin={vi.fn()}
+      onReportImportIssue={vi.fn()}
+      onResetView={reset}
+    />
+  );
+  const trigger = screen.getByTestId('action-gear-menu');
+  fireEvent.click(trigger);
+  const action = screen.getByRole('button', { name: 'Reset view' });
+  fireEvent.click(action);
+  expect(reset).toHaveBeenCalledOnce();
+  expect(screen.queryByRole('button', { name: 'Reset view' })).not.toBeInTheDocument();
+  expect(trigger).toHaveFocus();
+});

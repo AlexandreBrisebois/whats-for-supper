@@ -96,11 +96,20 @@ vi.mock('@/components/home/TonightPivotCard', () => ({
 
 vi.mock('@/components/home/TonightMenuCard', async (importOriginal) => ({
   ...(await importOriginal<typeof import('./TonightMenuCard')>()),
-  TonightMenuCard: ({ onSkip, onCookMode }: { onSkip: () => void; onCookMode: () => void }) => (
+  TonightMenuCard: ({
+    onSkip,
+    onCookMode,
+    ingredientContext,
+  }: {
+    onSkip: () => void;
+    onCookMode: () => void;
+    ingredientContext?: unknown;
+  }) => (
     <>
       <button data-testid="cook-mode-btn" onClick={onCookMode}>
         Cook
       </button>
+      <div data-testid="home-ingredient-context">{JSON.stringify(ingredientContext)}</div>
       <button data-testid="skip-btn" onClick={onSkip}>
         Skip
       </button>
@@ -216,6 +225,7 @@ vi.mock('@/store/todayStore', () => ({
       calendar: fixtureCalendar(),
       calendarError: mocks.calendarFailure ? 'Calendar unavailable' : null,
       currentRecipe: mocks.currentRecipe,
+      occurrenceId: mocks.occurrenceId,
       status: mocks.todayStatus,
       nonCooking: mocks.nonCooking,
       isLoading: false,
@@ -1440,3 +1450,23 @@ it.each(['saved-today', null])(
     });
   }
 );
+
+it('captures the same assigned identity for Home ingredients and Cook', async () => {
+  mocks.currentRecipe = { id: 'recipe-one', name: 'Pasta', ingredients: ['200 g pasta'] };
+  mocks.todayStatus = 0;
+  mocks.nonCooking = null;
+  mocks.occurrenceId = 'occurrence-one';
+  mocks.todayString = '2026-05-07';
+  render(<HomeCommandCenter todaysRecipe={null} />);
+  expect(screen.getByTestId('home-ingredient-context')).toHaveTextContent(
+    JSON.stringify({
+      context: 'assigned',
+      supperDate: '2026-05-07',
+      occurrenceId: 'occurrence-one',
+    })
+  );
+  fireEvent.click(screen.getByTestId('cook-mode-btn'));
+  expect(await screen.findByTestId('home-cooking-context')).toHaveTextContent(
+    screen.getByTestId('home-ingredient-context').textContent!
+  );
+});

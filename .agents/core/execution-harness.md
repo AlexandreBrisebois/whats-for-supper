@@ -7,6 +7,15 @@ processes, ports or databases.
 
 ## Preparation and verification
 
+Before overlapping test or service work, coordinate ownership of ports, databases,
+server processes and output records, as well as shared CPU/memory capacity. Use
+distinct task-owned resources where supported; serialize runs that contend or
+require shared mutation. Avoid redundant simultaneous broad gates. Inspect
+ownership and uncertain outcomes before cleanup or retry, and clean up only the
+resources that task owns. Keep each run's invocation-specific evidence and the
+required combined integration verification; parallel results do not automatically
+establish an integrated pass.
+
 Use `task verify:plan -- <paths>` to preview the existing verification selection
 as JSON, including selecting paths/classes, prerequisites and excluded scope.
 With no paths it uses all current Git changes. It runs no checks, computes no

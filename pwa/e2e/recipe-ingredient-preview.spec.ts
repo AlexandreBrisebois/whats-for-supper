@@ -40,7 +40,7 @@ test('legacy four-portion shells preview scales reliable lines despite omitted s
     },
   });
   await page.goto(`/recipes?open=${id}&reviewAmounts=true`);
-  for (const target of [2, 4, 6]) {
+  for (const target of [2, 6]) {
     await page.getByRole('button', { name: `Preview ${target} portions`, exact: true }).click();
     const list = page.getByTestId('recipe-ingredient-preview');
     await expect(list).toContainText(`${(12 * target) / 4} coquilles géantes`);
@@ -51,7 +51,7 @@ test('legacy four-portion shells preview scales reliable lines despite omitted s
     await expect(list.locator('li').nth(5)).toHaveText('poivre');
     await expect(
       page.getByText('Some amounts need review. Consult the original recipe.', { exact: true })
-    ).toBeVisible();
+    ).toHaveCount(0);
   }
 });
 
@@ -95,11 +95,28 @@ test('four-portion preview keeps five saved portions and groceries unchanged', a
   });
   await page.getByRole('button', { name: 'Preview 4 portions', exact: true }).click();
   await expect(page.getByTestId('recipe-ingredient-preview')).toContainText('400 g pasta');
-  await expect(page.getByTestId('recipe-portion-context')).toContainText('5 portions');
+  await expect(page.getByTestId('recipe-portion-context')).toHaveCount(0);
+  await expect(page.getByTestId('recipe-servings')).toContainText('4 servings');
   expect(await saved()).toEqual(before);
   expect(writes).toEqual([]);
-  await page.getByRole('button', { name: 'Planned quantities', exact: true }).click();
+  await expect(page.getByTestId('recipe-original-yield')).toContainText('2');
+  await expect(page.getByRole('button', { name: 'Original quantities', exact: true })).toHaveCount(
+    0
+  );
+  await expect(page.getByRole('button', { name: 'Planned quantities', exact: true })).toHaveCount(
+    0
+  );
+  await expect(
+    page.getByText('Preview only. Your plan and shopping list stay unchanged.', { exact: true })
+  ).toHaveCount(0);
+  await page.getByTestId('action-gear-menu').click();
+  await expect(page.getByTestId('action-reset-view')).toHaveAccessibleName('Reset view');
+  await page.getByTestId('action-reset-view').click();
   await expect(page.getByTestId('recipe-ingredient-projection')).toContainText('500 g pasta');
+  await expect(page.getByTestId('recipe-servings')).toHaveText('5 servings');
+  await expect(page.getByTestId('recipe-original-yield')).toHaveCount(0);
+  expect(await saved()).toEqual(before);
+  expect(writes).toEqual([]);
 });
 
 test('early preview survives initial target resolution, schedule hints and resume without writes', async ({
@@ -162,8 +179,15 @@ test('early preview survives initial target resolution, schedule hints and resum
   await expect(page.getByTestId('recipe-ingredient-preview')).toContainText('200 g pasta');
   await page.getByTestId('action-change-day').click();
   await page.getByTestId('planning-day-3').click();
-  await expect(selected).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.getByTestId('action-add-to-day')).toContainText('May 7');
+  await expect(page.getByTestId('recipe-ingredient-projection')).toContainText('200 g pasta');
+  // The new confirmed default is two; its pressed control is not temporary intent.
+  await expect(selected).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByTestId('recipe-ingredient-preview')).toHaveCount(0);
+  await expect(page.getByTestId('recipe-original-yield')).toHaveCount(0);
+  await expect(
+    page.getByText('Preview only. Your plan and shopping list stay unchanged.', { exact: true })
+  ).toHaveCount(0);
   expect(writes).toEqual([]);
 });
 
@@ -242,7 +266,11 @@ test('selected preview refreshes source safely and retains intent after refresh 
   failRefresh = false;
   await page.getByRole('button', { name: 'Retry', exact: true }).click();
   await expect(page.getByTestId('recipe-ingredient-preview')).toContainText('600 g pasta');
-  await page.getByRole('button', { name: 'Original quantities', exact: true }).click();
+  await page.getByTestId('action-gear-menu').click();
+  await expect(page.getByTestId('action-original-quantities')).toHaveAccessibleName(
+    'View original ingredients'
+  );
+  await page.getByTestId('action-original-quantities').click();
   await expect(selected).toHaveAttribute('aria-pressed', 'false');
   expect(writes).toEqual([]);
 });

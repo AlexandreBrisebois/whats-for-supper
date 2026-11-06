@@ -56,8 +56,7 @@ test('real extraction persistence reaches the generated detail client and biling
       await page.goto(`/recipes?open=${id}&reviewAmounts=true`);
       await page.addStyleTag({ content: `html { font-size: ${16 * scale}px !important; }` });
       const heading = page.getByRole('heading', {
-        name: locale === 'en' ? 'Ingredients' : 'Ingrédients',
-        exact: true,
+        name: locale === 'en' ? /^Ingredients/ : /^Ingrédients/,
       });
       await expect(heading).toBeVisible();
       await page.evaluate(async () => {
@@ -70,7 +69,7 @@ test('real extraction persistence reaches the generated detail client and biling
           node.getBoundingClientRect().top - scroller.getBoundingClientRect().top;
       });
       const geometry = await heading.evaluate((node) => {
-        const title = node.getBoundingClientRect();
+        const title = node.firstElementChild!.getBoundingClientRect();
         const originalBasis = document.querySelector('[data-testid=recipe-servings]')!;
         const badge = originalBasis.getBoundingClientRect();
         const bounds = node.getBoundingClientRect();
@@ -189,7 +188,7 @@ test('real extraction persistence reaches the generated detail client and biling
       await page.getByTestId('recipe-save-edits').press('Enter');
       expect((await saved).status()).toBe(200);
       await expect(page.getByTestId('recipe-servings')).toHaveText(
-        locale === 'en' ? 'Original recipe: 3 servings' : 'Recette originale : 3 portions'
+        locale === 'en' ? '3 servings' : '3 portions'
       );
       const savedRecipe = (
         await (await request.get(`${api}/api/recipes/${id}`, { headers })).json()
@@ -200,29 +199,30 @@ test('real extraction persistence reaches the generated detail client and biling
       });
       await page.goto(`/recipes?open=${id}&reviewAmounts=true`);
       await expect(page.getByTestId('recipe-servings')).toHaveText(
-        locale === 'en' ? 'Original recipe: 3 servings' : 'Recette originale : 3 portions'
+        locale === 'en' ? '3 servings' : '3 portions'
       );
       await page.getByTestId('action-gear-menu').click();
       await page.getByTestId('action-edit-recipe').click();
       await page.getByTestId('recipe-edit-servings-input').fill('4');
       await page.getByTestId('recipe-save-edits').click();
       await expect(page.getByTestId('recipe-servings')).toHaveText(
-        locale === 'en' ? 'Original recipe: 4 servings' : 'Recette originale : 4 portions'
+        locale === 'en' ? '4 servings' : '4 portions'
       );
       console.log(JSON.stringify({ locale, width, textScale: scale, ...geometry }));
     }
   }
   const unknownId = process.env.SERVINGS_UNKNOWN_ID!;
   await page.goto(`/recipes?open=${unknownId}&reviewAmounts=true`);
+  await expect(page.getByTestId('recipe-detail-name')).toHaveText('Unknown servings');
   await expect(page.getByTestId('recipe-servings')).toHaveCount(0);
   await page.getByTestId('action-gear-menu').click();
   await page.getByTestId('action-edit-recipe').click();
   await expect(page.getByTestId('recipe-edit-servings-input')).toHaveValue('');
   await page.getByTestId('recipe-edit-servings-input').fill('2');
   await page.getByTestId('recipe-save-edits').click();
-  await expect(page.getByTestId('recipe-servings')).toHaveText('Recette originale : 2 portions');
+  await expect(page.getByTestId('recipe-servings')).toHaveText('2 portions');
   await page.goto(`/recipes?open=${unknownId}&reviewAmounts=true`);
-  await expect(page.getByTestId('recipe-servings')).toHaveText('Recette originale : 2 portions');
+  await expect(page.getByTestId('recipe-servings')).toHaveText('2 portions');
   for (const servings of [null, 0, -1, 1.5, 2147483648, '3'])
     expect(
       (await request.patch(`${api}/api/recipes/${id}`, { headers, data: { servings } })).status()

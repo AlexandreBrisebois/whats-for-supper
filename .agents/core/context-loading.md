@@ -55,8 +55,13 @@ editing; a named tracing skill is not required for that investigation.
 
 ## Decomposition and context hygiene
 
-Keep dependent changes sequential. Where independent work is useful and authorized,
-use bounded delegation with explicit inputs, expected output and file ownership.
+For substantial work, identify the dependency chain and bounded assignments with
+concrete outcomes. Keep dependent changes sequential. When delegation is authorized,
+use independent assignments in parallel where their expected benefit exceeds
+coordination cost; continue useful critical-path work while they run. Keep trivial,
+tightly coupled or unresolved-dependent work direct. More agents are not a
+completion criterion. Use bounded delegation with explicit inputs, expected output
+and file ownership.
 Tool availability alone does not authorize delegation. Follow host restrictions;
 this conditional guidance is not an explicit request to spawn sub-agents.
 Only one writer owns a shared file at a time; read-only reviewers may inspect it.
@@ -65,6 +70,21 @@ Host adapters describe available delegation mechanics, not a different scope pol
 Summarize findings and narrow context between steps. Check the current task/spec
 first, targeted code next, then history only if still needed. A large context
 window is not a reason to load unrelated material.
+
+Reuse a worker for a related bounded assignment when its relevant context, evidence
+and ownership remain valid. Prefer fresh scoped context for unrelated work, noisy
+history or an independent review. Pass the [existing handoff fields](#delegation-handoff)
+and required OpenSpec dependencies; do not copy unrelated conversation history or
+replace mandatory context with a summary. Recheck actual worker and command state
+before resuming or retrying uncertain work.
+
+Consider elapsed time at meaningful boundaries and when work takes unexpectedly
+long. Inspect actual progress, results, blockers and contention, then adapt the
+remaining assignments or sequence and communicate material changes. Do not claim
+workers are running without evidence, restart active checks for a status update,
+or reduce required verification to meet a time estimate. Use the
+[execution harness](execution-harness.md#preparation-and-verification) for concurrent
+test-resource coordination.
 
 ## Investigation
 

@@ -14,6 +14,7 @@ vi.mock('@/lib/api/family', () => ({
 }));
 
 import { useFamilyStore } from './familyStore';
+import { getFamilyMembers } from '@/lib/api/family';
 
 const alex = {
   id: '11111111-1111-4111-8111-111111111111',
@@ -89,5 +90,22 @@ describe('familyStore cooking preferences', () => {
       cookingViewMode: 'step-by-step',
     });
     expect(useFamilyStore.getState().error).toBeNull();
+  });
+});
+
+it('retains a visible roster error when the API error has no message', async () => {
+  useFamilyStore.setState({
+    familyMembers: [alex],
+    isLoading: false,
+    hasLoaded: false,
+    error: null,
+  });
+  vi.mocked(getFamilyMembers).mockRejectedValueOnce(new Error(''));
+  await useFamilyStore.getState().loadFamilyMembers();
+  expect(useFamilyStore.getState()).toMatchObject({
+    familyMembers: [alex],
+    hasLoaded: true,
+    isLoading: false,
+    error: 'Failed to load family members',
   });
 });

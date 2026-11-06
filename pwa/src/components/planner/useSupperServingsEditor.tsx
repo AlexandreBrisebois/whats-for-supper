@@ -14,7 +14,7 @@ import { getImageUrl } from '@/lib/imageUtils';
 import { absoluteMonday, civilDate, weekOffsetFor } from '@/lib/deployment-calendar';
 
 const control =
-  'min-h-[48px] min-w-[48px] rounded-xl border border-charcoal/15 bg-white px-[12px] text-charcoal focus-visible:outline-2 focus-visible:outline-terracotta';
+  'min-h-[48px] min-w-[48px] rounded-xl border border-charcoal/15 bg-white px-4 text-charcoal focus-visible:outline-2 focus-visible:outline-terracotta';
 // Let native focus scrolling clear the sticky week header and fixed navigation.
 const focusClearance =
   '[&_button]:scroll-my-[calc(12rem+env(safe-area-inset-bottom))] [&_input]:scroll-my-[calc(12rem+env(safe-area-inset-bottom))]';
@@ -369,7 +369,7 @@ export function useSupperServingsEditor(
       {editing ? (
         <>
           <button
-            className="inline-flex min-h-[48px] min-w-[48px] items-center gap-1 rounded-full bg-white/70 px-2 text-xs font-semibold text-charcoal shadow-sm transition-colors hover:bg-white focus-visible:outline-2 focus-visible:outline-terracotta disabled:opacity-50"
+            className="inline-flex min-h-[48px] min-w-[48px] items-center gap-2 rounded-full bg-white/70 px-4 text-xs font-semibold text-charcoal shadow-sm transition-colors hover:bg-white focus-visible:outline-2 focus-visible:outline-terracotta disabled:opacity-50"
             data-testid="save-portions"
             disabled={pending || !state || !valid || reviewRequired}
             onClick={() => void save()}
@@ -377,7 +377,6 @@ export function useSupperServingsEditor(
             <Calendar size={14} aria-hidden="true" />
             {t('navigation.recipes', 'Recipes')}
           </button>
-          {pending && <span role="status">{t('portions.saving', 'Saving…')}</span>}
           {error && (
             <span role="alert">
               {t(
@@ -390,7 +389,7 @@ export function useSupperServingsEditor(
       ) : (
         <>
           <button
-            className="inline-flex min-h-[48px] min-w-[48px] items-center gap-1 rounded-full bg-white/70 px-2 text-xs font-semibold text-charcoal shadow-sm transition-colors hover:bg-white focus-visible:outline-2 focus-visible:outline-terracotta"
+            className="inline-flex min-h-[48px] min-w-[48px] items-center gap-2 rounded-full bg-white/70 px-4 text-xs font-semibold text-charcoal shadow-sm transition-colors hover:bg-white focus-visible:outline-2 focus-visible:outline-terracotta"
             data-testid="at-the-table-mode"
             onClick={() => void open()}
           >
@@ -515,7 +514,7 @@ export function useSupperServingsEditor(
             {t('portions.keepEditing', 'Keep editing')}
           </button>
           <button
-            className="min-h-[48px] px-3 text-sm text-charcoal/70 underline underline-offset-4"
+            className="min-h-[48px] px-4 text-sm text-charcoal/70 underline underline-offset-4"
             disabled={pending}
             data-testid="portions-discard"
             onClick={() => {
@@ -604,56 +603,69 @@ export function useSupperServingsEditor(
               )}
             </div>
             {meal?.status !== 3 ? (
-              <div
-                role="group"
-                aria-label={`${key} ${t('portions.portions', 'portions')}`}
-                className={`inline-flex items-center rounded-xl border border-charcoal/15 bg-white shadow-sm focus-within:ring-2 focus-within:ring-terracotta ${!day.editable ? 'opacity-60' : ''}`}
-              >
-                <button
-                  className="inline-flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-l-xl text-charcoal hover:bg-cream focus-visible:bg-terracotta-50 focus-visible:outline-2 focus-visible:outline-terracotta focus-visible:-outline-offset-2 disabled:opacity-40"
-                  disabled={!day.editable || pending || Number(value) <= 1}
-                  aria-label={`${t('portions.less', 'Fewer portions')} ${key}`}
-                  onClick={() => change(String(Math.max(1, Number(value || 1) - 1)))}
+              <div className="inline-flex items-center gap-2">
+                <div
+                  role="group"
+                  aria-label={`${key} ${t('portions.portions', 'portions')}`}
+                  aria-describedby={
+                    meal?.status === 2 && !day.editable ? `portion-cooked-${key}` : undefined
+                  }
+                  className={`inline-flex items-center rounded-xl border border-charcoal/15 bg-white shadow-sm focus-within:ring-2 focus-within:ring-terracotta ${!day.editable ? 'opacity-60' : ''}`}
                 >
-                  <Minus size={18} />
-                </button>
-                <label className="text-center text-sm">
-                  <input
-                    className="h-[48px] w-[64px] min-w-0 border-x border-charcoal/15 bg-transparent text-center tabular-nums outline-none focus-visible:bg-terracotta-50 focus-visible:outline-2 focus-visible:outline-terracotta focus-visible:-outline-offset-2"
-                    type="number"
-                    min={1}
-                    max={2147483647}
-                    inputMode="numeric"
-                    value={value}
-                    disabled={!day.editable || pending}
-                    aria-label={`${key} ${t('portions.portions', 'portions')}`}
-                    data-testid={`portion-input-${key}`}
-                    aria-invalid={
-                      (day.editable &&
+                  <button
+                    className="inline-flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-l-xl text-charcoal hover:bg-cream focus-visible:bg-terracotta-50 focus-visible:outline-2 focus-visible:outline-terracotta focus-visible:-outline-offset-2 disabled:opacity-40"
+                    disabled={!day.editable || pending || Number(value) <= 1}
+                    aria-label={`${t('portions.less', 'Fewer portions')} ${key}`}
+                    onClick={() => change(String(Math.max(1, Number(value || 1) - 1)))}
+                  >
+                    <Minus size={18} />
+                  </button>
+                  <label className="text-center text-sm">
+                    <input
+                      className="h-[48px] w-[64px] min-w-0 border-x border-charcoal/15 bg-transparent text-center tabular-nums outline-none focus-visible:bg-terracotta-50 focus-visible:outline-2 focus-visible:outline-terracotta focus-visible:-outline-offset-2"
+                      type="number"
+                      min={1}
+                      max={2147483647}
+                      inputMode="numeric"
+                      value={value}
+                      disabled={!day.editable || pending}
+                      aria-label={`${key} ${t('portions.portions', 'portions')}`}
+                      data-testid={`portion-input-${key}`}
+                      aria-invalid={
+                        (day.editable &&
+                          Object.hasOwn(draft, key) &&
+                          draft[key] !== null &&
+                          !validCount(value)) ||
+                        undefined
+                      }
+                      aria-describedby={
+                        day.editable &&
                         Object.hasOwn(draft, key) &&
                         draft[key] !== null &&
-                        !validCount(value)) ||
-                      undefined
-                    }
-                    aria-describedby={
-                      day.editable &&
-                      Object.hasOwn(draft, key) &&
-                      draft[key] !== null &&
-                      !validCount(value)
-                        ? `portion-error-${key}`
-                        : undefined
-                    }
-                    onChange={(event) => change(event.target.value)}
-                  />
-                </label>
-                <button
-                  className="inline-flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-r-xl text-charcoal hover:bg-cream focus-visible:bg-terracotta-50 focus-visible:outline-2 focus-visible:outline-terracotta focus-visible:-outline-offset-2 disabled:opacity-40"
-                  disabled={!day.editable || pending || Number(value) >= 2147483647}
-                  aria-label={`${t('portions.more', 'More portions')} ${key}`}
-                  onClick={() => change(String(Number(value || 0) + 1))}
-                >
-                  <Plus size={18} />
-                </button>
+                        !validCount(value)
+                          ? `portion-error-${key}`
+                          : undefined
+                      }
+                      onChange={(event) => change(event.target.value)}
+                    />
+                  </label>
+                  <button
+                    className="inline-flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-r-xl text-charcoal hover:bg-cream focus-visible:bg-terracotta-50 focus-visible:outline-2 focus-visible:outline-terracotta focus-visible:-outline-offset-2 disabled:opacity-40"
+                    disabled={!day.editable || pending || Number(value) >= 2147483647}
+                    aria-label={`${t('portions.more', 'More portions')} ${key}`}
+                    onClick={() => change(String(Number(value || 0) + 1))}
+                  >
+                    <Plus size={18} />
+                  </button>
+                </div>
+                {meal?.status === 2 && !day.editable && (
+                  <span
+                    id={`portion-cooked-${key}`}
+                    className="text-sm font-semibold text-charcoal-600"
+                  >
+                    {t('cook.cooked', 'Cooked')}
+                  </span>
+                )}
               </div>
             ) : (
               <span>{nonCookingLabel(meal.nonCooking)}</span>

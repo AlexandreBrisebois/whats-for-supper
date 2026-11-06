@@ -101,7 +101,8 @@ test('Settings portions retain invalid drafts and explicit values during roster 
     route.request().method() === 'GET'
       ? route.fulfill({
           status: 503,
-          headers: { 'Retry-After': '0' },
+          // CI uses a cross-origin API; expose the header so Kiota can avoid backoff.
+          headers: { 'Retry-After': '0', 'Access-Control-Expose-Headers': 'Retry-After' },
           json: { message: 'Roster unavailable' },
         })
       : route.fallback()
@@ -508,9 +509,7 @@ async function draftFixture(
   if (options.photo)
     await page.route(`**/api/recipes/${MOCK_IDS.RECIPE_LASAGNA}/hero`, (route) =>
       route.fulfill({
-        body: fs.readFileSync(
-          path.resolve('..', 'data', 'recipes', '669cc452-ffe2-42a1-ae35-e60edcc0b3d5', 'hero.webp')
-        ),
+        body: fs.readFileSync(path.resolve('e2e/fixtures/recipe-photos/original.webp')),
         contentType: 'image/webp',
       })
     );
@@ -909,7 +908,9 @@ for (const locale of ['en', 'fr'] as const)
                 .poll(() =>
                   page
                     .getByTestId('portions-mode-strip')
-                    .evaluate((strip) => getComputedStyle(strip.parentElement!).transform)
+                    .evaluate(
+                      (strip) => getComputedStyle(strip.parentElement!.parentElement!).transform
+                    )
                 )
                 .toBe('none');
               const result = await page.evaluate(() => {
@@ -937,9 +938,12 @@ for (const locale of ['en', 'fr'] as const)
                 return {
                   viewport: innerWidth,
                   overflow: document.documentElement.scrollWidth > innerWidth,
-                  stripAboveActions:
-                    !actions ||
-                    strip.getBoundingClientRect().bottom <= actions.getBoundingClientRect().top + 1,
+                  stripClearOfActions: (() => {
+                    if (!actions) return true;
+                    const a = strip.getBoundingClientRect();
+                    const b = actions.getBoundingClientRect();
+                    return a.bottom <= b.top + 1 || a.right <= b.left + 1;
+                  })(),
                   controls,
                 };
               });
@@ -949,7 +953,7 @@ for (const locale of ['en', 'fr'] as const)
                 contentType: 'application/json',
               });
               expect(result.overflow).toBe(false);
-              expect(result.stripAboveActions).toBe(true);
+              expect(result.stripClearOfActions).toBe(true);
               for (const c of result.controls) {
                 expect(c.height, JSON.stringify(c)).toBeGreaterThanOrEqual(48);
                 expect(c.width, JSON.stringify(c)).toBeGreaterThanOrEqual(48);
@@ -1261,14 +1265,16 @@ test('proposed dated detail uses saved portions and Change day remains read-only
   );
   await expect(page.getByTestId('recipe-servings')).toHaveText('4 servings');
   await expect(page.getByTestId('recipe-ingredient-projection')).toContainText('400 g pasta');
-  await expect(page.getByTestId('recipe-portion-context')).toContainText('May 6');
+  await expect(page.getByTestId('recipe-portion-context')).toHaveCount(0);
+  await expect(page.getByTestId('action-add-to-day')).toContainText('May 6');
   await page.getByTestId('action-change-day').click();
   await page.getByTestId('planning-day-4').click();
   await expect(page.getByTestId('recipe-servings')).toHaveText('6 servings');
   await expect(page.getByTestId('recipe-ingredient-projection')).toContainText('600 g pasta');
-  await expect(page.getByTestId('recipe-portion-context')).toContainText('May 8');
+  await expect(page.getByTestId('recipe-portion-context')).toHaveCount(0);
   await expect(page.getByTestId('action-add-to-day')).toContainText('May 8');
   await expect(page.getByTestId('recipe-detail-sheet').getByRole('spinbutton')).toHaveCount(0);
+  await page.getByTestId('action-gear-menu').click();
   await page.getByRole('button', { name: 'Original quantities', exact: true }).click();
   await expect(page.getByText('Original recipe: 2 servings', { exact: true })).toBeVisible();
   await expect(page.getByText('200 g pasta', { exact: true })).toBeVisible();
@@ -1454,7 +1460,7 @@ test('grocery quantities identify incomplete known subtotals without warning on 
     });
   expect(contrast.ratio).toBeGreaterThanOrEqual(4.5);
   fs.writeFileSync(
-    path.resolve('../.task/supper-servings/group3/dated-review-contrast.json'),
+    test.info().outputPath('dated-review-contrast.json'),
     JSON.stringify(contrast, null, 2)
   );
   await page.getByRole('button', { name: 'Source recipes for pasta', exact: true }).click();
@@ -1465,7 +1471,7 @@ test('grocery quantities identify incomplete known subtotals without warning on 
     `/recipes?open=${MOCK_IDS.RECIPE_CARBONARA}&reviewAmounts=true&sourceGroceryWeekOffset=0&sourceGroceryReferenceWeekStartDate=2026-05-04`
   );
   await page.screenshot({
-    path: path.resolve('../.task/supper-servings/group3/dated-grocery-phone.png'),
+    path: test.info().outputPath('dated-grocery-phone.png'),
   });
   await page.route(`**/api/recipes/${MOCK_IDS.RECIPE_CARBONARA}`, (route) =>
     route.fulfill({
@@ -1942,7 +1948,8 @@ for (const appLocale of ['en', 'fr'] as const) {
         await expect(card).toHaveAttribute('data-recipe-id', id);
         await card.focus();
         await card.press('Enter');
-        await expect(page.getByTestId('recipe-portion-context')).toContainText(
+        await expect(page.getByTestId('recipe-portion-context')).toHaveCount(0);
+        await expect(page.getByTestId('action-add-to-day')).toContainText(
           appLocale === 'fr' ? '8 mai' : 'May 8'
         );
         await expect(page.getByTestId('recipe-ingredient-projection')).toContainText(
@@ -1976,7 +1983,7 @@ for (const appLocale of ['en', 'fr'] as const) {
           })
           .click();
 
-        const directory = path.resolve('../.task/refinement-apply/renders/combined');
+        const directory = test.info().outputPath('combined');
         fs.mkdirSync(directory, { recursive: true });
         const prefix = `${appLocale}-${width}-${enlarged ? '200' : '100'}`;
         const evidence: any[] = [];
@@ -1989,7 +1996,7 @@ for (const appLocale of ['en', 'fr'] as const) {
           if (surface === 'normal')
             await expect
               .poll(() =>
-                root.evaluate((element) => {
+                root.locator('..').evaluate((element) => {
                   const matrix = new DOMMatrixReadOnly(getComputedStyle(element).transform);
                   return Math.abs(matrix.m41) + Math.abs(matrix.m42);
                 })
@@ -2031,17 +2038,23 @@ for (const appLocale of ['en', 'fr'] as const) {
               .toBe(true);
           }
           if (surface === 'partial') {
-            const review = root.getByText(
-              appLocale === 'fr'
-                ? 'Certaines quantités sont à vérifier. Consultez la recette originale.'
-                : 'Some amounts need review. Consult the original recipe.',
-              { exact: true }
-            );
-            await review.evaluate((element) => element.scrollIntoView({ block: 'center' }));
-            const area = await root.getByTestId('recipe-detail-reading').boundingBox();
-            const box = await review.boundingBox();
-            expect(box!.y).toBeGreaterThanOrEqual(area!.y);
-            expect(box!.y + box!.height).toBeLessThanOrEqual(area!.y + area!.height);
+            // Quiet detail keeps the unresolved ingredient itself as ordinary reading content.
+            const ingredient = root
+              .getByTestId('recipe-ingredient-projection')
+              .getByText('current sauce', { exact: true });
+            await ingredient.evaluate((element) => element.scrollIntoView({ block: 'center' }));
+            await expect
+              .poll(async () => {
+                const area = await root.getByTestId('recipe-detail-reading').boundingBox();
+                const box = await ingredient.boundingBox();
+                return (
+                  area != null &&
+                  box != null &&
+                  box.y >= area.y &&
+                  box.y + box.height <= area.y + area.height
+                );
+              })
+              .toBe(true);
           } else if (surface === 'normal') {
             await root
               .getByTestId('portions-mode-strip')
@@ -2154,13 +2167,14 @@ for (const appLocale of ['en', 'fr'] as const) {
             animations: 'disabled',
           });
           if (surface === 'partial') {
-            const limitation = root.getByTestId('recipe-instruction-limitation');
-            await limitation.evaluate((element) => element.scrollIntoView({ block: 'center' }));
+            await expect(root.getByTestId('recipe-instruction-limitation')).toHaveCount(0);
+            const instructions = root.getByText('Add 200 g pasta. Serve.', { exact: true });
+            await instructions.evaluate((element) => element.scrollIntoView({ block: 'center' }));
             const area = await root.getByTestId('recipe-detail-reading').boundingBox();
-            const box = await limitation.boundingBox();
+            const box = await instructions.boundingBox();
             expect(box!.y).toBeGreaterThanOrEqual(area!.y);
             expect(box!.y + box!.height).toBeLessThanOrEqual(area!.y + area!.height);
-            evidence.push({ surface: 'partial-steps', area, limitation: box });
+            evidence.push({ surface: 'partial-steps', area, instructions: box });
             await page.screenshot({
               path: path.join(directory, `${prefix}-partial-steps.png`),
               animations: 'disabled',
@@ -2288,7 +2302,11 @@ for (const appLocale of ['en', 'fr'] as const) {
         await page.route(projectionPattern, (route) => route.fulfill({ json: partial }));
         await page.getByTestId('action-close-sheet').click();
         await page.getByTestId('day-card-4').getByTestId('edit-recipe-button').click();
-        await expect(page.getByTestId('recipe-detail-sheet')).toContainText(
+        await expect(page.getByTestId('recipe-ingredient-projection')).toContainText(
+          'current sauce'
+        );
+        await expect(page.getByTestId('recipe-ingredient-projection')).toContainText('600 g pasta');
+        await expect(page.getByTestId('recipe-detail-sheet')).not.toContainText(
           appLocale === 'fr' ? 'Certaines quantités' : 'Some amounts need review'
         );
         for (const affordance of [
@@ -2303,7 +2321,7 @@ for (const appLocale of ['en', 'fr'] as const) {
         await capture(
           'partial',
           'recipe-detail-sheet',
-          '[data-testid="recipe-ingredient-projection"], [data-testid="recipe-instruction-limitation"], [role="status"]',
+          '[data-testid="recipe-ingredient-projection"], #recipe-instructions-heading',
           'recipe-ingredient-projection'
         );
         await page.unroute(projectionPattern);

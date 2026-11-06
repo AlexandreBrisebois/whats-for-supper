@@ -253,7 +253,7 @@ test.describe('Recipes Search Page', () => {
       }) => {
         await setupCommonRoutes(page);
         await page.addInitScript((language) => localStorage.setItem('locale', language), locale);
-        await page.goto(`/recipes?open=${id}`);
+        await page.goto(`/recipes?open=${id}&reviewAmounts=true`);
         const edit = async () => {
           await page.getByTestId('action-gear-menu').click();
           await page.getByTestId('action-edit-recipe').click();
@@ -310,10 +310,12 @@ test.describe('Recipes Search Page', () => {
         await expect(page.getByTestId('recipe-servings')).toHaveCount(initial == null ? 0 : 1);
         await page.getByTestId('recipe-save-edits').click();
         await expect(input).toHaveCount(0);
-        const name = `${locale === 'en' ? 'Original recipe:' : 'Recette originale :'} ${next} ${locale === 'en' ? 'servings' : 'portions'}`;
-        await expect(page.getByText(name, { exact: true })).toBeVisible();
-        await page.goto(`/recipes?open=${id}`);
-        await expect(page.getByText(name, { exact: true })).toBeVisible();
+        const count = `${next} ${locale === 'en' ? 'servings' : 'portions'}`;
+        await expect(page.getByTestId('recipe-servings')).toHaveText(count);
+        await expect(page.getByTestId('recipe-original-yield')).toHaveCount(0);
+        await page.goto(`/recipes?open=${id}&reviewAmounts=true`);
+        await expect(page.getByTestId('recipe-servings')).toHaveText(count);
+        await expect(page.getByTestId('recipe-original-yield')).toHaveCount(0);
         const read = await page.evaluate(
           async (id) => (await (await fetch(`/api/recipes/${id}`)).json()).recipe,
           id
@@ -327,7 +329,7 @@ test.describe('Recipes Search Page', () => {
     page,
   }) => {
     await setupCommonRoutes(page);
-    await page.goto(`/recipes?open=${MOCK_IDS.RECIPE_LASAGNA}`);
+    await page.goto(`/recipes?open=${MOCK_IDS.RECIPE_LASAGNA}&reviewAmounts=true`);
     await page.getByTestId('action-gear-menu').click();
     await page.getByTestId('action-edit-recipe').click();
     await page.getByTestId('recipe-edit-servings-input').fill('0');
@@ -336,7 +338,7 @@ test.describe('Recipes Search Page', () => {
       'true'
     );
     await page.evaluate(
-      (id) => history.pushState(null, '', `/recipes?open=${id}`),
+      (id) => history.pushState(null, '', `/recipes?open=${id}&reviewAmounts=true`),
       MOCK_IDS.RECIPE_CARBONARA
     );
     await expect(page.getByTestId('recipe-edit-servings-input')).toHaveCount(0);
@@ -376,18 +378,13 @@ test.describe('Recipes Search Page', () => {
             ? ''
             : `${servings} ${locale === 'en' ? (servings === 1 ? 'serving' : 'servings') : servings === 1 ? 'portion' : 'portions'}`;
         const heading = page.getByRole('heading', {
-          name: title,
+          name: label ? `${title} ${label}` : title,
           exact: true,
         });
         await expect(heading).toBeVisible();
         await expect(heading.locator('button,input,[tabindex]')).toHaveCount(0);
-        if (label)
-          await expect(
-            page.getByText(
-              `${locale === 'en' ? 'Original recipe:' : 'Recette originale :'} ${label}`,
-              { exact: true }
-            )
-          ).toHaveCount(1);
+        if (label) await expect(page.getByTestId('recipe-servings')).toHaveText(label);
+        await expect(page.getByTestId('recipe-original-yield')).toHaveCount(0);
         await expect(page.getByText('510 g beef', { exact: true })).toBeVisible();
         await expect(page.getByText('340 g pasta', { exact: true })).toBeVisible();
         await expect(page.getByTestId('recipe-servings')).toHaveCount(servings === null ? 0 : 1);
@@ -406,30 +403,38 @@ test.describe('Recipes Search Page', () => {
   }
 
   test('known-to-unknown detail identity drops the prior serving badge', async ({ page }) => {
-    await page.route('**/api/recipes/*', async (route) => {
-      if (route.request().method() !== 'GET') return route.fallback();
-      const id = new URL(route.request().url()).pathname.split('/').at(-1);
-      if (![MOCK_IDS.RECIPE_LASAGNA, MOCK_IDS.RECIPE_STIR_FRY].includes(id as any))
-        return route.fallback();
-      await route.fulfill({
-        json: {
-          recipe: {
-            ...MOCK_DETAIL_RECIPE,
-            id,
-            servings: id === MOCK_IDS.RECIPE_LASAGNA ? 4 : null,
-          },
-          updatedAt: '2026-05-04T12:00:00Z',
+    // Keep detail and dated-projection reads on the same stateful fixture owner.
+    await setupCommonRoutes(page, undefined, {
+      supperServings: {
+        knownRecipe: {
+          id: MOCK_IDS.RECIPE_LASAGNA,
+          basis: 4,
+          quantity: 200,
+          unit: 'g',
+          ingredient: 'pasta',
         },
-      });
+      },
     });
-    await page.goto(`/recipes?open=${MOCK_IDS.RECIPE_LASAGNA}`);
-    await expect(page.getByText('Original recipe: 4 servings', { exact: true })).toBeVisible();
-    await page.evaluate(
-      (id) => history.pushState(null, '', `/recipes?open=${id}`),
-      MOCK_IDS.RECIPE_STIR_FRY
+    await page.goto(`/recipes?open=${MOCK_IDS.RECIPE_LASAGNA}&reviewAmounts=true`);
+    await expect(page.getByTestId('recipe-servings')).toHaveText('4 servings');
+    const unknownRead = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'GET' &&
+        new URL(response.url()).pathname === `/api/recipes/${MOCK_IDS.RECIPE_CARBONARA}`
     );
+    await page.evaluate(
+      (id) => history.pushState(null, '', `/recipes?open=${id}&reviewAmounts=true`),
+      MOCK_IDS.RECIPE_CARBONARA
+    );
+    const unknown = (await (await unknownRead).json()).recipe;
+    expect(unknown.id).toBe(MOCK_IDS.RECIPE_CARBONARA);
+    expect(unknown.servings ?? null).toBeNull();
+    await expect(page.getByTestId('recipe-detail-name')).toHaveText(unknown.name);
     await expect(page.getByRole('heading', { name: 'Ingredients', exact: true })).toBeVisible();
     await expect(page.getByTestId('recipe-servings')).toHaveCount(0);
+    await expect(
+      page.getByRole('button', { name: 'Set recipe portions', exact: true })
+    ).toBeVisible();
   });
 
   test('removes a recipe from Browse after moving it to the bin without navigation', async ({

@@ -13,6 +13,9 @@ test('real dated detail saves through generated client and a second client prese
   request,
   baseURL,
 }) => {
+  // This combined real-API journey spans multiple dates, clients and recovery stages.
+  // Keep per-assertion deadlines unchanged; allow the expanded scenario to finish.
+  test.setTimeout(120_000);
   const api = process.env.RECIPE_PLANNING_API_URL!;
   const headers = { 'X-Hearth-Secret': process.env.HEARTH_SECRET! };
   const member = (await (await request.get(`${api}/api/family`, { headers })).json()).data[0];
@@ -402,22 +405,90 @@ test('real dated detail saves through generated client and a second client prese
     await expect(page.getByTestId('planner-planning-confirmation')).toContainText('November 11');
     expect((await readWeek(5)).days[2].recipe.id).toBe(recipeId);
     expect(JSON.stringify((await readWeek(5)).groceryItems).toLowerCase()).toContain('potato');
+    // A captured future occurrence remains navigable after the entry reference
+    // changes. Observe every API write, not just the schedule operations counted
+    // by the host, during these read/navigation-only phases.
+    const plannedNavigationWrites: string[] = [];
+    const recordPlannedNavigationWrite = (req: import('@playwright/test').Request) => {
+      if (
+        new URL(req.url()).pathname.startsWith('/api/') &&
+        !['GET', 'HEAD'].includes(req.method())
+      )
+        plannedNavigationWrites.push(`${req.method()} ${new URL(req.url()).pathname}`);
+    };
+    page.on('request', recordPlannedNavigationWrite);
+    const plannedNavigationCounts = await counts();
     await page.locator('#day-card-2').getByTestId('edit-recipe-button').click();
-    await expect(page.getByTestId('recipe-planning-actions')).toContainText('November 11');
-    await expect(page.getByTestId('action-cooks-mode')).toBeVisible();
-    await page.getByTestId('action-plan-another-day').click();
-    await expect(page).toHaveURL(/sourceDate=2026-11-11/);
-    await expect(page.getByTestId('recipe-detail-name')).toBeVisible();
+    const plannerDetail = page.getByTestId('recipe-detail-sheet');
+    await expect(
+      plannerDetail.getByTestId('recipe-detail-toolbar').getByTestId('action-cooks-mode')
+    ).toBeVisible();
+    await expect(plannerDetail.getByTestId('action-cooks-mode')).toHaveCount(1);
+    await expect(plannerDetail.getByTestId('action-change-day')).toHaveCount(0);
+    await expect(plannerDetail.getByTestId('action-plan-another-day')).toHaveCount(0);
+    await plannerDetail.getByTestId('action-cooks-mode').click();
+    await expect(page.getByTestId('cooks-mode-recipe-name')).toContainText('Chain Lasagna');
+    await page.getByTestId('close-cooks-mode').click();
+    const plannerPlanned = plannerDetail.getByTestId('action-planned');
+    await expect(plannerPlanned).toContainText('November 11');
+    await expect(plannerPlanned).toHaveAttribute('aria-label', /Open Planner/);
+    await plannerPlanned.click();
+    await expect(page.getByTestId('recipe-detail-sheet')).toHaveCount(0);
+    await expect(page).toHaveURL(
+      (url) =>
+        url.pathname === '/planner' &&
+        url.searchParams.get('weekOffset') === '5' &&
+        url.searchParams.get('referenceWeekStartDate') === '2026-10-05'
+    );
+    await expect(page.locator('#day-card-2')).toContainText('Chain Lasagna');
+    await page.goto(
+      `/recipes?addToDay=2&weekOffset=4&referenceWeekStartDate=2026-10-12&open=${recipeId}`
+    );
+    const recipesDetail = page.getByTestId('recipe-detail-sheet');
+    await expect(
+      recipesDetail.getByTestId('recipe-detail-toolbar').getByTestId('action-cooks-mode')
+    ).toBeVisible();
+    await expect(recipesDetail.getByTestId('action-cooks-mode')).toHaveCount(1);
+    await expect(recipesDetail.getByTestId('action-change-day')).toHaveCount(0);
+    const recipesPlanned = recipesDetail.getByTestId('action-planned');
+    await expect(recipesPlanned).toContainText('November 11');
+    await recipesPlanned.click();
+    await expect(page.getByTestId('recipe-detail-sheet')).toHaveCount(0);
+    await expect(page).toHaveURL(
+      (url) =>
+        url.pathname === '/planner' &&
+        url.searchParams.get('weekOffset') === '4' &&
+        url.searchParams.get('referenceWeekStartDate') === '2026-10-12'
+    );
+    await expect(page.locator('#day-card-2')).toContainText('Chain Lasagna');
+    page.off('request', recordPlannedNavigationWrite);
+    expect(plannedNavigationWrites).toEqual([]);
+    expect(await counts()).toEqual(plannedNavigationCounts);
+    expect((await counts()).assign - beforeAlternate.assign).toBe(1);
+    console.log(
+      `Real alternate persisted date=2026-11-11 recipe=${recipeId}; Planned from Planner and Recipes after reference rollover navigation writes=0`
+    );
+
+    // A changed source occurrence cannot keep a stale Planned claim. These are
+    // explicit fixture writes after the navigation-only count has been checked.
+    const priorOccurrence = (await readWeek(5)).days[2];
+    const changedRemoval = await request.delete(
+      `${api}/api/schedule/day/2026-11-11/remove?expectedPlanToken=${encodeURIComponent(priorOccurrence.removalToken)}`,
+      { headers }
+    );
+    expect(changedRemoval.ok()).toBe(true);
+    const changedAssignment = await request.post(
+      `${api}/api/schedule/assign?referenceWeekStartDate=2026-10-05`,
+      { headers, data: { weekOffset: 5, dayIndex: 2, recipeId: other, requireEmpty: true } }
+    );
+    expect(changedAssignment.ok()).toBe(true);
     await page.goto(
       `/recipes?addToDay=2&weekOffset=5&referenceWeekStartDate=2026-10-05&open=${recipeId}`
     );
-    await expect(page.getByTestId('action-add-to-day')).toHaveText('View plan');
-    await page.getByTestId('action-add-to-day').click();
-    await expect(page).toHaveURL(/planner/);
-    expect((await counts()).assign - beforeAlternate.assign).toBe(1);
-    console.log(
-      `Real alternate persisted date=2026-11-11 recipe=${recipeId}; identical activation writes=0; Planner source retained`
-    );
+    await expect(page.getByTestId('recipe-detail-name')).toBeVisible();
+    await expect(page.getByTestId('action-planned')).toHaveCount(0);
+    expect((await readWeek(5)).days[2].recipe.id).toBe(other);
+    console.log(`Changed occurrence date=2026-11-11 now recipe=${other}; stale Planned hidden`);
 
     const nonCookingSeed = await request.post(`${api}/api/schedule/day/2026-11-12/validate`, {
       headers,
@@ -453,6 +524,52 @@ test('real dated detail saves through generated client and a second client prese
     await expect(observer.locator('#day-card-3')).toContainText('Chain Lasagna');
     console.log(
       `Real non-cooking replacement date=2026-11-12 token captured; cancel writes=0; remove=1 assign=1; groceries=${JSON.stringify((await readWeek(5)).groceryItems)}`
+    );
+
+    // Completion is a deliberate API fixture write. Subsequent detail reading
+    // and Review navigation must neither pretend the meal is an ordinary
+    // uncompleted Planned occurrence nor reset its persisted status.
+    const completedSeed = await request.post(`${api}/api/schedule/day/2026-11-12/validate`, {
+      headers,
+      data: { status: 2, recipeId },
+    });
+    expect(completedSeed.ok()).toBe(true);
+    expect((await readWeek(5)).days[3].status).toBe(2);
+    const beforeCompletedNavigation = await counts();
+    const completedNavigationWrites: string[] = [];
+    const recordCompletedNavigationWrite = (req: import('@playwright/test').Request) => {
+      if (
+        new URL(req.url()).pathname.startsWith('/api/') &&
+        !['GET', 'HEAD'].includes(req.method())
+      )
+        completedNavigationWrites.push(`${req.method()} ${new URL(req.url()).pathname}`);
+    };
+    page.on('request', recordCompletedNavigationWrite);
+    await page.goto(
+      `/recipes?addToDay=3&weekOffset=5&referenceWeekStartDate=2026-10-05&open=${recipeId}`
+    );
+    const completedDetail = page.getByTestId('recipe-detail-sheet');
+    await expect(
+      completedDetail.getByTestId('recipe-detail-toolbar').getByTestId('action-cooks-mode')
+    ).toBeVisible();
+    await expect(completedDetail.getByTestId('action-planned')).toHaveCount(0);
+    await expect(completedDetail.getByTestId('action-change-day')).toHaveCount(0);
+    await expect(completedDetail.getByTestId('action-add-to-day')).toHaveText('Review plan');
+    await completedDetail.getByTestId('action-add-to-day').click();
+    await expect(page.getByTestId('recipe-detail-sheet')).toHaveCount(0);
+    await expect(page).toHaveURL(
+      (url) =>
+        url.pathname === '/planner' &&
+        url.searchParams.get('weekOffset') === '5' &&
+        url.searchParams.get('referenceWeekStartDate') === '2026-10-05'
+    );
+    await expect(page.locator('#day-card-3')).toContainText('Chain Lasagna');
+    page.off('request', recordCompletedNavigationWrite);
+    expect(completedNavigationWrites).toEqual([]);
+    expect(await counts()).toEqual(beforeCompletedNavigation);
+    expect((await readWeek(5)).days[3].status).toBe(2);
+    console.log(
+      'Completed occurrence date=2026-11-12 retained status 2; Review navigation writes=0'
     );
   } finally {
     await observerContext.close();

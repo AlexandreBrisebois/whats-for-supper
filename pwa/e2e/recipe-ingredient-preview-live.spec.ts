@@ -40,10 +40,57 @@ test('real preview preserves saved five, prepared seven, groceries and jobs acro
   const other = await browser.newContext({ baseURL });
   await other.addCookies(cookies);
   try {
-    await page.goto('/planner?weekOffset=0&referenceWeekStartDate=2026-10-12');
-    await expect(page.getByTestId('day-card-2')).toContainText('Original pasta for two');
+    // Capture the complete persistence boundary before any ingredient reading.
+    // Neither expanding Home nor entering Cook may write plan/check/job state.
     const baseline = await read('/_test/servings/persisted');
     const requestBaseline = await read('/_test/servings/requests');
+    const today = baseline.occurrences.find(
+      (occurrence: { date: string }) => occurrence.date === '2026-10-12'
+    );
+    expect(today).toBeTruthy();
+    const homeProjection = page.waitForResponse((response) => {
+      const url = new URL(response.url());
+      return (
+        url.pathname.endsWith(`/api/recipes/${today.recipeId}/ingredient-projection`) &&
+        url.searchParams.get('context') === 'assigned' &&
+        url.searchParams.get('supperDate') === today.date &&
+        url.searchParams.get('occurrenceId') === today.id
+      );
+    });
+    await page.goto('/home');
+    const home = page.getByTestId('tonight-menu-card');
+    await expect(home).toContainText('Original pasta for two');
+    await home.getByTestId('tonight-ingredients-toggle').click();
+    expect((await homeProjection).status()).toBe(200);
+    await expect(home).toContainText('600 g pasta');
+    await expect(home.getByText('200 g pasta', { exact: true })).toHaveCount(0);
+    await home
+      .getByText('600 g pasta', { exact: true })
+      .evaluate((node) => node.scrollIntoView({ block: 'center' }));
+    await expect(home.getByText('600 g pasta', { exact: true })).toBeVisible();
+    await page.screenshot({ path: '../.task/quiet-recipe-portions/live/home-assigned-six.png' });
+    expect(await read('/_test/servings/persisted')).toEqual(baseline);
+    await home.getByTestId('cook-mode-btn').click();
+    const cook = page.getByTestId('cooks-mode-overlay');
+    await expect(cook).toContainText('600 g pasta');
+    await expect(cook.getByTestId('cooking-portion-context')).toContainText('6 portions');
+    await expect(cook).toHaveCSS('opacity', '1');
+    await expect(cook.getByText('600 g pasta', { exact: true })).toBeVisible();
+    await page.screenshot({ path: '../.task/quiet-recipe-portions/live/cook-assigned-six.png' });
+    await cook.getByTestId('close-cooks-mode').click();
+    await expect(cook).toHaveCount(0);
+    expect(await read('/_test/servings/persisted')).toEqual(baseline);
+    // A real API read with an obsolete occurrence token must not grant this
+    // same recipe's current occurrence, even though recipe/date still match.
+    const stale = await request.get(
+      `${api}/api/recipes/${today.recipeId}/ingredient-projection?supperDate=${today.date}&context=assigned&occurrenceId=00000000-0000-4000-8000-000000000001`,
+      { headers }
+    );
+    expect(stale.status()).toBe(409);
+    expect(await read('/_test/servings/persisted')).toEqual(baseline);
+    expect(await read('/_test/servings/requests')).toEqual(requestBaseline);
+    await page.goto('/planner?weekOffset=0&referenceWeekStartDate=2026-10-12');
+    await expect(page.getByTestId('day-card-2')).toContainText('Original pasta for two');
     for (const [index, savedCount] of [
       [2, 5],
       [4, 7],
@@ -57,9 +104,16 @@ test('real preview preserves saved five, prepared seven, groceries and jobs acro
         await expect(page.getByTestId('recipe-ingredient-preview')).toContainText(
           `${count * 100} g pasta`
         );
-        await expect(page.getByTestId('recipe-portion-context')).toContainText(
-          `${savedCount} portions`
-        );
+        await expect(page.getByTestId('recipe-servings')).toHaveText(`${count} servings`);
+        await expect(page.getByTestId('recipe-portion-context')).toHaveCount(0);
+        if (savedCount === 7) {
+          await expect(page.getByTestId('recipe-prepared-portions')).toHaveText(
+            'Prepared 7 portions'
+          );
+          await expect(
+            page.getByTestId('recipe-detail-sheet').getByTestId('preparation-status')
+          ).toContainText('Prepared Monday, Oct 12');
+        }
         expect(await read('/_test/servings/persisted')).toEqual(baseline);
         const independent = await other.request.get(
           '/api/schedule?weekOffset=0&referenceWeekStartDate=2026-10-12'
@@ -82,7 +136,18 @@ test('real preview preserves saved five, prepared seven, groceries and jobs acro
     await page.goto(`/recipes?open=${shells.id}&reviewAmounts=true`);
     for (const count of [2, 4, 6]) {
       await page.getByRole('button', { name: `Preview ${count} portions`, exact: true }).click();
-      const list = page.getByTestId('recipe-ingredient-preview');
+      const list = page
+        .getByTestId('recipe-detail-sheet')
+        .locator('ul')
+        .filter({ hasText: 'coquilles géantes' });
+      if (count === 4) {
+        await expect(page.getByTestId('recipe-ingredient-preview')).toHaveCount(0);
+        await expect(
+          page.getByText('Preview only. Your plan and shopping list stay unchanged.', {
+            exact: true,
+          })
+        ).toHaveCount(0);
+      }
       await expect(list).toContainText(`${(12 * count) / 4} coquilles géantes`);
       await expect(list).toContainText(`${count / 4} oignon haché`);
       await expect(list).toContainText(`${(450 * count) / 4} g Bœuf haché mi-maigre`);
@@ -92,6 +157,17 @@ test('real preview preserves saved five, prepared seven, groceries and jobs acro
       expect(await read('/_test/servings/persisted')).toEqual(baseline);
     }
     expect(await read('/_test/servings/requests')).toEqual(requestBaseline);
+    console.log(
+      JSON.stringify({
+        homeAndCook: { supperDate: today.date, occurrenceId: today.id, amount: '600 g pasta' },
+        staleOccurrenceStatus: stale.status(),
+        defaultServings: 5,
+        frozenServings: 7,
+        sixPortionShells: { shells: 18, onion: 1.5, beefGrams: 675, sauceMillilitres: 750 },
+        persistedStateUnchanged: true,
+        mutationRequestsUnchanged: true,
+      })
+    );
   } finally {
     await other.close();
   }

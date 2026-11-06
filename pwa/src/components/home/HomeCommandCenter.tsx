@@ -105,6 +105,7 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
     calendar,
     calendarError,
     currentRecipe,
+    occurrenceId,
     preparation,
     status,
     nonCooking,
@@ -891,6 +892,15 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
                 }
                 imageUrl={currentRecipe.image || undefined}
                 ingredients={currentRecipe.ingredients || []}
+                ingredientContext={
+                  calendar && occurrenceId
+                    ? {
+                        context: 'assigned',
+                        supperDate: calendar.today,
+                        occurrenceId,
+                      }
+                    : null
+                }
                 totalTime={currentRecipe.totalTime || undefined}
                 onCookMode={handleCookMode}
                 onSkip={handleSkipTrigger}

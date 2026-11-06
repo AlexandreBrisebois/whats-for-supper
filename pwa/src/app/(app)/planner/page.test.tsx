@@ -282,20 +282,50 @@ vi.mock('@/components/recipes/RecipeDetailSheet', () => ({
     recipeId,
     sourceDayLabel,
     ingredientContext,
-    onPlanAnotherDay,
+    plannedDayLabel,
+    onOpenPlannedDay,
+    planningLoading,
+    planningNeedsCheck,
+    planningActionLabel,
+    planningMessage,
+    onRetryTarget,
+    onFindSimilar,
     onClose,
   }: {
     recipeId: string;
     sourceDayLabel?: string;
     ingredientContext?: unknown;
-    onPlanAnotherDay?: () => void;
+    plannedDayLabel?: string;
+    onOpenPlannedDay?: () => void;
+    planningLoading?: boolean;
+    planningNeedsCheck?: boolean;
+    planningActionLabel?: string;
+    planningMessage?: string;
+    onRetryTarget?: () => void;
+    onFindSimilar?: (recipeId: string) => void;
     onClose: () => void;
   }) => (
-    <div data-testid="mock-recipe-detail-sheet" data-recipe-id={recipeId}>
+    <div
+      data-testid="mock-recipe-detail-sheet"
+      data-recipe-id={recipeId}
+      data-planning-loading={String(!!planningLoading)}
+      data-planning-needs-check={String(!!planningNeedsCheck)}
+    >
       <span>{sourceDayLabel}</span>
       <span data-testid="mock-ingredient-context">{JSON.stringify(ingredientContext)}</span>
-      <button data-testid="mock-plan-another-day" onClick={onPlanAnotherDay}>
-        Plan another day
+      {planningMessage && <span data-testid="mock-planning-message">{planningMessage}</span>}
+      {plannedDayLabel && (
+        <button data-testid="mock-planned" onClick={onOpenPlannedDay}>
+          Planned for {plannedDayLabel}
+        </button>
+      )}
+      {onRetryTarget && (
+        <button data-testid="mock-review-plan" onClick={onRetryTarget}>
+          {planningActionLabel}
+        </button>
+      )}
+      <button data-testid="mock-find-similar" onClick={() => onFindSimilar?.(recipeId)}>
+        Find Similar
       </button>
       <button data-testid="mock-recipe-detail-close" onClick={onClose}>
         Close
@@ -1542,7 +1572,18 @@ describe('PlannerPage voting action row', () => {
     }
   );
 
-  it('shows recipe details sheet when clicking the recipe name', () => {
+  it('shows recipe details sheet when clicking the recipe name', async () => {
+    mocks.getSchedule.mockResolvedValue({
+      calendar: {
+        timeZone: 'UTC',
+        today: '2026-05-04',
+        capturedAtUtc: '2026-05-04T12:00:00Z',
+        currentWeekStartDate: '2026-05-04',
+        referenceWeekStartDate: '2026-05-04',
+        nextDayAtUtc: '2026-05-05T00:00:00Z',
+      },
+      days: makeAssignedSchedule('2026-05-10', 0),
+    });
     mocks.setPlannerState({
       currentWeekOffset: 0,
       activeTab: 'planner',
@@ -1574,10 +1615,308 @@ describe('PlannerPage voting action row', () => {
     expect(detailSheet).toBeInTheDocument();
     expect(detailSheet.getAttribute('data-recipe-id')).toBe('11111111-1111-1111-1111-111111111111');
     expect(detailSheet).toHaveTextContent('May 4');
-    fireEvent.click(screen.getByTestId('mock-plan-another-day'));
-    expect(mocks.push).toHaveBeenCalledWith(expect.stringContaining('planAnotherDay=true'));
-    expect(mocks.push).toHaveBeenCalledWith(expect.stringContaining('sourceDate=2026-05-04'));
+    expect(detailSheet).toHaveAttribute('data-planning-loading', 'true');
+    expect(await screen.findByTestId('mock-planned')).toHaveTextContent('May 4');
+    expect(detailSheet).toHaveAttribute('data-planning-loading', 'false');
+    fireEvent.click(screen.getByTestId('mock-planned'));
+    await waitFor(() =>
+      expect(mocks.push).toHaveBeenCalledWith(
+        '/planner?dayIndex=0&weekOffset=0&referenceWeekStartDate=2026-05-04'
+      )
+    );
+    expect(screen.queryByTestId('mock-recipe-detail-sheet')).not.toBeInTheDocument();
     expect(mocks.assignRecipe).not.toHaveBeenCalled();
+  });
+
+  it('opens Similar search from Planner detail without reopening detail', () => {
+    mocks.setPlannerState({
+      currentWeekOffset: 0,
+      activeTab: 'planner',
+      setWeekOffset: mocks.setWeekOffset,
+      setActiveTab: mocks.setActiveTab,
+      setGroceryState: mocks.setGroceryState,
+    });
+    mocks.setWeekState({
+      calendar: { referenceWeekStartDate: '2026-05-04' },
+      schedule: makeAssignedSchedule('2026-05-10', 0),
+      isLoading: false,
+      status: 0,
+      groceryItems: [],
+      init: mocks.weekInit,
+      openVoting: mocks.openVoting,
+      lockWeek: mocks.lockWeek,
+      assignRecipe: mocks.assignRecipe,
+      removeRecipe: mocks.removeRecipe,
+      reorderLocally: mocks.reorderLocally,
+    });
+    render(<PlannerPage />);
+    fireEvent.click(within(screen.getByTestId('day-card-0')).getByTestId('edit-recipe-button'));
+    fireEvent.click(screen.getByTestId('mock-find-similar'));
+    expect(mocks.push).toHaveBeenCalledWith(
+      '/recipes?similarTo=11111111-1111-1111-1111-111111111111'
+    );
+  });
+
+  it('does not claim Planned when the captured Planner occurrence changed', async () => {
+    mocks.setPlannerState({
+      currentWeekOffset: 0,
+      activeTab: 'planner',
+      setWeekOffset: mocks.setWeekOffset,
+      setActiveTab: mocks.setActiveTab,
+      setGroceryState: mocks.setGroceryState,
+    });
+    mocks.setWeekState({
+      calendar: { referenceWeekStartDate: '2026-05-04' },
+      schedule: makeAssignedSchedule('2026-05-10', 0),
+      isLoading: false,
+      status: 0,
+      groceryItems: [],
+      init: mocks.weekInit,
+      openVoting: mocks.openVoting,
+      lockWeek: mocks.lockWeek,
+      assignRecipe: mocks.assignRecipe,
+      removeRecipe: mocks.removeRecipe,
+      reorderLocally: mocks.reorderLocally,
+    });
+    const changed = makeAssignedSchedule('2026-05-10', 0);
+    changed[0].recipe = {
+      id: '22222222-2222-2222-2222-222222222222',
+      name: 'Replacement',
+      image: '',
+    };
+    mocks.getSchedule.mockResolvedValue({
+      calendar: {
+        timeZone: 'UTC',
+        today: '2026-05-04',
+        capturedAtUtc: '2026-05-04T12:00:00Z',
+        currentWeekStartDate: '2026-05-04',
+        referenceWeekStartDate: '2026-05-04',
+        nextDayAtUtc: '2026-05-05T00:00:00Z',
+      },
+      days: changed,
+    });
+    render(<PlannerPage />);
+    fireEvent.click(within(screen.getByTestId('day-card-0')).getByTestId('edit-recipe-button'));
+    await waitFor(() => expect(mocks.getSchedule).toHaveBeenCalled());
+    expect(screen.queryByTestId('mock-planned')).not.toBeInTheDocument();
+    expect(await screen.findByTestId('mock-review-plan')).toHaveTextContent('Review plan');
+    expect(screen.getByTestId('mock-recipe-detail-sheet')).toHaveAttribute(
+      'data-planning-needs-check',
+      'true'
+    );
+    fireEvent.click(screen.getByTestId('mock-review-plan'));
+    expect(mocks.push).toHaveBeenCalledWith(
+      '/planner?dayIndex=0&weekOffset=0&referenceWeekStartDate=2026-05-04'
+    );
+    expect(screen.queryByTestId('mock-recipe-detail-sheet')).not.toBeInTheDocument();
+  });
+
+  it('opens the captured Sunday in a later week across calendar rollover', async () => {
+    mocks.setSearchParams(
+      'detailRecipe=11111111-1111-1111-1111-111111111111&planDate=2026-05-17&referenceWeekStartDate=2026-05-04'
+    );
+    mocks.setPlannerState({
+      currentWeekOffset: 1,
+      activeTab: 'planner',
+      setWeekOffset: mocks.setWeekOffset,
+      setActiveTab: mocks.setActiveTab,
+      setGroceryState: mocks.setGroceryState,
+    });
+    mocks.setWeekState({
+      calendar: { referenceWeekStartDate: '2026-05-04' },
+      schedule: makeAssignedSchedule('2026-05-17', 6),
+      isLoading: false,
+      status: 0,
+      groceryItems: [],
+      init: mocks.weekInit,
+      openVoting: mocks.openVoting,
+      lockWeek: mocks.lockWeek,
+      assignRecipe: mocks.assignRecipe,
+      removeRecipe: mocks.removeRecipe,
+      reorderLocally: mocks.reorderLocally,
+    });
+    mocks.getSchedule.mockResolvedValue({
+      calendar: {
+        timeZone: 'UTC',
+        today: '2026-05-18',
+        capturedAtUtc: '2026-05-18T12:00:00Z',
+        currentWeekStartDate: '2026-05-18',
+        referenceWeekStartDate: '2026-05-04',
+        nextDayAtUtc: '2026-05-19T00:00:00Z',
+      },
+      days: makeAssignedSchedule('2026-05-17', 6),
+    });
+    render(<PlannerPage />);
+    expect(await screen.findByTestId('mock-planned')).toHaveTextContent('May 17');
+    fireEvent.click(screen.getByTestId('mock-planned'));
+    await waitFor(() =>
+      expect(mocks.push).toHaveBeenCalledWith(
+        '/planner?dayIndex=6&weekOffset=1&referenceWeekStartDate=2026-05-04'
+      )
+    );
+    expect(mocks.assignRecipe).not.toHaveBeenCalled();
+  });
+
+  it('retires Planned after the displayed occurrence changes in a background refresh', async () => {
+    mocks.setPlannerState({
+      currentWeekOffset: 0,
+      activeTab: 'planner',
+      setWeekOffset: mocks.setWeekOffset,
+      setActiveTab: mocks.setActiveTab,
+      setGroceryState: mocks.setGroceryState,
+    });
+    mocks.setWeekState({
+      calendar: { referenceWeekStartDate: '2026-05-04' },
+      schedule: makeAssignedSchedule('2026-05-10', 0),
+      isLoading: false,
+      status: 0,
+      groceryItems: [],
+      init: mocks.weekInit,
+      openVoting: mocks.openVoting,
+      lockWeek: mocks.lockWeek,
+      assignRecipe: mocks.assignRecipe,
+      removeRecipe: mocks.removeRecipe,
+      reorderLocally: mocks.reorderLocally,
+    });
+    mocks.getSchedule.mockResolvedValue({
+      calendar: {
+        timeZone: 'UTC',
+        today: '2026-05-04',
+        capturedAtUtc: '2026-05-04T12:00:00Z',
+        currentWeekStartDate: '2026-05-04',
+        referenceWeekStartDate: '2026-05-04',
+        nextDayAtUtc: '2026-05-05T00:00:00Z',
+      },
+      days: makeAssignedSchedule('2026-05-10', 0),
+    });
+    const view = render(<PlannerPage />);
+    fireEvent.click(within(screen.getByTestId('day-card-0')).getByTestId('edit-recipe-button'));
+    expect(await screen.findByTestId('mock-planned')).toBeInTheDocument();
+    const changed = makeAssignedSchedule('2026-05-10', 0);
+    changed[0].recipe = {
+      id: '22222222-2222-2222-2222-222222222222',
+      name: 'Replacement',
+      image: '',
+    };
+    mocks.getSchedule.mockResolvedValue({
+      calendar: {
+        timeZone: 'UTC',
+        today: '2026-05-04',
+        capturedAtUtc: '2026-05-04T12:00:00Z',
+        currentWeekStartDate: '2026-05-04',
+        referenceWeekStartDate: '2026-05-04',
+        nextDayAtUtc: '2026-05-05T00:00:00Z',
+      },
+      days: changed,
+    });
+    mocks.setWeekState({ ...mocks.getWeekState(), schedule: changed });
+    view.rerender(<PlannerPage />);
+    expect(screen.queryByTestId('mock-planned')).not.toBeInTheDocument();
+    expect(screen.getByTestId('mock-recipe-detail-sheet')).toHaveAttribute(
+      'data-planning-loading',
+      'true'
+    );
+    expect(await screen.findByTestId('mock-review-plan')).toHaveTextContent('Review plan');
+  });
+
+  it.each([2, 4])(
+    'reviews a confirmed status %i occurrence without a false Planned claim',
+    async (mealStatus) => {
+      mocks.setPlannerState({
+        currentWeekOffset: 0,
+        activeTab: 'planner',
+        setWeekOffset: mocks.setWeekOffset,
+        setActiveTab: mocks.setActiveTab,
+        setGroceryState: mocks.setGroceryState,
+      });
+      const days = makeAssignedSchedule('2026-05-10', 0);
+      days[0].status = mealStatus;
+      mocks.setWeekState({
+        calendar: { referenceWeekStartDate: '2026-05-04' },
+        schedule: days,
+        isLoading: false,
+        status: 0,
+        groceryItems: [],
+        init: mocks.weekInit,
+        openVoting: mocks.openVoting,
+        lockWeek: mocks.lockWeek,
+        assignRecipe: mocks.assignRecipe,
+        removeRecipe: mocks.removeRecipe,
+        reorderLocally: mocks.reorderLocally,
+      });
+      mocks.getSchedule.mockResolvedValue({
+        calendar: {
+          timeZone: 'UTC',
+          today: '2026-05-04',
+          capturedAtUtc: '2026-05-04T12:00:00Z',
+          currentWeekStartDate: '2026-05-04',
+          referenceWeekStartDate: '2026-05-04',
+          nextDayAtUtc: '2026-05-05T00:00:00Z',
+        },
+        days,
+      });
+      render(<PlannerPage />);
+      fireEvent.click(within(screen.getByTestId('day-card-0')).getByTestId('edit-recipe-button'));
+      expect(await screen.findByTestId('mock-review-plan')).toHaveTextContent('Review plan');
+      expect(screen.getByTestId('mock-planning-message')).toHaveTextContent(
+        'Review this completed or voting supper in Planner.'
+      );
+      expect(screen.queryByTestId('mock-planned')).not.toBeInTheDocument();
+      expect(screen.getByTestId('mock-recipe-detail-sheet')).toHaveAttribute(
+        'data-planning-needs-check',
+        'false'
+      );
+      expect(mocks.assignRecipe).not.toHaveBeenCalled();
+    }
+  );
+
+  it('ignores a late Planned click read after detail closes', async () => {
+    mocks.setPlannerState({
+      currentWeekOffset: 0,
+      activeTab: 'planner',
+      setWeekOffset: mocks.setWeekOffset,
+      setActiveTab: mocks.setActiveTab,
+      setGroceryState: mocks.setGroceryState,
+    });
+    const days = makeAssignedSchedule('2026-05-10', 0);
+    mocks.setWeekState({
+      calendar: { referenceWeekStartDate: '2026-05-04' },
+      schedule: days,
+      isLoading: false,
+      status: 0,
+      groceryItems: [],
+      init: mocks.weekInit,
+      openVoting: mocks.openVoting,
+      lockWeek: mocks.lockWeek,
+      assignRecipe: mocks.assignRecipe,
+      removeRecipe: mocks.removeRecipe,
+      reorderLocally: mocks.reorderLocally,
+    });
+    const response = {
+      calendar: {
+        timeZone: 'UTC',
+        today: '2026-05-04',
+        capturedAtUtc: '2026-05-04T12:00:00Z',
+        currentWeekStartDate: '2026-05-04',
+        referenceWeekStartDate: '2026-05-04',
+        nextDayAtUtc: '2026-05-05T00:00:00Z',
+      },
+      days,
+    };
+    let finish!: (value: typeof response) => void;
+    mocks.getSchedule.mockResolvedValueOnce(response).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        })
+    );
+    render(<PlannerPage />);
+    fireEvent.click(within(screen.getByTestId('day-card-0')).getByTestId('edit-recipe-button'));
+    fireEvent.click(await screen.findByTestId('mock-planned'));
+    fireEvent.click(screen.getByTestId('mock-recipe-detail-close'));
+    await act(async () => finish(response));
+    expect(screen.queryByTestId('mock-recipe-detail-sheet')).not.toBeInTheDocument();
+    expect(mocks.push).not.toHaveBeenCalled();
   });
 
   it('shows planning pivot sheet when clicking the change recipe button', () => {

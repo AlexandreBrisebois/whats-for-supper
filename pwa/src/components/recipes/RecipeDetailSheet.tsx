@@ -27,6 +27,7 @@ import {
   Images,
   ExternalLink,
   Share2,
+  Search,
   UtensilsCrossed,
 } from 'lucide-react';
 import {
@@ -61,7 +62,6 @@ import { OriginalPhotosViewer } from './OriginalPhotosViewer';
 import { subscribeIngredientProjectionInvalidation } from '@/lib/ingredient-projection-invalidation';
 import { ingredientProjectionText } from '@/lib/ingredient-presentation';
 import { CooksMode } from '../planner/CooksMode';
-import { formatSupperPlanDate } from '@/lib/planner/nonCooking';
 import type { IngredientProjection } from '@/lib/api/generated/models/index';
 import type {
   IngredientPreview,
@@ -116,11 +116,12 @@ interface RecipeDetailSheetProps {
   onBeginPlanning?: () => void;
   onRetryTarget?: () => void;
   sourceDayLabel?: string;
-  onPlanAnotherDay?: () => void;
+  plannedDayLabel?: string;
+  onOpenPlannedDay?: () => void;
   onClose: () => void;
   onDeleted?: () => void;
   onUseForDay: (recipe: Recipe, specificDayIndex?: number) => Promise<void>;
-  onFindSimilar: (recipeId: string) => void;
+  onFindSimilar?: (recipeId: string) => void;
 }
 
 export function RecipeDetailSheet({
@@ -136,7 +137,8 @@ export function RecipeDetailSheet({
   onBeginPlanning,
   onRetryTarget,
   sourceDayLabel,
-  onPlanAnotherDay,
+  plannedDayLabel,
+  onOpenPlannedDay,
   onClose,
   onDeleted,
   onUseForDay,
@@ -183,8 +185,7 @@ export function RecipeDetailSheet({
   const unresolvedPreviewScope = JSON.stringify([recipeId, null]);
   // Original evidence changes only the reading surface, never the dated target.
   const [originalEvidenceScope, setOriginalEvidenceScope] = useState<string | null>(null);
-  const showingOriginalEvidence =
-    !isEditing && Boolean(ingredientContext) && originalEvidenceScope === previewScope;
+  const showingOriginalEvidence = !isEditing && originalEvidenceScope === previewScope;
   if (originalEvidenceScope && (isEditing || originalEvidenceScope !== previewScope)) {
     setOriginalEvidenceScope(null);
   }
@@ -223,6 +224,7 @@ export function RecipeDetailSheet({
       ? preview
       : projection;
   const readingBasisServings = previewTarget ? preview?.baseServings : originalBasisServings;
+  const portionsHeadingRef = useRef<HTMLHeadingElement>(null);
   const servingsInputRef = useRef<HTMLInputElement>(null);
 
   const [isLoading, setIsLoading] = useState(true);
@@ -725,6 +727,8 @@ export function RecipeDetailSheet({
   const hasNotes = Boolean(notes.trim());
   const readyTime = formatRecipeTime(recipe?.totalTime);
   const hasDatedAction = Boolean(plannerDayLabel || planningEnabled || sourceDayLabel);
+  const isConfirmedPlanned = Boolean(plannedDayLabel && onOpenPlannedDay);
+  const departureBlocked = isSavingAction || planningLoading || planningNeedsCheck;
   const mealTypesForDisplay = (recipe?.mealTypes ?? []).filter(Boolean);
 
   return (
@@ -753,6 +757,23 @@ export function RecipeDetailSheet({
           className="shrink-0 flex flex-wrap items-center gap-[8px] border-b border-charcoal/10 px-[16px] py-[12px] md:px-8"
         >
           <div className="flex min-w-0 items-center gap-2">
+            {!isLoading && recipe && !isEditing && (
+              <button
+                type="button"
+                data-testid="action-cooks-mode"
+                disabled={departureBlocked}
+                onClick={() => setShowCooksMode(true)}
+                className={[
+                  'inline-flex min-h-[48px] min-w-[48px] items-center justify-center gap-2 rounded-full px-[12px] py-[10px] text-sm font-semibold shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-charcoal disabled:opacity-60',
+                  isConfirmedPlanned
+                    ? 'bg-terracotta text-white hover:bg-terracotta-600'
+                    : 'border border-charcoal/10 bg-white text-charcoal hover:bg-charcoal/5',
+                ].join(' ')}
+              >
+                <UtensilsCrossed size={18} className="shrink-0" aria-hidden="true" />
+                <span>{t('home.cook', 'Cook')}</span>
+              </button>
+            )}
             <p className="sr-only">{t('recipes.detailTitle', 'Recipe detail')}</p>
             {recipe?.importIssue && (
               <RecipeImportIssueBadge status={recipe.importIssue.status} variant="compact" />
@@ -823,7 +844,25 @@ export function RecipeDetailSheet({
                         setIsEditing(true);
                       }
                 }
-                onFindSimilar={() => onFindSimilar(recipe.id)}
+                originalQuantitiesDisabled={Boolean(ingredientContext && !projection)}
+                onOriginalQuantities={
+                  !showingOriginalEvidence
+                    ? () => {
+                        setPreviewSelection(null);
+                        setOriginalEvidenceScope(previewScope);
+                        requestAnimationFrame(() => portionsHeadingRef.current?.focus());
+                      }
+                    : undefined
+                }
+                onResetView={
+                  previewTarget || showingOriginalEvidence
+                    ? () => {
+                        setPreviewSelection(null);
+                        setOriginalEvidenceScope(null);
+                        requestAnimationFrame(() => portionsHeadingRef.current?.focus());
+                      }
+                    : undefined
+                }
                 onMoveToBin={() => void handleMoveToBin()}
                 onReportImportIssue={() => setShowImportIssueSheet(true)}
               />
@@ -1100,53 +1139,62 @@ export function RecipeDetailSheet({
                   <p className="text-sm leading-6 text-charcoal/70">{recipe.description}</p>
                 )
               )}
+              {!isEditing && onFindSimilar && (
+                <button
+                  type="button"
+                  data-testid="action-find-similar"
+                  disabled={departureBlocked}
+                  onClick={() => onFindSimilar(recipe.id)}
+                  className="inline-flex min-h-[48px] max-w-full items-center justify-center gap-2 self-start rounded-full border border-charcoal/15 bg-white px-[16px] py-[12px] text-sm font-semibold text-charcoal shadow-sm hover:bg-charcoal/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-charcoal disabled:opacity-60"
+                >
+                  <Search size={18} className="shrink-0" aria-hidden="true" />
+                  <span className="min-w-0 break-words">
+                    {t('recipes.findSimilar', 'Find Similar')}
+                  </span>
+                </button>
+              )}
             </div>
 
             <div className="mb-5 grid grid-cols-1 gap-8 md:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
               <div>
-                <h3 className="mb-4 flex flex-wrap items-center gap-2 text-xl font-semibold text-charcoal">
+                <h3
+                  ref={portionsHeadingRef}
+                  tabIndex={-1}
+                  className="mb-4 flex flex-wrap items-center gap-2 text-xl font-semibold text-charcoal focus-visible:outline-2 focus-visible:outline-charcoal"
+                >
                   <span className="max-w-full break-words">
                     {t('recipes.ingredients', 'Ingredients')}
                   </span>{' '}
-                  {(isEditing ||
-                    previewTarget ||
-                    (ingredientContext && !showingOriginalEvidence)) &&
-                    displayedServings != null &&
-                    displayedServings! > 0 && (
-                      <span
-                        data-testid="recipe-servings"
-                        className="inline-block max-w-full shrink-0 rounded-full bg-charcoal/5 px-2 py-1 text-xs font-medium normal-case tracking-normal text-charcoal/80"
-                      >
-                        {tWithVars(
-                          displayedServings === 1 ? 'recipes.serving' : 'recipes.servings',
-                          displayedServings === 1 ? '{{count}} serving' : '{{count}} servings',
-                          { count: displayedServings! }
-                        )}
-                      </span>
-                    )}
+                  {displayedServings != null && displayedServings! > 0 && (
+                    <span
+                      data-testid="recipe-servings"
+                      className="inline-block max-w-full shrink-0 rounded-full bg-charcoal/5 px-2 py-1 text-xs font-medium normal-case tracking-normal text-charcoal/80"
+                    >
+                      {tWithVars(
+                        displayedServings === 1 ? 'recipes.serving' : 'recipes.servings',
+                        displayedServings === 1 ? '{{count}} serving' : '{{count}} servings',
+                        { count: displayedServings! }
+                      )}
+                    </span>
+                  )}
                 </h3>
                 {!isEditing && (
                   <div className="mb-4 text-sm">
-                    {readingBasisServings != null && readingBasisServings > 0 && (
-                      <p
-                        data-testid={
-                          !previewTarget && (!ingredientContext || showingOriginalEvidence)
-                            ? 'recipe-servings'
-                            : 'recipe-original-yield'
-                        }
-                        className="mb-2 text-charcoal/80"
-                      >
-                        {tWithVars(
-                          readingBasisServings === 1
-                            ? 'recipes.originalBasisSingular'
-                            : 'recipes.originalBasis',
-                          readingBasisServings === 1
-                            ? 'Original recipe: {{count}} serving'
-                            : 'Original recipe: {{count}} servings',
-                          { count: readingBasisServings }
-                        )}
-                      </p>
-                    )}
+                    {(previewTarget || showingOriginalEvidence) &&
+                      readingBasisServings != null &&
+                      readingBasisServings > 0 && (
+                        <p data-testid="recipe-original-yield" className="mb-2 text-charcoal/80">
+                          {tWithVars(
+                            readingBasisServings === 1
+                              ? 'recipes.originalBasisSingular'
+                              : 'recipes.originalBasis',
+                            readingBasisServings === 1
+                              ? 'Original recipe: {{count}} serving'
+                              : 'Original recipe: {{count}} servings',
+                            { count: readingBasisServings }
+                          )}
+                        </p>
+                      )}
                     {recipe.servings != null && recipe.servings > 0 ? (
                       <div
                         role="group"
@@ -1165,13 +1213,25 @@ export function RecipeDetailSheet({
                               'Preview {{count}} portions',
                               { count: target }
                             )}
-                            aria-pressed={previewTarget === target}
+                            aria-pressed={
+                              previewTarget === target ||
+                              (!previewTarget &&
+                                !showingOriginalEvidence &&
+                                headingServings === target)
+                            }
                             onClick={() => {
                               setOriginalEvidenceScope(null);
                               setPreviewAttempt((value) => value + 1);
-                              setPreviewSelection({ scope: previewScope, target });
+                              setPreviewSelection(
+                                !planningLoading &&
+                                  !planningNeedsCheck &&
+                                  headingServings != null &&
+                                  target === headingServings
+                                  ? null
+                                  : { scope: previewScope, target }
+                              );
                             }}
-                            className={`min-h-[48px] min-w-[48px] rounded-xl border px-3 font-semibold focus-visible:outline-2 focus-visible:outline-terracotta ${previewTarget === target ? 'border-terracotta bg-terracotta-50 text-terracotta-700' : 'border-charcoal/15 bg-white text-charcoal'}`}
+                            className={`min-h-[48px] min-w-[48px] rounded-xl border px-3 font-semibold focus-visible:outline-2 focus-visible:outline-terracotta ${previewTarget === target || (!previewTarget && !showingOriginalEvidence && headingServings === target) ? 'border-terracotta bg-terracotta-50 text-terracotta-700' : 'border-charcoal/15 bg-white text-charcoal'}`}
                           >
                             {target}
                           </button>
@@ -1190,45 +1250,12 @@ export function RecipeDetailSheet({
                             requestAnimationFrame(() => servingsInputRef.current?.focus());
                           }}
                         >
-                          {t('recipes.setOriginalYield', 'Set original yield')}
+                          {t('recipes.setOriginalYield', 'Set recipe portions')}
                         </button>
-                        <p className="text-charcoal/70">
-                          {t(
-                            'recipes.yieldCorrectionHint',
-                            'This updates the saved recipe and may change your shopping list.'
-                          )}
-                        </p>
                       </>
-                    )}
-                    {ingredientContext && (
-                      <button
-                        type="button"
-                        className="min-h-[48px] text-sage-800 underline underline-offset-4"
-                        aria-pressed={showingOriginalEvidence}
-                        disabled={!projection}
-                        onClick={() => {
-                          setPreviewSelection(null);
-                          setOriginalEvidenceScope(showingOriginalEvidence ? null : previewScope);
-                        }}
-                      >
-                        {showingOriginalEvidence
-                          ? t('recipes.previewReturnPlanned', 'Planned quantities')
-                          : t('recipes.previewReturnOriginal', 'Original quantities')}
-                      </button>
                     )}
                     {previewTarget && (
                       <div className="mt-2">
-                        <p className="font-semibold">
-                          {tWithVars('recipes.previewFor', 'Preview for {{count}} portions', {
-                            count: previewTarget,
-                          })}
-                        </p>
-                        <p className="text-charcoal/70">
-                          {t(
-                            'recipes.previewOnly',
-                            'Preview only. Your plan and shopping list stay unchanged.'
-                          )}
-                        </p>
                         {!preview && !previewError && (
                           <p role="status">{t('recipes.previewLoading', 'Loading preview…')}</p>
                         )}
@@ -1244,40 +1271,28 @@ export function RecipeDetailSheet({
                             </button>
                           </p>
                         )}
-                        {preview &&
-                          (preview.status === 'partial' || preview.status === 'unresolved') && (
-                            <p role="status">
-                              {t(
-                                'recipes.projectionReview',
-                                'Some amounts need review. Consult the original recipe.'
-                              )}
-                            </p>
-                          )}
-                        <button
-                          type="button"
-                          className="min-h-[48px] text-sage-800 underline underline-offset-4"
-                          onClick={() => setPreviewSelection(null)}
-                        >
-                          {ingredientContext
-                            ? t('recipes.previewReturnPlanned', 'Planned quantities')
-                            : t('recipes.previewReturnOriginal', 'Original quantities')}
-                        </button>
                       </div>
                     )}
                   </div>
                 )}
+                {!isEditing && sourceDayLabel && onBeginPlanning && (
+                  <p data-testid="recipe-portion-context" className="mb-3 text-sm text-charcoal/80">
+                    {sourceDayLabel}
+                  </p>
+                )}
                 {ingredientContext && !isEditing && (
                   <div className="mb-3 text-sm text-charcoal/80">
-                    <p data-testid="recipe-portion-context">
-                      {plannerDayLabel ||
-                        sourceDayLabel ||
-                        formatSupperPlanDate(ingredientContext.supperDate)}
-                      {projection?.targetServings
-                        ? ` · ${tWithVars('recipes.portionCount', '{{count}} portions', { count: projection.targetServings })}`
-                        : ''}
-                    </p>
                     {projection?.preparation && (
-                      <PreparationStatus preparation={projection.preparation} />
+                      <>
+                        <PreparationStatus preparation={projection.preparation} />
+                        {projection.preparation.servings != null && (
+                          <p data-testid="recipe-prepared-portions">
+                            {tWithVars('recipes.preparedPortions', 'Prepared {{count}} portions', {
+                              count: projection.preparation.servings,
+                            })}
+                          </p>
+                        )}
+                      </>
                     )}
                     {!projection && !projectionError && (
                       <p role="status">
@@ -1309,26 +1324,16 @@ export function RecipeDetailSheet({
                             )}
                       </p>
                     )}
-                    {projection &&
-                      !previewTarget &&
-                      (projection.status === 'partial' || projection.status === 'unresolved') && (
-                        <p role="status">
-                          {projection.baseServings == null ||
-                          projection.lines?.some((line) => line.issues?.includes('missing_basis'))
-                            ? t(
-                                'recipes.projectionMissingBasis',
-                                'Set the original recipe servings to adjust quantities.'
-                              )
-                            : t(
-                                'recipes.projectionReview',
-                                'Some amounts need review. Consult the original recipe.'
-                              )}
-                        </p>
-                      )}
                   </div>
                 )}
                 {isEditing && (
                   <div className="mb-3 min-w-0">
+                    <p className="mb-2 text-sm text-charcoal/70">
+                      {t(
+                        'recipes.yieldCorrectionHint',
+                        'This updates the saved recipe and may change your shopping list.'
+                      )}
+                    </p>
                     <div className="flex items-center gap-3">
                       <label
                         htmlFor="recipe-edit-servings"
@@ -1429,7 +1434,8 @@ export function RecipeDetailSheet({
                 >
                   {t('recipes.instructions', 'Instructions')}
                 </h3>
-                {displayedProjection?.factor != null &&
+                {previewTarget &&
+                  displayedProjection?.factor != null &&
                   displayedProjection.factor !== 1 &&
                   displayedProjection.lines?.some((line) => line.status === 'scaled') && (
                     <p
@@ -1505,27 +1511,16 @@ export function RecipeDetailSheet({
                       aria-pressed={isSelected}
                       onClick={() => void handleRatingChange(value)}
                       className={[
-                        'relative inline-flex min-h-12 min-w-12 flex-1 flex-col items-center justify-center gap-1 rounded-xl px-2 py-3 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-terracotta',
-                        isSelected
-                          ? 'bg-terracotta-50 text-terracotta-700'
-                          : 'text-charcoal hover:bg-charcoal/5',
+                        'relative inline-flex min-h-[48px] min-w-[48px] flex-1 flex-col items-center justify-center gap-1 rounded-[1.5rem] px-2 py-3 text-sm text-charcoal transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-charcoal',
+                        isSelected ? 'bg-white shadow-md' : 'hover:bg-white/60',
                       ].join(' ')}
                     >
-                      {isSelected && (
-                        <Check
-                          data-testid="recipe-rating-selected"
-                          className="absolute right-2 top-2"
-                          size={14}
-                          aria-hidden="true"
-                        />
-                      )}
-                      <span className="text-lg" aria-hidden>
+                      <span className="text-3xl" aria-hidden>
                         {emoji}
                       </span>
                       <span
                         className={[
-                          'text-sm font-semibold',
-                          isSelected ? 'text-terracotta-700' : 'text-charcoal',
+                          'max-w-full break-words text-sm font-semibold text-charcoal',
                         ].join(' ')}
                       >
                         {t(`recipes.rating${label}`, label)}
@@ -1670,48 +1665,69 @@ export function RecipeDetailSheet({
                 {planningMessage}
               </p>
             )}
-            {sourceDayLabel && <p className="mb-2 text-sm font-bold">{sourceDayLabel}</p>}
-            {onBeginPlanning && (
-              <button
-                type="button"
-                data-testid="action-begin-planning"
-                onClick={onBeginPlanning}
-                className="mb-2 inline-flex min-h-12 items-center justify-center rounded-xl bg-terracotta px-5 py-3 text-sm font-semibold text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-charcoal"
-              >
-                {t('recipes.plan', 'Plan')}
-              </button>
-            )}
-            <div
-              data-testid="recipe-dated-planning-actions"
-              className="flex flex-wrap items-stretch gap-2"
-            >
-              {hasDatedAction && (
+            <div data-testid="recipe-dated-planning-actions" className="flex items-stretch gap-2">
+              {onBeginPlanning && (
                 <button
                   type="button"
-                  data-testid={sourceDayLabel ? 'action-cooks-mode' : 'action-add-to-day'}
-                  onClick={() =>
-                    sourceDayLabel
-                      ? setShowCooksMode(true)
-                      : onRetryTarget
-                        ? onRetryTarget()
-                        : void handleUseRecipe()
-                  }
-                  disabled={isSavingAction || planningLoading}
-                  className="inline-flex min-h-12 min-w-0 flex-[1_1_9rem] items-center justify-center gap-2 rounded-xl bg-terracotta px-5 py-3 text-sm font-semibold text-white disabled:opacity-60"
+                  data-testid="action-begin-planning"
+                  onClick={onBeginPlanning}
+                  disabled={departureBlocked}
+                  className="inline-flex min-h-[48px] min-w-0 flex-1 items-center justify-center rounded-xl bg-terracotta px-[16px] py-[12px] text-sm font-semibold text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-charcoal disabled:opacity-60"
                 >
-                  {sourceDayLabel && <UtensilsCrossed size={18} aria-hidden="true" />}
-                  {isSavingAction
-                    ? t('common.saving', 'Saving')
-                    : planningNeedsCheck
-                      ? t('recipes.retryPlanCheck', 'Retry check')
-                      : sourceDayLabel
-                        ? t('home.cook', 'Cook')
+                  {t('recipes.plan', 'Plan')}
+                </button>
+              )}
+              {isConfirmedPlanned ? (
+                <button
+                  type="button"
+                  data-testid="action-planned"
+                  onClick={onOpenPlannedDay}
+                  disabled={departureBlocked}
+                  aria-label={tWithVars(
+                    'recipes.openPlannedDay',
+                    'Planned for {{day}}. Open Planner',
+                    { day: plannedDayLabel! }
+                  )}
+                  className="inline-flex min-h-[48px] min-w-0 flex-1 items-center justify-center rounded-xl border border-charcoal/15 bg-white px-[16px] py-[12px] text-sm font-semibold text-charcoal shadow-sm hover:bg-charcoal/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-charcoal disabled:opacity-60"
+                >
+                  <span className="min-w-0 break-words">
+                    {tWithVars('recipes.plannedForDay', 'Planned for {{day}}', {
+                      day: plannedDayLabel!,
+                    })}
+                  </span>
+                </button>
+              ) : hasDatedAction && !sourceDayLabel ? (
+                <button
+                  type="button"
+                  data-testid="action-add-to-day"
+                  onClick={() => (onRetryTarget ? onRetryTarget() : void handleUseRecipe())}
+                  disabled={isSavingAction || planningLoading}
+                  className="inline-flex min-h-[48px] min-w-0 flex-1 items-center justify-center gap-2 rounded-xl bg-terracotta px-[16px] py-[12px] text-sm font-semibold text-white disabled:opacity-60"
+                >
+                  <span className="min-w-0 break-words">
+                    {isSavingAction
+                      ? t('common.saving', 'Saving')
+                      : planningNeedsCheck
+                        ? t('recipes.retryPlanCheck', 'Retry check')
                         : planningLoading
                           ? t('common.loading', 'Loading…')
                           : (planningActionLabel ?? primaryActionLabel)}
+                  </span>
                 </button>
-              )}
-              {onChangeDay && (
+              ) : sourceDayLabel && onRetryTarget ? (
+                <button
+                  type="button"
+                  data-testid="action-add-to-day"
+                  onClick={onRetryTarget}
+                  disabled={isSavingAction || planningLoading}
+                  className="inline-flex min-h-[48px] min-w-0 flex-1 items-center justify-center rounded-xl bg-terracotta px-[16px] py-[12px] text-sm font-semibold text-white disabled:opacity-60"
+                >
+                  {planningLoading
+                    ? t('common.loading', 'Loading…')
+                    : (planningActionLabel ?? t('recipes.retryPlanCheck', 'Retry check'))}
+                </button>
+              ) : null}
+              {!isConfirmedPlanned && onChangeDay && (
                 <button
                   type="button"
                   data-testid="action-change-day"
@@ -1730,27 +1746,6 @@ export function RecipeDetailSheet({
                 </button>
               )}
             </div>
-            {!sourceDayLabel && (
-              <button
-                type="button"
-                data-testid="action-cooks-mode"
-                onClick={() => setShowCooksMode(true)}
-                className="mt-2 inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-terracotta-200 bg-white px-5 py-3 font-semibold text-terracotta-700 hover:bg-terracotta-50"
-              >
-                <UtensilsCrossed size={18} aria-hidden="true" />
-                {t('home.cook', 'Cook')}
-              </button>
-            )}
-            {onPlanAnotherDay && (
-              <button
-                type="button"
-                data-testid="action-plan-another-day"
-                onClick={onPlanAnotherDay}
-                className="mt-2 inline-flex min-h-12 items-center justify-center gap-2 rounded-[1.5rem] border border-terracotta-200 bg-white px-5 py-3 font-semibold text-terracotta-700 hover:bg-terracotta-50"
-              >
-                {t('recipes.planAnotherDay', 'Plan another day')}
-              </button>
-            )}
           </div>
         )}
       </div>

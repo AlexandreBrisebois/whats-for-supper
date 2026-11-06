@@ -183,12 +183,36 @@ it('allows a server-editable cooked date to be corrected and saved', async () =>
   await openEditor(schedule.map((day) => (day.date === sunday ? { ...day, status: 2 } : day)));
   const input = screen.getByTestId(`portion-input-${sunday}`);
   expect(input).toBeEnabled();
+  expect(within(screen.getByTestId(`portion-row-${sunday}`)).queryByText('Cooked')).toBeNull();
   expect(input).toHaveValue(5);
   fireEvent.change(input, { target: { value: '6' } });
   fireEvent.click(screen.getByTestId('save-portions'));
   await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
   expect(save.mock.calls[0][0].days[0].servings).toBe(6);
 });
+
+it.each(['en', 'fr'])(
+  'labels a disabled cooked meal in %s without labeling other disabled dates',
+  async (locale) => {
+    localStorage.setItem('locale', locale);
+    try {
+      const state = snapshot();
+      state.days = state.days?.map((day) => ({ ...day, editable: false }));
+      read.mockResolvedValue(state);
+      await openEditor(schedule.map((day) => (day.date === sunday ? { ...day, status: 2 } : day)));
+      const row = screen.getByTestId(`portion-row-${sunday}`);
+      expect(within(row).getByTestId(`portion-input-${sunday}`)).toBeDisabled();
+      expect(within(row).getByText(locale === 'fr' ? 'Cuisiné' : 'Cooked')).toBeInTheDocument();
+      expect(
+        within(screen.getByTestId(`portion-row-${monday}`)).queryByText(
+          locale === 'fr' ? 'Cuisiné' : 'Cooked'
+        )
+      ).toBeNull();
+    } finally {
+      localStorage.removeItem('locale');
+    }
+  }
+);
 
 it('retains direct odd counts and sends one date-only batch', async () => {
   await openEditor();

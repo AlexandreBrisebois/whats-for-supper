@@ -989,7 +989,12 @@ test.describe('Supper Planner', () => {
               await button.click({ trial: true });
               const bounds = await button.boundingBox();
               const portionsBounds = await page.getByTestId('at-the-table-mode').boundingBox();
-              expect(Math.abs(bounds!.y - portionsBounds!.y)).toBeLessThanOrEqual(1);
+              expect(bounds!.y).toBeGreaterThanOrEqual(portionsBounds!.y - 1);
+              if (bounds!.y < portionsBounds!.y + portionsBounds!.height - 1) {
+                expect(bounds!.x).toBeGreaterThanOrEqual(
+                  portionsBounds!.x + portionsBounds!.width - 1
+                );
+              }
               expect(bounds!.x).toBeGreaterThanOrEqual(0);
               expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width);
               expect(await button.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
@@ -1842,6 +1847,7 @@ test.describe('Supper Planner', () => {
     await page.route(
       (url) => url.pathname === '/api/schedule',
       async (route) => {
+        if (route.request().method() !== 'GET') return route.fallback();
         const monday = currentMonday();
         const days = Array.from({ length: 7 }, (_, i) => {
           const d = new Date(monday);
@@ -1850,6 +1856,7 @@ test.describe('Supper Planner', () => {
           return {
             day: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i],
             date: dateStr,
+            status: 0,
             ...(dateStr === todayStr
               ? {
                   recipe: builders.scheduleRecipe({

@@ -1195,7 +1195,7 @@ Loaded detail SHALL show ingredients followed by numbered preparation steps in o
 
 ### Requirement: Place appreciation near recipe identity
 
-Viewing detail SHALL place existing Dislike, Like and Love after instructions, evenly spaced as borderless choices rather than outlined chips. Localized labels, accessible names, visible selected state and existing editing rules SHALL remain. Optional rating SHALL stay distinct from GOTO, votes and cooking completion. Selection SHALL not depend on faint opacity or color alone.
+Rating SHALL remain after instructions with evenly spaced borderless emoji/label choices, restoring the verified main’s neutral white selected surface and shadow/emphasis without red selection or a checkmark. Preserve localized readable labels, pressed/selected state, visible focus, 48 CSS px targets and existing save/toggle behavior. Optional rating remains distinct from GOTO, votes and completion; do not restore unreadable inactive opacity or untranslated names.
 
 #### Scenario: Recognise appreciation before planning
 - **WHEN** a recipe with a saved rating opens
@@ -1204,6 +1204,11 @@ Viewing detail SHALL place existing Dislike, Like and Love after instructions, e
 #### Scenario: Plan without rating
 - **WHEN** the recipe is unrated
 - **THEN** planning remains available without choosing a rating
+
+#### Scenario: Neutral selected rating and readable alternatives
+- **WHEN** a saved Like rating opens in English or French
+- **THEN** its white selected surface/emphasis and pressed semantics identify it without a red treatment/checkmark, and other choices remain visibly available and legible
+- **AND** repeated selection retains the existing clear-rating behavior without affecting planning, votes or cooking
 
 ### Requirement: Keep household details after recipe reading
 
@@ -1264,40 +1269,44 @@ Eligible View Original SHALL remain lower right on the hero as a warm translucen
 
 ### Requirement: Make detail actions reflect their entry context
 
-Detail SHALL preserve dated planning/recovery and source-date identity. Dated Plan and icon-only Change day SHALL remain adjacent with localized accessible name/tooltip and at least 48 CSS px targets. Where Cook exists, one Cook SHALL span the footer content width on its own row below planning controls, retaining its instructions icon/name. Planner detail retains Plan another day. Reading/previews SHALL not assign or complete a meal; no Steps action returns.
+Planner and Recipes detail SHALL put one existing Cook at the top dock’s left, retaining cooking context and guards. Bottom actions SHALL occupy one row: unplanned dated Plan with target-day arrows, or white Planned navigation without arrows for a confirmed occurrence. Editing the shown saved occurrence belongs in Planner. Do not repeat planned status in the body or retain bottom Cook/Plan another day copies. Reading/navigation SHALL not assign or complete a meal; no Steps action returns.
 
 #### Scenario: Read from a saved Planner meal
-- **WHEN** a planned recipe opens from its dated Planner card
-- **THEN** detail identifies the date, offers one full-width Cook on its own row and retains quieter Plan another day; closing returns to the same week without schedule mutation
+- **WHEN** a confirmed ordinary planned recipe opens from its dated Planner card
+- **THEN** Cook is top-left and one white Planned control opens Planner on that exact source date with no change arrows or duplicate body status
+- **AND** direct Plan another day is no longer stacked in detail; the person changes plans in Planner
 
 #### Scenario: Plan for a day
-- **WHEN** a valid dated assignment is available
-- **THEN** Plan for the explicit date and Change day appear beside each other, with only ArrowRightLeft visible on Change day, its localized accessible name and at least 48 CSS px target intact, and one full-width Cook remains a distinct secondary action on the next row
-- **AND** narrow/large-text layouts reflow within the action area without shrinking targets below 48 CSS px
-- **AND** Plan another day retains Home's quieter Change Plan treatment where applicable
+- **WHEN** a valid unassigned dated target is available
+- **THEN** dated Plan and the existing 48 CSS px icon-only target-day chooser appear in one bottom action row, with Cook in the top dock instead of a second bottom row
+- **AND** the arrows retain their localized chooser name and cannot move a saved plan or navigate to Planner
+- **AND** a recipe on a different date does not replace the explicitly displayed target
 
 #### Scenario: Pending or recovery footer
-- **WHEN** checking, assignment, uncertain persistence, conflict or staged recovery is active
-- **THEN** existing loading, retry, review and recovery actions remain reachable without duplicate writes or a misleading enabled Plan
-- **AND** changing the visual arrangement does not permit the target to change during an operation that owns it
+- **WHEN** target checking, assignment, uncertain persistence, conflict or staged recovery owns the flow
+- **THEN** existing retry/review/saving guards and necessary feedback remain reachable without duplicate writes or a misleading Planned/Plan state
+- **AND** action controls remain in one bottom row; feedback can wrap above them, and recovery in its separate existing surface retains its controls
+- **AND** top Cook or Find Similar cannot bypass an operation that owns unresolved state
 
 #### Scenario: Prepared or legacy completed occurrence
 - **WHEN** a completed occurrence opens
-- **THEN** instructions remain readable without another completion prompt, only known preparation metadata is shown and a preview does not replace frozen context
+- **THEN** instructions retain their readable Cook entry and completion protection, with only known preparation metadata and frozen portions
+- **AND** do not relabel completed or consensus state as a new uncompleted plan or invent preparation dates
 
 #### Scenario: Edit, read-only review or unavailable recipe
-- **WHEN** editing, original review, loading or failed detail is active
-- **THEN** Save/Cancel, source review, retry and close retain their roles; a grocery-source Plan transition requires deliberate activation before normal planning is exposed
+- **WHEN** editing, original-quantity review, loading or failed detail is active
+- **THEN** Save/Cancel, source review, retry and Close retain their roles; Cook is offered only under its existing availability rules
+- **AND** an original-grocery-review Plan transition remains deliberate and cannot assign by itself
 
 #### Scenario: Browse and grocery-source cooking layout
-- **WHEN** detail in ordinary recipe browsing or grocery-source original review already offers Cook
-- **THEN** that same Cook spans its footer content width without duplicating or inventing a cooking entry
-- **AND** any original-review Plan transition remains separate and cannot assign merely by opening Cook
+- **WHEN** ordinary Recipes browsing or original-grocery review already offers Cook
+- **THEN** that same control moves to the top-left dock without a bottom duplicate or changed cooking context
+- **AND** grocery original quantities and the separate guarded Plan transition remain intact
 
 #### Scenario: Responsive full-width means the current footer
-- **WHEN** English/French detail is read on phone, bounded tablet, a short viewport or with 200% text
-- **THEN** Cook spans the available footer content width inside its gutters, stays at least 48 CSS px tall and remains keyboard reachable
-- **AND** the taller footer and safe areas are reserved once so notes, original evidence and final reading content remain reachable without overlap
+- **WHEN** English/French detail appears on phone, bounded tablet, short height or 200% text
+- **THEN** the bottom action row uses its available inner width without stacking separate action rows, horizontal overflow or targets below 48 CSS px
+- **AND** labels can wrap within their controls, top controls can reflow, and reading/Notes clear the actual docks and safe areas once
 
 ### Requirement: Use one dated portion context while choosing a recipe
 
@@ -1342,7 +1351,7 @@ Detail SHALL place known Ready in duration on a readable hero surface, consisten
 
 ### Requirement: Preview two four or six portions without saving
 
-With a valid original yield, detail SHALL offer 2, 4 and 6 as immediate ingredient-only previews, clearly identifying the selected count and temporary meaning. The default remains the dated projection or original basis; returning to it SHALL be available. Preview SHALL NOT change saved portions, groceries, rating, preparation, cooking checks or completion context.
+With a valid original yield, detail SHALL offer immediate 2/4/6 ingredient-only previews with the existing Preview portions label and selected-count state. The dated/original default SHALL remain restorable through Recipe actions Reset view. Inline original/planned links and the preview-only sentence SHALL be absent. Preview SHALL NOT change saved portions, groceries, rating, preparation, cooking checks or completion context.
 
 #### Scenario: Preview four for Friday planned for six
 - **WHEN** a two-serving recipe with reliable 200 g pasta is planned for six and four is selected
@@ -1351,7 +1360,7 @@ With a valid original yield, detail SHALL offer 2, 4 and 6 as immediate ingredie
 
 #### Scenario: Unknown yield or unreliable amount
 - **WHEN** original yield is missing or an ingredient cannot reliably scale
-- **THEN** an unknown yield offers explicit Set original yield through recipe editing and no fabricated preview, while unreliable lines retain original text and uncertainty feedback
+- **THEN** an unknown yield offers explicit Set recipe portions through recipe editing and no fabricated preview, while unreliable lines retain original text without a generic review warning or replacement cue
 - **AND** intentionally unquantified text remains ordinary content
 
 #### Scenario: Yield correction is cancelled or fails
@@ -1376,8 +1385,7 @@ Refined controls SHALL retain visible keyboard focus, localized accessible names
 - **THEN** the notes field, retry, Close and contextual actions remain reachable without overlap or horizontal scrolling
 
 ### Requirement: Retain explicit preview intent through background loading
-
-A selected 2/4/6 preview SHALL survive routine schedule/grocery reads, unchanged refresh and app resume for the same recipe and planning target. Relevant input changes SHALL refresh that target preview without showing stale quantities as current. Changing recipe, deliberately changing day or returning to original/planned quantities SHALL reset selection. Late results SHALL not cross those boundaries.
+A selected 2/4/6 preview SHALL survive routine schedule/grocery reads, unchanged refresh and app resume for the same recipe and planning target. Relevant input changes SHALL refresh that target preview without showing stale quantities as current. Changing recipe, deliberately changing day or deliberately inspecting original ingredients or activating Reset view in Recipe actions SHALL reset selection. Late results SHALL not cross those boundaries.
 
 #### Scenario: Tap during initial schedule reads
 - **WHEN** two is selected before background schedule loading finishes
@@ -1394,19 +1402,30 @@ A selected 2/4/6 preview SHALL survive routine schedule/grocery reads, unchanged
 
 ### Requirement: Expose original evidence without a duplicate serving list
 
-Detail SHALL show a known original yield as quiet plain context and SHALL remove the duplicate Serving details ingredient list. Original quantities SHALL remain deliberately reachable when projected values differ or warning review needs them, without showing two identical ingredient lists. Unknown yield SHALL remain honest with the existing correction route. Source access and completeness warnings SHALL remain separate.
+Detail SHALL retain one ingredient list, disclosing original basis only after changed preview or deliberate inspection. Original inspection and Reset view SHALL remain progressive Recipe actions entries, including for dated/prepared and grocery review; inline original/planned links SHALL be absent. Unknown yield SHALL retain explicit correction. Generic amounts-review copy SHALL have no replacement warning cue.
 
 #### Scenario: Original and unresolved reading
 - **WHEN** the displayed ingredients already are the original strings
-- **THEN** no Serving details list repeats them; known original yield remains identifiable and unresolved feedback is visible
+- **THEN** no Serving details list repeats them; ordinary default reading omits repeated original-basis exposition and generic review feedback, while deliberate original inspection identifies its basis when known
 
 #### Scenario: Inspect original from a scaled preview
-- **WHEN** two portions are previewed from an original four and Original quantities is activated
+- **WHEN** two portions are previewed from an original four and View original ingredients is activated in Recipe actions
 - **THEN** original yield and ingredient text replace the preview, without a second simultaneous ingredient list or saved-state change
 
 #### Scenario: Missing original yield or warning
 - **WHEN** yield is missing or a grocery quantity warning led to detail
 - **THEN** original text/source remains inspectable with honest yield/correction feedback, and removing the duplicate list does not hide the warning's evidence
+
+#### Scenario: Default dated access and changed preview
+- **WHEN** ordinary dated detail opens before any preview change
+- **THEN** its effective count remains beside Ingredients, repeated date/portion exposition is absent, and original inspection is available in the overflow menu when applicable
+- **AND** after a changed preview the relevant original inspection remains in Recipe actions without an inline duplicate; it replaces the same list without saving
+
+#### Scenario: Grocery original review and prepared context
+- **WHEN** grocery-source original review or a prepared occurrence is opened
+- **THEN** the owned original-review context or actual preparation facts remain identifiable without false preview or planning authority
+- **AND** grocery original review retains its known source date once when its plain Plan transition does not already identify that date; ordinary dated detail does not regain a duplicate date/portion paragraph
+- **AND** original inspection is available even when the current recipe lacks a basis eligible for temporary previews
 
 ### Requirement: Enter planning deliberately from grocery source review
 
@@ -1424,3 +1443,99 @@ A recipe opened from a grocery source SHALL initially retain original-quantity r
 #### Scenario: Close or target check fails
 - **WHEN** the target check fails or detail is closed before assignment
 - **THEN** failure retains retry and original access, while closing restores the grocery week and shopping state without a write
+
+### Requirement: Keep Planned status in one navigable presentation
+
+A confirmed ordinary planned occurrence SHALL have one white Planned control in the bottom row, including its dated destination and a localized accessible name describing opening Planner. It SHALL not look disabled or include change arrows. Do not repeat planned status in the reading body. Portion/projection and actual-preparation facts SHALL retain their distinct truthful roles; unknown, stale or completed context SHALL not create a false Planned claim.
+
+#### Scenario: Recognise navigation without duplicate status
+- **WHEN** matching dated detail is confirmed planned
+- **THEN** Planned and its date appear in the white navigation control with an accessible name such as Planned for Friday, November 6. Open Planner
+- **AND** the body has no second Already planned/Planned status banner; necessary ingredient count, preview meaning, errors and actual-preparation facts are not hidden
+
+#### Scenario: Open the matching date without a write
+- **WHEN** Planned is activated by touch or keyboard
+- **THEN** it opens the captured Planner day/week without reassigning, moving, completing, editing portions or inventing save-success feedback
+
+### Requirement: Give the next permitted recipe action the primary accent
+
+The next best enabled action SHALL use the established terracotta primary treatment with readable light text. An ordinary unplanned target emphasizes dated Plan; a confirmed planned recipe emphasizes Cook at top-left while Planned navigation stays white. Error, review and uncertain states SHALL retain their existing safe next action rather than granting mutation through color. Labels and semantics SHALL explain roles without color alone.
+
+#### Scenario: Plan versus already planned
+- **WHEN** detail changes from an ordinary unassigned target to a confirmed matching saved occurrence
+- **THEN** the bottom changes from accent dated Plan with target arrows to white Planned without arrows, and Cook becomes the primary accented action in the top dock
+- **AND** no body status duplicates the Planned control
+
+#### Scenario: Error or unresolved outcome
+- **WHEN** target resolution fails or an assignment needs reconciliation
+- **THEN** the applicable safe Retry/Review action owns primary emphasis; disabled or unrelated actions cannot bypass the unresolved operation
+
+### Requirement: Expose Find Similar without opening a menu
+
+Loaded readable detail SHALL show one quiet labeled Find Similar action in its overview before Ingredients, outside both docks. It SHALL reuse the existing Similar function, current recipe identity and applicable navigation/draft guards, without a menu duplicate, ranking change or saved recipe/plan mutation. Rating → Notes → Ask the Family SHALL retain their ending order. Loading/edit/unavailable states SHALL retain existing eligibility.
+
+#### Scenario: Discover and activate Similar from both entry points
+- **WHEN** a loaded recipe is read from Planner or Recipes and Find Similar is activated
+- **THEN** the existing Similar flow opens for that recipe without first opening the three-dot menu or writing recipe/plan state
+- **AND** only one actionable Similar entry exists in detail, with its existing Search icon/localized label
+
+#### Scenario: Keep notes and owned recovery safe
+- **WHEN** notes contain a pending/failed draft or a planning operation owns unresolved state
+- **THEN** Similar follows existing draft-retention/departure safeguards and cannot silently discard or bypass that state
+
+#### Scenario: Bilingual and constrained layouts
+- **WHEN** detail uses French, a 320 CSS px viewport, tablet or 200% text
+- **THEN** the visible Similar label wraps legibly with a 48 CSS px target and keyboard focus, without adding a bottom action row or displacing required reading controls
+
+### Requirement: Reveal portions explanation after a deliberate reading change
+
+Ordinary detail SHALL retain one effective Ingredients count and eligible 2/4/6 controls without repeated date/basis/scaling exposition. Changed preview SHALL retain its original-count label and use Preview portions/selected state for temporary meaning, without the preview-only sentence or inline original/planned links. Reset SHALL collapse that context. Preparation facts, scoped loading/errors, retry and saved-basis editor consequences SHALL remain explicit.
+
+#### Scenario: Change six without changing a meal
+- **WHEN** original basis four is read and six is explicitly previewed
+- **THEN** Ingredients identifies six, the selected control is pressed, the original-four label remains, Preview portions and selected state identify temporary meaning, and original inspection/Reset view remain reachable through Recipe actions
+- **AND** no saved count, grocery state or cooking context changes; an entirely unscalable response does not claim that all ingredient amounts adjusted
+
+#### Scenario: Same count and return to default
+- **WHEN** an explicit selection matches a confirmed default count, or Recipe actions Reset view is activated
+- **THEN** default reading is restored without an unnecessary changed-preview explanation or saved-state mutation
+- **AND** a background default read does not retrospectively cancel a preview selected while that default was still loading
+
+#### Scenario: Dated preview equal to original basis
+- **WHEN** a four-serving recipe defaults to five dated portions and four is explicitly previewed
+- **THEN** that is still a temporary reading change with a return to five; no scaling factor different from one or changed saved plan is claimed
+
+#### Scenario: Missing original basis correction
+- **WHEN** current recipe basis is missing and Set recipe portions is activated
+- **THEN** the existing recipe editor opens at its original-basis field, with saved-change meaning explained there and existing Save/Cancel/validation/failure handling
+- **AND** family size, dated portions and unsaved edits do not become an invented recipe basis
+
+#### Scenario: Bilingual constrained reading
+- **WHEN** this section is used in English/French on a 320 CSS px phone, tablet, short viewport or 200 percent text
+- **THEN** count, preview and progressive Recipe actions controls remain keyboard operable with readable labels/state, visible focus and 48 CSS px targets without overlap or horizontal scroll
+
+#### Scenario: Specific instruction amounts during changed preview
+- **WHEN** a changed preview actually scales at least one reliable ingredient with a factor different from one
+- **THEN** existing specific guidance that instruction amounts remain original is available with that preview context
+- **AND** ordinary default reading, factor-one previews and entirely unscaled results do not add that exposition or claim changed step quantities
+
+### Requirement: Reset detail reading without inline quantity links
+
+Recipe actions SHALL offer Reset view while a temporary preview or original inspection differs from default reading. Reset SHALL clear temporary reading state and restore the current dated/frozen or standalone default in the same list without a write. Reset SHALL remain reachable after preview failure and for defaults outside 2/4/6. Removed inline links and the preview-only sentence SHALL not reappear as replacement explanatory copy.
+
+#### Scenario: Default five or seven
+- **WHEN** a dated default is five or seven, or a standalone original basis is outside 2/4/6, and a different count is previewed
+- **THEN** Recipe actions Reset view restores that default count and its matching quantities without editing saved basis, plan, groceries or preparation
+
+#### Scenario: Preview failed
+- **WHEN** a temporary preview fails to load
+- **THEN** inline loading/error and Retry remain scoped and Reset view in Recipe actions provides a read-only escape to default
+
+#### Scenario: Inspect original and return
+- **WHEN** View original ingredients is chosen from a dated preview and Reset view is then chosen
+- **THEN** the same list first shows original facts/basis and then the current dated default, with no second list or saved mutation
+
+#### Scenario: Keyboard and bilingual cleanup
+- **WHEN** the changed-preview area and Recipe actions are used in English/French at 320 CSS px or 200% text
+- **THEN** removed inline links/sentence are absent, the existing original serving-count label remains, and original inspection/Reset view have localized names, visible focus and 48 CSS px targets
+- **AND** menu closure/activation restores focus to a connected meaningful control or the Ingredients heading

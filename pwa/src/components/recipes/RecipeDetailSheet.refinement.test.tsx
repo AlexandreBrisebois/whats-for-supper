@@ -43,6 +43,7 @@ vi.mock('@/lib/api/recipes', () => ({
 }));
 
 vi.mock('@/locales', () => ({
+  getLocale: () => 'en',
   t: (_key: string, value: string) => value,
   tWithVars: (_key: string, value: string, vars: Record<string, unknown>) =>
     value.replace(/{{(\w+)}}/g, (_, key) => String(vars[key])),
@@ -133,6 +134,72 @@ beforeEach(() => {
 });
 
 describe('quiet recipe composition refinement', () => {
+  it('does not advertise Similar where the detail caller has no search action', async () => {
+    render(<RecipeDetailSheet {...props} onFindSimilar={undefined} />);
+    await screen.findByTestId('recipe-detail-name');
+    expect(screen.queryByTestId('action-find-similar')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('action-gear-menu'));
+    expect(screen.queryByTestId('action-find-similar')).not.toBeInTheDocument();
+  });
+
+  it('shows Similar once before Ingredients and reuses the callback without a menu duplicate', async () => {
+    render(<RecipeDetailSheet {...props} />);
+    const similar = await screen.findByTestId('action-find-similar');
+    expect(similar).toHaveAccessibleName('Find Similar');
+    expect(
+      similar.compareDocumentPosition(screen.getByRole('heading', { name: /Ingredients/ })) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+    fireEvent.click(screen.getByTestId('action-gear-menu'));
+    expect(screen.getAllByTestId('action-find-similar')).toHaveLength(1);
+    fireEvent.click(similar);
+    expect(props.onFindSimilar).toHaveBeenCalledWith(id);
+    expect(props.onUseForDay).not.toHaveBeenCalled();
+    expect(mockUpdateRecipe).not.toHaveBeenCalled();
+  });
+
+  it('keeps Similar disabled while an operation owns the detail', async () => {
+    render(<RecipeDetailSheet {...props} planningNeedsCheck />);
+    expect(await screen.findByTestId('action-find-similar')).toBeDisabled();
+    expect(screen.getByTestId('action-cooks-mode')).toBeDisabled();
+  });
+
+  it('keeps the sole Cook in the top dock and dated controls in one bottom row', async () => {
+    render(<RecipeDetailSheet {...props} />);
+    const cook = await screen.findByTestId('action-cooks-mode');
+    expect(screen.getByTestId('recipe-detail-toolbar')).toContainElement(cook);
+    expect(screen.getByTestId('recipe-planning-actions')).not.toContainElement(cook);
+    expect(screen.getAllByTestId('action-cooks-mode')).toHaveLength(1);
+    expect(screen.getByTestId('recipe-dated-planning-actions')).not.toHaveClass('flex-wrap');
+  });
+
+  it('offers white exact-date Planned navigation without assignment or arrows', async () => {
+    const onOpenPlannedDay = vi.fn();
+    render(
+      <RecipeDetailSheet
+        {...props}
+        plannedDayLabel="Wednesday, October 14"
+        onOpenPlannedDay={onOpenPlannedDay}
+      />
+    );
+    const planned = await screen.findByTestId('action-planned');
+    expect(planned).toHaveAccessibleName('Planned for Wednesday, October 14. Open Planner');
+    expect(planned).toHaveClass('bg-white');
+    expect(screen.queryByTestId('action-change-day')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('action-add-to-day')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('action-plan-another-day')).not.toBeInTheDocument();
+    expect(screen.getByTestId('action-cooks-mode')).toHaveClass('bg-terracotta');
+    fireEvent.click(planned);
+    expect(onOpenPlannedDay).toHaveBeenCalledOnce();
+    expect(props.onUseForDay).not.toHaveBeenCalled();
+    expect(mockUpdateRecipe).not.toHaveBeenCalled();
+  });
+
+  it('does not let top Cook bypass a pending target check', async () => {
+    render(<RecipeDetailSheet {...props} planningLoading />);
+    expect(await screen.findByTestId('action-cooks-mode')).toBeDisabled();
+  });
+
   it('puts the change arrows on Change day while preserving distinct dated Plan and Cook actions', async () => {
     render(<RecipeDetailSheet {...props} />);
     const plan = await screen.findByTestId('action-add-to-day');
@@ -157,7 +224,7 @@ describe('quiet recipe composition refinement', () => {
       '400 g pasta'
     );
     expect(screen.queryByText('Serving details')).not.toBeInTheDocument();
-    expect(screen.getByText('Original recipe: 2 servings')).toBeVisible();
+    expect(screen.queryByText('Original recipe: 2 servings')).not.toBeInTheDocument();
     expect(screen.queryByText('200 g pasta')).not.toBeInTheDocument();
     expect(screen.getByTestId('action-view-original')).toBeVisible();
     expect(mockUpdateRecipe).not.toHaveBeenCalled();
@@ -174,13 +241,16 @@ describe('quiet recipe composition refinement', () => {
     expect(await screen.findByTestId('recipe-ingredient-projection')).toHaveTextContent(
       '400 g pasta'
     );
-    fireEvent.click(screen.getByRole('button', { name: 'Original quantities' }));
+    if (!screen.queryByRole('button', { name: 'View original ingredients' }))
+      fireEvent.click(screen.getByTestId('action-gear-menu'));
+    fireEvent.click(screen.getByRole('button', { name: 'View original ingredients' }));
     expect(screen.getByText('200 g pasta')).toBeVisible();
     expect(screen.queryByText('400 g pasta')).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Planned quantities' }));
+    fireEvent.click(screen.getByTestId('action-gear-menu'));
+    fireEvent.click(screen.getByRole('button', { name: 'Reset view' }));
     expect(screen.getByTestId('recipe-ingredient-projection')).toHaveTextContent('400 g pasta');
     expect(screen.queryByText('200 g pasta')).not.toBeInTheDocument();
-    expect(screen.getByTestId('recipe-portion-context')).toHaveTextContent('Wednesday, October 14');
+    expect(screen.queryByTestId('recipe-portion-context')).not.toBeInTheDocument();
     expect(mockUpdateRecipe).not.toHaveBeenCalled();
     expect(props.onUseForDay).not.toHaveBeenCalled();
   });
@@ -242,23 +312,27 @@ describe('quiet recipe composition refinement', () => {
     expect(await screen.findByTestId('recipe-ingredient-projection')).toHaveTextContent(
       '400 g pasta'
     );
-    expect(screen.getByText('Original recipe: 2 servings')).toBeVisible();
-    fireEvent.click(screen.getByRole('button', { name: 'Original quantities' }));
+    expect(screen.queryByText('Original recipe: 2 servings')).not.toBeInTheDocument();
+    if (!screen.queryByRole('button', { name: 'View original ingredients' }))
+      fireEvent.click(screen.getByTestId('action-gear-menu'));
+    fireEvent.click(screen.getByRole('button', { name: 'View original ingredients' }));
     expect(screen.getByText('200 g pasta')).toBeVisible();
     expect(screen.queryByText('900 g corrected pasta')).not.toBeInTheDocument();
     expect(screen.queryByText('Original recipe: 6 servings')).not.toBeInTheDocument();
     expect(screen.queryByText('400 g pasta')).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Planned quantities' }));
+    fireEvent.click(screen.getByTestId('action-gear-menu'));
+    fireEvent.click(screen.getByRole('button', { name: 'Reset view' }));
     expect(screen.getByTestId('recipe-ingredient-projection')).toHaveTextContent('400 g pasta');
     expect(mockUpdateRecipe).not.toHaveBeenCalled();
     expect(props.onUseForDay).not.toHaveBeenCalled();
   });
-  it('marks the selected appreciation with a visible shape as well as pressed semantics', async () => {
+  it('restores neutral main appreciation without a red selection or checkmark', async () => {
     render(<RecipeDetailSheet {...props} />);
     const selected = await screen.findByRole('button', { name: 'Like' });
     expect(selected).toHaveAttribute('aria-pressed', 'true');
-    expect(within(selected).getByTestId('recipe-rating-selected')).toBeVisible();
-    expect(screen.getAllByTestId('recipe-rating-selected')).toHaveLength(1);
+    expect(selected).toHaveClass('bg-white', 'shadow-md');
+    expect(selected).not.toHaveClass('bg-terracotta-50', 'text-terracotta-700');
+    expect(screen.queryByTestId('recipe-rating-selected')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Love' })).toHaveAttribute('aria-pressed', 'false');
   });
 
@@ -284,17 +358,23 @@ describe('quiet recipe composition refinement', () => {
     await screen.findByTestId('recipe-detail-name');
     expect(screen.queryByText('Original recipe: 6 servings')).not.toBeInTheDocument();
     expect(screen.queryByText('900 g corrected pasta')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Original quantities' })).toBeDisabled();
+    if (!screen.queryByRole('button', { name: 'View original ingredients' }))
+      fireEvent.click(screen.getByTestId('action-gear-menu'));
+    expect(screen.getByRole('button', { name: 'View original ingredients' })).toBeDisabled();
     await act(async () => reject(new Error('Unavailable')));
     expect(await screen.findByText('Could not confirm ingredients for this supper.')).toBeVisible();
     expect(screen.queryByText('900 g corrected pasta')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Original quantities' })).toBeDisabled();
+    if (!screen.queryByRole('button', { name: 'View original ingredients' }))
+      fireEvent.click(screen.getByTestId('action-gear-menu'));
+    expect(screen.getByRole('button', { name: 'View original ingredients' })).toBeDisabled();
     mockGetIngredientProjection.mockResolvedValue(projection);
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
     await waitFor(() =>
-      expect(screen.getByRole('button', { name: 'Original quantities' })).toBeEnabled()
+      expect(screen.getByRole('button', { name: 'View original ingredients' })).toBeEnabled()
     );
-    fireEvent.click(screen.getByRole('button', { name: 'Original quantities' }));
+    if (!screen.queryByRole('button', { name: 'View original ingredients' }))
+      fireEvent.click(screen.getByTestId('action-gear-menu'));
+    fireEvent.click(screen.getByRole('button', { name: 'View original ingredients' }));
     expect(screen.getByText('200 g pasta')).toBeVisible();
     expect(mockUpdateRecipe).not.toHaveBeenCalled();
   });
@@ -312,7 +392,9 @@ describe('quiet recipe composition refinement', () => {
       />
     );
     await screen.findByTestId('recipe-ingredient-projection');
-    fireEvent.click(screen.getByRole('button', { name: 'Original quantities' }));
+    if (!screen.queryByRole('button', { name: 'View original ingredients' }))
+      fireEvent.click(screen.getByTestId('action-gear-menu'));
+    fireEvent.click(screen.getByRole('button', { name: 'View original ingredients' }));
     expect(screen.getByText('200 g pasta')).toBeVisible();
     mockGetIngredientProjection.mockRejectedValue(new Error('Unavailable'));
     await act(async () => {
@@ -324,10 +406,8 @@ describe('quiet recipe composition refinement', () => {
     mockGetIngredientProjection.mockResolvedValue(projection);
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
     expect(await screen.findByText('200 g pasta')).toBeVisible();
-    expect(screen.getByRole('button', { name: 'Planned quantities' })).toHaveAttribute(
-      'aria-pressed',
-      'true'
-    );
+    fireEvent.click(screen.getByTestId('action-gear-menu'));
+    expect(screen.getByRole('button', { name: 'Reset view' })).toBeEnabled();
     expect(mockUpdateRecipe).not.toHaveBeenCalled();
   });
 
@@ -364,7 +444,9 @@ describe('quiet recipe composition refinement', () => {
     );
     expect(await screen.findByText('Original recipe: 6 servings')).toBeVisible();
     expect(screen.getByTestId('recipe-ingredient-preview')).toHaveTextContent('900 g pasta');
-    fireEvent.click(screen.getByRole('button', { name: 'Original quantities' }));
+    if (!screen.queryByRole('button', { name: 'View original ingredients' }))
+      fireEvent.click(screen.getByTestId('action-gear-menu'));
+    fireEvent.click(screen.getByRole('button', { name: 'View original ingredients' }));
     expect(screen.getByText('Original recipe: 2 servings')).toBeVisible();
     expect(screen.getByText('200 g pasta')).toBeVisible();
     expect(mockUpdateRecipe).not.toHaveBeenCalled();
@@ -379,6 +461,236 @@ describe('quiet recipe composition refinement', () => {
     expect(change.querySelector('.lucide-arrow-right-left')).not.toBeNull();
     fireEvent.click(change);
     expect(props.onChangeDay).toHaveBeenCalledOnce();
+    expect(props.onUseForDay).not.toHaveBeenCalled();
+  });
+});
+
+describe('quiet portions deliberate reading', () => {
+  it('keeps one default count and moves original inspection into overflow', async () => {
+    render(
+      <RecipeDetailSheet
+        {...props}
+        ingredientContext={{ context: 'proposed', supperDate: '2026-10-14' }}
+      />
+    );
+    await screen.findByTestId('recipe-ingredient-projection');
+    expect(screen.getByTestId('recipe-servings')).toHaveTextContent('4 servings');
+    expect(screen.queryByText('Original recipe: 2 servings')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('recipe-portion-context')).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'View original ingredients' })
+    ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('action-gear-menu'));
+    if (!screen.queryByRole('button', { name: 'View original ingredients' }))
+      fireEvent.click(screen.getByTestId('action-gear-menu'));
+    fireEvent.click(screen.getByRole('button', { name: 'View original ingredients' }));
+    expect(screen.getByText('200 g pasta')).toBeVisible();
+    expect(screen.getByText('Original recipe: 2 servings')).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Planned quantities' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('action-gear-menu'));
+    fireEvent.click(screen.getByRole('button', { name: 'Reset view' }));
+    expect(screen.queryByText('Original recipe: 2 servings')).not.toBeInTheDocument();
+    expect(mockUpdateRecipe).not.toHaveBeenCalled();
+  });
+
+  it('reveals temporary basis for a changed partial preview and collapses when default is selected', async () => {
+    mockGetIngredientPreview.mockResolvedValue({
+      ...projection,
+      baseServings: 2,
+      targetServings: 6,
+      factor: 3,
+      status: 'partial',
+      lines: [
+        { ...projection.lines[0], quantity: 600 },
+        { originalText: 'salt to taste', status: 'unresolved' },
+      ],
+    });
+    render(<RecipeDetailSheet {...props} />);
+    await screen.findByTestId('recipe-detail-name');
+    expect(screen.getByTestId('recipe-servings')).toHaveTextContent('2 servings');
+    expect(screen.queryByText('Original recipe: 2 servings')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Preview 6 portions' }));
+    await screen.findByTestId('recipe-ingredient-preview');
+    expect(screen.getByText('Original recipe: 2 servings')).toBeVisible();
+    expect(
+      screen.queryByText('Preview only. Your plan and shopping list stay unchanged.')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('Some amounts need review. Consult the original recipe.')
+    ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('action-gear-menu'));
+    expect(screen.getByTestId('action-original-quantities')).toBeVisible();
+    fireEvent.click(screen.getByTestId('action-gear-menu'));
+    fireEvent.click(screen.getByRole('button', { name: 'Preview 2 portions' }));
+    expect(screen.queryByTestId('recipe-ingredient-preview')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('Preview only. Your plan and shopping list stay unchanged.')
+    ).not.toBeInTheDocument();
+    expect(mockUpdateRecipe).not.toHaveBeenCalled();
+  });
+
+  it('explains saved effects only inside the focused missing-basis editor', async () => {
+    mockGetRecipe.mockResolvedValue({ ...recipe, servings: null });
+    render(<RecipeDetailSheet {...props} />);
+    await screen.findByTestId('recipe-detail-name');
+    expect(
+      screen.queryByText('This updates the saved recipe and may change your shopping list.')
+    ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Set recipe portions' }));
+    await waitFor(() => expect(screen.getByTestId('recipe-edit-servings-input')).toHaveFocus());
+    expect(
+      screen.getByText('This updates the saved recipe and may change your shopping list.')
+    ).toBeVisible();
+    expect(mockUpdateRecipe).not.toHaveBeenCalled();
+  });
+});
+
+describe('quiet portions captured contexts', () => {
+  it('keeps a basis-four preview temporary against dated five without claiming a nonunit factor', async () => {
+    mockGetRecipe.mockResolvedValue({ ...recipe, servings: 4 });
+    mockGetIngredientProjection.mockResolvedValue({
+      ...projection,
+      baseServings: 4,
+      targetServings: 5,
+      factor: 1.25,
+      lines: [{ ...projection.lines[0], quantity: 250 }],
+    });
+    mockGetIngredientPreview.mockResolvedValue({
+      ...projection,
+      baseServings: 4,
+      targetServings: 4,
+      factor: 1,
+      lines: [{ ...projection.lines[0], quantity: 200 }],
+    });
+    render(
+      <RecipeDetailSheet
+        {...props}
+        ingredientContext={{ context: 'proposed', supperDate: '2026-10-14' }}
+      />
+    );
+    await screen.findByTestId('recipe-ingredient-projection');
+    fireEvent.click(screen.getByRole('button', { name: 'Preview 4 portions' }));
+    await screen.findByTestId('recipe-ingredient-preview');
+    expect(screen.getByText('Original recipe: 4 servings')).toBeVisible();
+    expect(screen.getByTestId('recipe-servings')).toHaveTextContent('4 servings');
+    expect(screen.queryByTestId('recipe-instruction-limitation')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('action-gear-menu'));
+    fireEvent.click(screen.getByRole('button', { name: 'Reset view' }));
+    expect(screen.getByTestId('recipe-servings')).toHaveTextContent('5 servings');
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: 'Ingredients 5 servings' })).toHaveFocus()
+    );
+    expect(screen.queryByTestId('recipe-original-yield')).not.toBeInTheDocument();
+    expect(mockUpdateRecipe).not.toHaveBeenCalled();
+  });
+
+  it('keeps frozen prepared seven visible during a temporary preview', async () => {
+    mockGetIngredientProjection.mockResolvedValue({
+      ...projection,
+      targetServings: 7,
+      preparation: { servings: 7, preparedOn: '2026-10-12', originalServings: 2 },
+    });
+    mockGetIngredientPreview.mockResolvedValue({ ...projection, targetServings: 6, factor: 3 });
+    render(
+      <RecipeDetailSheet
+        {...props}
+        ingredientContext={{
+          context: 'assigned',
+          supperDate: '2026-10-14',
+          occurrenceId: 'prepared',
+        }}
+      />
+    );
+    await screen.findByTestId('recipe-ingredient-projection');
+    fireEvent.click(screen.getByRole('button', { name: 'Preview 6 portions' }));
+    await screen.findByTestId('recipe-ingredient-preview');
+    expect(screen.getByTestId('recipe-servings')).toHaveTextContent('6 servings');
+    expect(screen.getByTestId('recipe-prepared-portions')).toHaveTextContent('Prepared 7 portions');
+    expect(screen.getByTestId('preparation-status')).toHaveTextContent('Prepared Monday, Oct 12');
+    expect(mockUpdateRecipe).not.toHaveBeenCalled();
+  });
+
+  it('retains a known grocery source date once beside an undated Plan transition', async () => {
+    render(
+      <RecipeDetailSheet
+        {...props}
+        plannerDayLabel={null}
+        sourceDayLabel="Wednesday, October 14"
+        onBeginPlanning={vi.fn()}
+      />
+    );
+    await screen.findByTestId('recipe-detail-name');
+    expect(screen.getAllByText('Wednesday, October 14')).toHaveLength(1);
+    expect(screen.getByTestId('action-begin-planning')).toHaveTextContent('Plan');
+    expect(screen.queryByTestId('recipe-original-yield')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('action-gear-menu'));
+    fireEvent.click(screen.getByRole('button', { name: 'View original ingredients' }));
+    expect(screen.getByText('Original recipe: 2 servings')).toBeVisible();
+    expect(screen.getAllByText('Wednesday, October 14')).toHaveLength(1);
+    expect(mockUpdateRecipe).not.toHaveBeenCalled();
+  });
+});
+
+describe('simplified detail preview controls', () => {
+  it('resets a failed standalone preview to an original basis outside the preset counts', async () => {
+    mockGetRecipe.mockResolvedValue({ ...recipe, servings: 3 });
+    mockGetIngredientPreview.mockRejectedValue(new Error('Preview unavailable'));
+    render(<RecipeDetailSheet {...props} />);
+    await screen.findByTestId('recipe-detail-name');
+    fireEvent.click(screen.getByRole('button', { name: 'Preview 6 portions' }));
+    await screen.findByText('Preview could not load.');
+    expect(screen.getByRole('button', { name: 'Retry' })).toBeEnabled();
+    expect(screen.queryByRole('button', { name: 'Original quantities' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Planned quantities' })).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('Preview only. Your plan and shopping list stay unchanged.')
+    ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('action-gear-menu'));
+    expect(screen.getByRole('button', { name: 'View original ingredients' })).toBeEnabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Reset view' }));
+    expect(screen.getByTestId('recipe-servings')).toHaveTextContent('3 servings');
+    expect(screen.getByText('200 g pasta')).toBeVisible();
+    expect(screen.queryByText('Preview could not load.')).not.toBeInTheDocument();
+    expect(mockUpdateRecipe).not.toHaveBeenCalled();
+    expect(props.onUseForDay).not.toHaveBeenCalled();
+  });
+
+  it('restores frozen seven through menu reset after inspecting original from a preview', async () => {
+    mockGetIngredientProjection.mockResolvedValue({
+      ...projection,
+      targetServings: 7,
+      lines: [{ ...projection.lines[0], quantity: 700 }],
+      preparation: { servings: 7, preparedOn: '2026-10-12', originalServings: 2 },
+    });
+    mockGetIngredientPreview.mockResolvedValue({
+      ...projection,
+      targetServings: 6,
+      factor: 3,
+      lines: [{ ...projection.lines[0], quantity: 600 }],
+    });
+    render(
+      <RecipeDetailSheet
+        {...props}
+        ingredientContext={{
+          context: 'assigned',
+          supperDate: '2026-10-14',
+          occurrenceId: 'prepared',
+        }}
+      />
+    );
+    await screen.findByTestId('recipe-ingredient-projection');
+    fireEvent.click(screen.getByRole('button', { name: 'Preview 6 portions' }));
+    await screen.findByTestId('recipe-ingredient-preview');
+    expect(screen.getByText('Original recipe: 2 servings')).toBeVisible();
+    fireEvent.click(screen.getByTestId('action-gear-menu'));
+    fireEvent.click(screen.getByRole('button', { name: 'View original ingredients' }));
+    expect(screen.getByText('200 g pasta')).toBeVisible();
+    fireEvent.click(screen.getByTestId('action-gear-menu'));
+    fireEvent.click(screen.getByRole('button', { name: 'Reset view' }));
+    expect(screen.getByTestId('recipe-servings')).toHaveTextContent('7 servings');
+    expect(screen.getByTestId('recipe-ingredient-projection')).toHaveTextContent('700 g pasta');
+    expect(screen.getByTestId('recipe-prepared-portions')).toHaveTextContent('Prepared 7 portions');
+    expect(mockUpdateRecipe).not.toHaveBeenCalled();
     expect(props.onUseForDay).not.toHaveBeenCalled();
   });
 });

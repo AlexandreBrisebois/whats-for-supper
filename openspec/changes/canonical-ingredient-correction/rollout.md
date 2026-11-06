@@ -1,0 +1,12 @@
+# Structured ingredient cutover and recovery plan
+
+This is a future operator plan, not evidence of migration or permission to operate on a live environment. Planning refinement and quiet-portions deployment do not authorize this cutover.
+
+1. Inventory API, capture/reimport, legacy clients, workers, import, disk sync and restore writers. Add canonical storage without removing retained source or legacy storage. Keep canonical writes disabled until all consumers and adapters satisfy the change's scenarios.
+2. Build an immutable candidate and test against disposable PostgreSQL and fixture/media copies. Run a no-write conversion inspection: exact input identities/revisions, safely represented original facts, protected current text, conflicts and no guessed quantities. Verify known original measurements survive unknown basis and one-row edits leave other rows measured.
+3. Produce an independently stored, verified exact backup using existing recovery tooling. Include database facts, canonical schema/state, explicit empty/null values, source evidence/protection, media, history and required pending derived work. Rehearse restoring the exact candidate schema/data/media set on an isolated target; a text share or merge import is not exact recovery.
+4. Confirm the nonproduction/production target separately, obtain deployment/cutover authorization and record artifact identity. Quiesce incompatible writers, rerun revision checks, and enable only guarded current writers. Convert bounded recipes atomically; retry unchanged successful revisions idempotently. Conflicted recipes retain their legacy read adapter until explicitly reconciled; never silently publish stale converted facts.
+5. Verify original-basis three-field Save/reopen, dated projection, grocery/category refresh, new capture/import, version-2 round trip and exact recovery against the deployed artifact. Record skipped/blocked checks and pending derived work honestly. Do not call the cutover complete with an active incompatible writer or missing recovery proof.
+6. On failure, stop incompatible writes, preserve human changes and diagnosis evidence, and use the rehearsed compatible forward fix or exact recovery procedure. An old image alone cannot safely undo canonical edits. Retain source/legacy storage until a later separately reviewed cleanup.
+
+Selective automated repair, candidate selection and report membership are outside this cutover. Existing household report state remains independent of ingredient conversion and Save.

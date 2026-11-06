@@ -149,6 +149,10 @@ public partial class SupperServingsPostgresTests
                 if (previewOnly) {
                     db.Recipes.Add(SupperIngredientPreviewPostgresTests.LegacyShells());
                     db.FamilySettings.Add(new FamilySetting { Key = SupperServingsService.DefaultKey, Value = JsonSerializer.SerializeToElement(new { servings = 5 }) });
+                    // The deployment clock is Monday. Home and Cook must both read this
+                    // captured occurrence through the real assigned projection contract.
+                    db.CalendarEvents.Add(new CalendarEvent { Date = new(2026, 10, 12), RecipeId = recipe.Id, Status = CalendarEventStatus.Planned });
+                    db.SupperServings.Add(new SupperServing { Date = new(2026, 10, 12), OverrideServings = 6 });
                     db.SupperServings.Add(new SupperServing { Date = Wednesday.AddDays(2), OverrideServings = 7 });
                     var prepared = await db.CalendarEvents.SingleAsync(x => x.Date == Wednesday.AddDays(2));
                     prepared.Status = CalendarEventStatus.Cooked; prepared.PreparedOn = new(2026, 10, 12);
@@ -258,7 +262,8 @@ public partial class SupperServingsPostgresTests
                         Assert.Equal(7, prepared.PreparedServings);
                         Assert.Equal(new DateOnly(2026, 10, 12), prepared.PreparedOn);
                         Assert.Equal(2, (await checkDb.Recipes.AsNoTracking().SingleAsync(x => x.Id == recipeId)).Servings);
-                        output.WriteLine("Preview generated-client browser and independent persisted-state checks passed.");
+                        Assert.Equal(6, (await checkDb.SupperServings.AsNoTracking().SingleAsync(x => x.Date == new DateOnly(2026, 10, 12))).OverrideServings);
+                        output.WriteLine("Home/Cook captured assigned quantities, stale-occurrence rejection, preview generated-client browser and independent persisted-state checks passed.");
                         return;
                     }
 

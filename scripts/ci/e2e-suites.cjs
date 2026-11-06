@@ -18,7 +18,7 @@ const suites = {
     'recipe-notes-recovery', 'recipe-original-viewer', 'recipe-recovery',
     'recipe-share', 'recipes', 'search-hardening', 'search-invalidation-recovery',
     'sharing-fidelity', 'unified-recipes',
-    'recipe-detail-layout', 'recipe-ingredient-preview',
+    'recipe-detail-layout', 'recipe-ingredient-preview', 'quiet-portions-layout',
   ],
   household: [
     'auth-flow', 'welcome-demo', 'bug-condition-exploration', 'capture-flow', 'demo-mode',

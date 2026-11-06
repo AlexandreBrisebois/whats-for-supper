@@ -71,17 +71,13 @@ const steps = {
     ],
   ],
 };
-const photoIds = {
-  original: '669cc452-ffe2-42a1-ae35-e60edcc0b3d5',
-  bright: '24d56c00-6090-4f16-8786-bf213abc8f8a',
-  dark: '96469a1e-a4d8-4692-8cef-2875f729ed99',
-};
+const photoNames = ['original', 'bright', 'dark'] as const;
 
 async function prepare(
   page: Page,
   locale: 'en' | 'fr',
   options: {
-    photo?: keyof typeof photoIds | 'missing';
+    photo?: (typeof photoNames)[number] | 'missing';
     missingInstructions?: boolean;
     long?: boolean;
     notes?: string;
@@ -171,11 +167,8 @@ async function prepare(
     route.fulfill({
       body: fs.readFileSync(
         path.resolve(
-          '..',
-          'data',
-          'recipes',
-          photoIds[options.photo === 'missing' ? 'original' : options.photo || 'original'],
-          'hero.webp'
+          'e2e/fixtures/recipe-photos',
+          `${options.photo === 'missing' ? 'original' : options.photo || 'original'}.webp`
         )
       ),
       contentType: 'image/webp',
@@ -183,7 +176,7 @@ async function prepare(
   );
   await page.route(`**/api/recipes/${recipeId}/original/*`, (route) =>
     route.fulfill({
-      body: fs.readFileSync(path.resolve('..', 'data', 'recipes', photoIds.original, 'hero.webp')),
+      body: fs.readFileSync(path.resolve('e2e/fixtures/recipe-photos/original.webp')),
       contentType: 'image/webp',
     })
   );
@@ -212,6 +205,55 @@ async function prepare(
 for (const locale of ['en', 'fr'] as const)
   test.describe(`recipe detail layout ${locale}`, () => {
     test.use({ appLocale: locale });
+    test('visible Similar opens existing search without plan or recipe writes', async ({
+      page,
+    }) => {
+      const mutations = await prepare(page, locale, { originalServings: 2 });
+      const similar = page.getByTestId('action-find-similar');
+      await expect(similar).toHaveCount(1);
+      await expect(similar).toHaveAccessibleName(
+        locale === 'fr' ? 'Trouver similaire' : 'Find Similar'
+      );
+      await page.getByTestId('action-gear-menu').click();
+      await expect(page.getByTestId('action-find-similar')).toHaveCount(1);
+      await page.getByTestId('action-gear-menu').click();
+      const search = page.waitForRequest(
+        (r) =>
+          r.method() === 'POST' &&
+          new URL(r.url()).pathname === '/api/recipes/search' &&
+          r.postDataJSON()?.similarToRecipeId === recipeId
+      );
+      await similar.click();
+      await search;
+      await expect(page.getByTestId('recipe-detail-sheet')).toHaveCount(0);
+      await expect(page.getByTestId('search-similar-chip-remove')).toBeVisible();
+      await expect(page.getByTestId('stack-card-front')).toBeVisible();
+      expect(mutations).toEqual([]);
+    });
+    test('keeps Cook top-left and dated actions in one row without navigation writes', async ({
+      page,
+    }) => {
+      const mutations = await prepare(page, locale, { originalServings: 2 });
+      const cook = page.getByTestId('action-cooks-mode');
+      await expect(
+        page.getByTestId('recipe-detail-toolbar').getByTestId('action-cooks-mode')
+      ).toHaveCount(1);
+      await expect(
+        page.getByTestId('recipe-planning-actions').getByTestId('action-cooks-mode')
+      ).toHaveCount(0);
+      const plan = page.getByTestId('action-add-to-day');
+      const change = page.getByTestId('action-change-day');
+      for (const width of [320, 390, 834]) {
+        await page.setViewportSize({ width, height: 844 });
+        const p = (await plan.boundingBox())!;
+        const c = (await change.boundingBox())!;
+        expect(Math.abs(p.y - c.y)).toBeLessThan(2);
+        expect(p.height).toBeGreaterThanOrEqual(48);
+        expect(c.height).toBeGreaterThanOrEqual(48);
+        await expect(cook).toBeInViewport();
+      }
+      expect(mutations).toEqual([]);
+    });
     test('grocery original review never exposes an automatic dated assignment', async ({
       page,
     }) => {
@@ -257,11 +299,7 @@ for (const locale of ['en', 'fr'] as const)
         await page.getByTestId('planning-day-cancel').press('Enter');
         await expect(change).toBeFocused();
         await page.screenshot({
-          path: path.resolve(
-            '..',
-            '.task/dv-polish-apply/group5-renders',
-            `${locale}-icon-only-${width}-${height}-${scale}.png`
-          ),
+          path: test.info().outputPath(`${locale}-icon-only-${width}-${height}-${scale}.png`),
         });
       }
       expect(mutations).toEqual([]);
@@ -284,11 +322,7 @@ for (const locale of ['en', 'fr'] as const)
         .poll(() => input.evaluate((el) => getComputedStyle(el).outlineColor))
         .toBe('rgb(184, 85, 66)');
       await page.screenshot({
-        path: path.resolve(
-          '..',
-          '.task/dv-polish-apply/group5-renders',
-          `${locale}-notes-settled-keyboard-focus.png`
-        ),
+        path: test.info().outputPath(`${locale}-notes-settled-keyboard-focus.png`),
       });
     });
     test('enlarged footer keyboard scrolling reveals each action and notes clears a shortened viewport', async ({
@@ -302,7 +336,7 @@ for (const locale of ['en', 'fr'] as const)
       await page.keyboard.press('Tab');
       const plan = page.getByTestId('action-add-to-day');
       await plan.focus();
-      for (const id of ['action-add-to-day', 'action-change-day', 'action-cooks-mode']) {
+      for (const id of ['action-add-to-day', 'action-change-day']) {
         const action = page.getByTestId(id);
         await expect(action).toBeFocused();
         await expect(action).toBeInViewport();
@@ -312,14 +346,15 @@ for (const locale of ['en', 'fr'] as const)
         expect(box.y + box.height).toBeLessThanOrEqual(footer.y + footer.height + 1);
         expect(await action.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
         await page.screenshot({
-          path: path.resolve(
-            '..',
-            '.task/dv-polish-apply/group5-renders',
-            `${locale}-320-200-focus-${id}.png`
-          ),
+          path: test.info().outputPath(`${locale}-320-200-focus-${id}.png`),
         });
         await page.keyboard.press('Tab');
       }
+      const cook = page.getByTestId('recipe-detail-toolbar').getByTestId('action-cooks-mode');
+      await cook.focus();
+      await expect(cook).toBeFocused();
+      await expect(cook).toBeInViewport();
+      expect((await cook.boundingBox())!.height).toBeGreaterThanOrEqual(48);
       await page.setViewportSize({ width: 390, height: 390 });
       await page.evaluate(() => {
         document.documentElement.style.fontSize = '16px';
@@ -334,11 +369,7 @@ for (const locale of ['en', 'fr'] as const)
       const footer = (await page.getByTestId('recipe-planning-actions').boundingBox())!;
       expect(bottom.y + bottom.height).toBeLessThanOrEqual(footer.y + 1);
       await page.screenshot({
-        path: path.resolve(
-          '..',
-          '.task/dv-polish-apply/group5-renders',
-          `${locale}-short-keyboard-notes.png`
-        ),
+        path: test.info().outputPath(`${locale}-short-keyboard-notes.png`),
       });
     });
 
@@ -371,11 +402,7 @@ for (const locale of ['en', 'fr'] as const)
         const focused = await style();
         expect(focused.focusVisible).toBe(true);
         expect(focused.outline).toContain('solid 2px');
-        const prefix = path.resolve(
-          '..',
-          '.task/dv-polish-apply/group5-renders',
-          `${locale}-${photo}-capsule`
-        );
+        const prefix = test.info().outputPath(`${locale}-${photo}-capsule`);
         await page.screenshot({ path: prefix + '-keyboard.png' });
         await original.press('Enter');
         await expect(page.getByTestId('action-close-viewer')).toBeFocused();
@@ -410,6 +437,9 @@ for (const locale of ['en', 'fr'] as const)
             };
           })
         );
+        await expect(page.getByTestId('recipe-rating-selected')).toHaveCount(0);
+        const selectedRating = rating.getByRole('button', { pressed: true });
+        await expect(selectedRating).toHaveCSS('background-color', 'rgb(255, 255, 255)');
         expect(choices).toHaveLength(3);
         expect(choices.filter((choice) => choice.pressed === 'true')).toHaveLength(1);
         for (const choice of choices) {
@@ -435,7 +465,7 @@ for (const locale of ['en', 'fr'] as const)
       await input.scrollIntoViewIfNeeded();
       await page.keyboard.press('Tab');
       await input.focus();
-      const prefix = path.resolve('..', '.task/dv-polish-apply/group5-renders', `${locale}-notes`);
+      const prefix = test.info().outputPath(`${locale}-notes`);
       await page.screenshot({ path: prefix + '-empty-keyboard.png' });
       await input.fill(locale === 'fr' ? 'Moins de piment' : 'Less chilli');
       await expect(page.getByTestId('recipe-notes-retry')).toBeVisible();
@@ -557,11 +587,7 @@ for (const locale of ['en', 'fr'] as const)
           await original.scrollIntoViewIfNeeded();
           await expect(original).toBeInViewport();
           await page.screenshot({
-            path: path.resolve(
-              '..',
-              '.task/refinement-apply/renders',
-              `${width}x${height}-${locale}-${scale}-identity.png`
-            ),
+            path: test.info().outputPath(`${width}x${height}-${locale}-${scale}-identity.png`),
           });
           await page.getByTestId('recipe-family-notes-shortcut').click();
           await expect(page.getByTestId('recipe-notes-input')).toBeFocused();
@@ -576,17 +602,13 @@ for (const locale of ['en', 'fr'] as const)
           const footer = (await page.getByTestId('recipe-planning-actions').boundingBox())!;
           expect(bottom.y + bottom.height).toBeLessThanOrEqual(footer.y + 1);
           await page.screenshot({
-            path: path.resolve(
-              '..',
-              '.task/refinement-apply/renders',
-              `${width}x${height}-${locale}-${scale}-reading.png`
-            ),
+            path: test.info().outputPath(`${width}x${height}-${locale}-${scale}-reading.png`),
           });
           metrics.push({ locale, scale, ...info });
         }
       expect(mutations).toEqual([]);
       fs.writeFileSync(
-        path.resolve('..', '.task/recipe-detail-review', `group5-${locale}-metrics.json`),
+        test.info().outputPath(`group5-${locale}-metrics.json`),
         JSON.stringify(metrics, null, 2)
       );
       await testInfo.attach('layout measurements', {
@@ -611,7 +633,7 @@ for (const locale of ['en', 'fr'] as const)
         }
         await page.getByTestId('action-view-original').scrollIntoViewIfNeeded();
         await page.getByTestId('recipe-detail-sheet').screenshot({
-          path: path.resolve('..', '.task/refinement-apply/renders', `${locale}-${photo}.png`),
+          path: test.info().outputPath(`${locale}-${photo}.png`),
         });
         if (photo !== 'missing') {
           await page.setViewportSize({
@@ -620,11 +642,7 @@ for (const locale of ['en', 'fr'] as const)
           });
           await page.getByTestId('action-view-original').scrollIntoViewIfNeeded();
           await page.getByTestId('recipe-detail-sheet').screenshot({
-            path: path.resolve(
-              '..',
-              '.task/refinement-apply/renders',
-              `${locale}-${photo}-alternate.png`
-            ),
+            path: test.info().outputPath(`${locale}-${photo}-alternate.png`),
           });
         }
         await page.getByTestId('action-view-original').click();
@@ -698,7 +716,7 @@ for (const locale of ['en', 'fr'] as const)
         await expect(button).toBeInViewport();
       }
       await consent.screenshot({
-        path: path.resolve('..', '.task/refinement-apply/renders', `${locale}-consent-200.png`),
+        path: test.info().outputPath(`${locale}-consent-200.png`),
       });
       await page.getByTestId('non-cooking-cancel').click();
       expect(mutations).toEqual([]);
@@ -751,7 +769,7 @@ for (const locale of ['en', 'fr'] as const)
         }, specimen.text);
         await page.emulateMedia({ reducedMotion: 'reduce' });
         await page.evaluate(() => document.fonts.ready);
-        const folder = path.resolve('..', '.task/dv-polish-apply/group5-renders', phase);
+        const folder = test.info().outputPath(phase);
         fs.mkdirSync(folder, { recursive: true });
         const prefix = path.join(folder, `${locale}-${specimen.name}`);
         const original = page.getByTestId('action-view-original');

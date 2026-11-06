@@ -10,7 +10,21 @@ import {
   toDateStr,
   mockSseWithSlotUpdate,
   mockSseWithConnectedSchedule,
+  mockSupperServings,
 } from './mock-api';
+
+// Synthetic Home schedules and dated projection reads share one stateful owner.
+async function setupHomeProjection(page: Page, schedule: ReturnType<typeof builders.scheduleDays>) {
+  for (const day of schedule.days) if (day.recipe) day.occurrenceId ??= MOCK_IDS.SUPPER_OCCURRENCE;
+  await mockSupperServings(page, () => schedule, {
+    readFamilyCount: () => 4,
+    readRecipe: (id) =>
+      builders.recipe({
+        id,
+        ingredients: schedule.days.find((day) => day.recipe?.id === id)?.recipe?.ingredients ?? [],
+      }),
+  });
+}
 
 /** Use the existing browser schedule/SSE seams, leaving Home SSR reconciliation intact. */
 async function prepareAdaptiveTonight(page: Page, name: string, image = 'loaded') {
@@ -31,6 +45,7 @@ async function prepareAdaptiveTonight(page: Page, name: string, image = 'loaded'
       totalTime: 'PT25M',
       ingredients: ['Salmon', 'Green beans'],
     });
+  await setupHomeProjection(page, schedule);
   await mockSseWithConnectedSchedule(page, schedule as unknown as ScheduleDays);
   await page.route(
     (url) => url.pathname.endsWith('/api/schedule'),
@@ -341,6 +356,7 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
       image: '',
     });
     schedule.days.find((day) => day.date === toDateStr(currentMonday()))!.recipe = recipe;
+    await setupHomeProjection(page, schedule);
     await mockSseWithConnectedSchedule(page, schedule as unknown as ScheduleDays);
     await page.route(
       (url) => url.pathname.endsWith('/api/schedule') && url.searchParams.get('weekOffset') === '0',
@@ -2102,4 +2118,93 @@ test.describe('Home active voting handoff', () => {
       });
     }
   });
+});
+
+test('Home expanded assigned ingredients and captured Cook share six portions without writes', async ({
+  page,
+}) => {
+  await page.context().addCookies([
+    {
+      name: 'x-family-member-id',
+      value: MOCK_IDS.MEMBER_ALEX,
+      url: process.env.BASE_URL || 'http://127.0.0.1:3000',
+    },
+  ]);
+  await setupCommonRoutes(page, builders.deploymentCalendar({ today: '2026-05-04' }), {
+    supperServings: {
+      knownRecipe: {
+        id: MOCK_IDS.RECIPE_SPAGHETTI,
+        basis: 2,
+        quantity: 200,
+        ingredient: 'pasta',
+        unit: 'g',
+      },
+    },
+  });
+  await page.goto('/onboarding');
+  await page.evaluate(
+    async ({ id, member }) => {
+      localStorage.setItem(
+        'family-storage',
+        JSON.stringify({
+          state: { selectedFamilyMemberId: member, familyMembers: [{ id: member, name: 'Alex' }] },
+          version: 0,
+        })
+      );
+      const state = (
+        await (
+          await fetch('/api/schedule/servings?weekOffset=0&referenceWeekStartDate=2026-05-04')
+        ).json()
+      ).data;
+      const defaults = await fetch('/api/schedule/servings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          expectedVersion: state.version,
+          weekOffset: 0,
+          referenceWeekStartDate: '2026-05-04',
+          defaultServings: 6,
+          days: [],
+        }),
+      });
+      if (!defaults.ok) throw new Error('Could not configure fixture portions');
+      const assignment = await fetch('/api/schedule/assign?referenceWeekStartDate=2026-05-04', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ weekOffset: 0, dayIndex: 0, recipeId: id }),
+      });
+      if (!assignment.ok) throw new Error('Could not seed captured supper');
+    },
+    { id: MOCK_IDS.RECIPE_SPAGHETTI, member: MOCK_IDS.MEMBER_ALEX }
+  );
+  const snapshot = () =>
+    page.evaluate(async () => ({
+      schedule: await (
+        await fetch('/api/schedule?weekOffset=0&referenceWeekStartDate=2026-05-04')
+      ).json(),
+      portions: await (
+        await fetch('/api/schedule/servings?weekOffset=0&referenceWeekStartDate=2026-05-04')
+      ).json(),
+    }));
+  const before = await snapshot();
+  const writes: string[] = [];
+  const reads: string[] = [];
+  page.on('request', (request) => {
+    const url = new URL(request.url());
+    if (!['GET', 'HEAD'].includes(request.method()) && url.pathname.startsWith('/api/'))
+      writes.push(request.method() + ' ' + url.pathname);
+    if (url.pathname.endsWith('/ingredient-projection')) reads.push(url.search);
+  });
+  await page.goto('/home');
+  await expect(page.getByTestId('tonight-menu-card')).toBeVisible();
+  await page.getByTestId('tonight-ingredients-toggle').click();
+  await expect(page.getByTestId('tonight-menu-card')).toContainText('600 g pasta');
+  await expect(page.getByTestId('ingredients-info-title')).toContainText('6 portions');
+  await page.getByTestId('cook-mode-btn').click();
+  await expect(page.getByTestId('cooks-mode-overlay')).toBeVisible();
+  await expect(page.getByTestId('cooks-mode-overlay')).toContainText('600 g pasta');
+  expect(reads.length).toBeGreaterThanOrEqual(2);
+  expect(new Set(reads).size).toBe(1);
+  expect(writes).toEqual([]);
+  expect(await snapshot()).toEqual(before);
 });

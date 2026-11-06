@@ -195,7 +195,7 @@ export const useFamilyStore = create<FamilyState>((set, get) => ({
       const members = await getFamilyMembers();
       set({ familyMembers: members ?? [], isLoading: false, hasLoaded: true });
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to load family members';
+      const message = (err instanceof Error && err.message) || 'Failed to load family members';
       set({ isLoading: false, error: message, hasLoaded: true });
     }
   },

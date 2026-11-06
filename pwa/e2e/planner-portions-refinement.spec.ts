@@ -18,7 +18,7 @@ for (const locale of ['en', 'fr'] as const)
       await page.setViewportSize({ width: 320, height: 740 });
       await page.goto('/planner');
       await page.getByRole('button', { name: 'Portions', exact: true }).click();
-      await expect(page.getByTestId('portions-mode-strip')).not.toContainText(
+      await expect(page.getByTestId('save-portions')).toHaveAccessibleName(
         locale === 'fr' ? 'Recettes' : 'Recipes'
       );
       await page.getByTestId('portion-input-2026-05-06').fill('5');
@@ -302,7 +302,10 @@ for (const locale of ['en', 'fr'] as const)
         await page.getByTestId('portions-keep-editing').click();
         expect(await page.getByTestId('portion-input-2026-05-10').inputValue()).toBe('5');
         const finishControls = page.getByTestId('portions-mode-strip').locator('button');
-        expect(await finishControls.count()).toBe(2);
+        await expect(finishControls).toHaveCount(1);
+        await expect(page.getByTestId('save-portions')).toHaveAccessibleName(
+          locale === 'fr' ? 'Recettes' : 'Recipes'
+        );
         for (const button of await finishControls.all()) {
           await button.focus();
           await assertVisibleFocus();
