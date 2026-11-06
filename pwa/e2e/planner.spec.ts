@@ -988,6 +988,8 @@ test.describe('Supper Planner', () => {
               await expect(button).toHaveAccessibleName(label);
               await button.click({ trial: true });
               const bounds = await button.boundingBox();
+              const portionsBounds = await page.getByTestId('at-the-table-mode').boundingBox();
+              expect(Math.abs(bounds!.y - portionsBounds!.y)).toBeLessThanOrEqual(1);
               expect(bounds!.x).toBeGreaterThanOrEqual(0);
               expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width);
               expect(await button.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);

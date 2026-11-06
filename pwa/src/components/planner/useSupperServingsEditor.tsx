@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { DateOnly } from '@microsoft/kiota-abstractions';
 import Image from 'next/image';
-import { Minus, Plus, Utensils } from 'lucide-react';
+import { Calendar, Minus, Plus, Utensils } from 'lucide-react';
 import { getLocale, t, tWithVars } from '@/locales';
 import { readSupperServings, saveSupperServings } from '@/lib/api/supper-servings';
 import type { SupperServings } from '@/lib/api/generated/models';
@@ -369,22 +369,13 @@ export function useSupperServingsEditor(
       {editing ? (
         <>
           <button
-            className={control}
-            disabled={pending}
-            onClick={() => {
-              close();
-              leave(onFinish);
-            }}
-          >
-            {t('portions.cancel', 'Cancel')}
-          </button>
-          <button
-            className={control}
+            className="inline-flex min-h-[48px] min-w-[48px] items-center gap-1 rounded-full bg-white/70 px-2 text-xs font-semibold text-charcoal shadow-sm transition-colors hover:bg-white focus-visible:outline-2 focus-visible:outline-terracotta disabled:opacity-50"
             data-testid="save-portions"
             disabled={pending || !state || !valid || reviewRequired}
             onClick={() => void save()}
           >
-            {t('portions.done', 'Done')}
+            <Calendar size={14} aria-hidden="true" />
+            {t('navigation.recipes', 'Recipes')}
           </button>
           {pending && <span role="status">{t('portions.saving', 'Saving…')}</span>}
           {error && (
@@ -399,11 +390,11 @@ export function useSupperServingsEditor(
       ) : (
         <>
           <button
-            className="inline-flex min-h-[48px] min-w-[48px] items-center gap-2 rounded-full bg-white/70 px-4 text-sm font-semibold text-charcoal shadow-sm transition-colors hover:bg-white focus-visible:outline-2 focus-visible:outline-terracotta"
+            className="inline-flex min-h-[48px] min-w-[48px] items-center gap-1 rounded-full bg-white/70 px-2 text-xs font-semibold text-charcoal shadow-sm transition-colors hover:bg-white focus-visible:outline-2 focus-visible:outline-terracotta"
             data-testid="at-the-table-mode"
             onClick={() => void open()}
           >
-            <Utensils size={18} aria-hidden="true" />
+            <Utensils size={14} aria-hidden="true" />
             {t('portions.atTable', 'Portions')}
           </button>
         </>
@@ -425,7 +416,7 @@ export function useSupperServingsEditor(
               )
             : t(
                 'portions.restored',
-                'Your unsaved portions are restored. Review them, finish with Done or Cancel to discard.'
+                'Your unsaved portions are restored. Review them, then choose Recipes to save.'
               )}
         </p>
       )}
@@ -460,7 +451,7 @@ export function useSupperServingsEditor(
               <p>
                 {t(
                   'portions.legacyUsualContext',
-                  'This restored draft also included a usual portions change. Change usual portions in Settings. Keep only the date edits below, or Cancel to discard this draft.'
+                  'This restored draft also included a usual portions change. Change usual portions in Settings, and keep only the date edits below.'
                 )}
               </p>
             </div>
@@ -571,7 +562,7 @@ export function useSupperServingsEditor(
         return (
           <div
             key={key}
-            className="flex flex-wrap items-center gap-1 rounded-2xl bg-white/70 p-2 sm:gap-2 sm:p-3"
+            className={`flex flex-wrap items-center gap-1 rounded-2xl p-2 sm:gap-2 sm:p-3 ${!day.editable && meal?.status !== 3 ? 'bg-charcoal/10 grayscale' : 'bg-white/70'}`}
             data-testid={`portion-row-${key}`}
           >
             <time
@@ -616,7 +607,7 @@ export function useSupperServingsEditor(
               <div
                 role="group"
                 aria-label={`${key} ${t('portions.portions', 'portions')}`}
-                className="inline-flex items-center rounded-xl border border-charcoal/15 bg-white shadow-sm focus-within:ring-2 focus-within:ring-terracotta"
+                className={`inline-flex items-center rounded-xl border border-charcoal/15 bg-white shadow-sm focus-within:ring-2 focus-within:ring-terracotta ${!day.editable ? 'opacity-60' : ''}`}
               >
                 <button
                   className="inline-flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-l-xl text-charcoal hover:bg-cream focus-visible:bg-terracotta-50 focus-visible:outline-2 focus-visible:outline-terracotta focus-visible:-outline-offset-2 disabled:opacity-40"
@@ -684,7 +675,7 @@ export function useSupperServingsEditor(
               (day.overrideServings != null ||
                 (Object.hasOwn(draft, key) && draft[key] !== null)) && (
                 <button
-                  className={control + ' ml-auto text-sm'}
+                  className={control + ' ml-auto text-sm disabled:opacity-60'}
                   data-testid={`reset-portions-${key}`}
                   disabled={!day.editable || pending}
                   aria-label={tWithVars(

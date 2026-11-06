@@ -3463,6 +3463,8 @@ export async function mockSupperServings(
           .map((day: any) => [
             dateString(day.date),
             day.status,
+            day.id ?? null,
+            day.recipe?.id ?? null,
             day.preparation?.preparedAtUtc ?? null,
             day.preparation?.servings ?? null,
           ])
@@ -3477,8 +3479,9 @@ export async function mockSupperServings(
               : usual())),
         overrideServings: overrides.get(dateString(day.date)) ?? null,
         editable:
-          day.status !== 2 &&
+          (day.status !== 2 || dateString(day.date) === dateString(schedule.calendar.today)) &&
           day.status !== 3 &&
+          !day.preparation &&
           dateString(day.date) >= dateString(schedule.calendar.today),
       })),
       groceryRefresh: previous?.groceryRefresh ?? {

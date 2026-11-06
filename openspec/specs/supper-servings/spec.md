@@ -24,7 +24,7 @@ Saved recipe servings SHALL remain the positive basis of stored amounts. Usual a
 
 ### Requirement: Apply an explicit household default with dated exceptions
 
-Settings SHALL configure usual portions. A positive human-set count SHALL remain effective until explicitly changed or reset to automatic, regardless of membership changes. Without an explicit choice, the current positive family-member count SHALL supply usual portions. Current/future dates SHALL use usual unless overridden. Past, Cooked and prepared snapshots and saved date overrides SHALL remain protected.
+Settings SHALL configure usual portions. Explicit counts SHALL persist until changed or reset to automatic; otherwise positive family size supplies usual. Current/future uncompleted dates inherit usual unless overridden. Default/member changes SHALL preserve overrides and past/Cooked/prepared snapshots. A deliberate correction of today's Cooked supper without a preparation receipt SHALL follow the current-day correction requirement; explicit preparation remains protected.
 
 #### Scenario: Change the usual portion count
 - **WHEN** usual changes from four to five and future Wednesday has override six
@@ -204,7 +204,7 @@ A reliable structured amount SHALL scale only for its verified original ingredie
 
 ### Requirement: Migrate usual portions without erasing human choices
 
-Every existing positive saved usual count SHALL be preserved as explicit. Missing or null usual SHALL adopt automatic family count for editable current/future dates only. Migration SHALL preserve overrides and historical/prepared snapshots, including original-quantity snapshots. Settings SHALL distinguish automatic from explicit and acknowledge saves only after persistence. Unknown or zero family count SHALL not become an invented positive count.
+Every existing positive saved usual count SHALL be preserved as explicit. Missing or null usual SHALL adopt automatic family count for uncompleted current/future dates only. Migration SHALL preserve overrides and historical/prepared snapshots, including original-quantity snapshots. Settings SHALL distinguish automatic from explicit and acknowledge saves only after persistence. Unknown or zero family count SHALL not become an invented positive count.
 
 #### Scenario: Upgrade with explicit and unset households
 - **WHEN** one household has saved usual seven and another has no usual with four members
@@ -225,6 +225,10 @@ Every existing positive saved usual count SHALL be preserved as explicit. Missin
 - **WHEN** a past or prepared occurrence was recorded with original-quantity context before automatic fallback was introduced
 - **THEN** reading or migrating it does not infer family size as its former cooking count
 
+#### Scenario: Migration does not correct a completed current date
+- **WHEN** today's supper is Cooked without a preparation receipt and the household default or member count changes
+- **THEN** its saved portion snapshot remains unchanged unless a person deliberately saves a dated correction
+
 ### Requirement: Recover Settings portions saves explicitly
 
 Settings SHALL expose a labeled positive whole-number usual field and an explicit automatic-family option. Saving SHALL preserve concurrent changes through the existing conflict/reconciliation rules. Failure or uncertain acknowledgement SHALL retain the draft without claiming success or blindly replaying a write. Default changes SHALL retain ordinary quiet grocery freshness and warning semantics.
@@ -236,3 +240,43 @@ Settings SHALL expose a labeled positive whole-number usual field and an explici
 #### Scenario: Save fails or competes with another update
 - **WHEN** usual validation fails, another member changes the baseline, or persistence cannot be confirmed
 - **THEN** a correctable/reviewable draft remains with explicit recovery and no false Saved or partially applied default
+
+### Requirement: Correct portions of the current cooked supper explicitly
+
+Deployment-local today's Cooked supper without an explicit preparation receipt SHALL permit a dated portions correction. Saving SHALL preserve recipe/occurrence, Cooked status and cooking history and use existing batch/version/recovery rules. Past dates, future Cooked dates, non-cooking plans and explicit preparations SHALL remain read-only. Default/member changes SHALL not apply this exception.
+
+#### Scenario: Correct the observed five-portion current supper
+- **WHEN** today is November 6, its supper is Cooked without a preparation receipt and saved portions five are explicitly changed to six and saved
+- **THEN** a fresh read and assigned ingredient projection use six, while its recipe/occurrence, status, cooking history and usual setting remain unchanged
+- **AND** no preparation receipt or actual preparation date is invented
+
+#### Scenario: Ordinary today remains editable
+- **WHEN** the deployment's today is empty or has an unprepared Planned or Locked supper
+- **THEN** existing dated editing remains available, without requiring it to become tomorrow first
+
+#### Scenario: Retain historical and explicitly prepared protection
+- **WHEN** a date is past, a Cooked date is future, a non-cooking plan applies, or an explicit preparation receipt exists even on today
+- **THEN** portions remain read-only and attempted date edits apply none of their batch
+
+#### Scenario: Version changes during correction
+- **WHEN** another member changes portions, replaces the occurrence or records explicit preparation after the editor's baseline read
+- **THEN** existing guarded save/reconciliation rules prevent a stale correction from overwriting the changed state and retain a reviewable draft
+
+#### Scenario: Deployment day rolls over before save
+- **WHEN** a correction captures today's absolute date and the deployment advances to the next day before submission
+- **THEN** the now-past date is rejected without applying any batch row, and the draft is retained for clear review rather than moved to the new today
+- **AND** browser timezone or a captured reference week cannot bypass this cutoff
+
+#### Scenario: Reset today's cooked correction to usual
+- **WHEN** the current Cooked supper has no preparation receipt, usual is four and its five-portion override is reset and saved
+- **THEN** the override is removed and four is captured for that completed date; a later usual/member change does not rescale it
+- **AND** returning without edits preserves five and an unavailable usual supplies no invented reset number
+
+#### Scenario: Saved correction updates groceries
+- **WHEN** today's cooked count correction commits and changes a reliable weekly grocery requirement
+- **THEN** the existing updating/current/failed grocery journey and increased-needs check policy apply to the corrected quantities
+- **AND** an increase can uncheck that affected item, while unchanged/decreased requirements and unrelated checks retain their existing policy
+
+#### Scenario: Correction acknowledgement or grocery follow-up is uncertain
+- **WHEN** the save reply is lost or grocery work fails after a committed correction
+- **THEN** authoritative portion reconciliation and grocery retry recover the saved correction without blindly repeating it, reopening cooking or recording history again

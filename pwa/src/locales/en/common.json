@@ -5,7 +5,7 @@
     "original": "Original recipe quantities",
     "keepDraft": "Keep my edits",
     "restoredUncertain": "Your portions edits are restored. Check saved portions before trying again.",
-    "restored": "Your unsaved portions are restored. Review them, finish with Done or Cancel to discard.",
+    "restored": "Your unsaved portions are restored. Review them, then choose Recipes to save.",
     "review": "Review saved portions",
     "unsaved": "Unsaved portions",
     "saveContinue": "Save and continue",
@@ -35,7 +35,7 @@
     "usingUsualOne": "Using usual {{count}} portion",
     "usualUnavailable": "Usual portions unavailable",
     "legacyUsualBlank": "No usual portions set",
-    "legacyUsualContext": "This restored draft also included a usual portions change. Change usual portions in Settings. Keep only the date edits below, or Cancel to discard this draft.",
+    "legacyUsualContext": "This restored draft also included a usual portions change. Change usual portions in Settings, and keep only the date edits below.",
     "keepDateDraft": "Keep date edits only"
   },
   "betaContext": {

@@ -382,7 +382,7 @@ components:
           allOf: [{ $ref: '#/components/schemas/SupperPreparation' }]
         servingVersion: { type: string, description: 'Opaque portions optimistic-concurrency version, distinct from derived recipe input identity.' }
         version: { type: string, description: 'Opaque effective ingredient identity for this recipe/date/context and occurrence. Includes original basis, target and ordered projected lines/issues; unaffected by unrelated dates, optimistic serving versions, notes or instruction-only edits.' }
-        editable: { type: boolean, description: 'Whether this date permits editing portions through At the table.' }
+        editable: { type: boolean, description: 'Whether portions may be edited: ordinary unprepared current or future dates and deployment-local today when Cooked without a preparation receipt. Past, future Cooked, non-cooking and explicitly prepared dates are read-only.' }
         status: { type: string, enum: [scaled, original, partial, unresolved] }
         lines:
           type: array
@@ -571,7 +571,7 @@ components:
         date: { type: string, format: date }
         servings: { type: [integer, 'null'], minimum: 1, maximum: 2147483647 }
         overrideServings: { type: [integer, 'null'], minimum: 1, maximum: 2147483647 }
-        editable: { type: boolean }
+        editable: { type: boolean, description: 'True for ordinary unprepared current or future dates and deployment-local today when Cooked without a preparation receipt. Past, future Cooked, non-cooking and explicitly prepared dates are read-only.' }
     ServingGroceryRefresh:
       type: object
       required: [status, version, appliedVersion, resetSummaryVersion]
@@ -3244,7 +3244,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/DemoGeneration'
       summary: Atomically save sparse dated portions and optional usual size
-      description: Acknowledges committed counts and durable refresh work before grocery execution. 400 or 409 applies none of the batch. Never changes recipes, calendar assignments or voting. Unknown replies require an authoritative read before retrying a write. After commit, an existing week_updated hint is published independently of grocery execution. Publication failure does not fail a confirmed save; missed updates reconcile through saved-state/projection reads on resume.
+      description: Acknowledges committed counts and durable refresh work before grocery execution. Deployment-local today may be corrected when Cooked without a preparation receipt; past dates, future Cooked dates, non-cooking dates and explicit preparations are read-only. Eligibility is rechecked at submission. 400 or 409 applies none of the batch. Never changes recipes, calendar assignments, cooking history, preparation receipts or voting. Unknown replies require an authoritative read before retrying a write. After commit, an existing week_updated hint is published independently of grocery execution. Publication failure does not fail a confirmed save; missed updates reconcile through saved-state/projection reads on resume.
       requestBody:
         required: true
         content:

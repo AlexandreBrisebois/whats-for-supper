@@ -46,7 +46,7 @@ public class SupperServingsService(RecipeDbContext db, IClock clock, DeploymentC
         Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(usual.Identity + "|" + usual.Source + ":" + usual.Count + "|"
             + string.Join('|', rows.OrderBy(x => x.Date).Select(x => $"{x.Date:yyyy-MM-dd}:{x.Version}:{x.OverrideServings}:{x.InheritedServings}")) + "|"
             + string.Join('|', events.Where(x => x.PreparedAtUtc is not null || x.Status is CalendarEventStatus.Cooked or CalendarEventStatus.Skipped)
-                .OrderBy(x => x.Date).Select(x => $"{x.Date:yyyy-MM-dd}:{x.Status}:{x.PreparedAtUtc:O}:{x.PreparedServings}")))));
+                .OrderBy(x => x.Date).Select(x => $"{x.Date:yyyy-MM-dd}:{x.Status}:{x.Id}:{x.RecipeId}:{x.PreparedAtUtc:O}:{x.PreparedServings}")))));
 
     // Updates only editable inherited snapshots; historical original/null, preparation and overrides are facts.
     // An empty date with a saved portions row remains editable before food is selected.
@@ -116,7 +116,7 @@ public class SupperServingsService(RecipeDbContext db, IClock clock, DeploymentC
         {
             var date = monday.AddDays(index); var row = rows.SingleOrDefault(x => x.Date == date); var evt = events.SingleOrDefault(x => x.Date == date);
             var cooked = evt?.Status == CalendarEventStatus.Cooked;
-            return new SupperServingDayDto(date, Effective(row, usual, date, context.Today, evt), row?.OverrideServings, date >= context.Today && !cooked && evt?.PreparedAtUtc is null && evt?.Status != CalendarEventStatus.Skipped);
+            return new SupperServingDayDto(date, Effective(row, usual, date, context.Today, evt), row?.OverrideServings, date >= context.Today && (!cooked || date == context.Today) && evt?.PreparedAtUtc is null && evt?.Status != CalendarEventStatus.Skipped);
         }).ToList();
         var plan = await db.WeeklyPlans.AsNoTracking().SingleOrDefaultAsync(x => x.WeekStartDate == monday, ct);
         return new()

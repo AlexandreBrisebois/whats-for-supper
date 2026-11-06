@@ -12,11 +12,13 @@ import path from 'node:path';
 
 async function settingsFixture(page: Page) {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page
-    .context()
-    .addCookies([
-      { name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: process.env.BASE_URL! },
-    ]);
+  await page.context().addCookies([
+    {
+      name: 'x-family-member-id',
+      value: MOCK_IDS.MEMBER_ALEX,
+      url: process.env.BASE_URL || 'http://127.0.0.1:3000',
+    },
+  ]);
   const control = await setupCommonRoutes(page);
   await page.goto('/profile/settings');
   const section = page.getByTestId('usual-portions-section');
@@ -294,11 +296,13 @@ test('grocery PATCH mocks retain captured reference and existing item/full-map b
   page,
 }) => {
   await setupCommonRoutes(page);
-  await page
-    .context()
-    .addCookies([
-      { name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: process.env.BASE_URL! },
-    ]);
+  await page.context().addCookies([
+    {
+      name: 'x-family-member-id',
+      value: MOCK_IDS.MEMBER_ALEX,
+      url: process.env.BASE_URL || 'http://127.0.0.1:3000',
+    },
+  ]);
   await page.goto('/planner');
   const result = await page.evaluate(async () => {
     const write = (suffix: string, body: unknown, reference = '2026-04-27') =>
@@ -363,11 +367,13 @@ async function fixture(
   completeness: 'true' | 'absent' | 'null' | 'false' = 'true'
 ) {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page
-    .context()
-    .addCookies([
-      { name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: process.env.BASE_URL! },
-    ]);
+  await page.context().addCookies([
+    {
+      name: 'x-family-member-id',
+      value: MOCK_IDS.MEMBER_ALEX,
+      url: process.env.BASE_URL || 'http://127.0.0.1:3000',
+    },
+  ]);
   const common = await setupCommonRoutes(page);
   const schedule = builders.scheduleDays() as any;
   schedule.days = schedule.days.map((day: any, index: number) => ({
@@ -477,11 +483,13 @@ async function draftFixture(
   } = {}
 ) {
   await page.setViewportSize({ width: options.width ?? 390, height: options.height ?? 844 });
-  await page
-    .context()
-    .addCookies([
-      { name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: process.env.BASE_URL! },
-    ]);
+  await page.context().addCookies([
+    {
+      name: 'x-family-member-id',
+      value: MOCK_IDS.MEMBER_ALEX,
+      url: process.env.BASE_URL || 'http://127.0.0.1:3000',
+    },
+  ]);
   const common = await setupCommonRoutes(page);
   const schedule = builders.scheduleDays() as any;
   schedule.days = schedule.days.map((day: any, i: number) => ({
@@ -531,7 +539,26 @@ async function draftFixture(
   return { bodies, control, schedule };
 }
 
-test('configured usual, sparse reset, invalid correction and Cancel keep date-only drafts', async ({
+test('corrects today cooked portions without reopening cooking', async ({ page }) => {
+  const { schedule, control, bodies } = await draftFixture(page);
+  await page.getByTestId('save-portions').click();
+  schedule.calendar.today = '2026-05-06';
+  schedule.days[2].status = 2;
+  const snapshot = control.captureSnapshot();
+  control.restoreSnapshot({ ...snapshot, overrides: [['2026-05-06', 5]] });
+  await page.getByTestId('at-the-table-mode').click();
+  const input = page.getByTestId('portion-input-2026-05-06');
+  await expect(input).toBeEnabled();
+  await expect(input).toHaveValue('5');
+  await input.fill('6');
+  await page.getByTestId('save-portions').click();
+  await expect(page.getByTestId('at-the-table-mode')).toBeVisible();
+  expect(bodies).toHaveLength(1);
+  expect(bodies[0].days).toEqual([{ date: '2026-05-06', servings: 6 }]);
+  expect(schedule.days[2].status).toBe(2);
+});
+
+test('configured usual, sparse reset and invalid correction keep date-only drafts', async ({
   page,
 }) => {
   const { bodies } = await draftFixture(page, { usual: 4 });
@@ -557,7 +584,8 @@ test('configured usual, sparse reset, invalid correction and Cancel keep date-on
   await page.getByTestId('at-the-table-mode').click();
   await page.getByTestId('portion-input-2026-05-06').fill('0');
   await expect(page.getByTestId('save-portions')).toBeDisabled();
-  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await page.getByTestId('portion-input-2026-05-06').fill('4');
+  await page.getByTestId('save-portions').click();
   expect(bodies).toHaveLength(2);
 });
 
@@ -868,13 +896,7 @@ for (const locale of ['en', 'fr'] as const)
                 await expect(
                   page.getByTestId('portion-row-2026-05-08').locator('input')
                 ).toHaveCount(0);
-              } else
-                await page
-                  .getByRole('button', {
-                    name: locale === 'fr' ? 'Annuler' : 'Cancel',
-                    exact: true,
-                  })
-                  .click();
+              } else await page.getByTestId('save-portions').click();
               const expectedActions =
                 status === 1 ? ['nudge-family-cta', 'close-voting-btn'] : ['ask-family-cta'];
               for (const id of expectedActions) await expect(page.getByTestId(id)).toBeVisible();
@@ -955,7 +977,7 @@ test('past and Cooked portions retain their saved values while usual portions ch
   page,
 }) => {
   const { schedule, bodies, control } = await draftFixture(page);
-  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await page.getByTestId('save-portions').click();
   control.restoreSnapshot({ ...control.captureSnapshot(), savedUsual: 5 });
   schedule.calendar.today = '2026-05-05';
   schedule.days[6].status = 2;
@@ -1046,7 +1068,7 @@ test('conflict review exposes newer saved values before explicitly keeping local
 
 test('future-week return control retains a 48px actionable target', async ({ page }) => {
   await draftFixture(page);
-  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await page.getByTestId('save-portions').click();
   await page.getByTestId('next-week').click();
   const control = page.getByTestId('planner-this-week-pill');
   await expect(control).toBeVisible();
@@ -1138,9 +1160,7 @@ for (const locale of ['en', 'fr'] as const)
       page,
     }, info) => {
       await draftFixture(page);
-      await page
-        .getByRole('button', { name: locale === 'fr' ? 'Annuler' : 'Cancel', exact: true })
-        .click();
+      await page.getByTestId('save-portions').click();
       for (const scale of [1, 2]) {
         await page.setViewportSize({ width: 320, height: 740 });
         await page.evaluate(
@@ -1180,11 +1200,13 @@ test('proposed dated detail uses saved portions and Change day remains read-only
     });
   });
   await page.setViewportSize({ width: 390, height: 844 });
-  await page
-    .context()
-    .addCookies([
-      { name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: process.env.BASE_URL! },
-    ]);
+  await page.context().addCookies([
+    {
+      name: 'x-family-member-id',
+      value: MOCK_IDS.MEMBER_ALEX,
+      url: process.env.BASE_URL || 'http://127.0.0.1:3000',
+    },
+  ]);
   const common = await setupCommonRoutes(page);
   await mockNonCookingSchedule(page, builders.scheduleDays() as any);
   await mockSupperServings(
@@ -1253,7 +1275,7 @@ test('proposed dated detail uses saved portions and Change day remains read-only
   expect(writes).toEqual([]);
 });
 
-test('legacy portions routes retain Done and Cancel return without a recipe editing shortcut', async ({
+test('legacy portions routes save and return without a recipe editing shortcut', async ({
   page,
 }) => {
   await page.addInitScript(() => {
@@ -1264,11 +1286,13 @@ test('legacy portions routes retain Done and Cancel return without a recipe edit
     });
   });
   await page.setViewportSize({ width: 390, height: 844 });
-  await page
-    .context()
-    .addCookies([
-      { name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: process.env.BASE_URL! },
-    ]);
+  await page.context().addCookies([
+    {
+      name: 'x-family-member-id',
+      value: MOCK_IDS.MEMBER_ALEX,
+      url: process.env.BASE_URL || 'http://127.0.0.1:3000',
+    },
+  ]);
   const common = await setupCommonRoutes(page);
   await mockNonCookingSchedule(page, builders.scheduleDays() as any);
   await mockSupperServings(
@@ -1326,8 +1350,7 @@ test('legacy portions routes retain Done and Cancel return without a recipe edit
     `/planner?${new URLSearchParams({ planDate: '2026-05-06', weekOffset: '0', referenceWeekStartDate: '2026-05-04', portions: 'true', returnTo: `/recipes?open=${MOCK_IDS.RECIPE_CARBONARA}&addToDay=2&weekOffset=0&referenceWeekStartDate=2026-05-04` })}`
   );
   await expect(page.getByTestId('portions-editor')).toBeVisible();
-  await page.getByTestId('portion-input-2026-05-06').fill('5');
-  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await page.getByTestId('save-portions').click();
   await expect(page.getByTestId('recipe-ingredient-projection')).toContainText('400 g pasta');
   await expect(page.getByTestId('action-add-to-day')).toContainText('May 6');
   await expect(page.getByRole('button', { name: 'Adjust portions', exact: true })).toHaveCount(0);
@@ -1352,11 +1375,13 @@ test('grocery quantities identify incomplete known subtotals without warning on 
     });
   });
   await page.setViewportSize({ width: 390, height: 844 });
-  await page
-    .context()
-    .addCookies([
-      { name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: process.env.BASE_URL! },
-    ]);
+  await page.context().addCookies([
+    {
+      name: 'x-family-member-id',
+      value: MOCK_IDS.MEMBER_ALEX,
+      url: process.env.BASE_URL || 'http://127.0.0.1:3000',
+    },
+  ]);
   await setupCommonRoutes(page);
   const schedule = builders.scheduleDays() as any;
   schedule.groceryItems = [
@@ -1489,7 +1514,7 @@ test('lost portions reply survives reload and reconciles committed intent withou
   expect(saved.defaultServings).toBe(4);
   await page.getByTestId('at-the-table-mode').click();
   await expect(page.getByTestId('portion-input-2026-05-06')).toHaveValue('6');
-  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await page.getByTestId('save-portions').click();
   expect(bodies).toHaveLength(1);
 });
 
@@ -1541,11 +1566,13 @@ test('dismissed grocery notices stay quiet across two absolute weeks and remount
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page
-    .context()
-    .addCookies([
-      { name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: process.env.BASE_URL! },
-    ]);
+  await page.context().addCookies([
+    {
+      name: 'x-family-member-id',
+      value: MOCK_IDS.MEMBER_ALEX,
+      url: process.env.BASE_URL || 'http://127.0.0.1:3000',
+    },
+  ]);
   await setupCommonRoutes(page);
   const schedules = [0, 1].map((offset) => ({
     ...builders.scheduleDays(offset),
@@ -1822,11 +1849,13 @@ for (const appLocale of ['en', 'fr'] as const) {
           knownRecipe: { id, basis: 2, quantity: 200, ingredient: 'pasta', unit: 'g' },
         };
         const control = await setupCommonRoutes(page, calendar, { supperServings: options });
-        await page
-          .context()
-          .addCookies([
-            { name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: process.env.BASE_URL! },
-          ]);
+        await page.context().addCookies([
+          {
+            name: 'x-family-member-id',
+            value: MOCK_IDS.MEMBER_ALEX,
+            url: process.env.BASE_URL || 'http://127.0.0.1:3000',
+          },
+        ]);
         await page.goto('/planner');
         if (!configured) {
           // Original/unavailable quantities require an honestly empty persisted roster now.

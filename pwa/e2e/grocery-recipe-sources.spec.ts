@@ -9,11 +9,13 @@ for (const locale of ['en', 'fr'] as const)
         page,
       }) => {
         test.setTimeout(60_000);
-        await page
-          .context()
-          .addCookies([
-            { name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: process.env.BASE_URL! },
-          ]);
+        await page.context().addCookies([
+          {
+            name: 'x-family-member-id',
+            value: MOCK_IDS.MEMBER_ALEX,
+            url: process.env.BASE_URL || 'http://127.0.0.1:3000',
+          },
+        ]);
         await setupCommonRoutes(page);
         const loadedName =
           locale === 'fr'

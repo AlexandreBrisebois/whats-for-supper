@@ -322,9 +322,9 @@ $$;
 COMMIT;
 
 -- Additive explicit preparation metadata; legacy Cooked rows deliberately remain null.
-ALTER TABLE calendar_events ADD COLUMN IF NOT EXISTS prepared_on date;
-ALTER TABLE calendar_events ADD COLUMN IF NOT EXISTS prepared_at_utc timestamp with time zone;
-ALTER TABLE calendar_events ADD COLUMN IF NOT EXISTS prepared_servings integer;
-ALTER TABLE calendar_events ADD COLUMN IF NOT EXISTS prepared_original_servings integer;
-ALTER TABLE calendar_events ADD COLUMN IF NOT EXISTS preparation_plan_token text;
-ALTER TABLE calendar_events ADD COLUMN IF NOT EXISTS preparation_serving_version text;
+ALTER TABLE IF EXISTS calendar_events ADD COLUMN IF NOT EXISTS prepared_on date;
+ALTER TABLE IF EXISTS calendar_events ADD COLUMN IF NOT EXISTS prepared_at_utc timestamp with time zone;
+ALTER TABLE IF EXISTS calendar_events ADD COLUMN IF NOT EXISTS prepared_servings integer;
+ALTER TABLE IF EXISTS calendar_events ADD COLUMN IF NOT EXISTS prepared_original_servings integer;
+ALTER TABLE IF EXISTS calendar_events ADD COLUMN IF NOT EXISTS preparation_plan_token text;
+ALTER TABLE IF EXISTS calendar_events ADD COLUMN IF NOT EXISTS preparation_serving_version text;

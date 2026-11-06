@@ -738,54 +738,56 @@ export default function PlannerPage() {
               exit={{ opacity: 0, x: currentWeekOffset > prevOffset ? -50 : 50 }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
             >
-              {portions.strip}
-              {(isVotingOpen || canOpenVoting) && (
-                <div
-                  data-testid="planner-action-row"
-                  className={cn(
-                    'flex flex-wrap items-center justify-between gap-2',
-                    isWide ? 'mb-4 pt-2.5' : 'mb-5'
-                  )}
-                >
-                  {/* Left Slot: Secondary Actions */}
-                  <div className="flex max-w-full justify-start">
-                    {isVotingOpen && (
-                      <button
-                        onClick={handleNudgeFamily}
-                        data-testid="nudge-family-cta"
-                        className="flex min-h-[48px] min-w-[48px] max-w-full items-center gap-1.5 rounded-full bg-sage px-3 text-[9px] font-black uppercase tracking-[0.18em] text-white shadow-lg shadow-sage/15 transition-all active:scale-95"
-                      >
-                        <Share2 size={10} />
-                        {t('planner.nudgeFamily', 'Nudge family')}
-                      </button>
+              <div className="flex flex-wrap items-start gap-x-1">
+                {portions.strip}
+                {(isVotingOpen || canOpenVoting) && (
+                  <div
+                    data-testid="planner-action-row"
+                    className={cn(
+                      'flex flex-1 flex-wrap items-center justify-end gap-1',
+                      isWide ? 'mb-4' : 'mb-5'
                     )}
-                  </div>
+                  >
+                    {/* Left Slot: Secondary Actions */}
+                    <div className="flex max-w-full justify-start">
+                      {isVotingOpen && (
+                        <button
+                          onClick={handleNudgeFamily}
+                          data-testid="nudge-family-cta"
+                          className="flex min-h-[48px] min-w-[48px] max-w-full items-center gap-1.5 rounded-full bg-sage px-2 text-[9px] font-black uppercase tracking-normal text-white shadow-lg shadow-sage/15 transition-all active:scale-95"
+                        >
+                          <Share2 size={10} />
+                          {t('planner.nudgeFamily', 'Nudge family')}
+                        </button>
+                      )}
+                    </div>
 
-                  {/* Right Slot: Primary Actions */}
-                  <div className="flex max-w-full justify-end">
-                    {canOpenVoting && (
-                      <button
-                        onClick={handleAskFamily}
-                        data-testid="ask-family-cta"
-                        className="flex min-h-[48px] min-w-[48px] max-w-full items-center rounded-full bg-sage px-4 text-[9px] font-black uppercase tracking-[0.18em] text-white shadow-lg shadow-sage/15 transition-all active:scale-95"
-                      >
-                        <Users size={12} className="mr-2" />
-                        {t('planner.askFamily', 'Ask the Family')}
-                      </button>
-                    )}
-                    {isVotingOpen && (
-                      <button
-                        onClick={handleCloseVoting}
-                        data-testid="close-voting-btn"
-                        className="flex min-h-[48px] min-w-[48px] max-w-full items-center gap-1.5 rounded-full border border-terracotta/10 bg-white/80 px-3 text-[9px] font-black uppercase tracking-[0.18em] text-terracotta transition-all hover:bg-terracotta-600 active:bg-terracotta-700 hover:text-white active:text-white active:scale-95"
-                      >
-                        <Ban size={10} />
-                        {t('planner.closeVoting', 'Close Voting')}
-                      </button>
-                    )}
+                    {/* Right Slot: Primary Actions */}
+                    <div className="flex max-w-full justify-end">
+                      {canOpenVoting && (
+                        <button
+                          onClick={handleAskFamily}
+                          data-testid="ask-family-cta"
+                          className="flex min-h-[48px] min-w-[48px] max-w-full items-center rounded-full bg-sage px-4 text-[9px] font-black uppercase tracking-[0.18em] text-white shadow-lg shadow-sage/15 transition-all active:scale-95"
+                        >
+                          <Users size={12} className="mr-2" />
+                          {t('planner.askFamily', 'Ask the Family')}
+                        </button>
+                      )}
+                      {isVotingOpen && (
+                        <button
+                          onClick={handleCloseVoting}
+                          data-testid="close-voting-btn"
+                          className="flex min-h-[48px] min-w-[48px] max-w-full items-center gap-1.5 rounded-full border border-terracotta/10 bg-white/80 px-2 text-[9px] font-black uppercase tracking-normal text-terracotta transition-all hover:bg-terracotta-600 active:bg-terracotta-700 hover:text-white active:text-white active:scale-95"
+                        >
+                          <Ban size={10} />
+                          {t('planner.closeVoting', 'Close Voting')}
+                        </button>
+                      )}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
 
               {portions.editing ? (
                 portions.rows

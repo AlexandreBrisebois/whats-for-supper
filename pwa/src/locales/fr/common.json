@@ -5,7 +5,7 @@
     "original": "Quantités originales de la recette",
     "keepDraft": "Garder mes modifications",
     "restoredUncertain": "Vos modifications de portions sont rétablies. Vérifiez les portions enregistrées avant de réessayer.",
-    "restored": "Vos portions non enregistrées sont rétablies. Vérifiez-les, puis terminez ou annulez pour les abandonner.",
+    "restored": "Vos portions non enregistrées sont rétablies. Vérifiez-les, puis choisissez Recettes pour les enregistrer.",
     "review": "Vérifier les portions enregistrées",
     "unsaved": "Portions non enregistrées",
     "saveContinue": "Enregistrer et continuer",
@@ -35,7 +35,7 @@
     "usingUsualOne": "Utilisation de la {{count}} portion habituelle",
     "usualUnavailable": "Portions habituelles indisponibles",
     "legacyUsualBlank": "Aucune portion habituelle définie",
-    "legacyUsualContext": "Ce brouillon rétabli comprenait aussi une modification des portions habituelles. Modifiez les portions habituelles dans les paramètres. Gardez uniquement les modifications par date ci-dessous, ou annulez pour abandonner ce brouillon.",
+    "legacyUsualContext": "Ce brouillon rétabli comprenait aussi une modification des portions habituelles. Modifiez les portions habituelles dans les paramètres et gardez uniquement les modifications par date ci-dessous.",
     "keepDateDraft": "Garder uniquement les modifications par date"
   },
   "betaContext": {

@@ -16,7 +16,7 @@ This request authorizes investigation and planning only. All implementation task
 
 ## What Changes
 
-- Expand date editability only for deployment-local today when its supper is Cooked without an explicit preparation receipt. Ordinary unprepared today stays editable. Retain atomic/version-checked writes, save/cancel/reset, uncertain-result recovery and frozen history/default safeguards.
+- Expand date editability only for deployment-local today when its supper is Cooked without an explicit preparation receipt. Ordinary unprepared today stays editable. Retain atomic/version-checked writes, save-and-return/reset, uncertain-result recovery and frozen history/default safeguards.
 - Treat the correction as dated portion intent, not cooking again. Recipe quantities and usual portions remain unchanged. Groceries recalculate; a reliable increase can uncheck the affected item under the existing shopping rule.
 - Remove both occurrences of Review amounts, adjacent separators and any empty warning layout. Render a known partial subtotal once. Preserve the distinct prior-unknown-checked-amount warning even when the current total is complete. Do not add a replacement icon or fabricate an unknown amount.
 - Give Cook its own full-width footer row in contexts that already expose it, with the existing icon/name and minimum 48 CSS px target. Keep Plan/Change day adjacent, preserve Plan another day and original-review Plan transition, and retain responsive clearance.

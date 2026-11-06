@@ -42,11 +42,13 @@ async function surfaceContrast(locator: import('@playwright/test').Locator) {
 
 async function contextFixture(page: import('@playwright/test').Page, configured = true) {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page
-    .context()
-    .addCookies([
-      { name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: process.env.BASE_URL! },
-    ]);
+  await page.context().addCookies([
+    {
+      name: 'x-family-member-id',
+      value: MOCK_IDS.MEMBER_ALEX,
+      url: process.env.BASE_URL || 'http://127.0.0.1:3000',
+    },
+  ]);
   await page.addInitScript(() =>
     document.addEventListener(
       'DOMContentLoaded',

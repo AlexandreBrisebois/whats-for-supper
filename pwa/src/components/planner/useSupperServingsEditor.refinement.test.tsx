@@ -91,7 +91,7 @@ it('shows only the usual number on reset with a date-specific accessible action'
   expect(reset).toBeEnabled();
 });
 
-it('resets five to inherited four in the draft and Done removes only that date override', async () => {
+it('resets five to inherited four and Recipes removes only that date override', async () => {
   await openEditor();
   fireEvent.click(screen.getByTestId(`reset-portions-${sunday}`));
   expect(screen.getByTestId(`portion-input-${sunday}`)).toHaveValue(4);
@@ -105,14 +105,32 @@ it('resets five to inherited four in the draft and Done removes only that date o
   expect(payload.days[0].servings).toBeNull();
 });
 
-it('Cancel restores saved five after a draft reset', async () => {
+it('returns to recipes without saving when nothing changed', async () => {
+  await openEditor();
+  expect(screen.queryByRole('button', { name: 'Cancel' })).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: 'Recipes' }));
+  expect(screen.getByTestId('at-the-table-mode')).toBeInTheDocument();
+  expect(save).not.toHaveBeenCalled();
+});
+
+it('saves a draft before returning to recipes', async () => {
   await openEditor();
   fireEvent.click(screen.getByTestId(`reset-portions-${sunday}`));
   expect(screen.getByTestId(`portion-input-${sunday}`)).toHaveValue(4);
-  fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
-  fireEvent.click(screen.getByTestId('at-the-table-mode'));
-  await waitFor(() => expect(screen.getByTestId(`portion-input-${sunday}`)).toHaveValue(5));
-  expect(save).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button', { name: 'Recipes' }));
+  await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
+  expect(save.mock.calls[0][0].days[0].servings).toBeNull();
+  await screen.findByTestId('at-the-table-mode');
+});
+
+it('keeps edits available for review when saving from Recipes fails', async () => {
+  save.mockRejectedValueOnce(new Error('failed'));
+  await openEditor();
+  fireEvent.change(screen.getByTestId(`portion-input-${sunday}`), { target: { value: '7' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Recipes' }));
+  await screen.findByTestId('portions-review');
+  expect(screen.getByTestId(`portion-input-${sunday}`)).toHaveValue(7);
+  expect(screen.getByRole('button', { name: 'Recipes' })).toBeDisabled();
 });
 
 it('explains inheritance when resetting an explicit four to usual four', async () => {
@@ -142,12 +160,34 @@ it('keeps frozen dates and non-cooking dates protected', async () => {
   const state = snapshot();
   state.days = state.days?.map((day) => ({ ...day, editable: false }));
   read.mockResolvedValue(state);
-  await openEditor(schedule.map((day) => (day.date === monday ? { ...day, status: 3 } : day)));
+  await openEditor(
+    schedule.map((day) =>
+      day.date === monday
+        ? { ...day, status: 3 }
+        : day.date === sunday
+          ? { ...day, status: 2 }
+          : day
+    )
+  );
   expect(screen.getByTestId(`portion-input-${sunday}`)).toBeDisabled();
+  expect(screen.getByTestId(`portion-row-${sunday}`)).toHaveClass('bg-charcoal/10');
+  expect(screen.getByTestId(`portion-input-${sunday}`)).toHaveValue(5);
   expect(screen.getByTestId(`reset-portions-${sunday}`)).toBeDisabled();
   expect(screen.queryByTestId(`portion-input-${monday}`)).not.toBeInTheDocument();
   expect(screen.queryByTestId(`reset-portions-${monday}`)).not.toBeInTheDocument();
+  expect(within(screen.getByTestId(`portion-row-${monday}`)).queryByRole('group')).toBeNull();
   expect(save).not.toHaveBeenCalled();
+});
+
+it('allows a server-editable cooked date to be corrected and saved', async () => {
+  await openEditor(schedule.map((day) => (day.date === sunday ? { ...day, status: 2 } : day)));
+  const input = screen.getByTestId(`portion-input-${sunday}`);
+  expect(input).toBeEnabled();
+  expect(input).toHaveValue(5);
+  fireEvent.change(input, { target: { value: '6' } });
+  fireEvent.click(screen.getByTestId('save-portions'));
+  await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
+  expect(save.mock.calls[0][0].days[0].servings).toBe(6);
 });
 
 it('retains direct odd counts and sends one date-only batch', async () => {
@@ -178,7 +218,7 @@ it('requires fresh review before a retained legacy combined draft can save', asy
   expect(save).not.toHaveBeenCalled();
 });
 
-it('never sends a legacy usual choice from Planner even when Done is activated', async () => {
+it('never sends a legacy usual choice from Planner when Recipes is activated', async () => {
   retainLegacyDraft();
   render(<Editor />);
   await screen.findByTestId('portions-restored');

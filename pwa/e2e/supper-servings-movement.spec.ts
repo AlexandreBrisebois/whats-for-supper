@@ -114,11 +114,13 @@ async function openMovement(
     ...recovery,
     supperServings: refresh,
   });
-  await page
-    .context()
-    .addCookies([
-      { name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: process.env.BASE_URL! },
-    ]);
+  await page.context().addCookies([
+    {
+      name: 'x-family-member-id',
+      value: MOCK_IDS.MEMBER_ALEX,
+      url: process.env.BASE_URL || 'http://127.0.0.1:3000',
+    },
+  ]);
   await page.goto('/planner');
   expect(await assign(page, 2)).toBe(200);
   await page.reload();

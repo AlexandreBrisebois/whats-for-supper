@@ -35,7 +35,7 @@ Use a test-owned current-day Cooked supper without preparation, count five. Open
 
 - Keep server editability authoritative. Use saved `day.servings` for a clean date row; use an explicit local number or reset intent only while it is a draft. Compare against the saved date state, not current usual, and preserve mode changes even when the visible number matches.
 - Include Cooked occurrence ID/recipe identity in the existing opaque version so replacement cannot accept a stale correction. Status/preparation/count changes remain covered. Validate the entire batch and deployment-local date again at save. Rollover rejects the captured past date rather than retargeting today. Do not use browser locale/timezone to decide eligibility.
-- Keep ordinary pending, duplicate suppression, Cancel and Save and continue / Keep editing / Discard changes. A save failure or 409 retains drafts. A committed reply lost in transit uses authoritative reconciliation; grocery retry never repeats cooking or the count mutation.
+- Keep ordinary pending, duplicate suppression, Recipes save-and-return and the existing Save and continue / Keep editing / Discard changes for other navigation. A save failure or 409 retains drafts. A committed reply lost in transit uses authoritative reconciliation; grocery retry never repeats cooking or the count mutation.
 - Preserve late-read, week/session and source-title guards. Removing grocery text neither acknowledges shopping checks nor clears underlying quantity markers.
 
 ## Persistence and Side Effects

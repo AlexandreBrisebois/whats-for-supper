@@ -5,11 +5,13 @@ test('legacy four-portion shells preview scales reliable lines despite omitted s
   page,
 }) => {
   const id = MOCK_IDS.RECIPE_SPAGHETTI;
-  await page
-    .context()
-    .addCookies([
-      { name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: process.env.BASE_URL! },
-    ]);
+  await page.context().addCookies([
+    {
+      name: 'x-family-member-id',
+      value: MOCK_IDS.MEMBER_ALEX,
+      url: process.env.BASE_URL || 'http://127.0.0.1:3000',
+    },
+  ]);
   await setupCommonRoutes(page, builders.deploymentCalendar({ today: '2026-05-04' }), {
     supperServings: {
       knownRecipe: {
@@ -55,11 +57,13 @@ test('legacy four-portion shells preview scales reliable lines despite omitted s
 
 test('four-portion preview keeps five saved portions and groceries unchanged', async ({ page }) => {
   const id = MOCK_IDS.RECIPE_SPAGHETTI;
-  await page
-    .context()
-    .addCookies([
-      { name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: process.env.BASE_URL! },
-    ]);
+  await page.context().addCookies([
+    {
+      name: 'x-family-member-id',
+      value: MOCK_IDS.MEMBER_ALEX,
+      url: process.env.BASE_URL || 'http://127.0.0.1:3000',
+    },
+  ]);
   await setupCommonRoutes(page, builders.deploymentCalendar({ today: '2026-05-04' }), {
     supperServings: {
       knownRecipe: { id, basis: 2, quantity: 200, ingredient: 'pasta', unit: 'g' },
@@ -102,11 +106,13 @@ test('early preview survives initial target resolution, schedule hints and resum
   page,
 }) => {
   const id = MOCK_IDS.RECIPE_SPAGHETTI;
-  await page
-    .context()
-    .addCookies([
-      { name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: process.env.BASE_URL! },
-    ]);
+  await page.context().addCookies([
+    {
+      name: 'x-family-member-id',
+      value: MOCK_IDS.MEMBER_ALEX,
+      url: process.env.BASE_URL || 'http://127.0.0.1:3000',
+    },
+  ]);
   await setupCommonRoutes(page, builders.deploymentCalendar({ today: '2026-05-04' }), {
     supperServings: {
       knownRecipe: { id, basis: 2, quantity: 200, ingredient: 'pasta', unit: 'g' },
@@ -165,11 +171,13 @@ test('selected preview refreshes source safely and retains intent after refresh 
   page,
 }) => {
   const id = MOCK_IDS.RECIPE_SPAGHETTI;
-  await page
-    .context()
-    .addCookies([
-      { name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: process.env.BASE_URL! },
-    ]);
+  await page.context().addCookies([
+    {
+      name: 'x-family-member-id',
+      value: MOCK_IDS.MEMBER_ALEX,
+      url: process.env.BASE_URL || 'http://127.0.0.1:3000',
+    },
+  ]);
   await setupCommonRoutes(page, builders.deploymentCalendar({ today: '2026-05-04' }), {
     supperServings: {
       knownRecipe: { id, basis: 2, quantity: 200, ingredient: 'pasta', unit: 'g' },

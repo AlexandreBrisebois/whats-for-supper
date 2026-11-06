@@ -24,11 +24,13 @@ async function fixture(
           knownRecipe: { id: recipe, basis: 2, quantity: 200, ingredient: 'pasta', unit: 'g' },
         },
   });
-  await page
-    .context()
-    .addCookies([
-      { name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: process.env.BASE_URL! },
-    ]);
+  await page.context().addCookies([
+    {
+      name: 'x-family-member-id',
+      value: MOCK_IDS.MEMBER_ALEX,
+      url: process.env.BASE_URL || 'http://127.0.0.1:3000',
+    },
+  ]);
   await page.goto('/planner');
   await page.evaluate(async (id) => {
     await fetch(`/api/recipes/${id}`, {

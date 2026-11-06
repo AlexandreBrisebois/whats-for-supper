@@ -14,6 +14,48 @@ namespace RecipeApi.Tests.Integration;
 public partial class SupperServingsPostgresTests
 {
     [DeploymentCalendarPostgresTests.CalendarPostgresFact]
+    public async Task SupperServings_CurrentCookedWithoutReceipt_AllowsCorrectionAndKeepsOccurrence()
+    {
+        await new TomorrowPushPostgresTests(output).WithDatabase(async settings => {
+            var clock = new DeploymentCalendarIntegrationTests.CalendarClock { UtcNow = DateTimeOffset.Parse("2026-10-14T16:00:00Z") };
+            await using var factory = await RecipeApi.Tests.Infrastructure.TestWebApplicationFactory.CreateWithAuthAsync(clock, new() {
+                ["Calendar:TimeZone"] = "America/Toronto", ["Tests:PostgresConnectionString"] = settings.ConnectionString,
+            });
+            using var scope = factory.Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+            var recipe = CorrectionRecipe();
+            var occurrence = new CalendarEvent { Date = Wednesday, RecipeId = recipe.Id, Status = CalendarEventStatus.Cooked };
+            db.Recipes.Add(recipe); db.CalendarEvents.Add(occurrence);
+            db.SupperServings.Add(new SupperServing { Date = Wednesday, OverrideServings = 5 });
+            await db.SaveChangesAsync();
+            using var client = factory.CreateAuthenticatedClient();
+            var baseline = await Read(client);
+            Assert.True(baseline.GetProperty("days")[2].GetProperty("editable").GetBoolean());
+            Assert.Equal(5, baseline.GetProperty("days")[2].GetProperty("servings").GetInt32());
+            var response = await client.PutAsJsonAsync("/api/schedule/servings", new { referenceWeekStartDate = "2026-10-12", weekOffset = 0, expectedVersion = baseline.GetProperty("version").GetString(), days = new[] { new { date = "2026-10-14", servings = 6 } } });
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.Equal(6, (await Read(client)).GetProperty("days")[2].GetProperty("servings").GetInt32());
+            db.ChangeTracker.Clear();
+            var stored = await db.CalendarEvents.SingleAsync();
+            Assert.Equal(occurrence.Id, stored.Id); Assert.Equal(recipe.Id, stored.RecipeId);
+            Assert.Equal(CalendarEventStatus.Cooked, stored.Status); Assert.Null(stored.PreparedAtUtc);
+        });
+    }
+
+    [DeploymentCalendarPostgresTests.CalendarPostgresFact]
+    public async Task SupperServings_OrdinaryToday_RemainsEditable()
+    {
+        await new TomorrowPushPostgresTests(output).WithDatabase(async settings => {
+            var clock = new DeploymentCalendarIntegrationTests.CalendarClock { UtcNow = DateTimeOffset.Parse("2026-10-14T16:00:00Z") };
+            await using var factory = await RecipeApi.Tests.Infrastructure.TestWebApplicationFactory.CreateWithAuthAsync(clock, new() {
+                ["Calendar:TimeZone"] = "America/Toronto", ["Tests:PostgresConnectionString"] = settings.ConnectionString,
+            });
+            using var client = factory.CreateAuthenticatedClient();
+            Assert.True((await Read(client)).GetProperty("days")[2].GetProperty("editable").GetBoolean());
+        });
+    }
+
+    [DeploymentCalendarPostgresTests.CalendarPostgresFact]
     public async Task SupperServings_Correction_EffectiveIdentityIgnoresOtherDatesAndInstructionMetadata()
     {
         await new TomorrowPushPostgresTests(output).WithDatabase(async settings => {

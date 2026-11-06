@@ -7,11 +7,13 @@ for (const locale of ['en', 'fr'] as const)
     test('keeps odd counts, draft-exit choices and compact rows usable at enlarged text', async ({
       page,
     }) => {
-      await page
-        .context()
-        .addCookies([
-          { name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: process.env.BASE_URL! },
-        ]);
+      await page.context().addCookies([
+        {
+          name: 'x-family-member-id',
+          value: MOCK_IDS.MEMBER_ALEX,
+          url: process.env.BASE_URL || 'http://127.0.0.1:3000',
+        },
+      ]);
       await setupCommonRoutes(page);
       await page.setViewportSize({ width: 320, height: 740 });
       await page.goto('/planner');
@@ -52,15 +54,17 @@ for (const locale of ['en', 'fr'] as const)
 for (const locale of ['en', 'fr'] as const)
   test.describe(`date reset ${locale}`, () => {
     test.use({ appLocale: locale });
-    test('resets five and equal-four with numeric action, Cancel and date-only persistence', async ({
+    test('resets five and equal-four with numeric action and date-only persistence', async ({
       page,
     }, info) => {
       await page.setViewportSize({ width: 390, height: 844 });
-      await page
-        .context()
-        .addCookies([
-          { name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: process.env.BASE_URL! },
-        ]);
+      await page.context().addCookies([
+        {
+          name: 'x-family-member-id',
+          value: MOCK_IDS.MEMBER_ALEX,
+          url: process.env.BASE_URL || 'http://127.0.0.1:3000',
+        },
+      ]);
       await setupCommonRoutes(page);
       await page.goto('/profile/settings');
       await page.getByTestId('usual-portions-automatic').uncheck();
@@ -82,6 +86,8 @@ for (const locale of ['en', 'fr'] as const)
           return data.days.find((day: { date: string }) => day.date === '2026-05-10');
         });
       await open.click();
+      await expect(done).toHaveAccessibleName(locale === 'fr' ? 'Recettes' : 'Recipes');
+      await expect(done.locator('svg.lucide-calendar')).toHaveCount(1);
       await expect(page.getByTestId('usual-portions')).toHaveCount(0);
       await input.fill('5');
       await page.getByTestId('portion-input-2026-05-06').fill('5');
@@ -123,13 +129,6 @@ for (const locale of ['en', 'fr'] as const)
       });
       await reset.click();
       await expect(input).toHaveValue('4');
-      await page
-        .getByRole('button', { name: locale === 'fr' ? 'Annuler' : 'Cancel', exact: true })
-        .click();
-      expect(await readSunday()).toMatchObject({ servings: 5, overrideServings: 5 });
-      await open.click();
-      await expect(input).toHaveValue('5');
-      await reset.click();
       const write = page.waitForRequest(
         (request) =>
           request.method() === 'PUT' && new URL(request.url()).pathname === '/api/schedule/servings'
@@ -137,7 +136,12 @@ for (const locale of ['en', 'fr'] as const)
       await done.click();
       const payload = (await write).postDataJSON();
       expect(payload).not.toHaveProperty('defaultServings');
-      expect(payload.days).toEqual([{ date: '2026-05-10', servings: null }]);
+      expect(payload.days).toEqual(
+        expect.arrayContaining([
+          { date: '2026-05-06', servings: null },
+          { date: '2026-05-10', servings: null },
+        ])
+      );
       await expect(open).toBeVisible();
       expect(await readSunday()).toMatchObject({ servings: 4, overrideServings: null });
       await open.click();
@@ -163,11 +167,13 @@ for (const locale of ['en', 'fr'] as const)
 test('a concurrent usual change reviews the new reset target and saves null with the fresh version', async ({
   page,
 }) => {
-  await page
-    .context()
-    .addCookies([
-      { name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: process.env.BASE_URL! },
-    ]);
+  await page.context().addCookies([
+    {
+      name: 'x-family-member-id',
+      value: MOCK_IDS.MEMBER_ALEX,
+      url: process.env.BASE_URL || 'http://127.0.0.1:3000',
+    },
+  ]);
   await setupCommonRoutes(page);
   await page.goto('/profile/settings');
   await page.getByTestId('usual-portions-automatic').uncheck();
@@ -231,11 +237,13 @@ for (const locale of ['en', 'fr'] as const)
         page,
       }, info) => {
         await page.setViewportSize({ width, height: 844 });
-        await page
-          .context()
-          .addCookies([
-            { name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: process.env.BASE_URL! },
-          ]);
+        await page.context().addCookies([
+          {
+            name: 'x-family-member-id',
+            value: MOCK_IDS.MEMBER_ALEX,
+            url: process.env.BASE_URL || 'http://127.0.0.1:3000',
+          },
+        ]);
         await setupCommonRoutes(page);
         await page.goto('/planner');
         await page.getByTestId('at-the-table-mode').click();

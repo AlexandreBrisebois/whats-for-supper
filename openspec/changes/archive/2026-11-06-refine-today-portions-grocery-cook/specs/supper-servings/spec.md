@@ -79,7 +79,7 @@ Deployment-local today's Cooked supper without an explicit preparation receipt S
 #### Scenario: Reset today's cooked correction to usual
 - **WHEN** the current Cooked supper has no preparation receipt, usual is four and its five-portion override is reset and saved
 - **THEN** the override is removed and four is captured for that completed date; a later usual/member change does not rescale it
-- **AND** Cancel preserves five and an unavailable usual supplies no invented reset number
+- **AND** returning without edits preserves five and an unavailable usual supplies no invented reset number
 
 #### Scenario: Saved correction updates groceries
 - **WHEN** today's cooked count correction commits and changes a reliable weekly grocery requirement

@@ -162,7 +162,7 @@ export interface ServingsRequestBuilder extends BaseRequestBuilder<ServingsReque
       RequestConfiguration<ServingsRequestBuilderGetQueryParameters> | undefined
   ): Promise<ServingsGetResponse | undefined>;
   /**
-   * Acknowledges committed counts and durable refresh work before grocery execution. 400 or 409 applies none of the batch. Never changes recipes, calendar assignments or voting. Unknown replies require an authoritative read before retrying a write. After commit, an existing week_updated hint is published independently of grocery execution. Publication failure does not fail a confirmed save; missed updates reconcile through saved-state/projection reads on resume.
+   * Acknowledges committed counts and durable refresh work before grocery execution. Deployment-local today may be corrected when Cooked without a preparation receipt; past dates, future Cooked dates, non-cooking dates and explicit preparations are read-only. Eligibility is rechecked at submission. 400 or 409 applies none of the batch. Never changes recipes, calendar assignments, cooking history, preparation receipts or voting. Unknown replies require an authoritative read before retrying a write. After commit, an existing week_updated hint is published independently of grocery execution. Publication failure does not fail a confirmed save; missed updates reconcile through saved-state/projection reads on resume.
    * @param body The request body
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {Promise<ServingsPutResponse>}
@@ -183,7 +183,7 @@ export interface ServingsRequestBuilder extends BaseRequestBuilder<ServingsReque
       RequestConfiguration<ServingsRequestBuilderGetQueryParameters> | undefined
   ): RequestInformation;
   /**
-   * Acknowledges committed counts and durable refresh work before grocery execution. 400 or 409 applies none of the batch. Never changes recipes, calendar assignments or voting. Unknown replies require an authoritative read before retrying a write. After commit, an existing week_updated hint is published independently of grocery execution. Publication failure does not fail a confirmed save; missed updates reconcile through saved-state/projection reads on resume.
+   * Acknowledges committed counts and durable refresh work before grocery execution. Deployment-local today may be corrected when Cooked without a preparation receipt; past dates, future Cooked dates, non-cooking dates and explicit preparations are read-only. Eligibility is rechecked at submission. 400 or 409 applies none of the batch. Never changes recipes, calendar assignments, cooking history, preparation receipts or voting. Unknown replies require an authoritative read before retrying a write. After commit, an existing week_updated hint is published independently of grocery execution. Publication failure does not fail a confirmed save; missed updates reconcile through saved-state/projection reads on resume.
    * @param body The request body
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {RequestInformation}

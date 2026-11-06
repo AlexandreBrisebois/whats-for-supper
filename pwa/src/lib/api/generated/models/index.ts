@@ -4729,7 +4729,7 @@ export interface IngredientProjection extends AdditionalDataHolder, Parsable {
    */
   context?: IngredientProjection_context | null;
   /**
-   * Whether this date permits editing portions through At the table.
+   * Whether portions may be edited: ordinary unprepared current or future dates and deployment-local today when Cooked without a preparation receipt. Past, future Cooked, non-cooking and explicitly prepared dates are read-only.
    */
   editable?: boolean | null;
   /**
@@ -8643,7 +8643,7 @@ export interface SupperServingDay extends AdditionalDataHolder, Parsable {
    */
   date?: DateOnly | null;
   /**
-   * The editable property
+   * True for ordinary unprepared current or future dates and deployment-local today when Cooked without a preparation receipt. Past, future Cooked, non-cooking and explicitly prepared dates are read-only.
    */
   editable?: boolean | null;
   /**
