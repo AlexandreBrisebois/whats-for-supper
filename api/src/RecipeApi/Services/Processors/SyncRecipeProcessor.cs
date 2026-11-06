@@ -11,7 +11,8 @@ public class SyncRecipeProcessor(
     IClock clock,
     RecipeDbContext db,
     RecipeRepository recipeRepository,
-    GroceryRecomputeService groceryRecomputeService,
+    SupperProjectionInvalidation projectionInvalidation,
+    ISupperProjectionPublisher projectionPublisher,
     ILogger<SyncRecipeProcessor> logger) : IWorkflowProcessor
 {
     public string ProcessorName => "SyncRecipe";
@@ -50,6 +51,7 @@ public class SyncRecipeProcessor(
         using var jsonDoc = JsonDocument.Parse(recipeJsonContent);
         var root = jsonDoc.RootElement;
 
+        await using var transaction = await RecipeRotation.LockAsync(db, recipeId, ct, lockSupperInputs: true);
         var recipe = await db.Recipes.FirstOrDefaultAsync(r => r.Id == recipeId, ct);
         if (recipe == null)
         {
@@ -119,10 +121,11 @@ public class SyncRecipeProcessor(
         recipe.UpdatedAt = clock.UtcNow;
 
         await db.SaveChangesAsync(ct);
-        logger.LogInformation("Synchronized recipe {RecipeId} from disk to database.", recipeId);
 
-        // Recompute grocery items for all week plans that include this recipe
-        await groceryRecomputeService.RecomputeForRecipeAsync(recipeId, ct);
+        var affectedWeeks = await projectionInvalidation.EnlistRecipeAsync(recipeId, ct);
+        if (transaction is not null) { await transaction.CommitAsync(ct); await transaction.DisposeAsync(); }
+        logger.LogInformation("Synchronized recipe {RecipeId} from disk to database.", recipeId);
+        await projectionPublisher.PublishAsync(affectedWeeks);
 
     }
 }

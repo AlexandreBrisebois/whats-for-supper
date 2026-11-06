@@ -88,61 +88,66 @@ test.describe('Recipe Hero Actions', () => {
     { width: 390, height: 844 },
     { width: 820, height: 1180 },
   ]) {
-    test(`detail action section owns its 8px inset at ${viewport.width}x${viewport.height}`, async ({
+    test(`final reading action remains reachable above planning at ${viewport.width}x${viewport.height}`, async ({
       page,
     }, testInfo) => {
       await page.setViewportSize(viewport);
       await openRecipeDetail(page);
       const finalAction = page.getByTestId('action-toggle-discovery');
       await finalAction.scrollIntoViewIfNeeded();
-      const gap = await finalAction.evaluate((button) => {
-        const scroller = button.closest('.overflow-y-auto') as HTMLElement;
-        scroller.scrollTop = scroller.scrollHeight;
-        return {
-          total: scroller.getBoundingClientRect().bottom - button.getBoundingClientRect().bottom,
-          scrollerPadding: parseFloat(getComputedStyle(scroller).paddingBottom),
-          actionPadding: parseFloat(getComputedStyle(button.parentElement!).paddingBottom),
-        };
-      });
-      expect(gap.total).toBeGreaterThanOrEqual(31);
-      expect(gap.total).toBeLessThanOrEqual(34);
-      expect(gap.scrollerPadding).toBe(24);
-      expect(gap.actionPadding).toBe(8);
-      await expect(finalAction).toBeVisible();
+      await finalAction.focus();
+      await expect(finalAction).toBeInViewport({ ratio: 1 });
+      await expect(finalAction).toBeFocused();
+      const reading = page.getByTestId('recipe-detail-reading');
+      const planning = page.getByTestId('recipe-planning-actions');
+      const readingBounds = await reading.boundingBox();
+      const planningBounds = await planning.boundingBox();
+      expect(readingBounds!.y + readingBounds!.height).toBeLessThanOrEqual(planningBounds!.y + 1);
+      await expect(page.getByTestId('action-add-to-day')).toBeInViewport({ ratio: 1 });
+      await expect(page.getByTestId('action-close-sheet')).toBeInViewport({ ratio: 1 });
+      expect(await page.getByTestId('recipe-detail-sheet').evaluate((node) => node.scrollTop)).toBe(
+        0
+      );
       await page.screenshot({ path: testInfo.outputPath(`detail-actions-${viewport.width}.png`) });
     });
   }
 
-  test('detail edit actions stay reachable at the end of the scroller', async ({ page }) => {
+  test('detail edit actions stay reachable while reading scrolls independently', async ({
+    page,
+  }) => {
     await page.setViewportSize({ width: 320, height: 568 });
     await openRecipeDetail(page);
     await page.getByTestId('action-gear-menu').click();
     await page.getByTestId('action-edit-recipe').click();
-    const cancel = page.getByTestId('recipe-cancel-edits');
-    await cancel.scrollIntoViewIfNeeded();
-    await cancel.focus();
-    const geometry = await cancel.evaluate((button) => {
-      const scroller = button.closest('.overflow-y-auto') as HTMLElement;
-      scroller.scrollTop = scroller.scrollHeight;
-      const panel = document.querySelector('[data-testid="recipe-detail-sheet"]')!;
-      return {
-        gap: scroller.getBoundingClientRect().bottom - button.getBoundingClientRect().bottom,
-        scrollerPadding: parseFloat(getComputedStyle(scroller).paddingBottom),
-        actionPadding: parseFloat(getComputedStyle(button.parentElement!).paddingBottom),
-        withinPanel:
-          button.getBoundingClientRect().bottom + 4 <= panel.getBoundingClientRect().bottom,
-      };
+    await page.getByTestId('recipe-detail-reading').evaluate((node) => {
+      node.scrollTop = node.scrollHeight;
     });
-    expect(geometry.gap).toBeGreaterThanOrEqual(31);
-    expect(geometry.scrollerPadding).toBe(24);
-    expect(geometry.actionPadding).toBe(24);
-    expect(geometry.withinPanel).toBe(true);
-    await expect(cancel).toBeFocused();
+    for (const action of ['recipe-save-edits', 'recipe-cancel-edits']) {
+      const control = page.getByTestId(action);
+      await control.scrollIntoViewIfNeeded();
+      await control.focus();
+      await expect(control).toBeInViewport({ ratio: 1 });
+      await expect(control).toBeFocused();
+      const withinPanel = await control.evaluate((button) => {
+        const bounds = button.getBoundingClientRect();
+        const panel = document
+          .querySelector('[data-testid="recipe-detail-sheet"]')!
+          .getBoundingClientRect();
+        return bounds.top >= panel.top && bounds.bottom + 4 <= panel.bottom;
+      });
+      expect(withinPanel).toBe(true);
+    }
+    expect(await page.getByTestId('recipe-detail-sheet').evaluate((node) => node.scrollTop)).toBe(
+      0
+    );
+    await expect(page.getByTestId('action-close-sheet')).toBeInViewport({ ratio: 1 });
   });
 
   test.describe('French enlarged detail footer', () => {
     test.use({ appLocale: 'fr' });
-    test('keeps the final action and focus reachable on a short phone', async ({ page }) => {
+    test('keeps the final reading action and focus reachable on a short phone', async ({
+      page,
+    }) => {
       await page.setViewportSize({ width: 320, height: 568 });
       await openRecipeDetail(page);
       await page.evaluate(() => {
@@ -151,19 +156,12 @@ test.describe('Recipe Hero Actions', () => {
       const finalAction = page.getByTestId('action-toggle-discovery');
       await finalAction.scrollIntoViewIfNeeded();
       await finalAction.focus();
-      const geometry = await finalAction.evaluate((button) => {
-        const scroller = button.closest('.overflow-y-auto') as HTMLElement;
-        scroller.scrollTop = scroller.scrollHeight;
-        const panel = document.querySelector('[data-testid="recipe-detail-sheet"]')!;
-        return {
-          gap: scroller.getBoundingClientRect().bottom - button.getBoundingClientRect().bottom,
-          withinPanel:
-            button.getBoundingClientRect().bottom + 4 <= panel.getBoundingClientRect().bottom,
-        };
-      });
-      expect(geometry.gap).toBeGreaterThanOrEqual(31);
-      expect(geometry.withinPanel).toBe(true);
+      await expect(finalAction).toBeInViewport({ ratio: 1 });
       await expect(finalAction).toBeFocused();
+      await expect(page.getByTestId('action-close-sheet')).toBeInViewport({ ratio: 1 });
+      expect(await page.getByTestId('recipe-detail-sheet').evaluate((node) => node.scrollTop)).toBe(
+        0
+      );
     });
   });
 

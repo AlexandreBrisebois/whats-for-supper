@@ -58,16 +58,23 @@ class ImpactPlanningTests(IsolatedGitTestCase):
 
         self.assertEqual(changed, ["pwa/src/app/(app)/recipes/page.tsx"])
 
-    def test_recipe_api_wrapper_maps_to_recipe_flows_instead_of_all_e2e(self):
+    def test_shared_recipe_api_wrapper_requires_all_e2e(self):
         module = load_module()
         plan = module.build_impact_plan(["pwa/src/lib/api/recipes.ts"])
 
-        self.assertFalse(plan.run_all)
-        self.assertEqual(
-            {Path(test).name for test in plan.tests},
-            {"recipes.spec.ts", "home-recipe.spec.ts"},
-        )
+        self.assertTrue(plan.run_all)
+        self.assertEqual(plan.tests, (str(module.E2E_DIR),))
         self.assertTrue(any("pwa/src/lib/api/recipes.ts" in reason for reason in plan.reasons))
+
+    def test_shared_recipe_wrapper_widens_mixed_changes_in_either_order(self):
+        module = load_module()
+        wrapper = "pwa/src/lib/api/recipes.ts"
+        browser_test = "pwa/e2e/recipes.spec.ts"
+        for changed in [[wrapper, browser_test], [browser_test, wrapper]]:
+            with self.subTest(changed=changed):
+                plan = module.build_impact_plan(changed)
+                self.assertTrue(plan.run_all)
+                self.assertEqual(plan.tests, (str(module.E2E_DIR),))
 
     def test_shared_generated_client_reports_why_all_e2e_are_required(self):
         module = load_module()

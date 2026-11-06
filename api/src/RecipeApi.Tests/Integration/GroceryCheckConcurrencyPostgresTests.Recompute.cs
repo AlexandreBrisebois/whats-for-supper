@@ -95,7 +95,7 @@ public sealed partial class GroceryCheckConcurrencyPostgresTests
                 new("huile d'olive", "huile d'olive", "Pantry", 1, "ml", []),
                 new("huile d’olive", "huile d’olive", "Pantry", 1, "ml", []),
             });
-            var recipe = new Recipe { Name = "Oil", RawMetadata = """{"supply":[{"name":"huile d'olive","quantity":1,"unitText":"ml"},{"name":"huile d’olive","quantity":1,"unitText":"ml"}]}""" };
+            var recipe = new Recipe { Name = "Oil", Ingredients = "[\"1 ml huile d'olive\",\"1 ml huile d’olive\"]", RawMetadata = """{"recipeIngredient":["1 ml huile d'olive","1 ml huile d’olive"],"supply":[{"name":"huile d'olive","quantity":1,"unitText":"ml"},{"name":"huile d’olive","quantity":1,"unitText":"ml"}]}""" };
             db.Recipes.Add(recipe);
             db.CalendarEvents.Add(new CalendarEvent { Date = Monday, RecipeId = recipe.Id });
             await db.SaveChangesAsync();
@@ -109,6 +109,8 @@ public sealed partial class GroceryCheckConcurrencyPostgresTests
             output.WriteLine($"Recompute from pretracked scope: {JsonSerializer.Serialize(checks)}");
             Assert.Equal(otherChecked, checks["huile d'olive"]);
             Assert.DoesNotContain("huile d’olive", checks.Keys);
+            var merged = Assert.Single(JsonSerializer.Deserialize<List<GroceryLineItemDto>>(plan.GroceryItems)!);
+            Assert.Equal(2, merged.Quantity); Assert.Equal("ml", merged.UnitText); Assert.True(merged.QuantityComplete);
             Assert.True(checks["unrelated"]);
             Assert.Equal(WeeklyPlanStatus.Locked, plan.Status);
             Assert.True(db.Entry(plan).Property(p => p.Status).IsModified);

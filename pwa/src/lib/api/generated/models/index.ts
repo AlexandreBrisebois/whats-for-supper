@@ -476,6 +476,39 @@ export function createImportedRecipeDtoFromDiscriminatorValue(
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {IngredientPreview}
+ */
+// @ts-ignore
+export function createIngredientPreviewFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoIngredientPreview;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {IngredientProjection}
+ */
+// @ts-ignore
+export function createIngredientProjectionFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoIngredientProjection;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {IngredientProjectionLine}
+ */
+// @ts-ignore
+export function createIngredientProjectionLineFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoIngredientProjectionLine;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {ManagementBackfillSearchAcceptedResponse}
  */
 // @ts-ignore
@@ -593,6 +626,28 @@ export function createPdfCaptureErrorFromDiscriminatorValue(
   parseNode: ParseNode | undefined
 ): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
   return deserializeIntoPdfCaptureError;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {PrepareSupperRequest}
+ */
+// @ts-ignore
+export function createPrepareSupperRequestFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoPrepareSupperRequest;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {PrepareSupperResult}
+ */
+// @ts-ignore
+export function createPrepareSupperResultFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoPrepareSupperResult;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -982,6 +1037,17 @@ export function createScheduleRecipeDtoFromDiscriminatorValue(
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {ServingGroceryRefresh}
+ */
+// @ts-ignore
+export function createServingGroceryRefreshFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoServingGroceryRefresh;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {SettingsDto_value}
  */
 // @ts-ignore
@@ -1033,6 +1099,72 @@ export function createSmartDefaultsDtoFromDiscriminatorValue(
   parseNode: ParseNode | undefined
 ): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
   return deserializeIntoSmartDefaultsDto;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {SupperPreparation}
+ */
+// @ts-ignore
+export function createSupperPreparationFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoSupperPreparation;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {SupperServingDay}
+ */
+// @ts-ignore
+export function createSupperServingDayFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoSupperServingDay;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {SupperServings}
+ */
+// @ts-ignore
+export function createSupperServingsFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoSupperServings;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {SupperServingsRefresh}
+ */
+// @ts-ignore
+export function createSupperServingsRefreshFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoSupperServingsRefresh;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {SupperServingsSave_days}
+ */
+// @ts-ignore
+export function createSupperServingsSave_daysFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoSupperServingsSave_days;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {SupperServingsSave}
+ */
+// @ts-ignore
+export function createSupperServingsSaveFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoSupperServingsSave;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -1867,6 +1999,11 @@ export function deserializeIntoGroceryLineItemDto(
   groceryLineItemDto: Partial<GroceryLineItemDto> | undefined = {}
 ): Record<string, (node: ParseNode) => void> {
   return {
+    checkReviewReason: (n) => {
+      groceryLineItemDto.checkReviewReason = n.getEnumValue<GroceryLineItemDto_checkReviewReason>(
+        GroceryLineItemDto_checkReviewReasonObject
+      );
+    },
     displayName: (n) => {
       groceryLineItemDto.displayName = n.getStringValue();
     },
@@ -1875,6 +2012,9 @@ export function deserializeIntoGroceryLineItemDto(
     },
     quantity: (n) => {
       groceryLineItemDto.quantity = n.getNumberValue();
+    },
+    quantityComplete: (n) => {
+      groceryLineItemDto.quantityComplete = n.getBooleanValue();
     },
     recipeIds: (n) => {
       groceryLineItemDto.recipeIds = n.getCollectionOfPrimitiveValues<Guid>('string');
@@ -2030,6 +2170,143 @@ export function deserializeIntoImportedRecipeDto(
     },
     totalTimeMinutes: (n) => {
       importedRecipeDto.totalTimeMinutes = n.getNumberValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param IngredientPreview The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoIngredientPreview(
+  ingredientPreview: Partial<IngredientPreview> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    baseServings: (n) => {
+      ingredientPreview.baseServings = n.getNumberValue();
+    },
+    factor: (n) => {
+      ingredientPreview.factor = n.getNumberValue();
+    },
+    lines: (n) => {
+      ingredientPreview.lines = n.getCollectionOfObjectValues<IngredientProjectionLine>(
+        createIngredientProjectionLineFromDiscriminatorValue
+      );
+    },
+    recipeId: (n) => {
+      ingredientPreview.recipeId = n.getGuidValue();
+    },
+    status: (n) => {
+      ingredientPreview.status = n.getEnumValue<IngredientPreview_status>(
+        IngredientPreview_statusObject
+      );
+    },
+    targetServings: (n) => {
+      ingredientPreview.targetServings = n.getNumberValue();
+    },
+    version: (n) => {
+      ingredientPreview.version = n.getStringValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param IngredientProjection The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoIngredientProjection(
+  ingredientProjection: Partial<IngredientProjection> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    baseServings: (n) => {
+      ingredientProjection.baseServings = n.getNumberValue();
+    },
+    context: (n) => {
+      ingredientProjection.context = n.getEnumValue<IngredientProjection_context>(
+        IngredientProjection_contextObject
+      );
+    },
+    editable: (n) => {
+      ingredientProjection.editable = n.getBooleanValue();
+    },
+    factor: (n) => {
+      ingredientProjection.factor = n.getNumberValue();
+    },
+    lines: (n) => {
+      ingredientProjection.lines = n.getCollectionOfObjectValues<IngredientProjectionLine>(
+        createIngredientProjectionLineFromDiscriminatorValue
+      );
+    },
+    occurrenceId: (n) => {
+      ingredientProjection.occurrenceId = n.getGuidValue();
+    },
+    preparation: (n) => {
+      ingredientProjection.preparation = n.getObjectValue<SupperPreparation>(
+        createSupperPreparationFromDiscriminatorValue
+      );
+    },
+    preparationPlanToken: (n) => {
+      ingredientProjection.preparationPlanToken = n.getStringValue();
+    },
+    preparationServingVersion: (n) => {
+      ingredientProjection.preparationServingVersion = n.getStringValue();
+    },
+    recipeId: (n) => {
+      ingredientProjection.recipeId = n.getGuidValue();
+    },
+    servingVersion: (n) => {
+      ingredientProjection.servingVersion = n.getStringValue();
+    },
+    status: (n) => {
+      ingredientProjection.status = n.getEnumValue<IngredientProjection_status>(
+        IngredientProjection_statusObject
+      );
+    },
+    supperDate: (n) => {
+      ingredientProjection.supperDate = n.getDateOnlyValue();
+    },
+    targetServings: (n) => {
+      ingredientProjection.targetServings = n.getNumberValue();
+    },
+    version: (n) => {
+      ingredientProjection.version = n.getStringValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param IngredientProjectionLine The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoIngredientProjectionLine(
+  ingredientProjectionLine: Partial<IngredientProjectionLine> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    issues: (n) => {
+      ingredientProjectionLine.issues =
+        n.getCollectionOfEnumValues<IngredientProjectionLine_issues>(
+          IngredientProjectionLine_issuesObject
+        );
+    },
+    name: (n) => {
+      ingredientProjectionLine.name = n.getStringValue();
+    },
+    originalText: (n) => {
+      ingredientProjectionLine.originalText = n.getStringValue();
+    },
+    quantity: (n) => {
+      ingredientProjectionLine.quantity = n.getNumberValue();
+    },
+    status: (n) => {
+      ingredientProjectionLine.status = n.getEnumValue<IngredientProjectionLine_status>(
+        IngredientProjectionLine_statusObject
+      );
+    },
+    unitText: (n) => {
+      ingredientProjectionLine.unitText = n.getStringValue();
     },
   };
 }
@@ -2306,6 +2583,56 @@ export function deserializeIntoPdfCaptureError(
     },
     status: (n) => {
       pdfCaptureError.status = n.getNumberValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param PrepareSupperRequest The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoPrepareSupperRequest(
+  prepareSupperRequest: Partial<PrepareSupperRequest> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    expectedOccurrenceId: (n) => {
+      prepareSupperRequest.expectedOccurrenceId = n.getGuidValue();
+    },
+    expectedPlanToken: (n) => {
+      prepareSupperRequest.expectedPlanToken = n.getStringValue();
+    },
+    expectedServingVersion: (n) => {
+      prepareSupperRequest.expectedServingVersion = n.getStringValue();
+    },
+    recipeId: (n) => {
+      prepareSupperRequest.recipeId = n.getGuidValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param PrepareSupperResult The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoPrepareSupperResult(
+  prepareSupperResult: Partial<PrepareSupperResult> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    occurrenceId: (n) => {
+      prepareSupperResult.occurrenceId = n.getGuidValue();
+    },
+    preparation: (n) => {
+      prepareSupperResult.preparation = n.getObjectValue<SupperPreparation>(
+        createSupperPreparationFromDiscriminatorValue
+      );
+    },
+    recipeId: (n) => {
+      prepareSupperResult.recipeId = n.getGuidValue();
+    },
+    supperDate: (n) => {
+      prepareSupperResult.supperDate = n.getDateOnlyValue();
     },
   };
 }
@@ -3240,10 +3567,21 @@ export function deserializeIntoScheduleDayDto(
         createNonCookingPlanDtoFromDiscriminatorValue
       );
     },
+    occurrenceId: (n) => {
+      scheduleDayDto.occurrenceId = n.getGuidValue();
+    },
+    preparation: (n) => {
+      scheduleDayDto.preparation = n.getObjectValue<SupperPreparation>(
+        createSupperPreparationFromDiscriminatorValue
+      );
+    },
     recipe: (n) => {
       scheduleDayDto.recipe = n.getObjectValue<ScheduleRecipeDto>(
         createScheduleRecipeDtoFromDiscriminatorValue
       );
+    },
+    removalToken: (n) => {
+      scheduleDayDto.removalToken = n.getStringValue();
     },
     status: (n) => {
       scheduleDayDto.status = n.getNumberValue();
@@ -3278,6 +3616,11 @@ export function deserializeIntoScheduleDays(
     groceryItems: (n) => {
       scheduleDays.groceryItems = n.getCollectionOfObjectValues<GroceryLineItemDto>(
         createGroceryLineItemDtoFromDiscriminatorValue
+      );
+    },
+    groceryRefresh: (n) => {
+      scheduleDays.groceryRefresh = n.getObjectValue<ServingGroceryRefresh>(
+        createServingGroceryRefreshFromDiscriminatorValue
       );
     },
     groceryState: (n) => {
@@ -3343,6 +3686,35 @@ export function deserializeIntoScheduleRecipeDto(
     },
     voteCount: (n) => {
       scheduleRecipeDto.voteCount = n.getNumberValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param ServingGroceryRefresh The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoServingGroceryRefresh(
+  servingGroceryRefresh: Partial<ServingGroceryRefresh> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    appliedVersion: (n) => {
+      servingGroceryRefresh.appliedVersion = n.getStringValue();
+    },
+    resetSummaryVersion: (n) => {
+      servingGroceryRefresh.resetSummaryVersion = n.getStringValue();
+    },
+    status: (n) => {
+      servingGroceryRefresh.status = n.getEnumValue<ServingGroceryRefresh_status>(
+        ServingGroceryRefresh_statusObject
+      );
+    },
+    version: (n) => {
+      servingGroceryRefresh.version = n.getStringValue();
+    },
+    workflowId: (n) => {
+      servingGroceryRefresh.workflowId = n.getGuidValue();
     },
   };
 }
@@ -3444,6 +3816,173 @@ export function deserializeIntoSmartDefaultsDto_openSlots(
   return {
     dayIndex: (n) => {
       smartDefaultsDto_openSlots.dayIndex = n.getNumberValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param SupperPreparation The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoSupperPreparation(
+  supperPreparation: Partial<SupperPreparation> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    originalServings: (n) => {
+      supperPreparation.originalServings = n.getNumberValue();
+    },
+    planToken: (n) => {
+      supperPreparation.planToken = n.getStringValue();
+    },
+    portionContext: (n) => {
+      supperPreparation.portionContext = n.getEnumValue<SupperPreparation_portionContext>(
+        SupperPreparation_portionContextObject
+      );
+    },
+    preparedAtUtc: (n) => {
+      supperPreparation.preparedAtUtc = n.getDateValue();
+    },
+    preparedOn: (n) => {
+      supperPreparation.preparedOn = n.getDateOnlyValue();
+    },
+    servings: (n) => {
+      supperPreparation.servings = n.getNumberValue();
+    },
+    servingVersion: (n) => {
+      supperPreparation.servingVersion = n.getStringValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param SupperServingDay The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoSupperServingDay(
+  supperServingDay: Partial<SupperServingDay> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    date: (n) => {
+      supperServingDay.date = n.getDateOnlyValue();
+    },
+    editable: (n) => {
+      supperServingDay.editable = n.getBooleanValue();
+    },
+    overrideServings: (n) => {
+      supperServingDay.overrideServings = n.getNumberValue();
+    },
+    servings: (n) => {
+      supperServingDay.servings = n.getNumberValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param SupperServings The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoSupperServings(
+  supperServings: Partial<SupperServings> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    affectedWeekStartDates: (n) => {
+      supperServings.affectedWeekStartDates =
+        n.getCollectionOfPrimitiveValues<DateOnly>('DateOnly');
+    },
+    days: (n) => {
+      supperServings.days = n.getCollectionOfObjectValues<SupperServingDay>(
+        createSupperServingDayFromDiscriminatorValue
+      );
+    },
+    defaultServings: (n) => {
+      supperServings.defaultServings = n.getNumberValue();
+    },
+    defaultServingsSource: (n) => {
+      supperServings.defaultServingsSource = n.getEnumValue<SupperServings_defaultServingsSource>(
+        SupperServings_defaultServingsSourceObject
+      );
+    },
+    groceryRefresh: (n) => {
+      supperServings.groceryRefresh = n.getObjectValue<ServingGroceryRefresh>(
+        createServingGroceryRefreshFromDiscriminatorValue
+      );
+    },
+    referenceWeekStartDate: (n) => {
+      supperServings.referenceWeekStartDate = n.getDateOnlyValue();
+    },
+    version: (n) => {
+      supperServings.version = n.getStringValue();
+    },
+    weekOffset: (n) => {
+      supperServings.weekOffset = n.getNumberValue();
+    },
+    weekStartDate: (n) => {
+      supperServings.weekStartDate = n.getDateOnlyValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param SupperServingsRefresh The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoSupperServingsRefresh(
+  supperServingsRefresh: Partial<SupperServingsRefresh> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    weekStartDates: (n) => {
+      supperServingsRefresh.weekStartDates = n.getCollectionOfPrimitiveValues<DateOnly>('DateOnly');
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param SupperServingsSave The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoSupperServingsSave(
+  supperServingsSave: Partial<SupperServingsSave> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    days: (n) => {
+      supperServingsSave.days = n.getCollectionOfObjectValues<SupperServingsSave_days>(
+        createSupperServingsSave_daysFromDiscriminatorValue
+      );
+    },
+    defaultServings: (n) => {
+      supperServingsSave.defaultServings = n.getNumberValue();
+    },
+    expectedVersion: (n) => {
+      supperServingsSave.expectedVersion = n.getStringValue();
+    },
+    referenceWeekStartDate: (n) => {
+      supperServingsSave.referenceWeekStartDate = n.getDateOnlyValue();
+    },
+    weekOffset: (n) => {
+      supperServingsSave.weekOffset = n.getNumberValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param SupperServingsSave_days The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoSupperServingsSave_days(
+  supperServingsSave_days: Partial<SupperServingsSave_days> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    date: (n) => {
+      supperServingsSave_days.date = n.getDateOnlyValue();
+    },
+    servings: (n) => {
+      supperServingsSave_days.servings = n.getNumberValue();
     },
   };
 }
@@ -3998,6 +4537,10 @@ export interface GroceryExtraSuggestionResponse extends Parsable {
 }
 export interface GroceryLineItemDto extends AdditionalDataHolder, Parsable {
   /**
+   * Persisted review of a previously checked requirement whose prior amount or completeness was unknown. Independent of current quantity completeness; a complete current quantity remains the full total. Preserved through reads/recomputation and cleared only by an explicit checked=true write for this recipe-derived item, not unrelated checks or manual extras.
+   */
+  checkReviewReason?: GroceryLineItemDto_checkReviewReason | null;
+  /**
    * The displayName property
    */
   displayName?: string | null;
@@ -4009,6 +4552,10 @@ export interface GroceryLineItemDto extends AdditionalDataHolder, Parsable {
    * The quantity property
    */
   quantity?: number | null;
+  /**
+   * False when this line includes unreliable contributions. A non-null quantity is then only the known subtotal; intentional to-taste directions do not make a line incomplete. Null or legacy absence means unknown completeness and cannot prove a requirement increase.
+   */
+  quantityComplete?: boolean | null;
   /**
    * The recipeIds property
    */
@@ -4022,6 +4569,8 @@ export interface GroceryLineItemDto extends AdditionalDataHolder, Parsable {
    */
   unitText?: string | null;
 }
+export type GroceryLineItemDto_checkReviewReason =
+  (typeof GroceryLineItemDto_checkReviewReasonObject)[keyof typeof GroceryLineItemDto_checkReviewReasonObject];
 export type GrocerySection = (typeof GrocerySectionObject)[keyof typeof GrocerySectionObject];
 export interface HealthCheckResponse extends AdditionalDataHolder, Parsable {
   /**
@@ -4138,6 +4687,134 @@ export interface ImportedRecipeDto extends AdditionalDataHolder, Parsable {
 }
 export type ImportedRecipeDto_mealTypes =
   (typeof ImportedRecipeDto_mealTypesObject)[keyof typeof ImportedRecipeDto_mealTypesObject];
+export interface IngredientPreview extends AdditionalDataHolder, Parsable {
+  /**
+   * The baseServings property
+   */
+  baseServings?: number | null;
+  /**
+   * The factor property
+   */
+  factor?: number | null;
+  /**
+   * The lines property
+   */
+  lines?: IngredientProjectionLine[] | null;
+  /**
+   * The recipeId property
+   */
+  recipeId?: Guid | null;
+  /**
+   * The status property
+   */
+  status?: IngredientPreview_status | null;
+  /**
+   * The targetServings property
+   */
+  targetServings?: number | null;
+  /**
+   * Opaque recipe ingredient identity for this preview, not a dated portions or preparation token.
+   */
+  version?: string | null;
+}
+export type IngredientPreview_status =
+  (typeof IngredientPreview_statusObject)[keyof typeof IngredientPreview_statusObject];
+export interface IngredientProjection extends AdditionalDataHolder, Parsable {
+  /**
+   * The baseServings property
+   */
+  baseServings?: number | null;
+  /**
+   * The context property
+   */
+  context?: IngredientProjection_context | null;
+  /**
+   * Whether this date permits editing portions through At the table.
+   */
+  editable?: boolean | null;
+  /**
+   * The factor property
+   */
+  factor?: number | null;
+  /**
+   * The lines property
+   */
+  lines?: IngredientProjectionLine[] | null;
+  /**
+   * The occurrenceId property
+   */
+  occurrenceId?: Guid | null;
+  /**
+   * The preparation property
+   */
+  preparation?: SupperPreparation | null;
+  /**
+   * Assigned occurrence fingerprint captured in the same repeatable-read snapshot as displayed quantities; proposed context is null.
+   */
+  preparationPlanToken?: string | null;
+  /**
+   * Assigned effective ingredient identity for preparation, distinct from the week-wide portions edit version; proposed context is null.
+   */
+  preparationServingVersion?: string | null;
+  /**
+   * The recipeId property
+   */
+  recipeId?: Guid | null;
+  /**
+   * Opaque portions optimistic-concurrency version, distinct from derived recipe input identity.
+   */
+  servingVersion?: string | null;
+  /**
+   * The status property
+   */
+  status?: IngredientProjection_status | null;
+  /**
+   * The supperDate property
+   */
+  supperDate?: DateOnly | null;
+  /**
+   * The targetServings property
+   */
+  targetServings?: number | null;
+  /**
+   * Opaque effective ingredient identity for this recipe/date/context and occurrence. Includes original basis, target and ordered projected lines/issues; unaffected by unrelated dates, optimistic serving versions, notes or instruction-only edits.
+   */
+  version?: string | null;
+}
+export type IngredientProjection_context =
+  (typeof IngredientProjection_contextObject)[keyof typeof IngredientProjection_contextObject];
+export type IngredientProjection_status =
+  (typeof IngredientProjection_statusObject)[keyof typeof IngredientProjection_statusObject];
+export interface IngredientProjectionLine extends AdditionalDataHolder, Parsable {
+  /**
+   * The issues property
+   */
+  issues?: IngredientProjectionLine_issues[] | null;
+  /**
+   * The name property
+   */
+  name?: string | null;
+  /**
+   * The originalText property
+   */
+  originalText?: string | null;
+  /**
+   * The quantity property
+   */
+  quantity?: number | null;
+  /**
+   * The status property
+   */
+  status?: IngredientProjectionLine_status | null;
+  /**
+   * The unitText property
+   */
+  unitText?: string | null;
+}
+export type IngredientProjectionLine_issues =
+  (typeof IngredientProjectionLine_issuesObject)[keyof typeof IngredientProjectionLine_issuesObject];
+export type IngredientProjectionLine_status =
+  (typeof IngredientProjectionLine_statusObject)[keyof typeof IngredientProjectionLine_statusObject];
 export interface ManagementBackfillSearchAcceptedResponse extends AdditionalDataHolder, Parsable {
   /**
    * The message property
@@ -4344,6 +5021,42 @@ export interface PdfCaptureError extends AdditionalDataHolder, ApiError, Parsabl
    * The status property
    */
   status?: number | null;
+}
+export interface PrepareSupperRequest extends AdditionalDataHolder, Parsable {
+  /**
+   * The expectedOccurrenceId property
+   */
+  expectedOccurrenceId?: Guid | null;
+  /**
+   * The expectedPlanToken property
+   */
+  expectedPlanToken?: string | null;
+  /**
+   * Captured preparationServingVersion from the displayed assigned projection, scoped to occurrence/date, effective count and ingredient source. Unrelated dates/default edits under an override do not conflict.
+   */
+  expectedServingVersion?: string | null;
+  /**
+   * The recipeId property
+   */
+  recipeId?: Guid | null;
+}
+export interface PrepareSupperResult extends AdditionalDataHolder, Parsable {
+  /**
+   * The occurrenceId property
+   */
+  occurrenceId?: Guid | null;
+  /**
+   * Stored preparation outcome. Null metadata on legacy Cooked entries does not imply an observed preparation date.
+   */
+  preparation?: SupperPreparation | null;
+  /**
+   * The recipeId property
+   */
+  recipeId?: Guid | null;
+  /**
+   * The supperDate property
+   */
+  supperDate?: DateOnly | null;
 }
 export interface PreSelectedRecipeDto extends AdditionalDataHolder, Parsable {
   /**
@@ -5065,9 +5778,21 @@ export interface ScheduleDayDto extends AdditionalDataHolder, Parsable {
    */
   nonCooking?: NonCookingPlanDto | null;
   /**
+   * Persisted supper CalendarEvent identity. Null for an empty date; a recreated same-recipe assignment has a new identity. Capture with date and recipe for assigned ingredient reads.
+   */
+  occurrenceId?: Guid | null;
+  /**
+   * The preparation property
+   */
+  preparation?: SupperPreparation | null;
+  /**
    * The recipe property
    */
   recipe?: ScheduleRecipeDto | null;
+  /**
+   * Opaque fingerprint of the persisted supper entry and its plan state. Null when no supper entry exists; unrelated meal slots do not supply a token. Capture from an authoritative schedule read and pass unchanged to guarded removal.
+   */
+  removalToken?: string | null;
   /**
    * 0: Planned, 1: Locked, 2: Cooked, 3: Skipped, 4: AwaitingConsensus
    */
@@ -5090,6 +5815,10 @@ export interface ScheduleDays extends AdditionalDataHolder, Parsable {
    * The groceryItems property
    */
   groceryItems?: GroceryLineItemDto[] | null;
+  /**
+   * The groceryRefresh property
+   */
+  groceryRefresh?: ServingGroceryRefresh | null;
   /**
    * The groceryState property
    */
@@ -5649,9 +6378,14 @@ export function serializeGroceryLineItemDto(
   if (!groceryLineItemDto || isSerializingDerivedType) {
     return;
   }
+  writer.writeEnumValue<GroceryLineItemDto_checkReviewReason>(
+    'checkReviewReason',
+    groceryLineItemDto.checkReviewReason
+  );
   writer.writeStringValue('displayName', groceryLineItemDto.displayName);
   writer.writeStringValue('normalizedKey', groceryLineItemDto.normalizedKey);
   writer.writeNumberValue('quantity', groceryLineItemDto.quantity);
+  writer.writeBooleanValue('quantityComplete', groceryLineItemDto.quantityComplete);
   writer.writeCollectionOfPrimitiveValues<Guid>('recipeIds', groceryLineItemDto.recipeIds);
   writer.writeStringValue('section', groceryLineItemDto.section);
   writer.writeStringValue('unitText', groceryLineItemDto.unitText);
@@ -5788,6 +6522,104 @@ export function serializeImportedRecipeDto(
   writer.writeStringValue('sourceUrl', importedRecipeDto.sourceUrl);
   writer.writeNumberValue('totalTimeMinutes', importedRecipeDto.totalTimeMinutes);
   writer.writeAdditionalData(importedRecipeDto.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param IngredientPreview The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeIngredientPreview(
+  writer: SerializationWriter,
+  ingredientPreview: Partial<IngredientPreview> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!ingredientPreview || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeNumberValue('baseServings', ingredientPreview.baseServings);
+  writer.writeNumberValue('factor', ingredientPreview.factor);
+  writer.writeCollectionOfObjectValues<IngredientProjectionLine>(
+    'lines',
+    ingredientPreview.lines,
+    serializeIngredientProjectionLine
+  );
+  writer.writeGuidValue('recipeId', ingredientPreview.recipeId);
+  writer.writeEnumValue<IngredientPreview_status>('status', ingredientPreview.status);
+  writer.writeNumberValue('targetServings', ingredientPreview.targetServings);
+  writer.writeStringValue('version', ingredientPreview.version);
+  writer.writeAdditionalData(ingredientPreview.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param IngredientProjection The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeIngredientProjection(
+  writer: SerializationWriter,
+  ingredientProjection: Partial<IngredientProjection> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!ingredientProjection || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeNumberValue('baseServings', ingredientProjection.baseServings);
+  writer.writeEnumValue<IngredientProjection_context>('context', ingredientProjection.context);
+  writer.writeBooleanValue('editable', ingredientProjection.editable);
+  writer.writeNumberValue('factor', ingredientProjection.factor);
+  writer.writeCollectionOfObjectValues<IngredientProjectionLine>(
+    'lines',
+    ingredientProjection.lines,
+    serializeIngredientProjectionLine
+  );
+  writer.writeGuidValue('occurrenceId', ingredientProjection.occurrenceId);
+  writer.writeObjectValue<SupperPreparation>(
+    'preparation',
+    ingredientProjection.preparation,
+    serializeSupperPreparation
+  );
+  writer.writeStringValue('preparationPlanToken', ingredientProjection.preparationPlanToken);
+  writer.writeStringValue(
+    'preparationServingVersion',
+    ingredientProjection.preparationServingVersion
+  );
+  writer.writeGuidValue('recipeId', ingredientProjection.recipeId);
+  writer.writeStringValue('servingVersion', ingredientProjection.servingVersion);
+  writer.writeEnumValue<IngredientProjection_status>('status', ingredientProjection.status);
+  writer.writeDateOnlyValue('supperDate', ingredientProjection.supperDate);
+  writer.writeNumberValue('targetServings', ingredientProjection.targetServings);
+  writer.writeStringValue('version', ingredientProjection.version);
+  writer.writeAdditionalData(ingredientProjection.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param IngredientProjectionLine The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeIngredientProjectionLine(
+  writer: SerializationWriter,
+  ingredientProjectionLine: Partial<IngredientProjectionLine> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!ingredientProjectionLine || isSerializingDerivedType) {
+    return;
+  }
+  if (ingredientProjectionLine.issues)
+    writer.writeCollectionOfEnumValues<IngredientProjectionLine_issues>(
+      'issues',
+      ingredientProjectionLine.issues
+    );
+  writer.writeStringValue('name', ingredientProjectionLine.name);
+  writer.writeStringValue('originalText', ingredientProjectionLine.originalText);
+  writer.writeNumberValue('quantity', ingredientProjectionLine.quantity);
+  writer.writeEnumValue<IngredientProjectionLine_status>('status', ingredientProjectionLine.status);
+  writer.writeStringValue('unitText', ingredientProjectionLine.unitText);
+  writer.writeAdditionalData(ingredientProjectionLine.additionalData);
 }
 /**
  * Serializes information the current object
@@ -6060,6 +6892,52 @@ export function serializePdfCaptureError(
   writer.writeStringValue('message', pdfCaptureError.messageEscaped);
   writer.writeNumberValue('status', pdfCaptureError.status);
   writer.writeAdditionalData(pdfCaptureError.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param PrepareSupperRequest The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializePrepareSupperRequest(
+  writer: SerializationWriter,
+  prepareSupperRequest: Partial<PrepareSupperRequest> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!prepareSupperRequest || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeGuidValue('expectedOccurrenceId', prepareSupperRequest.expectedOccurrenceId);
+  writer.writeStringValue('expectedPlanToken', prepareSupperRequest.expectedPlanToken);
+  writer.writeStringValue('expectedServingVersion', prepareSupperRequest.expectedServingVersion);
+  writer.writeGuidValue('recipeId', prepareSupperRequest.recipeId);
+  writer.writeAdditionalData(prepareSupperRequest.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param PrepareSupperResult The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializePrepareSupperResult(
+  writer: SerializationWriter,
+  prepareSupperResult: Partial<PrepareSupperResult> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!prepareSupperResult || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeGuidValue('occurrenceId', prepareSupperResult.occurrenceId);
+  writer.writeObjectValue<SupperPreparation>(
+    'preparation',
+    prepareSupperResult.preparation,
+    serializeSupperPreparation
+  );
+  writer.writeGuidValue('recipeId', prepareSupperResult.recipeId);
+  writer.writeDateOnlyValue('supperDate', prepareSupperResult.supperDate);
+  writer.writeAdditionalData(prepareSupperResult.additionalData);
 }
 /**
  * Serializes information the current object
@@ -6892,11 +7770,18 @@ export function serializeScheduleDayDto(
     scheduleDayDto.nonCooking,
     serializeNonCookingPlanDto
   );
+  writer.writeGuidValue('occurrenceId', scheduleDayDto.occurrenceId);
+  writer.writeObjectValue<SupperPreparation>(
+    'preparation',
+    scheduleDayDto.preparation,
+    serializeSupperPreparation
+  );
   writer.writeObjectValue<ScheduleRecipeDto>(
     'recipe',
     scheduleDayDto.recipe,
     serializeScheduleRecipeDto
   );
+  writer.writeStringValue('removalToken', scheduleDayDto.removalToken);
   writer.writeNumberValue('status', scheduleDayDto.status);
   writer.writeAdditionalData(scheduleDayDto.additionalData);
 }
@@ -6934,6 +7819,11 @@ export function serializeScheduleDays(
     'groceryItems',
     scheduleDays.groceryItems,
     serializeGroceryLineItemDto
+  );
+  writer.writeObjectValue<ServingGroceryRefresh>(
+    'groceryRefresh',
+    scheduleDays.groceryRefresh,
+    serializeServingGroceryRefresh
   );
   writer.writeObjectValue<ScheduleDays_groceryState>(
     'groceryState',
@@ -6987,6 +7877,28 @@ export function serializeScheduleRecipeDto(
   writer.writeStringValue('totalTime', scheduleRecipeDto.totalTime);
   writer.writeNumberValue('voteCount', scheduleRecipeDto.voteCount);
   writer.writeAdditionalData(scheduleRecipeDto.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param ServingGroceryRefresh The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeServingGroceryRefresh(
+  writer: SerializationWriter,
+  servingGroceryRefresh: Partial<ServingGroceryRefresh> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!servingGroceryRefresh || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeStringValue('appliedVersion', servingGroceryRefresh.appliedVersion);
+  writer.writeStringValue('resetSummaryVersion', servingGroceryRefresh.resetSummaryVersion);
+  writer.writeEnumValue<ServingGroceryRefresh_status>('status', servingGroceryRefresh.status);
+  writer.writeStringValue('version', servingGroceryRefresh.version);
+  writer.writeGuidValue('workflowId', servingGroceryRefresh.workflowId);
+  writer.writeAdditionalData(servingGroceryRefresh.additionalData);
 }
 /**
  * Serializes information the current object
@@ -7096,6 +8008,160 @@ export function serializeSmartDefaultsDto_openSlots(
   }
   writer.writeNumberValue('dayIndex', smartDefaultsDto_openSlots.dayIndex);
   writer.writeAdditionalData(smartDefaultsDto_openSlots.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param SupperPreparation The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeSupperPreparation(
+  writer: SerializationWriter,
+  supperPreparation: Partial<SupperPreparation> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!supperPreparation || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeNumberValue('originalServings', supperPreparation.originalServings);
+  writer.writeStringValue('planToken', supperPreparation.planToken);
+  writer.writeEnumValue<SupperPreparation_portionContext>(
+    'portionContext',
+    supperPreparation.portionContext
+  );
+  writer.writeDateValue('preparedAtUtc', supperPreparation.preparedAtUtc);
+  writer.writeDateOnlyValue('preparedOn', supperPreparation.preparedOn);
+  writer.writeNumberValue('servings', supperPreparation.servings);
+  writer.writeStringValue('servingVersion', supperPreparation.servingVersion);
+  writer.writeAdditionalData(supperPreparation.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param SupperServingDay The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeSupperServingDay(
+  writer: SerializationWriter,
+  supperServingDay: Partial<SupperServingDay> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!supperServingDay || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeDateOnlyValue('date', supperServingDay.date);
+  writer.writeBooleanValue('editable', supperServingDay.editable);
+  writer.writeNumberValue('overrideServings', supperServingDay.overrideServings);
+  writer.writeNumberValue('servings', supperServingDay.servings);
+  writer.writeAdditionalData(supperServingDay.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param SupperServings The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeSupperServings(
+  writer: SerializationWriter,
+  supperServings: Partial<SupperServings> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!supperServings || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeCollectionOfPrimitiveValues<DateOnly>(
+    'affectedWeekStartDates',
+    supperServings.affectedWeekStartDates
+  );
+  writer.writeCollectionOfObjectValues<SupperServingDay>(
+    'days',
+    supperServings.days,
+    serializeSupperServingDay
+  );
+  writer.writeNumberValue('defaultServings', supperServings.defaultServings);
+  writer.writeEnumValue<SupperServings_defaultServingsSource>(
+    'defaultServingsSource',
+    supperServings.defaultServingsSource
+  );
+  writer.writeObjectValue<ServingGroceryRefresh>(
+    'groceryRefresh',
+    supperServings.groceryRefresh,
+    serializeServingGroceryRefresh
+  );
+  writer.writeDateOnlyValue('referenceWeekStartDate', supperServings.referenceWeekStartDate);
+  writer.writeStringValue('version', supperServings.version);
+  writer.writeNumberValue('weekOffset', supperServings.weekOffset);
+  writer.writeDateOnlyValue('weekStartDate', supperServings.weekStartDate);
+  writer.writeAdditionalData(supperServings.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param SupperServingsRefresh The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeSupperServingsRefresh(
+  writer: SerializationWriter,
+  supperServingsRefresh: Partial<SupperServingsRefresh> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!supperServingsRefresh || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeCollectionOfPrimitiveValues<DateOnly>(
+    'weekStartDates',
+    supperServingsRefresh.weekStartDates
+  );
+  writer.writeAdditionalData(supperServingsRefresh.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param SupperServingsSave The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeSupperServingsSave(
+  writer: SerializationWriter,
+  supperServingsSave: Partial<SupperServingsSave> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!supperServingsSave || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeCollectionOfObjectValues<SupperServingsSave_days>(
+    'days',
+    supperServingsSave.days,
+    serializeSupperServingsSave_days
+  );
+  writer.writeNumberValue('defaultServings', supperServingsSave.defaultServings);
+  writer.writeStringValue('expectedVersion', supperServingsSave.expectedVersion);
+  writer.writeDateOnlyValue('referenceWeekStartDate', supperServingsSave.referenceWeekStartDate);
+  writer.writeNumberValue('weekOffset', supperServingsSave.weekOffset);
+  writer.writeAdditionalData(supperServingsSave.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param SupperServingsSave_days The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeSupperServingsSave_days(
+  writer: SerializationWriter,
+  supperServingsSave_days: Partial<SupperServingsSave_days> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!supperServingsSave_days || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeDateOnlyValue('date', supperServingsSave_days.date);
+  writer.writeNumberValue('servings', supperServingsSave_days.servings);
+  writer.writeAdditionalData(supperServingsSave_days.additionalData);
 }
 /**
  * Serializes information the current object
@@ -7452,6 +8518,30 @@ export function serializeWorkflowTriggerResponseDto(
   writer.writeGuidValue('instanceId', workflowTriggerResponseDto.instanceId);
   writer.writeAdditionalData(workflowTriggerResponseDto.additionalData);
 }
+export interface ServingGroceryRefresh extends AdditionalDataHolder, Parsable {
+  /**
+   * The appliedVersion property
+   */
+  appliedVersion?: string | null;
+  /**
+   * Opaque identity of an actual check-reset event
+   */
+  resetSummaryVersion?: string | null;
+  /**
+   * The status property
+   */
+  status?: ServingGroceryRefresh_status | null;
+  /**
+   * Current persisted projection input version.
+   */
+  version?: string | null;
+  /**
+   * The workflowId property
+   */
+  workflowId?: Guid | null;
+}
+export type ServingGroceryRefresh_status =
+  (typeof ServingGroceryRefresh_statusObject)[keyof typeof ServingGroceryRefresh_statusObject];
 export interface SettingsDto extends AdditionalDataHolder, Parsable {
   /**
    * The key property
@@ -7511,6 +8601,137 @@ export interface SmartDefaultsDto_openSlots extends AdditionalDataHolder, Parsab
    * The dayIndex property
    */
   dayIndex?: number | null;
+}
+/**
+ * Stored preparation outcome. Null metadata on legacy Cooked entries does not imply an observed preparation date.
+ */
+export interface SupperPreparation extends AdditionalDataHolder, Parsable {
+  /**
+   * The originalServings property
+   */
+  originalServings?: number | null;
+  /**
+   * Original accepted plan fingerprint.
+   */
+  planToken?: string | null;
+  /**
+   * Original explicitly freezes the unconfigured original-basis context; a later household default cannot supply portions.
+   */
+  portionContext?: SupperPreparation_portionContext | null;
+  /**
+   * The preparedAtUtc property
+   */
+  preparedAtUtc?: Date | null;
+  /**
+   * The preparedOn property
+   */
+  preparedOn?: DateOnly | null;
+  /**
+   * The servings property
+   */
+  servings?: number | null;
+  /**
+   * Original accepted effective quantity/source fingerprint.
+   */
+  servingVersion?: string | null;
+}
+export type SupperPreparation_portionContext =
+  (typeof SupperPreparation_portionContextObject)[keyof typeof SupperPreparation_portionContextObject];
+export interface SupperServingDay extends AdditionalDataHolder, Parsable {
+  /**
+   * The date property
+   */
+  date?: DateOnly | null;
+  /**
+   * The editable property
+   */
+  editable?: boolean | null;
+  /**
+   * The overrideServings property
+   */
+  overrideServings?: number | null;
+  /**
+   * The servings property
+   */
+  servings?: number | null;
+}
+export interface SupperServings extends AdditionalDataHolder, Parsable {
+  /**
+   * The affectedWeekStartDates property
+   */
+  affectedWeekStartDates?: DateOnly[] | null;
+  /**
+   * The days property
+   */
+  days?: SupperServingDay[] | null;
+  /**
+   * Effective usual portions; automatic family size is null when no positive member count is available.
+   */
+  defaultServings?: number | null;
+  /**
+   * Positive saved choice is explicit even when equal to family size; missing or null saved choice uses persisted family membership.
+   */
+  defaultServingsSource?: SupperServings_defaultServingsSource | null;
+  /**
+   * The groceryRefresh property
+   */
+  groceryRefresh?: ServingGroceryRefresh | null;
+  /**
+   * The referenceWeekStartDate property
+   */
+  referenceWeekStartDate?: DateOnly | null;
+  /**
+   * Opaque snapshot of usual-size and dated state; send unchanged as expectedVersion.
+   */
+  version?: string | null;
+  /**
+   * The weekOffset property
+   */
+  weekOffset?: number | null;
+  /**
+   * The weekStartDate property
+   */
+  weekStartDate?: DateOnly | null;
+}
+export type SupperServings_defaultServingsSource =
+  (typeof SupperServings_defaultServingsSourceObject)[keyof typeof SupperServings_defaultServingsSourceObject];
+export interface SupperServingsRefresh extends AdditionalDataHolder, Parsable {
+  /**
+   * The weekStartDates property
+   */
+  weekStartDates?: DateOnly[] | null;
+}
+export interface SupperServingsSave extends AdditionalDataHolder, Parsable {
+  /**
+   * The days property
+   */
+  days?: SupperServingsSave_days[] | null;
+  /**
+   * Omit to preserve the saved mode/value; null selects automatic persisted family-member count; a positive value selects an explicit total. Equal-number source changes are meaningful and change the optimistic version. Automatic member-count changes conflict with prior versions; explicit choices survive membership changes. Current/future inherited dates follow the effective usual; overrides, past, Cooked, prepared and non-cooking snapshots remain protected. A default-only batch has an empty days array.
+   */
+  defaultServings?: number | null;
+  /**
+   * The expectedVersion property
+   */
+  expectedVersion?: string | null;
+  /**
+   * The referenceWeekStartDate property
+   */
+  referenceWeekStartDate?: DateOnly | null;
+  /**
+   * The weekOffset property
+   */
+  weekOffset?: number | null;
+}
+export interface SupperServingsSave_days extends AdditionalDataHolder, Parsable {
+  /**
+   * The date property
+   */
+  date?: DateOnly | null;
+  /**
+   * Null resets this dated override to usual size.
+   */
+  servings?: number | null;
 }
 export interface TopPickDto extends AdditionalDataHolder, Parsable {
   /**
@@ -7865,6 +9086,14 @@ export const GoToItem_statusObject = {
   Pending: 'pending',
   Ready: 'ready',
 } as const;
+/**
+ * Persisted review of a previously checked requirement whose prior amount or completeness was unknown. Independent of current quantity completeness; a complete current quantity remains the full total. Preserved through reads/recomputation and cleared only by an explicit checked=true write for this recipe-derived item, not unrelated checks or manual extras.
+ */
+export const GroceryLineItemDto_checkReviewReasonObject = {
+  Prior_amount_unknown: 'prior_amount_unknown',
+  OpenapiJsonNullSentinelValue2BF936000FE44250987AE5DDB203E464:
+    'openapi-json-null-sentinel-value-2BF93600-0FE4-4250-987A-E5DDB203E464',
+} as const;
 export const GrocerySectionObject = {
   Produce: 'Produce',
   Meat: 'Meat',
@@ -7893,6 +9122,32 @@ export const ImportedRecipeDto_mealTypesObject = {
   Dessert: 'Dessert',
   Appetizer: 'Appetizer',
   Beverage: 'Beverage',
+} as const;
+export const IngredientPreview_statusObject = {
+  Scaled: 'scaled',
+  Partial: 'partial',
+  Unresolved: 'unresolved',
+} as const;
+export const IngredientProjection_contextObject = {
+  Proposed: 'proposed',
+  Assigned: 'assigned',
+} as const;
+export const IngredientProjection_statusObject = {
+  Scaled: 'scaled',
+  Original: 'original',
+  Partial: 'partial',
+  Unresolved: 'unresolved',
+} as const;
+export const IngredientProjectionLine_issuesObject = {
+  Missing_basis: 'missing_basis',
+  Unreliable_amount: 'unreliable_amount',
+  Stale_source: 'stale_source',
+} as const;
+export const IngredientProjectionLine_statusObject = {
+  Scaled: 'scaled',
+  Original: 'original',
+  Unquantified: 'unquantified',
+  Unresolved: 'unresolved',
 } as const;
 export const ManagementTaskStatusResponse_demoLastResetStatusObject = {
   Pending: 'Pending',
@@ -8006,6 +9261,25 @@ export const ReclassifyIngredientRequest_grocerySectionObject = {
 } as const;
 export const RecoveryBusyError_errorCodeObject = {
   RECOVERY_BUSY: 'RECOVERY_BUSY',
+} as const;
+export const ServingGroceryRefresh_statusObject = {
+  Current: 'current',
+  Updating: 'updating',
+  Failed: 'failed',
+} as const;
+/**
+ * Original explicitly freezes the unconfigured original-basis context; a later household default cannot supply portions.
+ */
+export const SupperPreparation_portionContextObject = {
+  Dated: 'dated',
+  Original: 'original',
+} as const;
+/**
+ * Positive saved choice is explicit even when equal to family size; missing or null saved choice uses persisted family membership.
+ */
+export const SupperServings_defaultServingsSourceObject = {
+  Explicit: 'explicit',
+  Family: 'family',
 } as const;
 export const UpdateRecipeDto_mealTypesObject = {
   Breakfast: 'Breakfast',

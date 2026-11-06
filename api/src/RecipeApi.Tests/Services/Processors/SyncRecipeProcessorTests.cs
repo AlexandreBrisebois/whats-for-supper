@@ -26,9 +26,8 @@ public class SyncRecipeProcessorTests : IDisposable
         _storage = new InMemoryStorageProvider();
         _recipeRepository = new RecipeRepository(_storage);
         
-        var aisleMapper = new AisleMapper();
-        var groceryRecomputeService = new GroceryRecomputeService(_db, aisleMapper, new Mock<ILogger<GroceryRecomputeService>>().Object, new SystemClock(), new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()), RecipeApi.Tests.Infrastructure.TestGroceryCoordinator.Create(_db));
-        _processor = new SyncRecipeProcessor(new RecipeApi.Services.SystemClock(), _db, _recipeRepository, groceryRecomputeService, _loggerMock.Object);
+        var invalidation = new SupperProjectionInvalidation(_db, new SystemClock(), new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()));
+        _processor = new SyncRecipeProcessor(new SystemClock(), _db, _recipeRepository, invalidation, Mock.Of<ISupperProjectionPublisher>(), _loggerMock.Object);
     }
 
     public void Dispose()

@@ -110,7 +110,7 @@ public partial class RecipeServingsPostgresTests(ITestOutputHelper output)
     }
 
     [DeploymentCalendarPostgresTests.CalendarPostgresFact]
-    public async Task RecipeServings_ContentSyncWinsOverBackfillCommittedAfterItsRead()
+    public async Task RecipeServings_ContentSyncSerializesOverlappingBackfillWithoutReintroducingOldCount()
     {
         await new TomorrowPushPostgresTests(output).WithDatabase(async settings => {
             var race = new BeforeContentSave();
@@ -119,15 +119,44 @@ public partial class RecipeServingsPostgresTests(ITestOutputHelper output)
             using var scope = factory.Services.CreateScope(); var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
             var recipe = new Recipe { Name = "Previous", Servings = null, RawMetadata = "{\"recipeYield\":\"2 portions\"}", Ingredients = "[\"old\"]" };
             db.Recipes.Add(recipe); await db.SaveChangesAsync();
-            race.Before = async () => {
-                await using var other = new RecipeDbContext(new DbContextOptionsBuilder<RecipeDbContext>().UseNpgsql(settings.ConnectionString).Options);
-                await new BackfillRecipeServingsProcessor(other, Mock.Of<IWorkflowOrchestrator>(), new SystemClock()).ExecuteAsync(new WorkflowTask(), CancellationToken.None);
-                Assert.Equal(2, (await other.Recipes.SingleAsync(r => r.Id == recipe.Id)).Servings);
-            };
+
             var storage = scope.ServiceProvider.GetRequiredService<IStorageProvider>();
             await storage.SaveAsync("recipes", $"{recipe.Id}/recipe.info", JsonSerializer.Serialize(new RecipeInfo { Id = recipe.Id }, JsonDefaults.CamelCase));
             await storage.SaveAsync("recipes", $"{recipe.Id}/recipe.json", "{\"recipeYield\":\"unknown\",\"recipeIngredient\":[\"340 g new pasta\"]}");
-            await RecipeServingsTests.Sync(db, new RecipeRepository(storage), new WorkflowTask { Payload = JsonSerializer.Serialize(new { recipeId = recipe.Id }) });
+            race.Armed = true;
+            var sync = RecipeServingsTests.Sync(db, new RecipeRepository(storage), new WorkflowTask { Payload = JsonSerializer.Serialize(new { recipeId = recipe.Id }) });
+            await using var other = new RecipeDbContext(new DbContextOptionsBuilder<RecipeDbContext>().UseNpgsql(settings.ConnectionString).Options);
+            Task<object?>? backfill = null;
+            try {
+                await race.Entered.Task.WaitAsync(TimeSpan.FromSeconds(15));
+                var owner = ((NpgsqlConnection)db.Database.GetDbConnection()).ProcessID;
+                await other.Database.OpenConnectionAsync();
+                var waiter = ((NpgsqlConnection)other.Database.GetDbConnection()).ProcessID;
+                backfill = new BackfillRecipeServingsProcessor(other, Mock.Of<IWorkflowOrchestrator>(), new SystemClock()).ExecuteAsync(new WorkflowTask(), CancellationToken.None);
+                await using var observer = new NpgsqlConnection(settings.ConnectionString); await observer.OpenAsync();
+                using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+                var blocked = false;
+                while (!backfill.IsCompleted && !blocked) {
+                    await using var query = new NpgsqlCommand("SELECT EXISTS (SELECT 1 FROM pg_stat_activity WHERE pid=@waiter AND datname=current_database() AND wait_event_type='Lock' AND @owner=ANY(pg_blocking_pids(pid)))", observer);
+                    query.Parameters.AddWithValue("waiter", waiter); query.Parameters.AddWithValue("owner", owner);
+                    blocked = (bool)(await query.ExecuteScalarAsync(timeout.Token))!;
+                    if (!blocked) await Task.WhenAny(backfill, Task.Delay(20, timeout.Token)).WaitAsync(timeout.Token);
+                }
+                Assert.True(blocked, "Backfill must actually wait on the content sync's held PostgreSQL recipe lock.");
+                Assert.False(backfill.IsCompleted);
+                output.WriteLine($"Positive PostgreSQL lock wait: backfill pid {waiter} blocked by sync pid {owner}.");
+                race.Release.TrySetResult();
+                await sync.WaitAsync(TimeSpan.FromSeconds(15));
+                var result = JsonSerializer.SerializeToElement(await backfill.WaitAsync(TimeSpan.FromSeconds(15)));
+                Assert.Equal(1, result.GetProperty("Examined").GetInt32());
+                Assert.Equal(0, result.GetProperty("Unresolved").GetInt32());
+                Assert.Equal(0, result.GetProperty("Updated").GetInt32());
+                Assert.Equal(1, result.GetProperty("Changed").GetInt32());
+            } finally {
+                race.Release.TrySetResult();
+                await sync.WaitAsync(TimeSpan.FromSeconds(15));
+                if (backfill is not null) await backfill.WaitAsync(TimeSpan.FromSeconds(15));
+            }
             Assert.True(race.Ran);
             db.ChangeTracker.Clear(); var saved = await db.Recipes.SingleAsync(r => r.Id == recipe.Id);
             Assert.Null(saved.Servings); Assert.Contains("340 g new pasta", saved.Ingredients);
@@ -137,11 +166,13 @@ public partial class RecipeServingsPostgresTests(ITestOutputHelper output)
 
     private sealed class BeforeContentSave : DbCommandInterceptor
     {
-        public Func<Task>? Before { get; set; }
+        public bool Armed { get; set; }
         public bool Ran { get; private set; }
+        public TaskCompletionSource Entered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public override async ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(DbCommand command, CommandEventData eventData, InterceptionResult<DbDataReader> result, CancellationToken cancellationToken = default)
         {
-            if (!Ran && Before is not null && command.CommandText.Contains("UPDATE recipes", StringComparison.Ordinal)) { Ran = true; await Before(); }
+            if (Armed && !Ran && command.CommandText.Contains("UPDATE recipes", StringComparison.Ordinal)) { Ran = true; Entered.TrySetResult(); await Release.Task.WaitAsync(TimeSpan.FromSeconds(15), cancellationToken); }
             return result;
         }
     }

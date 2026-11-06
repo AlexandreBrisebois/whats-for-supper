@@ -16,7 +16,7 @@ using PostgresFact = RecipeApi.Tests.Integration.RecipeImportReportPostgresTests
 
 namespace RecipeApi.Tests.Integration;
 
-public class OnlineRecoveryPostgresTests : IAsyncLifetime
+public partial class OnlineRecoveryPostgresTests : IAsyncLifetime
 {
     private readonly string database = "wfs_recovery_test_" + Guid.NewGuid().ToString("N");
     private readonly string backup = Path.Combine(Path.GetTempPath(), "wfs-recovery-backup-" + Guid.NewGuid().ToString("N"));

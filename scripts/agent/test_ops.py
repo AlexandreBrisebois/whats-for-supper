@@ -80,14 +80,6 @@ def build_impact_plan(changed_files: list[str]) -> ImpactPlan:
             return ImpactPlan((str(E2E_DIR),), tuple(reasons), True)
 
         before = len(reasons)
-        if file == "pwa/src/lib/api/recipes.ts":
-            mapped = matching_specs("recipes") | matching_specs("home-recipe")
-            impacted.update(mapped)
-            reasons.append(f"{file}: recipe API wrapper maps to recipe and home-recipe flows")
-            if mapped:
-                continue
-            return ImpactPlan((str(E2E_DIR),), (f"{file}: no mapped tests; run all E2E",), True)
-
         if file.startswith(("pwa/src/components/ui/", "pwa/src/components/common/")):
             reasons.append(f"{file}: shared UI component requires all E2E")
             return ImpactPlan((str(E2E_DIR),), tuple(reasons), True)

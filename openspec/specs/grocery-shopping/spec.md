@@ -16,10 +16,10 @@ References in preserved requirements to the former combined meal-planning owner 
 
 ### Requirement: Derive grocery needs from recipe-bearing entries in the selected week
 
-On successful recomputation, grocery needs SHALL include the supplies of recipe-bearing calendar entries within the selected Monday-through-Sunday interval. Repeated assignments SHALL contribute repeated supplies.
+On successful recomputation, grocery needs SHALL include the supplies of recipe-bearing calendar entries within the selected Monday-through-Sunday interval. Each occurrence SHALL apply supper-servings scaling for its own date before aggregation. Repeated assignments SHALL contribute separately; contexts without an effective positive serving count SHALL retain original quantities.
 
 #### Scenario: Recipe is scheduled twice
-- **WHEN** the same recipe with two eggs is assigned to two dates in the interval
+- **WHEN** the same recipe with two eggs is assigned to two dates in the interval without an effective positive serving count
 - **THEN** the recomputed count bucket contains four eggs with that recipe listed once as a contributor
 
 #### Scenario: Recipe-free date
@@ -28,10 +28,10 @@ On successful recomputation, grocery needs SHALL include the supplies of recipe-
 
 ### Requirement: Prefer usable structured supply over ingredient text
 
-A recipe with at least one named structured supply entry SHALL use its structured entries for grocery derivation. Blank names SHALL be skipped. Ingredient text SHALL be used only when extraction produces no supply entries.
+A recipe with named structured supplies coherent with its current ingredient basis SHALL use those entries for grocery derivation. Blank names SHALL be skipped. Ingredient text SHALL be used when there are no usable coherent supplies. Stale or unresolved contributions SHALL retain visible review feedback instead of claiming complete scaled quantities.
 
 #### Scenario: Structured supply exists
-- **WHEN** a recipe supplies named structured flour and also ingredient text
+- **WHEN** a recipe supplies named structured flour coherent with its current ingredient basis and also ingredient text
 - **THEN** the structured flour contributes without additionally appending the ingredient text
 
 #### Scenario: No named structured entry
@@ -887,7 +887,7 @@ On one application instance, item updates, full-map replacements and recomputati
 
 ### Requirement: Preserve current checks during overlapping recomputation
 
-Successful recomputation overlapping a recipe-derived check mutation SHALL preserve unrelated persisted check entries. Supported predecessor merge and rename transitions SHALL use the check state current at recomputation's processing position, without changing the existing mechanical-normalization rules.
+Successful recomputation overlapping a recipe-derived check mutation SHALL preserve unrelated persisted check entries. The serving-driven increased-needs rule SHALL intentionally uncheck only affected increased requirements at that same processing position. Supported predecessor merge and rename transitions SHALL use the check state current at recomputation's processing position, without changing the existing mechanical-normalization rules.
 
 #### Scenario: Check and unchanged-name recomputation
 - **WHEN** Tomato is checked while a recomputation retains its display name and neither operation intentionally replaces that key
@@ -924,3 +924,157 @@ A check mutation SHALL NOT report success merely because in-memory work was acce
 #### Scenario: Publication fails after commit
 - **WHEN** a check is committed but its notification attempt fails
 - **THEN** the committed map remains readable and subsequent check mutations are not blocked indefinitely by the failed operation
+### Requirement: Aggregate dated scaled contributions without mutating recipes
+
+For configured serving context each scheduled supper occurrence SHALL contribute its usable scaled amount using that date's count and recipe basis. Existing ingredient identity, unit-family separation and conversion SHALL apply after scaling. Recipe-free non-cooking dates SHALL contribute nothing. Recalculation SHALL use original quantities, preserve manual extras and produce the same totals on repeated execution.
+
+#### Scenario: Same recipe for four and six
+- **WHEN** a two-serving recipe with 200 g pasta is scheduled for four on Wednesday and six on Friday
+- **THEN** the contributions are 400 g and 600 g, the compatible weekly pasta total is 1000 g and recomputation does not multiply the previous total again
+
+#### Scenario: Count changes without changing meals
+- **WHEN** Wednesday changes from four to six
+- **THEN** only its serving contribution changes before weekly aggregation and the saved recipe, other date counts and manual extras remain unchanged
+
+### Requirement: Uncheck increased serving-driven grocery requirements
+
+After portions/default changes, assignment, replacement, movement or recipe corrections, recomputation SHALL compare requirements in the same normalized ingredient/unit bucket. A checked item whose known total increases SHALL become unchecked and show its updated total. Unchanged or decreased requirements SHALL retain their checks; a decrease SHALL NOT check an unchecked item. This transition SHALL be coordinated with concurrent grocery writes.
+
+#### Scenario: More pasta is needed
+- **WHEN** checked pasta requires 400 g and a count increase raises the weekly requirement to 600 g
+- **THEN** pasta becomes unchecked with only the 600 g total on its row; unrelated checks remain and one brief list-level explanation says Shopping list updated. Items needing more are unchecked.
+
+#### Scenario: Move to a larger-portion date
+- **WHEN** a move or replacement raises a checked ingredient requirement without changing any date count
+- **THEN** the same increase rule unchecks only the affected item and shows its new total
+
+#### Scenario: Recompute or decrease after the increase
+- **WHEN** the same saved counts are recomputed, or the count later decreases
+- **THEN** unchanged requirements do not trigger another check reset and decreases do not automatically mark anything purchased
+
+#### Scenario: Shopper checks after the increase is applied
+- **WHEN** the increased requirement has been persisted and another member subsequently checks that updated ingredient
+- **THEN** the later check remains authoritative without a later unchanged recomputation clearing it or repeating the explanation
+
+### Requirement: Keep incomplete grocery scaling visible
+
+Unreliable basis, amount or source coherence SHALL retain concise review feedback. Intentional unquantified directions remain ordinary text. Known compatible contributions can be summed, but a partial subtotal SHALL be visibly incomplete with unresolved contributors inspectable. No invented amount, mass/volume inference, package rounding or pantry knowledge SHALL be implied.
+
+#### Scenario: Known pasta plus unresolved pasta contribution
+- **WHEN** one planned recipe contributes known pasta and another has an unresolved amount
+- **THEN** the row retains a visible uncertainty warning and labels the numeric subtotal as known/incomplete rather than the full requirement
+- **AND** recipe contributors remain accessible through the separate recipe-book disclosure
+
+### Requirement: Keep grocery increase feedback quiet
+
+An update that unchecks increased requirements SHALL give one brief localized list-level explanation. Rows SHALL show their updated totals without extra delta amounts or persistent more-needed labels. Unchanged recomputation or repeated reading SHALL not repeat the explanation. Existing freshness and error feedback SHALL remain separate from successful-update feedback.
+
+#### Scenario: Several requirements increase together
+- **WHEN** one plan update increases pasta and tomatoes
+- **THEN** both updated totals are displayed with affected checks cleared, and one explanation covers the update rather than separate row notices
+
+### Requirement: Disclose contributor recipe titles independently of shopping actions
+
+Recipe-derived rows with contributors SHALL show a compact recipe-book control. Both Used in heading and source titles SHALL remain hidden until expansion. Expanded content SHALL show Used in and real contributor titles without repeated Review recipe wording. Checks and aisle tags SHALL remain separate. Duplicate occurrences SHALL not duplicate titles; absent contributors SHALL not invent sources.
+
+#### Scenario: Inspect ordinary complete ingredient sources
+- **WHEN** a complete pasta row has two contributors
+- **THEN** its collapsed row exposes neither Used in heading nor names; activating the book reveals both with no grocery write, check change or aisle change
+- **AND** collapsing hides the heading and names again
+
+#### Scenario: Source recipe repeated or missing title
+- **WHEN** a recipe contributes twice or its title cannot be resolved
+- **THEN** expanded sources list it once or use localized Recipe title unavailable, not a fabricated title or Review recipe number
+- **AND** a known identity retains its source link; no identity means no invented link
+
+#### Scenario: No recipe contributors
+- **WHEN** an extra or legacy row has no contributor identity
+- **THEN** no book control, Used in heading, source title or fictitious link is shown, while applicable quantity warnings remain
+
+### Requirement: Reuse loaded titles and resolve missing contributors lazily
+
+Source disclosure SHALL use loaded Planner names first and resolve missing titles through the existing recipe GET only when needed for an open disclosure. Duplicate contributor IDs SHALL share an in-flight read. Loading and unavailable states SHALL remain honest and nonblocking. Results SHALL belong to the selected absolute week/session and current contributors, without new grocery-response title fields.
+
+#### Scenario: Loaded supper titles need no extra lookup
+- **WHEN** the selected week's contributor recipes already have nonblank names in Planner
+- **THEN** expanding sources shows those names immediately without extra recipe-detail requests
+
+#### Scenario: Lunch-only contributor is absent from supper cards
+- **WHEN** a grocery contributor has a recipe-bearing other-meal entry but no supper card in the loaded week
+- **THEN** expanding its sources resolves the missing name through the existing recipe GET while retaining the ingredient's quantity and warning state
+- **AND** duplicate references to that ID across rows or occurrences share one in-flight request
+
+#### Scenario: Grocery live refresh introduces another contributor
+- **WHEN** an independent grocery refresh updates source IDs while loaded Planner cards remain unchanged
+- **THEN** an open disclosure uses loaded names for matching IDs and lazily resolves newly missing IDs
+- **AND** results for contributors no longer present cannot reappear in that disclosure
+
+#### Scenario: Change week or session during title resolution
+- **WHEN** a missing-title read remains pending and the selected absolute week or household/demo session changes
+- **THEN** the old result cannot populate the new disclosure or replace its names, checks or quantities
+
+#### Scenario: Lookup fails or returns no usable title
+- **WHEN** a missing-title read fails, returns not found or has a blank title
+- **THEN** the disclosure shows the localized unavailable-title fallback, retains any known-ID original-review link and does not block shopping
+- **AND** requests do not loop automatically; a later deliberate reopen can retry
+
+#### Scenario: Authoritative Planner names change
+- **WHEN** a subsequent schedule read supplies a current nonblank name for a contributor already resolved lazily
+- **THEN** the current Planner name takes precedence over that disclosure session's cached name without grocery recomputation
+
+### Requirement: Distinguish incomplete totals from prior unknown checked amounts
+
+Collapsed disclosure SHALL not hide quantity warnings. `quantityComplete=false` SHALL identify a displayed numeric amount as a known subtotal. `prior_amount_unknown` SHALL retain its prior-check review meaning independently of completeness; a now-complete current amount remains a full total. Opening sources or recipes SHALL not acknowledge or clear either condition.
+
+#### Scenario: Prior unknown amount is now complete
+- **WHEN** a checked row has prior_amount_unknown and a complete current 600 g total
+- **THEN** the row retains prior-check review feedback and displays 600 g as the full current amount rather than an incomplete subtotal
+- **AND** opening/closing sources or following a recipe link does not clear that marker
+
+#### Scenario: Both warning conditions occur
+- **WHEN** a row is incomplete and also has prior_amount_unknown
+- **THEN** the subtotal and prior-check meanings both remain understandable without duplicate generic calls to review
+
+#### Scenario: Explicit shopping acknowledgement
+- **WHEN** the person explicitly submits a positive check for the affected name
+- **THEN** the existing check acknowledgement policy can clear its prior-unknown marker without falsely claiming incomplete quantities are resolved
+- **AND** unrelated checks and warnings retain their existing state
+
+### Requirement: Preserve original quantity inspection from grocery sources
+
+Each source link SHALL initially open original-quantity review independently of planned portions or previews. Consultation SHALL not change shopping or plan state. A separate explicit Plan transition SHALL enter normal guarded planning without assigning by itself, while original evidence remains accessible. Missing/deleted access SHALL fail honestly. Closing without assignment SHALL restore the source week and shopping state.
+
+#### Scenario: Planned recipe for six opens original basis two
+- **WHEN** its title is activated from groceries
+- **THEN** original two-serving evidence and source access appear, with no automatically applied dated quantities or assignment
+- **AND** Plan is available as a deliberate transition rather than an immediate planning write
+
+#### Scenario: Return after source consultation
+- **WHEN** a person closes original review and returns to groceries
+- **THEN** the selected week, checks and available list state remain without read-triggered recomputation
+
+#### Scenario: Choose Plan deliberately
+- **WHEN** Plan is activated in source review
+- **THEN** normal dated target checks and assignment/recovery protections apply before a subsequent assignment can be requested
+- **AND** merely transitioning neither clears quantity-warning markers nor acknowledges shopping checks
+
+### Requirement: Make source disclosure accessible and quiet
+
+The book control SHALL have a localized ingredient-specific name, expanded state and associated region, keyboard operation, visible focus and a 48 CSS px target. Collapsed source content SHALL be absent from reading/focus order. It SHALL stay distinct from checkboxes and aisle tags. Expanded titles and warnings SHALL wrap legibly at 320 CSS px, 200% text and English/French phone/tablet sizes.
+
+#### Scenario: Keyboard and long French titles
+- **WHEN** a person expands sources by keyboard in a narrow French layout
+- **THEN** focus stays on the control, expanded state updates, Used in's French equivalent and links enter reading order, and long titles do not obscure checks, totals or aisle actions
+- **AND** collapse removes those links from focus order
+
+### Requirement: Keep quantity warnings outside collapsed sources
+
+Source collapse SHALL NOT conceal incomplete-subtotal feedback or prior-unknown checked-amount review. Opening/closing Used in or entering Plan SHALL not clear either warning or acknowledge a check. A complete current total with prior_amount_unknown SHALL remain a full total plus its distinct prior-check warning. No usual-portions setting or reset control SHALL be added to groceries.
+
+#### Scenario: Incomplete and prior unknown together
+- **WHEN** a collapsed row has both incomplete quantities and prior_amount_unknown
+- **THEN** both meanings remain understandable before source expansion, independently of the book and aisle controls
+
+#### Scenario: Complete amount with prior warning
+- **WHEN** current 600 g is complete but prior checked amount was unknown
+- **THEN** 600 g remains the full current amount with prior-check feedback, including after source consultation and Plan transition

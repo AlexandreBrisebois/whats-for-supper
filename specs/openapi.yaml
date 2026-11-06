@@ -309,6 +309,85 @@ components:
         updatedAt: { type: string, format: date-time }
         recipe: { $ref: '#/components/schemas/RecipeDto' }
 
+    IngredientProjectionLine:
+      type: object
+      required: [originalText, name, quantity, unitText, status, issues]
+      properties:
+        originalText: { type: string }
+        name: { type: string }
+        quantity: { type: number, nullable: true }
+        unitText: { type: string, nullable: true }
+        status: { type: string, enum: [scaled, original, unquantified, unresolved] }
+        issues:
+          type: array
+          items: { type: string, enum: [missing_basis, unreliable_amount, stale_source] }
+    SupperPreparation:
+      type: object
+      required: [preparedOn, preparedAtUtc, servings, portionContext, originalServings, planToken, servingVersion]
+      description: Stored preparation outcome. Null metadata on legacy Cooked entries does not imply an observed preparation date.
+      properties:
+        preparedOn: { type: string, format: date }
+        preparedAtUtc: { type: string, format: date-time }
+        servings: { type: integer, nullable: true, minimum: 1 }
+        portionContext: { type: string, enum: [dated, original], description: 'Original explicitly freezes the unconfigured original-basis context; a later household default cannot supply portions.' }
+        originalServings: { type: integer, nullable: true, minimum: 1 }
+        planToken: { type: string, description: Original accepted plan fingerprint. }
+        servingVersion: { type: string, description: Original accepted effective quantity/source fingerprint. }
+    PrepareSupperRequest:
+      type: object
+      required: [expectedOccurrenceId, recipeId, expectedPlanToken, expectedServingVersion]
+      properties:
+        expectedOccurrenceId: { type: string, format: uuid }
+        recipeId: { type: string, format: uuid }
+        expectedPlanToken: { type: string, pattern: '^v1\.[A-Za-z0-9_-]{43}$' }
+        expectedServingVersion: { type: string, pattern: '^[A-F0-9]{64}$', description: 'Captured preparationServingVersion from the displayed assigned projection, scoped to occurrence/date, effective count and ingredient source. Unrelated dates/default edits under an override do not conflict.' }
+    PrepareSupperResult:
+      type: object
+      required: [occurrenceId, recipeId, supperDate, preparation]
+      properties:
+        occurrenceId: { type: string, format: uuid }
+        recipeId: { type: string, format: uuid }
+        supperDate: { type: string, format: date }
+        preparation: { $ref: '#/components/schemas/SupperPreparation' }
+
+    IngredientPreview:
+      type: object
+      required: [recipeId, baseServings, targetServings, factor, version, status, lines]
+      properties:
+        recipeId: { type: string, format: uuid }
+        baseServings: { type: integer, nullable: true, minimum: 1 }
+        targetServings: { type: integer, enum: [2, 4, 6] }
+        factor: { type: number, nullable: true }
+        version: { type: string, description: 'Opaque recipe ingredient identity for this preview, not a dated portions or preparation token.' }
+        status: { type: string, enum: [scaled, partial, unresolved] }
+        lines:
+          type: array
+          items: { $ref: '#/components/schemas/IngredientProjectionLine' }
+
+    IngredientProjection:
+      type: object
+      required: [recipeId, supperDate, context, occurrenceId, baseServings, targetServings, factor, servingVersion, version, editable, status, lines]
+      properties:
+        recipeId: { type: string, format: uuid }
+        supperDate: { type: string, format: date }
+        context: { type: string, enum: [proposed, assigned] }
+        occurrenceId: { type: string, format: uuid, nullable: true }
+        baseServings: { type: integer, nullable: true, minimum: 1 }
+        targetServings: { type: integer, nullable: true, minimum: 1 }
+        factor: { type: number, nullable: true }
+        preparationPlanToken: { type: string, nullable: true, description: 'Assigned occurrence fingerprint captured in the same repeatable-read snapshot as displayed quantities; proposed context is null.' }
+        preparationServingVersion: { type: string, nullable: true, description: 'Assigned effective ingredient identity for preparation, distinct from the week-wide portions edit version; proposed context is null.' }
+        preparation:
+          nullable: true
+          allOf: [{ $ref: '#/components/schemas/SupperPreparation' }]
+        servingVersion: { type: string, description: 'Opaque portions optimistic-concurrency version, distinct from derived recipe input identity.' }
+        version: { type: string, description: 'Opaque effective ingredient identity for this recipe/date/context and occurrence. Includes original basis, target and ordered projected lines/issues; unaffected by unrelated dates, optimistic serving versions, notes or instruction-only edits.' }
+        editable: { type: boolean, description: 'Whether this date permits editing portions through At the table.' }
+        status: { type: string, enum: [scaled, original, partial, unresolved] }
+        lines:
+          type: array
+          items: { $ref: '#/components/schemas/IngredientProjectionLine' }
+
     PaginationDto:
       type: object
       required: [page, limit, total]
@@ -485,6 +564,78 @@ components:
         referenceWeekStartDate: { type: string, format: date, description: Monday used to interpret request offsets., example: '2026-10-05' }
         nextDayAtUtc: { type: string, format: date-time, description: Next deployment midnight as a UTC instant., example: '2026-10-12T04:00:00Z' }
 
+    SupperServingDay:
+      type: object
+      required: [date, servings, overrideServings, editable]
+      properties:
+        date: { type: string, format: date }
+        servings: { type: [integer, 'null'], minimum: 1, maximum: 2147483647 }
+        overrideServings: { type: [integer, 'null'], minimum: 1, maximum: 2147483647 }
+        editable: { type: boolean }
+    ServingGroceryRefresh:
+      type: object
+      required: [status, version, appliedVersion, resetSummaryVersion]
+      properties:
+        status: { type: string, enum: [current, updating, failed] }
+        version: { type: string, description: Current persisted projection input version. }
+        appliedVersion: { type: [string, 'null'] }
+        resetSummaryVersion: { type: [string, 'null'], description: Opaque identity of an actual check-reset event, independent of reusable input digests. Unchanged refresh retains it; a later changed projection with no reset retires it. }
+        workflowId: { type: [string, 'null'], format: uuid }
+    SupperServings:
+      type: object
+      required: [referenceWeekStartDate, weekOffset, weekStartDate, defaultServings, defaultServingsSource, version, days, groceryRefresh]
+      properties:
+        referenceWeekStartDate: { type: string, format: date }
+        weekOffset: { type: integer }
+        weekStartDate: { type: string, format: date }
+        defaultServings: { type: [integer, 'null'], minimum: 1, maximum: 2147483647, description: Effective usual portions; automatic family size is null when no positive member count is available. }
+        defaultServingsSource: { type: string, enum: [explicit, family], description: Positive saved choice is explicit even when equal to family size; missing or null saved choice uses persisted family membership. }
+        version: { type: string, description: Opaque snapshot of usual-size and dated state; send unchanged as expectedVersion. }
+        days:
+          type: array
+          minItems: 7
+          maxItems: 7
+          items: { $ref: '#/components/schemas/SupperServingDay' }
+        groceryRefresh: { $ref: '#/components/schemas/ServingGroceryRefresh' }
+        affectedWeekStartDates:
+          type: array
+          items: { type: string, format: date }
+    SupperServingsSave:
+      type: object
+      required: [referenceWeekStartDate, weekOffset, expectedVersion, days]
+      properties:
+        referenceWeekStartDate: { type: string, format: date }
+        weekOffset: { type: integer }
+        expectedVersion: { type: string, minLength: 1 }
+        defaultServings:
+          type: [integer, 'null']
+          minimum: 1
+          maximum: 2147483647
+          description: Omit to preserve the saved mode/value; null selects automatic persisted family-member count; a positive value selects an explicit total. Equal-number source changes are meaningful and change the optimistic version. Automatic member-count changes conflict with prior versions; explicit choices survive membership changes. Current/future inherited dates follow the effective usual; overrides, past, Cooked, prepared and non-cooking snapshots remain protected. A default-only batch has an empty days array.
+        days:
+          type: array
+          maxItems: 7
+          items:
+            type: object
+            required: [date, servings]
+            properties:
+              date: { type: string, format: date }
+              servings: { type: [integer, 'null'], minimum: 1, maximum: 2147483647, description: Null resets this dated override to usual size. }
+      example:
+        referenceWeekStartDate: '2026-10-05'
+        weekOffset: 0
+        expectedVersion: captured-opaque-version
+        defaultServings: 4
+        days: [{ date: '2026-10-07', servings: 6 }, { date: '2026-10-10', servings: null }]
+    SupperServingsRefresh:
+      type: object
+      required: [weekStartDates]
+      properties:
+        weekStartDates:
+          type: array
+          minItems: 1
+          items: { type: string, format: date }
+
     ScheduleDays:
       type: object
       required: [weekOffset, locked, days, status, calendar, weekStartDate]
@@ -506,6 +657,7 @@ components:
           minItems: 7
           maxItems: 7
           items: { $ref: '#/components/schemas/ScheduleDayDto' }
+        groceryRefresh: { $ref: '#/components/schemas/ServingGroceryRefresh' }
         groceryState:
           type: object
           additionalProperties: { type: boolean }
@@ -542,6 +694,18 @@ components:
         nonCooking:
           nullable: true
           allOf: [{ $ref: '#/components/schemas/NonCookingPlanDto' }]
+        occurrenceId:
+          type: [string, 'null']
+          format: uuid
+          description: Persisted supper CalendarEvent identity. Null for an empty date; a recreated same-recipe assignment has a new identity. Capture with date and recipe for assigned ingredient reads.
+        preparation:
+          nullable: true
+          allOf: [{ $ref: '#/components/schemas/SupperPreparation' }]
+        removalToken:
+          type: [string, 'null']
+          maxLength: 46
+          pattern: '^v1\.[A-Za-z0-9_-]{43}$'
+          description: Opaque fingerprint of the persisted supper entry and its plan state. Null when no supper entry exists; unrelated meal slots do not supply a token. Capture from an authoritative schedule read and pass unchanged to guarded removal.
 
     ScheduleRecipeDto:
       type: object
@@ -938,6 +1102,7 @@ components:
           required: [date, status]
           properties:
             date: { type: string, format: date }
+            occurrenceId: { type: [string, 'null'], format: uuid, description: Persisted supper identity; null for an empty date. }
             recipe:
               oneOf:
                 - $ref: '#/components/schemas/ScheduleRecipeDto'
@@ -1227,6 +1392,13 @@ components:
         section: { type: string }
         quantity: { type: [number, 'null'] }
         unitText: { type: [string, 'null'] }
+        quantityComplete:
+          type: [boolean, 'null']
+          description: False when this line includes unreliable contributions. A non-null quantity is then only the known subtotal; intentional to-taste directions do not make a line incomplete. Null or legacy absence means unknown completeness and cannot prove a requirement increase.
+        checkReviewReason:
+          type: [string, 'null']
+          enum: [prior_amount_unknown, null]
+          description: Persisted review of a previously checked requirement whose prior amount or completeness was unknown. Independent of current quantity completeness; a complete current quantity remains the full total. Preserved through reads/recomputation and cleared only by an explicit checked=true write for this recipe-derived item, not unrelated checks or manual extras.
         recipeIds:
           type: array
           items: { type: string, format: uuid }
@@ -2306,6 +2478,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/DemoGeneration'
       summary: Update a recipe
+      description: Recipe basis or ingredient corrections commit together with invalidation and durable grocery refresh work for affected current/future grocery contributions, preserving dated portion snapshots and original unscaled legacy non-supper/night-away contributions. Counts and original amounts are preserved; reads expose pending freshness until the worker recomputes. Existing week updates invalidate dated readers after commit.
       security: [{ FamilyMemberId: [] }]
       requestBody:
         required: true
@@ -2365,6 +2538,90 @@ paths:
                   assignedDays:
                     type: array
                     items: { type: string, format: date }
+
+  /api/recipes/{id}/ingredient-preview:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      summary: Preview ingredient quantities for two, four or six portions without saving
+      description: 'Read-only projection of current saved recipe ingredients using the shared scaling rules. Reliable structured amounts bind independently to their unchanged original ingredient lines; omitted or ambiguous lines cannot shift quantities or invalidate unrelated verified amounts. No date, occurrence or preparation authority is returned. Never changes recipes, portions, assignments, preparation, groceries, checks or refresh jobs. Missing basis returns unresolved with null factor; unreliable lines retain original evidence and intentional unquantified text stays ordinary.'
+      parameters:
+        - { name: targetServings, in: query, required: true, schema: { type: integer, enum: [2, 4, 6] } }
+      responses:
+        '200':
+          description: Preview with shared quantity completeness and original evidence
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/IngredientPreview' }
+              example:
+                recipeId: '11111111-1111-4111-8111-111111111111'
+                baseServings: 2
+                targetServings: 4
+                factor: 2
+                version: recipe-preview-identity
+                status: scaled
+                lines: [{ originalText: '200 g pasta', name: pasta, quantity: 400, unitText: g, status: scaled, issues: [] }]
+        '400': { description: Missing or unsupported preview target }
+        '404': { description: Recipe not found }
+        '503':
+          description: Online recovery coordination is busy
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
+
+  /api/recipes/{id}/ingredient-projection:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      summary: Read ingredients for a proposed date or captured assigned occurrence
+      description: 'Read-only. Resolve portions on the server; never assign, materialise snapshots, change defaults or call AI. No arbitrary targetServings input is accepted. Assigned context requires a matching supper occurrence identity. An assigned legacy recipe-backed night away uses original quantities with no target and editable false; a proposed replacement still resolves the dated portions. Original strings remain unchanged; absent coherent supply retains name-only fallback without numeric extraction. Intentionally unquantified directions are normal content.'
+      parameters:
+        - { name: supperDate, in: query, required: true, schema: { type: string, format: date }, example: '2026-10-14' }
+        - { name: context, in: query, required: true, schema: { type: string, enum: [proposed, assigned] }, example: proposed }
+        - { name: occurrenceId, in: query, required: false, schema: { type: string, format: uuid }, description: 'Required only for assigned context; captured from the matching schedule day.' }
+      responses:
+        '200':
+          description: Authoritative dated projection; unresolved lines retain current source text
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/IngredientProjection' }
+              examples:
+                proposedFour:
+                  value:
+                    recipeId: '11111111-1111-4111-8111-111111111111'
+                    supperDate: '2026-10-14'
+                    context: proposed
+                    occurrenceId: null
+                    baseServings: 2
+                    targetServings: 4
+                    factor: 2
+                    servingVersion: portions-version
+                    version: recipe-and-portions-version
+                    editable: true
+                    status: scaled
+                    lines: [{ originalText: '200 g pasta', name: pasta, quantity: 400, unitText: g, status: scaled, issues: [] }]
+                assignedSix:
+                  value:
+                    recipeId: '11111111-1111-4111-8111-111111111111'
+                    supperDate: '2026-10-16'
+                    context: assigned
+                    occurrenceId: '22222222-2222-4222-8222-222222222222'
+                    baseServings: 2
+                    targetServings: 6
+                    factor: 3
+                    servingVersion: portions-version
+                    version: recipe-and-portions-version
+                    editable: true
+                    status: scaled
+                    lines: [{ originalText: '200 g pasta', name: pasta, quantity: 600, unitText: g, status: scaled, issues: [] }]
+        '400': { description: 'Missing/invalid date or context, unexpected targetServings, or missing assigned occurrence identity' }
+        '404': { description: Recipe not found }
+        '409': { description: Captured occurrence no longer matches this recipe and supper date }
+        '503':
+          description: Online recovery coordination is busy
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
 
   /api/recipes/{id}/import-report:
     parameters:
@@ -2956,6 +3213,89 @@ paths:
                   promoted: []
                   all: []
 
+  /api/schedule/servings:
+    get:
+      summary: Read dated portions without writing or refreshing groceries
+      parameters:
+        - name: weekOffset
+          in: query
+          schema: { type: integer, default: 0 }
+        - name: referenceWeekStartDate
+          in: query
+          schema: { type: string, format: date }
+          description: Captured Monday; omitted resolves from deployment calendar.
+      responses:
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
+        '200':
+          description: Seven dated counts, explicit or automatic usual provenance and persisted grocery freshness. Missing or null saved usual derives from persisted family size; an empty roster resolves unavailable/null.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/SupperServings' }
+        '400': { description: Invalid reference Monday or week. }
+    put:
+      parameters:
+        - $ref: '#/components/parameters/DemoGeneration'
+      summary: Atomically save sparse dated portions and optional usual size
+      description: Acknowledges committed counts and durable refresh work before grocery execution. 400 or 409 applies none of the batch. Never changes recipes, calendar assignments or voting. Unknown replies require an authoritative read before retrying a write. After commit, an existing week_updated hint is published independently of grocery execution. Publication failure does not fail a confirmed save; missed updates reconcile through saved-state/projection reads on resume.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SupperServingsSave' }
+      responses:
+        '412':
+          description: Demo generation is absent or stale; refresh authoritative state without replaying the old write.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DemoResetRequiredError' }
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
+        '200':
+          description: Saved counts, affected absolute weeks and independently pending grocery refresh.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/SupperServings' }
+        '400': { description: 'Invalid date/count, duplicate date, date outside captured week or read-only target; nothing saved.' }
+        '409': { description: Relevant serving snapshot changed; nothing saved. Retain draft and review current values. }
+  /api/schedule/servings/refresh:
+    post:
+      parameters:
+        - $ref: '#/components/parameters/DemoGeneration'
+      summary: Retry groceries from current saved portions without replaying a count save
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SupperServingsRefresh' }
+      responses:
+        '412':
+          description: Demo generation is absent or stale; refresh authoritative state without replaying the old write.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DemoResetRequiredError' }
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
+        '202': { description: Durable refresh queued or already pending for the captured absolute weeks. }
+        '400': { description: Invalid or non-Monday week. }
+
   /api/schedule:
     get:
       summary: Get schedule for a week
@@ -3084,14 +3424,32 @@ paths:
   /api/schedule/day/{date}/remove:
     delete:
       summary: Remove a recipe from a scheduled day
-      description: Removing a Cooked calendar entry recalculates its recipe last-cooked value from remaining Cooked calendar dates, or null when none remain, before grocery and publication follow-ups. Ordinary Planned removal does not change last-cooked values.
+      description: Optional expectedPlanToken atomically compares and removes only the matching current supper entry. Malformed supplied tokens return 400; stale or missing entries return 409 without mutation or follow-up. Omission preserves legacy date deletion. Removal, stale grocery metadata and durable refresh work commit before best-effort grocery/publication follow-ups. A committed removal returns 204 even if those follow-ups fail; read the captured week to inspect updating or failed groceryRefresh and retry refresh without repeating DELETE. A lost or uncertain primary response still requires authoritative reconciliation before further writes. Removing a Cooked calendar entry recalculates its recipe last-cooked value from remaining Cooked calendar dates, or null when none remain, before grocery and publication follow-ups. Ordinary Planned removal does not change last-cooked values.
       parameters:
         - $ref: '#/components/parameters/DemoGeneration'
         - name: date
           in: path
           required: true
           schema: { type: string, format: date }
+        - name: expectedPlanToken
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 46
+            pattern: '^v1\.[A-Za-z0-9_-]{43}$'
+          description: Captured opaque removalToken; supplied empty or malformed values are invalid. Omit only for legacy unguarded deletion.
       responses:
+        '400':
+          description: Supplied expectedPlanToken is malformed
+          content:
+            application/json:
+              schema: { type: object, properties: { message: { type: string } } }
+        '409':
+          description: Expected supper is absent or changed; no calendar, grocery or publication mutation
+          content:
+            application/json:
+              schema: { type: object, properties: { message: { type: string } } }
         '412':
           description: Demo generation is absent or stale; refresh authoritative state without replaying the old write
           content:
@@ -3103,7 +3461,7 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '204':
-          description: Removed
+          description: Removal committed (or already absent for legacy unguarded deletion); grocery follow-ups may still be updating or failed
 
   /api/schedule/lock:
     post:
@@ -3155,6 +3513,7 @@ paths:
     post:
       summary: Move a recipe in the schedule
       description: >
+        Preparation metadata travels with recipe/status during swaps and whole-event moves; frozen portions and actual history remain unchanged.
         Legacy same-week swap and push retain their existing behavior. Actual cross-week placement
         returns moved=true with sourceDate, destinationDate, affectedWeekStartDates and refreshComplete.
         Both affected weeks receive independent grocery recomputation and snapshot publication attempts.
@@ -3208,6 +3567,7 @@ paths:
     post:
       summary: Defer a scheduled recipe to the first free date next week or later
       description: >
+        Deferral explicitly reopens completed content as Planned, clears its preparation receipt and recalculates history from remaining Cooked occurrences.
         Keeps the exact source date and recipe body and existing response shape. Searches from
         reference Monday plus targetWeekOffset weeks, continuing past occupied dates into later
         weeks. Feedback reports the actual destination and claims next week is full only when
@@ -3266,7 +3626,8 @@ paths:
         With requireEmpty true, an explicit reference Monday and dayIndex 0-6 are required.
         The absence check and supper insertion are atomic; an existing supper entry returns 409
         without calendar, plan, grocery or publication changes. Other meal slots are preserved.
-        When requireEmpty is omitted or false, assigns a recipe to the specified day. If the target slot is already occupied and falls
+        When requireEmpty is omitted or false, replacement retains the stored entry identity, becomes Planned and clears prior preparation metadata. History for displaced explicitly prepared content is recalculated from remaining Cooked occurrences.
+        If the target slot is already occupied and falls
         on Sunday (dayIndex 6), the displaced recipe is automatically carried forward to Monday
         of the following week (weekOffset+1, dayIndex 0) rather than being silently dropped.
       parameters:
@@ -3375,6 +3736,44 @@ paths:
                     description: 'Rich, creamy, and sophisticated—perfect for a quick gourmet weeknight dinner.'
                     ingredients: ['Potato gnocchi', 'Gorgonzola cheese', 'Heavy cream', 'Walnuts', 'Sage']
 
+  /api/schedule/day/{date}/prepare:
+    post:
+      operationId: prepareSupper
+      summary: Prepare the captured saved supper without moving its planned date
+      description: 'Atomically accept Planned/Locked supper identity, plan and displayed effective quantities; record deployment-local actual date and UTC time and freeze portions. Exact matching retries return the original stored outcome before checking current defaults/source, without another history write. A different preparation context or stale/recreated occurrence returns 409 without mutation. Committed preparation survives publication failure. Unknown replies require an authoritative occurrence reread before another mutation. Legacy Cooked entries without preparation metadata are not fabricated preparations.'
+      parameters:
+        - $ref: '#/components/parameters/DemoGeneration'
+        - { name: date, in: path, required: true, schema: { type: string, format: date } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PrepareSupperRequest' }
+      responses:
+        '200':
+          description: Confirmed stored preparation outcome, including exact matching retries
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/PrepareSupperResult' }
+        '400': { description: 'Invalid date, identity or captured guard' }
+        '401': { description: Unauthorized }
+        '409': { description: 'Captured occurrence, plan, effective quantities or preparation context changed; no mutation' }
+
+        '412':
+          description: Demo generation absent or stale; refresh without replaying the old write
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DemoResetRequiredError' }
+        '503':
+          description: Online recovery busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
+
   /api/schedule/day/{date}/validate:
     parameters:
       - name: date
@@ -3385,7 +3784,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/DemoGeneration'
       summary: Validate a scheduled day (Cooked/Skipped)
-      description: 'The path date remains literal. Today cooking and Order In callers select it from authoritative deployment calendar context at action start; browser timezone does not select the date. With status 2 and recipeId, records the viewed recipe cooking history at the captured UTC operation instant even if it is not scheduled. The scheduled meal is marked cooked only when its recipe ID matches. Existing stored civil dates and midnight-UTC history anchors are not migrated.'
+      description: 'The path date remains literal. Today cooking and Order In callers select it from authoritative deployment calendar context at action start; browser timezone does not select the date. With status 2 and recipeId, records the viewed recipe cooking history at the captured UTC operation instant even if it is not scheduled, while preserving any later actual preparation time from an explicitly prepared Cooked occurrence. Legacy calendar-date fallbacks and earlier legacy-only history do not replace that captured instant. Ordinary validation without nonCooking serializes its occurrence read/check/write with guarded preparation. Owned primary transactions commit and dispose before publication; a matched already prepared occurrence is not recorded again. The scheduled meal is marked cooked only when its recipe ID matches. Existing stored civil dates and midnight-UTC history anchors are not migrated.'
       requestBody:
         required: true
         content:
@@ -3497,12 +3896,19 @@ paths:
         order. Returns 204 after persistence and the grocery publication attempt. Publication
         attempts follow this processing order; independent snapshots may still arrive late.
         A fresh read after outstanding operations settle recovers committed state.
+        An optional captured reference Monday pins the intended absolute week across
+        deployment-week rollover; omission retains deployment-current-week behavior.
       parameters:
         - $ref: '#/components/parameters/DemoGeneration'
         - name: weekOffset
           in: path
           required: true
           schema: { type: integer }
+        - name: referenceWeekStartDate
+          in: query
+          required: false
+          description: Captured reference Monday; invalid or non-Monday values return 400 before mutation.
+          schema: { type: string, format: date }
       requestBody:
         required: true
         content:
@@ -3518,6 +3924,8 @@ paths:
                   type: boolean
                   example: true
       responses:
+        '400':
+          description: Invalid captured reference Monday or unsupported absolute week
         '412':
           description: Demo generation is absent or stale; refresh authoritative state without replaying the old write
           content:
@@ -3541,12 +3949,19 @@ paths:
         Missing keys in a stale replacement body are not merged from persisted state.
         Returns 200 after persistence and the ordered grocery publication attempt. Notification
         failure does not roll back a committed map; a fresh read recovers committed state.
+        An optional captured reference Monday pins the intended absolute week across
+        deployment-week rollover; omission retains deployment-current-week behavior.
       parameters:
         - $ref: '#/components/parameters/DemoGeneration'
         - name: weekOffset
           in: path
           required: true
           schema: { type: integer }
+        - name: referenceWeekStartDate
+          in: query
+          required: false
+          description: Captured reference Monday; invalid or non-Monday values return 400 before mutation.
+          schema: { type: string, format: date }
       requestBody:
         required: true
         content:
@@ -3559,6 +3974,8 @@ paths:
                 'Chicken Breast': true
                 'Olive Oil': false
       responses:
+        '400':
+          description: Invalid captured reference Monday or unsupported absolute week
         '412':
           description: Demo generation is absent or stale; refresh authoritative state without replaying the old write
           content:
@@ -4236,6 +4653,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/DemoGeneration'
       summary: Upsert a setting by key
+      description: supper_servings_default is reserved; use the typed PUT /api/schedule/servings operation with its captured version.
       security: [{ FamilyMemberId: [] }]
       requestBody:
         required: true
@@ -4243,6 +4661,7 @@ paths:
           application/json:
             schema: { $ref: '#/components/schemas/SettingsDto' }
       responses:
+        '400': { description: Reserved supper_servings_default key; use the typed serving operation. No setting is saved. }
         '412':
           description: Demo generation is absent or stale; refresh authoritative state without replaying the old write
           content:

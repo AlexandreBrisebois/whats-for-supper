@@ -6,7 +6,7 @@ test.describe('Recipe Action Pivot', () => {
     page.on('console', (msg) => {
       console.log(`[BROWSER] ${msg.type()}: ${msg.text()}`);
     });
-    const calendar = testInfo.title.includes('skips past')
+    const calendar = testInfo.title.includes('empty deployment-local Tonight')
       ? builders.deploymentCalendar({
           today: '2026-05-13',
           capturedAtUtc: '2026-05-13T12:00:00Z',
@@ -81,25 +81,14 @@ test.describe('Recipe Action Pivot', () => {
     });
   });
 
-  test('Search flow: shows "Cook This" and then the pivot', async ({ page }) => {
+  test('Search flow: shows its dated proposal without a hidden pivot', async ({ page }) => {
     await page.goto('/recipes?focus=search');
     await page.getByTestId('recipe-search-input').fill('lasagna');
     await page.getByTestId('recipe-search-input').press('Enter');
-    await expect(page.getByTestId('browse-all-loader')).not.toBeVisible();
-
-    const topPick = page.getByTestId('stack-card-front');
-    await expect(topPick).toBeVisible();
-    await topPick.click();
-
-    const cookBtn = page.getByTestId('action-cook-this');
-    await expect(cookBtn).toBeVisible();
-    await cookBtn.click();
-
-    // Should show pivot buttons
-    await expect(page.getByTestId('action-cook-tonight')).toBeVisible();
-    await expect(page.getByTestId('action-plan-later')).toBeVisible();
-    // Primary button should be hidden
-    await expect(cookBtn).not.toBeVisible();
+    await page.getByTestId('stack-card-front').click();
+    await expect(page.getByTestId('action-add-to-day')).toHaveText(/Plan for Monday/);
+    await expect(page.getByTestId('action-change-day')).toBeVisible();
+    await expect(page.getByTestId('action-cook-this')).toHaveCount(0);
   });
 
   test('Search flow: "Cook it tonight" returns to the planner with the assigned day', async ({
@@ -109,13 +98,11 @@ test.describe('Recipe Action Pivot', () => {
     await page.getByTestId('recipe-search-input').fill('lasagna');
     await page.getByTestId('recipe-search-input').press('Enter');
     await page.getByTestId('stack-card-front').click();
-    await page.getByTestId('action-cook-this').click();
-
-    await page.getByTestId('action-cook-tonight').click();
+    await page.getByTestId('action-add-to-day').click();
     await expect(page).toHaveURL(/\/planner\?success=1&dayIndex=0&weekOffset=0/);
   });
 
-  test('Search flow: "Cook Tonight" reveals recovery when today is occupied', async ({ page }) => {
+  test('Search flow: explicitly choosing occupied Tonight reveals recovery', async ({ page }) => {
     await page.clock.setFixedTime(new Date('2026-05-13T12:00:00Z'));
     const todayIndex = 2;
 
@@ -159,8 +146,9 @@ test.describe('Recipe Action Pivot', () => {
     await page.getByTestId('recipe-search-input').fill('lasagna');
     await page.getByTestId('recipe-search-input').press('Enter');
     await page.getByTestId('stack-card-front').click();
-    await page.getByTestId('action-cook-this').click();
-    await page.getByTestId('action-cook-tonight').click();
+    await page.getByTestId('action-change-day').click();
+    await page.getByTestId('planning-day-2').click();
+    await page.getByTestId('action-add-to-day').click();
 
     await expect(page.getByTestId('recipe-detail-sheet')).not.toBeVisible();
     await expect(page.getByTestId('recovery-dialog-title')).toBeVisible();
@@ -264,40 +252,41 @@ test.describe('Recipe Action Pivot', () => {
       /\/planner\?success=1&dayIndex=1&weekOffset=1&referenceWeekStartDate=2026-05-04/
     );
     await expect(page.getByTestId('day-card-1')).toContainText(
-      builders.scheduleRecipe({ id: MOCK_IDS.RECIPE_LASAGNA }).name!
+      builders.recipe({ id: MOCK_IDS.RECIPE_LASAGNA }).name!
     );
   });
 
-  test('Search flow: "Plan for Later" skips past and current day', async ({ page }) => {
+  test('Search flow: recommendation includes an empty deployment-local Tonight', async ({
+    page,
+  }) => {
     // Set fixed time to Wednesday May 13, 2026
     const wednesday = new Date('2026-05-13T12:00:00Z');
     await page.clock.setFixedTime(wednesday);
 
-    // Search owns Plan for Later; Discovery remains a voting-only journey.
+    // The server calendar owns the proposal; an empty Tonight is eligible.
     await page.goto('/recipes?focus=search');
     await page.getByTestId('recipe-search-input').fill('lasagna');
     await page.getByTestId('recipe-search-input').press('Enter');
     await expect(page.getByTestId('browse-all-loader')).not.toBeVisible();
     await page.getByTestId('stack-card-front').click();
-    await page.getByTestId('action-cook-this').click();
 
     const assignment = page.waitForRequest(
       (request) =>
         request.method() === 'POST' && new URL(request.url()).pathname === '/api/schedule/assign'
     );
-    await page.getByTestId('action-plan-later').click();
+    await expect(page.getByTestId('action-add-to-day')).toContainText('May 13');
+    await page.getByTestId('action-add-to-day').click();
     const request = await assignment;
     expect(request.postDataJSON()).toMatchObject({
       weekOffset: 0,
-      dayIndex: 3,
+      dayIndex: 2,
       recipeId: MOCK_IDS.RECIPE_LASAGNA,
     });
     expect(new URL(request.url()).searchParams.get('referenceWeekStartDate')).toBe('2026-05-11');
 
-    // Today is Wed (index 2), Tomorrow is Thu (index 3).
-    // It should skip index 0 (Mon), 1 (Tue), 2 (Wed).
+    // Past Monday/Tuesday are skipped; empty Wednesday is shown before saving.
     await expect(page).toHaveURL(/\/planner\?success=1/);
-    await expect(page).toHaveURL(/dayIndex=3/);
+    await expect(page).toHaveURL(/dayIndex=2/);
     await expect(page).toHaveURL(/weekOffset=0/);
   });
 });

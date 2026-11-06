@@ -12,10 +12,12 @@ internal static class RecipeRotation
 
     // Lock before reading: automatic writes cannot replay a stale human or restored state.
     // A row transaction bounds each Dreaming item; completed items survive a later failure.
-    public static async Task<IDbContextTransaction?> LockAsync(RecipeDbContext db, Guid id, CancellationToken ct = default)
+    public static async Task<IDbContextTransaction?> LockAsync(RecipeDbContext db, Guid id, CancellationToken ct = default, bool lockSupperInputs = false)
     {
         if (!db.Database.IsRelational()) return null;
-        var transaction = await db.Database.BeginTransactionAsync(ct);
+        var transaction = lockSupperInputs
+            ? await SupperServingsService.BeginAsync(db, ct)
+            : await db.Database.BeginTransactionAsync(ct);
         try
         {
             await db.Database.ExecuteSqlAsync($"SELECT id FROM recipes WHERE id = {id} FOR UPDATE", ct);
@@ -23,7 +25,7 @@ internal static class RecipeRotation
             if (tracked is not null) await tracked.ReloadAsync(ct);
             return transaction;
         }
-        catch { await transaction.DisposeAsync(); throw; }
+        catch { if (transaction is not null) await transaction.DisposeAsync(); throw; }
     }
 }
 

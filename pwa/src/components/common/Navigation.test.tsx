@@ -1,7 +1,10 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('next/navigation', () => ({ usePathname: () => '/recipes' }));
+vi.mock('next/navigation', () => ({
+  usePathname: () => '/recipes',
+  useRouter: () => ({ push: vi.fn() }),
+}));
 vi.mock('next/link', () => ({
   default: ({ children, href, ...props }: React.PropsWithChildren<{ href: string }>) => (
     <a href={href} {...props}>

@@ -79,7 +79,14 @@ export const builders = {
       days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, index) => {
         const date = new Date(monday);
         date.setUTCDate(date.getUTCDate() + index);
-        return { day, date: toDateStr(date), recipe: null as ScheduleRecipeDto | null, status: 0 };
+        return {
+          day,
+          date: toDateStr(date),
+          recipe: null as ScheduleRecipeDto | null,
+          status: 0,
+          removalToken: null as string | null,
+          occurrenceId: null as any,
+        };
       }),
       groceryState: {} as Record<string, boolean>,
     };

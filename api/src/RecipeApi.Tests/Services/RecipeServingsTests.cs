@@ -145,7 +145,7 @@ public class RecipeServingsTests
 
     internal static Task<object?> Sync(RecipeDbContext db, RecipeRepository repository, WorkflowTask task)
     {
-        var grocery = new GroceryRecomputeService(db, new AisleMapper(), NullLogger<GroceryRecomputeService>.Instance, new SystemClock(), new DeploymentCalendar(new ConfigurationManager()), TestGroceryCoordinator.Create(db));
-        return new SyncRecipeProcessor(new SystemClock(), db, repository, grocery, NullLogger<SyncRecipeProcessor>.Instance).ExecuteAsync(task, CancellationToken.None);
+        var invalidation = new SupperProjectionInvalidation(db, new SystemClock(), new DeploymentCalendar(new ConfigurationManager()));
+        return new SyncRecipeProcessor(new SystemClock(), db, repository, invalidation, Mock.Of<ISupperProjectionPublisher>(), NullLogger<SyncRecipeProcessor>.Instance).ExecuteAsync(task, CancellationToken.None);
     }
 }

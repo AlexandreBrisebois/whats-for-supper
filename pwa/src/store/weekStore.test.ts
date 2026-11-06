@@ -1667,3 +1667,61 @@ it('shows persisted promotions after session updates withdraw their pending sugg
   expect(useWeekStore.getState().schedule[0].recipe?.id).toBe(saved.id);
   expect(useWeekStore.getState().schedule[0]._isPending).not.toBe(true);
 });
+
+describe('grocery freshness reread lifetime', () => {
+  it.each(['week', 'reference', 'freshness', 'checks'] as const)(
+    'rejects a late response after newer %s state',
+    async (change) => {
+      let resolve!: (value: any) => void;
+      vi.mocked(getSchedule).mockReturnValue(
+        new Promise((done) => {
+          resolve = done;
+        })
+      );
+      const freshness = { status: 'updating' as const, version: 'old' };
+      useWeekStore.setState({ groceryRefresh: freshness });
+      usePlannerStore.setState({ groceryState: { pasta: false } });
+      const pending = useWeekStore.getState().refreshGroceries();
+      if (change === 'week') useWeekStore.setState({ weekOffset: 1, weekStartDate: '2025-01-13' });
+      if (change === 'reference')
+        useWeekStore.setState({ calendar: { ...calendar, referenceWeekStartDate: '2024-12-30' } });
+      if (change === 'freshness')
+        useWeekStore.setState({ groceryRefresh: { status: 'current', version: 'new' } });
+      if (change === 'checks') usePlannerStore.setState({ groceryState: { pasta: true } });
+      resolve({
+        ...makeScheduleDays(),
+        groceryItems: [{ displayName: 'stale' }],
+        groceryRefresh: freshness,
+        groceryState: { pasta: false },
+      });
+      await pending;
+      expect(useWeekStore.getState().groceryItems).toEqual([]);
+      if (change === 'checks')
+        expect(usePlannerStore.getState().groceryState).toEqual({ pasta: true });
+    }
+  );
+});
+
+describe('captured assigned occurrence', () => {
+  it('updates identity from a slot event without borrowing the prior same-recipe occurrence', () => {
+    useWeekStore.setState({
+      schedule: [
+        {
+          date: '2026-05-06',
+          _uiId: 'wed',
+          recipe: builders.scheduleRecipe(),
+          occurrenceId: 'old',
+        },
+      ] as any,
+    });
+    useWeekStore.getState().applySlotUpdate({
+      date: '2026-05-06',
+      recipe: builders.scheduleRecipe(),
+      status: 0,
+      occurrenceId: 'recreated',
+    });
+    expect(useWeekStore.getState().schedule[0].occurrenceId).toBe('recreated');
+    useWeekStore.getState().applySlotUpdate({ date: '2026-05-06', recipe: null, status: 0 });
+    expect(useWeekStore.getState().schedule[0].occurrenceId).toBeNull();
+  });
+});

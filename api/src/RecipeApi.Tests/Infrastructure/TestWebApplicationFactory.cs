@@ -182,6 +182,11 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
         builder.Services.AddScoped<IScheduleEventPublisher, SseEventPublisher>();
         builder.Services.AddSingleton<GroceryCheckCoordinator>();
         builder.Services.AddScoped<GroceryRecomputeService>();
+        builder.Services.AddScoped<SupperServingsService>();
+        builder.Services.AddScoped<IngredientProjectionService>();
+        builder.Services.AddScoped<SupperProjectionInvalidation>();
+        builder.Services.AddScoped<ISupperProjectionPublisher, SupperProjectionPublisher>();
+        builder.Services.AddScoped<RecipeApi.Workflow.IWorkflowProcessor, RecipeApi.Services.Processors.RefreshSupperGroceriesProcessor>();
         builder.Services.AddScoped<GroceryExtraService>();
         builder.Services.AddScoped<GroceryExtraRolloverService>();
         builder.Services.AddScoped<IngredientCategoryService>();

@@ -4,6 +4,27 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 BEGIN;
 
+CREATE TABLE IF NOT EXISTS supper_servings (
+    date date PRIMARY KEY,
+    override_servings integer,
+    inherited_servings integer,
+    version uuid NOT NULL,
+    created_at timestamptz NOT NULL,
+    updated_at timestamptz NOT NULL,
+    CONSTRAINT supper_servings_override_positive CHECK (override_servings IS NULL OR override_servings > 0),
+    CONSTRAINT supper_servings_inherited_positive CHECK (inherited_servings IS NULL OR inherited_servings > 0)
+);
+
+DO $$ BEGIN
+IF to_regclass('public.weekly_plans') IS NOT NULL THEN
+ALTER TABLE weekly_plans ADD COLUMN IF NOT EXISTS serving_input_version text;
+ALTER TABLE weekly_plans ADD COLUMN IF NOT EXISTS serving_applied_version text;
+ALTER TABLE weekly_plans ADD COLUMN IF NOT EXISTS serving_refresh_status text;
+ALTER TABLE weekly_plans ADD COLUMN IF NOT EXISTS serving_refresh_workflow_id uuid;
+ALTER TABLE weekly_plans ADD COLUMN IF NOT EXISTS grocery_reset_summary_version text;
+END IF;
+END $$;
+
 -- Add the nullable projection before application rollout; data backfill is explicit.
 DO $$
 BEGIN
@@ -299,3 +320,11 @@ END
 $$;
 
 COMMIT;
+
+-- Additive explicit preparation metadata; legacy Cooked rows deliberately remain null.
+ALTER TABLE calendar_events ADD COLUMN IF NOT EXISTS prepared_on date;
+ALTER TABLE calendar_events ADD COLUMN IF NOT EXISTS prepared_at_utc timestamp with time zone;
+ALTER TABLE calendar_events ADD COLUMN IF NOT EXISTS prepared_servings integer;
+ALTER TABLE calendar_events ADD COLUMN IF NOT EXISTS prepared_original_servings integer;
+ALTER TABLE calendar_events ADD COLUMN IF NOT EXISTS preparation_plan_token text;
+ALTER TABLE calendar_events ADD COLUMN IF NOT EXISTS preparation_serving_version text;

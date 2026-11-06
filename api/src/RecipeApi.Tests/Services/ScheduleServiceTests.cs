@@ -1,4 +1,5 @@
 using RecipeApi.Data;
+using Microsoft.EntityFrameworkCore;
 using RecipeApi.Models;
 using RecipeApi.Services;
 using RecipeApi.Tests.Infrastructure;
@@ -27,7 +28,7 @@ public class ScheduleServiceTests : IAsyncLifetime
         var logger = _scope.ServiceProvider.GetRequiredService<ILogger<ScheduleService>>();
         _publisherMock = new Mock<IScheduleEventPublisher>();
         var groceryRecomputeService = _scope.ServiceProvider.GetRequiredService<GroceryRecomputeService>();
-        _service = new ScheduleService(_db, logger, _publisherMock.Object, groceryRecomputeService, _scope.ServiceProvider.GetRequiredService<IClock>(), new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()), RecipeApi.Tests.Infrastructure.TestHistoricalInterest.Create(_db, _scope.ServiceProvider.GetRequiredService<IClock>(), new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager())), _scope.ServiceProvider.GetRequiredService<GroceryCheckCoordinator>());
+        _service = new ScheduleService(_db, logger, _publisherMock.Object, groceryRecomputeService, _scope.ServiceProvider.GetRequiredService<IClock>(), new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()), RecipeApi.Tests.Infrastructure.TestHistoricalInterest.Create(_db, _scope.ServiceProvider.GetRequiredService<IClock>(), new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager())), _scope.ServiceProvider.GetRequiredService<GroceryCheckCoordinator>(), new SupperProjectionInvalidation(_db,_scope.ServiceProvider.GetRequiredService<IClock>(),new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager())));
     }
 
     public async Task DisposeAsync()
@@ -231,8 +232,7 @@ public class ScheduleServiceTests : IAsyncLifetime
         _db.CalendarEvents.Add(new CalendarEvent { Date = latest, RecipeId = recipe.Id, Status = CalendarEventStatus.Cooked });
         await _db.SaveChangesAsync();
         if (publicationFails) _publisherMock.Setup(p => p.PublishWeekUpdatedAsync(It.IsAny<ScheduleDays>(), null, null)).ThrowsAsync(new IOException("Refresh failed"));
-        if (publicationFails) await Assert.ThrowsAsync<IOException>(() => _service.RemoveRecipeAsync(removeEarlier ? earlier : latest));
-        else await _service.RemoveRecipeAsync(removeEarlier ? earlier : latest);
+        await _service.RemoveRecipeAsync(removeEarlier ? earlier : latest);
 
         DateTimeOffset? expected = removeEarlier ? new(2026, 10, 12, 0, 0, 0, TimeSpan.Zero)
             : earlierExists ? new(2026, 10, 5, 0, 0, 0, TimeSpan.Zero) : null;
@@ -397,14 +397,27 @@ public class ScheduleServiceTests : IAsyncLifetime
     {
         var sourceMonday = new DateOnly(2026, 10, 12);
         var moved = new Recipe { Id = Guid.NewGuid(), Name = "Move this", Ingredients = "[\"carrots\"]" };
-        // A valid JSON value with an unsupported metadata shape makes source recomputation fail.
+        // Unsupported metadata is intentionally unresolved, not a grocery infrastructure failure.
         var malformed = new Recipe { Id = Guid.NewGuid(), Name = "Existing bad metadata", RawMetadata = "[]" };
         _db.Recipes.AddRange(moved, malformed);
         _db.CalendarEvents.AddRange(new CalendarEvent { Date = sourceMonday, RecipeId = moved.Id },
             new CalendarEvent { Date = sourceMonday.AddDays(1), RecipeId = malformed.Id });
         await _db.SaveChangesAsync();
 
-        var result = await _service.MoveScheduleEventAsync(new MoveScheduleDto(0, moved.Id, 0, "push", 1, 0));
+        var options = _scope.ServiceProvider.GetRequiredService<Microsoft.EntityFrameworkCore.DbContextOptions<RecipeDbContext>>();
+        var freshReads = 0;
+        using var groceryScopes = new ServiceCollection().AddScoped<RecipeDbContext>(_ =>
+            Interlocked.Increment(ref freshReads) == 1 ? throw new IOException("Injected source grocery read failure") : new RecipeDbContext(options)).BuildServiceProvider();
+        var clock = _scope.ServiceProvider.GetRequiredService<IClock>();
+        var calendar = new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager());
+        var grocery = new GroceryRecomputeService(_db, _scope.ServiceProvider.GetRequiredService<AisleMapper>(),
+            _scope.ServiceProvider.GetRequiredService<ILogger<GroceryRecomputeService>>(), clock, calendar,
+            new GroceryCheckCoordinator(groceryScopes.GetRequiredService<IServiceScopeFactory>()));
+        var service = new ScheduleService(_db, _scope.ServiceProvider.GetRequiredService<ILogger<ScheduleService>>(),
+            _publisherMock.Object, grocery, clock, calendar, TestHistoricalInterest.Create(_db, clock, calendar),
+            _scope.ServiceProvider.GetRequiredService<GroceryCheckCoordinator>(), new SupperProjectionInvalidation(_db,clock,calendar));
+
+        var result = await service.MoveScheduleEventAsync(new MoveScheduleDto(0, moved.Id, 0, "push", 1, 0));
 
         Assert.NotNull(result);
         Assert.True(result.Moved);
@@ -560,7 +573,7 @@ public class ScheduleServiceTests : IAsyncLifetime
 
         Assert.Equal(CalendarEventStatus.Cooked, _db.CalendarEvents.Single(e => e.Date == date).Status);
         Assert.Equal(clock.UtcNow, _db.Recipes.Single(r => r.Id == recipeId).LastCookedDate);
-        _publisherMock.Verify(p => p.PublishSlotUpdatedAsync(date, It.Is<ScheduleRecipeDto>(r => r.Id == recipeId), 2, null), Times.Once);
+        _publisherMock.Verify(p => p.PublishSlotUpdatedAsync(date, It.Is<ScheduleRecipeDto>(r => r.Id == recipeId), 2, null, null, It.Is<Guid?>(id => id != null)), Times.Once);
     }
 
     [Fact]
@@ -651,12 +664,20 @@ public class ScheduleServiceTests : IAsyncLifetime
         Assert.Equal(CalendarEventStatus.Skipped, _db.CalendarEvents.Single(e => e.Date == yesterday.AddDays(-1)).Status);
     }
 
-    [Fact]
-    public async Task FinalizeOverdueMeals_RecalculatesLastCookedDateFromNewlyCookedEventDate()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task FinalizeOverdueMeals_RecalculatesLastCookedDateFromNewlyCookedEventDate(bool laterCookedExists)
     {
         var recipeId = Guid.NewGuid();
         var cookedDate = new DateOnly(2026, 5, 12);
-        _db.Recipes.Add(new Recipe { Id = recipeId, Name = "Soup" });
+        var recipe = new Recipe { Id = recipeId, Name = "Soup" };
+        _db.Recipes.Add(recipe);
+        var laterCookedDate = cookedDate.AddDays(1);
+        if (laterCookedExists) {
+            recipe.LastCookedDate = new DateTimeOffset(laterCookedDate.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero);
+            _db.CalendarEvents.Add(new CalendarEvent { Id = Guid.NewGuid(), RecipeId = recipeId, Date = laterCookedDate, Status = CalendarEventStatus.Cooked });
+        }
         _db.CalendarEvents.Add(new CalendarEvent
         {
             Id = Guid.NewGuid(), RecipeId = recipeId, Date = cookedDate, Status = CalendarEventStatus.Planned
@@ -665,11 +686,18 @@ public class ScheduleServiceTests : IAsyncLifetime
 
         var service = CreateService(new FixedClock(new DateTimeOffset(2026, 5, 13, 12, 0, 0, TimeSpan.Zero)));
 
+        var expected = new DateTimeOffset((laterCookedExists ? laterCookedDate : cookedDate).ToDateTime(TimeOnly.MinValue), TimeSpan.Zero);
+        var publications = 0;
+        _publisherMock.Setup(p => p.PublishWeekUpdatedAsync(It.IsAny<ScheduleDays>(), null, null)).Returns(async () => {
+            using var fresh = _factory.Services.CreateScope();
+            var persisted = await fresh.ServiceProvider.GetRequiredService<RecipeDbContext>().Recipes.AsNoTracking().SingleAsync(r => r.Id == recipeId);
+            Assert.Equal(expected, persisted.LastCookedDate);
+            publications++;
+        });
         await service.FinalizeOverdueMealsAsync();
 
-        Assert.Equal(
-            new DateTimeOffset(2026, 5, 12, 0, 0, 0, TimeSpan.Zero),
-            _db.Recipes.Single(r => r.Id == recipeId).LastCookedDate);
+        Assert.Equal(1, publications);
+        Assert.Equal(expected, _db.Recipes.Single(r => r.Id == recipeId).LastCookedDate);
     }
 
     [Fact]
@@ -715,7 +743,7 @@ public class ScheduleServiceTests : IAsyncLifetime
     {
         var logger = _scope.ServiceProvider.GetRequiredService<ILogger<ScheduleService>>();
         var groceryRecomputeService = _scope.ServiceProvider.GetRequiredService<GroceryRecomputeService>();
-        return new ScheduleService(_db, logger, _publisherMock.Object, groceryRecomputeService, clock, new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()), RecipeApi.Tests.Infrastructure.TestHistoricalInterest.Create(_db, clock, new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager())), _scope.ServiceProvider.GetRequiredService<GroceryCheckCoordinator>());
+        return new ScheduleService(_db, logger, _publisherMock.Object, groceryRecomputeService, clock, new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()), RecipeApi.Tests.Infrastructure.TestHistoricalInterest.Create(_db, clock, new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager())), _scope.ServiceProvider.GetRequiredService<GroceryCheckCoordinator>(), new SupperProjectionInvalidation(_db,clock,new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager())));
     }
 
     private sealed class FixedClock(DateTimeOffset now) : IClock

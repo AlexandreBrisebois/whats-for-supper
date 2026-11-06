@@ -1,4 +1,7 @@
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
+using RecipeApi.Dto;
+using RecipeApi.Models;
 using RecipeApi.Data;
 
 namespace RecipeApi.Services;
@@ -17,6 +20,18 @@ public sealed class GroceryCheckCoordinator(IServiceScopeFactory scopes)
             return await operation(scope.ServiceProvider.GetRequiredService<RecipeDbContext>());
         }
         finally { gate.Release(); }
+    }
+
+    internal static void ClearAcknowledgedReviews(WeeklyPlan plan, IEnumerable<string> checkedNames)
+    {
+        var names = checkedNames.ToHashSet(StringComparer.Ordinal);
+        if (names.Count == 0) return;
+        List<GroceryLineItemDto> lines;
+        try { lines = JsonSerializer.Deserialize<List<GroceryLineItemDto>>(plan.GroceryItems) ?? []; }
+        catch (JsonException) { return; }
+        if (!lines.Any(line => line.CheckReviewReason is not null && names.Contains(line.DisplayName))) return;
+        plan.GroceryItems = JsonSerializer.Serialize(lines.Select(line => names.Contains(line.DisplayName)
+            ? line with { CheckReviewReason = null } : line));
     }
 
     internal static void SynchronizeTrackedPlan(RecipeDbContext caller, DateOnly monday, string state, string items)

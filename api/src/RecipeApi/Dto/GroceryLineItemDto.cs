@@ -8,4 +8,6 @@ public record GroceryLineItemDto(
     [property: JsonPropertyName("section")] string Section,
     [property: JsonPropertyName("quantity")] double? Quantity,
     [property: JsonPropertyName("unitText")] string? UnitText,
-    [property: JsonPropertyName("recipeIds")] List<Guid> RecipeIds);
+    [property: JsonPropertyName("recipeIds")] List<Guid> RecipeIds,
+    [property: JsonPropertyName("quantityComplete")] bool? QuantityComplete = null,
+    [property: JsonPropertyName("checkReviewReason")] string? CheckReviewReason = null);

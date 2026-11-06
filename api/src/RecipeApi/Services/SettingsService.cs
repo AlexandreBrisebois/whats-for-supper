@@ -22,6 +22,7 @@ public class SettingsService(IClock clock, RecipeDbContext dbContext, ILogger<Se
     /// <summary>Inserts or updates the setting for the given key. Returns the saved entity.</summary>
     public async Task<FamilySetting> UpsertSettingAsync(string key, JsonElement value)
     {
+        if (key == SupperServingsService.DefaultKey) throw new ArgumentException("Use the typed supper servings operation.");
         var existing = await _dbContext.FamilySettings
             .FirstOrDefaultAsync(s => s.Key == key);
 

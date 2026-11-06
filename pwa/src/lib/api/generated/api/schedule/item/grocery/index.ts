@@ -17,6 +17,7 @@ import {
 import {
   type AdditionalDataHolder,
   type BaseRequestBuilder,
+  type DateOnly,
   type KeysToExcludeForNavigationMetadata,
   type NavigationMetadata,
   type Parsable,
@@ -117,7 +118,7 @@ export interface GroceryRequestBuilder extends BaseRequestBuilder<GroceryRequest
    */
   get item(): Item_EscapedRequestBuilder;
   /**
-   * Replaces the entire recipe-derived check map with the supplied dictionary, including explicit false values; an empty dictionary clears it. On one application instance this replacement shares server processing order with item updates and recomputation. Missing keys in a stale replacement body are not merged from persisted state. Returns 200 after persistence and the ordered grocery publication attempt. Notification failure does not roll back a committed map; a fresh read recovers committed state.
+   * Replaces the entire recipe-derived check map with the supplied dictionary, including explicit false values; an empty dictionary clears it. On one application instance this replacement shares server processing order with item updates and recomputation. Missing keys in a stale replacement body are not merged from persisted state. Returns 200 after persistence and the ordered grocery publication attempt. Notification failure does not roll back a committed map; a fresh read recovers committed state. An optional captured reference Monday pins the intended absolute week across deployment-week rollover; omission retains deployment-current-week behavior.
    * @param body The request body
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {Promise<GroceryPatchResponse>}
@@ -126,18 +127,29 @@ export interface GroceryRequestBuilder extends BaseRequestBuilder<GroceryRequest
    */
   patch(
     body: GroceryPatchRequestBody,
-    requestConfiguration?: RequestConfiguration<object> | undefined
+    requestConfiguration?:
+      RequestConfiguration<GroceryRequestBuilderPatchQueryParameters> | undefined
   ): Promise<GroceryPatchResponse | undefined>;
   /**
-   * Replaces the entire recipe-derived check map with the supplied dictionary, including explicit false values; an empty dictionary clears it. On one application instance this replacement shares server processing order with item updates and recomputation. Missing keys in a stale replacement body are not merged from persisted state. Returns 200 after persistence and the ordered grocery publication attempt. Notification failure does not roll back a committed map; a fresh read recovers committed state.
+   * Replaces the entire recipe-derived check map with the supplied dictionary, including explicit false values; an empty dictionary clears it. On one application instance this replacement shares server processing order with item updates and recomputation. Missing keys in a stale replacement body are not merged from persisted state. Returns 200 after persistence and the ordered grocery publication attempt. Notification failure does not roll back a committed map; a fresh read recovers committed state. An optional captured reference Monday pins the intended absolute week across deployment-week rollover; omission retains deployment-current-week behavior.
    * @param body The request body
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {RequestInformation}
    */
   toPatchRequestInformation(
     body: GroceryPatchRequestBody,
-    requestConfiguration?: RequestConfiguration<object> | undefined
+    requestConfiguration?:
+      RequestConfiguration<GroceryRequestBuilderPatchQueryParameters> | undefined
   ): RequestInformation;
+}
+/**
+ * Replaces the entire recipe-derived check map with the supplied dictionary, including explicit false values; an empty dictionary clears it. On one application instance this replacement shares server processing order with item updates and recomputation. Missing keys in a stale replacement body are not merged from persisted state. Returns 200 after persistence and the ordered grocery publication attempt. Notification failure does not roll back a committed map; a fresh read recovers committed state. An optional captured reference Monday pins the intended absolute week across deployment-week rollover; omission retains deployment-current-week behavior.
+ */
+export interface GroceryRequestBuilderPatchQueryParameters {
+  /**
+   * Captured reference Monday; invalid or non-Monday values return 400 before mutation.
+   */
+  referenceWeekStartDate?: DateOnly;
 }
 /**
  * Serializes information the current object
@@ -198,7 +210,8 @@ export function serializeGroceryPatchResponse_data(
 /**
  * Uri template for the request builder.
  */
-export const GroceryRequestBuilderUriTemplate = '{+baseurl}/api/schedule/{weekOffset}/grocery';
+export const GroceryRequestBuilderUriTemplate =
+  '{+baseurl}/api/schedule/{weekOffset}/grocery{?referenceWeekStartDate*}';
 /**
  * Metadata for all the navigation properties in the request builder.
  */

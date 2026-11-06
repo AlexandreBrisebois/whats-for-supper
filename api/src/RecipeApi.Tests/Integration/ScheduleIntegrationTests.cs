@@ -40,7 +40,7 @@ public class ScheduleIntegrationTests : IAsyncLifetime
         var logger = _scope.ServiceProvider.GetRequiredService<ILogger<ScheduleService>>();
         _publisherMock = new Mock<IScheduleEventPublisher>();
         var groceryRecomputeService = _scope.ServiceProvider.GetRequiredService<GroceryRecomputeService>();
-        _service = new ScheduleService(_db, logger, _publisherMock.Object, groceryRecomputeService, _scope.ServiceProvider.GetRequiredService<IClock>(), new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()), RecipeApi.Tests.Infrastructure.TestHistoricalInterest.Create(_db, _scope.ServiceProvider.GetRequiredService<IClock>(), new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager())), _scope.ServiceProvider.GetRequiredService<GroceryCheckCoordinator>());
+        _service = new ScheduleService(_db, logger, _publisherMock.Object, groceryRecomputeService, _scope.ServiceProvider.GetRequiredService<IClock>(), new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()), RecipeApi.Tests.Infrastructure.TestHistoricalInterest.Create(_db, _scope.ServiceProvider.GetRequiredService<IClock>(), new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager())), _scope.ServiceProvider.GetRequiredService<GroceryCheckCoordinator>(), new SupperProjectionInvalidation(_db,_scope.ServiceProvider.GetRequiredService<IClock>(),new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager())));
         _discoveryService = new DiscoveryService(_db, _publisherMock.Object, _scope.ServiceProvider.GetRequiredService<IClock>(), new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()), RecipeApi.Tests.Infrastructure.TestHistoricalInterest.Create(_db, _scope.ServiceProvider.GetRequiredService<IClock>(), new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager())));
         _client = _factory.CreateClient();
     }
@@ -1005,7 +1005,7 @@ public class ScheduleIntegrationTests : IAsyncLifetime
             p => p.PublishSlotUpdatedAsync(
                 today,
                 It.IsAny<ScheduleRecipeDto?>(),
-                2),
+                2, null, null, It.Is<Guid?>(id => id != null)),
             Times.Once);
     }
 

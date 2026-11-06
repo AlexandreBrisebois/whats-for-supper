@@ -4,6 +4,21 @@ import { useScheduleStream } from './useScheduleStream';
 import { useWeekStore } from '@/store/weekStore';
 import { usePlannerStore } from '@/store/plannerStore';
 import { useDiscoveryStore } from '@/store/discoveryStore';
+import { useTodayStore } from '@/store/todayStore';
+import { calendarTime } from '@/lib/deployment-calendar';
+import { MOCK_IDS } from '@/testing/mock-ids';
+import { getSchedule } from '@/lib/api/planner';
+
+vi.mock('@/lib/api/planner', () => ({
+  getSchedule: vi.fn().mockResolvedValue(undefined),
+  getSmartDefaults: vi.fn(),
+  assignRecipeToDay: vi.fn(),
+  removeRecipeFromDay: vi.fn(),
+  moveRecipe: vi.fn(),
+  openVoting: vi.fn(),
+  lockSchedule: vi.fn(),
+  normalizeScheduleRecipe: (recipe: unknown) => recipe,
+}));
 
 vi.mock('@/lib/api/discovery', () => ({
   getVotingSession: vi.fn().mockRejectedValue(new Error('unavailable')),
@@ -59,14 +74,21 @@ class MockEventSource {
 }
 
 beforeEach(() => {
+  vi.mocked(getSchedule).mockReset().mockResolvedValue(undefined);
   vi.stubGlobal('EventSource', MockEventSource);
+  useTodayStore.setState({
+    calendar,
+    calendarAnchor: { receivedAtElapsed: calendarTime.elapsed(), expiresAfterMs: 60000 },
+  });
   useDiscoveryStore.setState({ session: null, sessionStatus: 'unknown' });
   useWeekStore.setState({
     calendar,
     weekStartDate: '2025-01-06',
     weekOffset: 0,
     schedule: [],
+    status: 0,
     groceryItems: [],
+    groceryRefresh: undefined,
     groceryExtras: [],
     pendingGroceryExtraIds: new Set(),
   });
@@ -77,6 +99,185 @@ beforeEach(() => {
     confirmedMoveSeq: 0,
     isDragActive: false,
     deferredWeekSnapshot: null,
+  });
+});
+
+describe('late completed grocery receipts', () => {
+  const extra = {
+    id: MOCK_IDS.GROCERY_EXTRA,
+    name: 'Coffee',
+    occurrenceWeekStartDate: '2025-01-06',
+    checked: false,
+    version: 2,
+  } as any;
+  it('keeps an acknowledged manual extra when an old week hint omits it', async () => {
+    let resolve!: (value: any) => void;
+    vi.mocked(getSchedule).mockReturnValue(new Promise((done) => (resolve = done)));
+    useWeekStore.setState({ groceryExtras: [extra] });
+    renderHook(() => useScheduleStream());
+    MockEventSource.instance.emit('week_updated', {
+      ...snapshot({ Old: true }),
+      groceryItems: [],
+      groceryExtras: [],
+    } as any);
+    expect(useWeekStore.getState().groceryExtras).toEqual([extra]);
+    expect(getSchedule).toHaveBeenCalledTimes(1);
+    await act(async () =>
+      resolve({
+        ...snapshot({ Old: true }),
+        groceryItems: [],
+        groceryExtras: [{ ...extra, version: 3, checked: true }],
+      })
+    );
+    expect(useWeekStore.getState().groceryExtras).toEqual([
+      { ...extra, version: 3, checked: true },
+    ]);
+  });
+  it('rejects an older grocery read after a manual extra acknowledgement', async () => {
+    let resolve!: (value: any) => void;
+    vi.mocked(getSchedule).mockReturnValue(new Promise((done) => (resolve = done)));
+    const pending = useWeekStore.getState().refreshGroceries();
+    useWeekStore.getState().upsertGroceryExtra(extra);
+    await act(async () => {
+      resolve({ ...snapshot({ Old: true }), groceryItems: [], groceryExtras: [] });
+      await pending;
+    });
+    expect(useWeekStore.getState().groceryExtras).toEqual([extra]);
+  });
+  it.each(['updating', 'failed'] as const)(
+    'treats an older %s receipt as a hint while retaining later checked/reviewed facts',
+    async (status) => {
+      vi.mocked(getSchedule).mockRejectedValue(new Error('authoritative read unavailable'));
+      const items = [{ displayName: 'pasta', quantity: 600 }];
+      useWeekStore.setState({
+        groceryItems: items,
+        groceryRefresh: { status: 'current', version: 'new-input', workflowId: 'new-job' },
+      });
+      usePlannerStore.setState({ groceryState: { pasta: true } });
+      renderHook(() => useScheduleStream());
+      MockEventSource.instance.emit('week_updated', {
+        ...snapshot({ pasta: false }),
+        groceryItems: [
+          { displayName: 'pasta', quantity: 200, checkReviewReason: 'prior_amount_unknown' },
+        ],
+        groceryRefresh: { status, version: 'old-input', workflowId: 'old-job' },
+      } as any);
+      await act(async () => {
+        await Promise.resolve();
+      });
+      expect(usePlannerStore.getState().groceryState).toEqual({ pasta: true });
+      expect(useWeekStore.getState().groceryItems).toBe(items);
+      expect(useWeekStore.getState().groceryRefresh?.status).toBe(status);
+      expect(getSchedule).toHaveBeenCalledTimes(1);
+    }
+  );
+  it.each(['check', 'review'] as const)(
+    'retains a later %s acknowledgement after a same-input same-job receipt',
+    async (change) => {
+      let resolve!: (value: any) => void;
+      vi.mocked(getSchedule).mockReturnValue(new Promise((done) => (resolve = done)));
+      const freshness = {
+        status: 'current' as const,
+        version: 'same-input',
+        appliedVersion: 'same-input',
+        workflowId: 'same-job',
+      };
+      const items = [{ displayName: 'pasta', quantity: 600 }];
+      useWeekStore.setState({ groceryRefresh: freshness, groceryItems: items });
+      usePlannerStore.setState({ groceryState: { pasta: true } });
+      renderHook(() => useScheduleStream());
+      MockEventSource.instance.emit('week_updated', {
+        ...snapshot({ pasta: change !== 'check' }),
+        groceryRefresh: freshness,
+        groceryItems:
+          change === 'review'
+            ? [{ ...items[0], checkReviewReason: 'prior_amount_unknown' }]
+            : items,
+      } as any);
+      expect(usePlannerStore.getState().groceryState).toEqual({ pasta: true });
+      expect(useWeekStore.getState().groceryItems).toBe(items);
+      expect(getSchedule).toHaveBeenCalledTimes(1);
+      await act(async () =>
+        resolve({ ...snapshot({ pasta: true }), groceryRefresh: freshness, groceryItems: items })
+      );
+      expect(usePlannerStore.getState().groceryState).toEqual({ pasta: true });
+      expect(useWeekStore.getState().groceryItems[0].checkReviewReason).toBeUndefined();
+    }
+  );
+  it.each([
+    ['updating', 'new-input'],
+    ['failed', 'new-input'],
+    ['updating', 'same-input'],
+    ['failed', 'same-input'],
+    ['current', 'new-input'],
+    ['current', 'same-input'],
+  ] as const)('keeps %s for %s until an authoritative derived read', async (status, version) => {
+    let resolve!: (value: any) => void;
+    vi.mocked(getSchedule).mockReturnValue(new Promise((done) => (resolve = done)));
+    const freshness = { status, version, appliedVersion: 'older', workflowId: 'new-job' };
+    const items = [
+      { displayName: 'pasta', quantity: 600, checkReviewReason: 'prior_amount_unknown' as const },
+    ];
+    useWeekStore.setState({ groceryRefresh: freshness, groceryItems: items });
+    usePlannerStore.setState({ groceryState: { pasta: false } });
+    renderHook(() => useScheduleStream());
+    MockEventSource.instance.emit('week_updated', {
+      ...snapshot({ pasta: true }),
+      status: 1,
+      groceryItems: [{ displayName: 'pasta', quantity: 200 }],
+      groceryRefresh: {
+        status: 'current',
+        version: 'same-input',
+        appliedVersion: 'same-input',
+        workflowId: 'old-job',
+      },
+    } as any);
+    expect(useWeekStore.getState().status).toBe(1);
+    expect(useWeekStore.getState().groceryRefresh).toBe(freshness);
+    expect(useWeekStore.getState().groceryItems).toBe(items);
+    expect(usePlannerStore.getState().groceryState).toEqual({ pasta: false });
+    expect(getSchedule).toHaveBeenLastCalledWith(0, calendar.referenceWeekStartDate);
+    await act(async () =>
+      resolve({
+        ...snapshot({ pasta: true }),
+        groceryItems: [{ displayName: 'pasta', quantity: 800 }],
+        groceryRefresh: {
+          status: 'current',
+          version: 'authoritative',
+          appliedVersion: 'authoritative',
+          workflowId: 'latest-job',
+        },
+      })
+    );
+    expect(useWeekStore.getState().groceryItems[0].quantity).toBe(800);
+    expect(useWeekStore.getState().groceryRefresh?.workflowId).toBe('latest-job');
+    expect(usePlannerStore.getState().groceryState).toEqual({ pasta: true });
+    expect(useWeekStore.getState().status).toBe(1);
+  });
+
+  it('a remote check map clears review only from authoritative item metadata and retains optimistic calendar', async () => {
+    let resolve!: (value: any) => void;
+    vi.mocked(getSchedule).mockReturnValue(new Promise((done) => (resolve = done)));
+    const items = [
+      { displayName: 'pasta', quantity: 600, checkReviewReason: 'prior_amount_unknown' as const },
+    ];
+    useWeekStore.setState({ groceryItems: items });
+    usePlannerStore.setState({ isDragActive: true });
+    renderHook(() => useScheduleStream());
+    MockEventSource.instance.emitChecks({ pasta: true });
+    expect(useWeekStore.getState().groceryItems).toBe(items);
+    await act(async () =>
+      resolve({
+        ...snapshot({ pasta: true }),
+        status: 2,
+        groceryItems: [{ displayName: 'pasta', quantity: 600 }],
+      })
+    );
+    expect(useWeekStore.getState().groceryItems[0].checkReviewReason).toBeUndefined();
+    expect(usePlannerStore.getState().groceryState).toEqual({ pasta: true });
+    expect(usePlannerStore.getState().isDragActive).toBe(true);
+    expect(useWeekStore.getState().status).toBe(0);
+    expect(usePlannerStore.getState().deferredWeekSnapshot).toBeNull();
   });
 });
 afterEach(() => vi.unstubAllGlobals());
@@ -183,5 +384,23 @@ describe('foreign move sequences through the stream and real stores', () => {
       Carrots: true,
     });
     expect(usePlannerStore.getState().confirmedMoveSeq).toBe(0);
+  });
+});
+
+describe('grocery events invalidate derived quantities', () => {
+  it('rereads the matching week after applying a check map without requiring a reload', () => {
+    const reread = vi.fn().mockResolvedValue(undefined);
+    const old = useWeekStore.getState().refreshGroceries;
+    useWeekStore.setState({ refreshGroceries: reread });
+    try {
+      renderHook(() => useScheduleStream());
+      MockEventSource.instance.emitChecks({ pasta: false });
+      expect(usePlannerStore.getState().groceryState).toEqual({ pasta: false });
+      expect(reread).toHaveBeenCalledTimes(1);
+      MockEventSource.instance.emitChecks({ other: true }, '2025-01-13');
+      expect(reread).toHaveBeenCalledTimes(1);
+    } finally {
+      useWeekStore.setState({ refreshGroceries: old });
+    }
   });
 });

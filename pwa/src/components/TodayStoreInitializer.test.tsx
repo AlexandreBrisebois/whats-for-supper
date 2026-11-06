@@ -31,7 +31,14 @@ describe('TodayStoreInitializer authoritative day', () => {
         nonCooking={{ kind: 'order_in' }}
       />
     );
-    expect(init).toHaveBeenCalledWith(null, 3, { kind: 'order_in' }, calendar);
+    expect(init).toHaveBeenCalledWith(
+      null,
+      3,
+      { kind: 'order_in' },
+      calendar,
+      undefined,
+      undefined
+    );
   });
 
   it.each([
@@ -50,6 +57,13 @@ describe('TodayStoreInitializer authoritative day', () => {
         nonCooking={plan}
       />
     );
-    expect(init).toHaveBeenCalledWith(null, 3, plan, { ...calendar, today: '2026-10-11' });
+    expect(init).toHaveBeenCalledWith(
+      null,
+      3,
+      plan,
+      { ...calendar, today: '2026-10-11' },
+      undefined,
+      undefined
+    );
   });
 });

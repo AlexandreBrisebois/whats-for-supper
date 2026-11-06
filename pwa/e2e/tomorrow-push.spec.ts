@@ -156,10 +156,12 @@ for (const entry of ['Home', 'Planner', 'Search', 'Browse'] as const) {
       await page.getByTestId('stack-card-front').click();
       await page.getByTestId('action-add-to-day').click();
     } else {
-      await page.goto('/browse-all-stack');
-      await page.getByTestId('stack-card-front').click();
-      await page.getByTestId('action-cook-this').click();
-      await page.getByTestId('action-cook-tonight').click();
+      await page.goto(`/recipes?open=${MOCK_IDS.RECIPE_LASAGNA}`);
+      await page.getByTestId('action-change-day').click();
+      await page.getByTestId('planning-week-previous').click();
+      await expect(page.getByTestId('planning-day-6')).toContainText('October 11');
+      await page.getByTestId('planning-day-6').click();
+      await page.getByTestId('action-add-to-day').click();
     }
     await expect(page.getByTestId('recovery-dialog-title')).toBeVisible();
     let moves = 0,
@@ -184,13 +186,37 @@ for (const entry of ['Home', 'Planner', 'Search', 'Browse'] as const) {
     await page.getByTestId('recovery-action-tomorrow').click();
     await move;
     try {
-      await expect(page.getByTestId('recovery-action-tomorrow')).toBeDisabled();
+      if (entry === 'Home') {
+        await expect(page.getByTestId('recovery-action-tomorrow')).toBeDisabled();
+      } else {
+        await expect(page.getByTestId('replacement-feedback')).toHaveAttribute('role', 'status');
+        await expect(page.getByTestId('replacement-feedback')).toContainText(
+          'Updating your original meal'
+        );
+        await expect(page.getByTestId('recovery-close')).toBeDisabled();
+        for (const action of ['tomorrow', 'next-week', 'drop'])
+          await expect(page.getByTestId(`recovery-action-${action}`)).toHaveCount(0);
+      }
+      expect(moves).toBe(1);
+      expect(assignments).toBe(0);
     } finally {
       release();
     }
-    await expect(page.getByText(/completed meal or changed plan blocks/)).toBeVisible();
+    if (entry === 'Home') {
+      await expect(page.getByText(/completed meal or changed plan blocks/)).toBeVisible();
+    } else {
+      await expect(page.getByTestId('replacement-feedback')).toContainText('Your plan changed');
+      await expect(page.getByTestId('recovery-review-plan')).toBeVisible();
+      await expect(page.getByTestId('recovery-retry-save')).toHaveCount(0);
+      await expect(page.getByTestId('recovery-retry-check')).toHaveCount(0);
+    }
     await expect(page.getByTestId('recovery-dialog-title')).toBeVisible();
     expect(moves).toBe(1);
     expect(assignments).toBe(0);
+    const source = await page.evaluate(async () => {
+      const response = await fetch('/api/schedule?weekOffset=0&referenceWeekStartDate=2026-10-05');
+      return (await response.json()).data.days[6];
+    });
+    expect(source).toMatchObject({ date: '2026-10-11', recipe: { id: MOCK_IDS.RECIPE_CHICKEN } });
   });
 }

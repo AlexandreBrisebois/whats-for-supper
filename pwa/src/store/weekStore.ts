@@ -43,6 +43,8 @@ export type UILocalScheduleDay = Omit<ScheduleDay, 'recipe'> & {
 };
 
 export interface WeekState {
+  /** Latest valid week hint, including a week not currently displayed by Planner. */
+  ingredientProjectionUpdate?: { weekStartDate: string; sequence: number };
   calendar: CalendarContext | null;
   weekStartDate: string | null;
   votingRoundId: string | null;
@@ -50,6 +52,7 @@ export interface WeekState {
   schedule: UILocalScheduleDay[];
   /** Pre-computed grocery items from the API, grouped by section for display */
   groceryItems: GroceryLineItemDto[];
+  groceryRefresh?: import('@/lib/api/generated/models').ServingGroceryRefresh | null;
   /** Identity-bearing household-entered rows, kept separate from recipe groceries. */
   groceryExtras: GroceryExtraDto[];
   pendingGroceryExtraIds: Set<string>;
@@ -94,6 +97,7 @@ export interface WeekState {
   closeVoting: () => Promise<void>;
   lockWeek: () => Promise<void>;
   sync: () => Promise<void>;
+  refreshGroceries: () => Promise<void>;
   reclassifyGroceryItem: (normalizedKey: string, section: GrocerySection) => void;
   upsertGroceryExtra: (extra: GroceryExtraDto) => void;
   removeGroceryExtra: (id: string) => void;
@@ -107,6 +111,8 @@ export interface WeekState {
     recipe: any;
     status: number;
     nonCooking?: NonCookingPlanDto | null;
+    occurrenceId?: string | null;
+    preparation?: import('@/lib/api/generated/models').SupperPreparation | null;
   }) => void;
   applyVoteUpdate: (update: { recipeId: string; voteCount: number }) => void;
   applySmartDefaultsUpdate: (defaults: SmartDefaultsDto) => void;
@@ -450,6 +456,7 @@ export const useWeekStore = create<WeekState>((set, get) => {
           votingRoundId: scheduleData.votingRoundId ?? null,
           schedule: mergedDays,
           groceryItems: scheduleData.groceryItems ?? [],
+          groceryRefresh: scheduleData.groceryRefresh,
           groceryExtras: reconcileExtras(
             get().groceryExtras,
             scheduleData.groceryExtras ?? [],
@@ -508,6 +515,7 @@ export const useWeekStore = create<WeekState>((set, get) => {
 
         set({
           groceryItems: data.groceryItems ?? [],
+          groceryRefresh: data.groceryRefresh,
           groceryExtras: reconcileExtras(
             get().groceryExtras,
             data.groceryExtras ?? [],
@@ -829,6 +837,56 @@ export const useWeekStore = create<WeekState>((set, get) => {
       }
     },
 
+    /** Authoritative grocery-entry/event/poll read, scoped to the displayed state. */
+    async refreshGroceries() {
+      const {
+        weekOffset,
+        weekStartDate,
+        calendar,
+        groceryRefresh,
+        groceryExtras,
+        pendingGroceryExtraIds,
+      } = get();
+      const reference = calendar?.referenceWeekStartDate;
+      const checks = usePlannerStore.getState().groceryState;
+      if (!weekStartDate || !reference) return;
+      try {
+        const snapshot = await getSchedule(weekOffset, reference);
+        const current = get();
+        if (
+          !snapshot ||
+          current.weekOffset !== weekOffset ||
+          current.weekStartDate !== weekStartDate ||
+          current.calendar?.referenceWeekStartDate !== reference ||
+          current.groceryRefresh !== groceryRefresh ||
+          current.groceryExtras !== groceryExtras ||
+          current.pendingGroceryExtraIds !== pendingGroceryExtraIds ||
+          usePlannerStore.getState().groceryState !== checks
+        )
+          return;
+        if (absoluteMonday(snapshot.weekStartDate) !== weekStartDate) return;
+        // This read owns derived groceries only. Calendar moves, voting and drag
+        // previews retain their existing reconciliation boundary.
+        set({
+          groceryItems: snapshot.groceryItems ?? [],
+          groceryRefresh: snapshot.groceryRefresh,
+          groceryExtras: reconcileExtras(
+            current.groceryExtras,
+            snapshot.groceryExtras ?? [],
+            current.pendingGroceryExtraIds,
+            weekStartDate,
+            current.calendar?.currentWeekStartDate ?? null
+          ),
+        });
+        const incomingChecks = (snapshot.groceryState?.additionalData ?? snapshot.groceryState) as
+          Record<string, boolean> | undefined;
+        if (incomingChecks && typeof incomingChecks === 'object')
+          usePlannerStore.getState().setGroceryState(incomingChecks);
+      } catch {
+        // Keep durable pending/failed state visible; the next event, open or poll can retry.
+      }
+    },
+
     // ── sync ──────────────────────────────────────────────────────────────────
     async sync() {
       const { weekOffset, calendar, weekStartDate } = get();
@@ -857,6 +915,7 @@ export const useWeekStore = create<WeekState>((set, get) => {
           weekStartDate: monday,
           votingRoundId: data.votingRoundId ?? null,
           groceryItems: data.groceryItems ?? [],
+          groceryRefresh: data.groceryRefresh,
           groceryExtras: reconcileExtras(
             get().groceryExtras,
             data.groceryExtras ?? [],
@@ -1013,6 +1072,27 @@ export const useWeekStore = create<WeekState>((set, get) => {
       )
         return;
 
+      const knownGroceries = get().groceryRefresh;
+      const incomingGroceries = schedule.groceryRefresh;
+      const incomingGroceryState = (schedule.groceryState?.additionalData ??
+        schedule.groceryState) as Record<string, boolean> | undefined;
+      // Input digests may repeat after A→B→A, and checks/review acknowledgements
+      // can change within one job. Disputed receipts are read hints, not ordering.
+      const disputedGroceries =
+        !!knownGroceries &&
+        (knownGroceries.version !== incomingGroceries?.version ||
+          knownGroceries.workflowId !== incomingGroceries?.workflowId ||
+          JSON.stringify(get().groceryItems) !== JSON.stringify(schedule.groceryItems ?? []) ||
+          JSON.stringify(plannerStore.groceryState) !== JSON.stringify(incomingGroceryState));
+      const disputedExtras =
+        JSON.stringify(get().groceryExtras) !== JSON.stringify(schedule.groceryExtras ?? []);
+      if (disputedGroceries) {
+        // Retain honest pending/failure feedback if the authoritative read fails,
+        // while keeping later checked amounts and review acknowledgements intact.
+        if (incomingGroceries && incomingGroceries.status !== 'current')
+          set({ groceryRefresh: incomingGroceries });
+      }
+
       // Another family member's update — only apply when we have no unconfirmed
       // moves in flight. This replaces the wall-clock window entirely.
       const hasPendingMoves =
@@ -1026,6 +1106,7 @@ export const useWeekStore = create<WeekState>((set, get) => {
       if (hasPendingMoves) {
         plannerStore.setDeferredWeekSnapshot(schedule);
         set({ status: nextStatus, lastSyncedAt: calendarTime.instant() });
+        if (disputedGroceries || disputedExtras) void get().refreshGroceries();
         return;
       }
 
@@ -1058,29 +1139,23 @@ export const useWeekStore = create<WeekState>((set, get) => {
         return day;
       });
 
-      const incomingGroceryState = (schedule.groceryState?.additionalData ??
-        schedule.groceryState) as Record<string, boolean> | undefined;
-
-      const reconciledExtras = reconcileExtras(
-        get().groceryExtras,
-        schedule.groceryExtras ?? [],
-        get().pendingGroceryExtraIds,
-        monday,
-        get().calendar?.currentWeekStartDate ?? null
-      );
-
       set({
         schedule: preserved,
         status: nextStatus,
-        groceryItems: schedule.groceryItems ?? [],
-        groceryExtras: reconciledExtras,
+        ...(!disputedGroceries
+          ? {
+              groceryItems: schedule.groceryItems ?? [],
+              groceryRefresh: schedule.groceryRefresh,
+            }
+          : {}),
         lastSyncedAt: calendarTime.instant(),
       });
 
       applyOwnedSession();
-      if (incomingGroceryState && typeof incomingGroceryState === 'object') {
+      if (!disputedGroceries && incomingGroceryState && typeof incomingGroceryState === 'object') {
         usePlannerStore.getState().setGroceryState(incomingGroceryState);
       }
+      if (disputedGroceries || disputedExtras) void get().refreshGroceries();
     },
 
     // ── applySlotUpdate ───────────────────────────────────────────────────────
@@ -1089,11 +1164,15 @@ export const useWeekStore = create<WeekState>((set, get) => {
       recipe,
       status,
       nonCooking,
+      occurrenceId,
+      preparation,
     }: {
       date: string;
       recipe: any;
       status: number;
       nonCooking?: NonCookingPlanDto | null;
+      occurrenceId?: string | null;
+      preparation?: import('@/lib/api/generated/models').SupperPreparation | null;
     }) {
       const prev = get().schedule;
       if (prev.length === 0) return;
@@ -1104,6 +1183,8 @@ export const useWeekStore = create<WeekState>((set, get) => {
           ? {
               ...d,
               recipe: recipe ?? undefined,
+              occurrenceId: (occurrenceId as any) ?? null,
+              preparation: preparation ?? null,
               status,
               nonCooking: status === 3 ? (nonCooking ?? null) : null,
               _isPending: false,

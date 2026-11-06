@@ -1,5 +1,7 @@
 'use client';
 
+import { useReplacementRecovery } from '@/lib/planner/useReplacementRecovery';
+
 // Generation-guarded requests and pagination depend on the explicit callback
 // lifetimes below. React Compiler may skip this controller without changing
 // those manual useCallback semantics.
@@ -7,17 +9,26 @@
 
 import { useUiStore } from '@/store/uiStore';
 
-import { useTodayStore } from '@/store/todayStore';
-import { calendarDayIndex, type CalendarContext } from '@/lib/deployment-calendar';
+import { rememberPlanningResult } from '@/lib/planner/planningResult';
+import { formatSupperPlanDate } from '@/lib/planner/nonCooking';
+import {
+  absoluteMonday,
+  calendarDayIndex,
+  loadDeploymentCalendar,
+  type CalendarContext,
+} from '@/lib/deployment-calendar';
 
-import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { AnimatePresence } from 'framer-motion';
 import { Search, Loader2, Compass, Recycle, Layers3, Grid3X3, Star } from 'lucide-react';
 import { RecipeStackCard } from '@/components/recipes/RecipeStackCard';
 import { StackActionBar } from '@/components/recipes/StackActionBar';
 import { EndCard } from '@/components/recipes/EndCard';
+import { PlanningDayChooser } from '@/components/recipes/PlanningDayChooser';
+import { NonCookingReplacementConfirmation } from '@/components/recipes/NonCookingReplacementConfirmation';
 import { RecipeDetailSheet } from '@/components/recipes/RecipeDetailSheet';
+import { usePlannerStore } from '@/store/plannerStore';
 import { RecipeImportIssueBadge } from '@/components/recipes/RecipeImportIssueBadge';
 import {
   RecipeFiltersSheet,
@@ -39,7 +50,6 @@ import {
   assignRecipeToEmptySlot,
   findFirstOpenPlannerSlot,
   getPlannerSlot,
-  resolveOccupiedSlot,
   type AssignmentRecipe,
   type PlannerSlot,
 } from '@/lib/planner/slotAssignment';
@@ -138,7 +148,7 @@ function RecipesContent() {
   const router = useRouter();
   const addToDay = searchParams.get('addToDay');
   const weekOffset = searchParams.get('weekOffset');
-  const planningDayLabel = plannerDayName(addToDay);
+  const hasPlanningTarget = addToDay !== null || weekOffset !== null;
   const entryContext = {
     gotoOnly: searchParams.get('gotoOnly') === 'true',
     discoverableOnly: searchParams.get('discoverableOnly') === 'true',
@@ -152,12 +162,39 @@ function RecipesContent() {
   const lastEntryContextRef = useRef(entryContext);
   const [planningCalendar, setPlanningCalendar] = useState<CalendarContext | null>(null);
   const [planningCalendarError, setPlanningCalendarError] = useState(false);
+  const targetDay = addToDay?.trim() ? Number(addToDay) : NaN;
+  const targetWeek = weekOffset?.trim() ? Number(weekOffset) : NaN;
+  const suppliedReference = searchParams.get('referenceWeekStartDate');
+  const targetReference = suppliedReference ?? planningCalendar?.referenceWeekStartDate;
+  const validTarget =
+    Number.isInteger(targetDay) &&
+    targetDay >= 0 &&
+    targetDay <= 6 &&
+    Number.isSafeInteger(targetWeek) &&
+    (suppliedReference === null || absoluteMonday(suppliedReference) !== null);
+  const targetInstant =
+    targetReference && absoluteMonday(targetReference)
+      ? Date.parse(`${targetReference}T00:00:00Z`) + (targetWeek * 7 + targetDay) * 86400000
+      : NaN;
+  const targetDate = new Date(targetInstant);
+  const urlPlanningDayLabel = hasPlanningTarget
+    ? validTarget &&
+      Number.isFinite(targetInstant) &&
+      targetDate.getUTCFullYear() >= 1 &&
+      targetDate.getUTCFullYear() <= 9999
+      ? formatSupperPlanDate(targetDate.toISOString().slice(0, 10))
+      : (plannerDayName(addToDay) ?? t('recipes.chooseDay', 'Choose a day'))
+    : null;
+  const [uncertainAssignment, setUncertainAssignment] = useState<{
+    key: string;
+    slot: PlannerSlot;
+    recipe: AssignmentRecipe;
+  } | null>(null);
+
   useEffect(() => {
     if (addToDay === null || weekOffset === null) return;
     let active = true;
-    void useTodayStore
-      .getState()
-      .ensureCalendar()
+    void loadDeploymentCalendar()
       .then((calendar) => {
         if (active) {
           setPlanningCalendar(calendar);
@@ -222,8 +259,30 @@ function RecipesContent() {
 
   // Recipe Detail Sheet state — freeze stack while open
   const openRecipeId = searchParams.get('open');
+  const sourceGroceryOffset = searchParams.get('sourceGroceryWeekOffset');
+  const sourceGroceryReference = searchParams.get('sourceGroceryReferenceWeekStartDate');
+  const parsedSourceGroceryOffset =
+    sourceGroceryOffset === null ? NaN : Number(sourceGroceryOffset);
+  const sourceGroceryReturn =
+    sourceGroceryOffset !== null &&
+    /^-?\d+$/.test(sourceGroceryOffset) &&
+    Number.isSafeInteger(parsedSourceGroceryOffset) &&
+    Math.abs(parsedSourceGroceryOffset) <= 520 &&
+    sourceGroceryReference !== null &&
+    absoluteMonday(sourceGroceryReference) !== null
+      ? `/planner?${new URLSearchParams({ weekOffset: String(parsedSourceGroceryOffset), referenceWeekStartDate: sourceGroceryReference })}`
+      : null;
+  const grocerySourceEntry = searchParams.has('reviewAmounts')
+    ? JSON.stringify([openRecipeId, sourceGroceryOffset, sourceGroceryReference])
+    : null;
+  const [sourcePlanningEntry, setSourcePlanningEntry] = useState<string | null>(null);
   const [detailRecipeId, setDetailRecipeId] = useState<string | null>(() => openRecipeId);
   const detailReturnFocusRef = useRef<HTMLElement | null>(null);
+  const originalSourceReview = Boolean(
+    grocerySourceEntry &&
+    detailRecipeId === openRecipeId &&
+    sourcePlanningEntry !== grocerySourceEntry
+  );
   // Route detail context is an external navigation source for the mounted session.
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setDetailRecipeId(openRecipeId), [openRecipeId]);
@@ -558,7 +617,6 @@ function RecipesContent() {
   const [pendingRecovery, setPendingRecovery] = useState<{
     slot: PlannerSlot;
     recipe: AssignmentRecipe;
-    navigateTo: { weekOffset: number; dayIndex: number };
   } | null>(null);
 
   // Ref to track whether a prefetch is already in flight (avoid duplicate requests)
@@ -988,160 +1046,285 @@ function RecipesContent() {
     setDetailRecipeId(recipeId);
   }, []);
 
-  const handleDetailSheetClose = useCallback(() => {
-    setDetailRecipeId(null);
-    requestAnimationFrame(() => {
-      const target = detailReturnFocusRef.current;
-      if (target?.isConnected) target.focus();
-      detailReturnFocusRef.current = null;
-    });
-  }, []);
-
   const toAssignmentRecipe = (recipe: Recipe): AssignmentRecipe => ({
     id: recipe.id,
     name: recipe.name ?? null,
     image: recipe.imageUrl ?? '',
   });
 
-  const handleCookTonight = useCallback(
-    async (recipe: Recipe) => {
-      const calendar = await useTodayStore.getState().ensureCalendar();
-      const todayIndex = calendarDayIndex(calendar);
-      const assignmentRecipe = toAssignmentRecipe(recipe);
-      const slot = await getPlannerSlot(0, todayIndex, calendar.referenceWeekStartDate);
+  const [chosenDetailTarget, setChosenDetailTarget] = useState<{
+    entry: string;
+    slot: PlannerSlot;
+  } | null>(null);
+  const [targetRead, setTargetRead] = useState<{
+    key: string;
+    slot?: PlannerSlot;
+    error?: string;
+  } | null>(null);
+  const [targetReadAttempt, setTargetReadAttempt] = useState(0);
+  const [showDayChooser, setShowDayChooser] = useState<string | null>(null);
+  const [nonCookingConfirmation, setNonCookingConfirmation] = useState<{
+    key: string;
+    slot: PlannerSlot;
+    recipe: AssignmentRecipe;
+  } | null>(null);
+  const handleDetailSheetClose = useCallback(() => {
+    setDetailRecipeId(null);
+    setSourcePlanningEntry(null);
+    setShowDayChooser(null);
+    setNonCookingConfirmation(null);
+    if (grocerySourceEntry && detailRecipeId === openRecipeId && sourceGroceryReturn) {
+      usePlannerStore.getState().setActiveTab('grocery');
+      router.replace(sourceGroceryReturn);
+      return;
+    }
+    requestAnimationFrame(() => {
+      const target = detailReturnFocusRef.current;
+      if (target?.isConnected) target.focus();
+      detailReturnFocusRef.current = null;
+    });
+  }, [detailRecipeId, grocerySourceEntry, openRecipeId, router, sourceGroceryReturn]);
 
-      if (slot?.recipe) {
-        setDetailRecipeId(null);
-        setPendingRecovery({
-          slot,
-          recipe: assignmentRecipe,
-          navigateTo: { weekOffset: 0, dayIndex: todayIndex },
-        });
-        return;
-      }
-
-      await assignRecipeToEmptySlot(
-        0,
-        todayIndex,
-        assignmentRecipe,
-        calendar.referenceWeekStartDate
-      );
-      router.push(
-        `/planner?success=1&dayIndex=${todayIndex}&weekOffset=0&referenceWeekStartDate=${calendar.referenceWeekStartDate}`
-      );
-    },
-    [router]
-  );
-
-  const handleSelectForPlanner = useCallback(
-    async (recipe: Recipe) => {
-      const dayIndex = addToDay !== null ? Number(addToDay) : NaN;
-      const targetWeekOffset = weekOffset !== null ? Number(weekOffset) : NaN;
-      if (
-        !Number.isInteger(dayIndex) ||
-        dayIndex < 0 ||
-        dayIndex > 6 ||
-        !Number.isInteger(targetWeekOffset)
-      ) {
-        await handleCookTonight(recipe);
-        return;
-      }
-      const calendar = planningCalendar ?? (await useTodayStore.getState().ensureCalendar());
-      const reference =
-        searchParams.get('referenceWeekStartDate') ?? calendar.referenceWeekStartDate;
-      const assignmentRecipe = toAssignmentRecipe(recipe);
-      const slot = await getPlannerSlot(targetWeekOffset, dayIndex, reference);
-      if (slot?.recipe) {
-        setDetailRecipeId(null);
-        setPendingRecovery({
-          slot,
-          recipe: assignmentRecipe,
-          navigateTo: { weekOffset: targetWeekOffset, dayIndex },
-        });
-        return;
-      }
-      await assignRecipeToEmptySlot(targetWeekOffset, dayIndex, assignmentRecipe, reference);
-      router.push(
-        `/planner?success=1&dayIndex=${dayIndex}&weekOffset=${targetWeekOffset}&referenceWeekStartDate=${reference}`
-      );
-    },
-    [addToDay, weekOffset, planningCalendar, searchParams, handleCookTonight, router]
-  );
-
-  const handlePlanForLater = useCallback(
-    async (recipe: Recipe) => {
-      // "Plan for Later" starts from tomorrow onwards
-      const calendar = await useTodayStore.getState().ensureCalendar();
-      const todayIndex = calendarDayIndex(calendar);
-      let startDayIndex = todayIndex + 1;
-      let startWeekOffset = 0;
-
-      if (startDayIndex > 6) {
-        startDayIndex = 0;
-        startWeekOffset = 1;
-      }
-
-      const openSlot = await findFirstOpenPlannerSlot(
-        startWeekOffset,
-        startDayIndex,
-        520,
-        calendar.referenceWeekStartDate
-      );
-      if (!openSlot) return;
-
-      await assignRecipeToEmptySlot(
-        openSlot.weekOffset,
-        openSlot.dayIndex,
-        toAssignmentRecipe(recipe),
-        openSlot.referenceWeekStartDate
-      );
-      router.push(
-        `/planner?success=1&dayIndex=${openSlot.dayIndex}&weekOffset=${openSlot.weekOffset}&referenceWeekStartDate=${openSlot.referenceWeekStartDate}`
-      );
-    },
-    [router]
-  );
-
-  const recoverySubmissionRef = useRef(false);
-  const [recoveryPending, setRecoveryPending] = useState(false);
-
-  const handleRecoveryAction = useCallback(
-    async (action: string) => {
-      if (!pendingRecovery) return;
-      if (action !== 'tomorrow' && action !== 'next_week' && action !== 'drop') return;
-      if (recoverySubmissionRef.current) return;
-      recoverySubmissionRef.current = true;
-      setRecoveryPending(true);
-
-      try {
-        await resolveOccupiedSlot(pendingRecovery.slot, action);
-        await assignRecipeToEmptySlot(
-          pendingRecovery.navigateTo.weekOffset,
-          pendingRecovery.navigateTo.dayIndex,
-          pendingRecovery.recipe,
-          pendingRecovery.slot.referenceWeekStartDate
+  const chosenTarget =
+    chosenDetailTarget?.entry === entryContextKey ? chosenDetailTarget.slot : null;
+  const detailTargetKey = JSON.stringify([
+    detailRecipeId,
+    entryContextKey,
+    chosenTarget,
+    grocerySourceEntry,
+    sourcePlanningEntry,
+  ]);
+  const detailContextRef = useRef<string | null>(detailTargetKey);
+  useLayoutEffect(() => {
+    detailContextRef.current = detailTargetKey;
+    return () => {
+      detailContextRef.current = null;
+    };
+  }, [detailTargetKey]);
+  const assignmentNeedsCheck = uncertainAssignment?.key === detailTargetKey;
+  const visibleTarget = targetRead?.key === detailTargetKey ? targetRead.slot : undefined;
+  const targetReadError = targetRead?.key === detailTargetKey ? targetRead.error : undefined;
+  const planningDayLabel = visibleTarget
+    ? formatSupperPlanDate(visibleTarget.date)
+    : urlPlanningDayLabel;
+  const targetReview = visibleTarget?.status === 2 || visibleTarget?.status === 4;
+  const identicalTarget = !!visibleTarget?.recipe?.id && visibleTarget.recipe.id === detailRecipeId;
+  const targetReferenceForChooser =
+    chosenTarget?.referenceWeekStartDate ??
+    suppliedReference ??
+    planningCalendar?.referenceWeekStartDate;
+  useEffect(() => {
+    if (!detailRecipeId || originalSourceReview) return;
+    let active = true;
+    const key = detailTargetKey;
+    void (async () => {
+      const calendar = await loadDeploymentCalendar();
+      if (!active) return;
+      setPlanningCalendar(calendar);
+      if (hasPlanningTarget && !validTarget && !chosenTarget)
+        throw new Error(
+          t(
+            'recipes.invalidPlanningDay',
+            'Invalid planning day. Choose a day in Planner and try again.'
+          )
         );
-
-        const { weekOffset, dayIndex } = pendingRecovery.navigateTo;
-        setPendingRecovery(null);
-        router.push(
-          `/planner?success=1&dayIndex=${dayIndex}&weekOffset=${weekOffset}&referenceWeekStartDate=${pendingRecovery.slot.referenceWeekStartDate}`
+      let slot: PlannerSlot | null;
+      if (chosenTarget) slot = chosenTarget;
+      else if (hasPlanningTarget)
+        slot = await getPlannerSlot(
+          targetWeek,
+          targetDay,
+          suppliedReference ?? calendar.referenceWeekStartDate
         );
-      } catch (error) {
-        useUiStore.getState().addToast({
-          type: 'error',
-          message:
+      else {
+        const candidate = await findFirstOpenPlannerSlot(
+          0,
+          calendarDayIndex(calendar),
+          520,
+          calendar.referenceWeekStartDate
+        );
+        if (!candidate)
+          throw new Error(
+            t('recipes.noOpenDay', 'No open supper found. Choose a day to review your plan.')
+          );
+        slot = await getPlannerSlot(
+          candidate.weekOffset,
+          candidate.dayIndex,
+          candidate.referenceWeekStartDate
+        );
+      }
+      if (!slot)
+        throw new Error(
+          t('recipes.checkPlanFailed', 'Could not confirm this meal. Retry check before saving.')
+        );
+      if (active && detailContextRef.current === key) setTargetRead({ key, slot });
+    })().catch((error) => {
+      if (active && detailContextRef.current === key)
+        setTargetRead({
+          key,
+          error:
             error instanceof Error
               ? error.message
-              : 'This meal could not be moved. Refresh your plan.',
+              : t(
+                  'recipes.weekReadFailed',
+                  'Could not read this week. Retry before choosing a day.'
+                ),
         });
-      } finally {
-        recoverySubmissionRef.current = false;
-        setRecoveryPending(false);
+    });
+    return () => {
+      active = false;
+    };
+  }, [
+    detailRecipeId,
+    originalSourceReview,
+    detailTargetKey,
+    chosenTarget,
+    hasPlanningTarget,
+    validTarget,
+    targetWeek,
+    targetDay,
+    suppliedReference,
+    targetReadAttempt,
+  ]);
+
+  const reviewDetailTarget = (slot: PlannerSlot) =>
+    router.push(
+      `/planner?dayIndex=${slot.dayIndex}&weekOffset=${slot.weekOffset}&referenceWeekStartDate=${slot.referenceWeekStartDate}`
+    );
+  const handleSelectForPlanner = async (recipe: Recipe) => {
+    const key = detailTargetKey;
+    const active = () => detailContextRef.current === key;
+    if (targetReadError) throw new Error(targetReadError);
+    if (!visibleTarget)
+      throw new Error(
+        t('recipes.checkPlanFailed', 'Could not confirm this meal. Retry check before saving.')
+      );
+    if (targetReview || identicalTarget) {
+      reviewDetailTarget(visibleTarget);
+      return;
+    }
+    const previous = uncertainAssignment?.key === key ? uncertainAssignment : null;
+    if (previous) {
+      const checked = await getPlannerSlot(
+        previous.slot.weekOffset,
+        previous.slot.dayIndex,
+        previous.slot.referenceWeekStartDate
+      );
+      if (!active()) return;
+      if (!checked)
+        throw new Error(
+          t('recipes.checkPlanFailed', 'Could not confirm this meal. Retry check before saving.')
+        );
+      if (checked.recipe?.id === previous.recipe.id) {
+        rememberPlanningResult({
+          ...checked,
+          referenceWeekStartDate: checked.referenceWeekStartDate!,
+          recipeId: previous.recipe.id,
+          recipeName: previous.recipe.name ?? '',
+        });
+        setUncertainAssignment(null);
+        router.push(
+          `/planner?success=1&dayIndex=${checked.dayIndex}&weekOffset=${checked.weekOffset}&referenceWeekStartDate=${checked.referenceWeekStartDate}`
+        );
+        return;
       }
+      setUncertainAssignment(null);
+      throw new Error(
+        checked.recipe || checked.status !== 0
+          ? t('recipes.planChanged', 'Your plan changed. Review the selected day in Planner.')
+          : t('recipes.notSaved', 'This meal was not saved. Try saving again.')
+      );
+    }
+    const captured = visibleTarget;
+    const slot = await getPlannerSlot(
+      captured.weekOffset,
+      captured.dayIndex,
+      captured.referenceWeekStartDate
+    );
+    if (!active()) return;
+    if (!slot || slot.referenceWeekStartDate !== captured.referenceWeekStartDate)
+      throw new Error(
+        t('recipes.checkPlanFailed', 'Could not confirm this meal. Retry check before saving.')
+      );
+    if (slot.status === 2 || slot.status === 4 || slot.recipe?.id === recipe.id) {
+      setTargetRead({ key, slot });
+      return;
+    }
+    const assignmentRecipe = toAssignmentRecipe(recipe);
+    if (slot.nonCooking) {
+      setNonCookingConfirmation({ key, slot, recipe: assignmentRecipe });
+      return;
+    }
+    if (slot.status !== 0 && slot.status !== 1 && slot.status !== undefined)
+      throw new Error(
+        t('recipes.planChanged', 'Your plan changed. Review the selected day in Planner.')
+      );
+    if (slot.recipe) {
+      setDetailRecipeId(null);
+      setPendingRecovery({ slot, recipe: assignmentRecipe });
+      return;
+    }
+    if (slot.removalToken)
+      throw new Error(
+        t('recipes.planChanged', 'Your plan changed. Review the selected day in Planner.')
+      );
+    try {
+      await assignRecipeToEmptySlot(
+        slot.weekOffset,
+        slot.dayIndex,
+        assignmentRecipe,
+        slot.referenceWeekStartDate
+      );
+    } catch (error) {
+      if (!active()) return;
+      const status = (error as { responseStatusCode?: number })?.responseStatusCode;
+      if (![400, 401, 403, 409].includes(status ?? 0)) {
+        setUncertainAssignment({ key, slot, recipe: assignmentRecipe });
+        throw new Error(
+          t(
+            'recipes.checkPlanRequired',
+            'The save could not be confirmed. Activate again to check the selected day before another save.'
+          )
+        );
+      }
+      throw new Error(
+        t('recipes.planChanged', 'Your plan changed. Review the selected day in Planner.')
+      );
+    }
+    if (!active()) return;
+    rememberPlanningResult({
+      ...slot,
+      referenceWeekStartDate: slot.referenceWeekStartDate!,
+      recipeId: recipe.id,
+      recipeName: recipe.name ?? '',
+    });
+    router.push(
+      `/planner?success=1&dayIndex=${slot.dayIndex}&weekOffset=${slot.weekOffset}&referenceWeekStartDate=${slot.referenceWeekStartDate}`
+    );
+  };
+
+  const recovery = useReplacementRecovery({
+    slot: pendingRecovery?.slot,
+    recipe: pendingRecovery?.recipe,
+    onClosed: (saved) => {
+      if (!saved && pendingRecovery) setDetailRecipeId(pendingRecovery.recipe.id);
+      setPendingRecovery(null);
     },
-    [pendingRecovery, router]
-  );
+    onSaved: async () => {
+      if (!pendingRecovery) return;
+      const { slot } = pendingRecovery;
+      router.push(
+        `/planner?success=1&dayIndex=${slot.dayIndex}&weekOffset=${slot.weekOffset}&referenceWeekStartDate=${slot.referenceWeekStartDate}`
+      );
+    },
+    onReview: () => {
+      if (!pendingRecovery) return;
+      const { slot } = pendingRecovery;
+      router.push(
+        `/planner?dayIndex=${slot.dayIndex}&weekOffset=${slot.weekOffset}&referenceWeekStartDate=${slot.referenceWeekStartDate}`
+      );
+    },
+  });
 
   // ---------------------------------------------------------------------------
   // Discoverable handlers
@@ -1268,9 +1451,9 @@ function RecipesContent() {
           className="relative z-10 mx-4 sm:mx-6 flex min-h-12 flex-wrap items-center gap-x-2 rounded-xl border border-terracotta/20 bg-terracotta/10 px-3"
         >
           <p className="min-w-0 flex-1 text-sm font-bold text-charcoal">
-            {planningDayLabel
+            {urlPlanningDayLabel
               ? tWithVars('recipes.choosingForDay', 'Choosing for {{day}}', {
-                  day: planningDayLabel,
+                  day: urlPlanningDayLabel,
                 })
               : tWithVars('recipes.choosingForDayNum', 'Choosing for Day {{day}}', {
                   day: Number(addToDay) + 1,
@@ -1280,10 +1463,11 @@ function RecipesContent() {
             <button
               type="button"
               onClick={() =>
-                void useTodayStore
-                  .getState()
-                  .ensureCalendar()
-                  .then(setPlanningCalendar)
+                void loadDeploymentCalendar()
+                  .then((calendar) => {
+                    setPlanningCalendar(calendar);
+                    setPlanningCalendarError(false);
+                  })
                   .catch(() => {})
               }
               className="min-h-12 px-2 font-bold text-terracotta-700"
@@ -1910,10 +2094,88 @@ function RecipesContent() {
           )}
       </div>
 
+      {showDayChooser === detailTargetKey && targetReferenceForChooser && (
+        <PlanningDayChooser
+          reference={targetReferenceForChooser}
+          weekOffset={visibleTarget?.weekOffset ?? (validTarget ? targetWeek : 0)}
+          onClose={() => setShowDayChooser(null)}
+          onSelect={(slot) => {
+            setChosenDetailTarget({ entry: entryContextKey, slot });
+            setShowDayChooser(null);
+          }}
+        />
+      )}
+      {nonCookingConfirmation?.key === detailTargetKey && (
+        <NonCookingReplacementConfirmation
+          slot={nonCookingConfirmation.slot}
+          recipe={nonCookingConfirmation.recipe}
+          onClose={() => setNonCookingConfirmation(null)}
+          onSaved={async () => {
+            const slot = nonCookingConfirmation.slot;
+            router.push(
+              `/planner?success=1&dayIndex=${slot.dayIndex}&weekOffset=${slot.weekOffset}&referenceWeekStartDate=${slot.referenceWeekStartDate}`
+            );
+          }}
+          onReview={() => reviewDetailTarget(nonCookingConfirmation.slot)}
+        />
+      )}
       {detailRecipeId && (
         <RecipeDetailSheet
           recipeId={detailRecipeId}
-          plannerDayLabel={planningDayLabel}
+          plannerDayLabel={originalSourceReview ? null : planningDayLabel}
+          ingredientContext={
+            !originalSourceReview && visibleTarget
+              ? { context: 'proposed', supperDate: visibleTarget.date }
+              : undefined
+          }
+          planningNeedsCheck={assignmentNeedsCheck}
+          planningEnabled={!originalSourceReview}
+          planningLoading={!originalSourceReview && !visibleTarget && !targetReadError}
+          planningMessage={
+            originalSourceReview
+              ? undefined
+              : (targetReadError ??
+                (targetReview
+                  ? t(
+                      'recipes.reviewBeforePlanning',
+                      'Review this completed or voting supper in Planner.'
+                    )
+                  : identicalTarget
+                    ? t('recipes.alreadyPlanned', 'Already planned for this date.')
+                    : undefined))
+          }
+          planningActionLabel={
+            originalSourceReview
+              ? undefined
+              : targetReadError
+                ? t('recipes.retryPlanCheck', 'Retry check')
+                : targetReview
+                  ? t('recipes.reviewPlan', 'Review plan')
+                  : identicalTarget
+                    ? t('recipes.viewPlan', 'View plan')
+                    : undefined
+          }
+          onChangeDay={
+            originalSourceReview || assignmentNeedsCheck || !targetReferenceForChooser
+              ? undefined
+              : () => setShowDayChooser(detailTargetKey)
+          }
+          onRetryTarget={
+            !originalSourceReview && targetReadError
+              ? () => setTargetReadAttempt((value) => value + 1)
+              : undefined
+          }
+          onBeginPlanning={
+            originalSourceReview
+              ? () => {
+                  // Changing the identity retires any previous read; the normal effect
+                  // obtains a fresh calendar/target. This transition never assigns.
+                  setSourcePlanningEntry(grocerySourceEntry);
+                  setChosenDetailTarget(null);
+                  setTargetReadAttempt((value) => value + 1);
+                }
+              : undefined
+          }
           onClose={handleDetailSheetClose}
           onDeleted={() => {
             if (searchActive)
@@ -1924,7 +2186,6 @@ function RecipesContent() {
             else setBrowseRefreshVersion((version) => version + 1);
           }}
           onUseForDay={handleSelectForPlanner}
-          onPlanForLater={handlePlanForLater}
           onFindSimilar={(recipeId) => {
             setDetailRecipeId(null);
             setQuery('');
@@ -1944,16 +2205,19 @@ function RecipesContent() {
 
       {pendingRecovery && (
         <SkipRecoveryDialog
-          pending={recoveryPending}
+          pending={recovery.pending}
           isOpen={true}
           step={2}
-          onClose={() => {
-            if (!recoverySubmissionRef.current) setPendingRecovery(null);
-          }}
-          onBack={() => {
-            if (!recoverySubmissionRef.current) setPendingRecovery(null);
-          }}
-          onAction={handleRecoveryAction}
+          source={pendingRecovery.slot}
+          replacement={recovery.feedback}
+          confirmAbandon={recovery.confirmAbandon}
+          onCancelAbandon={recovery.cancelAbandon}
+          onAbandon={recovery.abandon}
+          onRetryReplacement={recovery.retry}
+          onReviewPlan={recovery.review}
+          onClose={recovery.close}
+          onBack={recovery.close}
+          onAction={recovery.act}
         />
       )}
     </div>

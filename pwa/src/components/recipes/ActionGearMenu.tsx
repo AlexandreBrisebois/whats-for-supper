@@ -1,12 +1,13 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Settings, Trash2, Pencil, Flag } from 'lucide-react';
+import { Ellipsis, Trash2, Pencil, Flag, Search } from 'lucide-react';
 import { t } from '@/locales';
 
 interface ActionGearMenuProps {
   hasImportIssue: boolean;
   onEdit?: () => void;
+  onFindSimilar?: () => void;
   onMoveToBin: () => void;
   onReportImportIssue: () => void;
 }
@@ -14,6 +15,7 @@ interface ActionGearMenuProps {
 export function ActionGearMenu({
   hasImportIssue,
   onEdit,
+  onFindSimilar,
   onMoveToBin,
   onReportImportIssue,
 }: ActionGearMenuProps) {
@@ -48,15 +50,15 @@ export function ActionGearMenu({
         type="button"
         data-testid="action-gear-menu"
         onClick={() => setIsOpen(!isOpen)}
-        className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-charcoal/5 text-charcoal/70 transition hover:bg-charcoal/10"
-        aria-label={t('common.settings', 'Settings')}
-        title={t('common.settings', 'Settings')}
+        className="inline-flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-full bg-charcoal/5 text-charcoal/70 transition hover:bg-charcoal/10"
+        aria-label={t('recipes.actions', 'Recipe actions')}
+        title={t('recipes.actions', 'Recipe actions')}
       >
-        <Settings size={18} />
+        <Ellipsis size={20} />
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 top-full z-50 mt-2 w-48 origin-top-right animate-in fade-in zoom-in-95 duration-100">
+        <div className="absolute right-0 top-full z-50 mt-2 w-56 max-w-[calc(100vw-2rem)] origin-top-right animate-in fade-in zoom-in-95 duration-100">
           <div className="overflow-hidden rounded-2xl border border-white/40 bg-[rgba(253,252,240,0.98)] shadow-xl backdrop-blur-md">
             <div className="py-1">
               {onEdit && (
@@ -70,6 +72,20 @@ export function ActionGearMenu({
                   {t('common.edit', 'Edit')}
                 </button>
               )}
+              {onFindSimilar && (
+                <button
+                  type="button"
+                  data-testid="action-find-similar"
+                  onClick={() => {
+                    onFindSimilar();
+                    setIsOpen(false);
+                  }}
+                  className="flex min-h-12 w-full items-center gap-3 px-4 py-3 text-left text-sm font-bold text-charcoal transition hover:bg-charcoal/5"
+                >
+                  <Search size={16} className="text-terracotta-600" />
+                  {t('recipes.findSimilar', 'Find Similar')}
+                </button>
+              )}
               <button
                 type="button"
                 data-testid="action-report-import-issue"
@@ -80,7 +96,9 @@ export function ActionGearMenu({
                 className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-bold text-charcoal transition hover:bg-charcoal/5"
               >
                 <Flag size={16} className="text-terracotta-600" />
-                {hasImportIssue ? 'Review issue' : 'Report issue'}
+                {hasImportIssue
+                  ? t('recipes.reviewIssue', 'Review issue')
+                  : t('recipes.reportIssue', 'Report issue')}
               </button>
               <button
                 type="button"

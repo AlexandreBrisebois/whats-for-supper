@@ -1,8 +1,13 @@
 'use client';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import Link from 'next/link';
+import { useGroceryRecipeTitles } from './useGroceryRecipeTitles';
+import { demoSession } from '@/lib/api/demo-session';
+import { useFamilyStore } from '@/store/familyStore';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   AlertCircle,
+  BookOpen,
   Check,
   CheckCircle2,
   ChevronDown,
@@ -21,6 +26,7 @@ import { t, tWithVars } from '@/locales';
 import type { GrocerySection } from '@/lib/grocery/aisleMapper';
 import { AISLE_ORDER } from '@/lib/grocery/aisleOrder';
 import { useSchedule } from '@/lib/api/schedule';
+import { refreshSupperGroceries } from '@/lib/api/supper-servings';
 import { reclassifyIngredient } from '@/lib/api/ingredients';
 import type { GroceryExtraDto, GroceryLineItemDto } from '@/lib/api/generated/models';
 import { useWeekStore } from '@/store/weekStore';
@@ -31,7 +37,7 @@ import {
   suggestGroceryExtraNames,
   updateGroceryExtra,
 } from '@/lib/api/grocery-extras';
-import { absoluteMonday } from '@/lib/deployment-calendar';
+import { absoluteMonday, weekOffsetFor } from '@/lib/deployment-calendar';
 
 interface GroceryListProps {
   weekOffset: number;
@@ -78,6 +84,10 @@ function matchesOccurrenceIdentity(candidate: GroceryExtraDto, expected: Grocery
   );
 }
 
+function grocerySourceKey(aisle: string, item: GroceryLineItemDto, index: number) {
+  return `${aisle}\u0000${item.normalizedKey ?? ''}\u0000${item.unitText ?? ''}\u0000${index}`;
+}
+
 export function GroceryList({
   weekOffset,
   items,
@@ -86,6 +96,66 @@ export function GroceryList({
   isEmbedded,
 }: GroceryListProps) {
   const { groceryState, setGroceryItemToggle, setGroceryState } = usePlannerStore();
+  const [reviewSelection, setReviewSelection] = useState<{
+    scope: string;
+    key: string;
+    attempt: number;
+  } | null>(null);
+  const sourceOpenAttempt = useRef(0);
+  const servingRefresh = useWeekStore((s) => s.groceryRefresh);
+  const summary = servingRefresh?.resetSummaryVersion;
+  const weekStartDate = useWeekStore((state) => state.weekStartDate);
+  const noticeKey = weekStartDate ? `serving-grocery-summary:${weekStartDate}` : null;
+  const [dismissedSummaries, setDismissedSummaries] = useState<Record<string, string>>({});
+  let dismissedSummary: string | null = dismissedSummaries[weekStartDate ?? ''] ?? null;
+  if (!dismissedSummary && noticeKey && typeof window !== 'undefined') {
+    try {
+      dismissedSummary = sessionStorage.getItem(noticeKey);
+    } catch {
+      /* Storage is optional; the list and local dismissal remain usable. */
+    }
+  }
+  const [refreshError, setRefreshError] = useState(false);
+  const retryPortions = async () => {
+    setRefreshError(false);
+    const week = useWeekStore.getState().schedule[0]?.date;
+    const member = useFamilyStore.getState().selectedFamilyMemberId;
+    const generation = demoSession.generation;
+    if (!week) return;
+    const ownsReply = () => {
+      const current = useWeekStore.getState();
+      const freshness = current.groceryRefresh;
+      // A fresh GET can replace the object without changing the captured work.
+      // New input, progress or replacement workflows still retire this reply.
+      const sameWork =
+        freshness === servingRefresh ||
+        Boolean(
+          servingRefresh?.version &&
+          freshness?.version === servingRefresh.version &&
+          freshness.status === servingRefresh.status &&
+          freshness.appliedVersion === servingRefresh.appliedVersion &&
+          freshness.resetSummaryVersion === servingRefresh.resetSummaryVersion &&
+          freshness.workflowId === servingRefresh.workflowId
+        );
+      return (
+        current.schedule[0]?.date === week &&
+        sameWork &&
+        useFamilyStore.getState().selectedFamilyMemberId === member &&
+        demoSession.generation === generation &&
+        !demoSession.resetRequired
+      );
+    };
+    try {
+      await refreshSupperGroceries(week);
+      if (ownsReply())
+        useWeekStore.setState((state) => ({
+          groceryRefresh: { ...state.groceryRefresh, status: 'updating' },
+        }));
+    } catch {
+      if (ownsReply()) setRefreshError(true);
+    }
+  };
+
   const { toggleGroceryItem } = useSchedule();
   const [errorItems, setErrorItems] = useState<Set<string>>(new Set());
   const [reclassifyOpen, setReclassifyOpen] = useState<string | null>(null);
@@ -97,7 +167,10 @@ export function GroceryList({
   const setGroceryExtraPending = useWeekStore((state) => state.setGroceryExtraPending);
   const addToast = useUiStore((state) => state.addToast);
   const storePendingExtras = useWeekStore((state) => state.pendingGroceryExtraIds);
-  const weekStartDate = useWeekStore((state) => state.weekStartDate);
+  const referenceWeekStartDate = useWeekStore((state) => state.calendar?.referenceWeekStartDate);
+  useEffect(() => {
+    void useWeekStore.getState().refreshGroceries();
+  }, [weekOffset, weekStartDate, referenceWeekStartDate]);
   const currentWeekStartDate = useWeekStore((state) => state.calendar?.currentWeekStartDate);
   const [extraName, setExtraName] = useState('');
   const [suggestions, setSuggestions] = useState<string[]>([]);
@@ -301,6 +374,66 @@ export function GroceryList({
     }
     return result;
   }, [items]);
+  const sourceSchedule = useWeekStore((state) => state.schedule);
+  const memberContext = useFamilyStore((state) => state.selectedFamilyMemberId);
+  const demoReset = useSyncExternalStore(
+    demoSession.subscribe,
+    demoSession.getSnapshot,
+    () => false
+  );
+  // Only bounded, known week context may travel with original-source review.
+  const sourceReturnOffset = weekOffsetFor(weekStartDate, referenceWeekStartDate);
+  const sourceReturnParams =
+    sourceReturnOffset !== null &&
+    Number.isSafeInteger(sourceReturnOffset) &&
+    Math.abs(sourceReturnOffset) <= 520 &&
+    referenceWeekStartDate &&
+    absoluteMonday(referenceWeekStartDate) !== null
+      ? `&${new URLSearchParams({ sourceGroceryWeekOffset: String(sourceReturnOffset), sourceGroceryReferenceWeekStartDate: referenceWeekStartDate })}`
+      : '';
+  const sourceScope = JSON.stringify([
+    weekOffset,
+    weekStartDate,
+    referenceWeekStartDate,
+    memberContext,
+    demoSession.generation,
+    demoReset,
+  ]);
+  const reviewKey = reviewSelection?.scope === sourceScope ? reviewSelection.key : null;
+  const setReviewKey = (key: string | null) =>
+    setReviewSelection(
+      key === null ? null : { scope: sourceScope, key, attempt: ++sourceOpenAttempt.current }
+    );
+  const loadedSourceNames = useMemo(
+    () =>
+      Object.fromEntries(
+        sourceSchedule.flatMap((day) =>
+          day.recipe?.id && day.recipe.name?.trim()
+            ? [[String(day.recipe.id), day.recipe.name.trim()]]
+            : []
+        )
+      ),
+    [sourceSchedule]
+  );
+  const openSourceIds = Object.entries(grouped)
+    .flatMap(([aisle, rows]) =>
+      (rows ?? []).flatMap((item, index) =>
+        grocerySourceKey(aisle, item, index) === reviewKey ? (item.recipeIds ?? []) : []
+      )
+    )
+    .filter((id): id is string => typeof id === 'string' && id.length > 0);
+  const allSourceIds = items
+    .flatMap((item) => item.recipeIds ?? [])
+    .filter((id): id is string => typeof id === 'string' && id.length > 0);
+  const sourceTitles = useGroceryRecipeTitles(
+    sourceScope,
+    allSourceIds,
+    openSourceIds,
+    reviewSelection?.attempt ?? 0,
+    loadedSourceNames,
+    demoReset
+  );
+
   const completedAisles = useMemo(
     () =>
       new Set(
@@ -357,6 +490,9 @@ export function GroceryList({
   }, [completedAisles]);
 
   const handleToggle = async (ingredientName: string) => {
+    const captured = useWeekStore.getState();
+    const capturedWeek = captured.weekStartDate;
+    const capturedReference = captured.calendar?.referenceWeekStartDate;
     const newState = !groceryState[ingredientName];
     setGroceryItemToggle(ingredientName, newState);
 
@@ -364,9 +500,16 @@ export function GroceryList({
     // Sending the full map would cause concurrent toggles by two family members
     // to overwrite each other (last-writer-wins on the whole map).
     try {
-      await toggleGroceryItem(weekOffset, ingredientName, newState);
+      await toggleGroceryItem(weekOffset, ingredientName, newState, capturedReference);
+      if (newState && useWeekStore.getState().weekStartDate === capturedWeek)
+        void useWeekStore.getState().refreshGroceries();
     } catch (error) {
       console.error('Failed to save grocery state:', error);
+      if (
+        useWeekStore.getState().weekStartDate !== capturedWeek ||
+        usePlannerStore.getState().groceryState[ingredientName] !== newState
+      )
+        return;
       // Revert the single toggled item only
       setGroceryItemToggle(ingredientName, !newState);
       // Show per-item error indicator, auto-clear after 3 seconds
@@ -619,14 +762,57 @@ export function GroceryList({
         )}
       </div>
 
+      {servingRefresh?.status === 'updating' && (
+        <p role="status" className="p-4" data-testid="grocery-portions-updating">
+          {t('portions.updating', 'Updating your shopping list…')}
+        </p>
+      )}
+      {(servingRefresh?.status === 'failed' || refreshError) && (
+        <div role="alert" className="p-4">
+          {t('portions.refreshFailed', 'Portions saved. Shopping list needs updating.')}{' '}
+          <button className="min-h-12 px-3 underline" onClick={() => void retryPortions()}>
+            {t('portions.retry', 'Retry')}
+          </button>
+        </div>
+      )}
+      {summary && summary !== dismissedSummary && (
+        <div role="status" className="p-4" data-testid="grocery-portions-summary">
+          {t('portions.increased', 'Shopping list updated. Items needing more are unchecked.')}{' '}
+          <button
+            className="min-h-12 px-3"
+            aria-label={t('portions.dismiss', 'Dismiss')}
+            onClick={() => {
+              setDismissedSummaries((previous) => ({
+                ...previous,
+                [weekStartDate ?? '']: summary,
+              }));
+              if (noticeKey) {
+                try {
+                  sessionStorage.setItem(noticeKey, summary);
+                } catch {
+                  /* Preserve the local acknowledgement when storage is unavailable. */
+                }
+              }
+            }}
+          >
+            ×
+          </button>
+        </div>
+      )}
       {/* Content */}
       <div className="flex-1 overflow-y-auto bg-cream/50">
         <div
           className={cn(
             'mx-auto',
-            isEmbedded ? 'max-w-full pt-2 pb-20 px-4' : 'max-w-2xl py-8 px-6'
+            isEmbedded ? 'max-w-full pt-2 pb-20 px-[16px]' : 'max-w-2xl py-8 px-[16px] sm:px-6'
           )}
         >
+          {items.some((item) => item.checkReviewReason === 'prior_amount_unknown') && (
+            <p role="status" className="mb-4 text-sm" data-testid="grocery-check-review">
+              {t('grocery.priorCheckedAmountUnknown', 'Review previously checked amounts.')}
+            </p>
+          )}
+
           <AnimatePresence mode="wait">
             {Object.keys(grouped).length === 0 && extras.length === 0 ? (
               <motion.div
@@ -668,7 +854,7 @@ export function GroceryList({
                   // lines still have distinct, stable reconciliation identities.
                   const itemsWithRenderKeys = aisleItems.map((item, sourceIndex) => ({
                     item,
-                    renderKey: `${item.normalizedKey ?? ''}\u0000${item.unitText ?? ''}\u0000${sourceIndex}`,
+                    renderKey: grocerySourceKey(aisle, item, sourceIndex),
                   }));
                   const displayedRows = [
                     ...aisleExtras
@@ -698,7 +884,7 @@ export function GroceryList({
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -20 }}
-                      className="bg-white rounded-3xl border border-charcoal/5 overflow-hidden shadow-sm"
+                      className="@container bg-white rounded-3xl border border-charcoal/5 overflow-hidden shadow-sm"
                       data-testid={`aisle-section-${aisle}`}
                     >
                       {/* Aisle Header */}
@@ -769,7 +955,7 @@ export function GroceryList({
                       {/* Items */}
                       <div
                         id={itemsRegionId}
-                        className="divide-y divide-charcoal/5 p-4 space-y-2"
+                        className="divide-y divide-charcoal/5 p-[8px] space-y-2 @min-[18rem]:p-4"
                         hidden={isCollapsed}
                         aria-hidden={isCollapsed}
                       >
@@ -777,7 +963,20 @@ export function GroceryList({
                           if (row.kind === 'extra') return renderExtraRow(row.extra);
                           const { item, renderKey } = row;
                           const key = item.displayName ?? '';
-                          const quantityHint = formatQuantityHint(item.quantity, item.unitText);
+                          const knownQuantity = formatQuantityHint(item.quantity, item.unitText);
+                          const quantityHint =
+                            item.quantityComplete === false
+                              ? [
+                                  knownQuantity
+                                    ? tWithVars('grocery.knownSubtotal', '{{amount}} known', {
+                                        amount: knownQuantity.slice(1, -1),
+                                      })
+                                    : null,
+                                  t('grocery.reviewAmounts', 'Review amounts'),
+                                ]
+                                  .filter(Boolean)
+                                  .join(' · ')
+                              : knownQuantity;
                           const isChecked = groceryState[key] ?? false;
                           const hasError = errorItems.has(key);
                           const hasReclassifyError = reclassifyErrors.has(item.normalizedKey ?? '');
@@ -789,7 +988,7 @@ export function GroceryList({
                           return (
                             <div key={renderKey} className="relative">
                               <div
-                                className={`flex items-center p-4 rounded-2xl transition-all ${
+                                className={`flex flex-wrap items-center p-[8px] @min-[18rem]:p-4 rounded-2xl transition-all ${
                                   isChecked
                                     ? 'bg-sage/5 text-charcoal/40'
                                     : 'hover:bg-charcoal/2 text-charcoal'
@@ -806,7 +1005,7 @@ export function GroceryList({
                                         void handleToggle(key);
                                       }
                                     }}
-                                    className="flex min-w-0 items-start space-x-4 flex-1 text-left"
+                                    className="flex min-h-[48px] min-w-0 w-full flex-none items-start gap-[8px] text-left @min-[18rem]:min-h-12 @min-[18rem]:min-w-12 @min-[18rem]:w-auto @min-[18rem]:flex-1 @min-[18rem]:gap-0 @min-[18rem]:space-x-4"
                                     data-testid="grocery-item-checkbox"
                                     data-item-name={key}
                                     data-state="checked"
@@ -817,11 +1016,11 @@ export function GroceryList({
                                     <span className="min-w-0 flex-1 transition-all line-through opacity-60">
                                       <span
                                         data-testid="grocery-item-label"
-                                        className="block font-medium transition-all line-through opacity-60"
+                                        className="block break-words font-medium transition-all line-through opacity-60"
                                       >
                                         {key}
                                       </span>
-                                      {quantityHint && (
+                                      {quantityHint && item.quantityComplete !== false && (
                                         <span
                                           data-testid="grocery-item-quantity-hint"
                                           className="mt-1 block text-sm font-normal text-charcoal/50"
@@ -848,7 +1047,7 @@ export function GroceryList({
                                         void handleToggle(key);
                                       }
                                     }}
-                                    className="flex min-w-0 items-start space-x-4 flex-1 text-left"
+                                    className="flex min-h-[48px] min-w-0 w-full flex-none items-start gap-[8px] text-left @min-[18rem]:min-h-12 @min-[18rem]:min-w-12 @min-[18rem]:w-auto @min-[18rem]:flex-1 @min-[18rem]:gap-0 @min-[18rem]:space-x-4"
                                     data-testid="grocery-item-checkbox"
                                     data-item-name={key}
                                     data-state="unchecked"
@@ -859,11 +1058,11 @@ export function GroceryList({
                                     <span className="min-w-0 flex-1 transition-all">
                                       <span
                                         data-testid="grocery-item-label"
-                                        className="block font-medium transition-all"
+                                        className="block break-words font-medium transition-all"
                                       >
                                         {key}
                                       </span>
-                                      {quantityHint && (
+                                      {quantityHint && item.quantityComplete !== false && (
                                         <span
                                           data-testid="grocery-item-quantity-hint"
                                           className="mt-1 block text-sm font-normal text-charcoal/50"
@@ -882,6 +1081,115 @@ export function GroceryList({
                                   </button>
                                 )}
 
+                                {(item.quantityComplete === false ||
+                                  item.checkReviewReason === 'prior_amount_unknown') && (
+                                  <div
+                                    className="order-last mt-2 w-full min-w-0 px-[8px] text-sm text-charcoal bg-white rounded-lg @min-[18rem]:px-2"
+                                    data-testid="grocery-amount-review"
+                                  >
+                                    {item.quantityComplete === false && knownQuantity && (
+                                      <span
+                                        data-testid="grocery-item-quantity-hint"
+                                        className="block"
+                                      >
+                                        {tWithVars('grocery.knownSubtotal', '{{amount}} known', {
+                                          amount: knownQuantity.slice(1, -1),
+                                        })}
+                                      </span>
+                                    )}
+                                    {item.quantityComplete === false && (
+                                      <span className="block">
+                                        {t('grocery.reviewAmounts', 'Review amounts')}
+                                      </span>
+                                    )}
+                                    {item.checkReviewReason === 'prior_amount_unknown' && (
+                                      <span className="block">
+                                        {t(
+                                          'grocery.priorAmountReview',
+                                          'Previously checked amount needs review.'
+                                        )}
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
+                                {(item.recipeIds ?? []).some(
+                                  (id) => typeof id === 'string' && id.length > 0
+                                ) && (
+                                  <button
+                                    type="button"
+                                    data-testid="grocery-recipe-sources-toggle"
+                                    className="inline-flex min-h-[48px] min-w-[48px] shrink-0 items-center justify-center rounded-full text-charcoal/60 hover:bg-charcoal/5 focus-visible:outline-2 focus-visible:outline-terracotta"
+                                    aria-label={tWithVars(
+                                      'grocery.sourceRecipesFor',
+                                      'Source recipes for {{ingredient}}',
+                                      { ingredient: key }
+                                    )}
+                                    aria-expanded={reviewKey === renderKey}
+                                    aria-controls={`grocery-sources-${encodeURIComponent(renderKey)}`}
+                                    onClick={() =>
+                                      setReviewKey(reviewKey === renderKey ? null : renderKey)
+                                    }
+                                  >
+                                    <BookOpen size={18} aria-hidden="true" />
+                                  </button>
+                                )}
+                                {reviewKey === renderKey && (
+                                  <>
+                                    <div
+                                      id={`grocery-sources-${encodeURIComponent(renderKey)}`}
+                                      data-testid="grocery-recipe-sources-region"
+                                      role="region"
+                                      aria-labelledby={`grocery-sources-heading-${encodeURIComponent(renderKey)}`}
+                                      className="order-last w-full min-w-0 rounded-xl bg-white px-[12px] py-2 text-sm"
+                                    >
+                                      <h4
+                                        id={`grocery-sources-heading-${encodeURIComponent(renderKey)}`}
+                                        className="mb-1 font-semibold text-charcoal"
+                                      >
+                                        {t('grocery.usedIn', 'Used in')}
+                                      </h4>
+                                      <ul>
+                                        {[
+                                          ...new Set(
+                                            (item.recipeIds ?? []).filter(
+                                              (id): id is string =>
+                                                typeof id === 'string' && id.length > 0
+                                            )
+                                          ),
+                                        ].map((id) => (
+                                          <li key={id}>
+                                            <Link
+                                              prefetch={false}
+                                              className="inline-block min-h-[48px] max-w-full break-words py-3 text-sage-800 underline underline-offset-4"
+                                              href={`/recipes?open=${encodeURIComponent(id)}&reviewAmounts=true${sourceReturnParams}`}
+                                              aria-describedby={`grocery-source-purpose-${encodeURIComponent(renderKey)}`}
+                                            >
+                                              {sourceTitles[id] === undefined
+                                                ? t(
+                                                    'grocery.sourceTitleLoading',
+                                                    'Loading recipe title…'
+                                                  )
+                                                : (sourceTitles[id] ??
+                                                  t(
+                                                    'grocery.sourceTitleUnavailable',
+                                                    'Recipe title unavailable'
+                                                  ))}
+                                            </Link>
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                    <span
+                                      id={`grocery-source-purpose-${encodeURIComponent(renderKey)}`}
+                                      className="sr-only"
+                                    >
+                                      {t(
+                                        'grocery.sourceOriginalReview',
+                                        'Open the recipe’s original quantities.'
+                                      )}
+                                    </span>
+                                  </>
+                                )}
                                 {/* Reclassify button — separate tap target */}
                                 <button
                                   type="button"
@@ -890,7 +1198,7 @@ export function GroceryList({
                                       isPickerOpen ? null : (item.normalizedKey ?? null)
                                     )
                                   }
-                                  className="ml-2 p-1 rounded-full hover:bg-charcoal/5 text-charcoal/30 hover:text-charcoal/60 transition-colors relative"
+                                  className="ml-auto min-h-[48px] min-w-[48px] p-1 rounded-full hover:bg-charcoal/5 text-charcoal/30 hover:text-charcoal/60 transition-colors relative @min-[18rem]:ml-2"
                                   aria-label={`Change section for ${key}`}
                                   data-testid="reclassify-btn"
                                   data-item-name={key}

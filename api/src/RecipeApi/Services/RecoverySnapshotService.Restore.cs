@@ -60,7 +60,7 @@ public partial class RecoverySnapshotService
                 var eligible = await ScalarAsync(connection, $"SELECT count(*)::text FROM workflow_instances i WHERE i.id='{resetId}' AND i.status IN (0,1) AND EXISTS (SELECT 1 FROM workflow_tasks t WHERE t.instance_id=i.id AND t.processor_name='RestoreDemoState' AND t.status IN (1,2))", ct);
                 if (eligible != "1") throw new InvalidOperationException("Demo reset work was invalidated; it cannot publish into the current household.");
             }
-            if (demo && await ScalarAsync(connection, "SELECT count(*)::text FROM family_settings WHERE key <> 'family_goto'", ct) != "0")
+            if (demo && await ScalarAsync(connection, "SELECT count(*)::text FROM family_settings WHERE key NOT IN ('family_goto','supper_servings_default')", ct) != "0")
                 throw new InvalidDataException("Unclassified live setting; declare operator ownership before demo reset. Live state is unchanged.");
             using var duration = CancellationTokenSource.CreateLinkedTokenSource(ct);
             duration.CancelAfter(TimeSpan.FromSeconds(Math.Clamp(configuration.GetValue("Recovery:MaxFreezeSeconds", 30), 1, 3600)));
@@ -97,6 +97,10 @@ public partial class RecoverySnapshotService
                     {
                         await restored.Database.UseTransactionAsync(transaction, ct);
                         await new RecipeApi.Services.RecipeSearchFilterMaterializer(restored, clock).MaterializeAsync(ct);
+                        // Re-derive current inputs even when an older snapshot called its cache current.
+                        // This uses the restore transaction and publication lease, never a nested lease.
+                        await new SupperProjectionInvalidation(restored, clock, new DeploymentCalendar(configuration))
+                            .AuditSavedWeeksAsync(true, ct);
                     }
                     await ScalarAsync(connection, "UPDATE recipe_import_reports SET last_workflow_instance_id=NULL,last_error=CASE WHEN status='reimporting' THEN 'Exact recovery invalidated the unfinished import; retry reimport.' ELSE last_error END,status=CASE WHEN status='reimporting' THEN 'reimport_failed' ELSE status END", ct);
                     await QueueDerivedRepairAsync(connection, ct);
@@ -133,6 +137,11 @@ public partial class RecoverySnapshotService
             // Never delete a generation that might be active or awaiting commit reconciliation.
             if (!journalWritten && Directory.Exists(stage)) Directory.Delete(stage, true);
         }
+    }
+
+    internal async Task ResumeIfInterruptedAsync(CancellationToken ct)
+    {
+        if (File.Exists(JournalPath)) await ResumeAsync(ct);
     }
 
     public async Task<RecoveryResult> ResumeAsync(CancellationToken ct)

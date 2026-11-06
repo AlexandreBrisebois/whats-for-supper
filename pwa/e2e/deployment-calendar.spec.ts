@@ -171,10 +171,7 @@ test('shared schedule handlers retain dated assignments and reject invalid refer
   });
 });
 
-test('Sunday Plan for Later starts at deployment next Monday in Search', async ({
-  page,
-  baseURL,
-}) => {
+test('Sunday day chooser preserves deployment next Monday in Search', async ({ page, baseURL }) => {
   await page.clock.setFixedTime(new Date('2026-10-12T01:30:00Z'));
   await setupCommonRoutes(page);
   await page
@@ -226,12 +223,15 @@ test('Sunday Plan for Later starts at deployment next Monday in Search', async (
   await page.getByTestId('recipe-search-input').fill('lasagna');
   await page.getByTestId('recipe-search-input').press('Enter');
   await page.getByTestId('stack-card-front').click();
-  await page.getByTestId('action-cook-this').click();
+  await expect(page.getByTestId('action-add-to-day')).toContainText('October 11');
+  await page.getByTestId('action-change-day').click();
+  await page.getByTestId('planning-week-next').click();
+  await page.getByTestId('planning-day-0').click();
   const assignment = page.waitForRequest(
     (request) =>
       request.method() === 'POST' && new URL(request.url()).pathname === '/api/schedule/assign'
   );
-  await page.getByTestId('action-plan-later').click();
+  await page.getByTestId('action-add-to-day').click();
   const request = await assignment;
   expect(request.postDataJSON()).toMatchObject({
     weekOffset: 1,

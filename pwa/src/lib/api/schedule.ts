@@ -1,5 +1,5 @@
 import { demoFetch } from './demo-session';
-import { apiClient, requestAdapter } from './api-client';
+import { requestAdapter } from './api-client';
 import { useFamilyStore } from '@/store/familyStore';
 
 export function useSchedule() {
@@ -7,12 +7,13 @@ export function useSchedule() {
     async toggleGroceryItem(
       weekOffset: number,
       ingredientName: string,
-      checked: boolean
+      checked: boolean,
+      referenceWeekStartDate?: string
     ): Promise<void> {
       const familyMemberId = useFamilyStore.getState().selectedFamilyMemberId;
 
       const response = await demoFetch(
-        `${requestAdapter.baseUrl}/api/schedule/${weekOffset}/grocery/item`,
+        `${requestAdapter.baseUrl}/api/schedule/${weekOffset}/grocery/item${referenceWeekStartDate ? `?referenceWeekStartDate=${encodeURIComponent(referenceWeekStartDate)}` : ''}`,
         {
           method: 'PATCH',
           headers: {
@@ -30,12 +31,13 @@ export function useSchedule() {
 
     async updateGroceryState(
       weekOffset: number,
-      groceryState: Record<string, boolean>
+      groceryState: Record<string, boolean>,
+      referenceWeekStartDate?: string
     ): Promise<Record<string, boolean>> {
       const familyMemberId = useFamilyStore.getState().selectedFamilyMemberId;
 
       const response = await demoFetch(
-        `${requestAdapter.baseUrl}/api/schedule/${weekOffset}/grocery`,
+        `${requestAdapter.baseUrl}/api/schedule/${weekOffset}/grocery${referenceWeekStartDate ? `?referenceWeekStartDate=${encodeURIComponent(referenceWeekStartDate)}` : ''}`,
         {
           method: 'PATCH',
           headers: {

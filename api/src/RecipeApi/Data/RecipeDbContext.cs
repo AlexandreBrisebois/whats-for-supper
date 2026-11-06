@@ -19,6 +19,7 @@ public class RecipeDbContext(DbContextOptions<RecipeDbContext> options) : DbCont
     public DbSet<RecipeMatch> RecipeMatches => Set<RecipeMatch>();
     public DbSet<DiscoveryRecipe> DiscoveryRecipes => Set<DiscoveryRecipe>();
     public DbSet<CalendarEvent> CalendarEvents => Set<CalendarEvent>();
+    public DbSet<SupperServing> SupperServings => Set<SupperServing>();
     public DbSet<WeeklyPlan> WeeklyPlans => Set<WeeklyPlan>();
     public DbSet<FamilySetting> FamilySettings => Set<FamilySetting>();
     public DbSet<IngredientCategory> IngredientCategories => Set<IngredientCategory>();
@@ -46,6 +47,12 @@ public class RecipeDbContext(DbContextOptions<RecipeDbContext> options) : DbCont
             });
         });
 
+        modelBuilder.Entity<SupperServing>().ToTable("supper_servings", t =>
+        {
+            t.HasCheckConstraint("supper_servings_override_positive", "override_servings IS NULL OR override_servings > 0");
+            t.HasCheckConstraint("supper_servings_inherited_positive", "inherited_servings IS NULL OR inherited_servings > 0");
+        });
+        modelBuilder.Entity<SupperServing>().Property(x => x.Version).IsConcurrencyToken();
         modelBuilder.Entity<FamilyMember>(entity =>
         {
             entity.HasKey(e => e.Id);

@@ -119,6 +119,11 @@ try
     builder.Services.AddScoped<ScheduleService>();
     builder.Services.AddSingleton<GroceryCheckCoordinator>();
     builder.Services.AddScoped<GroceryRecomputeService>();
+    builder.Services.AddScoped<SupperServingsService>();
+    builder.Services.AddScoped<IngredientProjectionService>();
+    builder.Services.AddScoped<SupperProjectionInvalidation>();
+    builder.Services.AddScoped<ISupperProjectionPublisher, SupperProjectionPublisher>();
+    builder.Services.AddScoped<RecipeApi.Workflow.IWorkflowProcessor, RecipeApi.Services.Processors.RefreshSupperGroceriesProcessor>();
     builder.Services.AddScoped<IngredientCategoryService>();
     builder.Services.AddScoped<SettingsService>();
     builder.Services.AddSingleton<FeatureFlagRegistry>();
@@ -418,6 +423,13 @@ try
     app.UseMiddleware<RecoveryBoundaryMiddleware>();
     app.MapControllers();
 
+    // Reconcile derivation changes before HTTP traffic and hosted workers can observe stale "current" groceries.
+    await using (var scope = app.Services.CreateAsyncScope())
+    {
+        var services = scope.ServiceProvider;
+        await services.GetRequiredService<SupperProjectionInvalidation>().ReconcileActivationAsync(
+            services.GetRequiredService<RecoveryBoundary>(), services.GetRequiredService<RecoverySnapshotService>(), CancellationToken.None);
+    }
     await app.RunAsync();
 }
 catch (Exception ex) when (ex is not OperationCanceledException && ex.GetType().Name != "StopTheHostException")

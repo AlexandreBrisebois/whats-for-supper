@@ -1,7 +1,6 @@
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using Microsoft.EntityFrameworkCore;
 using RecipeApi.Data;
 using RecipeApi.Dto;
@@ -32,7 +31,8 @@ public class GroceryRecomputeService(
         int CategoryMatchPriority,
         double? Quantity,
         string? UnitText,
-        Guid RecipeId);
+        Guid RecipeId,
+        bool QuantityComplete);
 
     private sealed record RecomputedGroup(
         GroceryLineItemDto Line,
@@ -63,7 +63,9 @@ public class GroceryRecomputeService(
         context ??= calendar.Capture(clock.UtcNow);
         return groceryChecks.ProcessAsync(async fresh =>
         {
+            await using var transaction = await SupperServingsService.BeginAsync(fresh, ct);
             var (plan, groceryState, changedState) = await RecomputeOwnedAsync(fresh, monday, ct);
+            if (transaction is not null) await transaction.CommitAsync(ct);
             GroceryCheckCoordinator.SynchronizeTrackedPlan(db, monday, plan.GroceryState, plan.GroceryItems);
             if (changedState && publisher != null)
                 await publisher.PublishGroceryUpdatedAsync(GetWeekOffset(monday, context), groceryState, monday);
@@ -74,39 +76,11 @@ public class GroceryRecomputeService(
     private async Task<(WeeklyPlan Plan, Dictionary<string, bool> Checks, bool Changed)> RecomputeOwnedAsync(
         RecipeDbContext db, DateOnly monday, CancellationToken ct)
     {
-        var sunday = monday.AddDays(6);
-
-        // 1. Load all CalendarEvents for the week, including Recipe.RawMetadata.
-        var events = await db.CalendarEvents
-            .Include(e => e.Recipe)
-            .Where(e => e.Date >= monday && e.Date <= sunday && e.RecipeId != null)
-            .OrderBy(e => e.Date)
-            .ThenBy(e => e.Id)
-            .ToListAsync(ct);
-
-        // 2. Extract supply[] from each recipe's raw_metadata.
-        var supplyEntries = new List<(string DisplayName, double? Quantity, string? UnitText, Guid RecipeId)>();
-
-        foreach (var evt in events)
+        var inputs = await SupperProjectionInputs.ReadWeekAsync(db, monday, calendar.Capture(clock.UtcNow).Today, ct);
+        var supplyEntries = new List<(string DisplayName, double? Quantity, string? UnitText, Guid RecipeId, bool QuantityComplete)>();
+        foreach (var input in inputs)
         {
-            var recipe = evt.Recipe;
-            if (recipe == null) continue;
-
-            var supplies = !string.IsNullOrEmpty(recipe.RawMetadata)
-                ? ExtractSupplies(recipe.RawMetadata, recipe.Id)
-                : new List<(string DisplayName, double? Quantity, string? UnitText, Guid RecipeId)>();
-
-            // Fallback: If no structured supply entries found, use the raw ingredients list
-            if (supplies.Count == 0 && !string.IsNullOrEmpty(recipe.Ingredients))
-            {
-                var ingredients = RecipeService.DeserializeIngredients(recipe.Ingredients);
-                foreach (var ing in ingredients)
-                {
-                    supplies.Add((ing, null, null, recipe.Id));
-                }
-                logger.LogDebug("Recipe {RecipeId} has no structured supply — fell back to {Count} raw ingredients", recipe.Id, ingredients.Count);
-            }
-
+            var supplies = input.Lines.Select(line => (DisplayName: line.Name, line.Quantity, line.UnitText, RecipeId: input.Event.RecipeId!.Value, QuantityComplete: line.Status != "unresolved"));
             supplyEntries.AddRange(supplies
                 .OrderBy(s => s.DisplayName, StringComparer.Ordinal)
                 .ThenBy(s => s.UnitText, StringComparer.Ordinal)
@@ -153,7 +127,7 @@ public class GroceryRecomputeService(
         // 4. Build intermediate items with section resolved.
         var intermediate = new List<IntermediateItem>();
 
-        foreach (var (displayName, quantity, unitText, recipeId) in supplyEntries)
+        foreach (var (displayName, quantity, unitText, recipeId, quantityComplete) in supplyEntries)
         {
             var normalizedKey = IngredientNormalizer.Normalize(displayName);
             if (string.IsNullOrEmpty(normalizedKey))
@@ -179,7 +153,7 @@ public class GroceryRecomputeService(
                 section = SectionDisplayNames[grocerySection];
             }
 
-            intermediate.Add(new IntermediateItem(displayName, normalizedKey, legacyNormalizedKey, section, categoryMatchPriority, quantity, unitText, recipeId));
+            intermediate.Add(new IntermediateItem(displayName, normalizedKey, legacyNormalizedKey, section, categoryMatchPriority, quantity, unitText, recipeId, quantityComplete));
         }
 
         // 5. Group by (normalizedKey, canonicalUnit): sum quantities after unit conversion.
@@ -211,19 +185,14 @@ public class GroceryRecomputeService(
 
                 var nu = UnitNormalizer.Normalize(first.UnitText);
 
-                // Sum quantities after conversion to canonical unit.
-                double? totalQuantity = null;
-                bool hasAnyQuantity = g.Any(x => x.Quantity.HasValue);
-                if (hasAnyQuantity)
-                {
-                    totalQuantity = g
-                        .Where(x => x.Quantity.HasValue)
-                        .Sum(x =>
-                        {
-                            var entryNu = UnitNormalizer.Normalize(x.UnitText);
-                            return x.Quantity!.Value * (entryNu?.Factor ?? 1.0);
-                        });
-                }
+                // Invalid conversions and overflow remain unresolved, never JSON numbers.
+                var converted = g.Where(x => x.Quantity.HasValue)
+                    .Select(x => x.Quantity!.Value * (UnitNormalizer.Normalize(x.UnitText)?.Factor ?? 1.0)).ToList();
+                var finite = converted.Where(double.IsFinite).ToList();
+                double? totalQuantity = finite.Count > 0 ? finite.Sum() : null;
+                var totalFinite = totalQuantity is null || double.IsFinite(totalQuantity.Value);
+                var quantityComplete = g.All(item => item.QuantityComplete) && converted.All(double.IsFinite) && totalFinite;
+                if (!totalFinite) totalQuantity = null;
 
                 // Emit canonical unit for known families; raw unit for unknowns.
                 var emittedUnit = nu?.CanonicalUnit ?? first.UnitText;
@@ -237,7 +206,8 @@ public class GroceryRecomputeService(
                         Section: section,
                         Quantity: totalQuantity,
                         UnitText: emittedUnit,
-                        RecipeIds: recipeIds),
+                        RecipeIds: recipeIds,
+                        QuantityComplete: quantityComplete),
                     g.Select(item => item.LegacyNormalizedKey).ToHashSet(StringComparer.Ordinal),
                     g.Key.BucketUnit);
             })
@@ -246,12 +216,7 @@ public class GroceryRecomputeService(
             .ThenBy(group => group.Line.DisplayName, StringComparer.Ordinal)
             .ToList();
 
-        // 6. Serialize and persist to weekly_plans.grocery_items.
-        var groceryItemsJson = JsonSerializer.Serialize(grouped.Select(group => group.Line), new JsonSerializerOptions
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        });
-
+        // 6. Persist amounts and check-review state at the same coordinated position.
         var plan = await db.WeeklyPlans.FirstOrDefaultAsync(p => p.WeekStartDate == monday, ct);
         if (plan == null)
         {
@@ -266,11 +231,37 @@ public class GroceryRecomputeService(
             logger.LogInformation("Created WeeklyPlan for week starting {Monday} during grocery recompute", monday);
         }
 
+        plan.ServingInputVersion = SupperProjectionInputs.WeekVersion(inputs);
         var previousItems = DeserializeGroceryItems(plan.GroceryItems);
         var groceryState = DeserializeGroceryState(plan.GroceryState);
         var changedState = ApplyMergedStateTransitions(previousItems, grouped, groceryState);
+        var reset = false;
+        for (var index = 0; index < grouped.Count; index++)
+        {
+            var group = grouped[index];
+            var predecessors = previousItems.Where(item => (item.NormalizedKey == group.Line.NormalizedKey || group.LegacyNormalizedKeys.Contains(item.NormalizedKey)) &&
+                (UnitNormalizer.Normalize(item.UnitText)?.CanonicalUnit ?? item.UnitText ?? string.Empty) == group.BucketUnit).ToList();
+            // A reliable current total cannot prove what a shopper previously checked.
+            // Keep that distinct review until an explicit affected check acknowledges it.
+            var priorUnknown = predecessors.Any(x => !x.Quantity.HasValue || x.QuantityComplete != true);
+            var review = predecessors.Any(x => x.CheckReviewReason == "prior_amount_unknown")
+                || (priorUnknown && group.Line.Quantity.HasValue && group.Line.QuantityComplete == true
+                    && groceryState.GetValueOrDefault(group.Line.DisplayName));
+            if (review) grouped[index] = group with { Line = group.Line with { CheckReviewReason = "prior_amount_unknown" } };
+            if (predecessors.Count == 0 || priorUnknown || !group.Line.Quantity.HasValue || group.Line.QuantityComplete != true) continue;
+            var oldTotal = predecessors.Sum(x => x.Quantity!.Value);
+            if (group.Line.Quantity.Value > oldTotal && groceryState.GetValueOrDefault(group.Line.DisplayName))
+            {
+                groceryState[group.Line.DisplayName] = false; reset = changedState = true;
+            }
+        }
+        // Input identities may repeat (A → B → A); each actual reset is a new event.
+        if (reset) plan.GroceryResetSummaryVersion = Guid.NewGuid().ToString("N");
+        else if (plan.ServingAppliedVersion != plan.ServingInputVersion) plan.GroceryResetSummaryVersion = null;
+        plan.ServingAppliedVersion = plan.ServingInputVersion;
+        plan.ServingRefreshStatus = "current";
 
-        plan.GroceryItems = groceryItemsJson;
+        plan.GroceryItems = JsonSerializer.Serialize(grouped.Select(group => group.Line));
         if (changedState)
             plan.GroceryState = JsonSerializer.Serialize(groceryState);
         await db.SaveChangesAsync(ct);
@@ -279,39 +270,6 @@ public class GroceryRecomputeService(
             "Recomputed grocery_items for week starting {Monday}: {Count} line items",
             monday, grouped.Count);
         return (plan, groceryState, changedState);
-    }
-
-    /// <summary>
-    /// Finds all weeks that contain <paramref name="recipeId"/> and recomputes
-    /// <c>grocery_items</c> for each affected week.
-    /// </summary>
-    public async Task RecomputeForRecipeAsync(Guid recipeId, CancellationToken ct)
-    {
-        var affectedDates = await db.CalendarEvents
-            .Where(e => e.RecipeId == recipeId)
-            .Select(e => e.Date)
-            .ToListAsync(ct);
-
-        if (affectedDates.Count == 0)
-        {
-            logger.LogDebug("Recipe {RecipeId} is not assigned to any calendar events — no recompute needed", recipeId);
-            return;
-        }
-
-        // Collect distinct Mondays for each affected date.
-        var mondays = affectedDates
-            .Select(date => GetMonday(date))
-            .Distinct()
-            .ToList();
-
-        logger.LogInformation(
-            "Recipe {RecipeId} affects {WeekCount} week(s) — recomputing grocery_items",
-            recipeId, mondays.Count);
-
-        foreach (var monday in mondays)
-        {
-            await RecomputeForWeekAsync(monday, ct);
-        }
     }
 
     /// <summary>
@@ -367,89 +325,6 @@ public class GroceryRecomputeService(
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────
-
-    /// <summary>
-    /// Extracts supply entries from a recipe's <c>raw_metadata</c> JSON string.
-    /// Returns an empty list if <c>raw_metadata</c> is null, malformed, or has no <c>supply</c> array.
-    /// </summary>
-    private List<(string DisplayName, double? Quantity, string? UnitText, Guid RecipeId)> ExtractSupplies(
-        string rawMetadata, Guid recipeId)
-    {
-        var results = new List<(string, double?, string?, Guid)>();
-
-        JsonNode? root;
-        try
-        {
-            root = JsonNode.Parse(rawMetadata);
-        }
-        catch (JsonException ex)
-        {
-            logger.LogDebug(ex, "Failed to parse raw_metadata for recipe {RecipeId}", recipeId);
-            return results;
-        }
-
-        var supplyArray = root?["supply"]?.AsArray();
-        if (supplyArray == null || supplyArray.Count == 0)
-        {
-            logger.LogDebug("Recipe {RecipeId} raw_metadata has no supply[] — skipping", recipeId);
-            return results;
-        }
-
-        foreach (var item in supplyArray)
-        {
-            if (item == null) continue;
-
-            var name = item["name"]?.GetValue<string>();
-            if (string.IsNullOrWhiteSpace(name))
-                continue;
-
-            double? quantity = null;
-            var quantityNode = item["quantity"];
-            if (quantityNode != null)
-            {
-                try
-                {
-                    quantity = quantityNode.GetValue<double>();
-                }
-                catch
-                {
-                    // quantity is not parseable as a number — set to null, still include the item.
-                    logger.LogDebug(
-                        "Recipe {RecipeId}: supply item '{Name}' has non-numeric quantity — setting to null",
-                        recipeId, name);
-                }
-            }
-
-            var requiredQuantity = item["requiredQuantity"];
-            if (quantity == null && requiredQuantity != null)
-            {
-                var requiredValue = requiredQuantity["value"];
-                if (requiredValue != null)
-                {
-                    try
-                    {
-                        quantity = requiredValue.GetValue<double>();
-                    }
-                    catch
-                    {
-                        logger.LogDebug(
-                            "Recipe {RecipeId}: supply item '{Name}' has non-numeric requiredQuantity.value — setting quantity to null",
-                            recipeId, name);
-                    }
-                }
-            }
-
-            var unitText = item["unitText"]?.GetValue<string>();
-            if (string.IsNullOrWhiteSpace(unitText))
-                unitText = requiredQuantity?["unitText"]?.GetValue<string>();
-            if (string.IsNullOrWhiteSpace(unitText))
-                unitText = null;
-
-            results.Add((name, quantity, unitText, recipeId));
-        }
-
-        return results;
-    }
 
     /// <summary>Returns the Monday of the week containing <paramref name="date"/>.</summary>
     private static DateOnly GetMonday(DateOnly date)

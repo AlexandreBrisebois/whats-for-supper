@@ -19,13 +19,14 @@ public class SseEventPublisher : IScheduleEventPublisher
         _session = session;
     }
 
-    public Task PublishSlotUpdatedAsync(DateOnly date, ScheduleRecipeDto? recipe, int status, string? excludeConnectionId = null, NonCookingPlanDto? nonCooking = null)
+    public Task PublishSlotUpdatedAsync(DateOnly date, ScheduleRecipeDto? recipe, int status, string? excludeConnectionId = null, NonCookingPlanDto? nonCooking = null, Guid? occurrenceId = null)
         => PublishAndRefreshAsync("slot_updated", new
         {
             date = date.ToString("yyyy-MM-dd"),
             recipe,
             status,
-            nonCooking
+            nonCooking,
+            occurrenceId
         }, excludeConnectionId, DeploymentCalendar.Monday(date));
 
     public Task PublishWeekUpdatedAsync(ScheduleDays schedule, string? excludeConnectionId = null, int? echoSeq = null)

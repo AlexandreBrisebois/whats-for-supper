@@ -1,4 +1,6 @@
 'use client';
+import { PreparationStatus } from '@/components/planner/PreparationStatus';
+import { prepareSupper } from '@/lib/api/supper-servings';
 import { CalendarUnavailableError } from '@/lib/deployment-calendar';
 
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
@@ -24,6 +26,7 @@ import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
 import {
   getRecipe,
+  getIngredientProjection,
   resolveRecipeImportIssue,
   saveRecipeImportIssue,
   updateRecipe,
@@ -33,6 +36,9 @@ import { SolarLoader } from '@/components/ui/SolarLoader';
 import { RecipeDetailSheet } from '@/components/recipes/RecipeDetailSheet';
 import { OriginalPhotosViewer } from '@/components/recipes/OriginalPhotosViewer';
 import { RecipeImportIssueSheet } from '@/components/recipes/RecipeImportIssueSheet';
+import { subscribeIngredientProjectionInvalidation } from '@/lib/ingredient-projection-invalidation';
+import { ingredientProjectionText } from '@/lib/ingredient-presentation';
+import { formatSupperPlanDate } from '@/lib/planner/nonCooking';
 import { t, tWithVars } from '@/locales';
 import { parseRecipeSteps, type CookingStep } from '@/lib/cooking/stepParser';
 import { formatCookingInstruction } from '@/lib/cooking/instructionPresentation';
@@ -52,6 +58,7 @@ interface CooksModeProps {
     isVegetarian?: boolean;
     isCold?: boolean;
   };
+  ingredientContext?: import('@/lib/api/recipes').IngredientContext;
   onClose: () => void;
   /** Optional notification after the viewed recipe's cooking completion has been saved. */
   onCooked?: () => void;
@@ -65,10 +72,123 @@ function updateInstructionValue(value: unknown, instruction: string): unknown {
   return { ...step, name: instruction };
 }
 
-export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksModeProps) {
+export function CooksMode({
+  recipe: initialRecipe,
+  onClose,
+  onCooked,
+  ingredientContext,
+}: CooksModeProps) {
   const router = useRouter();
   const stackedLayout = useMediaQuery('(max-width: 767px)');
   const [recipeDetails, setRecipeDetails] = useState<Recipe | null>(null);
+  const [failedPhoto, setFailedPhoto] = useState<string | null>(null);
+  const contextKey = ingredientContext
+    ? JSON.stringify([initialRecipe.id, ingredientContext])
+    : null;
+  const [projectionRead, setProjectionRead] = useState<{
+    key: string;
+    data?: import('@/lib/api/generated/models').IngredientProjection;
+    error?: boolean;
+  } | null>(null);
+  const [projectionAttempt, setProjectionAttempt] = useState(0);
+  const projection = projectionRead?.key === contextKey ? projectionRead?.data : undefined;
+  const projectionError = projectionRead?.key === contextKey && projectionRead?.error;
+  useEffect(() => {
+    if (!contextKey) return;
+    let active = true;
+    const [id, context] = JSON.parse(contextKey);
+    void getIngredientProjection(id, context)
+      .then((data) => {
+        if (active) setProjectionRead({ key: contextKey, data });
+      })
+      .catch(() => {
+        if (active) setProjectionRead({ key: contextKey, error: true });
+      });
+    return () => {
+      active = false;
+    };
+  }, [contextKey, projectionAttempt]);
+  const [quantityNotice, setQuantityNotice] = useState<{
+    key: string;
+    available: boolean;
+    error: boolean;
+  } | null>(null);
+  const quantitiesAvailable = quantityNotice?.key === contextKey && quantityNotice.available;
+  const quantityRefreshError = quantityNotice?.key === contextKey && quantityNotice.error;
+  const [quantityRefreshing, setQuantityRefreshing] = useState(false);
+  const quantityRequest = useRef(0);
+  const quantityInvalidated = useRef(false);
+  const quantityRefreshInFlight = useRef(false);
+  const appliedProjection = useRef(projection);
+  useLayoutEffect(() => {
+    appliedProjection.current = projection;
+  }, [projection]);
+  useEffect(() => {
+    if (!contextKey) return;
+    let active = true;
+    const [id, context] = JSON.parse(contextKey);
+    const probe = async () => {
+      if (!appliedProjection.current || quantityRefreshInFlight.current) {
+        quantityInvalidated.current = true;
+        return;
+      }
+      quantityInvalidated.current = false;
+      const generation = ++quantityRequest.current;
+      try {
+        const current = await getIngredientProjection(id, context);
+        if (!active || generation !== quantityRequest.current) return;
+        const changed = current.version !== appliedProjection.current!.version;
+        if (!changed) setProjectionRead({ key: contextKey, data: current });
+        setQuantityNotice({ key: contextKey, error: false, available: changed });
+      } catch {
+        if (active && generation === quantityRequest.current)
+          setQuantityNotice((previous) => ({
+            key: contextKey,
+            error: true,
+            available: previous?.key === contextKey && previous.available,
+          }));
+      }
+    };
+    const unsubscribe = subscribeIngredientProjectionInvalidation(context, () => void probe());
+    if (quantityInvalidated.current) void probe();
+    const retireRequests = () => {
+      quantityRequest.current++;
+    };
+    return () => {
+      active = false;
+      retireRequests();
+      unsubscribe();
+    };
+  }, [contextKey, projection]);
+  const refreshQuantities = async () => {
+    if (!contextKey || quantityRefreshInFlight.current) return;
+    quantityRefreshInFlight.current = true;
+    const generation = ++quantityRequest.current;
+    const [id, context] = JSON.parse(contextKey);
+    setQuantityRefreshing(true);
+    try {
+      const data = await getIngredientProjection(id, context);
+      if (generation !== quantityRequest.current) return;
+      setProjectionRead({ key: contextKey, data });
+      setQuantityNotice({ key: contextKey, error: false, available: false });
+      if (preparationReview === 'quantities') {
+        uncertainPreparation.current = null;
+        setCheckingPreparation(false);
+        setPreparationReview(null);
+        setCompletionError(null);
+      }
+    } catch {
+      if (generation === quantityRequest.current)
+        setQuantityNotice((previous) => ({
+          key: contextKey,
+          error: true,
+          available: previous?.key === contextKey && previous.available,
+        }));
+    } finally {
+      quantityRefreshInFlight.current = false;
+      if (generation === quantityRequest.current) setQuantityRefreshing(false);
+    }
+  };
   const [parsedSteps, setParsedSteps] = useState<CookingStep[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [contentError, setContentError] = useState(false);
@@ -79,6 +199,61 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
   const [isCompleting, setIsCompleting] = useState(false);
   const [completionError, setCompletionError] = useState<string | null>(null);
   const completionInFlight = useRef(false);
+  const uncertainPreparation = useRef<
+    import('@/lib/api/generated/models').PrepareSupperRequest | null
+  >(null);
+  const [checkingPreparation, setCheckingPreparation] = useState(false);
+  const [preparationReview, setPreparationReview] = useState<'required' | 'quantities' | null>(
+    null
+  );
+  const [reviewingPreparation, setReviewingPreparation] = useState(false);
+  const reviewPreparation = async () => {
+    if (!contextKey || ingredientContext?.context !== 'assigned' || reviewingPreparation) return;
+    setReviewingPreparation(true);
+    setCompletionError(null);
+    const generation = ++quantityRequest.current;
+    try {
+      // The captured identity stays fixed: a recreated assignment must fail this read.
+      const current = await getIngredientProjection(initialRecipe.id, ingredientContext);
+      if (generation !== quantityRequest.current) return;
+      if (current.preparation) {
+        setProjectionRead({ key: contextKey, data: current });
+        uncertainPreparation.current = null;
+        setCheckingPreparation(false);
+        setPreparationReview(null);
+        useTodayStore.getState().confirmPreparation({
+          occurrenceId: current.occurrenceId,
+          recipeId: current.recipeId,
+          supperDate: current.supperDate,
+          preparation: current.preparation,
+        });
+        return;
+      }
+      if (!current.preparationPlanToken || !current.preparationServingVersion)
+        throw new Error('Preparation needs confirmation.');
+      if (current.version !== appliedProjection.current?.version) {
+        setPreparationReview('quantities');
+        setQuantityNotice({ key: contextKey, available: true, error: false });
+      } else {
+        // Explicit review may accept fresh guards only for the quantities already displayed.
+        setProjectionRead({ key: contextKey, data: current });
+        uncertainPreparation.current = null;
+        setCheckingPreparation(false);
+        setPreparationReview(null);
+        setQuantityNotice({ key: contextKey, available: false, error: false });
+      }
+    } catch {
+      if (generation === quantityRequest.current)
+        setCompletionError(
+          t(
+            'cook.preparationReviewFailed',
+            'Could not review this supper. Your cooking work is kept.'
+          )
+        );
+    } finally {
+      setReviewingPreparation(false);
+    }
+  };
   const [showDetailId, setShowDetailId] = useState<string | null>(null);
 
   const [showOriginals, setShowOriginals] = useState(false);
@@ -116,7 +291,15 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
   const currentViewSaveState = viewSaveMemberId === selectedFamilyMemberId ? viewSaveState : 'idle';
   const singlePageEnabled = cookingViewMode === 'all-steps';
   const { cookProgress, setCookProgress } = usePlannerStore();
-  const currentStep = Math.min(cookProgress[initialRecipe.id] ?? 0, parsedSteps.length);
+  const progressKey = ingredientContext
+    ? JSON.stringify([
+        initialRecipe.id,
+        ingredientContext.supperDate,
+        ingredientContext.context,
+        ingredientContext.context === 'assigned' ? ingredientContext.occurrenceId : null,
+      ])
+    : initialRecipe.id;
+  const currentStep = Math.min(cookProgress[progressKey] ?? 0, parsedSteps.length);
 
   useLayoutEffect(() => {
     if (viewSelectionRef.current.memberId !== selectedFamilyMemberId) {
@@ -162,6 +345,16 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
     };
   }, [initialRecipe.id, readAttempt]);
 
+  const ingredients = ingredientContext
+    ? (projection?.lines ?? []).map((line, index) => ({
+        key: `${index}:${line.originalText}`,
+        text: ingredientProjectionText(line),
+      }))
+    : (recipeDetails?.ingredients ?? []).map((text) => ({ key: text, text }));
+  const scaled =
+    projection?.factor != null &&
+    projection.factor !== 1 &&
+    projection.lines?.some((line) => line.status === 'scaled');
   const steps = parsedSteps;
   const hasInstructions = steps.length > 0;
   const isPrepStep = currentStep === 0 || (singlePageEnabled && showIngredients);
@@ -229,7 +422,7 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
       resumeScrollTopRef.current = null;
       return;
     }
-    const savedStep = usePlannerStore.getState().cookProgress[initialRecipe.id] ?? 1;
+    const savedStep = usePlannerStore.getState().cookProgress[progressKey] ?? 1;
     const row = surface?.querySelector<HTMLElement>(`[data-cooking-step="${savedStep}"]`);
     if (surface && row && savedStep > 1) {
       surface.scrollTop +=
@@ -237,7 +430,7 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
     } else if (surface) {
       surface.scrollTop = 0;
     }
-  }, [isLoading, singlePageCooking, isResumingSteps, initialRecipe.id]);
+  }, [isLoading, singlePageCooking, isResumingSteps, progressKey]);
 
   const trackReadingPosition = (event: React.UIEvent<HTMLDivElement>) => {
     if (!singlePageCooking || showOriginals) return;
@@ -256,18 +449,79 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
     ) {
       readingStep = steps.length;
     }
-    if (readingStep !== currentStep) setCookProgress(initialRecipe.id, readingStep);
+    if (readingStep !== currentStep) setCookProgress(progressKey, readingStep);
   };
 
   const editingStep = editingStepIndex === null ? null : steps[editingStepIndex];
 
   const finishCooking = async () => {
-    if (completionInFlight.current) return;
+    if (completionInFlight.current || projection?.preparation || preparationReview) return;
     completionInFlight.current = true;
     setIsCompleting(true);
     setCompletionError(null);
     try {
-      await useTodayStore.getState().markCooked(initialRecipe.id);
+      if (ingredientContext?.context === 'assigned') {
+        const displayed = appliedProjection.current;
+        if (
+          !uncertainPreparation.current &&
+          (!displayed?.preparationPlanToken ||
+            !displayed.preparationServingVersion ||
+            quantitiesAvailable)
+        )
+          throw new Error(
+            t(
+              'cook.reviewPreparation',
+              'Review the current supper and quantities before preparing it.'
+            )
+          );
+        const request = uncertainPreparation.current ?? {
+          expectedOccurrenceId: ingredientContext.occurrenceId as any,
+          recipeId: initialRecipe.id as any,
+          expectedPlanToken: displayed!.preparationPlanToken,
+          expectedServingVersion: displayed!.preparationServingVersion,
+        };
+        const confirmCaptured = async () => {
+          const current = await getIngredientProjection(initialRecipe.id, ingredientContext);
+          if (
+            current.preparation?.planToken !== request.expectedPlanToken ||
+            current.preparation?.servingVersion !== request.expectedServingVersion
+          ) {
+            setPreparationReview('required');
+            throw new Error(
+              t(
+                'cook.preparationUnconfirmed',
+                'Preparation could not be confirmed. Review this supper before trying again.'
+              )
+            );
+          }
+          return {
+            occurrenceId: request.expectedOccurrenceId,
+            recipeId: request.recipeId,
+            supperDate: current.supperDate,
+            preparation: current.preparation,
+          };
+        };
+        let outcome;
+        if (uncertainPreparation.current) outcome = await confirmCaptured();
+        else {
+          try {
+            outcome = await prepareSupper(ingredientContext.supperDate, request);
+          } catch (error) {
+            const status = (error as { responseStatusCode?: number })?.responseStatusCode;
+            if (status === 400 || status === 409 || status === 412) {
+              setPreparationReview('required');
+              throw error;
+            }
+            // Retain the original guards across failed reads; recovery never replays this write.
+            uncertainPreparation.current = request;
+            setCheckingPreparation(true);
+            outcome = await confirmCaptured();
+          }
+        }
+        uncertainPreparation.current = null;
+        setCheckingPreparation(false);
+        useTodayStore.getState().confirmPreparation(outcome);
+      } else await useTodayStore.getState().markCooked(initialRecipe.id);
       setShowCelebration(true);
       setTimeout(() => {
         onCooked?.();
@@ -286,10 +540,10 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
 
   const nextStep = () => {
     if (isPrepStep) {
-      if (!isResumingSteps) setCookProgress(initialRecipe.id, 1);
+      if (!isResumingSteps) setCookProgress(progressKey, 1);
       setShowIngredients(false);
     } else if (currentStep < steps.length) {
-      setCookProgress(initialRecipe.id, currentStep + 1);
+      setCookProgress(progressKey, currentStep + 1);
     } else {
       void finishCooking();
     }
@@ -297,7 +551,7 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
 
   const prevStep = () => {
     if (currentStep > 0) {
-      setCookProgress(initialRecipe.id, currentStep - 1);
+      setCookProgress(progressKey, currentStep - 1);
     }
   };
 
@@ -468,10 +722,11 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
             onClick={() => setShowDetailId(initialRecipe.id)}
             className="absolute inset-0 z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-terracotta"
           />
-          {initialRecipe.image ? (
+          {initialRecipe.image && failedPhoto !== initialRecipe.image ? (
             /* eslint-disable-next-line @next/next/no-img-element */
             <img
               src={getImageUrl(initialRecipe.image)}
+              onError={() => setFailedPhoto(initialRecipe.image)}
               alt={initialRecipe.name || 'Recipe'}
               className="absolute inset-0 h-full w-full object-cover"
             />
@@ -645,8 +900,122 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
           ref={instructionScrollRef}
           onScroll={trackReadingPosition}
           data-testid="cooks-mode-instructions"
-          className="flex-1 overflow-y-auto bg-white/60"
+          className="min-h-0 flex-1 overflow-y-auto bg-white/60"
         >
+          {ingredientContext && (
+            <div className="border-b border-charcoal/10 px-4 py-2 text-sm text-charcoal md:px-6">
+              <p data-testid="cooking-portion-context">
+                {formatSupperPlanDate(ingredientContext.supperDate)}
+                {projection?.targetServings != null
+                  ? ` · ${tWithVars('recipes.portionCount', '{{count}} portions', { count: projection.targetServings })}`
+                  : ''}
+              </p>
+              {projection?.preparation && (
+                <PreparationStatus preparation={projection.preparation} />
+              )}
+              {!projection && !projectionError && (
+                <p role="status">
+                  {t('recipes.projectionLoading', 'Loading ingredients for this date…')}
+                </p>
+              )}
+              {projectionError && (
+                <p role="alert">
+                  {t('recipes.projectionFailed', 'Could not confirm ingredients for this supper.')}{' '}
+                  <button
+                    className="min-h-12 min-w-12 underline"
+                    onClick={() => setProjectionAttempt((value) => value + 1)}
+                  >
+                    {t('common.retry', 'Retry')}
+                  </button>
+                </p>
+              )}
+              {(projection?.status === 'partial' || projection?.status === 'unresolved') && (
+                <p role="status">
+                  {t(
+                    'recipes.projectionReview',
+                    'Some amounts need review. Consult the original recipe.'
+                  )}
+                </p>
+              )}
+              {scaled && (
+                <p data-testid="cooking-instruction-limitation">
+                  {t(
+                    'cook.originalAmounts',
+                    'Ingredients are adjusted; step amounts remain original.'
+                  )}
+                </p>
+              )}
+              {!isPrepStep && (
+                <button className="min-h-12 min-w-12 underline" onClick={openIngredients}>
+                  {t('cook.adjustedIngredients', 'View adjusted ingredients')}
+                </button>
+              )}
+            </div>
+          )}
+          {(quantitiesAvailable || quantityRefreshError) && (
+            <div className="shrink-0 border-t border-charcoal/10 bg-white px-4 py-2 text-sm text-charcoal md:px-6">
+              {quantitiesAvailable && (
+                <p data-testid="cooking-quantities-available" role="status">
+                  {t('cook.quantitiesAvailable', 'Updated quantities are available.')}
+                </p>
+              )}
+              {(quantitiesAvailable || quantityRefreshError) && (
+                <button
+                  className="min-h-12 min-w-12 underline"
+                  disabled={quantityRefreshing}
+                  onClick={() => void refreshQuantities()}
+                >
+                  {quantityRefreshing
+                    ? t('cook.refreshingQuantities', 'Refreshing quantities…')
+                    : t('cook.refreshQuantities', 'Refresh quantities')}
+                </button>
+              )}
+              {quantityRefreshError && (
+                <p role="alert">
+                  {t(
+                    'cook.quantityRefreshFailed',
+                    'Could not confirm updated quantities. Your current quantities and cooking work are kept.'
+                  )}
+                </p>
+              )}
+            </div>
+          )}
+          {preparationReview && (
+            <div
+              data-testid="preparation-review"
+              className="shrink-0 border-t border-charcoal/10 px-4 py-2 text-sm text-charcoal md:px-6"
+              role="status"
+            >
+              <p>
+                {preparationReview === 'quantities'
+                  ? t(
+                      'cook.reviewChangedQuantities',
+                      'Refresh the changed quantities before marking this supper prepared.'
+                    )
+                  : t(
+                      'cook.reviewCurrentSupperHelp',
+                      'Review the current supper and quantities before another attempt. Your cooking work is kept.'
+                    )}
+              </p>
+              {preparationReview === 'required' && (
+                <button
+                  type="button"
+                  className="min-h-12 underline"
+                  disabled={reviewingPreparation}
+                  onClick={() => void reviewPreparation()}
+                >
+                  {reviewingPreparation
+                    ? t('cook.reviewingCurrentSupper', 'Reviewing supper…')
+                    : t('cook.reviewCurrentSupper', 'Review current supper')}
+                </button>
+              )}
+            </div>
+          )}
+          {completionError && (
+            <p role="alert" className="px-6 py-2 text-sm text-terracotta">
+              {completionError}
+            </p>
+          )}
           <div
             className={`min-h-full flex flex-col items-start justify-start ${singlePageCooking ? 'px-4 pt-5 pb-8 md:px-10 md:pt-8 lg:px-16' : 'px-8 pt-12 pb-24 md:px-16 md:pt-16 lg:px-24 lg:pt-16'} text-left`}
           >
@@ -717,19 +1086,19 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
                     </div>
 
                     {/* Ingredients Grid */}
-                    {recipeDetails?.ingredients && recipeDetails.ingredients.length > 0 ? (
+                    {ingredients.length > 0 ? (
                       <div className="space-y-6">
                         {/* Progress counter */}
                         <div className="flex items-center gap-2 text-sage">
                           <CheckCircle2 size={16} />
                           <span className="text-sm font-black uppercase tracking-wider">
-                            {Object.values(gathered).filter(Boolean).length} of{' '}
-                            {recipeDetails.ingredients.length} ready
+                            {Object.values(gathered).filter(Boolean).length} of {ingredients.length}{' '}
+                            ready
                           </span>
                         </div>
 
                         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 text-left">
-                          {recipeDetails.ingredients.map((ing, idx) => {
+                          {ingredients.map(({ key: ing, text }, idx) => {
                             const isChecked = !!gathered[ing];
                             return (
                               <motion.button
@@ -762,7 +1131,7 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
                                     isChecked ? 'text-charcoal/40 line-through' : 'text-charcoal/80'
                                   }`}
                                 >
-                                  {ing}
+                                  {text}
                                 </span>
                               </motion.button>
                             );
@@ -963,11 +1332,6 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
             </button>
           </p>
         )}
-        {completionError && (
-          <p role="alert" className="px-6 py-2 text-sm text-terracotta">
-            {completionError}
-          </p>
-        )}
         {reimportAcknowledgement && (
           <p
             role="status"
@@ -994,33 +1358,46 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
               </span>
             </Button>
           )}
-          <Button
-            disabled={isCompleting}
-            onClick={
-              !hasInstructions || (!isPrepStep && singlePageEnabled) ? finishCooking : nextStep
-            }
-            data-testid="cooks-mode-step-next"
-            aria-label={
-              isCompletionAction ? t('cook.markCooked', 'Mark recipe as cooked') : undefined
-            }
-            className={`h-auto min-h-12 min-w-0 flex-auto whitespace-normal rounded-xl py-2 text-lg font-bold shadow-sm bg-terracotta hover:bg-terracotta-600 active:bg-terracotta-700 text-white flex items-center justify-center space-x-2 active:scale-95 transition-all`}
-          >
-            <span>
-              {isCompletionAction
-                ? t('cook.cooked', 'Cooked')
-                : isResumingSteps
-                  ? t('cook.resumeSteps', 'Resume steps')
-                  : isPrepStep
-                    ? t('cook.letsCook', "Let's Cook")
-                    : t('cook.next', 'Next')}
-            </span>
-            {!isCompletionAction && <ChevronRight size={24} />}
-          </Button>
+          {!(projection?.preparation && isCompletionAction) && (
+            <Button
+              disabled={
+                isCompleting ||
+                !!preparationReview ||
+                (ingredientContext?.context === 'assigned' && !projection)
+              }
+              onClick={
+                !hasInstructions || (!isPrepStep && singlePageEnabled) ? finishCooking : nextStep
+              }
+              data-testid="cooks-mode-step-next"
+              aria-label={
+                isCompletionAction
+                  ? checkingPreparation
+                    ? t('cook.checkPreparation', 'Check preparation')
+                    : t('cook.markCooked', 'Mark recipe as cooked')
+                  : undefined
+              }
+              className={`h-auto min-h-12 min-w-0 flex-auto whitespace-normal rounded-xl py-2 text-lg font-bold shadow-sm bg-terracotta hover:bg-terracotta-600 active:bg-terracotta-700 text-white flex items-center justify-center space-x-2 active:scale-95 transition-all`}
+            >
+              <span>
+                {isCompletionAction
+                  ? checkingPreparation
+                    ? t('cook.checkPreparation', 'Check preparation')
+                    : t('cook.cooked', 'Cooked')
+                  : isResumingSteps
+                    ? t('cook.resumeSteps', 'Resume steps')
+                    : isPrepStep
+                      ? t('cook.letsCook', "Let's Cook")
+                      : t('cook.next', 'Next')}
+              </span>
+              {!isCompletionAction && <ChevronRight size={24} />}
+            </Button>
+          )}
         </div>
       </div>
 
       {showDetailId && (
         <RecipeDetailSheet
+          ingredientContext={ingredientContext}
           recipeId={showDetailId}
           plannerDayLabel={null}
           onClose={() => setShowDetailId(null)}

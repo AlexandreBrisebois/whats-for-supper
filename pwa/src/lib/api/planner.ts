@@ -1,5 +1,6 @@
 import { RetryHandlerOptions } from '@microsoft/kiota-http-fetchlibrary';
 import { DateOnly } from '@microsoft/kiota-abstractions';
+import { normalizeSupperPreparation } from './supper-servings';
 import { apiClient } from './api-client';
 import { usePlannerStore } from '@/store/plannerStore';
 import { useDiscoveryStore } from '@/store/discoveryStore';
@@ -71,7 +72,15 @@ export const getSchedule = async (
     },
   });
   const data = result?.data;
-  return data?.weekOffset !== undefined ? data : undefined;
+  return data?.weekOffset !== undefined
+    ? {
+        ...data,
+        days: data.days?.map((day) => ({
+          ...day,
+          preparation: normalizeSupperPreparation(day.preparation),
+        })),
+      }
+    : undefined;
 };
 
 export const lockSchedule = async (

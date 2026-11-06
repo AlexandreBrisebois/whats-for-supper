@@ -57,6 +57,7 @@ function buildSpaghettiSchedule() {
             })
           : null,
       status: 0,
+      occurrenceId: dateStr === todayStr ? MOCK_IDS.SUPPER_OCCURRENCE : null,
     };
   });
   return {
@@ -69,6 +70,41 @@ function buildSpaghettiSchedule() {
       days,
     },
   };
+}
+
+async function originalProjection(page: import('@playwright/test').Page, recipe: any) {
+  await page.route('**/api/recipes/*/ingredient-projection*', async (route) => {
+    const url = new URL(route.request().url());
+    const assigned = url.searchParams.get('context') === 'assigned';
+    if (assigned && url.searchParams.get('occurrenceId') !== MOCK_IDS.SUPPER_OCCURRENCE)
+      return route.fulfill({ status: 409, json: { message: 'That supper plan changed.' } });
+    return route.fulfill({
+      json: {
+        recipeId: recipe.id,
+        supperDate: url.searchParams.get('supperDate'),
+        context: assigned ? 'assigned' : 'proposed',
+        occurrenceId: assigned ? MOCK_IDS.SUPPER_OCCURRENCE : null,
+        baseServings: recipe.servings ?? null,
+        targetServings: null,
+        factor: null,
+        servingVersion: 'unset',
+        preparationPlanToken: assigned ? `v1.${'A'.repeat(43)}` : null,
+        preparationServingVersion: assigned ? 'A'.repeat(64) : null,
+        preparation: null,
+        version: JSON.stringify([recipe.id, recipe.ingredients]),
+        editable: true,
+        status: 'original',
+        lines: (recipe.ingredients ?? []).map((text: string) => ({
+          originalText: text,
+          name: text,
+          quantity: null,
+          unitText: null,
+          status: 'unquantified',
+          issues: [],
+        })),
+      },
+    });
+  });
 }
 
 async function collapseDevelopmentBadge(page: import('@playwright/test').Page) {
@@ -104,6 +140,7 @@ test.describe('Cook Mode — HowToSection[] steps display', () => {
     }, MOCK_IDS.MEMBER_ALEX);
 
     await setupCommonRoutes(page);
+    await originalProjection(page, REALISTIC_RECIPES[MOCK_IDS.RECIPE_SPAGHETTI]);
 
     // Override the SSE stream to emit a slot_updated event for 2026-05-04 (today in the
     // pinned clock). This updates todayStore.currentRecipe, which the home page server
@@ -115,7 +152,7 @@ test.describe('Cook Mode — HowToSection[] steps display', () => {
     });
     await page.route(/\/(?:backend\/)?api\/stream/, async (route) => {
       const connected = `event: connected\ndata: ${JSON.stringify({ type: 'connected', schedule: { weekOffset: 0, calendar: builders.deploymentCalendar() as any, weekStartDate: '2026-05-04' as any, locked: false, status: 0, days: buildSpaghettiSchedule().data.days } })}\n\n`;
-      const slotUpdated = `event: slot_updated\ndata: ${JSON.stringify({ type: 'slot_updated', date: '2026-05-04', recipe: spaghettiRecipe, status: 0 })}\n\n`;
+      const slotUpdated = `event: slot_updated\ndata: ${JSON.stringify({ type: 'slot_updated', date: '2026-05-04', recipe: spaghettiRecipe, status: 0, occurrenceId: MOCK_IDS.SUPPER_OCCURRENCE })}\n\n`;
       await route.fulfill({
         status: 200,
         contentType: 'text/event-stream',
@@ -165,6 +202,7 @@ test.describe('Cook Mode — HowToSection[] steps display', () => {
       })),
       ...overrides,
     };
+    await originalProjection(page, recipe);
     await page.route('**/api/recipes/*', async (route) => {
       if (route.request().method() === 'GET') return route.fulfill({ json: { recipe } });
       if (route.request().method() === 'PATCH') {
@@ -810,7 +848,7 @@ test.describe('Cook Mode — HowToSection[] steps display', () => {
         recipeId
       );
       await page.getByTestId('stack-card-front').click();
-      await page.getByTestId('time-cook-btn').click();
+      await page.getByTestId('action-cooks-mode').click();
       await page.getByTestId('cooks-mode-step-next').click();
       await expect(page.getByTestId('cooks-mode-step-next')).toHaveAccessibleName(
         'Mark recipe as cooked'
@@ -941,24 +979,47 @@ test.describe('Cook Mode — HowToSection[] steps display', () => {
   test('completing all steps shows celebration overlay then navigates to /home', async ({
     page,
   }) => {
+    const schedule = buildSpaghettiSchedule();
+    let preparations = 0;
     await page.route(
-      (url) => url.pathname.includes('/api/schedule') && !url.pathname.includes('smart-defaults'),
+      (url) => url.pathname === '/api/schedule',
       async (route) => {
-        if (route.request().method() === 'GET') {
-          await route.fulfill({
-            status: 200,
-            contentType: 'application/json',
-            body: JSON.stringify(buildSpaghettiSchedule()),
-          });
-        } else {
-          await route.fulfill({
-            status: 200,
-            contentType: 'application/json',
-            body: JSON.stringify({ data: { message: 'ok' } }),
-          });
-        }
+        if (route.request().method() !== 'GET') return route.fallback();
+        return route.fulfill({ json: schedule });
       }
     );
+    await page.route('**/api/schedule/day/*/prepare', async (route) => {
+      if (route.request().method() !== 'POST') return route.fallback();
+      preparations++;
+      const body = route.request().postDataJSON();
+      expect(new URL(route.request().url()).pathname).toBe('/api/schedule/day/2026-05-04/prepare');
+      expect(body).toMatchObject({
+        recipeId: MOCK_IDS.RECIPE_SPAGHETTI,
+        expectedOccurrenceId: MOCK_IDS.SUPPER_OCCURRENCE,
+        expectedPlanToken: `v1.${'A'.repeat(43)}`,
+        expectedServingVersion: 'A'.repeat(64),
+      });
+      const preparation = {
+        preparedOn: '2026-05-04',
+        preparedAtUtc: '2026-05-04T12:00:00Z',
+        servings: null,
+        originalServings: null,
+        portionContext: 'original',
+        planToken: body.expectedPlanToken,
+        servingVersion: body.expectedServingVersion,
+      };
+      Object.assign(schedule.data.days[0], { status: 2, preparation });
+      return route.fulfill({
+        json: {
+          data: {
+            occurrenceId: body.expectedOccurrenceId,
+            recipeId: body.recipeId,
+            supperDate: '2026-05-04',
+            preparation,
+          },
+        },
+      });
+    });
 
     await page.goto('/home');
     await expect(page.getByTestId('home-loader')).not.toBeVisible({ timeout: 10_000 });
@@ -985,5 +1046,7 @@ test.describe('Cook Mode — HowToSection[] steps display', () => {
 
     await expect(page.getByTestId('cooks-mode-celebration')).toBeVisible({ timeout: 2_000 });
     await expect(page).toHaveURL(/\/home/, { timeout: 5_000 });
+    expect(preparations).toBe(1);
+    expect(schedule.data.days[0].status).toBe(2);
   });
 });

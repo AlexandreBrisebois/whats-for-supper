@@ -19,6 +19,8 @@ public class RecipeService(
     IRecipeStore recipeStore,
     IWorkflowOrchestrator orchestrator,
     ILogger<RecipeService> logger,
+    SupperProjectionInvalidation projectionInvalidation,
+    ISupperProjectionPublisher projectionPublisher,
     IScheduleEventPublisher? publisher = null)
 {
     private const string RecipeShareBundleVersion = "1.0";
@@ -376,7 +378,7 @@ public class RecipeService(
     {
         if (dto.HasServings && (dto.Servings is null || dto.Servings <= 0))
             throw new ArgumentException("Servings must be a whole number from 1 to 2147483647.");
-        await using var rotationTransaction = await RecipeRotation.LockAsync(db, id);
+        await using var rotationTransaction = await RecipeRotation.LockAsync(db, id, lockSupperInputs: true);
         var recipe = await db.Recipes.FindAsync(id)
             ?? throw new KeyNotFoundException($"Recipe {id} not found.");
 
@@ -471,12 +473,17 @@ public class RecipeService(
             }
         }
         await db.SaveChangesAsync();
+        var affectedWeeks = dto.HasServings || dto.Ingredients is not null
+            ? await projectionInvalidation.EnlistRecipeAsync(id, CancellationToken.None) : [];
 
         if (rotationTransaction is not null)
         {
             await rotationTransaction.CommitAsync();
             await rotationTransaction.DisposeAsync();
         }
+
+        if (dto.HasServings || dto.Ingredients is not null)
+            await projectionPublisher.PublishAsync(affectedWeeks);
 
         // Re-enqueue search index after the recipe and pending sidecar commit.
         if (searchRelevantChanged)

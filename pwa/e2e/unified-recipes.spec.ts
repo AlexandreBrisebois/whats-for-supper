@@ -2,7 +2,10 @@ import { swipeCurrentStackCard } from './helpers/stack-swipe';
 import { test, expect, type Page } from './fixtures';
 import { MOCK_IDS, builders, setupCommonRoutes } from './mock-api';
 
-async function prepareNavigationMember(page: import('@playwright/test').Page) {
+async function prepareNavigationMember(
+  page: import('@playwright/test').Page,
+  calendar?: Parameters<typeof setupCommonRoutes>[1]
+) {
   const baseUrl = process.env.BASE_URL || 'http://127.0.0.1:3000';
   await page
     .context()
@@ -22,7 +25,7 @@ async function prepareNavigationMember(page: import('@playwright/test').Page) {
       ),
     MOCK_IDS.MEMBER_ALEX
   );
-  await setupCommonRoutes(page);
+  await setupCommonRoutes(page, calendar);
 }
 
 // A single passing frame can precede the dock's finite CSS transitions and the
@@ -184,8 +187,14 @@ async function expectLastRecipeReachable(page: Page, name: string, fittingRow = 
 
 test.describe('constrained French stack placement', () => {
   test.use({ appLocale: 'fr' });
-  test('card and family action stay scroll-reachable without a dock overlap', async ({ page }) => {
+  test('card and family action stay scroll-reachable without a dock overlap', async ({
+    page,
+  }, info) => {
     await prepareNavigationMember(page);
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    // Resize one loaded recipe: repeated navigations under the fixed test clock
+    // create mismatched performance and document-animation timeline origins.
+    await page.goto('/recipes');
     for (const scenario of [
       { width: 320, height: 568, scale: 1 },
       { width: 390, height: 667, scale: 1 },
@@ -194,8 +203,6 @@ test.describe('constrained French stack placement', () => {
       { width: 390, height: 844, scale: 2 },
     ]) {
       await page.setViewportSize({ width: scenario.width, height: scenario.height });
-      await page.emulateMedia({ reducedMotion: 'reduce' });
-      await page.goto('/recipes');
       await page.evaluate((scale) => {
         document.documentElement.style.fontSize = `${16 * scale}px`;
       }, scenario.scale);
@@ -216,22 +223,102 @@ test.describe('constrained French stack placement', () => {
           })
         )
         .toBeLessThanOrEqual(1);
-      // Fonts and dock measurement can settle after the first scroll under load.
-      // Keep scrolling to the final positions until the action clears the dock.
-      await expect
-        .poll(() =>
-          panel.evaluate((node) => {
-            const results = node.closest('[data-testid="browse-results-region"]') as HTMLElement;
-            const viewport = document.querySelector(
-              '[data-testid="browse-all-stack-container"]'
-            ) as HTMLElement;
-            const dock = document.querySelector('[data-testid="app-bottom-navigation"]')!;
-            results.scrollTop = results.scrollHeight;
-            viewport.scrollTop = viewport.scrollHeight;
-            return node.getBoundingClientRect().bottom - dock.getBoundingClientRect().top;
-          })
-        )
-        .toBeLessThanOrEqual(1);
+      // Scroll against settled fonts, finite transitions and the measured dock. A passing
+      // intermediate bottom bound alone can precede another resize/scroll-extent change.
+      await page.evaluate(() => document.fonts.ready.then(() => undefined));
+      const samples: unknown[] = [];
+      let previous = '';
+      let stable = 0;
+      try {
+        await expect
+          .poll(
+            async () => {
+              const geometry = await panel.evaluate((node) => {
+                const results = node.closest(
+                  '[data-testid="browse-results-region"]'
+                ) as HTMLElement;
+                const viewport = document.querySelector(
+                  '[data-testid="browse-all-stack-container"]'
+                ) as HTMLElement;
+                const dock = document.querySelector('[data-testid="app-bottom-navigation"]')!;
+                results.scrollTop = results.scrollHeight;
+                viewport.scrollTop = viewport.scrollHeight;
+                const targetBox = node.getBoundingClientRect();
+                const viewportBox = viewport.getBoundingClientRect();
+                const dockBox = dock.getBoundingClientRect();
+                const active = [
+                  ...viewport.getAnimations({ subtree: true }),
+                  ...dock.getAnimations({ subtree: true }),
+                ].some(
+                  (animation) =>
+                    animation.playState !== 'finished' &&
+                    animation.playState !== 'idle' &&
+                    Number.isFinite(animation.effect?.getComputedTiming().endTime)
+                );
+                return {
+                  top: targetBox.top,
+                  bottom: targetBox.bottom,
+                  height: targetBox.height,
+                  viewportTop: viewportBox.top,
+                  viewportBottom: viewportBox.bottom,
+                  dockTop: dockBox.top,
+                  resultScrollTop: results.scrollTop,
+                  resultMaxScroll: results.scrollHeight - results.clientHeight,
+                  viewportScrollTop: viewport.scrollTop,
+                  viewportMaxScroll: viewport.scrollHeight - viewport.clientHeight,
+                  transform: getComputedStyle(node).transform,
+                  active,
+                  ready:
+                    !active &&
+                    Math.abs(viewportBox.bottom - dockBox.top) <= 1 &&
+                    targetBox.top >= Math.max(0, viewportBox.top) - 1 &&
+                    targetBox.bottom <= Math.min(viewportBox.bottom, dockBox.top) + 1,
+                };
+              });
+              samples.push(geometry);
+              const signature = JSON.stringify(geometry);
+              stable = geometry.ready && signature === previous ? stable + 1 : 0;
+              previous = signature;
+              return stable;
+            },
+            { intervals: [16, 32, 64, 128] }
+          )
+          .toBeGreaterThanOrEqual(4);
+      } finally {
+        const animationState = await panel.evaluate((node) => {
+          const root = document.querySelector('[data-testid="browse-all-stack-container"]')!;
+          const dock = document.querySelector('[data-testid="app-bottom-navigation"]')!;
+          return {
+            now: performance.now(),
+            date: Date.now(),
+            panelOpacity: getComputedStyle(node).opacity,
+            animations: [
+              ...root.getAnimations({ subtree: true }),
+              ...dock.getAnimations({ subtree: true }),
+            ].map((animation) => ({
+              currentTime: animation.currentTime,
+              startTime: animation.startTime,
+              state: animation.playState,
+              rate: animation.playbackRate,
+              timing: animation.effect?.getComputedTiming(),
+              target: (animation.effect as KeyframeEffect | null)?.target?.getAttribute(
+                'data-testid'
+              ),
+            })),
+          };
+        });
+        console.log(
+          'STACK_SETTLED_GEOMETRY',
+          JSON.stringify({ scenario, samples, animationState })
+        );
+        await info.attach(
+          `stack-placement-${scenario.width}-${scenario.height}-${scenario.scale}`,
+          {
+            body: JSON.stringify({ scenario, samples }),
+            contentType: 'application/json',
+          }
+        );
+      }
       await expect(panel, JSON.stringify(scenario)).toBeInViewport({
         ratio: 0.98,
       });
@@ -2127,7 +2214,7 @@ test('planner entry resolves an occupied target before assigning the selected re
       assignments++;
     if (
       request.url().includes('/api/schedule/day/') &&
-      request.url().endsWith('/remove') &&
+      new URL(request.url()).pathname.endsWith('/remove') &&
       request.method() === 'DELETE'
     )
       removals++;
@@ -2145,4 +2232,220 @@ test('planner entry resolves an occupied target before assigning the selected re
   );
   expect(removals).toBe(1);
   expect(assignments).toBe(1);
+});
+
+for (const dayIndex of [2, 6]) {
+  test(`dated detail preserves a competing fill on day ${dayIndex}`, async ({ page }) => {
+    await prepareNavigationMember(page);
+    await page.goto(
+      `/recipes?addToDay=${dayIndex}&weekOffset=1&referenceWeekStartDate=2026-05-04&open=${MOCK_IDS.RECIPE_LASAGNA}`
+    );
+    let injected = false;
+    let attempted = 0;
+    await page.route('**/api/schedule/assign**', async (route) => {
+      if (injected) return route.fallback();
+      injected = true;
+      attempted++;
+      expect(route.request().postDataJSON()).toMatchObject({
+        requireEmpty: true,
+        dayIndex,
+        weekOffset: 1,
+      });
+      await page.evaluate(
+        async ({ id, dayIndex }) => {
+          const response = await fetch('/api/schedule/assign?referenceWeekStartDate=2026-05-04', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ weekOffset: 1, dayIndex, recipeId: id, requireEmpty: true }),
+          });
+          if (!response.ok) throw new Error('Competing save failed');
+        },
+        { id: MOCK_IDS.RECIPE_CHICKEN, dayIndex }
+      );
+      await route.fallback();
+    });
+    await page.getByTestId('action-add-to-day').click();
+    await expect(page.getByTestId('recipe-detail-sheet').getByRole('alert')).toContainText(
+      'Your plan changed'
+    );
+    expect(attempted).toBe(1);
+    expect(page.url()).toContain('/recipes?');
+    const snapshot = await page.evaluate(
+      async () =>
+        (await (await fetch('/api/schedule?weekOffset=1&referenceWeekStartDate=2026-05-04')).json())
+          .data
+    );
+    expect(snapshot.days[dayIndex].recipe.id).toBe(MOCK_IDS.RECIPE_CHICKEN);
+    expect(snapshot.days[0].recipe).toBeNull();
+  });
+}
+
+test('dated empty-day save is reachable immediately, single-submit and authoritatively confirmed', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 393, height: 852 });
+  await prepareNavigationMember(page);
+  await page.goto(
+    `/recipes?addToDay=2&weekOffset=1&referenceWeekStartDate=2026-05-04&open=${MOCK_IDS.RECIPE_LASAGNA}`
+  );
+  const action = page.getByTestId('action-add-to-day');
+  await expect(action).toHaveText(/Wednesday, May 13/);
+  const box = await action.boundingBox();
+  expect(box!.y + box!.height).toBeLessThanOrEqual(852);
+  let release!: () => void;
+  const pending = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let writes = 0;
+  await page.route('**/api/schedule/assign**', async (route) => {
+    writes++;
+    expect(route.request().postDataJSON()).toMatchObject({
+      requireEmpty: true,
+      weekOffset: 1,
+      dayIndex: 2,
+      recipeId: MOCK_IDS.RECIPE_LASAGNA,
+    });
+    expect(new URL(route.request().url()).searchParams.get('referenceWeekStartDate')).toBe(
+      '2026-05-04'
+    );
+    await pending;
+    await route.fallback();
+  });
+  await action.click();
+  await expect(action).toBeDisabled();
+  await page.getByTestId('action-close-sheet').click();
+  await expect(page.getByTestId('recipe-detail-sheet')).toBeVisible();
+  expect(writes).toBe(1);
+  release();
+  await expect(page).toHaveURL(
+    /planner\?success=1&dayIndex=2&weekOffset=1&referenceWeekStartDate=2026-05-04/
+  );
+  await expect(page.getByTestId('planner-planning-confirmation')).toContainText('May 13');
+  expect(writes).toBe(1);
+});
+
+test('saved meal refresh failure is distinct from retrying its assignment', async ({ page }) => {
+  await prepareNavigationMember(page);
+  await page.goto(
+    `/recipes?addToDay=2&weekOffset=1&referenceWeekStartDate=2026-05-04&open=${MOCK_IDS.RECIPE_LASAGNA}`
+  );
+  let saved = false;
+  let writes = 0;
+  page.on('response', (response) => {
+    if (response.url().includes('/api/schedule/assign') && response.ok()) {
+      saved = true;
+      writes++;
+    }
+  });
+  await page.route(
+    (url) => url.pathname === '/api/schedule',
+    async (route) => {
+      if (saved) return route.fulfill({ status: 503, json: { message: 'Refresh unavailable' } });
+      return route.fallback();
+    }
+  );
+  await page.getByTestId('action-add-to-day').click();
+  await expect(page.getByTestId('planner-planning-confirmation')).toContainText('was saved');
+  await expect(page.getByTestId('planner-planning-confirmation')).toContainText(
+    'could not refresh'
+  );
+  await page.getByTestId('planner-confirmation-refresh').click();
+  expect(writes).toBe(1);
+});
+
+test('dated detail proposes before writing and chooser cancellation preserves it', async ({
+  page,
+}) => {
+  await prepareNavigationMember(page);
+  let writes = 0;
+  page.on('request', (request) => {
+    if (request.method() !== 'GET' && /api\/schedule/.test(request.url())) writes++;
+  });
+  await page.goto(`/recipes?open=${MOCK_IDS.RECIPE_LASAGNA}`);
+  const action = page.getByTestId('action-add-to-day');
+  await expect(action).toBeVisible();
+  await expect(action).toContainText(/Plan for/);
+  const proposed = await action.textContent();
+  await page.getByTestId('action-change-day').click();
+  await expect(page.getByTestId('planning-day-chooser')).toBeVisible();
+  await page.getByTestId('planning-day-cancel').click();
+  await expect(action).toHaveText(proposed!);
+  expect(writes).toBe(0);
+});
+
+test('dated chooser saves the alternate date, preserves Planner source and avoids an identical write', async ({
+  page,
+}) => {
+  await prepareNavigationMember(page);
+  let saves = 0;
+  page.on('request', (r) => {
+    if (r.method() === 'POST' && new URL(r.url()).pathname === '/api/schedule/assign') saves++;
+  });
+  await page.goto(`/recipes?open=${MOCK_IDS.RECIPE_LASAGNA}`);
+  await page.getByTestId('action-change-day').click();
+  await page.getByTestId('planning-week-next').click();
+  await expect(page.getByTestId('planning-day-4')).toContainText('May 15');
+  await page.getByTestId('planning-day-4').click();
+  await expect(page.getByTestId('action-add-to-day')).toContainText('May 15');
+  expect(saves).toBe(0);
+  await page.getByTestId('action-add-to-day').click();
+  await expect(page.getByTestId('planner-planning-confirmation')).toContainText('May 15');
+  const snapshot = await page.evaluate(
+    async () =>
+      (await (await fetch('/api/schedule?weekOffset=1&referenceWeekStartDate=2026-05-04')).json())
+        .data
+  );
+  expect(snapshot.days[4]).toMatchObject({
+    date: '2026-05-15',
+    recipe: { id: MOCK_IDS.RECIPE_LASAGNA },
+  });
+  await page.locator('#day-card-4').getByTestId('edit-recipe-button').click();
+  await expect(page.getByTestId('recipe-planning-actions')).toContainText('May 15');
+  await expect(page.getByTestId('action-cooks-mode')).toBeVisible();
+  await page.getByTestId('action-plan-another-day').click();
+  await expect(page).toHaveURL(/sourceDate=2026-05-15/);
+  await page.goto(
+    `/recipes?addToDay=4&weekOffset=1&referenceWeekStartDate=2026-05-04&open=${MOCK_IDS.RECIPE_LASAGNA}`
+  );
+  await expect(page.getByTestId('action-add-to-day')).toHaveText('View plan');
+  await expect(page.getByTestId('recipe-planning-actions')).toContainText('Already planned');
+  await page.getByTestId('action-add-to-day').click();
+  await expect(page).toHaveURL(/planner/);
+  expect(saves).toBe(1);
+});
+
+test('Sunday recommendation crosses to Monday and stays shown before saving', async ({ page }) => {
+  await prepareNavigationMember(
+    page,
+    builders.deploymentCalendar({
+      today: '2026-05-10',
+      capturedAtUtc: '2026-05-10T12:00:00Z',
+      nextDayAtUtc: '2026-05-11T00:00:00Z',
+    })
+  );
+  await page.goto('/welcome');
+  await page.evaluate(async (id) => {
+    const r = await fetch('/api/schedule/assign?referenceWeekStartDate=2026-05-04', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ weekOffset: 0, dayIndex: 6, recipeId: id, requireEmpty: true }),
+    });
+    if (!r.ok) throw new Error('seed');
+  }, MOCK_IDS.RECIPE_CHICKEN);
+  let saves = 0;
+  page.on('request', (r) => {
+    if (r.method() === 'POST' && r.url().includes('/api/schedule/assign')) saves++;
+  });
+  await page.goto(`/recipes?open=${MOCK_IDS.RECIPE_LASAGNA}`);
+  await expect(page.getByTestId('action-add-to-day')).toContainText('May 11');
+  expect(saves).toBe(0);
+  await page.getByTestId('action-add-to-day').click();
+  await expect(page.getByTestId('planner-planning-confirmation')).toContainText('May 11');
+  expect(saves).toBe(1);
+  const snapshot = await page.evaluate(
+    async () =>
+      (await (await fetch('/api/schedule?weekOffset=1&referenceWeekStartDate=2026-05-04')).json())
+        .data
+  );
+  expect(snapshot.days[0].recipe.id).toBe(MOCK_IDS.RECIPE_LASAGNA);
 });

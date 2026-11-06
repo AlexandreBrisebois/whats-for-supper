@@ -12,6 +12,7 @@ import {
 import {
   type AdditionalDataHolder,
   type BaseRequestBuilder,
+  type DateOnly,
   type Parsable,
   type ParsableFactory,
   type ParseNode,
@@ -55,7 +56,7 @@ export function deserializeIntoItemPatchRequestBody(
  */
 export interface Item_EscapedRequestBuilder extends BaseRequestBuilder<Item_EscapedRequestBuilder> {
   /**
-   * On one application instance, stores the supplied intended check value while retaining other current persisted entries. Item updates, full-map replacements and recomputation transitions share one server processing order, which does not imply click or arrival order. Returns 204 after persistence and the grocery publication attempt. Publication attempts follow this processing order; independent snapshots may still arrive late. A fresh read after outstanding operations settle recovers committed state.
+   * On one application instance, stores the supplied intended check value while retaining other current persisted entries. Item updates, full-map replacements and recomputation transitions share one server processing order, which does not imply click or arrival order. Returns 204 after persistence and the grocery publication attempt. Publication attempts follow this processing order; independent snapshots may still arrive late. A fresh read after outstanding operations settle recovers committed state. An optional captured reference Monday pins the intended absolute week across deployment-week rollover; omission retains deployment-current-week behavior.
    * @param body The request body
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @throws {DemoResetRequiredError} error when the service returns a 412 status code
@@ -63,18 +64,29 @@ export interface Item_EscapedRequestBuilder extends BaseRequestBuilder<Item_Esca
    */
   patch(
     body: ItemPatchRequestBody,
-    requestConfiguration?: RequestConfiguration<object> | undefined
+    requestConfiguration?:
+      RequestConfiguration<Item_EscapedRequestBuilderPatchQueryParameters> | undefined
   ): Promise<void>;
   /**
-   * On one application instance, stores the supplied intended check value while retaining other current persisted entries. Item updates, full-map replacements and recomputation transitions share one server processing order, which does not imply click or arrival order. Returns 204 after persistence and the grocery publication attempt. Publication attempts follow this processing order; independent snapshots may still arrive late. A fresh read after outstanding operations settle recovers committed state.
+   * On one application instance, stores the supplied intended check value while retaining other current persisted entries. Item updates, full-map replacements and recomputation transitions share one server processing order, which does not imply click or arrival order. Returns 204 after persistence and the grocery publication attempt. Publication attempts follow this processing order; independent snapshots may still arrive late. A fresh read after outstanding operations settle recovers committed state. An optional captured reference Monday pins the intended absolute week across deployment-week rollover; omission retains deployment-current-week behavior.
    * @param body The request body
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {RequestInformation}
    */
   toPatchRequestInformation(
     body: ItemPatchRequestBody,
-    requestConfiguration?: RequestConfiguration<object> | undefined
+    requestConfiguration?:
+      RequestConfiguration<Item_EscapedRequestBuilderPatchQueryParameters> | undefined
   ): RequestInformation;
+}
+/**
+ * On one application instance, stores the supplied intended check value while retaining other current persisted entries. Item updates, full-map replacements and recomputation transitions share one server processing order, which does not imply click or arrival order. Returns 204 after persistence and the grocery publication attempt. Publication attempts follow this processing order; independent snapshots may still arrive late. A fresh read after outstanding operations settle recovers committed state. An optional captured reference Monday pins the intended absolute week across deployment-week rollover; omission retains deployment-current-week behavior.
+ */
+export interface Item_EscapedRequestBuilderPatchQueryParameters {
+  /**
+   * Captured reference Monday; invalid or non-Monday values return 400 before mutation.
+   */
+  referenceWeekStartDate?: DateOnly;
 }
 export interface ItemPatchRequestBody extends AdditionalDataHolder, Parsable {
   /**
@@ -109,7 +121,7 @@ export function serializeItemPatchRequestBody(
  * Uri template for the request builder.
  */
 export const Item_EscapedRequestBuilderUriTemplate =
-  '{+baseurl}/api/schedule/{weekOffset}/grocery/item';
+  '{+baseurl}/api/schedule/{weekOffset}/grocery/item{?referenceWeekStartDate*}';
 /**
  * Metadata for all the requests in the request builder.
  */

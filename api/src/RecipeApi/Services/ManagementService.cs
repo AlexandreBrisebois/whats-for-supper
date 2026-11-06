@@ -32,6 +32,7 @@ public partial class ManagementService(
     ILogger<ManagementService> logger,
     DemoModeOptions demoMode,
     RecoverySnapshotService recovery,
+    DeploymentCalendar calendar,
     IScheduleEventPublisher? publisher = null)
 {
     private static readonly HashSet<string> RetiredRecipeBackupFields = new(StringComparer.OrdinalIgnoreCase)
@@ -264,6 +265,7 @@ public partial class ManagementService(
         await WriteJsonAsync(GroceryExtrasBackupPath, new GroceryExtraBackup(1, groceryExtras), CancellationToken.None);
         logger.LogInformation("Backed up {Count} grocery extras to {Path}", groceryExtras.Count, GroceryExtrasBackupPath);
 
+        await ExportSupperServingsAsync(CancellationToken.None);
         await ExportInterestAsync(Path.Combine(DataRoot, "weekly-household-interest.json"), CancellationToken.None, boundaryHeld: true);
         if (snapshotTransaction is not null) await snapshotTransaction.CommitAsync();
         logger.LogInformation("Backed up {Count} recipes", backedUpCount);
@@ -783,6 +785,13 @@ public partial class ManagementService(
     {
         demoMode.EnsureManagementAvailable();
         var result = new SeedResult();
+        SupperServingsBackup? servingBackup = null;
+        try { servingBackup = await ReadSupperServingsAsync(ct); }
+        catch (Exception ex) when (ex is JsonException or InvalidDataException or IOException or UnauthorizedAccessException or FormatException)
+        {
+            result.Errors++;
+            logger.LogWarning("Skipping invalid supper-servings backup artifact: {Reason}", ex.Message);
+        }
         GroceryExtraBackup? groceryExtraBackup = null;
         try
         {
@@ -1171,8 +1180,14 @@ public partial class ManagementService(
         var eventsPath = Path.Combine(DataRoot, "calendar-events.json");
         if (File.Exists(eventsPath))
         {
-            var eventsJson = await File.ReadAllTextAsync(eventsPath, ct);
-            var events = JsonSerializer.Deserialize<List<CalendarEvent>>(eventsJson, JsonDefaults.CamelCase) ?? [];
+            List<CalendarEvent> events;
+            try { events = await ReadCalendarEventsAsync(eventsPath, ct); }
+            catch (Exception ex) when (ex is JsonException or InvalidDataException or FormatException)
+            {
+                result.Errors++;
+                logger.LogWarning("Skipping invalid calendar preparation artifact: {Reason}", ex.Message);
+                events = [];
+            }
             foreach (var @event in events)
             {
                 if (ct.IsCancellationRequested) break;
@@ -1329,6 +1344,8 @@ public partial class ManagementService(
                 logger.LogWarning("Skipping incompatible grocery-extras backup artifact: {Reason}", ex.Message);
             }
         }
+
+        await RestoreSupperServingsAsync(servingBackup, ct);
 
         logger.LogInformation("Restore complete - Added: {Added}, Updated: {Updated}, Skipped: {Skipped}, WeeklyPlans: {WeeklyPlans}, CalendarEvents: {CalendarEvents}, Backfilled: {Backfilled}, Errors: {Errors}",
             result.RecipesAdded, result.RecipesUpdated, result.RecipesSkipped, result.WeeklyPlansRestored, result.CalendarEventsRestored, result.FinishedDishIndicesBackfilled, result.Errors);

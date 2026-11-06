@@ -25,6 +25,7 @@ public partial class RecoverySnapshotService
         ["weekly_plans"] = "clear",
         ["calendar_events"] = "clear",
         ["grocery_extra_occurrences"] = "clear",
+        ["supper_servings"] = "clear",
         ["recipe_votes"] = "clear",
         ["weekly_household_interest"] = "clear",
         ["voting_round_state"] = "fresh-current-round",
@@ -35,7 +36,7 @@ public partial class RecoverySnapshotService
         ["maintenance_commands"] = "invalidate",
         ["recovery_publication"] = "fresh-publication"
     };
-    private static readonly HashSet<string> DemoClearTables = ["recipe_import_reports", "weekly_plans", "calendar_events", "weekly_household_interest", "grocery_extra_occurrences"];
+    private static readonly HashSet<string> DemoClearTables = ["recipe_import_reports", "weekly_plans", "calendar_events", "weekly_household_interest", "grocery_extra_occurrences", "supper_servings"];
     internal string DemoBaselineRoot
     {
         get
@@ -155,7 +156,7 @@ public partial class RecoverySnapshotService
                     row["is_discoverable"] = row["is_ready"]!.GetValue<bool>() && RecipeRotation.Suitable(recipe) && !recipe.RotationHumanOff;
                 }
             }
-        if (table == "family_settings" && values.Any(row => row!["key"]!.GetValue<string>() != "family_goto"))
+        if (table == "family_settings" && values.Any(row => row!["key"]!.GetValue<string>() is not ("family_goto" or SupperServingsService.DefaultKey)))
             throw new InvalidDataException("Unclassified household setting; declare ownership before demo capture/reset.");
         return values.ToJsonString();
     }
@@ -174,6 +175,11 @@ public partial class RecoverySnapshotService
         foreach (var row in settings.RootElement.EnumerateArray())
         {
             var value = row.GetProperty("value");
+            if (row.GetProperty("key").GetString() == SupperServingsService.DefaultKey)
+            {
+                SupperServingsService.ValidateDefaultSetting(value);
+                continue;
+            }
             if (value.ValueKind != JsonValueKind.Object || !value.TryGetProperty("items", out var items) || items.ValueKind != JsonValueKind.Array)
                 throw new InvalidDataException("Declared family_goto setting must contain an explicit items array.");
             foreach (var item in items.EnumerateArray())

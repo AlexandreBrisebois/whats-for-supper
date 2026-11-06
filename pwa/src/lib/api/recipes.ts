@@ -1,5 +1,7 @@
-import { createUntypedNodeFromDiscriminatorValue } from '@microsoft/kiota-abstractions';
+import { DateOnly, createUntypedNodeFromDiscriminatorValue } from '@microsoft/kiota-abstractions';
 import { JsonParseNode } from '@microsoft/kiota-serialization-json';
+import { normalizeSupperPreparation } from './supper-servings';
+import { civilDate } from '@/lib/deployment-calendar';
 import { demoFetch } from './demo-session';
 import { apiClient, requestAdapter } from './api-client';
 import { useFamilyStore } from '@/store/familyStore';
@@ -10,6 +12,8 @@ import { ImportReportRequestBuilderRequestsMetadata } from './generated/api/reci
 import { createRecipeImportReportSubmissionResponseDtoFromDiscriminatorValue } from './generated/models';
 import { RecipeShareInfoDto_bundleSourceObject } from './generated/models/index';
 import type {
+  IngredientProjection,
+  IngredientPreview,
   ImportedRecipeDto,
   RecipeDto,
   RecipeShareBundleDto,
@@ -243,6 +247,55 @@ export async function getRecipe(id: string): Promise<Recipe> {
   const result = await apiClient.api.recipes.byId(id as any).get();
   if (!result?.recipe) throw new Error('Recipe not found');
   return mapToRecipe(result.recipe);
+}
+
+export type IngredientContext = { supperDate: string } & (
+  { context: 'proposed' } | { context: 'assigned'; occurrenceId: string }
+);
+
+export async function getIngredientProjection(
+  id: string,
+  context: IngredientContext
+): Promise<IngredientProjection> {
+  const result = await apiClient.api.recipes.byId(id as any).ingredientProjection.get({
+    queryParameters: {
+      supperDate: DateOnly.parse(context.supperDate)!,
+      context: context.context,
+      ...(context.context === 'assigned' ? { occurrenceId: context.occurrenceId as any } : {}),
+    },
+  });
+  if (
+    !result?.version ||
+    String(result.recipeId) !== id ||
+    civilDate(result.supperDate) !== context.supperDate ||
+    result.context !== context.context ||
+    (context.context === 'assigned' && String(result.occurrenceId) !== context.occurrenceId) ||
+    !Array.isArray(result.lines)
+  )
+    throw new Error('Could not confirm ingredients for this supper.');
+  return {
+    ...result,
+    preparation: normalizeSupperPreparation(result.preparation),
+  };
+}
+
+export type PreviewPortions = 2 | 4 | 6;
+
+export async function getIngredientPreview(
+  id: string,
+  target: PreviewPortions
+): Promise<IngredientPreview> {
+  const result = await apiClient.api.recipes
+    .byId(id as any)
+    .ingredientPreview.get({ queryParameters: { targetServings: target } });
+  if (
+    !result?.version ||
+    String(result.recipeId) !== id ||
+    result.targetServings !== target ||
+    !Array.isArray(result.lines)
+  )
+    throw new Error('Could not confirm ingredient preview.');
+  return result;
 }
 
 // Local classification of raw Save response validity before generated decoding.

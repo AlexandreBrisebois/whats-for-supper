@@ -50,6 +50,218 @@ public class GroceryRecomputeServiceTests : IAsyncLifetime
         await _factory.DisposeAsync();
     }
 
+    [Fact]
+    public async Task IncreasedKnownRequirement_UnchecksOnlyAffectedBucket_AndUnchangedRetryKeepsLaterCheck()
+    {
+        var id = await SeedRecipeWithSupplyAsync(TestMonday, [("pasta", 200, "g"), ("sauce", 100, "ml")]);
+        await _service.RecomputeForWeekAsync(TestMonday, default);
+        var plan = await _db.WeeklyPlans.SingleAsync();
+        plan.GroceryState = "{\"pasta\":true,\"sauce\":true,\"unrelated\":true}";
+        var recipe = await _db.Recipes.SingleAsync(r => r.Id == id);
+        recipe.RawMetadata = BuildRawMetadata([("pasta", 600, "g"), ("sauce", 300, "ml")]);
+        await _db.SaveChangesAsync();
+        await _service.RecomputeForWeekAsync(TestMonday, default);
+        _db.ChangeTracker.Clear();
+        plan = await _db.WeeklyPlans.SingleAsync();
+        var checks = JsonSerializer.Deserialize<Dictionary<string, bool>>(plan.GroceryState)!;
+        Assert.False(checks["pasta"]); Assert.False(checks["sauce"]); Assert.True(checks["unrelated"]);
+        var items = await GetGroceryItemsAsync(TestMonday);
+        Assert.Equal(600, items.Single(x => x.DisplayName == "pasta").Quantity);
+        Assert.Equal(300, items.Single(x => x.DisplayName == "sauce").Quantity);
+        Assert.False(string.IsNullOrWhiteSpace(plan.GroceryResetSummaryVersion));
+        plan.GroceryState = "{\"pasta\":true,\"sauce\":true,\"unrelated\":true}";
+        await _db.SaveChangesAsync();
+        await _service.RecomputeForWeekAsync(TestMonday, default);
+        _db.ChangeTracker.Clear();
+        checks = JsonSerializer.Deserialize<Dictionary<string, bool>>((await _db.WeeklyPlans.SingleAsync()).GroceryState)!;
+        Assert.True(checks["pasta"]); Assert.True(checks["sauce"]); Assert.True(checks["unrelated"]);
+    }
+
+    [Fact]
+    public async Task UnconfiguredRepeatedRecipe_ContributesOriginalAmountPerOccurrenceWithOneContributorAndNoRecipeFreeDay()
+    {
+        var id = await SeedRecipeWithSupplyAsync(TestMonday, [("eggs", 2, "piece")]);
+        var recipe = await _db.Recipes.SingleAsync(x => x.Id == id);
+        recipe.Servings = 2; recipe.Ingredients = "[\"2 eggs\"]";
+        recipe.RawMetadata = "{\"recipeIngredient\":[\"2 eggs\"],\"supply\":[{\"name\":\"eggs\",\"quantity\":2,\"unitText\":\"piece\"}]}";
+        _db.CalendarEvents.AddRange(new CalendarEvent { Date = TestMonday.AddDays(1), RecipeId = id }, new CalendarEvent { Date = TestMonday.AddDays(2), RecipeId = null, Status = CalendarEventStatus.Skipped });
+        await _db.SaveChangesAsync();
+        for (var run = 0; run < 2; run++) {
+            await _service.RecomputeForWeekAsync(TestMonday, default);
+            _db.ChangeTracker.Clear();
+            var item = Assert.Single(await GetGroceryItemsAsync(TestMonday));
+            Assert.Equal(4, item.Quantity); Assert.Equal("piece", item.UnitText);
+            Assert.Equal(id, Assert.Single(item.RecipeIds!));
+            Assert.Empty(await _db.SupperServings.ToListAsync());
+            Assert.False(await _db.FamilySettings.AnyAsync(x => x.Key == SupperServingsService.DefaultKey));
+            var original = await _db.Recipes.SingleAsync(x => x.Id == id);
+            Assert.Equal(2, original.Servings); Assert.Equal("[\"2 eggs\"]", original.Ingredients);
+        }
+    }
+
+    [Theory]
+    [InlineData("structured")]
+    [InlineData("absent")]
+    [InlineData("empty")]
+    [InlineData("blank")]
+    public async Task GrocerySource_UsesCoherentSupplyOrKeepsFallbackTextWithoutParsingNumbers(string source)
+    {
+        var id = await SeedRecipeWithSupplyAsync(TestMonday, []);
+        var recipe = await _db.Recipes.SingleAsync(x => x.Id == id);
+        recipe.Ingredients = "[\"200 g pasta\"]";
+        recipe.RawMetadata = source switch {
+            "structured" => "{\"recipeIngredient\":[\"200 g pasta\"],\"supply\":[{\"name\":\"pasta\",\"quantity\":200,\"unitText\":\"g\"}]}",
+            "empty" => "{\"recipeIngredient\":[\"200 g pasta\"],\"supply\":[]}",
+            "blank" => "{\"recipeIngredient\":[\"200 g pasta\"],\"supply\":[{\"name\":\"   \",\"quantity\":999,\"unitText\":\"kg\"}]}",
+            _ => "{}"
+        };
+        await _db.SaveChangesAsync(); await _service.RecomputeForWeekAsync(TestMonday, default);
+        var item = Assert.Single(await GetGroceryItemsAsync(TestMonday));
+        if (source == "structured") { Assert.Equal("pasta", item.DisplayName); Assert.Equal(200, item.Quantity); Assert.Equal("g", item.UnitText); }
+        else { Assert.Equal("200 g pasta", item.DisplayName); Assert.Null(item.Quantity); Assert.Equal("piece", item.UnitText); }
+        Assert.Equal(id, Assert.Single(item.RecipeIds!));
+    }
+
+    [Theory]
+    [InlineData("absent")]
+    [InlineData("null")]
+    [InlineData("false")]
+    public async Task IncreasedKnownRequirement_DoesNotInferIncreaseFromUnprovenCachedSubtotal(string completeness)
+    {
+        var id = await SeedRecipeWithSupplyAsync(TestMonday, [("pasta", 600, "g")]);
+        var recipe = await _db.Recipes.SingleAsync(x => x.Id == id);
+        recipe.Ingredients = "[\"600 g pasta\"]";
+        recipe.RawMetadata = "{\"recipeIngredient\":[\"600 g pasta\"],\"supply\":[{\"name\":\"pasta\",\"quantity\":600,\"unitText\":\"g\"}]}";
+        var cached = new Dictionary<string, object?> { ["displayName"] = "pasta", ["normalizedKey"] = "pasta", ["section"] = "Pantry", ["quantity"] = 200, ["unitText"] = "g", ["recipeIds"] = new[] { id } };
+        if (completeness != "absent") cached["quantityComplete"] = completeness == "null" ? null : false;
+        _db.WeeklyPlans.Add(new WeeklyPlan { WeekStartDate = TestMonday,
+            GroceryItems = JsonSerializer.Serialize(new[] { cached }),
+            GroceryState = "{\"pasta\":true}" });
+        await _db.SaveChangesAsync();
+        await _service.RecomputeForWeekAsync(TestMonday, default);
+        _db.ChangeTracker.Clear();
+        var plan = await _db.WeeklyPlans.SingleAsync();
+        Assert.True(JsonSerializer.Deserialize<Dictionary<string, bool>>(plan.GroceryState)!["pasta"]);
+        using var rows = JsonDocument.Parse(plan.GroceryItems);
+        var row = rows.RootElement[0];
+        Assert.Equal(600, row.GetProperty("quantity").GetDouble());
+        Assert.True(row.GetProperty("quantityComplete").GetBoolean());
+        Assert.True(row.TryGetProperty("checkReviewReason", out var reason), "An unknown prior checked amount needs persisted review even when the new amount is complete.");
+        Assert.Equal("prior_amount_unknown", reason.GetString());
+        Assert.Null(plan.GroceryResetSummaryVersion);
+        await _service.RecomputeForWeekAsync(TestMonday, default);
+        _db.ChangeTracker.Clear();
+        Assert.Contains("prior_amount_unknown", (await _db.WeeklyPlans.SingleAsync()).GroceryItems);
+    }
+
+    [Fact]
+    public async Task ResetSummary_UsesActualResetIdentityAndRetiresAfterUnrelatedNonResetChange()
+    {
+        var id = await SeedRecipeWithSupplyAsync(TestMonday, [("pasta", 200, "g")]);
+        await _service.RecomputeForWeekAsync(TestMonday, default);
+        async Task Change(double quantity, bool check = false) {
+            _db.ChangeTracker.Clear();
+            (await _db.Recipes.SingleAsync(x => x.Id == id)).RawMetadata = BuildRawMetadata([("pasta", quantity, "g")]);
+            if (check) (await _db.WeeklyPlans.SingleAsync()).GroceryState = "{\"pasta\":true,\"unrelated\":true}";
+            await _db.SaveChangesAsync(); await _service.RecomputeForWeekAsync(TestMonday, default); _db.ChangeTracker.Clear();
+        }
+        await Change(600, true);
+        var first = (await _db.WeeklyPlans.SingleAsync()).GroceryResetSummaryVersion; Assert.NotNull(first);
+        await Change(600, true);
+        Assert.Equal(first, (await _db.WeeklyPlans.SingleAsync()).GroceryResetSummaryVersion);
+        Assert.True(JsonSerializer.Deserialize<Dictionary<string, bool>>((await _db.WeeklyPlans.SingleAsync()).GroceryState)!["pasta"]);
+        await Change(200); await Change(600);
+        var second = (await _db.WeeklyPlans.SingleAsync()).GroceryResetSummaryVersion;
+        Assert.NotNull(second); Assert.NotEqual(first, second);
+        await SeedRecipeWithSupplyAsync(TestMonday.AddDays(1), [("tomato", 100, "g")]);
+        await _service.RecomputeForWeekAsync(TestMonday, default); _db.ChangeTracker.Clear();
+        Assert.Null((await _db.WeeklyPlans.SingleAsync()).GroceryResetSummaryVersion);
+    }
+
+    [Fact]
+    public async Task ResetSummary_DecreaseRetiresPriorExplanationWithoutCheckingAnything()
+    {
+        var id = await SeedRecipeWithSupplyAsync(TestMonday, [("pasta", 200, "g")]);
+        await _service.RecomputeForWeekAsync(TestMonday, default);
+        (await _db.WeeklyPlans.SingleAsync()).GroceryState = "{\"pasta\":true}";
+        (await _db.Recipes.SingleAsync(x => x.Id == id)).RawMetadata = BuildRawMetadata([("pasta", 600, "g")]);
+        await _db.SaveChangesAsync(); await _service.RecomputeForWeekAsync(TestMonday, default);
+        _db.ChangeTracker.Clear();
+        Assert.NotNull((await _db.WeeklyPlans.SingleAsync()).GroceryResetSummaryVersion);
+        (await _db.Recipes.SingleAsync(x => x.Id == id)).RawMetadata = BuildRawMetadata([("pasta", 200, "g")]);
+        await _db.SaveChangesAsync(); await _service.RecomputeForWeekAsync(TestMonday, default); _db.ChangeTracker.Clear();
+        Assert.Null((await _db.WeeklyPlans.SingleAsync()).GroceryResetSummaryVersion);
+        Assert.False(JsonSerializer.Deserialize<Dictionary<string, bool>>((await _db.WeeklyPlans.SingleAsync()).GroceryState)!["pasta"]);
+    }
+
+    [Fact]
+    public async Task CheckedToTaste_UnchangedRecomputeDoesNotInventPriorAmountReview()
+    {
+        await SeedRecipeWithSupplyAsync(TestMonday, [("salt to taste", null, null)]);
+        await _service.RecomputeForWeekAsync(TestMonday, default);
+        var plan = await _db.WeeklyPlans.SingleAsync();
+        plan.GroceryState = "{\"salt to taste\":true}"; await _db.SaveChangesAsync();
+        await _service.RecomputeForWeekAsync(TestMonday, default);
+        _db.ChangeTracker.Clear();
+        var line = Assert.Single(JsonDocument.Parse((await _db.WeeklyPlans.SingleAsync()).GroceryItems).RootElement.EnumerateArray());
+        Assert.True(line.GetProperty("quantityComplete").GetBoolean());
+        Assert.Equal(JsonValueKind.Null, line.GetProperty("quantity").ValueKind);
+        Assert.Equal(JsonValueKind.Null, line.GetProperty("checkReviewReason").ValueKind);
+    }
+
+    [Fact]
+    public async Task EmptyIngredientsWithoutBasis_DatedProjectionDoesNotClaimScaled()
+    {
+        var recipe = new Recipe { Name = "Incomplete", Ingredients = "[]" };
+        _db.Recipes.Add(recipe);
+        _db.FamilySettings.Add(new FamilySetting { Key = "supper_servings_default", Value = JsonSerializer.SerializeToElement(new { servings = 4 }) });
+        await _db.SaveChangesAsync();
+        using var client = _factory.CreateAuthenticatedClient();
+        var today = _scope.ServiceProvider.GetRequiredService<DeploymentCalendar>()
+            .Capture(_scope.ServiceProvider.GetRequiredService<IClock>().UtcNow).Today;
+        var response = await client.GetAsync($"/api/recipes/{recipe.Id}/ingredient-projection?supperDate={today.AddDays(1):yyyy-MM-dd}&context=proposed");
+        response.EnsureSuccessStatusCode();
+        var result = JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement;
+        Assert.Equal("unresolved", result.GetProperty("status").GetString());
+    }
+
+    [Fact]
+    public async Task GrocerySubtotalOverflow_ExposesUnresolvedInsteadOfInvalidJson()
+    {
+        await SeedRecipeWithSupplyAsync(TestMonday, [("pasta", 1e308, "kg")]);
+        await _service.RecomputeForWeekAsync(TestMonday, default);
+        var row = Assert.Single(await GetGroceryItemsAsync(TestMonday));
+        Assert.Null(row.Quantity);
+        using var rows = JsonDocument.Parse((await GetWeeklyPlanAsync(TestMonday)).GroceryItems);
+        Assert.False(rows.RootElement[0].GetProperty("quantityComplete").GetBoolean());
+    }
+
+    [Fact]
+    public async Task SupplyWithoutRetainedBasis_PreservesNameWithoutInventingNumericAmount()
+    {
+        var id = await SeedRecipeWithSupplyAsync(TestMonday, [("pasta", 200, "g")]);
+        var recipe = await _db.Recipes.SingleAsync(x => x.Id == id);
+        recipe.RawMetadata = "{\"supply\":[{\"name\":\"pasta\",\"quantity\":200,\"unitText\":\"g\"}]}";
+        await _db.SaveChangesAsync();
+        await _service.RecomputeForWeekAsync(TestMonday, default);
+        var row = Assert.Single(await GetGroceryItemsAsync(TestMonday));
+        Assert.Equal("pasta", row.DisplayName);
+        Assert.Null(row.Quantity);
+        using var rows = JsonDocument.Parse((await GetWeeklyPlanAsync(TestMonday)).GroceryItems);
+        Assert.False(rows.RootElement[0].GetProperty("quantityComplete").GetBoolean());
+    }
+
+    [Fact]
+    public async Task AmbiguousSameRecipeSupplies_DoNotInventQuantifiedUnitBuckets()
+    {
+        await SeedRecipeWithSupplyAsync(TestMonday, [("flour", 200.0, "g"), ("flour", 1.0, "cup")]);
+        await _service.RecomputeForWeekAsync(TestMonday, default);
+        var row = Assert.Single(await GetGroceryItemsAsync(TestMonday));
+        Assert.Equal("flour", row.NormalizedKey);
+        Assert.Null(row.Quantity); Assert.False(row.QuantityComplete);
+        Assert.Single(row.RecipeIds);
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     /// <summary>Builds a raw_metadata JSON string with a supply array.</summary>
@@ -62,7 +274,7 @@ public class GroceryRecomputeServiceTests : IAsyncLifetime
             if (s.unitText != null) obj["unitText"] = s.unitText;
             return obj;
         });
-        return JsonSerializer.Serialize(new { supply = items });
+        return JsonSerializer.Serialize(new { recipeIngredient = supplies.Select(s => s.name), supply = items });
     }
 
     /// <summary>
@@ -71,13 +283,14 @@ public class GroceryRecomputeServiceTests : IAsyncLifetime
     /// </summary>
     private async Task<Guid> SeedRecipeWithSupplyAsync(
         DateOnly date,
-        IEnumerable<(string name, double? quantity, string? unitText)> supplies)
+        IEnumerable<(string name, double? quantity, string? unitText)> supplies, int? basis = null)
     {
         var recipeId = Guid.NewGuid();
         _db.Recipes.Add(new Recipe
         {
             Id = recipeId,
             Name = "Test Recipe",
+            Servings = basis,
             RawMetadata = BuildRawMetadata(supplies),
         });
         _db.CalendarEvents.Add(new CalendarEvent
@@ -187,14 +400,12 @@ public class GroceryRecomputeServiceTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task TwoSupplyItems_SameName_DifferentUnits_ProducesTwoLineItems()
+    public async Task TwoRecipes_SameName_DifferentUnits_ProducesTwoLineItems()
     {
         var monday = new DateOnly(2025, 1, 27);
-        // Same ingredient "flour" but different units in the same recipe
-        await SeedRecipeWithSupplyAsync(monday, [
-            ("flour", 200.0, "g"),
-            ("flour", 1.0, "cup"),
-        ]);
+        // Distinct verified contributors preserve unit buckets without ambiguous source binding.
+        await SeedRecipeWithSupplyAsync(monday, [("flour", 200.0, "g")]);
+        await SeedRecipeWithSupplyAsync(monday.AddDays(1), [("flour", 1.0, "cup")]);
 
         await _service.RecomputeForWeekAsync(monday, CancellationToken.None);
 
@@ -518,6 +729,7 @@ public class GroceryRecomputeServiceTests : IAsyncLifetime
                         RawMetadata =
                                 """
                                 {
+                                    "recipeIngredient": ["garlic cloves"],
                                     "supply": [
                                         {
                                             "name": "garlic cloves",
@@ -550,8 +762,8 @@ public class GroceryRecomputeServiceTests : IAsyncLifetime
     [Fact]
     public async Task RecomputeForWeekAsync_UnknownUnit_KeptAsSeparateBucket()
     {
-        await SeedRecipeWithSupplyAsync(TestMonday,
-            [("salt", 1.0, "pinch"), ("salt", 1.0, "pinch")]);
+        await SeedRecipeWithSupplyAsync(TestMonday, [("salt", 1.0, "pinch")]);
+        await SeedRecipeWithSupplyAsync(TestMonday.AddDays(1), [("salt", 1.0, "pinch")]);
 
         await _service.RecomputeForWeekAsync(TestMonday, CancellationToken.None);
 
@@ -611,8 +823,9 @@ public class GroceryRecomputeServiceTests : IAsyncLifetime
 
             var monday = UniqueMonday(baseDate, i * 7, 3000);
 
-            await SeedRecipeWithSupplyAsync(monday, [(name, q1, unit)]);
-            await SeedRecipeWithSupplyAsync(monday.AddDays(1), [(name, q2, unit)]);
+            // Future weeks inherit automatic family1; this numeric property needs a known matching basis.
+            await SeedRecipeWithSupplyAsync(monday, [(name, q1, unit)], basis: 1);
+            await SeedRecipeWithSupplyAsync(monday.AddDays(1), [(name, q2, unit)], basis: 1);
 
             await _service.RecomputeForWeekAsync(monday, CancellationToken.None);
 
@@ -655,8 +868,9 @@ public class GroceryRecomputeServiceTests : IAsyncLifetime
 
             var monday = UniqueMonday(baseDate, i * 7, 3000);
 
-            // Both supply items in the same recipe on the same day
-            await SeedRecipeWithSupplyAsync(monday, [(name, q1, unit1), (name, q2, unit2)]);
+            // Separate verified contributors isolate aggregation from ambiguous same-name binding.
+            await SeedRecipeWithSupplyAsync(monday, [(name, q1, unit1)]);
+            await SeedRecipeWithSupplyAsync(monday.AddDays(1), [(name, q2, unit2)]);
 
             await _service.RecomputeForWeekAsync(monday, CancellationToken.None);
 

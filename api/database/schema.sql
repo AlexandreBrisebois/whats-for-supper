@@ -118,6 +118,17 @@ CREATE INDEX IF NOT EXISTS idx_recipe_search_documents_document_trgm
     USING gin (document_text gin_trgm_ops)
     WHERE index_status = 'ready';
 
+CREATE TABLE supper_servings (
+    date date PRIMARY KEY,
+    override_servings integer,
+    inherited_servings integer,
+    version uuid NOT NULL,
+    created_at timestamptz NOT NULL,
+    updated_at timestamptz NOT NULL,
+    CONSTRAINT supper_servings_override_positive CHECK (override_servings IS NULL OR override_servings > 0),
+    CONSTRAINT supper_servings_inherited_positive CHECK (inherited_servings IS NULL OR inherited_servings > 0)
+);
+
 CREATE TABLE IF NOT EXISTS weekly_plans (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     week_start_date date UNIQUE NOT NULL,
@@ -128,6 +139,12 @@ CREATE TABLE IF NOT EXISTS weekly_plans (
     notified_at timestamptz,
     grocery_state jsonb NOT NULL DEFAULT '{}'::jsonb,
     grocery_items jsonb NOT NULL DEFAULT '[]'::jsonb,
+    serving_input_version text,
+    serving_applied_version text,
+    serving_refresh_status text,
+    serving_refresh_workflow_id uuid,
+    grocery_reset_summary_version text,
+
     created_at timestamptz DEFAULT now() NOT NULL
 );
 
@@ -184,6 +201,12 @@ CREATE TABLE calendar_events (
     status smallint NOT NULL,
     vote_count integer,
     candidate_ids uuid[],
+    prepared_on date,
+    prepared_at_utc timestamp with time zone,
+    prepared_servings integer,
+    prepared_original_servings integer,
+    preparation_plan_token text,
+    preparation_serving_version text,
     non_cooking_kind text,
     non_cooking_label text,
     CONSTRAINT calendar_events_non_cooking_check CHECK ((non_cooking_kind IS NULL AND non_cooking_label IS NULL) OR (non_cooking_kind IS NOT NULL AND status = 3 AND recipe_id IS NULL AND ((non_cooking_kind IN ('order_in', 'eating_out') AND (non_cooking_label IS NULL OR (char_length(btrim(non_cooking_label)) >= 1 AND char_length(btrim(non_cooking_label)) <= 80))) OR (non_cooking_kind = 'mystery' AND non_cooking_label IS NULL) OR (non_cooking_kind = 'custom' AND non_cooking_label IS NOT NULL AND char_length(btrim(non_cooking_label)) >= 1 AND char_length(btrim(non_cooking_label)) <= 80)))),

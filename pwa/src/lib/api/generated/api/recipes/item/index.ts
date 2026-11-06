@@ -25,6 +25,16 @@ import {
 } from './importReport/index';
 // @ts-ignore
 import {
+  IngredientPreviewRequestBuilderRequestsMetadata,
+  type IngredientPreviewRequestBuilder,
+} from './ingredientPreview/index';
+// @ts-ignore
+import {
+  IngredientProjectionRequestBuilderRequestsMetadata,
+  type IngredientProjectionRequestBuilder,
+} from './ingredientProjection/index';
+// @ts-ignore
+import {
   OriginalRequestBuilderNavigationMetadata,
   type OriginalRequestBuilder,
 } from './original/index';
@@ -157,6 +167,14 @@ export interface ItemRequestBuilder extends BaseRequestBuilder<ItemRequestBuilde
    */
   get importReport(): ImportReportRequestBuilder;
   /**
+   * The ingredientPreview property
+   */
+  get ingredientPreview(): IngredientPreviewRequestBuilder;
+  /**
+   * The ingredientProjection property
+   */
+  get ingredientProjection(): IngredientProjectionRequestBuilder;
+  /**
    * The original property
    */
   get original(): OriginalRequestBuilder;
@@ -201,7 +219,7 @@ export interface ItemRequestBuilder extends BaseRequestBuilder<ItemRequestBuilde
     requestConfiguration?: RequestConfiguration<object> | undefined
   ): Promise<RecipeDetailResponse | undefined>;
   /**
-   * Update a recipe
+   * Recipe basis or ingredient corrections commit together with invalidation and durable grocery refresh work for affected current/future grocery contributions, preserving dated portion snapshots and original unscaled legacy non-supper/night-away contributions. Counts and original amounts are preserved; reads expose pending freshness until the worker recomputes. Existing week updates invalidate dated readers after commit.
    * @param body The request body
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {Promise<PatchResponse>}
@@ -229,7 +247,7 @@ export interface ItemRequestBuilder extends BaseRequestBuilder<ItemRequestBuilde
     requestConfiguration?: RequestConfiguration<object> | undefined
   ): RequestInformation;
   /**
-   * Update a recipe
+   * Recipe basis or ingredient corrections commit together with invalidation and durable grocery refresh work for affected current/future grocery contributions, preserving dated portion snapshots and original unscaled legacy non-supper/night-away contributions. Counts and original amounts are preserved; reads expose pending freshness until the worker recomputes. Existing week updates invalidate dated readers after commit.
    * @param body The request body
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {RequestInformation}
@@ -344,6 +362,12 @@ export const ItemRequestBuilderNavigationMetadata: Record<
   },
   importReport: {
     requestsMetadata: ImportReportRequestBuilderRequestsMetadata,
+  },
+  ingredientPreview: {
+    requestsMetadata: IngredientPreviewRequestBuilderRequestsMetadata,
+  },
+  ingredientProjection: {
+    requestsMetadata: IngredientProjectionRequestBuilderRequestsMetadata,
   },
   original: {
     navigationMetadata: OriginalRequestBuilderNavigationMetadata,

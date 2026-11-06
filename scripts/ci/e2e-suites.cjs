@@ -8,15 +8,17 @@ const suites = {
     'tonight-replacement-recovery',
   ],
   planning: [
-    'deployment-calendar', 'grocery', 'plan-later', 'planner', 'planner-full-cycle',
+    'deployment-calendar', 'grocery', 'grocery-recipe-sources', 'plan-later', 'planner', 'planner-full-cycle',
     'planner-non-cooking-days', 'planner-reconciliation',
-    'planner-smart-defaults-week-offset', 'planner-voting-identity',
+    'planner-smart-defaults-week-offset', 'planner-voting-identity', 'planner-portions-refinement',
+    'prepared-supper', 'supper-servings', 'supper-servings-context', 'supper-servings-movement',
   ],
   recipes: [
     'browse-all-stack', 'browse-stack', 'stack-gestures', 'discovery', 'goto-layout', 'recipe-hero-actions',
     'recipe-notes-recovery', 'recipe-original-viewer', 'recipe-recovery',
     'recipe-share', 'recipes', 'search-hardening', 'search-invalidation-recovery',
     'sharing-fidelity', 'unified-recipes',
+    'recipe-detail-layout', 'recipe-ingredient-preview',
   ],
   household: [
     'auth-flow', 'welcome-demo', 'bug-condition-exploration', 'capture-flow', 'demo-mode',

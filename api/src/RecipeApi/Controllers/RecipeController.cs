@@ -128,6 +128,34 @@ public class RecipeController(
         return Ok(result);
     }
 
+    [HttpGet("{id:guid}/ingredient-preview")]
+    [SkipWrapping]
+    public async Task<IActionResult> IngredientPreview(Guid id, [FromQuery] int? targetServings,
+        [FromServices] IngredientProjectionService projection, CancellationToken ct)
+    {
+        if (targetServings is not (2 or 4 or 6))
+            return BadRequest(new { message = "Choose two, four or six portions to preview." });
+        try { return Ok(await projection.ReadPreviewAsync(id, targetServings.Value, ct)); }
+        catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+    }
+
+    [HttpGet("{id:guid}/ingredient-projection")]
+    [SkipWrapping]
+    public async Task<IActionResult> IngredientProjection(Guid id, [FromQuery] DateOnly? supperDate,
+        [FromQuery] string? context, [FromQuery] Guid? occurrenceId,
+        [FromServices] IngredientProjectionService projection, CancellationToken ct)
+    {
+        if (supperDate is null || context is not ("proposed" or "assigned") ||
+            Request.Query.ContainsKey("targetServings") ||
+            (context == "assigned" ? occurrenceId is null || occurrenceId == Guid.Empty : occurrenceId is not null))
+            return BadRequest(new { message = "Capture a supper date and proposed or assigned context; assigned context requires occurrenceId. Portions are resolved by the server." });
+        try { return Ok(await projection.ReadAsync(id, supperDate.Value, context, occurrenceId, ct)); }
+        catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+        catch (IngredientProjectionConflictException ex) { return Conflict(new { message = ex.Message }); }
+        catch (ArgumentOutOfRangeException) { return BadRequest(new { message = "Choose a supported week." }); }
+        catch (OverflowException) { return BadRequest(new { message = "Choose a supported week." }); }
+    }
+
     /// <summary>GET /api/recipes/{id}/share — export a privacy-scrubbed recipe bundle.</summary>
     [HttpGet("{id:guid}/share")]
     public async Task<IActionResult> Share(

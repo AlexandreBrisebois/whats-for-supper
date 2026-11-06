@@ -49,7 +49,7 @@ export interface DeferPostResponse extends AdditionalDataHolder, Parsable {
  */
 export interface DeferRequestBuilder extends BaseRequestBuilder<DeferRequestBuilder> {
   /**
-   * Keeps the exact source date and recipe body and existing response shape. Searches from reference Monday plus targetWeekOffset weeks, continuing past occupied dates into later weeks. Feedback reports the actual destination and claims next week is full only when placement spills beyond the requested destination week. Invalid inputs reject before mutation.
+   * Deferral explicitly reopens completed content as Planned, clears its preparation receipt and recalculates history from remaining Cooked occurrences. Keeps the exact source date and recipe body and existing response shape. Searches from reference Monday plus targetWeekOffset weeks, continuing past occupied dates into later weeks. Feedback reports the actual destination and claims next week is full only when placement spills beyond the requested destination week. Invalid inputs reject before mutation.
    * @param body The request body
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {Promise<DeferPostResponse>}
@@ -61,7 +61,7 @@ export interface DeferRequestBuilder extends BaseRequestBuilder<DeferRequestBuil
     requestConfiguration?: RequestConfiguration<DeferRequestBuilderPostQueryParameters> | undefined
   ): Promise<DeferPostResponse | undefined>;
   /**
-   * Keeps the exact source date and recipe body and existing response shape. Searches from reference Monday plus targetWeekOffset weeks, continuing past occupied dates into later weeks. Feedback reports the actual destination and claims next week is full only when placement spills beyond the requested destination week. Invalid inputs reject before mutation.
+   * Deferral explicitly reopens completed content as Planned, clears its preparation receipt and recalculates history from remaining Cooked occurrences. Keeps the exact source date and recipe body and existing response shape. Searches from reference Monday plus targetWeekOffset weeks, continuing past occupied dates into later weeks. Feedback reports the actual destination and claims next week is full only when placement spills beyond the requested destination week. Invalid inputs reject before mutation.
    * @param body The request body
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {RequestInformation}
@@ -72,7 +72,7 @@ export interface DeferRequestBuilder extends BaseRequestBuilder<DeferRequestBuil
   ): RequestInformation;
 }
 /**
- * Keeps the exact source date and recipe body and existing response shape. Searches from reference Monday plus targetWeekOffset weeks, continuing past occupied dates into later weeks. Feedback reports the actual destination and claims next week is full only when placement spills beyond the requested destination week. Invalid inputs reject before mutation.
+ * Deferral explicitly reopens completed content as Planned, clears its preparation receipt and recalculates history from remaining Cooked occurrences. Keeps the exact source date and recipe body and existing response shape. Searches from reference Monday plus targetWeekOffset weeks, continuing past occupied dates into later weeks. Feedback reports the actual destination and claims next week is full only when placement spills beyond the requested destination week. Invalid inputs reject before mutation.
  */
 export interface DeferRequestBuilderPostQueryParameters {
   /**

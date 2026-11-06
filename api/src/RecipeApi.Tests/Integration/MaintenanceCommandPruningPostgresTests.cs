@@ -131,7 +131,8 @@ public sealed class MaintenanceCommandPruningPostgresTests : IAsyncLifetime
         new FixedClock(Now),
         NullLogger<ManagementService>.Instance,
         scope.ServiceProvider.GetRequiredService<DemoModeOptions>(),
-        scope.ServiceProvider.GetRequiredService<RecoverySnapshotService>());
+        scope.ServiceProvider.GetRequiredService<RecoverySnapshotService>(),
+        scope.ServiceProvider.GetRequiredService<DeploymentCalendar>());
 
     private static MaintenanceCommand Command(string status, DateTimeOffset? completedAt) => new()
     {

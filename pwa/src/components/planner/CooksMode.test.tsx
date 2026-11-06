@@ -24,11 +24,14 @@ vi.mock('framer-motion', () => ({
 const layoutMocks = vi.hoisted(() => ({ stacked: true }));
 vi.mock('@/hooks/useMediaQuery', () => ({ useMediaQuery: () => layoutMocks.stacked }));
 
+const preparationMocks = vi.hoisted(() => ({ prepareSupper: vi.fn() }));
+vi.mock('@/lib/api/supper-servings', () => preparationMocks);
+
 const routerMocks = vi.hoisted(() => ({ push: vi.fn() }));
-const cookingMocks = vi.hoisted(() => ({ markCooked: vi.fn() }));
+const cookingMocks = vi.hoisted(() => ({ markCooked: vi.fn(), confirmPreparation: vi.fn() }));
 
 vi.mock('@/store/todayStore', () => ({
-  useTodayStore: { getState: () => cookingMocks },
+  useTodayStore: { getState: () => cookingMocks, subscribe: () => () => {} },
 }));
 
 vi.mock('next/navigation', () => ({
@@ -37,6 +40,7 @@ vi.mock('next/navigation', () => ({
 }));
 
 vi.mock('@/locales', () => ({
+  getLocale: () => 'en',
   t: (_key: string, fallback: string) => fallback,
   tWithVars: (_key: string, fallback: string, vars: Record<string, string | number>) =>
     Object.entries(vars).reduce(
@@ -53,6 +57,7 @@ vi.mock('@/lib/imageUtils', () => ({
   getImageUrl: (value: string) => value,
 }));
 
+const getIngredientProjectionMock = vi.fn();
 const getRecipeMock = vi.fn();
 const updateRecipeMock = vi.fn();
 const saveRecipeImportIssueMock = vi.fn();
@@ -60,6 +65,7 @@ const resolveRecipeImportIssueMock = vi.fn();
 
 vi.mock('@/lib/api/recipes', () => ({
   getRecipe: (...args: any[]) => getRecipeMock(...args),
+  getIngredientProjection: (...args: any[]) => getIngredientProjectionMock(...args),
   updateRecipe: (...args: any[]) => updateRecipeMock(...args),
   saveRecipeImportIssue: (...args: any[]) => saveRecipeImportIssueMock(...args),
   resolveRecipeImportIssue: (...args: any[]) => resolveRecipeImportIssueMock(...args),
@@ -95,7 +101,9 @@ const originalUpdateMemberPreferences = useFamilyStore.getState().updateMemberPr
 describe('CooksMode', () => {
   beforeEach(() => {
     layoutMocks.stacked = true;
+    preparationMocks.prepareSupper.mockReset();
     getRecipeMock.mockReset();
+    getIngredientProjectionMock.mockReset();
     updateRecipeMock.mockReset();
     saveRecipeImportIssueMock.mockReset();
     resolveRecipeImportIssueMock.mockReset();
@@ -104,6 +112,561 @@ describe('CooksMode', () => {
     usePlannerStore.setState({ cookProgress: {} });
     setCookingView('step-by-step');
     useFamilyStore.setState({ updateMemberPreferences: originalUpdateMemberPreferences });
+  });
+
+  it('prepares only the saved occurrence using guards captured with displayed quantities', async () => {
+    const id = 'saved-pasta';
+    const context = {
+      supperDate: '2026-10-16',
+      context: 'assigned' as const,
+      occurrenceId: '11111111-1111-4111-8111-111111111121',
+    };
+    getRecipeMock.mockResolvedValue({
+      id,
+      ingredients: ['200 g pasta'],
+      recipeInstructions: ['Serve.'],
+    });
+    getIngredientProjectionMock.mockResolvedValue({
+      recipeId: id,
+      ...context,
+      version: 'quantities-six',
+      servingVersion: 'whole-week',
+      preparationPlanToken: 'captured-plan',
+      preparationServingVersion: 'captured-six',
+      targetServings: 6,
+      lines: [
+        {
+          originalText: '200 g pasta',
+          name: 'pasta',
+          quantity: 600,
+          unitText: 'g',
+          status: 'scaled',
+        },
+      ],
+    });
+    preparationMocks.prepareSupper.mockResolvedValue({
+      occurrenceId: context.occurrenceId,
+      recipeId: id,
+      supperDate: context.supperDate,
+      preparation: { preparedOn: '2026-10-13', servings: 6 },
+    });
+    render(
+      <CooksMode
+        recipe={{ id, name: 'Pasta', image: '' }}
+        ingredientContext={context}
+        onClose={vi.fn()}
+      />
+    );
+    expect(await screen.findByText('600 g pasta')).toBeVisible();
+    fireEvent.click(screen.getByTestId('cooks-mode-step-next'));
+    fireEvent.click(screen.getByTestId('cooks-mode-step-next'));
+    await waitFor(() =>
+      expect(preparationMocks.prepareSupper).toHaveBeenCalledWith(context.supperDate, {
+        expectedOccurrenceId: context.occurrenceId,
+        recipeId: id,
+        expectedPlanToken: 'captured-plan',
+        expectedServingVersion: 'captured-six',
+      })
+    );
+    expect(cookingMocks.markCooked).not.toHaveBeenCalled();
+  });
+
+  it('rereads an uncertain preparation before retrying and never replays the mutation', async () => {
+    const id = 'uncertain-pasta';
+    const context = {
+      supperDate: '2026-10-16',
+      context: 'assigned' as const,
+      occurrenceId: '11111111-1111-4111-8111-111111111121',
+    };
+    const displayed = {
+      recipeId: id,
+      ...context,
+      version: 'six',
+      preparationPlanToken: 'plan',
+      preparationServingVersion: 'six',
+      targetServings: 6,
+      lines: [
+        {
+          originalText: '200 g pasta',
+          name: 'pasta',
+          quantity: 600,
+          unitText: 'g',
+          status: 'scaled',
+        },
+      ],
+    };
+    getRecipeMock.mockResolvedValue({
+      id,
+      ingredients: ['200 g pasta'],
+      recipeInstructions: ['Serve.'],
+    });
+    getIngredientProjectionMock
+      .mockResolvedValueOnce(displayed)
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockResolvedValue({
+        ...displayed,
+        preparation: {
+          preparedOn: '2026-10-13',
+          preparedAtUtc: '2026-10-13T12:00:00Z',
+          servings: 6,
+          planToken: 'plan',
+          servingVersion: 'six',
+        },
+      });
+    preparationMocks.prepareSupper.mockRejectedValue(new Error('reply lost'));
+    render(
+      <CooksMode
+        recipe={{ id, name: 'Pasta', image: '' }}
+        ingredientContext={context}
+        onClose={vi.fn()}
+      />
+    );
+    expect(await screen.findByText('600 g pasta')).toBeVisible();
+    fireEvent.click(screen.getByTestId('cooks-mode-step-next'));
+    fireEvent.click(screen.getByTestId('cooks-mode-step-next'));
+    expect(await screen.findByRole('alert')).toBeVisible();
+    fireEvent.click(screen.getByTestId('cooks-mode-step-next'));
+    await waitFor(() => expect(getIngredientProjectionMock).toHaveBeenCalledTimes(3));
+    expect(preparationMocks.prepareSupper).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(['unknown', 'conflict'])(
+    'requires explicit fresh review and a separate guarded attempt after %s negative outcome',
+    async (kind) => {
+      const id = 'review-pasta';
+      const context = {
+        supperDate: '2026-10-16',
+        context: 'assigned' as const,
+        occurrenceId: '11111111-1111-4111-8111-111111111121',
+      };
+      const displayed = {
+        recipeId: id,
+        ...context,
+        version: 'same-six',
+        targetServings: 6,
+        preparationPlanToken: 'old-plan',
+        preparationServingVersion: 'old-source',
+        lines: [
+          {
+            originalText: '200 g pasta',
+            name: 'pasta',
+            quantity: 600,
+            unitText: 'g',
+            status: 'scaled',
+          },
+        ],
+      };
+      const reviewed = {
+        ...displayed,
+        preparationPlanToken: 'current-plan',
+        preparationServingVersion: 'current-source',
+      };
+      getRecipeMock.mockResolvedValue({
+        id,
+        ingredients: ['200 g pasta'],
+        recipeInstructions: ['Serve.'],
+      });
+      getIngredientProjectionMock.mockResolvedValueOnce(displayed).mockResolvedValue(reviewed);
+      preparationMocks.prepareSupper
+        .mockRejectedValueOnce(
+          kind === 'conflict' ? { responseStatusCode: 409 } : new Error('reply unavailable')
+        )
+        .mockResolvedValue({
+          occurrenceId: context.occurrenceId,
+          recipeId: id,
+          supperDate: context.supperDate,
+          preparation: { preparedOn: '2026-10-13', servings: 6 },
+        });
+      render(
+        <CooksMode
+          recipe={{ id, name: 'Pasta', image: '' }}
+          ingredientContext={context}
+          onClose={vi.fn()}
+        />
+      );
+      await screen.findByText('600 g pasta');
+      fireEvent.click(screen.getByTestId('cooks-mode-step-next'));
+      fireEvent.click(screen.getByTestId('cooks-mode-step-next'));
+      await screen.findByRole('alert');
+      expect(preparationMocks.prepareSupper).toHaveBeenCalledTimes(1);
+      fireEvent.click(screen.getByRole('button', { name: 'Review current supper' }));
+      await waitFor(() =>
+        expect(screen.getByRole('button', { name: 'Mark recipe as cooked' })).toBeEnabled()
+      );
+      expect(preparationMocks.prepareSupper).toHaveBeenCalledTimes(1);
+      expect(screen.getByTestId('cooks-mode-step-text')).toHaveTextContent('Serve.');
+      fireEvent.click(screen.getByRole('button', { name: 'Mark recipe as cooked' }));
+      await waitFor(() => expect(preparationMocks.prepareSupper).toHaveBeenCalledTimes(2));
+      expect(preparationMocks.prepareSupper.mock.calls[1][1]).toMatchObject({
+        expectedOccurrenceId: context.occurrenceId,
+        expectedPlanToken: 'current-plan',
+        expectedServingVersion: 'current-source',
+      });
+    }
+  );
+
+  it('keeps uncertain source guards until explicit review and changed-quantity refresh, retaining cooking work', async () => {
+    setCookingView('all-steps');
+    const id = 'changed-review-pasta';
+    const context = {
+      supperDate: '2026-10-16',
+      context: 'assigned' as const,
+      occurrenceId: '11111111-1111-4111-8111-111111111121',
+    };
+    const displayed = {
+      recipeId: id,
+      ...context,
+      version: 'four',
+      targetServings: 4,
+      preparationPlanToken: 'plan',
+      preparationServingVersion: 'four',
+      lines: [
+        {
+          originalText: '200 g pasta',
+          name: 'pasta',
+          quantity: 400,
+          unitText: 'g',
+          status: 'scaled',
+        },
+      ],
+    };
+    const changed = {
+      ...displayed,
+      version: 'six',
+      targetServings: 6,
+      preparationServingVersion: 'six',
+      lines: [{ ...displayed.lines[0], quantity: 600 }],
+    };
+    getRecipeMock.mockResolvedValue({
+      id,
+      ingredients: ['200 g pasta'],
+      recipeInstructions: ['Serve.'],
+    });
+    getIngredientProjectionMock.mockResolvedValueOnce(displayed).mockResolvedValue(changed);
+    preparationMocks.prepareSupper.mockRejectedValue(new Error('reply unavailable'));
+    render(
+      <CooksMode
+        recipe={{ id, name: 'Pasta', image: '' }}
+        ingredientContext={context}
+        onClose={vi.fn()}
+      />
+    );
+    fireEvent.click((await screen.findAllByTestId('ingredient-toggle'))[0]);
+    fireEvent.click(screen.getByTestId('cooks-mode-step-next'));
+    fireEvent.click(screen.getByRole('button', { name: 'Mark recipe as cooked' }));
+    await screen.findByRole('alert');
+    fireEvent.click(screen.getByTestId('single-page-edit-step-1'));
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Keep my correction' } });
+    const reading = screen.getByTestId('cooks-mode-instructions');
+    reading.scrollTop = 137;
+    fireEvent.click(screen.getByRole('button', { name: 'Review current supper' }));
+    await screen.findByTestId('cooking-quantities-available');
+    expect(screen.getByTestId('cooking-portion-context')).toHaveTextContent('4 portions');
+    expect(preparationMocks.prepareSupper).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole('button', { name: 'Refresh quantities' }));
+    await waitFor(() =>
+      expect(screen.getByTestId('cooking-portion-context')).toHaveTextContent('6 portions')
+    );
+    expect(screen.getByRole('textbox')).toHaveValue('Keep my correction');
+    expect(reading.scrollTop).toBe(137);
+    expect(screen.getByTestId('cooks-mode-step-indicator')).toHaveTextContent('1');
+    expect(preparationMocks.prepareSupper).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    fireEvent.click(screen.getByRole('button', { name: 'View adjusted ingredients' }));
+    expect(screen.getAllByTestId('ingredient-toggle')[0]).toHaveAttribute('aria-checked', 'true');
+  });
+
+  it('keeps the original uncertain request when later review cannot resolve the captured occurrence', async () => {
+    const id = 'recreated-review';
+    const context = {
+      supperDate: '2026-10-16',
+      context: 'assigned' as const,
+      occurrenceId: '11111111-1111-4111-8111-111111111121',
+    };
+    const displayed = {
+      recipeId: id,
+      ...context,
+      version: 'six',
+      preparationPlanToken: 'original-plan',
+      preparationServingVersion: 'original-six',
+      targetServings: 6,
+      lines: [],
+    };
+    getRecipeMock.mockResolvedValue({ id, ingredients: [], recipeInstructions: ['Serve.'] });
+    getIngredientProjectionMock
+      .mockResolvedValueOnce(displayed)
+      .mockResolvedValueOnce(displayed)
+      .mockRejectedValue({ responseStatusCode: 409 });
+    preparationMocks.prepareSupper.mockRejectedValue(new Error('reply lost'));
+    render(
+      <CooksMode
+        recipe={{ id, name: 'Pasta', image: '' }}
+        ingredientContext={context}
+        onClose={vi.fn()}
+      />
+    );
+    await screen.findByTestId('cooking-portion-context');
+    fireEvent.click(screen.getByTestId('cooks-mode-step-next'));
+    fireEvent.click(screen.getByTestId('cooks-mode-step-next'));
+    await screen.findByRole('alert');
+    fireEvent.click(screen.getByRole('button', { name: 'Review current supper' }));
+    expect(
+      await screen.findByText('Could not review this supper. Your cooking work is kept.')
+    ).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Check preparation' })).toBeDisabled();
+    expect(preparationMocks.prepareSupper).toHaveBeenCalledTimes(1);
+    expect(
+      getIngredientProjectionMock.mock.calls.every(
+        ([, current]) => current.occurrenceId === context.occurrenceId
+      )
+    ).toBe(true);
+  });
+
+  it('authoritative review can recognise later prepared state without another completion', async () => {
+    const id = 'later-confirmed';
+    const context = {
+      supperDate: '2026-10-16',
+      context: 'assigned' as const,
+      occurrenceId: '11111111-1111-4111-8111-111111111121',
+    };
+    const displayed = {
+      recipeId: id,
+      ...context,
+      version: 'six',
+      preparationPlanToken: 'plan',
+      preparationServingVersion: 'six',
+      targetServings: 6,
+      lines: [],
+    };
+    getRecipeMock.mockResolvedValue({ id, ingredients: [], recipeInstructions: ['Serve.'] });
+    getIngredientProjectionMock
+      .mockResolvedValueOnce(displayed)
+      .mockResolvedValueOnce(displayed)
+      .mockResolvedValue({
+        ...displayed,
+        preparation: {
+          preparedOn: '2026-10-13',
+          planToken: 'plan',
+          servingVersion: 'six',
+          servings: 6,
+        },
+      });
+    preparationMocks.prepareSupper.mockRejectedValue(new Error('reply lost'));
+    render(
+      <CooksMode
+        recipe={{ id, name: 'Pasta', image: '' }}
+        ingredientContext={context}
+        onClose={vi.fn()}
+      />
+    );
+    await screen.findByTestId('cooking-portion-context');
+    fireEvent.click(screen.getByTestId('cooks-mode-step-next'));
+    fireEvent.click(screen.getByTestId('cooks-mode-step-next'));
+    await screen.findByRole('alert');
+    fireEvent.click(screen.getByRole('button', { name: 'Review current supper' }));
+    expect(await screen.findByText('Already prepared')).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Review current supper' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Mark recipe as cooked' })).toBeNull();
+    expect(preparationMocks.prepareSupper).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps prepared ingredients and instructions readable without another completion', async () => {
+    const id = 'prepared-pasta';
+    const context = {
+      supperDate: '2026-10-16',
+      context: 'assigned' as const,
+      occurrenceId: '11111111-1111-4111-8111-111111111121',
+    };
+    getRecipeMock.mockResolvedValue({
+      id,
+      ingredients: ['200 g pasta'],
+      recipeInstructions: ['Serve.'],
+    });
+    getIngredientProjectionMock.mockResolvedValue({
+      recipeId: id,
+      ...context,
+      version: 'prepared',
+      targetServings: 6,
+      preparation: {
+        preparedOn: '2026-10-13',
+        preparedAtUtc: '2026-10-13T12:00:00Z',
+        servings: 6,
+        portionContext: 'dated',
+      },
+      lines: [
+        {
+          originalText: '200 g pasta',
+          name: 'pasta',
+          quantity: 600,
+          unitText: 'g',
+          status: 'scaled',
+        },
+      ],
+    });
+    render(
+      <CooksMode
+        recipe={{ id, name: 'Pasta', image: '' }}
+        ingredientContext={context}
+        onClose={vi.fn()}
+      />
+    );
+    expect(await screen.findByText('Already prepared')).toBeVisible();
+    fireEvent.click(screen.getByTestId('cooks-mode-step-next'));
+    expect(await screen.findByText('Serve.')).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Mark recipe as cooked' })).toBeNull();
+    expect(cookingMocks.markCooked).not.toHaveBeenCalled();
+  });
+
+  it('replaces an unavailable cooking photo with the existing neutral fallback', async () => {
+    getRecipeMock.mockResolvedValue({
+      id: 'missing-photo',
+      name: 'Pasta',
+      ingredients: [],
+      recipeInstructions: ['Serve.'],
+    });
+    render(
+      <CooksMode
+        recipe={{ id: 'missing-photo', name: 'Pasta', image: '/missing-hero.jpg' }}
+        onClose={vi.fn()}
+      />
+    );
+    const photo = within(await screen.findByTestId('cooks-mode-photo')).getByRole('img');
+    fireEvent.error(photo);
+    expect(within(screen.getByTestId('cooks-mode-photo')).queryByRole('img')).toBeNull();
+    expect(screen.getByTestId('close-cooks-mode')).toBeVisible();
+  });
+
+  it('reads assigned dated ingredients while preserving original instructions and original-basis editing', async () => {
+    getRecipeMock.mockResolvedValue({
+      id: 'dated-pasta',
+      name: 'Pasta',
+      servings: 2,
+      ingredients: ['200 g pasta', 'Salt to taste'],
+      recipeInstructions: ['Add 200 g pasta.'],
+    });
+    const context = {
+      supperDate: '2026-05-08',
+      context: 'assigned' as const,
+      occurrenceId: '11111111-1111-4111-8111-111111111121',
+    };
+    getIngredientProjectionMock.mockResolvedValue({
+      recipeId: 'dated-pasta',
+      ...context,
+      baseServings: 2,
+      targetServings: 6,
+      factor: 3,
+      version: 'six',
+      servingVersion: 'v6',
+      status: 'scaled',
+      lines: [
+        {
+          originalText: '200 g pasta',
+          name: 'pasta',
+          quantity: 600,
+          unitText: 'g',
+          status: 'scaled',
+        },
+        { originalText: 'Salt to taste', name: 'Salt', quantity: null, status: 'unquantified' },
+      ],
+    });
+    render(
+      <CooksMode
+        recipe={{ id: 'dated-pasta', name: 'Pasta', image: '' }}
+        ingredientContext={context}
+        onClose={vi.fn()}
+      />
+    );
+    expect(await screen.findByText('600 g pasta')).toBeVisible();
+    expect(screen.getByTestId('cooking-portion-context')).toHaveTextContent('6 portions');
+    expect(screen.getByText('Salt to taste')).toBeVisible();
+    expect(screen.getByTestId('cooking-instruction-limitation')).toHaveTextContent(
+      'step amounts remain original'
+    );
+    expect(getIngredientProjectionMock).toHaveBeenCalledWith('dated-pasta', context);
+    fireEvent.click(screen.getByTestId('cooks-mode-step-next'));
+    expect(await screen.findByText('Add 200 g pasta.')).toBeVisible();
+    expect(cookingMocks.markCooked).not.toHaveBeenCalled();
+  });
+
+  it('offers explicit remote refresh without losing ingredient checks, position or an instruction draft', async () => {
+    setCookingView('all-steps');
+    const id = 'remote-pasta';
+    const context = {
+      supperDate: '2026-05-06',
+      context: 'assigned' as const,
+      occurrenceId: 'saved',
+    };
+    getRecipeMock.mockResolvedValue({
+      id,
+      name: 'Pasta',
+      ingredients: ['200 g pasta'],
+      recipeInstructions: ['Add 200 g pasta.', 'Serve.'],
+    });
+    const projected = (count: number, version: string) => ({
+      recipeId: id,
+      ...context,
+      baseServings: 2,
+      targetServings: count,
+      factor: count / 2,
+      status: 'scaled',
+      servingVersion: version,
+      version: String(count),
+      lines: [
+        {
+          originalText: '200 g pasta',
+          name: 'pasta',
+          quantity: count * 100,
+          unitText: 'g',
+          status: 'scaled',
+        },
+      ],
+    });
+    getIngredientProjectionMock.mockResolvedValue(projected(4, 'four'));
+    render(
+      <CooksMode
+        recipe={{ id, name: 'Pasta', image: '' }}
+        ingredientContext={context}
+        onClose={vi.fn()}
+      />
+    );
+    fireEvent.click((await screen.findAllByTestId('ingredient-toggle'))[0]);
+    fireEvent.click(screen.getByTestId('cooks-mode-step-next'));
+    fireEvent.click(screen.getByTestId('single-page-edit-step-1'));
+    const edit = screen.getByRole('textbox');
+    fireEvent.change(edit, { target: { value: 'Keep my unsaved correction' } });
+    // An unrelated date changes the optimistic week version, but not this supper's quantities.
+    getIngredientProjectionMock.mockResolvedValue(projected(4, 'unrelated-saturday'));
+    fireEvent.focus(window);
+    await waitFor(() => expect(getIngredientProjectionMock).toHaveBeenCalledTimes(2));
+    expect(screen.queryByTestId('cooking-quantities-available')).not.toBeInTheDocument();
+    getIngredientProjectionMock.mockResolvedValue(projected(6, 'six'));
+    fireEvent.focus(window);
+    expect(await screen.findByTestId('cooking-quantities-available')).toBeVisible();
+    expect(screen.getByTestId('cooking-portion-context')).toHaveTextContent('4 portions');
+    expect(edit).toHaveValue('Keep my unsaved correction');
+    const reading = screen.getByTestId('cooks-mode-instructions');
+    reading.scrollTop = 137;
+    getIngredientProjectionMock.mockRejectedValueOnce(new Error('Offline'));
+    fireEvent.click(screen.getByRole('button', { name: 'Refresh quantities' }));
+    expect(
+      await screen.findByText(
+        'Could not confirm updated quantities. Your current quantities and cooking work are kept.'
+      )
+    ).toBeVisible();
+    expect(screen.getByTestId('cooking-portion-context')).toHaveTextContent('4 portions');
+    expect(edit).toHaveValue('Keep my unsaved correction');
+    fireEvent.click(screen.getByRole('button', { name: 'Refresh quantities' }));
+    await waitFor(() =>
+      expect(screen.getByTestId('cooking-portion-context')).toHaveTextContent('6 portions')
+    );
+    expect(edit).toHaveValue('Keep my unsaved correction');
+    expect(screen.getByTestId('cooks-mode-step-indicator')).toHaveTextContent('1');
+    expect(reading.scrollTop).toBe(137);
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    fireEvent.click(screen.getByRole('button', { name: 'View adjusted ingredients' }));
+    expect(screen.getByText('600 g pasta')).toBeVisible();
+    expect(screen.getAllByTestId('ingredient-toggle')[0]).toHaveAttribute('aria-checked', 'true');
+    expect(cookingMocks.markCooked).not.toHaveBeenCalled();
   });
 
   it('consults original photos without losing an unsaved draft, bookmark, scroll or ingredient checks', async () => {
@@ -321,6 +884,36 @@ describe('CooksMode', () => {
     await act(async () => finish({ recipe, reimportStarted: false }));
     expect(original).toBeEnabled();
     expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('holds the initial cooking loader until returned ingredients and instructions are available', async () => {
+    let finish!: (value: unknown) => void;
+    getRecipeMock.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        })
+    );
+    render(<CooksMode recipe={{ id: 'recipe-1', name: 'Pasta', image: '' }} onClose={vi.fn()} />);
+    expect(screen.getByTestId('cooks-mode-loading')).toBeVisible();
+    expect(screen.queryByText('Returned pasta')).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Check & Prep' })).not.toBeInTheDocument();
+    await act(async () =>
+      finish({
+        id: 'recipe-1',
+        ingredients: ['Returned pasta', 'Returned sauce'],
+        recipeInstructions: ['Returned first step', 'Returned second step'],
+      })
+    );
+    expect(screen.queryByTestId('cooks-mode-loading')).not.toBeInTheDocument();
+    expect(screen.getByText('Returned pasta')).toBeVisible();
+    expect(screen.getByText('Returned sauce')).toBeVisible();
+    fireEvent.click(screen.getByTestId('cooks-mode-step-next'));
+    expect(await screen.findByText('Returned first step')).toBeVisible();
+    fireEvent.click(screen.getByTestId('cooks-mode-step-next'));
+    expect(await screen.findByText('Returned second step')).toBeVisible();
+    expect(cookingMocks.markCooked).not.toHaveBeenCalled();
+    expect(preparationMocks.prepareSupper).not.toHaveBeenCalled();
   });
 
   it('shows a failed read honestly and retries real steps', async () => {

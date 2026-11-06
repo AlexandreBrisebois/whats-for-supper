@@ -8,6 +8,8 @@ const { mockGetState, fetchMock } = vi.hoisted(() => ({
 const recipesApiMocks = vi.hoisted(() => {
   const searchPost = vi.fn();
   const byIdGet = vi.fn();
+  const projectionGet = vi.fn();
+  const previewGet = vi.fn();
   const byIdDelete = vi.fn();
   const byIdPatch = vi.fn();
   const recipesGet = vi.fn();
@@ -17,6 +19,8 @@ const recipesApiMocks = vi.hoisted(() => {
   return {
     searchPost,
     byIdGet,
+    projectionGet,
+    previewGet,
     byIdDelete,
     byIdPatch,
     recipesGet,
@@ -47,6 +51,8 @@ vi.mock('./api-client', () => ({
       recipes: {
         byId: () => ({
           get: recipesApiMocks.byIdGet,
+          ingredientProjection: { get: recipesApiMocks.projectionGet },
+          ingredientPreview: { get: recipesApiMocks.previewGet },
           delete: recipesApiMocks.byIdDelete,
           patch: recipesApiMocks.byIdPatch,
         }),
@@ -64,6 +70,8 @@ vi.mock('./api-client', () => ({
 
 import {
   getRecipe,
+  getIngredientProjection,
+  getIngredientPreview,
   createRecipe,
   updateRecipe,
   searchRecipes,
@@ -602,3 +610,60 @@ describe('recipe servings detail mapping', () => {
     expect(recipe.ingredients).toEqual(['510 g beef', '340 g pasta']);
   });
 });
+
+it('rejects an assigned projection for a different recreated occurrence', async () => {
+  const context = {
+    context: 'assigned' as const,
+    supperDate: '2026-05-06',
+    occurrenceId: 'captured',
+  };
+  recipesApiMocks.projectionGet.mockResolvedValue({
+    recipeId: 'recipe',
+    supperDate: '2026-05-06',
+    context: 'assigned',
+    occurrenceId: 'recreated',
+    version: 'new',
+    lines: [],
+  });
+  await expect(getIngredientProjection('recipe', context)).rejects.toThrow(
+    'Could not confirm ingredients'
+  );
+});
+
+it('does not treat an empty decoded nullable preparation as an observed preparation', async () => {
+  const context = {
+    supperDate: '2026-10-16',
+    context: 'assigned' as const,
+    occurrenceId: 'captured',
+  };
+  recipesApiMocks.projectionGet.mockResolvedValue({
+    recipeId: 'recipe',
+    ...context,
+    version: 'displayed',
+    preparation: {},
+    lines: [],
+  });
+  expect((await getIngredientProjection('recipe', context)).preparation).toBeNull();
+});
+
+it('reads an explicit preview through the generated client and rejects mismatched targets', async () => {
+  const data = {
+    recipeId: MOCK_PREVIEW_ID,
+    baseServings: 2,
+    targetServings: 4,
+    factor: 2,
+    status: 'scaled',
+    version: 'current-ingredients',
+    lines: [],
+  };
+  recipesApiMocks.previewGet.mockResolvedValue(data);
+  expect(await getIngredientPreview(MOCK_PREVIEW_ID, 4)).toEqual(data);
+  expect(recipesApiMocks.previewGet).toHaveBeenCalledWith({
+    queryParameters: { targetServings: 4 },
+  });
+  recipesApiMocks.previewGet.mockResolvedValue({ ...data, targetServings: 6 });
+  await expect(getIngredientPreview(MOCK_PREVIEW_ID, 4)).rejects.toThrow(
+    'Could not confirm ingredient preview.'
+  );
+});
+const MOCK_PREVIEW_ID = '550e8400-e29b-41d4-a716-446655440111';

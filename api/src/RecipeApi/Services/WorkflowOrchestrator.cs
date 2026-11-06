@@ -44,27 +44,7 @@ public class WorkflowOrchestrator(IClock clock, WorkflowRepository workflowRepos
     {
         var definition = await GetDefinitionAsync(workflowId);
 
-        // Validate that all required parameters are provided.
-        foreach (var param in definition.Parameters)
-        {
-            if (!IsOptionalParameter(param) && !parameters.ContainsKey(ParameterName(param)))
-            {
-                throw new InvalidWorkflowException($"Missing required parameter: {ParameterName(param)}");
-            }
-        }
-
-        var now = clock.UtcNow;
-        var instance = new WorkflowInstance
-        {
-            Id = Guid.NewGuid(),
-            WorkflowId = workflowId,
-            Status = WorkflowStatus.Pending,
-            Parameters = System.Text.Json.JsonSerializer.Serialize(parameters),
-            CreatedAt = now,
-            UpdatedAt = now
-        };
-
-        AddTasks(instance, definition, parameters, now, scheduledAt);
+        var instance = ConstructInstance(workflowId, definition, parameters, clock.UtcNow, scheduledAt);
 
         await using var transaction = await _dbContext.Database.BeginTransactionAsync();
         try
@@ -78,6 +58,33 @@ public class WorkflowOrchestrator(IClock clock, WorkflowRepository workflowRepos
             await transaction.RollbackAsync();
             throw;
         }
+
+        return instance;
+    }
+
+    internal static WorkflowInstance ConstructInstance(string workflowId, WorkflowDefinition definition,
+        Dictionary<string, string> parameters, DateTimeOffset now, DateTimeOffset? scheduledAt = null)
+    {
+        // Validate that all required parameters are provided.
+        foreach (var param in definition.Parameters)
+        {
+            if (!IsOptionalParameter(param) && !parameters.ContainsKey(ParameterName(param)))
+            {
+                throw new InvalidWorkflowException($"Missing required parameter: {ParameterName(param)}");
+            }
+        }
+
+        var instance = new WorkflowInstance
+        {
+            Id = Guid.NewGuid(),
+            WorkflowId = workflowId,
+            Status = WorkflowStatus.Pending,
+            Parameters = System.Text.Json.JsonSerializer.Serialize(parameters),
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+
+        AddTasks(instance, definition, parameters, now, scheduledAt);
 
         return instance;
     }
@@ -112,7 +119,7 @@ public class WorkflowOrchestrator(IClock clock, WorkflowRepository workflowRepos
         return instance;
     }
 
-    private void AddTasks(WorkflowInstance instance, WorkflowDefinition definition,
+    private static void AddTasks(WorkflowInstance instance, WorkflowDefinition definition,
         Dictionary<string, string> parameters, DateTimeOffset now, DateTimeOffset? scheduledAt)
     {
         foreach (var taskDef in definition.Tasks)
@@ -135,7 +142,7 @@ public class WorkflowOrchestrator(IClock clock, WorkflowRepository workflowRepos
 
     }
 
-    private string SubstituteVariables(
+    private static string SubstituteVariables(
         Dictionary<string, object> payload,
         Dictionary<string, string> parameters,
         List<string> definitionParameters)

@@ -35,6 +35,12 @@ public class WeeklyPlan
     [Column("grocery_items", TypeName = "jsonb")]
     public string GroceryItems { get; set; } = "[]";
 
+    [Column("serving_input_version")] public string? ServingInputVersion { get; set; }
+    [Column("serving_applied_version")] public string? ServingAppliedVersion { get; set; }
+    [Column("serving_refresh_status")] public string? ServingRefreshStatus { get; set; }
+    [Column("serving_refresh_workflow_id")] public Guid? ServingRefreshWorkflowId { get; set; }
+    [Column("grocery_reset_summary_version")] public string? GroceryResetSummaryVersion { get; set; }
+
     [Column("created_at")]
     public DateTimeOffset CreatedAt { get; set; }
 }

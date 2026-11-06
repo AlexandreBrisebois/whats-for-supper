@@ -26,7 +26,7 @@ test.beforeEach(async ({ page }) => {
 test('common check mocks retain distinct intentions, false, replacement and clear on reread', async ({
   page,
 }) => {
-  await page.route('**/api/schedule/*/grocery/item', (route) => route.fulfill({ status: 405 }));
+  await page.route('**/api/schedule/*/grocery/item**', (route) => route.fulfill({ status: 405 }));
   await setupCommonRoutes(page);
   await page.goto('/welcome');
   await page.evaluate(() => {
@@ -99,7 +99,7 @@ test('a held item save leaves another row usable and failure reverts only that i
   const pending = new Promise<void>((resolve) => {
     started = resolve;
   });
-  await page.route('**/api/schedule/*/grocery/item', async (route) => {
+  await page.route('**/api/schedule/*/grocery/item**', async (route) => {
     if (route.request().method() !== 'PATCH') return route.fallback();
     if (route.request().postDataJSON().ingredientName === 'Pasta') {
       started();
@@ -891,7 +891,8 @@ test.describe('Grocery List — PATCH failure behaviour', () => {
     await setupGroceryPage(page);
 
     // Override the per-item grocery PATCH endpoint to fail
-    await page.route('**/api/schedule/*/grocery/item', async (route) => {
+    await page.route('**/api/schedule/*/grocery/item**', async (route) => {
+      if (route.request().method() !== 'PATCH') return route.fallback();
       await route.fulfill({ status: 500, body: 'Internal Server Error' });
     });
 
@@ -948,12 +949,9 @@ test.describe('Grocery List — SSE sync', () => {
 
     // Mock SSE to emit grocery_updated with Pasta checked — registered AFTER
     // setupCommonRoutes so LIFO gives this handler priority over the default stream route.
-    const { triggerGroceryUpdated } = await mockSseWithGroceryUpdated(page, 1, {
-      Pasta: true,
-      Beef: true,
-      'Tomato Sauce': false,
-      Cheese: false,
-    });
+    const groceryState = { Pasta: false, Beef: true, 'Tomato Sauce': false, Cheese: false };
+    const publishedState = { ...groceryState, Pasta: true };
+    const { triggerGroceryUpdated } = await mockSseWithGroceryUpdated(page, 1, publishedState);
 
     // Override schedule to return a week with one recipe that has known ingredients
     const monday = currentMonday();
@@ -998,7 +996,7 @@ test.describe('Grocery List — SSE sync', () => {
                 weekOffset: 1,
                 calendar: builders.deploymentCalendar() as any,
                 weekStartDate: '2026-05-11' as any,
-                groceryState: { Pasta: false, Beef: true, 'Tomato Sauce': false, Cheese: false },
+                groceryState,
                 locked: false,
                 status: 0,
                 days,
@@ -1038,10 +1036,18 @@ test.describe('Grocery List — SSE sync', () => {
     const received = page.waitForEvent('console', {
       predicate: (message) => message.text() === '[SSE] Received "grocery_updated" event',
     });
+    // A committed event and subsequent reads must describe the same persisted state.
+    Object.assign(groceryState, publishedState);
     await triggerGroceryUpdated();
     await received;
     await expect(pastaItem).toBeVisible();
     await expect(pastaItem).toHaveAttribute('aria-checked', 'true');
+    const persisted = await page.evaluate(
+      async () =>
+        (await (await fetch('/api/schedule?referenceWeekStartDate=2026-05-04&weekOffset=1')).json())
+          .data
+    );
+    expect(persisted.groceryState.Pasta).toBe(true);
     await expect(beefItem).toHaveAttribute('aria-checked', 'true');
     await expect(cheeseItem).toHaveAttribute('aria-checked', 'false');
     await expect(page.getByTestId('grocery-item-checkbox')).toHaveCount(4);

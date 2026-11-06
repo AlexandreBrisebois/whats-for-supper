@@ -52,7 +52,7 @@ public class RecoveryExportFreshnessTests : IAsyncLifetime
             await Service.RestoreAsync();
             Assert.Equal(count, recipe.Servings);
             await new SyncRecipeProcessor(_scope.ServiceProvider.GetRequiredService<IClock>(), Db,
-                new RecipeRepository(_scope.ServiceProvider.GetRequiredService<IStorageProvider>()), _scope.ServiceProvider.GetRequiredService<GroceryRecomputeService>(),
+                new RecipeRepository(_scope.ServiceProvider.GetRequiredService<IStorageProvider>()), _scope.ServiceProvider.GetRequiredService<SupperProjectionInvalidation>(), _scope.ServiceProvider.GetRequiredService<ISupperProjectionPublisher>(),
                 Microsoft.Extensions.Logging.Abstractions.NullLogger<SyncRecipeProcessor>.Instance)
                 .ExecuteAsync(new WorkflowTask { Payload = JsonSerializer.Serialize(new { recipeId = recipe.Id }) }, CancellationToken.None);
             Assert.Equal(count, recipe.Servings); Assert.Contains("4 portions", recipe.RawMetadata); Assert.Equal(new[] { "510 g beef", "340 g pasta" }, RecipeService.DeserializeIngredients(recipe.Ingredients));
@@ -185,7 +185,7 @@ public class RecoveryExportFreshnessTests : IAsyncLifetime
         await Service.BackupAsync();
         var processor = new SyncRecipeProcessor(_scope.ServiceProvider.GetRequiredService<IClock>(), Db,
             new RecipeRepository(_scope.ServiceProvider.GetRequiredService<IStorageProvider>()),
-            _scope.ServiceProvider.GetRequiredService<GroceryRecomputeService>(),
+            _scope.ServiceProvider.GetRequiredService<SupperProjectionInvalidation>(), _scope.ServiceProvider.GetRequiredService<ISupperProjectionPublisher>(),
             Microsoft.Extensions.Logging.Abstractions.NullLogger<SyncRecipeProcessor>.Instance);
         await processor.ExecuteAsync(new WorkflowTask { Payload = JsonSerializer.Serialize(new { recipeId = recipe.Id }) }, CancellationToken.None);
         Assert.Equal(metadata, recipe.RawMetadata);

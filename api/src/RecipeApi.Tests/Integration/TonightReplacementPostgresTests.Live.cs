@@ -30,6 +30,10 @@ public partial class TonightReplacementPostgresTests
                     ["Tests:HttpUrl"]="http://127.0.0.1:0",
                 }, app => {
                     app.Use(async (context, next) => {
+                        try { await next(context); }
+                        catch (Exception error) when (context.Request.Path.StartsWithSegments("/api/schedule")) { output.WriteLine($"Actual live HTTP {context.Request.Method} {context.Request.Path} exception: {error}"); throw; }
+                    });
+                    app.Use(async (context, next) => {
                         if (context.Request.Method == "POST" && context.Request.Path == "/api/schedule/move") Interlocked.Increment(ref moveRequests);
                         if (context.Request.Method != "POST" || context.Request.Path != "/api/schedule/assign") { await next(context); return; }
                         Interlocked.Increment(ref assignments);

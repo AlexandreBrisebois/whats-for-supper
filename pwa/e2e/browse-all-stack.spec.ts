@@ -866,28 +866,73 @@ async function expectFrontRecipe(page: Page, id: string) {
     .toEqual([id]);
 }
 
-// Cover full and partial last pages with 20 recipes per page. The first backward
-// swipe must load the real last page and select its final recipe.
+// Exhaustive identity/ordinal traversal lives in the component tests. Keep real
+// pointer input and page/loop boundaries here, including full and partial tails.
 for (const count of [40, 46]) {
-  test(`complete ${count} recipe cycles retain identities and ordinals`, async ({ page }) => {
-    test.setTimeout(600_000);
+  test(`${count} recipe page boundaries retain identities, ordinals and active cards`, async ({
+    page,
+  }) => {
+    test.setTimeout(90_000);
     const recipes = LARGE_LIBRARY_RECIPES.slice(0, count);
+    const lastPage = Math.ceil(count / 20);
+    const lastPageStart = (lastPage - 1) * 20;
+    const reads: { page: number; limit: number; status: number }[] = [];
+    page.on('response', (response) => {
+      const url = new URL(response.url());
+      if (
+        response.request().method() === 'GET' &&
+        url.pathname === '/api/recipes' &&
+        url.searchParams.get('order') === 'explore'
+      )
+        reads.push({
+          page: Number(url.searchParams.get('page')),
+          limit: Number(url.searchParams.get('limit')),
+          status: response.status(),
+        });
+    });
     await setupBrowseAllStack(page, { recipes, total: count });
     await page.goto('/recipes');
     const check = async (index: number) => {
-      await expect(page.getByTestId('stack-card-front')).toHaveCount(1);
-      await expectFrontRecipe(page, recipes[index].id as string);
+      await expectFrontRecipe(page, recipes[index].id!);
       await expect(page.getByTestId('stack-depth-indicator')).toHaveText(`${index + 1} / ${count}`);
+      await expect(page.getByTestId('stack-card-front')).toHaveCSS('opacity', '1');
+      await page.getByTestId('stack-card-front').click({ trial: true });
     };
     await check(0);
-    for (let i = count - 1; i >= 0; i--) {
+    await swipeRight(page);
+    await check(count - 1);
+    await swipeLeft(page);
+    await check(0);
+    await swipeRight(page);
+    await check(count - 1);
+    for (let index = count - 2; index >= lastPageStart - 1; index--) {
       await swipeRight(page);
-      await check(i);
+      await check(index);
     }
-    for (let i = 1; i <= count; i++) {
-      await swipeLeft(page);
-      await check(i % count);
-    }
+    await swipeLeft(page);
+    await check(lastPageStart);
+
+    // The active card, rather than a visible back card, owns detail activation.
+    const detailRead = page.waitForRequest(
+      (request) =>
+        request.method() === 'GET' &&
+        new URL(request.url()).pathname === `/api/recipes/${recipes[lastPageStart].id}`
+    );
+    await page.getByTestId('stack-card-front').click();
+    await detailRead;
+    await expect(page.getByTestId('recipe-detail-sheet')).toBeVisible();
+    await page.getByTestId('action-close-sheet').click();
+    await expect(page.getByTestId('recipe-detail-sheet')).toHaveCount(0);
+    await check(lastPageStart);
+    expect(reads.map((read) => read.page)).toEqual(
+      expect.arrayContaining([1, lastPage - 1, lastPage])
+    );
+    expect(
+      reads.every(
+        (read) =>
+          read.status === 200 && read.limit === 20 && read.page >= 1 && read.page <= lastPage
+      )
+    ).toBe(true);
   });
 }
 
@@ -1045,10 +1090,10 @@ test('GOTO stack wraps, retries its failed filtered page and ignores a departed 
     await route.fallback();
   });
   await page.goto('/recipes');
-  await page.getByTestId('browse-filter-goto').click();
   const firstFilteredPage = page.waitForResponse(
     (response) => response.url().includes('gotoOnly=true') && response.url().includes('page=1')
   );
+  await page.getByTestId('browse-filter-goto').click();
   await firstFilteredPage;
   await expect(page.getByTestId('browse-all-loader')).not.toBeVisible();
   await expectFrontRecipe(page, recipes[0].id!);

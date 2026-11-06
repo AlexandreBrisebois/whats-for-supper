@@ -19,7 +19,7 @@ public partial class RecoverySnapshotService(RecipeDbContext db, RecipesRootReso
     DataRootResolver data, IConfiguration configuration, IClock clock, RecoveryBoundary boundary, IRecoveryCheckpoint? checkpoint = null, DemoModeOptions? demoMode = null)
 {
     private readonly DemoModeOptions _demoPolicy = demoMode ?? new DemoModeOptions(configuration);
-    internal static readonly string[] Tables = ["family_members", "recipes", "feature_flag_overrides", "recipe_import_reports", "weekly_plans", "calendar_events", "family_settings", "ingredient_categories", "weekly_household_interest", "grocery_extra_occurrences"];
+    internal static readonly string[] Tables = ["family_members", "recipes", "feature_flag_overrides", "recipe_import_reports", "weekly_plans", "calendar_events", "family_settings", "ingredient_categories", "weekly_household_interest", "grocery_extra_occurrences", "supper_servings"];
     private static readonly JsonSerializerOptions Json = JsonDefaults.CamelCase;
     private static readonly string[] ImageExtensions = [".jpg", ".jpeg", ".png", ".webp"];
     internal string BackupRoot

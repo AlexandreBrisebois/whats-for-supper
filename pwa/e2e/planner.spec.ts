@@ -240,6 +240,7 @@ test.describe('Supper Planner', () => {
 
     let currentStatus = 0;
     let isLockedState = false;
+    const assignments = new Map<number, ReturnType<typeof builders.scheduleRecipe>>();
 
     const readScheduleFixture = () => {
       const monday = currentMonday();
@@ -261,6 +262,7 @@ test.describe('Supper Planner', () => {
             : {}),
         };
       });
+      for (const [index, recipe] of assignments) Object.assign(days[index], { recipe, status: 0 });
       return {
         ...builders.scheduleDays(),
         weekOffset: 0,
@@ -286,6 +288,22 @@ test.describe('Supper Planner', () => {
       async (route) => {
         const url = route.request().url();
         const method = route.request().method();
+
+        if (method === 'POST' && new URL(url).pathname === '/api/schedule/assign') {
+          const body = route.request().postDataJSON();
+          const target = readScheduleFixture().days[body.dayIndex];
+          if (!target || body.weekOffset !== 0)
+            return route.fulfill({ status: 400, json: { message: 'Invalid target.' } });
+          if (body.requireEmpty && target.recipe)
+            return route.fulfill({ status: 409, json: { message: 'That supper changed.' } });
+          assignments.set(
+            body.dayIndex,
+            builders.scheduleRecipe({ id: body.recipeId, name: 'Homemade Lasagna' })
+          );
+          return route.fulfill({
+            json: { data: { message: 'Recipe assigned', displacedRecipe: null } },
+          });
+        }
 
         if (method !== 'GET') {
           if (url.includes('/voting/open')) {
@@ -783,12 +801,37 @@ test.describe('Supper Planner', () => {
     }
 
     for (const index of [0, 2]) {
-      test(`success feedback stays distinct on temporal row ${index}`, async ({ page }) => {
-        await openEmphasis(page, 2);
-        await page.goto(`/planner?success=1&dayIndex=${index}`);
-        await expect(page.getByTestId(`day-card-${index}`).getByTestId('planner-meal')).toHaveClass(
-          /ring-4/
+      test(`${index === 0 ? 'confirmed' : 'unacknowledged'} success feedback stays distinct on temporal row ${index}`, async ({
+        page,
+      }) => {
+        const schedule = await openEmphasis(page, 2);
+        const day = schedule.days![index];
+        if (index === 0) {
+          await page.evaluate(
+            (result) => sessionStorage.setItem('wfs.planning-result', JSON.stringify(result)),
+            {
+              weekOffset: 0,
+              dayIndex: index,
+              referenceWeekStartDate: '2026-05-04',
+              date: String(day.date),
+              recipeId: day.recipe!.id,
+              recipeName: day.recipe!.name,
+            }
+          );
+        }
+        await page.goto(
+          `/planner?success=1&dayIndex=${index}&weekOffset=0&referenceWeekStartDate=2026-05-04`
         );
+        const meal = page.getByTestId(`day-card-${index}`).getByTestId('planner-meal');
+        if (index === 0) {
+          await expect(page.getByTestId('planner-planning-confirmation')).toContainText(
+            'Monday Lasagna'
+          );
+          await expect(meal).toHaveClass(/ring-4/);
+        } else {
+          await expect(page.getByTestId('planner-planning-confirmation')).toHaveCount(0);
+          await expect(meal).not.toHaveClass(/ring-4/);
+        }
         await expect(page.getByTestId('day-card-2').getByTestId('planner-date')).toHaveAttribute(
           'aria-current',
           'date'
@@ -1083,7 +1126,11 @@ test.describe('Supper Planner', () => {
     await page.waitForURL(/\/planner\?success=1&dayIndex=2/);
     await expect(page).toHaveURL(/\/planner\?success=1&dayIndex=2/);
 
-    // 6. Verify success feedback (ring) on the card
+    // 6. Confirm the persisted recipe/date explicitly; the ring supplements it.
+    await expect(page.getByTestId('planner-planning-confirmation')).toContainText(
+      'Homemade Lasagna'
+    );
+    await expect(page.getByTestId('planner-planning-confirmation')).toContainText('May 6');
     await expect(targetCard.getByTestId('planner-meal')).toHaveClass(/ring-sage/, {
       timeout: 10_000,
     });
@@ -1113,6 +1160,18 @@ test.describe('Supper Planner', () => {
       };
     }, PINNED_DATE);
 
+    // Use one state owner for the assigned occurrence and its guarded quantity read.
+    await setupCommonRoutes(page);
+    await page.goto('/onboarding');
+    const assigned = await page.evaluate(async (recipeId) => {
+      const response = await fetch('/api/schedule/assign?referenceWeekStartDate=2026-05-04', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ weekOffset: 0, dayIndex: 0, recipeId }),
+      });
+      return response.status;
+    }, MOCK_IDS.RECIPE_LASAGNA);
+    expect(assigned).toBe(200);
     await page.goto('/planner');
     await expect(page.getByTestId('day-card-0')).toBeVisible({ timeout: 10_000 });
 
@@ -1123,7 +1182,7 @@ test.describe('Supper Planner', () => {
     // Click STEPS button to launch Cooks Mode
     const detailSheet = page.getByTestId('recipe-detail-sheet');
     await expect(detailSheet).toBeVisible();
-    await detailSheet.getByTestId('time-cook-btn').click();
+    await detailSheet.getByTestId('action-cooks-mode').click();
 
     const overlay = page.getByTestId('cooks-mode-overlay');
     await expect(overlay).toBeVisible();
@@ -1848,7 +1907,7 @@ test.describe('Supper Planner', () => {
     // Launch cooks mode
     const detailSheet = page.getByTestId('recipe-detail-sheet');
     await expect(detailSheet).toBeVisible();
-    await detailSheet.getByTestId('time-cook-btn').click();
+    await detailSheet.getByTestId('action-cooks-mode').click();
 
     // Wait for loader to disappear and overlay to appear
     await expect(page.getByTestId('cooks-mode-loading')).not.toBeVisible({ timeout: 10_000 });
@@ -1952,8 +2011,9 @@ test.describe('Quick Replace relative next week', () => {
     );
     await page.getByRole('button', { name: /Save for Next Week/ }).click();
     await pending;
-    await expect(page.getByRole('button', { name: /Save for Next Week/ })).toBeDisabled();
-    await page.getByRole('button', { name: /Save for Next Week/ }).dispatchEvent('click');
+    await expect(page.getByTestId('replacement-feedback')).toHaveAttribute('role', 'status');
+    await expect(page.getByTestId('recovery-close')).toBeDisabled();
+    await page.getByTestId('recovery-close').dispatchEvent('click');
     expect(deferrals).toBe(1);
     expect(replacements).toBe(0);
     release();
@@ -2004,8 +2064,8 @@ test.describe('Quick Replace relative next week', () => {
       await expect(
         page.getByText(
           failure === 'defer'
-            ? 'The current meal could not be moved. Your plan was refreshed; please try again.'
-            : 'The previous meal was moved, but the replacement could not be added. Your plan was refreshed; please try again.'
+            ? 'Your plan changed. Review it before replacing this meal.'
+            : "Your original meal was updated. Your new meal wasn't saved."
         )
       ).toBeVisible();
       expect(deferrals).toBe(1);
@@ -2013,7 +2073,7 @@ test.describe('Quick Replace relative next week', () => {
       if (failure === 'defer') {
         await expect(page.getByTestId('day-card-2')).toContainText('Chicken');
       } else {
-        await page.getByRole('button', { name: /Save for Next Week/ }).click();
+        await page.getByTestId('recovery-retry-save').click();
         await expect(page.getByTestId('day-card-2')).toContainText(
           builders.scheduleRecipe({ id: MOCK_IDS.RECIPE_CARBONARA }).name!
         );
