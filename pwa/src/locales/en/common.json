@@ -340,8 +340,7 @@
       "Pantry": "Pantry"
     },
     "knownSubtotal": "{{amount}} known",
-    "priorCheckedAmountUnknown": "Review previously checked amounts.",
-    "reviewAmounts": "Review amounts"
+    "priorCheckedAmountUnknown": "Review previously checked amounts."
   },
   "cook": {
     "instructionsLoadError": "Could not load cooking instructions.",

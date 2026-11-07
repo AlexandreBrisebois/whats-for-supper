@@ -200,8 +200,9 @@ describe('quiet grocery source refinement', () => {
     render(<GroceryList weekOffset={0} items={[item]} />);
     const book = screen.getByTestId('grocery-recipe-sources-toggle');
     const warnings = screen.getByTestId('grocery-amount-review');
-    expect(warnings).toHaveTextContent('400 g known');
-    expect(warnings).toHaveTextContent('Review amounts');
+    expect(screen.getByTestId('grocery-item-quantity-hint')).toHaveTextContent('400 g known');
+    expect(warnings).not.toHaveTextContent('400 g');
+    expect(screen.queryByText('Review amounts')).not.toBeInTheDocument();
     expect(warnings).toHaveTextContent('Previously checked amount needs review.');
     expect(screen.getByTestId('grocery-item-checkbox')).toBeVisible();
     expect(screen.getByTestId('reclassify-btn')).toHaveAccessibleName('Change section for pasta');

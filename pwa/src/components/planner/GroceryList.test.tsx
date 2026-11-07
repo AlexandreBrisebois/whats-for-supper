@@ -1414,7 +1414,9 @@ describe('honest quantity completeness', () => {
     const toTaste = { ...makeItem('salt to taste', 'Pantry'), quantityComplete: true };
     render(<GroceryList weekOffset={0} items={[partial, unresolved, toTaste]} />);
     expect(screen.getByText(/400 g known/i)).toBeVisible();
-    expect(screen.getAllByText(/Review amounts/i)).toHaveLength(2);
+    expect(screen.queryByText(/Review amounts/i)).not.toBeInTheDocument();
+    expect(screen.queryByTestId('grocery-amount-review')).not.toBeInTheDocument();
+    expect(screen.getAllByTestId('grocery-item-quantity-hint')).toHaveLength(1);
     expect(screen.getByText('salt to taste').parentElement).not.toHaveTextContent(/Review amounts/);
   });
 });

@@ -1,5 +1,15 @@
 # Active resume checkpoints
 
+## DV LAN routing — corrected on current Mac address (2026-11-07)
+
+Source/scope: Alex reported missing external Mac access after DV deployment. Read-only inspection confirmed existing PWA port3000 and proxy port3310 bind all IPv4/IPv6 interfaces. Mac en0 is now `192.168.6.150`; file-provider routing still accepted only the former `192.168.1.149` plus hostnames. Plain current-IP health returned404; the same request with `Host: dv.srvrlss.dev` returned200.
+
+Correction: added `Host(192.168.6.150)` to the three existing Traefik rules (PWA/API/SSE), preserving earlier hosts. Only `docker/compose/traefik_dynamic.yml` changes. Traefik hot-reloaded its existing mount; no DV service was restarted/recreated, no port configuration changed, and all four DV container identities remain equal. `http://192.168.6.150:3310/api/health` now returns200 with healthy API/database. Read-only LAN browser checks show `BUILD PLANNER-1107-0906`, authenticated schedule and saved Planner meals, with zero API mutations.
+
+Limitation: the extra synthetic receipt probe did not show its toast over plain LAN HTTP. Browser capability reads established that LAN HTTP is not a secure context and exposes no `crypto.randomUUID`, which existing receipt/toast owners use; localhost provides it. No product UUID/auth/TLS changes were made. Public DV HTTPS availability and access from a second physical device are not qualified by this correction.
+
+Verification/resources: explicit config preparation and whitespace review passed. Broad verifier `.task/agent-finish/runs/abfb22ec78684777a76a74f961ce1e86.json` passed lint/format/types/units and observed963browserpassed/60gatedskips/zerofailed, then discarded success because concurrent GroceryList/test/locale source changed. This is a failed content-stability gate; later API/static contracts/live parity/database checks were not run. Preserve those unrelated dirty files; no broad rerun was started against the active writer. An earlier pre-browser invocation was stopped to configure an isolated server and has no final record. The owned QA container on3347 was identity-checked and removed; the existing DV containers and unrelated VS Code test server are preserved. Detailed red/green/network/capability/runtime records are in `.task/dv-lan-routing/` and the LAN browser records under `.task/quiet-planner/deployment/`. No commit, push or other implementation was performed.
+
 ## Quiet Planner success notice — synced and archived, local DV verified (2026-11-07)
 
 Task/spec: [quiet-planner-success-notice](openspec/changes/archive/2026-11-07-quiet-planner-success-notice/proposal.md), branch `recipe-view-redesign`, worktree `/Users/alex/Code/whats-for-supper`. Alex authorized apply, six portions QA fixes, final qualification, and then the Taskfile update. All 5 tasks are complete. Alex subsequently authorized DV deployment, synchronization and archival, including the two exact description-length reductions. No additional commit, push, merge or other change implementation is authorized. Preserve current dirty work.

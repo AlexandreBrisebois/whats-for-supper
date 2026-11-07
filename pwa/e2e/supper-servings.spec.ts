@@ -1438,7 +1438,8 @@ test('grocery quantities identify incomplete known subtotals without warning on 
   await expect(
     page.getByTestId('grocery-item-quantity-hint').filter({ hasText: '400 g known' })
   ).toHaveText('400 g known');
-  await expect(page.getByText('Review amounts', { exact: true })).toHaveCount(2);
+  await expect(page.getByText('Review amounts', { exact: true })).toHaveCount(0);
+  await expect(page.getByTestId('grocery-amount-review')).toHaveCount(0);
   await expect(
     page.getByTestId('grocery-item-checkbox').filter({ hasText: 'salt to taste' })
   ).not.toContainText('Review amounts');
@@ -1446,7 +1447,7 @@ test('grocery quantities identify incomplete known subtotals without warning on 
   await expect(page.getByTestId('grocery-checklist')).toBeInViewport();
   await expect(page.getByTestId('grocery-checklist').locator('..')).toHaveCSS('opacity', '1');
   const contrast = await page
-    .getByTestId('grocery-amount-review')
+    .getByTestId('grocery-item-quantity-hint')
     .first()
     .evaluate((el) => {
       const channels = (color: string) => color.match(/[\d.]+/g)!.map(Number);

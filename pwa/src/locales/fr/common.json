@@ -340,8 +340,7 @@
       "Pantry": "Épicerie"
     },
     "knownSubtotal": "{{amount}} connus",
-    "priorCheckedAmountUnknown": "Vérifiez les quantités cochées auparavant.",
-    "reviewAmounts": "Vérifier les quantités"
+    "priorCheckedAmountUnknown": "Vérifiez les quantités cochées auparavant."
   },
   "cook": {
     "instructionsLoadError": "Impossible de charger les instructions de cuisson.",

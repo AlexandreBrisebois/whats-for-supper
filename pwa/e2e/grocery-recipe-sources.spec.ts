@@ -70,7 +70,10 @@ for (const locale of ['en', 'fr'] as const)
         });
         const book = page.getByTestId('grocery-recipe-sources-toggle');
         await expect(book).toHaveAttribute('aria-expanded', 'false');
-        await expect(page.getByTestId('grocery-amount-review')).toContainText('400 g');
+        await expect(page.getByTestId('grocery-item-quantity-hint')).toContainText('400 g');
+        await expect(
+          page.getByText(/Review amounts|Vérifier les quantités/, { exact: true })
+        ).toHaveCount(0);
         await book.focus();
         await book.press('Enter');
         await expect(book).toBeFocused();
@@ -143,7 +146,10 @@ for (const locale of ['en', 'fr'] as const)
               String(schedule.calendar.referenceWeekStartDate).slice(0, 10)
         );
         await expect(page.getByTestId('grocery-check-review')).toBeVisible();
-        await expect(page.getByTestId('grocery-amount-review')).toContainText('400 g');
+        await expect(page.getByTestId('grocery-item-quantity-hint')).toContainText('400 g');
+        await expect(
+          page.getByText(/Review amounts|Vérifier les quantités/, { exact: true })
+        ).toHaveCount(0);
         expect(writes).toEqual([]);
         await page.evaluate(() => {
           document.documentElement.style.fontSize = '16px';

@@ -965,17 +965,10 @@ export function GroceryList({
                           const key = item.displayName ?? '';
                           const knownQuantity = formatQuantityHint(item.quantity, item.unitText);
                           const quantityHint =
-                            item.quantityComplete === false
-                              ? [
-                                  knownQuantity
-                                    ? tWithVars('grocery.knownSubtotal', '{{amount}} known', {
-                                        amount: knownQuantity.slice(1, -1),
-                                      })
-                                    : null,
-                                  t('grocery.reviewAmounts', 'Review amounts'),
-                                ]
-                                  .filter(Boolean)
-                                  .join(' · ')
+                            item.quantityComplete === false && knownQuantity
+                              ? tWithVars('grocery.knownSubtotal', '{{amount}} known', {
+                                  amount: knownQuantity.slice(1, -1),
+                                })
                               : knownQuantity;
                           const isChecked = groceryState[key] ?? false;
                           const hasError = errorItems.has(key);
@@ -1020,10 +1013,15 @@ export function GroceryList({
                                       >
                                         {key}
                                       </span>
-                                      {quantityHint && item.quantityComplete !== false && (
+                                      {quantityHint && (
                                         <span
                                           data-testid="grocery-item-quantity-hint"
-                                          className="mt-1 block text-sm font-normal text-charcoal/50"
+                                          className={cn(
+                                            'mt-1 block text-sm font-normal',
+                                            item.quantityComplete === false
+                                              ? 'text-charcoal'
+                                              : 'text-charcoal/50'
+                                          )}
                                         >
                                           {quantityHint}
                                         </span>
@@ -1062,10 +1060,15 @@ export function GroceryList({
                                       >
                                         {key}
                                       </span>
-                                      {quantityHint && item.quantityComplete !== false && (
+                                      {quantityHint && (
                                         <span
                                           data-testid="grocery-item-quantity-hint"
-                                          className="mt-1 block text-sm font-normal text-charcoal/50"
+                                          className={cn(
+                                            'mt-1 block text-sm font-normal',
+                                            item.quantityComplete === false
+                                              ? 'text-charcoal'
+                                              : 'text-charcoal/50'
+                                          )}
                                         >
                                           {quantityHint}
                                         </span>
@@ -1081,35 +1084,17 @@ export function GroceryList({
                                   </button>
                                 )}
 
-                                {(item.quantityComplete === false ||
-                                  item.checkReviewReason === 'prior_amount_unknown') && (
+                                {item.checkReviewReason === 'prior_amount_unknown' && (
                                   <div
                                     className="order-last mt-2 w-full min-w-0 px-[8px] text-sm text-charcoal bg-white rounded-lg @min-[18rem]:px-2"
                                     data-testid="grocery-amount-review"
                                   >
-                                    {item.quantityComplete === false && knownQuantity && (
-                                      <span
-                                        data-testid="grocery-item-quantity-hint"
-                                        className="block"
-                                      >
-                                        {tWithVars('grocery.knownSubtotal', '{{amount}} known', {
-                                          amount: knownQuantity.slice(1, -1),
-                                        })}
-                                      </span>
-                                    )}
-                                    {item.quantityComplete === false && (
-                                      <span className="block">
-                                        {t('grocery.reviewAmounts', 'Review amounts')}
-                                      </span>
-                                    )}
-                                    {item.checkReviewReason === 'prior_amount_unknown' && (
-                                      <span className="block">
-                                        {t(
-                                          'grocery.priorAmountReview',
-                                          'Previously checked amount needs review.'
-                                        )}
-                                      </span>
-                                    )}
+                                    <span className="block">
+                                      {t(
+                                        'grocery.priorAmountReview',
+                                        'Previously checked amount needs review.'
+                                      )}
+                                    </span>
                                   </div>
                                 )}
                                 {(item.recipeIds ?? []).some(
