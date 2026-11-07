@@ -40,6 +40,12 @@ test('unknown, newly added and removed files fail closed', () => {
   assert.throws(() => validateInventory(inventory().slice(1)), /stale=.+spec.ts/);
 });
 
+test('explicit filtered production feedback uses the complete mocked inventory', () => {
+  const selected = selectSuite('all', inventory());
+  assert.equal(selected.length, Object.values(suites).flat().length);
+  assert.ok(selected.every(name => !name.endsWith('-live.spec.ts')));
+});
+
 
 test('refinement browser specs retain capability ownership and separate live qualification', () => {
   assert.ok(suites.recipes.includes('recipe-ingredient-preview'));

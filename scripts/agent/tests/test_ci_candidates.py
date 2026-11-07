@@ -20,7 +20,7 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual(public['working-directory'], 'pwa')
         self.assertEqual(public['run'], 'npm run test:e2e -- --config=e2e/welcome-demo.playwright.config.ts --output=test-results/welcome-demo')
         private = next(step for step in steps if step.get('name') == 'Run capability suite')
-        self.assertEqual(private['run'], 'npm run test:e2e')
+        self.assertEqual(private['run'], 'node ../scripts/ci/production-browser.cjs run --suites "$WFS_E2E_SUITE"')
         self.assertLess(steps.index(private), steps.index(public))
         self.assertEqual(job['env']['HEARTH_SECRET'], 'Paris-Montreal')
         self.assertNotIn('WFS_WELCOME_DEMO', job['env'])

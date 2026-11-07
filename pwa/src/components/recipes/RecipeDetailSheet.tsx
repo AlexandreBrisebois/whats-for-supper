@@ -833,39 +833,41 @@ export function RecipeDetailSheet({
                   <Share2 size={14} />
                 </button>
               )}
-            {!isLoading && recipe && !isEditing && (
-              <ActionGearMenu
-                hasImportIssue={Boolean(recipe.importIssue)}
-                onEdit={
-                  ingredientContext && !projection
-                    ? undefined
-                    : () => {
-                        resetDrafts(recipe);
-                        setIsEditing(true);
-                      }
-                }
-                originalQuantitiesDisabled={Boolean(ingredientContext && !projection)}
-                onOriginalQuantities={
-                  !showingOriginalEvidence
-                    ? () => {
-                        setPreviewSelection(null);
-                        setOriginalEvidenceScope(previewScope);
-                        requestAnimationFrame(() => portionsHeadingRef.current?.focus());
-                      }
-                    : undefined
-                }
-                onResetView={
-                  previewTarget || showingOriginalEvidence
-                    ? () => {
-                        setPreviewSelection(null);
-                        setOriginalEvidenceScope(null);
-                        requestAnimationFrame(() => portionsHeadingRef.current?.focus());
-                      }
-                    : undefined
-                }
-                onMoveToBin={() => void handleMoveToBin()}
-                onReportImportIssue={() => setShowImportIssueSheet(true)}
-              />
+            {recipe && !isEditing && (
+              <fieldset disabled={isLoading} className="contents">
+                <ActionGearMenu
+                  hasImportIssue={Boolean(recipe.importIssue)}
+                  onEdit={
+                    ingredientContext && !projection
+                      ? undefined
+                      : () => {
+                          resetDrafts(recipe);
+                          setIsEditing(true);
+                        }
+                  }
+                  originalQuantitiesDisabled={Boolean(ingredientContext && !projection)}
+                  onOriginalQuantities={
+                    !showingOriginalEvidence
+                      ? () => {
+                          setPreviewSelection(null);
+                          setOriginalEvidenceScope(previewScope);
+                          requestAnimationFrame(() => portionsHeadingRef.current?.focus());
+                        }
+                      : undefined
+                  }
+                  onResetView={
+                    previewTarget || showingOriginalEvidence
+                      ? () => {
+                          setPreviewSelection(null);
+                          setOriginalEvidenceScope(null);
+                          requestAnimationFrame(() => portionsHeadingRef.current?.focus());
+                        }
+                      : undefined
+                  }
+                  onMoveToBin={() => void handleMoveToBin()}
+                  onReportImportIssue={() => setShowImportIssueSheet(true)}
+                />
+              </fieldset>
             )}
             <button
               type="button"

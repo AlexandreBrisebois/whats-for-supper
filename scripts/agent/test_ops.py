@@ -30,7 +30,7 @@ VOLATILE_GENERATED_PATHS = {"pwa/next-env.d.ts"}
 # Test runners write result and transform caches beneath installed dependencies.
 # They are execution output, not installed dependency input, so including them
 # would make a successful verification invalidate its own content identity.
-RUNTIME_CACHE_DIRECTORIES = {".vite", ".cache"}
+RUNTIME_CACHE_DIRECTORIES = {".vite", ".cache", ".vitest-cache"}
 
 
 class ImpactPlan(NamedTuple):
@@ -64,30 +64,29 @@ def build_impact_plan(changed_files: list[str]) -> ImpactPlan:
     impacted: set[str] = set()
     reasons: list[str] = []
 
+    pwa_files = [file for file in changed_files if file.startswith("pwa/")]
+    if pwa_files:
+        selector = ROOT / "scripts/ci/select-e2e.cjs"
+        result = subprocess.run(
+            [shutil.which("node") or "node", str(selector), "--files"],
+            input="\n".join(pwa_files), text=True, capture_output=True, cwd=ROOT,
+        )
+        if result.returncode:
+            raise RuntimeError(f"Capability selection failed: {result.stderr.strip()}")
+        selected = json.loads(result.stdout)
+        impacted.update(str(E2E_DIR / name) for name in selected["files"])
+        reasons.append(", ".join(pwa_files) + ": PWA capability inventory: " + ", ".join(selected["suites"]))
+        if any(file.startswith("pwa/src/lib/api/generated/") for file in pwa_files):
+            reasons.append("shared generated client retains the complete mocked capability inventory")
+
     for file in changed_files:
-        if file in {
-            "specs/openapi.yaml",
-            "pwa/playwright.config.ts",
-            "pwa/package.json",
-            "pwa/package-lock.json",
-            "Taskfile.yml",
-        } or file.endswith(("fixtures.ts", "mock-api.ts")):
+        if file.startswith("pwa/"):
+            continue
+        if file in {"specs/openapi.yaml", "Taskfile.yml"}:
             reasons.append(f"{file}: shared contract or test infrastructure requires all E2E")
             return ImpactPlan((str(E2E_DIR),), tuple(reasons), True)
 
-        if file.startswith("pwa/src/lib/api/generated/"):
-            reasons.append(f"{file}: shared generated client requires all E2E")
-            return ImpactPlan((str(E2E_DIR),), tuple(reasons), True)
-
         before = len(reasons)
-        if file.startswith(("pwa/src/components/ui/", "pwa/src/components/common/")):
-            reasons.append(f"{file}: shared UI component requires all E2E")
-            return ImpactPlan((str(E2E_DIR),), tuple(reasons), True)
-
-        if file.startswith(("pwa/src/lib/api/", "pwa/src/store/")):
-            reasons.append(f"{file}: shared client or store requires all E2E")
-            return ImpactPlan((str(E2E_DIR),), tuple(reasons), True)
-
         if "Controllers" in file:
             controller_name = Path(file).name.replace("Controller.cs", "").lower()
             if controller_name == "recipe":
@@ -97,36 +96,12 @@ def build_impact_plan(changed_files: list[str]) -> ImpactPlan:
             impacted.update(mapped)
             if mapped:
                 reasons.append(f"{file}: controller maps to {len(mapped)} feature E2E file(s)")
-
-        if file.startswith("pwa/src/app/"):
-            parts = file.split("/")
-            if "(app)" in parts:
-                index = parts.index("(app)")
-                if len(parts) > index + 1:
-                    feature = parts[index + 1]
-                    mapped = matching_specs(feature)
-                    impacted.update(mapped)
-                    if mapped:
-                        reasons.append(f"{file}: app route maps to {feature} E2E flows")
-
-        if file.startswith("pwa/src/components/"):
-            parts = file.split("/")
-            if len(parts) > 3:
-                feature = parts[3]
-                mapped = matching_specs(feature)
-                impacted.update(mapped)
-                if mapped:
-                    reasons.append(f"{file}: component maps to {feature} E2E flows")
-
-        if file.startswith("pwa/e2e/") and file.endswith(".spec.ts"):
-            impacted.add(str(ROOT / file))
-            reasons.append(f"{file}: changed E2E file runs directly")
-
         if len(reasons) == before and not non_application_path(file):
             reasons.append(f"{file}: unknown/unmapped impact requires all E2E")
             return ImpactPlan((str(E2E_DIR),), tuple(reasons), True)
 
-    return ImpactPlan(tuple(sorted(impacted)), tuple(reasons), False)
+    return ImpactPlan(tuple(sorted(impacted)), tuple(reasons),
+                      bool(pwa_files and selected["fullInventory"]))
 
 
 def openspec_path_class(path: str) -> str | None:

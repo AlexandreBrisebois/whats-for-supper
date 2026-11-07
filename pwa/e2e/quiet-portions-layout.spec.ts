@@ -144,6 +144,7 @@ for (const locale of ['en', 'fr'] as const) {
         const originalBox = (await original.boundingBox())!;
         expect(originalBox.width).toBeGreaterThanOrEqual(48);
         expect(originalBox.height).toBeGreaterThanOrEqual(48);
+        await expect(original).toBeEnabled();
         await original.focus();
         await original.press('Enter');
         await expect(page.getByText('200 g pasta', { exact: true })).toBeVisible();
@@ -167,6 +168,7 @@ for (const locale of ['en', 'fr'] as const) {
         const resetBox = (await back.boundingBox())!;
         expect(resetBox.width).toBeGreaterThanOrEqual(48);
         expect(resetBox.height).toBeGreaterThanOrEqual(48);
+        await expect(back).toBeEnabled();
         await back.focus();
         await back.press('Enter');
         await expect(page.getByTestId('recipe-original-yield')).toHaveCount(0);

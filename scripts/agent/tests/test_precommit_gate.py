@@ -52,22 +52,40 @@ class PrecommitGateTests(unittest.TestCase):
         for path in ['scripts/requirements.txt', '.github/workflows/validate.yml', 'Taskfile.yml']:
             self.assertRegex(path, self.hooks['agent-harness']['files'])
 
+    def production_fixture(self, root):
+        shutil.copytree(ROOT / 'scripts/ci', root / 'scripts/ci')
+        shutil.copy(ROOT / 'pwa/package.json', root / 'pwa/package.json')
+        (root / '.nvmrc').write_text(subprocess.check_output(['node', '-p', 'process.versions.node'], text=True).strip())
+        (root / 'pwa/e2e').mkdir()
+        for file in (ROOT / 'pwa/e2e').glob('*.spec.ts'):
+            (root / 'pwa/e2e' / file.name).write_text('')
+        preload = root / 'port-double.cjs'
+        preload.write_text("const {EventEmitter}=require('node:events');require('node:net').createServer=()=>{const s=new EventEmitter();s.listen=(_p,_h,ready)=>queueMicrotask(ready);s.close=done=>queueMicrotask(done);return s;};")
+        return {'NODE_OPTIONS': f'--require={preload}'}
+
+    def npm_fixture_prologue(self):
+        return ('#!/bin/sh\n'
+                'if [ "$1" = --version ]; then echo 11.21.1; exit 0; fi\n'
+                'if [ "$2" = build ]; then mkdir -p .next; echo fixture > .next/BUILD_ID; fi\n'
+                "if [ \"$2\" = test:e2e ]; then mkdir -p test-results; echo '{\"stats\":{\"expected\":1,\"unexpected\":0,\"flaky\":0,\"skipped\":0}}' > test-results/results.json; fi\n")
+
     def test_pwa_production_checks_ignore_external_server_and_propagate_failures(self):
         for failure in ['', 'format:check', 'lint', 'typecheck', 'test:unit', 'build', 'test:e2e']:
             with self.subTest(failure=failure), tempfile.TemporaryDirectory() as tmp:
                 root = Path(tmp); (root / 'pwa').mkdir()
+                fixture_env = self.production_fixture(root)
                 npm = root / 'npm'
-                npm.write_text('#!/bin/sh\necho "$2" >> "$CALL_LOG"\n'
+                npm.write_text(self.npm_fixture_prologue() + 'echo "$2" >> "$CALL_LOG"\n'
                                '[ "$CI" = true ] && [ -z "$BASE_URL" ] && [ "$HEARTH_SECRET" = Paris-Montreal ] || exit 98\n'
                                '[ "$2" != "$FAIL_STEP" ] || exit 42\n')
                 npm.chmod(0o755)
                 (root / 'Taskfile.yml').write_text(yaml.safe_dump({'version': '3', 'tasks': {
                     'check:push:pwa': self.tasks['check:push:pwa']}}))
-                env = dict(os.environ, PATH=f'{tmp}:{os.environ["PATH"]}', CALL_LOG=str(root / 'calls'),
+                env = dict(os.environ, **fixture_env, PATH=f'{tmp}:{os.environ["PATH"]}', CALL_LOG=str(root / 'calls'),
                            FAIL_STEP=failure, BASE_URL='http://external.invalid', CI='false', HEARTH_SECRET='wrong')
                 result = subprocess.run([shutil.which('task') or 'task', 'check:push:pwa'], cwd=root, env=env,
                                         capture_output=True, text=True, timeout=15)
-                steps = ['format:check', 'lint', 'typecheck', 'test:unit', 'build', 'test:e2e']
+                steps = ['format:check', 'lint', 'typecheck', 'test:unit', 'build'] + ['test:e2e'] * 4
                 expected = steps[:steps.index(failure)+1] if failure else steps
                 self.assertEqual((root / 'calls').read_text().splitlines(), expected)
                 self.assertEqual(result.returncode == 0, not failure, result.stdout + result.stderr)
@@ -83,8 +101,9 @@ class PrecommitGateTests(unittest.TestCase):
     def test_pwa_selected_suites_build_once_and_keep_failures(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp); (root / 'pwa').mkdir()
+            fixture_env = self.production_fixture(root)
             npm = root / 'npm'
-            npm.write_text('#!/bin/sh\necho "$2:${WFS_E2E_SUITE:-none}" >> "$CALL_LOG"\n'
+            npm.write_text(self.npm_fixture_prologue() + 'echo "$2:${WFS_E2E_SUITE:-none}" >> "$CALL_LOG"\n'
                            '[ "$CI" = true ] && [ -z "$BASE_URL" ] || exit 98\n'
                            '[ "$WFS_E2E_SUITE" != "$FAIL_SUITE" ] || exit 42\n')
             npm.chmod(0o755)
@@ -92,7 +111,7 @@ class PrecommitGateTests(unittest.TestCase):
                 'check:push:pwa': self.tasks['check:push:pwa']}}))
             for fail in ['', 'planning']:
                 log = root / 'calls'; log.unlink(missing_ok=True)
-                env = dict(os.environ, PATH=f'{tmp}:{os.environ["PATH"]}', CALL_LOG=str(log),
+                env = dict(os.environ, **fixture_env, PATH=f'{tmp}:{os.environ["PATH"]}', CALL_LOG=str(log),
                            BASE_URL='http://external.invalid', WFS_E2E_SUITE='unrelated', FAIL_SUITE=fail or 'no-failure')
                 result = subprocess.run(['task', 'check:push:pwa', 'SUITES=planning household'],
                                         cwd=root, env=env, capture_output=True, text=True, timeout=15)

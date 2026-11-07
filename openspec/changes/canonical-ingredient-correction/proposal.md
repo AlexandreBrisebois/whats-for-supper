@@ -1,41 +1,36 @@
-# Structured ingredient editing and consistent saved facts
+# Canonical recipe facts and original-basis correction
 
 ## Why
 
-Recipe editing currently PATCHes `Recipe.Ingredients` strings while measured ingredients remain in `RawMetadata.supply`. `SupperIngredientProjection.Read` accepts that supply only while the entire retained ingredient string sequence matches, so changing one ingredient can make every measured row stale. A person needs to edit the measured facts themselves through three clear fields.
+String edits and retained `RawMetadata.supply` currently have different owners; one changed string can invalidate the measured collection. Portions, cooking and groceries need the same exact saved facts and safe correction boundary.
 
 ## Outcome and Scope
 
-Each ingredient has amount, unit and free-text description fields in the existing recipe editor. Amount and unit are independently optional; unquantified ingredients are valid. Save, reopen, original reading, dated projections and groceries agree on the saved original quantities. Editing from a scaled view always initializes original saved facts.
-
-This increment includes only the structured owner, guarded editor/read contract, safe legacy adapters and consumer/recovery compatibility necessary for that outcome. It follows the independently releasable quiet-portions UI and reuses its projection contexts. Existing ordinary Search → detail → Edit → Save navigation and household report resolution remain unchanged. New repair filters, repair dashboards, automated/provider repair, selective candidate workflows and the unrelated next-available-date issue are outside scope.
+Evolve this existing foundation, rather than replace it. One original-basis recipe content revision owns ordered ingredient rows, steps and their associations. Amount/unit remain independently nullable; exact fractions and ranges survive. The ordinary three-field editor stays quiet. This is a review draft with consequential allocation decisions outstanding; artifact existence is not implementation approval or readiness.
 
 ## What Changes
 
-- Replace the string-only ingredient draft with ordered rows containing amount, unit and free-text description. Preserve row identity, order, Cancel and failed-Save recovery.
-- Establish one versioned authoritative structured ingredient collection. Legacy strings become a compatible rendering; retained extraction metadata remains evidence, never a competing current writer.
-- Preserve reliable original measurements through supported conversion; preserve current manual text and unknown legacy authorship. Unsupported associations are not guessed, zipped by position or reparsed by AI.
-- **BREAKING:** ingredient and serving-basis writes require a captured current revision. Stale or unversioned writes return a conflict before any requested field changes; other field-only requests retain their existing contract.
-- Read canonical facts through the existing original/preview/dated projection owner and existing grocery/category consumers. New capture/import and restore boundaries use the same canonical contract.
-- Preserve structured facts, source evidence, human protection and explicit empty/null values in full-fidelity export/restore; retain privacy-scrubbed version-1 text sharing as a lower-fidelity format.
+- **BREAKING:** lossless scalar/range quantities, stable line/step IDs and `contentRevision` replace the proposed scalar-only, ingredient-only revision contract.
+- Save original facts from every context; preserve human edits, explicit clearing, retained sources and existing serving protections.
+- **BREAKING:** guarded atomic writes for ingredients, basis, instructions and shopping corrections; reject unversioned old editors before any field changes.
+- Capture/import/reprocessing publish through the same guarded owner; preserve existing user reporting and eligible repair triggers. No selective candidate endpoint or dashboard.
+- Share one server projection across Home, detail, Cook and grocery demand. Mandatory step scaling is owned by the companion below, not omitted from the release.
+- Split the earlier cooking, grocery and recovery deltas into their companion owners; no main capability sync or archive in this session.
 
 ## Capabilities
 
 ### New Capabilities
 
-- `recipe-ingredients`: ordered original ingredient facts, safe legacy conversion and current ownership.
+- `recipe-ingredients`: canonical original facts, exact quantities, identity and publication.
 
 ### Modified Capabilities
 
-- `recipe-editing`: three-field original-basis drafts and guarded authoritative Save.
-- `recipe-library`: canonical detail reads and nullable independent serving basis.
-- `recipe-capture`: initialize canonical facts at existing publication boundaries.
-- `recipe-sharing`: current rendered ingredients with conservative text-only import.
-- `cooking`: consume the shared current projection without changing instructions or occurrence semantics.
-- `supper-servings`: project canonical original facts using existing context rules.
-- `grocery-shopping`: derive quantities and categories from the same saved facts.
-- `data-backup-and-recovery`: preserve canonical ownership across export, sync and restore.
+- `recipe-editing`: original-basis drafts and coherent guarded Save.
+- `recipe-library`: original canonical DTO and independent nullable basis.
+- `recipe-capture`: coherent new capture and protected reprocessing publication.
+- `recipe-sharing`: lower-fidelity text sharing remains distinct from backups.
+- `supper-servings`: canonical original facts feed the existing shared projector.
 
 ## Impact
 
-Affected owners include `RecipeService.UpdateRecipe`/DTO mapping, `SupperIngredientProjection`, detail editor/client, capture/import processors, grocery/category derivation and existing disk/export/recovery adapters. Implementation will first update `specs/openapi.yaml`, generated clients and method-sensitive mock state consistently. This revision changes planning only; it does not approve implementation, migration or deployment of this increment.
+RecipeService, SupperIngredientProjection, import/synthesis/disk publication, generated client, editor, stateful mocks and PostgreSQL persistence will change only during a separately approved apply. Proposed shapes live in [contracts.md](contracts.md); the shared [review](review.md) and [acceptance corpus](acceptance-corpus.md) govern five bounded units. Companions: [groceries](../restore-dependable-grocery-interactions/proposal.md), [bilingual identity](../bilingual-shopping-identity/proposal.md), [steps](../scale-cooking-step-ingredients/proposal.md), [migration/recovery](../migrate-canonical-recipe-model/proposal.md).

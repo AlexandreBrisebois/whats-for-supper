@@ -110,6 +110,8 @@ jobs:
           node-version-file: '.nvmrc'
       - name: Install tooling test dependency
         run: python3 -m pip install -r scripts/requirements.txt
+      - name: Install Task for command regression tests
+        run: npm install --global @go-task/cli@3.54.0
       - name: Test pipeline selection, smoke and release boundaries
         run: |
           node --test scripts/ci/*.test.cjs
@@ -265,15 +267,12 @@ jobs:
         run: npm ci
         working-directory: pwa
       - name: Check capability suite inventory
-        run: node --test scripts/ci/*.test.cjs
+        run: |
+          npm install --global @go-task/cli@3.54.0
+          node --test scripts/ci/*.test.cjs
       - name: Build PWA
-        run: npm run build
+        run: node ../scripts/ci/production-browser.cjs build
         working-directory: pwa
-        env:
-          NEXT_PUBLIC_API_BASE_URL: http://127.0.0.1:5001
-          API_INTERNAL_URL: http://127.0.0.1:5001
-          NEXT_PUBLIC_ENABLE_AGENT_SEARCH: true
-          NEXT_PUBLIC_ENABLE_PHOTO_SEARCH: true
       - name: Archive production build (including hidden Next files)
         run: tar -cf "$RUNNER_TEMP/pwa-build.tar" -C pwa .next
       - uses: actions/upload-artifact@v7
@@ -326,7 +325,7 @@ jobs:
         run: npx playwright install chromium --with-deps
         working-directory: pwa
       - name: Run capability suite
-        run: npm run test:e2e
+        run: node ../scripts/ci/production-browser.cjs run --suites "$WFS_E2E_SUITE"
         working-directory: pwa
       - name: Public Demo Welcome regression
         if: matrix.suite == 'household'

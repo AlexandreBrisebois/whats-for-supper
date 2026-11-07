@@ -632,6 +632,41 @@ describe('quiet portions captured contexts', () => {
 });
 
 describe('simplified detail preview controls', () => {
+  it('retains the open keyboard menu during a same-recipe background read and blocks actions until settled', async () => {
+    mockGetIngredientPreview.mockResolvedValue({
+      ...projection,
+      targetServings: 6,
+      lines: [{ ...projection.lines[0], quantity: 600 }],
+    });
+    render(
+      <RecipeDetailSheet
+        {...props}
+        ingredientContext={{ context: 'proposed', supperDate: '2026-10-14' }}
+      />
+    );
+    await screen.findByTestId('recipe-ingredient-projection');
+    fireEvent.click(screen.getByRole('button', { name: 'Preview 6 portions' }));
+    await screen.findByTestId('recipe-ingredient-preview');
+    fireEvent.click(screen.getByTestId('action-gear-menu'));
+    const original = screen.getByTestId('action-original-quantities');
+    original.focus();
+    let finish!: (value: Recipe) => void;
+    mockGetRecipe.mockReturnValueOnce(
+      new Promise<Recipe>((resolve) => {
+        finish = resolve;
+      })
+    );
+    await act(async () => window.dispatchEvent(new Event('focus')));
+    expect(original).toBeInTheDocument();
+    expect(original).toBeDisabled();
+    expect(screen.getByTestId('action-gear-menu')).toHaveAttribute('aria-expanded', 'true');
+    await act(async () => finish(recipe));
+    expect(screen.getByTestId('action-original-quantities')).toBe(original);
+    expect(original).toBeEnabled();
+    expect(mockUpdateRecipe).not.toHaveBeenCalled();
+    expect(props.onUseForDay).not.toHaveBeenCalled();
+  });
+
   it('resets a failed standalone preview to an original basis outside the preset counts', async () => {
     mockGetRecipe.mockResolvedValue({ ...recipe, servings: 3 });
     mockGetIngredientPreview.mockRejectedValue(new Error('Preview unavailable'));

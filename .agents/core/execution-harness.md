@@ -139,6 +139,17 @@ identity. Keep it untracked so regeneration also does not invalidate pre-commit
 hooks. Source, configuration and installed dependency changes remain checked.
 
 `agent:test:impact` uses current Git changes by default. Finish passes its selected
+PWA paths through the shared CI capability selector/inventory, including cross-feature
+detail and cooking consumers. CI-named production feedback uses
+`task test:e2e:ci -- <spec> --workers=4 --retries=0`; full mocked qualification uses
+`task check:push:pwa SUITES='tonight planning recipes household'`. These commands
+require an owned runtime with port 3000 free, clear inherited external URLs/selectors
+and record build/source/configuration identity through `scripts/ci/production-browser.cjs`.
+They never stop an unrelated server. Native/local qualification remains distinct
+from required hosted qualification of the same committed candidate. The existing
+manual `task check:push -- --plan --base <ref>` previews committed-range selection.
+
+Finish passes its selected
 paths to the impact runner. Unknown/unmapped application paths fall back to all E2E. Cache identity still covers repository
 source, configuration, installed dependencies/browser bytes, tool executables and
 hashed runtime/environment inputs. Success is stored only under the pre-test identity when

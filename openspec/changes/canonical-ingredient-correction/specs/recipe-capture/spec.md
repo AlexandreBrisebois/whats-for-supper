@@ -69,3 +69,18 @@ Supported legacy ingredient inputs SHALL be converted at the ingestion boundary 
 - **WHEN** supported text and nested or flat legacy quantity facts enter canonical publication
 - **THEN** only demonstrably associated facts populate the same ingredient line and uncertain facts remain unresolved with retained evidence
 - **AND** unsupported provider properties do not silently become trusted canonical quantities
+### Requirement: Preserve report-triggered repairs through protected reprocessing
+
+Existing recipe reporting and eligible user-triggered reimports SHALL remain available with their eligibility, deduplication, source, quota and report-resolution safeguards. Reprocessing SHALL stage content and publish only against current content/source revisions while preserving protected human fields. Reads and migration SHALL NOT trigger repairs.
+
+#### Scenario: Eligible report still launches
+- **WHEN** eligible Ingredients or Steps feedback with a nonblank note requests repair
+- **THEN** the existing contextual reimport may start and exposes its attempt without claiming a correction completed
+
+#### Scenario: Delayed repair after correction
+- **WHEN** a person clears a quantity after a repair captured its baseline
+- **THEN** a late result cannot overwrite the clear, instructions or protected shopping name, and current content remains usable
+
+#### Scenario: Reports stay separate
+- **WHEN** controlled reprocessing publishes improved facts
+- **THEN** it does not automatically resolve unrelated household feedback or claim uncertain bindings are validated

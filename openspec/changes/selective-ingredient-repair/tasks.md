@@ -1,3 +1,5 @@
+> **Superseded, unimplemented — 2026-11-07.** Do not apply this separate ingredient-candidate proposal. Its tasks remain unchecked as historical planning. Use canonical guarded import/reprocessing plus manual correction. Existing user recipe flags, Report/Review issue and eligible repair triggers remain supported, including their safety and retry safeguards. See [replacement foundation](../canonical-ingredient-correction/proposal.md). No archive or main-spec sync has occurred.
+
 # Tasks — deferred
 
 Do not activate automatically. Requires completed `canonical-ingredient-correction` and a later request selecting this optional retained-source repair scope. No stage 1/2 task depends on these tasks. No provider work or implementation is approved now. Named new suites below are future tests to create, not existing evidence.

@@ -46,6 +46,7 @@ function validateInventory(files) {
 
 function selectSuite(name, files) {
   validateInventory(files);
+  if (name === 'all') return Object.values(suites).flat().map(n => `**/${n}.spec.ts`);
   if (!Object.hasOwn(suites, name)) throw new Error(`Unknown E2E suite: ${name}`);
   return suites[name].map(n => `**/${n}.spec.ts`);
 }

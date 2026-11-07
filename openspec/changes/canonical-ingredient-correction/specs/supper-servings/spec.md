@@ -17,7 +17,7 @@ Home dated ingredients, proposed/assigned detail, cooking and groceries SHALL sh
 - **THEN** its default is original quantities and an explicitly selected 2/4/6 preview remains a separate read-only projection
 
 #### Scenario: Converted and edited canonical record
-- **WHEN** a canonical ingredient revision replaces legacy live supply reads
+- **WHEN** a canonical content revision replaces legacy live supply reads
 - **THEN** all quantity consumers use that revision and its original amounts, with grocery normalization/aggregation after projection rather than another recipe ingredient parser
 
 #### Scenario: Home ingredients and dated Cook agree

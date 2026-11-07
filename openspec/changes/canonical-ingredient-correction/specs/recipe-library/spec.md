@@ -19,7 +19,7 @@ Original reading SHALL show rendered canonical current descriptions and optional
 
 ### Requirement: Return persisted servings in the recipe DTO
 
-Public recipe reads SHALL expose the saved nullable integer servings plus canonical original description/amount/unit rows and ingredient revision through their documented response contract; compatible ingredients strings are derived. Unknown count remains null. Existing envelopes/access/eligibility apply, and reads SHALL NOT call AI or mutate ingredient storage.
+Public recipe reads SHALL expose the saved nullable integer servings plus canonical original description/amount/unit rows and content revision through their documented response contract; compatible ingredients strings are derived. Unknown count remains null. Existing envelopes/access/eligibility apply, and reads SHALL NOT call AI or mutate ingredient storage.
 
 #### Scenario: Known count in detail
 - **WHEN** authorized GET /api/recipes/{id} retrieves a recipe with stored servings 4
@@ -31,7 +31,7 @@ Public recipe reads SHALL expose the saved nullable integer servings plus canoni
 
 ### Requirement: Correct or add servings through recipe editing
 
-Authorized recipe editing SHALL correct/add a positive whole basis within database integer range using the captured ingredient revision and existing Save/Cancel recovery. Saving preserves raw yield and original ingredient quantities and adds no basis/count field to recipe.info. Omitted count preserves its current value, including null. Stale/unversioned basis writes at canonical cutover SHALL conflict without partial updates.
+Authorized recipe editing SHALL correct/add a positive whole basis within database integer range using the captured content revision and existing Save/Cancel recovery. Saving preserves raw yield and original ingredient quantities and adds no basis/count field to recipe.info. Omitted count preserves its current value, including null. Stale/unversioned basis writes at canonical cutover SHALL conflict without partial updates.
 
 #### Scenario: Correct a known count
 - **WHEN** a user changes servings from 4 to 3 and successfully saves the recipe
@@ -54,5 +54,5 @@ Authorized recipe editing SHALL correct/add a positive whole basis within databa
 - **THEN** Cancel discards the draft, while failure retains it for correction or retry and does not present the new count as successfully saved
 
 #### Scenario: Preserve a newer basis or ingredient edit
-- **WHEN** the loaded ingredient revision is stale or required revision is absent when basis is submitted
+- **WHEN** the loaded content revision is stale or required revision is absent when basis is submitted
 - **THEN** the server rejects the update as a refresh/conflict, preserves current state and the client retains the draft rather than declaring success

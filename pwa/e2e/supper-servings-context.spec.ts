@@ -8,42 +8,60 @@ import {
 } from './mock-api';
 
 async function surfaceContrast(locator: import('@playwright/test').Locator) {
-  return locator.evaluate((el) => {
-    const canvas = document.createElement('canvas');
-    canvas.width = canvas.height = 1;
-    const paint = canvas.getContext('2d')!;
-    const rgba = (value: string) => {
-      paint.clearRect(0, 0, 1, 1);
-      paint.fillStyle = value;
-      paint.fillRect(0, 0, 1, 1);
-      const pixel = Array.from(paint.getImageData(0, 0, 1, 1).data);
-      return [pixel[0], pixel[1], pixel[2], pixel[3] / 255];
-    };
-    const blend = (top: number[], bottom: number[]) =>
-      top.slice(0, 3).map((c, i) => c * (top[3] ?? 1) + bottom[i] * (1 - (top[3] ?? 1)));
-    const parents: Element[] = [];
-    for (let node: Element | null = el; node; node = node.parentElement) parents.unshift(node);
-    let background = [255, 255, 255];
-    for (const node of parents)
-      background = blend(rgba(getComputedStyle(node).backgroundColor), background);
-    const text = blend(rgba(getComputedStyle(el).color), background);
-    const luminance = (rgb: number[]) =>
-      rgb
-        .map((c) => {
-          const v = c / 255;
-          return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
-        })
-        .reduce((total, value, i) => total + value * [0.2126, 0.7152, 0.0722][i], 0);
-    const a = luminance(text),
-      b = luminance(background);
-    return {
-      text,
-      background,
-      foreground: getComputedStyle(el).color,
-      backgroundColor: getComputedStyle(el).backgroundColor,
-      ratio: (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05),
-    };
-  });
+  const measure = () =>
+    locator.evaluate((el) => {
+      const parents: Element[] = [];
+      for (let node: Element | null = el; node; node = node.parentElement) parents.unshift(node);
+      const backgrounds = parents.map((node) => getComputedStyle(node).backgroundColor);
+      const foreground = getComputedStyle(el).color;
+      const backgroundColor = getComputedStyle(el).backgroundColor;
+      if (
+        !el.isConnected ||
+        !el.getClientRects().length ||
+        ![foreground, backgroundColor, ...backgrounds].every(
+          (value) => value && CSS.supports('color', value)
+        )
+      )
+        return null;
+      const canvas = document.createElement('canvas');
+      canvas.width = canvas.height = 1;
+      const paint = canvas.getContext('2d')!;
+      const rgba = (value: string) => {
+        paint.clearRect(0, 0, 1, 1);
+        paint.fillStyle = value;
+        paint.fillRect(0, 0, 1, 1);
+        const pixel = Array.from(paint.getImageData(0, 0, 1, 1).data);
+        return [pixel[0], pixel[1], pixel[2], pixel[3] / 255];
+      };
+      const blend = (top: number[], bottom: number[]) =>
+        top.slice(0, 3).map((c, i) => c * (top[3] ?? 1) + bottom[i] * (1 - (top[3] ?? 1)));
+      let background = [255, 255, 255];
+      for (const value of backgrounds) background = blend(rgba(value), background);
+      const text = blend(rgba(foreground), background);
+      const luminance = (rgb: number[]) =>
+        rgb
+          .map((c) => {
+            const v = c / 255;
+            return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+          })
+          .reduce((total, value, i) => total + value * [0.2126, 0.7152, 0.0722][i], 0);
+      const a = luminance(text),
+        b = luminance(background);
+      return {
+        text,
+        background,
+        foreground,
+        backgroundColor,
+        ratio: (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05),
+      };
+    });
+  let result: Awaited<ReturnType<typeof measure>> = null;
+  await expect
+    .poll(async () => Boolean((result = await measure())), {
+      message: 'Contrast requires a connected rendered node with valid computed colors',
+    })
+    .toBe(true);
+  return result!;
 }
 
 async function contextFixture(page: import('@playwright/test').Page, configured = true) {
@@ -132,6 +150,37 @@ async function contextFixture(page: import('@playwright/test').Page, configured 
   await expect(page.getByTestId('at-the-table-mode')).toBeVisible();
   return { schedule, control };
 }
+
+test('contrast measurement rereads a replaced node instead of accepting detached computed styles', async ({
+  page,
+}) => {
+  await page.setContent(
+    '<span data-testid="contrast-probe" style="color:rgb(0,0,0);background:rgb(255,255,255)">Readable</span>'
+  );
+  await page.evaluate(() => {
+    const read = window.getComputedStyle;
+    let replaced = false;
+    window.getComputedStyle = (element, pseudo) => {
+      if (!replaced && element.getAttribute('data-testid') === 'contrast-probe') {
+        replaced = true;
+        element.replaceWith(element.cloneNode(true));
+      }
+      return read(element, pseudo);
+    };
+  });
+  const result = await surfaceContrast(page.getByTestId('contrast-probe'));
+  expect(result.foreground).not.toBe('');
+  expect(result.ratio).toBeGreaterThanOrEqual(4.5);
+});
+
+test('contrast measurement preserves genuine low contrast detection', async ({ page }) => {
+  await page.setContent(
+    '<span data-testid="contrast-probe" style="color:rgb(240,240,240);background:rgb(255,255,255)">Low contrast</span>'
+  );
+  const result = await surfaceContrast(page.getByTestId('contrast-probe'));
+  expect(result.foreground).not.toBe('');
+  expect(result.ratio).toBeLessThan(4.5);
+});
 
 test('assigned detail and cooking keep separate dated quantities without completion or count writes', async ({
   page,

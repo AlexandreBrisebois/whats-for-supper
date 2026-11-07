@@ -128,7 +128,7 @@ def classes_for(paths):
             classes.add('contract')
         elif (openspec_class := test_ops.openspec_path_class(path)) is not None:
             classes.add(openspec_class)
-        elif path in {'Taskfile.yml', '.gitignore', '.pre-commit-config.yaml', '.nvmrc', 'scripts/requirements.txt'} or path.startswith(('scripts/agent/', '.agents/', '.github/workflows/')):
+        elif path in {'Taskfile.yml', '.gitignore', '.pre-commit-config.yaml', '.nvmrc', 'scripts/requirements.txt'} or path.startswith(('scripts/agent/', 'scripts/ci/', '.agents/', '.github/workflows/')):
             classes.add('harness')
         elif path.endswith('.md') or test_ops.documentation_artifact(path):
             classes.add('documentation')

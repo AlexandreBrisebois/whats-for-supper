@@ -33,7 +33,7 @@ Authorized GET /api/recipes/{id}/share with household access and member context 
 #### Scenario: Export current canonical text without private repair state
 - **WHEN** a canonical recipe with accepted corrections and retained private source or human-protection evidence is shared
 - **THEN** version 1.0 contains the saved canonical ingredient strings in order without private repair state or local ingredient identities
-- **AND** the portable share is not represented as a version-2 backup or a full-fidelity quantity transfer
+- **AND** the portable share is not represented as a current-format backup or a full-fidelity quantity transfer
 
 ### Requirement: Accept and persist imported recipe bundle into library
 

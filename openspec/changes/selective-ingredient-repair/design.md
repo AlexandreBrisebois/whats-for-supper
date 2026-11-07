@@ -1,3 +1,5 @@
+> **Superseded, unimplemented — 2026-11-07.** Do not apply this separate ingredient-candidate proposal. Its tasks remain unchecked as historical planning. Use canonical guarded import/reprocessing plus manual correction. Existing user recipe flags, Report/Review issue and eligible repair triggers remain supported, including their safety and retry safeguards. See [replacement foundation](../canonical-ingredient-correction/proposal.md). No archive or main-spec sync has occurred.
+
 # Design — deferred
 
 ## Context and Existing Ownership

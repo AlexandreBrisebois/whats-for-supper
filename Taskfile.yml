@@ -210,8 +210,7 @@ tasks:
     desc: "Run E2E against production build (CI parity: build + test)"
     dir: pwa
     cmds:
-      - npm run build
-      - npm run test:e2e -- {{.CLI_ARGS}}
+      - node ../scripts/ci/production-browser.cjs qualify -- {{.CLI_ARGS}}
 
   test:audit:
     desc: "🔍 Audit tests for a specific area (Usage: task test:audit AREA=<keyword>)"
@@ -1060,31 +1059,7 @@ tasks:
     env:
       WFS_PUSH_E2E_SUITES: '{{.SUITES | default "all"}}'
     cmds:
-      - |
-        set -e
-        unset BASE_URL WFS_E2E_SUITE CALENDAR_API_URL TONIGHT_API_URL TOMORROW_API_URL
-        export CI=true HEARTH_SECRET=Paris-Montreal
-        export NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:5001 API_INTERNAL_URL=http://127.0.0.1:5001
-        export NEXT_PUBLIC_ENABLE_AGENT_SEARCH=true NEXT_PUBLIC_ENABLE_PHOTO_SEARCH=true
-        for suite in $WFS_PUSH_E2E_SUITES; do
-          case "$suite" in
-            all|tonight|planning|recipes|household) ;;
-            *) echo "Unknown E2E suite: $suite" >&2; exit 2 ;;
-          esac
-        done
-        npm run format:check
-        npm run lint
-        npm run typecheck
-        npm run test:unit
-        npm run build
-        for suite in $WFS_PUSH_E2E_SUITES; do
-          case "$suite" in
-            all) unset WFS_E2E_SUITE ;;
-            tonight|planning|recipes|household) export WFS_E2E_SUITE="$suite" ;;
-            *) echo "Unknown E2E suite: $suite" >&2; exit 2 ;;
-          esac
-          npm run test:e2e
-        done
+      - node ../scripts/ci/production-browser.cjs check --suites "$WFS_PUSH_E2E_SUITES"
 
   # ============================================================================
   # DOCUMENTATION

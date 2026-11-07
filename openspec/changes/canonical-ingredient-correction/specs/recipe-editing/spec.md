@@ -4,7 +4,7 @@
 
 ### Requirement: Open initialized recipe-detail field drafts
 
-For successfully loaded library detail, Settings SHALL offer Edit initialized from the authoritative saved detail: name, description, canonical ingredient rows, serving basis, cuisine and meal types. Ingredient drafts SHALL retain line identities and the captured ingredient revision. Absent optional text and ingredients SHALL initialize empty; unknown basis SHALL remain unknown.
+For successfully loaded library detail, Settings SHALL offer Edit initialized from the authoritative saved detail: name, description, canonical ingredient rows, serving basis, cuisine and meal types. Ingredient drafts SHALL retain line identities and the captured content revision. Absent optional text and ingredients SHALL initialize empty; unknown basis SHALL remain unknown.
 
 #### Scenario: Edit loaded detail
 - **WHEN** a person opens Settings and activates Edit on successfully loaded library detail
@@ -68,11 +68,11 @@ The editor SHALL disable Save changes when the trimmed draft name is empty or no
 
 ### Requirement: Submit normalized detail fields for the loaded recipe
 
-Enabled Save SHALL PATCH the loaded recipe with normalized name, description, final ordered canonical ingredient lines, cuisine and meal types plus the captured ingredient revision. Description/unit text SHALL be trimmed, blank optional amount/unit fields mapped independently to null and wholly blank ingredient rows removed in order; a row containing only amount or unit SHALL require a description rather than being silently dropped; blank cuisine SHALL remain null. A basis edit SHALL use the same revision. Canonical lines and legacy ingredient arrays SHALL NOT be submitted together.
+Enabled Save SHALL PATCH the loaded recipe with normalized name, description, final ordered canonical ingredient lines, cuisine and meal types plus the captured content revision. Description/unit text SHALL be trimmed, blank optional amount/unit fields mapped independently to null and wholly blank ingredient rows removed in order; a row containing only amount or unit SHALL require a description rather than being silently dropped; blank cuisine SHALL remain null. A basis edit SHALL use the same revision. Canonical lines and legacy ingredient arrays SHALL NOT be submitted together.
 
 #### Scenario: Submit edited fields
 - **WHEN** enabled Save changes is activated for loaded recipe R
-- **THEN** PATCH targets R with normalized name, description, ingredientLines, expectedIngredientRevision, cuisineType and mealTypes rather than a different recipe or only the changed field
+- **THEN** PATCH targets R with normalized name, description, ingredientLines, expectedContentRevision, cuisineType and mealTypes rather than a different recipe or only the changed field
 
 #### Scenario: Submit blank optional drafts
 - **WHEN** Save changes is activated with blank description, blank cuisine and only blank ingredient rows, with a valid name and meal selection
@@ -80,10 +80,10 @@ Enabled Save SHALL PATCH the loaded recipe with normalized name, description, fi
 
 ### Requirement: Apply supplied non-null recipe-detail update fields
 
-Authorized PATCH SHALL retain existing top-level non-null/omission and empty-value semantics for detail fields. Within a supplied canonical row, explicit null amount or unit SHALL clear that optional fact; it SHALL NOT be interpreted as an omitted top-level field. Ingredient and basis mutations SHALL require the current ingredient revision at write cutover; canonical lines SHALL replace the current ordered collection and derive legacy strings. Successful updates SHALL retain recipe identity and advance its timestamp. Other field-only requests SHALL remain compatible.
+Authorized PATCH SHALL retain existing top-level non-null/omission and empty-value semantics for detail fields. Within a supplied canonical row, explicit null amount or unit SHALL clear that optional fact; it SHALL NOT be interpreted as an omitted top-level field. Ingredient, basis, instruction and shopping-association mutations SHALL require the current content revision at write cutover; canonical lines SHALL replace the current ordered collection and derive legacy strings. Successful updates SHALL retain recipe identity and advance its timestamp. Other field-only requests SHALL remain compatible.
 
 #### Scenario: Store supplied detail fields
-- **WHEN** an authorized PATCH supplies valid non-null detail fields and a current revision for any ingredient or basis mutation for an existing recipe and the update succeeds
+- **WHEN** an authorized PATCH supplies valid non-null detail fields and a current revision for any ingredient, basis, instruction or shopping-association mutation for an existing recipe and the update succeeds
 - **THEN** those values are stored for that ID and its update timestamp is assigned
 
 #### Scenario: Preserve omitted or null values
@@ -91,17 +91,17 @@ Authorized PATCH SHALL retain existing top-level non-null/omission and empty-val
 - **THEN** that stored field is unchanged, including an existing cuisine receiving null
 
 #### Scenario: Replace with empty values
-- **WHEN** an authorized PATCH supplies an empty description, an empty cuisine string, empty canonical ingredients or empty meal types with the required current ingredient revision and succeeds
+- **WHEN** an authorized PATCH supplies an empty description, an empty cuisine string, empty canonical ingredients or empty meal types with the required current content revision and succeeds
 - **THEN** each supplied empty value replaces its stored value
 - **AND** supplying empty meal types sets category to Supper without adding Supper to the stored meal-type array
 
 ### Requirement: Display the submitted snapshot after successful detail Save
 
-After successful detail Save, the client SHALL display the authoritative returned saved recipe, its ingredient revision and saved original ingredient facts, then leave editing. It SHALL NOT reconstruct quantities from submitted strings alone. Unrelated saved facts and existing departure behavior SHALL remain governed by their owners.
+After successful detail Save, the client SHALL display the authoritative returned saved recipe, its content revision and saved original ingredient facts, then leave editing. It SHALL NOT reconstruct quantities from submitted strings alone. Unrelated saved facts and existing departure behavior SHALL remain governed by their owners.
 
 #### Scenario: Save resolves successfully
 - **WHEN** a submitted detail-field update resolves successfully while the sheet remains mounted
-- **THEN** the sheet displays returned authoritative name, description, canonical ingredients, cuisine, meal types, ingredient revision and original facts through its existing detail presentation and exits editing
+- **THEN** the sheet displays returned authoritative name, description, canonical ingredients, cuisine, meal types, content revision and original facts through its existing detail presentation and exits editing
 
 ### Requirement: Mark search-derived recipe state pending with supported updates
 
@@ -117,7 +117,7 @@ When an authorized recipe PATCH supplies a non-null supported fact, the successf
 
 #### Scenario: Persist canonical correction and derived obligations
 - **WHEN** a valid current-revision ingredient or basis correction is saved
-- **THEN** its canonical facts, protection, ingredient revision and existing durable affected grocery/search refresh obligations are saved together
+- **THEN** its canonical facts, protection, content revision and existing durable affected grocery/search refresh obligations are saved together
 - **AND** a later dispatch failure does not make the saved correction disappear or establish completed derived refresh
 
 ### Requirement: Retain editing and offer another attempt after detail Save failure
@@ -129,13 +129,13 @@ When the detail-field update request rejects while the sheet remains open, the e
 - **THEN** the current drafts remain editable, the failure message appears and Saving ends with Cancel and any locally eligible Save available
 
 #### Scenario: Retry after failure
-- **WHEN** a person activates an enabled Save after a detail-field Save failure and any required ingredient revision reconciliation
+- **WHEN** a person activates an enabled Save after a detail-field Save failure and any required content revision reconciliation
 - **THEN** the prior error clears and the current normalized drafts and required captured revision are submitted in another PATCH for the loaded recipe ID
 
 ## ADDED Requirements
 
 ### Requirement: Guard ingredient and basis edits with the captured revision
-At canonical write cutover, ingredient or basis mutation SHALL require the captured current ingredient revision. Stale or missing revisions SHALL return 409 and apply none of that PATCH. A request containing both canonical lines and legacy ingredient arrays SHALL be rejected without mutation. Other recipe-field-only PATCH requests SHALL retain existing compatibility.
+At canonical write cutover, ingredient, basis, instruction or shopping-association mutation SHALL require the captured current content revision. Stale or missing revisions SHALL return 409 and apply none of that PATCH. A request containing both canonical lines and legacy ingredient arrays SHALL be rejected without mutation. Other recipe-field-only PATCH requests SHALL retain existing compatibility.
 
 #### Scenario: Another client saved first
 - **WHEN** a person saves ingredient or basis edits using a revision preceding another successful correction
@@ -146,7 +146,7 @@ At canonical write cutover, ingredient or basis mutation SHALL require the captu
 - **WHEN** an old client submits ingredient strings or basis without the required revision after cutover
 - **THEN** it receives 409 requiring refresh and no requested field is overwritten
 
-#### Scenario: Update unrelated fields without an ingredient revision
+#### Scenario: Update unrelated fields without an content revision
 - **WHEN** a PATCH changes only non-ingredient, non-basis fields
 - **THEN** existing omission, null, validation and response behavior remains applicable
 
@@ -163,7 +163,7 @@ A revision-guarded legacy string-only ingredient update SHALL derive canonical l
 
 
 ### Requirement: Distinguish failed saving from post-save delivery failure
-The editor SHALL retain drafts after validation, conflict or save failure. If persistence succeeded but later response, export or dispatch completion failed, subsequent authoritative reads SHALL expose saved facts and truthful pending work. Retry SHALL reconcile the current ingredient revision rather than blindly replaying a possibly committed mutation.
+The editor SHALL retain drafts after validation, conflict or save failure. If persistence succeeded but later response, export or dispatch completion failed, subsequent authoritative reads SHALL expose saved facts and truthful pending work. Retry SHALL reconcile the current content revision rather than blindly replaying a possibly committed mutation.
 
 #### Scenario: Reply is lost after persistence
 - **WHEN** a correction commits but its success reply does not reach the client
@@ -188,3 +188,26 @@ A current-revision Save SHALL persist coherent accepted description, independent
 - **WHEN** a recipe has 200 g pasta and 100 ml sauce and a person changes pasta to 250 g then saves
 - **THEN** reopen shows 250 g pasta and 100 ml sauce from authoritative structured facts
 - **AND** dated projections and groceries use those saved facts rather than making all rows stale
+### Requirement: Retain all drafts through an incompatible client upgrade
+
+An old editor that submits ingredient or instruction content without the new guard SHALL receive an atomic upgrade conflict. The supported refresh route SHALL retain every unsaved field in that browser tab and offer reconciliation against current original facts before resubmission.
+
+#### Scenario: Apparently name-only old editor
+- **WHEN** an old detail editor changes only name but submits its entire ingredient array without a content revision
+- **THEN** no field is applied and its name, description, ingredients, basis, cuisine and meal-type drafts survive the supported upgrade route
+
+#### Scenario: Step draft upgrade
+- **WHEN** a step editor encounters an upgrade conflict while viewing scaled portions
+- **THEN** the original-basis draft survives, and no projected number is silently saved
+
+### Requirement: Accept fractions and ranges in the ordinary amount field
+
+The existing amount input SHALL accept the supported exact fraction, decimal and closed-range grammar without a new mandatory quantity selector. Validation SHALL retain correctable input. Shopping-name and fixed-scaling corrections SHALL use progressive disclosure.
+
+#### Scenario: English and French input
+- **WHEN** a person saves 1 1/2, ½, 2–3 or an unambiguous French decimal amount
+- **THEN** reopening retains equivalent exact original facts and no display portion overwrites them
+
+#### Scenario: Ambiguous input
+- **WHEN** input could be a grouped thousands value or decimal under the supported grammar
+- **THEN** validation asks for an unambiguous amount in the editor without changing current facts

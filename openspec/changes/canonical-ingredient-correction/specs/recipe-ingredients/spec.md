@@ -7,7 +7,7 @@ Own ordered original ingredient facts and their safe publication so recipe editi
 ## ADDED Requirements
 
 ### Requirement: Own current ingredient facts in one ordered collection
-A recipe SHALL expose one versioned current ingredient collection with stable line identity/order, free-text description, nullable amount and nullable unit. Its compatible strings and context-specific projections SHALL derive from those same facts. Retained extraction metadata SHALL remain evidence rather than an independent current writer. Serving basis SHALL remain independently nullable.
+A recipe SHALL expose one versioned current ingredient collection with stable line identity/order, free-text description, nullable exact scalar-or-range amount and independently nullable unit. Its compatible strings and context-specific projections SHALL derive from those same facts. Retained extraction metadata SHALL remain evidence rather than an independent current writer. Serving basis SHALL remain independently nullable.
 
 #### Scenario: Shared facts across contexts
 - **WHEN** original, preview and captured dated consumers read a saved recipe
@@ -19,7 +19,7 @@ A recipe SHALL expose one versioned current ingredient collection with stable li
 - **THEN** current reads use saved canonical facts and retain the extraction evidence without replaying it over the correction
 
 ### Requirement: Permit independently optional quantity fields
-An ingredient SHALL allow amount and unit to be independently null. A nonempty row SHALL have a nonblank free-text description. Supplied amounts SHALL be finite and nonnegative; zero and unitless counts SHALL remain valid. Missing amount or unit alone SHALL NOT make an ingredient invalid, require a special phrase or create household report membership.
+An ingredient SHALL allow amount and unit to be independently null. A nonempty row SHALL have a nonblank free-text description. Supplied scalar amounts and range endpoints SHALL be exact, bounded and nonnegative; zero and unitless counts SHALL remain valid. Missing amount or unit alone SHALL NOT make an ingredient invalid, require a special phrase or create household report membership.
 
 #### Scenario: Every optional-field combination
 - **WHEN** rows contain 2 with no unit, g with no amount, neither amount nor unit, or both 200 and g, each with a description
@@ -37,7 +37,7 @@ An ingredient SHALL allow amount and unit to be independently null. A nonempty r
 Canonical publication SHALL preserve current manual descriptions, quantities and explicit null choices against stale extraction, reimport and conversion work. Unknown legacy authorship SHALL NOT be assumed machine-owned. Retained raw extraction content SHALL remain available as evidence, including original numeric and serving-yield evidence.
 
 #### Scenario: Automatic work finishes after manual Save
-- **WHEN** conversion or extraction work captured an older ingredient revision before a person saved a correction or cleared an amount
+- **WHEN** conversion or extraction work captured an older content revision before a person saved a correction or cleared an amount
 - **THEN** it cannot overwrite those saved facts and the original evidence remains retained
 
 #### Scenario: Existing edited text disagrees with extraction
@@ -60,7 +60,7 @@ Supported legacy adapters SHALL preserve current wording/order and only unambigu
 - **THEN** canonical conversion is deferred for that recipe with an explicit conflict outcome and the legacy read adapter remains available until explicit reconciliation
 
 ### Requirement: Guard resumable canonical publication
-Per-recipe conversion and canonical publication SHALL compare the captured ingredient revision before atomically publishing. Successful unchanged retries SHALL be idempotent. Before conversion the supported legacy read adapter owns current reads; after conversion canonical facts alone own them. Explicit empty collections and null facts SHALL not revive legacy values.
+Per-recipe conversion and canonical publication SHALL compare the captured content revision before atomically publishing. Successful unchanged retries SHALL be idempotent. Before conversion the supported legacy read adapter owns current reads; after conversion canonical facts alone own them. Explicit empty collections and null facts SHALL not revive legacy values.
 
 #### Scenario: Recipe changes during conversion
 - **WHEN** a person changes ingredients after conversion inspection but before publication
@@ -74,9 +74,38 @@ Per-recipe conversion and canonical publication SHALL compare the captured ingre
 - **WHEN** a person saves an empty canonical collection while retained metadata still contains supplies
 - **THEN** subsequent original, dated, grocery and recovery reads do not revive those old supplies
 
-### Requirement: Preserve compatible recovery before write cutover
-Canonical write activation SHALL retain supported legacy adapters and verified full-fidelity recovery for current rows, revisions, evidence, protection, explicit nulls and the separate basis. A legacy or malformed input SHALL NOT silently erase richer current facts. Ordinary privacy-scrubbed sharing SHALL not claim that recovery fidelity.
+### Requirement: Require coherent recovery before write cutover
 
-#### Scenario: Richer saved facts meet older content
-- **WHEN** a legacy merge lacks current structured facts or human protection
-- **THEN** current richer facts are preserved or an explicit ingredient conflict is reported rather than being silently erased
+Canonical writes SHALL activate only with verified current-format recovery of exact quantities, identities, revisions, source evidence, human protection and independent serving basis. Ordinary text sharing SHALL NOT claim this fidelity.
+
+#### Scenario: Recovery owner gate
+- **WHEN** canonical write activation is proposed
+- **THEN** the migration/recovery companion must have passed its current-format round-trip and staged client gates; old backup decoding is not a prerequisite
+
+### Requirement: Round trip exact original fractions and ranges
+
+Canonical quantities SHALL preserve supported fraction/decimal notation and exact scalar or ordered closed-range values. Projections SHALL always start from original facts, scale both endpoints and retain fixed package capacities. Invalid or out-of-bounds input SHALL fail without partial publication.
+
+#### Scenario: Fraction without drift
+- **WHEN** original 1/3 cup for three is previewed for five then three
+- **THEN** storage and the returned original remain exactly 1/3 cup
+
+#### Scenario: Range and packages
+- **WHEN** 2–3 cloves and two 400 g cans for four are read for eight
+- **THEN** they project 4–6 cloves and four 400 g cans, with no purchase rounding
+
+#### Scenario: Unknown and invalid are different
+- **WHEN** amount is absent, zero, an inverted range or a fraction with zero denominator
+- **THEN** absence stays unknown, zero stays valid, and the invalid supplied forms reject without saving other fields
+
+### Requirement: Own stable original steps under the same content revision
+
+Canonical content SHALL retain ordered stable ingredient, section and step IDs with original editable step text. Ingredients, basis, steps, validated use associations and saved shopping corrections SHALL share one content revision. Retained raw metadata SHALL NOT independently overwrite these current facts.
+
+#### Scenario: Reorder and rename
+- **WHEN** a person reorders rows or changes one description
+- **THEN** retained row IDs do not change and step references do not shift by index
+
+#### Scenario: One coherent revision
+- **WHEN** content is read during a concurrent ingredient and step save
+- **THEN** a projection contains one committed content revision, never ingredients from one and step bindings from another
