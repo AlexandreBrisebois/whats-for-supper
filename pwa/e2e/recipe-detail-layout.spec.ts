@@ -866,3 +866,61 @@ for (const locale of ['en', 'fr'] as const)
         });
       });
   });
+
+test.describe('automatic planning date freshness', () => {
+  test.use({ appLocale: 'en', timezoneId: 'Asia/Tokyo' });
+  test('refreshes an expired dated action without writing until its replacement is activated', async ({
+    page,
+  }) => {
+    const mutations = await prepare(page, 'en');
+    let today = '2026-05-04';
+    const writes: { body: any; reference: string | null }[] = [];
+    await page.route(
+      (url) => url.pathname === '/api/schedule',
+      async (route) => {
+        if (route.request().method() !== 'GET') return route.fallback();
+        const url = new URL(route.request().url());
+        const calendar = builders.deploymentCalendar({
+          timeZone: 'America/Toronto',
+          today,
+          capturedAtUtc: today + 'T16:00:00Z',
+          nextDayAtUtc: today === '2026-05-04' ? '2026-05-05T04:00:00Z' : '2026-05-06T04:00:00Z',
+          referenceWeekStartDate: url.searchParams.get('referenceWeekStartDate') ?? '2026-05-04',
+        });
+        const week = builders.scheduleDays(
+          Number(url.searchParams.get('weekOffset') ?? 0),
+          calendar
+        );
+        if (writes.length) week.days[1].recipe = builders.scheduleRecipe({ id: recipeId });
+        await route.fulfill({ json: { data: week } });
+      }
+    );
+    await page.route('**/api/schedule/assign**', async (route) => {
+      if (route.request().method() !== 'POST') return route.fallback();
+      writes.push({
+        body: route.request().postDataJSON(),
+        reference: new URL(route.request().url()).searchParams.get('referenceWeekStartDate'),
+      });
+      await route.fulfill({ json: { data: { message: 'Recipe assigned' } } });
+    });
+    await page.goto('/recipes?open=' + recipeId);
+    const action = page.getByTestId('action-add-to-day');
+    await expect(action).toContainText('May 4');
+    today = '2026-05-05';
+    await action.click();
+    await expect(action).toContainText('May 5');
+    expect(writes).toEqual([]);
+    expect(mutations).toEqual([]);
+    await action.click();
+    await expect(page).toHaveURL(
+      /success=1&dayIndex=1&weekOffset=0&referenceWeekStartDate=2026-05-04/
+    );
+    expect(writes).toEqual([
+      {
+        body: { weekOffset: 0, dayIndex: 1, recipeId, requireEmpty: true },
+        reference: '2026-05-04',
+      },
+    ]);
+    expect(mutations).toEqual(['POST /api/schedule/assign']);
+  });
+});

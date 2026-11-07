@@ -55,6 +55,35 @@ test('real dated detail saves through generated client and a second client prese
       expect(response.ok()).toBe(true);
       return response.json();
     };
+    // Toronto is still Sunday while this browser is already on Monday.
+    // Earlier empty weekdays must never become an automatic recommendation.
+    const automaticBefore = await sourceRead('/_test/planning/requests');
+    await page.goto('/recipes?open=' + recipeId);
+    const openWeeks = await Promise.all(
+      Array.from({ length: 4 }, (_, offset) =>
+        sourceRead('/api/schedule?weekOffset=' + offset + '&referenceWeekStartDate=2026-10-05')
+      )
+    );
+    const eligible = openWeeks
+      .flatMap((week) => week.data.days)
+      .find(
+        (day) =>
+          day.date >= openWeeks[0].data.calendar.today &&
+          day.status === 0 &&
+          !day.recipe &&
+          !day.nonCooking?.kind &&
+          !day.removalToken
+      );
+    expect(eligible).toBeTruthy();
+    const expectedLabel = new Intl.DateTimeFormat('en-US', {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric',
+      timeZone: 'UTC',
+    }).format(new Date(eligible.date + 'T12:00:00Z'));
+    await expect(page.getByTestId('action-add-to-day')).toContainText(expectedLabel);
+    expect(await sourceRead('/_test/planning/requests')).toEqual(automaticBefore);
+    await page.getByTestId('action-close-sheet').click();
     const sourceCountsBefore = await sourceRead('/_test/planning/requests');
     const sourceWeekBefore = (
       await sourceRead('/api/schedule?weekOffset=-1&referenceWeekStartDate=2026-10-05')

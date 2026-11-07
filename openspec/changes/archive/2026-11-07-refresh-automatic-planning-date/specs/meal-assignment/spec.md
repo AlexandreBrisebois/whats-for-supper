@@ -1,7 +1,8 @@
 ## MODIFIED Requirements
 
 ### Requirement: Find first-open placement after deployment-local today
-Without an explicit day, recipe detail SHALL suggest deployment-local Tonight if ordinary and empty, otherwise the first ordinary empty future supper in calendar order. Non-cooking, Cooked, AwaitingConsensus and recipe-backed days SHALL be skipped. Every automatic candidate SHALL be on or after authoritative deployment-local today, including when the reference Monday is historical. The date SHALL be shown before saving. Scanning SHALL stop after 520 relative weeks; missing or failed schedule data SHALL block recommendation rather than imply emptiness.
+
+Without an explicit day, recipe detail SHALL suggest the first ordinary empty supper on or after authoritative deployment-local today, including with a historical reference Monday: Tonight first, then future dates in order. Non-cooking, Cooked, AwaitingConsensus and recipe-backed days SHALL be skipped. The date SHALL be shown before saving. Scanning SHALL stop after 520 relative weeks; missing or failed schedule data SHALL block recommendation rather than imply emptiness.
 
 #### Scenario: Next date is non-cooking
 - **WHEN** the first candidate date is recipe-free Skipped and a later ordinary empty date exists
@@ -28,7 +29,8 @@ Without an explicit day, recipe detail SHALL suggest deployment-local Tonight if
 - **THEN** automatic eligibility uses returned deployment calendar today rather than browser-local midnight
 
 ### Requirement: Assign first-open placement through the shared assignment operation
-Activating the visible suggested-day action SHALL submit the chosen recipe for that captured date through guarded assignment after a fresh authoritative calendar/date check. If an automatic target has become historical, it SHALL refresh the visible dated suggestion and require another deliberate activation without writing to either the old or replacement date. A recommendation SHALL NOT reserve the slot or mutate the plan. Conflict SHALL retain recipe/date and explain the changed plan, offering another day or explicit replacement without silently choosing a new destination. Confirmed completion SHALL return to that Planner date.
+
+Activating the dated action SHALL use guarded assignment for the chosen recipe and captured date after a fresh authoritative calendar/date check. An automatic date now in the past SHALL refresh and require another activation without writing either date. Suggestions SHALL NOT reserve or mutate plans. Conflict SHALL retain recipe/date, explain the changed plan and offer another day or explicit replacement without silently retargeting. Confirmed completion SHALL return to that Planner date.
 
 #### Scenario: First-open assignment resolves
 - **WHEN** a shown target is chosen and its guarded assignment is confirmed

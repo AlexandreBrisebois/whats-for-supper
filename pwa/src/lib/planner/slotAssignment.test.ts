@@ -650,3 +650,68 @@ it('treats a generated empty non-cooking DTO as absence rather than Take Out', a
   expect((await getPlannerSlot(0, 0, '2026-10-12'))?.nonCooking).toBeNull();
   expect(await findFirstOpenPlannerSlot(0, 0, 1, '2026-10-12')).toMatchObject({ dayIndex: 0 });
 });
+
+describe('automatic deployment date lower bound', () => {
+  it.each([
+    ['2026-10-12', '2026-10-14', 0, 2],
+    ['2026-10-05', '2026-10-14', 1, 2],
+    ['2026-10-12', '2026-10-18', 0, 6],
+    ['2026-10-12', '2026-10-19', 1, 0],
+  ])(
+    'skips empty past days from reference %s on %s',
+    async (reference, today, weekOffset, dayIndex) => {
+      const { getSchedule } = await import('@/lib/api/planner');
+      const { findFirstOpenPlannerSlot } = await import('./slotAssignment');
+      vi.mocked(getSchedule).mockImplementation(
+        async (week = 0) =>
+          ({
+            calendar: {
+              timeZone: 'America/Toronto',
+              today,
+              currentWeekStartDate: today === '2026-10-19' ? today : '2026-10-12',
+              referenceWeekStartDate: reference,
+              capturedAtUtc: today + 'T16:00:00Z',
+              nextDayAtUtc: new Date(Date.parse(today + 'T04:00:00Z') + 86400000).toISOString(),
+            },
+            days: Array.from({ length: 7 }, (_, i) => ({
+              date: new Date(Date.parse(reference + 'T00:00:00Z') + (week * 7 + i) * 86400000)
+                .toISOString()
+                .slice(0, 10),
+              status: 0,
+              recipe: null,
+            })),
+          }) as any
+      );
+      // Browser clock is deliberately unrelated to the deployment date.
+      vi.spyOn(Date, 'now').mockReturnValue(Date.parse('2026-10-20T12:00:00Z'));
+      try {
+        expect(await findFirstOpenPlannerSlot(0, 0, 3, reference)).toEqual({
+          weekOffset,
+          dayIndex,
+          referenceWeekStartDate: reference,
+        });
+        expect(getSchedule).toHaveBeenLastCalledWith(weekOffset, reference);
+      } finally {
+        vi.mocked(Date.now).mockRestore();
+      }
+    }
+  );
+
+  it('rejects incoherent dates rather than treating a malformed week as empty', async () => {
+    const { getSchedule } = await import('@/lib/api/planner');
+    const { findFirstOpenPlannerSlot } = await import('./slotAssignment');
+    vi.mocked(getSchedule).mockResolvedValue({
+      calendar: {
+        timeZone: 'UTC',
+        today: '2026-10-12',
+        currentWeekStartDate: '2026-10-12',
+        referenceWeekStartDate: '2026-10-12',
+        capturedAtUtc: '2026-10-12T12:00:00Z',
+        nextDayAtUtc: '2026-10-13T00:00:00Z',
+      },
+      days: Array.from({ length: 7 }, () => ({ date: '2026-10-12', status: 0 })),
+    } as any);
+    await expect(findFirstOpenPlannerSlot()).rejects.toThrow();
+    expect(getSchedule).toHaveBeenCalledTimes(1);
+  });
+});

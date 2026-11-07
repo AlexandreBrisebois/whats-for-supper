@@ -14,7 +14,11 @@ import { formatSupperPlanDate } from '@/lib/planner/nonCooking';
 import { subscribeIngredientProjectionInvalidation } from '@/lib/ingredient-projection-invalidation';
 import {
   absoluteMonday,
-  calendarDayIndex,
+  calendarAnchorIsFresh,
+  CalendarUnavailableError,
+  calendarTime,
+  loadCalendarSnapshot,
+  type CalendarAnchor,
   loadDeploymentCalendar,
   type CalendarContext,
 } from '@/lib/deployment-calendar';
@@ -1062,7 +1066,33 @@ function RecipesContent() {
     slot?: PlannerSlot;
     error?: string;
     checking?: boolean;
+    anchor?: CalendarAnchor;
   } | null>(null);
+  // Retain the last automatic read's freshness evidence; a repeated cached
+  // capture cannot renew its day boundary or move authoritative today backwards.
+  const automaticCalendarRead = useRef<Pick<
+    Awaited<ReturnType<typeof loadCalendarSnapshot>>,
+    'calendar' | 'anchor'
+  > | null>(null);
+  const readAutomaticCalendar = useCallback(async () => {
+    const snapshot = await loadCalendarSnapshot();
+    const previous = automaticCalendarRead.current;
+    if (previous?.calendar.timeZone === snapshot.calendar.timeZone) {
+      if (
+        snapshot.calendar.today < previous.calendar.today ||
+        (!calendarAnchorIsFresh(previous.anchor) &&
+          snapshot.calendar.today === previous.calendar.today)
+      )
+        throw new CalendarUnavailableError();
+      if (
+        Date.parse(snapshot.calendar.capturedAtUtc) <= Date.parse(previous.calendar.capturedAtUtc)
+      )
+        snapshot.anchor = previous.anchor;
+    }
+    if (!calendarAnchorIsFresh(snapshot.anchor)) throw new CalendarUnavailableError();
+    automaticCalendarRead.current = { calendar: snapshot.calendar, anchor: snapshot.anchor };
+    return snapshot;
+  }, []);
   const [targetReadAttempt, setTargetReadAttempt] = useState(0);
   const targetReadGeneration = useRef(0);
   const [showDayChooser, setShowDayChooser] = useState<string | null>(null);
@@ -1105,6 +1135,7 @@ function RecipesContent() {
     };
   }, [detailTargetKey]);
   const assignmentNeedsCheck = uncertainAssignment?.key === detailTargetKey;
+  const automaticTarget = !chosenTarget && !hasPlanningTarget;
   const visibleTarget = targetRead?.key === detailTargetKey ? targetRead.slot : undefined;
   const targetReadError = targetRead?.key === detailTargetKey ? targetRead.error : undefined;
   const targetChecking = targetRead?.key === detailTargetKey && Boolean(targetRead.checking);
@@ -1126,78 +1157,110 @@ function RecipesContent() {
     suppliedReference ??
     planningCalendar?.referenceWeekStartDate;
   const visibleTargetDate = visibleTarget?.date;
-  useEffect(() => {
-    if (!detailRecipeId || originalSourceReview) return;
-    return subscribeIngredientProjectionInvalidation(
-      visibleTargetDate ? { context: 'proposed', supperDate: visibleTargetDate } : undefined,
-      () => {
-        targetReadGeneration.current += 1;
-        setTargetRead((current) =>
-          current?.key === detailTargetKey
-            ? { ...current, checking: true, error: undefined }
-            : current
-        );
-        setTargetReadAttempt((attempt) => attempt + 1);
-      }
+  const refreshDetailTarget = useCallback(() => {
+    targetReadGeneration.current += 1;
+    setTargetRead((current) =>
+      current?.key === detailTargetKey
+        ? { ...current, checking: true, error: undefined, anchor: undefined }
+        : current
     );
-  }, [detailRecipeId, originalSourceReview, visibleTargetDate, detailTargetKey]);
+    setTargetReadAttempt((attempt) => attempt + 1);
+  }, [detailTargetKey]);
+  useEffect(() => {
+    if (!detailRecipeId || originalSourceReview || assignmentNeedsCheck) return;
+    return subscribeIngredientProjectionInvalidation(
+      !automaticTarget && visibleTargetDate
+        ? { context: 'proposed', supperDate: visibleTargetDate }
+        : undefined,
+      refreshDetailTarget
+    );
+  }, [
+    detailRecipeId,
+    originalSourceReview,
+    assignmentNeedsCheck,
+    automaticTarget,
+    visibleTargetDate,
+    refreshDetailTarget,
+  ]);
+  const automaticAnchor =
+    automaticTarget && targetRead?.key === detailTargetKey ? targetRead.anchor : undefined;
+  useEffect(() => {
+    if (!automaticAnchor || assignmentNeedsCheck) return;
+    const remaining =
+      automaticAnchor.expiresAfterMs - (calendarTime.elapsed() - automaticAnchor.receivedAtElapsed);
+    const timer = window.setTimeout(refreshDetailTarget, Math.max(0, Math.ceil(remaining)));
+    return () => window.clearTimeout(timer);
+  }, [automaticAnchor, assignmentNeedsCheck, refreshDetailTarget]);
   useEffect(() => {
     if (!detailRecipeId || originalSourceReview) return;
     let active = true;
     const generation = ++targetReadGeneration.current;
     const key = detailTargetKey;
+    const current = () =>
+      active && targetReadGeneration.current === generation && detailContextRef.current === key;
     void (async () => {
-      const calendar = await loadDeploymentCalendar();
-      if (!active) return;
-      setPlanningCalendar(calendar);
-      if (hasPlanningTarget && !validTarget && !chosenTarget)
-        throw new Error(
-          t(
-            'recipes.invalidPlanningDay',
-            'Invalid planning day. Choose a day in Planner and try again.'
-          )
-        );
-      let slot: PlannerSlot | null;
-      if (chosenTarget)
-        slot = await getPlannerSlot(
-          chosenTarget.weekOffset,
-          chosenTarget.dayIndex,
-          chosenTarget.referenceWeekStartDate
-        );
-      else if (hasPlanningTarget)
-        slot = await getPlannerSlot(
-          targetWeek,
-          targetDay,
-          suppliedReference ?? calendar.referenceWeekStartDate
-        );
-      else {
-        const candidate = await findFirstOpenPlannerSlot(
-          0,
-          calendarDayIndex(calendar),
-          520,
-          calendar.referenceWeekStartDate
-        );
-        if (!candidate)
+      // A scan may span midnight. Restart once with a new authoritative snapshot,
+      // then fail closed rather than publishing an expired or endlessly retried date.
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const snapshot = await (automaticTarget ? readAutomaticCalendar() : loadCalendarSnapshot());
+        if (!current()) return;
+        const { calendar, anchor } = snapshot;
+        setPlanningCalendar(calendar);
+        if (hasPlanningTarget && !validTarget && !chosenTarget)
           throw new Error(
-            t('recipes.noOpenDay', 'No open supper found. Choose a day to review your plan.')
+            t(
+              'recipes.invalidPlanningDay',
+              'Invalid planning day. Choose a day in Planner and try again.'
+            )
           );
-        slot = await getPlannerSlot(
-          candidate.weekOffset,
-          candidate.dayIndex,
-          candidate.referenceWeekStartDate
-        );
+        let slot: PlannerSlot | null;
+        if (chosenTarget)
+          slot = await getPlannerSlot(
+            chosenTarget.weekOffset,
+            chosenTarget.dayIndex,
+            chosenTarget.referenceWeekStartDate
+          );
+        else if (hasPlanningTarget)
+          slot = await getPlannerSlot(
+            targetWeek,
+            targetDay,
+            suppliedReference ?? calendar.referenceWeekStartDate
+          );
+        else {
+          const candidate = await findFirstOpenPlannerSlot(
+            0,
+            0,
+            520,
+            calendar.referenceWeekStartDate
+          );
+          if (!candidate)
+            throw new Error(
+              t('recipes.noOpenDay', 'No open supper found. Choose a day to review your plan.')
+            );
+          slot = await getPlannerSlot(
+            candidate.weekOffset,
+            candidate.dayIndex,
+            candidate.referenceWeekStartDate
+          );
+        }
+        if (!current()) return;
+        if (!slot)
+          throw new Error(
+            t('recipes.checkPlanFailed', 'Could not confirm this meal. Retry check before saving.')
+          );
+        if (automaticTarget && (!calendarAnchorIsFresh(anchor) || slot.date < calendar.today))
+          continue;
+        setTargetRead({ key, slot, ...(automaticTarget ? { anchor } : {}) });
+        return;
       }
-      if (!slot)
-        throw new Error(
-          t('recipes.checkPlanFailed', 'Could not confirm this meal. Retry check before saving.')
-        );
-      if (active && targetReadGeneration.current === generation && detailContextRef.current === key)
-        setTargetRead({ key, slot });
+      throw new Error(
+        t('recipes.checkPlanFailed', 'Could not confirm this meal. Retry check before saving.')
+      );
     })().catch((error) => {
-      if (active && targetReadGeneration.current === generation && detailContextRef.current === key)
-        setTargetRead((current) => ({
+      if (current())
+        setTargetRead((previous) => ({
           key,
-          slot: current?.key === key ? current.slot : undefined,
+          slot: previous?.key === key ? previous.slot : undefined,
           error:
             error instanceof Error
               ? error.message
@@ -1221,6 +1284,8 @@ function RecipesContent() {
     targetDay,
     suppliedReference,
     targetReadAttempt,
+    automaticTarget,
+    readAutomaticCalendar,
   ]);
 
   const reviewDetailTarget = (slot: PlannerSlot) =>
@@ -1239,10 +1304,6 @@ function RecipesContent() {
       throw new Error(
         t('recipes.checkPlanFailed', 'Could not confirm this meal. Retry check before saving.')
       );
-    if (targetReview || identicalTarget) {
-      reviewDetailTarget(visibleTarget);
-      return;
-    }
     const previous = uncertainAssignment?.key === key ? uncertainAssignment : null;
     if (previous) {
       const checked = await getPlannerSlot(
@@ -1269,23 +1330,78 @@ function RecipesContent() {
         return;
       }
       setUncertainAssignment(null);
+      if (
+        automaticTarget &&
+        !checked.recipe &&
+        checked.status === 0 &&
+        !checked.nonCooking &&
+        !checked.removalToken
+      )
+        refreshDetailTarget();
+      else setTargetRead({ key, slot: checked });
       throw new Error(
         checked.recipe || checked.status !== 0
           ? t('recipes.planChanged', 'Your plan changed. Review the selected day in Planner.')
           : t('recipes.notSaved', 'This meal was not saved. Try saving again.')
       );
     }
+    if (targetReview || identicalTarget) {
+      reviewDetailTarget(visibleTarget);
+      return;
+    }
     const captured = visibleTarget;
-    const slot = await getPlannerSlot(
-      captured.weekOffset,
-      captured.dayIndex,
-      captured.referenceWeekStartDate
-    );
-    if (!active()) return;
-    if (!slot || slot.referenceWeekStartDate !== captured.referenceWeekStartDate)
-      throw new Error(
-        t('recipes.checkPlanFailed', 'Could not confirm this meal. Retry check before saving.')
+    const generation = targetReadGeneration.current;
+    let fresh: Awaited<ReturnType<typeof loadCalendarSnapshot>> | undefined;
+    if (automaticTarget) {
+      try {
+        fresh = await readAutomaticCalendar();
+      } catch (error) {
+        if (active() && targetReadGeneration.current === generation)
+          setTargetRead({
+            key,
+            slot: captured,
+            error: error instanceof Error ? error.message : new CalendarUnavailableError().message,
+          });
+        return;
+      }
+      if (!active() || targetReadGeneration.current !== generation) return;
+      if (!calendarAnchorIsFresh(fresh.anchor) || captured.date < fresh.calendar.today) {
+        refreshDetailTarget();
+        return;
+      }
+    }
+    let slot: PlannerSlot | null;
+    try {
+      slot = await getPlannerSlot(
+        captured.weekOffset,
+        captured.dayIndex,
+        captured.referenceWeekStartDate
       );
+    } catch (error) {
+      if (active() && targetReadGeneration.current === generation)
+        setTargetRead({
+          key,
+          slot: captured,
+          error: error instanceof Error ? error.message : new CalendarUnavailableError().message,
+        });
+      return;
+    }
+    if (!active() || targetReadGeneration.current !== generation) return;
+    if (fresh && !calendarAnchorIsFresh(fresh.anchor)) {
+      refreshDetailTarget();
+      return;
+    }
+    if (!slot || slot.referenceWeekStartDate !== captured.referenceWeekStartDate) {
+      setTargetRead({
+        key,
+        slot: captured,
+        error: t(
+          'recipes.checkPlanFailed',
+          'Could not confirm this meal. Retry check before saving.'
+        ),
+      });
+      return;
+    }
     if (slot.status === 2 || slot.status === 4 || slot.recipe?.id === recipe.id) {
       setTargetRead({ key, slot });
       return;
@@ -1319,6 +1435,9 @@ function RecipesContent() {
       if (!active()) return;
       const status = (error as { responseStatusCode?: number })?.responseStatusCode;
       if (![400, 401, 403, 409].includes(status ?? 0)) {
+        // Freeze this captured destination until its uncertain write is checked.
+        targetReadGeneration.current += 1;
+        setTargetRead({ key, slot });
         setUncertainAssignment({ key, slot, recipe: assignmentRecipe });
         throw new Error(
           t(

@@ -124,6 +124,7 @@ export async function findFirstOpenPlannerSlot(
     const dayIndex = schedule.days.findIndex(
       (day, index) =>
         index >= startIndex &&
+        day.date! >= calendar.today &&
         day.status === 0 &&
         !day.removalToken &&
         !day.nonCooking?.kind &&
