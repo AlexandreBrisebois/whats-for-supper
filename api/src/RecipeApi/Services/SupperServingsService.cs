@@ -186,7 +186,11 @@ public class SupperServingsService(RecipeDbContext db, IClock clock, DeploymentC
         foreach (var edit in edits)
         {
             var previous = rows.SingleOrDefault(x => x.Date == edit.Date);
-            if (previous?.OverrideServings == edit.Count) continue;
+            // Eligibility is already guarded and ordinary inherited dates were materialized above.
+            // A deliberate reset can still correct today's frozen Cooked count without an override.
+            var resetsFrozenInherited = edit.Count is null && previous?.OverrideServings is null
+                && previous?.InheritedServings != usual && before.Days.Single(d => d.Date == edit.Date).Servings != usual;
+            if (previous?.OverrideServings == edit.Count && !resetsFrozenInherited) continue;
             var row = Materialise(edit.Date);
             row.OverrideServings = edit.Count; row.InheritedServings = usual;
             row.Version = Guid.NewGuid(); row.UpdatedAt = now;

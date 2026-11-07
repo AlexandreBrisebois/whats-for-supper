@@ -312,5 +312,62 @@ public partial class SupperServingsPostgresTests
         });
     }
 
+    [DeploymentCalendarPostgresTests.CalendarPostgresFact]
+    public Task SupperServings_CurrentCookedInherited_ResetPersistsAndFreezesAgainstLaterDefaults() =>
+        AssertCurrentCookedInheritedCorrection(null);
+
+    [DeploymentCalendarPostgresTests.CalendarPostgresFact]
+    public Task SupperServings_CurrentCookedInherited_NumericCorrectionPersistsAndFreezesAgainstLaterDefaults() =>
+        AssertCurrentCookedInheritedCorrection(4);
+
+    private async Task AssertCurrentCookedInheritedCorrection(int? correction)
+    {
+        await new TomorrowPushPostgresTests(output).WithDatabase(async settings => {
+            var clock = new DeploymentCalendarIntegrationTests.CalendarClock { UtcNow = DateTimeOffset.Parse("2026-10-14T16:00:00Z") };
+            await using var factory = await RecipeApi.Tests.Infrastructure.TestWebApplicationFactory.CreateWithAuthAsync(clock, new() {
+                ["Calendar:TimeZone"] = "America/Toronto", ["Tests:PostgresConnectionString"] = settings.ConnectionString,
+            });
+            using var scope = factory.Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+            var recipe = CorrectionRecipe();
+            recipe.LastCookedDate = clock.UtcNow;
+            var occurrence = new CalendarEvent { Date = Wednesday, RecipeId = recipe.Id, Status = CalendarEventStatus.Cooked };
+            db.Recipes.Add(recipe); db.CalendarEvents.Add(occurrence);
+            db.FamilySettings.Add(new FamilySetting { Key = SupperServingsService.DefaultKey, Value = JsonSerializer.SerializeToElement(new { servings = 4 }) });
+            db.SupperServings.Add(new SupperServing { Date = Wednesday, InheritedServings = 5 });
+            await db.SaveChangesAsync();
+            await scope.ServiceProvider.GetRequiredService<GroceryRecomputeService>().RecomputeForWeekAsync(new(2026, 10, 12), default);
+            (await db.WeeklyPlans.SingleAsync()).GroceryState = "{\"pasta\":true}";
+            await db.SaveChangesAsync();
+            using var client = factory.CreateAuthenticatedClient();
+            var baseline = await Read(client);
+            Assert.Equal(5, baseline.GetProperty("days")[2].GetProperty("servings").GetInt32());
+            Assert.True(baseline.GetProperty("days")[2].GetProperty("editable").GetBoolean());
+            (await Put(client, baseline, null, [new { date = "2026-10-14", servings = correction }], false)).EnsureSuccessStatusCode();
+            var after = await Read(client);
+            Assert.Equal(4, after.GetProperty("days")[2].GetProperty("servings").GetInt32());
+            var savedOverride = after.GetProperty("days")[2].GetProperty("overrideServings");
+            if (correction is null) Assert.Equal(JsonValueKind.Null, savedOverride.ValueKind);
+            else Assert.Equal(correction.Value, savedOverride.GetInt32());
+            using var projection = JsonDocument.Parse(await client.GetStringAsync($"/api/recipes/{recipe.Id}/ingredient-projection?supperDate=2026-10-14&context=assigned&occurrenceId={occurrence.Id}"));
+            Assert.Equal(4, projection.RootElement.GetProperty("targetServings").GetInt32());
+            Assert.Equal(400, projection.RootElement.GetProperty("lines")[0].GetProperty("quantity").GetDouble());
+            db.ChangeTracker.Clear();
+            foreach (var task in await db.WorkflowTasks.Where(x => x.ProcessorName == "RefreshSupperGroceries").ToListAsync())
+                await scope.ServiceProvider.GetServices<IWorkflowProcessor>().Single(x => x.ProcessorName == task.ProcessorName).ExecuteAsync(task, default);
+            using var grocery = JsonDocument.Parse(await client.GetStringAsync("/api/schedule?referenceWeekStartDate=2026-10-12"));
+            Assert.Equal(400, grocery.RootElement.GetProperty("data").GetProperty("groceryItems")[0].GetProperty("quantity").GetDouble());
+            Assert.True(grocery.RootElement.GetProperty("data").GetProperty("groceryState").GetProperty("pasta").GetBoolean());
+            Assert.Equal(4, (await db.SupperServings.SingleAsync()).InheritedServings);
+            var stored = await db.CalendarEvents.SingleAsync();
+            Assert.Equal(occurrence.Id, stored.Id); Assert.Equal(recipe.Id, stored.RecipeId);
+            Assert.Equal(CalendarEventStatus.Cooked, stored.Status); Assert.Null(stored.PreparedAtUtc);
+            Assert.Equal(clock.UtcNow, (await db.Recipes.SingleAsync()).LastCookedDate);
+            (await Put(client, after, 6, [])).EnsureSuccessStatusCode();
+            Assert.Equal(4, (await Read(client)).GetProperty("days")[2].GetProperty("servings").GetInt32());
+            Assert.Equal(2, (await db.Recipes.AsNoTracking().SingleAsync()).Servings);
+        });
+    }
+
     private static Recipe CorrectionRecipe() => new() {Name="Pasta",Servings=2,Ingredients="[\"200 g pasta\"]",RawMetadata="{\"recipeIngredient\":[\"200 g pasta\"],\"supply\":[{\"name\":\"pasta\",\"quantity\":200,\"unitText\":\"g\"}]}"};
 }

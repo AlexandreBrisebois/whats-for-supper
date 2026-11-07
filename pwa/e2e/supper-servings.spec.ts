@@ -565,6 +565,47 @@ test('corrects today cooked portions without reopening cooking', async ({ page }
   expect(schedule.days[2].status).toBe(2);
 });
 
+for (const action of ['leave', 'four', 'reset'] as const) {
+  test(`current cooked inherited portions ${action} preserves the saved baseline and intent`, async ({
+    page,
+  }) => {
+    const { schedule, control, bodies } = await draftFixture(page, { usual: 4 });
+    await page.getByTestId('save-portions').click();
+    schedule.calendar.today = '2026-05-06';
+    schedule.days[2].status = 2;
+    control.restoreSnapshot({
+      ...control.captureSnapshot(),
+      overrides: [],
+      inherited: [['2026-05-06', 5]],
+    });
+    await page.getByTestId('at-the-table-mode').click();
+    const input = page.getByTestId('portion-input-2026-05-06');
+    await expect(input).toHaveValue('5');
+    await expect(page.getByTestId('reset-portions-2026-05-06')).toHaveCount(0);
+    if (action === 'leave') {
+      await page.getByTestId('save-portions').click();
+      expect(bodies).toHaveLength(0);
+    } else {
+      await input.fill(action === 'reset' ? '6' : '4');
+      if (action === 'reset') await page.getByTestId('reset-portions-2026-05-06').click();
+      await expect(input).toHaveValue('4');
+      await page.getByTestId('save-portions').click();
+      await expect(page.getByTestId('at-the-table-mode')).toBeVisible();
+      expect(bodies).toHaveLength(1);
+      expect(bodies[0].days).toEqual([
+        { date: '2026-05-06', servings: action === 'reset' ? null : 4 },
+      ]);
+      const stored = control.captureSnapshot();
+      expect(stored.inherited.find(([date]) => date === '2026-05-06')?.[1]).toBe(4);
+      control.restoreSnapshot({ ...stored, savedUsual: 6 });
+    }
+    await page.getByTestId('at-the-table-mode').click();
+    await expect(input).toHaveValue(action === 'leave' ? '5' : '4');
+    expect(schedule.days[2].status).toBe(2);
+    expect(schedule.days[2].preparation ?? null).toBeNull();
+  });
+}
+
 test('configured usual, sparse reset and invalid correction keep date-only drafts', async ({
   page,
 }) => {

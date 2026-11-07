@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { DateOnly } from '@microsoft/kiota-abstractions';
-import { beforeEach, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SupperServings } from '@/lib/api/generated/models';
 import { useWeekStore, type UILocalScheduleDay } from '@/store/weekStore';
 
@@ -428,4 +428,43 @@ it.each(['en', 'fr'])('uses singular numeric reset and inherited status in %s', 
   } finally {
     localStorage.removeItem('locale');
   }
+});
+
+describe('frozen inherited portions correction', () => {
+  const frozen = () => {
+    const state = snapshot(null);
+    state.days!.find((day) => String(day.date) === sunday)!.servings = 5;
+    return state;
+  };
+
+  it('opens a frozen inherited five at its saved value and leaves without writing', async () => {
+    read.mockResolvedValue(frozen());
+    await openEditor(schedule.map((day) => (day.date === sunday ? { ...day, status: 2 } : day)));
+    expect(screen.getByTestId(`portion-input-${sunday}`)).toHaveValue(5);
+    expect(screen.queryByTestId(`reset-portions-${sunday}`)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Recipes' }));
+    expect(save).not.toHaveBeenCalled();
+  });
+
+  it.each([4, 6])('saves a frozen inherited five explicitly corrected to %s', async (count) => {
+    read.mockResolvedValue(frozen());
+    await openEditor();
+    fireEvent.change(screen.getByTestId(`portion-input-${sunday}`), {
+      target: { value: String(count) },
+    });
+    fireEvent.click(screen.getByTestId('save-portions'));
+    await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
+    expect(save.mock.calls[0][0].days[0].servings).toBe(count);
+  });
+
+  it('retains reset intent after editing a frozen inherited five with no override', async () => {
+    read.mockResolvedValue(frozen());
+    await openEditor();
+    fireEvent.change(screen.getByTestId(`portion-input-${sunday}`), { target: { value: '6' } });
+    fireEvent.click(screen.getByTestId(`reset-portions-${sunday}`));
+    expect(screen.getByTestId(`portion-input-${sunday}`)).toHaveValue(4);
+    fireEvent.click(screen.getByTestId('save-portions'));
+    await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
+    expect(save.mock.calls[0][0].days[0].servings).toBeNull();
+  });
 });

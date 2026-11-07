@@ -536,24 +536,16 @@ export function useSupperServingsEditor(
       {state?.days?.map((day) => {
         const key = date(day.date);
         const meal = schedule.find((item) => item.date === key);
-        const override = Object.hasOwn(draft, key) ? draft[key] : day.overrideServings;
-        const value =
-          override != null
-            ? String(override)
-            : day.editable && (usual != null || Object.hasOwn(draft, key))
-              ? usual == null
-                ? ''
-                : String(usual)
-              : day.servings == null
-                ? ''
-                : String(day.servings);
+        const hasDraft = Object.hasOwn(draft, key);
+        const count = hasDraft ? (draft[key] === null ? usual : draft[key]) : day.servings;
+        const value = count == null ? '' : String(count);
         const change = (value: string | null) =>
           setDraft((previous) => {
             const next = { ...previous };
             const unchanged =
               value === null
-                ? day.overrideServings == null
-                : value === String(day.overrideServings ?? usual ?? day.servings ?? '');
+                ? day.overrideServings == null && day.servings === usual
+                : value === String(day.servings ?? '');
             if (unchanged) delete next[key];
             else next[key] = value;
             return next;
