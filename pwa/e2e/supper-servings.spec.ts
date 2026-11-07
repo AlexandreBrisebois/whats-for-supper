@@ -365,7 +365,8 @@ async function configureUsualInSettings(page: Page, count: number) {
 async function fixture(
   page: Page,
   fail = false,
-  completeness: 'true' | 'absent' | 'null' | 'false' = 'true'
+  completeness: 'true' | 'absent' | 'null' | 'false' = 'true',
+  transport: 'stream' | 'polling' = 'stream'
 ) {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.context().addCookies([
@@ -404,6 +405,13 @@ async function fixture(
   ];
   schedule.groceryState = { pasta: true, unrelated: true };
   await mockNonCookingSchedule(page, schedule);
+  if (transport === 'polling') {
+    // HTTP retry acceptance uses polling; a fulfilled SSE body would reconnect/replay.
+    await page.route(
+      (url) => url.pathname === '/api/stream',
+      (route) => route.fulfill({ status: 204 })
+    );
+  }
   const control = await mockSupperServings(page, () => schedule, {
     readFamilyCount: common.readFamilyCount,
     delayed: true,
@@ -459,7 +467,7 @@ test('saved portions return before refresh, then 600 g and one quiet check-reset
 test('a failed grocery refresh retains saved counts and Retry does not replay the save', async ({
   page,
 }) => {
-  const { writes, schedule, control } = await fixture(page, true);
+  const { writes, schedule, control } = await fixture(page, true, 'true', 'polling');
   await expect(page.getByText('Portions saved. Shopping list needs updating.')).toBeVisible({
     timeout: 10000,
   });
@@ -1275,7 +1283,10 @@ test('proposed dated detail uses saved portions and Change day remains read-only
   await expect(page.getByTestId('action-add-to-day')).toContainText('May 8');
   await expect(page.getByTestId('recipe-detail-sheet').getByRole('spinbutton')).toHaveCount(0);
   await page.getByTestId('action-gear-menu').click();
-  await page.getByRole('button', { name: 'Original quantities', exact: true }).click();
+  await expect(page.getByTestId('action-original-quantities')).toHaveAccessibleName(
+    'View original ingredients'
+  );
+  await page.getByTestId('action-original-quantities').click();
   await expect(page.getByText('Original recipe: 2 servings', { exact: true })).toBeVisible();
   await expect(page.getByText('200 g pasta', { exact: true })).toBeVisible();
   expect(writes).toEqual([]);
@@ -1842,6 +1853,14 @@ for (const appLocale of ['en', 'fr'] as const) {
         page,
       }, info) => {
         info.setTimeout(90_000);
+        // Keep development tooling out of product geometry and pointer acceptance.
+        await page.addInitScript(() => {
+          const style = document.createElement('style');
+          style.textContent = 'nextjs-portal{display:none}';
+          document.addEventListener('DOMContentLoaded', () => document.head.append(style), {
+            once: true,
+          });
+        });
         await page.setViewportSize({ width, height });
         const id = MOCK_IDS.RECIPE_SPAGHETTI;
         const reference = '2026-05-04';
@@ -1958,7 +1977,7 @@ for (const appLocale of ['en', 'fr'] as const) {
         expect(writes).toEqual([]);
         expect((await read()).days[4].recipe).toBeNull();
         await page.getByTestId('action-add-to-day').click();
-        await expect(page).toHaveURL(/planner\?success=1&dayIndex=4/);
+        await expect(page).toHaveURL(/planner\?(?:success=1&)?dayIndex=4/);
         await expect(page.getByTestId('day-card-4')).toContainText(candidate.name!);
         expect(writes.filter((write) => write.path.endsWith('/assign'))).toHaveLength(1);
         await page.getByTestId('grocery-tab').click();

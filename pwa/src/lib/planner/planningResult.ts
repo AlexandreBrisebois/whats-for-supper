@@ -2,6 +2,7 @@ import type { OriginalDisposition } from './replacementSession';
 import { absoluteMonday, civilDate } from '@/lib/deployment-calendar';
 
 export type PlanningResult = {
+  returnId?: string;
   weekOffset: number;
   dayIndex: number;
   referenceWeekStartDate: string;
@@ -15,7 +16,7 @@ const key = 'wfs.planning-result';
 
 export function rememberPlanningResult(result: PlanningResult) {
   try {
-    sessionStorage.setItem(key, JSON.stringify(result));
+    sessionStorage.setItem(key, JSON.stringify({ ...result, returnId: crypto.randomUUID() }));
   } catch {
     /* Storage may be unavailable. */
   }
@@ -40,5 +41,16 @@ export function readPlanningResult(): PlanningResult | null {
       : null;
   } catch {
     return null;
+  }
+}
+
+/** A reconciliation may consume only the return it read, never a newer save. */
+export function retirePlanningResult(result: PlanningResult) {
+  try {
+    if (JSON.stringify(readPlanningResult()) === JSON.stringify(result)) {
+      sessionStorage.removeItem(key);
+    }
+  } catch {
+    /* Storage may be unavailable. */
   }
 }

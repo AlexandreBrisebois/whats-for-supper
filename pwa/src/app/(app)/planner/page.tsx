@@ -58,7 +58,7 @@ import { useDiscoveryStore } from '@/store/discoveryStore';
 import { useTodayStore } from '@/store/todayStore';
 import { useUiStore } from '@/store/uiStore';
 import { SkipRecoveryDialog } from '@/components/home/SkipRecoveryDialog';
-import { readPlanningResult } from '@/lib/planner/planningResult';
+import { readPlanningResult, retirePlanningResult } from '@/lib/planner/planningResult';
 import { describeOriginalDisposition } from '@/lib/planner/replacementCopy';
 import { formatSupperPlanDate } from '@/lib/planner/nonCooking';
 import { type AssignmentRecipe } from '@/lib/planner/slotAssignment';
@@ -132,7 +132,9 @@ export default function PlannerPage() {
   const [successDay, setSuccessDay] = useState<number | null>(null);
   const [planningConfirmation, setPlanningConfirmation] = useState<{
     context: string;
+    identity: string;
     message: string;
+    kind: 'replacement' | 'changed' | 'refresh-failed' | 'refreshing';
   } | null>(null);
   const [confirmationRetry, setConfirmationRetry] = useState(0);
   const [detailSource, setDetailSource] = useState<{
@@ -351,7 +353,7 @@ export default function PlannerPage() {
 
   useEffect(() => {
     useWeekStore.getState().init(currentWeekOffset, referenceWeekStartDate);
-  }, [currentWeekOffset, successParam, referenceWeekStartDate]);
+  }, [currentWeekOffset, referenceWeekStartDate]);
 
   useEffect(() => {
     if (!planDate) {
@@ -387,9 +389,30 @@ export default function PlannerPage() {
   }
 
   const confirmationDay = searchParams.get('dayIndex');
-  const confirmationContext = `${successParam}/${currentWeekOffset}/${referenceWeekStartDate}/${confirmationDay}`;
+  const confirmationQuery = searchParams.toString();
+  const confirmationContext = `${currentWeekOffset}/${referenceWeekStartDate}/${confirmationDay}`;
+  const pendingResult = readPlanningResult();
+  const pendingResultIdentity = JSON.stringify(pendingResult);
   const visibleConfirmation =
-    planningConfirmation?.context === confirmationContext ? planningConfirmation.message : null;
+    planningConfirmation?.context === confirmationContext &&
+    (!pendingResult || planningConfirmation.identity === pendingResultIdentity)
+      ? planningConfirmation
+      : null;
+  const [previousConfirmationContext, setPreviousConfirmationContext] =
+    useState(confirmationContext);
+  // Adjust context-owned state before rendering a different dated destination.
+  if (previousConfirmationContext !== confirmationContext) {
+    setPreviousConfirmationContext(confirmationContext);
+    setPlanningConfirmation(null);
+    setSuccessDay(null);
+  }
+
+  const clearSuccessUrl = () => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete('success');
+    router.replace(`/planner${params.size ? `?${params}` : ''}`, { scroll: false });
+  };
+
   useEffect(() => {
     const result = readPlanningResult();
     if (
@@ -401,17 +424,27 @@ export default function PlannerPage() {
     )
       return;
     let active = true;
-    const confirm = (message: string) =>
-      setPlanningConfirmation({ context: confirmationContext, message });
+    const isCurrent = () =>
+      active && JSON.stringify(readPlanningResult()) === JSON.stringify(result);
+    const confirm = (kind: NonNullable<typeof planningConfirmation>['kind'], message: string) =>
+      setPlanningConfirmation({
+        context: confirmationContext,
+        identity: JSON.stringify(result),
+        kind,
+        message,
+      });
     void getSchedule(result.weekOffset, result.referenceWeekStartDate, true)
       .then((fresh) => {
-        if (!active) return;
-        setSuccessDay(null);
+        if (!isCurrent()) return;
         const day = fresh?.days?.[result.dayIndex];
         if (!fresh || !day?.date) throw new Error('Schedule result unavailable');
         useWeekStore.getState().applySnapshot(fresh);
-        if (day?.date !== result.date || day.recipe?.id !== result.recipeId) {
+        if (document.activeElement?.getAttribute('data-testid') === 'planner-confirmation-refresh')
+          document.getElementById(`day-card-${result.dayIndex}`)?.focus();
+        if (day.date !== result.date || day.recipe?.id !== result.recipeId) {
+          retirePlanningResult(result);
           confirm(
+            'changed',
             t(
               'planner.savedPlanChanged',
               'The saved plan has changed. Review this day before making another change.'
@@ -419,17 +452,24 @@ export default function PlannerPage() {
           );
           return;
         }
-        confirm(
-          [
-            tWithVars('planner.recipePlanned', '{{recipe}} is planned for {{date}}.', {
-              recipe: day.recipe.name ?? result.recipeName,
-              date: formatSupperPlanDate(result.date),
-            }),
-            result.original ? describeOriginalDisposition(result.original) : '',
-          ]
-            .filter(Boolean)
-            .join(' ')
-        );
+        const message = tWithVars('planner.recipePlanned', '{{recipe}} is planned for {{date}}.', {
+          recipe: day.recipe.name ?? result.recipeName,
+          date: formatSupperPlanDate(result.date),
+        });
+        // Delivery consumes this receipt. Renders, reloads and old URLs cannot replay it.
+        retirePlanningResult(result);
+        if (result.original) {
+          confirm(
+            'replacement',
+            [message, describeOriginalDisposition(result.original)].filter(Boolean).join(' ')
+          );
+        } else {
+          setPlanningConfirmation(null);
+          useUiStore.getState().addToast({ type: 'success', message });
+          const params = new URLSearchParams(confirmationQuery);
+          params.delete('success');
+          router.replace(`/planner${params.size ? `?${params}` : ''}`, { scroll: false });
+        }
         setSuccessDay(result.dayIndex);
         document.getElementById(`day-card-${result.dayIndex}`)?.scrollIntoView({
           behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -439,16 +479,14 @@ export default function PlannerPage() {
         });
       })
       .catch(() => {
-        if (active) {
+        if (isCurrent()) {
           setSuccessDay(null);
           confirm(
+            'refresh-failed',
             tWithVars(
               'planner.savedRefreshFailed',
               '{{recipe}} was saved for {{date}}, but the plan could not refresh. Retry refresh.',
-              {
-                recipe: result.recipeName,
-                date: formatSupperPlanDate(result.date),
-              }
+              { recipe: result.recipeName, date: formatSupperPlanDate(result.date) }
             )
           );
         }
@@ -456,6 +494,7 @@ export default function PlannerPage() {
     return () => {
       active = false;
     };
+    // Read identity also distinguishes two returns to the same dated destination.
   }, [
     successParam,
     confirmationDay,
@@ -463,6 +502,9 @@ export default function PlannerPage() {
     referenceWeekStartDate,
     confirmationRetry,
     confirmationContext,
+    pendingResultIdentity,
+    confirmationQuery,
+    router,
   ]);
 
   const navigateToWeekOffset = (nextWeekOffset: number) => {
@@ -665,15 +707,45 @@ export default function PlannerPage() {
           data-testid="planner-planning-confirmation"
           className="relative z-10 mx-4 rounded-2xl bg-sage/10 p-4 text-charcoal"
         >
-          <p>{visibleConfirmation}</p>
-          <button
-            type="button"
-            data-testid="planner-confirmation-refresh"
-            className="min-h-12 underline"
-            onClick={() => setConfirmationRetry((value) => value + 1)}
-          >
-            {t('common.refresh', 'Refresh')}
-          </button>
+          <p>{visibleConfirmation.message}</p>
+          {visibleConfirmation.kind === 'refresh-failed' ||
+          visibleConfirmation.kind === 'refreshing' ? (
+            <button
+              type="button"
+              data-testid="planner-confirmation-refresh"
+              onFocus={(event) => {
+                if (event.currentTarget.matches(':focus-visible'))
+                  event.currentTarget.scrollIntoView({ block: 'center', behavior: 'instant' });
+              }}
+              aria-disabled={visibleConfirmation.kind === 'refreshing'}
+              aria-busy={visibleConfirmation.kind === 'refreshing'}
+              className="min-h-12 min-w-12 rounded-lg px-3 underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage-700"
+              onClick={() => {
+                if (visibleConfirmation.kind === 'refreshing') return;
+                setPlanningConfirmation({ ...visibleConfirmation, kind: 'refreshing' });
+                setConfirmationRetry((value) => value + 1);
+              }}
+            >
+              {t('common.refresh', 'Refresh')}
+            </button>
+          ) : (
+            <button
+              type="button"
+              data-testid="planner-confirmation-dismiss"
+              onFocus={(event) => {
+                if (event.currentTarget.matches(':focus-visible'))
+                  event.currentTarget.scrollIntoView({ block: 'center', behavior: 'instant' });
+              }}
+              className="min-h-12 min-w-12 rounded-lg px-3 underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage-700"
+              onClick={() => {
+                setPlanningConfirmation(null);
+                clearSuccessUrl();
+                document.getElementById(`day-card-${confirmationDay}`)?.focus();
+              }}
+            >
+              {t('common.close', 'Close')}
+            </button>
+          )}
         </div>
       )}
       {/* Animated Blobs */}
@@ -908,7 +980,7 @@ export default function PlannerPage() {
                       key={day.date ?? index}
                       day={day}
                       index={index}
-                      successDay={visibleConfirmation ? successDay : null}
+                      successDay={pendingResult ? null : successDay}
                       onPivot={() => {
                         setSelectedDayIndex(index);
                         setShowPivot({ dayIndex: index });
@@ -1311,6 +1383,7 @@ const PlannerDayCard = memo(function PlannerDayCard({
       data-drag-source={isDragSource}
       data-drop-target={isDropTarget}
       id={`day-card-${index}`}
+      tabIndex={-1}
     >
       {isToday && (
         <div className="mb-1 flex flex-wrap items-center gap-2">

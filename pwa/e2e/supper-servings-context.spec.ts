@@ -36,7 +36,13 @@ async function surfaceContrast(locator: import('@playwright/test').Locator) {
         .reduce((total, value, i) => total + value * [0.2126, 0.7152, 0.0722][i], 0);
     const a = luminance(text),
       b = luminance(background);
-    return { text, background, ratio: (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05) };
+    return {
+      text,
+      background,
+      foreground: getComputedStyle(el).color,
+      backgroundColor: getComputedStyle(el).backgroundColor,
+      ratio: (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05),
+    };
   });
 }
 
@@ -348,7 +354,9 @@ test('saved Planner detail previews quantities without editing dated portions', 
   await expect(page.getByTestId('recipe-ingredient-projection')).toContainText('400 g pasta');
   await page.getByRole('button', { name: 'Preview 2 portions', exact: true }).click();
   await expect(page.getByTestId('recipe-ingredient-preview')).toContainText('200 g pasta');
-  await page.getByRole('button', { name: 'Planned quantities', exact: true }).click();
+  await page.getByTestId('action-gear-menu').click();
+  await expect(page.getByTestId('action-reset-view')).toHaveAccessibleName('Reset view');
+  await page.getByTestId('action-reset-view').click();
   await expect(page.getByTestId('recipe-ingredient-projection')).toContainText('400 g pasta');
   expect(writes).toEqual([]);
 });
@@ -375,9 +383,14 @@ test('an already open dated detail follows recipe corrections and rejects a repl
   await expect(page.getByTestId('recipe-ingredient-projection')).toContainText('800 g pasta');
   await expect(page.getByTestId('recipe-original-yield')).toHaveCount(0);
   await page.getByTestId('action-gear-menu').click();
-  await page.getByRole('button', { name: 'Original quantities', exact: true }).click();
+  await expect(page.getByTestId('action-original-quantities')).toHaveAccessibleName(
+    'View original ingredients'
+  );
+  await page.getByTestId('action-original-quantities').click();
   await expect(page.getByText('Original recipe: 1 serving', { exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Planned quantities', exact: true }).click();
+  await page.getByTestId('action-gear-menu').click();
+  await expect(page.getByTestId('action-reset-view')).toHaveAccessibleName('Reset view');
+  await page.getByTestId('action-reset-view').click();
   control.finishRefresh();
   expect(schedule.groceryItems.find((line: any) => line.normalizedKey === 'pasta').quantity).toBe(
     2000
@@ -501,7 +514,7 @@ for (const locale of ['en', 'fr'] as const)
           const contrast = {
             badge: await surfaceContrast(badge),
           };
-          expect(contrast.badge.ratio).toBeGreaterThanOrEqual(4.5);
+          expect(contrast.badge.ratio, JSON.stringify(contrast.badge)).toBeGreaterThanOrEqual(4.5);
           metrics.push({ locale, state, scale, ...measure, contrast });
         }
         await page.evaluate(() => {

@@ -115,7 +115,7 @@ test('Tonight uses Toronto Sunday in a Tokyo browser and pins assignment', async
   });
   expect(new URL(request.url()).searchParams.get('referenceWeekStartDate')).toBe('2026-10-05');
   await expect(page).toHaveURL(
-    /\/planner\?success=1&dayIndex=6&weekOffset=0&referenceWeekStartDate=2026-10-05/
+    /\/planner\?(?:success=1&)?dayIndex=6&weekOffset=0&referenceWeekStartDate=2026-10-05/
   );
 });
 

@@ -99,7 +99,7 @@ test.describe('Recipe Action Pivot', () => {
     await page.getByTestId('recipe-search-input').press('Enter');
     await page.getByTestId('stack-card-front').click();
     await page.getByTestId('action-add-to-day').click();
-    await expect(page).toHaveURL(/\/planner\?success=1&dayIndex=0&weekOffset=0/);
+    await expect(page).toHaveURL(/\/planner\?(?:success=1&)?dayIndex=0&weekOffset=0/);
   });
 
   test('Search flow: explicitly choosing occupied Tonight reveals recovery', async ({ page }) => {
@@ -169,7 +169,7 @@ test.describe('Recipe Action Pivot', () => {
 
     await addBtn.click();
     // Should navigate back to planner with success
-    await expect(page).toHaveURL(/\/planner\?success=1/);
+    await expect(page).toHaveURL(/\/planner\?(?:success=1&)?dayIndex=/);
     await expect(page).toHaveURL(/dayIndex=1/);
   });
 
@@ -249,7 +249,7 @@ test.describe('Recipe Action Pivot', () => {
     });
     expect(new URL(request.url()).searchParams.get('referenceWeekStartDate')).toBe('2026-05-04');
     await expect(page).toHaveURL(
-      /\/planner\?success=1&dayIndex=1&weekOffset=1&referenceWeekStartDate=2026-05-04/
+      /\/planner\?(?:success=1&)?dayIndex=1&weekOffset=1&referenceWeekStartDate=2026-05-04/
     );
     await expect(page.getByTestId('day-card-1')).toContainText(
       builders.recipe({ id: MOCK_IDS.RECIPE_LASAGNA }).name!
@@ -285,7 +285,7 @@ test.describe('Recipe Action Pivot', () => {
     expect(new URL(request.url()).searchParams.get('referenceWeekStartDate')).toBe('2026-05-11');
 
     // Past Monday/Tuesday are skipped; empty Wednesday is shown before saving.
-    await expect(page).toHaveURL(/\/planner\?success=1/);
+    await expect(page).toHaveURL(/\/planner\?(?:success=1&)?dayIndex=/);
     await expect(page).toHaveURL(/dayIndex=2/);
     await expect(page).toHaveURL(/weekOffset=0/);
   });

@@ -788,7 +788,7 @@ test.describe('Recipes Search Page', () => {
         dayIndex: 2,
         recipeId: MOCK_IDS.RECIPE_LASAGNA,
       });
-    await expect(page).toHaveURL(/\/planner\?success=1&dayIndex=2/);
+    await expect(page).toHaveURL(/\/planner\?(?:success=1&)?dayIndex=2/);
   });
 
   test('applying a filter from the chooser includes it in the next search request', async ({

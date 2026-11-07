@@ -483,19 +483,14 @@ test.describe('French list viewport with reduced motion', () => {
     const { recipes } = await setupViewportRecipes(page);
     const requests: (string | null)[] = [];
     let release!: () => void;
-    let notifyStarted!: () => void;
     const held = new Promise<void>((resolve) => {
       release = resolve;
-    });
-    const started = new Promise<void>((resolve) => {
-      notifyStarted = resolve;
     });
     await page.route('**/api/recipes/search', async (route) => {
       if (route.request().method() !== 'POST') return route.fallback();
       const request = route.request().postDataJSON();
       requests.push(request.continuationToken ?? null);
       if (request.continuationToken) {
-        notifyStarted();
         await held;
       }
       const items = request.continuationToken ? recipes.slice(12) : recipes.slice(0, 12);
@@ -527,13 +522,16 @@ test.describe('French list viewport with reduced motion', () => {
     );
     await page.getByTestId('recipe-search-input').fill('Meal');
     await firstSearch;
+    // Library and Search both have twelve cards; wait for the applied Search view.
+    await expect(page.getByRole('heading', { name: 'Résultats', exact: true })).toBeVisible();
     await expect(page.getByTestId('browse-list-recipe-card')).toHaveCount(12);
     await page.getByTestId('recipes-search-disclosure').click();
     const list = page.getByTestId('browse-list-scroll-container');
+    await settledListGeometry(page);
     await list.evaluate((el) => {
       el.scrollTop = el.scrollHeight;
     });
-    await started;
+    await expect.poll(() => requests).toEqual([null, 'viewport-next']);
     await page.evaluate(() => {
       document.documentElement.style.fontSize = '32px';
     });
@@ -2231,7 +2229,7 @@ test('planner entry resolves an occupied target before assigning the selected re
   expect(assignments).toBe(0);
   await page.getByTestId('recovery-action-drop').click();
   await expect(page).toHaveURL(
-    /\/planner\?success=1&dayIndex=2&weekOffset=1&referenceWeekStartDate=2026-05-04/
+    /\/planner\?(?:success=1&)?dayIndex=2&weekOffset=1&referenceWeekStartDate=2026-05-04/
   );
   expect(removals).toBe(1);
   expect(assignments).toBe(1);
@@ -2321,9 +2319,9 @@ test('dated empty-day save is reachable immediately, single-submit and authorita
   expect(writes).toBe(1);
   release();
   await expect(page).toHaveURL(
-    /planner\?success=1&dayIndex=2&weekOffset=1&referenceWeekStartDate=2026-05-04/
+    /planner\?(?:success=1&)?dayIndex=2&weekOffset=1&referenceWeekStartDate=2026-05-04/
   );
-  await expect(page.getByTestId('planner-planning-confirmation')).toContainText('May 13');
+  await expect(page.getByTestId('toast')).toContainText('May 13');
   expect(writes).toBe(1);
 });
 
@@ -2392,7 +2390,7 @@ test('dated chooser saves the alternate date, preserves Planner source and avoid
   await expect(page.getByTestId('action-add-to-day')).toContainText('May 15');
   expect(saves).toBe(0);
   await page.getByTestId('action-add-to-day').click();
-  await expect(page.getByTestId('planner-planning-confirmation')).toContainText('May 15');
+  await expect(page.getByTestId('toast')).toContainText('May 15');
   const snapshot = await page.evaluate(
     async () =>
       (await (await fetch('/api/schedule?weekOffset=1&referenceWeekStartDate=2026-05-04')).json())
@@ -2452,7 +2450,7 @@ test('Sunday recommendation crosses to Monday and stays shown before saving', as
   await expect(page.getByTestId('action-add-to-day')).toContainText('May 11');
   expect(saves).toBe(0);
   await page.getByTestId('action-add-to-day').click();
-  await expect(page.getByTestId('planner-planning-confirmation')).toContainText('May 11');
+  await expect(page.getByTestId('toast')).toContainText('May 11');
   expect(saves).toBe(1);
   const snapshot = await page.evaluate(
     async () =>

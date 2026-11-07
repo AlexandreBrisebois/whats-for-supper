@@ -1,5 +1,17 @@
 # Active resume checkpoints
 
+## Quiet Planner success notice — verified, 5/5 complete (2026-11-07)
+
+Task/spec: `quiet-planner-success-notice`, branch `recipe-view-redesign`, worktree `/Users/alex/Code/whats-for-supper`. Alex authorized apply, six portions QA fixes, final qualification, and then the Taskfile update. All 5 tasks are complete. No deployment, archive, sync, commit, push, merge or other change implementation is authorized. Preserve current dirty work.
+
+Checkpoint: routine success uses the existing transient accessible toast; replacement/changed-plan feedback remains dismissible; refresh failure retains read-only retry; consumed/superseded receipts cannot replay or overwrite newer context. Product source changes remain Planner page and `planningResult.ts`. Taskfile and the required matching CI OpenSpec pin are now 1.16.1. Six unrelated generated skill changes are preserved/excluded.
+
+Evidence: complete reviewed 19-path prepare/verify passed, record `.task/agent-finish/runs/b3332c7bae604bd0bb84c3b0acc4d966.json`, stable identity `f06f95c0c917ecd21c2810799dca77023a8525b631fc316539bc37b0c03e832d`. Counts: 1,828 units; 963 browsers passed/60 gated skips/zero failures; 1,400 API passed/284 conditional skips; 219 Python harness passed/1 opt-in skip plus Node checks; strict specs, lint/types/format and static contracts/client passed. Earlier 117 focused units/173 named browsers and approved QA qualification remain in tasks.md. The later completion publication changes only tasks/handoff and receives separate documentation verification; selected source/harness hashes remain in `.task/quiet-planner/passed-source-hashes.json`.
+
+Limitation: the earlier French 320px editor failure remains unreproduced, with no claimed root cause or repair. Thirty instrumented repetitions, all 17 unchanged servings layout/edit cases and the full integrated browser run passed. Exact bilingual accessibility, geometry, validation and mutation guards remain intact. Live/deployed/device qualification is not run. Failed/interrupted evidence is retained in tasks.md, including tooling mismatch record `516e0e7a61224828a4a95f224ba7dd9c`.
+
+Resources/next: no task-owned test/verifier/API server remains; the idle VS Code-owned test server was preserved. Work stops with local verification complete. Further deployment/lifecycle actions require a new instruction.
+
 ## Quiet recipe portions — deployed and archived (2026-11-06)
 
 Alex authorized implementing only this change, then syncing and archiving after passing tests and visible DV delivery. Branch `recipe-view-redesign`; no commit, push or merge. [Archived change](openspec/changes/archive/2026-11-06-quiet-recipe-portions/proposal.md). All seven tasks complete. Existing projection contracts remain unchanged; ingredient editor, automatic date selection and repair proposals remain separate scope.

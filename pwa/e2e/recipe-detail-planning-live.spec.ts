@@ -146,7 +146,7 @@ test('real dated detail saves through generated client and a second client prese
       recipeId,
     });
     expect(new URL(save.url()).searchParams.get('referenceWeekStartDate')).toBe('2026-10-05');
-    await expect(page.getByTestId('planner-planning-confirmation')).toContainText('October 7');
+    await expect(page.getByTestId('toast')).toContainText('October 7');
     const read = async () =>
       (
         await (
@@ -413,9 +413,7 @@ test('real dated detail saves through generated client and a second client prese
     await expect(page.getByTestId('action-add-to-day')).toContainText(displayDate(proposed!.date));
     expect((await counts()).assign).toBe(beforeProposal.assign);
     await page.getByTestId('action-add-to-day').click();
-    await expect(page.getByTestId('planner-planning-confirmation')).toContainText(
-      displayDate(proposed!.date)
-    );
+    await expect(page.getByTestId('toast')).toContainText(displayDate(proposed!.date));
     expect((await readWeek(proposed!.offset)).days[proposed!.index].recipe.id).toBe(other);
     expect((await counts()).assign - beforeProposal.assign).toBe(1);
     console.log(`Real recommendation persisted date=${proposed!.date} recipe=${other}`);
@@ -431,7 +429,7 @@ test('real dated detail saves through generated client and a second client prese
     await expect(page.getByTestId('action-add-to-day')).toContainText('November 11');
     expect((await counts()).assign).toBe(beforeAlternate.assign);
     await page.getByTestId('action-add-to-day').click();
-    await expect(page.getByTestId('planner-planning-confirmation')).toContainText('November 11');
+    await expect(page.getByTestId('toast')).toContainText('November 11');
     expect((await readWeek(5)).days[2].recipe.id).toBe(recipeId);
     expect(JSON.stringify((await readWeek(5)).groceryItems).toLowerCase()).toContain('potato');
     // A captured future occurrence remains navigable after the entry reference

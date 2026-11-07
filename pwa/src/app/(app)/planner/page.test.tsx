@@ -80,9 +80,10 @@ const mocks = vi.hoisted(() => {
 
 vi.mock('@/hooks/useMediaQuery', () => ({ useMediaQuery: () => mocks.getWide() }));
 
+const plannerRouter = { push: mocks.push, replace: mocks.replace };
 vi.mock('next/navigation', () => ({
   usePathname: () => '/planner',
-  useRouter: () => ({ push: mocks.push, replace: mocks.replace }),
+  useRouter: () => plannerRouter,
   useSearchParams: () => new URLSearchParams(mocks.getSearchParams()),
 }));
 
@@ -491,117 +492,155 @@ function renderPlanner(
 }
 
 describe('Planner result trust', () => {
-  beforeEach(() => {
-    Element.prototype.scrollIntoView = vi.fn();
-    window.matchMedia = vi.fn().mockReturnValue({ matches: false });
-    sessionStorage.clear();
-  });
-  it('does not invent confirmation from a success query alone', async () => {
-    vi.clearAllMocks();
-    mocks.setSearchParams('success=1&dayIndex=2&weekOffset=0&referenceWeekStartDate=2026-05-11');
-    renderPlanner(0);
-    expect(screen.queryByTestId('planner-planning-confirmation')).not.toBeInTheDocument();
+  const query = 'success=1&dayIndex=0&weekOffset=0&referenceWeekStartDate=2026-05-11';
+  const receipt = {
+    weekOffset: 0,
+    dayIndex: 0,
+    referenceWeekStartDate: '2026-05-11',
+    date: '2026-05-11',
+    recipeId: '11111111-1111-1111-1111-111111111111',
+    recipeName: 'Pasta Carbonara',
+  };
+  const remember = (overrides = {}) =>
+    sessionStorage.setItem('wfs.planning-result', JSON.stringify({ ...receipt, ...overrides }));
+  const noWrites = () => {
     expect(mocks.assignRecipe).not.toHaveBeenCalled();
-  });
-
-  it('ignores an incoherent receipt whose date differs from its week and index', async () => {
+    expect(mocks.guardedAssign).not.toHaveBeenCalled();
+    expect(mocks.resolveOccupiedSlot).not.toHaveBeenCalled();
+    expect(mocks.commitMove).not.toHaveBeenCalled();
+  };
+  beforeEach(() => {
     vi.clearAllMocks();
-    sessionStorage.setItem(
-      'wfs.planning-result',
-      JSON.stringify({
-        weekOffset: 0,
-        dayIndex: 0,
-        referenceWeekStartDate: '2026-05-11',
-        date: '2026-05-12',
-        recipeId: '11111111-1111-1111-1111-111111111111',
-        recipeName: 'Pasta Carbonara',
-      })
-    );
-    mocks.setSearchParams('success=1&dayIndex=0&weekOffset=0&referenceWeekStartDate=2026-05-11');
-    mocks.getSchedule.mockResolvedValue({ days: makeSchedule('2026-05-17') });
+    Element.prototype.scrollIntoView = vi.fn();
+    window.matchMedia = vi.fn().mockReturnValue({ matches: true });
+    sessionStorage.clear();
+    mocks.setSearchParams(query);
+    mocks.getSchedule.mockReset().mockResolvedValue({ days: makeSchedule('2026-05-17') });
+  });
+  it('does not invent confirmation or emphasis from a success query alone', async () => {
     renderPlanner(0);
     await act(async () => {});
     expect(screen.queryByTestId('planner-planning-confirmation')).not.toBeInTheDocument();
+    expect(mocks.addToast).not.toHaveBeenCalled();
     expect(mocks.getSchedule).not.toHaveBeenCalled();
+    noWrites();
   });
-
-  it('confirms the replacement and original actual spillover date together', async () => {
-    vi.clearAllMocks();
-    const days = makeSchedule('2026-05-17');
-    sessionStorage.setItem(
-      'wfs.planning-result',
-      JSON.stringify({
-        weekOffset: 0,
-        dayIndex: 0,
-        referenceWeekStartDate: '2026-05-11',
-        date: '2026-05-11',
-        recipeId: days[0].recipe!.id,
-        recipeName: 'Pasta Carbonara',
-        original: {
-          action: 'next_week',
-          recipeName: 'Lasagna',
-          sourceDate: '2026-05-11',
-          destinationDate: '2026-05-25',
-          spillover: true,
-        },
-      })
-    );
-    mocks.setSearchParams('success=1&dayIndex=0&weekOffset=0&referenceWeekStartDate=2026-05-11');
-    mocks.getSchedule.mockResolvedValue({ days });
+  it('ignores an incoherent receipt whose date differs from its week and index', async () => {
+    remember({ date: '2026-05-12' });
     renderPlanner(0);
-    await waitFor(() =>
-      expect(screen.getByTestId('planner-planning-confirmation')).toHaveTextContent(
-        'The following week was full. Lasagna moved to Monday, May 25.'
-      )
-    );
+    await act(async () => {});
+    expect(mocks.getSchedule).not.toHaveBeenCalled();
+    expect(mocks.addToast).not.toHaveBeenCalled();
   });
-
-  it('retires confirmation when navigation leaves the acknowledged week', async () => {
-    vi.clearAllMocks();
-    sessionStorage.setItem(
-      'wfs.planning-result',
-      JSON.stringify({
-        weekOffset: 0,
-        dayIndex: 0,
-        referenceWeekStartDate: '2026-05-11',
-        date: '2026-05-11',
-        recipeId: '11111111-1111-1111-1111-111111111111',
-        recipeName: 'Pasta Carbonara',
+  it('reads authoritative state then confirms once transiently, retiring old URL/reload receipts', async () => {
+    remember();
+    const view = renderPlanner(0);
+    await waitFor(() =>
+      expect(mocks.addToast).toHaveBeenCalledWith({
+        type: 'success',
+        message: expect.stringMatching(/Pasta Carbonara.*May 11/),
       })
     );
-    mocks.setSearchParams('success=1&dayIndex=0&weekOffset=0&referenceWeekStartDate=2026-05-11');
-    mocks.getSchedule.mockResolvedValue({ days: makeSchedule('2026-05-17') });
+    expect(screen.queryByTestId('planner-planning-confirmation')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('planner-confirmation-refresh')).not.toBeInTheDocument();
+    expect(mocks.getSchedule).toHaveBeenCalledWith(0, '2026-05-11', true);
+    expect(mocks.applySnapshot).toHaveBeenCalledWith(
+      expect.objectContaining({ days: makeSchedule('2026-05-17') })
+    );
+    expect(Element.prototype.scrollIntoView).toHaveBeenCalledWith({
+      behavior: 'auto',
+      block: 'center',
+    });
+    expect(within(screen.getByTestId('day-card-0')).getByTestId('planner-meal')).toHaveClass(
+      'ring-4'
+    );
+    expect(sessionStorage.getItem('wfs.planning-result')).toBeNull();
+    expect(mocks.replace).toHaveBeenCalledWith(
+      '/planner?dayIndex=0&weekOffset=0&referenceWeekStartDate=2026-05-11',
+      { scroll: false }
+    );
+    view.rerender(<PlannerPage />);
+    view.unmount();
+    renderPlanner(0);
+    await act(async () => {});
+    expect(mocks.addToast).toHaveBeenCalledTimes(1);
+    expect(mocks.getSchedule).toHaveBeenCalledTimes(1);
+    noWrites();
+  });
+  it('keeps replacement spillover readable without Refresh until keyboard dismissal, then prevents replay', async () => {
+    remember({
+      original: {
+        action: 'next_week',
+        recipeName: 'Lasagna',
+        sourceDate: receipt.date,
+        destinationDate: '2026-05-25',
+        spillover: true,
+      },
+    });
     const view = renderPlanner(0);
     expect(await screen.findByTestId('planner-planning-confirmation')).toHaveTextContent(
+      'The following week was full. Lasagna moved to Monday, May 25.'
+    );
+    expect(screen.getByTestId('planner-planning-confirmation')).toHaveTextContent(
       'Pasta Carbonara'
+    );
+    expect(screen.queryByTestId('planner-confirmation-refresh')).not.toBeInTheDocument();
+    expect(mocks.addToast).not.toHaveBeenCalled();
+    const dismiss = screen.getByTestId('planner-confirmation-dismiss');
+    expect(dismiss).toHaveAccessibleName('Close');
+    fireEvent.click(dismiss);
+    expect(screen.queryByTestId('planner-planning-confirmation')).not.toBeInTheDocument();
+    expect(sessionStorage.getItem('wfs.planning-result')).toBeNull();
+    view.unmount();
+    renderPlanner(0);
+    await act(async () => {});
+    expect(screen.queryByTestId('planner-planning-confirmation')).not.toBeInTheDocument();
+    noWrites();
+  });
+  it('retires replacement feedback on context departure without replay on Back', async () => {
+    remember({ original: { action: 'drop', recipeName: 'Lasagna', sourceDate: receipt.date } });
+    const view = renderPlanner(0);
+    expect(await screen.findByTestId('planner-planning-confirmation')).toHaveTextContent(
+      'was removed'
     );
     mocks.setSearchParams('weekOffset=1&referenceWeekStartDate=2026-05-11');
     mocks.setPlannerState({ ...mocks.getPlannerState(), currentWeekOffset: 1 });
     view.rerender(<PlannerPage />);
     expect(screen.queryByTestId('planner-planning-confirmation')).not.toBeInTheDocument();
+    mocks.setSearchParams(query);
+    mocks.setPlannerState({ ...mocks.getPlannerState(), currentWeekOffset: 0 });
+    view.rerender(<PlannerPage />);
+    await act(async () => {});
+    expect(screen.queryByTestId('planner-planning-confirmation')).not.toBeInTheDocument();
+    expect(mocks.getSchedule).toHaveBeenCalledTimes(1);
   });
-
-  it('clears prior success emphasis when a refresh finds a changed recipe', async () => {
-    vi.clearAllMocks();
-    sessionStorage.setItem(
-      'wfs.planning-result',
-      JSON.stringify({
-        weekOffset: 0,
-        dayIndex: 0,
-        referenceWeekStartDate: '2026-05-11',
-        date: '2026-05-11',
-        recipeId: '11111111-1111-1111-1111-111111111111',
-        recipeName: 'Pasta Carbonara',
-      })
-    );
-    mocks.setSearchParams('success=1&dayIndex=0&weekOffset=0&referenceWeekStartDate=2026-05-11');
-    mocks.getSchedule.mockResolvedValue({ days: makeSchedule('2026-05-17') });
+  it.each([undefined, new Error('offline')])(
+    'retains saved-but-unrefreshed context and retries reads only: %s',
+    async (failure) => {
+      remember();
+      if (failure instanceof Error) mocks.getSchedule.mockRejectedValueOnce(failure);
+      else mocks.getSchedule.mockResolvedValueOnce(failure);
+      renderPlanner(0);
+      expect(await screen.findByTestId('planner-planning-confirmation')).toHaveTextContent(
+        'was saved'
+      );
+      expect(screen.getByTestId('planner-planning-confirmation')).toHaveTextContent(
+        'could not refresh'
+      );
+      expect(sessionStorage.getItem('wfs.planning-result')).not.toBeNull();
+      expect(mocks.addToast).not.toHaveBeenCalled();
+      fireEvent.click(screen.getByTestId('planner-confirmation-refresh'));
+      await waitFor(() => expect(mocks.addToast).toHaveBeenCalledTimes(1));
+      expect(mocks.getSchedule).toHaveBeenCalledTimes(2);
+      expect(screen.queryByTestId('planner-planning-confirmation')).not.toBeInTheDocument();
+      noWrites();
+    }
+  );
+  it('shows current state and changed-plan guidance after retry, without old success or another Refresh', async () => {
+    remember();
+    mocks.getSchedule.mockRejectedValueOnce(new Error('offline'));
     renderPlanner(0);
-    expect(await screen.findByTestId('planner-planning-confirmation')).toHaveTextContent(
-      'Pasta Carbonara'
-    );
-    const meal = within(screen.getByTestId('day-card-0')).getByTestId('planner-meal');
-    await waitFor(() => expect(meal).toHaveClass('ring-4'));
+    await screen.findByTestId('planner-confirmation-refresh');
     const changed = makeSchedule('2026-05-17');
     changed[0].recipe!.id = '22222222-2222-2222-2222-222222222222';
     mocks.getSchedule.mockResolvedValue({ days: changed });
@@ -609,58 +648,48 @@ describe('Planner result trust', () => {
     await waitFor(() =>
       expect(screen.getByTestId('planner-planning-confirmation')).toHaveTextContent('has changed')
     );
-    await waitFor(() => expect(meal).not.toHaveClass('ring-4'));
+    expect(mocks.applySnapshot).toHaveBeenCalledWith(expect.objectContaining({ days: changed }));
+    expect(mocks.addToast).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('planner-confirmation-refresh')).not.toBeInTheDocument();
+    expect(within(screen.getByTestId('day-card-0')).getByTestId('planner-meal')).not.toHaveClass(
+      'ring-4'
+    );
+    expect(sessionStorage.getItem('wfs.planning-result')).toBeNull();
+    noWrites();
   });
-
-  it('treats an unusable confirmation read as saved but unrefreshed', async () => {
-    vi.clearAllMocks();
-    sessionStorage.setItem(
-      'wfs.planning-result',
-      JSON.stringify({
-        weekOffset: 0,
-        dayIndex: 0,
-        referenceWeekStartDate: '2026-05-11',
-        date: '2026-05-11',
-        recipeId: '11111111-1111-1111-1111-111111111111',
-        recipeName: 'Pasta Carbonara',
-      })
-    );
-    mocks.setSearchParams('success=1&dayIndex=0&weekOffset=0&referenceWeekStartDate=2026-05-11');
-    mocks.getSchedule.mockResolvedValue(undefined);
-    renderPlanner(0);
-    expect(await screen.findByTestId('planner-planning-confirmation')).toHaveTextContent(
-      'was saved'
-    );
-    expect(screen.getByTestId('planner-planning-confirmation')).toHaveTextContent(
-      'could not refresh'
-    );
-  });
-
-  it('reads a session-acknowledged result before confirming its recipe and date', async () => {
-    vi.clearAllMocks();
-    sessionStorage.setItem(
-      'wfs.planning-result',
-      JSON.stringify({
-        weekOffset: 0,
-        dayIndex: 0,
-        referenceWeekStartDate: '2026-05-11',
-        date: '2026-05-11',
-        recipeId: '11111111-1111-1111-1111-111111111111',
-        recipeName: 'Pasta Carbonara',
-      })
-    );
-    mocks.setSearchParams('success=1&dayIndex=0&weekOffset=0&referenceWeekStartDate=2026-05-11');
-    mocks.getSchedule.mockResolvedValue({ days: makeSchedule('2026-05-17') });
-    renderPlanner(0);
-    expect(await screen.findByTestId('planner-planning-confirmation')).toHaveTextContent(
-      /Pasta Carbonara.*May 11/
-    );
-    expect(mocks.getSchedule).toHaveBeenCalledWith(0, '2026-05-11', true);
-    expect(mocks.applySnapshot).toHaveBeenCalledWith(
-      expect.objectContaining({ days: makeSchedule('2026-05-17') })
-    );
-    sessionStorage.clear();
-  });
+  it.each(['week', 'reference', 'receipt'])(
+    'rejects a late reconciliation after changing %s',
+    async (departure) => {
+      remember();
+      let finish!: (value: unknown) => void;
+      mocks.getSchedule.mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            finish = resolve;
+          })
+      );
+      const view = renderPlanner(0);
+      await waitFor(() => expect(mocks.getSchedule).toHaveBeenCalledTimes(1));
+      if (departure === 'week') {
+        mocks.setSearchParams('weekOffset=1&referenceWeekStartDate=2026-05-11');
+        mocks.setPlannerState({ ...mocks.getPlannerState(), currentWeekOffset: 1 });
+        view.rerender(<PlannerPage />);
+      } else if (departure === 'reference') {
+        mocks.setSearchParams(
+          'success=1&dayIndex=0&weekOffset=0&referenceWeekStartDate=2026-05-18'
+        );
+        view.rerender(<PlannerPage />);
+      } else
+        remember({ recipeName: 'Newer return', recipeId: '22222222-2222-2222-2222-222222222222' });
+      await act(async () => finish({ days: makeSchedule('2026-05-17') }));
+      expect(mocks.applySnapshot).not.toHaveBeenCalled();
+      expect(mocks.addToast).not.toHaveBeenCalled();
+      expect(screen.queryByTestId('planner-planning-confirmation')).not.toBeInTheDocument();
+      if (departure === 'receipt')
+        expect(sessionStorage.getItem('wfs.planning-result')).toContain('Newer return');
+      noWrites();
+    }
+  );
 });
 
 describe('PlannerPage voting action row', () => {

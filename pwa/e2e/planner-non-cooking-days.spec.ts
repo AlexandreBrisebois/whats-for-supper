@@ -557,6 +557,10 @@ test('recipe detail requires consent and captures the non-cooking token before g
   await page.getByTestId('action-add-to-day').click();
   await page.getByTestId('non-cooking-confirm').click();
   await expect(page.getByTestId('planner-planning-confirmation')).toContainText('May 6');
+  await expect(page.getByTestId('planner-planning-confirmation')).toContainText(
+    'Birthday dinner was removed'
+  );
+  await expect(page.getByTestId('planner-confirmation-refresh')).toHaveCount(0);
   expect(operations).toHaveLength(2);
   expect(operations[0]).toContain('expectedPlanToken=');
   expect(operations[1]).toContain('/api/schedule/assign');

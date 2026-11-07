@@ -25,3 +25,11 @@ Reuse Solar Earth status/toast patterns, localized English/French text, visible 
 ## Risks and Deferrable Questions
 
 Removing the whole current banner would erase recovery; separating outcome kinds prevents that. Removing return storage too early would make retry impossible; retire only handled matching identities. Exact transient duration follows the established notification component; no new timer system is proposed. Coordinate edits to Planner and Recipes with the active quiet-portions owner before implementation; this planning change owns no implementation or DV.
+
+## Approved apply follow-up
+
+During final verification, the user explicitly expanded scope to resolve six portions QA failures in `supper-servings-context.spec.ts` and `supper-servings.spec.ts`. This is acceptance maintenance against existing recipe-library requirements, not a portions behavior change: migrate superseded inline/old quantity controls to Recipe actions original inspection and Reset view; isolate the Next.js development overlay from actual product click/geometry checks; retain contrast thresholds and add measured-color diagnostics. Preserve quantity, no-write, saved-state, stale-occurrence and ordinary click assertions. The full repository gate remains required after the focused cases pass.
+
+The final integration also retains Search-list continuation coverage in the already affected unified recipes suite. Its fixture must distinguish applied Search results from an identically sized library page, settle the existing viewport before scrolling, and bound the exact held continuation request. This changes test readiness only; Search application behavior and its assertions stay intact.
+
+The HTTP grocery-retry acceptance case explicitly selects the supported polling path with an HTTP 204 mock stream, avoiding incidental reconnect/replay from a finite SSE fixture. Other fixture callers retain streaming, and dedicated live-update coverage stays separate. This is test-transport isolation; it does not change GroceryList, backend retry policy or the shared mock implementation.
