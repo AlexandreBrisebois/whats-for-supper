@@ -1684,7 +1684,8 @@ describe('complete recipe reading', () => {
     expect(mockGetIngredientPreview).toHaveBeenCalledWith(props.recipeId, 4);
     expect(props.onUseForDay).not.toHaveBeenCalled();
     expect(mockUpdateRecipe).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole('button', { name: 'Original quantities' }));
+    fireEvent.click(screen.getByTestId('action-gear-menu'));
+    fireEvent.click(screen.getByTestId('action-original-quantities'));
     expect(screen.queryByTestId('recipe-ingredient-preview')).not.toBeInTheDocument();
     expect(screen.getByText('200 g pasta')).toBeVisible();
     let finishRefresh!: (data: unknown) => void;
