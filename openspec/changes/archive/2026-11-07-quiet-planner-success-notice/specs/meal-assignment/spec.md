@@ -1,7 +1,7 @@
 ## MODIFIED Requirements
 
 ### Requirement: Return targeted Search assignment to Planner
-After confirmed recipe-detail assignment, Search SHALL navigate to the captured Planner week/day with its reference Monday. Planner SHALL read that week, bring the day into view and provide one accessible, transient confirmation of the recipe and date. Routine success SHALL NOT leave a persistent banner or Refresh control. A success query or temporary ring alone SHALL NOT establish persistence. A refresh failure after confirmed save SHALL report saved-but-not-refreshed without repeating assignment.
+After confirmed recipe-detail assignment, Search SHALL return to the captured Planner week/day and reference Monday. Planner SHALL read that week, bring the day into view and provide one accessible, transient recipe/date confirmation. Routine success SHALL leave no persistent banner or Refresh control. A success query or temporary ring alone SHALL NOT establish persistence. If refresh fails after confirmed save, Planner SHALL report saved-but-not-refreshed without repeating assignment.
 
 #### Scenario: Search assignment resolves
 - **WHEN** explicit-target Search assignment resolves for index two in week one
@@ -12,7 +12,7 @@ After confirmed recipe-detail assignment, Search SHALL navigate to the captured 
 - **THEN** it reads the captured week and brings the matching card into view with reduced-motion support; any temporary highlight supplements the transient accessible confirmed-result text
 
 ### Requirement: Confirm completed planning without inventing work
-Recipe-detail completion SHALL identify the new recipe and dated Planner destination. Replacement SHALL also state the original's confirmed removal or actual moved date, including Next Week spillover. Ordinary completion SHALL use transient accessible feedback. Replacement disposition and spillover SHALL remain readable until dismissal or context departure. Successful completion SHALL offer no Refresh and require no further acceptance, rating or planning task. Saved-but-unrefreshed feedback SHALL distinguish confirmed persistence from unavailable view refresh.
+Recipe detail SHALL confirm the new recipe and Planner date. Replacement SHALL state the original's confirmed removal or actual moved date, including Next Week spillover. Ordinary completion SHALL use transient accessible feedback. Replacement/spillover feedback SHALL stay readable until dismissal or context departure. Success SHALL offer no Refresh and require no further acceptance, rating or planning task. Saved-but-unrefreshed feedback SHALL distinguish persistence from unavailable refresh.
 
 #### Scenario: Replacement and deferred original complete
 - **WHEN** Curry is saved to Wednesday and Lasagna was deferred past a full next week to the following Monday
