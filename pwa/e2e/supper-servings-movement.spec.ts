@@ -1,5 +1,7 @@
 import { test, expect, type Page } from './fixtures';
 import { setupCommonRoutes, MOCK_IDS } from './mock-api';
+import { scalarQuantity } from '../src/testing/grocery-fixtures';
+import { checkGrocery, checkedExtra, groceryChecked } from './supper-grocery';
 
 const reference = '2026-05-04';
 const pasta = MOCK_IDS.RECIPE_CARBONARA;
@@ -86,18 +88,7 @@ async function saveCounts(
   ).toBe(200);
 }
 
-async function check(page: Page, checked = true) {
-  expect(
-    (
-      await mutate(
-        page,
-        `/api/schedule/0/grocery/item?referenceWeekStartDate=${reference}`,
-        { ingredientName: 'pasta', checked },
-        'PATCH'
-      )
-    ).status
-  ).toBe(204);
-}
+const check = checkGrocery;
 
 async function openMovement(
   page: Page,
@@ -134,7 +125,9 @@ async function openMovement(
   await page.getByTestId('portion-input-2026-05-06').fill('6');
   await page.getByTestId('save-portions').click();
   await expect(page.getByTestId('portions-editor')).toHaveCount(0);
-  await expect.poll(async () => (await readWeek(page)).groceryItems?.[0]?.quantity).toBe(600);
+  await expect
+    .poll(async () => (await readWeek(page)).groceryItems?.[0]?.quantity)
+    .toEqual(scalarQuantity(600));
   return { refresh, control };
 }
 
@@ -147,7 +140,9 @@ test('common calendar move Wednesday six to Thursday four recomputes groceries a
   await handle.focus();
   await page.keyboard.press('ArrowDown');
   await expect(page.getByTestId('day-card-3')).toContainText(name);
-  await expect.poll(async () => (await readWeek(page)).groceryItems?.[0]?.quantity).toBe(400);
+  await expect
+    .poll(async () => (await readWeek(page)).groceryItems?.[0]?.quantity)
+    .toEqual(scalarQuantity(400));
   const counts = await page.evaluate(
     async () =>
       (
@@ -206,7 +201,7 @@ test('common Tomorrow Sunday chain conserves occurrences and recomputes every da
     weeks.map(
       (week) => week.groceryItems?.find((line: any) => line.normalizedKey === 'pasta')?.quantity
     )
-  ).toEqual([600, 2600, 2800, 400]);
+  ).toEqual([600, 2600, 2800, 400].map(scalarQuantity));
   expect(weeks.every((week) => week.groceryRefresh.status === 'current')).toBe(true);
   expect((await counts(page)).days[6].servings).toBe(6);
   expect((await counts(page, 1)).days[0].servings).toBe(2);
@@ -233,7 +228,7 @@ test('common defer spills past full next week into the actual Monday override', 
   expect(
     (await readWeek(page, 2)).groceryItems.find((line: any) => line.normalizedKey === 'pasta')
       .quantity
-  ).toBe(800);
+  ).toEqual(scalarQuantity(800));
   expect(
     (await readWeek(page)).groceryItems.filter((line: any) => line.normalizedKey === 'pasta')
   ).toEqual([]);
@@ -252,16 +247,7 @@ test('common occupied swap uses destination counts and selectively unchecks a kn
     { date: '2026-05-07', servings: 6 },
   ]);
   await check(page);
-  expect(
-    (
-      await mutate(
-        page,
-        `/api/schedule/0/grocery/item?referenceWeekStartDate=${reference}`,
-        { ingredientName: 'unrelated', checked: true },
-        'PATCH'
-      )
-    ).status
-  ).toBe(204);
+  await checkedExtra(page);
   await page.reload();
   await page.getByTestId('day-card-2').getByTestId('planner-drag-handle').focus();
   await page.keyboard.press('ArrowDown');
@@ -271,11 +257,14 @@ test('common occupied swap uses destination counts and selectively unchecks a kn
         (await readWeek(page)).groceryItems.find((line: any) => line.normalizedKey === 'pasta')
           ?.quantity
     )
-    .toBe(600);
+    .toEqual(scalarQuantity(600));
   const week = await readWeek(page);
   expect(week.days[2].recipe.id).toBe(MOCK_IDS.RECIPE_CHICKEN);
   expect(week.days[3].recipe.id).toBe(pasta);
-  expect(week.groceryState).toMatchObject({ pasta: false, unrelated: true });
+  expect(groceryChecked(week)).toBe(false);
+  expect(week.groceryExtras).toEqual(
+    expect.arrayContaining([expect.objectContaining({ name: 'unrelated', checked: true })])
+  );
   await page.getByTestId('grocery-tab').click();
   await expect(page.getByTestId('grocery-portions-summary')).toBeVisible();
 });
@@ -291,8 +280,10 @@ test('common new assignment contributes 400 plus 600 and later checks survive un
   await check(page);
   expect(await assign(page, 4)).toBe(200);
   let week = await readWeek(page);
-  expect(week.groceryItems.find((line: any) => line.normalizedKey === 'pasta').quantity).toBe(1000);
-  expect(week.groceryState.pasta).toBe(false);
+  expect(week.groceryItems.find((line: any) => line.normalizedKey === 'pasta').quantity).toEqual(
+    scalarQuantity(1000)
+  );
+  expect(groceryChecked(week)).toBe(false);
   const reset = week.groceryRefresh.resetSummaryVersion;
   expect(reset).toBeTruthy();
   await check(page);
@@ -300,7 +291,7 @@ test('common new assignment contributes 400 plus 600 and later checks survive un
     (await mutate(page, '/api/schedule/servings/refresh', { weekStartDates: [reference] })).status
   ).toBe(202);
   week = await readWeek(page);
-  expect(week.groceryState.pasta).toBe(true);
+  expect(groceryChecked(week)).toBe(true);
   expect(week.groceryRefresh.resetSummaryVersion).toBe(reset);
   await page.reload();
   await page.getByTestId('grocery-tab').click();
@@ -349,8 +340,10 @@ test('common guarded drop and replacement preserve portions and checked manual e
   ).toBe(204);
   expect(await assign(page, 3)).toBe(200);
   const week = await readWeek(page);
-  expect(week.groceryItems.find((line: any) => line.normalizedKey === 'pasta').quantity).toBe(1000);
-  expect(week.groceryState.pasta).toBe(false);
+  expect(week.groceryItems.find((line: any) => line.normalizedKey === 'pasta').quantity).toEqual(
+    scalarQuantity(1000)
+  );
+  expect(groceryChecked(week)).toBe(false);
   expect(week.groceryExtras).toEqual(
     expect.arrayContaining([expect.objectContaining({ id: extraId, checked: true })])
   );
@@ -461,7 +454,9 @@ test('common lost Tomorrow receipt keeps UI recovery and never replays movement 
   const week = await readWeek(page);
   expect(week.days[2].recipe).toBeNull();
   expect(week.days[3].recipe.id).toBe(pasta);
-  expect(week.groceryItems.find((line: any) => line.normalizedKey === 'pasta').quantity).toBe(400);
+  expect(week.groceryItems.find((line: any) => line.normalizedKey === 'pasta').quantity).toEqual(
+    scalarQuantity(400)
+  );
   expect(week.groceryRefresh.status).toBe('current');
   expect(writes.filter((path) => path === '/api/schedule/move')).toHaveLength(1);
   expect(
@@ -489,27 +484,27 @@ test('common dated projection and recipe corrections use shared quantities witho
   });
   await check(page);
   expect((await mutate(page, `/api/recipes/${pasta}`, { servings: 1 }, 'PATCH')).status).toBe(200);
-  expect((await readWeek(page)).groceryItems[0].quantity).toBe(1200);
-  expect((await readWeek(page)).groceryState.pasta).toBe(false);
+  expect((await readWeek(page)).groceryItems[0].quantity).toEqual(scalarQuantity(1200));
+  expect(groceryChecked(await readWeek(page))).toBe(false);
   await mutate(page, `/api/recipes/${pasta}`, { ingredients: ['pasta'] }, 'PATCH');
   await check(page);
   await mutate(page, `/api/recipes/${pasta}`, { ingredients: ['200 g pasta'] }, 'PATCH');
   let week = await readWeek(page);
   expect(week.groceryItems[0]).toMatchObject({
-    quantity: 1200,
+    quantity: scalarQuantity(1200),
     quantityComplete: true,
   });
   expect(week.groceryItems[0].checkReviewReason).not.toBe('prior_amount_unknown');
-  expect(week.groceryState.pasta).toBe(true);
+  expect(groceryChecked(week)).toBe(true);
   await mutate(page, '/api/schedule/servings/refresh', { weekStartDates: [reference] });
   expect((await readWeek(page)).groceryItems[0].checkReviewReason).not.toBe('prior_amount_unknown');
   await check(page);
   week = await readWeek(page);
-  expect(week.groceryItems[0].checkReviewReason).toBeNull();
-  expect(week.groceryItems[0].quantity).toBe(1200);
+  expect(week.groceryItems[0].checkReviewReason).toBeUndefined();
+  expect(week.groceryItems[0].quantity).toEqual(scalarQuantity(1200));
 });
 
-test('common same-bucket unitless review persists through unresolved quantities until explicit check acknowledgement', async ({
+test('common same-bucket unitless checks survive unprovable changes without a prior-amount warning', async ({
   page,
 }) => {
   await openMovement(page, {}, '');
@@ -517,25 +512,25 @@ test('common same-bucket unitless review persists through unresolved quantities 
   await check(page);
   await mutate(page, `/api/recipes/${pasta}`, { ingredients: ['200  pasta'] }, 'PATCH');
   expect((await readWeek(page)).groceryItems[0]).toMatchObject({
-    quantity: 600,
+    quantity: scalarQuantity(600),
     quantityComplete: true,
-    checkReviewReason: 'prior_amount_unknown',
+    checkReviewReason: undefined,
   });
   await mutate(page, `/api/recipes/${pasta}`, { ingredients: ['pasta'] }, 'PATCH');
   expect((await readWeek(page)).groceryItems[0]).toMatchObject({
     quantity: null,
     quantityComplete: false,
-    checkReviewReason: 'prior_amount_unknown',
+    checkReviewReason: undefined,
   });
   await mutate(page, '/api/schedule/servings/refresh', { weekStartDates: [reference] });
-  expect((await readWeek(page)).groceryItems[0].checkReviewReason).toBe('prior_amount_unknown');
+  expect((await readWeek(page)).groceryItems[0].checkReviewReason).toBeUndefined();
   await mutate(page, `/api/recipes/${pasta}`, { ingredients: ['200  pasta'] }, 'PATCH');
-  expect((await readWeek(page)).groceryItems[0].checkReviewReason).toBe('prior_amount_unknown');
+  expect((await readWeek(page)).groceryItems[0].checkReviewReason).toBeUndefined();
   await check(page);
   expect((await readWeek(page)).groceryItems[0]).toMatchObject({
-    quantity: 600,
+    quantity: scalarQuantity(600),
     quantityComplete: true,
-    checkReviewReason: null,
+    checkReviewReason: undefined,
   });
   await mutate(page, `/api/recipes/${pasta}`, { ingredients: ['salt to taste'] }, 'PATCH');
   const ordinary = (await readWeek(page)).groceryItems[0];
@@ -548,7 +543,7 @@ test('common usual-size edits refresh every materialized week without changing d
 }) => {
   await openMovement(page);
   expect(await assign(page, 1, 1)).toBe(200);
-  expect((await readWeek(page, 1)).groceryItems[0].quantity).toBe(400);
+  expect((await readWeek(page, 1)).groceryItems[0].quantity).toEqual(scalarQuantity(400));
   const state = await counts(page);
   expect(
     (
@@ -566,8 +561,8 @@ test('common usual-size edits refresh every materialized week without changing d
       )
     ).status
   ).toBe(200);
-  expect((await readWeek(page)).groceryItems[0].quantity).toBe(600);
-  expect((await readWeek(page, 1)).groceryItems[0].quantity).toBe(500);
+  expect((await readWeek(page)).groceryItems[0].quantity).toEqual(scalarQuantity(600));
+  expect((await readWeek(page, 1)).groceryItems[0].quantity).toEqual(scalarQuantity(500));
   const before = await counts(page, 1);
   expect(await counts(page, 1)).toEqual(before);
 });
@@ -579,6 +574,6 @@ test('common recipe-backed Skipped keeps original quantities while its dormant c
   expect((await mutate(page, '/api/schedule/day/2026-05-06/validate', { status: 3 })).status).toBe(
     200
   );
-  expect((await readWeek(page)).groceryItems[0].quantity).toBe(200);
+  expect((await readWeek(page)).groceryItems[0].quantity).toEqual(scalarQuantity(200));
   expect((await counts(page)).days[2].servings).toBe(6);
 });

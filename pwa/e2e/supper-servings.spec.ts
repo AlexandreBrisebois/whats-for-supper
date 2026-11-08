@@ -7,6 +7,9 @@ import {
   mockSupperServings,
 } from './mock-api';
 import type { Page } from '@playwright/test';
+import { createGroceryRowState } from './grocery-row-state';
+import { scalarQuantity } from '../src/testing/grocery-fixtures';
+import { checkedExtra, groceryChecked } from './supper-grocery';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -293,63 +296,95 @@ for (const locale of ['en', 'fr'] as const) {
   });
 }
 
-test('grocery PATCH mocks retain captured reference and existing item/full-map bodies across rollover', async ({
+test('grocery PATCH mocks retain captured reference and guarded row/full-map bodies across rollover', async ({
   page,
 }) => {
-  await setupCommonRoutes(page);
-  await page.context().addCookies([
-    {
-      name: 'x-family-member-id',
-      value: MOCK_IDS.MEMBER_ALEX,
-      url: process.env.BASE_URL || 'http://127.0.0.1:3000',
+  await setupCommonRoutes(page, undefined, {
+    supperServings: {
+      knownRecipe: {
+        id: MOCK_IDS.RECIPE_CARBONARA,
+        basis: 2,
+        quantity: 200,
+        ingredient: 'pasta',
+        unit: 'g',
+      },
     },
-  ]);
-  await page.goto('/planner');
-  const result = await page.evaluate(async () => {
-    const write = (suffix: string, body: unknown, reference = '2026-04-27') =>
-      fetch(`/api/schedule/1/grocery${suffix}?referenceWeekStartDate=${reference}`, {
+  });
+  await page.goto('/onboarding');
+  const result = await page.evaluate(async (recipeId) => {
+    const reference = '2026-04-27';
+    const read = async (offset: number) =>
+      (
+        await (
+          await fetch(`/api/schedule?weekOffset=${offset}&referenceWeekStartDate=${reference}`)
+        ).json()
+      ).data;
+    const write = (suffix: string, body: unknown, capturedReference = reference) =>
+      fetch(`/api/schedule/1/grocery${suffix}?referenceWeekStartDate=${capturedReference}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
-    const read = async (offset: number) =>
-      (
-        await (
-          await fetch(`/api/schedule?weekOffset=${offset}&referenceWeekStartDate=2026-04-27`)
-        ).json()
-      ).data;
-    const itemStatus = (await write('/item', { ingredientName: 'pasta', checked: true })).status;
+    const assigned = await fetch(`/api/schedule/assign?referenceWeekStartDate=${reference}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ weekOffset: 1, dayIndex: 0, recipeId }),
+    });
+    if (!assigned.ok) throw new Error('Could not seed grocery row');
+    const before = await read(1);
+    const row = before.groceryItems.find((item: any) => item.normalizedKey === 'pasta');
+    const itemStatus = (
+      await write('/item', {
+        rowId: row.rowId,
+        weekStartDate: before.weekStartDate,
+        expectedRowVersion: row.rowVersion,
+        checked: true,
+        clientMutationId: crypto.randomUUID(),
+      })
+    ).status;
     const item = await read(1);
-    const mapStatus = (await write('', { oil: true, pasta: false })).status;
+    const mapStatus = (
+      await write('', {
+        weekStartDate: item.weekStartDate,
+        expectedListVersion: item.groceryListVersion,
+        checks: { [row.rowId]: false },
+        clientMutationId: crypto.randomUUID(),
+      })
+    ).status;
     const map = await read(1);
-    const other = await read(2);
-    const invalid = await Promise.all(
+    const legacy = await Promise.all(
       ['/item', ''].map(
         async (suffix) =>
           (
             await write(
               suffix,
-              suffix ? { ingredientName: 'bad', checked: true } : { bad: true },
-              '2026-04-28'
+              suffix ? { ingredientName: 'pasta', checked: true } : { pasta: true }
             )
           ).status
       )
     );
+    const invalid = await Promise.all(
+      ['/item', ''].map(async (suffix) => (await write(suffix, {}, '2026-04-28')).status)
+    );
     return {
       itemStatus,
-      item: item.groceryState,
+      item: item.groceryState[row.rowId],
       mapStatus,
-      map: map.groceryState,
-      other: other.groceryState,
+      map: map.groceryState[row.rowId],
+      week: map.weekStartDate,
+      other: (await read(2)).groceryState,
+      legacy,
       invalid,
     };
-  });
+  }, MOCK_IDS.RECIPE_CARBONARA);
   expect(result).toEqual({
-    itemStatus: 204,
-    item: { pasta: true },
+    itemStatus: 200,
+    item: true,
     mapStatus: 200,
-    map: { oil: true, pasta: false },
+    map: false,
+    week: '2026-05-04',
     other: {},
+    legacy: [409, 409],
     invalid: [400, 400],
   });
 });
@@ -403,7 +438,25 @@ async function fixture(
       recipeIds: [MOCK_IDS.RECIPE_CARBONARA],
     },
   ];
-  schedule.groceryState = { pasta: true, unrelated: true };
+  schedule.groceryItems.push({
+    ...builders.groceryItems(['unrelated'], { unrelated: 'Other' })[0],
+    quantity: null,
+    quantityComplete: true,
+  });
+  const rowState = createGroceryRowState();
+  rowState.decorate(schedule);
+  for (const row of schedule.groceryItems) {
+    expect(
+      rowState.mutate(schedule.weekStartDate, 'item', {
+        rowId: row.rowId,
+        expectedRowVersion: row.rowVersion,
+        weekStartDate: schedule.weekStartDate,
+        checked: true,
+        clientMutationId: crypto.randomUUID(),
+      }).status
+    ).toBe(200);
+  }
+  rowState.decorate(schedule);
   await mockNonCookingSchedule(page, schedule);
   if (transport === 'polling') {
     // HTTP retry acceptance uses polling; a fulfilled SSE body would reconnect/replay.
@@ -413,6 +466,13 @@ async function fixture(
     );
   }
   const control = await mockSupperServings(page, () => schedule, {
+    rowState,
+    checkState: {
+      read: () => schedule.groceryState,
+      write: (_week, checks) => {
+        schedule.groceryState = checks;
+      },
+    },
     readFamilyCount: common.readFamilyCount,
     delayed: true,
     knownRecipe: {
@@ -423,6 +483,19 @@ async function fixture(
       unit: 'g',
     },
   });
+  const finish = control.finishRefresh;
+  control.finishRefresh = (fail = false) => {
+    finish(fail);
+    control.decorateSchedule(schedule);
+  };
+  await page.route(
+    (url) => url.pathname === '/api/schedule',
+    async (route) => {
+      if (route.request().method() !== 'GET') return route.fallback();
+      control.decorateSchedule(schedule);
+      return route.fulfill({ json: { data: schedule } });
+    }
+  );
   let writes = 0;
   page.on('request', (request) => {
     if (request.method() === 'PUT' && new URL(request.url()).pathname === '/api/schedule/servings')
@@ -454,11 +527,11 @@ test('saved portions return before refresh, then 600 g and one quiet check-reset
   const aisle = page.getByRole('button', { name: /Pantry/ });
   if ((await aisle.getAttribute('aria-expanded')) === 'false') await aisle.click();
   await expect(page.getByTestId('grocery-item-quantity-hint')).toContainText('600');
-  expect(schedule.groceryState.pasta).toBe(false);
-  expect(schedule.groceryState.unrelated).toBe(true);
+  expect(groceryChecked(schedule)).toBe(false);
+  expect(groceryChecked(schedule, 'unrelated')).toBe(true);
   await expect(page.getByText(/more needed|\+400/)).toHaveCount(0);
-  await page.getByTestId('grocery-item-checkbox').click();
-  expect(schedule.groceryState.pasta).toBe(true);
+  await page.getByTestId('grocery-item-checkbox').filter({ hasText: 'pasta' }).click();
+  expect(groceryChecked(schedule)).toBe(true);
   await page.getByRole('button', { name: 'Dismiss', exact: true }).click();
   await expect(page.getByTestId('grocery-portions-summary')).toHaveCount(0);
   expect(writes()).toBe(1);
@@ -478,7 +551,7 @@ test('a failed grocery refresh retains saved counts and Retry does not replay th
     timeout: 10000,
   });
   expect(writes()).toBe(1);
-  expect(schedule.groceryState.pasta).toBe(false);
+  expect(groceryChecked(schedule)).toBe(false);
 });
 
 async function draftFixture(
@@ -1447,7 +1520,7 @@ test('grocery quantities identify incomplete known subtotals without warning on 
       displayName: 'pasta',
       normalizedKey: 'pasta',
       section: 'Pantry',
-      quantity: 400,
+      quantity: scalarQuantity(400),
       unitText: 'g',
       quantityComplete: false,
       recipeIds: [MOCK_IDS.RECIPE_CARBONARA],
@@ -1471,6 +1544,10 @@ test('grocery quantities identify incomplete known subtotals without warning on 
       recipeIds: [MOCK_IDS.RECIPE_CARBONARA],
     },
   ];
+  schedule.groceryItems = schedule.groceryItems.map((item: any) => ({
+    ...builders.groceryItems([item.displayName])[0],
+    ...item,
+  }));
   await mockNonCookingSchedule(page, schedule);
   await page.goto('/planner');
   await page.getByTestId('grocery-tab').click();
@@ -1578,25 +1655,23 @@ test('lost portions reply survives reload and reconciles committed intent withou
 });
 
 for (const completeness of ['absent', 'null', 'false'] as const) {
-  test(`unknown prior checked amount (${completeness}) keeps truthful review through reload and unchanged refresh`, async ({
+  test(`unknown prior checked amount (${completeness}) stays checked without a review cue through reload and unchanged refresh`, async ({
     page,
   }) => {
     const { schedule, control, writes } = await fixture(page, false, completeness);
     await expect(page.getByTestId('grocery-portions-updating')).not.toBeVisible({ timeout: 10000 });
-    expect(schedule.groceryState.pasta).toBe(true);
+    expect(groceryChecked(schedule)).toBe(true);
     expect(schedule.groceryItems[0]).toMatchObject({
-      quantity: 600,
+      quantity: scalarQuantity(600),
       quantityComplete: true,
-      checkReviewReason: 'prior_amount_unknown',
     });
     await expect(page.getByTestId('grocery-portions-summary')).toHaveCount(0);
     const show = async () => {
       const aisle = page.getByRole('button', { name: /Pantry/ });
       if ((await aisle.getAttribute('aria-expanded')) === 'false') await aisle.click();
       await expect(page.getByTestId('grocery-item-quantity-hint')).toContainText('600');
-      await expect(page.getByTestId('grocery-check-review')).toContainText(
-        'Review previously checked amounts.'
-      );
+      await expect(page.getByTestId('grocery-check-review')).toHaveCount(0);
+      await expect(page.getByTestId('grocery-amount-review')).toHaveCount(0);
       await expect(page.getByText(/600.*known/)).toHaveCount(0);
     };
     await show();
@@ -1606,17 +1681,19 @@ for (const completeness of ['absent', 'null', 'false'] as const) {
     await show();
     await page.getByRole('button', { name: 'Source recipes for pasta', exact: true }).click();
     await expect(page.getByTestId('grocery-recipe-sources-region').getByRole('link')).toBeVisible();
-    const checkBox = await page.getByTestId('grocery-item-checkbox').boundingBox();
-    const reviewBox = await page.getByTestId('grocery-amount-review').boundingBox();
+    const checkBox = await page
+      .getByTestId('grocery-item-checkbox')
+      .filter({ hasText: 'pasta' })
+      .boundingBox();
     expect(checkBox!.width).toBeGreaterThanOrEqual(48);
     expect(checkBox!.height).toBeGreaterThanOrEqual(48);
-    expect(reviewBox!.y).toBeGreaterThanOrEqual(checkBox!.y + checkBox!.height);
-    await page.getByTestId('grocery-item-checkbox').click();
-    await expect(page.getByTestId('grocery-amount-review')).toBeVisible();
-    await page.getByTestId('grocery-item-checkbox').click();
+    await page.getByTestId('grocery-item-checkbox').filter({ hasText: 'pasta' }).click();
+    await expect(page.getByTestId('grocery-amount-review')).toHaveCount(0);
+    await page.getByTestId('grocery-item-checkbox').filter({ hasText: 'pasta' }).click();
     await expect(page.getByTestId('grocery-amount-review')).toHaveCount(0);
     control.finishRefresh();
-    expect(schedule.groceryState).toMatchObject({ pasta: true, unrelated: true });
+    expect(groceryChecked(schedule)).toBe(true);
+    expect(groceryChecked(schedule, 'unrelated')).toBe(true);
     expect(writes()).toBe(1);
   });
 }
@@ -1713,8 +1790,8 @@ test('actual reset events stay quiet on replay and return after a repeated input
   await expect(summary).toHaveCount(0);
   const aisle = page.getByRole('button', { name: /Pantry/ });
   if ((await aisle.getAttribute('aria-expanded')) === 'false') await aisle.click();
-  await page.getByTestId('grocery-item-checkbox').click();
-  await expect.poll(() => schedule.groceryState.pasta).toBe(true);
+  await page.getByTestId('grocery-item-checkbox').filter({ hasText: 'pasta' }).click();
+  await expect.poll(() => groceryChecked(schedule)).toBe(true);
   control.finishRefresh();
   await expect(summary).toHaveCount(0);
   const change = async (count: string) => {
@@ -1728,18 +1805,18 @@ test('actual reset events stay quiet on replay and return after a repeated input
     await expect(page.getByTestId('grocery-portions-updating')).not.toBeVisible({ timeout: 10000 });
   };
   await change('2');
-  expect(schedule.groceryState.pasta).toBe(true);
+  expect(groceryChecked(schedule)).toBe(true);
   expect(schedule.groceryRefresh.resetSummaryVersion).toBeNull();
   await expect(summary).toHaveCount(0);
   await change('6');
-  expect(schedule.groceryState.pasta).toBe(false);
+  expect(groceryChecked(schedule)).toBe(false);
   expect(schedule.groceryRefresh.resetSummaryVersion).not.toBe(first);
   await expect(summary).toBeVisible();
 });
 
-test.describe('prior amount review in French', () => {
+test.describe('unknown prior amount without review in French', () => {
   test.use({ appLocale: 'fr' });
-  test('one quiet cue and complete quantity remain usable at 320 px and enlarged text', async ({
+  test('no prior-check cue and complete quantity remain usable at 320 px and enlarged text', async ({
     page,
   }, info) => {
     await fixture(page, false, 'null');
@@ -1749,13 +1826,12 @@ test.describe('prior amount review in French', () => {
       document.documentElement.style.fontSize = '32px';
     });
     const cue = page.getByTestId('grocery-check-review');
-    await expect(cue).toHaveCount(1);
-    await expect(cue).toContainText('Vérifiez les quantités cochées auparavant.');
+    await expect(cue).toHaveCount(0);
     const header = page.getByTestId('aisle-section-Pantry').getByRole('button').first();
     if ((await header.getAttribute('aria-expanded')) === 'false') await header.click();
     await expect(page.getByTestId('grocery-item-quantity-hint')).toContainText('600');
     await page.getByRole('button', { name: 'Recettes sources pour pasta', exact: true }).click();
-    const checkbox = page.getByTestId('grocery-item-checkbox');
+    const checkbox = page.getByTestId('grocery-item-checkbox').filter({ hasText: 'pasta' });
     const link = page.getByTestId('grocery-recipe-sources-region').getByRole('link');
     await link.scrollIntoViewIfNeeded();
     await expect(link).toBeInViewport({ ratio: 1 });
@@ -1777,32 +1853,35 @@ test.describe('prior amount review in French', () => {
       };
     });
     const measureText = () =>
-      page.getByTestId('grocery-item-checkbox').evaluate((el) => {
-        const measure = (selector: string) => {
-          const text = el.querySelector(selector)!;
-          const box = text.getBoundingClientRect();
-          const range = document.createRange();
-          range.selectNodeContents(text);
-          const lines = Array.from(range.getClientRects()).map((r) => ({
-            left: r.left,
-            right: r.right,
-            top: r.top,
-            bottom: r.bottom,
-          }));
-          return {
-            text: text.textContent,
-            left: box.left,
-            right: box.right,
-            width: text.clientWidth,
-            scrollWidth: text.scrollWidth,
-            lines,
+      page
+        .getByTestId('grocery-item-checkbox')
+        .filter({ hasText: 'pasta' })
+        .evaluate((el) => {
+          const measure = (selector: string) => {
+            const text = el.querySelector(selector)!;
+            const box = text.getBoundingClientRect();
+            const range = document.createRange();
+            range.selectNodeContents(text);
+            const lines = Array.from(range.getClientRects()).map((r) => ({
+              left: r.left,
+              right: r.right,
+              top: r.top,
+              bottom: r.bottom,
+            }));
+            return {
+              text: text.textContent,
+              left: box.left,
+              right: box.right,
+              width: text.clientWidth,
+              scrollWidth: text.scrollWidth,
+              lines,
+            };
           };
-        };
-        return {
-          label: measure('[data-testid="grocery-item-label"]'),
-          quantity: measure('[data-testid="grocery-item-quantity-hint"]'),
-        };
-      });
+          return {
+            label: measure('[data-testid="grocery-item-label"]'),
+            quantity: measure('[data-testid="grocery-item-quantity-hint"]'),
+          };
+        });
     const textMetrics = await measureText();
     fs.writeFileSync(
       info.outputPath('prior-review-text.json'),
@@ -1836,10 +1915,8 @@ test.describe('prior amount review in French', () => {
     expect(viewport.ownsHit).toBe(true);
     await expect(checkbox).toBeInViewport({ ratio: 1 });
     const check = await checkbox.boundingBox();
-    const review = await page.getByTestId('grocery-amount-review').boundingBox();
     expect(check!.width).toBeGreaterThanOrEqual(48);
     expect(check!.height).toBeGreaterThanOrEqual(48);
-    expect(review!.y).toBeGreaterThanOrEqual(check!.y + check!.height);
     expect(check!.x).toBeGreaterThanOrEqual(0);
     expect(check!.x + check!.width).toBeLessThanOrEqual(320);
     await page.screenshot({ path: info.outputPath('prior-review-fr-320-enlarged.png') });
@@ -2030,13 +2107,7 @@ for (const appLocale of ['en', 'fr'] as const) {
         };
         await openPantry();
         await page.getByTestId('grocery-item-checkbox').filter({ hasText: 'pasta' }).click();
-        await page.evaluate(async (reference) => {
-          await fetch(`/api/schedule/0/grocery/item?referenceWeekStartDate=${reference}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ingredientName: 'unrelated', checked: true }),
-          });
-        }, reference);
+        await checkedExtra(page, reference);
         await page
           .getByRole('button', {
             name: appLocale === 'fr' ? 'Fermer la liste de courses' : 'Close grocery list',
@@ -2272,8 +2343,10 @@ for (const appLocale of ['en', 'fr'] as const) {
         ).toBeVisible();
         await expect(page.getByTestId('grocery-portions-summary')).toHaveCount(1);
         const scaled = await read();
-        expect(scaled.groceryState.pasta).toBe(false);
-        expect(scaled.groceryState.unrelated).toBe(true);
+        expect(groceryChecked(scaled)).toBe(false);
+        expect(scaled.groceryExtras.find((extra: any) => extra.name === 'unrelated').checked).toBe(
+          true
+        );
         await capture(
           'shopping',
           'grocery-checklist',
