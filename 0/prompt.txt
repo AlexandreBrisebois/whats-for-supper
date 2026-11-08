@@ -1,0 +1,101 @@
+Production qualification requires Node 26.12.0 and npm 11.21.1; found Node 26.12.0, npm 11.20.0
+task: Failed to run task "check:push:pwa": exit status 1
+failed: push validation: Command ['task', 'check:push:pwa', 'SUITES=all'] returned non-zero exit status 201.
+task: Failed to run task "check:push": exit status 2
+
+---
+
+1) [chromium] › e2e/home-recipe.spec.ts:2123:5 › Home expanded assigned ingredients and captured Cook share six portions without writes 
+
+    Error: expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 1
+
+    @@ -286,11 +286,11 @@
+                "source": "recipe",
+                "unitText": "g",
+                "weekStartDate": "2026-05-04",
+              },
+            ],
+    -       "groceryListVersion": "1",
+    +       "groceryListVersion": "2",
+            "groceryRefresh": Object {
+              "appliedVersion": "[[\"2026-05-04\",\"990e8400-e29b-41d4-a716-446655000001\",\"660e8400-e29b-41d4-a716-446655440016\",2,6,[{\"originalText\":\"200 g pasta\",\"name\":\"pasta\",\"quantity\":600,\"unitText\":\"g\",\"status\":\"scaled\",\"issues\":[]}]]]",
+              "resetSummaryVersion": null,
+              "status": "current",
+              "version": "[[\"2026-05-04\",\"990e8400-e29b-41d4-a716-446655000001\",\"660e8400-e29b-41d4-a716-446655440016\",2,6,[{\"originalText\":\"200 g pasta\",\"name\":\"pasta\",\"quantity\":600,\"unitText\":\"g\",\"status\":\"scaled\",\"issues\":[]}]]]",
+
+      2207 |   expect(new Set(reads).size).toBe(1);
+      2208 |   expect(writes).toEqual([]);
+    > 2209 |   expect(await snapshot()).toEqual(before);
+           |                            ^
+      2210 | });
+      2211 |
+        at /Users/alex/Code/whats-for-supper/pwa/e2e/home-recipe.spec.ts:2209:28
+
+    attachment #1: screenshot (image/png) ─────────────────────
+    test-results/home-recipe-Home-expanded--94f2a-six-portions-without-writes-chromium/test-failed-1.png
+    ───────────────────────────────────────────────────────────
+
+    Error Context: test-results/home-recipe-Home-expanded--94f2a-six-portions-without-writes-chromium/error-context.md
+
+    attachment #3: trace (application/zip) ────────────────────
+    test-results/home-recipe-Home-expanded--94f2a-six-portions-without-writes-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/home-recipe-Home-expanded--94f2a-six-portions-without-writes-chromium/trace.zip
+
+    ───────────────────────────────────────────────────────────
+
+    Retry #1 ──────────────────────────────────────────────────
+
+    Error: expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 1
+
+    @@ -286,11 +286,11 @@
+                "source": "recipe",
+                "unitText": "g",
+                "weekStartDate": "2026-05-04",
+              },
+            ],
+    -       "groceryListVersion": "1",
+    +       "groceryListVersion": "2",
+            "groceryRefresh": Object {
+              "appliedVersion": "[[\"2026-05-04\",\"990e8400-e29b-41d4-a716-446655000001\",\"660e8400-e29b-41d4-a716-446655440016\",2,6,[{\"originalText\":\"200 g pasta\",\"name\":\"pasta\",\"quantity\":600,\"unitText\":\"g\",\"status\":\"scaled\",\"issues\":[]}]]]",
+              "resetSummaryVersion": null,
+              "status": "current",
+              "version": "[[\"2026-05-04\",\"990e8400-e29b-41d4-a716-446655000001\",\"660e8400-e29b-41d4-a716-446655440016\",2,6,[{\"originalText\":\"200 g pasta\",\"name\":\"pasta\",\"quantity\":600,\"unitText\":\"g\",\"status\":\"scaled\",\"issues\":[]}]]]",
+
+      2207 |   expect(new Set(reads).size).toBe(1);
+      2208 |   expect(writes).toEqual([]);
+    > 2209 |   expect(await snapshot()).toEqual(before);
+           |                            ^
+      2210 | });
+      2211 |
+        at /Users/alex/Code/whats-for-supper/pwa/e2e/home-recipe.spec.ts:2209:28
+
+    attachment #1: screenshot (image/png) ─────────────────────
+    test-results/home-recipe-Home-expanded--94f2a-six-portions-without-writes-chromium-retry1/test-failed-1.png
+    ───────────────────────────────────────────────────────────
+
+    Error Context: test-results/home-recipe-Home-expanded--94f2a-six-portions-without-writes-chromium-retry1/error-context.md
+
+    attachment #3: trace (application/zip) ────────────────────
+    test-results/home-recipe-Home-expanded--94f2a-six-portions-without-writes-chromium-retry1/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/home-recipe-Home-expanded--94f2a-six-portions-without-writes-chromium-retry1/trace.zip
+
+    ───────────────────────────────────────────────────────────
+
+  1 failed
+    [chromium] › e2e/home-recipe.spec.ts:2123:5 › Home expanded assigned ingredients and captured Cook share six portions without writes 
+  1 skipped
+  174 passed (1.5m)
+::notice title=🎭 Playwright Run Summary::  1 failed%0A    [chromium] › e2e/home-recipe.spec.ts:2123:5 › Home expanded assigned ingredients and captured Cook share six portions without writes %0A  1 skipped%0A  174 passed (1.5m)
+task: Failed to run task "check:push:pwa": exit status 1
+failed: push validation: Command ['task', 'check:push:pwa', 'SUITES=all'] returned non-zero exit status 201.
+task: Failed to run task "check:push": exit status 2
