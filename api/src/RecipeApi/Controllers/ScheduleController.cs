@@ -15,8 +15,8 @@ public class ScheduleController(ScheduleService scheduleService) : ControllerBas
     {
         if (!TryReadReference(referenceWeekStartDate, out var reference))
             return BadRequest(new { message = "referenceWeekStartDate must be a yyyy-MM-dd Monday." });
-        var schedule = await _scheduleService.GetScheduleAsync(weekOffset, reference);
-        return Ok(schedule);
+        try { return Ok(await _scheduleService.GetScheduleAsync(weekOffset, reference)); }
+        catch (GroceryMutationConflictException ex) { return GroceryConflict(ex); }
     }
 
     [HttpPost("lock")]
@@ -160,34 +160,43 @@ public class ScheduleController(ScheduleService scheduleService) : ControllerBas
     [HttpPatch("{weekOffset}/grocery/item")]
     public async Task<IActionResult> ToggleGroceryItem(
         int weekOffset,
-        [FromBody] ToggleGroceryItemDto dto, [FromQuery] string? referenceWeekStartDate = null)
+        [FromBody] GroceryItemMutationDto dto, [FromQuery] string? referenceWeekStartDate = null)
     {
         if (!TryReadReference(referenceWeekStartDate, out var reference))
             return BadRequest(new { message = "referenceWeekStartDate must be a yyyy-MM-dd Monday." });
-        try { await _scheduleService.ToggleGroceryItemAsync(weekOffset, dto.IngredientName, dto.Checked, GetConnectionId(), HttpContext.RequestAborted, reference); }
+        try { return Ok(await _scheduleService.MutateGroceryItemAsync(weekOffset, dto, GetConnectionId(), HttpContext.RequestAborted, reference)); }
+        catch (GroceryMutationConflictException ex) { return GroceryConflict(ex); }
         catch (Exception ex) when (ex is ArgumentOutOfRangeException or OverflowException)
         { return BadRequest(new { message = "weekOffset must resolve to a supported calendar date." }); }
-        return NoContent();
     }
 
     [HttpPatch("{weekOffset}/grocery")]
     public async Task<IActionResult> UpdateGroceryState(
         int weekOffset,
-        [FromBody] Dictionary<string, bool> groceryState, [FromQuery] string? referenceWeekStartDate = null)
+        [FromBody] GroceryBulkMutationDto groceryState, [FromQuery] string? referenceWeekStartDate = null)
     {
         if (!TryReadReference(referenceWeekStartDate, out var reference))
             return BadRequest(new { message = "referenceWeekStartDate must be a yyyy-MM-dd Monday." });
         try
         {
-            var result = await _scheduleService.UpdateGroceryStateAsync(weekOffset, groceryState, GetConnectionId(), HttpContext.RequestAborted, reference);
+            var result = await _scheduleService.MutateGroceryBulkAsync(weekOffset, groceryState, GetConnectionId(), HttpContext.RequestAborted, reference);
             return Ok(new { data = result });
         }
+        catch (GroceryMutationConflictException ex) { return GroceryConflict(ex); }
         catch (Exception ex) when (ex is ArgumentOutOfRangeException or OverflowException)
         { return BadRequest(new { message = "weekOffset must resolve to a supported calendar date." }); }
     }
 
     private bool TryReadReference(string? value, out DateOnly? reference) =>
         DeploymentCalendar.TryParseReference(value ?? (Request.Query.ContainsKey("referenceWeekStartDate") ? "" : null), out reference);
+
+    private IActionResult GroceryConflict(GroceryMutationConflictException error)
+    {
+        var payload = new Dictionary<string, object> { ["code"] = error.Code };
+        if (error.Current is not null) payload["current"] = error.Current;
+        if (error.Absent) payload["absent"] = true;
+        return Conflict(payload);
+    }
 
     private string? GetConnectionId() => Request.Headers["X-SSE-Connection-ID"].FirstOrDefault();
 

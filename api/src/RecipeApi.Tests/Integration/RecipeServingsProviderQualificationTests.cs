@@ -54,10 +54,12 @@ public class RecipeServingsProviderQualificationTests(ITestOutputHelper output)
                 db.Recipes.Add(new Recipe { Id = id, IsReady = true }); await db.SaveChangesAsync();
                 var api = new OpenAIClient(new ApiKeyCredential(key), new OpenAIClientOptions { Endpoint = new Uri(endpoint), NetworkTimeout = TimeSpan.FromMinutes(5) }).GetChatClient(model).AsIChatClient();
                 using var chat = new RecordingClient(api, Path.Combine(evidence, example.Id));
-                var agent = new RecipeAgent(chat, repository, prompts, configuration, NullLogger<RecipeAgent>.Instance, db, "ExtractRecipe");
-                await agent.DoExtractRecipeAsync(id, CancellationToken.None);
+                var agent = new RecipeAgent(chat, prompts, configuration, NullLogger<RecipeAgent>.Instance,
+            new RecipeFilePublicationStore(db, repository, new SystemClock(), new SupperProjectionInvalidation(db, new SystemClock(), new DeploymentCalendar(new ConfigurationManager()))), "ExtractRecipe");
+                var producer = await RecipeServingsTests.ProducerTask(db, repository, id);
+                await agent.ExecuteAsync(producer, CancellationToken.None);
                 var normalized = await repository.GetRecipeJsonAsync(id, CancellationToken.None);
-                await RecipeServingsTests.Sync(db, repository, new WorkflowTask { Payload = JsonSerializer.Serialize(new { recipeId = id }) });
+                await RecipeServingsTests.Sync(db, repository, producer);
                 db.ChangeTracker.Clear();
                 var saved = await db.Recipes.SingleAsync(r => r.Id == id);
                 using var client = factory.CreateAuthenticatedClient(); var response = await client.GetAsync($"/api/recipes/{id}");

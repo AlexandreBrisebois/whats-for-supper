@@ -2,6 +2,161 @@ import { describe, expect, it, vi } from 'vitest';
 import type { Page, Route } from '@playwright/test';
 import { MOCK_IDS, setupCommonRoutes } from '../../e2e/mock-api';
 
+it('workflow reset mock returns the existing recovery-busy contract and preserves method routing', async () => {
+  const handlers = new Map<Parameters<Page['route']>[0], (route: Route) => Promise<unknown>>();
+  const page = {
+    route: vi.fn(
+      async (pattern: Parameters<Page['route']>[0], handler: (route: Route) => Promise<unknown>) =>
+        handlers.set(pattern, handler)
+    ),
+    evaluate: vi.fn().mockResolvedValue(undefined),
+  };
+  await setupCommonRoutes(page as unknown as Page, undefined, { busy: true });
+  const fulfill = vi.fn();
+  const fallback = vi.fn();
+  const call = async (method: string) =>
+    handlers.get('**/api/workflows/tasks/*/reset')!({
+      request: () => ({
+        method: () => method,
+        url: () => `http://localhost/api/workflows/tasks/${MOCK_IDS.RECIPE_LASAGNA}/reset`,
+      }),
+      fulfill,
+      fallback,
+    } as unknown as Route);
+  await call('GET');
+  expect(fallback).toHaveBeenCalledOnce();
+  expect(fulfill).not.toHaveBeenCalled();
+  await call('POST');
+  const response = fulfill.mock.calls[0][0];
+  expect(response.status).toBe(503);
+  expect(response.headers['Retry-After']).toBe('5');
+  expect(JSON.parse(response.body)).toEqual({
+    errorCode: 'RECOVERY_BUSY',
+    message: expect.any(String),
+  });
+});
+
+it('share mock refuses pending media delivery before returning a bundle', async () => {
+  const handlers = new Map<Parameters<Page['route']>[0], (route: Route) => Promise<unknown>>();
+  const page = {
+    route: vi.fn(
+      async (pattern: Parameters<Page['route']>[0], handler: (route: Route) => Promise<unknown>) =>
+        handlers.set(pattern, handler)
+    ),
+    evaluate: vi.fn().mockResolvedValue(undefined),
+  };
+  let pending = true;
+  await setupCommonRoutes(page as unknown as Page, undefined, {
+    recipePublicationPending: () => pending,
+  });
+  const fulfill = vi.fn();
+  const request = {
+    request: () => ({
+      method: () => 'GET',
+      url: () => `http://localhost/api/recipes/${MOCK_IDS.RECIPE_LASAGNA}/share`,
+    }),
+    fulfill,
+  } as unknown as Route;
+  await handlers.get('**/api/recipes/*/share')!(request);
+  expect(fulfill.mock.calls[0][0].status).toBe(409);
+  expect(fulfill.mock.calls[0][0].json.code).toBe('recipe_content_conflict');
+  pending = false;
+  fulfill.mockClear();
+  await handlers.get('**/api/recipes/*/share')!(request);
+  expect(fulfill.mock.calls[0][0].status).toBe(200);
+});
+
+it('share mock exports current saved text and scrubs household fields after editing', async () => {
+  const handlers = new Map<Parameters<Page['route']>[0], (route: Route) => Promise<unknown>>();
+  const page = {
+    route: vi.fn(
+      async (pattern: Parameters<Page['route']>[0], handler: (route: Route) => Promise<unknown>) =>
+        handlers.set(pattern, handler)
+    ),
+    evaluate: vi.fn().mockResolvedValue(undefined),
+  };
+  await setupCommonRoutes(page as unknown as Page);
+  const id = MOCK_IDS.RECIPE_LASAGNA;
+  const fulfill = vi.fn();
+  await handlers.get('**/api/recipes/*')!({
+    request: () => ({
+      method: () => 'PATCH',
+      url: () => `http://localhost/api/recipes/${id}`,
+      postDataJSON: () => ({
+        name: 'Current saved name',
+        ingredients: ['⅓ cup flour', 'oil'],
+        recipeInstructions: [
+          {
+            '@type': 'HowToSection',
+            name: 'Current section',
+            itemListElement: [{ '@type': 'HowToStep', text: 'Current corrected step' }],
+          },
+        ],
+        notes: 'Private note',
+        rating: 3,
+        servings: 3,
+      }),
+    }),
+    fulfill,
+  } as unknown as Route);
+  fulfill.mockClear();
+  await handlers.get('**/api/recipes/*/share')!({
+    request: () => ({ method: () => 'GET', url: () => `http://localhost/api/recipes/${id}/share` }),
+    fulfill,
+  } as unknown as Route);
+  const bundle = JSON.parse(fulfill.mock.calls[0][0].body).data;
+  expect(bundle.recipe.name).toBe('Current saved name');
+  expect(bundle.recipe.ingredients).toEqual(['⅓ cup flour', 'oil']);
+  expect(bundle.recipe.instructions[0].itemListElement[0].text).toBe('Current corrected step');
+  expect(bundle.recipe.notes).toBeNull();
+  expect(bundle.recipe.rating).toBeNull();
+  expect(bundle.recipe.servings).toBeNull();
+  expect(JSON.stringify(bundle)).not.toContain('Private note');
+});
+
+it.each([
+  { ingredientName: 'Water', checked: true },
+  {
+    rowId: MOCK_IDS.GROCERY_ROW_01,
+    weekStartDate: '2026-05-04',
+    expectedRowVersion: '1',
+    checked: true,
+    clientMutationId: MOCK_IDS.GROCERY_ROW_02,
+  },
+  {
+    rowId: MOCK_IDS.GROCERY_ROW_01,
+    weekStartDate: '2026-05-11',
+    expectedRowVersion: '1',
+    checked: true,
+    clientMutationId: MOCK_IDS.GROCERY_ROW_02,
+  },
+])(
+  'grocery mocks reject missing, absent or wrong-week row guards without a write: %j',
+  async (body) => {
+    const handlers = new Map<Parameters<Page['route']>[0], (route: Route) => Promise<unknown>>();
+    const page = {
+      route: vi.fn(
+        async (
+          pattern: Parameters<Page['route']>[0],
+          handler: (route: Route) => Promise<unknown>
+        ) => handlers.set(pattern, handler)
+      ),
+      evaluate: vi.fn().mockResolvedValue(undefined),
+    };
+    await setupCommonRoutes(page as unknown as Page);
+    const fulfill = vi.fn().mockResolvedValue(undefined);
+    await handlers.get('**/api/schedule/*/grocery/item**')!({
+      request: () => ({
+        method: () => 'PATCH',
+        url: () => 'http://localhost/api/schedule/0/grocery/item',
+        postDataJSON: () => body,
+      }),
+      fulfill,
+    } as unknown as Route);
+    expect(fulfill.mock.calls[0][0].status).toBe(409);
+  }
+);
+
 it('projects the actual legacy-supply mock handler without zipping missing ingredient lines', async () => {
   const handlers = new Map<Parameters<Page['route']>[0], (route: Route) => Promise<unknown>>();
   const page = {
@@ -333,4 +488,240 @@ describe('usual portions and shared family mock state', () => {
     expect((await get()).defaultServings).toBeNull();
     expect((await get()).defaultServingsSource).toBe('family');
   });
+});
+
+it.each(['ingredientLines', 'instructionSections'])(
+  'canonical %s stays gated atomically before qualified cutover',
+  async (collection) => {
+    const handlers = new Map<Parameters<Page['route']>[0], (route: Route) => Promise<unknown>>();
+    const page = {
+      route: vi.fn(
+        async (
+          pattern: Parameters<Page['route']>[0],
+          handler: (route: Route) => Promise<unknown>
+        ) => handlers.set(pattern, handler)
+      ),
+      evaluate: vi.fn().mockResolvedValue(undefined),
+    };
+    await setupCommonRoutes(page as unknown as Page);
+    const id = MOCK_IDS.RECIPE_SPAGHETTI;
+    const read = async () => {
+      const fulfill = vi.fn().mockResolvedValue(undefined);
+      await handlers.get('**/api/recipes/*')!({
+        request: () => ({ method: () => 'GET', url: () => `http://localhost/api/recipes/${id}` }),
+        fulfill,
+      } as unknown as Route);
+      const reply = fulfill.mock.calls[0][0];
+      return reply.json ?? JSON.parse(reply.body);
+    };
+    const before = await read();
+    expect(before.recipe.contentSchemaVersion).toBeNull();
+    expect(before.recipe.ingredientLines).toBeNull();
+    expect(before.recipe.instructionSections).toBeNull();
+    const fulfill = vi.fn().mockResolvedValue(undefined);
+    await handlers.get('**/api/recipes/*')!({
+      request: () => ({
+        method: () => 'PATCH',
+        url: () => `http://localhost/api/recipes/${id}`,
+        postDataJSON: () => ({
+          name: 'Cannot partially apply',
+          servings: 7,
+          expectedContentRevision: 'not-activated',
+          [collection]: [],
+        }),
+      }),
+      fulfill,
+    } as unknown as Route);
+    const reply = fulfill.mock.calls[0][0];
+    expect(reply.status).toBe(409);
+    expect(reply.json.code).toBe('recipe_content_conflict');
+    expect(reply.json.upgradeRequired).toBe(true);
+    expect(reply.json.currentContentRevision).toBeTruthy();
+    expect((await read()).recipe).toEqual(before.recipe);
+  }
+);
+
+it.each([
+  {
+    clientId: 'row',
+    description: 'pasta',
+    amount: { kind: 'scalar', value: { n: '2', d: '4' } },
+    amountText: '1/2',
+    unit: null,
+    scaling: 'proportional',
+    package: null,
+    shopping: { name: 'pasta', foodId: null, mappingRevision: null },
+  },
+  {
+    clientId: 'row',
+    description: 'pasta',
+    amount: null,
+    amountText: null,
+    scaling: 'proportional',
+    package: null,
+    shopping: { name: 'pasta', foodId: null, mappingRevision: null },
+  },
+])('canonical mock rejects invalid supplied facts atomically: %j', async (row) => {
+  const handlers = new Map<Parameters<Page['route']>[0], (route: Route) => Promise<unknown>>();
+  const page = {
+    route: vi.fn(
+      async (pattern: Parameters<Page['route']>[0], handler: (route: Route) => Promise<unknown>) =>
+        handlers.set(pattern, handler)
+    ),
+    evaluate: vi.fn().mockResolvedValue(undefined),
+  };
+  await setupCommonRoutes(page as unknown as Page);
+  const fulfill = vi.fn().mockResolvedValue(undefined);
+  await handlers.get('**/api/recipes/*')!({
+    request: () => ({
+      method: () => 'PATCH',
+      url: () => `http://localhost/api/recipes/${MOCK_IDS.RECIPE_SPAGHETTI}`,
+      postDataJSON: () => ({ name: 'Cannot save', ingredientLines: [row] }),
+    }),
+    fulfill,
+  } as unknown as Route);
+  expect(fulfill.mock.calls[0][0].status).toBe(400);
+});
+
+it.each([false, true])(
+  'original upload mock retains truthful append state (pending=%s)',
+  async (pending) => {
+    const handlers = new Map<Parameters<Page['route']>[0], (route: Route) => Promise<unknown>>();
+    const page = {
+      route: vi.fn(
+        async (
+          pattern: Parameters<Page['route']>[0],
+          handler: (route: Route) => Promise<unknown>
+        ) => handlers.set(pattern, handler)
+      ),
+      evaluate: vi.fn().mockResolvedValue(undefined),
+    };
+    await setupCommonRoutes(page as unknown as Page, undefined, {
+      recipePublicationPending: () => pending,
+    } as Parameters<typeof setupCommonRoutes>[2]);
+    const url = `http://localhost/api/recipes/${MOCK_IDS.RECIPE_LASAGNA}`;
+    const read = async () => {
+      const fulfill = vi.fn().mockResolvedValue(undefined);
+      await handlers.get('**/api/recipes/*')!({
+        request: () => ({ method: () => 'GET', url: () => url }),
+        fulfill,
+      } as unknown as Route);
+      return JSON.parse(fulfill.mock.calls[0][0].body).recipe;
+    };
+    const before = await read();
+    const fulfill = vi.fn().mockResolvedValue(undefined);
+    await handlers.get('**/api/recipes/*/originals')!({
+      request: () => ({ method: () => 'POST', url: () => `${url}/originals` }),
+      fulfill,
+    } as unknown as Route);
+    const response = fulfill.mock.calls[0][0];
+    expect(response.status).toBe(pending ? 409 : 201);
+    const after = await read();
+    if (pending) {
+      expect(response.json.code).toBe('recipe_content_conflict');
+      expect(after).toEqual(before);
+    } else {
+      expect(JSON.parse(response.body).data.id).toBe(before.imageCount ?? 0);
+      expect(after.imageCount).toBe((before.imageCount ?? 0) + 1);
+      expect(after.images).toEqual([...(before.images ?? []), before.imageCount ?? 0]);
+      expect(after.finishedDishIndex).toBe(before.finishedDishIndex);
+    }
+  }
+);
+
+it('isolated canonical editor saves exact rows atomically and subsequent reads retain the authoritative revision', async () => {
+  const handlers = new Map<Parameters<Page['route']>[0], (route: Route) => Promise<unknown>>();
+  const page = {
+    route: vi.fn(
+      async (pattern: Parameters<Page['route']>[0], handler: (route: Route) => Promise<unknown>) =>
+        handlers.set(pattern, handler)
+    ),
+    evaluate: vi.fn().mockResolvedValue(undefined),
+  };
+  const row = {
+    id: MOCK_IDS.RECIPE_CARBONARA,
+    description: 'pasta',
+    amount: { kind: 'scalar', value: { n: '200', d: '1' } },
+    amountText: '200',
+    unit: { text: 'g', definitionId: null },
+    scaling: 'proportional',
+    package: null,
+    shopping: { name: 'pasta', foodId: null, mappingRevision: null },
+  };
+  const id = MOCK_IDS.RECIPE_LASAGNA;
+  await setupCommonRoutes(page as unknown as Page, undefined, {
+    canonicalEditor: {
+      id,
+      contentSchemaVersion: 2,
+      contentRevision: 'initial',
+      servings: 4,
+      ingredients: ['200 g pasta'],
+      ingredientLines: [row],
+    } as any,
+  });
+  const call = async (method: string, body?: unknown) => {
+    const fulfill = vi.fn();
+    await handlers.get('**/api/recipes/*')!({
+      request: () => ({
+        method: () => method,
+        url: () => `http://localhost/api/recipes/${id}`,
+        postDataJSON: () => body,
+      }),
+      fulfill,
+    } as unknown as Route);
+    const reply = fulfill.mock.calls[0][0];
+    return { status: reply.status ?? 200, body: reply.json ?? JSON.parse(reply.body) };
+  };
+  const saved = await call('PATCH', {
+    name: 'Saved',
+    rating: 3,
+    isDiscoverable: true,
+    mealTypes: ['Supper'],
+    expectedContentRevision: 'initial',
+    ingredientLines: [
+      { ...row, amountText: '250', amount: { kind: 'scalar', value: { n: '250', d: '1' } } },
+    ],
+  });
+  expect(saved.status).toBe(200);
+  expect(saved.body.recipe.rating).toBe(3);
+  expect(saved.body.recipe.isDiscoverable).toBe(true);
+  expect(saved.body.recipe.ingredients).toEqual(['250 g pasta']);
+  expect(saved.body.recipe.ingredientLines[0].id).toBe(row.id);
+  expect(saved.body.recipe.contentRevision).not.toBe('initial');
+  expect(
+    (
+      await call('PATCH', {
+        name: 'Stale',
+        expectedContentRevision: 'initial',
+        ingredientLines: [],
+      })
+    ).status
+  ).toBe(409);
+  expect((await call('PATCH', { name: 'Old editor', ingredients: ['old'] })).status).toBe(409);
+  const reread = await call('GET');
+  expect(reread.body.recipe.name).toBe('Saved');
+  expect(reread.body.recipe.contentRevision).toBe(saved.body.recipe.contentRevision);
+  expect(reread.body.recipe.ingredients).toEqual(['250 g pasta']);
+  for (const invalid of [{ rating: 4 }, { mealTypes: ['Lunch'], isDiscoverable: true }]) {
+    expect(
+      (
+        await call('PATCH', {
+          expectedContentRevision: saved.body.recipe.contentRevision,
+          name: 'Invalid',
+          ingredientLines: [],
+          ...invalid,
+        })
+      ).status
+    ).toBe(400);
+    expect((await call('GET')).body.recipe).toEqual(reread.body.recipe);
+  }
+  const basis = await call('PATCH', {
+    expectedContentRevision: saved.body.recipe.contentRevision,
+    servings: 5,
+    rating: 2,
+  });
+  expect(basis.status).toBe(200);
+  expect(basis.body.recipe.servings).toBe(5);
+  expect(basis.body.recipe.rating).toBe(2);
+  expect(basis.body.recipe.ingredientLines).toEqual(saved.body.recipe.ingredientLines);
 });

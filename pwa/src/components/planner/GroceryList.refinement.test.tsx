@@ -1,3 +1,5 @@
+import { DateOnly } from '@microsoft/kiota-abstractions';
+import { scalarQuantity, fixtureGroceryId, fixtureGroceryChecks } from '@/testing/grocery-fixtures';
 /**
  * Unit tests for GroceryList — section completion UI (task 7.5).
  *
@@ -9,7 +11,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
 
 const {
   mockReadSchedule,
@@ -40,7 +42,7 @@ vi.mock('@/lib/api/recipes', () => ({ getRecipe: mockGetSourceRecipe }));
 
 let mockGroceryState: Record<string, boolean> = {};
 const mockSetGroceryItemToggle = vi.fn((ingredientName: string, isToggled: boolean) => {
-  mockGroceryState = { ...mockGroceryState, [ingredientName]: isToggled };
+  mockGroceryState = fixtureGroceryChecks({ ...mockGroceryState, [ingredientName]: isToggled });
 });
 
 vi.mock('@/store/plannerStore', () => ({
@@ -124,7 +126,7 @@ vi.mock('@/locales', () => ({
 // ── Import component AFTER mocks ──────────────────────────────────────────────
 
 import { GroceryList } from './GroceryList';
-import type { GroceryLineItemDto } from '@/lib/api/generated/models';
+import type { GroceryExtraDto, GroceryLineItemDto } from '@/lib/api/generated/models';
 import { reclassifyIngredient } from '@/lib/api/ingredients';
 import { useWeekStore } from '@/store/weekStore';
 
@@ -137,6 +139,11 @@ function makeItem(
   overrides?: Partial<GroceryLineItemDto>
 ): GroceryLineItemDto {
   return {
+    rowId: fixtureGroceryId(normalizedKey ?? displayName),
+    rowVersion: '1',
+    weekStartDate: DateOnly.parse('2025-01-06'),
+    source: 'recipe',
+    demandIdentity: `fixture:${normalizedKey ?? displayName}`,
     displayName,
     normalizedKey: normalizedKey ?? displayName.toLowerCase().replace(/\s+/g, '_'),
     section,
@@ -150,16 +157,16 @@ function makeItem(
 
 const id = '660e8400-e29b-41d4-a716-446655440013';
 const item = makeItem('pasta', 'Pantry', 'pasta', {
-  quantity: 400,
+  quantity: scalarQuantity(400),
   unitText: 'g',
   quantityComplete: false,
-  checkReviewReason: 'prior_amount_unknown',
+  ...{ checkReviewReason: 'prior_amount_unknown' }, // Retired persisted data must not restore UI.
   recipeIds: [id, id],
 });
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockGroceryState = {};
+  mockGroceryState = fixtureGroceryChecks({});
   mockGetSourceRecipe.mockResolvedValue({ id, name: 'Family pasta' });
   mockToggleGroceryItem.mockResolvedValue(undefined);
   useWeekStore.setState({
@@ -170,6 +177,102 @@ beforeEach(() => {
     groceryRefresh: undefined,
     groceryExtras: [],
     pendingGroceryExtraIds: new Set(),
+  });
+});
+
+describe('shopping focus and category parity', () => {
+  const extra = (name: string, id: string): GroceryExtraDto => ({
+    id,
+    lineageId: id,
+    name,
+    normalizedKey: name.toLowerCase(),
+    grocerySection: 'Pantry',
+    checked: false,
+    occurrenceWeekStartDate: DateOnly.parse('2026-10-12'),
+    version: 1,
+    source: 'extra',
+    readOnly: false,
+  });
+  const coffee = extra('Coffee', '05000000-0000-4000-8000-000000000011');
+  const tea = extra('Tea', '05000000-0000-4000-8000-000000000012');
+  const View = ({ future = false }: { future?: boolean }) => (
+    <GroceryList
+      weekOffset={future ? 1 : 0}
+      items={[item]}
+      extras={useWeekStore((state) => state.groceryExtras)}
+    />
+  );
+
+  it('keeps the initiating extra checkbox focused after acknowledgement instead of Edit', async () => {
+    useWeekStore.setState({ groceryExtras: [coffee, tea] });
+    mockUpdateExtra.mockResolvedValue({ ...coffee, checked: true, version: 2 });
+    render(<View />);
+    const check = screen.getAllByTestId('grocery-extra-checkbox')[0];
+    check.focus();
+    fireEvent.click(check);
+    await waitFor(() => expect(mockUpdateExtra).toHaveBeenCalledOnce());
+    await act(async () => {
+      await new Promise(requestAnimationFrame);
+    });
+    expect(check).toHaveFocus();
+    expect(screen.getByRole('button', { name: 'Edit Coffee' })).not.toHaveFocus();
+    expect(screen.queryByRole('group', { name: 'Choose section' })).not.toBeInTheDocument();
+  });
+
+  it('uses an adjacent checkbox when a keyboard-activated future extra disappears', async () => {
+    useWeekStore.setState({
+      weekOffset: 1,
+      weekStartDate: '2026-10-19',
+      groceryExtras: [coffee, tea],
+    });
+    mockUpdateExtra.mockResolvedValue({ ...coffee, checked: true, version: 2 });
+    render(<View future />);
+    const check = screen.getAllByTestId('grocery-extra-checkbox')[0];
+    const adjacent = screen.getAllByTestId('grocery-extra-checkbox')[1];
+    check.focus();
+    fireEvent.click(check, { detail: 0 });
+    await waitFor(() => expect(check).not.toBeInTheDocument());
+    expect(adjacent).toHaveFocus();
+  });
+
+  it('does not move focus from a later user action when an extra save returns', async () => {
+    let acknowledge!: (value: GroceryExtraDto) => void;
+    mockUpdateExtra.mockReturnValue(
+      new Promise<GroceryExtraDto>((resolve) => {
+        acknowledge = resolve;
+      })
+    );
+    useWeekStore.setState({ groceryExtras: [coffee, tea] });
+    render(<View />);
+    const [check, other] = screen.getAllByTestId('grocery-extra-checkbox');
+    check.focus();
+    fireEvent.click(check);
+    other.focus();
+    await act(async () => {
+      acknowledge({ ...coffee, checked: true, version: 2 });
+    });
+    await act(async () => {
+      await new Promise(requestAnimationFrame);
+    });
+    expect(other).toHaveFocus();
+  });
+
+  it('matches tag icon placement and avoids a write for the current extra section', async () => {
+    useWeekStore.setState({ groceryExtras: [coffee] });
+    render(<View />);
+    const normal = screen.getByTestId('reclassify-btn');
+    const tag = screen.getByRole('button', { name: 'Change section for Coffee' });
+    expect(normal.querySelector('svg')).toHaveAttribute(
+      'width',
+      tag.querySelector('svg')!.getAttribute('width')
+    );
+    expect(normal.querySelector('svg')).toHaveClass('mx-auto');
+    fireEvent.click(tag);
+    fireEvent.click(
+      screen.getByRole('group', { name: 'Choose section' }).querySelectorAll('button')[1]
+    );
+    expect(screen.queryByRole('group', { name: 'Choose section' })).not.toBeInTheDocument();
+    expect(mockUpdateExtra).not.toHaveBeenCalled();
   });
 });
 
@@ -196,21 +299,20 @@ describe('quiet grocery source refinement', () => {
     expect(reclassifyIngredient).not.toHaveBeenCalled();
   });
 
-  it('keeps subtotal and prior-check warnings separate from sources, check and aisle actions', () => {
+  it('retains known subtotals and source actions without retired prior-check warnings', () => {
     render(<GroceryList weekOffset={0} items={[item]} />);
     const book = screen.getByTestId('grocery-recipe-sources-toggle');
-    const warnings = screen.getByTestId('grocery-amount-review');
+    expect(screen.queryByTestId('grocery-amount-review')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('grocery-check-review')).not.toBeInTheDocument();
     expect(screen.getByTestId('grocery-item-quantity-hint')).toHaveTextContent('400 g known');
-    expect(warnings).not.toHaveTextContent('400 g');
     expect(screen.queryByText('Review amounts')).not.toBeInTheDocument();
-    expect(warnings).toHaveTextContent('Previously checked amount needs review.');
     expect(screen.getByTestId('grocery-item-checkbox')).toBeVisible();
     expect(screen.getByTestId('reclassify-btn')).toHaveAccessibleName('Change section for pasta');
     fireEvent.click(book);
     const sources = screen.getByTestId('grocery-recipe-sources-region');
-    expect(sources).not.toContainElement(warnings);
+    expect(sources).not.toHaveTextContent('Previously checked amount needs review.');
     fireEvent.click(book);
-    expect(warnings).toBeVisible();
+    expect(screen.queryByTestId('grocery-amount-review')).not.toBeInTheDocument();
     expect(mockToggleGroceryItem).not.toHaveBeenCalled();
     expect(reclassifyIngredient).not.toHaveBeenCalled();
   });
@@ -219,7 +321,7 @@ describe('quiet grocery source refinement', () => {
     render(<GroceryList weekOffset={0} items={[{ ...item, recipeIds: [] }]} />);
     expect(screen.queryByTestId('grocery-recipe-sources-toggle')).not.toBeInTheDocument();
     expect(screen.queryByText('Used in')).not.toBeInTheDocument();
-    expect(screen.getByTestId('grocery-amount-review')).toBeVisible();
+    expect(screen.queryByTestId('grocery-amount-review')).not.toBeInTheDocument();
     expect(screen.getByTestId('reclassify-btn')).toBeVisible();
   });
   it('pins the loaded absolute source week during a pending week change and calendar rollover', () => {

@@ -1,3 +1,4 @@
+import { scalarQuantity, fixtureGroceryId, fixtureGroceryChecks } from '@/testing/grocery-fixtures';
 /**
  * Unit tests for GroceryList — section completion UI (task 7.5).
  *
@@ -10,6 +11,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, act, within, waitFor } from '@testing-library/react';
+import { DateOnly } from '@microsoft/kiota-abstractions';
 
 const {
   mockReadSchedule,
@@ -40,7 +42,7 @@ vi.mock('@/lib/api/recipes', () => ({ getRecipe: mockGetSourceRecipe }));
 
 let mockGroceryState: Record<string, boolean> = {};
 const mockSetGroceryItemToggle = vi.fn((ingredientName: string, isToggled: boolean) => {
-  mockGroceryState = { ...mockGroceryState, [ingredientName]: isToggled };
+  mockGroceryState = fixtureGroceryChecks({ ...mockGroceryState, [ingredientName]: isToggled });
 });
 
 vi.mock('@/store/plannerStore', () => ({
@@ -124,7 +126,7 @@ vi.mock('@/locales', () => ({
 // ── Import component AFTER mocks ──────────────────────────────────────────────
 
 import { GroceryList } from './GroceryList';
-import type { GroceryLineItemDto } from '@/lib/api/generated/models';
+import type { GroceryExtraDto, GroceryLineItemDto } from '@/lib/api/generated/models';
 import { reclassifyIngredient } from '@/lib/api/ingredients';
 import { useWeekStore } from '@/store/weekStore';
 
@@ -137,6 +139,11 @@ function makeItem(
   overrides?: Partial<GroceryLineItemDto>
 ): GroceryLineItemDto {
   return {
+    rowId: fixtureGroceryId(normalizedKey ?? displayName),
+    rowVersion: '1',
+    weekStartDate: DateOnly.parse('2025-01-06'),
+    source: 'recipe',
+    demandIdentity: `fixture:${normalizedKey ?? displayName}`,
     displayName,
     normalizedKey: normalizedKey ?? displayName.toLowerCase().replace(/\s+/g, '_'),
     section,
@@ -149,10 +156,62 @@ function makeItem(
 }
 
 const ITEMS = [makeItem('tomato', 'Produce'), makeItem('lettuce', 'Produce')];
+function seedChecks(values: Record<string, boolean>) {
+  mockGroceryState = fixtureGroceryChecks(values);
+  useWeekStore.setState({
+    groceryListVersion: '1',
+    groceryVersionWeek: '2025-01-06',
+    authoritativeGroceryChecks: mockGroceryState,
+  });
+}
 
 function renderList() {
   return render(<GroceryList weekOffset={0} items={ITEMS} />);
 }
+
+// Group 1 contract regression: IDs are deliberately unrelated to all labels.
+const WATER_ROWS = ['g', 'ml', 'bottle'].map((unitText, index) =>
+  Object.assign(makeItem('Water', 'Produce', 'water', { unitText, quantity: null }), {
+    rowId: `04000000-0000-4000-8000-00000000000${index + 1}`,
+    rowVersion: '1',
+    weekStartDate: DateOnly.parse('2025-01-06'),
+    source: 'recipe',
+  })
+);
+const WATER_EXTRA: GroceryExtraDto = {
+  id: '04000000-0000-4000-8000-000000000004',
+  lineageId: '04000000-0000-4000-8000-000000000005',
+  occurrenceWeekStartDate: DateOnly.parse('2025-01-06'),
+  name: 'Water',
+  normalizedKey: 'water',
+  grocerySection: 'Produce',
+  checked: false,
+  version: 1,
+  source: 'extra',
+  readOnly: false,
+};
+
+describe('independent grocery row contract (C26 / bounded C31)', () => {
+  it('reads one checked water identity without sharing it with the other water buckets', () => {
+    seedChecks({ [WATER_ROWS[0].rowId]: true });
+    render(<GroceryList weekOffset={0} items={WATER_ROWS} extras={[WATER_EXTRA]} />);
+
+    const controls = screen.getAllByTestId('grocery-item-checkbox');
+    expect(controls).toHaveLength(3);
+    expect(screen.getAllByRole('checkbox', { name: /Water/ })).toHaveLength(4);
+    expect(
+      controls.filter((control) => control.getAttribute('aria-checked') === 'true')
+    ).toHaveLength(1);
+  });
+
+  it('writes the selected opaque identity instead of its shared display label', async () => {
+    render(<GroceryList weekOffset={0} items={WATER_ROWS} />);
+    await act(async () => fireEvent.click(screen.getAllByTestId('grocery-item-checkbox')[1]));
+
+    expect(mockSetGroceryItemToggle).toHaveBeenCalledWith(WATER_ROWS[1].rowId, true);
+    expect(mockGroceryState).toEqual({ [WATER_ROWS[1].rowId]: true });
+  });
+});
 
 function StoreBackedGroceryList({ weekOffset = 0 }: { weekOffset?: number }) {
   const items = useWeekStore((state) => state.groceryItems);
@@ -172,10 +231,41 @@ beforeEach(() => {
   useWeekStore.setState({ schedule: [] });
   mockRefreshServings.mockReset();
   useWeekStore.setState({ groceryRefresh: undefined });
-  mockGroceryState = {};
+  seedChecks({});
   mockSetGroceryItemToggle.mockClear();
   mockToggleGroceryItem.mockReset();
-  mockToggleGroceryItem.mockResolvedValue(undefined);
+  mockToggleGroceryItem.mockImplementation(async (_offset, request) => {
+    const current = useWeekStore.getState();
+    const version = String(BigInt(request.expectedRowVersion) + 1n);
+    const rows = current.groceryItems.some((row) => row.rowId === request.rowId)
+      ? current.groceryItems
+      : [
+          {
+            rowId: request.rowId,
+            rowVersion: request.expectedRowVersion,
+            weekStartDate: request.weekStartDate,
+            displayName: 'Fixture row',
+            normalizedKey: 'fixture',
+            source: 'recipe',
+            demandIdentity: 'fixture',
+            section: 'Produce',
+            recipeIds: [],
+            quantity: null,
+          },
+        ];
+    return {
+      updatedAt: new Date(),
+      weekStartDate: request.weekStartDate,
+      listVersion: String(BigInt(current.groceryListVersion ?? '1') + 1n),
+      rowId: request.rowId,
+      rowVersion: version,
+      checked: request.checked,
+      checks: { additionalData: { ...mockGroceryState, [request.rowId]: request.checked } },
+      rows: rows.map((row) =>
+        row.rowId === request.rowId ? { ...row, rowVersion: version } : row
+      ),
+    };
+  });
   vi.mocked(reclassifyIngredient).mockReset();
   useWeekStore.setState({ weekOffset: 0, groceryItems: [] });
   useWeekStore.setState({
@@ -287,7 +377,7 @@ describe('serving refresh acknowledgement lifetime', () => {
       renderList();
       fireEvent.click(screen.getByRole('checkbox', { name: /tomato/i }));
       if (change === 'week') useWeekStore.setState({ weekStartDate: '2025-01-13' });
-      else mockGroceryState = { tomato: false };
+      else seedChecks({ tomato: false });
       const calls = mockSetGroceryItemToggle.mock.calls.length;
       await act(async () => fail(new Error('old check failed')));
       expect(mockSetGroceryItemToggle).toHaveBeenCalledTimes(calls);
@@ -788,7 +878,7 @@ describe('GroceryList — checked item ordering', () => {
     }));
 
   it('orders mixed extra and recipe rows by check state without changing source order', () => {
-    mockGroceryState = { Rice: false, Beans: true };
+    seedChecks({ Rice: false, Beans: true });
     render(
       <GroceryList
         weekOffset={0}
@@ -881,7 +971,7 @@ describe('GroceryList — checked item ordering', () => {
   });
 
   it('renders unchecked items before checked items while preserving order within each group', () => {
-    mockGroceryState = { tomato: true, lettuce: false, carrot: true, cucumber: false };
+    seedChecks({ tomato: true, lettuce: false, carrot: true, cucumber: false });
 
     render(
       <GroceryList
@@ -899,7 +989,7 @@ describe('GroceryList — checked item ordering', () => {
   });
 
   it('moves an item down when checked and back up when unchecked', async () => {
-    mockGroceryState = { tomato: false, lettuce: false, carrot: true };
+    seedChecks({ tomato: false, lettuce: false, carrot: true });
     const items = [
       makeItem('tomato', 'Produce'),
       makeItem('lettuce', 'Produce'),
@@ -928,31 +1018,33 @@ describe('GroceryList — checked item ordering', () => {
 });
 
 describe('GroceryList — duplicate display names', () => {
-  it('keeps every duplicate row rendered exactly once while toggling its shared grocery state', async () => {
+  it('keeps duplicate rows rendered exactly once while toggling only the selected identity', async () => {
     const duplicateItems = [
-      makeItem('Eau', 'Pantry', 'water-cup', { quantity: 0.25, unitText: 'tasse' }),
-      makeItem('Eau', 'Pantry', 'water-ml', { quantity: 250, unitText: 'ml' }),
-      makeItem('Eau', 'Pantry', 'water-litre', { quantity: 0.25, unitText: 'L' }),
+      makeItem('Eau', 'Pantry', 'water-cup', { quantity: scalarQuantity(0.25), unitText: 'tasse' }),
+      makeItem('Eau', 'Pantry', 'water-ml', { quantity: scalarQuantity(250), unitText: 'ml' }),
+      makeItem('Eau', 'Pantry', 'water-litre', { quantity: scalarQuantity(0.25), unitText: 'L' }),
     ];
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     const { rerender } = render(<GroceryList weekOffset={0} items={duplicateItems} />);
 
     const rows = () => screen.getAllByTestId('grocery-item-checkbox');
     const labels = () => screen.getAllByTestId('grocery-item-label');
+    const selected = () =>
+      rows().find((row) => row.getAttribute('data-row-id') === duplicateItems[0].rowId)!;
 
     expect(rows()).toHaveLength(3);
     expect(labels()).toHaveLength(3);
     expect(screen.getByText('0/3 items')).toBeInTheDocument();
 
-    fireEvent.click(rows()[0]);
+    fireEvent.click(selected());
     rerender(<GroceryList weekOffset={0} items={duplicateItems} />);
 
     expect(rows()).toHaveLength(3);
     expect(labels()).toHaveLength(3);
-    expect(screen.getByText('3/3 items')).toBeInTheDocument();
-    expect(rows().every((row) => row.getAttribute('aria-checked') === 'true')).toBe(true);
+    expect(screen.getByText('1/3 items')).toBeInTheDocument();
+    expect(rows().filter((row) => row.getAttribute('aria-checked') === 'true')).toHaveLength(1);
 
-    fireEvent.click(rows()[0]);
+    fireEvent.click(selected());
     rerender(<GroceryList weekOffset={0} items={duplicateItems} />);
 
     expect(rows()).toHaveLength(3);
@@ -960,12 +1052,12 @@ describe('GroceryList — duplicate display names', () => {
     expect(screen.getByText('0/3 items')).toBeInTheDocument();
     expect(rows().every((row) => row.getAttribute('aria-checked') === 'false')).toBe(true);
 
-    fireEvent.click(rows()[0]);
+    fireEvent.click(selected());
     rerender(<GroceryList weekOffset={0} items={duplicateItems} />);
 
     expect(rows()).toHaveLength(3);
     expect(labels()).toHaveLength(3);
-    expect(screen.getByText('3/3 items')).toBeInTheDocument();
+    expect(screen.getByText('1/3 items')).toBeInTheDocument();
     expect(consoleError).not.toHaveBeenCalled();
 
     consoleError.mockRestore();
@@ -977,13 +1069,23 @@ describe('GroceryList — optimistic grocery state synchronization', () => {
   const rowCount = () => screen.getAllByTestId('grocery-item-checkbox').length;
 
   it('preserves row cardinality and ordering after a successful optimistic toggle', async () => {
-    mockGroceryState = { Tomato: false, Lettuce: false };
+    seedChecks({ Tomato: false, Lettuce: false });
     const { rerender } = render(<GroceryList weekOffset={0} items={items} />);
 
     fireEvent.click(screen.getByRole('checkbox', { name: /Tomato/ }));
     rerender(<GroceryList weekOffset={0} items={items} />);
 
-    expect(mockToggleGroceryItem).toHaveBeenCalledWith(0, 'Tomato', true, '2025-01-06');
+    await waitFor(() =>
+      expect(mockToggleGroceryItem).toHaveBeenCalledWith(
+        0,
+        expect.objectContaining({
+          rowId: fixtureGroceryId('Tomato'),
+          checked: true,
+          expectedRowVersion: '1',
+        }),
+        '2025-01-06'
+      )
+    );
     expect(rowCount()).toBe(2);
     expect(screen.getAllByTestId('grocery-item-label').map((label) => label.textContent)).toEqual([
       'Lettuce',
@@ -993,13 +1095,13 @@ describe('GroceryList — optimistic grocery state synchronization', () => {
   });
 
   it('rolls back a failed optimistic toggle without changing row cardinality', async () => {
-    mockGroceryState = { Tomato: false, Lettuce: false };
+    seedChecks({ Tomato: false, Lettuce: false });
     mockToggleGroceryItem.mockRejectedValueOnce(new Error('Network error'));
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     const { rerender } = render(<GroceryList weekOffset={0} items={items} />);
 
     fireEvent.click(screen.getByRole('checkbox', { name: /Tomato/ }));
-    await waitFor(() => expect(mockGroceryState.Tomato).toBe(false));
+    await waitFor(() => expect(mockGroceryState[fixtureGroceryId('Tomato')]).toBe(false));
     rerender(<GroceryList weekOffset={0} items={items} />);
 
     expect(rowCount()).toBe(2);
@@ -1015,13 +1117,16 @@ describe('GroceryList — optimistic grocery state synchronization', () => {
 
   it('reconciles repeated remote states without changing duplicate-row cardinality', () => {
     const duplicateItems = [
-      makeItem('Flour', 'Pantry', 'flour-grams', { quantity: 200, unitText: 'g' }),
-      makeItem('Flour', 'Pantry', 'flour-volume', { quantity: 240, unitText: 'ml' }),
+      makeItem('Flour', 'Pantry', 'flour-grams', { quantity: scalarQuantity(200), unitText: 'g' }),
+      makeItem('Flour', 'Pantry', 'flour-volume', {
+        quantity: scalarQuantity(240),
+        unitText: 'ml',
+      }),
     ];
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     const { rerender } = render(<GroceryList weekOffset={0} items={duplicateItems} />);
 
-    mockGroceryState = { Flour: true };
+    seedChecks(Object.fromEntries(duplicateItems.map((item) => [item.rowId!, true])));
     rerender(<GroceryList weekOffset={0} items={duplicateItems} />);
     rerender(<GroceryList weekOffset={0} items={duplicateItems} />);
 
@@ -1036,8 +1141,8 @@ describe('GroceryList — optimistic grocery state synchronization', () => {
 describe('GroceryList — replacement and remount consistency', () => {
   it('renders the same duplicate rows after an equivalent replacement and remount', () => {
     const items = [
-      makeItem('Eau', 'Pantry', 'water-cup', { quantity: 0.25, unitText: 'tasse' }),
-      makeItem('Eau', 'Pantry', 'water-ml', { quantity: 250, unitText: 'ml' }),
+      makeItem('Eau', 'Pantry', 'water-cup', { quantity: scalarQuantity(0.25), unitText: 'tasse' }),
+      makeItem('Eau', 'Pantry', 'water-ml', { quantity: scalarQuantity(250), unitText: 'ml' }),
     ];
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     const { rerender, unmount } = render(<GroceryList weekOffset={0} items={items} />);
@@ -1057,7 +1162,7 @@ describe('GroceryList — replacement and remount consistency', () => {
 describe('GroceryList — section completion UI', () => {
   it('shows percentage badge when section is not complete', () => {
     // Only one of two items checked
-    mockGroceryState = { tomato: true, lettuce: false };
+    seedChecks({ tomato: true, lettuce: false });
 
     renderList();
 
@@ -1069,7 +1174,7 @@ describe('GroceryList — section completion UI', () => {
   });
 
   it('shows percentage badge when no items are checked', () => {
-    mockGroceryState = { tomato: false, lettuce: false };
+    seedChecks({ tomato: false, lettuce: false });
 
     renderList();
 
@@ -1079,7 +1184,7 @@ describe('GroceryList — section completion UI', () => {
 
   it('shows checkmark icon when all items in a section are checked', () => {
     // All items checked
-    mockGroceryState = { tomato: true, lettuce: true };
+    seedChecks({ tomato: true, lettuce: true });
 
     renderList();
 
@@ -1091,7 +1196,7 @@ describe('GroceryList — section completion UI', () => {
   });
 
   it('applies sage green header background when section is complete', () => {
-    mockGroceryState = { tomato: true, lettuce: true };
+    seedChecks({ tomato: true, lettuce: true });
 
     renderList();
 
@@ -1100,7 +1205,7 @@ describe('GroceryList — section completion UI', () => {
   });
 
   it('applies gradient header background when section is not complete', () => {
-    mockGroceryState = { tomato: true, lettuce: false };
+    seedChecks({ tomato: true, lettuce: false });
 
     renderList();
 
@@ -1110,7 +1215,7 @@ describe('GroceryList — section completion UI', () => {
 
   it('does not show completion state when section has zero items', () => {
     // No items → empty state, no section cards rendered
-    mockGroceryState = {};
+    seedChecks({});
 
     render(<GroceryList weekOffset={0} items={[]} />);
 
@@ -1121,13 +1226,13 @@ describe('GroceryList — section completion UI', () => {
 
 describe('GroceryList — collapsible sections', () => {
   it('keeps a section open when its final ingredient is checked', () => {
-    mockGroceryState = { tomato: true, lettuce: false };
+    seedChecks({ tomato: true, lettuce: false });
     const { rerender } = renderList();
     const header = screen.getByRole('button', { name: /Produce/ });
 
     expect(header).toHaveAttribute('aria-expanded', 'true');
 
-    mockGroceryState = { tomato: true, lettuce: true };
+    seedChecks({ tomato: true, lettuce: true });
     rerender(<GroceryList weekOffset={0} items={ITEMS} />);
 
     expect(header).toHaveAttribute('aria-expanded', 'true');
@@ -1135,7 +1240,7 @@ describe('GroceryList — collapsible sections', () => {
   });
 
   it('defaults completed sections to collapsed and re-collapses them when the app returns', () => {
-    mockGroceryState = { tomato: true, lettuce: true };
+    seedChecks({ tomato: true, lettuce: true });
     renderList();
     const header = screen.getByRole('button', { name: /Produce/ });
 
@@ -1197,7 +1302,7 @@ describe('GroceryList — quantity hints', () => {
         weekOffset={0}
         items={[
           makeItem('Potato', 'Produce', 'potato', {
-            quantity: 1500,
+            quantity: scalarQuantity(1500),
             unitText: 'g',
           }),
         ]}
@@ -1231,7 +1336,7 @@ describe('GroceryList — quantity hints', () => {
         weekOffset={0}
         items={[
           makeItem('Milk', 'Pantry', 'milk', {
-            quantity: 2,
+            quantity: scalarQuantity(2),
             unitText: null,
           }),
         ]}
@@ -1311,7 +1416,7 @@ describe('GroceryList — reclassify affordance', () => {
   });
 
   it('preserves checked state when the item moves sections', async () => {
-    mockGroceryState = { Tomato: true };
+    seedChecks({ Tomato: true });
     vi.mocked(reclassifyIngredient).mockResolvedValue(undefined);
     renderStoreBacked([makeItem('Tomato', 'Produce', 'tomato')]);
 
@@ -1324,8 +1429,11 @@ describe('GroceryList — reclassify affordance', () => {
   it('moves only the selected duplicate-display-name line without cloning either row', async () => {
     vi.mocked(reclassifyIngredient).mockResolvedValue(undefined);
     renderStoreBacked([
-      makeItem('Flour', 'Produce', 'flour-grams', { quantity: 200, unitText: 'g' }),
-      makeItem('Flour', 'Produce', 'flour-volume', { quantity: 240, unitText: 'ml' }),
+      makeItem('Flour', 'Produce', 'flour-grams', { quantity: scalarQuantity(200), unitText: 'g' }),
+      makeItem('Flour', 'Produce', 'flour-volume', {
+        quantity: scalarQuantity(240),
+        unitText: 'ml',
+      }),
     ]);
 
     fireEvent.click(screen.getAllByTestId('reclassify-btn')[0]);
@@ -1391,6 +1499,7 @@ describe('authoritative grocery entry freshness', () => {
         days: [],
         groceryItems: ITEMS,
         groceryState: {},
+        groceryListVersion: '2',
         groceryRefresh: { status, version: 'remote' },
       });
       renderList();
@@ -1406,7 +1515,7 @@ describe('honest quantity completeness', () => {
   it('identifies a known subtotal and unresolved row without warning for to-taste content', () => {
     const partial = {
       ...makeItem('pasta', 'Pantry'),
-      quantity: 400,
+      quantity: scalarQuantity(400),
       unitText: 'g',
       quantityComplete: false,
     };
@@ -1446,19 +1555,24 @@ describe('prior checked amount review', () => {
   it('keeps a complete current total truthful while reviewing an unknown prior check', async () => {
     const item = {
       ...makeItem('pasta', 'Pantry'),
-      quantity: 600,
+      quantity: scalarQuantity(600),
       unitText: 'g',
       recipeIds: ['11111111-1111-4111-8111-111111111111'],
       quantityComplete: true,
       checkReviewReason: 'prior_amount_unknown',
     } as any;
-    renderStoreBacked([item, { ...item, displayName: 'tomato', normalizedKey: 'tomato' }]);
+    renderStoreBacked([
+      item,
+      {
+        ...item,
+        rowId: fixtureGroceryId('tomato'),
+        displayName: 'tomato',
+        normalizedKey: 'tomato',
+      },
+    ]);
     expect(screen.getAllByTestId('grocery-item-quantity-hint')[0]).toHaveTextContent('600');
-    expect(screen.getAllByTestId('grocery-check-review')).toHaveLength(1);
-    expect(screen.getByTestId('grocery-check-review')).toHaveTextContent(
-      'Review previously checked amounts.'
-    );
-    expect(screen.getAllByTestId('grocery-amount-review')).toHaveLength(2);
+    expect(screen.queryByTestId('grocery-check-review')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('grocery-amount-review')).not.toBeInTheDocument();
     expect(screen.queryByText(/600.*known/)).not.toBeInTheDocument();
     expect(screen.queryByTestId('grocery-portions-summary')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Source recipes for pasta' }));
@@ -1470,7 +1584,7 @@ describe('recipe source titles', () => {
   const id = '660e8400-e29b-41d4-a716-446655440013';
   const sourceItem = (name = 'pasta') => ({
     ...makeItem(name, 'Pantry'),
-    quantity: 400,
+    quantity: scalarQuantity(400),
     unitText: 'g',
     quantityComplete: true,
     recipeIds: [id, id] as any,

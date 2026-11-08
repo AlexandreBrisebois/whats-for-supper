@@ -70,6 +70,10 @@ vi.mock('@/lib/imageUtils', () => ({
   getImageUrl: (value: string | null | undefined) => value ?? '',
 }));
 
+// Each independent test begins in a fresh browser tab. Individual recovery
+// scenarios deliberately remount within their test to retain session storage.
+beforeEach(() => sessionStorage.clear());
+
 describe('RecipeDetailSheet', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -212,6 +216,9 @@ describe('RecipeDetailSheet', () => {
     await screen.findByText('Could not save changes. Try again.');
     expect(input).toHaveValue('3');
     expect(screen.getByTestId('recipe-servings')).toHaveTextContent('4 servings');
+    expect(screen.getByTestId('recipe-save-edits')).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Check saved recipe' }));
+    await waitFor(() => expect(screen.getByTestId('recipe-save-edits')).toBeEnabled());
     mockUpdateRecipe.mockResolvedValueOnce(undefined);
     fireEvent.click(screen.getByTestId('recipe-save-edits'));
     await waitFor(() => expect(screen.queryByTestId('recipe-edit-servings-input')).toBeNull());
@@ -273,7 +280,10 @@ describe('RecipeDetailSheet', () => {
     await screen.findByRole('heading', { name: 'Ingredients' });
     mockGetRecipe.mockResolvedValue(known);
     view.rerender(<RecipeDetailSheet {...editProps} />);
-    const input = await enterServingsEdit();
+    // Returning to this tab's recipe recovers the pending original draft.
+    const input = await screen.findByTestId('recipe-edit-servings-input');
+    expect(input).toHaveValue('3');
+    expect(screen.getByTestId('recipe-save-edits')).toBeDisabled();
     fireEvent.change(input, { target: { value: '2' } });
     await act(async () => finish());
     expect(input).toBeInTheDocument();

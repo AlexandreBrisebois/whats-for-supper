@@ -167,17 +167,20 @@ public class RecipeController(
 
         try
         {
-            if (!await imageService.HasHeroImage(id))
-            {
-                return BadRequest(new { message = "Recipe must have a hero image before it can be shared." });
-            }
-
             var result = await recipeService.ExportRecipeShareBundle(id);
             return Ok(result);
+        }
+        catch (RecipeContentConflictException conflict)
+        {
+            return Conflict(new RecipeContentConflictDto("recipe_content_conflict", conflict.CurrentContentRevision, conflict.UpgradeRequired));
         }
         catch (KeyNotFoundException ex)
         {
             return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
         }
         catch (Exception ex)
         {
@@ -194,8 +197,16 @@ public class RecipeController(
     [HttpPatch("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateRecipeDto dto)
     {
-        var result = await recipeService.UpdateRecipe(id, dto);
-        return Ok(result);
+        try
+        {
+            var result = await recipeService.UpdateRecipe(id, dto);
+            return Ok(result);
+        }
+        catch (RecipeContentConflictException conflict)
+        {
+            return Conflict(new RecipeContentConflictDto("recipe_content_conflict",
+                conflict.CurrentContentRevision, conflict.UpgradeRequired));
+        }
     }
 
     [HttpPost("{id:guid}/import-report")]
@@ -429,6 +440,11 @@ public class RecipeController(
         {
             var newIndex = await recipeService.AddOriginalImageAsync(id, file);
             return Created($"/api/recipes/{id}/original/{newIndex}", new { id = newIndex });
+        }
+        catch (RecipeContentConflictException conflict)
+        {
+            return Conflict(new RecipeContentConflictDto("recipe_content_conflict",
+                conflict.CurrentContentRevision, conflict.UpgradeRequired));
         }
         catch (KeyNotFoundException ex)
         {

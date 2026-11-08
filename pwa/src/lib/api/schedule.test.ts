@@ -1,31 +1,55 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-const { send } = vi.hoisted(() => ({ send: vi.fn() }));
-vi.mock('./demo-session', () => ({ demoFetch: send }));
-vi.mock('./api-client', () => ({ requestAdapter: { baseUrl: '' }, apiClient: {} }));
-vi.mock('@/store/familyStore', () => ({
-  useFamilyStore: { getState: () => ({ selectedFamilyMemberId: 'member' }) },
+import { DateOnly } from '@microsoft/kiota-abstractions';
+import { MOCK_IDS } from '@/testing/mock-ids';
+const { itemPatch, bulkPatch } = vi.hoisted(() => ({ itemPatch: vi.fn(), bulkPatch: vi.fn() }));
+vi.mock('./api-client', () => ({
+  apiClient: {
+    api: {
+      schedule: {
+        byWeekOffset: () => ({ grocery: { item: { patch: itemPatch }, patch: bulkPatch } }),
+      },
+    },
+  },
 }));
 import { useSchedule } from './schedule';
-beforeEach(() =>
-  send.mockReset().mockResolvedValue({ ok: true, json: async () => ({ data: { pasta: true } }) })
-);
-describe('captured grocery references preserve PATCH body compatibility', () => {
-  it.each([true, false])('pins item=%s without wrapping its existing body', async (item) => {
-    const api = useSchedule();
-    if (item) await api.toggleGroceryItem(1, 'pasta', true, '2026-10-05');
-    else await api.updateGroceryState(1, { pasta: true, oil: false }, '2026-10-05');
-    expect(send).toHaveBeenCalledWith(
-      `/api/schedule/1/grocery${item ? '/item' : ''}?referenceWeekStartDate=2026-10-05`,
-      expect.objectContaining({
-        method: 'PATCH',
-        body: JSON.stringify(
-          item ? { ingredientName: 'pasta', checked: true } : { pasta: true, oil: false }
-        ),
-      })
-    );
+const outcome = {
+  weekStartDate: DateOnly.parse('2026-10-12'),
+  listVersion: '2',
+  checks: { additionalData: { [MOCK_IDS.GROCERY_ROW_01]: true } },
+  rows: [],
+};
+beforeEach(() => {
+  itemPatch.mockReset().mockResolvedValue(outcome);
+  bulkPatch.mockReset().mockResolvedValue({ data: outcome });
+});
+describe('generated grocery client requests', () => {
+  it('pins the captured reference and sends the row guard and mutation identity', async () => {
+    const request = {
+      rowId: MOCK_IDS.GROCERY_ROW_01,
+      weekStartDate: DateOnly.parse('2026-10-12'),
+      expectedRowVersion: '1',
+      checked: true,
+      clientMutationId: MOCK_IDS.GROCERY_ROW_02,
+    };
+    expect(await useSchedule().toggleGroceryItem(1, request, '2026-10-05')).toBe(outcome);
+    const [body, config] = itemPatch.mock.calls[0];
+    expect(body).toBe(request);
+    expect(String(config.queryParameters.referenceWeekStartDate)).toBe('2026-10-05');
+    expect(config.options).toHaveLength(1);
   });
-  it('retains legacy omission', async () => {
-    await useSchedule().toggleGroceryItem(0, 'pasta', true);
-    expect(send).toHaveBeenCalledWith('/api/schedule/0/grocery/item', expect.any(Object));
+  it('sends a guarded bulk replacement and returns its authoritative outcome', async () => {
+    const request = {
+      weekStartDate: DateOnly.parse('2026-10-12'),
+      expectedListVersion: '1',
+      checks: { additionalData: { [MOCK_IDS.GROCERY_ROW_01]: false } },
+      clientMutationId: MOCK_IDS.GROCERY_ROW_02,
+    };
+    expect(await useSchedule().updateGroceryState(1, request, '2026-10-05')).toBe(outcome);
+    expect(bulkPatch.mock.calls[0][0]).toBe(request);
+  });
+  it('does not silently accept a lost or missing outcome', async () => {
+    itemPatch.mockResolvedValue(undefined);
+    await expect(useSchedule().toggleGroceryItem(0, {})).rejects.toThrow('Missing authoritative');
+    expect(itemPatch).toHaveBeenCalledTimes(1);
   });
 });

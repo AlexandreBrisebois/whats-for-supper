@@ -33,14 +33,15 @@ public partial class SupperServingsPostgresTests(ITestOutputHelper output)
                 var recipe = new Recipe { Name = "Pasta", Servings = 2, Ingredients = "[\"200 g pasta\"]", RawMetadata = "{\"recipeIngredient\":[\"200 g pasta\"],\"supply\":[{\"name\":\"pasta\",\"quantity\":200,\"unitText\":\"g\"}]}" };
                 recipeId = recipe.Id;
                 db.Recipes.Add(recipe);
+                var unrelated = new Recipe { Name = "Unrelated lunch", Ingredients = "[\"1 g salt\"]", RawMetadata = "{\"recipeIngredient\":[\"1 g salt\"],\"supply\":[{\"name\":\"salt\",\"quantity\":1,\"unitText\":\"g\"}]}" };
+                db.Recipes.Add(unrelated); db.CalendarEvents.Add(new CalendarEvent { Date = Wednesday, MealSlot = 1, RecipeId = unrelated.Id });
                 db.FamilySettings.Add(new() { Key = SupperServingsService.DefaultKey, Value = JsonSerializer.SerializeToElement(new { servings = 2 }) });
                 db.CalendarEvents.Add(new CalendarEvent { Date = Wednesday, RecipeId = recipe.Id, Status = CalendarEventStatus.Planned, VoteCount = 7 });
                 await db.SaveChangesAsync();
                 await scope.ServiceProvider.GetRequiredService<GroceryRecomputeService>().RecomputeForWeekAsync(new(2026,10,12), default);
-                var plan = await db.WeeklyPlans.SingleAsync();
-                plan.GroceryState = "{\"pasta\":true,\"unrelated\":true}";
-                await db.SaveChangesAsync();
                 using var client = factory.CreateAuthenticatedClient();
+                await GroceryTestRows.CheckAsync(client, new(2026,10,12));
+                await GroceryTestRows.CheckAsync(client, new(2026,10,12), "salt");
                 var baseline = await Read(client);
                 Assert.Equal(2, baseline.GetProperty("defaultServings").GetInt32());
                 Assert.Equal("explicit", baseline.GetProperty("defaultServingsSource").GetString());
@@ -60,7 +61,7 @@ public partial class SupperServingsPostgresTests(ITestOutputHelper output)
                 Assert.Single(job.Tasks, x => x.ProcessorName == "RefreshSupperGroceries");
                 var beforeWorker = await db.WeeklyPlans.SingleAsync();
                 Assert.Contains("200", beforeWorker.GroceryItems);
-                Assert.True(JsonDocument.Parse(beforeWorker.GroceryState).RootElement.GetProperty("pasta").GetBoolean());
+                Assert.True(GroceryTestRows.Checked(beforeWorker,"pasta"));
                 output.WriteLine("Portions acknowledged and durable pending work exists while groceries remain at 200 g; host stops before execution.");
             }
             // A new application scope/host resumes the committed task rather than replaying PUT.
@@ -75,20 +76,20 @@ public partial class SupperServingsPostgresTests(ITestOutputHelper output)
             Assert.Equal("current", current.GetProperty("groceryRefresh").GetProperty("status").GetString());
             using var schedule = JsonDocument.Parse(await reader.GetStringAsync("/api/schedule?referenceWeekStartDate=2026-10-12"));
             var groceries = schedule.RootElement.GetProperty("data");
-            Assert.Equal(600, groceries.GetProperty("groceryItems")[0].GetProperty("quantity").GetDouble());
-            Assert.False(groceries.GetProperty("groceryState").GetProperty("pasta").GetBoolean());
-            Assert.True(groceries.GetProperty("groceryState").GetProperty("unrelated").GetBoolean());
+            Assert.Equal(600, groceries.GetProperty("groceryItems")[0].GetProperty("quantity").ExactScalar());
+            Assert.False(GroceryTestRows.Checked(groceries,"pasta"));
+            Assert.True(GroceryTestRows.Checked(groceries,"salt"));
             Assert.NotEqual(JsonValueKind.Null, current.GetProperty("groceryRefresh").GetProperty("resetSummaryVersion").ValueKind);
             stored.ChangeTracker.Clear();
             var original = await stored.Recipes.SingleAsync(x => x.Id == recipeId);
             Assert.Equal(2, original.Servings); Assert.Equal("[\"200 g pasta\"]", original.Ingredients);
-            var occurrence = await stored.CalendarEvents.SingleAsync();
+            var occurrence = await stored.CalendarEvents.SingleAsync(x=>x.MealSlot==0);
             Assert.Equal(Wednesday, occurrence.Date); Assert.Equal(7, occurrence.VoteCount);
             // A later shopper check must survive an unchanged retry of the task.
-            var updatedPlan = await stored.WeeklyPlans.SingleAsync(); updatedPlan.GroceryState = "{\"pasta\":true,\"unrelated\":true}"; await stored.SaveChangesAsync();
+            await GroceryTestRows.CheckAsync(reader,new(2026,10,12));
             await processor.ExecuteAsync(task, default);
             stored.ChangeTracker.Clear();
-            Assert.True(JsonDocument.Parse((await stored.WeeklyPlans.SingleAsync()).GroceryState).RootElement.GetProperty("pasta").GetBoolean());
+            Assert.True(GroceryTestRows.Checked(await stored.WeeklyPlans.SingleAsync(),"pasta"));
         });
     }
 

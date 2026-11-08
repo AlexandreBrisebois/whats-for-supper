@@ -993,18 +993,20 @@ public class ScheduleServiceTests : IAsyncLifetime
         var daysToMonday = ((int)today.DayOfWeek - 1 + 7) % 7;
         var monday = today.AddDays(-daysToMonday);
 
-        var groceryMap = new Dictionary<string, bool>
-        {
-            { "Chicken", true },
-            { "Broccoli", false }
-        };
+        var chicken = Guid.NewGuid().ToString("D");
+        var broccoli = Guid.NewGuid().ToString("D");
+        var groceryMap = new Dictionary<string, bool> { [chicken] = true, [broccoli] = false };
+        var rows = new[] { (chicken, "Chicken"), (broccoli, "Broccoli") }.Select(entry =>
+            new GroceryLineItemDto(entry.Item2, entry.Item2.ToLowerInvariant(), "Grocery", null, null, [])
+            { RowId = entry.Item1, RowVersion = "1", WeekStartDate = monday, DemandIdentity = entry.Item2 });
 
         _db.WeeklyPlans.Add(new WeeklyPlan
         {
             Id = Guid.NewGuid(),
             WeekStartDate = monday,
             Status = WeeklyPlanStatus.Draft,
-            GroceryState = System.Text.Json.JsonSerializer.Serialize(groceryMap)
+            GroceryState = System.Text.Json.JsonSerializer.Serialize(groceryMap),
+            GroceryItems = System.Text.Json.JsonSerializer.Serialize(rows)
         });
         await _db.SaveChangesAsync();
 
@@ -1014,8 +1016,8 @@ public class ScheduleServiceTests : IAsyncLifetime
         // Assert
         Assert.NotNull(result.GroceryState);
         Assert.Equal(2, result.GroceryState.Count);
-        Assert.True(result.GroceryState["Chicken"]);
-        Assert.False(result.GroceryState["Broccoli"]);
+        Assert.True(result.GroceryState[chicken]);
+        Assert.False(result.GroceryState[broccoli]);
     }
 
     [Fact]
@@ -1027,6 +1029,8 @@ public class ScheduleServiceTests : IAsyncLifetime
         var result = await _service.GetScheduleAsync(0);
 
         // Assert
-        Assert.Null(result.GroceryState);
+        Assert.NotNull(result.GroceryState);
+        Assert.Empty(result.GroceryState);
+        Assert.Null(result.GroceryListVersion);
     }
 }

@@ -6,7 +6,7 @@ Different unit rows share name-level checks, and every successful extra mutation
 
 ## Outcome and Scope
 
-Row-scoped checks, proven-increase reset, removal of prior-unknown acknowledgement, focus/scroll preservation and category-control parity. Can ship before canonical facts using a reusable row identity. One-time ambiguous old check conversion remains held for approval.
+Row-scoped checks, proven-increase reset, removal of prior-unknown acknowledgement, focus/scroll preservation and category-control parity. Can ship before canonical facts using a reusable row identity. At the approved no-active-list upgrade, the next recipe-derived list starts new and unchecked; historical list/check data and extras remain preserved.
 
 ## What Changes
 

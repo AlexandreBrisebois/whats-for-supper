@@ -81,6 +81,7 @@ try
     builder.Services.AddSingleton<IRecipeStore, LocalRecipeStore>();
     builder.Services.AddSingleton<IPromptRepository, EmbeddedPromptRepository>();
     builder.Services.AddScoped<RecipeRepository>();
+    builder.Services.AddScoped<RecipeFilePublicationStore>();
     builder.Services.AddScoped<WorkflowRepository>();
     builder.Services.AddScoped<IWorkflowOrchestrator, WorkflowOrchestrator>();
     builder.Services.AddScoped<ManagementService>();
@@ -169,36 +170,33 @@ try
 
     builder.Services.AddScoped<IWorkflowProcessor>(sp => new WebAcquisitionAgent(
         sp.GetRequiredService<IChatClient>(),
-        sp.GetRequiredService<RecipeRepository>(),
+        sp.GetRequiredService<RecipeFilePublicationStore>(),
         sp.GetRequiredService<IPromptRepository>(),
         sp.GetRequiredService<HttpClient>(),
         sp.GetRequiredService<ILogger<WebAcquisitionAgent>>()));
 
     builder.Services.AddScoped<IWorkflowProcessor>(sp => new RecipeAgent(
         sp.GetRequiredService<IChatClient>(),
-        sp.GetRequiredService<RecipeRepository>(),
         sp.GetRequiredService<IPromptRepository>(),
         sp.GetRequiredService<IConfiguration>(),
         sp.GetRequiredService<ILogger<RecipeAgent>>(),
-        sp.GetRequiredService<RecipeDbContext>(),
+        sp.GetRequiredService<RecipeFilePublicationStore>(),
         "ExtractRecipe"));
 
     builder.Services.AddScoped<IWorkflowProcessor>(sp => new RecipeAgent(
         sp.GetRequiredService<IChatClient>(),
-        sp.GetRequiredService<RecipeRepository>(),
         sp.GetRequiredService<IPromptRepository>(),
         sp.GetRequiredService<IConfiguration>(),
         sp.GetRequiredService<ILogger<RecipeAgent>>(),
-        sp.GetRequiredService<RecipeDbContext>(),
+        sp.GetRequiredService<RecipeFilePublicationStore>(),
         "GenerateDescription"));
 
     builder.Services.AddScoped<IWorkflowProcessor>(sp => new RecipeAgent(
         sp.GetRequiredService<IChatClient>(),
-        sp.GetRequiredService<RecipeRepository>(),
         sp.GetRequiredService<IPromptRepository>(),
         sp.GetRequiredService<IConfiguration>(),
         sp.GetRequiredService<ILogger<RecipeAgent>>(),
-        sp.GetRequiredService<RecipeDbContext>(),
+        sp.GetRequiredService<RecipeFilePublicationStore>(),
         "SynthesizeRecipe"));
 
     builder.Services.AddScoped<IWorkflowProcessor, RecipeHeroAgent>();

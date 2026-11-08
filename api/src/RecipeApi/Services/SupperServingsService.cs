@@ -209,6 +209,8 @@ public class SupperServingsService(RecipeDbContext db, IClock clock, DeploymentC
         var parameters = new Dictionary<string, string> { ["weekStartDate"] = plan.WeekStartDate.ToString("yyyy-MM-dd") };
         var definition = new WorkflowDefinition { Parameters = ["weekStartDate"], Tasks = [new() { Name = "refresh", Processor = "RefreshSupperGroceries", Payload = new() { ["weekStartDate"] = "{{weekStartDate}}" } }] };
         var instance = WorkflowOrchestrator.ConstructInstance("supper-grocery-refresh", definition, parameters, now);
+        // Acceptance owns the immutable command; dispatch must never manufacture it.
+        RecipeFilePublicationStore.CaptureDispatchLaunch(instance);
         db.WorkflowInstances.Add(instance);
         plan.ServingInputVersion = version; plan.ServingRefreshStatus = "updating"; plan.ServingRefreshWorkflowId = instance.Id;
     }

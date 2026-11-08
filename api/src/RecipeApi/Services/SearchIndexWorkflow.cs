@@ -25,21 +25,41 @@ public class SearchIndexWorkflow(
     /// </summary>
     public async Task<object?> ExecuteAsync(WorkflowTask task, CancellationToken ct)
     {
-        if (string.IsNullOrEmpty(task.Payload))
-            throw new ArgumentException("Task payload is empty.");
-
-        using var docJson = JsonDocument.Parse(task.Payload);
-        if (!docJson.RootElement.TryGetProperty("recipeId", out var idProp))
-            throw new ArgumentException("Task payload does not contain recipeId.");
-
-        var recipeId = idProp.GetGuid();
-        var jobFingerprint = docJson.RootElement.TryGetProperty("fingerprint", out var fpProp)
-            ? fpProp.GetString() ?? string.Empty
-            : string.Empty;
-
+        var (recipeId, jobFingerprint) = ReadInput(task.Payload);
         await IndexRecipeInternalAsync(recipeId, jobFingerprint, ct);
+        return new { Message = CompletionMessage(recipeId) };
+    }
 
-        return new { Message = $"Indexed recipe {recipeId}" };
+    private static (Guid RecipeId, string Fingerprint) ReadInput(string? payload)
+    {
+        if (string.IsNullOrEmpty(payload))
+            throw new ArgumentException("Task payload is empty.");
+        using var input = JsonDocument.Parse(payload);
+        if (!input.RootElement.TryGetProperty("recipeId", out var id))
+            throw new ArgumentException("Task payload does not contain recipeId.");
+        return (id.GetGuid(), input.RootElement.TryGetProperty("fingerprint", out var fingerprint)
+            ? fingerprint.GetString() ?? string.Empty : string.Empty);
+    }
+
+    private static string CompletionMessage(Guid recipeId) => $"Indexed recipe {recipeId}";
+
+    internal static Guid ValidateOriginalHistory(string? payload, string? returned, string? parameters)
+    {
+        WorkflowProcessorHistory.ReadObservation<JsonElement>(payload ?? "null");
+        var (recipeId, fingerprint) = ReadInput(payload);
+        var original = WorkflowProcessorHistory.ReadObservation<Dictionary<string, string?>>(parameters ?? "null");
+        var result = WorkflowProcessorHistory.ReadObservation<JsonElement>(returned ?? "null");
+        if (recipeId == Guid.Empty || fingerprint != (original.GetValueOrDefault("fingerprint") ?? string.Empty)
+            || result.ValueKind != JsonValueKind.Object || !result.TryGetProperty("message", out var message)
+            || message.ValueKind != JsonValueKind.String || message.GetString() != CompletionMessage(recipeId))
+            throw new InvalidDataException("Original search receipt differs from its invocation.");
+        // The processor treats absent/null/empty fingerprints as an unguarded job.
+        // Their original wire representations remain untouched; this checks the
+        // effective invocation selection, never original source computation.
+        // The same message follows missing/deleted/stale/empty/no-sidecar skips,
+        // demo lexical publication and pending embeddings. It proves no effect.
+        // Unknown result extensions are retained without qualifying their meaning.
+        return recipeId;
     }
 
     /// <summary>

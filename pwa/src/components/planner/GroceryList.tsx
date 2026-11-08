@@ -1,6 +1,24 @@
 'use client';
-import React, { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import React, {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react';
 import Link from 'next/link';
+import { DateOnly } from '@microsoft/kiota-abstractions';
+import { getSchedule } from '@/lib/api/planner';
+import {
+  beginGroceryIntent,
+  finishGroceryIntent,
+  enqueueGroceryIntent,
+  currentGroceryVersion,
+  rememberGroceryVersion,
+  overlayGroceryIntents,
+  isLatestGroceryIntent,
+} from '@/lib/grocery/rowState';
 import { useGroceryRecipeTitles } from './useGroceryRecipeTitles';
 import { demoSession } from '@/lib/api/demo-session';
 import { useFamilyStore } from '@/store/familyStore';
@@ -60,20 +78,31 @@ const AISLE_ICONS: Record<GrocerySection, string> = {
   Grocery: '🛒',
 };
 
+const CATEGORY_BUTTON_CLASS =
+  'min-h-12 min-w-12 shrink-0 rounded-full text-charcoal/60 hover:bg-charcoal/5 focus-visible:outline-2 focus-visible:outline-sage';
+
 function formatQuantityHint(
-  quantity: number | null | undefined,
+  quantity: GroceryLineItemDto['quantity'],
   unitText: string | null | undefined
 ) {
   if (quantity == null || !unitText) return null;
 
-  const rounded = Number.isInteger(quantity)
-    ? quantity.toString()
-    : quantity
-        .toFixed(3)
-        .replace(/\.0+$/, '')
-        .replace(/(\.\d*?)0+$/, '$1');
-
-  return `(${rounded} ${unitText})`;
+  const amount = quantity as {
+    kind?: string;
+    value?: { n?: string; d?: string };
+    min?: { n?: string; d?: string };
+    max?: { n?: string; d?: string };
+  };
+  const scalar = (value?: { n?: string; d?: string }) => {
+    if (!value?.n || !value.d) return null;
+    const number = Number(value.n) / Number(value.d);
+    if (!Number.isFinite(number)) return null;
+    return Number.isInteger(number) ? String(number) : number.toFixed(3).replace(/\.?0+$/, '');
+  };
+  const minimum = scalar(amount.kind === 'scalar' ? amount.value : amount.min);
+  const maximum = amount.kind === 'range' ? scalar(amount.max) : null;
+  if (minimum === null || (amount.kind === 'range' && maximum === null)) return null;
+  return `(${minimum}${maximum !== null ? `–${maximum}` : ''} ${unitText})`;
 }
 
 function matchesOccurrenceIdentity(candidate: GroceryExtraDto, expected: GroceryExtraDto) {
@@ -85,7 +114,10 @@ function matchesOccurrenceIdentity(candidate: GroceryExtraDto, expected: Grocery
 }
 
 function grocerySourceKey(aisle: string, item: GroceryLineItemDto, index: number) {
-  return `${aisle}\u0000${item.normalizedKey ?? ''}\u0000${item.unitText ?? ''}\u0000${index}`;
+  return (
+    item.rowId ??
+    `${aisle}\u0000${item.normalizedKey ?? ''}\u0000${item.unitText ?? ''}\u0000${index}`
+  );
 }
 
 export function GroceryList({
@@ -95,7 +127,7 @@ export function GroceryList({
   onClose,
   isEmbedded,
 }: GroceryListProps) {
-  const { groceryState, setGroceryItemToggle, setGroceryState } = usePlannerStore();
+  const { groceryState, setGroceryItemToggle } = usePlannerStore();
   const [reviewSelection, setReviewSelection] = useState<{
     scope: string;
     key: string;
@@ -188,6 +220,46 @@ export function GroceryList({
   const composerRef = useRef<HTMLDivElement>(null);
   const createAttempt = useRef<{ name: string; week: string; clientId: string } | null>(null);
   const editButtons = useRef(new Map<string, HTMLButtonElement>());
+  const checklistRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const checkFocus = useRef<{
+    control: HTMLButtonElement;
+    adjacent: HTMLElement[];
+    keyboard: boolean;
+    week: string | null;
+    scrollTop: number;
+  } | null>(null);
+  const preserveCheckFocus = (control: HTMLButtonElement, keyboard: boolean) => {
+    if (document.activeElement !== control) return;
+    const controls = Array.from(
+      checklistRef.current?.querySelectorAll<HTMLButtonElement>('[role="checkbox"]') ?? []
+    ).filter((button) => !button.closest('[hidden]'));
+    const index = controls.indexOf(control);
+    checkFocus.current = {
+      control,
+      adjacent: [...controls.slice(index + 1), ...controls.slice(0, index).reverse()],
+      keyboard,
+      week: weekStartDate,
+      scrollTop: scrollRef.current?.scrollTop ?? 0,
+    };
+  };
+  useLayoutEffect(() => {
+    const intent = checkFocus.current;
+    checkFocus.current = null;
+    if (!intent || intent.week !== weekStartDate) return;
+    // Never steal focus from a later user action. DOM reordering/removal can
+    // return focus to body even though the initiating control was focused.
+    if (document.activeElement !== document.body && document.activeElement !== intent.control)
+      return;
+    const target = intent.control.isConnected
+      ? intent.control
+      : intent.keyboard
+        ? (intent.adjacent.find((control) => control.isConnected) ?? headingRef.current)
+        : null;
+    if (target && document.activeElement !== target) target.focus({ preventScroll: true });
+    if (scrollRef.current) scrollRef.current.scrollTop = intent.scrollTop;
+  });
   const composerIsEligible =
     absoluteMonday(weekStartDate) !== null &&
     absoluteMonday(weekStartDate) === absoluteMonday(currentWeekStartDate);
@@ -245,7 +317,8 @@ export function GroceryList({
 
   const mutateExtra = async (
     extra: GroceryExtraDto,
-    change: { name: string } | { checked: boolean } | { grocerySection: string }
+    change: { name: string } | { checked: boolean } | { grocerySection: string },
+    checkControl?: { element: HTMLButtonElement; keyboard: boolean }
   ) => {
     const id = extra.id;
     if (!id || pendingExtras.has(id)) return;
@@ -263,6 +336,7 @@ export function GroceryList({
     else if ('checked' in change) upsertExtra({ ...extra, ...change } as GroceryExtraDto);
     try {
       const authoritative = await updateGroceryExtra(extra, change);
+      if (checkControl) preserveCheckFocus(checkControl.element, checkControl.keyboard);
       if (!matchesOccurrenceIdentity(authoritative, extra)) {
         markExtraError(id);
         markExtraPending(id, false);
@@ -275,9 +349,13 @@ export function GroceryList({
         absoluteMonday(String(authoritative.occurrenceWeekStartDate ?? ''));
       if (isProjected && authoritative.checked) removeExtra(id);
       else upsertExtra(authoritative);
-      setEditingExtra(null);
-      requestAnimationFrame(() => editButtons.current.get(id)?.focus());
+      if ('name' in change) {
+        setEditingExtra(null);
+        requestAnimationFrame(() => editButtons.current.get(id)?.focus({ preventScroll: true }));
+      }
+      if ('grocerySection' in change) setReclassifyOpen(null);
     } catch (error) {
+      if (checkControl) preserveCheckFocus(checkControl.element, checkControl.keyboard);
       const conflict = error as { current?: GroceryExtraDto | null; absent?: boolean };
       if (conflict.current && matchesOccurrenceIdentity(conflict.current, extra))
         upsertExtra(conflict.current);
@@ -442,7 +520,7 @@ export function GroceryList({
           const aisleExtras = extrasBySection[aisle] ?? [];
           return (
             aisleItems.length + aisleExtras.length > 0 &&
-            aisleItems.every((item) => groceryState[item.displayName ?? '']) &&
+            aisleItems.every((item) => groceryState[item.rowId ?? '']) &&
             aisleExtras.every((extra) => extra.checked)
           );
         })
@@ -452,21 +530,6 @@ export function GroceryList({
   const [collapsedAisles, setCollapsedAisles] = useState<Set<GrocerySection>>(
     () => new Set(completedAisles)
   );
-
-  useEffect(() => {
-    // Initialize grocery state if not already set and we have items
-    if (items.length > 0 && Object.keys(groceryState).length === 0) {
-      const initialState = items.reduce(
-        (acc, item) => {
-          const key = item.displayName ?? '';
-          acc[key] = false;
-          return acc;
-        },
-        {} as Record<string, boolean>
-      );
-      setGroceryState(initialState);
-    }
-  }, [items, groceryState, setGroceryState]);
 
   useEffect(() => {
     const collapseCompletedAislesOnReturn = () => {
@@ -489,38 +552,94 @@ export function GroceryList({
     return () => document.removeEventListener('visibilitychange', collapseCompletedAislesOnReturn);
   }, [completedAisles]);
 
-  const handleToggle = async (ingredientName: string) => {
+  const handleToggle = async (item: GroceryLineItemDto) => {
     const captured = useWeekStore.getState();
-    const capturedWeek = captured.weekStartDate;
-    const capturedReference = captured.calendar?.referenceWeekStartDate;
-    const newState = !groceryState[ingredientName];
-    setGroceryItemToggle(ingredientName, newState);
-
-    // Persist to API — single item only, merged server-side.
-    // Sending the full map would cause concurrent toggles by two family members
-    // to overwrite each other (last-writer-wins on the whole map).
+    const week = absoluteMonday(item.weekStartDate) ?? captured.weekStartDate;
+    const reference = captured.calendar?.referenceWeekStartDate;
+    const id = item.rowId;
+    if (!id || !week || !reference || !item.rowVersion) return;
+    const intended = !usePlannerStore.getState().groceryState[id];
+    const token = beginGroceryIntent(week, id, intended);
+    setErrorItems((previous) => {
+      const next = new Set(previous);
+      next.delete(id);
+      return next;
+    });
+    setGroceryItemToggle(id, intended);
+    const reconcile = () => {
+      const state = useWeekStore.getState();
+      if (state.weekStartDate === week && state.groceryVersionWeek === week)
+        usePlannerStore
+          .getState()
+          .setGroceryState(overlayGroceryIntents(week, state.authoritativeGroceryChecks));
+    };
     try {
-      await toggleGroceryItem(weekOffset, ingredientName, newState, capturedReference);
-      if (newState && useWeekStore.getState().weekStartDate === capturedWeek)
-        void useWeekStore.getState().refreshGroceries();
+      await enqueueGroceryIntent(week, id, async () => {
+        const current = useWeekStore.getState();
+        const row =
+          current.weekStartDate === week
+            ? current.groceryItems.find((row) => row.rowId === id)
+            : undefined;
+        try {
+          const outcome = await toggleGroceryItem(
+            weekOffset,
+            {
+              rowId: id,
+              weekStartDate: DateOnly.parse(week)!,
+              checked: intended,
+              expectedRowVersion: currentGroceryVersion(
+                week,
+                id,
+                row?.rowVersion ?? item.rowVersion!
+              ),
+              clientMutationId: crypto.randomUUID(),
+            },
+            reference
+          );
+          if (!outcome?.rowVersion || !outcome.listVersion || !outcome.rows || !outcome.checks)
+            throw new Error('Missing authoritative grocery outcome.');
+          rememberGroceryVersion(week, id, outcome.rowVersion);
+          useWeekStore.getState().applyGrocerySnapshot({
+            weekStartDate: outcome.weekStartDate,
+            groceryListVersion: outcome.listVersion,
+            groceryItems: outcome.rows,
+            groceryState: outcome.checks,
+          });
+        } catch (error) {
+          // Unknown replies are read before any later queued intention. Never
+          // automatically replay the failed mutation or restore a whole old map.
+          try {
+            const snapshot = await getSchedule(weekOffset, reference, true);
+            const authoritative = snapshot?.groceryItems?.find((row) => row.rowId === id);
+            if (authoritative?.rowVersion)
+              rememberGroceryVersion(week, id, authoritative.rowVersion);
+            if (snapshot) useWeekStore.getState().applyGrocerySnapshot(snapshot);
+          } catch {
+            /* Keep the last confirmed state and an explicit row error. */
+          }
+          throw error;
+        }
+      });
     } catch (error) {
       console.error('Failed to save grocery state:', error);
       if (
-        useWeekStore.getState().weekStartDate !== capturedWeek ||
-        usePlannerStore.getState().groceryState[ingredientName] !== newState
-      )
-        return;
-      // Revert the single toggled item only
-      setGroceryItemToggle(ingredientName, !newState);
-      // Show per-item error indicator, auto-clear after 3 seconds
-      setErrorItems((prev) => new Set(prev).add(ingredientName));
-      setTimeout(() => {
-        setErrorItems((prev) => {
-          const next = new Set(prev);
-          next.delete(ingredientName);
-          return next;
-        });
-      }, 3000);
+        useWeekStore.getState().weekStartDate === week &&
+        isLatestGroceryIntent(week, id, token)
+      ) {
+        setErrorItems((previous) => new Set(previous).add(id));
+        setTimeout(
+          () =>
+            setErrorItems((previous) => {
+              const next = new Set(previous);
+              next.delete(id);
+              return next;
+            }),
+          3000
+        );
+      }
+    } finally {
+      finishGroceryIntent(week, id, token);
+      reconcile();
     }
   };
 
@@ -623,8 +742,13 @@ export function GroceryList({
                 role="checkbox"
                 aria-checked={extra.checked === true}
                 aria-label={`${extra.checked ? t('grocery.uncheck', 'Uncheck') : t('grocery.check', 'Check')} ${extra.name ?? ''}`}
-                disabled={pending}
-                onClick={() => void mutateExtra(extra, { checked: extra.checked !== true })}
+                aria-disabled={pending}
+                onClick={(event) => {
+                  if (pending) return;
+                  const control = { element: event.currentTarget, keyboard: event.detail === 0 };
+                  preserveCheckFocus(control.element, control.keyboard);
+                  void mutateExtra(extra, { checked: extra.checked !== true }, control);
+                }}
                 className="flex min-h-11 min-w-0 flex-1 items-center gap-3 text-left focus:outline-none focus:ring-2 focus:ring-sage"
                 data-testid="grocery-extra-checkbox"
               >
@@ -668,11 +792,12 @@ export function GroceryList({
               <>
                 <button
                   type="button"
-                  className="min-h-11 min-w-11 rounded-full focus:ring-2 focus:ring-sage"
+                  className={CATEGORY_BUTTON_CLASS}
                   aria-label={`${t('grocery.changeSection', 'Change section for')} ${extra.name ?? ''}`}
+                  aria-expanded={reclassifyOpen === id}
                   onClick={() => setReclassifyOpen(reclassifyOpen === id ? null : id)}
                 >
-                  <Tag size={16} className="mx-auto" />
+                  <Tag size={16} className="mx-auto" aria-hidden="true" />
                 </button>
                 <button
                   type="button"
@@ -705,7 +830,10 @@ export function GroceryList({
                 key={nextSection}
                 disabled={pending}
                 className="min-h-11 rounded-full bg-charcoal/5 px-3 text-xs font-bold focus:ring-2 focus:ring-sage"
-                onClick={() => void mutateExtra(extra, { grocerySection: nextSection })}
+                onClick={() => {
+                  if (extra.grocerySection === nextSection) setReclassifyOpen(null);
+                  else void mutateExtra(extra, { grocerySection: nextSection });
+                }}
               >
                 {t(`grocery.aisles.${nextSection}`, nextSection)}
               </button>
@@ -725,6 +853,7 @@ export function GroceryList({
 
   return (
     <div
+      ref={checklistRef}
       className={cn('flex flex-col bg-cream', isEmbedded ? 'h-full' : 'fixed inset-0 z-[100]')}
       data-testid="grocery-checklist"
     >
@@ -742,6 +871,8 @@ export function GroceryList({
             </p>
           )}
           <h2
+            ref={headingRef}
+            tabIndex={-1}
             className={cn(
               'font-heading font-black text-charcoal',
               isEmbedded ? 'text-lg' : 'text-xl'
@@ -800,19 +931,17 @@ export function GroceryList({
         </div>
       )}
       {/* Content */}
-      <div className="flex-1 overflow-y-auto bg-cream/50">
+      <div
+        ref={scrollRef}
+        className="flex-1 overflow-y-auto bg-cream/50"
+        style={{ overflowAnchor: 'none' }}
+      >
         <div
           className={cn(
             'mx-auto',
             isEmbedded ? 'max-w-full pt-2 pb-20 px-[16px]' : 'max-w-2xl py-8 px-[16px] sm:px-6'
           )}
         >
-          {items.some((item) => item.checkReviewReason === 'prior_amount_unknown') && (
-            <p role="status" className="mb-4 text-sm" data-testid="grocery-check-review">
-              {t('grocery.priorCheckedAmountUnknown', 'Review previously checked amounts.')}
-            </p>
-          )}
-
           <AnimatePresence mode="wait">
             {Object.keys(grouped).length === 0 && extras.length === 0 ? (
               <motion.div
@@ -861,18 +990,18 @@ export function GroceryList({
                       .filter((extra) => !extra.checked)
                       .map((extra) => ({ kind: 'extra' as const, extra })),
                     ...itemsWithRenderKeys
-                      .filter(({ item }) => !groceryState[item.displayName ?? ''])
+                      .filter(({ item }) => !groceryState[item.rowId ?? ''])
                       .map((entry) => ({ kind: 'recipe' as const, ...entry })),
                     ...aisleExtras
                       .filter((extra) => extra.checked)
                       .map((extra) => ({ kind: 'extra' as const, extra })),
                     ...itemsWithRenderKeys
-                      .filter(({ item }) => groceryState[item.displayName ?? ''])
+                      .filter(({ item }) => groceryState[item.rowId ?? ''])
                       .map((entry) => ({ kind: 'recipe' as const, ...entry })),
                   ];
 
                   const checkedCount =
-                    aisleItems.filter((item) => groceryState[item.displayName ?? '']).length +
+                    aisleItems.filter((item) => groceryState[item.rowId ?? '']).length +
                     aisleExtras.filter((extra) => extra.checked).length;
                   const totalCount = aisleItems.length + aisleExtras.length;
                   const isCollapsed = collapsedAisles.has(aisle);
@@ -970,8 +1099,8 @@ export function GroceryList({
                                   amount: knownQuantity.slice(1, -1),
                                 })
                               : knownQuantity;
-                          const isChecked = groceryState[key] ?? false;
-                          const hasError = errorItems.has(key);
+                          const isChecked = groceryState[item.rowId ?? ''] ?? false;
+                          const hasError = errorItems.has(item.rowId ?? '');
                           const hasReclassifyError = reclassifyErrors.has(item.normalizedKey ?? '');
                           const isPickerOpen = reclassifyOpen === item.normalizedKey;
                           const isReclassifyPending = pendingReclassifications.has(
@@ -988,115 +1117,79 @@ export function GroceryList({
                                 }`}
                               >
                                 {/* Toggle button — takes up the left portion */}
-                                {isChecked ? (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleToggle(key)}
-                                    onKeyDown={(event) => {
-                                      if (event.key === ' ' || event.key === 'Enter') {
-                                        event.preventDefault();
-                                        void handleToggle(key);
-                                      }
-                                    }}
-                                    className="flex min-h-[48px] min-w-0 w-full flex-none items-start gap-[8px] text-left @min-[18rem]:min-h-12 @min-[18rem]:min-w-12 @min-[18rem]:w-auto @min-[18rem]:flex-1 @min-[18rem]:gap-0 @min-[18rem]:space-x-4"
-                                    data-testid="grocery-item-checkbox"
-                                    data-item-name={key}
-                                    data-state="checked"
-                                    role="checkbox"
-                                    aria-checked="true"
-                                  >
-                                    <CheckCircle2 size={20} className="text-sage flex-shrink-0" />
-                                    <span className="min-w-0 flex-1 transition-all line-through opacity-60">
-                                      <span
-                                        data-testid="grocery-item-label"
-                                        className="block break-words font-medium transition-all line-through opacity-60"
-                                      >
-                                        {key}
-                                      </span>
-                                      {quantityHint && (
-                                        <span
-                                          data-testid="grocery-item-quantity-hint"
-                                          className={cn(
-                                            'mt-1 block text-sm font-normal',
-                                            item.quantityComplete === false
-                                              ? 'text-charcoal'
-                                              : 'text-charcoal/50'
-                                          )}
-                                        >
-                                          {quantityHint}
-                                        </span>
-                                      )}
-                                    </span>
-                                    {hasError && (
-                                      <AlertCircle
-                                        size={12}
-                                        className="text-terracotta flex-shrink-0 ml-1"
-                                        data-testid="grocery-item-error"
-                                      />
+                                <button
+                                  type="button"
+                                  onClick={(event) => {
+                                    preserveCheckFocus(event.currentTarget, event.detail === 0);
+                                    void handleToggle(item);
+                                  }}
+                                  onKeyDown={(event) => {
+                                    if (event.key === ' ' || event.key === 'Enter') {
+                                      event.preventDefault();
+                                      if (event.repeat) return;
+                                      preserveCheckFocus(event.currentTarget, true);
+                                      void handleToggle(item);
+                                    }
+                                  }}
+                                  className="flex min-h-12 min-w-0 flex-1 items-center gap-2 text-left @min-[18rem]:gap-4"
+                                  data-testid="grocery-item-checkbox"
+                                  data-row-id={item.rowId}
+                                  data-item-name={key}
+                                  data-state={isChecked ? 'checked' : 'unchecked'}
+                                  role="checkbox"
+                                  aria-checked={isChecked}
+                                >
+                                  {isChecked ? (
+                                    <CheckCircle2
+                                      size={20}
+                                      className="text-sage flex-shrink-0"
+                                      aria-hidden="true"
+                                    />
+                                  ) : (
+                                    <Circle
+                                      size={20}
+                                      className="text-charcoal/20 flex-shrink-0"
+                                      aria-hidden="true"
+                                    />
+                                  )}
+                                  <span
+                                    className={cn(
+                                      'min-w-0 flex-1 transition-all',
+                                      isChecked && 'line-through opacity-60'
                                     )}
-                                  </button>
-                                ) : (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleToggle(key)}
-                                    onKeyDown={(event) => {
-                                      if (event.key === ' ' || event.key === 'Enter') {
-                                        event.preventDefault();
-                                        void handleToggle(key);
-                                      }
-                                    }}
-                                    className="flex min-h-[48px] min-w-0 w-full flex-none items-start gap-[8px] text-left @min-[18rem]:min-h-12 @min-[18rem]:min-w-12 @min-[18rem]:w-auto @min-[18rem]:flex-1 @min-[18rem]:gap-0 @min-[18rem]:space-x-4"
-                                    data-testid="grocery-item-checkbox"
-                                    data-item-name={key}
-                                    data-state="unchecked"
-                                    role="checkbox"
-                                    aria-checked="false"
                                   >
-                                    <Circle size={20} className="text-charcoal/20 flex-shrink-0" />
-                                    <span className="min-w-0 flex-1 transition-all">
-                                      <span
-                                        data-testid="grocery-item-label"
-                                        className="block break-words font-medium transition-all"
-                                      >
-                                        {key}
-                                      </span>
-                                      {quantityHint && (
-                                        <span
-                                          data-testid="grocery-item-quantity-hint"
-                                          className={cn(
-                                            'mt-1 block text-sm font-normal',
-                                            item.quantityComplete === false
-                                              ? 'text-charcoal'
-                                              : 'text-charcoal/50'
-                                          )}
-                                        >
-                                          {quantityHint}
-                                        </span>
+                                    <span
+                                      data-testid="grocery-item-label"
+                                      className={cn(
+                                        'block break-words font-medium transition-all',
+                                        isChecked && 'line-through opacity-60'
                                       )}
+                                    >
+                                      {key}
                                     </span>
-                                    {hasError && (
-                                      <AlertCircle
-                                        size={12}
-                                        className="text-terracotta flex-shrink-0 ml-1"
-                                        data-testid="grocery-item-error"
-                                      />
+                                    {quantityHint && (
+                                      <span
+                                        data-testid="grocery-item-quantity-hint"
+                                        className={cn(
+                                          'mt-1 block text-sm font-normal',
+                                          item.quantityComplete === false
+                                            ? 'text-charcoal'
+                                            : 'text-charcoal/50'
+                                        )}
+                                      >
+                                        {quantityHint}
+                                      </span>
                                     )}
-                                  </button>
-                                )}
+                                  </span>
+                                  {hasError && (
+                                    <AlertCircle
+                                      size={12}
+                                      className="text-terracotta flex-shrink-0 ml-1"
+                                      data-testid="grocery-item-error"
+                                    />
+                                  )}
+                                </button>
 
-                                {item.checkReviewReason === 'prior_amount_unknown' && (
-                                  <div
-                                    className="order-last mt-2 w-full min-w-0 px-[8px] text-sm text-charcoal bg-white rounded-lg @min-[18rem]:px-2"
-                                    data-testid="grocery-amount-review"
-                                  >
-                                    <span className="block">
-                                      {t(
-                                        'grocery.priorAmountReview',
-                                        'Previously checked amount needs review.'
-                                      )}
-                                    </span>
-                                  </div>
-                                )}
                                 {(item.recipeIds ?? []).some(
                                   (id) => typeof id === 'string' && id.length > 0
                                 ) && (
@@ -1183,13 +1276,17 @@ export function GroceryList({
                                       isPickerOpen ? null : (item.normalizedKey ?? null)
                                     )
                                   }
-                                  className="ml-auto min-h-[48px] min-w-[48px] p-1 rounded-full hover:bg-charcoal/5 text-charcoal/30 hover:text-charcoal/60 transition-colors relative @min-[18rem]:ml-2"
-                                  aria-label={`Change section for ${key}`}
+                                  className={cn(
+                                    CATEGORY_BUTTON_CLASS,
+                                    'relative ml-auto @min-[18rem]:ml-2'
+                                  )}
+                                  aria-label={`${t('grocery.changeSection', 'Change section for')} ${key}`}
+                                  aria-expanded={isPickerOpen}
                                   data-testid="reclassify-btn"
                                   data-item-name={key}
                                   disabled={isReclassifyPending}
                                 >
-                                  <Tag size={14} />
+                                  <Tag size={16} className="mx-auto" aria-hidden="true" />
                                   {hasReclassifyError && (
                                     <AlertCircle
                                       size={10}
@@ -1213,7 +1310,7 @@ export function GroceryList({
                                       type="button"
                                       key={section}
                                       onClick={() => handleReclassify(item, section)}
-                                      className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${
+                                      className={`min-h-11 px-3 py-1 rounded-full text-xs font-semibold transition-colors ${
                                         item.section === section
                                           ? 'bg-sage text-white'
                                           : 'bg-white text-charcoal/60 hover:bg-sage/10'
@@ -1221,7 +1318,7 @@ export function GroceryList({
                                       data-testid={`section-option-${section}`}
                                       disabled={isReclassifyPending}
                                     >
-                                      {section}
+                                      {t(`grocery.aisles.${section}`, section)}
                                     </button>
                                   ))}
                                   {isReclassifyPending && (

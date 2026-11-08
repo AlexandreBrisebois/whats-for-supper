@@ -24,8 +24,8 @@ Existing quality report responses may contain new content: metadata/report updat
 
 A scaled context with affected uncertain quantity wording shows at most one concise contextual notice; keep unaffected valid steps projected. Do not show per-step badges or blanket warning for every unmeasured ingredient. Missing basis leaves original text and correction access; cooking and allowed completion remain available. Preserve time/temperature/equipment, source access, supported sections, both reading modes, focus and current phone/tablet layout.
 
-## Consequential Review Hold
+## Approved allocation correction
 
-If original total changes 200→250 g and one explicit use is 50 g, recommend retaining 50 g original (75 g at factor 1.5), explicit fractions and proven whole uses. Automatic redistribution would turn it into 62.5 g original without a direct instruction edit. A contradiction should invalidate dependent numeric rendering/remainder quietly. This policy needs a user decision; dependent edit-reconciliation implementation tasks remain blocked, not assumed approved. Read-only role semantics and independent grocery interaction review can continue.
+Alex approved the rule: if original total changes 200→250 g and an explicit partial use is 50 g, retain 50 g original (75 g at portion factor 1.5). Do not redistribute it to 62.5 g original. Relative “half” remains half of the corrected total; proven whole uses track that total. Validate affected groups and remainders again; inconsistencies leave affected wording readable and offer quiet review without blocking cooking. This decision is settled; implementation approval and runtime acceptance remain separate.
 
 See the shared [dependency/conflict review](../canonical-ingredient-correction/review.md) for approval and release order, and [acceptance corpus](../canonical-ingredient-correction/acceptance-corpus.md) for preservation cases. Proposed API/schema details have one owner in [contracts.md](../canonical-ingredient-correction/contracts.md).

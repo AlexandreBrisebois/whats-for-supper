@@ -7,9 +7,19 @@ namespace RecipeApi.Data;
 
 public class RecipeDbContext(DbContextOptions<RecipeDbContext> options) : DbContext(options)
 {
+    public DbSet<RecipePhysicalDeletion> RecipePhysicalDeletions => Set<RecipePhysicalDeletion>();
+    public DbSet<MaintenanceCommandLifecycleRecord> MaintenanceCommandLifecycleRecords => Set<MaintenanceCommandLifecycleRecord>();
+    public DbSet<WorkflowLifecycleRecord> WorkflowLifecycleRecords => Set<WorkflowLifecycleRecord>();
+    public DbSet<RecipeFilePublication> RecipeFilePublications => Set<RecipeFilePublication>();
+    public DbSet<CanonicalRecipeOperation> CanonicalRecipeOperations => Set<CanonicalRecipeOperation>();
     public DbSet<RecoveryPublication> RecoveryPublications => Set<RecoveryPublication>();
     public DbSet<FamilyMember> FamilyMembers => Set<FamilyMember>();
     public DbSet<Recipe> Recipes => Set<Recipe>();
+    public DbSet<WorkflowChildIntent> WorkflowChildIntents => Set<WorkflowChildIntent>();
+    public DbSet<WorkflowProcessorAttempt> WorkflowProcessorAttempts => Set<WorkflowProcessorAttempt>();
+    public DbSet<WorkflowResetIntent> WorkflowResetIntents => Set<WorkflowResetIntent>();
+    public DbSet<WorkflowLaunchIntent> WorkflowLaunchIntents => Set<WorkflowLaunchIntent>();
+    public DbSet<RecipeRepairIntent> RecipeRepairIntents => Set<RecipeRepairIntent>();
     public DbSet<RecipeImportReport> RecipeImportReports => Set<RecipeImportReport>();
     public DbSet<WorkflowInstance> WorkflowInstances => Set<WorkflowInstance>();
     public DbSet<WorkflowTask> WorkflowTasks => Set<WorkflowTask>();
@@ -29,11 +39,35 @@ public class RecipeDbContext(DbContextOptions<RecipeDbContext> options) : DbCont
     public DbSet<RecipeSearchAffinityFact> RecipeSearchAffinityFacts => Set<RecipeSearchAffinityFact>();
     public DbSet<FeatureFlagOverride> FeatureFlagOverrides => Set<FeatureFlagOverride>();
     public DbSet<GroceryExtraOccurrence> GroceryExtraOccurrences => Set<GroceryExtraOccurrence>();
+    public DbSet<GroceryMutationOutcome> GroceryMutationOutcomes => Set<GroceryMutationOutcome>();
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+        modelBuilder.Entity<WorkflowProcessorAttempt>().HasIndex(x => new { x.TaskId, x.CreatedAt, x.Id })
+            .HasDatabaseName("workflow_processor_attempts_task_idx");
+        modelBuilder.Entity<WorkflowProcessorAttempt>().ToTable("workflow_processor_attempts", table =>
+            table.HasCheckConstraint("workflow_processor_attempts_outcome_check", "(outcome IS NULL AND outcome_hash IS NULL AND observed_at IS NULL) OR (outcome IS NOT NULL AND outcome_hash IS NOT NULL AND observed_at IS NOT NULL)"));
+        modelBuilder.Entity<WorkflowResetIntent>().HasIndex(x => x.TaskId).IsUnique()
+            .HasFilter("applied_at IS NULL").HasDatabaseName("workflow_reset_intents_pending_task_idx");
+        modelBuilder.Entity<WorkflowResetIntent>().HasIndex(x => new { x.CreatedAt, x.Id })
+            .HasFilter("applied_at IS NULL").HasDatabaseName("workflow_reset_intents_pending_order_idx");
+        modelBuilder.Entity<RecipePhysicalDeletion>().HasIndex(x => x.OperationId).IsUnique().HasDatabaseName("recipe_physical_deletions_operation_id_idx");
+        modelBuilder.Entity<RecipePhysicalDeletion>().ToTable("recipe_physical_deletions", table =>
+        {
+            table.HasCheckConstraint("recipe_physical_deletions_kind_check", "kind IN ('purge', 'delete', 'failed-capture')");
+            table.HasCheckConstraint("recipe_physical_deletions_receipt_check", "(files_delivered_at IS NOT NULL OR files_removed IS NULL) AND (completed_at IS NULL OR files_delivered_at IS NOT NULL)");
+        });
+        modelBuilder.Entity<MaintenanceCommandLifecycleRecord>().HasKey(x => new { x.Id, x.Disposition });
+        modelBuilder.Entity<MaintenanceCommandLifecycleRecord>().ToTable("maintenance_command_lifecycle_records", table =>
+            table.HasCheckConstraint("maintenance_command_lifecycle_records_disposition_check", "disposition IN ('retention-started', 'pruned')"));
+        modelBuilder.Entity<WorkflowLifecycleRecord>().ToTable("workflow_lifecycle_records", table =>
+            table.HasCheckConstraint("workflow_lifecycle_records_disposition_check", "disposition IN ('cleared', 'pruned')"));
+        modelBuilder.Entity<RecipeFilePublication>().HasKey(x => new { x.RecipeId, x.OperationId });
+        modelBuilder.Entity<RecipeFilePublication>().HasOne<Recipe>().WithMany().HasForeignKey(x => x.RecipeId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<CanonicalRecipeOperation>().HasKey(x => new { x.RecipeId, x.OperationId });
+        modelBuilder.Entity<CanonicalRecipeOperation>().HasOne<Recipe>().WithMany().HasForeignKey(x => x.RecipeId).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<RecoveryPublication>().ToTable("recovery_publication", t => t.HasCheckConstraint("recovery_publication_singleton", "id = 1"));
         modelBuilder.Entity<VotingRoundState>().HasKey(x => x.Id);
         modelBuilder.Entity<WeeklyHouseholdInterest>(entity =>
@@ -124,6 +158,8 @@ public class RecipeDbContext(DbContextOptions<RecipeDbContext> options) : DbCont
                   .HasFilter("is_discoverable = TRUE")
                   .HasDatabaseName("idx_recipes_discovery_lookup");
         });
+
+        modelBuilder.Entity<RecipeRepairIntent>().HasKey(e => e.Id);
 
         modelBuilder.Entity<RecipeImportReport>(entity =>
         {

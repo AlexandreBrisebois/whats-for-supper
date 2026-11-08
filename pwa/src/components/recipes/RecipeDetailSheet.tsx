@@ -1,4 +1,21 @@
 'use client';
+import {
+  ingredientDraft,
+  prepareIngredientDrafts,
+  type IngredientDraft,
+} from '@/lib/recipes/ingredient-draft';
+import {
+  editorBaseline,
+  readEditorDraft,
+  persistEditorDraft,
+  discardEditorDraft,
+  editorBaselineMatches,
+  reconcileEditorDraft,
+  restoreDeletedEditorRows,
+  type EditorDraft,
+  type EditorFields,
+  type EditorField,
+} from '@/lib/recipes/editor-draft';
 import { PreparationStatus } from '@/components/planner/PreparationStatus';
 
 import { DemoAiActionGate } from '@/components/demo/DemoAiActionGate';
@@ -173,14 +190,127 @@ export function RecipeDetailSheet({
   const notesSaved = notesDraft?.status === 'saved';
   const [draftServings, setDraftServings] = useState('');
   const saveVisitRef = useRef(0);
+  const reconcileReadRef = useRef(0);
   const [draftName, setDraftName] = useState('');
   const [draftDescription, setDraftDescription] = useState('');
   const [draftIngredients, setDraftIngredients] = useState<string[]>([]);
+  const [canonicalDrafts, setCanonicalDrafts] = useState<IngredientDraft[]>([]);
+  const [draftRevision, setDraftRevision] = useState<string | null>(null);
+  const [saveNeedsRead, setSaveNeedsRead] = useState(false);
+  const [currentSavedRecipe, setCurrentSavedRecipe] = useState<Recipe | null>(null);
+  const [editorSession, setEditorSession] = useState<Omit<EditorDraft, 'fields'> | null>(null);
+  const [draftRecovered, setDraftRecovered] = useState(false);
+  const [draftStorageIssue, setDraftStorageIssue] = useState(false);
+  const draftStorageBlocked = useRef(false);
+  const [reconcileOpen, setReconcileOpen] = useState(false);
+  const [reconcileChoices, setReconcileChoices] = useState<
+    Partial<Record<EditorField, 'draft' | 'current'>>
+  >({});
+  const canonicalEditing = editorSession?.baseline.canonical ?? recipe?.contentSchemaVersion === 2;
+  const preparedDrafts = prepareIngredientDrafts(canonicalDrafts);
   const [draftCuisineType, setDraftCuisineType] = useState('');
   const [draftMealTypes, setDraftMealTypes] = useState<UpdateRecipeDto_mealTypes[]>([]);
   const [rating, setRating] = useState(0);
   const [isDiscoverable, setIsDiscoverable] = useState(false);
+  const installRecipeSnapshot = (source: Recipe) => {
+    setRecipe(source);
+    setRating(source.rating ?? 0);
+    setIsDiscoverable(source.isDiscoverable ?? false);
+  };
   const [isEditing, setIsEditing] = useState(false);
+  const editorValues: EditorFields = {
+    name: draftName,
+    description: draftDescription,
+    servings: draftServings,
+    cuisineType: draftCuisineType,
+    mealTypes: draftMealTypes,
+    ingredients: draftIngredients,
+    canonicalDrafts,
+  };
+  const installEditorFields = (fields: EditorFields) => {
+    setDraftName(fields.name);
+    setDraftDescription(fields.description);
+    setDraftServings(fields.servings);
+    setDraftCuisineType(fields.cuisineType);
+    setDraftMealTypes(fields.mealTypes);
+    setDraftIngredients(fields.ingredients);
+    setCanonicalDrafts(fields.canonicalDrafts);
+  };
+  const currentEditorBaseline = currentSavedRecipe
+    ? editorBaseline(currentSavedRecipe, resolveMealTypes(currentSavedRecipe))
+    : null;
+  const savedEditorChanged = !!(
+    currentEditorBaseline &&
+    editorSession &&
+    !editorBaselineMatches(editorSession.baseline, currentEditorBaseline)
+  );
+  const reviewedDraft =
+    editorSession && currentEditorBaseline && reconcileOpen
+      ? reconcileEditorDraft(
+          { ...editorSession, fields: editorValues },
+          currentEditorBaseline,
+          reconcileChoices
+        )
+      : null;
+  const reviewConflicts =
+    editorSession && currentEditorBaseline && reconcileOpen
+      ? reconcileEditorDraft({ ...editorSession, fields: editorValues }, currentEditorBaseline)
+          .conflicts
+      : [];
+  const editorFieldLabel = (field: EditorField) =>
+    ({
+      name: t('recipes.name', 'Name'),
+      description: t('recipes.description', 'Description'),
+      servings: t('recipes.originalServings', 'Original portions'),
+      cuisineType: t('recipes.cuisineType', 'Cuisine'),
+      mealTypes: t('recipes.mealTypes', 'Meal types'),
+      ingredients: t('recipes.ingredients', 'Ingredients'),
+    })[field];
+  const editorFieldText = (fields: EditorFields, field: EditorField, canonical: boolean) => {
+    if (field !== 'ingredients')
+      return Array.isArray(fields[field]) ? fields[field].join(', ') : fields[field];
+    return canonical
+      ? fields.canonicalDrafts
+          .map((row) =>
+            [
+              row.amount,
+              row.unit,
+              row.description,
+              row.shoppingName,
+              row.fixed
+                ? t('recipes.fixedIngredient', 'Keep amount fixed when portions change')
+                : '',
+            ]
+              .filter(Boolean)
+              .join(' · ')
+          )
+          .join('\n')
+      : fields.ingredients.join('\n');
+  };
+  useEffect(() => {
+    if (
+      !isEditing ||
+      !recipe ||
+      editorSession?.recipeId !== recipeId ||
+      draftStorageBlocked.current
+    )
+      return;
+    setDraftStorageIssue(!persistEditorDraft({ ...editorSession, fields: editorValues }));
+    // Persist each completed render, including invalid/blank input, without a timer
+    // that could lose the last edit on unmount or a tab upgrade.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    isEditing,
+    recipeId,
+    editorSession,
+    draftName,
+    draftDescription,
+    draftServings,
+    draftCuisineType,
+    draftMealTypes,
+    draftIngredients,
+    canonicalDrafts,
+  ]);
   const previewScope = JSON.stringify([recipeId, projectionKey]);
   const unresolvedPreviewScope = JSON.stringify([recipeId, null]);
   // Original evidence changes only the reading surface, never the dated target.
@@ -315,6 +445,7 @@ export function RecipeDetailSheet({
 
   useEffect(() => {
     saveVisitRef.current += 1;
+    reconcileReadRef.current += 1;
     let isActive = true;
 
     void (async () => {
@@ -330,15 +461,28 @@ export function RecipeDetailSheet({
         if (!isActive) return;
         setRecipe(nextRecipe);
         initializeRecipeNotes(recipeId, nextRecipe.notes ?? '', notesAtReadStart);
-        setDraftServings(nextRecipe.servings == null ? '' : String(nextRecipe.servings));
-        setDraftName(nextRecipe.name);
-        setDraftDescription(nextRecipe.description ?? '');
-        setDraftIngredients(nextRecipe.ingredients ?? []);
-        setDraftCuisineType(nextRecipe.cuisineType ?? '');
-        setDraftMealTypes(resolveMealTypes(nextRecipe));
+        const recovery = readEditorDraft(recipeId);
+        draftStorageBlocked.current =
+          recovery.status === 'incompatible' || recovery.status === 'unavailable';
+        setDraftStorageIssue(draftStorageBlocked.current);
+        const retained = recovery.draft;
+        installEditorFields(
+          retained?.fields ?? editorBaseline(nextRecipe, resolveMealTypes(nextRecipe)).fields
+        );
+        setEditorSession(
+          retained
+            ? { version: 1, recipeId, baseline: retained.baseline, original: retained.original }
+            : null
+        );
+        setDraftRevision(retained?.baseline.revision ?? nextRecipe.contentRevision ?? null);
+        setSaveNeedsRead(!!retained);
+        setDraftRecovered(!!retained);
+        setReconcileOpen(false);
+        setReconcileChoices({});
+        setCurrentSavedRecipe(null);
         setRating(nextRecipe.rating ?? 0);
         setIsDiscoverable(nextRecipe.isDiscoverable ?? false);
-        setIsEditing(false);
+        setIsEditing(!!retained);
         setEditError(null);
       } catch (error) {
         if (!isActive) return;
@@ -415,8 +559,26 @@ export function RecipeDetailSheet({
   };
 
   const resetDrafts = (source: Recipe) => {
-    const basis = ingredientContext && projection ? projection.baseServings : source.servings;
+    reconcileReadRef.current += 1;
+    setEditorSession({
+      version: 1,
+      recipeId: source.id,
+      baseline: editorBaseline(source, resolveMealTypes(source)),
+    });
+    setDraftRecovered(false);
+    setReconcileOpen(false);
+    setReconcileChoices({});
+    const basis =
+      source.contentSchemaVersion === 2
+        ? source.servings
+        : ingredientContext && projection
+          ? projection.baseServings
+          : source.servings;
     setDraftServings(basis == null ? '' : String(basis));
+    setCanonicalDrafts((source.ingredientLines ?? []).map(ingredientDraft));
+    setDraftRevision(source.contentRevision ?? null);
+    setSaveNeedsRead(false);
+    setCurrentSavedRecipe(null);
     setDraftName(source.name);
     setDraftDescription(source.description ?? '');
     setDraftIngredients(
@@ -430,7 +592,16 @@ export function RecipeDetailSheet({
   };
 
   const handleCancelEdit = () => {
-    if (recipe) resetDrafts(recipe);
+    if (!draftStorageBlocked.current) setDraftStorageIssue(!discardEditorDraft(recipeId));
+    if (recipe) {
+      const source = currentSavedRecipe ?? recipe;
+      if (currentSavedRecipe) {
+        installRecipeSnapshot(source);
+        setProjectionRead(null);
+        setProjectionAttempt((value) => value + 1);
+      }
+      resetDrafts(source);
+    }
     setIsEditing(false);
   };
 
@@ -451,9 +622,11 @@ export function RecipeDetailSheet({
   };
 
   const displayedServings = isEditing
-    ? ingredientContext
-      ? projection?.baseServings
-      : recipe?.servings
+    ? canonicalEditing
+      ? recipe?.servings
+      : ingredientContext
+        ? projection?.baseServings
+        : recipe?.servings
     : showingOriginalEvidence
       ? originalBasisServings
       : (previewTarget ?? headingServings);
@@ -464,7 +637,13 @@ export function RecipeDetailSheet({
       Number(draftServings) > 2147483647);
 
   const handleSaveRecipeFields = async () => {
-    if (!recipe || servingsInvalid) return;
+    if (
+      !recipe ||
+      servingsInvalid ||
+      saveNeedsRead ||
+      (canonicalEditing && (preparedDrafts.invalid || !draftRevision))
+    )
+      return;
     const savingVisit = saveVisitRef.current;
     const servingsUpdate = draftServings === '' ? {} : { servings: Number(draftServings) };
 
@@ -484,16 +663,22 @@ export function RecipeDetailSheet({
     setIsSavingRecipe(true);
     setEditError(null);
     try {
-      await updateRecipe(recipe.id, {
+      const saved = await updateRecipe(recipe.id, {
         ...servingsUpdate,
         name: nextRecipe.name,
         description: nextRecipe.description,
-        ingredients: cleanedIngredients,
+        ...(canonicalEditing
+          ? { ingredientLines: preparedDrafts.lines, expectedContentRevision: draftRevision! }
+          : { ingredients: cleanedIngredients }),
         cuisineType: nextRecipe.cuisineType,
         mealTypes: nextRecipe.mealTypes ?? [],
       });
       if (saveVisitRef.current !== savingVisit) return;
-      setRecipe(nextRecipe);
+      if (canonicalEditing && !saved) throw new Error('Authoritative saved recipe is absent.');
+      if (saved) installRecipeSnapshot(saved);
+      else setRecipe(nextRecipe);
+      reconcileReadRef.current += 1;
+      if (!draftStorageBlocked.current) setDraftStorageIssue(!discardEditorDraft(recipeId));
       setDraftIngredients(cleanedIngredients);
       setIsEditing(false);
       setProjectionRead(null);
@@ -501,6 +686,7 @@ export function RecipeDetailSheet({
     } catch (error) {
       console.error('Failed to update recipe fields', error);
       if (saveVisitRef.current !== savingVisit) return;
+      setSaveNeedsRead(true);
       setEditError(t('recipes.editFailed', 'Could not save changes. Try again.'));
     } finally {
       if (saveVisitRef.current === savingVisit) setIsSavingRecipe(false);
@@ -1024,6 +1210,7 @@ export function RecipeDetailSheet({
                   </span>
                   <input
                     data-testid="recipe-edit-name-input"
+                    disabled={isSavingRecipe}
                     value={draftName}
                     onChange={(event) => setDraftName(event.target.value)}
                     className="w-full rounded-[1.25rem] border border-charcoal/10 bg-white/90 px-4 py-3 text-xl font-black text-charcoal shadow-sm outline-none transition focus:border-terracotta/30"
@@ -1063,9 +1250,10 @@ export function RecipeDetailSheet({
                     </span>
                     <input
                       data-testid="recipe-edit-cuisine-input"
+                      disabled={isSavingRecipe}
                       value={draftCuisineType}
                       onChange={(event) => setDraftCuisineType(event.target.value)}
-                      className="w-full px-4 py-2.5 rounded-xl border border-charcoal/10 bg-white text-charcoal focus:border-sage focus:outline-none text-sm transition-all duration-200"
+                      className="min-h-12 w-full px-4 py-2.5 rounded-xl border border-charcoal/10 bg-white text-charcoal focus:border-sage focus:outline-none text-sm transition-all duration-200"
                     />
                   </label>
                   <div className="grid gap-2">
@@ -1080,6 +1268,7 @@ export function RecipeDetailSheet({
                             key={mealType}
                             type="button"
                             data-testid={`recipe-edit-meal-type-pill-${mealType.toLowerCase()}`}
+                            disabled={isSavingRecipe}
                             aria-pressed={isSelected}
                             onClick={() =>
                               setDraftMealTypes((current) =>
@@ -1090,8 +1279,8 @@ export function RecipeDetailSheet({
                             }
                             className={
                               isSelected
-                                ? 'px-4 py-2.5 rounded-full text-sm font-semibold transition-all duration-200 bg-sage text-white shadow-md active:scale-95'
-                                : 'px-4 py-2.5 rounded-full text-sm font-semibold transition-all duration-200 bg-white border border-charcoal/10 text-charcoal/60 hover:bg-cream/20 active:scale-95'
+                                ? 'min-h-12 px-4 py-2.5 rounded-full text-sm font-semibold transition-all duration-200 bg-sage text-white shadow-md active:scale-95'
+                                : 'min-h-12 px-4 py-2.5 rounded-full text-sm font-semibold transition-all duration-200 bg-white border border-charcoal/10 text-charcoal/60 hover:bg-cream/20 active:scale-95'
                             }
                           >
                             {mealType}
@@ -1131,6 +1320,7 @@ export function RecipeDetailSheet({
                   </span>
                   <textarea
                     data-testid="recipe-edit-description-input"
+                    disabled={isSavingRecipe}
                     value={draftDescription}
                     onChange={(event) => setDraftDescription(event.target.value)}
                     className="min-h-24 w-full rounded-[1.25rem] border border-charcoal/10 bg-white/90 px-4 py-3 text-sm leading-6 text-charcoal shadow-sm outline-none transition focus:border-terracotta/30"
@@ -1347,13 +1537,14 @@ export function RecipeDetailSheet({
                         id="recipe-edit-servings"
                         ref={servingsInputRef}
                         data-testid="recipe-edit-servings-input"
+                        disabled={isSavingRecipe}
                         type="text"
                         inputMode="numeric"
                         value={draftServings}
                         onChange={(event) => setDraftServings(event.target.value)}
                         aria-invalid={servingsInvalid}
                         aria-describedby={servingsInvalid ? 'recipe-servings-error' : undefined}
-                        className="min-h-12 min-w-0 flex-1 rounded-2xl border border-charcoal/10 bg-white/90 px-4 py-2 text-sm text-charcoal shadow-sm outline-none transition focus:border-terracotta/30"
+                        className="min-h-12 min-w-0 flex-1 rounded-2xl border border-charcoal/10 bg-white/90 px-3 py-2 text-sm text-charcoal shadow-sm outline-none transition focus:border-terracotta/30"
                       />
                     </div>
                     {servingsInvalid && (
@@ -1368,31 +1559,137 @@ export function RecipeDetailSheet({
                 )}
                 {isEditing ? (
                   <div className="space-y-2">
-                    {draftIngredients.map((ingredient, index) => (
-                      <div key={index} className="flex items-center gap-2">
-                        <input
-                          data-testid={`recipe-edit-ingredient-${index}`}
-                          aria-label={`Ingredient ${index + 1}`}
-                          title={`Ingredient ${index + 1}`}
-                          value={ingredient}
-                          onChange={(event) => handleIngredientChange(index, event.target.value)}
-                          className="min-h-12 min-w-0 flex-1 rounded-2xl border border-charcoal/10 bg-white/90 px-4 py-2 text-sm text-charcoal shadow-sm outline-none transition focus:border-terracotta/30"
-                        />
-                        <button
-                          type="button"
-                          data-testid={`recipe-remove-ingredient-${index}`}
-                          aria-label={t('recipes.removeIngredient', 'Remove ingredient')}
-                          onClick={() => handleRemoveIngredient(index)}
-                          className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-charcoal/5 text-charcoal/70 transition hover:bg-charcoal/10"
-                        >
-                          <X size={16} />
-                        </button>
-                      </div>
-                    ))}
+                    {canonicalEditing
+                      ? canonicalDrafts.map((row, index) => {
+                          const change = (patch: Partial<IngredientDraft>) =>
+                            setCanonicalDrafts((rows) =>
+                              rows.map((item) =>
+                                item.key === row.key ? { ...item, ...patch } : item
+                              )
+                            );
+                          return (
+                            <div
+                              key={row.key}
+                              className="space-y-2 rounded-2xl border border-charcoal/10 p-3"
+                            >
+                              <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,6rem),1fr))] gap-2">
+                                <label>
+                                  {t('recipes.ingredientAmount', 'Amount')}
+                                  <input
+                                    data-testid={`recipe-edit-amount-${index}`}
+                                    disabled={isSavingRecipe}
+                                    value={row.amount}
+                                    onChange={(event) => change({ amount: event.target.value })}
+                                    className="min-h-12 w-full min-w-0 rounded-xl border border-charcoal/10 px-3"
+                                  />
+                                </label>
+                                <label>
+                                  {t('recipes.ingredientUnit', 'Unit')}
+                                  <input
+                                    data-testid={`recipe-edit-unit-${index}`}
+                                    disabled={isSavingRecipe}
+                                    value={row.unit}
+                                    onChange={(event) => change({ unit: event.target.value })}
+                                    className="min-h-12 w-full min-w-0 rounded-xl border border-charcoal/10 px-3"
+                                  />
+                                </label>
+                              </div>
+                              <label className="block">
+                                {t('recipes.ingredientDescription', 'Description')}
+                                <input
+                                  data-testid={`recipe-edit-ingredient-${index}`}
+                                  disabled={isSavingRecipe}
+                                  value={row.description}
+                                  onChange={(event) => change({ description: event.target.value })}
+                                  className="min-h-12 w-full rounded-xl border border-charcoal/10 px-3"
+                                />
+                              </label>
+                              <details>
+                                <summary className="min-h-12 cursor-pointer py-3">
+                                  {t('recipes.ingredientOptions', 'Shopping and scaling')}
+                                </summary>
+                                <label className="block">
+                                  {t('recipes.shoppingName', 'Shopping name')}
+                                  <input
+                                    disabled={isSavingRecipe}
+                                    value={row.shoppingName}
+                                    onChange={(event) =>
+                                      change({ shoppingName: event.target.value })
+                                    }
+                                    className="min-h-12 w-full rounded-xl border border-charcoal/10 px-3"
+                                  />
+                                </label>
+                                <label className="flex min-h-12 items-center gap-2">
+                                  <input
+                                    type="checkbox"
+                                    disabled={isSavingRecipe}
+                                    checked={row.fixed}
+                                    onChange={(event) => change({ fixed: event.target.checked })}
+                                  />
+                                  {t(
+                                    'recipes.fixedIngredient',
+                                    'Keep amount fixed when portions change'
+                                  )}
+                                </label>
+                              </details>
+                              <button
+                                type="button"
+                                data-testid={`recipe-remove-ingredient-${index}`}
+                                disabled={isSavingRecipe}
+                                onClick={() =>
+                                  setCanonicalDrafts((rows) =>
+                                    rows.filter((item) => item.key !== row.key)
+                                  )
+                                }
+                                className="min-h-12 px-3"
+                              >
+                                {t('recipes.removeIngredient', 'Remove ingredient')}
+                              </button>
+                            </div>
+                          );
+                        })
+                      : draftIngredients.map((ingredient, index) => (
+                          <div key={index} className="flex items-center gap-2">
+                            <input
+                              data-testid={`recipe-edit-ingredient-${index}`}
+                              disabled={isSavingRecipe}
+                              aria-label={`Ingredient ${index + 1}`}
+                              title={`Ingredient ${index + 1}`}
+                              value={ingredient}
+                              onChange={(event) =>
+                                handleIngredientChange(index, event.target.value)
+                              }
+                              className="min-h-12 min-w-0 flex-1 rounded-2xl border border-charcoal/10 bg-white/90 px-4 py-2 text-sm text-charcoal shadow-sm outline-none transition focus:border-terracotta/30"
+                            />
+                            <button
+                              type="button"
+                              data-testid={`recipe-remove-ingredient-${index}`}
+                              disabled={isSavingRecipe}
+                              aria-label={t('recipes.removeIngredient', 'Remove ingredient')}
+                              onClick={() => handleRemoveIngredient(index)}
+                              className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-charcoal/5 text-charcoal/70 transition hover:bg-charcoal/10"
+                            >
+                              <X size={16} />
+                            </button>
+                          </div>
+                        ))}
+                    {canonicalEditing && preparedDrafts.invalid && (
+                      <p role="alert">
+                        {t(
+                          'recipes.ingredientInvalid',
+                          'Enter a description and a valid amount, or leave the amount blank.'
+                        )}
+                      </p>
+                    )}
                     <button
                       type="button"
                       data-testid="recipe-add-ingredient"
-                      onClick={handleAddIngredient}
+                      disabled={isSavingRecipe}
+                      onClick={() =>
+                        canonicalEditing
+                          ? setCanonicalDrafts((rows) => [...rows, ingredientDraft()])
+                          : handleAddIngredient()
+                      }
                       className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-charcoal/10 bg-white px-4 text-sm font-black text-charcoal shadow-sm"
                     >
                       <Plus size={16} />
@@ -1620,13 +1917,222 @@ export function RecipeDetailSheet({
             <p className="w-full text-[10px] font-black uppercase tracking-[0.24em] text-charcoal/45 sm:hidden">
               {t('recipes.saveEditingLabel', 'Save recipe edits')}
             </p>
+            {draftStorageIssue && (
+              <p role="alert" className="w-full text-sm">
+                {t(
+                  'recipes.draftStorageUnavailable',
+                  'This tab cannot safely store your edits for recovery. Keep it open until you save or cancel.'
+                )}
+              </p>
+            )}
+            {draftRecovered && (
+              <p role="status" className="w-full text-sm">
+                {t(
+                  'recipes.draftRecovered',
+                  'Your unsaved edits were recovered. Check the saved recipe before saving.'
+                )}
+              </p>
+            )}
+            {saveNeedsRead && (
+              <div className="w-full text-sm">
+                <button
+                  type="button"
+                  className="min-h-12 underline"
+                  onClick={async () => {
+                    const visit = saveVisitRef.current;
+                    const read = ++reconcileReadRef.current;
+                    try {
+                      const current = await getRecipe(recipeId);
+                      if (visit !== saveVisitRef.current || read !== reconcileReadRef.current)
+                        return;
+                      setCurrentSavedRecipe(current);
+                      setReconcileOpen(false);
+                      setReconcileChoices({});
+                      if (
+                        editorSession &&
+                        editorBaselineMatches(
+                          editorSession.baseline,
+                          editorBaseline(current, resolveMealTypes(current))
+                        )
+                      )
+                        setSaveNeedsRead(false);
+                    } catch {
+                      /* Keep the draft and the retry fence until a read succeeds. */
+                    }
+                  }}
+                >
+                  {t('recipes.checkSavedRecipe', 'Check saved recipe')}
+                </button>
+                {currentSavedRecipe && savedEditorChanged && (
+                  <div role="status">
+                    <p>
+                      {t(
+                        'recipes.savedRecipeChanged',
+                        'The saved recipe changed. Your draft is retained; review the current recipe before saving.'
+                      )}
+                    </p>
+                    <p>{currentSavedRecipe.name}</p>
+                    <ul>
+                      {currentSavedRecipe.ingredients?.map((line, index) => (
+                        <li key={index}>{line}</li>
+                      ))}
+                    </ul>
+                    <button
+                      type="button"
+                      className="min-h-12 underline"
+                      onClick={() => {
+                        setReconcileOpen(true);
+                        setReconcileChoices({});
+                      }}
+                    >
+                      {t('recipes.reconcileDraft', 'Reconcile draft')}
+                    </button>
+                    {reviewedDraft && currentEditorBaseline && editorSession && (
+                      <div className="space-y-3">
+                        <p>
+                          {t(
+                            'recipes.draftReconcileHelp',
+                            'Unchanged fields use the saved recipe. Choose each conflicting field, then review the resulting editor before saving. Restored deleted ingredients are added as new ingredients.'
+                          )}
+                        </p>
+                        {reviewConflicts.map((field) => (
+                          <fieldset
+                            key={field}
+                            className="min-w-0 rounded-xl border border-charcoal/20 p-3"
+                          >
+                            <legend>{editorFieldLabel(field)}</legend>
+                            <p>{t('recipes.myDraft', 'My draft')}</p>
+                            <p className="whitespace-pre-wrap break-words">
+                              {editorFieldText(
+                                editorValues,
+                                field,
+                                editorSession.baseline.canonical
+                              )}
+                            </p>
+                            <p>{t('recipes.currentSaved', 'Currently saved')}</p>
+                            <p className="whitespace-pre-wrap break-words">
+                              {editorFieldText(
+                                currentEditorBaseline.fields,
+                                field,
+                                currentEditorBaseline.canonical
+                              )}
+                            </p>
+                            {(field !== 'ingredients' ||
+                              editorSession.baseline.canonical ===
+                                currentEditorBaseline.canonical) && (
+                              <button
+                                type="button"
+                                className="min-h-12 underline"
+                                aria-pressed={reconcileChoices[field] === 'draft'}
+                                aria-label={`${t('recipes.keepMyDraft', 'Keep my draft')}: ${editorFieldLabel(field)}`}
+                                onClick={() =>
+                                  setReconcileChoices((choices) => ({
+                                    ...choices,
+                                    [field]: 'draft',
+                                  }))
+                                }
+                              >
+                                {t('recipes.keepMyDraft', 'Keep my draft')}
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              className="min-h-12 px-3 underline"
+                              aria-pressed={reconcileChoices[field] === 'current'}
+                              aria-label={`${t('recipes.useCurrentSaved', 'Use currently saved')}: ${editorFieldLabel(field)}`}
+                              onClick={() =>
+                                setReconcileChoices((choices) => ({
+                                  ...choices,
+                                  [field]: 'current',
+                                }))
+                              }
+                            >
+                              {t('recipes.useCurrentSaved', 'Use currently saved')}
+                            </button>
+                          </fieldset>
+                        ))}
+                        {editorSession.baseline.canonical !== currentEditorBaseline.canonical && (
+                          <p>
+                            {t(
+                              'recipes.legacyDraftReference',
+                              'The ingredient format changed. Your old ingredient text is retained below for reference; use the current ingredients and reapply corrections in the editor.'
+                            )}
+                          </p>
+                        )}
+                        <button
+                          type="button"
+                          className="min-h-12 underline"
+                          disabled={reviewedDraft.conflicts.length > 0}
+                          onClick={() => {
+                            if (reviewedDraft.conflicts.length || !currentSavedRecipe) return;
+                            const original = editorSession.original ?? {
+                              baseline: editorSession.baseline,
+                              fields: editorValues,
+                            };
+                            const fields = restoreDeletedEditorRows(
+                              reviewedDraft.fields,
+                              currentEditorBaseline
+                            );
+                            reconcileReadRef.current += 1;
+                            installRecipeSnapshot(currentSavedRecipe);
+                            installEditorFields(fields);
+                            setEditorSession({
+                              version: 1,
+                              recipeId,
+                              baseline: currentEditorBaseline,
+                              original,
+                            });
+                            setDraftRevision(currentEditorBaseline.revision);
+                            setSaveNeedsRead(false);
+                            setReconcileOpen(false);
+                            setDraftRecovered(false);
+                          }}
+                        >
+                          {t('recipes.applyReviewedDraft', 'Apply reviewed draft')}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+            {editorSession?.original && (
+              <details className="w-full text-sm">
+                <summary className="min-h-12 cursor-pointer py-3">
+                  {t('recipes.originalRecoveredDraft', 'Original recovered draft')}
+                </summary>
+                {(
+                  [
+                    'name',
+                    'description',
+                    'servings',
+                    'cuisineType',
+                    'mealTypes',
+                    'ingredients',
+                  ] as EditorField[]
+                ).map((field) => (
+                  <div key={field}>
+                    <p className="font-bold">{editorFieldLabel(field)}</p>
+                    <p className="whitespace-pre-wrap break-words">
+                      {editorFieldText(
+                        editorSession.original!.fields,
+                        field,
+                        editorSession.original!.baseline.canonical
+                      )}
+                    </p>
+                  </div>
+                ))}
+              </details>
+            )}
             <button
               type="button"
               data-testid="recipe-save-edits"
               onClick={() => void handleSaveRecipeFields()}
               disabled={
                 isSavingRecipe ||
+                saveNeedsRead ||
                 servingsInvalid ||
+                (canonicalEditing && (preparedDrafts.invalid || !draftRevision)) ||
                 draftName.trim().length === 0 ||
                 draftMealTypes.length === 0
               }

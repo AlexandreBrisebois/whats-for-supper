@@ -40,9 +40,8 @@ public partial class SupperServingsPostgresTests
     private static FamilySetting AcceptanceDefault(int count = 4) => new() { Key = SupperServingsService.DefaultKey, Value = JsonSerializer.SerializeToElement(new { servings = count }) };
     private static async Task<JsonElement> AcceptanceSchedule(HttpClient client, int offset = 0) =>
         JsonDocument.Parse(await client.GetStringAsync($"/api/schedule?weekOffset={offset}&{AcceptanceReference}")).RootElement.GetProperty("data").Clone();
-    private static double AcceptancePasta(JsonElement schedule) => schedule.GetProperty("groceryItems").EnumerateArray().Where(x => x.GetProperty("normalizedKey").GetString() == "pasta").Sum(x => x.GetProperty("quantity").GetDouble());
-    private static async Task AcceptanceCheck(HttpClient client) => Assert.Equal(HttpStatusCode.NoContent,
-        (await client.PatchAsJsonAsync($"/api/schedule/0/grocery/item?{AcceptanceReference}", new { ingredientName = "pasta", @checked = true })).StatusCode);
+    private static double AcceptancePasta(JsonElement schedule) => schedule.GetProperty("groceryItems").EnumerateArray().Where(x => x.GetProperty("normalizedKey").GetString() == "pasta").Sum(x => x.GetProperty("quantity").ExactScalar());
+    private static async Task AcceptanceCheck(HttpClient client) => await GroceryTestRows.CheckAsync(client, AcceptanceMonday);
     private static async Task AcceptanceRecompute(TestWebApplicationFactory app, params DateOnly[] mondays) {
         using var scope = app.Services.CreateScope();
         foreach (var monday in mondays) await scope.ServiceProvider.GetRequiredService<GroceryRecomputeService>().RecomputeForWeekAsync(monday, default);
@@ -136,12 +135,12 @@ public partial class SupperServingsPostgresTests
             var recipe = AcceptanceRecipe("Move larger"); db.Recipes.Add(recipe); db.CalendarEvents.Add(new CalendarEvent { Date = Wednesday, RecipeId = recipe.Id });
             db.SupperServings.AddRange(new SupperServing { Date = Wednesday, OverrideServings = 4 }, new SupperServing { Date = Wednesday.AddDays(1), OverrideServings = 6 });
             await db.SaveChangesAsync(); await AcceptanceRecompute(app, AcceptanceMonday);
-            var plan = await db.WeeklyPlans.SingleAsync(); plan.GroceryState = "{\"pasta\":true,\"unrelated\":true}"; await db.SaveChangesAsync();
+            await AcceptanceCheck(client);
             Assert.Equal(400, AcceptancePasta(await AcceptanceSchedule(client)));
             (await client.PostAsJsonAsync($"/api/schedule/move?{AcceptanceReference}", new { weekOffset = 0, recipeId = recipe.Id, fromIndex = 2, toIndex = 3, intent = "tomorrow" })).EnsureSuccessStatusCode();
-            var current = await AcceptanceSchedule(client); Assert.Equal(600, AcceptancePasta(current)); Assert.False(current.GetProperty("groceryState").GetProperty("pasta").GetBoolean()); Assert.True(current.GetProperty("groceryState").GetProperty("unrelated").GetBoolean());
+            var current = await AcceptanceSchedule(client); Assert.Equal(600, AcceptancePasta(current)); Assert.False(GroceryTestRows.Checked(current,"pasta"));
             db.ChangeTracker.Clear(); Assert.Equal(new[] { 4, 6 }, await db.SupperServings.OrderBy(x => x.Date).Select(x => x.OverrideServings!.Value).ToArrayAsync());
-            await AcceptanceCheck(client); await AcceptanceRecompute(app, AcceptanceMonday); Assert.True((await AcceptanceSchedule(client)).GetProperty("groceryState").GetProperty("pasta").GetBoolean());
+            await AcceptanceCheck(client); await AcceptanceRecompute(app, AcceptanceMonday); Assert.True(GroceryTestRows.Checked(await AcceptanceSchedule(client),"pasta"));
         });
 
     [DeploymentCalendarPostgresTests.CalendarPostgresFact]
@@ -150,10 +149,10 @@ public partial class SupperServingsPostgresTests
             var recipe = AcceptanceRecipe("Assigned twice"); db.Recipes.Add(recipe); db.CalendarEvents.Add(new CalendarEvent { Date = Wednesday, RecipeId = recipe.Id });
             db.SupperServings.AddRange(new SupperServing { Date = Wednesday, OverrideServings = 4 }, new SupperServing { Date = Wednesday.AddDays(2), OverrideServings = 6 });
             await db.SaveChangesAsync(); await AcceptanceRecompute(app, AcceptanceMonday);
-            var plan = await db.WeeklyPlans.SingleAsync(); plan.GroceryState = "{\"pasta\":true,\"unrelated\":true}"; await db.SaveChangesAsync();
+            await AcceptanceCheck(client);
             Assert.Equal(400, AcceptancePasta(await AcceptanceSchedule(client)));
             (await client.PostAsJsonAsync($"/api/schedule/assign?{AcceptanceReference}", new { weekOffset = 0, dayIndex = 4, recipeId = recipe.Id, requireEmpty = true })).EnsureSuccessStatusCode();
-            var current = await AcceptanceSchedule(client); Assert.Equal(1000, AcceptancePasta(current)); Assert.False(current.GetProperty("groceryState").GetProperty("pasta").GetBoolean()); Assert.True(current.GetProperty("groceryState").GetProperty("unrelated").GetBoolean());
+            var current = await AcceptanceSchedule(client); Assert.Equal(1000, AcceptancePasta(current)); Assert.False(GroceryTestRows.Checked(current,"pasta"));
             db.ChangeTracker.Clear(); Assert.Equal(2, await db.CalendarEvents.CountAsync(x => x.RecipeId == recipe.Id)); Assert.Equal(new[] { 4, 6 }, await db.SupperServings.OrderBy(x => x.Date).Select(x => x.OverrideServings!.Value).ToArrayAsync());
             await AcceptanceRecompute(app, AcceptanceMonday); Assert.Equal(1000, AcceptancePasta(await AcceptanceSchedule(client)));
         });
@@ -181,12 +180,12 @@ public partial class SupperServingsPostgresTests
             var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously); var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
             var checkEntered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously); var armed = false; var publications = 0;
             var publisher = new Mock<IScheduleEventPublisher>();
-            publisher.Setup(x => x.PublishGroceryUpdatedAsync(It.IsAny<int>(), It.IsAny<Dictionary<string, bool>>(), It.IsAny<DateOnly>(), It.IsAny<string?>()))
+            publisher.Setup(x => x.PublishGroceryRowsUpdatedAsync(It.IsAny<int>(), It.IsAny<GroceryMutationResult>(), It.IsAny<string?>()))
                 .Returns(async () => { if (armed && Interlocked.Increment(ref publications) == 1) { entered.TrySetResult(); await release.Task.WaitAsync(TimeSpan.FromSeconds(15)); } });
             await WithMovementAcceptance(async (app, db, client) => {
                 var recipe = AcceptanceRecipe("Ordered checks"); db.Recipes.Add(recipe); db.CalendarEvents.Add(new CalendarEvent { Date = Wednesday, RecipeId = recipe.Id });
                 db.SupperServings.Add(new SupperServing { Date = Wednesday, OverrideServings = 4 }); await db.SaveChangesAsync(); await AcceptanceRecompute(app, AcceptanceMonday);
-                var plan = await db.WeeklyPlans.SingleAsync(); plan.GroceryState = "{\"pasta\":true,\"unrelated\":true}";
+                await AcceptanceCheck(client);
                 var extraId = Guid.NewGuid(); var extra = GroceryExtraOccurrence.Create(extraId, extraId, AcceptanceMonday, "Coffee", "coffee", "Grocery", DateTimeOffset.Parse("2026-10-12T12:00:00Z")); extra.Checked = true; db.GroceryExtraOccurrences.Add(extra); await db.SaveChangesAsync();
                 (await Put(client, await Read(client), null, new[] { new { date = "2026-10-14", servings = 6 } }, false)).EnsureSuccessStatusCode();
                 armed = true;
@@ -195,11 +194,11 @@ public partial class SupperServingsPostgresTests
                 Task later = checkAfter ? AcceptanceCheck(client) : AcceptanceRecompute(app, AcceptanceMonday);
                 if (checkAfter) await checkEntered.Task.WaitAsync(TimeSpan.FromSeconds(15));
                 Assert.False(later.IsCompleted);
-                var during = await AcceptanceSchedule(client); Assert.Equal(checkAfter ? 600 : 400, AcceptancePasta(during)); Assert.Equal(!checkAfter, during.GetProperty("groceryState").GetProperty("pasta").GetBoolean());
+                var during = await AcceptanceSchedule(client); Assert.Equal(checkAfter ? 600 : 400, AcceptancePasta(during)); Assert.Equal(!checkAfter, GroceryTestRows.Checked(during,"pasta"));
                 release.TrySetResult(); await Task.WhenAll(first, later).WaitAsync(TimeSpan.FromSeconds(15));
-                var after = await AcceptanceSchedule(client); Assert.Equal(600, AcceptancePasta(after)); Assert.Equal(checkAfter, after.GetProperty("groceryState").GetProperty("pasta").GetBoolean()); Assert.True(after.GetProperty("groceryState").GetProperty("unrelated").GetBoolean());
+                var after = await AcceptanceSchedule(client); Assert.Equal(600, AcceptancePasta(after)); Assert.Equal(checkAfter, GroceryTestRows.Checked(after,"pasta"));
                 await AcceptanceCheck(client); await AcceptanceRecompute(app, AcceptanceMonday);
-                Assert.True((await AcceptanceSchedule(client)).GetProperty("groceryState").GetProperty("pasta").GetBoolean());
+                Assert.True(GroceryTestRows.Checked(await AcceptanceSchedule(client),"pasta"));
                 db.ChangeTracker.Clear(); var retained = await db.GroceryExtraOccurrences.SingleAsync(); Assert.Equal(extraId, retained.Id); Assert.Equal("Coffee", retained.Name); Assert.True(retained.Checked); Assert.Equal(1, retained.Version);
             }, services: s => s.AddSingleton(publisher.Object), application: app => app.Use(async (context, next) => {
                 if (armed && context.Request.Path.Value?.EndsWith("/grocery/item", StringComparison.Ordinal) == true) checkEntered.TrySetResult(); await next(context);

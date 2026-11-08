@@ -29,7 +29,8 @@ public class RecipeAgentPromptSelectionTests
             string aiExtractionResponse,
             string aiDescriptionResponse = "A delicious recipe.",
             string? targetLanguage = null,
-            string? aiRefinementResponse = null)
+            string? aiRefinementResponse = null,
+            Guid? recipeId = null)
     {
         var storage = new InMemoryStorageProvider();
         var repo = new RecipeRepository(storage);
@@ -71,14 +72,19 @@ public class RecipeAgentPromptSelectionTests
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
         var db = new RecipeDbContext(dbOptions);
+        if (recipeId is { } savedId)
+        {
+            db.Recipes.Add(new Recipe { Id = savedId, Name = "Pending" });
+            db.SaveChanges();
+        }
 
         var agent = new RecipeAgent(
             chatClientMock.Object,
-            repo,
             promptRepoMock.Object,
             mockConfig.Object,
             new Mock<ILogger<RecipeAgent>>().Object,
-            db,
+            new RecipeFilePublicationStore(db, repo, new SystemClock(), new SupperProjectionInvalidation(db, new SystemClock(),
+                new DeploymentCalendar(new ConfigurationManager()))),
             "ExtractRecipe");
 
         return (agent, storage, repo, promptRepoMock, chatClientMock, capturedMessages);
@@ -128,7 +134,7 @@ public class RecipeAgentPromptSelectionTests
     {
         // Arrange
         var recipeId = Guid.NewGuid();
-        var (agent, storage, repo, promptRepoMock, _, _) = CreateSut(ValidRecipeJson());
+        var (agent, storage, repo, promptRepoMock, _, _) = CreateSut(ValidRecipeJson(), recipeId: recipeId);
 
         await WriteRecipeInfo(storage, recipeId, imageCount: 0);
         await repo.SaveContentHtmlAsync(recipeId, "<html><body>Recipe</body></html>", CancellationToken.None);
@@ -146,7 +152,7 @@ public class RecipeAgentPromptSelectionTests
     {
         // Arrange
         var recipeId = Guid.NewGuid();
-        var (agent, storage, repo, promptRepoMock, _, _) = CreateSut(ValidRecipeJson());
+        var (agent, storage, repo, promptRepoMock, _, _) = CreateSut(ValidRecipeJson(), recipeId: recipeId);
 
         await WriteRecipeInfo(storage, recipeId, imageCount: 1);
         await WriteImage(storage, recipeId, 0);
@@ -173,7 +179,7 @@ public class RecipeAgentPromptSelectionTests
               ]
             }
             """;
-        var (agent, storage, _, _, _, capturedMessages) = CreateSut(flatSteps);
+        var (agent, storage, _, _, _, capturedMessages) = CreateSut(flatSteps, recipeId: recipeId);
         await WriteRecipeInfo(storage, recipeId, imageCount: 1);
         await WriteImage(storage, recipeId);
 
@@ -208,7 +214,7 @@ public class RecipeAgentPromptSelectionTests
             """;
         var (agent, storage, _, _, _, capturedMessages) = CreateSut(
             unusableInstructions,
-            aiRefinementResponse: refinedInstructions);
+            aiRefinementResponse: refinedInstructions, recipeId: recipeId);
         await WriteRecipeInfo(storage, recipeId, imageCount: 1);
         await WriteImage(storage, recipeId);
 
@@ -234,7 +240,7 @@ public class RecipeAgentPromptSelectionTests
             """;
         var (agent, storage, _, _, _, _) = CreateSut(
             unusableInstructions,
-            aiRefinementResponse: unusableInstructions);
+            aiRefinementResponse: unusableInstructions, recipeId: recipeId);
         await WriteRecipeInfo(storage, recipeId, imageCount: 1);
         await WriteImage(storage, recipeId);
 
@@ -248,7 +254,7 @@ public class RecipeAgentPromptSelectionTests
     public async Task ImageExtraction_WithRepairSnapshot_AddsDelimitedUntrustedIngredientsFocus()
     {
         var recipeId = Guid.NewGuid();
-        var (agent, storage, _, _, _, capturedMessages) = CreateSut(ValidRecipeJson());
+        var (agent, storage, _, _, _, capturedMessages) = CreateSut(ValidRecipeJson(), recipeId: recipeId);
         await WriteRecipeInfo(storage, recipeId, imageCount: 1);
         await WriteImage(storage, recipeId);
 
@@ -276,7 +282,7 @@ public class RecipeAgentPromptSelectionTests
     public async Task UrlExtraction_WithRepairSnapshot_AddsDelimitedUntrustedStepsFocus()
     {
         var recipeId = Guid.NewGuid();
-        var (agent, storage, repo, _, _, capturedMessages) = CreateSut(ValidRecipeJson());
+        var (agent, storage, repo, _, _, capturedMessages) = CreateSut(ValidRecipeJson(), recipeId: recipeId);
         await WriteRecipeInfo(storage, recipeId);
         await repo.SaveContentHtmlAsync(recipeId, "<html><body>Recipe</body></html>", CancellationToken.None);
 
@@ -300,7 +306,7 @@ public class RecipeAgentPromptSelectionTests
     public async Task NormalExtraction_OmitsUserReportedFocus()
     {
         var recipeId = Guid.NewGuid();
-        var (agent, storage, _, _, _, capturedMessages) = CreateSut(ValidRecipeJson());
+        var (agent, storage, _, _, _, capturedMessages) = CreateSut(ValidRecipeJson(), recipeId: recipeId);
         await WriteRecipeInfo(storage, recipeId, imageCount: 1);
         await WriteImage(storage, recipeId);
 
@@ -317,7 +323,7 @@ public class RecipeAgentPromptSelectionTests
     {
         // Arrange
         var recipeId = Guid.NewGuid();
-        var (agent, storage, _, promptRepoMock, _, _) = CreateSut(ValidRecipeJson());
+        var (agent, storage, _, promptRepoMock, _, _) = CreateSut(ValidRecipeJson(), recipeId: recipeId);
 
         await WriteRecipeInfo(storage, recipeId, imageCount: 0);
         // No content.html, no images
@@ -336,7 +342,7 @@ public class RecipeAgentPromptSelectionTests
     {
         // Arrange
         var recipeId = Guid.NewGuid();
-        var (agent, storage, repo, _, _, _) = CreateSut(ValidRecipeJson());
+        var (agent, storage, repo, _, _, _) = CreateSut(ValidRecipeJson(), recipeId: recipeId);
 
         await WriteRecipeInfo(storage, recipeId, imageCount: 0);
         await repo.SaveContentHtmlAsync(recipeId, "<html><body>Recipe page</body></html>", CancellationToken.None);
@@ -359,7 +365,7 @@ public class RecipeAgentPromptSelectionTests
         // Arrange
         var recipeId = Guid.NewGuid();
         var targetLanguage = "French";
-        var (agent, storage, repo, _, chatClientMock, capturedMessages) = CreateSut(ValidRecipeJson(), targetLanguage: targetLanguage);
+        var (agent, storage, repo, _, chatClientMock, capturedMessages) = CreateSut(ValidRecipeJson(), targetLanguage: targetLanguage, recipeId: recipeId);
 
         await WriteRecipeInfo(storage, recipeId, imageCount: 1);
         await WriteImage(storage, recipeId, 0);
@@ -380,7 +386,7 @@ public class RecipeAgentPromptSelectionTests
         // Arrange
         var recipeId = Guid.NewGuid();
         var targetLanguage = "NONE";
-        var (agent, storage, repo, _, chatClientMock, capturedMessages) = CreateSut(ValidRecipeJson(), targetLanguage: targetLanguage);
+        var (agent, storage, repo, _, chatClientMock, capturedMessages) = CreateSut(ValidRecipeJson(), targetLanguage: targetLanguage, recipeId: recipeId);
 
         await WriteRecipeInfo(storage, recipeId, imageCount: 1);
         await WriteImage(storage, recipeId, 0);
@@ -400,7 +406,7 @@ public class RecipeAgentPromptSelectionTests
     {
         // Arrange
         var recipeId = Guid.NewGuid();
-        var (agent, storage, _, _, _, _) = CreateSut(ValidRecipeJson());
+        var (agent, storage, _, _, _, _) = CreateSut(ValidRecipeJson(), recipeId: recipeId);
 
         await WriteRecipeInfo(storage, recipeId, imageCount: 1);
         await WriteImage(storage, recipeId, 0);
@@ -424,7 +430,7 @@ public class RecipeAgentPromptSelectionTests
     public async Task ImageExtraction_SendsEveryPageInOrder_WithItsActualMediaType(string extension, string mediaType, int count)
     {
         var id = Guid.NewGuid();
-        var (agent, storage, _, _, _, captured) = CreateSut(ValidRecipeJson());
+        var (agent, storage, _, _, _, captured) = CreateSut(ValidRecipeJson(), recipeId: id);
         await WriteRecipeInfo(storage, id, count);
         for (var i = 0; i < count; i++)
         {
@@ -503,7 +509,7 @@ public class RecipeAgentPromptSelectionTests
             rawHtml = "<html>should be stripped</html>"
         });
 
-        var (agent, storage, repo, _, _, _) = CreateSut(aiResponse);
+        var (agent, storage, repo, _, _, _) = CreateSut(aiResponse, recipeId: recipeId);
 
         // Set up: content.html path (web extraction)
         var info = new RecipeInfo { Id = recipeId, ImageCount = 0 };
@@ -546,7 +552,7 @@ public class RecipeAgentPromptSelectionTests
         var imageCount = rawImageCount.Get % 6; // 0..5
 
         var recipeId = Guid.NewGuid();
-        var (agent, storage, repo, promptRepoMock, _, _) = CreateSut(ValidRecipeJson());
+        var (agent, storage, repo, promptRepoMock, _, _) = CreateSut(ValidRecipeJson(), recipeId: recipeId);
 
         // Capture which PromptTypes were requested
         var capturedPromptTypes = new List<PromptType>();
@@ -647,7 +653,7 @@ public class RecipeAgentPromptSelectionTests
 
         // ── Web path (content.html present) ──────────────────────────────────
         var webRecipeId = Guid.NewGuid();
-        var (webAgent, webStorage, webRepo, _, _, _) = CreateSut(aiResponse);
+        var (webAgent, webStorage, webRepo, _, _, _) = CreateSut(aiResponse, recipeId: webRecipeId);
 
         var webInfo = new RecipeInfo { Id = webRecipeId, ImageCount = 0 };
         webStorage.SaveAsync("recipes", $"{webRecipeId}/recipe.info",
@@ -668,7 +674,7 @@ public class RecipeAgentPromptSelectionTests
 
         // ── Photo path (images only) ──────────────────────────────────────────
         var photoRecipeId = Guid.NewGuid();
-        var (photoAgent, photoStorage, _, _, _, _) = CreateSut(aiResponse);
+        var (photoAgent, photoStorage, _, _, _, _) = CreateSut(aiResponse, recipeId: photoRecipeId);
 
         var photoInfo = new RecipeInfo { Id = photoRecipeId, ImageCount = 1 };
         photoStorage.SaveAsync("recipes", $"{photoRecipeId}/recipe.info",

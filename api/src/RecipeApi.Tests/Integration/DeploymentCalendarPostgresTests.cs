@@ -232,16 +232,15 @@ public class DeploymentCalendarPostgresTests(ITestOutputHelper output)
         {
             await using var factory = await CreateFactory(settings);
             await Seed(factory);
+            string carrotId;
             using (var scope = factory.Services.CreateScope())
             {
                 var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
-                db.WeeklyPlans.Add(new WeeklyPlan
-                {
-                    WeekStartDate = new DateOnly(2026, 10, 5),
-                    GroceryState = "{\"Carrot\":true,\"obsolete\":true}",
-                    GroceryItems = JsonSerializer.Serialize(new[] { new RecipeApi.Dto.GroceryLineItemDto("Carrot", "carrot", "Produce", null, null, [SelectedId]) }),
-                });
+                db.CalendarEvents.Add(new CalendarEvent { Date = new(2026,10,5), MealSlot = 1, RecipeId = SelectedId });
                 await db.SaveChangesAsync();
+                await scope.ServiceProvider.GetRequiredService<RecipeApi.Services.GroceryRecomputeService>().RecomputeForWeekAsync(new(2026,10,5),default);
+                using var shopper = factory.CreateAuthenticatedClient();
+                carrotId = await GroceryTestRows.CheckAsync(shopper,new(2026,10,5),"carrot");
             }
             using var client = factory.CreateAuthenticatedClient();
             client.DefaultRequestHeaders.Add("Cookie", $"x-family-member-id={factory.DefaultFamilyMemberId}");
@@ -251,12 +250,12 @@ public class DeploymentCalendarPostgresTests(ITestOutputHelper output)
             using var connected = await ReadEvent(reader, "connected");
             Assert.Equal("2026-10-05", connected.RootElement.GetProperty("schedule").GetProperty("weekStartDate").GetString());
             (await client.PostAsJsonAsync("/api/schedule/assign?referenceWeekStartDate=2026-10-05",
-                new { weekOffset = 0, dayIndex = 6, recipeId = SelectedId })).EnsureSuccessStatusCode();
+                new { weekOffset = 0, dayIndex = 6, recipeId = SentinelId })).EnsureSuccessStatusCode();
             using var grocery = await ReadEvent(reader, "grocery_updated");
             Assert.Equal(0, grocery.RootElement.GetProperty("weekOffset").GetInt32());
             Assert.False(grocery.RootElement.GetProperty("groceryState").TryGetProperty("Carrot", out _));
-            Assert.True(grocery.RootElement.GetProperty("groceryState").GetProperty("carrot").GetBoolean());
-            Assert.True(grocery.RootElement.GetProperty("groceryState").GetProperty("obsolete").GetBoolean());
+            Assert.True(grocery.RootElement.GetProperty("groceryState").GetProperty(carrotId).GetBoolean());
+            Assert.All(grocery.RootElement.GetProperty("groceryState").EnumerateObject(), entry=>Assert.True(Guid.TryParse(entry.Name,out _)));
             output.WriteLine("Received grocery_updated for connected/reference Monday 2026-10-05: " + grocery.RootElement.GetRawText());
         });
     }

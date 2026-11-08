@@ -200,6 +200,8 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
         builder.Services.AddScoped<IValidationService, ValidationService>();
         builder.Services.AddScoped<ImageService>();
         builder.Services.AddScoped<RecipeService>();
+        builder.Services.AddScoped<RecipeRepository>();
+        builder.Services.AddScoped<RecipeFilePublicationStore>();
         builder.Services.AddScoped<PdfCaptureService>();
         builder.Services.AddSingleton<FeatureFlagRegistry>();
         builder.Services.AddScoped<FeatureFlagService>();
@@ -277,6 +279,35 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
 
                 return instance;
             });
+        orchestratorMock.Setup(o => o.TriggerReportAsync(It.IsAny<Guid>(), It.IsAny<Guid>(),
+                It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()))
+            .ReturnsAsync((Guid instanceId, Guid recipeId, string workflowId, Dictionary<string, string> parameters) =>
+            {
+                using var scope = _app!.Services.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+                var now = DateTimeOffset.UtcNow;
+                var instance = new WorkflowInstance
+                {
+                    Id = instanceId, WorkflowId = workflowId, Status = WorkflowStatus.Processing,
+                    Parameters = JsonSerializer.Serialize(parameters), CreatedAt = now, UpdatedAt = now
+                };
+                instance.Tasks.Add(new WorkflowTask
+                {
+                    TaskId = Guid.NewGuid(), InstanceId = instanceId, TaskName = "mock", ProcessorName = "Mock",
+                    Payload = JsonSerializer.Serialize(parameters), Status = RecipeApi.Models.TaskStatus.Pending,
+                    CreatedAt = now, UpdatedAt = now
+                });
+                var report = db.RecipeImportReports.Single(x => x.RecipeId == recipeId);
+                report.Status = RecipeImportReportStatus.Reimporting;
+                report.LastWorkflowInstanceId = instanceId;
+                report.LastAttemptAt = now;
+                report.ReimportedAt = null;
+                report.LastError = null;
+                report.UpdatedAt = now;
+                db.WorkflowInstances.Add(instance);
+                db.SaveChanges();
+                return instance;
+            });
         orchestratorMock.Setup(o => o.InitializeUrlCaptureAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Guid id, CancellationToken ct) =>
             {
@@ -289,6 +320,27 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
                 instance.Tasks.Add(new WorkflowTask
                 {
                     TaskId = Guid.NewGuid(), InstanceId = id, TaskName = "mock", ProcessorName = "Mock",
+                    Payload = instance.Parameters, Status = RecipeApi.Models.TaskStatus.Pending,
+                    CreatedAt = DateTimeOffset.UtcNow, UpdatedAt = DateTimeOffset.UtcNow
+                });
+                db.WorkflowTasks.AddRange(instance.Tasks);
+                instance.Status = WorkflowStatus.Processing;
+                db.SaveChanges();
+                return instance;
+            });
+        orchestratorMock.Setup(o => o.InitializeRecipeFollowupAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Guid id, CancellationToken ct) =>
+            {
+                using var scope = _app!.Services.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+                var instance = db.WorkflowInstances.Include(w => w.Tasks).Single(w => w.Id == id);
+                if (instance.Status != WorkflowStatus.Paused) return instance;
+                db.WorkflowTasks.RemoveRange(instance.Tasks);
+                instance.Tasks.Clear();
+                instance.Tasks.Add(new WorkflowTask
+                {
+                    TaskId = Guid.NewGuid(), InstanceId = id, TaskName = _configurationOverrides.GetValueOrDefault("Tests:PdfWorkflow") == "true" && instance.WorkflowId == "recipe-import" ? "convert_pdf" : "mock",
+                    ProcessorName = _configurationOverrides.GetValueOrDefault("Tests:PdfWorkflow") == "true" && instance.WorkflowId == "recipe-import" ? "ConvertPdf" : "Mock",
                     Payload = instance.Parameters, Status = RecipeApi.Models.TaskStatus.Pending,
                     CreatedAt = DateTimeOffset.UtcNow, UpdatedAt = DateTimeOffset.UtcNow
                 });

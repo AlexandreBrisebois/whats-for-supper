@@ -288,7 +288,8 @@ export function useScheduleStream() {
     // Only apply if the event is for the currently-loaded week.
     source.addEventListener('grocery_updated', (e: MessageEvent) => {
       console.log('[SSE] Received "grocery_updated" event');
-      const { weekStartDate, groceryState } = JSON.parse(e.data);
+      const payload = JSON.parse(e.data);
+      const { weekStartDate } = payload;
       const state = useWeekStore.getState();
       if (!absoluteMonday(weekStartDate)) {
         void state.sync();
@@ -298,7 +299,7 @@ export function useScheduleStream() {
         weekStartDate === state.weekStartDate &&
         weekOffsetFor(weekStartDate, state.calendar?.referenceWeekStartDate) === state.weekOffset
       ) {
-        usePlannerStore.getState().setGroceryState(groceryState);
+        state.applyGrocerySnapshot(payload);
         // Existing event payloads remain compatible: a check-map notification can
         // also mean derived quantities/freshness changed during recomputation.
         void state.refreshGroceries();

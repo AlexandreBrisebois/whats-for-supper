@@ -69,18 +69,19 @@ public partial class ScheduleService(RecipeDbContext dbContext, ILogger<Schedule
 
         var groceryState = plan?.GroceryState != null
             ? JsonSerializer.Deserialize<Dictionary<string, bool>>(plan.GroceryState)
-            : null;
+            : new Dictionary<string, bool>();
 
         var groceryItems = plan?.GroceryItems != null
             ? JsonSerializer.Deserialize<List<GroceryLineItemDto>>(plan.GroceryItems)
-            : null;
+            : new List<GroceryLineItemDto>();
+        if (plan is not null) GroceryRowState.RequireCurrent(plan, groceryItems ?? []);
 
         var round = await _dbContext.VotingRoundStates.AsNoTracking().SingleOrDefaultAsync();
         var roundId = plan?.VotingRoundId ?? plan?.LastClosedRoundId ??
             (round?.WeekStartDate is null || round.WeekStartDate == monday ? round?.RoundId : null);
         var extras = _groceryExtras is null ? [] : await _groceryExtras.ReadForViewAsync(monday, context.CurrentWeekStartDate);
         if (transaction is not null) await transaction.CommitAsync();
-        return new ScheduleDays(weekOffset, isLocked, status, days, context, monday, groceryState, groceryItems, roundId, extras, SupperServingsService.Freshness(plan, "legacy"));
+        return new ScheduleDays(weekOffset, isLocked, status, days, context, monday, groceryState, groceryItems, roundId, extras, SupperServingsService.Freshness(plan, "legacy"), plan?.GroceryListVersion);
     }
 
     public async Task OpenVotingAsync(int weekOffset, string? excludeConnectionId = null, DateOnly? referenceWeekStartDate = null)
@@ -934,7 +935,7 @@ public partial class ScheduleService(RecipeDbContext dbContext, ILogger<Schedule
         Dictionary<string, bool> groceryState,
         string? excludeConnectionId = null,
         CancellationToken ct = default, DateOnly? referenceWeekStartDate = null) =>
-        WriteGroceryStateAsync(weekOffset, _ => new Dictionary<string, bool>(groceryState), groceryState.Where(x => x.Value).Select(x => x.Key), excludeConnectionId, ct, referenceWeekStartDate);
+        WriteGroceryStateAsync(weekOffset, _ => new Dictionary<string, bool>(groceryState), excludeConnectionId, ct, referenceWeekStartDate);
 
     public async Task ToggleGroceryItemAsync(
         int weekOffset,
@@ -947,12 +948,12 @@ public partial class ScheduleService(RecipeDbContext dbContext, ILogger<Schedule
         {
             current[ingredientName] = checked_;
             return current;
-        }, checked_ ? [ingredientName] : [], excludeConnectionId, ct, referenceWeekStartDate);
+        }, excludeConnectionId, ct, referenceWeekStartDate);
     }
 
     private Task<Dictionary<string, bool>> WriteGroceryStateAsync(int weekOffset,
         Func<Dictionary<string, bool>, Dictionary<string, bool>> update,
-        IEnumerable<string> checkedNames, string? excludeConnectionId, CancellationToken ct, DateOnly? referenceWeekStartDate)
+        string? excludeConnectionId, CancellationToken ct, DateOnly? referenceWeekStartDate)
     {
         var monday = _calendar.Capture(_clock.UtcNow, referenceWeekStartDate).WeekStart(weekOffset);
         return groceryChecks.ProcessAsync(async db =>
@@ -962,7 +963,6 @@ public partial class ScheduleService(RecipeDbContext dbContext, ILogger<Schedule
             var current = JsonSerializer.Deserialize<Dictionary<string, bool>>(plan.GroceryState ?? "{}") ?? [];
             var result = update(current);
             plan.GroceryState = JsonSerializer.Serialize(result);
-            GroceryCheckCoordinator.ClearAcknowledgedReviews(plan, checkedNames);
             await db.SaveChangesAsync(ct);
             GroceryCheckCoordinator.SynchronizeTrackedPlan(_dbContext, monday, plan.GroceryState, plan.GroceryItems);
             await _publisher.PublishGroceryUpdatedAsync(weekOffset, result, monday, excludeConnectionId);

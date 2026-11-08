@@ -1,16 +1,16 @@
 # Shared dependency, conflict and adversarial design review
 
-Spec-only review at `d51222ffbb7e3eb6d08fed394851a52de3f5522c`, `recipe-view-redesign`, 2026-11-07. No main-capability sync, archive, product changes, commits or production execution. Implementation checkboxes remain unchecked. This replaces earlier assertions that no behavioral choices remained. A structurally valid OpenSpec draft is not approved design or tested product behavior.
+Spec-only review at `d51222ffbb7e3eb6d08fed394851a52de3f5522c`, `recipe-view-redesign`, 2026-11-07. No main-capability sync, archive, product changes, commits or production execution. Implementation checkboxes remain unchecked. The follow-up decision reconciliation was prepared from clean `recipe-view-redesign` at `482d44731ab44ec703f70e1252751fc0964bf7f2`. Alex subsequently approved the product rules recorded below; the initial source review remains historical evidence. A structurally valid OpenSpec draft is not implementation approval or tested product behavior.
 
 ## Ownership and dependency graph
 
 | Review unit | Owns | Depends on / can release |
 | --- | --- | --- |
 | canonical-ingredient-correction | Exact original rows/basis/steps, contentRevision, protected publication, common DTO/editor and canonical projector input | Foundation; never a competing replacement schema |
-| restore-dependable-grocery-interactions | Row/check identity, guarded check/bulk operations, reset comparison, no review acknowledgement, focus and category-control interaction | Reusable legacy demand identity can ship before full canonical migration; client/check transition required |
+| restore-dependable-grocery-interactions | Row/check identity, guarded check/bulk operations, reset comparison, no review acknowledgement, focus and category-control interaction | Reusable legacy demand identity can ship before full canonical migration; client fence and fresh-list/history-preservation upgrade required |
 | bilingual-shopping-identity | Saved app food IDs/EN-FR labels, aliases, shopping grouping/units, category scope/provenance | Canonical saved association and grocery row identity; no dictionary-completeness dependency for step scaling |
 | scale-cooking-step-ingredients | Revision-bound uses, allocation/rendering, original step editing, coherent cooking refresh and prepared current-recipe reading | Canonical facts; mandatory for complete portions release, independent of dictionary coverage |
-| migrate-canonical-recipe-model | In-place conversion, conditional fallback, old-writer fencing, one-time checks and complete current-format recovery | Design begins now; activation requires final persisted contracts of all owners |
+| migrate-canonical-recipe-model | In-place conversion, conditional fallback, old-writer fencing, fresh-list upgrade preserving history and complete current-format recovery | Design begins now; activation requires final persisted contracts of all owners |
 
 All proposed shapes live in [contracts.md](contracts.md). Every delta requirement is owned once across this set; this includes moving canonical draft cooking/grocery/recovery deltas into companions. Existing main specs remain implementation baselines until a separately approved apply/sync. No duplicate “recipe facts v2” capability is created.
 
@@ -46,18 +46,20 @@ Current report locking is explicitly in-process; the new design cannot claim rep
 - Rational string transport avoids JS precision loss and binary fraction drift; bounded input/intermediates prevent pathological arithmetic. Costs: tagged DTO migration, locale grammar and property fixtures. AmountText is validated notation, never a second numeric authority.
 - Revision-bound spans fit existing plain-text editing; segments could be safer for rich editing but expand scope. UTF-16 boundary validation, expected substrings and exact revisions are required; stale spans stay readable and unscaled.
 - Conservative fallback names and a curated identity seed avoid speculative bilingual merges. Costs: less aggregation and incomplete translation, acceptable with honest source labels. No upstream dataset has demonstrated corpus fit yet.
-- New split/merge rows default unchecked rather than invent independent historical purchase intent. This is a proposed structural rule distinct from proven continuing-row increase policy; review before approval.
+- Alex approved new split/merge rows starting unchecked rather than inheriting purchase intent. Continuing checked rows compare current requirement against a persisted checked-demand baseline, never the preceding recomputation; preserved overlaps/decreases do not advance it.
 - Complete current-format manifests simplify recovery semantics but make prior backups intentionally unsupported. Preserve an independently verified old snapshot/executable pair for emergency rollback, not a hidden new-app legacy adapter.
 
-## Consequential choices and approval holds
+## Approved product decisions
 
-1. Next product question: after ingredient total 200→250 g, should explicit 50 g step use stay 50 g original (recommended), or be deliberately redistributed? Preserve explicit fractions and update only proven whole uses under the recommendation. Contradictions invalidate dependent numeric rendering. The affected reconciliation implementation is blocked until settled.
-2. Approve grocery engineering comparison/continuity contract: exact complete range proof new.min>old.max; unprovable continuing changes preserve checks; new structural split/merge IDs start unchecked. The already accepted proven-increase-only scalar policy is not reopened.
-3. At idle-shopping cutover, recommend preserving proven one-to-one old checks and clearing only ambiguous name→multiple-row checks once, with manifest evidence. This does not reconstruct independent historical intent. Final transition task waits for actual affected-set assessment and approval.
-4. Dataset adoption requires licence text/version/hash, EN/FR exact-match/purchase corpus and governance review. Recommend CNF pilot, not automatic adoption. This is an engineering qualification gate, not a request to reconfirm import-time AI permission.
-5. Only if recipe-only disk fallback becomes necessary: decide disk/live precedence for the concrete divergent set. No default disk-wins decision, and no fallback execution task finalized now.
+1. Explicit partial uses remain at their original absolute values after ingredient-total correction and still scale with portions. Relative language remains relative; proven whole uses follow corrected total. Inconsistent allocations get quiet review without blocking cooking. Example: total 200→250 g leaves explicit use 50 g original/75 g at factor 1.5.
+2. A checked range resets only when current minimum exceeds the maximum of the requirement captured when the row was checked. Baseline 2–3 stays checked at 3–4 and unchecks at 4–5. Preserve the baseline while checked, so sequential overlapping updates cannot ratchet it forward and hide a cumulative increase. Redundant true/bulk/retry writes do not rebaseline; an actual unchecked→checked transition does.
+3. Rows newly created by split or merge start unchecked. Unchanged continuing rows keep checks subject to the approved proven-increase rule; label/locale changes do not imply a new row.
+4. Alex confirms no active grocery list during upgrade and says the next list will be new. New recipe-derived rows start unchecked with no inherited old-name checks/baselines. Preserve historical list/check data and extra occurrences/history; do not reinterpret ambiguous historical shared checks as individual acknowledgements. No elaborate active-check conversion or extra decision is required. If assessment unexpectedly finds an active list, stop/report rather than discard it.
+5. If a disk reseed is necessary, compare disk/database by stable recipe ID and supported recipe facts before mutation. Alex reports no UI recipe edits and Dreaming synchronization. Verify that expected matching state; stop/report unexpected content or membership mismatches rather than pick a winner. No per-recipe UI-edit conflict-resolution workflow is required solely for hypothetical edits. Preserve household data/IDs, revision safeguards against actual concurrency and input copies.
 
-These holds do not prevent preparing coherent drafts, nonproduction acceptance plans or independent grocery fixes. They prevent describing the complete set as implementation-ready. Tasks explicitly identify unfinalized dependent work rather than silently bake in these choices.
+## Remaining engineering and release gates
+
+Dataset adoption still requires pinned licence text/version/hash, EN/FR exact-match/purchase corpus and governance review. CNF remains a pilot recommendation, not automatic adoption. Public schema/API/client/mock, real PostgreSQL/files/browser and current-format recovery acceptance remain required during separately approved implementation. Conditional fallback is not the default and cannot proceed past an unexpected mismatch without further assessment. The five newly settled product decisions are no longer approval holds.
 
 ## Future CI and default-selection requirements
 
@@ -77,4 +79,18 @@ This planning session only runs document/OpenSpec checks with explicit paths, av
 
 ## Recommended review and release sequence
 
-Review shared schema/revisions and holds first; approve bounded units separately from implementation. Dependable grocery interactions can apply/release first using reusable row IDs after check/client gates. Then land canonical facts and guarded capture through the real stack, bilingual saved identity and mandatory step uses in dependency order (the latter two can be independent after the foundation). Rehearse complete in-place migration, client fencing and current-format recovery before activation. Release the full portions outcome only after step scaling, current prepared reading and required integration/visual corpus pass. Production cutover is a separate operator approval with exact candidate and verified recovery packet.
+The approved all-spec implementation now extracts the smallest coherent canonical
+saved-row identity/guarded-publication prerequisite before grocery closure; see the
+[extraction review](grocery-prerequisite-review.md). Legacy observed recipe/name
+membership cannot prove positive incompatible-unit continuation. Grocery remains
+open during this prerequisite, including exact recovery/client qualification before
+canonical write activation. This dependency extraction does not complete the
+canonical or migration companions or narrow any accepted grocery behavior.
+
+After the prerequisite, complete grocery acceptance, then remaining canonical
+facts/guarded capture, bilingual saved identity and mandatory step uses in dependency
+order (the latter two can be independent after the foundation). Rehearse complete
+in-place migration, client fencing and current-format recovery before activation.
+Release the full portions outcome only after step scaling, current prepared reading
+and required integration/visual corpus pass. Production cutover is a separate
+operator approval with exact candidate and verified recovery packet.

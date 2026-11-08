@@ -121,7 +121,7 @@ public partial class SupperServingsPostgresTests
                 foreach (var task in await db.WorkflowTasks.Where(x => x.ProcessorName == "RefreshSupperGroceries").ToListAsync())
                     await processors.Single(x => x.ProcessorName == task.ProcessorName).ExecuteAsync(task, default);
                 using var result = JsonDocument.Parse(await client.GetStringAsync("/api/schedule?referenceWeekStartDate=2026-10-12"));
-                Assert.Equal(quantity, result.RootElement.GetProperty("data").GetProperty("groceryItems")[0].GetProperty("quantity").GetDouble());
+                Assert.Equal(quantity, result.RootElement.GetProperty("data").GetProperty("groceryItems")[0].GetProperty("quantity").ExactScalar());
                 Assert.Equal("current", (await Read(client)).GetProperty("groceryRefresh").GetProperty("status").GetString());
             }
             (await Put(client, afterCancel, null, [new { date = "2026-10-14", servings = (int?)null }], false)).EnsureSuccessStatusCode();

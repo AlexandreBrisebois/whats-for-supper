@@ -18,6 +18,12 @@ Import-time AI may propose facts and identities through existing provider bounda
 
 ## First Observable Slice
 
+The approved sequence now extracts the coherent identity/guarded-publication
+prerequisite needed by grocery continuity before grocery closure. See the
+[prerequisite review](grocery-prerequisite-review.md) for boundaries, recovery
+activation gate, precision proof limits and required checks. This does not close
+this change or its companions and does not narrow grocery acceptance.
+
 Search → detail at eight portions from basis four → Edit original 200 g pasta and untouched 100 ml sauce → Save pasta 250 g → reread 250 g original and 500 g dated, with one shared revision and source retained. Include a proven whole-use step in the coordinated step slice; until that slice passes, this tracer is not complete portions support. Exercise UI → generated client → real API → PostgreSQL plus durable grocery/search invalidation, and method-sensitive mock equivalents.
 
 ## State, Concurrency and Recovery
@@ -34,6 +40,10 @@ Add storage, settle contracts and client/draft fencing, qualify guarded publicat
 
 Keep amount, unit and description as the primary editor fields. Accept fractions/ranges in amount. Shopping-name correction and fixed exceptions use progressive disclosure. Original and Reset stay in recipe actions; preserve quiet preview state, current phone/tablet composition, horizontal portions editor, original overlays, drafts, check states, exact offset and completion protections. Review EN/FR at 320 CSS px, 200% text and tablet Split View separately from automated checks.
 
-## Consequential Review Holds
+## Approved decisions and remaining qualification
 
-The choice after ingredient-total correction is still unresolved: preserve absolute step amounts (recommended), keep explicit fractions and recompute only proven whole uses, or intentionally redistribute selected uses. The step companion records the counterexample and blocks dependent implementation tasks. Dataset adoption and conditional disk/live precedence have separate gates in their owners. These are not deferrable implementation details.
+Alex approved keeping an explicit partial step amount at its original value when the ingredient total changes; it still scales with portions. Relative language stays relative to the corrected total. Proven whole uses follow that total, and inconsistent allocations require quiet review without blocking cooking. The step companion now includes the dependent reconciliation task.
+
+Checked grocery ranges compare against the demand captured when the row was checked: only new minimum greater than that baseline maximum resets the check. Preserving the check does not advance its baseline. New split/merge rows start unchecked; unchanged continuing rows retain checks under that comparison rule. Upgrade has no active grocery list to convert: the next recipe-derived list is new, while historical data and extra occurrences remain preserved.
+
+Dataset adoption still needs source/licence/corpus qualification. Conditional disk fallback uses stable-ID comparison and stops/reports unexpected mismatches rather than choosing a disk/live winner. Alex reports no UI recipe edits and Dreaming synchronization, so no elaborate per-recipe conflict workflow is required solely for such edits. These accepted product decisions do not authorize implementation or release.

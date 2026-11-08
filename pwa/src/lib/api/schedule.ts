@@ -1,59 +1,41 @@
-import { demoFetch } from './demo-session';
-import { requestAdapter } from './api-client';
-import { useFamilyStore } from '@/store/familyStore';
+import { DateOnly } from '@microsoft/kiota-abstractions';
+import { RetryHandlerOptions } from '@microsoft/kiota-http-fetchlibrary';
+import { apiClient } from './api-client';
+import type {
+  GroceryBulkMutation,
+  GroceryItemMutation,
+  GroceryMutationResult,
+} from './generated/models';
+
+const configuration = (reference?: string) => ({
+  // A lost response requires an authoritative read before any replay.
+  options: [new RetryHandlerOptions({ maxRetries: 0 })],
+  queryParameters: reference ? { referenceWeekStartDate: DateOnly.parse(reference)! } : undefined,
+});
 
 export function useSchedule() {
   return {
     async toggleGroceryItem(
-      weekOffset: number,
-      ingredientName: string,
-      checked: boolean,
-      referenceWeekStartDate?: string
-    ): Promise<void> {
-      const familyMemberId = useFamilyStore.getState().selectedFamilyMemberId;
-
-      const response = await demoFetch(
-        `${requestAdapter.baseUrl}/api/schedule/${weekOffset}/grocery/item${referenceWeekStartDate ? `?referenceWeekStartDate=${encodeURIComponent(referenceWeekStartDate)}` : ''}`,
-        {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Family-Member-Id': familyMemberId || '',
-          },
-          body: JSON.stringify({ ingredientName, checked }),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error(`Failed to toggle grocery item: ${response.statusText}`);
-      }
+      offset: number,
+      request: GroceryItemMutation,
+      reference?: string
+    ): Promise<GroceryMutationResult> {
+      const result = await apiClient.api.schedule
+        .byWeekOffset(offset)
+        .grocery.item.patch(request, configuration(reference));
+      if (!result) throw new Error('Missing authoritative grocery outcome.');
+      return result;
     },
-
     async updateGroceryState(
-      weekOffset: number,
-      groceryState: Record<string, boolean>,
-      referenceWeekStartDate?: string
-    ): Promise<Record<string, boolean>> {
-      const familyMemberId = useFamilyStore.getState().selectedFamilyMemberId;
-
-      const response = await demoFetch(
-        `${requestAdapter.baseUrl}/api/schedule/${weekOffset}/grocery${referenceWeekStartDate ? `?referenceWeekStartDate=${encodeURIComponent(referenceWeekStartDate)}` : ''}`,
-        {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Family-Member-Id': familyMemberId || '',
-          },
-          body: JSON.stringify(groceryState),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error(`Failed to update grocery state: ${response.statusText}`);
-      }
-
-      const result = await response.json();
-      return result?.data || groceryState;
+      offset: number,
+      request: GroceryBulkMutation,
+      reference?: string
+    ): Promise<GroceryMutationResult> {
+      const result = await apiClient.api.schedule
+        .byWeekOffset(offset)
+        .grocery.patch(request, configuration(reference));
+      if (!result?.data) throw new Error('Missing authoritative grocery outcome.');
+      return result.data;
     },
   };
 }

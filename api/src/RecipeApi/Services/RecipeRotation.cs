@@ -20,12 +20,20 @@ internal static class RecipeRotation
             : await db.Database.BeginTransactionAsync(ct);
         try
         {
-            await db.Database.ExecuteSqlAsync($"SELECT id FROM recipes WHERE id = {id} FOR UPDATE", ct);
-            var tracked = db.ChangeTracker.Entries<Recipe>().FirstOrDefault(x => x.Entity.Id == id);
-            if (tracked is not null) await tracked.ReloadAsync(ct);
+            await LockRowAsync(db, id, ct);
+            await RecipePhysicalLifecycle.RequireWritableAsync(db, id, ct);
             return transaction;
         }
         catch { if (transaction is not null) await transaction.DisposeAsync(); throw; }
+    }
+    // Enlist in an existing transaction after its supper-input locks, before reading recipe state.
+    internal static async Task LockRowAsync(RecipeDbContext db, Guid id, CancellationToken ct)
+    {
+        if (!db.Database.IsRelational()) return;
+        if (db.Database.CurrentTransaction is null) throw new InvalidOperationException("Recipe row locking requires a transaction.");
+        await db.Database.ExecuteSqlAsync($"SELECT id FROM recipes WHERE id = {id} FOR UPDATE", ct);
+        var tracked = db.ChangeTracker.Entries<Recipe>().FirstOrDefault(x => x.Entity.Id == id);
+        if (tracked is not null) await tracked.ReloadAsync(ct);
     }
 }
 

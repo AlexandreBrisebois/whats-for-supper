@@ -35,37 +35,28 @@ public sealed partial class GroceryCheckConcurrencyPostgresTests(ITestOutputHelp
                         secondEntered.TrySetResult();
                     await next(context);
                 }), configureServices: services => services.AddDbContext<RecipeDbContext>(options => options.AddInterceptors(barrier)));
-            using (var seed = factory.Services.CreateScope())
-            {
-                var db = seed.ServiceProvider.GetRequiredService<RecipeDbContext>();
-                db.WeeklyPlans.Add(new WeeklyPlan
-                {
-                    Id = Guid.NewGuid(), WeekStartDate = new(2026, 10, 5),
-                    GroceryState = "{\"Tomato\":false,\"Lettuce\":false}",
-                });
-                await db.SaveChangesAsync();
-            }
+            await SeedRowPlan(factory);
 
             using var first = factory.CreateAuthenticatedClient();
             using var second = factory.CreateAuthenticatedClient();
             barrier.Enabled = true;
             const string url = "/api/schedule/0/grocery/item";
-            var firstRequest = first.PatchAsJsonAsync(url, new { ingredientName = "Tomato", @checked = true });
+            var firstRequest = first.PatchAsJsonAsync(url, new { rowId = TomatoRow, weekStartDate = "2026-10-05", expectedRowVersion = "1", @checked = true, clientMutationId = Guid.NewGuid() });
             await barrier.FirstRead.Task.WaitAsync(TimeSpan.FromSeconds(15));
-            var secondRequest = second.PatchAsJsonAsync(url, new { ingredientName = "Lettuce", @checked = true });
+            var secondRequest = second.PatchAsJsonAsync(url, new { rowId = LettuceRow, weekStartDate = "2026-10-05", expectedRowVersion = "1", @checked = true, clientMutationId = Guid.NewGuid() });
             await secondEntered.Task.WaitAsync(TimeSpan.FromSeconds(15));
             barrier.Release.TrySetResult();
             var responses = await Task.WhenAll(firstRequest, secondRequest);
-            Assert.All(responses, response => Assert.Equal(HttpStatusCode.NoContent, response.StatusCode));
+            Assert.All(responses, response => Assert.Equal(HttpStatusCode.OK, response.StatusCode));
             Assert.Equal(2, barrier.Arrivals);
             barrier.Enabled = false;
 
             using var fresh = factory.Services.CreateScope();
-            var persisted = await fresh.ServiceProvider.GetRequiredService<RecipeDbContext>().WeeklyPlans.AsNoTracking().SingleAsync();
+            var persisted = await fresh.ServiceProvider.GetRequiredService<RecipeDbContext>().WeeklyPlans.AsNoTracking().SingleAsync(plan => plan.WeekStartDate == Monday);
             output.WriteLine($"Fresh third scope persisted map: {persisted.GroceryState}");
             var checks = JsonSerializer.Deserialize<Dictionary<string, bool>>(persisted.GroceryState!)!;
-            Assert.True(checks["Tomato"], "Tomato must survive the other request's save.");
-            Assert.True(checks["Lettuce"], "Lettuce must survive the other request's save.");
+            Assert.True(checks[TomatoRow], "Tomato must survive the other request's save.");
+            Assert.True(checks[LettuceRow], "Lettuce must survive the other request's save.");
         });
     }
 

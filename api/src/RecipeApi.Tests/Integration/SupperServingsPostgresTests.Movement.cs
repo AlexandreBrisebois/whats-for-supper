@@ -33,7 +33,7 @@ public partial class SupperServingsPostgresTests
             var occurrence=await db.CalendarEvents.SingleAsync();Assert.Equal(Wednesday.AddDays(1),occurrence.Date);Assert.Equal(7,occurrence.VoteCount);
             Assert.Equal(new[]{6,4},await db.SupperServings.OrderBy(x=>x.Date).Select(x=>x.OverrideServings!.Value).ToArrayAsync());
             var plan=await db.WeeklyPlans.SingleAsync();
-            Assert.Equal(400,JsonDocument.Parse(plan.GroceryItems!).RootElement[0].GetProperty("quantity").GetDouble());
+            Assert.Equal(400,JsonDocument.Parse(plan.GroceryItems!).RootElement[0].GetProperty("quantity").ExactScalar());
             Assert.Single(await db.WorkflowTasks.Where(x=>x.ProcessorName=="RefreshSupperGroceries").ToListAsync());
         });
     }
@@ -84,11 +84,12 @@ public partial class SupperServingsPostgresTests
             db.CalendarEvents.Add(new CalendarEvent {Date=Wednesday,RecipeId=original.Id});
             db.FamilySettings.Add(new FamilySetting {Key=SupperServingsService.DefaultKey,Value=JsonSerializer.SerializeToElement(new {servings=4})});await db.SaveChangesAsync();
             await scope.ServiceProvider.GetRequiredService<GroceryRecomputeService>().RecomputeForWeekAsync(new(2026,10,12),default);
-            var plan=await db.WeeklyPlans.SingleAsync();plan.GroceryState="{\"pasta\":true,\"unrelated\":true}";await db.SaveChangesAsync();
+            using (var shopper = factory.CreateAuthenticatedClient()) await GroceryTestRows.CheckAsync(shopper, new(2026,10,12));
+            var plan=await db.WeeklyPlans.SingleAsync();
             using var client=factory.CreateAuthenticatedClient();(await client.PostAsJsonAsync("/api/schedule/assign?referenceWeekStartDate=2026-10-12",new {weekOffset=0,dayIndex=2,recipeId=replacement.Id})).EnsureSuccessStatusCode();
             db.ChangeTracker.Clear();Assert.Equal(replacement.Id,(await db.CalendarEvents.SingleAsync()).RecipeId);Assert.Equal(4,(await db.SupperServings.SingleAsync()).InheritedServings);
-            plan=await db.WeeklyPlans.SingleAsync();Assert.Equal(400,JsonDocument.Parse(plan.GroceryItems!).RootElement[0].GetProperty("quantity").GetDouble());
-            var checks=JsonDocument.Parse(plan.GroceryState!).RootElement;Assert.False(checks.GetProperty("pasta").GetBoolean());Assert.True(checks.GetProperty("unrelated").GetBoolean());
+            plan=await db.WeeklyPlans.SingleAsync();Assert.Equal(400,JsonDocument.Parse(plan.GroceryItems!).RootElement[0].GetProperty("quantity").ExactScalar());
+            Assert.False(GroceryTestRows.Checked(plan,"pasta"));
             Assert.Single(await db.WorkflowTasks.Where(x=>x.ProcessorName=="RefreshSupperGroceries").ToListAsync());
         });
     }
@@ -105,7 +106,7 @@ public partial class SupperServingsPostgresTests
             using var client=factory.CreateAuthenticatedClient();(await client.PostAsJsonAsync("/api/schedule/defer?referenceWeekStartDate=2026-10-12",new {sourceDate="2026-10-14",recipeId=recipe.Id})).EnsureSuccessStatusCode();
             db.ChangeTracker.Clear();Assert.Equal(new DateOnly(2026,10,19),(await db.CalendarEvents.SingleAsync()).Date);
             Assert.Equal(6,(await db.SupperServings.SingleAsync(x=>x.Date==Wednesday)).OverrideServings);var destination=await db.SupperServings.SingleAsync(x=>x.Date==new DateOnly(2026,10,19));Assert.Equal(5,destination.OverrideServings);Assert.Equal(4,destination.InheritedServings);
-            var plan=await db.WeeklyPlans.SingleAsync(x=>x.WeekStartDate==new DateOnly(2026,10,19));Assert.Equal(500,JsonDocument.Parse(plan.GroceryItems!).RootElement[0].GetProperty("quantity").GetDouble());
+            var plan=await db.WeeklyPlans.SingleAsync(x=>x.WeekStartDate==new DateOnly(2026,10,19));Assert.Equal(500,JsonDocument.Parse(plan.GroceryItems!).RootElement[0].GetProperty("quantity").ExactScalar());
             Assert.Equal(2,await db.WorkflowTasks.CountAsync(x=>x.ProcessorName=="RefreshSupperGroceries"));
         });
     }
@@ -118,10 +119,10 @@ public partial class SupperServingsPostgresTests
             var recipe=CorrectionRecipe();db.Recipes.Add(recipe);db.CalendarEvents.AddRange(new CalendarEvent {Date=Wednesday,RecipeId=recipe.Id},new CalendarEvent {Date=Wednesday.AddDays(2),RecipeId=recipe.Id});
             db.SupperServings.AddRange(new SupperServing {Date=Wednesday,OverrideServings=6},new SupperServing {Date=Wednesday.AddDays(2),OverrideServings=4});await db.SaveChangesAsync();
             await scope.ServiceProvider.GetRequiredService<GroceryRecomputeService>().RecomputeForWeekAsync(new(2026,10,12),default);
-            var plan=await db.WeeklyPlans.SingleAsync();Assert.Equal(1000,JsonDocument.Parse(plan.GroceryItems!).RootElement[0].GetProperty("quantity").GetDouble());plan.GroceryState="{\"pasta\":true}";await db.SaveChangesAsync();
+            var plan=await db.WeeklyPlans.SingleAsync();Assert.Equal(1000,JsonDocument.Parse(plan.GroceryItems!).RootElement[0].GetProperty("quantity").ExactScalar());using (var shopper = factory.CreateAuthenticatedClient()) await GroceryTestRows.CheckAsync(shopper, new(2026,10,12));
             using var client=factory.CreateAuthenticatedClient();(await client.DeleteAsync("/api/schedule/day/2026-10-14/remove")).EnsureSuccessStatusCode();
             db.ChangeTracker.Clear();Assert.Equal(2,await db.SupperServings.CountAsync());Assert.Equal(Wednesday.AddDays(2),(await db.CalendarEvents.SingleAsync()).Date);
-            plan=await db.WeeklyPlans.SingleAsync();Assert.Equal(400,JsonDocument.Parse(plan.GroceryItems!).RootElement[0].GetProperty("quantity").GetDouble());Assert.True(JsonDocument.Parse(plan.GroceryState!).RootElement.GetProperty("pasta").GetBoolean());
+            plan=await db.WeeklyPlans.SingleAsync();Assert.Equal(400,JsonDocument.Parse(plan.GroceryItems!).RootElement[0].GetProperty("quantity").ExactScalar());Assert.True(GroceryTestRows.Checked(plan,"pasta"));
             Assert.Single(await db.WorkflowTasks.Where(x=>x.ProcessorName=="RefreshSupperGroceries").ToListAsync());
         });
     }

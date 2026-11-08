@@ -19,7 +19,7 @@ public partial class RecoverySnapshotService(RecipeDbContext db, RecipesRootReso
     DataRootResolver data, IConfiguration configuration, IClock clock, RecoveryBoundary boundary, IRecoveryCheckpoint? checkpoint = null, DemoModeOptions? demoMode = null)
 {
     private readonly DemoModeOptions _demoPolicy = demoMode ?? new DemoModeOptions(configuration);
-    internal static readonly string[] Tables = ["family_members", "recipes", "feature_flag_overrides", "recipe_import_reports", "weekly_plans", "calendar_events", "family_settings", "ingredient_categories", "weekly_household_interest", "grocery_extra_occurrences", "supper_servings"];
+    internal static readonly string[] Tables = ["family_members", "recipes", "canonical_recipe_operations", "recipe_file_publications", "feature_flag_overrides", "recipe_repair_intents", "recipe_import_reports", "weekly_plans", "calendar_events", "family_settings", "ingredient_categories", "weekly_household_interest", "grocery_extra_occurrences", "supper_servings", "grocery_mutation_outcomes"];
     private static readonly JsonSerializerOptions Json = JsonDefaults.CamelCase;
     private static readonly string[] ImageExtensions = [".jpg", ".jpeg", ".png", ".webp"];
     internal string BackupRoot
@@ -80,6 +80,14 @@ public partial class RecoverySnapshotService(RecipeDbContext db, RecipesRootReso
     {
         var tables = demo ? DemoTables : Tables;
         await using var lease = await boundary.EnterAsync(RecoveryAccess.Snapshot, ct);
+        // Snapshot metadata is regenerated from authoritative rows. Until file
+        // delivery has finished, those regenerated files are neither its captured
+        // baseline nor its exact candidate. Require reconciliation first rather
+        // than publish a snapshot with an obligation it cannot faithfully resume.
+        if (await db.RecipePhysicalDeletions.AsNoTracking().AnyAsync(x => x.CompletedAt == null, ct))
+            throw new RecoveryBusyException("Complete or reconcile pending recipe physical retirement before taking a snapshot.");
+        if (await db.RecipeFilePublications.AsNoTracking().AnyAsync(x => !x.Delivered, ct))
+            throw new RecoveryBusyException("Complete or reconcile pending recipe file publication before taking a snapshot.");
         using var duration = CancellationTokenSource.CreateLinkedTokenSource(ct);
         duration.CancelAfter(TimeSpan.FromSeconds(Math.Clamp(configuration.GetValue("Recovery:MaxFreezeSeconds", 30), 1, 3600)));
         ct = duration.Token;

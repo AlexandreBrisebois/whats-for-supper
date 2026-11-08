@@ -177,3 +177,19 @@ Validated uses SHALL distinguish mention, whole total, original absolute partial
 #### Scenario: Over-allocation and alternatives
 - **WHEN** explicit exhaustive uses exceed the total or alternative branches cannot be identified
 - **THEN** contradictory numeric bindings/remainders remain uncertain rather than increasing grocery demand
+
+### Requirement: Preserve explicit partial uses after ingredient-total correction
+
+An ingredient-total correction SHALL preserve saved original absolute partial-use amounts; those amounts SHALL still scale with portions. Relative fractions SHALL remain relative to the corrected total and proven whole uses SHALL track it. Inconsistent allocations SHALL receive quiet review without blocking cooking or silently redistributing amounts.
+
+#### Scenario: Correct total without rewriting partial use
+- **WHEN** total pasta changes from 200 g to 250 g while a validated step explicitly uses 50 g
+- **THEN** its saved use stays 50 g and a portion factor of 1.5 renders 75 g, not 93.75 g or the whole total
+
+#### Scenario: Relative half follows corrected total
+- **WHEN** a step says add half and total changes from 200 g to 250 g
+- **THEN** it remains half; any numeric original-basis annotation is 125 g and portion scaling uses that relationship
+
+#### Scenario: Corrected total makes allocations inconsistent
+- **WHEN** a total is reduced below its exhaustive explicit uses or a remainder becomes unprovable
+- **THEN** affected numeric bindings/remainders revalidate or become uncertain with readable wording and quiet review, while cooking and eligible completion remain available

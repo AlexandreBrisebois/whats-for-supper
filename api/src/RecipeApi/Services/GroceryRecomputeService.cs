@@ -32,12 +32,17 @@ public class GroceryRecomputeService(
         double? Quantity,
         string? UnitText,
         Guid RecipeId,
-        bool QuantityComplete);
+        bool QuantityComplete,
+        GroceryQuantity? ExactQuantity,
+        string Member,
+        string InputFingerprint,
+        GroceryContributor? Contributor);
 
     private sealed record RecomputedGroup(
         GroceryLineItemDto Line,
         IReadOnlySet<string> LegacyNormalizedKeys,
-        string BucketUnit);
+        string BucketUnit,
+        GroceryDemandEvidence Evidence);
 
     // Maps GrocerySection enum values to the display strings used in GroceryLineItemDto.
     private static readonly Dictionary<GrocerySection, string> SectionDisplayNames = new()
@@ -61,26 +66,45 @@ public class GroceryRecomputeService(
     public Task RecomputeForWeekAsync(DateOnly monday, CancellationToken ct, DeploymentCalendarContext? context = null)
     {
         context ??= calendar.Capture(clock.UtcNow);
-        return groceryChecks.ProcessAsync(async fresh =>
+        return groceryChecks.ProcessWeekAsync(monday, async fresh =>
         {
-            await using var transaction = await SupperServingsService.BeginAsync(fresh, ct);
             var (plan, groceryState, changedState) = await RecomputeOwnedAsync(fresh, monday, ct);
-            if (transaction is not null) await transaction.CommitAsync(ct);
-            GroceryCheckCoordinator.SynchronizeTrackedPlan(db, monday, plan.GroceryState, plan.GroceryItems);
-            if (changedState && publisher != null)
-                await publisher.PublishGroceryUpdatedAsync(GetWeekOffset(monday, context), groceryState, monday);
-            return true;
-        }, ct);
+            GroceryCheckCoordinator.SynchronizeTrackedPlan(db, monday, plan.GroceryState, plan.GroceryItems, plan.GroceryListVersion, plan);
+            return (plan, groceryState, changedState);
+        }, ct, async result =>
+        {
+            if (result.changedState && publisher is not null)
+                await publisher.PublishGroceryRowsUpdatedAsync(GetWeekOffset(monday, context), GroceryRowState.Snapshot(result.plan, clock.UtcNow));
+        });
     }
 
     private async Task<(WeeklyPlan Plan, Dictionary<string, bool> Checks, bool Changed)> RecomputeOwnedAsync(
         RecipeDbContext db, DateOnly monday, CancellationToken ct)
     {
         var inputs = await SupperProjectionInputs.ReadWeekAsync(db, monday, calendar.Capture(clock.UtcNow).Today, ct);
-        var supplyEntries = new List<(string DisplayName, double? Quantity, string? UnitText, Guid RecipeId, bool QuantityComplete)>();
+        var supplyEntries = new List<(string DisplayName, double? Quantity, string? UnitText, Guid RecipeId, bool QuantityComplete, GroceryQuantity? ExactQuantity, string Member, string InputFingerprint, GroceryContributor? Contributor)>();
         foreach (var input in inputs)
         {
-            var supplies = input.Lines.Select(line => (DisplayName: line.Name, line.Quantity, line.UnitText, RecipeId: input.Event.RecipeId!.Value, QuantityComplete: line.Status != "unresolved"));
+            var supplies = input.Lines.Select(line => (DisplayName: line.Name, line.Quantity, line.UnitText, RecipeId: input.Event.RecipeId!.Value,
+                // Canonical null is an independently unknown amount, including
+                // when it shares a bucket with a measured contribution. Legacy
+                // qualitative classification retains its existing compatibility.
+                QuantityComplete: line.GroceryObservation.Quantity is not null || line.Status == "unquantified" && line.SavedIngredientLineId is null,
+                ExactQuantity: line.GroceryObservation.Quantity,
+                Member: $"{input.Event.Id:D}:{input.Event.RecipeId:D}:{IngredientNormalizer.Normalize(line.Name)}",
+                InputFingerprint: GroceryDemandEvidence.Fingerprint(new
+                {
+                    input.Event.Id,
+                    input.Event.RecipeId,
+                    input.Basis,
+                    input.Target,
+                    line.OriginalText,
+                    line.Name,
+                    line.UnitText,
+                    line.GroceryRecordedNumberToken
+                }),
+                Contributor: line.SavedIngredientLineId is { } lineId && line.GroceryPurchaseIdentity is { } purchase
+                    ? new GroceryContributor(input.Event.Id, input.Event.RecipeId!.Value, lineId, purchase) : null));
             supplyEntries.AddRange(supplies
                 .OrderBy(s => s.DisplayName, StringComparer.Ordinal)
                 .ThenBy(s => s.UnitText, StringComparer.Ordinal)
@@ -127,7 +151,7 @@ public class GroceryRecomputeService(
         // 4. Build intermediate items with section resolved.
         var intermediate = new List<IntermediateItem>();
 
-        foreach (var (displayName, quantity, unitText, recipeId, quantityComplete) in supplyEntries)
+        foreach (var (displayName, quantity, unitText, recipeId, quantityComplete, exactQuantity, member, inputFingerprint, contributor) in supplyEntries)
         {
             var normalizedKey = IngredientNormalizer.Normalize(displayName);
             if (string.IsNullOrEmpty(normalizedKey))
@@ -153,14 +177,14 @@ public class GroceryRecomputeService(
                 section = SectionDisplayNames[grocerySection];
             }
 
-            intermediate.Add(new IntermediateItem(displayName, normalizedKey, legacyNormalizedKey, section, categoryMatchPriority, quantity, unitText, recipeId, quantityComplete));
+            intermediate.Add(new IntermediateItem(displayName, normalizedKey, legacyNormalizedKey, section, categoryMatchPriority, quantity, unitText, recipeId, quantityComplete, exactQuantity, member, inputFingerprint, contributor));
         }
 
         // 5. Group by (normalizedKey, canonicalUnit): sum quantities after unit conversion.
         //    Entries with unknown units stay in their own bucket keyed by the raw unitText.
         var grouped = intermediate
             .OrderBy(item => item.NormalizedKey, StringComparer.Ordinal)
-            .ThenBy(item => UnitNormalizer.Normalize(item.UnitText)?.CanonicalUnit ?? item.UnitText ?? string.Empty, StringComparer.Ordinal)
+            .ThenBy(item => GroceryUnit.Read(item.UnitText).Bucket, StringComparer.Ordinal)
             .ThenBy(item => item.DisplayName, StringComparer.Ordinal)
             .ThenBy(item => item.Section, StringComparer.Ordinal)
             .ThenBy(item => item.UnitText, StringComparer.Ordinal)
@@ -168,8 +192,7 @@ public class GroceryRecomputeService(
             .ThenBy(item => item.RecipeId)
             .GroupBy(item =>
             {
-                var nu = UnitNormalizer.Normalize(item.UnitText);
-                var bucketUnit = nu?.CanonicalUnit ?? item.UnitText ?? string.Empty;
+                var bucketUnit = GroceryUnit.Read(item.UnitText).Bucket;
                 return (item.NormalizedKey, BucketUnit: bucketUnit);
             })
             .Select(g =>
@@ -183,19 +206,26 @@ public class GroceryRecomputeService(
                     .Select(item => item.Section)
                     .FirstOrDefault() ?? first.Section;
 
-                var nu = UnitNormalizer.Normalize(first.UnitText);
+                var unit = GroceryUnit.Read(first.UnitText);
 
                 // Invalid conversions and overflow remain unresolved, never JSON numbers.
-                var converted = g.Where(x => x.Quantity.HasValue)
-                    .Select(x => x.Quantity!.Value * (UnitNormalizer.Normalize(x.UnitText)?.Factor ?? 1.0)).ToList();
-                var finite = converted.Where(double.IsFinite).ToList();
-                double? totalQuantity = finite.Count > 0 ? finite.Sum() : null;
-                var totalFinite = totalQuantity is null || double.IsFinite(totalQuantity.Value);
-                var quantityComplete = g.All(item => item.QuantityComplete) && converted.All(double.IsFinite) && totalFinite;
-                if (!totalFinite) totalQuantity = null;
+                GroceryQuantity? exactTotal = null;
+                var bounded = true;
+                foreach (var item in g.Where(item => item.ExactQuantity is not null))
+                {
+                    var definition = GroceryUnit.Read(item.UnitText);
+                    var converted = LegacyGroceryQuantity.Scale(item.ExactQuantity, definition.Numerator, definition.Denominator);
+                    if (converted is null) { bounded = false; break; }
+                    exactTotal = LegacyGroceryQuantity.Add(exactTotal, converted);
+                    if (exactTotal is null) { bounded = false; break; }
+                }
+                if (!bounded) exactTotal = null;
+                double? totalQuantity = exactTotal?.Value is { } scalar
+                    ? double.Parse(scalar.N, CultureInfo.InvariantCulture) / double.Parse(scalar.D, CultureInfo.InvariantCulture) : null;
+                var quantityComplete = g.All(item => item.QuantityComplete) && bounded;
 
                 // Emit canonical unit for known families; raw unit for unknowns.
-                var emittedUnit = nu?.CanonicalUnit ?? first.UnitText;
+                var emittedUnit = unit.Text;
 
                 var recipeIds = g.Select(x => x.RecipeId).Distinct().OrderBy(id => id).ToList();
 
@@ -207,17 +237,23 @@ public class GroceryRecomputeService(
                         Quantity: totalQuantity,
                         UnitText: emittedUnit,
                         RecipeIds: recipeIds,
-                        QuantityComplete: quantityComplete),
+                        QuantityComplete: quantityComplete)
+                    { ExactQuantity = exactTotal },
                     g.Select(item => item.LegacyNormalizedKey).ToHashSet(StringComparer.Ordinal),
-                    g.Key.BucketUnit);
+                    g.Key.BucketUnit,
+                    new GroceryDemandEvidence(GroceryDemandEvidence.Fingerprint(g.Select(item => item.InputFingerprint).Order(StringComparer.Ordinal)),
+                        g.Select(item => item.Member).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray(),
+                        g.All(item => item.Contributor is not null)
+                            ? g.Select(item => item.Contributor!).OrderBy(x => x.OccurrenceId).ThenBy(x => x.RecipeId).ThenBy(x => x.IngredientLineId).ToArray() : null));
             })
             .OrderBy(group => group.Line.NormalizedKey, StringComparer.Ordinal)
             .ThenBy(group => group.BucketUnit, StringComparer.Ordinal)
             .ThenBy(group => group.Line.DisplayName, StringComparer.Ordinal)
             .ToList();
 
-        // 6. Persist amounts and check-review state at the same coordinated position.
+        // 6. Persist demand and retained acknowledgements at the same coordinated position.
         var plan = await db.WeeklyPlans.FirstOrDefaultAsync(p => p.WeekStartDate == monday, ct);
+        var initialized = plan is null;
         if (plan == null)
         {
             plan = new WeeklyPlan
@@ -232,38 +268,84 @@ public class GroceryRecomputeService(
         }
 
         plan.ServingInputVersion = SupperProjectionInputs.WeekVersion(inputs);
-        var previousItems = DeserializeGroceryItems(plan.GroceryItems);
-        var groceryState = DeserializeGroceryState(plan.GroceryState);
-        var changedState = ApplyMergedStateTransitions(previousItems, grouped, groceryState);
+        var previousItems = GroceryRowState.Rows(plan);
+        GroceryRowState.RequireCurrent(plan, previousItems);
+        var priorChecks = GroceryRowState.Checks(plan);
+        var baselines = GroceryCheckedDemand.Read(plan, logger);
+        var previousEvidence = GroceryDemandEvidence.Read(plan, logger);
+        var nextEvidence = new Dictionary<string, GroceryDemandEvidence>(StringComparer.Ordinal);
+        var identities = grouped.Select(group => JsonSerializer.Serialize(new { fallback = group.Line.NormalizedKey, bucket = group.BucketUnit })).ToArray();
+        // Exact identity continues unless observed membership demonstrates a split
+        // or merge. Legacy Members remain negative-only. A cross-bucket continuation
+        // additionally needs exact saved contributor/purchase proof with unique edges.
+        var edges = grouped.Select((group, index) => previousItems.Where(row =>
+            row.DemandIdentity == identities[index] ||
+            (row.NormalizedKey == group.Line.NormalizedKey
+                && (!identities.Contains(row.DemandIdentity, StringComparer.Ordinal) || !previousItems.Any(prior => prior.DemandIdentity == identities[index]))
+                && previousEvidence.TryGetValue(row.RowId, out var evidence)
+                && evidence.Members.Intersect(group.Evidence.Members, StringComparer.Ordinal).Any())
+            || previousEvidence.TryGetValue(row.RowId, out var lineage) && lineage.SharesSavedContributor(group.Evidence)).ToArray()).ToArray();
+        var nextBaselines = new Dictionary<string, GroceryCheckedDemand?>(StringComparer.Ordinal);
         var reset = false;
+        var groceryState = new Dictionary<string, bool>(StringComparer.Ordinal);
         for (var index = 0; index < grouped.Count; index++)
         {
             var group = grouped[index];
-            var predecessors = previousItems.Where(item => (item.NormalizedKey == group.Line.NormalizedKey || group.LegacyNormalizedKeys.Contains(item.NormalizedKey)) &&
-                (UnitNormalizer.Normalize(item.UnitText)?.CanonicalUnit ?? item.UnitText ?? string.Empty) == group.BucketUnit).ToList();
-            // A reliable current total cannot prove what a shopper previously checked.
-            // Keep that distinct review until an explicit affected check acknowledges it.
-            var priorUnknown = predecessors.Any(x => !x.Quantity.HasValue || x.QuantityComplete != true);
-            var review = predecessors.Any(x => x.CheckReviewReason == "prior_amount_unknown")
-                || (priorUnknown && group.Line.Quantity.HasValue && group.Line.QuantityComplete == true
-                    && groceryState.GetValueOrDefault(group.Line.DisplayName));
-            if (review) grouped[index] = group with { Line = group.Line with { CheckReviewReason = "prior_amount_unknown" } };
-            if (predecessors.Count == 0 || priorUnknown || !group.Line.Quantity.HasValue || group.Line.QuantityComplete != true) continue;
-            var oldTotal = predecessors.Sum(x => x.Quantity!.Value);
-            if (group.Line.Quantity.Value > oldTotal && groceryState.GetValueOrDefault(group.Line.DisplayName))
+            var identity = identities[index];
+            var candidate = edges[index].Length == 1 ? edges[index][0] : null;
+            var priorEvidence = candidate is not null ? previousEvidence.GetValueOrDefault(candidate.RowId) : null;
+            var previous = candidate is not null && edges.Count(matches => matches.Contains(candidate)) == 1
+                && priorEvidence?.ChangesPurchaseMeaning(group.Evidence) != true
+                && (candidate.DemandIdentity == identity || priorEvidence?.SameLineage(group.Evidence) == true) ? candidate : null;
+            var rowId = previous?.RowId ?? Guid.NewGuid().ToString("D");
+            nextEvidence[rowId] = group.Evidence;
+            var comparisonChanged = previous is not null && (previous.ExactQuantity != group.Line.ExactQuantity || previous.QuantityComplete != group.Line.QuantityComplete
+                || previous.DemandIdentity != identity || previous.UnitText != group.Line.UnitText);
+            grouped[index] = group with
             {
-                groceryState[group.Line.DisplayName] = false; reset = changedState = true;
+                Line = group.Line with
+                {
+                    RowId = rowId,
+                    RowVersion = previous is null ? "1" : comparisonChanged ? GroceryRowState.Next(previous.RowVersion) : previous.RowVersion,
+                    WeekStartDate = monday,
+                    DemandIdentity = identity,
+                }
+            };
+            var isChecked = previous is not null && priorChecks.GetValueOrDefault(rowId!);
+            if (isChecked)
+            {
+                var baseline = baselines.GetValueOrDefault(rowId!);
+                if (baseline is null || !baseline.IsValid)
+                    logger.LogWarning("Missing or invalid checked-demand baseline for grocery row {RowId}", rowId);
+                if (baseline?.ProvesIncrease(grouped[index].Line, previous!.RowVersion, group.Evidence.InputFingerprint) == true)
+                {
+                    isChecked = false;
+                    reset = true;
+                    if (!comparisonChanged)
+                        grouped[index] = grouped[index] with { Line = grouped[index].Line with { RowVersion = GroceryRowState.Next(previous!.RowVersion) } };
+                }
+                else nextBaselines[rowId!] = baseline;
             }
+            groceryState[rowId!] = isChecked;
         }
-        // Input identities may repeat (A → B → A); each actual reset is a new event.
+        var nextItems = JsonSerializer.Serialize(grouped.Select(group => group.Line));
+        var nextChecks = JsonSerializer.Serialize(groceryState);
+        using var previousRowsJson = JsonDocument.Parse(plan.GroceryItems);
+        using var nextRowsJson = JsonDocument.Parse(nextItems);
+        using var previousChecksJson = JsonDocument.Parse(plan.GroceryState);
+        using var nextChecksJson = JsonDocument.Parse(nextChecks);
+        // PostgreSQL jsonb reorders object properties. Storage spelling is not a demand change.
+        var changedState = !JsonElement.DeepEquals(previousRowsJson.RootElement, nextRowsJson.RootElement)
+            || !JsonElement.DeepEquals(previousChecksJson.RootElement, nextChecksJson.RootElement);
+        if (changedState && !initialized) plan.GroceryListVersion = GroceryRowState.Next(plan.GroceryListVersion);
         if (reset) plan.GroceryResetSummaryVersion = Guid.NewGuid().ToString("N");
-        else if (plan.ServingAppliedVersion != plan.ServingInputVersion) plan.GroceryResetSummaryVersion = null;
+        else if (changedState) plan.GroceryResetSummaryVersion = null;
+        plan.GroceryCheckedDemandBaselines = JsonSerializer.Serialize(nextBaselines);
+        plan.GroceryDemandEvidence = JsonSerializer.Serialize(nextEvidence);
         plan.ServingAppliedVersion = plan.ServingInputVersion;
         plan.ServingRefreshStatus = "current";
-
-        plan.GroceryItems = JsonSerializer.Serialize(grouped.Select(group => group.Line));
-        if (changedState)
-            plan.GroceryState = JsonSerializer.Serialize(groceryState);
+        plan.GroceryItems = nextItems;
+        plan.GroceryState = nextChecks;
         await db.SaveChangesAsync(ct);
 
         logger.LogInformation(

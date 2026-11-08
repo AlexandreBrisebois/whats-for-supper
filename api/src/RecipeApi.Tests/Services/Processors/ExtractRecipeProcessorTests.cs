@@ -38,14 +38,16 @@ public class ExtractRecipeProcessorTests : IDisposable
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
         var db = new RecipeDbContext(dbOptions);
+        db.Recipes.Add(new Recipe { Id = _recipeId, Name = "Pending" });
+        db.SaveChanges();
 
         _agent = new RecipeAgent(
             _chatClientMock.Object,
-            _recipeRepository,
             promptRepositoryMock.Object,
             mockConfig.Object,
             new Mock<ILogger<RecipeAgent>>().Object,
-            db,
+            new RecipeFilePublicationStore(db, _recipeRepository, new SystemClock(), new SupperProjectionInvalidation(db, new SystemClock(),
+                new DeploymentCalendar(new ConfigurationManager()))),
             "ExtractRecipe");
     }
 

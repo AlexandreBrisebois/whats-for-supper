@@ -6,7 +6,7 @@ String edits and retained `RawMetadata.supply` currently have different owners; 
 
 ## Outcome and Scope
 
-Evolve this existing foundation, rather than replace it. One original-basis recipe content revision owns ordered ingredient rows, steps and their associations. Amount/unit remain independently nullable; exact fractions and ranges survive. The ordinary three-field editor stays quiet. This is a review draft with consequential allocation decisions outstanding; artifact existence is not implementation approval or readiness.
+Evolve this existing foundation, rather than replace it. One original-basis recipe content revision owns ordered ingredient rows, steps and their associations. Amount/unit remain independently nullable; exact fractions and ranges survive. The ordinary three-field editor stays quiet. Alex has approved absolute-allocation preservation, range comparison and new split/merge row behavior. Dataset and contract qualification remain engineering gates; artifact existence is not implementation approval or readiness.
 
 ## What Changes
 

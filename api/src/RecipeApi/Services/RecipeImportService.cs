@@ -8,8 +8,7 @@ namespace RecipeApi.Services;
 
 public class RecipeImportService(
     RecipeDbContext db,
-    IWorkflowOrchestrator orchestrator,
-    RecipeImportReportService reportService)
+    IWorkflowOrchestrator orchestrator)
 {
     public async Task<Guid> TriggerImport(Guid recipeId)
     {
@@ -34,9 +33,47 @@ public class RecipeImportService(
             throw new InvalidOperationException("Synthesized recipes cannot be reimported.");
         }
 
-        var instance = await orchestrator.TriggerAsync(workflowId, parameters);
-        await reportService.MarkAttemptStartedAsync(recipeId, instance.Id);
-        return instance.Id;
+        // Reserve before the fallible commit so a lost acknowledgement can be
+        // reconciled from the actual accepted aggregate, without launching again.
+        var instanceId = Guid.NewGuid();
+        try
+        {
+            var instance = await orchestrator.TriggerImportAsync(instanceId, recipeId, workflowId, parameters);
+            return instance.Id;
+        }
+        catch
+        {
+            var committed = await db.WorkflowInstances.AsNoTracking().Include(x => x.Tasks)
+                .SingleOrDefaultAsync(x => x.Id == instanceId);
+            if (committed is not null)
+            {
+                if (committed.WorkflowId != workflowId
+                    || CanonicalRecipeContentStore.NormalizeJson(committed.Parameters)
+                        != CanonicalRecipeContentStore.NormalizeJson(JsonSerializer.Serialize(parameters)))
+                    throw new InvalidDataException("Import acceptance differs from the original command.");
+                RecipeFilePublicationStore.ValidateExecutionLaunch(committed);
+                if (await db.WorkflowLaunchIntents.AsNoTracking().AnyAsync(x => x.Id == instanceId))
+                {
+                    // Reuse the original acceptance owner to check its independent
+                    // command/capture/receipt. A valid task graph alone cannot
+                    // override missing or divergent retained launch authority.
+                    return (await orchestrator.TriggerImportAsync(instanceId, recipeId, workflowId, parameters)).Id;
+                }
+                // Report state may already have independently advanced. Accepted
+                // work remains accepted; reconciliation never rewrites its report.
+                return instanceId;
+            }
+
+            // A confirmed rollback must not leave tracked attempted rows that a
+            // subsequent save could accidentally publish outside acceptance.
+            foreach (var entry in db.ChangeTracker.Entries<WorkflowTask>().Where(x => x.Entity.InstanceId == instanceId).ToList())
+                entry.State = EntityState.Detached;
+            foreach (var entry in db.ChangeTracker.Entries<WorkflowInstance>().Where(x => x.Entity.Id == instanceId).ToList())
+                entry.State = EntityState.Detached;
+            foreach (var entry in db.ChangeTracker.Entries<RecipeImportReport>().Where(x => x.Entity.RecipeId == recipeId).ToList())
+                await entry.ReloadAsync();
+            throw;
+        }
     }
 
     public async Task<RecipeImportStatusResponseDto?> GetImportStatus(Guid recipeId)

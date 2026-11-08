@@ -46,35 +46,40 @@ public sealed partial class GroceryCheckConcurrencyPostgresTests
         await new TomorrowPushPostgresTests(output).WithDatabase(async settings =>
         {
             await using var factory = await Factory(settings.ConnectionString);
-            await SeedPlan(factory);
+            await SeedRowPlan(factory, lettuce: true);
             using var client = factory.CreateAuthenticatedClient();
-            async Task Item(string name, bool value) => Assert.Equal(HttpStatusCode.NoContent,
-                (await client.PatchAsJsonAsync("/api/schedule/0/grocery/item", new { ingredientName = name, @checked = value })).StatusCode);
+            async Task<JsonElement> Snapshot() => Data(await client.GetFromJsonAsync<JsonElement>("/api/schedule?weekOffset=0"));
+            async Task Item(string id, bool value)
+            {
+                var row = (await Snapshot()).GetProperty("groceryItems").EnumerateArray().Single(row => row.GetProperty("rowId").GetString() == id);
+                Assert.Equal(HttpStatusCode.OK, (await client.PatchAsJsonAsync("/api/schedule/0/grocery/item", new
+                {
+                    rowId = id, weekStartDate = "2026-10-05", expectedRowVersion = row.GetProperty("rowVersion").GetString(),
+                    @checked = value, clientMutationId = Guid.NewGuid(),
+                })).StatusCode);
+            }
             async Task Replace(Dictionary<string, bool> map)
             {
-                var response = await client.PatchAsJsonAsync("/api/schedule/0/grocery", map);
+                var version = (await Snapshot()).GetProperty("groceryListVersion").GetString();
+                var response = await client.PatchAsJsonAsync("/api/schedule/0/grocery", new
+                {
+                    weekStartDate = "2026-10-05", expectedListVersion = version, checks = map, clientMutationId = Guid.NewGuid(),
+                });
                 Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-                var json = await response.Content.ReadFromJsonAsync<JsonElement>();
-                Assert.Equal(map.OrderBy(p => p.Key), JsonSerializer.Deserialize<Dictionary<string, bool>>(json.GetProperty("data"))!.OrderBy(p => p.Key));
+                var expected = new Dictionary<string, bool> { [TomatoRow] = map.GetValueOrDefault(TomatoRow), [LettuceRow] = map.GetValueOrDefault(LettuceRow) };
+                Assert.Equal(expected.OrderBy(pair => pair.Key), (await ReadChecks(factory)).OrderBy(pair => pair.Key));
             }
-            await Item("Tomato", true);
-            await Item("Tomato", true);
-            Assert.True((await ReadChecks(factory))["Tomato"]);
-            await Item("Tomato", false);
-            Assert.False((await ReadChecks(factory))["Tomato"]);
-            Assert.True((await ReadChecks(factory))["unrelated"]);
-            var staleBody = new Dictionary<string, bool> { ["Tomato"] = false };
-            await Item("Lettuce", true);
-            await Replace(staleBody);
-            Assert.Equal(staleBody, await ReadChecks(factory));
-            await Item("Lettuce", true);
-            Assert.True((await ReadChecks(factory))["Lettuce"]);
+            await Item(TomatoRow, true);
+            await Item(TomatoRow, true);
+            Assert.True((await ReadChecks(factory))[TomatoRow]);
+            await Item(TomatoRow, false);
+            Assert.False((await ReadChecks(factory))[TomatoRow]);
+            Assert.True((await ReadChecks(factory))[LettuceRow]);
+            await Replace(new() { [TomatoRow] = true });
             await Replace([]);
-            Assert.Empty(await ReadChecks(factory));
-            await Item("Lettuce", true);
-            Assert.Equal(new Dictionary<string, bool> { ["Lettuce"] = true }, await ReadChecks(factory));
-            await Replace([]);
-            Assert.Empty(await ReadChecks(factory));
+            await Item(LettuceRow, true);
+            Assert.True((await ReadChecks(factory))[LettuceRow]);
+
         });
     }
 
@@ -100,24 +105,18 @@ public sealed partial class GroceryCheckConcurrencyPostgresTests
             db.CalendarEvents.Add(new CalendarEvent { Date = Monday, RecipeId = recipe.Id });
             await db.SaveChangesAsync();
             using var client = factory.CreateAuthenticatedClient();
-            Assert.Equal(HttpStatusCode.NoContent, (await client.PatchAsJsonAsync("/api/schedule/0/grocery/item",
-                new { ingredientName = "huile d'olive", @checked = true })).StatusCode);
-            // A pending non-grocery field belongs to the original scope and must survive.
+            Assert.Equal(HttpStatusCode.Conflict, (await client.PatchAsJsonAsync("/api/schedule/0/grocery/item", new { ingredientName = "huile d'olive", @checked = true })).StatusCode);
             plan.Status = WeeklyPlanStatus.Locked;
-            await stale.ServiceProvider.GetRequiredService<GroceryRecomputeService>().RecomputeForWeekAsync(Monday, CancellationToken.None);
-            var checks = await ReadChecks(factory);
-            output.WriteLine($"Recompute from pretracked scope: {JsonSerializer.Serialize(checks)}");
-            Assert.Equal(otherChecked, checks["huile d'olive"]);
-            Assert.DoesNotContain("huile d’olive", checks.Keys);
-            var merged = Assert.Single(JsonSerializer.Deserialize<List<GroceryLineItemDto>>(plan.GroceryItems)!);
-            Assert.Equal(2, merged.Quantity); Assert.Equal("ml", merged.UnitText); Assert.True(merged.QuantityComplete);
-            Assert.True(checks["unrelated"]);
+            var before = (await db.WeeklyPlans.AsNoTracking().SingleAsync(p => p.WeekStartDate == Monday)).GroceryState;
+            var itemsBefore = plan.GroceryItems;
+            var error = await Assert.ThrowsAsync<GroceryMutationConflictException>(() => stale.ServiceProvider.GetRequiredService<GroceryRecomputeService>().RecomputeForWeekAsync(Monday, default));
+            Assert.Equal("active_legacy_list", error.Code);
+            var after = await db.WeeklyPlans.AsNoTracking().SingleAsync(p => p.WeekStartDate == Monday);
+            Assert.Equal(before, after.GroceryState);
+            Assert.True(JsonElement.DeepEquals(JsonDocument.Parse(itemsBefore).RootElement, JsonDocument.Parse(after.GroceryItems).RootElement));
             Assert.Equal(WeeklyPlanStatus.Locked, plan.Status);
             Assert.True(db.Entry(plan).Property(p => p.Status).IsModified);
-            Assert.False(db.Entry(plan).Property(p => p.GroceryState).IsModified);
-            Assert.Contains(JsonSerializer.Deserialize<List<GroceryLineItemDto>>(plan.GroceryItems)!, item => item.DisplayName == "huile d'olive");
-            await db.SaveChangesAsync();
-            Assert.Equal(otherChecked, (await ReadChecks(factory))["huile d'olive"]);
+
         });
     }
 
@@ -129,25 +128,24 @@ public sealed partial class GroceryCheckConcurrencyPostgresTests
         await new TomorrowPushPostgresTests(output).WithDatabase(async settings =>
         {
             await using var factory = await Factory(settings.ConnectionString);
-            var prior = rename ? "Tomato" : "tomato";
-            await SeedPlan(factory, JsonSerializer.Serialize(new Dictionary<string, bool> { [prior] = false, ["unrelated"] = true }));
+            var prior = rename ? "Eau label for tomato" : "tomato";
+            await SeedRowPlan(factory, lettuce: true, tomatoLabel: prior);
             using var stale = factory.Services.CreateScope();
             var db = stale.ServiceProvider.GetRequiredService<RecipeDbContext>();
             var plan = await db.WeeklyPlans.SingleAsync(p => p.WeekStartDate == Monday);
-            plan.GroceryItems = JsonSerializer.Serialize(new List<GroceryLineItemDto> { new(prior, "tomato", "Produce", 1, null, []) });
-            var recipe = new Recipe { Name = "Tomato", RawMetadata = """{"supply":[{"name":"Tomato","quantity":1}]}""" };
-            db.Recipes.Add(recipe);
-            db.CalendarEvents.Add(new CalendarEvent { Date = Monday, RecipeId = recipe.Id });
-            await db.SaveChangesAsync();
             using var client = factory.CreateAuthenticatedClient();
-            (await client.PatchAsJsonAsync("/api/schedule/0/grocery/item", new { ingredientName = prior, @checked = true })).EnsureSuccessStatusCode();
-            await stale.ServiceProvider.GetRequiredService<GroceryRecomputeService>().RecomputeForWeekAsync(Monday, CancellationToken.None);
+            Assert.Equal(HttpStatusCode.OK, (await client.PatchAsJsonAsync("/api/schedule/0/grocery/item", new
+            {
+                rowId = TomatoRow, weekStartDate = "2026-10-05", expectedRowVersion = "1", @checked = true, clientMutationId = Guid.NewGuid(),
+            })).StatusCode);
+            await stale.ServiceProvider.GetRequiredService<GroceryRecomputeService>().RecomputeForWeekAsync(Monday, default);
             var checks = await ReadChecks(factory);
-            Assert.True(checks["tomato"]);
-            Assert.True(checks["unrelated"]);
-            if (rename) Assert.DoesNotContain("Tomato", checks.Keys);
-            Assert.True(JsonSerializer.Deserialize<Dictionary<string, bool>>(plan.GroceryState)!["tomato"]);
-            Assert.Single(JsonSerializer.Deserialize<List<GroceryLineItemDto>>(plan.GroceryItems)!);
+            Assert.True(checks[TomatoRow]);
+            Assert.True(checks[LettuceRow]);
+            Assert.Equal(2, checks.Count);
+            Assert.True(JsonSerializer.Deserialize<Dictionary<string, bool>>(plan.GroceryState)![TomatoRow]);
+            Assert.Contains(JsonSerializer.Deserialize<List<GroceryLineItemDto>>(plan.GroceryItems)!, row => row.RowId == TomatoRow && row.DisplayName == "tomato");
+
         });
     }
 }

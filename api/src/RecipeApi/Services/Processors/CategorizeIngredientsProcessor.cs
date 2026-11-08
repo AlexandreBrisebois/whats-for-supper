@@ -66,15 +66,7 @@ public class CategorizeIngredientsProcessor(
 
     public async Task<object?> ExecuteAsync(WorkflowTask task, CancellationToken ct)
     {
-        if (string.IsNullOrEmpty(task.Payload))
-            throw new ArgumentException("Task payload is empty.");
-
-        using var doc = JsonDocument.Parse(task.Payload);
-        if (!doc.RootElement.TryGetProperty("recipeId", out var idProp) &&
-            !doc.RootElement.TryGetProperty("RecipeId", out idProp))
-            throw new ArgumentException("Task payload does not contain recipeId.");
-
-        var recipeId = idProp.GetGuid();
+        var recipeId = ReadRecipeId(task.Payload);
 
         try
         {
@@ -86,7 +78,35 @@ public class CategorizeIngredientsProcessor(
             logger.LogError(ex, "CategorizeIngredients: unexpected error for recipe {RecipeId} — workflow continues", recipeId);
         }
 
-        return new { Message = $"CategorizeIngredients completed for recipe {recipeId}." };
+        return new { Message = CompletionMessage(recipeId) };
+    }
+
+    private static Guid ReadRecipeId(string? payload)
+    {
+        if (string.IsNullOrEmpty(payload))
+            throw new ArgumentException("Task payload is empty.");
+        using var doc = JsonDocument.Parse(payload);
+        if (!doc.RootElement.TryGetProperty("recipeId", out var idProp) &&
+            !doc.RootElement.TryGetProperty("RecipeId", out idProp))
+            throw new ArgumentException("Task payload does not contain recipeId.");
+        return idProp.GetGuid();
+    }
+
+    private static string CompletionMessage(Guid recipeId) => $"CategorizeIngredients completed for recipe {recipeId}.";
+
+    internal static Guid ValidateOriginalHistory(string? payload, string? returned)
+    {
+        WorkflowProcessorHistory.ReadObservation<JsonElement>(payload ?? "null");
+        var recipeId = ReadRecipeId(payload);
+        var result = WorkflowProcessorHistory.ReadObservation<JsonElement>(returned ?? "null");
+        if (recipeId == Guid.Empty || result.ValueKind != JsonValueKind.Object
+            || !result.TryGetProperty("message", out var message) || message.ValueKind != JsonValueKind.String
+            || message.GetString() != CompletionMessage(recipeId))
+            throw new InvalidDataException("Original category completion receipt differs from its invocation.");
+        // Empty input, cached entries, no result and caught failure all emit
+        // this same text. It proves no original dictionary facts or publication.
+        // Unknown result extensions remain retained, without qualification.
+        return recipeId;
     }
 
     private async Task CategorizeAsync(Guid recipeId, CancellationToken ct)

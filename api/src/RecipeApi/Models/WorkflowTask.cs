@@ -42,6 +42,14 @@ public class WorkflowTask
     [Column("stack_trace")]
     public string? StackTrace { get; set; }
 
+    [System.Text.Json.Serialization.JsonIgnore]
+    [Column("child_launch_intent_id")]
+    public Guid? ChildLaunchIntentId { get; set; }
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    [Column("reset_intent_id")]
+    public Guid? ResetIntentId { get; set; }
+
     [Column("result", TypeName = "jsonb")]
     public string? Result { get; set; }
 

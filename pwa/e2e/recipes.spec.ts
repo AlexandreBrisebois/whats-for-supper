@@ -308,6 +308,14 @@ test.describe('Recipes Search Page', () => {
         ).toBeVisible();
         await expect(input).toHaveValue(String(next));
         await expect(page.getByTestId('recipe-servings')).toHaveCount(initial == null ? 0 : 1);
+        await expect(page.getByTestId('recipe-save-edits')).toBeDisabled();
+        await page
+          .getByRole('button', {
+            name: locale === 'en' ? 'Check saved recipe' : 'Vérifier la recette enregistrée',
+            exact: true,
+          })
+          .click();
+        await expect(page.getByTestId('recipe-save-edits')).toBeEnabled();
         await page.getByTestId('recipe-save-edits').click();
         await expect(input).toHaveCount(0);
         const count = `${next} ${locale === 'en' ? 'servings' : 'portions'}`;

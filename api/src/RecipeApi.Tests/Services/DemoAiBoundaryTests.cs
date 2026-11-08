@@ -102,12 +102,14 @@ public class DemoAiBoundaryTests
         var id = Guid.NewGuid();
         var directory = Path.Combine(recipes.Root, id.ToString());
         Directory.CreateDirectory(directory);
-        await File.WriteAllTextAsync(Path.Combine(directory, "recipe.info"), "{}");
+        await File.WriteAllTextAsync(Path.Combine(directory, "recipe.info"), System.Text.Json.JsonSerializer.Serialize(new RecipeInfo { Id = id }, JsonDefaults.CamelCase));
         var hero = Path.Combine(directory, "hero.webp");
         await File.WriteAllBytesAsync(hero, [1, 2, 3]);
         try
         {
-            var agent = new RecipeHeroAgent(recipes, config, NullLogger<RecipeHeroAgent>.Instance);
+            using var db = TestDbContextFactory.Create();
+            var publication = TestPublicationStore.Create(db, new LocalStorageProvider(new DataRootResolver(config), recipes), new SystemClock());
+            var agent = new RecipeHeroAgent(publication, config, NullLogger<RecipeHeroAgent>.Instance);
             await Assert.ThrowsAnyAsync<InvalidOperationException>(() => agent.CreateHeroImageAsync(id, force: true));
             var retained = await File.ReadAllBytesAsync(hero);
             Assert.Equal(new byte[] { 1, 2, 3 }, retained);
@@ -127,12 +129,15 @@ public class DemoAiBoundaryTests
         var id = Guid.NewGuid();
         var directory = Path.Combine(recipes.Root, id.ToString());
         Directory.CreateDirectory(directory);
-        await File.WriteAllTextAsync(Path.Combine(directory, "recipe.info"), "{}");
+        await File.WriteAllTextAsync(Path.Combine(directory, "recipe.info"), System.Text.Json.JsonSerializer.Serialize(new RecipeInfo { Id = id }, JsonDefaults.CamelCase));
         await File.WriteAllTextAsync(Path.Combine(directory, "recipe.json"), "{\"name\":\"Synthetic soup\"}");
         var hero = Path.Combine(directory, "hero.webp");
         await File.WriteAllBytesAsync(hero, [1, 2, 3]);
         using var handler = new SyntheticHandler("""{"candidates":[{"content":{"parts":[{"inlineData":{"mimeType":"image/webp","data":"BAUG"}}]}}]}""", forbidden: demo);
-        var agent = new RecipeHeroAgent(recipes, config, NullLogger<RecipeHeroAgent>.Instance, new ClientFactory(handler));
+        using var db = TestDbContextFactory.Create();
+        db.Recipes.Add(new Recipe { Id = id }); await db.SaveChangesAsync();
+        var publication = TestPublicationStore.Create(db, new LocalStorageProvider(new DataRootResolver(config), recipes), new SystemClock());
+        var agent = new RecipeHeroAgent(publication, config, NullLogger<RecipeHeroAgent>.Instance, new ClientFactory(handler));
         try
         {
             if (demo)

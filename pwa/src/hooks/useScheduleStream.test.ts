@@ -28,6 +28,7 @@ const mockRefreshSession = vi.fn().mockResolvedValue(undefined);
 const mockMarkReady = vi.fn();
 const mockSetGroceryState = vi.fn();
 const mockApplyGroceryExtrasUpdate = vi.fn();
+const mockApplyGrocerySnapshot = vi.fn();
 const mockRefreshGroceries = vi.fn().mockResolvedValue(undefined);
 
 // weekStore weekOffset — default to 0; tests can override via mockWeekOffset
@@ -81,6 +82,7 @@ vi.mock('@/store/weekStore', () => ({
       applyVoteUpdate: mockApplyVoteUpdate,
       applySmartDefaultsUpdate: mockApplySmartDefaultsUpdate,
       applyGroceryExtrasUpdate: mockApplyGroceryExtrasUpdate,
+      applyGrocerySnapshot: mockApplyGrocerySnapshot,
       refreshGroceries: mockRefreshGroceries,
     }),
   },
@@ -629,14 +631,21 @@ describe('recipe_failed event', () => {
 // ── grocery_updated event ─────────────────────────────────────────────────
 
 describe('grocery_updated event', () => {
-  it('grocery_updated event updates plannerStore.groceryState', () => {
+  it('grocery_updated event applies a versioned absolute-week snapshot', () => {
     mockWeekOffset = 0;
     const { source } = setupHook();
 
-    const groceryState = { flour: true, eggs: false };
-    source.emit('grocery_updated', { weekOffset: 0, weekStartDate: '2025-01-13', groceryState });
+    const groceryState = { '05000000-0000-4000-8000-000000000001': true };
+    const snapshot = {
+      weekOffset: 0,
+      weekStartDate: '2025-01-13',
+      groceryState,
+      groceryListVersion: '2',
+      groceryItems: [],
+    };
+    source.emit('grocery_updated', snapshot);
 
-    expect(mockSetGroceryState).toHaveBeenCalledWith(groceryState);
+    expect(mockApplyGrocerySnapshot).toHaveBeenCalledWith(snapshot);
     expect(mockRefreshGroceries).toHaveBeenCalledTimes(1);
   });
 
@@ -647,6 +656,7 @@ describe('grocery_updated event', () => {
     const groceryState = { flour: true };
     source.emit('grocery_updated', { weekOffset: 1, weekStartDate: '2025-01-20', groceryState });
 
+    expect(mockApplyGrocerySnapshot).not.toHaveBeenCalled();
     expect(mockSetGroceryState).not.toHaveBeenCalled();
   });
 });

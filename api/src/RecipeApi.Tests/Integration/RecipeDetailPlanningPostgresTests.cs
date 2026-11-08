@@ -104,7 +104,9 @@ public partial class RecipeDetailPlanningPostgresTests(ITestOutputHelper output)
             using var destination = JsonDocument.Parse(await second.GetStringAsync("/api/schedule?weekOffset=3&referenceWeekStartDate=2026-10-05"));
             Assert.Contains("potato", source.RootElement.GetProperty("data").GetProperty("groceryItems").GetRawText(), StringComparison.OrdinalIgnoreCase);
             Assert.Contains("carrot", destination.RootElement.GetProperty("data").GetProperty("groceryItems").GetRawText(), StringComparison.OrdinalIgnoreCase);
-            Assert.Contains("carrot", (await stored.WeeklyPlans.AsNoTracking().SingleAsync(p => p.WeekStartDate == new DateOnly(2026,10,12))).GroceryState);
+            var sourcePlan = await stored.WeeklyPlans.AsNoTracking().SingleAsync(p => p.WeekStartDate == new DateOnly(2026,10,12));
+            Assert.DoesNotContain("carrot", JsonDocument.Parse(sourcePlan.GroceryState).RootElement.EnumerateObject().Select(x=>x.Name));
+            Assert.All(JsonDocument.Parse(sourcePlan.GroceryState).RootElement.EnumerateObject(), x=>Assert.True(Guid.TryParse(x.Name,out _)));
             output.WriteLine($"Original occurrence {occurrence} conserved at 2026-10-26 with 37 votes; source competing winner {TomorrowPushPostgresTests.Other}; source groceries={source.RootElement.GetProperty("data").GetProperty("groceryItems").GetRawText()}; destination groceries={destination.RootElement.GetProperty("data").GetProperty("groceryItems").GetRawText()}");
         });
     }

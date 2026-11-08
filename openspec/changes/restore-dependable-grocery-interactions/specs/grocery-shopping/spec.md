@@ -214,7 +214,7 @@ Recomputation SHALL compare demand and transition checks at the same coordinated
 
 ### Requirement: Uncheck increased serving-driven grocery requirements
 
-Recomputation SHALL uncheck only a continuing checked row with a provable comparable demand increase. Equivalent/decreased or unprovable changes SHALL preserve its check, without asserting how much was bought. Comparison SHALL occur exactly before display rounding and be coordinated with check writes.
+Recomputation SHALL compare current demand with the requirement saved on the row’s unchecked-to-checked transition. It SHALL uncheck only when both requirements are complete/comparable and current minimum exceeds the baseline maximum; scalars are single-point intervals. Equivalent, decreased or unprovable changes SHALL preserve both check and baseline. Comparison SHALL precede rounding and coordinate with check writes.
 
 #### Scenario: More pasta is needed
 - **WHEN** complete checked 400 g becomes complete 600 g on the same demand row
@@ -242,7 +242,23 @@ Recomputation SHALL uncheck only a continuing checked row with a provable compar
 
 #### Scenario: Ranges
 - **WHEN** complete 2–3 becomes 4–5 in a compatible continuing row
-- **THEN** the proposed disjoint-interval proof resets it, while overlap 3–4 is unprovable and keeps its check
+- **THEN** the approved disjoint-interval proof resets it, while overlap 3–4 is unprovable and keeps its check
+
+#### Scenario: Cumulative overlaps do not advance baseline
+- **WHEN** a row checked at 2–3 changes to 3–4 and then 4–5 without a new unchecked-to-checked transition
+- **THEN** it stays checked at 3–4 with baseline 2–3 and unchecks at 4–5 because 4 exceeds original maximum 3
+
+#### Scenario: Redundant true and bulk writes do not acknowledge new demand
+- **WHEN** recomputation, repeated checked=true, retry or a full-map entry leaves an already checked row true
+- **THEN** its original checked-demand baseline remains unchanged; no overlapping update silently rebaselines it
+
+#### Scenario: Recheck captures a fresh requirement
+- **WHEN** a row is unchecked and then checked successfully at current 4–5
+- **THEN** its new baseline is 4–5 and repeated identical demand does not reset it
+
+#### Scenario: Unknown or decreased baseline journey
+- **WHEN** a checked demand decreases before rising again, or was unknown/incomplete when checked
+- **THEN** decreases do not lower its saved baseline and unknown baselines never become silently known from later demand; only a provable increase against the acknowledged baseline resets the check
 
 ### Requirement: Distinguish incomplete totals from prior unknown checked amounts
 
@@ -369,3 +385,11 @@ Checking or unchecking any row SHALL NOT focus Edit/category controls, open anot
 #### Scenario: Projected extra disappears
 - **WHEN** checking a current extra removes it from a future-week shopping view
 - **THEN** focus moves to a stable adjacent list control only if needed without viewport jump
+
+### Requirement: Preserve culinary units without automatic metric conversion
+
+Cups, teaspoons and tablespoons SHALL remain independent quantity families. Equivalent English and French aliases SHALL normalize within each family; quantities SHALL NOT automatically convert to millilitres or between those families.
+
+#### Scenario: Bilingual cup and spoon aliases
+- **WHEN** current coherent ingredients declare cup/cups/tasse, tsp/teaspoon/c. à thé or tbsp/tablespoon/c. à soupe
+- **THEN** aliases aggregate within their own family with exact quantities preserved, independently of millilitres and the other families

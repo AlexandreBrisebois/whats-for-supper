@@ -181,7 +181,7 @@ public partial class SupperServingsPostgresTests
             var plan = await db.WeeklyPlans.SingleAsync();
             var rows = JsonDocument.Parse(plan.GroceryItems).RootElement.EnumerateArray().ToList();
             var pasta = rows.Single(x => x.GetProperty("normalizedKey").GetString() == "pasta");
-            Assert.Equal(400, pasta.GetProperty("quantity").GetDouble());
+            Assert.Equal(400, pasta.GetProperty("quantity").ExactScalar());
             Assert.False(pasta.GetProperty("quantityComplete").GetBoolean());
             Assert.True(rows.Single(x => x.GetProperty("normalizedKey").GetString() == "salt").GetProperty("quantityComplete").GetBoolean());
             Assert.DoesNotContain(rows, x => x.GetProperty("displayName").GetString() == "old sauce");

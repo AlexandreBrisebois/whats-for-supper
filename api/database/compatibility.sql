@@ -4,6 +4,11 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 BEGIN;
 
+-- Private launch evidence; existing tasks remain unqualified rather than acquire
+-- a fabricated execution-time baseline after earlier source writes.
+ALTER TABLE IF EXISTS workflow_instances ADD COLUMN IF NOT EXISTS recipe_publication_capture jsonb;
+
+
 CREATE TABLE IF NOT EXISTS supper_servings (
     date date PRIMARY KEY,
     override_servings integer,
@@ -17,6 +22,11 @@ CREATE TABLE IF NOT EXISTS supper_servings (
 
 DO $$ BEGIN
 IF to_regclass('public.weekly_plans') IS NOT NULL THEN
+-- Empty means no acknowledged baseline; never infer one from current demand.
+ALTER TABLE weekly_plans ADD COLUMN IF NOT EXISTS grocery_checked_demand_baselines jsonb NOT NULL DEFAULT jsonb_build_object();
+-- Observation membership is not saved ingredient-row lineage. Missing historical
+-- evidence remains unknown and is never reconstructed from disclosure recipe IDs.
+ALTER TABLE weekly_plans ADD COLUMN IF NOT EXISTS grocery_demand_evidence jsonb NOT NULL DEFAULT jsonb_build_object();
 ALTER TABLE weekly_plans ADD COLUMN IF NOT EXISTS serving_input_version text;
 ALTER TABLE weekly_plans ADD COLUMN IF NOT EXISTS serving_applied_version text;
 ALTER TABLE weekly_plans ADD COLUMN IF NOT EXISTS serving_refresh_status text;
@@ -328,3 +338,159 @@ ALTER TABLE IF EXISTS calendar_events ADD COLUMN IF NOT EXISTS prepared_servings
 ALTER TABLE IF EXISTS calendar_events ADD COLUMN IF NOT EXISTS prepared_original_servings integer;
 ALTER TABLE IF EXISTS calendar_events ADD COLUMN IF NOT EXISTS preparation_plan_token text;
 ALTER TABLE IF EXISTS calendar_events ADD COLUMN IF NOT EXISTS preparation_serving_version text;
+
+-- Additive storage only. Canonical conversion remains an explicit gated operation.
+DO $$
+BEGIN
+    IF to_regclass('public.recipes') IS NOT NULL THEN
+        ALTER TABLE recipes ADD COLUMN IF NOT EXISTS canonical_content jsonb;
+        CREATE TABLE IF NOT EXISTS canonical_recipe_operations (
+            recipe_id uuid NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
+            operation_id uuid NOT NULL,
+            input_hash text NOT NULL,
+            result jsonb NOT NULL,
+            created_at timestamptz NOT NULL,
+            PRIMARY KEY (recipe_id, operation_id)
+        );
+        -- Original authority is nullable; historical operations remain unqualified.
+        ALTER TABLE canonical_recipe_operations ADD COLUMN IF NOT EXISTS original_request text;
+        CREATE TABLE IF NOT EXISTS recipe_file_publications (
+            recipe_id uuid NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
+            operation_id uuid NOT NULL,
+            input_hash text NOT NULL,
+            payload jsonb NOT NULL,
+            result_hash text NOT NULL,
+            delivered boolean NOT NULL DEFAULT false,
+            created_at timestamptz NOT NULL,
+            PRIMARY KEY (recipe_id, operation_id)
+        );
+    END IF;
+END $$;
+
+-- Prevent legacy semantic writers (including raw SQL jobs) from replacing a
+-- converted owner without a new coherent canonical revision.
+CREATE OR REPLACE FUNCTION guard_canonical_recipe_content() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+    IF OLD.canonical_content IS NOT NULL AND (
+        NEW.canonical_content IS NULL OR
+        ((NEW.source_url IS DISTINCT FROM OLD.source_url OR
+          NEW.raw_metadata IS DISTINCT FROM OLD.raw_metadata OR
+          NEW.ingredients IS DISTINCT FROM OLD.ingredients OR
+          NEW.servings IS DISTINCT FROM OLD.servings OR
+          NEW.canonical_content IS DISTINCT FROM OLD.canonical_content) AND
+         NEW.canonical_content->>'contentRevision' IS NOT DISTINCT FROM OLD.canonical_content->>'contentRevision')
+    ) THEN
+        RAISE EXCEPTION 'Canonical recipe content requires guarded publication' USING ERRCODE = '23514';
+    END IF;
+    RETURN NEW;
+END $$;
+DO $$
+BEGIN
+    IF to_regclass('public.recipes') IS NOT NULL THEN
+        DROP TRIGGER IF EXISTS canonical_recipe_content_guard ON recipes;
+        CREATE TRIGGER canonical_recipe_content_guard BEFORE UPDATE ON recipes
+            FOR EACH ROW EXECUTE FUNCTION guard_canonical_recipe_content();
+    END IF;
+END $$;
+
+-- Original report repair commands are retained independently of mutable reports.
+CREATE TABLE IF NOT EXISTS recipe_repair_intents (
+    id uuid PRIMARY KEY,
+    recipe_id uuid NOT NULL,
+    payload jsonb NOT NULL,
+    input_hash text NOT NULL,
+    created_at timestamptz NOT NULL
+);
+ALTER TABLE IF EXISTS recipe_import_reports ADD COLUMN IF NOT EXISTS repair_intent_id uuid;
+
+-- Retained original child commands; intentionally independent of prunable history.
+-- Independent observations; never cascade with execution rows or backfill old attempts.
+CREATE TABLE IF NOT EXISTS workflow_processor_attempts (
+    id uuid PRIMARY KEY,
+    task_id uuid NOT NULL,
+    instance_id uuid NOT NULL,
+    request jsonb NOT NULL,
+    request_hash text NOT NULL,
+    outcome jsonb,
+    outcome_hash text,
+    observed_at timestamptz,
+    created_at timestamptz NOT NULL,
+    CONSTRAINT workflow_processor_attempts_outcome_check CHECK (
+        (outcome IS NULL AND outcome_hash IS NULL AND observed_at IS NULL) OR
+        (outcome IS NOT NULL AND outcome_hash IS NOT NULL AND observed_at IS NOT NULL))
+);
+CREATE INDEX IF NOT EXISTS workflow_processor_attempts_task_idx ON workflow_processor_attempts (task_id, created_at, id);
+
+CREATE TABLE IF NOT EXISTS workflow_reset_intents (
+    id uuid PRIMARY KEY,
+    task_id uuid NOT NULL,
+    instance_id uuid NOT NULL,
+    request jsonb NOT NULL,
+    request_hash text NOT NULL,
+    applied_at timestamptz,
+    created_at timestamptz NOT NULL
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS workflow_reset_intents_pending_task_idx ON workflow_reset_intents (task_id) WHERE applied_at IS NULL;
+CREATE INDEX IF NOT EXISTS workflow_reset_intents_pending_order_idx ON workflow_reset_intents (created_at, id) WHERE applied_at IS NULL;
+
+CREATE TABLE IF NOT EXISTS workflow_launch_intents (
+    id uuid PRIMARY KEY,
+    request jsonb NOT NULL,
+    request_hash text NOT NULL,
+    prepared jsonb,
+    prepared_hash text,
+    accepted_at timestamptz,
+    created_at timestamptz NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS workflow_child_intents (
+    id uuid PRIMARY KEY,
+    parent_task_id uuid NOT NULL,
+    request jsonb NOT NULL,
+    request_hash text NOT NULL,
+    prepared jsonb,
+    prepared_hash text,
+    accepted_at timestamptz,
+    created_at timestamptz NOT NULL
+);
+ALTER TABLE IF EXISTS workflow_tasks ADD COLUMN IF NOT EXISTS child_launch_intent_id uuid;
+ALTER TABLE IF EXISTS workflow_tasks ADD COLUMN IF NOT EXISTS reset_intent_id uuid;
+
+-- Independent inert history survives workflow/task pruning and recipe cleanup.
+CREATE TABLE IF NOT EXISTS workflow_lifecycle_records (
+    id uuid PRIMARY KEY,
+    operation_id uuid NOT NULL,
+    disposition text NOT NULL CHECK (disposition IN ('cleared', 'pruned')),
+    payload jsonb NOT NULL,
+    payload_hash text NOT NULL,
+    created_at timestamptz NOT NULL
+);
+
+-- Independent terminal command history; never executable recovery authority.
+CREATE TABLE IF NOT EXISTS maintenance_command_lifecycle_records (
+    id uuid NOT NULL,
+    operation_id uuid NOT NULL,
+    disposition text NOT NULL CHECK (disposition IN ('retention-started', 'pruned')),
+    payload jsonb NOT NULL,
+    payload_hash text NOT NULL,
+    created_at timestamptz NOT NULL,
+    PRIMARY KEY (id, disposition)
+);
+
+-- Independent physical intent precedes files; delivery and database removal have separate receipts.
+CREATE TABLE IF NOT EXISTS recipe_physical_deletions (
+    recipe_id uuid PRIMARY KEY,
+    operation_id uuid NOT NULL,
+    kind text NOT NULL CHECK (kind IN ('purge', 'delete', 'failed-capture')),
+    payload jsonb NOT NULL,
+    payload_hash text NOT NULL,
+    recipe_hash text NOT NULL,
+    files_removed boolean,
+    created_at timestamptz NOT NULL,
+    files_delivered_at timestamptz,
+    completed_at timestamptz,
+    CONSTRAINT recipe_physical_deletions_receipt_check CHECK ((files_delivered_at IS NOT NULL OR files_removed IS NULL) AND (completed_at IS NULL OR files_delivered_at IS NOT NULL))
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS recipe_physical_deletions_operation_id_idx ON recipe_physical_deletions(operation_id);

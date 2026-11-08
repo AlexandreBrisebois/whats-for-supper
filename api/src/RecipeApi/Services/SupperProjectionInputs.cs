@@ -11,10 +11,10 @@ namespace RecipeApi.Services;
 /// <summary>Effective ingredient inputs, independent of optimistic portions-save versions.</summary>
 internal static class SupperProjectionInputs
 {
-    internal sealed record Occurrence(CalendarEvent Event, IReadOnlyList<IngredientProjectionLineDto> Lines, string Version);
+    internal sealed record Occurrence(CalendarEvent Event, IReadOnlyList<IngredientProjectionLineDto> Lines, string Version, int? Basis, int? Target);
 
     private static string IngredientVersion(Guid recipeId, int? basis, int? target, IReadOnlyList<IngredientProjectionLineDto> lines) =>
-        Hash(new { RecipeId = recipeId, Basis = basis, Target = target, Lines = lines });
+        Hash(new { RecipeId = recipeId, Basis = basis, Target = target, Lines = lines, GroceryOperands = lines.Select(line => line.GroceryObservation) });
 
     internal static bool UsesDatedPortions(CalendarEvent occurrence) => occurrence.MealSlot == 0 && occurrence.Status != CalendarEventStatus.Skipped;
 
@@ -39,7 +39,7 @@ internal static class SupperProjectionInputs
             var target = UsesDatedPortions(evt) ? SupperServingsService.Effective(rows.SingleOrDefault(x => x.Date == evt.Date), usual, evt.Date, today, evt) : null;
             var lines = SupperIngredientProjection.Read(evt.Recipe!, target);
             var basis = UsesDatedPortions(evt) ? evt.Recipe!.Servings : null;
-            return new Occurrence(evt, lines, IngredientVersion(evt.RecipeId!.Value, basis, target, lines));
+            return new Occurrence(evt, lines, IngredientVersion(evt.RecipeId!.Value, basis, target, lines), basis, target);
         }).ToList();
     }
 

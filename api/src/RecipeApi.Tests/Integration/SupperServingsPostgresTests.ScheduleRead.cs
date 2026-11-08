@@ -1,4 +1,5 @@
 using System.Data;
+using System.Text.Json;
 using System.Data.Common;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -16,6 +17,10 @@ namespace RecipeApi.Tests.Integration;
 
 public partial class SupperServingsPostgresTests
 {
+    private const string ScheduleReadRow = "660e8400-e29b-41d4-a716-446655440602";
+    private static string ScheduleReadItems(int amount) => JsonSerializer.Serialize(new[] { new GroceryLineItemDto("pasta", "pasta", "Pantry", amount, "g", [], true) {
+        ExactQuantity = new("scalar", new(amount.ToString(), "1")), RowId = ScheduleReadRow, RowVersion = "1", WeekStartDate = new(2026,10,12), DemandIdentity = "snapshot-fixture"
+    }});
     private static readonly Guid ScheduleReadRound = Guid.Parse("660e8400-e29b-41d4-a716-446655440601");
     [DeploymentCalendarPostgresTests.CalendarPostgresFact]
     public async Task SupperServings_ScheduleReadCannotMixCalendarAndGroceryCommits()
@@ -33,8 +38,8 @@ public partial class SupperServingsPostgresTests
                 (await db.CalendarEvents.SingleAsync()).VoteCount = 9;
                 (await db.Recipes.SingleAsync()).Name = "New recipe";
                 var plan = await db.WeeklyPlans.SingleAsync();
-                plan.GroceryItems = "[{\"displayName\":\"pasta\",\"quantity\":600}]";
-                plan.GroceryState = "{\"pasta\":false}";
+                plan.GroceryItems = ScheduleReadItems(600);
+                plan.GroceryState = JsonSerializer.Serialize(new Dictionary<string,bool>{[ScheduleReadRow]=false});
                 plan.ServingInputVersion = "new"; plan.ServingRefreshStatus = "updating";
                 (await db.VotingRoundStates.SingleAsync()).RoundId = Guid.NewGuid();
                 (await db.GroceryExtraOccurrences.SingleAsync()).Checked = true;
@@ -47,7 +52,7 @@ public partial class SupperServingsPostgresTests
             Assert.Equal("Old recipe", during.Days[2].Recipe!.Name);
             Assert.Equal(2, during.Days[2].Recipe!.VoteCount);
             Assert.Equal(200, during.GroceryItems![0].Quantity);
-            Assert.True(during.GroceryState!["pasta"]);
+            Assert.True(during.GroceryState![ScheduleReadRow]);
             Assert.Equal("current", during.GroceryRefresh!.Status);
             Assert.Equal(ScheduleReadRound, during.VotingRoundId);
             Assert.False(Assert.Single(during.GroceryExtras!).Checked);
@@ -55,7 +60,7 @@ public partial class SupperServingsPostgresTests
             Assert.Equal("New recipe", after.Days[2].Recipe!.Name);
             Assert.Equal(9, after.Days[2].Recipe!.VoteCount);
             Assert.Equal(600, after.GroceryItems![0].Quantity);
-            Assert.False(after.GroceryState!["pasta"]);
+            Assert.False(after.GroceryState![ScheduleReadRow]);
             Assert.Equal("updating", after.GroceryRefresh!.Status);
             Assert.NotEqual(ScheduleReadRound, after.VotingRoundId);
             Assert.Empty(after.GroceryExtras!);
@@ -77,13 +82,13 @@ public partial class SupperServingsPostgresTests
                 var db = writer.ServiceProvider.GetRequiredService<RecipeDbContext>();
                 (await db.CalendarEvents.SingleAsync()).VoteCount = 9;
                 (await db.Recipes.SingleAsync()).Name = "New recipe";
-                (await db.WeeklyPlans.SingleAsync()).GroceryState = "{\"pasta\":false}";
+                (await db.WeeklyPlans.SingleAsync()).GroceryState = JsonSerializer.Serialize(new Dictionary<string,bool>{[ScheduleReadRow]=false});
                 await db.SaveChangesAsync();
             }
             var fresh = await reader.ServiceProvider.GetRequiredService<ScheduleService>().GetScheduleAsync(0, new(2026, 10, 12));
             Assert.Equal("New recipe", fresh.Days[2].Recipe!.Name);
             Assert.Equal(9, fresh.Days[2].Recipe!.VoteCount);
-            Assert.False(fresh.GroceryState!["pasta"]);
+            Assert.False(fresh.GroceryState![ScheduleReadRow]);
             // Snapshot reads must not clear or overwrite the caller's tracked write state.
             Assert.Equal("Old recipe", tracked.Recipes.Local.Single().Name);
             Assert.Equal(2, tracked.CalendarEvents.Local.Single().VoteCount);
@@ -131,7 +136,7 @@ public partial class SupperServingsPostgresTests
         var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
         var recipe = CorrectionRecipe(); recipe.Name = "Old recipe"; db.Recipes.Add(recipe);
         db.CalendarEvents.Add(new CalendarEvent { Date = Wednesday, RecipeId = recipe.Id, VoteCount = 2 });
-        db.WeeklyPlans.Add(new WeeklyPlan { WeekStartDate = new(2026, 10, 12), GroceryItems = "[{\"displayName\":\"pasta\",\"quantity\":200}]", GroceryState = "{\"pasta\":true}", ServingInputVersion = "old", ServingAppliedVersion = "old" });
+        db.WeeklyPlans.Add(new WeeklyPlan { WeekStartDate = new(2026, 10, 12), GroceryItems = ScheduleReadItems(200), GroceryState = JsonSerializer.Serialize(new Dictionary<string,bool>{[ScheduleReadRow]=true}), ServingInputVersion = "old", ServingAppliedVersion = "old" });
         var round = await db.VotingRoundStates.SingleOrDefaultAsync();
         if (round is null) { round = new VotingRoundState(); db.VotingRoundStates.Add(round); }
         round.RoundId = ScheduleReadRound; round.WeekStartDate = new(2026, 10, 12);

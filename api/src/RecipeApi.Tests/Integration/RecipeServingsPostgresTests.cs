@@ -52,7 +52,7 @@ public partial class RecipeServingsPostgresTests(ITestOutputHelper output)
                     await db.Database.ExecuteSqlRawAsync("UPDATE recipes SET servings=7"); db.ChangeTracker.Clear();
                     Assert.Equal(0, (await management.RestoreAsync()).Errors);
                     foreach (var row in recipes) {
-                        await RecipeServingsTests.Sync(db, new RecipeRepository(scope.ServiceProvider.GetRequiredService<IStorageProvider>()), new WorkflowTask { Payload = JsonSerializer.Serialize(new { recipeId = row.Id }) });
+                        await Assert.ThrowsAsync<InvalidDataException>(() => RecipeServingsTests.Sync(db, new RecipeRepository(scope.ServiceProvider.GetRequiredService<IStorageProvider>()), new WorkflowTask { Payload = JsonSerializer.Serialize(new { recipeId = row.Id }) }));
                         var saved = await db.Recipes.SingleAsync(r => r.Id == row.Id); Assert.Equal(row.Id == recipes[0].Id ? 3 : 2, saved.Servings); Assert.True(System.Text.Json.JsonElement.DeepEquals(JsonDocument.Parse(row.RawMetadata!).RootElement, JsonDocument.Parse(saved.RawMetadata!).RootElement)); Assert.Equal(RecipeService.DeserializeIngredients(row.Ingredients), RecipeService.DeserializeIngredients(saved.Ingredients));
                         var info = JsonSerializer.Serialize(await scope.ServiceProvider.GetRequiredService<IRecipeStore>().ReadInfoAsync(row.Id), JsonDefaults.CamelCase); Assert.DoesNotContain("servings", info); Assert.DoesNotContain("recipeYield", info);
                     }
@@ -110,7 +110,7 @@ public partial class RecipeServingsPostgresTests(ITestOutputHelper output)
     }
 
     [DeploymentCalendarPostgresTests.CalendarPostgresFact]
-    public async Task RecipeServings_ContentSyncSerializesOverlappingBackfillWithoutReintroducingOldCount()
+    public async Task RecipeServings_CapturedPublicationSerializesOverlappingBackfillWithoutReintroducingOldCount()
     {
         await new TomorrowPushPostgresTests(output).WithDatabase(async settings => {
             var race = new BeforeContentSave();
@@ -123,8 +123,12 @@ public partial class RecipeServingsPostgresTests(ITestOutputHelper output)
             var storage = scope.ServiceProvider.GetRequiredService<IStorageProvider>();
             await storage.SaveAsync("recipes", $"{recipe.Id}/recipe.info", JsonSerializer.Serialize(new RecipeInfo { Id = recipe.Id }, JsonDefaults.CamelCase));
             await storage.SaveAsync("recipes", $"{recipe.Id}/recipe.json", "{\"recipeYield\":\"unknown\",\"recipeIngredient\":[\"340 g new pasta\"]}");
+            var repository = new RecipeRepository(storage);
+            var publisher = RecipeServingsTests.PublicationStore(db, repository);
+            var capture = await publisher.CaptureAsync(recipe.Id);
             race.Armed = true;
-            var sync = RecipeServingsTests.Sync(db, new RecipeRepository(storage), new WorkflowTask { Payload = JsonSerializer.Serialize(new { recipeId = recipe.Id }) });
+            var publication = publisher.PublishAsync(capture, new RecipePublicationCandidate(
+                "{\"recipeYield\":\"unknown\",\"recipeIngredient\":[\"340 g new pasta\"]}", new RecipeInfo { Id = recipe.Id }), Guid.NewGuid());
             await using var other = new RecipeDbContext(new DbContextOptionsBuilder<RecipeDbContext>().UseNpgsql(settings.ConnectionString).Options);
             Task<object?>? backfill = null;
             try {
@@ -142,11 +146,11 @@ public partial class RecipeServingsPostgresTests(ITestOutputHelper output)
                     blocked = (bool)(await query.ExecuteScalarAsync(timeout.Token))!;
                     if (!blocked) await Task.WhenAny(backfill, Task.Delay(20, timeout.Token)).WaitAsync(timeout.Token);
                 }
-                Assert.True(blocked, "Backfill must actually wait on the content sync's held PostgreSQL recipe lock.");
+                Assert.True(blocked, "Backfill must actually wait on the captured publication's held PostgreSQL recipe lock.");
                 Assert.False(backfill.IsCompleted);
-                output.WriteLine($"Positive PostgreSQL lock wait: backfill pid {waiter} blocked by sync pid {owner}.");
+                output.WriteLine($"Positive PostgreSQL lock wait: backfill pid {waiter} blocked by publication pid {owner}.");
                 race.Release.TrySetResult();
-                await sync.WaitAsync(TimeSpan.FromSeconds(15));
+                await publication.WaitAsync(TimeSpan.FromSeconds(15));
                 var result = JsonSerializer.SerializeToElement(await backfill.WaitAsync(TimeSpan.FromSeconds(15)));
                 Assert.Equal(1, result.GetProperty("Examined").GetInt32());
                 Assert.Equal(0, result.GetProperty("Unresolved").GetInt32());
@@ -154,7 +158,7 @@ public partial class RecipeServingsPostgresTests(ITestOutputHelper output)
                 Assert.Equal(1, result.GetProperty("Changed").GetInt32());
             } finally {
                 race.Release.TrySetResult();
-                await sync.WaitAsync(TimeSpan.FromSeconds(15));
+                await publication.WaitAsync(TimeSpan.FromSeconds(15));
                 if (backfill is not null) await backfill.WaitAsync(TimeSpan.FromSeconds(15));
             }
             Assert.True(race.Ran);

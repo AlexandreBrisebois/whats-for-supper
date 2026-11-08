@@ -120,6 +120,11 @@ The system SHALL provide explicit exact snapshot and restore operations distinct
 - **WHEN** an exact snapshot predates required canonical storage and fails schema or membership preflight
 - **THEN** exact restore rejects it before live publication rather than treating missing facts as empty or running implicit conversion
 
+#### Scenario: Preserve checked-demand comparison baseline
+- **WHEN** a current-format backup contains a checked row acknowledged at 2–3 whose current demand is 3–4
+- **THEN** recovery retains checked state and original baseline 2–3 together; subsequent 4–5 demand unchecks rather than using restored current 3–4 as a new baseline
+- **AND** unchecked rows have no active baseline and unknown/incomplete acknowledged baselines do not become known from restored current totals
+
 ### Requirement: Distinguish current recipe envelopes from legacy content
 
 Routine export, restore and disk sync SHALL support only the declared current recipe/backup formats, decode canonical content separately from evidence and reject old or malformed input before mutation. Explicit null/empty fields SHALL remain authoritative. One-time forward conversion SHALL be a distinct operation.
@@ -296,19 +301,23 @@ A one-time importer SHALL declare accepted legacy source formats, selected IDs, 
 
 ### Requirement: Restrict conditional reseed to reviewed recipe fields
 
-Recipe-only disk fallback SHALL require a documented in-place blocker and approved disk/live precedence for each divergent record. It SHALL preserve IDs, household state/links, database-only recipes, human corrections and media/source relationships, without delete-all or soft-delete resurrection.
+Recipe-only disk fallback SHALL require a documented in-place blocker and disk/database comparison by stable recipe ID before mutation. Unexpected content or membership mismatches SHALL stop fallback and be reported, not silently replaced. IDs, household links/data, historical lists, database-only recipes and media/source relationships SHALL be preserved without delete-all or soft-delete resurrection.
 
 #### Scenario: Divergent disk and live
-- **WHEN** fallback assessment finds newer or incomparable human edits
-- **THEN** it reports a conflict and cannot choose disk by timestamp
+- **WHEN** fallback assessment finds unexpected differences in supported recipe facts after allowing documented representation-only conversion
+- **THEN** it stops fallback before mutation and reports stable IDs and differing fields; neither timestamps nor assumed Dreaming synchronization choose a winner
 
 #### Scenario: Missing disk ID
 - **WHEN** a live recipe has no file or a file names an absent ID
-- **THEN** live records remain and absent-ID creation is a separate manifest decision
+- **THEN** assessment stops and reports the missing stable ID before fallback mutation; live records remain and no recipe is auto-created, purged or resurrected
 
 #### Scenario: Protected fields
 - **WHEN** approved fallback publishes selected recipe content
 - **THEN** before/after protected household hashes and relationships remain equivalent
+
+#### Scenario: Expected synchronized recipe content
+- **WHEN** a necessary fallback finds matching disk/database recipe IDs and supported content under its documented comparison
+- **THEN** it may stage the reviewed recipe conversion while preserving household data, without requiring an elaborate UI-edit conflict-resolution workflow
 
 ### Requirement: Gate cutover on compatible clients and verified recovery
 

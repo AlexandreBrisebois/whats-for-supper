@@ -10,6 +10,43 @@ vi.mock('@/store/discoveryStore', () => ({ useDiscoveryStore: { getState: () => 
 import { getSchedule } from './planner';
 
 describe('generated schedule preparation decoding', () => {
+  it.each([
+    { kind: 'scalar', value: { n: '400', d: '1' } },
+    { kind: 'range', min: { n: '2', d: '1' }, max: { n: '3', d: '1' } },
+    { kind: 'scalar', value: { n: '9007199254740993', d: '1' } },
+    null,
+  ])(
+    'retains the exact nullable grocery quantity through a generated schedule read: %j',
+    async (quantity) => {
+      const response = new JsonParseNode({
+        data: {
+          weekOffset: 0,
+          weekStartDate: '2026-10-12',
+          days: [],
+          groceryItems: [
+            {
+              rowId: '550e8400-e29b-41d4-a716-446655440211',
+              rowVersion: '1',
+              weekStartDate: '2026-10-12',
+              source: 'recipe',
+              demandIdentity: 'pasta:g',
+              displayName: 'pasta',
+              normalizedKey: 'pasta',
+              section: 'Pantry',
+              recipeIds: ['550e8400-e29b-41d4-a716-446655440212'],
+              quantity,
+              quantityComplete: false,
+              unitText: 'g',
+            },
+          ],
+        },
+      }).getObjectValue<ScheduleGetResponse>(createScheduleGetResponseFromDiscriminatorValue)!;
+      get.mockResolvedValue(response);
+      const schedule = await getSchedule(0, '2026-10-12');
+      expect(schedule!.groceryItems![0].quantity).toEqual(quantity);
+      expect(schedule!.groceryItems![0].quantityComplete).toBe(false);
+    }
+  );
   it('keeps unprepared and legacy dates unprepared when Kiota decodes nullable objects', async () => {
     const response = new JsonParseNode({
       data: {

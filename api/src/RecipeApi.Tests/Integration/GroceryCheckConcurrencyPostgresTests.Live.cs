@@ -16,7 +16,7 @@ namespace RecipeApi.Tests.Integration;
 public sealed partial class GroceryCheckConcurrencyPostgresTests
 {
     [DeploymentCalendarPostgresTests.CalendarLiveFact]
-    public async Task LiveBrowser_SharedChecksConvergeAndFreshReadRecoversOlderSnapshot()
+    public async Task LiveBrowser_IndependentWaterRowsConvergeAndRejectOlderSnapshot()
     {
         await new TomorrowPushPostgresTests(output).WithDatabase(async settings =>
         {
@@ -49,19 +49,35 @@ public sealed partial class GroceryCheckConcurrencyPostgresTests
                     foreach (var header in context.Request.Headers)
                         if (!string.Equals(header.Key, "Host", StringComparison.OrdinalIgnoreCase))
                             request.Headers.TryAddWithoutValidation(header.Key, header.Value.ToArray());
-                    using var response = await gateway.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, context.RequestAborted);
-                    context.Response.StatusCode = (int)response.StatusCode;
-                    foreach (var header in response.Headers.Concat(response.Content.Headers)) context.Response.Headers[header.Key] = header.Value.ToArray();
-                    context.Response.Headers.Remove("transfer-encoding");
-                    await response.Content.CopyToAsync(context.Response.Body, context.RequestAborted);
+                    try
+                    {
+                        using var response = await gateway.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, context.RequestAborted);
+                        context.Response.StatusCode = (int)response.StatusCode;
+                        foreach (var header in response.Headers.Concat(response.Content.Headers)) context.Response.Headers[header.Key] = header.Value.ToArray();
+                        context.Response.Headers.Remove("transfer-encoding");
+                        await response.Content.CopyToAsync(context.Response.Body, context.RequestAborted);
+                    }
+                    catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
+                    {
+                        // Development HMR navigation aborts the proxy stream after headers start.
+                        // A disconnected client cannot receive an error response.
+                    }
                 });
             });
             await using var db = new RecipeApi.Data.RecipeDbContext(new DbContextOptionsBuilder<RecipeApi.Data.RecipeDbContext>().UseNpgsql(connection).Options);
             var secondMember = new FamilyMember { Id = Guid.NewGuid(), Name = "Other shopper" };
             db.FamilyMembers.Add(secondMember);
-            var recipe = new Recipe { Id = Guid.NewGuid(), Name = "Shared shopping", RawMetadata = """{"supply":[{"name":"Tomato","quantity":1},{"name":"Lettuce","quantity":1}]}""" };
-            db.Recipes.Add(recipe);
-            db.CalendarEvents.Add(new CalendarEvent { Date = new(2026, 10, 5), RecipeId = recipe.Id });
+            foreach (var (unit, offset) in new[] { ("g", 0), ("ml", 1), ("cup", 2) })
+            {
+                var ingredient = $"1 {unit} Water";
+                var recipe = new Recipe { Id = Guid.NewGuid(), Name = $"Water in {unit}", Servings = 4,
+                    Ingredients = JsonSerializer.Serialize(new[] { ingredient }),
+                    RawMetadata = JsonSerializer.Serialize(new { recipeIngredient = new[] { ingredient }, supply = new[] { new { name = "Water", quantity = 1, unitText = unit } } }) };
+                db.Recipes.Add(recipe);
+                db.CalendarEvents.Add(new CalendarEvent { Date = new DateOnly(2026, 10, 5).AddDays(offset), RecipeId = recipe.Id });
+            }
+            var extraId = Guid.NewGuid();
+            db.GroceryExtraOccurrences.Add(GroceryExtraOccurrence.Create(extraId, Guid.NewGuid(), new(2026, 10, 5), "Water", "water", "Grocery", DateTimeOffset.UtcNow));
             db.WeeklyPlans.Add(new WeeklyPlan { WeekStartDate = new(2026, 10, 5), GroceryState = "{}" });
             await db.SaveChangesAsync();
             using (var seedScope = app.Services.CreateScope())
@@ -69,11 +85,15 @@ public sealed partial class GroceryCheckConcurrencyPostgresTests
 
 
             var root = DeploymentCalendarPostgresTests.RepositoryRoot();
+            var isolatedRoot = Path.Combine(Path.GetTempPath(), $"wfs-grocery-live-{Guid.NewGuid():N}");
+            CopyBrowserSource(Path.Combine(root, "pwa"), Path.Combine(isolatedRoot, "pwa"));
+            CopyBrowserSource(Path.Combine(root, "scripts", "ci"), Path.Combine(isolatedRoot, "scripts", "ci"));
+            Directory.CreateSymbolicLink(Path.Combine(isolatedRoot, "pwa", "node_modules"), Path.Combine(root, "pwa", "node_modules"));
             var start = new ProcessStartInfo("node")
             {
-                WorkingDirectory = Path.Combine(root, "pwa"), RedirectStandardOutput = true, RedirectStandardError = true
+                WorkingDirectory = Path.Combine(isolatedRoot, "pwa"), RedirectStandardOutput = true, RedirectStandardError = true
             };
-            foreach (var arg in new[] { "node_modules/next/dist/bin/next", "dev", "-H", "127.0.0.1", "-p", new Uri(pwaUrl).Port.ToString() }) start.ArgumentList.Add(arg);
+            foreach (var arg in new[] { "node_modules/next/dist/bin/next", "dev", "--webpack", "-H", "127.0.0.1", "-p", new Uri(pwaUrl).Port.ToString() }) start.ArgumentList.Add(arg);
             DeploymentCalendarPostgresTests.ConfigureEnvironment(start, app.HttpAddress, pwaUrl);
             using var server = Process.Start(start)!;
             server.OutputDataReceived += (_, e) => { if (e.Data is not null) output.WriteLine(e.Data); };
@@ -119,8 +139,12 @@ public sealed partial class GroceryCheckConcurrencyPostgresTests
                     var saved = await db.WeeklyPlans.AsNoTracking().SingleAsync();
                     output.WriteLine($"Live API {app.HttpAddress}; PWA {pwaUrl}; persisted map {saved.GroceryState}");
                     var checks = JsonSerializer.Deserialize<Dictionary<string, bool>>(saved.GroceryState)!;
-                    Assert.True(checks["tomato"]);
-                    Assert.True(checks["lettuce"]);
+                    var rows = JsonSerializer.Deserialize<List<RecipeApi.Dto.GroceryLineItemDto>>(saved.GroceryItems)!;
+                    Assert.Equal(3, rows.Count);
+                    Assert.True(checks[rows.Single(row => row.UnitText == "g").RowId!]);
+                    Assert.True(checks[rows.Single(row => row.UnitText == "ml").RowId!]);
+                    Assert.False(checks[rows.Single(row => row.UnitText == "cup").RowId!]);
+                    Assert.False((await db.GroceryExtraOccurrences.AsNoTracking().SingleAsync(row => row.Id == extraId)).Checked);
                     var drift = new ProcessStartInfo("task") { WorkingDirectory = root, RedirectStandardOutput = true, RedirectStandardError = true };
                     drift.ArgumentList.Add("agent:drift:endpoints");
                     drift.Environment["GENERATED_API_URL"] = app.HttpAddress + "/openapi/v1.json";
@@ -148,8 +172,25 @@ public sealed partial class GroceryCheckConcurrencyPostgresTests
             finally
             {
                 if (!server.HasExited) { server.Kill(entireProcessTree: true); await server.WaitForExitAsync(); }
+                Directory.Delete(isolatedRoot, recursive: true);
             }
         });
     }
 
+    private static void CopyBrowserSource(string source, string target)
+    {
+        Directory.CreateDirectory(target);
+        foreach (var file in Directory.EnumerateFiles(source))
+        {
+            var name = Path.GetFileName(file);
+            if (name.StartsWith(".env", StringComparison.Ordinal) || name == "tsconfig.tsbuildinfo") continue;
+            File.Copy(file, Path.Combine(target, name));
+        }
+        foreach (var directory in Directory.EnumerateDirectories(source))
+        {
+            var name = Path.GetFileName(directory);
+            if (name is "node_modules" or ".next" or "test-results" or "playwright-report" or "blob-report" or ".git") continue;
+            CopyBrowserSource(directory, Path.Combine(target, name));
+        }
+    }
 }

@@ -180,7 +180,7 @@ public partial class SupperServingsPostgresTests
                 var plan = await db.WeeklyPlans.SingleAsync(); plan.GroceryState = "{\"pasta\":true,\"unrelated\":true}"; await db.SaveChangesAsync();
                 if (sourceTitlesOnly) {
                     var items = JsonSerializer.Deserialize<List<RecipeApi.Dto.GroceryLineItemDto>>(plan.GroceryItems!)!;
-                    plan.GroceryItems = JsonSerializer.Serialize(items.Select(item => item with { CheckReviewReason = "prior_amount_unknown" }));
+                    plan.GroceryItems = JsonSerializer.Serialize(items.Select(item => JsonSerializer.SerializeToElement(item)).Select(item => item.EnumerateObject().ToDictionary(p => p.Name, p => (object?)p.Value)).Select(item => { item["checkReviewReason"] = "prior_amount_unknown"; return item; }));
                     await db.SaveChangesAsync();
                 }
 

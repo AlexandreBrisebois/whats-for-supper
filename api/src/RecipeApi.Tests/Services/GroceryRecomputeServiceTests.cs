@@ -24,7 +24,7 @@ namespace RecipeApi.Tests.Services;
 /// Property tests (P6–P9) use a manual 100-iteration loop because FsCheck 3.x
 /// does not support async property bodies, and the service requires async DB access.
 /// </summary>
-public class GroceryRecomputeServiceTests : IAsyncLifetime
+public partial class GroceryRecomputeServiceTests : IAsyncLifetime
 {
     private TestWebApplicationFactory _factory = null!;
     private IServiceScope _scope = null!;
@@ -56,7 +56,7 @@ public class GroceryRecomputeServiceTests : IAsyncLifetime
         var id = await SeedRecipeWithSupplyAsync(TestMonday, [("pasta", 200, "g"), ("sauce", 100, "ml")]);
         await _service.RecomputeForWeekAsync(TestMonday, default);
         var plan = await _db.WeeklyPlans.SingleAsync();
-        plan.GroceryState = "{\"pasta\":true,\"sauce\":true,\"unrelated\":true}";
+        await SetChecksAsync(("pasta", true), ("sauce", true));
         var recipe = await _db.Recipes.SingleAsync(r => r.Id == id);
         recipe.RawMetadata = BuildRawMetadata([("pasta", 600, "g"), ("sauce", 300, "ml")]);
         await _db.SaveChangesAsync();
@@ -64,17 +64,17 @@ public class GroceryRecomputeServiceTests : IAsyncLifetime
         _db.ChangeTracker.Clear();
         plan = await _db.WeeklyPlans.SingleAsync();
         var checks = JsonSerializer.Deserialize<Dictionary<string, bool>>(plan.GroceryState)!;
-        Assert.False(checks["pasta"]); Assert.False(checks["sauce"]); Assert.True(checks["unrelated"]);
+        Assert.All(checks.Values, value => Assert.False(value));
         var items = await GetGroceryItemsAsync(TestMonday);
         Assert.Equal(600, items.Single(x => x.DisplayName == "pasta").Quantity);
         Assert.Equal(300, items.Single(x => x.DisplayName == "sauce").Quantity);
         Assert.False(string.IsNullOrWhiteSpace(plan.GroceryResetSummaryVersion));
-        plan.GroceryState = "{\"pasta\":true,\"sauce\":true,\"unrelated\":true}";
+        await SetChecksAsync(("pasta", true), ("sauce", true));
         await _db.SaveChangesAsync();
         await _service.RecomputeForWeekAsync(TestMonday, default);
         _db.ChangeTracker.Clear();
         checks = JsonSerializer.Deserialize<Dictionary<string, bool>>((await _db.WeeklyPlans.SingleAsync()).GroceryState)!;
-        Assert.True(checks["pasta"]); Assert.True(checks["sauce"]); Assert.True(checks["unrelated"]);
+        Assert.All(checks.Values, value => Assert.True(value));
     }
 
     [Fact]
@@ -118,7 +118,7 @@ public class GroceryRecomputeServiceTests : IAsyncLifetime
         await _db.SaveChangesAsync(); await _service.RecomputeForWeekAsync(TestMonday, default);
         var item = Assert.Single(await GetGroceryItemsAsync(TestMonday));
         if (source == "structured") { Assert.Equal("pasta", item.DisplayName); Assert.Equal(200, item.Quantity); Assert.Equal("g", item.UnitText); }
-        else { Assert.Equal("200 g pasta", item.DisplayName); Assert.Null(item.Quantity); Assert.Equal("piece", item.UnitText); }
+        else { Assert.Equal("200 g pasta", item.DisplayName); Assert.Null(item.Quantity); Assert.Null(item.UnitText); }
         Assert.Equal(id, Assert.Single(item.RecipeIds!));
     }
 
@@ -128,30 +128,27 @@ public class GroceryRecomputeServiceTests : IAsyncLifetime
     [InlineData("false")]
     public async Task IncreasedKnownRequirement_DoesNotInferIncreaseFromUnprovenCachedSubtotal(string completeness)
     {
-        var id = await SeedRecipeWithSupplyAsync(TestMonday, [("pasta", 600, "g")]);
-        var recipe = await _db.Recipes.SingleAsync(x => x.Id == id);
-        recipe.Ingredients = "[\"600 g pasta\"]";
-        recipe.RawMetadata = "{\"recipeIngredient\":[\"600 g pasta\"],\"supply\":[{\"name\":\"pasta\",\"quantity\":600,\"unitText\":\"g\"}]}";
-        var cached = new Dictionary<string, object?> { ["displayName"] = "pasta", ["normalizedKey"] = "pasta", ["section"] = "Pantry", ["quantity"] = 200, ["unitText"] = "g", ["recipeIds"] = new[] { id } };
-        if (completeness != "absent") cached["quantityComplete"] = completeness == "null" ? null : false;
-        _db.WeeklyPlans.Add(new WeeklyPlan { WeekStartDate = TestMonday,
-            GroceryItems = JsonSerializer.Serialize(new[] { cached }),
-            GroceryState = "{\"pasta\":true}" });
+        await SeedRecipeWithSupplyAsync(TestMonday, [("pasta", 600, "g")]);
+        await _service.RecomputeForWeekAsync(TestMonday, default);
+        var plan = await GetWeeklyPlanAsync(TestMonday);
+        var row = Assert.Single(await GetGroceryItemsAsync(TestMonday));
+        var cached = JsonSerializer.SerializeToElement(row);
+        var properties = cached.EnumerateObject().ToDictionary(p => p.Name, p => (object?)p.Value);
+        properties["quantity"] = 200;
+        if (completeness == "absent") properties.Remove("quantityComplete");
+        else properties["quantityComplete"] = completeness == "null" ? null : false;
+        plan.GroceryItems = JsonSerializer.Serialize(new[] { properties });
         await _db.SaveChangesAsync();
-        await _service.RecomputeForWeekAsync(TestMonday, default);
-        _db.ChangeTracker.Clear();
-        var plan = await _db.WeeklyPlans.SingleAsync();
-        Assert.True(JsonSerializer.Deserialize<Dictionary<string, bool>>(plan.GroceryState)!["pasta"]);
-        using var rows = JsonDocument.Parse(plan.GroceryItems);
-        var row = rows.RootElement[0];
-        Assert.Equal(600, row.GetProperty("quantity").GetDouble());
-        Assert.True(row.GetProperty("quantityComplete").GetBoolean());
-        Assert.True(row.TryGetProperty("checkReviewReason", out var reason), "An unknown prior checked amount needs persisted review even when the new amount is complete.");
-        Assert.Equal("prior_amount_unknown", reason.GetString());
-        Assert.Null(plan.GroceryResetSummaryVersion);
-        await _service.RecomputeForWeekAsync(TestMonday, default);
-        _db.ChangeTracker.Clear();
-        Assert.Contains("prior_amount_unknown", (await _db.WeeklyPlans.SingleAsync()).GroceryItems);
+        await SetChecksAsync(("pasta", true));
+        for (var run = 0; run < 2; run++)
+        {
+            await _service.RecomputeForWeekAsync(TestMonday, default);
+            Assert.True(await IsCheckedAsync("pasta"));
+            var current = Assert.Single(await GetGroceryItemsAsync(TestMonday));
+            Assert.Equal(600, current.Quantity);
+            Assert.True(current.QuantityComplete);
+            Assert.Null((await GetWeeklyPlanAsync(TestMonday)).GroceryResetSummaryVersion);
+        }
     }
 
     [Fact]
@@ -162,15 +159,18 @@ public class GroceryRecomputeServiceTests : IAsyncLifetime
         async Task Change(double quantity, bool check = false) {
             _db.ChangeTracker.Clear();
             (await _db.Recipes.SingleAsync(x => x.Id == id)).RawMetadata = BuildRawMetadata([("pasta", quantity, "g")]);
-            if (check) (await _db.WeeklyPlans.SingleAsync()).GroceryState = "{\"pasta\":true,\"unrelated\":true}";
+            await _db.SaveChangesAsync();
+            if (check) await SetChecksAsync(("pasta", true));
             await _db.SaveChangesAsync(); await _service.RecomputeForWeekAsync(TestMonday, default); _db.ChangeTracker.Clear();
         }
         await Change(600, true);
         var first = (await _db.WeeklyPlans.SingleAsync()).GroceryResetSummaryVersion; Assert.NotNull(first);
         await Change(600, true);
         Assert.Equal(first, (await _db.WeeklyPlans.SingleAsync()).GroceryResetSummaryVersion);
-        Assert.True(JsonSerializer.Deserialize<Dictionary<string, bool>>((await _db.WeeklyPlans.SingleAsync()).GroceryState)!["pasta"]);
-        await Change(200); await Change(600);
+        Assert.True(await IsCheckedAsync("pasta"));
+        await Change(200);
+        await SetChecksAsync(("pasta", false), ("pasta", true));
+        await Change(600);
         var second = (await _db.WeeklyPlans.SingleAsync()).GroceryResetSummaryVersion;
         Assert.NotNull(second); Assert.NotEqual(first, second);
         await SeedRecipeWithSupplyAsync(TestMonday.AddDays(1), [("tomato", 100, "g")]);
@@ -183,7 +183,7 @@ public class GroceryRecomputeServiceTests : IAsyncLifetime
     {
         var id = await SeedRecipeWithSupplyAsync(TestMonday, [("pasta", 200, "g")]);
         await _service.RecomputeForWeekAsync(TestMonday, default);
-        (await _db.WeeklyPlans.SingleAsync()).GroceryState = "{\"pasta\":true}";
+        await SetChecksAsync(("pasta", true));
         (await _db.Recipes.SingleAsync(x => x.Id == id)).RawMetadata = BuildRawMetadata([("pasta", 600, "g")]);
         await _db.SaveChangesAsync(); await _service.RecomputeForWeekAsync(TestMonday, default);
         _db.ChangeTracker.Clear();
@@ -191,7 +191,7 @@ public class GroceryRecomputeServiceTests : IAsyncLifetime
         (await _db.Recipes.SingleAsync(x => x.Id == id)).RawMetadata = BuildRawMetadata([("pasta", 200, "g")]);
         await _db.SaveChangesAsync(); await _service.RecomputeForWeekAsync(TestMonday, default); _db.ChangeTracker.Clear();
         Assert.Null((await _db.WeeklyPlans.SingleAsync()).GroceryResetSummaryVersion);
-        Assert.False(JsonSerializer.Deserialize<Dictionary<string, bool>>((await _db.WeeklyPlans.SingleAsync()).GroceryState)!["pasta"]);
+        Assert.False(await IsCheckedAsync("pasta"));
     }
 
     [Fact]
@@ -200,13 +200,13 @@ public class GroceryRecomputeServiceTests : IAsyncLifetime
         await SeedRecipeWithSupplyAsync(TestMonday, [("salt to taste", null, null)]);
         await _service.RecomputeForWeekAsync(TestMonday, default);
         var plan = await _db.WeeklyPlans.SingleAsync();
-        plan.GroceryState = "{\"salt to taste\":true}"; await _db.SaveChangesAsync();
+        await SetChecksAsync(("salt to taste", true));
         await _service.RecomputeForWeekAsync(TestMonday, default);
         _db.ChangeTracker.Clear();
         var line = Assert.Single(JsonDocument.Parse((await _db.WeeklyPlans.SingleAsync()).GroceryItems).RootElement.EnumerateArray());
         Assert.True(line.GetProperty("quantityComplete").GetBoolean());
         Assert.Equal(JsonValueKind.Null, line.GetProperty("quantity").ValueKind);
-        Assert.Equal(JsonValueKind.Null, line.GetProperty("checkReviewReason").ValueKind);
+        Assert.False(line.TryGetProperty("checkReviewReason", out _));
     }
 
     [Fact]
@@ -394,9 +394,27 @@ public class GroceryRecomputeServiceTests : IAsyncLifetime
             .ToList();
 
         var water = Assert.Single(waterItems);
-        Assert.Equal(180.0, water.Quantity);
-        Assert.Equal("ml", water.UnitText);
+        Assert.Equal(0.75, water.Quantity);
+        Assert.Equal("cup", water.UnitText);
         Assert.Equal(recipeIds.OrderBy(id => id), water.RecipeIds.OrderBy(id => id));
+    }
+
+    [Theory]
+    [InlineData("cup", "cups", "tasse", "tasses", "cup")]
+    [InlineData("tsp", "teaspoon", "teaspoons", "c. à thé", "tsp")]
+    [InlineData("tbsp", "tablespoon", "tablespoons", "c. à soupe", "tbsp")]
+    public async Task CulinaryAliases_AggregateWithoutConvertingToMetric(string first, string second, string third, string fourth, string canonical)
+    {
+        var units = new[] { first, second, third, fourth };
+        for (var index = 0; index < units.Length; index++)
+            await SeedRecipeWithSupplyAsync(TestMonday.AddDays(index), [("Water", 0.25, units[index])]);
+        await SeedRecipeWithSupplyAsync(TestMonday.AddDays(4), [("Water", 5, "ml")]);
+        await _service.RecomputeForWeekAsync(TestMonday, default);
+        var items = await GetGroceryItemsAsync(TestMonday);
+        Assert.Equal(2, items.Count);
+        Assert.Contains(items, row => row.UnitText == canonical && row.Quantity == 1);
+        Assert.Contains(items, row => row.UnitText == "ml" && row.Quantity == 5);
+        Assert.NotEqual(items[0].RowId, items[1].RowId);
     }
 
     [Fact]
@@ -413,11 +431,11 @@ public class GroceryRecomputeServiceTests : IAsyncLifetime
         var flourItems = items.Where(i => i.NormalizedKey == "flour").ToList();
         Assert.Equal(2, flourItems.Count);
         Assert.Contains(flourItems, i => i.UnitText == "g" && i.Quantity == 200.0);
-        Assert.Contains(flourItems, i => i.UnitText == "ml" && i.Quantity == 240.0);
+        Assert.Contains(flourItems, i => i.UnitText == "cup" && i.Quantity == 1.0);
     }
 
     [Fact]
-    public async Task OptionalPluralGarlicForms_WithCountUnits_Aggregate()
+    public async Task OptionalPluralGarlicForms_WithDistinctCountUnits_RemainSeparate()
     {
         var monday = new DateOnly(2025, 2, 24);
         await SeedRecipeWithSupplyAsync(monday, [("garlic clove(s)", 2.0, "piece")]);
@@ -429,9 +447,9 @@ public class GroceryRecomputeServiceTests : IAsyncLifetime
             .Where(item => item.NormalizedKey == "garlic clove")
             .ToList();
 
-        var line = Assert.Single(garlic);
-        Assert.Equal(5.0, line.Quantity);
-        Assert.Equal("piece", line.UnitText);
+        Assert.Equal(2, garlic.Count);
+        Assert.Contains(garlic, row => row.UnitText == "piece" && row.Quantity == 2);
+        Assert.Contains(garlic, row => row.UnitText == "cloves" && row.Quantity == 3);
     }
 
     [Fact]
@@ -510,7 +528,7 @@ public class GroceryRecomputeServiceTests : IAsyncLifetime
             .ToList();
 
         Assert.Equal(2, items.Count);
-        Assert.Contains(items, item => item.UnitText == "ml" && item.Quantity == 720.0);
+        Assert.Contains(items, item => item.UnitText == "cup" && item.Quantity == 3.0);
         Assert.Contains(items, item => item.UnitText == "g" && item.Quantity == 3.0);
     }
 
@@ -584,7 +602,11 @@ public class GroceryRecomputeServiceTests : IAsyncLifetime
 
         var first = await GetWeeklyPlanAsync(firstMonday);
         var second = await GetWeeklyPlanAsync(secondMonday);
-        Assert.Equal(first.GroceryItems, second.GroceryItems);
+        var firstRows = JsonSerializer.Deserialize<List<GroceryLineItemDto>>(first.GroceryItems)!;
+        var secondRows = JsonSerializer.Deserialize<List<GroceryLineItemDto>>(second.GroceryItems)!;
+        Assert.Equal(firstRows.Select(row => (row.DisplayName, row.Section, row.UnitText, row.ExactQuantity, string.Join(',', row.RecipeIds))),
+            secondRows.Select(row => (row.DisplayName, row.Section, row.UnitText, row.ExactQuantity, string.Join(',', row.RecipeIds))));
+        Assert.Empty(firstRows.Select(row => row.RowId).Intersect(secondRows.Select(row => row.RowId)));
         var lines = await GetGroceryItemsAsync(firstMonday);
         Assert.Equal(["huile d'olive", "zucchini"], lines.Select(line => line.DisplayName));
         Assert.All(lines, line => Assert.Equal([firstRecipeId, secondRecipeId], line.RecipeIds));
@@ -600,7 +622,7 @@ public class GroceryRecomputeServiceTests : IAsyncLifetime
     [InlineData(null, true, false)]
     [InlineData(null, false, false)]
     [InlineData(null, null, false)]
-    public async Task NewlyMergedLines_RequireEveryPredecessorChecked_ReplaceObsoleteState_AndPublishResult(
+    public async Task LegacyNameChecks_BlockRecomputeWithoutChangingHistory(
         bool? straightChecked,
         bool? curlyChecked,
         bool expectedChecked)
@@ -623,19 +645,17 @@ public class GroceryRecomputeServiceTests : IAsyncLifetime
         await SeedRecipeWithSupplyAsync(monday, [("huile d'olive", 1.0, "ml")]);
         await SeedRecipeWithSupplyAsync(monday.AddDays(1), [("huile d’olive", 1.0, "ml")]);
 
-        await service.RecomputeForWeekAsync(monday, CancellationToken.None);
-
+        var before = await GetWeeklyPlanAsync(monday);
+        var items = before.GroceryItems;
+        var checks = before.GroceryState;
+        _ = expectedChecked; // Historical merge oracle is superseded; all legacy states are fenced.
+        var error = await Assert.ThrowsAsync<GroceryMutationConflictException>(() => service.RecomputeForWeekAsync(monday, CancellationToken.None));
+        Assert.Equal("active_legacy_list", error.Code);
+        _db.ChangeTracker.Clear();
         var plan = await GetWeeklyPlanAsync(monday);
-        var state = JsonSerializer.Deserialize<Dictionary<string, bool>>(plan.GroceryState)!;
-        Assert.Equal(expectedChecked, state["huile d'olive"]);
-        Assert.DoesNotContain("huile d’olive", state.Keys);
-        Assert.True(state["unrelated"]);
-        publisher.Verify(p => p.PublishGroceryUpdatedAsync(
-            0,
-            It.Is<Dictionary<string, bool>>(published => MatchesState(published, state)),
-            new DateOnly(2025, 3, 3),
-            null),
-            Times.Once);
+        Assert.Equal(items, plan.GroceryItems);
+        Assert.Equal(checks, plan.GroceryState);
+        publisher.Verify(p => p.PublishGroceryRowsUpdatedAsync(It.IsAny<int>(), It.IsAny<GroceryMutationResult>(), It.IsAny<string?>()), Times.Never);
     }
 
     private static Dictionary<string, bool> BuildPredecessorState(bool? straightChecked, bool? curlyChecked)
@@ -649,26 +669,19 @@ public class GroceryRecomputeServiceTests : IAsyncLifetime
     [Fact]
     public async Task RenamedSinglePredecessor_PreservesCheckedStateUnderTheNormalizedDisplayName()
     {
-        var monday = new DateOnly(2025, 3, 3);
-        _db.WeeklyPlans.Add(new WeeklyPlan
-        {
-            Id = Guid.NewGuid(),
-            WeekStartDate = monday,
-            GroceryItems = JsonSerializer.Serialize(new[]
-            {
-                new GroceryLineItemDto("Zucchini(s)", "zucchini(s)", "Produce", 1, "pcs", []),
-            }),
-            GroceryState = JsonSerializer.Serialize(new Dictionary<string, bool> { ["Zucchini(s)"] = true }),
-        });
-        await SeedRecipeWithSupplyAsync(monday, [("Zucchini(s)", 1.0, "pcs")]);
-
-        await _service.RecomputeForWeekAsync(monday, CancellationToken.None);
-
-        var plan = await GetWeeklyPlanAsync(monday);
-        var state = JsonSerializer.Deserialize<Dictionary<string, bool>>(plan.GroceryState)!;
-        Assert.True(state["zucchini"]);
-        Assert.DoesNotContain("Zucchini(s)", state.Keys);
-        Assert.Equal("zucchini", Assert.Single(await GetGroceryItemsAsync(monday)).DisplayName);
+        await SeedRecipeWithSupplyAsync(TestMonday, [("Zucchini(s)", 1.0, "pcs")]);
+        await _service.RecomputeForWeekAsync(TestMonday, default);
+        await SetChecksAsync(("zucchini", true));
+        var plan = await GetWeeklyPlanAsync(TestMonday);
+        var row = Assert.Single(await GetGroceryItemsAsync(TestMonday));
+        plan.GroceryItems = JsonSerializer.Serialize(new[] { row with { DisplayName = "Zucchini label" } });
+        await _db.SaveChangesAsync();
+        await _service.RecomputeForWeekAsync(TestMonday, default);
+        Assert.True(await IsCheckedAsync("zucchini"));
+        var current = Assert.Single(await GetGroceryItemsAsync(TestMonday));
+        Assert.Equal(row.RowId, current.RowId);
+        Assert.Equal(row.RowVersion, current.RowVersion);
+        Assert.Equal("zucchini", current.DisplayName);
     }
 
     private static bool MatchesState(Dictionary<string, bool> published, Dictionary<string, bool> expected) =>
@@ -777,7 +790,7 @@ public class GroceryRecomputeServiceTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task RecomputeForWeekAsync_NullUnit_GroupedUnderPiece()
+    public async Task RecomputeForWeekAsync_NullUnit_RemainsUndeclared()
     {
         for (int i = 0; i < 3; i++)
             await SeedRecipeWithSupplyAsync(TestMonday.AddDays(i),
@@ -790,7 +803,7 @@ public class GroceryRecomputeServiceTests : IAsyncLifetime
             plan.GroceryItems!, new JsonSerializerOptions { PropertyNameCaseInsensitive = true })!;
 
         var onion = items.Single(i => i.NormalizedKey!.Contains("onion"));
-        Assert.Equal("piece", onion.UnitText);
+        Assert.Null(onion.UnitText);
         Assert.Equal(3.0, onion.Quantity);
     }
 
@@ -831,9 +844,9 @@ public class GroceryRecomputeServiceTests : IAsyncLifetime
 
             var items = await GetGroceryItemsAsync(monday);
             var normalizedName = IngredientNormalizer.Normalize(name);
-            var normalizedUnit = UnitNormalizer.Normalize(unit);
-            var expectedUnit = normalizedUnit?.CanonicalUnit ?? unit;
-            var expectedQuantity = (q1 + q2) * (normalizedUnit?.Factor ?? 1.0);
+            // Only metric families convert; culinary and declared count units retain their amounts.
+            var expectedUnit = unit switch { "kg" => "g", "L" => "ml", _ => unit };
+            var expectedQuantity = (q1 + q2) * (unit is "kg" or "L" ? 1000 : 1);
             var matching = items.Where(x => x.NormalizedKey == normalizedName && x.UnitText == expectedUnit).ToList();
 
             Assert.Single(matching);
@@ -877,8 +890,8 @@ public class GroceryRecomputeServiceTests : IAsyncLifetime
             var items = await GetGroceryItemsAsync(monday);
             var normalizedName = IngredientNormalizer.Normalize(name);
             var matching = items.Where(x => x.NormalizedKey == normalizedName).ToList();
-            var expectedUnit1 = UnitNormalizer.Normalize(unit1)?.CanonicalUnit ?? unit1;
-            var expectedUnit2 = UnitNormalizer.Normalize(unit2)?.CanonicalUnit ?? unit2;
+            var expectedUnit1 = unit1 == "kg" ? "g" : unit1;
+            var expectedUnit2 = unit2 == "kg" ? "g" : unit2;
 
             Assert.Equal(2, matching.Count);
             var unitSet = matching.Select(x => x.UnitText).ToHashSet();
@@ -968,11 +981,17 @@ public class GroceryRecomputeServiceTests : IAsyncLifetime
             await SeedRecipeWithSupplyAsync(monday, [("onion", 1.0, "pcs")]);
 
             // Act
-            await _service.RecomputeForWeekAsync(monday, CancellationToken.None);
+            if (stateDict.Count > 0)
+            {
+                var error = await Assert.ThrowsAsync<GroceryMutationConflictException>(() => _service.RecomputeForWeekAsync(monday, CancellationToken.None));
+                Assert.Equal("active_legacy_list", error.Code);
+            }
+            else await _service.RecomputeForWeekAsync(monday, CancellationToken.None);
 
-            // Assert: grocery_state is byte-for-byte unchanged
+            // Nonempty historical name maps remain untouched behind the fence.
             var plan = await _db.WeeklyPlans.FirstAsync(p => p.WeekStartDate == monday);
-            Assert.Equal(groceryStateJson, plan.GroceryState);
+            if (stateDict.Count > 0) Assert.Equal(groceryStateJson, plan.GroceryState);
+            else Assert.All(JsonSerializer.Deserialize<Dictionary<string, bool>>(plan.GroceryState)!.Values, value => Assert.False(value));
         }
     }
 
@@ -1010,7 +1029,8 @@ public class GroceryRecomputeServiceTests : IAsyncLifetime
         await _db.SaveChangesAsync();
 
         // Act
-        await _service.RecomputeForWeekAsync(TestMonday, CancellationToken.None);
+        var error = await Assert.ThrowsAsync<GroceryMutationConflictException>(() => _service.RecomputeForWeekAsync(TestMonday, CancellationToken.None));
+        Assert.Equal("active_legacy_list", error.Code);
 
         // Assert: grocery_state is unchanged
         var updatedPlan = await _db.WeeklyPlans.FirstAsync(p => p.WeekStartDate == TestMonday);

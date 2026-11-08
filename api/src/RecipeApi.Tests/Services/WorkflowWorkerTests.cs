@@ -106,6 +106,33 @@ public class WorkflowWorkerTests : IAsyncLifetime
         }
     }
 
+    // Synthetic processor tests still accept their complete command before dispatch.
+    // This helper seeds only disposable fixture recipes; no capture is made by Worker.
+    private async Task AcceptLaunchAsync(RecipeDbContext db)
+    {
+        var storage = new InMemoryStorageProvider();
+        var instances = db.ChangeTracker.Entries<WorkflowInstance>()
+            .Where(x => x.State == EntityState.Added).Select(x => x.Entity).ToArray();
+        foreach (var instance in instances)
+        {
+            var parameters = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(instance.Parameters ?? "{}")!;
+            if (instance.Tasks.Any(x => x.ProcessorName is "ExtractRecipe" or "GenerateHero"))
+            {
+                if (!parameters.TryGetValue("recipeId", out var value) || !Guid.TryParse(value, out var id))
+                { id = Guid.NewGuid(); parameters["recipeId"] = id.ToString(); }
+                if (await db.Recipes.FindAsync(id) is null)
+                    db.Recipes.Add(new Recipe { Id = id, Name = "Worker fixture" });
+                await storage.SaveAsync("recipes", $"{id}/recipe.info",
+                    System.Text.Json.JsonSerializer.Serialize(new RecipeInfo { Id = id }, JsonDefaults.CamelCase));
+            }
+            instance.Parameters = System.Text.Json.JsonSerializer.Serialize(parameters);
+        }
+        await db.SaveChangesAsync();
+        var store = TestPublicationStore.Create(db, storage, _clock);
+        foreach (var instance in instances) await store.CaptureLaunchAsync(instance);
+        await db.SaveChangesAsync();
+    }
+
     [Fact]
     public async Task Worker_PicksUpPendingTasks_WhenScheduled()
     {
@@ -135,7 +162,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
             UpdatedAt = now
         };
         _db.WorkflowTasks.Add(task);
-        await _db.SaveChangesAsync();
+        await AcceptLaunchAsync(_db);
 
         // Ensure throttles are initialized by doing a dummy call first
         // This initializes the semaphores and everything else needed
@@ -182,7 +209,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
             _db.WorkflowTasks.Add(task);
             taskIds.Add(task.TaskId);
         }
-        await _db.SaveChangesAsync();
+        await AcceptLaunchAsync(_db);
 
         // Act: Simulate two workers running concurrently
         var cts1 = new CancellationTokenSource();
@@ -232,7 +259,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
             };
             _db.WorkflowTasks.Add(task);
         }
-        await _db.SaveChangesAsync();
+        await AcceptLaunchAsync(_db);
 
         // Act: Run worker
         var workerTask = _worker.StartAsync(_cts.Token);
@@ -270,7 +297,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
             Instance = instance
         };
         _db.WorkflowTasks.Add(task);
-        await _db.SaveChangesAsync();
+        await AcceptLaunchAsync(_db);
 
         // Act: Run worker
         var workerTask = _worker.StartAsync(_cts.Token);
@@ -365,7 +392,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
             UpdatedAt = now
         };
         db.WorkflowTasks.Add(task);
-        await db.SaveChangesAsync();
+        await AcceptLaunchAsync(db);
 
         var taskId = task.TaskId;
 
@@ -481,7 +508,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
             UpdatedAt = now
         };
         db.WorkflowTasks.Add(task);
-        await db.SaveChangesAsync();
+        await AcceptLaunchAsync(db);
 
         var taskId = task.TaskId;
         var instanceId = instance.Id;
@@ -556,7 +583,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
 
         _db.WorkflowTasks.Add(taskA);
         _db.WorkflowTasks.Add(taskB);
-        _db.SaveChanges();
+        await AcceptLaunchAsync(_db);
 
         // Verify: Task A is in database and pending
         var preTask = await _db.WorkflowTasks.FirstAsync(t => t.TaskId == taskAId);
@@ -640,7 +667,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
         };
 
         _db.WorkflowTasks.AddRange(taskA, taskB, taskC);
-        await _db.SaveChangesAsync();
+        await AcceptLaunchAsync(_db);
 
         // Verify setup: ensure tasks are saved correctly
         var savedTaskB = await _db.WorkflowTasks.FirstAsync(t => t.TaskId == taskB.TaskId);
@@ -754,7 +781,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
         };
 
         _db.WorkflowTasks.AddRange(taskA, taskB, taskC, taskD);
-        await _db.SaveChangesAsync();
+        await AcceptLaunchAsync(_db);
 
         // Act: Process task A
         await _worker.ProcessPendingTasksAsync(_cts.Token);
@@ -876,7 +903,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
             UpdatedAt = now
         };
         db.WorkflowTasks.Add(task);
-        await db.SaveChangesAsync();
+        await AcceptLaunchAsync(db);
 
         var taskId = task.TaskId;
         var instanceId = instance.Id;
@@ -990,7 +1017,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
             UpdatedAt = now
         };
         db.WorkflowTasks.Add(task);
-        await db.SaveChangesAsync();
+        await AcceptLaunchAsync(db);
 
         var taskId = task.TaskId;
         var instanceId = instance.Id;
@@ -1096,7 +1123,6 @@ public class WorkflowWorkerTests : IAsyncLifetime
         };
 
         db.WorkflowTasks.AddRange(taskA, taskB, taskC);
-        await db.SaveChangesAsync();
 
         // Task D: another pending task that won't be picked up (because it's scheduled in the future)
         var taskDId = Guid.NewGuid();
@@ -1110,7 +1136,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
             ScheduledAt = now.AddMinutes(10)
         };
         db.WorkflowTasks.Add(taskD);
-        await db.SaveChangesAsync();
+        await AcceptLaunchAsync(db);
 
         // Act: Process tasks
         await testWorker.ProcessPendingTasksAsync(default);
@@ -1232,7 +1258,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
             UpdatedAt = now
         };
         db.WorkflowTasks.Add(task);
-        await db.SaveChangesAsync();
+        await AcceptLaunchAsync(db);
 
         var taskId = task.TaskId;
 
@@ -1339,7 +1365,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
             UpdatedAt = now
         };
         db.WorkflowTasks.Add(task);
-        await db.SaveChangesAsync();
+        await AcceptLaunchAsync(db);
 
         var taskId = task.TaskId;
         var instanceId = instance.Id;
@@ -1447,7 +1473,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
             UpdatedAt = now
         };
         db.WorkflowTasks.Add(task);
-        await db.SaveChangesAsync();
+        await AcceptLaunchAsync(db);
 
         var taskId = task.TaskId;
         var instanceId = instance.Id;
@@ -1560,7 +1586,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
             UpdatedAt = now
         };
         db.WorkflowTasks.Add(task);
-        await db.SaveChangesAsync();
+        await AcceptLaunchAsync(db);
 
         var taskId = task.TaskId;
         var instanceId = instance.Id;
@@ -1706,7 +1732,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
             UpdatedAt = now
         };
         db.WorkflowTasks.Add(task);
-        await db.SaveChangesAsync();
+        await AcceptLaunchAsync(db);
 
         // Act
         using var cts = new CancellationTokenSource();
@@ -1847,7 +1873,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
             UpdatedAt = now
         };
         db.WorkflowTasks.Add(task);
-        await db.SaveChangesAsync();
+        await AcceptLaunchAsync(db);
 
         // Act
         using var cts = new CancellationTokenSource();
@@ -1952,7 +1978,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
             UpdatedAt = now
         };
         db.WorkflowTasks.Add(task);
-        await db.SaveChangesAsync();
+        await AcceptLaunchAsync(db);
 
         var taskId = task.TaskId;
 
@@ -2062,7 +2088,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
             UpdatedAt = now
         };
         db.WorkflowTasks.Add(task);
-        await db.SaveChangesAsync();
+        await AcceptLaunchAsync(db);
 
         var taskId = task.TaskId;
         var instanceId = instance.Id;

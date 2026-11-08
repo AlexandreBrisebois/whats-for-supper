@@ -1,6 +1,15 @@
 # Tasks
 
-Planning only; every implementation box remains unchecked. Separate approval is required to apply. Names of new tests below are proposed suites to create; no behavioral test has run in this spec session. Follow [shared corpus](acceptance-corpus.md) and [CI requirements](review.md). Resolve consequential holds before finalizing their dependent work; outlines below do not approve an assumption. Contract changes first update `specs/openapi.yaml`, run `task gen:client`, then synchronize generated SDK consumers and method-sensitive `pwa/e2e/mock-api.ts` handlers/builders/state transitions including conflicts, later reads and SSE. Every slice keeps its red/green evidence and usage documentation.
+Implementation sequence reconciliation (2026-11-07): the approved all-spec work
+extracts the coherent saved-row identity/guarded-publication prerequisite described
+in [grocery-prerequisite-review.md](grocery-prerequisite-review.md) before grocery
+closure. This is a dependency extraction across the relevant tasks below, not a
+new completed task, weakened acceptance or completed companion. Existing task boxes
+remain open until every required gate passes; recovery/client activation gates
+remain required. The planning-session description below is historical context,
+not a request for duplicate implementation approval.
+
+Planning only; every implementation box remains unchecked. Separate approval is required to apply. Names of new tests below are proposed suites to create; no behavioral test has run in this spec session. Follow [shared corpus](acceptance-corpus.md) and [CI requirements](review.md). Alex’s allocation, range, split/merge and fresh-list decisions are settled. Remaining engineering/dataset qualification does not authorize implementation. Contract changes first update `specs/openapi.yaml`, run `task gen:client`, then synchronize generated SDK consumers and method-sensitive `pwa/e2e/mock-api.ts` handlers/builders/state transitions including conflicts, later reads and SSE. Every slice keeps its red/green evidence and usage documentation.
 
 ## 1. Read exact original facts through the existing stack
 

@@ -6,7 +6,7 @@ Ingredient-only scaling leaves step quantities contradictory. Step uses need exp
 
 ## Outcome and Scope
 
-Mandatory ingredient-use scaling, coherent ingredient/step projection and current-recipe reading at recorded prepared counts. No general formula language, prose-wide numeric replacement or new grocery demand. Ingredient-total allocation correction policy is unresolved.
+Mandatory ingredient-use scaling, coherent ingredient/step projection and current-recipe reading at recorded prepared counts. No general formula language, prose-wide numeric replacement or new grocery demand. Explicit partial amounts remain original after total correction and still scale with portions; relative language stays relative, with quiet review for inconsistent allocations.
 
 ## What Changes
 

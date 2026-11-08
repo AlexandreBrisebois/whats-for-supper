@@ -17,14 +17,25 @@ public partial class RecoverySnapshotService
     {
         ["family_members"] = "restore",
         ["recipes"] = "restore-clear-cooking-history",
+        ["canonical_recipe_operations"] = "restore",
+        ["recipe_file_publications"] = "restore",
         ["recipe_search_documents"] = "restore-compatible-rebuild-lexical",
         ["feature_flag_overrides"] = "restore",
         ["family_settings"] = "restore-declared-keys",
         ["ingredient_categories"] = "restore",
         ["recipe_import_reports"] = "clear",
+        ["recipe_repair_intents"] = "clear",
+        ["workflow_child_intents"] = "retain-original-commands",
+        ["workflow_reset_intents"] = "retain-original-commands",
+        ["workflow_processor_attempts"] = "retain-original-observations",
+        ["workflow_launch_intents"] = "retain-original-commands",
+        ["workflow_lifecycle_records"] = "retain-inert-history",
+        ["maintenance_command_lifecycle_records"] = "retain-inert-history",
+        ["recipe_physical_deletions"] = "retain-physical-lifecycle",
         ["weekly_plans"] = "clear",
         ["calendar_events"] = "clear",
         ["grocery_extra_occurrences"] = "clear",
+        ["grocery_mutation_outcomes"] = "clear",
         ["supper_servings"] = "clear",
         ["recipe_votes"] = "clear",
         ["weekly_household_interest"] = "clear",
@@ -36,7 +47,7 @@ public partial class RecoverySnapshotService
         ["maintenance_commands"] = "invalidate",
         ["recovery_publication"] = "fresh-publication"
     };
-    private static readonly HashSet<string> DemoClearTables = ["recipe_import_reports", "weekly_plans", "calendar_events", "weekly_household_interest", "grocery_extra_occurrences", "supper_servings"];
+    private static readonly HashSet<string> DemoClearTables = ["recipe_repair_intents", "recipe_import_reports", "weekly_plans", "calendar_events", "weekly_household_interest", "grocery_extra_occurrences", "supper_servings", "grocery_mutation_outcomes"];
     internal string DemoBaselineRoot
     {
         get
@@ -212,7 +223,7 @@ public partial class RecoverySnapshotService
         var preserved = futureMaintenance.Where(i => IsSafeFutureDemoMaintenance(i, clock.UtcNow)).Select(i => i.Id).ToHashSet();
         preserved.Add(workflowInstanceId ?? Guid.Empty);
         var preserve = string.Join(',', preserved.Select(id => $"'{id}'"));
-        await ScalarAsync(connection, $"UPDATE workflow_tasks SET status=4,error_message='Invalidated by demo reset' WHERE status IN (0,1,2) AND instance_id NOT IN ({preserve}); UPDATE workflow_instances SET status=3,updated_at='{clock.UtcNow:O}'::timestamptz WHERE status IN (0,1,4) AND id NOT IN ({preserve}); UPDATE maintenance_commands SET status='skipped',completed_at='{clock.UtcNow:O}'::timestamptz,last_error='Invalidated by demo reset' WHERE status IN ('pending','processing')", ct);
+        await ScalarAsync(connection, $"UPDATE workflow_tasks SET child_launch_intent_id=NULL WHERE instance_id NOT IN ({preserve}); UPDATE workflow_tasks SET status=4,error_message='Invalidated by demo reset' WHERE status IN (0,1,2) AND instance_id NOT IN ({preserve}); UPDATE workflow_instances SET status=3,updated_at='{clock.UtcNow:O}'::timestamptz WHERE status IN (0,1,4) AND id NOT IN ({preserve}); UPDATE maintenance_commands SET status='skipped',completed_at='{clock.UtcNow:O}'::timestamptz,last_error='Invalidated by demo reset' WHERE status IN ('pending','processing')", ct);
         var builder = new RecipeSearchDocumentBuilder();
         var documents = await restored.RecipeSearchDocuments.ToDictionaryAsync(d => d.RecipeId, ct);
         foreach (var recipe in await restored.Recipes.AsNoTracking().ToListAsync(ct))

@@ -4,10 +4,13 @@
 // @ts-ignore
 import {
   createDemoResetRequiredErrorFromDiscriminatorValue,
+  createRecipeContentConflictFromDiscriminatorValue,
   createRecipeDetailResponseFromDiscriminatorValue,
   createRecoveryBusyErrorFromDiscriminatorValue,
+  serializeRecipeDetailResponse,
   serializeUpdateRecipeDto,
   type DemoResetRequiredError,
+  type RecipeContentConflict,
   type RecipeDetailResponse,
   type RecoveryBusyError,
   type UpdateRecipeDto,
@@ -71,28 +74,6 @@ import {
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {PatchResponse_data}
- */
-// @ts-ignore
-export function createPatchResponse_dataFromDiscriminatorValue(
-  parseNode: ParseNode | undefined
-): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
-  return deserializeIntoPatchResponse_data;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {PatchResponse}
- */
-// @ts-ignore
-export function createPatchResponseFromDiscriminatorValue(
-  parseNode: ParseNode | undefined
-): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
-  return deserializeIntoPatchResponse;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {RecipeDetailResponse409Error}
  */
 // @ts-ignore
@@ -100,34 +81,6 @@ export function createRecipeDetailResponse409ErrorFromDiscriminatorValue(
   parseNode: ParseNode | undefined
 ): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
   return deserializeIntoRecipeDetailResponse409Error;
-}
-/**
- * The deserialization information for the current model
- * @param PatchResponse The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoPatchResponse(
-  patchResponse: Partial<PatchResponse> | undefined = {}
-): Record<string, (node: ParseNode) => void> {
-  return {
-    data: (n) => {
-      patchResponse.data = n.getObjectValue<PatchResponse_data>(
-        createPatchResponse_dataFromDiscriminatorValue
-      );
-    },
-  };
-}
-/**
- * The deserialization information for the current model
- * @param PatchResponse_data The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoPatchResponse_data(
-  patchResponse_data: Partial<PatchResponse_data> | undefined = {}
-): Record<string, (node: ParseNode) => void> {
-  return {};
 }
 /**
  * The deserialization information for the current model
@@ -220,16 +173,17 @@ export interface ItemRequestBuilder extends BaseRequestBuilder<ItemRequestBuilde
   ): Promise<RecipeDetailResponse | undefined>;
   /**
    * Recipe basis or ingredient corrections commit together with invalidation and durable grocery refresh work for affected current/future grocery contributions, preserving dated portion snapshots and original unscaled legacy non-supper/night-away contributions. Counts and original amounts are preserved; reads expose pending freshness until the worker recomputes. Existing week updates invalidate dated readers after commit.
-   * @param body The request body
+   * @param body At canonical cutover every supplied semantic field requires expectedContentRevision; conflicts apply no field. Canonical and legacy arrays cannot coexist. Omission preserves; nullable row facts clear explicitly. Canonical writes remain gated by recovery and client qualification.
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
-   * @returns {Promise<PatchResponse>}
+   * @returns {Promise<RecipeDetailResponse>}
+   * @throws {RecipeContentConflict} error when the service returns a 409 status code
    * @throws {DemoResetRequiredError} error when the service returns a 412 status code
    * @throws {RecoveryBusyError} error when the service returns a 503 status code
    */
   patch(
     body: UpdateRecipeDto,
     requestConfiguration?: RequestConfiguration<object> | undefined
-  ): Promise<PatchResponse | undefined>;
+  ): Promise<RecipeDetailResponse | undefined>;
   /**
    * Soft-delete a recipe (returns updated recipe with deletedAt set)
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
@@ -248,7 +202,7 @@ export interface ItemRequestBuilder extends BaseRequestBuilder<ItemRequestBuilde
   ): RequestInformation;
   /**
    * Recipe basis or ingredient corrections commit together with invalidation and durable grocery refresh work for affected current/future grocery contributions, preserving dated portion snapshots and original unscaled legacy non-supper/night-away contributions. Counts and original amounts are preserved; reads expose pending freshness until the worker recomputes. Existing week updates invalidate dated readers after commit.
-   * @param body The request body
+   * @param body At canonical cutover every supplied semantic field requires expectedContentRevision; conflicts apply no field. Canonical and legacy arrays cannot coexist. Omission preserves; nullable row facts clear explicitly. Canonical writes remain gated by recovery and client qualification.
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {RequestInformation}
    */
@@ -257,13 +211,6 @@ export interface ItemRequestBuilder extends BaseRequestBuilder<ItemRequestBuilde
     requestConfiguration?: RequestConfiguration<object> | undefined
   ): RequestInformation;
 }
-export interface PatchResponse extends AdditionalDataHolder, Parsable {
-  /**
-   * The data property
-   */
-  data?: PatchResponse_data | null;
-}
-export interface PatchResponse_data extends AdditionalDataHolder, Parsable {}
 export interface RecipeDetailResponse409Error extends AdditionalDataHolder, ApiError, Parsable {
   /**
    * The assignedDays property
@@ -280,45 +227,6 @@ export interface RecipeDetailResponse409Error extends AdditionalDataHolder, ApiE
 }
 export type RecipeDetailResponse409Error_errorCode =
   (typeof RecipeDetailResponse409Error_errorCodeObject)[keyof typeof RecipeDetailResponse409Error_errorCodeObject];
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param PatchResponse The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializePatchResponse(
-  writer: SerializationWriter,
-  patchResponse: Partial<PatchResponse> | undefined | null = {},
-  isSerializingDerivedType: boolean = false
-): void {
-  if (!patchResponse || isSerializingDerivedType) {
-    return;
-  }
-  writer.writeObjectValue<PatchResponse_data>(
-    'data',
-    patchResponse.data,
-    serializePatchResponse_data
-  );
-  writer.writeAdditionalData(patchResponse.additionalData);
-}
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param PatchResponse_data The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializePatchResponse_data(
-  writer: SerializationWriter,
-  patchResponse_data: Partial<PatchResponse_data> | undefined | null = {},
-  isSerializingDerivedType: boolean = false
-): void {
-  if (!patchResponse_data || isSerializingDerivedType) {
-    return;
-  }
-  writer.writeAdditionalData(patchResponse_data.additionalData);
-}
 /**
  * Serializes information the current object
  * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
@@ -416,11 +324,12 @@ export const ItemRequestBuilderRequestsMetadata: RequestsMetadata = {
     uriTemplate: ItemRequestBuilderUriTemplate,
     responseBodyContentType: 'application/json',
     errorMappings: {
+      409: createRecipeContentConflictFromDiscriminatorValue as ParsableFactory<Parsable>,
       412: createDemoResetRequiredErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
       503: createRecoveryBusyErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
     },
     adapterMethodName: 'send',
-    responseBodyFactory: createPatchResponseFromDiscriminatorValue,
+    responseBodyFactory: createRecipeDetailResponseFromDiscriminatorValue,
     requestBodyContentType: 'application/json',
     requestBodySerializer: serializeUpdateRecipeDto,
     requestInformationContentSetMethod: 'setContentFromParsable',

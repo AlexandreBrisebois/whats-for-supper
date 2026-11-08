@@ -1,6 +1,6 @@
 # Adversarial acceptance corpus
 
-Planning fixtures, not executed tests. Every row asserts exact original persistence, returned content/context revision, eligible ingredient/step display, demand counted once, row checks and absence of unrelated writes where applicable. Use synthetic EN/FR recipes, fixed deployment clock and isolated nonproduction PostgreSQL/files. Providers are doubles only at their external boundary. Rows with unresolved policy identify a hold rather than an assumed expected implementation.
+Planning fixtures, not executed tests. Every row asserts exact original persistence, returned content/context revision, eligible ingredient/step display, demand counted once, row checks and absence of unrelated writes where applicable. Use synthetic EN/FR recipes, fixed deployment clock and isolated nonproduction PostgreSQL/files. Providers are doubles only at their external boundary. Alex’s approved product decisions are expected outcomes below; remaining dataset/contract qualification is separate from implementation approval.
 
 | ID / owner | Starting state and action | Required result / adversarial oracle |
 | --- | --- | --- |
@@ -33,27 +33,31 @@ Planning fixtures, not executed tests. Every row asserts exact original persiste
 | C27 groceries | Checked 500 g→0.5 kg proven continuing row | Same identity/check; exact conversion before comparison, no rounded false increase |
 | C28 groceries | Checked known increase 400→600; then check and recompute | Reset once for that row; later check survives unchanged retry and no repeated explanation |
 | C29 groceries | Unknown→known, incompatible units or incomplete contribution | Proven continuing check preserved; no prior-unknown marker, acknowledgement or replacement clutter |
-| C30 groceries HOLD | 2–3→4–5 versus 2–3→3–4 | Proposed disjoint-range proof resets first only; settle comparison contract before dependent code |
-| C31 groceries HOLD | Semantic split/merge vs pure EN→FR rename | Proposed structural new IDs unchecked; rename preserves ID/check; no inference of purchase intent |
+| C30 groceries | Checked baseline 2–3→current 3–4→4–5 | Keep checked/baseline 2–3 at 3–4; uncheck at 4–5 because current min 4 exceeds acknowledged max 3; never compare only adjacent recomputations |
+| C31 groceries | Semantic split/merge vs pure EN→FR rename | Approved new split/merge IDs start unchecked with no inherited baselines; rename preserves continuing ID/check/baseline |
 | C32 groceries | Concurrent different-row checks, same-row intents, bulk replacement, recompute | Fresh state preserves unrelated commits; stale versions conflict, identical mutation ID deduplicates, late responses cannot restore old checks |
 | C33 groceries | Extra pointer/touch check sorts row or removes future projection | Viewport retained; no Edit/category focus/open; disappearing keyboard target has stable local fallback |
 | C34 groceries | EN/FR check with Enter/Space; category tag compare | Exactly one action; stable focus, regular/extra icon/interaction parity; normal food/key vs selected occurrence mutation scopes remain distinct |
 | C35 groceries | Prior-unknown flags in loaded/current/restored row | Retired warning and locale equivalents absent in every state; only known subtotal once, no replacement reserved space |
 | C36 facts/upgrade | Old apparently name-only full editor sends ingredients/instructions | Atomic upgrade conflict; every draft field survives supported tab refresh; no unauthorized partial mutation |
 | C37 migration | In-place conversion stops before/after recipe commit | Prior content usable or exact converted content; retry idempotent with same IDs, resume manifest truthful |
-| C38 migration HOLD | One old checked name maps to several rows at idle-shopping upgrade | Inventory actual set; no invented individual historical intent; approved transition once only; extras/history preserved |
-| C39 migration | Conditional disk fallback has stale live/disk, absent IDs, database-only recipes | No disk-wins by timestamp, delete-all, soft-delete resurrection or purge; precedence gate blocks divergent content |
+| C38 migration | No active grocery list at upgrade; next list is new; ambiguous old shared names retained in history | New recipe rows unchecked with no old checks/baselines copied; preserve historical records and extra occurrence/history, without invented independent purchase intent |
+| C39 migration | Necessary disk fallback expects Dreaming-synchronized recipes; compare stable IDs and supported facts | Matching content may stage reviewed conversion; unexpected facts or missing IDs stop/report before fallback writes, with no winner selector, auto-create, purge or household mutation |
 | C40 recovery | Current full-fidelity backup → isolated restore → re-export | Exact fractions/ranges/notation, units, steps/spans, revisions, food/row IDs, null/empty/protection, prepared counts, household links and media bytes equivalent |
 | C41 recovery | Old backup or missing required current artifact | Clear unsupported/invalid preflight, zero file/DB/household writes; no implicit forward converter |
 | C42 recovery | Stale current-format merge; identical token/different content; explicit exact restore | Merge defers divergence, token mismatch invalid, exact restore replaces only after complete preflight and explicit selection |
 | C43 repair | Eligible content report + note, matching active/terminal retries, blank note, Duplicate | Existing eligibility/launch/dedup/report state retained; no new candidate workflow or automatic report clearing |
 | C44 repair | Repair file published before concurrent protected edit would be detected | Stage first; conflict before live file/DB publication; provider failure/cancel leaves usable prior content and report retry guidance |
-| C45 steps HOLD | Total changes 200→250 with absolute 50 g use | Decision required: recommendation retains absolute 50, fractions and proven whole links; contradictions quiet and dependent remainders invalid |
+| C45 steps | Total changes 200→250 with absolute 50 g and relative half uses | Keep absolute 50 original/75 at factor 1.5; half is half corrected total; proven whole follows total; inconsistency gets quiet review without cooking block |
 | C46 steps | UTF-16 emoji/combining accents, reordered text, overlapping spans | Validate exact revision/text/surrogate boundaries; no arbitrary replacement, no HTML evaluation |
-| C47 units | Unknown cup standard or count clove vs generic piece | No silent 240/15/5 ml or generic count merge; only evidenced supported definitions convert |
+| C47 units | English/French cup, teaspoon and tablespoon aliases plus ml; count clove vs generic piece | Aggregate aliases within each culinary family, preserve amounts and independent cup/tsp/tbsp/ml buckets without automatic conversion; no generic count merge |
 | C48 recovery | Crash between media staging, DB commit, activation and fresh backup | Complete committed or prior generation recovered before household use; no success from queued work; pre-cutover rollback pair verified |
 | C49 UI | All supported content in EN/FR 320 px, 200%, tablet split view | Quiet preview/Original/Reset, hero/sidebar, controls, drafts, reading offset and touch targets retain approved composition |
 | C50 CI | New live scenario, empty test filter, opt-in DB skip, first failure then retry | Inventory assignment does not count as execution; required real DB/live cases have zero skips; outcomes and never-run stages separately reported |
+
+| C51 groceries | Retained check after overlap/decrease, repeated true/bulk replacement/retry, locale/unit change and recovery | Persist original checked-demand baseline unchanged; compatible conversions compare exactly, incomparable/unknown baselines remain unprovable; no replay rebaselines |
+| C52 groceries | Reset or explicit uncheck followed by recheck at 4–5 | Capture new baseline 4–5 only on false→true; unchanged demand preserves check and later provable increase resets once |
+| C53 migration | Upgrade assessment unexpectedly finds an active list | Stop/report before overwrite/retirement; no silent history deletion, check reset or extra data removal |
 
 ## Existing regression owners and future seam classes
 

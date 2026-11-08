@@ -21,6 +21,7 @@ CREATE TABLE workflow_instances (
     workflow_id text NOT NULL,
     status smallint NOT NULL,
     parameters jsonb,
+    recipe_publication_capture jsonb,
     created_at timestamptz DEFAULT now() NOT NULL,
     updated_at timestamptz DEFAULT now() NOT NULL
 );
@@ -44,6 +45,7 @@ CREATE TABLE recipes (
     category text,
     is_vegetarian boolean,
     raw_metadata jsonb,
+    canonical_content jsonb,
     ingredients jsonb,
     cuisine_type text,
     meal_types text[],
@@ -62,6 +64,36 @@ CREATE TABLE recipes (
 
 COMMENT ON COLUMN recipes.is_vegetarian IS 'wfs-vegetarian-classification-nullable-v1';
 
+-- Dormant canonical owner: no automatic conversion or public write activation.
+CREATE TABLE canonical_recipe_operations (
+    recipe_id uuid NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
+    operation_id uuid NOT NULL,
+    input_hash text NOT NULL,
+    original_request text,
+    result jsonb NOT NULL,
+    created_at timestamptz NOT NULL,
+    PRIMARY KEY (recipe_id, operation_id)
+);
+
+CREATE TABLE recipe_file_publications (
+    recipe_id uuid NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
+    operation_id uuid NOT NULL,
+    input_hash text NOT NULL,
+    payload jsonb NOT NULL,
+    result_hash text NOT NULL,
+    delivered boolean NOT NULL DEFAULT false,
+    created_at timestamptz NOT NULL,
+    PRIMARY KEY (recipe_id, operation_id)
+);
+
+CREATE TABLE recipe_repair_intents (
+    id uuid PRIMARY KEY,
+    recipe_id uuid NOT NULL,
+    payload jsonb NOT NULL,
+    input_hash text NOT NULL,
+    created_at timestamptz NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS recipe_import_reports (
     recipe_id uuid PRIMARY KEY REFERENCES recipes(id) ON DELETE CASCADE,
     reasons text[] NOT NULL,
@@ -71,6 +103,7 @@ CREATE TABLE IF NOT EXISTS recipe_import_reports (
     updated_by uuid REFERENCES family_members(id) ON DELETE SET NULL,
     created_at timestamptz DEFAULT now() NOT NULL,
     updated_at timestamptz DEFAULT now() NOT NULL,
+    repair_intent_id uuid,
     last_workflow_instance_id uuid,
     last_attempt_at timestamptz,
     reimported_at timestamptz,
@@ -139,6 +172,9 @@ CREATE TABLE IF NOT EXISTS weekly_plans (
     notified_at timestamptz,
     grocery_state jsonb NOT NULL DEFAULT '{}'::jsonb,
     grocery_items jsonb NOT NULL DEFAULT '[]'::jsonb,
+    grocery_checked_demand_baselines jsonb NOT NULL DEFAULT jsonb_build_object(),
+    grocery_demand_evidence jsonb NOT NULL DEFAULT jsonb_build_object(),
+    grocery_list_version text NOT NULL DEFAULT '1',
     serving_input_version text,
     serving_applied_version text,
     serving_refresh_status text,
@@ -146,6 +182,13 @@ CREATE TABLE IF NOT EXISTS weekly_plans (
     grocery_reset_summary_version text,
 
     created_at timestamptz DEFAULT now() NOT NULL
+);
+
+CREATE TABLE grocery_mutation_outcomes (
+    id uuid PRIMARY KEY,
+    input_hash text NOT NULL,
+    week_start_date date NOT NULL,
+    outcome jsonb NOT NULL
 );
 
 CREATE TABLE grocery_extra_occurrences (
@@ -239,6 +282,57 @@ CREATE TABLE IF NOT EXISTS recipe_search_affinity_facts (
     generated_at timestamptz NOT NULL
 );
 
+-- Independent observations; never cascade with execution rows or backfill old attempts.
+CREATE TABLE workflow_processor_attempts (
+    id uuid PRIMARY KEY,
+    task_id uuid NOT NULL,
+    instance_id uuid NOT NULL,
+    request jsonb NOT NULL,
+    request_hash text NOT NULL,
+    outcome jsonb,
+    outcome_hash text,
+    observed_at timestamptz,
+    created_at timestamptz NOT NULL,
+    CONSTRAINT workflow_processor_attempts_outcome_check CHECK (
+        (outcome IS NULL AND outcome_hash IS NULL AND observed_at IS NULL) OR
+        (outcome IS NOT NULL AND outcome_hash IS NOT NULL AND observed_at IS NOT NULL))
+);
+CREATE INDEX workflow_processor_attempts_task_idx ON workflow_processor_attempts (task_id, created_at, id);
+
+CREATE TABLE workflow_reset_intents (
+    id uuid PRIMARY KEY,
+    task_id uuid NOT NULL,
+    instance_id uuid NOT NULL,
+    request jsonb NOT NULL,
+    request_hash text NOT NULL,
+    applied_at timestamptz,
+    created_at timestamptz NOT NULL
+);
+
+CREATE UNIQUE INDEX workflow_reset_intents_pending_task_idx ON workflow_reset_intents (task_id) WHERE applied_at IS NULL;
+CREATE INDEX workflow_reset_intents_pending_order_idx ON workflow_reset_intents (created_at, id) WHERE applied_at IS NULL;
+
+CREATE TABLE workflow_launch_intents (
+    id uuid PRIMARY KEY,
+    request jsonb NOT NULL,
+    request_hash text NOT NULL,
+    prepared jsonb,
+    prepared_hash text,
+    accepted_at timestamptz,
+    created_at timestamptz NOT NULL
+);
+
+CREATE TABLE workflow_child_intents (
+    id uuid PRIMARY KEY,
+    parent_task_id uuid NOT NULL,
+    request jsonb NOT NULL,
+    request_hash text NOT NULL,
+    prepared jsonb,
+    prepared_hash text,
+    accepted_at timestamptz,
+    created_at timestamptz NOT NULL
+);
+
 CREATE TABLE workflow_tasks (
     task_id uuid PRIMARY KEY,
     instance_id uuid NOT NULL REFERENCES workflow_instances(id) ON DELETE CASCADE,
@@ -252,6 +346,8 @@ CREATE TABLE workflow_tasks (
     error_message text,
     stack_trace text,
     result jsonb,
+    child_launch_intent_id uuid,
+    reset_intent_id uuid,
     created_at timestamptz DEFAULT now() NOT NULL,
     updated_at timestamptz DEFAULT now() NOT NULL
 );
@@ -277,6 +373,7 @@ CREATE TABLE IF NOT EXISTS maintenance_commands (
     status text NOT NULL,
     payload jsonb NOT NULL,
     result jsonb,
+    child_launch_intent_id uuid,
     attempts integer DEFAULT 0 NOT NULL,
     requested_by uuid REFERENCES family_members(id) ON DELETE SET NULL,
     created_at timestamptz DEFAULT now() NOT NULL,
@@ -330,3 +427,67 @@ CREATE TABLE recovery_publication (
     operation_id uuid NOT NULL,
     snapshot_id uuid NOT NULL
 );
+
+-- Prevent legacy semantic writers (including raw SQL jobs) from replacing a
+-- converted owner without a new coherent canonical revision.
+CREATE OR REPLACE FUNCTION guard_canonical_recipe_content() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+    IF OLD.canonical_content IS NOT NULL AND (
+        NEW.canonical_content IS NULL OR
+        ((NEW.source_url IS DISTINCT FROM OLD.source_url OR
+          NEW.raw_metadata IS DISTINCT FROM OLD.raw_metadata OR
+          NEW.ingredients IS DISTINCT FROM OLD.ingredients OR
+          NEW.servings IS DISTINCT FROM OLD.servings OR
+          NEW.canonical_content IS DISTINCT FROM OLD.canonical_content) AND
+         NEW.canonical_content->>'contentRevision' IS NOT DISTINCT FROM OLD.canonical_content->>'contentRevision')
+    ) THEN
+        RAISE EXCEPTION 'Canonical recipe content requires guarded publication' USING ERRCODE = '23514';
+    END IF;
+    RETURN NEW;
+END $$;
+DO $$
+BEGIN
+    IF to_regclass('public.recipes') IS NOT NULL THEN
+        DROP TRIGGER IF EXISTS canonical_recipe_content_guard ON recipes;
+        CREATE TRIGGER canonical_recipe_content_guard BEFORE UPDATE ON recipes
+            FOR EACH ROW EXECUTE FUNCTION guard_canonical_recipe_content();
+    END IF;
+END $$;
+
+-- Independent inert history survives workflow/task pruning and recipe cleanup.
+CREATE TABLE workflow_lifecycle_records (
+    id uuid PRIMARY KEY,
+    operation_id uuid NOT NULL,
+    disposition text NOT NULL CHECK (disposition IN ('cleared', 'pruned')),
+    payload jsonb NOT NULL,
+    payload_hash text NOT NULL,
+    created_at timestamptz NOT NULL
+);
+
+-- Independent terminal command history; never executable recovery authority.
+CREATE TABLE maintenance_command_lifecycle_records (
+    id uuid NOT NULL,
+    operation_id uuid NOT NULL,
+    disposition text NOT NULL CHECK (disposition IN ('retention-started', 'pruned')),
+    payload jsonb NOT NULL,
+    payload_hash text NOT NULL,
+    created_at timestamptz NOT NULL,
+    PRIMARY KEY (id, disposition)
+);
+
+-- Independent physical intent precedes files; delivery and database removal have separate receipts.
+CREATE TABLE recipe_physical_deletions (
+    recipe_id uuid PRIMARY KEY,
+    operation_id uuid NOT NULL,
+    kind text NOT NULL CHECK (kind IN ('purge', 'delete', 'failed-capture')),
+    payload jsonb NOT NULL,
+    payload_hash text NOT NULL,
+    recipe_hash text NOT NULL,
+    files_removed boolean,
+    created_at timestamptz NOT NULL,
+    files_delivered_at timestamptz,
+    completed_at timestamptz,
+    CONSTRAINT recipe_physical_deletions_receipt_check CHECK ((files_delivered_at IS NOT NULL OR files_removed IS NULL) AND (completed_at IS NULL OR files_delivered_at IS NOT NULL))
+);
+
+CREATE UNIQUE INDEX recipe_physical_deletions_operation_id_idx ON recipe_physical_deletions(operation_id);

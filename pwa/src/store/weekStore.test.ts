@@ -1,3 +1,4 @@
+import { scalarQuantity, fixtureGroceryId } from '@/testing/grocery-fixtures';
 import { DateOnly } from '@microsoft/kiota-abstractions';
 import { calendarTime } from '@/lib/deployment-calendar';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -59,6 +60,7 @@ function makeScheduleDays(days: Partial<UILocalScheduleDay>[] = []) {
     weekStartDate: '2025-01-06',
     votingRoundId: null,
     weekOffset: 0,
+    groceryListVersion: '1',
     locked: false,
     status: 0,
     days: days.map((d, i) => ({
@@ -81,6 +83,9 @@ beforeEach(() => {
     weekOffset: 0,
     schedule: [],
     groceryItems: [],
+    groceryListVersion: null,
+    groceryVersionWeek: null,
+    authoritativeGroceryChecks: {},
     groceryExtras: [],
     pendingGroceryExtraIds: new Set(),
     status: 0,
@@ -412,7 +417,7 @@ describe('weekStore — grocery reclassification', () => {
       displayName: 'Tomato',
       normalizedKey: 'tomato',
       section: 'Produce',
-      quantity: 2,
+      quantity: scalarQuantity(2),
       unitText: 'each',
       recipeIds: ['recipe-1'],
       additionalData: {},
@@ -421,7 +426,7 @@ describe('weekStore — grocery reclassification', () => {
       displayName: 'Rice',
       normalizedKey: 'rice',
       section: 'Pantry',
-      quantity: 1,
+      quantity: scalarQuantity(1),
       unitText: 'bag',
       recipeIds: ['recipe-2'],
       additionalData: {},
@@ -451,6 +456,7 @@ describe('weekStore — grocery reclassification', () => {
     useWeekStore.getState().applySnapshot({
       ...makeScheduleDays([]),
       groceryItems: [{ ...item, section: 'Grocery' }],
+      groceryState: {},
     } as any);
 
     expect(useWeekStore.getState().groceryItems[0].section).toBe('Grocery');
@@ -676,7 +682,10 @@ describe('weekStore — applySnapshot', () => {
     const snapshot = {
       ...makeScheduleDays([{ date: '2025-01-06', recipe: null }]),
       groceryState: {
-        additionalData: { Carrots: true, Onions: false },
+        additionalData: {
+          [fixtureGroceryId('Carrots')]: true,
+          [fixtureGroceryId('Onions')]: false,
+        },
       },
     } as any;
 
@@ -692,7 +701,10 @@ describe('weekStore — applySnapshot', () => {
 
     // Both stores must have been updated
     expect(useWeekStore.getState().schedule).toHaveLength(1);
-    expect(usePlannerStore.getState().groceryState).toEqual({ Carrots: true, Onions: false });
+    expect(usePlannerStore.getState().groceryState).toEqual({
+      [fixtureGroceryId('Carrots')]: true,
+      [fixtureGroceryId('Onions')]: false,
+    });
 
     // Both updates must have fired (week first, then planner — same synchronous tick)
     expect(updateOrder).toContain('week');
@@ -702,7 +714,7 @@ describe('weekStore — applySnapshot', () => {
   });
 
   it('clears prior checks from an empty generated-client dictionary', () => {
-    usePlannerStore.setState({ groceryState: { Old: true } });
+    usePlannerStore.setState({ groceryState: { [fixtureGroceryId('Old')]: true } });
     useWeekStore.getState().applySnapshot({
       ...makeScheduleDays(),
       groceryState: { additionalData: {} },

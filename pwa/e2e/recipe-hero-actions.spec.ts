@@ -208,11 +208,7 @@ test.describe('Recipe Hero Actions', () => {
     let uploadCalled = false;
     await page.route(`**/api/recipes/${MOCK_IDS.RECIPE_LASAGNA}/originals`, async (route) => {
       uploadCalled = true;
-      await route.fulfill({
-        status: 201,
-        contentType: 'application/json',
-        body: JSON.stringify({ id: MOCK_IDS.PHOTO_NEW }),
-      });
+      await route.fallback();
     });
 
     await openRecipeDetail(page);
@@ -234,4 +230,87 @@ test.describe('Recipe Hero Actions', () => {
     await expect(page.getByText('Regenerating hero image...')).toBeVisible();
     expect(uploadCalled).toBe(true);
   });
+});
+
+test('canonical original editor saves through the generated client and reopens server-issued facts', async ({
+  page,
+}) => {
+  const id = MOCK_IDS.RECIPE_LASAGNA;
+  const row = (rowId: string, name: string, quantity: string, unit: string) => ({
+    id: rowId,
+    description: name,
+    amount: { kind: 'scalar', value: { n: quantity, d: '1' } },
+    amountText: quantity,
+    unit: { text: unit, definitionId: null },
+    scaling: 'proportional',
+    package: null,
+    shopping: { name, foodId: null, mappingRevision: null },
+    provenance: { origin: 'unknown', sourceRef: null, protectedFields: [] },
+  });
+  await setupCommonRoutes(page, undefined, {
+    canonicalEditor: builders.recipe({
+      id,
+      name: 'Original facts pasta',
+      contentSchemaVersion: 2,
+      contentRevision: 'initial-editor',
+      servings: 4,
+      ingredients: ['200 g pasta', '100 ml sauce'],
+      ingredientLines: [
+        row(MOCK_IDS.RECIPE_CARBONARA, 'pasta', '200', 'g'),
+        row(MOCK_IDS.RECIPE_CHICKEN, 'sauce', '100', 'ml'),
+      ],
+    } as any),
+  });
+  await page
+    .context()
+    .addCookies([
+      { name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: process.env.BASE_URL! },
+    ]);
+  await page.route('**/api/recipes/search', (route) =>
+    route.fulfill({
+      json: {
+        data: {
+          topPick: null,
+          results: [builders.recipe({ id, name: 'Original facts pasta' })],
+          appliedFilters: {},
+          searchMode: 'explicit',
+          resultPath: 'lexical-only',
+        },
+      },
+    })
+  );
+  await page.goto('/recipes?focus=search');
+  await page.getByTestId('recipe-search-input').fill('Original facts pasta');
+  await page.getByTestId('recipe-search-input').press('Enter');
+  await page.getByTestId('stack-card-front').click();
+  await expect(page.getByTestId('recipe-detail-name')).toHaveText('Original facts pasta');
+  await page.getByTestId('action-gear-menu').click();
+  await page.getByRole('button', { name: 'Edit', exact: true }).click();
+  await expect(page.getByTestId('recipe-edit-amount-0')).toHaveValue('200');
+  await expect(page.getByTestId('recipe-edit-unit-0')).toHaveValue('g');
+  await page.getByTestId('recipe-edit-amount-0').fill('250');
+  const saving = page.waitForResponse(
+    (response) =>
+      response.url().endsWith(`/api/recipes/${id}`) && response.request().method() === 'PATCH'
+  );
+  await page.getByTestId('recipe-save-edits').click();
+  const response = await saving;
+  expect(
+    response.status(),
+    JSON.stringify({ request: response.request().postDataJSON(), response: await response.text() })
+  ).toBe(200);
+  const request = response.request().postDataJSON();
+  expect(request.expectedContentRevision).toBe('initial-editor');
+  expect(request).not.toHaveProperty('ingredients');
+  expect(request.ingredientLines[0]).toMatchObject({
+    id: MOCK_IDS.RECIPE_CARBONARA,
+    amount: { kind: 'scalar', value: { n: '250', d: '1' } },
+    amountText: '250',
+  });
+  await expect(page.getByText('250 g pasta', { exact: true })).toBeVisible();
+  await expect(page.getByText('100 ml sauce', { exact: true })).toBeVisible();
+  await page.getByTestId('action-gear-menu').click();
+  await page.getByRole('button', { name: 'Edit', exact: true }).click();
+  await expect(page.getByTestId('recipe-edit-amount-0')).toHaveValue('250');
+  await expect(page.getByTestId('recipe-edit-amount-1')).toHaveValue('100');
 });

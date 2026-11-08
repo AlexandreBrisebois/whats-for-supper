@@ -1,5 +1,10 @@
 import { RetryHandlerOptions } from '@microsoft/kiota-http-fetchlibrary';
 import { DateOnly } from '@microsoft/kiota-abstractions';
+import { JsonParseNode } from '@microsoft/kiota-serialization-json';
+import {
+  createGroceryRangeFromDiscriminatorValue,
+  createGroceryScalarFromDiscriminatorValue,
+} from './generated/models';
 import { normalizeSupperPreparation } from './supper-servings';
 import { apiClient } from './api-client';
 import { usePlannerStore } from '@/store/plannerStore';
@@ -11,6 +16,8 @@ import type {
   ScheduleRecipeDto,
   PreSelectedRecipeDto,
   SmartDefaultsDto,
+  GroceryScalar,
+  GroceryRange,
 } from './generated/models';
 
 export type ScheduleDay = ScheduleDayDto;
@@ -20,6 +27,22 @@ export type SmartDefaultsResponse = SmartDefaultsDto;
 
 function readRecord(value: unknown): Record<string, unknown> | null {
   return value != null && typeof value === 'object' ? (value as Record<string, unknown>) : null;
+}
+
+function normalizeGroceryQuantity(value: unknown): GroceryScalar | GroceryRange | null {
+  const source = readRecord(value);
+  if (!source) return null;
+  // Kiota may select the nullable union's marker first and retain the real
+  // kind/operands as additionalData. Decode that exact wire data, never a
+  // displayed decimal or an inferred quantity.
+  const { additionalData, ...fields } = source;
+  const wire = { ...(readRecord(additionalData) ?? {}), ...fields };
+  const node = new JsonParseNode(wire);
+  if (wire.kind === 'scalar')
+    return node.getObjectValue<GroceryScalar>(createGroceryScalarFromDiscriminatorValue) ?? null;
+  if (wire.kind === 'range')
+    return node.getObjectValue<GroceryRange>(createGroceryRangeFromDiscriminatorValue) ?? null;
+  return null;
 }
 
 export function normalizeScheduleRecipe(recipe: unknown): ScheduleRecipeDto | null {
@@ -75,6 +98,10 @@ export const getSchedule = async (
   return data?.weekOffset !== undefined
     ? {
         ...data,
+        groceryItems: data.groceryItems?.map((item) => ({
+          ...item,
+          quantity: normalizeGroceryQuantity(item.quantity),
+        })),
         days: data.days?.map((day) => ({
           ...day,
           preparation: normalizeSupperPreparation(day.preparation),

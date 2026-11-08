@@ -1,4 +1,22 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { uploadRecipeOriginal } from './recipes';
+
+it('reads the authoritative zero image index from the upload response envelope', async () => {
+  mockGetState.mockReturnValue({ selectedFamilyMemberId: 'member-id' });
+  vi.stubGlobal('fetch', fetchMock);
+  fetchMock.mockResolvedValueOnce({ ok: true, json: async () => ({ data: { id: 0 } }) });
+  try {
+    expect(
+      await uploadRecipeOriginal(
+        'recipe-id',
+        new File(['image'], 'photo.png', { type: 'image/png' })
+      )
+    ).toEqual({ id: 0 });
+  } finally {
+    fetchMock.mockReset();
+    vi.unstubAllGlobals();
+  }
+});
 
 const { mockGetState, fetchMock } = vi.hoisted(() => ({
   mockGetState: vi.fn(),
@@ -667,3 +685,28 @@ it('reads an explicit preview through the generated client and rejects mismatche
   );
 });
 const MOCK_PREVIEW_ID = '550e8400-e29b-41d4-a716-446655440111';
+
+it('normalizes Kiota nullable package objects before an original ingredient is edited', async () => {
+  const { JsonParseNode } = await import('@microsoft/kiota-serialization-json');
+  const { createRecipeDtoFromDiscriminatorValue } = await import('./generated/models');
+  const parsed = new JsonParseNode({
+    id: '550e8400-e29b-41d4-a716-446655440212',
+    contentSchemaVersion: 2,
+    ingredientLines: [
+      {
+        id: '550e8400-e29b-41d4-a716-446655440213',
+        description: 'sauce',
+        amount: null,
+        amountText: null,
+        unit: null,
+        package: null,
+        scaling: 'proportional',
+        shopping: { name: 'sauce', foodId: null, mappingRevision: null },
+      },
+    ],
+  }).getObjectValue(createRecipeDtoFromDiscriminatorValue)!;
+  recipesApiMocks.byIdGet.mockResolvedValueOnce({ recipe: parsed });
+  const recipe = await getRecipe('550e8400-e29b-41d4-a716-446655440212');
+  expect(recipe.ingredientLines![0].packageEscaped).toBeNull();
+  expect(recipe.ingredientLines![0].unit).toBeNull();
+});

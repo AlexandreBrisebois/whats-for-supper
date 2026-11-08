@@ -21,6 +21,10 @@ public class WorkflowInstance
     [Column("parameters")]
     public string? Parameters { get; set; } // Store as JSONB in DB
 
+    [System.Text.Json.Serialization.JsonIgnore]
+    [Column("recipe_publication_capture", TypeName = "jsonb")]
+    public string? RecipePublicationCapture { get; set; }
+
     [Column("created_at")]
     public DateTimeOffset CreatedAt { get; set; }
 

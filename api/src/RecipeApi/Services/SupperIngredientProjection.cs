@@ -19,6 +19,7 @@ public static class SupperIngredientProjection
 
     public static List<IngredientProjectionLineDto> Read(Recipe recipe, int? target)
     {
+        if (CanonicalRecipeContentStore.Read(recipe) is { } canonical) return ReadCanonical(canonical, target);
         var ingredients = RecipeService.DeserializeIngredients(recipe.Ingredients ?? "[]");
         using var metadata = Metadata(recipe.RawMetadata);
         var root = metadata?.RootElement;
@@ -59,6 +60,11 @@ public static class SupperIngredientProjection
             if (quantity is null && amount is not null && issues.Count == 0) issues.Add("unreliable_amount");
             result.Add(new IngredientProjectionLineDto
             {
+                GroceryRecordedNumberToken = NumericToken(item, "quantity") ?? NumericToken(required, "value"),
+                GroceryObservation = bindings.ContainsKey(index)
+                    ? LegacyGroceryQuantity.Read(text, name, unit, NumericToken(item, "quantity") ?? NumericToken(required, "value"),
+                        basis: recipe.Servings, target: target)
+                    : new(null, "unresolved"),
                 OriginalText = text,
                 Name = name,
                 Quantity = quantity,
@@ -68,6 +74,36 @@ public static class SupperIngredientProjection
             });
         }
         return result;
+    }
+
+    private static List<IngredientProjectionLineDto> ReadCanonical(CanonicalRecipeContent content, int? target)
+    {
+        return content.IngredientLines.Select(row =>
+        {
+            var quantity = target is null || row.Scaling == "fixed" ? row.Amount
+                : content.Servings is > 0 ? LegacyGroceryQuantity.Scale(row.Amount, target.Value, content.Servings.Value) : null;
+            var issues = new List<string>();
+            if (row.Amount is not null && quantity is null) issues.Add(content.Servings is not > 0 && target is not null ? "missing_basis" : "unreliable_amount");
+            double? number = quantity?.Value is { } scalar && double.TryParse(scalar.N, System.Globalization.CultureInfo.InvariantCulture, out var n)
+                && double.TryParse(scalar.D, System.Globalization.CultureInfo.InvariantCulture, out var d) && double.IsFinite(n / d) ? n / d : null;
+            return new IngredientProjectionLineDto
+            {
+                SavedIngredientLineId = row.Id,
+                GroceryPurchaseIdentity = GroceryDemandEvidence.Fingerprint(new
+                {
+                    row.Shopping.FoodId,
+                    Name = row.Shopping.FoodId is null ? row.Shopping.Name : null,
+                    row.Package
+                }),
+                OriginalText = CanonicalRecipeContentStore.Render(row),
+                Name = row.Shopping.Name,
+                UnitText = row.Unit?.Text,
+                Quantity = number,
+                GroceryObservation = new(quantity, "canonical_original"),
+                Status = row.Amount is null ? "unquantified" : issues.Count > 0 ? "unresolved" : target is null ? "original" : "scaled",
+                Issues = issues.ToArray()
+            };
+        }).ToList();
     }
 
     // Legacy supply arrays omit unquantified ingredients and do not carry source indices.
@@ -111,4 +147,8 @@ public static class SupperIngredientProjection
     private static double? Number(JsonElement item, string key)
         => item.ValueKind == JsonValueKind.Object && item.TryGetProperty(key, out var value) && value.ValueKind == JsonValueKind.Number
             && value.TryGetDouble(out var number) && double.IsFinite(number) && number >= 0 ? number : null;
+
+    private static string? NumericToken(JsonElement item, string key) =>
+        item.ValueKind == JsonValueKind.Object && item.TryGetProperty(key, out var value) && value.ValueKind == JsonValueKind.Number
+            ? value.GetRawText() : null;
 }

@@ -56,7 +56,7 @@ public class CaptureFailureService(RecipeDbContext db, IClock clock, IWorkflowOr
                 SourceWorkflowId = instance.WorkflowId,
                 SourceType = ResolveSourceType(instance.WorkflowId),
                 PreviewText = TryGetStringParameter(instance.Parameters, "url") ?? recipe?.SourceUrl,
-                FriendlyReason = UrlCaptureInitialization.IsPending(instance)
+                FriendlyReason = (UrlCaptureInitialization.IsPending(instance) || RecipeFollowupInitialization.IsPending(instance))
                     ? "Your recipe was saved, but its import has not started. Retry to start importing it."
                     : CaptureFailureReasonMapper.ToFriendlyReason(null),
                 FailureCode = null,
@@ -87,6 +87,14 @@ public class CaptureFailureService(RecipeDbContext db, IClock clock, IWorkflowOr
                 : CaptureFailureRetryResult.Queued;
         }
 
+        if (RecipeFollowupInitialization.IsPending(instance))
+        {
+            var initialized = await orchestrator.InitializeRecipeFollowupAsync(instance.Id, ct);
+            if (initialized is null) return CaptureFailureRetryResult.NotFound;
+            return RecipeFollowupInitialization.IsPending(initialized)
+                ? CaptureFailureRetryResult.NotFailedCapture : CaptureFailureRetryResult.Queued;
+        }
+
         var failedTask = GetFailedTask(instance);
         if (failedTask is null) return CaptureFailureRetryResult.NotFailedCapture;
 
@@ -105,51 +113,68 @@ public class CaptureFailureService(RecipeDbContext db, IClock clock, IWorkflowOr
 
     public async Task<CaptureFailureClearResult> ClearAsync(Guid workflowInstanceId, Guid? requestedBy = null, CancellationToken ct = default)
     {
-        await using var transaction = await db.Database.BeginTransactionAsync(ct);
-        var instance = await UrlCaptureInitialization.LoadLockedAsync(db, workflowInstanceId, ct);
-
-        if (instance is null) return new(CaptureFailureClearResultKind.NotFound);
-        if (!IsFailedCapture(instance)) return new(CaptureFailureClearResultKind.NotFailedCapture);
-
-        var recipeId = TryGetRecipeId(instance.Parameters);
-        if (recipeId is not null)
+        // Match publication's leading supper-input boundary before workflow/recipe rows.
+        await using var transaction = await SupperServingsService.BeginAsync(db, ct)
+            ?? await db.Database.BeginTransactionAsync(ct);
+        Guid? recipeId = null;
+        Guid? commandId = null;
+        try
         {
-            var recipe = await db.Recipes
-                .IgnoreQueryFilters()
-                .FirstOrDefaultAsync(r => r.Id == recipeId.Value, ct);
+            var instance = await WorkflowLifecycle.LoadLockedAsync(db, workflowInstanceId, ct);
 
-            if (recipe is not null && !IsReadyOrDiscoverable(recipe))
+            if (instance is null) return new(CaptureFailureClearResultKind.NotFound);
+            if (!IsFailedCapture(instance)) return new(CaptureFailureClearResultKind.NotFailedCapture);
+
+            recipeId = TryGetRecipeId(instance.Parameters);
+            if (recipeId is not null)
             {
-                recipe.DeletedAt ??= clock.UtcNow;
-                recipe.DeletedBy ??= requestedBy;
-                recipe.DeleteNote = $"failed-capture-clear workflowInstanceId={workflowInstanceId}";
-                recipe.IsDiscoverable = false;
-                recipe.UpdatedAt = clock.UtcNow;
+                await RecipeRotation.LockRowAsync(db, recipeId.Value, ct);
+                var recipe = await db.Recipes
+                    .IgnoreQueryFilters()
+                    .FirstOrDefaultAsync(r => r.Id == recipeId.Value, ct);
+
+                if (recipe is not null && !IsReadyOrDiscoverable(recipe))
+                {
+                    recipe.DeletedAt ??= clock.UtcNow;
+                    recipe.DeletedBy ??= requestedBy;
+                    recipe.DeleteNote = $"failed-capture-clear workflowInstanceId={workflowInstanceId}";
+                    recipe.IsDiscoverable = false;
+                    recipe.UpdatedAt = clock.UtcNow;
+                }
             }
-        }
 
-        var command = new MaintenanceCommand
-        {
-            Id = Guid.NewGuid(),
-            CommandType = DeleteFailedCaptureResidueCommand,
-            Status = "pending",
-            Payload = JsonSerializer.Serialize(new
+            var command = new MaintenanceCommand
             {
-                recipeId,
-                workflowInstanceId,
-                sourceWorkflowId = instance.WorkflowId,
-                reason = "user-cleared-failed-capture",
-            }, JsonDefaults.CamelCase),
-            RequestedBy = requestedBy,
-            CreatedAt = clock.UtcNow,
-        };
+                Id = Guid.NewGuid(),
+                CommandType = DeleteFailedCaptureResidueCommand,
+                Status = "pending",
+                Payload = JsonSerializer.Serialize(new
+                {
+                    recipeId,
+                    workflowInstanceId,
+                    sourceWorkflowId = instance.WorkflowId,
+                    reason = "user-cleared-failed-capture",
+                }, JsonDefaults.CamelCase),
+                RequestedBy = requestedBy,
+                CreatedAt = clock.UtcNow,
+            };
 
-        db.MaintenanceCommands.Add(command);
-        db.WorkflowInstances.Remove(instance);
-        await db.SaveChangesAsync(ct);
+            commandId = command.Id;
+            db.MaintenanceCommands.Add(command);
+            await WorkflowLifecycle.RetainAsync(db, instance, "cleared", command.Id, clock.UtcNow, ct, command);
+            db.WorkflowInstances.Remove(instance);
+            await db.SaveChangesAsync(ct);
 
-        await transaction.CommitAsync(ct);
-        return new(CaptureFailureClearResultKind.Cleared, command.Id);
+            await transaction.CommitAsync(ct);
+            return new(CaptureFailureClearResultKind.Cleared, command.Id);
+        }
+        catch
+        {
+            try { await transaction.RollbackAsync(CancellationToken.None); } catch { /* Preserve an uncertain committed outcome. */ }
+            await transaction.DisposeAsync();
+            await WorkflowLifecycle.ReloadAttemptAsync(db, workflowInstanceId, commandId, recipeId);
+            throw;
+        }
     }
 
     internal static Guid? TryGetRecipeId(string? parameters)

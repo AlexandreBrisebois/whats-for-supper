@@ -59,7 +59,16 @@ public class SearchReconciliationWorkflowTests
 
     private sealed class RecordingOrchestrator : IWorkflowOrchestrator
     {
+        public Task<WorkflowInstance> TriggerImportAsync(Guid instanceId, Guid recipeId,
+            string workflowId, Dictionary<string, string> parameters) => throw new NotSupportedException();
+
+        public Task<WorkflowInstance> TriggerReportAsync(Guid instanceId, Guid recipeId, string workflowId, Dictionary<string, string> parameters)
+            => throw new NotSupportedException();
+
         public Task<WorkflowInstance?> InitializeUrlCaptureAsync(Guid instanceId, CancellationToken ct = default)
+            => throw new NotSupportedException();
+
+        public Task<WorkflowInstance?> InitializeRecipeFollowupAsync(Guid instanceId, CancellationToken ct = default)
             => throw new NotSupportedException();
 
         public List<(string WorkflowId, Dictionary<string, string> Parameters)> Calls { get; } = [];

@@ -1,3 +1,4 @@
+import { fixtureGroceryId } from './grocery-fixtures';
 import {
   type RecipeDto,
   type RecipeShareBundleDto,
@@ -6,6 +7,7 @@ import {
   type ScheduleDays,
   type SmartDefaultsDto,
   type GroceryExtraDto,
+  type GroceryLineItemDto,
 } from '../lib/api/generated/models/index';
 import { type FamilyGetResponse_data } from '../lib/api/generated/api/family/index';
 import { MOCK_IDS } from './mock-ids';
@@ -89,6 +91,7 @@ export const builders = {
         };
       }),
       groceryState: {} as Record<string, boolean>,
+      groceryListVersion: '1',
     };
   },
   recipe: (overrides: Partial<RecipeDto> = {}): RecipeDto => {
@@ -125,7 +128,15 @@ export const builders = {
             isReady: true,
             createdAt: new Date(),
           };
-    return { servings: null, ...base, ...overrides };
+    return {
+      servings: null,
+      contentSchemaVersion: null,
+      contentRevision: null,
+      ingredientLines: null,
+      instructionSections: null,
+      ...base,
+      ...overrides,
+    };
   },
 
   scheduleRecipe: (overrides: Partial<ScheduleRecipeDto> = {}): ScheduleRecipeDto => {
@@ -161,15 +172,13 @@ export const builders = {
   groceryItems: (
     names: string[],
     sectionMap: Record<string, string> = {}
-  ): Array<{
-    displayName: string;
-    normalizedKey: string;
-    section: string;
-    quantity: number | null;
-    unitText: string | null;
-    recipeIds: string[];
-  }> =>
+  ): Array<GroceryLineItemDto & { displayName: string; section: string }> =>
     names.map((name) => ({
+      rowId: fixtureGroceryId(name),
+      rowVersion: '1',
+      weekStartDate: toDateStr(currentMonday()) as any,
+      source: 'recipe',
+      demandIdentity: `fixture:${name}`,
       displayName: name,
       normalizedKey: name.toLowerCase().replace(/\s+/g, '_'),
       section: sectionMap[name] ?? 'Pantry',

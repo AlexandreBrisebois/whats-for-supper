@@ -11,7 +11,7 @@ namespace RecipeApi.Services.Agents;
 
 public class WebAcquisitionAgent(
     IChatClient chatClient,
-    RecipeRepository recipeRepository,
+    RecipeFilePublicationStore publications,
     IPromptRepository promptRepository,
     HttpClient httpClient,
     ILogger<WebAcquisitionAgent> logger) : IWorkflowProcessor
@@ -37,13 +37,76 @@ public class WebAcquisitionAgent(
         var recipeId = idProp.GetGuid();
         var url = urlProp.GetString() ?? throw new ArgumentException("URL is null.");
 
-        await ProcessUrlAsync(recipeId, url, ct);
+        var operation = task.TaskId == Guid.Empty ? Guid.NewGuid() : task.TaskId;
+        var input = ProcessorName + "\n" + CanonicalRecipeContentStore.NormalizeJson(task.Payload);
+        if (!await publications.TryResumeAsync(recipeId, operation, input, ct))
+        {
+            var capture = await publications.CaptureForTaskAsync(task, recipeId, ct);
+            await ProcessUrlAsync(capture, url, operation, input, ct);
+        }
 
-        return new { Message = $"Fetched and processed content from {url}" };
+        return new { Message = CompletionMessage(url) };
     }
 
-    private async Task ProcessUrlAsync(Guid recipeId, string url, CancellationToken ct)
+    private static string CompletionMessage(string url) => $"Fetched and processed content from {url}";
+
+    private static string ContextName(WebContext context, string url) =>
+        string.IsNullOrWhiteSpace(context.Name) ? "Recipe from " + new Uri(url).Host : context.Name;
+
+    // Qualifies the original invocation/publication relationship only. Retained
+    // HTML, image bytes and context are observations, not authenticated web facts
+    // or proof that extraction, hero generation or notification completed.
+    internal static Guid ValidateOriginalHistory(string? payload, string? returned, RecipeFilePublication[] publications)
     {
+        static void Require(bool valid)
+        {
+            if (!valid) throw new InvalidDataException("Original web acquisition differs from its publication.");
+        }
+        static void UniqueObject(JsonElement value)
+        {
+            Require(value.ValueKind == JsonValueKind.Object);
+            var names = value.EnumerateObject().Select(x => x.Name).ToArray();
+            Require(names.Distinct(StringComparer.Ordinal).Count() == names.Length);
+        }
+        using var input = JsonDocument.Parse(payload ?? "null");
+        UniqueObject(input.RootElement);
+        var hasId = input.RootElement.TryGetProperty("recipeId", out var id)
+            || input.RootElement.TryGetProperty("RecipeId", out id);
+        Guid recipeId = default;
+        Require(hasId && id.ValueKind == JsonValueKind.String && id.TryGetGuid(out recipeId) && recipeId != Guid.Empty);
+        var hasUrl = input.RootElement.TryGetProperty("url", out var urlValue)
+            || input.RootElement.TryGetProperty("Url", out urlValue);
+        Require(hasUrl && urlValue.ValueKind == JsonValueKind.String);
+        var url = urlValue.GetString()!;
+        using var receipt = JsonDocument.Parse(returned ?? "null");
+        UniqueObject(receipt.RootElement);
+        Require(receipt.RootElement.TryGetProperty("message", out var message) && message.ValueKind == JsonValueKind.String
+            && message.GetString() == CompletionMessage(url) && publications.Length == 1 && publications[0].RecipeId == recipeId);
+        var (capture, candidate) = RecipeFilePublicationStore.ReadOriginalPublication(publications[0]);
+        Require(candidate.SourceKind == "web" && candidate.RecipeJson is null && candidate.SourceContext is not null);
+        var context = JsonSerializer.Deserialize<WebContext>(candidate.SourceContext!, JsonDefaults.CaseInsensitive) ?? new();
+        var info = JsonSerializer.Deserialize<RecipeInfo>(capture.Files["recipe.info"]!, JsonDefaults.CamelCase)
+            ?? throw new InvalidDataException("Original web acquisition metadata is absent.");
+        info.Name = ContextName(context, url);
+        info.SourceUrl = url;
+        var files = candidate.SourceFiles ?? throw new InvalidDataException("Original web acquisition files are absent.");
+        Require(files.TryGetValue("original/content.html", out var html) && html is not null);
+        if (files.Count != 1)
+        {
+            var slots = new[] { "original/0.jpg", "original/0.jpeg", "original/0.png", "original/0.webp" };
+            Require(!string.IsNullOrWhiteSpace(context.HeroImageUrl) && files.Count == 5
+                && slots.All(files.ContainsKey) && slots.Count(path => files[path] is not null) == 1);
+            info.ImageCount = 1;
+            info.FinishedDishImageIndex = 0;
+        }
+        Require(CanonicalRecipeContentStore.NormalizeJson(JsonSerializer.Serialize(info, JsonDefaults.CamelCase))
+            == CanonicalRecipeContentStore.NormalizeJson(JsonSerializer.Serialize(candidate.Info, JsonDefaults.CamelCase)));
+        return recipeId;
+    }
+
+    private async Task ProcessUrlAsync(RecipePublicationCapture capture, string url, Guid operation, string input, CancellationToken ct)
+    {
+        var recipeId = capture.RecipeId;
         logger.LogInformation("Fetching content from {Url} for recipe {RecipeId}", url, recipeId);
 
         string? html = null;
@@ -78,18 +141,17 @@ public class WebAcquisitionAgent(
         if (string.IsNullOrWhiteSpace(context.Name))
         {
             logger.LogWarning("Failed to extract recipe name from {Url}. Using URL host as fallback.", url);
-            context.Name = "Recipe from " + new Uri(url).Host;
         }
+        context.Name = ContextName(context, url);
 
-        // 3. Update recipe info
-        RecipeInfo info;
-        try { info = await recipeRepository.GetInfoAsync(recipeId, ct); }
-        catch { info = new RecipeInfo { Id = recipeId }; }
-
+        var info = JsonSerializer.Deserialize<RecipeInfo>(capture.Files["recipe.info"]!, JsonDefaults.CamelCase)
+            ?? throw new InvalidDataException("Captured metadata is invalid.");
         info.Name = context.Name;
-        if (!string.IsNullOrWhiteSpace(context.Notes))
-            info.Notes = context.Notes;
-        await recipeRepository.SaveInfoAsync(info, ct);
+        // Acquired notes are source evidence, never a replacement for private notes.
+        var files = new Dictionary<string, byte[]?>(StringComparer.Ordinal)
+        {
+            ["original/content.html"] = System.Text.Encoding.UTF8.GetBytes(html ?? string.Empty)
+        };
 
         // 4. Download Hero Image if found
         if (!string.IsNullOrWhiteSpace(context.HeroImageUrl))
@@ -104,25 +166,23 @@ public class WebAcquisitionAgent(
                 var contentType = imageResponse.Content.Headers.ContentType?.MediaType ?? "image/jpeg";
 
                 // Save as the first original image (0.jpg/png/webp)
-                await recipeRepository.SaveOriginalImageAsync(recipeId, 0, contentType, imageBytes, ct);
+                var extension = contentType.ToLowerInvariant() switch { "image/png" => ".png", "image/webp" => ".webp", _ => ".jpg" };
+                foreach (var alternative in new[] { ".jpg", ".jpeg", ".png", ".webp" })
+                    files[$"original/0{alternative}"] = alternative == extension ? imageBytes : null;
 
                 info.ImageCount = 1;
                 info.FinishedDishImageIndex = 0;
-                await recipeRepository.SaveInfoAsync(info, ct);
-                logger.LogInformation("Successfully downloaded and saved hero image for {RecipeId}", recipeId);
+                logger.LogInformation("Downloaded and staged hero image for {RecipeId}", recipeId);
             }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
             catch (Exception ex)
             {
                 logger.LogError(ex, "Failed to download hero image from {ImageUrl} for recipe {RecipeId}", context.HeroImageUrl, recipeId);
             }
         }
 
-        // 5. Save HTML as a first-class artifact
-        await recipeRepository.SaveContentHtmlAsync(recipeId, html ?? string.Empty, ct);
-
-        // 6. Persist SourceUrl in recipe.info
         info.SourceUrl = url;
-        await recipeRepository.SaveInfoAsync(info, ct);
+        await publications.PublishAsync(capture, new(null, info, input, files, jsonResponse, SourceKind: "web"), operation, ct);
 
         logger.LogInformation("Finished web acquisition for {RecipeId}", recipeId);
     }

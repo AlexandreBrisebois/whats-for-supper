@@ -56,9 +56,10 @@ public class RecipeImportReportPostgresTests : IAsyncLifetime
         _db.Recipes.Add(recipe);
         await _db.SaveChangesAsync();
         var storage = new InMemoryStorageProvider();
+        await new RecipeRepository(storage).SaveInfoAsync(new RecipeInfo { Id = recipe.Id, Name = recipe.Name, SourceUrl = recipe.SourceUrl }, default);
         await storage.SaveAsync("workflows", "url-import.yaml", await File.ReadAllTextAsync(
             Path.Combine(AppContext.BaseDirectory, "src", "RecipeApi", "Workflows", "url-import.yaml")));
-        var service = new RecipeImportReportService(new RecipeApi.Services.SystemClock(), _db, new WorkflowOrchestrator(new RecipeApi.Services.SystemClock(), new WorkflowRepository(storage), _db));
+        var service = new RecipeImportReportService(new RecipeApi.Services.SystemClock(), _db, new WorkflowOrchestrator(new RecipeApi.Services.SystemClock(), new WorkflowRepository(storage), _db, RecipeApi.Tests.Infrastructure.TestPublicationStore.Create(_db, storage, new RecipeApi.Services.SystemClock())));
         var feedback = new RecipeImportIssueRequest { Reasons = ["ingredients"], Note = "Check amounts" };
         var started = await service.SubmitAsync(recipe.Id, member.Id, feedback);
         Assert.True(started.ReimportStarted);

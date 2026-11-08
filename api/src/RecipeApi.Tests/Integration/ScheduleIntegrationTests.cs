@@ -527,11 +527,19 @@ public class ScheduleIntegrationTests : IAsyncLifetime
     // Planner Grocery Persistence Tests
     // ──────────────────────────────────────────────────────────────────────────────
 
+    private async Task<string> CheckPersistedRowAsync(DateOnly monday)
+    {
+        var plan = await ReloadWeeklyPlanAsync(monday);
+        var row = Assert.Single(ReadGroceryItems(plan));
+        await _service.MutateGroceryItemAsync(0, new(Guid.Parse(row.RowId), monday, row.RowVersion, true, Guid.NewGuid()), reference: monday);
+        return row.RowId;
+    }
+
     [Fact]
     public async Task AssignRecipe_RecomputesPersistedGroceryItems_AndPreservesGroceryState()
     {
         var monday = GetWeekMonday();
-        const string groceryState = "{\"assign-carrots\":true}";
+        const string groceryState = "{}";
         _db.WeeklyPlans.Add(new WeeklyPlan
         {
             Id = Guid.NewGuid(),
@@ -551,7 +559,7 @@ public class ScheduleIntegrationTests : IAsyncLifetime
         await _service.AssignRecipeAsync(new AssignScheduleDto(0, 0, recipeId));
 
         var reloaded = await ReloadWeeklyPlanAsync(monday);
-        Assert.Equal(groceryState, reloaded.GroceryState);
+        Assert.All(JsonSerializer.Deserialize<Dictionary<string, bool>>(reloaded.GroceryState)!.Values, value => Assert.False(value));
         Assert.Contains(ReadGroceryItems(reloaded), item => item.NormalizedKey == "assign carrots" && item.RecipeIds.Contains(recipeId));
     }
 
@@ -559,7 +567,7 @@ public class ScheduleIntegrationTests : IAsyncLifetime
     public async Task RemoveRecipe_RecomputesPersistedGroceryItems_AndPreservesGroceryState()
     {
         var monday = GetWeekMonday();
-        const string groceryState = "{\"remove-onions\":true}";
+        const string groceryState = "{}";
         var recipeId = Guid.NewGuid();
         _db.WeeklyPlans.Add(new WeeklyPlan
         {
@@ -584,6 +592,7 @@ public class ScheduleIntegrationTests : IAsyncLifetime
         await _db.SaveChangesAsync();
 
         await _scope.ServiceProvider.GetRequiredService<GroceryRecomputeService>().RecomputeForWeekAsync(monday, CancellationToken.None);
+        await CheckPersistedRowAsync(monday);
         await _service.RemoveRecipeAsync(monday);
 
         var reloaded = await ReloadWeeklyPlanAsync(monday);
@@ -595,7 +604,7 @@ public class ScheduleIntegrationTests : IAsyncLifetime
     public async Task SameWeekMove_PreservesPersistedGroceryItems_AndGroceryState()
     {
         var monday = GetWeekMonday();
-        const string groceryState = "{\"same-week-peppers\":true}";
+        const string groceryState = "{}";
         var recipeId = Guid.NewGuid();
         _db.WeeklyPlans.Add(new WeeklyPlan
         {
@@ -620,10 +629,12 @@ public class ScheduleIntegrationTests : IAsyncLifetime
         await _db.SaveChangesAsync();
 
         await _scope.ServiceProvider.GetRequiredService<GroceryRecomputeService>().RecomputeForWeekAsync(monday, CancellationToken.None);
+        var checkedRow = await CheckPersistedRowAsync(monday);
         await _service.MoveScheduleEventAsync(new MoveScheduleDto(0, recipeId, 1, "swap", FromIndex: 0));
 
         var reloaded = await ReloadWeeklyPlanAsync(monday);
-        Assert.Equal(groceryState, reloaded.GroceryState);
+        Assert.True(JsonSerializer.Deserialize<Dictionary<string, bool>>(reloaded.GroceryState)![checkedRow]);
+        Assert.Equal(checkedRow, Assert.Single(ReadGroceryItems(reloaded)).RowId);
         Assert.Contains(ReadGroceryItems(reloaded), item => item.NormalizedKey == "same week peppers" && item.RecipeIds.Contains(recipeId));
     }
 
@@ -632,8 +643,8 @@ public class ScheduleIntegrationTests : IAsyncLifetime
     {
         var sourceMonday = GetWeekMonday();
         var targetMonday = GetWeekMonday(1);
-        const string sourceState = "{\"cross-week-cabbage\":true}";
-        const string targetState = "{\"target-state\":false}";
+        const string sourceState = "{}";
+        const string targetState = "{}";
         var recipeId = Guid.NewGuid();
         _db.WeeklyPlans.AddRange(
             new WeeklyPlan { Id = Guid.NewGuid(), WeekStartDate = sourceMonday, GroceryState = sourceState, GroceryItems = "[]" },
@@ -654,13 +665,16 @@ public class ScheduleIntegrationTests : IAsyncLifetime
         await _db.SaveChangesAsync();
 
         await _scope.ServiceProvider.GetRequiredService<GroceryRecomputeService>().RecomputeForWeekAsync(sourceMonday, CancellationToken.None);
+        var sourceRow = await CheckPersistedRowAsync(sourceMonday);
         await _service.MoveScheduleEventAsync(new MoveScheduleDto(0, recipeId, 0, "swap", TargetWeekOffset: 1, FromIndex: 0));
 
         var source = await ReloadWeeklyPlanAsync(sourceMonday);
         var target = await ReloadWeeklyPlanAsync(targetMonday);
         Assert.Equal(sourceState, source.GroceryState);
         Assert.Empty(ReadGroceryItems(source));
-        Assert.Equal(targetState, target.GroceryState);
+        var targetRow = Assert.Single(ReadGroceryItems(target));
+        Assert.NotEqual(sourceRow, targetRow.RowId);
+        Assert.False(JsonSerializer.Deserialize<Dictionary<string, bool>>(target.GroceryState)![targetRow.RowId]);
         Assert.Contains(ReadGroceryItems(target), item => item.NormalizedKey == "cross week cabbage" && item.RecipeIds.Contains(recipeId));
     }
 
@@ -1141,10 +1155,6 @@ public class ScheduleIntegrationTests : IAsyncLifetime
         await _db.SaveChangesAsync();
 
         var publisherMock = new Mock<IScheduleEventPublisher>();
-        var processor = new RecipeReadyProcessor(
-            new RecipeApi.Services.SystemClock(), _db,
-            NullLogger<RecipeReadyProcessor>.Instance,
-            publisherMock.Object);
 
         var task = new WorkflowTask
         {
@@ -1160,6 +1170,7 @@ public class ScheduleIntegrationTests : IAsyncLifetime
         };
 
         // Act
+        var processor = await RecipeApi.Tests.Services.RecipeServingsTests.ReadyProcessor(_db, task, publisherMock.Object);
         await processor.ExecuteAsync(task, CancellationToken.None);
 
         // Assert: PublishRecipeReadyAsync called with the correct recipeId
@@ -1186,10 +1197,6 @@ public class ScheduleIntegrationTests : IAsyncLifetime
         await _db.SaveChangesAsync();
 
         var publisherMock = new Mock<IScheduleEventPublisher>();
-        var processor = new RecipeReadyProcessor(
-            new RecipeApi.Services.SystemClock(), _db,
-            NullLogger<RecipeReadyProcessor>.Instance,
-            publisherMock.Object);
 
         var task = new WorkflowTask
         {
@@ -1205,6 +1212,7 @@ public class ScheduleIntegrationTests : IAsyncLifetime
         };
 
         // Act
+        var processor = await RecipeApi.Tests.Services.RecipeServingsTests.ReadyProcessor(_db, task, publisherMock.Object);
         await processor.ExecuteAsync(task, CancellationToken.None);
 
         // Assert: enriched payload — name and imageUrl are included

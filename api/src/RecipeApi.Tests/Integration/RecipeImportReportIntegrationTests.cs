@@ -232,8 +232,8 @@ public class RecipeImportReportIntegrationTests : IAsyncLifetime
     {
         var recipeId = await SeedRecipeAsync(imageCount: 1);
         _factory.WorkflowOrchestratorMock
-            .Setup(orchestrator => orchestrator.TriggerAsync(
-                It.IsAny<string>(), It.IsAny<Dictionary<string, string>>(), It.IsAny<DateTimeOffset?>()))
+            .Setup(orchestrator => orchestrator.TriggerReportAsync(
+                It.IsAny<Guid>(), recipeId, It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()))
             .ThrowsAsync(new InvalidOperationException("workflow unavailable"));
 
         var response = await SubmitAsync(recipeId, new { reasons = new[] { "ingredients" }, note = "Check quantities" });

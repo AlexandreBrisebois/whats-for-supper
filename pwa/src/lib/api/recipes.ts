@@ -9,6 +9,7 @@ import { usePlannerStore } from '@/store/plannerStore';
 import { getFamilyMemberIdCookie } from '@/lib/identity/cookie';
 
 import { ImportReportRequestBuilderRequestsMetadata } from './generated/api/recipes/item/importReport';
+import type { OriginalsPostResponse } from './generated/api/recipes/item/originals';
 import { createRecipeImportReportSubmissionResponseDtoFromDiscriminatorValue } from './generated/models';
 import { RecipeShareInfoDto_bundleSourceObject } from './generated/models/index';
 import type {
@@ -16,6 +17,9 @@ import type {
   IngredientPreview,
   ImportedRecipeDto,
   RecipeDto,
+  RecipeIngredientLine,
+  RecipeInstructionSection,
+  UpdateRecipeDto,
   RecipeShareBundleDto,
   RecipeShareInfoDto_bundleSource,
   UpdateRecipeDto_mealTypes,
@@ -40,6 +44,10 @@ export interface Recipe {
   rating: number;
   notes?: string | null;
   isDiscoverable?: boolean;
+  contentSchemaVersion?: number | null;
+  contentRevision?: string | null;
+  ingredientLines?: RecipeIngredientLine[] | null;
+  instructionSections?: RecipeInstructionSection[] | null;
   ingredients?: string[];
   servings?: number | null;
   isVegetarian?: boolean;
@@ -158,6 +166,12 @@ function unwrapUntypedNode(node: any): any {
   return node;
 }
 
+// Kiota's object factory can represent a wire null as an empty object.
+// Normalize those optional facts before they become an editable saved snapshot.
+function nullableFact<T extends object>(value: T | null | undefined): T | null {
+  return value && Object.keys(value).length > 0 ? value : null;
+}
+
 function mapToRecipe(dto: RecipeDto): Recipe {
   const recipeInstructions = unwrapUntypedNode(dto.recipeInstructions);
 
@@ -171,6 +185,15 @@ function mapToRecipe(dto: RecipeDto): Recipe {
     rating: dto.rating || 0,
     notes: dto.notes ?? null,
     isDiscoverable: dto.isDiscoverable ?? false,
+    contentSchemaVersion: dto.contentSchemaVersion,
+    contentRevision: dto.contentRevision,
+    ingredientLines: dto.ingredientLines?.map((row) => ({
+      ...row,
+      amount: nullableFact(row.amount),
+      unit: nullableFact(row.unit),
+      packageEscaped: nullableFact(row.packageEscaped),
+    })),
+    instructionSections: dto.instructionSections,
     ingredients: dto.ingredients ?? [],
     servings: dto.servings ?? null,
     isVegetarian: dto.isVegetarian ?? false,
@@ -484,7 +507,7 @@ export async function getRecipeImportStatus(importId: string): Promise<RecipeImp
   };
 }
 
-export async function uploadRecipeOriginal(id: string, file: File): Promise<{ id: string }> {
+export async function uploadRecipeOriginal(id: string, file: File): Promise<{ id: number }> {
   const familyMemberId = useFamilyStore.getState().selectedFamilyMemberId;
   const formData = new FormData();
   formData.append('file', file);
@@ -501,9 +524,11 @@ export async function uploadRecipeOriginal(id: string, file: File): Promise<{ id
     throw new Error(`Failed to upload photo: ${response.statusText}`);
   }
 
-  const result = await response.json();
+  const result: OriginalsPostResponse = await response.json();
+  if (typeof result.data?.id !== 'number')
+    throw new Error('Upload response is missing its image index.');
   return {
-    id: result?.id || '',
+    id: result.data.id,
   };
 }
 
@@ -758,6 +783,9 @@ async function readFileAsText(file: File): Promise<string> {
 export async function updateRecipe(
   id: string,
   updates: {
+    expectedContentRevision?: string;
+    ingredientLines?: UpdateRecipeDto['ingredientLines'];
+    instructionSections?: UpdateRecipeDto['instructionSections'];
     servings?: number;
     name?: string;
     description?: string;
@@ -769,8 +797,11 @@ export async function updateRecipe(
     cuisineType?: string | null;
     mealTypes?: UpdateRecipeDto_mealTypes[] | null;
   }
-): Promise<void> {
-  await apiClient.api.recipes.byId(id as any).patch({
+): Promise<Recipe | void> {
+  const result = await apiClient.api.recipes.byId(id as any).patch({
+    expectedContentRevision: updates.expectedContentRevision,
+    ingredientLines: updates.ingredientLines,
+    instructionSections: updates.instructionSections,
     servings: updates.servings,
     name: updates.name,
     description: updates.description,
@@ -787,6 +818,7 @@ export async function updateRecipe(
     cuisineType: updates.cuisineType,
     mealTypes: updates.mealTypes,
   });
+  return result?.recipe ? mapToRecipe(result.recipe) : undefined;
 }
 
 export class RecipeSearchRequestError extends Error {

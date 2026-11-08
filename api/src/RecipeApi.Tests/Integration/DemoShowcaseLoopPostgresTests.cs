@@ -110,8 +110,15 @@ public partial class DemoShowcaseLoopPostgresTests : IAsyncLifetime
         var store = scope.ServiceProvider.GetRequiredService<IRecipeStore>();
         await store.SaveSourcePdfAsync(recipe.Id, new MemoryStream([1, 2, 3]));
         await store.SaveHeroImageAsync(recipe.Id, new MemoryStream([4, 5, 6]));
+        db.RecipeRepairIntents.Add(new RecipeRepairIntent
+        {
+            Id = Guid.NewGuid(), RecipeId = recipe.Id, Payload = "{\"privateFeedback\":\"Synthetic feedback\"}",
+            InputHash = new string('0', 64), CreatedAt = DateTimeOffset.UtcNow
+        });
+        await db.SaveChangesAsync();
         await service.CaptureDemoStateAsync();
-        _ = SelectedBaseline(scope);
+        var baseline = SelectedBaseline(scope);
+        Assert.Equal("[]", await File.ReadAllTextAsync(Path.Combine(baseline, "tables", "recipe_repair_intents.json")));
         recipe.Name = "Visitor edit";
         (await db.FeatureFlagOverrides.SingleAsync()).Enabled = true;
         (await db.IngredientCategories.SingleAsync()).GrocerySection = "Grocery";
@@ -137,6 +144,7 @@ public partial class DemoShowcaseLoopPostgresTests : IAsyncLifetime
         Assert.Empty(await db.CalendarEvents.ToListAsync());
         Assert.Empty(await db.RecipeVotes.ToListAsync());
         Assert.Empty(await db.RecipeImportReports.ToListAsync());
+        Assert.Empty(await db.RecipeRepairIntents.ToListAsync());
         Assert.False((await db.FeatureFlagOverrides.SingleAsync()).Enabled);
         Assert.Equal("Pantry", (await db.IngredientCategories.SingleAsync()).GrocerySection);
         Assert.Equal("family_goto", (await db.FamilySettings.SingleAsync()).Key);

@@ -125,6 +125,7 @@ const projection = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  sessionStorage.clear();
   useWeekStore.setState({ schedule: [], groceryRefresh: undefined });
   useRecipeNotesStore.setState({ drafts: {} });
   mockGetRecipe.mockResolvedValue(recipe);
@@ -727,5 +728,375 @@ describe('simplified detail preview controls', () => {
     expect(screen.getByTestId('recipe-prepared-portions')).toHaveTextContent('Prepared 7 portions');
     expect(mockUpdateRecipe).not.toHaveBeenCalled();
     expect(props.onUseForDay).not.toHaveBeenCalled();
+  });
+});
+
+describe('canonical original ingredient editing', () => {
+  const canonical = {
+    ...recipe,
+    contentSchemaVersion: 2,
+    contentRevision: 'original-revision',
+    servings: 4,
+    ingredients: ['200 g pasta', '100 ml sauce'],
+    ingredientLines: [
+      {
+        id: '550e8400-e29b-41d4-a716-446655440211',
+        description: 'pasta',
+        amount: { kind: 'scalar', value: { n: '200', d: '1' } },
+        amountText: '200',
+        unit: { text: 'g', definitionId: null },
+        scaling: 'proportional',
+        packageEscaped: null,
+        shopping: { name: 'pasta', foodId: null, mappingRevision: null },
+      },
+      {
+        id: '550e8400-e29b-41d4-a716-446655440212',
+        description: 'sauce',
+        amount: { kind: 'scalar', value: { n: '100', d: '1' } },
+        amountText: '100',
+        unit: { text: 'ml', definitionId: null },
+        scaling: 'proportional',
+        packageEscaped: null,
+        shopping: { name: 'sauce', foodId: null, mappingRevision: null },
+      },
+    ],
+  };
+  async function edit() {
+    fireEvent.click(screen.getByTestId('action-gear-menu'));
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+    return screen.findByTestId('recipe-edit-amount-0');
+  }
+  it('edits original separate facts and installs authoritative returned content', async () => {
+    mockGetRecipe.mockResolvedValue(canonical);
+    mockUpdateRecipe.mockResolvedValue({
+      ...canonical,
+      name: 'Authoritative saved name',
+      contentRevision: 'saved-revision',
+      ingredients: ['250 g pasta', '100 ml sauce'],
+    });
+    render(<RecipeDetailSheet {...props} />);
+    await screen.findByTestId('recipe-detail-name');
+    const amount = await edit();
+    expect(amount).toHaveValue('200');
+    expect(screen.getByTestId('recipe-edit-unit-0')).toHaveValue('g');
+    expect(screen.getByTestId('recipe-edit-ingredient-0')).toHaveValue('pasta');
+    fireEvent.change(amount, { target: { value: '250' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    await waitFor(() =>
+      expect(mockUpdateRecipe).toHaveBeenCalledWith(
+        id,
+        expect.objectContaining({
+          expectedContentRevision: 'original-revision',
+          ingredientLines: [
+            expect.objectContaining({
+              id: canonical.ingredientLines[0].id,
+              amountText: '250',
+              amount: { kind: 'scalar', value: { n: '250', d: '1' } },
+            }),
+            expect.objectContaining({ id: canonical.ingredientLines[1].id, amountText: '100' }),
+          ],
+        })
+      )
+    );
+    expect(mockUpdateRecipe.mock.calls[0][1]).not.toHaveProperty('ingredients');
+    await waitFor(() =>
+      expect(screen.getByTestId('recipe-detail-name')).toHaveTextContent('Authoritative saved name')
+    );
+    expect(screen.getByText('250 g pasta')).toBeVisible();
+  });
+  it('installs independently changed household feedback from the authoritative Save response', async () => {
+    mockGetRecipe.mockResolvedValue({ ...canonical, rating: 0, isDiscoverable: true });
+    mockUpdateRecipe.mockResolvedValue({
+      ...canonical,
+      rating: 3,
+      isDiscoverable: false,
+      contentRevision: 'saved-feedback',
+    });
+    render(<RecipeDetailSheet {...props} />);
+    await screen.findByTestId('recipe-detail-name');
+    fireEvent.change(await edit(), { target: { value: '250' } });
+    fireEvent.click(screen.getByTestId('recipe-save-edits'));
+    await waitFor(() =>
+      expect(screen.queryByTestId('recipe-edit-amount-0')).not.toBeInTheDocument()
+    );
+    expect(
+      within(screen.getByTestId('recipe-rating-selector')).getByRole('button', { name: 'Love' })
+    ).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByTestId('action-toggle-discovery')).toHaveAttribute('aria-pressed', 'false');
+  });
+  it('retains every draft on a failed or lost save and requires reconciliation before retry', async () => {
+    mockGetRecipe.mockResolvedValue(canonical);
+    mockUpdateRecipe.mockRejectedValue(new Error('Reply lost after possible commit'));
+    render(<RecipeDetailSheet {...props} />);
+    await screen.findByTestId('recipe-detail-name');
+    fireEvent.change(await edit(), { target: { value: '⅓' } });
+    fireEvent.change(screen.getByTestId('recipe-edit-name-input'), {
+      target: { value: 'Draft name' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    await screen.findByText('Could not save changes. Try again.');
+    expect(screen.getByTestId('recipe-edit-amount-0')).toHaveValue('⅓');
+    expect(screen.getByTestId('recipe-edit-name-input')).toHaveValue('Draft name');
+    expect(screen.getByRole('button', { name: 'Save changes' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Check saved recipe' }));
+    await waitFor(() => expect(mockGetRecipe).toHaveBeenCalledTimes(2));
+    expect(screen.getByTestId('recipe-edit-amount-0')).toHaveValue('⅓');
+    expect(screen.getByRole('button', { name: 'Save changes' })).toBeEnabled();
+  });
+  it('uses the canonical saved basis with its rows when a dated projection has an older basis', async () => {
+    mockGetRecipe.mockResolvedValue(canonical);
+    render(
+      <RecipeDetailSheet
+        {...props}
+        ingredientContext={{ context: 'proposed', supperDate: '2026-10-14' }}
+      />
+    );
+    await screen.findByTestId('recipe-ingredient-projection');
+    await edit();
+    expect(screen.getByTestId('recipe-edit-servings-input')).toHaveValue('4');
+    expect(screen.getByTestId('recipe-edit-amount-0')).toHaveValue('200');
+  });
+  it('recovers every field after unmount and rereads before a recovered draft can save', async () => {
+    mockGetRecipe.mockResolvedValue(canonical);
+    const first = render(<RecipeDetailSheet {...props} />);
+    await screen.findByTestId('recipe-detail-name');
+    fireEvent.change(await edit(), { target: { value: '⅓–½' } });
+    for (const [field, value] of Object.entries({
+      name: 'Unsaved name',
+      description: '',
+      cuisine: 'Quebec',
+      servings: '6',
+    }))
+      fireEvent.change(screen.getByTestId(`recipe-edit-${field}-input`), { target: { value } });
+    fireEvent.change(screen.getByTestId('recipe-edit-unit-0'), { target: { value: '' } });
+    fireEvent.change(screen.getByTestId('recipe-edit-ingredient-0'), {
+      target: { value: 'Fresh pasta' },
+    });
+    fireEvent.change(screen.getAllByRole('textbox', { name: 'Shopping name' })[0], {
+      target: { value: 'Family pasta' },
+    });
+    fireEvent.click(
+      screen.getAllByRole('checkbox', { name: 'Keep amount fixed when portions change' })[0]
+    );
+    fireEvent.click(screen.getByTestId('recipe-edit-meal-type-pill-lunch'));
+    fireEvent.click(screen.getByTestId('recipe-remove-ingredient-1'));
+    fireEvent.click(screen.getByRole('button', { name: 'Add ingredient' }));
+    fireEvent.change(screen.getByTestId('recipe-edit-ingredient-1'), {
+      target: { value: 'Basil leaves' },
+    });
+    first.unmount();
+    render(<RecipeDetailSheet {...props} />);
+    expect(await screen.findByTestId('recipe-edit-amount-0')).toHaveValue('⅓–½');
+    expect(screen.getByTestId('recipe-edit-name-input')).toHaveValue('Unsaved name');
+    expect(screen.getByTestId('recipe-edit-description-input')).toHaveValue('');
+    expect(screen.getByTestId('recipe-edit-cuisine-input')).toHaveValue('Quebec');
+    expect(screen.getByTestId('recipe-edit-servings-input')).toHaveValue('6');
+    expect(screen.getByTestId('recipe-edit-unit-0')).toHaveValue('');
+    expect(screen.getByTestId('recipe-edit-ingredient-1')).toHaveValue('Basil leaves');
+    expect(screen.getAllByRole('textbox', { name: 'Shopping name' })[0]).toHaveValue(
+      'Family pasta'
+    );
+    expect(
+      screen.getAllByRole('checkbox', { name: 'Keep amount fixed when portions change' })[0]
+    ).toBeChecked();
+    expect(screen.getByTestId('recipe-edit-meal-type-pill-lunch')).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+    expect(screen.getByTestId('recipe-save-edits')).toBeDisabled();
+    expect(mockUpdateRecipe).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Check saved recipe' }));
+    await waitFor(() => expect(screen.getByTestId('recipe-save-edits')).toBeEnabled());
+  });
+
+  it('reconciles changed saved fields explicitly while preserving the original recovered draft', async () => {
+    mockGetRecipe.mockResolvedValue(canonical);
+    const first = render(<RecipeDetailSheet {...props} />);
+    await screen.findByTestId('recipe-detail-name');
+    fireEvent.change(await edit(), { target: { value: '250' } });
+    fireEvent.change(screen.getByTestId('recipe-edit-name-input'), {
+      target: { value: 'My name' },
+    });
+    first.unmount();
+    const current = {
+      ...canonical,
+      contentRevision: 'someone-else',
+      name: 'Their name',
+      description: 'Their description',
+      servings: 8,
+    };
+    mockGetRecipe.mockResolvedValue(current);
+    mockUpdateRecipe.mockResolvedValue({ ...current, name: 'My name' });
+    render(<RecipeDetailSheet {...props} />);
+    expect(await screen.findByTestId('recipe-edit-amount-0')).toHaveValue('250');
+    fireEvent.click(screen.getByRole('button', { name: 'Check saved recipe' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Reconcile draft' }));
+    expect(screen.getByTestId('recipe-save-edits')).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Keep my draft: Name' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Apply reviewed draft' }));
+    expect(screen.getByTestId('recipe-edit-amount-0')).toHaveValue('250');
+    expect(screen.getByTestId('recipe-edit-description-input')).toHaveValue('Their description');
+    expect(screen.getByTestId('recipe-edit-servings-input')).toHaveValue('8');
+    fireEvent.click(screen.getByTestId('recipe-save-edits'));
+    await waitFor(() =>
+      expect(mockUpdateRecipe).toHaveBeenCalledWith(
+        id,
+        expect.objectContaining({
+          expectedContentRevision: 'someone-else',
+          name: 'My name',
+          description: 'Their description',
+          servings: 8,
+        })
+      )
+    );
+  });
+
+  it('discards persisted field drafts only on explicit Cancel or acknowledged Save', async () => {
+    mockGetRecipe.mockResolvedValue(canonical);
+    const first = render(<RecipeDetailSheet {...props} />);
+    await screen.findByTestId('recipe-detail-name');
+    fireEvent.change(await edit(), { target: { value: '250' } });
+    fireEvent.click(screen.getByTestId('recipe-cancel-edits'));
+    first.unmount();
+    render(<RecipeDetailSheet {...props} />);
+    await screen.findByTestId('recipe-detail-name');
+    expect(screen.queryByTestId('recipe-edit-amount-0')).not.toBeInTheDocument();
+    expect(await edit()).toHaveValue('200');
+  });
+
+  it('prevents further field edits while an acknowledged Save is pending', async () => {
+    mockGetRecipe.mockResolvedValue(canonical);
+    let finish!: (saved: Recipe) => void;
+    mockUpdateRecipe.mockImplementation(
+      () =>
+        new Promise<Recipe>((resolve) => {
+          finish = resolve;
+        })
+    );
+    render(<RecipeDetailSheet {...props} />);
+    await screen.findByTestId('recipe-detail-name');
+    fireEvent.change(await edit(), { target: { value: '250' } });
+    fireEvent.click(screen.getByTestId('recipe-save-edits'));
+    expect(screen.getByTestId('recipe-edit-amount-0')).toBeDisabled();
+    expect(screen.getByTestId('recipe-edit-name-input')).toBeDisabled();
+    expect(screen.getByTestId('recipe-edit-meal-type-pill-lunch')).toBeDisabled();
+    await act(async () => finish({ ...canonical, contentRevision: 'saved' } as Recipe));
+  });
+
+  it('recovers an uncertain save after reload without sending another write', async () => {
+    mockGetRecipe.mockResolvedValue(canonical);
+    mockUpdateRecipe.mockRejectedValue(new Error('Lost committed response'));
+    const first = render(<RecipeDetailSheet {...props} />);
+    await screen.findByTestId('recipe-detail-name');
+    fireEvent.change(await edit(), { target: { value: '250' } });
+    fireEvent.click(screen.getByTestId('recipe-save-edits'));
+    await screen.findByText('Could not save changes. Try again.');
+    first.unmount();
+    mockGetRecipe.mockResolvedValue({ ...canonical, contentRevision: 'committed-response-lost' });
+    render(<RecipeDetailSheet {...props} />);
+    expect(await screen.findByTestId('recipe-edit-amount-0')).toHaveValue('250');
+    expect(mockUpdateRecipe).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('recipe-save-edits')).toBeDisabled();
+  });
+
+  it('ignores an older reconciliation read after a newer saved revision was observed', async () => {
+    mockGetRecipe.mockResolvedValue(canonical);
+    mockUpdateRecipe.mockRejectedValue(new Error('Uncertain save'));
+    render(<RecipeDetailSheet {...props} />);
+    await screen.findByTestId('recipe-detail-name');
+    fireEvent.change(await edit(), { target: { value: '250' } });
+    fireEvent.click(screen.getByTestId('recipe-save-edits'));
+    await screen.findByText('Could not save changes. Try again.');
+    let oldReply!: (value: Recipe) => void;
+    mockGetRecipe.mockImplementationOnce(
+      () =>
+        new Promise<Recipe>((resolve) => {
+          oldReply = resolve;
+        })
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Check saved recipe' }));
+    mockGetRecipe.mockResolvedValueOnce({
+      ...canonical,
+      name: 'New current name',
+      contentRevision: 'new-current',
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Check saved recipe' }));
+    await screen.findByText('New current name');
+    await act(async () => oldReply(canonical as Recipe));
+    expect(screen.getByText('New current name')).toBeInTheDocument();
+    expect(screen.getByTestId('recipe-save-edits')).toBeDisabled();
+    expect(screen.getByTestId('recipe-edit-amount-0')).toHaveValue('250');
+  });
+  it('retires the old dated projection when a lost-save reread is explicitly accepted with Cancel', async () => {
+    mockGetRecipe.mockResolvedValue(canonical);
+    mockUpdateRecipe.mockRejectedValue(new Error('Committed response lost'));
+    render(
+      <RecipeDetailSheet
+        {...props}
+        ingredientContext={{ context: 'proposed', supperDate: '2026-10-14' }}
+      />
+    );
+    await screen.findByTestId('recipe-detail-name');
+    await screen.findByTestId('recipe-ingredient-projection');
+    fireEvent.change(await edit(), { target: { value: '250' } });
+    fireEvent.click(screen.getByTestId('recipe-save-edits'));
+    await screen.findByText('Could not save changes. Try again.');
+    mockGetRecipe.mockResolvedValue({
+      ...canonical,
+      contentRevision: 'committed-current',
+      ingredients: ['250 g pasta', '100 ml sauce'],
+      ingredientLines: [
+        {
+          ...canonical.ingredientLines[0],
+          amountText: '250',
+          amount: { kind: 'scalar', value: { n: '250', d: '1' } },
+        },
+        canonical.ingredientLines[1],
+      ],
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Check saved recipe' }));
+    await screen.findByRole('button', { name: 'Reconcile draft' });
+    mockGetIngredientProjection.mockResolvedValue({
+      ...projection,
+      lines: [{ ...projection.lines[0], originalText: '250 g pasta', quantity: 500 }],
+    });
+    fireEvent.click(screen.getByTestId('recipe-cancel-edits'));
+    await waitFor(() => expect(mockGetIngredientProjection).toHaveBeenCalledTimes(2));
+    expect(screen.getByTestId('recipe-ingredient-projection')).toHaveTextContent('500 g pasta');
+    expect(mockUpdateRecipe).toHaveBeenCalledTimes(1);
+  });
+
+  it('retains a legacy full-editor draft through a canonical format upgrade without replaying its strings', async () => {
+    mockGetRecipe.mockResolvedValue(recipe);
+    mockUpdateRecipe.mockRejectedValue(new Error('Upgrade required'));
+    const first = render(<RecipeDetailSheet {...props} />);
+    await screen.findByTestId('recipe-detail-name');
+    fireEvent.click(screen.getByTestId('action-gear-menu'));
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+    fireEvent.change(screen.getByTestId('recipe-edit-name-input'), {
+      target: { value: 'Legacy name' },
+    });
+    fireEvent.change(screen.getByTestId('recipe-edit-ingredient-0'), {
+      target: { value: '250 g legacy pasta' },
+    });
+    fireEvent.click(screen.getByTestId('recipe-save-edits'));
+    await screen.findByText('Could not save changes. Try again.');
+    first.unmount();
+    mockGetRecipe.mockResolvedValue(canonical);
+    render(<RecipeDetailSheet {...props} />);
+    expect(await screen.findByTestId('recipe-edit-ingredient-0')).toHaveValue('250 g legacy pasta');
+    expect(screen.getByTestId('recipe-edit-name-input')).toHaveValue('Legacy name');
+    fireEvent.click(screen.getByRole('button', { name: 'Check saved recipe' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Reconcile draft' }));
+    expect(screen.getByText('250 g legacy pasta')).toBeVisible();
+    expect(
+      screen.queryByRole('button', { name: 'Keep my draft: Ingredients' })
+    ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Use currently saved: Ingredients' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Apply reviewed draft' }));
+    expect(screen.getByTestId('recipe-edit-amount-0')).toHaveValue('200');
+    expect(screen.getByTestId('recipe-edit-name-input')).toHaveValue('Legacy name');
+    expect(screen.getByText('Original recovered draft')).toBeInTheDocument();
+    expect(mockUpdateRecipe).toHaveBeenCalledTimes(1);
   });
 });

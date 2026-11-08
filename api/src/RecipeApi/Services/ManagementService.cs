@@ -62,7 +62,14 @@ public partial class ManagementService(
     {
         await using var snapshotTransaction = await VotingBoundary.BeginAsync(db);
         if (db.Database.IsRelational())
-            await db.Database.ExecuteSqlRawAsync("LOCK TABLE recipes IN SHARE MODE");
+            // EXCLUSIVE also drains cooperating FOR UPDATE/SHARE file publishers.
+            // SHARE alone excludes SQL updates but still permits their row-lock phase.
+            // Ordinary SELECT reads remain available during this existing backup boundary.
+            await db.Database.ExecuteSqlRawAsync("LOCK TABLE recipes IN EXCLUSIVE MODE");
+        if (await db.RecipePhysicalDeletions.AsNoTracking().AnyAsync(x => x.CompletedAt == null))
+            throw new RecoveryBusyException("Complete or reconcile pending recipe physical retirement before backing up live recipe files.");
+        if (await db.RecipeFilePublications.AsNoTracking().AnyAsync(x => !x.Delivered))
+            throw new RecoveryBusyException("Complete or reconcile pending recipe file publication before backing up live recipe files.");
         // 1. Refresh current member values and membership, including an empty household.
         var dbMembers = await db.FamilyMembers.AsNoTracking().ToListAsync();
         await WriteJsonAsync(Path.Combine(DataRoot, "family-members.json"), dbMembers, CancellationToken.None);
@@ -322,17 +329,42 @@ public partial class ManagementService(
                 && i.UpdatedAt < cutoff)
             .ToListAsync(ct);
 
-        var taskCount = instances.Sum(i => i.Tasks.Count);
-        db.WorkflowInstances.RemoveRange(instances);
-        await db.SaveChangesAsync(ct);
+        var taskCount = 0;
+        var instanceCount = 0;
+        foreach (var candidate in instances)
+        {
+            await using var transaction = db.Database.IsRelational() ? await db.Database.BeginTransactionAsync(ct) : null;
+            try
+            {
+                var instance = await WorkflowLifecycle.LoadLockedAsync(db, candidate.Id, ct);
+                if (instance is null || instance.Status is not (WorkflowStatus.Completed or WorkflowStatus.Failed) || instance.UpdatedAt >= cutoff)
+                    continue;
+                await WorkflowLifecycle.RetainAsync(db, instance, "pruned", Guid.NewGuid(), clock.UtcNow, ct);
+                taskCount += instance.Tasks.Count;
+                db.WorkflowInstances.Remove(instance);
+                await db.SaveChangesAsync(ct);
+                if (transaction is not null) await transaction.CommitAsync(ct);
+                instanceCount++;
+            }
+            catch
+            {
+                if (transaction is not null)
+                {
+                    try { await transaction.RollbackAsync(CancellationToken.None); } catch { /* Reconcile without compensation. */ }
+                    await transaction.DisposeAsync();
+                }
+                await WorkflowLifecycle.ReloadAttemptAsync(db, candidate.Id);
+                throw;
+            }
+        }
 
         logger.LogInformation(
             "Pruned {InstanceCount} workflow instances and {TaskCount} workflow tasks older than {Cutoff}",
-            instances.Count,
+            instanceCount,
             taskCount,
             cutoff);
 
-        return new WorkflowPruneResult(instances.Count, taskCount);
+        return new WorkflowPruneResult(instanceCount, taskCount);
     }
 
     public async Task<MaintenanceCommandBatchResult> ProcessMaintenanceCommandsAsync(CancellationToken ct = default)
@@ -398,8 +430,14 @@ public partial class ManagementService(
             ? await db.Database.BeginTransactionAsync(ct)
             : null;
 
+        var operationId = Guid.NewGuid();
+        var attempted = new HashSet<Guid>();
         try
         {
+            // Drain terminal writers before observing final command/result facts.
+            // Keep the same bounded batch and completion-clock policy.
+            if (db.Database.IsNpgsql())
+                await db.Database.ExecuteSqlRawAsync("LOCK TABLE maintenance_commands IN SHARE ROW EXCLUSIVE MODE", ct);
             // Legacy terminal rows and recovery-invalidated rows from older releases did
             // not always have a completion time. Start their retention clock now rather
             // than treating an old creation time as evidence that they are safe to erase.
@@ -412,7 +450,13 @@ public partial class ManagementService(
                 .Take(batchSize)
                 .ToListAsync(ct);
             foreach (var command in missingCompletionTimes)
+            {
+                attempted.Add(command.Id);
+                if (db.Database.IsRelational()) await db.Entry(command).ReloadAsync(ct);
+                if (command.Status is not ("completed" or "skipped") || command.CompletedAt is not null) continue;
+                await MaintenanceCommandLifecycle.RetainAsync(db, command, "retention-started", operationId, now, ct);
                 command.CompletedAt = now;
+            }
 
             var expired = await db.MaintenanceCommands
                 .Where(c =>
@@ -424,7 +468,14 @@ public partial class ManagementService(
                 .Take(batchSize)
                 .ToListAsync(ct);
 
-            db.MaintenanceCommands.RemoveRange(expired);
+            foreach (var command in expired)
+            {
+                attempted.Add(command.Id);
+                if (db.Database.IsRelational()) await db.Entry(command).ReloadAsync(ct);
+                if (command.Status is not ("completed" or "skipped") || command.CompletedAt is null || command.CompletedAt > cutoff) continue;
+                await MaintenanceCommandLifecycle.RetainAsync(db, command, "pruned", operationId, now, ct);
+                db.MaintenanceCommands.Remove(command);
+            }
             await db.SaveChangesAsync(ct);
             if (transaction is not null)
             {
@@ -445,7 +496,11 @@ public partial class ManagementService(
         catch
         {
             if (transaction is not null)
-                await transaction.RollbackAsync(CancellationToken.None);
+            {
+                try { await transaction.RollbackAsync(CancellationToken.None); } catch { /* Read back an uncertain commit; never compensate. */ }
+                await transaction.DisposeAsync();
+            }
+            await MaintenanceCommandLifecycle.ReloadAttemptAsync(db, attempted);
             throw;
         }
     }
@@ -454,67 +509,85 @@ public partial class ManagementService(
     {
         var payload = JsonSerializer.Deserialize<DeleteFailedCaptureResiduePayload>(command.Payload, JsonDefaults.CamelCase)
             ?? new DeleteFailedCaptureResiduePayload();
-
-        if (payload.WorkflowInstanceId is Guid workflowInstanceId)
+        async Task RetireWorkflow()
         {
-            var workflow = await db.WorkflowInstances.FirstOrDefaultAsync(w => w.Id == workflowInstanceId, ct);
-            if (workflow is not null)
-                db.WorkflowInstances.Remove(workflow);
+            if (payload.WorkflowInstanceId is not Guid workflowId) return;
+            var workflow = await WorkflowLifecycle.LoadLockedAsync(db, workflowId, ct);
+            if (workflow is null) return;
+            await WorkflowLifecycle.RetainAsync(db, workflow, "cleared", command.Id, clock.UtcNow, ct, command);
+            db.WorkflowInstances.Remove(workflow);
         }
-
-        var status = "completed";
-        var reason = "deleted";
-        var filesDeleted = false;
-        var recipeDeleted = false;
-
-        if (payload.RecipeId is Guid recipeId)
+        try
         {
-            var recipe = await db.Recipes
-                .IgnoreQueryFilters()
-                .FirstOrDefaultAsync(r => r.Id == recipeId, ct);
-
-            if (recipe is null)
+            RecipePhysicalResult physical = new("no-recipe-id");
+            if (payload.RecipeId is Guid recipeId)
             {
-                reason = "recipe-not-found";
-            }
-            else if (RecipeIsReadyOrDiscoverable(recipe))
-            {
-                status = "skipped";
-                reason = "recipe-became-ready-or-discoverable";
-            }
-            else
-            {
-                var dir = Path.Combine(ActiveRecipesRoot, recipeId.ToString());
-                if (Directory.Exists(dir))
+                try
                 {
-                    Directory.Delete(dir, recursive: true);
-                    filesDeleted = true;
+                    physical = await RecipePhysicalLifecycle.DeleteAsync(db, recipeId, "failed-capture", clock, recipesRoot,
+                        recipe => !RecipeIsReadyOrDiscoverable(recipe),
+                        () => Task.FromResult<bool?>(LocalRecipeStore.DeleteDirectory(ActiveRecipesRoot, recipeId)),
+                        enlistRetirement: RetireWorkflow, command: command, ct: ct);
                 }
-
-                db.Recipes.Remove(recipe);
-                recipeDeleted = true;
+                catch
+                {
+                    // A lost final commit acknowledgement is reconciled only from
+                    // this original command's independently committed physical receipt.
+                    var receipt = await db.RecipePhysicalDeletions.AsNoTracking().SingleOrDefaultAsync(
+                        x => x.RecipeId == recipeId && x.OperationId == command.Id && x.CompletedAt != null, CancellationToken.None);
+                    if (receipt is null) throw;
+                    physical = RecipePhysicalLifecycle.CompletedResult(receipt, command);
+                }
             }
+            if (!physical.Deleted)
+            {
+                // Skipped/missing recipes retain the original workflow cleanup behavior.
+                await using var retirement = await SupperServingsService.BeginAsync(db, ct);
+                try
+                {
+                    await RetireWorkflow();
+                    await db.SaveChangesAsync(ct);
+                    if (retirement is not null) await retirement.CommitAsync(ct);
+                }
+                catch
+                {
+                    if (retirement is not null)
+                    {
+                        try { await retirement.RollbackAsync(CancellationToken.None); } catch { }
+                        await retirement.DisposeAsync();
+                    }
+                    await WorkflowLifecycle.ReloadAttemptAsync(db, payload.WorkflowInstanceId.GetValueOrDefault(), command.Id, payload.RecipeId);
+                    throw;
+                }
+            }
+            var reason = physical.Outcome == "ineligible" ? "recipe-became-ready-or-discoverable" : physical.Outcome;
+            var status = physical.Outcome == "ineligible" ? "skipped" : "completed";
+            command.Status = status;
+            command.CompletedAt = clock.UtcNow;
+            command.Result = JsonSerializer.Serialize(new
+            {
+                payload.RecipeId,
+                payload.WorkflowInstanceId,
+                payload.SourceWorkflowId,
+                payload.Reason,
+                filesDeleted = physical.FilesRemoved == true,
+                recipeDeleted = physical.Deleted,
+                outcome = reason
+            }, JsonDefaults.CamelCase);
+            await db.SaveChangesAsync(ct);
+            return new(command.Id, command.CommandType, status, payload.RecipeId, payload.WorkflowInstanceId, reason);
         }
-        else
+        catch
         {
-            reason = "no-recipe-id";
+            await WorkflowLifecycle.ReloadAttemptAsync(db, payload.WorkflowInstanceId.GetValueOrDefault(), command.Id, payload.RecipeId);
+            if (command.Status is "completed" or "skipped" && command.Result is not null)
+            {
+                using var saved = JsonDocument.Parse(command.Result);
+                return new(command.Id, command.CommandType, command.Status, payload.RecipeId, payload.WorkflowInstanceId,
+                    saved.RootElement.GetProperty("outcome").GetString());
+            }
+            throw;
         }
-
-        command.Status = status;
-        command.CompletedAt = clock.UtcNow;
-        command.Result = JsonSerializer.Serialize(new
-        {
-            payload.RecipeId,
-            payload.WorkflowInstanceId,
-            payload.SourceWorkflowId,
-            payload.Reason,
-            filesDeleted,
-            recipeDeleted,
-            outcome = reason,
-        }, JsonDefaults.CamelCase);
-
-        await db.SaveChangesAsync(ct);
-        return new(command.Id, command.CommandType, status, payload.RecipeId, payload.WorkflowInstanceId, reason);
     }
 
     private async Task<MaintenanceCommandReportItem> SkipUnsupportedCommandAsync(MaintenanceCommand command, CancellationToken ct)
@@ -1365,7 +1438,7 @@ public partial class ManagementService(
         return backup;
     }
 
-    private static void ValidateGroceryExtraHistory(IReadOnlyList<GroceryExtraOccurrence> rows)
+    internal static void ValidateGroceryExtraHistory(IReadOnlyList<GroceryExtraOccurrence> rows)
     {
         if (rows.Any(row => row.Id == Guid.Empty || row.LineageId == Guid.Empty || row.Version < 1
             || row.WeekStartDate.DayOfWeek != DayOfWeek.Monday || string.IsNullOrWhiteSpace(row.Name) || row.Name.Length > 200

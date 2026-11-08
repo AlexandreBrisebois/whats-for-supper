@@ -226,6 +226,145 @@ components:
         importId: { type: [string, 'null'], format: uuid }
         reimportLaunchFailed: { type: boolean }
 
+    # Original canonical facts. Nullable on legacy reads until explicit guarded conversion.
+    RecipeUnit:
+      type: object
+      additionalProperties: false
+      required: [text, definitionId]
+      properties:
+        text: { type: string, minLength: 1 }
+        definitionId: { type: [string, 'null'], description: 'Validated exact definition; culinary cup, teaspoon and tablespoon are independent families, never implicit millilitres.' }
+    RecipePackage:
+      type: object
+      additionalProperties: false
+      required: [countUnit, capacity, basis]
+      properties:
+        countUnit: { $ref: '#/components/schemas/RecipeUnit' }
+        capacity:
+          type: object
+          additionalProperties: false
+          required: [amount, unit]
+          properties:
+            amount:
+              oneOf:
+                - $ref: '#/components/schemas/GroceryScalar'
+                - $ref: '#/components/schemas/GroceryRange'
+            unit: { $ref: '#/components/schemas/RecipeUnit' }
+        basis: { type: string, enum: [net, drained, unspecified] }
+    RecipeShoppingAssociation:
+      type: object
+      additionalProperties: false
+      required: [name, foodId, mappingRevision]
+      properties:
+        name: { type: string, minLength: 1 }
+        foodId: { type: [string, 'null'], format: uuid }
+        mappingRevision: { type: [string, 'null'] }
+    RecipeIngredientProvenance:
+      type: object
+      additionalProperties: false
+      required: [origin, sourceRef, protectedFields]
+      description: Server-owned provenance. Public references never disclose private evidence bytes.
+      properties:
+        origin: { type: string, enum: [human, source, legacy_unknown, unknown], description: 'Unknown authorship remains protected; legacy_unknown is retained for compatible reads.' }
+        sourceRef: { type: [string, 'null'] }
+        protectedFields:
+          type: array
+          uniqueItems: true
+          items: { type: string, enum: [description, amount, amountText, unit, scaling, package, shopping] }
+    RecipeIngredientFacts:
+      type: object
+      required: [description, amount, amountText, unit, scaling, package, shopping]
+      properties:
+        description: { type: string, minLength: 1 }
+        amount:
+          description: Exact normalized nonnegative rationals with at most 38 digits per operand; ranges are ordered. Null is unknown, zero is known.
+          oneOf:
+            - $ref: '#/components/schemas/GroceryScalar'
+            - $ref: '#/components/schemas/GroceryRange'
+            - type: 'null'
+        amountText: { type: [string, 'null'], description: 'Original supported notation; must parse to exactly amount. Null when amount is null.' }
+        unit:
+          oneOf:
+            - $ref: '#/components/schemas/RecipeUnit'
+            - type: 'null'
+        scaling: { type: string, enum: [proportional, fixed] }
+        package:
+          oneOf:
+            - $ref: '#/components/schemas/RecipePackage'
+            - type: 'null'
+        shopping: { $ref: '#/components/schemas/RecipeShoppingAssociation' }
+    RecipeIngredientLine:
+      allOf:
+        - $ref: '#/components/schemas/RecipeIngredientFacts'
+        - type: object
+          required: [id, provenance]
+          properties:
+            id: { type: string, format: uuid, description: Server-issued saved row identity, independent of order and name. }
+            provenance: { $ref: '#/components/schemas/RecipeIngredientProvenance' }
+    RecipeIngredientLineInput:
+      allOf:
+        - $ref: '#/components/schemas/RecipeIngredientFacts'
+        - type: object
+          description: Supply exactly one existing saved id or request-local clientId. Provenance is server-owned.
+          oneOf:
+            - required: [id]
+              not: { required: [clientId] }
+            - required: [clientId]
+              not: { required: [id] }
+          properties:
+            id: { type: string, format: uuid }
+            clientId: { type: string, minLength: 1, maxLength: 128 }
+    RecipeInstructionStep:
+      type: object
+      required: [id, text, textRevision, bindings]
+      properties:
+        id: { type: string, format: uuid }
+        text: { type: string }
+        textRevision: { type: string, minLength: 1, description: Opaque token changes only when step text changes. }
+        bindings:
+          type: array
+          items: { type: object }
+          description: Revision-bound validated ingredient uses owned by the cooking-step contract. Unvalidated source objects cannot authorize substitutions or demand.
+    RecipeInstructionSection:
+      type: object
+      required: [id, name, steps]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: [string, 'null'] }
+        steps: { type: array, items: { $ref: '#/components/schemas/RecipeInstructionStep' } }
+    RecipeInstructionStepInput:
+      type: object
+      required: [text]
+      oneOf:
+        - required: [id]
+          not: { required: [clientId] }
+        - required: [clientId]
+          not: { required: [id] }
+      properties:
+        id: { type: string, format: uuid }
+        clientId: { type: string, minLength: 1, maxLength: 128 }
+        text: { type: string }
+    RecipeInstructionSectionInput:
+      type: object
+      required: [name, steps]
+      oneOf:
+        - required: [id]
+          not: { required: [clientId] }
+        - required: [clientId]
+          not: { required: [id] }
+      properties:
+        id: { type: string, format: uuid }
+        clientId: { type: string, minLength: 1, maxLength: 128 }
+        name: { type: [string, 'null'] }
+        steps: { type: array, items: { $ref: '#/components/schemas/RecipeInstructionStepInput' } }
+    RecipeContentConflict:
+      type: object
+      required: [code, currentContentRevision, upgradeRequired]
+      properties:
+        code: { type: string, const: recipe_content_conflict }
+        currentContentRevision: { type: string, minLength: 1 }
+        upgradeRequired: { type: boolean }
+
     RecipeDto:
       type: object
       required: [id, name, imageUrl, createdAt, sourceType, canReimport, imageCount, finishedDishIndex, isReady]
@@ -265,6 +404,14 @@ components:
           type: [integer, 'null']
           minimum: 1
           description: Number of servings made by the stored ingredient quantities; null when unknown.
+        contentSchemaVersion: { type: [integer, 'null'], minimum: 2, maximum: 2, description: 'Null for legacy ownership; GET never initializes saved identities.' }
+        contentRevision: { type: [string, 'null'], description: 'Opaque original-content guard. Clients never order tokens lexically.' }
+        ingredientLines:
+          type: [array, 'null']
+          items: { $ref: '#/components/schemas/RecipeIngredientLine' }
+        instructionSections:
+          type: [array, 'null']
+          items: { $ref: '#/components/schemas/RecipeInstructionSection' }
         ingredients:
           type: [array, 'null']
           items: { type: string }
@@ -308,6 +455,10 @@ components:
       properties:
         updatedAt: { type: string, format: date-time }
         recipe: { $ref: '#/components/schemas/RecipeDto' }
+        createdIds:
+          type: object
+          additionalProperties: { type: string, format: uuid }
+          description: Request-local clientId to server-issued saved UUID mapping on successful creation of rows, sections or steps.
 
     IngredientProjectionLine:
       type: object
@@ -638,7 +789,7 @@ components:
 
     ScheduleDays:
       type: object
-      required: [weekOffset, locked, days, status, calendar, weekStartDate]
+      required: [weekOffset, locked, days, status, calendar, weekStartDate, groceryListVersion]
       properties:
         weekOffset: { type: integer }
         votingRoundId:
@@ -657,6 +808,7 @@ components:
           minItems: 7
           maxItems: 7
           items: { $ref: '#/components/schemas/ScheduleDayDto' }
+        groceryListVersion: { type: [string, 'null'], pattern: '^[1-9][0-9]{0,19}$', description: Null only when this week has no materialized recipe grocery list. }
         groceryRefresh: { $ref: '#/components/schemas/ServingGroceryRefresh' }
         groceryState:
           type: object
@@ -822,7 +974,15 @@ components:
 
     UpdateRecipeDto:
       type: object
+      description: At canonical cutover every supplied semantic field requires expectedContentRevision; conflicts apply no field. Canonical and legacy arrays cannot coexist. Omission preserves; nullable row facts clear explicitly. Canonical writes remain gated by recovery and client qualification.
       properties:
+        expectedContentRevision: { type: string, minLength: 1 }
+        ingredientLines:
+          type: array
+          items: { $ref: '#/components/schemas/RecipeIngredientLineInput' }
+        instructionSections:
+          type: array
+          items: { $ref: '#/components/schemas/RecipeInstructionSectionInput' }
         name: { type: [string, 'null'] }
         description: { type: [string, 'null'] }
         ingredients:
@@ -1189,10 +1349,12 @@ components:
       allOf:
         - $ref: '#/components/schemas/ScheduleStreamEvent'
         - type: object
-          required: [weekStartDate, weekOffset, groceryState]
+          required: [weekStartDate, weekOffset, groceryState, groceryListVersion, groceryItems]
           properties:
             weekOffset: { type: integer }
             weekStartDate: { type: string, format: date, description: Absolute Monday; consumers map it before relative offset guards. }
+            groceryListVersion: { type: string, pattern: '^[1-9][0-9]{0,19}$' }
+            groceryItems: { type: array, items: { $ref: '#/components/schemas/GroceryLineItemDto' } }
             groceryState:
               type: object
               additionalProperties: { type: boolean }
@@ -1383,22 +1545,87 @@ components:
         taskCount: { type: integer }
 
     # --- Grocery ---
+    GroceryRational:
+      type: object
+      additionalProperties: false
+      required: [n, d]
+      properties:
+        n: { type: string, pattern: '^(0|[1-9][0-9]{0,37})$' }
+        d: { type: string, pattern: '^[1-9][0-9]{0,37}$' }
+    GroceryScalar:
+      type: object
+      additionalProperties: false
+      required: [kind, value]
+      properties:
+        kind: { type: string, const: scalar }
+        value: { $ref: '#/components/schemas/GroceryRational' }
+    GroceryRange:
+      type: object
+      additionalProperties: false
+      required: [kind, min, max]
+      properties:
+        kind: { type: string, const: range }
+        min: { $ref: '#/components/schemas/GroceryRational' }
+        max: { $ref: '#/components/schemas/GroceryRational' }
+    GroceryItemMutation:
+      type: object
+      additionalProperties: false
+      required: [rowId, weekStartDate, expectedRowVersion, checked, clientMutationId]
+      properties:
+        rowId: { type: string, format: uuid }
+        weekStartDate: { type: string, format: date }
+        expectedRowVersion: { type: string, pattern: '^[1-9][0-9]{0,19}$' }
+        checked: { type: boolean }
+        clientMutationId: { type: string, format: uuid }
+    GroceryBulkMutation:
+      type: object
+      additionalProperties: false
+      required: [weekStartDate, expectedListVersion, checks, clientMutationId]
+      properties:
+        weekStartDate: { type: string, format: date }
+        expectedListVersion: { type: string, pattern: '^[1-9][0-9]{0,19}$' }
+        checks: { type: object, additionalProperties: { type: boolean } }
+        clientMutationId: { type: string, format: uuid }
+    GroceryMutationResult:
+      type: object
+      required: [updatedAt, weekStartDate, listVersion, checks, rows]
+      properties:
+        updatedAt: { type: string, format: date-time }
+        weekStartDate: { type: string, format: date }
+        listVersion: { type: string, pattern: '^[1-9][0-9]{0,19}$' }
+        rowId: { type: string, format: uuid }
+        rowVersion: { type: string, pattern: '^[1-9][0-9]{0,19}$' }
+        checked: { type: boolean }
+        checks: { type: object, additionalProperties: { type: boolean } }
+        rows: { type: array, items: { $ref: '#/components/schemas/GroceryLineItemDto' } }
+    GroceryMutationConflict:
+      type: object
+      required: [code]
+      properties:
+        code: { type: string, enum: [upgrade_required, grocery_conflict, mutation_conflict, week_conflict, active_legacy_list] }
+        current: { $ref: '#/components/schemas/GroceryMutationResult' }
+        absent: { type: boolean }
     GroceryLineItemDto:
       type: object
-      required: [displayName, normalizedKey, section, recipeIds]
+      required: [rowId, rowVersion, weekStartDate, source, demandIdentity, displayName, normalizedKey, section, recipeIds]
       properties:
+        rowId: { type: string, format: uuid }
+        rowVersion: { type: string, pattern: '^[1-9][0-9]{0,19}$' }
+        weekStartDate: { type: string, format: date }
+        source: { type: string, const: recipe }
+        demandIdentity: { type: string }
         displayName: { type: string }
         normalizedKey: { type: string }
         section: { type: string }
-        quantity: { type: [number, 'null'] }
+        quantity:
+          oneOf:
+            - $ref: '#/components/schemas/GroceryScalar'
+            - $ref: '#/components/schemas/GroceryRange'
+            - { type: 'null' }
         unitText: { type: [string, 'null'] }
         quantityComplete:
           type: [boolean, 'null']
-          description: False when this line includes unreliable contributions. A non-null quantity is then only the known subtotal; intentional to-taste directions do not make a line incomplete. Null or legacy absence means unknown completeness and cannot prove a requirement increase.
-        checkReviewReason:
-          type: [string, 'null']
-          enum: [prior_amount_unknown, null]
-          description: Persisted review of a previously checked requirement whose prior amount or completeness was unknown. Independent of current quantity completeness; a complete current quantity remains the full total. Preserved through reads/recomputation and cleared only by an explicit checked=true write for this recipe-derived item, not unrelated checks or manual extras.
+          description: False when this line includes unknown or unusable numeric contributions, so a non-null quantity is only the known subtotal. Canonical null amounts stay unknown without phrase classification; retained qualitative legacy evidence keeps its compatibility semantics. Null or legacy absence means unknown completeness and cannot prove a requirement increase.
         recipeIds:
           type: array
           items: { type: string, format: uuid }
@@ -2497,13 +2724,19 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '200':
-          description: OK
+          description: Authoritative original saved detail (unwrapped), with createdIds when new content entities were assigned identities
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  data: { type: object }
+              schema: { $ref: '#/components/schemas/RecipeDetailResponse' }
+        '400':
+          description: Invalid supplied content, identity, quantity or conflicting legacy/current arrays; no field applied
+        '404':
+          description: Recipe unavailable
+        '409':
+          description: Missing/stale content guard or required client upgrade; no field applied
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecipeContentConflict' }
     delete:
       parameters:
         - $ref: '#/components/parameters/DemoGeneration'
@@ -2783,9 +3016,15 @@ paths:
         schema: { type: string, format: uuid }
     get:
       summary: Export a privacy-scrubbed portable recipe bundle
+      description: Reads one coherent saved recipe and selected media snapshot. Canonical ingredient and instruction text is current; private evidence and local content identities are omitted. A pending file publication must be reconciled before export.
       operationId: exportRecipeShareBundle
       security: [{ FamilyMemberId: [] }]
       responses:
+        '409':
+          description: Recipe has a pending file publication; refresh after reconciliation before sharing
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecipeContentConflict' }
         '503':
           description: Online recovery coordination is busy; retry after Retry-After seconds
           content:
@@ -3062,6 +3301,7 @@ paths:
         schema: { type: string, format: uuid }
     post:
       summary: Upload an original photo for the recipe
+      description: Capture current recipe and source membership before reading the upload. Append one photo only against that baseline, retaining earlier media and dish selection. A committed file-delivery interruption remains pending; refresh before retrying an uncertain upload. Canonical owners remain fenced until activation.
       operationId: uploadRecipeOriginal
       tags: [Recipes]
       requestBody:
@@ -3069,11 +3309,21 @@ paths:
           multipart/form-data:
             schema:
               type: object
+              required: [file]
               properties:
                 file:
                   type: string
                   format: binary
       responses:
+        '400':
+          description: Invalid or empty image, unsupported MIME type, or supported 20-photo limit exceeded
+        '404':
+          description: Recipe not found
+        '409':
+          description: Recipe/source changed during upload, pending file publication, or canonical owner remains fenced; no new append was published
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecipeContentConflict' }
         '403':
           $ref: '#/components/responses/DemoAiUnavailable'
         '503':
@@ -3087,9 +3337,13 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [id]
+                required: [data]
                 properties:
-                  id: { type: string, format: uuid }
+                  data:
+                    type: object
+                    required: [id]
+                    properties:
+                      id: { type: integer, minimum: 0, maximum: 19 }
 
   /api/recipes/{id}/hero/regenerate:
     parameters:
@@ -3888,16 +4142,15 @@ paths:
 
   /api/schedule/{weekOffset}/grocery/item:
     patch:
-      summary: Toggle a single grocery item (checked/unchecked)
+      summary: Guarded recipe-row check
       description: >-
-        On one application instance, stores the supplied intended check value while retaining
-        other current persisted entries. Item updates, full-map replacements and recomputation
-        transitions share one server processing order, which does not imply click or arrival
-        order. Returns 204 after persistence and the grocery publication attempt. Publication
-        attempts follow this processing order; independent snapshots may still arrive late.
-        A fresh read after outstanding operations settle recovers committed state.
-        An optional captured reference Monday pins the intended absolute week across
-        deployment-week rollover; omission retains deployment-current-week behavior.
+        Requires the captured absolute Monday and authoritative row version.
+        Names cannot identify checks; missing identity/version returns 409 upgrade_required.
+        Offset and captured reference must resolve the supplied week. A PostgreSQL-coordinated
+        commit retains unrelated rows and stores the mutation ID, request and outcome atomically.
+        Identical retries replay the saved outcome; changed input under the same ID conflicts.
+        Versions are unsigned-64 decimal strings. Publish after commit; lost replies require
+        reread before replay. Extras retain their independent occurrence endpoint.
       parameters:
         - $ref: '#/components/parameters/DemoGeneration'
         - name: weekOffset
@@ -3913,16 +4166,7 @@ paths:
         required: true
         content:
           application/json:
-            schema:
-              type: object
-              required: [ingredientName, checked]
-              properties:
-                ingredientName:
-                  type: string
-                  example: 'Chicken Breast'
-                checked:
-                  type: boolean
-                  example: true
+            schema: { $ref: '#/components/schemas/GroceryItemMutation' }
       responses:
         '400':
           description: Invalid captured reference Monday or unsupported absolute week
@@ -3936,21 +4180,28 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/RecoveryBusyError' }
-        '204':
-          description: No Content
+        '409':
+          description: Missing identity/version, stale row/list, wrong absolute week, mutation reuse or unexpected legacy active list; no stale intent applies
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GroceryMutationConflict' }
+        '200':
+          description: Committed authoritative outcome or identical saved replay
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GroceryMutationResult' }
 
   /api/schedule/{weekOffset}/grocery:
     patch:
-      summary: Update grocery checklist state for a week
+      summary: Guarded bulk replacement
       description: >-
-        Replaces the entire recipe-derived check map with the supplied dictionary, including
-        explicit false values; an empty dictionary clears it. On one application instance this
-        replacement shares server processing order with item updates and recomputation.
-        Missing keys in a stale replacement body are not merged from persisted state.
-        Returns 200 after persistence and the ordered grocery publication attempt. Notification
-        failure does not roll back a committed map; a fresh read recovers committed state.
-        An optional captured reference Monday pins the intended absolute week across
-        deployment-week rollover; omission retains deployment-current-week behavior.
+        Requires the captured absolute Monday and authoritative list version.
+        Names cannot identify checks; missing identity/version returns 409 upgrade_required.
+        Offset and captured reference must resolve the supplied week. A PostgreSQL-coordinated
+        commit retains unrelated rows and stores the mutation ID, request and outcome atomically.
+        Identical retries replay the saved outcome; changed input under the same ID conflicts.
+        Versions are unsigned-64 decimal strings. Publish after commit; lost replies require
+        reread before replay. Extras retain their independent occurrence endpoint.
       parameters:
         - $ref: '#/components/parameters/DemoGeneration'
         - name: weekOffset
@@ -3966,13 +4217,7 @@ paths:
         required: true
         content:
           application/json:
-            schema:
-              type: object
-              additionalProperties:
-                type: boolean
-              example:
-                'Chicken Breast': true
-                'Olive Oil': false
+            schema: { $ref: '#/components/schemas/GroceryBulkMutation' }
       responses:
         '400':
           description: Invalid captured reference Monday or unsupported absolute week
@@ -3986,17 +4231,20 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/RecoveryBusyError' }
+        '409':
+          description: Missing identity/version, stale row/list, wrong absolute week, mutation reuse or unexpected legacy active list; no stale intent applies
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GroceryMutationConflict' }
         '200':
-          description: OK
+          description: Committed authoritative outcome or identical saved replay
           content:
             application/json:
               schema:
                 type: object
+                required: [data]
                 properties:
-                  data:
-                    type: object
-                    additionalProperties:
-                      type: boolean
+                  data: { $ref: '#/components/schemas/GroceryMutationResult' }
 
   /api/management/recovery/snapshots:
     post:

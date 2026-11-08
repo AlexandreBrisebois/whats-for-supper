@@ -1,3 +1,6 @@
+import { applyCanonicalEditorPatch } from './canonical-editor';
+import { canonicalRecipePatchIsValid } from './canonical-content-input';
+import { createGroceryRowState } from './grocery-row-state';
 import { type Page, type Route } from '@playwright/test';
 import { createHash, randomUUID } from 'node:crypto';
 import type { CalendarContext } from '../src/lib/deployment-calendar';
@@ -256,7 +259,9 @@ export async function setupCommonRoutes(
   page: Page,
   calendarContext?: CalendarContext,
   recoveryOptions: {
+    canonicalEditor?: RecipeDto;
     busy?: boolean;
+    recipePublicationPending?: () => boolean;
     schedulePostCommitFailure?: (
       operation: 'assign' | 'defer' | 'move' | 'remove' | 'prepare'
     ) => boolean;
@@ -310,6 +315,11 @@ export async function setupCommonRoutes(
   let roundSequence = 1;
   let historyGeneration = 1;
   const recipeUpdates = new Map<string, Partial<RecipeDto>>();
+  if (recoveryOptions.canonicalEditor?.id)
+    recipeUpdates.set(
+      String(recoveryOptions.canonicalEditor.id),
+      structuredClone(recoveryOptions.canonicalEditor)
+    );
   const knownServingRecipe = recoveryOptions.supperServings?.knownRecipe;
   if (knownServingRecipe)
     recipeUpdates.set(knownServingRecipe.id, {
@@ -343,6 +353,7 @@ export async function setupCommonRoutes(
     removed?: boolean;
   };
   const groceryChecks = new Map<string, Record<string, boolean>>();
+  const groceryRows = createGroceryRowState(groceryChecks);
   const groceryExtras = new Map<string, MockExtra>();
   const extraSubmissions = new Map<string, { id: string; name: string; week: string }>();
   const extraHistory: string[] = [];
@@ -361,7 +372,7 @@ export async function setupCommonRoutes(
     toDateStr(new Date(Date.parse(`${date}T00:00:00Z`) + days * 86400000));
   const makeSchedule = (weekOffset: number, reference: string) => {
     const schedule: ReturnType<typeof builders.scheduleDays> &
-      Pick<ScheduleDays, 'groceryRefresh'> = builders.scheduleDays(weekOffset, {
+      Pick<ScheduleDays, 'groceryRefresh' | 'groceryItems'> = builders.scheduleDays(weekOffset, {
       ...scheduleCalendar,
       referenceWeekStartDate: reference,
     });
@@ -381,6 +392,9 @@ export async function setupCommonRoutes(
           occurrenceId: `${MOCK_IDS.SUPPER_OCCURRENCE.slice(0, -6)}${String(entryIds.get(entry)).padStart(6, '0')}`,
         });
     }
+    schedule.groceryItems = builders.groceryItems([
+      ...new Set(schedule.days.flatMap((day) => day.recipe?.ingredients ?? [])),
+    ]);
     const selectedMonday = addDays(reference, weekOffset * 7);
     const currentMonday = scheduleCalendar.currentWeekStartDate;
     (schedule as typeof schedule & { groceryExtras: MockExtra[] }).groceryExtras = [
@@ -724,6 +738,7 @@ export async function setupCommonRoutes(
 
   const readFamilyCount = () => familyMembers.length;
   const servingMock = await mockSupperServings(page, makeSchedule, {
+    rowState: groceryRows,
     ...recoveryOptions.supperServings,
     get delayed() {
       return recoveryOptions.supperServings?.delayed;
@@ -977,10 +992,32 @@ export async function setupCommonRoutes(
   // POST /api/recipes/{id}/originals
   await page.route('**/api/recipes/*/originals', async (route) => {
     if (route.request().method() === 'POST') {
+      const id = new URL(route.request().url()).pathname.split('/')[3];
+      const recipe = builders.recipe({ id, ...recipeUpdates.get(id) });
+      if (recoveryOptions.recipePublicationPending?.() || recipe.contentSchemaVersion === 2)
+        return fulfill(route, {
+          status: 409,
+          json: {
+            code: 'recipe_content_conflict',
+            currentContentRevision: recipe.contentRevision ?? 'legacy.mock-media',
+            upgradeRequired: false,
+          },
+        });
+      const index = recipe.imageCount ?? 0;
+      if (index >= 20)
+        return fulfill(route, {
+          status: 400,
+          json: { message: 'A maximum of 20 images may be uploaded per recipe.' },
+        });
+      recipeUpdates.set(id, {
+        ...recipeUpdates.get(id),
+        imageCount: index + 1,
+        images: [...(recipe.images ?? []), index],
+      });
       await fulfill(route, {
         status: 201,
         contentType: 'application/json',
-        body: JSON.stringify({ id: MOCK_IDS.PHOTO_NEW }),
+        body: JSON.stringify({ data: { id: index } }),
       });
     } else {
       await route.fallback();
@@ -1008,6 +1045,50 @@ export async function setupCommonRoutes(
           .request()
           .url()
           .match(/\/recipes\/([0-9a-f-]+)\/share/)?.[1] ?? MOCK_IDS.RECIPE_LASAGNA;
+      const recipe = builders.recipe({ id, ...recipeUpdates.get(id) });
+      if (recoveryOptions.recipePublicationPending?.())
+        return fulfill(route, {
+          status: 409,
+          json: {
+            code: 'recipe_content_conflict',
+            currentContentRevision: recipe.contentRevision ?? 'legacy.mock-media',
+            upgradeRequired: false,
+          },
+        });
+      // Share only text from the same current DTO returned by detail. Explicitly
+      // project section/step fields so private IDs and provenance cannot escape.
+      const instructions: { name: string | null; itemListElement: { text: string }[] }[] = [];
+      let loose: { text: string }[] = [];
+      const flush = () => {
+        if (!loose.length) return;
+        instructions.push({
+          name: instructions.length ? 'Additional Steps' : 'Instructions',
+          itemListElement: loose,
+        });
+        loose = [];
+      };
+      if (recipe.contentSchemaVersion === 2) {
+        for (const section of recipe.instructionSections ?? [])
+          instructions.push({
+            name: section.name ?? null,
+            itemListElement: (section.steps ?? []).map((step) => ({ text: step.text ?? '' })),
+          });
+      } else if (Array.isArray(recipe.recipeInstructions)) {
+        for (const value of recipe.recipeInstructions as unknown as (
+          | string
+          | { '@type'?: string; name?: string; text?: string; itemListElement?: { text: string }[] }
+        )[]) {
+          if (typeof value === 'string') loose.push({ text: value });
+          else if (value['@type'] === 'HowToSection') {
+            flush();
+            instructions.push({
+              name: value.name ?? null,
+              itemListElement: (value.itemListElement ?? []).map((step) => ({ text: step.text })),
+            });
+          } else if (value.text ?? value.name) loose.push({ text: value.text ?? value.name! });
+        }
+        flush();
+      }
       await fulfill(route, {
         status: 200,
         contentType: 'application/json',
@@ -1015,7 +1096,13 @@ export async function setupCommonRoutes(
           data: builders.recipeShareBundle({
             recipe: {
               ...builders.recipeShareBundle().recipe,
-              name: REALISTIC_RECIPES[id]?.name ?? 'Mock Recipe',
+              name: recipe.name ?? '',
+              description: recipe.description,
+              ingredients: recipe.ingredients ?? [],
+              instructions,
+              servings: null,
+              notes: null,
+              rating: null,
             },
           }),
         }),
@@ -1160,6 +1247,45 @@ export async function setupCommonRoutes(
     } else if (route.request().method() === 'PATCH') {
       const id = new URL(route.request().url()).pathname.split('/')[3];
       const changes = route.request().postDataJSON() as Partial<RecipeDto>;
+      if (
+        (Object.hasOwn(changes, 'ingredientLines') ||
+          Object.hasOwn(changes, 'instructionSections')) &&
+        !canonicalRecipePatchIsValid(changes)
+      )
+        return fulfill(route, {
+          status: 400,
+          json: { message: 'Invalid canonical recipe content. No fields were saved.' },
+        });
+      if (
+        recoveryOptions.canonicalEditor?.id === id &&
+        [
+          'ingredientLines',
+          'instructionSections',
+          'servings',
+          'ingredients',
+          'recipeInstructions',
+        ].some((key) => Object.hasOwn(changes, key))
+      ) {
+        const current = builders.recipe({ id, ...recipeUpdates.get(id) });
+        const result = applyCanonicalEditorPatch(current, changes);
+        if (result.status === 200) {
+          recipeUpdates.set(id, result.body.recipe);
+          await servingMock.recipeChanged(id, result.body.recipe);
+        }
+        return fulfill(route, { status: result.status, json: result.body });
+      }
+      if (
+        Object.hasOwn(changes, 'ingredientLines') ||
+        Object.hasOwn(changes, 'instructionSections')
+      )
+        return fulfill(route, {
+          status: 409,
+          json: {
+            code: 'recipe_content_conflict',
+            currentContentRevision: 'legacy.mock-not-activated',
+            upgradeRequired: true,
+          },
+        });
       if (
         Object.hasOwn(changes, 'servings') &&
         (typeof changes.servings !== 'number' ||
@@ -2014,63 +2140,42 @@ export async function setupCommonRoutes(
         : scheduleCalendar.currentWeekStartDate,
       Number(new URL(route.request().url()).pathname.split('/')[3]) * 7
     );
-  const emitGroceryChecks = async (route: Route, checks: Record<string, boolean>) => {
+  const emitGroceryChecks = async (route: Route) => {
+    const captured = groceryRows.snapshot(groceryWeek(route));
     await page.evaluate(
-      ({ weekOffset, weekStartDate, groceryState }) => {
-        const source = (window as any).__sseSource as EventSource | undefined;
-        source?.dispatchEvent(
-          new MessageEvent('grocery_updated', {
-            data: JSON.stringify({
-              type: 'grocery_updated',
-              weekOffset,
-              weekStartDate,
-              groceryState,
-            }),
-          })
-        );
-      },
+      (payload) =>
+        (window as any).__sseSource?.dispatchEvent(
+          new MessageEvent('grocery_updated', { data: JSON.stringify(payload) })
+        ),
       {
+        type: 'grocery_updated',
         weekOffset: Number(new URL(route.request().url()).pathname.split('/')[3]),
-        weekStartDate: groceryWeek(route),
-        groceryState: checks,
+        ...captured,
       }
     );
   };
-  await page.route('**/api/schedule/*/grocery/item**', async (route) => {
-    if (
-      route.request().method() !== 'PATCH' ||
-      !/^\/api\/schedule\/[^/]+\/grocery\/item$/.test(new URL(route.request().url()).pathname)
-    )
-      return route.fallback();
-    if (!readReference(new URL(route.request().url())))
-      return fulfill(route, { status: 400, json: { message: 'Invalid reference Monday.' } });
-    await processGroceryWrite(async () => {
-      const body = route.request().postDataJSON() as { ingredientName: string; checked: boolean };
-      const week = groceryWeek(route);
-      const checks = { ...(groceryChecks.get(week) ?? {}), [body.ingredientName]: body.checked };
-      groceryChecks.set(week, checks);
-      servingMock.acknowledgeChecks(week, { [body.ingredientName]: body.checked });
-      await fulfill(route, { status: 204 });
-      await emitGroceryChecks(route, checks);
+  for (const kind of ['item', 'bulk'] as const) {
+    const suffix = kind === 'item' ? '/item' : '';
+    await page.route(`**/api/schedule/*/grocery${suffix}**`, async (route) => {
+      if (
+        route.request().method() !== 'PATCH' ||
+        !new RegExp(`^/api/schedule/[^/]+/grocery${suffix}$`).test(
+          new URL(route.request().url()).pathname
+        )
+      )
+        return route.fallback();
+      if (!readReference(new URL(route.request().url())))
+        return fulfill(route, { status: 400, json: { message: 'Invalid reference Monday.' } });
+      await processGroceryWrite(async () => {
+        const body = route.request().postDataJSON();
+        const week = groceryWeek(route);
+        const result = groceryRows.mutate(week, kind, body);
+        const committed = result.status === 200 && !groceryRows.replayed;
+        await fulfill(route, result);
+        if (committed) await emitGroceryChecks(route);
+      });
     });
-  });
-
-  await page.route('**/api/schedule/*/grocery**', async (route) => {
-    if (
-      route.request().method() !== 'PATCH' ||
-      !/^\/api\/schedule\/[^/]+\/grocery$/.test(new URL(route.request().url()).pathname)
-    )
-      return route.fallback();
-    if (!readReference(new URL(route.request().url())))
-      return fulfill(route, { status: 400, json: { message: 'Invalid reference Monday.' } });
-    await processGroceryWrite(async () => {
-      const checks = { ...(route.request().postDataJSON() as Record<string, boolean>) };
-      groceryChecks.set(groceryWeek(route), checks);
-      servingMock.acknowledgeChecks(groceryWeek(route), checks);
-      await fulfill(route, { status: 200, json: { data: checks } });
-      await emitGroceryChecks(route, checks);
-    });
-  });
+  }
 
   // Stateful everyday grocery extras. These handlers intentionally preserve distinct
   // same-name occurrences and expose writes through subsequent schedule reads.
@@ -2516,6 +2621,16 @@ export async function setupCommonRoutes(
   // POST /api/workflows/tasks/{taskId}/reset
   await page.route('**/api/workflows/tasks/*/reset', async (route) => {
     if (route.request().method() !== 'POST') return route.fallback();
+    if (recoveryOptions.busy)
+      return fulfill(route, {
+        status: 503,
+        headers: { 'Retry-After': '5' },
+        contentType: 'application/json',
+        body: JSON.stringify({
+          errorCode: 'RECOVERY_BUSY',
+          message: 'Retry after recovery coordination.',
+        }),
+      });
     const taskId = new URL(route.request().url()).pathname.split('/').at(-2)!;
     if (recoveryOptions.demoMode && recoveryOptions.demoManagementTaskIds?.includes(taskId))
       return refuseDemoManagement(route);
@@ -2588,7 +2703,10 @@ export async function setupCommonRoutes(
       body: buildSseBody([
         buildSseFrame('connected', {
           type: 'connected',
-          schedule: makeSchedule(0, scheduleCalendar.referenceWeekStartDate),
+          schedule: {
+            ...makeSchedule(0, scheduleCalendar.referenceWeekStartDate),
+            ...groceryRows.snapshot(scheduleCalendar.referenceWeekStartDate),
+          },
           demoGeneration: generation(),
         }),
       ]),
@@ -2777,7 +2895,7 @@ export async function setupCommonRoutes(
       return route.fallback();
     });
   }
-  return { ...servingMock, readFamilyCount };
+  return { ...servingMock, readFamilyCount, groceryRows };
 }
 
 // ---------------------------------------------------------------------------
@@ -3041,7 +3159,8 @@ export async function mockSseWithVoteUpdated(
 export async function mockSseWithGroceryUpdated(
   page: Page,
   weekOffset: number,
-  groceryState: Record<string, boolean>
+  groceryState: Record<string, boolean>,
+  groceryItems: import('../src/lib/api/generated/models').GroceryLineItemDto[]
 ): Promise<{ triggerGroceryUpdated: () => Promise<void> }> {
   let requested!: (route: Route) => void;
   const streamRequested = new Promise<Route>((resolve) => {
@@ -3069,6 +3188,8 @@ export async function mockSseWithGroceryUpdated(
           weekOffset,
           weekStartDate: builders.scheduleDays(weekOffset).weekStartDate,
           groceryState,
+          groceryListVersion: '2',
+          groceryItems,
         }),
       });
     },
@@ -3355,6 +3476,7 @@ export async function mockSupperServings(
     };
     readFamilyCount: () => number;
     readRecipe?: (id: string) => RecipeDto;
+    rowState?: ReturnType<typeof createGroceryRowState>;
     checkState?: {
       read: (week: string) => Record<string, boolean>;
       write: (week: string, checks: Record<string, boolean>) => void;
@@ -3366,6 +3488,16 @@ export async function mockSupperServings(
   const schedules = new Map<string, any>();
   const saved = new Map<string, any>();
   const projected = new Map<string, { groceryItems: any }>();
+  const groceryRows = options.rowState ?? createGroceryRowState();
+  const decorateGrocery = (schedule: any) => {
+    const week = String(schedule.weekStartDate);
+    const state = saved.get(week);
+    if (state) schedule.groceryRefresh = state.groceryRefresh;
+    const projection = projected.get(week);
+    if (projection) schedule.groceryItems = projection.groceryItems;
+    groceryRows.decorate(schedule);
+  };
+
   const known = options.knownRecipe;
   const sourceText = known ? `${known.quantity} ${known.unit} ${known.ingredient}` : '';
   const sourceTexts = known?.source?.ingredients ?? (known ? [sourceText] : []);
@@ -3512,7 +3644,6 @@ export async function mockSupperServings(
         })
     );
   const complete = (state: any, fail = false) => {
-    let reset = false;
     const schedule = scheduleFor(state.weekOffset, state.referenceWeekStartDate);
     const previousProjection = projected.get(state.weekStartDate);
     if (previousProjection) schedule.groceryItems = previousProjection.groceryItems;
@@ -3532,42 +3663,6 @@ export async function mockSupperServings(
         0
       );
       // The fixture's known unit is canonical; absent units share the unitless bucket.
-      const predecessorFor = (name: string, unit: string | null) =>
-        schedule.groceryItems?.find(
-          (item: any) => item.normalizedKey === name && (item.unitText ?? '') === (unit ?? '')
-        );
-      const predecessor = predecessorFor(known.ingredient, known.unit);
-      const previous = predecessor?.quantity;
-      const checks =
-        options.checkState?.read(state.weekStartDate) ??
-        schedule.groceryState?.additionalData ??
-        schedule.groceryState ??
-        {};
-      const priorUnknown =
-        predecessor && (predecessor.quantity == null || predecessor.quantityComplete !== true);
-      const checkReviewReason =
-        predecessor?.checkReviewReason === 'prior_amount_unknown' ||
-        (priorUnknown &&
-          Number.isFinite(quantity) &&
-          currentTexts.length === 1 &&
-          currentTexts[0] === sourceText &&
-          checks[known.ingredient])
-          ? 'prior_amount_unknown'
-          : null;
-      if (
-        predecessor &&
-        !priorUnknown &&
-        currentTexts.length === 1 &&
-        currentTexts[0] === sourceText &&
-        quantity > previous &&
-        checks[known.ingredient]
-      ) {
-        checks[known.ingredient] = false;
-        state.groceryRefresh.resetSummaryVersion = randomUUID();
-        reset = true;
-      }
-      schedule.groceryState = checks;
-      options.checkState?.write(state.weekStartDate, checks);
       const unrelated = (schedule.groceryItems ?? []).filter(
         (item: any) => !item.recipeIds?.includes(known.id)
       );
@@ -3582,10 +3677,6 @@ export async function mockSupperServings(
                 section: 'Pantry',
                 quantity: null,
                 quantityComplete: line.status !== 'unresolved',
-                ...(predecessorFor(line.name, line.unitText)?.checkReviewReason ===
-                'prior_amount_unknown'
-                  ? { checkReviewReason: 'prior_amount_unknown' }
-                  : {}),
                 unitText: null,
                 recipeIds: [known.id],
               }))
@@ -3596,7 +3687,6 @@ export async function mockSupperServings(
                   section: 'Pantry',
                   quantity,
                   quantityComplete: true,
-                  checkReviewReason,
                   unitText: known.unit,
                   recipeIds: [known.id],
                 },
@@ -3605,7 +3695,7 @@ export async function mockSupperServings(
     }
     state.groceryRefresh.status = fail ? 'failed' : 'current';
     if (!fail) {
-      if (!reset && state.groceryRefresh.appliedVersion !== state.groceryRefresh.version)
+      if (state.groceryRefresh.appliedVersion !== state.groceryRefresh.version)
         state.groceryRefresh.resetSummaryVersion = null;
       state.groceryRefresh.appliedVersion = state.groceryRefresh.version;
     }
@@ -3671,6 +3761,7 @@ export async function mockSupperServings(
       const reference = dateString(schedule.calendar.referenceWeekStartDate);
       calendarChanged([dateString(schedule.weekStartDate)], reference, false);
       const current = scheduleFor(schedule.weekOffset, reference);
+      decorateGrocery(current);
       await page
         .evaluate(
           (snapshot) =>
@@ -3682,12 +3773,6 @@ export async function mockSupperServings(
         .catch(() => {});
     }
     if (!options.delayed) for (const state of saved.values()) complete(state, options.failRefresh);
-  };
-  const acknowledgeChecks = (week: string, explicit: Record<string, boolean>) => {
-    const schedule = schedules.get(week);
-    const items = projected.get(week)?.groceryItems ?? schedule?.groceryItems ?? [];
-    for (const item of items)
-      if (explicit[item.displayName] === true) item.checkReviewReason = null;
   };
   const handleServings = async (route: Route) => {
     const method = route.request().method();
@@ -3837,6 +3922,9 @@ export async function mockSupperServings(
     const id = new URL(request.url()).pathname.split('/')[3];
     if (request.method() !== 'PATCH' || !known || known.id !== id) return route.fallback();
     const changes = request.postDataJSON();
+    // Let the common handler reject before publishing a mock projection update.
+    if (Object.hasOwn(changes, 'ingredientLines') || Object.hasOwn(changes, 'instructionSections'))
+      return route.fallback();
     if (
       Object.hasOwn(changes, 'servings') &&
       (!Number.isInteger(changes.servings) || changes.servings < 1 || changes.servings > 2147483647)
@@ -3972,7 +4060,6 @@ export async function mockSupperServings(
     });
   };
   await page.route('**/api/recipes/*/ingredient-projection*', ingredientProjection);
-  // Acknowledging a recipe-derived check clears its persisted prior-amount review.
   for (const suffix of ['grocery/item', 'grocery']) {
     await page.route(
       (url) => new RegExp(`^/api/schedule/[^/]+/${suffix}$`).test(url.pathname),
@@ -3981,29 +4068,29 @@ export async function mockSupperServings(
         const url = new URL(route.request().url());
         const offset = Number(url.pathname.split('/')[3]);
         const reference = url.searchParams.get('referenceWeekStartDate') ?? referenceDefault;
-        const referenceDate = new Date(`${reference}T00:00:00Z`);
+        const date = new Date(`${reference}T00:00:00Z`);
         if (
           !/^\d{4}-\d{2}-\d{2}$/.test(reference) ||
-          !Number.isFinite(referenceDate.getTime()) ||
-          referenceDate.toISOString().slice(0, 10) !== reference ||
-          referenceDate.getUTCDay() !== 1
+          !Number.isFinite(date.getTime()) ||
+          date.toISOString().slice(0, 10) !== reference ||
+          date.getUTCDay() !== 1
         )
           return route.fulfill({ status: 400, json: { message: 'Invalid reference Monday.' } });
         const schedule = scheduleFor(offset, reference);
+        decorateGrocery(schedule);
         const body = route.request().postDataJSON();
-        const explicit: Record<string, boolean> = suffix.endsWith('/item')
-          ? { [body.ingredientName]: body.checked }
-          : body;
-        schedule.groceryState = suffix.endsWith('/item')
-          ? { ...schedule.groceryState, ...explicit }
-          : { ...explicit };
-        for (const item of schedule.groceryItems ?? [])
-          if (explicit[item.displayName] === true) item.checkReviewReason = null;
-        return route.fulfill(
-          suffix.endsWith('/item')
-            ? { status: 204 }
-            : { status: 200, json: { data: schedule.groceryState } }
+        const result = groceryRows.mutate(
+          String(schedule.weekStartDate),
+          suffix.endsWith('/item') ? 'item' : 'bulk',
+          body
         );
+        if (result.status === 200) {
+          options.checkState?.write(
+            String(schedule.weekStartDate),
+            groceryRows.snapshot(String(schedule.weekStartDate)).groceryState
+          );
+        }
+        await route.fulfill(result);
       }
     );
   }
@@ -4045,18 +4132,12 @@ export async function mockSupperServings(
     ingredientProjection,
     ingredientPreview,
     calendarChanged,
-    acknowledgeChecks,
     loseNextSaveReply: () => {
       loseSaveReply = true;
     },
     finishRefresh: (fail = false) => {
       for (const state of saved.values()) complete(state, fail);
     },
-    decorateSchedule: (schedule: any) => {
-      const state = saved.get(String(schedule.weekStartDate));
-      if (state) schedule.groceryRefresh = state.groceryRefresh;
-      const projection = projected.get(String(schedule.weekStartDate));
-      if (projection) schedule.groceryItems = projection.groceryItems;
-    },
+    decorateSchedule: decorateGrocery,
   };
 }

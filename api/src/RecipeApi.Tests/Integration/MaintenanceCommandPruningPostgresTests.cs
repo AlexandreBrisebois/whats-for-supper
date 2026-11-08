@@ -1,3 +1,6 @@
+using System.Text.Json;
+using System.Data.Common;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -100,9 +103,14 @@ public sealed class MaintenanceCommandPruningPostgresTests : IAsyncLifetime
 
         await Assert.ThrowsAsync<DbUpdateException>(() => service.PruneMaintenanceCommandsAsync(30, 500));
 
+        await db.Database.ExecuteSqlRawAsync("DROP TRIGGER reject_maintenance_delete ON maintenance_commands");
+        // A later unrelated save must not reapply a rolled-back deletion or timestamp.
+        db.FamilySettings.Add(new FamilySetting { Key = "unrelated-after-prune-rollback", Value = JsonSerializer.SerializeToElement(true) });
+        await db.SaveChangesAsync();
         db.ChangeTracker.Clear();
         Assert.True(await db.MaintenanceCommands.AnyAsync(c => c.Id == expired.Id));
         Assert.Null((await db.MaintenanceCommands.SingleAsync(c => c.Id == legacy.Id)).CompletedAt);
+        Assert.Empty(await db.MaintenanceCommandLifecycleRecords.ToArrayAsync());
     }
 
     [PostgresFact]
@@ -123,12 +131,120 @@ public sealed class MaintenanceCommandPruningPostgresTests : IAsyncLifetime
         Assert.True(await db.MaintenanceCommands.AnyAsync(c => c.Id == expired.Id));
     }
 
-    private static ManagementService CreateService(IServiceScope scope, RecipeDbContext db) => new(
+    [PostgresFact]
+    public async Task RetainedHistory_PreservesNullResultAndOriginalRequestWithoutRecipeDependency()
+    {
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+        var command = Command("skipped", Now.AddDays(-31));
+        command.Payload = JsonSerializer.Serialize(new { recipeId = Guid.NewGuid(), workflowInstanceId = Guid.NewGuid(), reason = "original" });
+        command.Result = null; command.LastError = "Original failed attempt"; command.Attempts = 4;
+        var requester = new FamilyMember { Id = Guid.NewGuid(), Name = "Disposable requester" };
+        db.FamilyMembers.Add(requester); command.RequestedBy = requester.Id; command.ScheduledFor = Now.AddDays(-50); command.StartedAt = Now.AddDays(-45);
+        db.MaintenanceCommands.Add(command); await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
+        var original = JsonSerializer.SerializeToElement(await db.MaintenanceCommands.SingleAsync(), JsonDefaults.CamelCase);
+        Assert.Equal(1, (await CreateService(scope, db).PruneMaintenanceCommandsAsync()).PrunedCommands);
+        db.ChangeTracker.Clear();
+        Assert.Empty(await db.MaintenanceCommands.ToArrayAsync());
+        var history = await db.MaintenanceCommandLifecycleRecords.SingleAsync();
+        using var payload = JsonDocument.Parse(history.Payload);
+        Assert.True(JsonElement.DeepEquals(original, payload.RootElement.GetProperty("command")));
+        Assert.Empty(payload.RootElement.GetProperty("workflowRetirements").EnumerateArray());
+        Assert.Equal("inert", payload.RootElement.GetProperty("executionDisposition").GetString());
+        Assert.Equal(command.Id, history.Id);
+        Assert.Equal("pruned", history.Disposition);
+    }
+
+    [PostgresFact]
+    public async Task Prune_LostCommitAcknowledgementKeepsHistoryAndDoesNotReplayRemoval()
+    {
+        using var scope = factory.Services.CreateScope();
+        var source = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+        var lost = new LostCommit();
+        await using var db = new RecipeDbContext(new DbContextOptionsBuilder<RecipeDbContext>()
+            .UseNpgsql(source.Database.GetConnectionString()).AddInterceptors(lost).Options);
+        var command = Command("completed", Now.AddDays(-31));
+        command.Result = """{"filesDeleted":false,"recipeDeleted":false,"outcome":"recipe-not-found"}""";
+        db.MaintenanceCommands.Add(command); await db.SaveChangesAsync();
+        var service = CreateService(scope, db);
+        lost.Armed = true;
+        await Assert.ThrowsAsync<IOException>(() => service.PruneMaintenanceCommandsAsync());
+        db.FamilySettings.Add(new FamilySetting { Key = "after-committed-prune", Value = JsonSerializer.SerializeToElement(true) });
+        await db.SaveChangesAsync();
+        Assert.Equal(0, (await service.PruneMaintenanceCommandsAsync()).PrunedCommands);
+        source.ChangeTracker.Clear();
+        Assert.Empty(await source.MaintenanceCommands.ToArrayAsync());
+        var retained = await source.MaintenanceCommandLifecycleRecords.SingleAsync();
+        Assert.Equal(command.Id, retained.Id);
+        using var snapshot = JsonDocument.Parse(retained.Payload);
+        using var result = JsonDocument.Parse(snapshot.RootElement.GetProperty("command").GetProperty("result").GetString()!);
+        Assert.False(result.RootElement.GetProperty("filesDeleted").GetBoolean());
+        Assert.False(result.RootElement.GetProperty("recipeDeleted").GetBoolean());
+    }
+
+    [PostgresFact]
+    public async Task Prune_DrainsCommandWriterAndRetainsFinalObservedResult()
+    {
+        using var scope = factory.Services.CreateScope();
+        var writer = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+        var command = Command("completed", Now.AddDays(-31));
+        command.Result = """{"observed":1}""";
+        writer.MaintenanceCommands.Add(command); await writer.SaveChangesAsync();
+        await using var pruning = new RecipeDbContext(new DbContextOptionsBuilder<RecipeDbContext>()
+            .UseNpgsql(writer.Database.GetConnectionString()).Options);
+        Assert.Equal(0, (await pruning.MaintenanceCommands.SingleAsync()).Attempts);
+        await using var transaction = await writer.Database.BeginTransactionAsync();
+        command.Result = """{"observed":2}"""; command.Attempts = 5; command.LastError = "retained final error";
+        await writer.SaveChangesAsync();
+        var prune = CreateService(scope, pruning).PruneMaintenanceCommandsAsync();
+        Assert.NotSame(prune, await Task.WhenAny(prune, Task.Delay(100)));
+        await transaction.CommitAsync();
+        Assert.Equal(1, (await prune.WaitAsync(TimeSpan.FromSeconds(10))).PrunedCommands);
+        writer.ChangeTracker.Clear();
+        using var snapshot = JsonDocument.Parse((await writer.MaintenanceCommandLifecycleRecords.SingleAsync()).Payload);
+        var saved = snapshot.RootElement.GetProperty("command");
+        Assert.Equal(5, saved.GetProperty("attempts").GetInt32());
+        Assert.Equal("retained final error", saved.GetProperty("lastError").GetString());
+        using var result = JsonDocument.Parse(saved.GetProperty("result").GetString()!);
+        Assert.Equal(2, result.RootElement.GetProperty("observed").GetInt32());
+    }
+
+    [PostgresFact]
+    public async Task LegacyNullCompletion_RetainsBothOriginalObservationAndLaterPrune()
+    {
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+        var command = Command("completed", null);
+        db.MaintenanceCommands.Add(command); await db.SaveChangesAsync();
+        Assert.Equal(1, (await CreateService(scope, db).PruneMaintenanceCommandsAsync()).InitializedCompletionTimestamps);
+        Assert.Equal(1, (await CreateService(scope, db, Now.AddDays(31)).PruneMaintenanceCommandsAsync()).PrunedCommands);
+        db.ChangeTracker.Clear();
+        var records = await db.MaintenanceCommandLifecycleRecords.Where(x => x.Id == command.Id).ToArrayAsync();
+        Assert.Equal(2, records.Length);
+        using var original = JsonDocument.Parse(Assert.Single(records, x => x.Disposition == "retention-started").Payload);
+        using var pruned = JsonDocument.Parse(Assert.Single(records, x => x.Disposition == "pruned").Payload);
+        Assert.Equal(JsonValueKind.Null, original.RootElement.GetProperty("command").GetProperty("completedAt").ValueKind);
+        Assert.Equal(Now, pruned.RootElement.GetProperty("command").GetProperty("completedAt").GetDateTimeOffset());
+        Assert.Empty(await db.MaintenanceCommands.ToArrayAsync());
+    }
+
+    private sealed class LostCommit : DbTransactionInterceptor
+    {
+        internal bool Armed;
+        public override Task TransactionCommittedAsync(DbTransaction transaction, TransactionEndEventData eventData, CancellationToken cancellationToken = default)
+        {
+            if (Armed) { Armed = false; throw new IOException("Synthetic lost committed acknowledgement"); }
+            return Task.CompletedTask;
+        }
+    }
+
+    private static ManagementService CreateService(IServiceScope scope, RecipeDbContext db, DateTimeOffset? now = null) => new(
         db,
         scope.ServiceProvider.GetRequiredService<IRecipeStore>(),
         scope.ServiceProvider.GetRequiredService<RecipesRootResolver>(),
         scope.ServiceProvider.GetRequiredService<DataRootResolver>(),
-        new FixedClock(Now),
+        new FixedClock(now ?? Now),
         NullLogger<ManagementService>.Instance,
         scope.ServiceProvider.GetRequiredService<DemoModeOptions>(),
         scope.ServiceProvider.GetRequiredService<RecoverySnapshotService>(),

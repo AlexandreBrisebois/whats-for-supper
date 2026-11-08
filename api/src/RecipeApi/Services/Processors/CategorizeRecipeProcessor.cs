@@ -43,21 +43,13 @@ public class CategorizeRecipeProcessor(
     {
         // Demo refusal must not fall through to heuristic replacement facts.
         demoMode?.EnsureAiAvailable();
-        if (string.IsNullOrEmpty(task.Payload))
-            throw new ArgumentException("Task payload is empty.");
-
-        using var doc = JsonDocument.Parse(task.Payload);
-        if (!doc.RootElement.TryGetProperty("recipeId", out var idProp) &&
-            !doc.RootElement.TryGetProperty("RecipeId", out idProp))
-            throw new ArgumentException("Task payload does not contain recipeId.");
-
-        var recipeId = idProp.GetGuid();
+        var recipeId = ReadRecipeId(task.Payload);
 
         var recipe = await db.Recipes.FindAsync([recipeId], ct);
         if (recipe is null)
         {
             logger.LogWarning("CategorizeRecipe: recipe {RecipeId} not found — skipping", recipeId);
-            return new { Message = $"Recipe {recipeId} not found — skipping" };
+            return new { Message = MissingMessage(recipeId) };
         }
 
         try
@@ -69,7 +61,36 @@ public class CategorizeRecipeProcessor(
             logger.LogError(ex, "CategorizeRecipe: unexpected error for recipe {RecipeId} — workflow continues", recipeId);
         }
 
-        return new { Message = $"CategorizeRecipe completed for recipe {recipeId}." };
+        return new { Message = CompletionMessage(recipeId) };
+    }
+
+    private static Guid ReadRecipeId(string? payload)
+    {
+        if (string.IsNullOrEmpty(payload))
+            throw new ArgumentException("Task payload is empty.");
+        using var doc = JsonDocument.Parse(payload);
+        if (!doc.RootElement.TryGetProperty("recipeId", out var idProp) &&
+            !doc.RootElement.TryGetProperty("RecipeId", out idProp))
+            throw new ArgumentException("Task payload does not contain recipeId.");
+        return idProp.GetGuid();
+    }
+
+    private static string MissingMessage(Guid recipeId) => $"Recipe {recipeId} not found — skipping";
+    private static string CompletionMessage(Guid recipeId) => $"CategorizeRecipe completed for recipe {recipeId}.";
+
+    internal static Guid ValidateOriginalHistory(string? payload, string? returned)
+    {
+        WorkflowProcessorHistory.ReadObservation<JsonElement>(payload ?? "null");
+        var recipeId = ReadRecipeId(payload);
+        var result = WorkflowProcessorHistory.ReadObservation<JsonElement>(returned ?? "null");
+        if (recipeId == Guid.Empty || result.ValueKind != JsonValueKind.Object
+            || !result.TryGetProperty("message", out var message) || message.ValueKind != JsonValueKind.String
+            || message.GetString() is not { } text || (text != MissingMessage(recipeId) && text != CompletionMessage(recipeId)))
+            throw new InvalidDataException("Original recipe categorization receipt differs from its invocation.");
+        // Completion also follows caught failures and fallback categorization.
+        // Neither message certifies historical source, provider or row state.
+        // Unknown extensions are preserved without qualifying their meaning.
+        return recipeId;
     }
 
     private async Task CategorizeAsync(Recipe recipe, CancellationToken ct)

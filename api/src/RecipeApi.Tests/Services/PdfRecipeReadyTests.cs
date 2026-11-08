@@ -20,21 +20,22 @@ public sealed class PdfRecipeReadyTests
         await using var factory = await TestWebApplicationFactory.CreateAsync();
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
-        var store = scope.ServiceProvider.GetRequiredService<IRecipeStore>();
+        var store = scope.ServiceProvider.GetRequiredService<RecipeRepository>();
+        var storage = scope.ServiceProvider.GetRequiredService<IStorageProvider>();
         var id = Guid.NewGuid();
         db.Recipes.Add(new Recipe { Id = id, AddedBy = factory.DefaultFamilyMemberId, Name = "Lemon chicken", ImageCount = 1 });
         await db.SaveChangesAsync();
-        await store.SaveSourcePdfAsync(id, new MemoryStream("%PDF"u8.ToArray()));
-        await store.WriteInfoAsync(new RecipeInfo { Id = id, Name = "Lemon chicken", ImageCount = 1 });
-        var processor = new RecipeReadyProcessor(new RecipeApi.Services.SystemClock(), db, NullLogger<RecipeReadyProcessor>.Instance, scope.ServiceProvider.GetRequiredService<IScheduleEventPublisher>(), store);
-        var task = new WorkflowTask { Payload = JsonSerializer.Serialize(new { recipeId = id }) };
+        await storage.SaveAsync("recipes", $"{id}/original/source.pdf", "%PDF"u8.ToArray());
+        await store.SaveInfoAsync(new RecipeInfo { Id = id, Name = "Lemon chicken", ImageCount = 1 }, default);
+        var processor = new RecipeReadyProcessor(db, NullLogger<RecipeReadyProcessor>.Instance, scope.ServiceProvider.GetRequiredService<IScheduleEventPublisher>(), scope.ServiceProvider.GetRequiredService<RecipeFilePublicationStore>());
+        var task = new WorkflowTask { TaskId = Guid.NewGuid(), Payload = JsonSerializer.Serialize(new { recipeId = id }) };
         await processor.ExecuteAsync(task, CancellationToken.None);
-        var info = await store.ReadInfoAsync(id);
+        var info = await store.GetInfoAsync(id, default);
         // Assert via serialized metadata so this test precedes the internal schema addition.
         using var metadata = JsonDocument.Parse(JsonSerializer.Serialize(info, JsonDefaults.CamelCase));
         Assert.True(metadata.RootElement.GetProperty("isReady").GetBoolean());
         await processor.ExecuteAsync(task, CancellationToken.None);
         Assert.True((await db.Recipes.SingleAsync(r => r.Id == id)).IsReady);
-        Assert.NotNull(await store.ReadSourcePdfAsync(id));
+        Assert.NotNull(await storage.LoadAsync("recipes", $"{id}/original/source.pdf"));
     }
 }

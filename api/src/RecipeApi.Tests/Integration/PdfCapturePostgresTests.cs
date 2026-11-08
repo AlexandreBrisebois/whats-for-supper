@@ -42,7 +42,7 @@ public sealed class PdfCapturePostgresTests : IAsyncLifetime
         {
             ["Tests:PostgresConnectionString"] = connection.ConnectionString,
             ["Tests:LocalRecipeStore"] = "true",
-            ["Tests:PdfWorkflow"] = "true"
+            ["Tests:RealWorkflowOrchestrator"] = "true"
         });
     }
 
@@ -59,6 +59,15 @@ public sealed class PdfCapturePostgresTests : IAsyncLifetime
     [PostgresFact]
     public async Task Accepted_source_failure_retry_and_delete_use_existing_recovery()
     {
+        using (var definitions = factory.Services.CreateScope())
+            await definitions.ServiceProvider.GetRequiredService<IStorageProvider>().SaveAsync("workflows", "recipe-import.yaml", """
+                name: recipe-import
+                parameters: [recipeId]
+                tasks:
+                  - name: convert_pdf
+                    processor: ConvertPdf
+                    payload: {recipeId: "{{ recipeId }}"}
+                """);
         using var client = factory.CreateClient();
         client.DefaultRequestHeaders.Add("X-Family-Member-Id", factory.DefaultFamilyMemberId.ToString());
         var bytes = "%PDF-corrupt"u8.ToArray();
@@ -81,7 +90,7 @@ public sealed class PdfCapturePostgresTests : IAsyncLifetime
         var task = Assert.Single(instance.Tasks);
         Assert.Equal("ConvertPdf", task.ProcessorName);
         var renderer = new ControlledRenderer();
-        var processor = new PdfConversionProcessor(new RecipeApi.Services.SystemClock(), db, store, renderer);
+        var processor = new PdfConversionProcessor(scope.ServiceProvider.GetRequiredService<RecipeFilePublicationStore>(), renderer);
         await Assert.ThrowsAsync<InvalidDataException>(() => processor.ExecuteAsync(task, CancellationToken.None));
         task.Status = RecipeApi.Models.TaskStatus.Failed;
         instance.Status = WorkflowStatus.Paused;

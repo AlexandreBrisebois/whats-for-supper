@@ -17,6 +17,37 @@ public class RecipeRepository(IStorageProvider storage)
 {
     private const string Partition = "recipes";
 
+    internal Task<byte[]?> ReadPublicationFileAsync(Guid id, string path) => storage.LoadAsync(Partition, $"{id}/{path}");
+    internal Task DeliverPublicationFileAsync(Guid id, string path, byte[]? bytes) => bytes is null
+        ? storage.DeleteAtomicallyAsync(Partition, $"{id}/{path}")
+        : storage.SaveAtomicallyAsync(Partition, $"{id}/{path}", bytes);
+
+    internal async Task<IReadOnlyDictionary<string, byte[]?>> CapturePublicationFilesAsync(Guid id, CancellationToken ct, bool allowMissingInfo = false)
+    {
+        var files = new SortedDictionary<string, byte[]?>(StringComparer.Ordinal);
+        foreach (var path in new[] { "recipe.info", "recipe.json", "original/content.html", "original/source.pdf", "hero.webp", "hero.jpg" })
+        {
+            ct.ThrowIfCancellationRequested();
+            files[path] = await ReadPublicationFileAsync(id, path);
+        }
+        if (files["recipe.info"] is { } infoBytes)
+        {
+            var info = JsonSerializer.Deserialize<RecipeInfo>(infoBytes, JsonDefaults.CamelCase)
+                ?? throw new InvalidDataException("Recipe info is invalid.");
+            if (info.Id != id || info.ImageCount is < 0 or > 20) throw new InvalidDataException("Recipe media membership is invalid.");
+        }
+        else if (!allowMissingInfo) throw new FileNotFoundException("Recipe info is missing.");
+        // Include absent extension alternatives: adding a preferred image must
+        // conflict too, rather than silently changing the evidence selected.
+        for (var index = 0; index < 20; index++)
+            foreach (var extension in new[] { ".jpg", ".jpeg", ".png", ".webp" })
+            {
+                var path = $"original/{index}{extension}";
+                files[path] = await ReadPublicationFileAsync(id, path);
+            }
+        return files;
+    }
+
     public async Task<RecipeInfo> GetInfoAsync(Guid recipeId, CancellationToken ct)
     {
         var data = await storage.LoadAsync(Partition, $"{recipeId}/recipe.info");
@@ -55,7 +86,7 @@ public class RecipeRepository(IStorageProvider storage)
     public async Task<byte[]> GetOriginalImageAsync(Guid recipeId, int index, CancellationToken ct)
     {
         // Supporting common extensions as per ImageService logic
-        var extensions = new[] { ".jpg", ".png", ".webp" };
+        var extensions = new[] { ".jpg", ".jpeg", ".png", ".webp" };
         foreach (var ext in extensions)
         {
             var data = await storage.LoadAsync(Partition, $"{recipeId}/original/{index}{ext}");

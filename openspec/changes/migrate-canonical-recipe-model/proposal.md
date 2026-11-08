@@ -6,7 +6,7 @@ The complete model must survive upgrade and recovery without losing household li
 
 ## Outcome and Scope
 
-In-place-first conversion, conditional recipe-only disk fallback, current-format-only recovery, staged client fencing and one-time grocery check transition. No default reseed, production operation, old backup compatibility, automatic extraction or implied disk-over-live precedence.
+In-place-first conversion, conditional recipe-only disk fallback, current-format-only recovery, staged client fencing and fresh-list upgrade without historical deletion. No default reseed, production operation, old backup compatibility, automatic extraction or silent disk-over-live precedence. Conditional fallback compares stable IDs and stops/reports unexpected mismatches.
 
 ## What Changes
 
