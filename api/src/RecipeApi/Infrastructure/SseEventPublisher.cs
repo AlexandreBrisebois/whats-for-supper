@@ -72,8 +72,11 @@ public class SseEventPublisher : IScheduleEventPublisher
     public Task PublishGroceryRowsUpdatedAsync(int weekOffset, GroceryMutationResult snapshot, string? excludeConnectionId = null)
         => _manager.BroadcastAsync("grocery_updated", new
         {
-            weekOffset, weekStartDate = snapshot.WeekStartDate, groceryListVersion = snapshot.ListVersion,
-            groceryState = snapshot.Checks, groceryItems = snapshot.Rows,
+            weekOffset,
+            weekStartDate = snapshot.WeekStartDate,
+            groceryListVersion = snapshot.ListVersion,
+            groceryState = snapshot.Checks,
+            groceryItems = snapshot.Rows,
         }, excludeConnectionId);
 
     public Task PublishGroceryExtrasUpdatedAsync(DateOnly weekStartDate, IReadOnlyList<GroceryExtraDto> groceryExtras, string? excludeConnectionId = null)
