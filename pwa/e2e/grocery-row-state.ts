@@ -125,7 +125,13 @@ export function createGroceryRowState(checks: Map<string, Record<string, boolean
     const currentChecks = Object.fromEntries(
       rows.map((row) => [row.rowId, observed[row.rowId] ?? false])
     );
-    const signature = JSON.stringify(rows.map(({ rowVersion, ...row }) => row));
+    // Reused source rows acquire identity metadata. Its insertion order must
+    // not turn an unchanged projection into a new list version.
+    const signature = JSON.stringify(
+      rows.map(({ rowVersion, ...row }) =>
+        Object.fromEntries(Object.entries(row).sort(([a], [b]) => a.localeCompare(b)))
+      )
+    );
     if (
       state.initialized &&
       (signature !== state.signature ||

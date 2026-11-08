@@ -48,6 +48,26 @@ function fixture() {
 }
 
 describe('stateful grocery mock retained demand', () => {
+  it('preserves the snapshot when the same source rows are decorated repeatedly', () => {
+    const state = createGroceryRowState();
+    const sourceRows = [
+      {
+        displayName: 'pasta',
+        normalizedKey: 'pasta',
+        quantity: 600,
+        quantityComplete: true,
+        unitText: 'g',
+        recipeIds: [],
+      },
+    ];
+    const decorate = () => state.decorate({ weekStartDate: week, groceryItems: sourceRows });
+    decorate();
+    const before = state.snapshot(week);
+    decorate();
+    decorate();
+    expect(state.snapshot(week)).toEqual(before);
+  });
+
   it.each(['unchanged', 'true', 'bulk', 'replay'])(
     'keeps the original range baseline across %s and cumulative overlap',
     (action) => {
