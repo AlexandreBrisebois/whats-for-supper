@@ -1,0 +1,20 @@
+/Users/alex/Code/whats-for-supper/api/src/RecipeApi/Infrastructure/SseEventPublisher.cs(75,24): error WHITESPACE: Fix whitespace formatting. Replace 1 characters with '\n\s\s\s\s\s\s\s\s\s\s\s\s'. [/Users/alex/Code/whats-for-supper/api/RecipeApi.csproj]
+/Users/alex/Code/whats-for-supper/api/src/RecipeApi/Infrastructure/SseEventPublisher.cs(75,64): error WHITESPACE: Fix whitespace formatting. Replace 1 characters with '\n\s\s\s\s\s\s\s\s\s\s\s\s'. [/Users/alex/Code/whats-for-supper/api/RecipeApi.csproj]
+/Users/alex/Code/whats-for-supper/api/src/RecipeApi/Infrastructure/SseEventPublisher.cs(76,44): error WHITESPACE: Fix whitespace formatting. Replace 1 characters with '\n\s\s\s\s\s\s\s\s\s\s\s\s'. [/Users/alex/Code/whats-for-supper/api/RecipeApi.csproj]
+Running Code Style analysis.
+Determining diagnostics...
+Running 7 analyzers on RecipeApi.
+Complete in 1495ms.
+Analysis complete in 1495ms.
+Running Analyzer Reference analysis.
+Determining diagnostics...
+Running 221 analyzers on RecipeApi.
+Complete in 1663ms.
+Analysis complete in 1663ms.
+Complete in 3596ms.
+Formatted code file '/Users/alex/Code/whats-for-supper/api/src/RecipeApi/Infrastructure/SseEventPublisher.cs'.
+Formatted 1 of 328 files.
+Format complete in 5502ms.
+task: Failed to run task "check:push:api": task: Failed to runtask "lint:api": exit status 2
+failed: push validation: Command ['task', 'check:push:api'] returned non-zero exit status 201.
+task: Failed to run task "check:push": exit status 2

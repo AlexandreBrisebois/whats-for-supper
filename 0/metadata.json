@@ -1,0 +1,44 @@
+{
+  "cli_version": "0.13.1",
+  "checkpoint_id": "01M6Y5T546XWSWH0NSYS21J94Z",
+  "session_id": "01a1bc35-46de-78e3-986e-c35a6e64d8c2",
+  "strategy": "manual-commit",
+  "created_at": "2026-11-08T18:13:00.476216Z",
+  "branch": "recipe-view-redesign",
+  "checkpoints_count": 1,
+  "save_step_count": 1,
+  "files_touched": [
+    "api/src/RecipeApi/Infrastructure/SseEventPublisher.cs"
+  ],
+  "agent": "Codex",
+  "model": "gpt-6.1-sol",
+  "turn_id": "38bc6cfb779b",
+  "checkpoint_transcript_start": 265,
+  "transcript_lines_at_start": 265,
+  "compact_transcript_start": 41,
+  "token_usage": {
+    "input_tokens": 2200,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 352640,
+    "output_tokens": 603,
+    "api_call_count": 4,
+    "subagent_tokens_complete": true
+  },
+  "redaction": {
+    "replacements": 6,
+    "layers": {
+      "betterleaks": 0,
+      "connection_string": 0,
+      "credential_key": 0,
+      "credential_value": 0,
+      "credentialed_uri": 0,
+      "entropy": 6,
+      "key_context": 0,
+      "provider_token": 0,
+      "shell_stdin": 0
+    }
+  },
+  "session_metrics": {
+    "turn_count": 2
+  }
+}
