@@ -44,11 +44,20 @@ Home, Planner and dated recipe detail SHALL carry the absolute supper date when 
 
 ### Requirement: Explain original instruction amounts during scaling
 
-Cooking SHALL show projected validated step quantities and original wording for uncertain spans. One concise contextual notice SHALL explain relevant uncertainty only when needed. Ingredients SHALL remain easy to consult without per-step warnings or confirmation prompts; time/equipment SHALL never be implied to scale.
+Cooking SHALL show projected validated step quantities and original wording for uncertain spans. Cooking SHALL NOT display the routine step-uncertainty notice or a duplicate View adjusted ingredients header action, including a replacement banner, badge, tooltip or hidden duplicate warning. Ingredients SHALL remain available through the existing All steps footer Ingredients/Resume path and focused Back navigation without per-step warnings or confirmation prompts; time/equipment SHALL never be implied to scale.
 
 #### Scenario: Step text contains half a cup
 - **WHEN** a whole-ingredient half-cup span is validated and portions double
-- **THEN** the rendered use becomes one cup; if its binding is uncertain, original wording remains with quiet contextual notice instead of a blanket original-step limitation
+- **THEN** the rendered use becomes one cup; if its binding is uncertain, original wording remains readable without the routine uncertainty notice or an invented scaled amount
+
+#### Scenario: Consult ingredients after removing the duplicate header link
+- **WHEN** a cook in All steps activates footer Ingredients and then Resume steps
+- **THEN** the mounted checklist, bookmark and exact reading offset are retained without a View adjusted ingredients header link
+- **AND** Ingredients remains disabled during step editing; focused reading retains its existing Back route to preparation
+
+#### Scenario: Preserve actionable feedback
+- **WHEN** cooking encounters a real loading, projection, conflict or refresh failure, or detects changed quantities/content
+- **THEN** its existing pending, error, retry and explicit Refresh feedback remains available despite removal of the routine step-uncertainty notice
 
 ### Requirement: Edit a supported cooking instruction explicitly
 
@@ -106,6 +115,39 @@ Dismissing the cooking report form SHALL retain the mounted ingredient checks an
 - **WHEN** report submission returns its recipe with re-import launch failure
 - **THEN** cooking applies that recipe but leaves the quality form open for its saved-report/launch-failure feedback
 
+### Requirement: Arrange cooking in the approved phone and tablet compositions
+
+Phone cooking SHALL keep a photo/title header and compact Original/direct two-button view tools fixed above one scrolling reading surface without a padded recipe card or status row. The progressbar SHALL sit directly above instructions; focused Edit SHALL join tools below the image. The phone view toggle SHALL stay left while the distinct Edit/Original action group aligns right in its wrapping toolbar, retaining labels, target sizes, DOM/keyboard order, focus and disabled states. Tablet cooking SHALL retain its 40% full-image sidebar with lower-left controls and a clear reading column. Reflow SHALL preserve these roles without fixed mockup allocations.
+
+#### Scenario: Read the approved phone composition
+- **WHEN** the cook opens a loaded recipe on a phone
+- **THEN** the dish-photo/title header and compact controls underneath remain fixed above a single scrolling instruction surface, without a separate padded recipe card or reading-status row
+
+#### Scenario: Use the approved iPad composition
+- **WHEN** cooking uses its tablet sidebar layout
+- **THEN** the full-image 40% sidebar retains its lower-left controls and cookbook character while the separate reading column stays clear
+
+#### Scenario: Accommodate text and safe-area growth
+- **WHEN** long English/French content, enlarged text, landscape or safe-area insets reduce available instruction space
+- **THEN** the composition reflows to retain readable labels, visible dish image and reachable controls without assuming the mockup's instruction-region height
+
+#### Scenario: Recover phone reading space
+- **WHEN** the same loaded recipe in All steps is compared before and after this change at ordinary 390 by 844 and 430 by 932 CSS-pixel portrait viewports with default text size
+- **THEN** both the dish-photo region and instruction viewport are taller, with no separate status row or replacement counter badge
+
+#### Scenario: Keep focused editing with the phone tools
+- **WHEN** a supported instruction is displayed in Step by step on a phone outside an active editor
+- **THEN** a named Edit action with at least a 44 by 44 CSS-pixel target is available beside the controls below the image and opens that current instruction without opening recipe detail
+
+#### Scenario: Avoid an ambiguous global edit action
+- **WHEN** the phone is in preparation, has no usable instructions, is already editing, or displays All steps
+- **THEN** the focused-step header Edit action is absent and All steps retains its named per-instruction edit controls when instructions exist
+
+#### Scenario: Restore the right-aligned phone action group
+- **WHEN** a loaded phone cooking view exposes Edit and/or Original beside its view toggle
+- **THEN** the view toggle stays left and the Edit/Original action group aligns to the inner right edge of the toolbar, wrapping to right-aligned rows as necessary without clipping labels, targets or focus outlines
+- **AND** English/French labels and enlarged text at narrow widths remain reachable without horizontal page overflow, while tablet retains its lower-left controls
+
 ## ADDED Requirements
 
 ### Requirement: Keep cooking independent of ingredient correction publication
@@ -144,11 +186,11 @@ Cooking SHALL project only validated ingredient-use spans from the same original
 
 ### Requirement: Keep uncertain step scaling quiet and nonblocking
 
-A stale, overlapping, missing, contradictory or unverified binding SHALL leave its affected source text unchanged without disabling cooking or eligible completion. Other valid bindings SHALL project. At most one contextual uncertainty notice SHALL appear for relevant scaled step wording, with correction/source access and no per-step warning clutter.
+A stale, overlapping, missing, contradictory or unverified binding SHALL leave its affected source text unchanged without disabling cooking or eligible completion. Other valid bindings SHALL project. Relevant scaled step wording SHALL retain correction/source access without a routine contextual uncertainty notice or per-step warning clutter. Actual failure/error feedback and explicit changed-content Refresh controls SHALL remain available.
 
 #### Scenario: Mixed coverage
 - **WHEN** one step amount is valid and another binding is uncertain
-- **THEN** the valid amount scales, uncertain text remains readable and one contextual notice is available
+- **THEN** the valid amount scales and uncertain text remains readable without a routine contextual notice or a claim that all amounts were adjusted
 
 #### Scenario: Span mismatch
 - **WHEN** a repeated ingredient phrase or Unicode edit no longer matches a validated span
@@ -180,7 +222,7 @@ Validated uses SHALL distinguish mention, whole total, original absolute partial
 
 ### Requirement: Preserve explicit partial uses after ingredient-total correction
 
-An ingredient-total correction SHALL preserve saved original absolute partial-use amounts; those amounts SHALL still scale with portions. Relative fractions SHALL remain relative to the corrected total and proven whole uses SHALL track it. Inconsistent allocations SHALL receive quiet review without blocking cooking or silently redistributing amounts.
+An ingredient-total correction SHALL preserve saved original absolute partial-use amounts; those amounts SHALL still scale with portions. Relative fractions SHALL remain relative to the corrected total and proven whole uses SHALL track it. Inconsistent allocations SHALL retain readable source wording and correction/source access without a routine uncertainty notice, cooking block or silent redistribution.
 
 #### Scenario: Correct total without rewriting partial use
 - **WHEN** total pasta changes from 200 g to 250 g while a validated step explicitly uses 50 g
@@ -192,4 +234,4 @@ An ingredient-total correction SHALL preserve saved original absolute partial-us
 
 #### Scenario: Corrected total makes allocations inconsistent
 - **WHEN** a total is reduced below its exhaustive explicit uses or a remainder becomes unprovable
-- **THEN** affected numeric bindings/remainders revalidate or become uncertain with readable wording and quiet review, while cooking and eligible completion remain available
+- **THEN** affected numeric bindings/remainders revalidate or become uncertain with readable wording and correction/source access, while cooking and eligible completion remain available

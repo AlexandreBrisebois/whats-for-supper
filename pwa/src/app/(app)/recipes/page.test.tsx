@@ -1117,7 +1117,9 @@ describe('RecipesPage', () => {
       await act(async () => {
         render(<UnifiedRecipesPage />);
       });
-      expect(await screen.findByTestId('action-add-to-day')).toHaveTextContent('Review plan');
+      await waitFor(() =>
+        expect(screen.getByTestId('action-add-to-day')).toHaveTextContent('Review plan')
+      );
       expect(screen.queryByTestId('action-planned')).not.toBeInTheDocument();
       expect(screen.queryByTestId('action-change-day')).not.toBeInTheDocument();
       expect(screen.getByTestId('action-cooks-mode')).toBeEnabled();

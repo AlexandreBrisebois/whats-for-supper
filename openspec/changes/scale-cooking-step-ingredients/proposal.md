@@ -6,7 +6,7 @@ Ingredient-only scaling leaves step quantities contradictory. Step uses need exp
 
 ## Outcome and Scope
 
-Mandatory ingredient-use scaling, coherent ingredient/step projection and current-recipe reading at recorded prepared counts. No general formula language, prose-wide numeric replacement or new grocery demand. Explicit partial amounts remain original after total correction and still scale with portions; relative language stays relative, with quiet review for inconsistent allocations.
+Mandatory ingredient-use scaling, coherent ingredient/step projection and current-recipe reading at recorded prepared counts. No general formula language, prose-wide numeric replacement or new grocery demand. Explicit partial amounts remain original after total correction and still scale with portions; relative language stays relative, with original readable wording for inconsistent allocations. Cook mode omits the routine step-uncertainty notice and duplicate header ingredients link; phone Edit/View Original actions return to the right while the view toggle stays left and tablet controls retain their lower-left layout.
 
 ## What Changes
 

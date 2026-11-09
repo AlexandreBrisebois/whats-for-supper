@@ -87,6 +87,7 @@ test('original correction, refresh recovery and concurrent grocery checks use th
     const check = (page: typeof editor, row: any) =>
       page.locator(`[data-testid="grocery-item-checkbox"][data-row-id="${row.rowId}"]`);
     await Promise.all([check(editor, pasta).click(), check(shopper, sauce).click()]);
+    await expect(check(editor, pasta)).toContainText('400 g');
     await expect
       .poll(async () => {
         const schedule = await readSchedule();
@@ -456,6 +457,7 @@ test('mixed incomplete baseline keeps its grocery check when unknown demand beco
   await expect(checkbox(pasta)).toContainText('400 g known');
   await checkbox(pasta).click();
   await expect(checkbox(pasta)).toHaveAttribute('aria-checked', 'true');
+  await expect(checkbox(pasta)).toContainText('400 g known');
   await checkbox(sauce).click();
   await expect.poll(async () => (await read()).groceryState[sauce.rowId]).toBe(true);
   await page.screenshot({
@@ -506,6 +508,7 @@ test('mixed incomplete baseline keeps its grocery check when unknown demand beco
   await showPantry();
   await expect(checkbox(pasta)).toHaveAttribute('aria-checked', 'true');
   await expect(checkbox(sauce)).toHaveAttribute('aria-checked', 'false');
+  await expect(checkbox(pasta)).toContainText('600 g');
   await page.screenshot({
     path: test.info().outputPath('mixed-complete-preserves-incomplete-baseline.png'),
     fullPage: true,

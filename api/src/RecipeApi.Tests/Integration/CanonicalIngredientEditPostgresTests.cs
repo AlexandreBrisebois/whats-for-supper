@@ -19,8 +19,8 @@ public sealed partial class CanonicalIngredientEditPostgresTests(ITestOutputHelp
     private static readonly Guid Id = TomorrowPushPostgresTests.Selected;
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
-    private async Task WithEditor(Func<TestWebApplicationFactory, CanonicalRecipeContent, Task> check,
-        Action<WebApplication>? configureApplication = null)
+    internal async Task WithEditor(Func<TestWebApplicationFactory, CanonicalRecipeContent, Task> check,
+        Action<WebApplication>? configureApplication = null, string? sourceUrl = null)
     {
         await new TomorrowPushPostgresTests(output).WithDatabase(async settings =>
         {
@@ -39,6 +39,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests(ITestOutputHelp
                 var services = scope.ServiceProvider;
                 var db = services.GetRequiredService<RecipeDbContext>();
                 var recipe = await db.Recipes.SingleAsync(x => x.Id == Id);
+                recipe.SourceUrl = sourceUrl ?? recipe.SourceUrl;
                 recipe.Servings = 4;
                 recipe.Ingredients = "[\"200 g pasta\",\"100 ml sauce\"]";
                 recipe.RawMetadata = """{"recipeIngredient":["200 g pasta","100 ml sauce"],"supply":[{"name":"pasta","quantity":200,"unitText":"g"},{"name":"sauce","quantity":100,"unitText":"ml"}],"recipeInstructions":[{"@type":"HowToStep","text":"Mix pasta and sauce."}]}""";

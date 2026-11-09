@@ -234,6 +234,7 @@ test.describe('Recipe Hero Actions', () => {
 
 test('canonical original editor saves through the generated client and reopens server-issued facts', async ({
   page,
+  baseURL,
 }) => {
   const id = MOCK_IDS.RECIPE_LASAGNA;
   const row = (rowId: string, name: string, quantity: string, unit: string) => ({
@@ -263,9 +264,7 @@ test('canonical original editor saves through the generated client and reopens s
   });
   await page
     .context()
-    .addCookies([
-      { name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: process.env.BASE_URL! },
-    ]);
+    .addCookies([{ name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: baseURL! }]);
   await page.route('**/api/recipes/search', (route) =>
     route.fulfill({
       json: {
@@ -307,6 +306,7 @@ test('canonical original editor saves through the generated client and reopens s
     amount: { kind: 'scalar', value: { n: '250', d: '1' } },
     amountText: '250',
   });
+  await page.getByRole('button', { name: 'Preview 4 portions', exact: true }).click();
   await expect(page.getByText('250 g pasta', { exact: true })).toBeVisible();
   await expect(page.getByText('100 ml sauce', { exact: true })).toBeVisible();
   await page.getByTestId('action-gear-menu').click();

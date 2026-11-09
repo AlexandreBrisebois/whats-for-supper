@@ -417,7 +417,7 @@ test.describe('Recipe import issue reporting', () => {
       const result = await fetch(`/api/recipes/${recipe.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(recipe),
+        body: JSON.stringify({ ingredients: recipe.ingredients }),
       });
       if (!result.ok) throw new Error('Could not seed coherent projection source');
     }, state.recipe);

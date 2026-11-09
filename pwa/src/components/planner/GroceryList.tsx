@@ -1131,7 +1131,7 @@ export function GroceryList({
                                       void handleToggle(item);
                                     }
                                   }}
-                                  className="flex min-h-12 min-w-0 flex-1 items-center gap-2 text-left @min-[18rem]:gap-4"
+                                  className="flex min-h-12 min-w-0 flex-1 basis-full items-center gap-2 text-left @min-[18rem]:basis-0 @min-[18rem]:gap-4"
                                   data-testid="grocery-item-checkbox"
                                   data-row-id={item.rowId}
                                   data-item-name={key}

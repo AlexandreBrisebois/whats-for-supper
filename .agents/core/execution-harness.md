@@ -8,10 +8,15 @@ processes, ports or databases.
 ## Preparation and verification
 
 Before overlapping test or service work, coordinate ownership of ports, databases,
-server processes and output records, as well as shared CPU/memory capacity. Use
-distinct task-owned resources where supported; serialize runs that contend or
-require shared mutation. Avoid redundant simultaneous broad gates. Inspect
-ownership and uncertain outcomes before cleanup or retry, and clean up only the
+server processes, build outputs and output records, as well as shared CPU/memory
+capacity. Prefer separating mutable state and using distinct task-owned resources
+before serializing independent work. Serialize genuine dependencies or unavoidable
+contention; keep one writer per shared file. A worktree is not runtime isolation.
+Use snapshots or owned resources for focused feedback where supported and report
+what they qualify; they do not narrow the verifier's actual source/runtime identity.
+Stabilize that selected identity for application and harness verification. Avoid
+redundant simultaneous broad gates. Inspect ownership and uncertain outcomes before
+cleanup or retry, and clean up only the
 resources that task owns. Keep each run's invocation-specific evidence and the
 required combined integration verification; parallel results do not automatically
 establish an integrated pass.
@@ -25,14 +30,19 @@ acceptance. Recompute after edits. Unknown impact retains the conservative union
 For focused red/green feedback, `task test:api -- --filter <expression>` forwards
 arguments to the API test runner; `task test:unit -- <test-file>` forwards arguments
 to Vitest (paths relative to `pwa/`). `task test:e2e -- <spec-file>` already supports
-Playwright selection. A focused run does not replace applicable final verification.
+Playwright selection. Use focused red/green checks and affected seams during
+development, then the applicable union of final checks at the completed acceptance
+boundary. Do not repeat full suites per small increment or restart checks for status.
+Focused feedback does not replace required final, hosted or release gates.
 
 Before editing, inspect Git status and relevant diffs.
 Preserve unrelated changes and review overlapping edits
 manually; Git differences and explicit path selection do not prove edit ownership.
 
-Use `task gate` for development feedback and retain the broad final checks below.
-Its adaptive E2E selection does not replace backend tests or the scope review.
+Prefer those focused targets for development feedback. Use `task gate` only when
+its broad `dev:kill`/`test:kill` cleanup effects are safe and authorized; dedicated
+ports or worktrees cannot make process-name `pkill` safe. Its adaptive E2E selection
+does not replace backend tests or the scope review.
 
 `task verify` runs applicable final repository checks for the selected implementation
 scope; it does not advance tasks or establish task acceptance.
@@ -85,8 +95,7 @@ Finish performs no formatting/generation in the source tree. Agent Python comman
 use `-B` to avoid adding/updating bytecode during verification. Kiota check generates
 and formats only in its temporary output directory. `review` remains a reusable
 application validation target, with no formatter or process-kill step; it does not
-include E2E. Running it again after successful application verification is unnecessary. `gate` is the developer loop
-and still kills processes: inspect its effects and use dedicated resources.
+include E2E. Running it again after successful application verification is unnecessary.
 
 Finish captures input identity before verification and checks it after every check.
 Mutation fails content evidence and leaves remaining checks not-run. Application,
@@ -126,7 +135,8 @@ Executed checks record `duration_seconds` and the following identity check's
 identity time, identity call count, check time and total verification-loop time
 using a monotonic clock. Selection and record serialization are outside that total.
 Check time includes any fingerprinting internal to a child runner; these fields
-measure the outer verifier, not nested phases or model/token usage. Unexecuted
+measure the outer verifier, not nested phases or model/token usage. Use these
+observed timings to identify actual cost before proposing runner changes. Unexecuted
 checks have no duration. Timings are observations, not completion evidence.
 `.task/agent-finish/last-run.json` is an atomically updated convenience copy and can
 belong to another agent. Later edits to the tested inputs invalidate that identity
@@ -256,8 +266,9 @@ Update [HANDOVER](../../HANDOVER.md) at a meaningful handoff or interruption, on
 in the writer's own task section. Preserve other tasks. Use these compact fields:
 Task/spec; Worktree/branch; Authorized scope and source; Current checkpoint;
 Verification evidence and content identity; Blocker or next action.
-Check stale evidence against current files when resuming. Completed detail belongs
-with its selected task; HANDOVER supplies context, not authority. [JOURNAL](../../JOURNAL.md) is
+Check stale evidence against current files when resuming. Keep the active checkpoint
+concise, linking task-owned history/evidence instead of copying cumulative transcripts;
+HANDOVER supplies context, not authority. [JOURNAL](../../JOURNAL.md) is
 frozen historical evidence after its salvage pass; do not append session results.
 There is no mandatory multi-file turn-end bookkeeping or automatic cleanup skill.
 Useful repeatable tooling may be proposed within scope; temporary scripts do not

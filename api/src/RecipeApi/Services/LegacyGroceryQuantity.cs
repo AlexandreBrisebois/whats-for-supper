@@ -106,12 +106,39 @@ public static class LegacyGroceryQuantity
             ? new("scalar", min) : new("range", Min: min, Max: max);
     }
 
+    // Subtract a known scalar from a scalar or a proven correlated range.
+    // Callers must establish the relationship; independent ranges are unsupported.
+    public static GroceryQuantity? SubtractScalar(GroceryQuantity? value, GroceryQuantity? scalar)
+    {
+        if (!IsCanonical(value) || !IsCanonical(scalar) || scalar!.Kind != "scalar") return null;
+        var right = scalar.Value!;
+        GroceryRational? Apply(GroceryRational left) => Make(
+            BigInteger.Parse(left.N, CultureInfo.InvariantCulture) * BigInteger.Parse(right.D, CultureInfo.InvariantCulture)
+                - BigInteger.Parse(right.N, CultureInfo.InvariantCulture) * BigInteger.Parse(left.D, CultureInfo.InvariantCulture),
+            BigInteger.Parse(left.D, CultureInfo.InvariantCulture) * BigInteger.Parse(right.D, CultureInfo.InvariantCulture));
+        if (value!.Kind == "scalar") return Scalar(Apply(value.Value!));
+        var min = Apply(value.Min!); var max = Apply(value.Max!);
+        return min is null || max is null ? null : new("range", Min: min, Max: max);
+    }
+
     public static GroceryQuantity? Scale(GroceryQuantity? value, int numerator, int denominator)
     {
         if (value is null || numerator < 0 || denominator <= 0) return null;
         GroceryRational? Apply(GroceryRational original) => Make(BigInteger.Parse(original.N, CultureInfo.InvariantCulture) * numerator,
             BigInteger.Parse(original.D, CultureInfo.InvariantCulture) * denominator);
         if (value.Kind == "scalar") return Scalar(Apply(value.Value!));
+        var min = Apply(value.Min!);
+        var max = Apply(value.Max!);
+        return min is null || max is null ? null : new("range", Min: min, Max: max);
+    }
+
+    public static GroceryQuantity? Multiply(GroceryQuantity? value, GroceryRational factor)
+    {
+        if (!IsCanonical(value) || !IsCanonicalRational(factor)) return null;
+        GroceryRational? Apply(GroceryRational original) => Make(
+            BigInteger.Parse(original.N, CultureInfo.InvariantCulture) * BigInteger.Parse(factor.N, CultureInfo.InvariantCulture),
+            BigInteger.Parse(original.D, CultureInfo.InvariantCulture) * BigInteger.Parse(factor.D, CultureInfo.InvariantCulture));
+        if (value!.Kind == "scalar") return Scalar(Apply(value.Value!));
         var min = Apply(value.Min!);
         var max = Apply(value.Max!);
         return min is null || max is null ? null : new("range", Min: min, Max: max);

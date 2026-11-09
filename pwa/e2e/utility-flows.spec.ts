@@ -50,8 +50,7 @@ test.describe("Cook's Mode and Grocery Flows", () => {
       );
     }, MOCK_IDS.MEMBER_ALEX);
 
-    await setupCommonRoutes(page);
-    const groceryState: Record<string, boolean> = {};
+    const control = await setupCommonRoutes(page);
 
     const thisMonday = currentMonday();
 
@@ -64,92 +63,51 @@ test.describe("Cook's Mode and Grocery Flows", () => {
       Ricotta: 'Dairy & Eggs',
     };
 
-    await page.route(
-      (url) => url.pathname.includes('/api/schedule'),
-      async (route) => {
-        if (
-          route.request().method() === 'GET' &&
-          !route.request().url().includes('smart-defaults')
-        ) {
-          // Build 7 days from the fixed Monday; put the recipe on today's date.
-          const days = Array.from({ length: 7 }, (_, i) => {
-            const d = new Date(thisMonday);
-            d.setUTCDate(thisMonday.getUTCDate() + i);
-            const dateStr = toDateStr(d);
-            const isToday = dateStr === TODAY;
-            return {
-              day: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i],
-              date: dateStr,
-              recipe: isToday
-                ? builders.scheduleRecipe({
-                    id: MOCK_IDS.RECIPE_LASAGNA,
-                    name: 'Test Lasagna',
-                    ingredients: UTILITY_GROCERY_INGREDIENTS,
-                  })
-                : null,
-            };
-          });
-          await route.fulfill({
-            status: 200,
-            contentType: 'application/json',
-            body: JSON.stringify({
-              data: {
-                weekOffset: 0,
-                calendar: builders.deploymentCalendar() as any,
-                weekStartDate: '2026-05-04' as any,
-                locked: true,
-                status: 2,
-                days,
-                groceryState,
-                groceryItems: builders.groceryItems(
-                  UTILITY_GROCERY_INGREDIENTS,
-                  UTILITY_GROCERY_SECTION_MAP
-                ),
-              },
-            }),
-          });
-        } else {
-          await route.continue();
-        }
-      }
-    );
-
-    await mockSseWithConnectedSchedule(page, {
-      weekOffset: 0,
-      calendar: builders.deploymentCalendar() as any,
-      weekStartDate: '2026-05-04' as any,
+    const schedule = {
+      ...builders.scheduleDays(),
       locked: true,
       status: 2,
       days: Array.from({ length: 7 }, (_, i) => {
-        const d = new Date(thisMonday);
-        d.setUTCDate(thisMonday.getUTCDate() + i);
-        const dateStr = toDateStr(d);
-        const isToday = dateStr === TODAY;
-
+        const date = new Date(thisMonday);
+        date.setUTCDate(thisMonday.getUTCDate() + i);
         return {
           day: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i],
-          date: dateStr,
-          recipe: isToday
-            ? builders.scheduleRecipe({
-                id: MOCK_IDS.RECIPE_LASAGNA,
-                name: 'Test Lasagna',
-                ingredients: UTILITY_GROCERY_INGREDIENTS,
-              })
-            : null,
+          date: toDateStr(date),
+          recipe:
+            toDateStr(date) === TODAY
+              ? builders.scheduleRecipe({
+                  id: MOCK_IDS.RECIPE_LASAGNA,
+                  name: 'Test Lasagna',
+                  ingredients: UTILITY_GROCERY_INGREDIENTS,
+                })
+              : null,
         };
       }),
       groceryItems: builders.groceryItems(UTILITY_GROCERY_INGREDIENTS, UTILITY_GROCERY_SECTION_MAP),
-      groceryState,
-    } as any);
+    };
+    control.groceryRows.decorate(schedule);
+    await page.route(
+      (url) => url.pathname === '/api/schedule',
+      async (route) => {
+        if (route.request().method() !== 'GET') return route.fallback();
+        control.groceryRows.decorate(schedule);
+        return route.fulfill({ status: 200, json: { data: schedule } });
+      }
+    );
+    await mockSseWithConnectedSchedule(page, schedule as any);
 
-    // Successful checks and later GET/SSE reads share persisted fixture state.
+    // Shopping writes and later GET/SSE reads use the same guarded row owner.
     await page.route(
       (url) => url.pathname.startsWith('/api/schedule/') && url.pathname.endsWith('/grocery/item'),
       async (route) => {
         if (route.request().method() !== 'PATCH') return route.fallback();
-        const body = route.request().postDataJSON();
-        groceryState[body.ingredientName] = body.checked;
-        await route.fulfill({ status: 204 });
+        const result = control.groceryRows.mutate(
+          String(schedule.weekStartDate),
+          'item',
+          route.request().postDataJSON()
+        );
+        control.groceryRows.decorate(schedule);
+        return route.fulfill(result);
       }
     );
 
@@ -203,14 +161,22 @@ test.describe("Cook's Mode and Grocery Flows", () => {
         request.method() === 'PATCH' && request.url().includes('/api/schedule/0/grocery/item')
     );
 
+    const groceryPatchResponse = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'PATCH' &&
+        new URL(response.url()).pathname === '/api/schedule/0/grocery/item'
+    );
     await firstItem.click({ delay: 100 });
     await groceryPatchRequest;
+    expect((await groceryPatchResponse).status()).toBe(200);
     const persisted = await page.evaluate(
       async () =>
         (await (await fetch('/api/schedule?weekOffset=0&referenceWeekStartDate=2026-05-04')).json())
           .data
     );
-    expect(persisted.groceryState[itemName]).toBe(true);
+    const savedRow = persisted.groceryItems.find((item: any) => item.displayName === itemName);
+    expect(savedRow).toBeDefined();
+    expect(persisted.groceryState[savedRow.rowId]).toBe(true);
     await expect(firstItem).toBeChecked();
     await expect(firstItem).toHaveAttribute('aria-checked', 'true');
 

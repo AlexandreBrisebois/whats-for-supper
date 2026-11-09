@@ -17,6 +17,12 @@
 - For bug fixes, add or update a regression test that reproduces the reported
   failure before implementation, and retain it after the fix.
 
+Assert observable behavior, domain invariants and relevant side effects rather than
+incidental implementation structure; retain tests for explicit architectural contracts.
+For state-changing work, include relevant duplicate, retry, interruption and
+unknown-outcome cases. A hand-verified representative example can seed these tests;
+it does not replace real seam or database acceptance.
+
 For each behavior increment, follow **red → green → refactor**:
 
 1. **Red**: Write or update the smallest meaningful behavior test, run it before

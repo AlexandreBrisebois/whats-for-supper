@@ -18,6 +18,9 @@ public sealed class IngredientProjectionService(RecipeDbContext db, SupperServin
         var lines = SupperIngredientProjection.Read(recipe, target);
         return new IngredientPreviewDto
         {
+            ContentRevision = CanonicalRecipeContentStore.InspectContentRevision(recipe),
+            ContextKey = GroceryDemandEvidence.Fingerprint(new { recipe.Id, Revision = CanonicalRecipeContentStore.InspectContentRevision(recipe), Context = "preview", Target = target }),
+            InstructionProjection = CanonicalRecipeContentStore.Read(recipe) is { } content ? CookingStepProjection.Read(content, target) : null,
             RecipeId = recipe.Id,
             BaseServings = recipe.Servings,
             TargetServings = target,
@@ -53,6 +56,9 @@ public sealed class IngredientProjectionService(RecipeDbContext db, SupperServin
         var version = SupperProjectionInputs.DatedVersion(recipe, date, context, context == "assigned" ? occurrenceId : null, target, lines);
         var result = new IngredientProjectionDto
         {
+            ContentRevision = CanonicalRecipeContentStore.InspectContentRevision(recipe),
+            ContextKey = GroceryDemandEvidence.Fingerprint(new { recipe.Id, Revision = CanonicalRecipeContentStore.InspectContentRevision(recipe), date, context, occurrenceId, target, state.Version }),
+            InstructionProjection = CanonicalRecipeContentStore.Read(recipe) is { } content ? CookingStepProjection.Read(content, target) : null,
             RecipeId = recipe.Id,
             SupperDate = date,
             Context = context,

@@ -22,7 +22,37 @@ public sealed partial class CanonicalIngredientEditPostgresTests
     [DeploymentCalendarPostgresTests.CalendarLiveFact]
     public Task LiveBrowser_CanonicalMixedIncompleteBaseline() => RunCanonicalBrowser(mixed: true);
 
-    private async Task RunCanonicalBrowser(bool mixed)
+    [DeploymentCalendarPostgresTests.CalendarLiveFact]
+    public Task LiveBrowser_CookingStepScaling() => RunCanonicalBrowser(mixed: false, stepScaling: true);
+
+    [DeploymentCalendarPostgresTests.CalendarLiveFact]
+    public Task LiveBrowser_CookingStepSplitOil() => RunCanonicalBrowser(mixed: false, allocation: "split");
+
+    [DeploymentCalendarPostgresTests.CalendarLiveFact]
+    public Task LiveBrowser_CookingStepPartial() => RunCanonicalBrowser(mixed: false, allocation: "partial");
+
+    [DeploymentCalendarPostgresTests.CalendarLiveFact]
+    public Task LiveBrowser_CookingStepExhaustiveReduction() => RunCanonicalBrowser(mixed: false, allocation: "exhaustive");
+
+    [DeploymentCalendarPostgresTests.CalendarLiveFact]
+    public Task LiveBrowser_CookingReportRefresh() => RunCanonicalBrowser(mixed: false, stepScaling: true, reportRefresh: true);
+
+    [DeploymentCalendarPostgresTests.CalendarLiveFact]
+    public Task LiveBrowser_CookingStepInstructionGuard() => RunCanonicalBrowser(mixed: false, stepScaling: true, instructionGuard: true);
+
+    [DeploymentCalendarPostgresTests.CalendarLiveFact]
+    public Task LiveBrowser_CookingStepFraction() => RunCanonicalBrowser(mixed: false, allocation: "fraction");
+
+    [DeploymentCalendarPostgresTests.CalendarLiveFact]
+    public Task LiveBrowser_CookingStepRemainder() => RunCanonicalBrowser(mixed: false, allocation: "remainder");
+
+    [DeploymentCalendarPostgresTests.CalendarLiveFact]
+    public Task LiveBrowser_CookingStepPerItem() => RunCanonicalBrowser(mixed: false, allocation: "perItem");
+
+    [DeploymentCalendarPostgresTests.CalendarLiveFact]
+    public Task LiveBrowser_CookingStepFixed() => RunCanonicalBrowser(mixed: false, allocation: "fixed");
+
+    internal async Task RunCanonicalBrowser(bool mixed, bool stepScaling = false, string? allocation = null, bool reportRefresh = false, bool instructionGuard = false, string? preparedContext = null)
     {
         // The task runner prepares an immutable production-built source copy.
         // Ordinary application composition never registers the canonical store.
@@ -30,7 +60,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests
             ?? throw new InvalidOperationException("Requires an isolated production-built PWA copy.");
         var evidenceRoot = Environment.GetEnvironmentVariable("WFS_CANONICAL_EVIDENCE")
             ?? throw new InvalidOperationException("Requires a unique evidence directory.");
-        var evidence = Path.Combine(evidenceRoot, mixed ? "mixed" : "correction");
+        var evidence = Path.Combine(evidenceRoot, preparedContext is not null ? "prepared-" + preparedContext : allocation ?? (instructionGuard ? "instruction-guard" : reportRefresh ? "report-refresh" : stepScaling ? "cooking-step" : mixed ? "mixed" : "correction"));
         Assert.True(File.Exists(Path.Combine(browserRoot, "pwa", ".next", "BUILD_ID")));
         Directory.CreateDirectory(evidence);
         var pwaPort = DeploymentCalendarPostgresTests.FreePort();
@@ -39,6 +69,12 @@ public sealed partial class CanonicalIngredientEditPostgresTests
         await WithEditor(async (factory, before) =>
         {
             Guid secondMember;
+            if (stepScaling) before = await SeedCookingWholeUse(factory, before, preparedContext is not null);
+            if (allocation == "fixed") before = await SeedCookingFixed(factory, before);
+            else if (allocation == "perItem") before = await SeedCookingPerItem(factory, before);
+            else if (allocation == "remainder") before = await SeedCookingRemainder(factory, before);
+            else if (allocation == "fraction") before = await SeedCookingFraction(factory, before);
+            else if (allocation is not null) before = await SeedCookingAllocation(factory, before, allocation != "partial", exhaustive: allocation == "exhaustive");
             var savedBaseline = before;
             if (mixed)
             {
@@ -62,9 +98,20 @@ public sealed partial class CanonicalIngredientEditPostgresTests
                 secondMember = member.Id;
                 db.FamilyMembers.Add(member);
                 db.FamilySettings.Add(new FamilySetting { Key = SupperServingsService.DefaultKey,
-                    Value = JsonSerializer.SerializeToElement(new { servings = 8, version = Guid.NewGuid() }) });
+                    Value = JsonSerializer.SerializeToElement(new { servings = allocation is "partial" or "fraction" ? 6 : 8, version = Guid.NewGuid() }) });
                 await db.SaveChangesAsync();
                 await scope.ServiceProvider.GetRequiredService<GroceryRecomputeService>().RecomputeForWeekAsync(monday, default);
+            }
+            JsonElement? preparedReceipt = null;
+            string? preparedOccurrences = null;
+            string? preparedHistory = null;
+            if (preparedContext is not null)
+            {
+                preparedReceipt = await PreparedSupperPostgresTests.SeedCanonicalPreparation(factory, preparedContext == "six");
+                using var baselineScope = factory.Services.CreateScope();
+                var baselineDb = baselineScope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+                preparedOccurrences = JsonSerializer.Serialize(await baselineDb.CalendarEvents.AsNoTracking().OrderBy(x => x.Id).ToListAsync());
+                preparedHistory = JsonSerializer.Serialize(await baselineDb.Recipes.AsNoTracking().OrderBy(x => x.Id).Select(x => new { x.Id, x.LastCookedDate }).ToListAsync());
             }
             ProcessStartInfo Command(params string[] args)
             {
@@ -79,6 +126,8 @@ public sealed partial class CanonicalIngredientEditPostgresTests
                 start.Environment["NEXT_TELEMETRY_DISABLED"] = "1";
                 start.Environment["HEARTH_SECRET"] = TestWebApplicationFactory.TestSecret;
                 start.Environment["CANONICAL_RECIPE_ID"] = Id.ToString();
+                if (preparedContext is not null) start.Environment["COOKING_PREPARED_CONTEXT"] = preparedContext;
+                if (allocation is not null) start.Environment["COOKING_ALLOCATION"] = allocation;
                 start.Environment["CANONICAL_MEMBERS"] = $"{factory.DefaultFamilyMemberId},{secondMember}";
                 start.Environment["PLAYWRIGHT_JSON_OUTPUT_NAME"] = Path.Combine(evidence, "browser-results.json");
                 return start;
@@ -100,7 +149,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests
                     await Task.Delay(300);
                 }
                 Assert.True(ready, "Owned production PWA did not become ready.");
-                using var browser = Process.Start(Command("node_modules/@playwright/test/cli.js", "test", "canonical-ingredient-live.spec.ts", "--grep", mixed ? "mixed incomplete baseline" : "original correction",
+                using var browser = Process.Start(Command("node_modules/@playwright/test/cli.js", "test", preparedContext is not null ? "prepared-supper-live.spec.ts" : allocation is not null ? "cooking-step-scaling-live.spec.ts" : stepScaling ? "cooking-step-scaling-live.spec.ts" : "canonical-ingredient-live.spec.ts", "--grep", preparedContext is not null ? "canonical prepared correction" : instructionGuard ? "undated instruction guard" : reportRefresh ? "report refresh" : allocation == "fixed" ? "standalone fixed use" : allocation == "perItem" ? "per-item dose" : allocation == "remainder" ? "remaining follows" : allocation == "fraction" ? "relative fraction" : allocation is not null ? "absolute allocation" : stepScaling ? "corrected whole use" : mixed ? "mixed incomplete baseline" : "original correction",
                     "--workers=1", "--retries=0", "--reporter=line,json", "--output", Path.Combine(evidence, "browser-artifacts")))!;
                 var browserOut = Pump(browser.StandardOutput, Path.Combine(evidence, "browser.log"));
                 var browserError = Pump(browser.StandardError, Path.Combine(evidence, "browser-error.log"));
@@ -117,6 +166,124 @@ public sealed partial class CanonicalIngredientEditPostgresTests
                 var content = CanonicalRecipeContentStore.Read(saved)!;
                 Assert.Equal(before.SourceRevision, content.SourceRevision);
                 Assert.Equal(savedBaseline.IngredientLines.Select(x => x.Id), content.IngredientLines.Select(x => x.Id));
+                if (preparedContext is not null)
+                {
+                    Assert.Equal("250", content.IngredientLines[0].AmountText);
+                    Assert.Equal(5, saved.Servings);
+                    Assert.Equal(preparedOccurrences, JsonSerializer.Serialize(await finalDb.CalendarEvents.AsNoTracking().OrderBy(x => x.Id).ToListAsync()));
+                    Assert.Equal(preparedHistory, JsonSerializer.Serialize(await finalDb.Recipes.AsNoTracking().OrderBy(x => x.Id).Select(x => new { x.Id, x.LastCookedDate }).ToListAsync()));
+                    Assert.Equal(savedBaseline.InstructionSections[0].Steps[0].Id, content.InstructionSections[0].Steps[0].Id);
+                    using var projectionClient = factory.CreateAuthenticatedClient();
+                    var occurrenceId = preparedReceipt!.Value.GetProperty("occurrenceId").GetGuid();
+                    var projection = await projectionClient.GetFromJsonAsync<JsonElement>($"/api/recipes/{Id}/ingredient-projection?supperDate=2026-10-16&context=assigned&occurrenceId={occurrenceId}");
+                    Assert.Equal(preparedReceipt.Value.GetProperty("preparation").GetRawText(), projection.GetProperty("preparation").GetRawText());
+                    var preparedPlan = await finalDb.WeeklyPlans.AsNoTracking().SingleAsync(x => x.WeekStartDate == monday);
+                    var preparedRows = JsonSerializer.Deserialize<List<GroceryLineItemDto>>(preparedPlan.GroceryItems)!;
+                    Assert.Equal(LegacyGroceryQuantity.Parse(preparedContext == "six" ? "300" : "250"), Assert.Single(preparedRows, x => x.NormalizedKey == "pasta").ExactQuantity);
+                    await File.WriteAllTextAsync(Path.Combine(evidence, "persisted-result.json"), JsonSerializer.Serialize(new { content, projection, preparedReceipt, rows = preparedRows, preparedOccurrences, preparedHistory }, Json));
+                    return;
+                }
+                if (allocation == "fixed")
+                {
+                    Assert.Equal("3", content.IngredientLines[0].AmountText);
+                    Assert.Equal("tsp", content.IngredientLines[0].Unit!.Text);
+                    Assert.Equal(before.InstructionSections[0].Steps.Select(x => (x.Id, x.Text)), content.InstructionSections[0].Steps.Select(x => (x.Id, x.Text)));
+                    var projected = CookingStepProjection.Read(content, 8);
+                    Assert.Equal(0, projected.ValidatedUses); Assert.Equal(2, projected.UncertainUses);
+                    var fixedPlan = await finalDb.WeeklyPlans.AsNoTracking().SingleAsync(x => x.WeekStartDate == monday);
+                    var fixedRows = JsonSerializer.Deserialize<List<GroceryLineItemDto>>(fixedPlan.GroceryItems)!;
+                    Assert.Equal(LegacyGroceryQuantity.Parse("6"), Assert.Single(fixedRows, x => x.NormalizedKey == "oil").ExactQuantity);
+                    await File.WriteAllTextAsync(Path.Combine(evidence, "persisted-result.json"), JsonSerializer.Serialize(new { content, projected, rows = fixedRows }, Json));
+                    return;
+                }
+                if (allocation == "perItem")
+                {
+                    Assert.Equal("6", content.IngredientLines[0].AmountText);
+                    Assert.Equal("3", content.IngredientLines[1].AmountText);
+                    Assert.Equal("g", content.IngredientLines[0].Unit!.Text);
+                    Assert.Equal(before.InstructionSections[0].Steps[0].Text, content.InstructionSections[0].Steps[0].Text);
+                    var projected = CookingStepProjection.Read(content, 8);
+                    Assert.Equal(0, projected.ValidatedUses); Assert.Equal(2, projected.UncertainUses);
+                    var perItemPlan = await finalDb.WeeklyPlans.AsNoTracking().SingleAsync(x => x.WeekStartDate == monday);
+                    var perItemRows = JsonSerializer.Deserialize<List<GroceryLineItemDto>>(perItemPlan.GroceryItems)!;
+                    Assert.Equal(LegacyGroceryQuantity.Parse("12"), Assert.Single(perItemRows, x => x.NormalizedKey == "pieces").ExactQuantity);
+                    Assert.Equal(LegacyGroceryQuantity.Parse("6"), Assert.Single(perItemRows, x => x.NormalizedKey == "oil").ExactQuantity);
+                    await File.WriteAllTextAsync(Path.Combine(evidence, "persisted-result.json"), JsonSerializer.Serialize(new { content, projected, rows = perItemRows }, Json));
+                    return;
+                }
+                if (allocation == "remainder")
+                {
+                    Assert.Equal("1/2", content.IngredientLines[0].AmountText);
+                    Assert.Equal(before.InstructionSections[0].Steps.Select(x => (x.Id, x.Text)), content.InstructionSections[0].Steps.Select(x => (x.Id, x.Text)));
+                    var projected = CookingStepProjection.Read(content, 8);
+                    Assert.Equal(0, projected.ValidatedUses); Assert.Equal(2, projected.UncertainUses);
+                    var remainderPlan = await finalDb.WeeklyPlans.AsNoTracking().SingleAsync(x => x.WeekStartDate == monday);
+                    var remainderRows = JsonSerializer.Deserialize<List<GroceryLineItemDto>>(remainderPlan.GroceryItems)!;
+                    Assert.Equal(LegacyGroceryQuantity.Parse("1"), Assert.Single(remainderRows, x => x.NormalizedKey == "oil").ExactQuantity);
+                    await File.WriteAllTextAsync(Path.Combine(evidence, "persisted-result.json"), JsonSerializer.Serialize(new { content, projected, rows = remainderRows }, Json));
+                    return;
+                }
+                if (allocation == "fraction")
+                {
+                    Assert.Equal("250", content.IngredientLines[0].AmountText);
+                    Assert.Equal(before.InstructionSections[0].Steps.Select(x => (x.Id, x.Text)), content.InstructionSections[0].Steps.Select(x => (x.Id, x.Text)));
+                    var half = content.InstructionSections[0].Steps[1].Bindings[0];
+                    Assert.Equal(before.InstructionSections[0].Steps[1].Bindings[0].GetProperty("id").GetGuid(), half.GetProperty("id").GetGuid());
+                    Assert.Equal("2", half.GetProperty("payload").GetProperty("fraction").GetProperty("d").GetString());
+                    Assert.Equal(content.ContentRevision, half.GetProperty("validatedContentRevision").GetString());
+                    var projected = CookingStepProjection.Read(content, 6);
+                    Assert.Equal(2, projected.ValidatedUses); Assert.Equal(3, projected.UncertainUses);
+                    Assert.Equal("Add half the pasta; cook 20 minutes at 180 °C.", projected.Sections[0].Steps[1].Text);
+                    var fractionPlan = await finalDb.WeeklyPlans.AsNoTracking().SingleAsync(x => x.WeekStartDate == monday);
+                    var fractionRows = JsonSerializer.Deserialize<List<GroceryLineItemDto>>(fractionPlan.GroceryItems)!;
+                    Assert.Equal(LegacyGroceryQuantity.Parse("375"), Assert.Single(fractionRows, x => x.NormalizedKey == "pasta").ExactQuantity);
+                    await File.WriteAllTextAsync(Path.Combine(evidence, "persisted-result.json"), JsonSerializer.Serialize(new { content, projected, rows = fractionRows }, Json));
+                    return;
+                }
+                if (allocation is not null)
+                {
+                    var split = allocation != "partial";
+                    var uncertain = allocation == "exhaustive";
+                    Assert.Equal(uncertain ? "1" : split ? "2" : "250", content.IngredientLines[0].AmountText);
+                    Assert.Equal(before.InstructionSections[0].Steps.Select(x => x.Text), content.InstructionSections[0].Steps.Select(x => x.Text));
+                    var projected = CookingStepProjection.Read(content, split ? 8 : 6);
+                    Assert.Equal(uncertain ? 0 : split ? 2 : 1, projected.ValidatedUses);
+                    Assert.Equal(uncertain ? 2 : 0, projected.UncertainUses);
+                    Assert.Equal(uncertain ? "Heat 1 tbsp oil." : split ? "Heat 2 tbsp oil." : "Add 75 g pasta from a 400 g package; cook 20 minutes at 180 °C.", projected.Sections[0].Steps[0].Text);
+                    if (split) Assert.Equal(uncertain ? "Finish with 1 tbsp oil." : "Finish with 2 tbsp oil.", projected.Sections[0].Steps[1].Text);
+                    else Assert.Equal("50", content.InstructionSections[0].Steps[0].Bindings[0].GetProperty("payload").GetProperty("amount").GetProperty("value").GetProperty("n").GetString());
+                    var allocationPlan = await finalDb.WeeklyPlans.AsNoTracking().SingleAsync(x => x.WeekStartDate == monday);
+                    var allocationRows = JsonSerializer.Deserialize<List<GroceryLineItemDto>>(allocationPlan.GroceryItems)!;
+                    Assert.Equal(LegacyGroceryQuantity.Parse(uncertain ? "2" : split ? "4" : "375"), Assert.Single(allocationRows, x => x.NormalizedKey == (split ? "oil" : "pasta")).ExactQuantity);
+                    await File.WriteAllTextAsync(Path.Combine(evidence, "persisted-result.json"), JsonSerializer.Serialize(new { content, rows = allocationRows, projected }, Json));
+                    return;
+                }
+                if (instructionGuard)
+                {
+                    Assert.Equal("250", content.IngredientLines[0].AmountText);
+                    Assert.Equal(before.InstructionSections[0].Id, content.InstructionSections[0].Id);
+                    Assert.Equal(before.InstructionSections[0].Steps[0].Id, content.InstructionSections[0].Steps[0].Id);
+                    Assert.Equal(before.InstructionSections[0].Steps[0].Text + " Stir gently. Original reply recovery. Dated reply recovery.", content.InstructionSections[0].Steps[0].Text);
+                    Assert.NotEqual(before.ContentRevision, content.ContentRevision);
+                    var projected = CookingStepProjection.Read(content, 8);
+                    Assert.Equal(0, projected.ValidatedUses);
+                    Assert.Contains("Add 200 g pasta", projected.Sections[0].Steps[0].Text);
+                    await File.WriteAllTextAsync(Path.Combine(evidence, "persisted-result.json"), JsonSerializer.Serialize(new { content, projected }, Json));
+                    return;
+                }
+                if (stepScaling)
+                {
+                    Assert.Equal(reportRefresh ? "300" : "250", content.IngredientLines[0].AmountText);
+                    Assert.Equal("Add 200 g pasta from a 400 g package; cook 20 minutes at 180 °C.", content.InstructionSections[0].Steps[0].Text);
+                    var projected = CookingStepProjection.Read(content, 8);
+                    Assert.Contains(reportRefresh ? "Add 600 g pasta" : "Add 500 g pasta", projected.Sections[0].Steps[0].Text);
+                    var plan2 = await finalDb.WeeklyPlans.AsNoTracking().SingleAsync(x => x.WeekStartDate == monday);
+                    var rows2 = JsonSerializer.Deserialize<List<GroceryLineItemDto>>(plan2.GroceryItems)!;
+                    var pasta2 = Assert.Single(rows2, x => x.NormalizedKey == "pasta");
+                    Assert.Equal(LegacyGroceryQuantity.Parse(reportRefresh ? "600" : "500"), pasta2.ExactQuantity);
+                    await File.WriteAllTextAsync(Path.Combine(evidence, "persisted-result.json"), JsonSerializer.Serialize(new { content, rows = rows2, projected }, Json));
+                    return;
+                }
                 if (mixed)
                 {
                     Assert.Equal("200", content.IngredientLines[0].AmountText);
@@ -178,7 +345,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests
                 }
                 catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested) { }
             });
-        });
+        }, sourceUrl: reportRefresh || instructionGuard || preparedContext is not null ? "https://example.test/owned-report-fixture" : null);
     }
 
     private static async Task Pump(StreamReader reader, string path)

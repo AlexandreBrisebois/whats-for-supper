@@ -99,8 +99,12 @@ When a bug's cause is uncertain or an attempted correction fails, choose the
 smallest repeatable experiment that distinguishes plausible causes. State the
 observation, hypothesis and predicted result; vary one relevant factor at a time,
 then compare the actual result before choosing the next correction. Source
-inspection can help construct the experiment. Keep the evidence in existing task
-notes or a concise update; no separate artifact or fixed hypothesis count is needed.
+inspection can help construct the experiment. Repeated failures call for revisiting
+the shared premise or representation before layering another patch or rerunning the
+same work. For an unfamiliar transformation or proposed reusable automation, work
+through one small representative input and expected outcome by hand before scaling
+the tooling; retain it as a test where useful. Keep evidence in existing task notes
+or a concise update; no separate artifact or fixed hypothesis count is needed.
 
 Record the ordered source paths, representation changes (DTO/entity/client/state),
 contract agreement or mismatch, observed side effects and likely failure point.

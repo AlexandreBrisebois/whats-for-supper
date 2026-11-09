@@ -630,6 +630,72 @@ export function createIngredientProjectionLineFromDiscriminatorValue(
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {IngredientUseBinding_payload}
+ */
+// @ts-ignore
+export function createIngredientUseBinding_payloadFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoIngredientUseBinding_payload;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {IngredientUseBinding_span}
+ */
+// @ts-ignore
+export function createIngredientUseBinding_spanFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoIngredientUseBinding_span;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {IngredientUseBinding}
+ */
+// @ts-ignore
+export function createIngredientUseBindingFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoIngredientUseBinding;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {InstructionProjection_sections_steps}
+ */
+// @ts-ignore
+export function createInstructionProjection_sections_stepsFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoInstructionProjection_sections_steps;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {InstructionProjection_sections}
+ */
+// @ts-ignore
+export function createInstructionProjection_sectionsFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoInstructionProjection_sections;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {InstructionProjection}
+ */
+// @ts-ignore
+export function createInstructionProjectionFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoInstructionProjection;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {ManagementBackfillSearchAcceptedResponse}
  */
 // @ts-ignore
@@ -956,17 +1022,6 @@ export function createRecipeInstructionSectionInputFromDiscriminatorValue(
   parseNode: ParseNode | undefined
 ): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
   return deserializeIntoRecipeInstructionSectionInput;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {RecipeInstructionStep_bindings}
- */
-// @ts-ignore
-export function createRecipeInstructionStep_bindingsFromDiscriminatorValue(
-  parseNode: ParseNode | undefined
-): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
-  return deserializeIntoRecipeInstructionStep_bindings;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -2752,8 +2807,19 @@ export function deserializeIntoIngredientPreview(
     baseServings: (n) => {
       ingredientPreview.baseServings = n.getNumberValue();
     },
+    contentRevision: (n) => {
+      ingredientPreview.contentRevision = n.getStringValue();
+    },
+    contextKey: (n) => {
+      ingredientPreview.contextKey = n.getStringValue();
+    },
     factor: (n) => {
       ingredientPreview.factor = n.getNumberValue();
+    },
+    instructionProjection: (n) => {
+      ingredientPreview.instructionProjection = n.getObjectValue<InstructionProjection>(
+        createInstructionProjectionFromDiscriminatorValue
+      );
     },
     lines: (n) => {
       ingredientPreview.lines = n.getCollectionOfObjectValues<IngredientProjectionLine>(
@@ -2789,16 +2855,27 @@ export function deserializeIntoIngredientProjection(
     baseServings: (n) => {
       ingredientProjection.baseServings = n.getNumberValue();
     },
+    contentRevision: (n) => {
+      ingredientProjection.contentRevision = n.getStringValue();
+    },
     context: (n) => {
       ingredientProjection.context = n.getEnumValue<IngredientProjection_context>(
         IngredientProjection_contextObject
       );
+    },
+    contextKey: (n) => {
+      ingredientProjection.contextKey = n.getStringValue();
     },
     editable: (n) => {
       ingredientProjection.editable = n.getBooleanValue();
     },
     factor: (n) => {
       ingredientProjection.factor = n.getNumberValue();
+    },
+    instructionProjection: (n) => {
+      ingredientProjection.instructionProjection = n.getObjectValue<InstructionProjection>(
+        createInstructionProjectionFromDiscriminatorValue
+      );
     },
     lines: (n) => {
       ingredientProjection.lines = n.getCollectionOfObjectValues<IngredientProjectionLine>(
@@ -2873,6 +2950,158 @@ export function deserializeIntoIngredientProjectionLine(
     },
     unitText: (n) => {
       ingredientProjectionLine.unitText = n.getStringValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param IngredientUseBinding The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoIngredientUseBinding(
+  ingredientUseBinding: Partial<IngredientUseBinding> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    id: (n) => {
+      ingredientUseBinding.id = n.getGuidValue();
+    },
+    ingredientLineId: (n) => {
+      ingredientUseBinding.ingredientLineId = n.getGuidValue();
+    },
+    payload: (n) => {
+      ingredientUseBinding.payload = n.getObjectValue<IngredientUseBinding_payload>(
+        createIngredientUseBinding_payloadFromDiscriminatorValue
+      );
+    },
+    role: (n) => {
+      ingredientUseBinding.role = n.getEnumValue<IngredientUseBinding_role>(
+        IngredientUseBinding_roleObject
+      );
+    },
+    span: (n) => {
+      ingredientUseBinding.span = n.getObjectValue<IngredientUseBinding_span>(
+        createIngredientUseBinding_spanFromDiscriminatorValue
+      );
+    },
+    status: (n) => {
+      ingredientUseBinding.status = n.getEnumValue<IngredientUseBinding_status>(
+        IngredientUseBinding_statusObject
+      );
+    },
+    stepId: (n) => {
+      ingredientUseBinding.stepId = n.getGuidValue();
+    },
+    validatedContentRevision: (n) => {
+      ingredientUseBinding.validatedContentRevision = n.getStringValue();
+    },
+    validatedTextRevision: (n) => {
+      ingredientUseBinding.validatedTextRevision = n.getStringValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param IngredientUseBinding_payload The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoIngredientUseBinding_payload(
+  ingredientUseBinding_payload: Partial<IngredientUseBinding_payload> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {};
+}
+/**
+ * The deserialization information for the current model
+ * @param IngredientUseBinding_span The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoIngredientUseBinding_span(
+  ingredientUseBinding_span: Partial<IngredientUseBinding_span> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    end: (n) => {
+      ingredientUseBinding_span.end = n.getNumberValue();
+    },
+    expectedText: (n) => {
+      ingredientUseBinding_span.expectedText = n.getStringValue();
+    },
+    start: (n) => {
+      ingredientUseBinding_span.start = n.getNumberValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param InstructionProjection The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoInstructionProjection(
+  instructionProjection: Partial<InstructionProjection> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    sections: (n) => {
+      instructionProjection.sections =
+        n.getCollectionOfObjectValues<InstructionProjection_sections>(
+          createInstructionProjection_sectionsFromDiscriminatorValue
+        );
+    },
+    uncertainUses: (n) => {
+      instructionProjection.uncertainUses = n.getNumberValue();
+    },
+    validatedUses: (n) => {
+      instructionProjection.validatedUses = n.getNumberValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param InstructionProjection_sections The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoInstructionProjection_sections(
+  instructionProjection_sections: Partial<InstructionProjection_sections> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    name: (n) => {
+      instructionProjection_sections.name = n.getStringValue();
+    },
+    sectionId: (n) => {
+      instructionProjection_sections.sectionId = n.getGuidValue();
+    },
+    steps: (n) => {
+      instructionProjection_sections.steps =
+        n.getCollectionOfObjectValues<InstructionProjection_sections_steps>(
+          createInstructionProjection_sections_stepsFromDiscriminatorValue
+        );
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param InstructionProjection_sections_steps The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoInstructionProjection_sections_steps(
+  instructionProjection_sections_steps:
+    Partial<InstructionProjection_sections_steps> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    originalText: (n) => {
+      instructionProjection_sections_steps.originalText = n.getStringValue();
+    },
+    stepId: (n) => {
+      instructionProjection_sections_steps.stepId = n.getGuidValue();
+    },
+    text: (n) => {
+      instructionProjection_sections_steps.text = n.getStringValue();
+    },
+    textRevision: (n) => {
+      instructionProjection_sections_steps.textRevision = n.getStringValue();
     },
   };
 }
@@ -3719,10 +3948,9 @@ export function deserializeIntoRecipeInstructionStep(
 ): Record<string, (node: ParseNode) => void> {
   return {
     bindings: (n) => {
-      recipeInstructionStep.bindings =
-        n.getCollectionOfObjectValues<RecipeInstructionStep_bindings>(
-          createRecipeInstructionStep_bindingsFromDiscriminatorValue
-        );
+      recipeInstructionStep.bindings = n.getCollectionOfObjectValues<IngredientUseBinding>(
+        createIngredientUseBindingFromDiscriminatorValue
+      );
     },
     id: (n) => {
       recipeInstructionStep.id = n.getGuidValue();
@@ -3734,17 +3962,6 @@ export function deserializeIntoRecipeInstructionStep(
       recipeInstructionStep.textRevision = n.getStringValue();
     },
   };
-}
-/**
- * The deserialization information for the current model
- * @param RecipeInstructionStep_bindings The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoRecipeInstructionStep_bindings(
-  recipeInstructionStep_bindings: Partial<RecipeInstructionStep_bindings> | undefined = {}
-): Record<string, (node: ParseNode) => void> {
-  return {};
 }
 /**
  * The deserialization information for the current model
@@ -5822,9 +6039,21 @@ export interface IngredientPreview extends AdditionalDataHolder, Parsable {
    */
   baseServings?: number | null;
   /**
+   * Captured semantic recipe revision shared by both projections.
+   */
+  contentRevision?: string | null;
+  /**
+   * Opaque identity including content revision and original/preview/dated serving context.
+   */
+  contextKey?: string | null;
+  /**
    * The factor property
    */
   factor?: number | null;
+  /**
+   * The instructionProjection property
+   */
+  instructionProjection?: InstructionProjection | null;
   /**
    * The lines property
    */
@@ -5854,9 +6083,17 @@ export interface IngredientProjection extends AdditionalDataHolder, Parsable {
    */
   baseServings?: number | null;
   /**
+   * Captured semantic recipe revision shared by both projections.
+   */
+  contentRevision?: string | null;
+  /**
    * The context property
    */
   context?: IngredientProjection_context | null;
+  /**
+   * Opaque identity including content revision and original/preview/dated serving context.
+   */
+  contextKey?: string | null;
   /**
    * Whether portions may be edited: ordinary unprepared current or future dates and deployment-local today when Cooked without a preparation receipt. Past, future Cooked, non-cooking and explicitly prepared dates are read-only.
    */
@@ -5865,6 +6102,10 @@ export interface IngredientProjection extends AdditionalDataHolder, Parsable {
    * The factor property
    */
   factor?: number | null;
+  /**
+   * The instructionProjection property
+   */
+  instructionProjection?: InstructionProjection | null;
   /**
    * The lines property
    */
@@ -5944,6 +6185,112 @@ export type IngredientProjectionLine_issues =
   (typeof IngredientProjectionLine_issuesObject)[keyof typeof IngredientProjectionLine_issuesObject];
 export type IngredientProjectionLine_status =
   (typeof IngredientProjectionLine_statusObject)[keyof typeof IngredientProjectionLine_statusObject];
+export interface IngredientUseBinding extends AdditionalDataHolder, Parsable {
+  /**
+   * The id property
+   */
+  id?: Guid | null;
+  /**
+   * The ingredientLineId property
+   */
+  ingredientLineId?: Guid | null;
+  /**
+   * Role evidence: whole uses the saved row total; absolute/fixed carry amount and unit; ungrouped fixed uses require a unique binding identity across current steps and canonical amount/unit evidence matching the bound row; their exact span wording remains unchanged at every target, including missing serving basis and permitted original-total corrections. Fixed is a binding policy independent of ingredient-row scaling and grocery demand. Grouped fixed uses, including exhaustive and remainder members, are unsupported and preserve affected original wording; fraction carries fraction {n,d}, a canonical exact rational in [0,1] of the current row total; validated relative spans retain their exact original wording at every target (no numeric annotation is added); remainder carries allocationGroupId (UUID) and predecessors (ordered binding UUIDs), matching every preceding member of its explicit exhaustive allocationGroup; a single final remainder uses the current total less those proven uses. Its original relative span is retained with a parenthesized exact quantity in projection only; saved prose is unchanged. Scalar prior uses subtract exactly; fractions refer to the same current total, permitting correlation-safe range arithmetic; independent prior ranges cannot prove a remainder. perItem carries dose {amount,unit} (a canonical scalar fixed dose in the bound ingredient unit) and countBindingId (UUID of a separately validated whole item-count binding on a different ingredient row). The per-item binding identity must itself be unique across current steps. The count proof must be unique across current steps, revision/span-valid, ungrouped, scalar and proportional; the declared link is item-count evidence, never numeric discovery. Only that count scales; the exact per-item span remains unchanged. Missing, stale, overlapping, duplicate, cyclic, grouped or unsupported count proof leaves the dose wording uncertain; other valid bindings remain independent. Ingredient-total edits may carry this proof only when both linked rows and the count step keep identity, wording, unit, policy, package, shopping and source dependencies; their original totals may change without altering the fixed dose. An optional allocationGroup carries id (UUID), exhaustive (true), and ordered bindingIds (UUID array) repeated identically on every member. Only complete same-row groups of compatible whole/absolute/fraction uses whose exact sum equals the saved scalar total, or a terminal remainder whose known compatible predecessors and current total prove a nonnegative bounded exact result may project; missing, stale, ambiguous, contradictory or unsupported members preserve affected wording. Fraction proof requires a canonical known total and bounded exact arithmetic at the requested serving context; corrected totals retain the fraction and binding identity when other proof dependencies are unchanged. Ungrouped uses are never summed. Unsupported or unproved roles preserve original wording.
+   */
+  payload?: IngredientUseBinding_payload | null;
+  /**
+   * The role property
+   */
+  role?: IngredientUseBinding_role | null;
+  /**
+   * The span property
+   */
+  span?: IngredientUseBinding_span | null;
+  /**
+   * The status property
+   */
+  status?: IngredientUseBinding_status | null;
+  /**
+   * The stepId property
+   */
+  stepId?: Guid | null;
+  /**
+   * The validatedContentRevision property
+   */
+  validatedContentRevision?: string | null;
+  /**
+   * The validatedTextRevision property
+   */
+  validatedTextRevision?: string | null;
+}
+/**
+ * Role evidence: whole uses the saved row total; absolute/fixed carry amount and unit; ungrouped fixed uses require a unique binding identity across current steps and canonical amount/unit evidence matching the bound row; their exact span wording remains unchanged at every target, including missing serving basis and permitted original-total corrections. Fixed is a binding policy independent of ingredient-row scaling and grocery demand. Grouped fixed uses, including exhaustive and remainder members, are unsupported and preserve affected original wording; fraction carries fraction {n,d}, a canonical exact rational in [0,1] of the current row total; validated relative spans retain their exact original wording at every target (no numeric annotation is added); remainder carries allocationGroupId (UUID) and predecessors (ordered binding UUIDs), matching every preceding member of its explicit exhaustive allocationGroup; a single final remainder uses the current total less those proven uses. Its original relative span is retained with a parenthesized exact quantity in projection only; saved prose is unchanged. Scalar prior uses subtract exactly; fractions refer to the same current total, permitting correlation-safe range arithmetic; independent prior ranges cannot prove a remainder. perItem carries dose {amount,unit} (a canonical scalar fixed dose in the bound ingredient unit) and countBindingId (UUID of a separately validated whole item-count binding on a different ingredient row). The per-item binding identity must itself be unique across current steps. The count proof must be unique across current steps, revision/span-valid, ungrouped, scalar and proportional; the declared link is item-count evidence, never numeric discovery. Only that count scales; the exact per-item span remains unchanged. Missing, stale, overlapping, duplicate, cyclic, grouped or unsupported count proof leaves the dose wording uncertain; other valid bindings remain independent. Ingredient-total edits may carry this proof only when both linked rows and the count step keep identity, wording, unit, policy, package, shopping and source dependencies; their original totals may change without altering the fixed dose. An optional allocationGroup carries id (UUID), exhaustive (true), and ordered bindingIds (UUID array) repeated identically on every member. Only complete same-row groups of compatible whole/absolute/fraction uses whose exact sum equals the saved scalar total, or a terminal remainder whose known compatible predecessors and current total prove a nonnegative bounded exact result may project; missing, stale, ambiguous, contradictory or unsupported members preserve affected wording. Fraction proof requires a canonical known total and bounded exact arithmetic at the requested serving context; corrected totals retain the fraction and binding identity when other proof dependencies are unchanged. Ungrouped uses are never summed. Unsupported or unproved roles preserve original wording.
+ */
+export interface IngredientUseBinding_payload extends AdditionalDataHolder, Parsable {}
+export type IngredientUseBinding_role =
+  (typeof IngredientUseBinding_roleObject)[keyof typeof IngredientUseBinding_roleObject];
+export interface IngredientUseBinding_span extends AdditionalDataHolder, Parsable {
+  /**
+   * The end property
+   */
+  end?: number | null;
+  /**
+   * The expectedText property
+   */
+  expectedText?: string | null;
+  /**
+   * UTF-16 half-open offset against exact stored text.
+   */
+  start?: number | null;
+}
+export type IngredientUseBinding_status =
+  (typeof IngredientUseBinding_statusObject)[keyof typeof IngredientUseBinding_statusObject];
+export interface InstructionProjection extends AdditionalDataHolder, Parsable {
+  /**
+   * The sections property
+   */
+  sections?: InstructionProjection_sections[] | null;
+  /**
+   * The uncertainUses property
+   */
+  uncertainUses?: number | null;
+  /**
+   * The validatedUses property
+   */
+  validatedUses?: number | null;
+}
+export interface InstructionProjection_sections extends AdditionalDataHolder, Parsable {
+  /**
+   * The name property
+   */
+  name?: string | null;
+  /**
+   * The sectionId property
+   */
+  sectionId?: Guid | null;
+  /**
+   * The steps property
+   */
+  steps?: InstructionProjection_sections_steps[] | null;
+}
+export interface InstructionProjection_sections_steps extends AdditionalDataHolder, Parsable {
+  /**
+   * The originalText property
+   */
+  originalText?: string | null;
+  /**
+   * The stepId property
+   */
+  stepId?: Guid | null;
+  /**
+   * Only validated spans substituted; all other source text retained.
+   */
+  text?: string | null;
+  /**
+   * The textRevision property
+   */
+  textRevision?: string | null;
+}
 export interface ManagementBackfillSearchAcceptedResponse extends AdditionalDataHolder, Parsable {
   /**
    * The message property
@@ -6578,7 +6925,7 @@ export interface RecipeInstructionStep extends AdditionalDataHolder, Parsable {
   /**
    * Revision-bound validated ingredient uses owned by the cooking-step contract. Unvalidated source objects cannot authorize substitutions or demand.
    */
-  bindings?: RecipeInstructionStep_bindings[] | null;
+  bindings?: IngredientUseBinding[] | null;
   /**
    * The id property
    */
@@ -6592,7 +6939,6 @@ export interface RecipeInstructionStep extends AdditionalDataHolder, Parsable {
    */
   textRevision?: string | null;
 }
-export interface RecipeInstructionStep_bindings extends AdditionalDataHolder, Parsable {}
 export interface RecipeInstructionStepInput extends AdditionalDataHolder, Parsable {
   /**
    * The clientId property
@@ -8141,7 +8487,14 @@ export function serializeIngredientPreview(
     return;
   }
   writer.writeNumberValue('baseServings', ingredientPreview.baseServings);
+  writer.writeStringValue('contentRevision', ingredientPreview.contentRevision);
+  writer.writeStringValue('contextKey', ingredientPreview.contextKey);
   writer.writeNumberValue('factor', ingredientPreview.factor);
+  writer.writeObjectValue<InstructionProjection>(
+    'instructionProjection',
+    ingredientPreview.instructionProjection,
+    serializeInstructionProjection
+  );
   writer.writeCollectionOfObjectValues<IngredientProjectionLine>(
     'lines',
     ingredientPreview.lines,
@@ -8169,9 +8522,16 @@ export function serializeIngredientProjection(
     return;
   }
   writer.writeNumberValue('baseServings', ingredientProjection.baseServings);
+  writer.writeStringValue('contentRevision', ingredientProjection.contentRevision);
   writer.writeEnumValue<IngredientProjection_context>('context', ingredientProjection.context);
+  writer.writeStringValue('contextKey', ingredientProjection.contextKey);
   writer.writeBooleanValue('editable', ingredientProjection.editable);
   writer.writeNumberValue('factor', ingredientProjection.factor);
+  writer.writeObjectValue<InstructionProjection>(
+    'instructionProjection',
+    ingredientProjection.instructionProjection,
+    serializeInstructionProjection
+  );
   writer.writeCollectionOfObjectValues<IngredientProjectionLine>(
     'lines',
     ingredientProjection.lines,
@@ -8222,6 +8582,150 @@ export function serializeIngredientProjectionLine(
   writer.writeEnumValue<IngredientProjectionLine_status>('status', ingredientProjectionLine.status);
   writer.writeStringValue('unitText', ingredientProjectionLine.unitText);
   writer.writeAdditionalData(ingredientProjectionLine.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param IngredientUseBinding The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeIngredientUseBinding(
+  writer: SerializationWriter,
+  ingredientUseBinding: Partial<IngredientUseBinding> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!ingredientUseBinding || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeGuidValue('id', ingredientUseBinding.id);
+  writer.writeGuidValue('ingredientLineId', ingredientUseBinding.ingredientLineId);
+  writer.writeObjectValue<IngredientUseBinding_payload>(
+    'payload',
+    ingredientUseBinding.payload,
+    serializeIngredientUseBinding_payload
+  );
+  writer.writeEnumValue<IngredientUseBinding_role>('role', ingredientUseBinding.role);
+  writer.writeObjectValue<IngredientUseBinding_span>(
+    'span',
+    ingredientUseBinding.span,
+    serializeIngredientUseBinding_span
+  );
+  writer.writeEnumValue<IngredientUseBinding_status>('status', ingredientUseBinding.status);
+  writer.writeGuidValue('stepId', ingredientUseBinding.stepId);
+  writer.writeStringValue(
+    'validatedContentRevision',
+    ingredientUseBinding.validatedContentRevision
+  );
+  writer.writeStringValue('validatedTextRevision', ingredientUseBinding.validatedTextRevision);
+  writer.writeAdditionalData(ingredientUseBinding.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param IngredientUseBinding_payload The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeIngredientUseBinding_payload(
+  writer: SerializationWriter,
+  ingredientUseBinding_payload: Partial<IngredientUseBinding_payload> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!ingredientUseBinding_payload || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeAdditionalData(ingredientUseBinding_payload.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param IngredientUseBinding_span The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeIngredientUseBinding_span(
+  writer: SerializationWriter,
+  ingredientUseBinding_span: Partial<IngredientUseBinding_span> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!ingredientUseBinding_span || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeNumberValue('end', ingredientUseBinding_span.end);
+  writer.writeStringValue('expectedText', ingredientUseBinding_span.expectedText);
+  writer.writeNumberValue('start', ingredientUseBinding_span.start);
+  writer.writeAdditionalData(ingredientUseBinding_span.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param InstructionProjection The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeInstructionProjection(
+  writer: SerializationWriter,
+  instructionProjection: Partial<InstructionProjection> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!instructionProjection || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeCollectionOfObjectValues<InstructionProjection_sections>(
+    'sections',
+    instructionProjection.sections,
+    serializeInstructionProjection_sections
+  );
+  writer.writeNumberValue('uncertainUses', instructionProjection.uncertainUses);
+  writer.writeNumberValue('validatedUses', instructionProjection.validatedUses);
+  writer.writeAdditionalData(instructionProjection.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param InstructionProjection_sections The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeInstructionProjection_sections(
+  writer: SerializationWriter,
+  instructionProjection_sections: Partial<InstructionProjection_sections> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!instructionProjection_sections || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeStringValue('name', instructionProjection_sections.name);
+  writer.writeGuidValue('sectionId', instructionProjection_sections.sectionId);
+  writer.writeCollectionOfObjectValues<InstructionProjection_sections_steps>(
+    'steps',
+    instructionProjection_sections.steps,
+    serializeInstructionProjection_sections_steps
+  );
+  writer.writeAdditionalData(instructionProjection_sections.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param InstructionProjection_sections_steps The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeInstructionProjection_sections_steps(
+  writer: SerializationWriter,
+  instructionProjection_sections_steps:
+    Partial<InstructionProjection_sections_steps> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!instructionProjection_sections_steps || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeStringValue('originalText', instructionProjection_sections_steps.originalText);
+  writer.writeGuidValue('stepId', instructionProjection_sections_steps.stepId);
+  writer.writeStringValue('text', instructionProjection_sections_steps.text);
+  writer.writeStringValue('textRevision', instructionProjection_sections_steps.textRevision);
+  writer.writeAdditionalData(instructionProjection_sections_steps.additionalData);
 }
 /**
  * Serializes information the current object
@@ -9000,32 +9504,15 @@ export function serializeRecipeInstructionStep(
   if (!recipeInstructionStep || isSerializingDerivedType) {
     return;
   }
-  writer.writeCollectionOfObjectValues<RecipeInstructionStep_bindings>(
+  writer.writeCollectionOfObjectValues<IngredientUseBinding>(
     'bindings',
     recipeInstructionStep.bindings,
-    serializeRecipeInstructionStep_bindings
+    serializeIngredientUseBinding
   );
   writer.writeGuidValue('id', recipeInstructionStep.id);
   writer.writeStringValue('text', recipeInstructionStep.text);
   writer.writeStringValue('textRevision', recipeInstructionStep.textRevision);
   writer.writeAdditionalData(recipeInstructionStep.additionalData);
-}
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param RecipeInstructionStep_bindings The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeRecipeInstructionStep_bindings(
-  writer: SerializationWriter,
-  recipeInstructionStep_bindings: Partial<RecipeInstructionStep_bindings> | undefined | null = {},
-  isSerializingDerivedType: boolean = false
-): void {
-  if (!recipeInstructionStep_bindings || isSerializingDerivedType) {
-    return;
-  }
-  writer.writeAdditionalData(recipeInstructionStep_bindings.additionalData);
 }
 /**
  * Serializes information the current object
@@ -11182,6 +11669,19 @@ export const IngredientProjectionLine_statusObject = {
   Original: 'original',
   Unquantified: 'unquantified',
   Unresolved: 'unresolved',
+} as const;
+export const IngredientUseBinding_roleObject = {
+  Mention: 'mention',
+  Whole: 'whole',
+  Absolute: 'absolute',
+  Fraction: 'fraction',
+  Remainder: 'remainder',
+  Fixed: 'fixed',
+  PerItem: 'perItem',
+} as const;
+export const IngredientUseBinding_statusObject = {
+  Validated: 'validated',
+  Uncertain: 'uncertain',
 } as const;
 export const ManagementTaskStatusResponse_demoLastResetStatusObject = {
   Pending: 'Pending',

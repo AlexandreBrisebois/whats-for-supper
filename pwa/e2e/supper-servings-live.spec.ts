@@ -2,6 +2,16 @@ import { test, expect } from '@playwright/test';
 import { writeFile } from 'node:fs/promises';
 import { generateSecretToken } from './auth-utils';
 
+const groceryRow = (snapshot: any, key = 'pasta') =>
+  snapshot.groceryItems.find((row: any) => row.normalizedKey === key);
+const groceryChecked = (snapshot: any) => snapshot.groceryState[groceryRow(snapshot).rowId];
+const exactGroceryQuantity = (amount: number) => ({
+  kind: 'scalar',
+  value: { n: String(amount), d: '1' },
+});
+const unrelatedChecked = (snapshot: any) =>
+  snapshot.groceryExtras.find((row: any) => row.normalizedKey === 'coffee')?.checked;
+
 test.skip(
   !process.env.SUPPER_SERVINGS_API_URL,
   'Requires isolated supper-servings PostgreSQL live host.'
@@ -58,7 +68,8 @@ if (process.env.SUPPER_SETTINGS_LIVE === '1') {
       const before = await read('/_test/servings/persisted');
       evidence.before = before;
       const initialSchedule = await schedule();
-      const initialQuantity = initialSchedule.groceryItems[0].quantity;
+      expect(groceryRow(initialSchedule).quantity.value.d).toBe('1');
+      const initialQuantity = Number(groceryRow(initialSchedule).quantity.value.n);
       await observer.goto('/planner?weekOffset=0&referenceWeekStartDate=2026-10-12');
       await observer.evaluate(() => {
         const state = { connected: false, weeks: [] as unknown[], groceries: [] as unknown[] };
@@ -109,15 +120,16 @@ if (process.env.SUPPER_SETTINGS_LIVE === '1') {
       await expect(observer.getByTestId('grocery-portions-updating')).toBeVisible();
       expect(await advance()).toBeGreaterThan(0);
       const afterFive = await schedule();
-      expect(afterFive.groceryItems[0].quantity).toBe(initialQuantity + 100);
-      expect(afterFive.groceryState).toMatchObject({ pasta: false, unrelated: true });
+      expect(groceryRow(afterFive).quantity).toEqual(exactGroceryQuantity(initialQuantity + 100));
+      expect(groceryChecked(afterFive)).toBe(false);
+      expect(unrelatedChecked(afterFive)).toBe(true);
       const pantry = observer.getByRole('button', { name: /Pantry/ });
       if ((await pantry.getAttribute('aria-expanded')) === 'false') await pantry.click();
       await expect(observer.getByTestId('grocery-item-quantity-hint')).toContainText(
         String(initialQuantity + 100)
       );
       await observer.getByTestId('grocery-item-checkbox').click();
-      await expect.poll(async () => (await schedule()).groceryState.pasta).toBe(true);
+      await expect.poll(async () => groceryChecked(await schedule())).toBe(true);
       const explicitVersion = (await servings()).version;
       await page.getByTestId('add-member-trigger').click();
       await page.getByTestId('family-name-input').fill('Settings fifth member');
@@ -140,7 +152,7 @@ if (process.env.SUPPER_SETTINGS_LIVE === '1') {
       expect(equalAutomatic).toMatchObject({ defaultServingsSource: 'family', defaultServings: 5 });
       expect(equalAutomatic.version).not.toBe(explicitVersion);
       await advance();
-      expect((await schedule()).groceryState.pasta).toBe(true);
+      expect(groceryChecked(await schedule())).toBe(true);
       await page.getByTestId('add-member-trigger').click();
       await page.getByTestId('family-name-input').fill('Settings sixth member');
       await page.getByTestId('add-member-submit').click();
@@ -153,8 +165,11 @@ if (process.env.SUPPER_SETTINGS_LIVE === '1') {
       await expect(observer.getByTestId('grocery-portions-updating')).toBeVisible();
       expect(await advance()).toBeGreaterThan(0);
       const finalSchedule = await schedule();
-      expect(finalSchedule.groceryItems[0].quantity).toBe(initialQuantity + 200);
-      expect(finalSchedule.groceryState).toMatchObject({ pasta: false, unrelated: true });
+      expect(groceryRow(finalSchedule).quantity).toEqual(
+        exactGroceryQuantity(initialQuantity + 200)
+      );
+      expect(groceryChecked(finalSchedule)).toBe(false);
+      expect(unrelatedChecked(finalSchedule)).toBe(true);
       await expect(observer.getByTestId('grocery-item-quantity-hint')).toContainText(
         String(initialQuantity + 200)
       );
@@ -334,7 +349,11 @@ test('real dated detail, cooking and groceries share inputs across two independe
         instanceId: ack.groceryRefresh.workflowId,
       }),
     ]);
-    expect(JSON.parse(pending.plans[0].groceryItems)[0].quantity).toBe(400);
+    // One household member: each of two 200 g/two-person dinners contributes
+    // 100 g. Pending work must retain that 200 g cache until recomputation.
+    expect(
+      groceryRow({ groceryItems: JSON.parse(pending.plans[0].groceryItems) }).quantity
+    ).toEqual(exactGroceryQuantity(200));
     evidence.pendingDatabase = pending;
     await expect
       .poll(() =>
@@ -361,16 +380,17 @@ test('real dated detail, cooking and groceries share inputs across two independe
       animations: 'disabled',
     });
     const current = await advance();
-    expect(current.groceryItems[0].quantity).toBe(1000);
-    expect(current.groceryState).toMatchObject({ pasta: false, unrelated: true });
+    expect(groceryRow(current).quantity).toEqual(exactGroceryQuantity(1000));
+    expect(groceryChecked(current)).toBe(false);
+    expect(unrelatedChecked(current)).toBe(true);
     const aisle = observer.getByRole('button', { name: /Pantry/ });
     if ((await aisle.getAttribute('aria-expanded')) === 'false') await aisle.click();
     await expect(observer.getByTestId('grocery-item-quantity-hint')).toContainText('1000');
     await observer.getByTestId('grocery-item-checkbox').click();
-    await expect.poll(async () => (await schedule()).groceryState.pasta).toBe(true);
+    await expect.poll(async () => groceryChecked(await schedule())).toBe(true);
     const unchanged = await request.post(`${api}/_test/servings/recompute`, { headers });
     expect(unchanged.ok()).toBe(true);
-    expect((await schedule()).groceryState.pasta).toBe(true);
+    expect(groceryChecked(await schedule())).toBe(true);
     evidence.initialDatabase = await read('/_test/servings/persisted');
     evidence.initialScheduleHttp = await schedule();
     await observer.getByRole('button', { name: 'Close grocery list', exact: true }).click();
@@ -519,8 +539,10 @@ test('real dated detail, cooking and groceries share inputs across two independe
     await foreign.close();
     await open(page, 2, 400);
     await page.getByTestId('action-cooks-mode').click();
-    if (!(await page.getByTestId('ingredient-toggle').count()))
-      await page.getByRole('button', { name: 'View adjusted ingredients', exact: true }).click();
+    if (!(await page.getByTestId('ingredient-toggle').count())) {
+      await page.getByTestId('cooking-view-all-steps').click();
+      await page.getByTestId('cooks-mode-step-prev').click();
+    }
     await page.getByTestId('ingredient-toggle').click();
     await page.getByTestId('cooks-mode-step-next').click();
     if ((await page.getByTestId('cooking-view-all-steps').getAttribute('aria-pressed')) === 'false')
@@ -534,7 +556,10 @@ test('real dated detail, cooking and groceries share inputs across two independe
     await expect(observer.getByTestId('recipe-detail-reading').locator('img')).toHaveCount(0);
     await expect(observer.getByTestId('hero-action-regenerate')).toBeVisible();
     await observer.getByTestId('recipe-edit-servings-input').fill('1');
-    await observer.getByTestId('recipe-save-edits').click();
+    // The mobile development indicator overlaps this footer button. Exercise
+    // its supported keyboard activation without bypassing application guards.
+    await observer.getByTestId('recipe-save-edits').focus();
+    await observer.getByTestId('recipe-save-edits').press('Enter');
     await expect(observer.getByTestId('recipe-ingredient-projection')).toContainText(
       '1,200 g pasta'
     );
@@ -543,12 +568,13 @@ test('real dated detail, cooking and groceries share inputs across two independe
     await page.getByRole('button', { name: 'Refresh quantities', exact: true }).click();
     await expect(page.getByRole('textbox')).toHaveValue('Keep this unsaved instruction.');
     await page.getByRole('button', { name: 'Cancel', exact: true }).click();
-    await page.getByRole('button', { name: 'View adjusted ingredients', exact: true }).click();
+    await page.getByTestId('cooking-view-all-steps').click();
+    await page.getByTestId('cooks-mode-step-prev').click();
     await expect(page.getByTestId('ingredient-toggle')).toContainText('800 g pasta');
     await expect(page.getByTestId('ingredient-toggle')).toHaveAttribute('aria-checked', 'true');
     const corrected = await advance();
-    expect(corrected.groceryItems[0].quantity).toBe(2000);
-    expect(corrected.groceryState.pasta).toBe(false);
+    expect(groceryRow(corrected).quantity).toEqual(exactGroceryQuantity(2000));
+    expect(groceryChecked(corrected)).toBe(false);
     evidence.correctedBasisHttp = [await projection(2), await projection(4)];
     evidence.correctedBasisDatabase = await read('/_test/servings/persisted');
     // Current text intentionally diverges from retained extraction; old numbers must disappear.
@@ -566,13 +592,16 @@ test('real dated detail, cooking and groceries share inputs across two independe
     await expect(page.getByTestId('ingredient-toggle')).toContainText('current sauce');
     await expect(page.getByTestId('ingredient-toggle')).not.toContainText('800');
     const stale = await advance();
-    expect(stale.groceryItems[0]).toMatchObject({ quantity: null, quantityComplete: false });
+    expect(groceryRow(stale, 'current sauce')).toMatchObject({
+      quantity: null,
+      quantityComplete: false,
+    });
     evidence.staleSourceHttp = [await projection(2), await projection(4)];
     evidence.staleSourceDatabase = await read('/_test/servings/persisted');
     await page.getByTestId('close-cooks-mode').click();
     await page.getByTestId('action-close-sheet').click();
     await page.getByTestId('grocery-tab').click();
-    await expect(page.getByTestId('grocery-amount-review')).toBeVisible();
+    await expect(page.getByTestId('grocery-amount-review')).toHaveCount(0);
     await page.screenshot({
       path: info.outputPath('real-stale-grocery.png'),
       animations: 'disabled',
@@ -672,7 +701,7 @@ if (process.env.SUPPER_RESET_LIVE === '1')
     const wednesday = page.getByTestId('portion-input-2026-10-14');
     try {
       evidence.before = await persisted();
-      expect((await schedule()).groceryItems[0].quantity).toBe(900);
+      expect(groceryRow(await schedule()).quantity).toEqual(exactGroceryQuantity(900));
       await observer.goto('/planner?referenceWeekStartDate=2026-10-12');
       await observer.evaluate(() => {
         const events = { connected: false, weeks: [] as unknown[], groceries: [] as unknown[] };
@@ -721,7 +750,7 @@ if (process.env.SUPPER_RESET_LIVE === '1')
       ).toBeNull();
       expect((await portions()).groceryRefresh.status).toBe('updating');
       await advance();
-      expect((await schedule()).groceryItems[0].quantity).toBe(800);
+      expect(groceryRow(await schedule()).quantity).toEqual(exactGroceryQuantity(800));
       await expect(observer.getByTestId('grocery-portions-updating')).toHaveCount(0);
       await open.click();
       await expect(page.getByTestId('portion-input-2026-10-16')).toHaveValue('4');
@@ -751,7 +780,7 @@ if (process.env.SUPPER_RESET_LIVE === '1')
       await advance();
       expect((await portions()).days[2]).toMatchObject({ servings: 7, overrideServings: null });
       expect((await portions()).days[4]).toMatchObject({ servings: 7, overrideServings: null });
-      expect((await schedule()).groceryItems[0].quantity).toBe(1400);
+      expect(groceryRow(await schedule()).quantity).toEqual(exactGroceryQuantity(1400));
       await expect
         .poll(() => observer.evaluate(() => (window as any).__resetEvents.groceries.length))
         .toBeGreaterThan(0);

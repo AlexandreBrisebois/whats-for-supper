@@ -323,8 +323,54 @@ components:
         textRevision: { type: string, minLength: 1, description: Opaque token changes only when step text changes. }
         bindings:
           type: array
-          items: { type: object }
+          items: { $ref: '#/components/schemas/IngredientUseBinding' }
           description: Revision-bound validated ingredient uses owned by the cooking-step contract. Unvalidated source objects cannot authorize substitutions or demand.
+    IngredientUseBinding:
+      type: object
+      required: [id, ingredientLineId, stepId, validatedContentRevision, validatedTextRevision, span, role, payload, status]
+      properties:
+        id: { type: string, format: uuid }
+        ingredientLineId: { type: string, format: uuid }
+        stepId: { type: string, format: uuid }
+        validatedContentRevision: { type: string }
+        validatedTextRevision: { type: string }
+        span:
+          type: object
+          required: [start, end, expectedText]
+          properties:
+            start: { type: integer, minimum: 0, description: UTF-16 half-open offset against exact stored text. }
+            end: { type: integer, minimum: 0 }
+            expectedText: { type: string }
+        role: { type: string, enum: [mention, whole, absolute, fraction, remainder, fixed, perItem] }
+        payload:
+          type: object
+          description: 'Role evidence: whole uses the saved row total; absolute/fixed carry amount and unit; ungrouped fixed uses require a unique binding identity across current steps and canonical amount/unit evidence matching the bound row; their exact span wording remains unchanged at every target, including missing serving basis and permitted original-total corrections. Fixed is a binding policy independent of ingredient-row scaling and grocery demand. Grouped fixed uses, including exhaustive and remainder members, are unsupported and preserve affected original wording; fraction carries fraction {n,d}, a canonical exact rational in [0,1] of the current row total; validated relative spans retain their exact original wording at every target (no numeric annotation is added); remainder carries allocationGroupId (UUID) and predecessors (ordered binding UUIDs), matching every preceding member of its explicit exhaustive allocationGroup; a single final remainder uses the current total less those proven uses. Its original relative span is retained with a parenthesized exact quantity in projection only; saved prose is unchanged. Scalar prior uses subtract exactly; fractions refer to the same current total, permitting correlation-safe range arithmetic; independent prior ranges cannot prove a remainder. perItem carries dose {amount,unit} (a canonical scalar fixed dose in the bound ingredient unit) and countBindingId (UUID of a separately validated whole item-count binding on a different ingredient row). The per-item binding identity must itself be unique across current steps. The count proof must be unique across current steps, revision/span-valid, ungrouped, scalar and proportional; the declared link is item-count evidence, never numeric discovery. Only that count scales; the exact per-item span remains unchanged. Missing, stale, overlapping, duplicate, cyclic, grouped or unsupported count proof leaves the dose wording uncertain; other valid bindings remain independent. Ingredient-total edits may carry this proof only when both linked rows and the count step keep identity, wording, unit, policy, package, shopping and source dependencies; their original totals may change without altering the fixed dose. An optional allocationGroup carries id (UUID), exhaustive (true), and ordered bindingIds (UUID array) repeated identically on every member. Only complete same-row groups of compatible whole/absolute/fraction uses whose exact sum equals the saved scalar total, or a terminal remainder whose known compatible predecessors and current total prove a nonnegative bounded exact result may project; missing, stale, ambiguous, contradictory or unsupported members preserve affected wording. Fraction proof requires a canonical known total and bounded exact arithmetic at the requested serving context; corrected totals retain the fraction and binding identity when other proof dependencies are unchanged. Ungrouped uses are never summed. Unsupported or unproved roles preserve original wording.'
+          additionalProperties: true
+        status: { type: string, enum: [validated, uncertain] }
+    InstructionProjection:
+      type: object
+      required: [sections, validatedUses, uncertainUses]
+      properties:
+        validatedUses: { type: integer, minimum: 0 }
+        uncertainUses: { type: integer, minimum: 0 }
+        sections:
+          type: array
+          items:
+            type: object
+            required: [sectionId, name, steps]
+            properties:
+              sectionId: { type: string, format: uuid }
+              name: { type: string, nullable: true }
+              steps:
+                type: array
+                items:
+                  type: object
+                  required: [stepId, textRevision, originalText, text]
+                  properties:
+                    stepId: { type: string, format: uuid }
+                    textRevision: { type: string }
+                    originalText: { type: string }
+                    text: { type: string, description: Only validated spans substituted; all other source text retained. }
     RecipeInstructionSection:
       type: object
       required: [id, name, steps]
@@ -503,8 +549,13 @@ components:
 
     IngredientPreview:
       type: object
-      required: [recipeId, baseServings, targetServings, factor, version, status, lines]
+      required: [recipeId, contentRevision, contextKey, baseServings, targetServings, factor, version, status, lines]
       properties:
+        contentRevision: { type: string, description: Captured semantic recipe revision shared by both projections. }
+        contextKey: { type: string, description: Opaque identity including content revision and original/preview/dated serving context. }
+        instructionProjection:
+          nullable: true
+          allOf: [{ $ref: '#/components/schemas/InstructionProjection' }]
         recipeId: { type: string, format: uuid }
         baseServings: { type: integer, nullable: true, minimum: 1 }
         targetServings: { type: integer, enum: [2, 4, 6] }
@@ -517,8 +568,13 @@ components:
 
     IngredientProjection:
       type: object
-      required: [recipeId, supperDate, context, occurrenceId, baseServings, targetServings, factor, servingVersion, version, editable, status, lines]
+      required: [recipeId, contentRevision, contextKey, supperDate, context, occurrenceId, baseServings, targetServings, factor, servingVersion, version, editable, status, lines]
       properties:
+        contentRevision: { type: string, description: Captured semantic recipe revision shared by both projections. }
+        contextKey: { type: string, description: Opaque identity including content revision and original/preview/dated serving context. }
+        instructionProjection:
+          nullable: true
+          allOf: [{ $ref: '#/components/schemas/InstructionProjection' }]
         recipeId: { type: string, format: uuid }
         supperDate: { type: string, format: date }
         context: { type: string, enum: [proposed, assigned] }

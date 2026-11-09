@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
@@ -63,12 +64,19 @@ public partial class SupperServingsPostgresTests
                 app.MapPost("/_test/recovery/restore", async (RecipeDbContext db) => {
                     await db.Database.ExecuteSqlRawAsync("DROP TRIGGER IF EXISTS fail_live_serving_grocery ON weekly_plans; DROP FUNCTION IF EXISTS fail_live_serving_grocery()"); return Results.Ok();
                 }).RequireAuthorization();
-                app.MapPost("/_test/recovery/legacy-prior", async (RecipeDbContext db) => {
-                    // A supported old cache lacks completeness; do not publish an invented event.
+                app.MapPost("/_test/recovery/unknown-prior", async (RecipeDbContext db) => {
+                    // Keep current row identity; an unknown acknowledgement must not become known on recompute.
                     var plan = await db.WeeklyPlans.SingleAsync();
-                    var recipe = await db.Recipes.SingleAsync();
-                    plan.GroceryItems = JsonSerializer.Serialize(new[] { new { displayName = "pasta", normalizedKey = "pasta", section = "Pantry", quantity = 200, unitText = "g", recipeIds = new[] { recipe.Id } } });
-                    plan.GroceryState = "{\"pasta\":true,\"unrelated\":true}"; await db.SaveChangesAsync(); return Results.Ok();
+                    var rows = JsonNode.Parse(plan.GroceryItems)!.AsArray();
+                    var row = rows.Single(row => row!["normalizedKey"]!.GetValue<string>() == "pasta")!;
+                    var rowId = row["rowId"]!.GetValue<string>();
+                    var baselines = JsonNode.Parse(plan.GroceryCheckedDemandBaselines)!.AsObject();
+                    baselines[rowId]!["Quantity"] = null;
+                    baselines[rowId]!["QuantityComplete"] = false;
+                    plan.GroceryCheckedDemandBaselines = baselines.ToJsonString();
+                    row["checkReviewReason"] = "prior_amount_unknown";
+                    plan.GroceryItems = rows.ToJsonString();
+                    await db.SaveChangesAsync(); return Results.Ok();
                 }).RequireAuthorization();
                 app.MapPost("/_test/recovery/replay/{taskId:guid}", async (Guid taskId, RecipeDbContext db) => {
                     var task = await db.WorkflowTasks.SingleAsync(x => x.TaskId == taskId); Assert.Equal(RecipeApi.Models.TaskStatus.Completed, task.Status);
@@ -86,7 +94,7 @@ public partial class SupperServingsPostgresTests
                     defaults = await db.FamilySettings.AsNoTracking().Where(x => x.Key == "supper_servings_default").ToListAsync(),
                     recipes = await db.Recipes.AsNoTracking().Select(x => new { x.Id, x.Servings, x.Ingredients }).ToListAsync(),
                     occurrences = await db.CalendarEvents.AsNoTracking().OrderBy(x => x.Date).Select(x => new { x.Id, x.Date, x.RecipeId, x.Status, x.MealSlot, x.VoteCount }).ToListAsync(),
-                    plans = await db.WeeklyPlans.AsNoTracking().OrderBy(x => x.WeekStartDate).Select(x => new { x.WeekStartDate, x.GroceryItems, x.GroceryState, x.ServingInputVersion, x.ServingAppliedVersion, x.ServingRefreshStatus, x.ServingRefreshWorkflowId, x.GroceryResetSummaryVersion }).ToListAsync(),
+                    plans = await db.WeeklyPlans.AsNoTracking().OrderBy(x => x.WeekStartDate).Select(x => new { x.WeekStartDate, x.GroceryItems, x.GroceryState, x.GroceryCheckedDemandBaselines, x.ServingInputVersion, x.ServingAppliedVersion, x.ServingRefreshStatus, x.ServingRefreshWorkflowId, x.GroceryResetSummaryVersion }).ToListAsync(),
                     tasks = await db.WorkflowTasks.AsNoTracking().Select(x => new { x.TaskId, x.InstanceId, x.ProcessorName, status = x.Status.ToString(), x.ErrorMessage }).ToListAsync(),
                     workflows = await db.WorkflowInstances.AsNoTracking().Select(x => new { x.Id, status = x.Status.ToString() }).ToListAsync(),
                     extras = await db.GroceryExtraOccurrences.AsNoTracking().Select(x => new { x.Id, x.Name, x.Checked, x.Version, x.WeekStartDate }).ToListAsync(),
@@ -107,14 +115,44 @@ public partial class SupperServingsPostgresTests
                 var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
                 var recipe = new Recipe { Name = "Recovery pasta", Servings = 2, Ingredients = "[\"200 g pasta\"]", RawMetadata = "{\"recipeIngredient\":[\"200 g pasta\"],\"supply\":[{\"name\":\"pasta\",\"quantity\":200,\"unitText\":\"g\"}]}", IsReady = true };
                 db.Recipes.Add(recipe); db.CalendarEvents.Add(new CalendarEvent { Date = Wednesday, RecipeId = recipe.Id, VoteCount = 7 });
-                db.SupperServings.Add(new SupperServing { Date = Wednesday, OverrideServings = 4 }); db.SupperServings.Add(new SupperServing { Date = Wednesday.AddDays(1), OverrideServings = 6 });
+                // Seed complete current date snapshots for the one-member household;
+                // movement must retain these rows rather than first materialize missing inheritance.
+                db.SupperServings.Add(new SupperServing { Date = Wednesday, OverrideServings = 4, InheritedServings = 1, CreatedAt = clock.UtcNow, UpdatedAt = clock.UtcNow });
+                db.SupperServings.Add(new SupperServing { Date = Wednesday.AddDays(1), OverrideServings = 6, InheritedServings = 1, CreatedAt = clock.UtcNow, UpdatedAt = clock.UtcNow });
                 var id = Guid.NewGuid(); var extra = GroceryExtraOccurrence.Create(id, id, new(2026,10,12), "Coffee", "coffee", "Grocery", clock.UtcNow); extra.Checked = true; db.GroceryExtraOccurrences.Add(extra);
                 await db.SaveChangesAsync(); await scope.ServiceProvider.GetRequiredService<GroceryRecomputeService>().RecomputeForWeekAsync(new(2026,10,12), default);
-                var plan = await db.WeeklyPlans.SingleAsync(); plan.GroceryState = "{\"pasta\":true,\"unrelated\":true}"; await db.SaveChangesAsync();
+
+            }
+            using (var client = factory.CreateAuthenticatedClient())
+                await GroceryTestRows.CheckAsync(client, new(2026, 10, 12));
+            // Legacy row/name caches are rejected, not silently upgraded. Restore current state before browsers connect.
+            string currentRows, currentChecks;
+            using (var scope = factory.Services.CreateScope()) {
+                var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+                var plan = await db.WeeklyPlans.SingleAsync();
+                currentRows = plan.GroceryItems; currentChecks = plan.GroceryState;
+                plan.GroceryItems = "[{\"displayName\":\"pasta\",\"normalizedKey\":\"pasta\",\"section\":\"Pantry\",\"quantity\":200,\"unitText\":\"g\",\"recipeIds\":[]}]";
+                plan.GroceryState = "{\"pasta\":true,\"unrelated\":true}";
+                await db.SaveChangesAsync();
+            }
+            try {
+                using var scope = factory.Services.CreateScope();
+                var rejected = await Assert.ThrowsAsync<GroceryMutationConflictException>(() => scope.ServiceProvider.GetRequiredService<ScheduleService>().GetScheduleAsync(0, new(2026, 10, 12)));
+                Assert.Equal("active_legacy_list", rejected.Code);
+            } finally {
+                using var scope = factory.Services.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+                var plan = await db.WeeklyPlans.SingleAsync();
+                plan.GroceryItems = currentRows; plan.GroceryState = currentChecks; await db.SaveChangesAsync();
             }
             ProcessStartInfo Command(params string[] args) {
                 var process = new ProcessStartInfo("node") { WorkingDirectory = Path.Combine(TomorrowPushPostgresTests.Root(), "pwa"), RedirectStandardOutput = true, RedirectStandardError = true };
                 foreach (var arg in args) process.ArgumentList.Add(arg);
+                var artifactRoot = Environment.GetEnvironmentVariable("WFS_LIVE_ARTIFACT_ROOT");
+                if (artifactRoot is not null) {
+                    Directory.CreateDirectory(artifactRoot);
+                    process.Environment["PLAYWRIGHT_JSON_OUTPUT_NAME"] = Path.Combine(artifactRoot, "recovery-browser.json");
+                }
                 process.Environment["BASE_URL"] = factory.HttpAddress; process.Environment["SUPPER_SERVINGS_RECOVERY_API_URL"] = factory.HttpAddress;
                 process.Environment["API_INTERNAL_URL"] = factory.HttpAddress; process.Environment["NEXT_PUBLIC_API_BASE_URL"] = "";
                 process.Environment["HEARTH_SECRET"] = TestWebApplicationFactory.TestSecret; process.Environment["NEXT_PUBLIC_ENVIRONMENT"] = "test"; return process;
@@ -126,7 +164,7 @@ public partial class SupperServingsPostgresTests
                 for (var attempt = 0; attempt < 60; attempt++) { try { ready = (await probe.GetAsync(pwaUrl + "/welcome")).IsSuccessStatusCode; } catch (HttpRequestException) { } if (ready || server.HasExited) break; await Task.Delay(500); }
                 Assert.True(ready, "Owned recovery PWA did not start");
                 output.WriteLine($"Recovery actual API {factory.HttpAddress}; PWA {pwaUrl}; isolated database {settings.Database}");
-                using var browser = Process.Start(Command("node_modules/@playwright/test/cli.js", "test", "supper-servings-recovery-live.spec.ts", "--workers=1", "--reporter=line"))!;
+                using var browser = Process.Start(Command("node_modules/@playwright/test/cli.js", "test", "supper-servings-recovery-live.spec.ts", "--workers=1", "--retries=0", Environment.GetEnvironmentVariable("WFS_LIVE_ARTIFACT_ROOT") is null ? "--reporter=line" : "--reporter=line,json"))!;
                 var stdout = browser.StandardOutput.ReadToEndAsync(); var stderr = browser.StandardError.ReadToEndAsync();
                 try { await browser.WaitForExitAsync().WaitAsync(TimeSpan.FromMinutes(6)); output.WriteLine(await stdout); output.WriteLine(await stderr); Assert.Equal(0, browser.ExitCode); }
                 finally { if (!browser.HasExited) browser.Kill(entireProcessTree: true); await browser.WaitForExitAsync(); }

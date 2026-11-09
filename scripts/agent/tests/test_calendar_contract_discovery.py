@@ -50,3 +50,38 @@ class CalendarContractDiscoveryTests(unittest.TestCase):
                 ('POST', '/api/schedule/assign'), ('GET', '/api/schedule/{weekOffset}/smart-defaults'),
                 ('GET', '/api/family/{id}'),
             })
+
+    def test_finite_literal_grocery_routes_are_discovered_without_inventing_coverage(self):
+        api = module('api_tools')
+        with tempfile.TemporaryDirectory() as folder:
+            mocks = Path(folder) / 'pwa/e2e'
+            mocks.mkdir(parents=True)
+            source = mocks / 'mock-api.ts'
+            source.write_text("""
+                for (const suffix of ['grocery/item', 'grocery']) {
+                  await page.route(
+                    (url) => new RegExp(`^/api/schedule/[^/]+/${suffix}$`).test(url.pathname),
+                    async (route) => {
+                      if (route.request().method() !== 'PATCH') return route.fallback();
+                      return route.fulfill({ status: 200 });
+                    });
+                }
+            """)
+            spec = {'paths': {
+                '/api/schedule/{weekOffset}/grocery/item': {'patch': {}},
+                '/api/schedule/{weekOffset}/grocery': {'patch': {}, 'delete': {}},
+                '/api/schedule/{weekOffset}/other': {'patch': {}},
+            }}
+            with mock.patch.object(api, 'ROOT', folder):
+                self.assertEqual({(e['method'], e['path']) for e in api.get_mock_endpoints(spec)}, {
+                    ('PATCH', '/api/schedule/{weekOffset}/grocery/item'),
+                    ('PATCH', '/api/schedule/{weekOffset}/grocery'),
+                })
+                original = source.read_text()
+                for changed in [
+                    original.replace("'grocery/item', 'grocery'", "'grocery/item', unknown"),
+                    original.replace('${suffix}', '${unknown}'),
+                    original.replace("method() !== 'PATCH'", "method() === 'PATCH'"),
+                ]:
+                    source.write_text(changed)
+                    self.assertEqual(api.get_mock_endpoints(spec), [])

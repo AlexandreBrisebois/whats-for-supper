@@ -299,6 +299,9 @@ export async function getIngredientProjection(
   return {
     ...result,
     preparation: normalizeSupperPreparation(result.preparation),
+    instructionProjection: Array.isArray(result.instructionProjection?.sections)
+      ? result.instructionProjection
+      : null,
   };
 }
 

@@ -1,3 +1,5 @@
+import { qualifyPreparedCorrection } from './prepared-correction';
+import { cookingStepRecipe } from './cooking-step-fixture';
 import { test, expect } from './fixtures';
 import { setupCommonRoutes, builders, MOCK_IDS } from './mock-api';
 import path from 'node:path';
@@ -565,7 +567,7 @@ for (const appLocale of ['en', 'fr'] as const) {
 for (const changed of ['count', 'source', 'identity'] as const) {
   test(`actual raced ${changed} conflict retains checks, reading and instruction draft`, async ({
     page,
-  }) => {
+  }, info) => {
     await fixture(page);
     let writes = 0;
     await page.route('**/api/schedule/day/*/prepare', async (route) => {
@@ -632,12 +634,151 @@ for (const changed of ['count', 'source', 'identity'] as const) {
     await expect(draft).toHaveValue('Keep my correction while the supper changes');
     await expect(page.getByTestId('cooks-mode-step-indicator')).toContainText('1');
     expect(writes).toBe(1);
+    await page.screenshot({
+      path: info.outputPath(`cleanup-${changed}-feedback.png`),
+      animations: 'disabled',
+    });
     await page.getByRole('button', { name: 'Cancel', exact: true }).click();
-    await page.getByRole('button', { name: 'View adjusted ingredients' }).click();
+    await page.getByTestId('cooking-view-all-steps').click();
+    await page.getByTestId('cooks-mode-step-prev').click();
     await expect(page.getByTestId('ingredient-toggle').first()).toHaveAttribute(
       'aria-checked',
       'true'
     );
     expect((await read(page)).days[4].preparation).toBeNull();
+  });
+}
+
+for (const configured of [true, false]) {
+  test(`canonical prepared correction retains ${configured ? 'six' : 'original null'} after defaults and roster change`, async ({
+    page,
+  }, info) => {
+    const content: any = cookingStepRecipe();
+    content.name = 'Prepared canonical pasta';
+    content.sourceUrl = 'https://example.test/prepared';
+    content.canReimport = true;
+    const step = content.instructionSections[0].steps[0];
+    step.text +=
+      ' Keep stirring gently and consult the original recipe for equipment and timing.'.repeat(16);
+    content.recipeInstructions[0].itemListElement[0].text = step.text;
+    const sauce = structuredClone(content.ingredientLines[0]);
+    sauce.id = MOCK_IDS.MEMBER_JORDAN;
+    sauce.description = 'sauce';
+    sauce.shopping.name = 'sauce';
+    sauce.amount.value.n = '100';
+    sauce.amountText = '100';
+    sauce.unit.text = 'ml';
+    content.ingredientLines.push(sauce);
+    content.ingredients.push('100 ml sauce');
+    await setupCommonRoutes(
+      page,
+      builders.deploymentCalendar({
+        today: '2026-05-05',
+        capturedAtUtc: '2026-05-05T12:00:00Z',
+        nextDayAtUtc: '2026-05-06T00:00:00Z',
+      }),
+      {
+        canonicalEditor: content,
+        supperServings: {
+          knownRecipe: {
+            id: content.id,
+            basis: 4,
+            quantity: 200,
+            ingredient: 'pasta',
+            unit: 'g',
+            source: {
+              ingredients: content.ingredients,
+              supplies: [
+                { name: 'pasta', quantity: 200, unitText: 'g' },
+                { name: 'sauce', quantity: 100, unitText: 'ml' },
+              ],
+            },
+          },
+        },
+      }
+    );
+    await page.context().addCookies([
+      {
+        name: 'x-family-member-id',
+        value: MOCK_IDS.MEMBER_ALEX,
+        url: process.env.BASE_URL || 'http://127.0.0.1:3000',
+      },
+    ]);
+    await page.goto('/planner');
+    const preparedFixture = await page.evaluate(
+      async ({ id, configured }) => {
+        if (!configured) {
+          const members = (await (await fetch('/api/family')).json()).data;
+          for (const member of members)
+            await fetch(`/api/family/${member.id}`, { method: 'DELETE' });
+        }
+        const state = (
+          await (await fetch('/api/schedule/servings?referenceWeekStartDate=2026-05-04')).json()
+        ).data;
+        if (configured)
+          await fetch('/api/schedule/servings', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              referenceWeekStartDate: '2026-05-04',
+              weekOffset: 0,
+              expectedVersion: state.version,
+              defaultServings: 6,
+              days: [],
+            }),
+          });
+        await fetch('/api/schedule/assign?referenceWeekStartDate=2026-05-04', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ weekOffset: 0, dayIndex: 4, recipeId: id }),
+        });
+        const day = (await (await fetch('/api/schedule?referenceWeekStartDate=2026-05-04')).json())
+          .data.days[4];
+        const projection = await (
+          await fetch(
+            `/api/recipes/${id}/ingredient-projection?supperDate=2026-05-08&context=assigned&occurrenceId=${day.occurrenceId}`
+          )
+        ).json();
+        const response = await fetch('/api/schedule/day/2026-05-08/prepare', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            recipeId: id,
+            expectedOccurrenceId: day.occurrenceId,
+            expectedPlanToken: projection.preparationPlanToken,
+            expectedServingVersion: projection.preparationServingVersion,
+          }),
+        });
+        const memberResponse = await fetch('/api/family', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: 'Later reader' }),
+        });
+        return { status: response.status, member: (await memberResponse.json()).data };
+      },
+      { id: content.id, configured }
+    );
+    expect(preparedFixture.status).toBe(200);
+    // Mount acceptance with an actual remaining profile after roster replacement.
+    await page.context().addCookies([
+      {
+        name: 'x-family-member-id',
+        value: preparedFixture.member.id,
+        url: process.env.BASE_URL || 'http://127.0.0.1:3000',
+      },
+    ]);
+    await page.evaluate(
+      (member) =>
+        localStorage.setItem(
+          'family-storage',
+          JSON.stringify({
+            state: { selectedFamilyMemberId: member.id, familyMembers: [member], hasLoaded: true },
+            version: 0,
+          })
+        ),
+      preparedFixture.member
+    );
+    await page.reload();
+    await qualifyPreparedCorrection(page, content.id, '2026-05-04', '2026-05-08', configured, info);
   });
 }

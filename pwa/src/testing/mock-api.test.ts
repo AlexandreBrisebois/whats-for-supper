@@ -725,3 +725,49 @@ it('isolated canonical editor saves exact rows atomically and subsequent reads r
   expect(basis.body.recipe.rating).toBe(2);
   expect(basis.body.recipe.ingredientLines).toEqual(saved.body.recipe.ingredientLines);
 });
+
+it('known-recipe recompute replaces its source rows once and preserves unrelated contributors', async () => {
+  const handlers = new Map<Parameters<Page['route']>[0], (route: Route) => Promise<unknown>>();
+  const page = {
+    route: vi.fn(
+      async (pattern: Parameters<Page['route']>[0], handler: (route: Route) => Promise<unknown>) =>
+        handlers.set(pattern, handler)
+    ),
+    evaluate: vi.fn().mockResolvedValue(undefined),
+  };
+  const id = MOCK_IDS.RECIPE_CARBONARA;
+  const control = await setupCommonRoutes(page as unknown as Page, undefined, {
+    supperServings: {
+      knownRecipe: { id, basis: 2, quantity: 200, ingredient: 'pasta', unit: 'g' },
+    },
+  });
+  const assign = async (recipeId: string, dayIndex: number) => {
+    const fulfill = vi.fn();
+    await handlers.get('**/api/schedule/assign**')!({
+      request: () => ({
+        method: () => 'POST',
+        url: () => 'http://localhost/api/schedule/assign?referenceWeekStartDate=2026-05-04',
+        postDataJSON: () => ({ weekOffset: 0, dayIndex, recipeId }),
+      }),
+      fulfill,
+    } as unknown as Route);
+    expect(fulfill).toHaveBeenCalledOnce();
+  };
+  await assign(id, 2);
+  let snapshot = control.groceryRows.snapshot('2026-05-04');
+  expect(snapshot.groceryItems).toHaveLength(1);
+  expect(snapshot.groceryItems[0]).toMatchObject({
+    normalizedKey: 'pasta',
+    quantity: { kind: 'scalar', value: { n: '200', d: '1' } },
+    recipeIds: [id],
+  });
+  const rowId = snapshot.groceryItems[0].rowId;
+  await assign(MOCK_IDS.RECIPE_LASAGNA, 1);
+  snapshot = control.groceryRows.snapshot('2026-05-04');
+  const projected = snapshot.groceryItems.filter((row) => row.recipeIds?.includes(id));
+  expect(projected).toHaveLength(1);
+  expect(projected[0].rowId).toBe(rowId);
+  const unrelated = snapshot.groceryItems.filter((row) => row.rowId !== rowId);
+  expect(unrelated.length).toBeGreaterThan(0);
+  for (const row of unrelated) expect(row.recipeIds).toEqual([MOCK_IDS.RECIPE_LASAGNA]);
+});

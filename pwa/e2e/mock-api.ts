@@ -1,3 +1,4 @@
+import { canonicalIngredientLines, cookingProjection } from './cooking-step-projection';
 import { applyCanonicalEditorPatch } from './canonical-editor';
 import { canonicalRecipePatchIsValid } from './canonical-content-input';
 import { createGroceryRowState } from './grocery-row-state';
@@ -323,6 +324,7 @@ export async function setupCommonRoutes(
   const knownServingRecipe = recoveryOptions.supperServings?.knownRecipe;
   if (knownServingRecipe)
     recipeUpdates.set(knownServingRecipe.id, {
+      ...recipeUpdates.get(knownServingRecipe.id),
       servings: knownServingRecipe.basis,
       ingredients: knownServingRecipe.source?.ingredients ?? [
         `${knownServingRecipe.quantity} ${knownServingRecipe.unit} ${knownServingRecipe.ingredient}`,
@@ -392,9 +394,18 @@ export async function setupCommonRoutes(
           occurrenceId: `${MOCK_IDS.SUPPER_OCCURRENCE.slice(0, -6)}${String(entryIds.get(entry)).padStart(6, '0')}`,
         });
     }
-    schedule.groceryItems = builders.groceryItems([
-      ...new Set(schedule.days.flatMap((day) => day.recipe?.ingredients ?? [])),
-    ]);
+    schedule.groceryItems = builders
+      .groceryItems([...new Set(schedule.days.flatMap((day) => day.recipe?.ingredients ?? []))])
+      .map((row) => ({
+        ...row,
+        recipeIds: [
+          ...new Set(
+            schedule.days.flatMap(({ recipe }) =>
+              recipe?.id && recipe.ingredients?.includes(row.displayName) ? [recipe.id] : []
+            )
+          ),
+        ],
+      }));
     const selectedMonday = addDays(reference, weekOffset * 7);
     const currentMonday = scheduleCalendar.currentWeekStartDate;
     (schedule as typeof schedule & { groceryExtras: MockExtra[] }).groceryExtras = [
@@ -1329,8 +1340,8 @@ export async function setupCommonRoutes(
           recipe: builders.recipe({
             id,
             createdAt: new Date(FIXED_E2E_TIMESTAMP),
-            importIssue: activeImportIssue,
             ...recipeUpdates.get(id),
+            importIssue: activeImportIssue,
           }),
           updatedAt: FIXED_E2E_TIMESTAMP,
         }),
@@ -1374,12 +1385,17 @@ export async function setupCommonRoutes(
       return;
     }
 
+    const reportedRecipe = builders.recipe({
+      id,
+      ...recipeUpdates.get(id),
+      importIssue: activeImportIssue,
+    });
     await fulfill(route, {
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({
         updatedAt: FIXED_E2E_TIMESTAMP,
-        recipe: builders.recipe({ id, importIssue: activeImportIssue }),
+        recipe: reportedRecipe,
         reimportStarted: activeImportId !== null,
         ...(activeImportId ? { importId: activeImportId } : {}),
         reimportLaunchFailed: false,
@@ -1539,6 +1555,8 @@ export async function setupCommonRoutes(
     const replacement = {
       recipe: builders.scheduleRecipe({
         id: body.recipeId,
+        ingredients: builders.recipe({ id: body.recipeId, ...recipeUpdates.get(body.recipeId) })
+          .ingredients,
         name:
           builders.recipe({ id: body.recipeId, ...recipeUpdates.get(body.recipeId) }).name ??
           'Planned recipe',
@@ -3503,6 +3521,8 @@ export async function mockSupperServings(
   const sourceTexts = known?.source?.ingredients ?? (known ? [sourceText] : []);
   let currentTexts = [...sourceTexts];
   const knownLines = (target: number | null) => {
+    const canonical = options.readRecipe?.(known!.id);
+    if (canonical?.contentSchemaVersion === 2) return canonicalIngredientLines(canonical, target);
     const supplies =
       known?.source?.supplies ??
       (known ? [{ name: known.ingredient, quantity: known.quantity, unitText: known.unit }] : []);
@@ -3547,24 +3567,26 @@ export async function mockSupperServings(
   const basisFor = (id: string) =>
     id === known?.id ? known.basis : (recipeSource(id).servings ?? null);
   const linesFor = (id: string, target: number | null) =>
-    id === known?.id
-      ? knownLines(target)
-      : (recipeSource(id).ingredients ?? []).map((text) => {
-          const unquantified =
-            /to taste|for frying|au goût|au gout|pour la friture|pour frire/i.test(text);
-          return {
-            originalText: text,
-            name: text,
-            quantity: null,
-            unitText: null,
-            status: unquantified ? 'unquantified' : 'unresolved',
-            issues: unquantified
-              ? []
-              : target != null && !(basisFor(id)! > 0)
-                ? ['missing_basis']
-                : ['unreliable_amount'],
-          };
-        });
+    recipeSource(id).contentSchemaVersion === 2
+      ? canonicalIngredientLines(recipeSource(id), target)
+      : id === known?.id
+        ? knownLines(target)
+        : (recipeSource(id).ingredients ?? []).map((text) => {
+            const unquantified =
+              /to taste|for frying|au goût|au gout|pour la friture|pour frire/i.test(text);
+            return {
+              originalText: text,
+              name: text,
+              quantity: null,
+              unitText: null,
+              status: unquantified ? 'unquantified' : 'unresolved',
+              issues: unquantified
+                ? []
+                : target != null && !(basisFor(id)! > 0)
+                  ? ['missing_basis']
+                  : ['unreliable_amount'],
+            };
+          });
   // Keep the stored choice separate from the effective automatic count for recovery and provenance.
   let savedUsual: number | null = null;
   const usual = () => {
@@ -3646,8 +3668,9 @@ export async function mockSupperServings(
   const complete = (state: any, fail = false) => {
     const schedule = scheduleFor(state.weekOffset, state.referenceWeekStartDate);
     const previousProjection = projected.get(state.weekStartDate);
-    if (previousProjection) schedule.groceryItems = previousProjection.groceryItems;
     const known = options.knownRecipe;
+    if (previousProjection && (fail || !known))
+      schedule.groceryItems = previousProjection.groceryItems;
     if (!fail && known) {
       const current = read(state.weekOffset, state.referenceWeekStartDate);
       const occurrences = schedule.days.filter((day: any) => day.recipe?.id === known.id);
@@ -3663,34 +3686,64 @@ export async function mockSupperServings(
         0
       );
       // The fixture's known unit is canonical; absent units share the unitless bucket.
-      const unrelated = (schedule.groceryItems ?? []).filter(
-        (item: any) => !item.recipeIds?.includes(known.id)
-      );
+      const unrelated = (schedule.groceryItems ?? []).flatMap((item: any) => {
+        if (!item.recipeIds?.includes(known.id)) return [item];
+        const recipeIds = item.recipeIds.filter((id: string) => id !== known.id);
+        return recipeIds.length ? [{ ...item, recipeIds }] : [];
+      });
       schedule.groceryItems = [
         ...unrelated,
         ...(occurrences.length === 0
           ? []
-          : currentTexts.length !== 1 || currentTexts[0] !== sourceText
-            ? knownLines(null).map((line) => ({
+          : recipeSource(known.id).contentSchemaVersion === 2
+            ? knownLines(null).map((line, index) => ({
                 displayName: line.name,
                 normalizedKey: line.name,
                 section: 'Pantry',
-                quantity: null,
-                quantityComplete: line.status !== 'unresolved',
-                unitText: null,
+                quantity: occurrences.reduce(
+                  (sum: number, day: any) =>
+                    sum +
+                    (knownLines(
+                      day.status === 3
+                        ? null
+                        : (current.days.find((item: any) => item.date === dateString(day.date))
+                            ?.servings ?? null)
+                    )[index]?.quantity ?? 0),
+                  0
+                ),
+                quantityComplete: occurrences.every(
+                  (day: any) =>
+                    knownLines(
+                      day.status === 3
+                        ? null
+                        : (current.days.find((item: any) => item.date === dateString(day.date))
+                            ?.servings ?? null)
+                    )[index]?.quantity != null
+                ),
+                unitText: line.unitText,
                 recipeIds: [known.id],
               }))
-            : [
-                {
-                  displayName: known.ingredient,
-                  normalizedKey: known.ingredient,
+            : currentTexts.length !== 1 || currentTexts[0] !== sourceText
+              ? knownLines(null).map((line) => ({
+                  displayName: line.name,
+                  normalizedKey: line.name,
                   section: 'Pantry',
-                  quantity,
-                  quantityComplete: true,
-                  unitText: known.unit,
+                  quantity: null,
+                  quantityComplete: line.status !== 'unresolved',
+                  unitText: null,
                   recipeIds: [known.id],
-                },
-              ]),
+                }))
+              : [
+                  {
+                    displayName: known.ingredient,
+                    normalizedKey: known.ingredient,
+                    section: 'Pantry',
+                    quantity,
+                    quantityComplete: true,
+                    unitText: known.unit,
+                    recipeIds: [known.id],
+                  },
+                ]),
       ];
     }
     state.groceryRefresh.status = fail ? 'failed' : 'current';
@@ -3978,6 +4031,16 @@ export async function mockSupperServings(
     const unresolved = !(basisFor(id)! > 0) || lines.some((line) => line.status === 'unresolved');
     return route.fulfill({
       json: {
+        contentRevision: recipeSource(id).contentRevision ?? 'legacy.mock',
+        contextKey: JSON.stringify([
+          id,
+          recipeSource(id).contentRevision,
+          route.request().url(),
+          basisFor(id),
+          target,
+          linesFor(id, target),
+        ]),
+        instructionProjection: cookingProjection(recipeSource(id), target),
         recipeId: id,
         baseServings: basisFor(id),
         targetServings: target,
@@ -4029,6 +4092,16 @@ export async function mockSupperServings(
         ...(context === 'assigned'
           ? preparationContext(date, id)
           : { preparationPlanToken: null, preparationServingVersion: null, preparation: null }),
+        contentRevision: recipeSource(id).contentRevision ?? 'legacy.mock',
+        contextKey: JSON.stringify([
+          id,
+          recipeSource(id).contentRevision,
+          route.request().url(),
+          basisFor(id),
+          target,
+          linesFor(id, target),
+        ]),
+        instructionProjection: cookingProjection(recipeSource(id), target),
         recipeId: id,
         supperDate: date,
         context,

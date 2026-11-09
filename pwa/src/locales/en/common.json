@@ -341,6 +341,7 @@
     "knownSubtotal": "{{amount}} known"
   },
   "cook": {
+    "stepAmountsUncertain": "Some step amounts remain as written. Review the step or consult the original recipe.",
     "instructionsLoadError": "Could not load cooking instructions.",
     "instructionsRecovery": "You can open recipe details to view the original, or mark this recipe as cooked.",
     "instructionsUnavailable": "Cooking instructions are not available for this recipe.",

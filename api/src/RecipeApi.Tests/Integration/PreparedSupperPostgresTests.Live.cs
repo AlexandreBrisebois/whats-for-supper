@@ -147,6 +147,11 @@ public partial class PreparedSupperPostgresTests
             ProcessStartInfo Command(params string[] args) {
                 var process = new ProcessStartInfo("node") { WorkingDirectory = Path.Combine(TomorrowPushPostgresTests.Root(), "pwa"), RedirectStandardOutput = true, RedirectStandardError = true };
                 foreach (var arg in args) process.ArgumentList.Add(arg);
+                var artifactRoot = Environment.GetEnvironmentVariable("WFS_LIVE_ARTIFACT_ROOT");
+                if (artifactRoot is not null) {
+                    Directory.CreateDirectory(artifactRoot);
+                    process.Environment["PLAYWRIGHT_JSON_OUTPUT_NAME"] = Path.Combine(artifactRoot, "prepared-browser.json");
+                }
                 process.Environment["BASE_URL"] = factory.HttpAddress; process.Environment["PREPARED_SUPPER_API_URL"] = factory.HttpAddress;
                 process.Environment["API_INTERNAL_URL"] = factory.HttpAddress; process.Environment["NEXT_PUBLIC_API_BASE_URL"] = "";
                 process.Environment["HEARTH_SECRET"] = TestWebApplicationFactory.TestSecret; process.Environment["NEXT_PUBLIC_ENVIRONMENT"] = "test"; return process;
@@ -159,7 +164,7 @@ public partial class PreparedSupperPostgresTests
                 for (var attempt = 0; attempt < 60; attempt++) { try { ready = (await probe.GetAsync(pwaUrl + "/welcome")).IsSuccessStatusCode; } catch (HttpRequestException) { } if (ready || server.HasExited) break; await Task.Delay(500); }
                 Assert.True(ready && !server.HasExited, "Task-owned PWA3311 failed to start.");
                 output.WriteLine($"Real API/gateway {factory.HttpAddress}; PWA {pwaUrl}; disposable database {settings.Database}");
-                using var browser = Process.Start(Command("node_modules/@playwright/test/cli.js", "test", "prepared-supper-live.spec.ts", "--workers=1", "--reporter=line"))!;
+                using var browser = Process.Start(Command("node_modules/@playwright/test/cli.js", "test", "prepared-supper-live.spec.ts", "--workers=1", "--retries=0", Environment.GetEnvironmentVariable("WFS_LIVE_ARTIFACT_ROOT") is null ? "--reporter=line" : "--reporter=line,json"))!;
                 var stdout = browser.StandardOutput.ReadToEndAsync(); var stderr = browser.StandardError.ReadToEndAsync();
                 try {
                     await browser.WaitForExitAsync().WaitAsync(TimeSpan.FromMinutes(8)); output.WriteLine(await stdout); output.WriteLine(await stderr); Assert.Equal(0, browser.ExitCode);

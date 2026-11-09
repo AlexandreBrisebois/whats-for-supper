@@ -2,6 +2,9 @@ namespace RecipeApi.Dto;
 
 public record IngredientProjectionDto
 {
+    public string ContentRevision { get; set; } = "";
+    public string ContextKey { get; set; } = "";
+    public InstructionProjectionDto? InstructionProjection { get; set; }
     public required Guid RecipeId { get; set; }
     public required DateOnly SupperDate { get; set; }
     public required string Context { get; set; }

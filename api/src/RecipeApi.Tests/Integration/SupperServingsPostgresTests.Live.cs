@@ -120,6 +120,9 @@ public partial class SupperServingsPostgresTests
                 var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
                 var recipe = new Recipe { Name = "Original pasta for two", Servings = 2, Ingredients = "[\"200 g pasta\"]", IsReady = true, SourceUrl = "https://example.test/original-pasta", Notes = "Keep the original pasta instructions.", RawMetadata = "{\"recipeInstructions\":[{\"@type\":\"HowToSection\",\"name\":\"Pasta\",\"itemListElement\":[{\"@type\":\"HowToStep\",\"text\":\"Add 200 g pasta.\"},{\"@type\":\"HowToStep\",\"text\":\"Serve.\"}]}],\"recipeIngredient\":[\"200 g pasta\"],\"supply\":[{\"name\":\"pasta\",\"quantity\":200,\"unitText\":\"g\"}]}" };
                 recipeId = recipe.Id; db.Recipes.Add(recipe);
+                var coffeeId = Guid.NewGuid();
+                var coffee = GroceryExtraOccurrence.Create(coffeeId, coffeeId, new(2026, 10, 12), "Coffee", "coffee", "Grocery", DateTimeOffset.Parse("2026-10-12T12:00:00Z"));
+                coffee.Checked = true; db.GroceryExtraOccurrences.Add(coffee);
                 db.Recipes.Add(new Recipe { Name = "Unassigned pasta for two", Servings = 2, Ingredients = recipe.Ingredients, RawMetadata = recipe.RawMetadata, IsReady = true });
                 db.CalendarEvents.Add(new CalendarEvent { Date = Wednesday, RecipeId = recipe.Id, Status = CalendarEventStatus.Planned, VoteCount = 7 });
                 db.CalendarEvents.Add(new CalendarEvent { Id = Guid.NewGuid(), Date = Wednesday.AddDays(2), RecipeId = recipe.Id, Status = CalendarEventStatus.Planned });
@@ -177,7 +180,7 @@ public partial class SupperServingsPostgresTests
                 }
                 await db.SaveChangesAsync();
                 await scope.ServiceProvider.GetRequiredService<GroceryRecomputeService>().RecomputeForWeekAsync(new(2026,10,12), default);
-                var plan = await db.WeeklyPlans.SingleAsync(); plan.GroceryState = "{\"pasta\":true,\"unrelated\":true}"; await db.SaveChangesAsync();
+                var plan = await db.WeeklyPlans.SingleAsync();
                 if (sourceTitlesOnly) {
                     var items = JsonSerializer.Deserialize<List<RecipeApi.Dto.GroceryLineItemDto>>(plan.GroceryItems!)!;
                     plan.GroceryItems = JsonSerializer.Serialize(items.Select(item => JsonSerializer.SerializeToElement(item)).Select(item => item.EnumerateObject().ToDictionary(p => p.Name, p => (object?)p.Value)).Select(item => { item["checkReviewReason"] = "prior_amount_unknown"; return item; }));
@@ -185,9 +188,17 @@ public partial class SupperServingsPostgresTests
                 }
 
             }
+            using (var client = factory.CreateAuthenticatedClient())
+                await GroceryTestRows.CheckAsync(client, new(2026, 10, 12));
+
             ProcessStartInfo Command(params string[] args) {
                 var process = new ProcessStartInfo("node") { WorkingDirectory = Path.Combine(TomorrowPushPostgresTests.Root(), "pwa"), RedirectStandardOutput = true, RedirectStandardError = true };
                 foreach (var arg in args) process.ArgumentList.Add(arg);
+                var artifactRoot = Environment.GetEnvironmentVariable("WFS_LIVE_ARTIFACT_ROOT");
+                if (artifactRoot is not null) {
+                    Directory.CreateDirectory(artifactRoot);
+                    process.Environment["PLAYWRIGHT_JSON_OUTPUT_NAME"] = Path.Combine(artifactRoot, "original-browser.json");
+                }
                 process.Environment["BASE_URL"] = factory.HttpAddress;
                 process.Environment["SUPPER_SERVINGS_API_URL"] = factory.HttpAddress;
                 process.Environment["API_INTERNAL_URL"] = factory.HttpAddress;
@@ -212,7 +223,7 @@ public partial class SupperServingsPostgresTests
                 }
                 Assert.True(ready, "Task-owned PWA failed to start.");
                 output.WriteLine($"Real API/gateway {factory.HttpAddress}; PWA {pwaUrl}; disposable database {settings.Database}");
-                var browserArgs = new List<string> { "node_modules/@playwright/test/cli.js", "test", previewOnly ? "recipe-ingredient-preview-live.spec.ts" : sourceTitlesOnly ? "grocery-recipe-sources-live.spec.ts" : "supper-servings-live.spec.ts", "--workers=1", "--reporter=line" };
+                var browserArgs = new List<string> { "node_modules/@playwright/test/cli.js", "test", previewOnly ? "recipe-ingredient-preview-live.spec.ts" : sourceTitlesOnly ? "grocery-recipe-sources-live.spec.ts" : "supper-servings-live.spec.ts", "--workers=1", "--retries=0", Environment.GetEnvironmentVariable("WFS_LIVE_ARTIFACT_ROOT") is null ? "--reporter=line" : "--reporter=line,json" };
                 if (settingsOnly) browserArgs.AddRange(["--grep", "real Settings usual portions"]);
                 if (resetOnly) browserArgs.AddRange(["--grep", "real Planner reset"]);
                 using var browser = Process.Start(Command(browserArgs.ToArray()))!;
@@ -296,7 +307,9 @@ public partial class SupperServingsPostgresTests
                         refreshWorkflows = instances.Select(x => new { x.Id, x.Status }),
                         advancement = "Controlled explicit production WorkflowWorker.ProcessPendingTasksAsync; no automatic scheduler claim",
                     };
-                    await File.WriteAllTextAsync(Path.Combine(TomorrowPushPostgresTests.Root(), ".task/supper-servings/live/database-evidence.json"), JsonSerializer.Serialize(evidence));
+                    var evidenceDirectory = Path.Combine(TomorrowPushPostgresTests.Root(), ".task/supper-servings/live");
+                    Directory.CreateDirectory(evidenceDirectory);
+                    await File.WriteAllTextAsync(Path.Combine(evidenceDirectory, "database-evidence.json"), JsonSerializer.Serialize(evidence));
                     PreserveSupperLiveArtifacts("original-journey");
 
                 } finally { if (!browser.HasExited) browser.Kill(entireProcessTree: true); await browser.WaitForExitAsync(); }

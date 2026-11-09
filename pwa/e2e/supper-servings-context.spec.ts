@@ -281,7 +281,8 @@ test('saved portions announce explicit cooking refresh while grocery work is hel
     animations: 'disabled',
   });
   await page.getByRole('button', { name: 'Cancel', exact: true }).click();
-  await page.getByRole('button', { name: 'View adjusted ingredients', exact: true }).click();
+  await page.getByTestId('cooking-view-all-steps').click();
+  await page.getByTestId('cooks-mode-step-prev').click();
   await expect(page.getByTestId('ingredient-toggle')).toContainText('600 g pasta');
   await expect(page.getByTestId('ingredient-toggle')).toHaveAttribute('aria-checked', 'true');
 });

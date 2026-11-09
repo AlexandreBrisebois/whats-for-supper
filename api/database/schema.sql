@@ -445,14 +445,8 @@ BEGIN
     END IF;
     RETURN NEW;
 END $$;
-DO $$
-BEGIN
-    IF to_regclass('public.recipes') IS NOT NULL THEN
-        DROP TRIGGER IF EXISTS canonical_recipe_content_guard ON recipes;
-        CREATE TRIGGER canonical_recipe_content_guard BEFORE UPDATE ON recipes
-            FOR EACH ROW EXECUTE FUNCTION guard_canonical_recipe_content();
-    END IF;
-END $$;
+CREATE TRIGGER canonical_recipe_content_guard BEFORE UPDATE ON recipes
+    FOR EACH ROW EXECUTE FUNCTION guard_canonical_recipe_content();
 
 -- Independent inert history survives workflow/task pruning and recipe cleanup.
 CREATE TABLE workflow_lifecycle_records (

@@ -1,6 +1,7 @@
 import { DateOnly } from '@microsoft/kiota-abstractions';
 import { RetryHandlerOptions } from '@microsoft/kiota-http-fetchlibrary';
 import { apiClient } from './api-client';
+import { normalizeGroceryItems } from './grocery-quantities';
 import type {
   GroceryBulkMutation,
   GroceryItemMutation,
@@ -24,7 +25,7 @@ export function useSchedule() {
         .byWeekOffset(offset)
         .grocery.item.patch(request, configuration(reference));
       if (!result) throw new Error('Missing authoritative grocery outcome.');
-      return result;
+      return { ...result, rows: normalizeGroceryItems(result.rows) };
     },
     async updateGroceryState(
       offset: number,
@@ -35,7 +36,7 @@ export function useSchedule() {
         .byWeekOffset(offset)
         .grocery.patch(request, configuration(reference));
       if (!result?.data) throw new Error('Missing authoritative grocery outcome.');
-      return result.data;
+      return { ...result.data, rows: normalizeGroceryItems(result.data.rows) };
     },
   };
 }

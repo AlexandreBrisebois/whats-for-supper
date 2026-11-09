@@ -664,6 +664,18 @@ it('does not treat an empty decoded nullable preparation as an observed preparat
   expect((await getIngredientProjection('recipe', context)).preparation).toBeNull();
 });
 
+it('normalizes a decoded null instruction projection without hiding original-step feedback', async () => {
+  const context = { supperDate: '2026-10-16', context: 'proposed' as const };
+  recipesApiMocks.projectionGet.mockResolvedValue({
+    recipeId: 'recipe',
+    ...context,
+    version: 'v',
+    lines: [],
+    instructionProjection: {},
+  });
+  expect((await getIngredientProjection('recipe', context)).instructionProjection).toBeNull();
+});
+
 it('reads an explicit preview through the generated client and rejects mismatched targets', async () => {
   const data = {
     recipeId: MOCK_PREVIEW_ID,

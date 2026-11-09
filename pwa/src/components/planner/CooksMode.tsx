@@ -72,6 +72,25 @@ function updateInstructionValue(value: unknown, instruction: string): unknown {
   return { ...step, name: instruction };
 }
 
+function projectedCookingSteps(
+  projection: import('@/lib/api/generated/models').IngredientProjection | undefined
+): CookingStep[] | null {
+  const sections = projection?.instructionProjection?.sections;
+  if (!sections) return null;
+  return sections
+    .flatMap((section, sectionIndex) =>
+      (section.steps ?? []).map((step, stepIndex) => ({
+        sectionTitle: section.name ?? undefined,
+        index: 0,
+        title: '',
+        instruction: step.text ?? step.originalText ?? '',
+        editableInstruction: step.originalText ?? '',
+        sourcePath: [sectionIndex, stepIndex] as [number, number],
+      }))
+    )
+    .map((step, index) => ({ ...step, index: index + 1, title: `Step ${index + 1}` }));
+}
+
 export function CooksMode({
   recipe: initialRecipe,
   onClose,
@@ -85,24 +104,29 @@ export function CooksMode({
   const contextKey = ingredientContext
     ? JSON.stringify([initialRecipe.id, ingredientContext])
     : null;
+  const contentKey = contextKey ?? JSON.stringify([initialRecipe.id, 'original']);
   const [projectionRead, setProjectionRead] = useState<{
     key: string;
     data?: import('@/lib/api/generated/models').IngredientProjection;
     error?: boolean;
   } | null>(null);
   const [projectionAttempt, setProjectionAttempt] = useState(0);
+  const quantityRequest = useRef(0);
   const projection = projectionRead?.key === contextKey ? projectionRead?.data : undefined;
   const projectionError = projectionRead?.key === contextKey && projectionRead?.error;
   useEffect(() => {
     if (!contextKey) return;
     let active = true;
+    const generation = ++quantityRequest.current;
     const [id, context] = JSON.parse(contextKey);
     void getIngredientProjection(id, context)
       .then((data) => {
-        if (active) setProjectionRead({ key: contextKey, data });
+        if (active && generation === quantityRequest.current)
+          setProjectionRead({ key: contextKey, data });
       })
       .catch(() => {
-        if (active) setProjectionRead({ key: contextKey, error: true });
+        if (active && generation === quantityRequest.current)
+          setProjectionRead({ key: contextKey, error: true });
       });
     return () => {
       active = false;
@@ -113,10 +137,9 @@ export function CooksMode({
     available: boolean;
     error: boolean;
   } | null>(null);
-  const quantitiesAvailable = quantityNotice?.key === contextKey && quantityNotice.available;
-  const quantityRefreshError = quantityNotice?.key === contextKey && quantityNotice.error;
+  const quantitiesAvailable = quantityNotice?.key === contentKey && quantityNotice.available;
+  const quantityRefreshError = quantityNotice?.key === contentKey && quantityNotice.error;
   const [quantityRefreshing, setQuantityRefreshing] = useState(false);
-  const quantityRequest = useRef(0);
   const quantityInvalidated = useRef(false);
   const quantityRefreshInFlight = useRef(false);
   const appliedProjection = useRef(projection);
@@ -137,7 +160,9 @@ export function CooksMode({
       try {
         const current = await getIngredientProjection(id, context);
         if (!active || generation !== quantityRequest.current) return;
-        const changed = current.version !== appliedProjection.current!.version;
+        const changed =
+          current.version !== appliedProjection.current!.version ||
+          current.contentRevision !== appliedProjection.current!.contentRevision;
         if (!changed) setProjectionRead({ key: contextKey, data: current });
         setQuantityNotice({ key: contextKey, error: false, available: changed });
       } catch {
@@ -161,16 +186,23 @@ export function CooksMode({
     };
   }, [contextKey, projection]);
   const refreshQuantities = async () => {
-    if (!contextKey || quantityRefreshInFlight.current) return;
+    if (quantityRefreshInFlight.current) return;
     quantityRefreshInFlight.current = true;
     const generation = ++quantityRequest.current;
-    const [id, context] = JSON.parse(contextKey);
     setQuantityRefreshing(true);
     try {
-      const data = await getIngredientProjection(id, context);
-      if (generation !== quantityRequest.current) return;
-      setProjectionRead({ key: contextKey, data });
-      setQuantityNotice({ key: contextKey, error: false, available: false });
+      if (contextKey) {
+        const [id, context] = JSON.parse(contextKey);
+        const data = await getIngredientProjection(id, context);
+        if (generation !== quantityRequest.current) return;
+        setProjectionRead({ key: contextKey, data });
+      } else {
+        const details = await getRecipe(initialRecipe.id);
+        if (generation !== quantityRequest.current) return;
+        setRecipeDetails(details);
+        setParsedSteps(parseRecipeSteps(details.recipeInstructions));
+      }
+      setQuantityNotice({ key: contentKey, error: false, available: false });
       if (preparationReview === 'quantities') {
         uncertainPreparation.current = null;
         setCheckingPreparation(false);
@@ -180,13 +212,15 @@ export function CooksMode({
     } catch {
       if (generation === quantityRequest.current)
         setQuantityNotice((previous) => ({
-          key: contextKey,
+          key: contentKey,
           error: true,
-          available: previous?.key === contextKey && previous.available,
+          available: previous?.key === contentKey && previous.available,
         }));
     } finally {
+      // Only one explicit refresh runs at a time. A report may retire its data
+      // generation, but the settled request must still release the retry control.
       quantityRefreshInFlight.current = false;
-      if (generation === quantityRequest.current) setQuantityRefreshing(false);
+      setQuantityRefreshing(false);
     }
   };
   const [parsedSteps, setParsedSteps] = useState<CookingStep[]>([]);
@@ -263,7 +297,17 @@ export function CooksMode({
   const [reimportAcknowledgement, setReimportAcknowledgement] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editingValue, setEditingValue] = useState('');
+  const activeInstructionDraft = useRef(editingValue);
+  useLayoutEffect(() => {
+    activeInstructionDraft.current = editingValue;
+  }, [editingValue]);
   const [editingStepIndex, setEditingStepIndex] = useState<number | null>(null);
+  const [editSnapshot, setEditSnapshot] = useState<{
+    details: Recipe;
+    projection: typeof projection;
+    step: CookingStep;
+  } | null>(null);
+  const uncertainInstructionSave = useRef(false);
   const [editPending, setEditPending] = useState(false);
   const [editError, setEditError] = useState(false);
   const [editAnnouncement, setEditAnnouncement] = useState('');
@@ -299,7 +343,8 @@ export function CooksMode({
         ingredientContext.context === 'assigned' ? ingredientContext.occurrenceId : null,
       ])
     : initialRecipe.id;
-  const currentStep = Math.min(cookProgress[progressKey] ?? 0, parsedSteps.length);
+  const steps = projectedCookingSteps(projection) ?? parsedSteps;
+  const currentStep = Math.min(cookProgress[progressKey] ?? 0, steps.length);
 
   useLayoutEffect(() => {
     if (viewSelectionRef.current.memberId !== selectedFamilyMemberId) {
@@ -355,7 +400,6 @@ export function CooksMode({
     projection?.factor != null &&
     projection.factor !== 1 &&
     projection.lines?.some((line) => line.status === 'scaled');
-  const steps = parsedSteps;
   const hasInstructions = steps.length > 0;
   const isPrepStep = currentStep === 0 || (singlePageEnabled && showIngredients);
   const isResumingSteps = singlePageEnabled && showIngredients && currentStep > 0;
@@ -452,7 +496,7 @@ export function CooksMode({
     if (readingStep !== currentStep) setCookProgress(progressKey, readingStep);
   };
 
-  const editingStep = editingStepIndex === null ? null : steps[editingStepIndex];
+  const editingStep = editingStepIndex === null ? null : editSnapshot?.step;
 
   const finishCooking = async () => {
     if (completionInFlight.current || projection?.preparation || preparationReview) return;
@@ -560,8 +604,23 @@ export function CooksMode({
     setShowIngredients(true);
   };
 
+  const startEdit = (index: number) => {
+    if (!recipeDetails) return;
+    const step = steps[index];
+    // A retained draft stays bound to its original content even across explicit refresh.
+    setEditSnapshot({ details: recipeDetails, projection, step });
+    setIsEditing(true);
+    setEditingStepIndex(index);
+    setEditingValue(step.editableInstruction ?? step.instruction);
+    setEditError(false);
+  };
+
   const handleSaveEdit = async () => {
-    if (!recipeDetails || !editingStep || editingValue === editingStep.editableInstruction) {
+    if (editPending) return;
+    const snapshot = editSnapshot;
+    const details = snapshot?.details;
+    const capturedProjection = snapshot?.projection;
+    if (!details || !editingStep || editingValue === editingStep.editableInstruction) {
       setIsEditing(false);
       setEditingStepIndex(null);
       return;
@@ -570,7 +629,92 @@ export function CooksMode({
     setEditPending(true);
     setEditError(false);
     try {
-      const originalInstructions = [...(recipeDetails.recipeInstructions || [])];
+      const datedSections = capturedProjection?.instructionProjection?.sections;
+      if (datedSections || (details.instructionSections && details.contentRevision)) {
+        // A dated editor requires its captured coherent projection even while
+        // recovering. A detail read cannot turn it into an original-context save.
+        if (ingredientContext && (!datedSections || !capturedProjection?.contentRevision))
+          throw new Error('Missing captured cooking instruction projection');
+        const revision = capturedProjection?.contentRevision ?? details.contentRevision!;
+        const [sectionIndex, stepIndex] = editingStep.sourcePath!;
+        const instructionSections = datedSections
+          ? datedSections.map((section, outer) => ({
+              id: section.sectionId,
+              name: section.name ?? null,
+              steps: (section.steps ?? []).map((step, inner) => ({
+                id: step.stepId,
+                text:
+                  outer === sectionIndex && inner === stepIndex ? editingValue : step.originalText,
+              })),
+            }))
+          : details.instructionSections!.map((section, outer) => ({
+              id: section.id,
+              name: section.name ?? null,
+              steps: (section.steps ?? []).map((step, inner) => ({
+                id: step.id,
+                text: outer === sectionIndex && inner === stepIndex ? editingValue : step.text,
+              })),
+            }));
+        const generation = ++quantityRequest.current;
+        let saved: Recipe | void = undefined;
+        if (uncertainInstructionSave.current) {
+          const current = await getRecipe(initialRecipe.id);
+          if (
+            generation !== quantityRequest.current ||
+            editingValue !== activeInstructionDraft.current
+          )
+            throw new Error('Instruction recovery superseded');
+          const savedSections = current.instructionSections?.map((section) => ({
+            id: section.id,
+            name: section.name ?? null,
+            steps: (section.steps ?? []).map((step) => ({ id: step.id, text: step.text })),
+          }));
+          if (
+            current.contentRevision &&
+            JSON.stringify(savedSections) === JSON.stringify(instructionSections)
+          ) {
+            // Confirm the entire intended original content, not just a changed
+            // opaque revision or the prior attempt's text after the draft changes.
+            saved = current;
+          } else if (current.contentRevision !== revision) {
+            throw new Error('Instruction recovery needs current-content review');
+          }
+        }
+        if (!saved) {
+          uncertainInstructionSave.current = true;
+          saved = await updateRecipe(initialRecipe.id, {
+            expectedContentRevision: revision,
+            instructionSections,
+          });
+        }
+        if (!saved) throw new Error('Missing authoritative recipe after instruction save');
+        // A failed post-save read is also uncertain from the editor's perspective:
+        // recovery reads current detail instead of resubmitting the instruction.
+        if (ingredientContext && contextKey) {
+          const current = await getIngredientProjection(initialRecipe.id, ingredientContext);
+          if (
+            generation !== quantityRequest.current ||
+            editingValue !== activeInstructionDraft.current
+          )
+            throw new Error('Instruction save superseded');
+          setProjectionRead({ key: contextKey, data: current });
+        } else {
+          if (
+            generation !== quantityRequest.current ||
+            editingValue !== activeInstructionDraft.current
+          )
+            throw new Error('Instruction save superseded');
+          setParsedSteps(parseRecipeSteps(saved.recipeInstructions));
+        }
+        setRecipeDetails(saved);
+        setQuantityNotice({ key: contentKey, error: false, available: false });
+        uncertainInstructionSave.current = false;
+        setIsEditing(false);
+        setEditingStepIndex(null);
+        setEditAnnouncement('Step saved');
+        return;
+      }
+      const originalInstructions = [...(details.recipeInstructions || [])];
       const [outerIndex, innerIndex] = editingStep.sourcePath ?? [editingStepIndex ?? 0];
       const updatedInstructions = originalInstructions.map((entry, index) => {
         if (index !== outerIndex) return entry;
@@ -592,7 +736,7 @@ export function CooksMode({
 
       // Update local state for immediate feedback
       const updatedDetails = {
-        ...recipeDetails,
+        ...details,
         recipeInstructions: updatedInstructions,
       };
       setRecipeDetails(updatedDetails);
@@ -625,13 +769,32 @@ export function CooksMode({
     }
   };
 
+  const applyReportRecipe = (updated: Recipe) => {
+    // A report owns quality metadata, not the active content snapshot.
+    setRecipeDetails(
+      (current) =>
+        current && {
+          ...current,
+          importIssue: updated.importIssue,
+          canReimport: updated.canReimport,
+          isReady: updated.isReady,
+        }
+    );
+    const displayedRevision =
+      appliedProjection.current?.contentRevision ?? recipeDetails?.contentRevision;
+    if (updated.contentRevision && updated.contentRevision !== displayedRevision) {
+      // Retire reads started before this content hint, including a pending refresh.
+      quantityRequest.current++;
+      setQuantityNotice({ key: contentKey, error: false, available: true });
+    }
+  };
+
   const handleSaveImportIssue = async (draft: RecipeImportIssueDraft) => {
     if (!recipeDetails) return;
     setReportPending(true);
     try {
       const submission = await saveRecipeImportIssue(recipeDetails.id, draft);
-      setRecipeDetails(submission.recipe);
-      setParsedSteps(parseRecipeSteps(submission.recipe.recipeInstructions));
+      applyReportRecipe(submission.recipe);
       if (submission.reimportLaunchFailed) throw new Error('Re-import launch failed');
       setReportContext(null);
       setReimportAcknowledgement(submission.reimportStarted);
@@ -645,13 +808,26 @@ export function CooksMode({
     setReportPending(true);
     try {
       const updated = await resolveRecipeImportIssue(recipeDetails.id);
-      setRecipeDetails(updated);
-      setParsedSteps(parseRecipeSteps(updated.recipeInstructions));
+      applyReportRecipe(updated);
       setReportContext(null);
     } finally {
       setReportPending(false);
     }
   };
+
+  const stepEditError = editError && (
+    <p role="alert" className="font-semibold text-terracotta">
+      Couldn&apos;t save this step.{' '}
+      <button
+        type="button"
+        disabled={editPending}
+        onClick={() => void handleSaveEdit()}
+        className="min-h-11 underline"
+      >
+        Try again
+      </button>
+    </p>
+  );
 
   const currentStepData = steps[activeRecipeStepIndex];
   const focusedEdit = hasInstructions && !isEditing && !isPrepStep && !singlePageEnabled && (
@@ -660,9 +836,7 @@ export function CooksMode({
       data-testid="cooks-mode-edit-step"
       aria-label="Edit step"
       onClick={() => {
-        setIsEditing(true);
-        setEditingStepIndex(activeRecipeStepIndex);
-        setEditingValue(currentStepData.editableInstruction ?? currentStepData.instruction);
+        startEdit(activeRecipeStepIndex);
       }}
       className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-terracotta-700 focus-visible:ring-2 focus-visible:ring-terracotta"
     >
@@ -795,32 +969,36 @@ export function CooksMode({
             })}
           </div>
 
-          {stackedLayout && focusedEdit}
-          {hasOriginal && (
-            <button
-              type="button"
-              data-testid="cooks-mode-original"
-              ref={originalActionRef}
-              disabled={originalPending}
-              aria-busy={originalPending}
-              title={originalPending ? t('common.saving', 'Saving') : undefined}
-              onClick={(event) => {
-                event.stopPropagation();
-                if (originalPending) return;
-                if (originalUrl) {
-                  if (recipeDetails?.id === initialRecipe.id)
-                    window.open(originalUrl, '_blank', 'noopener,noreferrer');
-                } else setShowOriginals(true);
-              }}
-              className="relative z-20 inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-charcoal/10 bg-white px-3 py-2 text-sm font-semibold text-charcoal-600 hover:bg-cream active:bg-charcoal-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-charcoal-500 disabled:cursor-wait disabled:opacity-60"
-            >
-              {originalUrl ? (
-                <ExternalLink size={18} aria-hidden="true" />
-              ) : (
-                <Images size={18} aria-hidden="true" />
+          {((stackedLayout && focusedEdit) || hasOriginal) && (
+            <div className="ml-auto flex min-w-0 max-w-full flex-wrap items-center justify-end gap-2 md:ml-0 md:justify-start">
+              {stackedLayout && focusedEdit}
+              {hasOriginal && (
+                <button
+                  type="button"
+                  data-testid="cooks-mode-original"
+                  ref={originalActionRef}
+                  disabled={originalPending}
+                  aria-busy={originalPending}
+                  title={originalPending ? t('common.saving', 'Saving') : undefined}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    if (originalPending) return;
+                    if (originalUrl) {
+                      if (recipeDetails?.id === initialRecipe.id)
+                        window.open(originalUrl, '_blank', 'noopener,noreferrer');
+                    } else setShowOriginals(true);
+                  }}
+                  className="relative z-20 inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-charcoal/10 bg-white px-3 py-2 text-sm font-semibold text-charcoal-600 hover:bg-cream active:bg-charcoal-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-charcoal-500 disabled:cursor-wait disabled:opacity-60"
+                >
+                  {originalUrl ? (
+                    <ExternalLink size={18} aria-hidden="true" />
+                  ) : (
+                    <Images size={18} aria-hidden="true" />
+                  )}
+                  {t('recipes.viewOriginal', 'View Original')}
+                </button>
               )}
-              {t('recipes.viewOriginal', 'View Original')}
-            </button>
+            </div>
           )}
         </div>
         <div
@@ -937,18 +1115,13 @@ export function CooksMode({
                   )}
                 </p>
               )}
-              {scaled && (
+              {scaled && !projection?.instructionProjection && (
                 <p data-testid="cooking-instruction-limitation">
                   {t(
                     'cook.originalAmounts',
                     'Ingredients are adjusted; step amounts remain original.'
                   )}
                 </p>
-              )}
-              {!isPrepStep && (
-                <button className="min-h-12 min-w-12 underline" onClick={openIngredients}>
-                  {t('cook.adjustedIngredients', 'View adjusted ingredients')}
-                </button>
               )}
             </div>
           )}
@@ -1092,8 +1265,8 @@ export function CooksMode({
                         <div className="flex items-center gap-2 text-sage">
                           <CheckCircle2 size={16} />
                           <span className="text-sm font-black uppercase tracking-wider">
-                            {Object.values(gathered).filter(Boolean).length} of {ingredients.length}{' '}
-                            ready
+                            {ingredients.filter(({ key }) => gathered[key]).length} of{' '}
+                            {ingredients.length} ready
                           </span>
                         </div>
 
@@ -1155,7 +1328,9 @@ export function CooksMode({
                     <ol role="list" aria-label="Cooking steps" className="list-none space-y-4">
                       {steps.map((step, index) => {
                         const rowEditing = editingStepIndex === index;
-                        const instruction = step.editableInstruction ?? step.instruction;
+                        const instruction = projection?.instructionProjection
+                          ? step.instruction
+                          : (step.editableInstruction ?? step.instruction);
                         const showTitle =
                           Boolean(step.title.trim()) &&
                           !/^step\s+\d+$/i.test(step.title.trim()) &&
@@ -1169,10 +1344,7 @@ export function CooksMode({
                             data-testid={`single-page-edit-step-${step.index}`}
                             aria-label={`Edit step ${step.index}`}
                             onClick={() => {
-                              setIsEditing(true);
-                              setEditingStepIndex(index);
-                              setEditingValue(step.editableInstruction ?? step.instruction);
-                              setEditError(false);
+                              startEdit(index);
                             }}
                             className={`h-11 w-11 shrink-0 items-center justify-center rounded-xl text-charcoal/70 hover:bg-charcoal/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta disabled:opacity-40 ${
                               showTitle
@@ -1230,18 +1402,7 @@ export function CooksMode({
                                         Cancel
                                       </button>
                                     </div>
-                                    {editError && (
-                                      <p role="alert" className="font-semibold text-terracotta">
-                                        Couldn&apos;t save this step.{' '}
-                                        <button
-                                          type="button"
-                                          onClick={() => void handleSaveEdit()}
-                                          className="min-h-11 underline"
-                                        >
-                                          Try again
-                                        </button>
-                                      </p>
-                                    )}
+                                    {stepEditError}
                                   </div>
                                 ) : (
                                   <div
@@ -1284,15 +1445,17 @@ export function CooksMode({
                       <button
                         type="button"
                         data-testid="cooks-mode-save-edit"
+                        disabled={editPending}
                         onClick={handleSaveEdit}
                         className="inline-flex h-14 items-center justify-center gap-3 rounded-full bg-terracotta active:bg-terracotta-700 px-10 text-base font-black text-white shadow-xl shadow-terracotta/20 transition hover:bg-terracotta-600 active:scale-95"
                       >
                         <Check size={20} strokeWidth={3} />
-                        <span>{t('common.save', 'Save')}</span>
+                        <span>{editPending ? 'Saving…' : t('common.save', 'Save')}</span>
                       </button>
                       <button
                         type="button"
                         data-testid="cooks-mode-cancel-edit"
+                        disabled={editPending}
                         onClick={handleCancelEdit}
                         className="inline-flex h-14 items-center justify-center gap-3 rounded-full border-2 border-charcoal/10 bg-white px-8 text-base font-black text-charcoal shadow-sm transition hover:bg-charcoal/5 active:scale-95"
                       >
@@ -1300,6 +1463,7 @@ export function CooksMode({
                         <span>{t('common.cancel', 'Cancel')}</span>
                       </button>
                     </div>
+                    {stepEditError}
                   </div>
                 ) : (
                   <p

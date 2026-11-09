@@ -2,6 +2,8 @@
 
 No dependency or dataset is selected/installed. These are primary-source research findings, not a claim that an entire dictionary is safe for direct grocery equivalence. Candidate counts, complete downloaded schema and corpus performance remain unmeasured.
 
+Supplementary [research dated 2026-11-08](research-2026-11-08.md) examines reuse of existing category records and recipe terms, source quality, regional ambiguity and reuse limits. It records local snapshot evidence and nonnormative suggestions; it does not select a dataset, adopt vocabulary or add product requirements.
+
 | Source | Verified primary evidence | Fit and adoption constraint |
 | --- | --- | --- |
 | Health Canada CNF 2026 | [Official description](https://www.canada.ca/en/health-canada/services/food-nutrition/healthy-eating/nutrient-data/canadian-nutrient-file-about-us.html) describes a bilingual food composition reference with downloadable relational files; [dataset record](https://open.canada.ca/data/en/dataset/1b6139bd-ed7e-4043-bc28-ff00e10f3109) lists EN/FR Food Name CSV and Open Government Licence – Canada | Best initial EN/FR pilot. Composition descriptions are not automatically shopper synonyms; cooked/raw, composite foods, preparations and purchase forms need review. Dataset listing verifies stated licence; direct licence page returned 403 in this research session, so retain/review the exact licence text and attribution conditions before adoption. |

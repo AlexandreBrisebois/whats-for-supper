@@ -5,6 +5,7 @@ import {
   MOCK_IDS,
   mockNonCookingSchedule,
   mockSupperServings,
+  mockSseWithConnectedSchedule,
 } from './mock-api';
 import type { Page } from '@playwright/test';
 import { createGroceryRowState } from './grocery-row-state';
@@ -1661,7 +1662,7 @@ for (const completeness of ['absent', 'null', 'false'] as const) {
     const { schedule, control, writes } = await fixture(page, false, completeness);
     await expect(page.getByTestId('grocery-portions-updating')).not.toBeVisible({ timeout: 10000 });
     expect(groceryChecked(schedule)).toBe(true);
-    expect(schedule.groceryItems[0]).toMatchObject({
+    expect(schedule.groceryItems.find((row: any) => row.normalizedKey === 'pasta')).toMatchObject({
       quantity: scalarQuantity(600),
       quantityComplete: true,
     });
@@ -1731,6 +1732,13 @@ test('dismissed grocery notices stay quiet across two absolute weeks and remount
       resetSummaryVersion: `reset-${offset}`,
     },
   }));
+  const rowState = createGroceryRowState();
+  for (const schedule of schedules) {
+    const reset = schedule.groceryRefresh.resetSummaryVersion;
+    rowState.decorate(schedule);
+    schedule.groceryRefresh.resetSummaryVersion = reset;
+  }
+  await mockSseWithConnectedSchedule(page, schedules[0] as any);
   const requestedWeeks: string[] = [];
   await page.route(
     (url) => url.pathname === '/api/schedule',
@@ -1809,6 +1817,9 @@ test('actual reset events stay quiet on replay and return after a repeated input
   expect(schedule.groceryRefresh.resetSummaryVersion).toBeNull();
   await expect(summary).toHaveCount(0);
   await change('6');
+  expect(groceryChecked(schedule)).toBe(true);
+  await expect(summary).toHaveCount(0);
+  await change('8');
   expect(groceryChecked(schedule)).toBe(false);
   expect(schedule.groceryRefresh.resetSummaryVersion).not.toBe(first);
   await expect(summary).toBeVisible();
@@ -2029,7 +2040,12 @@ for (const appLocale of ['en', 'fr'] as const) {
             await fetch(`/api/recipes/${id}`, {
               method: 'PATCH',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(candidate),
+              body: JSON.stringify({
+                servings: candidate.servings,
+                ingredients: candidate.ingredients,
+                recipeInstructions: candidate.recipeInstructions,
+                notes: candidate.notes,
+              }),
             });
             await fetch(`/api/schedule/assign?referenceWeekStartDate=${reference}`, {
               method: 'POST',
@@ -2039,6 +2055,10 @@ for (const appLocale of ['en', 'fr'] as const) {
           },
           { id, other: MOCK_IDS.RECIPE_CHICKEN, candidate, reference }
         );
+        await page.route(`**/api/recipes/${id}`, async (route) => {
+          if (route.request().method() !== 'GET') return route.fallback();
+          return route.fulfill({ json: { recipe: { ...candidate, imageCount: 1 } } });
+        });
         if (configured) {
           await page.reload();
           await configureUsualInSettings(page, 4);

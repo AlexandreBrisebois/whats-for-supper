@@ -54,6 +54,30 @@ def get_mock_endpoints(spec=None):
                 with open(path, 'r') as f:
                     content = f.read()
 
+                # A finite literal loop can register method-guarded pathname
+                # predicates. Resolve only this closed form, never evaluate JS
+                # or infer routes from unresolved variables/expressions.
+                literal_loop = re.compile(
+                    r"for\s*\(const\s+(\w+)\s+of\s+\[([^\]]+)\]\)\s*\{\s*"
+                    r"await\s+page\.route\(\s*\(url\)\s*=>\s*new RegExp\(`([^`]+)`\)"
+                    r"\.test\(url\.pathname\),\s*async\s*\(route\)\s*=>\s*\{\s*"
+                    r"if\s*\(route\.request\(\)\.method\(\)\s*!==\s*'([A-Z]+)'\)"
+                    r"\s*return route\.fallback\(\);"
+                )
+                for variable, values, template, method in literal_loop.findall(content):
+                    if not re.fullmatch(r"\s*'[\w/-]+'(?:\s*,\s*'[\w/-]+')*\s*,?\s*", values):
+                        continue
+                    token = '${' + variable + '}'
+                    if template.count(token) != 1 or not template.startswith('^/') or not template.endswith('$'):
+                        continue
+                    for value in re.findall(r"'([^']+)'", values):
+                        resolved = template[1:-1].replace(token, value).replace('[^/]+', '{id}')
+                        if not re.fullmatch(r'/[\w/{}-]+', resolved):
+                            continue
+                        for endpoint in get_spec_endpoints(spec or {}):
+                            if endpoint['method'] == method and normalize_path(endpoint['path']) == normalize_path(resolved):
+                                endpoints.append(endpoint)
+
                 # --- String-based routes ---
                 matches = re.findall(route_pattern_string, content)
                 for m in matches:

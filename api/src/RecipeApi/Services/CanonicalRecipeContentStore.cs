@@ -126,10 +126,8 @@ public sealed partial class CanonicalRecipeContentStore(RecipeDbContext db, IClo
                         : new("human", old?.Provenance.SourceRef, ProtectedFacts)
                 };
             }).ToArray();
-        // Bindings are still step-companion-owned. Until revalidation qualifies,
-        // changed ingredient facts invalidate every binding conservatively.
         var sections = input.InstructionSections.ValueKind == JsonValueKind.Undefined
-            ? current.InstructionSections.Select(section => section with { Steps = section.Steps.Select(step => step with { Bindings = Array.Empty<JsonElement>() }).ToArray() }).ToArray()
+            ? current.InstructionSections
             : EditSections(current, input.InstructionSections, created, newId, newRevision);
         var content = current with
         {
@@ -138,7 +136,7 @@ public sealed partial class CanonicalRecipeContentStore(RecipeDbContext db, IClo
             IngredientLines = lines,
             InstructionSections = sections
         };
-        return new CanonicalRecipeWriteResult(content, created);
+        return new CanonicalRecipeWriteResult(CookingStepProjection.Revalidate(current, content), created);
     }
 
     private static bool SameFacts(RecipeIngredientLineDto saved, RecipeIngredientLineInput input) =>
@@ -159,7 +157,7 @@ public sealed partial class CanonicalRecipeContentStore(RecipeDbContext db, IClo
             var nextId = prior?.Id ?? newId();
             if (prior is null) created.Add(step.GetProperty("clientId").GetString()!, nextId);
             var text = step.GetProperty("text").GetString()!;
-            return new RecipeInstructionStepDto(nextId, text, prior?.Text == text ? prior.TextRevision : newRevision(), []);
+            return new RecipeInstructionStepDto(nextId, text, prior?.Text == text ? prior.TextRevision : newRevision(), prior?.Bindings ?? []);
         }).ToArray();
         return new RecipeInstructionSectionDto(id, section.GetProperty("name").GetString(), steps);
     }).ToArray();

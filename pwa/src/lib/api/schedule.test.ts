@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DateOnly } from '@microsoft/kiota-abstractions';
+import { JsonParseNode } from '@microsoft/kiota-serialization-json';
+import {
+  createGroceryMutationResultFromDiscriminatorValue,
+  type GroceryMutationResult,
+} from './generated/models';
 import { MOCK_IDS } from '@/testing/mock-ids';
 const { itemPatch, bulkPatch } = vi.hoisted(() => ({ itemPatch: vi.fn(), bulkPatch: vi.fn() }));
 vi.mock('./api-client', () => ({
@@ -31,7 +36,7 @@ describe('generated grocery client requests', () => {
       checked: true,
       clientMutationId: MOCK_IDS.GROCERY_ROW_02,
     };
-    expect(await useSchedule().toggleGroceryItem(1, request, '2026-10-05')).toBe(outcome);
+    expect(await useSchedule().toggleGroceryItem(1, request, '2026-10-05')).toEqual(outcome);
     const [body, config] = itemPatch.mock.calls[0];
     expect(body).toBe(request);
     expect(String(config.queryParameters.referenceWeekStartDate)).toBe('2026-10-05');
@@ -44,7 +49,7 @@ describe('generated grocery client requests', () => {
       checks: { additionalData: { [MOCK_IDS.GROCERY_ROW_01]: false } },
       clientMutationId: MOCK_IDS.GROCERY_ROW_02,
     };
-    expect(await useSchedule().updateGroceryState(1, request, '2026-10-05')).toBe(outcome);
+    expect(await useSchedule().updateGroceryState(1, request, '2026-10-05')).toEqual(outcome);
     expect(bulkPatch.mock.calls[0][0]).toBe(request);
   });
   it('does not silently accept a lost or missing outcome', async () => {
@@ -52,4 +57,48 @@ describe('generated grocery client requests', () => {
     await expect(useSchedule().toggleGroceryItem(0, {})).rejects.toThrow('Missing authoritative');
     expect(itemPatch).toHaveBeenCalledTimes(1);
   });
+});
+
+describe('generated grocery acknowledgement quantities', () => {
+  for (const operation of ['item', 'bulk'] as const) {
+    it.each([
+      { kind: 'scalar', value: { n: '600', d: '1' } },
+      { kind: 'scalar', value: { n: '0', d: '1' } },
+      { kind: 'scalar', value: { n: '9007199254740993', d: '7' } },
+      { kind: 'range', min: { n: '1', d: '3' }, max: { n: '7', d: '2' } },
+      null,
+    ])(`${operation} keeps the exact quantity from the generated decoder: %j`, async (quantity) => {
+      const decoded = new JsonParseNode({
+        weekStartDate: '2026-10-12',
+        listVersion: '2',
+        rowId: MOCK_IDS.GROCERY_ROW_01,
+        rowVersion: '3',
+        checked: true,
+        checks: { [MOCK_IDS.GROCERY_ROW_01]: true },
+        rows: [
+          {
+            rowId: MOCK_IDS.GROCERY_ROW_01,
+            rowVersion: '3',
+            quantity,
+            quantityComplete: false,
+            unitText: 'g',
+            recipeIds: [MOCK_IDS.RECIPE_CARBONARA],
+          },
+        ],
+      }).getObjectValue<GroceryMutationResult>(createGroceryMutationResultFromDiscriminatorValue)!;
+      itemPatch.mockResolvedValue(decoded);
+      bulkPatch.mockResolvedValue({ data: decoded });
+      const result =
+        operation === 'item'
+          ? await useSchedule().toggleGroceryItem(0, {})
+          : await useSchedule().updateGroceryState(0, {});
+      expect(result.rows![0].quantity).toEqual(quantity);
+      expect(result.rows![0]).toMatchObject({
+        rowId: MOCK_IDS.GROCERY_ROW_01,
+        rowVersion: '3',
+        quantityComplete: false,
+      });
+      expect(result).toMatchObject({ listVersion: '2', rowVersion: '3', checked: true });
+    });
+  }
 });

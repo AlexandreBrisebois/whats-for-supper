@@ -2,13 +2,23 @@ import { test, expect, type Page } from '@playwright/test';
 import { writeFile } from 'node:fs/promises';
 import { generateSecretToken } from './auth-utils';
 
+const groceryRow = (snapshot: any, key = 'pasta') =>
+  snapshot.groceryItems.find((row: any) => row.normalizedKey === key);
+const groceryChecked = (snapshot: any) => snapshot.groceryState[groceryRow(snapshot).rowId];
+const exactGroceryQuantity = (amount: number) => ({
+  kind: 'scalar',
+  value: { n: String(amount), d: '1' },
+});
+const unrelatedChecked = (snapshot: any) =>
+  snapshot.groceryExtras.find((row: any) => row.normalizedKey === 'coffee')?.checked;
+
 test.skip(
   !process.env.SUPPER_SERVINGS_RECOVERY_API_URL,
   'Requires isolated real recovery API/PostgreSQL.'
 );
 test.use({ timezoneId: 'Asia/Tokyo', viewport: { width: 390, height: 844 } });
 
-test('real lost portions, failed worker, checks, review acknowledgements and movement converge', async ({
+test('real lost portions, failed worker, guarded checks, baselines and movement converge', async ({
   page,
   browser,
   request,
@@ -31,6 +41,8 @@ test('real lost portions, failed worker, checks, review acknowledgements and mov
   const schedule = async () =>
     (await read('/api/schedule?weekOffset=0&referenceWeekStartDate=2026-10-12')).data;
   const evidence: Record<string, any> = {};
+  const baseline = (db: any, snapshot: any) =>
+    JSON.parse(db.plans[0].groceryCheckedDemandBaselines)[groceryRow(snapshot).rowId];
   const member = (await read('/api/family')).data[0];
   const observerContext = await browser.newContext({
     baseURL,
@@ -189,13 +201,16 @@ test('real lost portions, failed worker, checks, review acknowledgements and mov
     expect(retried.plans[0].servingInputVersion).toBe(failed.plans[0].servingInputVersion);
     await control('restore');
     const firstCurrent = await advance();
-    expect(firstCurrent.groceryItems[0].quantity).toBe(600);
-    expect(firstCurrent.groceryState).toMatchObject({ pasta: false, unrelated: true });
+    expect(groceryRow(firstCurrent).quantity).toEqual(exactGroceryQuantity(600));
+    expect(groceryChecked(firstCurrent)).toBe(false);
+    expect(unrelatedChecked(firstCurrent)).toBe(true);
     await assertQuantity(600);
     await expect
       .poll(async () =>
         (await events(observer)).groceries.some(
-          (e: any) => e.weekStartDate === '2026-10-12' && e.groceryState.pasta === false
+          (e: any) =>
+            e.weekStartDate === '2026-10-12' &&
+            e.groceryState[groceryRow(firstCurrent).rowId] === false
         )
       )
       .toBe(true);
@@ -217,16 +232,22 @@ test('real lost portions, failed worker, checks, review acknowledgements and mov
     );
     await item(observer).click();
     const checked = await checkReply;
-    expect(checked.status()).toBe(204);
+    expect(checked.status()).toBe(200);
     expect(new URL(checked.url()).searchParams.get('referenceWeekStartDate')).toBe('2026-10-12');
-    expect(checked.request().postDataJSON()).toEqual({ ingredientName: 'pasta', checked: true });
+    expect(checked.request().postDataJSON()).toEqual({
+      rowId: groceryRow(firstCurrent).rowId,
+      weekStartDate: '2026-10-12',
+      expectedRowVersion: groceryRow(firstCurrent).rowVersion,
+      checked: true,
+      clientMutationId: expect.any(String),
+    });
     await expect(item(page)).toHaveAttribute('aria-checked', 'true');
     const completed = (await persisted()).tasks.find(
       (t: any) => t.instanceId === retried.plans[0].servingRefreshWorkflowId
     );
     await control(`replay/${completed.taskId}`);
     const replay = await advance();
-    expect(replay.groceryState.pasta).toBe(true);
+    expect(groceryChecked(replay)).toBe(true);
     expect(replay.groceryRefresh.resetSummaryVersion).toBe(firstReset);
     evidence.unchangedWorkerReplay = {
       taskId: completed.taskId,
@@ -243,27 +264,32 @@ test('real lost portions, failed worker, checks, review acknowledgements and mov
     expect(cycle.groceryRefresh.resetSummaryVersion).not.toBe(firstReset);
     await assertQuantity(600);
     evidence.resetCycle = { first: firstCurrent.groceryRefresh, later: cycle.groceryRefresh };
-    // A real old cache with unknown prior amount becomes a current complete amount needing review.
-    await control('legacy-prior');
+    // Current row identity and an unknown checked baseline survive a complete larger demand.
+    await control('unknown-prior');
+    const unknownBefore = await persisted();
+    const unknownSnapshot = await schedule();
+    expect(baseline(unknownBefore, unknownSnapshot).Quantity).toBeNull();
     await edit(8);
     const reviewed = await advance();
-    expect(reviewed.groceryItems[0]).toMatchObject({
-      quantity: 800,
+    expect(groceryRow(reviewed)).toMatchObject({
+      quantity: exactGroceryQuantity(800),
       quantityComplete: true,
-      checkReviewReason: 'prior_amount_unknown',
     });
+    expect(groceryChecked(reviewed)).toBe(true);
+    expect(baseline(await persisted(), reviewed)).toEqual(baseline(unknownBefore, unknownSnapshot));
     for (const target of [page, observer])
-      await expect(target.getByTestId('grocery-check-review')).toBeVisible();
+      await expect(target.getByTestId('grocery-check-review')).toHaveCount(0);
     const beforeAck = await persisted();
     const beforeAckEvents = (await events(page)).groceries.length;
-    // Explicit false does not acknowledge; the subsequent actual item true does.
+    // Only an actual unchecked-to-checked transition captures current demand.
     await item(observer).click();
-    await expect.poll(async () => (await schedule()).groceryState.pasta).toBe(false);
+    await expect.poll(async () => groceryChecked(await schedule())).toBe(false);
     await item(observer).click();
-    await expect.poll(async () => (await schedule()).groceryItems[0].checkReviewReason).toBeNull();
+    await expect.poll(async () => groceryChecked(await schedule())).toBe(true);
     for (const target of [page, observer])
       await expect(target.getByTestId('grocery-check-review')).toHaveCount(0);
     const acked = await persisted();
+    expect(baseline(acked, await schedule()).Quantity).toEqual(exactGroceryQuantity(800));
     expect(acked.rows).toEqual(beforeAck.rows);
     expect(acked.plans[0].servingInputVersion).toBe(beforeAck.plans[0].servingInputVersion);
     expect(acked.plans[0].servingRefreshWorkflowId).toBe(
@@ -278,21 +304,43 @@ test('real lost portions, failed worker, checks, review acknowledgements and mov
       http: await schedule(),
       events: await events(page),
     };
-    // The compatible full-map operation has no current UI caller: real HTTP contract evidence only.
-    await control('legacy-prior');
+    // Repeated true, including guarded bulk true, cannot silently acknowledge unknown demand.
+    await control('unknown-prior');
+    const bulkUnknown = await persisted();
+    const bulkUnknownSnapshot = await schedule();
     await edit(10);
     await advance();
     for (const target of [page, observer])
-      await expect(target.getByTestId('grocery-check-review')).toBeVisible();
+      await expect(target.getByTestId('grocery-check-review')).toHaveCount(0);
     const mapBefore = await persisted();
-    const map = await request.patch(
+    const mapSnapshot = await schedule();
+    const legacy = await request.patch(
       `${api}/api/schedule/0/grocery?referenceWeekStartDate=2026-10-12`,
       { headers, data: { pasta: true, unrelated: true } }
+    );
+    expect(legacy.status()).toBe(409);
+    expect((await legacy.json()).code).toBe('upgrade_required');
+    expect((await persisted()).plans).toEqual(mapBefore.plans);
+    const map = await request.patch(
+      `${api}/api/schedule/0/grocery?referenceWeekStartDate=2026-10-12`,
+      {
+        headers,
+        data: {
+          weekStartDate: '2026-10-12',
+          expectedListVersion: mapSnapshot.groceryListVersion,
+          checks: { [groceryRow(mapSnapshot).rowId]: true },
+          clientMutationId: crypto.randomUUID(),
+        },
+      }
     );
     expect(map.status()).toBe(200);
     for (const target of [page, observer])
       await expect(target.getByTestId('grocery-check-review')).toHaveCount(0);
     const mapAfter = await persisted();
+    expect(baseline(mapAfter, await schedule())).toEqual(
+      baseline(bulkUnknown, bulkUnknownSnapshot)
+    );
+    expect(unrelatedChecked(await schedule())).toBe(true);
     expect(mapAfter.rows).toEqual(mapBefore.rows);
     expect(mapAfter.plans[0].servingRefreshWorkflowId).toBe(
       mapBefore.plans[0].servingRefreshWorkflowId
@@ -305,24 +353,33 @@ test('real lost portions, failed worker, checks, review acknowledgements and mov
     };
     // Hold the actual shopper PATCH while a count save and registered worker refresh complete.
     await control('hold-check');
+    const overlappingReply = observer.waitForResponse(
+      (response) =>
+        response.request().method() === 'PATCH' &&
+        new URL(response.url()).pathname.endsWith('/grocery/item')
+    );
     const checkPending = item(observer).click();
     await expect.poll(async () => read('/_test/recovery/check-entered')).toBe(true);
     await edit(4);
     const overlapped = await advance();
-    expect(overlapped.groceryItems[0].quantity).toBe(400);
+    expect(groceryRow(overlapped).quantity).toEqual(exactGroceryQuantity(400));
     await control('release-check');
     await checkPending;
-    await expect.poll(async () => (await schedule()).groceryState.pasta).toBe(false);
-    // A later explicit shopper check survives a completed-task replay.
+    expect((await overlappingReply).status()).toBe(409);
+    await expect.poll(async () => groceryChecked(await schedule())).toBe(true);
+    await expect(item(observer)).toHaveAttribute('aria-checked', 'true');
+    // A fresh uncheck/recheck survives a completed-task replay; the stale write cannot win.
     await item(observer).click();
-    await expect.poll(async () => (await schedule()).groceryState.pasta).toBe(true);
+    await expect.poll(async () => groceryChecked(await schedule())).toBe(false);
+    await item(observer).click();
+    await expect.poll(async () => groceryChecked(await schedule())).toBe(true);
     const overlapDb = await persisted();
     const overlapTask = overlapDb.tasks.find(
       (t: any) => t.instanceId === overlapDb.plans[0].servingRefreshWorkflowId
     );
     await control(`replay/${overlapTask.taskId}`);
     await advance();
-    expect((await schedule()).groceryState.pasta).toBe(true);
+    expect(groceryChecked(await schedule())).toBe(true);
     evidence.overlap = { database: await persisted(), http: await schedule() };
     // Real generated move through Planner keyboard interaction; dated rows never travel.
     await page.getByRole('button', { name: 'Close grocery list', exact: true }).click();
@@ -345,7 +402,8 @@ test('real lost portions, failed worker, checks, review acknowledgements and mov
       date: '2026-10-15',
       voteCount: 7,
     });
-    expect((await schedule()).groceryState).toMatchObject({ pasta: false, unrelated: true });
+    expect(groceryChecked(await schedule())).toBe(false);
+    expect(unrelatedChecked(await schedule())).toBe(true);
     expect(afterMove.extras).toEqual(evidence.initialDatabase.extras);
     expect(afterMove.recipes).toEqual(evidence.initialDatabase.recipes);
     expect(afterMove.writes.filter((w: any) => w.path === '/api/schedule/move')).toHaveLength(1);

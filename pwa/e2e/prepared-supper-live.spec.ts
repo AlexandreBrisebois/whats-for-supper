@@ -1,9 +1,10 @@
+import { qualifyPreparedCorrection } from './prepared-correction';
 import { test, expect, type Page, type APIRequestContext } from '@playwright/test';
 import { writeFile } from 'node:fs/promises';
 import { generateSecretToken } from './auth-utils';
 
 test.skip(
-  !process.env.PREPARED_SUPPER_API_URL,
+  !process.env.PREPARED_SUPPER_API_URL && !process.env.COOKING_PREPARED_CONTEXT,
   'Requires isolated real preparation API/PostgreSQL.'
 );
 test.use({
@@ -305,7 +306,8 @@ for (const fault of [
       } else await expect(page.getByTestId('preparation-review')).toHaveCount(0);
       await expect(draft).toHaveValue('Keep this cooking correction');
       await page.getByRole('button', { name: 'Cancel', exact: true }).click();
-      await page.getByRole('button', { name: 'View adjusted ingredients' }).click();
+      await page.getByTestId('cooking-view-all-steps').click();
+      await page.getByTestId('cooks-mode-step-prev').click();
       await expect(page.getByTestId('ingredient-toggle').first()).toHaveAttribute(
         'aria-checked',
         'true'
@@ -345,3 +347,67 @@ for (const fault of [
     );
   });
 }
+
+test('canonical prepared correction retains recorded context through coherent refresh', async ({
+  page,
+  request,
+  baseURL,
+}, info) => {
+  test.skip(
+    !process.env.COOKING_PREPARED_CONTEXT,
+    'Requires the isolated canonical prepared fixture.'
+  );
+  const secret = process.env.HEARTH_SECRET!;
+  await page.context().addCookies([
+    { name: 'h_access', value: await generateSecretToken(secret), url: baseURL! },
+    {
+      name: 'x-family-member-id',
+      value: process.env.CANONICAL_MEMBERS!.split(',')[0],
+      url: baseURL!,
+    },
+  ]);
+  await page.clock.setFixedTime(new Date('2026-10-13T12:00:00Z'));
+  await page.addInitScript(() => localStorage.setItem('locale', 'en'));
+  await page.route('**/*', (route) =>
+    ['localhost', '127.0.0.1'].includes(new URL(route.request().url()).hostname) ||
+    ['data:', 'blob:'].includes(new URL(route.request().url()).protocol)
+      ? route.continue()
+      : route.abort('blockedbyclient')
+  );
+  // A roster can grow after an original-context receipt; this must not infer a count.
+  const created = await request.post(`${baseURL}/api/family`, {
+    headers: { 'X-Hearth-Secret': secret },
+    data: { name: 'Later reader' },
+  });
+  expect(created.status()).toBe(201);
+  await page
+    .context()
+    .addCookies([
+      { name: 'x-family-member-id', value: (await created.json()).data.id, url: baseURL! },
+    ]);
+  await page.goto('/planner');
+  await qualifyPreparedCorrection(
+    page,
+    process.env.CANONICAL_RECIPE_ID!,
+    '2026-10-12',
+    '2026-10-16',
+    process.env.COOKING_PREPARED_CONTEXT === 'six',
+    info,
+    async () => {
+      expect(
+        (
+          await request.post(`${baseURL}/_test/canonical/recompute`, {
+            headers: { 'X-Hearth-Secret': secret },
+          })
+        ).status()
+      ).toBe(200);
+      return (
+        await (
+          await request.get(`${baseURL}/api/schedule?referenceWeekStartDate=2026-10-12`, {
+            headers: { 'X-Hearth-Secret': secret },
+          })
+        ).json()
+      ).data.groceryItems;
+    }
+  );
+});

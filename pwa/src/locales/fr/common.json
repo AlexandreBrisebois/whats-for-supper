@@ -341,6 +341,7 @@
     "knownSubtotal": "{{amount}} connus"
   },
   "cook": {
+    "stepAmountsUncertain": "Certaines quantités des étapes restent telles quelles. Vérifiez l’étape ou consultez la recette originale.",
     "instructionsLoadError": "Impossible de charger les instructions de cuisson.",
     "instructionsRecovery": "Vous pouvez ouvrir les détails de la recette pour consulter la source originale ou marquer cette recette comme cuisinée.",
     "instructionsUnavailable": "Les instructions de cuisson de cette recette ne sont pas disponibles.",

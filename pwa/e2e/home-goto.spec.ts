@@ -180,6 +180,8 @@ test.describe('Home Command Center — GOTO & Pivot Flow', () => {
           await page.route('**/api/schedule/assign**', async (route) => {
             if (route.request().method() !== 'POST') return route.fallback();
             assignments.push(route.request().postDataJSON());
+            today.status = 0;
+            Object.assign(today, { nonCooking: null });
             today.recipe = builders.scheduleRecipe({
               id: MOCK_IDS.RECIPE_LASAGNA,
               name,

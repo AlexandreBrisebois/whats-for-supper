@@ -15,7 +15,7 @@ Planning fixtures, not executed tests. Every row asserts exact original persiste
 | C09 facts/identity | 2–3 + 1–2 compatible range contributions | Exact 3–5; unknown extra contribution makes subtotal incomplete without replacing interval by midpoint |
 | C10 facts | Zero, null amount, unit-only, amount-only, Fresh basil leaves | Save/reopen independently; no fabricated zero/unit, phrase whitelist or automatic report |
 | C11 facts | Known 200 g with unknown basis | Retain original 200 g; no fake factor/default family basis |
-| C12 steps | One valid, one stale binding | Valid scales, stale wording remains; one contextual notice, no cooking/completion block |
+| C12 steps | One valid, one stale binding | Valid scales, stale original wording remains; no routine contextual uncertainty notice or substitute warning, no cooking/completion block |
 | C13 facts/steps | Duplicate same-text rows and repeated step phrase; missing middle supply | IDs/occurrence spans prevent quantity shifts or arbitrary replacement |
 | C14 facts | Add/remove/reorder one row, clear null/empty | Unrelated IDs/facts/sections survive; cleared values never revive from metadata |
 | C15 facts/steps | Concurrent ingredient and instruction saves from one revision | One commits, other atomically 409; unrelated included fields do not partially save; drafts retained |

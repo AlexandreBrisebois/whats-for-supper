@@ -464,7 +464,7 @@ test('common lost Tomorrow receipt keeps UI recovery and never replays movement 
   ).toHaveLength(0);
 });
 
-test('common dated projection and recipe corrections use shared quantities without review across different units', async ({
+test('common dated projection and legacy corrections keep quantities and use fresh unchecked rows without lineage', async ({
   page,
 }) => {
   await openMovement(page);
@@ -486,7 +486,10 @@ test('common dated projection and recipe corrections use shared quantities witho
   expect((await mutate(page, `/api/recipes/${pasta}`, { servings: 1 }, 'PATCH')).status).toBe(200);
   expect((await readWeek(page)).groceryItems[0].quantity).toEqual(scalarQuantity(1200));
   expect(groceryChecked(await readWeek(page))).toBe(false);
+  const measuredRowId = (await readWeek(page)).groceryItems[0].rowId;
   await mutate(page, `/api/recipes/${pasta}`, { ingredients: ['pasta'] }, 'PATCH');
+  const unknownRowId = (await readWeek(page)).groceryItems[0].rowId;
+  expect(unknownRowId).not.toBe(measuredRowId);
   await check(page);
   await mutate(page, `/api/recipes/${pasta}`, { ingredients: ['200 g pasta'] }, 'PATCH');
   let week = await readWeek(page);
@@ -495,7 +498,8 @@ test('common dated projection and recipe corrections use shared quantities witho
     quantityComplete: true,
   });
   expect(week.groceryItems[0].checkReviewReason).not.toBe('prior_amount_unknown');
-  expect(groceryChecked(week)).toBe(true);
+  expect(week.groceryItems[0].rowId).not.toBe(unknownRowId);
+  expect(groceryChecked(week)).toBe(false);
   await mutate(page, '/api/schedule/servings/refresh', { weekStartDates: [reference] });
   expect((await readWeek(page)).groceryItems[0].checkReviewReason).not.toBe('prior_amount_unknown');
   await check(page);
@@ -514,14 +518,14 @@ test('common same-bucket unitless checks survive unprovable changes without a pr
   expect((await readWeek(page)).groceryItems[0]).toMatchObject({
     quantity: scalarQuantity(600),
     quantityComplete: true,
-    checkReviewReason: undefined,
   });
+  expect((await readWeek(page)).groceryItems[0]).not.toHaveProperty('checkReviewReason');
   await mutate(page, `/api/recipes/${pasta}`, { ingredients: ['pasta'] }, 'PATCH');
   expect((await readWeek(page)).groceryItems[0]).toMatchObject({
     quantity: null,
     quantityComplete: false,
-    checkReviewReason: undefined,
   });
+  expect((await readWeek(page)).groceryItems[0]).not.toHaveProperty('checkReviewReason');
   await mutate(page, '/api/schedule/servings/refresh', { weekStartDates: [reference] });
   expect((await readWeek(page)).groceryItems[0].checkReviewReason).toBeUndefined();
   await mutate(page, `/api/recipes/${pasta}`, { ingredients: ['200  pasta'] }, 'PATCH');
@@ -530,12 +534,12 @@ test('common same-bucket unitless checks survive unprovable changes without a pr
   expect((await readWeek(page)).groceryItems[0]).toMatchObject({
     quantity: scalarQuantity(600),
     quantityComplete: true,
-    checkReviewReason: undefined,
   });
+  expect((await readWeek(page)).groceryItems[0]).not.toHaveProperty('checkReviewReason');
   await mutate(page, `/api/recipes/${pasta}`, { ingredients: ['salt to taste'] }, 'PATCH');
   const ordinary = (await readWeek(page)).groceryItems[0];
   expect(ordinary).toMatchObject({ quantity: null, quantityComplete: true });
-  expect(ordinary.checkReviewReason).not.toBe('prior_amount_unknown');
+  expect(ordinary).not.toHaveProperty('checkReviewReason');
 });
 
 test('common usual-size edits refresh every materialized week without changing dated overrides or pure reads', async ({

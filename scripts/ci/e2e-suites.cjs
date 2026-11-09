@@ -4,7 +4,7 @@ const path = require('node:path');
 const suites = {
   tonight: [
     'action-pivot', 'home-goto', 'home-race', 'home-recipe', 'cook-mode-steps',
-    'cooking-instruction-recovery', 'meal-outcome-close', 'tomorrow-push',
+    'cooking-instruction-recovery', 'cooking-step-scaling', 'meal-outcome-close', 'tomorrow-push',
     'tonight-replacement-recovery',
   ],
   planning: [

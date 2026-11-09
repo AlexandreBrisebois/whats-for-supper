@@ -191,6 +191,152 @@ jobs:
           name: api-test-results
           path: api/test-results/*.trx
 
+  cooking-step-live:
+    name: Cooking steps — real API & PostgreSQL browser
+    needs: changes
+    if: needs.changes.outputs.api == 'true' || needs.changes.outputs.pwa == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: pgvector/pgvector@sha256:9d9c930220cb9bf2f956d10a8f909cf9973d9672ca0278aef2c1e6facccad2e0
+        env:
+          POSTGRES_USER: recipe_app
+          POSTGRES_PASSWORD: ci_password
+          POSTGRES_DB: recipe_app_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U recipe_app -d recipe_app_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      WFS_CALENDAR_LIVE: '1'
+      WFS_TEST_POSTGRES_CONNECTION: Host=127.0.0.1;Port=5432;Database=recipe_app_test;Username=recipe_app;Password=ci_password
+      NEXT_PUBLIC_ENVIRONMENT: test
+      NEXT_PUBLIC_API_BASE_URL: ''
+      API_INTERNAL_URL: http://127.0.0.1:1
+      NEXT_TELEMETRY_DISABLED: '1'
+      HEARTH_SECRET: test-hearth-secret
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: |
+            11.0.100-rc.2.26504.105
+            10.0.x
+          cache: true
+          cache-dependency-path: '**/*.csproj'
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+          cache-dependency-path: pwa/package-lock.json
+      - name: Install pinned npm
+        run: npm install --global npm@11.21.1
+      - name: Install PWA dependencies
+        run: npm ci
+        working-directory: pwa
+      - name: Restore pinned .NET tools
+        run: dotnet tool restore
+      - name: Verify generated client
+        run: python3 -B scripts/agent/kiota_client.py check
+      - name: Install Chromium
+        run: npx playwright install chromium --with-deps
+        working-directory: pwa
+      # Mocked suites compile a fixed API origin; live fixtures require relative
+      # requests so each test owns its random-port authenticated API and database.
+      - name: Build isolated live PWA
+        run: npm run build -- --webpack
+        working-directory: pwa
+      - name: Run required cooking live scenarios
+        run: >-
+          dotnet test api/src/RecipeApi.Tests/RecipeApi.Tests.csproj
+          --filter "FullyQualifiedName~LiveBrowser_CookingStep|FullyQualifiedName~LiveBrowser_CookingReportRefresh"
+          --logger "trx;LogFileName=cooking-live.trx" --results-directory .task/cooking-live
+        env:
+          WFS_CANONICAL_BROWSER_ROOT: ${{ github.workspace }}
+          WFS_CANONICAL_EVIDENCE: ${{ github.workspace }}/.task/cooking-live
+      - name: Require all cooking live results
+        run: |
+          python3 - <<'PY'
+          import xml.etree.ElementTree as ET
+          required = {'LiveBrowser_CookingStepScaling', 'LiveBrowser_CookingStepSplitOil', 'LiveBrowser_CookingStepPartial', 'LiveBrowser_CookingStepExhaustiveReduction', 'LiveBrowser_CookingReportRefresh', 'LiveBrowser_CookingStepInstructionGuard', 'LiveBrowser_CookingStepFraction', 'LiveBrowser_CookingStepRemainder', 'LiveBrowser_CookingStepPerItem', 'LiveBrowser_CookingStepFixed', 'LiveBrowser_CookingStepPreparedSix', 'LiveBrowser_CookingStepPreparedOriginal'}
+          results = ET.parse('.task/cooking-live/cooking-live.trx').getroot().findall('.//{*}UnitTestResult')
+          assert len(results) == len(required), 'Required cooking live cases were not all executed'
+          assert {result.get('testName').rsplit('.', 1)[-1] for result in results} == required
+          assert all(result.get('outcome') == 'Passed' for result in results), 'Cooking live cases must pass without skips'
+          PY
+      - name: Run required prepared context live
+        run: >-
+          dotnet test api/src/RecipeApi.Tests/RecipeApi.Tests.csproj
+          --filter "FullyQualifiedName=RecipeApi.Tests.Integration.PreparedSupperPostgresTests.LiveBrowser_PreparedSupperGeneratedClientAndTwoClientUpdates"
+          --logger "trx;LogFileName=native.trx" --results-directory .task/cooking-context-live/prepared
+        env:
+          WFS_LIVE_ARTIFACT_ROOT: ${{ github.workspace }}/.task/cooking-context-live/prepared
+      - name: Run required servings context live
+        run: >-
+          dotnet test api/src/RecipeApi.Tests/RecipeApi.Tests.csproj
+          --filter "FullyQualifiedName=RecipeApi.Tests.Integration.SupperServingsPostgresTests.LiveBrowser_SupperServingsGeneratedClientAndTwoClientUpdates"
+          --logger "trx;LogFileName=native.trx" --results-directory .task/cooking-context-live/servings
+        env:
+          WFS_LIVE_ARTIFACT_ROOT: ${{ github.workspace }}/.task/cooking-context-live/servings
+      - name: Require all cooking context live results
+        run: |
+          python3 - <<'PYGUARD'
+          import json
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+          root = Path('.task/cooking-context-live')
+          for directory, owner in [
+              ('prepared', 'LiveBrowser_PreparedSupperGeneratedClientAndTwoClientUpdates'),
+              ('servings', 'LiveBrowser_SupperServingsGeneratedClientAndTwoClientUpdates'),
+          ]:
+              results = ET.parse(root / directory / 'native.trx').getroot().findall('.//{*}UnitTestResult')
+              assert len(results) == 1 and results[0].get('testName').rsplit('.', 1)[-1] == owner, f'Missing exact native owner: {owner}'
+              assert results[0].get('outcome') == 'Passed', f'Required native owner must pass: {owner}'
+          prepared = {'generated prepare persists Friday receipt, actual Tuesday history, raw SSE and mounted independent display; ordinary backup retains browser receipt'} | {
+              f'real {fault} preparation boundary preserves authoritative outcome and cooking work without blind replay'
+              for fault in ['lost', 'unavailable', 'negative', 'changed', 'recreated', 'publisher']
+          }
+          reports = [
+              ('prepared/prepared-browser.json', prepared, {'canonical prepared correction retains recorded context through coherent refresh'}),
+              ('servings/original-browser.json', {'real dated detail, cooking and groceries share inputs across two independent clients'}, set()),
+              ('servings/recovery-browser.json', {'real lost portions, failed worker, guarded checks, baselines and movement converge'}, set()),
+          ]
+          def collect(suite):
+              for spec in suite.get('specs', []):
+                  for test in spec['tests']:
+                      yield spec['title'], test
+              for child in suite.get('suites', []):
+                  yield from collect(child)
+          for name, required, optional in reports:
+              report = json.loads((root / name).read_text())
+              tests = list(collect(report))
+              assert len(tests) == len(required | optional) and {title for title, _ in tests} == required | optional, f'Missing/extra browser cases: {name}'
+              for title, test in tests:
+                  results = test['results']
+                  assert len(results) == 1 and results[0].get('retry', 0) == 0, f'Retries are not acceptance: {title}'
+                  if title in optional:
+                      # The canonical branch needs its own fixture and is required separately
+                      # by CookingStepPreparedSix/Original in the unchanged twelve-case guard.
+                      assert test['status'] == 'skipped' and results[0]['status'] == 'skipped', f'Unexpected optional fixture context: {title}'
+                  else:
+                      assert test['status'] == 'expected' and results[0]['status'] == 'passed', f'Required browser must pass without skips: {title}'
+          print('Required context acceptance: 2 native owners, 9 browser passes, 1 explicitly gated canonical branch; zero required skips/retries.')
+          PYGUARD
+      - name: Upload cooking live results
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: cooking-live-results
+          path: |
+            .task/cooking-live/
+            .task/cooking-context-live/
+            pwa/test-results/
+          if-no-files-found: error
+          retention-days: 7
+
   pwa-validate:
     name: PWA — validate
     needs: changes

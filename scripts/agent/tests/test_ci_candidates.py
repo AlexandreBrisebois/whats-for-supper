@@ -27,6 +27,142 @@ class PipelineTests(unittest.TestCase):
         self.assertNotIn('WFS_WELCOME_SECRET', job['env'])
         self.assertEqual(sum('actions/download-artifact@' in step.get('uses', '') for step in steps), 1)
 
+    def test_cooking_live_job_executes_all_required_cases_without_skips(self):
+        jobs = yaml.safe_load((ROOT / '.github/workflows/validate.yml').read_text())['jobs']
+        self.assertIn('cooking-step-live', jobs, 'Opt-in cooking API/PostgreSQL browsers must execute in CI')
+        job = jobs['cooking-step-live']
+        self.assertEqual(job['runs-on'], 'ubuntu-latest')
+        self.assertEqual(job['needs'], 'changes')
+        self.assertIn("outputs.api == 'true'", job['if'])
+        self.assertIn("outputs.pwa == 'true'", job['if'])
+        self.assertIn('postgres', job['services'])
+        env = job['env']
+        self.assertEqual(env['WFS_CALENDAR_LIVE'], '1')
+        self.assertEqual(env['NEXT_PUBLIC_API_BASE_URL'], '')
+        self.assertIn('127.0.0.1', env['WFS_TEST_POSTGRES_CONNECTION'])
+        steps = job['steps']
+        sdk = next(step for step in steps if 'setup-dotnet' in step.get('uses', ''))
+        self.assertIn('10.0.x', sdk['with']['dotnet-version'])
+        self.assertTrue(any(step.get('run') == 'dotnet tool restore' for step in steps))
+        self.assertTrue(any(step.get('run') == 'python3 -B scripts/agent/kiota_client.py check' for step in steps))
+        build = next(step for step in steps if step.get('name') == 'Build isolated live PWA')
+        self.assertEqual(build['run'], 'npm run build -- --webpack')
+        self.assertEqual(build['working-directory'], 'pwa')
+        run = next(step for step in steps if step.get('name') == 'Run required cooking live scenarios')
+        self.assertIn('FullyQualifiedName~LiveBrowser_CookingStep', run['run'])
+        self.assertIn('WFS_CANONICAL_BROWSER_ROOT', run['env'])
+        self.assertIn('WFS_CANONICAL_EVIDENCE', run['env'])
+        required = next(step for step in steps if step.get('name') == 'Require all cooking live results')
+        self.assertIn('LiveBrowser_CookingStepSplitOil', required['run'])
+        self.assertIn('LiveBrowser_CookingStepPartial', required['run'])
+        self.assertIn('LiveBrowser_CookingStepScaling', required['run'])
+        self.assertIn('LiveBrowser_CookingStepExhaustiveReduction', required['run'])
+        self.assertIn('LiveBrowser_CookingReportRefresh', required['run'])
+        self.assertIn('LiveBrowser_CookingStepInstructionGuard', required['run'])
+        self.assertIn('LiveBrowser_CookingStepFraction', required['run'])
+        self.assertIn('LiveBrowser_CookingStepRemainder', required['run'])
+        self.assertIn('LiveBrowser_CookingStepPerItem', required['run'])
+        self.assertIn('LiveBrowser_CookingStepFixed', required['run'])
+        self.assertIn('LiveBrowser_CookingStepPreparedSix', required['run'])
+        self.assertIn('LiveBrowser_CookingStepPreparedOriginal', required['run'])
+        self.assertIn("== 'Passed'", required['run'])
+        self.assertNotIn('continue-on-error', job)
+        self.assertTrue(any(step.get('if') == 'always()' and 'upload-artifact' in step.get('uses', '') for step in steps))
+
+    def test_cooking_context_live_owners_are_sequential_and_guarded(self):
+        job = yaml.safe_load((ROOT / '.github/workflows/validate.yml').read_text())['jobs']['cooking-step-live']
+        steps = job['steps']
+        names = [step.get('name') for step in steps]
+        prepared = next(step for step in steps if step.get('name') == 'Run required prepared context live')
+        servings = next(step for step in steps if step.get('name') == 'Run required servings context live')
+        guard = next(step for step in steps if step.get('name') == 'Require all cooking context live results')
+        for step, owner, directory in [
+            (prepared, 'PreparedSupperPostgresTests.LiveBrowser_PreparedSupperGeneratedClientAndTwoClientUpdates', 'prepared'),
+            (servings, 'SupperServingsPostgresTests.LiveBrowser_SupperServingsGeneratedClientAndTwoClientUpdates', 'servings'),
+        ]:
+            self.assertIn('FullyQualifiedName=RecipeApi.Tests.Integration.' + owner, step['run'])
+            self.assertNotIn('FullyQualifiedName~', step['run'])
+            self.assertIn('native.trx', step['run'])
+            self.assertIn('.task/cooking-context-live/' + directory, step['run'])
+            self.assertIn('/.task/cooking-context-live/' + directory, step['env']['WFS_LIVE_ARTIFACT_ROOT'])
+            self.assertNotIn('continue-on-error', step)
+        self.assertLess(names.index(prepared['name']), names.index(servings['name']))
+        self.assertLess(names.index(servings['name']), names.index(guard['name']))
+        self.assertEqual(job['env']['WFS_CALENDAR_LIVE'], '1')
+        self.assertIn('WFS_TEST_POSTGRES_CONNECTION', job['env'])
+        for path in ['PreparedSupperPostgresTests.Live.cs', 'SupperServingsPostgresTests.Live.cs', 'SupperServingsPostgresTests.LiveRecovery.cs']:
+            text = (ROOT / 'api/src/RecipeApi.Tests/Integration' / path).read_text()
+            self.assertIn('--retries=0', text)
+            self.assertIn('PLAYWRIGHT_JSON_OUTPUT_NAME', text)
+        self.assertIn('await LiveSupperRecoveryJourney();', (ROOT / 'api/src/RecipeApi.Tests/Integration/SupperServingsPostgresTests.Live.cs').read_text())
+        artifacts = next(step for step in steps if step.get('name') == 'Upload cooking live results')
+        self.assertEqual(artifacts['if'], 'always()')
+        self.assertIn('.task/cooking-live/', artifacts['with']['path'])
+        self.assertIn('.task/cooking-context-live/', artifacts['with']['path'])
+        self.assertIn('pwa/test-results/', artifacts['with']['path'], 'Retain the last failed browser attachments even before native success preservation')
+
+    def test_cooking_context_guard_rejects_missing_skipped_failed_and_retried_results(self):
+        import copy
+        import json
+        import subprocess
+        import tempfile
+        import xml.etree.ElementTree as ET
+        steps = yaml.safe_load((ROOT / '.github/workflows/validate.yml').read_text())['jobs']['cooking-step-live']['steps']
+        guard = next(step['run'] for step in steps if step.get('name') == 'Require all cooking context live results')
+        prepared = ['generated prepare persists Friday receipt, actual Tuesday history, raw SSE and mounted independent display; ordinary backup retains browser receipt'] + [
+            f'real {fault} preparation boundary preserves authoritative outcome and cooking work without blind replay'
+            for fault in ['lost', 'unavailable', 'negative', 'changed', 'recreated', 'publisher']]
+        optional = 'canonical prepared correction retains recorded context through coherent refresh'
+        browser_names = {
+            'prepared/prepared-browser.json': prepared,
+            'servings/original-browser.json': ['real dated detail, cooking and groceries share inputs across two independent clients'],
+            'servings/recovery-browser.json': ['real lost portions, failed worker, guarded checks, baselines and movement converge'],
+        }
+        def spec(title, status='passed'):
+            return {'title': title, 'tests': [{'status': 'skipped' if status == 'skipped' else 'expected', 'results': [{'status': status, 'retry': 0}]}]}
+        reports = {name: {'suites': [{'specs': [spec(title) for title in titles]}]} for name, titles in browser_names.items()}
+        reports['prepared/prepared-browser.json']['suites'][0]['specs'].append(spec(optional, 'skipped'))
+        owners = {'prepared': 'LiveBrowser_PreparedSupperGeneratedClientAndTwoClientUpdates', 'servings': 'LiveBrowser_SupperServingsGeneratedClientAndTwoClientUpdates'}
+        def run(reports, native=None, absent=None):
+            with tempfile.TemporaryDirectory() as directory:
+                root = Path(directory) / '.task/cooking-context-live'
+                for name, report in reports.items():
+                    path = root / name
+                    path.parent.mkdir(parents=True, exist_ok=True)
+                    if name != absent:
+                        path.write_text(json.dumps(report))
+                for directory_name, owner in owners.items():
+                    path = root / directory_name / 'native.trx'
+                    tree = ET.Element('TestRun'); results = ET.SubElement(tree, 'Results')
+                    outcome = (native or {}).get(directory_name, 'Passed')
+                    if outcome != 'missing':
+                        ET.SubElement(results, 'UnitTestResult', testName='RecipeApi.Tests.Integration.' + owner, outcome=outcome)
+                    ET.ElementTree(tree).write(path)
+                return subprocess.run(['bash', '-c', guard], cwd=directory, capture_output=True, text=True)
+        self.assertEqual(run(reports).returncode, 0)
+        for owner in owners:
+            for outcome in ['missing', 'NotExecuted', 'Failed']:
+                with self.subTest(owner=owner, outcome=outcome):
+                    self.assertNotEqual(run(reports, {owner: outcome}).returncode, 0)
+        for name in reports:
+            with self.subTest(report=name, kind='absent'):
+                self.assertNotEqual(run(reports, absent=name).returncode, 0)
+            for outcome in ['missing', 'skipped', 'failed', 'retry']:
+                changed = copy.deepcopy(reports)
+                specs = changed[name]['suites'][0]['specs']
+                if outcome == 'missing':
+                    specs.pop(0)
+                elif outcome == 'retry':
+                    specs[0]['tests'][0]['results'].append({'status': 'passed', 'retry': 1})
+                else:
+                    specs[0]['tests'][0]['results'][0]['status'] = outcome
+                    specs[0]['tests'][0]['status'] = 'skipped' if outcome == 'skipped' else 'unexpected'
+                with self.subTest(report=name, outcome=outcome):
+                    self.assertNotEqual(run(changed).returncode, 0)
+        changed = copy.deepcopy(reports)
+        changed['prepared/prepared-browser.json']['suites'][0]['specs'][-1] = spec(optional)
+        self.assertNotEqual(run(changed).returncode, 0, 'Optional canonical branch must remain explicitly accounted for by its separate owner')
+
     def test_e2e_has_four_suites_and_one_build(self):
         jobs = yaml.safe_load((ROOT / '.github/workflows/validate.yml').read_text())['jobs']
         self.assertIn('pwa-build', jobs)

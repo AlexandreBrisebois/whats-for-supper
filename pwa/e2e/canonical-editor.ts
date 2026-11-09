@@ -1,3 +1,4 @@
+import { carryCookingBindings } from './cooking-step-projection';
 import { randomUUID } from 'node:crypto';
 
 /** Explicit disposable mock composition; the common default remains fenced. */
@@ -137,7 +138,14 @@ export function applyCanonicalEditorPatch(current: any, input: any): { status: n
         recipe.isDiscoverable = false;
       if (!input.mealTypes.length) recipe.category = 'Supper';
     }
-    if (semantic) recipe.contentRevision = randomUUID();
+    if (semantic) {
+      recipe.contentRevision = randomUUID();
+      carryCookingBindings(current, recipe);
+      recipe.recipeInstructions = (recipe.instructionSections ?? []).map((section: any) => ({
+        name: section.name,
+        itemListElement: section.steps.map((step: any) => ({ text: step.text })),
+      }));
+    }
     return { status: 200, body: { recipe, createdIds, updatedAt: new Date().toISOString() } };
   } catch {
     return invalid();
