@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 using RecipeApi.Data;
+using RecipeApi.Dto;
 using RecipeApi.Infrastructure;
 using RecipeApi.Models;
 
@@ -17,7 +18,8 @@ public sealed record RecipePublicationCandidate(string? RecipeJson, RecipeInfo I
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? SourceContext = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? SourceKind = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? BootstrapIntent = null,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? FollowupIntent = null);
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? FollowupIntent = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string[]? ReviewReasons = null);
 
 /// <summary>
 /// Captured legacy publication. The committed database journal owns delivery;
@@ -44,6 +46,8 @@ public sealed partial class RecipeFilePublicationStore(RecipeDbContext db, Recip
             throw Conflict(recipe);
         }
         await ResumeAsync(recipeId, operationId, ct);
+        if (saved.Candidate.SourceKind == "review-material")
+            throw new RecipeContentReviewException("Retained recipe material still needs review.", saved.Candidate.ReviewReasons!);
         return true;
     }
 
@@ -124,8 +128,14 @@ public sealed partial class RecipeFilePublicationStore(RecipeDbContext db, Recip
             }
             else
             {
+                if (candidate.SourceKind is "review-material" or "fresh-canonical")
+                    await ValidateFreshReviewMaterialAsync(capture, candidate, operationId, recipe, ct);
+                if (candidate.SourceKind == "review-canonical")
+                    await ValidateReviewedCanonicalAsync(capture, candidate, operationId, recipe, ct);
+                if (candidate.SourceKind == "hero" && recipe.CanonicalContent is not null)
+                    await ValidateFreshCanonicalHeroAsync(recipe.Id, operationId, ct);
                 // Readiness selects metadata only; it never reopens canonical facts.
-                if (candidate.SourceKind != "bootstrap" && ((recipe.CanonicalContent is not null && candidate.SourceKind is not ("canonical-export" or "readiness")) || capture.FieldHash != Fields(recipe, capture.FieldHashVersion)
+                if (candidate.SourceKind != "bootstrap" && ((recipe.CanonicalContent is not null && candidate.SourceKind is not ("canonical-export" or "readiness" or "hero")) || capture.FieldHash != Fields(recipe, capture.FieldHashVersion)
                     || capture.ContentRevision != CanonicalRecipeContentStore.InspectContentRevision(recipe)
                     || capture.SourceRevision != CanonicalRecipeContentStore.InspectSourceRevision(recipe)
                     || await db.RecipeFilePublications.AnyAsync(x => x.RecipeId == recipe.Id && !x.Delivered, ct)))
@@ -179,7 +189,7 @@ public sealed partial class RecipeFilePublicationStore(RecipeDbContext db, Recip
         if (publication.Delivered) return;
         var envelope = ReadEnvelope(publication);
         if (envelope.Candidate.SourceKind == "readiness" && !recipe.IsReady) throw Conflict(recipe);
-        if ((recipe.CanonicalContent is not null && envelope.Candidate.SourceKind is not ("canonical-export" or "readiness")) || Fields(recipe, envelope.Capture.FieldHashVersion) != publication.ResultHash) throw Conflict(recipe);
+        if ((recipe.CanonicalContent is not null && envelope.Candidate.SourceKind is not ("canonical-export" or "readiness" or "fresh-canonical" or "review-canonical" or "hero")) || Fields(recipe, envelope.Capture.FieldHashVersion) != publication.ResultHash) throw Conflict(recipe);
         // Validate every file before the first replacement, accepting the exact
         // candidate for already delivered files after an interrupted attempt.
         await CheckFiles(envelope.Capture, envelope.Output, recipe, ct);
@@ -273,6 +283,14 @@ public sealed partial class RecipeFilePublicationStore(RecipeDbContext db, Recip
         ValidateOriginalResult(publication, envelope);
         return envelope;
     }
+    private static bool SameReviewedLine(RecipeIngredientLineDto actual, RecipeIngredientLineDto expected) =>
+        actual.Description == expected.Description && actual.Amount == expected.Amount
+        && actual.AmountText == expected.AmountText && actual.Unit == expected.Unit
+        && actual.Scaling == expected.Scaling && actual.Package == expected.Package
+        && actual.Shopping == expected.Shopping && actual.Provenance.Origin == "human"
+        && actual.Provenance.SourceRef == expected.Provenance.SourceRef
+        && actual.Provenance.ProtectedFields.SequenceEqual(expected.Provenance.ProtectedFields);
+
     private static IReadOnlyDictionary<string, byte[]?> Prepare(RecipePublicationCapture capture, RecipePublicationCandidate candidate)
     {
         if (candidate.SourceKind == "canonical-export")
@@ -288,9 +306,74 @@ public sealed partial class RecipeFilePublicationStore(RecipeDbContext db, Recip
                 throw new InvalidDataException("Canonical export cannot change captured recipe facts.");
             return new Dictionary<string, byte[]?> { ["recipe.json"] = System.Text.Encoding.UTF8.GetBytes(candidate.RecipeJson) };
         }
+        if (candidate.SourceKind == "fresh-canonical")
+        {
+            if (candidate.RecipeJson is null || candidate.SourceFiles is not null || candidate.BootstrapIntent is not null
+                || candidate.FollowupIntent is not null || candidate.ReviewReasons is not null || capture.Fields is null)
+                throw new InvalidDataException("Fresh canonical publication requires selected current content.");
+            using var current = JsonDocument.Parse(candidate.RecipeJson);
+            var incoming = RecipeExportContent.ReadCurrent(current.RootElement, capture.RecipeId);
+            if (incoming.RawMetadata is null || incoming.Content.SourceRevision !=
+                CanonicalRecipeContentStore.InspectSourceRevision(new Recipe
+                { Id = capture.RecipeId, SourceUrl = capture.Fields.SourceUrl, RawMetadata = incoming.RawMetadata }))
+                throw new InvalidDataException("Fresh canonical source revision differs from selected evidence.");
+        }
+        if (candidate.SourceKind == "review-canonical")
+        {
+            if (candidate.RecipeJson is null || candidate.SourceFiles is not null || candidate.BootstrapIntent is not null
+                || candidate.FollowupIntent is not null || candidate.ReviewReasons is not null || capture.Fields is null)
+                throw new InvalidDataException("Reviewed canonical publication requires saved human facts.");
+            using var current = JsonDocument.Parse(candidate.RecipeJson);
+            var incoming = RecipeExportContent.ReadCurrent(current.RootElement, capture.RecipeId);
+            var expected = CanonicalRecipeContentStore.PrepareReviewedSource(capture.Fields);
+            if (CanonicalRecipeContentStore.NormalizeJson(incoming.RawMetadata) != CanonicalRecipeContentStore.NormalizeJson(expected.RawMetadata)
+                || incoming.Content.SourceRevision != expected.Content.SourceRevision
+                || incoming.Content.Servings != expected.Content.Servings
+                || incoming.Content.IngredientLines.Count != expected.Content.IngredientLines.Count
+                || incoming.Content.IngredientLines.Where((line, index) =>
+                    !SameReviewedLine(line, expected.Content.IngredientLines[index])).Any()
+                || incoming.Content.InstructionSections.Count != expected.Content.InstructionSections.Count
+                || incoming.Content.InstructionSections.Where((section, index) => section.Name != expected.Content.InstructionSections[index].Name
+                    || !section.Steps.Select(x => x.Text).SequenceEqual(expected.Content.InstructionSections[index].Steps.Select(x => x.Text))
+                    || section.Steps.Any(step => step.Bindings.Count != 0)).Any())
+                throw new InvalidDataException("Reviewed canonical facts differ from captured human corrections.");
+        }
         if (candidate.FollowupIntent is not null) _ = ReadFollowupIntent(candidate);
         if (candidate.SourceKind == "bootstrap") return PrepareBootstrap(capture, candidate);
         if (candidate.SourceKind == "readiness") return PrepareReadiness(capture, candidate);
+        if (candidate.SourceKind == "review-material" && (candidate.RecipeJson is null || candidate.SourceFiles is not null
+            || candidate.BootstrapIntent is not null || candidate.FollowupIntent is not null || candidate.ReviewReasons is not { Length: > 0 }
+            || candidate.ReviewReasons.Any(reason => reason is not ("ingredients" or "steps"))
+            || candidate.ReviewReasons.Distinct(StringComparer.Ordinal).Count() != candidate.ReviewReasons.Length))
+            throw new InvalidDataException("Review material requires selected content and semantic failure reasons.");
+        if (candidate.SourceKind == "review-material")
+        {
+            var extracted = RecipeExtractionParser.ParseAndNormalize(candidate.RecipeJson!);
+            var actual = new List<string>();
+            if (extracted.Recipe?.RecipeIngredient?.Any(value => !string.IsNullOrWhiteSpace(value)) != true)
+                actual.Add("ingredients");
+            if (extracted.Recipe?.RecipeInstructions?.SelectMany(section => section.ItemListElement ?? [])
+                .Any(step => !string.IsNullOrWhiteSpace(step.Text)) != true)
+                actual.Add("steps");
+            if (extracted.IsSemanticallyComplete)
+            {
+                if (!candidate.ReviewReasons!.SequenceEqual(["ingredients"]))
+                    throw new InvalidDataException("Complete review material requires an ingredient representation failure.");
+                var unrepresentable = false;
+                try
+                {
+                    _ = CanonicalRecipeContentStore.PrepareFreshSource(capture.RecipeId, candidate.RecipeJson!, capture.Fields?.SourceUrl);
+                }
+                catch (InvalidDataException) { unrepresentable = true; }
+                if (!unrepresentable)
+                    throw new InvalidDataException("Lossless fresh facts cannot be retained as failed review material.");
+            }
+            else if (actual.Count == 0 ||
+                !actual.Order(StringComparer.Ordinal).SequenceEqual(candidate.ReviewReasons!.Order(StringComparer.Ordinal)))
+                throw new InvalidDataException("Retained review reasons differ from the selected content.");
+        }
+        if (candidate.SourceKind != "review-material" && candidate.ReviewReasons is not null)
+            throw new InvalidDataException("Review reasons require a retained-material publication.");
         if (candidate.BootstrapIntent is not null) throw new InvalidDataException("Bootstrap intent requires new recipe membership.");
         if (candidate.RecipeJson is null && candidate.SourceFiles is null)
             throw new InvalidDataException("Publication has no selected content or source output.");
@@ -302,6 +385,8 @@ public sealed partial class RecipeFilePublicationStore(RecipeDbContext db, Recip
         if (!capture.Files.TryGetValue("recipe.info", out var bytes) || bytes is null)
             throw new InvalidDataException("Captured metadata is missing.");
         var info = JsonSerializer.Deserialize<RecipeInfo>(bytes, Json) ?? throw new InvalidDataException("Captured metadata is invalid.");
+        if (candidate.SourceKind == "review-canonical" && JsonSerializer.Serialize(candidate.Info, Json) != JsonSerializer.Serialize(info, Json))
+            throw new InvalidDataException("Reviewed recovery cannot replace saved metadata.");
         if (info.Id != capture.RecipeId || candidate.Info.Id != capture.RecipeId || candidate.Info.ImageCount is < 0 or > 20
             || (candidate.SourceFiles is null && (candidate.Info.ImageCount != info.ImageCount || candidate.Info.SourceUrl != info.SourceUrl)))
             throw new InvalidDataException("Source/media replacement requires separately qualified selection.");
@@ -381,6 +466,18 @@ public sealed partial class RecipeFilePublicationStore(RecipeDbContext db, Recip
         if (candidate.RecipeJson is null) return;
         using var document = JsonDocument.Parse(candidate.RecipeJson);
         var root = document.RootElement;
+        if (candidate.SourceKind is "fresh-canonical" or "review-canonical")
+        {
+            var current = RecipeExportContent.ReadCurrent(root, recipe.Id);
+            recipe.CanonicalContent = JsonSerializer.Serialize(current.Content, Json);
+            recipe.RawMetadata = current.RawMetadata;
+            recipe.Ingredients = JsonSerializer.Serialize(current.Content.IngredientLines.Select(CanonicalRecipeContentStore.Render), Json);
+            recipe.Servings = current.Content.Servings;
+            if (info.Name is not null) recipe.Name = info.Name;
+            if (info.Description is not null) recipe.Description = info.Description;
+            if (info.TotalTime is not null) recipe.TotalTime = info.TotalTime;
+            return;
+        }
         var exported = RecipeExportContent.Read(root);
         recipe.RawMetadata = exported is null ? candidate.RecipeJson : exported.RawMetadata;
         recipe.Ingredients = exported is not null ? exported.Ingredients

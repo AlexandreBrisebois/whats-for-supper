@@ -27,6 +27,20 @@ class PipelineTests(unittest.TestCase):
         self.assertNotIn('WFS_WELCOME_SECRET', job['env'])
         self.assertEqual(sum('actions/download-artifact@' in step.get('uses', '') for step in steps), 1)
 
+    def test_live_job_provisions_endpoint_drift_dependencies_before_browser_checks(self):
+        jobs = yaml.safe_load((ROOT / '.github/workflows/validate.yml').read_text())['jobs']
+        steps = jobs['cooking-step-live']['steps']
+        python = next((i for i, step in enumerate(steps) if 'actions/setup-python@' in step.get('uses', '')), None)
+        task = next((i for i, step in enumerate(steps) if step.get('run') == 'npm install --global @go-task/cli@3.54.0'), None)
+        tooling = next((i for i, step in enumerate(steps) if step.get('run') == 'task init:python'), None)
+        live = next(i for i, step in enumerate(steps) if step.get('name') == 'Run required cooking live scenarios')
+        self.assertIsNotNone(python, 'Live endpoint parity needs an explicit Python runtime')
+        self.assertIsNotNone(task, 'The live grocery owner invokes the pinned Task CLI')
+        self.assertIsNotNone(tooling, 'Task endpoint drift requires the repository .venv and pinned PyYAML')
+        self.assertLess(python, tooling)
+        self.assertLess(task, tooling)
+        self.assertLess(tooling, live)
+
     def test_cooking_live_job_executes_all_required_cases_without_skips(self):
         jobs = yaml.safe_load((ROOT / '.github/workflows/validate.yml').read_text())['jobs']
         self.assertIn('cooking-step-live', jobs, 'Opt-in cooking API/PostgreSQL browsers must execute in CI')

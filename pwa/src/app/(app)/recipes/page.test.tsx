@@ -874,6 +874,7 @@ describe('RecipesPage', () => {
     await act(async () => {
       render(<UnifiedRecipesPage />);
     });
+    await waitFor(() => expect(screen.getByTestId('action-add-to-day')).toHaveTextContent('May 6'));
     fireEvent.click(await screen.findByTestId('action-add-to-day'));
     await waitFor(() =>
       expect(mocks.assignRecipeToDay).toHaveBeenCalledWith(
@@ -935,6 +936,7 @@ describe('RecipesPage', () => {
     await act(async () => {
       render(<UnifiedRecipesPage />);
     });
+    await waitFor(() => expect(screen.getByTestId('action-add-to-day')).toHaveTextContent('May 6'));
     fireEvent.click(await screen.findByTestId('action-add-to-day'));
     fireEvent.click(await screen.findByTestId('recovery-close'));
     expect(await screen.findByTestId('recipe-detail-name')).toHaveTextContent('Chicken Soup');
@@ -962,6 +964,7 @@ describe('RecipesPage', () => {
     await act(async () => {
       render(<UnifiedRecipesPage />);
     });
+    await waitFor(() => expect(screen.getByTestId('action-add-to-day')).toHaveTextContent('May 6'));
     fireEvent.click(await screen.findByTestId('action-add-to-day'));
     fireEvent.click(await screen.findByTestId('recovery-action-next-week'));
     await waitFor(() => expect(mocks.deferPost).toHaveBeenCalledTimes(1));
@@ -981,6 +984,7 @@ describe('RecipesPage', () => {
     await act(async () => {
       render(<UnifiedRecipesPage />);
     });
+    await waitFor(() => expect(screen.getByTestId('action-add-to-day')).toHaveTextContent('May 6'));
     fireEvent.click(await screen.findByTestId('action-add-to-day'));
     await waitFor(() =>
       expect(mocks.assignRecipeToDay).toHaveBeenCalledWith(
@@ -1018,7 +1022,11 @@ describe('RecipesPage', () => {
       await act(async () => {
         render(<UnifiedRecipesPage />);
       });
-      fireEvent.click(await screen.findByTestId('action-add-to-day'));
+      const planAction = await screen.findByTestId('action-add-to-day');
+      await waitFor(() =>
+        expect(planAction).toHaveTextContent(status === 2 || status === 4 ? 'Review plan' : 'May 6')
+      );
+      fireEvent.click(planAction);
       if (status === 1)
         expect(await screen.findByTestId('recovery-dialog-title')).toBeInTheDocument();
       else if (status === 2 || status === 4) {
@@ -1348,6 +1356,7 @@ describe('RecipesPage', () => {
     await act(async () => {
       view = render(<UnifiedRecipesPage />);
     });
+    await waitFor(() => expect(screen.getByTestId('action-add-to-day')).toHaveTextContent('May 6'));
     fireEvent.click(await screen.findByTestId('action-add-to-day'));
     await screen.findByText(/Activate again to check/);
     fireEvent.click(screen.getByTestId('action-close-sheet'));
@@ -1367,6 +1376,7 @@ describe('RecipesPage', () => {
     await act(async () => {
       view!.rerender(<UnifiedRecipesPage />);
     });
+    await waitFor(() => expect(screen.getByTestId('action-add-to-day')).toHaveTextContent('May 6'));
     fireEvent.click(await screen.findByTestId('action-add-to-day'));
     await waitFor(() => expect(screen.getByTestId('recovery-dialog-title')).toBeInTheDocument());
     expect(mocks.push).not.toHaveBeenCalled();
@@ -1413,7 +1423,9 @@ describe('RecipesPage', () => {
     await act(async () => {
       view = render(<UnifiedRecipesPage />);
     });
-    fireEvent.click(await screen.findByTestId('action-add-to-day'));
+    const addToDay = await screen.findByTestId('action-add-to-day');
+    await waitFor(() => expect(addToDay).toHaveTextContent('May 6'));
+    fireEvent.click(addToDay);
     await screen.findByTestId('non-cooking-confirmation');
     mocks.setSearchParams(
       'addToDay=4&weekOffset=0&referenceWeekStartDate=2026-05-04&open=11111111-1111-1111-1111-111111111111'

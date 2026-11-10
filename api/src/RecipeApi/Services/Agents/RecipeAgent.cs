@@ -97,13 +97,22 @@ public class RecipeAgent(
         }
         Require(publications.Length == 1 && publications[0].RecipeId == recipeId);
         var (capture, candidate) = RecipeFilePublicationStore.ReadOriginalPublication(publications[0]);
-        Require(candidate.RecipeJson is not null && candidate.SourceFiles is null && candidate.SourceKind is null && candidate.SourceContext is null);
+        Require(candidate.RecipeJson is not null && candidate.SourceFiles is null && candidate.SourceContext is null
+            && (candidate.SourceKind is null || processor == "ExtractRecipe"
+                && (candidate.SourceKind == "fresh-canonical" || candidate.SourceKind == "review-canonical")));
         var info = CapturedInfo(capture);
         switch (processor)
         {
             case "ExtractRecipe":
                 Require(capture.Files.GetValueOrDefault("original/content.html") is not null || CapturedImages(capture, info).Count > 0);
-                var extraction = RecipeExtractionParser.ParseAndNormalize(candidate.RecipeJson!);
+                var extractedJson = candidate.RecipeJson!;
+                if (candidate.SourceKind is "fresh-canonical" or "review-canonical")
+                {
+                    using var document = JsonDocument.Parse(extractedJson);
+                    extractedJson = RecipeExportContent.ReadCurrent(document.RootElement, recipeId).RawMetadata
+                        ?? throw new InvalidDataException("Fresh extraction has no selected source.");
+                }
+                var extraction = RecipeExtractionParser.ParseAndNormalize(extractedJson);
                 Require(extraction.IsSemanticallyComplete && extraction.Recipe is not null);
                 info.Name = extraction.Recipe!.Name;
                 break;
@@ -192,6 +201,16 @@ RULES:
             return;
         }
 
+        if (operationId is { } recoveryOperation && producerInput is not null && contentHtml is not null
+            && await publications.CanRecoverReviewedUrlAsync(capture, recoveryOperation, ct))
+        {
+            var reviewed = CanonicalRecipeContentStore.PrepareReviewedSource(capture.Fields!);
+            await publications.PublishAsync(capture,
+                new(RecipeExportContent.WriteCurrent(reviewed), info, producerInput, SourceKind: "review-canonical"),
+                recoveryOperation, ct);
+            return;
+        }
+
         logger.LogInformation("Extracting recipe {RecipeId} (Images: {ImgCount}, HTML: {HasHtml}).", recipeId, imageFiles.Count, contentHtml != null);
 
         var promptType = contentHtml != null ? PromptType.WebRecipeExtraction : PromptType.RecipeExtraction;
@@ -257,7 +276,25 @@ RULES:
             if (finalExtraction.Recipe?.RecipeInstructions?.SelectMany(section => section.ItemListElement ?? [])
                 .Any(step => !string.IsNullOrWhiteSpace(step.Text)) != true) reasons.Add("steps");
             var message = $"Extraction failed for {recipeId}: Final JSON is missing a name, ingredient, or usable instruction step.";
-            if (reasons.Count > 0) throw new RecipeContentReviewException(message, reasons);
+            if (reasons.Count > 0)
+            {
+                // Only the witnessed fresh URL owner may retain partial wording;
+                // the publication store checks its immutable bootstrap and launch.
+                if (operationId is not null && producerInput is not null && contentHtml is not null &&
+                    finalExtraction.Recipe is { } partial &&
+                    (partial.RecipeIngredient?.Any(value => !string.IsNullOrWhiteSpace(value)) == true ||
+                     partial.RecipeInstructions?.SelectMany(section => section.ItemListElement ?? [])
+                         .Any(step => !string.IsNullOrWhiteSpace(step.Text)) == true) &&
+                    await publications.CanRetainFreshUrlReviewMaterialAsync(capture, operationId.Value, ct))
+                {
+                    var reviewJson = JsonSerializer.Serialize(partial, new JsonSerializerOptions(JsonDefaults.CamelCase) { WriteIndented = true });
+                    info.Name = partial.Name ?? info.Name;
+                    await publications.PublishAsync(capture,
+                        new(reviewJson, info, producerInput, SourceKind: "review-material", ReviewReasons: reasons.ToArray()),
+                        operationId.Value, ct);
+                }
+                throw new RecipeContentReviewException(message, reasons);
+            }
             throw new Exception(message);
         }
 
@@ -268,7 +305,22 @@ RULES:
 
         info.Name = finalRecipe.Name;
         await GenerateCandidateDescriptionAsync(recipeId, normalizedJson, info, capture, ct);
-        await publications.PublishAsync(capture, new(normalizedJson, info, producerInput), operationId ?? Guid.NewGuid(), ct);
+        if (operationId is { } freshOperation && producerInput is not null && contentHtml is not null &&
+            await publications.CanRetainFreshUrlReviewMaterialAsync(capture, freshOperation, ct))
+        {
+            CanonicalRecipeExport? prepared = null;
+            try { prepared = CanonicalRecipeContentStore.PrepareFreshSource(recipeId, normalizedJson, info.SourceUrl); }
+            catch (InvalidDataException)
+            {
+                await publications.PublishAsync(capture,
+                    new(normalizedJson, info, producerInput, SourceKind: "review-material", ReviewReasons: ["ingredients"]),
+                    freshOperation, ct);
+                throw new RecipeContentReviewException($"Extraction needs ingredient review for {recipeId}.", ["ingredients"]);
+            }
+            await publications.PublishAsync(capture,
+                new(RecipeExportContent.WriteCurrent(prepared), info, producerInput, SourceKind: "fresh-canonical"), freshOperation, ct);
+        }
+        else await publications.PublishAsync(capture, new(normalizedJson, info, producerInput), operationId ?? Guid.NewGuid(), ct);
         logger.LogInformation("Published extracted recipe for {RecipeId}", recipeId);
     }
 

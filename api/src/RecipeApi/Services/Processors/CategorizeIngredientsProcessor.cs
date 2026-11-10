@@ -111,7 +111,8 @@ public class CategorizeIngredientsProcessor(
 
     private async Task CategorizeAsync(Guid recipeId, CancellationToken ct)
     {
-        // 1. Load the recipe and read supply[] from raw_metadata.
+        // Current shopping associations own category names after canonical publication.
+        // Only unconverted recipes use their retained source supply adapter.
         var recipe = await db.Recipes.FindAsync([recipeId], ct);
         if (recipe is null)
         {
@@ -119,13 +120,15 @@ public class CategorizeIngredientsProcessor(
             return;
         }
 
-        if (string.IsNullOrWhiteSpace(recipe.RawMetadata))
+        var current = CanonicalRecipeContentStore.Read(recipe);
+        if (current is null && string.IsNullOrWhiteSpace(recipe.RawMetadata))
         {
             logger.LogDebug("CategorizeIngredients: recipe {RecipeId} has no raw_metadata — skipping", recipeId);
             return;
         }
 
-        var supplyNames = ExtractSupplyNames(recipe.RawMetadata, recipeId);
+        var supplyNames = current is null ? ExtractSupplyNames(recipe.RawMetadata!, recipeId)
+            : current.IngredientLines.Select(line => line.Shopping.Name).Where(name => !string.IsNullOrWhiteSpace(name)).ToList();
         if (supplyNames.Count == 0)
         {
             logger.LogDebug("CategorizeIngredients: recipe {RecipeId} has no supply[] entries — skipping", recipeId);

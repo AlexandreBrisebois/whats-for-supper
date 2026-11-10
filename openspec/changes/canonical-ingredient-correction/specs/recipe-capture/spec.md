@@ -101,8 +101,8 @@ A fresh intake identified by retained server-owned bootstrap and workflow launch
 
 #### Scenario: Trustworthy facts cannot be preserved in the fresh candidate
 - **WHEN** canonical preparation cannot preserve a trustworthy supplied fact together with its exact original wording
-- **THEN** the selected transaction rejects before live content/file replacement or readiness, retains the prior staged source and recipe, exposes the existing failure/retry flow and keeps recoverable recipe material accessible for manual correction through the existing flag
-- **AND** no successful legacy-only fallback is substituted for this fresh canonical publication
+- **THEN** a guarded publication retains exact usable ingredient/step wording and original source in the existing unready editable recipe, with a receipt distinguishing review material from completed extraction
+- **AND** the extraction remains failed, the existing Ready for review flag exposes manual correction, and no successful legacy-only fallback or readiness is claimed
 
 #### Scenario: Continue nonsemantic workflow steps
 - **WHEN** the fresh canonical producer has committed and the same captured workflow performs hero/category/readiness processing

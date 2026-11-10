@@ -159,7 +159,8 @@ public static class RecipeExtractionParser
 public sealed record RecipeExtractionParseResult(SchemaOrgRecipe? Recipe, bool IsSemanticallyComplete);
 
 // A semantic content result requiring human review, distinct from acquisition,
-// provider transport, image or categorization failures. It never publishes output.
+// provider transport, image or categorization failures. A fresh URL may retain
+// editable review material under a separate failed-extraction receipt.
 public sealed class RecipeContentReviewException(string message, IReadOnlyList<string> reasons) : Exception(message)
 {
     public IReadOnlyList<string> Reasons { get; } = reasons;

@@ -1,9 +1,11 @@
 using System.Security.Cryptography;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Microsoft.EntityFrameworkCore;
 using RecipeApi.Data;
 using RecipeApi.Dto;
 using RecipeApi.Models;
+using RecipeApi.Infrastructure;
 
 namespace RecipeApi.Services;
 
@@ -26,6 +28,53 @@ public sealed partial class CanonicalRecipeContentStore(RecipeDbContext db, IClo
     public static CanonicalRecipeContent? Read(Recipe recipe) => recipe.CanonicalContent is null ? null
         : JsonSerializer.Deserialize<CanonicalRecipeContent>(recipe.CanonicalContent, Json)
             ?? throw new InvalidDataException("Invalid saved canonical recipe content.");
+
+    // This is preparation for a witnessed new source, not conversion of a saved
+    // legacy or human-owned recipe. The publication owner still guards membership.
+    internal static CanonicalRecipeExport PrepareFreshSource(Guid id, string normalizedJson, string? sourceUrl)
+    {
+        var parsed = RecipeExtractionParser.ParseAndNormalize(normalizedJson);
+        if (!parsed.IsSemanticallyComplete || parsed.Recipe?.RecipeIngredient is null)
+            throw new InvalidDataException("Fresh source needs complete ingredient and step text.");
+        var source = new Recipe
+        {
+            Id = id,
+            SourceUrl = sourceUrl,
+            RawMetadata = normalizedJson,
+            Ingredients = JsonSerializer.Serialize(parsed.Recipe.RecipeIngredient, Json),
+            Servings = RecipeServings.FromMetadata(normalizedJson)
+        };
+        var sourceRevision = InspectSourceRevision(source);
+        var lines = ConvertLines(source, Guid.NewGuid).Select(line => line with
+        {
+            Provenance = new("source", sourceRevision, [])
+        }).ToArray();
+        var sections = ConvertInstructions(normalizedJson, Guid.NewGuid, Guid.NewGuid, NewRevision);
+        var content = new CanonicalRecipeContent(2, NewRevision(), sourceRevision, source.Servings, lines, sections);
+        var export = new CanonicalRecipeExport(id, content, normalizedJson);
+        _ = RecipeExportContent.WriteCurrent(export); // validate before any live mutation
+        return export;
+    }
+
+    // A reported correction selects saved human wording from the guarded launch,
+    // never a second provider response or today's mutable recipe row.
+    internal static CanonicalRecipeExport PrepareReviewedSource(RecipePublicationFields saved)
+    {
+        if (saved.Ingredients is null || saved.RawMetadata is null || saved.CanonicalContent is not null || saved.IsReady)
+            throw new InvalidDataException("Reviewed source needs captured editable content.");
+        var raw = JsonNode.Parse(saved.RawMetadata) as JsonObject
+            ?? throw new InvalidDataException("Reviewed source metadata is invalid.");
+        raw["recipeIngredient"] = JsonSerializer.SerializeToNode(RecipeService.DeserializeIngredients(saved.Ingredients));
+        if (!string.IsNullOrWhiteSpace(saved.Name)) raw["name"] = saved.Name;
+        var prepared = PrepareFreshSource(saved.Id, raw.ToJsonString(), saved.SourceUrl);
+        var lines = prepared.Content.IngredientLines.Select(line => line with
+        {
+            Provenance = new("human", prepared.Content.SourceRevision, ProtectedFacts)
+        }).ToArray();
+        var result = prepared with { Content = prepared.Content with { IngredientLines = lines } };
+        _ = RecipeExportContent.WriteCurrent(result);
+        return result;
+    }
 
     public async Task<CanonicalRecipeWriteResult> ConvertAsync(Guid id, string expectedContentRevision,
         string expectedSourceRevision, Guid operationId, CancellationToken ct = default)
