@@ -229,18 +229,20 @@ public class RecipeService(
         var recipe = await db.Recipes.FindAsync(id)
             ?? throw new KeyNotFoundException($"Recipe {id} not found.");
 
-        var report = await db.RecipeImportReports
-            .AsNoTracking()
-            .SingleOrDefaultAsync(item => item.RecipeId == id);
-
-        var dto = MapToDto(recipe);
-        dto.ImportIssue = RecipeImportReportService.ToPublicDto(report);
-
         return new RecipeDetailResponseDto
         {
             UpdatedAt = clock.UtcNow,
-            Recipe = dto
+            Recipe = await MapDetailDto(recipe)
         };
+    }
+
+    private async Task<RecipeDto> MapDetailDto(Recipe recipe)
+    {
+        var report = await db.RecipeImportReports.AsNoTracking()
+            .SingleOrDefaultAsync(item => item.RecipeId == recipe.Id);
+        var dto = MapToDto(recipe);
+        dto.ImportIssue = RecipeImportReportService.ToPublicDto(report);
+        return dto;
     }
 
     public async Task<RecipeShareBundleDto> ExportRecipeShareBundle(Guid id)
@@ -393,7 +395,7 @@ public class RecipeService(
                 var response = new RecipeDetailResponseDto
                 {
                     UpdatedAt = saved.UpdatedAt,
-                    Recipe = MapToDto(saved),
+                    Recipe = await MapDetailDto(saved),
                     CreatedIds = result.CreatedIds
                 };
                 await SynchronizeDetailMetadata(id, dto, saved);
@@ -492,7 +494,7 @@ public class RecipeService(
         return new RecipeDetailResponseDto
         {
             UpdatedAt = recipe.UpdatedAt,
-            Recipe = MapToDto(recipe)
+            Recipe = await MapDetailDto(recipe)
         };
     }
 

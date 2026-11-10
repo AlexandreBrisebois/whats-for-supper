@@ -555,7 +555,7 @@ public class WorkflowWorker(
                     instance.UpdatedAt = clock.UtcNow;
                     await db.SaveChangesAsync(ct);
 
-                    await RecordImportReportFailureAsync(instance, task, ct);
+                    await RecordImportReportFailureAsync(instance, task, ex, ct);
 
                     // Publish recipe_failed SSE event — all retries exhausted, workflow is fatally failed.
                     // This fires on the fatal path only.
@@ -753,6 +753,7 @@ public class WorkflowWorker(
     private async Task RecordImportReportFailureAsync(
         WorkflowInstance instance,
         WorkflowTask failedTask,
+        Exception failure,
         CancellationToken ct)
     {
         if (instance.WorkflowId is not ("recipe-import" or "url-import")) return;
@@ -770,7 +771,8 @@ public class WorkflowWorker(
                 recipeId.Value,
                 instance.Id,
                 failedTask.TaskName,
-                failedTask.ErrorMessage ?? "Unknown error");
+                failedTask.ErrorMessage ?? "Unknown error",
+                failedTask.ProcessorName == "ExtractRecipe" && failure is RecipeContentReviewException review ? review.Reasons : null);
         }
         catch (Exception ex)
         {

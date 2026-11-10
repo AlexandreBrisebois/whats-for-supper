@@ -252,7 +252,13 @@ RULES:
         var finalExtraction = RecipeExtractionParser.ParseAndNormalize(finalJson);
         if (!finalExtraction.IsSemanticallyComplete || finalExtraction.Recipe is null)
         {
-            throw new Exception($"Extraction failed for {recipeId}: Final JSON is missing a name, ingredient, or usable instruction step.");
+            var reasons = new List<string>();
+            if (finalExtraction.Recipe?.RecipeIngredient?.Any(value => !string.IsNullOrWhiteSpace(value)) != true) reasons.Add("ingredients");
+            if (finalExtraction.Recipe?.RecipeInstructions?.SelectMany(section => section.ItemListElement ?? [])
+                .Any(step => !string.IsNullOrWhiteSpace(step.Text)) != true) reasons.Add("steps");
+            var message = $"Extraction failed for {recipeId}: Final JSON is missing a name, ingredient, or usable instruction step.";
+            if (reasons.Count > 0) throw new RecipeContentReviewException(message, reasons);
+            throw new Exception(message);
         }
 
         var finalRecipe = finalExtraction.Recipe;

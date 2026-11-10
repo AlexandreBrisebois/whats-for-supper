@@ -567,7 +567,8 @@ export async function setupCommonRoutes(
       { week: weekStartDate, extras: visible }
     );
   };
-  let activeImportIssue: RecipeImportIssueDto | null = null;
+  let activeImportIssue: RecipeImportIssueDto | null =
+    recoveryOptions.canonicalEditor?.importIssue ?? null;
   let activeImportId: string | null = null;
   let importStatusReads = 0;
 
@@ -858,30 +859,43 @@ export async function setupCommonRoutes(
         json: { message: 'Search changed. Restart from the first page.' },
       });
     const membership = new Set(gotoItems.map((item) => item.recipeId));
-    const matches = browseRecipes.filter(
-      (recipe) =>
-        recipe.isReady &&
-        !recipe.deletedAt &&
-        (filters.gotoOnly !== true || membership.has(recipe.id)) &&
-        (filters.discoverableOnly !== true || recipe.isDiscoverable) &&
-        (filters.familyFavorite !== true ||
-          ((recipe.rating ?? 0) >= 2 && (recipe.isDiscoverable || recipe.notes))) &&
-        (!request.query?.trim() ||
-          recipe.name?.toLowerCase().includes(request.query.trim().toLowerCase())) &&
-        recipe.id !== request.similarToRecipeId
-    );
+    const reviewOnly = filters.reportedOnly === true || filters.readyToReviewOnly === true;
+    const matches = browseRecipes
+      .map((recipe) => ({ ...recipe, ...recipeUpdates.get(recipe.id!) }))
+      .filter(
+        (recipe) =>
+          (recipe.isReady || (reviewOnly && !request.query?.trim() && recipe.importIssue)) &&
+          (filters.readyToReviewOnly === true
+            ? recipe.importIssue?.status === 'readyToReview'
+            : filters.reportedOnly !== true || !!recipe.importIssue) &&
+          !recipe.deletedAt &&
+          (filters.gotoOnly !== true || membership.has(recipe.id)) &&
+          (filters.discoverableOnly !== true || recipe.isDiscoverable) &&
+          (filters.familyFavorite !== true ||
+            ((recipe.rating ?? 0) >= 2 && (recipe.isDiscoverable || recipe.notes))) &&
+          (!request.query?.trim() ||
+            recipe.name?.toLowerCase().includes(request.query.trim().toLowerCase())) &&
+          recipe.id !== request.similarToRecipeId
+      );
     const byId = new Map(matches.map((recipe) => [recipe.id!, recipe]));
     const ordered = previous
       ? previous.ids.filter((id) => byId.has(id))
       : matches.map((recipe) => recipe.id!);
-    const topId = previous ? undefined : ordered.shift();
+    const topId =
+      previous || reviewOnly ? undefined : ordered.find((id) => !byId.get(id)?.importIssue);
+    if (topId) ordered.splice(ordered.indexOf(topId), 1);
     const limit = Math.max(1, Math.min(50, request.limit ?? 12));
     const pageIds = ordered.slice(0, limit);
     const remaining = ordered.slice(limit);
     const nextCursor = remaining.length ? `mock-search-${++searchSequence}` : null;
     if (nextCursor)
       searchContinuations.set(nextCursor, { fingerprint, ids: remaining, filters, searchMode });
-    const result = (id: string) => ({ ...byId.get(id)!, isPromotionEligible: false, reasons: [] });
+    const result = (id: string) => ({
+      ...byId.get(id)!,
+      importIssueStatus: byId.get(id)?.importIssue?.status ?? null,
+      isPromotionEligible: false,
+      reasons: [],
+    });
     await fulfill(route, {
       json: {
         data: {
@@ -1385,6 +1399,7 @@ export async function setupCommonRoutes(
       return;
     }
 
+    recipeUpdates.set(id, { ...recipeUpdates.get(id), importIssue: activeImportIssue });
     const reportedRecipe = builders.recipe({
       id,
       ...recipeUpdates.get(id),

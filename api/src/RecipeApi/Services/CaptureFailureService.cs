@@ -133,7 +133,7 @@ public class CaptureFailureService(RecipeDbContext db, IClock clock, IWorkflowOr
                     .IgnoreQueryFilters()
                     .FirstOrDefaultAsync(r => r.Id == recipeId.Value, ct);
 
-                if (recipe is not null && !IsReadyOrDiscoverable(recipe))
+                if (recipe is not null && !ShouldRetainRecipe(recipe))
                 {
                     recipe.DeletedAt ??= clock.UtcNow;
                     recipe.DeletedBy ??= requestedBy;
@@ -229,7 +229,12 @@ public class CaptureFailureService(RecipeDbContext db, IClock clock, IWorkflowOr
     private static string ResolveSourceType(string workflowId) =>
         workflowId.Equals("url-import", StringComparison.OrdinalIgnoreCase) ? "url" : "photos";
 
-    private static bool IsReadyOrDiscoverable(Recipe recipe) =>
-        recipe.IsDiscoverable
+    // Non-null persisted content also represents explicit human clears. Retain
+    // partial automated content conservatively rather than inventing authorship.
+    internal static bool HasRetainedRecipeContent(Recipe recipe) =>
+        recipe.Ingredients is not null || recipe.RawMetadata is not null || recipe.CanonicalContent is not null;
+
+    internal static bool ShouldRetainRecipe(Recipe recipe) =>
+        recipe.IsDiscoverable || HasRetainedRecipeContent(recipe)
         || (!string.IsNullOrWhiteSpace(recipe.Name) && (recipe.ImageCount > 0 || recipe.IsSynthesized));
 }

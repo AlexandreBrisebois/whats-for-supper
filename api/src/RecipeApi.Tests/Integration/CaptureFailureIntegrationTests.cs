@@ -101,6 +101,44 @@ public class CaptureFailureIntegrationTests : IAsyncLifetime
         Assert.True(task.ScheduledAt <= DateTimeOffset.UtcNow.AddSeconds(5));
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ClearAndDeferredCleanup_PreserveSavedOriginalContentAndFeedback(bool clearContents)
+    {
+        var recipeId = await SeedPlaceholderRecipeAsync();
+        var instanceId = await SeedWorkflowAsync("url-import", WorkflowStatus.Paused, RecipeApi.Models.TaskStatus.Failed, recipeId: recipeId);
+        var root = _factory.Services.GetRequiredService<RecipesRootResolver>().Root;
+        var directory = Path.Combine(root, recipeId.ToString()); Directory.CreateDirectory(directory);
+        await File.WriteAllTextAsync(Path.Combine(directory, "original.txt"), "retained source");
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var services = scope.ServiceProvider;
+            var db = services.GetRequiredService<RecipeDbContext>();
+            db.RecipeImportReports.Add(new RecipeImportReport { RecipeId = recipeId, Reasons = ["steps"], Note = "My existing feedback", ReportedBy = _factory.DefaultFamilyMemberId });
+            await db.SaveChangesAsync();
+            var saved = await services.GetRequiredService<RecipeService>().UpdateRecipe(recipeId, new RecipeApi.Dto.UpdateRecipeDto
+            {
+                Ingredients = clearContents ? [] : ["Salt as I prefer"],
+                RecipeInstructions = JsonSerializer.SerializeToElement(clearContents ? Array.Empty<object>() : [new { text = "Taste and adjust." }])
+            });
+            Assert.Equal("My existing feedback", saved.Recipe.ImportIssue?.Note);
+        }
+        var response = await _client.DeleteAsync($"/api/captures/failures/{instanceId}");
+        Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+            Assert.Null((await db.Recipes.IgnoreQueryFilters().SingleAsync(recipe => recipe.Id == recipeId)).DeletedAt);
+            Assert.Equal("My existing feedback", (await db.RecipeImportReports.SingleAsync()).Note);
+            var result = await scope.ServiceProvider.GetRequiredService<ManagementService>().ProcessMaintenanceCommandsAsync();
+            Assert.Equal(1, result.Skipped);
+            Assert.True(await db.Recipes.IgnoreQueryFilters().AnyAsync(recipe => recipe.Id == recipeId));
+            Assert.True(await db.RecipeImportReports.AnyAsync(report => report.RecipeId == recipeId));
+        }
+        Assert.Equal("retained source", await File.ReadAllTextAsync(Path.Combine(directory, "original.txt")));
+    }
+
     [Fact]
     public async Task Clear_RemovesWorkflow_AndQueuesCleanupCommand()
     {

@@ -57,6 +57,49 @@ describe('per-tab original editor recovery', () => {
     expect(readEditorDraft(recipe.id).draft).toBeUndefined();
     expect(sessionStorage.getItem(editorDraftKey(recipe.id))).toBe(bytes);
   });
+  it('retains instruction edits and explicitly reconciles concurrent original step changes', () => {
+    const initial = editorBaseline(
+      {
+        ...recipe,
+        instructionSections: [{ id: 'section', steps: [{ id: 'step', text: 'Stir.' }] }],
+      } as Recipe,
+      ['Supper']
+    );
+    const edited: EditorDraft = {
+      version: 1,
+      recipeId: recipe.id,
+      baseline: initial,
+      fields: {
+        ...structuredClone(initial.fields),
+        instructions: [{ id: 'section', name: null, steps: [{ id: 'step', text: 'Taste.' }] }],
+      },
+    };
+    const current = editorBaseline(
+      {
+        ...recipe,
+        contentRevision: 'r2',
+        instructionSections: [{ id: 'section', steps: [{ id: 'step', text: 'Simmer.' }] }],
+      } as Recipe,
+      ['Supper']
+    );
+    expect(persistEditorDraft(edited)).toBe(true);
+    expect(readEditorDraft(recipe.id).draft).toEqual(edited);
+    expect(reconcileEditorDraft(edited, current).conflicts).toEqual(['instructions']);
+    expect(
+      reconcileEditorDraft(edited, current, { instructions: 'draft' }).fields.instructions
+    ).toEqual(edited.fields.instructions);
+    const restored = restoreDeletedEditorRows(
+      edited.fields,
+      editorBaseline({ ...recipe, instructionSections: [] } as Recipe, ['Supper'])
+    );
+    expect(restored.instructions).toEqual([
+      {
+        clientId: expect.any(String),
+        name: null,
+        steps: [{ clientId: expect.any(String), text: 'Taste.' }],
+      },
+    ]);
+  });
   it('reports quota/storage failures without deleting the retained draft', () => {
     const value = draft();
     persistEditorDraft(value);

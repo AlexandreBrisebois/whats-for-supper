@@ -538,7 +538,7 @@ public partial class ManagementService(
                 try
                 {
                     physical = await RecipePhysicalLifecycle.DeleteAsync(db, recipeId, "failed-capture", clock, recipesRoot,
-                        recipe => !RecipeIsReadyOrDiscoverable(recipe),
+                        recipe => !CaptureFailureService.ShouldRetainRecipe(recipe),
                         () => Task.FromResult<bool?>(LocalRecipeStore.DeleteDirectory(ActiveRecipesRoot, recipeId)),
                         enlistRetirement: RetireWorkflow, command: command, ct: ct);
                 }
@@ -573,7 +573,7 @@ public partial class ManagementService(
                     throw;
                 }
             }
-            var reason = physical.Outcome == "ineligible" ? "recipe-became-ready-or-discoverable" : physical.Outcome;
+            var reason = physical.Outcome == "ineligible" ? "recipe-retained" : physical.Outcome;
             var status = physical.Outcome == "ineligible" ? "skipped" : "completed";
             command.Status = status;
             command.CompletedAt = clock.UtcNow;
@@ -790,10 +790,6 @@ public partial class ManagementService(
 
         return report.ToString();
     }
-
-    private static bool RecipeIsReadyOrDiscoverable(Recipe recipe) =>
-        recipe.IsDiscoverable
-        || (!string.IsNullOrWhiteSpace(recipe.Name) && (recipe.ImageCount > 0 || recipe.IsSynthesized));
 
     private sealed class DeleteFailedCaptureResiduePayload
     {

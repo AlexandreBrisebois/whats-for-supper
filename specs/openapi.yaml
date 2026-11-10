@@ -205,6 +205,7 @@ components:
           maxLength: 500
         status:
           $ref: '#/components/schemas/RecipeImportIssueStatus'
+          description: readyToReview means human attention is needed, including a system-flagged content validation issue; it does not by itself certify re-import completion. System flags carry an explanatory note without launching repair on creation or unchanged Save; eligible changed human comments retain automatic correction semantics.
         isReimporting: { type: boolean }
         reimportFailureMessage: { type: [string, 'null'] }
         reimportFailureImportId: { type: [string, 'null'], format: uuid }
@@ -631,7 +632,9 @@ components:
           type: [boolean, 'null']
           description: True restricts all retrieval paths to current configured household GOTO membership before candidate limits and pagination. False or absent is inactive. Included in continuation compatibility; ranked continuations recheck membership without adding new candidates.
         discoverableOnly: { type: [boolean, 'null'] }
-        reportedOnly: { type: [boolean, 'null'] }
+        reportedOnly:
+          type: [boolean, 'null']
+          description: Includes existing reported recipes for review, including retained incomplete imports in the explicit filter-only list; ordinary discovery remains ready-only.
         readyToReviewOnly: { type: [boolean, 'null'] }
 
     RecipeSearchReasonDto:

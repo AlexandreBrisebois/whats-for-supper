@@ -61,6 +61,24 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
     }
 
     [DeploymentCalendarPostgresTests.CalendarPostgresFact]
+    public async Task ManualOriginalCorrection_PreventsCapturedExtractionReplacingIngredientsAndSteps()
+    {
+        await WithStore(async (services, repository, store, _) =>
+        {
+            var capture = await store.CaptureAsync(Id);
+            var instructions = JsonSerializer.SerializeToElement(new[] { new { text = "Taste and adjust salt." } });
+            await services.GetRequiredService<RecipeService>().UpdateRecipe(Id, new RecipeApi.Dto.UpdateRecipeDto
+            { Ingredients = ["Salt as I prefer"], RecipeInstructions = instructions });
+            await Assert.ThrowsAsync<RecipeContentConflictException>(() => store.PublishAsync(capture, Candidate(), Guid.NewGuid()));
+            var saved = await services.GetRequiredService<RecipeDbContext>().Recipes.AsNoTracking().SingleAsync(recipe => recipe.Id == Id);
+            Assert.Equal("[\"Salt as I prefer\"]", saved.Ingredients);
+            Assert.Equal("Taste and adjust salt.", JsonDocument.Parse(saved.RawMetadata!).RootElement.GetProperty("recipeInstructions")[0].GetProperty("text").GetString());
+            Assert.Equal(Original, await repository.GetRecipeJsonAsync(Id, default));
+            Assert.Equal("retained source", await repository.GetContentHtmlAsync(Id, default));
+        });
+    }
+
+    [DeploymentCalendarPostgresTests.CalendarPostgresFact]
     public async Task WorkflowLaunch_CapturesBeforeAcquisitionAndRejectsHumanEditBeforeProvider()
     {
         await WithStore(async (services, repository, store, _) =>
@@ -149,7 +167,7 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
                 recipe.Name = "Later human name"; db.SaveChanges();
             }, """{"candidates":[{"content":{"parts":[{"inlineData":{"mimeType":"image/webp","data":"BAUG"}}]}}]}""");
             var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
-                { ["GEMINI_API_KEY"] = "synthetic-key" }).Build();
+            { ["GEMINI_API_KEY"] = "synthetic-key" }).Build();
             var agent = new RecipeHeroAgent(store, config,
                 NullLogger<RecipeHeroAgent>.Instance, new HeroClientFactory(handler));
             await Assert.ThrowsAsync<RecipeContentConflictException>(() => agent.CreateHeroImageAsync(Id, force: true));
@@ -315,11 +333,22 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
             // fixture must remain decodable, rather than acquire newly added fields.
             var legacyFields = JsonSerializer.Serialize(new
             {
-                recipe.Id, recipe.Name, recipe.Description, recipe.Notes, recipe.Rating, recipe.SourceUrl,
+                recipe.Id,
+                recipe.Name,
+                recipe.Description,
+                recipe.Notes,
+                recipe.Rating,
+                recipe.SourceUrl,
                 Ingredients = HistoricalNormalizeJson(recipe.Ingredients),
-                RawMetadata = HistoricalNormalizeJson(recipe.RawMetadata), recipe.Servings,
-                Canonical = HistoricalNormalizeJson(recipe.CanonicalContent), recipe.CuisineType,
-                recipe.MealTypes, recipe.TotalTime, recipe.ImageCount, recipe.IsSynthesized, recipe.DeletedAt
+                RawMetadata = HistoricalNormalizeJson(recipe.RawMetadata),
+                recipe.Servings,
+                Canonical = HistoricalNormalizeJson(recipe.CanonicalContent),
+                recipe.CuisineType,
+                recipe.MealTypes,
+                recipe.TotalTime,
+                recipe.ImageCount,
+                recipe.IsSynthesized,
+                recipe.DeletedAt
             }, JsonDefaults.CamelCase);
             var fingerprint = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(
                 HistoricalNormalizeJson(legacyFields))));

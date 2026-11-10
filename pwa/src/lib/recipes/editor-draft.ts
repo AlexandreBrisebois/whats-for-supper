@@ -1,6 +1,7 @@
 import type { Recipe } from '@/lib/api/recipes';
 import type { UpdateRecipeDto_mealTypes } from '@/lib/api/generated/models';
 import { ingredientDraft, type IngredientDraft } from './ingredient-draft';
+import { originalInstructions, restoreDeletedInstructionIds } from './instruction-draft';
 
 export interface EditorFields {
   name: string;
@@ -10,6 +11,7 @@ export interface EditorFields {
   mealTypes: UpdateRecipeDto_mealTypes[];
   ingredients: string[];
   canonicalDrafts: IngredientDraft[];
+  instructions?: unknown[];
 }
 export interface EditorBaseline {
   revision: string | null;
@@ -25,7 +27,13 @@ export interface EditorDraft {
   original?: { baseline: EditorBaseline; fields: EditorFields };
 }
 export type EditorField =
-  'name' | 'description' | 'servings' | 'cuisineType' | 'mealTypes' | 'ingredients';
+  | 'name'
+  | 'description'
+  | 'servings'
+  | 'cuisineType'
+  | 'mealTypes'
+  | 'ingredients'
+  | 'instructions';
 export const editorFields: EditorField[] = [
   'name',
   'description',
@@ -33,6 +41,7 @@ export const editorFields: EditorField[] = [
   'cuisineType',
   'mealTypes',
   'ingredients',
+  'instructions',
 ];
 export const editorDraftKey = (id: string) => `wfs.recipe-editor-draft.${id}`;
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
@@ -53,6 +62,7 @@ export function editorBaseline(
       cuisineType: recipe.cuisineType ?? '',
       mealTypes,
       ingredients: recipe.ingredients ?? [],
+      instructions: originalInstructions(recipe),
       canonicalDrafts: (recipe.ingredientLines ?? []).map(ingredientDraft),
     },
   };
@@ -83,7 +93,9 @@ export function reconcileEditorDraft(
     const mine = value(draft.fields, field, draft.baseline.canonical);
     const theirs = value(current.fields, field, current.canonical);
     if (same(mine, before)) continue;
-    const compatible = field !== 'ingredients' || draft.baseline.canonical === current.canonical;
+    const compatible =
+      !['ingredients', 'instructions'].includes(field) ||
+      draft.baseline.canonical === current.canonical;
     if (compatible && (same(theirs, before) || same(mine, theirs)))
       set(fields, draft.fields, field);
     else if (choices[field] === 'current') continue;
@@ -103,6 +115,14 @@ export function restoreDeletedEditorRows(
   // never a claim that an absent saved identity continued.
   return {
     ...fields,
+    ...(current.canonical && fields.instructions
+      ? {
+          instructions: restoreDeletedInstructionIds(
+            fields.instructions,
+            current.fields.instructions ?? []
+          ),
+        }
+      : {}),
     canonicalDrafts: fields.canonicalDrafts.map((row) => {
       if (!row.source.id || savedIds.has(row.source.id)) return row;
       const { id: _id, ...facts } = row.source;
@@ -124,6 +144,7 @@ function validFields(value: unknown): value is EditorFields {
     ) &&
     strings(value.mealTypes) &&
     strings(value.ingredients) &&
+    (value.instructions === undefined || Array.isArray(value.instructions)) &&
     Array.isArray(value.canonicalDrafts) &&
     value.canonicalDrafts.every(
       (row) =>

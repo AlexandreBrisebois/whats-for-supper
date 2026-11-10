@@ -101,10 +101,16 @@ test('original correction, refresh recovery and concurrent grocery checks use th
     await editor.getByRole('button', { name: 'Edit', exact: true }).click();
     await expect(editor.getByTestId('recipe-edit-amount-0')).toHaveValue('200');
     await editor.getByTestId('recipe-edit-amount-0').fill('250');
+    await editor
+      .getByRole('textbox', { name: 'Step 1 instructions' })
+      .fill('Stir gently and taste.');
     await editor.getByTestId('recipe-edit-name-input').fill(draftName);
     await editor.getByTestId('recipe-edit-description-input').fill('A retained family draft');
     await editor.reload();
     await expect(editor.getByTestId('recipe-edit-amount-0')).toHaveValue('250');
+    await expect(editor.getByRole('textbox', { name: 'Step 1 instructions' })).toHaveValue(
+      'Stir gently and taste.'
+    );
     await expect(editor.getByTestId('recipe-edit-description-input')).toHaveValue(
       'A retained family draft'
     );
@@ -169,6 +175,10 @@ test('original correction, refresh recovery and concurrent grocery checks use th
       amountText: '250',
     });
     expect(saved.ingredientLines[1]).toEqual(initial.ingredientLines[1]);
+    expect(saved.instructionSections[0].steps[0]).toMatchObject({
+      id: initial.instructionSections[0].steps[0].id,
+      text: 'Stir gently and taste.',
+    });
     expect(saved.contentRevision).not.toBe(initial.contentRevision);
     expect(saved.rating).toBe(3);
     await expect(
@@ -368,6 +378,90 @@ test('original correction, refresh recovery and concurrent grocery checks use th
           await editor.getByTestId('recipe-cancel-edits').click();
         }
     }
+    // Retained incomplete imports use the same flag and editor, with an explanatory comment
+    // and no automatic repair. This separate recipe leaves the grocery tracer intact.
+    const incompleteResponse = await request.post(`${baseURL}/_test/canonical/failed-import`, {
+      headers,
+    });
+    expect(incompleteResponse.status()).toBe(200);
+    const incompleteId = (await incompleteResponse.json()).recipeId;
+    await editor.evaluate(() => localStorage.setItem('locale', 'en'));
+    await editor.setViewportSize({ width: 390, height: 844 });
+    await editor.goto('/recipes');
+    await editor.getByTestId('recipes-search-disclosure').click();
+    await editor.getByTestId('mobile-filters-button').click();
+    await editor.getByTestId('mobile-more-filters').click();
+    await editor.getByTestId('mobile-filter-ready-to-review').click();
+    await editor.getByTestId('mobile-filter-apply').click();
+    await expect(editor.getByTestId('stack-card-front')).toHaveAttribute(
+      'data-recipe-id',
+      incompleteId
+    );
+    await editor.getByTestId(`stack-card-${incompleteId}`).click();
+    await expect(editor.getByTestId('recipe-detail-name')).toHaveText('Flagged incomplete recipe');
+    await editor.getByTestId('action-gear-menu').click();
+    await editor.getByTestId('action-edit-recipe').click();
+    await editor.getByTestId('recipe-edit-ingredient-0').fill('Salt as I prefer');
+    await editor.getByRole('button', { name: 'Add step', exact: true }).click();
+    await editor
+      .getByRole('textbox', { name: 'Step 1 instructions' })
+      .fill('Taste and adjust salt.');
+    await editor.getByTestId('recipe-save-edits').click();
+    await expect(editor.getByTestId('recipe-save-edits')).toHaveCount(0);
+    await expect(editor.getByText('Taste and adjust salt.', { exact: true })).toBeVisible();
+    await expect(
+      editor
+        .getByTestId('recipe-detail-sheet')
+        .getByTestId('recipe-import-issue-status-readyToReview')
+    ).toBeVisible();
+    await editor.goto(`/recipes?open=${incompleteId}`);
+    await expect(editor.getByTestId('recipe-detail-name')).toHaveText('Flagged incomplete recipe');
+    await expect(editor.getByText('Taste and adjust salt.', { exact: true })).toBeVisible();
+    const incomplete = (
+      await (await request.get(`${baseURL}/api/recipes/${incompleteId}`, { headers })).json()
+    ).recipe;
+    expect(incomplete).toMatchObject({
+      isReady: false,
+      ingredients: ['Salt as I prefer'],
+      importIssue: {
+        note: expect.stringContaining('cooking steps'),
+        status: 'readyToReview',
+        isReimporting: false,
+      },
+    });
+    await editor.getByTestId('action-gear-menu').click();
+    await editor.getByTestId('action-report-import-issue').click();
+    await expect(
+      editor.getByRole('dialog', { name: 'Review issue' }).getByText(/Ready for review/)
+    ).toBeVisible();
+    await editor.getByTestId('import-issue-save').click();
+    await expect(editor.getByRole('dialog', { name: 'Review issue' })).toHaveCount(0);
+    const unchangedFlag = (
+      await (await request.get(`${baseURL}/api/recipes/${incompleteId}`, { headers })).json()
+    ).recipe.importIssue;
+    expect(unchangedFlag).toMatchObject({
+      note: incomplete.importIssue.note,
+      status: 'readyToReview',
+      isReimporting: false,
+    });
+    await editor.getByTestId('action-gear-menu').click();
+    await editor.getByTestId('action-report-import-issue').click();
+    await expect(editor.getByTestId('import-issue-note')).toHaveValue(incomplete.importIssue.note);
+    await editor.getByTestId('import-issue-note').fill('Please check the original steps.');
+    const correctionReply = editor.waitForResponse(
+      (response) =>
+        response.request().method() === 'POST' &&
+        response.url().endsWith(`/api/recipes/${incompleteId}/import-report`)
+    );
+    await editor.getByTestId('import-issue-save').click();
+    expect((await (await correctionReply).json()).reimportStarted).toBe(true);
+    const afterComment = (
+      await (await request.get(`${baseURL}/api/recipes/${incompleteId}`, { headers })).json()
+    ).recipe;
+    expect(afterComment).toMatchObject({
+      ingredients: ['Salt as I prefer'],
+      importIssue: { note: 'Please check the original steps.', isReimporting: true },
+    });
   } finally {
     await Promise.all(contexts.map((context) => context.close()));
   }

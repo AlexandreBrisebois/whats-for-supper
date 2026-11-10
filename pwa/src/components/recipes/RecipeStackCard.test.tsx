@@ -198,7 +198,7 @@ describe('RecipeStackCard — rendering', () => {
     expect(screen.getByLabelText('Recipe reported')).toBeTruthy();
 
     rerender(<RecipeStackCard {...defaultProps} importIssueStatus="readyToReview" />);
-    expect(screen.getByLabelText('Recipe updated — ready to review')).toBeTruthy();
+    expect(screen.getByLabelText('Recipe ready for review')).toBeTruthy();
   });
 });
 

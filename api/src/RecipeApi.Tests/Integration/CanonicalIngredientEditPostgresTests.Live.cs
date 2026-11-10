@@ -1,3 +1,4 @@
+using RecipeApi.Infrastructure;
 using System.Diagnostics;
 using System.Text.Json;
 using System.Net.Http.Json;
@@ -55,7 +56,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests
     internal async Task RunCanonicalBrowser(bool mixed, bool stepScaling = false, string? allocation = null, bool reportRefresh = false, bool instructionGuard = false, string? preparedContext = null)
     {
         // The task runner prepares an immutable production-built source copy.
-        // Ordinary application composition never registers the canonical store.
+        // Uses the same canonical editor registration as ordinary application composition.
         var browserRoot = Environment.GetEnvironmentVariable("WFS_CANONICAL_BROWSER_ROOT")
             ?? throw new InvalidOperationException("Requires an isolated production-built PWA copy.");
         var evidenceRoot = Environment.GetEnvironmentVariable("WFS_CANONICAL_EVIDENCE")
@@ -97,8 +98,11 @@ public sealed partial class CanonicalIngredientEditPostgresTests
                 var member = new FamilyMember { Id = Guid.NewGuid(), Name = "Second shopper" };
                 secondMember = member.Id;
                 db.FamilyMembers.Add(member);
-                db.FamilySettings.Add(new FamilySetting { Key = SupperServingsService.DefaultKey,
-                    Value = JsonSerializer.SerializeToElement(new { servings = allocation is "partial" or "fraction" ? 6 : 8, version = Guid.NewGuid() }) });
+                db.FamilySettings.Add(new FamilySetting
+                {
+                    Key = SupperServingsService.DefaultKey,
+                    Value = JsonSerializer.SerializeToElement(new { servings = allocation is "partial" or "fraction" ? 6 : 8, version = Guid.NewGuid() })
+                });
                 await db.SaveChangesAsync();
                 await scope.ServiceProvider.GetRequiredService<GroceryRecomputeService>().RecomputeForWeekAsync(monday, default);
             }
@@ -115,8 +119,12 @@ public sealed partial class CanonicalIngredientEditPostgresTests
             }
             ProcessStartInfo Command(params string[] args)
             {
-                var start = new ProcessStartInfo("node") { WorkingDirectory = Path.Combine(browserRoot, "pwa"),
-                    RedirectStandardOutput = true, RedirectStandardError = true };
+                var start = new ProcessStartInfo("node")
+                {
+                    WorkingDirectory = Path.Combine(browserRoot, "pwa"),
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true
+                };
                 foreach (var arg in args) start.ArgumentList.Add(arg);
                 foreach (var key in new[] { "CI", "WFS_E2E_SUITE", "PORT" }) start.Environment.Remove(key);
                 start.Environment["BASE_URL"] = factory.HttpAddress;
@@ -328,6 +336,42 @@ public sealed partial class CanonicalIngredientEditPostgresTests
                 await service.RecomputeForWeekAsync(monday, default);
                 return Results.Ok();
             }).ExcludeFromDescription().RequireAuthorization();
+            application.MapPost("/_test/canonical/failed-import", async (RecipeDbContext db, RecipeRepository repository, RecipeImportReportService reports, IStorageProvider storage) =>
+            {
+                var id = Guid.NewGuid();
+                var workflow = new WorkflowInstance
+                {
+                    Id = Guid.NewGuid(),
+                    WorkflowId = "url-import",
+                    Status = WorkflowStatus.Paused,
+                    Parameters = JsonSerializer.Serialize(new { recipeId = id }),
+                    CreatedAt = DateTimeOffset.UtcNow
+                };
+                var recipe = new Recipe
+                {
+                    Id = id,
+                    Name = "Flagged incomplete recipe",
+                    SourceUrl = "https://example.test/incomplete",
+                    IsReady = false,
+                    Ingredients = "[\"Salt\"]",
+                    RawMetadata = "{\"recipeInstructions\":[]}",
+                    MealTypes = ["Supper"]
+                };
+                db.Recipes.Add(recipe); db.WorkflowInstances.Add(workflow);
+                db.WorkflowTasks.Add(new WorkflowTask { TaskId = Guid.NewGuid(), InstanceId = workflow.Id, TaskName = "ExtractRecipe", ProcessorName = "ExtractRecipe", Status = RecipeApi.Models.TaskStatus.Failed });
+                await db.SaveChangesAsync();
+                await repository.SaveInfoAsync(new RecipeInfo { Id = id, Name = recipe.Name, SourceUrl = recipe.SourceUrl }, default);
+                await storage.SaveAsync("workflows", "url-import.yaml", """
+                    name: content-review
+                    parameters: [recipeId, url, repairReasons, repairNote]
+                    tasks:
+                      - name: extract
+                        processor: ExtractRecipe
+                        payload: {recipeId: "{{ recipeId }}"}
+                    """);
+                await reports.MarkFailedAsync(id, workflow.Id, "ExtractRecipe", "Incomplete original steps", ["steps"]);
+                return Results.Ok(new { recipeId = id });
+            }).ExcludeFromDescription().RequireAuthorization();
             application.MapFallback("{**path}", async context =>
             {
                 using var gateway = new HttpClient();
@@ -345,7 +389,8 @@ public sealed partial class CanonicalIngredientEditPostgresTests
                 }
                 catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested) { }
             });
-        }, sourceUrl: reportRefresh || instructionGuard || preparedContext is not null ? "https://example.test/owned-report-fixture" : null);
+        }, sourceUrl: reportRefresh || instructionGuard || preparedContext is not null ? "https://example.test/owned-report-fixture" : null,
+            realWorkflow: !mixed && !stepScaling && allocation is null && preparedContext is null);
     }
 
     private static async Task Pump(StreamReader reader, string path)

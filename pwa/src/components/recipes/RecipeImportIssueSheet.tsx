@@ -8,6 +8,7 @@ import type {
   RecipeImportIssueReason,
 } from '@/lib/api/recipes';
 import { RecipeImportIssueReasonObject } from '@/lib/api/generated/models/index';
+import { t } from '@/locales';
 import { useDemoMode } from '@/components/demo/DemoModeProvider';
 import { DemoAiActionGate } from '@/components/demo/DemoAiActionGate';
 
@@ -282,7 +283,10 @@ function RecipeImportIssueEditor({
         )}
         {issue?.status === 'readyToReview' && (
           <p className="mt-3 text-sm text-charcoal/70">
-            Reimport complete. Check the recipe, then mark this resolved when it looks right.
+            {t(
+              'recipes.importIssueReadyGuidance',
+              'Ready for review. Check the ingredients and steps, then mark this resolved when it looks right.'
+            )}
           </p>
         )}
         <button
@@ -298,7 +302,12 @@ function RecipeImportIssueEditor({
           {noteEligible ? 'What should we check?' : 'Add a note'}
         </button>
         {noteEligible && !aiUnavailable && (
-          <p className="mt-1 text-sm text-charcoal/60">Add a note to re-import this recipe.</p>
+          <p className="mt-1 text-sm text-charcoal/60">
+            {t(
+              'recipes.importIssueCorrectionGuidance',
+              'Add or change the note to request automatic correction.'
+            )}
+          </p>
         )}
         {noteOpen && (
           <div className="mt-2">

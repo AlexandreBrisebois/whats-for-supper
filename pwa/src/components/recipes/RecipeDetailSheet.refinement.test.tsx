@@ -766,6 +766,87 @@ describe('canonical original ingredient editing', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
     return screen.findByTestId('recipe-edit-amount-0');
   }
+  it('corrects flagged original ingredients and unbound steps even when the dated projection fails', async () => {
+    const original = {
+      ...canonical,
+      isReady: false,
+      importIssue: { reasons: ['ingredients', 'steps'], note: null, status: 'reported' as const },
+      instructionSections: [
+        {
+          id: '550e8400-e29b-41d4-a716-446655440220',
+          name: null,
+          steps: [
+            {
+              id: '550e8400-e29b-41d4-a716-446655440221',
+              text: 'Stir gently.',
+              textRevision: 't1',
+              bindings: [],
+            },
+          ],
+        },
+      ],
+      recipeInstructions: [
+        {
+          '@type': 'HowToSection',
+          itemListElement: [{ '@type': 'HowToStep', text: 'Stir gently.' }],
+        },
+      ],
+    };
+    mockGetRecipe.mockResolvedValue(original);
+    mockGetIngredientProjection.mockRejectedValue(new Error('projection unavailable'));
+    mockUpdateRecipe.mockImplementation(async (_id, update) => ({
+      ...original,
+      contentRevision: 'saved',
+      ingredientLines: update.ingredientLines,
+      instructionSections: update.instructionSections,
+      recipeInstructions: [
+        {
+          '@type': 'HowToSection',
+          itemListElement: [{ '@type': 'HowToStep', text: 'Stir and taste.' }],
+        },
+      ],
+    }));
+    render(
+      <RecipeDetailSheet
+        {...props}
+        ingredientContext={{ context: 'proposed', supperDate: '2026-10-14' }}
+      />
+    );
+    await screen.findByTestId('recipe-detail-name');
+    await edit();
+    expect(screen.getByTestId('recipe-edit-amount-0')).toHaveValue('200');
+    fireEvent.change(screen.getByTestId('recipe-edit-amount-0'), { target: { value: '' } });
+    fireEvent.change(screen.getByTestId('recipe-edit-unit-0'), { target: { value: '' } });
+    fireEvent.change(screen.getByRole('textbox', { name: 'Step 1 instructions' }), {
+      target: { value: 'Stir and taste.' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    await waitFor(() =>
+      expect(mockUpdateRecipe).toHaveBeenCalledWith(
+        id,
+        expect.objectContaining({
+          expectedContentRevision: 'original-revision',
+          ingredientLines: expect.arrayContaining([
+            expect.objectContaining({
+              id: canonical.ingredientLines[0].id,
+              amount: null,
+              unit: null,
+            }),
+          ]),
+          instructionSections: [
+            {
+              id: original.instructionSections[0].id,
+              name: null,
+              steps: [{ id: original.instructionSections[0].steps[0].id, text: 'Stir and taste.' }],
+            },
+          ],
+        })
+      )
+    );
+    expect(await screen.findByText('Stir and taste.')).toBeVisible();
+    expect(screen.getByLabelText('Recipe reported')).toBeVisible();
+  });
+
   it('edits original separate facts and installs authoritative returned content', async () => {
     mockGetRecipe.mockResolvedValue(canonical);
     mockUpdateRecipe.mockResolvedValue({

@@ -16,6 +16,13 @@ import {
   type EditorFields,
   type EditorField,
 } from '@/lib/recipes/editor-draft';
+import {
+  originalInstructions,
+  instructionRows,
+  changeInstruction,
+  addInstruction,
+  canonicalInstructionInput,
+} from '@/lib/recipes/instruction-draft';
 import { PreparationStatus } from '@/components/planner/PreparationStatus';
 
 import { DemoAiActionGate } from '@/components/demo/DemoAiActionGate';
@@ -194,6 +201,7 @@ export function RecipeDetailSheet({
   const [draftName, setDraftName] = useState('');
   const [draftDescription, setDraftDescription] = useState('');
   const [draftIngredients, setDraftIngredients] = useState<string[]>([]);
+  const [draftInstructions, setDraftInstructions] = useState<unknown[] | undefined>(undefined);
   const [canonicalDrafts, setCanonicalDrafts] = useState<IngredientDraft[]>([]);
   const [draftRevision, setDraftRevision] = useState<string | null>(null);
   const [saveNeedsRead, setSaveNeedsRead] = useState(false);
@@ -226,6 +234,7 @@ export function RecipeDetailSheet({
     mealTypes: draftMealTypes,
     ingredients: draftIngredients,
     canonicalDrafts,
+    instructions: draftInstructions,
   };
   const installEditorFields = (fields: EditorFields) => {
     setDraftName(fields.name);
@@ -235,6 +244,7 @@ export function RecipeDetailSheet({
     setDraftMealTypes(fields.mealTypes);
     setDraftIngredients(fields.ingredients);
     setCanonicalDrafts(fields.canonicalDrafts);
+    setDraftInstructions(fields.instructions);
   };
   const currentEditorBaseline = currentSavedRecipe
     ? editorBaseline(currentSavedRecipe, resolveMealTypes(currentSavedRecipe))
@@ -265,8 +275,13 @@ export function RecipeDetailSheet({
       cuisineType: t('recipes.cuisineType', 'Cuisine'),
       mealTypes: t('recipes.mealTypes', 'Meal types'),
       ingredients: t('recipes.ingredients', 'Ingredients'),
+      instructions: t('recipes.instructions', 'Instructions'),
     })[field];
   const editorFieldText = (fields: EditorFields, field: EditorField, canonical: boolean) => {
+    if (field === 'instructions')
+      return instructionRows(fields.instructions ?? [], canonical)
+        .map((row) => row.text)
+        .join('\n');
     if (field !== 'ingredients')
       return Array.isArray(fields[field]) ? fields[field].join(', ') : fields[field];
     return canonical
@@ -310,6 +325,7 @@ export function RecipeDetailSheet({
     draftMealTypes,
     draftIngredients,
     canonicalDrafts,
+    draftInstructions,
   ]);
   const previewScope = JSON.stringify([recipeId, projectionKey]);
   const unresolvedPreviewScope = JSON.stringify([recipeId, null]);
@@ -576,6 +592,7 @@ export function RecipeDetailSheet({
           : source.servings;
     setDraftServings(basis == null ? '' : String(basis));
     setCanonicalDrafts((source.ingredientLines ?? []).map(ingredientDraft));
+    setDraftInstructions(originalInstructions(source));
     setDraftRevision(source.contentRevision ?? null);
     setSaveNeedsRead(false);
     setCurrentSavedRecipe(null);
@@ -668,8 +685,17 @@ export function RecipeDetailSheet({
         name: nextRecipe.name,
         description: nextRecipe.description,
         ...(canonicalEditing
-          ? { ingredientLines: preparedDrafts.lines, expectedContentRevision: draftRevision! }
-          : { ingredients: cleanedIngredients }),
+          ? {
+              ingredientLines: preparedDrafts.lines,
+              expectedContentRevision: draftRevision!,
+              ...(draftInstructions === undefined
+                ? {}
+                : { instructionSections: canonicalInstructionInput(draftInstructions) }),
+            }
+          : {
+              ingredients: cleanedIngredients,
+              ...(draftInstructions === undefined ? {} : { recipeInstructions: draftInstructions }),
+            }),
         cuisineType: nextRecipe.cuisineType,
         mealTypes: nextRecipe.mealTypes ?? [],
       });
@@ -1023,14 +1049,10 @@ export function RecipeDetailSheet({
               <fieldset disabled={isLoading} className="contents">
                 <ActionGearMenu
                   hasImportIssue={Boolean(recipe.importIssue)}
-                  onEdit={
-                    ingredientContext && !projection
-                      ? undefined
-                      : () => {
-                          resetDrafts(recipe);
-                          setIsEditing(true);
-                        }
-                  }
+                  onEdit={() => {
+                    resetDrafts(recipe);
+                    setIsEditing(true);
+                  }}
                   originalQuantitiesDisabled={Boolean(ingredientContext && !projection)}
                   onOriginalQuantities={
                     !showingOriginalEvidence
@@ -1747,7 +1769,77 @@ export function RecipeDetailSheet({
                       )}
                     </p>
                   )}
-                {steps.length ? (
+                {isEditing ? (
+                  <div className="grid min-w-0 gap-4">
+                    {instructionRows(
+                      draftInstructions ?? originalInstructions(recipe),
+                      canonicalEditing
+                    ).map((row, index) => (
+                      <div key={row.path.join(':')} className="grid min-w-0 gap-2">
+                        <label className="grid min-w-0 gap-2">
+                          <span>
+                            {tWithVars('recipes.stepInstructions', 'Step {{number}} instructions', {
+                              number: index + 1,
+                            })}
+                          </span>
+                          <textarea
+                            rows={3}
+                            disabled={isSavingRecipe}
+                            value={row.text}
+                            onChange={(event) =>
+                              setDraftInstructions(
+                                changeInstruction(
+                                  draftInstructions ?? originalInstructions(recipe),
+                                  canonicalEditing,
+                                  row.path,
+                                  event.target.value
+                                )
+                              )
+                            }
+                            className="min-w-0 w-full rounded-2xl border border-charcoal/15 bg-white p-3 text-base"
+                          />
+                        </label>
+                        <button
+                          type="button"
+                          disabled={isSavingRecipe}
+                          aria-label={tWithVars('recipes.removeStep', 'Remove step {{number}}', {
+                            number: index + 1,
+                          })}
+                          onClick={() =>
+                            setDraftInstructions(
+                              changeInstruction(
+                                draftInstructions ?? originalInstructions(recipe),
+                                canonicalEditing,
+                                row.path,
+                                null
+                              )
+                            )
+                          }
+                          className="min-h-12 justify-self-end rounded-xl px-3 text-sm text-charcoal"
+                        >
+                          {tWithVars('recipes.removeStep', 'Remove step {{number}}', {
+                            number: index + 1,
+                          })}
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      disabled={isSavingRecipe}
+                      onClick={() =>
+                        setDraftInstructions(
+                          addInstruction(
+                            draftInstructions ?? originalInstructions(recipe),
+                            canonicalEditing
+                          )
+                        )
+                      }
+                      className="min-h-12 rounded-xl border border-charcoal/15 px-4 font-semibold"
+                    >
+                      {t('recipes.addStep', 'Add step')}
+                    </button>
+                  </div>
+                ) : steps.length ? (
                   <ol className="space-y-5">
                     {steps.map((step, index) => (
                       <li

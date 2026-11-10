@@ -594,7 +594,7 @@ describe('RecipeDetailSheet', () => {
       />
     );
 
-    expect(await screen.findByLabelText('Recipe updated — ready to review')).toHaveClass(
+    expect(await screen.findByLabelText('Recipe ready for review')).toHaveClass(
       'shrink-0',
       'whitespace-nowrap'
     );
@@ -708,7 +708,7 @@ describe('RecipeDetailSheet', () => {
       );
       expect(mockGetRecipe).toHaveBeenCalledTimes(2);
       expect(mockGetRecipe).toHaveBeenLastCalledWith('550e8400-e29b-41d4-a716-446655440111');
-      expect(screen.getByLabelText('Recipe updated — ready to review')).toBeVisible();
+      expect(screen.getByLabelText('Recipe ready for review')).toBeVisible();
 
       await act(async () => {
         await vi.advanceTimersByTimeAsync(2000);
@@ -1999,6 +1999,14 @@ describe('dated ingredient projection', () => {
   });
   it('retires an open dated projection on invalidation and shows current text or failure', async () => {
     const id = '550e8400-e29b-41d4-a716-446655440111';
+    mockGetRecipe.mockResolvedValue({
+      id,
+      name: 'Pasta',
+      servings: 2,
+      ingredients: ['200 g pasta'],
+      recipeInstructions: ['Add 200 g pasta.'],
+      mealTypes: ['Supper'],
+    });
     const four = {
       recipeId: id,
       supperDate: '2026-10-14',
@@ -2046,7 +2054,7 @@ describe('dated ingredient projection', () => {
     await waitFor(() => expect(mockGetIngredientProjection).toHaveBeenCalledTimes(2));
     expect(screen.queryByText('400 g pasta')).not.toBeInTheDocument();
     fireEvent.click(screen.getByTestId('action-gear-menu'));
-    expect(screen.queryByTestId('action-edit-recipe')).not.toBeInTheDocument();
+    expect(screen.getByTestId('action-edit-recipe')).toBeEnabled();
     fireEvent.click(screen.getByTestId('action-gear-menu'));
     await act(async () =>
       resolve({

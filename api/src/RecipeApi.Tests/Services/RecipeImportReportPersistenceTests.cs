@@ -9,6 +9,82 @@ namespace RecipeApi.Tests.Services;
 
 public class RecipeImportReportPersistenceTests
 {
+    [Theory]
+    [InlineData(WorkflowStatus.Paused)]
+    [InlineData(WorkflowStatus.Failed)]
+    public async Task FailedInitialImport_IsFlaggedWithoutLaunchingRepairOrLosingExistingFeedback(WorkflowStatus status)
+    {
+        await using var db = CreateContext();
+        var (recipe, member) = await SeedAsync(db);
+        recipe.IsReady = false;
+        recipe.Ingredients = "[\"Salt\"]";
+        var workflow = new WorkflowInstance
+        {
+            Id = Guid.NewGuid(),
+            WorkflowId = "url-import",
+            Status = status,
+            Parameters = System.Text.Json.JsonSerializer.Serialize(new { recipeId = recipe.Id.ToString() })
+        };
+        db.WorkflowInstances.Add(workflow);
+        db.WorkflowTasks.Add(new WorkflowTask { TaskId = Guid.NewGuid(), InstanceId = workflow.Id, TaskName = "ExtractRecipe", ProcessorName = "ExtractRecipe", Status = RecipeApi.Models.TaskStatus.Failed });
+        await db.SaveChangesAsync();
+        var service = new RecipeImportReportService(new SystemClock(), db);
+        await service.MarkFailedAsync(recipe.Id, workflow.Id, "ExtractRecipe", "Cannot extract instructions", ["steps"]);
+        var flag = await db.RecipeImportReports.SingleAsync();
+        Assert.Equal(recipe.Id, flag.RecipeId);
+        Assert.Equal(["steps"], flag.Reasons);
+        Assert.Equal(RecipeImportReportStatus.ReadyToReview, flag.Status);
+        Assert.False(string.IsNullOrWhiteSpace(flag.Note));
+        Assert.Contains("cooking steps", flag.Note);
+        Assert.Null(flag.RepairIntentId);
+        Assert.Null(flag.ReportedBy);
+        Assert.False(recipe.IsReady);
+        var systemBefore = System.Text.Json.JsonSerializer.Serialize(db.Entry(flag).Properties.ToDictionary(property => property.Metadata.Name, property => property.CurrentValue));
+        var unchanged = await service.SubmitAsync(recipe.Id, member.Id, new() { Reasons = ["steps"], Note = flag.Note });
+        Assert.False(unchanged.ReimportStarted);
+        Assert.Equal(systemBefore, System.Text.Json.JsonSerializer.Serialize(db.Entry(flag).Properties.ToDictionary(property => property.Metadata.Name, property => property.CurrentValue)));
+        flag.Note = "My own feedback";
+        flag.Reasons = ["steps"];
+        flag.LastWorkflowInstanceId = Guid.NewGuid();
+        flag.ReportedBy = member.Id;
+        flag.UpdatedBy = member.Id;
+        await db.SaveChangesAsync();
+        var feedbackBefore = System.Text.Json.JsonSerializer.Serialize(db.Entry(flag).Properties.ToDictionary(property => property.Metadata.Name, property => property.CurrentValue));
+        await service.MarkFailedAsync(recipe.Id, workflow.Id, "ExtractRecipe", "late failure");
+        Assert.Equal(feedbackBefore, System.Text.Json.JsonSerializer.Serialize(db.Entry(flag).Properties.ToDictionary(property => property.Metadata.Name, property => property.CurrentValue)));
+        Assert.Equal("My own feedback", flag.Note);
+        Assert.Equal(["steps"], flag.Reasons);
+        Assert.DoesNotContain("late failure", flag.LastError);
+        Assert.Empty(await db.RecipeRepairIntents.ToListAsync());
+    }
+
+    [Theory]
+    [InlineData("GenerateHero", true, true)]
+    [InlineData("CategorizeRecipe", true, true)]
+    [InlineData("ExtractRecipe", false, true)]
+    [InlineData("ExtractRecipe", true, false)]
+    public async Task NonContentOrUnretainedFailures_DoNotCreateSystemFlags(string processor, bool semanticFailure, bool retainedContent)
+    {
+        await using var db = CreateContext();
+        var (recipe, _) = await SeedAsync(db);
+        recipe.IsReady = false;
+        recipe.Ingredients = retainedContent ? "[\"Salt\"]" : null;
+        recipe.RawMetadata = null;
+        var workflow = new WorkflowInstance
+        {
+            Id = Guid.NewGuid(),
+            WorkflowId = "url-import",
+            Status = WorkflowStatus.Paused,
+            Parameters = System.Text.Json.JsonSerializer.Serialize(new { recipeId = recipe.Id })
+        };
+        db.WorkflowInstances.Add(workflow);
+        db.WorkflowTasks.Add(new WorkflowTask { TaskId = Guid.NewGuid(), InstanceId = workflow.Id, TaskName = "failed", ProcessorName = processor, Status = RecipeApi.Models.TaskStatus.Failed });
+        await db.SaveChangesAsync();
+        await new RecipeImportReportService(new SystemClock(), db).MarkFailedAsync(recipe.Id, workflow.Id, "failed", "failure", semanticFailure ? ["steps"] : null);
+        Assert.Empty(await db.RecipeImportReports.ToListAsync());
+        Assert.Empty(await db.RecipeRepairIntents.ToListAsync());
+    }
+
     [Fact]
     public async Task ManualAndUnchangedSaves_PreserveOneReportAndResponse()
     {
@@ -129,7 +205,10 @@ public class RecipeImportReportPersistenceTests
         var member = new FamilyMember { Id = Guid.NewGuid(), Name = "Synthetic member" };
         var recipe = new Recipe
         {
-            Id = Guid.NewGuid(), Name = "Synthetic recipe", SourceUrl = "https://example.invalid/private", AddedBy = member.Id
+            Id = Guid.NewGuid(),
+            Name = "Synthetic recipe",
+            SourceUrl = "https://example.invalid/private",
+            AddedBy = member.Id
         };
         db.FamilyMembers.Add(member);
         db.Recipes.Add(recipe);

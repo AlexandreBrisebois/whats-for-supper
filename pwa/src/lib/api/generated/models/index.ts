@@ -6756,7 +6756,7 @@ export interface RecipeImportIssueDto extends AdditionalDataHolder, Parsable {
    */
   reimportFailureMessage?: string | null;
   /**
-   * The status property
+   * readyToReview means human attention is needed, including a system-flagged content validation issue; it does not by itself certify re-import completion. System flags carry an explanatory note without launching repair on creation or unchanged Save; eligible changed human comments retain automatic correction semantics.
    */
   status?: RecipeImportIssueStatus | null;
 }
@@ -7124,7 +7124,7 @@ export interface RecipeSearchFiltersDto extends AdditionalDataHolder, Parsable {
    */
   readyToReviewOnly?: boolean | null;
   /**
-   * The reportedOnly property
+   * Includes existing reported recipes for review, including retained incomplete imports in the explicit filter-only list; ordinary discovery remains ready-only.
    */
   reportedOnly?: boolean | null;
   /**
@@ -11742,6 +11742,9 @@ export const RecipeImportIssueReasonObject = {
   Steps: 'steps',
   Duplicate: 'duplicate',
 } as const;
+/**
+ * readyToReview means human attention is needed, including a system-flagged content validation issue; it does not by itself certify re-import completion. System flags carry an explanatory note without launching repair on creation or unchanged Save; eligible changed human comments retain automatic correction semantics.
+ */
 export const RecipeImportIssueStatusObject = {
   Reported: 'reported',
   ReadyToReview: 'readyToReview',

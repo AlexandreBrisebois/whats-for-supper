@@ -119,10 +119,10 @@ export function fractionCookingRecipe() {
     'Use half or half the pasta.',
   ];
   const ids = [
-    MOCK_IDS.RECIPE_LASAGNA,
-    MOCK_IDS.RECIPE_CHICKEN,
-    MOCK_IDS.RECIPE_CARBONARA,
-    MOCK_IDS.MEMBER_ALEX,
+    '670e8400-e29b-41d4-a716-446655440101',
+    '670e8400-e29b-41d4-a716-446655440102',
+    '670e8400-e29b-41d4-a716-446655440103',
+    '670e8400-e29b-41d4-a716-446655440104',
   ];
   const steps = texts.map((text, i) => {
     const step = structuredClone(template);

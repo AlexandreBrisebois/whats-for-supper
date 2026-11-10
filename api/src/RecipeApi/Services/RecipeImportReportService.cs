@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using RecipeApi.Data;
 using RecipeApi.Dto;
@@ -38,6 +39,13 @@ public class RecipeImportReportService(
 
             if (active && (!matchingPriorFeedback || materiallyChanged))
                 throw new RecipeImportReportActiveException("This report cannot change while re-import is active.");
+
+            // Unchanged feedback cannot invent a repair command. Existing captured
+            // commands still use their original retry/reconciliation path below.
+            if (report is not null && !materiallyChanged && !active &&
+                (report.Status == RecipeImportReportStatus.ReadyToReview && report.RepairIntentId is null
+                    || !IsEligible(recipe, reasons, note)))
+                return ToSubmissionResponse(recipe, report, false, null, false);
 
             RecipeRepairIntent? intent = null;
             if (IsEligible(recipe, reasons, note) && !active && !matchingPriorFeedback)
@@ -301,10 +309,12 @@ public class RecipeImportReportService(
         Guid recipeId,
         Guid workflowInstanceId,
         string failedStep,
-        string errorSummary)
+        string errorSummary,
+        IReadOnlyList<string>? contentReviewReasons = null)
     {
         var now = clock.UtcNow;
         var failureSummary = BuildFailureSummary(failedStep, errorSummary);
+        if (await FlagContentForReviewAsync(recipeId, workflowInstanceId, failedStep, failureSummary, contentReviewReasons)) return;
         if (db.Database.IsRelational())
         {
             await db.RecipeImportReports
@@ -328,6 +338,52 @@ public class RecipeImportReportService(
         report.ReimportedAt = null;
         report.UpdatedAt = now;
         await db.SaveChangesAsync();
+    }
+
+    private async Task<bool> FlagContentForReviewAsync(Guid recipeId, Guid workflowInstanceId,
+        string failedStep, string failureSummary, IReadOnlyList<string>? reasons)
+    {
+        if (reasons is not { Count: > 0 } || reasons.Any(reason => reason is not ("ingredients" or "steps"))) return false;
+        var recipeLock = RecipeLocks.GetOrAdd(recipeId, _ => new SemaphoreSlim(1, 1));
+        await recipeLock.WaitAsync();
+        try
+        {
+            // Existing feedback retains its original authorship and repair owner.
+            if (await db.RecipeImportReports.AnyAsync(report => report.RecipeId == recipeId)) return false;
+            var workflow = await db.WorkflowInstances.AsNoTracking().SingleOrDefaultAsync(instance => instance.Id == workflowInstanceId);
+            if (workflow is null || workflow.Status is not (WorkflowStatus.Failed or WorkflowStatus.Paused) ||
+                workflow.WorkflowId is not ("recipe-import" or "url-import") ||
+                !await db.WorkflowTasks.AnyAsync(task => task.InstanceId == workflowInstanceId && task.TaskName == failedStep &&
+                    task.ProcessorName == "ExtractRecipe" && task.Status == RecipeApi.Models.TaskStatus.Failed)) return false;
+            using var parameters = JsonDocument.Parse(workflow.Parameters ?? "{}");
+            if (!(parameters.RootElement.TryGetProperty("recipeId", out var capturedId) || parameters.RootElement.TryGetProperty("RecipeId", out capturedId)) ||
+                capturedId.ValueKind != JsonValueKind.String || !Guid.TryParse(capturedId.GetString(), out var id) || id != recipeId) return false;
+            var recipe = await db.Recipes.AsNoTracking().SingleOrDefaultAsync(recipe => recipe.Id == recipeId && recipe.DeletedAt == null);
+            if (recipe is null || recipe.IsReady || !CaptureFailureService.HasRetainedRecipeContent(recipe)) return false;
+            var now = clock.UtcNow;
+            db.RecipeImportReports.Add(new RecipeImportReport
+            {
+                RecipeId = recipeId,
+                Reasons = reasons.Distinct().Order(StringComparer.Ordinal).ToArray(),
+                Note = ReviewExplanation(reasons),
+                Status = RecipeImportReportStatus.ReadyToReview,
+                LastWorkflowInstanceId = workflowInstanceId,
+                LastError = failureSummary,
+                LastAttemptAt = workflow.CreatedAt,
+                CreatedAt = now,
+                UpdatedAt = now
+            });
+            await db.SaveChangesAsync();
+            return true;
+        }
+        finally { recipeLock.Release(); }
+    }
+
+    private static string ReviewExplanation(IReadOnlyList<string> reasons)
+    {
+        var missing = reasons.Contains("ingredients") && reasons.Contains("steps") ? "ingredients and cooking steps"
+            : reasons.Contains("ingredients") ? "ingredients" : "cooking steps";
+        return $"The import did not provide usable {missing}. Please review and correct them.";
     }
 
     private static string BuildFailureSummary(string failedStep, string errorSummary)

@@ -211,3 +211,20 @@ The existing amount input SHALL accept the supported exact fraction, decimal and
 #### Scenario: Ambiguous input
 - **WHEN** input could be a grouped thousands value or decimal under the supported grammar
 - **THEN** validation asks for an unambiguous amount in the editor without changing current facts
+
+
+### Requirement: Correct original ingredients and instructions regardless of binding completeness
+
+The existing detail editor SHALL edit original ingredients and instructions for loaded legacy, canonical and flagged incomplete recipes. Missing measurements or safe bindings SHALL NOT make originals read-only. Unavailable dated projections SHALL leave an intentional original-content entry. Save and unsaved recovery SHALL preserve identities and unaffected wording, never saving scaled preview content as originals.
+
+#### Scenario: Edit without a dated projection
+- **WHEN** original detail loads but its dated projection is unavailable
+- **THEN** Edit initializes original ingredients and instructions and can save an intentional correction without using projected content
+
+#### Scenario: Edit an unbound or stale-bound step
+- **WHEN** a person changes original step text without safe scaling proof
+- **THEN** the text saves and reopens unchanged, unsafe proof does not apply, and unrelated valid bindings remain usable without a persistent warning
+
+#### Scenario: Preserve all unsaved corrections
+- **WHEN** Save fails or encounters a newer saved revision
+- **THEN** ingredient and instruction changes remain available through existing retry/reconciliation; Cancel discards only unsaved edits

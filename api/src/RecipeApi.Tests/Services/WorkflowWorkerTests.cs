@@ -1157,9 +1157,9 @@ public class WorkflowWorkerTests : IAsyncLifetime
         // Task D should be rescheduled to the future (proactively)
         // It should be staggered at least 1 minute after Task A (or more if Task B also rescheduled it)
         Assert.Equal(TaskStatus.Pending, updatedD.Status);
-        Assert.True(updatedD.ScheduledAt > updatedA.ScheduledAt, 
+        Assert.True(updatedD.ScheduledAt > updatedA.ScheduledAt,
             $"Task D schedule {updatedD.ScheduledAt} should be staggered after Task A schedule {updatedA.ScheduledAt}");
-        
+
         var diffMinutes = (updatedD.ScheduledAt!.Value - updatedA.ScheduledAt!.Value).TotalMinutes;
         Assert.True(diffMinutes >= 0.9, $"Task D should be at least 1 minute after Task A, but was {diffMinutes} min");
 
@@ -1619,11 +1619,14 @@ public class WorkflowWorkerTests : IAsyncLifetime
     /// that the recipe import failed or changing its import report.
     /// </summary>
     [Theory]
-    [InlineData("recipe-import", "ExtractRecipe", "extract_recipe", true)]
-    [InlineData("url-import", "ExtractRecipe", "extract_recipe", true)]
-    [InlineData("index-recipe-search", "IndexRecipeSearch", "index_job", false)]
+    [InlineData("recipe-import", "ExtractRecipe", "extract_recipe", true, true, false)]
+    [InlineData("url-import", "ExtractRecipe", "extract_recipe", true, true, false)]
+    [InlineData("index-recipe-search", "IndexRecipeSearch", "index_job", false, true, false)]
+    [InlineData("url-import", "ExtractRecipe", "extract_recipe", true, false, true)]
+    [InlineData("url-import", "GenerateHero", "generate_hero", true, false, false)]
+    [InlineData("url-import", "ExtractRecipe", "extract_recipe", true, false, false)]
     public async Task WorkflowFatalFailure_IndexingDoesNotReportAnImportFailure(
-        string workflowId, string processorName, string taskName, bool importFailed)
+        string workflowId, string processorName, string taskName, bool importFailed, bool existingReport, bool contentReview)
     {
         // Arrange
         var services = new ServiceCollection();
@@ -1650,7 +1653,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
 
         // Fatal exception — not transient, not 429 — exhausts retries immediately
         services.AddScoped<IWorkflowProcessor>(sp =>
-            new ThrowingWorkflowProcessor(processorName, new InvalidOperationException("AI pipeline exploded")));
+            new ThrowingWorkflowProcessor(processorName, contentReview ? new RecipeContentReviewException("AI pipeline exploded", ["steps"]) : new InvalidOperationException("AI pipeline exploded")));
 
         // Capture published events via a mock publisher
         var publishedEvents = new List<(Guid RecipeId, string ErrorMessage, string FailedStep, object? PartialData)>();
@@ -1690,6 +1693,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
             Id = recipeId,
             Name = "Spaghetti Bolognese",
             ImageCount = 0,
+            Ingredients = contentReview ? "[\"Salt\"]" : null,
             CreatedAt = now,
             UpdatedAt = now
         };
@@ -1708,10 +1712,11 @@ public class WorkflowWorkerTests : IAsyncLifetime
             UpdatedAt = now
         };
         db.WorkflowInstances.Add(instance);
-        db.RecipeImportReports.Add(new RecipeImportReport
+        if (existingReport) db.RecipeImportReports.Add(new RecipeImportReport
         {
             RecipeId = recipeId,
             Reasons = ["ingredients"],
+            Note = "Original private feedback",
             Status = RecipeImportReportStatus.Reimporting,
             LastWorkflowInstanceId = instance.Id,
             LastAttemptAt = now
@@ -1748,7 +1753,25 @@ public class WorkflowWorkerTests : IAsyncLifetime
         Assert.Contains("AI pipeline exploded", failedTask.ErrorMessage);
 
         var failures = await new CaptureFailureService(queryDb, _clock, Mock.Of<IWorkflowOrchestrator>()).GetActiveFailuresAsync();
-        var report = await queryDb.RecipeImportReports.SingleAsync(r => r.RecipeId == recipeId);
+        var report = await queryDb.RecipeImportReports.SingleOrDefaultAsync(r => r.RecipeId == recipeId);
+        if (!existingReport)
+        {
+            if (contentReview)
+            {
+                Assert.NotNull(report);
+                Assert.Equal(RecipeImportReportStatus.ReadyToReview, report.Status);
+                Assert.Equal(["steps"], report.Reasons);
+                Assert.Contains("cooking steps", report.Note);
+                Assert.Null(report.RepairIntentId);
+            }
+            else Assert.Null(report);
+            Assert.Single(failures);
+            Assert.Single(publishedEvents);
+            testWorker.Dispose(); initCts.Dispose(); await db.DisposeAsync();
+            return;
+        }
+        Assert.NotNull(report);
+        Assert.Equal("Original private feedback", report.Note);
         if (!importFailed)
         {
             Assert.Empty(publishedEvents);

@@ -1,6 +1,25 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { Page, Route } from '@playwright/test';
-import { MOCK_IDS, setupCommonRoutes } from '../../e2e/mock-api';
+import { MOCK_IDS, builders, setupCommonRoutes } from '../../e2e/mock-api';
+import { fractionCookingRecipe } from '../../e2e/cooking-step-fixture';
+import { canonicalRecipePatchIsValid } from '../../e2e/canonical-content-input';
+import { originalInstructions } from '../lib/recipes/instruction-draft';
+
+it('fraction binding negatives retain valid saved ingredient, section and step identities', () => {
+  const recipe = fractionCookingRecipe();
+  expect(
+    canonicalRecipePatchIsValid({
+      ingredientLines: recipe.ingredientLines.map(
+        ({ provenance: _provenance, ...line }: any) => line
+      ),
+      instructionSections: originalInstructions(recipe),
+    })
+  ).toBe(true);
+  // These are the intended negative proofs, independent of row identity validity.
+  const steps = recipe.instructionSections[0].steps;
+  expect(steps[2].bindings[0].payload.fraction.d).toBe('0');
+  expect(steps[3].bindings[0].validatedTextRevision).not.toBe(steps[3].textRevision);
+});
 
 it('workflow reset mock returns the existing recovery-busy contract and preserves method routing', async () => {
   const handlers = new Map<Parameters<Page['route']>[0], (route: Route) => Promise<unknown>>();
@@ -770,4 +789,52 @@ it('known-recipe recompute replaces its source rows once and preserves unrelated
   const unrelated = snapshot.groceryItems.filter((row) => row.rowId !== rowId);
   expect(unrelated.length).toBeGreaterThan(0);
   for (const row of unrelated) expect(row.recipeIds).toEqual([MOCK_IDS.RECIPE_LASAGNA]);
+});
+
+it('reported-only search finds an incomplete flagged recipe without promoting it or losing its flag on detail read', async () => {
+  const handlers = new Map<Parameters<Page['route']>[0], (route: Route) => Promise<unknown>>();
+  const page = {
+    route: vi.fn(
+      async (pattern: Parameters<Page['route']>[0], handler: (route: Route) => Promise<unknown>) =>
+        handlers.set(pattern, handler)
+    ),
+    evaluate: vi.fn().mockResolvedValue(undefined),
+  };
+  const recipe = builders.recipe({
+    id: MOCK_IDS.RECIPE_LASAGNA,
+    isReady: false,
+    importIssue: {
+      reasons: ['ingredients', 'steps'],
+      note: null,
+      status: 'reported',
+      isReimporting: false,
+    },
+  });
+  await setupCommonRoutes(page as unknown as Page, undefined, { canonicalEditor: recipe });
+  const fulfill = vi.fn();
+  const call = async (filters: Record<string, unknown>) => {
+    fulfill.mockClear();
+    await handlers.get('**/api/recipes/search')!({
+      request: () => ({ method: () => 'POST', postDataJSON: () => ({ query: '', filters }) }),
+      fulfill,
+    } as unknown as Route);
+    const result = fulfill.mock.calls[0][0];
+    return result.json ?? JSON.parse(result.body);
+  };
+  expect((await call({})).data.results.some((item: any) => item.id === recipe.id)).toBe(false);
+  const reported = (await call({ reportedOnly: true })).data;
+  expect(reported.topPick).toBeNull();
+  expect(reported.results).toEqual([
+    expect.objectContaining({ id: recipe.id, importIssueStatus: 'reported' }),
+  ]);
+  fulfill.mockClear();
+  await handlers.get('**/api/recipes/*')!({
+    request: () => ({
+      method: () => 'GET',
+      url: () => `http://localhost/api/recipes/${recipe.id}`,
+    }),
+    fulfill,
+  } as unknown as Route);
+  const result = fulfill.mock.calls[0][0];
+  expect(JSON.parse(result.body).recipe.importIssue).toEqual(recipe.importIssue);
 });

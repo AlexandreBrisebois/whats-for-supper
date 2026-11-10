@@ -84,3 +84,57 @@ Existing recipe reporting and eligible user-triggered reimports SHALL remain ava
 #### Scenario: Reports stay separate
 - **WHEN** controlled reprocessing publishes improved facts
 - **THEN** it does not automatically resolve unrelated household feedback or claim uncertain bindings are validated
+
+
+### Requirement: Publish a witnessed fresh canonical intake before readiness
+
+A fresh intake identified by retained server-owned bootstrap and workflow launch evidence SHALL publish canonical original facts and compatible output through the same guarded producer operation before readiness. A caller flag or an unready existing row SHALL NOT establish fresh authorship. Source-authored facts SHALL remain distinct from protected legacy or unknown facts. This proposed cutover is under review; it does not enable existing-recipe repair.
+
+#### Scenario: Fresh web intake becomes normally editable
+- **WHEN** a witnessed fresh URL workflow extracts losslessly representable four-serving 200 g pasta and 100 ml sauce
+- **THEN** that producer commits canonical ingredient/step IDs, exact original facts and retained source evidence in its existing journal before readiness
+- **AND** normal guarded editing can save 250 g pasta while a dated eight-portion read and grocery demand agree on 500 g pasta once, without changing sauce's original fact
+
+#### Scenario: Unmeasured text remains a valid ingredient
+- **WHEN** a complete fresh extraction includes an ingredient whose amount or unit is honestly absent
+- **THEN** the exact ingredient wording remains in the canonical collection without a guessed number/unit, phrase whitelist or automatic household report
+
+#### Scenario: Trustworthy facts cannot be preserved in the fresh candidate
+- **WHEN** canonical preparation cannot preserve a trustworthy supplied fact together with its exact original wording
+- **THEN** the selected transaction rejects before live content/file replacement or readiness, retains the prior staged source and recipe, exposes the existing failure/retry flow and keeps recoverable recipe material accessible for manual correction through the existing flag
+- **AND** no successful legacy-only fallback is substituted for this fresh canonical publication
+
+#### Scenario: Continue nonsemantic workflow steps
+- **WHEN** the fresh canonical producer has committed and the same captured workflow performs hero/category/readiness processing
+- **THEN** those steps use current canonical facts and their existing selected field/file ownership without replacing content revisions, protected facts, original evidence or unrelated household data
+
+#### Scenario: Interrupted delivery and a later human edit
+- **WHEN** canonical intake commits before file delivery completes, then retry or late replay occurs after a newer human edit
+- **THEN** retained operation identity and input/result checks prevent duplicate IDs, provider replay and stale content/file installation over the later edit
+
+#### Scenario: No semantic use proof was produced
+- **WHEN** initial canonical intake has no independently validated ingredient-use association
+- **THEN** original step wording remains readable under existing quiet-uncertainty behavior and the operation does not claim a proven whole use or complete adjusted-step coverage
+
+### Requirement: Keep recoverable failed imports accessible through existing flags
+
+A final ingredient/usable-step validation failure with retained editable recipe content SHALL create a system flag with a short explanatory comment in the existing Ready for review queue only when no report exists. Original ingredients and steps SHALL remain editable. Existing feedback and separate failed-capture management SHALL be preserved.
+
+#### Scenario: Correct a flagged incomplete import
+- **WHEN** final content validation identifies missing ingredient or usable-step content in an import with retained editable recipe content
+- **THEN** the existing Ready for review filter exposes that recipe with its existing issue badge and original-content editor
+- **AND** saving ingredient and step corrections preserves its identity and flag, and a delayed extraction captured before the correction cannot replace it
+
+#### Scenario: Preserve existing household feedback
+- **WHEN** failed import processing encounters an existing report
+- **THEN** it preserves household reasons/note and only updates attempt diagnostics for the matching workflow
+
+Existing flag comments keep their established meaning: a nonblank note on an eligible content report may request automated repair; a flag without a note is for human review. A system explanation SHALL describe the content issue without raw diagnostics, overwriting existing comments, or launching repair. Existing commented reports retain their guarded repair behavior and complete authorship/history/state.
+
+#### Scenario: Non-content failure remains a failed capture
+- **WHEN** acquisition, provider transport, image or category processing fails without a semantic ingredient/step validation result
+- **THEN** existing failed-capture handling remains and no content-review flag is created
+
+#### Scenario: Review does not certify readiness
+- **WHEN** an incomplete recipe is flagged or manually corrected
+- **THEN** the flag does not introduce a draft status, certify unsafe automated content, resolve feedback, or change recipe readiness

@@ -20,7 +20,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests(ITestOutputHelp
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
     internal async Task WithEditor(Func<TestWebApplicationFactory, CanonicalRecipeContent, Task> check,
-        Action<WebApplication>? configureApplication = null, string? sourceUrl = null)
+        Action<WebApplication>? configureApplication = null, string? sourceUrl = null, bool realWorkflow = false)
     {
         await new TomorrowPushPostgresTests(output).WithDatabase(async settings =>
         {
@@ -29,7 +29,8 @@ public sealed partial class CanonicalIngredientEditPostgresTests(ITestOutputHelp
                 {
                     ["Calendar:TimeZone"] = "America/Toronto",
                     ["Tests:HttpUrl"] = configureApplication is null ? null : "http://127.0.0.1:0",
-                    ["Tests:PostgresConnectionString"] = settings.ConnectionString
+                    ["Tests:PostgresConnectionString"] = settings.ConnectionString,
+                    ["Tests:RealWorkflowOrchestrator"] = realWorkflow ? "true" : null
                 }, configureApplication: configureApplication);
             await TomorrowPushPostgresTests.Seed(factory);
             CanonicalRecipeContent content;
@@ -53,10 +54,14 @@ public sealed partial class CanonicalIngredientEditPostgresTests(ITestOutputHelp
 
     private static RecipeIngredientLineInput Row(RecipeIngredientLineDto row, string? amount = null) => new()
     {
-        Id = row.Id, Description = row.Description,
+        Id = row.Id,
+        Description = row.Description,
         Amount = amount is null ? row.Amount : LegacyGroceryQuantity.Parse(amount),
-        AmountText = amount ?? row.AmountText, Unit = row.Unit, Scaling = row.Scaling,
-        Package = row.Package, Shopping = row.Shopping
+        AmountText = amount ?? row.AmountText,
+        Unit = row.Unit,
+        Scaling = row.Scaling,
+        Package = row.Package,
+        Shopping = row.Shopping
     };
 
     [DeploymentCalendarPostgresTests.CalendarPostgresFact]
@@ -67,8 +72,11 @@ public sealed partial class CanonicalIngredientEditPostgresTests(ITestOutputHelp
             using var client = factory.CreateAuthenticatedClient();
             var response = await client.PatchAsJsonAsync($"/api/recipes/{Id}", new
             {
-                expectedContentRevision = before.ContentRevision, name = "Family correction", rating = 3,
-                isDiscoverable = true, mealTypes = new[] { "Supper" },
+                expectedContentRevision = before.ContentRevision,
+                name = "Family correction",
+                rating = 3,
+                isDiscoverable = true,
+                mealTypes = new[] { "Supper" },
                 ingredientLines = new[] { Row(before.IngredientLines[0], "250"), Row(before.IngredientLines[1]) }
             });
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -92,8 +100,11 @@ public sealed partial class CanonicalIngredientEditPostgresTests(ITestOutputHelp
                 Assert.Equal(HttpStatusCode.BadRequest, (await client.PatchAsJsonAsync($"/api/recipes/{Id}", invalid)).StatusCode);
             Assert.Equal(HttpStatusCode.Conflict, (await client.PatchAsJsonAsync($"/api/recipes/{Id}", new
             {
-                expectedContentRevision = before.ContentRevision, name = "Stale", rating = 1,
-                isDiscoverable = false, ingredientLines = Array.Empty<object>()
+                expectedContentRevision = before.ContentRevision,
+                name = "Stale",
+                rating = 1,
+                isDiscoverable = false,
+                ingredientLines = Array.Empty<object>()
             })).StatusCode);
             db.ChangeTracker.Clear();
             Assert.Equal(baseline, JsonSerializer.Serialize(await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == Id)));
@@ -135,8 +146,11 @@ public sealed partial class CanonicalIngredientEditPostgresTests(ITestOutputHelp
             using var client = factory.CreateAuthenticatedClient();
             var extra = Row(before.IngredientLines[0]) with
             {
-                Id = null, ClientId = "unknown-contributor", Description = "Additional pasta",
-                Amount = null, AmountText = null
+                Id = null,
+                ClientId = "unknown-contributor",
+                Description = "Additional pasta",
+                Amount = null,
+                AmountText = null
             };
             var first = await client.PatchAsJsonAsync($"/api/recipes/{Id}", new
             {
@@ -188,8 +202,11 @@ public sealed partial class CanonicalIngredientEditPostgresTests(ITestOutputHelp
             using var client = factory.CreateAuthenticatedClient();
             var payload = new UpdateRecipeDto
             {
-                ExpectedContentRevision = before.ContentRevision, Name = "Family pasta",
-                Description = "Corrected description", CuisineType = "Italian", MealTypes = ["Supper"],
+                ExpectedContentRevision = before.ContentRevision,
+                Name = "Family pasta",
+                Description = "Corrected description",
+                CuisineType = "Italian",
+                MealTypes = ["Supper"],
                 IngredientLines = JsonSerializer.SerializeToElement(new[] { Row(before.IngredientLines[0], "250"), Row(before.IngredientLines[1]) }, Json)
             };
             var wire = System.Text.Json.Nodes.JsonNode.Parse(JsonSerializer.Serialize(payload, Json))!.AsObject();
@@ -241,8 +258,12 @@ public sealed partial class CanonicalIngredientEditPostgresTests(ITestOutputHelp
             {
                 var response = await client.PatchAsJsonAsync($"/api/recipes/{Id}", new
                 {
-                    expectedContentRevision = revision, name = "Must not save", description = "Must not save",
-                    cuisineType = "Bad", mealTypes = new[] { "Lunch" }, servings = 8,
+                    expectedContentRevision = revision,
+                    name = "Must not save",
+                    description = "Must not save",
+                    cuisineType = "Bad",
+                    mealTypes = new[] { "Lunch" },
+                    servings = 8,
                     ingredientLines = new[] { Row(before.IngredientLines[0], "250") }
                 });
                 Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
@@ -294,8 +315,11 @@ public sealed partial class CanonicalIngredientEditPostgresTests(ITestOutputHelp
 
             // Accent-stripped fallback text is not proof of unchanged purchase meaning.
             var beforeLabel = CanonicalRecipeContentStore.Read(await after.ServiceProvider.GetRequiredService<RecipeDbContext>().Recipes.AsNoTracking().SingleAsync(x => x.Id == Id))!;
-            var relabel = await client.PatchAsJsonAsync($"/api/recipes/{Id}", new { expectedContentRevision = beforeLabel.ContentRevision,
-                ingredientLines = new[] { Row(beforeLabel.IngredientLines[0]) with { Shopping = new("pásta", null, null) }, Row(beforeLabel.IngredientLines[1]) } });
+            var relabel = await client.PatchAsJsonAsync($"/api/recipes/{Id}", new
+            {
+                expectedContentRevision = beforeLabel.ContentRevision,
+                ingredientLines = new[] { Row(beforeLabel.IngredientLines[0]) with { Shopping = new("pásta", null, null) }, Row(beforeLabel.IngredientLines[1]) }
+            });
             Assert.Equal(HttpStatusCode.OK, relabel.StatusCode);
             using (var scope = factory.Services.CreateScope())
                 await scope.ServiceProvider.GetRequiredService<GroceryRecomputeService>().RecomputeForWeekAsync(monday, default);
@@ -311,10 +335,22 @@ public sealed partial class CanonicalIngredientEditPostgresTests(ITestOutputHelp
             // A new second bucket creates a structural split: neither successor
             // inherits the prior purchase acknowledgement, even with shared names.
             var current = CanonicalRecipeContentStore.Read(await after.ServiceProvider.GetRequiredService<RecipeDbContext>().Recipes.AsNoTracking().SingleAsync(x => x.Id == Id))!;
-            var split = new RecipeIngredientLineInput { ClientId = "split-row", Description = "pasta", Amount = LegacyGroceryQuantity.Parse("1"), AmountText = "1", Unit = new("g", null),
-                Scaling = "proportional", Package = null, Shopping = current.IngredientLines[0].Shopping };
-            var splitResponse = await client.PatchAsJsonAsync($"/api/recipes/{Id}", new { expectedContentRevision = current.ContentRevision,
-                ingredientLines = new[] { Row(current.IngredientLines[0]), Row(current.IngredientLines[1]), split } });
+            var split = new RecipeIngredientLineInput
+            {
+                ClientId = "split-row",
+                Description = "pasta",
+                Amount = LegacyGroceryQuantity.Parse("1"),
+                AmountText = "1",
+                Unit = new("g", null),
+                Scaling = "proportional",
+                Package = null,
+                Shopping = current.IngredientLines[0].Shopping
+            };
+            var splitResponse = await client.PatchAsJsonAsync($"/api/recipes/{Id}", new
+            {
+                expectedContentRevision = current.ContentRevision,
+                ingredientLines = new[] { Row(current.IngredientLines[0]), Row(current.IngredientLines[1]), split }
+            });
             Assert.Equal(HttpStatusCode.OK, splitResponse.StatusCode);
             using (var scope = factory.Services.CreateScope())
                 await scope.ServiceProvider.GetRequiredService<GroceryRecomputeService>().RecomputeForWeekAsync(monday, default);
@@ -326,8 +362,11 @@ public sealed partial class CanonicalIngredientEditPostgresTests(ITestOutputHelp
             var checks = JsonSerializer.Deserialize<Dictionary<string, bool>>(splitPlan.GroceryState)!;
             Assert.All(successors, row => Assert.False(checks[row.RowId]));
             var splitContent = CanonicalRecipeContentStore.Read(await splitScope.ServiceProvider.GetRequiredService<RecipeDbContext>().Recipes.AsNoTracking().SingleAsync(x => x.Id == Id))!;
-            var mergeResponse = await client.PatchAsJsonAsync($"/api/recipes/{Id}", new { expectedContentRevision = splitContent.ContentRevision,
-                ingredientLines = new[] { Row(splitContent.IngredientLines[0]) with { Unit = new("g", null) }, Row(splitContent.IngredientLines[1]), Row(splitContent.IngredientLines[2]) } });
+            var mergeResponse = await client.PatchAsJsonAsync($"/api/recipes/{Id}", new
+            {
+                expectedContentRevision = splitContent.ContentRevision,
+                ingredientLines = new[] { Row(splitContent.IngredientLines[0]) with { Unit = new("g", null) }, Row(splitContent.IngredientLines[1]), Row(splitContent.IngredientLines[2]) }
+            });
             Assert.Equal(HttpStatusCode.OK, mergeResponse.StatusCode);
             using (var scope = factory.Services.CreateScope())
                 await scope.ServiceProvider.GetRequiredService<GroceryRecomputeService>().RecomputeForWeekAsync(monday, default);
@@ -348,12 +387,25 @@ public sealed partial class CanonicalIngredientEditPostgresTests(ITestOutputHelp
             using var client = factory.CreateAuthenticatedClient();
             var forms = new[] { ("zero", "0", "g"), ("Fresh basil leaves", (string?)null, (string?)null),
                 ("unit only", (string?)null, "tsp"), ("count", "⅓", (string?)null), ("range", "2–3", "cloves") };
-            var rows = forms.Select((form, index) => new { clientId = $"draft-{index}", description = form.Item1,
-                amount = form.Item2 is null ? null : LegacyGroceryQuantity.Parse(form.Item2), amountText = form.Item2,
-                unit = form.Item3 is null ? null : new RecipeUnitDto(form.Item3, null), scaling = "proportional", package = (object?)null,
-                shopping = new RecipeShoppingAssociationDto(form.Item1, null, null) }).ToArray();
-            var response = await client.PatchAsJsonAsync($"/api/recipes/{Id}", new { expectedContentRevision = before.ContentRevision,
-                description = "", cuisineType = "", mealTypes = Array.Empty<string>(), ingredientLines = rows });
+            var rows = forms.Select((form, index) => new
+            {
+                clientId = $"draft-{index}",
+                description = form.Item1,
+                amount = form.Item2 is null ? null : LegacyGroceryQuantity.Parse(form.Item2),
+                amountText = form.Item2,
+                unit = form.Item3 is null ? null : new RecipeUnitDto(form.Item3, null),
+                scaling = "proportional",
+                package = (object?)null,
+                shopping = new RecipeShoppingAssociationDto(form.Item1, null, null)
+            }).ToArray();
+            var response = await client.PatchAsJsonAsync($"/api/recipes/{Id}", new
+            {
+                expectedContentRevision = before.ContentRevision,
+                description = "",
+                cuisineType = "",
+                mealTypes = Array.Empty<string>(),
+                ingredientLines = rows
+            });
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
             using var result = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
             var savedRows = result.RootElement.GetProperty("recipe").GetProperty("ingredientLines");
@@ -382,8 +434,11 @@ public sealed partial class CanonicalIngredientEditPostgresTests(ITestOutputHelp
         await WithEditor(async (factory, before) =>
         {
             using var client = factory.CreateAuthenticatedClient();
-            var response = await client.PatchAsJsonAsync($"/api/recipes/{Id}", new { expectedContentRevision = before.ContentRevision,
-                ingredientLines = new[] { Row(before.IngredientLines[0]) with { Shopping = new("whole wheat pasta", null, null) }, Row(before.IngredientLines[1]) } });
+            var response = await client.PatchAsJsonAsync($"/api/recipes/{Id}", new
+            {
+                expectedContentRevision = before.ContentRevision,
+                ingredientLines = new[] { Row(before.IngredientLines[0]) with { Shopping = new("whole wheat pasta", null, null) }, Row(before.IngredientLines[1]) }
+            });
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
             using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
             var row = body.RootElement.GetProperty("recipe").GetProperty("ingredientLines")[0];
