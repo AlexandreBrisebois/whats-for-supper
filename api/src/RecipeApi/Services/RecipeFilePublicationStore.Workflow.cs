@@ -248,7 +248,7 @@ public sealed partial class RecipeFilePublicationStore
             foreach (var (path, value) in envelope.Output) files[path] = value;
             expected = expected with { FieldHash = publication.ResultHash, Files = files, Fields = envelope.Result };
         }
-        if (recipe.CanonicalContent is not null || Fields(recipe, expected.FieldHashVersion) != expected.FieldHash
+        if ((recipe.CanonicalContent is not null && task.ProcessorName != "RecipeReady") || Fields(recipe, expected.FieldHashVersion) != expected.FieldHash
             || await db.RecipeFilePublications.AnyAsync(x => x.RecipeId == recipeId && !x.Delivered, ct)) throw Conflict(recipe);
         await CheckFiles(expected, null, recipe, ct);
         var capture = expected with

@@ -51,6 +51,101 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
             .Invoke(null, [journal]);
 
     [DeploymentCalendarPostgresTests.CalendarPostgresFact]
+    public async Task Ready_CanonicalFactsRemainExactThroughMetadataCommitDeliveryAndReplay()
+    {
+        foreach (var pdf in new[] { true, false })
+            await WithStore(async (services, repository, store, storage) =>
+            {
+                await SeedCurrentReplayAsync(services, repository);
+                var task = await ReadyTask(services, store, repository, storage, pdf: pdf);
+                var before = await store.CaptureAsync(Id);
+                var db = services.GetRequiredService<RecipeDbContext>();
+                if (pdf)
+                {
+                    storage.FailInfo = true;
+                    await Assert.ThrowsAsync<IOException>(() => RunReady(services, store, task));
+                    Assert.False((await db.RecipeFilePublications.AsNoTracking().SingleAsync()).Delivered);
+                    Assert.True((await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == Id)).IsReady);
+                    Assert.Null((await repository.GetInfoAsync(Id, default)).IsReady);
+                }
+                else await RunReady(services, store, task);
+
+                await using var fresh = new RecipeDbContext(new DbContextOptionsBuilder<RecipeDbContext>()
+                    .UseNpgsql(db.Database.GetConnectionString()!).Options);
+                var owner = new RecipeFilePublicationStore(fresh, repository, services.GetRequiredService<IClock>(),
+                    new SupperProjectionInvalidation(fresh, services.GetRequiredService<IClock>(), services.GetRequiredService<DeploymentCalendar>()));
+                storage.FailInfo = false;
+                var events = new Mock<IScheduleEventPublisher>();
+                var receipt = await new RecipeReadyProcessor(fresh, NullLogger<RecipeReadyProcessor>.Instance,
+                    events.Object, owner).ExecuteAsync(task, default);
+                var observed = JsonSerializer.SerializeToElement(receipt, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+                Assert.Equal("Ready", observed.GetProperty("status").GetString());
+                Assert.Equal(Id, observed.GetProperty("recipeId").GetGuid());
+                events.Verify(x => x.PublishRecipeReadyAsync(Id, It.IsAny<string>(), It.IsAny<string?>(), null), Times.Once);
+                events.VerifyNoOtherCalls();
+                var after = await owner.CaptureAsync(Id);
+                Assert.Equal(JsonSerializer.Serialize(before.Fields! with { IsReady = true }), JsonSerializer.Serialize(after.Fields));
+                foreach (var (path, bytes) in before.Files.Where(x => x.Key != "recipe.info"))
+                    Assert.Equal(bytes, after.Files[path]);
+                var info = await repository.GetInfoAsync(Id, default);
+                Assert.Equal(pdf ? true : (bool?)null, info.IsReady);
+                Assert.Equal("retained private notes", info.Notes);
+                if (!pdf) Assert.Equal(before.Files["recipe.info"], after.Files["recipe.info"]);
+                var journal = await fresh.RecipeFilePublications.AsNoTracking().SingleAsync();
+                Assert.True(journal.Delivered);
+                Assert.Equal("RecipeReady\n" + HistoricalNormalizeJson(task.Payload), ReadReadyJournal(journal));
+                var writes = storage.AtomicWrites;
+                Assert.True(await owner.CompleteReadinessAsync(task, Id));
+                Assert.Equal(writes, storage.AtomicWrites);
+                Assert.Equal(journal.Payload, (await fresh.RecipeFilePublications.AsNoTracking().SingleAsync()).Payload);
+                Assert.Equal(after.Fields!.CanonicalContent, HistoricalNormalizeJson(
+                    (await fresh.Recipes.AsNoTracking().SingleAsync(x => x.Id == Id)).CanonicalContent));
+            });
+    }
+
+    [DeploymentCalendarPostgresTests.CalendarPostgresFact]
+    public async Task Ready_CanonicalEditAfterCaptureCannotBeReplacedOrFinalizedByStaleReadiness()
+    {
+        await WithStore(async (services, repository, store, storage) =>
+        {
+            var export = await SeedCurrentReplayAsync(services, repository);
+            var task = await ReadyTask(services, store, repository, storage);
+            var db = services.GetRequiredService<RecipeDbContext>();
+            var editor = services.GetRequiredService<CanonicalRecipeContentStore>();
+            await editor.EditAsync(Id, export.Content.SourceRevision, Guid.NewGuid(), new RecipeApi.Dto.UpdateRecipeDto
+            { ExpectedContentRevision = export.Content.ContentRevision, Servings = 5 });
+            var changed = (await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == Id)).CanonicalContent;
+            await Assert.ThrowsAsync<RecipeContentConflictException>(() => RunReady(services, store, task));
+            var actual = await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == Id);
+            Assert.Equal(changed, actual.CanonicalContent);
+            Assert.False(actual.IsReady);
+            Assert.False(await db.RecipeFilePublications.AnyAsync());
+            Assert.Null((await repository.GetInfoAsync(Id, default)).IsReady);
+            Assert.Equal(RecipeExportContent.WriteCurrent(export), await repository.GetRecipeJsonAsync(Id, default));
+        });
+    }
+
+    [DeploymentCalendarPostgresTests.CalendarPostgresFact]
+    public async Task Ready_CanonicalPermissionDoesNotAuthorizeExtractionOrSemanticReplacement()
+    {
+        await WithStore(async (services, repository, store, storage) =>
+        {
+            var export = await SeedCurrentReplayAsync(services, repository);
+            var ready = await ReadyTask(services, store, repository, storage, extraction: true);
+            var db = services.GetRequiredService<RecipeDbContext>();
+            var extract = await db.WorkflowTasks.SingleAsync(x => x.InstanceId == ready.InstanceId && x.ProcessorName == "ExtractRecipe");
+            await Assert.ThrowsAsync<RecipeContentConflictException>(() => store.CaptureForTaskAsync(extract, Id));
+            var before = await store.CaptureAsync(Id);
+            await Assert.ThrowsAsync<RecipeContentConflictException>(() => store.PublishAsync(before, Candidate(), Guid.NewGuid()));
+            Assert.False(await db.RecipeFilePublications.AnyAsync());
+            var after = await store.CaptureAsync(Id);
+            Assert.Equal(JsonSerializer.Serialize(before.Fields), JsonSerializer.Serialize(after.Fields));
+            Assert.Equal(RecipeExportContent.WriteCurrent(export), await repository.GetRecipeJsonAsync(Id, default));
+            Assert.False((await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == Id)).IsReady);
+        });
+    }
+
+    [DeploymentCalendarPostgresTests.CalendarPostgresFact]
     public async Task Ready_UsesCapturedExtractionAncestor_AndBothJournalsReadBackThroughTheirOwner()
     {
         await WithStore(async (services, repository, store, storage) =>

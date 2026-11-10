@@ -124,7 +124,8 @@ public sealed partial class RecipeFilePublicationStore(RecipeDbContext db, Recip
             }
             else
             {
-                if (candidate.SourceKind != "bootstrap" && ((recipe.CanonicalContent is not null && candidate.SourceKind != "canonical-export") || capture.FieldHash != Fields(recipe, capture.FieldHashVersion)
+                // Readiness selects metadata only; it never reopens canonical facts.
+                if (candidate.SourceKind != "bootstrap" && ((recipe.CanonicalContent is not null && candidate.SourceKind is not ("canonical-export" or "readiness")) || capture.FieldHash != Fields(recipe, capture.FieldHashVersion)
                     || capture.ContentRevision != CanonicalRecipeContentStore.InspectContentRevision(recipe)
                     || capture.SourceRevision != CanonicalRecipeContentStore.InspectSourceRevision(recipe)
                     || await db.RecipeFilePublications.AnyAsync(x => x.RecipeId == recipe.Id && !x.Delivered, ct)))
@@ -178,7 +179,7 @@ public sealed partial class RecipeFilePublicationStore(RecipeDbContext db, Recip
         if (publication.Delivered) return;
         var envelope = ReadEnvelope(publication);
         if (envelope.Candidate.SourceKind == "readiness" && !recipe.IsReady) throw Conflict(recipe);
-        if ((recipe.CanonicalContent is not null && envelope.Candidate.SourceKind != "canonical-export") || Fields(recipe, envelope.Capture.FieldHashVersion) != publication.ResultHash) throw Conflict(recipe);
+        if ((recipe.CanonicalContent is not null && envelope.Candidate.SourceKind is not ("canonical-export" or "readiness")) || Fields(recipe, envelope.Capture.FieldHashVersion) != publication.ResultHash) throw Conflict(recipe);
         // Validate every file before the first replacement, accepting the exact
         // candidate for already delivered files after an interrupted attempt.
         await CheckFiles(envelope.Capture, envelope.Output, recipe, ct);
