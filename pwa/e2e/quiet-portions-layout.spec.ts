@@ -9,6 +9,8 @@ import {
   mockSupperServings,
 } from './mock-api';
 
+const visualEvidence = Boolean(process.env.WFS_GROUP5_RENDER_PHASE);
+
 for (const locale of ['en', 'fr'] as const) {
   test.describe(`quiet portions geometry ${locale}`, () => {
     test.use({ appLocale: locale });
@@ -89,10 +91,11 @@ for (const locale of ['en', 'fr'] as const) {
           exact: true,
         });
         await preview.scrollIntoViewIfNeeded();
-        await page.screenshot({
-          path: info.outputPath(`${width}-${scale}-default.png`),
-          animations: 'disabled',
-        });
+        if (visualEvidence)
+          await page.screenshot({
+            path: info.outputPath(`${width}-${scale}-default.png`),
+            animations: 'disabled',
+          });
         const geometry = await page.getByTestId('recipe-detail-sheet').evaluate((el) => ({
           width: innerWidth,
           height: innerHeight,
@@ -119,10 +122,11 @@ for (const locale of ['en', 'fr'] as const) {
         );
         await expect(page.getByTestId('recipe-original-yield')).toContainText('2');
         await expect(page.getByTestId('recipe-instruction-limitation')).toBeVisible();
-        await page.screenshot({
-          path: info.outputPath(`${width}-${scale}-preview.png`),
-          animations: 'disabled',
-        });
+        if (visualEvidence)
+          await page.screenshot({
+            path: info.outputPath(`${width}-${scale}-preview.png`),
+            animations: 'disabled',
+          });
         await expect(
           page.getByRole('button', {
             name: /^(Original quantities|Planned quantities|Quantités d’origine|Quantités prévues)$/,
@@ -155,10 +159,11 @@ for (const locale of ['en', 'fr'] as const) {
             exact: true,
           })
         ).toBeFocused();
-        await page.screenshot({
-          path: info.outputPath(`${width}-${scale}-original.png`),
-          animations: 'disabled',
-        });
+        if (visualEvidence)
+          await page.screenshot({
+            path: info.outputPath(`${width}-${scale}-original.png`),
+            animations: 'disabled',
+          });
         await expect(page.getByTestId('recipe-original-yield')).toContainText('2');
         await page.getByTestId('action-gear-menu').click();
         const back = page.getByTestId('action-reset-view');
@@ -180,14 +185,16 @@ for (const locale of ['en', 'fr'] as const) {
         metrics.push({ locale, scale, ...geometry });
       }
       expect(writes).toEqual([]);
-      writeFileSync(
-        info.outputPath('quiet-portions-geometry.json'),
-        JSON.stringify(metrics, null, 2)
-      );
-      await info.attach('quiet-portions-geometry.json', {
-        body: JSON.stringify(metrics, null, 2),
-        contentType: 'application/json',
-      });
+      if (visualEvidence)
+        writeFileSync(
+          info.outputPath('quiet-portions-geometry.json'),
+          JSON.stringify(metrics, null, 2)
+        );
+      if (visualEvidence)
+        await info.attach('quiet-portions-geometry.json', {
+          body: JSON.stringify(metrics, null, 2),
+          contentType: 'application/json',
+        });
     });
   });
 }
@@ -209,6 +216,22 @@ async function captureState(
   target: Locator,
   controls: Locator[]
 ) {
+  // These are acceptance checks, independent of optional screenshot artifacts.
+  await expect(target).toBeVisible();
+  await expect
+    .poll(() =>
+      page.getByTestId('recipe-detail-sheet').evaluate((sheet) => {
+        const reading = sheet.querySelector<HTMLElement>('[data-testid="recipe-detail-reading"]')!;
+        return sheet.scrollWidth <= sheet.clientWidth && reading.scrollWidth <= reading.clientWidth;
+      })
+    )
+    .toBe(true);
+  for (const control of controls) {
+    const box = (await control.boundingBox())!;
+    expect(box.width).toBeGreaterThanOrEqual(48);
+    expect(box.height).toBeGreaterThanOrEqual(48);
+  }
+  if (!visualEvidence) return;
   await page.evaluate(() => document.fonts.ready);
   await target.scrollIntoViewIfNeeded();
   await expect(target).toBeInViewport();
@@ -244,7 +267,8 @@ async function captureState(
     expect(box.width).toBeGreaterThanOrEqual(48);
     targets.push({ label: await control.innerText(), ...box });
   }
-  await page.screenshot({ path: info.outputPath(`${name}.png`), animations: 'disabled' });
+  if (visualEvidence)
+    await page.screenshot({ path: info.outputPath(`${name}.png`), animations: 'disabled' });
   const record = { name, ...measure, target: targetBox, controls: targets };
   writeFileSync(info.outputPath(`${name}-geometry.json`), JSON.stringify(record, null, 2));
 }

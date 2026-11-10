@@ -1,4 +1,8 @@
-import { fixtureGroceryId, fixtureGroceryChecks } from '../src/testing/grocery-fixtures';
+import {
+  scalarQuantity,
+  fixtureGroceryId,
+  fixtureGroceryChecks,
+} from '../src/testing/grocery-fixtures';
 /**
  * E2E — Grocery List: PATCH failure behaviour
  *
@@ -22,6 +26,80 @@ import {
 
 test.beforeEach(async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
+});
+
+test('known unitless amounts preserve shopping rows and source disclosure without writes', async ({
+  page,
+  baseURL,
+}) => {
+  const { groceryRows } = await setupCommonRoutes(page);
+  await page
+    .context()
+    .addCookies([{ name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: baseURL! }]);
+  const snapshot = {
+    ...builders.scheduleDays(),
+    groceryItems: builders.groceryItems(['Garlic', 'Salt']).map((row, index) => ({
+      ...row,
+      quantity: scalarQuantity(index === 0 ? 0 : 2),
+      unitText: index === 0 ? null : '   ',
+      quantityComplete: index === 0,
+      recipeIds: [MOCK_IDS.RECIPE_LASAGNA],
+    })),
+  };
+  snapshot.days[0].recipe = builders.scheduleRecipe({
+    id: MOCK_IDS.RECIPE_LASAGNA,
+    name: 'Family lasagna',
+  });
+  groceryRows.decorate(snapshot);
+  // Seed an accepted check through the existing row owner; decoration alone
+  // intentionally starts new rows unchecked.
+  const checked = groceryRows.mutate(snapshot.weekStartDate, 'item', {
+    rowId: snapshot.groceryItems[1].rowId,
+    weekStartDate: snapshot.weekStartDate,
+    expectedRowVersion: snapshot.groceryItems[1].rowVersion,
+    checked: true,
+    clientMutationId: '04000000-0000-4000-8000-000000000099',
+  });
+  expect(checked.status).toBe(200);
+  Object.assign(snapshot, groceryRows.snapshot(snapshot.weekStartDate));
+  const before = structuredClone(snapshot);
+  const writes: string[] = [];
+  page.on('request', (request) => {
+    if (
+      new URL(request.url()).pathname.startsWith('/api/') &&
+      !['GET', 'HEAD'].includes(request.method())
+    )
+      writes.push(`${request.method()} ${new URL(request.url()).pathname}`);
+  });
+  await page.route(
+    (url) => url.pathname === '/api/schedule',
+    (route) => route.fulfill({ json: { data: snapshot } })
+  );
+  await mockSseWithConnectedSchedule(
+    page,
+    snapshot as unknown as Parameters<typeof mockSseWithConnectedSchedule>[1]
+  );
+  await page.goto('/planner?tab=grocery');
+  await page.getByTestId('grocery-tab').click();
+  await expect(page.getByTestId('grocery-item-checkbox')).toHaveCount(2);
+  const salt = page.locator(`[data-row-id="${snapshot.groceryItems[1].rowId}"]`);
+  await expect(salt).toHaveAttribute('aria-checked', 'true');
+  await expect(
+    page.getByTestId('grocery-item-quantity-hint').filter({ hasText: /^\(0\)$/ })
+  ).toHaveCount(1);
+  await expect(
+    page.getByTestId('grocery-item-quantity-hint').filter({ hasText: /^2 known$/ })
+  ).toHaveCount(1);
+  await page.getByRole('button', { name: 'Source recipes for Salt', exact: true }).click();
+  await expect(
+    page.getByTestId('grocery-recipe-sources-region').getByRole('link', { name: 'Family lasagna' })
+  ).toBeVisible();
+  await expect(salt).toHaveAttribute('aria-checked', 'true');
+  await expect(
+    page.getByTestId('aisle-section-Pantry').getByTestId('grocery-item-checkbox')
+  ).toHaveCount(2);
+  expect(snapshot).toEqual(before);
+  expect(writes).toEqual([]);
 });
 
 test('opaque water row controls remain independent from other buckets and the extra', async ({

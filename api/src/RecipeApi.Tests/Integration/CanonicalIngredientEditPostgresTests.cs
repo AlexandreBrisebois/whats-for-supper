@@ -13,7 +13,7 @@ using Microsoft.AspNetCore.Builder;
 
 namespace RecipeApi.Tests.Integration;
 
-// Explicit test-only composition. Production has no canonical store registration.
+// Exercise the default guarded editor after explicit recipe conversion.
 public sealed partial class CanonicalIngredientEditPostgresTests(ITestOutputHelper output)
 {
     private static readonly Guid Id = TomorrowPushPostgresTests.Selected;
@@ -30,8 +30,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests(ITestOutputHelp
                     ["Calendar:TimeZone"] = "America/Toronto",
                     ["Tests:HttpUrl"] = configureApplication is null ? null : "http://127.0.0.1:0",
                     ["Tests:PostgresConnectionString"] = settings.ConnectionString
-                }, configureApplication: configureApplication,
-                configureServices: services => services.AddScoped<CanonicalRecipeContentStore>());
+                }, configureApplication: configureApplication);
             await TomorrowPushPostgresTests.Seed(factory);
             CanonicalRecipeContent content;
             using (var scope = factory.Services.CreateScope())

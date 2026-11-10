@@ -1330,21 +1330,62 @@ describe('GroceryList — quantity hints', () => {
     expect(screen.queryByText(/piece/)).not.toBeInTheDocument();
   });
 
-  it('does not show the amount hint when unitText is missing', () => {
+  it.each([null, '', '   '])(
+    'shows a trusted scalar without inventing a blank unit (%j)',
+    (unitText) => {
+      render(
+        <GroceryList
+          weekOffset={0}
+          items={[
+            makeItem('Milk', 'Pantry', 'milk', {
+              quantity: scalarQuantity(2),
+              unitText,
+            }),
+          ]}
+        />
+      );
+      expect(screen.getByTestId('grocery-item-quantity-hint')).toHaveTextContent(/^\(2\)$/);
+    }
+  );
+
+  it.each([
+    { quantity: scalarQuantity(0), expected: '(0)' },
+    { quantity: scalarQuantity(0.5), expected: '(0.5)' },
+    {
+      quantity: { kind: 'range', min: { n: '2', d: '1' }, max: { n: '3', d: '1' } },
+      expected: '(2–3)',
+    },
+  ])('shows trusted unitless $expected', ({ quantity, expected }) => {
     render(
       <GroceryList
         weekOffset={0}
         items={[
           makeItem('Milk', 'Pantry', 'milk', {
-            quantity: scalarQuantity(2),
+            quantity,
             unitText: null,
           }),
         ]}
       />
     );
+    expect(screen.getByTestId('grocery-item-quantity-hint').textContent).toBe(expected);
+  });
 
-    expect(screen.getByText('Milk')).toBeInTheDocument();
-    expect(screen.queryByText(/\(2/)).not.toBeInTheDocument();
+  it('preserves unit-bearing precision and hides genuinely missing or unreadable amounts', () => {
+    render(
+      <GroceryList
+        weekOffset={0}
+        items={[
+          makeItem('Milk', 'Pantry', 'milk', { quantity: scalarQuantity(1.23456), unitText: 'kg' }),
+          makeItem('Onion', 'Produce', 'onion', { quantity: null, unitText: null }),
+          makeItem('Rice', 'Pantry', 'rice', {
+            quantity: { kind: 'scalar', value: { n: '1', d: '0' } },
+            unitText: '',
+          }),
+        ]}
+      />
+    );
+    expect(screen.getAllByTestId('grocery-item-quantity-hint')).toHaveLength(1);
+    expect(screen.getByTestId('grocery-item-quantity-hint').textContent).toBe('(1.235 kg)');
   });
 });
 

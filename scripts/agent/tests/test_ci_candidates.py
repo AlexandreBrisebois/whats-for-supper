@@ -163,6 +163,107 @@ class PipelineTests(unittest.TestCase):
         changed['prepared/prepared-browser.json']['suites'][0]['specs'][-1] = spec(optional)
         self.assertNotEqual(run(changed).returncode, 0, 'Optional canonical branch must remain explicitly accounted for by its separate owner')
 
+    def test_grocery_live_owner_is_selected_and_guarded(self):
+        job = yaml.safe_load((ROOT / '.github/workflows/validate.yml').read_text())['jobs']['cooking-step-live']
+        steps = job['steps']
+        run = next(step for step in steps if step.get('name') == 'Run required grocery checks live')
+        guard = next(step for step in steps if step.get('name') == 'Require grocery checks live results')
+        self.assertIn('FullyQualifiedName=RecipeApi.Tests.Integration.GroceryCheckConcurrencyPostgresTests.LiveBrowser_IndependentWaterRowsConvergeAndRejectOlderSnapshot', run['run'])
+        self.assertIn('--results-directory .task/grocery-live/checks', run['run'])
+        self.assertIn('/.task/grocery-live/checks', run['env']['WFS_LIVE_ARTIFACT_ROOT'])
+        self.assertEqual(job['env']['WFS_CALENDAR_LIVE'], '1')
+        self.assertLess(steps.index(run), steps.index(guard))
+        self.assertNotIn('continue-on-error', run)
+        text = (ROOT / 'api/src/RecipeApi.Tests/Integration/GroceryCheckConcurrencyPostgresTests.Live.cs').read_text()
+        for token in ['--workers=1', '--retries=0', 'PLAYWRIGHT_JSON_OUTPUT_NAME', 'WFS_LIVE_ARTIFACT_ROOT']:
+            self.assertIn(token, text)
+        upload = next(step for step in steps if step.get('name') == 'Upload cooking live results')
+        self.assertIn('.task/grocery-live/', upload['with']['path'])
+
+    def test_grocery_live_guard_fails_closed(self):
+        import copy
+        import json
+        import subprocess
+        import tempfile
+        import xml.etree.ElementTree as ET
+        steps = yaml.safe_load((ROOT / '.github/workflows/validate.yml').read_text())['jobs']['cooking-step-live']['steps']
+        guard = next(step['run'] for step in steps if step.get('name') == 'Require grocery checks live results')
+        owner = 'RecipeApi.Tests.Integration.GroceryCheckConcurrencyPostgresTests.LiveBrowser_IndependentWaterRowsConvergeAndRejectOlderSnapshot'
+        title = 'independent water checks converge and an older snapshot cannot restore stale checks'
+        good = {'suites': [{'specs': [{'title': title, 'tests': [{'status': 'expected', 'results': [{'status': 'passed', 'retry': 0}]}]}]}]}
+        def execute(report=good, native='Passed', missing=None, name=owner):
+            with tempfile.TemporaryDirectory() as directory:
+                root = Path(directory) / '.task/grocery-live/checks'
+                root.mkdir(parents=True)
+                if missing != 'native':
+                    tree = ET.Element('TestRun'); results = ET.SubElement(tree, 'Results')
+                    if native != 'empty': ET.SubElement(results, 'UnitTestResult', testName=name, outcome=native)
+                    ET.ElementTree(tree).write(root / 'native.trx')
+                if missing != 'browser': (root / 'browser.json').write_text(json.dumps(report))
+                return subprocess.run(['bash', '-c', guard], cwd=directory, capture_output=True, text=True).returncode
+        self.assertEqual(execute(), 0)
+        for kind in ['native', 'browser']:
+            with self.subTest(missing=kind): self.assertNotEqual(execute(missing=kind), 0)
+        for outcome in ['empty', 'NotExecuted', 'Failed']:
+            with self.subTest(native=outcome): self.assertNotEqual(execute(native=outcome), 0)
+        self.assertNotEqual(execute(name='another.owner'), 0)
+        for outcome in ['empty', 'skipped', 'failed', 'retry', 'extra']:
+            changed = copy.deepcopy(good)
+            specs = changed['suites'][0]['specs']
+            if outcome == 'empty': specs.clear()
+            elif outcome == 'extra': specs.append(copy.deepcopy(specs[0]))
+            elif outcome == 'retry': specs[0]['tests'][0]['results'].append({'status': 'passed', 'retry': 1})
+            else:
+                specs[0]['tests'][0]['status'] = 'skipped' if outcome == 'skipped' else 'unexpected'
+                specs[0]['tests'][0]['results'][0]['status'] = outcome
+            with self.subTest(browser=outcome): self.assertNotEqual(execute(report=changed), 0)
+
+    def test_grocery_canonical_dependencies_are_selected_and_fail_closed(self):
+        import copy
+        import json
+        import subprocess
+        import tempfile
+        import xml.etree.ElementTree as ET
+        steps = yaml.safe_load((ROOT / '.github/workflows/validate.yml').read_text())['jobs']['cooking-step-live']['steps']
+        run = next(step for step in steps if step.get('name') == 'Run required grocery canonical dependencies')
+        guard = next(step for step in steps if step.get('name') == 'Require grocery canonical dependency results')
+        names = ['LiveBrowser_CanonicalIngredientCorrection', 'LiveBrowser_CanonicalMixedIncompleteBaseline']
+        titles = [
+            'original correction, refresh recovery and concurrent grocery checks use the real generated client API and database',
+            'mixed incomplete baseline keeps its grocery check when unknown demand becomes known while a separate proven increase resets',
+        ]
+        for name in names:
+            self.assertIn('FullyQualifiedName=RecipeApi.Tests.Integration.CanonicalIngredientEditPostgresTests.' + name, run['run'])
+        self.assertIn('--results-directory .task/grocery-live/canonical', run['run'])
+        self.assertIn('/.task/grocery-live/canonical', run['env']['WFS_CANONICAL_EVIDENCE'])
+        self.assertEqual(run['env']['WFS_CANONICAL_BROWSER_ROOT'], '${{ github.workspace }}')
+        self.assertLess(steps.index(run), steps.index(guard))
+        self.assertNotIn('continue-on-error', run)
+        def execute(native='Passed', browser='passed', absent=None):
+            with tempfile.TemporaryDirectory() as directory:
+                root = Path(directory) / '.task/grocery-live/canonical'; root.mkdir(parents=True)
+                if absent != 'native':
+                    tree = ET.Element('TestRun'); results = ET.SubElement(tree, 'Results')
+                    for name in names[:0 if native == 'empty' else 2]:
+                        ET.SubElement(results, 'UnitTestResult', testName='RecipeApi.Tests.Integration.CanonicalIngredientEditPostgresTests.' + name, outcome=native)
+                    ET.ElementTree(tree).write(root / 'native.trx')
+                for folder, title in zip(['correction', 'mixed'], titles):
+                    if absent == folder: continue
+                    (root / folder).mkdir()
+                    result = {'status': browser, 'retry': 1 if browser == 'retry' else 0}
+                    tests = [{'status': 'expected' if browser in ['passed', 'retry'] else 'unexpected', 'results': [result]}]
+                    report = {'suites': [{'specs': [{'title': title, 'tests': tests}]}]}
+                    if browser == 'extra': report['suites'][0]['specs'].append(copy.deepcopy(report['suites'][0]['specs'][0]))
+                    (root / folder / 'browser-results.json').write_text(json.dumps(report))
+                return subprocess.run(['bash', '-c', guard['run']], cwd=directory, capture_output=True).returncode
+        self.assertEqual(execute(), 0)
+        for missing in ['native', 'correction', 'mixed']:
+            with self.subTest(missing=missing): self.assertNotEqual(execute(absent=missing), 0)
+        for outcome in ['empty', 'NotExecuted', 'Failed']:
+            with self.subTest(native=outcome): self.assertNotEqual(execute(native=outcome), 0)
+        for outcome in ['skipped', 'failed', 'retry', 'extra']:
+            with self.subTest(browser=outcome): self.assertNotEqual(execute(browser=outcome), 0)
+
     def test_e2e_has_four_suites_and_one_build(self):
         jobs = yaml.safe_load((ROOT / '.github/workflows/validate.yml').read_text())['jobs']
         self.assertIn('pwa-build', jobs)

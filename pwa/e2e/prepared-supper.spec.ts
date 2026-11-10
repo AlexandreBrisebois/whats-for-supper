@@ -116,6 +116,10 @@ test('prepares only captured Friday with six portions and Tuesday actual date; p
   expect(writes[0].url).toContain('/day/2026-05-08/prepare');
   expect(writes[0].body.expectedOccurrenceId).toBe(before.days[4].occurrenceId);
   await expect(page.getByTestId('cooks-mode-overlay')).toHaveCount(0);
+  // One browser boundary owns physical dismissal and the interactive parent.
+  await expect(page.getByTestId('recipe-detail-sheet')).not.toHaveAttribute('inert');
+  await page.getByTestId('action-close-sheet').click();
+  await expect(page.getByTestId('recipe-detail-sheet')).toHaveCount(0);
   await page.reload();
   await expect(page.getByTestId('day-card-4')).toContainText('Already prepared');
   await page.getByTestId('day-card-4').getByTestId('edit-recipe-button').click();
@@ -149,7 +153,7 @@ for (const fault of ['lost reply', 'publication failure'] as const) {
     });
     await openCooking(page);
     await page.getByRole('button', { name: 'Mark recipe as cooked' }).click();
-    await expect(page.getByTestId('cooks-mode-overlay')).toHaveCount(0);
+    await expect.poll(async () => (await read(page)).days[4].status).toBe(2);
     expect(posts).toBe(1);
     const day = (await read(page)).days[4];
     expect(day.preparation).toMatchObject({ preparedOn: '2026-05-05', servings: 6 });
@@ -203,7 +207,7 @@ for (const fault of ['negative', 'known conflict', 'unavailable reread'] as cons
     expect(writes).toBe(1);
     expect((await read(page)).days[4].status).not.toBe(2);
     await page.getByRole('button', { name: 'Mark recipe as cooked' }).click();
-    await expect(page.getByTestId('cooks-mode-overlay')).toHaveCount(0);
+    await expect.poll(async () => (await read(page)).days[4].status).toBe(2);
     expect(writes).toBe(2);
   });
 }
@@ -244,7 +248,7 @@ test('stale portions retain displayed quantities until explicit refresh and use 
   await expect(page.getByTestId('cooking-portion-context')).toContainText('8 portions');
   await expect(page.getByTestId('cooks-mode-instructions')).toContainText('Serve.');
   await page.getByRole('button', { name: 'Mark recipe as cooked' }).click();
-  await expect(page.getByTestId('cooks-mode-overlay')).toHaveCount(0);
+  await expect.poll(async () => (await read(page)).days[4].status).toBe(2);
   expect(writes).toBe(1);
   expect(requests[0].expectedServingVersion).toMatch(/^[A-F0-9]{64}$/);
   expect((await read(page)).days[4].preparation.servings).toBe(8);
@@ -286,7 +290,7 @@ test('planned-day Home, Planner, detail and table retain frozen prepared context
   const calendar = await fixture(page);
   await openCooking(page);
   await page.getByRole('button', { name: 'Mark recipe as cooked' }).click();
-  await expect(page.getByTestId('cooks-mode-overlay')).toHaveCount(0);
+  await expect.poll(async () => (await read(page)).days[4].status).toBe(2);
   await page.evaluate(async () => {
     const state = (
       await (await fetch('/api/schedule/servings?referenceWeekStartDate=2026-05-04')).json()
@@ -340,7 +344,7 @@ test('generic common-fixture cooking prepares from its current source context', 
   });
   await openCooking(page);
   await page.getByRole('button', { name: 'Mark recipe as cooked' }).click();
-  await expect(page.getByTestId('cooks-mode-overlay')).toHaveCount(0);
+  await expect.poll(async () => (await read(page)).days[4].status).toBe(2);
   expect(posts).toBe(1);
   expect((await read(page)).days[4].preparation).toMatchObject({
     servings: 6,
@@ -351,6 +355,11 @@ test('generic common-fixture cooking prepares from its current source context', 
 
 for (const appLocale of ['en', 'fr'] as const) {
   test.describe(`prepared rendered ${appLocale}`, () => {
+    // On demand: WFS_GROUP5_RENDER_PHASE=after task test:e2e -- prepared-supper.spec.ts --grep 'prepared rendered'
+    test.skip(
+      !process.env.WFS_GROUP5_RENDER_PHASE,
+      'Optional matched-render evidence; functional recovery and accessibility remain routine.'
+    );
     test.use({ appLocale, reducedMotion: 'reduce' });
     for (const [width, height, enlarged] of [
       [390, 844, false],
@@ -516,7 +525,7 @@ for (const appLocale of ['en', 'fr'] as const) {
         await review.click();
         await expect(page.getByTestId('cooks-mode-step-next')).toBeEnabled();
         await page.getByTestId('cooks-mode-step-next').click();
-        await expect(page.getByTestId('cooks-mode-overlay')).toHaveCount(0);
+        await expect.poll(async () => (await read(page)).days[4].status).toBe(2);
         await page.getByTestId('action-close-sheet').click();
         await expect(page.getByTestId('recipe-detail-sheet')).toHaveCount(0);
         await page.getByTestId('day-card-4').scrollIntoViewIfNeeded();

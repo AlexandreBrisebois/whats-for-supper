@@ -78,6 +78,7 @@ public partial class ManagementService(
         var historyRecipeIds = await db.WeeklyHouseholdInterests.Select(h => h.RecipeId).Distinct().ToArrayAsync();
         var recipes = await db.Recipes.IgnoreQueryFilters().AsNoTracking().Where(r => r.DeletedAt == null || historyRecipeIds.Contains(r.Id)).ToListAsync();
         int backedUpCount = 0;
+        var canonicalBackupIds = new List<Guid>();
         foreach (var recipe in recipes)
         {
             await using var pdfSource = await recipeStore.ReadSourcePdfAsync(recipe.Id);
@@ -86,6 +87,7 @@ public partial class ManagementService(
                        || (!string.IsNullOrEmpty(recipe.Name) && recipe.IsSynthesized);
             if (!historyRecipeIds.Contains(recipe.Id) && pdfSource is null && !isReady &&
                 string.IsNullOrEmpty(recipe.RawMetadata) &&
+                recipe.CanonicalContent is null &&
                 string.IsNullOrEmpty(recipe.Notes) &&
                 recipe.Rating == RecipeRating.Unknown)
             {
@@ -96,6 +98,14 @@ public partial class ManagementService(
             var existing = await recipeStore.ReadInfoAsync(recipe.Id);
             if (existing != null)
             {
+                if (recipe.CanonicalContent is not null)
+                {
+                    existing.AddedBy = recipe.AddedBy;
+                    existing.CreatedAt = recipe.CreatedAt;
+                    existing.ImageCount = recipe.ImageCount;
+                    existing.FinishedDishImageIndex = recipe.FinishedDishIndex;
+                    existing.IsReady = recipe.IsReady;
+                }
                 existing.RotationVersion = 1;
                 if (pdfSource is not null || historyRecipeIds.Contains(recipe.Id)) existing.IsReady = recipe.IsReady;
                 existing.DeletedAt = recipe.DeletedAt;
@@ -123,7 +133,7 @@ public partial class ManagementService(
             {
                 var info = new RecipeInfo
                 {
-                    IsReady = pdfSource is not null || historyRecipeIds.Contains(recipe.Id) ? recipe.IsReady : null,
+                    IsReady = recipe.CanonicalContent is not null || pdfSource is not null || historyRecipeIds.Contains(recipe.Id) ? recipe.IsReady : null,
                     DeletedAt = recipe.DeletedAt,
                     Id = recipe.Id,
                     Notes = recipe.Notes,
@@ -132,6 +142,7 @@ public partial class ManagementService(
                     Name = recipe.Name,
                     AddedBy = recipe.AddedBy,
                     ImageCount = recipe.ImageCount,
+                    FinishedDishImageIndex = recipe.FinishedDishIndex,
                     IsSynthesized = recipe.IsSynthesized,
                     CreatedAt = recipe.CreatedAt,
                     Category = recipe.Category,
@@ -155,6 +166,7 @@ public partial class ManagementService(
             // Refresh supported content, including cleared values, without touching media.
             await recipeStore.WriteRecipeJsonAsync(recipe.Id, SerializeRecipeBackup(recipe));
 
+            if (recipe.CanonicalContent is not null) canonicalBackupIds.Add(recipe.Id);
             backedUpCount++;
         }
 
@@ -274,6 +286,7 @@ public partial class ManagementService(
 
         await ExportSupperServingsAsync(CancellationToken.None);
         await ExportInterestAsync(Path.Combine(DataRoot, "weekly-household-interest.json"), CancellationToken.None, boundaryHeld: true);
+        await WriteCanonicalBackupInventoryAsync(canonicalBackupIds, CancellationToken.None);
         if (snapshotTransaction is not null) await snapshotTransaction.CommitAsync();
         logger.LogInformation("Backed up {Count} recipes", backedUpCount);
         return new { Message = $"Updated/Created {backedUpCount} metadata files. Weekly plans and calendar events also backed up.", FilesProcessed = backedUpCount };
@@ -799,6 +812,8 @@ public partial class ManagementService(
 
     private static string SerializeRecipeBackup(Recipe recipe)
     {
+        if (CanonicalRecipeContentStore.Read(recipe) is { } content)
+            return RecipeExportContent.WriteCurrent(new(recipe.Id, content, recipe.RawMetadata));
         var root = JsonSerializer.SerializeToNode(recipe, _cycleIgnoreOptions)?.AsObject()
             ?? throw new InvalidOperationException("Recipe backup serialization did not produce an object.");
         RemoveRetiredRecipeFields(root);
@@ -857,6 +872,7 @@ public partial class ManagementService(
     public async Task<SeedResult> RestoreAsync(CancellationToken ct = default)
     {
         demoMode.EnsureManagementAvailable();
+        var canonicalInputs = await PreflightCanonicalSeedAsync(ct);
         var result = new SeedResult();
         SupperServingsBackup? servingBackup = null;
         try { servingBackup = await ReadSupperServingsAsync(ct); }
@@ -918,6 +934,7 @@ public partial class ManagementService(
         logger.LogInformation("Found {Count} recipes in store", recipeIds.Count);
         var missingMemberIds = new HashSet<Guid>();
         var recipesToRestore = new List<Recipe>();
+        var canonicalSeedConflicts = new HashSet<Guid>();
         var pendingPdfIds = new HashSet<Guid>();
         var explicitReadiness = new Dictionary<Guid, bool>();
 
@@ -942,7 +959,9 @@ public partial class ManagementService(
 
                 if (hasInfo)
                 {
-                    var info = await recipeStore.ReadInfoAsync(recipeId, ct);
+                    var info = canonicalInputs.TryGetValue(recipeId, out var canonicalInfo)
+                        ? JsonSerializer.Deserialize<RecipeInfo>(canonicalInfo.Info, JsonDefaults.CamelCase)
+                        : await recipeStore.ReadInfoAsync(recipeId, ct);
                     if (info != null)
                     {
                         if (info.RotationVersion is < 0 or > 1 ||
@@ -994,7 +1013,8 @@ public partial class ManagementService(
 
                 if (hasJson)
                 {
-                    var json5 = await recipeStore.ReadRecipeJsonAsync(recipeId, ct);
+                    var json5 = canonicalInputs.TryGetValue(recipeId, out var canonicalJson)
+                        ? canonicalJson.Json : await recipeStore.ReadRecipeJsonAsync(recipeId, ct);
 
                     // We avoid deserializing directly into the 'Recipe' model because properties like 'Ingredients'
                     // in local files are often arrays/objects, whereas in the EF model they are raw JSON strings (mapped to JSONB).
@@ -1009,22 +1029,29 @@ public partial class ManagementService(
 
                         logger.LogDebug("Loaded recipe.json for {RecipeId}", recipeId);
 
-                        var exportedContent = RecipeExportContent.Read(rootElement);
-                        recipe.RawMetadata = exportedContent is null ? currentJson
-                            : exportedContent.RawMetadata is null ? null
-                            : RemoveRetiredRecipeFields(exportedContent.RawMetadata);
+                        if (canonicalInputs.TryGetValue(recipeId, out var canonical))
+                        {
+                            SetCanonicalSeedContent(recipe, canonical.Content);
+                        }
+                        else
+                        {
+                            var exportedContent = RecipeExportContent.Read(rootElement);
+                            recipe.RawMetadata = exportedContent is null ? currentJson
+                                : exportedContent.RawMetadata is null ? null
+                                : RemoveRetiredRecipeFields(exportedContent.RawMetadata);
 
-                        recipe.Servings = exportedContent is null ? RecipeServings.FromMetadata(recipe.RawMetadata) : exportedContent.Servings;
+                            recipe.Servings = exportedContent is null ? RecipeServings.FromMetadata(recipe.RawMetadata) : exportedContent.Servings;
 
-                        if (exportedContent is not null) recipe.Ingredients = exportedContent.Ingredients;
-                        else if (rootElement.TryGetProperty("recipeIngredient", out var ingProp) && ingProp.ValueKind == JsonValueKind.Array)
-                            recipe.Ingredients = ingProp.GetRawText();
-                        else if (rootElement.TryGetProperty("ingredients", out var legacyIngProp) && legacyIngProp.ValueKind == JsonValueKind.Array)
-                            recipe.Ingredients = legacyIngProp.GetRawText();
-                        else if (rootElement.TryGetProperty("ingredients", out var serializedIngredients)
-                            && serializedIngredients.ValueKind == JsonValueKind.String
-                            && IsJsonArray(serializedIngredients.GetString()))
-                            recipe.Ingredients = serializedIngredients.GetString();
+                            if (exportedContent is not null) recipe.Ingredients = exportedContent.Ingredients;
+                            else if (rootElement.TryGetProperty("recipeIngredient", out var ingProp) && ingProp.ValueKind == JsonValueKind.Array)
+                                recipe.Ingredients = ingProp.GetRawText();
+                            else if (rootElement.TryGetProperty("ingredients", out var legacyIngProp) && legacyIngProp.ValueKind == JsonValueKind.Array)
+                                recipe.Ingredients = legacyIngProp.GetRawText();
+                            else if (rootElement.TryGetProperty("ingredients", out var serializedIngredients)
+                                && serializedIngredients.ValueKind == JsonValueKind.String
+                                && IsJsonArray(serializedIngredients.GetString()))
+                                recipe.Ingredients = serializedIngredients.GetString();
+                        }
 
                         if (string.IsNullOrEmpty(recipe.Category) && rootElement.TryGetProperty("category", out var catProp))
                             recipe.Category = catProp.GetString();
@@ -1101,6 +1128,19 @@ public partial class ManagementService(
                     logger.LogDebug("Updating existing recipe: {Id} ({Name}) (deleted={IsDeleted})",
                         recipe.Id, recipe.Name ?? "unknown", existing.DeletedAt.HasValue);
 
+                    // Current content has no implicit disk-over-live authority. An
+                    // identical seed is a no-write replay; any divergence needs the
+                    // captured publication owner rather than this household operation.
+                    if (recipe.CanonicalContent is not null || existing.CanonicalContent is not null)
+                    {
+                        if (!IdenticalCanonicalSeed(recipe, existing))
+                        {
+                            result.Errors++;
+                            canonicalSeedConflicts.Add(existing.Id);
+                        }
+                        if (rotationTransaction is not null) await rotationTransaction.CommitAsync(ct);
+                        continue;
+                    }
                     // Update metadata
                     existing.Rating = recipe.Rating;
                     existing.Notes = recipe.Notes;
@@ -1150,7 +1190,7 @@ public partial class ManagementService(
 
         // 4b. Restore search index sidecars
         var configuredModel = Environment.GetEnvironmentVariable("EMBEDDING_MODEL_ID") ?? "gemini-embedding-2";
-        foreach (var recipe in recipesToRestore)
+        foreach (var recipe in recipesToRestore.Where(x => !canonicalSeedConflicts.Contains(x.Id)))
         {
             if (ct.IsCancellationRequested) break;
             try
@@ -1521,7 +1561,9 @@ public partial class ManagementService(
     {
         try
         {
-            var recipes = await db.Recipes.IgnoreQueryFilters().ToListAsync(ct);
+            // Canonical metadata was already staged with its recipe. This legacy
+            // repair must not reapply old disk choices after a guarded seed defers.
+            var recipes = await db.Recipes.IgnoreQueryFilters().Where(x => x.CanonicalContent == null).ToListAsync(ct);
             int updated = 0;
             foreach (var recipe in recipes)
             {

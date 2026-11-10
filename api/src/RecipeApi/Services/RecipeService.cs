@@ -24,7 +24,7 @@ public class RecipeService(
     RecipeFilePublicationStore publications,
     RecipesRootResolver recipesRoot,
     IScheduleEventPublisher? publisher = null,
-    CanonicalRecipeContentStore? isolatedCanonicalEditor = null)
+    CanonicalRecipeContentStore? canonicalEditor = null)
 {
     private const string RecipeShareBundleVersion = "1.0";
 
@@ -376,16 +376,16 @@ public class RecipeService(
     {
         if (dto.HasServings && (dto.Servings is null || dto.Servings <= 0))
             throw new ArgumentException("Servings must be a whole number from 1 to 2147483647.");
-        // Explicit composition seam for disposable integration qualification only.
-        // No configuration switch or production registration enables this owner.
-        if (isolatedCanonicalEditor is not null && (dto.HasCanonicalContent ||
+        // Only explicitly converted recipes enter the guarded canonical owner.
+        // An ordinary edit never converts legacy content or allocates saved IDs.
+        if (canonicalEditor is not null && (dto.HasCanonicalContent ||
             dto.HasServings && dto.Ingredients is null && dto.RecipeInstructions is null))
         {
             var baseline = await db.Recipes.AsNoTracking().SingleOrDefaultAsync(x => x.Id == id)
                 ?? throw new KeyNotFoundException($"Recipe {id} not found.");
-            if (baseline.CanonicalContent is not null || dto.HasCanonicalContent)
+            if (baseline.CanonicalContent is not null)
             {
-                var result = await isolatedCanonicalEditor.EditAsync(id,
+                var result = await canonicalEditor.EditAsync(id,
                     CanonicalRecipeContentStore.InspectSourceRevision(baseline), Guid.NewGuid(), dto);
                 var saved = await db.Recipes.SingleAsync(x => x.Id == id);
                 // Capture the operation's authoritative snapshot before metadata
@@ -404,9 +404,8 @@ public class RecipeService(
         var recipe = await db.Recipes.FindAsync(id)
             ?? throw new KeyNotFoundException($"Recipe {id} not found.");
 
-        // Canonical publication is not activated until exact recovery and staged
-        // clients qualify. Never acknowledge an unsupported canonical payload as
-        // a legacy partial Save. Check before mutating ANY tracked or disk field.
+        // Legacy content requires explicit conversion; legacy payloads cannot
+        // replace canonical facts. Check before mutating ANY tracked or disk field.
         RecipeContentInput.Validate(dto);
         if (dto.HasCanonicalContent || recipe.CanonicalContent is not null &&
             (dto.HasServings || dto.Ingredients is not null || dto.RecipeInstructions is not null))

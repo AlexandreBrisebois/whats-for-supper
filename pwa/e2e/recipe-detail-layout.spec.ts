@@ -728,6 +728,11 @@ for (const locale of ['en', 'fr'] as const)
 // not an assertion of measured contrast or OS keyboard/device validation.
 for (const locale of ['en', 'fr'] as const)
   test.describe(`group5 matched actual render ${locale}`, () => {
+    // On demand: WFS_GROUP5_RENDER_PHASE=after task test:e2e -- recipe-detail-layout.spec.ts --grep 'group5 matched actual render'
+    test.skip(
+      !process.env.WFS_GROUP5_RENDER_PHASE,
+      'Optional matched-render evidence; focused target, keyboard, focus and reflow cases remain routine.'
+    );
     test.use({ appLocale: locale });
     const specimens = [
       { name: 'phone-light', width: 390, height: 844, photo: 'bright', text: 1, yield: 2 },

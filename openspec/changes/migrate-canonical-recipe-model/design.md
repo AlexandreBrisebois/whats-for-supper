@@ -10,9 +10,15 @@ Default in-place preserves live recipes and stable IDs. Capture source/current f
 
 Current-format ordinary merge and explicitly selected exact replacement are separate. Version and timestamps cannot establish precedence. An old backup is unsupported, not implicitly convertible inside restore. The one-time forward importer accepts only its manifest's input list; legacy source readability during this process does not promise continued old-backup support. Existing historical voter privacy, extras, report state and preparation/serving recovery remain intact.
 
+## Existing operations own canonical backup and seed
+
+Dreaming’s db-backup step invokes BackupDatabase and the same `ManagementService.BackupAsync` as POST `/api/management/backup`. POST `/api/management/seed` invokes `RestoreAsync`; evolve these owners to write/read the existing version-2 canonical recipe codec. Keep the existing disk layout and management routes. Any necessary format/integrity inventory is internal to these operations, not a second recovery API or user-facing package. Whole-installation database plus asset backup remains a separate protection against disk loss and migration rollback.
+
+Preflight canonical input before household mutation. New destination recipes retain exported IDs and exact canonical content; repeated identical seed is idempotent. A divergent current destination is not authority to overwrite newer human facts: preserve it and report conflict unless the existing captured revision/publication owner proves authority. Sync remains recipe-only and uses captured input, revision guards and durable publication/retry ownership; it must never invoke household seed or infer permission from timestamps. Legacy readability before activation is not a promise of permanent old-backup support; cutover remains fenced until the current-only boundary is qualified.
+
 ## First Observable Slice
 
-Disposable PostgreSQL plus copied recipe/media store → no-write manifest → convert one 4-portion 1/3-cup recipe with current edits and one partial step → current-format export/read-back → isolated exact restore. Compare every canonical field, source/media hash, relationship and protected household field; interrupt before/after commit and resume idempotently. Prove unsupported old format preflight has zero writes before widening batches.
+Disposable PostgreSQL plus copied recipe/media store → no-write manifest → convert one 4-portion 1/3-cup recipe with current edits and one partial step → existing Dreaming/management backup → management seed into an isolated destination → independent read-back → repeat. Compare every canonical field, source/media hash, relationship and protected household field; distinguish this seed merge from independent whole-installation exact restore; interrupt before/after commit and resume idempotently. Prove unsupported old format preflight has zero writes before widening batches.
 
 ## Compatibility, Rollout and Reversal
 

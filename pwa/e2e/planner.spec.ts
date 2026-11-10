@@ -1299,7 +1299,17 @@ test.describe('Supper Planner', () => {
               await expect(feedback).toHaveCount(0);
               await expect(page.getByTestId('toast')).toContainText('Monday Lasagna');
               await expect(page.getByTestId('toast')).toHaveAttribute('role', 'status');
-              await expect(page.getByTestId('toast')).toHaveCount(0, { timeout: 7000 });
+              // Timer expiry belongs to ToastContainer's focused unit test. Keep
+              // one browser boundary for actual dismissal and return to planning.
+              if (locale === 'en') {
+                await page
+                  .getByTestId('toast')
+                  .getByRole('button', { name: 'Dismiss notification' })
+                  .click();
+                await expect(page.getByTestId('toast')).toHaveCount(0);
+                await page.getByTestId('day-card-0').focus();
+                await expect(page.getByTestId('day-card-0')).toBeFocused();
+              }
             }
             expect(reads).toBe(2);
             expect(writes).toEqual([]);
@@ -1841,8 +1851,14 @@ test.describe('Supper Planner', () => {
     expect(box.width).toBeGreaterThanOrEqual(44);
     expect(box.height).toBeGreaterThanOrEqual(44);
     const row = page.getByTestId('day-card-0');
-    const date = (await row.getByTestId('planner-date').boundingBox())!;
-    const content = (await row.getByTestId('planner-meal').boundingBox())!;
+    const { date, content } = await row.evaluate((node) => {
+      const date = node.querySelector<HTMLElement>('[data-testid="planner-date"]')!;
+      const meal = node.querySelector<HTMLElement>('[data-testid="planner-meal"]')!;
+      return {
+        date: date.getBoundingClientRect().toJSON(),
+        content: meal.getBoundingClientRect().toJSON(),
+      };
+    });
     expect(date.x + date.width).toBeLessThan(content.x);
     expect(Math.abs(date.y + date.height / 2 - content.y - content.height / 2)).toBeLessThan(1);
     expect(await row.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);

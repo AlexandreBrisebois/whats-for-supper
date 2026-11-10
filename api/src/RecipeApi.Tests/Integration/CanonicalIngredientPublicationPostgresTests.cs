@@ -1,3 +1,4 @@
+using RecipeApi.Tests.Infrastructure;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -22,11 +23,14 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests(ITestOut
     private const string Original = """{"name":"Original","recipeIngredient":["salt"],"recipeInstructions":[{"@type":"HowToStep","text":"Mix."}]}""";
     private const string Replacement = """{"name":"Replacement","recipeIngredient":["pepper"],"recipeInstructions":[{"@type":"HowToStep","text":"Stir."}]}""";
 
-    private async Task WithStore(Func<IServiceProvider, RecipeRepository, RecipeFilePublicationStore, FailingStorage, Task> action)
+    private async Task WithStore(Func<IServiceProvider, RecipeRepository, RecipeFilePublicationStore, FailingStorage, Task> action, bool localRecipeStore = false)
     {
         await new TomorrowPushPostgresTests(output).WithDatabase(async settings =>
         {
-            await using var factory = await TomorrowPushPostgresTests.CreateFactory(settings);
+            await using var factory = localRecipeStore
+                ? await TestWebApplicationFactory.CreateWithAuthAsync(new DeploymentCalendarIntegrationTests.CalendarClock(), new()
+                { ["Calendar:TimeZone"] = "America/Toronto", ["Tests:PostgresConnectionString"] = settings.ConnectionString, ["Tests:LocalRecipeStore"] = "true" })
+                : await TomorrowPushPostgresTests.CreateFactory(settings);
             await TomorrowPushPostgresTests.Seed(factory);
             using var scope = factory.Services.CreateScope();
             var services = scope.ServiceProvider;
@@ -274,6 +278,7 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests(ITestOut
     private sealed class FailingStorage(IStorageProvider inner) : IStorageProvider
     {
         public bool FailInfo { get; set; }
+        public bool FailJson { get; set; }
         public int AtomicWrites { get; private set; }
         public Func<Task>? BeforeStage { get; set; }
         public Task SaveAsync(string partition, string key, string value) => SaveAsync(partition, key, System.Text.Encoding.UTF8.GetBytes(value));
@@ -283,7 +288,7 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests(ITestOut
         {
             AtomicWrites++;
             if (BeforeStage is { } callback && key.Contains("/.publications/", StringComparison.Ordinal)) await callback();
-            if (FailInfo && key.EndsWith("/recipe.info", StringComparison.Ordinal)) throw new IOException("Simulated file delivery interruption");
+            if (FailInfo && key.EndsWith("/recipe.info", StringComparison.Ordinal) || FailJson && key.EndsWith("/recipe.json", StringComparison.Ordinal)) throw new IOException("Simulated file delivery interruption");
             await inner.SaveAtomicallyAsync(partition, key, value);
         }
         public Task DeleteAtomicallyAsync(string partition, string key) => inner.DeleteAtomicallyAsync(partition, key);

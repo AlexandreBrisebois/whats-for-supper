@@ -53,7 +53,7 @@ For an included recipe, export SHALL refresh recipe.info and replace recipe.json
 
 ### Requirement: Reconstruct recipes from retained metadata and content
 
-Restore SHALL scan retained recipe IDs and skip IDs with neither recipe.info nor recipe.json. Valid recipe.info SHALL provide primary supported metadata; decoded recipe.json SHALL provide canonical ingredients, separate serving basis, retained normalized metadata and supported content fallbacks. Ordinary restore SHALL preflight the declared current-format manifest before any mutation; legacy input is permitted only in the separate one-time forward importer.
+Restore SHALL scan retained recipe IDs and skip IDs with neither recipe.info nor recipe.json. Valid recipe.info SHALL provide primary supported metadata; decoded recipe.json SHALL provide canonical ingredients, separate serving basis, retained normalized metadata and supported content fallbacks. Existing management seed SHALL preflight declared current-format input and its internal integrity inventory before any mutation; legacy input is permitted only in the separate one-time forward importer.
 
 #### Scenario: Metadata and content
 - **WHEN** valid recipe.info and recipe.json exist for a recipe ID
@@ -270,6 +270,20 @@ Current-format restore SHALL validate all declared recipe records in staging bef
 - **THEN** the later record is still inspected and reported valid, without implying it was restored despite failed complete-set preflight
 
 ## ADDED Requirements
+
+### Requirement: Evolve existing backup, seed and sync operations
+
+Canonical backup and seed SHALL use the existing Dreaming/management backup and management seed flows and existing disk layout. They SHALL NOT require a new public recovery API or user-facing package workflow. Recipe-only sync and forward reprocessing SHALL NOT invoke household restore. Whole-installation database-and-asset recovery SHALL remain separate disk-loss/rollback protection.
+
+#### Scenario: Existing operation round trip
+- **WHEN** a canonical recipe is edited, Dreaming or management backs it up, and management seed loads that disk state into an isolated destination
+- **THEN** stable recipe/line/step IDs, exact amounts, bindings, nulls/clears, source/media and supported household/history/extra state survive
+- **AND** repeating the same flow neither duplicates identities nor replays cleared values
+
+#### Scenario: Stale recipe sync retry
+- **WHEN** an older sync or publication retry encounters newer human content
+- **THEN** it preserves the newer content and files or reports the captured revision conflict, without reseeding household state
+
 
 ### Requirement: Migrate in place before considering a recipe-only disk fallback
 

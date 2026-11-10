@@ -124,7 +124,7 @@ public sealed partial class RecipeFilePublicationStore(RecipeDbContext db, Recip
             }
             else
             {
-                if (candidate.SourceKind != "bootstrap" && (recipe.CanonicalContent is not null || capture.FieldHash != Fields(recipe, capture.FieldHashVersion)
+                if (candidate.SourceKind != "bootstrap" && ((recipe.CanonicalContent is not null && candidate.SourceKind != "canonical-export") || capture.FieldHash != Fields(recipe, capture.FieldHashVersion)
                     || capture.ContentRevision != CanonicalRecipeContentStore.InspectContentRevision(recipe)
                     || capture.SourceRevision != CanonicalRecipeContentStore.InspectSourceRevision(recipe)
                     || await db.RecipeFilePublications.AnyAsync(x => x.RecipeId == recipe.Id && !x.Delivered, ct)))
@@ -178,7 +178,7 @@ public sealed partial class RecipeFilePublicationStore(RecipeDbContext db, Recip
         if (publication.Delivered) return;
         var envelope = ReadEnvelope(publication);
         if (envelope.Candidate.SourceKind == "readiness" && !recipe.IsReady) throw Conflict(recipe);
-        if (recipe.CanonicalContent is not null || Fields(recipe, envelope.Capture.FieldHashVersion) != publication.ResultHash) throw Conflict(recipe);
+        if ((recipe.CanonicalContent is not null && envelope.Candidate.SourceKind != "canonical-export") || Fields(recipe, envelope.Capture.FieldHashVersion) != publication.ResultHash) throw Conflict(recipe);
         // Validate every file before the first replacement, accepting the exact
         // candidate for already delivered files after an interrupted attempt.
         await CheckFiles(envelope.Capture, envelope.Output, recipe, ct);
@@ -274,6 +274,19 @@ public sealed partial class RecipeFilePublicationStore(RecipeDbContext db, Recip
     }
     private static IReadOnlyDictionary<string, byte[]?> Prepare(RecipePublicationCapture capture, RecipePublicationCandidate candidate)
     {
+        if (candidate.SourceKind == "canonical-export")
+        {
+            if (capture.FieldHashVersion != 3 || capture.Fields is null || candidate.SourceFiles is not null
+                || candidate.BootstrapIntent is not null || candidate.FollowupIntent is not null || candidate.RecipeJson is null)
+                throw new InvalidDataException("Canonical export requires captured current facts without source or workflow replacement.");
+            var saved = RestoreObservation(capture.Fields);
+            var content = CanonicalRecipeContentStore.Read(saved) ?? throw new InvalidDataException("Canonical export requires canonical content.");
+            using var document = JsonDocument.Parse(candidate.RecipeJson);
+            var incoming = RecipeExportContent.ReadCurrent(document.RootElement, capture.RecipeId);
+            if (!RecipeExportContent.IsIdenticalCurrent(incoming, new(saved.Id, content, saved.RawMetadata)))
+                throw new InvalidDataException("Canonical export cannot change captured recipe facts.");
+            return new Dictionary<string, byte[]?> { ["recipe.json"] = System.Text.Encoding.UTF8.GetBytes(candidate.RecipeJson) };
+        }
         if (candidate.FollowupIntent is not null) _ = ReadFollowupIntent(candidate);
         if (candidate.SourceKind == "bootstrap") return PrepareBootstrap(capture, candidate);
         if (candidate.SourceKind == "readiness") return PrepareReadiness(capture, candidate);
@@ -342,6 +355,7 @@ public sealed partial class RecipeFilePublicationStore(RecipeDbContext db, Recip
 
     private static void Apply(Recipe recipe, RecipePublicationCandidate candidate, byte[] infoBytes)
     {
+        if (candidate.SourceKind == "canonical-export") return;
         var info = JsonSerializer.Deserialize<RecipeInfo>(infoBytes, Json)!;
         if (candidate.SourceKind == "readiness")
         {

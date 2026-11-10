@@ -325,6 +325,78 @@ jobs:
                       assert test['status'] == 'expected' and results[0]['status'] == 'passed', f'Required browser must pass without skips: {title}'
           print('Required context acceptance: 2 native owners, 9 browser passes, 1 explicitly gated canonical branch; zero required skips/retries.')
           PYGUARD
+      - name: Run required grocery checks live
+        run: >-
+          dotnet test api/src/RecipeApi.Tests/RecipeApi.Tests.csproj
+          --filter "FullyQualifiedName=RecipeApi.Tests.Integration.GroceryCheckConcurrencyPostgresTests.LiveBrowser_IndependentWaterRowsConvergeAndRejectOlderSnapshot"
+          --logger "trx;LogFileName=native.trx" --results-directory .task/grocery-live/checks
+        env:
+          WFS_LIVE_ARTIFACT_ROOT: ${{ github.workspace }}/.task/grocery-live/checks
+      - name: Require grocery checks live results
+        run: |
+          python3 - <<'PYGUARD'
+          import json
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+          root = Path('.task/grocery-live/checks')
+          owner = 'RecipeApi.Tests.Integration.GroceryCheckConcurrencyPostgresTests.LiveBrowser_IndependentWaterRowsConvergeAndRejectOlderSnapshot'
+          native = ET.parse(root / 'native.trx').getroot().findall('.//{*}UnitTestResult')
+          assert len(native) == 1 and native[0].get('testName') == owner, 'Missing exact grocery native owner'
+          assert native[0].get('outcome') == 'Passed', 'Grocery native owner must pass without skips'
+          def collect(suite):
+              for spec in suite.get('specs', []):
+                  for test in spec['tests']:
+                      yield spec['title'], test
+              for child in suite.get('suites', []):
+                  yield from collect(child)
+          report = json.loads((root / 'browser.json').read_text())
+          tests = [item for suite in report['suites'] for item in collect(suite)]
+          expected = 'independent water checks converge and an older snapshot cannot restore stale checks'
+          assert len(tests) == 1 and tests[0][0] == expected, 'Missing/extra grocery browser results'
+          test = tests[0][1]
+          assert test['status'] == 'expected' and len(test['results']) == 1, 'Grocery browser must pass once'
+          result = test['results'][0]
+          assert result['status'] == 'passed' and result.get('retry', 0) == 0, 'Grocery browser skips/retries are not acceptance'
+          print('Required grocery checks: 1 native owner, 1 browser journey; zero skips/retries.')
+          PYGUARD
+      - name: Run required grocery canonical dependencies
+        run: >-
+          dotnet test api/src/RecipeApi.Tests/RecipeApi.Tests.csproj
+          --filter "FullyQualifiedName=RecipeApi.Tests.Integration.CanonicalIngredientEditPostgresTests.LiveBrowser_CanonicalIngredientCorrection|FullyQualifiedName=RecipeApi.Tests.Integration.CanonicalIngredientEditPostgresTests.LiveBrowser_CanonicalMixedIncompleteBaseline"
+          --logger "trx;LogFileName=native.trx" --results-directory .task/grocery-live/canonical
+        env:
+          WFS_CANONICAL_BROWSER_ROOT: ${{ github.workspace }}
+          WFS_CANONICAL_EVIDENCE: ${{ github.workspace }}/.task/grocery-live/canonical
+      - name: Require grocery canonical dependency results
+        run: |
+          python3 - <<'PYGUARD'
+          import json
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+          root = Path('.task/grocery-live/canonical')
+          owners = {'RecipeApi.Tests.Integration.CanonicalIngredientEditPostgresTests.' + name for name in ['LiveBrowser_CanonicalIngredientCorrection', 'LiveBrowser_CanonicalMixedIncompleteBaseline']}
+          native = ET.parse(root / 'native.trx').getroot().findall('.//{*}UnitTestResult')
+          assert len(native) == len(owners) and {result.get('testName') for result in native} == owners, 'Missing/extra canonical grocery native owners'
+          assert all(result.get('outcome') == 'Passed' for result in native), 'Canonical grocery owners must pass without skips'
+          def collect(suite):
+              for spec in suite.get('specs', []):
+                  for test in spec['tests']:
+                      yield spec['title'], test
+              for child in suite.get('suites', []):
+                  yield from collect(child)
+          for folder, title in [
+              ('correction', 'original correction, refresh recovery and concurrent grocery checks use the real generated client API and database'),
+              ('mixed', 'mixed incomplete baseline keeps its grocery check when unknown demand becomes known while a separate proven increase resets'),
+          ]:
+              report = json.loads((root / folder / 'browser-results.json').read_text())
+              tests = list(collect(report))
+              assert len(tests) == 1 and tests[0][0] == title, f'Missing/extra canonical grocery browser: {folder}'
+              test = tests[0][1]
+              assert test['status'] == 'expected' and len(test['results']) == 1, f'Required browser must pass once: {folder}'
+              result = test['results'][0]
+              assert result['status'] == 'passed' and result.get('retry', 0) == 0, f'Browser skips/retries are not acceptance: {folder}'
+          print('Required grocery canonical dependencies: 2 native owners, 2 browser journeys; zero skips/retries.')
+          PYGUARD
       - name: Upload cooking live results
         uses: actions/upload-artifact@v7
         if: always()
@@ -333,6 +405,7 @@ jobs:
           path: |
             .task/cooking-live/
             .task/cooking-context-live/
+            .task/grocery-live/
             pwa/test-results/
           if-no-files-found: error
           retention-days: 7

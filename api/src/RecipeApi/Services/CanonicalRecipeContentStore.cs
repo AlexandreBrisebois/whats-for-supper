@@ -7,8 +7,8 @@ using RecipeApi.Models;
 
 namespace RecipeApi.Services;
 
-// Deliberately not registered or reachable from a route/worker until recovery,
-// staged publication and client activation qualify together.
+// Canonical facts own reads and guarded edits after explicit forward conversion.
+// Legacy reads and ordinary edits never trigger conversion implicitly.
 public sealed record CanonicalRecipeContent(
     int ContentSchemaVersion, string ContentRevision, string SourceRevision, int? Servings,
     IReadOnlyList<RecipeIngredientLineDto> IngredientLines,

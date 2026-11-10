@@ -1,6 +1,46 @@
 # Spec Delta
 
+## RENAMED Requirements
+
+- FROM: `### Requirement: Show an amount hint only with quantity and unit`
+- TO: `### Requirement: Show trusted grocery amounts without inventing units`
+
 ## MODIFIED Requirements
+
+### Requirement: Show trusted grocery amounts without inventing units
+
+A displayed grocery row SHALL show its trusted nonnegative scalar or range amount even when its display unit is null, empty or whitespace-only. Zero SHALL remain a known amount. Complete amounts SHALL retain the parenthesized hint; a usable supplied unit SHALL retain its existing suffix, while an absent/blank unit SHALL add no suffix or fabricated unit. Noninteger amounts SHALL retain rounding to at most three decimal places with trailing zeros removed. Genuinely missing or unreadable amounts SHALL show no invented number. Incomplete known subtotals SHALL retain the existing localized wording once in the amount position.
+
+Rendering SHALL NOT change demand arithmetic, completeness, row grouping/identity, shopping checks/baselines, recipe contributors or source disclosure, or trigger a mutation or recomputation. Showing a bare value SHALL NOT assert an inferred clove, head, piece, mass, volume or package unit.
+
+#### Scenario: Known scalar without a unit
+- **WHEN** a row has trusted scalar amount two with a null, empty or whitespace-only display unit
+- **THEN** its complete hint is `(2)`, with no fabricated unit or trailing unit space
+
+#### Scenario: Known zero without a unit
+- **WHEN** a row has trusted scalar amount zero and no display unit
+- **THEN** its complete hint is `(0)` rather than an omitted or unknown amount
+
+#### Scenario: Fraction and range without a unit
+- **WHEN** complete rows have trusted amount one half or range two through three with no display unit
+- **THEN** their hints are `(0.5)` and `(2–3)` under the existing display convention, without changing the exact supplied amounts
+
+#### Scenario: Amount shown
+- **WHEN** a complete row has amount 1.23456 and display unit kg
+- **THEN** its hint remains `(1.235 kg)` with the existing rounding and unit presentation
+
+#### Scenario: Missing amount or unit
+- **WHEN** a row lacks a known amount or has no usable display unit
+- **THEN** a genuinely missing amount has no numeric hint, while a trusted amount with only its unit missing remains visible without a unit suffix
+- **AND** neither case gains a guessed count/unit, replacement warning or reserved warning space
+
+#### Scenario: One honest incomplete subtotal in either locale
+- **WHEN** an incomplete row has known subtotal two and no unit, in English or French
+- **THEN** the amount position shows `2 known` or `2 connus` once using the existing localized subtotal wording, without claiming the full requirement or adding a duplicate hint/warning
+
+#### Scenario: Display preserves the shopping row and its sources
+- **WHEN** a checked row with a trusted unitless amount is rendered, reread or has its recipe sources expanded
+- **THEN** its amount, group, row identity, check/baseline and contributor identities remain unchanged, source disclosure remains usable, and no mutation or recomputation is sent merely to display or inspect it
 
 ### Requirement: Use display name as the shared check identity
 
@@ -259,6 +299,33 @@ Recomputation SHALL compare current demand with the requirement saved on the row
 #### Scenario: Unknown or decreased baseline journey
 - **WHEN** a checked demand decreases before rising again, or was unknown/incomplete when checked
 - **THEN** decreases do not lower its saved baseline and unknown baselines never become silently known from later demand; only a provable increase against the acknowledged baseline resets the check
+
+### Requirement: Keep incomplete grocery scaling visible
+
+Known compatible partial totals SHALL appear once as known/incomplete subtotals in the amount position. Wholly unknown amounts SHALL show no invented number or new visible warning cue. Review amounts text, its separators and empty row space SHALL be removed. Unresolved state and original-source inspection SHALL remain. Intentional unquantified directions stay ordinary text; no invented amount, mass/volume inference, package rounding or pantry knowledge is implied.
+
+#### Scenario: Known pasta plus unresolved pasta contribution
+- **WHEN** one planned recipe contributes known pasta and another has an unresolved amount
+- **THEN** the row shows the numeric subtotal once as known/incomplete rather than the full requirement, without Review amounts or a replacement icon
+- **AND** recipe contributors remain accessible through the separate recipe-book disclosure
+
+#### Scenario: Entirely unknown current amount
+- **WHEN** a row is incomplete and has no known numeric amount
+- **THEN** it shows its ingredient without an invented amount, Review amounts, replacement icon/copy or empty warning panel
+- **AND** unresolved state remains unchanged and available source recipes still lead to original quantity evidence
+
+#### Scenario: Avoid a duplicate subtotal and its reserved space
+- **WHEN** an incomplete row has known 400 g and no prior-check warning
+- **THEN** 400 g known appears once in the amount position, without a repeated subtotal, dot separator or separate warning row/margin
+
+#### Scenario: Quantity exists without a usable display unit
+- **WHEN** a trusted numeric amount or known incomplete subtotal has no usable display unit
+- **THEN** that known amount appears once under the trusted-amount display rule, without a fabricated unit or claim that an incomplete subtotal is the full requirement
+- **AND** genuinely missing amounts remain without an invented number, Review amounts or replacement cue
+
+#### Scenario: Complete and intentionally unquantified rows
+- **WHEN** an amount is complete or content is intentionally unquantified such as salt to taste
+- **THEN** complete amounts keep their existing presentation and intentionally unquantified text gains no warning or invented numeric amount
 
 ### Requirement: Distinguish incomplete totals from prior unknown checked amounts
 

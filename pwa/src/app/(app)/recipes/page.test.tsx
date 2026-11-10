@@ -1324,7 +1324,9 @@ describe('RecipesPage', () => {
     await act(async () => {
       render(<UnifiedRecipesPage />);
     });
-    expect(await screen.findByTestId('action-add-to-day')).toHaveTextContent('May 20');
+    await waitFor(() =>
+      expect(screen.getByTestId('action-add-to-day')).toHaveTextContent('May 20')
+    );
     fireEvent.click(screen.getByTestId('action-add-to-day'));
     await waitFor(() =>
       expect(mocks.assignRecipeToDay).toHaveBeenCalledWith(

@@ -85,7 +85,7 @@ function formatQuantityHint(
   quantity: GroceryLineItemDto['quantity'],
   unitText: string | null | undefined
 ) {
-  if (quantity == null || !unitText) return null;
+  if (quantity == null) return null;
 
   const amount = quantity as {
     kind?: string;
@@ -102,7 +102,7 @@ function formatQuantityHint(
   const minimum = scalar(amount.kind === 'scalar' ? amount.value : amount.min);
   const maximum = amount.kind === 'range' ? scalar(amount.max) : null;
   if (minimum === null || (amount.kind === 'range' && maximum === null)) return null;
-  return `(${minimum}${maximum !== null ? `–${maximum}` : ''} ${unitText})`;
+  return `(${minimum}${maximum !== null ? `–${maximum}` : ''}${unitText?.trim() ? ` ${unitText}` : ''})`;
 }
 
 function matchesOccurrenceIdentity(candidate: GroceryExtraDto, expected: GroceryExtraDto) {

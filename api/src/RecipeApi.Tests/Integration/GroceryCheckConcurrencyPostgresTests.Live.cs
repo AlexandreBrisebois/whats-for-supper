@@ -112,12 +112,19 @@ public sealed partial class GroceryCheckConcurrencyPostgresTests
                     await Task.Delay(500);
                 }
                 Assert.True(ready, "Task-owned PWA failed to start.");
-                var acceptance = new ProcessStartInfo("task") { WorkingDirectory = root, RedirectStandardOutput = true, RedirectStandardError = true };
-                foreach (var arg in new[] { "test:e2e:reuse-server", "--", "grocery-checks-live.spec.ts" }) acceptance.ArgumentList.Add(arg);
+                var artifactRoot = Environment.GetEnvironmentVariable("WFS_LIVE_ARTIFACT_ROOT");
+                if (artifactRoot is not null) Directory.CreateDirectory(artifactRoot);
+                var acceptance = new ProcessStartInfo("node") { WorkingDirectory = Path.Combine(root, "pwa"), RedirectStandardOutput = true, RedirectStandardError = true };
+                foreach (var arg in new[] { "node_modules/@playwright/test/cli.js", "test", "grocery-checks-live.spec.ts", "--workers=1", "--retries=0", artifactRoot is null ? "--reporter=line" : "--reporter=line,json" }) acceptance.ArgumentList.Add(arg);
+                if (artifactRoot is not null)
+                {
+                    acceptance.Environment["PLAYWRIGHT_JSON_OUTPUT_NAME"] = Path.Combine(artifactRoot, "browser.json");
+                    acceptance.ArgumentList.Add("--output=" + Path.Combine(artifactRoot, "browser-output"));
+                }
                 DeploymentCalendarPostgresTests.ConfigureEnvironment(acceptance, app.HttpAddress, pwaUrl);
                 acceptance.Environment["GROCERY_CHECKS_LIVE_MEMBERS"] = $"{app.DefaultFamilyMemberId},{secondMember.Id}";
                 using var browser = Process.Start(acceptance)!;
-                var progress = Path.Combine(Path.GetTempPath(), "wfs-grocery-checks-browser-progress.log");
+                var progress = Path.Combine(artifactRoot ?? isolatedRoot, "browser-progress.log");
                 await File.WriteAllTextAsync(progress, "");
                 var stdout = Task.Run(async () =>
                 {

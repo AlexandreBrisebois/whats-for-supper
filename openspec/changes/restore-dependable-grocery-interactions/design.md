@@ -37,3 +37,14 @@ Requires a reviewed row-ID/client fence and the migration companion's fresh-list
 Retain sorting, aisle collapse, contributors, existing subtotal/freshness and error behavior. Remove prior-check review messages in both locales, markers and acknowledgement handling entirely, with no replacement badge/space/copy. Existing brief proven-increase list feedback stays separate. Check actions never open or focus category/edit controls. Phone/tablet, keyboard, 200% EN/FR and actual pointer tests establish visual behavior.
 
 See the shared [dependency/conflict review](../canonical-ingredient-correction/review.md) for approval and release order, and [acceptance corpus](../canonical-ingredient-correction/acceptance-corpus.md) for preservation cases. Proposed API/schema details have one owner in [contracts.md](../canonical-ingredient-correction/contracts.md).
+
+
+## Proposed display-only slice — known amounts without units
+
+Current `GroceryList.tsx` `formatQuantityHint` returns no hint when `unitText` is absent, and `GroceryList.test.tsx` deliberately enforces that policy. Canonical amounts already allow an independently missing unit. The proposed change is rendering eligibility, not a correction to the supplied totals or permission to infer count semantics from a bare value.
+
+The approved implementation reuses that formatter and the existing localized known-subtotal path. A trusted amount is sufficient to render; a usable unit supplies the existing suffix, and a missing/blank unit supplies none. Complete amounts remain parenthesized; incomplete rows reuse `{{amount}} known` / `{{amount}} connus` exactly once in the existing amount position. Retain current scalar/range precision and trailing-zero removal. Missing amounts remain quiet. No API/schema/generated-client, quantity arithmetic, grouping, unit conversion, food mapping, catalogue, check baseline, list version or source-disclosure change is planned.
+
+The first observable outcome is a loaded row with trusted amount two and no unit showing `(2)` instead of silently omitting it. A known incomplete subtotal remains explicitly partial in either locale. A display change must cause no mutation/recompute request or row/check transition. It can ship independently of bilingual qualification and does not justify combining French/English or incompatible-unit rows.
+
+Trade-off: bare amounts retain useful information but remain ambiguous about the absent unit. Keeping them hidden preserves the old policy but discards known information. Inventing piece/clove/litre or merging rows would change purchase meaning and is excluded. Preserve the already-qualified test consolidation; use focused formatter/component coverage and one existing grocery browser owner rather than a new screenshot or recovery matrix. This bounded display slice is implemented and locally qualified as recorded in tasks.md; it does not establish acceptance of the other grocery or bilingual work.

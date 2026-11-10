@@ -87,6 +87,7 @@ try
     builder.Services.AddScoped<ManagementService>();
     builder.Services.AddScoped<RecipeImportBulkService>();
     builder.Services.AddScoped<RecipeService>();
+    builder.Services.AddScoped<CanonicalRecipeContentStore>();
     builder.Services.AddScoped<PdfCaptureService>();
     builder.Services.AddSingleton<IPdfPageRenderer, PdfProcessRenderer>();
     builder.Services.AddScoped<IWorkflowProcessor, PdfConversionProcessor>();

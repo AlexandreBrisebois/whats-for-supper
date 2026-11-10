@@ -2,7 +2,7 @@
 
 ## Why
 
-The complete model must survive upgrade and recovery without losing household links or human edits. The earlier draft promised permanent legacy backup decoding despite the user choosing current-format-only recovery.
+The complete model must survive upgrade and recovery without losing household links or human edits. Dreaming and management already share disk backup, seed and sync owners; those owners must retain canonical facts rather than exporting and restoring legacy-only fields.
 
 ## Outcome and Scope
 
@@ -12,7 +12,9 @@ In-place-first conversion, conditional recipe-only disk fallback, current-format
 
 - **BREAKING:** adopt the applicable shared [contract](../canonical-ingredient-correction/contracts.md) with explicit compatibility/failure behavior.
 - Preserve user decisions and existing safety boundaries in the shared [review](../canonical-ingredient-correction/review.md).
-- Add adversarial acceptance from the shared [corpus](../canonical-ingredient-correction/acceptance-corpus.md); no product implementation in this session.
+- Evolve Dreaming → db-backup → BackupDatabase → `ManagementService.BackupAsync` (also management backup POST), management seed → `RestoreAsync`, and guarded recipe sync/publication. Reuse the current recipe codec; do not add a parallel recovery API or user-facing package workflow.
+- Keep recipe-only forward reprocessing separate from household seed. Whole-installation database-and-asset backup remains separate disk-loss and rollback protection.
+- Qualify edit → existing backup → seed into an independent disposable destination → compare → repeat, including exact canonical facts, retained media and protected household/history/extras.
 
 ## Capabilities
 
@@ -27,4 +29,4 @@ None.
 
 ## Impact
 
-Depends on the canonical foundation and companion ownership map as specified in design.md. Future apply must synchronize OpenAPI, generated clients, consumers and stateful mocks where affected, and qualify actual persistence/workflow seams. Planning existence does not establish implementation readiness.
+Depends on the canonical foundation and companion ownership map as specified in design.md. Any public contract change must synchronize OpenAPI, generated clients, consumers and stateful mocks; this bounded existing-operation slice changes no public operation or DTO. Qualify actual persistence/workflow seams. Planning existence does not establish implementation readiness.

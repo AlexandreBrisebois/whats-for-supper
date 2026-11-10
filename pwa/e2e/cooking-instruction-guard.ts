@@ -126,7 +126,9 @@ export async function qualifyCookingInstructionGuard(page: Page, id: string, inf
 
 async function qualifyPendingDatedInstructionEdit(page: Page, id: string, info: TestInfo) {
   await page.getByTestId('close-cooks-mode').click();
-  await page.goto(`/recipes?open=${id}`);
+  await page.evaluate(() => window.history.pushState(null, '', '/recipes'));
+  await expect(page.getByTestId('action-cooks-mode')).toHaveCount(0);
+  await page.evaluate((url) => window.history.pushState(null, '', url), `/recipes?open=${id}`);
   await expect(page.getByTestId('action-cooks-mode')).toBeVisible();
   await page.evaluate((recipeId) => {
     const originalFetch = window.fetch;

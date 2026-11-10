@@ -33,7 +33,7 @@ Grocery derivation SHALL use each canonical current ingredient once, with its sa
 
 ### Requirement: Read supported structured quantity representations
 
-Legacy ingestion and deterministic conversion SHALL prefer a numeric quantity and nonblank unitText, falling back independently to requiredQuantity.value and requiredQuantity.unitText when needed. Unreadable numeric quantity values SHALL leave the quantity unknown when no numeric fallback exists. After conversion, groceries SHALL read trusted finite nonnegative canonical amounts directly; zero and unitless counts SHALL remain valid, with existing amount-display rules unchanged.
+Legacy ingestion and deterministic conversion SHALL prefer a numeric quantity and nonblank unitText, falling back independently to requiredQuantity.value and requiredQuantity.unitText when needed. Unreadable numeric quantity values SHALL leave the quantity unknown when no numeric fallback exists. After conversion, groceries SHALL read trusted finite nonnegative canonical amounts directly; zero and unitless counts SHALL remain valid. Grocery display SHALL preserve trusted known amounts without inventing units under the [dependable grocery display amendment](../../../restore-dependable-grocery-interactions/specs/grocery-shopping/spec.md); a missing unit SHALL NOT hide a trusted amount or change derivation, grouping or checks.
 
 #### Scenario: Nested quantity
 - **WHEN** legacy garlic supply has requiredQuantity value four and unitText piece without top-level values
@@ -49,7 +49,7 @@ Legacy ingestion and deterministic conversion SHALL prefer a numeric quantity an
 
 #### Scenario: Zero or unitless canonical amount
 - **WHEN** a canonical line has a trusted zero amount or a trusted count without a display unit
-- **THEN** derivation retains that amount without inventing a unit, treating zero as missing or changing the existing quantity-and-unit hint rule
+- **THEN** derivation retains that amount without inventing a unit or treating zero as missing, and display shows the trusted amount with no unit suffix under the grocery display rule; missing amounts remain hidden
 
 
 ### Requirement: Use ingredient text after invalid JSON syntax
@@ -176,18 +176,6 @@ Grocery lines SHALL expose stable row identity, exact scalar/range or null total
 #### Scenario: Locale change
 - **WHEN** a member changes EN to FR
 - **THEN** validated label changes only, with source-language fallback when unavailable
-
-### Requirement: Show an amount hint only with quantity and unit
-
-A grocery amount hint SHALL require known numeric content and a usable display unit. It SHALL render exact fractions/ranges or deterministic bounded decimal display without altering persisted values; an incomplete subtotal SHALL be labeled once and an unknown total SHALL not be invented.
-
-#### Scenario: Amount shown
-- **WHEN** a complete row contains an exact fractional or interval requirement and unit
-- **THEN** the hint preserves its meaning with locale-appropriate formatting
-
-#### Scenario: Missing amount or unit
-- **WHEN** quantity is null or display unit unavailable
-- **THEN** no amount hint or unit is fabricated
 
 ### Requirement: Choose stored category before keyword fallback
 

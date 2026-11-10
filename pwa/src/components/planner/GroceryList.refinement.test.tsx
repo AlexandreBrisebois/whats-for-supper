@@ -1,3 +1,5 @@
+import enCommon from '@/locales/en/common.json';
+import frCommon from '@/locales/fr/common.json';
 import { DateOnly } from '@microsoft/kiota-abstractions';
 import { scalarQuantity, fixtureGroceryId, fixtureGroceryChecks } from '@/testing/grocery-fixtures';
 /**
@@ -11,9 +13,10 @@ import { scalarQuantity, fixtureGroceryId, fixtureGroceryChecks } from '@/testin
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, act, waitFor, within } from '@testing-library/react';
 
 const {
+  mockLocale,
   mockReadSchedule,
   mockGetSourceRecipe,
   mockRefreshServings,
@@ -24,6 +27,7 @@ const {
   mockDeleteExtra,
   mockAddToast,
 } = vi.hoisted(() => ({
+  mockLocale: { value: 'en' as 'en' | 'fr' },
   mockReadSchedule: vi.fn(),
   mockGetSourceRecipe: vi.fn(),
   mockRefreshServings: vi.fn(),
@@ -116,10 +120,12 @@ vi.mock('framer-motion', () => ({
 
 vi.mock('@/locales', () => ({
   t: (_key: string, fallback: string) => fallback,
-  tWithVars: (_key: string, fallback: string, vars: Record<string, string | number>) =>
+  tWithVars: (key: string, fallback: string, vars: Record<string, string | number>) =>
     Object.entries(vars).reduce(
       (result, [name, value]) => result.replace(`{{${name}}}`, String(value)),
-      fallback
+      key === 'grocery.knownSubtotal'
+        ? (mockLocale.value === 'fr' ? frCommon : enCommon).grocery.knownSubtotal
+        : fallback
     ),
 }));
 
@@ -166,6 +172,7 @@ const item = makeItem('pasta', 'Pantry', 'pasta', {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockLocale.value = 'en';
   mockGroceryState = fixtureGroceryChecks({});
   mockGetSourceRecipe.mockResolvedValue({ id, name: 'Family pasta' });
   mockToggleGroceryItem.mockResolvedValue(undefined);
@@ -316,6 +323,40 @@ describe('quiet grocery source refinement', () => {
     expect(mockToggleGroceryItem).not.toHaveBeenCalled();
     expect(reclassifyIngredient).not.toHaveBeenCalled();
   });
+
+  it.each(['en', 'fr'] as const)(
+    'keeps one unitless known subtotal, checked identity and sources in %s',
+    (locale) => {
+      mockLocale.value = locale;
+      const unitless = { ...item, quantity: scalarQuantity(2), unitText: null };
+      const before = structuredClone(unitless);
+      mockGroceryState = fixtureGroceryChecks({ [unitless.rowId!]: true });
+      const checksBefore = { ...mockGroceryState };
+      render(<GroceryList weekOffset={0} items={[unitless, makeItem('rice', 'Pantry', 'rice')]} />);
+      const hint = screen.getByTestId('grocery-item-quantity-hint');
+      expect(screen.getAllByTestId('grocery-item-quantity-hint')).toHaveLength(1);
+      expect(hint.textContent).toBe(locale === 'fr' ? '2 connus' : '2 known');
+      const check = screen
+        .getAllByTestId('grocery-item-checkbox')
+        .find((node) => node.getAttribute('data-row-id') === unitless.rowId)!;
+      expect(check).toHaveAttribute('data-row-id', unitless.rowId);
+      expect(check).toHaveAttribute('aria-checked', 'true');
+      expect(screen.queryByText('Review amounts')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('grocery-check-review')).not.toBeInTheDocument();
+      fireEvent.click(screen.getByTestId('grocery-recipe-sources-toggle'));
+      expect(
+        within(screen.getByTestId('grocery-recipe-sources-region')).getAllByRole('link', {
+          name: 'Family pasta',
+        })
+      ).toHaveLength(1);
+      expect(screen.getAllByTestId('grocery-item-checkbox')).toContain(check);
+      expect(mockGroceryState).toEqual(checksBefore);
+      expect(unitless).toEqual(before);
+      expect(mockToggleGroceryItem).not.toHaveBeenCalled();
+      expect(mockRefreshServings).not.toHaveBeenCalled();
+      expect(reclassifyIngredient).not.toHaveBeenCalled();
+    }
+  );
 
   it('does not invent a source disclosure for rows without recipe contributors', () => {
     render(<GroceryList weekOffset={0} items={[{ ...item, recipeIds: [] }]} />);

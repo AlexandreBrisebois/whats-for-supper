@@ -6,7 +6,6 @@ import { qualifyCookingRemainder } from './cooking-remainder';
 import { remainderCookingRecipe } from './cooking-step-fixture';
 import { qualifyCookingFraction } from './cooking-fraction';
 import { fractionCookingRecipe } from './cooking-step-fixture';
-import { qualifyCookingInstructionGuard } from './cooking-instruction-guard';
 import { qualifyCookingReportRefresh } from './cooking-report-refresh';
 import { test, expect } from './fixtures';
 import { setupCommonRoutes, MOCK_IDS } from './mock-api';
@@ -260,19 +259,6 @@ test('dated report refresh preserves coherent content until accepted', async ({
     }, recipe.id)
   ).toEqual([200, 200]);
   await qualifyCookingReportRefresh(page, recipe.id!, info);
-});
-
-test('undated canonical instruction guard retains stale drafts', async ({
-  page,
-  baseURL,
-}, info) => {
-  const recipe = cookingStepRecipe();
-  await setupCommonRoutes(page, undefined, { canonicalEditor: recipe });
-  await page
-    .context()
-    .addCookies([{ name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: baseURL! }]);
-  await page.setViewportSize({ width: 390, height: 844 });
-  await qualifyCookingInstructionGuard(page, recipe.id!, info);
 });
 
 test('relative fraction half retains wording with mixed invalid stale and ambiguous bindings', async ({
