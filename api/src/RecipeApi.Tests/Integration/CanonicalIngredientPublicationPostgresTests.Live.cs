@@ -99,6 +99,36 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
                 services.GetRequiredService<SupperProjectionInvalidation>());
             var orchestrator = new WorkflowOrchestrator(clock, new WorkflowRepository(storage), db, store);
             var service = ActivatorUtilities.CreateInstance<RecipeService>(services, store, orchestrator);
+            async Task CategorizeFreshAsync(WorkflowInstance intake, Guid recipeId)
+            {
+                var beforeCategory = await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == recipeId);
+                Assert.NotEqual("Lunch", beforeCategory.Category);
+                Assert.NotEqual("Italian", beforeCategory.CuisineType);
+                Assert.NotEqual(new[] { "Lunch", "Supper" }, beforeCategory.MealTypes);
+                Assert.NotEqual(true, beforeCategory.IsVegetarian);
+                var categoryChat = new Mock<IChatClient>();
+                categoryChat.Setup(x => x.GetResponseAsync(It.IsAny<IEnumerable<ChatMessage>>(), It.IsAny<ChatOptions>(), It.IsAny<CancellationToken>()))
+                    .ReturnsAsync((IEnumerable<ChatMessage> messages, ChatOptions? _, CancellationToken _) =>
+                    {
+                        var prompt = string.Join("\n", messages.Select(x => x.Text));
+                        if (prompt.Contains("grocery categorization assistant", StringComparison.Ordinal))
+                            return new ChatResponse(new ChatMessage(ChatRole.Assistant,
+                                """[{"normalizedKey":"pasta","section":"Pantry","confidence":1},{"normalizedKey":"photo pasta","section":"Pantry","confidence":1},{"normalizedKey":"sauce","section":"Pantry","confidence":1}]"""));
+                        Assert.Contains("recipe facts categorization assistant", prompt);
+                        return new ChatResponse(new ChatMessage(ChatRole.Assistant,
+                            """{"cuisineType":"Italian","mealTypes":["Lunch","Supper"],"primaryMealType":"Lunch","isVegetarian":true}"""));
+                    });
+                await new CategorizeIngredientsProcessor(clock, db, categoryChat.Object,
+                    NullLogger<CategorizeIngredientsProcessor>.Instance).ExecuteAsync(
+                        intake.Tasks.Single(x => x.ProcessorName == "CategorizeIngredients"), default);
+                await ActivatorUtilities.CreateInstance<CategorizeRecipeProcessor>(services, categoryChat.Object)
+                    .ExecuteAsync(intake.Tasks.Single(x => x.ProcessorName == "CategorizeRecipe"), default);
+                var classified = await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == recipeId);
+                Assert.Equal("Lunch", classified.Category);
+                Assert.Equal("Italian", classified.CuisineType);
+                Assert.Equal(new[] { "Lunch", "Supper" }, classified.MealTypes);
+                Assert.True(classified.IsVegetarian);
+            }
             var member = (await db.FamilyMembers.FirstAsync()).Id;
             var id = await service.CaptureUrl(new() { Url = "https://example.test/live-pasta" }, member);
             db.ChangeTracker.Clear();
@@ -124,6 +154,7 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
                 services.GetRequiredService<SupperProjectionInvalidation>(), Mock.Of<ISupperProjectionPublisher>(),
                 NullLogger<SyncRecipeProcessor>.Instance).ExecuteAsync(
                     workflow.Tasks.Single(x => x.ProcessorName == "SyncRecipe"), default);
+            await CategorizeFreshAsync(workflow, id);
             await new RecipeReadyProcessor(db, NullLogger<RecipeReadyProcessor>.Instance,
                 Mock.Of<IScheduleEventPublisher>(), store).ExecuteAsync(
                     workflow.Tasks.Single(x => x.ProcessorName == "RecipeReady"), default);
@@ -213,6 +244,7 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
                 services.GetRequiredService<SupperProjectionInvalidation>(), Mock.Of<ISupperProjectionPublisher>(),
                 NullLogger<SyncRecipeProcessor>.Instance).ExecuteAsync(
                     photoWorkflow.Tasks.Single(x => x.ProcessorName == "SyncRecipe"), default);
+            await CategorizeFreshAsync(photoWorkflow, photoId);
             await new RecipeReadyProcessor(db, NullLogger<RecipeReadyProcessor>.Instance,
                 Mock.Of<IScheduleEventPublisher>(), store).ExecuteAsync(
                     photoWorkflow.Tasks.Single(x => x.ProcessorName == "RecipeReady"), default);

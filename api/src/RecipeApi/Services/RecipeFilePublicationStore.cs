@@ -134,8 +134,10 @@ public sealed partial class RecipeFilePublicationStore(RecipeDbContext db, Recip
                     await ValidateReviewedCanonicalAsync(capture, candidate, operationId, recipe, ct);
                 if (candidate.SourceKind == "hero" && recipe.CanonicalContent is not null)
                     await ValidateFreshCanonicalHeroAsync(recipe.Id, operationId, ct);
+                if (candidate.SourceKind == "categorization")
+                    await ValidateCategorizationTaskAsync(recipe.Id, operationId, candidate.ProducerInput, ct);
                 // Readiness selects metadata only; it never reopens canonical facts.
-                if (candidate.SourceKind != "bootstrap" && ((recipe.CanonicalContent is not null && candidate.SourceKind is not ("canonical-export" or "readiness" or "hero")) || capture.FieldHash != Fields(recipe, capture.FieldHashVersion)
+                if (candidate.SourceKind != "bootstrap" && ((recipe.CanonicalContent is not null && candidate.SourceKind is not ("canonical-export" or "readiness" or "hero" or "categorization")) || capture.FieldHash != Fields(recipe, capture.FieldHashVersion)
                     || capture.ContentRevision != CanonicalRecipeContentStore.InspectContentRevision(recipe)
                     || capture.SourceRevision != CanonicalRecipeContentStore.InspectSourceRevision(recipe)
                     || await db.RecipeFilePublications.AnyAsync(x => x.RecipeId == recipe.Id && !x.Delivered, ct)))
@@ -189,7 +191,7 @@ public sealed partial class RecipeFilePublicationStore(RecipeDbContext db, Recip
         if (publication.Delivered) return;
         var envelope = ReadEnvelope(publication);
         if (envelope.Candidate.SourceKind == "readiness" && !recipe.IsReady) throw Conflict(recipe);
-        if ((recipe.CanonicalContent is not null && envelope.Candidate.SourceKind is not ("canonical-export" or "readiness" or "fresh-canonical" or "review-canonical" or "hero")) || Fields(recipe, envelope.Capture.FieldHashVersion) != publication.ResultHash) throw Conflict(recipe);
+        if ((recipe.CanonicalContent is not null && envelope.Candidate.SourceKind is not ("canonical-export" or "readiness" or "fresh-canonical" or "review-canonical" or "hero" or "categorization")) || Fields(recipe, envelope.Capture.FieldHashVersion) != publication.ResultHash) throw Conflict(recipe);
         // Validate every file before the first replacement, accepting the exact
         // candidate for already delivered files after an interrupted attempt.
         await CheckFiles(envelope.Capture, envelope.Output, recipe, ct);
@@ -369,6 +371,7 @@ public sealed partial class RecipeFilePublicationStore(RecipeDbContext db, Recip
         if (candidate.FollowupIntent is not null) _ = ReadFollowupIntent(candidate);
         if (candidate.SourceKind == "bootstrap") return PrepareBootstrap(capture, candidate);
         if (candidate.SourceKind == "readiness") return PrepareReadiness(capture, candidate);
+        if (candidate.SourceKind == "categorization") return PrepareCategorization(capture, candidate);
         if (candidate.SourceKind == "review-material" && (candidate.RecipeJson is null || candidate.SourceFiles is not null
             || candidate.BootstrapIntent is not null || candidate.FollowupIntent is not null || candidate.ReviewReasons is not { Length: > 0 }
             || candidate.ReviewReasons.Any(reason => reason is not ("ingredients" or "steps"))
@@ -471,6 +474,14 @@ public sealed partial class RecipeFilePublicationStore(RecipeDbContext db, Recip
     {
         if (candidate.SourceKind == "canonical-export") return;
         var info = JsonSerializer.Deserialize<RecipeInfo>(infoBytes, Json)!;
+        if (candidate.SourceKind == "categorization")
+        {
+            recipe.Category = info.Category;
+            recipe.CuisineType = info.CuisineType;
+            recipe.MealTypes = info.MealTypes;
+            recipe.IsVegetarian = info.IsVegetarian;
+            return;
+        }
         if (candidate.SourceKind == "readiness")
         {
             recipe.IsDiscoverable = RecipeRotation.Suitable(recipe) && !recipe.RotationHumanOff && !recipe.CookedSuppressed;

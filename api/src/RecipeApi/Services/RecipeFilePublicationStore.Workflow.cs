@@ -253,7 +253,9 @@ public sealed partial class RecipeFilePublicationStore
         }
         var freshHero = task.ProcessorName == "GenerateHero" && instance.WorkflowId is ("url-import" or "recipe-import")
             && publications.Any(x => ReadEnvelope(x).Candidate.SourceKind is "fresh-canonical" or "review-canonical");
-        if ((recipe.CanonicalContent is not null && task.ProcessorName != "RecipeReady" && !freshHero) || Fields(recipe, expected.FieldHashVersion) != expected.FieldHash
+        var freshCategorization = task.ProcessorName == "CategorizeRecipe" && instance.WorkflowId is ("url-import" or "recipe-import")
+            && publications.Any(x => ReadEnvelope(x).Candidate.SourceKind is "fresh-canonical" or "review-canonical");
+        if ((recipe.CanonicalContent is not null && task.ProcessorName != "RecipeReady" && !freshHero && !freshCategorization) || Fields(recipe, expected.FieldHashVersion) != expected.FieldHash
             || await db.RecipeFilePublications.AnyAsync(x => x.RecipeId == recipeId && !x.Delivered, ct)) throw Conflict(recipe);
         await CheckFiles(expected, null, recipe, ct);
         var capture = expected with
