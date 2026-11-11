@@ -251,7 +251,7 @@ public sealed partial class RecipeFilePublicationStore
             foreach (var (path, value) in envelope.Output) files[path] = value;
             expected = expected with { FieldHash = publication.ResultHash, Files = files, Fields = envelope.Result };
         }
-        var freshHero = task.ProcessorName == "GenerateHero" && instance.WorkflowId == "url-import"
+        var freshHero = task.ProcessorName == "GenerateHero" && instance.WorkflowId is ("url-import" or "recipe-import")
             && publications.Any(x => ReadEnvelope(x).Candidate.SourceKind is "fresh-canonical" or "review-canonical");
         if ((recipe.CanonicalContent is not null && task.ProcessorName != "RecipeReady" && !freshHero) || Fields(recipe, expected.FieldHashVersion) != expected.FieldHash
             || await db.RecipeFilePublications.AnyAsync(x => x.RecipeId == recipeId && !x.Delivered, ct)) throw Conflict(recipe);
@@ -278,27 +278,59 @@ public sealed partial class RecipeFilePublicationStore
             throw new InvalidDataException("Retained review material requires its original extraction task.");
         var workflow = await db.WorkflowInstances.AsNoTracking().Include(x => x.Tasks)
             .SingleOrDefaultAsync(x => x.Id == task.InstanceId, ct);
-        if (workflow is null || workflow.WorkflowId != "url-import" || workflow.RecipePublicationCapture is null)
-            throw new InvalidDataException("Retained review material requires a witnessed URL import.");
+        if (workflow is null || workflow.WorkflowId is not ("url-import" or "recipe-import") || workflow.RecipePublicationCapture is null)
+            throw new InvalidDataException("Retained review material requires a witnessed fresh import.");
         ValidateExecutionLaunch(workflow);
         var launch = ReadRecoveryJson<Launch>(workflow.RecipePublicationCapture);
-        var bootstrap = await db.RecipeFilePublications.AsNoTracking()
-            .SingleOrDefaultAsync(x => x.RecipeId == recipe.Id && x.OperationId == workflow.Id, ct);
         if (!launch.Tasks.TryGetValue(operationId, out var input) || input.Processor != "ExtractRecipe"
             || launch.Capture.Fields is not { Ingredients: null, RawMetadata: null, CanonicalContent: null, IsReady: false }
-            || bootstrap is null || !bootstrap.Delivered || ReadEnvelope(bootstrap).Candidate.SourceKind != "bootstrap")
+            || !await HasFreshSourceAncestryAsync(workflow, launch.Capture, ct))
             throw new InvalidDataException("Retained review material requires fresh bootstrap ancestry.");
+    }
+
+    private async Task<bool> HasFreshSourceAncestryAsync(WorkflowInstance workflow,
+        RecipePublicationCapture launchCapture, CancellationToken ct)
+    {
+        if (workflow.WorkflowId is not ("url-import" or "recipe-import")
+            || launchCapture.Fields is not { Ingredients: null, RawMetadata: null, CanonicalContent: null, IsReady: false })
+            return false;
+        var bootstrap = await db.RecipeFilePublications.AsNoTracking().SingleOrDefaultAsync(x =>
+            x.RecipeId == launchCapture.RecipeId && x.OperationId == workflow.Id, ct);
+        if (bootstrap is null || !bootstrap.Delivered) return false;
+        var envelope = ReadEnvelope(bootstrap);
+        if (envelope.Candidate.SourceKind != "bootstrap" || envelope.Candidate.RecipeJson is not null
+            || bootstrap.ResultHash != launchCapture.FieldHash) return false;
+        if (workflow.WorkflowId == "url-import") return true;
+
+        // A photo's original accepted follow-up is the only recipe-import launch
+        // that can claim this bootstrap operation. PDF pages and later report
+        // reimports may have images but cannot satisfy this original ancestry.
+        var source = envelope.Candidate.SourceFiles;
+        var info = envelope.Candidate.Info;
+        if (source is null || info.ImageCount is < 1 or > 20 || envelope.Candidate.FollowupIntent is null
+            || source.ContainsKey("original/source.pdf") || launchCapture.Files.GetValueOrDefault("original/source.pdf") is not null
+            || launchCapture.Files.GetValueOrDefault("original/content.html") is not null
+            || source.Count != info.ImageCount) return false;
+        for (var index = 0; index < info.ImageCount; index++)
+        {
+            var files = source.Where(x => x.Key.StartsWith($"original/{index}.", StringComparison.Ordinal)).ToArray();
+            if (files.Length != 1 || files[0].Value is not { Length: > 0 }
+                || !launchCapture.Files.TryGetValue(files[0].Key, out var captured)
+                || !Equal(files[0].Value, captured)) return false;
+        }
+        ValidateFollowupWorkflow(envelope.Candidate, bootstrap.OperationId, workflow, requirePending: false);
+        return true;
     }
 
     private async Task ValidateFreshCanonicalHeroAsync(Guid recipeId, Guid operationId, CancellationToken ct)
     {
         var task = await db.WorkflowTasks.AsNoTracking().SingleOrDefaultAsync(x => x.TaskId == operationId, ct);
         if (task is null || task.ProcessorName != "GenerateHero" || task.InstanceId == Guid.Empty)
-            throw new InvalidDataException("Canonical hero needs its original URL workflow task.");
+            throw new InvalidDataException("Canonical hero needs its original workflow task.");
         var workflow = await db.WorkflowInstances.AsNoTracking().Include(x => x.Tasks)
             .SingleOrDefaultAsync(x => x.Id == task.InstanceId, ct);
-        if (workflow is null || workflow.WorkflowId != "url-import" || workflow.RecipePublicationCapture is null)
-            throw new InvalidDataException("Canonical hero needs its witnessed URL workflow.");
+        if (workflow is null || workflow.WorkflowId is not ("url-import" or "recipe-import") || workflow.RecipePublicationCapture is null)
+            throw new InvalidDataException("Canonical hero needs its witnessed source workflow.");
         ValidateExecutionLaunch(workflow);
         var launch = ReadRecoveryJson<Launch>(workflow.RecipePublicationCapture);
         var extraction = workflow.Tasks.SingleOrDefault(x => x.ProcessorName == "ExtractRecipe");
@@ -308,7 +340,9 @@ public sealed partial class RecipeFilePublicationStore
             throw new InvalidDataException("Canonical hero has no captured extraction ancestor.");
         var publication = await db.RecipeFilePublications.AsNoTracking().SingleOrDefaultAsync(
             x => x.RecipeId == recipeId && x.OperationId == extraction.TaskId, ct);
-        if (publication is null || !publication.Delivered || ReadEnvelope(publication).Candidate.SourceKind is not ("fresh-canonical" or "review-canonical"))
+        if (publication is null || !publication.Delivered || ReadEnvelope(publication).Candidate.SourceKind is not ("fresh-canonical" or "review-canonical")
+            || workflow.WorkflowId == "recipe-import" && ReadEnvelope(publication).Candidate.SourceKind == "fresh-canonical"
+                && !await HasFreshSourceAncestryAsync(workflow, launch.Capture, ct))
             throw new InvalidDataException("Canonical hero needs delivered fresh canonical ancestry.");
     }
 
@@ -324,8 +358,8 @@ public sealed partial class RecipeFilePublicationStore
             throw new InvalidDataException("Reviewed recovery needs its original extraction task.");
         var workflow = await db.WorkflowInstances.AsNoTracking().Include(x => x.Tasks)
             .SingleOrDefaultAsync(x => x.Id == task.InstanceId, ct);
-        if (workflow is null || workflow.WorkflowId != "url-import" || workflow.RecipePublicationCapture is null)
-            throw new InvalidDataException("Reviewed recovery needs its captured URL repair workflow.");
+        if (workflow is null || workflow.WorkflowId is not ("url-import" or "recipe-import") || workflow.RecipePublicationCapture is null)
+            throw new InvalidDataException("Reviewed recovery needs its captured source repair workflow.");
         ValidateExecutionLaunch(workflow);
         var report = await db.RecipeImportReports.AsNoTracking().SingleOrDefaultAsync(x => x.RecipeId == recipe.Id, ct);
         var intent = report?.RepairIntentId is Guid intentId
@@ -335,8 +369,8 @@ public sealed partial class RecipeFilePublicationStore
             || !report.Reasons.Any(x => x is "ingredients" or "steps") || intent is null)
             throw new InvalidDataException("Reviewed recovery needs its accepted changed-comment repair intent.");
         RecipeReportRepairIntent.ValidateAccepted(intent, workflow);
-        var earlier = await db.RecipeFilePublications.AsNoTracking().Where(x => x.RecipeId == recipe.Id).ToListAsync(ct);
-        if (!earlier.Any(x => x.Delivered && ReadEnvelope(x).Candidate.SourceKind == "review-material"))
+        var earlier = await db.RecipeFilePublications.AsNoTracking().Where(x => x.RecipeId == recipe.Id).ToArrayAsync(ct);
+        if (!await HasReviewedSourceAncestryAsync(workflow, earlier, ct))
             throw new InvalidDataException("Reviewed recovery needs original retained review material.");
         var launch = ReadRecoveryJson<Launch>(workflow.RecipePublicationCapture);
         if (!launch.Tasks.TryGetValue(operationId, out var input) || input.Processor != "ExtractRecipe"
@@ -345,7 +379,24 @@ public sealed partial class RecipeFilePublicationStore
             throw new InvalidDataException("Reviewed recovery differs from its saved human correction.");
     }
 
-    internal async Task<bool> CanRecoverReviewedUrlAsync(RecipePublicationCapture capture, Guid operationId, CancellationToken ct = default)
+    private async Task<bool> HasReviewedSourceAncestryAsync(WorkflowInstance repair,
+        RecipeFilePublication[] earlier, CancellationToken ct)
+    {
+        foreach (var retained in earlier.Where(x => x.Delivered && ReadEnvelope(x).Candidate.SourceKind == "review-material"))
+        {
+            var originalTask = await db.WorkflowTasks.AsNoTracking().SingleOrDefaultAsync(x => x.TaskId == retained.OperationId, ct);
+            if (originalTask is null) continue;
+            var original = await db.WorkflowInstances.AsNoTracking().Include(x => x.Tasks)
+                .SingleOrDefaultAsync(x => x.Id == originalTask.InstanceId, ct);
+            if (original is null || original.WorkflowId != repair.WorkflowId || original.RecipePublicationCapture is null) continue;
+            ValidateExecutionLaunch(original);
+            if (await HasFreshSourceAncestryAsync(original, ReadRecoveryJson<Launch>(original.RecipePublicationCapture).Capture, ct))
+                return true;
+        }
+        return false;
+    }
+
+    internal async Task<bool> CanRecoverReviewedSourceAsync(RecipePublicationCapture capture, Guid operationId, CancellationToken ct = default)
     {
         if (capture.Fields is not { Ingredients: not null, RawMetadata: not null, CanonicalContent: null, IsReady: false }) return false;
         var task = await db.WorkflowTasks.AsNoTracking().SingleOrDefaultAsync(x => x.TaskId == operationId, ct);
@@ -354,21 +405,25 @@ public sealed partial class RecipeFilePublicationStore
         if (report?.LastWorkflowInstanceId != task.InstanceId || report.Status != RecipeImportReportStatus.Reimporting
             || report.RepairIntentId is null || report.Reasons.Contains("duplicate")
             || !report.Reasons.Any(x => x is "ingredients" or "steps")) return false;
-        var earlier = await db.RecipeFilePublications.AsNoTracking().Where(x => x.RecipeId == capture.RecipeId).ToListAsync(ct);
-        return earlier.Any(x => x.Delivered && ReadEnvelope(x).Candidate.SourceKind == "review-material");
+        var workflow = await db.WorkflowInstances.AsNoTracking().SingleOrDefaultAsync(x => x.Id == task.InstanceId, ct);
+        if (workflow is null || workflow.WorkflowId is not ("url-import" or "recipe-import")) return false;
+        var earlier = await db.RecipeFilePublications.AsNoTracking().Where(x => x.RecipeId == capture.RecipeId).ToArrayAsync(ct);
+        return await HasReviewedSourceAncestryAsync(workflow, earlier, ct);
     }
 
-    internal async Task<bool> CanRetainFreshUrlReviewMaterialAsync(RecipePublicationCapture capture, Guid operationId,
+    internal async Task<bool> CanRetainFreshReviewMaterialAsync(RecipePublicationCapture capture, Guid operationId,
         CancellationToken ct = default)
     {
         if (capture.Fields is not { Ingredients: null, RawMetadata: null, CanonicalContent: null, IsReady: false })
             return false;
         var task = await db.WorkflowTasks.AsNoTracking().SingleOrDefaultAsync(x => x.TaskId == operationId, ct);
         if (task is null || task.ProcessorName != "ExtractRecipe" || task.InstanceId == Guid.Empty) return false;
-        var workflow = await db.WorkflowInstances.AsNoTracking().SingleOrDefaultAsync(x => x.Id == task.InstanceId, ct);
-        if (workflow is null || workflow.WorkflowId != "url-import" || workflow.RecipePublicationCapture is null) return false;
-        return await db.RecipeFilePublications.AsNoTracking().AnyAsync(x => x.RecipeId == capture.RecipeId
-            && x.OperationId == workflow.Id && x.Delivered, ct);
+        var workflow = await db.WorkflowInstances.AsNoTracking().Include(x => x.Tasks)
+            .SingleOrDefaultAsync(x => x.Id == task.InstanceId, ct);
+        if (workflow?.RecipePublicationCapture is null || workflow.WorkflowId is not ("url-import" or "recipe-import")) return false;
+        ValidateExecutionLaunch(workflow);
+        return await HasFreshSourceAncestryAsync(workflow,
+            ReadRecoveryJson<Launch>(workflow.RecipePublicationCapture).Capture, ct);
     }
 
     private static bool SameFiles(IReadOnlyDictionary<string, byte[]?> left, IReadOnlyDictionary<string, byte[]?> right) =>

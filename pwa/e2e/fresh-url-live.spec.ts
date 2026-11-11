@@ -88,7 +88,9 @@ test('fresh URL canonical edit reaches two shoppers and dated groceries', async 
     for (const page of [editor, shopper]) {
       await page.goto('/planner?weekOffset=1&referenceWeekStartDate=2026-10-05');
       await page.getByTestId('grocery-tab').click();
-      await expect(page.getByText('500 g', { exact: false })).toBeVisible();
+      await expect(
+        page.getByRole('checkbox', { name: 'pasta (500 g)', exact: true })
+      ).toBeVisible();
     }
     const schedule = (
       await (
@@ -99,6 +101,116 @@ test('fresh URL canonical edit reaches two shoppers and dated groceries', async 
       ).json()
     ).data;
     const pasta = schedule.groceryItems.filter((row: any) => row.normalizedKey === 'pasta');
+    expect(pasta).toHaveLength(1);
+    expect(pasta[0].quantity).toEqual({ kind: 'scalar', value: { n: '500', d: '1' } });
+  } finally {
+    await Promise.all(contexts.map((context) => context.close()));
+  }
+});
+
+test('fresh photo canonical edit keeps original media and reaches dated groceries', async ({
+  browser,
+  request,
+  baseURL,
+}) => {
+  test.setTimeout(180_000);
+  const id = process.env.FRESH_PHOTO_RECIPE_ID!;
+  const secret = process.env.HEARTH_SECRET!;
+  const members = process.env.FRESH_URL_MEMBERS!.split(',');
+  const headers = { 'X-Hearth-Secret': secret };
+  const original = (await (await request.get(`${baseURL}/api/recipes/${id}`, { headers })).json())
+    .recipe;
+  expect(original).toMatchObject({
+    isReady: true,
+    servings: 4,
+    ingredients: ['200 g photo pasta', '100 ml sauce'],
+    sourceUrl: null,
+  });
+  expect(original.ingredientLines[0].provenance.origin).toBe('source');
+  const family = (await (await request.get(`${baseURL}/api/family`, { headers })).json()).data;
+  const contexts = await Promise.all(
+    members.map(() => browser.newContext({ viewport: { width: 390, height: 844 } }))
+  );
+  try {
+    for (const [index, context] of contexts.entries()) {
+      await context.addCookies([
+        { name: 'h_access', value: await generateSecretToken(secret), url: baseURL! },
+        { name: 'x-family-member-id', value: members[index], url: baseURL! },
+      ]);
+      await context.addInitScript(
+        ({ member, familyMembers }) => {
+          localStorage.setItem('locale', 'en');
+          localStorage.setItem(
+            'family-storage',
+            JSON.stringify({
+              state: {
+                selectedFamilyMemberId: member,
+                familyMembers,
+                _hasHydrated: true,
+                hasLoaded: true,
+              },
+              version: 0,
+            })
+          );
+        },
+        { member: members[index], familyMembers: family }
+      );
+      await context.route('**/*', (route) => {
+        const url = new URL(route.request().url());
+        return ['127.0.0.1', 'localhost'].includes(url.hostname) ||
+          ['data:', 'blob:'].includes(url.protocol)
+          ? route.continue()
+          : route.abort('blockedbyclient');
+      });
+    }
+    const [editor, shopper] = await Promise.all(contexts.map((context) => context.newPage()));
+    for (const page of [editor, shopper])
+      await page.clock.setFixedTime(new Date('2026-10-25T01:30:00Z'));
+    await editor.goto(`/recipes?open=${id}`);
+    await editor.getByTestId('action-gear-menu').click();
+    await editor.getByRole('button', { name: 'Edit', exact: true }).click();
+    await expect(editor.getByTestId('recipe-edit-amount-0')).toHaveValue('200');
+    await editor.getByTestId('recipe-edit-amount-0').fill('250');
+    const saving = editor.waitForResponse(
+      (response) =>
+        response.request().method() === 'PATCH' &&
+        new URL(response.url()).pathname === `/api/recipes/${id}`
+    );
+    await editor.getByTestId('recipe-save-edits').click();
+    const reply = await saving;
+    expect(reply.status(), await reply.text()).toBe(200);
+    const saved = (await reply.json()).recipe;
+    expect(saved.ingredientLines[0].id).toBe(original.ingredientLines[0].id);
+    expect(saved.ingredientLines[1]).toEqual(original.ingredientLines[1]);
+    expect(saved.instructionSections[0].steps[0].id).toBe(
+      original.instructionSections[0].steps[0].id
+    );
+    expect(saved.ingredientLines[0].provenance.origin).toBe('human');
+    const projection = await request.get(
+      `${baseURL}/api/recipes/${id}/ingredient-projection?context=proposed&supperDate=2026-10-25`,
+      { headers }
+    );
+    expect(projection.status()).toBe(200);
+    expect((await projection.json()).lines[0].quantity).toBe(500);
+    expect(
+      (await request.post(`${baseURL}/_test/fresh-url/recompute-photo`, { headers })).status()
+    ).toBe(200);
+    for (const page of [editor, shopper]) {
+      await page.goto('/planner?weekOffset=2&referenceWeekStartDate=2026-10-05');
+      await page.getByTestId('grocery-tab').click();
+      await expect(
+        page.getByRole('checkbox', { name: 'photo pasta (500 g)', exact: true })
+      ).toBeVisible();
+    }
+    const schedule = (
+      await (
+        await request.get(
+          `${baseURL}/api/schedule?weekOffset=2&referenceWeekStartDate=2026-10-05`,
+          { headers }
+        )
+      ).json()
+    ).data;
+    const pasta = schedule.groceryItems.filter((row: any) => row.normalizedKey === 'photo pasta');
     expect(pasta).toHaveLength(1);
     expect(pasta[0].quantity).toEqual({ kind: 'scalar', value: { n: '500', d: '1' } });
   } finally {
@@ -211,7 +323,9 @@ test('retained URL material becomes Ready after browser correction and reviewed 
     expect((await projection.json()).lines[0].quantity).toBe(500);
     await editor.goto('/planner?weekOffset=2&referenceWeekStartDate=2026-10-05');
     await editor.getByTestId('grocery-tab').click();
-    await expect(editor.getByText('500 g', { exact: false })).toBeVisible();
+    await expect(
+      editor.getByRole('checkbox', { name: 'pasta (500 g)', exact: true })
+    ).toBeVisible();
     const schedule = (
       await (
         await request.get(

@@ -36,6 +36,8 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
         var pwaUrl = $"http://127.0.0.1:{pwaPort}";
         var monday = new DateOnly(2026, 10, 12);
         var reviewMonday = monday.AddDays(7);
+        var photoMonday = reviewMonday;
+        var photoDate = photoMonday.AddDays(6);
         Func<Guid, Task>? finishReview = null;
         await new TomorrowPushPostgresTests(output).WithDatabase(async settings =>
         {
@@ -52,6 +54,11 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
                     app.MapPost("/_test/fresh-url/recompute", async (GroceryRecomputeService grocery) =>
                     {
                         await grocery.RecomputeForWeekAsync(monday, default);
+                        return Results.Ok();
+                    }).ExcludeFromDescription().RequireAuthorization();
+                    app.MapPost("/_test/fresh-url/recompute-photo", async (GroceryRecomputeService grocery) =>
+                    {
+                        await grocery.RecomputeForWeekAsync(photoMonday, default);
                         return Results.Ok();
                     }).ExcludeFromDescription().RequireAuthorization();
                     app.MapPost("/_test/fresh-url/complete-review/{importId:guid}", async (Guid importId) =>
@@ -182,6 +189,40 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
                 await services.GetRequiredService<GroceryRecomputeService>().RecomputeForWeekAsync(reviewMonday, default);
             };
 
+            await storage.SaveAsync("workflows", "recipe-import.yaml", await File.ReadAllTextAsync(
+                Path.Combine(browserRoot, "api", "src", "RecipeApi", "Workflows", "recipe-import.yaml")));
+            var photoId = await service.CreateRecipe(member, new FormFileCollection { Upload() }, new());
+            db.ChangeTracker.Clear();
+            var photoWorkflow = (await db.WorkflowInstances.Include(x => x.Tasks)
+                .Where(x => x.WorkflowId == "recipe-import").ToListAsync()).Single();
+            const string photoSource = """
+                {"name":"Photo Pasta","recipeYield":"4 servings","recipeIngredient":["200 g photo pasta","100 ml sauce"],"supply":[{"name":"photo pasta","requiredQuantity":{"value":200,"unitText":"g"}},{"name":"sauce","requiredQuantity":{"value":100,"unitText":"ml"}}],"recipeInstructions":[{"text":"Cook the photo pasta."}]}
+                """;
+            var photoChat = new Mock<IChatClient>();
+            photoChat.Setup(x => x.GetResponseAsync(It.IsAny<IEnumerable<ChatMessage>>(), It.IsAny<ChatOptions>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new ChatResponse(new ChatMessage(ChatRole.Assistant, photoSource)));
+            await new RecipeAgent(photoChat.Object, prompts.Object, new ConfigurationManager(),
+                NullLogger<RecipeAgent>.Instance, store, "ExtractRecipe")
+                .ExecuteAsync(photoWorkflow.Tasks.Single(x => x.ProcessorName == "ExtractRecipe"), default);
+            var photoHero = photoWorkflow.Tasks.Single(x => x.ProcessorName == "GenerateHero");
+            await store.PublishAsync(await store.CaptureForTaskAsync(photoHero, photoId),
+                new(null, await repository.GetInfoAsync(photoId, default),
+                    "GenerateHero\n" + JsonSerializer.Serialize(JsonDocument.Parse(photoHero.Payload!).RootElement),
+                    new Dictionary<string, byte[]?> { ["hero.webp"] = [7, 8, 9] }, SourceKind: "hero"), photoHero.TaskId);
+            await new SyncRecipeProcessor(clock, db, repository,
+                services.GetRequiredService<SupperProjectionInvalidation>(), Mock.Of<ISupperProjectionPublisher>(),
+                NullLogger<SyncRecipeProcessor>.Instance).ExecuteAsync(
+                    photoWorkflow.Tasks.Single(x => x.ProcessorName == "SyncRecipe"), default);
+            await new RecipeReadyProcessor(db, NullLogger<RecipeReadyProcessor>.Instance,
+                Mock.Of<IScheduleEventPublisher>(), store).ExecuteAsync(
+                    photoWorkflow.Tasks.Single(x => x.ProcessorName == "RecipeReady"), default);
+            Assert.True((await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == photoId)).IsReady);
+            Assert.Equal(new byte[] { 4, 5, 6 }, await repository.GetOriginalImageAsync(photoId, 0, default));
+            (await db.CalendarEvents.SingleAsync(x => x.Date == photoDate && x.MealSlot == 0)).RecipeId = photoId;
+            db.SupperServings.Add(new SupperServing { Date = photoDate, OverrideServings = 8 });
+            await db.SaveChangesAsync();
+            await services.GetRequiredService<GroceryRecomputeService>().RecomputeForWeekAsync(photoMonday, default);
+
             ProcessStartInfo Command(params string[] args)
             {
                 var start = new ProcessStartInfo("node")
@@ -198,6 +239,7 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
                 start.Environment["NEXT_TELEMETRY_DISABLED"] = "1";
                 start.Environment["HEARTH_SECRET"] = TestWebApplicationFactory.TestSecret;
                 start.Environment["FRESH_URL_RECIPE_ID"] = id.ToString();
+                start.Environment["FRESH_PHOTO_RECIPE_ID"] = photoId.ToString();
                 start.Environment["REVIEW_URL_RECIPE_ID"] = reviewId.ToString();
                 start.Environment["FRESH_URL_MEMBERS"] = $"{member},{second.Id}";
                 start.Environment["PLAYWRIGHT_JSON_OUTPUT_NAME"] = Path.Combine(evidence, "browser-results.json");
@@ -236,6 +278,11 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
                 Assert.True(reviewed.IsReady);
                 Assert.Equal("https://example.test/reviewed-pasta", reviewed.SourceUrl);
                 Assert.Equal("250", CanonicalRecipeContentStore.Read(reviewed)!.IngredientLines[0].AmountText);
+                var photo = await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == photoId);
+                Assert.True(photo.IsReady);
+                Assert.Null(photo.SourceUrl);
+                Assert.Equal("250", CanonicalRecipeContentStore.Read(photo)!.IngredientLines[0].AmountText);
+                Assert.Equal(new byte[] { 4, 5, 6 }, await repository.GetOriginalImageAsync(photoId, 0, default));
                 Assert.Equal(RecipeImportReportStatus.ReadyToReview,
                     (await db.RecipeImportReports.AsNoTracking().SingleAsync(x => x.RecipeId == reviewId)).Status);
                 await File.WriteAllTextAsync(Path.Combine(evidence, "persisted-result.json"), JsonSerializer.Serialize(new

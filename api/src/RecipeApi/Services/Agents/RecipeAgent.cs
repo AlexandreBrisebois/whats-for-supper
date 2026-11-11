@@ -201,8 +201,8 @@ RULES:
             return;
         }
 
-        if (operationId is { } recoveryOperation && producerInput is not null && contentHtml is not null
-            && await publications.CanRecoverReviewedUrlAsync(capture, recoveryOperation, ct))
+        if (operationId is { } recoveryOperation && producerInput is not null
+            && await publications.CanRecoverReviewedSourceAsync(capture, recoveryOperation, ct))
         {
             var reviewed = CanonicalRecipeContentStore.PrepareReviewedSource(capture.Fields!);
             await publications.PublishAsync(capture,
@@ -278,14 +278,14 @@ RULES:
             var message = $"Extraction failed for {recipeId}: Final JSON is missing a name, ingredient, or usable instruction step.";
             if (reasons.Count > 0)
             {
-                // Only the witnessed fresh URL owner may retain partial wording;
-                // the publication store checks its immutable bootstrap and launch.
-                if (operationId is not null && producerInput is not null && contentHtml is not null &&
+                // Only a witnessed fresh URL or original photo owner may retain
+                // partial wording; the store checks its bootstrap and launch.
+                if (operationId is not null && producerInput is not null &&
                     finalExtraction.Recipe is { } partial &&
                     (partial.RecipeIngredient?.Any(value => !string.IsNullOrWhiteSpace(value)) == true ||
                      partial.RecipeInstructions?.SelectMany(section => section.ItemListElement ?? [])
                          .Any(step => !string.IsNullOrWhiteSpace(step.Text)) == true) &&
-                    await publications.CanRetainFreshUrlReviewMaterialAsync(capture, operationId.Value, ct))
+                    await publications.CanRetainFreshReviewMaterialAsync(capture, operationId.Value, ct))
                 {
                     var reviewJson = JsonSerializer.Serialize(partial, new JsonSerializerOptions(JsonDefaults.CamelCase) { WriteIndented = true });
                     info.Name = partial.Name ?? info.Name;
@@ -305,8 +305,8 @@ RULES:
 
         info.Name = finalRecipe.Name;
         await GenerateCandidateDescriptionAsync(recipeId, normalizedJson, info, capture, ct);
-        if (operationId is { } freshOperation && producerInput is not null && contentHtml is not null &&
-            await publications.CanRetainFreshUrlReviewMaterialAsync(capture, freshOperation, ct))
+        if (operationId is { } freshOperation && producerInput is not null &&
+            await publications.CanRetainFreshReviewMaterialAsync(capture, freshOperation, ct))
         {
             CanonicalRecipeExport? prepared = null;
             try { prepared = CanonicalRecipeContentStore.PrepareFreshSource(recipeId, normalizedJson, info.SourceUrl); }
