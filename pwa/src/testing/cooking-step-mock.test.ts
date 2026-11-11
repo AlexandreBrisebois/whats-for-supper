@@ -499,3 +499,68 @@ it.each([
       after.contentRevision
     );
 });
+
+it('projects only an existing proven half annotation and carries it through a guarded total correction', async () => {
+  const { cookingProjection } = await import('../../e2e/cooking-step-projection');
+  const recipe: any = cookingStepRecipe();
+  const step = recipe.instructionSections[0].steps[0];
+  step.text = 'Add half of the pasta (100 g).';
+  const binding = step.bindings[0];
+  binding.role = 'fraction';
+  binding.span = { start: 4, end: 8, expectedText: 'half' };
+  binding.payload = {
+    fraction: { n: '1', d: '2' },
+    annotationSpan: { start: 23, end: 28, expectedText: '100 g' },
+  };
+  expect(cookingProjection(recipe, 6)!.sections[0].steps[0].text).toBe(
+    'Add half of the pasta (150 g).'
+  );
+  const corrected = applyCanonicalEditorPatch(recipe, {
+    expectedContentRevision: recipe.contentRevision,
+    ingredientLines: [
+      {
+        ...recipe.ingredientLines[0],
+        amount: { kind: 'scalar', value: { n: '250', d: '1' } },
+        amountText: '250',
+      },
+    ],
+  });
+  expect(corrected.status).toBe(200);
+  const saved = corrected.body.recipe;
+  expect(saved.instructionSections[0].steps[0].text).toBe(step.text);
+  expect(cookingProjection(saved, 6)!.sections[0].steps[0].text).toBe(
+    'Add half of the pasta (187.5 g).'
+  );
+  binding.payload.annotationSpan.expectedText = '125 g';
+  expect(cookingProjection(recipe, 6)!.sections[0].steps[0].text).toBe(step.text);
+  binding.payload.annotationSpan = { start: 4, end: 8, expectedText: 'half' };
+  expect(cookingProjection(recipe, 6)!.sections[0].steps[0].text).toBe(step.text);
+});
+
+it('rejects both projections when an absolute span overlaps a half annotation', async () => {
+  const { cookingProjection } = await import('../../e2e/cooking-step-projection');
+  const recipe: any = cookingStepRecipe();
+  const step = recipe.instructionSections[0].steps[0];
+  step.text = 'Add half of the pasta (100 g).';
+  const binding = step.bindings[0];
+  binding.role = 'fraction';
+  binding.span = { start: 4, end: 8, expectedText: 'half' };
+  binding.payload = {
+    fraction: { n: '1', d: '2' },
+    annotationSpan: { start: 23, end: 28, expectedText: '100 g' },
+  };
+  step.bindings.push({
+    ...structuredClone(binding),
+    id: recipe.id,
+    role: 'absolute',
+    span: binding.payload.annotationSpan,
+    payload: {
+      amount: { kind: 'scalar', value: { n: '100', d: '1' } },
+      unit: recipe.ingredientLines[0].unit,
+    },
+  });
+  const projected = cookingProjection(recipe, 6)!;
+  expect(projected.sections[0].steps[0].text).toBe(step.text);
+  expect(projected.validatedUses).toBe(0);
+  expect(projected.uncertainUses).toBe(2);
+});

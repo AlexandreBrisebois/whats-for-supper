@@ -261,3 +261,48 @@ later intake, conversion, protected reimport, catalogue or Similar UI is include
 Commit, push, exact-commit frontend/backend/database DV acceptance and integration
 are authorized for this slice only; stop after accepted DV and provide one bounded
 successor prompt. No main-spec promotion/archive or broader CI completion claim.
+
+
+## Coordinated annotated-half slice 4
+
+Selected step tasks 0.1–0.3 (explicit annotated-half producer subset), 2.1, 2.3
+and 4.1; canonical tasks 2.2, 3.2 and 4.1 (integration/qualification subsets).
+Prerequisites: accepted `6cc6ead66378f6b1763ba251ca94fbd6859fe08a` and DV operation
+`9948fe35-0400-465f-9335-a1debb16cf58`, verified before implementation.
+
+The bounded inlet admits a closed affirmative explicit half clause for one unique
+saved ingredient with a compatible parenthesized numeric annotation. Exact source,
+UTF-16 relative/annotation spans and current revisions are independently validated;
+numeric equality alone is not fractional intent. It reuses the fraction projector,
+retains relative wording and saved original text, and replaces only the existing
+proven numeric annotation. Basis four/total 200 g/half (100 g) at six projects150 g;
+guarded total correction to250 retains original100 g wording, projects187.5 g and
+one375 g ingredient-derived grocery demand. Step edits replace affected proof;
+clears/no-ops/unrelated saves retain existing semantics. Unsupported, contradictory,
+ambiguous, overlapping and conditional evidence abstains quietly.
+
+B owns producer/projector units; A owns guarded Save/publication/PostgreSQL/native
+fixtures; C independently reviews preservation and existing DV recovery with no
+shared-source writes. Coordinator owns contracts/client/mocks/browser, lifecycle,
+source freeze/resources, complete preparation/verification, commit, hosted and DV.
+No integrated checks run before explicit RUN on prepared stable source. Evidence
+is under `.task/dependable-portions-slice4/`; local, hosted and DV remain separate.
+No acceptance is implied until their fresh required gates pass.
+
+C04/C45 is primary; preserve C02 two independent1 tbsp uses at doubled portions,
+correction2→3 yielding two2 tbsp uses and one6 tbsp demand, C03/C45 absolute50→75
+with corrected250 total/one375 demand, C01–C06/C12–C19/C46 and all existing roles,
+prepared/serving/recovery seams. No exhaustive allocation inference, asynchronous
+AI, new remainder/fixed/per-item producers or later intake is selected.
+
+Canonical/step/recovery preparation/grocery/CI qualification remain active;
+bilingual-shopping-identity and Similar UI deferred; selective-ingredient-repair
+superseded and unimplemented. Aggregate checkboxes stay open. No main-spec
+promotion/archive, library conversion/list cutover, resets/reseeds or production.
+Preserve all prior failed DV/fixture/backup histories and first failures/retries,
+including slice3 French geometry/Retry/SSE reread evidence and public version
+viewport failures whose root cause remains unknown. Later passes are not repairs.
+No real-provider quality or semantic-search qualification is claimed.
+
+Stop after one exact-commit hosted/DV-accepted slice integrated into
+recipe-view-redesign; provide exactly one successor prompt and do not launch it.

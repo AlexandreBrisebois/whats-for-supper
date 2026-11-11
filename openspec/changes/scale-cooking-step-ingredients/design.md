@@ -129,3 +129,21 @@ roles retain their owners. No API, async task or other role producer is added.
 
 See [selected slice and scenario mapping](tasks.md#coordinated-absolute-use-slice-2) for
 C03/C45 acceptance, C01–C06/C12–C19/C46 preservation and remaining aggregate obligations.
+
+
+## Explicit half annotation evidence inlet
+
+
+Selected tasks: step 0.1–0.3 explicit annotated-half subset, 2.1/2.3/4.1. No new public inlet or provider authority. Ordinary current canonical ingredient facts and exact saved step text are the evidence inlet.
+
+Admit one closed affirmative clause: `Add half of the pasta (100 g).` / `Use half the pasta (100 g).`; French `Ajouter la moitié des pâtes (100 g).` / `Ajoutez la moitié de la farine (100 g).` Existing Add/Use/Cook/Boil/Mix and French verb variants may be reused. The row description is literal and unique, occurs once across all steps; a positive scalar proportional saved total and matching saved unit are required. Parenthesized numeric annotation is required; no plain-half or numeric-equality inference. Annotation must equal exact saved total × 1/2 at first production. Unsupported larger clauses, alternatives, conditions, repeated mentions and other partial/conditional sequences abstain.
+
+The binding role is existing `fraction`, payload `fraction:{n:"1",d:"2"}`. Its primary UTF-16 span selects only `half` / `moitié`; a new optional `annotationSpan` selects exactly the numeric measurement `100 g`. Existing relationshipEvidence stores original annotated amount and sourceRevision with rule `explicit-half-annotation-clause`. Both spans derive from a complete anchored parse of saved wording, never submitted provider offsets. No allocation group and no grocery contribution.
+
+Fresh validation strips submitted proof and independently rediscovers exact proof from canonical source facts, rejecting forged fraction/annotation/span/revisions and extra keys. Guarded saved-total correction can carry only previously persisted matching proof with unchanged source, row dependencies and exact step text/revision; it retains original annotation100g but recomputes display from corrected total. A step edit replaces proof and must independently match the then-current saved total. Clears/unrelated changes/no-ops follow established producer semantics.
+
+Projection reuses FractionAmount and existing exact Scale. Existing fractions without annotation remain unchanged. An annotated fraction replaces only its validated nonoverlapping annotation span, retaining the relative half and every other source byte. Bad/stale/overlapping annotation evidence leaves original readable. Basis4 total200g→250g projects `half … (187.5 g)` at six, while ingredient-derived groceries yield375g once.
+
+Trade-off: extend the existing fraction payload/projector with one optional span rather than manufacture an absolute role or duplicate numeric binding. This preserves fraction semantics and avoids duplicate use/allocation state. No new remainder/fixed/per-item producer, async workflow, exhaustive allocation inference or package/unit conversion.
+
+An explicit closed annotated-half clause naming another unique saved row is an independent subject for existing whole/absolute proof. It must not remove that unrelated proof; this subject check does not certify the other fraction or infer any exhaustive allocation.

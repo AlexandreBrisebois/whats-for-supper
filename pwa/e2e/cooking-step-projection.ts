@@ -23,6 +23,7 @@ function valid(recipe: any, step: any, binding: any) {
     !Array.isArray(binding.payload) &&
     ['whole', 'absolute', 'fraction', 'remainder', 'perItem', 'fixed'].includes(binding.role) &&
     (binding.role !== 'fixed' || fixedValid(recipe, binding)) &&
+    annotationValid(step, binding) &&
     span &&
     span.end > span.start &&
     boundary(span.start) &&
@@ -34,9 +35,49 @@ function valid(recipe: any, step: any, binding: any) {
     !step.bindings.some(
       (other: any) =>
         other.id !== binding.id &&
-        other.span &&
-        span.start < other.span.end &&
-        other.span.start < span.end
+        [other.span, ...(other.role === 'fraction' ? [other.payload?.annotationSpan] : [])].some(
+          (otherSpan: any) => otherSpan && span.start < otherSpan.end && otherSpan.start < span.end
+        )
+    )
+  );
+}
+function annotationValid(step: any, binding: any) {
+  if (binding.role !== 'fraction' || !Object.hasOwn(binding.payload, 'annotationSpan')) return true;
+  const span = binding.payload.annotationSpan;
+  const boundary = (n: number) =>
+    Number.isInteger(n) &&
+    n >= 0 &&
+    n <= step.text.length &&
+    !(
+      n > 0 &&
+      n < step.text.length &&
+      /[\uD800-\uDBFF]/.test(step.text[n - 1]) &&
+      /[\uDC00-\uDFFF]/.test(step.text[n])
+    );
+  if (
+    !span ||
+    span.end <= span.start ||
+    !boundary(span.start) ||
+    !boundary(span.end) ||
+    step.text.slice(span.start, span.end) !== span.expectedText
+  )
+    return false;
+  const overlaps = (other: any) => other && span.start < other.end && other.start < span.end;
+  if (!binding.span || overlaps(binding.span)) return false;
+  return (
+    !step.bindings.some(
+      (other: any) =>
+        other.id !== binding.id &&
+        (overlaps(other.span) ||
+          (other.role === 'fraction' && overlaps(other.payload?.annotationSpan)))
+    ) &&
+    !step.bindings.some(
+      (other: any) =>
+        other.id !== binding.id &&
+        other.role === 'fraction' &&
+        other.payload?.annotationSpan &&
+        binding.span.start < other.payload.annotationSpan.end &&
+        other.payload.annotationSpan.start < binding.span.end
     )
   );
 }
@@ -339,6 +380,19 @@ function amountText(amount: any, numerator: number, denominator: number) {
     ? scalar(amount.value)
     : `${scalar(amount.min)}–${scalar(amount.max)}`;
 }
+// Exact terminating decimal for an existing annotation only; other role formatting stays unchanged.
+function annotationAmountText(text: string) {
+  if (!/^\d+\/\d+$/.test(text)) return text;
+  const [n, d] = text.split('/').map(BigInt);
+  let remainder = n % d,
+    digits = '';
+  while (remainder !== 0n && digits.length < 256) {
+    remainder *= 10n;
+    digits += String(remainder / d);
+    remainder %= d;
+  }
+  return remainder === 0n ? `${n / d}.${digits}` : text;
+}
 export function canonicalIngredientLines(
   recipe: any,
   target: number | null
@@ -420,14 +474,18 @@ export function cookingProjection(recipe: any, target: number | null) {
         try {
           const fixed = target == null || row.scaling === 'fixed';
           const replacement = [
-            amountText(amount, fixed ? 1 : target!, fixed ? 1 : recipe.servings),
+            binding.role === 'fraction' && binding.payload.annotationSpan
+              ? annotationAmountText(
+                  amountText(amount, fixed ? 1 : target!, fixed ? 1 : recipe.servings)
+                )
+              : amountText(amount, fixed ? 1 : target!, fixed ? 1 : recipe.servings),
             row.unit?.text,
           ]
             .filter(Boolean)
             .join(' ');
-          if (binding.role !== 'fraction')
+          if (binding.role !== 'fraction' || binding.payload.annotationSpan)
             replacements.push({
-              ...binding.span,
+              ...(binding.role === 'fraction' ? binding.payload.annotationSpan : binding.span),
               replacement:
                 binding.role === 'remainder'
                   ? `${binding.span.expectedText} (${replacement})`

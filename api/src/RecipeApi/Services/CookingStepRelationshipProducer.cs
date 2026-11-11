@@ -12,6 +12,8 @@ public static class CookingStepRelationshipProducer
 {
     private const string WholeRule = "explicit-whole-clause";
     private const string AbsoluteRule = "explicit-absolute-clause";
+    private const string HalfRule = "explicit-half-annotation-clause";
+    private static readonly GroceryRational Half = new("1", "2");
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
     private const RegexOptions Options = RegexOptions.CultureInvariant | RegexOptions.IgnoreCase;
     private static readonly TimeSpan MatchTimeout = TimeSpan.FromMilliseconds(100);
@@ -21,10 +23,12 @@ public static class CookingStepRelationshipProducer
     private sealed record Evidence(int Version, string Rule, string SourceRevision, GroceryQuantity OriginalAmount);
     private sealed record Payload(Evidence RelationshipEvidence,
         [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] GroceryQuantity? Amount = null,
-        [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] RecipeUnitDto? Unit = null);
+        [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] RecipeUnitDto? Unit = null,
+        [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] GroceryRational? Fraction = null,
+        [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] Span? AnnotationSpan = null);
     private sealed record Binding(Guid Id, Guid IngredientLineId, Guid StepId, string ValidatedContentRevision,
         string ValidatedTextRevision, Span Span, string Role, Payload Payload, string Status);
-    private sealed record Clause(Span Span, GroceryQuantity Amount, string Role);
+    private sealed record Clause(Span Span, GroceryQuantity Amount, string Role, Span? AnnotationSpan = null);
 
     public static CanonicalRecipeContent Discover(CanonicalRecipeContent content, CanonicalRecipeContent? previous = null)
     {
@@ -66,14 +70,20 @@ public static class CookingStepRelationshipProducer
                     var prior = Carry(previous, content, step, row, clause);
                     if (prior is not null)
                         return step with { Bindings = [Write(prior with { ValidatedContentRevision = content.ContentRevision })] };
-                    if (clause!.Role == "whole" ? clause.Amount != row.Amount : !PartialAmount(row, clause.Amount))
+                    if (clause!.Role switch
+                    {
+                        "whole" => clause.Amount != row.Amount,
+                        "fraction" => !HalfAmount(row, clause.Amount),
+                        _ => !PartialAmount(row, clause.Amount)
+                    })
                         return step with { Bindings = [] };
                     var existing = step.Bindings.Select(Read).SingleOrDefault(binding =>
                         binding is not null && Matches(binding, content, step, row, clause));
                     var binding = new Binding(existing?.Id ?? Guid.NewGuid(), row.Id, step.Id, content.ContentRevision,
                         step.TextRevision, clause.Span, clause.Role,
-                        new(new(1, clause.Role == "whole" ? WholeRule : AbsoluteRule, content.SourceRevision, clause.Amount),
-                            clause.Role == "absolute" ? clause.Amount : null, clause.Role == "absolute" ? row.Unit : null), "validated");
+                        new(new(1, Rule(clause.Role), content.SourceRevision, clause.Amount),
+                            clause.Role == "absolute" ? clause.Amount : null, clause.Role == "absolute" ? row.Unit : null,
+                            clause.Role == "fraction" ? Half : null, clause.AnnotationSpan), "validated");
                     return step with { Bindings = [Write(binding)] };
                 }).ToArray()
             }).ToArray()
@@ -124,7 +134,8 @@ public static class CookingStepRelationshipProducer
         // exhaustive allocation, even when the explicit amounts sum to the total.
         var independent = mentions.Length == 1 && mentions[0].Count == 1 ||
             mentions.Length > 1 && mentions.All(item => item.Count == 1 && Parse(item.Step.Text, row)?.Role == "absolute");
-        return independent && steps.All(step => !PartialOrConditional.IsMatch(step.Text) || IndependentPartial(content, row, step.Text));
+        return independent && steps.All(step => !PartialOrConditional.IsMatch(step.Text) ||
+            Parse(step.Text, row)?.Role == "fraction" || IndependentPartial(content, row, step.Text));
     }
 
     // A partial clause with no established subject can affect this row. A closed
@@ -133,7 +144,7 @@ public static class CookingStepRelationshipProducer
     private static bool IndependentPartial(CanonicalRecipeContent content, RecipeIngredientLineDto selected, string text) =>
         content.IngredientLines.Where(row => row.Id != selected.Id && !string.IsNullOrWhiteSpace(row.Description) &&
             content.IngredientLines.Count(other => string.Equals(other.Description, row.Description, StringComparison.OrdinalIgnoreCase)) == 1)
-        .Any(row => Regex.IsMatch(text,
+        .Any(row => Parse(text, row)?.Role == "fraction" || Regex.IsMatch(text,
             @"\A[ \t]*(?:(?:Add|Use|Reserve)[ \t]+(?:half[ \t]+(?:of[ \t]+)?(?:the[ \t]+)?|some[ \t]+(?:of[ \t]+the[ \t]+)?|the[ \t]+remaining[ \t]+)|(?:Ajouter|Ajoutez|Réserver|Réservez)[ \t]+la moitié[ \t]+(?:de la[ \t]+|du[ \t]+|des[ \t]+|de l['’]))" +
             Regex.Escape(row.Description) + @"\.?[ \t]*\z", Options, MatchTimeout));
 
@@ -143,6 +154,22 @@ public static class CookingStepRelationshipProducer
         const string amount = @"(?<amount>[0-9¼½¾⅐⅑⅒⅓⅔⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞][0-9¼½¾⅐⅑⅒⅓⅔⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞/.,–\- \t]*)";
         var measurement = @"(?<measurement>" + amount + (row.Unit is null ? "" : @"[ \t]+" + Regex.Escape(row.Unit.Text)) + ")";
         var noun = Regex.Escape(row.Description);
+        var halfPatterns = new[]
+        {
+            @"\A[ \t]*(?:Add|Use|Cook|Boil|Mix)[ \t]+(?<relative>half)[ \t]+(?:of[ \t]+)?the[ \t]+" + noun + @"[ \t]+\(" + measurement + @"\)\.?[ \t]*\z",
+            @"\A[ \t]*(?:Ajouter|Ajoutez|Utiliser|Utilisez|Cuire|Faire cuire|Faites cuire|Mélanger|Mélangez)[ \t]+la[ \t]+(?<relative>moitié)[ \t]+(?:de la[ \t]+|du[ \t]+|des[ \t]+|de l['’])" + noun + @"[ \t]+\(" + measurement + @"\)\.?[ \t]*\z"
+        };
+        foreach (var pattern in halfPatterns)
+        {
+            var match = Regex.Match(text, pattern, Options, MatchTimeout);
+            if (!match.Success) continue;
+            var quantity = LegacyGroceryQuantity.Parse(match.Groups["amount"].Value.Trim());
+            if (quantity is null || !LegacyGroceryQuantity.IsCanonical(quantity)) return null;
+            var relative = match.Groups["relative"];
+            var annotation = match.Groups["measurement"];
+            return new(new(relative.Index, relative.Index + relative.Length, relative.Value), quantity, "fraction",
+                new(annotation.Index, annotation.Index + annotation.Length, annotation.Value));
+        }
         var patterns = new (string Role, string Pattern)[]
         {
             ("whole", @"\A[ \t]*(?:Add|Use|Cook|Boil|Mix)[ \t]+all[ \t]+" + measurement + @"[ \t]+(?:of[ \t]+)?" + noun + @"\.?[ \t]*\z"),
@@ -165,6 +192,13 @@ public static class CookingStepRelationshipProducer
     // A closed affirmative measured-use clause establishes an absolute role,
     // never a whole role from numeric equality. Initial partial proof is bounded
     // to a positive scalar use below a known scalar total with the saved unit.
+    private static string Rule(string role) => role switch { "whole" => WholeRule, "fraction" => HalfRule, _ => AbsoluteRule };
+
+    private static bool HalfAmount(RecipeIngredientLineDto row, GroceryQuantity amount) =>
+        row.Unit is not null && row.Amount is { Kind: "scalar", Value.N: not "0" } &&
+        amount is { Kind: "scalar", Value.N: not "0" } &&
+        LegacyGroceryQuantity.Multiply(row.Amount, Half) == amount;
+
     private static bool PartialAmount(RecipeIngredientLineDto row, GroceryQuantity amount) =>
         row.Unit is not null && row.Amount is { Kind: "scalar" } && amount is { Kind: "scalar", Value.N: not "0" } &&
         LegacyGroceryQuantity.SubtractScalar(row.Amount, amount) is { Value.N: not "0" };
@@ -192,9 +226,14 @@ public static class CookingStepRelationshipProducer
         binding.StepId == step.Id && binding.ValidatedContentRevision == content.ContentRevision && binding.ValidatedTextRevision == step.TextRevision &&
         binding.Span == clause.Span && binding.Role == clause.Role && binding.Status == "validated" &&
         binding.Payload?.RelationshipEvidence is { Version: 1 } evidence &&
-        evidence.Rule == (clause.Role == "whole" ? WholeRule : AbsoluteRule) &&
+        evidence.Rule == (Rule(clause.Role)) &&
         evidence.SourceRevision == content.SourceRevision && evidence.OriginalAmount == clause.Amount &&
-        (clause.Role == "whole" || binding.Payload.Amount == clause.Amount && binding.Payload.Unit == row.Unit);
+        (clause.Role switch
+        {
+            "whole" => binding.Payload.Amount is null && binding.Payload.Unit is null && binding.Payload.Fraction is null && binding.Payload.AnnotationSpan is null,
+            "fraction" => binding.Payload.Amount is null && binding.Payload.Unit is null && binding.Payload.Fraction == Half && binding.Payload.AnnotationSpan == clause.AnnotationSpan,
+            _ => binding.Payload.Amount == clause.Amount && binding.Payload.Unit == row.Unit && binding.Payload.Fraction is null && binding.Payload.AnnotationSpan is null
+        });
 
     private static bool Owned(JsonElement raw) => raw.ValueKind == JsonValueKind.Object &&
         raw.TryGetProperty("payload", out var payload) && payload.ValueKind == JsonValueKind.Object &&

@@ -340,6 +340,37 @@ class PipelineTests(unittest.TestCase):
         for browser in ['skipped', 'failed', 'retry']:
             self.assertNotEqual(execute(browser=browser), 0)
 
+    def test_fraction_producer_hosted_gate_rejects_missing_skipped_and_retried_evidence(self):
+        import json
+        import subprocess
+        import tempfile
+        import xml.etree.ElementTree as ET
+        steps = yaml.safe_load((ROOT / '.github/workflows/validate.yml').read_text())['jobs']['cooking-step-live']['steps']
+        run = next((s for s in steps if s.get('name') == 'Run required fraction-use canonical journey'), None)
+        self.assertIsNotNone(run, 'Absolute producer needs actual hosted workflow/browser acceptance')
+        self.assertIn('LiveBrowser_FreshFractionCanonicalGroceries', run['run'])
+        guard = next(s for s in steps if s.get('name') == 'Require fraction-use canonical journey results')
+        titles = ['fresh URL explicit half retains relative proof through Cook refresh',
+                  'fresh photo explicit half retains relative proof through Cook refresh',
+                  'retained URL material becomes Ready after browser correction and reviewed import']
+        def execute(native='Passed', browser='passed', absent=False):
+            with tempfile.TemporaryDirectory() as directory:
+                root = Path(directory) / '.task/grocery-live/fraction'; root.mkdir(parents=True)
+                tree = ET.Element('TestRun'); results = ET.SubElement(tree, 'Results')
+                ET.SubElement(results, 'UnitTestResult', testName='RecipeApi.Tests.Integration.CanonicalIngredientPublicationPostgresTests.LiveBrowser_FreshFractionCanonicalGroceries', outcome=native)
+                ET.ElementTree(tree).write(root / 'native.trx')
+                if not absent:
+                    (root / 'fresh-fraction').mkdir()
+                    specs = [{'title': title, 'tests': [{'status': 'expected', 'results': [{'status': browser, 'retry': int(browser == 'retry')}]}]} for title in titles]
+                    (root / 'fresh-fraction/browser-results.json').write_text(json.dumps({'suites': [{'specs': specs}]}))
+                return subprocess.run(['bash', '-c', guard['run']], cwd=directory, capture_output=True).returncode
+        self.assertEqual(execute(), 0)
+        self.assertNotEqual(execute(absent=True), 0)
+        for native in ['Failed', 'NotExecuted']:
+            self.assertNotEqual(execute(native=native), 0)
+        for browser in ['skipped', 'failed', 'retry']:
+            self.assertNotEqual(execute(browser=browser), 0)
+
     def test_e2e_has_four_suites_and_one_build(self):
         jobs = yaml.safe_load((ROOT / '.github/workflows/validate.yml').read_text())['jobs']
         self.assertIn('pwa-build', jobs)

@@ -1,13 +1,14 @@
 import { test, expect } from '@playwright/test';
 import { generateSecretToken } from './auth-utils';
 import './fresh-multiple-absolute-live';
+import './fresh-fraction-live';
 
 const multipleUse = process.env.FRESH_MULTIPLE_ABSOLUTE_USE === '1';
 const absoluteUse = process.env.FRESH_ABSOLUTE_USE === '1';
 
 test.skip(!process.env.FRESH_URL_RECIPE_ID, 'Requires producer-backed live API and built PWA.');
 
-if (!multipleUse) {
+if (!multipleUse && process.env.FRESH_FRACTION_USE !== '1') {
   test('fresh URL canonical edit reaches two shoppers and dated groceries', async ({
     browser,
     request,

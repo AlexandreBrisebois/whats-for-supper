@@ -50,6 +50,47 @@ public sealed class CookingStepProjectionTests
         Assert.Equal(1, result.UncertainUses);
     }
 
+    [Theory]
+    [InlineData("valid", "Use half the pasta (150 g).", 1)]
+    [InlineData("stale", "Use half the pasta (100 g).", 0)]
+    [InlineData("overlap", "Use half the pasta (100 g).", 0)]
+    [InlineData("outside", "Use half the pasta (100 g).", 0)]
+    [InlineData("otherUse", "Use half the pasta (100 g).", 0)]
+    public void FractionAnnotationProjectsOnlyExactDisjointCurrentSourceSpan(string fault, string expected, int validated)
+    {
+        const string text = "Use half the pasta (100 g).";
+        var annotation = fault switch
+        {
+            "stale" => new { start = 20, end = 25, expectedText = "200 g" },
+            "overlap" => new { start = 4, end = 8, expectedText = "half" },
+            "outside" => new { start = 20, end = 99, expectedText = "100 g" },
+            _ => new { start = 20, end = 25, expectedText = "100 g" }
+        };
+        var fraction = JsonSerializer.SerializeToElement(new { id = Guid.NewGuid(), ingredientLineId = RowId, stepId = StepId,
+            validatedContentRevision = "content", validatedTextRevision = "text", span = new { start = 4, end = 8, expectedText = "half" },
+            role = "fraction", payload = new { fraction = new { n = "1", d = "2" }, annotationSpan = annotation }, status = "validated" });
+        var content = Content(text, fraction);
+        if (fault == "otherUse") content = Content(text, fraction, Use(20, 25, "100 g", payload: new { }));
+        var projected = CookingStepProjection.Read(content, 6);
+        Assert.Equal(expected, projected.Sections[0].Steps[0].Text);
+        Assert.Equal(validated, projected.ValidatedUses);
+    }
+
+    [Theory]
+    [InlineData("null")]
+    [InlineData("[]")]
+    public void InvalidNeighboringFractionPayloadCannotBreakIndependentProjection(string payload)
+    {
+        const string text = "Use half the pasta (100 g).";
+        var invalid = JsonSerializer.SerializeToElement(new { id = Guid.NewGuid(), ingredientLineId = RowId, stepId = StepId,
+            validatedContentRevision = "content", validatedTextRevision = "text", span = new { start = 4, end = 8, expectedText = "half" },
+            role = "fraction", payload = JsonSerializer.Deserialize<JsonElement>(payload), status = "validated" });
+        var result = CookingStepProjection.Read(Content(text, invalid, Use(20, 25, "100 g", payload: new { })), 6);
+        Assert.Equal("Use half the pasta (300 g).", result.Sections[0].Steps[0].Text);
+        Assert.Equal(1, result.ValidatedUses);
+        Assert.Equal(1, result.UncertainUses);
+    }
+
     [Fact]
     public void UnknownBasisRetainsOriginalAndDoesNotBlockOtherCookingContent()
     {

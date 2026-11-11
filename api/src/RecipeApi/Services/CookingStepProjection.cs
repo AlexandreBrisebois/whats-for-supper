@@ -32,7 +32,7 @@ public static class CookingStepProjection
             content.IngredientLines.Count(x => x.Id == binding.IngredientLineId) != 1) return false;
         var row = content.IngredientLines.Single(x => x.Id == binding.IngredientLineId);
         if (binding.Role == "whole") return row.Amount is not null && LegacyGroceryQuantity.IsCanonical(row.Amount);
-        if (binding.Role == "fraction") return FractionAmount(row, binding) is not null;
+        if (binding.Role == "fraction") return FractionAmount(row, binding) is not null && AnnotationValid(step, binding);
         if (binding.Role == "remainder") return true;
         if (binding.Role == "perItem") return content.InstructionSections.SelectMany(x => x.Steps)
             .SelectMany(x => x.Bindings).Select(Read).Count(x => x?.Id == binding.Id) == 1 &&
@@ -114,8 +114,55 @@ public static class CookingStepProjection
         _ => binding.Payload.GetProperty("amount").Deserialize<GroceryQuantity>(Json)
     };
 
-    private static bool Overlap(Binding binding, Binding? other) => other?.Span is { } span &&
-        binding.Span.Start < span.End && span.Start < binding.Span.End;
+    private static Span? Annotation(Binding binding)
+    {
+        try
+        {
+            return binding.Role == "fraction" && binding.Payload.ValueKind == JsonValueKind.Object &&
+                binding.Payload.TryGetProperty("annotationSpan", out var raw)
+                ? raw.Deserialize<Span>(Json) : null;
+        }
+        catch (JsonException) { return null; }
+    }
+
+    // Annotated halves preserve exact arithmetic. Prefer a finite decimal only
+    // when division terminates within the supported source-token bound; otherwise
+    // retain the existing rational rendering without rounding.
+    private static string? AnnotationAmount(GroceryQuantity quantity)
+    {
+        if (quantity is not { Kind: "scalar", Value: { } value }) return null;
+        var denominator = BigInteger.Parse(value.D);
+        var integer = BigInteger.DivRem(BigInteger.Parse(value.N), denominator, out var remainder);
+        if (remainder.IsZero) return integer.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        var digits = new System.Text.StringBuilder();
+        while (!remainder.IsZero && digits.Length < 256)
+        {
+            var digit = BigInteger.DivRem(remainder * 10, denominator, out remainder);
+            digits.Append((char)('0' + (int)digit));
+        }
+        return remainder.IsZero ? integer.ToString(System.Globalization.CultureInfo.InvariantCulture) + "." + digits : null;
+    }
+
+    private static bool SpanOverlap(Span first, Span second) => first.Start < second.End && second.Start < first.End;
+
+    private static bool AnnotationValid(RecipeInstructionStepDto step, Binding binding)
+    {
+        if (!binding.Payload.TryGetProperty("annotationSpan", out _)) return true;
+        return Annotation(binding) is { } span && span.End > span.Start &&
+            Boundary(step.Text, span.Start) && Boundary(step.Text, span.End) &&
+            step.Text[span.Start..span.End] == span.ExpectedText && !SpanOverlap(binding.Span, span);
+    }
+
+    private static bool Overlap(Binding binding, Binding? other)
+    {
+        if (other?.Span is not { } span) return false;
+        var annotation = Annotation(binding);
+        var otherAnnotation = Annotation(other);
+        return SpanOverlap(binding.Span, span) ||
+            annotation is not null && SpanOverlap(annotation, span) ||
+            otherAnnotation is not null && SpanOverlap(binding.Span, otherAnnotation) ||
+            annotation is not null && otherAnnotation is not null && SpanOverlap(annotation, otherAnnotation);
+    }
 
     private static bool Eligible(CanonicalRecipeContent content, RecipeInstructionStepDto step, Binding? binding, Binding?[] bindings) =>
         Valid(content, step, binding) && bindings.Count(x => x?.Id == binding!.Id) == 1 &&
@@ -233,8 +280,17 @@ public static class CookingStepProjection
                         : content.Servings is > 0 ? LegacyGroceryQuantity.Scale(amount, target.Value, content.Servings.Value) : null;
                     if (scaled is null) { uncertain++; continue; }
                     // Relative wording is already the correct instruction at every target.
-                    // Calculating the exact use above proves the relationship without inventing an annotation.
-                    if (binding!.Role == "fraction") { valid++; continue; }
+                    // Replace an existing proved numeric annotation only; never invent one.
+                    if (binding!.Role == "fraction")
+                    {
+                        if (Annotation(binding) is { } annotation)
+                        {
+                            var annotated = CanonicalRecipeContentStore.Render(row with { Amount = scaled, AmountText = AnnotationAmount(scaled), Description = "" }).TrimEnd();
+                            replacements.Add((annotation.Start, annotation.End, annotated));
+                        }
+                        valid++;
+                        continue;
+                    }
                     var rendered = CanonicalRecipeContentStore.Render(row with { Amount = scaled, AmountText = null, Description = "" }).TrimEnd();
                     replacements.Add((binding.Span.Start, binding.Span.End, binding.Role == "remainder" ? $"{binding.Span.ExpectedText} ({rendered})" : rendered));
                     valid++;
