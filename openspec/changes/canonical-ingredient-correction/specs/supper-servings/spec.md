@@ -47,6 +47,14 @@ Known canonical amounts SHALL scale only for their stable original-basis line id
 - **WHEN** an ingredient says salt to taste or oil for frying, or a verified quantity is two 400 g cans
 - **THEN** the direction remains ordinary unquantified text and scaling changes the can count without multiplying its package size or instruction numbers
 
+#### Scenario: Legacy garlic count exposes a placeholder unit when scaled
+- **WHEN** original wording is `2 Gousses d'ail`, basis is two, and coherently associated legacy supply records amount 2, name `Gousses d'ail` and the generic placeholder unit `unit`
+- **THEN** detail at four portions displays `4 Gousses d'ail`, never `4 unit Gousses d'ail`; returning to original displays `2 Gousses d'ail`
+- **AND** the equivalent canonical amount-2, null-unit count has the same display, while genuine measurement units remain visible
+- **AND** preview/read does not rewrite saved ingredients, units, extraction evidence or revisions, perform implicit conversion, or call a provider
+- **AND** grocery demand includes each recipe contribution once; a companion recipe recorded with unit `Gousses` remains conservatively separate unless equivalence is independently established, rather than merging because detail suppresses the placeholder
+- **AND** this display regression does not authorize generic count conversion, bilingual garlic/ail merging or bulk repair of existing recipes
+
 #### Scenario: Shared consumers and unknown basis
 - **WHEN** the same aligned recipe/count is read through preview, proposed or assigned detail, cooking and grocery contribution
 - **THEN** reliable numeric amounts and completeness agree across consumers before display rounding

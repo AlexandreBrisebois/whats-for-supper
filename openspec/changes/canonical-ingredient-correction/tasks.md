@@ -63,6 +63,23 @@ human protection, source/media and journal/replay boundaries.
 - [ ] 3.5 In a later bounded increment, qualify shared-recipe import into the canonical owner. Keep lower-fidelity sharing distinct from full backup recovery; establish fresh stable identities and preserve supported wording/facts without inventing bindings or provenance. Exercise ordinary edit/read and one-demand behavior through real seams.
 - [ ] 3.6 In a later bounded increment, qualify general existing-recipe reimport/repair with explicit captured source/content and protected-field authority. Reuse eligible Report/Review issue workflows, preserving human edits/clears, media, failure/cancel and retry semantics. Do not relax the canonical publication fence globally or treat later work as fresh intake. Narrow URL/photo retained-review repair is already implemented and does not prove this general merge.
 
+**Pending bounded display regression under 3.2 — approved 2026-11-11:** Add the
+[legacy garlic placeholder scenario](specs/supper-servings/spec.md#scenario-legacy-garlic-count-exposes-a-placeholder-unit-when-scaled)
+to the next selected ingredient-display slice, separate from step-producer work.
+DV inspection found original `2 Gousses d'ail` represented with both `unit` and
+`Gousses` in different legacy recipes. Use synthetic fixtures reproducing those
+facts, not edits to the user's DV recipes. First prove the unwanted
+`4 unit Gousses d'ail` rendering, then qualify `4 Gousses d'ail`, original/reset
+round-trip, canonical null-unit parity and genuine-unit preservation through the
+existing formatter/detail browser owners and actual API/PostgreSQL projection seam.
+Assert saved content/evidence/revisions are unchanged by reads. Check grocery
+contribution amounts, independent row/check identities and no duplicate demand
+separately: display suppression is not evidence of unit equivalence or a merge.
+Preserve C47's no-generic-count-merge boundary; bilingual equivalence, bulk legacy
+repair and migration activation remain outside this slice. Implementation and
+qualification are pending; prior slice passes do not cover this example and no
+aggregate checkbox closes from this planning addition.
+
 ## 4. Final integration and verification
 
 - [ ] 4.1 Reconcile scenario coverage and actual evidence for the selected delivery milestone, review the complete integrated diff and affected contracts/mocks, then run applicable preparation and `task verify -- <reviewed paths>`. Record candidate/configuration and invocation-specific record_path plus passed/failed/blocked/skipped/not-run results. Required real database/live seams have zero required skips; local and hosted-candidate gates are distinct. First-increment acceptance does not close later channel tasks or the entire change. Migration activation and production deployment remain separate operator actions.
