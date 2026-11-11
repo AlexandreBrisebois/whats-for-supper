@@ -240,3 +240,24 @@ unchanged lifecycle dispositions are recorded in
 deployment are explicitly authorized for this one completed slice. Stop after accepted
 DV integration into recipe-view-redesign and provide the next prompt without launching
 it. Unfinished aggregates remain open; no archival or main-spec promotion follows.
+
+## Coordinated multiple-absolute-use slice 3
+
+The selected successor of accepted `780327550ebbe9e34afa13ccbfb07cec46d0b4e5`
+(DV `b4e031e6-54ab-4398-9b1c-0dcafcb9a4c4`) admits separate independently
+explicit absolute uses of one unique ingredient across separate steps. C02 starts
+with oil 2 tbsp and two 1 tbsp steps; eight portions from basis four show two
+2 tbsp steps and one 4 tbsp ingredient-derived demand. Correcting the total to
+3 tbsp retains both absolute uses and produces one 6 tbsp demand. Summing to a
+total never establishes exhaustive allocation. Unsupported sequences remain quiet
+original wording. Whole-use and prior absolute-use behavior remain required.
+
+Scope: step 0.1–0.3 multiple-use subset, 2.1/2.3/4.1; canonical 2.2/3.2/4.1
+integration/qualification subsets. B owns producer/unit proof, A owns guarded
+Save/publication/native fixtures, C independently reviews preservation/recovery,
+and coordinator owns browser/contracts/lifecycle/source freeze and final gates.
+Lifecycle dispositions remain unchanged. No new role producer, asynchronous AI,
+later intake, conversion, protected reimport, catalogue or Similar UI is included.
+Commit, push, exact-commit frontend/backend/database DV acceptance and integration
+are authorized for this slice only; stop after accepted DV and provide one bounded
+successor prompt. No main-spec promotion/archive or broader CI completion claim.

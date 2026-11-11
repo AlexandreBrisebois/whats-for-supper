@@ -168,3 +168,30 @@ prior failed DV attempts, soft-deleted fixture histories, failed-capture notices
 embedding HTTP422 and French focus/prepared containment/Search navigation limitations.
 Stop after one accepted exact-commit DV slice and integration into recipe-view-redesign;
 provide one successor prompt but do not launch it. Production/reset/reseed are excluded.
+
+## Coordinated multiple-absolute-use slice 3
+
+Selected 2.2, 3.2 and 4.1 integration/qualification subsets build on accepted
+`780327550ebbe9e34afa13ccbfb07cec46d0b4e5` / DV
+`b4e031e6-54ab-4398-9b1c-0dcafcb9a4c4`. Existing canonical hooks already invoke
+the shared producer; new actual guarded Save/publication and categorization/native
+workflow fixtures qualify multiple uses without duplicating production logic.
+C02: total 2 tbsp/two 1 tbsp uses at basis four → two 2 tbsp uses/one 4 tbsp demand
+at eight; correction to 3 retains absolute uses/one 6 tbsp demand. C03/C45 and
+C01–C06/C12–C19/C46 remain required preservation. Source/evidence and separate
+local/hosted/DV gates are recorded under `.task/dependable-portions-slice3/`.
+Aggregate checkboxes remain open for broader unqualified requirements. Next action:
+complete stable-source local gates, exact-commit hosted and data-preserving DV
+acceptance, then integrate this slice and stop without launching its successor.
+
+Local slice qualification: focused 3/3 PostgreSQL cases passed with zero skips
+(`19ae3815cdb14160b907c0623a348c06`); canonical/edit/publication/recovery 143/143
+(`51ad2e29aae24493a365b088baaeec13`); prepared/servings 94/94
+(`b3b74d2ece0d4d5ab7dac45319937f24`). Source-stable native 3/3 and browser 9/9
+passed without required skips/retries in
+`.task/dependable-portions-slice3/a/live-attempt2/`. The first native browser
+attempt used the wrong mocked-build API origin and was cancelled after its first
+failure; it remains retained. Compilation-only skips are not database acceptance.
+Final repository, exact-commit hosted and DV evidence are separately authoritative
+under `.task/dependable-portions-slice3/`; this local evidence does not establish
+them or close unfinished aggregate tasks.

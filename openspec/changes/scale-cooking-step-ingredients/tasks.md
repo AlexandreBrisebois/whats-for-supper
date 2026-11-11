@@ -150,3 +150,28 @@ prior failed DV attempts, soft-deleted fixture histories, failed-capture notices
 embedding HTTP422 and French focus/prepared containment/Search navigation limitations.
 Stop after one accepted exact-commit DV slice and integration into recipe-view-redesign;
 provide one successor prompt but do not launch it. Production/reset/reseed are excluded.
+
+## Coordinated multiple-absolute-use slice 3
+
+Selected 0.1–0.3 multiple-use subset, 2.1/2.3/4.1 build on accepted
+`780327550ebbe9e34afa13ccbfb07cec46d0b4e5` / DV
+`b4e031e6-54ab-4398-9b1c-0dcafcb9a4c4`. B extends the bounded evidence inlet:
+all mentioning steps must independently prove a closed absolute clause for one
+unique ingredient. Equality of summed uses never infers exhaustive allocation.
+Conditional/ambiguous/duplicate/overlap/unsupported sequences remain original.
+Initial producer intended red 5 failed/52 passed, then 57/57 green; preservation
+156/156 with zero skips. First broader compile failure retained and repaired.
+A qualifies guarded Save/publication and actual URL/photo workflows; coordinator
+qualifies generated-client Cook refresh/state and one ingredient-derived demand.
+C02 is the new case; prior whole/absolute and all projector roles plus prepared,
+serving and recovery seams remain required. Evidence/gates are separately retained
+under `.task/dependable-portions-slice3/`; aggregate checkboxes remain open.
+Next action: stable integrated local gates, exact-commit hosted/DV acceptance,
+integration and one successor prompt, then stop. No main-spec promotion/archive.
+
+Local integrated evidence: focused 3/3 PostgreSQL cases, canonical/recovery 143/143,
+prepared/servings 94/94 and source-stable native 3/3 plus browser 9/9 passed with
+zero required skips/retries. Invocation identities and retained first failures are
+in `.task/dependable-portions-slice3/a/`; the final repository/hosted/DV receipts
+remain distinct. Neither these local results nor subsequent bounded acceptance
+closes asynchronous reevaluation, later role/input/library work or broader CI.

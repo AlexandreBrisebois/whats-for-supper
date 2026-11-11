@@ -117,8 +117,14 @@ public static class CookingStepRelationshipProducer
             string.IsNullOrWhiteSpace(row.Description) || row.Description.IndexOfAny(['\r', '\n', '.', ';', ':', '!', '?']) >= 0 ||
             content.IngredientLines.Count(x => string.Equals(x.Description, row.Description, StringComparison.OrdinalIgnoreCase)) != 1) return false;
         var mention = new Regex(@"(?<![\p{L}\p{N}])" + Regex.Escape(row.Description) + @"(?![\p{L}\p{N}])", Options, MatchTimeout);
-        return steps.Sum(step => mention.Matches(step.Text).Count) == 1 &&
-            steps.All(step => !PartialOrConditional.IsMatch(step.Text) || IndependentPartial(content, row, step.Text));
+        var mentions = steps.Select(step => (Step: step, Count: mention.Matches(step.Text).Count))
+            .Where(item => item.Count != 0).ToArray();
+        // Repetition is not ambiguity when every mentioning step independently
+        // states one closed absolute use. It proves neither a whole use nor an
+        // exhaustive allocation, even when the explicit amounts sum to the total.
+        var independent = mentions.Length == 1 && mentions[0].Count == 1 ||
+            mentions.Length > 1 && mentions.All(item => item.Count == 1 && Parse(item.Step.Text, row)?.Role == "absolute");
+        return independent && steps.All(step => !PartialOrConditional.IsMatch(step.Text) || IndependentPartial(content, row, step.Text));
     }
 
     // A partial clause with no established subject can affect this row. A closed
