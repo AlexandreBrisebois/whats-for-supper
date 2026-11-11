@@ -355,3 +355,17 @@ selective repair superseded and unimplemented. Preserve all prior provider/UI/
 public viewport limitations and failure histories. No main-spec sync/archive,
 resets/reseeds or production. Stop after this one accepted slice and one unlaunched
 bounded successor prompt.
+
+### Per-item producer qualification checkpoint
+
+C06 now has dedicated ordinary producer/service tests and real PostgreSQL
+publication/edit owners in `CookingStepRelationshipProducerTests.PerItem.cs`,
+`CanonicalIngredientPublicationPostgresTests.PerItemRelationships.cs` and
+`CanonicalIngredientEditPostgresTests.PerItemRelationships.cs`. The native owner
+`LiveBrowser_FreshPerItemCanonicalGroceries` covers ordinary URL/photo ancestry,
+generated-client edits and coherent Cook refresh; its explicit recompute consumer
+fixture does not qualify autonomous worker or DV operation. Those remain separate
+exact-candidate gates. Aggregate tasks stay open pending all required role/corpus
+reconciliation and the final hosted campaign. The historical full PostgreSQL run
+with 613 passing tests failed its content-stability gate and remains failed; a
+complete stable rerun is required before current-candidate acceptance.

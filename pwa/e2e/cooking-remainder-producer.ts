@@ -1,3 +1,4 @@
+import { isIndependentPerItemStep } from './cooking-per-item-producer';
 import { parseExplicitFixedClause } from './cooking-fixed-producer';
 import { randomUUID } from 'node:crypto';
 import { isDeepStrictEqual as same } from 'node:util';
@@ -89,7 +90,9 @@ function finalClause(text: string, row: any) {
     'iu'
   ).exec(text);
 }
-function independentStep(text: string, selected: any, rows: any[]) {
+function independentStep(text: string, selected: any, recipe: any, before: any) {
+  const rows = recipe.ingredientLines;
+  if (isIndependentPerItemStep(recipe, selected, text, before)) return true;
   if (
     /^[ \t]*Simmer[ \t]+[1-9][0-9]*[ \t]+minutes[ \t]+at[ \t]+[1-9][0-9]*[ \t]+°C\.[ \t]*$/iu.test(
       text
@@ -121,6 +124,9 @@ function independentStep(text: string, selected: any, rows: any[]) {
 export function discoverRemainderBindings(before: any, recipe: any) {
   const steps = (recipe.instructionSections ?? []).flatMap((section: any) => section.steps);
   const previous = (before.instructionSections ?? []).flatMap((section: any) => section.steps);
+  // Preserve only the already revalidated proof when testing independent steps.
+  // Clearing this producer's output must not turn preservation into fresh discovery.
+  const independenceRecipe = structuredClone(recipe);
   for (const step of steps) step.bindings = step.bindings.filter((binding: any) => !owned(binding));
   for (const row of recipe.ingredientLines ?? []) {
     if (
@@ -171,7 +177,7 @@ export function discoverRemainderBindings(before: any, recipe: any) {
         (step: any) =>
           step !== prior &&
           step !== final &&
-          !independentStep(step.text, row, recipe.ingredientLines)
+          !independentStep(step.text, row, independenceRecipe, before)
       )
     )
       continue;

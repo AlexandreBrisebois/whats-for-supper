@@ -655,3 +655,119 @@ test('ordinary guarded Save discovers a standalone fixed use without additional 
   expect(oil).toHaveLength(1);
   expect(oil[0].quantity).toEqual({ kind: 'scalar', value: { n: '6', d: '1' } });
 });
+
+test('ordinary guarded Save discovers per-item count and dose without binding-derived grocery demand', async ({
+  page,
+  baseURL,
+}) => {
+  const recipe: any = perItemCookingRecipe();
+  recipe.ingredientLines[0].description = 'tofu';
+  recipe.ingredientLines[0].shopping.name = 'tofu';
+  recipe.ingredients = ['4 pieces tofu', '2 tsp oil'];
+  const source = 'For all 4 pieces of tofu, use exactly 1/2 tsp of oil on each piece.';
+  recipe.instructionSections[0].steps[0].text = source;
+  recipe.instructionSections[0].steps[0].bindings = [];
+  recipe.recipeInstructions[0].itemListElement = [{ text: source }];
+  await setupCommonRoutes(page, undefined, {
+    canonicalEditor: recipe,
+    supperServings: {
+      knownRecipe: {
+        id: recipe.id,
+        basis: 4,
+        quantity: 4,
+        ingredient: 'tofu',
+        unit: 'pieces',
+        source: {
+          ingredients: recipe.ingredients,
+          supplies: [
+            { name: 'tofu', quantity: 4, unitText: 'pieces' },
+            { name: 'oil', quantity: 2, unitText: 'tsp' },
+          ],
+        },
+      },
+    },
+  });
+  await page
+    .context()
+    .addCookies([{ name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: baseURL! }]);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(`/recipes?open=${recipe.id}`);
+  expect(
+    await page.evaluate(async (id) => {
+      const assigned = await fetch('/api/schedule/assign?referenceWeekStartDate=2026-05-04', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ weekOffset: 0, dayIndex: 0, recipeId: id }),
+      });
+      const state = (await (await fetch('/api/schedule/servings?weekOffset=0')).json()).data;
+      const portions = await fetch('/api/schedule/servings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          weekOffset: 0,
+          referenceWeekStartDate: '2026-05-04',
+          expectedVersion: state.version,
+          defaultServings: 8,
+          days: [],
+        }),
+      });
+      return [assigned.status, portions.status];
+    }, recipe.id)
+  ).toEqual([200, 200]);
+  await page.getByTestId('action-gear-menu').click();
+  await page.getByTestId('action-edit-recipe').click();
+  await page.getByTestId('recipe-edit-amount-1').fill('3');
+  const saving = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'PATCH' &&
+      new URL(response.url()).pathname === `/api/recipes/${recipe.id}`
+  );
+  await page.getByTestId('recipe-save-edits').click();
+  const reply = await saving;
+  expect(reply.status()).toBe(200);
+  const saved = (await reply.json()).recipe;
+  const step = saved.instructionSections[0].steps[0];
+  expect(step.text).toBe(source);
+  expect(step.bindings.map((binding: any) => binding.role)).toEqual(['whole', 'perItem']);
+  expect(step.bindings[1].payload.countBindingId).toBe(step.bindings[0].id);
+  expect(step.bindings[1].payload.dose.amount).toEqual({
+    kind: 'scalar',
+    value: { n: '1', d: '2' },
+  });
+  expect(
+    step.bindings.every(
+      (binding: any) => binding.validatedContentRevision === saved.contentRevision
+    )
+  ).toBe(true);
+  await page.goto('/planner');
+  await page.getByTestId('day-card-0').getByTestId('edit-recipe-button').click();
+  await page.getByTestId('action-cooks-mode').click();
+  const tofu = page.getByTestId('ingredient-toggle').filter({ hasText: '8 pieces tofu' });
+  await expect(tofu).toBeVisible();
+  await expect(
+    page.getByTestId('ingredient-toggle').filter({ hasText: '6 tsp oil' })
+  ).toBeVisible();
+  await tofu.click();
+  await page.getByTestId('cooking-view-step-by-step').click();
+  await page.getByTestId('cooks-mode-step-next').click();
+  await expect(page.getByTestId('cooks-mode-instructions')).toContainText(
+    'For all 8 pieces of tofu, use exactly 1/2 tsp of oil on each piece.'
+  );
+  await expect(page.getByTestId('cooking-step-uncertainty')).toHaveCount(0);
+  await page.getByTestId('cooks-mode-edit-step').click();
+  await expect(page.getByRole('textbox')).toHaveValue(source);
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await page.getByTestId('cooks-mode-step-prev').click();
+  await expect(tofu).toHaveAttribute('aria-checked', 'true');
+  const rows = await page.evaluate(
+    async () => (await (await fetch('/api/schedule?weekOffset=0')).json()).data.groceryItems
+  );
+  for (const [key, amount] of [
+    ['tofu', '8'],
+    ['oil', '6'],
+  ]) {
+    const matches = rows.filter((row: any) => row.normalizedKey === key);
+    expect(matches).toHaveLength(1);
+    expect(matches[0].quantity).toEqual({ kind: 'scalar', value: { n: amount, d: '1' } });
+  }
+});

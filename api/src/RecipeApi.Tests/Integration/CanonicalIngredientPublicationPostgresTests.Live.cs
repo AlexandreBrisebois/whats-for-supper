@@ -40,14 +40,17 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
     [DeploymentCalendarPostgresTests.CalendarLiveFact]
     public Task LiveBrowser_FreshFixedCanonicalGroceries() => FreshCanonicalGroceries(absoluteUse: false, fixedUse: true);
 
-    private async Task FreshCanonicalGroceries(bool absoluteUse, bool multipleUse = false, bool fractionUse = false, bool remainderUse = false, bool fixedUse = false)
+    [DeploymentCalendarPostgresTests.CalendarLiveFact]
+    public Task LiveBrowser_FreshPerItemCanonicalGroceries() => FreshCanonicalGroceries(absoluteUse: false, perItemUse: true);
+
+    private async Task FreshCanonicalGroceries(bool absoluteUse, bool multipleUse = false, bool fractionUse = false, bool remainderUse = false, bool fixedUse = false, bool perItemUse = false)
     {
         var browserRoot = Environment.GetEnvironmentVariable("WFS_CANONICAL_BROWSER_ROOT")
             ?? throw new InvalidOperationException("Requires an isolated production-built PWA copy.");
         var evidenceRoot = Environment.GetEnvironmentVariable("WFS_CANONICAL_EVIDENCE")
             ?? throw new InvalidOperationException("Requires a unique evidence directory.");
         Assert.True(File.Exists(Path.Combine(browserRoot, "pwa", ".next", "BUILD_ID")));
-        var evidence = Path.Combine(evidenceRoot, fixedUse ? "fresh-fixed" : remainderUse ? "fresh-remainder" : fractionUse ? "fresh-fraction" : multipleUse ? "fresh-multiple-absolute" : absoluteUse ? "fresh-absolute" : "fresh-url");
+        var evidence = Path.Combine(evidenceRoot, perItemUse ? "fresh-per-item" : fixedUse ? "fresh-fixed" : remainderUse ? "fresh-remainder" : fractionUse ? "fresh-fraction" : multipleUse ? "fresh-multiple-absolute" : absoluteUse ? "fresh-absolute" : "fresh-url");
         Directory.CreateDirectory(evidence);
         var pwaPort = DeploymentCalendarPostgresTests.FreePort();
         var pwaUrl = $"http://127.0.0.1:{pwaPort}";
@@ -130,7 +133,7 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
                         var prompt = string.Join("\n", messages.Select(x => x.Text));
                         if (prompt.Contains("grocery categorization assistant", StringComparison.Ordinal))
                             return new ChatResponse(new ChatMessage(ChatRole.Assistant,
-                                """[{"normalizedKey":"oil","section":"Pantry","confidence":1},{"normalizedKey":"photo oil","section":"Pantry","confidence":1},{"normalizedKey":"pasta","section":"Pantry","confidence":1},{"normalizedKey":"photo pasta","section":"Pantry","confidence":1},{"normalizedKey":"sauce","section":"Pantry","confidence":1}]"""));
+                                """[{"normalizedKey":"tofu","section":"Produce","confidence":1},{"normalizedKey":"photo tofu","section":"Produce","confidence":1},{"normalizedKey":"oil","section":"Pantry","confidence":1},{"normalizedKey":"photo oil","section":"Pantry","confidence":1},{"normalizedKey":"pasta","section":"Pantry","confidence":1},{"normalizedKey":"photo pasta","section":"Pantry","confidence":1},{"normalizedKey":"sauce","section":"Pantry","confidence":1}]"""));
                         Assert.Contains("recipe facts categorization assistant", prompt);
                         return new ChatResponse(new ChatMessage(ChatRole.Assistant,
                             """{"cuisineType":"Italian","mealTypes":["Lunch","Supper"],"primaryMealType":"Lunch","isVegetarian":true}"""));
@@ -149,7 +152,7 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
             async Task RunHeroAsync(WorkflowInstance intake, Guid recipeId, byte[] image)
             {
                 var task = intake.Tasks.Single(x => x.ProcessorName == "GenerateHero");
-                if (fixedUse)
+                if (fixedUse || perItemUse)
                 {
                     var response = JsonSerializer.Serialize(new
                     {
@@ -186,6 +189,7 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
             if (multipleUse) extracted = MultipleAbsoluteSource;
             if (remainderUse) extracted = RemainderUseSource;
             if (fixedUse) extracted = FixedUseSource;
+            if (perItemUse) extracted = PerItemUseSource;
             if (absoluteUse) extracted = extracted.Replace("Add all 200 g pasta.", "Add 50 g pasta.", StringComparison.Ordinal);
             var chat = new Mock<IChatClient>();
             chat.Setup(x => x.GetResponseAsync(It.IsAny<IEnumerable<ChatMessage>>(), It.IsAny<ChatOptions>(), It.IsAny<CancellationToken>()))
@@ -279,11 +283,17 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
                 .Replace("oil", "photo oil", StringComparison.Ordinal);
             if (fixedUse) photoSource = FixedUseSource.Replace("Oil", "Photo Oil", StringComparison.Ordinal)
                 .Replace("oil", "photo oil", StringComparison.Ordinal);
+            if (perItemUse) photoSource = PerItemUseSource
+                .Replace("\"name\":\"Per-item tofu\"", "\"name\":\"Photo Per-item tofu\"", StringComparison.Ordinal)
+                .Replace("4 pieces tofu", "4 pieces photo tofu", StringComparison.Ordinal)
+                .Replace("\"tofu\"", "\"photo tofu\"", StringComparison.Ordinal)
+                .Replace("of tofu", "of photo tofu", StringComparison.Ordinal)
+                .Replace("oil", "photo oil", StringComparison.Ordinal);
             if (absoluteUse) photoSource = photoSource.Replace("Cook the photo pasta.", "Add 50 g photo pasta.", StringComparison.Ordinal);
             var photoChat = new Mock<IChatClient>();
             photoChat.Setup(x => x.GetResponseAsync(It.IsAny<IEnumerable<ChatMessage>>(), It.IsAny<ChatOptions>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new ChatResponse(new ChatMessage(ChatRole.Assistant, photoSource)));
-            if (fixedUse)
+            if (fixedUse || perItemUse)
                 await new PdfConversionProcessor(store, Mock.Of<IPdfPageRenderer>())
                     .ExecuteAsync(photoWorkflow.Tasks.Single(x => x.ProcessorName == "ConvertPdf"), default);
             await new RecipeAgent(photoChat.Object, prompts.Object, new ConfigurationManager(),
@@ -322,6 +332,7 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
                 start.Environment["HEARTH_SECRET"] = TestWebApplicationFactory.TestSecret;
                 start.Environment["FRESH_REMAINDER_USE"] = remainderUse ? "1" : "0";
                 start.Environment["FRESH_FIXED_USE"] = fixedUse ? "1" : "0";
+                start.Environment["FRESH_PER_ITEM_USE"] = perItemUse ? "1" : "0";
                 start.Environment["FRESH_FRACTION_USE"] = fractionUse ? "1" : "0";
                 start.Environment["FRESH_ABSOLUTE_USE"] = absoluteUse ? "1" : "0";
                 start.Environment["FRESH_MULTIPLE_ABSOLUTE_USE"] = multipleUse ? "1" : "0";
@@ -360,7 +371,7 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
                 finally { await StopFresh(browser); }
                 var final = await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == id);
                 Assert.Equal("https://example.test/live-pasta", final.SourceUrl);
-                Assert.Equal(fixedUse ? "1/2" : multipleUse || remainderUse ? "3" : "250", CanonicalRecipeContentStore.Read(final)!.IngredientLines[0].AmountText);
+                Assert.Equal(perItemUse ? "6" : fixedUse ? "1/2" : multipleUse || remainderUse ? "3" : "250", CanonicalRecipeContentStore.Read(final)!.IngredientLines[0].AmountText);
                 var reviewed = await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == reviewId);
                 Assert.True(reviewed.IsReady);
                 Assert.Equal("https://example.test/reviewed-pasta", reviewed.SourceUrl);
@@ -368,8 +379,35 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
                 var photo = await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == photoId);
                 Assert.True(photo.IsReady);
                 Assert.Null(photo.SourceUrl);
-                Assert.Equal(fixedUse ? "1/2" : multipleUse || remainderUse ? "3" : "250", CanonicalRecipeContentStore.Read(photo)!.IngredientLines[0].AmountText);
+                Assert.Equal(perItemUse ? "6" : fixedUse ? "1/2" : multipleUse || remainderUse ? "3" : "250", CanonicalRecipeContentStore.Read(photo)!.IngredientLines[0].AmountText);
                 Assert.Equal(new byte[] { 4, 5, 6 }, await repository.GetOriginalImageAsync(photoId, 0, default));
+                if (perItemUse)
+                {
+                    foreach (var (recipe, photoCapture) in new[] { (final, false), (photo, true) })
+                    {
+                        var current = CanonicalRecipeContentStore.Read(recipe)!;
+                        var rowPrefix = photoCapture ? "photo " : "";
+                        Assert.Equal("6", current.IngredientLines[0].AmountText);
+                        Assert.Equal("3", current.IngredientLines[1].AmountText);
+                        Assert.Equal("100", current.IngredientLines[2].AmountText);
+                        Assert.Equal($"For all 6 pieces of {rowPrefix}tofu, use exactly 1/3 tsp of {rowPrefix}oil on each piece.",
+                            current.InstructionSections[0].Steps[0].Text);
+                        var bindings = current.InstructionSections[0].Steps[0].Bindings;
+                        Assert.Equal(2, bindings.Count);
+                        Assert.Equal("whole", bindings[0].GetProperty("role").GetString());
+                        Assert.Equal("perItem", bindings[1].GetProperty("role").GetString());
+                        Assert.Equal(bindings[0].GetProperty("id").GetGuid(), bindings[1].GetProperty("payload").GetProperty("countBindingId").GetGuid());
+                        Assert.Equal(LegacyGroceryQuantity.Parse("1/3"), bindings[1].GetProperty("payload").GetProperty("dose")
+                            .GetProperty("amount").Deserialize<GroceryQuantity>(new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+                        var projected = CookingStepProjection.Read(current, 8);
+                        Assert.Equal(3, projected.ValidatedUses);
+                        Assert.Equal($"For all 12 pieces of {rowPrefix}tofu, use exactly 1/3 tsp of {rowPrefix}oil on each piece.",
+                            projected.Sections[0].Steps[0].Text);
+                        Assert.Equal("Add all 200 ml sauce.", projected.Sections[0].Steps[1].Text);
+                        Assert.Equal("Cook for 20 minutes at 180 °C in a 20 cm pan; retain the 400 g package label.",
+                            projected.Sections[0].Steps[2].Text);
+                    }
+                }
                 Assert.Equal(RecipeImportReportStatus.ReadyToReview,
                     (await db.RecipeImportReports.AsNoTracking().SingleAsync(x => x.RecipeId == reviewId)).Status);
                 await File.WriteAllTextAsync(Path.Combine(evidence, "persisted-result.json"), JsonSerializer.Serialize(new

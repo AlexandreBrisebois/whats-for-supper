@@ -1,3 +1,4 @@
+import { isIndependentPerItemStep } from './cooking-per-item-producer';
 import { randomUUID } from 'node:crypto';
 import { isDeepStrictEqual as same } from 'node:util';
 import { parseIngredientAmount } from '../src/lib/recipes/ingredient-amount';
@@ -97,8 +98,7 @@ export function discoverFixedBindings(before: any, recipe: any) {
         parseExplicitFixedClause(step.text, row) != null &&
         steps.every(
           (other: any) =>
-            !ambiguous.test(other.text) ||
-            independentPartial(other.text, row, recipe.ingredientLines)
+            !ambiguous.test(other.text) || independentPartial(other.text, row, recipe, before)
         )
       );
     });
@@ -194,7 +194,9 @@ export function parseExplicitFixedClause(text: string, row: any) {
   return amount?.kind === 'scalar' && value?.n && BigInt(value.n) > 0n ? match : null;
 }
 
-function independentPartial(text: string, selected: any, rows: any[]) {
+function independentPartial(text: string, selected: any, recipe: any, before: any) {
+  const rows = recipe.ingredientLines;
+  if (isIndependentPerItemStep(recipe, selected, text, before)) return true;
   if (/[\r\n]/.test(text)) return false;
   return rows.some((row: any) => {
     if (

@@ -207,3 +207,37 @@ uses the existing amount/unit and internal `explicit-fixed-portions-clause`
 evidence; there is no public contract or arithmetic change. One ingredient-derived
 demand remains independent of binding count. Runtime/hosted/DV qualification and
 first failures remain in tasks and operation-specific evidence.
+
+## Per-item evidence inlet
+
+The C06 inlet recognizes a closed count-first clause naming two distinct saved
+rows: `For all 4 pieces of tofu, use exactly 1/2 tsp of oil on each piece.` or
+`Pour tous les 4 morceaux de tofu, utilisez exactement 1/2 c. à thé d’huile sur
+chaque morceau.` The count uses the literal declared `pieces` or `morceaux` unit;
+this grants no unit conversion or catalogue equivalence. Exact canonical scalar
+operands, unique named rows/step identities and UTF-16 spans are validated before
+publishing an ordered whole-count binding and per-item dose binding.
+
+Both use internal evidence version 1, rule `explicit-per-item-clause`, source
+revision and original measured amount. The dose retains the existing
+`dose:{amount,unit}` and `countBindingId` payload. Fresh publication rederives both
+bindings and validates the complete supplied graph, including bijective ID/edge
+rewrites and raw payload equality. Provider labels grant no authority. No public
+DTO, projector, arithmetic or grocery-contribution change is required.
+
+Guarded prior proof can retain the count and dose identities when original totals
+change: count 4→6 projects 12 at eight portions, while oil 2→3 changes its own
+ingredient demand without changing the explicit half-teaspoon dose. An unknown or
+cleared oil total does not invent a grocery amount. Missing serving basis preserves
+original wording without guessing. Changed text needs fresh current evidence;
+after correcting the count, a new clause naming 6 and dose 1/3 replaces both
+same-step proof identities.
+
+The dose depends on the count, not the reverse. Renaming, removing or changing the
+dose row cannot erase an otherwise valid guarded count or unrelated prior proof.
+Such count-only carry cannot authorize a new exhaustive allocation: the unresolved
+source fallback preserves only exact prior/current validated independent proof,
+with unchanged selected-row dependencies and instruction text. Fresh missing,
+ambiguous or incompatible facts still abstain. Existing C01–C05 and fixed-use
+producer paths remain independently qualified. Local, native, DV and final hosted
+acceptance remain distinct gates under the coordinated delivery policy.

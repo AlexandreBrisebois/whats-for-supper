@@ -32,7 +32,9 @@ public static partial class CookingStepRelationshipProducer
         [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] Span? AnnotationSpan = null,
         [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] AllocationGroup? AllocationGroup = null,
         [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] Guid? AllocationGroupId = null,
-        [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] Guid[]? Predecessors = null);
+        [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] Guid[]? Predecessors = null,
+        [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] Dose? Dose = null,
+        [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] Guid? CountBindingId = null);
     private sealed record Binding(Guid Id, Guid IngredientLineId, Guid StepId, string ValidatedContentRevision,
         string ValidatedTextRevision, Span Span, string Role, Payload Payload, string Status);
     private sealed record Clause(Span Span, GroceryQuantity Amount, string Role, Span? AnnotationSpan = null);
@@ -66,10 +68,12 @@ public static partial class CookingStepRelationshipProducer
                     // Never reinterpret or overlap another role's proof, including
                     // retained uncertain proof owned by the existing projector.
                     if (foreign.Length != 0) return step with { Bindings = foreign };
+                    var perItem = DiscoverPerItem(content, previous, steps, step);
+                    if (perItem is not null) return step with { Bindings = perItem };
                     if (step.Bindings.Count > 1) return step with { Bindings = [] };
                     if (remainders.TryGetValue(step.Id, out var remainder)) return step with { Bindings = [remainder] };
                     var candidates = content.IngredientLines
-                        .Where(row => Unambiguous(content, steps, row))
+                        .Where(row => Unambiguous(content, steps, row, previous))
                         .Select(row => (Row: row, Clause: Parse(step.Text, row)))
                         .Where(x => x.Clause is not null).ToArray();
                     if (candidates.Length != 1) return step with { Bindings = [] };
@@ -147,7 +151,8 @@ public static partial class CookingStepRelationshipProducer
                 if (binding.Payload?.AllocationGroup is { } groupProof &&
                     (groupProof.BindingIds is null || groupProof.BindingIds.Any(member => !ids.ContainsKey(member))) ||
                     binding.Payload?.Predecessors is { } predecessors && predecessors.Any(member => !ids.ContainsKey(member)) ||
-                    binding.Payload?.AllocationGroupId is { } allocationId && !groups.ContainsKey(allocationId))
+                    binding.Payload?.AllocationGroupId is { } allocationId && !groups.ContainsKey(allocationId) ||
+                    binding.Payload?.CountBindingId is { } countId && !ids.ContainsKey(countId))
                     throw new InvalidDataException("Fresh relationship allocation references are missing.");
                 var supplied = JsonNode.Parse(actual[index].Bindings[use].GetRawText()) as JsonObject;
                 if (supplied is null) throw new InvalidDataException("Fresh relationship evidence is invalid.");
@@ -155,6 +160,7 @@ public static partial class CookingStepRelationshipProducer
                 if (supplied["payload"] is JsonObject payload)
                 {
                     RewriteId(payload, "allocationGroupId", groups);
+                    RewriteId(payload, "countBindingId", ids);
                     RewriteIds(payload["predecessors"], ids);
                     if (payload["allocationGroup"] is JsonObject group)
                     {
@@ -188,7 +194,7 @@ public static partial class CookingStepRelationshipProducer
         var result = new Dictionary<Guid, JsonElement>();
         foreach (var row in content.IngredientLines)
         {
-            var sequence = Remainder(content, steps, row);
+            var sequence = Remainder(content, steps, row, previous);
             if (sequence is null) continue;
             var prior = Carry(previous, content, sequence.Prior, row, sequence.PriorClause, true) ??
                 sequence.Prior.Bindings.Select(Read).SingleOrDefault(binding => binding is not null &&
@@ -226,7 +232,7 @@ public static partial class CookingStepRelationshipProducer
     // The literal final clause supplies exhaustive intent. Only its complete
     // source-bound two-step graph can introduce an allocation group.
     private static RemainderSequence? Remainder(CanonicalRecipeContent content, RecipeInstructionStepDto[] steps,
-        RecipeIngredientLineDto row)
+        RecipeIngredientLineDto row, CanonicalRecipeContent? previous)
     {
         if (!UsableRow(content, row) || PartialOrConditional.IsMatch(row.Description) ||
             row.Amount is not { Kind: "scalar" } || row.Unit is null ||
@@ -242,15 +248,15 @@ public static partial class CookingStepRelationshipProducer
         if (prior is not { Role: "absolute", Amount.Kind: "scalar", Amount.Value.N: not "0" } || final is null ||
             LegacyGroceryQuantity.SubtractScalar(row.Amount, prior.Amount) is null ||
             steps.Any(step => step.Id != mentions[0].Id && step.Id != mentions[1].Id &&
-                !IndependentRemainderStep(content, row, step.Text))) return null;
+                !IndependentRemainderStep(content, row, step.Text, previous))) return null;
         return new(row, mentions[0], prior, mentions[1], final);
     }
 
     // Every additional clause must have a closed, independently understood
     // subject or the one bounded neutral procedure. Unknown prose cannot prove
     // the absence of a conditional branch in this exhaustive sequence.
-    private static bool IndependentRemainderStep(CanonicalRecipeContent content, RecipeIngredientLineDto selected, string text) =>
-        NeutralRemainderStep.IsMatch(text) || content.IngredientLines
+    private static bool IndependentRemainderStep(CanonicalRecipeContent content, RecipeIngredientLineDto selected, string text, CanonicalRecipeContent? previous) =>
+        NeutralRemainderStep.IsMatch(text) || IndependentPerItemStep(content, selected, text, previous) || content.IngredientLines
             .Where(row => row.Id != selected.Id && row.Id != Guid.Empty && !string.IsNullOrWhiteSpace(row.Description) &&
                 !PartialOrConditional.IsMatch(row.Description) && content.IngredientLines.Count(other => other.Id == row.Id) == 1 &&
                 content.IngredientLines.Count(other => string.Equals(other.Description, row.Description, StringComparison.OrdinalIgnoreCase)) == 1)
@@ -273,7 +279,7 @@ public static partial class CookingStepRelationshipProducer
         !string.IsNullOrWhiteSpace(row.Description) && row.Description.IndexOfAny(['\r', '\n', '.', ';', ':', '!', '?']) < 0 &&
         content.IngredientLines.Count(other => string.Equals(other.Description, row.Description, StringComparison.OrdinalIgnoreCase)) == 1;
 
-    private static bool Unambiguous(CanonicalRecipeContent content, RecipeInstructionStepDto[] steps, RecipeIngredientLineDto row)
+    private static bool Unambiguous(CanonicalRecipeContent content, RecipeInstructionStepDto[] steps, RecipeIngredientLineDto row, CanonicalRecipeContent? previous)
     {
         if (!UsableRow(content, row) && !UsableFixedRow(content, row)) return false;
         var mention = new Regex(@"(?<![\p{L}\p{N}])" + Regex.Escape(row.Description) + @"(?![\p{L}\p{N}])", Options, MatchTimeout);
@@ -289,14 +295,14 @@ public static partial class CookingStepRelationshipProducer
         var independent = mentions.Length == 1 && mentions[0].Count == 1 ||
             mentions.Length > 1 && mentions.All(item => item.Count == 1 && Parse(item.Step.Text, row)?.Role == "absolute");
         return independent && steps.All(step => !PartialOrConditional.IsMatch(step.Text) ||
-            Parse(step.Text, row)?.Role == "fraction" || IndependentPartial(content, row, step.Text));
+            Parse(step.Text, row)?.Role == "fraction" || IndependentPartial(content, row, step.Text, previous));
     }
 
     // A partial clause with no established subject can affect this row. A closed
     // clause explicitly naming another unique saved row does not. This does not
     // create or validate that other row's partial allocation.
-    private static bool IndependentPartial(CanonicalRecipeContent content, RecipeIngredientLineDto selected, string text) =>
-        content.IngredientLines.Where(row => row.Id != selected.Id && !string.IsNullOrWhiteSpace(row.Description) &&
+    private static bool IndependentPartial(CanonicalRecipeContent content, RecipeIngredientLineDto selected, string text, CanonicalRecipeContent? previous) =>
+        IndependentPerItemStep(content, selected, text, previous) || content.IngredientLines.Where(row => row.Id != selected.Id && !string.IsNullOrWhiteSpace(row.Description) &&
             content.IngredientLines.Count(other => string.Equals(other.Description, row.Description, StringComparison.OrdinalIgnoreCase)) == 1)
         .Any(row => Parse(text, row)?.Role == "fraction" || ParseFinalRemainder(text, row) is not null || Regex.IsMatch(text,
             @"\A[ \t]*(?:(?:Add|Use|Reserve)[ \t]+(?:half[ \t]+(?:of[ \t]+)?(?:the[ \t]+)?|some[ \t]+(?:of[ \t]+the[ \t]+)?|the[ \t]+remaining[ \t]+)|(?:Ajouter|Ajoutez|Réserver|Réservez)[ \t]+la moitié[ \t]+(?:de la[ \t]+|du[ \t]+|des[ \t]+|de l['’]))" +
@@ -384,6 +390,7 @@ public static partial class CookingStepRelationshipProducer
         binding.Payload?.RelationshipEvidence is { Version: 1 } evidence &&
         evidence.Rule == (Rule(clause.Role)) &&
         evidence.SourceRevision == content.SourceRevision && evidence.OriginalAmount == clause.Amount &&
+        binding.Payload.Dose is null && binding.Payload.CountBindingId is null &&
         (allocation || binding.Payload.AllocationGroup is null && binding.Payload.AllocationGroupId is null && binding.Payload.Predecessors is null) &&
         (clause.Role switch
         {
