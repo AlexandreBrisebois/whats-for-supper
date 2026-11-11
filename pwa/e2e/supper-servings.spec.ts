@@ -532,7 +532,7 @@ test('saved portions return before refresh, then 600 g and one quiet check-reset
   expect(groceryChecked(schedule, 'unrelated')).toBe(true);
   await expect(page.getByText(/more needed|\+400/)).toHaveCount(0);
   await page.getByTestId('grocery-item-checkbox').filter({ hasText: 'pasta' }).click();
-  expect(groceryChecked(schedule)).toBe(true);
+  await expect.poll(() => groceryChecked(schedule)).toBe(true);
   await page.getByRole('button', { name: 'Dismiss', exact: true }).click();
   await expect(page.getByTestId('grocery-portions-summary')).toHaveCount(0);
   expect(writes()).toBe(1);

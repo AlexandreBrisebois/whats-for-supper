@@ -1,5 +1,6 @@
 import { test, expect, type BrowserContext } from '@playwright/test';
 import { generateSecretToken } from './auth-utils';
+import { pinCivilDate } from './date-only-clock';
 
 test.skip(
   !process.env.CANONICAL_RECIPE_ID || !process.env.CANONICAL_MEMBERS,
@@ -76,7 +77,7 @@ test('original correction, refresh recovery and concurrent grocery checks use th
     });
     for (const page of [editor, shopper]) {
       page.setDefaultTimeout(15_000);
-      await page.clock.setFixedTime(new Date('2026-10-12T01:30:00Z'));
+      await pinCivilDate(page, '2026-10-12T01:30:00Z');
       await page.goto('/planner?weekOffset=1&referenceWeekStartDate=2026-10-05');
       await page.getByTestId('grocery-tab').click();
     }
@@ -429,6 +430,7 @@ test('original correction, refresh recovery and concurrent grocery checks use th
         isReimporting: false,
       },
     });
+    await editor.bringToFront();
     await editor.getByTestId('action-gear-menu').click();
     await editor.getByTestId('action-report-import-issue').click();
     await expect(
@@ -444,6 +446,10 @@ test('original correction, refresh recovery and concurrent grocery checks use th
       status: 'readyToReview',
       isReimporting: false,
     });
+    const savedNotification = editor.getByTestId('toast').filter({ hasText: 'Changes saved' });
+    await expect(savedNotification).toBeVisible();
+    await savedNotification.getByRole('button', { name: 'Dismiss notification' }).click();
+    await expect(savedNotification).toHaveCount(0);
     await editor.getByTestId('action-gear-menu').click();
     await editor.getByTestId('action-report-import-issue').click();
     await expect(editor.getByTestId('import-issue-note')).toHaveValue(incomplete.importIssue.note);

@@ -41,6 +41,9 @@ for (const locale of ['en', 'fr'] as const) {
           },
         },
       });
+      // Geometry and keyboard activation use the HTTP snapshot. A finite mocked SSE
+      // response reconnects and can disable the menu mid-keypress during a reread.
+      await page.route(/\/(?:backend\/)?api\/stream/, (route) => route.fulfill({ status: 204 }));
       await page.route(`**/api/recipes/${id}`, async (route) => {
         if (route.request().method() !== 'GET') return route.fallback();
         await route.fulfill({
@@ -150,6 +153,7 @@ for (const locale of ['en', 'fr'] as const) {
         expect(originalBox.height).toBeGreaterThanOrEqual(48);
         await expect(original).toBeEnabled();
         await original.focus();
+        await expect(original).toBeFocused();
         await original.press('Enter');
         await expect(page.getByText('200 g pasta', { exact: true })).toBeVisible();
         await expect(page.getByTestId('recipe-ingredient-preview')).toHaveCount(0);

@@ -5,6 +5,8 @@ import { setupCommonRoutes, builders, MOCK_IDS } from './mock-api';
 import path from 'node:path';
 import fs from 'node:fs';
 
+test.use({ dateOnlyClock: true });
+
 const recipe = MOCK_IDS.RECIPE_SPAGHETTI;
 const reference = '2026-05-04';
 
