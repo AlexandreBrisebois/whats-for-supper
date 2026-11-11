@@ -227,6 +227,12 @@ identity. Report final check results directly when no durable edit is needed.
 
 ## Scope review
 
+For an optional source self-check before committing, use the
+[review prompt quick start](../prompts/README.md): defect review first, then
+implementation quality review when useful. Both support uncommitted task changes
+and run read-only in the current agent. They complement this scope review and do
+not replace required verification or authorize fixes, staging or commits.
+
 After any applicable preparation and before `task verify`, inspect `git status --short`, staged
 and unstaged diffs, new/deleted files, and any changes within already dirty files.
 Review the full explicit path set before passing it to preparation or finish.
