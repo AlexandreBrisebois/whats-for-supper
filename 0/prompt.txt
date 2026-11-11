@@ -1,0 +1,19 @@
+review the openspec active changes. are they contradicting each other? agents have been progressively implemeting them and I feer that some specs may work against other specs. I need validation that there's no tension here
+
+---
+
+check outstanding requirements and scenrios against the code and help me understand what's left to be built. then identify if there are gaps that will prevent me from completing the work.
+
+---
+
+build me a prompt that updates teh specs to be honest. ask me questions 1 by 1. make a proposition that I need to accept. I want to get out of thies thrashing and complete this feature.
+
+start by giving me a short executive brief on what these changes have as a target. then work through the questions and I will steer you to what I really need. to build these specs we were inspired by cooklang and the way they manage portions and scale portions. along the way, we found a lot of things that required changes like bilingual shoping idenity.
+
+---
+
+yes.
+
+I want you to consolidare the specs, I want you to structure the work in a effective manner. organise it soe multiple agents can work in parallel to accelerate teh work. allow agents to work with each other and orchestrate. 
+
+build the baseline and we can layer from there. goal is to move from chaotic to structured and to start deliverying value quickly

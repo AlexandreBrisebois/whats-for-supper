@@ -1,0 +1,48 @@
+{
+  "cli_version": "0.13.1",
+  "checkpoint_id": "01M73ZYCW0K3DAR2XXE103DY7J",
+  "session_id": "01a1c7ed-55a0-79c2-b261-1773afc78db5",
+  "strategy": "manual-commit",
+  "created_at": "2026-11-11T00:25:54.86935Z",
+  "branch": "recipe-view-redesign",
+  "checkpoints_count": 3,
+  "save_step_count": 3,
+  "files_touched": [
+    ".github/workflows/validate.yml",
+    "api/src/RecipeApi.Tests/Integration/CanonicalIngredientPublicationPostgresTests.Live.cs",
+    "api/src/RecipeApi/Services/Agents/RecipeAgent.cs",
+    "api/src/RecipeApi/Services/RecipeFilePublicationStore.Workflow.cs",
+    "openspec/changes/canonical-ingredient-correction/design.md",
+    "openspec/changes/canonical-ingredient-correction/tasks.md",
+    "pwa/e2e/fresh-url-live.spec.ts"
+  ],
+  "agent": "Codex",
+  "model": "gpt-6-astra",
+  "turn_id": "f774e1730eea",
+  "compact_transcript_start": 0,
+  "token_usage": {
+    "input_tokens": 316659,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 8411904,
+    "output_tokens": 23977,
+    "api_call_count": 75,
+    "subagent_tokens_complete": false
+  },
+  "redaction": {
+    "replacements": 27,
+    "layers": {
+      "betterleaks": 0,
+      "connection_string": 0,
+      "credential_key": 0,
+      "credential_value": 7,
+      "credentialed_uri": 0,
+      "entropy": 20,
+      "key_context": 0,
+      "provider_token": 0,
+      "shell_stdin": 0
+    }
+  },
+  "session_metrics": {
+    "turn_count": 3
+  }
+}
