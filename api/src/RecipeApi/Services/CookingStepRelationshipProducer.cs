@@ -8,7 +8,7 @@ namespace RecipeApi.Services;
 
 // A bounded write-time inlet. Neither provider labels nor the projector establish
 // ingredient-use semantics. Unsupported language remains ordinary readable text.
-public static class CookingStepRelationshipProducer
+public static partial class CookingStepRelationshipProducer
 {
     private const string WholeRule = "explicit-whole-clause";
     private const string AbsoluteRule = "explicit-absolute-clause";
@@ -85,6 +85,7 @@ public static class CookingStepRelationshipProducer
                     {
                         "whole" => clause.Amount != row.Amount,
                         "fraction" => !HalfAmount(row, clause.Amount),
+                        "fixed" => !FixedAmount(row, clause.Amount),
                         _ => !PartialAmount(row, clause.Amount)
                     })
                         return step with { Bindings = [] };
@@ -93,7 +94,7 @@ public static class CookingStepRelationshipProducer
                     var binding = new Binding(existing?.Id ?? Guid.NewGuid(), row.Id, step.Id, content.ContentRevision,
                         step.TextRevision, clause.Span, clause.Role,
                         new(new(1, Rule(clause.Role), content.SourceRevision, clause.Amount),
-                            clause.Role == "absolute" ? clause.Amount : null, clause.Role == "absolute" ? row.Unit : null,
+                            clause.Role is "absolute" or "fixed" ? clause.Amount : null, clause.Role is "absolute" or "fixed" ? row.Unit : null,
                             clause.Role == "fraction" ? Half : null, clause.AnnotationSpan), "validated");
                     return step with { Bindings = [Write(binding)] };
                 }).ToArray()
@@ -274,10 +275,14 @@ public static class CookingStepRelationshipProducer
 
     private static bool Unambiguous(CanonicalRecipeContent content, RecipeInstructionStepDto[] steps, RecipeIngredientLineDto row)
     {
-        if (!UsableRow(content, row)) return false;
+        if (!UsableRow(content, row) && !UsableFixedRow(content, row)) return false;
         var mention = new Regex(@"(?<![\p{L}\p{N}])" + Regex.Escape(row.Description) + @"(?![\p{L}\p{N}])", Options, MatchTimeout);
         var mentions = steps.Select(step => (Step: step, Count: mention.Matches(step.Text).Count))
             .Where(item => item.Count != 0).ToArray();
+        var fixedUse = mentions.Length == 1 && mentions[0].Count == 1 && Parse(mentions[0].Step.Text, row)?.Role == "fixed";
+        if (fixedUse ? !UsableFixedRow(content, row) || mentions[0].Step.Id == Guid.Empty ||
+            steps.Count(step => step.Id == mentions[0].Step.Id) != 1 || string.IsNullOrEmpty(mentions[0].Step.TextRevision) ||
+            string.IsNullOrEmpty(content.SourceRevision) || string.IsNullOrEmpty(content.ContentRevision) : !UsableRow(content, row)) return false;
         // Repetition is not ambiguity when every mentioning step independently
         // states one closed absolute use. It proves neither a whole use nor an
         // exhaustive allocation, even when the explicit amounts sum to the total.
@@ -300,6 +305,8 @@ public static class CookingStepRelationshipProducer
     private static Clause? Parse(string text, RecipeIngredientLineDto row)
     {
         if (text.IndexOfAny(['\r', '\n']) >= 0) return null;
+        var fixedClause = ParseFixed(text, row);
+        if (fixedClause is not null) return fixedClause;
         const string amount = @"(?<amount>[0-9¼½¾⅐⅑⅒⅓⅔⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞][0-9¼½¾⅐⅑⅒⅓⅔⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞/.,–\- \t]*)";
         var measurement = @"(?<measurement>" + amount + (row.Unit is null ? "" : @"[ \t]+" + Regex.Escape(row.Unit.Text)) + ")";
         var noun = Regex.Escape(row.Description);
@@ -341,7 +348,7 @@ public static class CookingStepRelationshipProducer
     // A closed affirmative measured-use clause establishes an absolute role,
     // never a whole role from numeric equality. Initial partial proof is bounded
     // to a positive scalar use below a known scalar total with the saved unit.
-    private static string Rule(string role) => role switch { "whole" => WholeRule, "fraction" => HalfRule, _ => AbsoluteRule };
+    private static string Rule(string role) => role switch { "whole" => WholeRule, "fraction" => HalfRule, "fixed" => FixedRule, _ => AbsoluteRule };
 
     private static bool HalfAmount(RecipeIngredientLineDto row, GroceryQuantity amount) =>
         row.Unit is not null && row.Amount is { Kind: "scalar", Value.N: not "0" } &&

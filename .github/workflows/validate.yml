@@ -589,6 +589,43 @@ jobs:
               for _, test in tests), 'Fresh URL browser skips/retries are not acceptance'
           print('Required remainder-use URL/photo checks: 1 native owner, 3 browser journeys; zero skips/retries.')
           PYGUARD
+      - name: Run required fixed-use canonical journey
+        run: >-
+          dotnet test api/src/RecipeApi.Tests/RecipeApi.Tests.csproj
+          --filter "FullyQualifiedName=RecipeApi.Tests.Integration.CanonicalIngredientPublicationPostgresTests.LiveBrowser_FreshFixedCanonicalGroceries"
+          --logger "trx;LogFileName=native.trx" --results-directory .task/grocery-live/fixed
+        env:
+          WFS_CANONICAL_BROWSER_ROOT: ${{ github.workspace }}
+          WFS_CANONICAL_EVIDENCE: ${{ github.workspace }}/.task/grocery-live/fixed
+      - name: Require fixed-use canonical journey results
+        run: |
+          python3 - <<'PYGUARD'
+          import json
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+          root = Path('.task/grocery-live/fixed')
+          native = ET.parse(root / 'native.trx').getroot().findall('.//{*}UnitTestResult')
+          owner = 'RecipeApi.Tests.Integration.CanonicalIngredientPublicationPostgresTests.LiveBrowser_FreshFixedCanonicalGroceries'
+          assert len(native) == 1 and native[0].get('testName') == owner and native[0].get('outcome') == 'Passed', 'Fresh URL native owner must pass without skips'
+          def collect(suite):
+              for spec in suite.get('specs', []):
+                  for test in spec['tests']:
+                      yield spec['title'], test
+              for child in suite.get('suites', []):
+                  yield from collect(child)
+          report = json.loads((root / 'fresh-fixed' / 'browser-results.json').read_text())
+          tests = [item for suite in report['suites'] for item in collect(suite)]
+          expected = {
+              'fresh URL explicit fixed use survives correction and coherent Cook refresh',
+              'fresh photo explicit fixed use survives correction and coherent Cook refresh',
+              'retained URL material becomes Ready after browser correction and reviewed import',
+          }
+          assert len(tests) == 3 and {title for title, _ in tests} == expected, 'Missing/extra fresh URL/photo browser results'
+          assert all(test['status'] == 'expected' and len(test['results']) == 1
+              and test['results'][0]['status'] == 'passed' and test['results'][0].get('retry', 0) == 0
+              for _, test in tests), 'Fresh URL browser skips/retries are not acceptance'
+          print('Required fixed-use URL/photo checks: 1 native owner, 3 browser journeys; zero skips/retries.')
+          PYGUARD
       - name: Upload cooking live results
         uses: actions/upload-artifact@v7
         if: always()

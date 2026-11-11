@@ -1,5 +1,24 @@
 # Tasks
 
+## Current coordinated release policy — 2026-11-11
+
+The user authorized completing the remaining accepted dependable-portions release
+after predecessor C05 at `74f0a48b47ffd6eccb52d3710de58c384c2b6aaa`.
+Local tests and exact-candidate data-preserving DV acceptance gate runtime slices;
+applicable checks gate documentation slices. Commit accepted owned work locally
+and continue the dependency queue without per-slice pushes. After full integrated
+local/DV qualification, make one consolidated push, resolve required hosted CI
+failures with justified repairs/follow-up pushes, then sync/archive only fully
+completed in-scope changes. Required exact-final-candidate hosted acceptance stays
+open until observed. Historical single-slice stopping and hosted-before-DV rules
+below describe their original operations and are superseded prospectively by this
+policy; historical failures/retries/limits remain unchanged. No production, reset,
+reseed, force push, unrelated merge, garlic-placeholder implementation, bilingual
+catalogue adoption or Similar UI work. Selective repair remains superseded.
+Task IDs/checklists remain authoritative; partial slices do not close aggregates.
+The operational navigation record is `.task/dependable-portions-coordinator/continuation.md`.
+
+
 Groups 1–3 and the approved known-amount display amendment (group 5) are locally qualified. Group 4.1 remains open for hosted acceptance on the final committed candidate; this change is not synced or archived. The serial closure evidence below supersedes earlier partial-qualification checkpoints without erasing their failures or scope boundaries. Follow [shared corpus](../canonical-ingredient-correction/acceptance-corpus.md) and [CI requirements](../canonical-ingredient-correction/review.md). Alex’s allocation, range, split/merge and fresh-list decisions are settled. Remaining engineering/dataset qualification does not authorize implementation. Contract changes first update `specs/openapi.yaml`, run `task gen:client`, then synchronize generated SDK consumers and method-sensitive `pwa/e2e/mock-api.ts` handlers/builders/state transitions including conflicts, later reads and SSE. Every slice keeps its red/green evidence and usage documentation.
 
 ## 1. Independently check displayed rows

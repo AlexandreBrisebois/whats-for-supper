@@ -1,5 +1,24 @@
 # Canonical recipe facts and original-basis correction
 
+## Coordinated release delivery policy — accepted 2026-11-11
+
+The current user request selects the remaining accepted release across canonical
+correction, step scaling, migration/recovery, grocery qualification and CI parity.
+Predecessor C05 `74f0a48b47ffd6eccb52d3710de58c384c2b6aaa` is the verified starting point.
+Advance runtime slices on complete local tests and exact-candidate data-preserving
+DV acceptance; commit accepted slices locally and continue without per-slice pushes.
+After full stable integrated local/DV release qualification, push once, repair
+required final hosted CI failures with justified follow-up pushes, and sync/archive
+fully completed changes only after required hosted acceptance. Final lifecycle
+commit/push and applicable final-commit checks are included. This supersedes the
+prospective single-slice stop, per-slice push and hosted-before-DV restrictions in
+earlier selection records. Those records retain their original failures, waivers
+and limitations. Existing-library conversion still requires operational/recovery/
+client-fencing/no-active-list preflight. Deferred bilingual catalogue/Similar and
+superseded selective repair stay outside release; garlic-placeholder implementation,
+production, reset/reseed, force push and unrelated merges remain excluded.
+
+
 ## Dependable portions delivery baseline — accepted 2026-11-10
 
 This is the release entry point for the existing capability changes, not a new

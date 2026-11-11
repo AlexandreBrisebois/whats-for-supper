@@ -1,4 +1,5 @@
 import { carryCookingBindings } from './cooking-step-projection';
+import { discoverFixedBindings } from './cooking-fixed-producer';
 import { discoverRemainderBindings } from './cooking-remainder-producer';
 import { randomUUID } from 'node:crypto';
 
@@ -143,6 +144,7 @@ export function applyCanonicalEditorPatch(current: any, input: any): { status: n
       recipe.contentRevision = randomUUID();
       carryCookingBindings(current, recipe);
       discoverRemainderBindings(current, recipe);
+      discoverFixedBindings(current, recipe);
       recipe.recipeInstructions = (recipe.instructionSections ?? []).map((section: any) => ({
         name: section.name,
         itemListElement: section.steps.map((step: any) => ({ text: step.text })),

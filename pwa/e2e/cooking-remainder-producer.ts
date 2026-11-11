@@ -1,3 +1,4 @@
+import { parseExplicitFixedClause } from './cooking-fixed-producer';
 import { randomUUID } from 'node:crypto';
 import { isDeepStrictEqual as same } from 'node:util';
 import { parseIngredientAmount } from '../src/lib/recipes/ingredient-amount';
@@ -106,7 +107,7 @@ function independentStep(text: string, selected: any, rows: any[]) {
       return false;
     const measured = measuredClause(text, row, true);
     if (measured && parseIngredientAmount(measured.groups!.amount.trim())) return true;
-    if (finalClause(text, row)) return true;
+    if (finalClause(text, row) || parseExplicitFixedClause(text, row)) return true;
     const noun = escape(row.description);
     const annotation = `[0-9¼½¾⅐⅑⅒⅓⅔⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞][0-9¼½¾⅐⅑⅒⅓⅔⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞/.,–\\- \\t]*[ \\t]+${escape(row.unit?.text ?? '')}`;
     return new RegExp(

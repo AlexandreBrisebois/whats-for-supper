@@ -572,3 +572,86 @@ test('ordinary guarded Save discovers a final remainder and step editing replace
   expect(demand[0].quantity).toEqual({ kind: 'scalar', value: { n: '6', d: '1' } });
   expect(stepEditPatchCount).toBe(1);
 });
+
+test('ordinary guarded Save discovers a standalone fixed use without additional grocery demand', async ({
+  page,
+  baseURL,
+}) => {
+  const recipe: any = cookingAllocationRecipe(true);
+  const source = 'For any number of portions, use exactly 1 tbsp oil.';
+  recipe.instructionSections[0].steps = [
+    { ...recipe.instructionSections[0].steps[0], text: source, bindings: [] },
+  ];
+  recipe.recipeInstructions[0].itemListElement = [{ text: source }];
+  await setupCommonRoutes(page, undefined, {
+    canonicalEditor: recipe,
+    supperServings: {
+      knownRecipe: { id: recipe.id, basis: 4, quantity: 2, ingredient: 'oil', unit: 'tbsp' },
+    },
+  });
+  await page
+    .context()
+    .addCookies([{ name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: baseURL! }]);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(`/recipes?open=${recipe.id}`);
+  expect(
+    await page.evaluate(async (id) => {
+      const assigned = await fetch('/api/schedule/assign?referenceWeekStartDate=2026-05-04', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ weekOffset: 0, dayIndex: 0, recipeId: id }),
+      });
+      const state = (await (await fetch('/api/schedule/servings?weekOffset=0')).json()).data;
+      const portions = await fetch('/api/schedule/servings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          weekOffset: 0,
+          referenceWeekStartDate: '2026-05-04',
+          expectedVersion: state.version,
+          defaultServings: 8,
+          days: [],
+        }),
+      });
+      return [assigned.status, portions.status];
+    }, recipe.id)
+  ).toEqual([200, 200]);
+  await page.getByTestId('action-gear-menu').click();
+  await page.getByTestId('action-edit-recipe').click();
+  await page.getByTestId('recipe-edit-amount-0').fill('3');
+  const saving = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'PATCH' &&
+      new URL(response.url()).pathname === `/api/recipes/${recipe.id}`
+  );
+  await page.getByTestId('recipe-save-edits').click();
+  const reply = await saving;
+  expect(reply.status()).toBe(200);
+  const saved = (await reply.json()).recipe;
+  expect(saved.instructionSections[0].steps[0].text).toBe(source);
+  expect(saved.instructionSections[0].steps[0].bindings).toHaveLength(1);
+  expect(saved.instructionSections[0].steps[0].bindings[0]).toMatchObject({
+    role: 'fixed',
+    validatedContentRevision: saved.contentRevision,
+  });
+  await page.goto('/planner');
+  await page.getByTestId('day-card-0').getByTestId('edit-recipe-button').click();
+  await page.getByTestId('action-cooks-mode').click();
+  await expect(page.getByTestId('ingredient-toggle')).toContainText('6 tbsp oil');
+  await page.getByTestId('ingredient-toggle').click();
+  await page.getByTestId('cooking-view-step-by-step').click();
+  await page.getByTestId('cooks-mode-step-next').click();
+  await expect(page.getByTestId('cooks-mode-instructions')).toContainText(source);
+  await expect(page.getByTestId('cooking-step-uncertainty')).toHaveCount(0);
+  await page.getByTestId('cooks-mode-edit-step').click();
+  await expect(page.getByRole('textbox')).toHaveValue(source);
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await page.getByTestId('cooks-mode-step-prev').click();
+  await expect(page.getByTestId('ingredient-toggle')).toHaveAttribute('aria-checked', 'true');
+  const rows = await page.evaluate(
+    async () => (await (await fetch('/api/schedule?weekOffset=0')).json()).data.groceryItems
+  );
+  const oil = rows.filter((row: any) => row.normalizedKey === 'oil');
+  expect(oil).toHaveLength(1);
+  expect(oil[0].quantity).toEqual({ kind: 'scalar', value: { n: '6', d: '1' } });
+});

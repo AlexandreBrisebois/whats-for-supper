@@ -2047,24 +2047,55 @@ test.describe('Home active voting handoff', () => {
     page,
   }) => {
     await prepare(page);
+    await page.addInitScript(() => {
+      (window as any).__homeVotingRetryClicks = 0;
+      document.addEventListener(
+        'click',
+        (event) => {
+          const button = event.target instanceof Element ? event.target.closest('button') : null;
+          if (
+            button?.closest('[data-testid="voting-nudge-card"]') &&
+            button.textContent?.trim() === 'Retry'
+          )
+            (window as any).__homeVotingRetryClicks++;
+        },
+        true
+      );
+    });
     let mode: 'failed' | 'ready' | 'pending' = 'failed';
+    let readyAfterRetry = 1;
     let release: (() => void) | undefined;
     await page.route('**/api/discovery/session', async (route) => {
+      if (route.request().method() !== 'GET') return route.fallback();
       if (mode === 'pending')
         await new Promise<void>((resolve) => {
           release = resolve;
         });
-      if (mode === 'failed')
+      // Background reconciliation must not consume a recovery reserved for Retry.
+      const retryClicks = await page.evaluate(() => (window as any).__homeVotingRetryClicks);
+      if (mode === 'failed' || (mode === 'ready' && retryClicks < readyAfterRetry))
         return route.fulfill({ status: 400, json: { message: 'Unavailable' } });
       return route.fulfill({ json: { data: round('2026-05-11', 'converged') } });
     });
     await page.goto('/home');
-    await expect(page.getByRole('button', { name: 'Retry', exact: true })).toBeVisible({
+    const retry = page
+      .getByTestId('voting-nudge-card')
+      .getByRole('button', { name: 'Retry', exact: true });
+    await expect(retry).toBeVisible({
       timeout: 20000,
     });
     await expect(page.getByTestId('home-see-matches')).toHaveCount(0);
     mode = 'ready';
-    await page.getByRole('button', { name: 'Retry', exact: true }).click();
+    // A reconnect may recheck voting before the person activates Retry.
+    await expect.poll(() => page.evaluate(() => !!(window as any).__sseSource)).toBe(true);
+    const backgroundRecheck = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'GET' &&
+        new URL(response.url()).pathname === '/api/discovery/session'
+    );
+    await page.evaluate(() => (window as any).__sseSource.dispatchEvent(new Event('open')));
+    expect((await backgroundRecheck).status()).toBe(400);
+    await retry.click();
     await expect(page.getByTestId('home-see-matches')).toBeEnabled();
     mode = 'pending';
     await page.evaluate(() => dispatchEvent(new Event('pageshow')));
@@ -2076,9 +2107,11 @@ test.describe('Home active voting handoff', () => {
       timeout: 20000,
     });
     await expect(page.getByTestId('home-see-matches')).toBeEnabled();
+    readyAfterRetry = 2;
     mode = 'ready';
-    await page.getByRole('button', { name: 'Retry', exact: true }).click();
+    await retry.click();
     await expect(page.getByTestId('home-voting-status')).toHaveCount(0);
+    expect(await page.evaluate(() => (window as any).__homeVotingRetryClicks)).toBe(2);
   });
 
   test.describe('French Home voting', () => {

@@ -37,14 +37,17 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
     [DeploymentCalendarPostgresTests.CalendarLiveFact]
     public Task LiveBrowser_FreshRemainderCanonicalGroceries() => FreshCanonicalGroceries(absoluteUse: false, remainderUse: true);
 
-    private async Task FreshCanonicalGroceries(bool absoluteUse, bool multipleUse = false, bool fractionUse = false, bool remainderUse = false)
+    [DeploymentCalendarPostgresTests.CalendarLiveFact]
+    public Task LiveBrowser_FreshFixedCanonicalGroceries() => FreshCanonicalGroceries(absoluteUse: false, fixedUse: true);
+
+    private async Task FreshCanonicalGroceries(bool absoluteUse, bool multipleUse = false, bool fractionUse = false, bool remainderUse = false, bool fixedUse = false)
     {
         var browserRoot = Environment.GetEnvironmentVariable("WFS_CANONICAL_BROWSER_ROOT")
             ?? throw new InvalidOperationException("Requires an isolated production-built PWA copy.");
         var evidenceRoot = Environment.GetEnvironmentVariable("WFS_CANONICAL_EVIDENCE")
             ?? throw new InvalidOperationException("Requires a unique evidence directory.");
         Assert.True(File.Exists(Path.Combine(browserRoot, "pwa", ".next", "BUILD_ID")));
-        var evidence = Path.Combine(evidenceRoot, remainderUse ? "fresh-remainder" : fractionUse ? "fresh-fraction" : multipleUse ? "fresh-multiple-absolute" : absoluteUse ? "fresh-absolute" : "fresh-url");
+        var evidence = Path.Combine(evidenceRoot, fixedUse ? "fresh-fixed" : remainderUse ? "fresh-remainder" : fractionUse ? "fresh-fraction" : multipleUse ? "fresh-multiple-absolute" : absoluteUse ? "fresh-absolute" : "fresh-url");
         Directory.CreateDirectory(evidence);
         var pwaPort = DeploymentCalendarPostgresTests.FreePort();
         var pwaUrl = $"http://127.0.0.1:{pwaPort}";
@@ -143,6 +146,34 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
                 Assert.Equal(new[] { "Lunch", "Supper" }, classified.MealTypes);
                 Assert.True(classified.IsVegetarian);
             }
+            async Task RunHeroAsync(WorkflowInstance intake, Guid recipeId, byte[] image)
+            {
+                var task = intake.Tasks.Single(x => x.ProcessorName == "GenerateHero");
+                if (fixedUse)
+                {
+                    var response = JsonSerializer.Serialize(new
+                    {
+                        candidates = new[]
+                        {
+                            new { content = new { parts = new[]
+                            {
+                                new { inlineData = new { mimeType = "image/webp", data = Convert.ToBase64String(image) } }
+                            } } }
+                        }
+                    });
+                    var handler = new SourceHandler(() => { }, response);
+                    var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+                        { ["GEMINI_API_KEY"] = "synthetic-key" }).Build();
+                    await new RecipeHeroAgent(store, configuration, NullLogger<RecipeHeroAgent>.Instance,
+                        new HeroClientFactory(handler)).ExecuteAsync(task, default);
+                    Assert.Equal(1, handler.Calls);
+                    return;
+                }
+                await store.PublishAsync(await store.CaptureForTaskAsync(task, recipeId),
+                    new(null, await repository.GetInfoAsync(recipeId, default),
+                        "GenerateHero\n" + JsonSerializer.Serialize(JsonDocument.Parse(task.Payload!).RootElement),
+                        new Dictionary<string, byte[]?> { ["hero.webp"] = image }, SourceKind: "hero"), task.TaskId);
+            }
             var member = (await db.FamilyMembers.FirstAsync()).Id;
             var id = await service.CaptureUrl(new() { Url = "https://example.test/live-pasta" }, member);
             db.ChangeTracker.Clear();
@@ -154,6 +185,7 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
             if (fractionUse) extracted = extracted.Replace("Add all 200 g pasta.", "Add half of the pasta (100 g).", StringComparison.Ordinal);
             if (multipleUse) extracted = MultipleAbsoluteSource;
             if (remainderUse) extracted = RemainderUseSource;
+            if (fixedUse) extracted = FixedUseSource;
             if (absoluteUse) extracted = extracted.Replace("Add all 200 g pasta.", "Add 50 g pasta.", StringComparison.Ordinal);
             var chat = new Mock<IChatClient>();
             chat.Setup(x => x.GetResponseAsync(It.IsAny<IEnumerable<ChatMessage>>(), It.IsAny<ChatOptions>(), It.IsAny<CancellationToken>()))
@@ -163,11 +195,7 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
             await new RecipeAgent(chat.Object, prompts.Object, new ConfigurationManager(),
                 NullLogger<RecipeAgent>.Instance, store, "ExtractRecipe")
                 .ExecuteAsync(workflow.Tasks.Single(x => x.ProcessorName == "ExtractRecipe"), default);
-            var hero = workflow.Tasks.Single(x => x.ProcessorName == "GenerateHero");
-            await store.PublishAsync(await store.CaptureForTaskAsync(hero, id),
-                new(null, await repository.GetInfoAsync(id, default),
-                    "GenerateHero\n" + JsonSerializer.Serialize(JsonDocument.Parse(hero.Payload).RootElement),
-                    new Dictionary<string, byte[]?> { ["hero.webp"] = [1, 2, 3] }, SourceKind: "hero"), hero.TaskId);
+            await RunHeroAsync(workflow, id, [1, 2, 3]);
             await new SyncRecipeProcessor(clock, db, repository,
                 services.GetRequiredService<SupperProjectionInvalidation>(), Mock.Of<ISupperProjectionPublisher>(),
                 NullLogger<SyncRecipeProcessor>.Instance).ExecuteAsync(
@@ -217,15 +245,12 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
                 await Web(store, new SourceHandler(() => { })).ExecuteAsync(
                     repair.Tasks.Single(x => x.ProcessorName == "FetchUrlContent"), default);
                 await reviewAgent.ExecuteAsync(repair.Tasks.Single(x => x.ProcessorName == "ExtractRecipe"), default);
-                var hero = repair.Tasks.Single(x => x.ProcessorName == "GenerateHero");
-                await store.PublishAsync(await store.CaptureForTaskAsync(hero, reviewId),
-                    new(null, await repository.GetInfoAsync(reviewId, default),
-                        "GenerateHero\n" + JsonSerializer.Serialize(JsonDocument.Parse(hero.Payload!).RootElement),
-                        new Dictionary<string, byte[]?> { ["hero.webp"] = [4, 5, 6] }, SourceKind: "hero"), hero.TaskId);
+                await RunHeroAsync(repair, reviewId, [4, 5, 6]);
                 await new SyncRecipeProcessor(clock, db, repository,
                     services.GetRequiredService<SupperProjectionInvalidation>(), Mock.Of<ISupperProjectionPublisher>(),
                     NullLogger<SyncRecipeProcessor>.Instance).ExecuteAsync(
                         repair.Tasks.Single(x => x.ProcessorName == "SyncRecipe"), default);
+                if (fixedUse) await CategorizeFreshAsync(repair, reviewId);
                 await new RecipeReadyProcessor(db, NullLogger<RecipeReadyProcessor>.Instance,
                     Mock.Of<IScheduleEventPublisher>(), store).ExecuteAsync(
                         repair.Tasks.Single(x => x.ProcessorName == "RecipeReady"), default);
@@ -252,18 +277,19 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
                 .Replace("oil", "photo oil", StringComparison.Ordinal);
             if (remainderUse) photoSource = RemainderUseSource.Replace("Oil", "Photo Oil", StringComparison.Ordinal)
                 .Replace("oil", "photo oil", StringComparison.Ordinal);
+            if (fixedUse) photoSource = FixedUseSource.Replace("Oil", "Photo Oil", StringComparison.Ordinal)
+                .Replace("oil", "photo oil", StringComparison.Ordinal);
             if (absoluteUse) photoSource = photoSource.Replace("Cook the photo pasta.", "Add 50 g photo pasta.", StringComparison.Ordinal);
             var photoChat = new Mock<IChatClient>();
             photoChat.Setup(x => x.GetResponseAsync(It.IsAny<IEnumerable<ChatMessage>>(), It.IsAny<ChatOptions>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new ChatResponse(new ChatMessage(ChatRole.Assistant, photoSource)));
+            if (fixedUse)
+                await new PdfConversionProcessor(store, Mock.Of<IPdfPageRenderer>())
+                    .ExecuteAsync(photoWorkflow.Tasks.Single(x => x.ProcessorName == "ConvertPdf"), default);
             await new RecipeAgent(photoChat.Object, prompts.Object, new ConfigurationManager(),
                 NullLogger<RecipeAgent>.Instance, store, "ExtractRecipe")
                 .ExecuteAsync(photoWorkflow.Tasks.Single(x => x.ProcessorName == "ExtractRecipe"), default);
-            var photoHero = photoWorkflow.Tasks.Single(x => x.ProcessorName == "GenerateHero");
-            await store.PublishAsync(await store.CaptureForTaskAsync(photoHero, photoId),
-                new(null, await repository.GetInfoAsync(photoId, default),
-                    "GenerateHero\n" + JsonSerializer.Serialize(JsonDocument.Parse(photoHero.Payload!).RootElement),
-                    new Dictionary<string, byte[]?> { ["hero.webp"] = [7, 8, 9] }, SourceKind: "hero"), photoHero.TaskId);
+            await RunHeroAsync(photoWorkflow, photoId, [7, 8, 9]);
             await new SyncRecipeProcessor(clock, db, repository,
                 services.GetRequiredService<SupperProjectionInvalidation>(), Mock.Of<ISupperProjectionPublisher>(),
                 NullLogger<SyncRecipeProcessor>.Instance).ExecuteAsync(
@@ -295,6 +321,7 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
                 start.Environment["NEXT_TELEMETRY_DISABLED"] = "1";
                 start.Environment["HEARTH_SECRET"] = TestWebApplicationFactory.TestSecret;
                 start.Environment["FRESH_REMAINDER_USE"] = remainderUse ? "1" : "0";
+                start.Environment["FRESH_FIXED_USE"] = fixedUse ? "1" : "0";
                 start.Environment["FRESH_FRACTION_USE"] = fractionUse ? "1" : "0";
                 start.Environment["FRESH_ABSOLUTE_USE"] = absoluteUse ? "1" : "0";
                 start.Environment["FRESH_MULTIPLE_ABSOLUTE_USE"] = multipleUse ? "1" : "0";
@@ -333,7 +360,7 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
                 finally { await StopFresh(browser); }
                 var final = await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == id);
                 Assert.Equal("https://example.test/live-pasta", final.SourceUrl);
-                Assert.Equal(multipleUse || remainderUse ? "3" : "250", CanonicalRecipeContentStore.Read(final)!.IngredientLines[0].AmountText);
+                Assert.Equal(fixedUse ? "1/2" : multipleUse || remainderUse ? "3" : "250", CanonicalRecipeContentStore.Read(final)!.IngredientLines[0].AmountText);
                 var reviewed = await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == reviewId);
                 Assert.True(reviewed.IsReady);
                 Assert.Equal("https://example.test/reviewed-pasta", reviewed.SourceUrl);
@@ -341,7 +368,7 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
                 var photo = await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == photoId);
                 Assert.True(photo.IsReady);
                 Assert.Null(photo.SourceUrl);
-                Assert.Equal(multipleUse || remainderUse ? "3" : "250", CanonicalRecipeContentStore.Read(photo)!.IngredientLines[0].AmountText);
+                Assert.Equal(fixedUse ? "1/2" : multipleUse || remainderUse ? "3" : "250", CanonicalRecipeContentStore.Read(photo)!.IngredientLines[0].AmountText);
                 Assert.Equal(new byte[] { 4, 5, 6 }, await repository.GetOriginalImageAsync(photoId, 0, default));
                 Assert.Equal(RecipeImportReportStatus.ReadyToReview,
                     (await db.RecipeImportReports.AsNoTracking().SingleAsync(x => x.RecipeId == reviewId)).Status);

@@ -186,3 +186,24 @@ OpenAPI shapes are reused. Stateful mocks derive this bounded proof on Save.
 Evidence and selected-task bookkeeping reside under
 `.task/dependable-portions-slice5/` and the owner tasks. Async AI, additional role
 producers, later intake channels and aggregate closure remain outside this slice.
+
+## Standalone fixed-use evidence inlet — 2026-11-11
+
+The existing write-time owner accepts the closed affirmative English clause
+“For any number of portions, use exactly <amount> <saved unit> [of] <saved ingredient>.”
+and French “Quel que soit le nombre de portions, utilisez exactement <amount>
+<saved unit> de/d’<saved ingredient>.” Association requires one uniquely identified
+saved row and one literal occurrence with exact current source/content/text
+revisions and UTF-16 measurement span. Unknown or incompatible amount/unit,
+packages, repeated/alternative/conditional scope and foreign proof abstain.
+Positive canonical scalar fixed/proportional rows use the already supported
+mass/volume/independent culinary families. No basis or use≤total restriction is
+invented: fixed is an independent use policy, not an exhaustive allocation.
+The original fixed amount/unit is independently rederived at fresh publication;
+guarded Save can carry the same binding identity through total-only correction,
+including a corrected total below the dose. Text edits establish new proof,
+explicit clears remain cleared, and unrelated proof retains its owner. Payload
+uses the existing amount/unit and internal `explicit-fixed-portions-clause`
+evidence; there is no public contract or arithmetic change. One ingredient-derived
+demand remains independent of binding count. Runtime/hosted/DV qualification and
+first failures remain in tasks and operation-specific evidence.

@@ -1,5 +1,24 @@
 # Tasks
 
+## Current coordinated release policy — 2026-11-11
+
+The user authorized completing the remaining accepted dependable-portions release
+after predecessor C05 at `74f0a48b47ffd6eccb52d3710de58c384c2b6aaa`.
+Local tests and exact-candidate data-preserving DV acceptance gate runtime slices;
+applicable checks gate documentation slices. Commit accepted owned work locally
+and continue the dependency queue without per-slice pushes. After full integrated
+local/DV qualification, make one consolidated push, resolve required hosted CI
+failures with justified repairs/follow-up pushes, then sync/archive only fully
+completed in-scope changes. Required exact-final-candidate hosted acceptance stays
+open until observed. Historical single-slice stopping and hosted-before-DV rules
+below describe their original operations and are superseded prospectively by this
+policy; historical failures/retries/limits remain unchanged. No production, reset,
+reseed, force push, unrelated merge, garlic-placeholder implementation, bilingual
+catalogue adoption or Similar UI work. Selective repair remains superseded.
+Task IDs/checklists remain authoritative; partial slices do not close aggregates.
+The operational navigation record is `.task/dependable-portions-coordinator/continuation.md`.
+
+
 ## 0. Produce and maintain relationships through ordinary workflows
 
 Accepted product behavior on 2026-11-10: automatic relationship setup applies to
