@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using RecipeApi.Dto;
 
@@ -9,7 +10,8 @@ namespace RecipeApi.Services;
 // ingredient-use semantics. Unsupported language remains ordinary readable text.
 public static class CookingStepRelationshipProducer
 {
-    private const string Rule = "explicit-whole-clause";
+    private const string WholeRule = "explicit-whole-clause";
+    private const string AbsoluteRule = "explicit-absolute-clause";
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
     private const RegexOptions Options = RegexOptions.CultureInvariant | RegexOptions.IgnoreCase;
     private static readonly TimeSpan MatchTimeout = TimeSpan.FromMilliseconds(100);
@@ -17,10 +19,12 @@ public static class CookingStepRelationshipProducer
         @"(?<![\p{L}\p{N}])(half|remaining|remainder|rest|reserve|reserved|except|unless|some|part|divided|each|per|alternatively|or|if|not|never|moitié|reste|restant|restante|réserver|réservez|sauf|chaque|par|ou|si|pas|jamais)(?![\p{L}\p{N}])", Options, MatchTimeout);
     private sealed record Span(int Start, int End, string ExpectedText);
     private sealed record Evidence(int Version, string Rule, string SourceRevision, GroceryQuantity OriginalAmount);
-    private sealed record Payload(Evidence RelationshipEvidence);
+    private sealed record Payload(Evidence RelationshipEvidence,
+        [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] GroceryQuantity? Amount = null,
+        [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] RecipeUnitDto? Unit = null);
     private sealed record Binding(Guid Id, Guid IngredientLineId, Guid StepId, string ValidatedContentRevision,
         string ValidatedTextRevision, Span Span, string Role, Payload Payload, string Status);
-    private sealed record Clause(Span Span, GroceryQuantity Amount);
+    private sealed record Clause(Span Span, GroceryQuantity Amount, string Role);
 
     public static CanonicalRecipeContent Discover(CanonicalRecipeContent content, CanonicalRecipeContent? previous = null)
     {
@@ -55,14 +59,21 @@ public static class CookingStepRelationshipProducer
                         .Where(x => x.Clause is not null).ToArray();
                     if (candidates.Length != 1) return step with { Bindings = [] };
                     var (row, clause) = candidates[0];
-                    var prior = Carry(previous, content, step, row, clause!);
+                    // A corrected total below its explicit use is contradictory;
+                    // retain the wording without redistribution or numeric proof.
+                    if (clause!.Role == "absolute" && LegacyGroceryQuantity.SubtractScalar(row.Amount, clause.Amount) is null)
+                        return step with { Bindings = [] };
+                    var prior = Carry(previous, content, step, row, clause);
                     if (prior is not null)
                         return step with { Bindings = [Write(prior with { ValidatedContentRevision = content.ContentRevision })] };
-                    if (clause!.Amount != row.Amount) return step with { Bindings = [] };
+                    if (clause!.Role == "whole" ? clause.Amount != row.Amount : !PartialAmount(row, clause.Amount))
+                        return step with { Bindings = [] };
                     var existing = step.Bindings.Select(Read).SingleOrDefault(binding =>
                         binding is not null && Matches(binding, content, step, row, clause));
                     var binding = new Binding(existing?.Id ?? Guid.NewGuid(), row.Id, step.Id, content.ContentRevision,
-                        step.TextRevision, clause.Span, "whole", new(new(1, Rule, content.SourceRevision, clause.Amount)), "validated");
+                        step.TextRevision, clause.Span, clause.Role,
+                        new(new(1, clause.Role == "whole" ? WholeRule : AbsoluteRule, content.SourceRevision, clause.Amount),
+                            clause.Role == "absolute" ? clause.Amount : null, clause.Role == "absolute" ? row.Unit : null), "validated");
                     return step with { Bindings = [Write(binding)] };
                 }).ToArray()
             }).ToArray()
@@ -126,22 +137,31 @@ public static class CookingStepRelationshipProducer
         const string amount = @"(?<amount>[0-9¼½¾⅐⅑⅒⅓⅔⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞][0-9¼½¾⅐⅑⅒⅓⅔⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞/.,–\- \t]*)";
         var measurement = @"(?<measurement>" + amount + (row.Unit is null ? "" : @"[ \t]+" + Regex.Escape(row.Unit.Text)) + ")";
         var noun = Regex.Escape(row.Description);
-        var patterns = new[]
+        var patterns = new (string Role, string Pattern)[]
         {
-            @"\A[ \t]*(?:Add|Use|Cook|Boil|Mix)[ \t]+all[ \t]+" + measurement + @"[ \t]+(?:of[ \t]+)?" + noun + @"\.?[ \t]*\z",
-            @"\A[ \t]*(?:Ajouter|Ajoutez|Utiliser|Utilisez|Cuire|Faire cuire|Faites cuire|Mélanger|Mélangez)[ \t]+(?:tous les|toutes les|la totalité des)[ \t]+" + measurement + @"[ \t]+(?:de[ \t]+|d['’])?" + noun + @"\.?[ \t]*\z"
+            ("whole", @"\A[ \t]*(?:Add|Use|Cook|Boil|Mix)[ \t]+all[ \t]+" + measurement + @"[ \t]+(?:of[ \t]+)?" + noun + @"\.?[ \t]*\z"),
+            ("whole", @"\A[ \t]*(?:Ajouter|Ajoutez|Utiliser|Utilisez|Cuire|Faire cuire|Faites cuire|Mélanger|Mélangez)[ \t]+(?:tous les|toutes les|la totalité des)[ \t]+" + measurement + @"[ \t]+(?:de[ \t]+|d['’])?" + noun + @"\.?[ \t]*\z"),
+            ("absolute", @"\A[ \t]*(?:Add|Use|Cook|Boil|Mix)[ \t]+" + measurement + @"[ \t]+(?:of[ \t]+)?" + noun + @"\.?[ \t]*\z"),
+            ("absolute", @"\A[ \t]*(?:Ajouter|Ajoutez|Utiliser|Utilisez|Cuire|Faire cuire|Faites cuire|Mélanger|Mélangez)[ \t]+" + measurement + @"[ \t]+(?:de[ \t]+|d['’])?" + noun + @"\.?[ \t]*\z")
         };
-        foreach (var pattern in patterns)
+        foreach (var (role, pattern) in patterns)
         {
             var match = Regex.Match(text, pattern, Options, MatchTimeout);
             if (!match.Success) continue;
             var quantity = LegacyGroceryQuantity.Parse(match.Groups["amount"].Value.Trim());
             if (quantity is null || !LegacyGroceryQuantity.IsCanonical(quantity)) return null;
             var span = match.Groups["measurement"];
-            return new(new(span.Index, span.Index + span.Length, span.Value), quantity);
+            return new(new(span.Index, span.Index + span.Length, span.Value), quantity, role);
         }
         return null;
     }
+
+    // A closed affirmative measured-use clause establishes an absolute role,
+    // never a whole role from numeric equality. Initial partial proof is bounded
+    // to a positive scalar use below a known scalar total with the saved unit.
+    private static bool PartialAmount(RecipeIngredientLineDto row, GroceryQuantity amount) =>
+        row.Unit is not null && row.Amount is { Kind: "scalar" } && amount is { Kind: "scalar", Value.N: not "0" } &&
+        LegacyGroceryQuantity.SubtractScalar(row.Amount, amount) is { Value.N: not "0" };
 
     private static Binding? Carry(CanonicalRecipeContent? previous, CanonicalRecipeContent content,
         RecipeInstructionStepDto step, RecipeIngredientLineDto row, Clause clause)
@@ -164,9 +184,11 @@ public static class CookingStepRelationshipProducer
     private static bool Matches(Binding binding, CanonicalRecipeContent content, RecipeInstructionStepDto step,
         RecipeIngredientLineDto row, Clause clause) => binding.Id != Guid.Empty && binding.IngredientLineId == row.Id &&
         binding.StepId == step.Id && binding.ValidatedContentRevision == content.ContentRevision && binding.ValidatedTextRevision == step.TextRevision &&
-        binding.Span == clause.Span && binding.Role == "whole" && binding.Status == "validated" &&
-        binding.Payload?.RelationshipEvidence is { Version: 1, Rule: Rule } evidence &&
-        evidence.SourceRevision == content.SourceRevision && evidence.OriginalAmount == clause.Amount;
+        binding.Span == clause.Span && binding.Role == clause.Role && binding.Status == "validated" &&
+        binding.Payload?.RelationshipEvidence is { Version: 1 } evidence &&
+        evidence.Rule == (clause.Role == "whole" ? WholeRule : AbsoluteRule) &&
+        evidence.SourceRevision == content.SourceRevision && evidence.OriginalAmount == clause.Amount &&
+        (clause.Role == "whole" || binding.Payload.Amount == clause.Amount && binding.Payload.Unit == row.Unit);
 
     private static bool Owned(JsonElement raw) => raw.ValueKind == JsonValueKind.Object &&
         raw.TryGetProperty("payload", out var payload) && payload.ValueKind == JsonValueKind.Object &&

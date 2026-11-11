@@ -23,14 +23,19 @@ namespace RecipeApi.Tests.Integration;
 public sealed partial class CanonicalIngredientPublicationPostgresTests
 {
     [DeploymentCalendarPostgresTests.CalendarLiveFact]
-    public async Task LiveBrowser_FreshUrlCanonicalGroceries()
+    public Task LiveBrowser_FreshUrlCanonicalGroceries() => FreshCanonicalGroceries(absoluteUse: false);
+
+    [DeploymentCalendarPostgresTests.CalendarLiveFact]
+    public Task LiveBrowser_FreshAbsoluteCanonicalGroceries() => FreshCanonicalGroceries(absoluteUse: true);
+
+    private async Task FreshCanonicalGroceries(bool absoluteUse)
     {
         var browserRoot = Environment.GetEnvironmentVariable("WFS_CANONICAL_BROWSER_ROOT")
             ?? throw new InvalidOperationException("Requires an isolated production-built PWA copy.");
         var evidenceRoot = Environment.GetEnvironmentVariable("WFS_CANONICAL_EVIDENCE")
             ?? throw new InvalidOperationException("Requires a unique evidence directory.");
         Assert.True(File.Exists(Path.Combine(browserRoot, "pwa", ".next", "BUILD_ID")));
-        var evidence = Path.Combine(evidenceRoot, "fresh-url");
+        var evidence = Path.Combine(evidenceRoot, absoluteUse ? "fresh-absolute" : "fresh-url");
         Directory.CreateDirectory(evidence);
         var pwaPort = DeploymentCalendarPostgresTests.FreePort();
         var pwaUrl = $"http://127.0.0.1:{pwaPort}";
@@ -134,9 +139,10 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
             db.ChangeTracker.Clear();
             var workflow = await db.WorkflowInstances.Include(x => x.Tasks).SingleAsync(x => x.WorkflowId == "url-import");
             await Web(store, new SourceHandler(() => { })).ExecuteAsync(workflow.Tasks.Single(x => x.ProcessorName == "FetchUrlContent"), default);
-            const string extracted = """
+            var extracted = """
                 {"name":"Pasta","recipeYield":"4 servings","recipeIngredient":["200 g pasta","100 ml sauce"],"supply":[{"name":"pasta","requiredQuantity":{"value":200,"unitText":"g"}},{"name":"sauce","requiredQuantity":{"value":100,"unitText":"ml"}}],"recipeInstructions":[{"text":"Add all 200 g pasta."},{"text":"Simmer 20 minutes at 180 °C."}]}
                 """;
+            if (absoluteUse) extracted = extracted.Replace("Add all 200 g pasta.", "Add 50 g pasta.", StringComparison.Ordinal);
             var chat = new Mock<IChatClient>();
             chat.Setup(x => x.GetResponseAsync(It.IsAny<IEnumerable<ChatMessage>>(), It.IsAny<ChatOptions>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new ChatResponse(new ChatMessage(ChatRole.Assistant, extracted)));
@@ -160,7 +166,7 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
                     workflow.Tasks.Single(x => x.ProcessorName == "RecipeReady"), default);
             Assert.True((await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == id)).IsReady);
             (await db.CalendarEvents.SingleAsync(x => x.Date == monday && x.MealSlot == 0)).RecipeId = id;
-            db.SupperServings.Add(new SupperServing { Date = monday, OverrideServings = 8 });
+            db.SupperServings.Add(new SupperServing { Date = monday, OverrideServings = absoluteUse ? 6 : 8 });
             var second = new FamilyMember { Id = Guid.NewGuid(), Name = "Second shopper" };
             db.FamilyMembers.Add(second);
             await db.SaveChangesAsync();
@@ -226,9 +232,10 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
             db.ChangeTracker.Clear();
             var photoWorkflow = (await db.WorkflowInstances.Include(x => x.Tasks)
                 .Where(x => x.WorkflowId == "recipe-import").ToListAsync()).Single();
-            const string photoSource = """
+            var photoSource = """
                 {"name":"Photo Pasta","recipeYield":"4 servings","recipeIngredient":["200 g photo pasta","100 ml sauce"],"supply":[{"name":"photo pasta","requiredQuantity":{"value":200,"unitText":"g"}},{"name":"sauce","requiredQuantity":{"value":100,"unitText":"ml"}}],"recipeInstructions":[{"text":"Cook the photo pasta."}]}
                 """;
+            if (absoluteUse) photoSource = photoSource.Replace("Cook the photo pasta.", "Add 50 g photo pasta.", StringComparison.Ordinal);
             var photoChat = new Mock<IChatClient>();
             photoChat.Setup(x => x.GetResponseAsync(It.IsAny<IEnumerable<ChatMessage>>(), It.IsAny<ChatOptions>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new ChatResponse(new ChatMessage(ChatRole.Assistant, photoSource)));
@@ -251,7 +258,7 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
             Assert.True((await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == photoId)).IsReady);
             Assert.Equal(new byte[] { 4, 5, 6 }, await repository.GetOriginalImageAsync(photoId, 0, default));
             (await db.CalendarEvents.SingleAsync(x => x.Date == photoDate && x.MealSlot == 0)).RecipeId = photoId;
-            db.SupperServings.Add(new SupperServing { Date = photoDate, OverrideServings = 8 });
+            db.SupperServings.Add(new SupperServing { Date = photoDate, OverrideServings = absoluteUse ? 6 : 8 });
             await db.SaveChangesAsync();
             await services.GetRequiredService<GroceryRecomputeService>().RecomputeForWeekAsync(photoMonday, default);
 
@@ -270,6 +277,7 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
                 start.Environment["NEXT_PUBLIC_ENVIRONMENT"] = "test";
                 start.Environment["NEXT_TELEMETRY_DISABLED"] = "1";
                 start.Environment["HEARTH_SECRET"] = TestWebApplicationFactory.TestSecret;
+                start.Environment["FRESH_ABSOLUTE_USE"] = absoluteUse ? "1" : "0";
                 start.Environment["FRESH_URL_RECIPE_ID"] = id.ToString();
                 start.Environment["FRESH_PHOTO_RECIPE_ID"] = photoId.ToString();
                 start.Environment["REVIEW_URL_RECIPE_ID"] = reviewId.ToString();

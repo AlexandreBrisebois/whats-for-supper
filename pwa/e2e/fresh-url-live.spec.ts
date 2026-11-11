@@ -1,6 +1,8 @@
 import { test, expect } from '@playwright/test';
 import { generateSecretToken } from './auth-utils';
 
+const absoluteUse = process.env.FRESH_ABSOLUTE_USE === '1';
+
 test.skip(!process.env.FRESH_URL_RECIPE_ID, 'Requires producer-backed live API and built PWA.');
 
 test('fresh URL canonical edit reaches two shoppers and dated groceries', async ({
@@ -18,7 +20,9 @@ test('fresh URL canonical edit reaches two shoppers and dated groceries', async 
   expect(initial).toMatchObject({ servings: 4, ingredients: ['200 g pasta', '100 ml sauce'] });
   expect(initial.ingredientLines[0].provenance.origin).toBe('source');
   expect(initial.instructionSections[0].steps[0].bindings).toHaveLength(1);
-  expect(initial.instructionSections[0].steps[0].bindings[0].role).toBe('whole');
+  expect(initial.instructionSections[0].steps[0].bindings[0].role).toBe(
+    absoluteUse ? 'absolute' : 'whole'
+  );
   expect(initial.sourceUrl).toBe('https://example.test/live-pasta');
   const family = (await (await request.get(`${baseURL}/api/family`, { headers })).json()).data;
   const contexts = await Promise.all(
@@ -62,13 +66,15 @@ test('fresh URL canonical edit reaches two shoppers and dated groceries', async 
     // Keep another cook mounted across ordinary original-content saves.
     await shopper.goto('/home');
     await shopper.getByTestId('cook-mode-btn').click();
-    const sauce = shopper.getByTestId('ingredient-toggle').filter({ hasText: '200 ml sauce' });
+    const sauce = shopper
+      .getByTestId('ingredient-toggle')
+      .filter({ hasText: absoluteUse ? '150 ml sauce' : '200 ml sauce' });
     await expect(sauce).toBeVisible();
     await sauce.click();
     await shopper.getByTestId('cooking-view-step-by-step').click();
     await shopper.getByTestId('cooks-mode-step-next').click();
     await expect(shopper.getByTestId('cooks-mode-instructions')).toContainText(
-      'Add all 400 g pasta.'
+      absoluteUse ? 'Add 75 g pasta.' : 'Add all 400 g pasta.'
     );
     await editor.goto(`/recipes?open=${id}`);
     await editor.getByTestId('action-gear-menu').click();
@@ -94,19 +100,26 @@ test('fresh URL canonical edit reaches two shoppers and dated groceries', async 
       { headers }
     );
     expect(projection.status()).toBe(200);
-    expect((await projection.json()).lines[0].quantity).toBe(500);
-    expect(saved.instructionSections[0].steps[0].text).toBe('Add all 200 g pasta.');
+    expect((await projection.json()).lines[0].quantity).toBe(absoluteUse ? 375 : 500);
+    expect(saved.instructionSections[0].steps[0].text).toBe(
+      absoluteUse ? 'Add 50 g pasta.' : 'Add all 200 g pasta.'
+    );
     await shopper.evaluate(() => window.dispatchEvent(new Event('focus')));
     await expect(shopper.getByTestId('cooking-quantities-available')).toBeVisible();
     await expect(shopper.getByTestId('cooks-mode-instructions')).toContainText(
-      'Add all 400 g pasta.'
+      absoluteUse ? 'Add 75 g pasta.' : 'Add all 400 g pasta.'
     );
     await shopper.getByRole('button', { name: 'Refresh quantities', exact: true }).click();
     await expect(shopper.getByTestId('cooks-mode-instructions')).toContainText(
-      'Add all 500 g pasta.'
+      absoluteUse ? 'Add 75 g pasta.' : 'Add all 500 g pasta.'
     );
     await shopper.getByTestId('cooks-mode-step-prev').click();
     await expect(sauce).toHaveAttribute('aria-checked', 'true');
+    await expect(
+      shopper
+        .getByTestId('ingredient-toggle')
+        .filter({ hasText: absoluteUse ? '375 g pasta' : '500 g pasta' })
+    ).toBeVisible();
     await shopper.getByTestId('cooks-mode-step-next').click();
 
     // The existing generated-client step editor saves original wording and
@@ -116,8 +129,12 @@ test('fresh URL canonical edit reaches two shoppers and dated groceries', async 
     await editor.getByTestId('cooking-view-step-by-step').click();
     await editor.getByTestId('cooks-mode-step-next').click();
     await editor.getByTestId('cooks-mode-edit-step').click();
-    await expect(editor.getByRole('textbox')).toHaveValue('Add all 200 g pasta.');
-    await editor.getByRole('textbox').fill('Add all 250 g pasta.');
+    await expect(editor.getByRole('textbox')).toHaveValue(
+      absoluteUse ? 'Add 50 g pasta.' : 'Add all 200 g pasta.'
+    );
+    await editor
+      .getByRole('textbox')
+      .fill(absoluteUse ? 'Use 50 g pasta.' : 'Add all 250 g pasta.');
     const stepSaving = editor.waitForResponse(
       (response) =>
         response.request().method() === 'PATCH' &&
@@ -127,24 +144,66 @@ test('fresh URL canonical edit reaches two shoppers and dated groceries', async 
     const stepReply = await stepSaving;
     expect(stepReply.status(), await stepReply.text()).toBe(200);
     const stepSaved = (await stepReply.json()).recipe;
-    expect(stepSaved.instructionSections[0].steps[0].text).toBe('Add all 250 g pasta.');
+    expect(stepSaved.instructionSections[0].steps[0].text).toBe(
+      absoluteUse ? 'Use 50 g pasta.' : 'Add all 250 g pasta.'
+    );
     expect(stepSaved.instructionSections[0].steps[0].bindings).toHaveLength(1);
+    if (absoluteUse) {
+      expect(saved.instructionSections[0].steps[0].bindings[0].id).toBe(
+        initial.instructionSections[0].steps[0].bindings[0].id
+      );
+      expect(stepSaved.instructionSections[0].steps[0].bindings[0].id).not.toBe(
+        saved.instructionSections[0].steps[0].bindings[0].id
+      );
+      expect(stepSaved.instructionSections[0].steps[0].bindings[0].role).toBe('absolute');
+    }
     expect(stepSaved.instructionSections[0].steps[1].text).toBe('Simmer 20 minutes at 180 °C.');
     expect(stepSaved.ingredientLines).toEqual(saved.ingredientLines);
     await shopper.evaluate(() => window.dispatchEvent(new Event('focus')));
     await expect(shopper.getByTestId('cooking-quantities-available')).toBeVisible();
     await shopper.getByRole('button', { name: 'Refresh quantities', exact: true }).click();
     await expect(shopper.getByTestId('cooks-mode-instructions')).toContainText(
-      'Add all 500 g pasta.'
+      absoluteUse ? 'Use 75 g pasta.' : 'Add all 500 g pasta.'
     );
     await expect(shopper.getByTestId('cooking-step-uncertainty')).toHaveCount(0);
     await expect(shopper.getByTestId('cooks-mode-overlay')).toHaveCSS('opacity', '1');
     await shopper.getByTestId('cooks-mode-instructions').screenshot({
-      path: info.outputPath('ordinary-whole-use-refreshed.png'),
+      path: info.outputPath(
+        absoluteUse ? 'ordinary-absolute-use-refreshed.png' : 'ordinary-whole-use-refreshed.png'
+      ),
       animations: 'disabled',
     });
     await shopper.getByTestId('cooks-mode-step-prev').click();
     await expect(sauce).toHaveAttribute('aria-checked', 'true');
+
+    if (absoluteUse) {
+      await editor.getByTestId('cooks-mode-edit-step').click();
+      await expect(editor.getByRole('textbox')).toHaveValue('Use 50 g pasta.');
+      await editor.getByRole('textbox').fill('Add 50 g pasta or sauce.');
+      const uncertainSaving = editor.waitForResponse(
+        (response) =>
+          response.request().method() === 'PATCH' &&
+          new URL(response.url()).pathname === `/api/recipes/${id}`
+      );
+      await editor.getByTestId('cooks-mode-save-edit').click();
+      const uncertainReply = await uncertainSaving;
+      expect(uncertainReply.status()).toBe(200);
+      const uncertain = (await uncertainReply.json()).recipe;
+      expect(uncertain.instructionSections[0].steps[0].text).toBe('Add 50 g pasta or sauce.');
+      expect(uncertain.instructionSections[0].steps[0].bindings).toHaveLength(0);
+      expect(uncertain.ingredientLines).toEqual(saved.ingredientLines);
+      await shopper.getByTestId('cooks-mode-step-next').click();
+      await shopper.evaluate(() => window.dispatchEvent(new Event('focus')));
+      await expect(shopper.getByTestId('cooking-quantities-available')).toBeVisible();
+      await expect(shopper.getByTestId('cooks-mode-instructions')).toContainText('Use 75 g pasta.');
+      await shopper.getByRole('button', { name: 'Refresh quantities', exact: true }).click();
+      await expect(shopper.getByTestId('cooks-mode-instructions')).toContainText(
+        'Add 50 g pasta or sauce.'
+      );
+      await expect(shopper.getByTestId('cooking-step-uncertainty')).toHaveCount(0);
+      await shopper.getByTestId('cooks-mode-step-prev').click();
+      await expect(sauce).toHaveAttribute('aria-checked', 'true');
+    }
 
     expect((await request.post(`${baseURL}/_test/fresh-url/recompute`, { headers })).status()).toBe(
       200
@@ -153,7 +212,10 @@ test('fresh URL canonical edit reaches two shoppers and dated groceries', async 
       await page.goto('/planner?weekOffset=1&referenceWeekStartDate=2026-10-05');
       await page.getByTestId('grocery-tab').click();
       await expect(
-        page.getByRole('checkbox', { name: 'pasta (500 g)', exact: true })
+        page.getByRole('checkbox', {
+          name: absoluteUse ? 'pasta (375 g)' : 'pasta (500 g)',
+          exact: true,
+        })
       ).toBeVisible();
     }
     const schedule = (
@@ -166,7 +228,10 @@ test('fresh URL canonical edit reaches two shoppers and dated groceries', async 
     ).data;
     const pasta = schedule.groceryItems.filter((row: any) => row.normalizedKey === 'pasta');
     expect(pasta).toHaveLength(1);
-    expect(pasta[0].quantity).toEqual({ kind: 'scalar', value: { n: '500', d: '1' } });
+    expect(pasta[0].quantity).toEqual({
+      kind: 'scalar',
+      value: { n: absoluteUse ? '375' : '500', d: '1' },
+    });
   } finally {
     await Promise.all(contexts.map((context) => context.close()));
   }
@@ -230,6 +295,20 @@ test('fresh photo canonical edit keeps original media and reaches dated grocerie
     const [editor, shopper] = await Promise.all(contexts.map((context) => context.newPage()));
     for (const page of [editor, shopper])
       await page.clock.setFixedTime(new Date('2026-10-25T01:30:00Z'));
+    if (absoluteUse) {
+      expect(original.instructionSections[0].steps[0].text).toBe('Add 50 g photo pasta.');
+      expect(original.instructionSections[0].steps[0].bindings[0].role).toBe('absolute');
+      await shopper.goto('/planner?weekOffset=2&referenceWeekStartDate=2026-10-05');
+      await shopper.getByTestId('day-card-6').getByTestId('edit-recipe-button').click();
+      await shopper.getByTestId('action-cooks-mode').click();
+      await expect(shopper.getByTestId('cooking-portion-context')).toContainText('6 portions');
+      await shopper.getByTestId('ingredient-toggle').filter({ hasText: '150 ml sauce' }).click();
+      await shopper.getByTestId('cooking-view-step-by-step').click();
+      await shopper.getByTestId('cooks-mode-step-next').click();
+      await expect(shopper.getByTestId('cooks-mode-instructions')).toContainText(
+        'Add 75 g photo pasta.'
+      );
+    }
     await editor.goto(`/recipes?open=${id}`);
     await editor.getByTestId('action-gear-menu').click();
     await editor.getByRole('button', { name: 'Edit', exact: true }).click();
@@ -250,12 +329,35 @@ test('fresh photo canonical edit keeps original media and reaches dated grocerie
       original.instructionSections[0].steps[0].id
     );
     expect(saved.ingredientLines[0].provenance.origin).toBe('human');
+    if (absoluteUse) {
+      expect(saved.instructionSections[0].steps[0].text).toBe('Add 50 g photo pasta.');
+      expect(saved.instructionSections[0].steps[0].bindings[0].id).toBe(
+        original.instructionSections[0].steps[0].bindings[0].id
+      );
+      await shopper.evaluate(() => window.dispatchEvent(new Event('focus')));
+      await expect(shopper.getByTestId('cooking-quantities-available')).toBeVisible();
+      await expect(shopper.getByTestId('cooks-mode-instructions')).toContainText(
+        'Add 75 g photo pasta.'
+      );
+      await shopper.getByRole('button', { name: 'Refresh quantities', exact: true }).click();
+      await expect(shopper.getByTestId('cooks-mode-instructions')).toContainText(
+        'Add 75 g photo pasta.'
+      );
+      await expect(shopper.getByTestId('cooking-step-uncertainty')).toHaveCount(0);
+      await shopper.getByTestId('cooks-mode-step-prev').click();
+      await expect(
+        shopper.getByTestId('ingredient-toggle').filter({ hasText: '150 ml sauce' })
+      ).toHaveAttribute('aria-checked', 'true');
+      await expect(
+        shopper.getByTestId('ingredient-toggle').filter({ hasText: '375 g photo pasta' })
+      ).toBeVisible();
+    }
     const projection = await request.get(
       `${baseURL}/api/recipes/${id}/ingredient-projection?context=proposed&supperDate=2026-10-25`,
       { headers }
     );
     expect(projection.status()).toBe(200);
-    expect((await projection.json()).lines[0].quantity).toBe(500);
+    expect((await projection.json()).lines[0].quantity).toBe(absoluteUse ? 375 : 500);
     expect(
       (await request.post(`${baseURL}/_test/fresh-url/recompute-photo`, { headers })).status()
     ).toBe(200);
@@ -263,7 +365,10 @@ test('fresh photo canonical edit keeps original media and reaches dated grocerie
       await page.goto('/planner?weekOffset=2&referenceWeekStartDate=2026-10-05');
       await page.getByTestId('grocery-tab').click();
       await expect(
-        page.getByRole('checkbox', { name: 'photo pasta (500 g)', exact: true })
+        page.getByRole('checkbox', {
+          name: absoluteUse ? 'photo pasta (375 g)' : 'photo pasta (500 g)',
+          exact: true,
+        })
       ).toBeVisible();
     }
     const schedule = (
@@ -276,7 +381,10 @@ test('fresh photo canonical edit keeps original media and reaches dated grocerie
     ).data;
     const pasta = schedule.groceryItems.filter((row: any) => row.normalizedKey === 'photo pasta');
     expect(pasta).toHaveLength(1);
-    expect(pasta[0].quantity).toEqual({ kind: 'scalar', value: { n: '500', d: '1' } });
+    expect(pasta[0].quantity).toEqual({
+      kind: 'scalar',
+      value: { n: absoluteUse ? '375' : '500', d: '1' },
+    });
   } finally {
     await Promise.all(contexts.map((context) => context.close()));
   }

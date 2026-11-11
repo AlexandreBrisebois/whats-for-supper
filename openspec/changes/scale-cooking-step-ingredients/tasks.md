@@ -99,3 +99,54 @@ Implementation, focused verification and real local seams are distinct from fina
 repository, hosted and DV acceptance, which the coordinator records separately.
 Final prepared runtime hashes and worker red/failure evidence are under
 `.task/dependable-portions-slice1/`; no whole-change completion/sync/archive follows.
+
+## Coordinated absolute-use slice 2
+
+Selected by the current execution prompt: step tasks 0.1–0.3 (absolute-use subset),
+2.1, 2.3 and 4.1; canonical tasks 2.2, 3.2 and 4.1 (integration/qualification subsets).
+Prerequisite accepted commit `0ee175e45b38407b87c8a562c2d2f086292464e0` and DV
+operation `7efa8202-e5d9-463d-802e-cd26ccc561d6` are preserved by starting commit
+`b7054b601c94af4e2a79aba41f0d6f213b5d892d` on recipe-view-redesign.
+
+B owns the bounded producer/unit tests; A owns canonical Save/publication and real
+PostgreSQL integration tests; C independently reviews preservation and existing DV
+recovery without shared-source writes. Coordinator owns browser/contracts integration,
+lifecycle, final verification, commit and exact-commit DV acceptance. This slice reuses
+whole-use, all-role projection, categorization journals and the durable RecoveryBoundary
+hold; it does not rebuild those foundations.
+
+The explicit measured-use clause binds a positive scalar use below a known scalar total
+to one unique saved ingredient, its exact declared unit and current step/source revisions.
+A closed affirmative Add/Use/Cook/Boil/Mix clause (bounded French equivalents included)
+provides use semantics; numeric/name equality alone cannot prove whole use. Fresh
+publication strips supplied proof and independently derives the expected relationship.
+Guarded Save revalidates dependencies; total 200→250 retains explicit 50 original,
+which renders 75 at six portions from basis four, with one ingredient-derived 375 demand.
+Changed step wording replaces proof without rewriting saved facts. Conditional, repeated,
+ambiguous, incompatible, package and unsupported clauses abstain quietly. Reduction below
+the explicit use invalidates that proof without redistribution or a cooking block.
+
+Primary C03/C45 acceptance crosses ordinary URL/photo extraction, both real categorization
+processors, readiness, guarded ingredient/step Save, generated-client Cook explicit refresh
+and one grocery demand. Preservation C01–C06, C12–C19/C46 remains assigned to existing
+allocation, canonical edit/publication, Cook, prepared and recovery owners. Whole and
+absolute live variants remain separate. No public contract/client shape change is needed;
+existing role/payload support and stateful mocks remain authoritative. The hosted workflow
+requires the new absolute native/browser variant with zero required skips or retries.
+
+Implementation and qualification evidence is recorded separately under
+`.task/dependable-portions-slice2/`: producer red/green, real database, browser, integrated
+repository gate, hosted exact commit, and DV deployment/recovery. Implementation is in
+progress until all required current-candidate gates are reconciled; no result is implied
+by this checkpoint. Aggregate checkboxes remain open because other roles, asynchronous
+reevaluation, later intake and full-release acceptance are unfinished.
+
+Lifecycle dispositions: canonical correction and step scaling active; migration/recovery
+foundation reused with no library conversion; grocery and local/hosted CI qualification
+remain active and unfinished; bilingual-shopping-identity and similar-search-filter deferred;
+selective-ingredient-repair superseded and unimplemented, with its existing replacement
+links retained. No main-spec promotion, synchronization or whole-change archive. Preserve
+prior failed DV attempts, soft-deleted fixture histories, failed-capture notices, optional
+embedding HTTP422 and French focus/prepared containment/Search navigation limitations.
+Stop after one accepted exact-commit DV slice and integration into recipe-view-redesign;
+provide one successor prompt but do not launch it. Production/reset/reseed are excluded.

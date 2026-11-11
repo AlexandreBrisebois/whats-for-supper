@@ -31,6 +31,108 @@ public sealed class CookingStepRelationshipProducerTests
     }
 
     [Theory]
+    [InlineData("Add 50 g pasta.", "pasta", "Add 75 g pasta.")]
+    [InlineData("Use 50 g of pasta.", "pasta", "Use 75 g of pasta.")]
+    [InlineData("Ajouter 50 g de pâtes.", "pâtes", "Ajouter 75 g de pâtes.")]
+    [InlineData("Add 50 g 🍅 tomatoes.", "🍅 tomatoes", "Add 75 g 🍅 tomatoes.")]
+    public void ExplicitAbsoluteClauseProducesCurrentProofAndRetainsOriginalFacts(string text, string description, string projected)
+    {
+        var original = Content(text, description);
+        var result = CookingStepRelationshipProducer.Discover(original);
+        var binding = Assert.Single(result.InstructionSections[0].Steps[0].Bindings);
+        Assert.Equal("absolute", binding.GetProperty("role").GetString());
+        Assert.Equal(LegacyGroceryQuantity.Parse("50"), binding.GetProperty("payload").GetProperty("amount").Deserialize<GroceryQuantity>(new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+        Assert.Equal(text, result.InstructionSections[0].Steps[0].Text);
+        Assert.Equal(original.IngredientLines, result.IngredientLines);
+        Assert.Equal(projected, CookingStepProjection.Read(result, 6).Sections[0].Steps[0].Text);
+        CookingStepRelationshipProducer.ValidateFresh(result);
+    }
+
+    [Fact]
+    public void AbsoluteTotalCorrectionRetainsFiftyAndStepEditReplacesProof()
+    {
+        var before = CookingStepRelationshipProducer.Discover(Content("Add 50 g pasta."));
+        var prior = Assert.Single(before.InstructionSections[0].Steps[0].Bindings);
+        var after = before with { ContentRevision = "corrected", IngredientLines = [before.IngredientLines[0] with { Amount = LegacyGroceryQuantity.Parse("250"), AmountText = "250" }] };
+        var result = CookingStepRelationshipProducer.Discover(CookingStepProjection.Revalidate(before, after), before);
+        Assert.Equal("Add 75 g pasta.", CookingStepProjection.Read(result, 6).Sections[0].Steps[0].Text);
+        Assert.Equal(prior.GetProperty("id").GetGuid(), Assert.Single(result.InstructionSections[0].Steps[0].Bindings).GetProperty("id").GetGuid());
+        Assert.Equal(JsonSerializer.Serialize(result), JsonSerializer.Serialize(CookingStepRelationshipProducer.Discover(result, result)));
+        var step = result.InstructionSections[0].Steps[0];
+        var edited = result with { ContentRevision = "edited", InstructionSections = [result.InstructionSections[0] with { Steps = [step with { Text = "Use 40 g pasta.", TextRevision = "edited-text" }] }] };
+        var replaced = CookingStepRelationshipProducer.Discover(CookingStepProjection.Revalidate(result, edited), result);
+        var current = Assert.Single(replaced.InstructionSections[0].Steps[0].Bindings);
+        Assert.NotEqual(prior.GetProperty("id").GetGuid(), current.GetProperty("id").GetGuid());
+        Assert.Equal("Use 60 g pasta.", CookingStepProjection.Read(replaced, 6).Sections[0].Steps[0].Text);
+        Assert.Equal("Use 40 g pasta.", replaced.InstructionSections[0].Steps[0].Text);
+    }
+
+    [Theory]
+    [InlineData("Add 50 g pasta or sauce.")]
+    [InlineData("Do not add 50 g pasta.")]
+    [InlineData("Add 50 g pasta. Cook for 20 minutes.")]
+    [InlineData("Add 50 g pasta and 50 g pasta.")]
+    [InlineData("Add 250 g pasta.")]
+    [InlineData("Add 0 g pasta.")]
+    [InlineData("Add 50 ml pasta.")]
+    [InlineData("Add half the pasta.")]
+    public void AmbiguousOrUnsupportedAbsoluteClauseAbstains(string text)
+    {
+        var result = CookingStepRelationshipProducer.Discover(Content(text));
+        Assert.Empty(result.InstructionSections[0].Steps[0].Bindings);
+        Assert.Equal(text, CookingStepProjection.Read(result, 6).Sections[0].Steps[0].Text);
+    }
+
+    [Fact]
+    public void AbsoluteFreshProofRejectsChangedAmountUnitRoleOrRevision()
+    {
+        var original = CookingStepRelationshipProducer.Discover(Content("Add 50 g pasta."));
+        var binding = Assert.Single(original.InstructionSections[0].Steps[0].Bindings);
+        foreach (var property in new[] { "amount", "unit", "role", "validatedContentRevision" })
+        {
+            var node = JsonNode.Parse(binding.GetRawText())!;
+            if (property == "amount") node["payload"]![property] = JsonSerializer.SerializeToNode(LegacyGroceryQuantity.Parse("60"), new JsonSerializerOptions(JsonSerializerDefaults.Web));
+            else if (property == "unit") node["payload"]![property] = JsonSerializer.SerializeToNode(new RecipeUnitDto("ml", null), new JsonSerializerOptions(JsonSerializerDefaults.Web));
+            else node[property] = "forged";
+            var changed = original with { InstructionSections = [original.InstructionSections[0] with { Steps = [original.InstructionSections[0].Steps[0] with { Bindings = [JsonSerializer.SerializeToElement(node)] }] }] };
+            Assert.Throws<InvalidDataException>(() => CookingStepRelationshipProducer.ValidateFresh(changed));
+        }
+    }
+
+    [Theory]
+    [InlineData("clear")]
+    [InlineData("reduced")]
+    [InlineData("unit")]
+    [InlineData("description")]
+    public void AbsoluteDependencyChangeAbstainsWithoutRewritingSavedFacts(string change)
+    {
+        var before = CookingStepRelationshipProducer.Discover(Content("Add 50 g pasta."));
+        var row = before.IngredientLines[0];
+        row = change switch
+        {
+            "clear" => row with { Amount = null, AmountText = null },
+            "reduced" => row with { Amount = LegacyGroceryQuantity.Parse("40"), AmountText = "40" },
+            "unit" => row with { Unit = new("ml", null) },
+            _ => row with { Description = "noodles" }
+        };
+        var after = before with { ContentRevision = "changed", IngredientLines = [row] };
+        var result = CookingStepRelationshipProducer.Discover(CookingStepProjection.Revalidate(before, after), before);
+        Assert.Equal(0, CookingStepProjection.Read(result, 6).ValidatedUses);
+        Assert.Equal("Add 50 g pasta.", CookingStepProjection.Read(result, 6).Sections[0].Steps[0].Text);
+        Assert.Equal(after.IngredientLines, result.IngredientLines);
+    }
+
+    [Fact]
+    public void RepeatedAbsoluteMentionAndDuplicateRowsAbstain()
+    {
+        var repeated = CookingStepRelationshipProducer.Discover(Content("Add 50 g pasta.", "pasta", "200", "Use pasta later."));
+        Assert.Empty(repeated.InstructionSections[0].Steps[0].Bindings);
+        var original = Content("Add 50 g pasta.");
+        var duplicate = original with { IngredientLines = [original.IngredientLines[0], original.IngredientLines[0] with { Id = Guid.NewGuid() }] };
+        Assert.Empty(CookingStepRelationshipProducer.Discover(duplicate).InstructionSections[0].Steps[0].Bindings);
+    }
+
+    [Theory]
     [InlineData("Add 200 g pasta.")]
     [InlineData("Add all 200 g pasta except a spoonful.")]
     [InlineData("Do not add all 200 g pasta.")]

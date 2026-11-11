@@ -225,3 +225,18 @@ editing, clear protection and report semantics are documented in [design](design
 and their capability deltas. [Tasks](tasks.md) maps those implemented foundations
 to remaining work and evidence; no completed slice must be rebuilt solely because
 its containing aggregate task is unchecked.
+
+## Coordinated absolute-use slice 2
+
+The accepted whole-use deployment remains the prerequisite. The next selected slice
+adds ordinary explicit absolute-use production through existing URL/photo and guarded
+Save hooks: total 200→250 preserves explicit 50, six portions from basis four displays
+75 in Cook and one 375 grocery demand. Step edits replace proof; ambiguous associations
+abstain quietly. Existing whole and allocation roles remain preservation requirements.
+
+Selected tasks, sole-writer ownership, dependencies, scenario mapping, evidence and
+unchanged lifecycle dispositions are recorded in
+[tasks](tasks.md#coordinated-absolute-use-slice-2). Commit, push and exact-commit DV
+deployment are explicitly authorized for this one completed slice. Stop after accepted
+DV integration into recipe-view-redesign and provide the next prompt without launching
+it. Unfinished aggregates remain open; no archival or main-spec promotion follows.

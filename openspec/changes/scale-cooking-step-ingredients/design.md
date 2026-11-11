@@ -113,3 +113,19 @@ A responsive end-aligned action group meets the screenshot with one small wrappe
 **Required acceptance before completion:** no routine notice or duplicate header ingredients action in preparation or either reading presentation, in original, scaled, mixed uncertain and prepared contexts; valid amounts still project and uncertain spans stay original/readable without extra demand or cooking/completion block. Exercise All steps Ingredients → Resume with retained checks/bookmark/nonzero exact offset, disabled Ingredients while editing and retained drafts through refresh; exercise focused Back to prep. Render EN/FR at 320, 390 and 430 CSS-pixel widths, enlarged text and narrow landscape/safe-area reflow: left toggle, right Edit/Original group, correct order, full labels/targets/focus and no overflow. Each rendered toolbar row must end-align the action group against the toolbar's inner right edge when present; the view toggle stays against its inner left edge. Retain tablet portrait/landscape lower-left controls, 40% sidebar and source/focus behavior. Geometry and interaction evidence are required, not a class-name assertion alone.
 
 This is a UI preference amendment, not a newly demonstrated projection defect. Earlier positive uncertainty-notice and header-link expectations were replaced under the approved implementation; other acceptance remains binding. C19's prepared evidence remains tied to its source identity. The historical 11/12 report-opacity failure is retained in task evidence, followed by separately recorded report-navigation and fixture repairs and a 12/12 required local cooking pass. It is not the current unresolved result. Current integration and hosted-candidate gaps are tracked in tasks.md and the parity owner; do not infer that the cleanup fixed unrelated French focus/navigation, touch drag or Planner timing observations. This change establishes no deployment readiness and adds no old-backup support.
+
+## Explicit absolute-use evidence inlet
+
+The next bounded producer extends the slice 1 write-time owner with
+`explicit-absolute-clause` evidence. Its version/source/original amount, exact declared
+unit and UTF-16 measurement span are checked against the closed action clause and unique
+saved ingredient. A positive scalar use strictly below a known scalar total establishes
+partial use without asserting exhaustive allocation. Unsupported associations abstain.
+Fresh publication independently derives supplied proof; Save reuses only current valid
+proof from its guarded previous snapshot. Total corrections preserve the original absolute
+amount; step wording changes create new proof. Original facts, source and readable text
+are never rewritten by discovery. Existing projector payload amount/unit and all other
+roles retain their owners. No API, async task or other role producer is added.
+
+See [selected slice and scenario mapping](tasks.md#coordinated-absolute-use-slice-2) for
+C03/C45 acceptance, C01–C06/C12–C19/C46 preservation and remaining aggregate obligations.
