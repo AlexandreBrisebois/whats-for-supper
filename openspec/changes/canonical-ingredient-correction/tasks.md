@@ -301,3 +301,41 @@ retained separately. The first combined gate was deliberately interrupted while
 source remained unchanged; only its owned child groups/API/browser/PG resources
 were stopped and removed. Its partial results are not acceptance. Fresh full
 verification follows the correction; no optional review suggestion released source.
+
+
+### Annotated-half slice 4 — local DV acceptance, 2026-11-11
+
+Candidate `fc6769c41db1843cdc0df4d4d9bdb861cb5a695e` is accepted on DV under
+operation `c8e77683-30da-4d2f-938d-7eb29ecbe35b`. User directed moving forward
+locally using completed verification; hosted CI remains failed on Ubuntu package
+DNS, explicitly waived only as this slice's deployment prerequisite. It is not a
+hosted pass or broader CI closure. Exact local candidate images and completed stable
+repository verification `34aa0977b0e24a3084a8162a780de35b` were independently rechecked;
+no application source changed or broad local suites were repeated on handoff.
+
+Fresh snapshot/rehearsal/migration and independently verified held backup/read-back
+passed. Actual deployed URL/photo workflows completed both real categorization
+processors before Ready (84 audit checks); generated-client/browser correction and
+coherent Cook refresh retained the half wording/original100 g, projected187.5 g at
+six after total200→250, retained the sauce check and one375 g grocery demand.
+Guarded fixture cleanup passed. All2094original rows/1457files remain;195fresh finite
+startup transitions and two separately reviewed normal fixture-control metadata
+transitions are retained, with0unexpected differences. All64newrows/15files were
+independently traced; no blanket exclusions or concurrency-version rollback.
+Original provider/environment/ports/PostgreSQL/data mount/public routing restored,
+hold absent, exact version/health/rendered behavior passed. Maintenance377.449s.
+First public version viewport failure, diagnostic pass and unchanged-original retry
+pass remain separate; no repair/root-cause claim. Every earlier failure/backup and
+soft-deleted fixture remains. Owned temporary resources removed; port3000 preserved.
+
+Evidence: `.task/dependable-portions-slice4/local-acceptance-20261111/acceptance.json`,
+`release/`, and `c/` beneath that directory. These newer receipts supersede blocked
+acceptance status only; historical blocked/first-attempt receipts remain unchanged.
+Selected step0.1–0.3 explicit-half subset/2.1/2.3/4.1 and canonical2.2/3.2/4.1
+integration/qualification subsets only. Aggregate checkboxes remain open. Canonical,
+step, recovery preparation, grocery and CI qualification remain active; bilingual
+shopping identity/Similar UI deferred; selective ingredient repair superseded and
+unimplemented. No later role/intake/library conversion, main-spec sync/archive or
+production action. No real-provider or semantic-search claim. Candidate already
+belongs to recipe-view-redesign; subsequent documentation/harness commits preserved.
+Stop after this accepted slice; supply one successor prompt without launching it.
