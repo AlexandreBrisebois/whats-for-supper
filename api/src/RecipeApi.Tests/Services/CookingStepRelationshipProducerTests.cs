@@ -6,7 +6,7 @@ using Xunit;
 
 namespace RecipeApi.Tests.Services;
 
-public sealed class CookingStepRelationshipProducerTests
+public sealed partial class CookingStepRelationshipProducerTests
 {
     private static CanonicalRecipeContent Content(string text, string description = "pasta", string quantity = "200", params string[] otherSteps) => new(2, "content", "source", 4,
         [new RecipeIngredientLineDto { Id = Guid.NewGuid(), Description = description, Amount = LegacyGroceryQuantity.Parse(quantity),

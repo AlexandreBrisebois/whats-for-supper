@@ -344,3 +344,34 @@ unimplemented. No later role/intake/library conversion, main-spec sync/archive o
 production action. No real-provider or semantic-search claim. Candidate already
 belongs to recipe-view-redesign; subsequent documentation/harness commits preserved.
 Stop after this accepted slice; supply one successor prompt without launching it.
+
+## Coordinated C05 explicit final-remainder slice 5
+
+The selected successor builds on accepted annotated-half candidate
+`fc6769c41db1843cdc0df4d4d9bdb861cb5a695e` and DV operation
+`c8e77683-30da-4d2f-938d-7eb29ecbe35b`. Step tasks0.1–0.3 explicit final-remainder
+subset,2.1/2.3/4.1 and canonical2.2/3.2/4.1 integration/qualification subsets
+remain the only selected authority. Aggregate checkboxes stay open.
+
+Ordinary URL/photo publication and guarded Save establish an explicit measured
+prior use followed by a source-proven final use of all the remaining ingredient.
+The [step evidence inlet](../scale-cooking-step-ingredients/design.md#c05-explicit-final-remainder-evidence-inlet)
+requires closed EN/FR clauses, positive admission of independent extra steps,
+current source/content/text revisions, stable identities, exact UTF-16 spans and
+independent graph validation. Existing allocation/projection arithmetic supplies
+one ingredient-derived demand. Original wording and independent-row proof survive.
+
+B owns producer/unit evidence, A owns Save/publication/PostgreSQL/native fixtures,
+C independently reviews preservation/recovery, and coordinator owns contracts,
+mocks/browser, lifecycle/resources, preparation/full verification, commit/push,
+exact-image DV acceptance and integration. Work starts in isolated
+`dependable-portions-c05` from `5b1c60a0a6f27f1beb81a0b74be02261cc30bb16`, preserving
+subsequent and unrelated root work. Local, hosted and DV results remain separate.
+The user's later direction to complete without waiting for CI applies to this
+successor and is recorded independently from slice4's historical hosted exception.
+
+Evidence is under `.task/dependable-portions-slice5/`. Preserve C01–C06/C12–C19/
+C45/C46, prior first failures/retries and every retained backup/fixture. No additional
+producer/channel, library conversion, protected general reimport, garlic display
+implementation, unrelated CI repair, main-spec promotion/archive or production.
+Stop after this one accepted owned slice is integrated and one next prompt supplied.

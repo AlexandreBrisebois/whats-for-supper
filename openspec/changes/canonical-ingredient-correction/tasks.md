@@ -339,3 +339,37 @@ unimplemented. No later role/intake/library conversion, main-spec sync/archive o
 production action. No real-provider or semantic-search claim. Candidate already
 belongs to recipe-view-redesign; subsequent documentation/harness commits preserved.
 Stop after this accepted slice; supply one successor prompt without launching it.
+
+
+## C05 explicit final-remainder slice 5 progress
+
+Selected step0.1–0.3 explicit-final-remainder subset/2.1/2.3/4.1 and
+canonical2.2/3.2/4.1 integration/qualification subsets only. Aggregate boxes remain
+open. The new write-time producer uses existing guarded Save/publication hooks and
+existing remainder arithmetic. Exact source-bound EN/FR final exhaustive intent,
+positive independent extra-step admission and complete graph identity validation
+are specified in the step design. Other roles/intakes and aggregate closure remain
+outside this slice.
+
+Implementation and focused unit evidence are recorded in
+`.task/dependable-portions-slice5/b/unit-evidence.json`. The initial five missing-
+producer failures, six branch-cue failures, split-group identity failure and three
+positive-admission failures precede their fixes. Focused runs and exact source hashes remain invocation-specific in that
+receipt, including the subsequent alternative-subject regression and correction. The first PostgreSQL red retained an invalidated source-stability
+record, followed by fresh stable intended red in database invocation
+`3f650a0fcad24dc79bd3f5ba8ea2aafe`. Stateful mock tests separately exercise ordinary
+Save, subsequent GET/projection, correction, replacement, stale replay and quiet
+abstention. No new public payload shape or generated-client field is required.
+
+Prepared integrated database/native browser, complete repository verification,
+owned commit, hosted observation and exact-image data-preserving DV acceptance
+remain separately recorded under the slice evidence owner. C freshly checked the
+accepted baseline before work. The later user instruction to complete without
+waiting for CI is a successor-specific authorization, retained in
+`local-authorization.json`; hosted results retain their observed status.
+
+Canonical/step/recovery/grocery/CI remain active, bilingual/Similar deferred,
+selective repair superseded and unimplemented. Preserve all prior provider/UI/
+public viewport limitations and failure histories. No main-spec sync/archive,
+resets/reseeds or production. Stop after this one accepted slice and one unlaunched
+bounded successor prompt.

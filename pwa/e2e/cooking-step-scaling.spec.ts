@@ -430,3 +430,145 @@ test('standalone fixed use retains wording beside proportional use and guarded t
   ).toEqual([200, 200]);
   await qualifyCookingFixed(page, recipe.id, info);
 });
+
+test('ordinary guarded Save discovers a final remainder and step editing replaces its proof', async ({
+  page,
+  baseURL,
+}) => {
+  const recipe: any = cookingAllocationRecipe(true);
+  const originalSteps = ['Use 1 tbsp oil.', 'Finally, use all the remaining oil.'];
+  for (const [index, step] of recipe.instructionSections[0].steps.entries()) {
+    step.text = originalSteps[index];
+    step.bindings = [];
+  }
+  recipe.recipeInstructions[0].itemListElement = originalSteps.map((text) => ({ text }));
+  await setupCommonRoutes(page, undefined, {
+    canonicalEditor: recipe,
+    supperServings: {
+      knownRecipe: { id: recipe.id, basis: 4, quantity: 2, ingredient: 'oil', unit: 'tbsp' },
+    },
+  });
+  await page
+    .context()
+    .addCookies([{ name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: baseURL! }]);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(`/recipes?open=${recipe.id}`);
+  expect(
+    await page.evaluate(async (id) => {
+      const assigned = await fetch('/api/schedule/assign?referenceWeekStartDate=2026-05-04', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ weekOffset: 0, dayIndex: 0, recipeId: id }),
+      });
+      const state = (await (await fetch('/api/schedule/servings?weekOffset=0')).json()).data;
+      const portions = await fetch('/api/schedule/servings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          weekOffset: 0,
+          referenceWeekStartDate: '2026-05-04',
+          expectedVersion: state.version,
+          defaultServings: 8,
+          days: [],
+        }),
+      });
+      return [assigned.status, portions.status];
+    }, recipe.id)
+  ).toEqual([200, 200]);
+  await page.getByTestId('action-gear-menu').click();
+  await page.getByTestId('action-edit-recipe').click();
+  await page.getByTestId('recipe-edit-amount-0').fill('3');
+  const saving = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'PATCH' &&
+      new URL(response.url()).pathname === `/api/recipes/${recipe.id}`
+  );
+  await page.getByTestId('recipe-save-edits').click();
+  const reply = await saving;
+  expect(reply.status()).toBe(200);
+  const saved = (await reply.json()).recipe;
+  expect(saved.instructionSections[0].steps.map((step: any) => step.text)).toEqual(originalSteps);
+  expect(saved.instructionSections[0].steps.map((step: any) => step.bindings[0].role)).toEqual([
+    'absolute',
+    'remainder',
+  ]);
+  await page.goto('/planner');
+  await page.getByTestId('day-card-0').getByTestId('edit-recipe-button').click();
+  await page.getByTestId('action-cooks-mode').click();
+  const oil = page.getByTestId('ingredient-toggle').filter({ hasText: '6 tbsp oil' });
+  await oil.click();
+  await page.getByTestId('cooking-view-step-by-step').click();
+  await page.getByTestId('cooks-mode-step-next').click();
+  await expect(page.getByTestId('cooks-mode-instructions')).toContainText('Use 2 tbsp oil.');
+  await page.getByTestId('cooks-mode-step-next').click();
+  await expect(page.getByTestId('cooks-mode-instructions')).toContainText(
+    'Finally, use all the remaining (4 tbsp) oil.'
+  );
+  await page.getByTestId('cooks-mode-edit-step').click();
+  await expect(page.getByRole('textbox')).toHaveValue(originalSteps[1]);
+  await page.getByRole('textbox').fill('Finally, add all the remaining oil.');
+  let stepEditPatchCount = 0;
+  page.on('request', (request) => {
+    if (
+      request.method() === 'PATCH' &&
+      new URL(request.url()).pathname === `/api/recipes/${recipe.id}`
+    )
+      stepEditPatchCount++;
+  });
+  const editing = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'PATCH' &&
+      new URL(response.url()).pathname === `/api/recipes/${recipe.id}`
+  );
+  await page.getByTestId('cooks-mode-save-edit').click();
+  const editedReply = await editing;
+  expect(editedReply.status()).toBe(200);
+  const edited = (await editedReply.json()).recipe;
+  expect(edited.instructionSections[0].steps[1].bindings[0].id).not.toBe(
+    saved.instructionSections[0].steps[1].bindings[0].id
+  );
+  const instructionError = page.getByTestId('cooks-mode-instructions').getByRole('alert');
+  await expect(instructionError).toContainText("Couldn't save this step.");
+  await expect(page.getByRole('textbox')).toHaveValue('Finally, add all the remaining oil.');
+  await expect(page.getByTestId('cooking-quantities-available')).toBeVisible();
+  expect(stepEditPatchCount).toBe(1);
+  const recoveryDetail = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'GET' &&
+      new URL(response.url()).pathname === `/api/recipes/${recipe.id}`
+  );
+  const recoveryProjection = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'GET' &&
+      new URL(response.url()).pathname === `/api/recipes/${recipe.id}/ingredient-projection`
+  );
+  await instructionError.getByRole('button', { name: 'Try again' }).click();
+  const recoveredDetail = await recoveryDetail;
+  const recoveredProjection = await recoveryProjection;
+  expect(recoveredDetail.status()).toBe(200);
+  expect(recoveredProjection.status()).toBe(200);
+  expect((await recoveredDetail.json()).recipe.contentRevision).toBe(edited.contentRevision);
+  expect((await recoveredProjection.json()).contentRevision).toBe(edited.contentRevision);
+  await expect(page.getByRole('textbox')).toHaveCount(0);
+  await expect(page.getByText('Step saved', { exact: true })).toHaveAttribute(
+    'aria-live',
+    'polite'
+  );
+  await expect(instructionError).toHaveCount(0);
+  await expect(page.getByTestId('cooking-quantities-available')).toHaveCount(0);
+  expect(stepEditPatchCount).toBe(1);
+  await expect(page.getByTestId('cooks-mode-instructions')).toContainText(
+    'Finally, add all the remaining (4 tbsp) oil.'
+  );
+  await expect(page.getByTestId('cooking-step-uncertainty')).toHaveCount(0);
+  await page.getByTestId('cooks-mode-step-prev').click();
+  await page.getByTestId('cooks-mode-step-prev').click();
+  await expect(oil).toHaveAttribute('aria-checked', 'true');
+  const groceries = await page.evaluate(
+    async () => (await (await fetch('/api/schedule?weekOffset=0')).json()).data.groceryItems
+  );
+  const demand = groceries.filter((row: any) => row.normalizedKey === 'oil');
+  expect(demand).toHaveLength(1);
+  expect(demand[0].quantity).toEqual({ kind: 'scalar', value: { n: '6', d: '1' } });
+  expect(stepEditPatchCount).toBe(1);
+});

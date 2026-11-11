@@ -13,22 +13,31 @@ public static class CookingStepRelationshipProducer
     private const string WholeRule = "explicit-whole-clause";
     private const string AbsoluteRule = "explicit-absolute-clause";
     private const string HalfRule = "explicit-half-annotation-clause";
+    private const string RemainderRule = "explicit-final-all-remaining-clause";
     private static readonly GroceryRational Half = new("1", "2");
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
     private const RegexOptions Options = RegexOptions.CultureInvariant | RegexOptions.IgnoreCase;
     private static readonly TimeSpan MatchTimeout = TimeSpan.FromMilliseconds(100);
     private static readonly Regex PartialOrConditional = new(
         @"(?<![\p{L}\p{N}])(half|remaining|remainder|rest|reserve|reserved|except|unless|some|part|divided|each|per|alternatively|or|if|not|never|moitié|reste|restant|restante|réserver|réservez|sauf|chaque|par|ou|si|pas|jamais)(?![\p{L}\p{N}])", Options, MatchTimeout);
+    private static readonly Regex NeutralRemainderStep = new(
+        @"\A[ \t]*Simmer[ \t]+[1-9][0-9]*[ \t]+minutes[ \t]+at[ \t]+[1-9][0-9]*[ \t]+°C\.[ \t]*\z", Options, MatchTimeout);
     private sealed record Span(int Start, int End, string ExpectedText);
     private sealed record Evidence(int Version, string Rule, string SourceRevision, GroceryQuantity OriginalAmount);
+    private sealed record AllocationGroup(Guid Id, bool Exhaustive, Guid[] BindingIds);
     private sealed record Payload(Evidence RelationshipEvidence,
         [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] GroceryQuantity? Amount = null,
         [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] RecipeUnitDto? Unit = null,
         [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] GroceryRational? Fraction = null,
-        [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] Span? AnnotationSpan = null);
+        [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] Span? AnnotationSpan = null,
+        [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] AllocationGroup? AllocationGroup = null,
+        [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] Guid? AllocationGroupId = null,
+        [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] Guid[]? Predecessors = null);
     private sealed record Binding(Guid Id, Guid IngredientLineId, Guid StepId, string ValidatedContentRevision,
         string ValidatedTextRevision, Span Span, string Role, Payload Payload, string Status);
     private sealed record Clause(Span Span, GroceryQuantity Amount, string Role, Span? AnnotationSpan = null);
+    private sealed record RemainderSequence(RecipeIngredientLineDto Row, RecipeInstructionStepDto Prior,
+        Clause PriorClause, RecipeInstructionStepDto Final, Span FinalSpan);
 
     public static CanonicalRecipeContent Discover(CanonicalRecipeContent content, CanonicalRecipeContent? previous = null)
     {
@@ -46,6 +55,7 @@ public static class CookingStepRelationshipProducer
     private static CanonicalRecipeContent DiscoverBounded(CanonicalRecipeContent content, CanonicalRecipeContent? previous)
     {
         var steps = content.InstructionSections.SelectMany(x => x.Steps).ToArray();
+        var remainders = DiscoverRemainders(content, previous, steps);
         return content with
         {
             InstructionSections = content.InstructionSections.Select(section => section with
@@ -57,6 +67,7 @@ public static class CookingStepRelationshipProducer
                     // retained uncertain proof owned by the existing projector.
                     if (foreign.Length != 0) return step with { Bindings = foreign };
                     if (step.Bindings.Count > 1) return step with { Bindings = [] };
+                    if (remainders.TryGetValue(step.Id, out var remainder)) return step with { Bindings = [remainder] };
                     var candidates = content.IngredientLines
                         .Where(row => Unambiguous(content, steps, row))
                         .Select(row => (Row: row, Clause: Parse(step.Text, row)))
@@ -101,31 +112,169 @@ public static class CookingStepRelationshipProducer
         };
         var expected = Discover(stripped).InstructionSections.SelectMany(x => x.Steps).ToArray();
         var actual = content.InstructionSections.SelectMany(x => x.Steps).ToArray();
-        var ids = new HashSet<Guid>();
+        var ids = new Dictionary<Guid, Guid>();
+        var groups = new Dictionary<Guid, Guid>();
+        var groupSources = new Dictionary<Guid, Guid>();
         for (var index = 0; index < actual.Length; index++)
         {
-            // A staged older export may have no relationships. Missing proof is
-            // safe readable fallback; only supplied proof needs validation here.
+            // Missing independent proof remains a readable fallback. A supplied
+            // allocation graph must include every referenced member below.
             if (actual[index].Bindings.Count > expected[index].Bindings.Count)
                 throw new InvalidDataException("Fresh relationship evidence differs from saved original facts.");
             for (var use = 0; use < actual[index].Bindings.Count; use++)
             {
                 var binding = Read(actual[index].Bindings[use]);
                 var proof = Read(expected[index].Bindings[use])!;
+                if (binding is null || binding.Id == Guid.Empty || !ids.TryAdd(binding.Id, proof.Id))
+                    throw new InvalidDataException("Fresh relationship identity is invalid.");
+                if (binding.Payload?.AllocationGroup is { } suppliedGroup && proof.Payload.AllocationGroup is { } expectedGroup)
+                {
+                    if (suppliedGroup.Id == Guid.Empty || groups.TryGetValue(suppliedGroup.Id, out var mapped) && mapped != expectedGroup.Id ||
+                        groupSources.TryGetValue(expectedGroup.Id, out var source) && source != suppliedGroup.Id)
+                        throw new InvalidDataException("Fresh relationship allocation identity is inconsistent.");
+                    groups[suppliedGroup.Id] = expectedGroup.Id;
+                    groupSources[expectedGroup.Id] = suppliedGroup.Id;
+                }
+            }
+        }
+        for (var index = 0; index < actual.Length; index++)
+        {
+            for (var use = 0; use < actual[index].Bindings.Count; use++)
+            {
+                var proof = Read(expected[index].Bindings[use])!;
+                var binding = Read(actual[index].Bindings[use])!;
+                if (binding.Payload?.AllocationGroup is { } groupProof &&
+                    (groupProof.BindingIds is null || groupProof.BindingIds.Any(member => !ids.ContainsKey(member))) ||
+                    binding.Payload?.Predecessors is { } predecessors && predecessors.Any(member => !ids.ContainsKey(member)) ||
+                    binding.Payload?.AllocationGroupId is { } allocationId && !groups.ContainsKey(allocationId))
+                    throw new InvalidDataException("Fresh relationship allocation references are missing.");
                 var supplied = JsonNode.Parse(actual[index].Bindings[use].GetRawText()) as JsonObject;
-                if (supplied is not null) supplied["id"] = proof.Id;
-                if (binding is null || binding.Id == Guid.Empty || !ids.Add(binding.Id) || supplied is null ||
-                    !JsonElement.DeepEquals(JsonSerializer.SerializeToElement(supplied, Json), Write(proof)))
+                if (supplied is null) throw new InvalidDataException("Fresh relationship evidence is invalid.");
+                RewriteId(supplied, "id", ids);
+                if (supplied["payload"] is JsonObject payload)
+                {
+                    RewriteId(payload, "allocationGroupId", groups);
+                    RewriteIds(payload["predecessors"], ids);
+                    if (payload["allocationGroup"] is JsonObject group)
+                    {
+                        RewriteId(group, "id", groups);
+                        RewriteIds(group["bindingIds"], ids);
+                    }
+                }
+                if (!JsonElement.DeepEquals(JsonSerializer.SerializeToElement(supplied, Json), Write(proof)))
                     throw new InvalidDataException("Fresh relationship evidence is not independently validated.");
             }
         }
     }
 
+    private static void RewriteId(JsonObject node, string property, Dictionary<Guid, Guid> identities)
+    {
+        if (node[property] is JsonValue value && value.TryGetValue<Guid>(out var id) && identities.TryGetValue(id, out var replacement))
+            node[property] = replacement;
+    }
+
+    private static void RewriteIds(JsonNode? node, Dictionary<Guid, Guid> identities)
+    {
+        if (node is not JsonArray array) return;
+        for (var index = 0; index < array.Count; index++)
+            if (array[index] is JsonValue value && value.TryGetValue<Guid>(out var id) && identities.TryGetValue(id, out var replacement))
+                array[index] = replacement;
+    }
+
+    private static Dictionary<Guid, JsonElement> DiscoverRemainders(CanonicalRecipeContent content,
+        CanonicalRecipeContent? previous, RecipeInstructionStepDto[] steps)
+    {
+        var result = new Dictionary<Guid, JsonElement>();
+        foreach (var row in content.IngredientLines)
+        {
+            var sequence = Remainder(content, steps, row);
+            if (sequence is null) continue;
+            var prior = Carry(previous, content, sequence.Prior, row, sequence.PriorClause, true) ??
+                sequence.Prior.Bindings.Select(Read).SingleOrDefault(binding => binding is not null &&
+                    Matches(binding, content, sequence.Prior, row, sequence.PriorClause, true));
+            var priorId = prior?.Id ?? Guid.NewGuid();
+            var priorGroup = prior?.Payload.AllocationGroup;
+            var groupId = priorGroup is { Id: var id, BindingIds: { Length: 2 } members } && id != Guid.Empty && members[0] == priorId
+                ? id : Guid.NewGuid();
+            var final = sequence.Final.Bindings.Select(Read).SingleOrDefault();
+            var finalId = final?.Id ?? Guid.NewGuid();
+            var bindings = SequenceBindings(content, sequence, priorId, finalId, groupId);
+            if (final is null || !JsonElement.DeepEquals(Write(final), bindings.Final))
+                bindings = SequenceBindings(content, sequence, priorId, Guid.NewGuid(), groupId);
+            result[sequence.Prior.Id] = bindings.Prior;
+            result[sequence.Final.Id] = bindings.Final;
+        }
+        return result;
+    }
+
+    private static (JsonElement Prior, JsonElement Final) SequenceBindings(CanonicalRecipeContent content,
+        RemainderSequence sequence, Guid priorId, Guid finalId, Guid groupId)
+    {
+        var group = new AllocationGroup(groupId, true, [priorId, finalId]);
+        var prior = new Binding(priorId, sequence.Row.Id, sequence.Prior.Id, content.ContentRevision,
+            sequence.Prior.TextRevision, sequence.PriorClause.Span, "absolute",
+            new(new(1, AbsoluteRule, content.SourceRevision, sequence.PriorClause.Amount), sequence.PriorClause.Amount,
+                sequence.Row.Unit, AllocationGroup: group), "validated");
+        var final = new Binding(finalId, sequence.Row.Id, sequence.Final.Id, content.ContentRevision,
+            sequence.Final.TextRevision, sequence.FinalSpan, "remainder",
+            new(new(1, RemainderRule, content.SourceRevision, sequence.PriorClause.Amount),
+                AllocationGroup: group, AllocationGroupId: groupId, Predecessors: [priorId]), "validated");
+        return (Write(prior), Write(final));
+    }
+
+    // The literal final clause supplies exhaustive intent. Only its complete
+    // source-bound two-step graph can introduce an allocation group.
+    private static RemainderSequence? Remainder(CanonicalRecipeContent content, RecipeInstructionStepDto[] steps,
+        RecipeIngredientLineDto row)
+    {
+        if (!UsableRow(content, row) || PartialOrConditional.IsMatch(row.Description) ||
+            row.Amount is not { Kind: "scalar" } || row.Unit is null ||
+            GroceryUnit.Read(row.Unit.Text).Bucket is not ("g" or "ml" or "cup" or "tsp" or "tbsp") ||
+            string.IsNullOrEmpty(content.SourceRevision) || string.IsNullOrEmpty(content.ContentRevision)) return null;
+        var mention = new Regex(@"(?<![\p{L}\p{N}])" + Regex.Escape(row.Description) + @"(?![\p{L}\p{N}])", Options, MatchTimeout);
+        var mentions = steps.Where(step => mention.IsMatch(step.Text)).ToArray();
+        if (mentions.Length != 2 || mentions.Any(step => mention.Matches(step.Text).Count != 1 || step.Id == Guid.Empty ||
+            steps.Count(other => other.Id == step.Id) != 1 || string.IsNullOrEmpty(step.TextRevision) ||
+            step.Bindings.Count > 1 || step.Bindings.Any(raw => !Owned(raw)))) return null;
+        var prior = Parse(mentions[0].Text, row);
+        var final = ParseFinalRemainder(mentions[1].Text, row);
+        if (prior is not { Role: "absolute", Amount.Kind: "scalar", Amount.Value.N: not "0" } || final is null ||
+            LegacyGroceryQuantity.SubtractScalar(row.Amount, prior.Amount) is null ||
+            steps.Any(step => step.Id != mentions[0].Id && step.Id != mentions[1].Id &&
+                !IndependentRemainderStep(content, row, step.Text))) return null;
+        return new(row, mentions[0], prior, mentions[1], final);
+    }
+
+    // Every additional clause must have a closed, independently understood
+    // subject or the one bounded neutral procedure. Unknown prose cannot prove
+    // the absence of a conditional branch in this exhaustive sequence.
+    private static bool IndependentRemainderStep(CanonicalRecipeContent content, RecipeIngredientLineDto selected, string text) =>
+        NeutralRemainderStep.IsMatch(text) || content.IngredientLines
+            .Where(row => row.Id != selected.Id && row.Id != Guid.Empty && !string.IsNullOrWhiteSpace(row.Description) &&
+                !PartialOrConditional.IsMatch(row.Description) && content.IngredientLines.Count(other => other.Id == row.Id) == 1 &&
+                content.IngredientLines.Count(other => string.Equals(other.Description, row.Description, StringComparison.OrdinalIgnoreCase)) == 1)
+            .Any(row => Parse(text, row) is not null || ParseFinalRemainder(text, row) is not null);
+
+    private static Span? ParseFinalRemainder(string text, RecipeIngredientLineDto row)
+    {
+        var noun = Regex.Escape(row.Description);
+        var pattern = @"\A[ \t]*(?:Finally,[ \t]+(?:use|add)[ \t]+all[ \t]+the[ \t]+(?<remainder>remaining)[ \t]+" + noun +
+            @"|Enfin,[ \t]+(?:utilisez|ajoutez)[ \t]+tout[ \t]+le[ \t]+(?<remainder>reste)[ \t]+(?:de[ \t]+|d['’])" + noun + @")\.?[ \t]*\z";
+        var match = Regex.Match(text, pattern, Options, MatchTimeout);
+        if (!match.Success) return null;
+        var span = match.Groups["remainder"];
+        return new(span.Index, span.Index + span.Length, span.Value);
+    }
+
+    private static bool UsableRow(CanonicalRecipeContent content, RecipeIngredientLineDto row) =>
+        row.Id != Guid.Empty && content.IngredientLines.Count(other => other.Id == row.Id) == 1 &&
+        row.Amount is not null && LegacyGroceryQuantity.IsCanonical(row.Amount) && row.Scaling == "proportional" && row.Package is null &&
+        !string.IsNullOrWhiteSpace(row.Description) && row.Description.IndexOfAny(['\r', '\n', '.', ';', ':', '!', '?']) < 0 &&
+        content.IngredientLines.Count(other => string.Equals(other.Description, row.Description, StringComparison.OrdinalIgnoreCase)) == 1;
+
     private static bool Unambiguous(CanonicalRecipeContent content, RecipeInstructionStepDto[] steps, RecipeIngredientLineDto row)
     {
-        if (row.Amount is null || !LegacyGroceryQuantity.IsCanonical(row.Amount) || row.Scaling != "proportional" || row.Package is not null ||
-            string.IsNullOrWhiteSpace(row.Description) || row.Description.IndexOfAny(['\r', '\n', '.', ';', ':', '!', '?']) >= 0 ||
-            content.IngredientLines.Count(x => string.Equals(x.Description, row.Description, StringComparison.OrdinalIgnoreCase)) != 1) return false;
+        if (!UsableRow(content, row)) return false;
         var mention = new Regex(@"(?<![\p{L}\p{N}])" + Regex.Escape(row.Description) + @"(?![\p{L}\p{N}])", Options, MatchTimeout);
         var mentions = steps.Select(step => (Step: step, Count: mention.Matches(step.Text).Count))
             .Where(item => item.Count != 0).ToArray();
@@ -144,7 +293,7 @@ public static class CookingStepRelationshipProducer
     private static bool IndependentPartial(CanonicalRecipeContent content, RecipeIngredientLineDto selected, string text) =>
         content.IngredientLines.Where(row => row.Id != selected.Id && !string.IsNullOrWhiteSpace(row.Description) &&
             content.IngredientLines.Count(other => string.Equals(other.Description, row.Description, StringComparison.OrdinalIgnoreCase)) == 1)
-        .Any(row => Parse(text, row)?.Role == "fraction" || Regex.IsMatch(text,
+        .Any(row => Parse(text, row)?.Role == "fraction" || ParseFinalRemainder(text, row) is not null || Regex.IsMatch(text,
             @"\A[ \t]*(?:(?:Add|Use|Reserve)[ \t]+(?:half[ \t]+(?:of[ \t]+)?(?:the[ \t]+)?|some[ \t]+(?:of[ \t]+the[ \t]+)?|the[ \t]+remaining[ \t]+)|(?:Ajouter|Ajoutez|Réserver|Réservez)[ \t]+la moitié[ \t]+(?:de la[ \t]+|du[ \t]+|des[ \t]+|de l['’]))" +
             Regex.Escape(row.Description) + @"\.?[ \t]*\z", Options, MatchTimeout));
 
@@ -204,7 +353,7 @@ public static class CookingStepRelationshipProducer
         LegacyGroceryQuantity.SubtractScalar(row.Amount, amount) is { Value.N: not "0" };
 
     private static Binding? Carry(CanonicalRecipeContent? previous, CanonicalRecipeContent content,
-        RecipeInstructionStepDto step, RecipeIngredientLineDto row, Clause clause)
+        RecipeInstructionStepDto step, RecipeIngredientLineDto row, Clause clause, bool allocation = false)
     {
         if (previous is null || previous.SourceRevision != content.SourceRevision) return null;
         var oldStep = previous.InstructionSections.SelectMany(x => x.Steps).SingleOrDefault(x => x.Id == step.Id);
@@ -215,19 +364,20 @@ public static class CookingStepRelationshipProducer
         // The only authority for carrying the original proof is the previously
         // persisted canonical snapshot passed by the guarded store, never an inlet.
         var prior = oldStep.Bindings.Select(Read).Where(binding => binding is not null &&
-            Matches(binding, previous, oldStep, oldRow, clause)).ToArray();
+            Matches(binding, previous, oldStep, oldRow, clause, allocation)).ToArray();
         if (prior.Length != 1 || !step.Bindings.Select(Read).Any(binding => binding is not null && binding.Id == prior[0]!.Id &&
-            Matches(binding, content, step, row, clause))) return null;
+            Matches(binding, content, step, row, clause, allocation))) return null;
         return prior[0];
     }
 
     private static bool Matches(Binding binding, CanonicalRecipeContent content, RecipeInstructionStepDto step,
-        RecipeIngredientLineDto row, Clause clause) => binding.Id != Guid.Empty && binding.IngredientLineId == row.Id &&
+        RecipeIngredientLineDto row, Clause clause, bool allocation = false) => binding.Id != Guid.Empty && binding.IngredientLineId == row.Id &&
         binding.StepId == step.Id && binding.ValidatedContentRevision == content.ContentRevision && binding.ValidatedTextRevision == step.TextRevision &&
         binding.Span == clause.Span && binding.Role == clause.Role && binding.Status == "validated" &&
         binding.Payload?.RelationshipEvidence is { Version: 1 } evidence &&
         evidence.Rule == (Rule(clause.Role)) &&
         evidence.SourceRevision == content.SourceRevision && evidence.OriginalAmount == clause.Amount &&
+        (allocation || binding.Payload.AllocationGroup is null && binding.Payload.AllocationGroupId is null && binding.Payload.Predecessors is null) &&
         (clause.Role switch
         {
             "whole" => binding.Payload.Amount is null && binding.Payload.Unit is null && binding.Payload.Fraction is null && binding.Payload.AnnotationSpan is null,

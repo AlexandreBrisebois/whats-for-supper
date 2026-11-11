@@ -1,4 +1,5 @@
 import { carryCookingBindings } from './cooking-step-projection';
+import { discoverRemainderBindings } from './cooking-remainder-producer';
 import { randomUUID } from 'node:crypto';
 
 /** Explicit disposable mock composition; the common default remains fenced. */
@@ -141,6 +142,7 @@ export function applyCanonicalEditorPatch(current: any, input: any): { status: n
     if (semantic) {
       recipe.contentRevision = randomUUID();
       carryCookingBindings(current, recipe);
+      discoverRemainderBindings(current, recipe);
       recipe.recipeInstructions = (recipe.instructionSections ?? []).map((section: any) => ({
         name: section.name,
         itemListElement: section.steps.map((step: any) => ({ text: step.text })),

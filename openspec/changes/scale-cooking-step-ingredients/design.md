@@ -147,3 +147,42 @@ Projection reuses FractionAmount and existing exact Scale. Existing fractions wi
 Trade-off: extend the existing fraction payload/projector with one optional span rather than manufacture an absolute role or duplicate numeric binding. This preserves fraction semantics and avoids duplicate use/allocation state. No new remainder/fixed/per-item producer, async workflow, exhaustive allocation inference or package/unit conversion.
 
 An explicit closed annotated-half clause naming another unique saved row is an independent subject for existing whole/absolute proof. It must not remove that unrelated proof; this subject check does not certify the other fraction or infer any exhaustive allocation.
+
+## C05 explicit final-remainder evidence inlet
+
+The selected successor admits one unique proportional saved scalar ingredient
+with one explicit measured prior use and one final use of all remaining contents.
+The final clauses are anchored English `Finally, use/add all the remaining <row>.`
+and French `Enfin, utilisez/ajoutez tout le reste de/d’<row>.`, with exact saved
+wording, units and UTF-16 spans. The existing measured-use grammar owns the prior
+clause. The two references occur once each in distinct ordered saved steps.
+Unknown units/totals, repeated references, unsupported branches, incompatible
+facts and ranges abstain. Supported zero remainder retains existing arithmetic.
+
+Every other step requires positive independent evidence. It must be a complete
+existing measured/whole/annotated-half or explicit-final clause naming another
+unique saved row, or the anchored neutral procedural grammar
+`Simmer <positive integer> minutes at <positive integer> °C.` with a required
+terminal period. Unsupported extra wording abstains for this sequence. Neutral
+numbers retain their saved text and acquire no quantity binding.
+
+The producer independently derives final exhaustive intent before creating the
+existing two-member allocationGroup and ordered predecessor edge. Fresh validation
+rederives literal source proof with incoming bindings removed, requires complete
+supplied graph membership and consistent bijective group identities, then compares
+exact evidence/revisions/spans. Labels, equality, summed uses and seeded groups
+supply no semantic authority. Guarded Save carries unaffected proof only from its
+captured prior snapshot. Final-step changes replace final proof, prior-step
+changes replace their dependent graph, and independent other-row proof survives.
+
+Existing projector/allocation arithmetic remains the owner. At basis four and
+eight portions, oil total two/prior one yields two plus two, total correction to
+three retains original one and yields two plus four with one six-tablespoon demand.
+Total one supports zero remainder. Total below one makes the numeric sequence
+uncertain quietly while original wording and cooking remain usable. The public
+binding payload already represents these fields, so the generated client and
+OpenAPI shapes are reused. Stateful mocks derive this bounded proof on Save.
+
+Evidence and selected-task bookkeeping reside under
+`.task/dependable-portions-slice5/` and the owner tasks. Async AI, additional role
+producers, later intake channels and aggregate closure remain outside this slice.
