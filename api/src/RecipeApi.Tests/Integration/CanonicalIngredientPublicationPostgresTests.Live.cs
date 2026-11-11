@@ -42,7 +42,7 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
         await new TomorrowPushPostgresTests(output).WithDatabase(async settings =>
         {
             await using var factory = await TestWebApplicationFactory.CreateWithAuthAsync(
-                new DeploymentCalendarIntegrationTests.CalendarClock(), new()
+                new DeploymentCalendarIntegrationTests.CalendarClock { UtcNow = DateTimeOffset.Parse("2026-10-12T16:00:00Z") }, new()
                 {
                     ["Calendar:TimeZone"] = "America/Toronto",
                     ["Tests:HttpUrl"] = "http://127.0.0.1:0",
@@ -105,7 +105,7 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
             var workflow = await db.WorkflowInstances.Include(x => x.Tasks).SingleAsync(x => x.WorkflowId == "url-import");
             await Web(store, new SourceHandler(() => { })).ExecuteAsync(workflow.Tasks.Single(x => x.ProcessorName == "FetchUrlContent"), default);
             const string extracted = """
-                {"name":"Pasta","recipeYield":"4 servings","recipeIngredient":["200 g pasta","100 ml sauce"],"supply":[{"name":"pasta","requiredQuantity":{"value":200,"unitText":"g"}},{"name":"sauce","requiredQuantity":{"value":100,"unitText":"ml"}}],"recipeInstructions":[{"text":"Cook the pasta."}]}
+                {"name":"Pasta","recipeYield":"4 servings","recipeIngredient":["200 g pasta","100 ml sauce"],"supply":[{"name":"pasta","requiredQuantity":{"value":200,"unitText":"g"}},{"name":"sauce","requiredQuantity":{"value":100,"unitText":"ml"}}],"recipeInstructions":[{"text":"Add all 200 g pasta."},{"text":"Simmer 20 minutes at 180 °C."}]}
                 """;
             var chat = new Mock<IChatClient>();
             chat.Setup(x => x.GetResponseAsync(It.IsAny<IEnumerable<ChatMessage>>(), It.IsAny<ChatOptions>(), It.IsAny<CancellationToken>()))

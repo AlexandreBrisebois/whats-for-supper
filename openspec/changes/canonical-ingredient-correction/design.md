@@ -1,8 +1,19 @@
 # Design
 
+## Current delivery checkpoint
+
+At `a666a64f`, canonical storage/guarded editing, flagged correction and fresh
+URL/photo publication have bounded local evidence. See [tasks](tasks.md) for exact
+records and remaining criteria. Ordinary binding production is not implemented;
+it now includes import and post-edit reevaluation under the step companion.
+The [accepted baseline](proposal.md) sets coordinated deployment, maintenance reuse,
+old-client refresh and bilingual deferral. The source descriptions below explicitly
+refer to their historical checkpoints; do not reimplement them without checking
+current code and evidence.
+
 ## Context and Existing Ownership
 
-Source inspection at `d51222ffbb7e3eb6d08fed394851a52de3f5522c`, branch `recipe-view-redesign`, 2026-11-07. Uncommitted browser-parity edits are concurrent evidence, not part of this change. `RecipeService.UpdateRecipe` writes string Ingredients while `SupperIngredientProjection.Read` requires whole-list coherence before binding retained supply. Its `IntentionallyUnquantified` phrase list is not a validity rule for the new model. `CategorizeIngredientsProcessor` still reads raw supply. `SyncRecipeProcessor` replaces raw content and basis from disk. These are current competing publication paths, not implemented canonical support.
+Source inspection at `d51222ffbb7e3eb6d08fed394851a52de3f5522c`, branch `recipe-view-redesign`, 2026-11-07. Uncommitted browser-parity edits are concurrent evidence, not part of this change. `RecipeService.UpdateRecipe` writes string Ingredients while `SupperIngredientProjection.Read` requires whole-list coherence before binding retained supply. Its `IntentionallyUnquantified` phrase list is not a validity rule for the new model. `CategorizeIngredientsProcessor` still reads raw supply. `SyncRecipeProcessor` replaces raw content and basis from disk. These were competing publication paths at that historical checkpoint; current URL/photo and guarded editing support is recorded above.
 
 The existing projection/context and durable invalidation owners remain authoritative for dated counts, previews, cooked baseline and prepared receipts. The new model replaces their recipe input. Shared ownership and conflicts are in [review.md](review.md), exact proposed public/persistence boundaries in [contracts.md](contracts.md).
 
@@ -34,6 +45,15 @@ Explicit nulls/empty collections are authoritative; retained metadata cannot rev
 
 ## Compatibility, Rollout and Reversal
 
+Alex confirms that frontend, backend and database deploy together as one release.
+Do not design a rolling mixed-version backend/schema compatibility period or a
+permanent legacy string-write adapter. Canonical records reject old ingredient/
+instruction payloads atomically even with a current revision; stale tabs use the
+supported refresh route with recoverable drafts and current-original reconciliation.
+The current app's unconverted/review-material editing path remains supported.
+Coordinated deployment still requires guarding delayed workers, preserving data
+and verifying the matching application/schema recovery pair.
+
 Add storage, settle contracts and client/draft fencing, qualify guarded publication, then in-place conversion under [rollout.md](rollout.md). Recovery and current-format-only support belong to the migration companion. No permanent legacy backup adapters. A per-recipe legacy read adapter during conversion is not old-backup restore compatibility. Disabling new code after new writes is not safe rollback.
 
 ## User Experience
@@ -46,7 +66,7 @@ Alex approved keeping an explicit partial step amount at its original value when
 
 Checked grocery ranges compare against the demand captured when the row was checked: only new minimum greater than that baseline maximum resets the check. Preserving the check does not advance its baseline. New split/merge rows start unchecked; unchanged continuing rows retain checks under that comparison rule. Upgrade has no active grocery list to convert: the next recipe-derived list is new, while historical data and extra occurrences remain preserved.
 
-Dataset adoption still needs source/licence/corpus qualification. Conditional disk fallback uses stable-ID comparison and stops/reports unexpected mismatches rather than choosing a disk/live winner. Alex reports no UI recipe edits and Dreaming synchronization, so no elaborate per-recipe conflict workflow is required solely for such edits. These accepted product decisions do not authorize implementation or release.
+Dataset adoption remains a deferred bilingual gate, not a prerequisite of this portions release. Conditional disk fallback uses stable-ID comparison and stops/reports unexpected mismatches rather than choosing a disk/live winner. Alex reports no UI recipe edits and Dreaming synchronization, so no elaborate per-recipe conflict workflow is required solely for such edits. These accepted product decisions do not authorize implementation or release.
 
 
 ## Fresh-intake publication cutover — 2026-11-10
@@ -95,7 +115,7 @@ Lossless photo extraction publishes `fresh-canonical` through the existing journ
 
 The strict automated publication proposal above must not make a person's recipe read-only. Reuse RecipeImportReport, its reported/reviewed states, existing Reported search filter and badge; introduce no new draft status or product workflow. Only an exhausted semantic ingredient/usable-step validation failure with retained recipe content can create a missing system flag. Select only the failed content reasons, use Ready for review and its generic explanation, and persist a short safe explanation in the existing comment field. Acquisition, provider transport, image and category failures keep existing failed-capture handling. Preserve existing reports and only associate ordinary repair-failure diagnostics with their matching attempt. No automatic report resolution, repair launch or Ready transition follows a manual save.
 
-Only the explicit report/review-filtered search includes flagged unready recipes; normal ready-only discovery/planning stays unchanged. Detail and PATCH already support unready records. Open/Edit initializes authoritative original content, even when the dated projection cannot be read; it never saves a scaled preview as originals. The same editor offers original steps, stable canonical section/step IDs, and the existing legacy instruction representation without conversion on ordinary Save. Add/remove retains all unaffected wording and identities. Save, Cancel, error recovery and conflict reconciliation include steps as well as ingredients. Local unsaved edit recovery is an existing technical facility, not a new recipe status.
+The explicit filter-only report/review queue includes flagged unready recipes. Typed lexical/vector search and normal discovery/planning remain ready-only; do not infer expanded search eligibility from review-queue access. Detail and PATCH already support unready records. Open/Edit initializes authoritative original content, even when the dated projection cannot be read; it never saves a scaled preview as originals. The same editor offers original steps, stable canonical section/step IDs, and the existing legacy instruction representation without conversion on ordinary Save. Add/remove retains all unaffected wording and identities. Save, Cancel, error recovery and conflict reconciliation include steps as well as ingredients. Local unsaved edit recovery is an existing technical facility, not a new recipe status.
 
 Canonical Save keeps human provenance/protection, independently nullable quantity/unit and original text. A changed step or invalidated ingredient dependency makes only unsafe proof ineligible for projection; unrelated valid uses remain usable. Do not guess allocations, erase readable instructions, or require a binding editor. Revision conflicts preserve the person's unsaved changes and require the existing intentional reread/reconciliation; automation captured earlier cannot overwrite an accepted correction.
 
@@ -107,7 +127,7 @@ Existing flag comments keep their established meaning: a nonblank note on an eli
 
 Alex approved a system flag only for actual ingredient/usable-step validation needs on retained editable recipe content. Use the existing Ready for review status and generic explanation, with a short system-authored explanatory comment and no repair launch. Unchanged feedback Save is a no-op; a changed human comment keeps the existing eligible correction rules (source URL/images, Ingredients/Steps, no Duplicate), history and stale-write protection. Do not turn image/category/transport failures into content reports or overwrite existing feedback. This is a limited bridge from content validation to the existing review queue, not replacement of failed-capture management. Review wording must not claim a re-import happened. Resolve retains its existing feedback-only semantics.
 
-Use the existing Clear/deferred-cleanup guard conservatively: persisted ingredient/instruction/canonical content, including explicit empty saved collections, survives. This also retains some partial automated content; the trade-off avoids a new human-ownership marker/schema or recovery mechanism. Empty placeholders remain eligible for existing cleanup. Preserve the original-step editor and original-content entry, and verify system review → manual correction → reopen → changed comment correction, no-op unchanged save (including after backup/read-back), report preservation, clear protection and stale-job safety. The earlier broad failure-flag proposal is superseded; fresh canonical source publication and binding production remain separate, unimplemented scope. Broader tasks and archive stay open until required acceptance passes.
+Use the existing Clear/deferred-cleanup guard conservatively: persisted ingredient/instruction/canonical content, including explicit empty saved collections, survives. This also retains some partial automated content; the trade-off avoids a new human-ownership marker/schema or recovery mechanism. Empty placeholders remain eligible for existing cleanup. Preserve the original-step editor and original-content entry, and verify system review → manual correction → reopen → changed comment correction, no-op unchanged save (including after backup/read-back), report preservation, clear protection and stale-job safety. The earlier broad failure-flag proposal is superseded; URL/photo canonical source publication is locally qualified, while other intake channels and ordinary binding production remain unfinished. Broader tasks and archive stay open until required acceptance passes.
 
 The classifier does not treat arbitrary partial provider output as a completed extraction. For witnessed fresh URL work, the extractor may publish usable normalized wording as `review-material` under the existing journal before raising the typed semantic-content failure. The worker passes that classification after exhausting the attempt. The report owner verifies the persisted failed ExtractRecipe task and retained recipe before inserting a flag. Provider/network/image/category errors do not share that signal. Empty acquisition placeholders remain in existing failed-capture management.
 

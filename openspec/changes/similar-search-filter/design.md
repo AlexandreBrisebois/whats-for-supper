@@ -1,5 +1,7 @@
 # Design
 
+> **Release disposition — 2026-11-10:** Independent follow-up outside the first dependable-portions release. Preserve these requirements, but do not schedule them as a portions or migration prerequisite. See the [accepted baseline](../canonical-ingredient-correction/proposal.md).
+
 ## Context and Existing Ownership
 
 RecipesExperience owns the full-width Search field, separate Similar identity, immediate chip removal, clearSearch and applied count. Its current inline action flow wraps naturally when full Clear labels consume width. French currently uses Recettes similaires and Effacer la recherche et parcourir. RecipeFiltersSheet owns independent draft filters/preferences and keeps text/Similar on Clear Filters. Find Similar entry currently shares the input-autofocus disclosure effect. Preserve these owners; the user has revised the earlier hide-Similar-in-Filters proposal.

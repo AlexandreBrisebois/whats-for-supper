@@ -1,5 +1,7 @@
 # Design
 
+> **Release disposition — 2026-11-10:** Deferred from the first dependable-portions release. Do not schedule catalogue adoption, cross-language merging or mapping/category APIs as baseline prerequisites; retain these requirements for their later release. Existing human protection and any persisted references remain preservation obligations. See the [accepted baseline](../canonical-ingredient-correction/proposal.md).
+
 ## Context and Existing Ownership
 
 `IngredientNormalizer`, `UnitNormalizer`, `AisleMapper`, `CategorizeIngredientsProcessor` and `GroceryRecomputeService` currently use normalized raw supply names. Canonical publication replaces stale evidence reads; identity mapping is saved at import/correction, never guessed per grocery refresh. See [dataset evaluation](sources.md).

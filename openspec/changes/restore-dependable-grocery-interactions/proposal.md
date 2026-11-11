@@ -1,8 +1,10 @@
 # Dependable grocery interactions
 
+> **Delivery baseline — 2026-11-10:** Baseline delivery dependency. Reuse the implemented row/check and interaction work; remaining acceptance is tracked in this change. Bilingual equivalence is not a prerequisite for its conservative grouping and check guarantees. See the [release scope and agent coordination](../canonical-ingredient-correction/proposal.md#dependable-portions-delivery-baseline--accepted-2026-11-10).
+
 ## Why
 
-Different unit rows share name-level checks, and every successful extra mutation currently focuses Edit. Shoppers need independent checks and stable interaction while amounts change.
+The original defects were shared name-level checks across different unit rows and successful extra mutations always focusing Edit. The implemented corrections provide independent checks and stable interaction while amounts change; remaining qualification is tracked in tasks.md.
 
 ## Outcome and Scope
 

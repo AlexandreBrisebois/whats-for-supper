@@ -113,8 +113,13 @@ The system SHALL provide explicit exact snapshot and restore operations distinct
 
 #### Scenario: Exact snapshot includes canonical ownership
 - **WHEN** a compatible exact snapshot is captured after canonical write cutover
-- **THEN** it includes authoritative exact canonical facts, ingredient/step/binding identities, saved food associations/labels/overrides, content/check revisions, source evidence/protection, serving/preparation state and required durable conversion/refresh work with matching media
+- **THEN** it includes authoritative exact canonical facts, ingredient/step/binding identities, every persisted food association/label/override and its required references, content/check revisions, source evidence/protection, serving/preparation state and required durable conversion/refresh work with matching media
 - **AND** restore preserves human facts and does not silently substitute legacy-only rows
+
+#### Scenario: Baseline without a bilingual catalogue
+- **WHEN** the portions release has no adopted bilingual catalogue and saved shopping mappings are null
+- **THEN** backup and recovery preserve the source shopping names, null mappings and conservative fallback identities without requiring catalogue adoption or inventing translations
+- **AND** any food or category reference actually present must still round trip with its meaning; a missing required referenced artifact fails preflight
 
 #### Scenario: Old snapshot has an incompatible canonical schema
 - **WHEN** an exact snapshot predates required canonical storage and fails schema or membership preflight
@@ -338,8 +343,8 @@ Recipe-only disk fallback SHALL require a documented in-place blocker and disk/d
 Write activation SHALL require old-writer fencing, supported unsaved-draft recovery, isolated migration/recovery rehearsal and an independently verified rollback pair. A fresh current-format backup SHALL be read back after conversion. Enqueue/dispatch acceptance alone SHALL NOT establish completed conversion, derived refresh or recovery.
 
 #### Scenario: Old tab submits full editor payload
-- **WHEN** an old tab sends ingredient/instruction content during cutover
-- **THEN** it conflicts atomically and the supported refresh route retains all drafts
+- **WHEN** an old tab sends a legacy ingredient/instruction payload to a canonical record, including a payload carrying a current content revision
+- **THEN** it conflicts atomically without partial mutation and the supported refresh route retains recoverable draft fields for reconciliation
 
 #### Scenario: Old backup rejection
 - **WHEN** an old backup is selected on the new app
@@ -348,6 +353,31 @@ Write activation SHALL require old-writer fencing, supported unsaved-draft recov
 #### Scenario: Migration interval
 - **WHEN** conversion fails before the new backup exists
 - **THEN** the operator has a verified pre-cutover snapshot with its exact compatible executable/schema and a rehearsed recovery route
+
+### Requirement: Reuse recovery coordination for planned deployment maintenance
+
+Frontend, backend and schema SHALL deploy together during planned maintenance.
+The write/worker hold SHALL reuse existing demo/online-recovery coordination and
+snapshot owners, preserve household state and recoverable drafts, and remain
+effective across process restart until validation permits reopening. No new recovery
+subsystem, independent rolling-version support or legacy canonical-write translation
+is required.
+
+#### Scenario: Coordinated deployment restarts application processes
+- **WHEN** the operator rehearses the frontend/backend/schema deployment during planned downtime
+- **THEN** writes and workers remain held across shutdown and restart, while the supported maintenance/recovery status remains truthful
+- **AND** the application reopens only after the selected schema, converted facts, required recovery read-back and derived-state checks pass, without invoking demo reset, clearing household/history/extra state or discarding recoverable drafts
+- **AND** a lease acquired before shutdown alone does not establish protection after restart
+
+#### Scenario: Deployment or validation fails before reopening
+- **WHEN** interruption or failed validation prevents the coordinated release from completing
+- **THEN** the household remains unavailable for mutation until the rehearsed compatible recovery or forward completion establishes a usable state
+- **AND** no process restart or queued recovery action alone is reported as successful cutover
+
+#### Scenario: Maintenance lease holder is lost
+- **WHEN** the operator's publication lease ends after durable maintenance intent was installed
+- **THEN** subsequent writes, workflow work and recovery publication remain blocked across application restart until explicit verified reopening
+- **AND** malformed or unreadable maintenance intent cannot silently reopen the household
 
 ## REMOVED Requirements
 

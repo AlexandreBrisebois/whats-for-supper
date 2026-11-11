@@ -12,7 +12,25 @@ public sealed class RecoveryBusyException(string message) : Exception(message);
 public sealed class RecoveryBoundary(RecipeDbContext db, IConfiguration configuration, RecipesRootResolver recipes, DemoModeOptions? demoMode = null)
 {
     private readonly DemoModeOptions _demoPolicy = demoMode ?? new DemoModeOptions(configuration);
+    // Operator-owned intent survives application/session loss. Creation drains the
+    // existing publication lease first; removal requires stopped-app read-back.
+    // Any entry (even malformed or unreadable) is a hold, never an automatic reopen.
+    private bool MaintenanceHeld
+    {
+        get
+        {
+            try
+            {
+                _ = File.GetAttributes(Path.Combine(recipes.BaseRoot, ".maintenance-hold.json"));
+                return true;
+            }
+            catch (FileNotFoundException) { return false; }
+            catch (DirectoryNotFoundException) { return false; }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return true; }
+        }
+    }
     public bool Enabled => (_demoPolicy.Enabled && db.Database.IsNpgsql())
+        || MaintenanceHeld
         || File.Exists(Path.Combine(recipes.BaseRoot, ".demo-coordination"))
         || !string.IsNullOrWhiteSpace(configuration["Recovery:BackupRoot"])
         || File.Exists(Path.Combine(recipes.BaseRoot, ".recovery-journal.json"));
@@ -31,6 +49,8 @@ public sealed class RecoveryBoundary(RecipeDbContext db, IConfiguration configur
             var publication = access == RecoveryAccess.Publish ? "pg_advisory_lock" : "pg_advisory_lock_shared";
             await using var command = new NpgsqlCommand($"SELECT {publication}(244001)", connection);
             await command.ExecuteNonQueryAsync(timeout.Token);
+            if (access is RecoveryAccess.Write or RecoveryAccess.Publish && MaintenanceHeld)
+                throw new RecoveryBusyException("Planned maintenance holds writes and recovery publication until verified operator reopening.");
             if (access is RecoveryAccess.Write or RecoveryAccess.Snapshot)
             {
                 command.CommandText = $"SELECT {(access == RecoveryAccess.Snapshot ? "pg_advisory_lock" : "pg_advisory_lock_shared")}(244002)";

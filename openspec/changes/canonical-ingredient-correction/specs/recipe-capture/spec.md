@@ -88,7 +88,7 @@ Existing recipe reporting and eligible user-triggered reimports SHALL remain ava
 
 ### Requirement: Publish a witnessed fresh canonical intake before readiness
 
-A fresh intake identified by retained server-owned bootstrap and workflow launch evidence SHALL publish canonical original facts and compatible output through the same guarded producer operation before readiness. A caller flag or an unready existing row SHALL NOT establish fresh authorship. Source-authored facts SHALL remain distinct from protected legacy or unknown facts. This proposed cutover is under review; it does not enable existing-recipe repair.
+A fresh intake proven by retained server bootstrap and workflow launch evidence SHALL publish canonical facts and compatible output through one guarded producer operation before readiness. A caller flag or unready row SHALL NOT establish freshness. Source-authored facts SHALL remain distinct from protected legacy or unknown facts. Fresh-intake authority SHALL NOT authorize general existing-recipe repair.
 
 #### Scenario: Fresh web intake becomes normally editable
 - **WHEN** a witnessed fresh URL workflow extracts losslessly representable four-serving 200 g pasta and 100 ml sauce

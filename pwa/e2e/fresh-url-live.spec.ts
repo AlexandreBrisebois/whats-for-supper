@@ -7,7 +7,7 @@ test('fresh URL canonical edit reaches two shoppers and dated groceries', async 
   browser,
   request,
   baseURL,
-}) => {
+}, info) => {
   test.setTimeout(180_000);
   const id = process.env.FRESH_URL_RECIPE_ID!;
   const secret = process.env.HEARTH_SECRET!;
@@ -17,6 +17,8 @@ test('fresh URL canonical edit reaches two shoppers and dated groceries', async 
     .recipe;
   expect(initial).toMatchObject({ servings: 4, ingredients: ['200 g pasta', '100 ml sauce'] });
   expect(initial.ingredientLines[0].provenance.origin).toBe('source');
+  expect(initial.instructionSections[0].steps[0].bindings).toHaveLength(1);
+  expect(initial.instructionSections[0].steps[0].bindings[0].role).toBe('whole');
   expect(initial.sourceUrl).toBe('https://example.test/live-pasta');
   const family = (await (await request.get(`${baseURL}/api/family`, { headers })).json()).data;
   const contexts = await Promise.all(
@@ -56,7 +58,18 @@ test('fresh URL canonical edit reaches two shoppers and dated groceries', async 
     }
     const [editor, shopper] = await Promise.all(contexts.map((context) => context.newPage()));
     for (const page of [editor, shopper])
-      await page.clock.setFixedTime(new Date('2026-10-12T01:30:00Z'));
+      await page.clock.setFixedTime(new Date('2026-10-12T16:00:00Z'));
+    // Keep another cook mounted across ordinary original-content saves.
+    await shopper.goto('/home');
+    await shopper.getByTestId('cook-mode-btn').click();
+    const sauce = shopper.getByTestId('ingredient-toggle').filter({ hasText: '200 ml sauce' });
+    await expect(sauce).toBeVisible();
+    await sauce.click();
+    await shopper.getByTestId('cooking-view-step-by-step').click();
+    await shopper.getByTestId('cooks-mode-step-next').click();
+    await expect(shopper.getByTestId('cooks-mode-instructions')).toContainText(
+      'Add all 400 g pasta.'
+    );
     await editor.goto(`/recipes?open=${id}`);
     await editor.getByTestId('action-gear-menu').click();
     await editor.getByRole('button', { name: 'Edit', exact: true }).click();
@@ -82,6 +95,57 @@ test('fresh URL canonical edit reaches two shoppers and dated groceries', async 
     );
     expect(projection.status()).toBe(200);
     expect((await projection.json()).lines[0].quantity).toBe(500);
+    expect(saved.instructionSections[0].steps[0].text).toBe('Add all 200 g pasta.');
+    await shopper.evaluate(() => window.dispatchEvent(new Event('focus')));
+    await expect(shopper.getByTestId('cooking-quantities-available')).toBeVisible();
+    await expect(shopper.getByTestId('cooks-mode-instructions')).toContainText(
+      'Add all 400 g pasta.'
+    );
+    await shopper.getByRole('button', { name: 'Refresh quantities', exact: true }).click();
+    await expect(shopper.getByTestId('cooks-mode-instructions')).toContainText(
+      'Add all 500 g pasta.'
+    );
+    await shopper.getByTestId('cooks-mode-step-prev').click();
+    await expect(sauce).toHaveAttribute('aria-checked', 'true');
+    await shopper.getByTestId('cooks-mode-step-next').click();
+
+    // The existing generated-client step editor saves original wording and
+    // discovers the replacement relationship through the same canonical owner.
+    await editor.goto('/home');
+    await editor.getByTestId('cook-mode-btn').click();
+    await editor.getByTestId('cooking-view-step-by-step').click();
+    await editor.getByTestId('cooks-mode-step-next').click();
+    await editor.getByTestId('cooks-mode-edit-step').click();
+    await expect(editor.getByRole('textbox')).toHaveValue('Add all 200 g pasta.');
+    await editor.getByRole('textbox').fill('Add all 250 g pasta.');
+    const stepSaving = editor.waitForResponse(
+      (response) =>
+        response.request().method() === 'PATCH' &&
+        new URL(response.url()).pathname === `/api/recipes/${id}`
+    );
+    await editor.getByTestId('cooks-mode-save-edit').click();
+    const stepReply = await stepSaving;
+    expect(stepReply.status(), await stepReply.text()).toBe(200);
+    const stepSaved = (await stepReply.json()).recipe;
+    expect(stepSaved.instructionSections[0].steps[0].text).toBe('Add all 250 g pasta.');
+    expect(stepSaved.instructionSections[0].steps[0].bindings).toHaveLength(1);
+    expect(stepSaved.instructionSections[0].steps[1].text).toBe('Simmer 20 minutes at 180 °C.');
+    expect(stepSaved.ingredientLines).toEqual(saved.ingredientLines);
+    await shopper.evaluate(() => window.dispatchEvent(new Event('focus')));
+    await expect(shopper.getByTestId('cooking-quantities-available')).toBeVisible();
+    await shopper.getByRole('button', { name: 'Refresh quantities', exact: true }).click();
+    await expect(shopper.getByTestId('cooks-mode-instructions')).toContainText(
+      'Add all 500 g pasta.'
+    );
+    await expect(shopper.getByTestId('cooking-step-uncertainty')).toHaveCount(0);
+    await expect(shopper.getByTestId('cooks-mode-overlay')).toHaveCSS('opacity', '1');
+    await shopper.getByTestId('cooks-mode-instructions').screenshot({
+      path: info.outputPath('ordinary-whole-use-refreshed.png'),
+      animations: 'disabled',
+    });
+    await shopper.getByTestId('cooks-mode-step-prev').click();
+    await expect(sauce).toHaveAttribute('aria-checked', 'true');
+
     expect((await request.post(`${baseURL}/_test/fresh-url/recompute`, { headers })).status()).toBe(
       200
     );

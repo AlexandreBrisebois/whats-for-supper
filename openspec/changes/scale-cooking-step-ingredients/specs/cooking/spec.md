@@ -113,7 +113,8 @@ Dismissing the cooking report form SHALL retain the mounted ingredient checks an
 
 #### Scenario: Launch fails after report save
 - **WHEN** report submission returns its recipe with re-import launch failure
-- **THEN** cooking applies that recipe but leaves the quality form open for its saved-report/launch-failure feedback
+- **THEN** cooking applies report metadata and leaves the quality form open for its saved-report/launch-failure feedback
+- **AND** any changed semantic content revision is offered through explicit coherent ingredient/step refresh without replacing the active cooking content immediately
 
 ### Requirement: Arrange cooking in the approved phone and tablet compositions
 

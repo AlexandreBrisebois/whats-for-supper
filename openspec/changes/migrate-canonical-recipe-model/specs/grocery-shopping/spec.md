@@ -21,3 +21,8 @@ Under the confirmed no-active-list upgrade, the next recipe-derived grocery list
 #### Scenario: Unexpected active list
 - **WHEN** upgrade assessment contradicts the confirmed no-active-list condition
 - **THEN** it stops and reports the discrepancy before retiring or overwriting that list, without silently clearing checks or deleting data
+
+#### Scenario: Baseline uses conservative shopping identities
+- **WHEN** the portions upgrade runs before bilingual catalogue adoption
+- **THEN** the new list uses saved demand identities and conservative fallbacks without inventing cross-language equivalence
+- **AND** every food/category reference already present remains preserved

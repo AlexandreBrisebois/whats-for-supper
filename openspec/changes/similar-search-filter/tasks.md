@@ -1,5 +1,7 @@
 # Tasks
 
+> **Release disposition — 2026-11-10:** Independent follow-up outside the first dependable-portions release. Preserve these requirements, but do not schedule them as a portions or migration prerequisite. See the [accepted baseline](../canonical-ingredient-correction/proposal.md).
+
 Planning only. All implementation remains unstarted; the temporary static fixture validates layout feasibility, not product behavior.
 
 ## 1. Compact visible control row with preserved Search semantics

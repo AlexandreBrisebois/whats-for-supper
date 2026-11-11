@@ -1,5 +1,7 @@
 # Tasks
 
+> **Release disposition — 2026-11-10:** Deferred from the first dependable-portions release. Do not schedule catalogue adoption, cross-language merging or mapping/category APIs as baseline prerequisites; retain these requirements for their later release. Existing human protection and any persisted references remain preservation obligations. See the [accepted baseline](../canonical-ingredient-correction/proposal.md).
+
 Planning only; every implementation box remains unchecked. Separate approval is required to apply. Names of new tests below are proposed suites to create; no behavioral test has run in this spec session. Follow [shared corpus](../canonical-ingredient-correction/acceptance-corpus.md) and [CI requirements](../canonical-ingredient-correction/review.md). Resolve consequential holds before finalizing their dependent work; outlines below do not approve an assumption. Contract changes first update `specs/openapi.yaml`, run `task gen:client`, then synchronize generated SDK consumers and method-sensitive `pwa/e2e/mock-api.ts` handlers/builders/state transitions including conflicts, later reads and SSE. Every slice keeps its red/green evidence and usage documentation.
 
 ## 1. Qualify a bounded bilingual vocabulary

@@ -317,6 +317,7 @@ RULES:
                     freshOperation, ct);
                 throw new RecipeContentReviewException($"Extraction needs ingredient review for {recipeId}.", ["ingredients"]);
             }
+            prepared = prepared with { Content = CookingStepRelationshipProducer.Discover(prepared.Content) };
             await publications.PublishAsync(capture,
                 new(RecipeExportContent.WriteCurrent(prepared), info, producerInput, SourceKind: "fresh-canonical"), freshOperation, ct);
         }

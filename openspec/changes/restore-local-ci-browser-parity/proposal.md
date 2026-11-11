@@ -1,5 +1,7 @@
 # Proposal
 
+> **Delivery baseline — 2026-11-10:** Baseline qualification dependency, coordinated with the existing CI writer. Keep local and hosted evidence tied to their candidates. Focused worker passes do not replace integrated release acceptance, and historical failure descriptions below are not proof of the current failure cause. See the [release scope and agent coordination](../canonical-ingredient-correction/proposal.md#dependable-portions-delivery-baseline--accepted-2026-11-10).
+
 ## Why
 
 CI run [42383870083](https://github.com/AlexandreBrisebois/whats-for-supper/actions/runs/42383870083), commit `e504e820a67bf25e5849157a1017aad54e7ff392`, passed static/unit/build checks but failed nine browser cases across planning and recipes, with two additional retry passes. Local commands can select fewer scenarios, start development mode despite a CI-parity name, or test an external image whose identity/configuration differs from the pushed build.

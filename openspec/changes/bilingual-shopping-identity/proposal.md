@@ -1,5 +1,7 @@
 # Bilingual shopping identity
 
+> **Delivery baseline — 2026-11-10:** Deferred from the first dependable-portions release by Alex on 2026-11-10. Retain this future feature and its unchecked tasks; do not start catalogue adoption, cross-language merging or dependent mapping/category APIs as a portions prerequisite. English/French recipe usability, existing human protection and preservation of already persisted identities remain baseline obligations. See the [release scope and agent coordination](../canonical-ingredient-correction/proposal.md#dependable-portions-delivery-baseline--accepted-2026-11-10).
+
 ## Why
 
 Mechanical description normalization cannot safely identify equivalent French/English foods or distinguish preparation from purchase facts. Grocery generation must use saved validated identities deterministically.

@@ -1,8 +1,12 @@
+# Status: superseded and unimplemented
+
+Historical task IDs and scenarios are retained below, all unchecked. This is not an executable or deferred delivery queue. [Canonical correction](../canonical-ingredient-correction/tasks.md) owns guarded intake/correction; [step scaling](../scale-cooking-step-ingredients/tasks.md) owns relationship maintenance. See [retirement rationale](proposal.md). No main-spec promotion or implementation completion is implied.
+
 > **Superseded, unimplemented — 2026-11-07.** Do not apply this separate ingredient-candidate proposal. Its tasks remain unchecked as historical planning. Use canonical guarded import/reprocessing plus manual correction. Existing user recipe flags, Report/Review issue and eligible repair triggers remain supported, including their safety and retry safeguards. See [replacement foundation](../canonical-ingredient-correction/proposal.md). No archive or main-spec sync has occurred.
 
-# Tasks — deferred
+# Historical tasks — superseded, not executable
 
-Do not activate automatically. Requires completed `canonical-ingredient-correction` and a later request selecting this optional retained-source repair scope. No stage 1/2 task depends on these tasks. No provider work or implementation is approved now. Named new suites below are future tests to create, not existing evidence.
+The original candidate-repair plan below is retained only to preserve task IDs and acceptance history. Its former activation prerequisites are superseded by the replacement owners above. No stage 1/2 task depends on these tasks. Named suites below were proposed and remain unimplemented, not existing evidence.
 
 ## 1. Generate one selected candidate without live publication
 **Outcome/scenarios:** ingredient-repair / Select source repair; Generate candidates; Validate evidence.
@@ -23,4 +27,4 @@ Do not activate automatically. Requires completed `canonical-ingredient-correcti
 - [ ] 3.1 Reconcile optional repair scenarios and stage 2 preservation boundaries, run applicable prepare/scope review and `task verify -- <complete reviewed paths>`, plus strict specs. Record provider-boundary fixtures separately from any separately authorized real-provider qualification, no current data loss and actual required seam outcomes. A candidate generated is not a correction saved or a downstream refresh completed.
 
 ## Workflow follow-up
-- Keep deferred unless measured post-stage-2 correction effort warrants activation. Production repair execution/deployment and DV reset are separate actions.
+- Retired without implementation. Any future proposal must reconcile the replacement owners above; these historical instructions do not reactivate a delivery queue. No deployment or reset follows from retirement.

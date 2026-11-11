@@ -2,15 +2,25 @@
 
 Spec-only review at `d51222ffbb7e3eb6d08fed394851a52de3f5522c`, `recipe-view-redesign`, 2026-11-07. No main-capability sync, archive, product changes, commits or production execution. Implementation checkboxes remain unchecked. The follow-up decision reconciliation was prepared from clean `recipe-view-redesign` at `482d44731ab44ec703f70e1252751fc0964bf7f2`. Alex subsequently approved the product rules recorded below; the initial source review remains historical evidence. A structurally valid OpenSpec draft is not implementation approval or tested product behavior.
 
+## Current release scope
+
+The [accepted delivery baseline](proposal.md) governs execution. URL/photo intake
+and manual correction are the first increment; remaining intake channels follow.
+Step relationship production (including post-edit optional AI reevaluation) is the
+next missing end-to-end connection. Bilingual catalogue/merging and Similar UI are
+deferred; selective repair is superseded. Current owner tasks distinguish existing
+implementation from missing acceptance. The original review below is historical
+rationale, not a report that every listed defect still exists.
+
 ## Ownership and dependency graph
 
 | Review unit | Owns | Depends on / can release |
 | --- | --- | --- |
 | canonical-ingredient-correction | Exact original rows/basis/steps, contentRevision, protected publication, common DTO/editor and canonical projector input | Foundation; never a competing replacement schema |
 | restore-dependable-grocery-interactions | Row/check identity, guarded check/bulk operations, reset comparison, no review acknowledgement, focus and category-control interaction | Reusable legacy demand identity can ship before full canonical migration; client fence and fresh-list/history-preservation upgrade required |
-| bilingual-shopping-identity | Saved app food IDs/EN-FR labels, aliases, shopping grouping/units, category scope/provenance | Canonical saved association and grocery row identity; no dictionary-completeness dependency for step scaling |
+| bilingual-shopping-identity | Saved app food IDs/EN-FR labels, aliases, shopping grouping/units, category scope/provenance | Deferred release; canonical saved association and grocery row identity when resumed; not a portions prerequisite |
 | scale-cooking-step-ingredients | Revision-bound uses, allocation/rendering, original step editing, coherent cooking refresh and prepared current-recipe reading | Canonical facts; mandatory for complete portions release, independent of dictionary coverage |
-| migrate-canonical-recipe-model | In-place conversion, conditional fallback, old-writer fencing, fresh-list upgrade preserving history and complete current-format recovery | Design begins now; activation requires final persisted contracts of all owners |
+| migrate-canonical-recipe-model | In-place conversion, conditional fallback, old-writer fencing, fresh-list upgrade preserving history and complete current-format recovery | Inventory/conversion work can proceed now; activation requires final persisted contracts included in this release and preservation of every existing reference |
 
 All proposed shapes live in [contracts.md](contracts.md). Every delta requirement is owned once across this set; this includes moving canonical draft cooking/grocery/recovery deltas into companions. Existing main specs remain implementation baselines until a separately approved apply/sync. No duplicate “recipe facts v2” capability is created.
 
@@ -75,22 +85,29 @@ Future apply must:
 - Keep deterministic fixed clock/deployment timezone, provider fixtures only at external boundaries, no real AI/translation calls, no production household services. Recompute must assert zero provider calls.
 - Report first-attempt pass, retry pass, final failure, skipped, blocked and never-run stages separately. Store source/build/config/tool/platform and exact selected-case identity; hosted CI on the final candidate is distinct from native Mac validation. No cache or earlier waiver can stand in for new contract seams.
 
-This planning session only runs document/OpenSpec checks with explicit paths, avoiding shared browser ports, builds, database containers and concurrent app tests. Future broader CI/default changes need their own authorized tooling scope after parity results settle.
+The earlier planning reconciliation ran documentation/OpenSpec checks only. Current delivery uses the selected slice and actual candidate-specific evidence; the historical paragraph grants no runtime or completion claim. Broader CI/default changes remain with the parity owner.
 
-## Recommended review and release sequence
+## Accepted delivery and release sequence
 
-The approved all-spec implementation now extracts the smallest coherent canonical
-saved-row identity/guarded-publication prerequisite before grocery closure; see the
-[extraction review](grocery-prerequisite-review.md). Legacy observed recipe/name
-membership cannot prove positive incompatible-unit continuation. Grocery remains
-open during this prerequisite, including exact recovery/client qualification before
-canonical write activation. This dependency extraction does not complete the
-canonical or migration companions or narrow any accepted grocery behavior.
+Reuse the qualified canonical/grocery foundation rather than reopening its completed
+slices. The [grocery prerequisite review](grocery-prerequisite-review.md) explains the
+historical extraction. Complete outstanding grocery/hosted acceptance on the integrated
+candidate without treating local success as hosted success.
 
-After the prerequisite, complete grocery acceptance, then remaining canonical
-facts/guarded capture, bilingual saved identity and mandatory step uses in dependency
-order (the latter two can be independent after the foundation). Rehearse complete
-in-place migration, client fencing and current-format recovery before activation.
-Release the full portions outcome only after step scaling, current prepared reading
-and required integration/visual corpus pass. Production cutover is a separate
-operator approval with exact candidate and verified recovery packet.
+Workstream B delivers the ordinary whole-use producer and post-edit reevaluation
+through workstream A's canonical publication boundary. A owns shared Save/publication
+hooks and remaining intake channels; C proceeds with no-write inventory and bounded
+conversion/recovery. Final recovery waits for the persisted baseline contracts, not
+for deferred bilingual adoption. The coordinator assigns shared files and integrates
+vertical slices before one combined gate. See [proposal](proposal.md) for ownership.
+
+Frontend/backend/database deploy together, with planned downtime using the existing
+demo/online-recovery coordination owners and migration's data/draft preservation
+policy. Rehearse the process-restart hold, stale-tab refresh, recovery pair and
+read-back before operator activation. Full portions completion requires supported
+step behavior, prepared/context preservation and applicable real-seam/visual corpus
+acceptance; no seeded-only proof or silent allocation-scope reduction.
+
+## Legacy scenario mapping
+
+The former `Change a legacy string` and `Remove or duplicate a legacy row` scenarios map to `Legacy format carries a current revision` and `Refresh an older editing tab` under the accepted no-legacy-write-adapter decision. Their positional adapter behavior is superseded for canonical writes by atomic 409 rejection and draft reconciliation, not marked implemented. Unconverted/review-material editing remains supported; positional identity transfer remains forbidden. Original names are retained here as historical acceptance references.

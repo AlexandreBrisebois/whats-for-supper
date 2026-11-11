@@ -291,6 +291,27 @@ public sealed partial class RecipeFilePublicationStore(RecipeDbContext db, Recip
         && actual.Provenance.SourceRef == expected.Provenance.SourceRef
         && actual.Provenance.ProtectedFields.SequenceEqual(expected.Provenance.ProtectedFields);
 
+    // Compare complete original collections, not ingredient-to-step associations.
+    // Independent reconstruction allocates new IDs/revisions; those and proposed
+    // bindings are excluded while every original fact and text remains exact.
+    private static string FreshOriginalFacts(CanonicalRecipeContent content) => Hash(new
+    {
+        content.Servings,
+        Lines = content.IngredientLines.Select(line => new
+        {
+            line.Description,
+            line.Amount,
+            line.AmountText,
+            line.Unit,
+            line.Scaling,
+            line.Package,
+            line.Shopping,
+            line.Provenance
+        }),
+        Sections = content.InstructionSections.Select(section => new
+        { section.Name, Steps = section.Steps.Select(step => step.Text) })
+    });
+
     private static IReadOnlyDictionary<string, byte[]?> Prepare(RecipePublicationCapture capture, RecipePublicationCandidate candidate)
     {
         if (candidate.SourceKind == "canonical-export")
@@ -317,6 +338,13 @@ public sealed partial class RecipeFilePublicationStore(RecipeDbContext db, Recip
                 CanonicalRecipeContentStore.InspectSourceRevision(new Recipe
                 { Id = capture.RecipeId, SourceUrl = capture.Fields.SourceUrl, RawMetadata = incoming.RawMetadata }))
                 throw new InvalidDataException("Fresh canonical source revision differs from selected evidence.");
+            if (incoming.Content.InstructionSections.SelectMany(section => section.Steps).Any(step => step.Bindings.Count != 0))
+            {
+                var original = CanonicalRecipeContentStore.PrepareFreshSource(capture.RecipeId, incoming.RawMetadata, capture.Fields.SourceUrl);
+                if (FreshOriginalFacts(incoming.Content) != FreshOriginalFacts(original.Content))
+                    throw new InvalidDataException("Fresh relationship originals differ from retained source evidence.");
+            }
+            CookingStepRelationshipProducer.ValidateFresh(incoming.Content);
         }
         if (candidate.SourceKind == "review-canonical")
         {

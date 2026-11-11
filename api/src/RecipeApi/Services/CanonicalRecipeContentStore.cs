@@ -185,7 +185,8 @@ public sealed partial class CanonicalRecipeContentStore(RecipeDbContext db, IClo
             IngredientLines = lines,
             InstructionSections = sections
         };
-        return new CanonicalRecipeWriteResult(CookingStepProjection.Revalidate(current, content), created);
+        var revalidated = CookingStepProjection.Revalidate(current, content);
+        return new CanonicalRecipeWriteResult(CookingStepRelationshipProducer.Discover(revalidated, current), created);
     }
 
     private static bool SameFacts(RecipeIngredientLineDto saved, RecipeIngredientLineInput input) =>

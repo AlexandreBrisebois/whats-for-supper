@@ -1,6 +1,30 @@
 # Adversarial acceptance corpus
 
-Planning fixtures, not executed tests. Every row asserts exact original persistence, returned content/context revision, eligible ingredient/step display, demand counted once, row checks and absence of unrelated writes where applicable. Use synthetic EN/FR recipes, fixed deployment clock and isolated nonproduction PostgreSQL/files. Providers are doubles only at their external boundary. Alex’s approved product decisions are expected outcomes below; remaining dataset/contract qualification is separate from implementation approval.
+Normative acceptance examples, not a claim that every row has been executed. Existing owner records qualify specific subsets and candidates. Every row asserts exact original persistence, returned content/context revision, eligible ingredient/step display, demand counted once, row checks and absence of unrelated writes where applicable. Use synthetic EN/FR recipes, fixed deployment clock and isolated nonproduction PostgreSQL/files. Providers are doubles only at their external boundary. Alex’s approved product decisions are expected outcomes below; remaining dataset/contract qualification is separate from implementation approval.
+
+
+## Release disposition
+
+All C01–C53 IDs and their oracles remain intact. Unless qualified below, a case is
+required for the applicable baseline behavior; evidence must name its real owner
+and candidate. This map selects delivery scope, not a test waiver.
+
+| Cases | First portions release | Deferred or conditional portion |
+| --- | --- | --- |
+| C22 | Preserve original text and deterministic conservative grouping | Validated EN/FR equivalence and identity-based merge |
+| C23 | Never introduce a speculative purchase-meaning merge | Catalogue-wide mapping/collision corpus |
+| C24 | Missing mapping/translation uses source label and safe fallback | Dictionary-backed translation adoption |
+| C25 | Existing human name/aisle protection through retry and recovery | Catalogue-update/alias-release behavior |
+| C31 | Continuing identity/check baseline and safe split/merge behavior | Proven cross-language identity rename |
+| C40–C42 | Recover all baseline facts and every identity/reference actually present | No requirement to introduce an absent optional catalogue |
+| C47 | Retain conservative unit families and no unproven conversion | New catalogue-backed food/count-kind mappings |
+| C39 | Stop/report if fallback assessment detects mismatches | Execute recipe-only fallback only if in-place assessment requires it |
+
+URL/photo first is a milestone boundary, not completion of every intake channel.
+PDF/synthesis/share follow separately. Cases involving protected general reimport
+remain with that unfinished channel. Automatic post-edit relationship production
+and stale/failure cases are additionally required by the step editing delta/tasks;
+seeded-binding C01 passes do not qualify that producer.
 
 | ID / owner | Starting state and action | Required result / adversarial oracle |
 | --- | --- | --- |
@@ -65,6 +89,6 @@ Reuse `RecipeDetailSheet.refinement.test.tsx`, `RecipeDetailSheet.test.tsx`, `Ac
 
 Browser owners: `recipe-ingredient-preview.spec.ts`, `quiet-portions-layout.spec.ts`, `supper-servings.spec.ts`, `supper-servings-context.spec.ts`, `supper-servings-movement.spec.ts`, `prepared-supper.spec.ts`, `cook-mode-steps.spec.ts`, `cooking-instruction-recovery.spec.ts`, `grocery.spec.ts`, `grocery-recipe-sources.spec.ts`, `recipe-import-reporting.spec.ts`, `online-recovery.spec.ts`. Home coverage must include its actual current assigned-ingredient/Cook journey, not only recipe detail.
 
-API/PostgreSQL owners: `IngredientNormalizerTests`, `IngredientCategoryServiceTests`, `GroceryRecomputeServiceTests`, `GroceryCheckConcurrencyPostgresTests`, `GroceryExtraRecoveryPostgresTests`, `SupperServingsPostgresTests` (including `SupperServings_CurrentCookedInherited`), `SupperIngredientPreviewPostgresTests`, `PreparedSupperPostgresTests`, `RecipeImportReportPostgresTests`, `RecipeImportReportPersistencePostgresTests`, `OnlineRecoveryPostgresTests`. New canonical, allocation, bilingual and conversion/recovery test classes named in tasks are proposed tests to create, never existing evidence.
+API/PostgreSQL owners: `IngredientNormalizerTests`, `IngredientCategoryServiceTests`, `GroceryRecomputeServiceTests`, `GroceryCheckConcurrencyPostgresTests`, `GroceryExtraRecoveryPostgresTests`, `SupperServingsPostgresTests` (including `SupperServings_CurrentCookedInherited`), `SupperIngredientPreviewPostgresTests`, `PreparedSupperPostgresTests`, `RecipeImportReportPostgresTests`, `RecipeImportReportPersistencePostgresTests`, `OnlineRecoveryPostgresTests`. Canonical, allocation and recovery owners now exist in part. Inspect their actual cases and records before adding tests. Bilingual and remaining operator/producer owners may still need creation; a class name or planning row alone is not evidence.
 
 Useful properties alongside examples: exact basis round-trip without arithmetic overflow, projection independent of preview history, grocery demand independent of binding count, provider-free deterministic recompute under input permutation, idempotent migration/publication and unrelated-row check preservation. Generated cases supplement actual API/PostgreSQL/file/browser acceptance, not replace them. No archived test waiver is carried to these new seams.

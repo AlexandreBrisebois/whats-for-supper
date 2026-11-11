@@ -1,5 +1,7 @@
 # Proposal
 
+> **Delivery baseline — 2026-11-10:** Independent follow-up, outside the first dependable-portions release as accepted by Alex on 2026-11-10. Preserve the proposal and unchecked tasks. Do not schedule this UI work as a prerequisite for portions, grocery correctness or migration. See the [release scope and agent coordination](../canonical-ingredient-correction/proposal.md#dependable-portions-delivery-baseline--accepted-2026-11-10).
+
 ## Why
 
 Expanded Search currently puts the full-width input above Filters, a long Clear search and browse button and a Similar removal chip. The long English/French clear labels force those controls onto multiple lines on phones. Find Similar also expands controls through an effect that focuses the input unnecessarily.

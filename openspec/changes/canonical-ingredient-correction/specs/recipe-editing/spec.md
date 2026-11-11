@@ -150,16 +150,22 @@ At canonical write cutover, ingredient, basis, instruction or shopping-associati
 - **WHEN** a PATCH changes only non-ingredient, non-basis fields
 - **THEN** existing omission, null, validation and response behavior remains applicable
 
-### Requirement: Adapt supported legacy ingredient edits conservatively
-A revision-guarded legacy string-only ingredient update SHALL derive canonical lines without guessing quantities. Only demonstrably unchanged unambiguous line associations SHALL retain structured facts. Changed, new or ambiguous lines SHALL retain text with unresolved quantity facts until explicitly corrected; positional matching SHALL NOT transfer amounts.
+### Requirement: Require current editing format for canonical recipes
+Canonical recipes SHALL reject legacy string-only ingredient or instruction writes
+with an atomic 409 upgrade conflict, including requests carrying a current content
+revision. The supported refresh route SHALL preserve recoverable drafts and offer
+reconciliation against current originals before current-format resubmission. No
+legacy-write conversion adapter SHALL be required. This boundary SHALL NOT remove
+current-app correction of unconverted or retained review material.
 
-#### Scenario: Change a legacy string
-- **WHEN** a supported current-revision legacy edit changes an ingredient text that previously carried a numeric amount
-- **THEN** the changed line does not silently inherit that old amount and unchanged unambiguous lines retain their facts
+#### Scenario: Legacy format carries a current revision
+- **WHEN** an older client submits ingredient or instruction strings to a canonical recipe with its current content revision
+- **THEN** the request receives 409 requiring refresh and no included field is applied
 
-#### Scenario: Remove or duplicate a legacy row
-- **WHEN** a supported legacy edit removes a row or makes its association ambiguous
-- **THEN** quantities are not shifted to adjacent rows or duplicated by positional matching
+#### Scenario: Refresh an older editing tab
+- **WHEN** the frontend, backend and database have been upgraded together while an older editing tab remains open
+- **THEN** the supported refresh route retains recoverable unsaved fields and loads current originals for explicit reconciliation
+- **AND** the refreshed editor submits the current format without positional transfer of old quantities
 
 
 ### Requirement: Distinguish failed saving from post-save delivery failure
