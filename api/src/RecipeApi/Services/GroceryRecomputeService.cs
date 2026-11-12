@@ -293,7 +293,12 @@ public class GroceryRecomputeService(
             (row.NormalizedKey == group.Line.NormalizedKey
                 && (!identities.Contains(row.DemandIdentity, StringComparer.Ordinal) || !previousItems.Any(prior => prior.DemandIdentity == identities[index]))
                 && previousEvidence.TryGetValue(row.RowId, out var evidence)
-                && evidence.Members.Intersect(group.Evidence.Members, StringComparer.Ordinal).Any())
+                && evidence.Members.Intersect(group.Evidence.Members, StringComparer.Ordinal).Any()
+                // Same-name package lines can share a legacy Member while their
+                // saved occurrence/recipe/line contributors prove they are disjoint.
+                && !(evidence.HasLineage && group.Evidence.HasLineage
+                    && !evidence.SharesSavedContributor(group.Evidence)
+                    && IsKnownPackageTransition(row.DemandIdentity, group.Package)))
             || previousEvidence.TryGetValue(row.RowId, out var lineage) && lineage.SharesSavedContributor(group.Evidence)).ToArray()).ToArray();
         var nextBaselines = new Dictionary<string, GroceryCheckedDemand?>(StringComparer.Ordinal);
         var reset = false;
@@ -498,6 +503,31 @@ public class GroceryRecomputeService(
         }
 
         return changed;
+    }
+
+    private static bool IsKnownPackageTransition(string previousIdentity, RecipePackageDto? currentPackage)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(previousIdentity);
+            var identity = document.RootElement;
+            if (identity.ValueKind != JsonValueKind.Object
+                || !identity.TryGetProperty("fallback", out var name) || name.ValueKind != JsonValueKind.String
+                || !identity.TryGetProperty("bucket", out var bucket) || bucket.ValueKind != JsonValueKind.String)
+                return false;
+            if (!identity.TryGetProperty("package", out var package)) return currentPackage is not null;
+            return package.ValueKind == JsonValueKind.Object
+                && package.TryGetProperty("countUnit", out var count) && count.ValueKind == JsonValueKind.Object
+                && count.TryGetProperty("text", out var countText) && countText.ValueKind == JsonValueKind.String
+                && package.TryGetProperty("capacity", out var capacity) && capacity.ValueKind == JsonValueKind.Object
+                && capacity.TryGetProperty("amount", out var amount) && amount.ValueKind == JsonValueKind.Object
+                && LegacyGroceryQuantity.IsCanonical(amount.Deserialize<GroceryQuantity>())
+                && capacity.TryGetProperty("unit", out var unit) && unit.ValueKind == JsonValueKind.Object
+                && unit.TryGetProperty("text", out var unitText) && unitText.ValueKind == JsonValueKind.String
+                && package.TryGetProperty("basis", out var basis) && basis.ValueKind == JsonValueKind.String
+                && basis.GetString() is ("net" or "drained" or "unspecified");
+        }
+        catch (JsonException) { return false; }
     }
 
     private static int GetWeekOffset(DateOnly monday, DeploymentCalendarContext context) =>

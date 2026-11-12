@@ -179,3 +179,116 @@ it.each([false, true])(
     expect(schedule.groceryItems).toEqual(before);
   }
 );
+
+it('retains the checked sibling purchase when an ordinary mock Save clears only one package size', async () => {
+  const { mockSupperServings, builders } = await import('../../e2e/mock-api');
+  const { createGroceryRowState } = await import('../../e2e/grocery-row-state');
+  const initial = input();
+  let recipe: any = initial.recipe;
+  const small = {
+    ...initial.row,
+    amount: scalar('3'),
+    amountText: '3',
+    shopping: {
+      name: 'tomato',
+      foodId: null,
+      mappingRevision: null,
+    },
+  };
+  const large = {
+    ...structuredClone(small),
+    id: '10000000-0000-0000-0000-000000000031',
+    amount: scalar('2'),
+    amountText: '2',
+    package: {
+      ...structuredClone(small.package),
+      capacity: { ...structuredClone(small.package.capacity), amount: scalar('800') },
+    },
+  };
+  recipe.servings = 4;
+  recipe.ingredientLines = [small, large];
+  recipe.ingredients = [
+    '3 cans tomatoes (400 g / cans; net)',
+    '2 cans tomatoes (800 g / cans; net)',
+  ];
+  const schedule: any = builders.scheduleDays();
+  const day = schedule.days[6];
+  day.recipe = { id: recipe.id };
+  day.occurrenceId = '10000000-0000-0000-0000-000000000032';
+  const rowState = createGroceryRowState();
+  const page: any = {
+    route: vi.fn().mockResolvedValue(undefined),
+    evaluate: vi.fn().mockResolvedValue(undefined),
+  };
+  const control = await mockSupperServings(page, () => schedule, {
+    readFamilyCount: () => 1,
+    readRecipe: () => recipe,
+    rowState,
+    knownRecipe: { id: recipe.id, basis: 4, quantity: 3, ingredient: 'tomato', unit: 'cans' },
+  });
+  control.preparationContext(day.date, recipe.id);
+  const refresh = async () => {
+    await control.recipeChanged(recipe.id, { ingredients: recipe.ingredients });
+    control.decorateSchedule(schedule);
+    return structuredClone(schedule);
+  };
+  const first = await refresh();
+  expect(first.groceryItems).toHaveLength(2);
+  const smallPurchase = first.groceryItems.find(
+    (row: any) => row.displayName === 'tomato (400 g / cans; net)'
+  );
+  const largePurchase = first.groceryItems.find(
+    (row: any) => row.displayName === 'tomato (800 g / cans; net)'
+  );
+  for (const [index, purchase] of [smallPurchase, largePurchase].entries()) {
+    expect(
+      rowState.mutate(schedule.weekStartDate, 'item', {
+        weekStartDate: schedule.weekStartDate,
+        rowId: purchase.rowId,
+        expectedRowVersion: purchase.rowVersion,
+        checked: true,
+        clientMutationId: `10000000-0000-0000-0000-00000000004${index}`,
+      }).status
+    ).toBe(200);
+  }
+  const checkedLarge = structuredClone(
+    rowState
+      .snapshot(schedule.weekStartDate)
+      .groceryItems.find((row: any) => row.rowId === largePurchase.rowId)
+  );
+  if (!checkedLarge) throw new Error('Checked 800 g purchase is missing');
+  const clear = applyCanonicalEditorPatch(recipe, {
+    expectedContentRevision: recipe.contentRevision,
+    ingredientLines: [{ ...recipe.ingredientLines[0], package: null }, recipe.ingredientLines[1]],
+  });
+  expect(clear.status).toBe(200);
+  recipe = clear.body.recipe;
+  const cleared = await refresh();
+  const unqualified = cleared.groceryItems.find((row: any) => row.displayName === 'tomato');
+  expect(unqualified.rowId).not.toBe(smallPurchase.rowId);
+  expect(unqualified.quantity).toEqual({ kind: 'scalar', value: { n: '3', d: '4' } });
+  expect(cleared.groceryState[unqualified.rowId]).toBe(false);
+  expect(cleared.groceryItems.find((row: any) => row.rowId === checkedLarge.rowId)).toEqual(
+    checkedLarge
+  );
+  expect(cleared.groceryState[checkedLarge.rowId]).toBe(true);
+  const following = applyCanonicalEditorPatch(recipe, {
+    expectedContentRevision: recipe.contentRevision,
+    ingredientLines: [
+      { ...recipe.ingredientLines[0], amount: scalar('4'), amountText: '4' },
+      recipe.ingredientLines[1],
+    ],
+  });
+  expect(following.status).toBe(200);
+  recipe = following.body.recipe;
+  expect(recipe.ingredientLines[0].package).toBeNull();
+  const after = await refresh();
+  expect(after.groceryItems.find((row: any) => row.displayName === 'tomato')).toMatchObject({
+    rowId: unqualified.rowId,
+    quantity: scalar('1'),
+  });
+  expect(after.groceryItems.find((row: any) => row.rowId === checkedLarge.rowId)).toEqual(
+    checkedLarge
+  );
+  expect(after.groceryState[checkedLarge.rowId]).toBe(true);
+});

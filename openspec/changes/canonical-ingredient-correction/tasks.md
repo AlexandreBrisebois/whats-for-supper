@@ -423,3 +423,33 @@ Retain the separate non-package exact public scalar/range display reconciliation
 later intake channels, protected reimport, current full recovery, client fencing,
 selected library conversion and final release gates. Bilingual/Similar remain
 deferred, selective repair superseded and garlic-placeholder work excluded.
+
+### Package sibling-purchase regression and corrective qualification
+
+Package candidate `a8303cb98d129f39126963d7fbf5a9c784bfe701` was committed after
+the stable 43-path local gate passed, including 621 PostgreSQL cases and the fresh
+22-owner/37-case native campaign. These results remain scoped to that source and
+their recorded coverage; they did not cover clearing one of two same-subject
+package sizes while preserving the other size's acknowledgement.
+
+Exact-image DV operation `c43d1928-f9c9-4972-a75d-904973c2a123` demonstrated that
+clearing the 400 g qualifier replaced the unchanged 800 g grocery row despite its
+unchanged purchase identity and amount. The earlier plural-versus-singular fixture
+assertion failure and reviewed five-write continuation are retained separately.
+The package candidate is **not accepted**. Four guarded cleanup writes completed;
+strict preservation and independent review covered all 2,482 original rows,
+1,519 original files, 195 exact existing-startup transitions and the operation's
+87 new rows/15 files. The previous accepted `ad32726` runtime, environment, ports
+and public access were recovered and verified. Nine owned disposable resources
+were removed; backups, images and evidence remain retained under
+`.task/dependable-portions-coordinator/package/release/`.
+
+The corrective subset of 1.1–1.3/4.1 preserves the unchanged sibling purchase
+without weakening genuine split/merge or changed-purchase fences. Actual database
+runner `813101cf471e4bd780796a02ba803d60` is the stable intended red: ordinary
+authenticated Save clearing only 400 g replaced the 800 g row, reset its check and
+lost its full baseline. The preceding compile-only attempt is not behavior red.
+The bounded correction and added service/native/mock guards require fresh green
+database, native and final local gates, a new commit and images, and a new DV
+operation. Current implementation or historical local passes do not establish
+those results. Hosted acceptance and all aggregate checkboxes remain outstanding.

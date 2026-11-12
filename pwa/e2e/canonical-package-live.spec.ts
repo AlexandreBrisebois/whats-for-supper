@@ -521,6 +521,120 @@ test(`declared package ${locale} uses ordinary Save and fixed capacity across po
       (row: any) => row.id === initial.ingredientLines[0].id
     );
     await expect(projectionRows.nth(pastaIndex)).toHaveText('400 g pasta');
+
+    // Two saved lines share the legacy tomato member, but represent distinct purchases.
+    // Clearing one package must preserve the other size's acknowledged demand.
+    await edit(editor);
+    await editor.getByTestId('recipe-edit-unit-2').fill('cans');
+    await options(editor);
+    await editor.getByTestId('recipe-edit-package-enabled-2').check();
+    await editor.getByTestId('recipe-edit-package-count-unit-2').fill('cans');
+    await editor.getByTestId('recipe-edit-package-capacity-2').fill('400');
+    await editor.getByTestId('recipe-edit-package-unit-2').fill('g');
+    await editor.getByTestId('recipe-edit-package-basis-2').selectOption('net');
+    await editor.getByTestId('recipe-add-ingredient').click();
+    await editor.getByTestId('recipe-edit-amount-3').fill('2');
+    await editor.getByTestId('recipe-edit-unit-3').fill('cans');
+    await editor.getByTestId('recipe-edit-ingredient-3').fill('tomatoes');
+    const siblingOptions = editor.locator('details').filter({
+      has: editor.getByTestId('recipe-edit-package-enabled-3'),
+    });
+    if (!(await siblingOptions.evaluate((node) => (node as HTMLDetailsElement).open)))
+      await siblingOptions.locator('summary').click();
+    await editor.getByTestId('recipe-edit-package-enabled-3').check();
+    await editor.getByTestId('recipe-edit-package-count-unit-3').fill('cans');
+    await editor.getByTestId('recipe-edit-package-capacity-3').fill('800');
+    await editor.getByTestId('recipe-edit-package-unit-3').fill('g');
+    await editor.getByTestId('recipe-edit-package-basis-3').selectOption('net');
+    const siblingSaved = (await save(editor)).result.recipe;
+    assertOriginals(siblingSaved);
+    expect(siblingSaved.ingredientLines[2].id).toBe(packageId);
+    const siblingId = siblingSaved.ingredientLines[3].id;
+    expect(siblingId).not.toBe(packageId);
+    await recompute();
+    const packageRows = (state: any) =>
+      state.groceryItems.filter(
+        (row: any) => row.normalizedKey === 'tomato' && row.recipeIds.includes(id)
+      );
+    const twoSizes = packageRows(await schedule());
+    expect(twoSizes).toHaveLength(2);
+    const small = twoSizes.find((row: any) => row.displayName === 'tomato (400 g / cans; net)');
+    const large = twoSizes.find((row: any) => row.displayName === 'tomato (800 g / cans; net)');
+    expect(small).toBeDefined();
+    expect(large).toBeDefined();
+    expect(small.quantity).toEqual(scalar('6'));
+    expect(large.quantity).toEqual(scalar('4'));
+    expect(small.rowId).not.toBe(large.rowId);
+    await openGroceries(shopper);
+    await groceryCheck(shopper, small).click();
+    await groceryCheck(shopper, large).click();
+    await expect
+      .poll(async () => {
+        const state = await schedule();
+        return [state.groceryState[small.rowId], state.groceryState[large.rowId]];
+      })
+      .toEqual([true, true]);
+    const checkedLarge = packageRows(await schedule()).find(
+      (row: any) => row.rowId === large.rowId
+    );
+    expect(checkedLarge).toBeDefined();
+
+    await edit(editor);
+    await options(editor);
+    await editor.getByTestId('recipe-edit-package-enabled-2').uncheck();
+    const clearedOne = (await save(editor)).result.recipe;
+    expect(clearedOne.ingredientLines[3]).toEqual(siblingSaved.ingredientLines[3]);
+    await recompute();
+    const clearState = await schedule();
+    const clearRows = packageRows(clearState);
+    expect(clearRows).toHaveLength(2);
+    const unqualified = clearRows.find((row: any) => row.displayName === 'tomato');
+    expect(unqualified).toMatchObject({ quantity: scalar('6'), unitText: 'cans' });
+    expect(unqualified.rowId).not.toBe(small.rowId);
+    expect(clearState.groceryState[unqualified.rowId]).toBe(false);
+    expect(clearRows.find((row: any) => row.displayName === checkedLarge.displayName)).toEqual(
+      checkedLarge
+    );
+    expect(clearState.groceryState[checkedLarge.rowId]).toBe(true);
+
+    await edit(editor);
+    await editor.getByTestId('recipe-edit-amount-2').fill('4');
+    const followingSave = (await save(editor)).result.recipe;
+    assertOriginals(followingSave);
+    expect(followingSave.ingredientLines[2]).toMatchObject({
+      id: packageId,
+      amount: scalar('4'),
+      unit: { text: 'cans', definitionId: null },
+      package: null,
+    });
+    expect(followingSave.ingredientLines[3]).toEqual(siblingSaved.ingredientLines[3]);
+    expect(followingSave.ingredientLines[3].id).toBe(siblingId);
+    await recompute();
+    const followingState = await schedule();
+    const followingRows = packageRows(followingState);
+    expect(followingRows).toHaveLength(2);
+    const followingUnqualified = followingRows.find((row: any) => row.displayName === 'tomato');
+    expect(followingUnqualified).toMatchObject({ rowId: unqualified.rowId, quantity: scalar('8') });
+    expect(followingRows.find((row: any) => row.displayName === checkedLarge.displayName)).toEqual(
+      checkedLarge
+    );
+    expect(followingState.groceryState[checkedLarge.rowId]).toBe(true);
+    expect(followingState.groceryState[unqualified.rowId]).toBe(false);
+    expect(followingState.groceryState[pasta.rowId]).toBe(true);
+    expect(followingState.groceryState[sauce.rowId]).toBe(true);
+    await openGroceries(shopper);
+    await expect(groceryCheck(shopper, checkedLarge)).toHaveAttribute('aria-checked', 'true');
+    await expect(groceryCheck(shopper, followingUnqualified)).toHaveAttribute(
+      'aria-checked',
+      'false'
+    );
+    await editor.goto(`/recipes?open=${id}`);
+    const finalProjection = editor
+      .getByTestId('recipe-ingredient-projection')
+      .getByRole('listitem');
+    await expect(finalProjection).toHaveCount(4);
+    await expect(finalProjection.nth(2)).toHaveText('8 cans tomatoes');
+    await expect(finalProjection.nth(3)).toHaveText('4 cans tomatoes (800 g / cans; net)');
   } finally {
     await Promise.all(contexts.map((context) => context.close()));
   }
