@@ -1,0 +1,78 @@
+Use .agents/prompts/dependable-portions.md.
+Orchestrate and complete its first coordinated delivery slice using parallel agents.
+
+This prompt explicitly authorizes committing each completed coordinated slice and deploying that exact commit to DV. It overrides conflicting commit/DV restrictions in the referenced prompt. Production deployment remains excluded.
+
+Work on one coordinated slice per invocation. After committing, deploying and verifying it in DV, stop and provide the next copy-paste prompt for me to launch the next slice.
+
+Before assigning implementation:
+- Classify changes as active, deferred, superseded or completed.
+- Define the slice’s user-visible outcome, task IDs, dependencies, owned files, acceptance checks and stopping boundary.
+- Choose a coherent, independently verifiable slice. Do not split shared contracts or required consumers across incomplete deployments.
+- Retire selective-ingredient-repair explicitly as superseded and unimplemented. Preserve its rationale and replacement links; do not mark its tasks completed or promote its requirements into main specs.
+- Separate bilingual-shopping-identity and similar-search-filter from the current delivery queue, preserving their requirements for later work.
+- Consolidate stale execution instructions and historical progress narratives into concise evidence references. Preserve accepted decisions, failures and limitations.
+- Update dependency links so each outcome has one authoritative task owner.
+
+During delivery:
+- Use parallel agents for independent work, with direct communication and one writer per shared file.
+- The coordinator owns integration, lifecycle edits, final verification, the commit and DV deployment.
+- Track implementation, local verification, hosted verification and DV acceptance separately.
+- Preserve existing task IDs and acceptance scenarios; document mappings when reorganizing them.
+- Reuse implemented foundations. An unchecked aggregate task does not mean its implementation must be rebuilt.
+- Keep unfinished work visibly unfinished, including outstanding grocery and CI qualification.
+- Preserve unrelated staged, unstaged and untracked work. Never include another agent’s unfinished changes in the slice commit.
+
+At each coordinated slice boundary:
+1. Integrate the complete slice and reconcile its specs, contracts, clients, mocks, tests and task evidence.
+2. Validate specs, links and scenario preservation, then run the required scoped checks and real integration acceptance on stable source.
+3. Review the exact commit contents and commit only the completed slice.
+4. Use the repository’s established DV deployment procedure to deploy that exact commit, coordinating frontend, backend and database as one release.
+5. Push the slice branch if required by the established DV deployment or hosted-verification workflow. Do not force-push or merge unrelated work.
+6. Verify the deployed version, health and the slice’s user-visible behavior in DV. Record the commit, deployment identity and actual results. Deployment initiation alone is not success.
+7. Reuse the accepted maintenance/recovery mechanism when needed. Preserve DV data; deployment authorization does not authorize an unrelated reset or reseed.
+8. If a required check or deployment fails, investigate and resolve it within scope. Do not call the slice complete or advance to another slice while its required acceptance remains failed or blocked.
+
+Lifecycle cleanup:
+- Sync main specs and archive only changes whose full implementation and acceptance requirements are satisfied, using the repository’s OpenSpec workflows.
+- Do not archive an entire change merely because one slice is complete.
+- Preserve superseded/deferred status without presenting retirement as successful implementation.
+- Keep lifecycle edits in the coordinated commit when their conditions are satisfied.
+- Leave unrelated archives and working-tree changes untouched.
+
+Final response:
+- Summarize the delivered behavior.
+- Provide the commit SHA, DV deployment identity and verification evidence.
+- Report what was retired, deferred, consolidated, synchronized or archived.
+- State remaining failures, blockers and unfinished requirements honestly.
+- Provide one ready-to-paste prompt for the next recommended slice, including its exact task IDs, outcome, prerequisites, ownership, acceptance checks, exclusions and stopping boundary.
+- Carry forward these commit, DV deployment and next-prompt requirements into that successor prompt.
+- Do not launch the next slice yourself; wait for me to invoke its prompt.
+
+Perform only the initial cleanup necessary to establish clear ownership, then keep delivery moving. Do not ask again for commit or DV deployment permission already granted here. Ask only when a newly discovered consequential ambiguity or action falls outside this authorization.
+
+---
+
+<send_user_message_question_reply>
+[{"questionItemId":"[\"request_user_input_async\",\"call_85eb05696401437fa81f4a662e79977a\",0]","question":"DV preflight found a missing deployment prerequisite: the existing recovery lock disappears if its holder dies, and there is no durable maintenance hold across restart. The referenced prompt limits migration 3.1 to assessment, but its deployment acceptance requires that hold. May I extend this slice to implement and rehearse a persistent hold within the existing RecoveryBoundary (preserving data), or leave deployment blocked pending a separate maintenance slice?","answer":"Extend this slice with the required maintenance hold"}]
+</send_user_message_question_reply>
+
+---
+
+is this what you are fixing ? [https://github.com/AlexandreBrisebois/whats-for-supper/actions/runs/42943231361/job/130269863386](https://github.com/AlexandreBrisebois/whats-for-supper/actions/runs/42943231361/job/130269863386)
+
+---
+
+i see you pushed on a different branch than the one in this IDE recipe-cire-redesign
+
+---
+
+when this slice is done bring everything back to recipe-view-redeisgn sp we are able to move everything forward as 1
+
+---
+
+im surprised we did not catch these errors locally
+
+---
+
+proceed to deploy dv locally

@@ -1,0 +1,47 @@
+{
+  "cli_version": "0.13.2",
+  "checkpoint_id": "01M77K817VSMMGR4J8FJCRXSZ9",
+  "strategy": "manual-commit",
+  "branch": "recipe-view-redesign",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "api/src/RecipeApi.Tests/Integration/CanonicalIngredientEditPostgresTests.Relationships.cs",
+    "api/src/RecipeApi.Tests/Integration/CanonicalIngredientPublicationPostgresTests.Relationships.cs",
+    "api/src/RecipeApi.Tests/Services/CookingStepRelationshipProducerTests.cs",
+    "api/src/RecipeApi/Services/Agents/RecipeAgent.cs",
+    "api/src/RecipeApi/Services/CanonicalRecipeContentStore.cs",
+    "api/src/RecipeApi/Services/CookingStepRelationshipProducer.cs",
+    "api/src/RecipeApi/Services/RecipeFilePublicationStore.cs",
+    "api/src/RecipeApi/Services/RecoveryBoundary.cs"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 914385,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 122648064,
+    "output_tokens": 201996,
+    "api_call_count": 842
+  },
+  "redaction": {
+    "replacements": 3434,
+    "layers": {
+      "betterleaks": 45,
+      "connection_string": 0,
+      "credential_key": 0,
+      "credential_value": 22,
+      "credentialed_uri": 0,
+      "entropy": 3515,
+      "key_context": 0,
+      "provider_token": 0,
+      "shell_stdin": 0
+    }
+  }
+}
