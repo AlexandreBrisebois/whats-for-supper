@@ -132,3 +132,66 @@ Use the existing Clear/deferred-cleanup guard conservatively: persisted ingredie
 The classifier does not treat arbitrary partial provider output as a completed extraction. For witnessed fresh URL work, the extractor may publish usable normalized wording as `review-material` under the existing journal before raising the typed semantic-content failure. The worker passes that classification after exhausting the attempt. The report owner verifies the persisted failed ExtractRecipe task and retained recipe before inserting a flag. Provider/network/image/category errors do not share that signal. Empty acquisition placeholders remain in existing failed-capture management.
 
 The system explanation is stored in the existing report note, not dropped or hidden behind generic copy. No new origin field/status is needed: unchanged feedback without a retained RepairIntentId is a no-op, independently of authorship; an existing retained command keeps its original retry/reconciliation path. A changed comment or other eligible changed feedback requests a newly captured correction under existing rules. Current backup/read-back already preserves note/reasons/status and absence of a repair command; qualify that unchanged restored feedback cannot create one. Missing/deleted member attribution is never used to infer system origin.
+
+
+## Coordinated explicit package input — 2026-11-12 UTC
+
+Selected tasks 1.1–1.3 extend the existing guarded editor, not source extraction.
+An explicit human declaration supplies the existing package object: count label,
+exact scalar/range capacity, capacity unit and net/drained/unspecified basis.
+The ingredient amount alone scales. Capacity remains fixed, without purchase
+rounding, guessed package sizes, regional conversion or a new catalogue. Existing
+canonical nonnegative quantity rules, including zero and independently unknown
+count, remain unchanged. Line unit and package count label are independent: a
+cleared line unit stays null and does not clear the package or acquire a fallback.
+
+New literal unit objects carry null definition IDs. A non-null definition object
+may only continue unchanged at its own saved line/count/capacity path; changing
+text under the same ID, moving an ID or introducing one remains rejected. Capacity
+and basis edits may retain those unchanged objects. A deleted row explicitly
+restored as a new clientId retains its readable literal package facts but drops
+old definition authority. Existing food-mapping, content/source guards, human
+protection, operation replay and quiet relationship abstention remain in place.
+Package numbers do not introduce a new cooking-step evidence grammar.
+
+The existing ingredient options contain the optional package controls. Their exact
+drafts survive failure, reload and explicit reconciliation; Cancel and acknowledged
+Save retain their existing authority. Package capacity/basis/label differences and
+clears appear in both conflict choices and the recovered-original display. Earlier
+version-1 drafts lacking these optional controls compare using their saved package
+facts, preventing an invented conflict solely from the new editor fields.
+
+An additive optional projection displayText is server-owned presentation of the
+exact count and fixed declared qualifier, for example `4 cans tomatoes (400 g /
+cans; net)`. OriginalText retains original-basis meaning. Missing basis or bounded
+arithmetic failure retains readable originals without inventing a factor. The
+shared PWA formatter consumes this string and retains its prior fallback; the
+general non-package exact public range/scalar display gap remains a separate
+reconciliation item. Quantity-only cooking span formatting must not append a
+package caption. EN/FR editor and recovery labels are localized; declared literals
+and the current explicit basis qualifier remain readable without a new server
+localization subsystem.
+
+Grocery grouping and demand identity include the complete exact declared package
+qualifier. Identical declarations aggregate counts; unlike capacities, bases,
+labels/definitions and unpackaged purchases stay separate. The qualifier is added
+to the final display name after category and normalized-key selection. Captions
+never become identity or an extra mass demand. Non-package identity JSON retains
+its previous bytes by omitting the new qualifier entirely. Existing contributor,
+checked-demand, split/merge, retired-row and stale-write rules remain authoritative.
+
+Serving/refresh semantic hashes use the previous six ingredient line fields in
+their existing order plus the existing exact grocery operands. Derived displayText
+is not semantic input. Only a sequence containing packages adds the full ordered
+package operands, including null positions. This preserves old non-package hashes
+and ensures a same-text definition clear still changes purchase-input versions and
+enlists the ordinary grocery refresh. A new null presentation member must not
+rewrite unaffected historical versions on deployment.
+
+Qualification distinguishes focused units, real PostgreSQL, fixed-origin mocked
+production browsers, same-origin native generated-client browsers, exact-image DV
+and hosted CI. Native package fixtures explicitly convert the initial recipe and
+author package facts only through ordinary human Save; they do not qualify source
+package extraction. Current bounded recovery-codec evidence is not operational
+full-library recovery or conversion acceptance. No aggregate completion or archive
+follows this design checkpoint.

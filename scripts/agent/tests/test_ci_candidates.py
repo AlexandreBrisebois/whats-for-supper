@@ -465,6 +465,45 @@ class PipelineTests(unittest.TestCase):
             self.assertNotEqual(execute(browser=browser), 0)
 
 
+    def test_declared_package_hosted_gate_requires_both_locales_without_skips_or_retries(self):
+        import json
+        import subprocess
+        import tempfile
+        import xml.etree.ElementTree as ET
+        steps = yaml.safe_load((ROOT / '.github/workflows/validate.yml').read_text())['jobs']['cooking-step-live']['steps']
+        run = next((step for step in steps if step.get('name') == 'Run required declared-package canonical journey'), None)
+        self.assertIsNotNone(run, 'Ordinary package input needs its real native owner in hosted qualification')
+        self.assertIn('LiveBrowser_CanonicalDeclaredPackages', run['run'])
+        guard = next(step for step in steps if step.get('name') == 'Require declared-package canonical journey results')
+        def execute(native='Passed', browser='passed', retry=0, missing=None, extra=False, wrong_title=False):
+            with tempfile.TemporaryDirectory() as directory:
+                root = Path(directory) / '.task/grocery-live/package-input'; root.mkdir(parents=True)
+                tree = ET.Element('TestRun'); results = ET.SubElement(tree, 'Results')
+                ET.SubElement(results, 'UnitTestResult', testName='RecipeApi.Tests.Integration.CanonicalIngredientEditPostgresTests.LiveBrowser_CanonicalDeclaredPackages', outcome=native)
+                ET.ElementTree(tree).write(root / 'native.trx')
+                for locale in ['en', 'fr']:
+                    path = root / 'packages' / locale; path.mkdir(parents=True)
+                    if missing != locale:
+                        title = f'declared package {locale} uses ordinary Save and fixed capacity across portions'
+                        specs = [{'title': 'wrong journey' if wrong_title else title, 'tests': [{
+                            'status': 'expected' if browser == 'passed' else browser,
+                            'results': [{'status': browser, 'retry': retry}]}]}]
+                        if extra: specs.append(specs[0])
+                        (path / 'browser-results.json').write_text(json.dumps({'suites': [{'specs': specs}]}))
+                    if missing != 'persisted':
+                        (path / 'persisted-result.json').write_text(json.dumps({'content': {}, 'rows': [], 'checks': {}, 'operations': 1}))
+                return subprocess.run(['bash', '-c', guard['run']], cwd=directory, capture_output=True).returncode
+        self.assertEqual(execute(), 0)
+        for native in ['Failed', 'NotExecuted']:
+            self.assertNotEqual(execute(native=native), 0)
+        for browser in ['skipped', 'failed']:
+            self.assertNotEqual(execute(browser=browser), 0)
+        self.assertNotEqual(execute(retry=1), 0)
+        for missing in ['en', 'fr', 'persisted']:
+            self.assertNotEqual(execute(missing=missing), 0)
+        self.assertNotEqual(execute(extra=True), 0)
+        self.assertNotEqual(execute(wrong_title=True), 0)
+
     def test_e2e_has_four_suites_and_one_build(self):
         jobs = yaml.safe_load((ROOT / '.github/workflows/validate.yml').read_text())['jobs']
         self.assertIn('pwa-build', jobs)

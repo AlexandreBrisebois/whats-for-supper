@@ -766,6 +766,126 @@ describe('canonical original ingredient editing', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
     return screen.findByTestId('recipe-edit-amount-0');
   }
+  it.each([false, true])(
+    'shows package-only conflicts, including a remote clear, in both review choices: %s',
+    async (cleared) => {
+      const pack = {
+        countUnit: { text: 'cans', definitionId: null },
+        capacity: {
+          amount: { kind: 'scalar', value: { n: '400', d: '1' } },
+          unit: { text: 'g', definitionId: null },
+        },
+        basis: 'net',
+      };
+      const initial = {
+        ...canonical,
+        ingredientLines: [
+          {
+            ...canonical.ingredientLines[0],
+            description: 'tomatoes',
+            amountText: '2',
+            amount: { kind: 'scalar', value: { n: '2', d: '1' } },
+            unit: { text: 'cans', definitionId: null },
+            packageEscaped: pack,
+          },
+          canonical.ingredientLines[1],
+        ],
+      };
+      mockGetRecipe.mockResolvedValue(initial);
+      const first = render(<RecipeDetailSheet {...props} />);
+      await screen.findByTestId('recipe-detail-name');
+      await edit();
+      fireEvent.change(screen.getByTestId('recipe-edit-package-capacity-0'), {
+        target: { value: '600' },
+      });
+      first.unmount();
+      mockGetRecipe.mockResolvedValue({
+        ...initial,
+        contentRevision: 'package-remote',
+        ingredientLines: [
+          {
+            ...initial.ingredientLines[0],
+            packageEscaped: cleared
+              ? null
+              : {
+                  ...pack,
+                  capacity: {
+                    ...pack.capacity,
+                    amount: { kind: 'scalar', value: { n: '800', d: '1' } },
+                  },
+                  basis: 'drained',
+                },
+          },
+          initial.ingredientLines[1],
+        ],
+      });
+      render(<RecipeDetailSheet {...props} />);
+      expect(await screen.findByTestId('recipe-edit-package-capacity-0')).toHaveValue('600');
+      fireEvent.click(screen.getByRole('button', { name: 'Check saved recipe' }));
+      fireEvent.click(await screen.findByRole('button', { name: 'Reconcile draft' }));
+      const review = await screen.findByRole('group', { name: 'Ingredients' });
+      expect(review).toHaveTextContent('600 g');
+      expect(review).toHaveTextContent('Net amount');
+      expect(review).toHaveTextContent(cleared ? 'No package details' : '800 g');
+      if (!cleared) expect(review).toHaveTextContent('Drained amount');
+      expect(mockUpdateRecipe).not.toHaveBeenCalled();
+    }
+  );
+  it('retains explicit package fields through failed Save and tab draft recovery, then discards on Cancel', async () => {
+    mockGetRecipe.mockResolvedValue(canonical);
+    mockUpdateRecipe.mockRejectedValue(new Error('offline'));
+    const first = render(<RecipeDetailSheet {...props} />);
+    await screen.findByTestId('recipe-detail-name');
+    fireEvent.change(await edit(), { target: { value: '2' } });
+    fireEvent.change(screen.getByTestId('recipe-edit-unit-0'), { target: { value: 'cans' } });
+    fireEvent.click(screen.getByTestId('recipe-edit-package-enabled-0'));
+    fireEvent.change(screen.getByTestId('recipe-edit-package-count-unit-0'), {
+      target: { value: 'tins' },
+    });
+    fireEvent.change(screen.getByTestId('recipe-edit-package-capacity-0'), {
+      target: { value: '⅓–½' },
+    });
+    fireEvent.change(screen.getByTestId('recipe-edit-package-unit-0'), { target: { value: 'kg' } });
+    fireEvent.change(screen.getByTestId('recipe-edit-package-basis-0'), {
+      target: { value: 'drained' },
+    });
+    fireEvent.click(screen.getByTestId('recipe-save-edits'));
+    await waitFor(() => expect(mockUpdateRecipe).toHaveBeenCalledTimes(1));
+    await screen.findByText('Could not save changes. Try again.');
+    expect(screen.getByTestId('recipe-save-edits')).toBeDisabled();
+    expect(mockUpdateRecipe).toHaveBeenCalledWith(
+      id,
+      expect.objectContaining({
+        ingredientLines: expect.arrayContaining([
+          expect.objectContaining({
+            amountText: '2',
+            unit: { text: 'cans', definitionId: null },
+            packageEscaped: {
+              countUnit: { text: 'tins', definitionId: null },
+              capacity: {
+                amount: { kind: 'range', min: { n: '1', d: '3' }, max: { n: '1', d: '2' } },
+                unit: { text: 'kg', definitionId: null },
+              },
+              basis: 'drained',
+            },
+          }),
+        ]),
+      })
+    );
+    first.unmount();
+    const recovered = render(<RecipeDetailSheet {...props} />);
+    expect(await screen.findByTestId('recipe-edit-package-capacity-0')).toHaveValue('⅓–½');
+    expect(screen.getByTestId('recipe-edit-package-count-unit-0')).toHaveValue('tins');
+    expect(screen.getByTestId('recipe-edit-package-unit-0')).toHaveValue('kg');
+    expect(screen.getByTestId('recipe-edit-package-basis-0')).toHaveValue('drained');
+    fireEvent.click(screen.getByTestId('recipe-cancel-edits'));
+    recovered.unmount();
+    render(<RecipeDetailSheet {...props} />);
+    await screen.findByTestId('recipe-detail-name');
+    await edit();
+    expect(screen.getByTestId('recipe-edit-package-enabled-0')).not.toBeChecked();
+    expect(mockUpdateRecipe).toHaveBeenCalledTimes(1);
+  });
   it('corrects flagged original ingredients and unbound steps even when the dated projection fails', async () => {
     const original = {
       ...canonical,

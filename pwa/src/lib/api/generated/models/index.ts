@@ -2928,6 +2928,9 @@ export function deserializeIntoIngredientProjectionLine(
   ingredientProjectionLine: Partial<IngredientProjectionLine> | undefined = {}
 ): Record<string, (node: ParseNode) => void> {
   return {
+    displayText: (n) => {
+      ingredientProjectionLine.displayText = n.getStringValue();
+    },
     issues: (n) => {
       ingredientProjectionLine.issues =
         n.getCollectionOfEnumValues<IngredientProjectionLine_issues>(
@@ -6157,6 +6160,10 @@ export type IngredientProjection_status =
   (typeof IngredientProjection_statusObject)[keyof typeof IngredientProjection_statusObject];
 export interface IngredientProjectionLine extends AdditionalDataHolder, Parsable {
   /**
+   * Optional server-derived package presentation for the captured portion context. Uses the exact projected ingredient count and unchanged declared capacity, count label and basis; no purchase rounding. If scaling is unresolved, retains the original count without inventing a factor. originalText always retains the original-basis meaning. Presentation is not an input to grocery identity or relationship discovery. Older and non-package lines may omit this field or return null.
+   */
+  displayText?: string | null;
+  /**
    * The issues property
    */
   issues?: IngredientProjectionLine_issues[] | null;
@@ -7003,6 +7010,9 @@ export interface RecipeListResponse extends AdditionalDataHolder, Parsable {
    */
   updatedAt?: Date | null;
 }
+/**
+ * Explicit package facts. Ordinary guarded ingredient Save may add or change literal units whose definitionId is null, or retain an unchanged validated definition at the same saved field. New or changed non-null definition objects require qualified definition validation. countUnit is an independently declared package label: a null ingredient unit remains null, and clearing it does not clear the package. Only the ingredient amount scales; capacity and basis remain fixed. No package-size, unit-equivalence or net/drained conversion is inferred.
+ */
 export interface RecipePackage extends Parsable {
   /**
    * The basis property
@@ -8571,6 +8581,7 @@ export function serializeIngredientProjectionLine(
   if (!ingredientProjectionLine || isSerializingDerivedType) {
     return;
   }
+  writer.writeStringValue('displayText', ingredientProjectionLine.displayText);
   if (ingredientProjectionLine.issues)
     writer.writeCollectionOfEnumValues<IngredientProjectionLine_issues>(
       'issues',

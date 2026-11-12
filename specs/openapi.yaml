@@ -239,6 +239,13 @@ components:
       type: object
       additionalProperties: false
       required: [countUnit, capacity, basis]
+      description: 'Explicit package facts. Ordinary guarded ingredient Save may add or change literal units whose definitionId is null, or retain an unchanged validated definition at the same saved field. New or changed non-null definition objects require qualified definition validation. countUnit is an independently declared package label: a null ingredient unit remains null, and clearing it does not clear the package. Only the ingredient amount scales; capacity and basis remain fixed. No package-size, unit-equivalence or net/drained conversion is inferred.'
+      example:
+        countUnit: { text: cans, definitionId: null }
+        capacity:
+          amount: { kind: scalar, value: { n: '400', d: '1' } }
+          unit: { text: g, definitionId: null }
+        basis: net
       properties:
         countUnit: { $ref: '#/components/schemas/RecipeUnit' }
         capacity:
@@ -512,6 +519,9 @@ components:
       required: [originalText, name, quantity, unitText, status, issues]
       properties:
         originalText: { type: string }
+        displayText:
+          type: [string, 'null']
+          description: 'Optional server-derived package presentation for the captured portion context. Uses the exact projected ingredient count and unchanged declared capacity, count label and basis; no purchase rounding. If scaling is unresolved, retains the original count without inventing a factor. originalText always retains the original-basis meaning. Presentation is not an input to grocery identity or relationship discovery. Older and non-package lines may omit this field or return null.'
         name: { type: string }
         quantity: { type: number, nullable: true }
         unitText: { type: string, nullable: true }

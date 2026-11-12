@@ -722,3 +722,131 @@ it('normalizes Kiota nullable package objects before an original ingredient is e
   expect(recipe.ingredientLines![0].packageEscaped).toBeNull();
   expect(recipe.ingredientLines![0].unit).toBeNull();
 });
+
+describe('generated package quantity operands survive editor reopen and untouched Save', () => {
+  beforeEach(() => {
+    recipesApiMocks.byIdGet.mockReset();
+    recipesApiMocks.byIdPatch.mockReset();
+  });
+
+  const packageCases = [
+    { name: 'scalar400', amount: { kind: 'scalar', value: { n: '400', d: '1' } }, text: '400' },
+    { name: 'exactFraction', amount: { kind: 'scalar', value: { n: '1', d: '3' } }, text: '1/3' },
+    {
+      name: 'range',
+      amount: { kind: 'range', min: { n: '1', d: '3' }, max: { n: '1', d: '2' } },
+      text: '1/3–1/2',
+    },
+    { name: 'nullPackage', amount: null, text: '' },
+  ];
+
+  it.each(packageCases)(
+    'preserves $name through generated decode, editable draft and generated PATCH',
+    async ({ amount, text }) => {
+      const { JsonParseNode } = await import('@microsoft/kiota-serialization-json');
+      const { createRecipeDtoFromDiscriminatorValue } = await import('./generated/models');
+      const { ingredientDraft, prepareIngredientDrafts } =
+        await import('../recipes/ingredient-draft');
+      const id = '550e8400-e29b-41d4-a716-446655440212';
+      const pack =
+        amount === null
+          ? null
+          : {
+              countUnit: { text: 'cans', definitionId: null },
+              capacity: { amount, unit: { text: 'g', definitionId: null } },
+              basis: 'net',
+            };
+      // Use the real generated reader. A hand-built client model would hide Kiota's additionalData union representation.
+      const parsed = new JsonParseNode({
+        id,
+        contentSchemaVersion: 2,
+        contentRevision: 'captured-package',
+        servings: 4,
+        ingredientLines: [
+          {
+            id: '550e8400-e29b-41d4-a716-446655440213',
+            description: 'tomatoes',
+            amount: { kind: 'scalar', value: { n: '2', d: '1' } },
+            amountText: '2',
+            unit: { text: 'cans', definitionId: null },
+            scaling: 'proportional',
+            package: pack,
+            shopping: { name: 'tomatoes', foodId: null, mappingRevision: null },
+          },
+        ],
+      }).getObjectValue(createRecipeDtoFromDiscriminatorValue)!;
+      recipesApiMocks.byIdGet.mockResolvedValueOnce({ recipe: parsed });
+      const recipe = await getRecipe(id);
+      const draft = ingredientDraft(recipe.ingredientLines![0]);
+      expect(draft.packageEnabled).toBe(pack !== null);
+      expect(draft.packageCapacityAmount).toBe(text);
+      const prepared = prepareIngredientDrafts([draft]);
+      expect(prepared.invalid).toBe(false);
+      expect(prepared.lines[0].packageEscaped).toEqual(pack);
+      recipesApiMocks.byIdPatch.mockResolvedValueOnce({ recipe: parsed });
+      await updateRecipe(id, {
+        expectedContentRevision: recipe.contentRevision!,
+        ingredientLines: prepared.lines,
+      });
+      const writer = new JsonSerializationWriter();
+      writer.writeObjectValue(
+        undefined,
+        recipesApiMocks.byIdPatch.mock.calls[0][0],
+        serializeUpdateRecipeDto
+      );
+      const wire = JSON.parse(new TextDecoder().decode(writer.getSerializedContent()));
+      expect(wire.expectedContentRevision).toBe('captured-package');
+      expect(wire.ingredientLines[0].package).toEqual(pack);
+      expect(wire.ingredientLines[0].amount).toEqual({ kind: 'scalar', value: { n: '2', d: '1' } });
+    }
+  );
+
+  it('retains a top-level exact count with amountText null without inventing notation to decode it', async () => {
+    const { JsonParseNode } = await import('@microsoft/kiota-serialization-json');
+    const { createRecipeDtoFromDiscriminatorValue } = await import('./generated/models');
+    const { ingredientDraft, prepareIngredientDrafts } =
+      await import('../recipes/ingredient-draft');
+    const id = '550e8400-e29b-41d4-a716-446655440212';
+    const exact = { kind: 'scalar', value: { n: '1', d: '3' } };
+    const parsed = new JsonParseNode({
+      id,
+      contentSchemaVersion: 2,
+      contentRevision: 'captured-count',
+      ingredientLines: [
+        {
+          id: '550e8400-e29b-41d4-a716-446655440213',
+          description: 'tomatoes',
+          amount: exact,
+          amountText: null,
+          unit: null,
+          scaling: 'proportional',
+          package: null,
+          shopping: { name: 'tomatoes', foodId: null, mappingRevision: null },
+        },
+      ],
+    }).getObjectValue(createRecipeDtoFromDiscriminatorValue)!;
+    recipesApiMocks.byIdGet.mockResolvedValueOnce({ recipe: parsed });
+    const recipe = await getRecipe(id);
+    expect(recipe.ingredientLines![0].amountText ?? null).toBeNull();
+    expect(recipe.ingredientLines![0].amount).toEqual(exact);
+    const draft = ingredientDraft(recipe.ingredientLines![0]);
+    expect(draft.amount).toBe('1/3');
+    const prepared = prepareIngredientDrafts([draft]);
+    expect(prepared.invalid).toBe(false);
+    recipesApiMocks.byIdPatch.mockResolvedValueOnce({ recipe: parsed });
+    await updateRecipe(id, {
+      expectedContentRevision: recipe.contentRevision!,
+      ingredientLines: prepared.lines,
+    });
+    const writer = new JsonSerializationWriter();
+    writer.writeObjectValue(
+      undefined,
+      recipesApiMocks.byIdPatch.mock.calls[0][0],
+      serializeUpdateRecipeDto
+    );
+    const wire = JSON.parse(new TextDecoder().decode(writer.getSerializedContent()));
+    expect(wire.ingredientLines[0].amount).toEqual(exact);
+    expect(wire.ingredientLines[0].unit).toBeNull();
+    expect(wire.ingredientLines[0].package).toBeNull();
+  });
+});

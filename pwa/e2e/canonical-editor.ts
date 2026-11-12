@@ -1,4 +1,5 @@
-import { carryCookingBindings } from './cooking-step-projection';
+import { carryCookingBindings, canonicalIngredientText } from './cooking-step-projection';
+import { isDeepStrictEqual as sameUnit } from 'node:util';
 import { discoverFixedBindings } from './cooking-fixed-producer';
 import { discoverPerItemBindings } from './cooking-per-item-producer';
 import { discoverRemainderBindings } from './cooking-remainder-producer';
@@ -75,16 +76,18 @@ export function applyCanonicalEditorPatch(current: any, input: any): { status: n
         )
           throw new Error('Unqualified mapping');
         if (
-          (row.unit?.definitionId != null &&
-            JSON.stringify(row.unit) !== JSON.stringify(old?.unit)) ||
-          (row.package != null && JSON.stringify(row.package) !== JSON.stringify(old?.package))
+          (row.unit?.definitionId != null && !sameUnit(row.unit, old?.unit)) ||
+          (row.package?.countUnit?.definitionId != null &&
+            !sameUnit(row.package.countUnit, old?.package?.countUnit)) ||
+          (row.package?.capacity?.unit?.definitionId != null &&
+            !sameUnit(row.package.capacity.unit, old?.package?.capacity?.unit))
         )
           throw new Error('Unqualified definition');
         const result = assign(row, current.ingredientLines);
         const same =
           old &&
           ['description', 'amount', 'amountText', 'unit', 'scaling', 'package', 'shopping'].every(
-            (key) => JSON.stringify(row[key]) === JSON.stringify(old[key])
+            (key) => sameUnit(row[key], old[key])
           );
         result.provenance = same
           ? old.provenance
@@ -103,21 +106,7 @@ export function applyCanonicalEditorPatch(current: any, input: any): { status: n
             };
         return result;
       });
-      const rational = (q: any) => (q.d === '1' ? q.n : `${q.n}/${q.d}`);
-      recipe.ingredients = recipe.ingredientLines.map((row: any) =>
-        [
-          row.amountText ??
-            (row.amount?.kind === 'scalar'
-              ? rational(row.amount.value)
-              : row.amount?.kind === 'range'
-                ? `${rational(row.amount.min)}–${rational(row.amount.max)}`
-                : null),
-          row.unit?.text,
-          row.description,
-        ]
-          .filter((value) => value != null)
-          .join(' ')
-      );
+      recipe.ingredients = recipe.ingredientLines.map((row: any) => canonicalIngredientText(row));
     }
     if (input.instructionSections) {
       const steps = current.instructionSections?.flatMap((section: any) => section.steps) ?? [];

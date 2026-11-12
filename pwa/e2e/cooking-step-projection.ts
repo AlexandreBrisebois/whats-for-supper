@@ -393,36 +393,102 @@ function annotationAmountText(text: string) {
   }
   return remainder === 0n ? `${n / d}.${digits}` : text;
 }
+export function declaredPackageSuffix(pack: any) {
+  return pack
+    ? ` (${amountText(pack.capacity.amount, 1, 1)} ${pack.capacity.unit.text} / ${pack.countUnit.text}; ${pack.basis})`
+    : '';
+}
+export function canonicalIngredientText(row: any, count?: string | null) {
+  return (
+    [
+      count === undefined
+        ? (row.amountText ?? (row.amount ? amountText(row.amount, 1, 1) : null))
+        : count,
+      row.unit?.text,
+      row.description,
+    ]
+      .filter((value) => value != null)
+      .join(' ') + (row.description ? declaredPackageSuffix(row.package) : '')
+  );
+}
+export function packageProjectedQuantity(row: any, target: number | null, basis: number | null) {
+  if (!row.amount || (target != null && row.scaling !== 'fixed' && !(basis! > 0))) return null;
+  try {
+    const text = amountText(
+      row.amount,
+      target == null || row.scaling === 'fixed' ? 1 : target,
+      target == null || row.scaling === 'fixed' ? 1 : basis!
+    );
+    const rational = (value: string) => {
+      const [n, d = '1'] = value.split('/');
+      return { n, d };
+    };
+    const range = text.split('–');
+    return range.length === 1
+      ? { kind: 'scalar', value: rational(text) }
+      : { kind: 'range', min: rational(range[0]), max: rational(range[1]) };
+  } catch {
+    return null;
+  }
+}
 export function canonicalIngredientLines(
   recipe: any,
   target: number | null
 ): Array<{
   originalText: string;
+  displayText?: string | null;
   name: string;
   unitText: string | null;
   quantity: number | null;
   status: string;
   issues: string[];
 }> {
-  return recipe.ingredientLines.map((row: any, index: number) => ({
-    originalText: recipe.ingredients[index],
-    name: row.shopping.name,
-    unitText: row.unit?.text ?? null,
-    quantity:
-      row.amount?.kind === 'scalar' && (target == null || recipe.servings > 0)
-        ? (Number(row.amount.value.n) / Number(row.amount.value.d)) *
-          (row.scaling === 'fixed' || target == null ? 1 : target / recipe.servings)
-        : null,
-    status:
-      row.amount == null
-        ? 'unquantified'
-        : target != null && !(recipe.servings > 0)
+  return recipe.ingredientLines.map((row: any, index: number) => {
+    const exact = row.package ? packageProjectedQuantity(row, target, recipe.servings) : null;
+    const packageIssues =
+      row.package && row.amount != null && exact == null
+        ? [
+            target != null && row.scaling !== 'fixed' && !(recipe.servings > 0)
+              ? 'missing_basis'
+              : 'unreliable_amount',
+          ]
+        : [];
+    return {
+      originalText: row.package ? canonicalIngredientText(row) : recipe.ingredients[index],
+      ...(row.package
+        ? {
+            displayText: exact
+              ? canonicalIngredientText(row, amountText(exact, 1, 1))
+              : canonicalIngredientText(row),
+          }
+        : {}),
+      name: row.shopping.name,
+      unitText: row.unit?.text ?? null,
+      quantity: row.package
+        ? exact?.kind === 'scalar'
+          ? Number(exact.value!.n) / Number(exact.value!.d)
+          : null
+        : row.amount?.kind === 'scalar' && (target == null || recipe.servings > 0)
+          ? (Number(row.amount.value.n) / Number(row.amount.value.d)) *
+            (row.scaling === 'fixed' || target == null ? 1 : target / recipe.servings)
+          : null,
+      status:
+        row.package && packageIssues.length
           ? 'unresolved'
-          : target == null
-            ? 'original'
-            : 'scaled',
-    issues: row.amount != null && target != null && !(recipe.servings > 0) ? ['missing_basis'] : [],
-  }));
+          : row.amount == null
+            ? 'unquantified'
+            : target != null && !(recipe.servings > 0) && (!row.package || row.scaling !== 'fixed')
+              ? 'unresolved'
+              : target == null
+                ? 'original'
+                : 'scaled',
+      issues: row.package
+        ? packageIssues
+        : row.amount != null && target != null && !(recipe.servings > 0)
+          ? ['missing_basis']
+          : [],
+    };
+  });
 }
 export function cookingProjection(recipe: any, target: number | null) {
   if (recipe.contentSchemaVersion !== 2) return null;

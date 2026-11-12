@@ -1,5 +1,6 @@
 import { canonicalIngredientLines, cookingProjection } from './cooking-step-projection';
 import { applyCanonicalEditorPatch } from './canonical-editor';
+import { declaredPackageGroceryRows } from './declared-package-grocery';
 import { canonicalRecipePatchIsValid } from './canonical-content-input';
 import { createGroceryRowState } from './grocery-row-state';
 import { type Page, type Route } from '@playwright/test';
@@ -3711,33 +3712,43 @@ export async function mockSupperServings(
         ...(occurrences.length === 0
           ? []
           : recipeSource(known.id).contentSchemaVersion === 2
-            ? knownLines(null).map((line, index) => ({
-                displayName: line.name,
-                normalizedKey: line.name,
-                section: 'Pantry',
-                quantity: occurrences.reduce(
-                  (sum: number, day: any) =>
-                    sum +
-                    (knownLines(
-                      day.status === 3
-                        ? null
-                        : (current.days.find((item: any) => item.date === dateString(day.date))
-                            ?.servings ?? null)
-                    )[index]?.quantity ?? 0),
-                  0
+            ? declaredPackageGroceryRows(
+                knownLines(null).map((line, index) => ({
+                  displayName: line.name,
+                  normalizedKey: line.name,
+                  section: 'Pantry',
+                  quantity: occurrences.reduce(
+                    (sum: number, day: any) =>
+                      sum +
+                      (knownLines(
+                        day.status === 3
+                          ? null
+                          : (current.days.find((item: any) => item.date === dateString(day.date))
+                              ?.servings ?? null)
+                      )[index]?.quantity ?? 0),
+                    0
+                  ),
+                  quantityComplete: occurrences.every(
+                    (day: any) =>
+                      knownLines(
+                        day.status === 3
+                          ? null
+                          : (current.days.find((item: any) => item.date === dateString(day.date))
+                              ?.servings ?? null)
+                      )[index]?.quantity != null
+                  ),
+                  unitText: line.unitText,
+                  recipeIds: [known.id],
+                })),
+                recipeSource(known.id).ingredientLines ?? [],
+                occurrences.map((day: any) =>
+                  day.status === 3
+                    ? null
+                    : (current.days.find((item: any) => item.date === dateString(day.date))
+                        ?.servings ?? null)
                 ),
-                quantityComplete: occurrences.every(
-                  (day: any) =>
-                    knownLines(
-                      day.status === 3
-                        ? null
-                        : (current.days.find((item: any) => item.date === dateString(day.date))
-                            ?.servings ?? null)
-                    )[index]?.quantity != null
-                ),
-                unitText: line.unitText,
-                recipeIds: [known.id],
-              }))
+                recipeSource(known.id).servings ?? null
+              )
             : currentTexts.length !== 1 || currentTexts[0] !== sourceText
               ? knownLines(null).map((line) => ({
                   displayName: line.name,

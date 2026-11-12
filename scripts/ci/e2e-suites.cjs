@@ -14,6 +14,7 @@ const suites = {
     'prepared-supper', 'supper-servings', 'supper-servings-context', 'supper-servings-movement',
   ],
   recipes: [
+    'canonical-package',
     'browse-all-stack', 'browse-stack', 'stack-gestures', 'discovery', 'goto-layout', 'recipe-hero-actions',
     'recipe-notes-recovery', 'recipe-original-viewer', 'recipe-recovery',
     'recipe-share', 'recipes', 'search-hardening', 'search-invalidation-recovery',

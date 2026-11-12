@@ -1,6 +1,7 @@
 'use client';
 import {
   ingredientDraft,
+  ingredientPackageDraft,
   prepareIngredientDrafts,
   type IngredientDraft,
 } from '@/lib/recipes/ingredient-draft';
@@ -286,8 +287,15 @@ export function RecipeDetailSheet({
       return Array.isArray(fields[field]) ? fields[field].join(', ') : fields[field];
     return canonical
       ? fields.canonicalDrafts
-          .map((row) =>
-            [
+          .map((row) => {
+            const pack = ingredientPackageDraft(row);
+            const basis =
+              pack.basis === 'net'
+                ? t('recipes.packageBasisNet', 'Net amount')
+                : pack.basis === 'drained'
+                  ? t('recipes.packageBasisDrained', 'Drained amount')
+                  : t('recipes.packageBasisUnspecified', 'Not specified');
+            return [
               row.amount,
               row.unit,
               row.description,
@@ -295,10 +303,13 @@ export function RecipeDetailSheet({
               row.fixed
                 ? t('recipes.fixedIngredient', 'Keep amount fixed when portions change')
                 : '',
+              pack.enabled
+                ? `${t('recipes.packageDetails', 'Package details')}: ${pack.capacityAmount} ${pack.capacityUnit} / ${pack.countUnit} · ${basis}`
+                : t('recipes.noPackageDetails', 'No package details'),
             ]
               .filter(Boolean)
-              .join(' · ')
-          )
+              .join(' · ');
+          })
           .join('\n')
       : fields.ingredients.join('\n');
   };
@@ -1589,6 +1600,7 @@ export function RecipeDetailSheet({
                                 item.key === row.key ? { ...item, ...patch } : item
                               )
                             );
+                          const pack = ingredientPackageDraft(row);
                           return (
                             <div
                               key={row.key}
@@ -1653,6 +1665,86 @@ export function RecipeDetailSheet({
                                     'Keep amount fixed when portions change'
                                   )}
                                 </label>
+                                <label className="flex min-h-12 items-center gap-2">
+                                  <input
+                                    type="checkbox"
+                                    data-testid={`recipe-edit-package-enabled-${index}`}
+                                    disabled={isSavingRecipe}
+                                    checked={pack.enabled}
+                                    onChange={(event) =>
+                                      change({
+                                        packageEnabled: event.target.checked,
+                                        packageCountUnit: row.packageCountUnit || row.unit.trim(),
+                                      })
+                                    }
+                                  />
+                                  {t('recipes.packageDetails', 'Package details')}
+                                </label>
+                                {pack.enabled && (
+                                  <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] gap-2">
+                                    <label>
+                                      {t('recipes.packageCountUnit', 'Package label')}
+                                      <input
+                                        data-testid={`recipe-edit-package-count-unit-${index}`}
+                                        disabled={isSavingRecipe}
+                                        value={pack.countUnit}
+                                        onChange={(event) =>
+                                          change({ packageCountUnit: event.target.value })
+                                        }
+                                        className="min-h-12 w-full min-w-0 rounded-xl border border-charcoal/10 px-3"
+                                      />
+                                    </label>
+                                    <label>
+                                      {t('recipes.packageCapacityAmount', 'Amount in each package')}
+                                      <input
+                                        data-testid={`recipe-edit-package-capacity-${index}`}
+                                        disabled={isSavingRecipe}
+                                        value={pack.capacityAmount}
+                                        onChange={(event) =>
+                                          change({ packageCapacityAmount: event.target.value })
+                                        }
+                                        className="min-h-12 w-full min-w-0 rounded-xl border border-charcoal/10 px-3"
+                                      />
+                                    </label>
+                                    <label>
+                                      {t('recipes.packageCapacityUnit', 'Unit in each package')}
+                                      <input
+                                        data-testid={`recipe-edit-package-unit-${index}`}
+                                        disabled={isSavingRecipe}
+                                        value={pack.capacityUnit}
+                                        onChange={(event) =>
+                                          change({ packageCapacityUnit: event.target.value })
+                                        }
+                                        className="min-h-12 w-full min-w-0 rounded-xl border border-charcoal/10 px-3"
+                                      />
+                                    </label>
+                                    <label>
+                                      {t('recipes.packageBasis', 'Amount refers to')}
+                                      <select
+                                        data-testid={`recipe-edit-package-basis-${index}`}
+                                        disabled={isSavingRecipe}
+                                        value={pack.basis}
+                                        onChange={(event) =>
+                                          change({
+                                            packageBasis: event.target
+                                              .value as IngredientDraft['packageBasis'],
+                                          })
+                                        }
+                                        className="min-h-12 w-full min-w-0 rounded-xl border border-charcoal/10 px-3"
+                                      >
+                                        <option value="unspecified">
+                                          {t('recipes.packageBasisUnspecified', 'Not specified')}
+                                        </option>
+                                        <option value="net">
+                                          {t('recipes.packageBasisNet', 'Net amount')}
+                                        </option>
+                                        <option value="drained">
+                                          {t('recipes.packageBasisDrained', 'Drained amount')}
+                                        </option>
+                                      </select>
+                                    </label>
+                                  </div>
+                                )}
                               </details>
                               <button
                                 type="button"

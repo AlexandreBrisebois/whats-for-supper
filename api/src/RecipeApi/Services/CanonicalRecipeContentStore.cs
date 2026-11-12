@@ -157,7 +157,11 @@ public sealed partial class CanonicalRecipeContentStore(RecipeDbContext db, IClo
                     throw new ArgumentException("Shopping association changes require qualified mapping validation.");
                 if (old is null && row.Shopping.FoodId is not null)
                     throw new ArgumentException("New food mappings require qualified mapping validation.");
-                if (row.Unit?.DefinitionId is not null && row.Unit != old?.Unit || row.Package is not null && row.Package != old?.Package)
+                // Literal package facts need no registry. A declared definition
+                // may only retain its exact previously saved unit at that path.
+                if (row.Unit?.DefinitionId is not null && row.Unit != old?.Unit ||
+                    row.Package?.CountUnit.DefinitionId is not null && row.Package.CountUnit != old?.Package?.CountUnit ||
+                    row.Package?.Capacity.Unit.DefinitionId is not null && row.Package.Capacity.Unit != old?.Package?.Capacity.Unit)
                     throw new ArgumentException("New unit/package definitions require qualified definition validation.");
                 var savedId = old?.Id ?? newId();
                 if (row.ClientId is { } clientId) created.Add(clientId, savedId);
@@ -288,9 +292,14 @@ public sealed partial class CanonicalRecipeContentStore(RecipeDbContext db, IClo
         return sections;
     }
 
-    public static string Render(RecipeIngredientLineDto row) => string.Join(" ", new[] {
-        row.AmountText ?? Format(row.Amount), row.Unit?.Text, row.Description }.Where(x => x is not null));
-    private static string? Format(GroceryQuantity? value) => value is null ? null : value.Kind == "scalar" ? Scalar(value.Value!) : $"{Scalar(value.Min!)}–{Scalar(value.Max!)}";
+    public static string Render(RecipeIngredientLineDto row)
+    {
+        var text = string.Join(" ", new[] { row.AmountText ?? Format(row.Amount), row.Unit?.Text, row.Description }.Where(x => x is not null));
+        // Step projection requests only a measured quantity with an empty
+        // description. Its numeric source span must never acquire a capacity.
+        return string.IsNullOrEmpty(row.Description) ? text : DeclaredPackagePresentation.Append(text, row.Package);
+    }
+    internal static string? Format(GroceryQuantity? value) => value is null ? null : value.Kind == "scalar" ? Scalar(value.Value!) : $"{Scalar(value.Min!)}–{Scalar(value.Max!)}";
     private static string Scalar(GroceryRational value) => value.D == "1" ? value.N : $"{value.N}/{value.D}";
     private static string NewRevision() => Guid.NewGuid().ToString("N");
     private static void RequireOperation(Guid id) { if (id == Guid.Empty) throw new ArgumentException("Operation ID is required."); }

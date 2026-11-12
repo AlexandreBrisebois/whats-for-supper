@@ -36,12 +36,14 @@ public class GroceryRecomputeService(
         GroceryQuantity? ExactQuantity,
         string Member,
         string InputFingerprint,
-        GroceryContributor? Contributor);
+        GroceryContributor? Contributor,
+        RecipePackageDto? Package);
 
     private sealed record RecomputedGroup(
         GroceryLineItemDto Line,
         IReadOnlySet<string> LegacyNormalizedKeys,
         string BucketUnit,
+        RecipePackageDto? Package,
         GroceryDemandEvidence Evidence);
 
     // Maps GrocerySection enum values to the display strings used in GroceryLineItemDto.
@@ -82,7 +84,7 @@ public class GroceryRecomputeService(
         RecipeDbContext db, DateOnly monday, CancellationToken ct)
     {
         var inputs = await SupperProjectionInputs.ReadWeekAsync(db, monday, calendar.Capture(clock.UtcNow).Today, ct);
-        var supplyEntries = new List<(string DisplayName, double? Quantity, string? UnitText, Guid RecipeId, bool QuantityComplete, GroceryQuantity? ExactQuantity, string Member, string InputFingerprint, GroceryContributor? Contributor)>();
+        var supplyEntries = new List<(string DisplayName, double? Quantity, string? UnitText, Guid RecipeId, bool QuantityComplete, GroceryQuantity? ExactQuantity, string Member, string InputFingerprint, GroceryContributor? Contributor, RecipePackageDto? Package)>();
         foreach (var input in inputs)
         {
             var supplies = input.Lines.Select(line => (DisplayName: line.Name, line.Quantity, line.UnitText, RecipeId: input.Event.RecipeId!.Value,
@@ -104,7 +106,8 @@ public class GroceryRecomputeService(
                     line.GroceryRecordedNumberToken
                 }),
                 Contributor: line.SavedIngredientLineId is { } lineId && line.GroceryPurchaseIdentity is { } purchase
-                    ? new GroceryContributor(input.Event.Id, input.Event.RecipeId!.Value, lineId, purchase) : null));
+                    ? new GroceryContributor(input.Event.Id, input.Event.RecipeId!.Value, lineId, purchase) : null,
+                Package: line.GroceryPackage));
             supplyEntries.AddRange(supplies
                 .OrderBy(s => s.DisplayName, StringComparer.Ordinal)
                 .ThenBy(s => s.UnitText, StringComparer.Ordinal)
@@ -151,7 +154,7 @@ public class GroceryRecomputeService(
         // 4. Build intermediate items with section resolved.
         var intermediate = new List<IntermediateItem>();
 
-        foreach (var (displayName, quantity, unitText, recipeId, quantityComplete, exactQuantity, member, inputFingerprint, contributor) in supplyEntries)
+        foreach (var (displayName, quantity, unitText, recipeId, quantityComplete, exactQuantity, member, inputFingerprint, contributor, package) in supplyEntries)
         {
             var normalizedKey = IngredientNormalizer.Normalize(displayName);
             if (string.IsNullOrEmpty(normalizedKey))
@@ -177,10 +180,11 @@ public class GroceryRecomputeService(
                 section = SectionDisplayNames[grocerySection];
             }
 
-            intermediate.Add(new IntermediateItem(displayName, normalizedKey, legacyNormalizedKey, section, categoryMatchPriority, quantity, unitText, recipeId, quantityComplete, exactQuantity, member, inputFingerprint, contributor));
+            intermediate.Add(new IntermediateItem(displayName, normalizedKey, legacyNormalizedKey, section, categoryMatchPriority, quantity, unitText, recipeId, quantityComplete, exactQuantity, member, inputFingerprint, contributor, package));
         }
 
-        // 5. Group by (normalizedKey, canonicalUnit): sum quantities after unit conversion.
+        // 5. Group compatible counts by name/unit and exact declared purchase.
+        // Package capacity/count label/basis remain fixed, never a conversion.
         //    Entries with unknown units stay in their own bucket keyed by the raw unitText.
         var grouped = intermediate
             .OrderBy(item => item.NormalizedKey, StringComparer.Ordinal)
@@ -193,7 +197,7 @@ public class GroceryRecomputeService(
             .GroupBy(item =>
             {
                 var bucketUnit = GroceryUnit.Read(item.UnitText).Bucket;
-                return (item.NormalizedKey, BucketUnit: bucketUnit);
+                return (item.NormalizedKey, BucketUnit: bucketUnit, PackageKey: DeclaredPackagePresentation.Key(item.Package));
             })
             .Select(g =>
             {
@@ -231,7 +235,7 @@ public class GroceryRecomputeService(
 
                 return new RecomputedGroup(
                     new GroceryLineItemDto(
-                        DisplayName: first.NormalizedKey,
+                        DisplayName: DeclaredPackagePresentation.Append(first.NormalizedKey, first.Package),
                         NormalizedKey: first.NormalizedKey,
                         Section: section,
                         Quantity: totalQuantity,
@@ -241,6 +245,7 @@ public class GroceryRecomputeService(
                     { ExactQuantity = exactTotal },
                     g.Select(item => item.LegacyNormalizedKey).ToHashSet(StringComparer.Ordinal),
                     g.Key.BucketUnit,
+                    first.Package,
                     new GroceryDemandEvidence(GroceryDemandEvidence.Fingerprint(g.Select(item => item.InputFingerprint).Order(StringComparer.Ordinal)),
                         g.Select(item => item.Member).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray(),
                         g.All(item => item.Contributor is not null)
@@ -248,6 +253,7 @@ public class GroceryRecomputeService(
             })
             .OrderBy(group => group.Line.NormalizedKey, StringComparer.Ordinal)
             .ThenBy(group => group.BucketUnit, StringComparer.Ordinal)
+            .ThenBy(group => DeclaredPackagePresentation.Key(group.Package), StringComparer.Ordinal)
             .ThenBy(group => group.Line.DisplayName, StringComparer.Ordinal)
             .ToList();
 
@@ -274,7 +280,11 @@ public class GroceryRecomputeService(
         var baselines = GroceryCheckedDemand.Read(plan, logger);
         var previousEvidence = GroceryDemandEvidence.Read(plan, logger);
         var nextEvidence = new Dictionary<string, GroceryDemandEvidence>(StringComparer.Ordinal);
-        var identities = grouped.Select(group => JsonSerializer.Serialize(new { fallback = group.Line.NormalizedKey, bucket = group.BucketUnit })).ToArray();
+        // Keep the exact pre-package JSON bytes when no package is declared.
+        // A serialized null member would change existing acknowledgement identity.
+        var identities = grouped.Select(group => group.Package is null
+            ? JsonSerializer.Serialize(new { fallback = group.Line.NormalizedKey, bucket = group.BucketUnit })
+            : JsonSerializer.Serialize(new { fallback = group.Line.NormalizedKey, bucket = group.BucketUnit, package = group.Package })).ToArray();
         // Exact identity continues unless observed membership demonstrates a split
         // or merge. Legacy Members remain negative-only. A cross-bucket continuation
         // additionally needs exact saved contributor/purchase proof with unique edges.

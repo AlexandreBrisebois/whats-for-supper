@@ -2,6 +2,13 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { suites, live, selectSuite, validateInventory, inventory } = require('./e2e-suites.cjs');
 
+test('ordinary package editor belongs to recipes and its native peer remains separate', () => {
+  assert.ok(suites.recipes.includes('canonical-package'));
+  assert.ok(selectSuite('recipes', inventory()).includes('**/canonical-package.spec.ts'));
+  assert.ok(live.includes('canonical-package-live'));
+  assert.ok(!selectSuite('recipes', inventory()).includes('**/canonical-package-live.spec.ts'));
+});
+
 test('retirement coverage belongs to household without removed producer qualifications', () => {
   assert.ok(suites.household.includes('telemetry-retirement'));
   for (const name of ['telemetry-opening', 'telemetry-navigation', 'telemetry-errors']) {

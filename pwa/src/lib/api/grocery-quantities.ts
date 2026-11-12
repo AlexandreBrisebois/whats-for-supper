@@ -11,7 +11,7 @@ function readRecord(value: unknown): Record<string, unknown> | null {
   return value != null && typeof value === 'object' ? (value as Record<string, unknown>) : null;
 }
 
-function normalizeGroceryQuantity(value: unknown): GroceryScalar | GroceryRange | null {
+export function normalizeGroceryQuantity(value: unknown): GroceryScalar | GroceryRange | null {
   const source = readRecord(value);
   if (!source) return null;
   // Kiota may select the nullable union's marker first and retain the real

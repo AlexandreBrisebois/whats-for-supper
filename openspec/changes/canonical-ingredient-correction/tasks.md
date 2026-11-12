@@ -392,3 +392,34 @@ selective repair superseded and unimplemented. Preserve all prior provider/UI/
 public viewport limitations and failure histories. No main-spec sync/archive,
 resets/reseeds or production. Stop after this one accepted slice and one unlaunched
 bounded successor prompt.
+
+
+## Coordinated explicit package input checkpoint — 2026-11-12 UTC
+
+Current release policy at the top of this file supersedes earlier single-slice
+stopping/push boundaries prospectively. Selected tasks are 1.1–1.3, with C07/C14/C47
+primary and the applicable existing quantity/unknown-basis preservation cases.
+The committed accepted baseline is per-item candidate `ad32726`; package work
+is still uncommitted and has not been deployed at this checkpoint.
+
+The ordinary literal package inlet, fixed-capacity presentation, conservative
+purchase grouping and semantic-version fences are implemented in the isolated
+release checkout. Focused backend union: 143 passed, zero skips. Actual PostgreSQL
+package union: eight passed, zero skips, runner `0e4ab4b45efc4623968e1dd0a5242d89`.
+Earlier admission, display/grouping and semantic-refresh reds remain distinct;
+fixture-only and compile-only failures are retained separately. Evidence lives
+under `.task/dependable-portions-coordinator/a-structured/`,
+`b-package-admission/` and `a-structured-prep/`. These paths are operational evidence,
+not replacement task authority.
+
+`LiveBrowser_CanonicalDeclaredPackages` supplies two fresh EN/FR human-Save
+fixtures through the real generated client/API/PostgreSQL and current consumers.
+Its source and CI owner/never-skip guard are implemented; native and production
+browser execution, prepared final verification, local commit and exact-candidate
+data-preserving DV acceptance remain outstanding here. Hosted acceptance stays
+pending the final consolidated campaign. All aggregate checkboxes remain open.
+
+Retain the separate non-package exact public scalar/range display reconciliation,
+later intake channels, protected reimport, current full recovery, client fencing,
+selected library conversion and final release gates. Bilingual/Similar remain
+deferred, selective repair superseded and garlic-placeholder work excluded.

@@ -312,6 +312,91 @@ test('original correction, refresh recovery and concurrent grocery checks use th
           await amount.press('Tab');
           await expect(unit).toBeFocused();
           await editor.getByTestId('recipe-edit-ingredient-0').scrollIntoViewIfNeeded();
+          const packageCheckbox = editor.getByTestId('recipe-edit-package-enabled-0');
+          const ingredientOptions = editor.locator('details').filter({ has: packageCheckbox });
+          if (!(await ingredientOptions.evaluate((node) => (node as HTMLDetailsElement).open)))
+            await ingredientOptions.locator('summary').click();
+          await expect(packageCheckbox).toBeVisible();
+          await expect(packageCheckbox).not.toBeChecked();
+          const packageLabel = packageCheckbox.locator('..');
+          await expect(packageLabel).toHaveJSProperty('tagName', 'LABEL');
+          const clickPackageLabelOutsideGlyph = async () => {
+            await packageLabel.scrollIntoViewIfNeeded();
+            await expect(packageLabel).toBeVisible();
+            const target = await packageLabel.evaluate((node) => {
+              const label = node as HTMLLabelElement;
+              const checkbox = label.querySelector<HTMLInputElement>(
+                'input[data-testid="recipe-edit-package-enabled-0"]'
+              )!;
+              const bounds = label.getBoundingClientRect();
+              const glyph = checkbox.getBoundingClientRect();
+              const x = Math.min(bounds.right, window.innerWidth) - 8;
+              const y = (Math.max(bounds.top, 0) + Math.min(bounds.bottom, window.innerHeight)) / 2;
+              const hit = document.elementFromPoint(x, y);
+              return {
+                associated:
+                  label.control === checkbox && [...(checkbox.labels ?? [])].includes(label),
+                width: bounds.width,
+                height: bounds.height,
+                left: bounds.left,
+                right: bounds.right,
+                viewportWidth: window.innerWidth,
+                x,
+                y,
+                pointInsideLabel:
+                  x > bounds.left && x < bounds.right && y > bounds.top && y < bounds.bottom,
+                outsideGlyph:
+                  x < glyph.left || x > glyph.right || y < glyph.top || y > glyph.bottom,
+                hitsLabel: hit !== null && label.contains(hit),
+              };
+            });
+            expect(
+              target.associated,
+              `${locale}/${width}/${scale} checkbox label association`
+            ).toBe(true);
+            expect(target.width).toBeGreaterThanOrEqual(48);
+            expect(target.height).toBeGreaterThanOrEqual(48);
+            expect(target.left).toBeGreaterThanOrEqual(0);
+            expect(target.right).toBeLessThanOrEqual(target.viewportWidth);
+            expect(target.pointInsideLabel).toBe(true);
+            expect(target.outsideGlyph).toBe(true);
+            expect(target.hitsLabel).toBe(true);
+            await editor.mouse.click(target.x, target.y);
+          };
+          const readEditorFields = () =>
+            editor.evaluate((recipeId) => {
+              const bytes = sessionStorage.getItem(`wfs.recipe-editor-draft.${recipeId}`);
+              return bytes ? JSON.parse(bytes).fields : null;
+            }, id);
+          await expect.poll(readEditorFields).not.toBeNull();
+          const originalEditorFields = await readEditorFields();
+          const originalSaveDisabled = await editor.getByTestId('recipe-save-edits').isDisabled();
+          const writesBeforePackageTarget = editorWrites.length;
+          await clickPackageLabelOutsideGlyph();
+          await expect(packageCheckbox).toBeChecked();
+          await clickPackageLabelOutsideGlyph();
+          await expect(packageCheckbox).not.toBeChecked();
+          expect(editorWrites).toHaveLength(writesBeforePackageTarget);
+          await ingredientOptions.screenshot({
+            path: test.info().outputPath(`package-target-${locale}-${width}-${scale}x.png`),
+          });
+          // Enabling copies the count label from the row unit. Cancel/reopen restores every original control,
+          // including hidden values, without saving the temporary package declaration or carrying a dirty draft.
+          await editor.getByTestId('recipe-cancel-edits').click();
+          expect(await readEditorFields()).toBeNull();
+          expect(editorWrites).toHaveLength(writesBeforePackageTarget);
+          await editor.getByTestId('action-gear-menu').click();
+          await editor.getByTestId('action-edit-recipe').click();
+          await expect.poll(readEditorFields).toEqual(originalEditorFields);
+          await expect(amount).toHaveValue('2');
+          await expect(unit).toHaveValue('cup');
+          expect(await editor.getByTestId('recipe-save-edits').isDisabled()).toBe(
+            originalSaveDisabled
+          );
+          await expect(packageCheckbox).not.toBeChecked();
+          if (!(await ingredientOptions.evaluate((node) => (node as HTMLDetailsElement).open)))
+            await ingredientOptions.locator('summary').click();
+          await expect(packageCheckbox).toBeVisible();
           const geometry = await editor.getByTestId('recipe-detail-sheet').evaluate((panel) => ({
             panel: panel.scrollWidth <= panel.clientWidth,
             document: document.documentElement.scrollWidth <= window.innerWidth,
@@ -345,7 +430,11 @@ test('original correction, refresh recovery and concurrent grocery checks use th
               ),
             ]
               .map((input) => {
-                const bounds = input.getBoundingClientRect();
+                const target =
+                  input instanceof HTMLInputElement && input.type === 'checkbox'
+                    ? (input.labels?.[0] ?? input)
+                    : input;
+                const bounds = target.getBoundingClientRect();
                 return {
                   id: input.getAttribute('data-testid'),
                   width: bounds.width,
@@ -377,6 +466,8 @@ test('original correction, refresh recovery and concurrent grocery checks use th
           await editor.getByTestId('recipe-save-edits').press('Tab');
           await expect(editor.getByTestId('recipe-cancel-edits')).toBeFocused();
           await editor.getByTestId('recipe-cancel-edits').click();
+          expect(await readEditorFields()).toBeNull();
+          expect(editorWrites).toHaveLength(writesBeforePackageTarget);
         }
     }
     // Retained incomplete imports use the same flag and editor, with an explanatory comment

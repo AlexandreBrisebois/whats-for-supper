@@ -13,8 +13,15 @@ internal static class SupperProjectionInputs
 {
     internal sealed record Occurrence(CalendarEvent Event, IReadOnlyList<IngredientProjectionLineDto> Lines, string Version, int? Basis, int? Target);
 
-    private static string IngredientVersion(Guid recipeId, int? basis, int? target, IReadOnlyList<IngredientProjectionLineDto> lines) =>
-        Hash(new { RecipeId = recipeId, Basis = basis, Target = target, Lines = lines, GroceryOperands = lines.Select(line => line.GroceryObservation) });
+    private static string IngredientVersion(Guid recipeId, int? basis, int? target, IReadOnlyList<IngredientProjectionLineDto> lines)
+    {
+        // Preserve the original semantic shape independently of derived presentation fields.
+        var stableLines = lines.Select(line => new { line.OriginalText, line.Name, line.Quantity, line.UnitText, line.Status, line.Issues });
+        var groceryOperands = lines.Select(line => line.GroceryObservation);
+        return lines.Any(line => line.GroceryPackage is not null)
+            ? Hash(new { RecipeId = recipeId, Basis = basis, Target = target, Lines = stableLines, GroceryOperands = groceryOperands, PackageOperands = lines.Select(line => line.GroceryPackage) })
+            : Hash(new { RecipeId = recipeId, Basis = basis, Target = target, Lines = stableLines, GroceryOperands = groceryOperands });
+    }
 
     internal static bool UsesDatedPortions(CalendarEvent occurrence) => occurrence.MealSlot == 0 && occurrence.Status != CalendarEventStatus.Skipped;
 

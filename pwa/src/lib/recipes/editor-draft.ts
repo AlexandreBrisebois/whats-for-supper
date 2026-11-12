@@ -1,6 +1,11 @@
 import type { Recipe } from '@/lib/api/recipes';
 import type { UpdateRecipeDto_mealTypes } from '@/lib/api/generated/models';
-import { ingredientDraft, type IngredientDraft } from './ingredient-draft';
+import { normalizeGroceryQuantity } from '@/lib/api/grocery-quantities';
+import {
+  ingredientDraft,
+  withIngredientPackageDraft,
+  type IngredientDraft,
+} from './ingredient-draft';
 import { originalInstructions, restoreDeletedInstructionIds } from './instruction-draft';
 
 export interface EditorFields {
@@ -45,8 +50,34 @@ export const editorFields: EditorField[] = [
 ];
 export const editorDraftKey = (id: string) => `wfs.recipe-editor-draft.${id}`;
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+function comparisonDraft(row: IngredientDraft): IngredientDraft {
+  const pack = row.source.packageEscaped;
+  // Retained SDK representations and current reads can encode the same exact
+  // operands differently. Compare decoded facts without rewriting stored drafts.
+  return withIngredientPackageDraft({
+    ...row,
+    source: {
+      ...row.source,
+      amount: normalizeGroceryQuantity(row.source.amount) ?? row.source.amount,
+      packageEscaped: pack?.capacity
+        ? {
+            ...pack,
+            capacity: {
+              ...pack.capacity,
+              amount: normalizeGroceryQuantity(pack.capacity.amount) ?? pack.capacity.amount,
+            },
+          }
+        : pack,
+    },
+  });
+}
 export const editorBaselineMatches = (a: EditorBaseline, b: EditorBaseline) =>
-  a.revision === b.revision && a.canonical === b.canonical && same(a.fields, b.fields);
+  a.revision === b.revision &&
+  a.canonical === b.canonical &&
+  same(
+    { ...a.fields, canonicalDrafts: a.fields.canonicalDrafts.map(comparisonDraft) },
+    { ...b.fields, canonicalDrafts: b.fields.canonicalDrafts.map(comparisonDraft) }
+  );
 
 export function editorBaseline(
   recipe: Recipe,
@@ -71,7 +102,7 @@ export function editorBaseline(
 function value(fields: EditorFields, field: EditorField, canonical: boolean) {
   return field === 'ingredients'
     ? canonical
-      ? fields.canonicalDrafts
+      ? fields.canonicalDrafts.map(comparisonDraft)
       : fields.ingredients
     : fields[field];
 }
@@ -111,6 +142,8 @@ export function restoreDeletedEditorRows(
   current: EditorBaseline
 ): EditorFields {
   const savedIds = new Set(current.fields.canonicalDrafts.map((row) => row.source.id));
+  const literalUnit = (unit: IngredientDraft['source']['unit']) =>
+    unit == null ? unit : { text: unit.text, definitionId: null };
   // Only called by explicit Apply. A restored deleted row is a new create,
   // never a claim that an absent saved identity continued.
   return {
@@ -127,7 +160,26 @@ export function restoreDeletedEditorRows(
       if (!row.source.id || savedIds.has(row.source.id)) return row;
       const { id: _id, ...facts } = row.source;
       const clientId = crypto.randomUUID();
-      return { ...row, key: clientId, source: { ...facts, clientId } };
+      return {
+        ...row,
+        key: clientId,
+        source: {
+          ...facts,
+          clientId,
+          unit: literalUnit(facts.unit),
+          packageEscaped:
+            facts.packageEscaped == null
+              ? facts.packageEscaped
+              : {
+                  ...facts.packageEscaped,
+                  countUnit: literalUnit(facts.packageEscaped.countUnit),
+                  capacity: {
+                    ...facts.packageEscaped.capacity,
+                    unit: literalUnit(facts.packageEscaped.capacity?.unit),
+                  },
+                },
+        },
+      };
     }),
   };
 }
@@ -136,6 +188,31 @@ const object = (value: unknown): value is Record<string, unknown> =>
   !!value && typeof value === 'object' && !Array.isArray(value);
 const strings = (value: unknown): value is string[] =>
   Array.isArray(value) && value.every((item) => typeof item === 'string');
+function validSourcePackage(value: unknown): boolean {
+  if (value == null) return true;
+  const unit = (item: unknown) =>
+    object(item) &&
+    typeof item.text === 'string' &&
+    (item.definitionId == null || typeof item.definitionId === 'string');
+  const rational = (item: unknown) =>
+    object(item) && typeof item.n === 'string' && typeof item.d === 'string';
+  if (
+    !object(value) ||
+    !unit(value.countUnit) ||
+    !object(value.capacity) ||
+    !unit(value.capacity.unit) ||
+    !object(value.capacity.amount) ||
+    !['net', 'drained', 'unspecified'].includes(value.basis as string)
+  )
+    return false;
+  const amount: unknown = normalizeGroceryQuantity(value.capacity.amount);
+  return (
+    object(amount) &&
+    (amount.kind === 'scalar'
+      ? rational(amount.value)
+      : amount.kind === 'range' && rational(amount.min) && rational(amount.max))
+  );
+}
 function validFields(value: unknown): value is EditorFields {
   return (
     object(value) &&
@@ -153,7 +230,14 @@ function validFields(value: unknown): value is EditorFields {
           (key) => typeof row[key] === 'string'
         ) &&
         typeof row.fixed === 'boolean' &&
+        (row.packageEnabled === undefined || typeof row.packageEnabled === 'boolean') &&
+        ['packageCountUnit', 'packageCapacityAmount', 'packageCapacityUnit'].every(
+          (key) => row[key] === undefined || typeof row[key] === 'string'
+        ) &&
+        (row.packageBasis === undefined ||
+          ['net', 'drained', 'unspecified'].includes(row.packageBasis as string)) &&
         object(row.source) &&
+        validSourcePackage(row.source.packageEscaped) &&
         (typeof row.source.id === 'string' || typeof row.source.clientId === 'string') &&
         (row.source.unit == null ||
           (object(row.source.unit) && typeof row.source.unit.text === 'string')) &&

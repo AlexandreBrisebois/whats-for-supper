@@ -1,5 +1,6 @@
 import { DateOnly, createUntypedNodeFromDiscriminatorValue } from '@microsoft/kiota-abstractions';
 import { JsonParseNode } from '@microsoft/kiota-serialization-json';
+import { normalizeGroceryQuantity } from './grocery-quantities';
 import { normalizeSupperPreparation } from './supper-servings';
 import { civilDate } from '@/lib/deployment-calendar';
 import { demoFetch } from './demo-session';
@@ -187,12 +188,23 @@ function mapToRecipe(dto: RecipeDto): Recipe {
     isDiscoverable: dto.isDiscoverable ?? false,
     contentSchemaVersion: dto.contentSchemaVersion,
     contentRevision: dto.contentRevision,
-    ingredientLines: dto.ingredientLines?.map((row) => ({
-      ...row,
-      amount: nullableFact(row.amount),
-      unit: nullableFact(row.unit),
-      packageEscaped: nullableFact(row.packageEscaped),
-    })),
+    ingredientLines: dto.ingredientLines?.map((row) => {
+      const pack = nullableFact(row.packageEscaped);
+      return {
+        ...row,
+        amount: normalizeGroceryQuantity(row.amount),
+        unit: nullableFact(row.unit),
+        packageEscaped: pack?.capacity
+          ? {
+              ...pack,
+              capacity: {
+                ...pack.capacity,
+                amount: normalizeGroceryQuantity(pack.capacity.amount),
+              },
+            }
+          : pack,
+      };
+    }),
     instructionSections: dto.instructionSections,
     ingredients: dto.ingredients ?? [],
     servings: dto.servings ?? null,
