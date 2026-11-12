@@ -698,6 +698,48 @@ it('reads an explicit preview through the generated client and rejects mismatche
 });
 const MOCK_PREVIEW_ID = '550e8400-e29b-41d4-a716-446655440111';
 
+it('retains exact server fraction and range display through the generated preview reader and wrapper', async () => {
+  const { JsonParseNode } = await import('@microsoft/kiota-serialization-json');
+  const { createIngredientPreviewFromDiscriminatorValue } = await import('./generated/models');
+  const { ingredientProjectionText } = await import('../ingredient-presentation');
+  const parsed = new JsonParseNode({
+    recipeId: MOCK_PREVIEW_ID,
+    baseServings: 3,
+    targetServings: 6,
+    factor: 2,
+    status: 'scaled',
+    version: 'exact-server-context',
+    lines: [
+      {
+        originalText: '⅓ cup saved flour wording',
+        displayText: '2/3 cup flour',
+        name: 'flour',
+        quantity: 2 / 3,
+        unitText: 'cup',
+        status: 'scaled',
+        issues: [],
+      },
+      {
+        originalText: '2–3 cloves garlic',
+        displayText: '4–6 cloves garlic',
+        name: 'garlic',
+        quantity: null,
+        unitText: 'cloves',
+        status: 'scaled',
+        issues: [],
+      },
+    ],
+  }).getObjectValue(createIngredientPreviewFromDiscriminatorValue)!;
+  recipesApiMocks.previewGet.mockResolvedValueOnce(parsed);
+  const result = await getIngredientPreview(MOCK_PREVIEW_ID, 6);
+  expect(result.lines).toHaveLength(2);
+  expect(result.lines!.map(ingredientProjectionText)).toEqual([
+    '2/3 cup flour',
+    '4–6 cloves garlic',
+  ]);
+  expect(result.lines![0].originalText).toBe('⅓ cup saved flour wording');
+});
+
 it('normalizes Kiota nullable package objects before an original ingredient is edited', async () => {
   const { JsonParseNode } = await import('@microsoft/kiota-serialization-json');
   const { createRecipeDtoFromDiscriminatorValue } = await import('./generated/models');

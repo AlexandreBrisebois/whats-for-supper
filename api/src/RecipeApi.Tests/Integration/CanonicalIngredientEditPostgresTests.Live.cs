@@ -53,15 +53,18 @@ public sealed partial class CanonicalIngredientEditPostgresTests
     [DeploymentCalendarPostgresTests.CalendarLiveFact]
     public Task LiveBrowser_CookingStepFixed() => RunCanonicalBrowser(mixed: false, allocation: "fixed");
 
-    internal async Task RunCanonicalBrowser(bool mixed, bool stepScaling = false, string? allocation = null, bool reportRefresh = false, bool instructionGuard = false, string? preparedContext = null, string? packageLocale = null)
+    internal async Task RunCanonicalBrowser(bool mixed, bool stepScaling = false, string? allocation = null, bool reportRefresh = false, bool instructionGuard = false, string? preparedContext = null, string? packageLocale = null, string? exactDisplayLocale = null)
     {
+        if (exactDisplayLocale is not null && (mixed || stepScaling || allocation is not null || reportRefresh
+            || instructionGuard || preparedContext is not null || packageLocale is not null || exactDisplayLocale is not ("en" or "fr")))
+            throw new ArgumentException("Exact-display locale must be en/fr and cannot combine with another native selector.", nameof(exactDisplayLocale));
         // The task runner prepares an immutable production-built source copy.
         // Uses the same canonical editor registration as ordinary application composition.
         var browserRoot = Environment.GetEnvironmentVariable("WFS_CANONICAL_BROWSER_ROOT")
             ?? throw new InvalidOperationException("Requires an isolated production-built PWA copy.");
         var evidenceRoot = Environment.GetEnvironmentVariable("WFS_CANONICAL_EVIDENCE")
             ?? throw new InvalidOperationException("Requires a unique evidence directory.");
-        var evidence = Path.Combine(evidenceRoot, packageLocale is not null ? Path.Combine("packages", packageLocale) : preparedContext is not null ? "prepared-" + preparedContext : allocation ?? (instructionGuard ? "instruction-guard" : reportRefresh ? "report-refresh" : stepScaling ? "cooking-step" : mixed ? "mixed" : "correction"));
+        var evidence = Path.Combine(evidenceRoot, exactDisplayLocale is not null ? Path.Combine("exact-display", exactDisplayLocale) : packageLocale is not null ? Path.Combine("packages", packageLocale) : preparedContext is not null ? "prepared-" + preparedContext : allocation ?? (instructionGuard ? "instruction-guard" : reportRefresh ? "report-refresh" : stepScaling ? "cooking-step" : mixed ? "mixed" : "correction"));
         Assert.True(File.Exists(Path.Combine(browserRoot, "pwa", ".next", "BUILD_ID")));
         Directory.CreateDirectory(evidence);
         var pwaPort = DeploymentCalendarPostgresTests.FreePort();
@@ -77,15 +80,15 @@ public sealed partial class CanonicalIngredientEditPostgresTests
             else if (allocation == "fraction") before = await SeedCookingFraction(factory, before);
             else if (allocation is not null) before = await SeedCookingAllocation(factory, before, allocation != "partial", exhaustive: allocation == "exhaustive");
             var savedBaseline = before;
-            string? packageMetadataBaseline = null;
-            string? packageSourceUrlBaseline = null;
-            if (packageLocale is not null)
+            string? sourceMetadataBaseline = null;
+            string? sourceUrlBaseline = null;
+            if (packageLocale is not null || exactDisplayLocale is not null)
             {
                 using var sourceScope = factory.Services.CreateScope();
                 var sourceRecipe = await sourceScope.ServiceProvider.GetRequiredService<RecipeDbContext>().Recipes.AsNoTracking()
                     .SingleAsync(recipe => recipe.Id == Id);
-                packageMetadataBaseline = sourceRecipe.RawMetadata;
-                packageSourceUrlBaseline = sourceRecipe.SourceUrl;
+                sourceMetadataBaseline = sourceRecipe.RawMetadata;
+                sourceUrlBaseline = sourceRecipe.SourceUrl;
             }
             if (mixed)
             {
@@ -145,6 +148,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests
                 start.Environment["HEARTH_SECRET"] = TestWebApplicationFactory.TestSecret;
                 start.Environment["CANONICAL_RECIPE_ID"] = Id.ToString();
                 if (packageLocale is not null) start.Environment["CANONICAL_PACKAGE_LOCALE"] = packageLocale;
+                if (exactDisplayLocale is not null) start.Environment["CANONICAL_EXACT_DISPLAY_LOCALE"] = exactDisplayLocale;
                 if (preparedContext is not null) start.Environment["COOKING_PREPARED_CONTEXT"] = preparedContext;
                 if (allocation is not null) start.Environment["COOKING_ALLOCATION"] = allocation;
                 start.Environment["CANONICAL_MEMBERS"] = $"{factory.DefaultFamilyMemberId},{secondMember}";
@@ -168,7 +172,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests
                     await Task.Delay(300);
                 }
                 Assert.True(ready, "Owned production PWA did not become ready.");
-                using var browser = Process.Start(Command("node_modules/@playwright/test/cli.js", "test", packageLocale is not null ? "canonical-package-live.spec.ts" : preparedContext is not null ? "prepared-supper-live.spec.ts" : allocation is not null ? "cooking-step-scaling-live.spec.ts" : stepScaling ? "cooking-step-scaling-live.spec.ts" : "canonical-ingredient-live.spec.ts", "--grep", packageLocale is not null ? $"declared package {packageLocale} " : preparedContext is not null ? "canonical prepared correction" : instructionGuard ? "undated instruction guard" : reportRefresh ? "report refresh" : allocation == "fixed" ? "standalone fixed use" : allocation == "perItem" ? "per-item dose" : allocation == "remainder" ? "remaining follows" : allocation == "fraction" ? "relative fraction" : allocation is not null ? "absolute allocation" : stepScaling ? "corrected whole use" : mixed ? "mixed incomplete baseline" : "original correction",
+                using var browser = Process.Start(Command("node_modules/@playwright/test/cli.js", "test", exactDisplayLocale is not null ? "canonical-exact-display-live.spec.ts" : packageLocale is not null ? "canonical-package-live.spec.ts" : preparedContext is not null ? "prepared-supper-live.spec.ts" : allocation is not null ? "cooking-step-scaling-live.spec.ts" : stepScaling ? "cooking-step-scaling-live.spec.ts" : "canonical-ingredient-live.spec.ts", "--grep", exactDisplayLocale is not null ? $"exact display {exactDisplayLocale} " : packageLocale is not null ? $"declared package {packageLocale} " : preparedContext is not null ? "canonical prepared correction" : instructionGuard ? "undated instruction guard" : reportRefresh ? "report refresh" : allocation == "fixed" ? "standalone fixed use" : allocation == "perItem" ? "per-item dose" : allocation == "remainder" ? "remaining follows" : allocation == "fraction" ? "relative fraction" : allocation is not null ? "absolute allocation" : stepScaling ? "corrected whole use" : mixed ? "mixed incomplete baseline" : "original correction",
                     "--workers=1", "--retries=0", "--reporter=line,json", "--output", Path.Combine(evidence, "browser-artifacts")))!;
                 var browserOut = Pump(browser.StandardOutput, Path.Combine(evidence, "browser.log"));
                 var browserError = Pump(browser.StandardError, Path.Combine(evidence, "browser-error.log"));
@@ -184,10 +188,18 @@ public sealed partial class CanonicalIngredientEditPostgresTests
                 var saved = await finalDb.Recipes.AsNoTracking().SingleAsync(x => x.Id == Id);
                 var content = CanonicalRecipeContentStore.Read(saved)!;
                 Assert.Equal(before.SourceRevision, content.SourceRevision);
+                if (exactDisplayLocale is not null)
+                {
+                    Assert.Equal(sourceMetadataBaseline, saved.RawMetadata);
+                    Assert.Equal(sourceUrlBaseline, saved.SourceUrl);
+                    using var projectionClient = factory.CreateAuthenticatedClient();
+                    await AssertCanonicalExactDisplayBrowserResult(finalDb, savedBaseline, saved, content, monday, evidence, projectionClient);
+                    return;
+                }
                 if (packageLocale is not null)
                 {
-                    Assert.Equal(packageMetadataBaseline, saved.RawMetadata);
-                    Assert.Equal(packageSourceUrlBaseline, saved.SourceUrl);
+                    Assert.Equal(sourceMetadataBaseline, saved.RawMetadata);
+                    Assert.Equal(sourceUrlBaseline, saved.SourceUrl);
                     await AssertCanonicalPackageBrowserResult(finalDb, savedBaseline, content, monday, evidence);
                     return;
                 }

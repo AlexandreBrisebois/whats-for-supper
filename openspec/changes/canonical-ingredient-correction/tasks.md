@@ -56,7 +56,7 @@ quantity/conversion tests. This is existing foundation plus remaining qualificat
 
 - [ ] 1.1 Reconcile the implemented contentRevision, exact scalar/range, nullable amount/unit, stable row/step and basis contracts against current OpenAPI/client/mocks and the corpus. Reuse `CanonicalIngredientConversionPostgresTests`, exact-quantity tests and fresh-URL exact-facts cases. Add intended-red cases only for demonstrated missing behavior: unknown basis, duplicate/missing associations, explicit null/empty, exact notation/overflow, units/packages and no phrase whitelist. Run the real database owner plus `task test:unit -- src/testing/mock-api.test.ts`; record actual case coverage rather than recreating existing shapes.
 - [ ] 1.2 Close only gaps demonstrated by 1.1 through the existing per-recipe canonical owner. Run its affected checks and `task gen:client:check` where applicable; prove exact facts through the generated-client/API/PostgreSQL path. Preserve deferred legacy readability, evidence and human clears. Do not add implicit ordinary-read conversion or routine old-backup adapters.
-- [ ] 1.3 Qualify an ordinary supported input path for structured unit/package facts required by C07/C47, including scaled package count with fixed capacity and no purchase rounding. Inspect current input validation first: reserved DTO fields or seeded records are not a producer. Define the smallest explicit evidence/definition inlet without guessing regional conversions, package sizes or food equivalence. Keep bilingual food catalogue adoption deferred.
+- [x] 1.3 Qualify an ordinary supported input path for structured unit/package facts required by C07/C47, including scaled package count with fixed capacity and no purchase rounding. Inspect current input validation first: reserved DTO fields or seeded records are not a producer. Define the smallest explicit evidence/definition inlet without guessing regional conversions, package sizes or food equivalence. Keep bilingual food catalogue adoption deferred.
 
 ## 2. Correct original facts and retain drafts
 
@@ -453,3 +453,46 @@ The bounded correction and added service/native/mock guards require fresh green
 database, native and final local gates, a new commit and images, and a new DV
 operation. Current implementation or historical local passes do not establish
 those results. Hosted acceptance and all aggregate checkboxes remain outstanding.
+
+### Accepted package milestone and exact-display successor — 2026-11-12
+
+The declared-package inlet and sibling-purchase correction are accepted locally
+and on DV at `6d98d673aba16b7cf6f7d7c23cf43fadef5def15`, integrated into
+`recipe-view-redesign`. This closes the bounded ordinary-input criterion in 1.3;
+it does not close the broader reconciliation or final release tasks. Local
+qualification includes 622 PostgreSQL cases with zero skips, a fresh 22-owner /
+37-case native campaign with zero required skips or retries, and the complete
+applicable formal gate. Evidence is retained under
+`.task/dependable-portions-coordinator/package-lineage-fix/`.
+
+Fresh exact-image DV operation `5d1635bb-cd62-48f5-bd5e-55ce6bd1c707`
+completed both ordinary URL/photo workflows, the two-capacity clear regression,
+all 24 confirmed campaign/cleanup intents, strict independent preservation of
+2,569 original rows and 1,534 original files, and exact review of 120 new rows /
+15 new files. Only the independently rehearsed 195 startup timestamp transitions
+were permitted. Public access, original provider/environment/ports and the
+original PostgreSQL/data mounts were restored and independently verified; seven
+owned disposable resources were removed. Backups, images and failed history are
+retained. The first metadata audit failure is preserved separately: a reviewed,
+pure-tested sibling audit decoded the journal's serialized metadata before exact
+object/source-URL comparison and passed all 145 live read-only checks. This is
+not a retry of recipe capture or a waiver of source preservation. Real-provider
+accuracy and semantic search remain unqualified; hosted acceptance awaits the
+final consolidated campaign.
+
+The selected successor under 1.1–1.2, affected 3.2 and 4.1 supplies exact
+non-package scalar/range presentation through the existing optional `displayText`
+field. It retains original notation and descriptions, scaled shopping labels,
+independent units, honest unknown/overflow fallback, package semantics and the
+semantic-version exclusion for derived presentation. Intended pure and actual
+authenticated Save/API/PostgreSQL reds demonstrated null public text despite exact
+internal operands; the separate compile-only attempt remains distinct. Focused
+green evidence covers 87 backend cases, 19 PostgreSQL cases and 83 frontend/mock
+cases with zero skips. The real database tracer separately verifies the exact
+compatible range subtotal with an unknown contributor and unchanged persisted
+state during reads. Its dated fixture changes are not ordinary UI evidence.
+Native EN/FR journeys and their strict CI receipt guard are implemented; complete
+native/integrated gates, a new commit and fresh exact-candidate DV acceptance are
+still required. Grocery hint precision is a separate existing policy; no complete
+C08/C09 or broader-task closure is implied by these focused results. Garlic
+placeholder work, bilingual catalogue adoption and Similar remain excluded.

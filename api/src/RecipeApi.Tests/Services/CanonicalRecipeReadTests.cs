@@ -6,7 +6,7 @@ using Xunit;
 
 namespace RecipeApi.Tests.Services;
 
-public sealed class CanonicalRecipeReadTests
+public sealed partial class CanonicalRecipeReadTests
 {
     [Fact]
     public void CompatibleInstructions_RenderCanonicalStepsWithSchemaOrgKeys()

@@ -444,9 +444,9 @@ export function canonicalIngredientLines(
   issues: string[];
 }> {
   return recipe.ingredientLines.map((row: any, index: number) => {
-    const exact = row.package ? packageProjectedQuantity(row, target, recipe.servings) : null;
-    const packageIssues =
-      row.package && row.amount != null && exact == null
+    const exact = packageProjectedQuantity(row, target, recipe.servings);
+    const projectionIssues =
+      row.amount != null && exact == null
         ? [
             target != null && row.scaling !== 'fixed' && !(recipe.servings > 0)
               ? 'missing_basis'
@@ -461,32 +461,24 @@ export function canonicalIngredientLines(
               ? canonicalIngredientText(row, amountText(exact, 1, 1))
               : canonicalIngredientText(row),
           }
-        : {}),
+        : target != null && exact != null
+          ? {
+              displayText: [amountText(exact, 1, 1), row.unit?.text, row.shopping.name]
+                .filter((value) => value != null)
+                .join(' '),
+            }
+          : {}),
       name: row.shopping.name,
       unitText: row.unit?.text ?? null,
-      quantity: row.package
-        ? exact?.kind === 'scalar'
-          ? Number(exact.value!.n) / Number(exact.value!.d)
-          : null
-        : row.amount?.kind === 'scalar' && (target == null || recipe.servings > 0)
-          ? (Number(row.amount.value.n) / Number(row.amount.value.d)) *
-            (row.scaling === 'fixed' || target == null ? 1 : target / recipe.servings)
-          : null,
-      status:
-        row.package && packageIssues.length
-          ? 'unresolved'
-          : row.amount == null
-            ? 'unquantified'
-            : target != null && !(recipe.servings > 0) && (!row.package || row.scaling !== 'fixed')
-              ? 'unresolved'
-              : target == null
-                ? 'original'
-                : 'scaled',
-      issues: row.package
-        ? packageIssues
-        : row.amount != null && target != null && !(recipe.servings > 0)
-          ? ['missing_basis']
-          : [],
+      quantity: exact?.kind === 'scalar' ? Number(exact.value!.n) / Number(exact.value!.d) : null,
+      status: projectionIssues.length
+        ? 'unresolved'
+        : row.amount == null
+          ? 'unquantified'
+          : target == null
+            ? 'original'
+            : 'scaled',
+      issues: projectionIssues,
     };
   });
 }

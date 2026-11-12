@@ -6160,7 +6160,7 @@ export type IngredientProjection_status =
   (typeof IngredientProjection_statusObject)[keyof typeof IngredientProjection_statusObject];
 export interface IngredientProjectionLine extends AdditionalDataHolder, Parsable {
   /**
-   * Optional server-derived package presentation for the captured portion context. Uses the exact projected ingredient count and unchanged declared capacity, count label and basis; no purchase rounding. If scaling is unresolved, retains the original count without inventing a factor. originalText always retains the original-basis meaning. Presentation is not an input to grocery identity or relationship discovery. Older and non-package lines may omit this field or return null.
+   * Optional server-derived ingredient presentation for the captured portion context. Canonical non-package lines with a reliable projected amount use exact scalar or range text, their independently declared unit and current shopping name; rounded compatibility quantity is not used to construct this text. Original, unquantified or unresolved non-package lines may omit this field or return null and retain originalText, without inventing an amount or factor. Package lines retain the exact projected ingredient count and unchanged declared capacity, count label and basis; no purchase rounding. If package scaling is unresolved, retains the original count without inventing a factor. originalText always retains original-basis wording and supported notation. Presentation is not an input to grocery identity, relationship discovery or semantic quantity versions. Older legacy lines may omit this field or return null.
    */
   displayText?: string | null;
   /**

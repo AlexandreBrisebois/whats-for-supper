@@ -504,6 +504,125 @@ class PipelineTests(unittest.TestCase):
         self.assertNotEqual(execute(extra=True), 0)
         self.assertNotEqual(execute(wrong_title=True), 0)
 
+    def test_exact_display_hosted_gate_runs_one_dedicated_native_owner(self):
+        job = yaml.safe_load((ROOT / '.github/workflows/validate.yml').read_text())['jobs']['cooking-step-live']
+        steps = job['steps']
+        runs = [step for step in steps if step.get('name') == 'Run required exact-display canonical journey']
+        self.assertEqual(len(runs), 1, 'Exact public display needs its dedicated actual native CI owner')
+        run = runs[0]
+        owner = 'RecipeApi.Tests.Integration.CanonicalIngredientEditPostgresTests.LiveBrowser_CanonicalExactDisplay'
+        self.assertIn('FullyQualifiedName=' + owner, run['run'])
+        self.assertNotIn('FullyQualifiedName~', run['run'])
+        self.assertIn('trx;LogFileName=native.trx', run['run'])
+        self.assertIn('--results-directory .task/grocery-live/exact-display-input', run['run'])
+        self.assertEqual(run['env']['WFS_CANONICAL_BROWSER_ROOT'], '${{ github.workspace }}')
+        self.assertEqual(run['env']['WFS_CANONICAL_EVIDENCE'], '${{ github.workspace }}/.task/grocery-live/exact-display-input')
+        self.assertNotIn('continue-on-error', run)
+        self.assertNotIn('continue-on-error', job)
+        guards = [step for step in steps if step.get('name') == 'Require exact-display canonical journey results']
+        self.assertEqual(len(guards), 1, 'Exact display native and both locale receipts need an explicit never-skip guard')
+        self.assertNotIn('continue-on-error', guards[0])
+        upload = next(step for step in steps if step.get('name') == 'Upload cooking live results')
+        self.assertEqual(upload['if'], 'always()')
+        self.assertIn('.task/grocery-live/', upload['with']['path'])
+        self.assertLess(steps.index(run), steps.index(guards[0]))
+        self.assertLess(steps.index(guards[0]), steps.index(upload))
+
+    def test_exact_display_hosted_guard_rejects_incomplete_or_nonpassing_actual_receipts(self):
+        import copy
+        import json
+        import subprocess
+        import tempfile
+        import xml.etree.ElementTree as ET
+        steps = yaml.safe_load((ROOT / '.github/workflows/validate.yml').read_text())['jobs']['cooking-step-live']['steps']
+        guards = [step for step in steps if step.get('name') == 'Require exact-display canonical journey results']
+        self.assertEqual(len(guards), 1, 'Missing actual exact-display guard is the intended preimplementation red')
+        guard = guards[0]['run']
+        owner = 'RecipeApi.Tests.Integration.CanonicalIngredientEditPostgresTests.LiveBrowser_CanonicalExactDisplay'
+        good_native = [(owner, 'Passed')]
+        good_reports = {locale: {'suites': [{'specs': [{
+            'title': f'exact display {locale} preserves original fractions and coherent dated refresh',
+            'tests': [{'status': 'expected', 'results': [{'status': 'passed', 'retry': 0}]}]
+        }]}]} for locale in ['en', 'fr']}
+        good_receipts = {locale: {'content': {}, 'rows': [], 'checks': {}, 'operations': 1} for locale in ['en', 'fr']}
+
+        def execute(native=None, reports=None, receipts=None, missing=None, malformed=None):
+            with tempfile.TemporaryDirectory() as directory:
+                root = Path(directory) / '.task/grocery-live/exact-display-input'
+                root.mkdir(parents=True)
+                if missing != 'native':
+                    tree = ET.Element('TestRun')
+                    results = ET.SubElement(tree, 'Results')
+                    for name, outcome in good_native if native is None else native:
+                        ET.SubElement(results, 'UnitTestResult', testName=name, outcome=outcome)
+                    ET.ElementTree(tree).write(root / 'native.trx')
+                for locale in ['en', 'fr']:
+                    path = root / 'exact-display' / locale
+                    path.mkdir(parents=True)
+                    if missing != locale + '-browser':
+                        report = (good_reports if reports is None else reports)[locale]
+                        (path / 'browser-results.json').write_text('{' if malformed == locale + '-browser' else json.dumps(report))
+                    if missing != locale + '-persisted':
+                        receipt = (good_receipts if receipts is None else receipts)[locale]
+                        (path / 'persisted-result.json').write_text('{' if malformed == locale + '-persisted' else json.dumps(receipt))
+                return subprocess.run(['bash', '-c', guard], cwd=directory, capture_output=True).returncode
+
+        self.assertEqual(execute(), 0, 'One passed native owner and both exact locale receipts must be admissible')
+        nested = copy.deepcopy(good_reports)
+        nested['fr']['suites'] = [{'suites': nested['fr']['suites']}]
+        self.assertEqual(execute(reports=nested), 0, 'Guard must inspect nested actual Playwright suites')
+        for label, native in [
+            ('missing-native', []), ('wrong-owner', [(owner + 'Other', 'Passed')]),
+            ('native-not-executed', [(owner, 'NotExecuted')]), ('native-failed', [(owner, 'Failed')]),
+            ('duplicate-native', good_native + good_native), ('extra-native-owner', good_native + [(owner + 'Other', 'Passed')]),
+        ]:
+            with self.subTest(fault=label):
+                self.assertNotEqual(execute(native=native), 0)
+        self.assertNotEqual(execute(missing='native'), 0)
+        for locale in ['en', 'fr']:
+            for kind in ['browser', 'persisted']:
+                with self.subTest(missing=locale + '-' + kind):
+                    self.assertNotEqual(execute(missing=locale + '-' + kind), 0)
+                with self.subTest(malformed=locale + '-' + kind):
+                    self.assertNotEqual(execute(malformed=locale + '-' + kind), 0)
+            for label in ['empty', 'wrong-title', 'extra', 'duplicate', 'not-executed', 'skipped', 'failed', 'retried', 'multiple-attempts', 'unexpected-status']:
+                reports = copy.deepcopy(good_reports)
+                specs = reports[locale]['suites'][0]['specs']
+                test = specs[0]['tests'][0]
+                if label == 'empty':
+                    specs.clear()
+                elif label == 'wrong-title':
+                    specs[0]['title'] = 'a different ingredient journey'
+                elif label in ['extra', 'duplicate']:
+                    specs.append(copy.deepcopy(specs[0]))
+                    if label == 'extra':
+                        specs[-1]['title'] = 'extra unrelated journey'
+                elif label == 'not-executed':
+                    test['results'] = []
+                elif label == 'skipped':
+                    test['status'] = 'skipped'
+                    test['results'][0]['status'] = 'skipped'
+                elif label == 'failed':
+                    test['status'] = 'unexpected'
+                    test['results'][0]['status'] = 'failed'
+                elif label == 'retried':
+                    test['results'][0]['retry'] = 1
+                elif label == 'multiple-attempts':
+                    test['results'] = [{'status': 'failed', 'retry': 0}, {'status': 'passed', 'retry': 1}]
+                else:
+                    test['status'] = 'unexpected'
+                with self.subTest(locale=locale, fault=label):
+                    self.assertNotEqual(execute(reports=reports), 0)
+            for key in ['content', 'rows', 'checks', 'operations']:
+                receipts = copy.deepcopy(good_receipts)
+                del receipts[locale][key]
+                with self.subTest(locale=locale, missing_persisted_key=key):
+                    self.assertNotEqual(execute(receipts=receipts), 0)
+            receipts = copy.deepcopy(good_receipts)
+            receipts[locale] = {}
+            with self.subTest(locale=locale, empty_persisted=True):
+                self.assertNotEqual(execute(receipts=receipts), 0)
+
     def test_e2e_has_four_suites_and_one_build(self):
         jobs = yaml.safe_load((ROOT / '.github/workflows/validate.yml').read_text())['jobs']
         self.assertIn('pwa-build', jobs)

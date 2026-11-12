@@ -75,13 +75,13 @@ public sealed class StructuredPackageProjectionTests
     }
 
     [Fact]
-    public void NonpackageProjectionKeepsOriginalRenderingAndOptionalDisplayAbsent()
+    public void NonpackageProjectionKeepsOriginalRenderingAndReturnsExactKnownCaption()
     {
         var (recipe, row) = Source(package: false);
         var line = Assert.Single(SupperIngredientProjection.Read(recipe, 8));
         Assert.Equal("2 cans tomatoes", CanonicalRecipeContentStore.Render(row));
         Assert.Equal("2 cans tomatoes", line.OriginalText);
-        Assert.Null(line.DisplayText);
+        Assert.Equal("4 cans tomatoes", line.DisplayText);
         Assert.Null(line.GroceryPackage);
     }
     [Fact]

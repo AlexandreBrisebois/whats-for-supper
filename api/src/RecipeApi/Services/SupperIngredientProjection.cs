@@ -97,7 +97,11 @@ public static class SupperIngredientProjection
                 }),
                 GroceryPackage = row.Package,
                 OriginalText = CanonicalRecipeContentStore.Render(row),
-                DisplayText = row.Package is null ? null : quantity is null ? CanonicalRecipeContentStore.Render(row)
+                DisplayText = row.Package is null
+                    ? target is not null && quantity is not null
+                        ? string.Join(" ", new[] { CanonicalRecipeContentStore.Format(quantity), row.Unit?.Text, row.Shopping.Name }.Where(x => x is not null))
+                        : null
+                    : quantity is null ? CanonicalRecipeContentStore.Render(row)
                     : CanonicalRecipeContentStore.Render(row with { Amount = quantity, AmountText = null }),
                 Name = row.Shopping.Name,
                 UnitText = row.Unit?.Text,
