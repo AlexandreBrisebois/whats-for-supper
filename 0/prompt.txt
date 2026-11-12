@@ -1,0 +1,98 @@
+review the openspec active changes. are they contradicting each other? agents have been progressively implemeting them and I feer that some specs may work against other specs. I need validation that there's no tension here
+
+---
+
+check outstanding requirements and scenrios against the code and help me understand what's left to be built. then identify if there are gaps that will prevent me from completing the work.
+
+---
+
+build me a prompt that updates teh specs to be honest. ask me questions 1 by 1. make a proposition that I need to accept. I want to get out of thies thrashing and complete this feature.
+
+start by giving me a short executive brief on what these changes have as a target. then work through the questions and I will steer you to what I really need. to build these specs we were inspired by cooklang and the way they manage portions and scale portions. along the way, we found a lot of things that required changes like bilingual shoping idenity.
+
+---
+
+yes.
+
+I want you to consolidare the specs, I want you to structure the work in a effective manner. organise it soe multiple agents can work in parallel to accelerate teh work. allow agents to work with each other and orchestrate. 
+
+build the baseline and we can layer from there. goal is to move from chaotic to structured and to start deliverying value quickly
+
+---
+
+the other agent completed it's work.
+
+---
+
+i accept
+
+---
+
+yes. this must also be true is a user updates ingredients or steps. recipes that are updated can be reevaluated by an AI task using a workflow if necessary.
+
+---
+
+yes
+
+---
+
+yes. and app front end, back ends and database are deployed as 1
+
+---
+
+yes, this concept exists in the demo loop
+
+---
+
+do you need to clean up older specs ?
+
+---
+
+provide me with a prompt that adds this cleanup to the work prompt given earlier
+
+---
+
+you didnt include 
+
+Use .agents/prompts/dependable-portions.md.
+Orchestrate and complete its first delivery increment using parallel agents.
+
+---
+
+every completed coordinated slice must be commited and deployed to dv, then provide me with the next prompt for me to launch the next slide.
+
+
+
+update this prompt :&#x20;
+
+
+```sql
+Use .agents/prompts/dependable-portions.md.
+Orchestrate and complete its first delivery increment using parallel agents.
+
+Include OpenSpec lifecycle cleanup in the coordinator’s work.
+
+Before assigning implementation:
+- Classify changes as active, deferred, superseded or completed.
+- Retire selective-ingredient-repair explicitly as superseded and unimplemented. Preserve its rationale and replacement links; do not mark its tasks completed or promote its requirements into main specs.
+- Separate bilingual-shopping-identity and similar-search-filter from the current delivery queue, preserving their requirements for later work.
+- Consolidate stale execution instructions and historical progress narratives into concise evidence references. Preserve accepted decisions, failures and limitations.
+- Update dependency links so each outcome has one authoritative task owner.
+
+During delivery:
+- Track implementation separately from verification and release readiness.
+- Preserve existing task IDs and acceptance scenarios; document mappings when reorganizing them.
+- Reuse implemented foundations. An unchecked aggregate task does not mean its implementation must be rebuilt.
+- Keep unfinished work visibly unfinished, including outstanding grocery and CI qualification.
+- The coordinator owns lifecycle edits; workers propose changes rather than independently rewriting shared specs or archiving changes.
+
+At the completion boundary:
+- Sync main specs and archive only changes whose full implementation and acceptance requirements are satisfied, using the repository’s OpenSpec workflows.
+- Do not archive an entire change merely because this first increment is complete.
+- Preserve superseded/deferred status without presenting retirement as successful implementation.
+- Leave unrelated archives and working-tree changes untouched.
+- Validate specs, links and scenario preservation, then run applicable scoped verification.
+- Report what was delivered, retired, deferred, consolidated, synchronized or archived, with exact evidence and remaining work.
+
+Perform only the initial cleanup necessary to establish clear ownership, then keep delivery moving. This adds scoped synchronization and archival authority to the earlier prompt; its other boundaries, including no deployment, production mutation, commit or push without separate authorization, remain unchanged.
+```

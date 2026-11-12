@@ -1,0 +1,71 @@
+{
+  "cli_version": "0.13.2",
+  "checkpoint_id": "01M770YFJEV3T9XXF6EB910M31",
+  "session_id": "01a1c7ed-55a0-79c2-b261-1773afc78db5",
+  "strategy": "manual-commit",
+  "created_at": "2026-11-12T04:41:08.946212Z",
+  "branch": "recipe-view-redesign",
+  "checkpoints_count": 11,
+  "save_step_count": 12,
+  "files_touched": [
+    ".github/workflows/validate.yml",
+    "Taskfile.yml",
+    "openspec/changes/bilingual-shopping-identity/design.md",
+    "openspec/changes/bilingual-shopping-identity/proposal.md",
+    "openspec/changes/bilingual-shopping-identity/tasks.md",
+    "openspec/changes/canonical-ingredient-correction/acceptance-corpus.md",
+    "openspec/changes/canonical-ingredient-correction/contracts.md",
+    "openspec/changes/canonical-ingredient-correction/design.md",
+    "openspec/changes/canonical-ingredient-correction/proposal.md",
+    "openspec/changes/canonical-ingredient-correction/review.md",
+    "openspec/changes/canonical-ingredient-correction/rollout.md",
+    "openspec/changes/canonical-ingredient-correction/specs/recipe-capture/spec.md",
+    "openspec/changes/canonical-ingredient-correction/specs/recipe-editing/spec.md",
+    "openspec/changes/canonical-ingredient-correction/tasks.md",
+    "openspec/changes/migrate-canonical-recipe-model/design.md",
+    "openspec/changes/migrate-canonical-recipe-model/proposal.md",
+    "openspec/changes/migrate-canonical-recipe-model/specs/data-backup-and-recovery/spec.md",
+    "openspec/changes/migrate-canonical-recipe-model/specs/grocery-shopping/spec.md",
+    "openspec/changes/migrate-canonical-recipe-model/tasks.md",
+    "openspec/changes/restore-dependable-grocery-interactions/proposal.md",
+    "openspec/changes/restore-local-ci-browser-parity/proposal.md",
+    "openspec/changes/scale-cooking-step-ingredients/design.md",
+    "openspec/changes/scale-cooking-step-ingredients/proposal.md",
+    "openspec/changes/scale-cooking-step-ingredients/specs/cooking/spec.md",
+    "openspec/changes/scale-cooking-step-ingredients/specs/recipe-editing/spec.md",
+    "openspec/changes/scale-cooking-step-ingredients/tasks.md",
+    "openspec/changes/selective-ingredient-repair/proposal.md",
+    "openspec/changes/similar-search-filter/design.md",
+    "openspec/changes/similar-search-filter/proposal.md",
+    "openspec/changes/similar-search-filter/tasks.md"
+  ],
+  "agent": "Codex",
+  "model": "gpt-6-astra",
+  "turn_id": "3c3a852fd154",
+  "compact_transcript_start": 0,
+  "token_usage": {
+    "input_tokens": 202529,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 10674304,
+    "output_tokens": 31415,
+    "api_call_count": 65,
+    "subagent_tokens_complete": false
+  },
+  "redaction": {
+    "replacements": 36,
+    "layers": {
+      "betterleaks": 0,
+      "connection_string": 0,
+      "credential_key": 0,
+      "credential_value": 10,
+      "credentialed_uri": 0,
+      "entropy": 26,
+      "key_context": 0,
+      "provider_token": 0,
+      "shell_stdin": 0
+    }
+  },
+  "session_metrics": {
+    "turn_count": 14
+  }
+}
