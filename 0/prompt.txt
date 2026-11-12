@@ -1,0 +1,1 @@
+i updated openspec to 1.17.0, update the openspec references in the harness and automations so it doesn't break

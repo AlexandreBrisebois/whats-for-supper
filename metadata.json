@@ -1,0 +1,69 @@
+{
+  "cli_version": "0.13.2",
+  "checkpoint_id": "01M770YHJKWKHQ70K6BZY105EF",
+  "strategy": "manual-commit",
+  "branch": "recipe-view-redesign",
+  "checkpoints_count": 1,
+  "files_touched": [
+    ".github/workflows/validate.yml",
+    "Taskfile.yml",
+    "openspec/changes/bilingual-shopping-identity/design.md",
+    "openspec/changes/bilingual-shopping-identity/proposal.md",
+    "openspec/changes/bilingual-shopping-identity/tasks.md",
+    "openspec/changes/canonical-ingredient-correction/acceptance-corpus.md",
+    "openspec/changes/canonical-ingredient-correction/contracts.md",
+    "openspec/changes/canonical-ingredient-correction/design.md",
+    "openspec/changes/canonical-ingredient-correction/proposal.md",
+    "openspec/changes/canonical-ingredient-correction/review.md",
+    "openspec/changes/canonical-ingredient-correction/rollout.md",
+    "openspec/changes/canonical-ingredient-correction/specs/recipe-capture/spec.md",
+    "openspec/changes/canonical-ingredient-correction/specs/recipe-editing/spec.md",
+    "openspec/changes/canonical-ingredient-correction/tasks.md",
+    "openspec/changes/migrate-canonical-recipe-model/design.md",
+    "openspec/changes/migrate-canonical-recipe-model/proposal.md",
+    "openspec/changes/migrate-canonical-recipe-model/specs/data-backup-and-recovery/spec.md",
+    "openspec/changes/migrate-canonical-recipe-model/specs/grocery-shopping/spec.md",
+    "openspec/changes/migrate-canonical-recipe-model/tasks.md",
+    "openspec/changes/restore-dependable-grocery-interactions/proposal.md",
+    "openspec/changes/restore-local-ci-browser-parity/proposal.md",
+    "openspec/changes/scale-cooking-step-ingredients/design.md",
+    "openspec/changes/scale-cooking-step-ingredients/proposal.md",
+    "openspec/changes/scale-cooking-step-ingredients/specs/cooking/spec.md",
+    "openspec/changes/scale-cooking-step-ingredients/specs/recipe-editing/spec.md",
+    "openspec/changes/scale-cooking-step-ingredients/tasks.md",
+    "openspec/changes/selective-ingredient-repair/proposal.md",
+    "openspec/changes/similar-search-filter/design.md",
+    "openspec/changes/similar-search-filter/proposal.md",
+    "openspec/changes/similar-search-filter/tasks.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 40889,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 468736,
+    "output_tokens": 1506,
+    "api_call_count": 11
+  },
+  "redaction": {
+    "replacements": 2,
+    "layers": {
+      "betterleaks": 0,
+      "connection_string": 0,
+      "credential_key": 0,
+      "credential_value": 0,
+      "credentialed_uri": 0,
+      "entropy": 2,
+      "key_context": 0,
+      "provider_token": 0,
+      "shell_stdin": 0
+    }
+  }
+}
