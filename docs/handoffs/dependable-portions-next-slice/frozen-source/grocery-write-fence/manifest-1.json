@@ -1,0 +1,22 @@
+{
+  "api/src/RecipeApi/Dto/GroceryMutationDto.cs": {
+    "beforeSha256": "d27715b244675446c3e7146de5b90b958a2c4dccba0eb3535afdb90fa27979eb",
+    "afterSha256": "6109d16e0b07cc21aa8e9d8ec7ac094d6c055e7d6e6cd34c5bc90fb33ce8a81f"
+  },
+  "api/src/RecipeApi/Services/ScheduleService.GroceryRows.cs": {
+    "beforeSha256": "cb28aeefe0efb93ad7421f34681566b6abe9cc2cea7bd5bd6756b2a1f5a5e9e1",
+    "afterSha256": "d9739c5a3e9dba773be74eec657c47743a5d38f8788521d122c2dd22bd7fb266"
+  },
+  "api/src/RecipeApi/Services/ScheduleService.cs": {
+    "beforeSha256": "4a4304f3431cf939e3ef0c0e155f69314d2a7a8a49246a9b91a180a15c16ff6d",
+    "afterSha256": "47c472bd0e537805829278c8ad3082bb48c298e7b709a0208ac2237cdbc02322"
+  },
+  "api/src/RecipeApi.Tests/Integration/GroceryMutationEpochTests.cs": {
+    "beforeSha256": null,
+    "afterSha256": "17c43186c862286559cd9221880e0afb789a94b881f94c690c05b36d71452a29"
+  },
+  "api/src/RecipeApi.Tests/Services/GroceryRecomputeServiceTests.Bilingual.cs": {
+    "beforeSha256": "f349369ff3ded531b0ec616183c94762599916c06dd1bb06efca7ff97b2bca29",
+    "afterSha256": "09474db52dd8a7016d427210e905a9b0646104afc0454c5cf2803383cbe6fe58"
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "api/src/RecipeApi/Services/RecipeFilePublicationStore.UrlRepair.cs": {
+    "beforeSha256": null,
+    "afterSha256": "c85abe2d9ec790e99ddccf013207060b8723c922e9d9097476fbe21382eb5d0a"
+  },
+  "api/src/RecipeApi/Services/Agents/WebAcquisitionAgent.cs": {
+    "beforeSha256": "0a9fb2d9dc4bd8ccbff8773065f6c13de90cadc8e4618c779e42aac2a0e6bf66",
+    "afterSha256": "326664bebc8414808d30869a66e54a193bd361254503739517b913e624827820"
+  },
+  "api/src/RecipeApi/Services/FoodMappingQualification.cs": {
+    "beforeSha256": "2437ae136d5fb30d0cc53f873c71da77cd838f6552f51b270861cfa6ab5eecbf",
+    "afterSha256": "bbe18a2cce1fea1336cf40b233566dc35c72bbd1052c4a47d244e38289ba2141"
+  },
+  "api/src/RecipeApi/Services/Agents/RecipeAgent.cs": {
+    "beforeSha256": "52a8fa35a3ad567f8aa8f2423851772e2cb0e5b2d5f76a20ddf004e10f92fc05",
+    "afterSha256": "46b17606107b7042b99eeeb963e94e1b80fd54f244d9b5954484e9245c9f0ce8"
+  },
+  "api/src/RecipeApi/Services/RecipeFilePublicationStore.Workflow.cs": {
+    "beforeSha256": "afaf97d96017458d0893508b56e8651d0fabe7ce0f55e3f562648f6f59ab7534",
+    "afterSha256": "fdc3b1dba5fb6d14451ba5c83a100e8d1237fea668c44a2eca1eb36a2a173bb3"
+  },
+  "api/src/RecipeApi/Services/RecipeFilePublicationStore.Vocabulary.cs": {
+    "beforeSha256": "ef229ac5dda4fe4728e35f0effe5871905ea32a40b08fc1e99e4c59ce55ce180",
+    "afterSha256": "4a9d6cc271c0629ddb74b29dd10134ca81aea318374b6c9f45a04250d1fea0ae"
+  },
+  "api/src/RecipeApi/Services/RecipeFilePublicationStore.cs": {
+    "beforeSha256": "7db97a391ea5a4aa969de44f34f39e20a5b266d9af16840ea82b2b35ceeecc01",
+    "afterSha256": "badeb404133ae5139e78f2af03336cd4ba5b79f16c28fa9a82aca15f4a3db7bc"
+  },
+  "api/src/RecipeApi/Services/RecipeFilePublicationStore.Categorization.cs": {
+    "beforeSha256": "bb2d95bd3dbb639a72160f93ffb5128370cef28c4e457d7018f15975309faae7",
+    "afterSha256": "ca1c623bc11fc7b7e1965ed3ca713522830e3f956e235dd40df918e2ba8106b9"
+  },
+  "api/src/RecipeApi.Tests/Services/RecipeProtectedUrlReimportTests.cs": {
+    "beforeSha256": null,
+    "afterSha256": "653dbf3e86cec63645c140f7d0dd3d2c357d906bc6e2de3f32a61dd014e87d16"
+  },
+  "api/src/RecipeApi.Tests/Integration/RecipeProtectedUrlReimportPostgresTests.cs": {
+    "beforeSha256": null,
+    "afterSha256": "ae047c36a9b176f159931198ea8b9b6f30a1328d7582e74693464e3e1ff247ae"
+  }
+}

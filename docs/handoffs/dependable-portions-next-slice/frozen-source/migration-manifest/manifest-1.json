@@ -1,0 +1,18 @@
+{
+  "api/src/RecipeApi/Services/CanonicalRecipeMigrationManifest.cs": {
+    "beforeSha256": null,
+    "afterSha256": "84756e597ff8d7a6ffcd8734413b66cfb0c1169f42965476dba1951b98e5e18b"
+  },
+  "api/src/RecipeApi/Services/CanonicalRecipeContentStore.MigrationInventory.cs": {
+    "beforeSha256": null,
+    "afterSha256": "801de1d153d385e5af124185e1ee788e33280d4488bf96c2c272851d80a9190b"
+  },
+  "api/src/RecipeApi.Tests/Services/CanonicalRecipeMigrationManifestTests.cs": {
+    "beforeSha256": null,
+    "afterSha256": "72e61aed01d3599e6e298a4661bfe426b6ea6cc2db0410832d332a1be06c1f6a"
+  },
+  "api/src/RecipeApi.Tests/Integration/CanonicalRecipeMigrationPostgresTests.cs": {
+    "beforeSha256": null,
+    "afterSha256": "0f45123710e7be5e3ddc368ce0d4ead5d497ccae569ea170b12080f42715f4b1"
+  }
+}

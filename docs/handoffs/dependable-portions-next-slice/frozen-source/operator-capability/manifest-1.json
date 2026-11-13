@@ -1,0 +1,26 @@
+{
+  "api/src/RecipeApi/Services/RecoveryBoundary.cs": {
+    "before": "c2bc943c4cd2c1344988cf3070063a23e73b0efeb26b246d257c18b33b8cb7b5",
+    "after": "f6eb0354f612f458690c538ae4e67a3f5ea6b5b9c5b444fb4e0148bf4696d53e"
+  },
+  "api/src/RecipeApi/Services/RecoveryBoundary.Maintenance.cs": {
+    "before": null,
+    "after": "5e3ad9ed6d3b9f867bc1c159b95ef46bcd9e5c2821d288865e5346b6626147f8"
+  },
+  "api/src/RecipeApi/Services/MaintenanceCommandLifecycle.cs": {
+    "before": "7d06d195199ba7b3eef5d0dba80a0c6170a737633f3b118c0c95451d01a888ad",
+    "after": "d5d085e77319dce430ebcdd939099dcd81ef34cfd4123e2370c45a99c4c848d4"
+  },
+  "api/src/RecipeApi/Services/MaintenanceCommandLifecycle.MigrationReceipt.cs": {
+    "before": null,
+    "after": "b9f4f8db15b90a60b9f7c3f9844bf40dda1d128cfcc4924fcd205317b3e27501"
+  },
+  "api/src/RecipeApi/Services/MaintenanceCommandObservation.cs": {
+    "before": null,
+    "after": "0b97bb515fc8b13971adfa440b0ed4b3146bda476eb491b3c2c517f7ffc26b89"
+  },
+  "api/src/RecipeApi.Tests/Integration/OnlineRecoveryPostgresTests.MaintenanceOperator.cs": {
+    "before": null,
+    "after": "4cc56e9ef85ac7cad526e89ccd5ed00869b216417d938fbe7c404d3bfea8b2f7"
+  }
+}

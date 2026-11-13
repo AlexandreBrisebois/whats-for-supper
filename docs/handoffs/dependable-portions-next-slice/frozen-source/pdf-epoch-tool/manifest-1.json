@@ -1,0 +1,14 @@
+{
+  "scripts/agent/pdf-acceptance/acceptance.cjs": {
+    "before": "15068e5254656603fd539b9c4153d01fdd76090443875942b6dbffe87f35c475",
+    "after": "bf5ad5c0e32638b031c32ec732c78080d276da23d858b7ef8758cc3dce139037"
+  },
+  "scripts/agent/pdf-acceptance/acceptance-selftest.cjs": {
+    "before": "6a122cae8c63292525f1f997233251f4cbb5a61aa2538f9a5d841dfcc99a3003",
+    "after": "b319b179ab56103025785fc20e733414c17c22f3226bfbcdbd378b661e1ee226"
+  },
+  "scripts/agent/pdf-acceptance/README.md": {
+    "before": "21b231237b6d67832312be658a7df6568009acc9916be9bd878e4909fd022c3a",
+    "after": "e0a7f79f754d37d5cafb77bd6bceaa842395a015910782d629f77782c8f2d774"
+  }
+}

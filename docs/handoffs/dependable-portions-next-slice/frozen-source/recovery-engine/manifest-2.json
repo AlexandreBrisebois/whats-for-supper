@@ -1,0 +1,10 @@
+{
+  "api/src/RecipeApi.Tests/Integration/CanonicalIngredientPublicationPostgresTests.cs": {
+    "beforeSha256": "4c1d9803737fd0ec614ec73c1d46e83aa83167d9e9a149dee3c262450572fabe",
+    "afterSha256": "24250e2d48df616104f56b2594233986cbf64df26aa48001c214253eaeb688e6"
+  },
+  "api/src/RecipeApi.Tests/Integration/CanonicalIngredientPublicationPostgresTests.RecoveryRestore.cs": {
+    "beforeSha256": "efdfb0895383c013b315ba3a734c5274a23e20dc0f170cdc148ed7f7676e8143",
+    "afterSha256": "fe5dd1ecabf772e390a90d0d0a17606db5927d9e933706f0bbb80edb5f5b259f"
+  }
+}

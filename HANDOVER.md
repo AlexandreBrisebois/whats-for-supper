@@ -1,5 +1,13 @@
 # Active resume checkpoints
 
+## Dependable portions grocery/intake checkpoint and recovery handoff (2026-11-13)
+
+Task/spec: six selected dependable-portions changes; current delivery bounded by Alex's request to finish this slice, commit, push and merge into `recipe-view-redesign`, with the next slice handed off. Worktree `/private/tmp/wfs-dependable-portions-bilingual`, branch `dependable-portions-bilingual`; target `/Users/alex/Code/whats-for-supper`, branch `recipe-view-redesign`. Original fast-forward delivery authority is retained in the tracked coordinator prompt; production and unrelated merges stay excluded.
+
+Checkpoint: signed code/support commit `697d8fd4efbce23144dfb8d29da65794fb5f2043`; [delivery/evidence](docs/handoffs/dependable-portions-next-slice/DELIVERY.md) distinguishes document-time local/remote facts from subsequent Git/CI delivery. Stable full gate `7fbdc5e3058c450ca421ab2809ab3861` passed2,165frontend / 1,004browser (101existing skips, zero retries) / 2,782hostAPI (647conditional skips) / 700nativePostgreSQL (zero skips); source stable and all owned verifier resources cleaned. Full release/DV acceptance remains open.
+
+Next: finish authorized checkpoint publication/fast-forward and applicable hosted CI, then follow the [bounded recovery-first prompt](.agents/prompts/dependable-portions-next-slice.md). Exact future source is preserved under the tracked [handoff](docs/handoffs/dependable-portions-next-slice/README.md), with explicit unreviewed/WIP limits. No migration activation, adoption, DV mutation or archival in that recovery slice. Older checkpoints below retain their historical identities and are not current delivery authority.
+
 ## Dependable portions slice 4: annotated half, hosted DNS blocker (2026-11-11)
 
 Task/spec: `scale-cooking-step-ingredients` 0.1–0.3 annotated-half subset, 2.1/2.3/4.1; `canonical-ingredient-correction` 2.2/3.2/4.1 integration subsets. Worktree `/Users/alex/Code/whats-for-supper`, branch `recipe-view-redesign`. The attached execution request authorizes exactly this slice, parallel B/A/C ownership, commit, exact-commit hosted/DV acceptance and later integration; no next slice, unrelated CI repair, reset/reseed or production.
