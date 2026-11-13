@@ -75,13 +75,16 @@ public sealed partial class RecipeFilePublicationStore
     private static void ApplyFoodEvidence(Recipe recipe, RecipePublicationCapture capture, RecipePublicationCandidate candidate)
     {
         if (capture.FieldHashVersion != 4) return;
-        if (candidate.SourceKind is "fresh-canonical" or "review-canonical") recipe.FoodMappingEvidence = candidate.MappingEvidence;
+        if (candidate.SourceKind is "fresh-canonical" or "review-canonical" or "shared-canonical" or "synthesized-canonical" or "photo-ingredient-repair") recipe.FoodMappingEvidence = candidate.MappingEvidence;
         ValidateRecipeEvidence(recipe, capture.FoodAuthority!);
     }
 
     private static IReadOnlyDictionary<string, byte[]?> PrepareV4(RecipePublicationCapture capture, RecipePublicationCandidate candidate, Guid operationId)
     {
         ValidateV4Capture(capture);
+        if (candidate.SourceKind == "shared-canonical") return PrepareSharedBootstrap(capture, candidate, operationId);
+        if (candidate.SourceKind == "synthesized-canonical") return PrepareSynthesizedCanonical(capture, candidate, operationId);
+        if (candidate.SourceKind == "photo-ingredient-repair") return PreparePhotoRepair(capture, candidate, operationId);
         var legacyCapture = capture with
         {
             FieldHashVersion = 3,
@@ -137,12 +140,106 @@ public sealed partial class RecipeFilePublicationStore
     {
         ValidateV4Capture(envelope.Capture);
         if (envelope.Result is null || envelope.ResultEvidence is null) throw new InvalidDataException("V4 result observations are absent.");
-        var expected = envelope.Candidate.SourceKind == "bootstrap" ? NewRecipe(envelope.Candidate) : RestoreV4(envelope.Capture);
-        if (envelope.Candidate.SourceKind != "bootstrap")
+        var expected = IsBootstrap(envelope.Candidate) ? NewRecipe(envelope.Candidate) : RestoreV4(envelope.Capture);
+        if (!IsBootstrap(envelope.Candidate))
             Apply(expected, envelope.Candidate, envelope.Output.GetValueOrDefault("recipe.info") ?? envelope.Capture.Files["recipe.info"]!);
         ApplyFoodEvidence(expected, envelope.Capture, envelope.Candidate);
         if (Hash(Observe(expected)) != Hash(envelope.Result) || Evidence(expected) != envelope.ResultEvidence.Value
             || Fields(expected, 4) != publication.ResultHash)
             throw new InvalidDataException("V4 result differs from its complete captured derivation.");
     }
+    internal static FoodVocabularyReference[] RetainedLaunchVocabularyReferences(Guid instanceId, string workflowId,
+        string? parameters, string? rawCapture, WorkflowTask task)
+    {
+        if (rawCapture is null) return []; // Explicit historical absence carries no dictionary authority.
+        var instance = new WorkflowInstance
+        {
+            Id = instanceId,
+            WorkflowId = workflowId,
+            Parameters = parameters,
+            RecipePublicationCapture = rawCapture
+        };
+        if (IsDispatchLaunch(rawCapture))
+        {
+            var launch = ReadRecoveryJson<DispatchLaunch>(rawCapture);
+            if (launch.Tasks is null || launch.Tasks.Any(x => x.Value is null)) throw new InvalidDataException("Retained dispatch tasks are absent.");
+            instance.Tasks = launch.Tasks.Select(x => new WorkflowTask
+            {
+                TaskId = x.Key,
+                InstanceId = instanceId,
+                TaskName = x.Value.Name,
+                ProcessorName = x.Value.Processor,
+                Payload = x.Value.Payload,
+                DependsOn = x.Value.DependsOn,
+                ScheduledAt = x.Value.ScheduledAt
+            }).ToArray();
+        }
+        else
+        {
+            var launch = ReadRecoveryJson<Launch>(rawCapture);
+            if (launch.Tasks is null || launch.Tasks.Any(x => x.Value is null)) throw new InvalidDataException("Retained publication tasks are absent.");
+            instance.Tasks = launch.Tasks.Select(x => new WorkflowTask
+            {
+                TaskId = x.Key,
+                InstanceId = instanceId,
+                TaskName = x.Value.Name,
+                ProcessorName = x.Value.Processor,
+                Payload = x.Value.Payload,
+                DependsOn = x.Value.DependsOn
+            }).ToArray();
+        }
+        var original = instance.Tasks.SingleOrDefault(x => x.TaskId == task.TaskId);
+        if (original is null || task.InstanceId != instanceId || original.TaskName != task.TaskName
+            || original.ProcessorName != task.ProcessorName || original.DependsOn is null || task.DependsOn is null
+            || !original.DependsOn.SequenceEqual(task.DependsOn)
+            || CanonicalRecipeContentStore.NormalizeJson(original.Payload) != CanonicalRecipeContentStore.NormalizeJson(task.Payload))
+            throw new InvalidDataException("Retained task differs from its own captured launch.");
+        return VocabularyReferences(instance);
+    }
+
+    internal static FoodVocabularyReference[] VocabularyReferences(FoodVocabularyStagedJournalObservation stage,
+        IReadOnlyList<RecipeFilePublication> publications)
+    {
+        if (stage.RecipeId == Guid.Empty || stage.OperationId == Guid.Empty || stage.RawBytes is null)
+            throw new InvalidDataException("Staged publication identity is absent.");
+        string raw;
+        Envelope observed;
+        try
+        {
+            raw = new System.Text.UTF8Encoding(false, true).GetString(stage.RawBytes);
+            observed = ReadRecoveryJson<Envelope>(raw);
+        }
+        catch (Exception error) when (error is JsonException or System.Text.DecoderFallbackException)
+        { throw new InvalidDataException("Staged publication observation is malformed.", error); }
+        var publication = publications.SingleOrDefault(x => x.RecipeId == stage.RecipeId && x.OperationId == stage.OperationId);
+        if (publication is not null)
+        {
+            if (publication.InputHash != stage.InputHash)
+                throw new InvalidDataException("Staged publication conflicts with its committed operation identity.");
+            var committed = ReadEnvelope(publication);
+            // Delivery is a later receipt. Its absence cannot erase the original
+            // request/result authority independently retained by the committed row.
+            var staged = committed with { Result = null, ResultEvidence = null };
+            if (CanonicalRecipeContentStore.NormalizeJson(raw) != CanonicalRecipeContentStore.NormalizeJson(JsonSerializer.Serialize(staged, Json)))
+                throw new InvalidDataException("Staged journal differs from its committed publication's original preparation.");
+            return CaptureVocabularyReferences(committed.Capture);
+        }
+        // Retain original preparation from rejected and interrupted attempts as
+        // inert reference evidence. The independently validated DB row supplies
+        // committed result and delivery authority.
+        if (observed.Capture is null || observed.Candidate is null || observed.Candidate.Info is null
+            || observed.Capture.Files is null || observed.Output is null || observed.Result is not null || observed.ResultEvidence is not null)
+            throw new InvalidDataException("Prepared publication cannot claim missing input or committed result authority.");
+        ValidateOriginalFields(observed.Capture);
+        if (observed.Capture.RecipeId != stage.RecipeId || observed.Candidate.Info.Id != stage.RecipeId
+            || Hash(new { capture = observed.Capture, candidate = observed.Candidate }) != stage.InputHash
+            || Hash(Prepare(observed.Capture, observed.Candidate, stage.OperationId)) != Hash(observed.Output))
+            throw new InvalidDataException("Prepared publication differs from its original identity or derived output.");
+        if (observed.Candidate.BootstrapIntent is not null && ReadBootstrapIntent(observed.Candidate).Id != stage.OperationId)
+            throw new InvalidDataException("Prepared bootstrap has a different operation identity.");
+        if (observed.Candidate.FollowupIntent is not null && ReadFollowupIntent(observed.Candidate).Id != stage.OperationId)
+            throw new InvalidDataException("Prepared follow-up has a different operation identity.");
+        return CaptureVocabularyReferences(observed.Capture);
+    }
+
 }

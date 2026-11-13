@@ -77,6 +77,7 @@ vi.mock('@/lib/api/schedule', () => ({
 vi.mock('@/lib/api/ingredients', () => ({
   reclassifyIngredient: vi.fn(),
 }));
+vi.mock('@/lib/api/foods', () => ({ reclassifyFoodCategory: vi.fn() }));
 
 vi.mock('@/lib/api/grocery-extras', () => ({
   createGroceryExtra: mockCreateExtra,
@@ -115,6 +116,8 @@ vi.mock('framer-motion', () => ({
 // ── Locales mock ──────────────────────────────────────────────────────────────
 
 vi.mock('@/locales', () => ({
+  getLocale: () => 'en',
+  setLocale: vi.fn(),
   t: (_key: string, fallback: string) => fallback,
   tWithVars: (_key: string, fallback: string, vars: Record<string, string | number>) =>
     Object.entries(vars).reduce(
@@ -128,6 +131,7 @@ vi.mock('@/locales', () => ({
 import { GroceryList } from './GroceryList';
 import type { GroceryExtraDto, GroceryLineItemDto } from '@/lib/api/generated/models';
 import { reclassifyIngredient } from '@/lib/api/ingredients';
+import { reclassifyFoodCategory } from '@/lib/api/foods';
 import { useWeekStore } from '@/store/weekStore';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -1851,4 +1855,90 @@ it('keeps a replacement workflow after an old Retry acknowledgement for the same
   act(() => useWeekStore.setState({ groceryRefresh: replacement }));
   await act(async () => finish());
   expect(useWeekStore.getState().groceryRefresh).toEqual(replacement);
+});
+
+describe('server-owned bilingual grocery labels', () => {
+  it('selects the current member locale without changing the saved row or checking by caption', async () => {
+    const { LocaleProvider } = await import('@/components/common/LocaleProvider');
+    const { useFamilyStore } = await import('@/store/familyStore');
+    const memberId = 'ed7a28dc-c54f-436d-a1a1-9e2b8c56e746';
+    useFamilyStore.setState({
+      familyMembers: [{ id: memberId, name: 'Member', preferredLanguage: 'fr' }],
+      selectedFamilyMemberId: memberId,
+    });
+    const item = {
+      ...makeItem('onion source', 'Produce'),
+      displayLabels: { en: 'Onion', fr: 'Oignon' },
+    };
+    const before = JSON.stringify(item);
+    render(
+      <LocaleProvider>
+        <GroceryList weekOffset={0} items={[item]} />
+      </LocaleProvider>
+    );
+    expect(screen.getByRole('checkbox', { name: /Oignon/ })).toBeInTheDocument();
+    await act(async () => fireEvent.click(screen.getByRole('checkbox', { name: /Oignon/ })));
+    expect(mockSetGroceryItemToggle).toHaveBeenCalledWith(item.rowId, true);
+    expect(JSON.stringify(item)).toBe(before);
+    useFamilyStore.setState({ familyMembers: [], selectedFamilyMemberId: null });
+  });
+});
+
+describe('qualified household food correction scope', () => {
+  it('uses the food revision instead of sending a merged row through one alias key', async () => {
+    const item = makeItem('Onion', 'Produce', 'onion', {
+      foodId: 'c5028c26-48ba-4845-a4bb-551db3575508',
+      categoryScope: 'food',
+      categoryRevision: 'category.7',
+      categoryStatus: 'resolved',
+    });
+    const refresh = vi.spyOn(useWeekStore.getState(), 'refreshGroceries').mockResolvedValue();
+    vi.mocked(reclassifyFoodCategory).mockResolvedValue();
+    vi.mocked(reclassifyIngredient).mockClear();
+    render(<GroceryList weekOffset={0} items={[item]} />);
+    fireEvent.click(screen.getByTestId('reclassify-btn'));
+    fireEvent.click(
+      within(screen.getByTestId('section-picker')).getByRole('button', { name: 'Pantry' })
+    );
+    await waitFor(() =>
+      expect(reclassifyFoodCategory).toHaveBeenCalledWith(item.foodId, 'Pantry', 'category.7')
+    );
+    expect(reclassifyIngredient).not.toHaveBeenCalled();
+    expect(refresh).toHaveBeenCalled();
+    refresh.mockRestore();
+  });
+});
+
+it('persists an explicit food choice even when a conflict currently falls back to that section', async () => {
+  const item = makeItem('Onion', 'Pantry', 'onion', {
+    foodId: 'c5028c26-48ba-4845-a4bb-551db3575508',
+    categoryScope: 'food',
+    categoryRevision: null,
+    categoryStatus: 'conflict',
+    categoryChoices: [{ normalizedKey: 'oignon', grocerySection: 'Produce', source: 'legacy' }],
+  });
+  const { JsonParseNode } = await import('@microsoft/kiota-serialization-json');
+  const { createGroceryLineItemDtoFromDiscriminatorValue } =
+    await import('@/lib/api/generated/models');
+  const { normalizeGroceryItems } = await import('@/lib/api/grocery-quantities');
+  const decoded = new JsonParseNode(item).getObjectValue(
+    createGroceryLineItemDtoFromDiscriminatorValue
+  )!;
+  const normalized = normalizeGroceryItems([decoded])![0];
+  expect(normalized.categoryRevision).toBeNull();
+  vi.mocked(reclassifyFoodCategory).mockClear().mockResolvedValue();
+  const refresh = vi.spyOn(useWeekStore.getState(), 'refreshGroceries').mockResolvedValue();
+  render(<GroceryList weekOffset={0} items={[normalized]} />);
+  fireEvent.click(screen.getByTestId('reclassify-btn'));
+  expect(
+    screen.getByText('Different saved sections apply. Choose one for this food.')
+  ).toBeVisible();
+  expect(screen.getByTestId('category-prior-choices')).toHaveTextContent('Produce');
+  fireEvent.click(
+    within(screen.getByTestId('section-picker')).getByRole('button', { name: 'Pantry' })
+  );
+  await waitFor(() =>
+    expect(reclassifyFoodCategory).toHaveBeenCalledWith(item.foodId, 'Pantry', null)
+  );
+  refresh.mockRestore();
 });

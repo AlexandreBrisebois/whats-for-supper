@@ -53,8 +53,8 @@ public class RecipeSearchFilterMaterializerPostgresTests : IAsyncLifetime
         var clock = new FixedClock(new DateTimeOffset(2026, 9, 19, 0, 0, 0, TimeSpan.Zero));
 
         var snapshot = await new RecipeSearchFilterMaterializer(_db, clock).MaterializeAsync(CancellationToken.None);
-        await _db.Database.ExecuteSqlRawAsync(ReadDatabaseFile("compatibility.sql"));
-        await _db.Database.ExecuteSqlRawAsync(ReadDatabaseFile("compatibility.sql"));
+        await RecipeApi.Tests.Infrastructure.PostgresScript.ExecuteAsync(_db, ReadDatabaseFile("compatibility.sql"));
+        await RecipeApi.Tests.Infrastructure.PostgresScript.ExecuteAsync(_db, ReadDatabaseFile("compatibility.sql"));
 
         Assert.Equal(["Italian"], snapshot.AllCuisines);
         Assert.Single(await _db.RecipeSearchFilterStates.ToListAsync());

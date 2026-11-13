@@ -12,6 +12,8 @@ public record IngredientProjectionLineDto
     public string? GroceryPurchaseIdentity { get; init; }
     [System.Text.Json.Serialization.JsonIgnore]
     public RecipePackageDto? GroceryPackage { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore]
+    public Guid? GroceryFoodId { get; init; }
     public required string OriginalText { get; set; }
     public string? DisplayText { get; set; }
     public required string Name { get; set; }

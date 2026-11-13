@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 using RecipeApi.Models;
 
@@ -13,6 +14,35 @@ public partial class WorkflowOrchestrator
     private sealed record LaunchTask(Guid Id, string Name, string Processor, string? Payload,
         string[] DependsOn, DateTimeOffset? ScheduledAt);
     private sealed record LaunchPrepared(DateTimeOffset CreatedAt, string Capture, LaunchTask[] Tasks);
+
+    private static readonly JsonSerializerOptions LaunchHistoryJson = new()
+    {
+        RespectRequiredConstructorParameters = true,
+        UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow
+    };
+
+    // Retained preparation precedes runtime membership. Read its own original
+    // command and graph without accepting work or consulting today's definition.
+    public static FoodVocabularyReference[] VocabularyReferences(WorkflowLaunchIntent intent)
+    {
+        var request = WorkflowProcessorHistory.ReadObservation<LaunchRequest>(intent.Request, LaunchHistoryJson);
+        ReadLaunchRequest(intent);
+        if (intent.CreatedAt == default || request.Parameters.Any(x => string.IsNullOrWhiteSpace(x.Key) || x.Value is null))
+            throw new InvalidDataException("Original launch observation is inconsistent.");
+        if (intent.Prepared is null)
+        {
+            if (intent.PreparedHash is not null || intent.AcceptedAt is not null)
+                throw new InvalidDataException("Unprepared launch has a later receipt.");
+            return [];
+        }
+        var prepared = WorkflowProcessorHistory.ReadObservation<LaunchPrepared>(intent.Prepared, LaunchHistoryJson);
+        if (prepared.CreatedAt == default || string.IsNullOrWhiteSpace(prepared.Capture)
+            || prepared.Tasks is null || prepared.Tasks.Length == 0
+            || prepared.Tasks.Any(x => x is null || x.Id == Guid.Empty || x.DependsOn is null)
+            || prepared.Tasks.Select(x => x.Id).Distinct().Count() != prepared.Tasks.Length)
+            throw new InvalidDataException("Original prepared launch is inconsistent.");
+        return RecipeFilePublicationStore.VocabularyReferences(InitializeOriginalLaunch(intent));
+    }
 
     private static string LaunchHash(string value) => Convert.ToHexString(SHA256.HashData(
         Encoding.UTF8.GetBytes(CanonicalRecipeContentStore.NormalizeJson(value))));

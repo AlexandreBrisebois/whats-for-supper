@@ -257,7 +257,13 @@ public sealed partial class RecipeFilePublicationStore
             && publications.Any(x => ReadEnvelope(x).Candidate.SourceKind is "fresh-canonical" or "review-canonical");
         var freshCategorization = task.ProcessorName == "CategorizeRecipe" && instance.WorkflowId is ("url-import" or "recipe-import")
             && publications.Any(x => ReadEnvelope(x).Candidate.SourceKind is "fresh-canonical" or "review-canonical");
-        if ((expected.FieldHashVersion != 4 && recipe.FoodMappingEvidence is not null) || (recipe.CanonicalContent is not null && task.ProcessorName != "RecipeReady" && !freshHero && !freshCategorization) || Fields(recipe, expected.FieldHashVersion) != expected.FieldHash
+        var synthesizedFollowup = task.ProcessorName is ("GenerateHero" or "CategorizeRecipe") && instance.WorkflowId == "goto-synthesis"
+            && publications.Any(x => ReadEnvelope(x).Candidate.SourceKind == "synthesized-canonical");
+        var photoIngredientRepair = task.ProcessorName == "ExtractRecipe" && await CanRepairCanonicalPhotoAsync(expected, task.TaskId, ct);
+        var photoRepairFollowup = task.ProcessorName is ("GenerateHero" or "CategorizeRecipe") && instance.WorkflowId == "recipe-import"
+            && publications.Any(x => ReadEnvelope(x).Candidate.SourceKind == "photo-ingredient-repair");
+        if (photoRepairFollowup) await ValidatePhotoRepairFollowupAsync(instance, task, recipeId, ct);
+        if ((expected.FieldHashVersion != 4 && recipe.FoodMappingEvidence is not null) || (recipe.CanonicalContent is not null && task.ProcessorName != "RecipeReady" && !freshHero && !freshCategorization && !synthesizedFollowup && !photoIngredientRepair && !photoRepairFollowup) || Fields(recipe, expected.FieldHashVersion) != expected.FieldHash
             || await db.RecipeFilePublications.AnyAsync(x => x.RecipeId == recipeId && !x.Delivered, ct)) throw Conflict(recipe);
         await CheckFiles(expected, null, recipe, ct);
         var capture = expected with
@@ -392,6 +398,11 @@ public sealed partial class RecipeFilePublicationStore
             throw new InvalidDataException("Canonical hero needs its original workflow task.");
         var workflow = await db.WorkflowInstances.AsNoTracking().Include(x => x.Tasks)
             .SingleOrDefaultAsync(x => x.Id == task.InstanceId, ct);
+        if (workflow?.WorkflowId == "goto-synthesis")
+        {
+            await ValidateSynthesizedFollowupAsync(workflow, task, recipeId, ct);
+            return;
+        }
         if (workflow is null || workflow.WorkflowId is not ("url-import" or "recipe-import") || workflow.RecipePublicationCapture is null)
             throw new InvalidDataException("Canonical hero needs its witnessed source workflow.");
         ValidateExecutionLaunch(workflow);
@@ -403,6 +414,11 @@ public sealed partial class RecipeFilePublicationStore
             throw new InvalidDataException("Canonical hero has no captured extraction ancestor.");
         var publication = await db.RecipeFilePublications.AsNoTracking().SingleOrDefaultAsync(
             x => x.RecipeId == recipeId && x.OperationId == extraction.TaskId, ct);
+        if (publication is { Delivered: true } && ReadEnvelope(publication).Candidate.SourceKind == "photo-ingredient-repair")
+        {
+            await ValidatePhotoRepairFollowupAsync(workflow, task, recipeId, ct);
+            return;
+        }
         if (publication is null || !publication.Delivered || ReadEnvelope(publication).Candidate.SourceKind is not ("fresh-canonical" or "review-canonical")
             || workflow.WorkflowId == "recipe-import" && ReadEnvelope(publication).Candidate.SourceKind == "fresh-canonical"
                 && !await HasFreshSourceAncestryAsync(workflow, launch, extraction.TaskId, ct))

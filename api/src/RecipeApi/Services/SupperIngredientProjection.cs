@@ -96,6 +96,7 @@ public static class SupperIngredientProjection
                     row.Package
                 }),
                 GroceryPackage = row.Package,
+                GroceryFoodId = row.Shopping.FoodId,
                 OriginalText = CanonicalRecipeContentStore.Render(row),
                 DisplayText = row.Package is null
                     ? target is not null && quantity is not null

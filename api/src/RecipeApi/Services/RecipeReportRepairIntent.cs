@@ -87,4 +87,18 @@ internal static class RecipeReportRepairIntent
     internal static bool SameParameters(string? json, Dictionary<string, string> parameters) =>
         CanonicalRecipeContentStore.NormalizeJson(json) == CanonicalRecipeContentStore.NormalizeJson(JsonSerializer.Serialize(parameters));
     private static string Hash(string payload) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(CanonicalRecipeContentStore.NormalizeJson(payload))));
+    internal static FoodVocabularyReference[] VocabularyReferences(RecipeRepairIntent intent)
+    {
+        var json = new JsonSerializerOptions
+        {
+            RespectRequiredConstructorParameters = true,
+            UnmappedMemberHandling = System.Text.Json.Serialization.JsonUnmappedMemberHandling.Disallow
+        };
+        var command = WorkflowProcessorHistory.ReadObservation<Command>(intent.Payload, json);
+        Read(intent);
+        if (intent.CreatedAt == default) throw new InvalidDataException("Retained repair time is absent.");
+        return command.Prepared is null ? [] : RecipeFilePublicationStore.VocabularyReferences(
+            Initialize(intent, command.WorkflowId, command.Parameters));
+    }
+
 }

@@ -49,6 +49,13 @@ public sealed partial class RecipeFilePublicationStore
             throw new InvalidDataException("Categorization needs its original workflow task.");
         var workflow = await db.WorkflowInstances.AsNoTracking().Include(x => x.Tasks)
             .SingleAsync(x => x.Id == task.InstanceId, ct);
+        if (workflow.WorkflowId == "goto-synthesis")
+        {
+            if (producerInput != "CategorizeRecipe\n" + CanonicalRecipeContentStore.NormalizeJson(task.Payload))
+                throw new InvalidDataException("Categorization input differs from its synthesis task.");
+            await ValidateSynthesizedFollowupAsync(workflow, task, recipeId, ct);
+            return;
+        }
         if (workflow.WorkflowId is not ("url-import" or "recipe-import") || workflow.RecipePublicationCapture is null)
             throw new InvalidDataException("Categorization needs its witnessed source workflow.");
         ValidateExecutionLaunch(workflow);
@@ -68,6 +75,11 @@ public sealed partial class RecipeFilePublicationStore
             throw new InvalidDataException("Categorization has no captured extraction ancestor.");
         var publication = await db.RecipeFilePublications.AsNoTracking()
             .SingleOrDefaultAsync(x => x.RecipeId == recipeId && x.OperationId == extraction.TaskId, ct);
+        if (publication is { Delivered: true } && ReadEnvelope(publication).Candidate.SourceKind == "photo-ingredient-repair")
+        {
+            await ValidatePhotoRepairFollowupAsync(workflow, task, recipeId, ct);
+            return;
+        }
         if (publication is null || !publication.Delivered
             || ReadEnvelope(publication).Candidate.SourceKind is not ("fresh-canonical" or "review-canonical"))
             throw new InvalidDataException("Categorization needs delivered canonical source ancestry.");

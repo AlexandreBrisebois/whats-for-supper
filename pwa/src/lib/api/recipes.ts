@@ -1,3 +1,4 @@
+import { RetryHandlerOptions } from '@microsoft/kiota-http-fetchlibrary';
 import { DateOnly, createUntypedNodeFromDiscriminatorValue } from '@microsoft/kiota-abstractions';
 import { JsonParseNode } from '@microsoft/kiota-serialization-json';
 import { normalizeGroceryQuantity } from './grocery-quantities';
@@ -577,7 +578,10 @@ export async function getRecipeShareBundle(id: string): Promise<RecipeShareBundl
 }
 
 export async function importRecipeShareBundle(bundle: RecipeShareBundleDto): Promise<Recipe> {
-  const result = await apiClient.api.recipes.importBundle.post(bundle);
+  // An uncertain reply may follow publication; another POST creates another recipe.
+  const result = await apiClient.api.recipes.importBundle.post(bundle, {
+    options: [new RetryHandlerOptions({ maxRetries: 0 })],
+  });
   if (!result?.data) {
     throw new Error('Could not import this recipe right now.');
   }

@@ -41,11 +41,13 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { usePlannerStore } from '@/store/plannerStore';
 import { t, tWithVars } from '@/locales';
+import { useLocale } from '@/components/common/LocaleProvider';
 import type { GrocerySection } from '@/lib/grocery/aisleMapper';
 import { AISLE_ORDER } from '@/lib/grocery/aisleOrder';
 import { useSchedule } from '@/lib/api/schedule';
 import { refreshSupperGroceries } from '@/lib/api/supper-servings';
 import { reclassifyIngredient } from '@/lib/api/ingredients';
+import { reclassifyFoodCategory } from '@/lib/api/foods';
 import type { GroceryExtraDto, GroceryLineItemDto } from '@/lib/api/generated/models';
 import { useWeekStore } from '@/store/weekStore';
 import { useUiStore } from '@/store/uiStore';
@@ -77,6 +79,12 @@ const AISLE_ICONS: Record<GrocerySection, string> = {
   Beverages: '🧃',
   Grocery: '🛒',
 };
+
+function categoryCorrectionKey(item: GroceryLineItemDto) {
+  return item.categoryScope === 'food'
+    ? `food:${item.foodId ?? item.rowId ?? ''}`
+    : (item.normalizedKey ?? '');
+}
 
 const CATEGORY_BUTTON_CLASS =
   'min-h-12 min-w-12 shrink-0 rounded-full text-charcoal/60 hover:bg-charcoal/5 focus-visible:outline-2 focus-visible:outline-sage';
@@ -127,6 +135,7 @@ export function GroceryList({
   onClose,
   isEmbedded,
 }: GroceryListProps) {
+  const { locale } = useLocale();
   const { groceryState, setGroceryItemToggle } = usePlannerStore();
   const [reviewSelection, setReviewSelection] = useState<{
     scope: string;
@@ -602,6 +611,8 @@ export function GroceryList({
           useWeekStore.getState().applyGrocerySnapshot({
             weekStartDate: outcome.weekStartDate,
             groceryListVersion: outcome.listVersion,
+            presentationVersion: outcome.presentationVersion ?? undefined,
+            presentationEpoch: outcome.presentationEpoch ?? undefined,
             groceryItems: outcome.rows,
             groceryState: outcome.checks,
           });
@@ -645,37 +656,59 @@ export function GroceryList({
 
   const handleReclassify = async (item: GroceryLineItemDto, newSection: GrocerySection) => {
     const normalizedKey = item.normalizedKey;
-    if (!normalizedKey || pendingReclassifications.has(normalizedKey)) return;
-    if (item.section === newSection) {
+    const categoryKey = categoryCorrectionKey(item);
+    if (!categoryKey || pendingReclassifications.has(categoryKey)) return;
+    if (item.section === newSection && item.categoryStatus !== 'conflict') {
       setReclassifyOpen(null);
       return;
     }
 
     const startingWeek = weekOffset;
-    setPendingReclassifications((prev) => new Set(prev).add(normalizedKey));
+    const startingWeekStart = useWeekStore.getState().weekStartDate;
+    setPendingReclassifications((prev) => new Set(prev).add(categoryKey));
     try {
-      await reclassifyIngredient(normalizedKey, newSection);
-      if (useWeekStore.getState().weekOffset === startingWeek) {
-        reclassifyGroceryItem(normalizedKey, newSection);
+      if (item.categoryScope === 'food') {
+        if (!item.foodId || item.categoryRevision === undefined)
+          throw new Error('Food category authority is unavailable.');
+        await reclassifyFoodCategory(item.foodId, newSection, item.categoryRevision);
+        if (
+          useWeekStore.getState().weekOffset === startingWeek &&
+          useWeekStore.getState().weekStartDate === startingWeekStart
+        )
+          await useWeekStore.getState().refreshGroceries();
+      } else {
+        if (!normalizedKey) throw new Error('Ingredient category authority is unavailable.');
+        await reclassifyIngredient(normalizedKey, newSection);
+        if (
+          useWeekStore.getState().weekOffset === startingWeek &&
+          useWeekStore.getState().weekStartDate === startingWeekStart
+        )
+          reclassifyGroceryItem(normalizedKey, newSection);
       }
       setReclassifyOpen(null);
     } catch {
+      if (
+        item.categoryScope === 'food' &&
+        useWeekStore.getState().weekOffset === startingWeek &&
+        useWeekStore.getState().weekStartDate === startingWeekStart
+      )
+        void useWeekStore.getState().refreshGroceries();
       setReclassifyErrors((prev) => {
         const next = new Set(prev);
-        next.add(normalizedKey);
+        next.add(categoryKey);
         return next;
       });
       setTimeout(() => {
         setReclassifyErrors((prev) => {
           const next = new Set(prev);
-          next.delete(normalizedKey);
+          next.delete(categoryKey);
           return next;
         });
       }, 3000);
     } finally {
       setPendingReclassifications((prev) => {
         const next = new Set(prev);
-        next.delete(normalizedKey);
+        next.delete(categoryKey);
         return next;
       });
     }
@@ -1091,7 +1124,7 @@ export function GroceryList({
                         {displayedRows.map((row) => {
                           if (row.kind === 'extra') return renderExtraRow(row.extra);
                           const { item, renderKey } = row;
-                          const key = item.displayName ?? '';
+                          const key = item.displayLabels?.[locale] ?? item.displayName ?? '';
                           const knownQuantity = formatQuantityHint(item.quantity, item.unitText);
                           const quantityHint =
                             item.quantityComplete === false && knownQuantity
@@ -1101,11 +1134,10 @@ export function GroceryList({
                               : knownQuantity;
                           const isChecked = groceryState[item.rowId ?? ''] ?? false;
                           const hasError = errorItems.has(item.rowId ?? '');
-                          const hasReclassifyError = reclassifyErrors.has(item.normalizedKey ?? '');
-                          const isPickerOpen = reclassifyOpen === item.normalizedKey;
-                          const isReclassifyPending = pendingReclassifications.has(
-                            item.normalizedKey ?? ''
-                          );
+                          const categoryKey = categoryCorrectionKey(item);
+                          const hasReclassifyError = reclassifyErrors.has(categoryKey);
+                          const isPickerOpen = reclassifyOpen === (item.rowId ?? categoryKey);
+                          const isReclassifyPending = pendingReclassifications.has(categoryKey);
 
                           return (
                             <div key={renderKey} className="relative">
@@ -1273,7 +1305,7 @@ export function GroceryList({
                                   type="button"
                                   onClick={() =>
                                     setReclassifyOpen(
-                                      isPickerOpen ? null : (item.normalizedKey ?? null)
+                                      isPickerOpen ? null : (item.rowId ?? categoryKey)
                                     )
                                   }
                                   className={cn(
@@ -1305,6 +1337,32 @@ export function GroceryList({
                                   data-item-name={key}
                                   aria-busy={isReclassifyPending}
                                 >
+                                  {item.categoryStatus === 'conflict' && (
+                                    <div className="w-full text-sm text-charcoal/70">
+                                      <p>
+                                        {t(
+                                          'grocery.categoryConflict',
+                                          'Different saved sections apply. Choose one for this food.'
+                                        )}
+                                      </p>
+                                      {(item.categoryChoices?.length ?? 0) > 0 && (
+                                        <p data-testid="category-prior-choices">
+                                          {t('grocery.savedSections', 'Saved sections:')}{' '}
+                                          {[
+                                            ...new Set(
+                                              item.categoryChoices
+                                                ?.map((choice) => choice.grocerySection)
+                                                .filter(Boolean)
+                                            ),
+                                          ]
+                                            .map((section) =>
+                                              t(`grocery.aisles.${section}`, section ?? '')
+                                            )
+                                            .join(', ')}
+                                        </p>
+                                      )}
+                                    </div>
+                                  )}
                                   {AISLE_ORDER.map((section) => (
                                     <button
                                       type="button"

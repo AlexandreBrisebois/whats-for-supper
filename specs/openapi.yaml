@@ -858,8 +858,10 @@ components:
 
     ScheduleDays:
       type: object
-      required: [weekOffset, locked, days, status, calendar, weekStartDate, groceryListVersion]
+      required: [weekOffset, locked, days, status, calendar, weekStartDate, groceryListVersion, presentationVersion, presentationEpoch]
       properties:
+        presentationVersion: { $ref: '#/components/schemas/GroceryPresentationVersion' }
+        presentationEpoch: { type: string, format: uuid }
         weekOffset: { type: integer }
         votingRoundId:
           type: [string, 'null']
@@ -1130,7 +1132,7 @@ components:
         notes: { type: [string, 'null'] }
         rating: { type: [integer, 'null'], minimum: 0, maximum: 3 }
         totalTimeMinutes: { type: [integer, 'null'] }
-        servings: { type: [integer, 'null'] }
+        servings: { type: [integer, 'null'], minimum: 1, description: Declared positive share count when supplied. Omitted or null stays unknown; this count does not certify original-source evidence. }
         sourceUrl: { type: [string, 'null'], format: uri }
         sourceName: { type: [string, 'null'] }
         category: { type: [string, 'null'] }
@@ -1418,8 +1420,10 @@ components:
       allOf:
         - $ref: '#/components/schemas/ScheduleStreamEvent'
         - type: object
-          required: [weekStartDate, weekOffset, groceryState, groceryListVersion, groceryItems]
+          required: [weekStartDate, weekOffset, groceryState, groceryListVersion, groceryItems, presentationVersion, presentationEpoch]
           properties:
+            presentationVersion: { $ref: '#/components/schemas/GroceryPresentationVersion' }
+            presentationEpoch: { type: string, format: uuid }
             weekOffset: { type: integer }
             weekStartDate: { type: string, format: date, description: Absolute Monday; consumers map it before relative offset guards. }
             groceryListVersion: { type: string, pattern: '^[1-9][0-9]{0,19}$' }
@@ -1657,8 +1661,10 @@ components:
         clientMutationId: { type: string, format: uuid }
     GroceryMutationResult:
       type: object
-      required: [updatedAt, weekStartDate, listVersion, checks, rows]
+      required: [updatedAt, weekStartDate, listVersion, checks, rows, presentationVersion, presentationEpoch]
       properties:
+        presentationVersion: { $ref: '#/components/schemas/GroceryPresentationVersion' }
+        presentationEpoch: { type: string, format: uuid }
         updatedAt: { type: string, format: date-time }
         weekStartDate: { type: string, format: date }
         listVersion: { type: string, pattern: '^[1-9][0-9]{0,19}$' }
@@ -1674,10 +1680,74 @@ components:
         code: { type: string, enum: [upgrade_required, grocery_conflict, mutation_conflict, week_conflict, active_legacy_list] }
         current: { $ref: '#/components/schemas/GroceryMutationResult' }
         absent: { type: boolean }
+    GroceryPresentationVersion:
+      type: string
+      pattern: '^(0|[1-9][0-9]*)$'
+      description: Exact independent presentation counter. Compare only within the same opaque presentationEpoch; establish a changed epoch through a fresh authoritative read. Locale selection never advances this counter or grocery versions. Legacy absence uses version zero and the nil UUID epoch.
+    GroceryDisplayLabels:
+      type: object
+      required: [en, fr]
+      properties:
+        en: { type: string }
+        fr: { type: string }
+    GroceryDisplayNameVariants:
+      type: object
+      required: [en, fr]
+      properties:
+        en: { type: array, items: { $ref: '#/components/schemas/GroceryDisplayNameVariant' } }
+        fr: { type: array, items: { $ref: '#/components/schemas/GroceryDisplayNameVariant' } }
+    GroceryDisplayNameVariant:
+      type: object
+      required: [text, contributors]
+      properties:
+        text: { type: string }
+        contributors:
+          type: array
+          items: { $ref: '#/components/schemas/GroceryDisplayContributor' }
+    GroceryDisplayContributor:
+      type: object
+      required: [occurrenceId, recipeId, ingredientLineId]
+      properties:
+        occurrenceId: { type: string, format: uuid }
+        recipeId: { type: string, format: uuid }
+        ingredientLineId: { type: string, format: uuid }
+    GroceryCategoryChoice:
+      type: object
+      required: [normalizedKey, grocerySection, source]
+      properties:
+        normalizedKey: { type: string }
+        grocerySection: { type: string }
+        source: { type: string }
+    ReclassifyFoodCategoryRequest:
+      type: object
+      additionalProperties: false
+      required: [grocerySection, expectedCategoryRevision]
+      properties:
+        grocerySection: { $ref: '#/components/schemas/GrocerySection' }
+        expectedCategoryRevision:
+          type: [string, 'null']
+          description: Null requires no existing household food override; otherwise must match its current opaque category revision. Absence is an upgrade conflict, never blind overwrite.
+    FoodCategoryConflict:
+      type: object
+      required: [code]
+      properties:
+        code: { type: string, enum: [upgrade_required, food_category_conflict, food_identity_conflict] }
+        categoryRevision: { type: [string, 'null'] }
+
     GroceryLineItemDto:
       type: object
-      required: [rowId, rowVersion, weekStartDate, source, demandIdentity, displayName, normalizedKey, section, recipeIds]
+      required: [rowId, rowVersion, weekStartDate, source, demandIdentity, displayName, normalizedKey, section, recipeIds, displayLabels, labelStatus, displayNameVariants, categoryScope, categoryStatus, categoryRevision, categoryChoices]
       properties:
+        foodId: { type: [string, 'null'], format: uuid, description: Saved validated purchase identity; absent or null for source fallback. }
+        displayLabels: { $ref: '#/components/schemas/GroceryDisplayLabels' }
+        labelStatus: { type: string, enum: [resolved, fallback, conflict] }
+        displayNameVariants: { $ref: '#/components/schemas/GroceryDisplayNameVariants' }
+        categoryScope: { type: string, enum: [food, fallback] }
+        categoryStatus: { type: string, enum: [resolved, conflict] }
+        categoryRevision: { type: [string, 'null'] }
+        categoryChoices:
+          type: array
+          items: { $ref: '#/components/schemas/GroceryCategoryChoice' }
         rowId: { type: string, format: uuid }
         rowVersion: { type: string, pattern: '^[1-9][0-9]{0,19}$' }
         weekStartDate: { type: string, format: date }
@@ -2021,6 +2091,43 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/HealthCheckResponse' }
+
+  /api/foods/{foodId}/category:
+    patch:
+      summary: Correct a household food category
+      description: Revises only the qualified saved food scope under an expected category revision. Retains human provenance and conflicts; never publishes a global alias or changes an extra occurrence. Recomputes all affected grocery weeks after persistence. The normalized ingredient endpoint remains fallback-key scoped.
+      operationId: reclassifyFoodCategory
+      parameters:
+        - $ref: '#/components/parameters/DemoGeneration'
+        - name: foodId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReclassifyFoodCategoryRequest' }
+      responses:
+        '204':
+          description: Private correction persisted and affected grocery weeks recomputed.
+        '400':
+          description: Invalid food identifier, malformed request or unsupported grocery section.
+        '409':
+          description: Missing revision presence, stale category revision or food identity is no longer qualified. Refresh authoritative state before another correction.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FoodCategoryConflict' }
+        '412':
+          description: Demo generation is absent or stale; refresh without replaying the old write.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DemoResetRequiredError' }
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
 
   /api/ingredients/{normalizedKey}/category:
     patch:

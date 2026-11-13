@@ -78,7 +78,7 @@ public partial class RecipeServingsPostgresTests(ITestOutputHelper output)
                 db.Recipes.AddRange(known, unknown); await db.SaveChangesAsync();
                 var snapshot = await scope.ServiceProvider.GetRequiredService<RecoverySnapshotService>().CaptureAsync(CancellationToken.None);
                 await db.Database.ExecuteSqlRawAsync("DROP VIEW vw_discovery_recipes; ALTER TABLE recipes DROP COLUMN servings");
-                await db.Database.ExecuteSqlRawAsync(await File.ReadAllTextAsync(Path.Combine(TomorrowPushPostgresTests.Root(), "api/database/compatibility.sql")));
+                await RecipeApi.Tests.Infrastructure.PostgresScript.ExecuteAsync(db, await File.ReadAllTextAsync(Path.Combine(TomorrowPushPostgresTests.Root(), "api/database/compatibility.sql")));
                 await db.Database.ExecuteSqlRawAsync(DiscoveryViewDdl());
                 using var client = factory.CreateAuthenticatedClient();
                 var response = await client.PostAsync($"/api/management/recovery/restore/{snapshot.SnapshotId}", null);

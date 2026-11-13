@@ -59,8 +59,7 @@ internal static class WorkflowReset
 
     private static Request Read(WorkflowResetIntent intent)
     {
-        var request = JsonSerializer.Deserialize<Request>(intent.Request, Json)
-            ?? throw new InvalidDataException("Original reset request is missing.");
+        var request = WorkflowProcessorHistory.ReadObservation<Request>(intent.Request, Json);
         if (request.Version != 1 || request.Id == Guid.Empty || request.Id != intent.Id || request.TaskId != intent.TaskId
             || request.InstanceId != intent.InstanceId || request.Before is null || request.Before.TaskId != intent.TaskId
             || request.Before.InstanceId != intent.InstanceId || request.Before.DependsOn is null
@@ -165,4 +164,28 @@ internal static class WorkflowReset
         }
         return applied;
     }
+    internal static WorkflowTask RetainedTask(WorkflowResetIntent intent)
+    {
+        var request = Read(intent);
+        var task = request.Before;
+        return new()
+        {
+            TaskId = task.TaskId,
+            InstanceId = task.InstanceId,
+            TaskName = task.TaskName,
+            ProcessorName = task.ProcessorName,
+            Payload = task.Payload,
+            DependsOn = task.DependsOn,
+            ResetIntentId = task.ResetIntentId,
+            ChildLaunchIntentId = task.ChildLaunchIntentId
+        };
+    }
+
+    internal static FoodVocabularyReference[] VocabularyReferences(WorkflowResetIntent intent)
+    {
+        var request = Read(intent);
+        return RecipeFilePublicationStore.RetainedLaunchVocabularyReferences(intent.InstanceId,
+            request.WorkflowId, request.Parameters, request.Capture, RetainedTask(intent));
+    }
+
 }

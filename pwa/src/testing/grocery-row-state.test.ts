@@ -112,3 +112,33 @@ describe('stateful grocery mock retained demand', () => {
     expect(f.checked()).toBe(false);
   });
 });
+
+it('updates server presentation without changing demand versions, checks or receipt history', () => {
+  const f = fixture();
+  f.project(scalarQuantity(50));
+  const receipt = f.check(true);
+  const original = f.state.mutate(week, 'item', receipt);
+  const before = f.state.snapshot(week);
+  f.state.decorate({
+    weekStartDate: week,
+    groceryItems: before.groceryItems.map((row) => ({
+      ...row,
+      displayLabels: { en: 'Onion', fr: 'Oignon' },
+      labelStatus: 'resolved',
+    })),
+    presentationVersion: '8',
+    presentationEpoch: '4e7341d8-5f29-45f0-8c11-f9689ee16783',
+  });
+  const after = f.state.snapshot(week);
+  expect(after.groceryListVersion).toBe(before.groceryListVersion);
+  expect(after.groceryState).toEqual(before.groceryState);
+  expect(after.groceryItems[0].rowVersion).toBe(before.groceryItems[0].rowVersion);
+  expect(after.presentationVersion).toBe('8');
+  expect(after.groceryItems[0].displayLabels.fr).toBe('Oignon');
+  const replay = f.state.mutate(week, 'item', receipt) as any;
+  expect(replay.status).toBe(200);
+  expect(replay.json.listVersion).toBe((original as any).json.listVersion);
+  expect(replay.json.presentationVersion).toBe('8');
+  expect(replay.json.rows[0].displayLabels.fr).toBe('Oignon');
+  expect((original as any).json.presentationVersion).toBe('0');
+});

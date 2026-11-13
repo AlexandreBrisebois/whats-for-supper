@@ -1,0 +1,40 @@
+{
+  "format": "wfs-vocabulary-adoption-review",
+  "version": 1,
+  "disposition": "reviewed-candidate-not-installed",
+  "sourceProposal": "model-draft-2026-11-12.1.json",
+  "sourceProposalSha256": "37f6843c90853e86c6d4d786644d870dea913bb91a6011eeb854eb1a8ff7285a",
+  "candidate": "model-reviewed-2026-11-13.1.json",
+  "candidateSha256": "a44ef018d74f44b1596e0763da3858c128d3c65b9fd27a6c3a8e2b29f50df1b0",
+  "adoptionReviewIdentity": "wfs-reviewed-vocabulary:model-reviewed-2026-11-13.1:a44ef018d74f44b1596e0763da3858c128d3c65b9fd27a6c3a8e2b29f50df1b0",
+  "reviewedBy": [
+    {
+      "role": "coordinator",
+      "kind": "AI-agent",
+      "scope": "Every finite label, qualifier and alias; exact projection from preserved model-authored draft."
+    },
+    {
+      "role": "independent-worker",
+      "kind": "AI-agent",
+      "scope": "All44 identities,122 aliases and48 excluded terms; zero semantic findings within exact whole-phrase policy."
+    }
+  ],
+  "scope": {
+    "foods": 44,
+    "aliases": 122,
+    "excludedTerms": 48,
+    "units": 0
+  },
+  "policy": [
+    "All44 literal food IDs, labels, purchase qualifiers and explicit alias text/locale/keys/relation/sourceRef are retained from the original draft.",
+    "New immutable food revisions and review timestamps distinguish reviewed status; draft bytes remain unchanged.",
+    "Fresh/canned, salt, grain/processing, spice form, legume preservation, chicken cut and tofu texture remain distinct.",
+    "NFC, invariant case and whitespace normalization only. Accents and punctuation remain; no substring, preparation stripping, locale guessing or new aliases.",
+    "Original local model-authored source references are provenance, not external citations or statistical guarantees. Review was performed by AI agents under the release instruction, not represented as human semantic approval.",
+    "Unit definitions are empty; existing quantity, serving, package, density and count owners retain their policies."
+  ],
+  "activation": {
+    "installed": false,
+    "requirements": "Explicit guarded publication of these exact bytes after full recovery and affected-set/reversal qualification. Restart/restore must load persisted bytes; no regeneration, implicit reseed or substitution from the draft."
+  }
+}

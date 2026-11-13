@@ -76,6 +76,8 @@ try
     builder.Services.AddScoped<RecoverySnapshotService>();
     builder.Services.AddScoped<RecoveryBoundary>();
     builder.Services.AddScoped<FoodVocabularyStore>();
+    builder.Services.AddScoped<GroceryPresentationService>();
+    builder.Services.AddScoped<HouseholdFoodOverrideStore>();
     builder.Services.AddHostedService<RecoveryReconciler>();
     builder.Services.AddSingleton<WorkflowRootResolver>();
     builder.Services.AddSingleton<IStorageProvider, LocalStorageProvider>();

@@ -33,6 +33,7 @@ public class RecipeDbContext(DbContextOptions<RecipeDbContext> options) : DbCont
     public DbSet<WeeklyPlan> WeeklyPlans => Set<WeeklyPlan>();
     public DbSet<FamilySetting> FamilySettings => Set<FamilySetting>();
     public DbSet<IngredientCategory> IngredientCategories => Set<IngredientCategory>();
+    public DbSet<HouseholdFoodOverride> HouseholdFoodOverrides => Set<HouseholdFoodOverride>();
     public DbSet<RecipeSearchDocument> RecipeSearchDocuments => Set<RecipeSearchDocument>();
     public DbSet<MaintenanceCommand> MaintenanceCommands => Set<MaintenanceCommand>();
     public DbSet<RecipeSearchFilterState> RecipeSearchFilterStates => Set<RecipeSearchFilterState>();
@@ -45,6 +46,16 @@ public class RecipeDbContext(DbContextOptions<RecipeDbContext> options) : DbCont
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+        modelBuilder.Entity<HouseholdFoodOverride>().HasIndex(x => x.FoodId).IsUnique().HasFilter("food_id IS NOT NULL").HasDatabaseName("household_food_overrides_food_idx");
+        modelBuilder.Entity<HouseholdFoodOverride>().HasIndex(x => x.FallbackKey).IsUnique().HasFilter("fallback_key IS NOT NULL").HasDatabaseName("household_food_overrides_fallback_idx");
+        modelBuilder.Entity<HouseholdFoodOverride>().HasIndex(x => x.PresentationSequence).IsUnique().HasDatabaseName("household_food_overrides_sequence_idx");
+        modelBuilder.Entity<HouseholdFoodOverride>().ToTable("household_food_overrides", table =>
+        {
+            table.HasCheckConstraint("household_food_overrides_target_check", "(food_id IS NOT NULL AND food_id <> '00000000-0000-0000-0000-000000000000'::uuid AND fallback_key IS NULL AND dictionary_revision IS NOT NULL AND document_revision IS NOT NULL AND document_sha256 IS NOT NULL AND document_sha256 ~ '^[a-f0-9]{64}$') OR (food_id IS NULL AND fallback_key IS NOT NULL AND btrim(fallback_key) <> '' AND dictionary_revision IS NULL AND document_revision IS NULL AND document_sha256 IS NULL)");
+            table.HasCheckConstraint("household_food_overrides_sequence_check", "presentation_sequence ~ '^[1-9][0-9]*$'");
+            table.HasCheckConstraint("household_food_overrides_protection_check", "cardinality(protected_fields) > 0 AND protected_fields <@ ARRAY['shoppingName','grocerySection']::text[]");
+            table.HasCheckConstraint("household_food_overrides_chronology_check", "updated_at >= created_at AND btrim(revision) <> ''");
+        });
         modelBuilder.Entity<WorkflowProcessorAttempt>().HasIndex(x => new { x.TaskId, x.CreatedAt, x.Id })
             .HasDatabaseName("workflow_processor_attempts_task_idx");
         modelBuilder.Entity<WorkflowProcessorAttempt>().ToTable("workflow_processor_attempts", table =>

@@ -21,7 +21,8 @@ public class GroceryRecomputeService(
     IClock clock,
     DeploymentCalendar calendar,
     GroceryCheckCoordinator groceryChecks,
-    IScheduleEventPublisher? publisher = null)
+    IScheduleEventPublisher? publisher = null,
+    FoodVocabularyStore? vocabulary = null)
 {
     private sealed record IntermediateItem(
         string DisplayName,
@@ -29,6 +30,7 @@ public class GroceryRecomputeService(
         string LegacyNormalizedKey,
         string Section,
         int CategoryMatchPriority,
+        string? CategorySource,
         double? Quantity,
         string? UnitText,
         Guid RecipeId,
@@ -37,7 +39,8 @@ public class GroceryRecomputeService(
         string Member,
         string InputFingerprint,
         GroceryContributor? Contributor,
-        RecipePackageDto? Package);
+        RecipePackageDto? Package,
+        Guid? FoodId);
 
     private sealed record RecomputedGroup(
         GroceryLineItemDto Line,
@@ -65,7 +68,7 @@ public class GroceryRecomputeService(
     /// Recomputes <c>grocery_items</c> for the week starting on <paramref name="monday"/>.
     /// Creates the <c>weekly_plans</c> row if it does not yet exist.
     /// </summary>
-    public Task RecomputeForWeekAsync(DateOnly monday, CancellationToken ct, DeploymentCalendarContext? context = null)
+    public Task RecomputeForWeekAsync(DateOnly monday, CancellationToken ct, DeploymentCalendarContext? context = null, bool presentationChanged = false)
     {
         context ??= calendar.Capture(clock.UtcNow);
         return groceryChecks.ProcessWeekAsync(monday, async fresh =>
@@ -75,7 +78,7 @@ public class GroceryRecomputeService(
             return (plan, groceryState, changedState);
         }, ct, async result =>
         {
-            if (result.changedState && publisher is not null)
+            if ((result.changedState || presentationChanged) && publisher is not null)
                 await publisher.PublishGroceryRowsUpdatedAsync(GetWeekOffset(monday, context), GroceryRowState.Snapshot(result.plan, clock.UtcNow));
         });
     }
@@ -84,7 +87,20 @@ public class GroceryRecomputeService(
         RecipeDbContext db, DateOnly monday, CancellationToken ct)
     {
         var inputs = await SupperProjectionInputs.ReadWeekAsync(db, monday, calendar.Capture(clock.UtcNow).Today, ct);
-        var supplyEntries = new List<(string DisplayName, double? Quantity, string? UnitText, Guid RecipeId, bool QuantityComplete, GroceryQuantity? ExactQuantity, string Member, string InputFingerprint, GroceryContributor? Contributor, RecipePackageDto? Package)>();
+        // A saved UUID is usable only with its exact retained mapping authority.
+        // Validate before any grocery row/check/baseline write; never rematch aliases.
+        var savedRecipes = inputs.Select(input => input.Event.Recipe!).DistinctBy(recipe => recipe.Id).ToArray();
+        var presentation = vocabulary is null ? null : await vocabulary.CapturePresentationAsync(savedRecipes.Select(recipe => recipe.FoodMappingEvidence), ct);
+        foreach (var recipe in savedRecipes)
+        {
+            if (CanonicalRecipeContentStore.Read(recipe) is not { } content) continue;
+            var hasMapping = content.IngredientLines.Any(line => line.Shopping.FoodId is not null);
+            var authority = hasMapping
+                ? presentation?.Authority ?? throw new InvalidDataException("Mapped groceries require retained vocabulary authority.")
+                : new FoodVocabularyAuthority(null, []);
+            FoodMappingQualification.Validate(content, recipe.FoodMappingEvidence, authority, recipe.Id);
+        }
+        var supplyEntries = new List<(string DisplayName, double? Quantity, string? UnitText, Guid RecipeId, bool QuantityComplete, GroceryQuantity? ExactQuantity, string Member, string InputFingerprint, GroceryContributor? Contributor, RecipePackageDto? Package, Guid? FoodId)>();
         foreach (var input in inputs)
         {
             var supplies = input.Lines.Select(line => (DisplayName: line.Name, line.Quantity, line.UnitText, RecipeId: input.Event.RecipeId!.Value,
@@ -107,7 +123,8 @@ public class GroceryRecomputeService(
                 }),
                 Contributor: line.SavedIngredientLineId is { } lineId && line.GroceryPurchaseIdentity is { } purchase
                     ? new GroceryContributor(input.Event.Id, input.Event.RecipeId!.Value, lineId, purchase) : null,
-                Package: line.GroceryPackage));
+                Package: line.GroceryPackage,
+                FoodId: line.GroceryFoodId));
             supplyEntries.AddRange(supplies
                 .OrderBy(s => s.DisplayName, StringComparer.Ordinal)
                 .ThenBy(s => s.UnitText, StringComparer.Ordinal)
@@ -139,7 +156,7 @@ public class GroceryRecomputeService(
             .Distinct(StringComparer.Ordinal)
             .ToList();
 
-        Dictionary<string, string> categoryMap = new(StringComparer.Ordinal);
+        Dictionary<string, IngredientCategory> categoryMap = new(StringComparer.Ordinal);
         if (categoryLookupKeys.Count > 0)
         {
             var dbCategories = await db.IngredientCategories
@@ -148,13 +165,13 @@ public class GroceryRecomputeService(
                 .ToListAsync(ct);
 
             foreach (var cat in dbCategories)
-                categoryMap[cat.NormalizedKey] = cat.GrocerySection;
+                categoryMap[cat.NormalizedKey] = cat;
         }
 
         // 4. Build intermediate items with section resolved.
         var intermediate = new List<IntermediateItem>();
 
-        foreach (var (displayName, quantity, unitText, recipeId, quantityComplete, exactQuantity, member, inputFingerprint, contributor, package) in supplyEntries)
+        foreach (var (displayName, quantity, unitText, recipeId, quantityComplete, exactQuantity, member, inputFingerprint, contributor, package, foodId) in supplyEntries)
         {
             var normalizedKey = IngredientNormalizer.Normalize(displayName);
             if (string.IsNullOrEmpty(normalizedKey))
@@ -163,14 +180,17 @@ public class GroceryRecomputeService(
 
             string section;
             var categoryMatchPriority = 0;
+            string? categorySource = null;
             if (categoryMap.TryGetValue(normalizedKey, out var dbSection))
             {
-                section = dbSection;
+                section = dbSection.GrocerySection;
+                categorySource = dbSection.Source;
                 categoryMatchPriority = 2;
             }
             else if (categoryMap.TryGetValue(legacyNormalizedKey, out var legacyDbSection))
             {
-                section = legacyDbSection;
+                section = legacyDbSection.GrocerySection;
+                categorySource = legacyDbSection.Source;
                 categoryMatchPriority = 1;
             }
             else
@@ -180,7 +200,7 @@ public class GroceryRecomputeService(
                 section = SectionDisplayNames[grocerySection];
             }
 
-            intermediate.Add(new IntermediateItem(displayName, normalizedKey, legacyNormalizedKey, section, categoryMatchPriority, quantity, unitText, recipeId, quantityComplete, exactQuantity, member, inputFingerprint, contributor, package));
+            intermediate.Add(new IntermediateItem(displayName, normalizedKey, legacyNormalizedKey, section, categoryMatchPriority, categorySource, quantity, unitText, recipeId, quantityComplete, exactQuantity, member, inputFingerprint, contributor, package, foodId));
         }
 
         // 5. Group compatible counts by name/unit and exact declared purchase.
@@ -197,7 +217,7 @@ public class GroceryRecomputeService(
             .GroupBy(item =>
             {
                 var bucketUnit = GroceryUnit.Read(item.UnitText).Bucket;
-                return (item.NormalizedKey, BucketUnit: bucketUnit, PackageKey: DeclaredPackagePresentation.Key(item.Package));
+                return (Identity: item.FoodId is { } food ? "food:" + food.ToString("D") : "fallback:" + item.NormalizedKey, BucketUnit: bucketUnit, PackageKey: DeclaredPackagePresentation.Key(item.Package));
             })
             .Select(g =>
             {
@@ -210,6 +230,15 @@ public class GroceryRecomputeService(
                     .Select(item => item.Section)
                     .FirstOrDefault() ?? first.Section;
 
+                if (first.FoodId is not null)
+                {
+                    var manual = g.SelectMany(item => CategoryKeys(item.DisplayName)).Distinct(StringComparer.Ordinal)
+                        .Select(key => categoryMap.GetValueOrDefault(key)).Where(category => category?.Source == "manual")
+                        .Select(category => category!.GrocerySection).Distinct(StringComparer.Ordinal).ToArray();
+                    if (manual.Length > 0) section = manual.Length == 1 ? manual[0] : "Grocery";
+                    var correction = presentation?.Overrides.SingleOrDefault(row => row.FoodId == first.FoodId);
+                    if (correction?.ProtectedFields.Contains("grocerySection") == true) section = correction.GrocerySection ?? "Grocery";
+                }
                 var unit = GroceryUnit.Read(first.UnitText);
 
                 // Invalid conversions and overflow remain unresolved, never JSON numbers.
@@ -242,7 +271,7 @@ public class GroceryRecomputeService(
                         UnitText: emittedUnit,
                         RecipeIds: recipeIds,
                         QuantityComplete: quantityComplete)
-                    { ExactQuantity = exactTotal },
+                    { ExactQuantity = exactTotal, FoodId = first.FoodId },
                     g.Select(item => item.LegacyNormalizedKey).ToHashSet(StringComparer.Ordinal),
                     g.Key.BucketUnit,
                     first.Package,
@@ -282,7 +311,11 @@ public class GroceryRecomputeService(
         var nextEvidence = new Dictionary<string, GroceryDemandEvidence>(StringComparer.Ordinal);
         // Keep the exact pre-package JSON bytes when no package is declared.
         // A serialized null member would change existing acknowledgement identity.
-        var identities = grouped.Select(group => group.Package is null
+        var identities = grouped.Select(group => group.Line.FoodId is { } foodId
+            ? group.Package is null
+                ? JsonSerializer.Serialize(new { foodId, bucket = group.BucketUnit })
+                : JsonSerializer.Serialize(new { foodId, bucket = group.BucketUnit, package = group.Package })
+            : group.Package is null
             ? JsonSerializer.Serialize(new { fallback = group.Line.NormalizedKey, bucket = group.BucketUnit })
             : JsonSerializer.Serialize(new { fallback = group.Line.NormalizedKey, bucket = group.BucketUnit, package = group.Package })).ToArray();
         // Exact identity continues unless observed membership demonstrates a split
@@ -421,6 +454,20 @@ public class GroceryRecomputeService(
         }
     }
 
+    public async Task RecomputeForFoodAsync(Guid foodId, CancellationToken ct)
+    {
+        var recipes = await db.Recipes.AsNoTracking().Where(recipe => recipe.CanonicalContent != null).ToArrayAsync(ct);
+        var ids = recipes.Where(recipe => CanonicalRecipeContentStore.Read(recipe)!.IngredientLines.Any(line => line.Shopping.FoodId == foodId))
+            .Select(recipe => recipe.Id).ToArray();
+        var dates = await db.CalendarEvents.AsNoTracking().Where(occurrence => occurrence.RecipeId != null && ids.Contains(occurrence.RecipeId.Value))
+            .Select(occurrence => occurrence.Date).ToArrayAsync(ct);
+        var plans = await db.WeeklyPlans.AsNoTracking().ToArrayAsync(ct);
+        var weeks = dates.Select(DeploymentCalendar.Monday)
+            .Concat(plans.Where(plan => GroceryRowState.Rows(plan).Any(row => row.FoodId == foodId)).Select(plan => plan.WeekStartDate))
+            .Distinct().Order().ToArray();
+        foreach (var week in weeks) await RecomputeForWeekAsync(week, ct, presentationChanged: true);
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────────────
 
     /// <summary>Returns the Monday of the week containing <paramref name="date"/>.</summary>
@@ -430,6 +477,9 @@ public class GroceryRecomputeService(
         var daysFromMonday = ((int)date.DayOfWeek - 1 + 7) % 7;
         return date.AddDays(-daysFromMonday);
     }
+
+    internal static string[] CategoryKeys(string name) => new[] { IngredientNormalizer.Normalize(name), LegacyNormalize(name) }
+        .Where(key => !string.IsNullOrWhiteSpace(key)).Distinct(StringComparer.Ordinal).ToArray();
 
     private static string LegacyNormalize(string raw)
     {

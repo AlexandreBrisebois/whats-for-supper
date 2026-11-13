@@ -328,6 +328,8 @@
     "bought": "Acheté",
     "notBought": "Non acheté",
     "changeSection": "Changer le rayon pour",
+    "categoryConflict": "Plusieurs rayons sont enregistrés. Choisissez-en un pour cet aliment.",
+    "savedSections": "Rayons enregistrés :",
     "chooseSection": "Choisir le rayon",
     "savingExtra": "Enregistrement…",
     "extraSaveError": "Impossible d’enregistrer. Actualisation en cours; réessayez.",

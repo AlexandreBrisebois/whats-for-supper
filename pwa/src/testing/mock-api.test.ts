@@ -5,6 +5,209 @@ import { fractionCookingRecipe } from '../../e2e/cooking-step-fixture';
 import { canonicalRecipePatchIsValid } from '../../e2e/canonical-content-input';
 import { originalInstructions } from '../lib/recipes/instruction-draft';
 
+async function sharedImportRoutes() {
+  const handlers = new Map<Parameters<Page['route']>[0], (route: Route) => Promise<unknown>>();
+  const page = {
+    route: vi.fn(
+      async (
+        pattern: Parameters<Page['route']>[0],
+        handler: (route: Route) => Promise<unknown>
+      ) => {
+        handlers.set(pattern, handler);
+      }
+    ),
+    evaluate: vi.fn().mockResolvedValue(undefined),
+  };
+  await setupCommonRoutes(page as unknown as Page);
+  return async (pattern: string, method: string, path: string, body?: unknown) => {
+    const fulfill = vi.fn();
+    await handlers.get(pattern)!({
+      request: () => ({
+        method: () => method,
+        url: () => 'http://localhost' + path,
+        postDataJSON: () => body,
+      }),
+      fulfill,
+      fallback: vi.fn(),
+    } as unknown as Route);
+    const response = fulfill.mock.calls[0][0];
+    return {
+      status: response.status ?? 200,
+      json: response.json ?? (typeof response.body === 'string' ? JSON.parse(response.body) : null),
+      body: response.body,
+      contentType: response.contentType,
+    };
+  };
+}
+
+const protectedSharedFacts = [
+  'description',
+  'amount',
+  'amountText',
+  'unit',
+  'scaling',
+  'package',
+  'shopping',
+];
+function textOnlySharedBundle() {
+  const bundle = structuredClone(builders.recipeShareBundle());
+  Object.assign(bundle.recipe!, {
+    name: 'Shared exact pasta',
+    ingredients: ['⅓ cup flour', '2 eggs', 'oil'],
+    instructions: [
+      {
+        name: 'Mix exactly',
+        itemListElement: [{ text: 'Mix all the flour.' }, { text: 'Keep the wording.' }],
+      },
+    ],
+    notes: 'Imported private note',
+    rating: 3,
+  });
+  bundle.info!.recipeId = '09000000-0000-4000-8000-000000000011';
+  return bundle;
+}
+
+it.each([4, null, 'omitted'] as const)(
+  'shared import persists declared basis %j and canonical unknown facts through detail, editor and share',
+  async (basis) => {
+    const call = await sharedImportRoutes();
+    const bundle = textOnlySharedBundle();
+    if (basis === 'omitted') delete bundle.recipe!.servings;
+    else bundle.recipe!.servings = basis;
+    const result = await call(
+      '**/api/recipes/import-bundle',
+      'POST',
+      '/api/recipes/import-bundle',
+      bundle
+    );
+    expect(result.status).toBe(201);
+    const imported = result.json.data;
+    expect(imported.servings).toBe(basis === 'omitted' ? null : basis);
+    expect(imported.contentSchemaVersion).toBe(2);
+    expect(imported.id).toBe(bundle.info!.recipeId);
+    expect(imported.contentRevision).toEqual(expect.any(String));
+    expect(imported.ingredients).toEqual(bundle.recipe!.ingredients);
+    expect(imported.ingredientLines).toHaveLength(3);
+    expect(imported.ingredientLines.map((line: any) => line.description)).toEqual(
+      bundle.recipe!.ingredients
+    );
+    for (const line of imported.ingredientLines)
+      expect(line).toMatchObject({
+        amount: null,
+        amountText: null,
+        unit: null,
+        package: null,
+        scaling: 'proportional',
+        shopping: { name: line.description, foodId: null, mappingRevision: null },
+        provenance: {
+          origin: 'legacy_unknown',
+          sourceRef: null,
+          protectedFields: protectedSharedFacts,
+        },
+      });
+    expect(imported.instructionSections[0].steps.map((step: any) => step.text)).toEqual([
+      'Mix all the flour.',
+      'Keep the wording.',
+    ]);
+    expect(
+      imported.instructionSections[0].steps.every((step: any) => step.bindings.length === 0)
+    ).toBe(true);
+    const read = (await call('**/api/recipes/*', 'GET', '/api/recipes/' + imported.id)).json.recipe;
+    expect(read).toMatchObject(imported);
+    const originalIds = imported.ingredientLines.map((line: any) => line.id);
+    const edited = await call('**/api/recipes/*', 'PATCH', '/api/recipes/' + imported.id, {
+      expectedContentRevision: imported.contentRevision,
+      ingredientLines: imported.ingredientLines.map(
+        ({ provenance: _provenance, ...line }: any) => line
+      ),
+    });
+    expect(edited.status).toBe(200);
+    expect(edited.json.recipe.ingredientLines.map((line: any) => line.id)).toEqual(originalIds);
+    expect(
+      edited.json.recipe.ingredientLines.every(
+        (line: any) => line.amount === null && line.provenance.sourceRef === null
+      )
+    ).toBe(true);
+    const exported = (
+      await call('**/api/recipes/*/share', 'GET', '/api/recipes/' + imported.id + '/share')
+    ).json.data;
+    expect(exported.recipe.ingredients).toEqual(bundle.recipe!.ingredients);
+    expect(exported.recipe.instructions).toEqual(bundle.recipe!.instructions);
+    expect(exported.recipe.servings).toBeNull();
+    expect(exported.recipe.notes).toBeNull();
+    expect(exported.recipe.rating).toBeNull();
+    expect(exported.hero).toEqual(bundle.hero);
+    expect(exported.originals).toEqual(bundle.originals);
+    expect(JSON.stringify(exported)).not.toContain('legacy_unknown');
+    expect(JSON.stringify(exported)).not.toContain('Imported private note');
+    const hero = await call(
+      '**/api/recipes/*/hero',
+      'GET',
+      '/api/recipes/' + imported.id + '/hero'
+    );
+    expect(hero.body).toEqual(Buffer.from(bundle.hero!.base64!, 'base64'));
+    const original = await call(
+      '**/api/recipes/*/original/*',
+      'GET',
+      '/api/recipes/' + imported.id + '/original/0'
+    );
+    expect(original.body).toEqual(Buffer.from(bundle.originals![0].base64!, 'base64'));
+  }
+);
+
+it.each([0, -1])(
+  'shared import rejects declared basis %s before creating saved membership',
+  async (basis) => {
+    const call = await sharedImportRoutes();
+    const bundle = textOnlySharedBundle();
+    bundle.recipe!.servings = basis;
+    expect(
+      (await call('**/api/recipes/import-bundle', 'POST', '/api/recipes/import-bundle', bundle))
+        .status
+    ).toBe(400);
+    bundle.recipe!.servings = 4;
+    const imported = (
+      await call('**/api/recipes/import-bundle', 'POST', '/api/recipes/import-bundle', bundle)
+    ).json.data;
+    expect(imported.id).toBe(bundle.info!.recipeId);
+    expect(imported.servings).toBe(4);
+  }
+);
+
+it('shared import rejects unsupported version before saving any recipe', async () => {
+  const call = await sharedImportRoutes();
+  const bundle = textOnlySharedBundle();
+  bundle.version = '1.1';
+  expect(
+    (await call('**/api/recipes/import-bundle', 'POST', '/api/recipes/import-bundle', bundle))
+      .status
+  ).toBe(400);
+  bundle.version = '1.0';
+  expect(
+    (await call('**/api/recipes/import-bundle', 'POST', '/api/recipes/import-bundle', bundle)).json
+      .data.id
+  ).toBe(bundle.info!.recipeId);
+});
+
+it('shared imports keep separate local identities when requested recipe membership collides', async () => {
+  const call = await sharedImportRoutes();
+  const bundle = textOnlySharedBundle();
+  bundle.info!.recipeId = MOCK_IDS.RECIPE_LASAGNA;
+  const first = (
+    await call('**/api/recipes/import-bundle', 'POST', '/api/recipes/import-bundle', bundle)
+  ).json.data;
+  const second = (
+    await call('**/api/recipes/import-bundle', 'POST', '/api/recipes/import-bundle', bundle)
+  ).json.data;
+  expect(first.id).not.toBe(MOCK_IDS.RECIPE_LASAGNA);
+  expect(second.id).not.toBe(first.id);
+  const firstIds = new Set(first.ingredientLines.map((line: any) => line.id));
+  expect(second.ingredientLines.every((line: any) => !firstIds.has(line.id))).toBe(true);
+  expect(
+    (await call('**/api/recipes/*', 'GET', '/api/recipes/' + first.id)).json.recipe.contentRevision
+  ).toBe(first.contentRevision);
+});
+
 it('fraction binding negatives retain valid saved ingredient, section and step identities', () => {
   const recipe = fractionCookingRecipe();
   expect(
@@ -837,4 +1040,110 @@ it('reported-only search finds an incomplete flagged recipe without promoting it
   } as unknown as Route);
   const result = fulfill.mock.calls[0][0];
   expect(JSON.parse(result.body).recipe.importIssue).toEqual(recipe.importIssue);
+});
+
+it('food category mock preserves checks and conflicts on stale revisions across weeks', async () => {
+  const handlers = new Map<Parameters<Page['route']>[0], (route: Route) => Promise<unknown>>();
+  const page = {
+    route: vi.fn(
+      async (
+        pattern: Parameters<Page['route']>[0],
+        handler: (route: Route) => Promise<unknown>
+      ) => {
+        handlers.set(pattern, handler);
+      }
+    ),
+    evaluate: vi.fn().mockResolvedValue(undefined),
+  };
+  const common = await setupCommonRoutes(page as unknown as Page);
+  const foodId = '09000000-0000-4000-8000-000000000001';
+  const weeks = ['2026-11-09', '2026-11-16'];
+  const row = {
+    foodId,
+    displayName: 'onion',
+    normalizedKey: 'onion',
+    section: 'Produce',
+    quantity: 2,
+    quantityComplete: true,
+    unitText: 'piece',
+    categoryScope: 'food',
+    categoryStatus: 'conflict',
+    categoryRevision: null,
+    categoryChoices: [{ normalizedKey: 'oignon', grocerySection: 'Pantry', source: 'legacy' }],
+  };
+  for (const weekStartDate of weeks)
+    common.groceryRows.decorate({ weekStartDate, groceryItems: [{ ...row }] });
+  const initial = common.groceryRows.snapshot(weeks[0]);
+  const item = initial.groceryItems[0];
+  const checkedBody = {
+    clientMutationId: '09000000-0000-4000-8000-000000000002',
+    weekStartDate: weeks[0],
+    rowId: item.rowId,
+    expectedRowVersion: item.rowVersion,
+    checked: true,
+  };
+  expect(common.groceryRows.mutate(weeks[0], 'item', checkedBody).status).toBe(200);
+  const before = weeks.map((week) => common.groceryRows.snapshot(week));
+  const call = async (body: unknown) => {
+    const fulfill = vi.fn();
+    const handler = handlers.get('**/api/foods/*/category');
+    if (!handler) return { status: 404 };
+    await handler({
+      request: () => ({
+        method: () => 'PATCH',
+        url: () => `http://localhost/api/foods/${foodId}/category`,
+        postDataJSON: () => body,
+      }),
+      fulfill,
+      fallback: vi.fn(),
+    } as unknown as Route);
+    const response = fulfill.mock.calls[0][0];
+    return { status: response.status ?? 200, json: response.json };
+  };
+  expect((await call({ grocerySection: 'Produce', expectedCategoryRevision: null })).status).toBe(
+    204
+  );
+  const after = weeks.map((week) => common.groceryRows.snapshot(week));
+  for (let i = 0; i < weeks.length; i++) {
+    expect(after[i].groceryListVersion).toBe(before[i].groceryListVersion);
+    expect(after[i].groceryState).toEqual(before[i].groceryState);
+    expect(after[i].groceryItems[0].rowVersion).toBe(before[i].groceryItems[0].rowVersion);
+    expect(BigInt(after[i].presentationVersion)).toBeGreaterThan(
+      BigInt(before[i].presentationVersion)
+    );
+    expect(after[i].groceryItems[0]).toMatchObject({
+      categoryStatus: 'resolved',
+      categoryChoices: row.categoryChoices,
+    });
+    expect(after[i].groceryItems[0].categoryRevision).toBeTruthy();
+  }
+  expect((await call({ grocerySection: 'Pantry', expectedCategoryRevision: null })).status).toBe(
+    409
+  );
+  expect((await call({ grocerySection: 'Pantry' })).status).toBe(409);
+  expect(weeks.map((week) => common.groceryRows.snapshot(week))).toEqual(after);
+  expect(page.evaluate).toHaveBeenCalledTimes(2);
+  expect(
+    (
+      await call({
+        grocerySection: 'Pantry',
+        expectedCategoryRevision: after[0].groceryItems[0].categoryRevision,
+      })
+    ).status
+  ).toBe(204);
+  expect(common.groceryRows.snapshot(weeks[0]).groceryState).toEqual(before[0].groceryState);
+  expect(common.groceryRows.snapshot(weeks[0]).groceryListVersion).not.toBe(
+    after[0].groceryListVersion
+  );
+  common.groceryRows.decorate({ weekStartDate: weeks[0], groceryItems: [{ ...row }] });
+  expect(common.groceryRows.snapshot(weeks[0]).groceryItems[0].section).toBe('Pantry');
+  const replay = common.groceryRows.mutate(weeks[0], 'item', checkedBody);
+  expect(replay.json).toMatchObject({
+    rows: [
+      {
+        section: 'Pantry',
+        categoryRevision: common.groceryRows.snapshot(weeks[0]).groceryItems[0].categoryRevision,
+      },
+    ],
+  });
 });

@@ -56,6 +56,7 @@ public partial class RecoverySnapshotService
             if (File.Exists(JournalPath)) throw new RecoveryBusyException("Resume the interrupted restore before starting another.");
             if (await db.RecipePhysicalDeletions.AsNoTracking().AnyAsync(x => x.CompletedAt == null, ct))
                 throw new RecoveryBusyException("Complete or reconcile pending recipe physical retirement before restoring household state.");
+            if (demo) await ValidateDemoInventoryAsync(connection, ct, prospectiveDemoInvalidation: true);
             if (demo && workflowInstanceId is { } resetId)
             {
                 // Recheck after draining: another publication may have fenced this claimed worker.
@@ -321,7 +322,7 @@ public partial class RecoverySnapshotService
     private async Task ValidateTablesAsync(NpgsqlConnection connection, string stage, RecoveryManifest manifest, CancellationToken ct, bool demo = false)
     {
         var tables = demo ? DemoTables : Tables;
-        if (demo) await ValidateDemoInventoryAsync(connection, ct);
+        if (demo) await ValidateDemoInventoryAsync(connection, ct, prospectiveDemoInvalidation: true);
         if (manifest.Schema != await SchemaAsync(connection, ct, demo ? DemoDispositions.Keys.Order().ToArray() : null)) throw new InvalidDataException("Snapshot schema is incompatible; use the matching application version or migrate a separate copy.");
         foreach (var table in tables)
         {
@@ -337,6 +338,7 @@ public partial class RecoverySnapshotService
                     throw new InvalidDataException($"{table} row has missing, duplicate or unknown fields.");
             await ScalarAsync(connection, $"CREATE TEMP TABLE recovery_{table} (LIKE public.{table} INCLUDING ALL) ON COMMIT DROP; INSERT INTO pg_temp.recovery_{table} ({writable}) SELECT {writable} FROM jsonb_populate_recordset(NULL::public.{table}, @json)", ct, text);
         }
+        if (demo) await ValidateLegacyDemoTableAuthorityAsync(connection, ct);
         if (demo)
             ValidateDemoSettingReferences(
                 await File.ReadAllTextAsync(Path.Combine(stage, ".snapshot/tables/family_settings.json"), ct),

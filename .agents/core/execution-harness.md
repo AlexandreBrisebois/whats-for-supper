@@ -184,8 +184,13 @@ mocked API boundary.
   On macOS with no configured connection, the runner also uses the Linux SDK image
   pinned by `api/Dockerfile`, so Linux recovery durability checks execute on their
   supported filesystem. Repository source is copied into an ephemeral Linux workspace;
-  host build outputs are excluded. SDK/PostgreSQL containers share an owned private
-  network; the runner removes those resources after success, failure or timeout.
+  host build outputs are excluded. The SDK joins only its owned PostgreSQL
+  container's network namespace and connects over loopback; PostgreSQL remains on
+  the owned private network without a published host port. This avoids the bridge's
+  same-destination TIME_WAIT port ceiling for intentionally unpooled fixtures without
+  changing pooling, kernel settings or test parallelism. Temporary PostgreSQL keeps
+  explicit SCRAM TCP authentication. The runner removes the SDK, database and private
+  network after success, failure or timeout.
   This path requires Docker, without requiring a host .NET installation. Native Linux
   and explicitly configured connections retain host .NET execution; configured
   connections therefore require a supported host for Linux-only recovery coverage.

@@ -29,5 +29,13 @@ export function normalizeGroceryQuantity(value: unknown): GroceryScalar | Grocer
 
 /** Keep reads and mutation acknowledgements on the same exact wire boundary. */
 export function normalizeGroceryItems(items: GroceryLineItemDto[] | null | undefined) {
-  return items?.map((item) => ({ ...item, quantity: normalizeGroceryQuantity(item.quantity) }));
+  return items?.map((item) => ({
+    ...item,
+    // Kiota assigns explicit wire null to an own undefined property. Missing
+    // authority must remain missing so callers can reject an incomplete read.
+    ...(Object.hasOwn(item, 'categoryRevision') && item.categoryRevision === undefined
+      ? { categoryRevision: null }
+      : {}),
+    quantity: normalizeGroceryQuantity(item.quantity),
+  }));
 }

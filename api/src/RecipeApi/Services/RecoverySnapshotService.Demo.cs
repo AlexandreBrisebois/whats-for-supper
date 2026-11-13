@@ -172,12 +172,49 @@ public partial class RecoverySnapshotService
         return values.ToJsonString();
     }
 
-    private static async Task ValidateDemoInventoryAsync(NpgsqlConnection connection, CancellationToken ct)
+    private async Task ValidateDemoInventoryAsync(NpgsqlConnection connection, CancellationToken ct, bool prospectiveDemoInvalidation = false)
     {
         var names = await ScalarAsync(connection, "SELECT string_agg(tablename,',' ORDER BY tablename) FROM pg_tables WHERE schemaname='public'", ct);
-        if (!names.Split(',').SequenceEqual(DemoDispositions.Keys.Order()))
+        var actual = names.Split(',');
+        if (!actual.SequenceEqual(DemoDispositions.Keys.Append("household_food_overrides").Order()))
             throw new InvalidDataException("Household schema has unclassified state; recapture requires an explicit disposition for every table.");
+        await RequireLegacyDemoFoodFreeAsync(ct, prospectiveDemoInvalidation);
     }
+    private async Task RequireLegacyDemoFoodFreeAsync(CancellationToken ct, bool prospectiveDemoInvalidation)
+    {
+        var facts = await vocabulary.ObserveInventoryFactsAsync(ct);
+        if (facts.Membership.RawJson is not null || facts.Overrides.Coverage != FoodVocabularyOverrideCoverage.CapturedV1
+            || facts.Overrides.Rows is not { Count: 0 } || facts.Recipes.Any(x => x.FoodMappingEvidence is not null)
+            || (prospectiveDemoInvalidation
+                ? FoodVocabularyInventoryQualification.RequiredReferencesForDemoInvalidation(facts)
+                : FoodVocabularyInventoryQualification.RequiredReferences(facts)).Count != 0)
+            throw new InvalidDataException("Legacy demo format 2 cannot represent food vocabulary authority or private food overrides; capture format 4 is required.");
+        foreach (var operation in facts.CanonicalOperations)
+        {
+            if (operation.OriginalRequest is null) continue;
+            using var request = JsonDocument.Parse(operation.OriginalRequest);
+            if (request.RootElement.GetProperty("version").GetInt32() == 2)
+                throw new InvalidDataException("Legacy demo format 2 cannot represent current canonical operation authority; capture format 4 is required.");
+        }
+    }
+
+    private async Task ValidateLegacyDemoTableAuthorityAsync(NpgsqlConnection connection, CancellationToken ct)
+    {
+        if (await ScalarAsync(connection, "SELECT count(*)::text FROM pg_temp.recovery_family_settings WHERE key='food_vocabulary_publication'", ct) != "0"
+            || await ScalarAsync(connection, "SELECT count(*)::text FROM pg_temp.recovery_recipes WHERE food_mapping_evidence IS NOT NULL", ct) != "0"
+            || await ScalarAsync(connection, "SELECT count(*)::text FROM pg_temp.recovery_canonical_recipe_operations WHERE original_request::jsonb->>'version'='2'", ct) != "0")
+            throw new InvalidDataException("Legacy demo format 2 contains unsupported food vocabulary authority.");
+        await using var command = new NpgsqlCommand("SELECT id,canonical_content::text,food_mapping_evidence::text FROM pg_temp.recovery_recipes", connection);
+        await using var reader = await command.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            var recipe = new FoodVocabularyRecipeObservation(reader.GetGuid(0), reader.IsDBNull(1) ? null : reader.GetString(1),
+                reader.IsDBNull(2) ? null : reader.GetString(2));
+            if (FoodVocabularyInventoryQualification.RecipeReferences(recipe).Length != 0)
+                throw new InvalidDataException("Legacy demo format 2 contains unsupported ingredient food authority.");
+        }
+    }
+
     private static void ValidateDemoSettingReferences(string settingRows, string recipeRows)
     {
         using var recipes = JsonDocument.Parse(recipeRows);
@@ -251,15 +288,20 @@ public partial class RecoverySnapshotService
 
     private static bool IsSafeFutureDemoMaintenance(WorkflowInstance instance, DateTimeOffset now)
     {
+        var roots = instance.Tasks.Where(t => t.DependsOn.Length == 0).ToArray();
+        return roots.Length != 0 && roots.All(t => t.Status == Models.TaskStatus.Pending && t.ScheduledAt > now)
+            && instance.Tasks.All(t => t.Status is Models.TaskStatus.Waiting or Models.TaskStatus.Pending && t.RetryCount == 0)
+            && IsReviewedDemoMaintenanceGraph(instance);
+    }
+
+    internal static bool IsReviewedDemoMaintenanceGraph(WorkflowInstance instance)
+    {
         try
         {
             using var parameters = JsonDocument.Parse(instance.Parameters ?? "{}");
             if (parameters.RootElement.ValueKind != JsonValueKind.Object || parameters.RootElement.EnumerateObject().Any()) return false;
-            var roots = instance.Tasks.Where(t => t.DependsOn.Length == 0).ToArray();
-            if (roots.Length == 0 || roots.Any(t => t.Status != Models.TaskStatus.Pending || t.ScheduledAt is null || t.ScheduledAt <= now)) return false;
             foreach (var task in instance.Tasks)
             {
-                if (task.Status is not (Models.TaskStatus.Waiting or Models.TaskStatus.Pending) || task.RetryCount != 0) return false;
                 if (task.ProcessorName is "PruneWorkflows" or "ProcessMaintenanceCommands" or "PruneMaintenanceCommands"
                     or "FinalizeOverdueMeals" or "RolloverGroceryExtras" or "ReconcileRecipeRotation"
                     or "MaterializeRecipeSearchFilters" or "GenerateDreamingReport") continue;

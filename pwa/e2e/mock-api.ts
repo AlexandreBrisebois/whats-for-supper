@@ -317,6 +317,7 @@ export async function setupCommonRoutes(
   let roundSequence = 1;
   let historyGeneration = 1;
   const recipeUpdates = new Map<string, Partial<RecipeDto>>();
+  const importedShares = new Map<string, RecipeShareBundleDto>();
   if (recoveryOptions.canonicalEditor?.id)
     recipeUpdates.set(
       String(recoveryOptions.canonicalEditor.id),
@@ -999,6 +1000,14 @@ export async function setupCommonRoutes(
 
   // GET /api/recipes/{id}/hero
   await page.route('**/api/recipes/*/hero', async (route) => {
+    const id = new URL(route.request().url()).pathname.split('/')[3];
+    const hero = importedShares.get(id)?.hero;
+    if (route.request().method() === 'GET' && hero?.base64)
+      return fulfill(route, {
+        status: 200,
+        contentType: hero.mimeType ?? 'image/jpeg',
+        body: Buffer.from(hero.base64, 'base64'),
+      });
     await fulfill(route, { status: 200, contentType: 'image/jpeg', body: Buffer.from([]) });
   });
 
@@ -1120,12 +1129,22 @@ export async function setupCommonRoutes(
         contentType: 'application/json',
         body: JSON.stringify({
           data: builders.recipeShareBundle({
+            ...(importedShares.has(id)
+              ? { hero: importedShares.get(id)!.hero, originals: importedShares.get(id)!.originals }
+              : {}),
             recipe: {
               ...builders.recipeShareBundle().recipe,
               name: recipe.name ?? '',
               description: recipe.description,
               ingredients: recipe.ingredients ?? [],
               instructions,
+              sourceUrl: recipe.sourceUrl ?? null,
+              category: recipe.category ?? null,
+              cuisineType: recipe.cuisineType ?? null,
+              mealTypes: recipe.mealTypes ?? null,
+              isSynthesized:
+                importedShares.get(id)?.recipe?.isSynthesized ??
+                recipe.sourceType === RecipeDto_sourceTypeObject.Synthesized,
               servings: null,
               notes: null,
               rating: null,
@@ -1140,6 +1159,14 @@ export async function setupCommonRoutes(
 
   // GET /api/recipes/{recipeId}/original/{photoIndex}
   await page.route('**/api/recipes/*/original/*', async (route) => {
+    const [, , , id, , index] = new URL(route.request().url()).pathname.split('/');
+    const original = importedShares.get(id)?.originals?.[Number(index)];
+    if (route.request().method() === 'GET' && original?.base64)
+      return fulfill(route, {
+        status: 200,
+        contentType: original.mimeType ?? 'image/jpeg',
+        body: Buffer.from(original.base64, 'base64'),
+      });
     await fulfill(route, { status: 200, contentType: 'image/jpeg', body: Buffer.from([]) });
   });
 
@@ -1283,7 +1310,7 @@ export async function setupCommonRoutes(
           json: { message: 'Invalid canonical recipe content. No fields were saved.' },
         });
       if (
-        recoveryOptions.canonicalEditor?.id === id &&
+        (recoveryOptions.canonicalEditor?.id === id || importedShares.has(id)) &&
         [
           'ingredientLines',
           'instructionSections',
@@ -1456,23 +1483,101 @@ export async function setupCommonRoutes(
   await page.route('**/api/recipes/import-bundle', async (route) => {
     if (route.request().method() === 'POST') {
       const body = route.request().postDataJSON() as RecipeShareBundleDto;
+      const source = body?.recipe;
+      if (
+        body?.version !== '1.0' ||
+        body.info?.bundleSource !== 'wfs-share' ||
+        !source?.name?.trim() ||
+        !Array.isArray(source.ingredients) ||
+        !source.ingredients.length ||
+        !Array.isArray(source.instructions) ||
+        !source.instructions.length ||
+        !Array.isArray(body.originals) ||
+        body.originals.length > 5 ||
+        (source.servings != null &&
+          (!Number.isInteger(source.servings) ||
+            source.servings < 1 ||
+            source.servings > 2147483647))
+      )
+        return fulfill(route, {
+          status: 400,
+          json: { message: 'Malformed or unsupported shared recipe bundle.' },
+        });
+      let id = body.info.recipeId ?? randomUUID();
+      while (recipeUpdates.has(id) || browseRecipes.some((recipe) => recipe.id === id))
+        id = randomUUID();
+      const imported = builders.recipe({
+        id,
+        name: source.name,
+        description: source.description ?? null,
+        notes: source.notes ?? null,
+        rating: source.rating ?? 0,
+        ingredients: [...source.ingredients],
+        servings: source.servings ?? null,
+        contentSchemaVersion: 2,
+        contentRevision: randomUUID(),
+        ingredientLines: source.ingredients.map((text) => ({
+          id: randomUUID(),
+          description: text,
+          amount: null,
+          amountText: null,
+          unit: null,
+          scaling: 'proportional',
+          package: null,
+          shopping: { name: text, foodId: null, mappingRevision: null },
+          provenance: {
+            origin: 'legacy_unknown',
+            sourceRef: null,
+            protectedFields: [
+              'description',
+              'amount',
+              'amountText',
+              'unit',
+              'scaling',
+              'package',
+              'shopping',
+            ],
+          },
+        })),
+        instructionSections: source.instructions.map((section) => ({
+          id: randomUUID(),
+          name: section.name ?? null,
+          steps: (section.itemListElement ?? []).map((step) => ({
+            id: randomUUID(),
+            text: step.text ?? '',
+            textRevision: randomUUID(),
+            bindings: [],
+          })),
+        })),
+        recipeInstructions: structuredClone(source.instructions) as any,
+        sourceUrl: source.sourceUrl ?? null,
+        sourceType: source.sourceUrl
+          ? RecipeDto_sourceTypeObject.Url
+          : body.originals.length
+            ? RecipeDto_sourceTypeObject.Photos
+            : RecipeDto_sourceTypeObject.Synthesized,
+        canReimport: Boolean(source.sourceUrl || body.originals.length),
+        imageUrl: '/api/recipes/' + id + '/hero',
+        imageCount: body.originals.length,
+        images: body.originals.map((_, index) => index),
+        finishedDishIndex: -1,
+        category: source.category ?? null,
+        cuisineType: source.cuisineType ?? null,
+        mealTypes: source.mealTypes ?? null,
+        totalTime:
+          source.totalTimeMinutes != null && source.totalTimeMinutes > 0
+            ? 'PT' + source.totalTimeMinutes + 'M'
+            : null,
+        isDiscoverable: false,
+        isReady: true,
+      });
+      recipeUpdates.set(id, imported);
+      importedShares.set(id, structuredClone(body));
       await fulfill(route, {
-        status: 200,
+        status: 201,
         contentType: 'application/json',
         body: JSON.stringify({
-          data: builders.recipe({
-            id: MOCK_IDS.RECIPE_GOTO_STUB,
-            name: body.recipe?.name ?? 'Imported Recipe',
-            description: body.recipe?.description ?? null,
-            imageUrl: null,
-            ingredients: body.recipe?.ingredients ?? [],
-            sourceUrl: body.recipe?.sourceUrl ?? null,
-            sourceType: body.recipe?.sourceUrl
-              ? RecipeDto_sourceTypeObject.Url
-              : RecipeDto_sourceTypeObject.Synthesized,
-            canReimport: false,
-            isReady: true,
-          }),
+          data: imported,
         }),
       });
     } else {
@@ -2744,6 +2849,27 @@ export async function setupCommonRoutes(
           demoGeneration: generation(),
         }),
       ]),
+    });
+  });
+
+  // Food corrections share the serialized writer and retain every affected week.
+  await page.route('**/api/foods/*/category', async (route) => {
+    if (route.request().method() !== 'PATCH') return route.fallback();
+    await processGroceryWrite(async () => {
+      const foodId = new URL(route.request().url()).pathname.split('/')[3];
+      const result = groceryRows.reclassifyFood(foodId, route.request().postDataJSON());
+      await fulfill(route, {
+        status: result.status,
+        ...('json' in result ? { json: result.json } : {}),
+      });
+      for (const captured of result.affected)
+        await page.evaluate(
+          (payload) =>
+            (window as any).__sseSource?.dispatchEvent(
+              new MessageEvent('grocery_updated', { data: JSON.stringify(payload) })
+            ),
+          { type: 'grocery_updated', ...captured }
+        );
     });
   });
 

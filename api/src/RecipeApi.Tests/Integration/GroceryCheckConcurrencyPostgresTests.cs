@@ -71,7 +71,9 @@ public sealed partial class GroceryCheckConcurrencyPostgresTests(ITestOutputHelp
         public override async ValueTask<DbDataReader> ReaderExecutedAsync(DbCommand command,
             CommandExecutedEventData eventData, DbDataReader result, CancellationToken cancellationToken = default)
         {
-            if (Enabled && command.CommandText.Contains("FROM weekly_plans") && Interlocked.Increment(ref arrivals) == 1)
+            // Count the serialized mutation snapshots; response presentation performs additional read-only queries.
+            if (Enabled && eventData.Context?.Database.CurrentTransaction is not null
+                && command.CommandText.Contains("FROM weekly_plans") && Interlocked.Increment(ref arrivals) == 1)
             {
                 FirstRead.TrySetResult();
                 await Release.Task.WaitAsync(TimeSpan.FromSeconds(15), cancellationToken);

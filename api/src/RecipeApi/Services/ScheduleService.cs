@@ -10,7 +10,7 @@ using static RecipeApi.Dto.SmartDefaultsDto;
 
 namespace RecipeApi.Services;
 
-public partial class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService> logger, IScheduleEventPublisher publisher, GroceryRecomputeService groceryRecomputeService, IClock clock, DeploymentCalendar calendar, HistoricalInterestService historicalInterest, GroceryCheckCoordinator groceryChecks, SupperProjectionInvalidation projectionInvalidation, GroceryExtraService? groceryExtras = null, GroceryExtraRolloverService? groceryExtraRollover = null)
+public partial class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService> logger, IScheduleEventPublisher publisher, GroceryRecomputeService groceryRecomputeService, IClock clock, DeploymentCalendar calendar, HistoricalInterestService historicalInterest, GroceryCheckCoordinator groceryChecks, SupperProjectionInvalidation projectionInvalidation, GroceryExtraService? groceryExtras = null, GroceryExtraRolloverService? groceryExtraRollover = null, GroceryPresentationService? groceryPresentation = null)
 {
     private readonly RecipeDbContext _dbContext = dbContext;
     private readonly ILogger<ScheduleService> _logger = logger;
@@ -81,7 +81,11 @@ public partial class ScheduleService(RecipeDbContext dbContext, ILogger<Schedule
             (round?.WeekStartDate is null || round.WeekStartDate == monday ? round?.RoundId : null);
         var extras = _groceryExtras is null ? [] : await _groceryExtras.ReadForViewAsync(monday, context.CurrentWeekStartDate);
         if (transaction is not null) await transaction.CommitAsync();
-        return new ScheduleDays(weekOffset, isLocked, status, days, context, monday, groceryState, groceryItems, roundId, extras, SupperServingsService.Freshness(plan, "legacy"), plan?.GroceryListVersion);
+        var presentation = groceryPresentation is null ? null : await groceryPresentation.DecorateAsync(
+            new(_clock.UtcNow, monday, plan?.GroceryListVersion ?? "1", groceryState ?? [], groceryItems ?? []));
+        return new ScheduleDays(weekOffset, isLocked, status, days, context, monday, groceryState, presentation?.Rows ?? groceryItems,
+            roundId, extras, SupperServingsService.Freshness(plan, "legacy"), plan?.GroceryListVersion)
+        { PresentationVersion = presentation?.PresentationVersion ?? "0", PresentationEpoch = presentation?.PresentationEpoch ?? Guid.Empty };
     }
 
     public async Task OpenVotingAsync(int weekOffset, string? excludeConnectionId = null, DateOnly? referenceWeekStartDate = null)

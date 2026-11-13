@@ -46,4 +46,50 @@ internal static class MaintenanceCommandLifecycle
             else await entry.ReloadAsync(CancellationToken.None);
         }
     }
+    private sealed record RetainedCommand(Guid Id, string CommandType, string Status, string Payload, string? Result,
+        int Attempts, Guid? RequestedBy, DateTimeOffset CreatedAt, DateTimeOffset? ScheduledFor,
+        DateTimeOffset? StartedAt, DateTimeOffset? CompletedAt, string? LastError);
+    private sealed record RetainedWorkflow(Guid Id, Guid OperationId, string Disposition, string PayloadHash);
+    private sealed record RetainedPhysical(Guid RecipeId, Guid OperationId, string Kind, string PayloadHash,
+        bool? FilesRemoved, DateTimeOffset? FilesDeliveredAt, DateTimeOffset? CompletedAt);
+    private sealed record RetainedPayload(int Version, string ExecutionDisposition, RetainedCommand Command,
+        RetainedWorkflow[] WorkflowRetirements, RetainedPhysical[] PhysicalRetirements);
+
+    internal static void ValidateRetainedReferences(MaintenanceCommandLifecycleRecord record,
+        IReadOnlyList<WorkflowLifecycleRecord> workflows, IReadOnlyList<RecipePhysicalDeletion> physical)
+    {
+        var json = new JsonSerializerOptions(JsonDefaults.CamelCase)
+        {
+            RespectRequiredConstructorParameters = true,
+            UnmappedMemberHandling = System.Text.Json.Serialization.JsonUnmappedMemberHandling.Disallow
+        };
+        var payload = WorkflowProcessorHistory.ReadObservation<RetainedPayload>(record.Payload, json);
+        if (record.Id == Guid.Empty || record.OperationId == Guid.Empty || record.CreatedAt == default
+            || record.Disposition is not ("retention-started" or "pruned") || record.PayloadHash != Convert.ToHexString(SHA256.HashData(
+                Encoding.UTF8.GetBytes(CanonicalRecipeContentStore.NormalizeJson(record.Payload))))
+            || payload.Version != 1 || payload.ExecutionDisposition != "inert" || payload.Command is null
+            || payload.Command.Id != record.Id || payload.Command.Status is not ("completed" or "skipped")
+            || payload.WorkflowRetirements is null || payload.PhysicalRetirements is null
+            || payload.WorkflowRetirements.Select(x => x.Id).Distinct().Count() != payload.WorkflowRetirements.Length
+            || payload.PhysicalRetirements.Select(x => x.RecipeId).Distinct().Count() != payload.PhysicalRetirements.Length)
+            throw new InvalidDataException("Retained maintenance observation is inconsistent.");
+        foreach (var link in payload.WorkflowRetirements)
+        {
+            var retained = workflows.SingleOrDefault(x => x.Id == link.Id);
+            if (retained is null || link.OperationId != record.Id || retained.OperationId != link.OperationId
+                || retained.Disposition != link.Disposition || retained.PayloadHash != link.PayloadHash)
+                throw new InvalidDataException("Retained maintenance workflow link is unresolved.");
+        }
+        foreach (var link in payload.PhysicalRetirements)
+        {
+            var retained = physical.SingleOrDefault(x => x.RecipeId == link.RecipeId);
+            if (retained is null || link.OperationId != record.Id || retained.OperationId != link.OperationId
+                || retained.Kind != link.Kind || retained.PayloadHash != link.PayloadHash
+                || link.FilesRemoved is not null && retained.FilesRemoved != link.FilesRemoved
+                || link.FilesDeliveredAt is not null && retained.FilesDeliveredAt != link.FilesDeliveredAt
+                || link.CompletedAt is not null && retained.CompletedAt != link.CompletedAt)
+                throw new InvalidDataException("Retained maintenance physical link is unresolved.");
+        }
+    }
+
 }

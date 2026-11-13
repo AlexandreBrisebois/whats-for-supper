@@ -16,7 +16,7 @@ public sealed record RecoveryManifest(int Version, Guid Id, DateTimeOffset Captu
 
 /// <summary>Versioned independent recovery artifacts. All paths are server-owned.</summary>
 public partial class RecoverySnapshotService(RecipeDbContext db, RecipesRootResolver recipes,
-    DataRootResolver data, IConfiguration configuration, IClock clock, RecoveryBoundary boundary, IRecoveryCheckpoint? checkpoint = null, DemoModeOptions? demoMode = null)
+    DataRootResolver data, IConfiguration configuration, IClock clock, RecoveryBoundary boundary, FoodVocabularyStore vocabulary, IRecoveryCheckpoint? checkpoint = null, DemoModeOptions? demoMode = null)
 {
     private readonly DemoModeOptions _demoPolicy = demoMode ?? new DemoModeOptions(configuration);
     internal static readonly string[] Tables = ["family_members", "recipes", "canonical_recipe_operations", "recipe_file_publications", "feature_flag_overrides", "recipe_repair_intents", "recipe_import_reports", "weekly_plans", "calendar_events", "family_settings", "ingredient_categories", "weekly_household_interest", "grocery_extra_occurrences", "supper_servings", "grocery_mutation_outcomes"];

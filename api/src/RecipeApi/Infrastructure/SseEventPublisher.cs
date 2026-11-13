@@ -12,11 +12,13 @@ public class SseEventPublisher : IScheduleEventPublisher
 {
     private readonly SseConnectionManager _manager;
     private readonly VotingSession? _session;
+    private readonly GroceryPresentationService? _presentation;
 
-    public SseEventPublisher(SseConnectionManager manager, VotingSession? session = null)
+    public SseEventPublisher(SseConnectionManager manager, VotingSession? session = null, GroceryPresentationService? presentation = null)
     {
         _manager = manager;
         _session = session;
+        _presentation = presentation;
     }
 
     public Task PublishSlotUpdatedAsync(DateOnly date, ScheduleRecipeDto? recipe, int status, string? excludeConnectionId = null, NonCookingPlanDto? nonCooking = null, Guid? occurrenceId = null)
@@ -69,15 +71,20 @@ public class SseEventPublisher : IScheduleEventPublisher
     public Task PublishGroceryUpdatedAsync(int weekOffset, Dictionary<string, bool> groceryState, DateOnly weekStartDate, string? excludeConnectionId = null)
         => _manager.BroadcastAsync("grocery_updated", new { weekOffset, weekStartDate, groceryState }, excludeConnectionId);
 
-    public Task PublishGroceryRowsUpdatedAsync(int weekOffset, GroceryMutationResult snapshot, string? excludeConnectionId = null)
-        => _manager.BroadcastAsync("grocery_updated", new
+    public async Task PublishGroceryRowsUpdatedAsync(int weekOffset, GroceryMutationResult snapshot, string? excludeConnectionId = null)
+    {
+        if (_presentation is not null) snapshot = await _presentation.DecorateAsync(snapshot);
+        await _manager.BroadcastAsync("grocery_updated", new
         {
             weekOffset,
             weekStartDate = snapshot.WeekStartDate,
             groceryListVersion = snapshot.ListVersion,
             groceryState = snapshot.Checks,
             groceryItems = snapshot.Rows,
+            presentationVersion = snapshot.PresentationVersion,
+            presentationEpoch = snapshot.PresentationEpoch,
         }, excludeConnectionId);
+    }
 
     public Task PublishGroceryExtrasUpdatedAsync(DateOnly weekStartDate, IReadOnlyList<GroceryExtraDto> groceryExtras, string? excludeConnectionId = null)
         => _manager.BroadcastAsync("grocery_extras_updated", new

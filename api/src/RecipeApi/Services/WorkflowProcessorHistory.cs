@@ -277,4 +277,38 @@ internal static class WorkflowProcessorHistory
         return document.RootElement.Deserialize<T>(options ?? Json)
             ?? throw new InvalidDataException("Original processor observation is absent.");
     }
+    internal static WorkflowTask RetainedTask(WorkflowProcessorAttempt attempt)
+    {
+        Validate(attempt);
+        var task = ReadObservation<Request>(attempt.Request).Task;
+        return new()
+        {
+            TaskId = task.TaskId,
+            InstanceId = task.InstanceId,
+            TaskName = task.TaskName,
+            ProcessorName = task.ProcessorName,
+            Payload = task.Payload,
+            DependsOn = task.DependsOn,
+            ResetIntentId = task.ResetIntentId,
+            ChildLaunchIntentId = task.ChildLaunchIntentId
+        };
+    }
+
+    internal static FoodVocabularyReference[] VocabularyReferences(WorkflowProcessorAttempt attempt)
+    {
+        Validate(attempt);
+        var request = ReadObservation<Request>(attempt.Request);
+        var references = RecipeFilePublicationStore.RetainedLaunchVocabularyReferences(attempt.InstanceId,
+            request.WorkflowId, request.Parameters, request.Capture, RetainedTask(attempt)).ToList();
+        if (attempt.Outcome is { } raw)
+        {
+            var outcome = ReadObservation<Outcome>(raw);
+            references.AddRange(outcome.Publications.SelectMany(RecipeFilePublicationStore.VocabularyReferences));
+            references.AddRange(outcome.CanonicalOperations.SelectMany(CanonicalRecipeContentStore.VocabularyReferences));
+            if (outcome.ChildCommand is { } child)
+                references.AddRange(WorkflowOrchestrator.VocabularyReferences(child.Restore(), [RetainedTask(attempt)]));
+        }
+        return references.Distinct().ToArray();
+    }
+
 }

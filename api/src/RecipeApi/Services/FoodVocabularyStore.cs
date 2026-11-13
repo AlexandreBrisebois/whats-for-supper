@@ -26,7 +26,7 @@ internal sealed record FoodVocabularyMembership(int Version, string? ActiveRevis
 
 // Only this owner publishes live definitions. No controller, provider output or
 // first request can implicitly install a vocabulary or infer a current head.
-public sealed class FoodVocabularyStore(RecipeDbContext db, IStorageProvider storage,
+public sealed partial class FoodVocabularyStore(RecipeDbContext db, IStorageProvider storage,
     RecipesRootResolver recipes, RecoveryBoundary boundary, IClock clock)
 {
     private const string Key = "food_vocabulary_publication";
@@ -51,6 +51,7 @@ public sealed class FoodVocabularyStore(RecipeDbContext db, IStorageProvider sto
     public async Task<FoodVocabularyCapture?> CaptureActiveAsync(CancellationToken ct = default)
     {
         await using var lease = await boundary.EnterAsync(RecoveryAccess.Read, ct);
+        await using var readConnection = await DatabaseReadConnection.RetainAsync(db, ct);
         var member = await db.FamilySettings.AsNoTracking().SingleOrDefaultAsync(x => x.Key == Key, ct);
         if (member is null)
         {
@@ -101,6 +102,7 @@ public sealed class FoodVocabularyStore(RecipeDbContext db, IStorageProvider sto
         // This is a top-level operator call. It must never upgrade a caller's
         // shared write lease to exclusive publication authority.
         await using var lease = await boundary.EnterAsync(RecoveryAccess.Publish, ct);
+        await using var presentationLock = await EnterPresentationLockAsync(write: true, ct);
         _ = recipes.Root;
         await using var transaction = db.Database.IsRelational() ? await db.Database.BeginTransactionAsync(ct) : null;
         if (db.Database.IsNpgsql()) await db.Database.ExecuteSqlRawAsync("LOCK TABLE family_settings IN SHARE ROW EXCLUSIVE MODE", ct);
@@ -231,22 +233,8 @@ public sealed class FoodVocabularyStore(RecipeDbContext db, IStorageProvider sto
 
     private async Task RequireUnreferencedAbsence(CancellationToken ct)
     {
-        var recipesWithFacts = await db.Recipes.AsNoTracking().Where(x => x.FoodMappingEvidence != null || x.CanonicalContent != null).ToListAsync(ct);
-        foreach (var recipe in recipesWithFacts)
-        {
-            var content = CanonicalRecipeContentStore.Read(recipe);
-            if (content is null) FoodVocabularyDefinitions.Require(recipe.FoodMappingEvidence is null);
-            else
-            {
-                FoodVocabularyDefinitions.Require(recipe.FoodMappingEvidence is null || !FoodMappingQualification.References(recipe.FoodMappingEvidence).Any());
-                FoodMappingQualification.Validate(content, recipe.FoodMappingEvidence, new(null, []), recipe.Id);
-            }
-        }
-        var operations = await db.CanonicalRecipeOperations.AsNoTracking().ToListAsync(ct);
-        var publications = await db.RecipeFilePublications.AsNoTracking().ToListAsync(ct);
-        var workflows = await db.WorkflowInstances.AsNoTracking().Include(x => x.Tasks).ToListAsync(ct);
-        FoodVocabularyDefinitions.Require(!operations.SelectMany(CanonicalRecipeContentStore.VocabularyReferences).Any()
-            && !publications.SelectMany(RecipeFilePublicationStore.VocabularyReferences).Any()
-            && !workflows.SelectMany(RecipeFilePublicationStore.VocabularyReferences).Any());
+        var facts = await ObserveInventoryFactsAsync(ct);
+        FoodVocabularyDefinitions.Require(FoodVocabularyInventoryQualification.RequiredReferences(facts).Count == 0);
+
     }
 }

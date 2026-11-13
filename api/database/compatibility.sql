@@ -496,3 +496,29 @@ CREATE TABLE IF NOT EXISTS recipe_physical_deletions (
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS recipe_physical_deletions_operation_id_idx ON recipe_physical_deletions(operation_id);
+
+-- Retained private food decisions; no existing categories or extras are moved.
+CREATE TABLE IF NOT EXISTS household_food_overrides (
+    id uuid PRIMARY KEY,
+    revision text NOT NULL,
+    food_id uuid,
+    dictionary_revision text,
+    fallback_key text,
+    shopping_name text,
+    grocery_section text,
+    protected_fields text[] NOT NULL,
+    created_at timestamptz NOT NULL,
+    updated_at timestamptz NOT NULL,
+    document_revision text,
+    document_sha256 text,
+    presentation_sequence text NOT NULL,
+    CONSTRAINT household_food_overrides_target_check CHECK (
+        (food_id IS NOT NULL AND food_id <> '00000000-0000-0000-0000-000000000000'::uuid AND fallback_key IS NULL AND dictionary_revision IS NOT NULL AND document_revision IS NOT NULL AND document_sha256 IS NOT NULL AND document_sha256 ~ '^[a-f0-9]{64}$')
+        OR (food_id IS NULL AND fallback_key IS NOT NULL AND btrim(fallback_key) <> '' AND dictionary_revision IS NULL AND document_revision IS NULL AND document_sha256 IS NULL)),
+    CONSTRAINT household_food_overrides_sequence_check CHECK (presentation_sequence ~ '^[1-9][0-9]*$'),
+    CONSTRAINT household_food_overrides_protection_check CHECK (cardinality(protected_fields) > 0 AND protected_fields <@ ARRAY['shoppingName','grocerySection']::text[]),
+    CONSTRAINT household_food_overrides_chronology_check CHECK (updated_at >= created_at AND btrim(revision) <> '')
+);
+CREATE UNIQUE INDEX IF NOT EXISTS household_food_overrides_food_idx ON household_food_overrides(food_id) WHERE food_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS household_food_overrides_fallback_idx ON household_food_overrides(fallback_key) WHERE fallback_key IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS household_food_overrides_sequence_idx ON household_food_overrides(presentation_sequence);

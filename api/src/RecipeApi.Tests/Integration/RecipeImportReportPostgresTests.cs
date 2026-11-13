@@ -187,8 +187,8 @@ public class RecipeImportReportPostgresTests : IAsyncLifetime
         await Assert.ThrowsAsync<PostgresException>(() => _db.Database.ExecuteSqlAsync(
             $"UPDATE recipe_import_reports SET reasons = ARRAY['duplicate']::text[] WHERE recipe_id = {report.RecipeId}"));
 
-        await _db.Database.ExecuteSqlRawAsync(ReadDatabaseFile("compatibility.sql"));
-        await _db.Database.ExecuteSqlRawAsync(ReadDatabaseFile("compatibility.sql"));
+        await RecipeApi.Tests.Infrastructure.PostgresScript.ExecuteAsync(_db, ReadDatabaseFile("compatibility.sql"));
+        await RecipeApi.Tests.Infrastructure.PostgresScript.ExecuteAsync(_db, ReadDatabaseFile("compatibility.sql"));
         foreach (var reasons in new[] { new[] { "duplicate" }, ["ingredients", "steps", "duplicate"] })
         {
             await _db.Database.ExecuteSqlAsync(

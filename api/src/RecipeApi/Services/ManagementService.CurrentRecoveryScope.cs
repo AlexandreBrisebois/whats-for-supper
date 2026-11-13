@@ -37,7 +37,7 @@ public partial class ManagementService
         if (!db.Database.IsNpgsql()) throw new InvalidOperationException("Selected recovery inspection requires PostgreSQL schema qualification.");
         // Reuse the existing complete public-table inventory and shape fingerprint
         // owner. Dispositions still belong to exact/demo recovery, not this read.
-        var tables = RecoverySnapshotService.DemoDispositions.Keys.Order(StringComparer.Ordinal).ToArray();
+        var tables = RecoverySnapshotService.DemoDispositions.Keys.Append("household_food_overrides").Order(StringComparer.Ordinal).ToArray();
         await db.Database.ExecuteSqlRawAsync("SET LOCAL lock_timeout = '5s'", ct);
         var connection = (NpgsqlConnection)db.Database.GetDbConnection();
         // Identifiers are the fixed repository inventory above, never archive or

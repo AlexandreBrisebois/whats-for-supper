@@ -25,6 +25,8 @@ class DatabaseTests(unittest.TestCase):
         self.test_exit = 0
         self.bootstrap_failure = False
         self.test_timeout = False
+        self.test_env = None
+        self.database_container_env = None
         self.source_paths = ['global.json', 'api/database/schema.sql', 'api/src/Example.cs',
                              'api/src/bin/stale.dll', 'api/src/obj/stale.dll']
         for name in self.source_paths:
@@ -34,6 +36,8 @@ class DatabaseTests(unittest.TestCase):
 
     def command(self, args, **kwargs):
         self.calls.append(args)
+        if args[:2] == ['docker', 'run'] and 'pgvector/pgvector:fixture' in args:
+            self.database_container_env = dict(kwargs.get('env') or {})
         if 'run' in args and self.bootstrap_failure:
             raise self.runner.Unavailable('Docker unavailable')
         if '{{.Image}}' in args or '{{.Id}}' in args:
@@ -46,6 +50,7 @@ class DatabaseTests(unittest.TestCase):
 
     def fake_tests(self, args, env, log):
         self.calls.append(args)
+        self.test_env = dict(env)
         self.assertTrue(env['WFS_TEST_POSTGRES_CONNECTION'])
         self.assertIn('PostgresTests', args[args.index('--filter') + 1])
         self.assertIn('!~LiveBrowser_', args[args.index('--filter') + 1])
@@ -206,6 +211,37 @@ class DatabaseTests(unittest.TestCase):
         self.assertFalse(any(call[0] == 'docker' for call in self.calls))
         self.assertTrue(any(call[0] == 'dotnet' for call in self.calls))
         self.assertNotIn('fixture-secret', json.dumps(record))
+
+    def test_macos_sdk_joins_only_its_owned_postgres_namespace_and_uses_loopback(self):
+        status, record = self.run_gate(host_platform='Darwin', local_dotnet=False)
+        self.assertEqual(status, 'passed')
+        sdk, postgres = self.assert_owned_linux_cleanup(record)
+        postgres_name = postgres[postgres.index('--name') + 1]
+        self.assertEqual(sdk[sdk.index('--network') + 1], 'container:' + postgres_name)
+        self.assertEqual(postgres[postgres.index('--network') + 1], record['runtime']['network']['name'])
+        self.assertTrue(self.test_env['WFS_TEST_POSTGRES_CONNECTION'].startswith('Host=127.0.0.1;Port=5432;'))
+        self.assertNotIn('--publish', sdk)
+        self.assertNotIn('--publish', postgres)
+        self.assertNotIn('--sysctl', sdk + postgres)
+        self.assertNotIn('--privileged', sdk + postgres)
+        self.assertNotIn('Pooling', self.test_env['WFS_TEST_POSTGRES_CONNECTION'])
+        self.assertNotIn('Password=', json.dumps(record))
+
+    def test_macos_loopback_keeps_tcp_password_authentication_explicit(self):
+        self.assertEqual(self.run_gate(host_platform='Darwin')[0], 'passed')
+        postgres = next(call for call in self.calls if 'pgvector/pgvector:fixture' in call)
+        self.assertIn('POSTGRES_INITDB_ARGS', postgres)
+        self.assertEqual(self.database_container_env['POSTGRES_INITDB_ARGS'], '--auth-host=scram-sha-256')
+
+    def test_configured_connection_is_passed_unchanged_on_both_platforms(self):
+        secret = 'Host=example.test;Port=54321;Password=fixture-secret;Database=selected;Pooling=false'
+        for host in ['Darwin', 'Linux']:
+            with self.subTest(host=host):
+                status, record = self.run_gate(secret, host_platform=host)
+                self.assertEqual(status, 'passed')
+                self.assertEqual(self.test_env['WFS_TEST_POSTGRES_CONNECTION'], secret)
+                self.assertFalse(any(call[0] == 'docker' for call in self.calls))
+                self.assertNotIn('fixture-secret', json.dumps(record))
 
     def test_macos_test_failure_cleans_owned_sdk_database_and_network(self):
         self.test_exit = 1

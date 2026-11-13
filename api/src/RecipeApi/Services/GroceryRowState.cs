@@ -35,6 +35,14 @@ internal static class GroceryRowState
         if (!IsVersion(plan.GroceryListVersion)) throw new JsonException("Invalid persisted grocery list version.");
     }
 
+    internal static string SerializeOutcome(GroceryMutationResult outcome)
+    {
+        var stored = System.Text.Json.Nodes.JsonNode.Parse(JsonSerializer.Serialize(outcome))!.AsObject();
+        stored.Remove("presentationVersion");
+        stored.Remove("presentationEpoch");
+        return stored.ToJsonString();
+    }
+
     internal static GroceryMutationResult Snapshot(WeeklyPlan plan, DateTimeOffset now, string? rowId = null)
     {
         var rows = Rows(plan);

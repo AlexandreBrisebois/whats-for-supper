@@ -13,6 +13,10 @@ public sealed record GroceryMutationResult(
     [property: JsonPropertyName("rows")] List<GroceryLineItemDto> Rows,
     [property: JsonPropertyName("rowId"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? RowId = null,
     [property: JsonPropertyName("rowVersion"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? RowVersion = null,
-    [property: JsonPropertyName("checked"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] bool? Checked = null);
+    [property: JsonPropertyName("checked"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] bool? Checked = null)
+{
+    [JsonPropertyName("presentationVersion")] public string PresentationVersion { get; init; } = "0";
+    [JsonPropertyName("presentationEpoch")] public Guid PresentationEpoch { get; init; }
+}
 
 public sealed record GroceryMutationReceipt(string InputHash, GroceryMutationResult Outcome);

@@ -55,7 +55,7 @@ public partial class ScheduleService
             }, exclude, ct, reference);
     }
 
-    private Task<GroceryMutationResult> MutateGroceryRowsAsync(int offset, DateOnly week, Guid mutationId, object input,
+    private async Task<GroceryMutationResult> MutateGroceryRowsAsync(int offset, DateOnly week, Guid mutationId, object input,
         Func<WeeklyPlan, List<GroceryLineItemDto>, Dictionary<string, bool>, string?> apply,
         string? exclude, CancellationToken ct, DateOnly? reference)
     {
@@ -64,44 +64,52 @@ public partial class ScheduleService
         var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(input))));
         var replay = false;
         WeeklyPlan? authoritativePlan = null;
-        return groceryChecks.ProcessWeekAsync(week, async db =>
+        try
         {
-            var saved = await db.GroceryMutationOutcomes.AsNoTracking().SingleOrDefaultAsync(outcome => outcome.Id == mutationId, ct);
-            if (saved is not null)
+            var result = await groceryChecks.ProcessWeekAsync(week, async db =>
             {
-                if (saved.InputHash != hash) throw new GroceryMutationConflictException("mutation_conflict");
-                replay = true;
-                return JsonSerializer.Deserialize<GroceryMutationResult>(saved.Outcome) ?? throw new JsonException("Invalid grocery mutation outcome.");
-            }
-            var plan = await db.WeeklyPlans.SingleOrDefaultAsync(plan => plan.WeekStartDate == week, ct)
-                ?? throw new GroceryMutationConflictException("grocery_conflict", absent: true);
-            var rows = GroceryRowState.Rows(plan);
-            GroceryRowState.RequireCurrent(plan, rows);
-            var checks = GroceryRowState.Checks(plan);
-            var priorChecks = new Dictionary<string, bool>(checks, StringComparer.Ordinal);
-            var baselines = GroceryCheckedDemand.Read(plan, _logger);
-            var evidence = GroceryDemandEvidence.Read(plan, _logger);
-            var rowId = apply(plan, rows, checks);
-            foreach (var row in rows)
+                var saved = await db.GroceryMutationOutcomes.AsNoTracking().SingleOrDefaultAsync(outcome => outcome.Id == mutationId, ct);
+                if (saved is not null)
+                {
+                    if (saved.InputHash != hash) throw new GroceryMutationConflictException("mutation_conflict");
+                    replay = true;
+                    return JsonSerializer.Deserialize<GroceryMutationResult>(saved.Outcome) ?? throw new JsonException("Invalid grocery mutation outcome.");
+                }
+                var plan = await db.WeeklyPlans.SingleOrDefaultAsync(plan => plan.WeekStartDate == week, ct)
+                    ?? throw new GroceryMutationConflictException("grocery_conflict", absent: true);
+                var rows = GroceryRowState.Rows(plan);
+                GroceryRowState.RequireCurrent(plan, rows);
+                var checks = GroceryRowState.Checks(plan);
+                var priorChecks = new Dictionary<string, bool>(checks, StringComparer.Ordinal);
+                var baselines = GroceryCheckedDemand.Read(plan, _logger);
+                var evidence = GroceryDemandEvidence.Read(plan, _logger);
+                var rowId = apply(plan, rows, checks);
+                foreach (var row in rows)
+                {
+                    if (!checks.GetValueOrDefault(row.RowId)) baselines.Remove(row.RowId);
+                    else if (!priorChecks.GetValueOrDefault(row.RowId))
+                        baselines[row.RowId] = GroceryCheckedDemand.Capture(row, row.RowVersion, evidence.GetValueOrDefault(row.RowId)?.InputFingerprint);
+                    // A missing baseline on an already checked row stays unknown.
+                }
+                plan.GroceryCheckedDemandBaselines = JsonSerializer.Serialize(baselines);
+                authoritativePlan = plan;
+                plan.GroceryState = JsonSerializer.Serialize(checks);
+                plan.GroceryItems = JsonSerializer.Serialize(rows);
+                plan.GroceryListVersion = GroceryRowState.Next(plan.GroceryListVersion);
+                var outcome = GroceryRowState.Snapshot(plan, _clock.UtcNow, rowId);
+                db.GroceryMutationOutcomes.Add(new() { Id = mutationId, InputHash = hash, WeekStartDate = week, Outcome = GroceryRowState.SerializeOutcome(outcome) });
+                await db.SaveChangesAsync(ct);
+                return outcome;
+            }, ct, async outcome =>
             {
-                if (!checks.GetValueOrDefault(row.RowId)) baselines.Remove(row.RowId);
-                else if (!priorChecks.GetValueOrDefault(row.RowId))
-                    baselines[row.RowId] = GroceryCheckedDemand.Capture(row, row.RowVersion, evidence.GetValueOrDefault(row.RowId)?.InputFingerprint);
-                // A missing baseline on an already checked row stays unknown.
-            }
-            plan.GroceryCheckedDemandBaselines = JsonSerializer.Serialize(baselines);
-            authoritativePlan = plan;
-            plan.GroceryState = JsonSerializer.Serialize(checks);
-            plan.GroceryItems = JsonSerializer.Serialize(rows);
-            plan.GroceryListVersion = GroceryRowState.Next(plan.GroceryListVersion);
-            var outcome = GroceryRowState.Snapshot(plan, _clock.UtcNow, rowId);
-            db.GroceryMutationOutcomes.Add(new() { Id = mutationId, InputHash = hash, WeekStartDate = week, Outcome = JsonSerializer.Serialize(outcome) });
-            await db.SaveChangesAsync(ct);
-            return outcome;
-        }, ct, async outcome =>
+                GroceryCheckCoordinator.SynchronizeTrackedPlan(_dbContext, outcome.WeekStartDate, JsonSerializer.Serialize(outcome.Checks), JsonSerializer.Serialize(outcome.Rows), outcome.ListVersion, authoritativePlan);
+                if (!replay) await _publisher.PublishGroceryRowsUpdatedAsync(offset, outcome, exclude);
+            }, mutationId);
+            return groceryPresentation is null ? result : await groceryPresentation.DecorateAsync(result, ct);
+        }
+        catch (GroceryMutationConflictException conflict) when (conflict.Current is not null && groceryPresentation is not null)
         {
-            GroceryCheckCoordinator.SynchronizeTrackedPlan(_dbContext, outcome.WeekStartDate, JsonSerializer.Serialize(outcome.Checks), JsonSerializer.Serialize(outcome.Rows), outcome.ListVersion, authoritativePlan);
-            if (!replay) await _publisher.PublishGroceryRowsUpdatedAsync(offset, outcome, exclude);
-        }, mutationId);
+            throw new GroceryMutationConflictException(conflict.Code, await groceryPresentation.DecorateAsync(conflict.Current, ct), conflict.Absent);
+        }
     }
 }

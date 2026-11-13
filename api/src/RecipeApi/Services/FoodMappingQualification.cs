@@ -77,6 +77,35 @@ public static class FoodMappingQualification
 
     public static FoodMappingPreparation Prepare(CanonicalRecipeExport export, FoodVocabularyAuthority authority,
         Guid operationId, CanonicalRecipeContent? priorContent = null, string? priorEvidence = null)
+        => PrepareCore(export, authority, operationId, priorContent, priorEvidence, requalifyCapturedRepair: false);
+
+    // The guarded photo repair owner independently reconstructs source rows and
+    // the complete protected merge. This entrypoint requalifies only an existing
+    // unchanged shopping decision against its captured dictionary proof; it
+    // never reruns matching for a private name, identity clear or override.
+    internal static FoodMappingPreparation PrepareCapturedPhotoRepair(CanonicalRecipeExport export, FoodVocabularyAuthority authority,
+        Guid operationId, CanonicalRecipeContent priorContent, string? priorEvidence)
+    {
+        FoodVocabularyDefinitions.Require(export.RawMetadata is not null
+            && export.Content.SourceRevision == CanonicalRecipeContentStore.InspectSourceRevision(new Models.Recipe
+            { Id = export.RecipeId, RawMetadata = export.RawMetadata })
+            && priorContent.IngredientLines.Select(x => x.Id).SequenceEqual(export.Content.IngredientLines.Select(x => x.Id)));
+        foreach (var line in export.Content.IngredientLines)
+        {
+            var old = priorContent.IngredientLines.Single(x => x.Id == line.Id);
+            FoodVocabularyDefinitions.Require(line.Shopping == old.Shopping);
+            if (old.Provenance.Origin != "source" || old.Provenance.ProtectedFields.Count != 0)
+                FoodVocabularyDefinitions.Require(JsonSerializer.Serialize(line, Json) == JsonSerializer.Serialize(old, Json));
+            else
+                FoodVocabularyDefinitions.Require(old.Provenance.SourceRef == priorContent.SourceRevision
+                    && line.Provenance.Origin == "source" && line.Provenance.ProtectedFields.Count == 0
+                    && line.Provenance.SourceRef == export.Content.SourceRevision);
+        }
+        return PrepareCore(export, authority, operationId, priorContent, priorEvidence, requalifyCapturedRepair: true);
+    }
+
+    private static FoodMappingPreparation PrepareCore(CanonicalRecipeExport export, FoodVocabularyAuthority authority,
+        Guid operationId, CanonicalRecipeContent? priorContent, string? priorEvidence, bool requalifyCapturedRepair)
     {
         FoodVocabularyDefinitions.Require(operationId != Guid.Empty);
         var active = authority.ActiveDefinitions();
@@ -93,7 +122,17 @@ public static class FoodMappingQualification
             {
                 decisions.Add(saved with { ContentRevision = export.Content.ContentRevision });
                 var carried = prior!.Mappings.SingleOrDefault(x => x.Facts.IngredientLineId == line.Id);
-                if (carried is not null) mappings.Add(carried with { Facts = carried.Facts with { ContentRevision = export.Content.ContentRevision } });
+                if (carried is not null) mappings.Add(carried with
+                {
+                    Facts = requalifyCapturedRepair
+                        ? carried.Facts with
+                        {
+                            ContentRevision = export.Content.ContentRevision,
+                            SourceRef = line.Provenance.SourceRef,
+                            EvidenceSourceRevision = line.Provenance.SourceRef is null ? null : export.Content.SourceRevision
+                        }
+                        : carried.Facts with { ContentRevision = export.Content.ContentRevision }
+                });
                 return line;
             }
             // A quantity/description edit's coarse human row provenance is not

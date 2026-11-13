@@ -22,11 +22,19 @@ public sealed class GroceryLineItemJsonConverter : JsonConverter<GroceryLineItem
             throw new JsonException("Invalid persisted exact grocery quantity.");
         double? numeric = quantity.ValueKind == JsonValueKind.Number && quantity.TryGetDouble(out var number) && double.IsFinite(number)
             ? number : exact?.Value is { } scalar ? double.Parse(scalar.N, CultureInfo.InvariantCulture) / double.Parse(scalar.D, CultureInfo.InvariantCulture) : null;
+        Guid? foodId = null;
+        if (root.TryGetProperty("foodId", out var savedFood) && savedFood.ValueKind != JsonValueKind.Null)
+        {
+            if (savedFood.ValueKind != JsonValueKind.String || !Guid.TryParseExact(savedFood.GetString(), "D", out var parsedFood) || parsedFood == Guid.Empty)
+                throw new JsonException("Invalid persisted grocery food identity.");
+            foodId = parsedFood;
+        }
         return new(Text("displayName") ?? "", Text("normalizedKey") ?? "", Text("section") ?? "Grocery", numeric,
             Text("unitText"), root.TryGetProperty("recipeIds", out var ids) ? ids.Deserialize<List<Guid>>(options) ?? [] : [],
             Boolean("quantityComplete"))
         {
             ExactQuantity = exact,
+            FoodId = foodId,
             RowId = Text("rowId") ?? "",
             RowVersion = Text("rowVersion") ?? "",
             DemandIdentity = Text("demandIdentity") ?? "",
@@ -40,20 +48,32 @@ public sealed class GroceryLineItemJsonConverter : JsonConverter<GroceryLineItem
         if (exact is not null && !LegacyGroceryQuantity.IsCanonical(exact)) throw new JsonException("Invalid exact grocery quantity.");
         // Internal numeric projection remains a compatibility observation. The wire
         // always carries bounded rational strings, never a rounded numeric authority.
-        JsonSerializer.Serialize(writer, new
+        var fields = new Dictionary<string, object?>
         {
-            displayName = value.DisplayName,
-            normalizedKey = value.NormalizedKey,
-            section = value.Section,
-            quantity = exact,
-            unitText = value.UnitText,
-            recipeIds = value.RecipeIds,
-            quantityComplete = value.Quantity.HasValue && exact is null ? false : value.QuantityComplete,
-            rowId = value.RowId,
-            rowVersion = value.RowVersion,
-            weekStartDate = value.WeekStartDate,
-            demandIdentity = value.DemandIdentity,
-            source = "recipe",
-        }, options);
+            ["displayName"] = value.DisplayName,
+            ["normalizedKey"] = value.NormalizedKey,
+            ["section"] = value.Section,
+            ["quantity"] = exact,
+            ["unitText"] = value.UnitText,
+            ["recipeIds"] = value.RecipeIds,
+            ["quantityComplete"] = value.Quantity.HasValue && exact is null ? false : value.QuantityComplete,
+            ["rowId"] = value.RowId,
+            ["rowVersion"] = value.RowVersion,
+            ["weekStartDate"] = value.WeekStartDate,
+            ["demandIdentity"] = value.DemandIdentity,
+            ["source"] = "recipe",
+        };
+        if (value.FoodId is { } savedFoodId) fields["foodId"] = savedFoodId;
+        if (value.Presentation is not null)
+        {
+            fields["displayLabels"] = value.DisplayLabels;
+            fields["labelStatus"] = value.LabelStatus;
+            fields["displayNameVariants"] = value.DisplayNameVariants;
+            fields["categoryScope"] = value.CategoryScope;
+            fields["categoryStatus"] = value.CategoryStatus;
+            fields["categoryRevision"] = value.CategoryRevision;
+            fields["categoryChoices"] = value.CategoryChoices;
+        }
+        JsonSerializer.Serialize(writer, fields, options);
     }
 }

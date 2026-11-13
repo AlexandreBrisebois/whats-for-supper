@@ -335,6 +335,9 @@ describe('MinimalCapture recipe import', () => {
         expect.objectContaining({
           version: '1.0',
           recipe: expect.objectContaining({ name: 'Imported Shared Recipe' }),
+        }),
+        expect.objectContaining({
+          options: [expect.objectContaining({ maxRetries: 0 })],
         })
       );
       expect(mockSubmitRecipe).not.toHaveBeenCalled();

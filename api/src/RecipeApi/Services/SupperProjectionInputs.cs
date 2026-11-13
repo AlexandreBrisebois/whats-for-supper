@@ -18,6 +18,22 @@ internal static class SupperProjectionInputs
         // Preserve the original semantic shape independently of derived presentation fields.
         var stableLines = lines.Select(line => new { line.OriginalText, line.Name, line.Quantity, line.UnitText, line.Status, line.Issues });
         var groceryOperands = lines.Select(line => line.GroceryObservation);
+        // Saved FoodId changes purchase meaning even when source wording and
+        // amount stay identical. Mapping/content/label revisions are not operands:
+        // immutable vocabulary compatibility fixes qualifiers for each stable ID.
+        // Keep the exact pre-identity bytes for wholly unmapped legacy inputs.
+        if (lines.Any(line => line.GroceryFoodId is not null))
+            return Hash(new
+            {
+                RecipeId = recipeId,
+                Basis = basis,
+                Target = target,
+                Lines = stableLines,
+                GroceryOperands = groceryOperands,
+                GroceryIdentityPolicy = 1,
+                SavedFoodIds = lines.Select(line => line.GroceryFoodId),
+                PackageOperands = lines.Select(line => line.GroceryPackage)
+            });
         return lines.Any(line => line.GroceryPackage is not null)
             ? Hash(new { RecipeId = recipeId, Basis = basis, Target = target, Lines = stableLines, GroceryOperands = groceryOperands, PackageOperands = lines.Select(line => line.GroceryPackage) })
             : Hash(new { RecipeId = recipeId, Basis = basis, Target = target, Lines = stableLines, GroceryOperands = groceryOperands });

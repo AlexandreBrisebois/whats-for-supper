@@ -8,6 +8,7 @@ const suites = {
     'tonight-replacement-recovery',
   ],
   planning: [
+    'bilingual-grocery',
     'deployment-calendar', 'grocery', 'grocery-recipe-sources', 'plan-later', 'planner', 'planner-full-cycle',
     'planner-non-cooking-days', 'planner-reconciliation',
     'planner-smart-defaults-week-offset', 'planner-voting-identity', 'planner-portions-refinement',

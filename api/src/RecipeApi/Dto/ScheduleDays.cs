@@ -33,4 +33,8 @@ public record ScheduleDays(
     [property: JsonPropertyName("votingRoundId")] Guid? VotingRoundId = null,
     [property: JsonPropertyName("groceryExtras")] List<GroceryExtraDto>? GroceryExtras = null,
     [property: JsonPropertyName("groceryRefresh")] ServingGroceryRefreshDto? GroceryRefresh = null,
-    [property: JsonPropertyName("groceryListVersion")] string? GroceryListVersion = null);
+    [property: JsonPropertyName("groceryListVersion")] string? GroceryListVersion = null)
+{
+    [JsonPropertyName("presentationVersion")] public string PresentationVersion { get; init; } = "0";
+    [JsonPropertyName("presentationEpoch")] public Guid PresentationEpoch { get; init; }
+}

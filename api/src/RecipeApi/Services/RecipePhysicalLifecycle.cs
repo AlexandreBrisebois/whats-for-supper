@@ -53,7 +53,7 @@ internal static class RecipePhysicalLifecycle
             var history = await ReadHistoryAsync(db, id, ct);
             var payload = JsonSerializer.Serialize(new
             {
-                version = 1,
+                version = 2,
                 physicalIntent = new { recipeId = id, operationId, kind, target = "recipe-aggregate" },
                 physicalCapture,
                 historyDisposition = "inert",
@@ -154,7 +154,7 @@ internal static class RecipePhysicalLifecycle
     {
         using var document = JsonDocument.Parse(intent.Payload);
         var original = document.RootElement.GetProperty("physicalIntent");
-        if (document.RootElement.GetProperty("version").GetInt32() != 1
+        if (document.RootElement.GetProperty("version").GetInt32() is not (1 or 2)
             || original.GetProperty("recipeId").GetGuid() != intent.RecipeId
             || original.GetProperty("operationId").GetGuid() != intent.OperationId
             || original.GetProperty("kind").GetString() != intent.Kind
@@ -294,4 +294,109 @@ internal static class RecipePhysicalLifecycle
             throw;
         }
     }
+    private sealed record RetainedRecipe(Guid Id, RecipeRating Rating, Guid? AddedBy, string? Notes, string? Description,
+        string? Name, string? TotalTime, string? SourceUrl, int ImageCount, bool IsSynthesized, bool IsDiscoverable,
+        bool RotationHumanOff, string RotationSource, bool CookedSuppressed, bool? SupperSuitable, bool IsReady,
+        string? Category, string? CuisineType, string[]? MealTypes, bool? IsVegetarian, string? RawMetadata,
+        string? Ingredients, string? CanonicalContent, int? Servings,
+        DateTimeOffset? DeletedAt, Guid? DeletedBy, string? DeleteNote, DateTimeOffset CreatedAt,
+        DateTimeOffset UpdatedAt, DateTimeOffset? LastCookedDate, int FinishedDishIndex, string? FoodMappingEvidence = null);
+    private sealed record RetainedReport(Guid RecipeId, string[] Reasons, string? Note, RecipeImportReportStatus Status,
+        Guid? ReportedBy, Guid? UpdatedBy, DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt,
+        Guid? RepairIntentId, Guid? LastWorkflowInstanceId, DateTimeOffset? LastAttemptAt,
+        DateTimeOffset? ReimportedAt, string? LastError);
+    private sealed record RetainedIntent(Guid RecipeId, Guid OperationId, string Kind, string Target);
+    private sealed record RetainedWorkflowLink(Guid Id, string Disposition, string PayloadHash);
+    private sealed record RetainedPayload(int Version, RetainedIntent PhysicalIntent, PhysicalCapture PhysicalCapture,
+        string HistoryDisposition, RetainedRecipe Recipe, string HistoryHash, RecipeFilePublication[] Publications,
+        CanonicalRecipeOperation[] CanonicalOperations, RecipeRepairIntent[] RepairCommands, RetainedReport[] Reports,
+        MaintenanceCommand? OriginalMaintenanceCommand, RetainedWorkflowLink[] WorkflowRetirements);
+
+    internal static FoodVocabularyReference[] VocabularyReferences(RecipePhysicalDeletion intent)
+    {
+        var json = new JsonSerializerOptions(JsonDefaults.CamelCase)
+        {
+            RespectRequiredConstructorParameters = true,
+            UnmappedMemberHandling = System.Text.Json.Serialization.JsonUnmappedMemberHandling.Disallow
+        };
+        using var raw = JsonDocument.Parse(intent.Payload);
+        var version = raw.RootElement.GetProperty("version").GetInt32();
+        var hasEvidenceObservation = raw.RootElement.GetProperty("recipe").TryGetProperty("foodMappingEvidence", out _);
+        if (version is not (1 or 2) || version == 2 && !hasEvidenceObservation)
+            throw new InvalidDataException("Unsupported or incomplete physical retirement evidence format.");
+        foreach (var row in raw.RootElement.GetProperty("publications").EnumerateArray())
+            if (new[] { "recipeId", "operationId", "inputHash", "payload", "resultHash", "delivered", "createdAt" }
+                .Any(name => !row.TryGetProperty(name, out _)))
+                throw new InvalidDataException("Retained physical publication observation is incomplete.");
+        foreach (var row in raw.RootElement.GetProperty("repairCommands").EnumerateArray())
+            if (new[] { "id", "recipeId", "payload", "inputHash", "createdAt" }.Any(name => !row.TryGetProperty(name, out _)))
+                throw new InvalidDataException("Retained physical repair observation is incomplete.");
+        var payload = WorkflowProcessorHistory.ReadObservation<RetainedPayload>(intent.Payload, json);
+        Validate(intent, intent.Kind, null);
+        if (intent.CompletedAt is null)
+            throw new RecoveryBusyException("Complete or reconcile pending recipe physical retirement before capturing vocabulary authority.");
+        if (intent.RecipeId == Guid.Empty || intent.OperationId == Guid.Empty || intent.CreatedAt == default
+            || intent.FilesDeliveredAt is null || payload.Version is not (1 or 2)
+            || payload.HistoryDisposition != "inert" || payload.PhysicalIntent is not { Target: "recipe-aggregate" }
+            || payload.Recipe is null || payload.Recipe.Id != intent.RecipeId || payload.PhysicalCapture is null
+            || payload.Publications is null || payload.CanonicalOperations is null || payload.RepairCommands is null
+            || payload.Reports is null || payload.WorkflowRetirements is null
+            || payload.PhysicalCapture.StagedJournals is null || payload.PhysicalCapture.Files is null)
+            throw new InvalidDataException("Retained physical retirement is incomplete or inconsistent.");
+        var history = JsonSerializer.Serialize(new
+        {
+            payload.Publications,
+            payload.CanonicalOperations,
+            payload.RepairCommands,
+            payload.Reports
+        }, JsonDefaults.CamelCase);
+        if (Hash(history) != payload.HistoryHash) throw new InvalidDataException("Retained physical history hash differs.");
+        var references = FoodVocabularyInventoryQualification.RecipeReferences(new(intent.RecipeId,
+            payload.Recipe.CanonicalContent, payload.Recipe.FoodMappingEvidence)).ToList();
+        if (payload.Publications.Any(x => x.RecipeId != intent.RecipeId)
+            || payload.CanonicalOperations.Any(x => x.RecipeId != intent.RecipeId)
+            || payload.RepairCommands.Any(x => x.RecipeId != intent.RecipeId)
+            || payload.Reports.Any(x => x.RecipeId != intent.RecipeId))
+            throw new InvalidDataException("Retained physical history targets another recipe.");
+        references.AddRange(payload.Publications.SelectMany(RecipeFilePublicationStore.VocabularyReferences));
+        references.AddRange(payload.CanonicalOperations.SelectMany(CanonicalRecipeContentStore.VocabularyReferences));
+        references.AddRange(payload.RepairCommands.SelectMany(RecipeReportRepairIntent.VocabularyReferences));
+        foreach (var stage in payload.PhysicalCapture.StagedJournals)
+        {
+            var publication = payload.Publications.SingleOrDefault(x => stage.Key == $".publications/{x.OperationId:N}/{x.InputHash}.json")
+                ?? throw new InvalidDataException("Retained staged journal has no matching committed publication.");
+            if (!payload.PhysicalCapture.Files.TryGetValue(stage.Key, out var hash)
+                || hash != Convert.ToHexString(SHA256.HashData(stage.Value)))
+                throw new InvalidDataException("Retained staged journal bytes differ from their captured file hash.");
+            references.AddRange(RecipeFilePublicationStore.VocabularyReferences(new(intent.RecipeId,
+                publication.OperationId, publication.InputHash, stage.Value), payload.Publications));
+        }
+        // V1 predates the evidence column. Its exact omission is historical
+        // only when all original canonical/publication/repair facts are unmapped.
+        // A V2 observation, including null, is always mandatory.
+        if (!hasEvidenceObservation && references.Count != 0)
+            throw new InvalidDataException("Historical physical omission cannot erase vocabulary authority.");
+        return references.Distinct().ToArray();
+    }
+
+    internal static void ValidateRetainedWorkflowReferences(RecipePhysicalDeletion record,
+        IReadOnlyList<WorkflowLifecycleRecord> workflows)
+    {
+        var json = new JsonSerializerOptions(JsonDefaults.CamelCase)
+        {
+            RespectRequiredConstructorParameters = true,
+            UnmappedMemberHandling = System.Text.Json.Serialization.JsonUnmappedMemberHandling.Disallow
+        };
+        var payload = WorkflowProcessorHistory.ReadObservation<RetainedPayload>(record.Payload, json);
+        if (payload.WorkflowRetirements is null || payload.WorkflowRetirements.Select(x => x.Id).Distinct().Count() != payload.WorkflowRetirements.Length)
+            throw new InvalidDataException("Retained physical workflow links are inconsistent.");
+        foreach (var link in payload.WorkflowRetirements)
+        {
+            var retained = workflows.SingleOrDefault(x => x.Id == link.Id);
+            if (retained is null || retained.OperationId != record.OperationId || retained.Disposition != link.Disposition
+                || retained.PayloadHash != link.PayloadHash)
+                throw new InvalidDataException("Retained physical workflow link is unresolved.");
+        }
+    }
+
 }

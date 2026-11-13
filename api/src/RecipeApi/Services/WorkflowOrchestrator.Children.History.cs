@@ -38,4 +38,17 @@ public partial class WorkflowOrchestrator
             throw new InvalidDataException("Original prepared child is inconsistent.");
         return InitializeChild(intent, request);
     }
+    internal static FoodVocabularyReference[] VocabularyReferences(WorkflowChildIntent intent,
+        IReadOnlyList<WorkflowTask> parentObservations)
+    {
+        var request = WorkflowProcessorHistory.ReadObservation<ChildRequest>(intent.Request, ChildHistoryJson);
+        var parent = parentObservations.FirstOrDefault(x => x.TaskId == intent.ParentTaskId
+            && x.TaskId == request.TaskId && x.InstanceId == request.ParentId && x.ProcessorName == request.Processor
+            && x.ResetIntentId == request.ResetIntentId
+            && CanonicalRecipeContentStore.NormalizeJson(x.Payload) == request.Payload)
+            ?? throw new InvalidDataException("Retained child requires its independently observed parent generation.");
+        var original = ValidateOriginalChildCommand(intent, parent);
+        return original is null ? [] : RecipeFilePublicationStore.VocabularyReferences(original);
+    }
+
 }

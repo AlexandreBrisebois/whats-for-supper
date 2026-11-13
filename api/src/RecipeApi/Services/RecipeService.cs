@@ -341,13 +341,6 @@ public class RecipeService(
             var extension = original.MimeType.ToLowerInvariant() switch { "image/png" => "png", "image/webp" => "webp", _ => "jpg" };
             files.Add($"original/{index}.{extension}", Convert.FromBase64String(original.Base64));
         }
-        var content = JsonSerializer.Serialize(new
-        {
-            backupContentVersion = 1,
-            rawMetadata = BuildImportedRawMetadata(bundle.Recipe),
-            ingredients = JsonSerializer.Serialize(bundle.Recipe.Ingredients),
-            servings = (int?)null
-        });
         while (true)
         {
             var operation = Guid.NewGuid();
@@ -355,7 +348,8 @@ public class RecipeService(
             try
             {
                 var capture = await publications.CaptureNewAsync(recipeId);
-                await publications.PublishAsync(capture, new(content, info, SourceFiles: files, SourceKind: "bootstrap"), operation);
+                var candidate = publications.PrepareSharedIntake(capture, BuildImportedRawMetadata(bundle.Recipe), info, files, operation);
+                await publications.PublishAsync(capture, candidate, operation);
                 return MapToDto(await db.Recipes.SingleAsync(x => x.Id == recipeId));
             }
             catch (RecipeContentConflictException)
@@ -1026,7 +1020,10 @@ public class RecipeService(
     private static string BuildImportedRawMetadata(ImportedRecipeDto recipe)
         => JsonSerializer.Serialize(new
         {
+            name = recipe.Name,
+            servings = recipe.Servings,
             sourceName = recipe.SourceName,
+            recipeIngredient = recipe.Ingredients,
             recipeInstructions = recipe.Instructions,
         });
 
@@ -1045,6 +1042,9 @@ public class RecipeService(
         {
             throw new InvalidOperationException("Malformed recipe bundle payload.");
         }
+
+        if (bundle.Recipe.Servings is <= 0)
+            throw new InvalidOperationException("Shared recipe servings must be positive when supplied.");
 
         if (bundle.Originals.Count > 5)
             throw new InvalidOperationException("Recipe bundle cannot contain more than five original images.");

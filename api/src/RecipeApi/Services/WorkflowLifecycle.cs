@@ -132,4 +132,103 @@ internal static class WorkflowLifecycle
             CreatedAt = now
         });
     }
+    private sealed record RetainedTask(Guid TaskId, Guid InstanceId, string TaskName, string ProcessorName,
+        string? Payload, Models.TaskStatus Status, string[] DependsOn, int RetryCount, DateTimeOffset? ScheduledAt,
+        string? ErrorMessage, string? StackTrace, Guid? ChildLaunchIntentId, Guid? ResetIntentId, string? Result,
+        DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt)
+    {
+        public WorkflowTask Restore() => new()
+        {
+            TaskId = TaskId,
+            InstanceId = InstanceId,
+            TaskName = TaskName,
+            ProcessorName = ProcessorName,
+            Payload = Payload,
+            Status = Status,
+            DependsOn = DependsOn,
+            RetryCount = RetryCount,
+            ScheduledAt = ScheduledAt,
+            ErrorMessage = ErrorMessage,
+            StackTrace = StackTrace,
+            ChildLaunchIntentId = ChildLaunchIntentId,
+            ResetIntentId = ResetIntentId,
+            Result = Result,
+            CreatedAt = CreatedAt,
+            UpdatedAt = UpdatedAt
+        };
+    }
+    private sealed record RetainedWorkflow(Guid Id, string WorkflowId, WorkflowStatus Status, string? Parameters,
+        string? RecipePublicationCapture, DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt, RetainedTask[] Tasks);
+    private sealed record RetainedReport(Guid RecipeId, Guid? LastWorkflowInstanceId, Guid? RepairIntentId);
+    private sealed record RetainedPayload(int Version, string ExecutionDisposition, RetainedWorkflow Workflow,
+        WorkflowChildIntent[] ChildCommands, WorkflowResetIntent[] ResetCommands, WorkflowProcessorAttempt[] ProcessorAttempts,
+        RecipeRepairIntent[] RepairCommands, RecipeFilePublication[] Publications, CanonicalRecipeOperation[] CanonicalOperations,
+        RetainedReport[] Reports, MaintenanceCommand? MaintenanceCommand);
+    private static readonly JsonSerializerOptions RetainedJson = new(JsonDefaults.CamelCase)
+    {
+        RespectRequiredConstructorParameters = true,
+        UnmappedMemberHandling = System.Text.Json.Serialization.JsonUnmappedMemberHandling.Disallow
+    };
+
+    private static RetainedPayload ReadRetained(WorkflowLifecycleRecord record)
+    {
+        using var raw = JsonDocument.Parse(record.Payload);
+        // Every nullable column in these retained rows is an explicit observed
+        // value. Missing columns cannot erase a prepared capture or receipt.
+        void RequireMembers(string collection, string[] members)
+        {
+            foreach (var row in raw.RootElement.GetProperty(collection).EnumerateArray())
+                if (row.ValueKind != JsonValueKind.Object || members.Any(name => !row.TryGetProperty(name, out _)))
+                    throw new InvalidDataException("Retained workflow row observation is incomplete.");
+        }
+        RequireMembers("childCommands", ["id", "parentTaskId", "request", "requestHash", "prepared", "preparedHash", "acceptedAt", "createdAt"]);
+        RequireMembers("resetCommands", ["id", "taskId", "instanceId", "request", "requestHash", "appliedAt", "createdAt"]);
+        RequireMembers("processorAttempts", ["id", "taskId", "instanceId", "request", "requestHash", "outcome", "outcomeHash", "observedAt", "createdAt"]);
+        RequireMembers("repairCommands", ["id", "recipeId", "payload", "inputHash", "createdAt"]);
+        RequireMembers("publications", ["recipeId", "operationId", "inputHash", "payload", "resultHash", "delivered", "createdAt"]);
+        RequireMembers("canonicalOperations", ["recipeId", "operationId", "inputHash", "result", "createdAt"]);
+        var payload = WorkflowProcessorHistory.ReadObservation<RetainedPayload>(record.Payload, RetainedJson);
+        if (record.Id == Guid.Empty || record.OperationId == Guid.Empty || record.CreatedAt == default
+            || record.Disposition is not ("cleared" or "pruned") || record.PayloadHash != Convert.ToHexString(SHA256.HashData(
+                Encoding.UTF8.GetBytes(CanonicalRecipeContentStore.NormalizeJson(record.Payload))))
+            || payload.Version != 1 || payload.ExecutionDisposition != "inert" || payload.Workflow is not { } workflow
+            || workflow.Id != record.Id || workflow.Tasks is null || payload.ChildCommands is null || payload.ResetCommands is null
+            || payload.ProcessorAttempts is null || payload.RepairCommands is null || payload.Publications is null
+            || payload.CanonicalOperations is null || payload.Reports is null
+            || workflow.Tasks.Any(x => x is null || x.TaskId == Guid.Empty || x.InstanceId != record.Id || x.DependsOn is null)
+            || workflow.Tasks.Select(x => x.TaskId).Distinct().Count() != workflow.Tasks.Length)
+            throw new InvalidDataException("Retained workflow observation is inconsistent.");
+        return payload;
+    }
+
+    internal static WorkflowTask[] RetainedTasks(WorkflowLifecycleRecord record) =>
+        ReadRetained(record).Workflow.Tasks.Select(x => x.Restore()).ToArray();
+
+    internal static FoodVocabularyReference[] VocabularyReferences(WorkflowLifecycleRecord record)
+    {
+        var payload = ReadRetained(record);
+        var workflow = payload.Workflow;
+        var tasks = workflow.Tasks.Select(x => x.Restore()).ToArray();
+        var parentObservations = tasks.Concat(payload.ResetCommands.Select(WorkflowReset.RetainedTask))
+            .Concat(payload.ProcessorAttempts.Select(WorkflowProcessorHistory.RetainedTask)).ToArray();
+        var references = RecipeFilePublicationStore.VocabularyReferences(new WorkflowInstance
+        {
+            Id = workflow.Id,
+            WorkflowId = workflow.WorkflowId,
+            Status = workflow.Status,
+            Parameters = workflow.Parameters,
+            RecipePublicationCapture = workflow.RecipePublicationCapture,
+            CreatedAt = workflow.CreatedAt,
+            UpdatedAt = workflow.UpdatedAt,
+            Tasks = tasks
+        }).ToList();
+        references.AddRange(payload.ChildCommands.SelectMany(x => WorkflowOrchestrator.VocabularyReferences(x, parentObservations)));
+        references.AddRange(payload.ResetCommands.SelectMany(WorkflowReset.VocabularyReferences));
+        references.AddRange(payload.ProcessorAttempts.SelectMany(WorkflowProcessorHistory.VocabularyReferences));
+        references.AddRange(payload.RepairCommands.SelectMany(RecipeReportRepairIntent.VocabularyReferences));
+        references.AddRange(payload.Publications.SelectMany(RecipeFilePublicationStore.VocabularyReferences));
+        references.AddRange(payload.CanonicalOperations.SelectMany(CanonicalRecipeContentStore.VocabularyReferences));
+        return references.Distinct().ToArray();
+    }
+
 }

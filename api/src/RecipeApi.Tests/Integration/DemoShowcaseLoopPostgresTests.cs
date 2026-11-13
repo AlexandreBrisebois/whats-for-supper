@@ -110,11 +110,14 @@ public partial class DemoShowcaseLoopPostgresTests : IAsyncLifetime
         var store = scope.ServiceProvider.GetRequiredService<IRecipeStore>();
         await store.SaveSourcePdfAsync(recipe.Id, new MemoryStream([1, 2, 3]));
         await store.SaveHeroImageAsync(recipe.Id, new MemoryStream([4, 5, 6]));
-        db.RecipeRepairIntents.Add(new RecipeRepairIntent
-        {
-            Id = Guid.NewGuid(), RecipeId = recipe.Id, Payload = "{\"privateFeedback\":\"Synthetic feedback\"}",
-            InputHash = new string('0', 64), CreatedAt = DateTimeOffset.UtcNow
-        });
+        var repairOwner = typeof(RecipeFilePublicationStore).Assembly.GetType("RecipeApi.Services.RecipeReportRepairIntent")!
+            .GetMethod("Create", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic)!;
+        var repair = (RecipeRepairIntent)repairOwner.Invoke(null, [Guid.NewGuid(), recipe.Id, "url-import",
+            new Dictionary<string, string> { ["recipeId"] = recipe.Id.ToString("D"), ["privateFeedback"] = "Synthetic feedback" },
+            null, DateTimeOffset.UtcNow])!;
+        using (var original = JsonDocument.Parse(repair.Payload))
+            Assert.Equal("Synthetic feedback", original.RootElement.GetProperty("Parameters").GetProperty("privateFeedback").GetString());
+        db.RecipeRepairIntents.Add(repair);
         await db.SaveChangesAsync();
         await service.CaptureDemoStateAsync();
         var baseline = SelectedBaseline(scope);
@@ -188,7 +191,7 @@ public partial class DemoShowcaseLoopPostgresTests : IAsyncLifetime
             scope.ServiceProvider.GetRequiredService<DataRootResolver>(),
             scope.ServiceProvider.GetRequiredService<IConfiguration>(),
             scope.ServiceProvider.GetRequiredService<IClock>(),
-            scope.ServiceProvider.GetRequiredService<RecoveryBoundary>(), new InterruptAt(point));
+            scope.ServiceProvider.GetRequiredService<RecoveryBoundary>(), scope.ServiceProvider.GetRequiredService<FoodVocabularyStore>(), new InterruptAt(point));
         await Assert.ThrowsAsync<IOException>(() => recovery.RestoreDemoAsync(null, CancellationToken.None));
         db.ChangeTracker.Clear();
         Assert.Equal(committed ? "Baseline soup" : "Visitor edit", (await db.Recipes.SingleAsync()).Name);

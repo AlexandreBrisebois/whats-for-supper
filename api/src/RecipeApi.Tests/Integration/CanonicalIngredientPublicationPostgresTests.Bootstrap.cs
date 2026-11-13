@@ -33,13 +33,22 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
             Assert.False(journal.Delivered);
             Assert.True(await db.Recipes.AnyAsync(x => x.Id == id));
             Assert.True(await db.RecipeSearchDocuments.AnyAsync(x => x.RecipeId == id));
+            var committed = await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == id);
+            Assert.Null(committed.Servings); // The incoming share omitted its declared basis.
+            var committedContent = CanonicalRecipeContentStore.Read(committed)!;
+            Assert.NotNull(committedContent);
             storage.FailInfo = false;
             await store.ResumeAsync(id, journal.OperationId);
             await store.ResumeAsync(id, journal.OperationId);
             Assert.Equal("Shared soup", (await repository.GetInfoAsync(id, default)).Name);
             Assert.Equal(new byte[] { 4, 5, 6 }, await repository.GetOriginalImageAsync(id, 0, default));
             using var json = JsonDocument.Parse(await repository.GetRecipeJsonAsync(id, default));
-            Assert.Contains("salt", json.RootElement.GetProperty("ingredients").GetString());
+            var exported = RecipeExportContent.ReadCurrent(json.RootElement, id);
+            Assert.Equal(JsonSerializer.Serialize(committedContent), JsonSerializer.Serialize(exported.Content));
+            Assert.Equal("salt", Assert.Single(exported.Content.IngredientLines).Description);
+            Assert.Null(exported.Content.Servings);
+            AssertSharedTextRemainsUnknown(exported.Content);
+            Assert.Equal(member, (await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == id)).AddedBy);
             Assert.True((await db.RecipeFilePublications.SingleAsync(x => x.RecipeId == id)).Delivered);
         });
     }
@@ -260,7 +269,7 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
             bundle.Hero = new() { MimeType = "image/webp", Base64 = "BAUG" };
             bundle.Recipe.Notes = "Private note";
             bundle.Recipe.Rating = 3;
-            bundle.Recipe.Servings = 17; // Version 1 text sharing does not establish a trustworthy basis.
+            bundle.Recipe.Servings = 17; // Preserve a declared count without claiming verified original-source facts.
             using var imported = await client.PostAsJsonAsync("/api/recipes/import-bundle", bundle);
             Assert.Equal(HttpStatusCode.Created, imported.StatusCode);
             using var body = JsonDocument.Parse(await imported.Content.ReadAsStringAsync());
@@ -272,17 +281,38 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
             Assert.NotNull(exported);
             Assert.Null(exported.Recipe.Notes);
             Assert.Null(exported.Recipe.Rating);
+            Assert.Null(exported.Recipe.Servings); // The existing outgoing share projection omits household fields.
             Assert.Equal(new[] { "salt" }, exported.Recipe.Ingredients);
             Assert.Equal("BAUG", exported.Originals.Single().Base64);
             using var scope = factory.Services.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
             var recipe = await db.Recipes.SingleAsync();
             Assert.Equal("Private note", recipe.Notes);
-            Assert.Null(recipe.Servings);
+            Assert.Equal(17, recipe.Servings);
+            var canonical = CanonicalRecipeContentStore.Read(recipe)!;
+            Assert.NotNull(canonical);
+            Assert.Equal(17, canonical.Servings);
+            AssertSharedTextRemainsUnknown(canonical);
             Assert.True(recipe.IsReady);
             Assert.Equal(factory.DefaultFamilyMemberId, recipe.AddedBy);
             Assert.True((await db.RecipeFilePublications.SingleAsync()).Delivered);
         });
+    }
+
+    private static void AssertSharedTextRemainsUnknown(CanonicalRecipeContent content)
+    {
+        var line = Assert.Single(content.IngredientLines);
+        Assert.Equal("salt", line.Description);
+        Assert.Null(line.Amount);
+        Assert.Null(line.AmountText);
+        Assert.Null(line.Unit);
+        Assert.Null(line.Package);
+        Assert.Null(line.Shopping.FoodId);
+        Assert.Null(line.Shopping.MappingRevision);
+        Assert.Equal("legacy_unknown", line.Provenance.Origin);
+        Assert.Null(line.Provenance.SourceRef);
+        Assert.Equal(new[] { "description", "amount", "amountText", "unit", "scaling", "package", "shopping" }, line.Provenance.ProtectedFields);
+        Assert.All(content.InstructionSections.SelectMany(section => section.Steps), step => Assert.Empty(step.Bindings));
     }
 
     private static RecipeShareBundleDto Share(Guid id) => new()

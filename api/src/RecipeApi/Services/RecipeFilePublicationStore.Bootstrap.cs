@@ -90,8 +90,19 @@ public sealed partial class RecipeFilePublicationStore
         if (candidate.RecipeJson is not null)
         {
             using var parsed = JsonDocument.Parse(candidate.RecipeJson);
-            var content = RecipeExportContent.Read(parsed.RootElement)!;
-            recipe.RawMetadata = content.RawMetadata; recipe.Ingredients = content.Ingredients; recipe.Servings = content.Servings;
+            if (candidate.SourceKind == "shared-canonical")
+            {
+                var current = RecipeExportContent.ReadCurrent(parsed.RootElement, recipe.Id);
+                recipe.RawMetadata = current.RawMetadata;
+                recipe.CanonicalContent = JsonSerializer.Serialize(current.Content, Json);
+                recipe.Ingredients = JsonSerializer.Serialize(current.Content.IngredientLines.Select(CanonicalRecipeContentStore.Render), Json);
+                recipe.Servings = current.Content.Servings;
+            }
+            else
+            {
+                var content = RecipeExportContent.Read(parsed.RootElement)!;
+                recipe.RawMetadata = content.RawMetadata; recipe.Ingredients = content.Ingredients; recipe.Servings = content.Servings;
+            }
         }
         return recipe;
     }

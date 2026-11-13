@@ -99,14 +99,15 @@ public class RecipeAgent(
         var (capture, candidate) = RecipeFilePublicationStore.ReadOriginalPublication(publications[0]);
         Require(candidate.RecipeJson is not null && candidate.SourceFiles is null && candidate.SourceContext is null
             && (candidate.SourceKind is null || processor == "ExtractRecipe"
-                && (candidate.SourceKind == "fresh-canonical" || candidate.SourceKind == "review-canonical")));
+                && (candidate.SourceKind == "fresh-canonical" || candidate.SourceKind == "review-canonical" || candidate.SourceKind == "photo-ingredient-repair")
+                || processor == "SynthesizeRecipe" && candidate.SourceKind == "synthesized-canonical"));
         var info = CapturedInfo(capture);
         switch (processor)
         {
             case "ExtractRecipe":
                 Require(capture.Files.GetValueOrDefault("original/content.html") is not null || CapturedImages(capture, info).Count > 0);
                 var extractedJson = candidate.RecipeJson!;
-                if (candidate.SourceKind is "fresh-canonical" or "review-canonical")
+                if (candidate.SourceKind is "fresh-canonical" or "review-canonical" or "photo-ingredient-repair")
                 {
                     using var document = JsonDocument.Parse(extractedJson);
                     extractedJson = RecipeExportContent.ReadCurrent(document.RootElement, recipeId).RawMetadata
@@ -114,7 +115,7 @@ public class RecipeAgent(
                 }
                 var extraction = RecipeExtractionParser.ParseAndNormalize(extractedJson);
                 Require(extraction.IsSemanticallyComplete && extraction.Recipe is not null);
-                info.Name = extraction.Recipe!.Name;
+                if (candidate.SourceKind != "photo-ingredient-repair") info.Name = extraction.Recipe!.Name;
                 break;
             case "GenerateDescription":
                 Require(capture.Files.GetValueOrDefault("recipe.json") is { } bytes
@@ -126,11 +127,18 @@ public class RecipeAgent(
                 var hasDescription = input.RootElement.TryGetProperty("description", out var description)
                     || input.RootElement.TryGetProperty("Description", out description);
                 if (!recovered) Require(hasDescription && description.ValueKind is JsonValueKind.String or JsonValueKind.Null);
-                var recipe = JsonSerializer.Deserialize<SchemaOrgRecipe>(candidate.RecipeJson!, JsonDefaults.CaseInsensitive);
+                var synthesizedJson = candidate.RecipeJson!;
+                if (candidate.SourceKind == "synthesized-canonical")
+                {
+                    using var document = JsonDocument.Parse(synthesizedJson);
+                    synthesizedJson = RecipeExportContent.ReadCurrent(document.RootElement, recipeId).RawMetadata
+                        ?? throw new InvalidDataException("Canonical synthesis has no retained generated text.");
+                }
+                var recipe = JsonSerializer.Deserialize<SchemaOrgRecipe>(synthesizedJson, JsonDefaults.CaseInsensitive);
                 Require(recipe is not null);
                 if (string.IsNullOrWhiteSpace(recipe!.Name) && hasDescription
                     && description.ValueKind is JsonValueKind.String or JsonValueKind.Null)
-                    Require(CanonicalRecipeContentStore.NormalizeJson(candidate.RecipeJson)
+                    Require(CanonicalRecipeContentStore.NormalizeJson(synthesizedJson)
                         == CanonicalRecipeContentStore.NormalizeJson(JsonSerializer.Serialize(SynthesisFallback(description.GetString() ?? ""), JsonDefaults.CamelCase)));
                 info.Name = recipe!.Name;
                 info.IsSynthesized = true;
@@ -303,6 +311,14 @@ RULES:
         // Re-serialize to ensure we save in our standard format, not the model's hallucinated schema
         var normalizedJson = JsonSerializer.Serialize(finalRecipe, new JsonSerializerOptions(JsonDefaults.CamelCase) { WriteIndented = true });
 
+        if (operationId is { } repairOperation && producerInput is not null
+            && await publications.CanRepairCanonicalPhotoAsync(capture, repairOperation, ct))
+        {
+            var repaired = publications.PreparePhotoIngredientRepair(capture, normalizedJson, repairOperation);
+            await publications.PublishAsync(capture, new(RecipeExportContent.WriteCurrent(repaired.Export), info,
+                producerInput, SourceKind: "photo-ingredient-repair", MappingEvidence: repaired.Evidence), repairOperation, ct);
+            return;
+        }
         info.Name = finalRecipe.Name;
         await GenerateCandidateDescriptionAsync(recipeId, normalizedJson, info, capture, ct);
         if (operationId is { } freshOperation && producerInput is not null &&
@@ -538,7 +554,10 @@ STRICT OUTPUT: Return ONLY valid JSON. No markdown. No preamble. No explanation.
         info.IsSynthesized = true;
         if (!string.IsNullOrWhiteSpace(recipe.TotalTime)) info.TotalTime = recipe.TotalTime;
         await GenerateCandidateDescriptionAsync(recipeId, normalizedJson, info, capture, ct);
-        await publications.PublishAsync(capture, new(normalizedJson, info, producerInput), operationId ?? Guid.NewGuid(), ct);
+        var operation = operationId ?? Guid.NewGuid();
+        var canonical = producerInput is null ? null
+            : await publications.PrepareSynthesizedIntakeAsync(capture, normalizedJson, info, operation, producerInput, ct);
+        await publications.PublishAsync(capture, canonical ?? new(normalizedJson, info, producerInput), operation, ct);
         logger.LogInformation("Published synthesized recipe for {RecipeId}", recipeId);
     }
 

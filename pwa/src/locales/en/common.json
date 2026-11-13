@@ -328,6 +328,8 @@
     "bought": "Bought",
     "notBought": "Not bought",
     "changeSection": "Change section for",
+    "categoryConflict": "Different saved sections apply. Choose one for this food.",
+    "savedSections": "Saved sections:",
     "chooseSection": "Choose section",
     "savingExtra": "Saving…",
     "extraSaveError": "Could not save. Refreshing; try again.",

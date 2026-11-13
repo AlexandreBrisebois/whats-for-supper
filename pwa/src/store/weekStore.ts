@@ -1,3 +1,4 @@
+import { groceryPresentation, retainGroceryPresentation } from '@/lib/grocery/presentation';
 import { groceryVersion, overlayGroceryIntents } from '@/lib/grocery/rowState';
 import { create } from 'zustand';
 import {
@@ -55,14 +56,21 @@ export interface WeekState {
   groceryItems: GroceryLineItemDto[];
   groceryListVersion: string | null;
   groceryVersionWeek: string | null;
+  groceryPresentationEpoch: string | null;
+  groceryPresentationVersion: string | null;
   authoritativeGroceryChecks: Record<string, boolean>;
-  applyGrocerySnapshot: (snapshot: {
-    weekStartDate?: unknown;
-    groceryListVersion?: string | null;
-    groceryItems?: GroceryLineItemDto[] | null;
-    groceryState?: unknown;
-    groceryRefresh?: import('@/lib/api/generated/models').ServingGroceryRefresh | null;
-  }) => boolean;
+  applyGrocerySnapshot: (
+    snapshot: {
+      presentationVersion?: string | null;
+      presentationEpoch?: string | null;
+      weekStartDate?: unknown;
+      groceryListVersion?: string | null;
+      groceryItems?: GroceryLineItemDto[] | null;
+      groceryState?: unknown;
+      groceryRefresh?: import('@/lib/api/generated/models').ServingGroceryRefresh | null;
+    },
+    authority?: { expectedPresentationEpoch: string | null }
+  ) => boolean;
   groceryRefresh?: import('@/lib/api/generated/models').ServingGroceryRefresh | null;
   /** Identity-bearing household-entered rows, kept separate from recipe groceries. */
   groceryExtras: GroceryExtraDto[];
@@ -382,8 +390,10 @@ export const useWeekStore = create<WeekState>((set, get) => {
     groceryItems: [],
     groceryListVersion: null,
     groceryVersionWeek: null,
+    groceryPresentationEpoch: null,
+    groceryPresentationVersion: null,
     authoritativeGroceryChecks: {},
-    applyGrocerySnapshot(snapshot) {
+    applyGrocerySnapshot(snapshot, authority) {
       const week = absoluteMonday(snapshot.weekStartDate);
       const version = groceryVersion(snapshot.groceryListVersion);
       if (!week || week !== get().weekStartDate) return false;
@@ -392,6 +402,31 @@ export const useWeekStore = create<WeekState>((set, get) => {
       const previous =
         get().groceryVersionWeek === week ? groceryVersion(get().groceryListVersion) : null;
       if (previous !== null && (version === null || version < previous)) return false;
+      const presentation = groceryPresentation(
+        snapshot.presentationVersion,
+        snapshot.presentationEpoch
+      );
+      if (!presentation) return false;
+      const current = get();
+      const priorPresentation =
+        current.groceryPresentationEpoch !== null
+          ? groceryPresentation(
+              current.groceryPresentationVersion ?? undefined,
+              current.groceryPresentationEpoch ?? undefined
+            )
+          : null;
+      const changedEpoch =
+        priorPresentation !== null && priorPresentation.epoch !== presentation.epoch;
+      if (
+        changedEpoch &&
+        (!authority || authority.expectedPresentationEpoch !== current.groceryPresentationEpoch)
+      )
+        return false;
+      const stalePresentation =
+        priorPresentation !== null &&
+        !changedEpoch &&
+        presentation.version < priorPresentation.version;
+      if (stalePresentation && previous === version) return false;
       const raw = snapshot.groceryState as { additionalData?: unknown } | undefined;
       const checks = (raw?.additionalData ?? raw) as Record<string, boolean> | undefined;
       if (
@@ -414,7 +449,15 @@ export const useWeekStore = create<WeekState>((set, get) => {
       )
         return false;
       set({
-        groceryItems: snapshot.groceryItems ?? [],
+        groceryItems: stalePresentation
+          ? retainGroceryPresentation(snapshot.groceryItems ?? [], current.groceryItems)
+          : (snapshot.groceryItems ?? []),
+        groceryPresentationEpoch: stalePresentation
+          ? current.groceryPresentationEpoch
+          : presentation.epoch,
+        groceryPresentationVersion: stalePresentation
+          ? current.groceryPresentationVersion
+          : presentation.version.toString(),
         groceryListVersion: snapshot.groceryListVersion ?? null,
         groceryVersionWeek: week,
         authoritativeGroceryChecks: checks,
@@ -435,6 +478,7 @@ export const useWeekStore = create<WeekState>((set, get) => {
 
     // ── init ──────────────────────────────────────────────────────────────────
     async init(weekOffset, referenceWeekStartDate) {
+      const expectedPresentationEpoch = get().groceryPresentationEpoch;
       const frame = ++loadingFrame;
       const initialStatus = get().status;
       const initialRound = get().votingRoundId;
@@ -513,7 +557,7 @@ export const useWeekStore = create<WeekState>((set, get) => {
           lastSyncedAt: calendarTime.instant(),
           isLoading: false,
         });
-        get().applyGrocerySnapshot(scheduleData);
+        get().applyGrocerySnapshot(scheduleData, { expectedPresentationEpoch });
       } catch {
         // Existing initialization failure leaves the current schedule available.
       } finally {
@@ -892,6 +936,7 @@ export const useWeekStore = create<WeekState>((set, get) => {
         groceryExtras,
         pendingGroceryExtraIds,
       } = get();
+      const expectedPresentationEpoch = get().groceryPresentationEpoch;
       const reference = calendar?.referenceWeekStartDate;
       const checks = usePlannerStore.getState().groceryState;
       if (!weekStartDate || !reference) return;
@@ -921,7 +966,7 @@ export const useWeekStore = create<WeekState>((set, get) => {
             current.calendar?.currentWeekStartDate ?? null
           ),
         });
-        get().applyGrocerySnapshot(snapshot);
+        get().applyGrocerySnapshot(snapshot, { expectedPresentationEpoch });
       } catch {
         // Keep durable pending/failed state visible; the next event, open or poll can retry.
       }
@@ -929,6 +974,7 @@ export const useWeekStore = create<WeekState>((set, get) => {
 
     // ── sync ──────────────────────────────────────────────────────────────────
     async sync() {
+      const expectedPresentationEpoch = get().groceryPresentationEpoch;
       const { weekOffset, calendar, weekStartDate } = get();
       const initialStatus = get().status;
       const initialSession = useDiscoveryStore.getState().session;
@@ -962,7 +1008,7 @@ export const useWeekStore = create<WeekState>((set, get) => {
             context.currentWeekStartDate
           ),
         });
-        get().applyGrocerySnapshot(data);
+        get().applyGrocerySnapshot(data, { expectedPresentationEpoch });
 
         const { optimisticWriteAt } = get();
         const optimisticIsRecent =

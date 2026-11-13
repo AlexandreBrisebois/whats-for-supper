@@ -11,7 +11,7 @@ using Xunit.Abstractions;
 
 namespace RecipeApi.Tests.Integration;
 
-public sealed class WorkflowLaunchIntentPostgresTests(ITestOutputHelper output)
+public sealed partial class WorkflowLaunchIntentPostgresTests(ITestOutputHelper output)
 {
     [DeploymentCalendarPostgresTests.CalendarPostgresFact]
     public Task Worker_ReconcilesGenericOriginalBeforeDispatch() => new TomorrowPushPostgresTests(output)
