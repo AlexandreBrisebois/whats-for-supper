@@ -11,13 +11,14 @@ public sealed partial class RecipeFilePublicationStore
     /// <summary>Capture absent membership before accepting a new aggregate's files.</summary>
     public async Task<RecipePublicationCapture> CaptureNewAsync(Guid id, CancellationToken ct = default)
     {
+        var authority = await vocabulary.CaptureAuthorityAsync(null, ct);
         await using var transaction = await RecipeRotation.LockAsync(db, id, ct, lockSupperInputs: true);
         var existing = await db.Recipes.AsNoTracking().SingleOrDefaultAsync(x => x.Id == id, ct);
         if (existing is not null) throw Conflict(existing);
         var files = await repository.CapturePublicationFilesAsync(id, ct, allowMissingInfo: true);
         if (files.Any(x => x.Value is not null)) throw new InvalidDataException("New recipe identity already has retained files.");
         if (transaction is not null) await transaction.CommitAsync(ct);
-        return new(id, "absent", "absent", "absent", files, FieldHashVersion: 3);
+        return new(id, "absent", "absent", "absent", files, FieldHashVersion: 4, FoodEvidence: new(null), FoodAuthority: authority);
     }
 
     private async Task CheckEmptyBootstrapAsync(RecipePublicationCapture capture, CancellationToken ct)

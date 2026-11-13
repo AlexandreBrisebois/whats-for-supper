@@ -19,6 +19,9 @@ public sealed partial record RecipeExportContent
     // This decodes recipe content only. Household/media manifests, captured merge
     // authority and coordinated publication must qualify before routine restore uses it.
     public static CanonicalRecipeExport ReadCurrent(JsonElement root, Guid expectedRecipeId)
+        => ReadCurrentCore(root, expectedRecipeId, retainedHistory: false);
+
+    private static CanonicalRecipeExport ReadCurrentCore(JsonElement root, Guid expectedRecipeId, bool retainedHistory)
     {
         try
         {
@@ -28,7 +31,7 @@ public sealed partial record RecipeExportContent
                 || expectedRecipeId == Guid.Empty || envelope.RecipeId != expectedRecipeId
                 || envelope.Content is null || envelope.ContentRevision != envelope.Content.ContentRevision)
                 throw InvalidCurrent();
-            ValidateCurrentContent(envelope.Content);
+            ValidateCurrentContent(envelope.Content, retainedHistory);
             // Evidence is a separately retained JSON string, never the envelope or a
             // fallback owner for an explicitly cleared canonical field.
             if (envelope.RawMetadata is not null) using (JsonDocument.Parse(envelope.RawMetadata)) { }
@@ -51,6 +54,16 @@ public sealed partial record RecipeExportContent
         return serialized.GetRawText();
     }
 
+    // Internal history may retain a proof after a unit/dependency change. Its
+    // old validation tokens keep it inert; exact original-command rederivation
+    // remains required by the caller. Public current/export defaults stay strict.
+    internal static void ValidateRetainedHistory(CanonicalRecipeExport export)
+    {
+        var envelope = new CurrentEnvelope("wfs-recipe", 2, export.RecipeId, 2,
+            export.Content.ContentRevision, export.Content, export.RawMetadata);
+        _ = ReadCurrentCore(JsonSerializer.SerializeToElement(envelope, CurrentJson), export.RecipeId, retainedHistory: true);
+    }
+
     public static bool IsIdenticalCurrent(CanonicalRecipeExport incoming, CanonicalRecipeExport saved)
     {
         // Both sides must be independently valid. Equality grants only a no-write
@@ -70,7 +83,7 @@ public sealed partial record RecipeExportContent
     private sealed record CurrentEnvelope(string Format, int Version, Guid RecipeId,
         int ContentSchemaVersion, string ContentRevision, CanonicalRecipeContent Content, string? RawMetadata);
 
-    private static void ValidateCurrentContent(CanonicalRecipeContent content)
+    private static void ValidateCurrentContent(CanonicalRecipeContent content, bool retainedHistory)
     {
         if (content.ContentSchemaVersion != 2 || string.IsNullOrWhiteSpace(content.ContentRevision)
             || string.IsNullOrWhiteSpace(content.SourceRevision) || content.Servings is <= 0
@@ -105,24 +118,32 @@ public sealed partial record RecipeExportContent
         var ingredients = content.IngredientLines.Select(x => x.Id).ToHashSet();
         foreach (var step in content.InstructionSections.SelectMany(x => x.Steps))
         {
-            var spans = new List<(int Start, int End)>();
+            var spans = new List<(int Start, int End, string TextRevision)>();
             foreach (var binding in step.Bindings)
             {
                 if (binding.ValueKind != JsonValueKind.Object) throw InvalidCurrent();
                 Identity(binding.GetProperty("id").GetGuid());
-                if (!ingredients.Contains(binding.GetProperty("ingredientLineId").GetGuid())
+                var ingredientId = binding.GetProperty("ingredientLineId").GetGuid();
+                var contentRevision = binding.GetProperty("validatedContentRevision").GetString();
+                var textRevision = binding.GetProperty("validatedTextRevision").GetString();
+                var current = contentRevision == content.ContentRevision && textRevision == step.TextRevision;
+                var inert = retainedHistory && !current;
+                if (ingredientId == Guid.Empty || !inert && !ingredients.Contains(ingredientId)
                     || binding.GetProperty("stepId").GetGuid() != step.Id
-                    || binding.GetProperty("validatedContentRevision").GetString() != content.ContentRevision
-                    || binding.GetProperty("validatedTextRevision").GetString() != step.TextRevision)
-                    throw InvalidCurrent();
+                    || string.IsNullOrWhiteSpace(contentRevision) || string.IsNullOrWhiteSpace(textRevision)
+                    || !retainedHistory && !current) throw InvalidCurrent();
                 var span = binding.GetProperty("span");
                 var start = span.GetProperty("start").GetInt32();
                 var end = span.GetProperty("end").GetInt32();
-                if (start < 0 || end <= start || end > step.Text.Length
-                    || !Boundary(step.Text, start) || !Boundary(step.Text, end)
-                    || span.GetProperty("expectedText").GetString() != step.Text[start..end]
-                    || spans.Any(x => start < x.End && end > x.Start)) throw InvalidCurrent();
-                spans.Add((start, end));
+                var expectedText = span.GetProperty("expectedText").GetString();
+                // An inert proof describes its retained source text, not today's
+                // edited/deleted ingredient or step wording. It remains structurally
+                // bounded and belongs to this step; it never becomes active proof.
+                if (start < 0 || end <= start || expectedText is null || expectedText.Length != end - start
+                    || !inert && (end > step.Text.Length || !Boundary(step.Text, start) || !Boundary(step.Text, end)
+                        || expectedText != step.Text[start..end])
+                    || spans.Any(x => x.TextRevision == textRevision && start < x.End && end > x.Start)) throw InvalidCurrent();
+                spans.Add((start, end, textRevision!));
                 if (binding.GetProperty("role").GetString() is not ("mention" or "whole" or "absolute" or "fraction" or "remainder" or "fixed" or "perItem")
                     || binding.GetProperty("payload").ValueKind != JsonValueKind.Object
                     || string.IsNullOrWhiteSpace(binding.GetProperty("status").GetString())) throw InvalidCurrent();

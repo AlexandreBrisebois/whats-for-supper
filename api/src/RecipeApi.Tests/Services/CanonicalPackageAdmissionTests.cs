@@ -1,3 +1,5 @@
+using RecipeApi.Infrastructure;
+using RecipeApi.Tests.Infrastructure;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -28,7 +30,7 @@ public sealed class CanonicalPackageAdmissionTests
         internal Fixture(RecipePackageDto? package = null, bool definitions = false, bool noLineUnit = false)
         {
             var clock = new SystemClock();
-            Store = new(Db, clock, new SupperProjectionInvalidation(Db, clock, new DeploymentCalendar(new ConfigurationManager())));
+            Store = new(Db, clock, new SupperProjectionInvalidation(Db, clock, new DeploymentCalendar(new ConfigurationManager())), TestPublicationStore.Vocabulary(Db, new InMemoryStorageProvider(), clock));
             var row = new RecipeIngredientLineDto { Id = Guid.NewGuid(), Description = "tomatoes",
                 Amount = LegacyGroceryQuantity.Parse("2"), AmountText = "2", Unit = noLineUnit ? null : new("cans", definitions ? "saved-line-definition" : null),
                 Scaling = "proportional", Package = package, Shopping = new("tomatoes", null, null), Provenance = new("source", "source", []) };

@@ -116,7 +116,7 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
                 Path.Combine(browserRoot, "api", "src", "RecipeApi", "Workflows", "url-import.yaml")));
             var repository = new RecipeRepository(storage);
             var store = new RecipeFilePublicationStore(db, repository, clock,
-                services.GetRequiredService<SupperProjectionInvalidation>());
+                services.GetRequiredService<SupperProjectionInvalidation>(), TestPublicationStore.Vocabulary(db, repository.StorageProvider, clock, services));
             var orchestrator = new WorkflowOrchestrator(clock, new WorkflowRepository(storage), db, store);
             var service = ActivatorUtilities.CreateInstance<RecipeService>(services, store, orchestrator);
             async Task CategorizeFreshAsync(WorkflowInstance intake, Guid recipeId)
@@ -202,7 +202,7 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
             await RunHeroAsync(workflow, id, [1, 2, 3]);
             await new SyncRecipeProcessor(clock, db, repository,
                 services.GetRequiredService<SupperProjectionInvalidation>(), Mock.Of<ISupperProjectionPublisher>(),
-                NullLogger<SyncRecipeProcessor>.Instance).ExecuteAsync(
+                NullLogger<SyncRecipeProcessor>.Instance, TestPublicationStore.Vocabulary(db, (repository).StorageProvider, clock, services)).ExecuteAsync(
                     workflow.Tasks.Single(x => x.ProcessorName == "SyncRecipe"), default);
             await CategorizeFreshAsync(workflow, id);
             await new RecipeReadyProcessor(db, NullLogger<RecipeReadyProcessor>.Instance,
@@ -252,7 +252,7 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
                 await RunHeroAsync(repair, reviewId, [4, 5, 6]);
                 await new SyncRecipeProcessor(clock, db, repository,
                     services.GetRequiredService<SupperProjectionInvalidation>(), Mock.Of<ISupperProjectionPublisher>(),
-                    NullLogger<SyncRecipeProcessor>.Instance).ExecuteAsync(
+                    NullLogger<SyncRecipeProcessor>.Instance, TestPublicationStore.Vocabulary(db, (repository).StorageProvider, clock, services)).ExecuteAsync(
                         repair.Tasks.Single(x => x.ProcessorName == "SyncRecipe"), default);
                 if (fixedUse) await CategorizeFreshAsync(repair, reviewId);
                 await new RecipeReadyProcessor(db, NullLogger<RecipeReadyProcessor>.Instance,
@@ -302,7 +302,7 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
             await RunHeroAsync(photoWorkflow, photoId, [7, 8, 9]);
             await new SyncRecipeProcessor(clock, db, repository,
                 services.GetRequiredService<SupperProjectionInvalidation>(), Mock.Of<ISupperProjectionPublisher>(),
-                NullLogger<SyncRecipeProcessor>.Instance).ExecuteAsync(
+                NullLogger<SyncRecipeProcessor>.Instance, TestPublicationStore.Vocabulary(db, (repository).StorageProvider, clock, services)).ExecuteAsync(
                     photoWorkflow.Tasks.Single(x => x.ProcessorName == "SyncRecipe"), default);
             await CategorizeFreshAsync(photoWorkflow, photoId);
             await new RecipeReadyProcessor(db, NullLogger<RecipeReadyProcessor>.Instance,

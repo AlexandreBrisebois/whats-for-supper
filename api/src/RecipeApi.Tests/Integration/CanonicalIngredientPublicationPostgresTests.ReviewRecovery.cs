@@ -1,3 +1,4 @@
+using RecipeApi.Tests.Infrastructure;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
@@ -129,7 +130,7 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
             Assert.Equal(saved.CanonicalContent, (await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == id)).CanonicalContent);
             await new SyncRecipeProcessor(clock, db, repository,
                 services.GetRequiredService<SupperProjectionInvalidation>(), Mock.Of<ISupperProjectionPublisher>(),
-                NullLogger<SyncRecipeProcessor>.Instance).ExecuteAsync(
+                NullLogger<SyncRecipeProcessor>.Instance, TestPublicationStore.Vocabulary(db, (repository).StorageProvider, clock, services)).ExecuteAsync(
                     repair.Tasks.Single(x => x.ProcessorName == "SyncRecipe"), default);
             await new RecipeReadyProcessor(db, NullLogger<RecipeReadyProcessor>.Instance,
                 Mock.Of<IScheduleEventPublisher>(), store).ExecuteAsync(

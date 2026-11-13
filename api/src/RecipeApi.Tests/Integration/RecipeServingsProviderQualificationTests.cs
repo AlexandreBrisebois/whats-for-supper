@@ -55,7 +55,7 @@ public class RecipeServingsProviderQualificationTests(ITestOutputHelper output)
                 var api = new OpenAIClient(new ApiKeyCredential(key), new OpenAIClientOptions { Endpoint = new Uri(endpoint), NetworkTimeout = TimeSpan.FromMinutes(5) }).GetChatClient(model).AsIChatClient();
                 using var chat = new RecordingClient(api, Path.Combine(evidence, example.Id));
                 var agent = new RecipeAgent(chat, prompts, configuration, NullLogger<RecipeAgent>.Instance,
-            new RecipeFilePublicationStore(db, repository, new SystemClock(), new SupperProjectionInvalidation(db, new SystemClock(), new DeploymentCalendar(new ConfigurationManager()))), "ExtractRecipe");
+            new RecipeFilePublicationStore(db, repository, new SystemClock(), new SupperProjectionInvalidation(db, new SystemClock(), new DeploymentCalendar(new ConfigurationManager())), TestPublicationStore.Vocabulary(db, repository.StorageProvider, new SystemClock())), "ExtractRecipe");
                 var producer = await RecipeServingsTests.ProducerTask(db, repository, id);
                 await agent.ExecuteAsync(producer, CancellationToken.None);
                 var normalized = await repository.GetRecipeJsonAsync(id, CancellationToken.None);

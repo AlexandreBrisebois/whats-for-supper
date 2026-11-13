@@ -9,6 +9,7 @@ namespace RecipeApi.Services;
 
 public class SettingsService(IClock clock, RecipeDbContext dbContext, ILogger<SettingsService> logger)
 {
+    public const string FoodVocabularyMembershipKey = "food_vocabulary_publication";
     private readonly RecipeDbContext _dbContext = dbContext;
     private readonly ILogger<SettingsService> _logger = logger;
 
@@ -23,6 +24,7 @@ public class SettingsService(IClock clock, RecipeDbContext dbContext, ILogger<Se
     public async Task<FamilySetting> UpsertSettingAsync(string key, JsonElement value)
     {
         if (key == SupperServingsService.DefaultKey) throw new ArgumentException("Use the typed supper servings operation.");
+        if (key == FoodVocabularyMembershipKey) throw new ArgumentException("Use the reviewed vocabulary publication owner.");
         var existing = await _dbContext.FamilySettings
             .FirstOrDefaultAsync(s => s.Key == key);
 

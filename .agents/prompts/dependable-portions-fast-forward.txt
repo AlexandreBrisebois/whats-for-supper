@@ -1,0 +1,140 @@
+DEPENDABLE PORTIONS — COMPLETE, COMMIT, PUSH AND RELEASE
+
+Work in /Users/alex/Code/whats-for-supper. Act as the delivery coordinator and complete the remaining accepted release work today, November 13, 2026, America/Toronto. Use parallel agents and own implementation through final verification, Git delivery, CI repair and eligible OpenSpec archival. Treat today as the delivery target. Keep the full acceptance criteria and report material schedule risk early with the actual critical path.
+
+1. AUTHORITY AND DELIVERY POLICY
+
+This instruction authorizes the remaining implementation, contracts, generated clients, mocks, regression tests, independent reviews, local commits, normal non-force pushes, data-preserving DV qualification, CI repairs and completed-spec synchronization/archival.
+
+It replaces the previous requirement to wait for one consolidated final push. Commit and push coherent reviewed increments throughout execution. Push to the current reviewed release branch or an explicitly recorded checkpoint branch, after checking the actual remote state and branch ownership. Integrate locally qualified work toward recipe-view-redesign. Keep production deployment and unrelated merges outside scope.
+
+Persist this prompt in the repository's tracked prompt/handoff location and include it in the next appropriate commit/push so the active delivery authority survives temporary-worktree loss.
+
+Proceed through authorized steps without asking for permission between slices. Resolve engineering choices using the accepted requirements and existing owners. Ask only for a consequential unresolved product choice, actual host permission, or action outside this scope. Continue independent work when one stream is blocked.
+
+Preserve every planned meal and calendar event, their identities and intent, manual extras, human corrections, media, drafts and retained history. Recalculate every persisted and implied grocery week. Bulk check/baseline reset belongs only to the captured migration epoch, with retry fences protecting later shopping checks. The later preservation instruction supersedes earlier meal-plan deletion and no-active-list migration gates.
+
+Bilingual shopping identity is included. Use the bounded app-owned model-authored vocabulary. Keep its stable IDs, qualified aliases, purchase distinctions, labels and provenance in exact versioned UTF-8 JSON on disk and through full backup/restore. Use persisted/restored bytes thereafter. Preserve the authored44-food draft. Review and record adoption explicitly. Similar UI, garlic-placeholder work and superseded selective ingredient repair remain excluded.
+
+2. ORIENT ONCE, THEN START
+
+Read AGENT.md, its current loading rules/Codex adapter, .entire/agent-guide.md, and the applicable implementation skills. Run the required focused Brain brief. Treat indexed context as historical when it differs from source.
+
+Read these existing operational records before broad exploration
+- .task/dependable-portions-coordinator/resume-20261113.md
+- .task/dependable-portions-coordinator/continuation.md
+- .task/dependable-portions-coordinator/governing-prompt.txt
+
+Apply this prompt's updated delivery policy where older records conflict. Preserve prior failure evidence.
+
+Inspect actual Git branches/heads/diffs, remote tracking, agent status, processes, ports and owned resources. Verify the restored public DV state. Preserve unrelated work, containers and port3000. Existing agents can be reused after confirming they are idle and still have relevant context.
+
+The newer release specifications are in /private/tmp/wfs-dependable-portions-release. Its last recorded HEAD is24551afc4a388e6033a311e5c2468a0d8c89de5b. Main was7a502eff4e805bad939e9f909bb2c83350e9ba81. Verify both. Use the release worktree's updated planning artifacts as the starting authority and carry them into the integration branch. Main's older bilingual task list is stale. Refresh OpenSpec status/apply instructions from the selected root.
+
+Read the six selected task owners and relevant shared contracts/corpus
+- canonical-ingredient-correction
+- scale-cooking-step-ingredients
+- bilingual-shopping-identity
+- migrate-canonical-recipe-model
+- restore-dependable-grocery-interactions
+- restore-local-ci-browser-parity
+
+Recorded progress was22/68. Reconcile checkboxes against actual evidence and current acceptance language. Preserve already accepted behavior and matching evidence. Limit initial orientation to the decisions needed to dispatch the first useful work.
+
+3. MODEL ROUTING AND CONCURRENCY
+
+Use one coordinator and up to three concurrent workers, respecting the actual host limit. The following routing is explicitly authorized. Check the actual model catalog and supported effort settings. Use fork_turns=none for model overrides, with concise complete handoffs. Disclose unavailable models and the selected substitute once.
+
+- Coordinator — gpt-6.1-sol, medium. Own dependency order, contract decisions, integration, Git delivery, final checks and DV mutation. Use high effort for a concrete difficult integration or recovery decision.
+- WorkerA — gpt-6.1-sol, high. Own typed history/reference closure, initial-install/absence guards, full vocabulary recovery and the dependent preservation migration.
+- WorkerB — gpt-6.1-sol, high. Own backend bilingual grocery identity/grouping, labels, private correction/category behavior and affected regressions.
+- WorkerC — gpt-6.1-sol, high for backend workflow correctness, medium for ordinary frontend/fixture maintenance. Own remaining PDF/synthesis/share/protected-reimport implementation and source/transport fixture qualification. Reassign frontend/client work explicitly as capacity frees.
+- Independent difficult review — gpt-6-astra, high, in a freed slot for bounded concurrency, migration/recovery or unresolved correctness review. Use Sol high for ordinary independent reviews.
+- Narrow inventories/evidence indexing — gpt-6-luna, medium, only when a slot is available and the task is actually read-only and bounded.
+
+These are task-routing choices. Change a routing when observed results justify it. Keep dependent interfaces with one owner. Freeze shared vocabulary/reference, override, grocery presentation and migration interfaces before dependent edits. Give each worker exact task IDs, observable outcome, owned files, prerequisites, tests and handoff boundary. Workers must not spawn recursively without coordinator assignment.
+
+Cross-review frozen patches without approving one's own changes. The coordinator may independently review backend work it did not write. Keep review and implementation moving as workers finish increments. Reuse agents for related work and give fresh context to unrelated tasks.
+
+4. FIRST MILESTONE — DELIVER THE EXISTING WORK
+
+Start from /private/tmp/wfs-dependable-portions-bilingual. The reviewed81-path integration is already applied. Its manifest is
+.task/dependable-portions-coordinator/bilingual/integrated-guard-history/source-manifest-v2.json
+SHA256 ce3dd3344e36a97450b780437e99f0a35b8b80d43ab28887e95cc95d00bf92d2
+Use paths-v2.txt beside it and verify current bytes before reuse.
+
+It includes core mapping/publisher66, five release documents, the eight-path settings reservation fix, and the three-file canonicalV2 history repair. Relevant evidence is under bilingual/a-review-fixes, settings-key-guard, history-repair and their independent-review directories. Focused passes include17unit/9PG core,4PG/28mock settings,29unit/1PG history. They establish their actual scopes. Combined qualification remains pending.
+
+Run affected existing history fixtures first. Some mutate newly generated results using old V1 field paths. Classify actual failures, preserve old-format tests and update only stale fixtures to explicit version-aware mutation. Fix any real regression found.
+
+Run preparation and the applicable complete reviewed verification scope on a stable tree. Review the integrated diff and commit/push this coherent foundation promptly when its required checks pass. Record the actual commit and remote SHA. Keep remaining recovery/adoption/release acceptance open. Do not leave this implementation only in temporary worktrees while starting unrelated successors.
+
+The future MASTER query guard fix is independently reviewed under pdf/demand-query-guard-repair. Carry its maintained operator/test changes into the appropriate tracked test tooling or durable operational source as part of a bounded commit. Keep operational secrets, dumps, private household data and transient receipts out of Git.
+
+5. PARALLEL IMPLEMENTATION AND DEPENDENCY ORDER
+
+StreamA — recovery foundations, then migration
+- Finish strict owner-specific reference extraction for canonical operations, publication/launch captures, child/reset intents, processor attempts, lifecycle, repair and physical-retirement facts. Preserve old V1/V3 wire/derivation. Explicitly dispatch V2/V4.
+- Reproduce and repair first-install admission when vocabulary authority survives only in a prepared/retained launch and membership is absent. Reuse that complete inventory for recovery. Avoid generic recursive JSON scans.
+- Extend the existing capture/staging/journal/activation owners. Start from the actual full-backup RED that completed capture but omitted the required vocabulary file.
+- Follow bilingual/recovery-contract-proposal/root-decisions.md and the reviewed storage contract. Retain exact raw files, every referenced revision, protected Name/clear facts and the actual household override feed. Coordinate that feed with StreamB before final recovery qualification.
+- Qualify full backup to isolated restore with the source unavailable, restart, replay, re-export, missing/corrupt/history-only files, conflicting destination authority, capture races and interruption. Demonstrate rejection before live writes and zero AI/network/reseed.
+- Build migration inventory/operator/fences in parallel where independent. Activate conversion only after recovery/client/writer prerequisites pass. Preserve all plans/events and rebuild all lists. Prove interruption/resume and once-only reset semantics.
+
+StreamB — bilingual groceries and corrections
+- Start from bilingual/grocery-plan/proposal.md and the existing qualified publisher. Reuse exact quantity, package, contributor lineage and check-baseline owners.
+- First actual regression should import and save EN onion and FR oignon through the common producer, ordinarily schedule them, and demonstrate the missing same-food aggregation.
+- Implement validated saved identity grouping and server-owned EN/FR labels with source fallback. Preserve fresh/canned distinctions, package capacity/basis, incompatible units and ambiguity.
+- Cover quantity-only Save, private names, explicit mapping clears, stale producers and household category scope/conflicts. Keep global alias releases distinct from private corrections.
+- Requalify400-clear/untouched800 package continuity, split/merge and proven-increase rules. Locale-only presentation must preserve quantities, identities, checks and baselines.
+- Coordinate the exact API/SSE/presentation fence and override contracts with Root/A. Root owns shared OpenAPI/generated-client/mocks until ownership is explicitly transferred. Deliver actual frontend locale/correction journeys alongside backend behavior.
+
+StreamC — remaining intake channels and fixture reliability
+- Preserve the PDF producer success already witnessed. PDF3 was aborted after the grocery guard rejected the application's week-reference query. Its producer had ten successful original attempts and zero retries, including indexing.
+- Use the reviewed future MASTER fix that admits exactly one matching referenceWeekStartDate and rejects wrong/duplicate/extra queries. The source adapter, strict serialized body inspection and finite write guards remain required.
+- Qualify actual generated request serialization and all nine action forms offline, including file upload, grocery check, editor Save250/clear and guarded cleanup. Preserve the captured test failures.
+- Reuse current synthesis/share/reimport owners. Implement only demonstrated missing canonical publication/provenance/protection behavior. Cover stale work, explicit clears, duplicate delivery, source/media and one grocery demand.
+- Reconcile relationship production/maintenance against the shared corpus. Preserve accepted whole/absolute/fraction/remainder/fixed/per-item/package behavior. Keep unsupported interpretations honest.
+
+Root works on shared contracts, generated clients, stateful mocks, frontend integration, early hosted-failure diagnosis, integration and Git delivery while the streams run.
+
+6. FAST LOCAL LOOP AND COMMIT/PUSH CONTRACT
+
+For each observable increment
+1) Confirm contract and ownership.
+2) Add/run the smallest meaningful domain regression before missing logic.
+3) Implement through the real affected seams and run focused checks.
+4) Review the frozen owned diff independently.
+5) Run task prepare before applicable task verify on the complete reviewed paths.
+6) Commit with normal hooks and push the recorded branch.
+7) Confirm the remote SHA, update task evidence and assign the next ready increment.
+
+Every completed worker handoff must include its immutable diff, commands/results, remaining limits and Git disposition. Root promptly integrates, reviews and commits it. Maintain one delivery table with stream, outcome, owner, tested identity, local commit, remote commit, CI status and remaining acceptance. An implementation handoff stays open until it has an explicit integration/commit/push disposition.
+
+Checkpoint pushes are authorized before final DV/release acceptance. Passing CI for a checkpoint establishes only the checks it ran. Keep incomplete OpenSpec acceptance visible. Before an interruption, preserve owned work through commits and pushes. If an external blocker prevents normal integration, preserve the exact owned patch/inventory and failure evidence in an explicitly identified remote checkpoint branch consistent with hook policy. Exclude secrets and private operational data.
+
+Use focused tests during implementation and the applicable full union at coherent checkpoints/final integration. Reuse matching immutable evidence. Repeat checks when source, configuration, runtime or unresolved findings invalidate them. Keep one writer per shared path and stable verification inputs. Use isolated databases, ports and build outputs. Parallelize independent checks when resources support them and serialize actual contention. Avoid overlapping broad suites and broad process-name cleanup.
+
+7. FINAL INTEGRATED QUALIFICATION, DV AND CI
+
+After the streams converge, reconcile every selected task/corpus scenario and review the complete accumulated diff. Run the full stable integrated local/native/database/browser/recovery/migration requirements. Required cases must execute with their required skip/retry policy. Freeze and commit the candidate, then build exact local API/PWA/migration images.
+
+Perform the final DV acceptance campaign against that integrated candidate. Reuse prior source proof only where identities and scope match. Fresh DV facts, owned operation/resources, quiet-window assessment, ordinary migration rehearsal, independent locked backup/readback, private writes and final preservation remain mandatory. Batch independent inspections at phase boundaries and reuse their valid results. Keep actual backup, identity and preservation dependencies sequential. Avoid adding administrative approval gates.
+
+Front-load fixture/source/serializer checks before stopping public services. Use fresh whole-week fixtures because February8 now has retained empty records. Preserve old failed reports and fixtures. Reconcile uncertain writes authoritatively before retrying an unfinished safe stage. Keep deadline/abort restoration executable so usage interruption leaves data safe and the next recovery action explicit.
+
+Root is the sole DV mutator. Complete owned fixture cleanup, restore normal provider/public settings and verify rendered behavior and health. Leave the accepted candidate running after successful release qualification. An aborted campaign must return DV to its last accepted baseline through the reviewed recovery path. Independently verify preservation and owned-resource cleanup. A prior producer success or source review cannot substitute for a complete release journey.
+
+Monitor hosted CI on every pushed checkpoint without idling other independent streams. Diagnose the saved user-push package-overlay opacity failure early from its logs/artifacts and actual source/runtime. Repair demonstrated causes. Required jobs must execute on the final remote candidate, with explicit treatment of skipped jobs. Preserve assertions, inventories and first failures.
+
+Once implementation, final local/DV acceptance and required hosted jobs pass, reconcile task checkboxes, sync overlapping capability deltas coherently, validate and archive fully completed changes. Commit/push lifecycle changes and satisfy their applicable final checks. Verify every delivered commit is reachable from the intended remote branch and report final local/remote SHAs.
+
+8. SESSION DISCIPLINE AND FINISH
+
+Use current supported runtime pins from the checkpoint and actual tooling. In the previous run Node26.12.0/npm11.21.1, Python3.15.2, explicit host .NET11.0.100 and the pinned Linux11rc2 database runner mattered. Avoid PATH-driven SDK drift. Clear inherited Git-local variables in nested repository fixtures. Preserve normal hook behavior.
+
+Keep one concise continuation record, one delivery table and actual verifier receipts. Link existing evidence instead of duplicating handoff packets. Record actual commits/remote SHAs, active resource owners, next actions and uncertain writes. Compact at stable boundaries before context or model capacity becomes critical. Checkpoint/release DV before an expected interruption. Resume from current source and receipts after compaction.
+
+Report meaningful progress with delivered behavior, commit/push status, blockers and the next acceptance boundary. Review the day's actual critical path regularly and redeploy freed agents toward it. Finish all authorized work. If an external blocker prevents completion, preserve/push the owned work safely and identify the exact unfinished criteria and next executable action. Do not silently defer a selected requirement to make the schedule appear complete.
+
+Start now by verifying the81-path integration and dispatching the three streams. The first concrete delivery is the existing foundation committed and pushed. Continue until the complete release and eligible archival are delivered.

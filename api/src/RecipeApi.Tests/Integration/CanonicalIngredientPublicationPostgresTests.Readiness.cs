@@ -1,3 +1,4 @@
+using RecipeApi.Tests.Infrastructure;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -73,7 +74,7 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
                 await using var fresh = new RecipeDbContext(new DbContextOptionsBuilder<RecipeDbContext>()
                     .UseNpgsql(db.Database.GetConnectionString()!).Options);
                 var owner = new RecipeFilePublicationStore(fresh, repository, services.GetRequiredService<IClock>(),
-                    new SupperProjectionInvalidation(fresh, services.GetRequiredService<IClock>(), services.GetRequiredService<DeploymentCalendar>()));
+                    new SupperProjectionInvalidation(fresh, services.GetRequiredService<IClock>(), services.GetRequiredService<DeploymentCalendar>()), TestPublicationStore.Vocabulary(fresh, repository.StorageProvider, services.GetRequiredService<IClock>(), services));
                 storage.FailInfo = false;
                 var events = new Mock<IScheduleEventPublisher>();
                 var receipt = await new RecipeReadyProcessor(fresh, NullLogger<RecipeReadyProcessor>.Instance,
@@ -190,7 +191,7 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
             Assert.True(actual.RotationHumanOff); Assert.True(actual.CookedSuppressed); Assert.Equal("Human", actual.RotationSource);
             Assert.Equal(journal.Payload, (await independent.RecipeFilePublications.AsNoTracking().SingleAsync()).Payload);
             var owner = new RecipeFilePublicationStore(independent, repository, services.GetRequiredService<IClock>(),
-                new SupperProjectionInvalidation(independent, services.GetRequiredService<IClock>(), services.GetRequiredService<DeploymentCalendar>()));
+                new SupperProjectionInvalidation(independent, services.GetRequiredService<IClock>(), services.GetRequiredService<DeploymentCalendar>()), TestPublicationStore.Vocabulary(independent, repository.StorageProvider, services.GetRequiredService<IClock>(), services));
             storage.FailInfo = false;
             Assert.True(await owner.CompleteReadinessAsync(task, Id));
             Assert.True((await repository.GetInfoAsync(Id, default)).IsReady);

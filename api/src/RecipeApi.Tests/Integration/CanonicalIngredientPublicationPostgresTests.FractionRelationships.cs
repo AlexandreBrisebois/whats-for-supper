@@ -1,3 +1,4 @@
+using RecipeApi.Tests.Infrastructure;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
@@ -49,7 +50,7 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
                     new(null, await repository.GetInfoAsync(id, default), "GenerateHero\n" + JsonSerializer.Serialize(JsonDocument.Parse(hero.Payload!).RootElement),
                         new Dictionary<string, byte[]?> { ["hero.webp"] = [7, 8, 9] }, SourceKind: "hero"), hero.TaskId);
                 await new SyncRecipeProcessor(clock, db, repository, services.GetRequiredService<SupperProjectionInvalidation>(),
-                    Mock.Of<ISupperProjectionPublisher>(), NullLogger<SyncRecipeProcessor>.Instance)
+                    Mock.Of<ISupperProjectionPublisher>(), NullLogger<SyncRecipeProcessor>.Instance, TestPublicationStore.Vocabulary(db, (repository).StorageProvider, clock, services))
                     .ExecuteAsync(workflow.Tasks.Single(x => x.ProcessorName == "SyncRecipe"), default);
                 chat.Setup(x => x.GetResponseAsync(It.IsAny<IEnumerable<ChatMessage>>(), It.IsAny<ChatOptions>(), It.IsAny<CancellationToken>()))
                     .ReturnsAsync(new ChatResponse(new ChatMessage(ChatRole.Assistant,
@@ -121,10 +122,13 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
                     new(envelope.ToJsonString(), info,
                         "ExtractRecipe\n" + JsonSerializer.Serialize(JsonDocument.Parse(extraction.Payload!).RootElement), SourceKind: "fresh-canonical"),
                     extraction.TaskId));
+                Assert.Equal(4, capture.FieldHashVersion);
                 Assert.Equal(fault switch
                 {
                     "fraction" or "annotation" => "Fresh relationship evidence is not independently validated.",
-                    "source-text" => "Fresh relationship originals differ from retained source evidence.",
+                    // This current producer captures V4 vocabulary authority;
+                    // its mapped-original validation precedes the legacy V3 fence.
+                    "source-text" => "Mapped originals/evidence differ from the captured source decision.",
                     _ => "Unsupported or malformed current recipe content envelope."
                 }, rejected.Message);
                 db.ChangeTracker.Clear();

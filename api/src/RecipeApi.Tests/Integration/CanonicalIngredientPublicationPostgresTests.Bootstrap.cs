@@ -145,7 +145,7 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
             await using var losingDb = new RecipeDbContext(new DbContextOptionsBuilder<RecipeDbContext>()
                 .UseNpgsql(db.Database.GetConnectionString()).AddInterceptors(boundary).Options);
             var invalidation = new SupperProjectionInvalidation(losingDb, services.GetRequiredService<IClock>(), services.GetRequiredService<DeploymentCalendar>());
-            var losingStore = new RecipeFilePublicationStore(losingDb, repository, services.GetRequiredService<IClock>(), invalidation);
+            var losingStore = new RecipeFilePublicationStore(losingDb, repository, services.GetRequiredService<IClock>(), invalidation, TestPublicationStore.Vocabulary(losingDb, repository.StorageProvider, services.GetRequiredService<IClock>(), services));
             var service = ActivatorUtilities.CreateInstance<RecipeService>(services, losingDb, losingStore, invalidation);
             var imported = await service.ImportRecipeShareBundle(Share(id), member);
             Assert.Equal(id, winner);
@@ -179,7 +179,7 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
             await using var replayDb = new RecipeDbContext(new DbContextOptionsBuilder<RecipeDbContext>()
                 .UseNpgsql(db.Database.GetConnectionString()).AddInterceptors(boundary).Options);
             var replayStore = new RecipeFilePublicationStore(replayDb, repository, services.GetRequiredService<IClock>(),
-                new SupperProjectionInvalidation(replayDb, services.GetRequiredService<IClock>(), services.GetRequiredService<DeploymentCalendar>()));
+                new SupperProjectionInvalidation(replayDb, services.GetRequiredService<IClock>(), services.GetRequiredService<DeploymentCalendar>()), TestPublicationStore.Vocabulary(replayDb, repository.StorageProvider, services.GetRequiredService<IClock>(), services));
             await replayStore.PublishAsync(capture, candidate, operation);
             Assert.Equal("Later human name", (await db.Recipes.SingleAsync(x => x.Id == id)).Name);
             Assert.Equal(1, await db.RecipeFilePublications.CountAsync());

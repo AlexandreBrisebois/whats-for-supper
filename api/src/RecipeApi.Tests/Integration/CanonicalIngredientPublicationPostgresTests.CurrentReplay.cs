@@ -39,7 +39,7 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
 
     private static SyncRecipeProcessor CurrentReplayProcessor(IServiceProvider services, RecipeRepository repository, ISupperProjectionPublisher publisher) => new(
         services.GetRequiredService<IClock>(), services.GetRequiredService<RecipeDbContext>(), repository,
-        services.GetRequiredService<SupperProjectionInvalidation>(), publisher, NullLogger<SyncRecipeProcessor>.Instance);
+        services.GetRequiredService<SupperProjectionInvalidation>(), publisher, NullLogger<SyncRecipeProcessor>.Instance, RecipeApi.Tests.Infrastructure.TestPublicationStore.Vocabulary(services.GetRequiredService<RecipeDbContext>(), repository.StorageProvider, services.GetRequiredService<IClock>(), services));
 
     [DeploymentCalendarPostgresTests.CalendarPostgresFact]
     public async Task CurrentReplay_IdenticalCanonicalContentUsesCommittedRowAndLeavesEveryFileAndObligationUnchanged()

@@ -1,3 +1,5 @@
+using RecipeApi.Infrastructure;
+using RecipeApi.Tests.Infrastructure;
 using System.Net;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
@@ -23,7 +25,7 @@ public partial class OnlineRecoveryPostgresTests
             Ingredients = """["⅓ cup flour"]""", RawMetadata = """{"recipeIngredient":["⅓ cup flour"],"supply":[{"name":"flour","unitText":"cup","quantity":0.33}]}""" };
         db.Recipes.Add(recipe);
         await db.SaveChangesAsync();
-        var store = new CanonicalRecipeContentStore(db, services.GetRequiredService<IClock>(), services.GetRequiredService<SupperProjectionInvalidation>());
+        var store = new CanonicalRecipeContentStore(db, services.GetRequiredService<IClock>(), services.GetRequiredService<SupperProjectionInvalidation>(), TestPublicationStore.Vocabulary(db, services.GetRequiredService<IStorageProvider>(), services.GetRequiredService<IClock>(), services));
         var content = CanonicalRecipeContentStore.InspectContentRevision(recipe);
         var source = CanonicalRecipeContentStore.InspectSourceRevision(recipe);
         var operation = Guid.NewGuid();

@@ -32,6 +32,7 @@ public sealed partial class CanonicalRecipeContentStore
     internal static bool ValidateOriginalOperation(CanonicalRecipeOperation operation)
     {
         if (operation.OriginalRequest is null) return false;
+        if (IsV2(operation)) return ValidateOriginalOperationV2(operation);
         try
         {
             var request = ReadOriginal<OriginalRequest>(operation.OriginalRequest);

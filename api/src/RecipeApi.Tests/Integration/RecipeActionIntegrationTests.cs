@@ -7,6 +7,7 @@ using Moq;
 using RecipeApi.Data;
 using RecipeApi.Infrastructure;
 using RecipeApi.Models;
+using RecipeApi.Services;
 using RecipeApi.Tests.Infrastructure;
 using RecipeApi.Workflow;
 using Xunit;
@@ -96,14 +97,17 @@ public class RecipeActionIntegrationTests : IAsyncLifetime
     {
         var recipeId = Guid.NewGuid();
         _db.Recipes.Add(new Recipe { Id = recipeId, ImageCount = 1 });
-        _db.RecipeFilePublications.Add(new RecipeFilePublication
-        {
-            RecipeId = recipeId, OperationId = Guid.NewGuid(), InputHash = "pending",
-            Payload = "{}", ResultHash = "pending"
-        });
         await _db.SaveChangesAsync();
         var store = _factory.Services.GetRequiredService<IRecipeStore>();
         await store.WriteInfoAsync(new RecipeInfo { Id = recipeId, ImageCount = 1 });
+        // Retain a real valid journal: vocabulary absence checks inspect saved
+        // publication authority before the new upload reaches its conflict guard.
+        var publications = _scope.ServiceProvider.GetRequiredService<RecipeFilePublicationStore>();
+        var operation = Guid.NewGuid();
+        await publications.PublishAsync(await publications.CaptureAsync(recipeId),
+            new RecipePublicationCandidate("{}", (await store.ReadInfoAsync(recipeId))!), operation);
+        (await _db.RecipeFilePublications.SingleAsync(x => x.OperationId == operation)).Delivered = false;
+        await _db.SaveChangesAsync();
         using var content = new MultipartFormDataContent();
         var file = new ByteArrayContent([1, 2, 3]);
         file.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/png");

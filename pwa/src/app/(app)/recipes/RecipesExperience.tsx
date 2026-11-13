@@ -1111,10 +1111,17 @@ function RecipesContent() {
       router.replace(sourceGroceryReturn);
       return;
     }
+    const target = detailReturnFocusRef.current;
+    detailReturnFocusRef.current = null;
     requestAnimationFrame(() => {
-      const target = detailReturnFocusRef.current;
-      if (target?.isConnected) target.focus();
-      detailReturnFocusRef.current = null;
+      const active = document.activeElement;
+      // A newer keyboard/pointer intent can move focus before this frame runs.
+      // Return focus only while it is still unclaimed or already at the trigger.
+      if (
+        target?.isConnected &&
+        (!active || active === document.body || active === target || !active.isConnected)
+      )
+        target.focus();
     });
   }, [detailRecipeId, grocerySourceEntry, openRecipeId, router, sourceGroceryReturn]);
 

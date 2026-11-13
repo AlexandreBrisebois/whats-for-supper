@@ -1082,6 +1082,12 @@ public class WorkflowWorkerTests : IAsyncLifetime
             MaxRetries = 10
         }));
 
+        // This direct test entrypoint does not run BackgroundService.ExecuteAsync.
+        // Initialize the configured throttle deterministically before dispatch.
+        await (Task)typeof(WorkflowWorker).GetMethod("InitializeThrottles",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+            .Invoke(testWorker, [CancellationToken.None])!;
+
         var now = _clock.UtcNow;
         var instance = new WorkflowInstance { Id = Guid.NewGuid(), WorkflowId = "test", Status = WorkflowStatus.Processing };
         db.WorkflowInstances.Add(instance);
@@ -1095,7 +1101,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
             TaskName = "A",
             ProcessorName = "ExtractRecipe",
             Status = TaskStatus.Pending,
-            ScheduledAt = now.AddSeconds(-1)
+            ScheduledAt = now.AddMinutes(-5)
         };
 
         // Task B: should be proactively rescheduled
@@ -1107,7 +1113,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
             TaskName = "B",
             ProcessorName = "ExtractRecipe",
             Status = TaskStatus.Pending,
-            ScheduledAt = now.AddMinutes(-5) // Much older task to ensure it's picked up first
+            ScheduledAt = now.AddSeconds(-1) // A is selected first; B waits for its configured throttle slot.
         };
 
         // Task C: different type, should NOT be rescheduled to the same future time
@@ -1146,6 +1152,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
         var queryDb = queryScope.ServiceProvider.GetRequiredService<RecipeDbContext>();
 
         var updatedA = await queryDb.WorkflowTasks.FirstAsync(t => t.TaskId == taskAId);
+        var updatedB = await queryDb.WorkflowTasks.FirstAsync(t => t.TaskId == taskBId);
         var updatedD = await queryDb.WorkflowTasks.FirstAsync(t => t.TaskId == taskDId);
         var updatedC = await queryDb.WorkflowTasks.FirstAsync(t => t.TaskId == taskCId);
 
@@ -1154,8 +1161,13 @@ public class WorkflowWorkerTests : IAsyncLifetime
         Assert.Equal(TaskStatus.Pending, updatedA.Status);
         Assert.NotNull(updatedA.ScheduledAt);
 
+        // A's 429 reaches the waiting task before it invokes the processor again.
+        Assert.Equal(0, updatedB.RetryCount);
+        Assert.Equal(TaskStatus.Pending, updatedB.Status);
+        Assert.Equal(updatedA.ScheduledAt!.Value.AddMinutes(1), updatedB.ScheduledAt);
+
         // Task D should be rescheduled to the future (proactively)
-        // It should be staggered at least 1 minute after Task A (or more if Task B also rescheduled it)
+        // It should be staggered at least 1 minute after Task A, after the pending B slot
         Assert.Equal(TaskStatus.Pending, updatedD.Status);
         Assert.True(updatedD.ScheduledAt > updatedA.ScheduledAt,
             $"Task D schedule {updatedD.ScheduledAt} should be staggered after Task A schedule {updatedA.ScheduledAt}");

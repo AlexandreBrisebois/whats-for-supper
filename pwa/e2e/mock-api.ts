@@ -2818,11 +2818,16 @@ export async function setupCommonRoutes(
           body: JSON.stringify({ data: { key, value: settingsStore[key] } }),
         });
       }
-    } else {
+    } else if (route.request().method() === 'POST') {
       if (key === 'supper_servings_default')
         return fulfill(route, {
           status: 400,
           json: { message: 'Use PUT /api/schedule/servings.' },
+        });
+      if (key === 'food_vocabulary_publication')
+        return fulfill(route, {
+          status: 400,
+          json: { message: 'Use the reviewed vocabulary publication owner.' },
         });
       const body = route.request().postDataJSON();
       settingsStore[key] = body.value;
@@ -2831,7 +2836,7 @@ export async function setupCommonRoutes(
         contentType: 'application/json',
         body: JSON.stringify({ data: { key, value: body.value } }),
       });
-    }
+    } else await route.fallback();
   });
 
   // GET /api/captures/failures (Task 18)

@@ -234,8 +234,7 @@ internal static class WorkflowProcessorHistory
                 && operation.CreatedAt != default && operation.InputHash is { Length: 64 }
                 && operation.InputHash.All(Uri.IsHexDigit));
             ValidateRecipeAssociation(request, operation.RecipeId);
-            CanonicalRecipeContentStore.ValidateOriginalOperation(operation);
-            var result = ReadObservation<CanonicalRecipeWriteResult>(operation.Result);
+            var result = CanonicalRecipeContentStore.ReadValidatedRetainedResult(operation);
             Require(result.Content is not null && result.CreatedIds is not null);
             // Validate retained content without comparing it to a current recipe.
             // This does not supply missing original request/evidence/dictionary

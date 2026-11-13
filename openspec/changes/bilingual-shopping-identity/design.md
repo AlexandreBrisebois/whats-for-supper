@@ -30,6 +30,10 @@ A household name/association correction is private and protected. A proven same-
 
 Global aliases/labels change only through a reviewed pinned vocabulary release, never from a private correction or model suggestion. Food/fallback household category correction is distinct from extra-occurrence category mutation. Preserve the existing normalized-key endpoint until the shared food-scoped revision contract/client transition is implemented; no silent key reinterpretation. A unique prior manual category retains provenance; conflicting alias categories remain unresolved, never selected by source/alphabetical order or provider confidence. Keep revision checks, stale-week UI guards and protected human precedence.
 
+## Storage and operation boundary
+
+The selected [storage and operation contract](storage-and-operation-contract.md) fixes the immutable JSON/reference, recipe evidence and V2/V4 authority boundaries before implementation. Historical V1/V3 derivation remains unchanged. Its guarantees require the named executed tests and full recovery qualification; this design is not completion evidence.
+
 ## First Observable Slice
 
 A reviewed minimal vocabulary → real EN/FR import/publication → persisted mapping/reference revisions → ordinary scheduling and exact grocery recomputation → generated-client EN/FR reads of the same saved rows. Compatible onion aliases group once; fresh/canned tomatoes and incompatible units/packages remain separate; ambiguous inputs remain source-named. Switch locale/source order without changing amounts, row/check/baseline identity or recipe originals, while a provider spy proves zero runtime lookup/translation calls.

@@ -12,14 +12,17 @@ namespace RecipeApi.Services;
 public sealed record RecipePublicationCapture(Guid RecipeId, string ContentRevision, string SourceRevision,
     string FieldHash, IReadOnlyDictionary<string, byte[]?> Files,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] int? FieldHashVersion = null,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] RecipePublicationFields? Fields = null);
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] RecipePublicationFields? Fields = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] FoodMappingObservation? FoodEvidence = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] FoodVocabularyAuthority? FoodAuthority = null);
 public sealed record RecipePublicationCandidate(string? RecipeJson, RecipeInfo Info, string? ProducerInput = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyDictionary<string, byte[]?>? SourceFiles = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? SourceContext = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? SourceKind = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? BootstrapIntent = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? FollowupIntent = null,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string[]? ReviewReasons = null);
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string[]? ReviewReasons = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? MappingEvidence = null);
 
 /// <summary>
 /// Captured legacy publication. The committed database journal owns delivery;
@@ -27,12 +30,13 @@ public sealed record RecipePublicationCandidate(string? RecipeJson, RecipeInfo I
 /// Callers participate in the existing recovery write lease and single-instance worker boundary.
 /// </summary>
 public sealed partial class RecipeFilePublicationStore(RecipeDbContext db, RecipeRepository repository,
-    IClock clock, SupperProjectionInvalidation invalidation)
+    IClock clock, SupperProjectionInvalidation invalidation, FoodVocabularyStore vocabulary)
 {
     private static readonly JsonSerializerOptions Json = new(JsonDefaults.CamelCase);
     private sealed record Envelope(RecipePublicationCapture Capture, RecipePublicationCandidate Candidate,
         IReadOnlyDictionary<string, byte[]?> Output,
-        [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] RecipePublicationFields? Result = null);
+        [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] RecipePublicationFields? Result = null,
+        [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] FoodMappingObservation? ResultEvidence = null);
 
     public async Task<bool> TryResumeAsync(Guid recipeId, Guid operationId, string producerInput, CancellationToken ct = default)
     {
@@ -54,6 +58,9 @@ public sealed partial class RecipeFilePublicationStore(RecipeDbContext db, Recip
     public async Task<RecipePublicationCapture> CaptureAsync(Guid recipeId, CancellationToken ct = default,
         bool requireSourceMatch = false, string? expectedSourceUrl = null)
     {
+        var before = await db.Recipes.AsNoTracking().SingleOrDefaultAsync(x => x.Id == recipeId, ct)
+            ?? throw new KeyNotFoundException("Recipe is unavailable.");
+        var authority = await vocabulary.CaptureAuthorityAsync(before.FoodMappingEvidence, ct);
         await using var transaction = await RecipeRotation.LockAsync(db, recipeId, ct, lockSupperInputs: true);
         var recipe = await db.Recipes.AsNoTracking().SingleOrDefaultAsync(x => x.Id == recipeId, ct)
             ?? throw new KeyNotFoundException("Recipe is unavailable.");
@@ -61,9 +68,12 @@ public sealed partial class RecipeFilePublicationStore(RecipeDbContext db, Recip
             throw new InvalidDataException("Repair source differs from its original command.");
         if (await db.RecipeFilePublications.AnyAsync(x => x.RecipeId == recipeId && !x.Delivered, ct))
             throw Conflict(recipe);
+        if (Evidence(before) != Evidence(recipe)) throw Conflict(recipe);
+        ValidateRecipeEvidence(recipe, authority);
         var capture = new RecipePublicationCapture(recipeId, CanonicalRecipeContentStore.InspectContentRevision(recipe),
-            CanonicalRecipeContentStore.InspectSourceRevision(recipe), Fields(recipe, 3),
-            await repository.CapturePublicationFilesAsync(recipeId, ct), FieldHashVersion: 3, Fields: Observe(recipe));
+            CanonicalRecipeContentStore.InspectSourceRevision(recipe), Fields(recipe, 4),
+            await repository.CapturePublicationFilesAsync(recipeId, ct), FieldHashVersion: 4, Fields: Observe(recipe),
+            FoodEvidence: new(Evidence(recipe)), FoodAuthority: authority);
         if (transaction is not null) await transaction.CommitAsync(ct);
         return capture;
     }
@@ -88,9 +98,10 @@ public sealed partial class RecipeFilePublicationStore(RecipeDbContext db, Recip
             if (!replay.Delivered) await ResumeAsync(capture.RecipeId, operationId, ct);
             return;
         }
+        if (capture.FieldHashVersion == 4) await vocabulary.ValidateLiveAuthorityAsync(capture.FoodAuthority!, ct);
         var followup = candidate.FollowupIntent is null ? null : ReadFollowupIntent(candidate);
         if (followup is not null && followup.Id != operationId) throw new InvalidDataException("Follow-up operation identity differs.");
-        var output = Prepare(capture, candidate);
+        var output = Prepare(capture, candidate, operationId);
         var envelope = new Envelope(capture, candidate, output);
         var payload = JsonSerializer.Serialize(envelope, Json);
         // Retain the captured source and candidate before publication. A conflicting
@@ -137,7 +148,7 @@ public sealed partial class RecipeFilePublicationStore(RecipeDbContext db, Recip
                 if (candidate.SourceKind == "categorization")
                     await ValidateCategorizationTaskAsync(recipe.Id, operationId, candidate.ProducerInput, ct);
                 // Readiness selects metadata only; it never reopens canonical facts.
-                if (candidate.SourceKind != "bootstrap" && ((recipe.CanonicalContent is not null && candidate.SourceKind is not ("canonical-export" or "readiness" or "hero" or "categorization")) || capture.FieldHash != Fields(recipe, capture.FieldHashVersion)
+                if (candidate.SourceKind != "bootstrap" && ((capture.FieldHashVersion != 4 && recipe.FoodMappingEvidence is not null) || (recipe.CanonicalContent is not null && candidate.SourceKind is not ("canonical-export" or "readiness" or "hero" or "categorization")) || capture.FieldHash != Fields(recipe, capture.FieldHashVersion)
                     || capture.ContentRevision != CanonicalRecipeContentStore.InspectContentRevision(recipe)
                     || capture.SourceRevision != CanonicalRecipeContentStore.InspectSourceRevision(recipe)
                     || await db.RecipeFilePublications.AnyAsync(x => x.RecipeId == recipe.Id && !x.Delivered, ct)))
@@ -147,6 +158,7 @@ public sealed partial class RecipeFilePublicationStore(RecipeDbContext db, Recip
                 if (candidate.SourceKind == "human-original" && recipe.ImageCount != candidate.Info.ImageCount - 1)
                     throw Conflict(recipe);
                 if (candidate.SourceKind != "bootstrap") Apply(recipe, candidate, output.GetValueOrDefault("recipe.info") ?? capture.Files["recipe.info"]!);
+                ApplyFoodEvidence(recipe, capture, candidate);
                 recipe.UpdatedAt = clock.UtcNow;
                 if (followup is not null)
                 {
@@ -159,8 +171,8 @@ public sealed partial class RecipeFilePublicationStore(RecipeDbContext db, Recip
                     RecipeId = recipe.Id,
                     OperationId = operationId,
                     InputHash = inputHash,
-                    Payload = capture.FieldHashVersion == 3
-                        ? JsonSerializer.Serialize(envelope with { Result = Observe(recipe) }, Json) : payload,
+                    Payload = capture.FieldHashVersion is 3 or 4
+                        ? JsonSerializer.Serialize(envelope with { Result = Observe(recipe), ResultEvidence = capture.FieldHashVersion == 4 ? new(Evidence(recipe)) : null }, Json) : payload,
                     ResultHash = Fields(recipe, capture.FieldHashVersion),
                     CreatedAt = clock.UtcNow
                 });
@@ -190,6 +202,8 @@ public sealed partial class RecipeFilePublicationStore(RecipeDbContext db, Recip
         var publication = await db.RecipeFilePublications.SingleAsync(x => x.RecipeId == recipeId && x.OperationId == operationId, ct);
         if (publication.Delivered) return;
         var envelope = ReadEnvelope(publication);
+        if (envelope.Capture.FieldHashVersion != 4 && recipe.FoodMappingEvidence is not null) throw Conflict(recipe);
+        if (envelope.Capture.FieldHashVersion == 4) await vocabulary.ValidateLiveAuthorityAsync(envelope.Capture.FoodAuthority!, ct);
         if (envelope.Candidate.SourceKind == "readiness" && !recipe.IsReady) throw Conflict(recipe);
         if ((recipe.CanonicalContent is not null && envelope.Candidate.SourceKind is not ("canonical-export" or "readiness" or "fresh-canonical" or "review-canonical" or "hero" or "categorization")) || Fields(recipe, envelope.Capture.FieldHashVersion) != publication.ResultHash) throw Conflict(recipe);
         // Validate every file before the first replacement, accepting the exact
@@ -276,7 +290,7 @@ public sealed partial class RecipeFilePublicationStore(RecipeDbContext db, Recip
         catch (JsonException ex) { throw new InvalidDataException("Invalid publication journal.", ex); }
         if (envelope.Capture.RecipeId != publication.RecipeId || envelope.Candidate.Info.Id != publication.RecipeId
             || Hash(new { capture = envelope.Capture, candidate = envelope.Candidate }) != publication.InputHash
-            || Hash(Prepare(envelope.Capture, envelope.Candidate)) != Hash(envelope.Output))
+            || Hash(Prepare(envelope.Capture, envelope.Candidate, publication.OperationId)) != Hash(envelope.Output))
             throw new InvalidDataException("Publication evidence does not match its committed candidate.");
         if (envelope.Candidate.BootstrapIntent is not null && ReadBootstrapIntent(envelope.Candidate).Id != publication.OperationId)
             throw new InvalidDataException("Bootstrap intent has a different operation identity.");
@@ -314,8 +328,11 @@ public sealed partial class RecipeFilePublicationStore(RecipeDbContext db, Recip
         { section.Name, Steps = section.Steps.Select(step => step.Text) })
     });
 
-    private static IReadOnlyDictionary<string, byte[]?> Prepare(RecipePublicationCapture capture, RecipePublicationCandidate candidate)
+    private static IReadOnlyDictionary<string, byte[]?> Prepare(RecipePublicationCapture capture, RecipePublicationCandidate candidate, Guid operationId = default)
     {
+        if (capture.FieldHashVersion == 4) return PrepareV4(capture, candidate, operationId);
+        if (capture.FoodEvidence is not null || capture.FoodAuthority is not null || candidate.MappingEvidence is not null)
+            throw new InvalidDataException("Historical publication cannot gain vocabulary authority.");
         if (candidate.SourceKind == "canonical-export")
         {
             if (capture.FieldHashVersion != 3 || capture.Fields is null || candidate.SourceFiles is not null
@@ -533,6 +550,7 @@ public sealed partial class RecipeFilePublicationStore(RecipeDbContext db, Recip
     // not overwrite a later edit merely because ingredient tokens are unchanged.
     private static string Fields(Recipe recipe, int? version = null) => version switch
     {
+        4 => Hash(new { version = 4, fieldsV3 = Observe(recipe), foodMappingEvidence = new FoodMappingObservation(Evidence(recipe)) }),
         3 => Hash(Observe(recipe)),
         2 => Hash(new { legacy = Fields(recipe), recipe.FinishedDishIndex }),
         null => LegacyFields(recipe),

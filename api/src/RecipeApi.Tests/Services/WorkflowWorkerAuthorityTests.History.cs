@@ -45,7 +45,7 @@ public sealed partial class WorkflowWorkerAuthorityTests
                     new RecipeInfo { Id = recipe.Id, Name = "Produced" }, "AuthorityProbe\n{}"), task.TaskId);
             var current = await producerDb.Recipes.AsNoTracking().SingleAsync(x => x.Id == recipe.Id);
             await new CanonicalRecipeContentStore(producerDb, fixture.Clock,
-                new SupperProjectionInvalidation(producerDb, fixture.Clock, new DeploymentCalendar(new ConfigurationManager())))
+                new SupperProjectionInvalidation(producerDb, fixture.Clock, new DeploymentCalendar(new ConfigurationManager())), TestPublicationStore.Vocabulary(producerDb, storage, fixture.Clock))
                 .ConvertAsync(recipe.Id, CanonicalRecipeContentStore.InspectContentRevision(current),
                     CanonicalRecipeContentStore.InspectSourceRevision(current), task.TaskId);
         };
@@ -95,7 +95,7 @@ public sealed partial class WorkflowWorkerAuthorityTests
         Refuse(node =>
         {
             var result = System.Text.Json.Nodes.JsonNode.Parse(node["canonicalOperations"]![0]!["result"]!.GetValue<string>())!;
-            result["content"]!["sourceRevision"] = "different-original-source";
+            HistoryResultBody(result)["content"]!["sourceRevision"] = "different-original-source";
             node["canonicalOperations"]![0]!["result"] = result.ToJsonString();
         });
         Refuse(node => node["publications"]![0]!["resultHash"] = new string('0', 64));
@@ -115,13 +115,13 @@ public sealed partial class WorkflowWorkerAuthorityTests
         Refuse(node =>
         {
             var result = System.Text.Json.Nodes.JsonNode.Parse(node["canonicalOperations"]![0]!["result"]!.GetValue<string>())!;
-            result["content"]!.AsObject().Remove("sourceRevision");
+            HistoryResultBody(result)["content"]!.AsObject().Remove("sourceRevision");
             node["canonicalOperations"]![0]!["result"] = result.ToJsonString();
         });
         Refuse(node =>
         {
             var result = System.Text.Json.Nodes.JsonNode.Parse(node["canonicalOperations"]![0]!["result"]!.GetValue<string>())!;
-            result["createdIds"]!["foreign"] = Guid.NewGuid();
+            HistoryResultBody(result)["createdIds"]!["foreign"] = Guid.NewGuid();
             node["canonicalOperations"]![0]!["result"] = result.ToJsonString();
         });
         Refuse(node => node["canonicalOperations"]![0]!["recipeId"] = Guid.NewGuid());
@@ -135,7 +135,7 @@ public sealed partial class WorkflowWorkerAuthorityTests
         // Qualify both edits with a supplied basis and omission-only replays,
         // including request-local allocations across ingredients/sections/steps.
         var owner = new CanonicalRecipeContentStore(retained, fixture.Clock,
-            new SupperProjectionInvalidation(retained, fixture.Clock, new DeploymentCalendar(new ConfigurationManager())));
+            new SupperProjectionInvalidation(retained, fixture.Clock, new DeploymentCalendar(new ConfigurationManager())), TestPublicationStore.Vocabulary(retained, storage, fixture.Clock));
         var currentRecipe = await retained.Recipes.SingleAsync(x => x.Id == recipe.Id);
         var currentContent = CanonicalRecipeContentStore.Read(currentRecipe)!;
         var edit = new RecipeApi.Dto.UpdateRecipeDto
@@ -177,16 +177,29 @@ public sealed partial class WorkflowWorkerAuthorityTests
         var stepJournal = await retained.CanonicalRecipeOperations.AsNoTracking().SingleAsync(x => x.OperationId == stepOperation);
         Assert.Equal(true, inspectOriginal.Invoke(null, [stepJournal]));
         var changedStepResult = System.Text.Json.Nodes.JsonNode.Parse(stepJournal.Result)!;
-        changedStepResult["content"]!["instructionSections"]![0]!["steps"]![0]!["textRevision"] = edited.Content.InstructionSections[0].Steps[0].TextRevision;
+        HistoryResultBody(changedStepResult)["content"]!["instructionSections"]![0]!["steps"]![0]!["textRevision"] = edited.Content.InstructionSections[0].Steps[0].TextRevision;
         stepJournal.Result = changedStepResult.ToJsonString();
         var refusedRevision = Assert.Throws<TargetInvocationException>(() => inspectOriginal.Invoke(null, [stepJournal]));
         Assert.IsType<InvalidDataException>(refusedRevision.InnerException);
         // A codec-valid changed result cannot masquerade as the original edit.
         var changedResult = System.Text.Json.Nodes.JsonNode.Parse(originalEdit.Result)!;
-        changedResult["content"]!["ingredientLines"]![0]!["description"] = "different oil";
+        HistoryResultBody(changedResult)["content"]!["ingredientLines"]![0]!["description"] = "different oil";
         originalEdit.Result = changedResult.ToJsonString();
         var refusedEdit = Assert.Throws<TargetInvocationException>(() => inspectOriginal.Invoke(null, [originalEdit]));
         Assert.IsType<InvalidDataException>(refusedEdit.InnerException);
+    }
+
+    private static System.Text.Json.Nodes.JsonNode HistoryResultBody(System.Text.Json.Nodes.JsonNode result)
+    {
+        // Legacy journals store the result directly; V2 retains it in a versioned
+        // authority envelope. Mutate the same domain fact in either wire format.
+        if (result.AsObject().TryGetPropertyValue("version", out var version))
+        {
+            Assert.Equal(2, version!.GetValue<int>());
+            return Assert.IsAssignableFrom<System.Text.Json.Nodes.JsonNode>(result["result"]);
+        }
+        Assert.NotNull(result["content"]);
+        return result;
     }
 
     private static string HistoryHash(string value)

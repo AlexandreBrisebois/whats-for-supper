@@ -31,7 +31,7 @@ public class SyncRecipeProcessorTests
         var publisher = new Mock<ISupperProjectionPublisher>();
         var invalidation = new SupperProjectionInvalidation(db, new SystemClock(), new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()));
         var processor = new SyncRecipeProcessor(new SystemClock(), db, repository, invalidation,
-            publisher.Object, NullLogger<SyncRecipeProcessor>.Instance);
+            publisher.Object, NullLogger<SyncRecipeProcessor>.Instance, TestPublicationStore.Vocabulary(db, (repository).StorageProvider, new SystemClock()));
         var task = new WorkflowTask { Payload = JsonSerializer.Serialize(new { recipeId = recipe.Id, mode = "current-format-replay" }) };
         for (var index = 0; index < 2; index++) Assert.NotNull(await processor.ExecuteAsync(task, default));
         Assert.Equal(rowBefore, JsonSerializer.Serialize(recipe));
@@ -75,7 +75,7 @@ public class SyncRecipeProcessorTests
         var invalidation = new SupperProjectionInvalidation(db, new SystemClock(), new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()));
         var publisher = new Mock<ISupperProjectionPublisher>();
         var processor = new SyncRecipeProcessor(new SystemClock(), db, repository, invalidation,
-            publisher.Object, NullLogger<SyncRecipeProcessor>.Instance);
+            publisher.Object, NullLogger<SyncRecipeProcessor>.Instance, TestPublicationStore.Vocabulary(db, (repository).StorageProvider, new SystemClock()));
 
         var error = await Assert.ThrowsAsync<InvalidDataException>(() => processor.ExecuteAsync(task, default));
         Assert.Contains("committed producer publication", error.Message);
@@ -94,8 +94,9 @@ public class SyncRecipeProcessorTests
     {
         using var db = TestDbContextFactory.Create();
         var invalidation = new SupperProjectionInvalidation(db, new SystemClock(), new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()));
-        var processor = new SyncRecipeProcessor(new SystemClock(), db, new RecipeRepository(new InMemoryStorageProvider()),
-            invalidation, Mock.Of<ISupperProjectionPublisher>(), NullLogger<SyncRecipeProcessor>.Instance);
+        var repository = new RecipeRepository(new InMemoryStorageProvider());
+        var processor = new SyncRecipeProcessor(new SystemClock(), db, repository,
+            invalidation, Mock.Of<ISupperProjectionPublisher>(), NullLogger<SyncRecipeProcessor>.Instance, TestPublicationStore.Vocabulary(db, repository.StorageProvider, new SystemClock()));
         var error = await Assert.ThrowsAsync<InvalidDataException>(() => processor.ExecuteAsync(new WorkflowTask
             { Payload = JsonSerializer.Serialize(new { recipeId = Guid.NewGuid() }) }, default));
         Assert.Contains("committed producer publication", error.Message);

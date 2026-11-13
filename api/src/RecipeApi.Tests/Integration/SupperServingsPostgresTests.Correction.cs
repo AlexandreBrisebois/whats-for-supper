@@ -177,7 +177,7 @@ public partial class SupperServingsPostgresTests
             var storage=new RecipeApi.Infrastructure.InMemoryStorageProvider();var repository=new RecipeRepository(storage);
             await storage.SaveAsync("recipes",$"{recipe.Id}/recipe.info",JsonSerializer.Serialize(new RecipeInfo {Id=recipe.Id,ImageCount=0},RecipeApi.Infrastructure.JsonDefaults.CamelCase));
             await storage.SaveAsync("recipes",$"{recipe.Id}/recipe.json",recipe.RawMetadata!.Insert(1,"\"recipeYield\":\"4 portions\","));
-            var sync=new RecipeApi.Services.Processors.SyncRecipeProcessor(scope.ServiceProvider.GetRequiredService<IClock>(),db,repository,scope.ServiceProvider.GetRequiredService<SupperProjectionInvalidation>(),scope.ServiceProvider.GetRequiredService<ISupperProjectionPublisher>(),Microsoft.Extensions.Logging.Abstractions.NullLogger<RecipeApi.Services.Processors.SyncRecipeProcessor>.Instance);
+            var sync=new RecipeApi.Services.Processors.SyncRecipeProcessor(scope.ServiceProvider.GetRequiredService<IClock>(),db,repository,scope.ServiceProvider.GetRequiredService<SupperProjectionInvalidation>(),scope.ServiceProvider.GetRequiredService<ISupperProjectionPublisher>(),Microsoft.Extensions.Logging.Abstractions.NullLogger<RecipeApi.Services.Processors.SyncRecipeProcessor>.Instance, RecipeApi.Tests.Infrastructure.TestPublicationStore.Vocabulary(db, storage, scope.ServiceProvider.GetRequiredService<IClock>(), scope.ServiceProvider));
             var task=await RecipeApi.Tests.Services.RecipeServingsTests.ProducerTask(db,repository,recipe.Id);
             var owner=RecipeApi.Tests.Services.RecipeServingsTests.PublicationStore(db,repository);
             await owner.PublishAsync(await owner.CaptureAsync(recipe.Id),new RecipePublicationCandidate(

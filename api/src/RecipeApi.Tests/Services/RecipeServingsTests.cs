@@ -128,7 +128,7 @@ public class RecipeServingsTests
         var prompts = new Mock<IPromptRepository>();
         prompts.Setup(p => p.GetPrompt(It.IsAny<PromptType>())).Returns("Extract the supplied recipe.");
         var agent = new RecipeAgent(chat.Object, prompts.Object, new ConfigurationManager(), NullLogger<RecipeAgent>.Instance,
-            new RecipeFilePublicationStore(db, repository, new SystemClock(), new SupperProjectionInvalidation(db, new SystemClock(), new DeploymentCalendar(new ConfigurationManager()))), "ExtractRecipe");
+            new RecipeFilePublicationStore(db, repository, new SystemClock(), new SupperProjectionInvalidation(db, new SystemClock(), new DeploymentCalendar(new ConfigurationManager())), TestPublicationStore.Vocabulary(db, repository.StorageProvider, new SystemClock())), "ExtractRecipe");
         db.Recipes.Add(new Recipe { Id = id, Name = "Pending", IsReady = true });
         await db.SaveChangesAsync();
         var task = await ProducerTask(db, repository, id);
@@ -169,7 +169,7 @@ public class RecipeServingsTests
     }
 
     internal static RecipeFilePublicationStore PublicationStore(RecipeDbContext db, RecipeRepository repository) =>
-        new(db, repository, new SystemClock(), new SupperProjectionInvalidation(db, new SystemClock(), new DeploymentCalendar(new ConfigurationManager())));
+        new(db, repository, new SystemClock(), new SupperProjectionInvalidation(db, new SystemClock(), new DeploymentCalendar(new ConfigurationManager())), TestPublicationStore.Vocabulary(db, repository.StorageProvider, new SystemClock()));
 
     internal static async Task<WorkflowTask> ProducerTask(RecipeDbContext db, RecipeRepository repository, Guid recipeId)
     {
@@ -187,6 +187,6 @@ public class RecipeServingsTests
     internal static Task<object?> Sync(RecipeDbContext db, RecipeRepository repository, WorkflowTask task)
     {
         var invalidation = new SupperProjectionInvalidation(db, new SystemClock(), new DeploymentCalendar(new ConfigurationManager()));
-        return new SyncRecipeProcessor(new SystemClock(), db, repository, invalidation, Mock.Of<ISupperProjectionPublisher>(), NullLogger<SyncRecipeProcessor>.Instance).ExecuteAsync(task, CancellationToken.None);
+        return new SyncRecipeProcessor(new SystemClock(), db, repository, invalidation, Mock.Of<ISupperProjectionPublisher>(), NullLogger<SyncRecipeProcessor>.Instance, TestPublicationStore.Vocabulary(db, (repository).StorageProvider, new SystemClock())).ExecuteAsync(task, CancellationToken.None);
     }
 }

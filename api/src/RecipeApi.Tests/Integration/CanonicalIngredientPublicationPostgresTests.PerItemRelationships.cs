@@ -1,3 +1,4 @@
+using RecipeApi.Tests.Infrastructure;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.EntityFrameworkCore;
@@ -125,7 +126,7 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
         Assert.Equal(1, heroHandler.Calls);
         var clock = services.GetRequiredService<IClock>();
         await new SyncRecipeProcessor(clock, db, repository, services.GetRequiredService<SupperProjectionInvalidation>(),
-            Mock.Of<ISupperProjectionPublisher>(), NullLogger<SyncRecipeProcessor>.Instance)
+            Mock.Of<ISupperProjectionPublisher>(), NullLogger<SyncRecipeProcessor>.Instance, TestPublicationStore.Vocabulary(db, (repository).StorageProvider, clock, services))
             .ExecuteAsync(workflow.Tasks.Single(task => task.ProcessorName == "SyncRecipe"), default);
         var oil = french ? "huile" : "oil";
         chat.Setup(client => client.GetResponseAsync(It.IsAny<IEnumerable<ChatMessage>>(), It.IsAny<ChatOptions>(), It.IsAny<CancellationToken>()))

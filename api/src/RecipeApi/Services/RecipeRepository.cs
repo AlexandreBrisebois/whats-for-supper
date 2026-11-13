@@ -15,6 +15,7 @@ using RecipeApi.Models;
 /// </summary>
 public class RecipeRepository(IStorageProvider storage)
 {
+    public IStorageProvider StorageProvider => storage;
     private const string Partition = "recipes";
 
     internal Task<byte[]?> ReadPublicationFileAsync(Guid id, string path) => storage.LoadAsync(Partition, $"{id}/{path}");

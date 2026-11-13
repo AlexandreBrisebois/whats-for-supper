@@ -46,6 +46,7 @@ CREATE TABLE recipes (
     is_vegetarian boolean,
     raw_metadata jsonb,
     canonical_content jsonb,
+    food_mapping_evidence jsonb,
     ingredients jsonb,
     cuisine_type text,
     meal_types text[],

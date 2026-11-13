@@ -45,7 +45,7 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests(ITestOut
             await repository.SaveOriginalImageAsync(Id, 0, "image/png", [1, 2, 3], default);
             await repository.SaveContentHtmlAsync(Id, "retained source", default);
             var store = new RecipeFilePublicationStore(db, repository, services.GetRequiredService<IClock>(),
-                services.GetRequiredService<SupperProjectionInvalidation>());
+                services.GetRequiredService<SupperProjectionInvalidation>(), TestPublicationStore.Vocabulary(db, repository.StorageProvider, services.GetRequiredService<IClock>(), services));
             await action(services, repository, store, storage);
         });
     }
@@ -135,7 +135,7 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests(ITestOut
             await db.SaveChangesAsync();
             await new SyncRecipeProcessor(services.GetRequiredService<IClock>(), db, repository,
                 services.GetRequiredService<SupperProjectionInvalidation>(), Mock.Of<ISupperProjectionPublisher>(),
-                NullLogger<SyncRecipeProcessor>.Instance).ExecuteAsync(new WorkflowTask { InstanceId = instance,
+                NullLogger<SyncRecipeProcessor>.Instance, TestPublicationStore.Vocabulary(db, (repository).StorageProvider, services.GetRequiredService<IClock>(), services)).ExecuteAsync(new WorkflowTask { InstanceId = instance,
                     Payload = JsonSerializer.Serialize(new { recipeId = Id }) }, default);
             await db.Entry(recipe).ReloadAsync();
             Assert.Equal("New human name", recipe.Name); Assert.Equal("", recipe.Description);
@@ -265,7 +265,7 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests(ITestOut
             var db = services.GetRequiredService<RecipeDbContext>();
             var recipe = await db.Recipes.SingleAsync(x => x.Id == Id);
             await new CanonicalRecipeContentStore(db, services.GetRequiredService<IClock>(),
-                services.GetRequiredService<SupperProjectionInvalidation>()).ConvertAsync(Id,
+                services.GetRequiredService<SupperProjectionInvalidation>(), TestPublicationStore.Vocabulary(db, services.GetRequiredService<IStorageProvider>(), services.GetRequiredService<IClock>(), services)).ConvertAsync(Id,
                 CanonicalRecipeContentStore.InspectContentRevision(recipe), CanonicalRecipeContentStore.InspectSourceRevision(recipe), Guid.NewGuid());
             var captured = await store.CaptureAsync(Id);
             var canonical = recipe.CanonicalContent;

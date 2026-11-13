@@ -204,9 +204,9 @@ RULES:
         if (operationId is { } recoveryOperation && producerInput is not null
             && await publications.CanRecoverReviewedSourceAsync(capture, recoveryOperation, ct))
         {
-            var reviewed = CanonicalRecipeContentStore.PrepareReviewedSource(capture.Fields!);
+            var reviewed = publications.PrepareMappedSource(capture, CanonicalRecipeContentStore.PrepareReviewedSource(capture.Fields!), recoveryOperation);
             await publications.PublishAsync(capture,
-                new(RecipeExportContent.WriteCurrent(reviewed), info, producerInput, SourceKind: "review-canonical"),
+                new(RecipeExportContent.WriteCurrent(reviewed.Export), info, producerInput, SourceKind: "review-canonical", MappingEvidence: reviewed.Evidence),
                 recoveryOperation, ct);
             return;
         }
@@ -318,8 +318,9 @@ RULES:
                 throw new RecipeContentReviewException($"Extraction needs ingredient review for {recipeId}.", ["ingredients"]);
             }
             prepared = prepared with { Content = CookingStepRelationshipProducer.Discover(prepared.Content) };
+            var mapped = publications.PrepareMappedSource(capture, prepared, freshOperation);
             await publications.PublishAsync(capture,
-                new(RecipeExportContent.WriteCurrent(prepared), info, producerInput, SourceKind: "fresh-canonical"), freshOperation, ct);
+                new(RecipeExportContent.WriteCurrent(mapped.Export), info, producerInput, SourceKind: "fresh-canonical", MappingEvidence: mapped.Evidence), freshOperation, ct);
         }
         else await publications.PublishAsync(capture, new(normalizedJson, info, producerInput), operationId ?? Guid.NewGuid(), ct);
         logger.LogInformation("Published extracted recipe for {RecipeId}", recipeId);

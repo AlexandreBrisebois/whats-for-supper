@@ -344,6 +344,8 @@ DO $$
 BEGIN
     IF to_regclass('public.recipes') IS NOT NULL THEN
         ALTER TABLE recipes ADD COLUMN IF NOT EXISTS canonical_content jsonb;
+        -- Additive evidence storage; no mapping adoption or existing-row rewrite.
+        ALTER TABLE recipes ADD COLUMN IF NOT EXISTS food_mapping_evidence jsonb;
         CREATE TABLE IF NOT EXISTS canonical_recipe_operations (
             recipe_id uuid NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
             operation_id uuid NOT NULL,

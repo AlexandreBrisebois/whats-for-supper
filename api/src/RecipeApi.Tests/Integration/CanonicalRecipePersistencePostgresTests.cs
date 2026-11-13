@@ -18,7 +18,7 @@ public sealed class CanonicalRecipePersistencePostgresTests(ITestOutputHelper ou
     private static readonly Guid Id = TomorrowPushPostgresTests.Selected;
     private static CanonicalRecipeContentStore Store(IServiceProvider services) => new(
         services.GetRequiredService<RecipeDbContext>(), services.GetRequiredService<IClock>(),
-        services.GetRequiredService<SupperProjectionInvalidation>());
+        services.GetRequiredService<SupperProjectionInvalidation>(), services.GetRequiredService<FoodVocabularyStore>());
 
     private static async Task Seed(IServiceProvider services)
     {
@@ -116,8 +116,25 @@ public sealed class CanonicalRecipePersistencePostgresTests(ITestOutputHelper ou
             Assert.NotNull(originalProperty);
             using var originalRequest = JsonDocument.Parse(Assert.IsType<string>(originalProperty.GetValue(retainedOperation)));
             Assert.True(originalRequest.RootElement.GetProperty("hasServings").GetBoolean());
-            Assert.Equal(initial.Content.ContentRevision, originalRequest.RootElement.GetProperty("expectedContentRevision").GetString());
-            Assert.Equal(initial.Content.SourceRevision, originalRequest.RootElement.GetProperty("expectedSourceRevision").GetString());
+            switch (originalRequest.RootElement.GetProperty("version").GetInt32())
+            {
+                case 1:
+                    Assert.Equal(initial.Content.ContentRevision, originalRequest.RootElement.GetProperty("expectedContentRevision").GetString());
+                    Assert.Equal(initial.Content.SourceRevision, originalRequest.RootElement.GetProperty("expectedSourceRevision").GetString());
+                    break;
+                case 2:
+                    using (var submitted = JsonDocument.Parse(originalRequest.RootElement.GetProperty("input").GetString()!))
+                        Assert.Equal(initial.Content.ContentRevision, submitted.RootElement.GetProperty("expectedContentRevision").GetString());
+                    using (var baseline = JsonDocument.Parse(originalRequest.RootElement.GetProperty("baseline").GetProperty("canonicalContent").GetString()!))
+                    {
+                        Assert.Equal(initial.Content.ContentRevision, baseline.RootElement.GetProperty("contentRevision").GetString());
+                        Assert.Equal(initial.Content.SourceRevision, baseline.RootElement.GetProperty("sourceRevision").GetString());
+                    }
+                    break;
+                default:
+                    Assert.Fail("Unsupported retained canonical request version.");
+                    break;
+            }
             input.Name = "Must not save";
             await Assert.ThrowsAsync<RecipeContentConflictException>(() => store.EditAsync(Id, initial.Content.SourceRevision, operation, input));
             await Assert.ThrowsAsync<RecipeContentConflictException>(() => store.EditAsync(Id, initial.Content.SourceRevision, Guid.NewGuid(), input));

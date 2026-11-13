@@ -1,3 +1,4 @@
+using RecipeApi.Tests.Infrastructure;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -148,7 +149,7 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
                 new HeroClientFactory(heroHandler)).ExecuteAsync(workflow.Tasks.Single(x => x.ProcessorName == "GenerateHero"), default);
             Assert.Equal(1, heroHandler.Calls);
             await new SyncRecipeProcessor(clock, db, repository, services.GetRequiredService<SupperProjectionInvalidation>(),
-                Mock.Of<ISupperProjectionPublisher>(), NullLogger<SyncRecipeProcessor>.Instance)
+                Mock.Of<ISupperProjectionPublisher>(), NullLogger<SyncRecipeProcessor>.Instance, TestPublicationStore.Vocabulary(db, (repository).StorageProvider, clock, services))
                 .ExecuteAsync(workflow.Tasks.Single(x => x.ProcessorName == "SyncRecipe"), default);
             chat.Setup(x => x.GetResponseAsync(It.IsAny<IEnumerable<ChatMessage>>(), It.IsAny<ChatOptions>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new ChatResponse(new ChatMessage(ChatRole.Assistant,

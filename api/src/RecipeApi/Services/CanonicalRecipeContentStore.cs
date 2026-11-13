@@ -18,7 +18,7 @@ public sealed record CanonicalRecipeContent(
 
 public sealed record CanonicalRecipeWriteResult(CanonicalRecipeContent Content, IReadOnlyDictionary<string, Guid> CreatedIds);
 
-public sealed partial class CanonicalRecipeContentStore(RecipeDbContext db, IClock clock, SupperProjectionInvalidation invalidation, IValidationService? validation = null)
+public sealed partial class CanonicalRecipeContentStore(RecipeDbContext db, IClock clock, SupperProjectionInvalidation invalidation, FoodVocabularyStore vocabulary, IValidationService? validation = null)
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
     private static readonly string[] ProtectedFacts = ["description", "amount", "amountText", "unit", "scaling", "package", "shopping"];
@@ -81,16 +81,22 @@ public sealed partial class CanonicalRecipeContentStore(RecipeDbContext db, IClo
     {
         RequireOperation(operationId);
         var hash = Hash(new { Kind = "convert", expectedContentRevision, expectedSourceRevision });
+        var before = await db.Recipes.AsNoTracking().SingleOrDefaultAsync(x => x.Id == id, ct) ?? throw new KeyNotFoundException();
+        if (await Replay(id, operationId, hash, before, ct) is { } historical) return historical;
+        var authority = await vocabulary.CaptureAuthorityAsync(before.FoodMappingEvidence, ct);
         await using var transaction = await RecipeRotation.LockAsync(db, id, ct, lockSupperInputs: true);
         var recipe = await db.Recipes.SingleOrDefaultAsync(x => x.Id == id, ct) ?? throw new KeyNotFoundException();
         if (await Replay(id, operationId, hash, recipe, ct) is { } replay) return replay;
         Guard(recipe, expectedContentRevision, expectedSourceRevision);
-        var originalRequest = CaptureOriginal(recipe, operationId, "convert", expectedContentRevision, expectedSourceRevision, null);
+        if (EvidenceValue(recipe) != EvidenceValue(before)) throw Conflict(recipe);
+        await vocabulary.ValidateLiveAuthorityAsync(authority, ct);
+        var baseline = RecipeFilePublicationStore.Observe(recipe);
+        var priorEvidence = EvidenceValue(recipe);
         if (Read(recipe) is { } existing)
         {
             // A new inspection of already converted content never reallocates identities.
             var unchanged = new CanonicalRecipeWriteResult(existing, new Dictionary<string, Guid>());
-            Record(id, operationId, hash, unchanged, originalRequest);
+            RecordV2(recipe, operationId, "convert", hash, baseline, priorEvidence, authority, null, unchanged, priorEvidence);
             await db.SaveChangesAsync(ct);
             if (transaction is not null) await transaction.CommitAsync(ct);
             return unchanged;
@@ -99,11 +105,14 @@ public sealed partial class CanonicalRecipeContentStore(RecipeDbContext db, IClo
         var lines = ConvertLines(recipe, Guid.NewGuid);
         var sections = ConvertInstructions(recipe.RawMetadata, Guid.NewGuid, Guid.NewGuid, NewRevision);
         var content = new CanonicalRecipeContent(2, NewRevision(), expectedSourceRevision, recipe.Servings, lines, sections);
+        var mapped = FoodMappingQualification.Prepare(new(id, content, recipe.RawMetadata), authority, operationId);
+        content = mapped.Export.Content;
         var result = new CanonicalRecipeWriteResult(content, new Dictionary<string, Guid>());
+        recipe.FoodMappingEvidence = mapped.Evidence;
         recipe.CanonicalContent = JsonSerializer.Serialize(content, Json);
         recipe.Ingredients = JsonSerializer.Serialize(lines.Select(Render));
         recipe.UpdatedAt = clock.UtcNow;
-        Record(id, operationId, hash, result, originalRequest);
+        RecordV2(recipe, operationId, "convert", hash, baseline, priorEvidence, authority, null, result, recipe.FoodMappingEvidence);
         await Invalidate(recipe, ct);
         if (transaction is not null) await transaction.CommitAsync(ct);
         return result;
@@ -115,21 +124,30 @@ public sealed partial class CanonicalRecipeContentStore(RecipeDbContext db, IClo
         RequireOperation(operationId);
         ValidateEditInput(input);
         var hash = Hash(new { Kind = "edit", expectedSourceRevision, Input = input });
+        var before = await db.Recipes.AsNoTracking().SingleOrDefaultAsync(x => x.Id == id, ct) ?? throw new KeyNotFoundException();
+        if (await Replay(id, operationId, hash, before, ct) is { } historical) return historical;
+        var authority = await vocabulary.CaptureAuthorityAsync(before.FoodMappingEvidence, ct);
         await using var transaction = await RecipeRotation.LockAsync(db, id, ct, lockSupperInputs: true);
         var recipe = await db.Recipes.SingleOrDefaultAsync(x => x.Id == id, ct) ?? throw new KeyNotFoundException();
         if (await Replay(id, operationId, hash, recipe, ct) is { } replay) return replay;
         Guard(recipe, input.ExpectedContentRevision, expectedSourceRevision);
-        var originalRequest = CaptureOriginal(recipe, operationId, "edit", input.ExpectedContentRevision!, expectedSourceRevision, input);
+        if (EvidenceValue(recipe) != EvidenceValue(before)) throw Conflict(recipe);
+        await vocabulary.ValidateLiveAuthorityAsync(authority, ct);
+        var baseline = RecipeFilePublicationStore.Observe(recipe);
+        var priorEvidence = EvidenceValue(recipe);
         var current = Read(recipe) ?? throw Conflict(recipe);
-        var result = PrepareEdit(current, input, Guid.NewGuid, NewRevision);
+        var prepared = PrepareEditV2(current, input, Guid.NewGuid, NewRevision);
+        var mapped = FoodMappingQualification.Prepare(new(id, prepared.Content, recipe.RawMetadata), authority, operationId, current, priorEvidence);
+        var result = prepared with { Content = mapped.Export.Content };
         var content = result.Content;
         // No tracked mutation occurs above this point; invalid membership/guards cannot partially save.
         RecipeService.ApplyEditableDetailFields(recipe, input, validation ?? new ValidationService());
+        recipe.FoodMappingEvidence = mapped.Evidence;
         recipe.CanonicalContent = JsonSerializer.Serialize(content, Json);
         recipe.Ingredients = JsonSerializer.Serialize(content.IngredientLines.Select(Render));
         recipe.Servings = content.Servings;
         recipe.UpdatedAt = clock.UtcNow;
-        Record(id, operationId, hash, result, originalRequest);
+        RecordV2(recipe, operationId, "edit", hash, baseline, priorEvidence, authority, input, result, recipe.FoodMappingEvidence);
         await Invalidate(recipe, ct);
         if (transaction is not null) await transaction.CommitAsync(ct);
         return result;
@@ -191,6 +209,58 @@ public sealed partial class CanonicalRecipeContentStore(RecipeDbContext db, IClo
         };
         var revalidated = CookingStepProjection.Revalidate(current, content);
         return new CanonicalRecipeWriteResult(CookingStepRelationshipProducer.Discover(revalidated, current), created);
+    }
+
+    private static CanonicalRecipeWriteResult PrepareEditV2(CanonicalRecipeContent current, UpdateRecipeDto input,
+        Func<Guid> newId, Func<string> newRevision, CanonicalRecipeContent? recordedResult = null)
+    {
+        var created = new Dictionary<string, Guid>(StringComparer.Ordinal);
+        var lines = input.IngredientLines.ValueKind == JsonValueKind.Undefined ? current.IngredientLines
+            : input.IngredientLines.EnumerateArray().Select(raw =>
+            {
+                var row = raw.Deserialize<RecipeIngredientLineInput>(Json)!;
+                var old = row.Id is { } saved ? current.IngredientLines.SingleOrDefault(x => x.Id == saved)
+                    ?? throw new ArgumentException("Ingredient does not belong to this recipe.") : null;
+                if (old is not null && row.Shopping.FoodId is not null && (row.Shopping.FoodId != old.Shopping.FoodId || row.Shopping.MappingRevision != old.Shopping.MappingRevision))
+                    throw new ArgumentException("Shopping association changes require qualified mapping validation.");
+                if (old is null && row.Shopping.FoodId is not null)
+                    throw new ArgumentException("New food mappings require qualified mapping validation.");
+                // Literal package facts need no registry. A declared definition
+                // may only retain its exact previously saved unit at that path.
+                if (row.Unit?.DefinitionId is not null && row.Unit != old?.Unit ||
+                    row.Package?.CountUnit.DefinitionId is not null && row.Package.CountUnit != old?.Package?.CountUnit ||
+                    row.Package?.Capacity.Unit.DefinitionId is not null && row.Package.Capacity.Unit != old?.Package?.Capacity.Unit)
+                    throw new ArgumentException("New unit/package definitions require qualified definition validation.");
+                var savedId = old?.Id ?? newId();
+                if (row.ClientId is { } clientId) created.Add(clientId, savedId);
+                return new RecipeIngredientLineDto
+                {
+                    Id = savedId,
+                    Description = row.Description,
+                    Amount = row.Amount,
+                    AmountText = row.AmountText,
+                    Unit = row.Unit,
+                    Scaling = row.Scaling,
+                    Package = row.Package,
+                    Shopping = row.Shopping,
+                    Provenance = old is not null && SameFacts(old, row) ? old.Provenance
+                        : new("human", old?.Provenance.SourceRef, ProtectedFacts)
+                };
+            }).ToArray();
+        var sections = input.InstructionSections.ValueKind == JsonValueKind.Undefined
+            ? current.InstructionSections
+            : EditSections(current, input.InstructionSections, created, newId, newRevision);
+        var content = current with
+        {
+            ContentRevision = newRevision(),
+            Servings = input.HasServings ? input.Servings : current.Servings,
+            IngredientLines = lines,
+            InstructionSections = sections
+        };
+        var revalidated = CookingStepProjection.Revalidate(current, content);
+        return new CanonicalRecipeWriteResult(recordedResult is null
+            ? CookingStepRelationshipProducer.Discover(revalidated, current)
+            : CookingStepRelationshipProducer.DiscoverRecorded(revalidated, current, recordedResult), created);
     }
 
     private static bool SameFacts(RecipeIngredientLineDto saved, RecipeIngredientLineInput input) =>
@@ -312,6 +382,7 @@ public sealed partial class CanonicalRecipeContentStore(RecipeDbContext db, IClo
     {
         var previous = await db.CanonicalRecipeOperations.AsNoTracking().SingleOrDefaultAsync(x => x.RecipeId == id && x.OperationId == operation, ct);
         if (previous is null) return null;
+        if (IsV2(previous)) return ReplayV2(previous, hash, recipe);
         if (previous.InputHash != hash) throw Conflict(recipe);
         ValidateOriginalOperation(previous);
         return JsonSerializer.Deserialize<CanonicalRecipeWriteResult>(previous.Result, Json) ?? throw new InvalidDataException("Invalid canonical replay.");

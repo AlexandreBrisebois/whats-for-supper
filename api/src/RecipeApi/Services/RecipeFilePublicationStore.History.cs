@@ -68,6 +68,9 @@ public sealed partial class RecipeFilePublicationStore
 
     private static void ValidateOriginalFields(RecipePublicationCapture capture)
     {
+        if (capture.FieldHashVersion == 4) { ValidateV4Capture(capture); return; }
+        if (capture.FoodEvidence is not null || capture.FoodAuthority is not null)
+            throw new InvalidDataException("Historical capture cannot gain vocabulary authority.");
         if (capture.FieldHashVersion is not (null or 2 or 3))
             throw new InvalidDataException("Unsupported original publication fields.");
         if (capture.FieldHashVersion != 3)
@@ -92,6 +95,8 @@ public sealed partial class RecipeFilePublicationStore
     private static void ValidateOriginalResult(RecipeFilePublication publication, Envelope envelope)
     {
         ValidateOriginalFields(envelope.Capture);
+        if (envelope.Capture.FieldHashVersion == 4) { ValidateV4Result(publication, envelope); return; }
+        if (envelope.ResultEvidence is not null) throw new InvalidDataException("Historical result cannot gain evidence authority.");
         if (envelope.Capture.FieldHashVersion != 3)
         {
             if (envelope.Result is not null) throw new InvalidDataException("Historical publication cannot claim result authority.");

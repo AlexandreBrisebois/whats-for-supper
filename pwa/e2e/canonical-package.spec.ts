@@ -4,7 +4,7 @@ import { cookingStepRecipe } from './cooking-step-fixture';
 
 for (const locale of ['en', 'fr'] as const) {
   test.describe(`declared packages ${locale}`, () => {
-    test.use({ appLocale: locale });
+    test.use({ appLocale: locale, dateOnlyClock: true });
     test('ordinary editor keeps fixed capacity across exact counts and explicit clear', async ({
       page,
       baseURL,

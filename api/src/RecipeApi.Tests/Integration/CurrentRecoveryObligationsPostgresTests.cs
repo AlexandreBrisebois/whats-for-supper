@@ -14,7 +14,7 @@ namespace RecipeApi.Tests.Integration;
 public sealed class CurrentRecoveryObligationsPostgresTests(ITestOutputHelper output)
 {
     [DeploymentCalendarPostgresTests.CalendarPostgresFact]
-    public async Task ManagementInspection_RetainsOriginalCanonicalRequestsAndAllCreatedIdKindsWithoutPublication()
+    public async Task ManagementInspection_RetainsHistoricalV1CanonicalRequestsAndAllCreatedIdKindsWithoutPublication()
     {
         await new TomorrowPushPostgresTests(output).WithDatabase(async settings =>
         {
@@ -22,6 +22,18 @@ public sealed class CurrentRecoveryObligationsPostgresTests(ITestOutputHelper ou
             await TomorrowPushPostgresTests.Seed(factory);
             using var fixture = new CurrentRecoveryCanonicalOperationTests();
             await fixture.CheckOriginalsAsync(factory.Services);
+        });
+    }
+
+    [DeploymentCalendarPostgresTests.CalendarPostgresFact]
+    public async Task ManagementInspection_RejectsCurrentV2CanonicalRequestsInHistoricalFormatBeforeWrites()
+    {
+        await new TomorrowPushPostgresTests(output).WithDatabase(async settings =>
+        {
+            await using var factory = await TomorrowPushPostgresTests.CreateFactory(settings);
+            await TomorrowPushPostgresTests.Seed(factory);
+            using var fixture = new CurrentRecoveryCanonicalOperationTests();
+            await fixture.CheckOriginalsAsync(factory.Services, currentV2: true);
         });
     }
 

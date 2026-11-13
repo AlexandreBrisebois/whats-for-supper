@@ -13,7 +13,8 @@ public class SyncRecipeProcessor(
     RecipeRepository recipeRepository,
     SupperProjectionInvalidation projectionInvalidation,
     ISupperProjectionPublisher projectionPublisher,
-    ILogger<SyncRecipeProcessor> logger) : IWorkflowProcessor
+    ILogger<SyncRecipeProcessor> logger,
+    FoodVocabularyStore vocabulary) : IWorkflowProcessor
 {
     public string ProcessorName => "SyncRecipe";
 
@@ -96,7 +97,7 @@ public class SyncRecipeProcessor(
                 // over a human edit made between generation and this workflow step.
                 var confirmation = new Confirmation(1, publications.Select(PublicationFacts.Observe).ToArray());
                 foreach (var publication in publications)
-                    await new RecipeFilePublicationStore(db, recipeRepository, clock, projectionInvalidation)
+                    await new RecipeFilePublicationStore(db, recipeRepository, clock, projectionInvalidation, vocabulary)
                         .ResumeAsync(recipeId, publication.OperationId, ct);
                 IReadOnlyList<DateOnly> weeks;
                 await using (var transaction = await RecipeRotation.LockAsync(db, recipeId, ct, lockSupperInputs: true))

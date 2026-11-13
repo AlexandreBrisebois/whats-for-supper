@@ -227,7 +227,7 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
                     var current = await db.Recipes.SingleAsync(x => x.Id == Id); current.Name = "Newer human name"; await db.SaveChangesAsync();
                     await new RecipeApi.Services.Processors.SyncRecipeProcessor(services.GetRequiredService<IClock>(), db, repository,
                         services.GetRequiredService<SupperProjectionInvalidation>(), Mock.Of<ISupperProjectionPublisher>(),
-                        NullLogger<RecipeApi.Services.Processors.SyncRecipeProcessor>.Instance).ExecuteAsync(new WorkflowTask
+                        NullLogger<RecipeApi.Services.Processors.SyncRecipeProcessor>.Instance, RecipeApi.Tests.Infrastructure.TestPublicationStore.Vocabulary(db, storage, services.GetRequiredService<IClock>(), services)).ExecuteAsync(new WorkflowTask
                         { InstanceId = instance.Id, Payload = JsonSerializer.Serialize(new { recipeId = Id }) }, default);
                     Assert.Equal("Newer human name", (await db.Recipes.SingleAsync(x => x.Id == Id)).Name);
                     Assert.All(await db.RecipeFilePublications.ToListAsync(), publication => Assert.True(publication.Delivered));

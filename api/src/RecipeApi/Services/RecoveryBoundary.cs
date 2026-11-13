@@ -38,7 +38,7 @@ public sealed class RecoveryBoundary(RecipeDbContext db, IConfiguration configur
     public bool CoordinatesWrites => db.Database.IsNpgsql() || Enabled;
     public async Task<IAsyncDisposable> EnterAsync(RecoveryAccess access, CancellationToken ct)
     {
-        if (!Enabled && !(access == RecoveryAccess.Write && db.Database.IsNpgsql())) return new EmptyLease();
+        if (!Enabled && !db.Database.IsNpgsql()) return new EmptyLease();
         if (!db.Database.IsNpgsql()) throw new RecoveryBusyException("Online recovery coordination requires PostgreSQL.");
         var connection = new NpgsqlConnection(db.Database.GetConnectionString());
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);

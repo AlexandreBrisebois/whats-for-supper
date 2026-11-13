@@ -5,6 +5,7 @@ using Moq;
 using RecipeApi.Data;
 using RecipeApi.Models;
 using RecipeApi.Services;
+using RecipeApi.Workflow;
 using Xunit;
 
 namespace RecipeApi.Tests.Integration;
@@ -43,8 +44,18 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
             var info = await repository.GetInfoAsync(Id, default);
             info.ImageCount = 19;
             await repository.SaveInfoAsync(info, default);
+            // This case qualifies image admission, not workflow execution. Keep
+            // the accepted typed follow-up paused instead of the factory's shallow
+            // initializer replacing its task while retaining the old dispatch.
+            Mock.Get(services.GetRequiredService<IWorkflowOrchestrator>())
+                .Setup(x => x.InitializeRecipeFollowupAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((WorkflowInstance?)null);
             var service = services.GetRequiredService<RecipeService>();
             Assert.Equal(19, await service.AddOriginalImageAsync(Id, Upload()));
+            var accepted = await db.RecipeFilePublications.SingleAsync();
+            var followup = await db.WorkflowInstances.Include(x => x.Tasks).SingleAsync(x => x.Id == accepted.OperationId);
+            Assert.Equal(WorkflowStatus.Paused, followup.Status);
+            Assert.Equal("RecipeFollowupInitialization", Assert.Single(followup.Tasks).ProcessorName);
             await Assert.ThrowsAsync<ArgumentException>(() => service.AddOriginalImageAsync(Id, Upload()));
             Assert.Equal(20, (await repository.GetInfoAsync(Id, default)).ImageCount);
             Assert.Equal(new byte[] { 4, 5, 6 }, await repository.GetOriginalImageAsync(Id, 19, default));

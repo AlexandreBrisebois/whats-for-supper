@@ -42,8 +42,13 @@ public static partial class CookingStepRelationshipProducer
         Clause PriorClause, RecipeInstructionStepDto Final, Span FinalSpan);
 
     public static CanonicalRecipeContent Discover(CanonicalRecipeContent content, CanonicalRecipeContent? previous = null)
+        => DiscoverWithIdentities(content, previous, _ => Guid.NewGuid());
+
+    private sealed record CreationKey(Guid StepId, Guid IngredientLineId, string Kind, int Start, int End);
+    private static CanonicalRecipeContent DiscoverWithIdentities(CanonicalRecipeContent content, CanonicalRecipeContent? previous,
+        Func<CreationKey, Guid> createIdentity)
     {
-        try { return DiscoverBounded(content, previous); }
+        try { return DiscoverBounded(content, previous, createIdentity); }
         catch (RegexMatchTimeoutException)
         {
             return content with
@@ -54,10 +59,10 @@ public static partial class CookingStepRelationshipProducer
         }
     }
 
-    private static CanonicalRecipeContent DiscoverBounded(CanonicalRecipeContent content, CanonicalRecipeContent? previous)
+    private static CanonicalRecipeContent DiscoverBounded(CanonicalRecipeContent content, CanonicalRecipeContent? previous, Func<CreationKey, Guid> createIdentity)
     {
         var steps = content.InstructionSections.SelectMany(x => x.Steps).ToArray();
-        var remainders = DiscoverRemainders(content, previous, steps);
+        var remainders = DiscoverRemainders(content, previous, steps, createIdentity);
         return content with
         {
             InstructionSections = content.InstructionSections.Select(section => section with
@@ -68,7 +73,7 @@ public static partial class CookingStepRelationshipProducer
                     // Never reinterpret or overlap another role's proof, including
                     // retained uncertain proof owned by the existing projector.
                     if (foreign.Length != 0) return step with { Bindings = foreign };
-                    var perItem = DiscoverPerItem(content, previous, steps, step);
+                    var perItem = DiscoverPerItem(content, previous, steps, step, createIdentity);
                     if (perItem is not null) return step with { Bindings = perItem };
                     if (step.Bindings.Count > 1) return step with { Bindings = [] };
                     if (remainders.TryGetValue(step.Id, out var remainder)) return step with { Bindings = [remainder] };
@@ -95,7 +100,7 @@ public static partial class CookingStepRelationshipProducer
                         return step with { Bindings = [] };
                     var existing = step.Bindings.Select(Read).SingleOrDefault(binding =>
                         binding is not null && Matches(binding, content, step, row, clause));
-                    var binding = new Binding(existing?.Id ?? Guid.NewGuid(), row.Id, step.Id, content.ContentRevision,
+                    var binding = new Binding(existing?.Id ?? createIdentity(new(step.Id, row.Id, clause.Role, clause.Span.Start, clause.Span.End)), row.Id, step.Id, content.ContentRevision,
                         step.TextRevision, clause.Span, clause.Role,
                         new(new(1, Rule(clause.Role), content.SourceRevision, clause.Amount),
                             clause.Role is "absolute" or "fixed" ? clause.Amount : null, clause.Role is "absolute" or "fixed" ? row.Unit : null,
@@ -189,7 +194,7 @@ public static partial class CookingStepRelationshipProducer
     }
 
     private static Dictionary<Guid, JsonElement> DiscoverRemainders(CanonicalRecipeContent content,
-        CanonicalRecipeContent? previous, RecipeInstructionStepDto[] steps)
+        CanonicalRecipeContent? previous, RecipeInstructionStepDto[] steps, Func<CreationKey, Guid> createIdentity)
     {
         var result = new Dictionary<Guid, JsonElement>();
         foreach (var row in content.IngredientLines)
@@ -199,15 +204,15 @@ public static partial class CookingStepRelationshipProducer
             var prior = Carry(previous, content, sequence.Prior, row, sequence.PriorClause, true) ??
                 sequence.Prior.Bindings.Select(Read).SingleOrDefault(binding => binding is not null &&
                     Matches(binding, content, sequence.Prior, row, sequence.PriorClause, true));
-            var priorId = prior?.Id ?? Guid.NewGuid();
+            var priorId = prior?.Id ?? createIdentity(new(sequence.Prior.Id, row.Id, "absolute", sequence.PriorClause.Span.Start, sequence.PriorClause.Span.End));
             var priorGroup = prior?.Payload.AllocationGroup;
             var groupId = priorGroup is { Id: var id, BindingIds: { Length: 2 } members } && id != Guid.Empty && members[0] == priorId
-                ? id : Guid.NewGuid();
+                ? id : createIdentity(new(sequence.Prior.Id, row.Id, "allocationGroup", sequence.PriorClause.Span.Start, sequence.PriorClause.Span.End));
             var final = sequence.Final.Bindings.Select(Read).SingleOrDefault();
-            var finalId = final?.Id ?? Guid.NewGuid();
+            var finalId = final?.Id ?? createIdentity(new(sequence.Final.Id, row.Id, "remainder", sequence.FinalSpan.Start, sequence.FinalSpan.End));
             var bindings = SequenceBindings(content, sequence, priorId, finalId, groupId);
             if (final is null || !JsonElement.DeepEquals(Write(final), bindings.Final))
-                bindings = SequenceBindings(content, sequence, priorId, Guid.NewGuid(), groupId);
+                bindings = SequenceBindings(content, sequence, priorId, createIdentity(new(sequence.Final.Id, row.Id, "remainder", sequence.FinalSpan.Start, sequence.FinalSpan.End)), groupId);
             result[sequence.Prior.Id] = bindings.Prior;
             result[sequence.Final.Id] = bindings.Final;
         }

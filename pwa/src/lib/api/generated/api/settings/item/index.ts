@@ -136,7 +136,7 @@ export interface WithKeyItemRequestBuilder extends BaseRequestBuilder<WithKeyIte
     requestConfiguration?: RequestConfiguration<object> | undefined
   ): Promise<WithKeyGetResponse | undefined>;
   /**
-   * supper_servings_default is reserved; use the typed PUT /api/schedule/servings operation with its captured version.
+   * supper_servings_default is reserved; use the typed PUT /api/schedule/servings operation with its captured version. food_vocabulary_publication is reserved for the reviewed vocabulary publication owner and cannot be written through generic settings. Reserved-key rejection saves no setting; GET remains available and unrelated settings retain their existing behavior.
    * @param body The request body
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {Promise<WithKeyPostResponse>}
@@ -156,7 +156,7 @@ export interface WithKeyItemRequestBuilder extends BaseRequestBuilder<WithKeyIte
     requestConfiguration?: RequestConfiguration<object> | undefined
   ): RequestInformation;
   /**
-   * supper_servings_default is reserved; use the typed PUT /api/schedule/servings operation with its captured version.
+   * supper_servings_default is reserved; use the typed PUT /api/schedule/servings operation with its captured version. food_vocabulary_publication is reserved for the reviewed vocabulary publication owner and cannot be written through generic settings. Reserved-key rejection saves no setting; GET remains available and unrelated settings retain their existing behavior.
    * @param body The request body
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {RequestInformation}

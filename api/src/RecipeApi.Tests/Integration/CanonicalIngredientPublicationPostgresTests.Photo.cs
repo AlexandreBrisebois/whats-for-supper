@@ -1,3 +1,4 @@
+using RecipeApi.Tests.Infrastructure;
 using System.Text.Json;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
@@ -74,7 +75,7 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
                     new Dictionary<string, byte[]?> { ["hero.webp"] = [7, 8, 9] }, SourceKind: "hero"), hero.TaskId);
             await new SyncRecipeProcessor(services.GetRequiredService<IClock>(), db, repository,
                 services.GetRequiredService<SupperProjectionInvalidation>(), Mock.Of<ISupperProjectionPublisher>(),
-                NullLogger<SyncRecipeProcessor>.Instance).ExecuteAsync(
+                NullLogger<SyncRecipeProcessor>.Instance, TestPublicationStore.Vocabulary(db, (repository).StorageProvider, services.GetRequiredService<IClock>(), services)).ExecuteAsync(
                     workflow.Tasks.Single(x => x.ProcessorName == "SyncRecipe"), default);
             await new RecipeReadyProcessor(db, NullLogger<RecipeReadyProcessor>.Instance,
                 Mock.Of<IScheduleEventPublisher>(), store).ExecuteAsync(
@@ -160,7 +161,7 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
                     new Dictionary<string, byte[]?> { ["hero.webp"] = [7, 8, 9] }, SourceKind: "hero"), hero.TaskId);
             await new SyncRecipeProcessor(clock, db, repository,
                 services.GetRequiredService<SupperProjectionInvalidation>(), Mock.Of<ISupperProjectionPublisher>(),
-                NullLogger<SyncRecipeProcessor>.Instance).ExecuteAsync(
+                NullLogger<SyncRecipeProcessor>.Instance, TestPublicationStore.Vocabulary(db, (repository).StorageProvider, clock, services)).ExecuteAsync(
                     repair.Tasks.Single(x => x.ProcessorName == "SyncRecipe"), default);
             await new RecipeReadyProcessor(db, NullLogger<RecipeReadyProcessor>.Instance,
                 Mock.Of<IScheduleEventPublisher>(), store).ExecuteAsync(

@@ -1,3 +1,4 @@
+using RecipeApi.Tests.Infrastructure;
 using System.Text;
 using System.Text.Json;
 using FsCheck;
@@ -84,7 +85,7 @@ public class RecipeAgentPromptSelectionTests
             mockConfig.Object,
             new Mock<ILogger<RecipeAgent>>().Object,
             new RecipeFilePublicationStore(db, repo, new SystemClock(), new SupperProjectionInvalidation(db, new SystemClock(),
-                new DeploymentCalendar(new ConfigurationManager()))),
+                new DeploymentCalendar(new ConfigurationManager())), TestPublicationStore.Vocabulary(db, repo.StorageProvider, new SystemClock())),
             "ExtractRecipe");
 
         return (agent, storage, repo, promptRepoMock, chatClientMock, capturedMessages);

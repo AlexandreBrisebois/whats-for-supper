@@ -4979,7 +4979,10 @@ paths:
       parameters:
         - $ref: '#/components/parameters/DemoGeneration'
       summary: Upsert a setting by key
-      description: supper_servings_default is reserved; use the typed PUT /api/schedule/servings operation with its captured version.
+      description: >-
+        supper_servings_default is reserved; use the typed PUT /api/schedule/servings operation with its captured version.
+        food_vocabulary_publication is reserved for the reviewed vocabulary publication owner and cannot be written through generic settings.
+        Reserved-key rejection saves no setting; GET remains available and unrelated settings retain their existing behavior.
       security: [{ FamilyMemberId: [] }]
       requestBody:
         required: true
@@ -4987,7 +4990,7 @@ paths:
           application/json:
             schema: { $ref: '#/components/schemas/SettingsDto' }
       responses:
-        '400': { description: Reserved supper_servings_default key; use the typed serving operation. No setting is saved. }
+        '400': { description: Reserved supper_servings_default or food_vocabulary_publication key. Use its typed owner. No setting is saved. }
         '412':
           description: Demo generation is absent or stale; refresh authoritative state without replaying the old write
           content:

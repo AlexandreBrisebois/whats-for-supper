@@ -1,3 +1,4 @@
+using RecipeApi.Infrastructure;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -90,7 +91,7 @@ public class CanonicalIngredientConversionPostgresTests(ITestOutputHelper output
                 var recipe = await db.Recipes.SingleAsync(x => x.Id == id);
                 // Explicit forward conversion sets up saved IDs; neither GET nor
                 // the ordinary edit request may silently convert legacy content.
-                var store = new CanonicalRecipeContentStore(db, services.GetRequiredService<IClock>(), services.GetRequiredService<SupperProjectionInvalidation>());
+                var store = new CanonicalRecipeContentStore(db, services.GetRequiredService<IClock>(), services.GetRequiredService<SupperProjectionInvalidation>(), TestPublicationStore.Vocabulary(db, services.GetRequiredService<IStorageProvider>(), services.GetRequiredService<IClock>(), services));
                 converted = (await store.ConvertAsync(id, CanonicalRecipeContentStore.InspectContentRevision(recipe),
                     CanonicalRecipeContentStore.InspectSourceRevision(recipe), Guid.NewGuid())).Content;
             }

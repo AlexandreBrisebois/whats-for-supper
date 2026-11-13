@@ -3,6 +3,8 @@ name: dependable-portions
 description: Coordinate the first dependable-portions delivery increment using the accepted OpenSpec baseline and bounded parallel agents.
 ---
 
+> Current delivery authority: [November 13 fast-forward prompt](dependable-portions-fast-forward.txt). Its reviewed checkpoint commit/push policy supersedes the older consolidated-push instructions below. Full local/DV/hosted acceptance and eligible archival remain required.
+
 # Deliver the first dependable-portions increment
 
 Act as delivery coordinator for this repository. Read AGENT.md and its loading

@@ -34,7 +34,7 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
             seeded = seeded with { Content = seeded.Content with { InstructionSections = [seeded.Content.InstructionSections[0] with { Steps = [step with { Bindings = [binding] }] }] } };
             (await db.Recipes.SingleAsync(x => x.Id == Id)).CanonicalContent = JsonSerializer.Serialize(seeded.Content, JsonDefaults.CamelCase);
             await db.SaveChangesAsync();
-            var editor = new CanonicalRecipeContentStore(db, services.GetRequiredService<IClock>(), services.GetRequiredService<SupperProjectionInvalidation>());
+            var editor = new CanonicalRecipeContentStore(db, services.GetRequiredService<IClock>(), services.GetRequiredService<SupperProjectionInvalidation>(), TestPublicationStore.Vocabulary(db, services.GetRequiredService<IStorageProvider>(), services.GetRequiredService<IClock>(), services));
             var edited = await editor.EditAsync(Id, seeded.Content.SourceRevision, Guid.NewGuid(), new UpdateRecipeDto
             { ExpectedContentRevision = seeded.Content.ContentRevision, Notes = "Human note" });
             var expected = JsonSerializer.Serialize(edited.Content, JsonDefaults.CamelCase);
@@ -147,7 +147,7 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
             var management = services.GetRequiredService<ManagementService>();
             await management.BackupAsync();
             var db = services.GetRequiredService<RecipeDbContext>();
-            var editor = new CanonicalRecipeContentStore(db, services.GetRequiredService<IClock>(), services.GetRequiredService<SupperProjectionInvalidation>());
+            var editor = new CanonicalRecipeContentStore(db, services.GetRequiredService<IClock>(), services.GetRequiredService<SupperProjectionInvalidation>(), TestPublicationStore.Vocabulary(db, services.GetRequiredService<IStorageProvider>(), services.GetRequiredService<IClock>(), services));
             await editor.EditAsync(Id, original.Content.SourceRevision, Guid.NewGuid(), new UpdateRecipeDto
             { ExpectedContentRevision = original.Content.ContentRevision, IngredientLines = JsonSerializer.SerializeToElement(Array.Empty<object>()), Notes = "Newer human note" });
             var current = await db.Recipes.SingleAsync(x => x.Id == Id);

@@ -112,7 +112,11 @@ vi.mock('@/components/recipes/RecipeStackCard', () => ({
     onSwipeRight: () => void;
     onTap: () => void;
   }) => (
-    <div data-testid={isFront ? 'stack-card-front' : 'stack-card-back'} data-recipe-id={id}>
+    <div
+      tabIndex={isFront ? 0 : -1}
+      data-testid={isFront ? 'stack-card-front' : 'stack-card-back'}
+      data-recipe-id={id}
+    >
       {name}
       {isFront && (
         <>
@@ -394,6 +398,35 @@ describe('RecipesPage', () => {
       0, 2, 2, 2, 2, 2,
     ]);
     expect(screen.queryByTestId('browse-all-exit')).not.toBeInTheDocument();
+  });
+
+  it('does not let delayed detail focus restoration steal a newly focused filter', async () => {
+    mocks.setSearchParams('');
+    await act(async () => render(<UnifiedRecipesPage />));
+    const front = await screen.findByTestId('stack-card-front');
+    front.focus();
+    fireEvent.click(screen.getByTestId('unit-stack-detail'));
+    await screen.findByTestId('recipe-detail-sheet');
+    const frames: FrameRequestCallback[] = [];
+    const raf = vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+      frames.push(callback);
+      return frames.length;
+    });
+    try {
+      fireEvent.click(screen.getByTestId('action-close-sheet'));
+      await waitFor(() =>
+        expect(screen.queryByTestId('recipe-detail-sheet')).not.toBeInTheDocument()
+      );
+      const filter = screen.getByTestId('browse-filter-goto');
+      filter.focus();
+      expect(filter).toHaveFocus();
+      await act(async () => {
+        for (const callback of frames.splice(0)) callback(performance.now());
+      });
+      expect(filter).toHaveFocus();
+    } finally {
+      raf.mockRestore();
+    }
   });
 
   it('keeps detail on the front card without an added action row in Explore', async () => {

@@ -75,6 +75,7 @@ try
     builder.Services.AddSingleton<RecipesRootResolver>();
     builder.Services.AddScoped<RecoverySnapshotService>();
     builder.Services.AddScoped<RecoveryBoundary>();
+    builder.Services.AddScoped<FoodVocabularyStore>();
     builder.Services.AddHostedService<RecoveryReconciler>();
     builder.Services.AddSingleton<WorkflowRootResolver>();
     builder.Services.AddSingleton<IStorageProvider, LocalStorageProvider>();

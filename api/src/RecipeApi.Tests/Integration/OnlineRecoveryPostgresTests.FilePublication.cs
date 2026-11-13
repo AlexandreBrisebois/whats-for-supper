@@ -1,3 +1,4 @@
+using RecipeApi.Tests.Infrastructure;
 using System.Net;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -27,7 +28,7 @@ public partial class OnlineRecoveryPostgresTests
         await repository.SaveInfoAsync(new RecipeInfo { Id = recipe.Id, Name = "Original" }, default);
         await repository.SaveRecipeJsonAsync(recipe.Id, original, default);
         var store = new RecipeFilePublicationStore(db, repository, services.GetRequiredService<IClock>(),
-            services.GetRequiredService<SupperProjectionInvalidation>());
+            services.GetRequiredService<SupperProjectionInvalidation>(), TestPublicationStore.Vocabulary(db, repository.StorageProvider, services.GetRequiredService<IClock>(), services));
         var capture = await store.CaptureAsync(recipe.Id);
         var candidate = new RecipePublicationCandidate(replacement, new RecipeInfo { Id = recipe.Id, Name = "Published" });
         var operation = Guid.NewGuid();

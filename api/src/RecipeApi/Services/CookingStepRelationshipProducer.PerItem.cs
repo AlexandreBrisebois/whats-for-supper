@@ -192,7 +192,7 @@ public static partial class CookingStepRelationshipProducer
     }
 
     private static JsonElement[]? DiscoverPerItem(CanonicalRecipeContent content, CanonicalRecipeContent? previous,
-        RecipeInstructionStepDto[] steps, RecipeInstructionStepDto step)
+        RecipeInstructionStepDto[] steps, RecipeInstructionStepDto step, Func<CreationKey, Guid> createIdentity)
     {
         var clauses = PerItemCandidates(content, step.Text);
         var independentCount = CarryIndependentPerItemCount(previous, content, steps, step);
@@ -221,7 +221,7 @@ public static partial class CookingStepRelationshipProducer
             // that dependency change; source tokens never repair the saved unit.
             if (clause.Count.Amount != clause.CountClause.Amount || clause.Ingredient.Unit != clause.DoseUnit) return [];
             count = PerItemExisting(content, step, clause, true, Guid.Empty) ??
-                PerItemBinding(content, step, clause, true, Guid.NewGuid(), Guid.Empty);
+                PerItemBinding(content, step, clause, true, createIdentity(new(step.Id, clause.Count.Id, "whole", clause.CountClause.Span.Start, clause.CountClause.Span.End)), Guid.Empty);
         }
         var countRaw = Write(count);
         // A whole count is independent of whether the fixed-dose edge remains
@@ -230,7 +230,7 @@ public static partial class CookingStepRelationshipProducer
             clause.Ingredient.Unit != clause.DoseUnit || clause.Ingredient.Scaling is not ("proportional" or "fixed")) return [countRaw];
         var dose = CarryPerItem(previous, content, step, clause, false, count.Id) ??
             PerItemExisting(content, step, clause, false, count.Id) ??
-            PerItemBinding(content, step, clause, false, Guid.NewGuid(), count.Id);
+            PerItemBinding(content, step, clause, false, createIdentity(new(step.Id, clause.Ingredient.Id, "perItem", clause.DoseClause.Span.Start, clause.DoseClause.Span.End)), count.Id);
         return [countRaw, Write(dose)];
     }
 }

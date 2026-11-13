@@ -1,3 +1,4 @@
+using RecipeApi.Tests.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Configuration;
@@ -47,7 +48,7 @@ public class ExtractRecipeProcessorTests : IDisposable
             mockConfig.Object,
             new Mock<ILogger<RecipeAgent>>().Object,
             new RecipeFilePublicationStore(db, _recipeRepository, new SystemClock(), new SupperProjectionInvalidation(db, new SystemClock(),
-                new DeploymentCalendar(new ConfigurationManager()))),
+                new DeploymentCalendar(new ConfigurationManager())), TestPublicationStore.Vocabulary(db, _recipeRepository.StorageProvider, new SystemClock())),
             "ExtractRecipe");
     }
 

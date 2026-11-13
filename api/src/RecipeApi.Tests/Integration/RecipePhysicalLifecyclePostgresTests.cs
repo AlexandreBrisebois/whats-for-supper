@@ -1,3 +1,4 @@
+using RecipeApi.Tests.Infrastructure;
 using System.Data.Common;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
@@ -316,7 +317,7 @@ public sealed class RecipePhysicalLifecyclePostgresTests(ITestOutputHelper outpu
             var storage = new StageBarrier(publishing.ServiceProvider.GetRequiredService<IStorageProvider>());
             var repository = new RecipeRepository(storage);
             await repository.SaveInfoAsync(new RecipeInfo { Id = recipe.Id, Name = "Original" }, default);
-            var store = new RecipeFilePublicationStore(db, repository, publishing.ServiceProvider.GetRequiredService<IClock>(), publishing.ServiceProvider.GetRequiredService<SupperProjectionInvalidation>());
+            var store = new RecipeFilePublicationStore(db, repository, publishing.ServiceProvider.GetRequiredService<IClock>(), publishing.ServiceProvider.GetRequiredService<SupperProjectionInvalidation>(), TestPublicationStore.Vocabulary(db, repository.StorageProvider, publishing.ServiceProvider.GetRequiredService<IClock>(), publishing.ServiceProvider));
             var capture = await store.CaptureAsync(recipe.Id);
             var operation = Guid.NewGuid();
             var candidate = new RecipePublicationCandidate("{\"name\":\"Published\",\"recipeIngredient\":[\"salt\"]}", new RecipeInfo { Id = recipe.Id, Name = "Published" });

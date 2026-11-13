@@ -96,6 +96,10 @@ public class Recipe
     [Column("canonical_content", TypeName = "jsonb")]
     public string? CanonicalContent { get; set; }
 
+    /// <summary>Revision-bound shopping identity and protected name/clear evidence; null before adoption.</summary>
+    [Column("food_mapping_evidence", TypeName = "jsonb")]
+    public string? FoodMappingEvidence { get; set; }
+
     [Column("servings")]
     public int? Servings { get; set; }
 

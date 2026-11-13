@@ -74,7 +74,7 @@ public sealed partial class WorkflowWorkerAuthorityTests
             await using var producing = fixture.CreateDb();
             var processor = new SyncRecipeProcessor(fixture.Clock, producing, repository,
                 new SupperProjectionInvalidation(producing, fixture.Clock, new DeploymentCalendar(new ConfigurationManager())),
-                Mock.Of<ISupperProjectionPublisher>(), NullLogger<SyncRecipeProcessor>.Instance);
+                Mock.Of<ISupperProjectionPublisher>(), NullLogger<SyncRecipeProcessor>.Instance, TestPublicationStore.Vocabulary(producing, (repository).StorageProvider, fixture.Clock));
             returned = await processor.ExecuteAsync(executing, default);
             if (mode == "repeated") returned = await processor.ExecuteAsync(executing, default);
         };

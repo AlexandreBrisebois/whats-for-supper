@@ -1,3 +1,4 @@
+using RecipeApi.Tests.Infrastructure;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -34,7 +35,7 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
                 var publisher = new Mock<ISupperProjectionPublisher>();
                 var processor = new SyncRecipeProcessor(services.GetRequiredService<IClock>(), db, repository,
                     services.GetRequiredService<SupperProjectionInvalidation>(), publisher.Object,
-                    NullLogger<SyncRecipeProcessor>.Instance);
+                    NullLogger<SyncRecipeProcessor>.Instance, TestPublicationStore.Vocabulary(db, (repository).StorageProvider, services.GetRequiredService<IClock>(), services));
                 for (var attempt = 0; attempt < 2; attempt++)
                 {
                     var error = await Assert.ThrowsAsync<InvalidDataException>(() => processor.ExecuteAsync(new WorkflowTask

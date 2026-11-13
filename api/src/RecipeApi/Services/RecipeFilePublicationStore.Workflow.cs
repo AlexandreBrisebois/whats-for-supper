@@ -80,7 +80,7 @@ public sealed partial class RecipeFilePublicationStore
             || !launch.Capture.Files.Keys.All(IsRecoveryPublicationPath)
             || string.IsNullOrWhiteSpace(launch.Capture.ContentRevision) || string.IsNullOrWhiteSpace(launch.Capture.SourceRevision)
             || launch.Capture.FieldHash is not { Length: 64 } || !launch.Capture.FieldHash.All(Uri.IsHexDigit)
-            || launch.Capture.FieldHashVersion is not (null or 2 or 3))
+            || launch.Capture.FieldHashVersion is not (null or 2 or 3 or 4))
             throw new InvalidDataException("Captured publication intent is inconsistent.");
         ValidateOriginalFields(launch.Capture);
         foreach (var task in instance.Tasks)
@@ -172,6 +172,7 @@ public sealed partial class RecipeFilePublicationStore
                 if (publication.RecipeId != expected.RecipeId
                     || envelope.Capture.FieldHash != expected.FieldHash
                     || envelope.Capture.FieldHashVersion != expected.FieldHashVersion
+                    || Hash(envelope.Capture.FoodAuthority) != Hash(expected.FoodAuthority)
                     || !SameFiles(envelope.Capture.Files, expected.Files)
                     || envelope.Candidate.ProducerInput != launch.Tasks[publication.OperationId].Processor
                         + "\n" + launch.Tasks[publication.OperationId].Payload)
@@ -187,7 +188,7 @@ public sealed partial class RecipeFilePublicationStore
                     throw new InvalidDataException("A descendant cannot precede its ancestor's delivery.");
                 var files = new SortedDictionary<string, byte[]?>(expected.Files.ToDictionary(x => x.Key, x => x.Value), StringComparer.Ordinal);
                 foreach (var (path, bytes) in ReadEnvelope(prior).Output) files[path] = bytes;
-                expected = expected with { FieldHash = prior.ResultHash, Files = files, Fields = ReadEnvelope(prior).Result };
+                expected = expected with { FieldHash = prior.ResultHash, Files = files, Fields = ReadEnvelope(prior).Result, FoodEvidence = ReadEnvelope(prior).ResultEvidence };
             }
             Matches(current);
         }
@@ -206,6 +207,7 @@ public sealed partial class RecipeFilePublicationStore
         try { launch = ReadRecoveryJson<Launch>(json); }
         catch (JsonException ex) { throw new InvalidDataException("Invalid workflow publication capture.", ex); }
         ValidateOriginalFields(launch.Capture);
+        if (launch.Capture.FieldHashVersion == 4) await vocabulary.ValidateLiveAuthorityAsync(launch.Capture.FoodAuthority!, ct);
         if (!MatchesLaunchIntent(launch, instance)
             || launch.Capture.RecipeId != recipeId || !launch.Tasks.TryGetValue(task.TaskId, out var input)
             || input.Processor != task.ProcessorName || input.Name != task.TaskName
@@ -241,7 +243,7 @@ public sealed partial class RecipeFilePublicationStore
             var publication = publications.SingleOrDefault(x => x.OperationId == id);
             if (publication is null) continue;
             var envelope = ReadEnvelope(publication);
-            if (envelope.Capture.FieldHash != expected.FieldHash)
+            if (envelope.Capture.FieldHash != expected.FieldHash || Hash(envelope.Capture.FoodAuthority) != Hash(expected.FoodAuthority))
                 throw new InvalidDataException("Publication chain field baseline differs from its captured predecessor.");
             if (!SameFiles(envelope.Capture.Files, expected.Files))
                 throw new InvalidDataException("Publication chain file baseline differs from its captured predecessor.");
@@ -249,13 +251,13 @@ public sealed partial class RecipeFilePublicationStore
                 throw new InvalidDataException("Publication chain producer input differs from its captured predecessor.");
             var files = new SortedDictionary<string, byte[]?>(expected.Files.ToDictionary(x => x.Key, x => x.Value), StringComparer.Ordinal);
             foreach (var (path, value) in envelope.Output) files[path] = value;
-            expected = expected with { FieldHash = publication.ResultHash, Files = files, Fields = envelope.Result };
+            expected = expected with { FieldHash = publication.ResultHash, Files = files, Fields = envelope.Result, FoodEvidence = envelope.ResultEvidence };
         }
         var freshHero = task.ProcessorName == "GenerateHero" && instance.WorkflowId is ("url-import" or "recipe-import")
             && publications.Any(x => ReadEnvelope(x).Candidate.SourceKind is "fresh-canonical" or "review-canonical");
         var freshCategorization = task.ProcessorName == "CategorizeRecipe" && instance.WorkflowId is ("url-import" or "recipe-import")
             && publications.Any(x => ReadEnvelope(x).Candidate.SourceKind is "fresh-canonical" or "review-canonical");
-        if ((recipe.CanonicalContent is not null && task.ProcessorName != "RecipeReady" && !freshHero && !freshCategorization) || Fields(recipe, expected.FieldHashVersion) != expected.FieldHash
+        if ((expected.FieldHashVersion != 4 && recipe.FoodMappingEvidence is not null) || (recipe.CanonicalContent is not null && task.ProcessorName != "RecipeReady" && !freshHero && !freshCategorization) || Fields(recipe, expected.FieldHashVersion) != expected.FieldHash
             || await db.RecipeFilePublications.AnyAsync(x => x.RecipeId == recipeId && !x.Delivered, ct)) throw Conflict(recipe);
         await CheckFiles(expected, null, recipe, ct);
         var capture = expected with
@@ -435,7 +437,7 @@ public sealed partial class RecipeFilePublicationStore
             throw new InvalidDataException("Reviewed recovery needs original retained review material.");
         var launch = ReadRecoveryJson<Launch>(workflow.RecipePublicationCapture);
         if (!launch.Tasks.TryGetValue(operationId, out var input) || input.Processor != "ExtractRecipe"
-            || launch.Capture.Fields is null || Fields(RestoreObservation(launch.Capture.Fields), launch.Capture.FieldHashVersion) != launch.Capture.FieldHash
+            || launch.Capture.Fields is null || Fields(launch.Capture.FieldHashVersion == 4 ? RestoreV4(launch.Capture) : RestoreObservation(launch.Capture.Fields), launch.Capture.FieldHashVersion) != launch.Capture.FieldHash
             || launch.Capture.Fields.Ingredients != capture.Fields.Ingredients || launch.Capture.Fields.RawMetadata != capture.Fields.RawMetadata)
             throw new InvalidDataException("Reviewed recovery differs from its saved human correction.");
     }
