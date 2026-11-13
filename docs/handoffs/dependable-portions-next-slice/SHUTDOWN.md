@@ -1,6 +1,6 @@
 # Shutdown checkpoint — 2026-11-13
 
-Alex requested immediate consolidation into local `recipe-view-redesign` and a continuation prompt. This checkpoint preserves unfinished work; it is not final release or CI acceptance. Resume with [.agents/prompts/dependable-portions-shutdown-resume.md](../../../.agents/prompts/dependable-portions-shutdown-resume.md). This status supersedes the earlier DELIVERY.md preparation snapshot.
+Alex requested immediate consolidation into local `recipe-view-redesign` and a continuation prompt, then explicitly confirmed future implementation will happen directly on this local branch. Temporary implementation worktrees are historical evidence, not the continuation workspace. This checkpoint preserves unfinished work; it is not final release or CI acceptance. Resume with [.agents/prompts/dependable-portions-shutdown-resume.md](../../../.agents/prompts/dependable-portions-shutdown-resume.md). This status supersedes the earlier DELIVERY.md preparation snapshot.
 
 ## Source and delivery
 
