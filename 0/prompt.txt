@@ -1,0 +1,21 @@
+Execute .task/dependable-portions-slice1/next-slice-prompt.md using parallel agents.
+
+Deliver exactly one slice: explicit absolute-use relationships for ordinary URL/photo intake and guarded ingredient/step Save.
+
+Task IDs:
+- scale-cooking-step-ingredients: 0.1–0.3 (absolute-use subset), 2.1, 2.3, 4.1.
+- canonical-ingredient-correction: 2.2, 3.2, 4.1 (integration/qualification subsets).
+
+Prerequisites: recipe-view-redesign contains accepted commit 0ee175e45b38407b87c8a562c2d2f086292464e0, deployed as DV operation 7efa8202-e5d9-463d-802e-cd26ccc561d6. Preserve subsequent commits and unrelated work.
+
+Outcome: correcting total 200g to 250g retains an explicit 50g step use; six portions from basis four shows 75g in Cook and one 375g grocery demand. Step edits replace proof; ambiguous associations abstain.
+
+Ownership: independent agents own producer/tests, Save/publication/PostgreSQL integration, and preservation/recovery review. Coordinator owns shared files, lifecycle, browser/contracts integration, verification, commit and DV.
+
+Acceptance: preserve C01–C06, C12–C19/C46; qualify C03/C45. Run actual URL/photo workflows including both categorization processors, guarded edits, Cook refresh/state retention and grocery acceptance. Run task prepare then task verify on stable source, real integration checks, hosted verification and exact-commit DV acceptance.
+
+Exclude other new role producers, async AI, library conversion, deferred bilingual/Similar work, unrelated grocery/CI repairs, reset/reseed and production. Keep unfinished aggregates open and selective-ingredient-repair superseded/unimplemented.
+
+Commit and DV deployment are explicitly authorized. Commit only completed owned work; push as needed, deploy that exact commit using established data-preserving recovery procedures, verify images/version/health/user behavior, and integrate accepted commits into recipe-view-redesign.
+
+Stop after this single accepted DV slice. Report SHA, deployment identity, evidence, lifecycle dispositions and limitations. Provide one ready-to-paste successor prompt carrying these commit, DV and next-prompt requirements. Do not launch the successor.
