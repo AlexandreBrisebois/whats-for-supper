@@ -1,5 +1,7 @@
 # Checkpoint delivery
 
+Current shutdown/resumption status is in [SHUTDOWN.md](SHUTDOWN.md); the preparation snapshot below is historical.
+
 ## Locally qualified code
 
 Signed code/support commit `697d8fd4efbce23144dfb8d29da65794fb5f2043` on `dependable-portions-bilingual` contains the 133-path grocery/intake/history checkpoint and its blocking verification repairs. It follows the already pushed foundation `9e8504ed`, release planning `87cccb75` and finite PDF tooling `80f79638`. All normal commit hooks passed. This handoff commit changes documentation/prompt data only; it does not apply the frozen future patches.

@@ -270,7 +270,7 @@ test(`declared package ${locale} uses ordinary Save and fixed capacity across po
       ).toBeVisible();
       await editor.getByTestId('close-cooks-mode').click();
       await openGroceries(editor);
-      await expect(groceryCheck(editor, state.row)).toContainText('tomato (400 g / cans; net)');
+      await expect(groceryCheck(editor, state.row)).toContainText('tomatoes (400 g / cans; net)');
       await expect(
         groceryCheck(editor, state.row).getByTestId('grocery-item-quantity-hint')
       ).toContainText(portions === 1 ? '0.5 cans' : `${count} cans`);
