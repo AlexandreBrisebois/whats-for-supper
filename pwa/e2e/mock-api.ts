@@ -273,6 +273,8 @@ export async function setupCommonRoutes(
     demoMode?: boolean;
     demoManagementTaskIds?: string[];
     demoGeneration?: () => string;
+    /** Complete this finite fixture after one snapshot; unrelated reconnects are not under test. */
+    sseMode?: 'connected-once';
   } = {}
 ) {
   let gotoItems: any[] = [];
@@ -2824,13 +2826,15 @@ export async function setupCommonRoutes(
   // GET /api/stream — SSE endpoint
   //
   // BS-10 NOTE: route.fulfill() closes the HTTP response immediately after the body is sent.
-  // This causes the browser's EventSource to see a dropped connection and automatically
-  // reconnect. The reconnect loop is harmless because every reconnect receives the same
-  // `connected` event with the same snapshot. Tests that assert on UI state MUST do so
-  // AFTER the `connected` event has been processed (use waitFor on the resulting DOM state,
-  // not on connection state). Do NOT assert on the EventSource being "open" — it will
-  // always be in a reconnecting state after fulfill() closes the response.
+  // This causes native EventSource to reconnect and reapply the snapshot. Default
+  // fixtures retain that behavior. Non-reconnect scenarios may opt into one snapshot
+  // followed by 204, which tells native EventSource to stop reconnecting. Explicit
+  // mutation events still dispatch to the same client object through emitSchedule.
+  let connectedSent = false;
   await page.route(/\/(?:backend\/)?api\/stream/, async (route) => {
+    if (recoveryOptions.sseMode === 'connected-once' && connectedSent)
+      return fulfill(route, { status: 204 });
+    connectedSent = true;
     await fulfill(route, {
       status: 200,
       contentType: 'text/event-stream',

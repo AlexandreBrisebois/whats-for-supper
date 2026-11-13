@@ -2,6 +2,7 @@ import { RetryHandlerOptions } from '@microsoft/kiota-http-fetchlibrary';
 import { DateOnly, createUntypedNodeFromDiscriminatorValue } from '@microsoft/kiota-abstractions';
 import { JsonParseNode } from '@microsoft/kiota-serialization-json';
 import { normalizeGroceryQuantity } from './grocery-quantities';
+import { canonicalIngredientLinesForTransport } from './canonical-edit-wire';
 import { normalizeSupperPreparation } from './supper-servings';
 import { civilDate } from '@/lib/deployment-calendar';
 import { demoFetch } from './demo-session';
@@ -819,7 +820,7 @@ export async function updateRecipe(
 ): Promise<Recipe | void> {
   const result = await apiClient.api.recipes.byId(id as any).patch({
     expectedContentRevision: updates.expectedContentRevision,
-    ingredientLines: updates.ingredientLines,
+    ingredientLines: canonicalIngredientLinesForTransport(updates.ingredientLines),
     instructionSections: updates.instructionSections,
     servings: updates.servings,
     name: updates.name,

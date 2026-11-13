@@ -1089,6 +1089,54 @@ describe('RecipesPage', () => {
     expect(screen.getByTestId('recipe-detail-name')).toHaveTextContent('Chicken Soup');
     expect(mocks.assignRecipeToDay).not.toHaveBeenCalled();
   });
+  it('returns Cancel focus to the same Change day trigger while target invalidation is still refreshing', async () => {
+    const base = await mocks.getSchedule();
+    mocks.setSearchParams('open=11111111-1111-1111-1111-111111111111');
+    await act(async () => {
+      render(<UnifiedRecipesPage />);
+    });
+    await waitFor(() => expect(screen.getByTestId('action-add-to-day')).toHaveTextContent('May 4'));
+    const change = screen.getByTestId('action-change-day');
+    change.focus();
+    fireEvent.click(change);
+    expect(await screen.findByTestId('planning-day-chooser')).toBeInTheDocument();
+    screen.getByTestId('planning-day-cancel').focus();
+    let finish!: (value: typeof base) => void;
+    const refreshed = new Promise<typeof base>((resolve) => {
+      finish = resolve;
+    });
+    mocks.getSchedule.mockReturnValue(refreshed);
+    try {
+      await act(async () => {
+        useWeekStore.setState((state) => ({ schedule: [...state.schedule] }));
+      });
+      expect(screen.getByTestId('action-add-to-day')).toBeDisabled();
+      fireEvent.click(screen.getByTestId('planning-day-cancel'));
+      expect(screen.queryByTestId('planning-day-chooser')).not.toBeInTheDocument();
+      expect(change).toHaveFocus();
+      expect(screen.getByTestId('action-change-day')).toBe(change);
+      expect(change).toHaveAttribute('aria-disabled', 'true');
+      fireEvent.click(change);
+      expect(screen.queryByTestId('planning-day-chooser')).not.toBeInTheDocument();
+      expect(mocks.assignRecipeToDay).not.toHaveBeenCalled();
+      await act(async () => {
+        finish(base);
+      });
+      await waitFor(() => expect(screen.getByTestId('action-add-to-day')).toBeEnabled());
+      expect(screen.getByTestId('action-change-day')).toBe(change);
+      expect(change).toHaveFocus();
+      expect(change).not.toHaveAttribute('aria-disabled', 'true');
+      fireEvent.click(change);
+      expect(await screen.findByTestId('planning-day-chooser')).toBeInTheDocument();
+      fireEvent.click(screen.getByTestId('planning-day-cancel'));
+      expect(change).toHaveFocus();
+      expect(mocks.assignRecipeToDay).not.toHaveBeenCalled();
+    } finally {
+      await act(async () => {
+        finish(base);
+      });
+    }
+  });
   it('shows the next ordinary empty proposal and saves only the selected alternate date', async () => {
     const base = await mocks.getSchedule();
     mocks.getSchedule.mockResolvedValue({

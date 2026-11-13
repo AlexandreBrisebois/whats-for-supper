@@ -2375,10 +2375,10 @@ function RecipesContent() {
                   ? t('recipes.reviewPlan', 'Review plan')
                   : undefined
           }
+          changeDayDisabled={targetChecking}
           onChangeDay={
             originalSourceReview ||
             assignmentNeedsCheck ||
-            targetChecking ||
             identicalTarget ||
             !targetReferenceForChooser
               ? undefined

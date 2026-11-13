@@ -6,7 +6,6 @@ test.use({ timezoneId: 'Asia/Tokyo' });
 
 test('Tonight uses Toronto Sunday in a Tokyo browser and pins assignment', async ({ page }) => {
   await page.clock.setFixedTime(new Date('2026-10-12T01:30:00Z'));
-  await setupCommonRoutes(page);
   await page.context().addCookies([
     {
       name: 'x-family-member-id',
@@ -22,6 +21,7 @@ test('Tonight uses Toronto Sunday in a Tokyo browser and pins assignment', async
     referenceWeekStartDate: '2026-10-05',
     nextDayAtUtc: '2026-10-12T04:00:00Z',
   };
+  await setupCommonRoutes(page, calendar, { sseMode: 'connected-once' });
   let assignedId: string | null = null;
   await page.route(
     (url) => url.pathname === '/api/schedule',

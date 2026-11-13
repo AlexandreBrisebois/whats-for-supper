@@ -4,6 +4,64 @@ import { MOCK_IDS, builders, setupCommonRoutes } from '../../e2e/mock-api';
 import { fractionCookingRecipe } from '../../e2e/cooking-step-fixture';
 import { canonicalRecipePatchIsValid } from '../../e2e/canonical-content-input';
 import { originalInstructions } from '../lib/recipes/instruction-draft';
+describe('finite SSE fixture completion', () => {
+  async function fixture(connectedOnce: boolean) {
+    const handlers = new Map<Parameters<Page['route']>[0], (route: Route) => Promise<unknown>>();
+    const page = {
+      route: async (
+        pattern: Parameters<Page['route']>[0],
+        handler: (route: Route) => Promise<unknown>
+      ) => {
+        handlers.set(pattern, handler);
+      },
+      evaluate: vi.fn().mockResolvedValue(undefined),
+    };
+    const calendar = builders.deploymentCalendar({
+      timeZone: 'America/Toronto',
+      capturedAtUtc: '2026-10-12T01:30:00Z',
+      today: '2026-10-11',
+      currentWeekStartDate: '2026-10-05',
+      referenceWeekStartDate: '2026-10-05',
+      nextDayAtUtc: '2026-10-12T04:00:00Z',
+    });
+    const options = {
+      demoMode: false,
+      ...(connectedOnce ? { sseMode: 'connected-once' as const } : {}),
+    };
+    await setupCommonRoutes(page as unknown as Page, calendar, options);
+    const stream = [...handlers].find(
+      ([pattern]) => pattern instanceof RegExp && pattern.test('http://localhost/api/stream')
+    )![1];
+    const connect = async () => {
+      const fulfill = vi.fn();
+      await stream({ fulfill } as unknown as Route);
+      return fulfill.mock.calls[0][0];
+    };
+    return { connect, calendar };
+  }
+
+  it('delivers the captured calendar once and completes later native reconnect requests with 204', async () => {
+    const { connect, calendar } = await fixture(true);
+    const first = await connect();
+    expect(first.status).toBe(200);
+    expect(first.contentType).toBe('text/event-stream');
+    const connected = JSON.parse(first.body.split('data: ')[1].trim());
+    expect(connected.schedule.calendar).toEqual(calendar);
+    expect(connected.schedule.weekStartDate).toBe('2026-10-05');
+    for (let i = 0; i < 2; i++) {
+      const later = await connect();
+      expect(later.status).toBe(204);
+      expect(later.body).toBeUndefined();
+    }
+  });
+
+  it('keeps the default reconnect snapshot behavior unchanged', async () => {
+    const { connect } = await fixture(false);
+    const replies = await Promise.all([connect(), connect(), connect()]);
+    expect(replies.map((reply) => reply.status)).toEqual([200, 200, 200]);
+    for (const reply of replies) expect(reply.body).toContain('event: connected');
+  });
+});
 
 async function sharedImportRoutes() {
   const handlers = new Map<Parameters<Page['route']>[0], (route: Route) => Promise<unknown>>();

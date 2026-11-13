@@ -19,6 +19,8 @@ internal static class RecipeContentInput
     public static void Validate(UpdateRecipeDto input)
     {
         if (!input.HasCanonicalContent) return;
+        RequireUniqueProperties(input.IngredientLines);
+        RequireUniqueProperties(input.InstructionSections);
         if (input.Ingredients is not null || input.RecipeInstructions is not null)
             throw Invalid();
         var savedIds = new HashSet<Guid>();
@@ -109,6 +111,21 @@ internal static class RecipeContentInput
     {
         if (value.ValueKind != JsonValueKind.Object || value.EnumerateObject().Any(x => !allowed.Contains(x.Name))
             || required.Any(x => !value.TryGetProperty(x, out _))) throw Invalid();
+    }
+
+    private static void RequireUniqueProperties(JsonElement value)
+    {
+        if (value.ValueKind == JsonValueKind.Object)
+        {
+            var names = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var property in value.EnumerateObject())
+            {
+                if (!names.Add(property.Name)) throw Invalid();
+                RequireUniqueProperties(property.Value);
+            }
+        }
+        else if (value.ValueKind == JsonValueKind.Array)
+            foreach (var item in value.EnumerateArray()) RequireUniqueProperties(item);
     }
 
     private static void RequireArray(JsonElement value)

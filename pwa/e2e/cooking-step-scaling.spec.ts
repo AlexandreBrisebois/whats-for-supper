@@ -14,6 +14,74 @@ import {
   cookingAllocationRecipe,
   exhaustiveCookingRecipe,
 } from './cooking-step-fixture';
+test('finite SSE fixture delivers one native snapshot and later mutation on the same client', async ({
+  page,
+}) => {
+  const options = { demoMode: false, sseMode: 'connected-once' as const };
+  await setupCommonRoutes(page, undefined, options);
+  await page.route('**/finite-sse-contract', (route) =>
+    route.fulfill({
+      contentType: 'text/html',
+      body: '<!doctype html><title>Finite SSE contract</title>',
+    })
+  );
+  await page.goto('/finite-sse-contract');
+  const replies: number[] = [];
+  page.on('response', (response) => {
+    if (new URL(response.url()).pathname === '/api/stream') replies.push(response.status());
+  });
+  await page.evaluate(() => {
+    const source = new EventSource('/api/stream');
+    const probe = { source, connected: [] as any[], weeks: [] as any[] };
+    (window as any).__finiteSseProbe = probe;
+    (window as any).__sseSource = source;
+    source.addEventListener('connected', (event) => probe.connected.push(JSON.parse(event.data)));
+    source.addEventListener('week_updated', (event) => probe.weeks.push(JSON.parse(event.data)));
+  });
+  await expect.poll(() => replies).toEqual([200, 204]);
+  await expect
+    .poll(() => page.evaluate(() => (window as any).__finiteSseProbe.source.readyState))
+    .toBe(2);
+  expect(
+    await page.evaluate(() => {
+      const probe = (window as any).__finiteSseProbe;
+      return {
+        native: probe.source instanceof EventSource,
+        same: probe.source === (window as any).__sseSource,
+        connected: probe.connected.length,
+        week: probe.connected[0].schedule.weekStartDate,
+      };
+    })
+  ).toEqual({ native: true, same: true, connected: 1, week: '2026-05-04' });
+  expect(
+    await page.evaluate(
+      async (recipeId) =>
+        (
+          await fetch('/api/schedule/assign?referenceWeekStartDate=2026-05-04', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ weekOffset: 0, dayIndex: 0, recipeId }),
+          })
+        ).status,
+      MOCK_IDS.RECIPE_CHICKEN
+    )
+  ).toBe(200);
+  await expect
+    .poll(() => page.evaluate(() => (window as any).__finiteSseProbe.weeks.length))
+    .toBe(1);
+  expect(
+    await page.evaluate(() => {
+      const probe = (window as any).__finiteSseProbe;
+      return {
+        same: probe.source === (window as any).__sseSource,
+        connected: probe.connected.length,
+        state: probe.source.readyState,
+        recipeId: probe.weeks[0].schedule.days[0].recipe.id,
+      };
+    })
+  ).toEqual({ same: true, connected: 1, state: 2, recipeId: MOCK_IDS.RECIPE_CHICKEN });
+  expect(replies).toEqual([200, 204]);
+});
 
 for (const uncertain of [false, true])
   test(`corrected whole use ${uncertain ? 'keeps stale wording usable' : 'scales once across detail Cook and groceries'}`, async ({
@@ -314,6 +382,7 @@ test('remaining follows corrected total and safely retains prose after reduction
 }, info) => {
   const recipe = remainderCookingRecipe();
   await setupCommonRoutes(page, undefined, {
+    sseMode: 'connected-once',
     canonicalEditor: recipe,
     supperServings: {
       knownRecipe: { id: recipe.id, basis: 4, quantity: 2, ingredient: 'oil', unit: 'tbsp' },

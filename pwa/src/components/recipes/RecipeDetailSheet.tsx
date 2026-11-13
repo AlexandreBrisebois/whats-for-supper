@@ -138,6 +138,7 @@ interface RecipeDetailSheetProps {
   planningMessage?: string;
   planningActionLabel?: string;
   onChangeDay?: () => void;
+  changeDayDisabled?: boolean;
   onBeginPlanning?: () => void;
   onRetryTarget?: () => void;
   sourceDayLabel?: string;
@@ -159,6 +160,7 @@ export function RecipeDetailSheet({
   planningMessage,
   planningActionLabel,
   onChangeDay,
+  changeDayDisabled = false,
   onBeginPlanning,
   onRetryTarget,
   sourceDayLabel,
@@ -2426,7 +2428,12 @@ export function RecipeDetailSheet({
                   aria-label={t('recipes.changeDay', 'Change day')}
                   title={t('recipes.changeDay', 'Change day')}
                   disabled={isSavingAction}
-                  onClick={onChangeDay}
+                  aria-disabled={isSavingAction || changeDayDisabled}
+                  onClick={() => {
+                    // A pending target read blocks activation while keeping the
+                    // chooser's return-focus trigger connected and focusable.
+                    if (!changeDayDisabled) onChangeDay();
+                  }}
                   className="inline-flex min-h-[48px] w-[48px] min-w-[48px] flex-none items-center justify-center rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-terracotta"
                 >
                   <ArrowRightLeft
