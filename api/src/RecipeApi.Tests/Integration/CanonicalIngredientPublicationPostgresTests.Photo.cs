@@ -178,7 +178,7 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
     }
 
     [DeploymentCalendarPostgresTests.CalendarPostgresFact]
-    public async Task FreshPhotoAuthority_RejectsLaterImportAndPdfPageImages()
+    public async Task FreshPhotoAuthority_RejectsLaterImportAndUnprovenPdfPageImages()
     {
         await WithStore(async (services, _, store, storage) =>
         {
@@ -207,6 +207,9 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
             Assert.Null(laterSaved.CanonicalContent);
             Assert.Contains("200 g pasta", laterSaved.Ingredients);
 
+            // Page files alone are not original-photo authority. This direct conversion
+            // deliberately has no retained processor-result/completion witness; the
+            // separately proven fresh-PDF channel must not make this launch sufficient.
             var pdf = ActivatorUtilities.CreateInstance<PdfCaptureService>(services, store, orchestrator);
             var pdfId = await pdf.AcceptAsync(member, RecipeFollowupIntentTests.Upload("application/pdf"), 0, null, default);
             db.ChangeTracker.Clear();

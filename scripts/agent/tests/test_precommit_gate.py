@@ -1,9 +1,11 @@
 """Exercise commit-stage boundaries and the shared production PWA gate."""
 import os
+import hashlib
 from pathlib import Path
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -29,22 +31,51 @@ class PrecommitGateTests(unittest.TestCase):
         self.assertTrue(all(hook['stages'] == ['pre-commit'] for hook in self.hooks.values()))
 
     def test_hook_install_removes_existing_push_hook_and_keeps_commit_hook(self):
+        env = dict(os.environ)
+        for name in subprocess.check_output(['git', 'rev-parse', '--local-env-vars'], text=True).splitlines():
+            env.pop(name, None)
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            subprocess.run(['git', 'init', '-q', tmp], check=True)
+            subprocess.run(['git', 'init', '-q', tmp], env=env, check=True)
             shutil.copy(ROOT / '.pre-commit-config.yaml', root)
             subprocess.run(['pre-commit', 'install', '--hook-type', 'pre-push'],
-                           cwd=root, check=True, capture_output=True)
+                           cwd=root, env=env, check=True, capture_output=True)
             push_hook = root / '.git/hooks/pre-push'
             self.assertTrue(push_hook.exists())
             (root / 'Taskfile.yml').write_text(yaml.safe_dump({'version': '3', 'tasks': {
                 'hooks:install': self.tasks['hooks:install']}}))
             for _ in range(2):
                 result = subprocess.run(['task', 'hooks:install'], cwd=root,
-                                        capture_output=True, text=True, timeout=15)
+                                        env=env, capture_output=True, text=True, timeout=15)
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
                 self.assertFalse(push_hook.exists())
                 self.assertTrue((root / '.git/hooks/pre-commit').exists())
+
+    def test_hook_install_isolates_inherited_git_repository_environment(self):
+        env = dict(os.environ)
+        for name in subprocess.check_output(['git', 'rev-parse', '--local-env-vars'], text=True).splitlines():
+            env.pop(name, None)
+        with tempfile.TemporaryDirectory() as tmp:
+            foreign = Path(tmp)
+            subprocess.run(['git', 'init', '-q', tmp], env=env, check=True)
+            hooks = foreign / '.git/hooks'
+            for name in ['pre-commit', 'pre-push']:
+                (hooks / name).write_text('#!/bin/sh\n# Owned foreign repository sentinel\n')
+            def snapshot():
+                return {path.name: hashlib.sha256(path.read_bytes()).hexdigest()
+                        for path in hooks.iterdir() if path.is_file()}
+            before = snapshot()
+            inherited = dict(env, GIT_DIR=str(foreign / '.git'), GIT_WORK_TREE=str(foreign),
+                             GIT_INDEX_FILE=str(foreign / '.git/index'))
+            # Only the existing fact runs in the child; never recursively run this regression.
+            result = subprocess.run([sys.executable, '-B', '-m', 'unittest',
+                                     'test_precommit_gate.PrecommitGateTests.test_hook_install_removes_existing_push_hook_and_keeps_commit_hook'],
+                                    cwd=ROOT / 'scripts/agent/tests', env=inherited,
+                                    capture_output=True, text=True, timeout=60)
+            after = snapshot()
+            changed = sorted(name for name in before.keys() | after.keys() if before.get(name) != after.get(name))
+            self.assertEqual(changed, [], 'Isolated hook test changed foreign hooks: ' + result.stdout + result.stderr)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
     def test_spec_and_harness_changes_select_quick_hooks(self):
         for path in ['openspec/config.yaml', 'openspec/changes/new/tasks.md', 'openspec/specs/example/spec.md']:

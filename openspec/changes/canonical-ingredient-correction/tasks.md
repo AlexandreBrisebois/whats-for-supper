@@ -13,8 +13,13 @@ completed in-scope changes. Required exact-final-candidate hosted acceptance sta
 open until observed. Historical single-slice stopping and hosted-before-DV rules
 below describe their original operations and are superseded prospectively by this
 policy; historical failures/retries/limits remain unchanged. No production, reset,
-reseed, force push, unrelated merge, garlic-placeholder implementation, bilingual
-catalogue adoption or Similar UI work. Selective repair remains superseded.
+reseed, force push, unrelated merge, garlic-placeholder implementation or Similar
+UI work. Selective repair remains superseded. The 2026-11-12 user amendment includes
+bilingual identity with a reviewed model-authored vocabulary, durable versioned JSON
+on disk and full backup/restore; no external dataset or runtime AI regeneration.
+Migration preserves all planned meals/events and rebuilds every grocery list;
+checks and checked-demand baselines may reset only in that fenced rebuild.
+Manual extras/corrections/history and ordinary later check continuity remain.
 Task IDs/checklists remain authoritative; partial slices do not close aggregates.
 The operational navigation record is `.task/dependable-portions-coordinator/continuation.md`.
 
@@ -38,7 +43,7 @@ records current delivery scope separately.
 | PDF/synthesis/share/general repair (3.3–3.6) | Not fully canonical | Separate later increments; do not reopen URL/photo merely because 3.1 is unchecked |
 | Ordinary relationship production | Missing | Step companion tasks 0.1–0.3 own import/post-edit proposal and evidence validation; A supplies canonical Save/publication hooks |
 | Library conversion/recovery | Primitives and bounded backup/seed/sync exist | Migration companion owns operational conversion, maintenance and rehearsal |
-| Bilingual catalogue/merging | Deferred | Not a portions prerequisite; preserve any already persisted references |
+| Bilingual catalogue/merging | Included, implementation pending under its companion | Reviewed model-authored durable JSON, saved mapping/grouping/corrections and full recovery/cutover qualification |
 
 First increment: reuse URL/photo and manual correction, then close the ordinary
 instruction-scaling connection. Workstream A owns canonical store/RecipeService/
@@ -56,7 +61,7 @@ quantity/conversion tests. This is existing foundation plus remaining qualificat
 
 - [ ] 1.1 Reconcile the implemented contentRevision, exact scalar/range, nullable amount/unit, stable row/step and basis contracts against current OpenAPI/client/mocks and the corpus. Reuse `CanonicalIngredientConversionPostgresTests`, exact-quantity tests and fresh-URL exact-facts cases. Add intended-red cases only for demonstrated missing behavior: unknown basis, duplicate/missing associations, explicit null/empty, exact notation/overflow, units/packages and no phrase whitelist. Run the real database owner plus `task test:unit -- src/testing/mock-api.test.ts`; record actual case coverage rather than recreating existing shapes.
 - [ ] 1.2 Close only gaps demonstrated by 1.1 through the existing per-recipe canonical owner. Run its affected checks and `task gen:client:check` where applicable; prove exact facts through the generated-client/API/PostgreSQL path. Preserve deferred legacy readability, evidence and human clears. Do not add implicit ordinary-read conversion or routine old-backup adapters.
-- [x] 1.3 Qualify an ordinary supported input path for structured unit/package facts required by C07/C47, including scaled package count with fixed capacity and no purchase rounding. Inspect current input validation first: reserved DTO fields or seeded records are not a producer. Define the smallest explicit evidence/definition inlet without guessing regional conversions, package sizes or food equivalence. Keep bilingual food catalogue adoption deferred.
+- [x] 1.3 Qualify an ordinary supported input path for structured unit/package facts required by C07/C47, including scaled package count with fixed capacity and no purchase rounding. Inspect current input validation first: reserved DTO fields or seeded records are not a producer. Define the smallest explicit evidence/definition inlet without guessing regional conversions, package sizes or food equivalence. The accepted package checkpoint did not adopt bilingual identity; that feature is now included through its own companion and is not qualified by this package task.
 
 ## 2. Correct original facts and retain drafts
 
@@ -496,3 +501,39 @@ native/integrated gates, a new commit and fresh exact-candidate DV acceptance ar
 still required. Grocery hint precision is a separate existing policy; no complete
 C08/C09 or broader-task closure is implied by these focused results. Garlic
 placeholder work, bilingual catalogue adoption and Similar remain excluded.
+
+### Exact-display acceptance and selected PDF successor — 2026-11-12
+
+The preceding focused display checkpoint is now completed at
+`7a502eff4e805bad939e9f909bb2c83350e9ba81`: all 13 applicable formal checks,
+623 real PostgreSQL cases and a fresh 23-owner / 39-case native campaign passed,
+with zero required PostgreSQL/native skips or native retries. Exact-candidate DV
+operation `d7d5f310-b15d-44ed-8834-854532bf4df6` completed 12 exercise and six
+guarded cleanup writes, EN/FR settled reads and 137 workflow audit checks. Strict
+independent preservation covered all 2,689 original rows and 1,549 original files,
+195 individually qualified startup timestamp transitions, and exact attribution
+of 98 new rows / 15 files. Public original provider/environment/ports and the
+original PostgreSQL/data mounts were restored and independently verified. Seven
+owned temporary resources were removed; backups, images and failure records remain.
+Evidence: `.task/dependable-portions-coordinator/exact-display/slice-acceptance.json`.
+
+The first rehearsal helper lacked curl, and the first read-only public smoke
+invocation failed its local pinned-npm preflight before network requests. Those
+failures remain separate from the corrected unchanged-helper passes. One owned
+search-index child remains failed with HTTP 422 and no retry; both required import
+roots and categorization processors passed. Semantic search and real-provider
+accuracy remain unqualified. The user pushed earlier commit `6d98d673` while this
+candidate was built. Hosted acceptance remains open; saved older `ad32726` planning
+browser failures and current run identities are retained under
+`.task/dependable-portions-coordinator/hosted-user-push-readonly/`.
+
+The next selected slice is task 3.3, with affected 3.1–3.2/4.1 seams: witnessed fresh
+PDF canonical publication through accepted PDF/bootstrap/conversion ancestry.
+Producer-backed PostgreSQL red must precede implementation. PDF pages retain their
+own authority proof, using the existing returned-result, journal, captured dependency
+and file-chain validators; they do not borrow original-photo eligibility. Qualify
+usable retained review, the existing guarded changed-comment correction path,
+source/media, stale work, interruption/replay, actual native rendering and the
+ordinary edit/read/grocery seam. Task 3.3 and the broader aggregates remain unchecked
+until their required acceptance passes. Synthesis, share, general protected reimport,
+recovery/library cutover and final integrated/hosted acceptance remain separate work.

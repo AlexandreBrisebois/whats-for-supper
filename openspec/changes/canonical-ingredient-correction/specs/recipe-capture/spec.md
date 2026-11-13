@@ -95,6 +95,23 @@ A fresh intake proven by retained server bootstrap and workflow launch evidence 
 - **THEN** that producer commits canonical ingredient/step IDs, exact original facts and retained source evidence in its existing journal before readiness
 - **AND** normal guarded editing can save 250 g pasta while a dated eight-portion read and grocery demand agree on 500 g pasta once, without changing sauce's original fact
 
+#### Scenario: Witnessed fresh PDF intake becomes normally editable
+- **WHEN** the accepted new PDF bootstrap retains only its original PDF source, and its captured extraction descends from the same workflow's delivered PDF conversion with validated original returned result and selected ordered pages
+- **AND** the supported original facts in that extraction can be preserved losslessly
+- **THEN** extraction publishes canonical facts through the existing guarded producer before readiness, preserving original PDF bytes and converted page provenance
+- **AND** normal guarded editing, dated projection and grocery recomputation use those saved original facts once
+
+#### Scenario: PDF page presence does not establish fresh authority
+- **WHEN** rendered pages have no qualifying accepted PDF bootstrap or conversion on the captured extraction dependency ancestry, including a later reimport or skipped converter
+- **THEN** those pages do not acquire fresh PDF or original-photo canonical authority
+- **AND** contradictory retained launch, input, publication, source or page evidence is rejected by the existing validation owners rather than downgraded into a successful fresh intake
+
+#### Scenario: Witnessed PDF review retains its existing correction guards
+- **WHEN** a witnessed fresh PDF extraction cannot preserve trustworthy facts losslessly and retains usable review material
+- **THEN** it preserves original PDF and page bytes, distinct failed-extraction and review-material receipts, and the existing unready editable recipe
+- **AND** only the existing accepted report and changed-comment repair with captured current human corrections may publish reviewed canonical facts from that original extraction ancestry
+- **AND** a generic later PDF reimport or manual Save alone does not gain that authority or certify readiness
+
 #### Scenario: Unmeasured text remains a valid ingredient
 - **WHEN** a complete fresh extraction includes an ingredient whose amount or unit is honestly absent
 - **THEN** the exact ingredient wording remains in the canonical collection without a guessed number/unit, phrase whitelist or automatic household report

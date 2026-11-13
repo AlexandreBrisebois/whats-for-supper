@@ -61,7 +61,11 @@ class ToolingSetupTests(unittest.TestCase):
             python.chmod(0o755)
             tests = root / 'scripts/agent/tests'
             tests.mkdir(parents=True)
+            shutil.copy(ROOT / 'scripts/agent/test_agent.py', root / 'scripts/agent/test_agent.py')
             (tests / 'test_dependency.py').write_text('import yaml\nimport unittest\nclass Dependency(unittest.TestCase):\n def test_yaml(self): self.assertEqual(yaml.safe_load("ok: true"), {"ok": True})\n')
+            ci = root / 'scripts/ci'
+            ci.mkdir()
+            (ci / 'dependency.test.cjs').write_text("require('node:test')('shared Node suite is invoked', () => {});\n")
             (root / 'Taskfile.yml').write_text(yaml.safe_dump({
                 'version': '3', 'vars': {'PYTHON': config['vars'].get('PYTHON', 'python3')},
                 'tasks': {'test:agent': config['tasks']['test:agent']},

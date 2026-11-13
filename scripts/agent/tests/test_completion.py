@@ -403,7 +403,7 @@ class CompletionTests(IsolatedGitTestCase):
         self.assertEqual(tasks['prepare']['cmds'], ['"{{.PYTHON}}" -B scripts/agent/finish.py --prepare {{.CLI_ARGS}}'])
         for removed in ['agent:prepare', 'agent:finish', 'agent:begin', 'agent:abort', 'agent:session:status']:
             self.assertNotIn(removed, tasks)
-        self.assertIn('"{{.PYTHON}}" -B -m unittest', tasks['test:agent']['cmds'][0])
+        self.assertIn('"{{.PYTHON}}" -B scripts/agent/test_agent.py', tasks['test:agent']['cmds'][0])
         self.assertNotIn({'task': 'format'}, tasks['review']['cmds'])
         self.assertIn('format:check:pwa', tasks['review:validate']['deps'])
         self.assertNotIn({'task': 'dev:kill'}, tasks['review']['cmds'])

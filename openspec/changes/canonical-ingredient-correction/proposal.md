@@ -13,10 +13,15 @@ fully completed changes only after required hosted acceptance. Final lifecycle
 commit/push and applicable final-commit checks are included. This supersedes the
 prospective single-slice stop, per-slice push and hosted-before-DV restrictions in
 earlier selection records. Those records retain their original failures, waivers
-and limitations. Existing-library conversion still requires operational/recovery/
-client-fencing/no-active-list preflight. Deferred bilingual catalogue/Similar and
-superseded selective repair stay outside release; garlic-placeholder implementation,
-production, reset/reseed, force push and unrelated merges remain excluded.
+and limitations. Existing-library conversion still requires operational/recovery/client fencing,
+but the 2026-11-12 user amendment preserves all plans/events and rebuilds every
+grocery list, permitting migration-only check/baseline reset instead of an
+empty-list prerequisite. Bilingual shopping identity is now included: use a
+model-authored bounded vocabulary, persist it as versioned JSON on disk and include
+it in complete backup/restore. No external dataset adoption or runtime AI lookup
+is required or authorized. Similar and superseded selective repair remain outside
+release; garlic-placeholder implementation, production, reset/reseed, force push
+and unrelated merges remain excluded.
 
 
 ## Dependable portions delivery baseline — accepted 2026-11-10
@@ -33,13 +38,15 @@ data survive. Uncertain instruction references remain original and readable;
 they are never guessed merely to complete scaling. English and French recipes
 and UI remain supported.
 
-**Deferred from this release:** automatic cross-language food equivalence,
-catalogue adoption and the dependent bilingual mapping/category feature.
-Similar-search layout is an independent follow-up. The superseded selective
-ingredient-repair proposal is not executable work. Deferred work is retained,
-not declared implemented or archived. Recovery must preserve every identity and
-reference actually persisted; an optional catalogue not introduced by this
-release is not a prerequisite for portions delivery.
+**Historical 2026-11-10 deferral, amended 2026-11-12:** bilingual identity was
+originally separate. Alex has now included validated saved EN/FR identity,
+deterministic grouping and protected mapping/category correction in this release,
+using model-authored vocabulary rather than an external dataset. Its durable
+versioned JSON and every saved reference are mandatory full-recovery artifacts;
+AI does not regenerate them. Ambiguous/out-of-vocabulary terms keep conservative
+source fallback. Similar-search layout remains deferred and selective ingredient
+repair remains superseded/unimplemented. Historical qualification below retains
+its original scope; it does not establish the new bilingual behavior.
 
 **Accepted delivery order:** the first usable increment builds on URL/photo
 intake and manual correction, concentrating next on instruction scaling. PDF,
@@ -97,7 +104,7 @@ do not advance the queue on a blocked acceptance.
 | Migration/recovery | Active preparation; conversion not activated | Migration 1.1 inventory and 3.1 assessment; remaining tasks retain conversion/recovery gates |
 | Grocery interactions | Active qualification; implemented foundations reused | Grocery 4.1 remains authoritative for unfinished acceptance |
 | Local/hosted CI parity | Active qualification | Its existing unchecked tasks retain hosted and complete-candidate obligations |
-| Bilingual shopping identity | Deferred, requirements retained | Its existing tasks; not a prerequisite for this slice |
+| Bilingual shopping identity | Included by the 2026-11-12 amendment; model-authored durable JSON | Existing bilingual tasks, shared producer/grouping/correction and complete recovery/cutover qualification |
 | Similar-search filter | Deferred independent UI work, requirements retained | Its existing tasks; outside this queue |
 | Selective ingredient repair | Superseded, unimplemented | No delivery owner; historical unchecked tasks retained, replacement owners above |
 
@@ -209,7 +216,7 @@ The canonical foundation now exists, but ordinary instruction relationships, rem
 
 ## Outcome and Scope
 
-Evolve this existing foundation, rather than replace it. One original-basis recipe content revision owns ordered ingredient rows, steps and their associations. Amount/unit remain independently nullable; exact fractions and ranges survive. The ordinary three-field editor stays quiet. Alex has approved absolute-allocation preservation, range comparison and new split/merge row behavior. Contract qualification remains a release gate; dataset adoption gates only the deferred bilingual work. Artifact existence is not implementation approval or readiness.
+Evolve this existing foundation, rather than replace it. One original-basis recipe content revision owns ordered ingredient rows, steps and their associations. Amount/unit remain independently nullable; exact fractions and ranges survive. The ordinary three-field editor stays quiet. Alex has approved absolute-allocation preservation, range comparison and new split/merge row behavior. Contract qualification remains a release gate; included bilingual identity requires a reviewed pinned model-authored JSON vocabulary and collision/provenance corpus, without an external dataset/licence gate. Artifact existence is not implementation approval or readiness.
 
 ## What Changes
 
@@ -236,7 +243,7 @@ Evolve this existing foundation, rather than replace it. One original-basis reci
 
 ## Impact
 
-Existing owners are RecipeService, SupperIngredientProjection, import/synthesis/publication, generated clients, editor, stateful mocks and PostgreSQL persistence. Reuse implemented behavior; future code work follows the selected owner tasks. Shared shapes live in [contracts.md](contracts.md); [review](review.md) and the [acceptance corpus](acceptance-corpus.md) distinguish this release from deferred bilingual work. Companions: [groceries](../restore-dependable-grocery-interactions/proposal.md), [bilingual identity](../bilingual-shopping-identity/proposal.md), [steps](../scale-cooking-step-ingredients/proposal.md), [migration/recovery](../migrate-canonical-recipe-model/proposal.md).
+Existing owners are RecipeService, SupperIngredientProjection, import/synthesis/publication, generated clients, editor, stateful mocks and PostgreSQL persistence. Reuse implemented behavior; future code work follows the selected owner tasks. Shared shapes live in [contracts.md](contracts.md); [review](review.md) and the [acceptance corpus](acceptance-corpus.md) record the included bilingual producer/grouping/correction/recovery dependencies and still-deferred Similar scope. Companions: [groceries](../restore-dependable-grocery-interactions/proposal.md), [bilingual identity](../bilingual-shopping-identity/proposal.md), [steps](../scale-cooking-step-ingredients/proposal.md), [migration/recovery](../migrate-canonical-recipe-model/proposal.md).
 
 
 Fresh URL/photo qualification, retained review-material repair, ordinary original

@@ -286,13 +286,14 @@ public sealed partial class RecipeFilePublicationStore
         var launch = ReadRecoveryJson<Launch>(workflow.RecipePublicationCapture);
         if (!launch.Tasks.TryGetValue(operationId, out var input) || input.Processor != "ExtractRecipe"
             || launch.Capture.Fields is not { Ingredients: null, RawMetadata: null, CanonicalContent: null, IsReady: false }
-            || !await HasFreshSourceAncestryAsync(workflow, launch.Capture, ct))
+            || !await HasFreshSourceAncestryAsync(workflow, launch, operationId, ct))
             throw new InvalidDataException("Retained review material requires fresh bootstrap ancestry.");
     }
 
     private async Task<bool> HasFreshSourceAncestryAsync(WorkflowInstance workflow,
-        RecipePublicationCapture launchCapture, CancellationToken ct)
+        Launch launch, Guid extractionTaskId, CancellationToken ct)
     {
+        var launchCapture = launch.Capture;
         if (workflow.WorkflowId is not ("url-import" or "recipe-import")
             || launchCapture.Fields is not { Ingredients: null, RawMetadata: null, CanonicalContent: null, IsReady: false })
             return false;
@@ -304,9 +305,11 @@ public sealed partial class RecipeFilePublicationStore
             || bootstrap.ResultHash != launchCapture.FieldHash) return false;
         if (workflow.WorkflowId == "url-import") return true;
 
-        // A photo's original accepted follow-up is the only recipe-import launch
-        // that can claim this bootstrap operation. PDF pages and later report
-        // reimports may have images but cannot satisfy this original ancestry.
+        if (envelope.Candidate.SourceFiles?.ContainsKey("original/source.pdf") == true)
+            return await HasFreshPdfSourceAncestryAsync(workflow, launch, extractionTaskId, bootstrap, envelope, ct);
+
+        // Original photos require their own accepted image membership. Derived
+        // PDF pages and later imports cannot borrow this photo authority.
         var source = envelope.Candidate.SourceFiles;
         var info = envelope.Candidate.Info;
         if (source is null || info.ImageCount is < 1 or > 20 || envelope.Candidate.FollowupIntent is null
@@ -321,6 +324,62 @@ public sealed partial class RecipeFilePublicationStore
                 || !Equal(files[0].Value, captured)) return false;
         }
         ValidateFollowupWorkflow(envelope.Candidate, bootstrap.OperationId, workflow, requirePending: false);
+        return true;
+    }
+
+    private async Task<bool> HasFreshPdfSourceAncestryAsync(WorkflowInstance workflow, Launch launch,
+        Guid extractionTaskId, RecipeFilePublication bootstrap, Envelope bootstrapEnvelope, CancellationToken ct)
+    {
+        var source = bootstrapEnvelope.Candidate.SourceFiles;
+        var info = bootstrapEnvelope.Candidate.Info;
+        if (source is not { Count: 1 } || source.GetValueOrDefault("original/source.pdf") is not { Length: > 0 } pdf
+            || info.ImageCount != 0 || info.FinishedDishImageIndex != -1 || info.IsReady != false
+            || bootstrapEnvelope.Candidate.FollowupIntent is null
+            || !launch.Tasks.TryGetValue(extractionTaskId, out var extraction) || extraction.Processor != "ExtractRecipe")
+            return false;
+
+        // This validates absent membership and the complete accepted result-to-
+        // launch file/field baseline, not just the PDF's current presence.
+        ValidateRecoveryFollowupIntent(bootstrap, new Dictionary<Guid, WorkflowInstance> { [workflow.Id] = workflow });
+        var ancestors = new HashSet<Guid>();
+        var visiting = new HashSet<Guid>();
+        void Visit(Guid id)
+        {
+            if (ancestors.Contains(id)) return;
+            if (!visiting.Add(id)) throw new InvalidDataException("PDF extraction dependency cycle.");
+            foreach (var name in launch.Tasks[id].DependsOn)
+            {
+                var matches = launch.Tasks.Where(x => x.Value.Name == name).ToArray();
+                if (matches.Length != 1) throw new InvalidDataException("PDF extraction dependency is ambiguous.");
+                Visit(matches[0].Key);
+            }
+            visiting.Remove(id);
+            if (id != extractionTaskId) ancestors.Add(id);
+        }
+        Visit(extractionTaskId);
+        var converters = ancestors.Where(id => launch.Tasks[id].Processor == "ConvertPdf").ToArray();
+        if (converters.Length == 0) return false;
+        if (converters.Length != 1) throw new InvalidDataException("PDF extraction has ambiguous conversion ancestry.");
+        var converterId = converters[0];
+        var publications = await db.RecipeFilePublications.AsNoTracking()
+            .Where(x => x.RecipeId == launch.Capture.RecipeId && ancestors.Contains(x.OperationId)).ToDictionaryAsync(x => x.OperationId, ct);
+        // Present contradictory journals must throw, even when a returned
+        // receipt is missing. Never turn invalid ancestry into legacy fallback.
+        ValidateRecoveryPublicationChain(workflow, publications);
+        publications.TryGetValue(converterId, out var conversion);
+        if (conversion is not null)
+        {
+            var (convertedCapture, _) = ReadOriginalPublication(conversion);
+            if (!Equal(convertedCapture.Files.GetValueOrDefault("original/source.pdf"), pdf))
+                throw new InvalidDataException("PDF conversion source differs from accepted original bytes.");
+        }
+        var converter = workflow.Tasks.Single(x => x.TaskId == converterId);
+        if (converter.Result is null) return false;
+        var recipeId = Processors.PdfConversionProcessor.ValidateOriginalHistory(launch.Tasks[converterId].Payload,
+            converter.Result, conversion is null ? [] : [conversion]);
+        if (recipeId != launch.Capture.RecipeId)
+            throw new InvalidDataException("PDF conversion result differs from accepted recipe membership.");
+        if (conversion is null || !conversion.Delivered) return false;
         return true;
     }
 
@@ -344,7 +403,7 @@ public sealed partial class RecipeFilePublicationStore
             x => x.RecipeId == recipeId && x.OperationId == extraction.TaskId, ct);
         if (publication is null || !publication.Delivered || ReadEnvelope(publication).Candidate.SourceKind is not ("fresh-canonical" or "review-canonical")
             || workflow.WorkflowId == "recipe-import" && ReadEnvelope(publication).Candidate.SourceKind == "fresh-canonical"
-                && !await HasFreshSourceAncestryAsync(workflow, launch.Capture, ct))
+                && !await HasFreshSourceAncestryAsync(workflow, launch, extraction.TaskId, ct))
             throw new InvalidDataException("Canonical hero needs delivered fresh canonical ancestry.");
     }
 
@@ -392,7 +451,7 @@ public sealed partial class RecipeFilePublicationStore
                 .SingleOrDefaultAsync(x => x.Id == originalTask.InstanceId, ct);
             if (original is null || original.WorkflowId != repair.WorkflowId || original.RecipePublicationCapture is null) continue;
             ValidateExecutionLaunch(original);
-            if (await HasFreshSourceAncestryAsync(original, ReadRecoveryJson<Launch>(original.RecipePublicationCapture).Capture, ct))
+            if (await HasFreshSourceAncestryAsync(original, ReadRecoveryJson<Launch>(original.RecipePublicationCapture), originalTask.TaskId, ct))
                 return true;
         }
         return false;
@@ -425,7 +484,7 @@ public sealed partial class RecipeFilePublicationStore
         if (workflow?.RecipePublicationCapture is null || workflow.WorkflowId is not ("url-import" or "recipe-import")) return false;
         ValidateExecutionLaunch(workflow);
         return await HasFreshSourceAncestryAsync(workflow,
-            ReadRecoveryJson<Launch>(workflow.RecipePublicationCapture).Capture, ct);
+            ReadRecoveryJson<Launch>(workflow.RecipePublicationCapture), operationId, ct);
     }
 
     private static bool SameFiles(IReadOnlyDictionary<string, byte[]?> left, IReadOnlyDictionary<string, byte[]?> right) =>

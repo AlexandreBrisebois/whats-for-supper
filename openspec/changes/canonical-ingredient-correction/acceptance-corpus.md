@@ -1,6 +1,6 @@
 # Adversarial acceptance corpus
 
-Normative acceptance examples, not a claim that every row has been executed. Existing owner records qualify specific subsets and candidates. Every row asserts exact original persistence, returned content/context revision, eligible ingredient/step display, demand counted once, row checks and absence of unrelated writes where applicable. Use synthetic EN/FR recipes, fixed deployment clock and isolated nonproduction PostgreSQL/files. Providers are doubles only at their external boundary. Alex’s approved product decisions are expected outcomes below; remaining dataset/contract qualification is separate from implementation approval.
+Normative acceptance examples, not a claim that every row has been executed. Existing owner records qualify specific subsets and candidates. Every row asserts exact original persistence, returned content/context revision, eligible ingredient/step display, demand counted once, row checks and absence of unrelated writes where applicable. Use synthetic EN/FR recipes, fixed deployment clock and isolated nonproduction PostgreSQL/files. Providers are doubles only at their external boundary. Alex’s approved product decisions are expected outcomes below; model-authored vocabulary/collision and contract qualification remains separate from observed implementation acceptance.
 
 
 ## Release disposition
@@ -9,15 +9,15 @@ All C01–C53 IDs and their oracles remain intact. Unless qualified below, a cas
 required for the applicable baseline behavior; evidence must name its real owner
 and candidate. This map selects delivery scope, not a test waiver.
 
-| Cases | First portions release | Deferred or conditional portion |
+| Cases | Required release behavior | Boundary or qualification |
 | --- | --- | --- |
-| C22 | Preserve original text and deterministic conservative grouping | Validated EN/FR equivalence and identity-based merge |
-| C23 | Never introduce a speculative purchase-meaning merge | Catalogue-wide mapping/collision corpus |
-| C24 | Missing mapping/translation uses source label and safe fallback | Dictionary-backed translation adoption |
-| C25 | Existing human name/aisle protection through retry and recovery | Catalogue-update/alias-release behavior |
-| C31 | Continuing identity/check baseline and safe split/merge behavior | Proven cross-language identity rename |
-| C40–C42 | Recover all baseline facts and every identity/reference actually present | No requirement to introduce an absent optional catalogue |
-| C47 | Retain conservative unit families and no unproven conversion | New catalogue-backed food/count-kind mappings |
+| C22 | Preserve originals and group compatible demand through validated saved EN/FR food IDs | Only reviewed model-authored aliases; no runtime AI |
+| C23 | Never introduce a speculative purchase-meaning merge | Bounded authored-release collisions, ambiguous terms and purchase qualifiers; unknowns abstain |
+| C24 | Saved validated labels project in EN/FR; missing mapping/translation keeps source fallback | Locale changes do not rewrite content, row identity or checked baseline |
+| C25 | Protected human name/aisle survives retry, release and full recovery | Private corrections never auto-publish global aliases; stale writes conflict |
+| C31 | Continuing identity/check baseline, safe split/merge and mapped locale-only label behavior | Mapping/purchase transitions do not infer shopping intent; migration reset is separately fenced |
+| C40–C42 | Recover all baseline facts, durable vocabulary JSON and every saved identity/reference offline | Missing/corrupt required artifacts fail before writes; no AI regeneration or implicit reseeding |
+| C47 | Retain conservative unit families and reviewed food distinctions | Food equivalence never proves count-kind, package, mass/volume or regional-unit equivalence |
 | C39 | Stop/report if fallback assessment detects mismatches | Execute recipe-only fallback only if in-place assessment requires it |
 
 URL/photo first is a milestone boundary, not completion of every intake channel.
@@ -65,7 +65,7 @@ seeded-binding C01 passes do not qualify that producer.
 | C35 groceries | Prior-unknown flags in loaded/current/restored row | Retired warning and locale equivalents absent in every state; only known subtotal once, no replacement reserved space |
 | C36 facts/upgrade | Old apparently name-only full editor sends ingredients/instructions | Atomic upgrade conflict; every draft field survives supported tab refresh; no unauthorized partial mutation |
 | C37 migration | In-place conversion stops before/after recipe commit | Prior content usable or exact converted content; retry idempotent with same IDs, resume manifest truthful |
-| C38 migration | No active grocery list at upgrade; next list is new; ambiguous old shared names retained in history | New recipe rows unchecked with no old checks/baselines copied; preserve historical records and extra occurrence/history, without invented independent purchase intent |
+| C38 migration | Populated past/current/future plans and events survive conversion; every persisted or assignment-implied grocery week is rebuilt | Preserve all meal/event identities and protected facts/extras/corrections/history; reset checks/baselines only in the fenced migration epoch, without inventing purchase acknowledgement |
 | C39 migration | Necessary disk fallback expects Dreaming-synchronized recipes; compare stable IDs and supported facts | Matching content may stage reviewed conversion; unexpected facts or missing IDs stop/report before fallback writes, with no winner selector, auto-create, purge or household mutation |
 | C40 recovery | Current full-fidelity backup → isolated restore → re-export | Exact fractions/ranges/notation, units, steps/spans, revisions, food/row IDs, null/empty/protection, prepared counts, household links and media bytes equivalent |
 | C41 recovery | Old backup or missing required current artifact | Clear unsupported/invalid preflight, zero file/DB/household writes; no implicit forward converter |
@@ -81,7 +81,7 @@ seeded-binding C01 passes do not qualify that producer.
 
 | C51 groceries | Retained check after overlap/decrease, repeated true/bulk replacement/retry, locale/unit change and recovery | Persist original checked-demand baseline unchanged; compatible conversions compare exactly, incomparable/unknown baselines remain unprovable; no replay rebaselines |
 | C52 groceries | Reset or explicit uncheck followed by recheck at 4–5 | Capture new baseline 4–5 only on false→true; unchanged demand preserves check and later provable increase resets once |
-| C53 migration | Upgrade assessment unexpectedly finds an active list | Stop/report before overwrite/retirement; no silent history deletion, check reset or extra data removal |
+| C53 migration | Rebuild populated past/current/future lists through the new model | Preserve all planned meals/events/extras/corrections/history; reset checks/baselines only in the fenced idempotent migration epoch |
 
 ## Existing regression owners and future seam classes
 

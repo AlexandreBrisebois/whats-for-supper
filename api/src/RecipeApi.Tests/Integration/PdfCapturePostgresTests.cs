@@ -17,6 +17,7 @@ namespace RecipeApi.Tests.Integration;
 
 /// <summary>Actual PostgreSQL/schema and disk storage; native rendering is qualified separately.
 /// The factory persists workflow tasks; this test drives the standard failed-task transition.</summary>
+[Collection("ElevatedActionsPin")]
 public sealed class PdfCapturePostgresTests : IAsyncLifetime
 {
     private readonly string database = "wfs_pdf_" + Guid.NewGuid().ToString("N");

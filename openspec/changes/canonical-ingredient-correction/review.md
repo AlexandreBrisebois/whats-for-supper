@@ -6,9 +6,12 @@ Spec-only review at `d51222ffbb7e3eb6d08fed394851a52de3f5522c`, `recipe-view-red
 
 The [accepted delivery baseline](proposal.md) governs execution. URL/photo intake
 and manual correction are the first increment; remaining intake channels follow.
-Step relationship production (including post-edit optional AI reevaluation) is the
-next missing end-to-end connection. Bilingual catalogue/merging and Similar UI are
-deferred; selective repair is superseded. Current owner tasks distinguish existing
+Accepted portions/relationship slices retain their exact evidence; remaining
+intake and recovery owners are still incomplete. The 2026-11-12 user amendment
+includes bilingual identity with model-authored durable JSON and protected
+grouping/corrections. Similar UI remains deferred; selective repair is superseded.
+Migration preserves all plans/events and rebuilds all lists, with check/baseline
+reset allowed only during its fenced rebuild, replacing the empty-list gate. Current owner tasks distinguish existing
 implementation from missing acceptance. The original review below is historical
 rationale, not a report that every listed defect still exists.
 
@@ -17,10 +20,10 @@ rationale, not a report that every listed defect still exists.
 | Review unit | Owns | Depends on / can release |
 | --- | --- | --- |
 | canonical-ingredient-correction | Exact original rows/basis/steps, contentRevision, protected publication, common DTO/editor and canonical projector input | Foundation; never a competing replacement schema |
-| restore-dependable-grocery-interactions | Row/check identity, guarded check/bulk operations, reset comparison, no review acknowledgement, focus and category-control interaction | Reusable legacy demand identity can ship before full canonical migration; client fence and fresh-list/history-preservation upgrade required |
-| bilingual-shopping-identity | Saved app food IDs/EN-FR labels, aliases, shopping grouping/units, category scope/provenance | Deferred release; canonical saved association and grocery row identity when resumed; not a portions prerequisite |
+| restore-dependable-grocery-interactions | Row/check identity, guarded check/bulk operations, reset comparison, no review acknowledgement, focus and category-control interaction | Reusable legacy demand identity can ship before full canonical migration; client fence and plan-preserving all-list rebuild required; migration-only reset does not waive ordinary continuity |
+| bilingual-shopping-identity | Saved app food IDs/EN-FR labels, aliases, shopping grouping/units, category scope/provenance | Included release; reviewed model-authored vocabulary persisted as versioned JSON, saved associations, deterministic grouping/correction and full recovery |
 | scale-cooking-step-ingredients | Revision-bound uses, allocation/rendering, original step editing, coherent cooking refresh and prepared current-recipe reading | Canonical facts; mandatory for complete portions release, independent of dictionary coverage |
-| migrate-canonical-recipe-model | In-place conversion, conditional fallback, old-writer fencing, fresh-list upgrade preserving history and complete current-format recovery | Inventory/conversion work can proceed now; activation requires final persisted contracts included in this release and preservation of every existing reference |
+| migrate-canonical-recipe-model | In-place conversion, conditional fallback, old-writer fencing, all-list rebuild preserving plans/events/history and complete current-format recovery | Inventory/conversion work can proceed now; activation requires final persisted contracts included in this release and preservation of every existing reference |
 
 All proposed shapes live in [contracts.md](contracts.md). Every delta requirement is owned once across this set; this includes moving canonical draft cooking/grocery/recovery deltas into companions. Existing main specs remain implementation baselines until a separately approved apply/sync. No duplicate “recipe facts v2” capability is created.
 
@@ -55,7 +58,7 @@ Current report locking is explicitly in-process; the new design cannot claim rep
 
 - Rational string transport avoids JS precision loss and binary fraction drift; bounded input/intermediates prevent pathological arithmetic. Costs: tagged DTO migration, locale grammar and property fixtures. AmountText is validated notation, never a second numeric authority.
 - Revision-bound spans fit existing plain-text editing; segments could be safer for rich editing but expand scope. UTF-16 boundary validation, expected substrings and exact revisions are required; stale spans stay readable and unscaled.
-- Conservative fallback names and a curated identity seed avoid speculative bilingual merges. Costs: less aggregation and incomplete translation, acceptable with honest source labels. No upstream dataset has demonstrated corpus fit yet.
+- Conservative fallback names and a curated identity seed avoid speculative bilingual merges. Costs: less aggregation and incomplete translation, acceptable with honest source labels. The user selected model-authored vocabulary instead of adopting an external dataset. A pinned reviewed JSON release and collision/false-merge corpus gate adoption; no runtime AI or vocabulary regeneration is permitted.
 - Alex approved new split/merge rows starting unchecked rather than inheriting purchase intent. Continuing checked rows compare current requirement against a persisted checked-demand baseline, never the preceding recomputation; preserved overlaps/decreases do not advance it.
 - Complete current-format manifests simplify recovery semantics but make prior backups intentionally unsupported. Preserve an independently verified old snapshot/executable pair for emergency rollback, not a hidden new-app legacy adapter.
 
@@ -64,12 +67,12 @@ Current report locking is explicitly in-process; the new design cannot claim rep
 1. Explicit partial uses remain at their original absolute values after ingredient-total correction and still scale with portions. Relative language remains relative; proven whole uses follow corrected total. Inconsistent allocations get quiet review without blocking cooking. Example: total 200→250 g leaves explicit use 50 g original/75 g at factor 1.5.
 2. A checked range resets only when current minimum exceeds the maximum of the requirement captured when the row was checked. Baseline 2–3 stays checked at 3–4 and unchecks at 4–5. Preserve the baseline while checked, so sequential overlapping updates cannot ratchet it forward and hide a cumulative increase. Redundant true/bulk/retry writes do not rebaseline; an actual unchecked→checked transition does.
 3. Rows newly created by split or merge start unchecked. Unchanged continuing rows keep checks subject to the approved proven-increase rule; label/locale changes do not imply a new row.
-4. Alex confirms no active grocery list during upgrade and says the next list will be new. New recipe-derived rows start unchecked with no inherited old-name checks/baselines. Preserve historical list/check data and extra occurrences/history; do not reinterpret ambiguous historical shared checks as individual acknowledgements. No elaborate active-check conversion or extra decision is required. If assessment unexpectedly finds an active list, stop/report rather than discard it.
+4. The original idle-list decision is superseded by Alex’s 2026-11-12 amendment: preserve every planned meal/calendar event and rebuild every persisted or assignment-implied grocery week, including populated past/current/future lists. Checkmarks and checked-demand baselines may reset only in the captured fenced migration epoch. Preserve manual extras/corrections/history and other protected facts; completed retries cannot clear later human checks. Never clear plans/events or require an empty list to obtain admission. Ordinary later continuity remains unchanged.
 5. If a disk reseed is necessary, compare disk/database by stable recipe ID and supported recipe facts before mutation. Alex reports no UI recipe edits and Dreaming synchronization. Verify that expected matching state; stop/report unexpected content or membership mismatches rather than pick a winner. No per-recipe UI-edit conflict-resolution workflow is required solely for hypothetical edits. Preserve household data/IDs, revision safeguards against actual concurrency and input copies.
 
 ## Remaining engineering and release gates
 
-Dataset adoption still requires pinned licence text/version/hash, EN/FR exact-match/purchase corpus and governance review. CNF remains a pilot recommendation, not automatic adoption. Public schema/API/client/mock, real PostgreSQL/files/browser and current-format recovery acceptance remain required during separately approved implementation. Conditional fallback is not the default and cannot proceed past an unexpected mismatch without further assessment. The five newly settled product decisions are no longer approval holds.
+The selected model-authored vocabulary requires a pinned JSON revision/hash, reviewed EN/FR exact aliases/purchase qualifiers and collision/false-merge corpus, plus affected-set/reversal review. Earlier CNF/licence research is historical and not an adoption or download prerequisite. Public schema/API/client/mock, real PostgreSQL/files/browser and current-format recovery acceptance remain required during the authorized implementation. Conditional fallback is not the default and cannot proceed past an unexpected mismatch without further assessment. The five newly settled product decisions are no longer approval holds.
 
 ## Future CI and default-selection requirements
 
@@ -97,8 +100,9 @@ candidate without treating local success as hosted success.
 Workstream B delivers the ordinary whole-use producer and post-edit reevaluation
 through workstream A's canonical publication boundary. A owns shared Save/publication
 hooks and remaining intake channels; C proceeds with no-write inventory and bounded
-conversion/recovery. Final recovery waits for the persisted baseline contracts, not
-for deferred bilingual adoption. The coordinator assigns shared files and integrates
+conversion/recovery. Final recovery waits for all persisted release contracts, including the durable
+bilingual vocabulary JSON and every dependent saved mapping/override reference.
+Preliminary inventory/recovery preparation may proceed before those final gates. The coordinator assigns shared files and integrates
 vertical slices before one combined gate. See [proposal](proposal.md) for ownership.
 
 Frontend/backend/database deploy together, with planned downtime using the existing

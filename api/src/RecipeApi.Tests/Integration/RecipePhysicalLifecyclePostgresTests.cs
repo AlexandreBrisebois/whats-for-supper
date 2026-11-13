@@ -13,8 +13,13 @@ using Xunit.Abstractions;
 
 namespace RecipeApi.Tests.Integration;
 
-public sealed class RecipePhysicalLifecyclePostgresTests(ITestOutputHelper output)
+[Collection("ElevatedActionsPin")]
+public sealed class RecipePhysicalLifecyclePostgresTests(ITestOutputHelper output) : IDisposable
 {
+    private readonly string? initialPin = Environment.GetEnvironmentVariable("ELEVATED_ACTIONS_PIN");
+
+    public void Dispose() => Environment.SetEnvironmentVariable("ELEVATED_ACTIONS_PIN", initialPin);
+
     [DeploymentCalendarPostgresTests.CalendarPostgresFact]
     public Task Purge_RetainsIndependentOriginalJournalsAndPhysicalReceiptBeforeCascade() =>
         new TomorrowPushPostgresTests(output).WithDatabase(async settings =>
@@ -183,7 +188,20 @@ public sealed class RecipePhysicalLifecyclePostgresTests(ITestOutputHelper outpu
                 await Assert.ThrowsAsync<IOException>(() => service.PurgeAsync(recipe.Id, "physical-test"));
                 var original = await db.RecipePhysicalDeletions.AsNoTracking().SingleAsync();
                 var report = await db.RecipeImportReports.SingleAsync(); report.Note = "new human report"; await db.SaveChangesAsync();
+                // A concurrent test's process-wide PIN change returns before history
+                // validation. Prove that path separately on the same pending intent.
+                Environment.SetEnvironmentVariable("ELEVATED_ACTIONS_PIN", "pdf-qualification-pin");
+                var denied = await service.PurgeAsync(recipe.Id, "physical-test");
+                Assert.Equal(PurgeResult.Forbidden, denied);
+                Assert.Equal("must survive", await File.ReadAllTextAsync(Path.Combine(directory, "original.txt")));
+                var deniedIntent = await db.RecipePhysicalDeletions.AsNoTracking().SingleAsync();
+                Assert.Equal(original.PayloadHash, deniedIntent.PayloadHash);
+                Assert.Null(deniedIntent.FilesDeliveredAt);
+                Assert.Null(deniedIntent.CompletedAt);
+                output.WriteLine("Foreign PIN control returned Forbidden with the pending intent and source intact.");
+                Environment.SetEnvironmentVariable("ELEVATED_ACTIONS_PIN", "physical-test");
                 await Assert.ThrowsAsync<InvalidDataException>(() => service.PurgeAsync(recipe.Id, "physical-test"));
+                output.WriteLine("Restored PIN control reached InvalidDataException for the later human report.");
                 Assert.Equal("must survive", await File.ReadAllTextAsync(Path.Combine(directory, "original.txt")));
                 var pending = await db.RecipePhysicalDeletions.AsNoTracking().SingleAsync();
                 Assert.Equal(original.PayloadHash, pending.PayloadHash); Assert.Null(pending.FilesDeliveredAt); Assert.Null(pending.CompletedAt);

@@ -13,8 +13,13 @@ completed in-scope changes. Required exact-final-candidate hosted acceptance sta
 open until observed. Historical single-slice stopping and hosted-before-DV rules
 below describe their original operations and are superseded prospectively by this
 policy; historical failures/retries/limits remain unchanged. No production, reset,
-reseed, force push, unrelated merge, garlic-placeholder implementation, bilingual
-catalogue adoption or Similar UI work. Selective repair remains superseded.
+reseed, force push, unrelated merge, garlic-placeholder implementation or Similar
+UI work. Selective repair remains superseded. The 2026-11-12 user amendment includes
+bilingual identity with a reviewed model-authored vocabulary, durable versioned JSON
+on disk and full backup/restore; no external dataset or runtime AI regeneration.
+Migration preserves all planned meals/events and rebuilds every grocery list;
+checks and checked-demand baselines may reset only in that fenced rebuild.
+Manual extras/corrections/history and ordinary later check continuity remain.
 Task IDs/checklists remain authoritative; partial slices do not close aggregates.
 The operational navigation record is `.task/dependable-portions-coordinator/continuation.md`.
 

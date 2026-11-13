@@ -1258,8 +1258,7 @@ tasks:
       - sh: test -f "{{.ROOT_DIR}}/.venv/bin/python"
         msg: "Python venv not found. Run: task init:python"
     cmds:
-      - '"{{.PYTHON}}" -B -m unittest discover -s scripts/agent/tests -p "test_*.py"'
-      - node --test scripts/ci/*.test.cjs
+      - '"{{.PYTHON}}" -B scripts/agent/test_agent.py'
 
   # ============================================================================
   # AUTH

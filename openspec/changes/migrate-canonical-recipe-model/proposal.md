@@ -1,6 +1,6 @@
 # Migrate and recover canonical recipe content
 
-> **Delivery baseline — 2026-11-10:** Baseline workstream C. Start inventory and bounded conversion/recovery work alongside intake and binding design; final acceptance requires the persisted contracts included in this release. Preserve every existing identity/reference; adoption of the deferred bilingual catalogue is not a prerequisite. The shared rollout plan exists under the canonical change; operational rehearsal and candidate evidence remain required. See the [release scope and agent coordination](../canonical-ingredient-correction/proposal.md#dependable-portions-delivery-baseline--accepted-2026-11-10).
+> **Updated delivery authority — 2026-11-12:** Workstream C preserves every planned meal and calendar event and recalculates all grocery lists under the new model. Grocery checks and checked-demand baselines may reset only within the fenced migration rebuild; manual extras, corrections, history and all other facts remain protected. Bilingual shopping identity is included in this release: its model-authored, durable versioned UTF-8 JSON vocabulary and all saved references must survive full backup/restore without AI regeneration or external dataset/network dependencies. These amendments supersede prospective idle-list and bilingual-deferral gates, not historical evidence. See the [shared release scope](../canonical-ingredient-correction/proposal.md) and [rollout owner](../canonical-ingredient-correction/rollout.md).
 
 ## Why
 
@@ -8,7 +8,7 @@ The complete model must survive upgrade and recovery without losing household li
 
 ## Outcome and Scope
 
-In-place-first conversion, conditional recipe-only disk fallback, current-format-only recovery, staged client fencing and fresh-list upgrade without historical deletion. No default reseed, production operation, old backup compatibility, automatic extraction or silent disk-over-live precedence. Conditional fallback compares stable IDs and stops/reports unexpected mismatches.
+In-place-first conversion, conditional recipe-only disk fallback, current-format-only recovery, staged client fencing and complete grocery-list rebuild while preserving every plan/event and household history. No default reseed, production operation, old backup compatibility, automatic extraction or silent disk-over-live precedence. Conditional fallback compares stable IDs and stops/reports unexpected mismatches.
 
 Frontend, backend and database deploy as one coordinated release. Old tabs refresh
 before editing upgraded recipes, with recoverable draft reconciliation. Mixed-version
@@ -41,11 +41,13 @@ None.
 
 ## Impact
 
-Depends on the canonical foundation and the persisted contracts included in the
-dependable-portions baseline. Bilingual catalogue adoption and Similar search do
-not block this release. Preserve all food/category references already present;
-an absent optional catalogue is not a missing mandatory recovery artifact. Any
-public contract change must synchronize OpenAPI, generated clients, consumers and
+Depends on the canonical foundation and final persisted portions, step, row/check
+and bilingual identity contracts. Similar remains excluded. The final full recovery
+format requires the durable vocabulary JSON and every referenced food/release/mapping
+and household override. Historical pre-adoption inspection may describe absent
+optional vocabulary without inventing mappings; it does not authorize the new app
+to restore an incomplete old backup. Any public contract change must synchronize
+OpenAPI, generated clients, consumers and
 stateful mocks; no new public recovery operation is planned.
 
 ## Implementation baseline and remaining delivery
@@ -56,6 +58,7 @@ slice has local evidence at `.task/canonical-existing-flows-20261110/outcome.jso
 that evidence does not qualify an operational batch migration or coordinated
 deployment. Reuse these foundations. Remaining work is the selected-ID no-write
 manifest and resumable operator path, complete baseline recovery/preflight,
-first-list transition, stale-client refresh and maintenance/rollback rehearsal.
+all-list rebuild with a migration-only reset epoch, durable vocabulary integration,
+stale-client refresh and maintenance/rollback rehearsal.
 The authoritative checklist is [tasks.md](tasks.md); all combined tasks remain
 open until their own evidence is complete. Production execution is separate.

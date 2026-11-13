@@ -116,17 +116,21 @@ The system SHALL provide explicit exact snapshot and restore operations distinct
 - **THEN** it includes authoritative exact canonical facts, ingredient/step/binding identities, every persisted food association/label/override and its required references, content/check revisions, source evidence/protection, serving/preparation state and required durable conversion/refresh work with matching media
 - **AND** restore preserves human facts and does not silently substitute legacy-only rows
 
-#### Scenario: Baseline without a bilingual catalogue
-- **WHEN** the portions release has no adopted bilingual catalogue and saved shopping mappings are null
-- **THEN** backup and recovery preserve the source shopping names, null mappings and conservative fallback identities without requiring catalogue adoption or inventing translations
-- **AND** any food or category reference actually present must still round trip with its meaning; a missing required referenced artifact fails preflight
+#### Scenario: Historical pre-adoption inspection
+- **WHEN** read-only inspection examines a historical pre-adoption source with absent optional vocabulary and null mappings
+- **THEN** it reports those original facts without inventing food identities or translations
+- **AND** that inspection does not authorize the final new app to perform a full restore from an incomplete old backup; the final declared format requires the durable vocabulary and all saved references
+
+#### Scenario: Final full snapshot with unmapped recipes
+- **WHEN** the adopted bilingual release captures a full snapshot whose recipe mappings include null or ambiguous entries
+- **THEN** it includes the durable versioned vocabulary JSON and preserves those source labels/null mappings honestly, without AI regeneration or forced mapping
 
 #### Scenario: Old snapshot has an incompatible canonical schema
 - **WHEN** an exact snapshot predates required canonical storage and fails schema or membership preflight
 - **THEN** exact restore rejects it before live publication rather than treating missing facts as empty or running implicit conversion
 
 #### Scenario: Preserve checked-demand comparison baseline
-- **WHEN** a current-format backup contains a checked row acknowledged at 2–3 whose current demand is 3–4
+- **WHEN** ordinary current-format recovery, outside the separately selected migration rebuild, restores a checked row acknowledged at 2–3 whose current demand is 3–4
 - **THEN** recovery retains checked state and original baseline 2–3 together; subsequent 4–5 demand unchecks rather than using restored current 3–4 as a new baseline
 - **AND** unchecked rows have no active baseline and unknown/incomplete acknowledged baselines do not become known from restored current totals
 
@@ -290,9 +294,50 @@ Canonical backup and seed SHALL use the existing Dreaming/management backup and 
 - **THEN** it preserves the newer content and files or reports the captured revision conflict, without reseeding household state
 
 
+### Requirement: Persist and recover the versioned bilingual vocabulary
+
+The model-authored bilingual vocabulary SHALL persist as versioned UTF-8 JSON on disk and be included in full backup/restore with all saved references. Stable IDs, EN/FR labels/aliases, qualifiers, revisions and provenance SHALL survive offline recovery. Existing storage/archive/publication owners SHALL be reused. AI regeneration, external dataset downloads and silent reseeding SHALL NOT substitute for retained identity facts.
+
+#### Scenario: Restart with persisted vocabulary
+- **WHEN** the application restarts with an existing valid versioned vocabulary file
+- **THEN** it loads the saved identity facts without AI/network generation or overwriting them with another revision
+
+#### Scenario: Complete independent round trip
+- **WHEN** a full current-format backup is restored into an independently selected isolated destination and re-exported
+- **THEN** the vocabulary JSON's stable IDs, labels/aliases, qualifiers, revisions and provenance, all saved recipe mappings and protected household overrides remain equivalent and reference-complete
+- **AND** the restored captured vocabulary bytes are retained rather than regenerated from model knowledge
+
+#### Scenario: Missing or corrupt required identity artifact
+- **WHEN** the selected full backup omits the required vocabulary JSON or contains invalid format, checksum, revision, collision or reference membership
+- **THEN** complete preflight fails before dependent database, file or household writes
+- **AND** absence is not treated as an empty vocabulary or repaired by AI or a default seed
+
+#### Scenario: Existing vocabulary differs from staged input
+- **WHEN** an ordinary dictionary publication or merge encounters a different existing revision/hash than its captured destination
+- **THEN** it preserves the existing file and reports the conflict without blind overwrite or timestamp-based precedence
+- **AND** explicitly selected exact restore retains its complete preflight and replacement authority
+
+#### Scenario: Initial vocabulary creation
+- **WHEN** a reviewed initial vocabulary is installed into captured absent membership
+- **THEN** creation is guarded against a concurrently appearing file or existing dependent references that require another retained revision
+
+#### Scenario: Snapshot races with identity publication
+- **WHEN** a vocabulary or saved mapping changes during snapshot capture
+- **THEN** the capture boundary produces one consistent file/reference revision or rejects the snapshot without replacing a prior complete backup
+
+#### Scenario: Interrupted vocabulary and mapping publication
+- **WHEN** interruption occurs between staged vocabulary activation and dependent database publication
+- **THEN** existing durable recovery reconciles the complete committed or complete prior state before dependent household writes resume
+- **AND** retry preserves stable IDs and human corrections without reseeding, dropping referenced definitions or replaying stale mappings
+
 ### Requirement: Migrate in place before considering a recipe-only disk fallback
 
-The default forward upgrade SHALL convert live recipes in place with stable recipe IDs and protected household relationships. Per-recipe publication SHALL be revision-guarded, atomic, resumable and idempotent. Unrepresentable trusted facts SHALL defer with usable prior content, not be silently discarded.
+Default upgrade SHALL convert live recipes in place with stable IDs and protected household relationships. Per-recipe publication SHALL be revision-guarded, atomic, resumable and idempotent; unrepresentable trusted facts SHALL defer with usable content. Every plan/event SHALL remain preserved while all grocery lists rebuild. Check/baseline resets SHALL be confined to the fenced migration epoch.
+
+#### Scenario: Preserve complete calendar during conversion
+- **WHEN** in-place migration converts recipe content and rebuilds every persisted or assignment-implied grocery week
+- **THEN** every planned meal/event retains IDs, dates, status, recipe links, servings and prepared/cooked facts
+- **AND** manual extra occurrences, corrections and recurrence/removal/history links and all other protected facts remain intact
 
 #### Scenario: Interrupted batch
 - **WHEN** upgrade stops after some recipes commit
@@ -320,7 +365,7 @@ A one-time importer SHALL declare accepted legacy source formats, selected IDs, 
 
 ### Requirement: Restrict conditional reseed to reviewed recipe fields
 
-Recipe-only disk fallback SHALL require a documented in-place blocker and disk/database comparison by stable recipe ID before mutation. Unexpected content or membership mismatches SHALL stop fallback and be reported, not silently replaced. IDs, household links/data, historical lists, database-only recipes and media/source relationships SHALL be preserved without delete-all or soft-delete resurrection.
+Recipe-only fallback SHALL require a documented in-place blocker and stable-ID disk/database comparison. Unexpected content or membership differences SHALL stop fallback before writes. It SHALL preserve IDs, plans/events, household and history membership, database-only recipes and media/source links without delete-all or resurrection. Grocery-derived changes SHALL remain confined to the declared migration rebuild.
 
 #### Scenario: Divergent disk and live
 - **WHEN** fallback assessment finds unexpected differences in supported recipe facts after allowing documented representation-only conversion
@@ -340,7 +385,7 @@ Recipe-only disk fallback SHALL require a documented in-place blocker and disk/d
 
 ### Requirement: Gate cutover on compatible clients and verified recovery
 
-Write activation SHALL require old-writer fencing, supported unsaved-draft recovery, isolated migration/recovery rehearsal and an independently verified rollback pair. A fresh current-format backup SHALL be read back after conversion. Enqueue/dispatch acceptance alone SHALL NOT establish completed conversion, derived refresh or recovery.
+Write activation SHALL require old-writer fencing, supported draft recovery, isolated rehearsal, verified all-list rebuild and an independent rollback pair. Every plan/event SHALL remain preserved; no idle-list or clearing prerequisite applies. A fresh complete backup with the durable vocabulary and saved references SHALL be read back after conversion. Dispatch alone SHALL NOT establish completed migration or recovery.
 
 #### Scenario: Old tab submits full editor payload
 - **WHEN** an old tab sends a legacy ingredient/instruction payload to a canonical record, including a payload carrying a current content revision

@@ -175,7 +175,16 @@ Grocery lines SHALL expose stable row identity, exact scalar/range or null total
 
 #### Scenario: Locale change
 - **WHEN** a member changes EN to FR
-- **THEN** validated label changes only, with source-language fallback when unavailable
+- **THEN** the reviewed label changes only, with saved source shopping spelling when unavailable
+- **AND** saved quantities, recipe originals/contentRevision, purchase identity, rowId, checks and checked baselines remain unchanged
+
+#### Scenario: Two members use different languages
+- **WHEN** two members read the same persisted list in EN and FR concurrently
+- **THEN** each sees the reviewed label for that locale or source fallback without rewriting the shared row or the other member's view
+
+#### Scenario: Label-only vocabulary revision
+- **WHEN** an accepted release changes only a label for the same saved food/purchase identity
+- **THEN** its display updates without remapping saved associations or resetting row/check/baseline identity
 
 ### Requirement: Choose stored category before keyword fallback
 
@@ -191,7 +200,7 @@ Category resolution SHALL prefer protected household food/fallback-key correctio
 
 ### Requirement: Persist a supported category correction before success
 
-A valid category PATCH SHALL save a category override for the supplied saved food identity or conservative fallback key and recompute affected stored weekly grocery lists before returning 204. An absent, blank or unsupported grocerySection SHALL return 400.
+A valid revision-guarded category PATCH SHALL save a household override for the supplied saved food identity or conservative fallback key and recompute affected stored weekly grocery lists before returning204. An absent, blank or unsupported grocerySection SHALL return400. Stale category revisions SHALL return409 without mutation; normal food/fallback corrections SHALL NOT mutate extra occurrences or publish global aliases.
 
 #### Scenario: Valid correction
 - **WHEN** a valid Produce correction completes its save and affected recomputations
@@ -199,7 +208,15 @@ A valid category PATCH SHALL save a category override for the supplied saved foo
 
 #### Scenario: Invalid correction
 - **WHEN** grocerySection is NotARealSection
-- **THEN** the operation returns 400 without applying that correction
+- **THEN** the operation returns400 without applying that correction
+
+#### Scenario: Stale category correction
+- **WHEN** a correction supplies a stale expected category revision
+- **THEN** it returns409 without changing the saved category, rows or checks
+
+#### Scenario: Category scope remains household-owned
+- **WHEN** a food or unresolved fallback category correction succeeds
+- **THEN** it affects that household scope only, without modifying extra occurrences or adding a global alias
 
 ### Requirement: Update matching loaded grocery rows after correction success
 
@@ -285,12 +302,100 @@ Grocery reads and recomputation SHALL use saved validated associations, labels, 
 
 ### Requirement: Govern saved bilingual identity updates
 
-Published food labels and exact aliases SHALL carry source/version provenance and validated EN/FR meaning. External catalogue changes SHALL NOT silently rewrite saved mappings, private corrections or row checks. Adoption SHALL require licence and affected-corpus review.
+Accepted food labels and exact aliases SHALL reference app-owned release/food revisions and local model-authoring/review provenance. Model confidence SHALL NOT establish exact equivalence. A global release SHALL bind reviewed affected-set and reversal evidence; it SHALL NOT silently rewrite private corrections, saved meaning or checks.
 
-#### Scenario: Upstream rename
-- **WHEN** a source renames or retires a food code
-- **THEN** the app-owned ID and saved corrections survive pending reviewed migration
+#### Scenario: Reviewed model-authored label revision
+- **WHEN** a proposed app-owned release renames a label without changing the reviewed food/purchase meaning
+- **THEN** stable IDs and saved corrections survive and only presentation changes
 
 #### Scenario: Private correction
 - **WHEN** one household corrects shopping name or category
 - **THEN** no global alias is automatically published
+
+#### Scenario: Release changes meaning
+- **WHEN** a proposed release changes an alias target or purchase qualifier
+- **THEN** the affected mappings, rows and manual-category conflicts are explicit in its reviewed transition/reversal evidence rather than silently migrated as labels
+
+### Requirement: Qualify a bounded model-authored vocabulary
+
+The app SHALL use a bounded model-authored vocabulary whose reviewed UTF-8 JSON format, release revision and raw hash are pinned. Accepted entries SHALL have stable app IDs, labels, exact aliases, purchase qualifiers and local provenance. No imported external dataset, licence/attribution package or download SHALL be required for this vocabulary.
+
+#### Scenario: Reviewed exact bilingual aliases
+- **WHEN** onion and oignon have individually reviewed exact aliases for the same fresh bulb-onion purchase
+- **THEN** qualified ingestion saves that food/release association rather than guessing from viewer locale
+
+#### Scenario: Active alias collision
+- **WHEN** a proposed release maps one exact match key to two different active purchase identities
+- **THEN** adoption rejects that collision before publishing the release or changing saved mappings
+
+#### Scenario: Model confidence without exact evidence
+- **WHEN** a model proposes a confident alias for an ambiguous term such as échalote
+- **THEN** it remains unmapped with source shopping spelling until its exact purchase meaning is reviewed
+
+#### Scenario: Purchase and unit distinctions
+- **WHEN** fresh/canned tomato or400g/800g packages share a food name and a language alias
+- **THEN** purchase qualifiers/package facts remain separate and no capacity, regional-unit or mass-volume conversion is inferred
+
+### Requirement: Reload persisted vocabulary without inference
+
+The vocabulary SHALL persist as versioned UTF-8 JSON on disk with stable IDs, EN/FR labels or explicit missing labels, aliases, qualifiers, provenance and every referenced release. Reads, recomputation, restart and restore SHALL use persisted/restored bytes without AI, translation, external lookup, implicit reseed or regeneration.
+
+#### Scenario: Restart with providers unavailable
+- **WHEN** the app restarts with a valid persisted vocabulary and providers unavailable
+- **THEN** the same saved associations/labels load from disk without model/network calls or changed revision/hash
+
+#### Scenario: Missing referenced vocabulary
+- **WHEN** saved mappings require a missing or corrupt vocabulary file/release
+- **THEN** loading fails explicitly instead of substituting a seed, inventing labels or rewriting those mappings
+
+#### Scenario: Ordinary unmapped source
+- **WHEN** a source term has no accepted exact alias in the captured vocabulary
+- **THEN** it retains source shopping spelling and conservative fallback without a runtime translation request
+
+### Requirement: Guard vocabulary replacement by expected revision
+
+A vocabulary replacement SHALL validate its complete document and expected current revision/hash before publication. Stale or different valid existing data SHALL NOT be overwritten implicitly. Referenced prior releases SHALL remain available; interruption recovery SHALL retain the accepted operation/bytes rather than generate a new vocabulary.
+
+#### Scenario: Stale replacement
+- **WHEN** an update supplies an old expected revision/hash after another release commits
+- **THEN** it conflicts without replacing the current file or saved references
+
+#### Scenario: Existing valid vocabulary on installation
+- **WHEN** initial-install input encounters a different valid persisted/restored vocabulary
+- **THEN** it does not reseed or overwrite that file
+
+#### Scenario: Interrupted publication
+- **WHEN** publication commits accepted vocabulary bytes but delivery is interrupted
+- **THEN** recovery completes that retained operation without model regeneration or a new unreviewed revision
+
+### Requirement: Preserve protected shopping corrections
+
+Qualified mapping changes SHALL keep private human shopping names, explicit association clears and household category decisions protected. A changed or ambiguous purchase meaning SHALL clear or explicitly requalify its association, never retain an unrelated FoodId. Conflicting prior manual categories SHALL remain unresolved; private corrections SHALL NOT become global aliases.
+
+#### Scenario: Name changes purchase meaning
+- **WHEN** a person changes onion shopping meaning to canned tomato without a qualified same-food association
+- **THEN** the onion FoodId is cleared or explicitly requalified rather than retained behind the new name
+
+#### Scenario: Explicit mapping clear
+- **WHEN** a person saves a cleared mapping and delayed provider or reimport work completes
+- **THEN** the clear/protection survives and that work cannot revive the earlier association
+
+#### Scenario: Conflicting manual categories
+- **WHEN** aliases proposed for one food carry conflicting prior household aisle corrections
+- **THEN** all prior human decisions remain retained and the conflict is not resolved by source order, newest suggestion or model confidence
+
+### Requirement: Include vocabulary identities in full recovery
+
+Full backup SHALL retain exact vocabulary JSON and all referenced revisions, saved mapping/content links and protected household overrides/clears in one coherent captured set. Full restore SHALL validate format, hashes and complete reference membership before writes and restore those facts without network/model calls or bundled-seed substitution.
+
+#### Scenario: Full offline recovery round trip
+- **WHEN** a full backup is restored into an isolated destination and exported again offline
+- **THEN** IDs, JSON bytes/revisions, labels, aliases, qualifiers, provenance, saved references and private corrections remain exact
+
+#### Scenario: Invalid required identity artifact
+- **WHEN** restore encounters missing required JSON, unsupported format, checksum mismatch or unknown food/release reference
+- **THEN** it rejects before any destination write rather than partially restoring or replacing identity with fallback guesses
+
+#### Scenario: Vocabulary changes during capture
+- **WHEN** dictionary bytes and saved mapping/content revisions change during a backup capture
+- **THEN** capture either retains one coherent versioned set or rejects/retries under its existing fence; it cannot publish a valid-looking archive with dangling references

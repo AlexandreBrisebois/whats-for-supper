@@ -13,8 +13,13 @@ completed in-scope changes. Required exact-final-candidate hosted acceptance sta
 open until observed. Historical single-slice stopping and hosted-before-DV rules
 below describe their original operations and are superseded prospectively by this
 policy; historical failures/retries/limits remain unchanged. No production, reset,
-reseed, force push, unrelated merge, garlic-placeholder implementation, bilingual
-catalogue adoption or Similar UI work. Selective repair remains superseded.
+reseed, force push, unrelated merge, garlic-placeholder implementation or Similar
+UI work. Selective repair remains superseded. The 2026-11-12 user amendment includes
+bilingual identity with a reviewed model-authored vocabulary, durable versioned JSON
+on disk and full backup/restore; no external dataset or runtime AI regeneration.
+Migration preserves all planned meals/events and rebuilds every grocery list;
+checks and checked-demand baselines may reset only in that fenced rebuild.
+Manual extras/corrections/history and ordinary later check continuity remain.
 Task IDs/checklists remain authoritative; partial slices do not close aggregates.
 The operational navigation record is `.task/dependable-portions-coordinator/continuation.md`.
 
@@ -45,7 +50,7 @@ Groups 1–3 and the approved known-amount display amendment (group 5) are local
 - [x] 3.1 Add intended-red pointer/touch/Enter/Space tests for extra/normal sort and future-extra disappearance, actual viewport/focus assertions, and normal-vs-extra tag interaction/icon parity in existing grocery browser/unit owners. Run `task test:unit -- src/components/planner/GroceryList.refinement.test.tsx` and `task test:e2e -- grocery.spec.ts` before focus changes.
 - [x] 3.2 Implement scoped focus handling and category-control parity, run 3.1 green on phone/tablet EN/FR and 200% text, then actual category/extra API→PostgreSQL checks proving ingredient scope versus one-occurrence scope. Preserve extra composer/history and contributor disclosure; document visual review and actual scroll/focus evidence.
 
-**Cutover boundary:** migration confirms no active list and creates a fresh unchecked recipe-derived list, preserving historical data and extras. There is no pending ambiguous-active-check transition decision; unexpected active-list evidence must stop/report rather than authorize deletion.
+**Cutover boundary — amended 2026-11-12:** migration preserves every planned meal/calendar event and rebuilds all grocery lists, including populated weeks. Checkmarks/checked-demand baselines may reset only in the captured idempotent rebuild epoch. Preserve manual extras/corrections/history and ordinary subsequent continuity; no empty-list prerequisite or plan clearing.
 
 ## 4. Final integration and verification
 

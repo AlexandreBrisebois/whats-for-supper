@@ -13,8 +13,13 @@ completed in-scope changes. Required exact-final-candidate hosted acceptance sta
 open until observed. Historical single-slice stopping and hosted-before-DV rules
 below describe their original operations and are superseded prospectively by this
 policy; historical failures/retries/limits remain unchanged. No production, reset,
-reseed, force push, unrelated merge, garlic-placeholder implementation, bilingual
-catalogue adoption or Similar UI work. Selective repair remains superseded.
+reseed, force push, unrelated merge, garlic-placeholder implementation or Similar
+UI work. Selective repair remains superseded. The 2026-11-12 user amendment includes
+bilingual identity with a reviewed model-authored vocabulary, durable versioned JSON
+on disk and full backup/restore; no external dataset or runtime AI regeneration.
+Migration preserves all planned meals/events and rebuilds every grocery list;
+checks and checked-demand baselines may reset only in that fenced rebuild.
+Manual extras/corrections/history and ordinary later check continuity remain.
 Task IDs/checklists remain authoritative; partial slices do not close aggregates.
 The operational navigation record is `.task/dependable-portions-coordinator/continuation.md`.
 
@@ -42,7 +47,7 @@ Groups 1–3 retain their task IDs and acceptance obligations, but now reconcile
 | 5.1–5.2 | Implemented with recorded local acceptance below | Preserve approved UI behavior; no rebuild |
 | 4.1 and 5.3 | Required local results exist at their recorded identities | Complete combined and hosted-candidate requirements without treating discovery, skips or older source results as current acceptance |
 
-Unchecked boxes remain open until all their criteria pass; this reconciliation marks none complete. Follow [shared corpus](../canonical-ingredient-correction/acceptance-corpus.md), [release scope](../canonical-ingredient-correction/proposal.md#dependable-portions-delivery-baseline--accepted-2026-11-10) and [CI requirements](../canonical-ingredient-correction/review.md). Allocation, range and split/merge outcomes are settled. Bilingual dataset adoption is deferred and is not a prerequisite for this workstream. Contract changes use the coordinator's sole OpenAPI/generated-client owner and synchronize affected consumers and method-sensitive mocks in the same slice. No product tests run during this specification reconciliation are implied by historical evidence.
+Unchecked boxes remain open until all their criteria pass; this reconciliation marks none complete. Follow [shared corpus](../canonical-ingredient-correction/acceptance-corpus.md), [release scope](../canonical-ingredient-correction/proposal.md#dependable-portions-delivery-baseline--accepted-2026-11-10) and [CI requirements](../canonical-ingredient-correction/review.md). Allocation, range and split/merge outcomes are settled. Step arithmetic and relationship work do not depend on dictionary coverage; bilingual identity is included in final integrated release qualification using model-authored durable JSON, and the external-dataset adoption path is superseded. Contract changes use the coordinator's sole OpenAPI/generated-client owner and synchronize affected consumers and method-sensitive mocks in the same slice. No product tests run during this specification reconciliation are implied by historical evidence.
 
 ## 1. Project one proven whole use coherently
 

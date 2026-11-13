@@ -735,6 +735,190 @@ jobs:
               assert {'content', 'rows', 'checks', 'operations'} <= persisted.keys(), 'Missing actual exact-display persisted-result receipt'
           print('Required exact-display checks: 1 native owner, 2 fresh locale browser journeys; zero skips/retries.')
           PYGUARD
+      - name: Run required fresh PDF canonical journey
+        run: >-
+          dotnet test api/src/RecipeApi.Tests/RecipeApi.Tests.csproj
+          --filter "FullyQualifiedName=RecipeApi.Tests.Integration.CanonicalIngredientPublicationPostgresTests.LiveBrowser_FreshPdfCanonicalGroceries"
+          --logger "trx;LogFileName=native.trx" --results-directory .task/grocery-live/fresh-pdf-input
+        env:
+          WFS_CANONICAL_BROWSER_ROOT: ${{ github.workspace }}
+          WFS_CANONICAL_EVIDENCE: ${{ github.workspace }}/.task/grocery-live/fresh-pdf-input
+      - name: Require fresh PDF canonical journey results
+        run: |
+          python3 - <<'PYGUARD'
+          import json
+          import re
+          from pathlib import Path
+          from uuid import UUID
+          import xml.etree.ElementTree as ET
+
+          root = Path('.task/grocery-live/fresh-pdf-input')
+          owner = 'RecipeApi.Tests.Integration.CanonicalIngredientPublicationPostgresTests.LiveBrowser_FreshPdfCanonicalGroceries'
+          native = ET.parse(root / 'native.trx').getroot().findall('.//{*}UnitTestResult')
+          assert len(native) == 1 and native[0].get('testName') == owner and native[0].get('outcome') == 'Passed', 'Exact PDF native owner must pass once'
+
+          def unique(pairs):
+              result = {}
+              for key, value in pairs:
+                  assert key not in result, 'Duplicate JSON key'
+                  result[key] = value
+              return result
+
+          def read(path):
+              value = json.loads(path.read_text(), object_pairs_hook=unique)
+              assert isinstance(value, dict)
+              return value
+
+          def guid(value):
+              assert isinstance(value, str) and str(UUID(value)) == value and UUID(value).int != 0
+              return value
+
+          def sha(value):
+              assert isinstance(value, str) and re.fullmatch('[0-9a-fA-F]{64}', value)
+
+          def collect(suite):
+              for spec in suite.get('specs', []):
+                  for test in spec['tests']:
+                      yield spec['title'], test
+              for child in suite.get('suites', []):
+                  yield from collect(child)
+
+          def scalar(n):
+              return {'kind': 'scalar', 'value': {'n': str(n), 'd': '1'}}
+
+          def one_row(rows, key, recipe):
+              values = [row for row in rows if row['normalizedKey'] == key]
+              assert len(values) == 1 and values[0]['recipeIds'] == [recipe]
+              assert values[0]['rowId'] and values[0]['rowVersion'] and values[0]['demandIdentity']
+              return values[0]
+
+          assert {path.name for path in (root / 'fresh-pdf').iterdir() if path.is_dir()} == {'en', 'fr'}, 'Exact two PDF locales required'
+          seen_recipes = set()
+          for locale in ['en', 'fr']:
+              path = root / 'fresh-pdf' / locale
+              report = read(path / 'browser-results.json')
+              assert report.get('errors', []) == []
+              assert {key: report['stats'][key] for key in ['expected', 'unexpected', 'skipped', 'flaky']} == {'expected': 1, 'unexpected': 0, 'skipped': 0, 'flaky': 0}
+              tests = [item for suite in report['suites'] for item in collect(suite)]
+              title = f'fresh PDF {locale} uses native conversion, guarded editing and grocery refresh'
+              assert len(tests) == 1 and tests[0][0] == title, 'Missing/extra PDF browser journey'
+              result = tests[0][1]
+              assert result['status'] == 'expected' and len(result['results']) == 1
+              assert result['results'][0]['status'] == 'passed' and type(result['results'][0]['retry']) is int and result['results'][0]['retry'] == 0
+              browser = read(path / 'browser-receipt.json')
+              persisted = read(path / 'persisted-result.json')
+              assert {'locale', 'id', 'accepted', 'captureRequests', 'initial', 'saved', 'final', 'checked', 'afterSave', 'afterClear', 'dated', 'originalPages', 'sauceControlBefore', 'sauceControlAfterSave', 'sauceControlAfterClear'} <= browser.keys()
+              assert set(persisted) == {'locale', 'id', 'proof', 'runtime', 'externalCalls'}
+              recipe = guid(browser['id'])
+              assert recipe == guid(persisted['id']) and recipe not in seen_recipes
+              seen_recipes.add(recipe)
+              assert browser['locale'] == persisted['locale'] == locale
+              assert browser['accepted']['data']['id'] == recipe and type(browser['captureRequests']) is int and browser['captureRequests'] == 1
+              proof = persisted['proof']
+              assert {'content', 'source', 'sourceFiles', 'workflow', 'attempts', 'publications', 'categories', 'rows', 'checks', 'operations', 'reports'} <= proof.keys()
+              initial, saved, final = browser['initial'], browser['saved'], browser['final']
+              assert initial['id'] == saved['id'] == final['id'] == recipe
+              assert initial['servings'] == saved['servings'] == final['servings'] == 4
+              source_refs = [row['provenance']['sourceRef'] for row in initial['ingredientLines']]
+              assert all(isinstance(value, str) and value for value in source_refs)
+              assert source_refs == [row['provenance']['sourceRef'] for row in saved['ingredientLines']] == [row['provenance']['sourceRef'] for row in final['ingredientLines']]
+              assert all(value == proof['content']['sourceRevision'] for value in source_refs)
+              assert len({initial['contentRevision'], saved['contentRevision'], final['contentRevision']}) == 3
+              for key in ['contentRevision', 'servings', 'ingredientLines', 'instructionSections']:
+                  assert proof['content'][key] == final[key]
+              lines = [initial['ingredientLines'], saved['ingredientLines'], final['ingredientLines']]
+              assert all(len(value) == 3 for value in lines)
+              assert [guid(row['id']) for row in lines[0]] == [row['id'] for row in lines[1]] == [row['id'] for row in lines[2]]
+              assert len({row['id'] for row in lines[0]}) == 3
+              assert lines[0][0]['amount'] == scalar(200) and lines[1][0]['amount'] == scalar(250) and lines[2][0]['amount'] is None
+              assert lines[0][1] == lines[1][1] == lines[2][1] and lines[0][1]['amount'] == scalar(100)
+              assert lines[0][2] == lines[1][2] == lines[2][2] and lines[0][2]['amount'] is None and lines[0][2]['unit'] is None
+              assert initial['instructionSections'] == saved['instructionSections'] == final['instructionSections']
+              assert lines[2][0]['provenance']['origin'] == 'human' and 'amount' in lines[2][0]['provenance']['protectedFields']
+              assert browser['dated']['lines'][0]['displayText'] == '500 g pasta'
+              assert proof['source']['isReady'] is True and proof['source']['servings'] == 4 and proof['source']['imageCount'] == 2
+              sha(proof['source']['rawMetadataSha256'])
+              guid(proof['source']['addedBy'])
+              assert proof['source']['rating'] == 'like' and proof['source']['notes'] == 'Keep this public PDF source.'
+              files = proof['sourceFiles']
+              assert set(files) == {'original/source.pdf', 'original/0.png', 'original/1.png', 'hero.webp'}
+              for file in files.values():
+                  sha(file['sha256'])
+                  assert type(file['bytes']) is int and file['bytes'] > 0
+              assert files['original/source.pdf'] == {'sha256': '20808885823da6870ff6dfd8b7408e35d0fc0de766491bdc0344b204df48916d', 'bytes': 1330}
+              assert files['original/0.png']['sha256'] != files['original/1.png']['sha256']
+              assert [value['index'] for value in browser['originalPages']] == [0, 1]
+              for page in browser['originalPages']:
+                  assert {'sha256': page['sha256'], 'bytes': page['bytes']} == files[f"original/{page['index']}.png"]
+              workflows = proof['workflow']
+              assert isinstance(workflows, list) and len(workflows) >= 3
+              ids = [guid(workflow['id']) for workflow in workflows]
+              assert len(ids) == len(set(ids))
+              assert all(workflow['status'] == 'completed' for workflow in workflows)
+              roots = [workflow for workflow in workflows if workflow['workflowId'] == 'recipe-import']
+              children = [workflow for workflow in workflows if workflow['workflowId'] == 'index-recipe-search']
+              assert len(roots) == len(children) == 1
+              processors = ['ConvertPdf', 'ExtractRecipe', 'GenerateHero', 'SyncRecipe', 'CategorizeIngredients', 'CategorizeRecipe', 'RecipeReady', 'CompleteRecipeImportReport', 'QueueRecipeSearchIndex']
+              assert sorted(task['processorName'] for task in roots[0]['tasks']) == sorted(processors)
+              assert [task['processorName'] for task in children[0]['tasks']] == ['IndexRecipeSearch']
+              for workflow in workflows:
+                  if workflow not in roots + children:
+                      assert workflow['workflowId'] == 'supper-grocery-refresh' and [task['processorName'] for task in workflow['tasks']] == ['RefreshSupperGroceries']
+              tasks = [(workflow['id'], task) for workflow in workflows for task in workflow['tasks']]
+              task_ids = [guid(task['taskId']) for _, task in tasks]
+              assert len(task_ids) == len(set(task_ids))
+              attempts = proof['attempts']
+              assert len(attempts) == len(tasks) and len({guid(attempt['id']) for attempt in attempts}) == len(attempts)
+              for instance_id, task in tasks:
+                  assert task['status'] == 'completed' and type(task['retryCount']) is int and task['retryCount'] == 0
+                  observed = [attempt for attempt in attempts if attempt['taskId'] == task['taskId']]
+                  assert len(observed) == 1 and observed[0]['instanceId'] == instance_id and observed[0]['observedAt']
+                  sha(observed[0]['requestHash']); sha(observed[0]['outcomeHash'])
+              publications = proof['publications']
+              assert isinstance(publications, list) and publications
+              assert len({guid(value['operationId']) for value in publications}) == len(publications)
+              assert roots[0]['id'] in {value['operationId'] for value in publications}
+              assert next(task['taskId'] for task in roots[0]['tasks'] if task['processorName'] == 'ConvertPdf') in {value['operationId'] for value in publications}
+              for value in publications:
+                  assert value['delivered'] is True
+                  sha(value['inputHash']); sha(value['resultHash'])
+              categories = proof['categories']
+              assert sorted(value['normalizedKey'] for value in categories) == ['pasta', 'salt to taste', 'sauce']
+              assert all(value['grocerySection'] == 'Pantry' for value in categories)
+              assert proof['reports'] == []
+              operations = proof['operations']
+              assert len(operations) == 2 and len({guid(value['operationId']) for value in operations}) == 2
+              for value in operations:
+                  sha(value['inputHash'])
+              assert len(proof['rows']) == len(proof['checks']) == 1
+              assert proof['rows'][0]['weekStartDate'] == proof['checks'][0]['weekStartDate'] == '2026-10-12'
+              rows = proof['rows'][0]['items']
+              assert sorted(value['normalizedKey'] for value in rows) == ['pasta', 'salt to taste', 'sauce']
+              sauce = one_row(rows, 'sauce', recipe)
+              assert sauce['quantity'] == scalar(200) and one_row(rows, 'pasta', recipe)['quantity'] is None
+              assert proof['checks'][0]['state'][sauce['rowId']] is True and isinstance(proof['checks'][0]['baseline'][sauce['rowId']], dict)
+              for name in ['checked', 'afterSave', 'afterClear']:
+                  assert browser[name]['weekStartDate'] == '2026-10-12'
+                  assert one_row(browser[name]['groceryItems'], 'sauce', recipe) == sauce
+                  assert browser[name]['groceryState'][sauce['rowId']] is True
+              assert one_row(browser['checked']['groceryItems'], 'pasta', recipe)['quantity'] == scalar(400)
+              assert one_row(browser['afterSave']['groceryItems'], 'pasta', recipe)['quantity'] == scalar(500)
+              assert one_row(browser['afterClear']['groceryItems'], 'pasta', recipe)['quantity'] is None
+              controls = [browser[key] for key in ['sauceControlBefore', 'sauceControlAfterSave', 'sauceControlAfterClear']]
+              assert controls[0] == controls[1] == controls[2]
+              assert controls[0]['sauce'] == sauce and controls[0]['check'] is True
+              assert controls[0]['baseline'] == proof['checks'][0]['baseline'][sauce['rowId']]
+              runtime = persisted['runtime']
+              assert {'runtime', 'os', 'architecture', 'profile', 'dotnetSha256', 'inputs', 'nativeAssets'} == set(runtime)
+              assert runtime['runtime'] and runtime['os'] and runtime['architecture'] and isinstance(runtime['profile'], dict) and runtime['profile']
+              sha(runtime['dotnetSha256'])
+              assert any(name.endswith('.runtimeconfig.json') for name in runtime['inputs']) and any(name.endswith('.deps.json') for name in runtime['inputs']) and any(name.endswith('.dll') for name in runtime['inputs'])
+              assert any('pdfium' in name.lower() for name in runtime['nativeAssets']) and any('skiasharp' in name.lower() for name in runtime['nativeAssets'])
+              for value in list(runtime['inputs'].values()) + list(runtime['nativeAssets'].values()):
+                  sha(value)
+              assert persisted['externalCalls'] == {name: 1 for name in ['extract', 'description', 'ingredient-category', 'recipe-category', 'hero', 'embedding']}
+          print('Required PDF checks: 1 exact native owner, 2 fresh locale browser journeys and actual persisted proofs; zero skips/retries.')
+          PYGUARD
       - name: Upload cooking live results
         uses: actions/upload-artifact@v7
         if: always()

@@ -7,7 +7,7 @@ URL/photo publication have bounded local evidence. See [tasks](tasks.md) for exa
 records and remaining criteria. Ordinary binding production is not implemented;
 it now includes import and post-edit reevaluation under the step companion.
 The [accepted baseline](proposal.md) sets coordinated deployment, maintenance reuse,
-old-client refresh and bilingual deferral. The source descriptions below explicitly
+old-client refresh; its 2026-11-12 amendment also includes bilingual identity and plan-preserving full-list rebuilding. The source descriptions below explicitly
 refer to their historical checkpoints; do not reimplement them without checking
 current code and evidence.
 
@@ -64,9 +64,9 @@ Keep amount, unit and description as the primary editor fields. Accept fractions
 
 Alex approved keeping an explicit partial step amount at its original value when the ingredient total changes; it still scales with portions. Relative language stays relative to the corrected total. Proven whole uses follow that total, and inconsistent allocations require quiet review without blocking cooking. The step companion now includes the dependent reconciliation task.
 
-Checked grocery ranges compare against the demand captured when the row was checked: only new minimum greater than that baseline maximum resets the check. Preserving the check does not advance its baseline. New split/merge rows start unchecked; unchanged continuing rows retain checks under that comparison rule. Upgrade has no active grocery list to convert: the next recipe-derived list is new, while historical data and extra occurrences remain preserved.
+Checked grocery ranges compare against the demand captured when the row was checked: only new minimum greater than that baseline maximum resets the check. Preserving the check does not advance its baseline. New split/merge rows start unchecked; unchanged continuing rows retain checks under that comparison rule. During the migration rebuild only, all grocery checks and checked-demand baselines may reset. Preserve every planned meal/calendar event and rebuild all current, future and past lists through the new model, retaining manual extras/corrections and history. Ordinary later recomputation retains the continuity rules above. An empty-list condition is not a prerequisite or permission to clear plans.
 
-Dataset adoption remains a deferred bilingual gate, not a prerequisite of this portions release. Conditional disk fallback uses stable-ID comparison and stops/reports unexpected mismatches rather than choosing a disk/live winner. Alex reports no UI recipe edits and Dreaming synchronization, so no elaborate per-recipe conflict workflow is required solely for such edits. These accepted product decisions do not authorize implementation or release.
+The 2026-11-12 amendment includes bilingual identity using a reviewed model-authored bounded vocabulary, without an external dataset or licence/attribution dependency. Save the vocabulary once as durable versioned UTF-8 JSON and include it and all dependent overrides/mappings in full snapshot/read-back/restore; no AI regeneration on read, restart, migration or recovery. Conditional disk fallback uses stable-ID comparison and stops/reports unexpected mismatches rather than choosing a disk/live winner. Alex reports no UI recipe edits and Dreaming synchronization, so no elaborate per-recipe conflict workflow is required solely for such edits. These accepted product decisions do not authorize implementation or release.
 
 
 ## Fresh-intake publication cutover — 2026-11-10
@@ -110,6 +110,51 @@ The smallest coherent approach extends the existing transaction/journal and curr
 Alex approved extending the same guarded canonical/review publication to **new photo recipes only** when the original photo and empty destination are verified. `recipe-import` also serves PDF and existing-recipe repairs, so its name or image presence alone grants no freshness. The extraction must descend from the original delivered photo bootstrap under the *same captured follow-up workflow ID*, with its declared original image bytes selected in the launch, no `original/source.pdf`, no HTML source, no prior ingredient/raw/canonical content and no ready state. Validate the retained follow-up intent and exact launch/field/file ancestry before publication. A later `recipe-import` on the same photo recipe cannot borrow that bootstrap. PDF-rendered pages cannot qualify as original photos.
 
 Lossless photo extraction publishes `fresh-canonical` through the existing journal, hero, sync and readiness owners without replacing source images. Usable but unsafe wording publishes distinct unready `review-material` and the existing failed-extraction flag. A human can edit ingredient and step wording, then submit a changed eligible Ingredients/Steps comment; the existing image-backed `recipe-import` repair intent must capture those saved fields. Only that guarded repair may publish `review-canonical` from the selected human wording, without another provider response, then complete readiness/report flow. Manual Save/Resolve is not completion. Preserve failed receipts, replay protection, source/media bytes and unrelated human edits. General reimport, PDF, synthesis and share remain separate task 3.1 channels.
+
+### Selected PDF canonical publication (2026-11-12)
+
+The coordinated release now selects task 3.3 after exact-display commit
+`7a502eff4e805bad939e9f909bb2c83350e9ba81` passed local and DV acceptance.
+The outcome is an accepted fresh PDF becoming normally editable canonical content
+through its own bootstrap, conversion and captured extraction ancestry. The
+original-photo exclusion above remains the photo rule; PDF authority is a separate
+private proof within the existing publication owner.
+
+Reuse the delivered empty-destination bootstrap whose operation is the accepted
+follow-up workflow ID. Its selected source is exactly one nonempty
+`original/source.pdf`, with zero original images and no HTML or preexisting recipe
+content. Bind the retained follow-up and captured launch to the same recipe,
+processors, normalized inputs and task dependency graph. The qualifying
+`ConvertPdf` task must lie on the relevant captured extraction ancestry. Its
+delivered `pdf` publication, original returned result and exact ordered page bytes
+must agree with the accepted PDF and the existing publication-chain checks.
+Reuse `PdfConversionProcessor.ValidateOriginalHistory` for result and page-selection
+validation, including its recovered receipt; do not duplicate its bounded output
+rules or invent a new successful-attempt authority record.
+
+Pass the relevant extraction task identity privately through the existing shared
+ancestry helper. Fresh publication, hero and review-material callers use their
+captured extraction; retained-review recovery uses the original retained extraction,
+not the current repair task. This intentionally enables the existing guarded
+PDF review-material correction path and requires its report/intent/human-protection
+qualification. General existing-recipe repair remains task 3.6.
+
+Missing eligible origin or returned conversion evidence supplies no new canonical
+authority; existing compatible legacy behavior stays with its current owners.
+Contradictory retained evidence must propagate its existing validation/conflict
+failure rather than being caught and converted into boolean abstention. Interrupted
+conversion may resume its committed journal and return its actual recovered receipt
+before extraction; it need not fabricate an earlier successful attempt or render
+again. Current content/source, explicit clears, pending delivery and stale-replay
+guards remain required at publication.
+
+This in-place extension reuses the existing journal and history owners. A separate
+PDF flag/source kind would duplicate authority state, while trusting current pages
+or a workflow name would omit accepted-origin and dependency proof. The selected
+approach adds no endpoint, DTO, public flag, workflow or storage model. Qualification
+must distinguish controlled-renderer ancestry tests from actual native PDF rendering,
+then cover the required hero/sync/both-category/readiness chain and ordinary
+edit/read/grocery seam. No checkbox closes from design or an isolated producer pass.
 
 ## Approved flagged-correction slice (2026-11-10)
 

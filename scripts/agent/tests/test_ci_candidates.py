@@ -623,6 +623,196 @@ class PipelineTests(unittest.TestCase):
             with self.subTest(locale=locale, empty_persisted=True):
                 self.assertNotEqual(execute(receipts=receipts), 0)
 
+    def test_fresh_pdf_hosted_gate_runs_one_dedicated_native_owner(self):
+        job = yaml.safe_load((ROOT / '.github/workflows/validate.yml').read_text())['jobs']['cooking-step-live']
+        steps = job['steps']
+        runs = [step for step in steps if step.get('name') == 'Run required fresh PDF canonical journey']
+        self.assertEqual(len(runs), 1, 'Fresh PDF needs its actual dedicated native CI invocation')
+        run = runs[0]
+        owner = 'RecipeApi.Tests.Integration.CanonicalIngredientPublicationPostgresTests.LiveBrowser_FreshPdfCanonicalGroceries'
+        self.assertIn('FullyQualifiedName=' + owner, run['run'])
+        self.assertNotIn('FullyQualifiedName~', run['run'])
+        self.assertIn('trx;LogFileName=native.trx', run['run'])
+        self.assertIn('--results-directory .task/grocery-live/fresh-pdf-input', run['run'])
+        self.assertEqual(run['env']['WFS_CANONICAL_BROWSER_ROOT'], '${{ github.workspace }}')
+        self.assertEqual(run['env']['WFS_CANONICAL_EVIDENCE'], '${{ github.workspace }}/.task/grocery-live/fresh-pdf-input')
+        guards = [step for step in steps if step.get('name') == 'Require fresh PDF canonical journey results']
+        self.assertEqual(len(guards), 1, 'Fresh PDF needs native, both browser and persisted receipt guard')
+        self.assertNotIn('continue-on-error', job)
+        self.assertNotIn('continue-on-error', run)
+        self.assertNotIn('continue-on-error', guards[0])
+        upload = next(step for step in steps if step.get('name') == 'Upload cooking live results')
+        self.assertEqual(upload['if'], 'always()')
+        self.assertIn('.task/grocery-live/', upload['with']['path'])
+        self.assertLess(steps.index(run), steps.index(guards[0]))
+        self.assertLess(steps.index(guards[0]), steps.index(upload))
+
+    def test_fresh_pdf_hosted_guard_rejects_incomplete_or_nonpassing_actual_receipts(self):
+        import copy
+        import json
+        import subprocess
+        import tempfile
+        from uuid import UUID
+        import xml.etree.ElementTree as ET
+        steps = yaml.safe_load((ROOT / '.github/workflows/validate.yml').read_text())['jobs']['cooking-step-live']['steps']
+        guards = [step for step in steps if step.get('name') == 'Require fresh PDF canonical journey results']
+        self.assertEqual(len(guards), 1, 'Missing actual PDF workflow guard is the intended preimplementation red')
+        guard = guards[0]['run']
+        owner = 'RecipeApi.Tests.Integration.CanonicalIngredientPublicationPostgresTests.LiveBrowser_FreshPdfCanonicalGroceries'
+        # Synthetic receipt data validates the actual inline CI guard, never a live PDF journey.
+        uid = lambda value: str(UUID(int=value))
+        scalar = lambda value: {'kind': 'scalar', 'value': {'n': str(value), 'd': '1'}}
+        browser, persisted, reports = {}, {}, {}
+        for index, locale in enumerate(['en', 'fr'], 1):
+            recipe = uid(index)
+            lines = [{'id': uid(10 + n), 'amount': scalar(amount) if amount else None,
+                      'unit': {'text': unit, 'definitionId': None} if unit else None,
+                      'provenance': {'origin': 'source', 'sourceRef': 'retained-source', 'protectedFields': []}}
+                     for n, (amount, unit) in enumerate([(200, 'g'), (100, 'ml'), (None, None)])]
+            initial = {'id': recipe, 'servings': 4, 'contentRevision': 'initial',
+                       'ingredientLines': lines, 'instructionSections': []}
+            saved = copy.deepcopy(initial); saved['contentRevision'] = 'saved'; saved['ingredientLines'][0]['amount'] = scalar(250)
+            final = copy.deepcopy(saved); final['contentRevision'] = 'final'; final['ingredientLines'][0]['amount'] = None
+            final['ingredientLines'][0]['provenance'] = {'origin': 'human', 'sourceRef': 'retained-source', 'protectedFields': ['amount']}
+            def row(key, amount):
+                return {'normalizedKey': key, 'recipeIds': [recipe], 'rowId': key + '-row',
+                        'rowVersion': '2', 'demandIdentity': key + '-identity', 'quantity': scalar(amount) if amount else None}
+            sauce = row('sauce', 200)
+            def schedule(amount):
+                return {'weekStartDate': '2026-10-12', 'groceryItems': [row('pasta', amount), sauce, row('salt to taste', None)],
+                        'groceryState': {'sauce-row': True}}
+            browser[locale] = {'locale': locale, 'id': recipe, 'accepted': {'data': {'id': recipe}}, 'captureRequests': 1,
+                               'initial': initial, 'saved': saved, 'final': final, 'checked': schedule(400),
+                               'afterSave': schedule(500), 'afterClear': schedule(None),
+                               'dated': {'lines': [{'displayText': '500 g pasta'}]}}
+            workflows, attempts = [], []
+            names = [('recipe-import', ['ConvertPdf', 'ExtractRecipe', 'GenerateHero', 'SyncRecipe', 'CategorizeIngredients',
+                                       'CategorizeRecipe', 'RecipeReady', 'CompleteRecipeImportReport', 'QueueRecipeSearchIndex']),
+                     ('index-recipe-search', ['IndexRecipeSearch']), ('supper-grocery-refresh', ['RefreshSupperGroceries'])]
+            for number, (kind, processors) in enumerate(names, 1):
+                instance = uid(100 + number)
+                tasks = []
+                for task_number, processor in enumerate(processors, 1):
+                    task = uid(number * 1000 + task_number)
+                    tasks.append({'taskId': task, 'processorName': processor, 'status': 'completed', 'retryCount': 0})
+                    attempts.append({'id': uid(number * 10000 + task_number), 'taskId': task, 'instanceId': instance,
+                                     'requestHash': 'a' * 64, 'outcomeHash': 'b' * 64, 'observedAt': '2026-11-12T00:00:00Z'})
+                workflows.append({'id': instance, 'workflowId': kind, 'status': 'completed', 'tasks': tasks})
+            proof = {'content': {'sourceRevision': 'retained-source', **{key: final[key] for key in ['contentRevision', 'servings', 'ingredientLines', 'instructionSections']}},
+                     'source': {'isReady': True, 'servings': 4, 'imageCount': 2, 'rawMetadataSha256': 'c' * 64,
+                                'addedBy': uid(99), 'rating': 'like', 'notes': 'Keep this public PDF source.'},
+                     'sourceFiles': {name: {'sha256': str(number) * 64, 'bytes': 100}
+                                     for number, name in enumerate(['original/0.png', 'original/1.png', 'hero.webp'], 1)},
+                     'workflow': workflows, 'attempts': attempts,
+                     'publications': [{'operationId': value, 'inputHash': 'a' * 64, 'resultHash': 'b' * 64, 'delivered': True}
+                                      for value in [workflows[0]['id'], workflows[0]['tasks'][0]['taskId']]],
+                     'categories': [{'normalizedKey': key, 'grocerySection': 'Pantry'} for key in ['pasta', 'salt to taste', 'sauce']],
+                     'reports': [], 'rows': [{'weekStartDate': '2026-10-12', 'items': schedule(None)['groceryItems']}],
+                     'checks': [{'weekStartDate': '2026-10-12', 'state': {'sauce-row': True}, 'baseline': {'sauce-row': {'quantity': scalar(200)}}}],
+                     'operations': [{'operationId': uid(700 + number), 'inputHash': 'a' * 64} for number in [1, 2]]}
+            proof['sourceFiles']['original/source.pdf'] = {'sha256': '20808885823da6870ff6dfd8b7408e35d0fc0de766491bdc0344b204df48916d', 'bytes': 1330}
+            browser[locale]['originalPages'] = [{'index': number, **proof['sourceFiles'][f'original/{number}.png']} for number in [0, 1]]
+            control = {'sauce': sauce, 'check': True, 'baseline': proof['checks'][0]['baseline']['sauce-row']}
+            for key in ['sauceControlBefore', 'sauceControlAfterSave', 'sauceControlAfterClear']:
+                browser[locale][key] = copy.deepcopy(control)
+            persisted[locale] = {'locale': locale, 'id': recipe, 'proof': proof,
+                                 'runtime': {'runtime': '.NET 10', 'os': 'Linux', 'architecture': 'X64', 'profile': {'dpi': 200},
+                                             'dotnetSha256': 'd' * 64, 'inputs': {name: 'e' * 64 for name in ['RecipeApi.dll', 'RecipeApi.runtimeconfig.json', 'RecipeApi.deps.json']},
+                                             'nativeAssets': {'libpdfium.so': 'f' * 64, 'libSkiaSharp.so': 'f' * 64}},
+                                 'externalCalls': {name: 1 for name in ['extract', 'description', 'ingredient-category', 'recipe-category', 'hero', 'embedding']}}
+            reports[locale] = {'errors': [], 'stats': {'expected': 1, 'unexpected': 0, 'skipped': 0, 'flaky': 0},
+                               'suites': [{'specs': [{'title': f'fresh PDF {locale} uses native conversion, guarded editing and grocery refresh',
+                                                      'tests': [{'status': 'expected', 'results': [{'status': 'passed', 'retry': 0}]}]}]}]}
+
+        def execute(native=None, changed_reports=None, changed_browser=None, changed_persisted=None, missing=None, malformed=None, extra_locale=False):
+            with tempfile.TemporaryDirectory() as directory:
+                root = Path(directory) / '.task/grocery-live/fresh-pdf-input'
+                root.mkdir(parents=True)
+                if missing != 'native':
+                    tree = ET.Element('TestRun'); results = ET.SubElement(tree, 'Results')
+                    for name, outcome in [(owner, 'Passed')] if native is None else native:
+                        ET.SubElement(results, 'UnitTestResult', testName=name, outcome=outcome)
+                    ET.ElementTree(tree).write(root / 'native.trx')
+                for locale in ['en', 'fr']:
+                    path = root / 'fresh-pdf' / locale
+                    path.mkdir(parents=True)
+                    for suffix, values in [('browser-results', changed_reports or reports), ('browser-receipt', changed_browser or browser), ('persisted-result', changed_persisted or persisted)]:
+                        key = locale + '-' + suffix
+                        if missing != key:
+                            (path / (suffix + '.json')).write_text('{' if malformed == key else json.dumps(values[locale]))
+                if extra_locale:
+                    (root / 'fresh-pdf' / 'de').mkdir()
+                return subprocess.run(['bash', '-c', guard], cwd=directory, capture_output=True).returncode
+
+        self.assertEqual(execute(), 0, 'Actual guard must admit a complete one-native/two-locale receipt set')
+        nested = copy.deepcopy(reports); nested['fr']['suites'] = [{'suites': nested['fr']['suites']}]
+        self.assertEqual(execute(changed_reports=nested), 0, 'Nested actual Playwright suite layout remains supported')
+        self.assertNotEqual(execute(extra_locale=True), 0)
+        shared_browser, shared_persisted = copy.deepcopy(browser), copy.deepcopy(persisted)
+        shared_browser['fr'] = copy.deepcopy(shared_browser['en']); shared_browser['fr']['locale'] = 'fr'
+        shared_persisted['fr'] = copy.deepcopy(shared_persisted['en']); shared_persisted['fr']['locale'] = 'fr'
+        self.assertNotEqual(execute(changed_browser=shared_browser, changed_persisted=shared_persisted), 0, 'EN/FR must have fresh independent recipe identities')
+        for native in [[], [(owner + 'Other', 'Passed')], [(owner, 'NotExecuted')], [(owner, 'Failed')],
+                       [(owner, 'Passed'), (owner, 'Passed')], [(owner, 'Passed'), (owner + 'Other', 'Passed')]]:
+            with self.subTest(native=native): self.assertNotEqual(execute(native=native), 0)
+        self.assertNotEqual(execute(missing='native'), 0)
+        for locale in ['en', 'fr']:
+            for suffix in ['browser-results', 'browser-receipt', 'persisted-result']:
+                with self.subTest(missing=locale + '-' + suffix): self.assertNotEqual(execute(missing=locale + '-' + suffix), 0)
+                with self.subTest(malformed=locale + '-' + suffix): self.assertNotEqual(execute(malformed=locale + '-' + suffix), 0)
+            for fault in ['wrong-title', 'extra', 'duplicate', 'empty', 'not-executed', 'skip', 'fail', 'flaky', 'retry', 'multiple-attempts']:
+                values = copy.deepcopy(reports); specs = values[locale]['suites'][0]['specs']; test = specs[0]['tests'][0]
+                if fault == 'wrong-title': specs[0]['title'] = 'Another journey'
+                elif fault in ['extra', 'duplicate']: specs.append(copy.deepcopy(specs[0]))
+                elif fault == 'empty': specs.clear()
+                elif fault == 'not-executed': test['results'] = []
+                elif fault == 'retry': test['results'][0]['retry'] = 1
+                elif fault == 'multiple-attempts': test['results'] = [{'status': 'failed', 'retry': 0}, {'status': 'passed', 'retry': 1}]
+                elif fault == 'flaky': test['status'] = 'flaky'; values[locale]['stats']['flaky'] = 1
+                else: test['status'] = 'skipped' if fault == 'skip' else 'unexpected'; test['results'][0]['status'] = 'skipped' if fault == 'skip' else 'failed'
+                with self.subTest(locale=locale, browser_fault=fault): self.assertNotEqual(execute(changed_reports=values), 0)
+            for key in browser[locale]:
+                values = copy.deepcopy(browser); del values[locale][key]
+                with self.subTest(locale=locale, missing_browser_key=key): self.assertNotEqual(execute(changed_browser=values), 0)
+            for key in persisted[locale]['proof']:
+                values = copy.deepcopy(persisted); del values[locale]['proof'][key]
+                with self.subTest(locale=locale, missing_proof_key=key): self.assertNotEqual(execute(changed_persisted=values), 0)
+            for browser_fault in ['page-hash', 'source-ref', 'sauce-baseline', 'same-recipe']:
+                values = copy.deepcopy(browser)
+                if browser_fault == 'page-hash': values[locale]['originalPages'][0]['sha256'] = '0' * 64
+                elif browser_fault == 'source-ref': values[locale]['saved']['ingredientLines'][0]['provenance']['sourceRef'] = 'changed-source'
+                elif browser_fault == 'sauce-baseline': values[locale]['sauceControlAfterClear']['baseline'] = {}
+                else: values[locale]['id'] = uid(1 if locale == 'fr' else 2)
+                with self.subTest(locale=locale, receipt_fault=browser_fault): self.assertNotEqual(execute(changed_browser=values), 0)
+            for fault in ['foreign-id', 'same-locale', 'pdf-sha', 'missing-page', 'same-page', 'missing-root', 'extra-root', 'missing-child', 'root-task', 'failed-task', 'retried-task', 'missing-attempt', 'duplicate-attempt', 'foreign-attempt', 'undelivered', 'category', 'source', 'rows', 'check', 'baseline', 'operation', 'report', 'runtime', 'external-count', 'content']:
+                values = copy.deepcopy(persisted); value = values[locale]; proof = value['proof']
+                if fault == 'foreign-id': value['id'] = uid(999)
+                elif fault == 'same-locale': value['locale'] = 'fr' if locale == 'en' else 'en'
+                elif fault == 'pdf-sha': proof['sourceFiles']['original/source.pdf']['sha256'] = '0' * 64
+                elif fault == 'missing-page': del proof['sourceFiles']['original/1.png']
+                elif fault == 'same-page': proof['sourceFiles']['original/1.png'] = proof['sourceFiles']['original/0.png']
+                elif fault == 'missing-root': proof['workflow'].pop(0)
+                elif fault == 'extra-root': proof['workflow'].append(copy.deepcopy(proof['workflow'][0]))
+                elif fault == 'missing-child': proof['workflow'].pop(1)
+                elif fault == 'root-task': proof['workflow'][0]['tasks'].pop()
+                elif fault == 'failed-task': proof['workflow'][0]['tasks'][0]['status'] = 'failed'
+                elif fault == 'retried-task': proof['workflow'][0]['tasks'][0]['retryCount'] = 1
+                elif fault == 'missing-attempt': proof['attempts'].pop()
+                elif fault == 'duplicate-attempt': proof['attempts'].append(copy.deepcopy(proof['attempts'][0]))
+                elif fault == 'foreign-attempt': proof['attempts'][0]['instanceId'] = uid(999)
+                elif fault == 'undelivered': proof['publications'][0]['delivered'] = False
+                elif fault == 'category': proof['categories'].pop()
+                elif fault == 'source': proof['source']['isReady'] = False
+                elif fault == 'rows': proof['rows'][0]['items'][0]['quantity'] = scalar(500)
+                elif fault == 'check': proof['checks'][0]['state']['sauce-row'] = False
+                elif fault == 'baseline': proof['checks'][0]['baseline'] = {}
+                elif fault == 'operation': proof['operations'].pop()
+                elif fault == 'report': proof['reports'] = [{'status': 'reimportFailed'}]
+                elif fault == 'runtime': value['runtime']['nativeAssets'] = {}
+                elif fault == 'external-count': value['externalCalls']['extract'] = 2
+                elif fault == 'content': proof['content']['contentRevision'] = 'stale'
+                with self.subTest(locale=locale, persisted_fault=fault): self.assertNotEqual(execute(changed_persisted=values), 0)
+
     def test_e2e_has_four_suites_and_one_build(self):
         jobs = yaml.safe_load((ROOT / '.github/workflows/validate.yml').read_text())['jobs']
         self.assertIn('pwa-build', jobs)

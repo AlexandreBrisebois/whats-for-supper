@@ -2677,6 +2677,11 @@ paths:
         establishes persistence, not readiness or verified workflow launch.
         Corrupt, encrypted and over-10-page documents fail the workflow and remain
         in Settings for Retry/Delete. No page truncation or PDF download.
+        A witnessed fresh PDF extraction that can preserve its supported original
+        facts losslessly publishes canonical ingredients and steps through its
+        guarded publication before readiness. Usable content requiring review
+        retains the existing unready review behavior. Rendered pages retain their
+        PDF conversion ancestry; later reimports do not inherit fresh-intake authority.
       security: [{ FamilyMemberId: [] }]
       requestBody:
         required: true
@@ -3301,6 +3306,10 @@ paths:
         - $ref: '#/components/parameters/DemoMediaGeneration'
       summary: Get original recipe image by index
       operationId: getRecipeOriginalImage
+      description: |
+        For PDF captures this returns the selected rendered page by its ordered
+        image index. The retained source PDF remains separate and is not returned
+        by this image operation.
       tags: [Recipes]
       responses:
         '412':
