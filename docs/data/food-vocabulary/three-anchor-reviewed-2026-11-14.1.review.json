@@ -1,0 +1,75 @@
+{
+  "format": "wfs-bounded-vocabulary-review",
+  "version": 1,
+  "disposition": "reviewed-local-candidate",
+  "reference": {
+    "revision": "three-anchor-reviewed-2026-11-14.1",
+    "sha256": "9a73124844fd93422d00bda2a287169317377f69ef2a1a66f6b405e101e8274b"
+  },
+  "draft": {
+    "path": "model-draft-2026-11-12.1.json",
+    "sha256": "37f6843c90853e86c6d4d786644d870dea913bb91a6011eeb854eb1a8ff7285a",
+    "authoring": {
+      "method": "Model-authored from general language/food knowledge and the user-selected scope; no external dataset, website, imported dictionary or provider call.",
+      "author": "Codex assistant /root/package_delivery_prep",
+      "exactDeployedModelIdentifier": "not independently asserted",
+      "idAllocation": "One-time UUIDv4 allocation during candidate authoring; literal IDs persist in this JSON and must not be regenerated from labels.",
+      "sourceRefMeaning": "Local candidate revision, not an external citation or semantic truth certificate.",
+      "review": "Every food/alias is unresolved/proposed. No independent semantic review, adoption or model-confidence claim is made."
+    },
+    "authoredAtUtc": "2026-11-12T11:34:18.622129+00:00"
+  },
+  "selectedFrom": {
+    "path": "model-reviewed-2026-11-13.1.json",
+    "sha256": "a44ef018d74f44b1596e0763da3858c128d3c65b9fd27a6c3a8e2b29f50df1b0",
+    "reviewRecord": "model-reviewed-2026-11-13.1.review.json"
+  },
+  "selectionAuthor": {
+    "agent": "Codex",
+    "modelFamily": "GPT-6",
+    "exactDeploymentIdentifier": "unavailable in this session",
+    "revision": "three-anchor-reviewed-2026-11-14.1",
+    "selectedAtUtc": "2026-11-14T14:41:53.776042+00:00"
+  },
+  "review": {
+    "kind": "AI source and finite alias review",
+    "date": "2026-11-14",
+    "revision": "three-anchor-reviewed-2026-11-14.1",
+    "scope": "Each of the three existing IDs, both labels, all purchase qualifiers and 15 literal aliases were retained exactly from the reviewed candidate. Existing alias review timestamps and food revisions remain intact.",
+    "decisions": {
+      "ac9818ee-4c30-4f91-a4ea-0aa4fc7265ee": "Fresh bulb onion, unspecified variety. The listed literal diced/sliced phrases describe preparation of that purchase. Powder, green onion and shallot remain outside this identity.",
+      "d9940182-48c9-4823-a820-1c7c54869d5f": "Fresh raw tomato, unspecified variety. No preserved, dried, concentrated or prepared-product form is inferred.",
+      "031a0c4b-2d73-4a70-88aa-8ad3dd680ebb": "Canned tomato with cut unspecified. No fresh tomato, paste, explicit crushed cut, added seasoning, net/drained basis or package capacity is inferred."
+    },
+    "unmappedTerms": "See the exact corpus. Unlisted forms abstain.",
+    "independentReview": {
+      "agent": "/root/bounded_vocabulary_review",
+      "scope": "Immutable candidate bytes and all finite corpus entries. IDs, labels, qualifiers and aliases compared to retained predecessor.",
+      "candidateSha256": "9a73124844fd93422d00bda2a287169317377f69ef2a1a66f6b405e101e8274b",
+      "exact": 15,
+      "unmapped": 65,
+      "sameLocaleCollisions": 0,
+      "finiteCorpusFalseMerges": 0,
+      "qualification": "AI source review. Final implementation source review has its own immutable artifact."
+    }
+  },
+  "adoptionReviewIdentity": "wfs-bounded-vocabulary:three-anchor-reviewed-2026-11-14.1:9a73124844fd93422d00bda2a287169317377f69ef2a1a66f6b405e101e8274b",
+  "corpus": {
+    "path": "three-anchor-reviewed-2026-11-14.1.corpus.json",
+    "sha256": "2830ded1e3cc8246ec71f43bcc408716889e99cbf1ff5c635cc28135539d56b1"
+  },
+  "scope": {
+    "foods": 3,
+    "aliases": 15,
+    "units": 0,
+    "unmappedCorpusTerms": 65
+  },
+  "adoptionManifest": {
+    "path": "three-anchor-reviewed-2026-11-14.1.adoption.json",
+    "sha256": "82869ec0269b3cef43e38ee1b5850ce4f430ac06e0964bb4e097e38bbdf08046"
+  },
+  "reversalManifest": {
+    "path": "three-anchor-reviewed-2026-11-14.1.reversal.json",
+    "sha256": "7328e9039a6b29ac68855cd6073d327b123ef1a4205d226778d7add20d468367"
+  }
+}

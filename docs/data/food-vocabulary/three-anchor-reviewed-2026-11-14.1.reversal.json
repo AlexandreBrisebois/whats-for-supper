@@ -1,0 +1,248 @@
+{
+  "format": "wfs-bounded-vocabulary-reversal",
+  "version": 1,
+  "evidence": {
+    "observationPath": ".task/bilingual-common-20261114/common-observations.json",
+    "observationRawSha256": "e541d1f7b0d90c510f6e44da6d8471d96dccbb8e23603b5fc22aa43afcd25767",
+    "receiptPath": ".task/database-tests/runs/1c9de74bc57a4c26ab6da407fdb91b3a/result.json",
+    "receiptRawSha256": "636c281e6001baa07267cb58f231b73f9ca6ce18f46729ea9f9a37734389deee",
+    "trxPath": ".task/database-tests/runs/1c9de74bc57a4c26ab6da407fdb91b3a/database.trx",
+    "trxRawSha256": "eca8d5f046b920b5c221c0a28744e645101905e7f0297fdce80bf025a4a9dd0c",
+    "qualification": "actual disposable PostgreSQL and local filesystem; external extraction/acquisition providers doubled; source originals and mappings produced by ordinary owners",
+    "capturedJsonProjectionHash": "SHA256 of UTF-8 JSON with recursively sorted keys, no whitespace and unescaped Unicode. Snapshot manifest/history/file hashes retain their original owners."
+  },
+  "test": "RecipeApi.Tests.Integration.BilingualShoppingIdentityPostgresTests.Reversal_DisablesOnlyFutureMatchingAndRetainsCapturedSavedMappingsAndProtectedTables",
+  "outcome": "Passed",
+  "priorHead": {
+    "revision": "three-anchor-reviewed-2026-11-14.1",
+    "sha256": "9a73124844fd93422d00bda2a287169317377f69ef2a1a66f6b405e101e8274b"
+  },
+  "replacementHead": {
+    "revision": "three-anchor-matching-disabled-rehearsal-v1",
+    "sha256": "543bb2c8039d2aae5ee5c1bd47fe4d88e1e565cb1f6225fcc1441c3c9ed3b91f"
+  },
+  "operationId": "5d28bfd7-af8b-4010-8f3a-967859ff33fa",
+  "publication": {
+    "previousHead": {
+      "revision": "three-anchor-reviewed-2026-11-14.1",
+      "sha256": "9a73124844fd93422d00bda2a287169317377f69ef2a1a66f6b405e101e8274b"
+    },
+    "newHead": {
+      "revision": "three-anchor-matching-disabled-rehearsal-v1",
+      "sha256": "543bb2c8039d2aae5ee5c1bd47fe4d88e1e565cb1f6225fcc1441c3c9ed3b91f"
+    },
+    "presentationVersion": "2"
+  },
+  "acceptedRawBytesBase64": "eyJ2ZXJzaW9uIjoxLCJyZXZpc2lvbiI6InRocmVlLWFuY2hvci1tYXRjaGluZy1kaXNhYmxlZC1yZWhlYXJzYWwtdjEiLCJzb3VyY2VSZWYiOiJ3ZnMtbG9jYWwtbW9kZWwtcHJvcG9zYWw6bW9kZWwtZHJhZnQtMjAyNi0xMS0xMi4xIiwidW5pdHMiOltdLCJyZWxlYXNlcyI6W3sicmV2aXNpb24iOiJ0aHJlZS1hbmNob3ItcmV2aWV3ZWQtMjAyNi0xMS0xNC4xIiwic291cmNlUmVmIjoid2ZzLWxvY2FsLW1vZGVsLXByb3Bvc2FsOm1vZGVsLWRyYWZ0LTIwMjYtMTEtMTIuMSIsImZvb2RzIjpbeyJpZCI6ImFjOTgxOGVlLTRjMzAtNGY5MS1hNGVhLTBhYTRmYzcyNjVlZSIsInJldmlzaW9uIjoibW9kZWwtcmV2aWV3ZWQtMjAyNi0xMS0xMy4xL2Zvb2QtMSIsImxhYmVscyI6eyJlbiI6IkZyZXNoIGJ1bGIgb25pb24iLCJmciI6Ik9pZ25vbiBmcmFpcyJ9LCJxdWFsaWZpZXJzIjp7InN0YXRlIjoiZnJlc2giLCJwbGFudFBhcnQiOiJidWxiIiwidmFyaWV0eSI6InVuc3BlY2lmaWVkIn0sInN0YXR1cyI6InZhbGlkYXRlZCIsImFsaWFzZXMiOlt7ImxvY2FsZSI6ImVuIiwidGV4dCI6Im9uaW9uIiwibWF0Y2hLZXkiOiJvbmlvbiIsInJlbGF0aW9uIjoiZXhhY3QiLCJzb3VyY2VSZWYiOiJ3ZnMtbG9jYWwtbW9kZWwtcHJvcG9zYWw6bW9kZWwtZHJhZnQtMjAyNi0xMS0xMi4xI2Zvb2QvYWM5ODE4ZWUtNGMzMC00ZjkxLWE0ZWEtMGFhNGZjNzI2NWVlIiwicmV2aWV3ZWRBdCI6IjIwMjYtMTEtMTNUMTY6MjI6MTQuMjk2MTQ0XHUwMDJCMDA6MDAifSx7ImxvY2FsZSI6ImVuIiwidGV4dCI6Im9uaW9ucyIsIm1hdGNoS2V5Ijoib25pb25zIiwicmVsYXRpb24iOiJleGFjdCIsInNvdXJjZVJlZiI6Indmcy1sb2NhbC1tb2RlbC1wcm9wb3NhbDptb2RlbC1kcmFmdC0yMDI2LTExLTEyLjEjZm9vZC9hYzk4MThlZS00YzMwLTRmOTEtYTRlYS0wYWE0ZmM3MjY1ZWUiLCJyZXZpZXdlZEF0IjoiMjAyNi0xMS0xM1QxNjoyMjoxNC4yOTYxNDRcdTAwMkIwMDowMCJ9LHsibG9jYWxlIjoiZW4iLCJ0ZXh0Ijoib25pb24sIGRpY2VkIiwibWF0Y2hLZXkiOiJvbmlvbiwgZGljZWQiLCJyZWxhdGlvbiI6ImV4YWN0Iiwic291cmNlUmVmIjoid2ZzLWxvY2FsLW1vZGVsLXByb3Bvc2FsOm1vZGVsLWRyYWZ0LTIwMjYtMTEtMTIuMSNmb29kL2FjOTgxOGVlLTRjMzAtNGY5MS1hNGVhLTBhYTRmYzcyNjVlZSIsInJldmlld2VkQXQiOiIyMDI2LTExLTEzVDE2OjIyOjE0LjI5NjE0NFx1MDAyQjAwOjAwIn0seyJsb2NhbGUiOiJlbiIsInRleHQiOiJvbmlvbiwgc2xpY2VkIiwibWF0Y2hLZXkiOiJvbmlvbiwgc2xpY2VkIiwicmVsYXRpb24iOiJleGFjdCIsInNvdXJjZVJlZiI6Indmcy1sb2NhbC1tb2RlbC1wcm9wb3NhbDptb2RlbC1kcmFmdC0yMDI2LTExLTEyLjEjZm9vZC9hYzk4MThlZS00YzMwLTRmOTEtYTRlYS0wYWE0ZmM3MjY1ZWUiLCJyZXZpZXdlZEF0IjoiMjAyNi0xMS0xM1QxNjoyMjoxNC4yOTYxNDRcdTAwMkIwMDowMCJ9LHsibG9jYWxlIjoiZnIiLCJ0ZXh0Ijoib2lnbm9uIiwibWF0Y2hLZXkiOiJvaWdub24iLCJyZWxhdGlvbiI6ImV4YWN0Iiwic291cmNlUmVmIjoid2ZzLWxvY2FsLW1vZGVsLXByb3Bvc2FsOm1vZGVsLWRyYWZ0LTIwMjYtMTEtMTIuMSNmb29kL2FjOTgxOGVlLTRjMzAtNGY5MS1hNGVhLTBhYTRmYzcyNjVlZSIsInJldmlld2VkQXQiOiIyMDI2LTExLTEzVDE2OjIyOjE0LjI5NjE0NFx1MDAyQjAwOjAwIn0seyJsb2NhbGUiOiJmciIsInRleHQiOiJvaWdub25zIiwibWF0Y2hLZXkiOiJvaWdub25zIiwicmVsYXRpb24iOiJleGFjdCIsInNvdXJjZVJlZiI6Indmcy1sb2NhbC1tb2RlbC1wcm9wb3NhbDptb2RlbC1kcmFmdC0yMDI2LTExLTEyLjEjZm9vZC9hYzk4MThlZS00YzMwLTRmOTEtYTRlYS0wYWE0ZmM3MjY1ZWUiLCJyZXZpZXdlZEF0IjoiMjAyNi0xMS0xM1QxNjoyMjoxNC4yOTYxNDRcdTAwMkIwMDowMCJ9LHsibG9jYWxlIjoiZnIiLCJ0ZXh0Ijoib2lnbm9uIFx1MDBFOW1pbmNcdTAwRTkiLCJtYXRjaEtleSI6Im9pZ25vbiBcdTAwRTltaW5jXHUwMEU5IiwicmVsYXRpb24iOiJleGFjdCIsInNvdXJjZVJlZiI6Indmcy1sb2NhbC1tb2RlbC1wcm9wb3NhbDptb2RlbC1kcmFmdC0yMDI2LTExLTEyLjEjZm9vZC9hYzk4MThlZS00YzMwLTRmOTEtYTRlYS0wYWE0ZmM3MjY1ZWUiLCJyZXZpZXdlZEF0IjoiMjAyNi0xMS0xM1QxNjoyMjoxNC4yOTYxNDRcdTAwMkIwMDowMCJ9XX0seyJpZCI6ImQ5OTQwMTgyLTQ4YzktNDgyMy1hODIwLTFjN2M1NDg2OWQ1ZiIsInJldmlzaW9uIjoibW9kZWwtcmV2aWV3ZWQtMjAyNi0xMS0xMy4xL2Zvb2QtMiIsImxhYmVscyI6eyJlbiI6IkZyZXNoIHRvbWF0byIsImZyIjoiVG9tYXRlIGZyYVx1MDBFRWNoZSJ9LCJxdWFsaWZpZXJzIjp7InN0YXRlIjoiZnJlc2giLCJwcm9kdWN0Rm9ybSI6InJhdyB0b21hdG8iLCJ2YXJpZXR5IjoidW5zcGVjaWZpZWQifSwic3RhdHVzIjoidmFsaWRhdGVkIiwiYWxpYXNlcyI6W3sibG9jYWxlIjoiZW4iLCJ0ZXh0IjoidG9tYXRvIiwibWF0Y2hLZXkiOiJ0b21hdG8iLCJyZWxhdGlvbiI6ImV4YWN0Iiwic291cmNlUmVmIjoid2ZzLWxvY2FsLW1vZGVsLXByb3Bvc2FsOm1vZGVsLWRyYWZ0LTIwMjYtMTEtMTIuMSNmb29kL2Q5OTQwMTgyLTQ4YzktNDgyMy1hODIwLTFjN2M1NDg2OWQ1ZiIsInJldmlld2VkQXQiOiIyMDI2LTExLTEzVDE2OjIyOjE0LjI5NjE0NFx1MDAyQjAwOjAwIn0seyJsb2NhbGUiOiJlbiIsInRleHQiOiJ0b21hdG9lcyIsIm1hdGNoS2V5IjoidG9tYXRvZXMiLCJyZWxhdGlvbiI6ImV4YWN0Iiwic291cmNlUmVmIjoid2ZzLWxvY2FsLW1vZGVsLXByb3Bvc2FsOm1vZGVsLWRyYWZ0LTIwMjYtMTEtMTIuMSNmb29kL2Q5OTQwMTgyLTQ4YzktNDgyMy1hODIwLTFjN2M1NDg2OWQ1ZiIsInJldmlld2VkQXQiOiIyMDI2LTExLTEzVDE2OjIyOjE0LjI5NjE0NFx1MDAyQjAwOjAwIn0seyJsb2NhbGUiOiJmciIsInRleHQiOiJ0b21hdGUiLCJtYXRjaEtleSI6InRvbWF0ZSIsInJlbGF0aW9uIjoiZXhhY3QiLCJzb3VyY2VSZWYiOiJ3ZnMtbG9jYWwtbW9kZWwtcHJvcG9zYWw6bW9kZWwtZHJhZnQtMjAyNi0xMS0xMi4xI2Zvb2QvZDk5NDAxODItNDhjOS00ODIzLWE4MjAtMWM3YzU0ODY5ZDVmIiwicmV2aWV3ZWRBdCI6IjIwMjYtMTEtMTNUMTY6MjI6MTQuMjk2MTQ0XHUwMDJCMDA6MDAifSx7ImxvY2FsZSI6ImZyIiwidGV4dCI6InRvbWF0ZXMiLCJtYXRjaEtleSI6InRvbWF0ZXMiLCJyZWxhdGlvbiI6ImV4YWN0Iiwic291cmNlUmVmIjoid2ZzLWxvY2FsLW1vZGVsLXByb3Bvc2FsOm1vZGVsLWRyYWZ0LTIwMjYtMTEtMTIuMSNmb29kL2Q5OTQwMTgyLTQ4YzktNDgyMy1hODIwLTFjN2M1NDg2OWQ1ZiIsInJldmlld2VkQXQiOiIyMDI2LTExLTEzVDE2OjIyOjE0LjI5NjE0NFx1MDAyQjAwOjAwIn1dfSx7ImlkIjoiMDMxYTBjNGItMmQ3My00YTcwLTg4YWEtOGFkM2RkNjgwZWJiIiwicmV2aXNpb24iOiJtb2RlbC1yZXZpZXdlZC0yMDI2LTExLTEzLjEvZm9vZC0zIiwibGFiZWxzIjp7ImVuIjoiQ2FubmVkIHRvbWF0b2VzLCB1bnNwZWNpZmllZCBjdXQiLCJmciI6IlRvbWF0ZXMgZW4gY29uc2VydmUsIGNvdXBlIG5vbiBwclx1MDBFOWNpc1x1MDBFOWUifSwicXVhbGlmaWVycyI6eyJwcmVzZXJ2YXRpb24iOiJjYW5uZWQiLCJwcm9kdWN0Rm9ybSI6InRvbWF0b2VzIiwiY3V0IjoidW5zcGVjaWZpZWQifSwic3RhdHVzIjoidmFsaWRhdGVkIiwiYWxpYXNlcyI6W3sibG9jYWxlIjoiZW4iLCJ0ZXh0IjoiY2FubmVkIHRvbWF0byIsIm1hdGNoS2V5IjoiY2FubmVkIHRvbWF0byIsInJlbGF0aW9uIjoiZXhhY3QiLCJzb3VyY2VSZWYiOiJ3ZnMtbG9jYWwtbW9kZWwtcHJvcG9zYWw6bW9kZWwtZHJhZnQtMjAyNi0xMS0xMi4xI2Zvb2QvMDMxYTBjNGItMmQ3My00YTcwLTg4YWEtOGFkM2RkNjgwZWJiIiwicmV2aWV3ZWRBdCI6IjIwMjYtMTEtMTNUMTY6MjI6MTQuMjk2MTQ0XHUwMDJCMDA6MDAifSx7ImxvY2FsZSI6ImVuIiwidGV4dCI6ImNhbm5lZCB0b21hdG9lcyIsIm1hdGNoS2V5IjoiY2FubmVkIHRvbWF0b2VzIiwicmVsYXRpb24iOiJleGFjdCIsInNvdXJjZVJlZiI6Indmcy1sb2NhbC1tb2RlbC1wcm9wb3NhbDptb2RlbC1kcmFmdC0yMDI2LTExLTEyLjEjZm9vZC8wMzFhMGM0Yi0yZDczLTRhNzAtODhhYS04YWQzZGQ2ODBlYmIiLCJyZXZpZXdlZEF0IjoiMjAyNi0xMS0xM1QxNjoyMjoxNC4yOTYxNDRcdTAwMkIwMDowMCJ9LHsibG9jYWxlIjoiZnIiLCJ0ZXh0IjoidG9tYXRlIGVuIGNvbnNlcnZlIiwibWF0Y2hLZXkiOiJ0b21hdGUgZW4gY29uc2VydmUiLCJyZWxhdGlvbiI6ImV4YWN0Iiwic291cmNlUmVmIjoid2ZzLWxvY2FsLW1vZGVsLXByb3Bvc2FsOm1vZGVsLWRyYWZ0LTIwMjYtMTEtMTIuMSNmb29kLzAzMWEwYzRiLTJkNzMtNGE3MC04OGFhLThhZDNkZDY4MGViYiIsInJldmlld2VkQXQiOiIyMDI2LTExLTEzVDE2OjIyOjE0LjI5NjE0NFx1MDAyQjAwOjAwIn0seyJsb2NhbGUiOiJmciIsInRleHQiOiJ0b21hdGVzIGVuIGNvbnNlcnZlIiwibWF0Y2hLZXkiOiJ0b21hdGVzIGVuIGNvbnNlcnZlIiwicmVsYXRpb24iOiJleGFjdCIsInNvdXJjZVJlZiI6Indmcy1sb2NhbC1tb2RlbC1wcm9wb3NhbDptb2RlbC1kcmFmdC0yMDI2LTExLTEyLjEjZm9vZC8wMzFhMGM0Yi0yZDczLTRhNzAtODhhYS04YWQzZGQ2ODBlYmIiLCJyZXZpZXdlZEF0IjoiMjAyNi0xMS0xM1QxNjoyMjoxNC4yOTYxNDRcdTAwMkIwMDowMCJ9XX1dfSx7InJldmlzaW9uIjoidGhyZWUtYW5jaG9yLW1hdGNoaW5nLWRpc2FibGVkLXJlaGVhcnNhbC12MSIsInNvdXJjZVJlZiI6ImxvY2FsLXJldmVyc2FsLXJlaGVhcnNhbDpyZXRhaW4tc2F2ZWQtbWVhbmluZyIsImZvb2RzIjpbXX1dfQ==",
+  "before": {
+    "snapshotId": "1cd880e6-6217-4a4e-a743-aa75b4b6466c",
+    "manifestSha256": "d0c70ba7b525317d66a04dea5aad21e30ca3610d2cbcf656aa084e41ed1ce9c3",
+    "schemaSha256": "3536B04192965EBC66BF4DC46C29D119B022F647EC52CC9E4E04C4FF6451E6F9",
+    "generation": null,
+    "files": [
+      {
+        "path": "recipes/.household/food-vocabulary/three-anchor-reviewed-2026-11-14.1-9a73124844fd93422d00bda2a287169317377f69ef2a1a66f6b405e101e8274b.json",
+        "length": 7085,
+        "sha256": "9A73124844FD93422D00BDA2A287169317377F69EF2A1A66F6B405E101E8274B"
+      },
+      {
+        "path": "recipes/7b253bb7-2f8c-4dc5-9851-705e9fe29bb9/hero.webp",
+        "length": 3,
+        "sha256": "66A6757151F8EE55DB127716C7E3DCE0BE8074B64E20EDA542E5C1E46CA9C41E"
+      },
+      {
+        "path": "recipes/7b253bb7-2f8c-4dc5-9851-705e9fe29bb9/original/content.html",
+        "length": 29,
+        "sha256": "E3A7AFE61085720C73D9FEA76A740F00E5A0A6C8A37EF3339B5E36F1BCD3E98E"
+      }
+    ],
+    "derivedOmissions": [
+      "recipe metadata and search sidecars"
+    ],
+    "historyBytesSha256": "2aa9e0ad408a6fdcc6614afb608b42d30046fa78acd10ac00de16ca69e98666f",
+    "historyLength": 611963,
+    "tables": {
+      "family_members": {
+        "rows": 1,
+        "capturedJsonProjectionSha256": "b10005cf8eac19720dd789d5fcf1a2fbd010d04530ed8d99e7f06557e621b7ff"
+      },
+      "recipes": {
+        "rows": 3,
+        "capturedJsonProjectionSha256": "ecf50f8e45ad97ba402ee7dd0f8f9f1d8c27e65f6db425ee1ffe6775444af1be"
+      },
+      "canonical_recipe_operations": {
+        "rows": 0,
+        "capturedJsonProjectionSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      "recipe_file_publications": {
+        "rows": 6,
+        "capturedJsonProjectionSha256": "2b129c195a22dbd4d212e2bfb181a42def9bc4b029f3be2af7d3baf5e0de321b"
+      },
+      "feature_flag_overrides": {
+        "rows": 0,
+        "capturedJsonProjectionSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      "recipe_repair_intents": {
+        "rows": 0,
+        "capturedJsonProjectionSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      "recipe_import_reports": {
+        "rows": 0,
+        "capturedJsonProjectionSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      "weekly_plans": {
+        "rows": 1,
+        "capturedJsonProjectionSha256": "33ba3bb8358b9c4b56f1cf0b2d33ae6bac175bbfbb49f6d22357e8bae623fb85"
+      },
+      "calendar_events": {
+        "rows": 16,
+        "capturedJsonProjectionSha256": "5677d7b6af177c364969b9668febad3e1d7b2db1e5fef2258a78ae447f98b773"
+      },
+      "family_settings": {
+        "rows": 1,
+        "capturedJsonProjectionSha256": "b326edb9e50422fb09d773f358b07bcb89a0ade8fe1e8155e0044a9293073394"
+      },
+      "ingredient_categories": {
+        "rows": 0,
+        "capturedJsonProjectionSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      "weekly_household_interest": {
+        "rows": 0,
+        "capturedJsonProjectionSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      "grocery_extra_occurrences": {
+        "rows": 0,
+        "capturedJsonProjectionSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      "supper_servings": {
+        "rows": 0,
+        "capturedJsonProjectionSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      "grocery_mutation_outcomes": {
+        "rows": 1,
+        "capturedJsonProjectionSha256": "035fa46535a34dc3e3f771133fa02a4ba9c2e245ce160a50d1dc417a89521d4e"
+      },
+      "household_food_overrides": {
+        "rows": 0,
+        "capturedJsonProjectionSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      }
+    }
+  },
+  "after": {
+    "snapshotId": "413ff3d2-e471-4892-8743-cd37ebfd242b",
+    "manifestSha256": "f0795ddacfe3b8719724928e18ce25db9b8f193f9db3f7aed637ee1bbe8d4b0a",
+    "schemaSha256": "3536B04192965EBC66BF4DC46C29D119B022F647EC52CC9E4E04C4FF6451E6F9",
+    "generation": null,
+    "files": [
+      {
+        "path": "recipes/.household/food-vocabulary/three-anchor-matching-disabled-rehearsal-v1-543bb2c8039d2aae5ee5c1bd47fe4d88e1e565cb1f6225fcc1441c3c9ed3b91f.json",
+        "length": 4852,
+        "sha256": "543BB2C8039D2AAE5EE5C1BD47FE4D88E1E565CB1F6225FCC1441C3C9ED3B91F"
+      },
+      {
+        "path": "recipes/.household/food-vocabulary/three-anchor-reviewed-2026-11-14.1-9a73124844fd93422d00bda2a287169317377f69ef2a1a66f6b405e101e8274b.json",
+        "length": 7085,
+        "sha256": "9A73124844FD93422D00BDA2A287169317377F69EF2A1A66F6B405E101E8274B"
+      },
+      {
+        "path": "recipes/7b253bb7-2f8c-4dc5-9851-705e9fe29bb9/hero.webp",
+        "length": 3,
+        "sha256": "66A6757151F8EE55DB127716C7E3DCE0BE8074B64E20EDA542E5C1E46CA9C41E"
+      },
+      {
+        "path": "recipes/7b253bb7-2f8c-4dc5-9851-705e9fe29bb9/original/content.html",
+        "length": 29,
+        "sha256": "E3A7AFE61085720C73D9FEA76A740F00E5A0A6C8A37EF3339B5E36F1BCD3E98E"
+      }
+    ],
+    "derivedOmissions": [
+      "recipe metadata and search sidecars"
+    ],
+    "historyBytesSha256": "945ffb2f39625d317711a0990648f661967493613fd3d38a2683c04bc314e374",
+    "historyLength": 613625,
+    "tables": {
+      "family_members": {
+        "rows": 1,
+        "capturedJsonProjectionSha256": "b10005cf8eac19720dd789d5fcf1a2fbd010d04530ed8d99e7f06557e621b7ff"
+      },
+      "recipes": {
+        "rows": 3,
+        "capturedJsonProjectionSha256": "ecf50f8e45ad97ba402ee7dd0f8f9f1d8c27e65f6db425ee1ffe6775444af1be"
+      },
+      "canonical_recipe_operations": {
+        "rows": 0,
+        "capturedJsonProjectionSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      "recipe_file_publications": {
+        "rows": 6,
+        "capturedJsonProjectionSha256": "2b129c195a22dbd4d212e2bfb181a42def9bc4b029f3be2af7d3baf5e0de321b"
+      },
+      "feature_flag_overrides": {
+        "rows": 0,
+        "capturedJsonProjectionSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      "recipe_repair_intents": {
+        "rows": 0,
+        "capturedJsonProjectionSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      "recipe_import_reports": {
+        "rows": 0,
+        "capturedJsonProjectionSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      "weekly_plans": {
+        "rows": 1,
+        "capturedJsonProjectionSha256": "33ba3bb8358b9c4b56f1cf0b2d33ae6bac175bbfbb49f6d22357e8bae623fb85"
+      },
+      "calendar_events": {
+        "rows": 16,
+        "capturedJsonProjectionSha256": "5677d7b6af177c364969b9668febad3e1d7b2db1e5fef2258a78ae447f98b773"
+      },
+      "family_settings": {
+        "rows": 1,
+        "capturedJsonProjectionSha256": "d7260473122abd0d522db8e465a24a1db5d9f780f5cdd59a7264f7336dbe34c8"
+      },
+      "ingredient_categories": {
+        "rows": 0,
+        "capturedJsonProjectionSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      "weekly_household_interest": {
+        "rows": 0,
+        "capturedJsonProjectionSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      "grocery_extra_occurrences": {
+        "rows": 0,
+        "capturedJsonProjectionSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      "supper_servings": {
+        "rows": 0,
+        "capturedJsonProjectionSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      "grocery_mutation_outcomes": {
+        "rows": 1,
+        "capturedJsonProjectionSha256": "035fa46535a34dc3e3f771133fa02a4ba9c2e245ce160a50d1dc417a89521d4e"
+      },
+      "household_food_overrides": {
+        "rows": 0,
+        "capturedJsonProjectionSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      }
+    }
+  },
+  "affectedSet": {
+    "savedRecipeId": "7b253bb7-2f8c-4dc5-9851-705e9fe29bb9",
+    "retainedMappingCount": 3,
+    "rewrittenSavedMappings": 0,
+    "changedBusinessTables": [],
+    "newAliasMatches": 0
+  },
+  "vocabularyFiles": [
+    {
+      "Name": "three-anchor-matching-disabled-rehearsal-v1-543bb2c8039d2aae5ee5c1bd47fe4d88e1e565cb1f6225fcc1441c3c9ed3b91f.json",
+      "Sha256": "543bb2c8039d2aae5ee5c1bd47fe4d88e1e565cb1f6225fcc1441c3c9ed3b91f"
+    },
+    {
+      "Name": "three-anchor-reviewed-2026-11-14.1-9a73124844fd93422d00bda2a287169317377f69ef2a1a66f6b405e101e8274b.json",
+      "Sha256": "9a73124844fd93422d00bda2a287169317377f69ef2a1a66f6b405e101e8274b"
+    }
+  ],
+  "scope": "Executed only in the disposable rehearsal. The replacement active release contains zero aliases and retains the original release. Saved associations continue validating against their retained document and mapping revision. Future matching is disabled by an explicit accepted release; existing rows, plans, events, private corrections and checks are retained. Any shared-environment reversal requires freshly captured inputs and its own authority."
+}

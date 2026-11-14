@@ -52,10 +52,12 @@ public sealed class FoodVocabularyAuthority
     public void Validate()
     {
         var seen = new HashSet<FoodVocabularyReference>();
+        var revisions = new HashSet<string>(StringComparer.Ordinal);
         foreach (var item in Captures)
         {
             if (item is null || !seen.Add(item.Reference)) throw new InvalidDataException("Duplicate vocabulary authority.");
             _ = item.Definitions();
+            if (!revisions.Add(item.Reference.Revision)) throw new InvalidDataException("Conflicting vocabulary revision.");
         }
         if (ActiveRef is not null && !seen.Contains(ActiveRef)) throw new InvalidDataException("Active vocabulary document is absent.");
     }

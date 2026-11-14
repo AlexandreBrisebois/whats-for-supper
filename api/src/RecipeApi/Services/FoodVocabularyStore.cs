@@ -125,9 +125,17 @@ public sealed partial class FoodVocabularyStore(RecipeDbContext db, IStorageProv
         {
             if (state is null) await RequireUnreferencedAbsence(ct);
             FoodVocabularyDefinitions.Require(state?.Active == expectedHead && state?.Operations.Any(x => x.State == "prepared") != true);
-            if (state is not null)
-                foreach (var retained in state.Retained)
-                    definition.ValidateCompatible((await LoadCapturedAsync(retained, ct)).Definitions());
+        }
+        // A prepared retry must re-admit the complete retained file set before
+        // publishing its bytes or committing a head that depends on those files.
+        if (state is not null)
+            foreach (var retained in state.Retained)
+            {
+                FoodVocabularyDefinitions.Require(retained.Revision != reference.Revision || retained == reference);
+                definition.ValidateCompatible((await LoadCapturedAsync(retained, ct)).Definitions());
+            }
+        if (previous is null)
+        {
             state ??= new(1, null, null, "0", operationId.ToString("D"), [], []);
             state = state with { Operations = [.. state.Operations, new(operationId, 1, hash, request, "prepared", null)] };
             if (member is null) { member = new FamilySetting { Key = Key }; db.FamilySettings.Add(member); }
@@ -183,6 +191,7 @@ public sealed partial class FoodVocabularyStore(RecipeDbContext db, IStorageProv
         if (state.Active is not null) FoodVocabularyDefinitions.ValidateReference(state.Active);
         var references = new HashSet<FoodVocabularyReference>();
         foreach (var reference in state.Retained) { FoodVocabularyDefinitions.ValidateReference(reference); FoodVocabularyDefinitions.Require(references.Add(reference)); }
+        FoodVocabularyDefinitions.Require(state.Retained.Select(x => x.Revision).Distinct(StringComparer.Ordinal).Count() == state.Retained.Length);
         if (state.Active is not null) FoodVocabularyDefinitions.Require(references.Contains(state.Active));
         var operations = new HashSet<Guid>();
         foreach (var operation in state.Operations)
@@ -193,6 +202,8 @@ public sealed partial class FoodVocabularyStore(RecipeDbContext db, IStorageProv
                 && !string.IsNullOrWhiteSpace(operation.Request.AdoptionReviewIdentity) && operation.InputHash == RequestHash(operation.Request)
                 && operation.State is "prepared" or "committed");
             FoodVocabularyDefinitions.ValidateReference(operation!.Request.NewFile);
+            FoodVocabularyDefinitions.Require(state.Retained.All(reference => reference.Revision != operation.Request.NewFile.Revision
+                || reference == operation.Request.NewFile));
             if (operation.Request.ExpectedHead is not null) FoodVocabularyDefinitions.ValidateReference(operation.Request.ExpectedHead);
             if (operation.State == "prepared") FoodVocabularyDefinitions.Require(operation.CommittedOutcome is null);
             else FoodVocabularyDefinitions.Require(operation.CommittedOutcome is { } outcome && outcome.NewHead == operation.Request.NewFile

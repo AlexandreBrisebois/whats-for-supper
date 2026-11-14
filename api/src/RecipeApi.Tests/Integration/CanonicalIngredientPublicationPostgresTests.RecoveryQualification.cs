@@ -16,6 +16,7 @@ using RecipeApi.Infrastructure;
 using RecipeApi.Models;
 using RecipeApi.Services;
 using RecipeApi.Services.Agents;
+using RecipeApi.Tests.Infrastructure;
 using Xunit;
 
 namespace RecipeApi.Tests.Integration;
@@ -78,9 +79,11 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
     }
 
     [RecipeImportReportPostgresTests.PostgresTheory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public Task VocabularyRecovery_AllTypedHistoryAndProtectedClearsSurviveIndependentOfflineRestore(bool demo) =>
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public Task VocabularyRecovery_AllTypedHistoryAndProtectedClearsSurviveIndependentOfflineRestore(bool demo, bool boundedRelease) =>
         WithStore(async (sourceServices, sourceRepository, sourceStore, sourceStorage) =>
         {
             var root = Path.Combine(Path.GetTempPath(), "wfs-recovery-typed-roundtrip-" + Guid.NewGuid().ToString("N"));
@@ -93,8 +96,9 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
                 var independentBackup = Path.Combine(root, "independent");
                 sourceServices.GetRequiredService<IConfiguration>()["Recovery:BackupRoot"] = sourceBackup;
                 var sourceDb = sourceServices.GetRequiredService<RecipeDbContext>();
-                var bytesA = await File.ReadAllBytesAsync(Path.Combine(DeploymentCalendarPostgresTests.RepositoryRoot(),
-                    "api/src/RecipeApi.Tests/Fixtures/food-vocabulary-three-anchor-v1.json"));
+                var bytesA = boundedRelease ? BoundedVocabularyInput.Bytes()
+                    : await File.ReadAllBytesAsync(Path.Combine(DeploymentCalendarPostgresTests.RepositoryRoot(),
+                        "api/src/RecipeApi.Tests/Fixtures/food-vocabulary-three-anchor-v1.json"));
                 var vocabulary = sourceServices.GetRequiredService<FoodVocabularyStore>();
                 var a = await vocabulary.PublishReviewedAsync(bytesA, null, Guid.NewGuid(), "full-recovery-A");
                 await sourceStore.PublishAsync(await sourceStore.CaptureAsync(Id), Candidate(), Guid.NewGuid());

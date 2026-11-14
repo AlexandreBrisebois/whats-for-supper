@@ -129,19 +129,38 @@ public partial class OnlineRecoveryPostgresTests
         var gate = scope.ServiceProvider.GetRequiredService<RecoveryBoundary>();
         var roots = scope.ServiceProvider.GetRequiredService<RecipesRootResolver>();
         var (operation, candidate, marker, hash) = await OperatorMarker(roots);
-        await gate.RunMaintenanceAsync(operation, candidate, hash, async token =>
+        var foreignDatabase = "wfs_recovery_operator_canary_" + Guid.NewGuid().ToString("N");
+        try
         {
-            var db = scope.ServiceProvider.GetRequiredService<RecipeApi.Data.RecipeDbContext>();
-            await using var control = new Npgsql.NpgsqlConnection(Microsoft.EntityFrameworkCore.RelationalDatabaseFacadeExtensions.GetConnectionString(db.Database));
-            await control.OpenAsync(token);
-            await using var terminate = new Npgsql.NpgsqlCommand("SELECT pg_terminate_backend(pid) FROM pg_locks WHERE locktype='advisory' AND classid=0 AND objid=244005 AND objsubid=1 AND granted", control);
-            Assert.True((bool)(await terminate.ExecuteScalarAsync(token))!);
-            var assemblyHash = Convert.ToHexStringLower(SHA256.HashData(await File.ReadAllBytesAsync(typeof(RecoveryBoundary).Assembly.Location, token)));
-            Assert.Throws<RecoveryBusyException>(() => gate.ValidateMaintenanceInvocation(operation, candidate, assemblyHash));
-            await Assert.ThrowsAsync<RecoveryBusyException>(() => gate.EnterAsync(RecoveryAccess.Write, token));
-            return 0;
-        });
-        File.Delete(marker);
+            await new Npgsql.NpgsqlCommand($"CREATE DATABASE {foreignDatabase}", admin).ExecuteNonQueryAsync();
+            var settings = new Npgsql.NpgsqlConnectionStringBuilder(connection) { Database = foreignDatabase };
+            await using var foreign = new Npgsql.NpgsqlConnection(settings.ConnectionString);
+            await foreign.OpenAsync();
+            await new Npgsql.NpgsqlCommand("SELECT pg_advisory_lock(244005)", foreign).ExecuteNonQueryAsync();
+            await gate.RunMaintenanceAsync(operation, candidate, hash, async token =>
+            {
+                var db = scope.ServiceProvider.GetRequiredService<RecipeApi.Data.RecipeDbContext>();
+                await using var control = new Npgsql.NpgsqlConnection(Microsoft.EntityFrameworkCore.RelationalDatabaseFacadeExtensions.GetConnectionString(db.Database));
+                await control.OpenAsync(token);
+                await using var terminate = new Npgsql.NpgsqlCommand("""
+                    SELECT pg_terminate_backend(pid)
+                    FROM pg_locks
+                    WHERE database = (SELECT oid FROM pg_database WHERE datname = current_database())
+                      AND locktype = 'advisory' AND classid = 0 AND objid = 244005 AND objsubid = 1 AND granted
+                    """, control);
+                Assert.True((bool)(await terminate.ExecuteScalarAsync(token))!);
+                var assemblyHash = Convert.ToHexStringLower(SHA256.HashData(await File.ReadAllBytesAsync(typeof(RecoveryBoundary).Assembly.Location, token)));
+                Assert.Throws<RecoveryBusyException>(() => gate.ValidateMaintenanceInvocation(operation, candidate, assemblyHash));
+                await Assert.ThrowsAsync<RecoveryBusyException>(() => gate.EnterAsync(RecoveryAccess.Write, token));
+                Assert.Equal(1, (int)(await new Npgsql.NpgsqlCommand("SELECT 1", foreign).ExecuteScalarAsync(token))!);
+                return 0;
+            });
+        }
+        finally
+        {
+            await new Npgsql.NpgsqlCommand($"DROP DATABASE IF EXISTS {foreignDatabase} WITH (FORCE)", admin).ExecuteNonQueryAsync();
+            File.Delete(marker);
+        }
     }
 
     private static async Task<(Guid Operation, string Candidate, string Marker, string Hash)> OperatorMarker(RecipesRootResolver roots)

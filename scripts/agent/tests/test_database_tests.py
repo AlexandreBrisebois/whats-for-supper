@@ -212,6 +212,18 @@ class DatabaseTests(unittest.TestCase):
         self.assertTrue(any(call[0] == 'dotnet' for call in self.calls))
         self.assertNotIn('fixture-secret', json.dumps(record))
 
+    def test_linux_source_includes_reviewed_vocabulary_inputs(self):
+        name = 'docs/data/food-vocabulary/reviewed.json'
+        self.source_paths.append(name)
+        path = self.root / name
+        path.parent.mkdir(parents=True)
+        path.write_text('{"version":1}')
+        self.assertEqual(self.run_gate(host_platform='Darwin')[0], 'passed')
+        selection = next(call for call in self.calls if call[:2] == ['git', 'ls-files'])
+        self.assertIn('docs/data/food-vocabulary', selection)
+        source = next(self.root.glob('.task/database-tests/runs/*/source'))
+        self.assertEqual((source / name).read_bytes(), path.read_bytes())
+
     def test_macos_sdk_joins_only_its_owned_postgres_namespace_and_uses_loopback(self):
         status, record = self.run_gate(host_platform='Darwin', local_dotnet=False)
         self.assertEqual(status, 'passed')

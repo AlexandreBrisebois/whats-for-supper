@@ -10,9 +10,9 @@ All implementation boxes remain unchecked until actual acceptance. Use the share
 **Owners/boundaries:** existing canonical shopping/protected-content owner, storage/atomic JSON owner, import/correction seam and current recovery dictionary validation. No imported dataset or runtime translation dependency.
 **Acceptance boundary:** reviewed local vocabulary evidence plus actual producer/API/PostgreSQL/files; seeded IDs or model confidence alone do not qualify mapping.
 
-- [ ] 1.1 Deliver a bounded model-authored UTF-8 JSON draft and its reviewed pinned format/release revision/raw SHA256. Record stable app IDs, EN/FR labels or explicit missing labels, full-phrase exact aliases, purchase qualifiers, authoring model/review provenance and unresolved terms. Review an EN/FR collision/false-merge/ambiguity corpus including fresh/canned, salted/unsalted, échalote, poivron/piment, coriander leaf/seed, cream percentages and alternatives. Deliver adoption/affected-set/reversal manifest with actual reviewed outcomes; do not label model confidence validated truth or add external licence/attribution/download gates. Verify exact JSON/hash and corpus/manifest consistency as the completion artifact.
-- [ ] 1.2 Bind the live JSON/version/path and saved food/mapping/override revision scopes to Root's shared contracts and existing archive validation before code. Where APIs change, update OpenAPI/client/consumers/method-sensitive mocks. Add intended-red `BilingualShoppingIdentityPostgresTests` and deterministic resolver cases for actual EN/FR import publication, exact aliases, unknown/colliding fallback, stale/foreign association, private name/clear protection and revision/file mismatch; run `task test:database -- --filter FullyQualifiedName~BilingualShoppingIdentityPostgresTests` and affected pure owner before implementing the missing producer. Document actual seam/provider-double limits.
-- [ ] 1.3 Implement qualified common saved mapping and durable versioned JSON publication through existing canonical/storage owners. Run1.2 green plus `task gen:client:check` where applicable and `task test:unit -- src/testing/mock-api.test.ts`. Prove restart reloads exact persisted/restored revisions without AI, network, reseed, overwrite or regeneration; initial install versus missing referenced data, stale expected revision/hash and interrupted atomic publication fail/recover safely. Keep quantity-only Saves and mapping contentRevision coherent. Record API/PostgreSQL/file/source hashes and usage documentation; new intake channels reuse this seam.
+- [x] 1.1 Deliver a bounded model-authored UTF-8 JSON draft and its reviewed pinned format/release revision/raw SHA256. Record stable app IDs, EN/FR labels or explicit missing labels, full-phrase exact aliases, purchase qualifiers, authoring model/review provenance and unresolved terms. Review an EN/FR collision/false-merge/ambiguity corpus including fresh/canned, salted/unsalted, échalote, poivron/piment, coriander leaf/seed, cream percentages and alternatives. Deliver adoption/affected-set/reversal manifest with actual reviewed outcomes; do not label model confidence validated truth or add external licence/attribution/download gates. Verify exact JSON/hash and corpus/manifest consistency as the completion artifact.
+- [x] 1.2 Bind the live JSON/version/path and saved food/mapping/override revision scopes to Root's shared contracts and existing archive validation before code. Where APIs change, update OpenAPI/client/consumers/method-sensitive mocks. Add intended-red `BilingualShoppingIdentityPostgresTests` and deterministic resolver cases for actual EN/FR import publication, exact aliases, unknown/colliding fallback, stale/foreign association, private name/clear protection and revision/file mismatch; run `task test:database -- --filter FullyQualifiedName~BilingualShoppingIdentityPostgresTests` and affected pure owner before implementing the missing producer. Document actual seam/provider-double limits.
+- [x] 1.3 Implement qualified common saved mapping and durable versioned JSON publication through existing canonical/storage owners. Run1.2 green plus `task gen:client:check` where applicable and `task test:unit -- src/testing/mock-api.test.ts`. Prove restart reloads exact persisted/restored revisions without AI, network, reseed, overwrite or regeneration; initial install versus missing referenced data, stale expected revision/hash and interrupted atomic publication fail/recover safely. Keep quantity-only Saves and mapping contentRevision coherent. Record API/PostgreSQL/file/source hashes and usage documentation; new intake channels reuse this seam.
 
 ## 2. Derive bilingual groceries without changing purchase/check policy
 
@@ -49,3 +49,43 @@ Task 4.1 is complete on signed application commit `71b56bc5945f0be770eeb02bc5759
 Ordinary3/demo4 independent restore and re-export preserve exact A/B vocabulary bytes and revisions, actual mapped canonical content, typed current and retained references, protected category/name/clear facts, and original/hero media. Corruption, unsupported inputs, unknown food/release, destination CAS, capture/staging races and staged/journal/pointer/committed interruptions have real PostgreSQL coverage. Restart and replay retain the exact vocabulary file set. Strict target `IChatClient` and `IHttpClientFactory` spies recorded zero calls. Earlier failed source/fixture runs remain retained with their original identities. The complete final PostgreSQL gate includes the corrected fixtures and all dependent epoch/lease cases.
 
 Task 4.2 still requires actual migration acceptance. Task 5.1 retains final corpus, exact-candidate native/DV/hosted release requirements. Ordinary association-clear producer and correction acceptance remain in their existing unchecked tasks. Alex took ownership of CI monitoring after the application push. Current delivery and the bounded migration handoff are recorded in [RECOVERY.md](../../../docs/handoffs/dependable-portions-next-slice/RECOVERY.md).
+
+## Common vocabulary acceptance — 2026-11-14
+
+Tasks 1.1–1.3 qualify the bounded common vocabulary slice through the existing
+publication, deterministic mapping and exact recovery owners. The version1
+three-food input has raw SHA256
+`9a73124844fd93422d00bda2a287169317377f69ef2a1a66f6b405e101e8274b`.
+Its review, 15 exact aliases, 65 unmapped corpus terms and captured
+adoption/affected-set/reversal manifests are linked from the
+[common handoff](../../../docs/handoffs/dependable-portions-next-slice/BILINGUAL-COMMON.md).
+Original model provenance is retained, including the unavailable exact deployment
+identifier. Independent finite review and immutable implementation review retain
+separate source hashes.
+
+Stable RED covers conflicting document hashes, prepared retry after missing/corrupt
+retained files and contradictory captured/membership revisions. GREEN includes
+25 pure owner/artifact cases, generated-client parity, 40 affected mock units,
+97 prepared-source PostgreSQL cases with zero skips, the corrected process-root
+canary case and two production-built EN/FR generated-client browser repetitions.
+Actual source publication saves mapping revisions. Quantity-only Saves carry
+those references, private names and explicit clears remain protected, stale/foreign
+inputs fail atomically, and exact offline instance/process restarts retain files.
+The existing full recovery test additionally exercises these exact bounded bytes
+through ordinary and demo isolated restore/re-export.
+
+`.task/bilingual-common-20261114/delivery.json` owns final prepared source/review,
+complete stable verification, full PostgreSQL, signed delivery and cleanup receipts.
+Earlier compile/setup, identity-mutation and meaningful failing runs retain their
+actual outcomes. The existing public API shapes and generated-client/mocks retain
+their contracts. Group 2, group 3, migration 4.2 and final combined release 5.1
+remain open. Alex owns CI monitoring.
+
+The first complete repository gate passed as
+`3c0c57a81f8b420e9688d289108579a6`. The additional full PostgreSQL run exposed a
+cross-database recovery fault-injection defect, with 835 passes and one migration
+session-loss failure. A foreign-database canary reproduced the fault before the
+test query was scoped to its own database. Its corrected two-case acceptance
+passed with zero skips in `c1e5909b77a24079b7e4345b27eb4f4e`. The final 27-path
+source, independent review and repeated complete verification retain separate
+identities in the delivery receipt.

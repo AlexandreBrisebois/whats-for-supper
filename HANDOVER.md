@@ -1,5 +1,32 @@
 # Active resume checkpoints
 
+## Bilingual common vocabulary slice (2026-11-14)
+
+Task/spec is `bilingual-shopping-identity` 1.1–1.3 on local `recipe-view-redesign`,
+starting from clean local/remote `82e975ecb5518e146bc1a08e9d6fa1104db48c88`.
+Alex selected the bounded reviewed three-food vocabulary and common durable
+publication/persistence slice, including signed commit/push and the next handoff.
+
+The reviewed UTF-8 input, finite corpus and captured adoption/reversal manifests
+are linked from [BILINGUAL-COMMON.md](docs/handoffs/dependable-portions-next-slice/BILINGUAL-COMMON.md).
+Existing publication/resolver/canonical/recovery owners remain authoritative.
+Demonstrated revision-hash and interrupted retained-file admission gaps are
+repaired. Actual PostgreSQL/files qualify source publication, protected edits,
+exact recovery and application/executable restarts. Two EN/FR generated-client
+browser repetitions passed. Independent immutable review and the final prepared
+path set retain their own hashes and findings.
+
+Full-suite qualification also exposed a recovery test's cross-database session
+termination. Its foreign-session canary reproduced the failure, and the query now
+targets its own fixture database while retaining the original revocation checks.
+
+Terminal verification, signed delivery and cleanup receipts belong to
+`.task/bilingual-common-20261114/delivery.json`. Its final record_path and tested
+identity qualify the stable repository gate. Combined grouping/correction,
+migration and release tasks retain their open acceptance. The next selection
+requires current refs and the common handoff's boundary. Alex owns CI monitoring.
+Port 3000 and the six entry containers remain reserved.
+
 ## Dependable portions recovery and migration successor (2026-11-13)
 
 The bounded recovery-first slice is delivered on local and remote `recipe-view-redesign` in signed application commit `71b56bc5945f0be770eeb02bc5759578faf0582f`. The work covers F1 typed legacy authority, ordinary3/demo4 independent recovery, validated source protection, OpenAPI/SDK/mocks and grocery epoch/lease fencing. Runtime qualification used disposable resources, with original containers and port 3000 preserved.

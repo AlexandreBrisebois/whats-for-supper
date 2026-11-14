@@ -85,7 +85,7 @@ def linux_command(stack, runtime, directory, args, postgres_container):
     source = directory / 'source'
     source.mkdir()
     paths = command(['git', 'ls-files', '-z', '--cached', '--others', '--exclude-standard',
-                     '--', 'api', 'global.json', 'Taskfile.yml']).split('\0')
+                     '--', 'api', 'global.json', 'Taskfile.yml', 'docs/data/food-vocabulary']).split('\0')
     manifest = {}
     for name in sorted(set(paths)):
         path = Path(name)

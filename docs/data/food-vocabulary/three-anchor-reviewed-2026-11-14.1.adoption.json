@@ -1,0 +1,647 @@
+{
+  "format": "wfs-bounded-vocabulary-adoption",
+  "version": 1,
+  "reference": {
+    "revision": "three-anchor-reviewed-2026-11-14.1",
+    "sha256": "9a73124844fd93422d00bda2a287169317377f69ef2a1a66f6b405e101e8274b"
+  },
+  "adoptionReviewIdentity": "wfs-bounded-vocabulary:three-anchor-reviewed-2026-11-14.1:9a73124844fd93422d00bda2a287169317377f69ef2a1a66f6b405e101e8274b",
+  "releaseChanges": {
+    "priorDefinitions": null,
+    "addedFoodIds": [
+      "ac9818ee-4c30-4f91-a4ea-0aa4fc7265ee",
+      "d9940182-48c9-4823-a820-1c7c54869d5f",
+      "031a0c4b-2d73-4a70-88aa-8ad3dd680ebb"
+    ],
+    "changedExistingIds": [],
+    "aliases": 15,
+    "units": 0
+  },
+  "evidence": {
+    "observationPath": ".task/bilingual-common-20261114/common-observations.json",
+    "observationRawSha256": "e541d1f7b0d90c510f6e44da6d8471d96dccbb8e23603b5fc22aa43afcd25767",
+    "receiptPath": ".task/database-tests/runs/1c9de74bc57a4c26ab6da407fdb91b3a/result.json",
+    "receiptRawSha256": "636c281e6001baa07267cb58f231b73f9ca6ce18f46729ea9f9a37734389deee",
+    "trxPath": ".task/database-tests/runs/1c9de74bc57a4c26ab6da407fdb91b3a/database.trx",
+    "trxRawSha256": "eca8d5f046b920b5c221c0a28744e645101905e7f0297fdce80bf025a4a9dd0c",
+    "qualification": "actual disposable PostgreSQL and local filesystem; external extraction/acquisition providers doubled; source originals and mappings produced by ordinary owners",
+    "capturedJsonProjectionHash": "SHA256 of UTF-8 JSON with recursively sorted keys, no whitespace and unescaped Unicode. Snapshot manifest/history/file hashes retain their original owners."
+  },
+  "cases": [
+    {
+      "test": "RecipeApi.Tests.Integration.BilingualShoppingIdentityPostgresTests.ReviewedRelease_OrdinaryPublicationPersistsExactMappingsAndCapturedAdoptionInputs(locale: \"en\")",
+      "outcome": "Passed",
+      "locale": "en",
+      "priorHead": null,
+      "publication": {
+        "previousHead": null,
+        "newHead": {
+          "revision": "three-anchor-reviewed-2026-11-14.1",
+          "sha256": "9a73124844fd93422d00bda2a287169317377f69ef2a1a66f6b405e101e8274b"
+        },
+        "presentationVersion": "1"
+      },
+      "before": {
+        "snapshotId": "49523c9c-583e-4d5a-baa0-c587a0d14dee",
+        "manifestSha256": "39de862065f63bc99520df70b6b746ac347c5c0cbcfdcad499009e96ce4560d5",
+        "schemaSha256": "3536B04192965EBC66BF4DC46C29D119B022F647EC52CC9E4E04C4FF6451E6F9",
+        "generation": null,
+        "files": [],
+        "derivedOmissions": [
+          "recipe metadata and search sidecars"
+        ],
+        "historyBytesSha256": "6eea38eef5ead7d2a61ae044e1dc2fc16e27f5766ba2748c205fed417816f3cc",
+        "historyLength": 1943,
+        "tables": {
+          "family_members": {
+            "rows": 1,
+            "capturedJsonProjectionSha256": "2bad07a1040b776f953f1227f84f2dd30d8830f8a92da98cd15f66576d767ccc"
+          },
+          "recipes": {
+            "rows": 2,
+            "capturedJsonProjectionSha256": "5371d51c609d2f58c40aca3e87bfa400a64882b7b68c2f179c83a0a9b5ac32e9"
+          },
+          "canonical_recipe_operations": {
+            "rows": 0,
+            "capturedJsonProjectionSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+          },
+          "recipe_file_publications": {
+            "rows": 0,
+            "capturedJsonProjectionSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+          },
+          "feature_flag_overrides": {
+            "rows": 0,
+            "capturedJsonProjectionSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+          },
+          "recipe_repair_intents": {
+            "rows": 0,
+            "capturedJsonProjectionSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+          },
+          "recipe_import_reports": {
+            "rows": 0,
+            "capturedJsonProjectionSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+          },
+          "weekly_plans": {
+            "rows": 1,
+            "capturedJsonProjectionSha256": "fc9857cc77f1cd7266d4387b1165db1301d6cbe98f3fea0ecb93fb7d0b10c8ea"
+          },
+          "calendar_events": {
+            "rows": 16,
+            "capturedJsonProjectionSha256": "c260a77269d520745bb51def36d7a362cb4b00eec2c27f05bedcf7357bb7bcfa"
+          },
+          "family_settings": {
+            "rows": 0,
+            "capturedJsonProjectionSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+          },
+          "ingredient_categories": {
+            "rows": 0,
+            "capturedJsonProjectionSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+          },
+          "weekly_household_interest": {
+            "rows": 0,
+            "capturedJsonProjectionSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+          },
+          "grocery_extra_occurrences": {
+            "rows": 0,
+            "capturedJsonProjectionSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+          },
+          "supper_servings": {
+            "rows": 0,
+            "capturedJsonProjectionSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+          },
+          "grocery_mutation_outcomes": {
+            "rows": 1,
+            "capturedJsonProjectionSha256": "f7911879a4258f56cabef16374356dcf79f21dee6b445b43c0e95dc84403ac65"
+          },
+          "household_food_overrides": {
+            "rows": 0,
+            "capturedJsonProjectionSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+          }
+        }
+      },
+      "after": {
+        "snapshotId": "e5d32416-070e-4b3e-a79f-16f73d9e6186",
+        "manifestSha256": "5ba70451e4a850a64d8051ca9d3571e5890c54624124cffb58cb4f8a21b06602",
+        "schemaSha256": "3536B04192965EBC66BF4DC46C29D119B022F647EC52CC9E4E04C4FF6451E6F9",
+        "generation": null,
+        "files": [
+          {
+            "path": "recipes/.household/food-vocabulary/three-anchor-reviewed-2026-11-14.1-9a73124844fd93422d00bda2a287169317377f69ef2a1a66f6b405e101e8274b.json",
+            "length": 7085,
+            "sha256": "9A73124844FD93422D00BDA2A287169317377F69EF2A1A66F6B405E101E8274B"
+          }
+        ],
+        "derivedOmissions": [
+          "recipe metadata and search sidecars"
+        ],
+        "historyBytesSha256": "62968fa1a645e67f53a8ab8d84f6f85eec59c51be6aff25c6da39d6495b47a22",
+        "historyLength": 3731,
+        "tables": {
+          "family_members": {
+            "rows": 1,
+            "capturedJsonProjectionSha256": "2bad07a1040b776f953f1227f84f2dd30d8830f8a92da98cd15f66576d767ccc"
+          },
+          "recipes": {
+            "rows": 2,
+            "capturedJsonProjectionSha256": "5371d51c609d2f58c40aca3e87bfa400a64882b7b68c2f179c83a0a9b5ac32e9"
+          },
+          "canonical_recipe_operations": {
+            "rows": 0,
+            "capturedJsonProjectionSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+          },
+          "recipe_file_publications": {
+            "rows": 0,
+            "capturedJsonProjectionSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+          },
+          "feature_flag_overrides": {
+            "rows": 0,
+            "capturedJsonProjectionSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+          },
+          "recipe_repair_intents": {
+            "rows": 0,
+            "capturedJsonProjectionSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+          },
+          "recipe_import_reports": {
+            "rows": 0,
+            "capturedJsonProjectionSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+          },
+          "weekly_plans": {
+            "rows": 1,
+            "capturedJsonProjectionSha256": "fc9857cc77f1cd7266d4387b1165db1301d6cbe98f3fea0ecb93fb7d0b10c8ea"
+          },
+          "calendar_events": {
+            "rows": 16,
+            "capturedJsonProjectionSha256": "c260a77269d520745bb51def36d7a362cb4b00eec2c27f05bedcf7357bb7bcfa"
+          },
+          "family_settings": {
+            "rows": 1,
+            "capturedJsonProjectionSha256": "0249a30863462214a06e03ab0fcf6b99dca4a94d97567e2ba4ac6c9c4aa85ce1"
+          },
+          "ingredient_categories": {
+            "rows": 0,
+            "capturedJsonProjectionSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+          },
+          "weekly_household_interest": {
+            "rows": 0,
+            "capturedJsonProjectionSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+          },
+          "grocery_extra_occurrences": {
+            "rows": 0,
+            "capturedJsonProjectionSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+          },
+          "supper_servings": {
+            "rows": 0,
+            "capturedJsonProjectionSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+          },
+          "grocery_mutation_outcomes": {
+            "rows": 1,
+            "capturedJsonProjectionSha256": "f7911879a4258f56cabef16374356dcf79f21dee6b445b43c0e95dc84403ac65"
+          },
+          "household_food_overrides": {
+            "rows": 0,
+            "capturedJsonProjectionSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+          }
+        }
+      },
+      "affectedSet": {
+        "capturedRecipeIds": [
+          "660e8400-e29b-41d4-a716-446655440011",
+          "660e8400-e29b-41d4-a716-446655440012"
+        ],
+        "existingMappingCount": 0,
+        "existingMappingsAfter": 0,
+        "changedBusinessTables": [],
+        "existingMappingsRemapped": 0,
+        "existingGroceryRowsChanged": 0,
+        "protectedHouseholdOverrides": 0,
+        "manualCategoriesInspected": 0,
+        "manualAliasCategoryChoices": [],
+        "categoryConflicts": []
+      },
+      "ordinaryPublication": {
+        "recipeId": "20c4d537-b825-4c3d-bd2e-745a2f8b6a50",
+        "sourceUrl": "https://example.test/bounded-en",
+        "rawMetadata": "{\"name\": \"Bounded en\", \"@type\": \"Recipe\", \"supply\": [{\"name\": \"onion, diced\", \"@type\": \"HowToSupply\", \"requiredQuantity\": {\"@type\": \"QuantitativeValue\", \"value\": 25, \"unitCode\": null, \"unitText\": \"g\"}}, {\"name\": \"tomato\", \"@type\": \"HowToSupply\", \"requiredQuantity\": {\"@type\": \"QuantitativeValue\", \"value\": 25, \"unitCode\": null, \"unitText\": \"g\"}}, {\"name\": \"canned tomatoes\", \"@type\": \"HowToSupply\", \"requiredQuantity\": {\"@type\": \"QuantitativeValue\", \"value\": 25, \"unitCode\": null, \"unitText\": \"g\"}}, {\"name\": \"échalote\", \"@type\": \"HowToSupply\", \"requiredQuantity\": {\"@type\": \"QuantitativeValue\", \"value\": 25, \"unitCode\": null, \"unitText\": \"g\"}}, {\"name\": \"tomatoes with basil\", \"@type\": \"HowToSupply\", \"requiredQuantity\": {\"@type\": \"QuantitativeValue\", \"value\": 25, \"unitCode\": null, \"unitText\": \"g\"}}], \"@context\": \"https://schema.org/\", \"nutrition\": null, \"totalTime\": null, \"recipeYield\": \"4 servings\", \"recipeIngredient\": [\"25 g onion, diced\", \"25 g tomato\", \"25 g canned tomatoes\", \"25 g échalote\", \"25 g tomatoes with basil\"], \"suggestedPairing\": null, \"recipeInstructions\": [{\"name\": null, \"@type\": \"HowToSection\", \"itemListElement\": [{\"text\": \"Mix.\", \"@type\": \"HowToStep\"}]}]}",
+        "canonicalContentRawSha256": "6a1dace46efce387a5da34524b5373b170b2ad502da57ba88695e1c65ec1aac7",
+        "foodMappingEvidenceRawSha256": "b0f5ef8e33fecacb370d63a3f83542fdc5e2cdf9e3fa2d84f876ae2184be6a99",
+        "mappingFacts": [
+          {
+            "facts": {
+              "foodId": "ac9818ee-4c30-4f91-a4ea-0aa4fc7265ee",
+              "origin": "source",
+              "recipeId": "20c4d537-b825-4c3d-bd2e-745a2f8b6a50",
+              "sourceRef": "source.8D7B2E3E927F61DA83BAC138A5905C1637D3D677D6F21C645BA59A8FFF73C305",
+              "foodRevision": "model-reviewed-2026-11-13.1/food-1",
+              "contentRevision": "e614ca09b67c4a91a11a3d9a5927dd8c",
+              "mappingRevision": "mapping.db9e590253994f11b19dfa3c455ecd99.48d53ec5c98d489aa9caee2ecb3c2686",
+              "protectedFields": [],
+              "ingredientLineId": "48d53ec5-c98d-489a-a9ca-ee2ecb3c2686",
+              "dictionaryRevision": "three-anchor-reviewed-2026-11-14.1",
+              "evidenceSourceRevision": "source.8D7B2E3E927F61DA83BAC138A5905C1637D3D677D6F21C645BA59A8FFF73C305"
+            },
+            "vocabularySha256": "9a73124844fd93422d00bda2a287169317377f69ef2a1a66f6b405e101e8274b",
+            "vocabularyRevision": "three-anchor-reviewed-2026-11-14.1",
+            "resolverPolicyVersion": 1
+          },
+          {
+            "facts": {
+              "foodId": "d9940182-48c9-4823-a820-1c7c54869d5f",
+              "origin": "source",
+              "recipeId": "20c4d537-b825-4c3d-bd2e-745a2f8b6a50",
+              "sourceRef": "source.8D7B2E3E927F61DA83BAC138A5905C1637D3D677D6F21C645BA59A8FFF73C305",
+              "foodRevision": "model-reviewed-2026-11-13.1/food-2",
+              "contentRevision": "e614ca09b67c4a91a11a3d9a5927dd8c",
+              "mappingRevision": "mapping.db9e590253994f11b19dfa3c455ecd99.0311caab89784fcc9a1b451bc76c9e87",
+              "protectedFields": [],
+              "ingredientLineId": "0311caab-8978-4fcc-9a1b-451bc76c9e87",
+              "dictionaryRevision": "three-anchor-reviewed-2026-11-14.1",
+              "evidenceSourceRevision": "source.8D7B2E3E927F61DA83BAC138A5905C1637D3D677D6F21C645BA59A8FFF73C305"
+            },
+            "vocabularySha256": "9a73124844fd93422d00bda2a287169317377f69ef2a1a66f6b405e101e8274b",
+            "vocabularyRevision": "three-anchor-reviewed-2026-11-14.1",
+            "resolverPolicyVersion": 1
+          },
+          {
+            "facts": {
+              "foodId": "031a0c4b-2d73-4a70-88aa-8ad3dd680ebb",
+              "origin": "source",
+              "recipeId": "20c4d537-b825-4c3d-bd2e-745a2f8b6a50",
+              "sourceRef": "source.8D7B2E3E927F61DA83BAC138A5905C1637D3D677D6F21C645BA59A8FFF73C305",
+              "foodRevision": "model-reviewed-2026-11-13.1/food-3",
+              "contentRevision": "e614ca09b67c4a91a11a3d9a5927dd8c",
+              "mappingRevision": "mapping.db9e590253994f11b19dfa3c455ecd99.38bab5bd60d8498a9483778064ce4ae0",
+              "protectedFields": [],
+              "ingredientLineId": "38bab5bd-60d8-498a-9483-778064ce4ae0",
+              "dictionaryRevision": "three-anchor-reviewed-2026-11-14.1",
+              "evidenceSourceRevision": "source.8D7B2E3E927F61DA83BAC138A5905C1637D3D677D6F21C645BA59A8FFF73C305"
+            },
+            "vocabularySha256": "9a73124844fd93422d00bda2a287169317377f69ef2a1a66f6b405e101e8274b",
+            "vocabularyRevision": "three-anchor-reviewed-2026-11-14.1",
+            "resolverPolicyVersion": 1
+          }
+        ],
+        "nameDecisions": [
+          {
+            "kind": "source",
+            "name": "onion, diced",
+            "contentRevision": "e614ca09b67c4a91a11a3d9a5927dd8c",
+            "mappingRevision": "mapping.db9e590253994f11b19dfa3c455ecd99.48d53ec5c98d489aa9caee2ecb3c2686",
+            "ingredientLineId": "48d53ec5-c98d-489a-a9ca-ee2ecb3c2686",
+            "decidingOperationId": "db9e5902-5399-4f11-b19d-fa3c455ecd99"
+          },
+          {
+            "kind": "source",
+            "name": "tomato",
+            "contentRevision": "e614ca09b67c4a91a11a3d9a5927dd8c",
+            "mappingRevision": "mapping.db9e590253994f11b19dfa3c455ecd99.0311caab89784fcc9a1b451bc76c9e87",
+            "ingredientLineId": "0311caab-8978-4fcc-9a1b-451bc76c9e87",
+            "decidingOperationId": "db9e5902-5399-4f11-b19d-fa3c455ecd99"
+          },
+          {
+            "kind": "source",
+            "name": "canned tomatoes",
+            "contentRevision": "e614ca09b67c4a91a11a3d9a5927dd8c",
+            "mappingRevision": "mapping.db9e590253994f11b19dfa3c455ecd99.38bab5bd60d8498a9483778064ce4ae0",
+            "ingredientLineId": "38bab5bd-60d8-498a-9483-778064ce4ae0",
+            "decidingOperationId": "db9e5902-5399-4f11-b19d-fa3c455ecd99"
+          },
+          {
+            "kind": "source",
+            "name": "échalote",
+            "contentRevision": "e614ca09b67c4a91a11a3d9a5927dd8c",
+            "mappingRevision": null,
+            "ingredientLineId": "c6030a38-e3f6-4cdc-a21e-1f0e1a621188",
+            "decidingOperationId": "db9e5902-5399-4f11-b19d-fa3c455ecd99"
+          },
+          {
+            "kind": "source",
+            "name": "tomatoes with basil",
+            "contentRevision": "e614ca09b67c4a91a11a3d9a5927dd8c",
+            "mappingRevision": null,
+            "ingredientLineId": "2bad4e48-07fa-4900-87c2-ad4a95c60143",
+            "decidingOperationId": "db9e5902-5399-4f11-b19d-fa3c455ecd99"
+          }
+        ],
+        "mappedLines": 3,
+        "unmappedNames": [
+          "échalote",
+          "tomatoes with basil"
+        ]
+      },
+      "vocabularyFiles": [
+        {
+          "Name": "three-anchor-reviewed-2026-11-14.1-9a73124844fd93422d00bda2a287169317377f69ef2a1a66f6b405e101e8274b.json",
+          "Sha256": "9a73124844fd93422d00bda2a287169317377f69ef2a1a66f6b405e101e8274b"
+        }
+      ]
+    },
+    {
+      "test": "RecipeApi.Tests.Integration.BilingualShoppingIdentityPostgresTests.ReviewedRelease_OrdinaryPublicationPersistsExactMappingsAndCapturedAdoptionInputs(locale: \"fr\")",
+      "outcome": "Passed",
+      "locale": "fr",
+      "priorHead": null,
+      "publication": {
+        "previousHead": null,
+        "newHead": {
+          "revision": "three-anchor-reviewed-2026-11-14.1",
+          "sha256": "9a73124844fd93422d00bda2a287169317377f69ef2a1a66f6b405e101e8274b"
+        },
+        "presentationVersion": "1"
+      },
+      "before": {
+        "snapshotId": "c9353630-1508-44a6-97a1-5ab90ba93202",
+        "manifestSha256": "50b17324b9e1cb1f300f149635205b003a2b713a720b3e049481a7420a6651a6",
+        "schemaSha256": "3536B04192965EBC66BF4DC46C29D119B022F647EC52CC9E4E04C4FF6451E6F9",
+        "generation": null,
+        "files": [],
+        "derivedOmissions": [
+          "recipe metadata and search sidecars"
+        ],
+        "historyBytesSha256": "57f0271217797ff9cb149c38e0baad45039d7f2c2f1c4397c04ee0d04c193661",
+        "historyLength": 1943,
+        "tables": {
+          "family_members": {
+            "rows": 1,
+            "capturedJsonProjectionSha256": "6282d467d62b496c4228fbddc4dc90f1e9af3ed0666e661523866f57ed052c52"
+          },
+          "recipes": {
+            "rows": 2,
+            "capturedJsonProjectionSha256": "83f8ccef911921a442467473bf378d9c614200432450891a953705a7af6bec46"
+          },
+          "canonical_recipe_operations": {
+            "rows": 0,
+            "capturedJsonProjectionSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+          },
+          "recipe_file_publications": {
+            "rows": 0,
+            "capturedJsonProjectionSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+          },
+          "feature_flag_overrides": {
+            "rows": 0,
+            "capturedJsonProjectionSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+          },
+          "recipe_repair_intents": {
+            "rows": 0,
+            "capturedJsonProjectionSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+          },
+          "recipe_import_reports": {
+            "rows": 0,
+            "capturedJsonProjectionSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+          },
+          "weekly_plans": {
+            "rows": 1,
+            "capturedJsonProjectionSha256": "06d6b8ba666af58463c36547463f8c3013dc9d9c4465d813ca97087cb287af6a"
+          },
+          "calendar_events": {
+            "rows": 16,
+            "capturedJsonProjectionSha256": "e14dd49f6a51e38618b0a10b71c006b7c30077a669a9b31bf8b025ba88c2b66d"
+          },
+          "family_settings": {
+            "rows": 0,
+            "capturedJsonProjectionSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+          },
+          "ingredient_categories": {
+            "rows": 0,
+            "capturedJsonProjectionSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+          },
+          "weekly_household_interest": {
+            "rows": 0,
+            "capturedJsonProjectionSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+          },
+          "grocery_extra_occurrences": {
+            "rows": 0,
+            "capturedJsonProjectionSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+          },
+          "supper_servings": {
+            "rows": 0,
+            "capturedJsonProjectionSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+          },
+          "grocery_mutation_outcomes": {
+            "rows": 1,
+            "capturedJsonProjectionSha256": "29c820b0325fabcf7d994aaea607b4dbb1fa756b780972667d001bc591114a87"
+          },
+          "household_food_overrides": {
+            "rows": 0,
+            "capturedJsonProjectionSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+          }
+        }
+      },
+      "after": {
+        "snapshotId": "857e9885-6af1-4a5a-847f-e792a1566d5d",
+        "manifestSha256": "bbf8bdf4f3411855f509a61544186d54422b7b42aba7d3b60998b50d4be832cc",
+        "schemaSha256": "3536B04192965EBC66BF4DC46C29D119B022F647EC52CC9E4E04C4FF6451E6F9",
+        "generation": null,
+        "files": [
+          {
+            "path": "recipes/.household/food-vocabulary/three-anchor-reviewed-2026-11-14.1-9a73124844fd93422d00bda2a287169317377f69ef2a1a66f6b405e101e8274b.json",
+            "length": 7085,
+            "sha256": "9A73124844FD93422D00BDA2A287169317377F69EF2A1A66F6B405E101E8274B"
+          }
+        ],
+        "derivedOmissions": [
+          "recipe metadata and search sidecars"
+        ],
+        "historyBytesSha256": "17b9d6fa37dc2341b1be822528d250eb18d18948d4789be654b3ac1f03127fd0",
+        "historyLength": 3731,
+        "tables": {
+          "family_members": {
+            "rows": 1,
+            "capturedJsonProjectionSha256": "6282d467d62b496c4228fbddc4dc90f1e9af3ed0666e661523866f57ed052c52"
+          },
+          "recipes": {
+            "rows": 2,
+            "capturedJsonProjectionSha256": "83f8ccef911921a442467473bf378d9c614200432450891a953705a7af6bec46"
+          },
+          "canonical_recipe_operations": {
+            "rows": 0,
+            "capturedJsonProjectionSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+          },
+          "recipe_file_publications": {
+            "rows": 0,
+            "capturedJsonProjectionSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+          },
+          "feature_flag_overrides": {
+            "rows": 0,
+            "capturedJsonProjectionSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+          },
+          "recipe_repair_intents": {
+            "rows": 0,
+            "capturedJsonProjectionSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+          },
+          "recipe_import_reports": {
+            "rows": 0,
+            "capturedJsonProjectionSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+          },
+          "weekly_plans": {
+            "rows": 1,
+            "capturedJsonProjectionSha256": "06d6b8ba666af58463c36547463f8c3013dc9d9c4465d813ca97087cb287af6a"
+          },
+          "calendar_events": {
+            "rows": 16,
+            "capturedJsonProjectionSha256": "e14dd49f6a51e38618b0a10b71c006b7c30077a669a9b31bf8b025ba88c2b66d"
+          },
+          "family_settings": {
+            "rows": 1,
+            "capturedJsonProjectionSha256": "419edae6291955991f58cd0b4e5e650f5f5aa7a6af6dab3c0467ee1b4888f661"
+          },
+          "ingredient_categories": {
+            "rows": 0,
+            "capturedJsonProjectionSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+          },
+          "weekly_household_interest": {
+            "rows": 0,
+            "capturedJsonProjectionSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+          },
+          "grocery_extra_occurrences": {
+            "rows": 0,
+            "capturedJsonProjectionSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+          },
+          "supper_servings": {
+            "rows": 0,
+            "capturedJsonProjectionSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+          },
+          "grocery_mutation_outcomes": {
+            "rows": 1,
+            "capturedJsonProjectionSha256": "29c820b0325fabcf7d994aaea607b4dbb1fa756b780972667d001bc591114a87"
+          },
+          "household_food_overrides": {
+            "rows": 0,
+            "capturedJsonProjectionSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+          }
+        }
+      },
+      "affectedSet": {
+        "capturedRecipeIds": [
+          "660e8400-e29b-41d4-a716-446655440011",
+          "660e8400-e29b-41d4-a716-446655440012"
+        ],
+        "existingMappingCount": 0,
+        "existingMappingsAfter": 0,
+        "changedBusinessTables": [],
+        "existingMappingsRemapped": 0,
+        "existingGroceryRowsChanged": 0,
+        "protectedHouseholdOverrides": 0,
+        "manualCategoriesInspected": 0,
+        "manualAliasCategoryChoices": [],
+        "categoryConflicts": []
+      },
+      "ordinaryPublication": {
+        "recipeId": "b4bb5f17-b135-4a98-844d-17f6d7403afe",
+        "sourceUrl": "https://example.test/bounded-fr",
+        "rawMetadata": "{\"name\": \"Bounded fr\", \"@type\": \"Recipe\", \"supply\": [{\"name\": \"oignon émincé\", \"@type\": \"HowToSupply\", \"requiredQuantity\": {\"@type\": \"QuantitativeValue\", \"value\": 25, \"unitCode\": null, \"unitText\": \"g\"}}, {\"name\": \"tomate\", \"@type\": \"HowToSupply\", \"requiredQuantity\": {\"@type\": \"QuantitativeValue\", \"value\": 25, \"unitCode\": null, \"unitText\": \"g\"}}, {\"name\": \"tomates en conserve\", \"@type\": \"HowToSupply\", \"requiredQuantity\": {\"@type\": \"QuantitativeValue\", \"value\": 25, \"unitCode\": null, \"unitText\": \"g\"}}, {\"name\": \"échalote\", \"@type\": \"HowToSupply\", \"requiredQuantity\": {\"@type\": \"QuantitativeValue\", \"value\": 25, \"unitCode\": null, \"unitText\": \"g\"}}, {\"name\": \"tomates séchées\", \"@type\": \"HowToSupply\", \"requiredQuantity\": {\"@type\": \"QuantitativeValue\", \"value\": 25, \"unitCode\": null, \"unitText\": \"g\"}}], \"@context\": \"https://schema.org/\", \"nutrition\": null, \"totalTime\": null, \"recipeYield\": \"4 servings\", \"recipeIngredient\": [\"25 g oignon émincé\", \"25 g tomate\", \"25 g tomates en conserve\", \"25 g échalote\", \"25 g tomates séchées\"], \"suggestedPairing\": null, \"recipeInstructions\": [{\"name\": null, \"@type\": \"HowToSection\", \"itemListElement\": [{\"text\": \"Mix.\", \"@type\": \"HowToStep\"}]}]}",
+        "canonicalContentRawSha256": "eeec3367a4f3d3fcf1e22770a159924714f356d1e4e569a8f1cc09c782571360",
+        "foodMappingEvidenceRawSha256": "6e9c17579d4609c43161be5929ea225ad8b173071faf6d1538a1b580b82505d8",
+        "mappingFacts": [
+          {
+            "facts": {
+              "foodId": "ac9818ee-4c30-4f91-a4ea-0aa4fc7265ee",
+              "origin": "source",
+              "recipeId": "b4bb5f17-b135-4a98-844d-17f6d7403afe",
+              "sourceRef": "source.06243A08DA0FB6350851B6BA6331EB00A6D92A0EFFED5861739408D77591EAB7",
+              "foodRevision": "model-reviewed-2026-11-13.1/food-1",
+              "contentRevision": "0697694514524a6ca6d3f041143641d7",
+              "mappingRevision": "mapping.abe81e62a6fb4387a900903c67ebcf3d.1257f47c4a5f4b8c991a5f89839cc2fb",
+              "protectedFields": [],
+              "ingredientLineId": "1257f47c-4a5f-4b8c-991a-5f89839cc2fb",
+              "dictionaryRevision": "three-anchor-reviewed-2026-11-14.1",
+              "evidenceSourceRevision": "source.06243A08DA0FB6350851B6BA6331EB00A6D92A0EFFED5861739408D77591EAB7"
+            },
+            "vocabularySha256": "9a73124844fd93422d00bda2a287169317377f69ef2a1a66f6b405e101e8274b",
+            "vocabularyRevision": "three-anchor-reviewed-2026-11-14.1",
+            "resolverPolicyVersion": 1
+          },
+          {
+            "facts": {
+              "foodId": "d9940182-48c9-4823-a820-1c7c54869d5f",
+              "origin": "source",
+              "recipeId": "b4bb5f17-b135-4a98-844d-17f6d7403afe",
+              "sourceRef": "source.06243A08DA0FB6350851B6BA6331EB00A6D92A0EFFED5861739408D77591EAB7",
+              "foodRevision": "model-reviewed-2026-11-13.1/food-2",
+              "contentRevision": "0697694514524a6ca6d3f041143641d7",
+              "mappingRevision": "mapping.abe81e62a6fb4387a900903c67ebcf3d.fc7e73a6c4b244e3ba1f6d9251c450b8",
+              "protectedFields": [],
+              "ingredientLineId": "fc7e73a6-c4b2-44e3-ba1f-6d9251c450b8",
+              "dictionaryRevision": "three-anchor-reviewed-2026-11-14.1",
+              "evidenceSourceRevision": "source.06243A08DA0FB6350851B6BA6331EB00A6D92A0EFFED5861739408D77591EAB7"
+            },
+            "vocabularySha256": "9a73124844fd93422d00bda2a287169317377f69ef2a1a66f6b405e101e8274b",
+            "vocabularyRevision": "three-anchor-reviewed-2026-11-14.1",
+            "resolverPolicyVersion": 1
+          },
+          {
+            "facts": {
+              "foodId": "031a0c4b-2d73-4a70-88aa-8ad3dd680ebb",
+              "origin": "source",
+              "recipeId": "b4bb5f17-b135-4a98-844d-17f6d7403afe",
+              "sourceRef": "source.06243A08DA0FB6350851B6BA6331EB00A6D92A0EFFED5861739408D77591EAB7",
+              "foodRevision": "model-reviewed-2026-11-13.1/food-3",
+              "contentRevision": "0697694514524a6ca6d3f041143641d7",
+              "mappingRevision": "mapping.abe81e62a6fb4387a900903c67ebcf3d.8ccf5099c04748ea8837de6c27dddc3a",
+              "protectedFields": [],
+              "ingredientLineId": "8ccf5099-c047-48ea-8837-de6c27dddc3a",
+              "dictionaryRevision": "three-anchor-reviewed-2026-11-14.1",
+              "evidenceSourceRevision": "source.06243A08DA0FB6350851B6BA6331EB00A6D92A0EFFED5861739408D77591EAB7"
+            },
+            "vocabularySha256": "9a73124844fd93422d00bda2a287169317377f69ef2a1a66f6b405e101e8274b",
+            "vocabularyRevision": "three-anchor-reviewed-2026-11-14.1",
+            "resolverPolicyVersion": 1
+          }
+        ],
+        "nameDecisions": [
+          {
+            "kind": "source",
+            "name": "oignon émincé",
+            "contentRevision": "0697694514524a6ca6d3f041143641d7",
+            "mappingRevision": "mapping.abe81e62a6fb4387a900903c67ebcf3d.1257f47c4a5f4b8c991a5f89839cc2fb",
+            "ingredientLineId": "1257f47c-4a5f-4b8c-991a-5f89839cc2fb",
+            "decidingOperationId": "abe81e62-a6fb-4387-a900-903c67ebcf3d"
+          },
+          {
+            "kind": "source",
+            "name": "tomate",
+            "contentRevision": "0697694514524a6ca6d3f041143641d7",
+            "mappingRevision": "mapping.abe81e62a6fb4387a900903c67ebcf3d.fc7e73a6c4b244e3ba1f6d9251c450b8",
+            "ingredientLineId": "fc7e73a6-c4b2-44e3-ba1f-6d9251c450b8",
+            "decidingOperationId": "abe81e62-a6fb-4387-a900-903c67ebcf3d"
+          },
+          {
+            "kind": "source",
+            "name": "tomates en conserve",
+            "contentRevision": "0697694514524a6ca6d3f041143641d7",
+            "mappingRevision": "mapping.abe81e62a6fb4387a900903c67ebcf3d.8ccf5099c04748ea8837de6c27dddc3a",
+            "ingredientLineId": "8ccf5099-c047-48ea-8837-de6c27dddc3a",
+            "decidingOperationId": "abe81e62-a6fb-4387-a900-903c67ebcf3d"
+          },
+          {
+            "kind": "source",
+            "name": "échalote",
+            "contentRevision": "0697694514524a6ca6d3f041143641d7",
+            "mappingRevision": null,
+            "ingredientLineId": "d4d789b9-c79f-4d0f-be8c-c1eb944c8fb1",
+            "decidingOperationId": "abe81e62-a6fb-4387-a900-903c67ebcf3d"
+          },
+          {
+            "kind": "source",
+            "name": "tomates séchées",
+            "contentRevision": "0697694514524a6ca6d3f041143641d7",
+            "mappingRevision": null,
+            "ingredientLineId": "7d43966a-9809-44cf-8f78-07f19da8c0d2",
+            "decidingOperationId": "abe81e62-a6fb-4387-a900-903c67ebcf3d"
+          }
+        ],
+        "mappedLines": 3,
+        "unmappedNames": [
+          "échalote",
+          "tomates séchées"
+        ]
+      },
+      "vocabularyFiles": [
+        {
+          "Name": "three-anchor-reviewed-2026-11-14.1-9a73124844fd93422d00bda2a287169317377f69ef2a1a66f6b405e101e8274b.json",
+          "Sha256": "9a73124844fd93422d00bda2a287169317377f69ef2a1a66f6b405e101e8274b"
+        }
+      ]
+    }
+  ],
+  "scope": "The two captured disposable households supply the measured affected sets. Shared/copied-library adoption requires its own capture, review and authority."
+}

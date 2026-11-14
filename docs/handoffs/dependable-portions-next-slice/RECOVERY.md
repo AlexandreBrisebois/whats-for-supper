@@ -1,5 +1,10 @@
 # Recovery-first delivery
 
+The later [common vocabulary handoff](BILINGUAL-COMMON.md) records bounded
+`bilingual-shopping-identity` tasks 1.1–1.3 and its exact reviewed three-food input.
+Its captured disposable adoption and reversal evidence supplies the next common
+vocabulary checkpoint for this branch.
+
 The bounded migration follow-up is now described in [the executor handoff](MIGRATION-EXECUTOR.md). The recovery checkpoint below retains its original candidate and qualification.
 
 ## Application checkpoint
