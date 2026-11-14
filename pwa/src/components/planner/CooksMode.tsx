@@ -112,6 +112,12 @@ export function CooksMode({
   } | null>(null);
   const [projectionAttempt, setProjectionAttempt] = useState(0);
   const quantityRequest = useRef(0);
+  useEffect(
+    () => () => {
+      quantityRequest.current++;
+    },
+    [contentKey]
+  );
   const projection = projectionRead?.key === contextKey ? projectionRead?.data : undefined;
   const projectionError = projectionRead?.key === contextKey && projectionRead?.error;
   useEffect(() => {
@@ -149,6 +155,7 @@ export function CooksMode({
   useEffect(() => {
     if (!contextKey) return;
     let active = true;
+    let probeRequest = 0;
     const [id, context] = JSON.parse(contextKey);
     const probe = async () => {
       if (!appliedProjection.current || quantityRefreshInFlight.current) {
@@ -156,17 +163,21 @@ export function CooksMode({
         return;
       }
       quantityInvalidated.current = false;
-      const generation = ++quantityRequest.current;
+      // A background hint can retire another probe, but cannot supersede an
+      // explicit Save or refresh. Foreground work still retires older probes.
+      const generation = quantityRequest.current;
+      const probeGeneration = ++probeRequest;
       try {
         const current = await getIngredientProjection(id, context);
-        if (!active || generation !== quantityRequest.current) return;
+        if (!active || generation !== quantityRequest.current || probeGeneration !== probeRequest)
+          return;
         const changed =
           current.version !== appliedProjection.current!.version ||
           current.contentRevision !== appliedProjection.current!.contentRevision;
         if (!changed) setProjectionRead({ key: contextKey, data: current });
         setQuantityNotice({ key: contextKey, error: false, available: changed });
       } catch {
-        if (active && generation === quantityRequest.current)
+        if (active && generation === quantityRequest.current && probeGeneration === probeRequest)
           setQuantityNotice((previous) => ({
             key: contextKey,
             error: true,
@@ -176,12 +187,8 @@ export function CooksMode({
     };
     const unsubscribe = subscribeIngredientProjectionInvalidation(context, () => void probe());
     if (quantityInvalidated.current) void probe();
-    const retireRequests = () => {
-      quantityRequest.current++;
-    };
     return () => {
       active = false;
-      retireRequests();
       unsubscribe();
     };
   }, [contextKey, projection]);
@@ -697,6 +704,7 @@ export function CooksMode({
             editingValue !== activeInstructionDraft.current
           )
             throw new Error('Instruction save superseded');
+          quantityRequest.current++;
           setProjectionRead({ key: contextKey, data: current });
         } else {
           if (

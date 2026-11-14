@@ -1,6 +1,17 @@
 # Tasks
 
-## Current selected delivery — 2026-11-14
+## Cooking instruction Save repair — selected 2026-11-14
+
+The user selected the attachment's cooking Save diagnosis on `recipe-view-redesign`
+at `c65b799b`; the newer hosted run passed cooking and failed planning. This is only
+an instruction-save/coherent-refresh contribution beneath 4.1–4.2, with regression,
+production/native repetition and stable verification. The
+[handoff](../../../docs/handoffs/dependable-portions-next-slice/COOKING-SAVE.md)
+and `.task/cooking-save-20261114/delivery.json` retain all diagnostic failures and
+candidate-specific results. Unrelated cooking completion criteria and 6.2–6.3 stay
+open. Alex owns CI monitoring; no rerun or unrelated planning repair is selected.
+
+## Prior Portions/copied-library selection — 2026-11-14
 
 The current bounded selection covers the authorized Portions native-focus coverage
 amendment, disposable copied-library migration 2.1–2.2/3.1–3.2, contingent bilingual

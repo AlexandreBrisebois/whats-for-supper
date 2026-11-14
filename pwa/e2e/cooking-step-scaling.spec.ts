@@ -576,6 +576,31 @@ test('ordinary guarded Save discovers a final remainder and step editing replace
   await page.getByTestId('cooks-mode-edit-step').click();
   await expect(page.getByRole('textbox')).toHaveValue(originalSteps[1]);
   await page.getByRole('textbox').fill('Finally, add all the remaining oil.');
+  // Exercise uncertain delivery explicitly; a background hint must not turn a
+  // matching successful Save into the error needed by this recovery scenario.
+  await page.evaluate((id) => {
+    const originalFetch = window.fetch;
+    let lost = false;
+    (window as any).__restoreRemainderFetch = () => {
+      window.fetch = originalFetch;
+    };
+    window.fetch = async (...args) => {
+      const input = args[0];
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+      const method = args[1]?.method ?? (input instanceof Request ? input.method : 'GET');
+      const reply = await originalFetch(...args);
+      if (
+        !lost &&
+        method.toUpperCase() === 'PATCH' &&
+        new URL(url, location.href).pathname === `/api/recipes/${id}`
+      ) {
+        if (reply.status !== 200) throw new Error(`Expected committed Save, got ${reply.status}`);
+        lost = true;
+        throw new TypeError('Synthetic lost instruction reply after commit');
+      }
+      return reply;
+    };
+  }, recipe.id);
   let stepEditPatchCount = 0;
   page.on('request', (request) => {
     if (
@@ -599,6 +624,7 @@ test('ordinary guarded Save discovers a final remainder and step editing replace
   const instructionError = page.getByTestId('cooks-mode-instructions').getByRole('alert');
   await expect(instructionError).toContainText("Couldn't save this step.");
   await expect(page.getByRole('textbox')).toHaveValue('Finally, add all the remaining oil.');
+  await page.evaluate(() => window.dispatchEvent(new Event('focus')));
   await expect(page.getByTestId('cooking-quantities-available')).toBeVisible();
   expect(stepEditPatchCount).toBe(1);
   const recoveryDetail = page.waitForResponse(
@@ -618,6 +644,7 @@ test('ordinary guarded Save discovers a final remainder and step editing replace
   expect(recoveredProjection.status()).toBe(200);
   expect((await recoveredDetail.json()).recipe.contentRevision).toBe(edited.contentRevision);
   expect((await recoveredProjection.json()).contentRevision).toBe(edited.contentRevision);
+  await page.evaluate(() => (window as any).__restoreRemainderFetch());
   await expect(page.getByRole('textbox')).toHaveCount(0);
   await expect(page.getByText('Step saved', { exact: true })).toHaveAttribute(
     'aria-live',

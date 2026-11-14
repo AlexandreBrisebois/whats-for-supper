@@ -1,6 +1,17 @@
 # Tasks
 
-## Current selected delivery — 2026-11-14
+## Cooking instruction Save repair — selected 2026-11-14
+
+The user selected the attachment's instruction-save/coherent-refresh diagnosis on
+`recipe-view-redesign` at `c65b799b`. This is a bounded contribution to 2.2/3.2 and
+their verification, preserving the guarded canonical PATCH and authoritative
+projection without a backend policy or API change. The
+[handoff](../../../docs/handoffs/dependable-portions-next-slice/COOKING-SAVE.md)
+and `.task/cooking-save-20261114/delivery.json` own exact evidence and delivery.
+No aggregate checkbox closes. Retained V1 history reconciliation, library migration,
+unrelated planning CI repair and final release acceptance remain separate selections.
+
+## Prior Portions/copied-library selection — 2026-11-14
 
 The current bounded selection covers the authorized Portions native-focus coverage
 amendment, disposable copied-library migration 2.1–2.2/3.1–3.2, contingent bilingual

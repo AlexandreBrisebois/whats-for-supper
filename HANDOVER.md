@@ -1,5 +1,17 @@
 # Active resume checkpoints
 
+## Cooking instruction Save repair (2026-11-14)
+
+Selected on clean local/remote `recipe-view-redesign` at `c65b799b`; user chose the
+attachment's cooking diagnosis after the newer run passed cooking but failed
+planning. The [cooking handoff](docs/handoffs/dependable-portions-next-slice/COOKING-SAVE.md)
+owns scope, demonstrated cause and retained diagnostic failures. Background probes
+no longer supersede matching foreground Save; draft/context/uncertain-write guards
+remain. Terminal immutable review, stable verification, full PostgreSQL, signed
+delivery and owned-resource cleanup belong to `.task/cooking-save-20261114/delivery.json`.
+Alex owns CI monitoring. No aggregate closes, migration work or unrelated CI repair.
+The separate retained V1 blocker and all original history remain unchanged below.
+
 ## Portions coverage and copied-library admission (2026-11-14)
 
 The [current handoff](docs/handoffs/dependable-portions-next-slice/MIGRATION-ACCEPTANCE.md)

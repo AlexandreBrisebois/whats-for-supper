@@ -148,11 +148,26 @@ if (
       await editor
         .getByRole('textbox')
         .fill(absoluteUse ? 'Use 50 g pasta.' : 'Add all 250 g pasta.');
-      const stepSaving = editor.waitForResponse(
-        (response) =>
-          response.request().method() === 'PATCH' &&
-          new URL(response.url()).pathname === `/api/recipes/${id}`
+      let instructionReplyReceived = false;
+      let focusedDuringSave = false;
+      await editor.route(
+        (url) => url.pathname === `/api/recipes/${id}/ingredient-projection`,
+        async (route) => {
+          if (!instructionReplyReceived || focusedDuringSave) return route.continue();
+          const response = await route.fetch();
+          focusedDuringSave = true;
+          // Resume hints must not retire this Save's matching authoritative read.
+          await editor.evaluate(() => window.dispatchEvent(new Event('focus')));
+          await route.fulfill({ response });
+        }
       );
+      const stepSaving = editor.waitForResponse((response) => {
+        const matches =
+          response.request().method() === 'PATCH' &&
+          new URL(response.url()).pathname === `/api/recipes/${id}`;
+        if (matches) instructionReplyReceived = true;
+        return matches;
+      });
       await editor.getByTestId('cooks-mode-save-edit').click();
       const stepReply = await stepSaving;
       expect(stepReply.status(), await stepReply.text()).toBe(200);
@@ -172,6 +187,9 @@ if (
       }
       expect(stepSaved.instructionSections[0].steps[1].text).toBe('Simmer 20 minutes at 180 °C.');
       expect(stepSaved.ingredientLines).toEqual(saved.ingredientLines);
+      await expect(editor.getByRole('textbox')).toHaveCount(0);
+      expect(focusedDuringSave).toBe(true);
+      await expect(editor.getByText('Step saved', { exact: true })).toBeVisible();
       await shopper.evaluate(() => window.dispatchEvent(new Event('focus')));
       await expect(shopper.getByTestId('cooking-quantities-available')).toBeVisible();
       await shopper.getByRole('button', { name: 'Refresh quantities', exact: true }).click();
